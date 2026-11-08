@@ -20,6 +20,10 @@ exports.handler = async (event) => {
     return json(405, { success: false, error: "केवल POST अनुरोध स्वीकार है।" });
   }
 
+  // Reject oversized requests before parsing or contacting Supabase.
+  if (typeof event.body === "string" && Buffer.byteLength(event.body, "utf8") > 16384) {
+    return json(413, { success: false, error: "अनुरोध बहुत बड़ा है। कृपया जानकारी कम करके दोबारा भेजें।" });
+  }
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error("Missing Supabase server configuration for electrician applications.");
     return json(500, { success: false, error: "सर्वर कॉन्फ़िगरेशन अधूरा है। Admin से संपर्क करें।" });
