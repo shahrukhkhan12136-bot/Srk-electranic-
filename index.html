@@ -186,7 +186,7 @@ async function loadCustomerBookings() {
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
     (row.quoted_amount != null ? '<p>तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
-    (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">भुगतान संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
+    (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
     '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
     '</article>').join('');
 }
