@@ -1,4 +1,5 @@
 // SRK ELECTRONIC electrician application API.
+const crypto = require("crypto");
 // Server-side only: keep SUPABASE_SERVICE_ROLE_KEY in Netlify environment variables.
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,6 +16,20 @@ const json = (statusCode, body) => ({
 const clean = (value, max = 500) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
+async function checkPublicRateLimit(endpoint, ipHash, limit) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/srk_check_public_rate_limit`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ p_endpoint: endpoint, p_ip_hash: ipHash, p_limit: limit })
+  });
+  if (!response.ok) throw new Error("Rate-limit database request failed");
+  return (await response.json()) === true;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return json(405, { success: false, error: "केवल POST अनुरोध स्वीकार है।" });
@@ -27,6 +42,22 @@ exports.handler = async (event) => {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error("Missing Supabase server configuration for electrician applications.");
     return json(500, { success: false, error: "सर्वर कॉन्फ़िगरेशन अधूरा है। Admin से संपर्क करें।" });
+  }
+
+  const clientIp = event.headers?.["x-nf-client-connection-ip"] || event.headers?.["X-Nf-Client-Connection-Ip"];
+  if (typeof clientIp !== "string" || !clientIp.trim()) {
+    return json(503, { success: false, error: "सुरक्षा जाँच अभी उपलब्ध नहीं है। कृपया थोड़ी देर बाद कोशिश करें।" });
+  }
+  try {
+    const ipHash = crypto.createHash("sha256").update(clientIp.trim()).digest("hex");
+    const allowed = await checkPublicRateLimit("application", ipHash, 3);
+    if (!allowed) return {
+      ...json(429, { success: false, error: "इस मोबाइल नेटवर्क से बहुत अधिक आवेदन आए हैं। कृपया कुछ देर बाद कोशिश करें।" }),
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "Retry-After": "3600" }
+    };
+  } catch (rateError) {
+    console.error("Application rate-limit check failed:", rateError.name || "UnknownError");
+    return json(503, { success: false, error: "आवेदन सुरक्षा जाँच अस्थायी रूप से उपलब्ध नहीं है। कृपया बाद में कोशिश करें।" });
   }
 
   try {
