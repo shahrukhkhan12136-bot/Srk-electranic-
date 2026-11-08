@@ -80,6 +80,11 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <label for="district">जिला</label><input id="district" required placeholder="अपना जिला लिखें">
    <label for="pin">PIN Code</label><input id="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="6 अंकों का PIN Code">
    <label for="address">पूरा पता</label><textarea id="address" required placeholder="मकान नंबर, गली, एरिया और शहर"></textarea>
+   <div class="small" style="margin-top:8px">📍 सही लोकेशन चुनने के लिए GPS अनुमति दें। आपकी लोकेशन बुकिंग के साथ Admin और असाइन हुए इलेक्ट्रिशियन को दिखाई जाएगी।</div>
+   <button class="btn" type="button" id="customerLocate" style="margin-top:8px;background:#eaf2ff;color:#164b91">📍 मेरी लोकेशन चुनें</button>
+   <input type="hidden" id="bookingLat"><input type="hidden" id="bookingLng">
+   <p class="small" id="customerLocationStatus" role="status" aria-live="polite">लोकेशन अभी नहीं चुनी गई है। पता लिखकर भी Google Maps में देखा जा सकेगा।</p>
+   <div id="customerMapWrap" style="display:none;margin-top:10px"><iframe id="customerMap" title="बुकिंग लोकेशन का Google Map" width="100%" height="220" style="border:0;border-radius:12px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a id="customerMapLink" target="_blank" rel="noopener">Google Maps में लोकेशन खोलें</a></div>
    <label for="service">कौन-सी सर्विस चाहिए?</label>
    <select id="service"><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>होम रिपेयरिंग</option><option>अन्य</option></select>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
@@ -109,6 +114,9 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <label for="eState">राज्य</label><select id="eState" required><option value="">राज्य चुनें</option><option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option><option>Andaman and Nicobar Islands</option><option>Chandigarh</option><option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Jammu and Kashmir</option><option>Ladakh</option><option>Lakshadweep</option><option>Puducherry</option></select>
    <label for="eDistrict">जिला</label><input id="eDistrict" required placeholder="जिला">
    <label for="ePin">काम का PIN Code</label><input id="ePin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="6 अंकों का PIN Code">
+   <button class="btn" type="button" id="electricianLocate" style="margin-top:8px;background:#eaf2ff;color:#164b91">📍 अपनी काम की लोकेशन चुनें</button>
+   <input type="hidden" id="electricianLat"><input type="hidden" id="electricianLng">
+   <p class="small" id="electricianLocationStatus" role="status">GPS लोकेशन वैकल्पिक है; PIN Code और जिला से भी ऑफर मिलेंगे।</p>
    <label for="eSkills">कौन-कौन से काम आते हैं?</label><select id="eSkills" required><option value="">काम चुनें</option><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>MCB / DB / इन्वर्टर</option><option>मोटर / पंप</option><option>सभी इलेक्ट्रिकल काम</option></select>
    <label for="eExperience">अनुभव (वर्ष)</label><input id="eExperience" type="number" min="0" max="60" required placeholder="जैसे 3">
    <label for="eAbout">अनुभव / अतिरिक्त जानकारी</label><textarea id="eAbout" placeholder="अपनी योग्यता, उपलब्ध समय आदि लिखें"></textarea>
@@ -151,6 +159,12 @@ function customerPhoneE164() {
   if (raw.startsWith('+') && digits.length >= 10 && digits.length <= 15) return '+' + digits;
   return null;
 }
+function googleMapsUrl(lat, lng, address) { const q = lat !== '' && lng !== '' && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) ? `${lat},${lng}` : address; return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q); }
+function locateInto(latId, lngId, statusId, mapWrapId, mapId, linkId) {
+  const status=document.getElementById(statusId); if(!navigator.geolocation){status.textContent='इस डिवाइस में GPS लोकेशन उपलब्ध नहीं है।';return;}
+  status.textContent='GPS लोकेशन प्राप्त हो रही है…';
+  navigator.geolocation.getCurrentPosition(pos=>{const lat=pos.coords.latitude.toFixed(7),lng=pos.coords.longitude.toFixed(7);document.getElementById(latId).value=lat;document.getElementById(lngId).value=lng;status.textContent='लोकेशन सफलतापूर्वक चुन ली गई।';if(mapWrapId){document.getElementById(mapId).src='https://maps.google.com/maps?q='+encodeURIComponent(lat+','+lng)+'&z=16&output=embed';document.getElementById(linkId).href=googleMapsUrl(lat,lng,'');document.getElementById(mapWrapId).style.display='block';}},()=>{status.textContent='लोकेशन नहीं मिल सकी। ब्राउज़र में Location अनुमति चालू करें या पता लिखें।';},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+}
 function customerEsc(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -161,7 +175,7 @@ async function loadCustomerBookings() {
   if (!session) return;
   box.textContent = 'आपकी बुकिंग लोड हो रही हैं…';
   const { data, error } = await customerSb.from('service_bookings')
-    .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid')
+    .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng')
     .eq('customer_user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -172,6 +186,7 @@ async function loadCustomerBookings() {
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
     (row.quoted_amount != null ? '<p>तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
+    '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
     '</article>').join('');
 }
 async function syncCustomerSession() {
@@ -307,11 +322,13 @@ async function startRazorpayPayment() {
   }
 }
 
+document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
+document.getElementById('electricianLocate').addEventListener('click',()=>locateInto('electricianLat','electricianLng','electricianLocationStatus'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
   const amount = Number(value('amount'));
   const method = value('payment');
-  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
+  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
   currentBookingWhatsApp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
   if (method === 'Razorpay ऑनलाइन भुगतान' && (!Number.isFinite(amount) || amount < 1)) { alert('ऑनलाइन भुगतान के लिए कम से कम ₹1 की सही राशि भरें।'); return; }
   const submitButton = this.querySelector('button[type="submit"]');
@@ -325,7 +342,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     }
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify({
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
-      address: value('address'), service_type: value('service'), preferred_date: value('date'), preferred_time: value('time'),
+      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: value('service'), preferred_date: value('date'), preferred_time: value('time'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method, quoted_amount: amount || null
     }) });
     const result = await response.json();
@@ -348,11 +365,11 @@ document.getElementById('booking').addEventListener('submit', async function (e)
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
 document.getElementById('electricianForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  const msg = `नमस्ते SRK ELECTRONIC, मैं इलेक्ट्रिशियन के रूप में रजिस्टर करना चाहता/चाहती हूँ।\nनाम: ${value('eName')}\nमोबाइल: ${value('ePhone')}\nराज्य: ${value('eState')}\nजिला: ${value('eDistrict')}\nPIN Code: ${value('ePin')}\nकौशल: ${value('eSkills')}\nअनुभव: ${value('eExperience')} वर्ष\nजानकारी: ${value('eAbout')}`;
+  const msg = `नमस्ते SRK ELECTRONIC, मैं इलेक्ट्रिशियन के रूप में रजिस्टर करना चाहता/चाहती हूँ।\nनाम: ${value('eName')}\nमोबाइल: ${value('ePhone')}\nराज्य: ${value('eState')}\nजिला: ${value('eDistrict')}\nPIN Code: ${value('ePin')}\nGoogle Maps: ${googleMapsUrl(value('electricianLat'),value('electricianLng'),[value('eDistrict'),value('eState'),value('ePin'),'India'].join(', '))}\nकौशल: ${value('eSkills')}\nअनुभव: ${value('eExperience')} वर्ष\nजानकारी: ${value('eAbout')}`;
   const whatsapp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
   const button = this.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'आवेदन भेजा जा रहा है…';
   try {
-    const response = await fetch('/api/apply-electrician', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: value('eName'), phone: value('ePhone'), state: value('eState'), district: value('eDistrict'), pincode: value('ePin'), skills: value('eSkills'), experience_years: value('eExperience'), about: value('eAbout') }) });
+    const response = await fetch('/api/apply-electrician', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: value('eName'), phone: value('ePhone'), state: value('eState'), district: value('eDistrict'), pincode: value('ePin'), location_lat: value('electricianLat') || null, location_lng: value('electricianLng') || null, skills: value('eSkills'), experience_years: value('eExperience'), about: value('eAbout') }) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'आवेदन सेव नहीं हुआ।');
     alert(result.message); window.location.href = whatsapp;
