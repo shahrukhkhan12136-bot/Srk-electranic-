@@ -42,6 +42,27 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
  </div>
 </header>
 <main class="wrap">
+ <section class="panel" id="customer-login">
+  <h2 class="section-title" style="margin-top:0">ग्राहक लॉगिन</h2>
+  <p class="small">अपना मोबाइल नंबर सत्यापित करके अपनी बुकिंग देखें।</p>
+  <label for="customerPhone">मोबाइल नंबर</label>
+  <input id="customerPhone" type="tel" inputmode="numeric" maxlength="15" placeholder="10 अंकों का मोबाइल नंबर">
+  <button class="btn primary" type="button" id="customerSendOtp">OTP भेजें</button>
+  <div id="customerOtpBox" style="display:none">
+   <label for="customerOtp">SMS से मिला OTP</label>
+   <input id="customerOtp" type="text" inputmode="numeric" maxlength="8" placeholder="OTP दर्ज करें">
+   <button class="btn primary" type="button" id="customerVerifyOtp">OTP सत्यापित करें</button>
+  </div>
+  <p class="small" id="customerAuthMessage" role="status" aria-live="polite"></p>
+ </section>
+ <section class="panel" id="customer-dashboard" style="display:none">
+  <h2 class="section-title" style="margin-top:0">मेरी बुकिंग</h2>
+  <p class="small" id="customerSignedIn"></p>
+  <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
+  <div id="customerBookings" aria-live="polite"></div>
+  <button class="btn" type="button" id="customerLogout">लॉगआउट</button>
+ </section>
+
  <h2 class="section-title">हमारी सेवाएँ</h2>
  <div class="grid">
   <article class="card"><div class="icon">⚡</div><h3>घर की वायरिंग</h3><p>नई वायरिंग और इलेक्ट्रिकल फिटिंग से जुड़ी सेवाएँ।</p></article>
@@ -125,7 +146,7 @@ let customerOtpTimer = null;
 const customerMessage = message => { document.getElementById('customerAuthMessage').textContent = message; };
 function customerPhoneE164() {
   const raw = document.getElementById('customerPhone').value.trim();
-  const digits = raw.replace(/\\D/g, '');
+  const digits = raw.replace(/\D/g, '');
   if (digits.length === 10) return '+91' + digits;
   if (raw.startsWith('+') && digits.length >= 10 && digits.length <= 15) return '+' + digits;
   return null;
@@ -193,7 +214,7 @@ async function customerVerifyOtp() {
   if (customerOtpBusy) return;
   const phone = customerPhoneE164();
   const token = document.getElementById('customerOtp').value.trim();
-  if (!phone || !/^\\d{4,8}$/.test(token)) { customerMessage('सही मोबाइल नंबर और SMS OTP दर्ज करें।'); return; }
+  if (!phone || !/^\d{4,8}$/.test(token)) { customerMessage('सही मोबाइल नंबर और SMS OTP दर्ज करें।'); return; }
   customerOtpBusy = true;
   const button = document.getElementById('customerVerifyOtp');
   button.disabled = true; customerMessage('OTP सत्यापित हो रहा है…');
