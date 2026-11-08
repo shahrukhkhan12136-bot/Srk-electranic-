@@ -48,3 +48,10 @@ begin
   end if;
 end;
 $function$;
+
+ALTER TABLE public.service_bookings VALIDATE CONSTRAINT service_bookings_location_pair_check;
+ALTER TABLE public.service_bookings VALIDATE CONSTRAINT service_bookings_location_range_check;
+ALTER TABLE public.electrician_applications VALIDATE CONSTRAINT electrician_applications_location_pair_check;
+ALTER TABLE public.electrician_applications VALIDATE CONSTRAINT electrician_applications_location_range_check;
+ALTER TABLE public.electrician_profiles VALIDATE CONSTRAINT electrician_profiles_location_pair_check;
+ALTER TABLE public.electrician_profiles VALIDATE CONSTRAINT electrician_profiles_location_range_check;
