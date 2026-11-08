@@ -69,8 +69,13 @@ exports.handler = async (event) => {
     const pincode = clean(body.pincode, 6);
     const skills = clean(body.skills, 300);
     const about = clean(body.about, 2000);
+    const location_lat = body.location_lat == null || body.location_lat === '' ? null : Number(body.location_lat);
+    const location_lng = body.location_lng == null || body.location_lng === '' ? null : Number(body.location_lng);
     const experience_years = Number(body.experience_years);
 
+    if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
+      return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
+    }
     if (!full_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !skills ||
         !Number.isInteger(experience_years) || experience_years < 0 || experience_years > 60) {
@@ -91,7 +96,7 @@ exports.handler = async (event) => {
           Prefer: "return=representation"
         },
         body: JSON.stringify([{
-          full_name, phone, state, district, pincode, skills,
+          full_name, phone, state, district, pincode, location_lat, location_lng, skills,
           experience_years, about: about || null,
           verification_status: "pending",
           active: false
