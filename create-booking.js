@@ -1,4 +1,5 @@
 // SRK ELECTRONIC booking API.
+const crypto = require("crypto");
 // Netlify environment variables required: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
 // Keep the service-role key in Netlify environment variables only; never commit it.
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -50,6 +51,14 @@ async function supabase(path, options = {}) {
   return data;
 }
 
+async function checkPublicRateLimit(endpoint, ipHash, limit) {
+  const result = await supabase("rpc/srk_check_public_rate_limit", {
+    method: "POST",
+    body: JSON.stringify({ p_endpoint: endpoint, p_ip_hash: ipHash, p_limit: limit })
+  });
+  return result === true;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return json(405, { success: false, error: "केवल POST अनुरोध स्वीकार है।" });
@@ -61,6 +70,22 @@ exports.handler = async (event) => {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
     return json(500, { success: false, error: "सर्वर कॉन्फ़िगरेशन अधूरा है। Admin से संपर्क करें।" });
+  }
+
+  const clientIp = event.headers?.["x-nf-client-connection-ip"] || event.headers?.["X-Nf-Client-Connection-Ip"];
+  if (typeof clientIp !== "string" || !clientIp.trim()) {
+    return json(503, { success: false, error: "सुरक्षा जाँच अभी उपलब्ध नहीं है। कृपया थोड़ी देर बाद कोशिश करें।" });
+  }
+  try {
+    const ipHash = crypto.createHash("sha256").update(clientIp.trim()).digest("hex");
+    const allowed = await checkPublicRateLimit("booking", ipHash, 5);
+    if (!allowed) return {
+      ...json(429, { success: false, error: "इस मोबाइल नेटवर्क से बहुत अधिक बुकिंग अनुरोध आए हैं। कृपया कुछ देर बाद कोशिश करें।" }),
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "Retry-After": "3600" }
+    };
+  } catch (rateError) {
+    console.error("Booking rate-limit check failed:", rateError.httpStatus || rateError.name || "UnknownError");
+    return json(503, { success: false, error: "बुकिंग सुरक्षा जाँच अस्थायी रूप से उपलब्ध नहीं है। कृपया बाद में कोशिश करें।" });
   }
 
   try {
