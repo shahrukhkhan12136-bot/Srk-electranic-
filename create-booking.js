@@ -103,39 +103,14 @@ exports.handler = async (event) => {
     const booking = Array.isArray(inserted) ? inserted[0] : null;
     if (!booking || !booking.id) throw new Error("Booking insert returned no booking ID.");
 
-    // Match approved and active electricians in the exact PIN code first.
-    const base = "electrician_profiles?select=id&active=eq.true&verification_status=eq.approved";
-    const exact = await supabase(
-      base + "&pincode=eq." + encodeURIComponent(pincode) +
-      "&state=ilike." + encodeURIComponent(state)
+    // Supabase's broadcast_new_booking trigger creates offers exactly once.
+    // Read the resulting queue here; do not create duplicate job_offers from this function.
+    const offers = await supabase(
+      "job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(booking.id)
     );
-    let matches = Array.isArray(exact) ? exact : [];
-    let matchLevel = "pincode";
-
-    // If no PIN-code partner exists, fall back to the same district and state.
-    if (matches.length === 0) {
-      const districtResult = await supabase(
-        base + "&district=ilike." + encodeURIComponent(district) +
-        "&state=ilike." + encodeURIComponent(state)
-      );
-      matches = Array.isArray(districtResult) ? districtResult : [];
-      matchLevel = "district";
-    }
-
-    let offersCreated = 0;
-    if (matches.length) {
-      const offerRows = matches.map(({ id }) => ({
-        booking_id: booking.id,
-        electrician_id: id,
-        status: "offered",
-        match_level: matchLevel
-      }));
-      const offers = await supabase("job_offers", {
-        method: "POST",
-        body: JSON.stringify(offerRows)
-      });
-      offersCreated = Array.isArray(offers) ? offers.length : offerRows.length;
-    }
+    const offerRows = Array.isArray(offers) ? offers : [];
+    const offersCreated = offerRows.length;
+    const matchLevel = offerRows[0]?.match_level || null;
 
     return json(200, {
       success: true,
