@@ -13,7 +13,6 @@ const json = (statusCode, body) => ({
 async function updateBooking(orderId, payment) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
-  url.searchParams.set("payment_status", "neq.paid");
   url.searchParams.set("select", "id,quoted_amount,payment_status");
 
   const response = await fetch(url, {
@@ -24,6 +23,7 @@ async function updateBooking(orderId, payment) {
   const rows = await response.json();
   const booking = Array.isArray(rows) ? rows[0] : null;
   if (!booking) return "not_found";
+  if (booking.payment_status === "paid") return "already_processed";
 
   const expectedAmount = Math.round(Number(booking.quoted_amount) * 100);
   if (!Number.isSafeInteger(expectedAmount) || payment.amount !== expectedAmount || payment.currency !== "INR") {
@@ -69,7 +69,7 @@ exports.handler = async (event) => {
 
   const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(rawBody).digest();
   const received = Buffer.from(signature, "hex");
-  if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) {
+  if (received.length !== expected.length || !crypto.timingSafeEqual(expected, received)) {
     return json(400, { success: false, error: "Signature verification failed." });
   }
 
