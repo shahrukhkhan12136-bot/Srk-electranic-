@@ -13,6 +13,19 @@ const json = (statusCode, body) => ({
 const clean = (value, max = 500) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
+const validDate = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+};
+
+const validTime = (value) => {
+  if (!/^\d{2}:\d{2}$/.test(value)) return false;
+  const [hour, minute] = value.split(":").map(Number);
+  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+};
+
 async function supabase(path, options = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
@@ -83,8 +96,7 @@ exports.handler = async (event) => {
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(preferred_date) ||
-        !/^\d{2}:\d{2}$/.test(preferred_time)) {
+        !validDate(preferred_date) || !validTime(preferred_time)) {
       return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, तारीख और समय भरें।" });
     }
     if (quoted_amount !== null &&
