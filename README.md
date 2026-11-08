@@ -1,28 +1,33 @@
-# SRK ELECTRONIC — Vercel + Supabase + Razorpay
+# SRK ELECTRONIC — Netlify + Supabase + Razorpay
 
-This package is a nationwide electrician booking marketplace starter. Deploy the folder contents to Vercel (Other framework, no build command). Read `VERCEL_DEPLOY_HINDI.md` before deploying.
+यह repository SRK ELECTRONIC की वेबसाइट और electrician booking marketplace के लिए है। वर्तमान deployment target Netlify है।
 
-## Main pages
-- `/` customer booking and electrician application
-- `/admin.html` admin email/password portal
-- `/electrician.html` electrician phone OTP portal
+## मुख्य पेज
+- `/` ग्राहक सेवा बुकिंग और इलेक्ट्रिशियन आवेदन
+- `/admin.html` Admin email/password portal
+- `/electrician.html` Electrician phone OTP portal
 
-## Server-side environment variables (Vercel only)
+## Netlify Functions
+- `/api/create-booking` — बुकिंग सेव करना और Supabase broadcast trigger से बने offers पढ़ना
+- `/api/apply-electrician` — इलेक्ट्रिशियन आवेदन सेव करना
+- `/api/create-order` — Razorpay order बनाना
+- `/api/verify-payment` — signature और captured INR payment सत्यापित करना
+
+## Server-side environment variables
+Netlify Site configuration → Environment variables में:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `RAZORPAY_KEY_ID`
-- `RAZORPAY_KEY_SECRET`
+- `RAZORPAY_KEY_ID` (पुराना alias `APIKEY` भी समर्थित)
+- `RAZORPAY_KEY_SECRET` (पुराना alias `SECRETAPIKEY` भी समर्थित)
 
-Never place the service-role key or Razorpay secret in browser code, GitHub, or chat. The browser config contains only the Supabase publishable key.
+Service-role key और Razorpay secret को browser, GitHub या chat में कभी न रखें।
 
 ## Database
-Run `COMPLETE_DATABASE_SETUP.sql` once in Supabase SQL Editor. It includes base tables, secure portal policies, customer privacy protection, admin email login compatibility, and Razorpay payment tracking. Existing records are not dropped.
+मुख्य Supabase project: `gnqhoaqatmoiwwhgzkgm`। मौजूदा database में bookings, applications, profiles और offers tables मौजूद हैं। Admin review, electrician profile linking, offer inbox और single-winner accept RPC configured हैं।
 
-## Matching and privacy
-Booking offers go to all approved/active electricians at the exact PIN code; if none are available, the system falls back to the same state and district. Only the electrician who wins assignment receives customer phone/name/full address.
-
-## Payment safety
-The server creates an order from the saved booking amount, verifies Razorpay HMAC signature, checks the payment is captured and INR, matches the payment amount to the booking, then marks the booking paid. Start with Razorpay Test Mode.
-
-## Not automatically activated
-Deploying code does not create account credentials, enable SMS OTP, configure real-time push notifications, approve electricians, or complete Razorpay merchant KYC. Follow the Hindi deployment guide and test each flow before accepting real bookings.
+## महत्वपूर्ण सीमाएँ
+- SMS/WhatsApp/push notifications अभी स्वचालित नहीं हैं; electrician dashboard में offer inbox है।
+- OTP login के लिए Supabase phone provider/SMS setup आवश्यक है।
+- Nationwide enquiry स्वीकार है, लेकिन हर PIN Code में तुरंत सेवा उपलब्ध होने की गारंटी नहीं है।
+- Razorpay Test Mode में end-to-end test अभी बाकी है।
+- Production से पहले KYC, refund/dispute, privacy/terms और support प्रक्रिया पूरी करें।
