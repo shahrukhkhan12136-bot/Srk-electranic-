@@ -1,2 +1,18 @@
-const { handler } = require("../../verify-payment.js");
-exports.handler = handler;
+const crypto=require("crypto");
+const SUPABASE_URL=process.env.SUPABASE_URL, SUPABASE_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY;
+const RAZORPAY_KEY_ID=process.env.RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET=process.env.RAZORPAY_KEY_SECRET;
+const json=(statusCode,body)=>({statusCode,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"},body:JSON.stringify(body)});
+async function db(path,options={}){const r=await fetch(SUPABASE_URL+"/rest/v1/"+path,{...options,headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=representation",...(options.headers||{})}});const raw=await r.text();let d;try{d=raw?JSON.parse(raw):null}catch{d=null}if(!r.ok){const e=new Error("Database request failed");e.status=r.status;throw e}return d}
+async function payment(id){const auth=Buffer.from(RAZORPAY_KEY_ID+":"+RAZORPAY_KEY_SECRET).toString("base64");const r=await fetch("https://api.razorpay.com/v1/payments/"+encodeURIComponent(id),{headers:{Authorization:"Basic "+auth}});const raw=await r.text();let d;try{d=raw?JSON.parse(raw):null}catch{d=null}if(!r.ok)throw new Error("Payment lookup failed");return d}
+exports.handler=async event=>{
+if(event.httpMethod!=="POST")return json(405,{success:false,error:"केवल POST अनुरोध स्वीकार है।"});
+if(!SUPABASE_URL||!SUPABASE_KEY||!RAZORPAY_KEY_ID||!RAZORPAY_KEY_SECRET)return json(500,{success:false,error:"पेमेंट सर्वर कॉन्फ़िगरेशन अधूरा है।"});
+try{const b=JSON.parse(event.body||"{}"),payId=typeof b.razorpay_payment_id==="string"?b.razorpay_payment_id:"",orderId=typeof b.razorpay_order_id==="string"?b.razorpay_order_id:"",sig=typeof b.razorpay_signature==="string"?b.razorpay_signature:"";
+if(!/^pay_[A-Za-z0-9]+$/.test(payId)||!/^order_[A-Za-z0-9]+$/.test(orderId)||!/^[a-f0-9]{64}$/i.test(sig))return json(400,{success:false,error:"भुगतान विवरण सही नहीं हैं।"});
+const expected=crypto.createHmac("sha256",RAZORPAY_KEY_SECRET).update(orderId+"|"+payId).digest("hex"),a=Buffer.from(expected,"hex"),c=Buffer.from(sig,"hex");if(a.length!==c.length||!crypto.timingSafeEqual(a,c))return json(400,{success:false,error:"भुगतान signature सत्यापित नहीं हुआ।"});
+const rows=await db("service_bookings?select=id,quoted_amount,payment_status,razorpay_order_id&razorpay_order_id=eq."+encodeURIComponent(orderId)+"&limit=1"),booking=rows?.[0];if(!booking)return json(404,{success:false,error:"इस पेमेंट ऑर्डर की बुकिंग नहीं मिली।"});
+if(booking.payment_status==="paid")return json(200,{success:true,message:"भुगतान पहले ही सत्यापित हो चुका है।"});
+const p=await payment(payId),expectedAmount=Math.round(Number(booking.quoted_amount)*100);if(p.order_id!==orderId||p.status!=="captured"||p.currency!=="INR"||p.amount!==expectedAmount)return json(409,{success:false,error:"भुगतान अभी captured नहीं है या राशि/ऑर्डर मेल नहीं खाते।"});
+const updated=await db("service_bookings?id=eq."+encodeURIComponent(booking.id)+"&razorpay_order_id=eq."+encodeURIComponent(orderId)+"&payment_status=neq.paid",{method:"PATCH",body:JSON.stringify({payment_status:"paid",razorpay_payment_id:payId,payment_verified_at:new Date().toISOString()})});
+if(!Array.isArray(updated)||updated.length===0)return json(409,{success:false,error:"भुगतान स्थिति अपडेट नहीं हो सकी। Admin से संपर्क करें।"});return json(200,{success:true,message:"भुगतान सफल और सत्यापित है।"});
+}catch(e){console.error("verify-payment error:",e?.status||e?.name||"Unknown");return json(502,{success:false,error:"भुगतान सत्यापित नहीं हो सका। कृपया Admin से संपर्क करें।"})}};
