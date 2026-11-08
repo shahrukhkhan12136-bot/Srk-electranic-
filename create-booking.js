@@ -29,7 +29,10 @@ async function supabase(path, options = {}) {
   try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
   if (!response.ok) {
     console.error("Supabase error:", response.status, data);
-    throw new Error("Database request failed");
+    const error = new Error("Database request failed");
+    error.httpStatus = response.status;
+    error.dbCode = data && typeof data === "object" && typeof data.code === "string" ? data.code : null;
+    throw error;
   }
   return data;
 }
@@ -47,8 +50,20 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || "{}");
     // Safe connectivity check: verifies server credentials and table access without inserting data.
     if (body && body.dry_run === true) {
-      await supabase("service_bookings?select=id&limit=1", { method: "GET" });
-      return json(200, { success: true, dry_run: true, message: "Supabase connection and service_bookings access are working. No booking was created." });
+      try {
+        await supabase("service_bookings?select=id&limit=1", { method: "GET" });
+        return json(200, { success: true, dry_run: true, message: "Supabase connection and service_bookings access are working. No booking was created." });
+      } catch (error) {
+        console.error("Supabase dry-run failed:", error);
+        return json(502, {
+          success: false,
+          dry_run: true,
+          stage: "supabase_read",
+          http_status: error.httpStatus || null,
+          database_code: error.dbCode || null,
+          message: "Supabase से संपर्क हुआ, लेकिन service_bookings पढ़ने में समस्या आई। कोई बुकिंग नहीं बनाई गई।"
+        });
+      }
     }
     const customer_name = clean(body.customer_name, 100);
     const phone = clean(body.phone, 10);
