@@ -41,7 +41,7 @@ async function supabase(path, options = {}) {
   let data;
   try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
   if (!response.ok) {
-    console.error("Supabase error:", response.status, data);
+    console.error("Supabase request failed:", response.status, data && typeof data === "object" && typeof data.code === "string" ? data.code : "database_error");
     const error = new Error("Database request failed");
     error.httpStatus = response.status;
     error.dbCode = data && typeof data === "object" && typeof data.code === "string" ? data.code : null;
@@ -54,6 +54,10 @@ exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return json(405, { success: false, error: "केवल POST अनुरोध स्वीकार है।" });
   }
+  // Reject oversized requests before parsing or contacting Supabase.
+  if (typeof event.body === "string" && Buffer.byteLength(event.body, "utf8") > 16384) {
+    return json(413, { success: false, error: "अनुरोध बहुत बड़ा है। कृपया जानकारी कम करके दोबारा भेजें।" });
+  }
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
     return json(500, { success: false, error: "सर्वर कॉन्फ़िगरेशन अधूरा है। Admin से संपर्क करें।" });
@@ -61,25 +65,6 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body || "{}");
-    // Safe connectivity check: verifies server credentials and table access without inserting data.
-    if (body && body.dry_run === true) {
-      try {
-        await supabase("service_bookings?select=id&limit=1", { method: "GET" });
-        return json(200, { success: true, dry_run: true, message: "Supabase connection and service_bookings access are working. No booking was created." });
-      } catch (error) {
-        console.error("Supabase dry-run failed:", error);
-        return json(502, {
-          success: false,
-          dry_run: true,
-          stage: "supabase_read",
-          http_status: error.httpStatus || null,
-          database_code: error.dbCode || null,
-          error_type: error.name || "UnknownError",
-          error_detail: typeof error.message === "string" ? error.message.slice(0, 160) : null,
-          message: "Supabase तक अनुरोध पहुँचने से पहले या पढ़ने के दौरान तकनीकी समस्या आई। कोई बुकिंग नहीं बनाई गई।"
-        });
-      }
-    }
     const customer_name = clean(body.customer_name, 100);
     const phone = clean(body.phone, 10);
     const state = clean(body.state, 100);
