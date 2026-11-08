@@ -128,6 +128,8 @@ exports.handler = async (event) => {
     const district = clean(body.district, 100);
     const pincode = clean(body.pincode, 6);
     const address = clean(body.address, 1000);
+    const location_lat = body.location_lat == null || body.location_lat === '' ? null : Number(body.location_lat);
+    const location_lng = body.location_lng == null || body.location_lng === '' ? null : Number(body.location_lng);
     const service_type = clean(body.service_type, 120);
     const preferred_date = clean(body.preferred_date, 10);
     const preferred_time = clean(body.preferred_time, 8);
@@ -145,6 +147,9 @@ exports.handler = async (event) => {
         !validDate(preferred_date) || !validTime(preferred_time)) {
       return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, तारीख और समय भरें।" });
     }
+    if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
+      return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
+    }
     if (quoted_amount !== null &&
         (!Number.isFinite(quoted_amount) || quoted_amount <= 0 || quoted_amount > 10000000)) {
       return json(400, { success: false, error: "भुगतान राशि सही नहीं है।" });
@@ -154,7 +159,7 @@ exports.handler = async (event) => {
       method: "POST",
       body: JSON.stringify([{
         customer_name, phone, state, district, pincode, address, service_type,
-        preferred_date, preferred_time, work_details, payment_method, quoted_amount,
+        preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
         status: "new", payment_status: "unpaid",
         ...(customer_user_id ? { customer_user_id } : {})
       }])
