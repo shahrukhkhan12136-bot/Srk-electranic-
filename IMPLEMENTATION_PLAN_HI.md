@@ -1,24 +1,29 @@
-# SRK ELECTRONIC – All India Marketplace: नया चरण
+# SRK ELECTRONIC — वर्तमान तकनीकी स्थिति
 
-## इस अपडेट में क्या जोड़ा गया
-- ग्राहक बुकिंग अब `/api/create-booking` server function को भेजी जाती है।
-- बुकिंग Supabase `service_bookings` में सेव होती है।
-- उसी PIN Code के सभी approved + active इलेक्ट्रिशियन को `job_offers` में offer बनाया जाता है।
-- PIN Code में कोई provider न मिले तो उसी राज्य और जिले के सभी approved + active providers को offer queue किया जाता है।
-- इलेक्ट्रिशियन आवेदन `/api/apply-electrician` से Supabase में सेव होता है।
-- Razorpay checkout का मौजूदा flow रखा गया है।
+## इस चरण में पूरा / जोड़ा गया
+- ग्राहक बुकिंग Netlify Function से Supabase `service_bookings` में सेव होती है।
+- Supabase का `broadcast_new_booking` trigger PIN Code पर matching approved/active electrician को offer बनाता है; PIN match न मिले तो उसी राज्य और जिले में fallback करता है।
+- बुकिंग Function अब trigger द्वारा बने offers को केवल पढ़ता है; duplicate offer insert नहीं करता।
+- इलेक्ट्रिशियन आवेदन `/api/apply-electrician` से `electrician_applications` में सेव होता है।
+- Admin email/password portal: `/admin.html`; Admin allowlist `srk_admin_users` और RPC `is_srk_admin` से सुरक्षा।
+- Admin approval पर inactive electrician profile बनती है; KYC जाँच के बाद Admin उसे Active कर सकता है।
+- Electrician OTP portal: `/electrician.html`; approved profile फोन OTP सत्यापन के बाद Auth user से link होती है।
+- Electrician offer inbox, Accept/Decline और एक booking को केवल एक electrician द्वारा स्वीकार करने के लिए atomic database RPC मौजूद है।
+- ग्राहक का नाम, फोन और पूरा पता केवल assigned electrician को दिखाने वाला सुरक्षित RPC मौजूद है।
+- Razorpay order creation और payment verification के Netlify handlers जोड़े गए: order amount saved booking से लिया जाता है, HMAC signature और Razorpay captured payment/INR/amount जाँचे जाते हैं।
+- Netlify routes `/api/create-booking`, `/api/apply-electrician`, `/api/create-order`, `/api/verify-payment` configured हैं।
 
-## अभी क्या वास्तविक रूप से नहीं जुड़ा है
-- यह offer queue है; अभी SMS, WhatsApp या मोबाइल push notification अपने-आप नहीं जाता। उसके लिए messaging provider की API credentials और electrician dashboard/app में offer inbox व Accept/Decline flow जोड़ना होगा।
-- Admin dashboard/login अभी नहीं है; approval और profile activation फिलहाल सुरक्षित admin प्रक्रिया/SQL से करनी होगी।
-- अभी PIN Code और जिला/राज्य matching है, GPS दूरी आधारित nearby matching नहीं।
-- ZIP deploy किए बिना live website नहीं बदलेगी। Supabase schema और Netlify secrets पहले configure करने होंगे।
+## लाइव उपयोग से पहले जरूरी कॉन्फ़िगरेशन / सीमाएँ
+1. Netlify environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`। Secret values केवल Netlify में रहें।
+2. Supabase Auth में electrician phone OTP provider/SMS setup होना चाहिए; SMS provider configuration अभी account में सत्यापित नहीं की गई है।
+3. Razorpay Test Mode keys डालकर एक वास्तविक test payment flow जाँचना बाकी है। अभी कोई payment test नहीं किया गया।
+4. एक वास्तविक electrician आवेदन, Admin approval, verified phone login और controlled test booking के साथ end-to-end test बाकी है। बिना अनुमति कोई नकली/वास्तविक booking नहीं बनाई जाएगी।
+5. SMS/WhatsApp/push notifications अपने-आप नहीं भेजे जाते; फिलहाल electrician dashboard में offer inbox उपलब्ध है।
+6. Matching PIN Code और उसी राज्य/जिले पर है; GPS दूरी आधारित खोज नहीं है।
+7. Nationwide enquiry स्वीकार हो सकती है, लेकिन हर PIN Code पर सेवा उपलब्ध होने की गारंटी नहीं है।
 
-## जरूरी सेटअप
-1. Supabase में `SUPABASE_SCHEMA.sql` पूरा चलाएँ।
-2. Netlify environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` जोड़ें। Service-role key निजी रखें। Razorpay की keys भी Netlify में ही रहें।
-3. ZIP deploy करें और पहले एक पायलट जिले में टेस्ट करें।
-4. इलेक्ट्रिशियन आवेदन जाँचने के बाद profile बनाएँ; केवल सत्यापित व्यक्ति को `verification_status='approved'` और `active=true` करें।
-5. आगे Admin dashboard, electrician login, offer inbox, Accept/Decline, expiry/reassignment और SMS/WhatsApp/push notification जोड़ना बाकी है।
-
-**कमीशन:** 15% केवल प्रस्तावित मॉडल है। ग्राहक को कुल कीमत/फीस पहले बतानी होगी। इलेक्ट्रिशियन payout/marketplace settlement अलग से compliant payment integration के बाद ही संभव होगा।
+## सुरक्षा / संचालन
+- Service-role key और Razorpay secret browser, GitHub या WhatsApp में न रखें।
+- आवेदन की मंजूरी से पहले पहचान/दस्तावेज़ की मानवीय जाँच करें।
+- Commission rate 15% database default है; इसे commercial/legal review के बिना final pricing न मानें।
+- Production चालू करने से पहले Razorpay merchant KYC, refund/dispute प्रक्रिया, privacy/terms और customer support workflow पूरा करें।
