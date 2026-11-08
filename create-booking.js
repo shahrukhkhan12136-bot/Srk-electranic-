@@ -105,10 +105,17 @@ exports.handler = async (event) => {
 
     // Supabase's broadcast_new_booking trigger creates offers exactly once.
     // Read the resulting queue here; do not create duplicate job_offers from this function.
-    const offers = await supabase(
-      "job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(booking.id)
-    );
-    const offerRows = Array.isArray(offers) ? offers : [];
+    let offerRows = [];
+    let offerStatusChecked = true;
+    try {
+      const offers = await supabase(
+        "job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(booking.id)
+      );
+      offerRows = Array.isArray(offers) ? offers : [];
+    } catch (offerError) {
+      offerStatusChecked = false;
+      console.error("Booking saved; offer queue read failed:", offerError.httpStatus || offerError.name || "UnknownError");
+    }
     const offersCreated = offerRows.length;
     const matchLevel = offerRows[0]?.match_level || null;
 
@@ -117,9 +124,11 @@ exports.handler = async (event) => {
       booking_id: booking.id,
       offers_created: offersCreated,
       match_level: offersCreated ? matchLevel : null,
-      message: offersCreated
-        ? `बुकिंग सेव हो गई। ${offersCreated} approved और active इलेक्ट्रिशियन को ${matchLevel === "pincode" ? "इसी PIN Code" : "इसी जिले"} का ऑफर बनाया गया है।`
-        : "बुकिंग सेव हो गई। इस PIN Code या जिले में अभी कोई approved और active इलेक्ट्रिशियन उपलब्ध नहीं मिला।"
+      message: !offerStatusChecked
+        ? "बुकिंग सेव हो गई है, लेकिन ऑफर की स्थिति अभी जाँची नहीं जा सकी। हमारी टीम से पुष्टि करें।"
+        : offersCreated
+          ? `बुकिंग सेव हो गई। ${offersCreated} approved और active इलेक्ट्रिशियन को ${matchLevel === "pincode" ? "इसी PIN Code" : "इसी जिले"} का ऑफर बनाया गया है।`
+          : "बुकिंग सेव हो गई। इस PIN Code या जिले में अभी कोई approved और active इलेक्ट्रिशियन उपलब्ध नहीं मिला।"
     });
   } catch (error) {
     console.error("create-booking error:", error);
