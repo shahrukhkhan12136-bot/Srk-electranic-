@@ -28,6 +28,11 @@
   to = "/.netlify/functions/verify-payment"
   status = 200
 
+[[redirects]]
+  from = "/api/razorpay-webhook"
+  to = "/.netlify/functions/razorpay-webhook"
+  status = 200
+
 [[headers]]
   for = "/api/*"
   [headers.values]
