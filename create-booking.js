@@ -59,6 +59,38 @@ async function checkPublicRateLimit(endpoint, ipHash, limit) {
   return result === true;
 }
 
+async function verifyCustomerSession(authorization, bookingPhone) {
+  if (!authorization) return null; // Guest booking remains supported.
+  const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(authorization);
+  if (!match || match[1].length > 8192) {
+    const error = new Error("Invalid customer session");
+    error.httpStatus = 401;
+    throw error;
+  }
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${match[1]}`
+    }
+  });
+  if (!response.ok) {
+    const error = new Error("Customer session could not be verified");
+    error.httpStatus = 401;
+    throw error;
+  }
+  const user = await response.json();
+  const verifiedPhone = typeof user.phone === "string" ? user.phone.replace(/\\D/g, "") : "";
+  const submittedPhone = bookingPhone.replace(/\\D/g, "");
+  const normalizedVerified = verifiedPhone.length === 10 ? "91" + verifiedPhone : verifiedPhone;
+  const normalizedSubmitted = submittedPhone.length === 10 ? "91" + submittedPhone : submittedPhone;
+  if (!user.id || !user.phone_confirmed_at || normalizedVerified !== normalizedSubmitted) {
+    const error = new Error("Verified account phone must match booking phone");
+    error.httpStatus = 403;
+    throw error;
+  }
+  return user.id;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
     return json(405, { success: false, error: "केवल POST अनुरोध स्वीकार है।" });
@@ -103,6 +135,10 @@ exports.handler = async (event) => {
     const payment_method = clean(body.payment_method, 80) || "नकद (Cash)";
     const quoted_amount = body.quoted_amount == null || body.quoted_amount === ""
       ? null : Number(body.quoted_amount);
+    const customer_user_id = await verifyCustomerSession(
+      event.headers?.authorization || event.headers?.Authorization || "",
+      phone
+    );
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
@@ -119,7 +155,8 @@ exports.handler = async (event) => {
       body: JSON.stringify([{
         customer_name, phone, state, district, pincode, address, service_type,
         preferred_date, preferred_time, work_details, payment_method, quoted_amount,
-        status: "new", payment_status: "unpaid"
+        status: "new", payment_status: "unpaid",
+        ...(customer_user_id ? { customer_user_id } : {})
       }])
     });
     const booking = Array.isArray(inserted) ? inserted[0] : null;
@@ -153,7 +190,15 @@ exports.handler = async (event) => {
           : "बुकिंग सेव हो गई। इस PIN Code या जिले में अभी कोई approved और active इलेक्ट्रिशियन उपलब्ध नहीं मिला।"
     });
   } catch (error) {
-    console.error("create-booking error:", error);
+    if (error.httpStatus === 401 || error.httpStatus === 403) {
+      return json(error.httpStatus, {
+        success: false,
+        error: error.httpStatus === 401
+          ? "आपका लॉगिन सत्र समाप्त हो गया है। दोबारा लॉगिन करें या Guest Booking जारी रखें।"
+          : "लॉगिन मोबाइल नंबर और बुकिंग मोबाइल नंबर एक जैसे होने चाहिए।"
+      });
+    }
+    console.error("create-booking error:", error.httpStatus || error.name || "UnknownError");
     return json(500, { success: false, error: "बुकिंग सेव नहीं हो सकी। कृपया कुछ देर बाद दोबारा कोशिश करें।" });
   }
 };
