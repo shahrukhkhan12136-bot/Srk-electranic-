@@ -106,6 +106,8 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
  </section>
 </main>
 <footer>© <span id="year"></span> SRK ELECTRONIC · Shahrukh Khan</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/srk-config.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
 let currentBookingWhatsApp = '';
@@ -115,6 +117,107 @@ let paymentBusy = false;
 document.getElementById('year').textContent = new Date().getFullYear();
 
 const value = id => document.getElementById(id).value.trim();
+const customerCfg = window.SRK_CONFIG || {};
+let customerSb = null;
+let customerOtpBusy = false;
+let customerOtpUntil = 0;
+let customerOtpTimer = null;
+const customerMessage = message => { document.getElementById('customerAuthMessage').textContent = message; };
+function customerPhoneE164() {
+  const raw = document.getElementById('customerPhone').value.trim();
+  const digits = raw.replace(/\\D/g, '');
+  if (digits.length === 10) return '+91' + digits;
+  if (raw.startsWith('+') && digits.length >= 10 && digits.length <= 15) return '+' + digits;
+  return null;
+}
+function customerEsc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function loadCustomerBookings() {
+  const box = document.getElementById('customerBookings');
+  const { data: sessionData } = await customerSb.auth.getSession();
+  const session = sessionData.session;
+  if (!session) return;
+  box.textContent = 'आपकी बुकिंग लोड हो रही हैं…';
+  const { data, error } = await customerSb.from('service_bookings')
+    .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid')
+    .eq('customer_user_id', session.user.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) { box.textContent = 'बुकिंग अभी लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।'; return; }
+  if (!data || !data.length) { box.textContent = 'इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। आगे की बुकिंग में OTP वाला यही मोबाइल नंबर इस्तेमाल करें।'; return; }
+  box.innerHTML = data.map(row => '<article class="card" style="margin:10px 0;padding:13px">' +
+    '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
+    '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
+    '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
+    (row.quoted_amount != null ? '<p>तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
+    '</article>').join('');
+}
+async function syncCustomerSession() {
+  if (!customerSb) return;
+  const { data } = await customerSb.auth.getSession();
+  const session = data.session;
+  document.getElementById('customer-login').style.display = session ? 'none' : 'block';
+  document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
+  if (session) {
+    document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
+    await loadCustomerBookings();
+  }
+}
+async function customerSendOtp() {
+  if (customerOtpBusy) return;
+  const phone = customerPhoneE164();
+  if (!phone) { customerMessage('कृपया सही 10 अंकों का भारतीय मोबाइल नंबर डालें।'); return; }
+  if (Date.now() < customerOtpUntil) { customerMessage('कृपया OTP दोबारा भेजने से पहले प्रतीक्षा करें।'); return; }
+  customerOtpBusy = true;
+  const button = document.getElementById('customerSendOtp');
+  button.disabled = true; customerMessage('OTP भेजा जा रहा है…');
+  try {
+    const { error } = await customerSb.auth.signInWithOtp({ phone });
+    if (error) { customerMessage('OTP नहीं भेजा जा सका। कृपया कुछ देर बाद कोशिश करें।'); return; }
+    document.getElementById('customerOtpBox').style.display = 'block';
+    customerOtpUntil = Date.now() + 60000;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((customerOtpUntil - Date.now()) / 1000));
+      button.textContent = left ? 'दोबारा OTP ' + left + ' सेकंड बाद' : 'OTP दोबारा भेजें';
+      button.disabled = left > 0;
+      if (!left && customerOtpTimer) { clearInterval(customerOtpTimer); customerOtpTimer = null; }
+    };
+    if (customerOtpTimer) clearInterval(customerOtpTimer);
+    tick(); customerOtpTimer = setInterval(tick, 1000);
+    customerMessage('OTP भेज दिया गया है। OTP किसी के साथ साझा न करें।');
+  } catch (_) { customerMessage('OTP सेवा अभी उपलब्ध नहीं है।'); }
+  finally { customerOtpBusy = false; if (Date.now() >= customerOtpUntil) { button.disabled = false; button.textContent = 'OTP भेजें'; } }
+}
+async function customerVerifyOtp() {
+  if (customerOtpBusy) return;
+  const phone = customerPhoneE164();
+  const token = document.getElementById('customerOtp').value.trim();
+  if (!phone || !/^\\d{4,8}$/.test(token)) { customerMessage('सही मोबाइल नंबर और SMS OTP दर्ज करें।'); return; }
+  customerOtpBusy = true;
+  const button = document.getElementById('customerVerifyOtp');
+  button.disabled = true; customerMessage('OTP सत्यापित हो रहा है…');
+  try {
+    const { error } = await customerSb.auth.verifyOtp({ phone, token, type: 'sms' });
+    if (error) { customerMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।'); return; }
+    customerMessage('लॉगिन सफल। आपकी बुकिंग दिखाई जा रही हैं।');
+    await syncCustomerSession();
+  } catch (_) { customerMessage('OTP सत्यापन अभी नहीं हो सका।'); }
+  finally { customerOtpBusy = false; button.disabled = false; }
+}
+async function customerLogout() { await customerSb.auth.signOut(); customerMessage('आप लॉगआउट हो गए हैं। Guest Booking जारी रख सकते हैं।'); await syncCustomerSession(); }
+if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
+  customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
+  customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
+  document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
+  document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
+  document.getElementById('customerLogout').addEventListener('click', customerLogout);
+  document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
+  syncCustomerSession();
+} else {
+  customerMessage('ग्राहक लॉगिन सेटअप अभी उपलब्ध नहीं है। Guest Booking जारी है।');
+}
+
 function setPaymentStatus(message, isError = false) {
   const el = document.getElementById('paymentStatus');
   el.textContent = message;
@@ -193,7 +296,13 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
-    const response = await fetch('/api/create-booking', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+    const bookingHeaders = { 'Content-Type': 'application/json' };
+    if (customerSb) {
+      const { data: customerSessionData } = await customerSb.auth.getSession();
+      const customerSession = customerSessionData.session;
+      if (customerSession) bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
+    }
+    const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify({
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
       address: value('address'), service_type: value('service'), preferred_date: value('date'), preferred_time: value('time'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method, quoted_amount: amount || null
