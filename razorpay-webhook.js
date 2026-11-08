@@ -45,6 +45,7 @@ async function updateBooking(orderId, payment) {
     },
     body: JSON.stringify({
       payment_status: "paid",
+      amount_paid: Number((payment.amount / 100).toFixed(2)),
       razorpay_payment_id: payment.id,
       payment_verified_at: new Date().toISOString()
     })
