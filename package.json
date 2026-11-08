@@ -1,0 +1,7 @@
+{
+  "name": "srk-electronic-vercel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SRK ELECTRONIC website with Razorpay and Supabase serverless APIs on Vercel",
+  "dependencies": { "razorpay": "^2.9.6" }
+}

@@ -110,6 +110,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <script>
 let currentBookingWhatsApp = '';
 let pendingAmount = 0;
+let pendingBookingId = null;
 let paymentBusy = false;
 document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -131,7 +132,7 @@ async function startRazorpayPayment() {
   try {
     const orderResponse = await fetch('/api/create-order', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: pendingAmount })
+      body: JSON.stringify({ booking_id: pendingBookingId })
     });
     const orderData = await orderResponse.json();
     if (!orderResponse.ok) throw new Error(orderData.error || 'ऑर्डर नहीं बन पाया।');
@@ -202,6 +203,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
     if (method === 'Razorpay ऑनलाइन भुगतान') {
       pendingAmount = amount;
+      pendingBookingId = result.booking_id;
       document.getElementById('qrAmount').textContent = 'भुगतान राशि: ₹' + amount.toFixed(2);
       document.getElementById('upiPanel').style.display = 'block';
       setPaymentStatus('बुकिंग सेव हो गई। भुगतान शुरू करने के लिए नीचे बटन दबाएँ।');
