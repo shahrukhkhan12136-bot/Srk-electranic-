@@ -1,2 +1,18 @@
-const { handler } = require("../../create-order.js");
-exports.handler = handler;
+const SUPABASE_URL=process.env.SUPABASE_URL, SUPABASE_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY;
+const RAZORPAY_KEY_ID=process.env.RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET=process.env.RAZORPAY_KEY_SECRET;
+const json=(statusCode,body)=>({statusCode,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"},body:JSON.stringify(body)});
+const uuid=v=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v||"");
+async function db(path,options={}){const r=await fetch(SUPABASE_URL+"/rest/v1/"+path,{...options,headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=representation",...(options.headers||{})}});const raw=await r.text();let d;try{d=raw?JSON.parse(raw):null}catch{d=null}if(!r.ok){const e=new Error("Database request failed");e.status=r.status;throw e}return d}
+async function rp(path,options={}){const auth=Buffer.from(RAZORPAY_KEY_ID+":"+RAZORPAY_KEY_SECRET).toString("base64");const r=await fetch("https://api.razorpay.com/v1/"+path,{...options,headers:{Authorization:"Basic "+auth,"Content-Type":"application/json",...(options.headers||{})}});const raw=await r.text();let d;try{d=raw?JSON.parse(raw):null}catch{d=null}if(!r.ok){const e=new Error(d?.error?.description||"Razorpay request failed");e.status=r.status;throw e}return d}
+exports.handler=async event=>{
+if(event.httpMethod!=="POST")return json(405,{success:false,error:"केवल POST अनुरोध स्वीकार है।"});
+if(!SUPABASE_URL||!SUPABASE_KEY||!RAZORPAY_KEY_ID||!RAZORPAY_KEY_SECRET)return json(500,{success:false,error:"पेमेंट सर्वर कॉन्फ़िगरेशन अधूरा है।"});
+try{const b=JSON.parse(event.body||"{}"),id=b.booking_id;if(!uuid(id))return json(400,{success:false,error:"बुकिंग ID सही नहीं है।"});
+const rows=await db("service_bookings?select=id,quoted_amount,payment_status,razorpay_order_id&id=eq."+encodeURIComponent(id)+"&limit=1");const booking=rows?.[0];if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
+if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
+const amount=Math.round(Number(booking.quoted_amount)*100);if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
+let order=null;if(booking.razorpay_order_id&&booking.payment_status==="pending"){try{const old=await rp("orders/"+encodeURIComponent(booking.razorpay_order_id));if(old.status==="created"&&old.amount===amount&&old.currency==="INR")order=old}catch(_){}}
+if(!order)order=await rp("orders",{method:"POST",body:JSON.stringify({amount,currency:"INR",receipt:id.slice(0,40),notes:{booking_id:id,service:"SRK ELECTRONIC"}})});
+await db("service_bookings?id=eq."+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})});
+return json(200,{success:true,key_id:RAZORPAY_KEY_ID,order_id:order.id,amount:order.amount,currency:order.currency});
+}catch(e){console.error("create-order error:",e?.status||e?.name||"Unknown");return json(502,{success:false,error:"पेमेंट ऑर्डर नहीं बन पाया। कृपया कुछ देर बाद कोशिश करें।"})}};
