@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SRK ELECTRONIC - Connection Test</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:560px;margin:40px auto;padding:20px;line-height:1.5}
+button{padding:14px 18px;font-size:17px;border:0;border-radius:8px;background:#0759c7;color:white}
+pre{white-space:pre-wrap;background:#f2f2f2;padding:14px;border-radius:8px}
+</style>
+</head>
+<body>
+<h2>SRK ELECTRONIC - Supabase Connection Test</h2>
+<p>यह सिर्फ कनेक्शन जाँचेगा। कोई बुकिंग या रिकॉर्ड नहीं बनाएगा।</p>
+<button id="test">कनेक्शन जाँचें</button>
+<pre id="result">जाँच शुरू करने के लिए बटन दबाएँ।</pre>
+<script>
+document.getElementById("test").addEventListener("click", async () => {
+ const out = document.getElementById("result");
+ out.textContent = "जाँच जारी है...";
+ try {
+  const response = await fetch("/.netlify/functions/create-booking", {
+   method: "POST",
+   headers: {"Content-Type":"application/json"},
+   body: JSON.stringify({dry_run:true})
+  });
+  const data = await response.json();
+  out.textContent = JSON.stringify(data, null, 2);
+ } catch (error) {
+  out.textContent = "अनुरोध पूरा नहीं हुआ। कृपया दोबारा कोशिश करें।";
+ }
+});
+</script>
+</body>
+</html>
