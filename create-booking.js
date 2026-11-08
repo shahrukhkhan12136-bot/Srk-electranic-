@@ -61,7 +61,9 @@ exports.handler = async (event) => {
           stage: "supabase_read",
           http_status: error.httpStatus || null,
           database_code: error.dbCode || null,
-          message: "Supabase से संपर्क हुआ, लेकिन service_bookings पढ़ने में समस्या आई। कोई बुकिंग नहीं बनाई गई।"
+          error_type: error.name || "UnknownError",
+          error_detail: typeof error.message === "string" ? error.message.slice(0, 160) : null,
+          message: "Supabase तक अनुरोध पहुँचने से पहले या पढ़ने के दौरान तकनीकी समस्या आई। कोई बुकिंग नहीं बनाई गई।"
         });
       }
     }
