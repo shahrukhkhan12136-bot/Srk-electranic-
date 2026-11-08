@@ -66,8 +66,8 @@ exports.handler = async (event) => {
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
-        !/^\\d{4}-\\d{2}-\\d{2}$/.test(preferred_date) ||
-        !/^\\d{2}:\\d{2}$/.test(preferred_time)) {
+        !/^\d{4}-\d{2}-\d{2}$/.test(preferred_date) ||
+        !/^\d{2}:\d{2}$/.test(preferred_time)) {
       return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, तारीख और समय भरें।" });
     }
     if (quoted_amount !== null &&
