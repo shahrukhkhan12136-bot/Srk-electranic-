@@ -16,10 +16,11 @@ exports.handler=async event=>{
   try{
     const b=JSON.parse(event.body||"{}");bookingId=b.booking_id;
     if(!uuid(bookingId))return json(400,{success:false,error:"बुकिंग ID सही नहीं है।"});
-    let rows=await db("service_bookings?select=id,quoted_amount,payment_status,razorpay_order_id&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
+    let rows=await db("service_bookings?select=id,quoted_amount,payment_status,razorpay_order_id,status&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
     let booking=rows?.[0];if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
     if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
-    const amount=Math.round(Number(booking.quoted_amount)*100);
+    if(booking.status==="cancelled"||booking.status==="completed")return json(409,{success:false,error:"रद्द या पूरा हो चुका काम पेमेंट के लिए उपलब्ध नहीं है।"});
+    let amount=Math.round(Number(booking.quoted_amount)*100);
     if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
 
     let order=await findReusableOrder(booking);
@@ -28,10 +29,14 @@ exports.handler=async event=>{
       lockToken=typeof claim==="string"?claim:(Array.isArray(claim)?claim[0]:null);
       if(!lockToken)return json(409,{success:false,error:"इस बुकिंग का पेमेंट ऑर्डर बन रहा है। 10 सेकंड बाद दोबारा कोशिश करें।"});
       // Re-read after acquiring the per-booking lock in case a prior request completed.
-      rows=await db("service_bookings?select=id,quoted_amount,payment_status,razorpay_order_id&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
+      rows=await db("service_bookings?select=id,quoted_amount,payment_status,razorpay_order_id,status&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
       booking=rows?.[0];
       if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
       if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
+      if(booking.status==="cancelled"||booking.status==="completed")return json(409,{success:false,error:"रद्द या पूरा हो चुका काम पेमेंट के लिए उपलब्ध नहीं है।"});
+      // Recalculate after acquiring the lock so an Admin price change cannot create a stale-amount order.
+      amount=Math.round(Number(booking.quoted_amount)*100);
+      if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
       order=await findReusableOrder(booking);
       if(!order)order=await rp("orders",{method:"POST",body:JSON.stringify({amount,currency:"INR",receipt:bookingId.slice(0,40),notes:{booking_id:bookingId,service:"SRK ELECTRONIC"}})});
       await db("service_bookings?id=eq."+encodeURIComponent(bookingId),{method:"PATCH",body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})});
