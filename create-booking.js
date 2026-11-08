@@ -45,6 +45,11 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body || "{}");
+    // Safe connectivity check: verifies server credentials and table access without inserting data.
+    if (body && body.dry_run === true) {
+      await supabase("service_bookings?select=id&limit=1", { method: "GET" });
+      return json(200, { success: true, dry_run: true, message: "Supabase connection and service_bookings access are working. No booking was created." });
+    }
     const customer_name = clean(body.customer_name, 100);
     const phone = clean(body.phone, 10);
     const state = clean(body.state, 100);
