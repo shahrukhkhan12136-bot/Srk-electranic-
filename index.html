@@ -212,8 +212,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
       window.location.href = currentBookingWhatsApp;
     }
   } catch (err) {
-    alert(`${err.message}\nआपकी बुकिंग अभी वेबसाइट के डेटाबेस में सेव नहीं हुई। WhatsApp पर अनुरोध भेज रहे हैं।`);
-    window.location.href = currentBookingWhatsApp;
+    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`);
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
@@ -227,7 +226,7 @@ document.getElementById('electricianForm').addEventListener('submit', async func
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'आवेदन सेव नहीं हुआ।');
     alert(result.message); window.location.href = whatsapp;
-  } catch (err) { alert(`${err.message}\nWhatsApp पर आवेदन भेज रहे हैं।`); window.location.href = whatsapp; }
+  } catch (err) { alert(`${err.message}\nआवेदन डेटाबेस में सेव नहीं हुआ है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`); }
   finally { button.disabled = false; button.textContent = 'इलेक्ट्रिशियन आवेदन भेजें'; }
 });
 
