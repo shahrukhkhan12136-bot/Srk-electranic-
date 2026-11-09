@@ -13,7 +13,7 @@ const json = (statusCode, body) => ({
 async function updateBooking(orderId, payment) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
-  url.searchParams.set("select", "id,quoted_amount,payment_status,razorpay_payment_id");
+  url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,razorpay_payment_id");
 
   const response = await fetch(url, {
     method: "GET",
@@ -25,8 +25,16 @@ async function updateBooking(orderId, payment) {
   if (!booking) return "not_found";
   if (booking.payment_status === "paid") return booking.razorpay_payment_id === payment.id ? "already_processed" : "payment_conflict";
 
-  const expectedAmount = Math.round(Number(booking.quoted_amount) * 100);
-  if (!Number.isSafeInteger(expectedAmount) || payment.amount !== expectedAmount || payment.currency !== "INR") {
+  // Reconcile only a completed job with an explicitly approved quote.
+  if (booking.status !== "completed" || booking.quote_status !== "approved") {
+    return "booking_not_payable";
+  }
+  const approvedTotal = Number(booking.service_charge) + Number(booking.materials_amount);
+  const quotedTotal = Number(booking.quoted_amount);
+  const expectedAmount = Math.round(approvedTotal * 100);
+  if (!Number.isFinite(approvedTotal) || approvedTotal < 1 ||
+      !Number.isFinite(quotedTotal) || Math.round(quotedTotal * 100) !== expectedAmount ||
+      !Number.isSafeInteger(expectedAmount) || payment.amount !== expectedAmount || payment.currency !== "INR") {
     return "amount_mismatch";
   }
 
@@ -107,7 +115,7 @@ exports.handler = async (event) => {
       console.error("Razorpay webhook update was not applied; retry requested.");
       return json(500, { success: false, reconciled: false, reason: result });
     }
-    if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict") {
+    if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict" || result === "booking_not_payable") {
       console.error("Razorpay webhook could not reconcile booking:", result);
       return json(200, { success: true, reconciled: false, reason: result });
     }
