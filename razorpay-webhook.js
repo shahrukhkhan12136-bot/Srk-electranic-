@@ -52,7 +52,7 @@ async function processRefundWebhook(refund) {
   const rows=await found.json(), row=Array.isArray(rows)?rows[0]:null;
   if (!row) return "refund_not_found";
   if (row.refund_id && row.refund_id!==refund.id) return "refund_id_conflict";
-  if (row.status==="processed" && refund.status!=="processed") return "refund_state_conflict";
+  if ((row.status==="processed" && refund.status!=="processed") || (row.status==="failed" && refund.status==="processed")) return "refund_state_conflict";
 
   const nextStatus=refund.status==="processed"?"processed":"failed";
   const patch=new URL("/rest/v1/srk_razorpay_refunds",SUPABASE_URL);
