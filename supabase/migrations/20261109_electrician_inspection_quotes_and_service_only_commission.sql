@@ -97,3 +97,11 @@ grant execute on function public.srk_submit_booking_quote(uuid,numeric,numeric,t
 grant execute on function public.srk_customer_respond_booking_quote(uuid,text) to authenticated;
 grant execute on function public.srk_update_booking_work_status(uuid,text) to authenticated;
 grant execute on function public.srk_get_my_offer_details() to authenticated;
+
+-- Include the new gated workflow states and require assignment for each post-assignment state.
+alter table public.service_bookings drop constraint if exists service_bookings_status_check;
+alter table public.service_bookings add constraint service_bookings_status_check
+ check (status = any(array['new','confirmed','assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed','cancelled']::text[]));
+alter table public.service_bookings drop constraint if exists service_bookings_assignment_status_requires_electrician;
+alter table public.service_bookings add constraint service_bookings_assignment_status_requires_electrician
+ check ((status <> all(array['assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed']::text[])) or assigned_electrician_id is not null);
