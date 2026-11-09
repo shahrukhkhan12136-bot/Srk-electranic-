@@ -184,8 +184,6 @@ async function loadCustomerBookings() {
   const callMap = new Map((callContacts || []).map(item => [item.booking_id, item]));
   box.innerHTML = data.map(row => {
     const contact = callMap.get(row.id);
-    // Never expose a real phone number in the customer dashboard.
-    const canCall = false;
     return '<article class="card" style="margin:10px 0;padding:13px">' +
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
