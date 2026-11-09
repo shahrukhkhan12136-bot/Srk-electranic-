@@ -9,7 +9,7 @@ on:
       - "create-order.js"
       - "verify-payment.js"
       - "tests/razorpay-webhook.synthetic.test.js"
-      - "tests/razorpay-payment-functions.synthetic.test.js"
+      - "tests/razorpay-payment-functions.synthetic.test.js"\n      - "tests/admin-direct-assignment.static.test.js"\n      - "supabase/migrations/20261110030000_admin_direct_electrician_assignment.sql"\n      - "admin.html"
       - ".github/workflows/synthetic-webhook-tests.yml"
   workflow_dispatch:
 
