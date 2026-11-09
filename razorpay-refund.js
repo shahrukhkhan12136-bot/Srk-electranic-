@@ -12,7 +12,7 @@ async function restorePendingPayout(bookingId,previousNote){
  const url=new URL("/rest/v1/srk_electrician_payouts",SUPABASE_URL);
  url.searchParams.set("booking_id","eq."+bookingId);url.searchParams.set("payout_status","eq.blocked");
  url.searchParams.set("payout_note","eq.Razorpay refund pending");
- await fetch(url,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({payout_status:"pending",payout_note:previousNote||null,updated_at:new Date().toISOString()})});
+ const r=await fetch(url,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({payout_status:"pending",payout_note:previousNote||null,updated_at:new Date().toISOString()})});if(!r.ok)throw new Error("Failed to release payout hold");
 }
 exports.handler=async event=>{
  if(event.httpMethod!=="POST")return json(405,{success:false,error:"केवल POST अनुरोध स्वीकार है।"});
