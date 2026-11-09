@@ -156,7 +156,6 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <script src="./srk-config.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-let currentBookingWhatsApp = '';
 let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
@@ -376,9 +375,6 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   e.preventDefault();
   const amount = 0; // Quote and final amount are set after electrician inspection.
   const method = value('payment');
-  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
-  currentBookingWhatsApp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
-  if (method === 'Razorpay ऑनलाइन भुगतान' && (!Number.isFinite(amount) || amount < 1)) { alert('ऑनलाइन भुगतान के लिए कम से कम ₹1 की सही राशि भरें।'); return; }
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
@@ -396,16 +392,13 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
     alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
-    if (method === 'Razorpay ऑनलाइन भुगतान') {
-      pendingAmount = amount;
-      pendingBookingId = result.booking_id;
-      document.getElementById('qrAmount').textContent = 'भुगतान राशि: ₹' + amount.toFixed(2);
-      document.getElementById('upiPanel').style.display = 'block';
-      setPaymentStatus('बुकिंग सेव हो गई। भुगतान शुरू करने के लिए नीचे बटन दबाएँ।');
-      document.getElementById('upiPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      window.location.href = currentBookingWhatsApp;
-    }
+    await loadCustomerBookings();
+    this.reset();
+    document.getElementById('bookingLat').value = '';
+    document.getElementById('bookingLng').value = '';
+    document.getElementById('customerLocationStatus').textContent = 'लोकेशन अभी नहीं चुनी गई है। पता लिखकर भी Google Maps में देखा जा सकेगा।';
+    document.getElementById('customerMapWrap').style.display = 'none';
+    document.getElementById('customer-dashboard').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`);
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
