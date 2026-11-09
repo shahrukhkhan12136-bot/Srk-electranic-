@@ -175,7 +175,7 @@ async function loadCustomerBookings() {
   if (!session) return;
   box.textContent = 'आपकी बुकिंग लोड हो रही हैं…';
   const { data, error } = await customerSb.from('service_bookings')
-    .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng')
+    .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
     .eq('customer_user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -185,10 +185,27 @@ async function loadCustomerBookings() {
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
-    (row.quoted_amount != null ? '<p>तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
+    (row.quote_status && row.quote_status!=='not_submitted' ? '<div class="job"><b>इलेक्ट्रिशियन का कोटेशन</b><p>सर्विस / मेहनताना: ₹'+customerEsc(Number(row.service_charge||0).toFixed(2))+'</p><p>सामान / पार्ट्स: ₹'+customerEsc(Number(row.materials_amount||0).toFixed(2))+'</p><p><b>कुल: ₹'+customerEsc(Number(row.quoted_amount||0).toFixed(2))+'</b></p><p>स्थिति: '+customerEsc(row.quote_status)+'</p>'+(row.quote_note?'<p>'+customerEsc(row.quote_note)+'</p>':'')+(row.quote_status==='pending'&&row.status==='awaiting_quote_approval'?'<button type="button" onclick="customerQuoteResponse(\''+row.id+'\',\'approved\')">कोटेशन मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerQuoteResponse(\''+row.id+'\',\'rejected\')">कोटेशन अस्वीकार करें</button>':'')+'</div>':'') +
+    (row.quoted_amount != null ? '<p>कुल तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
+    (row.status==='completed'&&row.quote_status==='approved'&&row.payment_status!=='paid'?'<button type="button" onclick="customerPayBooking(\''+row.id+'\','+Number(row.quoted_amount||0)+')">🔒 काम पूरा — अब भुगतान करें</button>':'') +
     (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
     '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
     '</article>').join('');
+}
+async function customerQuoteResponse(id,response){
+ if(!confirm(response==='approved'?'क्या आप सर्विस और सामान का पूरा कोटेशन मंजूर करते हैं?':'क्या आप यह कोटेशन अस्वीकार करते हैं?'))return;
+ const {error}=await customerSb.rpc('srk_customer_respond_booking_quote',{p_booking_id:id,p_response:response});
+ if(error){alert('जवाब सेव नहीं हुआ: '+error.message);return;}
+ alert(response==='approved'?'कोटेशन मंजूर हो गया। अब इलेक्ट्रिशियन काम शुरू कर सकता है।':'कोटेशन अस्वीकार कर दिया गया। इलेक्ट्रिशियन संशोधित कोटेशन भेज सकता है।');
+ await loadCustomerBookings();
+}
+function customerPayBooking(id,amount){
+ if(!Number.isFinite(amount)||amount<1){alert('भुगतान राशि सही नहीं है।');return;}
+ pendingBookingId=id;pendingAmount=amount;
+ document.getElementById('qrAmount').textContent='भुगतान राशि: ₹'+amount.toFixed(2);
+ document.getElementById('upiPanel').style.display='block';
+ setPaymentStatus('काम पूरा दर्ज है। Razorpay से भुगतान करें।');
+ document.getElementById('upiPanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function syncCustomerSession() {
   if (!customerSb) return;
