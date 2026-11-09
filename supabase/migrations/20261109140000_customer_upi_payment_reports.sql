@@ -40,6 +40,8 @@ begin
     where b.id=p_booking_id and b.customer_user_id=v_uid
       and b.assigned_electrician_id is not null
       and b.payment_status <> 'paid'
+      and b.quoted_amount is not null
+      and round(p_amount,2)=round(b.quoted_amount,2)
       and ep.payout_upi_status='verified' and ep.payout_upi_id is not null
     for update of b;
   if not found then raise exception 'Booking unavailable, already paid, or electrician UPI is not verified'; end if;
