@@ -22,6 +22,7 @@ assert.match(migration, /REVOKE UPDATE \(active\) ON TABLE public\.electrician_p
 assert.match(migration, /replacement identity\/address document invalidates the previous approval[\s\S]*UPDATE public\.electrician_profiles SET active=false/i);
 assert.match(migration, /p_review_status IN \('rejected','needs_resubmission'\)[\s\S]*UPDATE public\.electrician_profiles SET active=false/i);
 assert.match(migration, /Serialize activation with document reviews and replacement uploads[\s\S]*FOR SHARE/i);
+assert.match(migration,/same profile-then-document lock order[\s\S]*electrician_profiles[\s\S]*FOR UPDATE[\s\S]*srk_electrician_verification_documents[\s\S]*FOR UPDATE/i);
 console.log("PASS private document bucket, owner/admin access, metadata privacy, audit events, and race-safe activation guard");
 
 assert.match(electrician, /srk-electrician-verification/);
