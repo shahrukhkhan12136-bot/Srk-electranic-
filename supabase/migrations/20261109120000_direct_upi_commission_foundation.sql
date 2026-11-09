@@ -63,18 +63,25 @@ as $function$
 declare
   v_uid uuid := auth.uid();
   v_profile_id uuid;
+  v_profile_count integer;
   v_upi text := lower(trim(coalesce(p_upi_id,'')));
 begin
   if v_uid is null then raise exception 'Authentication required' using errcode='42501'; end if;
   if v_upi !~ '^[a-z0-9][a-z0-9._-]{1,255}@[a-z][a-z0-9]{1,63}$' then
     raise exception 'Invalid UPI ID format';
   end if;
+  select count(*) into v_profile_count
+  from public.electrician_profiles
+  where (auth_user_id=v_uid or user_id=v_uid)
+    and verification_status='approved';
+  if v_profile_count <> 1 then
+    raise exception 'Exactly one approved electrician profile must be linked to this account' using errcode='42501';
+  end if;
   select id into v_profile_id
   from public.electrician_profiles
-  where coalesce(auth_user_id,user_id)=v_uid
+  where (auth_user_id=v_uid or user_id=v_uid)
     and verification_status='approved'
   for update;
-  if v_profile_id is null then raise exception 'Approved electrician profile required' using errcode='42501'; end if;
   update public.electrician_profiles
   set payout_upi_id=v_upi,
       payout_upi_status='pending',
@@ -151,18 +158,56 @@ language plpgsql
 security definer
 set search_path to 'pg_catalog','public','auth','pg_temp'
 as $function$
-declare v_uid uuid:=auth.uid(); v_profile_id uuid; v_id uuid;
+declare v_uid uuid:=auth.uid(); v_profile_id uuid; v_id uuid; v_profile_count integer; v_due numeric; v_verified numeric; v_submitted numeric;
 begin
   if v_uid is null then raise exception 'Authentication required' using errcode='42501'; end if;
   if p_amount is null or p_amount<=0 or p_amount>10000000 then raise exception 'Invalid remittance amount'; end if;
   if length(trim(coalesce(p_payment_reference,''))) not between 4 and 120 then raise exception 'Valid payment reference required'; end if;
+  select count(*) into v_profile_count from public.electrician_profiles
+  where (auth_user_id=v_uid or user_id=v_uid) and verification_status='approved';
+  if v_profile_count <> 1 then raise exception 'Exactly one approved electrician profile must be linked to this account' using errcode='42501'; end if;
   select id into v_profile_id from public.electrician_profiles
-  where coalesce(auth_user_id,user_id)=v_uid and verification_status='approved';
-  if v_profile_id is null then raise exception 'Approved electrician profile required' using errcode='42501'; end if;
+  where (auth_user_id=v_uid or user_id=v_uid) and verification_status='approved' for update;
+  select coalesce(sum(coalesce(commission_amount,round(amount_paid*commission_rate/100,2))),0)
+    into v_due from public.service_bookings
+    where assigned_electrician_id=v_profile_id and status='completed' and payment_status='paid';
+  select coalesce(sum(amount),0) into v_verified from public.srk_commission_remittances
+    where electrician_profile_id=v_profile_id and status='verified';
+  select coalesce(sum(amount),0) into v_submitted from public.srk_commission_remittances
+    where electrician_profile_id=v_profile_id and status='submitted';
+  if round(p_amount,2) > greatest(0,round(v_due-v_verified-v_submitted,2)) then
+    raise exception 'Remittance exceeds the currently outstanding commission balance';
+  end if;
   insert into public.srk_commission_remittances(electrician_profile_id,submitted_by,amount,payment_reference,payment_date)
   values(v_profile_id,v_uid,round(p_amount,2),trim(p_payment_reference),coalesce(p_payment_date,current_date))
   returning id into v_id;
   return v_id;
+end;
+$function$;
+
+create or replace function public.srk_get_my_commission_balance()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path to 'pg_catalog','public','auth','pg_temp'
+as $function$
+declare v_uid uuid:=auth.uid(); v_profile_id uuid; v_due numeric; v_verified numeric; v_submitted numeric;
+begin
+  if v_uid is null then raise exception 'Authentication required' using errcode='42501'; end if;
+  select id into v_profile_id from public.electrician_profiles
+  where (auth_user_id=v_uid or user_id=v_uid) and verification_status='approved'
+  order by created_at desc limit 1;
+  if v_profile_id is null then raise exception 'Approved electrician profile required' using errcode='42501'; end if;
+  select coalesce(sum(coalesce(commission_amount,round(amount_paid*commission_rate/100,2))),0)
+    into v_due from public.service_bookings
+    where assigned_electrician_id=v_profile_id and status='completed' and payment_status='paid';
+  select coalesce(sum(amount),0) into v_verified from public.srk_commission_remittances
+    where electrician_profile_id=v_profile_id and status='verified';
+  select coalesce(sum(amount),0) into v_submitted from public.srk_commission_remittances
+    where electrician_profile_id=v_profile_id and status='submitted';
+  return jsonb_build_object('commission_due',round(v_due,2),'verified_remitted',round(v_verified,2),
+    'pending_review',round(v_submitted,2),'outstanding',greatest(0,round(v_due-v_verified-v_submitted,2)));
 end;
 $function$;
 
@@ -195,8 +240,10 @@ revoke all on function public.srk_admin_review_payout_upi(uuid,text,text) from p
 revoke all on function public.srk_get_assigned_booking_verified_upi(uuid) from public,anon;
 revoke all on function public.srk_submit_my_commission_remittance(numeric,text,date) from public,anon;
 revoke all on function public.srk_admin_review_commission_remittance(uuid,text,text) from public,anon;
+revoke all on function public.srk_get_my_commission_balance() from public,anon;
 grant execute on function public.srk_submit_my_payout_upi(text) to authenticated;
 grant execute on function public.srk_admin_review_payout_upi(uuid,text,text) to authenticated;
 grant execute on function public.srk_get_assigned_booking_verified_upi(uuid) to authenticated;
 grant execute on function public.srk_submit_my_commission_remittance(numeric,text,date) to authenticated;
 grant execute on function public.srk_admin_review_commission_remittance(uuid,text,text) to authenticated;
+grant execute on function public.srk_get_my_commission_balance() to authenticated;
