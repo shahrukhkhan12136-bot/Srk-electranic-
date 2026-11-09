@@ -344,7 +344,7 @@ document.getElementById('customerLocate').addEventListener('click',()=>locateInt
 document.getElementById('electricianLocate').addEventListener('click',()=>locateInto('electricianLat','electricianLng','electricianLocationStatus'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
-  const amount = Number(value('amount'));
+  const amount = 0; // Quote and final amount are set after electrician inspection.
   const method = value('payment');
   const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
   currentBookingWhatsApp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
