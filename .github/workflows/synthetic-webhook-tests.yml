@@ -1,12 +1,15 @@
-name: Synthetic webhook regression tests
+name: Synthetic Razorpay regression tests
 
 on:
   push:
     branches:
       - work/separate-customer-electrician-portals
     paths:
-      - "razorpay-webhook.js"\n      - "create-order.js"\n      - "verify-payment.js"\n      - "tests/razorpay-payment-functions.synthetic.test.js"
+      - "razorpay-webhook.js"
+      - "create-order.js"
+      - "verify-payment.js"
       - "tests/razorpay-webhook.synthetic.test.js"
+      - "tests/razorpay-payment-functions.synthetic.test.js"
       - ".github/workflows/synthetic-webhook-tests.yml"
   workflow_dispatch:
 
@@ -14,7 +17,7 @@ permissions:
   contents: read
 
 jobs:
-  synthetic-webhook:
+  synthetic-payment-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Check out work branch
@@ -25,3 +28,5 @@ jobs:
           node-version: "20"
       - name: Run isolated synthetic webhook tests
         run: node tests/razorpay-webhook.synthetic.test.js
+      - name: Run isolated synthetic payment function tests
+        run: node tests/razorpay-payment-functions.synthetic.test.js
