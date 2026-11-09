@@ -11,6 +11,7 @@ AS $function$
 DECLARE
   v_booking public.service_bookings%rowtype;
   v_electrician public.electrician_profiles%rowtype;
+  v_match_level text;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
     RAISE EXCEPTION 'Admin permission required' USING ERRCODE='42501';
@@ -31,6 +32,18 @@ BEGIN
     RAISE EXCEPTION 'Only new or confirmed bookings can be assigned';
   END IF;
 
+  IF EXISTS (
+    SELECT 1 FROM public.electrician_profiles e
+    WHERE e.active=true AND e.verification_status='approved'
+      AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
+      AND e.pincode=v_booking.pincode
+      AND lower(pg_catalog.btrim(e.state))=lower(pg_catalog.btrim(v_booking.state))
+  ) THEN
+    v_match_level := 'pincode';
+  ELSE
+    v_match_level := 'district';
+  END IF;
+
   SELECT * INTO v_electrician
   FROM public.electrician_profiles
   WHERE id=p_electrician_id
@@ -43,10 +56,10 @@ BEGIN
   END IF;
   IF lower(pg_catalog.btrim(v_electrician.state)) <> lower(pg_catalog.btrim(v_booking.state))
      OR NOT (
-       v_electrician.pincode = v_booking.pincode
-       OR lower(pg_catalog.btrim(v_electrician.district)) = lower(pg_catalog.btrim(v_booking.district))
+       (v_match_level='pincode' AND v_electrician.pincode=v_booking.pincode)
+       OR (v_match_level='district' AND lower(pg_catalog.btrim(v_electrician.district))=lower(pg_catalog.btrim(v_booking.district)))
      ) THEN
-    RAISE EXCEPTION 'Electrician must match booking state and PIN or district';
+    RAISE EXCEPTION 'Electrician must match same PIN first, or district fallback when no same-PIN electrician is eligible';
   END IF;
 
   UPDATE public.service_bookings
