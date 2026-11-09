@@ -32,71 +32,72 @@ ALTER TABLE public.srk_admin_audit_events
   ADD CONSTRAINT srk_admin_audit_events_entity_type_check
   CHECK (entity_type IN ('booking','electrician_profile','electrician_application','manual_payment','manual_refund','electrician_payout','razorpay_refund'));
 
-CREATE OR REPLACE FUNCTION public.srk_capture_admin_audit_event()
+CREATE OR REPLACE FUNCTION public.srk_capture_razorpay_refund_audit_event()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path=pg_catalog,public,auth,pg_temp
 AS $function$
 DECLARE
-  v_old jsonb := CASE WHEN TG_OP='INSERT' THEN '{}'::jsonb ELSE to_jsonb(OLD) END;
-  v_new jsonb := CASE WHEN TG_OP='DELETE' THEN '{}'::jsonb ELSE to_jsonb(NEW) END;
+  v_entity_id uuid;
+  v_booking_id uuid;
   v_before jsonb := '{}'::jsonb;
   v_after jsonb := '{}'::jsonb;
   v_fields text[] := ARRAY[]::text[];
-  v_key text;
-  v_entity_type text;
-  v_entity_id uuid;
-  v_booking_id uuid;
   v_actor uuid := auth.uid();
   v_role text;
-  v_allow text[];
 BEGIN
-  v_entity_type := CASE TG_TABLE_NAME
-    WHEN 'service_bookings' THEN 'booking'
-    WHEN 'electrician_profiles' THEN 'electrician_profile'
-    WHEN 'electrician_applications' THEN 'electrician_application'
-    WHEN 'srk_manual_payment_entries' THEN 'manual_payment'
-    WHEN 'srk_manual_refund_entries' THEN 'manual_refund'
-    WHEN 'srk_electrician_payouts' THEN 'electrician_payout'
-    WHEN 'srk_razorpay_refunds' THEN 'razorpay_refund'
-    ELSE NULL END;
-  IF v_entity_type IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;
-  v_allow := CASE v_entity_type
-    WHEN 'booking' THEN ARRAY['status','payment_status','payment_method','amount_paid','quoted_amount','quote_status','service_charge','materials_amount','assigned_electrician_id','commission_amount']
-    WHEN 'electrician_profile' THEN ARRAY['active','verification_status','auth_user_id','user_id']
-    WHEN 'electrician_application' THEN ARRAY['verification_status','active']
-    WHEN 'manual_payment' THEN ARRAY['booking_id','payment_method','amount']
-    WHEN 'manual_refund' THEN ARRAY['booking_id','payment_entry_id','amount']
-    WHEN 'electrician_payout' THEN ARRAY['booking_id','payout_status','payout_method','electrician_payable','platform_commission','paid_at']
-    WHEN 'razorpay_refund' THEN ARRAY['booking_id','payment_id','refund_id','amount','status','provider_status','last_error']
-    ELSE ARRAY[]::text[] END;
-  v_entity_id := coalesce(nullif(v_new->>'id','')::uuid,nullif(v_old->>'id','')::uuid);
-  v_booking_id := CASE WHEN v_entity_type='booking' THEN v_entity_id
-    ELSE coalesce(nullif(v_new->>'booking_id','')::uuid,nullif(v_old->>'booking_id','')::uuid) END;
-  IF v_entity_id IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;
-  FOREACH v_key IN ARRAY v_allow LOOP
-    IF v_old->v_key IS DISTINCT FROM v_new->v_key THEN
-      v_fields := array_append(v_fields,v_key);
-      IF v_old ? v_key THEN v_before := v_before || jsonb_build_object(v_key,v_old->v_key); END IF;
-      IF v_new ? v_key THEN v_after := v_after || jsonb_build_object(v_key,v_new->v_key); END IF;
+  IF TG_OP='DELETE' THEN
+    v_entity_id := OLD.id;
+    v_booking_id := OLD.booking_id;
+    v_before := jsonb_build_object('refund_id',OLD.refund_id,'amount',OLD.amount,'status',OLD.status,'provider_status',OLD.provider_status);
+    v_fields := ARRAY['refund_id','amount','status','provider_status'];
+  ELSIF TG_OP='INSERT' THEN
+    v_entity_id := NEW.id;
+    v_booking_id := NEW.booking_id;
+    v_after := jsonb_build_object('refund_id',NEW.refund_id,'amount',NEW.amount,'status',NEW.status,'provider_status',NEW.provider_status);
+    v_fields := ARRAY['refund_id','amount','status','provider_status'];
+  ELSE
+    v_entity_id := NEW.id;
+    v_booking_id := NEW.booking_id;
+    IF OLD.refund_id IS DISTINCT FROM NEW.refund_id THEN
+      v_fields := array_append(v_fields,'refund_id');
+      v_before := v_before || jsonb_build_object('refund_id',OLD.refund_id);
+      v_after := v_after || jsonb_build_object('refund_id',NEW.refund_id);
     END IF;
-  END LOOP;
-  IF cardinality(v_fields)=0 THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF; END IF;
-  v_role := CASE WHEN v_actor IS NULL THEN 'system'
-    WHEN public.is_srk_admin() THEN 'admin' ELSE 'user' END;
-  INSERT INTO public.srk_admin_audit_events
-    (entity_type,entity_id,booking_id,action,actor_user_id,actor_role,changed_fields,before_data,after_data)
-  VALUES (v_entity_type,v_entity_id,v_booking_id,
-    CASE TG_OP WHEN 'INSERT' THEN 'created' WHEN 'UPDATE' THEN 'updated' ELSE 'deleted' END,
-    v_actor,v_role,v_fields,v_before,v_after);
+    IF OLD.amount IS DISTINCT FROM NEW.amount THEN
+      v_fields := array_append(v_fields,'amount');
+      v_before := v_before || jsonb_build_object('amount',OLD.amount);
+      v_after := v_after || jsonb_build_object('amount',NEW.amount);
+    END IF;
+    IF OLD.status IS DISTINCT FROM NEW.status THEN
+      v_fields := array_append(v_fields,'status');
+      v_before := v_before || jsonb_build_object('status',OLD.status);
+      v_after := v_after || jsonb_build_object('status',NEW.status);
+    END IF;
+    IF OLD.provider_status IS DISTINCT FROM NEW.provider_status THEN
+      v_fields := array_append(v_fields,'provider_status');
+      v_before := v_before || jsonb_build_object('provider_status',OLD.provider_status);
+      v_after := v_after || jsonb_build_object('provider_status',NEW.provider_status);
+    END IF;
+  END IF;
+  IF cardinality(v_fields)>0 THEN
+    v_role := CASE WHEN v_actor IS NULL THEN 'system'
+      WHEN public.is_srk_admin() THEN 'admin' ELSE 'user' END;
+    INSERT INTO public.srk_admin_audit_events
+      (entity_type,entity_id,booking_id,action,actor_user_id,actor_role,changed_fields,before_data,after_data)
+    VALUES ('razorpay_refund',v_entity_id,v_booking_id,
+      CASE TG_OP WHEN 'INSERT' THEN 'created' WHEN 'UPDATE' THEN 'updated' ELSE 'deleted' END,
+      v_actor,v_role,v_fields,v_before,v_after);
+  END IF;
   IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
 END;
 $function$;
+REVOKE ALL ON FUNCTION public.srk_capture_razorpay_refund_audit_event() FROM PUBLIC,anon,authenticated;
 
 DROP TRIGGER IF EXISTS srk_audit_razorpay_refunds ON public.srk_razorpay_refunds;
 CREATE TRIGGER srk_audit_razorpay_refunds AFTER INSERT OR UPDATE OR DELETE ON public.srk_razorpay_refunds
-FOR EACH ROW EXECUTE FUNCTION public.srk_capture_admin_audit_event();
+FOR EACH ROW EXECUTE FUNCTION public.srk_capture_razorpay_refund_audit_event();
 
 CREATE OR REPLACE FUNCTION public.srk_admin_prepare_razorpay_refund(p_booking_id uuid,p_reason text)
 RETURNS TABLE(refund_record_id uuid,booking_id uuid,payment_id text,amount_paise bigint,idempotency_key text,status text,previous_payout_note text)
