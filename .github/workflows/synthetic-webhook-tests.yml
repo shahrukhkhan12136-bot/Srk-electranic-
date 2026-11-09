@@ -52,6 +52,8 @@ jobs:
         run: node tests/razorpay-refund-webhook.synthetic.test.js
       - name: Run synthetic Admin Razorpay refund handler tests
         run: node tests/razorpay-refund-handler.synthetic.test.js
+      - name: Check synthetic refund test syntax
+        run: node --check tests/razorpay-refund-handler.synthetic.test.js
       - name: Run isolated synthetic payment function tests
         run: node tests/razorpay-payment-functions.synthetic.test.js
       - name: Check direct-assignment test syntax
