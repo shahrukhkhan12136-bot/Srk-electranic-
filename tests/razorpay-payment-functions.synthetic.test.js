@@ -136,3 +136,5 @@ const pass = name => results.push({ name, result: "PASS" });
 
   console.log(JSON.stringify({ tests: results, passed: results.length, realSupabaseCalls: 0, realRazorpayCalls: 0 }, null, 2));
 })().catch(error => { console.error(error); process.exitCode = 1; });
+
+// Syntax and regression checks run in GitHub Actions with fully mocked HTTP.
