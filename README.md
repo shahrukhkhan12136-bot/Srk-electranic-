@@ -38,3 +38,11 @@ Service-role key और Razorpay secret को browser, GitHub या chat म�
 - An authorized Admin makes the actual UPI or bank transfer outside the website, then records the UTR / UPI reference in `/admin.html`. The website only records the transfer; it does not send money.
 - The electrician can see their own pending/paid payout status and recorded reference in `/electrician.html`. RLS restricts payout rows to the owning electrician and authorized admins.
 - Never mark a payout Paid before the actual transfer succeeds. No automatic payout or real-money test is performed by this code.
+
+## Masked calling and phone privacy
+
+- Customer and electrician phone numbers are not displayed to the other party in the customer/electrician dashboards or the corresponding contact RPC results.
+- Direct phone-call buttons remain disabled until a compliant two-way masked-calling provider is enabled and end-to-end tested.
+- The current provider candidate is Exotel Lead Assist (GreenPin): it supports virtual-number proxy calling and PIN verification, but it is an account-level feature that Exotel must enable and it uses separate credentials. Do not add provider credentials to GitHub or browser code.
+- Before a call can start from a different mobile device, the caller must enter their registered account number and complete OTP ownership verification. Merely typing a number must never authorize a call.
+- Until provider activation, both parties' real numbers remain hidden and calling is unavailable through the platform.
