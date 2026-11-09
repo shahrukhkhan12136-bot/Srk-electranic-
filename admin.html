@@ -25,9 +25,10 @@ async function loadElectricianVerificationDocuments(){
 }
 async function openElectricianVerificationDocument(id){
  const path=electricianDocPaths.get(id);if(!path){alert('दस्तावेज़ सूची Refresh करें।');return;}
+ const viewer=window.open('about:blank','_blank');if(!viewer){alert('दस्तावेज़ खोलने के लिए Pop-up अनुमति दें।');return;}
  const {data,error}=await sb.storage.from('srk-electrician-verification').createSignedUrl(path,300);
- if(error){alert('दस्तावेज़ सुरक्षित रूप से नहीं खुला: '+error.message);return;}
- window.open(data.signedUrl,'_blank','noopener');
+ if(error){viewer.close();alert('दस्तावेज़ सुरक्षित रूप से नहीं खुला: '+error.message);return;}
+ viewer.opener=null;viewer.location.href=data.signedUrl;
 }
 async function reviewElectricianDocument(id){
  const status=document.getElementById('electrician-doc-status-'+id)?.value;
