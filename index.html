@@ -181,9 +181,13 @@ async function loadCustomerBookings() {
     .limit(50);
   if (error) { box.textContent = 'बुकिंग अभी लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।'; return; }
   if (!data || !data.length) { box.textContent = 'इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। आगे की बुकिंग में OTP वाला यही मोबाइल नंबर इस्तेमाल करें।'; return; }
-  const upiResults = await Promise.all(data.map(row => customerSb.rpc('srk_get_assigned_booking_verified_upi',{p_booking_id:row.id})));\n  const quoteResults = await Promise.all(data.map(row => customerSb.rpc('srk_get_my_booking_quotes',{p_booking_id:row.id})));
+  const upiResults = await Promise.all(data.map(row => customerSb.rpc('srk_get_assigned_booking_verified_upi',{p_booking_id:row.id})));
+  const quoteResults = await Promise.all(data.map(row => customerSb.rpc('srk_get_my_booking_quotes',{p_booking_id:row.id})));
   box.innerHTML = data.map((row,index) => {
     const upi = upiResults[index]?.data;
+    const quotes = quoteResults[index]?.data || [];
+    const pendingQuote = quotes.find(q=>q.quote_status==='pending_customer');
+    const quoteBlock = quotes.length ? '<div style="padding:12px;background:#fff8e8;border-radius:10px;margin:10px 0"><b>कोटेशन का हिसाब</b>'+quotes.map(q=>'<p>कोटेशन #'+customerEsc(q.quote_version)+' • '+customerEsc(q.quote_status)+'</p><p>लेबर: ₹'+Number(q.labor_amount).toFixed(2)+' • सामान: ₹'+Number(q.material_amount).toFixed(2)+' • अन्य: ₹'+Number(q.other_amount).toFixed(2)+'</p><p><b>कुल: ₹'+Number(q.total_amount).toFixed(2)+'</b></p>'+(q.work_notes?'<p>'+customerEsc(q.work_notes)+'</p>':'')+(q.estimated_duration?'<p>समय: '+customerEsc(q.estimated_duration)+'</p>':'')+(q.quote_status==='pending_customer'?'<button type="button" onclick="reviewBookingQuote(\''+q.quote_id+'\',\'accepted\')">कोटेशन स्वीकार करें</button><button type="button" onclick="reviewBookingQuote(\''+q.quote_id+'\',\'rejected\')">कोटेशन अस्वीकार करें</button>':'')).join('')+'<p class="small">केवल लेबर फीस पर 15% कमीशन; सामान और अन्य चार्ज पर कमीशन नहीं।</p></div>':'';
     const upiBlock = upi?.upi_id
       ? '<div style="padding:12px;background:#eaf7f1;border-radius:10px"><b>इलेक्ट्रिशियन की सत्यापित UPI ID:</b><p>'+customerEsc(upi.upi_id)+'</p><a href="upi://pay?pa='+encodeURIComponent(upi.upi_id)+'&pn='+encodeURIComponent(upi.electrician_name||'SRK ELECTRONIC')+'&tn='+encodeURIComponent('SRK Booking '+row.id)+'">UPI ऐप से भुगतान करें</a><p class="small">भुगतान सीधे इलेक्ट्रिशियन को होगा। UPI भुगतान अपने-आप सत्यापित नहीं होता। पैसे भेजने से पहले UPI ऐप में प्राप्तकर्ता का नाम जाँचें। भुगतान केवल ऊपर दिखाई गई तय राशि का करें; रिपोर्ट में भी यही राशि और UTR दर्ज करें। Admin बैंक/UPI रिकॉर्ड जाँचकर ही भुगतान Paid करेगा।</p>'+(row.payment_status!=='paid' ? '<button type="button" onclick="reportDirectUpiPayment(\''+row.id+'\')">मैंने UPI से भुगतान किया — रिपोर्ट भेजें</button>' : '<p><b>भुगतान स्थिति:</b> Admin द्वारा Paid दर्ज</p>')+'</div>'
       : (row.status==='assigned'||row.status==='in_progress'||row.status==='completed' ? '<p class="small">इलेक्ट्रिशियन की UPI ID अभी Admin द्वारा सत्यापित नहीं है या उपलब्ध नहीं है।</p>' : '');
@@ -191,7 +195,8 @@ async function loadCustomerBookings() {
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
-    (row.quoted_amount != null ? '<p>तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +\n    quoteBlock +
+    (row.quoted_amount != null ? '<p>तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
+    quoteBlock +
     (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
     upiBlock +
     '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
