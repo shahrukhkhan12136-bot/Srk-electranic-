@@ -1,4 +1,4 @@
-name: Synthetic Razorpay regression tests
+name: Synthetic Razorpay and Admin regression tests
 
 on:
   push:
@@ -9,7 +9,10 @@ on:
       - "create-order.js"
       - "verify-payment.js"
       - "tests/razorpay-webhook.synthetic.test.js"
-      - "tests/razorpay-payment-functions.synthetic.test.js"\n      - "tests/admin-direct-assignment.static.test.js"\n      - "supabase/migrations/20261110030000_admin_direct_electrician_assignment.sql"\n      - "admin.html"
+      - "tests/razorpay-payment-functions.synthetic.test.js"
+      - "tests/admin-direct-assignment.static.test.js"
+      - "supabase/migrations/20261110030000_admin_direct_electrician_assignment.sql"
+      - "admin.html"
       - ".github/workflows/synthetic-webhook-tests.yml"
   workflow_dispatch:
 
@@ -32,3 +35,7 @@ jobs:
         run: node tests/razorpay-webhook.synthetic.test.js
       - name: Run isolated synthetic payment function tests
         run: node tests/razorpay-payment-functions.synthetic.test.js
+      - name: Check direct-assignment test syntax
+        run: node --check tests/admin-direct-assignment.static.test.js
+      - name: Run direct-assignment static regression tests
+        run: node tests/admin-direct-assignment.static.test.js
