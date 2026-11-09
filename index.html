@@ -199,6 +199,12 @@ async function loadCustomerBookings() {
   if (!data || !data.length) { box.textContent = 'इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। आगे की बुकिंग में OTP वाला यही मोबाइल नंबर इस्तेमाल करें।'; return; }
   const { data: callContacts } = await customerSb.rpc('srk_get_customer_call_contacts');
   const callMap = new Map((callContacts || []).map(item => [item.booking_id, item]));
+  const { data: complaintRows } = await customerSb.rpc('srk_customer_list_booking_complaints');
+  const complaintMap = new Map();
+  (complaintRows || []).forEach(item => {
+    if (!complaintMap.has(item.booking_id)) complaintMap.set(item.booking_id, []);
+    complaintMap.get(item.booking_id).push(item);
+  });
   box.innerHTML = data.map(row => {
     const contact = callMap.get(row.id);
     const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
@@ -213,8 +219,18 @@ async function loadCustomerBookings() {
     (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
     '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
     (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>') : '') +
+    (function(){const items=complaintMap.get(row.id)||[];const active=items.some(c=>!['resolved','closed'].includes(c.status));const history=items.map(c=>'<div class="job"><b>शिकायत: '+customerEsc(c.category)+'</b><p>'+customerEsc(c.description)+'</p><p>स्थिति: '+customerEsc(c.status)+'</p>'+(c.admin_note?'<p><b>Admin जवाब:</b> '+customerEsc(c.admin_note)+'</p>':'')+'<small>'+customerEsc(new Date(c.created_at).toLocaleString('en-IN'))+'</small></div>').join('');return '<div class="job"><b>शिकायत / सहायता</b>'+history+(active?'<p class="small">आपकी एक शिकायत पर काम चल रहा है। अपडेट यहीं दिखाई देगा।</p>':'<label for="complaint-category-'+row.id+'">शिकायत का विषय</label><select id="complaint-category-'+row.id+'" style="width:100%"><option value="service_quality">काम की गुणवत्ता</option><option value="electrician_behavior">इलेक्ट्रिशियन का व्यवहार</option><option value="billing_payment">बिल / भुगतान</option><option value="delay_no_show">देरी / इलेक्ट्रिशियन नहीं आया</option><option value="safety">सुरक्षा संबंधी समस्या</option><option value="other">अन्य</option></select><label for="complaint-description-'+row.id+'">समस्या का पूरा विवरण (कम से कम 20 अक्षर)</label><textarea id="complaint-description-'+row.id+'" maxlength="2000" rows="3" style="width:100%"></textarea><button type="button" onclick="customerSubmitComplaint(\''+row.id+'\')">शिकायत भेजें</button>')+'</div>';})() +
     '</article>';
   }).join('');
+}
+async function customerSubmitComplaint(bookingId){
+ const category=document.getElementById('complaint-category-'+bookingId)?.value;
+ const description=document.getElementById('complaint-description-'+bookingId)?.value.trim()||'';
+ if(description.length<20){alert('कृपया समस्या कम से कम 20 अक्षरों में लिखें।');return;}
+ const {error}=await customerSb.rpc('srk_customer_create_booking_complaint',{p_booking_id:bookingId,p_category:category,p_description:description});
+ if(error){alert('शिकायत दर्ज नहीं हुई: '+error.message);return;}
+ alert('आपकी शिकायत सुरक्षित रूप से दर्ज हो गई है। Admin का जवाब आपकी बुकिंग में दिखेगा।');
+ await loadCustomerBookings();
 }
 async function customerQuoteResponse(id,response){
  if(!confirm(response==='approved'?'क्या आप सर्विस और सामान का पूरा कोटेशन मंजूर करते हैं?':'क्या आप यह कोटेशन अस्वीकार करते हैं?'))return;
