@@ -16,6 +16,7 @@ assert.match(migration,/payout_status='blocked'/i);
 assert.match(migration,/payout_status='paid'/i);
 assert.match(migration,/RETURN QUERY SELECT v_refund\.id,v_refund\.booking_id,v_refund\.payment_id,v_refund\.amount_paise,v_refund\.idempotency_key,v_refund\.status,v_refund\.previous_payout_note;/i);
 assert.match(handler,/X-Refund-Idempotency/);
+assert.match(handler,/status","in\.\(requested,unknown,processing\)"/);
 assert.match(handler,/srk_admin_prepare_razorpay_refund/);
 assert.match(handler,/auth\/v1\/user/);
 assert.match(handler,/api\.razorpay\.com\/v1\/payments/);
