@@ -1,0 +1,1 @@
+-- Applied migration: electrician home inspection, itemized customer quote, quote approval, work-state gates, and 15% commission on service_charge only. See live Supabase migration electrician_inspection_quotes_and_service_only_commission.
