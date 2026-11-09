@@ -1,0 +1,27 @@
+name: Synthetic webhook regression tests
+
+on:
+  push:
+    branches:
+      - work/separate-customer-electrician-portals
+    paths:
+      - "razorpay-webhook.js"
+      - "tests/razorpay-webhook.synthetic.test.js"
+      - ".github/workflows/synthetic-webhook-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-webhook:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out work branch
+        uses: actions/checkout@v4
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run isolated synthetic webhook tests
+        run: node tests/razorpay-webhook.synthetic.test.js
