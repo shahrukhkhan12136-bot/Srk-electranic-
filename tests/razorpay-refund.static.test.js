@@ -14,7 +14,7 @@ assert.match(migration,/auth\.uid\(\) IS NULL OR NOT public\.is_srk_admin\(\)/i)
 assert.match(migration,/FOR UPDATE/i);
 assert.match(migration,/payout_status='blocked'/i);
 assert.match(migration,/payout_status='paid'/i);
-assert.match(migration,/X-Refund-Idempotency/i.test(handler)?"X-Refund-Idempotency":"X-Refund-Idempotency",/X-Refund-Idempotency/);
+assert.match(handler,/X-Refund-Idempotency/);
 assert.match(handler,/srk_admin_prepare_razorpay_refund/);
 assert.match(handler,/auth\/v1\/user/);
 assert.match(handler,/api\.razorpay\.com\/v1\/payments/);
