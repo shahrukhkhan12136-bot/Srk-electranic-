@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071a2b">
+<title>ग्राहक OTP लॉगिन — SRK ELECTRONIC</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px;background:#f3f6fa;color:#142235;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}.card{width:min(100%,440px);background:#fff;border-radius:20px;padding:24px;box-shadow:0 10px 35px #102b4618}h1{margin:0;color:#071a2b;font-size:23px}.sub{color:#637184;line-height:1.55;font-size:14px}label{display:block;margin:18px 0 7px;font-weight:650;font-size:14px}input{width:100%;padding:14px;border:1px solid #ccd6e2;border-radius:11px;font:inherit}.btn{width:100%;border:0;border-radius:11px;padding:14px;margin-top:14px;background:#0b5ed7;color:#fff;font-size:15px;font-weight:750}.btn:disabled{opacity:.55}.msg{min-height:42px;color:#176b3a;font-size:14px;line-height:1.5}.hidden{display:none}.back{display:block;text-align:center;margin-top:16px;color:#0b5ed7}
+</style>
+</head>
+<body>
+<main class="card">
+<h1>SRK ELECTRONIC</h1>
+<p class="sub">ग्राहक मोबाइल OTP लॉगिन</p>
+<p class="sub">अपना रजिस्टर्ड भारतीय मोबाइल नंबर डालें। OTP SMS से आएगा। OTP केवल इसी स्क्रीन पर खुद दर्ज करें—किसी के साथ साझा न करें।</p>
+<label for="phone">रजिस्टर्ड मोबाइल नंबर</label>
+<input id="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="15" placeholder="10 अंकों का मोबाइल नंबर">
+<button class="btn" id="send" type="button">OTP भेजें</button>
+<section id="otpArea" class="hidden">
+<label for="otp">SMS से मिला OTP</label>
+<input id="otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="OTP दर्ज करें">
+<button class="btn" id="verify" type="button">OTP सत्यापित करके लॉगिन करें</button>
+</section>
+<p id="message" class="msg" role="status" aria-live="polite"></p>
+<a class="back" href="/">मुख्य पेज पर वापस जाएँ</a>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/srk-config.js"></script>
+<script>
+(() => {
+ const cfg=window.SRK_CONFIG||{};
+ const msg=document.getElementById('message');
+ const send=document.getElementById('send');
+ const verify=document.getElementById('verify');
+ const phoneInput=document.getElementById('phone');
+ const otpInput=document.getElementById('otp');
+ const area=document.getElementById('otpArea');
+ let busy=false, resendAt=0, timer=null;
+ const sb=(cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&window.supabase)?window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY):null;
+ function phoneE164(){const raw=phoneInput.value.trim(),d=raw.replace(/\D/g,'');if(d.length===10)return '+91'+d;if(raw.startsWith('+')&&d.length>=10&&d.length<=15)return '+'+d;return null;}
+ function setMessage(t,bad=false){msg.textContent=t;msg.style.color=bad?'#b42318':'#176b3a';}
+ send.addEventListener('click',async()=>{
+  if(!sb){setMessage('लॉगिन कॉन्फ़िगरेशन उपलब्ध नहीं है।',true);return;}
+  if(busy)return;const phone=phoneE164();if(!phone){setMessage('कृपया सही 10 अंकों का भारतीय मोबाइल नंबर डालें।',true);return;}
+  if(Date.now()<resendAt){setMessage('OTP दोबारा भेजने से पहले कृपया प्रतीक्षा करें।',true);return;}
+  busy=true;send.disabled=true;setMessage('OTP भेजा जा रहा है…');
+  try{const {error}=await sb.auth.signInWithOtp({phone});if(error)throw error;area.classList.remove('hidden');resendAt=Date.now()+60000;setMessage('OTP भेजने का अनुरोध सफल हुआ। SMS देखें और OTP खुद दर्ज करें।');let left=60;send.textContent='OTP दोबारा भेजें ('+left+' सेकंड)';timer=setInterval(()=>{left--;send.textContent=left>0?'OTP दोबारा भेजें ('+left+' सेकंड)':'OTP दोबारा भेजें';if(left<=0){clearInterval(timer);send.disabled=false;}},1000);}catch(e){setMessage('OTP नहीं भेजा जा सका। मोबाइल नंबर और SMS सेवा जाँचकर फिर कोशिश करें।',true);send.disabled=false;}finally{busy=false;}
+ });
+ verify.addEventListener('click',async()=>{
+  if(!sb||busy)return;const phone=phoneE164(),token=otpInput.value.trim();if(!phone||!/^\d{4,8}$/.test(token)){setMessage('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}
+  busy=true;verify.disabled=true;setMessage('OTP सत्यापित हो रहा है…');
+  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका सुरक्षित ग्राहक सेशन इस वेबसाइट में सेव हो गया है। अब मेरी बुकिंग देखने के लिए मुख्य पेज खोलें।');setTimeout(()=>{window.location.href='/#customer-login';},1800);}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=false;}
+ });
+ if(!sb){send.disabled=true;setMessage('लॉगिन सेवा कॉन्फ़िगरेशन नहीं मिला।',true);}
+})();
+</script>
+</body>
+</html>
