@@ -23,6 +23,18 @@ WITH CHECK (
   )
 );
 
+DROP POLICY IF EXISTS srk_electrician_verification_cleanup ON storage.objects;
+CREATE POLICY srk_electrician_verification_cleanup
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id='srk-electrician-verification'
+  AND (storage.foldername(name))[1]=auth.uid()::text
+  AND NOT EXISTS (
+    SELECT 1 FROM public.srk_electrician_verification_documents d
+    WHERE d.storage_path=storage.objects.name
+  )
+);
+
 DROP POLICY IF EXISTS srk_electrician_verification_read ON storage.objects;
 CREATE POLICY srk_electrician_verification_read
 ON storage.objects FOR SELECT TO authenticated
@@ -85,10 +97,10 @@ DECLARE
   v_id uuid;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Electrician login required' USING ERRCODE='42501'; END IF;
-  IF p_document_type NOT IN ('identity_proof','address_proof','skill_certificate')
+  IF p_document_type IS NULL OR p_document_type NOT IN ('identity_proof','address_proof','skill_certificate')
      OR p_storage_path IS NULL OR left(p_storage_path,40) <> v_uid::text||'/'
      OR p_file_name IS NULL OR length(p_file_name) NOT BETWEEN 1 AND 180
-     OR p_mime_type NOT IN ('application/pdf','image/jpeg','image/png')
+     OR p_mime_type IS NULL OR p_mime_type NOT IN ('application/pdf','image/jpeg','image/png')
      OR p_file_size_bytes IS NULL OR p_file_size_bytes NOT BETWEEN 1 AND 5242880 THEN
     RAISE EXCEPTION 'Invalid document metadata';
   END IF;
@@ -176,7 +188,7 @@ BEGIN
   IF v_admin IS NULL OR NOT public.is_srk_admin() THEN
     RAISE EXCEPTION 'Admin permission required' USING ERRCODE='42501';
   END IF;
-  IF p_document_id IS NULL OR p_review_status NOT IN ('approved','rejected','needs_resubmission')
+  IF p_document_id IS NULL OR p_review_status IS NULL OR p_review_status NOT IN ('approved','rejected','needs_resubmission')
      OR (p_admin_note IS NOT NULL AND length(p_admin_note)>1000) THEN
     RAISE EXCEPTION 'Invalid document review';
   END IF;
