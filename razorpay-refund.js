@@ -4,7 +4,7 @@ const RAZORPAY_KEY_ID=process.env.RAZORPAY_KEY_ID||process.env.APIKEY;
 const RAZORPAY_KEY_SECRET=process.env.RAZORPAY_KEY_SECRET||process.env.SECRETAPIKEY;
 const json=(statusCode,body)=>({statusCode,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"},body:JSON.stringify(body)});
 async function patchRefund(id,fields){
- const url=new URL("/rest/v1/srk_razorpay_refunds",SUPABASE_URL);url.searchParams.set("id","eq."+id);
+ const url=new URL("/rest/v1/srk_razorpay_refunds",SUPABASE_URL);url.searchParams.set("id","eq."+id);url.searchParams.set("status","not.eq.processed");
  const r=await fetch(url,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({...fields,updated_at:new Date().toISOString()})});
  if(!r.ok)throw new Error("Refund reconciliation update failed");
 }
