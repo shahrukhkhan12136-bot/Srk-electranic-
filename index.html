@@ -185,7 +185,7 @@ async function loadCustomerBookings() {
   box.innerHTML = data.map((row,index) => {
     const upi = upiResults[index]?.data;
     const upiBlock = upi?.upi_id
-      ? '<div style="padding:12px;background:#eaf7f1;border-radius:10px"><b>इलेक्ट्रिशियन की सत्यापित UPI ID:</b><p>'+customerEsc(upi.upi_id)+'</p><a href="upi://pay?pa='+encodeURIComponent(upi.upi_id)+'&pn='+encodeURIComponent(upi.electrician_name||'SRK ELECTRONIC')+'&tn='+encodeURIComponent('SRK Booking '+row.id)+'">UPI ऐप से भुगतान करें</a><p class="small">भुगतान सीधे इलेक्ट्रिशियन को होगा। UPI भुगतान अपने-आप सत्यापित नहीं होता। पैसे भेजने से पहले UPI ऐप में प्राप्तकर्ता का नाम जाँचें। भुगतान करने के बाद नीचे राशि और UTR दर्ज करके Admin को रिपोर्ट भेजें।</p>'+(row.payment_status!=='paid' ? '<button type="button" onclick="reportDirectUpiPayment(\''+row.id+'\')">मैंने UPI से भुगतान किया — रिपोर्ट भेजें</button>' : '<p><b>भुगतान स्थिति:</b> Admin द्वारा Paid दर्ज</p>')+'</div>'
+      ? '<div style="padding:12px;background:#eaf7f1;border-radius:10px"><b>इलेक्ट्रिशियन की सत्यापित UPI ID:</b><p>'+customerEsc(upi.upi_id)+'</p><a href="upi://pay?pa='+encodeURIComponent(upi.upi_id)+'&pn='+encodeURIComponent(upi.electrician_name||'SRK ELECTRONIC')+'&tn='+encodeURIComponent('SRK Booking '+row.id)+'">UPI ऐप से भुगतान करें</a><p class="small">भुगतान सीधे इलेक्ट्रिशियन को होगा। UPI भुगतान अपने-आप सत्यापित नहीं होता। पैसे भेजने से पहले UPI ऐप में प्राप्तकर्ता का नाम जाँचें। भुगतान केवल ऊपर दिखाई गई तय राशि का करें; रिपोर्ट में भी यही राशि और UTR दर्ज करें। Admin बैंक/UPI रिकॉर्ड जाँचकर ही भुगतान Paid करेगा।</p>'+(row.payment_status!=='paid' ? '<button type="button" onclick="reportDirectUpiPayment(\''+row.id+'\')">मैंने UPI से भुगतान किया — रिपोर्ट भेजें</button>' : '<p><b>भुगतान स्थिति:</b> Admin द्वारा Paid दर्ज</p>')+'</div>'
       : (row.status==='assigned'||row.status==='in_progress'||row.status==='completed' ? '<p class="small">इलेक्ट्रिशियन की UPI ID अभी Admin द्वारा सत्यापित नहीं है या उपलब्ध नहीं है।</p>' : '');
     return '<article class="card" style="margin:10px 0;padding:13px">' +
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
@@ -200,7 +200,7 @@ async function loadCustomerBookings() {
 }
 function indiaLocalDate(){const p=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const v=Object.fromEntries(p.map(x=>[x.type,x.value]));return v.year+'-'+v.month+'-'+v.day;}
 async function reportDirectUpiPayment(bookingId){
-  const amountRaw=prompt('आपने वास्तव में कितने रुपये भेजे?');
+  const amountRaw=prompt('आपने कितने रुपये भेजे? राशि ऊपर दिखाई गई तय बुकिंग राशि के बराबर होनी चाहिए।');
   if(amountRaw===null)return;
   const amount=Number(amountRaw);
   if(!Number.isFinite(amount)||amount<=0||amount>10000000){alert('सही भुगतान राशि दर्ज करें।');return;}
