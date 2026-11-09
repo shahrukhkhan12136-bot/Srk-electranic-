@@ -354,11 +354,11 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
     const bookingHeaders = { 'Content-Type': 'application/json' };
-    if (customerSb) {
-      const { data: customerSessionData } = await customerSb.auth.getSession();
-      const customerSession = customerSessionData.session;
-      if (customerSession) bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
-    }
+    if (!customerSb) throw new Error('ग्राहक लॉगिन सेवा उपलब्ध नहीं है।');
+    const { data: customerSessionData } = await customerSb.auth.getSession();
+    const customerSession = customerSessionData.session;
+    if (!customerSession) throw new Error('बुकिंग और कोटेशन मंजूरी के लिए पहले ग्राहक OTP लॉगिन करें।');
+    bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify({
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: value('service'), preferred_date: value('date'), preferred_time: value('time'),
