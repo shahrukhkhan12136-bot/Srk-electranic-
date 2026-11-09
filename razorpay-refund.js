@@ -1,4 +1,3 @@
-const crypto=require("crypto");
 const SUPABASE_URL=process.env.SUPABASE_URL;
 const SUPABASE_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RAZORPAY_KEY_ID=process.env.RAZORPAY_KEY_ID||process.env.APIKEY;
@@ -9,11 +8,11 @@ async function patchRefund(id,fields){
  const r=await fetch(url,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({...fields,updated_at:new Date().toISOString()})});
  if(!r.ok)throw new Error("Refund reconciliation update failed");
 }
-async function restorePendingPayout(bookingId){
+async function restorePendingPayout(bookingId,previousNote){
  const url=new URL("/rest/v1/srk_electrician_payouts",SUPABASE_URL);
  url.searchParams.set("booking_id","eq."+bookingId);url.searchParams.set("payout_status","eq.blocked");
  url.searchParams.set("payout_note","eq.Razorpay refund pending");
- await fetch(url,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({payout_status:"pending",payout_note:null,updated_at:new Date().toISOString()})});
+ await fetch(url,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({payout_status:"pending",payout_note:previousNote||null,updated_at:new Date().toISOString()})});
 }
 exports.handler=async event=>{
  if(event.httpMethod!=="POST")return json(405,{success:false,error:"केवल POST अनुरोध स्वीकार है।"});
@@ -40,13 +39,13 @@ exports.handler=async event=>{
   const basic=Buffer.from(keyId+":"+secret).toString("base64");
   const provider=await fetch("https://api.razorpay.com/v1/payments/"+encodeURIComponent(row.payment_id)+"/refund",{
    method:"POST",headers:{Authorization:"Basic "+basic,"Content-Type":"application/json","X-Refund-Idempotency":row.idempotency_key},
-   body:JSON.stringify({amount:Number(row.amount_paise),notes:{booking_id:row.booking_id,refund_record_id:row.refund_record_id||row.refund_record_id||""}})
+   body:JSON.stringify({amount:Number(row.amount_paise),notes:{booking_id:row.booking_id,refund_record_id:row.refund_record_id}})
   });
   const raw=await provider.text();let result;try{result=raw?JSON.parse(raw):{}}catch{result={}}
   if(!provider.ok){
    const uncertain=provider.status===409||provider.status>=500;
    await patchRefund(row.refund_record_id,{status:uncertain?"unknown":"failed",provider_status:result.status||null,last_error:"Razorpay API HTTP "+provider.status});
-   if(!uncertain)await restorePendingPayout(row.booking_id);
+   if(!uncertain)await restorePendingPayout(row.booking_id,row.previous_payout_note);
    return json(uncertain?202:409,{success:false,status:uncertain?"unknown":"failed",error:uncertain?"Refund request का अंतिम परिणाम स्पष्ट नहीं है। वही idempotency key सुरक्षित रखी गई है; Dashboard/webhook से मिलान करें।":"Razorpay ने Refund अनुरोध अस्वीकार किया। Dashboard में कारण जाँचें।"});
   }
   if(!/^rfnd_[A-Za-z0-9]+$/.test(result.id||"")||result.payment_id!==row.payment_id||result.amount!==Number(row.amount_paise)){
