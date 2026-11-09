@@ -192,13 +192,16 @@ stable
 security definer
 set search_path to 'pg_catalog','public','auth','pg_temp'
 as $function$
-declare v_uid uuid:=auth.uid(); v_profile_id uuid; v_due numeric; v_verified numeric; v_submitted numeric;
+declare v_uid uuid:=auth.uid(); v_profile_id uuid; v_profile_count integer; v_due numeric; v_verified numeric; v_submitted numeric;
 begin
   if v_uid is null then raise exception 'Authentication required' using errcode='42501'; end if;
+  select count(*) into v_profile_count from public.electrician_profiles
+  where (auth_user_id=v_uid or user_id=v_uid) and verification_status='approved';
+  if v_profile_count <> 1 then
+    raise exception 'Exactly one approved electrician profile must be linked to this account' using errcode='42501';
+  end if;
   select id into v_profile_id from public.electrician_profiles
-  where (auth_user_id=v_uid or user_id=v_uid) and verification_status='approved'
-  order by created_at desc limit 1;
-  if v_profile_id is null then raise exception 'Approved electrician profile required' using errcode='42501'; end if;
+  where (auth_user_id=v_uid or user_id=v_uid) and verification_status='approved';
   select coalesce(sum(coalesce(commission_amount,round(amount_paid*commission_rate/100,2))),0)
     into v_due from public.service_bookings
     where assigned_electrician_id=v_profile_id and status='completed' and payment_status='paid';
