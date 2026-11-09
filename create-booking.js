@@ -199,7 +199,7 @@ exports.handler = async (event) => {
       return json(error.httpStatus, {
         success: false,
         error: error.httpStatus === 401
-          ? "आपका लॉगिन सत्र समाप्त हो गया है। दोबारा लॉगिन करें या Guest Booking जारी रखें।"
+          ? "आपका लॉगिन सत्र समाप्त हो गया है। कृपया दोबारा OTP लॉगिन करें।"
           : "लॉगिन मोबाइल नंबर और बुकिंग मोबाइल नंबर एक जैसे होने चाहिए।"
       });
     }
