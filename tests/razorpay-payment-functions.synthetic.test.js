@@ -73,7 +73,7 @@ const pass = name => results.push({ name, result: "PASS" });
   let r = await createOrder({ httpMethod: "GET", headers: {}, body: "" });
   assert.equal(r.statusCode, 405); pass("create-order rejects non-POST");
 
-  reset(); user = null;
+  reset();\n  r = await createOrder(req({ booking_id: "not-a-uuid" }));\n  assert.equal(r.statusCode, 400);\n  pass("create-order rejects malformed booking UUID");\n\n  reset(); user = null;
   r = await createOrder(req({ booking_id: booking.id }));
   assert.equal(r.statusCode, 401); pass("create-order requires a valid customer session");
 
