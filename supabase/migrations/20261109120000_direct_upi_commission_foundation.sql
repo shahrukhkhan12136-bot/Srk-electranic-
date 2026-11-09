@@ -97,18 +97,29 @@ $function$;
 create or replace function public.srk_admin_review_payout_upi(
   p_electrician_profile_id uuid,
   p_decision text,
-  p_note text default null
+  p_note text default null,
+  p_expected_upi_id text default null
 )
 returns jsonb
 language plpgsql
 security definer
 set search_path to 'pg_catalog','public','auth','pg_temp'
 as $function$
+declare
+  v_current_upi_id text;
 begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'Admin access required' using errcode='42501';
   end if;
   if p_decision not in ('verified','rejected') then raise exception 'Invalid decision'; end if;
+  select payout_upi_id into v_current_upi_id
+  from public.electrician_profiles
+  where id=p_electrician_profile_id and payout_upi_status='pending'
+  for update;
+  if not found then raise exception 'Pending UPI submission not found'; end if;
+  if v_current_upi_id is distinct from lower(trim(coalesce(p_expected_upi_id,''))) then
+    raise exception 'UPI ID changed since admin loaded the list. Refresh and review again.';
+  end if;
   update public.electrician_profiles
   set payout_upi_status=p_decision,
       payout_upi_reviewed_at=now(),
@@ -116,7 +127,7 @@ begin
       payout_upi_review_note=nullif(left(trim(coalesce(p_note,'')),500),'')
   where id=p_electrician_profile_id
     and payout_upi_status='pending'
-    and payout_upi_id is not null;
+    and payout_upi_id=v_current_upi_id;
   if not found then raise exception 'Pending UPI submission not found'; end if;
   return jsonb_build_object('success',true,'status',p_decision);
 end;
@@ -296,14 +307,14 @@ end;
 $function$;
 
 revoke all on function public.srk_submit_my_payout_upi(text) from public,anon;
-revoke all on function public.srk_admin_review_payout_upi(uuid,text,text) from public,anon;
+revoke all on function public.srk_admin_review_payout_upi(uuid,text,text,text) from public,anon;
 revoke all on function public.srk_get_assigned_booking_verified_upi(uuid) from public,anon;
 revoke all on function public.srk_submit_my_commission_remittance(numeric,text,date) from public,anon;
 revoke all on function public.srk_admin_review_commission_remittance(uuid,text,text) from public,anon;
 revoke all on function public.srk_get_my_commission_balance() from public,anon;
 revoke all on function public.srk_admin_direct_upi_commission_overview() from public,anon;
 grant execute on function public.srk_submit_my_payout_upi(text) to authenticated;
-grant execute on function public.srk_admin_review_payout_upi(uuid,text,text) to authenticated;
+grant execute on function public.srk_admin_review_payout_upi(uuid,text,text,text) to authenticated;
 grant execute on function public.srk_get_assigned_booking_verified_upi(uuid) to authenticated;
 grant execute on function public.srk_submit_my_commission_remittance(numeric,text,date) to authenticated;
 grant execute on function public.srk_admin_review_commission_remittance(uuid,text,text) to authenticated;
