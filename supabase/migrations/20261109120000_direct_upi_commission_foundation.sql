@@ -224,11 +224,22 @@ language plpgsql
 security definer
 set search_path to 'pg_catalog','public','auth','pg_temp'
 as $function$
+declare
+  v_profile_id uuid;
 begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'Admin access required' using errcode='42501';
   end if;
   if p_decision not in ('verified','rejected') then raise exception 'Invalid decision'; end if;
+
+  -- Serialize review with new remittance submissions for the same electrician.
+  select electrician_profile_id into v_profile_id
+  from public.srk_commission_remittances
+  where id=p_remittance_id and status='submitted';
+  if v_profile_id is null then raise exception 'Submitted remittance not found'; end if;
+
+  perform 1 from public.electrician_profiles where id=v_profile_id for update;
+
   update public.srk_commission_remittances
   set status=p_decision,admin_note=nullif(left(trim(coalesce(p_note,'')),500),''),
       reviewed_by=auth.uid(),reviewed_at=now()
