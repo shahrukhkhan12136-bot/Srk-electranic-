@@ -26,6 +26,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - name: Check payment test syntax
+        run: node --check tests/razorpay-payment-functions.synthetic.test.js
       - name: Run isolated synthetic webhook tests
         run: node tests/razorpay-webhook.synthetic.test.js
       - name: Run isolated synthetic payment function tests
