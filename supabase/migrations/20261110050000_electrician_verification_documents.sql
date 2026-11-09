@@ -23,18 +23,6 @@ WITH CHECK (
   )
 );
 
-DROP POLICY IF EXISTS srk_electrician_verification_cleanup ON storage.objects;
-CREATE POLICY srk_electrician_verification_cleanup
-ON storage.objects FOR DELETE TO authenticated
-USING (
-  bucket_id='srk-electrician-verification'
-  AND (storage.foldername(name))[1]=auth.uid()::text
-  AND NOT EXISTS (
-    SELECT 1 FROM public.srk_electrician_verification_documents d
-    WHERE d.storage_path=storage.objects.name
-  )
-);
-
 DROP POLICY IF EXISTS srk_electrician_verification_read ON storage.objects;
 CREATE POLICY srk_electrician_verification_read
 ON storage.objects FOR SELECT TO authenticated
@@ -61,6 +49,18 @@ CREATE TABLE IF NOT EXISTS public.srk_electrician_verification_documents (
   reviewed_at timestamptz,
   reviewed_by uuid REFERENCES auth.users(id) ON DELETE RESTRICT
 );
+DROP POLICY IF EXISTS srk_electrician_verification_cleanup ON storage.objects;
+CREATE POLICY srk_electrician_verification_cleanup
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id='srk-electrician-verification'
+  AND (storage.foldername(name))[1]=auth.uid()::text
+  AND NOT EXISTS (
+    SELECT 1 FROM public.srk_electrician_verification_documents d
+    WHERE d.storage_path=storage.objects.name
+  )
+);
+
 CREATE INDEX IF NOT EXISTS srk_electrician_docs_profile_idx
   ON public.srk_electrician_verification_documents(electrician_profile_id,document_type,uploaded_at DESC);
 CREATE INDEX IF NOT EXISTS srk_electrician_docs_status_idx
