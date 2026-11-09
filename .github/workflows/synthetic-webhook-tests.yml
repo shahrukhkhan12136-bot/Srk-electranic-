@@ -6,6 +6,7 @@ on:
       - work/separate-customer-electrician-portals
     paths:
       - "razorpay-webhook.js"
+      - "razorpay-refund.js"
       - "create-order.js"
       - "verify-payment.js"
       - "tests/razorpay-webhook.synthetic.test.js"
@@ -14,14 +15,17 @@ on:
       - "tests/complaints.static.test.js"
       - "tests/electrician-verification.static.test.js"
       - "tests/admin-audit-log.static.test.js"
+      - "tests/razorpay-refund.static.test.js"
       - "tests/parse_direct_assignment_migration.py"
       - "supabase/migrations/20261110030000_admin_direct_electrician_assignment.sql"
       - "supabase/migrations/20261110040000_customer_admin_complaints.sql"
       - "supabase/migrations/20261110050000_electrician_verification_documents.sql"
       - "supabase/migrations/20261110060000_admin_audit_log.sql"
+      - "supabase/migrations/20261110070000_razorpay_refund_workflow.sql"
       - "electrician.html"
       - "index.html"
       - "admin.html"
+      - "netlify.toml"
       - ".github/workflows/synthetic-webhook-tests.yml"
   workflow_dispatch:
 
@@ -52,6 +56,10 @@ jobs:
         run: node tests/electrician-verification.static.test.js
       - name: Run Admin audit log static security and UI tests
         run: node tests/admin-audit-log.static.test.js
+      - name: Run Razorpay refund static security and safety tests
+        run: node tests/razorpay-refund.static.test.js
+      - name: Check Razorpay refund function syntax
+        run: node --check razorpay-refund.js
       - name: Run direct-assignment static regression tests
         run: node tests/admin-direct-assignment.static.test.js
       - name: Set up Python for PostgreSQL parser
