@@ -181,7 +181,7 @@ async function loadCustomerBookings() {
     .limit(50);
   if (error) { box.textContent = 'बुकिंग अभी लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।'; return; }
   if (!data || !data.length) { box.textContent = 'इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। आगे की बुकिंग में OTP वाला यही मोबाइल नंबर इस्तेमाल करें।'; return; }
-  const upiResults = await Promise.all(data.map(row => customerSb.rpc('srk_get_assigned_booking_verified_upi',{p_booking_id:row.id})));
+  const upiResults = await Promise.all(data.map(row => customerSb.rpc('srk_get_assigned_booking_verified_upi',{p_booking_id:row.id})));\n  const quoteResults = await Promise.all(data.map(row => customerSb.rpc('srk_get_my_booking_quotes',{p_booking_id:row.id})));
   box.innerHTML = data.map((row,index) => {
     const upi = upiResults[index]?.data;
     const upiBlock = upi?.upi_id
@@ -191,12 +191,20 @@ async function loadCustomerBookings() {
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
-    (row.quoted_amount != null ? '<p>तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
+    (row.quoted_amount != null ? '<p>तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +\n    quoteBlock +
     (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
     upiBlock +
     '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
     '</article>';
   }).join('');
+}
+async function reviewBookingQuote(quoteId,decision){
+ const label=decision==='accepted'?'स्वीकार':'अस्वीकार';
+ if(!confirm('क्या आप यह कोटेशन '+label+' करना चाहते हैं?'))return;
+ const {error}=await customerSb.rpc('srk_customer_review_booking_quote',{p_quote_id:quoteId,p_decision:decision});
+ if(error){alert('कोटेशन अपडेट नहीं हुआ: '+error.message);return;}
+ alert(decision==='accepted'?'कोटेशन मंजूर हो गया। अब तय राशि के अनुसार काम होगा।':'कोटेशन अस्वीकार कर दिया गया। इलेक्ट्रिशियन संशोधित कोटेशन भेज सकता है।');
+ await loadCustomerBookings();
 }
 function indiaLocalDate(){const p=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const v=Object.fromEntries(p.map(x=>[x.type,x.value]));return v.year+'-'+v.month+'-'+v.day;}
 async function reportDirectUpiPayment(bookingId){
