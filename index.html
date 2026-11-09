@@ -198,6 +198,7 @@ async function loadCustomerBookings() {
     '</article>';
   }).join('');
 }
+function indiaLocalDate(){const p=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const v=Object.fromEntries(p.map(x=>[x.type,x.value]));return v.year+'-'+v.month+'-'+v.day;}
 async function reportDirectUpiPayment(bookingId){
   const amountRaw=prompt('आपने वास्तव में कितने रुपये भेजे?');
   if(amountRaw===null)return;
@@ -207,7 +208,7 @@ async function reportDirectUpiPayment(bookingId){
   if(reference===null)return;
   if(reference.trim().length<4||reference.trim().length>120){alert('सही UTR / Transaction ID दर्ज करें।');return;}
   const {error}=await customerSb.rpc('srk_submit_my_customer_upi_payment_report',{
-    p_booking_id:bookingId,p_amount:amount,p_payment_reference:reference.trim(),p_payment_date:new Date().toISOString().slice(0,10)
+    p_booking_id:bookingId,p_amount:amount,p_payment_reference:reference.trim(),p_payment_date:indiaLocalDate()
   });
   if(error){alert('रिपोर्ट जमा नहीं हुई: '+error.message);return;}
   alert('रिपोर्ट Admin को भेज दी गई है। बैंक/UPI रिकॉर्ड जाँचने के बाद ही भुगतान Paid होगा।');
