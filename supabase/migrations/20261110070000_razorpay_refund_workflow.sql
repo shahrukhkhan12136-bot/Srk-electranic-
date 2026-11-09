@@ -159,7 +159,7 @@ BEGIN
     (p_booking_id,v_booking.razorpay_payment_id,v_total,round(v_total*100)::bigint,
      replace(gen_random_uuid()::text,'-',''), 'requested',btrim(p_reason),auth.uid(),v_payout.payout_note)
   RETURNING * INTO v_refund;
-  RETURN QUERY SELECT v_refund.id,v_refund.booking_id,v_refund.payment_id,v_refund.amount_paise,v_refund.idempotency_key,v_refund.status;
+  RETURN QUERY SELECT v_refund.id,v_refund.booking_id,v_refund.payment_id,v_refund.amount_paise,v_refund.idempotency_key,v_refund.status,v_refund.previous_payout_note;
 END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_admin_prepare_razorpay_refund(uuid,text) FROM PUBLIC,anon;
