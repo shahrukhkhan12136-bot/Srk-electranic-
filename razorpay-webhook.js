@@ -103,6 +103,10 @@ exports.handler = async (event) => {
     }
 
     const result = await updateBooking(payment.order_id, payment);
+    if (result === "update_not_applied") {
+      console.error("Razorpay webhook update was not applied; retry requested.");
+      return json(500, { success: false, reconciled: false, reason: result });
+    }
     if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict") {
       console.error("Razorpay webhook could not reconcile booking:", result);
       return json(200, { success: true, reconciled: false, reason: result });
