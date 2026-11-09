@@ -107,6 +107,11 @@ BEGIN
   SELECT * INTO v_profile FROM public.electrician_profiles
    WHERE auth_user_id=v_uid AND user_id=v_uid FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Linked electrician profile required' USING ERRCODE='42501'; END IF;
+  -- A replacement identity/address document invalidates the previous approval until reviewed.
+  IF p_document_type IN ('identity_proof','address_proof') THEN
+    UPDATE public.electrician_profiles SET active=false
+    WHERE id=v_profile.id AND active=true;
+  END IF;
   PERFORM 1 FROM storage.objects
    WHERE bucket_id='srk-electrician-verification' AND name=p_storage_path;
   IF NOT FOUND THEN RAISE EXCEPTION 'Uploaded private document not found'; END IF;
@@ -201,6 +206,11 @@ BEGIN
   UPDATE public.srk_electrician_verification_documents
   SET review_status=p_review_status,admin_note=v_note,reviewed_at=pg_catalog.now(),reviewed_by=v_admin
   WHERE id=p_document_id;
+  IF p_review_status IN ('rejected','needs_resubmission')
+     AND v_doc.document_type IN ('identity_proof','address_proof') THEN
+    UPDATE public.electrician_profiles SET active=false
+    WHERE id=v_doc.electrician_profile_id AND active=true;
+  END IF;
   INSERT INTO public.srk_electrician_verification_events
     (document_id,electrician_profile_id,actor_user_id,actor_role,event_type,note)
   VALUES (p_document_id,v_doc.electrician_profile_id,v_admin,'admin',p_review_status,v_note);
@@ -222,6 +232,11 @@ BEGIN
   SELECT * INTO v_profile FROM public.electrician_profiles WHERE id=p_profile_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Electrician profile not found'; END IF;
   IF p_active THEN
+    -- Serialize activation with document reviews and replacement uploads.
+    PERFORM 1 FROM public.srk_electrician_verification_documents
+    WHERE electrician_profile_id=v_profile.id
+      AND document_type IN ('identity_proof','address_proof')
+    ORDER BY uploaded_at DESC FOR SHARE;
     IF v_profile.verification_status<>'approved' OR v_profile.auth_user_id IS NULL
        OR v_profile.user_id IS DISTINCT FROM v_profile.auth_user_id THEN
       RAISE EXCEPTION 'Electrician must be Admin-approved and OTP-linked before activation';
