@@ -267,7 +267,7 @@ async function customerVerifyOtp() {
   } catch (_) { customerMessage('OTP सत्यापन अभी नहीं हो सका।'); }
   finally { customerOtpBusy = false; button.disabled = false; }
 }
-async function customerLogout() { await customerSb.auth.signOut(); customerMessage('आप लॉगआउट हो गए हैं। Guest Booking जारी रख सकते हैं।'); await syncCustomerSession(); }
+async function customerLogout() { await customerSb.auth.signOut(); customerMessage('आप लॉगआउट हो गए हैं। नई बुकिंग और भुगतान के लिए OTP लॉगिन जरूरी है।'); await syncCustomerSession(); }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
@@ -277,7 +277,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
   syncCustomerSession();
 } else {
-  customerMessage('ग्राहक लॉगिन सेटअप अभी उपलब्ध नहीं है। Guest Booking जारी है।');
+  customerMessage('ग्राहक लॉगिन सेटअप अभी उपलब्ध नहीं है। OTP लॉगिन सेवा ठीक होने तक बुकिंग नहीं की जा सकेगी।');
 }
 
 function setPaymentStatus(message, isError = false) {
