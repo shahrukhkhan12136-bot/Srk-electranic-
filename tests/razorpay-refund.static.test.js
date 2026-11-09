@@ -15,6 +15,8 @@ assert.match(migration,/FOR UPDATE/i);
 assert.match(migration,/payout_status='blocked'/i);
 assert.match(migration,/payout_status='paid'/i);
 assert.match(migration,/RETURN QUERY SELECT v_refund\.id,v_refund\.booking_id,v_refund\.payment_id,v_refund\.amount_paise,v_refund\.idempotency_key,v_refund\.status,v_refund\.previous_payout_note;/i);
+assert.match(migration,/CREATE OR REPLACE FUNCTION public\.srk_capture_razorpay_refund_audit_event\(\)/i);
+assert.match(migration,/CREATE TRIGGER srk_audit_razorpay_refunds/i);
 assert.match(handler,/X-Refund-Idempotency/);
 assert.match(handler,/status","in\.\(requested,unknown,processing\)"/);
 assert.match(handler,/srk_admin_prepare_razorpay_refund/);
@@ -37,4 +39,4 @@ for(const [label,src] of [["refund",handler],["webhook",webhook]]){
 const scripts=[...admin.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x=>x[1]).filter(x=>x.trim());
 scripts.forEach((src,i)=>new vm.Script(src,{filename:"admin-inline-"+i+".js"}));
 console.log("PASS Razorpay refund Admin gate, idempotent request, signed webhook reconciliation, payout hold and Admin UI wiring");
-console.log(JSON.stringify({passed:1,scope:"static syntax/source only",realRazorpayCalls:0,realRefundIssued:false,migrationApplied:false},null,2));
+console.log(JSON.stringify({passed:1,scope:"static syntax/source only",realRazorpayCalls:0,realRefundIssued:false,databaseMigrationExecutionIncluded:false},null,2));
