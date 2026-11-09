@@ -72,7 +72,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
  </div>
  <section class="panel">
   <h2 class="section-title" style="margin-top:0">सर्विस बुक करें</h2>
-  <p class="small">नीचे जानकारी भरें। डेटाबेस सेट होने पर बुकिंग सेव होगी और उसी PIN Code के verified, active इलेक्ट्रिशियन को काम का offer भेजा जाएगा।</p>
+  <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर निरीक्षण करेगा। वह सर्विस शुल्क और सामान का खर्च अलग-अलग देगा। आपकी मंजूरी के बिना काम शुरू नहीं होगा।</p>
   <form id="booking">
    <label for="name">आपका नाम</label><input id="name" required placeholder="नाम लिखें">
    <label for="phone">मोबाइल नंबर</label><input id="phone" type="tel" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का मोबाइल नंबर लिखें">
@@ -91,11 +91,10 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
    <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
-   <label for="payment">भुगतान का तरीका</label>
-   <select id="payment" required><option value="नकद (Cash)">नकद (Cash)</option><option value="Razorpay ऑनलाइन भुगतान">ऑनलाइन भुगतान (UPI / Google Pay / PhonePe / कार्ड)</option><option value="काम के बाद तय करेंगे">काम के बाद तय करेंगे</option></select>
-   <label for="amount">भुगतान राशि (₹) — यदि तय हो</label><input id="amount" type="number" min="1" step="0.01" inputmode="decimal" placeholder="उदाहरण: 500">
-   <button class="btn primary" type="submit">WhatsApp पर बुकिंग भेजें</button>
-   <p class="small">ऑनलाइन भुगतान चुनने पर Razorpay Checkout खुलेगा। भुगतान करने से पहले राशि और प्राप्तकर्ता का नाम जाँच लें।</p>
+   <label for="payment">भुगतान</label>
+   <select id="payment" required><option value="काम पूरा होने के बाद भुगतान">काम पूरा होने के बाद भुगतान</option></select>
+   <p class="small">पहले इलेक्ट्रिशियन घर आकर काम देखेगा और सर्विस चार्ज तथा सामान का अलग-अलग कोटेशन देगा। आपकी मंजूरी के बाद ही काम शुरू होगा। काम पूरा होने पर ही Razorpay से भुगतान होगा।</p>
+   <button class="btn primary" type="submit">बुकिंग भेजें</button>
   </form>
  </section>
  <section class="panel" id="upiPanel" style="display:none">
