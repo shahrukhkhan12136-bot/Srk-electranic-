@@ -19,10 +19,20 @@ async function verifyCustomerSession(authorization, booking) {
   return user.id;
 }
 
-async function findReusableOrder(booking){
-  if(!booking.razorpay_order_id||booking.payment_status!=="pending")return null;
-  try{const old=await rp("orders/"+encodeURIComponent(booking.razorpay_order_id));if(old.status==="created"&&old.amount===Math.round(Number(booking.quoted_amount)*100)&&old.currency==="INR")return old}catch(_){}
-  return null;
+async function findReusableOrder(booking, expectedAmount){
+  if(!booking.razorpay_order_id)return null;
+  let old;
+  try{old=await rp("orders/"+encodeURIComponent(booking.razorpay_order_id));}
+  catch(error){
+    // Only a confirmed missing order may be replaced. Network/auth/API errors
+    // must not cause a second order to be created while the first is unknown.
+    if(error.status===404)return null;
+    throw error;
+  }
+  if(old.status==="created"&&old.amount===expectedAmount&&old.currency==="INR")return old;
+  const error=new Error("Existing Razorpay order requires reconciliation");
+  error.httpStatus=409;
+  throw error;
 }
 exports.handler=async event=>{
   if(event.httpMethod!=="POST")return json(405,{success:false,error:"केवल POST अनुरोध स्वीकार है।"});
@@ -41,7 +51,7 @@ exports.handler=async event=>{
     let amount=Math.round(approvedTotal*100);
     if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
 
-    let order=await findReusableOrder(booking);
+    let order=await findReusableOrder(booking,amount);
     if(!order){
       const claim=await db("rpc/srk_claim_payment_order_lock",{method:"POST",body:JSON.stringify({p_booking_id:bookingId})});
       lockToken=typeof claim==="string"?claim:(Array.isArray(claim)?claim[0]:null);
@@ -58,12 +68,23 @@ exports.handler=async event=>{
       if(!Number.isFinite(latestTotal)||latestTotal<1||Math.round(latestTotal*100)!==Math.round(Number(booking.quoted_amount)*100))return json(409,{success:false,error:"मंजूर कोटेशन की कुल राशि और सेवा/सामान का हिसाब मेल नहीं खाता। Admin से जाँच कराएँ।"});
       amount=Math.round(latestTotal*100);
       if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
-      order=await findReusableOrder(booking);
+      order=await findReusableOrder(booking,amount);
       if(!order)order=await rp("orders",{method:"POST",body:JSON.stringify({amount,currency:"INR",receipt:bookingId.slice(0,40),notes:{booking_id:bookingId,service:"SRK ELECTRONIC"}})});
-      await db("service_bookings?id=eq."+encodeURIComponent(bookingId),{method:"PATCH",body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})});
+      // Do not overwrite a payment that was reconciled concurrently by
+      // verify-payment/webhook while this order request was in flight.
+      const orderUpdateFilter = "service_bookings?id=eq."+encodeURIComponent(bookingId)+
+        "&payment_status=neq.paid&status=eq.completed&quote_status=eq.approved"+
+        (booking.razorpay_order_id
+          ? "&razorpay_order_id=eq."+encodeURIComponent(booking.razorpay_order_id)
+          : "&razorpay_order_id=is.null");
+      const orderUpdate = await db(orderUpdateFilter,{method:"PATCH",body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})});
+      if(!Array.isArray(orderUpdate)||orderUpdate.length===0){
+        return json(409,{success:false,error:"बुकिंग की भुगतान स्थिति बदल गई है। नया ऑर्डर नहीं जोड़ा गया; कृपया भुगतान स्थिति जाँचें या Admin से संपर्क करें।"});
+      }
     }
     return json(200,{success:true,key_id:RAZORPAY_KEY_ID,order_id:order.id,amount:order.amount,currency:order.currency});
   }catch(e){
+    if(e.httpStatus===409)return json(409,{success:false,error:"इस बुकिंग का पुराना Razorpay ऑर्डर अभी reconcile नहीं हुआ है। दोबारा भुगतान शुरू करने से पहले Admin से जाँच कराएँ।"});
     if(e.httpStatus===401||e.httpStatus===403)return json(e.httpStatus,{success:false,error:e.httpStatus===401?"भुगतान के लिए ग्राहक OTP लॉगिन करें।":"यह बुकिंग आपके सत्यापित मोबाइल खाते से जुड़ी नहीं है।"});
     console.error("create-order error:",e?.status||e?.name||"Unknown");
     return json(502,{success:false,error:"पेमेंट ऑर्डर नहीं बन पाया। कृपया कुछ देर बाद कोशिश करें।"});
