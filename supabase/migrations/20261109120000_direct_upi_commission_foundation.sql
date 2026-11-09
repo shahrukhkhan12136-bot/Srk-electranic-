@@ -249,15 +249,63 @@ begin
 end;
 $function$;
 
+
+create or replace function public.srk_admin_direct_upi_commission_overview()
+returns table (
+  electrician_profile_id uuid,
+  electrician_name text,
+  commission_due numeric,
+  verified_remitted numeric,
+  pending_review numeric,
+  outstanding numeric
+)
+language plpgsql
+stable
+security definer
+set search_path to 'pg_catalog','public','auth','pg_temp'
+as $function$
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'Admin access required' using errcode='42501';
+  end if;
+  return query
+  with due as (
+    select b.assigned_electrician_id as profile_id,
+      round(coalesce(sum(coalesce(b.commission_amount,
+        round(coalesce(b.amount_paid,0)*b.commission_rate/100,2))),0),2) as total_due
+    from public.service_bookings b
+    where b.status='completed' and b.payment_status='paid'
+      and b.assigned_electrician_id is not null
+    group by b.assigned_electrician_id
+  ), remitted as (
+    select r.electrician_profile_id as profile_id,
+      round(coalesce(sum(r.amount) filter (where r.status='verified'),0),2) as verified,
+      round(coalesce(sum(r.amount) filter (where r.status='submitted'),0),2) as pending
+    from public.srk_commission_remittances r
+    group by r.electrician_profile_id
+  )
+  select ep.id, ep.display_name,
+    coalesce(d.total_due,0), coalesce(r.verified,0), coalesce(r.pending,0),
+    greatest(0,round(coalesce(d.total_due,0)-coalesce(r.verified,0)-coalesce(r.pending,0),2))
+  from public.electrician_profiles ep
+  left join due d on d.profile_id=ep.id
+  left join remitted r on r.profile_id=ep.id
+  where coalesce(d.total_due,0)>0 or coalesce(r.verified,0)>0 or coalesce(r.pending,0)>0
+  order by ep.display_name;
+end;
+$function$;
+
 revoke all on function public.srk_submit_my_payout_upi(text) from public,anon;
 revoke all on function public.srk_admin_review_payout_upi(uuid,text,text) from public,anon;
 revoke all on function public.srk_get_assigned_booking_verified_upi(uuid) from public,anon;
 revoke all on function public.srk_submit_my_commission_remittance(numeric,text,date) from public,anon;
 revoke all on function public.srk_admin_review_commission_remittance(uuid,text,text) from public,anon;
 revoke all on function public.srk_get_my_commission_balance() from public,anon;
+revoke all on function public.srk_admin_direct_upi_commission_overview() from public,anon;
 grant execute on function public.srk_submit_my_payout_upi(text) to authenticated;
 grant execute on function public.srk_admin_review_payout_upi(uuid,text,text) to authenticated;
 grant execute on function public.srk_get_assigned_booking_verified_upi(uuid) to authenticated;
 grant execute on function public.srk_submit_my_commission_remittance(numeric,text,date) to authenticated;
 grant execute on function public.srk_admin_review_commission_remittance(uuid,text,text) to authenticated;
 grant execute on function public.srk_get_my_commission_balance() to authenticated;
+grant execute on function public.srk_admin_direct_upi_commission_overview() to authenticated;
