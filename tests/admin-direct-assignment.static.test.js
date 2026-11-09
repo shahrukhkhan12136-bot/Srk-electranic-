@@ -34,6 +34,11 @@ assert.match(html, /जिला fallback/);
 assert.match(html, /district-match/);
 console.log("PASS district fallback appears only when no eligible same-PIN candidate exists");
 
+html = render(booking, []);
+assert.match(html, /कोई योग्य Active और Approved OTP-verified इलेक्ट्रिशियन उपलब्ध नहीं है/);
+assert.doesNotMatch(html, /directAssignBooking/);
+console.log("PASS clear no-eligible-electrician message; no unusable assignment button");
+
 const invalid = [
   electrician("inactive", { active: false }),
   electrician("pending", { verification_status: "pending" }),
