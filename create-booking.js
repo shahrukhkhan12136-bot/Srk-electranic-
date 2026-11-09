@@ -60,7 +60,7 @@ async function checkPublicRateLimit(endpoint, ipHash, limit) {
 }
 
 async function verifyCustomerSession(authorization, bookingPhone) {
-  if (!authorization) return null; // Guest booking remains supported.
+  if (!authorization) { const error = new Error("Customer login required"); error.httpStatus = 401; throw error; }
   const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(authorization);
   if (!match || match[1].length > 8192) {
     const error = new Error("Invalid customer session");
