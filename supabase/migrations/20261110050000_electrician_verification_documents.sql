@@ -257,3 +257,4 @@ GRANT EXECUTE ON FUNCTION public.srk_admin_set_electrician_active(uuid,boolean) 
 
 -- Remove direct profile activation privilege; Admin activation now uses the guarded RPC.
 REVOKE UPDATE ON TABLE public.electrician_profiles FROM authenticated;
+REVOKE UPDATE (active) ON TABLE public.electrician_profiles FROM authenticated;
