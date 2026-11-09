@@ -79,8 +79,8 @@ async function verifyCustomerSession(authorization, bookingPhone) {
     throw error;
   }
   const user = await response.json();
-  const verifiedPhone = typeof user.phone === "string" ? user.phone.replace(/\\D/g, "") : "";
-  const submittedPhone = bookingPhone.replace(/\\D/g, "");
+  const verifiedPhone = typeof user.phone === "string" ? user.phone.replace(/\D/g, "") : "";
+  const submittedPhone = bookingPhone.replace(/\D/g, "");
   const normalizedVerified = verifiedPhone.length === 10 ? "91" + verifiedPhone : verifiedPhone;
   const normalizedSubmitted = submittedPhone.length === 10 ? "91" + submittedPhone : submittedPhone;
   if (!user.id || !user.phone_confirmed_at || normalizedVerified !== normalizedSubmitted) {
