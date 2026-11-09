@@ -295,8 +295,12 @@ async function startRazorpayPayment() {
   button.textContent = 'कृपया प्रतीक्षा करें…';
   setPaymentStatus('पेमेंट ऑर्डर बनाया जा रहा है…');
   try {
+    const { data: customerSessionData } = await customerSb.auth.getSession();
+    const customerSession = customerSessionData.session;
+    if (!customerSession) throw new Error('भुगतान के लिए पहले ग्राहक OTP लॉगिन करें।');
+    const paymentHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + customerSession.access_token };
     const orderResponse = await fetch('/api/create-order', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: paymentHeaders,
       body: JSON.stringify({ booking_id: pendingBookingId })
     });
     const orderData = await orderResponse.json();
@@ -316,7 +320,7 @@ async function startRazorpayPayment() {
         setPaymentStatus('भुगतान की जाँच हो रही है…');
         try {
           const verifyResponse = await fetch('/api/verify-payment', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: paymentHeaders,
             body: JSON.stringify({
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id,
