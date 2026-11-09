@@ -18,11 +18,11 @@ console.log("PASS complaint table is private, customer ownership is checked, and
 
 assert.match(customer, /srk_customer_create_booking_complaint/);
 assert.match(customer, /srk_customer_list_booking_complaints/);
-assert.match(customer, /customerSubmitComplaint/);
+assert.match(customer, /customerSubmitComplaint/);\nassert.match(customer, /c\\.activity/);
 assert.match(customer, /customer_user_id/);
 assert.match(admin, /srk_admin_list_booking_complaints/);
 assert.match(admin, /srk_admin_update_booking_complaint/);
-assert.match(admin, /ग्राहक शिकायतें और सहायता/);
+assert.match(admin, /ग्राहक शिकायतें और सहायता/);\nassert.match(admin, /x\\.activity/);
 console.log("PASS customer submission/history and Admin complaint inbox/update UI are connected to RPCs");
 
 function checkInlineScripts(html, label) {
