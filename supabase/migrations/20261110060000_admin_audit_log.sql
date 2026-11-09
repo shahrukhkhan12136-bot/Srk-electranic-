@@ -48,7 +48,7 @@ BEGIN
     WHEN 'srk_manual_refund_entries' THEN 'manual_refund'
     WHEN 'srk_electrician_payouts' THEN 'electrician_payout'
     ELSE NULL END;
-  IF v_entity_type IS NULL THEN RETURN coalesce(NEW,OLD); END IF;
+  IF v_entity_type IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;
 
   v_allow := CASE v_entity_type
     WHEN 'booking' THEN ARRAY['status','payment_status','payment_method','amount_paid','quoted_amount','quote_status','service_charge','materials_amount','assigned_electrician_id','commission_amount']
@@ -62,7 +62,7 @@ BEGIN
   v_entity_id := coalesce(nullif(v_new->>'id','')::uuid,nullif(v_old->>'id','')::uuid);
   v_booking_id := CASE WHEN v_entity_type='booking' THEN v_entity_id
     ELSE coalesce(nullif(v_new->>'booking_id','')::uuid,nullif(v_old->>'booking_id','')::uuid) END;
-  IF v_entity_id IS NULL THEN RETURN coalesce(NEW,OLD); END IF;
+  IF v_entity_id IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;
 
   FOREACH v_key IN ARRAY v_allow LOOP
     IF v_old->v_key IS DISTINCT FROM v_new->v_key THEN
@@ -71,7 +71,7 @@ BEGIN
       IF v_new ? v_key THEN v_after := v_after || jsonb_build_object(v_key,v_new->v_key); END IF;
     END IF;
   END LOOP;
-  IF cardinality(v_fields)=0 THEN RETURN coalesce(NEW,OLD); END IF;
+  IF cardinality(v_fields)=0 THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;
 
   v_role := CASE WHEN v_actor IS NULL THEN 'system'
     WHEN public.is_srk_admin() THEN 'admin' ELSE 'user' END;
@@ -81,7 +81,7 @@ BEGIN
     (v_entity_type,v_entity_id,v_booking_id,
      CASE TG_OP WHEN 'INSERT' THEN 'created' WHEN 'UPDATE' THEN 'updated' ELSE 'deleted' END,
      v_actor,v_role,v_fields,v_before,v_after);
-  RETURN coalesce(NEW,OLD);
+  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
 END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_capture_admin_audit_event() FROM PUBLIC,anon,authenticated;
