@@ -59,7 +59,7 @@ assert.match(migration, /WHERE id=p_electrician_id\s+FOR SHARE/i);
 assert.match(migration, /v_booking\.status NOT IN \('new','confirmed'\)/i);
 assert.match(migration, /e\.active=true[\s\S]*e\.verification_status='approved'[\s\S]*e\.auth_user_id IS NOT NULL[\s\S]*e\.user_id=e\.auth_user_id/i);
 assert.match(migration, /SET assigned_electrician_id=p_electrician_id, status='assigned'/i);
-assert.match(migration, /AND assigned_electrician_id IS NULL\\s+AND status IN \\('new','confirmed'\\)/i);
+assert.match(migration, /AND assigned_electrician_id IS NULL\s+AND status IN \('new','confirmed'\)/i);
 assert.match(migration, /status IN \('offered','accepted'\)/i);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.srk_admin_assign_electrician\(uuid,uuid\) FROM PUBLIC/i);
 assert.match(migration, /REVOKE ALL ON FUNCTION public\.srk_admin_assign_electrician\(uuid,uuid\) FROM anon/i);
