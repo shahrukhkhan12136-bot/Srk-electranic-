@@ -10,7 +10,7 @@ async function verifyCustomerSession(authorization, booking) {
   const response = await fetch(SUPABASE_URL + "/auth/v1/user", { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + match[1] } });
   if (!response.ok) { const error = new Error("Customer session invalid"); error.httpStatus = 401; throw error; }
   const user = await response.json();
-  const digits = value => String(value || "").replace(/\\D/g, "");
+  const digits = value => String(value || "").replace(/\D/g, "");
   const normalize = value => digits(value).length === 10 ? "91" + digits(value) : digits(value);
   if (!user.id || !user.phone_confirmed_at || user.id !== booking.customer_user_id || normalize(user.phone) !== normalize(booking.phone)) {
     const error = new Error("Booking does not belong to this verified customer"); error.httpStatus = 403; throw error;
