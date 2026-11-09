@@ -185,7 +185,7 @@ async function loadCustomerBookings() {
   box.innerHTML = data.map((row,index) => {
     const upi = upiResults[index]?.data;
     const upiBlock = upi?.upi_id
-      ? '<div style="padding:12px;background:#eaf7f1;border-radius:10px"><b>इलेक्ट्रिशियन की सत्यापित UPI ID:</b><p>'+customerEsc(upi.upi_id)+'</p><a href="upi://pay?pa='+encodeURIComponent(upi.upi_id)+'&pn='+encodeURIComponent(upi.electrician_name||'SRK ELECTRONIC')+'&tn='+encodeURIComponent('SRK Booking '+row.id)+'">UPI ऐप से भुगतान करें</a><p class="small">भुगतान सीधे इलेक्ट्रिशियन को होगा। UPI भुगतान अपने-आप सत्यापित नहीं होता। पैसे भेजने से पहले UPI ऐप में प्राप्तकर्ता का नाम जाँचें।</p></div>'
+      ? '<div style="padding:12px;background:#eaf7f1;border-radius:10px"><b>इलेक्ट्रिशियन की सत्यापित UPI ID:</b><p>'+customerEsc(upi.upi_id)+'</p><a href="upi://pay?pa='+encodeURIComponent(upi.upi_id)+'&pn='+encodeURIComponent(upi.electrician_name||'SRK ELECTRONIC')+'&tn='+encodeURIComponent('SRK Booking '+row.id)+'">UPI ऐप से भुगतान करें</a><p class="small">भुगतान सीधे इलेक्ट्रिशियन को होगा। UPI भुगतान अपने-आप सत्यापित नहीं होता। पैसे भेजने से पहले UPI ऐप में प्राप्तकर्ता का नाम जाँचें। भुगतान करने के बाद नीचे राशि और UTR दर्ज करके Admin को रिपोर्ट भेजें।</p>'+(row.payment_status!=='paid' ? '<button type="button" onclick="reportDirectUpiPayment(\''+row.id+'\')">मैंने UPI से भुगतान किया — रिपोर्ट भेजें</button>' : '<p><b>भुगतान स्थिति:</b> Admin द्वारा Paid दर्ज</p>')+'</div>'
       : (row.status==='assigned'||row.status==='in_progress'||row.status==='completed' ? '<p class="small">इलेक्ट्रिशियन की UPI ID अभी Admin द्वारा सत्यापित नहीं है या उपलब्ध नहीं है।</p>' : '');
     return '<article class="card" style="margin:10px 0;padding:13px">' +
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
@@ -197,6 +197,21 @@ async function loadCustomerBookings() {
     '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
     '</article>';
   }).join('');
+}
+async function reportDirectUpiPayment(bookingId){
+  const amountRaw=prompt('आपने वास्तव में कितने रुपये भेजे?');
+  if(amountRaw===null)return;
+  const amount=Number(amountRaw);
+  if(!Number.isFinite(amount)||amount<=0||amount>10000000){alert('सही भुगतान राशि दर्ज करें।');return;}
+  const reference=prompt('UPI ऐप का UTR / Transaction ID दर्ज करें:');
+  if(reference===null)return;
+  if(reference.trim().length<4||reference.trim().length>120){alert('सही UTR / Transaction ID दर्ज करें।');return;}
+  const {error}=await customerSb.rpc('srk_submit_my_customer_upi_payment_report',{
+    p_booking_id:bookingId,p_amount:amount,p_payment_reference:reference.trim(),p_payment_date:new Date().toISOString().slice(0,10)
+  });
+  if(error){alert('रिपोर्ट जमा नहीं हुई: '+error.message);return;}
+  alert('रिपोर्ट Admin को भेज दी गई है। बैंक/UPI रिकॉर्ड जाँचने के बाद ही भुगतान Paid होगा।');
+  await loadCustomerBookings();
 }
 async function syncCustomerSession() {
   if (!customerSb) return;
