@@ -17,6 +17,7 @@ on:
       - "tests/admin-audit-log.static.test.js"
       - "tests/razorpay-refund.static.test.js"
       - "tests/razorpay-refund-webhook.synthetic.test.js"
+      - "tests/razorpay-refund-handler.synthetic.test.js"
       - "tests/parse_direct_assignment_migration.py"
       - "supabase/migrations/20261110030000_admin_direct_electrician_assignment.sql"
       - "supabase/migrations/20261110040000_customer_admin_complaints.sql"
@@ -49,6 +50,8 @@ jobs:
         run: node tests/razorpay-webhook.synthetic.test.js
       - name: Run synthetic Razorpay refund webhook tests
         run: node tests/razorpay-refund-webhook.synthetic.test.js
+      - name: Run synthetic Admin Razorpay refund handler tests
+        run: node tests/razorpay-refund-handler.synthetic.test.js
       - name: Run isolated synthetic payment function tests
         run: node tests/razorpay-payment-functions.synthetic.test.js
       - name: Check direct-assignment test syntax
