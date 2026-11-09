@@ -10,6 +10,31 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body)
 });
 
+async function recordWebhookEvent(eventId, fields) {
+  const url = new URL("/rest/v1/srk_razorpay_webhook_events", SUPABASE_URL);
+  url.searchParams.set("on_conflict", "event_id");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({ event_id: eventId, ...fields, updated_at: new Date().toISOString() })
+  });
+  if (!response.ok) throw new Error("Webhook audit write failed");
+}
+
+async function updateWebhookEvent(eventId, status, reason) {
+  const url = new URL("/rest/v1/srk_razorpay_webhook_events", SUPABASE_URL);
+  url.searchParams.set("event_id", "eq." + eventId);
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json", Prefer: "return=minimal" },
+    body: JSON.stringify({ processing_status: status, reconciliation_reason: reason || null,
+      processed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+  });
+  if (!response.ok) throw new Error("Webhook audit update failed");
+}
+
 async function updateBooking(orderId, payment) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
@@ -110,16 +135,34 @@ exports.handler = async (event) => {
       return json(400, { success: false, error: "Captured payment details missing." });
     }
 
+    const eventIdHeader = event.headers?.["x-razorpay-event-id"] || event.headers?.["X-Razorpay-Event-Id"] || "";
+    const eventId = /^[A-Za-z0-9_-]{1,128}$/.test(eventIdHeader)
+      ? eventIdHeader
+      : "body_" + crypto.createHash("sha256").update(rawBody).digest("hex");
+
+    await recordWebhookEvent(eventId, {
+      event_type: eventName,
+      razorpay_order_id: payment.order_id,
+      razorpay_payment_id: payment.id,
+      payment_amount_paise: Number.isSafeInteger(payment.amount) ? payment.amount : null,
+      payment_currency: typeof payment.currency === "string" ? payment.currency : null,
+      processing_status: "received",
+      reconciliation_reason: null
+    });
+
     const result = await updateBooking(payment.order_id, payment);
     if (result === "update_not_applied") {
+      await updateWebhookEvent(eventId, "processing_error", result);
       console.error("Razorpay webhook update was not applied; retry requested.");
       return json(500, { success: false, reconciled: false, reason: result });
     }
     if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict" || result === "booking_not_payable") {
-      console.error("Razorpay webhook could not reconcile booking:", result);
-      return json(200, { success: true, reconciled: false, reason: result });
+      await updateWebhookEvent(eventId, "exception", result);
+      console.error("Razorpay webhook requires Admin reconciliation:", result);
+      return json(200, { success: true, reconciled: false, reason: result, audit_recorded: true });
     }
-    return json(200, { success: true, reconciled: true, result });
+    await updateWebhookEvent(eventId, "reconciled", result);
+    return json(200, { success: true, reconciled: true, result, audit_recorded: true });
   } catch (error) {
     console.error("Razorpay webhook processing failed:", error?.name || "UnknownError");
     return json(500, { success: false, error: "Webhook processing failed." });
