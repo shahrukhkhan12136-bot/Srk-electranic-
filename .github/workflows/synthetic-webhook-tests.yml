@@ -5,7 +5,7 @@ on:
     branches:
       - work/separate-customer-electrician-portals
     paths:
-      - "razorpay-webhook.js"
+      - "razorpay-webhook.js"\n      - "create-order.js"\n      - "verify-payment.js"\n      - "tests/razorpay-payment-functions.synthetic.test.js"
       - "tests/razorpay-webhook.synthetic.test.js"
       - ".github/workflows/synthetic-webhook-tests.yml"
   workflow_dispatch:
