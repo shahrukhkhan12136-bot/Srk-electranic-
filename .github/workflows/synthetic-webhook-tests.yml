@@ -32,4 +32,3 @@ jobs:
         run: node tests/razorpay-webhook.synthetic.test.js
       - name: Run isolated synthetic payment function tests
         run: node tests/razorpay-payment-functions.synthetic.test.js
-\n# CI covers webhook, order creation, and payment verification with isolated mocks.\n
