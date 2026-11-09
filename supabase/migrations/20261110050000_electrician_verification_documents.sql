@@ -98,7 +98,7 @@ DECLARE
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'Electrician login required' USING ERRCODE='42501'; END IF;
   IF p_document_type IS NULL OR p_document_type NOT IN ('identity_proof','address_proof','skill_certificate')
-     OR p_storage_path IS NULL OR left(p_storage_path,40) <> v_uid::text||'/'
+     OR p_storage_path IS NULL OR left(p_storage_path,pg_catalog.length(v_uid::text||'/'||p_document_type||'/')) <> v_uid::text||'/'||p_document_type||'/'
      OR p_file_name IS NULL OR length(p_file_name) NOT BETWEEN 1 AND 180
      OR p_mime_type IS NULL OR p_mime_type NOT IN ('application/pdf','image/jpeg','image/png')
      OR p_file_size_bytes IS NULL OR p_file_size_bytes NOT BETWEEN 1 AND 5242880 THEN
