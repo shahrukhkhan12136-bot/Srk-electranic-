@@ -18,7 +18,11 @@ assert.match(migration, /storage\.objects[\s\S]*bucket_id='srk-electrician-verif
 assert.match(migration, /auth\.uid\(\) IS NULL OR NOT public\.is_srk_admin\(\)/i);
 assert.match(migration, /Latest identity and address proof documents must both be approved/i);
 assert.match(migration, /REVOKE UPDATE ON TABLE public\.electrician_profiles FROM authenticated/i);
-console.log("PASS private document bucket, owner/admin access, metadata privacy, audit events, and activation guard");
+assert.match(migration, /REVOKE UPDATE \(active\) ON TABLE public\.electrician_profiles FROM authenticated/i);
+assert.match(migration, /replacement identity\/address document invalidates the previous approval[\s\S]*UPDATE public\.electrician_profiles SET active=false/i);
+assert.match(migration, /p_review_status IN \('rejected','needs_resubmission'\)[\s\S]*UPDATE public\.electrician_profiles SET active=false/i);
+assert.match(migration, /Serialize activation with document reviews and replacement uploads[\s\S]*FOR SHARE/i);
+console.log("PASS private document bucket, owner/admin access, metadata privacy, audit events, and race-safe activation guard");
 
 assert.match(electrician, /srk-electrician-verification/);
 assert.match(electrician, /srk_electrician_submit_verification_document/);
