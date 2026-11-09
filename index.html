@@ -180,7 +180,13 @@ async function loadCustomerBookings() {
     .limit(50);
   if (error) { box.textContent = 'बुकिंग अभी लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।'; return; }
   if (!data || !data.length) { box.textContent = 'इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। आगे की बुकिंग में OTP वाला यही मोबाइल नंबर इस्तेमाल करें।'; return; }
-  box.innerHTML = data.map(row => '<article class="card" style="margin:10px 0;padding:13px">' +
+  const { data: callContacts } = await customerSb.rpc('srk_get_customer_call_contacts');
+  const callMap = new Map((callContacts || []).map(item => [item.booking_id, item]));
+  box.innerHTML = data.map(row => {
+    const contact = callMap.get(row.id);
+    const phone = String(contact?.electrician_phone || '').trim().replace(/[^0-9+]/g, '');
+    const canCall = contact && /^\\+?[0-9]{10,15}$/.test(phone);
+    return '<article class="card" style="margin:10px 0;padding:13px">' +
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
@@ -189,7 +195,9 @@ async function loadCustomerBookings() {
     (row.status==='completed'&&row.quote_status==='approved'&&row.payment_status!=='paid'?'<button type="button" onclick="customerPayBooking(\''+row.id+'\','+Number(row.quoted_amount||0)+')">🔒 काम पूरा — अब भुगतान करें</button>':'') +
     (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
     '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
-    '</article>').join('');
+    (canCall ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + ' • ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + customerEsc(phone) + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '') +
+    '</article>';
+  }).join('');
 }
 async function customerQuoteResponse(id,response){
  if(!confirm(response==='approved'?'क्या आप सर्विस और सामान का पूरा कोटेशन मंजूर करते हैं?':'क्या आप यह कोटेशन अस्वीकार करते हैं?'))return;
