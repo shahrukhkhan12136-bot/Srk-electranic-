@@ -15,7 +15,8 @@ async function loadBookingComplaints(){
  const rows=data||[];msg.textContent=rows.length+' शिकायतें दिखाई जा रही हैं (अधिकतम 200)';
  body.innerHTML=rows.map(x=>{
   const statusOptions=[['new','नई'],['in_review','जाँच में'],['resolved','हल हुई'],['closed','बंद']].map(([v,l])=>'<option value="'+v+'" '+(x.status===v?'selected':'')+'>'+l+'</option>').join('');
-  return '<tr><td>'+esc(x.customer_name)+'<br>'+esc(x.customer_phone)+'<br><small>'+esc(new Date(x.created_at).toLocaleString('en-IN'))+'</small></td><td>'+esc(x.booking_id)+'<br>'+esc(x.service_type||'')+'</td><td><b>'+esc(x.category)+'</b><br>'+esc(x.description)+'</td><td><select id="complaint-status-'+x.id+'">'+statusOptions+'</select></td><td><textarea id="complaint-note-'+x.id+'" maxlength="2000" rows="3" style="width:220px">'+esc(x.admin_note||'')+'</textarea></td><td><button onclick="updateBookingComplaint(\''+x.id+'\')">अपडेट सेव करें</button></td></tr>';
+  const timeline=(x.activity||[]).map(v=>'<small>'+esc(v.actor_role==='admin'?'Admin':'ग्राहक')+' • '+esc(v.to_status)+' • '+esc(new Date(v.created_at).toLocaleString('en-IN'))+(v.note?' • '+esc(v.note):'')+'</small>').join('<br>');
+  return '<tr><td>'+esc(x.customer_name)+'<br>'+esc(x.customer_phone)+'<br><small>'+esc(new Date(x.created_at).toLocaleString('en-IN'))+'</small></td><td>'+esc(x.booking_id)+'<br>'+esc(x.service_type||'')+'</td><td><b>'+esc(x.category)+'</b><br>'+esc(x.description)+'<p>'+timeline+'</p></td><td><select id="complaint-status-'+x.id+'">'+statusOptions+'</select></td><td><textarea id="complaint-note-'+x.id+'" maxlength="2000" rows="3" style="width:220px">'+esc(x.admin_note||'')+'</textarea></td><td><button onclick="updateBookingComplaint(\''+x.id+'\')">अपडेट सेव करें</button></td></tr>';
  }).join('')||'<tr><td colspan="6">अभी कोई शिकायत दर्ज नहीं है।</td></tr>';
 }
 async function updateBookingComplaint(id){
