@@ -184,7 +184,7 @@ async function loadCustomerBookings() {
   const callMap = new Map((callContacts || []).map(item => [item.booking_id, item]));
   box.innerHTML = data.map(row => {
     const contact = callMap.get(row.id);
-    const phone = String(contact?.electrician_phone || '').trim().replace(/[^0-9+]/g, '');
+    const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
     const canCall = contact && /^\\+?[0-9]{10,15}$/.test(phone);
     return '<article class="card" style="margin:10px 0;padding:13px">' +
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
