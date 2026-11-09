@@ -187,6 +187,8 @@ SET search_path TO 'pg_catalog','public','auth','pg_temp'
 AS $function$
 DECLARE
   v_admin uuid:=auth.uid();
+  v_profile_id uuid;
+  v_profile public.electrician_profiles%rowtype;
   v_doc public.srk_electrician_verification_documents%rowtype;
   v_note text:=NULLIF(pg_catalog.btrim(p_admin_note),'');
 BEGIN
@@ -197,8 +199,15 @@ BEGIN
      OR (p_admin_note IS NOT NULL AND length(p_admin_note)>1000) THEN
     RAISE EXCEPTION 'Invalid document review';
   END IF;
+  -- Use the same profile-then-document lock order as activation and uploads.
+  SELECT electrician_profile_id INTO v_profile_id
+    FROM public.srk_electrician_verification_documents WHERE id=p_document_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Document not found'; END IF;
+  SELECT * INTO v_profile FROM public.electrician_profiles
+   WHERE id=v_profile_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Electrician profile not found'; END IF;
   SELECT * INTO v_doc FROM public.srk_electrician_verification_documents
-   WHERE id=p_document_id FOR UPDATE;
+   WHERE id=p_document_id AND electrician_profile_id=v_profile.id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Document not found'; END IF;
   IF p_review_status IN ('rejected','needs_resubmission') AND v_note IS NULL THEN
     RAISE EXCEPTION 'Reason required for rejected or resubmission status';
