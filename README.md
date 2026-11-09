@@ -46,3 +46,7 @@ Service-role key और Razorpay secret को browser, GitHub या chat म�
 - The current provider candidate is Exotel Lead Assist (GreenPin): it supports virtual-number proxy calling and PIN verification, but it is an account-level feature that Exotel must enable and it uses separate credentials. Do not add provider credentials to GitHub or browser code.
 - Before a call can start from a different mobile device, the caller must enter their registered account number and complete OTP ownership verification. Merely typing a number must never authorize a call.
 - Until provider activation, both parties' real numbers remain hidden and calling is unavailable through the platform.
+
+
+## Updated phone visibility decision (2026-11-09)
+The owner has changed the calling requirement: do **not** implement masked calling or Exotel GreenPin for now. For an assigned booking, the customer may see the assigned electrician's phone number and use a direct Call button; the assigned, approved electrician may see the customer's booking phone number and use a direct Call button. Phone numbers must remain restricted to the authenticated booking owner / assigned electrician through the existing booking-scoped RPCs. Do not expose phone numbers in public pages, unassigned offers, search results, or unauthenticated APIs. This decision supersedes the earlier masked-calling requirement above.
