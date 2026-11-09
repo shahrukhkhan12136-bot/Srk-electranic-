@@ -14,6 +14,21 @@ CREATE TABLE IF NOT EXISTS public.srk_booking_complaints (
   resolved_by uuid REFERENCES auth.users(id)
 );
 
+CREATE TABLE IF NOT EXISTS public.srk_booking_complaint_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  complaint_id uuid NOT NULL REFERENCES public.srk_booking_complaints(id) ON DELETE CASCADE,
+  actor_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  actor_role text NOT NULL CHECK (actor_role IN ('customer','admin')),
+  from_status text CHECK (from_status IS NULL OR from_status IN ('new','in_review','resolved','closed')),
+  to_status text NOT NULL CHECK (to_status IN ('new','in_review','resolved','closed')),
+  note text CHECK (note IS NULL OR length(note) <= 2000),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS srk_booking_complaint_events_complaint_idx
+  ON public.srk_booking_complaint_events (complaint_id, created_at ASC);
+ALTER TABLE public.srk_booking_complaint_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.srk_booking_complaint_events FROM PUBLIC, anon, authenticated;
+
 CREATE INDEX IF NOT EXISTS srk_booking_complaints_created_idx
   ON public.srk_booking_complaints (created_at DESC);
 CREATE INDEX IF NOT EXISTS srk_booking_complaints_booking_idx
@@ -68,6 +83,10 @@ BEGIN
     (p_booking_id,v_customer_id,p_category,btrim(p_description))
   RETURNING id INTO v_complaint_id;
 
+  INSERT INTO public.srk_booking_complaint_events
+    (complaint_id,actor_user_id,actor_role,from_status,to_status,note)
+  VALUES (v_complaint_id,v_customer_id,'customer',NULL,'new','ग्राहक ने शिकायत दर्ज की');
+
   RETURN v_complaint_id;
 END;
 $function$;
@@ -82,7 +101,8 @@ RETURNS TABLE (
   admin_note text,
   created_at timestamptz,
   updated_at timestamptz,
-  resolved_at timestamptz
+  resolved_at timestamptz,
+  activity jsonb
 )
 LANGUAGE plpgsql
 STABLE
@@ -95,7 +115,11 @@ BEGIN
   END IF;
   RETURN QUERY
     SELECT c.id,c.booking_id,c.category,c.description,c.status,c.admin_note,
-           c.created_at,c.updated_at,c.resolved_at
+           c.created_at,c.updated_at,c.resolved_at,
+           COALESCE((SELECT jsonb_agg(jsonb_build_object(
+             'actor_role',e.actor_role,'from_status',e.from_status,'to_status',e.to_status,
+             'note',e.note,'created_at',e.created_at) ORDER BY e.created_at ASC)
+             FROM public.srk_booking_complaint_events e WHERE e.complaint_id=c.id),'[]'::jsonb)
       FROM public.srk_booking_complaints c
      WHERE c.customer_user_id=auth.uid()
      ORDER BY c.created_at DESC
@@ -116,7 +140,8 @@ RETURNS TABLE (
   admin_note text,
   created_at timestamptz,
   updated_at timestamptz,
-  resolved_at timestamptz
+  resolved_at timestamptz,
+  activity jsonb
 )
 LANGUAGE plpgsql
 STABLE
@@ -130,7 +155,11 @@ BEGIN
   RETURN QUERY
     SELECT c.id,c.booking_id,b.customer_name,b.phone,b.service_type,
            c.category,c.description,c.status,c.admin_note,c.created_at,
-           c.updated_at,c.resolved_at
+           c.updated_at,c.resolved_at,
+           COALESCE((SELECT jsonb_agg(jsonb_build_object(
+             'actor_role',e.actor_role,'from_status',e.from_status,'to_status',e.to_status,
+             'note',e.note,'created_at',e.created_at) ORDER BY e.created_at ASC)
+             FROM public.srk_booking_complaint_events e WHERE e.complaint_id=c.id),'[]'::jsonb)
       FROM public.srk_booking_complaints c
       JOIN public.service_bookings b ON b.id=c.booking_id
      ORDER BY c.created_at DESC
@@ -174,6 +203,10 @@ BEGIN
          resolved_at=CASE WHEN p_status IN ('resolved','closed') THEN COALESCE(resolved_at,pg_catalog.now()) ELSE NULL END,
          resolved_by=CASE WHEN p_status IN ('resolved','closed') THEN COALESCE(resolved_by,v_admin_id) ELSE NULL END
    WHERE id=p_complaint_id;
+
+  INSERT INTO public.srk_booking_complaint_events
+    (complaint_id,actor_user_id,actor_role,from_status,to_status,note)
+  VALUES (p_complaint_id,v_admin_id,'admin',v_row.status,p_status,v_note);
 
   RETURN pg_catalog.jsonb_build_object('success',true,'complaint_id',p_complaint_id,'status',p_status);
 END;
