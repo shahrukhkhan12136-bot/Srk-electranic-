@@ -64,7 +64,9 @@ BEGIN
 
   UPDATE public.service_bookings
   SET assigned_electrician_id=p_electrician_id, status='assigned'
-  WHERE id=p_booking_id AND assigned_electrician_id IS NULL;
+  WHERE id=p_booking_id
+    AND assigned_electrician_id IS NULL
+    AND status IN ('new','confirmed');
   IF NOT FOUND THEN RAISE EXCEPTION 'Booking assignment conflict'; END IF;
 
   UPDATE public.job_offers
