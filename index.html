@@ -348,9 +348,9 @@ async function startRazorpayPayment() {
           });
           const verifyData = await verifyResponse.json();
           if (!verifyResponse.ok || !verifyData.success) throw new Error(verifyData.error || 'भुगतान सत्यापित नहीं हुआ।');
-          setPaymentStatus('✅ भुगतान सफल और सत्यापित! अब बुकिंग WhatsApp पर भेजी जा रही है।');
-          const paidMessage = currentBookingWhatsApp + '%0A%0APayment: Razorpay verified' + '%0APayment ID: ' + encodeURIComponent(response.razorpay_payment_id);
-          window.location.href = paidMessage;
+          setPaymentStatus('✅ भुगतान सफल और सर्वर द्वारा सत्यापित हो गया है। आपकी बुकिंग का भुगतान स्टेटस अपडेट किया जा रहा है।');
+          pendingBookingId = null;
+          await loadCustomerBookings();
         } catch (err) { setPaymentStatus(err.message, true); }
       },
       modal: { ondismiss: function () { setPaymentStatus('आपने भुगतान विंडो बंद कर दी। अभी भुगतान की पुष्टि नहीं हुई है।', true); } }
@@ -372,7 +372,6 @@ async function startRazorpayPayment() {
 }
 
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
-document.getElementById('electricianLocate').addEventListener('click',()=>locateInto('electricianLat','electricianLng','electricianLocationStatus'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
   const amount = 0; // Quote and final amount are set after electrician inspection.
@@ -412,20 +411,6 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
-document.getElementById('electricianForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const msg = `नमस्ते SRK ELECTRONIC, मैं इलेक्ट्रिशियन के रूप में रजिस्टर करना चाहता/चाहती हूँ।\nनाम: ${value('eName')}\nमोबाइल: ${value('ePhone')}\nराज्य: ${value('eState')}\nजिला: ${value('eDistrict')}\nPIN Code: ${value('ePin')}\nGoogle Maps: ${googleMapsUrl(value('electricianLat'),value('electricianLng'),[value('eDistrict'),value('eState'),value('ePin'),'India'].join(', '))}\nकौशल: ${value('eSkills')}\nअनुभव: ${value('eExperience')} वर्ष\nजानकारी: ${value('eAbout')}`;
-  const whatsapp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
-  const button = this.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'आवेदन भेजा जा रहा है…';
-  try {
-    const response = await fetch('/api/apply-electrician', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: value('eName'), phone: value('ePhone'), state: value('eState'), district: value('eDistrict'), pincode: value('ePin'), location_lat: value('electricianLat') || null, location_lng: value('electricianLng') || null, skills: value('eSkills'), experience_years: value('eExperience'), about: value('eAbout') }) });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error(result.error || 'आवेदन सेव नहीं हुआ।');
-    alert(result.message); window.location.href = whatsapp;
-  } catch (err) { alert(`${err.message}\nआवेदन डेटाबेस में सेव नहीं हुआ है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`); }
-  finally { button.disabled = false; button.textContent = 'इलेक्ट्रिशियन आवेदन भेजें'; }
-});
-
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
