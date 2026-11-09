@@ -127,8 +127,9 @@ BEGIN
     RAISE EXCEPTION 'Invalid Razorpay payment ID';
   END IF;
   v_total:=round(v_booking.amount_paid,2);
-  IF v_total<>round(v_booking.quoted_amount,2)
-     OR v_total<>round(coalesce(v_booking.service_charge,0)+v_booking.materials_amount,2) THEN
+  IF v_booking.quoted_amount IS NULL OR v_booking.service_charge IS NULL OR v_booking.materials_amount IS NULL
+     OR v_total<>round(v_booking.quoted_amount,2)
+     OR v_total<>round(v_booking.service_charge+v_booking.materials_amount,2) THEN
     RAISE EXCEPTION 'Paid amount does not match approved quote';
   END IF;
 
