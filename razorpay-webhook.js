@@ -52,7 +52,7 @@ async function processRefundWebhook(refund) {
   const rows=await found.json(), row=Array.isArray(rows)?rows[0]:null;
   if (!row) return "refund_not_found";
   if (row.refund_id && row.refund_id!==refund.id) return "refund_id_conflict";
-  if (row.status==="processed") return refund.status==="processed"?"already_processed":"refund_state_conflict";
+  if (row.status==="processed" && refund.status!=="processed") return "refund_state_conflict";
 
   const nextStatus=refund.status==="processed"?"processed":"failed";
   const patch=new URL("/rest/v1/srk_razorpay_refunds",SUPABASE_URL);
@@ -77,12 +77,14 @@ async function processRefundWebhook(refund) {
     const payoutUrl=new URL("/rest/v1/srk_electrician_payouts",SUPABASE_URL);
     payoutUrl.searchParams.set("booking_id","eq."+row.booking_id);payoutUrl.searchParams.set("payout_status","eq.blocked");
     payoutUrl.searchParams.set("payout_note","eq.Razorpay refund pending");
-    await fetch(payoutUrl,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({payout_status:"refunded",payout_note:"Razorpay refund processed",updated_at:new Date().toISOString()})});
+    const payoutPatch=await fetch(payoutUrl,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({payout_status:"refunded",payout_note:"Razorpay refund processed",updated_at:new Date().toISOString()})});
+    if(!payoutPatch.ok)throw new Error("Electrician payout refund reconciliation failed");
   } else {
     const payoutUrl=new URL("/rest/v1/srk_electrician_payouts",SUPABASE_URL);
     payoutUrl.searchParams.set("booking_id","eq."+row.booking_id);payoutUrl.searchParams.set("payout_status","eq.blocked");
     payoutUrl.searchParams.set("payout_note","eq.Razorpay refund pending");
-    await fetch(payoutUrl,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({payout_status:"pending",payout_note:row.previous_payout_note,updated_at:new Date().toISOString()})});
+    const payoutPatch=await fetch(payoutUrl,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({payout_status:"pending",payout_note:row.previous_payout_note,updated_at:new Date().toISOString()})});
+    if(!payoutPatch.ok)throw new Error("Electrician payout hold release failed");
   }
   return nextStatus;
 }
