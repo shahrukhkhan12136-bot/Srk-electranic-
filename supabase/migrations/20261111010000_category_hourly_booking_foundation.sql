@@ -262,3 +262,173 @@ on conflict (category_key, duration_hours) do update set
   labour_amount = excluded.labour_amount,
   is_published = excluded.is_published,
   updated_at = now();
+
+
+-- Server-authoritative work timer and prorated labour calculation.
+alter table public.service_bookings
+  add column if not exists actual_work_minutes integer
+    check (actual_work_minutes is null or actual_work_minutes >= 0),
+  add column if not exists actual_labour_amount numeric(10,2)
+    check (actual_labour_amount is null or actual_labour_amount >= 0);
+
+create or replace function public.srk_get_my_work_timer(p_booking_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = pg_catalog, public, auth, pg_temp
+as $function$
+declare
+  v_profile_id uuid;
+  v_booking public.service_bookings%rowtype;
+  v_base_amount numeric(10,2);
+  v_elapsed_seconds numeric;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+
+  select id into v_profile_id
+    from public.electrician_profiles
+   where (user_id = auth.uid() or auth_user_id = auth.uid())
+     and verification_status = 'approved' and active = true
+   order by created_at desc limit 1;
+
+  if v_profile_id is null then raise exception 'Approved active electrician required'; end if;
+
+  select * into v_booking
+    from public.service_bookings
+   where id = p_booking_id and assigned_electrician_id = v_profile_id
+   for share;
+
+  if not found then raise exception 'Assigned booking not found'; end if;
+  if v_booking.status <> 'in_progress' or v_booking.work_started_at is null then
+    raise exception 'Work timer is not running';
+  end if;
+
+  if v_booking.electrician_category is not null and v_booking.duration_hours is not null then
+    select labour_amount into v_base_amount
+      from public.srk_service_hourly_prices
+     where category_key = v_booking.electrician_category
+       and duration_hours = v_booking.duration_hours
+       and is_published = true;
+  end if;
+
+  if v_base_amount is null then
+    v_base_amount := coalesce(v_booking.service_charge, v_booking.quoted_amount, 0);
+  end if;
+
+  v_elapsed_seconds := greatest(0, extract(epoch from (coalesce(v_booking.work_completed_at, statement_timestamp()) - v_booking.work_started_at)));
+
+  return jsonb_build_object(
+    'booking_id', v_booking.id,
+    'work_started_at', v_booking.work_started_at,
+    'elapsed_seconds', floor(v_elapsed_seconds)::bigint,
+    'elapsed_minutes', ceil(v_elapsed_seconds / 60.0)::integer,
+    'duration_hours', v_booking.duration_hours,
+    'category_key', v_booking.electrician_category,
+    'booked_labour_amount', round(v_base_amount, 2),
+    'estimated_labour_amount',
+      case
+        when v_booking.electrician_category is not null and v_booking.duration_hours is not null
+          then round(v_base_amount * v_elapsed_seconds / (v_booking.duration_hours * 3600.0), 2)
+        else round(v_base_amount, 2)
+      end
+  );
+end;
+$function$;
+
+create or replace function public.srk_update_booking_work_status(p_booking_id uuid, p_status text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, public, auth, pg_temp
+as $function$
+declare
+  v_profile_id uuid;
+  v_booking public.service_bookings%rowtype;
+  v_base_amount numeric(10,2);
+  v_elapsed_seconds numeric;
+  v_actual_minutes integer;
+  v_actual_labour numeric(10,2);
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if p_status not in ('inspection','in_progress','completed') then raise exception 'Invalid work status'; end if;
+
+  select id into v_profile_id
+    from public.electrician_profiles
+   where (user_id = auth.uid() or auth_user_id = auth.uid())
+     and verification_status = 'approved' and active = true
+   order by created_at desc limit 1;
+
+  if v_profile_id is null then raise exception 'Approved active electrician required'; end if;
+
+  select * into v_booking
+    from public.service_bookings
+   where id = p_booking_id and assigned_electrician_id = v_profile_id
+   for update;
+
+  if not found then raise exception 'Assigned booking not found'; end if;
+
+  if p_status = 'inspection' and v_booking.status = 'assigned' then
+    update public.service_bookings set status = 'inspection' where id = p_booking_id;
+
+  elsif p_status = 'in_progress'
+        and v_booking.status = 'quote_approved'
+        and v_booking.quote_status = 'approved'
+        and v_booking.work_started_at is null then
+    update public.service_bookings
+       set status = 'in_progress', work_started_at = statement_timestamp()
+     where id = p_booking_id;
+
+  elsif p_status = 'completed'
+        and v_booking.status = 'in_progress'
+        and v_booking.work_started_at is not null
+        and v_booking.work_completed_at is null then
+
+    v_elapsed_seconds := greatest(0, extract(epoch from (statement_timestamp() - v_booking.work_started_at)));
+    v_actual_minutes := ceil(v_elapsed_seconds / 60.0)::integer;
+
+    if v_booking.electrician_category is not null and v_booking.duration_hours is not null then
+      select labour_amount into v_base_amount
+        from public.srk_service_hourly_prices
+       where category_key = v_booking.electrician_category
+         and duration_hours = v_booking.duration_hours
+         and is_published = true;
+
+      if v_base_amount is null then
+        raise exception 'Published labour price not found for this category and duration';
+      end if;
+
+      v_actual_labour := round(
+        v_base_amount * v_elapsed_seconds / (v_booking.duration_hours * 3600.0), 2
+      );
+    else
+      -- Legacy bookings without category/duration retain their already-approved quote.
+      v_actual_labour := round(coalesce(v_booking.service_charge, 0), 2);
+    end if;
+
+    update public.service_bookings
+       set status = 'completed',
+           work_completed_at = statement_timestamp(),
+           actual_work_minutes = v_actual_minutes,
+           actual_labour_amount = v_actual_labour,
+           service_charge = v_actual_labour,
+           quoted_amount = round(v_actual_labour + coalesce(v_booking.materials_amount, 0), 2)
+     where id = p_booking_id;
+
+  else
+    raise exception 'Invalid booking status transition';
+  end if;
+
+  return jsonb_build_object(
+    'success', true,
+    'status', p_status,
+    'actual_work_minutes', case when p_status = 'completed' then v_actual_minutes else null end,
+    'actual_labour_amount', case when p_status = 'completed' then v_actual_labour else null end
+  );
+end;
+$function$;
+
+revoke all on function public.srk_get_my_work_timer(uuid) from public, anon;
+grant execute on function public.srk_get_my_work_timer(uuid) to authenticated;
+revoke all on function public.srk_update_booking_work_status(uuid, text) from public, anon;
+grant execute on function public.srk_update_booking_work_status(uuid, text) to authenticated;
