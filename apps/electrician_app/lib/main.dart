@@ -103,7 +103,7 @@ class ElectricianDashboard extends StatefulWidget {
 class _ElectricianDashboardState extends State<ElectricianDashboard> {
   final client = Supabase.instance.client;
   Map<String, dynamic>? profile, wallet;
-  List<Map<String, dynamic>> offers = [], earnings = [], offerPriceDetails = [];
+  List<Map<String, dynamic>> offers = [], earnings = [], offerPriceDetails = [], bookingDetails = [];
   bool loading = true;
   String? error;
   @override
@@ -121,16 +121,93 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         offers = List<Map<String, dynamic>>.from(offerRows);
         final priceDetailsRows = await client.rpc('srk_get_my_offer_price_details');
         offerPriceDetails = List<Map<String, dynamic>>.from(priceDetailsRows as List);
+        final bookingRows = await client.rpc('srk_get_my_offer_details');
+        bookingDetails = List<Map<String, dynamic>>.from(bookingRows as List);
         final earningRows = await client.rpc('srk_get_my_earnings');
         earnings = List<Map<String, dynamic>>.from(earningRows as List);
         final walletResult = await client.rpc('srk_get_my_wallet_summary');
         final walletData = Map<String, dynamic>.from(walletResult as Map);
         final partnerWallet = walletData['electrician'];
         wallet = partnerWallet == null ? null : Map<String, dynamic>.from(partnerWallet as Map);
-      } else { offers = []; earnings = []; offerPriceDetails = []; wallet = null; }
+      } else { offers = []; earnings = []; offerPriceDetails = []; bookingDetails = []; wallet = null; }
     } catch (_) { error = 'डैशबोर्ड लोड नहीं हो सका। इंटरनेट जाँचकर Refresh करें।'; }
     finally { if (mounted) setState(() => loading = false); }
   }
+
+  String bookingStatusLabel(String? status) => switch (status) {
+    'assigned' => 'इलेक्ट्रिशियन नियुक्त',
+    'inspection' => 'जाँच / निरीक्षण',
+    'awaiting_quote_approval' => 'ग्राहक की कोटेशन मंजूरी बाकी',
+    'quote_approved' => 'कोटेशन मंजूर',
+    'quote_rejected' => 'ग्राहक ने कोटेशन में बदलाव माँगा',
+    'in_progress' => 'काम जारी',
+    'completed' => 'काम पूरा',
+    _ => status ?? 'स्थिति उपलब्ध नहीं',
+  };
+
+  Future<void> openQuoteForm(Map<String, dynamic> booking) async {
+    final serviceController = TextEditingController();
+    final materialsController = TextEditingController(text: '0');
+    final noteController = TextEditingController();
+    String? formError;
+    bool saving = false;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('ग्राहक को कोटेशन भेजें'),
+          content: SingleChildScrollView(child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('मेहनताना और सामान की कीमत अलग-अलग भरें। कुल रकम ग्राहक की मंजूरी के बाद ही मान्य होगी।'),
+              const SizedBox(height: 12),
+              TextField(controller: serviceController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'मेहनताना / सर्विस चार्ज (₹)')),
+              const SizedBox(height: 10),
+              TextField(controller: materialsController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'सामान / पार्ट्स (₹)')),
+              const SizedBox(height: 10),
+              TextField(controller: noteController, maxLines: 3, maxLength: 1000, decoration: const InputDecoration(labelText: 'काम का विवरण / नोट (वैकल्पिक)')),
+              if (formError != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(formError!, style: const TextStyle(color: Colors.red))),
+            ],
+          )),
+          actions: [
+            TextButton(onPressed: saving ? null : () => Navigator.pop(dialogContext), child: const Text('रद्द करें')),
+            FilledButton(
+              onPressed: saving ? null : () async {
+                final service = double.tryParse(serviceController.text.trim());
+                final materials = double.tryParse(materialsController.text.trim());
+                if (service == null || service <= 0 || materials == null || materials < 0 || service > 10000000 || materials > 10000000) {
+                  setDialogState(() => formError = 'सही रकम भरें। मेहनताना शून्य से अधिक और सामान की रकम शून्य या अधिक होनी चाहिए।');
+                  return;
+                }
+                setDialogState(() { saving = true; formError = null; });
+                try {
+                  await client.rpc('srk_submit_booking_quote', params: {
+                    'p_booking_id': booking['booking_id'],
+                    'p_service_charge': service,
+                    'p_materials_amount': materials,
+                    'p_quote_note': noteController.text.trim(),
+                  });
+                  if (dialogContext.mounted) Navigator.pop(dialogContext);
+                  if (mounted) {
+                    ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('कोटेशन ग्राहक को मंजूरी के लिए भेज दिया गया।')));
+                    await load();
+                  }
+                } catch (e) {
+                  setDialogState(() { saving = false; formError = 'कोटेशन नहीं भेजा जा सका। कृपया दोबारा कोशिश करें।'; });
+                }
+              },
+              child: Text(saving ? 'भेजा जा रहा है…' : 'कोटेशन भेजें'),
+            ),
+          ],
+        ),
+      ),
+    );
+    serviceController.dispose();
+    materialsController.dispose();
+    noteController.dispose();
+  }
+
   int count(String status) => offers.where((o) => o['status'] == status).length;
   @override
   Widget build(BuildContext context) {
@@ -186,6 +263,41 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                     Text('स्थिति: ' + (detail['quote_status']?.toString() ?? '—')),
                   ],
                   if ((detail['quote_note'] ?? '').toString().isNotEmpty) Text('नोट: ' + detail['quote_note'].toString()),
+                ],
+              )));
+            }),
+
+            Text('मेरी नियुक्त बुकिंग और कोटेशन', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            if (bookingDetails.where((b) => ['assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed'].contains(b['booking_status'])).isEmpty)
+              const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('अभी कोई नियुक्त बुकिंग उपलब्ध नहीं है। नई बुकिंग स्वीकार होने के बाद यहाँ कोटेशन भेज सकेंगे।')))
+            else ...bookingDetails.where((b) => ['assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed'].contains(b['booking_status'])).map((booking) {
+              final status = booking['booking_status']?.toString();
+              final canQuote = ['assigned','inspection','quote_rejected'].contains(status);
+              final service = (booking['service_charge'] as num?)?.toDouble();
+              final materials = (booking['materials_amount'] as num?)?.toDouble();
+              final total = (booking['quoted_amount'] as num?)?.toDouble();
+              return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(booking['service_type']?.toString() ?? 'सर्विस बुकिंग', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 5),
+                  Text('बुकिंग: ' + (booking['booking_id']?.toString() ?? '—')),
+                  Text('स्थान: ' + (booking['district']?.toString() ?? '') + ', ' + (booking['state']?.toString() ?? '') + ' • PIN ' + (booking['pincode']?.toString() ?? '')),
+                  Text('स्थिति: ' + bookingStatusLabel(status)),
+                  if (service != null) Text('मेहनताना: ₹' + service.toStringAsFixed(2)),
+                  if (materials != null) Text('सामान: ₹' + materials.toStringAsFixed(2)),
+                  if (total != null) Text('कुल कोटेशन: ₹' + total.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  if ((booking['quote_note'] ?? '').toString().isNotEmpty) Text('नोट: ' + booking['quote_note'].toString()),
+                  if (canQuote) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(width: double.infinity, child: FilledButton.icon(
+                      onPressed: loading ? null : () => openQuoteForm(booking),
+                      icon: const Icon(Icons.send_outlined),
+                      label: const Text('ग्राहक को कोटेशन भेजें'),
+                    )),
+                  ] else if (status == 'awaiting_quote_approval')
+                    const Text('कोटेशन ग्राहक को भेज दिया गया है। ग्राहक की मंजूरी का इंतजार करें।'),
                 ],
               )));
             }),
