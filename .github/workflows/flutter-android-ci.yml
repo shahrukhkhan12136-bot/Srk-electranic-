@@ -1,12 +1,6 @@
 name: Flutter Android CI
 
 on:
-  push:
-    branches:
-      - feature/flutter-mobile-apps
-  pull_request:
-    branches:
-      - feature/flutter-mobile-apps
   workflow_dispatch:
 
 permissions:
