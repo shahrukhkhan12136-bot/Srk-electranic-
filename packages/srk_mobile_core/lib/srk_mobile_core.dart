@@ -295,7 +295,7 @@ class _SrkLoginPageState extends State<SrkLoginPage> {
 
 
 /// Shared SRK ELECTRONIC founder artwork used consistently across mobile apps.
-/// The portrait has a transparent background and intentionally contains no personal name.
+/// The portrait is a bundled transparent WebP asset and intentionally contains no personal name.
 class SrkFounderBanner extends StatelessWidget {
   const SrkFounderBanner({super.key, this.compact = false});
   final bool compact;
