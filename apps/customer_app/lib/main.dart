@@ -284,6 +284,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   final _pincode = TextEditingController();
   final _address = TextEditingController();
   final _work = TextEditingController();
+  final _suggestedAmount = TextEditingController();
   final _client = Supabase.instance.client;
   String? _service;
   DateTime? _date;
@@ -312,7 +313,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   @override
   void dispose() {
     _name.dispose(); _phone.dispose(); _state.dispose(); _district.dispose();
-    _pincode.dispose(); _address.dispose(); _work.dispose();
+    _pincode.dispose(); _address.dispose(); _work.dispose(); _suggestedAmount.dispose();
     super.dispose();
   }
 
@@ -388,6 +389,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         'preferred_date': '${_date!.year}-${_two(_date!.month)}-${_two(_date!.day)}',
         'preferred_time': '${_two(_time!.hour)}:${_two(_time!.minute)}',
         'work_details': _work.text.trim(),
+        'customer_suggested_amount': _suggestedAmount.text.trim().isEmpty ? null : double.parse(_suggestedAmount.text.trim()),
         'payment_method': 'नकद (Cash)',
       }));
       final response = await request.close().timeout(const Duration(seconds: 30));
@@ -483,6 +485,15 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         const SizedBox(height: 12),
         _field(_work, 'काम की समस्या / अतिरिक्त जानकारी', maxLines: 4, maxLength: 2000,
           validator: (v) => (v?.trim().length ?? 0) < 5 ? 'कम से कम 5 अक्षरों में काम समझाएँ' : null),
+        _field(_suggestedAmount, 'आपकी शुरुआती अनुमानित कीमत (₹) — वैकल्पिक',
+          keyboard: const TextInputType.numberWithOptions(decimal: true), maxLength: 12,
+          validator: (v) {
+            final value = v?.trim() ?? '';
+            if (value.isEmpty) return null;
+            final amount = double.tryParse(value);
+            return amount == null || !amount.isFinite || amount <= 0 || amount > 10000000
+                ? '₹1 से ₹1,00,00,000 के बीच सही राशि भरें' : null;
+          }),
         OutlinedButton.icon(
           onPressed: _pickDate,
           icon: const Icon(Icons.calendar_month),
@@ -497,7 +508,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         const SizedBox(height: 12),
         Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Padding(padding: EdgeInsets.all(14), child: Text(
-            'अभी कोई अग्रिम भुगतान नहीं लिया जाएगा। इलेक्ट्रिशियन के निरीक्षण के बाद Labour/Service और Materials का अलग-अलग कोटेशन आएगा, जिसे आप मंजूर या अस्वीकार कर सकेंगे। ग्राहक की शुरुआती कीमत और Counter Offer सुविधा backend में अलग सुरक्षित fields/RPC बनने के बाद जोड़ी जाएगी।')),
+            'आपकी शुरुआती कीमत वैकल्पिक है और केवल अनुमान है, अंतिम भुगतान नहीं। इलेक्ट्रिशियन निरीक्षण के बाद Labour/Service और Materials का अलग-अलग कोटेशन या Counter Offer भेजेगा। काम शुरू होने से पहले आपकी मंजूरी जरूरी होगी; अभी कोई अग्रिम भुगतान नहीं लिया जाएगा।')),
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
