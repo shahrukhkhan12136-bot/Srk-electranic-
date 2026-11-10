@@ -244,3 +244,21 @@ grant select, insert, update, delete on public.srk_service_hourly_prices to auth
 grant select, insert, update, delete on public.srk_electrician_availability to authenticated;
 grant select, insert, update on public.srk_electrician_category_tests to authenticated;
 grant select, insert, update on public.srk_booking_cancellation_requests to authenticated;
+
+-- Admin-approved starter labour rates (materials/parts are always billed separately).
+-- These 32 prices are published for customer display; Admin can revise them later.
+insert into public.srk_service_hourly_prices
+  (category_key, duration_hours, labour_amount, is_published)
+values
+  ('helper',1,149,true),('helper',2,249,true),('helper',3,349,true),('helper',4,449,true),
+  ('helper',5,549,true),('helper',6,649,true),('helper',7,749,true),('helper',8,849,true),
+  ('standard',1,199,true),('standard',2,349,true),('standard',3,499,true),('standard',4,649,true),
+  ('standard',5,799,true),('standard',6,949,true),('standard',7,1099,true),('standard',8,1249,true),
+  ('experienced',1,249,true),('experienced',2,449,true),('experienced',3,649,true),('experienced',4,849,true),
+  ('experienced',5,1049,true),('experienced',6,1249,true),('experienced',7,1449,true),('experienced',8,1649,true),
+  ('master',1,299,true),('master',2,549,true),('master',3,799,true),('master',4,999,true),
+  ('master',5,1249,true),('master',6,1499,true),('master',7,1749,true),('master',8,1999,true)
+on conflict (category_key, duration_hours) do update set
+  labour_amount = excluded.labour_amount,
+  is_published = excluded.is_published,
+  updated_at = now();
