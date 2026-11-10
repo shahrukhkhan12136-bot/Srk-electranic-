@@ -187,6 +187,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Future<void> _logout() => _client.auth.signOut();
+  void _openOperations() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminOperationsPage()));
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -206,6 +207,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
               const SizedBox(height: 4),
               Text('सुरक्षित Admin डेटा • ${_client.auth.currentUser?.email ?? 'Admin'}'),
               const SizedBox(height: 14),
+              Card(child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.admin_panel_settings)),
+                title: const Text('बुकिंग और इलेक्ट्रिशियन प्रबंधन', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('बुकिंग ऑफर, आवेदन समीक्षा और दस्तावेज़ सत्यापन'),
+                trailing: const Icon(Icons.chevron_right), onTap: _openOperations,
+              )),
               if (_loading) const LinearProgressIndicator(),
               if (_error != null) Card(child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -312,4 +319,195 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ]),
       );
+}
+
+class AdminOperationsPage extends StatefulWidget {
+  const AdminOperationsPage({super.key});
+  @override
+  State<AdminOperationsPage> createState() => _AdminOperationsPageState();
+}
+
+class _AdminOperationsPageState extends State<AdminOperationsPage> with SingleTickerProviderStateMixin {
+  final _client = Supabase.instance.client;
+  late final TabController _tabs;
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _bookings = [], _applications = [], _documents = [];
+  final Set<String> _busy = {};
+
+  @override
+  void initState() { super.initState(); _tabs = TabController(length: 3, vsync: this); _load(); }
+  @override
+  void dispose() { _tabs.dispose(); super.dispose(); }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() { _loading = true; _error = null; });
+    try {
+      if (await _client.rpc('is_srk_admin') != true) {
+        await _client.auth.signOut();
+        throw StateError('Admin अनुमति नहीं मिली। दोबारा लॉगिन करें।');
+      }
+      final r = await Future.wait([
+        _client.from('service_bookings').select('id,created_at,customer_name,state,district,pincode,address,service_type,preferred_date,preferred_time,work_details,status,assigned_electrician_id,quoted_amount,payment_status,service_charge,materials_amount,quote_status').order('created_at', ascending: false).limit(100),
+        _client.from('electrician_applications').select('id,created_at,full_name,state,district,pincode,skills,experience_years,about,verification_status,active').order('created_at', ascending: false).limit(100),
+        _client.rpc('srk_admin_list_electrician_verification_documents', params: {'p_limit': 200}),
+      ]);
+      _bookings = (r[0] as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
+      _applications = (r[1] as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
+      _documents = (r[2] as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
+    } catch(e) { _error = e is StateError ? e.message : 'डेटा लोड नहीं हुआ। Admin अनुमति और नेटवर्क जाँचें।'; }
+    finally { if (mounted) setState(() => _loading = false); }
+  }
+
+  String _date(dynamic v) {
+    if (v == null) return '—';
+    final d = DateTime.tryParse(v.toString());
+    return d == null ? v.toString() : '${d.day.toString().padLeft(2,'0')}-${d.month.toString().padLeft(2,'0')}-${d.year}';
+  }
+
+  Future<void> _run(String id, Future<dynamic> Function() action, String message) async {
+    if (_busy.contains(id)) return;
+    setState(() => _busy.add(id));
+    try {
+      await action();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      await _load();
+    } catch(e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('कार्रवाई पूरी नहीं हुई: ${e.toString().replaceFirst('Exception: ','')}')));
+    } finally { if (mounted) setState(() => _busy.remove(id)); }
+  }
+
+  Future<String?> _note({required String title, required bool requiredNote}) async {
+    final ctl = TextEditingController();
+    final value = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: TextField(controller: ctl, maxLines: 3, maxLength: 1000,
+        decoration: InputDecoration(labelText: requiredNote ? 'कारण (अनिवार्य)' : 'Admin टिप्पणी (वैकल्पिक)', border: const OutlineInputBorder())),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('रद्द करें')),
+        FilledButton(onPressed: () { final s=ctl.text.trim(); if(requiredNote && s.isEmpty) return; Navigator.pop(ctx,s); }, child: const Text('जारी रखें')),
+      ],
+    ));
+    ctl.dispose(); return value;
+  }
+
+  Future<void> _offer(Map<String,dynamic> b) async {
+    final id=b['id'].toString();
+    final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+      title:const Text('बुकिंग ऑफर भेजें?'),
+      content:const Text('पहले उसी PIN के Active और Approved इलेक्ट्रिशियन को ऑफर जाएगा। वहाँ कोई योग्य पार्टनर न मिलने पर उसी जिले में fallback होगा।'),
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('रद्द करें')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('ऑफर भेजें'))],
+    ));
+    if(ok!=true)return;
+    await _run(id,() async {
+      final v=Map<String,dynamic>.from(await _client.rpc('srk_admin_offer_booking',params:{'p_booking_id':id}) as Map);
+      if(v['success']!=true) throw StateError(v['message']?.toString() ?? 'योग्य इलेक्ट्रिशियन उपलब्ध नहीं है।');
+      return v;
+    },'बुकिंग ऑफर प्रक्रिया पूरी हुई।');
+  }
+
+  Future<void> _application(Map<String,dynamic> a,String decision) async {
+    final approve=decision=='approved';
+    final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+      title:Text(approve?'इलेक्ट्रिशियन आवेदन Approve करें?':decision=='rejected'?'आवेदन Reject करें?':'आवेदन Suspend करें?'),
+      content:Text(approve?'सर्वर आवेदन के मोबाइल नंबर से OTP सत्यापन जाँचेगा। Approval के बाद भी प्रोफाइल Inactive रहेगी।':'यह आवेदन की verification स्थिति बदलेगा।'),
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('रद्द करें')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('पुष्टि करें'))],
+    ));
+    if(ok!=true)return;
+    final id=a['id'].toString();
+    await _run(id,()=>_client.rpc('srk_admin_review_application',params:{'p_application_id':id,'p_decision':decision}),'आवेदन समीक्षा अपडेट हो गई।');
+  }
+
+  Future<void> _document(Map<String,dynamic> d,String status) async {
+    final note=await _note(title:status=='approved'?'दस्तावेज़ Approve करें':'दस्तावेज़ पर कारण लिखें',requiredNote:status!='approved');
+    if(note==null)return;
+    final id=d['id'].toString();
+    await _run(id,()=>_client.rpc('srk_admin_review_electrician_document',params:{'p_document_id':id,'p_review_status':status,'p_admin_note':note}),'दस्तावेज़ समीक्षा अपडेट हो गई।');
+  }
+
+  Future<void> _active(Map<String,dynamic> d,bool active) async {
+    final id=d['electrician_profile_id'].toString();
+    final ok=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+      title:Text(active?'इलेक्ट्रिशियन Activate करें?':'इलेक्ट्रिशियन Deactivate करें?'),
+      content:Text(active?'सर्वर OTP-linked approval और नवीनतम Identity तथा Address proof दोनों के Approved होने की जाँच करेगा।':'इलेक्ट्रिशियन को नए काम के ऑफर मिलना बंद हो जाएगा।'),
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('रद्द करें')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('पुष्टि करें'))],
+    ));
+    if(ok!=true)return;
+    await _run(id,()=>_client.rpc('srk_admin_set_electrician_active',params:{'p_profile_id':id,'p_active':active}),active?'इलेक्ट्रिशियन सक्रिय हो गया।':'इलेक्ट्रिशियन निष्क्रिय हो गया।');
+  }
+
+  @override
+  Widget build(BuildContext context)=>Scaffold(
+    appBar:AppBar(title:const Text('बुकिंग और पार्टनर प्रबंधन'),
+      actions:[IconButton(onPressed:_loading?null:_load,icon:const Icon(Icons.refresh))],
+      bottom:TabBar(controller:_tabs,isScrollable:true,tabs:[
+        Tab(text:'बुकिंग (${_bookings.length})'),Tab(text:'आवेदन (${_applications.length})'),Tab(text:'दस्तावेज़ (${_documents.length})')
+      ])),
+    body:Column(children:[
+      if(_loading)const LinearProgressIndicator(),
+      if(_error!=null)Padding(padding:const EdgeInsets.all(12),child:Text(_error!,style:const TextStyle(color:Colors.red))),
+      Expanded(child:TabBarView(controller:_tabs,children:[_bookingList(),_applicationList(),_documentList()])),
+    ]),
+  );
+
+  Widget _bookingList()=>RefreshIndicator(onRefresh:_load,child:_bookings.isEmpty
+    ?ListView(children:const [SizedBox(height:100),Center(child:Text('अभी कोई बुकिंग उपलब्ध नहीं है।'))])
+    :ListView.builder(padding:const EdgeInsets.all(12),itemCount:_bookings.length,itemBuilder:(ctx,i){
+      final b=_bookings[i]; final id=b['id'].toString(); final assigned=b['assigned_electrician_id']!=null; final status=b['status']?.toString()??'—';
+      return Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Row(children:[Expanded(child:Text(b['service_type']?.toString()??'सेवा बुकिंग',style:const TextStyle(fontWeight:FontWeight.bold,fontSize:16))),Chip(label:Text(status))]),
+        Text('ग्राहक: ${b['customer_name']??'—'}'),
+        Text('स्थान: ${b['district']??'—'}, ${b['state']??'—'} • PIN ${b['pincode']??'—'}'),
+        Text('पता: ${b['address']??'—'}',maxLines:2,overflow:TextOverflow.ellipsis),
+        Text('तारीख: ${_date(b['preferred_date'])} • भुगतान: ${b['payment_status']??'—'}'),
+        if(b['work_details']!=null)Text('काम: ${b['work_details']}',maxLines:2,overflow:TextOverflow.ellipsis),
+        if(b['quote_status']!=null)Text('Quote: ${b['quote_status']} • Labour ₹${b['service_charge']??'0'} • Materials ₹${b['materials_amount']??'0'}'),
+        const SizedBox(height:8),
+        Row(children:[Expanded(child:Text(assigned?'इलेक्ट्रिशियन नियुक्त है':'इलेक्ट्रिशियन नियुक्त नहीं है',style:const TextStyle(fontSize:12,color:Colors.black54))),
+          if(!assigned&&(status=='new'||status=='confirmed'))FilledButton.tonalIcon(onPressed:_busy.contains(id)?null:()=>_offer(b),icon:const Icon(Icons.campaign),label:const Text('ऑफर भेजें'))]),
+      ])));
+    }));
+
+  Widget _applicationList()=>RefreshIndicator(onRefresh:_load,child:_applications.isEmpty
+    ?ListView(children:const [SizedBox(height:100),Center(child:Text('कोई आवेदन उपलब्ध नहीं है।'))])
+    :ListView.builder(padding:const EdgeInsets.all(12),itemCount:_applications.length,itemBuilder:(ctx,i){
+      final a=_applications[i]; final id=a['id'].toString(); final status=a['verification_status']?.toString()??'pending';
+      return Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(a['full_name']?.toString()??'इलेक्ट्रिशियन आवेदन',style:const TextStyle(fontWeight:FontWeight.bold,fontSize:16)),
+        Text('${a['district']??'—'}, ${a['state']??'—'} • PIN ${a['pincode']??'—'}'),
+        Text('कौशल: ${a['skills']??'—'} • अनुभव: ${a['experience_years']??0} वर्ष'),
+        Text('स्थिति: $status • आवेदन: ${_date(a['created_at'])}'),
+        if(a['about']!=null)Text(a['about'].toString(),maxLines:3,overflow:TextOverflow.ellipsis),
+        if(status=='pending')Wrap(spacing:8,children:[
+          FilledButton.tonal(onPressed:_busy.contains(id)?null:()=>_application(a,'approved'),child:const Text('Approve')),
+          OutlinedButton(onPressed:_busy.contains(id)?null:()=>_application(a,'rejected'),child:const Text('Reject')),
+        ]),
+        if(status=='approved')OutlinedButton(onPressed:_busy.contains(id)?null:()=>_application(a,'suspended'),child:const Text('Suspend')),
+      ])));
+    }));
+
+  Widget _documentList()=>RefreshIndicator(onRefresh:_load,child:_documents.isEmpty
+    ?ListView(children:const [SizedBox(height:100),Center(child:Text('कोई सत्यापन दस्तावेज़ उपलब्ध नहीं है।'))])
+    :ListView.builder(padding:const EdgeInsets.all(12),itemCount:_documents.length,itemBuilder:(ctx,i){
+      final d=_documents[i]; final id=d['id'].toString(); final status=d['review_status']?.toString()??'pending';
+      final profileStatus=d['verification_status']?.toString()??'—'; final active=d['active']==true;
+      return Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Text(d['electrician_name']?.toString()??'इलेक्ट्रिशियन',style:const TextStyle(fontWeight:FontWeight.bold,fontSize:16)),
+        Text('दस्तावेज़: ${d['document_type']??'—'} • समीक्षा: $status'),
+        Text('फाइल: ${d['file_name']??'—'} • अपलोड: ${_date(d['uploaded_at'])}'),
+        Text('प्रोफाइल: $profileStatus • ${active?'Active':'Inactive'}'),
+        if(d['admin_note']!=null)Text('Admin टिप्पणी: ${d['admin_note']}'),
+        if(status=='pending'||status=='needs_resubmission')Wrap(spacing:8,children:[
+          FilledButton.tonal(onPressed:_busy.contains(id)?null:()=>_document(d,'approved'),child:const Text('Approve')),
+          OutlinedButton(onPressed:_busy.contains(id)?null:()=>_document(d,'rejected'),child:const Text('Reject')),
+          TextButton(onPressed:_busy.contains(id)?null:()=>_document(d,'needs_resubmission'),child:const Text('दोबारा माँगें')),
+        ]),
+        if(profileStatus=='approved')OutlinedButton.icon(
+          onPressed:_busy.contains(d['electrician_profile_id'].toString())?null:()=>_active(d,!active),
+          icon:Icon(active?Icons.pause_circle_outline:Icons.check_circle_outline),
+          label:Text(active?'Deactivate Partner':'Activate Partner')),
+      ])));
+    }));
 }
