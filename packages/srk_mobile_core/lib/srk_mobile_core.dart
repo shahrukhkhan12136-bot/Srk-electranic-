@@ -214,7 +214,7 @@ class _SrkLoginPageState extends State<SrkLoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.electrical_services, size: 52),
+                    const SrkWelcomeHeader(),
                     const SizedBox(height: 8),
                     Text('SRK ELECTRONIC',
                         textAlign: TextAlign.center,
