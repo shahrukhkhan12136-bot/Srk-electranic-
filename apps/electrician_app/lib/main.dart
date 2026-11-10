@@ -121,7 +121,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         offers = List<Map<String, dynamic>>.from(offerRows);
         final priceDetailsRows = await client.rpc('srk_get_my_offer_price_details');
         offerPriceDetails = List<Map<String, dynamic>>.from(priceDetailsRows as List);
-        final bookingRows = await client.rpc('srk_get_my_offer_details');
+        final bookingRows = await client.rpc('srk_get_my_assigned_booking_quote_details');
         bookingDetails = List<Map<String, dynamic>>.from(bookingRows as List);
         final earningRows = await client.rpc('srk_get_my_earnings');
         earnings = List<Map<String, dynamic>>.from(earningRows as List);
