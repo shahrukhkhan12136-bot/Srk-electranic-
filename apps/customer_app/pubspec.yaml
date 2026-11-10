@@ -9,6 +9,7 @@ dependencies:
     sdk: flutter
   srk_mobile_core:
     path: ../../packages/srk_mobile_core
+  url_launcher: ^6.3.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
