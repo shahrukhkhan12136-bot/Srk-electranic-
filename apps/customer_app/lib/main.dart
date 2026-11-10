@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:srk_mobile_core/srk_mobile_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -138,6 +141,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     await _client.auth.signOut();
   }
 
+  Future<void> _openBookingForm() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => const CustomerBookingFormPage(),
+    ));
+    if (mounted) _loadBookings();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -155,6 +165,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             icon: const Icon(Icons.logout),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openBookingForm,
+        icon: const Icon(Icons.add),
+        label: const Text('नई बुकिंग'),
       ),
       body: RefreshIndicator(
         onRefresh: _loadBookings,
@@ -248,4 +263,250 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       ),
     );
   }
+}
+
+/// Uses the existing rate-limited Netlify booking endpoint. The service-role
+/// credential remains server-side and is never included in this app.
+class CustomerBookingFormPage extends StatefulWidget {
+  const CustomerBookingFormPage({super.key});
+
+  @override
+  State<CustomerBookingFormPage> createState() => _CustomerBookingFormPageState();
+}
+
+class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
+  static const _apiBase = String.fromEnvironment('SRK_API_BASE_URL');
+  final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController();
+  final _phone = TextEditingController();
+  final _state = TextEditingController();
+  final _district = TextEditingController();
+  final _pincode = TextEditingController();
+  final _address = TextEditingController();
+  final _work = TextEditingController();
+  final _client = Supabase.instance.client;
+  String? _service;
+  DateTime? _date;
+  TimeOfDay? _time;
+  bool _submitting = false;
+
+  static const _services = [
+    'Electrical Wiring',
+    'Fan Installation / Repair',
+    'Switch & Socket Repair',
+    'Light Installation',
+    'MCB / Distribution Board',
+    'Inverter / Battery',
+    'Appliance Electrical Repair',
+    'Other Electrical Work',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final user = _client.auth.currentUser;
+    _phone.text = (user?.phone ?? '').replaceAll(RegExp(r'\\D'), '').replaceFirst(RegExp(r'^91(?=\\d{10}$)'), '');
+    _name.text = user?.userMetadata?['full_name']?.toString() ?? '';
+  }
+
+  @override
+  void dispose() {
+    _name.dispose(); _phone.dispose(); _state.dispose(); _district.dispose();
+    _pincode.dispose(); _address.dispose(); _work.dispose();
+    super.dispose();
+  }
+
+  String? _required(String? value, String label, {int min = 2}) {
+    final v = value?.trim() ?? '';
+    if (v.length < min) return '$label सही भरें';
+    return null;
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final value = await showDatePicker(
+      context: context,
+      initialDate: _date ?? now,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 1),
+    );
+    if (value != null) setState(() => _date = value);
+  }
+
+  Future<void> _pickTime() async {
+    final value = await showTimePicker(
+      context: context,
+      initialTime: _time ?? TimeOfDay.now(),
+    );
+    if (value != null) setState(() => _time = value);
+  }
+
+  String _two(int n) => n.toString().padLeft(2, '0');
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_service == null || _date == null || _time == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('सर्विस, तारीख और समय चुनना जरूरी है।')),
+      );
+      return;
+    }
+    final session = _client.auth.currentSession;
+    final user = _client.auth.currentUser;
+    if (session == null || user == null || user.phoneConfirmedAt == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('बुकिंग के लिए पहले मोबाइल OTP सत्यापन पूरा करें।')),
+      );
+      return;
+    }
+    if (_apiBase.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ऐप का API domain configure नहीं है। अभी बुकिंग भेजना संभव नहीं है।')),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    HttpClient? http;
+    try {
+      final base = _apiBase.trim().replaceFirst(RegExp(r'/+$'), '');
+      final uri = Uri.parse('$base/api/create-booking');
+      if (uri.scheme != 'https' || uri.host.isEmpty) {
+        throw const FormatException('Secure API address is invalid');
+      }
+      http = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+      final request = await http.postUrl(uri);
+      request.headers.contentType = ContentType.json;
+      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer ${session.accessToken}');
+      request.write(jsonEncode({
+        'customer_name': _name.text.trim(),
+        'phone': _phone.text.trim(),
+        'state': _state.text.trim(),
+        'district': _district.text.trim(),
+        'pincode': _pincode.text.trim(),
+        'address': _address.text.trim(),
+        'service_type': _service,
+        'preferred_date': '${_date!.year}-${_two(_date!.month)}-${_two(_date!.day)}',
+        'preferred_time': '${_two(_time!.hour)}:${_two(_time!.minute)}',
+        'work_details': _work.text.trim(),
+        'payment_method': 'नकद (Cash)',
+      }));
+      final response = await request.close().timeout(const Duration(seconds: 30));
+      final responseText = await response.transform(utf8.decoder).join();
+      final Map<String, dynamic> data;
+      try {
+        data = Map<String, dynamic>.from(jsonDecode(responseText) as Map);
+      } catch (_) {
+        throw StateError('सर्वर से सही जवाब नहीं मिला।');
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300 || data['success'] != true) {
+        throw StateError(data['error']?.toString() ?? 'बुकिंग सेव नहीं हुई।');
+      }
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.check_circle, color: Colors.green, size: 42),
+          title: const Text('बुकिंग सफलतापूर्वक भेजी गई'),
+          content: Text(
+            '${data['message'] ?? 'आपकी बुकिंग सेव हो गई है।'}\n\nबुकिंग ID: ${data['booking_id'] ?? '—'}',
+          ),
+          actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('ठीक है'))],
+        ),
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e is SocketException
+              ? 'इंटरनेट कनेक्शन जाँचें और दोबारा कोशिश करें।'
+              : e.toString().replaceFirst('Bad state: ', ''))),
+        );
+      }
+    } finally {
+      http?.close(force: true);
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  InputDecoration _decoration(String label, {String? hint}) => InputDecoration(
+    labelText: label, hintText: hint, border: const OutlineInputBorder(),
+    filled: true, fillColor: Colors.white,
+  );
+
+  Widget _field(TextEditingController controller, String label, {
+    String? hint, TextInputType? keyboard, int maxLines = 1, int maxLength = 250,
+    String? Function(String?)? validator,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: TextFormField(
+      controller: controller, decoration: _decoration(label, hint: hint),
+      keyboardType: keyboard, maxLines: maxLines, maxLength: maxLength,
+      validator: validator ?? (v) => _required(v, label),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('नई सर्विस बुकिंग')),
+    body: SafeArea(child: Form(
+      key: _formKey,
+      child: ListView(padding: const EdgeInsets.all(16), children: [
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
+          const Icon(Icons.verified_user, color: Colors.green),
+          const SizedBox(width: 10),
+          Expanded(child: Text('बुकिंग आपके OTP-verified मोबाइल खाते से जुड़ी होगी। मोबाइल नंबर वही होना चाहिए जिससे लॉगिन किया है।')),
+        ]))),
+        const SizedBox(height: 12),
+        Text('ग्राहक की जानकारी', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        _field(_name, 'पूरा नाम', maxLength: 100),
+        _field(_phone, 'OTP verified मोबाइल नंबर', keyboard: TextInputType.phone, maxLength: 10,
+          validator: (v) => RegExp(r'^\\d{10}$').hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
+        const SizedBox(height: 4),
+        Text('सेवा का पता', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        _field(_state, 'राज्य', maxLength: 100),
+        _field(_district, 'जिला', maxLength: 100),
+        _field(_pincode, '6 अंकों का PIN Code', keyboard: TextInputType.number, maxLength: 6,
+          validator: (v) => RegExp(r'^\\d{6}$').hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
+        _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
+        const SizedBox(height: 4),
+        Text('काम की जानकारी', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          value: _service, decoration: _decoration('कौन-सी इलेक्ट्रिकल सर्विस चाहिए?'),
+          items: _services.map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))).toList(),
+          onChanged: (v) => setState(() => _service = v),
+          validator: (v) => v == null ? 'सर्विस चुनें' : null,
+        ),
+        const SizedBox(height: 12),
+        _field(_work, 'काम की समस्या / अतिरिक्त जानकारी', maxLines: 4, maxLength: 2000,
+          validator: (v) => (v?.trim().length ?? 0) < 5 ? 'कम से कम 5 अक्षरों में काम समझाएँ' : null),
+        OutlinedButton.icon(
+          onPressed: _pickDate,
+          icon: const Icon(Icons.calendar_month),
+          label: Text(_date == null ? 'पसंदीदा तारीख चुनें' : 'तारीख: ${_date!.day}-${_date!.month}-${_date!.year}'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _pickTime,
+          icon: const Icon(Icons.schedule),
+          label: Text(_time == null ? 'पसंदीदा समय चुनें' : 'समय: ${_time!.format(context)}'),
+        ),
+        const SizedBox(height: 12),
+        Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Padding(padding: EdgeInsets.all(14), child: Text(
+            'अभी कोई अग्रिम भुगतान नहीं लिया जाएगा। इलेक्ट्रिशियन के निरीक्षण के बाद Labour/Service और Materials का अलग-अलग कोटेशन आएगा, जिसे आप मंजूर या अस्वीकार कर सकेंगे। ग्राहक की शुरुआती कीमत और Counter Offer सुविधा backend में अलग सुरक्षित fields/RPC बनने के बाद जोड़ी जाएगी।')),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _submitting ? null : _submit,
+          icon: _submitting ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.send),
+          label: Text(_submitting ? 'बुकिंग भेजी जा रही है…' : 'बुकिंग भेजें'),
+        ),
+        const SizedBox(height: 24),
+      ]),
+    )),
+  );
 }
