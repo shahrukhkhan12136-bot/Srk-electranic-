@@ -140,7 +140,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         IconButton(onPressed: () => client.auth.signOut(), icon: const Icon(Icons.logout)),
       ]),
       body: RefreshIndicator(onRefresh: load, child: loading
-        ? const ListView(children: [SizedBox(height: 260), Center(child: CircularProgressIndicator())])
+        ? ListView(children: const [SizedBox(height: 260), Center(child: CircularProgressIndicator())])
         : ListView(padding: const EdgeInsets.all(16), children: [
           if (error != null) Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(error!, style: const TextStyle(color: Colors.red)))),
           Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
