@@ -275,7 +275,7 @@ class CustomerBookingFormPage extends StatefulWidget {
 }
 
 class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
-  static const _apiBase = String.fromEnvironment('SRK_API_BASE_URL');
+  static const _apiBase = String.fromEnvironment('SRK_API_BASE_URL', defaultValue: 'https://srk-electronic-india.netlify.app');
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _phone = TextEditingController();
