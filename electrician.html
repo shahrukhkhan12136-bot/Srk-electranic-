@@ -94,6 +94,7 @@ async function workStatus(id,status){
  if(error){alert('स्थिति अपडेट नहीं हुई: '+error.message);return;}alert('बुकिंग स्थिति अपडेट हो गई।');refresh();
 }
 async function respond(id,response){if(!confirm(response==='accepted'?'यह काम स्वीकार करना है?':'यह ऑफर मना करना है?'))return;let {error}=await sb.rpc('srk_respond_to_offer',{p_offer_id:id,p_response:response});if(error)alert(error.message);else{alert(response==='accepted'?'काम आपको असाइन हो गया।':'ऑफर मना कर दिया गया।');refresh()}}
-setInterval(()=>document.querySelectorAll('[data-work-timer]').forEach(el=>loadWorkTimer(el.dataset.workTimer)),15000);\nfunction bookingMapDirections(o){const destination=o.location_lat!=null&&o.location_lng!=null?String(o.location_lat)+','+String(o.location_lng):[o.address,o.district,o.state,o.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destination)+'&travelmode=driving'}
+setInterval(()=>document.querySelectorAll('[data-work-timer]').forEach(el=>loadWorkTimer(el.dataset.workTimer)),15000);
+function bookingMapDirections(o){const destination=o.location_lat!=null&&o.location_lng!=null?String(o.location_lat)+','+String(o.location_lng):[o.address,o.district,o.state,o.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destination)+'&travelmode=driving'}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}init();
 </script></body></html>
