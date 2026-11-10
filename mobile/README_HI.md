@@ -28,7 +28,7 @@ flutter run --dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co --dart-d
 APK के लिए `flutter build apk --release`; Play Store bundle के लिए `flutter build appbundle --release` (release signing अभी configure/test करना बाकी है)।
 
 ## वर्तमान स्थिति
-यह पहला सुरक्षित source scaffold है, production app नहीं। Dashboard data/actions अभी मौजूदा website के verified RPC/API contracts से चरणबद्ध तरीके से जोड़े जाएँगे। पहले database/RLS/RPC contracts की जाँच होगी; फिर Customer, Electrician और Admin modules अलग-अलग implement होंगे। OTP delivery, device testing, Android build, signing और end-to-end tests बाकी हैं।
+यह अभी development source है, production-ready app नहीं। Admin App में सर्वर-सत्यापित लॉगिन, वित्तीय सारांश, payout overview, wallet overview और commission summary के read-only dashboard panels जोड़े गए हैं। ये मौजूदा verified admin RPC contracts का उपयोग करते हैं। Customer और Electrician workflows अभी आंशिक हैं। OTP delivery, Flutter compile, device testing, Android build, signing और end-to-end tests बाकी हैं।
 
 ## सुरक्षा सीमाएँ
 - Customer और Electrician के लिए phone OTP verification जरूरी है।
