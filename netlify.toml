@@ -29,6 +29,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/create-refund"
+  to = "/.netlify/functions/create-refund"
+  status = 200
+
+[[redirects]]
   from = "/api/razorpay-webhook"
   to = "/.netlify/functions/razorpay-webhook"
   status = 200
