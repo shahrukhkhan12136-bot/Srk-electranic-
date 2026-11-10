@@ -97,7 +97,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.admin_panel_settings, size: 58),
+                      const SrkWelcomeHeader(),
                       const SizedBox(height: 12),
                       Text('SRK ELECTRONIC', textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),

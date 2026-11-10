@@ -76,7 +76,7 @@ class _ElectricianLoginPageState extends State<ElectricianLoginPage> {
     body: Center(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 460), child: Card(child: Padding(padding: const EdgeInsets.all(22), child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Icon(Icons.electrical_services, size: 52),
+          const SrkWelcomeHeader(),
           Text('इलेक्ट्रिशियन लॉगिन', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 18),
           TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'रजिस्टर्ड मोबाइल नंबर')),

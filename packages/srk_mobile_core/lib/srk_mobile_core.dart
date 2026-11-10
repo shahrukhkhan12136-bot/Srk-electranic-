@@ -294,6 +294,35 @@ class _SrkLoginPageState extends State<SrkLoginPage> {
 }
 
 
+/// Branded welcome artwork shown before login in all three mobile apps.
+class SrkWelcomeHeader extends StatelessWidget {
+  const SrkWelcomeHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Container(
+        width: 76,
+        height: 76,
+        decoration: BoxDecoration(
+          color: const Color(0xFFEAF2FF),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFB8D2FF)),
+        ),
+        child: const Icon(Icons.electrical_services_rounded,
+            size: 48, color: Color(0xFF0755B8)),
+      ),
+      const SizedBox(height: 10),
+      const Text('SRK ELECTRONIC',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900,
+          letterSpacing: .5, color: Color(0xFF073B91))),
+      const SizedBox(height: 12),
+      const SrkFounderBanner(),
+    ],
+  );
+}
+
 /// Shared SRK ELECTRONIC founder artwork used consistently across mobile apps.
 /// The portrait is a bundled transparent WebP asset and intentionally contains no personal name.
 class SrkFounderBanner extends StatelessWidget {
