@@ -202,66 +202,20 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
   }
 
   Future<void> openQuoteForm(Map<String, dynamic> booking) async {
-    final serviceController = TextEditingController();
-    final materialsController = TextEditingController(text: '0');
-    final noteController = TextEditingController();
-    String? formError;
-    bool saving = false;
-    await showDialog<void>(
+    final submitted = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('ग्राहक को कोटेशन भेजें'),
-          content: SingleChildScrollView(child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('मेहनताना और सामान की कीमत अलग-अलग भरें। कुल रकम ग्राहक की मंजूरी के बाद ही मान्य होगी।'),
-              const SizedBox(height: 12),
-              TextField(controller: serviceController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'मेहनताना / सर्विस चार्ज (₹)')),
-              const SizedBox(height: 10),
-              TextField(controller: materialsController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'सामान / पार्ट्स (₹)')),
-              const SizedBox(height: 10),
-              TextField(controller: noteController, maxLines: 3, maxLength: 1000, decoration: const InputDecoration(labelText: 'काम का विवरण / नोट (वैकल्पिक)')),
-              if (formError != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(formError!, style: const TextStyle(color: Colors.red))),
-            ],
-          )),
-          actions: [
-            TextButton(onPressed: saving ? null : () => Navigator.pop(dialogContext), child: const Text('रद्द करें')),
-            FilledButton(
-              onPressed: saving ? null : () async {
-                final service = double.tryParse(serviceController.text.trim());
-                final materials = double.tryParse(materialsController.text.trim());
-                if (service == null || service <= 0 || materials == null || materials < 0 || service > 10000000 || materials > 10000000) {
-                  setDialogState(() => formError = 'सही रकम भरें। मेहनताना शून्य से अधिक और सामान की रकम शून्य या अधिक होनी चाहिए।');
-                  return;
-                }
-                setDialogState(() { saving = true; formError = null; });
-                try {
-                  await client.rpc('srk_submit_booking_quote', params: {
-                    'p_booking_id': booking['booking_id'],
-                    'p_service_charge': service,
-                    'p_materials_amount': materials,
-                    'p_quote_note': noteController.text.trim(),
-                  });
-                  if (dialogContext.mounted) Navigator.pop(dialogContext);
-                  if (mounted) {
-                    ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(content: Text('कोटेशन ग्राहक को मंजूरी के लिए भेज दिया गया।')));
-                    await load();
-                  }
-                } catch (e) {
-                  setDialogState(() { saving = false; formError = 'कोटेशन नहीं भेजा जा सका। कृपया दोबारा कोशिश करें।'; });
-                }
-              },
-              child: Text(saving ? 'भेजा जा रहा है…' : 'कोटेशन भेजें'),
-            ),
-          ],
-        ),
+      barrierDismissible: false,
+      builder: (_) => _QuoteSubmissionDialog(
+        client: client,
+        bookingId: booking['booking_id'].toString(),
       ),
     );
-    serviceController.dispose();
-    materialsController.dispose();
-    noteController.dispose();
+    if (submitted == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('कोटेशन ग्राहक को मंजूरी के लिए भेज दिया गया।')),
+      );
+      await load();
+    }
   }
 
   int count(String status) => offers.where((o) => o['status'] == status).length;
@@ -433,6 +387,115 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
       ),
     );
   }
+}
+
+class _QuoteSubmissionDialog extends StatefulWidget {
+  const _QuoteSubmissionDialog({
+    required this.client,
+    required this.bookingId,
+  });
+
+  final SupabaseClient client;
+  final String bookingId;
+
+  @override
+  State<_QuoteSubmissionDialog> createState() => _QuoteSubmissionDialogState();
+}
+
+class _QuoteSubmissionDialogState extends State<_QuoteSubmissionDialog> {
+  final serviceController = TextEditingController();
+  final materialsController = TextEditingController(text: '0');
+  final noteController = TextEditingController();
+  bool saving = false;
+  String? formError;
+
+  @override
+  void dispose() {
+    serviceController.dispose();
+    materialsController.dispose();
+    noteController.dispose();
+    super.dispose();
+  }
+
+  Future<void> submit() async {
+    final service = double.tryParse(serviceController.text.trim());
+    final materials = double.tryParse(materialsController.text.trim());
+    if (service == null || service <= 0 || materials == null || materials < 0 ||
+        service > 10000000 || materials > 10000000) {
+      setState(() => formError =
+          'सही रकम भरें। मेहनताना शून्य से अधिक और सामान की रकम शून्य या अधिक होनी चाहिए।');
+      return;
+    }
+
+    setState(() {
+      saving = true;
+      formError = null;
+    });
+    try {
+      await widget.client.rpc('srk_submit_booking_quote', params: {
+        'p_booking_id': widget.bookingId,
+        'p_service_charge': service,
+        'p_materials_amount': materials,
+        'p_quote_note': noteController.text.trim(),
+      });
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          saving = false;
+          formError = 'कोटेशन नहीं भेजा जा सका। कृपया दोबारा कोशिश करें।';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('ग्राहक को कोटेशन भेजें'),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('मेहनताना और सामान की कीमत अलग-अलग भरें। कुल रकम ग्राहक की मंजूरी के बाद ही मान्य होगी।'),
+          const SizedBox(height: 12),
+          TextField(
+            controller: serviceController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'मेहनताना / सर्विस चार्ज (₹)'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: materialsController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'सामान / पार्ट्स (₹)'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: noteController,
+            maxLines: 3,
+            maxLength: 1000,
+            decoration: const InputDecoration(labelText: 'काम का विवरण / नोट (वैकल्पिक)'),
+          ),
+          if (formError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(formError!, style: const TextStyle(color: Colors.red)),
+            ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: saving ? null : () => Navigator.of(context).pop(false),
+        child: const Text('रद्द करें'),
+      ),
+      FilledButton(
+        onPressed: saving ? null : submit,
+        child: Text(saving ? 'भेजा जा रहा है…' : 'कोटेशन भेजें'),
+      ),
+    ],
+  );
 }
 
 Future<void> _callPhone(String raw) async {
