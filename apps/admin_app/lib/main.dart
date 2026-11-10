@@ -362,7 +362,20 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> with SingleTi
         'srk_admin_list_electrician_verification_documents',
         params: {'p_limit': 200},
       );
-      _bookings = (bookingsResult as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
+      final contactRows = await _client.rpc('srk_admin_get_booking_contacts');
+      final bookingContacts = <String, Map<String, dynamic>>{};
+      for (final row in List<Map<String, dynamic>>.from(contactRows as List)) {
+        bookingContacts[row['booking_id'].toString()] = row;
+      }
+      _bookings = (bookingsResult as List).map((x) {
+        final booking = Map<String,dynamic>.from(x as Map);
+        final contacts = bookingContacts[booking['id'].toString()];
+        if (contacts != null) {
+          booking['customer_phone'] = contacts['customer_phone'];
+          booking['electrician_phone'] = contacts['electrician_phone'];
+        }
+        return booking;
+      }).toList();
       _applications = (applicationsResult as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
       _documents = (documentsResult as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
     } catch(e) { _error = e is StateError ? e.message : 'डेटा लोड नहीं हुआ। Admin अनुमति और नेटवर्क जाँचें।'; }
@@ -468,6 +481,10 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> with SingleTi
       return Card(child:Padding(padding:const EdgeInsets.all(14),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
         Row(children:[Expanded(child:Text(b['service_type']?.toString()??'सेवा बुकिंग',style:const TextStyle(fontWeight:FontWeight.bold,fontSize:16))),Chip(label:Text(status))]),
         Text('ग्राहक: ${b['customer_name']??'—'}'),
+        if ((b['customer_phone'] ?? '').toString().trim().isNotEmpty)
+          SelectableText('ग्राहक मोबाइल: ${b['customer_phone']}'),
+        if ((b['electrician_phone'] ?? '').toString().trim().isNotEmpty)
+          SelectableText('इलेक्ट्रिशियन मोबाइल: ${b['electrician_phone']}'),
         Text('स्थान: ${b['district']??'—'}, ${b['state']??'—'} • PIN ${b['pincode']??'—'}'),
         Text('पता: ${b['address']??'—'}',maxLines:2,overflow:TextOverflow.ellipsis),
         Text('तारीख: ${_date(b['preferred_date'])} • भुगतान: ${b['payment_status']??'—'}'),
