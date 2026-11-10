@@ -65,7 +65,8 @@ class _ElectricianLoginPageState extends State<ElectricianLoginPage> {
   }
   Future<void> verifyOtp() async {
     final p = normalizedPhone, token = otp.text.trim();
-    if (p == null || !RegExp(r'^\d{4,8}
+    final validOtp = token.length >= 4 && token.length <= 8 && token.codeUnits.every((unit) => unit >= 48 && unit <= 57);
+    if (p == null || !validOtp) { setState(() => message = 'सही मोबाइल नंबर और SMS OTP दर्ज करें।'); return; }
     await run(() async { await Supabase.instance.client.auth.verifyOTP(phone: p, token: token, type: OtpType.sms); });
   }
   @override
