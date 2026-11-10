@@ -146,6 +146,33 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
     finally { if (mounted) setState(() => loading = false); }
   }
 
+
+  Future<void> confirmCashPayment(Map<String,dynamic> booking) async {
+    final ok = await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+      title:const Text('नकद भुगतान की पुष्टि'),
+      content:Text('क्या ग्राहक से ₹${booking['quoted_amount'] ?? 0} नकद वास्तव में मिल गए हैं?'),
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('नहीं')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('हाँ, नकद मिला'))],
+    ));
+    if(ok!=true)return;
+    try {
+      await client.rpc('srk_electrician_confirm_cash_payment',params:{'p_booking_id':booking['booking_id']});
+      if(!mounted)return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('नकद भुगतान दर्ज हो गया।')));
+      await load();
+    } catch (_) {
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('नकद भुगतान दर्ज नहीं हुआ। बुकिंग और भुगतान तरीका जाँचें।')));
+    }
+  }
+
+  Future<void> openBookingMap(Map<String,dynamic> booking) async {
+    final lat=booking['location_lat'], lng=booking['location_lng'];
+    final query=lat is num && lng is num ? '${lat.toString()},${lng.toString()}' :
+      '${booking['address'] ?? ''}, ${booking['district'] ?? ''}, ${booking['state'] ?? ''} ${booking['pincode'] ?? ''}';
+    if(query.trim().isEmpty)return;
+    final uri=Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}');
+    await launchUrl(uri,mode:LaunchMode.externalApplication);
+  }
+
   String bookingStatusLabel(String? status) => switch (status) {
     'assigned' => 'इलेक्ट्रिशियन नियुक्त',
     'inspection' => 'जाँच / निरीक्षण',
@@ -326,6 +353,11 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                   Text('बुकिंग: ' + (booking['booking_id']?.toString() ?? '—')),
                   Text('स्थान: ' + (booking['district']?.toString() ?? '') + ', ' + (booking['state']?.toString() ?? '') + ' • PIN ' + (booking['pincode']?.toString() ?? '')),
                   Text('स्थिति: ' + bookingStatusLabel(status)),
+                  OutlinedButton.icon(onPressed:()=>openBookingMap(booking),icon:const Icon(Icons.directions),label:const Text('ग्राहक की लोकेशन / रास्ता खोलें')),
+                  if(status=='completed' && (booking['payment_method'] ?? '').toString().toLowerCase()=='cash' && booking['payment_status']!='paid')
+                    FilledButton.icon(onPressed:()=>confirmCashPayment(booking),icon:const Icon(Icons.payments),label:Text('नकद भुगतान मिला • ₹${booking['quoted_amount'] ?? 0}')),
+                  if(booking['payment_status']=='paid')
+                    const Text('भुगतान प्राप्त दर्ज है',style:TextStyle(color:Colors.green,fontWeight:FontWeight.bold)),
                   if ((booking['customer_phone'] ?? '').toString().trim().isNotEmpty)
                     Card(
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
