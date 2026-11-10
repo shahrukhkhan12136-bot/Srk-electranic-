@@ -82,6 +82,11 @@ class _ElectricianLoginPageState extends State<ElectricianLoginPage> {
           if (sent) ...[const SizedBox(height: 12), TextField(controller: otp, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'SMS OTP'))],
           const SizedBox(height: 16),
           FilledButton(onPressed: busy ? null : (sent ? verifyOtp : sendOtp), child: Text(busy ? 'कृपया प्रतीक्षा करें…' : (sent ? 'OTP सत्यापित करें' : 'OTP भेजें'))),
+          if (sent) ...[
+            const SizedBox(height: 8),
+            TextButton(onPressed: busy ? null : sendOtp, child: const Text('OTP दोबारा भेजें')),
+            TextButton(onPressed: busy ? null : () => setState(() { sent = false; otp.clear(); message = 'मोबाइल नंबर जाँचें और OTP फिर से भेजें।'; }), child: const Text('मोबाइल नंबर बदलें')),
+          ],
           const Text('लॉगिन के लिए आवेदन में दर्ज रजिस्टर्ड नंबर का OTP सत्यापन जरूरी है।', textAlign: TextAlign.center),
           if (message != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(message!, textAlign: TextAlign.center)),
         ],
