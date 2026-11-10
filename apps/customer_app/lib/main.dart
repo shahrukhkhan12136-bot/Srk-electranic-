@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:geolocator/geolocator.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -423,6 +424,9 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   DateTime? _date;
   TimeOfDay? _time;
   bool _submitting = false;
+  bool _locationBusy = false;
+  double? _locationLat, _locationLng;
+  String _paymentMethod = 'cash';
 
   static const _services = [
     'Electrical Wiring',
@@ -454,6 +458,21 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     final v = value?.trim() ?? '';
     if (v.length < min) return '$label सही भरें';
     return null;
+  }
+
+  Future<void> _useCurrentLocation() async {
+    setState(() => _locationBusy = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) throw StateError('फोन की Location/GPS चालू करें।');
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) throw StateError('लोकेशन अनुमति दें या पता मैन्युअल भरें।');
+      final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 20)));
+      if (!mounted) return;
+      setState(() { _locationLat = pos.latitude; _locationLng = pos.longitude; });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('वर्तमान लोकेशन बुकिंग में जोड़ दी गई।')));
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', '')))); }
+    finally { if (mounted) setState(() => _locationBusy = false); }
   }
 
   Future<void> _pickDate() async {
@@ -523,7 +542,9 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         'preferred_time': '${_two(_time!.hour)}:${_two(_time!.minute)}',
         'work_details': _work.text.trim(),
         'customer_suggested_amount': _suggestedAmount.text.trim().isEmpty ? null : double.parse(_suggestedAmount.text.trim()),
-        'payment_method': 'नकद (Cash)',
+        'payment_method': _paymentMethod,
+        'location_lat': _locationLat,
+        'location_lng': _locationLng,
       }));
       final response = await request.close().timeout(const Duration(seconds: 30));
       final responseText = await response.transform(utf8.decoder).join();
@@ -606,7 +627,12 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         _field(_pincode, '6 अंकों का PIN Code', keyboard: TextInputType.number, maxLength: 6,
           validator: (v) => RegExp(r'^\d{6}$').hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
         _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
+        OutlinedButton.icon(onPressed: _locationBusy ? null : _useCurrentLocation, icon: _locationBusy ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.my_location), label: Text(_locationBusy ? 'लोकेशन ली जा रही है…' : (_locationLat == null ? 'वर्तमान GPS लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें'))),
+        if (_locationLat != null) const Text('मैप लोकेशन बुकिंग के साथ भेजी जाएगी।', style: TextStyle(color: Colors.green)),
         const SizedBox(height: 4),
+        Text('भुगतान का तरीका', style: Theme.of(context).textTheme.titleMedium),
+        DropdownButtonFormField<String>(value: _paymentMethod, decoration: _decoration('भुगतान चुनें'), items: const [DropdownMenuItem(value: 'cash', child: Text('नकद (काम पूरा होने पर)')), DropdownMenuItem(value: 'online', child: Text('ऑनलाइन (UPI / कार्ड / नेट बैंकिंग)'))], onChanged: (v) => setState(() => _paymentMethod = v ?? 'cash')),
+        const Text('ऑनलाइन भुगतान केवल काम पूरा होने और कोटेशन मंजूर होने के बाद होगा। कोई अग्रिम भुगतान नहीं।'),
         Text('काम की जानकारी', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(

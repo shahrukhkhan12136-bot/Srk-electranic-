@@ -78,6 +78,9 @@ jobs:
           prepare_android apps/customer_app customer in.srkelectronic.customer
           prepare_android apps/electrician_app electrician in.srkelectronic.electrician
           prepare_android apps/admin_app admin in.srkelectronic.admin
+          for manifest in apps/customer_app/android/app/src/main/AndroidManifest.xml apps/electrician_app/android/app/src/main/AndroidManifest.xml; do
+            sed -i '/<application/i\\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' "$manifest"
+          done
 
       - name: Resolve dependencies and analyze shared core
         run: |
