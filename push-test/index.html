@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b5b45"><title>SRK ELECTRONIC — Push TEST</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Noto Sans Devanagari",sans-serif;color:#17231f;background:#f3f7f5}
+body{margin:0;padding:22px;max-width:560px;margin-inline:auto}
+main{background:#fff;border-radius:18px;padding:22px;box-shadow:0 8px 30px #1232}
+h1{font-size:23px;margin:0 0 8px;color:#0b5b45}.tag{display:inline-block;background:#fff2cc;color:#775400;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:700}
+p{line-height:1.55}label{display:block;font-weight:650;margin:14px 0 6px}input{box-sizing:border-box;width:100%;padding:13px;border:1px solid #b8c9c1;border-radius:10px;font-size:16px}
+button{width:100%;border:0;border-radius:11px;padding:14px;margin-top:13px;background:#0b5b45;color:#fff;font-size:16px;font-weight:700}
+button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
+#status{white-space:pre-wrap;background:#f0f5f2;padding:12px;border-radius:10px;margin-top:16px;font-size:14px}
+.small{font-size:12px;color:#596b63}
+</style></head>
+<body><main>
+<span class="tag">केवल TEST प्रोजेक्ट • Production से अलग</span>
+<h1>SRK ELECTRONIC Push Notification Test</h1>
+<p>इस पेज से केवल TEST Supabase अकाउंट में लॉगिन करके इस Android ब्राउज़र की Push Subscription सेव होगी। कोई ग्राहक डेटा या भुगतान इस्तेमाल नहीं होगा।</p>
+<form id="login">
+<label for="email">TEST ईमेल</label><input id="email" type="email" autocomplete="username" required value="shahrookhkhan206@gmail.com">
+<label for="password">TEST पासवर्ड</label><input id="password" type="password" autocomplete="current-password" required>
+<button type="submit">TEST अकाउंट लॉगिन करें</button>
+</form>
+<button id="enable" disabled>इस फोन पर Push Notification चालू करें</button>
+<button id="logout" class="secondary" disabled>TEST अकाउंट लॉगआउट</button>
+<div id="status" role="status">स्थिति: अभी लॉगिन नहीं हुआ।</div>
+<p class="small">सुरक्षा: इस पेज में केवल Supabase publishable key है। कोई service-role key या निजी VAPID key नहीं है। TEST पूरा होने पर लॉगआउट करें।</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(() => {
+  const SUPABASE_URL = 'https://dvzmarekhstaubyuoeeh.supabase.co';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_nlmQlMXeW6YSjoN4JRt6rQ_o541dFH0';
+  const VAPID_PUBLIC_KEY = 'BM_Eetd6mq2wXnKOtCJP9yzpGQdOaoy6HgKrD3AaadLc0M-xWZgRaV_Wj72er6EDnyQalHs8H8XUtYPYxFaZ4Hg';
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  const status = document.getElementById('status');
+  const enable = document.getElementById('enable');
+  const logout = document.getElementById('logout');
+  const say = (message) => { status.textContent = message; };
+  const urlBase64ToUint8Array = (value) => {
+    const padding = '='.repeat((4 - value.length % 4) % 4);
+    const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  };
+  async function refreshSession() {
+    const { data, error } = await client.auth.getSession();
+    if (error) throw error;
+    const signedIn = !!data.session;
+    enable.disabled = !signedIn;
+    logout.disabled = !signedIn;
+    if (signedIn) say('लॉगिन सफल। TEST User ID: ' + data.session.user.id + '\nअब Push Notification चालू करें।');
+  }
+  document.getElementById('login').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    say('TEST अकाउंट में लॉगिन हो रहा है…');
+    const { error } = await client.auth.signInWithPassword({
+      email: document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value
+    });
+    if (error) { say('लॉगिन असफल: ' + error.message); return; }
+    document.getElementById('password').value = '';
+    await refreshSession();
+  });
+  enable.addEventListener('click', async () => {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        throw new Error('इस ब्राउज़र में Web Push समर्थित नहीं है। Chrome में खोलकर प्रयास करें।');
+      }
+      if (!window.isSecureContext) throw new Error('Push के लिए HTTPS पेज आवश्यक है।');
+      say('Notification अनुमति माँगी जा रही है…');
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') throw new Error('Notification अनुमति नहीं मिली: ' + permission);
+      const registration = await navigator.serviceWorker.register('./sw.js', {scope:'./'});
+      await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+      }
+      const json = subscription.toJSON();
+      const { data: userData, error: userError } = await client.auth.getUser();
+      if (userError || !userData.user) throw userError || new Error('TEST लॉगिन सत्र नहीं मिला।');
+      const { error } = await client.from('srk_push_subscriptions').upsert({
+        user_id: userData.user.id,
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh,
+        auth: json.keys.auth,
+        user_agent: navigator.userAgent
+      }, {onConflict:'endpoint'});
+      if (error) throw error;
+      say('सफल! इस फोन की Push Subscription TEST डेटाबेस में सुरक्षित हो गई।\nअब Edge Function + Database Webhook का परीक्षण बाकी है।');
+    } catch (error) {
+      say('त्रुटि: ' + (error?.message || String(error)));
+    }
+  });
+  logout.addEventListener('click', async () => {
+    const { error } = await client.auth.signOut();
+    if (error) { say('लॉगआउट त्रुटि: ' + error.message); return; }
+    enable.disabled = true; logout.disabled = true;
+    say('TEST अकाउंट लॉगआउट हो गया।');
+  });
+  refreshSession().catch(error => say('स्थिति जाँच त्रुटि: ' + error.message));
+})();
+</script></body></html>
