@@ -87,7 +87,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       if (user == null) return;
       final response = await _client
           .from('service_bookings')
-          .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,service_charge,materials_amount,quote_status,quote_note,district,state,pincode')
+          .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,service_charge,materials_amount,quote_status,quote_note,district,state,pincode,customer_suggested_amount,electrician_quote_kind')
           .eq('customer_user_id', user.id)
           .order('created_at', ascending: false)
           .limit(50);
@@ -225,10 +225,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             Text('स्थिति: ${_status(status)}'),
             Text('इलाका: ${booking['district'] ?? ''}, ${booking['state'] ?? ''} • PIN ${booking['pincode'] ?? ''}'),
             Text('तारीख: ${booking['preferred_date'] ?? '—'} • समय: ${booking['preferred_time'] ?? '—'}'),
+            if (booking['customer_suggested_amount'] != null)
+              Text('आपकी शुरुआती अनुमानित कीमत: ₹${(booking['customer_suggested_amount'] as num).toStringAsFixed(2)}'),
             if (quoteStatus != 'not_submitted') ...[
               const Divider(),
-              const Text('इलेक्ट्रिशियन का कोटेशन',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(booking['electrician_quote_kind'] == 'counter_offer' ? 'इलेक्ट्रिशियन का Counter Offer' : 'इलेक्ट्रिशियन का कोटेशन',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               Text('सर्विस / मेहनताना: ₹${service.toStringAsFixed(2)}'),
               Text('सामान / पार्ट्स: ₹${materials.toStringAsFixed(2)}'),
               Text('कुल: ₹${total.toStringAsFixed(2)}',
