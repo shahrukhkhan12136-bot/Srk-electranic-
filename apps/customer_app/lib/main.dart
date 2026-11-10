@@ -264,6 +264,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            const SrkFounderBanner(),
+            const SizedBox(height: 14),
             Text('मेरी बुकिंग',
                 style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 6),

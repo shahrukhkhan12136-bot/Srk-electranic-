@@ -203,6 +203,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              const SrkFounderBanner(),
+              const SizedBox(height: 14),
               Text('व्यवसाय डैशबोर्ड', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text('सुरक्षित Admin डेटा • ${_client.auth.currentUser?.email ?? 'Admin'}'),

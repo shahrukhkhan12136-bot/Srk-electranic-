@@ -8,3 +8,6 @@ dependencies:
   flutter:
     sdk: flutter
   supabase_flutter: ^2.10.0
+
+  assets:
+    - assets/founder.webp

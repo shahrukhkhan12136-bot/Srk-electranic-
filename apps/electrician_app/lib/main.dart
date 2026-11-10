@@ -280,6 +280,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
       body: RefreshIndicator(onRefresh: load, child: loading
         ? ListView(children: const [SizedBox(height: 260), Center(child: CircularProgressIndicator())])
         : ListView(padding: const EdgeInsets.all(16), children: [
+          const SrkFounderBanner(),
           if (error != null) Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(error!, style: const TextStyle(color: Colors.red)))),
           Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(p?['display_name']?.toString() ?? 'प्रोफाइल लिंक नहीं हुई', style: Theme.of(context).textTheme.titleLarge),

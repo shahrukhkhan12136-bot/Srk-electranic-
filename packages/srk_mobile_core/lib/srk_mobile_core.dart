@@ -292,3 +292,70 @@ class _SrkLoginPageState extends State<SrkLoginPage> {
     );
   }
 }
+
+
+/// Shared SRK ELECTRONIC founder artwork used consistently across mobile apps.
+/// The portrait has a transparent background and intentionally contains no personal name.
+class SrkFounderBanner extends StatelessWidget {
+  const SrkFounderBanner({super.key, this.compact = false});
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    elevation: 2,
+    child: Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF073B91), Color(0xFF0876E8), Color(0xFFEAF4FF)],
+        ),
+      ),
+      child: SizedBox(
+        height: compact ? 132 : 176,
+        child: Stack(
+          children: [
+            Positioned(
+              right: compact ? 8 : 16,
+              bottom: -8,
+              top: 0,
+              child: Image.asset(
+                'packages/srk_mobile_core/assets/founder.webp',
+                fit: BoxFit.contain,
+                alignment: Alignment.bottomCenter,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+            Positioned(
+              left: 18,
+              top: 18,
+              bottom: 18,
+              right: compact ? 112 : 145,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'SRK ELECTRONIC',
+                    style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: .4),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    compact ? 'हर घर की इलेक्ट्रिकल सेवा' : 'आपकी सेवा में हमेशा तैयार…',
+                    style: TextStyle(color: Colors.white, fontSize: compact ? 12 : 16, fontWeight: FontWeight.w700),
+                  ),
+                  if (!compact) ...[
+                    const SizedBox(height: 9),
+                    Container(width: 54, height: 3, decoration: BoxDecoration(color: const Color(0xFFFFC928), borderRadius: BorderRadius.circular(8))),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
