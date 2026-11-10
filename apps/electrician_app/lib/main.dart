@@ -98,7 +98,7 @@ class ElectricianDashboard extends StatefulWidget {
 class _ElectricianDashboardState extends State<ElectricianDashboard> {
   final client = Supabase.instance.client;
   Map<String, dynamic>? profile, wallet;
-  List<Map<String, dynamic>> offers = [], earnings = [];
+  List<Map<String, dynamic>> offers = [], earnings = [], offerPriceDetails = [];
   bool loading = true;
   String? error;
   @override
@@ -114,13 +114,15 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         final pid = profile!['id'] as String;
         final offerRows = await client.from('job_offers').select('id,status,match_level,created_at').eq('electrician_id', pid).order('created_at', ascending: false).limit(100);
         offers = List<Map<String, dynamic>>.from(offerRows);
+        final priceDetailsRows = await client.rpc('srk_get_my_offer_price_details');
+        offerPriceDetails = List<Map<String, dynamic>>.from(priceDetailsRows as List);
         final earningRows = await client.rpc('srk_get_my_earnings');
         earnings = List<Map<String, dynamic>>.from(earningRows as List);
         final walletResult = await client.rpc('srk_get_my_wallet_summary');
         final walletData = Map<String, dynamic>.from(walletResult as Map);
         final partnerWallet = walletData['electrician'];
         wallet = partnerWallet == null ? null : Map<String, dynamic>.from(partnerWallet as Map);
-      } else { offers = []; earnings = []; wallet = null; }
+      } else { offers = []; earnings = []; offerPriceDetails = []; wallet = null; }
     } catch (_) { error = 'डैशबोर्ड लोड नहीं हो सका। इंटरनेट जाँचकर Refresh करें।'; }
     finally { if (mounted) setState(() => loading = false); }
   }
@@ -158,13 +160,30 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
               const SizedBox(width: 8),
               Expanded(child: _Metric(label: 'मना किए', value: count('declined').toString())),
             ]),
-            const Card(child: Padding(padding: EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('ऑफर की पूरी जानकारी अभी सुरक्षित रूप से उपलब्ध नहीं है।', style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              Text('मौजूदा backend का offer-details RPC ग्राहक का असली फोन नंबर भी ऐप को भेजता है। आपकी तय Masked Calling नीति के अनुसार हम वह डेटा मोबाइल ऐप में नहीं मँगाएँगे या दिखाएँगे। पहले फोन नंबर हटाकर सुरक्षित offer-details RPC बनाना जरूरी है।'),
-              SizedBox(height: 8),
-              Text('मौजूदा backend में केवल Accept और Reject उपलब्ध हैं। Counter Offer के लिए अलग backend सुविधा भी अभी नहीं बनी है।'),
-            ]))),
+            if (offerPriceDetails.isEmpty)
+              const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('अभी कीमत की जानकारी वाला कोई ऑफर उपलब्ध नहीं है।')))
+            else ...offerPriceDetails.map((detail) {
+              final suggested = (detail['customer_suggested_amount'] as num?)?.toDouble();
+              final service = (detail['service_charge'] as num?)?.toDouble();
+              final materials = (detail['materials_amount'] as num?)?.toDouble();
+              final kind = detail['electrician_quote_kind']?.toString() ?? 'electrician_quote';
+              return Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('बुकिंग ' + (detail['booking_id']?.toString() ?? '—'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  if (suggested != null) Text('ग्राहक की शुरुआती कीमत: ₹' + suggested.toStringAsFixed(2)),
+                  if (service != null && materials != null) ...[
+                    const Divider(),
+                    Text(kind == 'counter_offer' ? 'आपका Counter Offer' : kind == 'matches_suggestion' ? 'ग्राहक की कीमत के अनुसार कोटेशन' : 'आपका कोटेशन'),
+                    Text('मेहनताना / सर्विस: ₹' + service.toStringAsFixed(2)),
+                    Text('सामान / पार्ट्स: ₹' + materials.toStringAsFixed(2)),
+                    Text('कुल: ₹' + (service + materials).toStringAsFixed(2)),
+                    Text('स्थिति: ' + (detail['quote_status']?.toString() ?? '—')),
+                  ],
+                  if ((detail['quote_note'] ?? '').toString().isNotEmpty) Text('नोट: ' + detail['quote_note'].toString()),
+                ],
+              )));
+            }),
             Text('कमाई', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Row(children: [
