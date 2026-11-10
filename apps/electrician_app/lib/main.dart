@@ -104,7 +104,7 @@ class ElectricianDashboard extends StatefulWidget {
 class _ElectricianDashboardState extends State<ElectricianDashboard> {
   final client = Supabase.instance.client;
   Map<String, dynamic>? profile, wallet;
-  List<Map<String, dynamic>> offers = [], earnings = [], offerPriceDetails = [], bookingDetails = [];
+  List<Map<String, dynamic>> offers = [], offerDetails = [], earnings = [], offerPriceDetails = [], bookingDetails = [];
   bool loading = true;
   String? error;
   @override
@@ -120,6 +120,8 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         final pid = profile!['id'] as String;
         final offerRows = await client.from('job_offers').select('id,status,match_level,created_at').eq('electrician_id', pid).order('created_at', ascending: false).limit(100);
         offers = List<Map<String, dynamic>>.from(offerRows);
+        final offerDetailRows = await client.rpc('srk_get_my_offer_details');
+        offerDetails = List<Map<String, dynamic>>.from(offerDetailRows as List);
         final priceDetailsRows = await client.rpc('srk_get_my_offer_price_details');
         offerPriceDetails = List<Map<String, dynamic>>.from(priceDetailsRows as List);
         final bookingRows = await client.rpc('srk_get_my_assigned_booking_quote_details');
@@ -139,7 +141,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         final walletData = Map<String, dynamic>.from(walletResult as Map);
         final partnerWallet = walletData['electrician'];
         wallet = partnerWallet == null ? null : Map<String, dynamic>.from(partnerWallet as Map);
-      } else { offers = []; earnings = []; offerPriceDetails = []; bookingDetails = []; wallet = null; }
+      } else { offers = []; offerDetails = []; earnings = []; offerPriceDetails = []; bookingDetails = []; wallet = null; }
     } catch (_) { error = 'डैशबोर्ड लोड नहीं हो सका। इंटरनेट जाँचकर Refresh करें।'; }
     finally { if (mounted) setState(() => loading = false); }
   }
@@ -154,6 +156,50 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
     'completed' => 'काम पूरा',
     _ => status ?? 'स्थिति उपलब्ध नहीं',
   };
+
+  Future<void> respondToOffer(Map<String, dynamic> offer, String response) async {
+    final accept = response == 'accepted';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(accept ? 'बुकिंग ऑफर स्वीकार करें?' : 'बुकिंग ऑफर मना करें?'),
+        content: Text(accept
+          ? 'स्वीकार करते ही यह बुकिंग आपके नाम नियुक्त हो जाएगी। दूसरे इलेक्ट्रिशियन के ऑफर बंद हो जाएँगे।'
+          : 'यह ऑफर आपकी सूची से हट जाएगा।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('वापस')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(accept ? 'स्वीकार करें' : 'मना करें')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await client.rpc('srk_respond_to_offer', params: {
+        'p_offer_id': offer['offer_id'], 'p_response': response,
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(accept ? 'बुकिंग आपके नाम नियुक्त हो गई।' : 'ऑफर मना कर दिया गया।')));
+      await load();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ऑफर अपडेट नहीं हुआ। संभव है बुकिंग किसी दूसरे इलेक्ट्रिशियन को मिल गई हो।')));
+      await load();
+    }
+  }
+
+  Future<void> updateWorkStatus(String bookingId, String nextStatus, String label) async {
+    try {
+      await client.rpc('srk_update_booking_work_status', params: {
+        'p_booking_id': bookingId, 'p_status': nextStatus,
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(label)));
+      await load();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('बुकिंग की स्थिति अपडेट नहीं हुई। पहले ग्राहक की कोटेशन मंजूरी जाँचें।')));
+    }
+  }
 
   Future<void> openQuoteForm(Map<String, dynamic> booking) async {
     final serviceController = TextEditingController();
@@ -252,6 +298,36 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
               const SizedBox(width: 8),
               Expanded(child: _Metric(label: 'मना किए', value: count('declined').toString())),
             ]),
+            Text('नए बुकिंग ऑफर', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            if (offerDetails.where((o) => o['offer_status'] == 'offered').isEmpty)
+              const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('अभी कोई नया बुकिंग ऑफर नहीं है। Refresh करके फिर जाँचें।')))
+            else ...offerDetails.where((o) => o['offer_status'] == 'offered').map((offer) => Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: Padding(padding: const EdgeInsets.all(14), child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(offer['service_type']?.toString() ?? 'नई सर्विस बुकिंग', style: Theme.of(context).textTheme.titleMedium),
+                  Text('बुकिंग: ${offer['booking_id'] ?? '—'}'),
+                  Text('क्षेत्र: ${offer['district'] ?? '—'}, ${offer['state'] ?? '—'} • PIN ${offer['pincode'] ?? '—'}'),
+                  Text('तारीख: ${offer['preferred_date'] ?? '—'} • समय: ${offer['preferred_time'] ?? '—'}'),
+                  if ((offer['work_details'] ?? '').toString().isNotEmpty)
+                    Text('काम: ${offer['work_details']}'),
+                  Text('मैच: ${offer['match_level'] == 'pincode' ? 'आपके PIN Code में' : 'जिले के आधार पर'}'),
+                  const SizedBox(height: 10),
+                  Wrap(spacing: 8, children: [
+                    FilledButton.icon(
+                      onPressed: loading ? null : () => respondToOffer(offer, 'accepted'),
+                      icon: const Icon(Icons.check_circle_outline), label: const Text('ऑफर स्वीकार करें'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: loading ? null : () => respondToOffer(offer, 'declined'),
+                      icon: const Icon(Icons.close), label: const Text('मना करें'),
+                    ),
+                  ]),
+                ],
+              )),
+            )),
             if (offerPriceDetails.isEmpty)
               const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('अभी कीमत की जानकारी वाला कोई ऑफर उपलब्ध नहीं है।')))
             else ...offerPriceDetails.map((detail) {
@@ -313,6 +389,21 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                   if (materials != null) Text('सामान: ₹' + materials.toStringAsFixed(2)),
                   if (total != null) Text('कुल कोटेशन: ₹' + total.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)),
                   if ((booking['quote_note'] ?? '').toString().isNotEmpty) Text('नोट: ' + booking['quote_note'].toString()),
+                  if (status == 'assigned')
+                    Align(alignment: Alignment.centerRight, child: OutlinedButton.icon(
+                      onPressed: loading ? null : () => updateWorkStatus(booking['booking_id'].toString(), 'inspection', 'निरीक्षण शुरू हो गया।'),
+                      icon: const Icon(Icons.search), label: const Text('निरीक्षण शुरू करें'),
+                    )),
+                  if (status == 'quote_approved')
+                    Align(alignment: Alignment.centerRight, child: FilledButton.icon(
+                      onPressed: loading ? null : () => updateWorkStatus(booking['booking_id'].toString(), 'in_progress', 'काम शुरू दर्ज हो गया।'),
+                      icon: const Icon(Icons.play_arrow), label: const Text('काम शुरू करें'),
+                    )),
+                  if (status == 'in_progress')
+                    Align(alignment: Alignment.centerRight, child: FilledButton.icon(
+                      onPressed: loading ? null : () => updateWorkStatus(booking['booking_id'].toString(), 'completed', 'काम पूरा दर्ज हो गया।'),
+                      icon: const Icon(Icons.task_alt), label: const Text('काम पूरा करें'),
+                    )),
                   if (canQuote) ...[
                     const SizedBox(height: 12),
                     SizedBox(width: double.infinity, child: FilledButton.icon(
