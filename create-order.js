@@ -35,8 +35,7 @@ exports.handler=async event=>{
     let booking=rows?.[0];if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
     await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "", booking);
     if(String(booking.payment_method||"").toLowerCase()!=="online")return json(409,{success:false,error:"यह बुकिंग नकद भुगतान के लिए चुनी गई है।"});
-     if(String(booking.payment_method||"").toLowerCase()!=="online")return json(409,{success:false,error:"यह बुकिंग नकद भुगतान के लिए चुनी गई है।"});
-       if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
+    if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
     if(booking.status!=="completed"||booking.quote_status!=="approved")return json(409,{success:false,error:"भुगतान केवल ग्राहक द्वारा मंजूर कोटेशन का काम पूरा होने के बाद किया जा सकता है।"});
     const approvedTotal=Number(booking.service_charge)+Number(booking.materials_amount);
     if(!Number.isFinite(approvedTotal)||approvedTotal<1||Math.round(approvedTotal*100)!==Math.round(Number(booking.quoted_amount)*100))return json(409,{success:false,error:"मंजूर कोटेशन की कुल राशि और सेवा/सामान का हिसाब मेल नहीं खाता। Admin से जाँच कराएँ।"});
@@ -53,6 +52,7 @@ exports.handler=async event=>{
       booking=rows?.[0];
       if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
       await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "", booking);
+      if(String(booking.payment_method||"").toLowerCase()!=="online")return json(409,{success:false,error:"यह बुकिंग नकद भुगतान के लिए चुनी गई है।"});
       if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
       if(booking.status!=="completed"||booking.quote_status!=="approved")return json(409,{success:false,error:"भुगतान केवल ग्राहक द्वारा मंजूर कोटेशन का काम पूरा होने के बाद किया जा सकता है।"});
       // Recalculate after acquiring the lock so an Admin price change cannot create a stale-amount order.
