@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:srk_mobile_core/srk_mobile_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,7 +92,18 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           .eq('customer_user_id', user.id)
           .order('created_at', ascending: false)
           .limit(50);
-      _bookings = List<Map<String, dynamic>>.from(response);
+      final contacts = <String, String>{};
+      try {
+        final rows = await _client.rpc('srk_customer_get_my_booking_contacts');
+        for (final row in List<Map<String, dynamic>>.from(rows as List)) {
+          final phone = row['electrician_phone']?.toString().trim() ?? '';
+          if (phone.isNotEmpty) contacts[row['booking_id'].toString()] = phone;
+        }
+      } catch (_) {}
+      _bookings = List<Map<String, dynamic>>.from(response).map((booking) {
+        final phone = contacts[booking['id'].toString()];
+        return {...booking, if (phone != null) 'electrician_phone': phone};
+      }).toList();
     } catch (_) {
       _error = 'बुकिंग अभी लोड नहीं हो सकीं। इंटरनेट और लॉगिन जाँचकर फिर कोशिश करें।';
     } finally {
@@ -195,7 +207,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ..._bookings.map(_bookingCard),
             const SizedBox(height: 24),
             const Text(
-              'सुरक्षा: इस ऐप में ग्राहक या इलेक्ट्रिशियन के निजी फोन नंबर सीधे नहीं दिखाए जाते। सुरक्षित masked calling सुविधा अलग से जोड़कर जाँची जाएगी।',
+              'नंबर केवल इलेक्ट्रिशियन द्वारा ऑर्डर स्वीकार किए जाने के बाद दिखता है।',
               style: TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ],
@@ -223,6 +235,21 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             const SizedBox(height: 6),
             Text('बुकिंग: ${booking['id']}'),
             Text('स्थिति: ${_status(status)}'),
+            if ((booking['electrician_phone'] ?? '').toString().trim().isNotEmpty &&
+                ['assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed'].contains(status))
+              Card(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: ListTile(
+                  leading: const Icon(Icons.call),
+                  title: const Text('इलेक्ट्रिशियन का मोबाइल नंबर'),
+                  subtitle: SelectableText(booking['electrician_phone'].toString()),
+                  trailing: IconButton(
+                    tooltip: 'कॉल करें',
+                    icon: const Icon(Icons.call_outlined),
+                    onPressed: () => _callPhone(booking['electrician_phone'].toString()),
+                  ),
+                ),
+              ),
             Text('इलाका: ${booking['district'] ?? ''}, ${booking['state'] ?? ''} • PIN ${booking['pincode'] ?? ''}'),
             Text('तारीख: ${booking['preferred_date'] ?? '—'} • समय: ${booking['preferred_time'] ?? '—'}'),
             if (booking['customer_suggested_amount'] != null)
@@ -265,6 +292,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       ),
     );
   }
+}
+
+Future<void> _callPhone(String raw) async {
+  final number = raw.trim();
+  if (number.isEmpty) return;
+  await launchUrl(Uri(scheme: 'tel', path: number));
 }
 
 /// Uses the existing rate-limited Netlify booking endpoint. The service-role
