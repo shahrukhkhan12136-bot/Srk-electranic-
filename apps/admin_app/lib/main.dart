@@ -348,14 +348,23 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> with SingleTi
         await _client.auth.signOut();
         throw StateError('Admin अनुमति नहीं मिली। दोबारा लॉगिन करें।');
       }
-      final r = await Future.wait([
-        _client.from('service_bookings').select('id,created_at,customer_name,state,district,pincode,address,service_type,preferred_date,preferred_time,work_details,status,assigned_electrician_id,quoted_amount,payment_status,service_charge,materials_amount,quote_status').order('created_at', ascending: false).limit(100),
-        _client.from('electrician_applications').select('id,created_at,full_name,state,district,pincode,skills,experience_years,about,verification_status,active').order('created_at', ascending: false).limit(100),
-        _client.rpc('srk_admin_list_electrician_verification_documents', params: {'p_limit': 200}),
-      ]);
-      _bookings = (r[0] as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
-      _applications = (r[1] as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
-      _documents = (r[2] as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
+      final bookingsResult = await _client
+          .from('service_bookings')
+          .select('id,created_at,customer_name,state,district,pincode,address,service_type,preferred_date,preferred_time,work_details,status,assigned_electrician_id,quoted_amount,payment_status,service_charge,materials_amount,quote_status')
+          .order('created_at', ascending: false)
+          .limit(100);
+      final applicationsResult = await _client
+          .from('electrician_applications')
+          .select('id,created_at,full_name,state,district,pincode,skills,experience_years,about,verification_status,active')
+          .order('created_at', ascending: false)
+          .limit(100);
+      final documentsResult = await _client.rpc(
+        'srk_admin_list_electrician_verification_documents',
+        params: {'p_limit': 200},
+      );
+      _bookings = (bookingsResult as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
+      _applications = (applicationsResult as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
+      _documents = (documentsResult as List).map((x) => Map<String,dynamic>.from(x as Map)).toList();
     } catch(e) { _error = e is StateError ? e.message : 'डेटा लोड नहीं हुआ। Admin अनुमति और नेटवर्क जाँचें।'; }
     finally { if (mounted) setState(() => _loading = false); }
   }
