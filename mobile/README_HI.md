@@ -35,3 +35,19 @@ APK के लिए `flutter build apk --release`; Play Store bundle के ल
 - Admin को dashboard से पहले `is_srk_admin()` RPC से verify किया जाता है; client-side email allowlist पर भरोसा नहीं है।
 - Direct phone-number calling अभी नहीं जोड़ी गई है; masked calling provider और OTP-verified registered-device flow अलग से पूरा/टेस्ट होगा।
 - नई price/counter-offer migration केवल GitHub feature branch में draft है; production database पर apply नहीं की गई। इस migration के बिना नए API/App code को deploy नहीं करना है। कोई production deploy या live payment action नहीं किया गया है।
+
+## GitHub Actions में सुरक्षित मोबाइल Backend Configuration
+
+नए APK को वास्तविक SRK backend से जोड़ने के लिए GitHub repository में ये तीन values configure करना अनिवार्य है। इन्हें source code या workflow log में hard-code/print न करें।
+
+GitHub repository खोलें → **Settings → Secrets and variables → Actions**:
+
+1. **Variables** में `SUPABASE_URL` नाम बनाएँ और value रखें: `https://gnqhoaqatmoiwwhgzkgm.supabase.co`
+2. **Variables** में `SRK_API_BASE_URL` नाम बनाएँ और value रखें: `https://srk-electronic-india.netlify.app`
+3. **Secrets** में `SUPABASE_ANON_KEY` नाम बनाएँ और मुख्य Supabase project की सक्रिय **legacy anon public key** रखें। केवल public anon/publishable key इस्तेमाल करें; `service_role`, secret API key, Razorpay secret या webhook secret कभी नहीं।
+
+Workflow अब configuration की मौजूदगी जाँचेगा और तीनों ऐप में `SUPABASE_URL`, `SUPABASE_ANON_KEY` तथा `SRK_API_BASE_URL` compile-time dart-defines के रूप में देगा। कोई value अनुपस्थित या HTTPS validation fail हुई तो APK build रोक दिया जाएगा। Key और URL logs में print नहीं होंगे।
+
+**महत्वपूर्ण:** पिछला CI build (Run #4) बिना इन dart-defines के बना था। इसलिए वे APK केवल compile/build proof हैं; उन्हें backend login या वास्तविक बुकिंग टेस्ट के लिए इस्तेमाल न करें। GitHub में ऊपर की तीन values सेट करने के बाद नया सफल CI build आने पर ही नया configured APK डाउनलोड करें।
+
+इन configured APKs का परीक्षण पहले test accounts और नियंत्रित test bookings से करें। Customer price/counter-offer migration अभी केवल feature branch में है और किसी Supabase database पर लागू नहीं हुई है; उस नई सुविधा का end-to-end test migration की अलग सुरक्षित समीक्षा और isolated test के बाद ही होगा। Production database या Netlify deployment इस चरण में न करें।
