@@ -19,9 +19,19 @@ function serviceHeaders() {
 async function patchRefund(id, patch) {
   const url = new URL("/rest/v1/srk_razorpay_refunds", SUPABASE_URL);
   url.searchParams.set("id", "eq." + id);
+  // Processed and failed are terminal states; delayed API responses must not overwrite webhook results.
+  if (patch.status) url.searchParams.set("status", "not.in.(processed,failed)");
   const response = await fetch(url, { method: "PATCH", headers: { ...serviceHeaders(), Prefer: "return=representation" }, body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }) });
   if (!response.ok) throw new Error("Refund record update failed");
-  return response.json();
+  const rows = await response.json();
+  if (Array.isArray(rows) && rows.length) return rows[0];
+  const currentUrl = new URL("/rest/v1/srk_razorpay_refunds", SUPABASE_URL);
+  currentUrl.searchParams.set("id", "eq." + id);
+  currentUrl.searchParams.set("select", "id,status,booking_id,payment_id,refund_id,amount_paise,previous_payout_note");
+  const currentResponse = await fetch(currentUrl, { headers: serviceHeaders() });
+  if (!currentResponse.ok) throw new Error("Refund state recheck failed");
+  const currentRows = await currentResponse.json();
+  return Array.isArray(currentRows) ? currentRows[0] : null;
 }
 async function patchBookingRefunded(bookingId, paymentId) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
@@ -84,7 +94,9 @@ exports.handler = async (event) => {
     }
     if (row.status === "processed") return json(200, { success: true, status: "processed", already_processed: true, refund_record_id: row.refund_record_id });
 
-    await patchRefund(row.refund_record_id, { status: "processing", last_error: null });
+    const beforeProvider = await patchRefund(row.refund_record_id, { status: "processing", last_error: null });
+    if (beforeProvider?.status === "processed") return json(200, { success: true, status: "processed", already_processed: true, refund_record_id: row.refund_record_id });
+    if (beforeProvider?.status === "failed") return json(409, { success: false, status: "failed", message: "Previous refund failed; manual reconciliation is required before another attempt." });
     const requestBody = { amount: Number(row.amount_paise), receipt: "srk_" + row.refund_record_id.replace(/-/g, "").slice(0, 32), notes: { booking_id: bookingId, refund_record_id: row.refund_record_id } };
     let providerResponse, provider;
     try {
@@ -111,24 +123,25 @@ exports.handler = async (event) => {
     }
 
     const status = provider.status === "processed" ? "processed" : provider.status === "failed" ? "failed" : "processing";
-    await patchRefund(row.refund_record_id, {
+    const finalRecord = await patchRefund(row.refund_record_id, {
       refund_id: provider.id,
       provider_status: provider.status,
       status,
       processed_at: status === "processed" ? new Date().toISOString() : null,
       last_error: status === "failed" ? "Razorpay reported refund failed." : null
     });
-    if (status === "processed") {
+    const finalStatus = finalRecord?.status || status;
+    if (finalStatus === "processed") {
       await patchBookingRefunded(bookingId, row.payment_id);
       await settleRefundedPayout(bookingId);
-    } else if (status === "failed") {
+    } else if (finalStatus === "failed") {
       await restorePendingPayout(bookingId, row.previous_payout_note);
     }
-    return json(status === "processed" ? 200 : status === "failed" ? 409 : 202, {
-      success: status === "processed",
-      status,
+    return json(finalStatus === "processed" ? 200 : finalStatus === "failed" ? 409 : 202, {
+      success: finalStatus === "processed",
+      status: finalStatus,
       refund_id: provider.id,
-      message: status === "processed" ? "Razorpay refund processed and reconciled." : status === "failed" ? "Razorpay refund failed; payout hold was released." : "Razorpay refund is processing; webhook will confirm the final state."
+      message: finalStatus === "processed" ? "Razorpay refund processed and reconciled." : finalStatus === "failed" ? "Razorpay refund failed; payout hold was released." : "Razorpay refund is processing; webhook will confirm the final state."
     });
   } catch (error) {
     console.error("Refund endpoint failed:", error?.name || "UnknownError");
