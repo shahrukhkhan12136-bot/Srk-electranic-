@@ -57,6 +57,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _bookings = [];
+  List<Map<String, dynamic>> _complaints = [];
 
   @override
   void initState() {
@@ -100,6 +101,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           if (phone.isNotEmpty) contacts[row['booking_id'].toString()] = phone;
         }
       } catch (_) {}
+      try {
+        final complaintRows = await _client.rpc('srk_customer_list_booking_complaints');
+        _complaints = List<Map<String, dynamic>>.from(complaintRows as List);
+      } catch (_) { _complaints = []; }
       _bookings = List<Map<String, dynamic>>.from(response).map((booking) {
         final phone = contacts[booking['id'].toString()];
         return {...booking, if (phone != null) 'electrician_phone': phone};
@@ -147,6 +152,77 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         const SnackBar(content: Text('जवाब सेव नहीं हुआ। कृपया दोबारा कोशिश करें।')),
       );
     }
+  }
+
+  Future<void> _cancelBooking(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('बुकिंग रद्द करें?'),
+        content: const Text('यह विकल्प केवल तब उपलब्ध है जब इलेक्ट्रिशियन नियुक्त नहीं हुआ है।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('वापस')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('बुकिंग रद्द करें')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _client.rpc('srk_customer_cancel_my_booking', params: {'p_booking_id': id});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('बुकिंग रद्द कर दी गई।')));
+      await _loadBookings();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('बुकिंग रद्द नहीं हो सकी। हो सकता है इलेक्ट्रिशियन नियुक्त हो चुका हो।')));
+    }
+  }
+
+  Future<void> _createComplaint(String bookingId) async {
+    final description = TextEditingController();
+    String category = 'काम की गुणवत्ता';
+    String? error;
+    bool saving = false;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setDialogState) => AlertDialog(
+        title: const Text('शिकायत / सहायता'),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          DropdownButtonFormField<String>(
+            value: category,
+            decoration: const InputDecoration(labelText: 'शिकायत का विषय'),
+            items: const ['काम की गुणवत्ता','व्यवहार','कीमत / कोटेशन','समय पर नहीं पहुँचे','भुगतान','अन्य']
+              .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+            onChanged: saving ? null : (v) { if (v != null) setDialogState(() => category = v); },
+          ),
+          const SizedBox(height: 10),
+          TextField(controller: description, maxLines: 4, maxLength: 1000,
+            decoration: const InputDecoration(labelText: 'समस्या का पूरा विवरण')),
+          if (error != null) Text(error!, style: const TextStyle(color: Colors.red)),
+        ])),
+        actions: [
+          TextButton(onPressed: saving ? null : () => Navigator.pop(ctx), child: const Text('रद्द करें')),
+          FilledButton(onPressed: saving ? null : () async {
+            if (description.text.trim().length < 10) {
+              setDialogState(() => error = 'कृपया कम से कम 10 अक्षरों में समस्या बताएँ।');
+              return;
+            }
+            setDialogState(() { saving = true; error = null; });
+            try {
+              await _client.rpc('srk_customer_create_booking_complaint', params: {
+                'p_booking_id': bookingId, 'p_category': category, 'p_description': description.text.trim(),
+              });
+              if (ctx.mounted) Navigator.pop(ctx);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('आपकी शिकायत दर्ज हो गई।')));
+                await _loadBookings();
+              }
+            } catch (_) { setDialogState(() { saving = false; error = 'शिकायत दर्ज नहीं हुई। दोबारा कोशिश करें।'; }); }
+          }, child: Text(saving ? 'भेज रहे हैं…' : 'शिकायत भेजें')),
+        ],
+      )),
+    );
+    description.dispose();
   }
 
   Future<void> _logout() async {
@@ -205,6 +281,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 child: Text('अभी इस OTP लॉगिन से कोई बुकिंग लिंक नहीं है।'),
               )),
             ..._bookings.map(_bookingCard),
+            if (_complaints.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('मेरी शिकायतें', style: Theme.of(context).textTheme.titleLarge),
+              ..._complaints.map((c) => Card(child: ListTile(
+                leading: const Icon(Icons.support_agent),
+                title: Text(c['category']?.toString() ?? 'शिकायत'),
+                subtitle: Text('${c['description'] ?? ''}\\nस्थिति: ${c['status'] ?? '—'}${(c['admin_note'] ?? '').toString().isEmpty ? '' : '\\nAdmin जवाब: ${c['admin_note']}'}'),
+                isThreeLine: true,
+              ))),
+            ],
             const SizedBox(height: 24),
             const Text(
               'नंबर केवल इलेक्ट्रिशियन द्वारा ऑर्डर स्वीकार किए जाने के बाद दिखता है।',
@@ -282,6 +368,16 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 ),
               ],
             ],
+            if (status == 'new' || status == 'confirmed')
+              Align(alignment: Alignment.centerRight, child: TextButton.icon(
+                onPressed: () => _cancelBooking(booking['id'].toString()),
+                icon: const Icon(Icons.cancel_outlined), label: const Text('बुकिंग रद्द करें'),
+              )),
+            if (status != 'cancelled')
+              Align(alignment: Alignment.centerRight, child: TextButton.icon(
+                onPressed: () => _createComplaint(booking['id'].toString()),
+                icon: const Icon(Icons.support_agent), label: const Text('शिकायत / सहायता'),
+              )),
             if (status == 'completed' && booking['payment_status'] != 'paid')
               const Padding(
                 padding: EdgeInsets.only(top: 8),
