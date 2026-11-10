@@ -335,7 +335,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
             Card(child: ListTile(leading: const Icon(Icons.account_balance_wallet_outlined),
               title: Text('वॉलेट बैलेंस: ₹' + ((wallet?['balance'] as num?)?.toStringAsFixed(2) ?? '0.00')),
               subtitle: const Text('बैंक पेआउट अभी बंद है; Route onboarding और live approval बाकी है।'))),
-            const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('सुरक्षा: इस ऐप में ग्राहक का फोन नंबर या direct tel: कॉल लिंक नहीं दिखाया जाता। Masked Calling provider का परीक्षण अलग से होगा।'))),
+            const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('ग्राहक का पूरा मोबाइल नंबर केवल आपकी नियुक्त बुकिंग में दिखता है।'))),
           ],
         ]),
       ),
