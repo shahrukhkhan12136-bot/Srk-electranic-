@@ -68,12 +68,13 @@ async function reconcileRefund(refund, eventName) {
   if (Number(record.amount_paise) !== Number(refund.amount)) return "refund_amount_mismatch";
   if (record.refund_id && record.refund_id !== refund.id) return "refund_id_conflict";
   if (record.status === "processed") return "already_processed";
+  if (record.status === "failed") return eventName === "refund.failed" ? "already_failed" : "terminal_state_conflict";
 
   const mapped = eventName === "refund.processed" ? "processed" :
     eventName === "refund.failed" ? "failed" : "processing";
   const patch = new URL("/rest/v1/srk_razorpay_refunds", SUPABASE_URL);
   patch.searchParams.set("id", "eq." + record.id);
-  patch.searchParams.set("status", "neq.processed");
+  patch.searchParams.set("status", "not.in.(processed,failed)");
   const patchResponse = await fetch(patch, {
     method: "PATCH",
     headers: { ...serviceHeaders(), Prefer: "return=representation" },
@@ -88,7 +89,7 @@ async function reconcileRefund(refund, eventName) {
   });
   if (!patchResponse.ok) throw new Error("Refund status update failed");
   const changed = await patchResponse.json();
-  if (!Array.isArray(changed) || !changed.length) return "already_processed";
+  if (!Array.isArray(changed) || !changed.length) return "terminal_state_conflict";
 
   if (mapped === "processed") {
     const booking = new URL("/rest/v1/service_bookings", SUPABASE_URL);
