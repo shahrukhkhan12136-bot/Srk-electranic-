@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:srk_mobile_core/srk_mobile_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -122,7 +123,16 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         final priceDetailsRows = await client.rpc('srk_get_my_offer_price_details');
         offerPriceDetails = List<Map<String, dynamic>>.from(priceDetailsRows as List);
         final bookingRows = await client.rpc('srk_get_my_assigned_booking_quote_details');
-        bookingDetails = List<Map<String, dynamic>>.from(bookingRows as List);
+        final contactRows = await client.rpc('srk_electrician_get_my_assigned_booking_contacts');
+        final customerPhones = <String, String>{};
+        for (final row in List<Map<String, dynamic>>.from(contactRows as List)) {
+          final phone = row['customer_phone']?.toString().trim() ?? '';
+          if (phone.isNotEmpty) customerPhones[row['booking_id'].toString()] = phone;
+        }
+        bookingDetails = List<Map<String, dynamic>>.from(bookingRows as List).map((booking) {
+          final phone = customerPhones[booking['booking_id'].toString()];
+          return {...booking, if (phone != null) 'customer_phone': phone};
+        }).toList();
         final earningRows = await client.rpc('srk_get_my_earnings');
         earnings = List<Map<String, dynamic>>.from(earningRows as List);
         final walletResult = await client.rpc('srk_get_my_wallet_summary');
@@ -285,6 +295,20 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                   Text('बुकिंग: ' + (booking['booking_id']?.toString() ?? '—')),
                   Text('स्थान: ' + (booking['district']?.toString() ?? '') + ', ' + (booking['state']?.toString() ?? '') + ' • PIN ' + (booking['pincode']?.toString() ?? '')),
                   Text('स्थिति: ' + bookingStatusLabel(status)),
+                  if ((booking['customer_phone'] ?? '').toString().trim().isNotEmpty)
+                    Card(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      child: ListTile(
+                        leading: const Icon(Icons.call),
+                        title: const Text('ग्राहक का मोबाइल नंबर'),
+                        subtitle: SelectableText(booking['customer_phone'].toString()),
+                        trailing: IconButton(
+                          tooltip: 'कॉल करें',
+                          icon: const Icon(Icons.call_outlined),
+                          onPressed: () => _callPhone(booking['customer_phone'].toString()),
+                        ),
+                      ),
+                    ),
                   if (service != null) Text('मेहनताना: ₹' + service.toStringAsFixed(2)),
                   if (materials != null) Text('सामान: ₹' + materials.toStringAsFixed(2)),
                   if (total != null) Text('कुल कोटेशन: ₹' + total.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -317,6 +341,12 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
       ),
     );
   }
+}
+
+Future<void> _callPhone(String raw) async {
+  final number = raw.trim();
+  if (number.isEmpty) return;
+  await launchUrl(Uri(scheme: 'tel', path: number));
 }
 
 class _Metric extends StatelessWidget {
