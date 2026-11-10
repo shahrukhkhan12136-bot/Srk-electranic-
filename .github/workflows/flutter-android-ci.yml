@@ -1,0 +1,103 @@
+name: Flutter Android CI
+
+on:
+  push:
+    branches:
+      - feature/flutter-mobile-apps
+  pull_request:
+    branches:
+      - feature/flutter-mobile-apps
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-build:
+    name: Analyze and build Android apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Show toolchain versions
+        run: |
+          flutter --version
+          dart --version
+          java -version
+
+      - name: Prepare Android project scaffolding
+        shell: bash
+        run: |
+          set -euo pipefail
+          prepare_android() {
+            local app_dir="$1"
+            local project_name="$2"
+            local app_id="$3"
+            local temp_dir
+            temp_dir="$(mktemp -d)"
+            flutter create --platforms=android --org in.srkelectronic --project-name "$project_name" "$temp_dir"
+            mkdir -p "$app_dir"
+            cp -R "$temp_dir/android" "$app_dir/android"
+            rm -rf "$temp_dir"
+            sed -i "s/applicationId = .*/applicationId = \"$app_id\"/" "$app_dir/android/app/build.gradle.kts"
+            sed -i "s/namespace = .*/namespace = \"$app_id\"/" "$app_dir/android/app/build.gradle.kts"
+          }
+          prepare_android apps/customer_app customer in.srkelectronic.customer
+          prepare_android apps/electrician_app electrician in.srkelectronic.electrician
+          prepare_android apps/admin_app admin in.srkelectronic.admin
+
+      - name: Resolve dependencies and analyze shared core
+        run: |
+          cd packages/srk_mobile_core
+          flutter pub get
+          dart analyze
+
+      - name: Analyze and build Customer app
+        run: |
+          cd apps/customer_app
+          flutter pub get
+          dart analyze
+          flutter build apk --debug
+
+      - name: Analyze and build Electrician app
+        run: |
+          cd apps/electrician_app
+          flutter pub get
+          dart analyze
+          flutter build apk --debug
+
+      - name: Analyze and build Admin app
+        run: |
+          cd apps/admin_app
+          flutter pub get
+          dart analyze
+          flutter build apk --debug
+
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: srk-electronic-android-debug-apks
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            apps/customer_app/build/app/outputs/flutter-apk/app-debug.apk
+            apps/electrician_app/build/app/outputs/flutter-apk/app-debug.apk
+            apps/admin_app/build/app/outputs/flutter-apk/app-debug.apk
