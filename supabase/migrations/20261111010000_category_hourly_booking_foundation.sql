@@ -297,7 +297,7 @@ begin
   select * into v_booking
     from public.service_bookings
    where id = p_booking_id and assigned_electrician_id = v_profile_id
-   for share;
+   ;
 
   if not found then raise exception 'Assigned booking not found'; end if;
   if v_booking.status <> 'in_progress' or v_booking.work_started_at is null then
