@@ -128,7 +128,7 @@ class _SrkLoginPageState extends State<SrkLoginPage> {
       final allowed = await _client.rpc('is_srk_admin');
       if (allowed != true) {
         await _client.auth.signOut();
-        throw const AuthException('इस खाते को Admin अनुमति नहीं मिली।');
+        throw StateError('इस खाते को Admin अनुमति नहीं मिली।');
       }
       if (mounted) setState(() => _message = 'Admin सत्यापन सफल हुआ।');
     });
