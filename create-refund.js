@@ -57,6 +57,14 @@ async function restorePendingPayout(bookingId, previousNote) {
   const response = await fetch(url, { method: "PATCH", headers: { ...serviceHeaders(), Prefer: "return=minimal" }, body: JSON.stringify({ payout_status: "pending", payout_note: previousNote || null, updated_at: new Date().toISOString() }) });
   if (!response.ok) throw new Error("Payout restoration failed");
 }
+async function applyTerminalRefundState(record) {
+  if (record?.status === "processed") {
+    await patchBookingRefunded(record.booking_id, record.payment_id);
+    await settleRefundedPayout(record.booking_id);
+  } else if (record?.status === "failed") {
+    await restorePendingPayout(record.booking_id, record.previous_payout_note);
+  }
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { success: false, error: "POST only." });
@@ -112,13 +120,19 @@ exports.handler = async (event) => {
       });
       provider = await providerResponse.json();
     } catch (error) {
-      await patchRefund(row.refund_record_id, { status: "unknown", provider_status: null, last_error: "Provider response not confirmed; retry only with the same idempotency key." });
+      const current = await patchRefund(row.refund_record_id, { status: "unknown", provider_status: null, last_error: "Provider response not confirmed; retry only with the same idempotency key." });
+      await applyTerminalRefundState(current);
+      if (current?.status === "processed") return json(200, { success: true, status: "processed", refund_id: current.refund_id, message: "Razorpay refund was confirmed by webhook and reconciled." });
+      if (current?.status === "failed") return json(409, { success: false, status: "failed", message: "Razorpay reported refund failed; payout hold was released." });
       return json(202, { success: false, status: "unknown", message: "Razorpay response was not confirmed. The same idempotent request can be retried safely." });
     }
 
     if (!providerResponse.ok || !provider?.id || provider.payment_id !== row.payment_id || Number(provider.amount) !== Number(row.amount_paise) || provider.currency !== "INR") {
       const detail = provider?.error?.description || "Razorpay did not confirm the requested refund.";
-      await patchRefund(row.refund_record_id, { status: "unknown", provider_status: provider?.status || null, last_error: String(detail).slice(0, 500) });
+      const current = await patchRefund(row.refund_record_id, { status: "unknown", provider_status: provider?.status || null, last_error: String(detail).slice(0, 500) });
+      await applyTerminalRefundState(current);
+      if (current?.status === "processed") return json(200, { success: true, status: "processed", refund_id: current.refund_id, message: "Razorpay refund was confirmed by webhook and reconciled." });
+      if (current?.status === "failed") return json(409, { success: false, status: "failed", message: "Razorpay reported refund failed; payout hold was released." });
       return json(202, { success: false, status: "unknown", message: "Razorpay response needs reconciliation before it can be marked successful." });
     }
 
@@ -131,12 +145,7 @@ exports.handler = async (event) => {
       last_error: status === "failed" ? "Razorpay reported refund failed." : null
     });
     const finalStatus = finalRecord?.status || status;
-    if (finalStatus === "processed") {
-      await patchBookingRefunded(bookingId, row.payment_id);
-      await settleRefundedPayout(bookingId);
-    } else if (finalStatus === "failed") {
-      await restorePendingPayout(bookingId, row.previous_payout_note);
-    }
+    await applyTerminalRefundState(finalRecord);
     return json(finalStatus === "processed" ? 200 : finalStatus === "failed" ? 409 : 202, {
       success: finalStatus === "processed",
       status: finalStatus,
