@@ -99,7 +99,7 @@ alter table public.service_bookings
   add column if not exists electrician_category text references public.srk_electrician_categories(category_key),
   add column if not exists duration_hours smallint check (duration_hours between 1 and 8),
   add column if not exists scheduled_end_at timestamptz,
-  add column if not exists visit_started_at timestamptz,
+  add column if not exists work_completed_at timestamptz,
   add column if not exists visit_lat double precision,
   add column if not exists visit_lng double precision,
   add column if not exists visit_fee_amount numeric(10,2) check (visit_fee_amount is null or visit_fee_amount >= 0),
