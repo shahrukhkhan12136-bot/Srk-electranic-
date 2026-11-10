@@ -137,6 +137,8 @@ exports.handler = async (event) => {
     const payment_method = clean(body.payment_method, 80) || "नकद (Cash)";
     const quoted_amount = body.quoted_amount == null || body.quoted_amount === ""
       ? null : Number(body.quoted_amount);
+    const customer_suggested_amount = body.customer_suggested_amount == null || body.customer_suggested_amount === ""
+      ? null : Number(body.customer_suggested_amount);
     const customer_user_id = await verifyCustomerSession(
       event.headers?.authorization || event.headers?.Authorization || "",
       phone
@@ -154,6 +156,10 @@ exports.handler = async (event) => {
         (!Number.isFinite(quoted_amount) || quoted_amount <= 0 || quoted_amount > 10000000)) {
       return json(400, { success: false, error: "भुगतान राशि सही नहीं है।" });
     }
+    if (customer_suggested_amount !== null &&
+        (!Number.isFinite(customer_suggested_amount) || customer_suggested_amount <= 0 || customer_suggested_amount > 10000000)) {
+      return json(400, { success: false, error: "आपकी सुझाई हुई कीमत सही नहीं है। ₹1 से ₹1,00,00,000 के बीच राशि भरें।" });
+    }
 
     const inserted = await supabase("service_bookings", {
       method: "POST",
@@ -161,6 +167,8 @@ exports.handler = async (event) => {
         customer_name, phone, state, district, pincode, address, service_type,
         preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
         status: "new", payment_status: "unpaid",
+        customer_suggested_amount,
+        customer_suggested_at: customer_suggested_amount === null ? null : new Date().toISOString(),
         ...(customer_user_id ? { customer_user_id } : {})
       }])
     });
