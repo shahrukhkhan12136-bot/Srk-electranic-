@@ -5,15 +5,16 @@ type OfferRow = { id: string; electrician_id: string; booking_id: string; status
 type WebhookPayload = { type: "INSERT" | "UPDATE"; table: string; schema: string; record: OfferRow; old_record?: OfferRow | null };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
+const serviceKey = secretKeys.default || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const vapidPrivate = Deno.env.get("VAPID_PRIVATE_KEY")!;
 const hookSecret = Deno.env.get("PUSH_WEBHOOK_SECRET")!;
 const db = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-webpush.setVapidDetails("mailto:admin@srkelectronic.in", vapidPublic, vapidPrivate);
+webpush.setVapidDetails(Deno.env.get("VAPID_SUBJECT") || "mailto:ops@example.com", vapidPublic, vapidPrivate);
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST" || !hookSecret || req.headers.get("x-srk-push-secret") !== hookSecret) {
+  if (req.method !== "POST" || !hookSecret || !serviceKey || !vapidPublic || !vapidPrivate || req.headers.get("x-srk-push-secret") !== hookSecret) {
     return new Response("Unauthorized", { status: 401 });
   }
   let payload: WebhookPayload;
