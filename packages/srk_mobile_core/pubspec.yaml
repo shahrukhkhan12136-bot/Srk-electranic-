@@ -9,5 +9,6 @@ dependencies:
     sdk: flutter
   supabase_flutter: ^2.10.0
 
+flutter:
   assets:
     - assets/founder.webp
