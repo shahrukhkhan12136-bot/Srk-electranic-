@@ -329,7 +329,7 @@ begin
     'estimated_labour_amount',
       case
         when v_booking.electrician_category is not null and v_booking.duration_hours is not null
-          then round(v_base_amount * v_elapsed_seconds / (v_booking.duration_hours * 3600.0), 2)
+          then round(v_base_amount * ceil(v_elapsed_seconds / 60.0) / (v_booking.duration_hours * 60.0), 2)
         else round(v_base_amount, 2)
       end
   );
@@ -399,7 +399,7 @@ begin
       end if;
 
       v_actual_labour := round(
-        v_base_amount * v_elapsed_seconds / (v_booking.duration_hours * 3600.0), 2
+        v_base_amount * v_actual_minutes / (v_booking.duration_hours * 60.0), 2
       );
     else
       -- Legacy bookings without category/duration retain their already-approved quote.
