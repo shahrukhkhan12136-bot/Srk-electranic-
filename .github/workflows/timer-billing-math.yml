@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - "supabase/migrations/202611110001_timer_billing_materials_foundation.sql"
+      - "supabase/migrations/202611110002_timer_billing_integrity_extensions.sql"
       - "supabase/tests/timer_billing_math.sql"
       - "supabase/tests/timer_billing_foundation_harness.sql"
       - "supabase/tests/timer_billing_foundation_assertions.sql"
+      - "supabase/tests/timer_billing_integrity_extensions_assertions.sql"
       - ".github/workflows/timer-billing-math.yml"
   push:
     branches:
@@ -69,6 +71,27 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/tests/timer_billing_foundation_assertions.sql
+      - name: Apply integrity extension migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110002_timer_billing_integrity_extensions.sql
+      - name: Verify integrity extension migration is replay-safe
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110002_timer_billing_integrity_extensions.sql
+      - name: Verify material revisions, payable snapshots and webhook idempotency
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/tests/timer_billing_integrity_extensions_assertions.sql
       - name: Run rollback-only billing arithmetic tests
         env:
           PGPASSWORD: postgres
