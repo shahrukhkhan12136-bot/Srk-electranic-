@@ -56,11 +56,11 @@ jobs:
           for (const file of ['index.html', 'electrician.html', 'admin.html', 'apps/mobile-poc/customer/www/index.html']) {
             const html = fs.readFileSync(file, 'utf8');
             const scripts = [];
-            for (const chunk of html.split(/<script\\b/i).slice(1)) {
+            for (const chunk of html.split(/<script\b/i).slice(1)) {
               const tagEnd = chunk.indexOf('>');
               const close = chunk.toLowerCase().indexOf('</script>');
               if (tagEnd < 0 || close < 0) continue;
-              if (/\\bsrc\\s*=/i.test(chunk.slice(0, tagEnd))) continue;
+              if (/\bsrc\s*=/i.test(chunk.slice(0, tagEnd))) continue;
               scripts.push(chunk.slice(tagEnd + 1, close));
             }
             scripts.forEach((source, index) => new vm.Script(source, { filename: file + '#inline-' + index }));
