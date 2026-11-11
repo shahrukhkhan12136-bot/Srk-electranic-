@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b5b45"><title>नई बुकिंग — SRK ELECTRONIC TEST</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Noto Sans Devanagari",sans-serif;color:#17231f;background:#f2f6f4}body{margin:0;padding:18px;max-width:560px;margin:auto}main{background:white;border-radius:18px;padding:20px;box-shadow:0 8px 28px #1232}h1{color:#0b5b45;font-size:23px;margin:8px 0}.tag{display:inline-block;background:#fff2cc;color:#765300;border-radius:18px;padding:5px 10px;font-size:12px;font-weight:700}.muted{color:#607168;font-size:14px;line-height:1.5}.card{background:#f3f7f5;border-radius:12px;padding:14px;margin:16px 0}.row{margin:10px 0;overflow-wrap:anywhere}.label{color:#607168;font-size:13px}.value{font-weight:700}button{width:100%;padding:14px;border:0;border-radius:11px;margin-top:11px;background:#087b50;color:white;font-weight:700;font-size:16px}button.reject{background:#64748b}button:disabled{opacity:.5}#status{white-space:pre-wrap;margin-top:14px;background:#eef4f0;padding:12px;border-radius:10px;font-size:14px}
+</style></head><body><main><span class="tag">केवल TEST • Production से अलग</span><h1>आपके लिए नया काम आया है</h1><p class="muted">यह पेज नोटिफिकेशन से सीधे संबंधित TEST ऑफर खोलता है। कृपया ऑफर देखकर जवाब दें।</p><section class="card"><div class="row"><div class="label">ऑफर नंबर</div><div class="value" id="offer">जाँच हो रही है…</div></div><div class="row"><div class="label">बुकिंग संदर्भ</div><div class="value" id="booking">—</div></div><div class="row"><div class="label">मैच</div><div class="value" id="match">—</div></div><div class="row"><div class="label">स्थिति</div><div class="value" id="offerStatus">—</div></div></section><p class="muted">TEST डेटाबेस में अभी ग्राहक का पूरा पता, सेवा और फोन विवरण उपलब्ध नहीं है। यह परीक्षण केवल सही ऑफर खोलने और Accept / Reject जवाब जाँचने के लिए है।</p><button id="accept" disabled>काम स्वीकार करें</button><button id="reject" class="reject" disabled>मना करें</button><div id="status" role="status">लॉगिन सत्र और ऑफर की जाँच हो रही है…</div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+(async()=>{
+const url='https://dvzmarekhstaubyuoeeh.supabase.co';
+const key='sb_publishable_nlmQlMXeW6YSjoN4JRt6rQ_o541dFH0';
+const sb=window.supabase.createClient(url,key);
+const $=id=>document.getElementById(id), say=t=>$('status').textContent=t;
+const offerId=new URLSearchParams(location.search).get('offerId');
+if(!offerId){say('लिंक में ऑफर नंबर नहीं मिला। Push TEST पेज से नया नोटिफिकेशन भेजें।');return;}
+$('offer').textContent=offerId;
+const {data:{session},error:sessionError}=await sb.auth.getSession();
+if(sessionError||!session){say('TEST लॉगिन सत्र नहीं मिला। पहले TEST Push पेज पर लॉगिन करें, फिर नोटिफिकेशन खोलें।');return;}
+const {data,error}=await sb.rpc('srk_test_get_offer',{p_offer_id:offerId});
+if(error){say('ऑफर लोड नहीं हुआ: '+error.message);return;}
+const row=Array.isArray(data)?data[0]:null;
+if(!row){say('यह ऑफर आपके TEST इलेक्ट्रिशियन खाते के लिए उपलब्ध नहीं है।');return;}
+$('booking').textContent=row.booking_id;
+$('match').textContent=row.match_level||'—';
+$('offerStatus').textContent=row.offer_status;
+if(row.offer_status!=='offered'){say('यह ऑफर अब उपलब्ध नहीं है। वर्तमान स्थिति: '+row.offer_status);return;}
+$('accept').disabled=false;$('reject').disabled=false;say('बुकिंग ऑफर खुल गया। नीचे अपना जवाब चुनें।');
+async function respond(response){
+if(!confirm(response==='accepted'?'क्या आप यह काम स्वीकार करते हैं?':'क्या आप यह ऑफर मना करना चाहते हैं?'))return;
+$('accept').disabled=true;$('reject').disabled=true;say('आपका जवाब सुरक्षित किया जा रहा है…');
+const {data:result,error:err}=await sb.rpc('srk_test_respond_to_offer',{p_offer_id:offerId,p_response:response});
+if(err){$('accept').disabled=false;$('reject').disabled=false;say('जवाब सेव नहीं हुआ: '+err.message);return;}
+$('offerStatus').textContent=response;say(response==='accepted'?'सफल! TEST ऑफर स्वीकार हो गया।':'सफल! TEST ऑफर मना कर दिया गया।');
+}
+$('accept').addEventListener('click',()=>respond('accepted'));
+$('reject').addEventListener('click',()=>respond('declined'));
+})().catch(e=>document.getElementById('status').textContent='त्रुटि: '+e.message);
+</script></body></html>
