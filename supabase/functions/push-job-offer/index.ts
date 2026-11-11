@@ -52,11 +52,27 @@ Deno.serve(async (req) => {
 
   let rawPayload: unknown;
   try {
-    const bodyText = await req.text();
-    if (new TextEncoder().encode(bodyText).byteLength > 32_768) {
-      return new Response("Payload too large", { status: 413 });
+    if (!req.body) return new Response("Missing request body", { status: 400 });
+    const reader = req.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > 32_768) {
+        await reader.cancel();
+        return new Response("Payload too large", { status: 413 });
+      }
+      chunks.push(value);
     }
-    rawPayload = JSON.parse(bodyText);
+    const bodyBytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bodyBytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    rawPayload = JSON.parse(new TextDecoder().decode(bodyBytes));
   } catch {
     return new Response("Invalid JSON", { status: 400 });
   }
