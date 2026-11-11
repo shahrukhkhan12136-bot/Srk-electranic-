@@ -97,6 +97,34 @@ JavaScript syntax checks also passed for `create-booking.js` and the inline cust
 6. The legacy `srk_update_booking_work_status` caller and authenticated EXECUTE grant must not be retired until all UI callers are migrated and tested.
 7. The legacy `payment_method` NOT NULL default must not be changed in isolation. Final payment cutover must coordinate customer/electrician/Admin displays, Razorpay order creation, verification, webhook reconciliation, cash receipt evidence and legacy quote paths.
 
+### Customer/electrician timer UI and calculation precision update (2026-11-11)
+
+Feature Branch now wires the customer booking history to `srk_get_booking_timer_bill_details` and the exact customer decision RPCs:
+
+- Customer can see the timer state and pending start/stop requests.
+- Customer approval/rejection calls `srk_customer_decide_timer_start(uuid,text)` or `srk_customer_decide_timer_stop(uuid,text)`.
+- The customer UI suppresses legacy quote and payment controls for bookings with a server-saved service category.
+- The final labour bill is displayed separately; materials remain described as a separate itemized proposal requiring a future material-approval UI.
+
+The electrician dashboard now:
+
+- Loads scoped timer/bill details only for offers that already expose the assigned customer's details.
+- Provides arrival recording, timer-start request, and timer-stop request controls using the exact RPC argument names and fresh idempotency keys.
+- Hides the legacy inspection/quote/work-status/cash controls when a booking has a category snapshot, preserving those controls only for legacy bookings.
+
+A review of the timer SQL found premature rounding: labour was being rounded to two decimal places before the final payable calculation. Feature Branch now retains the labour calculation at `numeric(20,10)` precision in `srk_final_bills`; the payable snapshot remains the later paise-rounded payment boundary. Migration `202611110006_preserve_labour_calculation_precision.sql` supports an additive type upgrade. The timer lifecycle assertion now checks the retained ten-decimal calculation.
+
+The CI workflow now includes both customer and electrician HTML files in its path filters and parses their inline JavaScript with Node before running the disposable PostgreSQL tests. This change is committed but its new CI run still needs to finish and be inspected. JavaScript syntax was also checked locally through the GitHub file content parser after the UI edits.
+
+### Remaining release gates (updated)
+
+- Admin timer/bill/material/cancellation review and override UI is not wired.
+- Material revision create/submit/customer approval RPCs and UI are not complete.
+- Cancellation request/Admin decision RPCs are not complete.
+- Payable snapshot creation and the Razorpay order/signature/webhook cutover remain incomplete; do not expose payment for timer bookings yet.
+- Cash receipt confirmation must be bound to the immutable payable snapshot; the legacy cash confirmation is not the timer-billing flow.
+- Full browser-level preview testing and an isolated shared TEST validation remain outstanding; no shared TEST or Production DB changes have been made.
+
 ## Safety boundary
 
 All code and SQL changes described above are Feature Branch only. No shared TEST/Production migration, database write, live payment, or deployment was performed. Do not deploy until the remaining payment, timer UI, material, cancellation, audit, and full integration tests are complete and the user explicitly approves.
