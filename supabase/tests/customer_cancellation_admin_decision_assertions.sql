@@ -25,6 +25,11 @@ begin
     (v_no_arrival_booking,v_customer,'assigned',null),
     (v_rejected_booking,v_customer,'assigned',clock_timestamp());
 
+  -- Production guard resets inserts to new/unassigned; simulate accepted
+  -- assignment before the cancellation policy checks.
+  update public.service_bookings set status='assigned'
+  where id in (v_arrived_booking,v_no_arrival_booking,v_rejected_booking);
+
   perform set_config('request.jwt.claim.sub',v_outsider::text,true);
   begin
     perform public.srk_customer_request_booking_cancellation(v_arrived_booking,'Not my booking');
