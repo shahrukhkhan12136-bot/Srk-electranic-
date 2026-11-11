@@ -27,8 +27,17 @@ $privileges$;
 insert into auth.users(id,phone) values
  ('51000000-0000-4000-8000-000000000001','9000000001'),
  ('51000000-0000-4000-8000-000000000002','9000000002'),
- ('51000000-0000-4000-8000-000000000005','9000000005')
+ ('51000000-0000-4000-8000-000000000005','9000000005'),
+ ('51000000-0000-4000-8000-000000000006','9000000006')
 on conflict(id) do nothing;
+
+create or replace function public.is_srk_admin()
+returns boolean
+language sql
+stable
+as $function$
+ select auth.uid() = '51000000-0000-4000-8000-000000000006'::uuid
+$function$;
 
 insert into public.electrician_profiles(
  id,user_id,auth_user_id,active,verification_status,display_name,phone,state,district,pincode,skills
@@ -107,8 +116,44 @@ begin
  if coalesce((v_result->>'success')::boolean,false) is not true then
   raise exception 'authenticated electrician arrival RPC failed: %',v_result;
  end if;
+
+ -- Legacy quote and work-status RPCs must reject timer-category bookings.
+ begin
+  perform public.srk_submit_booking_quote(v_booking,500,100,'must be blocked');
+  raise exception 'legacy quote RPC unexpectedly accepted a timer booking';
+ exception when sqlstate '55000' then
+  if sqlerrm <> 'TIMER_BOOKING_REQUIRES_TIMER_BILLING' then raise; end if;
+ end;
+ begin
+  perform public.srk_update_booking_work_status(v_booking,'inspection');
+  raise exception 'legacy work-status RPC unexpectedly accepted a timer booking';
+ exception when sqlstate '55000' then
+  if sqlerrm <> 'TIMER_BOOKING_REQUIRES_TIMER_BILLING' then raise; end if;
+ end;
+ if (select count(*) from public.srk_get_my_assigned_booking_quote_details()) <> 0 then
+  raise exception 'legacy quote-details RPC exposed a timer booking';
+ end if;
+
  v_result := public.srk_electrician_request_timer_start(v_booking,'role-start-key-0001');
  v_start := (v_result->>'decision_id')::uuid;
+
+ perform set_config('request.jwt.claim.sub','51000000-0000-4000-8000-000000000001',true);
+ perform set_config('request.jwt.claims','{"phone":"9000000001"}',true);
+ begin
+  perform public.srk_customer_respond_booking_quote(v_booking,'approved');
+  raise exception 'legacy customer quote response unexpectedly accepted a timer booking';
+ exception when sqlstate '55000' then
+  if sqlerrm <> 'TIMER_BOOKING_REQUIRES_TIMER_BILLING' then raise; end if;
+ end;
+
+ perform set_config('request.jwt.claim.sub','51000000-0000-4000-8000-000000000006',true);
+ perform set_config('request.jwt.claims','{"phone":"9000000006"}',true);
+ begin
+  perform public.srk_admin_update_booking(v_booking,null,'Role test address','Balrampur','Uttar Pradesh','271861');
+  raise exception 'legacy Admin update unexpectedly accepted a timer booking';
+ exception when sqlstate '55000' then
+  if sqlerrm <> 'TIMER_BOOKING_REQUIRES_TIMER_ADMIN_WORKFLOW' then raise; end if;
+ end;
 
  perform set_config('request.jwt.claim.sub','51000000-0000-4000-8000-000000000001',true);
  perform set_config('request.jwt.claims','{"phone":"9000000001"}',true);
@@ -147,5 +192,40 @@ begin
 end
 $electrician_timer$;
 reset role;
+
+-- A paid/completed timer booking without an immutable payable snapshot must
+-- not create a legacy quote-based payout.
+do $payout_guard$
+declare
+ v_booking uuid := '54000000-0000-4000-8000-000000000001';
+begin
+ insert into public.service_bookings(
+  id,customer_name,phone,state,district,pincode,address,service_type,
+  customer_user_id,service_category_code,service_category_label,hourly_rate_snapshot
+ ) values (
+  v_booking,'Missing snapshot timer fixture','9000000001','Uttar Pradesh',
+  'Balrampur','271861','Fixture address','Electrical repair',
+  '51000000-0000-4000-8000-000000000001','helper','Helper',112.375
+ );
+ begin
+  update public.service_bookings
+  set assigned_electrician_id='52000000-0000-4000-8000-000000000003',
+      status='completed',quote_status='approved',service_charge=10,
+      materials_amount=10,amount_paid=20,payment_status='paid',
+      payment_verified_at=pg_catalog.clock_timestamp(),
+      razorpay_payment_id='pay_missing_snapshot'
+  where id=v_booking;
+  raise exception 'timer booking without payable snapshot unexpectedly became paid';
+ exception when sqlstate '55000' then
+  if sqlerrm <> 'TIMER_PAYABLE_SNAPSHOT_REQUIRED' then raise; end if;
+ end;
+ if (select payment_status from public.service_bookings where id=v_booking) <> 'unpaid' then
+  raise exception 'missing-snapshot timer booking was not kept unpaid';
+ end if;
+ if exists (select 1 from public.srk_electrician_payouts where booking_id=v_booking) then
+  raise exception 'legacy payout was created for timer booking without snapshot';
+ end if;
+end
+$payout_guard$;
 
 rollback;
