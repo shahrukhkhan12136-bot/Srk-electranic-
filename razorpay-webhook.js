@@ -79,7 +79,86 @@ async function updateBooking(orderId, payment) {
   return "update_not_applied";
 }
 
-async function updateSnapshotOrder(orderId, payment) {
+async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
+  const endpoint = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
+  endpoint.searchParams.set("on_conflict", "provider,provider_event_id");
+  const insert = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json",
+      Prefer: "resolution=ignore-duplicates,return=representation"
+    },
+    body: JSON.stringify([{
+      provider: "razorpay",
+      provider_event_id: eventMeta.eventId,
+      payload_sha256: eventMeta.payloadHash,
+      event_type: eventMeta.eventType,
+      provider_order_id: orderId,
+      provider_payment_id: paymentId,
+      processing_status: "received"
+    }])
+  });
+  if (!insert.ok) throw new Error("Webhook event ledger insert failed");
+  const inserted = await insert.json();
+  let row = Array.isArray(inserted) ? inserted[0] : null;
+  if (!row) {
+    const lookup = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
+    lookup.searchParams.set("provider", "eq.razorpay");
+    lookup.searchParams.set("provider_event_id", "eq." + eventMeta.eventId);
+    lookup.searchParams.set("select", "id,processing_status,attempt_count");
+    lookup.searchParams.set("limit", "1");
+    const existingResponse = await fetch(lookup, {
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
+    });
+    if (!existingResponse.ok) throw new Error("Webhook event ledger lookup failed");
+    const rows = await existingResponse.json();
+    row = Array.isArray(rows) ? rows[0] : null;
+  }
+  if (!row) throw new Error("Webhook event ledger row unavailable");
+  if (row.processing_status === "processed") return { id: row.id, processed: true };
+  const patchUrl = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
+  patchUrl.searchParams.set("id", "eq." + row.id);
+  const patch = await fetch(patchUrl, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      processing_status: "processing",
+      attempt_count: Number(row.attempt_count || 0) + 1
+    })
+  });
+  if (!patch.ok) throw new Error("Webhook event ledger claim failed");
+  return { id: row.id, processed: false };
+}
+
+async function finishSnapshotWebhookEvent(eventId, status, outcomeCode, detail) {
+  const endpoint = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
+  endpoint.searchParams.set("id", "eq." + eventId);
+  const response = await fetch(endpoint, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      processing_status: status,
+      outcome_code: outcomeCode,
+      outcome_detail: String(detail || "").slice(0, 300),
+      processed_at: status === "processed" || status === "rejected" ? new Date().toISOString() : null
+    })
+  });
+  if (!response.ok) throw new Error("Webhook event ledger status update failed");
+}
+
+async function updateSnapshotOrder(orderId, payment, eventMeta) {
   const lookup = new URL("/rest/v1/srk_razorpay_orders", SUPABASE_URL);
   lookup.searchParams.set("provider_order_id", "eq." + orderId);
   lookup.searchParams.set("select", "provider_order_id,provider_payment_id,amount_paise,currency,status");
@@ -92,14 +171,22 @@ async function updateSnapshotOrder(orderId, payment) {
   const order = Array.isArray(rows) ? rows[0] : null;
   if (!order) return null;
 
+  const eventRow = await startSnapshotWebhookEvent(eventMeta, orderId, payment.id);
+  if (eventRow.processed) return "snapshot_event_already_processed";
   if (Number(order.amount_paise) !== payment.amount || order.currency !== payment.currency) {
+    await finishSnapshotWebhookEvent(eventRow.id, "rejected", "snapshot_amount_mismatch", "Captured payment amount/currency does not match the bound snapshot order.");
     return "snapshot_amount_mismatch";
   }
   if (order.status === "paid" && order.provider_payment_id === payment.id) {
+    await finishSnapshotWebhookEvent(eventRow.id, "processed", "snapshot_already_processed", "Payment was already reconciled.");
     return "snapshot_already_processed";
   }
-  if (order.status !== "created") return "snapshot_order_not_ready";
+  if (order.status !== "created") {
+    await finishSnapshotWebhookEvent(eventRow.id, "rejected", "snapshot_order_not_ready", "Order is not in created state.");
+    return "snapshot_order_not_ready";
+  }
 
+  try {
   const rpcResponse = await fetch(new URL("/rest/v1/rpc/srk_reconcile_razorpay_snapshot_payment", SUPABASE_URL), {
     method: "POST",
     headers: {
@@ -123,7 +210,16 @@ async function updateSnapshotOrder(orderId, payment) {
     throw error;
   }
   const result = await rpcResponse.json();
-  return result?.success ? "snapshot_reconciled" : "snapshot_not_reconciled";
+  if (result?.success) {
+    await finishSnapshotWebhookEvent(eventRow.id, "processed", result.replayed ? "snapshot_replayed" : "snapshot_reconciled", "Snapshot payment reconciliation completed.");
+    return result.replayed ? "snapshot_already_processed" : "snapshot_reconciled";
+  }
+  await finishSnapshotWebhookEvent(eventRow.id, "retryable_error", "snapshot_not_reconciled", "Reconciliation RPC returned no success.");
+  return "snapshot_not_reconciled";
+  } catch (error) {
+    try { await finishSnapshotWebhookEvent(eventRow.id, "retryable_error", "snapshot_reconcile_error", error.message); } catch (_) {}
+    throw error;
+  }
 }
 
 exports.handler = async (event) => {
@@ -158,9 +254,15 @@ exports.handler = async (event) => {
       return json(400, { success: false, error: "Captured payment details missing." });
     }
 
-    const snapshotResult = await updateSnapshotOrder(payment.order_id, payment);
+    const eventHeader = event.headers?.["x-razorpay-event-id"] || event.headers?.["X-Razorpay-Event-Id"] || "";
+    const eventMeta = {
+      eventId: /^[A-Za-z0-9_:-]{1,160}$/.test(eventHeader) ? eventHeader : "sha256-" + crypto.createHash("sha256").update(rawBody).digest("hex"),
+      payloadHash: crypto.createHash("sha256").update(rawBody).digest("hex"),
+      eventType: String(eventName || "unknown").slice(0, 120)
+    };
+    const snapshotResult = await updateSnapshotOrder(payment.order_id, payment, eventMeta);
     if (snapshotResult !== null) {
-      if (snapshotResult === "snapshot_reconciled" || snapshotResult === "snapshot_already_processed") {
+      if (snapshotResult === "snapshot_reconciled" || snapshotResult === "snapshot_already_processed" || snapshotResult === "snapshot_event_already_processed") {
         return json(200, { success: true, reconciled: true, result: snapshotResult });
       }
       if (snapshotResult === "snapshot_amount_mismatch" || snapshotResult === "snapshot_order_not_ready") {
