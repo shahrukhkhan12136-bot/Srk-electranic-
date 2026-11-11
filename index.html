@@ -399,7 +399,7 @@ async function loadCustomerBookings() {
   if (!session) return;
   box.textContent = 'आपकी बुकिंग लोड हो रही हैं…';
   const { data, error } = await customerSb.from('service_bookings')
-    .select('id,service_type,status,payment_status,final_bill_id,service_category_label,hourly_rate_snapshot,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
+    .select('id,order_number,service_type,status,payment_status,final_bill_id,service_category_label,hourly_rate_snapshot,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
     .eq('customer_user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -440,7 +440,7 @@ async function loadCustomerBookings() {
     const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
     const canCall = contact && /^[0-9]{10,15}$/.test(phone);
     return '<article class="card" style="margin:10px 0;padding:13px">' +
-    '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
+    '<b>ऑर्डर नंबर: ' + customerEsc(row.order_number || 'नंबर उपलब्ध नहीं') + '</b><p>' + customerEsc(row.service_type) + '</p>' +
     (row.service_category_label ? '<p>इलेक्ट्रिशियन श्रेणी: <b>'+customerEsc(row.service_category_label)+'</b> • मेहनताना: ₹'+customerEsc(Number(row.hourly_rate_snapshot||0).toFixed(3))+'/घंटा</p>' : '') +
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + (row.final_bill_id ? customerEsc(row.payment_status) : 'अभी देय नहीं') + '</p>' +
     timerHtml +
