@@ -123,3 +123,12 @@ This audit is a factual implementation map, not a claim of completion. No Produc
 - Current database status values remain the legacy list, including quote statuses. The migration must use a carefully reviewed transition strategy and preserve historical quote status/evidence. Do not remove quote RPCs/grants or status values until all legacy data, screens, functions, triggers, and reporting references are migrated and verified.
 
 No database writes or deployment were performed during this follow-up.
+
+## 8. Booking and electrician profile column verification (2026-11-11)
+
+- The current `electrician_profiles` table has no structured electrician category/rate field. It has free-text/array `skills` and account/approval/location fields only. Therefore category must be an explicit booking selection and a validated booking snapshot; it must not be inferred from `skills`.
+- The current `service_bookings.payment_method` column is NOT NULL with default `'Cash'`. That schema default conflicts with the approved rule that booking creation must not select or imply a payment method. A future additive migration must first audit all consumers, then safely make the field nullable/remove the Cash default while preserving existing historical values.
+- Current `service_bookings` includes `quoted_amount`, `service_charge`, `materials_amount`, `quote_status`, `quote_note`, quote timestamps and `work_started_at`. It does not include the new structured category/rate snapshot, electrician arrival actor/time, timer request/decision state, billable whole minutes, immutable bill record, material line-item approvals, cancellation request/decision ledger or final-bill payment linkage.
+- The payout ledger stores gross service amount, materials amount, platform commission and electrician payable separately. This structure is useful, but the trigger's source-of-truth must change from quote fields to the immutable final bill. Do not alter commission percentage or assume the platform commission applies to materials without a separate approved decision.
+
+No Production writes were made; this section records read-only schema inspection only.
