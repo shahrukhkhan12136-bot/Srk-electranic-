@@ -107,6 +107,16 @@ async function loadBusinessFinanceDashboard(){
  const {data,error}=await sb.rpc('srk_admin_finance_dashboard',{p_period:period,p_anchor_date:anchor});
  if(error){msg.textContent='वित्तीय रिपोर्ट नहीं खुली: '+esc(error.message);if(rowsEl)rowsEl.innerHTML='<tr><td colspan="7">रिपोर्ट उपलब्ध नहीं है।</td></tr>';return;}
  const d=data||{};
+ const requiredFinanceFields=['completed_bookings','paid_completed_bookings','unmatched_paid_completed_bookings','customer_payments','platform_commission','electrician_share','electrician_payout_paid','electrician_payout_pending','total_expenses','estimated_expenses','expense_breakdown','net_profit','projected_net_profit'];
+ const missingFinanceFields=requiredFinanceFields.filter(key=>!Object.prototype.hasOwnProperty.call(d,key));
+ if(missingFinanceFields.length){
+  msg.textContent='वित्तीय रिपोर्ट अभी उपलब्ध नहीं है। आवश्यक database migration 20261111090000 अभी लागू होना बाकी है; गलत शून्य आँकड़े दिखाने से बचने के लिए रिपोर्ट रोकी गई है।';
+  ['financeCompletedBookings','financePaidCompletedBookings','financeCommissionIncome','financeActualExpenses','financeEstimatedExpenses','financeNetProfit','financeProjectedProfit','financeCustomerPayments','financeElectricianShare','financePayoutSummary'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—'});
+  if(rowsEl)rowsEl.innerHTML='<tr><td colspan="7">आवश्यक database migration लागू होने के बाद खर्च रिकॉर्ड दिखेंगे।</td></tr>';
+  const categoryRows=document.getElementById('financeCategoryRows');
+  if(categoryRows)categoryRows.innerHTML='<tr><td colspan="3">वित्तीय रिपोर्ट उपलब्ध नहीं है।</td></tr>';
+  return;
+ }
  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
  set('financeCompletedBookings',Number(d.completed_bookings||0).toLocaleString('en-IN'));
  set('financePaidCompletedBookings',Number(d.paid_completed_bookings||0).toLocaleString('en-IN'));
