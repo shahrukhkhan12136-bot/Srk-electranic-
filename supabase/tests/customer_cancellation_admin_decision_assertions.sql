@@ -3,7 +3,7 @@
 begin;
 
 create or replace function public.is_srk_admin()
-returns boolean language sql stable as $function$ select true $function$;
+returns boolean language sql stable as $function$ select coalesce(current_setting('test.is_srk_admin',true),'off')='on' $function$;
 
 do $test$
 declare
@@ -41,7 +41,16 @@ begin
     raise exception 'duplicate pending request was not replay-safe';
   end if;
 
+  perform set_config('request.jwt.claim.sub',v_outsider::text,true);
+  perform set_config('test.is_srk_admin','off',true);
+  begin
+    perform public.srk_admin_decide_booking_cancellation(v_request,'approved',null);
+    raise exception 'non-admin cancellation decision unexpectedly accepted';
+  exception when insufficient_privilege then null;
+  end;
+
   perform set_config('request.jwt.claim.sub',v_admin::text,true);
+  perform set_config('test.is_srk_admin','on',true);
   v_result:=public.srk_admin_decide_booking_cancellation(v_request,'approved','Verified customer request');
   if (v_result->>'cancellation_fee')::numeric<>99 then
     raise exception 'arrival + customer request + Admin approval must assess exactly INR 99';
