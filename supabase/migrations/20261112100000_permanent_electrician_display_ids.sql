@@ -51,7 +51,10 @@ begin
       'SRK-EL-' ||
       pg_catalog.lpad(
         pg_catalog.nextval('public.electrician_display_id_seq'::pg_catalog.regclass)::text,
-        6,
+        pg_catalog.greatest(
+          6,
+          pg_catalog.length(pg_catalog.currval('public.electrician_display_id_seq'::pg_catalog.regclass)::text)
+        ),
         '0'
       );
   end if;
@@ -71,6 +74,15 @@ before insert or update of verification_status, active, user_id, electrician_dis
 on public.electrician_profiles
 for each row
 execute function public.srk_assign_electrician_display_id();
+
+ -- Backfill only profiles already approved, active, and linked to an Auth account.
+-- The same trigger applies the same issuance rule; inactive/unapproved rows remain blank.
+update public.electrician_profiles
+   set active = active
+ where verification_status = 'approved'
+   and active is true
+   and user_id is not null
+   and electrician_display_id is null;
 
 comment on column public.electrician_profiles.electrician_display_id is
   'Permanent server-issued display ID (SRK-EL-000001 format); not an authentication credential.';
