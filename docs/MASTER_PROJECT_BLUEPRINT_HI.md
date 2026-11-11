@@ -292,3 +292,11 @@ Detailed screen-by-screen UI blueprint has been expanded with repository archite
 - API 26 minimum, proposed application IDs (in.srkelectronic.customer / in.srkelectronic.electrician), FCM and GitHub Actions AAB pipeline are proposals only, pending explicit owner approval.
 - No Firebase project/credentials, app signing, paid service, Production deployment or Play Store release was activated.
 - **Status: planning document expanded; architecture approval, POC, native implementation and device QA remain pending.**
+
+
+
+## 19. Capacitor Customer POC — Owner-approved (2026-11-12)
+
+Owner ने Capacitor feasibility POC को मंजूरी दी। Isolated source added at apps/mobile-poc/customer/ with Capacitor 8.0.0, temporary package ID in.srkelectronic.poc.customer, original founder photo welcome screen, Supabase session restore/getUser verification, and RLS-scoped read-only customer booking summaries filtered by authenticated customer_user_id. It does not send OTP, create bookings, mutate records, process payments, deploy, or apply migrations. GitHub Actions workflow .github/workflows/customer-mobile-poc.yml is configured to generate a debug APK artifact for internal inspection.
+
+Static inline JavaScript syntax and source contract checks passed locally through repository content inspection. CI Gradle build, downloadable APK, valid-session test, and physical-device visual QA remain pending. This is a Customer POC only, not either production Android app; Electrician app remains README-only. No final framework/package ID decision or Play Store release has been made.
