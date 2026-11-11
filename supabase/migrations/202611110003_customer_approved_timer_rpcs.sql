@@ -295,7 +295,7 @@ declare
   v_now timestamptz;
   v_elapsed bigint;
   v_minutes bigint;
-  v_labour numeric(12,2);
+  v_labour numeric(20,10);
   v_bill_id uuid;
 begin
   if v_uid is null then raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000'; end if;
@@ -340,7 +340,7 @@ begin
 
   v_elapsed := greatest(0,ceil(extract(epoch from (v_now-v_booking.timer_started_at)))::bigint);
   v_minutes := case when v_elapsed=0 then 0 else (v_elapsed+59)/60 end;
-  v_labour := round((v_booking.hourly_rate_snapshot::numeric*v_minutes::numeric)/60,2);
+  v_labour := (v_booking.hourly_rate_snapshot::numeric*v_minutes::numeric)/60;
   insert into public.srk_final_bills(
     booking_id,bill_version,category_code,category_label,hourly_rate,
     started_at,stopped_at,elapsed_seconds,billable_minutes,labour_amount,
