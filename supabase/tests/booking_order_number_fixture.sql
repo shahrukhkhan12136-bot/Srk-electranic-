@@ -14,7 +14,7 @@ create table public.service_bookings(
  id uuid primary key default gen_random_uuid(),
  service_type text, state text, district text, pincode text,
  preferred_date date, preferred_time time, work_details text,
- quoted_amount numeric, status text not null default 'new',
+ quoted_amount numeric, order_number text, status text not null default 'new',
  customer_name text, phone text, address text,
  location_lat double precision, location_lng double precision,
  service_charge numeric, materials_amount numeric, quote_status text, quote_note text,
