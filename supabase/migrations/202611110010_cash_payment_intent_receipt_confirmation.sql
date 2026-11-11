@@ -391,6 +391,15 @@ begin
       where ci.booking_id=b.id
       order by ci.selected_at desc limit 1
     ),
+    'razorpay_order',(
+      select jsonb_build_object(
+        'status',ro.status,'amount_paise',ro.amount_paise,
+        'currency',ro.currency,'created_at',ro.created_at
+      )
+      from public.srk_razorpay_orders ro
+      where ro.booking_id=b.id
+      order by ro.created_at desc limit 1
+    ),
     'is_admin_view',v_is_admin
   ) into v_result
   from public.service_bookings b
