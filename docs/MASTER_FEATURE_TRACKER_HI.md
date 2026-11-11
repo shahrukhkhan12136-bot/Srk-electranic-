@@ -161,5 +161,6 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [ ] Formula: approved 8-hour category price × selected integer hours ÷ 8; preserve precision and round only final payable amount to paise using half-up. Examples: Helper 1h ₹112.38, 2h ₹224.75, 8h ₹899.00; Ordinary 1h ₹149.88, 2h ₹299.75, 8h ₹1,199.00.
 - [ ] Server validates duration is an integer from 1 through 8 and recalculates from current approved rate/version; never trust client-submitted total.
 - [ ] Immutable booking snapshot stores category, rate/version, selected duration and Labour total.
-- [ ] Define and test how selected duration interacts with timer/final bill; never silently charge beyond selected duration without an approved rule.
+- [ ] Treat selected 1–8 hours as booking preference/initial duration only—not a timer cap or final-bill cap. Timer continues under the approved timer lifecycle; final Labour bill is based on actual elapsed work time, whether shorter or longer than selected duration.
+- [ ] Show the selected-duration price at booking as the price for the chosen duration; final amount is calculated from actual server timer duration. Do not auto-stop the timer when selected hours expire.
 - [ ] Keep materials separate; no upfront payment. Test responsive/mobile, accessibility, stale/offline/error handling and end-to-end booking.
