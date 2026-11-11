@@ -82,6 +82,7 @@ begin
   v_result := public.srk_customer_decide_material_revision(v_revision,'approved');
   if v_result->>'replayed' <> 'true' then raise exception 'material decision replay was not idempotent'; end if;
 
+  perform set_config('request.jwt.claim.sub',v_electrician::text,true);
   begin
     perform public.srk_electrician_submit_material_revision(
       v_booking,
