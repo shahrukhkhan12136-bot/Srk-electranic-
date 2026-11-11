@@ -66,7 +66,7 @@ begin
 
   select count(distinct electrician_display_id) into v_count
   from public.electrician_profiles where electrician_display_id is not null;
-  if v_count <> 3 then raise exception 'Expected three currently retained distinct IDs after deleting one profile, got %', v_count; end if;
+  if v_count <> 4 then raise exception 'Expected four currently retained distinct IDs after deletion/recreation, got %', v_count; end if;
 
   delete from public.electrician_profiles
    where auth_user_id = '00000000-0000-0000-0000-000000000007';
@@ -74,6 +74,18 @@ begin
   values ('Recreated Fixture','9000000008','Uttar Pradesh','Balrampur','271861','approved',true,'00000000-0000-0000-0000-000000000008');
   if (select electrician_display_id from public.electrician_profiles where auth_user_id = '00000000-0000-0000-0000-000000000008') <> 'SRK-EL-000004' then
     raise exception 'Deleting and recreating a profile must not recycle a previously issued ID';
+  end if;
+
+  insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,user_id)
+  values ('Legacy User Link Fixture','9000000009','Uttar Pradesh','Balrampur','271861','approved',true,'00000000-0000-0000-0000-000000000009');
+  if (select electrician_display_id from public.electrician_profiles where user_id = '00000000-0000-0000-0000-000000000009') <> 'SRK-EL-000005' then
+    raise exception 'A single unambiguous legacy user_id link should receive an ID';
+  end if;
+
+  insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,auth_user_id)
+  values ('Duplicate Auth Link Fixture','9000000010','Uttar Pradesh','Balrampur','271861','approved',true,'00000000-0000-0000-0000-000000000009');
+  if (select electrician_display_id from public.electrician_profiles where phone = '9000000010') is not null then
+    raise exception 'A duplicate Auth identity across profile link columns must not receive an ID';
   end if;
 
   if has_sequence_privilege('anon', 'public.electrician_display_id_seq', 'USAGE')
