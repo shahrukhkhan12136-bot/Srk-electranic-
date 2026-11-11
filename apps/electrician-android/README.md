@@ -92,4 +92,4 @@ The Electrician ID/Profile card should show:
 
 Changing an electrician's approved category does not change their ID number. ID number alone is never an authentication credential.
 
-**Status: PROPOSED FORMAT / OWNER CONFIRMATION PENDING / NOT IMPLEMENTED.**
+**Status: FORMAT APPROVED BY OWNER / IMPLEMENTATION & TESTING PENDING.**
