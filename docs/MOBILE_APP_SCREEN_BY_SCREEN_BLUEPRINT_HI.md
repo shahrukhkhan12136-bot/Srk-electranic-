@@ -251,10 +251,107 @@
 
 No framework or app ID is selected here. Native project files must not be generated until these decisions are reviewed.
 
-## 10. Release Guardrails / Status
+
+## 11. Architecture Decision Record — प्रस्ताव और निर्णय की स्थिति
+
+**महत्वपूर्ण:** नीचे दिए गए विकल्प repository inspection पर आधारित engineering recommendations हैं; owner की अंतिम मंजूरी के बिना इन्हें चुना हुआ framework, app ID या release configuration न मानें।
+
+### 11.1 मौजूदा repository से मिले तथ्य
+- मुख्य web client plain HTML/CSS/JavaScript है; package.json में अभी केवल Razorpay server SDK dependency है, कोई React/Flutter/Capacitor/Android build setup नहीं।
+- Root में Customer-facing index.html, Electrician electrician.html, Admin admin.html, manifest.webmanifest और sw.js मौजूद हैं।
+- apps/customer-android/ और apps/electrician-android/ में अभी केवल README हैं; native project, Gradle wrapper, Android manifest, source screens या build workflow नहीं हैं।
+- Backend Supabase Auth/DB/RLS/RPC पर आधारित है; server-side payment functions अलग हैं। Mobile client को privileged server secrets कभी नहीं मिलने चाहिए।
+- Existing Service Worker एक web/PWA cache है; उसे Android native app का offline/security implementation न समझें।
+
+### 11.2 Framework विकल्प और अनुशंसा
+| विकल्प | लाभ | लागत/जोखिम | स्थिति |
+|---|---|---|---|
+| Capacitor + HTML/CSS/JS | मौजूदा web stack/UI का अधिक reuse; दो Android shells; कम language/tooling बदलाव; native plugins उपलब्ध | मौजूदा pages को dedicated app navigation में refactor करना होगा; native feel/performance/plugins की device QA जरूरी | पहला practical विकल्प — owner approval बाकी |
+| Flutter | मजबूत native-feeling UI, polished motion/accessibility, shared Dart components | मौजूदा HTML UI reuse सीमित; नई client implementation और Dart expertise/build pipeline चाहिए; web और mobile UI दो जगह maintain होंगे | वैकल्पिक |
+| Kotlin + Jetpack Compose | Android-native UX और platform integration | दो अलग app modules/clients; मौजूदा web UI reuse कम; Android-specific maintenance | वैकल्पिक |
+
+**प्रस्ताव:** पहले Capacitor का छोटा proof-of-concept बनाकर एक Splash + एक authenticated read-only dashboard screen पर navigation, rendering, session restore और responsive performance जांचें। POC केवल Feature Branch/local/internal test में; कोई Production deployment या paid activation नहीं। यदि native feel, performance या required plugin behavior acceptance test में fail हो, तब Flutter/Kotlin पर निर्णय दोबारा खोलें। POC बनने से पहले framework final नहीं माना जाएगा।
+
+### 11.3 Android OS और device support — प्रस्ताव
+- प्रारंभिक minimum: Android 8.0 (API 26) प्रस्तावित, final नहीं।
+- Target/compile SDK: release के समय Google Play की उस समय लागू target API requirement के अनुसार latest supported stable version; अभी hard-code न करें।
+- Test matrix: Android 8/9 baseline compatibility (यदि API 26 चुना जाए), Android 11/12, Android 13+ notification permission, और current Android release; कम-से-कम एक low-memory device, एक mid-range device, एक बड़े display और 360dp छोटे viewport.
+- Responsive acceptance widths: 360dp, 393dp, 432dp; छोटे height, gesture navigation, cutout, landscape (जहाँ समर्थित), font scale 1.0/1.3/1.5.
+- Hindi glyphs/matras, system font scaling, TalkBack, contrast, focus order और 48dp touch targets अनिवार्य।
+
+### 11.4 Application IDs और app identity — प्रस्ताव
+- Customer: in.srkelectronic.customer
+- Electrician: in.srkelectronic.electrician
+- Display names: SRK ELECTRONIC Customer और SRK ELECTRONIC Electrician.
+- ये केवल प्रस्ताव हैं। Domain ownership, Play Console availability, signing, package collision और owner approval के बाद ही स्थायी रूप से सेट करें। App publish होने के बाद application ID बदलना migration/republication जैसा जोखिम रखता है।
+- दो अलग apps, दो अलग application IDs, अलग notification/deep-link routing; Admin/Staff Android app नहीं बनेगा।
+
+### 11.5 Push Notification Architecture — प्रस्ताव
+- Push provider: Firebase Cloud Messaging (FCM) candidate; project creation/configuration, sender identity और credentials owner approval के बाद।
+- Server event → authenticated server-side dispatcher → FCM → device; client स्वयं offer/booking notification का trusted source नहीं।
+- In-app Notifications Inbox database से पढ़े; push केवल alert/deep-link trigger है, source of truth नहीं।
+- Android 13+ notification permission context समझाकर मांगी जाए; deny होने पर app functionality और in-app inbox चलें।
+- Push payload में phone, पूरा address, payment secrets, OTP, Aadhaar या अन्य संवेदनशील data न भेजें। Generic text + opaque event/reference ID पर्याप्त।
+- Deep link खोलते समय session, role, booking ownership/assignment और current status server पर दोबारा verify हों। Logout/account switch पर पुराने account के notifications/cache isolate हों।
+- Duplicate/reordered push, token rotation, uninstall/reinstall, permission denied, offline device और expired session test हों। FCM delivery को guaranteed/instant न मानें।
+
+### 11.6 Offline और local storage boundaries — प्रस्ताव
+- Offline में केवल app shell, logo/assets, non-sensitive help/policy content और explicitly approved non-sensitive reference data cache करें।
+- Booking create/accept/decline, timer start/stop, arrival, materials approval, final bill, payment, payout या category/ID change offline execute न हों। Network/server confirmation तक action pending/error दिखे; client-side success fabricate न हो।
+- Customer/electrician PII, phone, full address, wallet/earnings, payment details या sensitive booking data को shared/public cache में न रखें। यदि कोई limited private cache आवश्यक हो तो per-account encrypted storage, expiry, logout wipe और threat review के बाद ही।
+- Auth tokens केवल platform-secure storage plugin/keystore-backed storage में; plain preferences, logs, screenshots या web localStorage में long-lived secrets नहीं।
+- Network वापस आने पर safe read refresh; financial/state-changing requests blind auto-replay नहीं। Server idempotency और explicit retry confirmation अनिवार्य।
+
+### 11.7 Build, signing और release pipeline — प्रस्ताव
+1. GitHub Feature Branch पर source; pull request review और required CI.
+2. CI: lint/static checks, unit tests, dependency/license scan, secret scan, Android build, artifact checksum.
+3. Debug build local/internal QA; release keystore केवल owner-controlled secure custody में। Keystore/password CI logs/repository/chat में कभी नहीं।
+4. Internal testing track में signed AAB; tester feedback, crash-free smoke test, permissions/privacy/data-safety declarations और rollback plan.
+5. Production rollout केवल अलग explicit owner approval के बाद। Play Console, signing, release और paid services की कोई खरीद/activation स्वतः नहीं।
+6. Versioning: अलग Customer/Electrician version codes; release notes और backend compatibility matrix.
+
+### 11.8 Screen action contract — सभी critical screens के लिए
+हर actionable control की implementation specification में ये fields अनिवार्य हों:
+- Screen ID + control ID + Hindi/English visible label.
+- Actor/role और preconditions (login, approval, assignment, current booking state).
+- Read source / mutation RPC or API; request fields और response contract.
+- Server-side validation, authorization/RLS, idempotency key और conflict behavior.
+- Loading, success, empty, offline, timeout, retry, stale-session और permission-denied states.
+- Success के बाद authoritative refresh/navigation; local optimistic UI केवल reversible/non-financial interaction पर।
+- Analytics/logging में PII/OTP/phone/address/financial secret न हो.
+- Accessibility name, focus order, TalkBack announcement, 48dp touch target और destructive-action confirmation.
+
+### 11.9 Screen-specific action inventory supplement
+| Screen IDs | मुख्य controls / actions | अनिवार्य guard |
+|---|---|---|
+| S-01–S-05 | Retry, Continue, Sign in, Request OTP, Verify OTP, Resend, Allow/Not now | OTP throttle/expiry; permission optional; no role switching |
+| C-01–C-03 | New Booking, My Bookings, Change Location, Save Address, Help, Notifications | own profile/address only; server serviceability |
+| C-04–C-07 | Select service/category, choose 1–8 hours, choose date, Review, Submit, View Booking | server rate/version, date-only, idempotency, no upfront payment |
+| C-08–C-11 | Filters, View Details, eligible offer selection (if backend supports), Approve Work Start, Approve Timer Stop | only current authorized booking; server state/arrival evidence |
+| C-12–C-14 | Approve/Reject Material, Review Bill, Choose Cash/Online after bill, View Receipt | materials separately approved; payment verified server-side |
+| C-15–C-17 | Create Complaint, Request Cancellation, Confirm Logout, Privacy/Data Request | ₹99 only with required evidence + Admin approval; no unauthorized refund/fee action |
+| E-01–E-02 | View Profile, Electrician ID, category/status, refresh | own profile only; ID/category server-authoritative |
+| E-03–E-06 | View Offer, Accept, Decline, My Work, Call, Navigate | eligible offer; accepted assignment before contact visibility |
+| E-07–E-09 | Mark Arrival, Wait for Customer Authorization, View Timer | server arrival evidence + customer approval; device clock not trusted |
+| E-10–E-12 | Add Material, Submit Proposal, Mark Complete, View Final Bill | separate itemized materials; no local settlement/override |
+| E-13–E-15 | View Rate Card, Earnings, Wallet, Payout History | show only approved 8-hour net Labour values; never commission/gross Labour |
+| E-16–E-18 | Open Notification, Create Support Ticket, Settings, Logout | authorized deep link; no payout/refund/commission approval privilege |
+
+### 11.10 Owner approval gates — अभी खुले
+- [ ] Framework: Capacitor POC (recommended) / Flutter / Kotlin.
+- [ ] Minimum Android API 26 proposal स्वीकार या संशोधित.
+- [ ] दोनों Application IDs और display names स्वीकार या संशोधित.
+- [ ] FCM candidate और Firebase project/credentials setup की अनुमति.
+- [ ] Offline cache boundary और secure-storage implementation approval.
+- [ ] GitHub Actions internal AAB pipeline तथा release-key custody process approval.
+
+**Blueprint completion status:** Screen inventory, navigation, security, business rules, action inventory, edge states और QA matrix documented. Architecture recommendations documented but owner approval pending. Native apps, POC, device tests और release artifacts अभी बने नहीं हैं।
+
+
+## 12. Release Guardrails / Status
 - Exactly two Android apps; Admin/Staff remain secure web dashboards.
 - No Production migration/deployment, paid provider activation or Play Store publication under this blueprint.
 - Reference mockup data is never treated as live data.
 - Backend remains authoritative for identity, pricing, booking, timer, category, ID and settlement.
 - Android workspaces remain README-only; no native app/build is claimed.
-- **Status:** Screen inventory and interaction contracts documented. Framework choice, visual prototype, native implementation, backend integration, device QA and release remain pending.
+- **Status:** Screen inventory, navigation, action inventory, security/business contracts, architecture options/recommendation, proposed SDK/package IDs, push/offline plan, build/release plan and QA matrix documented. Owner architecture approvals, POC, native implementation, backend integration, device QA and release remain pending.
