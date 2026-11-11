@@ -15,6 +15,8 @@ on:
       - "supabase/tests/timer_billing_integrity_extensions_assertions.sql"
       - "supabase/tests/customer_approved_timer_rpcs_assertions.sql"
       - "supabase/tests/server_authoritative_booking_creation_assertions.sql"
+      - "index.html"
+      - "electrician.html"
       - ".github/workflows/timer-billing-math.yml"
   push:
     branches:
@@ -56,6 +58,18 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+      - name: Check customer and electrician inline JavaScript syntax
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const vm = require('vm');
+          for (const file of ['index.html', 'electrician.html']) {
+            const html = fs.readFileSync(file, 'utf8');
+            const scripts = [...html.matchAll(/<script\\b(?![^>]*\\bsrc=)[^>]*>([\\s\\S]*?)<\\/script>/gi)];
+            scripts.forEach((match, index) => new vm.Script(match[1], { filename: file + '#inline-' + index }));
+            console.log(file + ': ' + scripts.length + ' inline script(s) passed syntax check');
+          }
+          NODE
       - name: Create minimal synthetic baseline
         env:
           PGPASSWORD: postgres
