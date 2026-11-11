@@ -127,8 +127,30 @@ create table if not exists public.srk_booking_payable_snapshots (
   created_at timestamptz not null default clock_timestamp(),
   created_by uuid references auth.users(id) on delete set null,
   constraint srk_booking_payable_snapshot_amount_check
-    check (amount_paise = (total_amount * 100)::bigint)
+    check (amount_paise = (total_amount * 100)::bigint),
+  unique (id, booking_id)
 );
+
+-- Composite keys prevent cross-booking/cross-bill references even if a caller
+-- supplies otherwise valid UUIDs from two different customer jobs.
+create unique index if not exists srk_final_bills_id_booking_unique
+  on public.srk_final_bills(id, booking_id);
+do $binding_constraints$
+begin
+  if not exists (select 1 from pg_constraint where conrelid='public.srk_booking_payable_snapshots'::regclass and conname='srk_payable_snapshot_bill_booking_fk') then
+    alter table public.srk_booking_payable_snapshots
+      add constraint srk_payable_snapshot_bill_booking_fk
+      foreign key (bill_id, booking_id)
+      references public.srk_final_bills(id, booking_id) on delete restrict;
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid='public.srk_booking_payable_snapshots'::regclass and conname='srk_payable_snapshot_material_revision_bill_fk') then
+    alter table public.srk_booking_payable_snapshots
+      add constraint srk_payable_snapshot_material_revision_bill_fk
+      foreign key (material_revision_id, bill_id)
+      references public.srk_bill_material_revisions(id, bill_id) on delete restrict;
+  end if;
+end
+$binding_constraints$;
 create unique index if not exists srk_booking_payable_snapshot_binding_unique
   on public.srk_booking_payable_snapshots
     (booking_id, bill_id, bill_version, coalesce(material_revision_id, '00000000-0000-0000-0000-000000000000'::uuid));
@@ -165,7 +187,10 @@ create table if not exists public.srk_cash_receipts (
   confirmed_at timestamptz not null default clock_timestamp(),
   amount_paise bigint not null check (amount_paise >= 0),
   currency text not null default 'INR' check (currency = 'INR'),
-  receipt_note text
+  receipt_note text,
+  constraint srk_cash_receipt_snapshot_booking_fk
+    foreign key (payable_snapshot_id, booking_id)
+    references public.srk_booking_payable_snapshots(id, booking_id) on delete restrict
 );
 
 -- Append-oriented business audit events for state changes not represented by
