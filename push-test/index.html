@@ -46,20 +46,23 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
     return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
   };
-  const offerId = new URLSearchParams(location.search).get('offerId');
+  let offerId = new URLSearchParams(location.search).get('offerId');
   async function loadOffer() {
-    if (!offerId) return;
     enable.hidden = true; logout.hidden = true;
     document.getElementById('offer-view').hidden = false;
     const info=document.getElementById('offer-info'), status=document.getElementById('offer-status');
     const {data:{session}}=await client.auth.getSession();
-    if(!session){info.textContent='यह ऑफर देखने के लिए अपने रजिस्टर्ड TEST इलेक्ट्रिशियन खाते से नीचे लॉगिन करें। लॉगिन के बाद ऑफर अपने आप खुलेगा।';document.getElementById('login').hidden=false;document.getElementById('offer-accept').hidden=true;document.getElementById('offer-reject').hidden=true;return;}
+    if(!session){if(!offerId){document.getElementById('offer-view').hidden=true;return;} info.textContent='यह ऑफर देखने के लिए अपने रजिस्टर्ड TEST इलेक्ट्रिशियन खाते से नीचे लॉगिन करें। लॉगिन के बाद ऑफर अपने आप खुलेगा।';document.getElementById('login').hidden=false;document.getElementById('offer-accept').hidden=true;document.getElementById('offer-reject').hidden=true;return;}
     document.getElementById('login').hidden=true;
     document.getElementById('offer-accept').hidden=false;document.getElementById('offer-reject').hidden=false;
-    const {data,error}=await client.rpc('srk_test_get_offer',{p_offer_id:offerId});
+    let data, error;
+    if (offerId) ({data,error}=await client.rpc('srk_test_get_offer',{p_offer_id:offerId}));
+    else ({data,error}=await client.rpc('srk_test_get_latest_offer'));
+    
     if(error){info.textContent='ऑफर लोड नहीं हुआ: '+error.message;document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
     const row=Array.isArray(data)?data[0]:null;
-    if(!row){info.textContent='यह ऑफर आपके TEST खाते के लिए उपलब्ध नहीं है।';document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
+    if(!row){info.textContent='इस TEST इलेक्ट्रिशियन खाते के लिए अभी कोई सक्रिय ऑफर नहीं मिला।';document.getElementById('offer-view').hidden=true;enable.hidden=false;logout.hidden=false;document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
+    offerId = row.offer_id; if (!new URLSearchParams(location.search).get('offerId')) history.replaceState({}, '', location.pathname+'?offerId='+encodeURIComponent(offerId));
     info.textContent='यह ऑफर आपके इलेक्ट्रिशियन खाते से मिलान करके सुरक्षित रूप से खोला गया है।\nस्थिति: '+row.offer_status+' | मैच: '+(row.match_level||'—');
     if(row.offer_status!=='offered'){status.textContent='यह ऑफर अब उपलब्ध नहीं है।';document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
     async function respond(response){
@@ -90,7 +93,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     if (error) { say('लॉगिन असफल: ' + error.message); return; }
     document.getElementById('password').value = '';
     await refreshSession();
-    if (offerId) await loadOffer();
+    await loadOffer();
   });
   enable.addEventListener('click', async () => {
     try {
@@ -133,7 +136,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     say('TEST अकाउंट लॉगआउट हो गया।');
   });
   refreshSession().catch(error => say('स्थिति जाँच त्रुटि: ' + error.message));
-  if (offerId) loadOffer().catch(error => document.getElementById('offer-status').textContent='त्रुटि: '+error.message);
+  client.auth.getSession().then(({data}) => { if (offerId || data.session) loadOffer(); }).catch(error => say('स्थिति जाँच त्रुटि: '+error.message));
 })();
 </script></body></html>
 <!-- redeploy trigger: 2026-11-11 explicit workflow -->
