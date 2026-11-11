@@ -31,7 +31,9 @@ begin
   where b.id=p_booking_id and b.customer_user_id=v_uid
   for update;
   if not found then raise exception 'CUSTOMER_BOOKING_NOT_FOUND' using errcode='42501'; end if;
-  if v_booking.status in ('cancelled','completed') then
+  if v_booking.status in ('cancelled','completed')
+     or v_booking.timer_state in ('running','start_pending','stop_pending','stopped')
+     or v_booking.final_bill_id is not null then
     raise exception 'BOOKING_NOT_CANCELLABLE' using errcode='55000';
   end if;
 
@@ -84,20 +86,25 @@ begin
   if not coalesce(public.is_srk_admin(),false) then
     raise exception 'ADMIN_ONLY' using errcode='42501';
   end if;
-  if p_request_id is null or p_decision not in ('approved','rejected') then
+  if p_request_id is null or p_decision is null or p_decision not in ('approved','rejected') then
     raise exception 'INVALID_CANCELLATION_DECISION' using errcode='22023';
   end if;
   if length(coalesce(p_admin_note,''))>1000 then
     raise exception 'ADMIN_NOTE_TOO_LONG' using errcode='22023';
   end if;
 
-  select r.* into v_request from public.srk_booking_cancellation_requests r
-  where r.id=p_request_id for update;
+  -- Lock order matches the customer request RPC: booking first, then request.
+  -- This avoids a request-vs-Admin deadlock when both arrive concurrently.
+  select b.* into v_booking
+  from public.service_bookings b
+  join public.srk_booking_cancellation_requests r on r.booking_id=b.id
+  where r.id=p_request_id
+  for update of b;
   if not found then raise exception 'CANCELLATION_REQUEST_NOT_FOUND' using errcode='P0002'; end if;
 
-  select b.* into v_booking from public.service_bookings b
-  where b.id=v_request.booking_id for update;
-  if not found then raise exception 'BOOKING_NOT_FOUND' using errcode='P0002'; end if;
+  select r.* into v_request from public.srk_booking_cancellation_requests r
+  where r.id=p_request_id and r.booking_id=v_booking.id for update;
+  if not found then raise exception 'CANCELLATION_REQUEST_NOT_FOUND' using errcode='P0002'; end if;
 
   if v_request.decision<>'pending' then
     if v_request.decided_by=v_uid and v_request.decision=p_decision then
@@ -105,6 +112,14 @@ begin
         'decision',v_request.decision,'cancellation_fee',v_request.cancellation_fee,'replayed',true);
     end if;
     raise exception 'CANCELLATION_ALREADY_DECIDED' using errcode='55000';
+  end if;
+
+  if p_decision='approved' and (
+       v_booking.status in ('cancelled','completed')
+       or v_booking.timer_state in ('running','start_pending','stop_pending','stopped')
+       or v_booking.final_bill_id is not null
+     ) then
+    raise exception 'BOOKING_NOT_CANCELLABLE' using errcode='55000';
   end if;
 
   v_fee := case
