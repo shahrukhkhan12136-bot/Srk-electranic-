@@ -34,6 +34,26 @@ begin
     raise exception 'Missing unique index for electrician display IDs';
   end if;
 
+  if not (
+    select c.relrowsecurity
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relname = 'electrician_profiles'
+  ) then
+    raise exception 'electrician_profiles must keep RLS enabled';
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'electrician_profiles'
+      and cmd = 'UPDATE'
+      and coalesce(qual, '') ilike '%is_srk_admin%'
+      and coalesce(with_check, '') ilike '%is_srk_admin%'
+  ) then
+    raise exception 'Profile approval/activation must remain Admin-only under RLS';
+  end if;
+
   if not exists (
     select 1 from pg_trigger t
     join pg_class c on c.oid = t.tgrelid
