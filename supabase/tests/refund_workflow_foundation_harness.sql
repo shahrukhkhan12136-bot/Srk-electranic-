@@ -24,11 +24,17 @@ create table public.srk_razorpay_refunds(
 );
 create table public.srk_booking_payable_snapshots(
  id uuid primary key,booking_id uuid not null references public.service_bookings(id),
- total_amount numeric(12,2) not null,amount_paise bigint not null,currency text not null,created_at timestamptz not null default now()
+ total_amount numeric(12,2) not null,amount_paise bigint not null,currency text not null,created_at timestamptz not null default now(),unique(id,booking_id)
 );
 create table public.srk_cash_receipts(
  id uuid primary key,booking_id uuid not null references public.service_bookings(id),
  amount_paise bigint not null,currency text not null default 'INR'
+);
+create table public.srk_cash_receipts(
+ id uuid primary key default gen_random_uuid(),payable_snapshot_id uuid not null unique references public.srk_booking_payable_snapshots(id),
+ booking_id uuid not null references public.service_bookings(id),confirmed_by uuid not null references auth.users(id),
+ confirmed_at timestamptz not null default now(),amount_paise bigint not null,currency text not null default 'INR',receipt_note text,
+ unique(payable_snapshot_id,booking_id)
 );
 create table public.srk_razorpay_payments(
  id uuid primary key default gen_random_uuid(),provider_payment_id text not null,booking_id uuid not null references public.service_bookings(id),
@@ -77,6 +83,8 @@ insert into public.service_bookings(id,customer_user_id,customer_name,phone,paym
 values('20000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000001','Timer Customer','9999999991','paid',now(),1000,'not_submitted',null,null,null,'pay_TIMER123','Online','skilled');
 insert into public.srk_booking_payable_snapshots(id,booking_id,total_amount,amount_paise,currency)
 values('30000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003',1000,100000,'INR');
+insert into public.srk_cash_receipts(payable_snapshot_id,booking_id,confirmed_by,amount_paise,currency,receipt_note)
+values('30000000-0000-4000-8000-000000000003','20000000-0000-4000-8000-000000000003','10000000-0000-4000-8000-000000000003',100000,'INR','Customer approved cash receipt');
 insert into public.srk_razorpay_payments(provider_payment_id,booking_id,snapshot_id,amount_paise,currency)
 values('pay_TIMER123','20000000-0000-4000-8000-000000000003','30000000-0000-4000-8000-000000000003',100000,'INR');
 
