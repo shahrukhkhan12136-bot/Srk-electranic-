@@ -287,6 +287,8 @@ async function loadCustomerBookings() {
     return [row.id, result];
   }));
   const cancellationMap = new Map(cancellationEntries);
+  const complaintResult = await customerSb.rpc('srk_customer_list_booking_complaints');
+  const complaintMap = new Map((complaintResult.data || []).map(item => [item.booking_id, item]));
   box.innerHTML = data.map(row => {
     const contact = callMap.get(row.id);
     const timerResult = timerMap.get(row.id);
@@ -299,6 +301,8 @@ async function loadCustomerBookings() {
     const cancellationHtml = customerCancellationCardHtml(
       row, cancellationResult?.data, timerResult?.data
     );
+    const complaint = complaintMap.get(row.id);
+    const complaintHtml = customerComplaintCardHtml(row.id, complaint, complaintResult.error);
     const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
     const canCall = contact && /^[0-9]{10,15}$/.test(phone);
     return '<article class="card" style="margin:10px 0;padding:13px">' +
@@ -307,6 +311,7 @@ async function loadCustomerBookings() {
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + (row.final_bill_id ? customerEsc(row.payment_status) : 'अभी देय नहीं') + '</p>' +
     timerHtml +
     cancellationHtml +
+    complaintHtml +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
     (!row.service_category_label && row.quote_status && row.quote_status!=='not_submitted' ? '<div class="job"><b>इलेक्ट्रिशियन का कोटेशन</b><p>सर्विस / मेहनताना: ₹'+customerEsc(Number(row.service_charge||0).toFixed(2))+'</p><p>सामान / पार्ट्स: ₹'+customerEsc(Number(row.materials_amount||0).toFixed(2))+'</p><p><b>कुल: ₹'+customerEsc(Number(row.quoted_amount||0).toFixed(2))+'</b></p><p>स्थिति: '+customerEsc(row.quote_status)+'</p>'+(row.quote_note?'<p>'+customerEsc(row.quote_note)+'</p>':'')+(row.quote_status==='pending'&&row.status==='awaiting_quote_approval'?'<button type="button" onclick="customerQuoteResponse(\''+row.id+'\',\'approved\')">कोटेशन मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerQuoteResponse(\''+row.id+'\',\'rejected\')">कोटेशन अस्वीकार करें</button>':'')+'</div>':'') +
     (!row.service_category_label && row.quoted_amount != null ? '<p>कुल तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
@@ -317,6 +322,26 @@ async function loadCustomerBookings() {
     '</article>';
   }).join('');
 }
+
+function customerComplaintCardHtml(bookingId, complaint, loadError) {
+  const labels={new:'नई',in_review:'जाँच जारी',resolved:'हल हो गई',closed:'बंद'};
+  if(loadError) return '<div class="job"><b>शिकायत स्थिति</b><p class="small">अभी लोड नहीं हुई। बुकिंग Refresh करें।</p></div>';
+  if(complaint) return '<div class="job"><b>📩 आपकी शिकायत</b><p>श्रेणी: '+customerEsc(complaint.category)+'</p><p>स्थिति: <b>'+customerEsc(labels[complaint.status]||complaint.status)+'</b></p><p>'+customerEsc(complaint.description)+'</p>'+(complaint.admin_note?'<p><b>Admin का जवाब:</b> '+customerEsc(complaint.admin_note)+'</p>':'')+'<p class="small">दर्ज: '+customerEsc(new Date(complaint.created_at).toLocaleString('hi-IN'))+'</p></div>';
+  return '<div class="job"><b>📩 सहायता / शिकायत दर्ज करें</b><p class="small">इस बुकिंग से जुड़ी समस्या, बिल या सेवा संबंधी शिकायत लिखें। 20 से 2000 अक्षर।</p><label for="complaint-category-'+bookingId+'">शिकायत का प्रकार</label><select id="complaint-category-'+bookingId+'"><option value="service_quality">सेवा की गुणवत्ता</option><option value="electrician_behavior">इलेक्ट्रिशियन का व्यवहार</option><option value="billing_payment">बिल / भुगतान</option><option value="delay_no_show">देरी / इलेक्ट्रिशियन नहीं पहुँचा</option><option value="safety">सुरक्षा संबंधी समस्या</option><option value="other">अन्य</option></select><label for="complaint-description-'+bookingId+'">समस्या का विवरण</label><textarea id="complaint-description-'+bookingId+'" maxlength="2000" minlength="20" placeholder="अपनी समस्या स्पष्ट लिखें (कम से कम 20 अक्षर)"></textarea><button type="button" onclick="customerSubmitBookingComplaint(\''+customerEsc(bookingId)+'\')">शिकायत भेजें</button></div>';
+}
+async function customerSubmitBookingComplaint(bookingId) {
+  const category=document.getElementById('complaint-category-'+bookingId)?.value;
+  const description=document.getElementById('complaint-description-'+bookingId)?.value.trim()||'';
+  if(description.length<20||description.length>2000){alert('शिकायत का विवरण 20 से 2000 अक्षरों में लिखें।');return;}
+  const button=event?.currentTarget;if(button){button.disabled=true;button.textContent='भेजा जा रहा है…';}
+  try{
+    const {data,error}=await customerSb.rpc('srk_customer_create_booking_complaint',{p_booking_id:bookingId,p_category:category,p_description:description});
+    if(error)throw error;
+    alert('आपकी शिकायत दर्ज हो गई। शिकायत संदर्भ: '+data);
+    await loadCustomerBookings();
+  }catch(error){alert('शिकायत दर्ज नहीं हुई: '+(error.message||'कृपया दोबारा कोशिश करें।'));if(button){button.disabled=false;button.textContent='शिकायत भेजें';}}
+}
+
 function customerCancellationCardHtml(row, result, timer) {
   const request = result && !result.error ? result.data : null;
   if (request && request.decision === 'pending') {
