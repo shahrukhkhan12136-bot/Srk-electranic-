@@ -135,6 +135,29 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#3b82f6;box-sh
 .welcome-portrait img{object-fit:cover;object-position:center 16%;transform:scale(1.28);transform-origin:50% 16%;-webkit-mask-image:none;mask-image:none}
 @media(max-width:650px){.welcome-portrait img{transform:scale(1.28);transform-origin:50% 16%}}
 
+
+/* Customer dashboard visual system — Royal Blue / White / Gold */
+#customer-login.panel,#customer-dashboard.panel{position:relative;isolation:isolate;overflow:hidden;border:1px solid #d8e4f5;border-radius:24px;background:linear-gradient(155deg,#fff 0%,#f7faff 70%,#fffaf0 100%);box-shadow:0 18px 48px rgba(7,26,43,.10);padding:clamp(18px,3.5vw,30px)}
+#customer-login.panel:before,#customer-dashboard.panel:before{content:"";position:absolute;z-index:-1;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#0b3b78 0%,#1e63b8 58%,#e2b64d 100%)}
+#customer-login .section-title,#customer-dashboard .section-title{color:#102f59;letter-spacing:-.025em;font-weight:850}
+#customer-login .small,#customer-dashboard .small{color:#53657b;line-height:1.65}
+#customer-login label{display:block;margin:16px 0 7px;color:#18385f;font-size:.93rem;font-weight:750}
+#customer-login input{width:100%;min-height:50px;border:1px solid #cbd8e8;border-radius:13px;background:#fff;padding:12px 14px;color:#132b48;outline:none;transition:border-color .18s,box-shadow .18s}
+#customer-login input:focus{border-color:#2767b4;box-shadow:0 0 0 4px rgba(39,103,180,.13)}
+#customer-login .btn.primary,#customer-dashboard .btn.primary{min-height:46px;border:0;border-radius:13px;background:linear-gradient(135deg,#0b3974,#1f65b6);box-shadow:0 8px 18px rgba(11,57,116,.18);font-weight:800}
+#customer-dashboard .founder-mini{display:flex;align-items:center;gap:14px;margin:16px 0;padding:14px;border:1px solid #e7d7a8;border-radius:17px;background:linear-gradient(110deg,#fffdf6,#f2f7ff)}
+#customer-dashboard .founder-mini img{width:58px;height:68px;flex:0 0 58px;object-fit:cover;object-position:center 16%;border-radius:13px;border:2px solid #e1bd62}
+#customer-dashboard .founder-mini b{display:block;color:#123b70;font-size:1rem;letter-spacing:.02em}
+#customer-dashboard .founder-mini span{display:block;margin-top:4px;color:#65758a;font-size:.78rem;line-height:1.4}
+#customer-dashboard .dashboard-quick-nav{gap:9px!important;margin:18px 0!important;padding:13px!important;border:1px solid #d9e5f5!important;border-radius:18px!important;background:#f3f7fd!important}
+#customer-dashboard .dashboard-quick-nav .btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 14px;border:1px solid #d5e0ef;border-radius:12px;background:#fff;color:#17477f;text-decoration:none;font-size:.88rem;font-weight:750;box-shadow:0 3px 10px rgba(17,48,84,.05);transition:transform .18s,border-color .18s,box-shadow .18s}
+#customer-dashboard .dashboard-quick-nav .btn:hover{transform:translateY(-2px);border-color:#d5b45d;box-shadow:0 8px 16px rgba(17,48,84,.09)}
+#customer-dashboard #customerBookings{display:grid;gap:12px;margin:16px 0}
+#customer-dashboard #customerBookings:empty{display:block;min-height:54px;padding:16px;border:1px dashed #cbd8e8;border-radius:14px;background:#fbfdff}
+#customer-dashboard #customerBookings:empty:after{content:"आपकी बुकिंग की जानकारी यहाँ दिखाई देगी।";color:#718096;font-size:.9rem}
+#customer-dashboard #customerRefresh,#customer-dashboard #customerLogout{min-height:44px;border-radius:12px;font-weight:750}
+@media(max-width:560px){#customer-login.panel,#customer-dashboard.panel{padding:17px;border-radius:19px}#customer-dashboard .dashboard-quick-nav .btn{flex:1 1 calc(50% - 9px);font-size:.82rem;padding:9px 10px}#customer-dashboard .founder-mini{align-items:flex-start}}
+@media(prefers-reduced-motion:reduce){#customer-dashboard .dashboard-quick-nav .btn,#customer-login input{transition:none}}
 </style>
 </head>
 <body>
