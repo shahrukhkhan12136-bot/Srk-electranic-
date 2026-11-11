@@ -1,4 +1,4 @@
-const CACHE='srk-electronic-v5';
+const CACHE='srk-electronic-v6';
 const FILES=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',event=>{
@@ -54,9 +54,24 @@ self.addEventListener('push', event => {
     badge: '/icon.svg',
     tag: data.offerId ? 'srk-offer-' + data.offerId : 'srk-notification',
     renotify: true,
+    silent: false,
+    vibrate: [400, 180, 400, 180, 700, 300, 400],
+    requireInteraction: true,
     data: { url: safeUrl, offerId: data.offerId || null }
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil((async()=>{
+    await self.registration.showNotification(title, options);
+    // If the electrician dashboard is already open, ask it to play its in-page alert tone.
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clients) {
+      try {
+        const url = new URL(client.url);
+        if (url.origin === self.location.origin && url.pathname.endsWith('/electrician.html')) {
+          client.postMessage({ type: 'SRK_NEW_JOB_OFFER', title, body: options.body, offerId: data.offerId || null });
+        }
+      } catch (_) {}
+    }
+  })());
 });
 
 self.addEventListener('notificationclick', event => {
