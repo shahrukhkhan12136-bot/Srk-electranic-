@@ -63,9 +63,7 @@ begin
   if not exists (
     select 1 from pg_proc p
     where p.oid = v_function
-      and coalesce(array_to_string(p.proconfig, ','), '') like '%search_path=%'
-      and coalesce(array_to_string(p.proconfig, ','), '') like '%search_path=%'
-      and array_to_string(p.proconfig, ',') like '%search_path=%'
+      and p.proconfig @> array['search_path=""']
   ) then
     raise exception 'ID trigger function must pin an empty search_path';
   end if;
