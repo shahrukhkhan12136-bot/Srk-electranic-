@@ -13,6 +13,7 @@ declare
   v_revision uuid;
   v_total numeric;
   v_count bigint;
+  v_status text;
 begin
   insert into auth.users(id) values (v_customer),(v_electrician),(v_outsider);
   insert into public.electrician_profiles(id,user_id,active,verification_status)
@@ -30,7 +31,7 @@ begin
     started_at,stopped_at,elapsed_seconds,billable_minutes,labour_amount
   ) values (
     v_bill,v_booking,1,'helper','Helper',112.375,
-    clock_timestamp()-interval '60 seconds',clock_timestamp(),60,1,round(112.375::numeric/60,10)
+    now()-interval '60 seconds',now(),60,1,round(112.375::numeric/60,10)
   );
   update public.service_bookings set final_bill_id=v_bill where id=v_booking;
 
@@ -84,8 +85,8 @@ begin
 
   select count(*) into v_count from public.srk_bill_material_approvals where revision_id=v_revision and decision='approved';
   if v_count <> 1 then raise exception 'customer material approval ledger is not unique'; end if;
-  select status into v_result from public.srk_bill_material_revisions where id=v_revision;
-  if v_result::text <> '"approved"' then raise exception 'material revision status not approved'; end if;
+  select status into v_status from public.srk_bill_material_revisions where id=v_revision;
+  if v_status <> 'approved' then raise exception 'material revision status not approved'; end if;
 end
 $test$;
 rollback;
