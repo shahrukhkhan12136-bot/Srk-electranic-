@@ -196,3 +196,18 @@ Customer booking screen में ग्राहक को **1 से 8 घं�
 - Offline/loading/error/invalid-duration state में stale या अनुमानित price न दिखे; server-validated price unavailable हो तो booking submit रोकें और स्पष्ट संदेश दें।
 
 स्थिति: **REQUIREMENT APPROVED / CUSTOMER UI, SERVER CONTRACT & E2E TEST PENDING**.
+
+
+## 14. Customer Booking — date-only selection (Owner-confirmed: 2026-11-11)
+
+Customer booking form में **केवल तारीख (Date) चुनने का विकल्प** रहेगा। ग्राहक से booking के समय कोई clock-time / समय चुनने को नहीं कहा जाएगा। मौजूदा time-picker/time-slot selection UI हटाया जाएगा।
+
+- Date picker स्पष्ट, mobile-friendly और उपलब्ध/अनुमत booking dates के validation के साथ हो।
+- Booking request में customer-selected service date सुरक्षित हो; customer-selected time field/slot अनिवार्य न हो और UI में time selection न दिखे।
+- Date की validation server-side हो; invalid, past या business rules के अनुसार unavailable date पर booking submit न हो।
+- Date-only booking को किसी मनगढ़ंत/default समय (जैसे 09:00 या 00:00) में silently convert न करें। Backend/API और matching workflow को date-only intent support करना होगा; जहाँ operational scheduling time बाद में तय हो, वह अलग authorized workflow से हो और customer से time चुनवाने की शर्त न बने।
+- Existing timer lifecycle इससे अलग है: काम शुरू होने पर server-authoritative timer चलेगा और final Labour bill actual elapsed work time से बनेगा। 1–8 घंटे का booking selection timer cutoff नहीं है।
+- Date-only booking के लिए timezone/date-boundary, availability, duplicate booking, reschedule/cancellation और legacy time-slot compatibility tests आवश्यक हैं।
+- पुरानी bookings में मौजूद time data को मिटाएँ/बदलें नहीं; केवल नए booking flow में customer time selection हटाएँ।
+
+स्थिति: **REQUIREMENT APPROVED / BOOKING UI, API-DATA CONTRACT & E2E TEST PENDING**.
