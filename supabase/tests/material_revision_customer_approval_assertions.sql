@@ -1,0 +1,91 @@
+-- Material proposal and customer decision assertions.
+-- Disposable PostgreSQL harness only; all fixtures are rolled back.
+begin;
+do $test$
+declare
+  v_customer uuid := '41000000-0000-4000-8000-000000000001';
+  v_electrician uuid := '41000000-0000-4000-8000-000000000002';
+  v_outsider uuid := '41000000-0000-4000-8000-000000000005';
+  v_profile uuid := '41000000-0000-4000-8000-000000000003';
+  v_booking uuid := '41000000-0000-4000-8000-000000000004';
+  v_bill uuid := '41000000-0000-4000-8000-000000000006';
+  v_result jsonb;
+  v_revision uuid;
+  v_total numeric;
+  v_count bigint;
+begin
+  insert into auth.users(id) values (v_customer),(v_electrician),(v_outsider);
+  insert into public.electrician_profiles(id,user_id,active,verification_status)
+  values (v_profile,v_electrician,true,'approved');
+  insert into public.service_bookings(
+    id,customer_user_id,assigned_electrician_id,status,
+    service_category_code,service_category_label,hourly_rate_snapshot,timer_state
+  ) values (
+    v_booking,v_customer,v_profile,'completed','helper','Helper',112.375,'stopped'
+  );
+  insert into public.job_offers(booking_id,electrician_id,status)
+  values (v_booking,v_profile,'accepted');
+  insert into public.srk_final_bills(
+    id,booking_id,bill_version,category_code,category_label,hourly_rate,
+    started_at,stopped_at,elapsed_seconds,billable_minutes,labour_amount
+  ) values (
+    v_bill,v_booking,1,'helper','Helper',112.375,
+    clock_timestamp()-interval '60 seconds',clock_timestamp(),60,1,round(112.375::numeric/60,10)
+  );
+  update public.service_bookings set final_bill_id=v_bill where id=v_booking;
+
+  perform set_config('request.jwt.claim.sub',v_electrician::text,true);
+  v_result := public.srk_electrician_submit_material_revision(
+    v_booking,
+    '[{"description":"Switch","quantity":2,"unit_price":50,"supplied_by":"electrician","receipt_reference":"invoice-001"},{"description":"Customer wire","quantity":1,"unit_price":0,"supplied_by":"customer"}]'::jsonb,
+    'material-key-0001'
+  );
+  v_revision := (v_result->>'revision_id')::uuid;
+  if v_result->>'success' <> 'true' or (v_result->>'electrician_material_total')::numeric <> 100 then
+    raise exception 'material proposal did not total only electrician supplied items: %',v_result;
+  end if;
+
+  v_result := public.srk_electrician_submit_material_revision(
+    v_booking,
+    '[{"description":"Switch","quantity":2,"unit_price":50,"supplied_by":"electrician","receipt_reference":"invoice-001"},{"description":"Customer wire","quantity":1,"unit_price":0,"supplied_by":"customer"}]'::jsonb,
+    'material-key-0001'
+  );
+  if (v_result->>'revision_id')::uuid <> v_revision or v_result->>'replayed' <> 'true' then
+    raise exception 'material proposal retry did not return the original revision';
+  end if;
+
+  select count(*) into v_count from public.srk_bill_material_items where revision_id=v_revision;
+  if v_count <> 2 then raise exception 'material proposal duplicate items detected'; end if;
+  select sum(line_total) into v_total from public.srk_bill_material_items where revision_id=v_revision;
+  if v_total <> 100 then raise exception 'customer supplied material was charged: %',v_total; end if;
+
+  begin
+    perform public.srk_electrician_submit_material_revision(
+      v_booking,
+      '[{"description":"No receipt","quantity":1,"unit_price":10,"supplied_by":"electrician"}]'::jsonb,
+      'material-key-no-receipt'
+    );
+    raise exception 'electrician material without receipt reference unexpectedly accepted';
+  exception when invalid_parameter_value then null;
+  end;
+
+  perform set_config('request.jwt.claim.sub',v_outsider::text,true);
+  begin
+    perform public.srk_customer_decide_material_revision(v_revision,'approved');
+    raise exception 'unrelated user unexpectedly decided material proposal';
+  exception when insufficient_privilege then null;
+  end;
+
+  perform set_config('request.jwt.claim.sub',v_customer::text,true);
+  v_result := public.srk_customer_decide_material_revision(v_revision,'approved');
+  if v_result->>'decision' <> 'approved' then raise exception 'customer material approval failed: %',v_result; end if;
+  v_result := public.srk_customer_decide_material_revision(v_revision,'approved');
+  if v_result->>'replayed' <> 'true' then raise exception 'material decision replay was not idempotent'; end if;
+
+  select count(*) into v_count from public.srk_bill_material_approvals where revision_id=v_revision and decision='approved';
+  if v_count <> 1 then raise exception 'customer material approval ledger is not unique'; end if;
+  select status into v_result from public.srk_bill_material_revisions where id=v_revision;
+  if v_result::text <> '"approved"' then raise exception 'material revision status not approved'; end if;
+end
+$test$;
+rollback;
