@@ -1,0 +1,134 @@
+# SRK ELECTRONIC — Master Feature Tracker & Acceptance Register
+
+इस रजिस्टर में हर फीचर की स्थिति प्रमाण के आधार पर अपडेट होगी। खाली checkbox का अर्थ काम बाकी है। पुराने काम को बिना दोबारा जाँचे COMPLETE न करें।
+
+## Status legend
+- [ ] Not started
+- [~] Scaffold/design only
+- [I] Implemented in branch; runtime tests pending
+- [T] Testing / blocked
+- [V] Verified in Preview/test environment
+- [L] Live verified in Production
+- [!] Blocked / decision or provider required
+
+## A. Customer journey
+- [I] Customer authentication / OTP UI and existing booking access — verify Auth provider and full E2E.
+- [ ] Profile and address management, consent and account recovery.
+- [I] Service catalogue and booking foundation — verify every active service and validation.
+- [I] PIN/district matching and offer broadcast — investigate known PIN inconsistency; negative tests.
+- [T] Electrician bid/quote and customer compare/select flow.
+- [T] Booking state transitions, duplicate prevention and retry/idempotency.
+- [T] Accepted-booking phone visibility, strict booking ownership and privacy.
+- [T] Arrival proof and customer-approved timer.
+- [T] Materials itemization, separate approval and no markup.
+- [T] Final invoice, receipt, Cash and Online flow.
+- [ ] Customer notification preferences, rating/review, complaint UX, cancellation/refund UX.
+- [ ] Data export/deletion and privacy request workflow.
+
+## B. Electrician journey
+- [I] Application, profile, offer inbox and acceptance foundation.
+- [T] Document verification, Admin approval, active-state consistency.
+- [T] Availability, service area and offer matching.
+- [T] Bid/quote, accept/reject/expire and single-winner concurrency.
+- [T] Accepted-booking customer contact visibility.
+- [T] Arrival evidence, timer, materials, completion.
+- [T] Cash receipt confirmation and commission remittance.
+- [T] Online earnings, wallet ledger and payout evidence.
+- [T] Push notification device registration, delivery and deep-link.
+- [ ] Profile update, account recovery, support and data controls.
+
+## C. Admin
+- [I] Existing Admin portal and admin allow-list — verify enrollment, MFA and recovery.
+- [I] Booking/electrician/finance foundations — full permission and reconciliation tests.
+- [ ] Staff account provisioning, deactivation and least-privilege role matrix.
+- [ ] Service/category/rate settings with effective dates, validation, preview and rollback.
+- [ ] Customer/electrician support lookup with safe identity matching.
+- [T] Cancellation decision and ₹99 eligibility evidence; no actual fee collection implemented.
+- [T] Complaint triage, assignment, escalation and resolution SLA.
+- [T] Refund approval vs execution separation; no money movement without authorization.
+- [T] Cash/online reconciliation, commission and payout evidence.
+- [ ] Reports, exports, retention and access audit.
+- [ ] App Update & Maintenance control center.
+- [ ] Backup/restore status and incident controls.
+
+## D. Staff & Customer Support
+- [ ] Staff login, MFA, individual identities and role-based access.
+- [ ] Booking/customer lookup with identity verification and data minimization.
+- [ ] Complaint creation, notes, ownership, status, SLA and escalation.
+- [ ] Cancellation script and eligibility checklist; staff cannot impose/collect fee.
+- [ ] Call-center number, IVR, queues, agent routing and concurrency design.
+- [ ] Consent/privacy and call recording policy; retention and access logs.
+- [ ] Call metadata linkage to customer/booking, where lawful.
+- [ ] Admin oversight and audit; no refund/payout/commission/database privileges.
+
+## E. Payments & finance
+- [I] Razorpay order/payment handlers and webhook code — sandbox E2E pending.
+- [T] Payment signature/capture/webhook replay/idempotency and reconciliation.
+- [T] Razorpay Route setup and transfer state reconciliation; do not claim active split.
+- [T] Cash paid-to-electrician confirmation and SRK commission remittance.
+- [T] Labour-only 15% commission and separate materials accounting.
+- [T] Refund request, Admin approval, provider refund and evidence reconciliation.
+- [T] Immutable ledger, duplicate wallet identity and historical anomalies review.
+- [ ] Invoice numbering, downloadable receipts and applicable tax/legal validation.
+- [ ] Finance period reports and export permissions.
+
+## F. Timer, bill and cancellation
+- [I] Timer/rate/material/cash/cancellation migrations and UI exist in feature branch; Production not cut over.
+- [T] Resolve migration ordering and duplicate migration identities.
+- [T] Build authoritative Production-schema fixture and replay full forward migration twice.
+- [T] Test RLS, triggers, legacy callers and rollback/failure behavior.
+- [T] Verify server timestamps, rounding, pause/retry and concurrent requests.
+- [T] Verify customer stop approval, immutable bill snapshot and paise rounding.
+- [T] Verify materials revisions and separate receipt.
+- [T] Verify ₹99 rule only after customer request + arrival evidence + Admin approval; collection not implemented.
+
+## G. Android apps
+- [ ] Customer Android app project, architecture, package ID and app signing plan.
+- [ ] Electrician Android app project, architecture, package ID and app signing plan.
+- [ ] Secure Supabase Auth session handling; no service-role secrets in app.
+- [ ] Push permissions, token lifecycle, deep links and notification opt-out.
+- [ ] Camera/location permissions only when needed, with consent and graceful denial.
+- [ ] Offline/network failure, crash reporting and accessibility.
+- [ ] Internal testing, device matrix, signed AAB, privacy/data-safety disclosures.
+- [ ] Play Console listing, screenshots, policy declarations and staged release.
+
+## H. Website, PWA and design
+- [I] Customer/Electrician/Admin UI polish and responsive CSS on feature branch.
+- [T] Visual QA on real mobile and desktop browsers.
+- [ ] Staff PWA screens and navigation.
+- [ ] Installability, manifest/icons, offline fallback and service-worker update strategy.
+- [ ] Accessibility, keyboard navigation, Hindi copy review and performance.
+- [ ] Founder image true background cutout asset; current CSS framing is not a cutout.
+
+## I. Security, privacy and operations
+- [I] Public table RLS enabled in current catalog snapshot; policy behavior still requires tests.
+- [T] Full RLS positive/negative matrix for anon/customer/electrician/staff/admin.
+- [ ] Admin MFA, recovery, session timeout, rate limiting and alerting.
+- [ ] Secret inventory, rotation and environment separation.
+- [ ] Privacy notice, consent, data minimization, retention/deletion and incident response.
+- [ ] Backup schedule, restore drill, RPO/RTO and backup access protection.
+- [ ] Logs/metrics/alerts, error monitoring and uptime checks.
+- [ ] Dependency and vulnerability scanning; abuse/rate-limit tests.
+
+## J. Delivery and maintenance
+- [ ] Feature request / bug report intake and prioritization.
+- [ ] Branch, review, CI, Preview and acceptance workflow.
+- [ ] App version registry and release notes.
+- [ ] Admin-configurable setting versioning and rollback.
+- [ ] Production release checklist and owner approval record.
+- [ ] Android staged rollout, crash monitoring and rollback/halt procedure.
+- [ ] Disaster recovery and restore validation.
+
+## K. Final release gates
+- [ ] Every P0/P1 defect resolved or explicitly accepted by owner.
+- [ ] Main Production schema parity and forward migration plan verified.
+- [ ] Auth, RLS and role matrix tests pass.
+- [ ] Customer/Electrician/Admin/Staff E2E flows pass.
+- [ ] Razorpay Test Mode and webhook replay pass; no real-money test.
+- [ ] Backup and rollback tested.
+- [ ] Netlify capacity and environment variables verified.
+- [ ] Android signed builds and policy review complete.
+- [ ] Owner gives explicit approval for one consolidated Production release.
+
+## Current guardrail
+This register is a planning/acceptance scaffold, not a claim that unchecked features have been implemented. Main Production database, live website and Play Store must not be changed as part of documentation scaffolding.
