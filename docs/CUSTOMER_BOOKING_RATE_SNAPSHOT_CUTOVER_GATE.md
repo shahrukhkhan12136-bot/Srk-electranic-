@@ -157,6 +157,26 @@ The workflow adds the migration and SQL assertion file to disposable PostgreSQL 
 
 Latest validation note (2026-11-11): the three dashboard inline-script syntax checks passed locally after the Admin/material UI changes. The updated SQL workflow includes migration 007, replay testing and the material approval assertion file, but a completed GitHub Actions result for this latest change has not yet been confirmed. The Vercel status check currently reports a build-rate-limit/upgrade block; this is a preview build restriction, not a successful deployment. Do not treat it as a production deploy or as evidence that the SQL workflow passed.
 
+### Immutable payable snapshot update (2026-11-11)
+
+Migration `202611110008_customer_payable_snapshot_rpc.sql` adds a customer-owned RPC to create the payable snapshot only after the server-generated final timer bill exists and no material revision is pending.
+
+- The snapshot binds the booking, exact final bill/version, and the latest customer-approved material revision.
+- Only electrician-supplied lines from that approved revision are included. Customer-supplied items remain ₹0 and are excluded from the material total.
+- Labour retains its 10-decimal calculation precision in the snapshot; only the combined labour-plus-material total is rounded half-up to paise.
+- The booking row is locked while the snapshot is created. Repeated customer requests return the same snapshot.
+- Once a snapshot exists, the material submission RPC refuses further revisions for that bill.
+- Customer UI now displays the separate labour/material breakdown and asks the customer to confirm creation of the locked total. The UI does not yet expose Razorpay or Cash payment for this new flow.
+
+CI now applies and replays migration 008 before running the combined material-approval/payable-snapshot assertions. The latest GitHub Actions result still needs confirmation; no shared TEST/Production database changes or deployment have occurred.
+
+### Remaining payment cutover gates
+
+- Add a Razorpay order ledger bound to exactly one payable snapshot and its paise amount.
+- Update order creation, checkout verification and webhook reconciliation to use that snapshot only; old quote-based endpoints must reject new timer-category bookings.
+- Add electrician-confirmed Cash receipt against the same snapshot.
+- Browser-level end-to-end testing, isolated shared TEST validation, and one consolidated Production release remain outstanding.
+
 ## Safety boundary
 
 All code and SQL changes described above are Feature Branch only. No shared TEST/Production migration, database write, live payment, or deployment was performed. Do not deploy until the remaining payment, timer UI, material, cancellation, audit, and full integration tests are complete and the user explicitly approves.
