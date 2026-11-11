@@ -18,10 +18,10 @@ This integration is prepared on branch `feature/production-push-notifications`. 
 6. Configure a Supabase Database Webhook for `public.job_offers` on INSERT and UPDATE, targeting:
    `https://gnqhoaqatmoiwwhgzkgm.supabase.co/functions/v1/push-job-offer`
    Include JSON content type, the project publishable key in the `apikey` header, and the custom header `x-srk-push-secret` with the same strong secret stored in the Edge Function.
-7. Enable/confirm the project's `pg_net` extension (it was not listed among enabled extensions at inspection) and configure the Database Webhook. Confirm webhook calls complete successfully.
-8. Test with an approved, active electrician account on Android Chrome: subscribe, create a real test booking in a controlled test window, verify one notification, tap it, confirm the electrician dashboard opens the matching offer, then accept/reject and verify closure behavior.
-9. Review webhook request/response logs and Edge Function logs. Confirm no duplicate notifications and no notification to inactive/unapproved electricians.
-10. Only after all checks pass, merge this branch and perform the single consolidated Netlify deployment.
+7. Enable the project's `pg_net` extension before creating the Database Webhook; Supabase documents Database Webhooks as asynchronous triggers built on `pg_net`. Confirm webhook calls complete successfully. The webhook payload includes `old_record: null` for INSERT and the previous row in `old_record` for UPDATE, which the function uses to detect a genuine transition out of `offered` and avoid repeat closure alerts.\n8. For this project’s `sb_publishable_...` client key, the Edge Function must remain configured with JWT verification disabled; the platform does not authenticate the new publishable key for Edge Function requests in that mode. The function’s `x-srk-push-secret` comparison is the actual webhook authorization check. Do not treat the publishable `apikey` header as a secret. Keep the custom webhook secret strong and private; if using a Supabase secret API key in webhook headers, follow Supabase guidance to store it in Vault rather than hard-coding it in webhook configuration.
+9. Test with an approved, active electrician account on Android Chrome: subscribe, create a real test booking in a controlled test window, verify one notification, tap it, confirm the electrician dashboard opens the matching offer, then accept/reject and verify closure behavior.
+10. Review webhook request/response logs and Edge Function logs. Confirm no duplicate notifications and no notification to inactive/unapproved electricians.
+11. Only after all checks pass, merge this branch and perform the single consolidated Netlify deployment.
 
 ## Safety notes
 - The current `job_offers` rows are created by the existing `broadcast_new_booking` trigger on `service_bookings`; the push webhook must listen to `job_offers`, not directly to bookings.
