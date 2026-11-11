@@ -52,7 +52,7 @@ create index if not exists srk_payouts_cash_commission_due_idx
 create or replace function public.srk_calculate_booking_commission()
 returns trigger
 language plpgsql
-set search_path = pg_catalog, public, pg_temp
+set search_path = ''
 as $function$
 declare
   v_labour numeric;
@@ -98,7 +98,7 @@ create or replace function public.srk_create_electrician_payable()
 returns trigger
 language plpgsql
 security definer
-set search_path = pg_catalog, public, pg_temp
+set search_path = ''
 as $function$
 declare
   v_snapshot public.srk_booking_payable_snapshots%rowtype;
@@ -260,7 +260,7 @@ create or replace function public.srk_electrician_submit_cash_commission_remitta
 returns jsonb
 language plpgsql
 security definer
-set search_path = pg_catalog, public, auth, pg_temp
+set search_path = ''
 as $function$
 declare
   v_uid uuid := auth.uid();
@@ -306,7 +306,7 @@ create or replace function public.srk_admin_confirm_cash_commission_remittance(
 returns jsonb
 language plpgsql
 security definer
-set search_path = pg_catalog, public, auth, pg_temp
+set search_path = ''
 as $function$
 declare
   v_uid uuid := auth.uid();
@@ -347,7 +347,7 @@ create or replace function public.srk_admin_commission_report()
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $function$
 declare
   v_result jsonb;
