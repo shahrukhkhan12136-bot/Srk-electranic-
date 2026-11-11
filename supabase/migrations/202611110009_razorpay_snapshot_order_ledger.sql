@@ -236,7 +236,7 @@ begin
      or p_provider_payment_id is null or p_provider_payment_id !~ '^pay_[A-Za-z0-9]+$'
      or p_amount_paise is null or p_amount_paise <= 0
      or p_currency is distinct from 'INR'
-     or p_source is null or p_source not in ('verify','webhook') then
+     or p_source is null or p_source not in ('checkout','webhook') then
     raise exception 'INVALID_RAZORPAY_PAYMENT_RECONCILIATION' using errcode='22023';
   end if;
 
