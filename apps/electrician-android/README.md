@@ -93,3 +93,9 @@ The Electrician ID/Profile card should show:
 Changing an electrician's approved category does not change their ID number. ID number alone is never an authentication credential.
 
 **Status: FORMAT APPROVED BY OWNER.** The server-side migration, web Electrician Profile ID display and Admin list/search wiring are committed on the Feature Branch. PostgreSQL 16 Production-shaped fixture, security/behavior checks, 24-way concurrent issuance stress test and web inline-JavaScript syntax checks passed in CI run `43082442370`. The migration is not applied to Production. This Android workspace remains README-only; the native Android ID card/profile screen, app framework/build and device-level testing are still pending.
+
+
+
+## Owner-approved mobile visual direction (2026-11-12)
+
+The three-phone reference image establishes the visual direction for the Electrician Dashboard: Royal Blue / White / Gold, SRK ELECTRONIC branding, own profile and approval state, new job offers with clear accept/decline actions, earnings/work summary cards and accessible bottom navigation. Sample names, location, counts, ratings, earnings and offers in the reference are illustrative only; show only authenticated, authorized live data. Preserve the approved net-Labour-only Rate Card rules above. The Electrician Android app remains unimplemented; this approval does not mean a native app or build exists.
