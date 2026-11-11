@@ -228,6 +228,9 @@ create table if not exists public.srk_final_bill_adjustments (
   decided_by uuid references auth.users(id) on delete restrict,
   decided_at timestamptz,
   unique (bill_id, adjustment_number),
+  constraint srk_final_bill_adjustments_bill_booking_fk
+    foreign key (bill_id, booking_id)
+    references public.srk_final_bills(id, booking_id) on delete restrict,
   constraint srk_final_bill_adjustments_decision_shape_check check (
     (decision = 'pending' and decided_by is null and decided_at is null)
     or (decision in ('approved','rejected') and decided_by is not null and decided_at is not null)
@@ -255,6 +258,87 @@ grant all on public.srk_payment_webhook_events to service_role;
 grant all on public.srk_cash_receipts to service_role;
 grant all on public.srk_booking_audit_events to service_role;
 grant all on public.srk_final_bill_adjustments to service_role;
+
+
+-- Validate that the cash receipt amount equals the exact payable snapshot.
+create or replace function public.srk_validate_cash_receipt_snapshot()
+returns trigger
+language plpgsql
+set search_path = ''
+as $function$
+declare
+  v_amount bigint;
+  v_currency text;
+begin
+  select s.amount_paise, s.currency
+    into v_amount, v_currency
+  from public.srk_booking_payable_snapshots s
+  where s.id = new.payable_snapshot_id
+    and s.booking_id = new.booking_id;
+
+  if not found then
+    raise exception 'PAYABLE_SNAPSHOT_NOT_FOUND' using errcode = '23503';
+  end if;
+  if new.amount_paise <> v_amount or new.currency <> v_currency then
+    raise exception 'CASH_RECEIPT_AMOUNT_MISMATCH' using errcode = '23514';
+  end if;
+  return new;
+end
+$function$;
+
+drop trigger if exists srk_validate_cash_receipt_snapshot_trigger
+  on public.srk_cash_receipts;
+create trigger srk_validate_cash_receipt_snapshot_trigger
+before insert or update of payable_snapshot_id, booking_id, amount_paise, currency
+on public.srk_cash_receipts
+for each row execute function public.srk_validate_cash_receipt_snapshot();
+
+-- Prevent changes to the identity and financial payload of a snapshot. A
+-- future correction must create a new bill/version or an adjustment record.
+create or replace function public.srk_guard_payable_snapshot_financial_fields()
+returns trigger
+language plpgsql
+set search_path = ''
+as $function$
+begin
+  if row(
+    new.booking_id, new.bill_id, new.material_revision_id, new.bill_version,
+    new.labour_amount, new.materials_amount, new.total_amount, new.amount_paise,
+    new.currency, new.calculation_version, new.created_at, new.created_by
+  ) is distinct from row(
+    old.booking_id, old.bill_id, old.material_revision_id, old.bill_version,
+    old.labour_amount, old.materials_amount, old.total_amount, old.amount_paise,
+    old.currency, old.calculation_version, old.created_at, old.created_by
+  ) then
+    raise exception 'PAYABLE_SNAPSHOT_IMMUTABLE' using errcode = '55000';
+  end if;
+  return new;
+end
+$function$;
+
+drop trigger if exists srk_guard_payable_snapshot_financial_fields_trigger
+  on public.srk_booking_payable_snapshots;
+create trigger srk_guard_payable_snapshot_financial_fields_trigger
+before update on public.srk_booking_payable_snapshots
+for each row execute function public.srk_guard_payable_snapshot_financial_fields();
+
+-- Audit events are append-only, including for service_role. Corrections are
+-- represented by a new event rather than rewriting history.
+create or replace function public.srk_reject_booking_audit_mutation()
+returns trigger
+language plpgsql
+set search_path = ''
+as $function$
+begin
+  raise exception 'BOOKING_AUDIT_EVENTS_APPEND_ONLY' using errcode = '55000';
+end
+$function$;
+
+drop trigger if exists srk_booking_audit_events_append_only_trigger
+  on public.srk_booking_audit_events;
+create trigger srk_booking_audit_events_append_only_trigger
+before update or delete on public.srk_booking_audit_events
+for each row execute function public.srk_reject_booking_audit_mutation();
 
 comment on table public.srk_bill_material_revisions is
   'A complete material proposal revision; approvals bind to this exact immutable line set.';
