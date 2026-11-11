@@ -125,6 +125,36 @@ The CI workflow now includes both customer and electrician HTML files in its pat
 - Cash receipt confirmation must be bound to the immutable payable snapshot; the legacy cash confirmation is not the timer-billing flow.
 - Full browser-level preview testing and an isolated shared TEST validation remain outstanding; no shared TEST or Production DB changes have been made.
 
+### Admin audit and separate materials approval update (2026-11-11)
+
+Feature Branch now adds an Admin read-only audit section that uses the ownership-scoped timer/bill RPC to display:
+
+- Category/rate snapshot, arrival, timer state and customer decisions.
+- Final labour-only bill and billable minutes.
+- Material proposal revisions and itemized lines, including supplier and receipt reference.
+- Payable snapshots and cash receipt evidence when those records exist.
+
+The legacy Admin booking editor now refuses to save any booking with a server-saved service category. Its old payment/status update path cannot be used to complete or collect payment for the new timer-based workflow. Legacy booking rows continue using the existing Admin controls.
+
+Migration `202611110007_material_revision_customer_approval_rpcs.sql` adds:
+- An assigned, active, approved electrician-only RPC to submit a separate itemized material proposal after the final labour bill exists.
+- A customer-only RPC to approve or reject the exact pending revision.
+- Idempotent electrician submission keys, one open revision per bill, audit events, and a decision ledger.
+- A mandatory receipt/bill reference for electrician-supplied materials.
+- Customer-supplied items must have ₹0 unit price and ₹0 line total, so they cannot be added to the customer's payable amount.
+
+The electrician panel now provides a multi-line material proposal form after the timer is stopped and the labour bill exists. The customer panel displays each material item and can approve/reject the exact revision. The Admin panel displays the same material history read-only. Material approval does not yet create a payable snapshot or enable payment; that remains a separate server-side payment cutover gate.
+
+The workflow adds the migration and SQL assertion file to disposable PostgreSQL CI and includes the Admin dashboard in JavaScript syntax checks. These latest CI results still need to be inspected before this work can be called verified.
+
+### Remaining release gates (updated)
+
+- Payable snapshot creation must use the final labour bill plus only customer-approved electrician-supplied material lines; customer-supplied materials must remain excluded.
+- Razorpay order creation, payment verification and webhook reconciliation must bind to one immutable payable snapshot.
+- Cash receipt confirmation must be bound to the exact payable snapshot and confirmed by the assigned electrician.
+- Admin cancellation request review and the ₹99 arrival-evidence rule still need their dedicated RPC and UI.
+- Full browser-level preview testing and isolated shared TEST validation remain outstanding; no shared TEST or Production DB changes have been made.
+
 ## Safety boundary
 
 All code and SQL changes described above are Feature Branch only. No shared TEST/Production migration, database write, live payment, or deployment was performed. Do not deploy until the remaining payment, timer UI, material, cancellation, audit, and full integration tests are complete and the user explicitly approves.
