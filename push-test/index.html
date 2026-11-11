@@ -84,7 +84,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     const signedIn = !!data.session;
     enable.disabled = !signedIn;
     logout.disabled = !signedIn;
-    if (signedIn && !offerId) say('लॉगिन सफल। TEST User ID: ' + data.session.user.id + '\nअब Push Notification चालू करें।');
+    if (signedIn && !offerId) say('लॉगिन सफल। अब “मेरे नए ऑफर देखें” दबाएँ।');
   }
   document.getElementById('login').addEventListener('submit', async (event) => {
     event.preventDefault();
