@@ -122,10 +122,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#3b82f6;box-sh
 <header>
  <div class="top"><div class="logo">SRK</div><div><h1>SRK ELECTRONIC</h1><p>Electrical • Wiring • Home Repair</p></div></div>
  <div class="hero"><h2>घर की इलेक्ट्रिकल सर्विस,<br>अब एक ही जगह।</h2><p>वायरिंग, इलेक्ट्रिकल रिपेयर और घर की छोटी-बड़ी मरम्मत के लिए संपर्क करें।</p></div>
- <div class="actions">
-  <a class="btn call" href="tel:9920904161">☎ कॉल करें</a>
-  <a class="btn whatsapp" href="https://wa.me/919920904161?text=Namaste%20SRK%20ELECTRONIC%2C%20mujhe%20service%20chahiye." target="_blank" rel="noopener">WhatsApp</a>
- </div>
 </header>
 <main class="wrap">
  <section class="founder-banner" aria-label="SRK ELECTRONIC founder welcome"><div class="founder-photo"><img src="/assets/founder-shahrukh-khan.webp" alt="SRK ELECTRONIC Founder" width="128" height="171" fetchpriority="high"></div><div class="founder-copy"><span class="founder-kicker">आपका स्वागत है</span><h2>SRK ELECTRONIC</h2><p class="founder-tagline">Smart Service • Better Life</p><p>हर घर तक सुरक्षित और भरोसेमंद इलेक्ट्रिकल सेवा पहुँचाने का हमारा संकल्प।</p><strong>Founder &amp; Director <small>SRK ELECTRONIC</small></strong><div class="founder-pills"><span>⚡ इलेक्ट्रिकल सर्विस</span><span>🏠 होम रिपेयरिंग</span><span>🤝 भरोसेमंद सेवा</span></div><nav class="welcome-panel-links" aria-label="पैनल चुनें"><a href="#customer-login">ग्राहक लॉगिन</a><a href="/electrician.html">इलेक्ट्रिशियन</a><a href="/admin.html">एडमिन</a></nav></div></section>
@@ -226,10 +222,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#3b82f6;box-sh
   <h2 class="section-title" style="margin-top:0">सर्विस क्षेत्र</h2>
   <div class="coverage"><span class="pill">आजमगढ़</span><span class="pill">बलरामपुर</span><span class="pill">मुंबई</span></div>
   <p class="small">ग्राहक भारत के किसी भी राज्य, जिले और PIN Code से अनुरोध भेज सकते हैं। फिलहाल यह nationwide enquiry है—हर इलाके में तुरंत सेवा उपलब्ध होने की गारंटी नहीं है। हमारी टीम पहले उपलब्धता की पुष्टि करेगी।</p>
-  <div class="actions">
-   <a class="btn call" href="tel:9920904161">9920904161 पर कॉल</a>
-   <a class="btn whatsapp" href="https://wa.me/919920904161" target="_blank" rel="noopener">मैसेज करें</a>
-  </div>
  </section>
 </main>
 <footer>© <span id="year"></span> SRK ELECTRONIC</footer>
@@ -705,7 +697,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     await loadCustomerBookings();
     document.getElementById('customer-dashboard').scrollIntoView({behavior:'smooth',block:'start'});
   } catch (err) {
-    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`);
+    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
@@ -719,7 +711,7 @@ document.getElementById('electricianForm').addEventListener('submit', async func
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'आवेदन सेव नहीं हुआ।');
     alert(result.message); window.location.href = whatsapp;
-  } catch (err) { alert(`${err.message}\nआवेदन डेटाबेस में सेव नहीं हुआ है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`); }
+  } catch (err) { alert(`${err.message}\nआवेदन डेटाबेस में सेव नहीं हुआ है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`); }
   finally { button.disabled = false; button.textContent = 'इलेक्ट्रिशियन आवेदन भेजें'; }
 });
 
