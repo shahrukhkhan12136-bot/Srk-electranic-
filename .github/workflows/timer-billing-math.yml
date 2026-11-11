@@ -16,6 +16,7 @@ on:
       - "supabase/tests/material_revision_customer_approval_assertions.sql"
       - "supabase/tests/cash_payment_intent_assertions.sql"
       - "supabase/tests/cash_payment_intent_flow_assertions.sql"
+      - "supabase/tests/cash_payment_intent_flow_assertions.sql"
       - "supabase/tests/timer_billing_math.sql"
       - "supabase/tests/timer_billing_foundation_harness.sql"
       - "supabase/tests/timer_billing_foundation_assertions.sql"
@@ -50,6 +51,7 @@ on:
       - "supabase/migrations/202611110010_cash_payment_intent_receipt_confirmation.sql"
       - "supabase/tests/material_revision_customer_approval_assertions.sql"
       - "supabase/tests/cash_payment_intent_assertions.sql"
+      - "supabase/tests/cash_payment_intent_flow_assertions.sql"
       - "supabase/tests/cash_payment_intent_flow_assertions.sql"
       - "index.html"
       - "admin.html"
@@ -296,6 +298,13 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/tests/cash_payment_intent_assertions.sql
+      - name: Assert customer cash selection and electrician receipt end-to-end
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/tests/cash_payment_intent_flow_assertions.sql
       - name: Test customer cash selection and electrician receipt confirmation
         env:
           PGPASSWORD: postgres
