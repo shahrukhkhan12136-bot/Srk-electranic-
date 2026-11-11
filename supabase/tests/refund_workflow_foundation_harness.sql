@@ -27,8 +27,10 @@ create table public.srk_booking_payable_snapshots(
  total_amount numeric(12,2) not null,amount_paise bigint not null,currency text not null,created_at timestamptz not null default now(),unique(id,booking_id)
 );
 create table public.srk_cash_receipts(
- id uuid primary key,booking_id uuid not null references public.service_bookings(id),
- amount_paise bigint not null,currency text not null default 'INR'
+ id uuid primary key default gen_random_uuid(),payable_snapshot_id uuid not null unique references public.srk_booking_payable_snapshots(id),
+ booking_id uuid not null references public.service_bookings(id),confirmed_by uuid not null references auth.users(id),
+ confirmed_at timestamptz not null default now(),amount_paise bigint not null,currency text not null default 'INR',receipt_note text,
+ unique(payable_snapshot_id,booking_id)
 );
 create table public.srk_razorpay_payments(
  id uuid primary key default gen_random_uuid(),provider_payment_id text not null,booking_id uuid not null references public.service_bookings(id),
