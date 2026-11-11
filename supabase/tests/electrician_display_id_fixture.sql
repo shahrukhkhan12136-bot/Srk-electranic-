@@ -10,7 +10,7 @@ $roles$;
 
 create schema if not exists auth;
 create or replace function auth.uid()
-returns uuid language sql stable as $ select null::uuid $;
+returns uuid language sql stable as $$ select null::uuid $$;
 
 create table public.electrician_profiles (
   id uuid primary key default gen_random_uuid(),
