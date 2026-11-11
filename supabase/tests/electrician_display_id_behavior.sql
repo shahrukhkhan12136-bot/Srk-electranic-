@@ -12,25 +12,25 @@ begin
     raise exception 'Backfill should issue first readable ID, got %', v_id;
   end if;
 
-  insert into public.electrician_profiles (verification_status, active, user_id)
-  values ('pending', false, '00000000-0000-0000-0000-000000000002');
+  insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,user_id)
+  values ('Pending Fixture','9000000002','Uttar Pradesh','Balrampur','271861','pending',false,'00000000-0000-0000-0000-000000000002');
   if (select electrician_display_id from public.electrician_profiles where user_id = '00000000-0000-0000-0000-000000000002') is not null then
     raise exception 'Pending/inactive profile must not receive an ID';
   end if;
 
-  insert into public.electrician_profiles (verification_status, active, auth_user_id)
-  values ('approved', true, '00000000-0000-0000-0000-000000000003');
+  insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,auth_user_id)
+  values ('Auth Only Fixture','9000000003','Uttar Pradesh','Balrampur','271861','approved',true,'00000000-0000-0000-0000-000000000003');
   select electrician_display_id into v_id from public.electrician_profiles where auth_user_id = '00000000-0000-0000-0000-000000000003';
   if v_id <> 'SRK-EL-000002' then raise exception 'auth_user_id-only profile should receive next ID, got %', v_id; end if;
 
-  insert into public.electrician_profiles (verification_status, active, user_id, auth_user_id)
-  values ('approved', true, '00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000005');
+  insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,user_id,auth_user_id)
+  values ('Mismatched Fixture','9000000004','Uttar Pradesh','Balrampur','271861','approved',true,'00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000005');
   if (select electrician_display_id from public.electrician_profiles where user_id = '00000000-0000-0000-0000-000000000004') is not null then
     raise exception 'Ambiguous mismatched Auth links must not receive an ID';
   end if;
 
-  insert into public.electrician_profiles (verification_status, active)
-  values ('approved', true);
+  insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active)
+  values ('Late Link Fixture','9000000007','Uttar Pradesh','Balrampur','271861','approved',true);
   update public.electrician_profiles
      set auth_user_id = '00000000-0000-0000-0000-000000000007'
    where verification_status = 'approved'
@@ -57,8 +57,8 @@ begin
   end;
 
   begin
-    insert into public.electrician_profiles (verification_status, active, user_id, electrician_display_id)
-    values ('approved', true, '00000000-0000-0000-0000-000000000006', 'SRK-EL-999998');
+    insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,user_id,electrician_display_id)
+    values ('Client ID Fixture','9000000006','Uttar Pradesh','Balrampur','271861','approved',true,'00000000-0000-0000-0000-000000000006','SRK-EL-999998');
     raise exception 'Expected server-only issuance guard to reject client-supplied ID';
   exception when sqlstate '22000' then
     null;
@@ -70,8 +70,8 @@ begin
 
   delete from public.electrician_profiles
    where auth_user_id = '00000000-0000-0000-0000-000000000007';
-  insert into public.electrician_profiles (verification_status, active, auth_user_id)
-  values ('approved', true, '00000000-0000-0000-0000-000000000008');
+  insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,auth_user_id)
+  values ('Recreated Fixture','9000000008','Uttar Pradesh','Balrampur','271861','approved',true,'00000000-0000-0000-0000-000000000008');
   if (select electrician_display_id from public.electrician_profiles where auth_user_id = '00000000-0000-0000-0000-000000000008') <> 'SRK-EL-000004' then
     raise exception 'Deleting and recreating a profile must not recycle a previously issued ID';
   end if;
