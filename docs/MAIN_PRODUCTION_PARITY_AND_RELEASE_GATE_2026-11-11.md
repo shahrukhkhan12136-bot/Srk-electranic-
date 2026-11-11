@@ -108,3 +108,10 @@ This successful run still uses the intentionally synthetic harness. It is not a 
 ## Forward-only migration sequencing decision
 
 Do not rename or mark the historical migration files as applied. Prepare a new, separately reviewed release sequence with versions strictly greater than `20261111142316`. The timer foundation and dependent migrations must be replayed in dependency order, followed by cancellation and the commission integration. Exclude/reconcile the already-present push subscription and push upsert migrations rather than duplicating their effects. Before creating this sequence, validate every migration against a disposable fixture that reproduces the actual Production `service_bookings` columns, trigger graph, payout table and status-history table, with representative legacy rows. The existing CI harness is not yet that fixture.
+
+
+## Commission migration security hardening and re-test
+
+- In commit `3aa552580f68d705ca41c9653d4f8bb50ce7ce0f`, all four SECURITY DEFINER functions in `20261111150000_timer_commission_cash_online_integration.sql` were changed to `SET search_path = ''`. Their application objects are schema-qualified; this removes reliance on mutable schemas in privileged execution.
+- GitHub Actions run `43042917794` passed on that commit. All 45 workflow steps completed successfully, including Cash, material approval, cancellation, commission/remittance, legacy preservation and rollback arithmetic.
+- This security change is still Feature Branch only. It has not been applied to Main Production.
