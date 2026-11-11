@@ -132,3 +132,17 @@ No database writes or deployment were performed during this follow-up.
 - The payout ledger stores gross service amount, materials amount, platform commission and electrician payable separately. This structure is useful, but the trigger's source-of-truth must change from quote fields to the immutable final bill. Do not alter commission percentage or assume the platform commission applies to materials without a separate approved decision.
 
 No Production writes were made; this section records read-only schema inspection only.
+
+## 9. Row-level security policy verification (2026-11-11)
+
+Read-only inspection of current policies found:
+
+- `service_bookings` SELECT is limited to Admin or the authenticated customer whose `customer_user_id` matches. There is no direct electrician SELECT policy in the inspected policy set; electrician booking data is served through controlled RPCs such as the offer-details function. New timer and materials data should follow this least-privilege pattern rather than adding broad table reads.
+- `service_bookings` UPDATE is Admin-only under the inspected RLS policy. New customer/electrician actions should therefore use narrow SECURITY DEFINER RPCs with explicit actor/booking/assignment checks, row locks, fixed search paths, and authenticated-only EXECUTE grants; do not open direct UPDATE to clients.
+- `electrician_profiles` SELECT permits the linked electrician account (`user_id` or `auth_user_id`) and Admin. Admin-only insert/update/delete policies are present.
+- `srk_electrician_payouts` SELECT permits Admin or the linked electrician through `user_id` only. When payout visibility is changed, consider the established dual-link identity model (`user_id` / `auth_user_id`) without broadening access to other profiles.
+- The inspected policy query returned no policies for `srk_manual_payment_entries`. Confirm whether RLS is enabled and whether service-role-only access is intended before using it as a client-readable payment evidence source.
+
+Implementation guardrail: new audit/event/bill/material/cancellation tables should have RLS enabled, no anonymous access, and no broad authenticated table writes. Customer/electrician reads should be via ownership-scoped RPCs or carefully scoped SELECT policies; event creation and decisions should be via dedicated server-side RPCs only.
+
+No RLS policy or database setting was changed; this was read-only metadata inspection.
