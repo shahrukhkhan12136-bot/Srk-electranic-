@@ -49,8 +49,21 @@ Deno.serve(async (req) => {
   };
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: publicKeyCors });
   if (req.method === "GET") {
-    if (!vapidPublic) return new Response(JSON.stringify({ error: "Push public key is not configured" }), { status: 503, headers: publicKeyCors });
-    return new Response(JSON.stringify({ publicKey: vapidPublic }), { status: 200, headers: publicKeyCors });
+    if (!vapidPublic) return new Response(JSON.stringify({ error: "Push public key is not configured", pushReady: false }), { status: 503, headers: publicKeyCors });
+    let vapidReady = false;
+    let diagnostic = "";
+    try {
+      webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+      vapidReady = true;
+    } catch (error) {
+      diagnostic = error instanceof Error ? error.message : "VAPID configuration validation failed";
+      console.error("VAPID configuration validation failed");
+    }
+    const authorizedDiagnostic = Boolean(hookSecret && req.headers.get("x-srk-push-secret") === hookSecret);
+    const responseBody = authorizedDiagnostic
+      ? { publicKey: vapidPublic, pushReady: vapidReady, diagnostic: vapidReady ? null : diagnostic, publicKeyLength: vapidPublic.length, privateKeyLength: vapidPrivate.length, subjectLooksValid: /^(mailto:|https:\/\/)/i.test(vapidSubject) }
+      : { publicKey: vapidPublic, pushReady: vapidReady };
+    return new Response(JSON.stringify(responseBody), { status: 200, headers: publicKeyCors });
   }
   if (req.method !== "POST" || !hookSecret || !serviceKey || !vapidPublic ||
       !vapidPrivate || !vapidSubject || !db ||
