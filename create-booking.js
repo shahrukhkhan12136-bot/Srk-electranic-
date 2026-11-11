@@ -182,6 +182,18 @@ exports.handler = async (event) => {
       throw error;
     }
     const booking = { id: bookingResult.booking_id };
+    // Fetch the server-generated public order number for the confirmation response.
+    let orderNumber = bookingResult.order_number || null;
+    if (!orderNumber) {
+      try {
+        const bookingRows = await supabase(
+          "service_bookings?select=order_number&id=eq." + encodeURIComponent(booking.id) + "&limit=1"
+        );
+        orderNumber = Array.isArray(bookingRows) ? bookingRows[0]?.order_number || null : null;
+      } catch (orderNumberError) {
+        console.error("Booking saved; order number read failed:", orderNumberError.httpStatus || orderNumberError.name || "UnknownError");
+      }
+    }
 
     // Supabase's broadcast_new_booking trigger creates offers exactly once.
     // Read the resulting queue here; do not create duplicate job_offers from this function.
@@ -202,14 +214,15 @@ exports.handler = async (event) => {
     return json(200, {
       success: true,
       booking_id: booking.id,
+      order_number: orderNumber,
       replayed: bookingResult.replayed === true,
       offers_created: offersCreated,
       match_level: offersCreated ? matchLevel : null,
       message: !offerStatusChecked
         ? "बुकिंग सेव हो गई है, लेकिन ऑफर की स्थिति अभी जाँची नहीं जा सकी। हमारी टीम से पुष्टि करें।"
         : offersCreated
-          ? `बुकिंग सेव हो गई। ${offersCreated} approved और active इलेक्ट्रिशियन को ${matchLevel === "pincode" ? "इसी PIN Code" : "इसी जिले"} का ऑफर बनाया गया है।`
-          : "बुकिंग सेव हो गई। इस PIN Code या जिले में अभी कोई approved और active इलेक्ट्रिशियन उपलब्ध नहीं मिला।"
+          ? `बुकिंग ${orderNumber ? "नंबर " + orderNumber + " के साथ " : ""}सेव हो गई। ${offersCreated} approved और active इलेक्ट्रिशियन को ${matchLevel === "pincode" ? "इसी PIN Code" : "इसी जिले"} का ऑफर बनाया गया है।`
+          : "बुकिंग ${orderNumber ? "नंबर " + orderNumber + " के साथ " : ""}सेव हो गई। इस PIN Code या जिले में अभी कोई approved और active इलेक्ट्रिशियन उपलब्ध नहीं मिला।"
     });
   } catch (error) {
     if (error.httpStatus === 401 || error.httpStatus === 403) {
