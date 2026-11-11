@@ -175,3 +175,14 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [ ] Existing bookings का historical time data preserve करें; नया customer flow ही date-only हो।
 - [ ] Confirm करें कि selected 1–8 hours अभी भी केवल booking preference है; actual timer और final Labour bill वास्तविक elapsed work time पर आधारित रहें।
 - [~] Requirement documented; UI/API implementation and E2E verification pending.
+
+
+## B.1 Electrician ID/Profile — own approved category badge (owner-confirmed 2026-11-11)
+- [ ] Electrician के अपने Profile / Electrician ID पर उसकी Admin-approved category का स्पष्ट नाम और badge दिखे: Helper, Ordinary, Skilled या Master।
+- [ ] Category केवल server-authoritative verified profile/application assignment से आए; client-supplied category/label को ignore करें।
+- [ ] Electrician को अपनी category खुद edit/upgrade/downgrade करने की अनुमति न हो; Admin changes authorized, versioned और audited हों।
+- [ ] Pending/rejected/suspended/inactive/missing assignment में कोई गलत default category न दिखे; सही status/error message दिखे।
+- [ ] केवल signed-in electrician अपनी category देख सके; अन्य electricians की private assignment सुरक्षित रहे।
+- [ ] Profile/ID badge और Rate Card highlight एक ही authoritative category source इस्तेमाल करें।
+- [ ] Loading/offline/stale/error, accessibility और mobile E2E तथा RLS/authorization/tampering negative tests पास हों।
+- [~] Requirement documented; actual Android/profile UI and API implementation pending.
