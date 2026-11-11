@@ -49,6 +49,7 @@ function base64UrlToBytes(value){const pad='='.repeat((4-value.length%4)%4);cons
 async function enablePush(){
  const status=document.getElementById('pushStatus'),button=document.getElementById('enablePush');
  if(!user){status.textContent='पहले इलेक्ट्रिशियन लॉगिन करें।';return}
+ if(!profile||!profile.active||profile.verification_status!=='approved'){status.textContent='Push Notification केवल Admin द्वारा Active और Approved किए गए इलेक्ट्रिशियन के लिए उपलब्ध है।';return}
  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){status.textContent='इस ब्राउज़र में Push Notification उपलब्ध नहीं है।';return}
  if(!cfg.SUPABASE_VAPID_PUBLIC_KEY){status.textContent='Push Notification का सुरक्षित VAPID सेटअप अभी बाकी है। यह सुविधा सेटअप पूरा होने के बाद चालू होगी।';return}
  button.disabled=true;status.textContent='नोटिफिकेशन अनुमति और सदस्यता सेव की जा रही है…';
