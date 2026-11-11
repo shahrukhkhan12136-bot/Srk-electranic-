@@ -69,8 +69,9 @@ These rates are labour charges only.
 3. Matching electrician receives the offer and accepts it.
 4. Electrician travels to the customer's address and reaches the location; arrival must be recorded.
 5. Arrival/visit is recorded separately from the paid-work timer. Merely accepting the job or travelling to the customer must not start labour billing.
-6. Once the customer and electrician are ready for work, electrician starts the work timer. The server records the authoritative start timestamp.
-7. When work is finished, electrician stops the timer. The server records the stop timestamp and calculates elapsed billable time and labour amount using the category rate saved on that booking. Billable work duration is calculated on a per-minute basis, not in 15-minute or 30-minute blocks.
+6. Mutual-consent timer start: the electrician presses **Start Timer** to send a start request to the customer. The timer must remain NOT RUNNING while customer approval is pending. The customer reviews and accepts the start request; only then does the server record the authoritative start timestamp and mark the timer as running. If the customer rejects the request, the timer does not start and the rejection is recorded.
+7. Mutual-consent timer stop: after finishing the work, the electrician presses **Finish / Request Stop** to send a stop request to the customer. The timer continues running while customer approval is pending; it must not stop merely because the electrician requested a stop. The customer reviews and accepts the stop request; only then does the server record the authoritative stop timestamp and stop the timer. If the customer rejects the stop request, the timer remains running and the rejection is recorded so the parties can resolve the discrepancy.
+8. The server calculates elapsed billable time between the accepted start timestamp and accepted stop timestamp, using the category rate saved on that booking. Billable work duration is accounted for per minute, not in 15-minute or 30-minute blocks. Both parties see the approved start/stop timestamps, elapsed duration and calculated labour bill.
 8. Customer sees the generated bill and a Cash (नकद) payment option.
 9. Electrician confirms receipt of cash. Only after this confirmation should the booking/payment show as cash received/paid. Record who confirmed and when.
 
@@ -108,15 +109,15 @@ The category and rate used must be snapshotted on the booking/work session so la
 
 ## 5. Server-side integrity and audit requirements
 - Server/database timestamps are authoritative; never trust client device clock or client-submitted duration/amount.
-- Start/stop actions must be authenticated, idempotent and restricted to the electrician assigned to that booking.
-- Prevent duplicate active timers, stopping a timer that was never started, restarting a completed session, and overlapping work sessions for the same booking.
+- Timer start/stop requests must be authenticated and idempotent. Only the assigned electrician may initiate a start/stop request, and only the booking's customer may approve/reject it. A timer starts/stops only after the corresponding customer approval is recorded server-side.
+- Prevent duplicate pending requests, duplicate approvals, duplicate active timers, stopping a timer that was never started, restarting a completed session, and overlapping work sessions for the same booking. Enforce valid state transitions on the server/database.
 - Preserve immutable start/stop timestamps, category/rate snapshot, calculated duration, labour amount, materials breakdown, payment method, cash confirmation, cancellation requests and Admin decisions.
 - Use database constraints/RLS and secure server-side functions; hiding UI controls is not sufficient.
 - Work duration is to be accounted for per minute. The server must calculate the amount from the authoritative timer timestamps and the saved hourly category rate; do not round up to 15-minute or 30-minute blocks. Define and document the exact treatment of partial minutes (seconds) consistently before implementation.
 - Handle disputes, timer corrections and payment reversals through audited Admin actions, not direct edits by customer/electrician.
 
 ## 6. Booking state flow (proposed)
-new → offered → accepted/assigned → electrician_arrived → work_in_progress (timer running) → work_stopped/bill_generated → cash_pending → cash_confirmed/completed.
+new → offered → accepted/assigned → electrician_arrived → timer_start_requested → (customer approves → work_in_progress / timer running) → timer_stop_requested → (customer approves → work_stopped/bill_generated) → cash_pending → cash_confirmed/completed.
 
 Cancellation side-flow:
 active booking → cancellation_requested → (Admin approves → cancelled) OR (Admin rejects → return to prior active state).
@@ -129,3 +130,12 @@ active booking → cancellation_requested → (Admin approves → cancelled) OR 
 5. Whether Admin may waive a cancellation charge and what reason/audit is mandatory.
 
 **No application code, database migration, production database, or production deployment is changed by this specification update.**
+
+
+## 8. Customer approval is required for both timer actions
+- Electrician initiates the timer start; customer approval is mandatory before the timer starts.
+- Electrician initiates the timer stop after finishing; customer approval is mandatory before the timer stops.
+- A pending start request is not billable time. A pending stop request does not stop the timer; time continues until the customer approves the stop request.
+- Store each request, customer decision, actor ID, server timestamp, and any rejection reason in an audit trail.
+- Customer must be able to see the requested action and approve or reject it from their booking screen; electrician must see the decision/status.
+- Do not allow either party to alter timestamps or directly edit elapsed duration/amount. If the customer rejects a start/stop request or does not respond, keep the request pending/rejected as appropriate and provide an Admin-mediated, audited dispute-resolution path. Do not silently start/stop the timer or invent a timeout rule.
