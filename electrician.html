@@ -92,7 +92,7 @@ function electricianTimerCardHtml(timer,bookingId){
  if(cashIntent?.status==='pending'){
   cashHtml='<div class="cash-confirm-wrap"><p class="cash-confirm-note">ग्राहक ने ₹'+(Number(cashIntent.amount_paise||0)/100).toFixed(2)+' नकद भुगतान चुना है। पूरा पैसा वास्तव में मिलने के बाद ही पुष्टि करें।</p><button type="button" class="cash-confirm-button" onclick="electricianConfirmSnapshotCash(\''+esc(cashIntent.payable_snapshot_id)+'\')">💵 पूरा नकद भुगतान प्राप्त — पुष्टि करें</button></div>';
  }else if(cashIntent?.status==='confirmed'){
-  cashHtml='<div class="cash-confirm-wrap"><p class="cash-confirm-note">✅ नकद भुगतान प्राप्त और दर्ज हो चुका है।</p><p class="small">पुष्टि: '+esc(cashIntent.confirmed_at||'')+'</p></div>';
+  cashHtml='<div class="cash-confirm-wrap"><p class="cash-confirm-note">✅ ₹'+(Number(cashIntent.amount_paise||0)/100).toFixed(2)+' नकद भुगतान प्राप्त और दर्ज हो चुका है।</p><p class="small">रसीद संदर्भ: '+esc(cashIntent.receipt_id||'')+' • पुष्टि: '+esc(cashIntent.confirmed_at||'')+'</p></div>';
  }
  const labels={not_requested:'इलेक्ट्रिशियन के पहुँचने / टाइमर अनुरोध की प्रतीक्षा',start_pending:'ग्राहक की टाइमर शुरू करने की मंजूरी बाकी',running:'काम का समय चल रहा है',stop_pending:'ग्राहक की टाइमर रोकने की मंजूरी बाकी — तब तक समय चलता रहेगा',stopped:'काम का समय पूरा'};
  const bill=timer.final_bill;
