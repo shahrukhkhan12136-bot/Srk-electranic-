@@ -66,7 +66,7 @@ begin
 
   select count(distinct electrician_display_id) into v_count
   from public.electrician_profiles where electrician_display_id is not null;
-  if v_count <> 4 then raise exception 'Expected four currently retained distinct IDs after deletion/recreation, got %', v_count; end if;
+  if v_count <> 3 then raise exception 'Expected three retained IDs before deletion/recreation, got %', v_count; end if;
 
   delete from public.electrician_profiles
    where auth_user_id = '00000000-0000-0000-0000-000000000007';
@@ -87,6 +87,10 @@ begin
   if (select electrician_display_id from public.electrician_profiles where phone = '9000000010') is not null then
     raise exception 'A duplicate Auth identity across profile link columns must not receive an ID';
   end if;
+
+  select count(distinct electrician_display_id) into v_count
+  from public.electrician_profiles where electrician_display_id is not null;
+  if v_count <> 4 then raise exception 'Expected four retained unique IDs after legacy-link tests, got %', v_count; end if;
 
   if has_sequence_privilege('anon', 'public.electrician_display_id_seq', 'USAGE')
      or has_sequence_privilege('authenticated', 'public.electrician_display_id_seq', 'USAGE') then
