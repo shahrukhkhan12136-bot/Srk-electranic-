@@ -153,3 +153,13 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [ ] Immutable booking snapshot stores category code/label, approved rate/version and duration; subsequent catalogue changes do not alter existing bookings.
 - [ ] Customer price display is separate from electrician Rate Card: electrician Rate Card continues to show only 8-hour duration and electrician net amount, never gross Labour or commission details.
 - [ ] Verify responsive/accessibility, loading/error/offline states and customer booking E2E. No upfront payment.
+
+
+## A.2 Customer Booking — duration selector 1–8 hours (owner-confirmed 2026-11-11)
+- [ ] Add a single-select duration control for 1, 2, 3, 4, 5, 6, 7 or 8 hours.
+- [ ] Recalculate and show the selected category's total customer Labour price on the customer's mobile screen immediately when duration changes.
+- [ ] Formula: approved 8-hour category price × selected integer hours ÷ 8; preserve precision and round only final payable amount to paise using half-up. Examples: Helper 1h ₹112.38, 2h ₹224.75, 8h ₹899.00; Ordinary 1h ₹149.88, 2h ₹299.75, 8h ₹1,199.00.
+- [ ] Server validates duration is an integer from 1 through 8 and recalculates from current approved rate/version; never trust client-submitted total.
+- [ ] Immutable booking snapshot stores category, rate/version, selected duration and Labour total.
+- [ ] Define and test how selected duration interacts with timer/final bill; never silently charge beyond selected duration without an approved rule.
+- [ ] Keep materials separate; no upfront payment. Test responsive/mobile, accessibility, stale/offline/error handling and end-to-end booking.
