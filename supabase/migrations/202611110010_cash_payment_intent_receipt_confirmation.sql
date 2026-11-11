@@ -110,11 +110,6 @@ begin
      or v_booking.timer_state<>'stopped' or v_booking.final_bill_id is distinct from v_snapshot.bill_id then
     raise exception 'FINAL_BILL_SNAPSHOT_MISMATCH' using errcode='55000';
   end if;
-  if v_snapshot.amount_paise<=0 then raise exception 'NO_CASH_PAYMENT_DUE' using errcode='22023'; end if;
-  if v_booking.payment_status='paid' then raise exception 'BOOKING_ALREADY_PAID' using errcode='55000'; end if;
-  if exists(select 1 from public.srk_razorpay_orders ro where ro.snapshot_id=p_snapshot_id) then
-    raise exception 'RAZORPAY_PAYMENT_ALREADY_STARTED' using errcode='55000';
-  end if;
 
   select ci.* into v_intent from public.srk_cash_payment_intents ci
   where ci.payable_snapshot_id=p_snapshot_id for update;
@@ -123,6 +118,12 @@ begin
       'success',true,'intent_id',v_intent.id,'status',v_intent.status,
       'amount_paise',v_intent.amount_paise,'currency',v_intent.currency,'replayed',true
     );
+  end if;
+
+  if v_snapshot.amount_paise<=0 then raise exception 'NO_CASH_PAYMENT_DUE' using errcode='22023'; end if;
+  if v_booking.payment_status='paid' then raise exception 'BOOKING_ALREADY_PAID' using errcode='55000'; end if;
+  if exists(select 1 from public.srk_razorpay_orders ro where ro.snapshot_id=p_snapshot_id) then
+    raise exception 'RAZORPAY_PAYMENT_ALREADY_STARTED' using errcode='55000';
   end if;
 
   v_now:=clock_timestamp();
