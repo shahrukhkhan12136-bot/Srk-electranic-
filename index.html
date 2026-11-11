@@ -692,6 +692,9 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
     alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
+    // Keep the same key only for retries of a failed request. A successful booking
+    // must get a fresh key so the customer's next booking is not replayed.
+    bookingIdempotencyKey = null;
     document.getElementById('upiPanel').style.display = 'none';
     setPaymentStatus('बुकिंग सेव हो गई। अभी कोई भुगतान नहीं करना है। काम पूरा होने पर ग्राहक की मंजूरी से अंतिम बिल बनेगा।');
     await loadCustomerBookings();
