@@ -193,6 +193,20 @@ JavaScript syntax checks passed for the customer, electrician and Admin pages, t
 
 Remaining before release: verify the latest PostgreSQL CI result, add electrician-confirmed Cash receipt RPC/UI, execute end-to-end Razorpay Test Mode and webhook tests in an isolated environment, and perform browser testing. No shared TEST/Production database changes and no Production deployment have occurred.
 
+### Customer-selected cash payment and electrician receipt confirmation (2026-11-11)
+
+Feature Branch now includes migration `202611110010_cash_payment_intent_receipt_confirmation.sql`:
+
+- Customer can choose Cash only after the immutable payable snapshot is ready. The server records a pending cash intent for the exact snapshot amount and switches the booking payment method to Cash.
+- The customer sees that payment remains pending until the assigned electrician confirms actual receipt. The UI explicitly tells the customer not to pay twice while confirmation is pending.
+- The assigned, active, approved electrician with an accepted offer can confirm the full amount received. The RPC derives the amount from the immutable snapshot; the electrician cannot submit or alter the amount.
+- Confirmation creates the existing append-oriented `srk_cash_receipts` record, marks the cash intent confirmed, and atomically marks the booking Paid/Completed with the exact amount received.
+- Duplicate customer selection and electrician confirmation are idempotent. Only one cash intent and one receipt can exist per snapshot.
+- Customer Cash selection and Razorpay order creation are mutually exclusive. Both paths serialize on the payable snapshot/booking, and a database trigger blocks a Razorpay order insert when a cash intent exists.
+- The scoped booking detail RPC exposes the cash intent to the customer, assigned electrician and Admin; Admin audit now displays both selection and receipt confirmation.
+
+Inline JavaScript syntax checks pass for customer, electrician and Admin pages. SQL migration replay and structural/security assertions have been added to CI; no completed CI run or live/Test database execution is confirmed yet. No shared TEST/Production database changes or Production deployment have occurred.
+
 ## Safety boundary
 
 All code and SQL changes described above are Feature Branch only. No shared TEST/Production migration, database write, live payment, or deployment was performed. Do not deploy until the remaining payment, timer UI, material, cancellation, audit, and full integration tests are complete and the user explicitly approves.
