@@ -14,11 +14,11 @@ This integration is prepared on branch `feature/production-push-notifications`. 
 2. Add only the VAPID public key to `window.SRK_CONFIG.SUPABASE_VAPID_PUBLIC_KEY`.
 3. Store the VAPID private key, VAPID subject, and a strong random webhook secret as Supabase Edge Function secrets. Never commit these values or put the private key in browser code.
 4. Apply the subscription-table migration to the Production database.
-5. Deploy the `push-job-offer` Edge Function and verify its required Supabase/VAPID secrets are present.
+5. Deploy the `push-job-offer` Edge Function with JWT verification disabled for the database webhook endpoint (for example, `--no-verify-jwt`). The function independently validates the high-entropy `x-srk-push-secret`; do not leave the endpoint unprotected. Verify all required Supabase/VAPID secrets are present.
 6. Configure a Supabase Database Webhook for `public.job_offers` on INSERT and UPDATE, targeting:
    `https://gnqhoaqatmoiwwhgzkgm.supabase.co/functions/v1/push-job-offer`
-   Include JSON content type and the custom header `x-srk-push-secret` with the same strong secret stored in the Edge Function.
-7. Confirm the project's Database Webhooks/pg_net support is enabled. It was not listed among the extensions enabled at the time of inspection.
+   Include JSON content type, the project publishable key in the `apikey` header, and the custom header `x-srk-push-secret` with the same strong secret stored in the Edge Function.
+7. Enable/confirm the project's `pg_net` extension (it was not listed among enabled extensions at inspection) and configure the Database Webhook. Confirm webhook calls complete successfully.
 8. Test with an approved, active electrician account on Android Chrome: subscribe, create a real test booking in a controlled test window, verify one notification, tap it, confirm the electrician dashboard opens the matching offer, then accept/reject and verify closure behavior.
 9. Review webhook request/response logs and Edge Function logs. Confirm no duplicate notifications and no notification to inactive/unapproved electricians.
 10. Only after all checks pass, merge this branch and perform the single consolidated Netlify deployment.
