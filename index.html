@@ -330,6 +330,7 @@ function customerTimerCardHtml(timer) {
       '<button type="button" style="background:#64748b" onclick="customerTimerDecision(\'' + customerEsc(d.id) + '\',\'' + (isStart ? 'start' : 'stop') + '\',\'rejected\')">अस्वीकार करें</button></div>';
   }).join('');
   const bill = timer.final_bill;
+  const materialsHtml = customerMaterialRevisionHtml(timer.material_revisions || []);
   return '<div class="job"><b>टाइमर स्थिति:</b> ' + customerEsc(stateLabels[timer.timer_state] || timer.timer_state) +
     '<p>श्रेणी: ' + customerEsc(timer.service_category_label || '') + ' • दर: ₹' + customerEsc(Number(timer.hourly_rate_snapshot || 0).toFixed(3)) + '/घंटा</p>' +
     (timer.electrician_arrived_at ? '<p>इलेक्ट्रिशियन पहुँचे: ' + customerEsc(new Date(timer.electrician_arrived_at).toLocaleString('hi-IN')) + '</p>' : '') +
@@ -337,7 +338,31 @@ function customerTimerCardHtml(timer) {
     (timer.timer_stopped_at ? '<p>टाइमर बंद: ' + customerEsc(new Date(timer.timer_stopped_at).toLocaleString('hi-IN')) + '</p>' : '') +
     decisions +
     (bill ? '<div class="pay-note"><b>अंतिम मेहनताना बिल</b><p>बिल योग्य मिनट: ' + customerEsc(bill.billable_minutes) + '</p><p>मेहनताना: ₹' + customerEsc(Number(bill.labour_amount || 0).toFixed(2)) + '</p><p class="small">सामान/पार्ट्स का खर्च अलग सूची और आपकी अलग मंजूरी के बाद ही जोड़ा जाएगा।</p></div>' : '') +
+    materialsHtml +
     '</div>';
+}
+function customerMaterialRevisionHtml(revisions) {
+  if (!revisions.length) return '<p class="small">सामग्री/पार्ट्स का अलग बिल अभी जमा नहीं हुआ है।</p>';
+  return '<div class="pay-note"><b>सामग्री/पार्ट्स का अलग itemized प्रस्ताव</b>' + revisions.map(function(r) {
+    const items=(r.items||[]).map(function(it) {
+      const supplier=it.supplied_by==='customer'?'आपके द्वारा खरीदा गया — कोई शुल्क नहीं':'इलेक्ट्रिशियन द्वारा दिया गया';
+      return '<li>'+customerEsc(it.description)+' — '+customerEsc(it.quantity)+' × ₹'+customerEsc(Number(it.unit_price||0).toFixed(2))+' = ₹'+customerEsc(Number(it.line_total||0).toFixed(2))+'<br><small>'+supplier+(it.receipt_reference?' • रसीद: '+customerEsc(it.receipt_reference):'')+'</small></li>';
+    }).join('');
+    const actions=r.status==='pending'
+      ? '<p><b>आपकी मंजूरी आवश्यक है।</b></p><button type="button" onclick="customerDecideMaterialRevision(\''+customerEsc(r.id)+'\',\'approved\')">सामग्री मंजूर करें</button><button type="button" style="background:#64748b" onclick="customerDecideMaterialRevision(\''+customerEsc(r.id)+'\',\'rejected\')">अस्वीकार करें</button>'
+      : '<p>निर्णय: '+customerEsc(r.status==='approved'?'आपने मंजूर किया':'आपने अस्वीकार किया')+'</p>';
+    return '<div class="job"><b>प्रस्ताव #'+customerEsc(r.revision)+' • '+customerEsc(r.status)+'</b><ul>'+items+'</ul>'+actions+'</div>';
+  }).join('')+'</div>';
+}
+async function customerDecideMaterialRevision(revisionId,decision) {
+  const prompt=decision==='approved'
+    ? 'क्या आपने सामग्री की पूरी सूची, मात्रा, दर और रसीद देखकर इस अलग सामग्री बिल को मंजूर किया है?'
+    : 'क्या आप इस सामग्री प्रस्ताव को अस्वीकार करना चाहते हैं?';
+  if(!confirm(prompt))return;
+  const {data,error}=await customerSb.rpc('srk_customer_decide_material_revision',{p_revision_id:revisionId,p_decision:decision});
+  if(error){alert('सामग्री का निर्णय सेव नहीं हुआ: '+error.message);return;}
+  alert(decision==='approved'?'सामग्री प्रस्ताव की मंजूरी दर्ज हो गई।':'सामग्री प्रस्ताव अस्वीकार हो गया।');
+  await loadCustomerBookings();
 }
 async function customerTimerDecision(decisionId, action, decision) {
   const prompt = action === 'start'
