@@ -25,7 +25,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
 </form>
 <button id="enable" disabled>इस फोन पर Push Notification चालू करें</button>
 <button id="logout" class="secondary" disabled>TEST अकाउंट लॉगआउट</button>
-<button id="check-offers" type="button" class="secondary" hidden>मेरे नए ऑफर देखें</button>
+<button id="check-offers" type="button" class="secondary" style="display:block!important;visibility:visible!important">मेरे नए ऑफर देखें</button>
 <div id="status" role="status">स्थिति: अभी लॉगिन नहीं हुआ।</div>
 <p class="small">सुरक्षा: इस पेज में केवल Supabase publishable key है। कोई service-role key या निजी VAPID key नहीं है। TEST पूरा होने पर लॉगआउट करें।</p>
 
@@ -102,7 +102,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     await refreshSession();
     try { await loadOffer(); } catch(e) { say('ऑफर स्क्रीन खोलने में त्रुटि: '+(e?.message||String(e))+'। “मेरे नए ऑफर देखें” दबाकर फिर कोशिश करें।'); checkOffers.hidden=false; }
   });
-  checkOffers.addEventListener('click', async () => { checkOffers.hidden=false; checkOffers.disabled=true; say('आपके नए ऑफर खोजे जा रहे हैं…'); try { offerId=null; history.replaceState({}, '', location.pathname); await loadOffer(); } catch(e) { say('ऑफर जाँच त्रुटि: '+(e?.message||String(e))); document.getElementById('offer-view').hidden=false; document.getElementById('offer-info').textContent='ऑफर जाँच में समस्या आई। कृपया फिर से प्रयास करें।'; } finally { checkOffers.disabled=false; checkOffers.hidden=false; } });
+  checkOffers.addEventListener('click', async () => { checkOffers.hidden=false; checkOffers.style.display='block'; checkOffers.disabled=true; say('आपके नए ऑफर खोजे जा रहे हैं…'); try { offerId=null; history.replaceState({}, '', location.pathname); await loadOffer(); } catch(e) { say('ऑफर जाँच त्रुटि: '+(e?.message||String(e))); document.getElementById('offer-view').hidden=false; document.getElementById('offer-info').textContent='ऑफर जाँच में समस्या आई। कृपया फिर से प्रयास करें।'; } finally { checkOffers.disabled=false; checkOffers.hidden=false; } });
   enable.addEventListener('click', async () => {
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
@@ -147,4 +147,4 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
   client.auth.getSession().then(({data}) => { if (offerId || data.session) loadOffer(); }).catch(error => say('स्थिति जाँच त्रुटि: '+error.message));
 })();
 </script></body></html>
-<!-- TEST UI refresh: login always exposes offer lookup button; build 2026-11-11-v3 -->
+<!-- TEST UI refresh: always-visible offer lookup button; build 2026-11-11-v4 -->
