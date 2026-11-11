@@ -16,6 +16,9 @@ on:
       - "tests/complaints.static.test.js"
       - "tests/electrician-verification.static.test.js"
       - "tests/admin-audit-log.static.test.js"
+      - "tests/business-finance.static.test.js"
+      - "supabase/migrations/20261110080448_srk_business_finance_dashboard.sql"
+      - "supabase/migrations/20261111090000_harden_business_finance_dashboard.sql"
       - "tests/razorpay-refund.static.test.js"
       - "tests/razorpay-refund-webhook.synthetic.test.js"
       - "tests/razorpay-refund-handler.synthetic.test.js"
@@ -65,6 +68,10 @@ jobs:
         run: node tests/electrician-verification.static.test.js
       - name: Run Admin audit log static security and UI tests
         run: node tests/admin-audit-log.static.test.js
+      - name: Run Business Expense & Profit static security and UI tests
+        run: node tests/business-finance.static.test.js
+      - name: Check Business Finance test syntax
+        run: node --check tests/business-finance.static.test.js
       - name: Run Razorpay refund static security and safety tests
         run: node tests/razorpay-refund.static.test.js
       - name: Check Razorpay refund function syntax
