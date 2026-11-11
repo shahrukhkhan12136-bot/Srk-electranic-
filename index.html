@@ -358,7 +358,7 @@ function customerPayableSnapshotHtml(timer,bookingId,paymentStatus) {
           ? '<p><b>💵 आपने नकद भुगतान चुना है।</b></p><p class="small">इलेक्ट्रिशियन से वास्तविक नकद भुगतान प्राप्ति की पुष्टि बाकी है। पुष्टि होने तक दोबारा भुगतान न करें।</p>'
           : (paise===0
             ? '<p>इस बिल में कोई भुगतान देय नहीं है।</p>'
-            : '<button type="button" id="snapshot-cash-'+customerEsc(p.id)+'" onclick="customerSelectCashPayment(\\''+customerEsc(p.id)+'\\')">💵 नकद भुगतान चुनें</button>'+(paise>=100?'<button type="button" id="snapshot-pay-'+customerEsc(p.id)+'" onclick="customerPaySnapshot(\\''+customerEsc(p.id)+'\\')">🔒 Razorpay से सुरक्षित भुगतान करें</button>':'<p class="small">₹1 से कम राशि के लिए ऑनलाइन भुगतान उपलब्ध नहीं है। नकद विकल्प इस्तेमाल करें।</p>'))));
+            : '<button type="button" id="snapshot-cash-'+customerEsc(p.id)+'" onclick="customerSelectCashPayment(\''+customerEsc(p.id)+'\')">💵 नकद भुगतान चुनें</button>'+(paise>=100?'<button type="button" id="snapshot-pay-'+customerEsc(p.id)+'" onclick="customerPaySnapshot(\''+customerEsc(p.id)+'\')">🔒 Razorpay से सुरक्षित भुगतान करें</button>':'<p class="small">₹1 से कम राशि के लिए ऑनलाइन भुगतान उपलब्ध नहीं है। नकद विकल्प इस्तेमाल करें।</p>'))));
     return '<div class="pay-note"><b>अंतिम भुगतान योग्य राशि — सुरक्षित snapshot</b><p>मेहनताना (सटीक गणना): ₹'+customerEsc(Number(p.labour_amount||0).toFixed(10))+'</p><p>मंजूर सामग्री: ₹'+customerEsc(Number(p.materials_amount||0).toFixed(2))+'</p><p><b>कुल देय: ₹'+customerEsc(total.toFixed(2))+'</b></p><p class="small">Snapshot ID: '+customerEsc(p.id)+' • '+customerEsc(p.currency)+'</p>'+payAction+'</div>';
   }
   if(timer.timer_state!=='stopped'||!timer.final_bill)return '';
