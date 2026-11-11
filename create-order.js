@@ -48,7 +48,7 @@ exports.handler=async event=>{
       lockToken=typeof claim==="string"?claim:(Array.isArray(claim)?claim[0]:null);
       if(!lockToken)return json(409,{success:false,error:"इस बुकिंग का पेमेंट ऑर्डर बन रहा है। 10 सेकंड बाद दोबारा कोशिश करें।"});
       // Re-read after acquiring the per-booking lock in case a prior request completed.
-      rows=await db("service_bookings?select=id,phone,customer_user_id,quoted_amount,service_charge,materials_amount,payment_status,razorpay_order_id,status,quote_status&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
+      rows=await db("service_bookings?select=id,phone,customer_user_id,quoted_amount,service_charge,materials_amount,payment_status,razorpay_order_id,status,quote_status,service_category_code&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
       booking=rows?.[0];
       if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
       await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "", booking);
