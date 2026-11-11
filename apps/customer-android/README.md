@@ -31,3 +31,7 @@ Choose and document the Android framework, minimum SDK/device support, applicati
 ## Owner-approved mobile visual direction (2026-11-12)
 
 The three-phone reference image establishes the visual direction for the shared splash and Customer Dashboard: Royal Blue / White / Gold, clear SRK ELECTRONIC branding, founder waist-up portrait on the splash, concise dashboard cards, clear booking shortcuts and accessible bottom navigation. Treat sample location, counts, prices, ratings, wallet balance and booking records in the image as illustrative only; render only authenticated live data. The Customer Android app remains unimplemented; this approval does not mean a native app or build exists.
+
+
+## Screen-by-screen UI Blueprint
+See ../../docs/MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md for the approved screen inventory, navigation, business rules, edge states and QA acceptance matrix. This is a planning document; this Android app is not implemented yet.
