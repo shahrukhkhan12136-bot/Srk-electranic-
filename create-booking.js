@@ -88,7 +88,7 @@ async function verifyCustomerSession(authorization, bookingPhone) {
     error.httpStatus = 403;
     throw error;
   }
-  return user.id;
+  return { id: user.id, accessToken: match[1] };
 }
 
 exports.handler = async (event) => {
@@ -134,13 +134,15 @@ exports.handler = async (event) => {
     const preferred_date = clean(body.preferred_date, 10);
     const preferred_time = clean(body.preferred_time, 8);
     const work_details = clean(body.work_details, 2000);
-    const payment_method = clean(body.payment_method, 80) || "नकद (Cash)";
-    if (!["नकद (Cash)", "Razorpay ऑनलाइन"].includes(payment_method)) {
-      return json(400, { success: false, error: "कृपया नकद या Razorpay ऑनलाइन में से भुगतान का सही तरीका चुनें।" });
+    const service_category_code = clean(body.service_category_code, 20);
+    if (!["helper", "ordinary", "skilled", "master"].includes(service_category_code)) {
+      return json(400, { success: false, error: "कृपया इलेक्ट्रिशियन की सही श्रेणी चुनें।" });
     }
-    const quoted_amount = body.quoted_amount == null || body.quoted_amount === ""
-      ? null : Number(body.quoted_amount);
-    const customer_user_id = await verifyCustomerSession(
+    const idempotency_key = clean(body.idempotency_key, 36);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotency_key)) {
+      return json(400, { success: false, error: "बुकिंग अनुरोध की पहचान सही नहीं है। कृपया दोबारा सबमिट करें।" });
+    }
+    const customerSession = await verifyCustomerSession(
       event.headers?.authorization || event.headers?.Authorization || "",
       phone
     );
@@ -153,22 +155,33 @@ exports.handler = async (event) => {
     if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
     }
-    if (quoted_amount !== null &&
-        (!Number.isFinite(quoted_amount) || quoted_amount <= 0 || quoted_amount > 10000000)) {
-      return json(400, { success: false, error: "भुगतान राशि सही नहीं है।" });
-    }
-
-    const inserted = await supabase("service_bookings", {
+    const rpcResponse = await fetch(`${SUPABASE_URL}/rest/v1/rpc/srk_create_customer_booking`, {
       method: "POST",
-      body: JSON.stringify([{
-        customer_name, phone, state, district, pincode, address, service_type,
-        preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
-        status: "new", payment_status: "unpaid",
-        ...(customer_user_id ? { customer_user_id } : {})
-      }])
+      headers: {
+        apikey: SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${customerSession.accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        p_idempotency_key: idempotency_key,
+        p_booking: {
+          customer_name, phone, state, district, pincode, address, service_type,
+          preferred_date, preferred_time, work_details, location_lat, location_lng,
+          service_category_code
+        }
+      })
     });
-    const booking = Array.isArray(inserted) ? inserted[0] : null;
-    if (!booking || !booking.id) throw new Error("Booking insert returned no booking ID.");
+    const rpcRaw = await rpcResponse.text();
+    let bookingResult;
+    try { bookingResult = rpcRaw ? JSON.parse(rpcRaw) : null; } catch { bookingResult = null; }
+    if (!rpcResponse.ok || !bookingResult?.booking_id) {
+      console.error("Customer booking RPC failed:", rpcResponse.status,
+        bookingResult && typeof bookingResult.code === "string" ? bookingResult.code : "booking_rpc_error");
+      const error = new Error("Booking RPC failed");
+      error.httpStatus = rpcResponse.status;
+      throw error;
+    }
+    const booking = { id: bookingResult.booking_id };
 
     // Supabase's broadcast_new_booking trigger creates offers exactly once.
     // Read the resulting queue here; do not create duplicate job_offers from this function.
@@ -189,6 +202,7 @@ exports.handler = async (event) => {
     return json(200, {
       success: true,
       booking_id: booking.id,
+      replayed: bookingResult.replayed === true,
       offers_created: offersCreated,
       match_level: offersCreated ? matchLevel : null,
       message: !offerStatusChecked
