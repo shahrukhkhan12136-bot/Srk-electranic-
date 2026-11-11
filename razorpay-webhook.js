@@ -265,10 +265,10 @@ exports.handler = async (event) => {
     };
     const snapshotResult = await updateSnapshotOrder(payment.order_id, payment, eventMeta);
     if (snapshotResult !== null) {
-      if (snapshotResult === "snapshot_reconciled" || snapshotResult === "snapshot_already_processed" || snapshotResult === "snapshot_event_already_processed" || snapshotResult === "snapshot_event_rejected") {
+      if (snapshotResult === "snapshot_reconciled" || snapshotResult === "snapshot_already_processed" || snapshotResult === "snapshot_event_already_processed") {
         return json(200, { success: true, reconciled: true, result: snapshotResult });
       }
-      if (snapshotResult === "snapshot_amount_mismatch" || snapshotResult === "snapshot_order_not_ready") {
+      if (snapshotResult === "snapshot_event_rejected" || snapshotResult === "snapshot_amount_mismatch" || snapshotResult === "snapshot_order_not_ready") {
         console.error("Razorpay snapshot webhook requires review:", snapshotResult);
         return json(200, { success: true, reconciled: false, reason: snapshotResult });
       }
