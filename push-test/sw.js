@@ -11,7 +11,7 @@ self.addEventListener('push', (event) => {
     icon: '../icon.svg',
     badge: '../icon.svg',
     tag: data.tag || 'srk-electronic-push-test',
-    data: { url: data.url || (data.offerId ? './offer.html?offerId=' + encodeURIComponent(data.offerId) : './') },
+    data: { url: data.url || (data.offerId ? './?offerId=' + encodeURIComponent(data.offerId) : './') },
     requireInteraction: true
   };
   event.waitUntil(self.registration.showNotification(title, options));
