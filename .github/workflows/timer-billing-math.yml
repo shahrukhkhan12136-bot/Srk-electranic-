@@ -8,6 +8,7 @@ on:
       - "supabase/migrations/202611110003_customer_approved_timer_rpcs.sql"
       - "supabase/migrations/202611110004_scoped_timer_bill_read_rpc.sql"
       - "supabase/migrations/202611110005_server_authoritative_booking_creation.sql"
+      - "supabase/migrations/202611110006_preserve_labour_calculation_precision.sql"
       - "supabase/tests/timer_billing_math.sql"
       - "supabase/tests/timer_billing_foundation_harness.sql"
       - "supabase/tests/timer_billing_foundation_assertions.sql"
@@ -160,6 +161,20 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/tests/server_authoritative_booking_creation_assertions.sql
+      - name: Apply labour precision migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110006_preserve_labour_calculation_precision.sql
+      - name: Verify labour precision migration is replay-safe
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110006_preserve_labour_calculation_precision.sql
       - name: Run rollback-only billing arithmetic tests
         env:
           PGPASSWORD: postgres
