@@ -29,6 +29,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/create-snapshot-order"
+  to = "/.netlify/functions/create-snapshot-order"
+  status = 200
+
+[[redirects]]
+  from = "/api/verify-snapshot-payment"
+  to = "/.netlify/functions/verify-snapshot-payment"
+  status = 200
+
+[[redirects]]
   from = "/api/razorpay-webhook"
   to = "/.netlify/functions/razorpay-webhook"
   status = 200
