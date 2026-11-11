@@ -40,20 +40,33 @@ self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) {}
   const title = data.title || 'SRK ELECTRONIC';
+  let safeUrl = '/electrician.html';
+  try {
+    const candidate = new URL(data.url || '/electrician.html', self.location.origin);
+    if (candidate.origin === self.location.origin &&
+        candidate.pathname === '/electrician.html') {
+      safeUrl = candidate.pathname + candidate.search;
+    }
+  } catch (_) {}
   const options = {
     body: data.body || 'आपके लिए नया काम आया है।',
     icon: '/icon.svg',
     badge: '/icon.svg',
     tag: data.offerId ? 'srk-offer-' + data.offerId : 'srk-notification',
     renotify: true,
-    data: { url: data.url || '/electrician.html', offerId: data.offerId || null }
+    data: { url: safeUrl, offerId: data.offerId || null }
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url || '/electrician.html', self.location.origin).href;
+  let target = self.location.origin + '/electrician.html';
+  try {
+    const candidate = new URL(event.notification.data?.url || '/electrician.html', self.location.origin);
+    if (candidate.origin === self.location.origin &&
+        candidate.pathname === '/electrician.html') target = candidate.href;
+  } catch (_) {}
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     // Reuse only an electrician dashboard tab. Never redirect a customer page.
