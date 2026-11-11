@@ -13,6 +13,7 @@ on:
       - "index.html"
       - "electrician.html"
       - "admin.html"
+      - "apps/mobile-poc/customer/www/index.html"
   pull_request:
     paths:
       - "supabase/migrations/20261112110000_customer_booking_order_numbers.sql"
