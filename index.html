@@ -288,7 +288,8 @@ async function loadCustomerBookings() {
   }));
   const cancellationMap = new Map(cancellationEntries);
   const complaintResult = await customerSb.rpc('srk_customer_list_booking_complaints');
-  const complaintMap = new Map((complaintResult.data || []).map(item => [item.booking_id, item]));
+  const complaintMap = new Map();
+  (complaintResult.data || []).forEach(item => { const list=complaintMap.get(item.booking_id)||[]; list.push(item); complaintMap.set(item.booking_id,list); });
   box.innerHTML = data.map(row => {
     const contact = callMap.get(row.id);
     const timerResult = timerMap.get(row.id);
@@ -323,11 +324,18 @@ async function loadCustomerBookings() {
   }).join('');
 }
 
-function customerComplaintCardHtml(bookingId, complaint, loadError) {
+function customerComplaintCardHtml(bookingId, complaints, loadError) {
   const labels={new:'नई',in_review:'जाँच जारी',resolved:'हल हो गई',closed:'बंद'};
+  const categories={service_quality:'सेवा की गुणवत्ता',electrician_behavior:'इलेक्ट्रिशियन का व्यवहार',billing_payment:'बिल / भुगतान',delay_no_show:'देरी / इलेक्ट्रिशियन नहीं पहुँचा',safety:'सुरक्षा',other:'अन्य'};
   if(loadError) return '<div class="job"><b>शिकायत स्थिति</b><p class="small">अभी लोड नहीं हुई। बुकिंग Refresh करें।</p></div>';
-  if(complaint) return '<div class="job"><b>📩 आपकी शिकायत</b><p>श्रेणी: '+customerEsc(complaint.category)+'</p><p>स्थिति: <b>'+customerEsc(labels[complaint.status]||complaint.status)+'</b></p><p>'+customerEsc(complaint.description)+'</p>'+(complaint.admin_note?'<p><b>Admin का जवाब:</b> '+customerEsc(complaint.admin_note)+'</p>':'')+'<p class="small">दर्ज: '+customerEsc(new Date(complaint.created_at).toLocaleString('hi-IN'))+'</p></div>';
-  return '<div class="job"><b>📩 सहायता / शिकायत दर्ज करें</b><p class="small">इस बुकिंग से जुड़ी समस्या, बिल या सेवा संबंधी शिकायत लिखें। 20 से 2000 अक्षर।</p><label for="complaint-category-'+bookingId+'">शिकायत का प्रकार</label><select id="complaint-category-'+bookingId+'"><option value="service_quality">सेवा की गुणवत्ता</option><option value="electrician_behavior">इलेक्ट्रिशियन का व्यवहार</option><option value="billing_payment">बिल / भुगतान</option><option value="delay_no_show">देरी / इलेक्ट्रिशियन नहीं पहुँचा</option><option value="safety">सुरक्षा संबंधी समस्या</option><option value="other">अन्य</option></select><label for="complaint-description-'+bookingId+'">समस्या का विवरण</label><textarea id="complaint-description-'+bookingId+'" maxlength="2000" minlength="20" placeholder="अपनी समस्या स्पष्ट लिखें (कम से कम 20 अक्षर)"></textarea><button type="button" onclick="customerSubmitBookingComplaint(\''+customerEsc(bookingId)+'\',this)">शिकायत भेजें</button></div>';
+  const rows=Array.isArray(complaints)?complaints:(complaints?[complaints]:[]);
+  const history=rows.map(function(c){
+    const events=Array.isArray(c.activity)?c.activity.map(function(e){return '<li>'+customerEsc(e.actor_role)+' • '+customerEsc(labels[e.to_status]||e.to_status)+' • '+customerEsc(e.note||'')+'</li>';}).join(''):'';
+    return '<div class="pay-note"><b>शिकायत #'+customerEsc(c.id)+'</b><p>प्रकार: '+customerEsc(categories[c.category]||c.category)+' • स्थिति: <b>'+customerEsc(labels[c.status]||c.status)+'</b></p><p>'+customerEsc(c.description)+'</p>'+(c.admin_note?'<p><b>Admin का जवाब:</b> '+customerEsc(c.admin_note)+'</p>':'')+'<p class="small">दर्ज: '+customerEsc(new Date(c.created_at).toLocaleString('hi-IN'))+'</p>'+(events?'<details><summary>गतिविधि इतिहास</summary><ul>'+events+'</ul></details>':'')+'</div>';
+  }).join('');
+  const hasOpen=rows.some(c=>!['resolved','closed'].includes(c.status));
+  if(hasOpen) return '<div class="job"><b>📩 सहायता / शिकायत इतिहास</b>'+history+'<p class="small">आपकी शिकायत पर Admin की जाँच जारी है। इसी शिकायत का जवाब आने तक नई शिकायत की जरूरत नहीं है।</p></div>';
+  return '<div class="job"><b>📩 सहायता / शिकायत दर्ज करें</b>'+history+'<p class="small">इस बुकिंग से जुड़ी समस्या, बिल या सेवा संबंधी शिकायत लिखें। 20 से 2000 अक्षर।</p><label for="complaint-category-'+bookingId+'">शिकायत का प्रकार</label><select id="complaint-category-'+bookingId+'"><option value="service_quality">सेवा की गुणवत्ता</option><option value="electrician_behavior">इलेक्ट्रिशियन का व्यवहार</option><option value="billing_payment">बिल / भुगतान</option><option value="delay_no_show">देरी / इलेक्ट्रिशियन नहीं पहुँचा</option><option value="safety">सुरक्षा संबंधी समस्या</option><option value="other">अन्य</option></select><label for="complaint-description-'+bookingId+'">समस्या का विवरण</label><textarea id="complaint-description-'+bookingId+'" maxlength="2000" minlength="20" placeholder="अपनी समस्या स्पष्ट लिखें (कम से कम 20 अक्षर)"></textarea><button type="button" onclick="customerSubmitBookingComplaint(\\''+customerEsc(bookingId)+'\\',this)">शिकायत भेजें</button></div>';
 }
 async function customerSubmitBookingComplaint(bookingId,button) {
   const category=document.getElementById('complaint-category-'+bookingId)?.value;
