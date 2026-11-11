@@ -26,6 +26,20 @@ begin
   end if;
 
   if not exists (
+    select 1
+    from pg_sequence s
+    join pg_class c on c.oid = s.seqrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = 'electrician_display_id_seq'
+      and s.seqincrement = 1
+      and s.seqmin = 1
+      and not s.seqcycle
+  ) then
+    raise exception 'ID sequence must increment by one from one and never cycle';
+  end if;
+
+  if not exists (
     select 1 from pg_indexes
     where schemaname = 'public'
       and indexname = 'electrician_profiles_display_id_uidx'
