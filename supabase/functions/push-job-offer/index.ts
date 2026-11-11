@@ -5,8 +5,18 @@ type OfferRow = { id: string; electrician_id: string; booking_id: string; status
 type WebhookPayload = { type: "INSERT" | "UPDATE"; table: string; schema: string; record: OfferRow; old_record?: OfferRow | null };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
-const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || secretKeys.default || "";
+// Secret API-key bundles are optional; malformed JSON must not crash the function at startup.
+let defaultSecretKey = "";
+try {
+  const parsedKeys: unknown = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
+  if (parsedKeys && typeof parsedKeys === "object" &&
+      "default" in parsedKeys && typeof parsedKeys.default === "string") {
+    defaultSecretKey = parsedKeys.default;
+  }
+} catch {
+  // Fall back to the explicitly configured service-role key below.
+}
+const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || defaultSecretKey;
 const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY") || "";
 const vapidPrivate = Deno.env.get("VAPID_PRIVATE_KEY") || "";
 const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "";
@@ -41,7 +51,7 @@ Deno.serve(async (req) => {
 
   const { data: profile, error: profileError } = await db
     .from("electrician_profiles")
-    .select("user_id,auth_user_id,active,verification_status")
+    .select("user_id,active,verification_status")
     .eq("id", row.electrician_id)
     .maybeSingle();
 
