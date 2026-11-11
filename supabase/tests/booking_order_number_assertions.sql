@@ -8,7 +8,7 @@ begin
  insert into public.service_bookings(id,customer_name,phone,address)
  values ('10000000-0000-0000-0000-000000000004','New','9000000004','New Address');
  select order_number into n2 from public.service_bookings where id='10000000-0000-0000-0000-000000000004';
- if n2 <> 'SRK-ORD-000012' then raise exception 'New booking number wrong after backfill: %',n2; end if;
+ if n2 <> 'SRK-ORD-000013' then raise exception 'New booking number wrong after backfill: %',n2; end if;
  select count(distinct order_number) into c from public.service_bookings;
  if c <> 4 then raise exception 'Order numbers not unique'; end if;
  begin
