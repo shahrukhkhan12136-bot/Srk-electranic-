@@ -79,6 +79,53 @@ async function updateBooking(orderId, payment) {
   return "update_not_applied";
 }
 
+async function updateSnapshotOrder(orderId, payment) {
+  const lookup = new URL("/rest/v1/srk_razorpay_orders", SUPABASE_URL);
+  lookup.searchParams.set("provider_order_id", "eq." + orderId);
+  lookup.searchParams.set("select", "provider_order_id,provider_payment_id,amount_paise,currency,status");
+  lookup.searchParams.set("limit", "1");
+  const response = await fetch(lookup, {
+    headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
+  });
+  if (!response.ok) throw new Error("Snapshot Razorpay order lookup failed");
+  const rows = await response.json();
+  const order = Array.isArray(rows) ? rows[0] : null;
+  if (!order) return null;
+
+  if (Number(order.amount_paise) !== payment.amount || order.currency !== payment.currency) {
+    return "snapshot_amount_mismatch";
+  }
+  if (order.status === "paid" && order.provider_payment_id === payment.id) {
+    return "snapshot_already_processed";
+  }
+  if (order.status !== "created") return "snapshot_order_not_ready";
+
+  const rpcResponse = await fetch(new URL("/rest/v1/rpc/srk_reconcile_razorpay_snapshot_payment", SUPABASE_URL), {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      p_provider_order_id: orderId,
+      p_provider_payment_id: payment.id,
+      p_amount_paise: payment.amount,
+      p_currency: payment.currency,
+      p_source: "webhook"
+    })
+  });
+  if (!rpcResponse.ok) {
+    const detail = await rpcResponse.text();
+    const error = new Error("Snapshot payment reconciliation failed");
+    error.status = rpcResponse.status;
+    error.detail = detail.slice(0, 300);
+    throw error;
+  }
+  const result = await rpcResponse.json();
+  return result?.success ? "snapshot_reconciled" : "snapshot_not_reconciled";
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { success: false, error: "POST only." });
   if (!SUPABASE_URL || !SUPABASE_KEY || !WEBHOOK_SECRET) {
@@ -109,6 +156,18 @@ exports.handler = async (event) => {
     if (!payment || payment.status !== "captured" || !/^pay_[A-Za-z0-9]+$/.test(payment.id || "") ||
         !/^order_[A-Za-z0-9]+$/.test(payment.order_id || "")) {
       return json(400, { success: false, error: "Captured payment details missing." });
+    }
+
+    const snapshotResult = await updateSnapshotOrder(payment.order_id, payment);
+    if (snapshotResult !== null) {
+      if (snapshotResult === "snapshot_reconciled" || snapshotResult === "snapshot_already_processed") {
+        return json(200, { success: true, reconciled: true, result: snapshotResult });
+      }
+      if (snapshotResult === "snapshot_amount_mismatch" || snapshotResult === "snapshot_order_not_ready") {
+        console.error("Razorpay snapshot webhook requires review:", snapshotResult);
+        return json(200, { success: true, reconciled: false, reason: snapshotResult });
+      }
+      return json(500, { success: false, reconciled: false, reason: snapshotResult });
     }
 
     const result = await updateBooking(payment.order_id, payment);
