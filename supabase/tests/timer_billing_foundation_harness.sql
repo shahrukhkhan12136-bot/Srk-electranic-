@@ -126,7 +126,7 @@ for each row execute function public.test_broadcast_new_booking();
 -- after timer billing migrations; it must not be silently marked paid or
 -- receive a timer bill, payable snapshot, or commission payout.
 insert into public.electrician_profiles(id,active,verification_status)
-values ('21000000-0000-4000-8000-000000000001',true,'approved');
+values ('21000000-0000-4000-8000-000000000001',false,'approved');
 
 insert into public.service_bookings(
   id,customer_name,phone,state,district,pincode,address,service_type,
