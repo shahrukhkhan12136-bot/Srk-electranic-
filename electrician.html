@@ -23,6 +23,23 @@ button[onclick="logout()"]{background:linear-gradient(115deg,#475569,#334155)}
 .hidden{display:none!important}
 @media(max-width:560px){.wrap{padding:14px}.card{padding:16px;border-radius:17px}.hero{padding:23px 14px 28px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+/* Responsive safety pass: partner dashboard */
+html{max-width:100%;overflow-x:hidden}
+body{min-width:0;overflow-x:hidden}
+main,.wrap,.card,.job{min-width:0;max-width:100%}
+img,svg,video,canvas{max-width:100%;height:auto}
+input,select,textarea{width:min(100%,420px);min-width:0}
+button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.job,.card{overflow-wrap:anywhere}
+@media(max-width:560px){
+  .wrap{width:100%;padding:12px}
+  .card{padding:14px}
+  .founder-banner{align-items:center}
+  .founder-copy{flex:1}
+  .founder-copy h2{overflow-wrap:anywhere}
+  button{min-height:42px}
+}
+@media(min-width:561px){input,select,textarea{max-width:420px}}
 
 .cash-confirm-wrap{margin-top:12px;padding:13px;border-radius:14px;background:linear-gradient(130deg,#fff7df,#ecfdf5);border:1px solid #fbbf24}
 .cash-confirm-note{margin:0 0 9px;font-weight:650;color:#854d0e}
