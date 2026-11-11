@@ -139,3 +139,17 @@ active booking → cancellation_requested → (Admin approves → cancelled) OR 
 - Store each request, customer decision, actor ID, server timestamp, and any rejection reason in an audit trail.
 - Customer must be able to see the requested action and approve or reject it from their booking screen; electrician must see the decision/status.
 - Do not allow either party to alter timestamps or directly edit elapsed duration/amount. If the customer rejects a start/stop request or does not respond, keep the request pending/rejected as appropriate and provide an Admin-mediated, audited dispute-resolution path. Do not silently start/stop the timer or invent a timeout rule.
+
+
+## 9. Remove the electrician quotation-sending workflow
+**User decision:** The electrician quotation/estimate submission and customer quote-approval workflow is to be removed from SRK ELECTRONIC.
+
+- Do not show an electrician control to prepare/send a labour quotation or combined quotation.
+- Do not require customer approval of an electrician-submitted quotation before work can begin.
+- During booking, show the four electrician categories and the applicable approved 8-hour and hourly labour rates clearly; the customer chooses/sees the applicable category/rate before confirming the booking.
+- Final labour billing is generated from the mutually customer-approved work timer (electrician requests start/stop; customer approves each action) and the saved category rate, charged per minute.
+- Materials/parts remain separate from labour. If materials are needed, list items, quantities and prices separately and obtain customer approval for those materials; do not treat this as an electrician labour quotation.
+- The old quote status/approval states and quote-related RPCs/database columns must be retired safely through a reviewed migration, without deleting historical payment or booking records.
+- Update customer, electrician and Admin screens and all payment/commission calculations so they use the approved timer-generated labour bill and separately approved materials, not the old quote amount.
+- Do not simply hide the quotation button while leaving the old quote-gated state machine in place: replace the underlying workflow and test booking → assignment → arrival → customer-approved timer start/stop → final bill → payment end-to-end.
+- Until that replacement is implemented and tested, do not claim the quotation system has been removed from the live app. This decision is recorded in the Feature Branch specification only; no production code or database has been changed by this update.
