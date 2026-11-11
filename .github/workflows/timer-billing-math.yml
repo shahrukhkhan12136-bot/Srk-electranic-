@@ -24,6 +24,14 @@ on:
       - "index.html"
       - "electrician.html"
       - "admin.html"
+      - "create-order.js"
+      - "verify-payment.js"
+      - "razorpay-webhook.js"
+      - "create-snapshot-order.js"
+      - "verify-snapshot-payment.js"
+      - "netlify.toml"
+      - "netlify/functions/create-snapshot-order.js"
+      - "netlify/functions/verify-snapshot-payment.js"
       - ".github/workflows/timer-billing-math.yml"
   push:
     branches:
@@ -41,6 +49,14 @@ on:
       - "supabase/tests/material_revision_customer_approval_assertions.sql"
       - "index.html"
       - "admin.html"
+      - "create-order.js"
+      - "verify-payment.js"
+      - "razorpay-webhook.js"
+      - "create-snapshot-order.js"
+      - "verify-snapshot-payment.js"
+      - "netlify.toml"
+      - "netlify/functions/create-snapshot-order.js"
+      - "netlify/functions/verify-snapshot-payment.js"
       - "electrician.html"
       - "supabase/tests/server_authoritative_booking_creation_assertions.sql"
       - "supabase/tests/timer_billing_math.sql"
@@ -85,6 +101,15 @@ jobs:
             console.log(file + ': ' + scripts.length + ' inline script(s) passed syntax check');
           }
           NODE
+      - name: Check server-side payment handlers and Netlify adapters
+        run: |
+          node --check create-order.js
+          node --check verify-payment.js
+          node --check razorpay-webhook.js
+          node --check create-snapshot-order.js
+          node --check verify-snapshot-payment.js
+          node --check netlify/functions/create-snapshot-order.js
+          node --check netlify/functions/verify-snapshot-payment.js
       - name: Create minimal synthetic baseline
         env:
           PGPASSWORD: postgres
