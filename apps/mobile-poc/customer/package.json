@@ -1,0 +1,18 @@
+{
+  "name": "srk-electronic-customer-mobile-poc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Isolated Capacitor proof of concept for SRK ELECTRONIC Customer app",
+  "scripts": {
+    "build": "node scripts/prepare-web.mjs",
+    "cap:add:android": "cap add android",
+    "cap:sync:android": "cap sync android"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.0.0",
+    "@capacitor/core": "8.0.0"
+  }
+}
