@@ -66,7 +66,15 @@ begin
 
   select count(distinct electrician_display_id) into v_count
   from public.electrician_profiles where electrician_display_id is not null;
-  if v_count <> 3 then raise exception 'Expected exactly three distinct issued IDs, got %', v_count; end if;
+  if v_count <> 3 then raise exception 'Expected three currently retained distinct IDs after deleting one profile, got %', v_count; end if;
+
+  delete from public.electrician_profiles
+   where auth_user_id = '00000000-0000-0000-0000-000000000007';
+  insert into public.electrician_profiles (verification_status, active, auth_user_id)
+  values ('approved', true, '00000000-0000-0000-0000-000000000008');
+  if (select electrician_display_id from public.electrician_profiles where auth_user_id = '00000000-0000-0000-0000-000000000008') <> 'SRK-EL-000004' then
+    raise exception 'Deleting and recreating a profile must not recycle a previously issued ID';
+  end if;
 
   if has_sequence_privilege('anon', 'public.electrician_display_id_seq', 'USAGE')
      or has_sequence_privilege('authenticated', 'public.electrician_display_id_seq', 'USAGE') then
