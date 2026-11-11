@@ -4,6 +4,18 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 type OfferRow = { id: string; electrician_id: string; booking_id: string; status: string };
 type WebhookPayload = { type: "INSERT" | "UPDATE"; table: string; schema: string; record: OfferRow; old_record?: OfferRow | null };
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isOfferRow(value: unknown): value is OfferRow {
+  if (!isObject(value)) return false;
+  return typeof value.id === "string" && value.id.length > 0 &&
+    typeof value.electrician_id === "string" && value.electrician_id.length > 0 &&
+    typeof value.booking_id === "string" && value.booking_id.length > 0 &&
+    typeof value.status === "string" && value.status.length > 0;
+}
+
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 // Secret API-key bundles are optional; malformed JSON must not crash the function at startup.
 let defaultSecretKey = "";
@@ -32,22 +44,33 @@ Deno.serve(async (req) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  let payload: WebhookPayload;
-  try { payload = await req.json(); }
+  let rawPayload: unknown;
+  try { rawPayload = await req.json(); }
   catch { return new Response("Invalid JSON", { status: 400 }); }
 
-  if (payload.schema !== "public" || payload.table !== "job_offers" ||
-      !payload.record?.id || !payload.record?.electrician_id) {
+  if (!isObject(rawPayload) ||
+      (rawPayload.type !== "INSERT" && rawPayload.type !== "UPDATE") ||
+      rawPayload.schema !== "public" || rawPayload.table !== "job_offers" ||
+      !isOfferRow(rawPayload.record)) {
     return new Response("Unsupported webhook payload", { status: 400 });
   }
+  if (rawPayload.old_record !== undefined && rawPayload.old_record !== null &&
+      !isOfferRow(rawPayload.old_record)) {
+    return new Response("Invalid previous row", { status: 400 });
+  }
 
+  const payload = rawPayload as unknown as WebhookPayload;
   const row = payload.record;
   const isNewOffer = payload.type === "INSERT" && row.status === "offered";
   const wasOffered = payload.old_record?.status === "offered";
   const shouldClose = payload.type === "UPDATE" && wasOffered && row.status !== "offered" && row.status !== "accepted";
   if (!isNewOffer && !shouldClose) return new Response("Ignored", { status: 200 });
 
-  webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+  try {
+    webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+  } catch {
+    return new Response("Push provider configuration is invalid", { status: 500 });
+  }
 
   const { data: profile, error: profileError } = await db
     .from("electrician_profiles")
@@ -71,6 +94,12 @@ Deno.serve(async (req) => {
   if (error) return new Response("Could not load subscriptions", { status: 500 });
 
   const results = await Promise.all((subscriptions || []).map(async (sub) => {
+    if (typeof sub.endpoint !== "string" || !sub.endpoint.startsWith("https://") ||
+        typeof sub.p256dh !== "string" || !sub.p256dh ||
+        typeof sub.auth !== "string" || !sub.auth) {
+      await db.from("srk_push_subscriptions").delete().eq("id", sub.id).catch(() => ({ error: true }));
+      return { id: sub.id, ok: false, reason: "invalid_subscription" };
+    }
     const subscription = { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } };
     const body = isNewOffer
       ? {
@@ -96,7 +125,7 @@ Deno.serve(async (req) => {
     } catch (err) {
       const statusCode = (err as { statusCode?: number }).statusCode;
       if (statusCode === 404 || statusCode === 410) {
-        await db.from("srk_push_subscriptions").delete().eq("id", sub.id);
+        await db.from("srk_push_subscriptions").delete().eq("id", sub.id).catch(() => ({ error: true }));
       }
       return { id: sub.id, ok: false, statusCode };
     }
