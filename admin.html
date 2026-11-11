@@ -2,20 +2,20 @@
 :root{font-family:system-ui,Arial;color:#14213d;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}.top{background:#102a43;color:white;padding:20px}.wrap{max-width:1100px;margin:auto;padding:18px}.card{background:white;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 3px 16px #102a4312}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.stat{font-size:28px;font-weight:800;color:#087e8b}input,button,select{font:inherit;padding:11px;border-radius:8px;border:1px solid #ccd5df}button{background:#087e8b;color:white;border:0;cursor:pointer;margin:3px}button.alt{background:#334e68}table{width:100%;border-collapse:collapse;min-width:700px}td,th{text-align:left;padding:10px;border-bottom:1px solid #e6edf3;font-size:14px}.scroll{overflow:auto}.muted{color:#627d98}.hidden{display:none}.danger{color:#b42318}.tag{padding:4px 8px;background:#e6f4f1;border-radius:20px;font-size:12px}
 </style></head><body><header class="top"><div class="wrap"><h1>SRK ELECTRONIC — Admin Panel</h1><p>ग्राहक बुकिंग • इलेक्ट्रिशियन • काम और कमीशन</p></div></header><main class="wrap"><section class="card" id="login"><h2>Admin लॉगिन</h2><p class="muted">अपने SRK Admin ईमेल और पासवर्ड से लॉगिन करें।</p><input id="email" type="email" autocomplete="username" placeholder="Admin ईमेल" style="width:min(100%,360px)"><br><br><input id="password" type="password" autocomplete="current-password" placeholder="पासवर्ड" style="width:min(100%,360px)"><br><br><button onclick="emailLogin()">Admin Login</button><p id="authmsg"></p></section><section id="app" class="hidden"><div class="card"><button class="alt" onclick="loadAll()">↻ Refresh</button><button class="alt" onclick="logout()">Logout</button><span id="who" class="muted"></span></div><div class="grid"><div class="card"><div class="muted">कुल बुकिंग</div><div class="stat" id="nBookings">—</div></div><div class="card"><div class="muted">नए काम</div><div class="stat" id="nNew">—</div></div><div class="card"><div class="muted">इलेक्ट्रिशियन आवेदन</div><div class="stat" id="nApps">—</div></div><div class="card"><div class="muted">सक्रिय पार्टनर</div><div class="stat" id="nPros">—</div></div></div><div class="card"><h2>नई बुकिंग और काम</h2><div class="scroll"><table><thead><tr><th>ग्राहक</th><th>सेवा / पता</th><th>लोकेशन</th><th>स्टेटस</th><th>तय राशि ₹</th><th>वास्तव में मिली ₹</th><th>पेमेंट</th><th>अपडेट</th></tr></thead><tbody id="bookings"></tbody></table></div></div><div class="card"><h2>इलेक्ट्रिशियन आवेदन</h2><p class="muted">महत्वपूर्ण: Approve करने से पहले इलेक्ट्रिशियन को इसी आवेदन वाले मोबाइल नंबर से <code>/electrician.html</code> पर SMS OTP लॉगिन करके सत्यापन पूरा करना होगा। OTP सत्यापन के बिना Approval सुरक्षित रूप से अस्वीकार होगा। Approval के बाद दस्तावेज़ जाँच करके पार्टनर को अलग से Activate करें।</p><div class="scroll"><table><thead><tr><th>नाम / फोन</th><th>लोकेशन</th><th>कौशल / अनुभव</th><th>स्थिति</th><th>कार्रवाई</th></tr></thead><tbody id="applications"></tbody></table></div></div><div class="card"><h2>इलेक्ट्रिशियन पार्टनर</h2><p class="muted">स्वीकृति के बाद भी दस्तावेज़ जाँच पूरी करके ही Active करें। OTP लॉगिन के लिए आवेदन वाला मोबाइल नंबर Supabase में सत्यापित होना चाहिए।</p><div class="scroll"><table><thead><tr><th>नाम</th><th>फोन</th><th>लोकेशन</th><th>सत्यापन</th><th>काम लेना</th><th>बदलें</th></tr></thead><tbody id="pros"></tbody></table></div></div><div class="card"><h2>इलेक्ट्रिशियन पेआउट — UPI / बैंक</h2><p class="muted">ग्राहक का verified Razorpay भुगतान और काम पूरा होने के बाद ही यहाँ देय रकम आएगी। Admin वास्तविक UPI/बैंक ट्रांसफर करने के बाद UTR डालकर Paid दर्ज करे। यह बटन अपने-आप पैसा नहीं भेजता।</p><div class="grid"><div><small>लंबित पेआउट</small><div class="stat" id="payoutPending">₹0</div></div><div><small>भुगतान किए गए पेआउट</small><div class="stat" id="payoutPaid">₹0</div></div></div><div class="scroll"><table><thead><tr><th>इलेक्ट्रिशियन</th><th>बुकिंग</th><th>मेहनताना</th><th>सामान</th><th>SRK कमीशन</th><th>देय रकम</th><th>स्थिति / कार्रवाई</th></tr></thead><tbody id="payoutRows"><tr><td colspan="7">लोड हो रहा है…</td></tr></tbody></table></div><p id="payoutMsg" class="muted"></p></div><div class="card"><h2>आंतरिक लेजर सारांश (ग्राहक वॉलेट नहीं)</h2><div id="walletAdminSummary">वॉलेट रिपोर्ट लोड हो रही है…</div><p class="muted">ग्राहक टॉप-अप और इलेक्ट्रिशियन निकासी अभी बंद हैं। इस पैनल में केवल सुरक्षित लेजर सारांश दिखता है।</p></div><div class="card"><h2>कमीशन रिपोर्ट</h2><p>कमीशन प्रत्येक बुकिंग में दर्ज commission_rate के अनुसार सर्विस शुल्क पर गणना होता है; सामान की राशि पर कमीशन नहीं लगता। Razorpay भुगतान सत्यापन पर राशि अपने-आप दर्ज होगी; Cash/अन्य भुगतान में Admin वास्तविक प्राप्त राशि और भुगतान स्थिति दर्ज करे। कमीशन तभी बनेगा जब काम Completed और ग्राहक भुगतान Paid हो। इलेक्ट्रिशियन की देय कमाई वास्तविक बैंक सेटलमेंट नहीं है; Route से पुष्टि होने तक इसे भुगतान न मानें।</p><div class="grid"><div><small>वास्तव में प्राप्त भुगतान</small><div id="collected" class="stat">₹0</div></div><div><small>कंपनी का कमीशन</small><div id="commission" class="stat">₹0</div></div><div><small>इलेक्ट्रिशियन की देय कमाई</small><div id="electricianDue" class="stat">₹0</div></div></div><h3>इलेक्ट्रिशियन के अनुसार हिसाब</h3><div class="scroll"><table><thead><tr><th>इलेक्ट्रिशियन</th><th>पूरे Paid काम</th><th>प्राप्त राशि</th><th>कंपनी कमीशन</th><th>इलेक्ट्रिशियन देय कमाई (भुगतान नहीं)</th></tr></thead><tbody id="partnerEarnings"></tbody></table></div></div><div class="card" id="financeDashboard">
 <h2>💰 Business Finance & Profit Dashboard</h2>
-<p class="muted">यह रिपोर्ट केवल Completed + Paid कामों को कमाई में गिनती है। इलेक्ट्रिशियन का हिस्सा कंपनी का खर्च नहीं है; खर्च केवल SRK के कमीशन से घटेगा। सभी खर्च Admin द्वारा बिल/रसीद के आधार पर दर्ज करें। 2Factor, Razorpay, Supabase और Netlify के बिल अभी अपने-आप आयात नहीं होते; उन्हें यहाँ मैन्युअली दर्ज करना होगा।</p>
+<p class="muted">यह रिपोर्ट केवल Completed + Paid कामों को कमाई में गिनती है। तारीखें भारत समय (Asia/Kolkata) के अनुसार हैं। Paid पेआउट वास्तविक भुगतान तारीख में और लंबित पेआउट बनने की तारीख में दिखते हैं। इलेक्ट्रिशियन का हिस्सा कंपनी का खर्च नहीं है; कंपनी के खर्च केवल SRK के कमीशन से घटते हैं। 2Factor SMS/OTP, Razorpay, Supabase और Netlify के बिल अपने-आप आयात नहीं होते; बिल/रसीद देखकर Admin उन्हें मैन्युअली दर्ज करे।</p>
 <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
 <label for="financePeriod">रिपोर्ट अवधि</label><select id="financePeriod" onchange="loadFinanceDashboard()" style="max-width:180px"><option value="daily">आज</option><option value="monthly" selected>इस महीने</option><option value="yearly">इस साल</option></select>
 <button class="alt" onclick="loadFinanceDashboard()">↻ हिसाब Refresh</button><span id="financeRange" class="muted"></span>
 </div>
 <div class="grid">
 <div class="card"><small>ग्राहक से प्राप्त भुगतान</small><div id="finCustomerPayments" class="stat">₹0.00</div></div>
-<div class="card"><small>SRK का 15%/निर्धारित कमीशन</small><div id="finCommission" class="stat">₹0.00</div></div>
+<div class="card"><small>SRK कमीशन (डिफ़ॉल्ट 15%, केवल सर्विस पर)</small><div id="finCommission" class="stat">₹0.00</div></div>
 <div class="card"><small>इलेक्ट्रिशियन का हिस्सा</small><div id="finElectricianShare" class="stat">₹0.00</div></div>
 <div class="card"><small>कुल कंपनी खर्च</small><div id="finExpenses" class="stat">₹0.00</div></div>
 <div class="card"><small>वास्तविक शुद्ध बचत / घाटा</small><div id="finNetProfit" class="stat">₹0.00</div></div>
-<div class="card"><small>Paid इलेक्ट्रिशियन पेआउट</small><div id="finPayoutPaid" class="stat">₹0.00</div></div>
-<div class="card"><small>बाकी इलेक्ट्रिशियन पेआउट</small><div id="finPayoutPending" class="stat">₹0.00</div></div>
-<div class="card"><small>Paid + Completed बुकिंग</small><div id="finBookingCount" class="stat">0</div></div>
+<div class="card"><small>इस अवधि में वास्तव में Paid पेआउट</small><div id="finPayoutPaid" class="stat">₹0.00</div></div>
+<div class="card"><small>इस अवधि में बने और अभी लंबित पेआउट</small><div id="finPayoutPending" class="stat">₹0.00</div></div>
+<div class="card"><small>इस अवधि में बनी बुकिंग</small><div id="finTotalBookings" class="stat">0</div></div><div class="card"><small>Paid + Completed बुकिंग</small><div id="finBookingCount" class="stat">0</div></div>
 </div>
 <h3>खर्च का विवरण</h3>
 <div class="grid">
@@ -37,7 +37,7 @@
 <div><label>बिल / Transaction Reference</label><input id="expenseReference" maxlength="120" placeholder="वैकल्पिक"></div>
 </div>
 <label>नोट (वैकल्पिक)</label><input id="expenseNotes" maxlength="500" placeholder="अतिरिक्त जानकारी">
-<button onclick="addFinanceExpense()">खर्च सुरक्षित दर्ज करें</button><p id="financeMsg" class="muted"></p>
+<button id="addExpenseBtn" onclick="addFinanceExpense()">खर्च सुरक्षित दर्ज करें</button><p id="financeMsg" class="muted"></p>
 <h3>इस अवधि के खर्चों की सूची</h3><div class="scroll"><table><thead><tr><th>तारीख</th><th>प्रकार</th><th>Provider</th><th>विवरण</th><th>Reference</th><th>राशि</th></tr></thead><tbody id="financeExpenseRows"><tr><td colspan="6">लोड हो रहा है…</td></tr></tbody></table></div>
 </div></section></main><script src="/srk-config.js"></script><script>
 const cfg=window.SRK_CONFIG||{};let sb,user;
@@ -51,7 +51,7 @@ async function markPayoutPaid(id){const method=document.getElementById('pm-'+id)
 async function loadWalletAdmin(){const box=document.getElementById('walletAdminSummary');if(!box)return;const {data,error}=await sb.rpc('srk_admin_wallet_overview');if(error){box.textContent='वॉलेट रिपोर्ट लोड नहीं हुई: '+error.message;return;}box.innerHTML='<p>पुराने ग्राहक लेजर खाते: <b>'+Number(data.customer_wallets||0)+'</b> (कोई ग्राहक टॉप-अप/भुगतान सुविधा नहीं)</p><p>इलेक्ट्रिशियन वॉलेट: <b>'+Number(data.electrician_wallets||0)+'</b></p><p>लेजर क्रेडिट: <b>₹'+Number(data.posted_ledger_credits||0).toFixed(2)+'</b></p><p>लेजर डेबिट: <b>₹'+Number(data.posted_ledger_debits||0).toFixed(2)+'</b></p><p>लंबित एंट्री: <b>'+Number(data.pending_entries||0)+'</b></p><p>सत्यापित बैंक लिंक: <b>'+Number(data.verified_bank_links||0)+'</b></p>';}
 
 function money(v){return '₹'+Number(v||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
-function localToday(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function localToday(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const x=Object.fromEntries(p.map(v=>[v.type,v.value]));return x.year+'-'+x.month+'-'+x.day}
 function expenseCategoryName(v){return ({sms_otp:'SMS / OTP',razorpay_fee:'Razorpay फीस',supabase:'Supabase',netlify:'Netlify / Server',advertising:'विज्ञापन',staff:'स्टाफ',other:'अन्य'})[v]||v}
 async function loadFinanceDashboard(){
  if(!sb||!user)return;
@@ -65,7 +65,7 @@ async function loadFinanceDashboard(){
  set('finCustomerPayments',money(d.customer_payments));set('finCommission',money(d.platform_commission));
  set('finElectricianShare',money(d.electrician_share));set('finExpenses',money(d.total_expenses));
  set('finNetProfit',money(d.net_profit));set('finPayoutPaid',money(d.electrician_payout_paid));
- set('finPayoutPending',money(d.electrician_payout_pending));set('finBookingCount',Number(d.paid_completed_bookings||0));
+ set('finPayoutPending',money(d.electrician_payout_pending));set('finTotalBookings',Number(d.bookings_created||0));set('finBookingCount',Number(d.paid_completed_bookings||0));
  set('finSms',money(d.sms_otp_cost));set('finRazorpay',money(d.razorpay_fees));
  set('finSupabase',money(d.supabase_cost));set('finNetlify',money(d.netlify_cost));
  set('finAds',money(d.advertising_cost));set('finStaff',money(d.staff_cost));set('finOther',money(d.other_cost));
@@ -76,22 +76,33 @@ async function loadFinanceDashboard(){
 }
 async function addFinanceExpense(){
  const msg=document.getElementById('financeMsg');
+ const btn=document.getElementById('addExpenseBtn');
  const amount=Number(document.getElementById('expenseAmount').value);
  const description=document.getElementById('expenseDescription').value.trim();
  if(!Number.isFinite(amount)||amount<=0||amount>100000000||description.length<2){msg.textContent='सही राशि और कम से कम 2 अक्षरों का विवरण भरें।';return;}
- const {data,error}=await sb.rpc('srk_admin_finance_add_expense',{
-  p_expense_date:document.getElementById('expenseDate').value||localToday(),
-  p_category:document.getElementById('expenseCategory').value,
-  p_provider:document.getElementById('expenseProvider').value.trim(),
-  p_description:description,p_amount:amount,
-  p_reference:document.getElementById('expenseReference').value.trim()||null,
-  p_notes:document.getElementById('expenseNotes').value.trim()||null
- });
- if(error){msg.textContent='खर्च दर्ज नहीं हुआ: '+error.message;return;}
- msg.textContent='खर्च सुरक्षित दर्ज हो गया। रिकॉर्ड ID: '+data;
- document.getElementById('expenseAmount').value='';document.getElementById('expenseDescription').value='';
- document.getElementById('expenseReference').value='';document.getElementById('expenseNotes').value='';
- await loadFinanceDashboard();
+ if(btn?.disabled)return;
+ if(btn)btn.disabled=true;
+ try{
+  const {data,error}=await sb.rpc('srk_admin_finance_add_expense',{
+   p_expense_date:document.getElementById('expenseDate').value||localToday(),
+   p_category:document.getElementById('expenseCategory').value,
+   p_provider:document.getElementById('expenseProvider').value.trim(),
+   p_description:description,p_amount:amount,
+   p_reference:document.getElementById('expenseReference').value.trim()||null,
+   p_notes:document.getElementById('expenseNotes').value.trim()||null
+  });
+  if(error){msg.textContent='खर्च दर्ज नहीं हुआ: '+error.message;return;}
+  msg.textContent='खर्च सुरक्षित दर्ज हो गया। रिकॉर्ड ID: '+data;
+  document.getElementById('expenseAmount').value='';
+  document.getElementById('expenseDescription').value='';
+  document.getElementById('expenseReference').value='';
+  document.getElementById('expenseNotes').value='';
+  await loadFinanceDashboard();
+ }catch(e){
+  msg.textContent='खर्च दर्ज करते समय त्रुटि हुई। दोबारा प्रयास से पहले सूची Refresh करके जाँचें।';
+ }finally{
+  if(btn)btn.disabled=false;
+ }
 }
 
 async function loadAll(){if(!sb||!user)return;await Promise.all([loadWalletAdmin(),loadPayouts(),loadFinanceDashboard()]);let [b,a,p,report]=await Promise.all([sb.from('service_bookings').select('id,created_at,customer_name,phone,service_type,address,district,state,pincode,status,quoted_amount,payment_status,amount_paid,assigned_electrician_id,razorpay_payment_id,location_lat,location_lng,preferred_date,preferred_time').order('created_at',{ascending:false}).limit(300),sb.from('electrician_applications').select('*').order('created_at',{ascending:false}).limit(300),sb.from('electrician_profiles').select('*').order('created_at',{ascending:false}).limit(500),sb.rpc('srk_admin_commission_report')]);let err=b.error||a.error||p.error||report.error;if(err){alert('डेटा नहीं खुला: '+err.message+' — जाँचें कि आपका फोन srk_admin_users में Admin है।');return}document.getElementById('nBookings').textContent=b.data.length;document.getElementById('nNew').textContent=b.data.filter(x=>x.status==='new').length;document.getElementById('nApps').textContent=a.data.length;document.getElementById('nPros').textContent=p.data.filter(x=>x.active&&x.verification_status==='approved').length;document.getElementById('bookings').innerHTML=b.data.map(x=>`<tr><td>${esc(x.customer_name)}<br>${esc(x.phone)}</td><td>${esc(x.service_type)}<br>${esc(x.address)}</td><td><input id="loc-address-${x.id}" value="${esc(x.address)}" placeholder="पूरा पता" maxlength="300" style="width:190px;margin:2px"><input id="loc-district-${x.id}" value="${esc(x.district)}" placeholder="जिला" maxlength="80" style="width:130px;margin:2px"><input id="loc-state-${x.id}" value="${esc(x.state)}" placeholder="राज्य" maxlength="80" style="width:130px;margin:2px"><input id="loc-pin-${x.id}" value="${esc(x.pincode)}" placeholder="6 अंकों का PIN" inputmode="numeric" maxlength="6" style="width:110px;margin:2px"><br><a target="_blank" rel="noopener" href="${esc(mapUrl(x))}">📍 Map</a><br><button class="alt" onclick="saveCustomerLocation('${x.id}')">पता / जिला बदलें</button></td><td><span class="tag">${esc(x.status)}</span></td><td><input id="amt-${x.id}" type="number" min="0" step="0.01" value="${x.quoted_amount??''}" placeholder="राशि" style="width:95px"></td><td><input id="paid-${x.id}" type="number" min="0" step="0.01" value="" style="width:100px"></td><td><select id="pay-${x.id}"><option>unpaid</option><option>pending</option><option>paid</option></select></td><td>${(!x.assigned_electrician_id&&['new','confirmed'].includes(x.status))? "<button class='alt' data-booking-id='"+x.id+"' onclick='offerBooking(this.dataset.bookingId)'>इलेक्ट्रिशियन को ऑफर भेजें</button><br>" : ''}<select id="st-${x.id}">${['new','confirmed','assigned','in_progress','completed','cancelled'].map(s=>`<option ${s===x.status?'selected':''}>${s}</option>`).join('')}</select><button onclick="saveBooking('${x.id}')">Save</button></td></tr>`).join('');b.data.forEach(x=>{const e=document.getElementById('pay-'+x.id);if(e)e.value=x.payment_status||'unpaid';const a=document.getElementById('paid-'+x.id);if(a)a.value=x.amount_paid??'';});document.getElementById('applications').innerHTML=a.data.map(x=>`<tr><td>${esc(x.full_name)}<br>${esc(x.phone)}</td><td>${esc(x.district)}, ${esc(x.state)}<br>${esc(x.pincode)}<br><a target="_blank" rel="noopener" href="${esc(mapUrl({...x,address:''}))}">📍 Map</a></td><td>${esc(x.skills)}<br>${x.experience_years} वर्ष</td><td>${esc(x.verification_status)}</td><td>${x.verification_status==='pending'?`<button onclick="review('${x.id}','approved')">Approve</button><button class="alt" onclick="review('${x.id}','rejected')">Reject</button>`:'—'}</td></tr>`).join('');document.getElementById('pros').innerHTML=p.data.map(x=>`<tr><td>${esc(x.display_name)}</td><td>${esc(x.phone)}</td><td>${esc(x.district)}, ${esc(x.state)} ${esc(x.pincode)}<br><a target="_blank" rel="noopener" href="${esc(mapUrl({...x,address:''}))}">📍 Map</a></td><td>${esc(x.verification_status)}</td><td>${x.active?'Active':'Inactive'}</td><td><button onclick="toggleActive('${x.id}',${!x.active})">${x.active?'Deactivate':'Activate'}</button></td></tr>`).join('');const summary=report.data||{};document.getElementById('commission').textContent='₹'+Number(summary.total_commission||0).toFixed(2);document.getElementById('collected').textContent='₹'+Number(summary.total_collected||0).toFixed(2);document.getElementById('electricianDue').textContent='₹'+Number(summary.total_electrician_payable||0).toFixed(2);document.getElementById('partnerEarnings').innerHTML=(summary.partners||[]).map(partner=>'<tr><td>'+esc(partner.display_name)+'</td><td>'+Number(partner.paid_completed_jobs||0)+'</td><td>₹'+Number(partner.gross_received||0).toFixed(2)+'</td><td>₹'+Number(partner.company_commission||0).toFixed(2)+'</td><td>₹'+Number(partner.electrician_earning||0).toFixed(2)+'</td></tr>').join('')||'<tr><td colspan="5">अभी कोई Paid और Completed काम नहीं है।</td></tr>'}
