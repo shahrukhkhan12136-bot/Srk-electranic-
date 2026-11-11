@@ -40,3 +40,25 @@ do $$ begin
  if (select payment_status from public.service_bookings where id='20000000-0000-4000-8000-000000000002')<>'refunded' then raise exception 'Manual refund did not update booking'; end if;
  if (select count(*) from public.srk_manual_refund_entries where booking_id='20000000-0000-4000-8000-000000000002')<>1 then raise exception 'Manual refund audit entry missing'; end if;
 end $$;
+
+
+-- Timer-category refund must be bound to its immutable payable snapshot and captured-payment ledger.
+set role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',false);
+select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000001","role":"authenticated"}',false);
+select public.srk_customer_create_booking_refund_request('20000000-0000-4000-8000-000000000003','टाइमर बुकिंग के भुगतान पर सेवा विवाद के कारण पूर्ण Refund अनुरोध।');
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',false);
+select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000003","role":"authenticated","is_srk_admin":"true"}',false);
+select public.srk_admin_decide_booking_refund_request((select id from public.srk_booking_refund_requests where booking_id='20000000-0000-4000-8000-000000000003'),'approved','Immutable timer snapshot and captured payment ledger matched.');
+select * from public.srk_admin_prepare_booking_refund((select id from public.srk_booking_refund_requests where booking_id='20000000-0000-4000-8000-000000000003'));
+reset role;
+set role service_role;
+select set_config('request.jwt.claims','{"role":"service_role"}',false);
+select public.srk_service_reconcile_booking_refund((select id from public.srk_razorpay_refunds where booking_id='20000000-0000-4000-8000-000000000003'),'rfnd_TIMER123','processed',null);
+reset role;
+do $$ begin
+ if (select payment_status from public.service_bookings where id='20000000-0000-4000-8000-000000000003')<>'refunded' then raise exception 'Timer snapshot refund did not update booking'; end if;
+ if (select amount_paise from public.srk_razorpay_refunds where booking_id='20000000-0000-4000-8000-000000000003')<>100000 then raise exception 'Timer refund amount does not match immutable snapshot'; end if;
+end $$;
