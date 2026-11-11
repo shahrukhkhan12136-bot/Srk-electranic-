@@ -471,7 +471,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: value('service'), preferred_date: value('date'), preferred_time: value('time'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '),
       service_category_code: value('serviceCategory'),
-      idempotency_key: window.crypto && crypto.randomUUID ? crypto.randomUUID() : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, x => (x ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> x / 4).toString(16))
+      idempotency_key: window.crypto.randomUUID()
     }) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
