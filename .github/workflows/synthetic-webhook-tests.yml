@@ -19,6 +19,7 @@ on:
       - "tests/business-finance.static.test.js"
       - "tests/parse_business_finance_migrations.py"
       - "supabase/migrations/20261110080448_srk_business_finance_dashboard.sql"
+      - "supabase/migrations/20261111043852_srk_business_finance_reporting_dates.sql"
       - "supabase/migrations/20261111090000_harden_business_finance_dashboard.sql"
       - "tests/razorpay-refund.static.test.js"
       - "tests/razorpay-refund-webhook.synthetic.test.js"
