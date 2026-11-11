@@ -247,6 +247,36 @@ exports.handler = async (event) => {
   try {
     const payload = JSON.parse(rawBody.toString("utf8"));
     const eventName = payload.event;
+    if (eventName === "refund.processed" || eventName === "refund.failed" || eventName === "refund.created") {
+      const refund = payload.payload?.refund?.entity;
+      if (!refund || !/^rfnd_[A-Za-z0-9]+$/.test(refund.id || "") ||
+          !/^pay_[A-Za-z0-9]+$/.test(refund.payment_id || "")) {
+        return json(400, { success: false, error: "Refund details missing." });
+      }
+      const lookup = new URL("/rest/v1/srk_razorpay_refunds", SUPABASE_URL);
+      lookup.searchParams.set("payment_id", "eq." + refund.payment_id);
+      lookup.searchParams.set("select", "id,refund_id,status");
+      lookup.searchParams.set("limit", "1");
+      const found = await fetch(lookup, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } });
+      if (!found.ok) throw new Error("Refund ledger lookup failed");
+      const rows = await found.json();
+      const record = Array.isArray(rows) ? rows[0] : null;
+      if (!record) return json(200, { success: true, ignored: true, reason: "refund_not_managed_by_srk" });
+      const providerStatus = refund.status === "processed" ? "processed" :
+        refund.status === "failed" ? "failed" : "pending";
+      const reconcile = await fetch(new URL("/rest/v1/rpc/srk_service_reconcile_booking_refund", SUPABASE_URL), {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          p_refund_record_id: record.id,
+          p_provider_refund_id: refund.id,
+          p_provider_status: providerStatus,
+          p_error: providerStatus === "failed" ? "Razorpay refund.failed webhook" : null
+        })
+      });
+      if (!reconcile.ok) throw new Error("Refund webhook reconciliation failed");
+      return json(200, { success: true, refund_reconciled: true, status: providerStatus });
+    }
     if (eventName !== "payment.captured" && eventName !== "order.paid") {
       return json(200, { success: true, ignored: true });
     }
