@@ -75,6 +75,10 @@ begin
   if position('cash_payment_intent' in pg_get_functiondef('public.srk_get_booking_timer_bill_details(uuid)'::regprocedure))=0 then
     raise exception 'scoped booking detail RPC does not expose cash intent status';
   end if;
+
+  if position('razorpay_order' in pg_get_functiondef('public.srk_get_booking_timer_bill_details(uuid)'::regprocedure))=0 then
+    raise exception 'scoped booking detail RPC does not expose Razorpay order state';
+  end if;
 end
 $assert$;
 
