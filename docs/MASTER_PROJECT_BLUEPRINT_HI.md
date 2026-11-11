@@ -211,3 +211,20 @@ Customer booking form में **केवल तारीख (Date) चुन�
 - पुरानी bookings में मौजूद time data को मिटाएँ/बदलें नहीं; केवल नए booking flow में customer time selection हटाएँ।
 
 स्थिति: **REQUIREMENT APPROVED / BOOKING UI, API-DATA CONTRACT & E2E TEST PENDING**.
+
+
+## 15. Electrician ID/Profile — assigned category visibility (Owner-confirmed: 2026-11-11)
+
+हर electrician को अपने Electrician App के **Profile / Electrician ID** पर अपनी Admin-approved category साफ़ दिखाई देनी चाहिए—जैसे **Helper, Ordinary, Skilled या Master**। Electrician को अपने ID/profile को देखकर तुरंत पता चल सके कि वह किस category में registered/approved है।
+
+- Electrician ID/Profile पर category का स्पष्ट नाम और badge दिखे; केवल अस्पष्ट code न दिखे।
+- Category server-authoritative, verified electrician profile/application assignment से आए; app client से भेजे गए label/category पर भरोसा न हो।
+- Electrician अपनी category खुद edit, upgrade या downgrade नहीं कर सके। बदलाव केवल authorized Admin workflow से, audit trail और version history के साथ हो।
+- Pending, rejected, suspended, inactive या missing assignment पर Helper/Master जैसी कोई default category न दिखे; वास्तविक status के अनुसार स्पष्ट message दिखे।
+- अपने ID/Profile पर केवल signed-in electrician की category दिखाई जाए; दूसरे electricians की private assignment उजागर न हो।
+- यही assigned category Rate Card में भी highlight हो और दोनों जगह एक ही authoritative profile value उपयोग हो।
+- Category badge mobile-friendly, accessible और Hindi/English labels के साथ हो; loading, offline, stale data और server error states स्पष्ट हों।
+
+Acceptance: profile API/RLS ownership tests, client-tampering negative tests, Admin category-change audit/version tests, status-state tests और mobile UI E2E पास हों।
+
+स्थिति: **REQUIREMENT APPROVED / IMPLEMENTATION & TESTING PENDING**.
