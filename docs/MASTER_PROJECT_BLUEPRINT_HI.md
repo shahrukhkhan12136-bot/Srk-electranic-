@@ -275,3 +275,7 @@ Owner ने तीन-phone reference image से Customer और Electrician 
 - Implement after blueprint/architecture approval, then run device-size/accessibility, auth/RLS, offline/retry, push, booking and release-build tests. No Play Store release without explicit owner approval.
 
 **Status: VISUAL DIRECTION APPROVED / ANDROID APPS NOT IMPLEMENTED.** Both Android directories remain README-only scaffolds.
+
+
+## Android Screen-by-Screen Blueprint
+Detailed Customer और Electrician Android screen inventory, flows, server-authority rules, edge states और QA matrix: [MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md](MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md). यह planning artifact है; native apps अभी implemented नहीं हैं।
