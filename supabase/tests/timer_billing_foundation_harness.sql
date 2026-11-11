@@ -121,6 +121,54 @@ create trigger test_broadcast_new_booking
 after insert on public.service_bookings
 for each row execute function public.test_broadcast_new_booking();
 
+-- Production parity: service-booking status history and insert guard.
+-- Historical fixture rows are inserted before these triggers, matching an
+-- already-live Production database where the triggers only affect new rows.
+create table if not exists public.service_booking_status_history (
+  id uuid primary key default gen_random_uuid(),
+  booking_id uuid not null references public.service_bookings(id),
+  old_status text,
+  new_status text not null,
+  note text,
+  changed_by uuid,
+  changed_at timestamptz not null default now()
+);
+
+create or replace function public.guard_new_booking()
+returns trigger
+language plpgsql
+as $function$
+begin
+  new.status := 'new';
+  new.payment_status := 'unpaid';
+  new.assigned_electrician_id := null;
+  new.commission_rate := 15.00;
+  new.commission_amount := null;
+  new.created_at := now();
+  return new;
+end
+$function$;
+
+create or replace function public.srk_log_service_booking_status()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public, auth, pg_temp
+as $function$
+begin
+  if tg_op = 'INSERT' then
+    insert into public.service_booking_status_history
+      (booking_id, old_status, new_status, note, changed_by)
+    values (new.id, null, new.status, 'Booking created', auth.uid());
+  elsif new.status is distinct from old.status then
+    insert into public.service_booking_status_history
+      (booking_id, old_status, new_status, note, changed_by)
+    values (new.id, old.status, new.status, 'Booking status updated', auth.uid());
+  end if;
+  return new;
+end
+$function$;
+
 -- Representative Production legacy record: completed but unpaid, with an
 -- approved quote and assigned electrician. It must remain historical/legacy
 -- after timer billing migrations; it must not be silently marked paid or
@@ -148,3 +196,15 @@ values (
   'accepted'
 );
 
+
+-- Match Production trigger names/order. The guard runs before insertion;
+-- status history runs after insertion and must not break the booking RPC.
+drop trigger if exists a_guard_booking on public.service_bookings;
+create trigger a_guard_booking
+before insert on public.service_bookings
+for each row execute function public.guard_new_booking();
+
+drop trigger if exists srk_log_service_booking_status on public.service_bookings;
+create trigger srk_log_service_booking_status
+after insert or update of status on public.service_bookings
+for each row execute function public.srk_log_service_booking_status();
