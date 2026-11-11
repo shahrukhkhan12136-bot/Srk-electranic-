@@ -2,7 +2,7 @@ import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 type OfferRow = { id: string; electrician_id: string; booking_id: string; status: string };
-type WebhookPayload = { type: "INSERT" | "UPDATE"; table: string; schema: string; record: OfferRow };
+type WebhookPayload = { type: "INSERT" | "UPDATE"; table: string; schema: string; record: OfferRow; old_record?: OfferRow | null };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}");
@@ -33,7 +33,8 @@ Deno.serve(async (req) => {
 
   const row = payload.record;
   const isNewOffer = payload.type === "INSERT" && row.status === "offered";
-  const shouldClose = payload.type === "UPDATE" && row.status !== "offered";
+  const wasOffered = payload.old_record?.status === "offered";
+  const shouldClose = payload.type === "UPDATE" && wasOffered && row.status !== "offered";
   if (!isNewOffer && !shouldClose) return new Response("Ignored", { status: 200 });
 
   webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
     return new Response("Electrician is not eligible", { status: 200 });
   }
 
-  const userId = profile.user_id || profile.auth_user_id;
+  const userId = profile.user_id; // Must match the dashboard RPC identity (p.user_id = auth.uid()).
   if (!userId) return new Response("Electrician account not linked", { status: 409 });
 
   const { data: subscriptions, error } = await db
