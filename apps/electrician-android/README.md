@@ -92,4 +92,4 @@ The Electrician ID/Profile card should show:
 
 Changing an electrician's approved category does not change their ID number. ID number alone is never an authentication credential.
 
-**Status: FORMAT APPROVED BY OWNER / IMPLEMENTATION & TESTING PENDING.**
+**Status: FORMAT APPROVED BY OWNER.** The server-side migration, web Electrician Profile ID display and Admin list/search wiring are committed on the Feature Branch. PostgreSQL 16 Production-shaped fixture, security/behavior checks, 24-way concurrent issuance stress test and web inline-JavaScript syntax checks passed in CI run `43082442370`. The migration is not applied to Production. This Android workspace remains README-only; the native Android ID card/profile screen, app framework/build and device-level testing are still pending.
