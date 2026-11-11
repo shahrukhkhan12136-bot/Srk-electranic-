@@ -17,6 +17,7 @@ on:
       - "supabase/tests/server_authoritative_booking_creation_assertions.sql"
       - "index.html"
       - "electrician.html"
+      - "admin.html"
       - ".github/workflows/timer-billing-math.yml"
   push:
     branches:
@@ -66,7 +67,7 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const vm = require('vm');
-          for (const file of ['index.html', 'electrician.html']) {
+          for (const file of ['index.html', 'electrician.html', 'admin.html']) {
             const html = fs.readFileSync(file, 'utf8');
             const scripts = [...html.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
             scripts.forEach((match, index) => new vm.Script(match[1], { filename: file + '#inline-' + index }));
