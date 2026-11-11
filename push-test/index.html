@@ -15,7 +15,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
 .small{font-size:12px;color:#596b63}
 </style></head>
 <body><main>
-<span class="tag">केवल TEST प्रोजेक्ट • Production से अलग</span>
+<span class="tag">केवल TEST प्रोजेक्ट • Production से अलग</span><p class="small">पेज संस्करण: 11-11-2026 / TEST-3</p>
 <h1>SRK ELECTRONIC Push Notification Test</h1>
 <p>इस पेज से केवल TEST Supabase अकाउंट में लॉगिन करके इस Android ब्राउज़र की Push Subscription सेव होगी। कोई ग्राहक डेटा या भुगतान इस्तेमाल नहीं होगा।</p>
 <form id="login">
@@ -95,10 +95,14 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     });
     if (error) { say('लॉगिन असफल: ' + error.message); return; }
     document.getElementById('password').value = '';
+    checkOffers.hidden = false;
+    checkOffers.disabled = false;
+    checkOffers.scrollIntoView({behavior:'smooth',block:'center'});
+    say('लॉगिन सफल। अब नीचे “मेरे नए ऑफर देखें” बटन दबाएँ।');
     await refreshSession();
-    await loadOffer();
+    try { await loadOffer(); } catch(e) { say('ऑफर स्क्रीन खोलने में त्रुटि: '+(e?.message||String(e))+'। “मेरे नए ऑफर देखें” दबाकर फिर कोशिश करें।'); checkOffers.hidden=false; }
   });
-  checkOffers.addEventListener('click', async () => { checkOffers.disabled=true; say('आपके नए ऑफर खोजे जा रहे हैं…'); try { offerId=null; history.replaceState({}, '', location.pathname); await loadOffer(); } catch(e) { say('ऑफर जाँच त्रुटि: '+(e?.message||String(e))); } finally { checkOffers.disabled=false; } });
+  checkOffers.addEventListener('click', async () => { checkOffers.hidden=false; checkOffers.disabled=true; say('आपके नए ऑफर खोजे जा रहे हैं…'); try { offerId=null; history.replaceState({}, '', location.pathname); await loadOffer(); } catch(e) { say('ऑफर जाँच त्रुटि: '+(e?.message||String(e))); document.getElementById('offer-view').hidden=false; document.getElementById('offer-info').textContent='ऑफर जाँच में समस्या आई। कृपया फिर से प्रयास करें।'; } finally { checkOffers.disabled=false; checkOffers.hidden=false; } });
   enable.addEventListener('click', async () => {
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
@@ -143,4 +147,4 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
   client.auth.getSession().then(({data}) => { if (offerId || data.session) loadOffer(); }).catch(error => say('स्थिति जाँच त्रुटि: '+error.message));
 })();
 </script></body></html>
-<!-- TEST UI refresh: visible offer lookup button and clearer offer state; build 2026-11-11-v2 -->
+<!-- TEST UI refresh: login always exposes offer lookup button; build 2026-11-11-v3 -->
