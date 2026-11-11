@@ -252,7 +252,7 @@
 No framework or app ID is selected here. Native project files must not be generated until these decisions are reviewed.
 
 
-## 11. Architecture Decision Record — प्रस्ताव और निर्णय की स्थिति
+## 10. Architecture Decision Record — प्रस्ताव और निर्णय की स्थिति
 
 **महत्वपूर्ण:** नीचे दिए गए विकल्प repository inspection पर आधारित engineering recommendations हैं; owner की अंतिम मंजूरी के बिना इन्हें चुना हुआ framework, app ID या release configuration न मानें।
 
@@ -348,7 +348,7 @@ No framework or app ID is selected here. Native project files must not be genera
 **Blueprint completion status:** Screen inventory, navigation, security, business rules, action inventory, edge states और QA matrix documented. Architecture recommendations documented but owner approval pending. Native apps, POC, device tests और release artifacts अभी बने नहीं हैं।
 
 
-## 12. Release Guardrails / Status
+## 11. Release Guardrails / Status
 - Exactly two Android apps; Admin/Staff remain secure web dashboards.
 - No Production migration/deployment, paid provider activation or Play Store publication under this blueprint.
 - Reference mockup data is never treated as live data.
