@@ -99,3 +99,7 @@ Changing an electrician's approved category does not change their ID number. ID 
 ## Owner-approved mobile visual direction (2026-11-12)
 
 The three-phone reference image establishes the visual direction for the Electrician Dashboard: Royal Blue / White / Gold, SRK ELECTRONIC branding, own profile and approval state, new job offers with clear accept/decline actions, earnings/work summary cards and accessible bottom navigation. Sample names, location, counts, ratings, earnings and offers in the reference are illustrative only; show only authenticated, authorized live data. Preserve the approved net-Labour-only Rate Card rules above. The Electrician Android app remains unimplemented; this approval does not mean a native app or build exists.
+
+
+## Screen-by-screen UI Blueprint
+See ../../docs/MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md for the approved screen inventory, navigation, business rules, edge states and QA acceptance matrix. This is a planning document; this Android app is not implemented yet.
