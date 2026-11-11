@@ -71,7 +71,7 @@ revoke all on sequence public.electrician_display_id_seq from public, anon, auth
 
 drop trigger if exists srk_assign_electrician_display_id_trigger on public.electrician_profiles;
 create trigger srk_assign_electrician_display_id_trigger
-before insert or update of verification_status, active, user_id, electrician_display_id
+before insert or update of verification_status, active, user_id, auth_user_id, electrician_display_id
 on public.electrician_profiles
 for each row
 execute function public.srk_assign_electrician_display_id();
