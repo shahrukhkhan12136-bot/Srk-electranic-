@@ -331,7 +331,7 @@ function customerTimerCardHtml(timer, bookingId) {
   }).join('');
   const bill = timer.final_bill;
   const materialsHtml = customerMaterialRevisionHtml(timer.material_revisions || []);
-  const snapshotHtml = customerPayableSnapshotHtml(timer, bookingId);
+  const snapshotHtml = customerPayableSnapshotHtml(timer, bookingId, row.payment_status);
   return '<div class="job"><b>टाइमर स्थिति:</b> ' + customerEsc(stateLabels[timer.timer_state] || timer.timer_state) +
     '<p>श्रेणी: ' + customerEsc(timer.service_category_label || '') + ' • दर: ₹' + customerEsc(Number(timer.hourly_rate_snapshot || 0).toFixed(3)) + '/घंटा</p>' +
     (timer.electrician_arrived_at ? '<p>इलेक्ट्रिशियन पहुँचे: ' + customerEsc(new Date(timer.electrician_arrived_at).toLocaleString('hi-IN')) + '</p>' : '') +
@@ -343,16 +343,70 @@ function customerTimerCardHtml(timer, bookingId) {
     snapshotHtml +
     '</div>';
 }
-function customerPayableSnapshotHtml(timer,bookingId) {
+function customerPayableSnapshotHtml(timer,bookingId,paymentStatus) {
   const snapshots=timer.payable_snapshots||[];
   const pending=(timer.material_revisions||[]).some(function(r){return r.status==='pending'||r.status==='draft';});
   if(snapshots.length){
     const p=snapshots[snapshots.length-1];
-    return '<div class="pay-note"><b>अंतिम भुगतान योग्य राशि — सुरक्षित snapshot</b><p>मेहनताना (सटीक गणना): ₹'+customerEsc(Number(p.labour_amount||0).toFixed(10))+'</p><p>मंजूर सामग्री: ₹'+customerEsc(Number(p.materials_amount||0).toFixed(2))+'</p><p><b>कुल देय: ₹'+customerEsc(Number(p.total_amount||0).toFixed(2))+'</b></p><p class="small">Snapshot ID: '+customerEsc(p.id)+' • '+customerEsc(p.currency)+'</p><p class="small">यह राशि अब लॉक है। भुगतान विकल्प सुरक्षित पेमेंट कनेक्शन पूरा होने पर उपलब्ध होंगे।</p></div>';
+    const total=Number(p.total_amount||0),paise=Number(p.amount_paise||0);
+    const payAction=paymentStatus==='paid'
+      ? '<p><b>भुगतान सफल और सत्यापित है।</b></p>'
+      : (paise>=100
+        ? '<button type="button" id="snapshot-pay-'+customerEsc(p.id)+'" onclick="customerPaySnapshot(\''+customerEsc(p.id)+'\')">🔒 Razorpay से सुरक्षित भुगतान करें</button>'
+        : (paise===0?'<p>इस बिल में कोई भुगतान देय नहीं है।</p>':'<p class="small">₹1 से कम राशि के लिए Razorpay भुगतान उपलब्ध नहीं है।</p>'));
+    return '<div class="pay-note"><b>अंतिम भुगतान योग्य राशि — सुरक्षित snapshot</b><p>मेहनताना (सटीक गणना): ₹'+customerEsc(Number(p.labour_amount||0).toFixed(10))+'</p><p>मंजूर सामग्री: ₹'+customerEsc(Number(p.materials_amount||0).toFixed(2))+'</p><p><b>कुल देय: ₹'+customerEsc(total.toFixed(2))+'</b></p><p class="small">Snapshot ID: '+customerEsc(p.id)+' • '+customerEsc(p.currency)+'</p>'+payAction+'</div>';
   }
   if(timer.timer_state!=='stopped'||!timer.final_bill)return '';
   if(pending)return '<div class="pay-note"><b>भुगतान राशि अभी तैयार नहीं है।</b><p class="small">पहले सामग्री के लंबित प्रस्ताव को मंजूर या अस्वीकार करें।</p></div>';
   return '<div class="pay-note"><b>अंतिम भुगतान राशि तैयार करें</b><p class="small">आपके अंतिम मेहनताना बिल और ग्राहक द्वारा मंजूर सामग्री को जोड़कर कुल राशि लॉक की जाएगी। ग्राहक द्वारा खरीदे गए सामान का कोई शुल्क नहीं जोड़ा जाएगा।</p><button type="button" onclick="customerCreatePayableSnapshot(\''+customerEsc(bookingId)+'\')">अंतिम कुल राशि तैयार करें</button></div>';
+}
+async function customerPaySnapshot(snapshotId) {
+  if(paymentBusy)return;
+  const button=document.getElementById('snapshot-pay-'+snapshotId);
+  if(button){button.disabled=true;button.textContent='कृपया प्रतीक्षा करें…';}
+  paymentBusy=true;
+  try{
+    const {data:sessionData}=await customerSb.auth.getSession();
+    const session=sessionData.session;
+    if(!session)throw new Error('भुगतान के लिए पहले ग्राहक OTP लॉगिन करें।');
+    const headers={'Content-Type':'application/json','Authorization':'Bearer '+session.access_token};
+    const orderResponse=await fetch('/api/create-snapshot-order',{method:'POST',headers,body:JSON.stringify({snapshot_id:snapshotId})});
+    const orderData=await orderResponse.json();
+    if(!orderResponse.ok||!orderData.success)throw new Error(orderData.error||'पेमेंट ऑर्डर नहीं बन पाया।');
+    const checkout=new Razorpay({
+      key:orderData.key_id,amount:orderData.amount,currency:orderData.currency,
+      name:'SRK ELECTRONIC',description:'अंतिम मेहनताना और मंजूर सामग्री',
+      order_id:orderData.order_id,
+      prefill:{name:value('name'),contact:session.user.phone||''},
+      notes:{service:'SRK ELECTRONIC',payable_snapshot_id:snapshotId},
+      theme:{color:'#0b5ed7'},
+      handler:async function(response){
+        try{
+          const verifyResponse=await fetch('/api/verify-snapshot-payment',{
+            method:'POST',headers,
+            body:JSON.stringify({
+              snapshot_id:snapshotId,
+              razorpay_payment_id:response.razorpay_payment_id,
+              razorpay_order_id:response.razorpay_order_id,
+              razorpay_signature:response.razorpay_signature
+            })
+          });
+          const verified=await verifyResponse.json();
+          if(!verifyResponse.ok||!verified.success)throw new Error(verified.error||'भुगतान सत्यापित नहीं हुआ।');
+          alert('भुगतान सफल और सत्यापित हो गया।');
+          await loadCustomerBookings();
+        }catch(error){alert(error.message||'भुगतान सत्यापित नहीं हो सका।');}
+      },
+      modal:{ondismiss:function(){alert('भुगतान विंडो बंद हुई। जब तक पुष्टि न हो, भुगतान सफल न मानें।');}}
+    });
+    checkout.on('payment.failed',function(){alert('भुगतान असफल रहा। कृपया दोबारा कोशिश करें।');});
+    checkout.open();
+  }catch(error){
+    alert(error.message||'भुगतान शुरू नहीं हो सका।');
+  }finally{
+    paymentBusy=false;
+    if(button){button.disabled=false;button.textContent='🔒 Razorpay से सुरक्षित भुगतान करें';}
+  }
 }
 async function customerCreatePayableSnapshot(bookingId) {
   if(!confirm('क्या आप अंतिम मेहनताना बिल और मंजूर सामग्री देखकर कुल भुगतान योग्य राशि लॉक करना चाहते हैं? इसके बाद सामग्री सूची में बदलाव नहीं किया जा सकेगा।'))return;
