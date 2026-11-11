@@ -1,0 +1,8 @@
+{
+  "appId": "in.srkelectronic.poc.customer",
+  "appName": "SRK ELECTRONIC Customer POC",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
