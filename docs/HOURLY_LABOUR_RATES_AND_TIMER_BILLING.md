@@ -174,3 +174,14 @@ active booking → cancellation_requested → (Admin approves → cancelled) OR 
 - Show the customer the actual elapsed time, billable whole minutes, per-minute rate, and final rounded labour amount as separate, understandable values.
 - Apply this same deterministic rule in every server-side bill calculation, receipt, admin view, and payment amount. Never calculate the authoritative amount in the client.
 - This rule does not introduce a minimum labour charge; no minimum has been approved.
+
+
+## 12. Approved decision reconciliation (2026-11-11)
+This section resolves older open questions above. If an earlier paragraph in this document conflicts with this section or Section 11, the later user-confirmed decisions below take precedence:
+
+- **Partial minutes:** use the ceiling rule in Section 11. Any remaining seconds count as the next whole billable minute. There is no per-second prorating and no minimum labour charge.
+- **Customer cancellation charge:** ₹99 fixed, and only if (a) the customer requests cancellation, (b) the electrician's actual arrival at the customer location has been recorded, and (c) Admin explicitly approves the cancellation request. No charge if arrival was not recorded. The request itself never creates an immediately payable fee.
+- **Materials:** labour and materials remain separate; itemized materials require separate customer approval. Materials must not be included in the electrician labour amount or incur an unauthorized markup.
+- **Payment:** no payment method or checkout at booking. Cash and Online Payment become available only after customer-approved timer stop and final bill generation. Cash is marked paid only after the assigned electrician confirms actual receipt; online is marked paid only after verified provider confirmation.
+
+The implementation status remains pending. This document update changes no application code, database schema/data, payment configuration, or deployment.
