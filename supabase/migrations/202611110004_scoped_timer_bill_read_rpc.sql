@@ -114,17 +114,6 @@ begin
       ) order by cr.confirmed_at)
       from public.srk_cash_receipts cr where cr.booking_id=b.id
     ),'[]'::jsonb),
-    'cash_payment_intent',(
-      select jsonb_build_object(
-        'id',ci.id,'payable_snapshot_id',ci.payable_snapshot_id,
-        'amount_paise',ci.amount_paise,'currency',ci.currency,
-        'status',ci.status,'selected_at',ci.selected_at,
-        'confirmed_at',ci.confirmed_at,'receipt_id',ci.receipt_id
-      )
-      from public.srk_cash_payment_intents ci
-      where ci.booking_id=b.id
-      order by ci.selected_at desc limit 1
-    ),
     'is_admin_view',v_is_admin
   ) into v_result
   from public.service_bookings b
