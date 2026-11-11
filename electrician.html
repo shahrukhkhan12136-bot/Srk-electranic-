@@ -107,7 +107,54 @@ function electricianTimerCardHtml(timer,bookingId){
   (timer.timer_started_at?'<p>टाइमर शुरू: '+esc(new Date(timer.timer_started_at).toLocaleString('hi-IN'))+'</p>':'')+
   controls+
   (bill?'<div class="pay-note"><b>अंतिम मेहनताना बिल</b><p>बिल योग्य मिनट: '+esc(bill.billable_minutes)+'</p><p>मेहनताना: ₹'+esc(Number(bill.labour_amount||0).toFixed(2))+'</p><p class="small">सामान/पार्ट्स अलग itemized bill और ग्राहक की अलग मंजूरी से ही जोड़े जाएँगे।</p></div>':'')+
+  (bill&&timer.timer_state==='stopped'?electricianMaterialFormHtml(bookingId,timer.material_revisions||''):'')+
   '</div>';
+}
+function electricianMaterialLineHtml(){
+ return '<div class="job material-line" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:8px 0">'+
+ '<input data-field="description" maxlength="240" placeholder="सामान का नाम / विवरण">'+
+ '<input data-field="quantity" type="number" min="0.001" step="0.001" placeholder="मात्रा">'+
+ '<input data-field="unit_price" type="number" min="0" step="0.01" placeholder="प्रति यूनिट ₹">'+
+ '<select data-field="supplied_by"><option value="electrician">इलेक्ट्रिशियन देगा</option><option value="customer">ग्राहक ने खरीदा (₹0)</option></select>'+
+ '<input data-field="receipt_reference" maxlength="120" placeholder="इलेक्ट्रिशियन की रसीद / बिल नंबर">'+
+ '</div>';
+}
+function electricianMaterialFormHtml(bookingId,revisions){
+ const open=(revisions||[]).find(function(r){return r.status==='pending'||r.status==='draft';});
+ if(open)return '<div class="pay-note"><b>सामग्री प्रस्ताव #'+esc(open.revision)+'</b><p>ग्राहक की मंजूरी बाकी है। इस बीच नया सामग्री प्रस्ताव नहीं भेजा जा सकता।</p></div>';
+ return '<div class="pay-note"><b>सामग्री / पार्ट्स का अलग itemized बिल</b><p class="small">केवल वही सामान दर्ज करें जो आपने ग्राहक को दिया है। हर इलेक्ट्रिशियन-प्रदत्त सामग्री के लिए अलग रसीद/बिल नंबर जरूरी है। ग्राहक द्वारा खरीदे गए सामान पर ₹0 शुल्क रखें। मेहनताना इसमें शामिल न करें।</p>'+
+ '<div id="material-lines-'+esc(bookingId)+'">'+electricianMaterialLineHtml()+'</div>'+
+ '<button type="button" class="alt" onclick="addElectricianMaterialLine(\''+esc(bookingId)+'\')">＋ एक और सामान जोड़ें</button>'+
+ '<button type="button" onclick="submitElectricianMaterials(\''+esc(bookingId)+'\')">ग्राहक को सामग्री सूची मंजूरी के लिए भेजें</button></div>';
+}
+function addElectricianMaterialLine(bookingId){
+ const box=document.getElementById('material-lines-'+bookingId);
+ if(!box)return;
+ if(box.querySelectorAll('.material-line').length>=30){alert('एक प्रस्ताव में अधिकतम 30 सामग्री आइटम जोड़े जा सकते हैं।');return;}
+ box.insertAdjacentHTML('beforeend',electricianMaterialLineHtml());
+}
+async function submitElectricianMaterials(bookingId){
+ const box=document.getElementById('material-lines-'+bookingId);
+ if(!box)return;
+ const lines=[...box.querySelectorAll('.material-line')].map(function(row){
+  const value=function(key){return row.querySelector('[data-field="'+key+'"]').value.trim();};
+  return {description:value('description'),quantity:Number(value('quantity')),unit_price:Number(value('unit_price')),supplied_by:value('supplied_by'),receipt_reference:value('receipt_reference')};
+ });
+ if(!lines.length||lines.some(function(x){return !x.description||!Number.isFinite(x.quantity)||x.quantity<=0||!Number.isFinite(x.unit_price)||x.unit_price<0;})){
+  alert('हर सामग्री का नाम, सही मात्रा और दर भरें।');return;
+ }
+ if(lines.some(function(x){return x.supplied_by==='electrician'&&!x.receipt_reference;})){
+  alert('इलेक्ट्रिशियन द्वारा दिए गए हर सामान की रसीद/बिल संख्या भरना जरूरी है।');return;
+ }
+ if(lines.some(function(x){return x.supplied_by==='customer'&&x.unit_price!==0;})){
+  alert('ग्राहक द्वारा खरीदे गए सामान पर कोई शुल्क नहीं लगेगा। उसकी दर ₹0 रखें।');return;
+ }
+ if(!confirm('क्या आप यह अलग itemized सामग्री सूची ग्राहक की मंजूरी के लिए भेजना चाहते हैं?'))return;
+ const key='materials-'+bookingId+'-'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2));
+ const {data,error}=await sb.rpc('srk_electrician_submit_material_revision',{p_booking_id:bookingId,p_items:lines,p_idempotency_key:key});
+ if(error){alert('सामग्री सूची नहीं भेजी गई: '+error.message);return;}
+ alert('अलग सामग्री सूची ग्राहक की मंजूरी के लिए भेज दी गई। कुल इलेक्ट्रिशियन-प्रदत्त सामग्री: ₹'+Number(data?.electrician_material_total||0).toFixed(2));
+ await refresh();
 }
 async function electricianTimerAction(bookingId,action){
  const prompts={arrival:'क्या आप पुष्टि करते हैं कि आप ग्राहक के पते पर पहुँच गए हैं?',start:'क्या आप ग्राहक से काम का टाइमर शुरू करने की मंजूरी माँगना चाहते हैं?',stop:'क्या आप ग्राहक से टाइमर रोकने और अंतिम मेहनताना बिल बनाने की मंजूरी माँगना चाहते हैं?'};
