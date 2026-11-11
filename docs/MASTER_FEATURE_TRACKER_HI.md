@@ -188,8 +188,8 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [~] Requirement documented; actual Android/profile UI and API implementation pending.
 
 
-## B.2 Electrician ID Number — permanent unique number (2026-11-11)
-- [ ] Proposed format: SRK-EL-000001, SRK-EL-000002…; owner confirmation pending.
+## B.2 Electrician ID Number — permanent unique number (owner-approved 2026-11-12)
+- [ ] Owner-approved format: SRK-EL-000001, SRK-EL-000002… .
 - [ ] Issue automatically from server only after Admin approval and account activation.
 - [ ] Unique, permanent, never reused; electrician cannot edit or choose it.
 - [ ] Keep internal UUID primary key separate from readable public/display ID.
@@ -198,4 +198,4 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [ ] Category changes must not change the permanent ID number; Admin changes remain audited/versioned.
 - [ ] Add database uniqueness, transactional sequence/concurrency, authorization and lookup tests.
 - [ ] ID alone must never authenticate a user or grant access.
-- [~] Design documented; format awaits owner confirmation; implementation pending.
+- [~] Format approved; database issuance, profile UI, Admin lookup, authorization and tests remain pending.
