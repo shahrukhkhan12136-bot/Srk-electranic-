@@ -155,3 +155,11 @@ No RLS policy or database setting was changed; this was read-only metadata inspe
 - The new migration must explicitly revoke old quote/work-status paths only after replacement flows are implemented and tested. For each SECURITY DEFINER RPC, explicitly set a safe fixed search_path, revoke PUBLIC/anon, grant only the intended role, validate actor identity inside the function, and test unauthenticated/unauthorized calls.
 
 This updates the prior policy note with the confirmed table RLS flags. No database policies, grants, or functions were changed.
+
+## 11. TEST project suitability re-check (2026-11-11)
+
+A read-only inventory of TEST Supabase project `dvzmarekhstaubyuoeeh` currently returns only three public base tables: `electrician_profiles`, `job_offers`, and `srk_push_subscriptions`. It does not contain `service_bookings` or the payment, payout, booking-history and audit structures needed for representative timer/billing tests. Therefore this project is not a viable target for the new booking migration or end-to-end booking workflow test at this time. Do not apply the migration to it and do not treat a successful migration there as validation.
+
+Before database integration testing, establish a complete isolated TEST schema from reviewed migrations (including required auth roles/helpers/extensions and relevant triggers/RLS), then seed synthetic customer/electrician/Admin accounts and synthetic bookings. Keep this separate from Production and avoid copying real customer personal/payment data. If a complete isolated Supabase test project cannot be prepared, use a local disposable PostgreSQL/Supabase test environment and run the full migration + automated tests there first.
+
+No TEST or Production database writes were made during this inventory.
