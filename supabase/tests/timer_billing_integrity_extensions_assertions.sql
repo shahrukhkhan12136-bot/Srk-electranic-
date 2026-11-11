@@ -72,6 +72,24 @@ begin
     null;
   end;
 
+  begin
+    insert into public.srk_cash_receipts(
+      payable_snapshot_id, booking_id, confirmed_by, amount_paise
+    ) values (v_snapshot, v_booking, v_user, 2374);
+    raise exception 'cash receipt with mismatched amount unexpectedly accepted';
+  exception when check_violation then
+    null;
+  end;
+
+  begin
+    update public.srk_booking_payable_snapshots
+    set total_amount = 24.00, amount_paise = 2400
+    where id = v_snapshot;
+    raise exception 'payable snapshot financial fields unexpectedly mutable';
+  exception when object_not_in_prerequisite_state then
+    null;
+  end;
+
   insert into public.srk_payment_webhook_events(
     provider, provider_event_id, payload_sha256, event_type
   ) values (
@@ -101,6 +119,14 @@ begin
     where bill_id=v_bill and revision_id=v_revision
   ) then
     raise exception 'material line is not attached to exact revision';
+  end if;
+  if not exists (
+    select 1 from pg_trigger
+    where tgrelid='public.srk_booking_audit_events'::regclass
+      and tgname='srk_booking_audit_events_append_only_trigger'
+      and not tgisinternal
+  ) then
+    raise exception 'append-only audit trigger is missing';
   end if;
 
   begin
