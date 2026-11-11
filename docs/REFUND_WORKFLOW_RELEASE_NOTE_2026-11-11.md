@@ -31,3 +31,16 @@
 3. If Razorpay reports a failed/uncertain refund, reconcile it in the Razorpay Dashboard before taking another action. Do not create a new refund record or change the idempotency key to bypass an unresolved attempt.
 4. Do not apply the timer extension migration before its prerequisite timer schema migrations.
 5. Full refunds only; partial refunds are not implemented.
+
+## Additional Main Production catalog audit
+
+- Latest recorded Main Production migration is `20261111153846 srk_booking_refund_requests_workflow`; no `20261111160000`–`20261111160015` migrations are recorded.
+- The Production catalog currently has none of the timer-specific tables: `srk_booking_timer_decisions`, `srk_final_bills`, `srk_bill_material_items`, `srk_bill_material_approvals`, `srk_booking_payable_snapshots`, `srk_cash_receipts`, `srk_cash_payment_intents`, `srk_razorpay_orders`, `srk_razorpay_payments`, or `srk_timer_cash_refund_entries`. The existing refund, manual payment/refund, payout, booking, electrician profile and offer tables are present.
+- Production `service_bookings.payment_status` already permits `refunded`; the booking `status` constraint does not, and the timer cash refund RPC changes only `payment_status`, not booking status. Production payout `payout_status` permits `refunded`.
+- Production function signatures match the legacy functions replaced by migration 13, and the existing customer contact RPC wrapper/private implementation match migration 14's intended target. The existing `srk_admin_list_booking_refund_requests(integer)` has no catalog dependencies, so migration 15's return-shape replacement has no dependent database object to cascade.
+- Main Production health advisor returned no findings. Security/performance advisor reports pre-existing warnings (including RLS-enabled tables with no policies but no direct client table grants, authenticated-executable SECURITY DEFINER RPCs protected by in-function Admin checks, and unused/missing-FK-index notices). These were not silently altered as part of the refund/timer work.
+- Migration 15 was also included in the successful isolated refund workflow run `43052368202`; this still does not substitute for live Supabase JWT/RLS or browser testing.
+
+## Release decision
+
+The catalog audit found no direct table-name collision and confirmed the key payment/refund constraints, but the timer/payment schema has **not** been written to Main Production. The full 16-migration sequence (timer foundation through timer refund extension) remains a controlled production schema change. Keep it unapplied until the final live authentication, browser and Razorpay Test Mode checks are completed and the consolidated release is approved. No production deployment has been made.
