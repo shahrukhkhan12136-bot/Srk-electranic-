@@ -29,6 +29,11 @@ begin
   ) values (
     v_booking,v_customer,v_profile,'completed','helper','Helper',120,'stopped'
   );
+  -- Production's BEFORE INSERT guard clears assignment and forces status=new.
+  -- Recreate the real post-acceptance/finished state through a later update.
+  update public.service_bookings
+  set assigned_electrician_id=v_profile,status='completed'
+  where id=v_booking;
   insert into public.job_offers(booking_id,electrician_id,status)
   values (v_booking,v_profile,'accepted');
   insert into public.srk_final_bills(
