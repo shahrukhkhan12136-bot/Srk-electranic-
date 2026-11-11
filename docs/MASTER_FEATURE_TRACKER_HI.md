@@ -198,4 +198,4 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [ ] Category changes must not change the permanent ID number; Admin changes remain audited/versioned.
 - [ ] Add database uniqueness, transactional sequence/concurrency, authorization and lookup tests.
 - [ ] ID alone must never authenticate a user or grant access.
-- [~] Format approved; database issuance, profile UI, Admin lookup, authorization and tests remain pending.
+- [I] Owner-approved format; server-side sequence/trigger migration plus security assertions and electrician/Admin ID display wiring are committed to Feature Branch. Migration not applied; runtime authorization/concurrency tests and Preview verification pending.
