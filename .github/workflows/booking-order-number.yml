@@ -26,6 +26,7 @@ on:
       - "index.html"
       - "electrician.html"
       - "admin.html"
+      - "apps/mobile-poc/customer/www/index.html"
 permissions:
   contents: read
 jobs:
