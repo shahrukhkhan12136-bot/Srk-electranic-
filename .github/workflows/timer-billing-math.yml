@@ -293,6 +293,20 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/migrations/202611110010_cash_payment_intent_receipt_confirmation.sql
+      - name: Apply payable snapshot legacy rounding constraint repair
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110011_repair_payable_snapshot_rounding_constraint.sql
+      - name: Verify payable snapshot constraint repair is replay-safe
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110011_repair_payable_snapshot_rounding_constraint.sql
       - name: Assert cash payment ownership, grants and Razorpay exclusivity
         env:
           PGPASSWORD: postgres
