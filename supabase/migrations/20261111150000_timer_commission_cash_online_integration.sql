@@ -114,6 +114,10 @@ begin
     update public.srk_electrician_payouts
     set payout_status = 'refunded',
         commission_collection_status = 'not_applicable',
+        commission_remittance_reference = null,
+        commission_remittance_submitted_at = null,
+        commission_remittance_confirmed_at = null,
+        commission_remittance_confirmed_by = null,
         updated_at = now()
     where booking_id = new.id
       and payout_status in ('pending','blocked')
