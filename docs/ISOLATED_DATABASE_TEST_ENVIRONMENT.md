@@ -76,3 +76,43 @@ The export route must be generated read-only and reviewed before it is added to 
 ## Next safe step
 
 Obtain and review a schema-only baseline snapshot (or restore the complete missing migration history), then build the disposable CI database. Do not use a paid Supabase branch or create a new hosted project unless its cost is disclosed and the user explicitly approves it.
+
+## Additional read-only dependency inventory (Production metadata)
+
+A second catalog-only query checked foreign keys, triggers, and RLS policies around the booking workflow. It did not read booking rows or modify the database.
+
+### Booking foreign-key graph
+- `job_offers.booking_id` -> `service_bookings.id` (ON DELETE CASCADE).
+- `service_booking_status_history.booking_id` -> `service_bookings.id` (ON DELETE CASCADE).
+- `service_bookings.customer_user_id` -> `auth.users.id` (ON DELETE SET NULL).
+- Complaint, electrician payout, manual payment, manual refund, Razorpay refund, and Route transfer records reference bookings with ON DELETE RESTRICT.
+- Payment-order locks reference bookings with ON DELETE CASCADE.
+
+Implication: integration tests must prove booking deletion behavior does not erase financial/audit evidence unexpectedly. Financial and complaint references intentionally restrict deletion; the test harness must cover those restrictions. Cascading history/offers and payment-order locks need explicit retention-policy review before any future schema redesign.
+
+### Existing booking triggers
+Current Production metadata reports these trigger functions on `service_bookings`:
+- `guard_new_booking()` BEFORE INSERT.
+- `broadcast_booking_job()` AFTER INSERT.
+- `srk_capture_admin_audit_event()` AFTER INSERT/UPDATE/DELETE.
+- `srk_calculate_booking_commission()` BEFORE INSERT/UPDATE.
+- `srk_cancel_booking_job_offers()` AFTER UPDATE.
+- `srk_log_service_booking_status()` AFTER INSERT/UPDATE.
+- `srk_create_electrician_payable()` AFTER INSERT/UPDATE.
+
+The disposable harness cannot blindly invoke production side-effect functions. It must either load their reviewed definitions and stub external integrations safely, or explicitly disable/replace only external side-effect triggers in the isolated test copy while retaining the database integrity, audit, commission, and payable logic under test. Record each substitution. Never copy production secrets or send real push notifications.
+
+### Current RLS policy metadata
+- `service_bookings`: authenticated SELECT is Admin or owning customer; UPDATE is Admin-only.
+- `service_booking_status_history`: Admin SELECT; service_role ALL.
+- `electrician_profiles`: authenticated SELECT allows linked user via `auth_user_id` or `user_id`, or Admin; writes are Admin-only.
+- `job_offers`: authenticated SELECT allows Admin or the active, approved electrician linked by either `user_id` or `auth_user_id`.
+- `srk_admin_users`: user can SELECT their own admin record.
+
+Harness must test the policies under distinct synthetic identities, not only as database owner/superuser (which bypasses RLS). Also verify the SECURITY DEFINER helpers called by policies, especially `is_srk_admin()`, are safely defined and have hardened search paths.
+
+### Further integration hazards
+1. Booking creation currently has BEFORE INSERT guards and AFTER INSERT broadcast/audit/status/finance triggers. A new booking-flow implementation must account for all of them; tests should prove a no-payment booking does not accidentally create a payable, commission, or payment order.
+2. Legacy commission and electrician-payable triggers fire on both INSERT and UPDATE. Their old quote/payment assumptions and material-inclusive payable basis must be reconciled before enabling the new labour-only final bill flow.
+3. Status history is trigger-driven on INSERT/UPDATE; verify it cannot be spoofed or duplicated through direct client writes.
+4. A test database loaded as a superuser alone is not sufficient evidence for RLS, grants, or role-scoped RPC behavior.
