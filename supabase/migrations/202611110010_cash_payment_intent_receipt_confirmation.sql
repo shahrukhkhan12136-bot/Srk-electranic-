@@ -356,7 +356,7 @@ begin
       select jsonb_agg(jsonb_build_object(
         'id',cr.id,'payable_snapshot_id',cr.payable_snapshot_id,
         'amount_paise',cr.amount_paise,'currency',cr.currency,
-        'confirmed_at',cr.confirmed_at,'receipt_note',cr.receipt_note
+        'confirmed_at',cr.confirmed_at,'confirmed_by',cr.confirmed_by,'receipt_note',cr.receipt_note
       ) order by cr.confirmed_at)
       from public.srk_cash_receipts cr where cr.booking_id=b.id
     ),'[]'::jsonb),
@@ -365,7 +365,7 @@ begin
         'id',ci.id,'payable_snapshot_id',ci.payable_snapshot_id,
         'amount_paise',ci.amount_paise,'currency',ci.currency,
         'status',ci.status,'selected_at',ci.selected_at,
-        'confirmed_at',ci.confirmed_at,'receipt_id',ci.receipt_id
+        'confirmed_at',ci.confirmed_at,'confirmed_by',ci.confirmed_by,'receipt_id',ci.receipt_id
       )
       from public.srk_cash_payment_intents ci
       where ci.booking_id=b.id
