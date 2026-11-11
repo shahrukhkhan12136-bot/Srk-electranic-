@@ -228,3 +228,19 @@ Customer booking form में **केवल तारीख (Date) चुन�
 Acceptance: profile API/RLS ownership tests, client-tampering negative tests, Admin category-change audit/version tests, status-state tests और mobile UI E2E पास हों।
 
 स्थिति: **REQUIREMENT APPROVED / IMPLEMENTATION & TESTING PENDING**.
+
+
+## 16. Electrician ID Number — permanent unique identifier (Owner decision proposed: 2026-11-11)
+
+हर electrician को एक अलग, स्थायी और unique **SRK ELECTRONIC Electrician ID Number** दिया जाएगा। प्रस्तावित readable format: **SRK-EL-000001**, अगला **SRK-EL-000002**, फिर **SRK-EL-000003** आदि।
+
+- ID number server/database द्वारा सुरक्षित तरीके से generate होगा; electrician या client उसे स्वयं नहीं चुन/बदल सकेगा।
+- ID केवल Admin approval और electrician account activation के सफल होने पर issue होगा। Pending/rejected application को active Electrician ID number न दिया जाए।
+- Number unique, permanent और कभी recycle न हो—account deactivate/delete/suspend होने पर भी वही number किसी दूसरे electrician को न दिया जाए।
+- ID में mobile number, Aadhaar, जन्मतिथि या कोई निजी जानकारी encode न हो।
+- Electrician Profile/ID Card पर ID Number, approved category badge (Helper/Ordinary/Skilled/Master), electrician display name और approval/status दिखें। Category बदलने पर ID number वही रहे; केवल Admin-approved category और उसका audit/version बदले।
+- Database में internal immutable UUID primary key अलग रहे; readable SRK-EL number public/display identifier होगा। Unique constraint, server-side sequence/transaction और concurrent issuance tests अनिवार्य हैं।
+- Admin dashboard में ID lookup/search हो; customer-facing screens पर electrician ID केवल जरूरत/अनुमति के अनुसार दिखे। किसी ID number को अकेले authentication या account access का प्रमाण न मानें।
+- QR verification भविष्य में जोड़ी जा सकती है, लेकिन QR में निजी data न हो और verification server-side हो।
+
+स्थिति: **ID FORMAT DESIGN PROPOSED / OWNER CONFIRMATION & IMPLEMENTATION PENDING**.
