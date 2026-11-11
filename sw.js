@@ -56,11 +56,19 @@ self.addEventListener('notificationclick', event => {
   const target = new URL(event.notification.data?.url || '/electrician.html', self.location.origin).href;
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of windows) {
-      if (client.url.startsWith(self.location.origin) && 'focus' in client) {
-        await client.navigate(target);
-        return client.focus();
+    // Reuse only an electrician dashboard tab. Never redirect a customer page.
+    const electricianWindow = windows.find(client => {
+      try {
+        const url = new URL(client.url);
+        return url.origin === self.location.origin &&
+          (url.pathname.endsWith('/electrician.html') || url.pathname === '/electrician.html');
+      } catch (_) {
+        return false;
       }
+    });
+    if (electricianWindow) {
+      if ('navigate' in electricianWindow) await electricianWindow.navigate(target);
+      return electricianWindow.focus();
     }
     return self.clients.openWindow(target);
   })());
