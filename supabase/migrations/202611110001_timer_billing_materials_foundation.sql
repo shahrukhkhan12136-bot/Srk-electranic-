@@ -84,7 +84,7 @@ create table if not exists public.srk_final_bills (
   stopped_at timestamptz not null,
   elapsed_seconds bigint not null check (elapsed_seconds >= 0),
   billable_minutes bigint not null check (billable_minutes >= 0),
-  labour_amount numeric(12,2) not null check (labour_amount >= 0),
+  labour_amount numeric(20,10) not null check (labour_amount >= 0),
   rounding_rule text not null default 'ceil_seconds_to_whole_minutes;round_final_half_up_0.01',
   calculation_version text not null default 'timer-v1',
   generated_at timestamptz not null default clock_timestamp(),
