@@ -75,7 +75,7 @@ begin
   if not exists (
     select 1 from public.srk_final_bills
     where id=v_bill and booking_id=v_booking
-      and labour_amount=round((112.375::numeric*v_minutes::numeric)/60,2)
+      and labour_amount=round((112.375::numeric*v_minutes::numeric)/60,10)
   ) then raise exception 'final labour bill missing or incorrectly calculated'; end if;
 
   -- A repeated stop approval returns the same bill and never inserts another.
