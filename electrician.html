@@ -1,5 +1,28 @@
 <!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SRK ELECTRONIC | Electrician Partner</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/srk-config.js"></script><style>
 *{box-sizing:border-box}body{margin:0;background:#f2f7f8;color:#16324f;font-family:system-ui,Arial}.hero{background:#102a43;color:white;padding:24px}.wrap{max-width:950px;margin:auto;padding:18px}.card{background:white;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 3px 16px #102a4312}input,button{font:inherit;padding:12px;border-radius:8px;border:1px solid #ccd5df}button{background:#087e8b;color:white;border:0;cursor:pointer;margin:4px}.muted{color:#627d98}.hidden{display:none}.job{border:1px solid #dce7ed;padding:14px;border-radius:12px;margin:12px 0}.pill{background:#e2f4ef;border-radius:20px;padding:4px 9px;font-size:12px}.good{color:#087e55}.bad{color:#b42318}
+
+/* SRK ELECTRONIC visual refresh — electrician partner dashboard */
+:root{--navy:#071a2b;--blue:#2563eb;--teal:#0d9488;--gold:#fbbf24;--paper:#f2f6ff;--ink:#16324f}
+body{background:radial-gradient(ellipse at 5% 10%,#dbeafe 0,transparent 32%),radial-gradient(ellipse at 95% 35%,#ccfbf1 0,transparent 30%),#f4f7fb;color:var(--ink)}
+.hero{background:linear-gradient(120deg,#071a2b,#123f68 58%,#0f766e);padding:28px 18px 34px;box-shadow:0 14px 32px #102a4330;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;width:210px;height:210px;border:30px solid #ffffff12;border-radius:50%;right:-65px;top:-110px;pointer-events:none}
+.hero h1{font-size:clamp(22px,4vw,30px);letter-spacing:-.4px}.hero p{color:#d9edff;line-height:1.55}
+.wrap{max-width:1000px}.card{border:1px solid #e1e9f4;border-radius:20px;padding:20px;box-shadow:0 10px 28px #16345b12;background:linear-gradient(150deg,#fff,#fbfdff);transition:box-shadow .2s,transform .2s}
+#app>.card:first-child{background:linear-gradient(120deg,#fff 0%,#eff6ff 55%,#ecfdf5 100%);border-color:#cbdff5}
+.card h2{color:#123f68;letter-spacing:-.25px}
+input{background:#fff;border:1px solid #d4deee;min-width:0;max-width:100%;box-shadow:inset 0 1px 2px #0b31550a}
+input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 4px #3b82f620}
+button{background:linear-gradient(115deg,#2563eb,#0d9488);border:0;border-radius:11px;padding:11px 15px;font-weight:700;box-shadow:0 5px 12px #102b4618;transition:transform .18s,filter .18s}
+button:hover{filter:brightness(1.06);transform:translateY(-1px)}button:focus-visible{outline:3px solid #fbbf24;outline-offset:2px}
+button[onclick="logout()"]{background:linear-gradient(115deg,#475569,#334155)}
+#enablePush{background:linear-gradient(115deg,#7c3aed,#2563eb)}
+#stopOfferRing{background:linear-gradient(115deg,#ef4444,#c2410c)!important}
+.job{background:linear-gradient(145deg,#fff,#f7fbff);border:1px solid #dbe7f5;border-left:5px solid #0d9488;border-radius:16px;box-shadow:0 6px 18px #16345b0c}
+.pill{display:inline-block;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:99px;padding:5px 10px;font-weight:700}
+.muted{color:#64748b;line-height:1.55}.good{color:#047857;font-weight:700}.bad{color:#b42318;font-weight:700}
+.hidden{display:none!important}
+@media(max-width:560px){.wrap{padding:14px}.card{padding:16px;border-radius:17px}.hero{padding:23px 14px 28px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
 </style></head><body><header class="hero"><div class="wrap"><h1>SRK ELECTRONIC — Electrician Partner</h1><p>लॉगिन करें, अपने इलाके के काम देखें और स्वीकार करें।</p></div></header><main class="wrap"><section class="card" id="login"><h2>पार्टनर लॉगिन</h2><p class="muted">आवेदन में दिया हुआ और Supabase में सत्यापित मोबाइल नंबर डालें।</p><input id="phone" placeholder="मोबाइल नंबर" inputmode="tel"><button onclick="sendOtp()">OTP भेजें</button><div id="otpbox" class="hidden"><input id="otp" placeholder="OTP" inputmode="numeric"><button onclick="verifyOtp()">लॉगिन</button></div><p id="msg"></p></section><section id="app" class="hidden"><div class="card"><button onclick="refresh()">↻ Refresh</button><button onclick="logout()">Logout</button><button id="enablePush" type="button">🔔 Push Notification चालू करें</button><p id="pushStatus" class="muted" aria-live="polite">नोटिफिकेशन सेटअप की जाँच हो रही है…</p><button id="stopOfferRing" type="button" style="display:none;background:#b42318">🔕 रिंग बंद करें</button><h2 id="name">आपका डैशबोर्ड</h2><p id="profile"></p><p id="state"></p></div><div class="card"><h2>मेरी कमाई और देय राशि</h2><p class="muted">यह आपकी देय कमाई और Admin द्वारा किए गए UPI / बैंक भुगतान का रिकॉर्ड है। Admin वास्तविक ट्रांसफर के बाद UTR दर्ज करेगा, तभी Paid दिखेगा।</p><div id="earnings">हिसाब लोड हो रहा है…</div></div><div class="card"><h2>इलेक्ट्रिशियन वॉलेट</h2><div id="partnerWallet">वॉलेट लोड हो रहा है…</div></div><div class="card"><h2>आपके लिए काम के ऑफर</h2><p class="muted">एक काम किसी एक पार्टनर द्वारा स्वीकार होने पर दूसरे ऑफर बंद हो जाएँगे। ग्राहक का नाम, फोन और पूरा पता काम आपको असाइन होने के बाद ही दिखेगा।</p><div id="jobs">लोड हो रहा है…</div></div></section></main><script>
 const cfg=window.SRK_CONFIG||{};let sb,user,profile,offersChannel,otpBusy=false,otpCooldownUntil=0,otpTimer=null,ringAudioContext=null,ringTimer=null,ringStopTimer=null;
 function safeTel(v){const p=String(v??'').replace(/\D/g,'');return /^[0-9]{10,15}$/.test(p)?'tel:'+p:''}
