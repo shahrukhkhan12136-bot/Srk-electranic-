@@ -93,7 +93,7 @@ BEGIN
   INSERT INTO private.srk_business_expenses
     (expense_date,category,provider,description,amount,reference,notes,recorded_by,entry_type)
   VALUES
-    (coalesce(p_expense_date,current_date),p_category,coalesce(btrim(p_provider),''),btrim(p_description),p_amount,
+    (coalesce(p_expense_date,(now() AT TIME ZONE 'Asia/Kolkata')::date),p_category,coalesce(btrim(p_provider),''),btrim(p_description),p_amount,
      nullif(btrim(p_reference),''),nullif(btrim(p_notes),''),auth.uid(),'actual')
   RETURNING id INTO v_id;
   RETURN v_id;
@@ -135,7 +135,7 @@ BEGIN
   INSERT INTO private.srk_business_expenses
     (expense_date,category,provider,description,amount,reference,notes,recorded_by,entry_type)
   VALUES
-    (coalesce(p_expense_date,current_date),p_category,coalesce(btrim(p_provider),''),btrim(p_description),p_amount,
+    (coalesce(p_expense_date,(now() AT TIME ZONE 'Asia/Kolkata')::date),p_category,coalesce(btrim(p_provider),''),btrim(p_description),p_amount,
      nullif(btrim(p_reference),''),nullif(btrim(p_notes),''),auth.uid(),'estimate')
   RETURNING id INTO v_id;
   RETURN v_id;
@@ -184,7 +184,7 @@ BEGIN
   INSERT INTO private.srk_business_expenses
     (expense_date,category,provider,description,amount,reference,notes,recorded_by,entry_type)
   VALUES
-    (coalesce(p_expense_date,current_date),v_estimate.category,coalesce(btrim(p_provider),v_estimate.provider),
+    (coalesce(p_expense_date,(now() AT TIME ZONE 'Asia/Kolkata')::date),v_estimate.category,coalesce(btrim(p_provider),v_estimate.provider),
      btrim(p_description),p_amount,nullif(btrim(p_reference),''),nullif(btrim(p_notes),''),auth.uid(),'actual')
   RETURNING id INTO v_actual_id;
 
@@ -231,7 +231,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.srk_admin_finance_dashboard(
   p_period text DEFAULT 'monthly',
-  p_anchor_date date DEFAULT CURRENT_DATE
+  p_anchor_date date DEFAULT ((now() AT TIME ZONE 'Asia/Kolkata')::date)
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -251,14 +251,14 @@ BEGIN
   END IF;
 
   IF p_period='daily' THEN
-    v_start:=coalesce(p_anchor_date,current_date);
+    v_start:=coalesce(p_anchor_date,(now() AT TIME ZONE 'Asia/Kolkata')::date);
     v_end:=v_start;
   ELSIF p_period='monthly' THEN
-    v_start:=date_trunc('month',coalesce(p_anchor_date,current_date))::date;
+    v_start:=date_trunc('month',coalesce(p_anchor_date,(now() AT TIME ZONE 'Asia/Kolkata')::date))::date;
     v_end:=(v_start+interval '1 month - 1 day')::date;
   ELSE
-    v_start:=make_date(extract(year FROM coalesce(p_anchor_date,current_date))::int,1,1);
-    v_end:=make_date(extract(year FROM coalesce(p_anchor_date,current_date))::int,12,31);
+    v_start:=make_date(extract(year FROM coalesce(p_anchor_date,(now() AT TIME ZONE 'Asia/Kolkata')::date))::int,1,1);
+    v_end:=make_date(extract(year FROM coalesce(p_anchor_date,(now() AT TIME ZONE 'Asia/Kolkata')::date))::int,12,31);
   END IF;
 
   WITH completion_dates AS (
@@ -272,7 +272,7 @@ BEGIN
     FROM public.service_bookings b
     LEFT JOIN completion_dates h ON h.booking_id=b.id
     WHERE b.status='completed'
-      AND coalesce(h.completed_at,b.created_at)::date BETWEEN v_start AND v_end
+      AND (coalesce(h.completed_at,b.created_at) AT TIME ZONE 'Asia/Kolkata')::date BETWEEN v_start AND v_end
   ),
   paid_jobs AS (
     -- One payout row per booking is the authoritative, already verified commission source.
@@ -284,7 +284,7 @@ BEGIN
       AND b.payment_status='paid'
       AND b.payment_verified_at IS NOT NULL
       AND p.payout_status IN ('pending','paid')
-      AND b.payment_verified_at::date BETWEEN v_start AND v_end
+      AND (b.payment_verified_at AT TIME ZONE 'Asia/Kolkata')::date BETWEEN v_start AND v_end
   ),
   job_totals AS (
     SELECT count(*)::int AS paid_completed_bookings,
@@ -300,7 +300,7 @@ BEGIN
     WHERE b.status='completed'
       AND b.payment_status='paid'
       AND b.payment_verified_at IS NOT NULL
-      AND b.payment_verified_at::date BETWEEN v_start AND v_end
+      AND (b.payment_verified_at AT TIME ZONE 'Asia/Kolkata')::date BETWEEN v_start AND v_end
       AND NOT EXISTS (
         SELECT 1 FROM public.srk_electrician_payouts p
         WHERE p.booking_id=b.id AND p.payout_status IN ('pending','paid')
@@ -308,10 +308,10 @@ BEGIN
   ),
   payout_totals AS (
     SELECT coalesce(sum(electrician_payable) FILTER (
-             WHERE payout_status='paid' AND paid_at::date BETWEEN v_start AND v_end
+             WHERE payout_status='paid' AND (paid_at AT TIME ZONE 'Asia/Kolkata')::date BETWEEN v_start AND v_end
            ),0)::numeric(14,2) AS payout_paid,
            coalesce(sum(electrician_payable) FILTER (
-             WHERE payout_status='pending' AND created_at::date BETWEEN v_start AND v_end
+             WHERE payout_status='pending' AND (created_at AT TIME ZONE 'Asia/Kolkata')::date BETWEEN v_start AND v_end
            ),0)::numeric(14,2) AS payout_pending
     FROM public.srk_electrician_payouts
   ),
