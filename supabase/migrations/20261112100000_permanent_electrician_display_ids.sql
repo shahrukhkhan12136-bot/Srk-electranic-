@@ -45,6 +45,23 @@ begin
       message = 'Electrician display ID is generated only by the server';
   end if;
 
+  -- A single Auth identity must not be ambiguously linked to another profile
+  -- through either legacy user_id or auth_user_id column.
+  if exists (
+    select 1
+      from public.electrician_profiles p
+     where p.id is distinct from new.id
+       and (
+         (new.user_id is not null and
+           (p.user_id = new.user_id or p.auth_user_id = new.user_id))
+         or
+         (new.auth_user_id is not null and
+           (p.user_id = new.auth_user_id or p.auth_user_id = new.auth_user_id))
+       )
+  ) then
+    return new;
+  end if;
+
   -- Do not issue an ID for pending, rejected, suspended, inactive, or unlinked profiles.
   if new.verification_status = 'approved'
      and new.active is true
@@ -79,7 +96,7 @@ execute function public.srk_assign_electrician_display_id();
 -- Backfill only profiles already approved, active, and linked unambiguously to an Auth account.
 -- The same trigger applies the same issuance rule; inactive/unapproved rows remain blank.
 update public.electrician_profiles
-   set active = active
+   set electrician_display_id = null
  where verification_status = 'approved'
    and active is true
    and (user_id is not null or auth_user_id is not null)
