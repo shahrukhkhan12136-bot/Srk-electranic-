@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     if (typeof sub.endpoint !== "string" || !sub.endpoint.startsWith("https://") ||
         typeof sub.p256dh !== "string" || !sub.p256dh ||
         typeof sub.auth !== "string" || !sub.auth) {
-      await db.from("srk_push_subscriptions").delete().eq("id", sub.id).catch(() => ({ error: true }));
+      try { await db.from("srk_push_subscriptions").delete().eq("id", sub.id); } catch { /* best-effort cleanup */ }
       return { id: sub.id, ok: false, reason: "invalid_subscription" };
     }
     const subscription = { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } };
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
     } catch (err) {
       const statusCode = (err as { statusCode?: number }).statusCode;
       if (statusCode === 404 || statusCode === 410) {
-        await db.from("srk_push_subscriptions").delete().eq("id", sub.id).catch(() => ({ error: true }));
+        try { await db.from("srk_push_subscriptions").delete().eq("id", sub.id); } catch { /* best-effort cleanup */ }
       }
       return { id: sub.id, ok: false, statusCode };
     }
