@@ -20,22 +20,34 @@ alter table public.service_bookings
   add column if not exists timer_billable_minutes bigint,
   add column if not exists final_bill_id uuid;
 
-alter table public.service_bookings
-  add constraint service_bookings_service_category_code_check
-    check (service_category_code is null or service_category_code in ('helper','ordinary','skilled','master')),
-  add constraint service_bookings_hourly_rate_snapshot_check
-    check (hourly_rate_snapshot is null or hourly_rate_snapshot > 0),
-  add constraint service_bookings_timer_state_check
-    check (timer_state in ('not_requested','start_pending','running','stop_pending','stopped')),
-  add constraint service_bookings_timer_elapsed_nonnegative_check
-    check (timer_elapsed_seconds is null or timer_elapsed_seconds >= 0),
-  add constraint service_bookings_timer_minutes_nonnegative_check
-    check (timer_billable_minutes is null or timer_billable_minutes >= 0),
-  add constraint service_bookings_timer_timestamps_order_check
-    check (
-      timer_started_at is null or timer_stopped_at is null
-      or timer_stopped_at >= timer_started_at
-    );
+do $migration$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.service_bookings'::regclass and conname = 'service_bookings_service_category_code_check') then
+    alter table public.service_bookings add constraint service_bookings_service_category_code_check
+      check (service_category_code is null or service_category_code in ('helper','ordinary','skilled','master'));
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.service_bookings'::regclass and conname = 'service_bookings_hourly_rate_snapshot_check') then
+    alter table public.service_bookings add constraint service_bookings_hourly_rate_snapshot_check
+      check (hourly_rate_snapshot is null or hourly_rate_snapshot > 0);
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.service_bookings'::regclass and conname = 'service_bookings_timer_state_check') then
+    alter table public.service_bookings add constraint service_bookings_timer_state_check
+      check (timer_state in ('not_requested','start_pending','running','stop_pending','stopped'));
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.service_bookings'::regclass and conname = 'service_bookings_timer_elapsed_nonnegative_check') then
+    alter table public.service_bookings add constraint service_bookings_timer_elapsed_nonnegative_check
+      check (timer_elapsed_seconds is null or timer_elapsed_seconds >= 0);
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.service_bookings'::regclass and conname = 'service_bookings_timer_minutes_nonnegative_check') then
+    alter table public.service_bookings add constraint service_bookings_timer_minutes_nonnegative_check
+      check (timer_billable_minutes is null or timer_billable_minutes >= 0);
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.service_bookings'::regclass and conname = 'service_bookings_timer_timestamps_order_check') then
+    alter table public.service_bookings add constraint service_bookings_timer_timestamps_order_check
+      check (timer_started_at is null or timer_stopped_at is null or timer_stopped_at >= timer_started_at);
+  end if;
+end
+$migration$;
 
 create table if not exists public.srk_booking_timer_decisions (
   id uuid primary key default gen_random_uuid(),
@@ -79,7 +91,7 @@ create table if not exists public.srk_final_bills (
   generated_by uuid references auth.users(id) on delete set null,
   constraint srk_final_bills_time_order_check check (stopped_at >= started_at),
   constraint srk_final_bills_elapsed_matches_check check (
-    elapsed_seconds = greatest(0, floor(extract(epoch from (stopped_at - started_at)))::bigint)
+    elapsed_seconds = greatest(0, ceil(extract(epoch from (stopped_at - started_at)))::bigint)
   ),
   constraint srk_final_bills_minutes_match_check check (
     billable_minutes = case when elapsed_seconds = 0 then 0 else ((elapsed_seconds + 59) / 60) end
@@ -135,9 +147,15 @@ create table if not exists public.srk_booking_cancellation_requests (
 create index if not exists srk_booking_cancellation_requests_booking_idx
   on public.srk_booking_cancellation_requests (booking_id, requested_at desc);
 
-alter table public.service_bookings
-  add constraint service_bookings_final_bill_fk
-  foreign key (final_bill_id) references public.srk_final_bills(id) on delete restrict;
+do $migration$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.service_bookings'::regclass and conname = 'service_bookings_final_bill_fk') then
+    alter table public.service_bookings
+      add constraint service_bookings_final_bill_fk
+      foreign key (final_bill_id) references public.srk_final_bills(id) on delete restrict;
+  end if;
+end
+$migration$;
 
 -- New workflow tables are not directly writable/readable by browser roles.
 -- Follow-up SECURITY DEFINER RPCs will expose only ownership-scoped operations.
