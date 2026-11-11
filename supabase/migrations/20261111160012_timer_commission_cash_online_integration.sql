@@ -196,6 +196,12 @@ begin
     return new;
   end if;
 
+  -- Timer-category bookings must never fall through to the legacy quote payout path.
+  -- A paid/completed timer booking without its immutable payable snapshot is invalid.
+  if new.service_category_code is not null then
+    raise exception 'TIMER_PAYABLE_SNAPSHOT_REQUIRED' using errcode = '55000';
+  end if;
+
   -- Preserve the established quote-based payout path for legacy bookings.
   if new.quote_status = 'approved'
      and (new.razorpay_payment_id is not null or exists (
