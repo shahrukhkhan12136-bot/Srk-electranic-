@@ -1,0 +1,70 @@
+name: SRK Refund Workflow Tests
+
+on:
+  push:
+    branches:
+      - feature/production-push-notifications
+    paths:
+      - "supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql"
+      - "supabase/tests/refund_workflow_*.sql"
+      - "process-refund.js"
+      - "razorpay-webhook.js"
+      - "netlify/functions/process-refund.js"
+      - "index.html"
+      - "admin.html"
+      - "netlify.toml"
+      - ".github/workflows/refund-workflow.yml"
+  pull_request:
+    paths:
+      - "supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql"
+      - "supabase/tests/refund_workflow_*.sql"
+      - "process-refund.js"
+      - "razorpay-webhook.js"
+      - "netlify/functions/process-refund.js"
+      - "index.html"
+      - "admin.html"
+      - "netlify.toml"
+      - ".github/workflows/refund-workflow.yml"
+
+jobs:
+  refund-workflow:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create isolated refund database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h localhost -U postgres srk_refund_test
+      - name: Load refund schema fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/tests/refund_workflow_foundation_harness.sql
+      - name: Apply refund migration twice
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql
+          psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql
+      - name: Test customer ownership, Admin approval, Razorpay reconciliation and manual UTR
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/tests/refund_workflow_assertions.sql
+      - name: Validate serverless JavaScript syntax
+        run: |
+          node --check process-refund.js
+          node --check razorpay-webhook.js
+          node --check netlify/functions/process-refund.js
