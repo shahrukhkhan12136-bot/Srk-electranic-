@@ -240,6 +240,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#3b82f6;box-sh
 let currentBookingWhatsApp = '';
 let pendingAmount = 0;
 let pendingBookingId = null;
+let bookingIdempotencyKey = null;
 let paymentBusy = false;
 document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -458,6 +459,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nइलेक्ट्रिशियन श्रेणी: ${value('serviceCategory')}\nमेहनताना दर चुनी गई श्रेणी के अनुसार; सामान अलग और मंजूरी के बाद`;
   currentBookingWhatsApp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
   const submitButton = this.querySelector('button[type="submit"]');
+  if (!bookingIdempotencyKey) bookingIdempotencyKey = window.crypto.randomUUID();
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
     const bookingHeaders = { 'Content-Type': 'application/json' };
@@ -471,7 +473,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: value('service'), preferred_date: value('date'), preferred_time: value('time'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '),
       service_category_code: value('serviceCategory'),
-      idempotency_key: window.crypto.randomUUID()
+      idempotency_key: bookingIdempotencyKey
     }) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
