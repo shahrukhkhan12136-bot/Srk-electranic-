@@ -16,7 +16,7 @@ begin
   raise exception 'Immutable order number trigger did not reject update';
  exception when sqlstate '55000' then null; end;
  begin
-  insert into public.service_bookings(id,order_number) values('10000000-0000-0000-0000-000000000005','SRK-ORD-000001');
+  insert into public.service_bookings(id,order_number) values('10000000-0000-0000-0000-000000000005','SRK-ORD-000011');
   raise exception 'Unique order number index did not reject duplicate';
  exception when unique_violation then null; end;
 end
