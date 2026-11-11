@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   const row = payload.record;
   const isNewOffer = payload.type === "INSERT" && row.status === "offered";
   const wasOffered = payload.old_record?.status === "offered";
-  const shouldClose = payload.type === "UPDATE" && wasOffered && row.status !== "offered";
+  const shouldClose = payload.type === "UPDATE" && wasOffered && row.status !== "offered" && row.status !== "accepted";
   if (!isNewOffer && !shouldClose) return new Response("Ignored", { status: 200 });
 
   webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
