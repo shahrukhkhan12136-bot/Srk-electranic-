@@ -99,8 +99,10 @@ begin
 
   for v_item in select value from jsonb_array_elements(p_items)
   loop
-    if jsonb_typeof(v_item) <> 'object'
-       or exists (select 1 from jsonb_object_keys(v_item) k where k not in ('description','quantity','unit_price','supplied_by','receipt_reference')) then
+    if jsonb_typeof(v_item) <> 'object' then
+      raise exception 'INVALID_MATERIAL_ITEM_FIELDS' using errcode='22023';
+    end if;
+    if exists (select 1 from jsonb_object_keys(v_item) k where k not in ('description','quantity','unit_price','supplied_by','receipt_reference')) then
       raise exception 'INVALID_MATERIAL_ITEM_FIELDS' using errcode='22023';
     end if;
 
@@ -171,7 +173,7 @@ begin
   if not found then raise exception 'FINAL_BILL_NOT_FOUND' using errcode='P0002'; end if;
   select b.* into v_booking from public.service_bookings b where b.id=v_bill.booking_id;
   if not found then raise exception 'BOOKING_NOT_FOUND' using errcode='P0002'; end if;
-  if v_booking.customer_user_id <> v_uid then
+  if v_booking.customer_user_id is distinct from v_uid then
     raise exception 'BOOKING_ACCESS_DENIED' using errcode='42501';
   end if;
 
