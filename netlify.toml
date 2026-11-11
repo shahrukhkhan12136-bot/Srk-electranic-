@@ -43,6 +43,11 @@
   to = "/.netlify/functions/razorpay-webhook"
   status = 200
 
+[[redirects]]
+  from = "/api/process-refund"
+  to = "/.netlify/functions/process-refund"
+  status = 200
+
 [[headers]]
   for = "/api/*"
   [headers.values]
