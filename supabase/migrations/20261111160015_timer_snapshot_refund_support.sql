@@ -63,7 +63,7 @@ begin
  if not found then raise exception 'CONFIRMED_CASH_RECEIPT_REQUIRED'; end if;
  if v_receipt.currency<>'INR' or round(v_receipt.amount_paise::numeric/100,2)<>v_request.amount or round(coalesce(v_booking.amount_paid,0),2)<>v_request.amount then raise exception 'CASH_RECEIPT_AMOUNT_MISMATCH'; end if;
  if exists(select 1 from public.srk_timer_cash_refund_entries where booking_id=v_booking.id) then raise exception 'TIMER_CASH_REFUND_ALREADY_RECORDED'; end if;
- select * into v_payout from public.srk_electrician_payouts where booking_id=v_booking.id for update;
+ select ep.* into v_payout from public.srk_electrician_payouts ep where ep.booking_id=v_booking.id for update;
  if found then
    if v_payout.payout_status='paid' or v_payout.commission_collection_status='received' then raise exception 'CASH_COMMISSION_ALREADY_SETTLED_RECOVERY_REQUIRED'; end if;
  end if;
@@ -100,18 +100,18 @@ begin
  v_amount:=round(v_booking.amount_paid,2);
  if v_amount<>v_request.amount then raise exception 'REFUND_AMOUNT_CHANGED_SINCE_REQUEST' using errcode='55000'; end if;
  if v_booking.service_category_code is not null then
-   select * into v_snapshot from public.srk_booking_payable_snapshots
-   where booking_id=v_booking.id order by created_at desc limit 1 for update;
+   select ps.* into v_snapshot from public.srk_booking_payable_snapshots ps
+   where ps.booking_id=v_booking.id order by ps.created_at desc limit 1 for update;
    if not found then raise exception 'IMMUTABLE_TIMER_PAYABLE_SNAPSHOT_REQUIRED' using errcode='55000'; end if;
    v_paise:=v_snapshot.amount_paise;
    if v_snapshot.currency<>'INR' or v_snapshot.total_amount<>v_amount
       or v_paise<>round(v_amount*100)::bigint then
      raise exception 'TIMER_REFUND_AMOUNT_DOES_NOT_MATCH_PAYABLE_SNAPSHOT' using errcode='55000';
    end if;
-   select * into v_payment from public.srk_razorpay_payments
-   where booking_id=v_booking.id and snapshot_id=v_snapshot.id
-     and provider_payment_id=v_booking.razorpay_payment_id
-     and amount_paise=v_paise and currency='INR'
+   select rp.* into v_payment from public.srk_razorpay_payments rp
+   where rp.booking_id=v_booking.id and rp.snapshot_id=v_snapshot.id
+     and rp.provider_payment_id=v_booking.razorpay_payment_id
+     and rp.amount_paise=v_paise and rp.currency='INR'
    for update;
    if not found then raise exception 'CAPTURED_RAZORPAY_PAYMENT_LEDGER_REQUIRED' using errcode='55000'; end if;
  else
@@ -123,7 +123,7 @@ begin
    end if;
    v_paise:=round(v_amount*100)::bigint;
  end if;
- select * into v_refund from public.srk_razorpay_refunds where booking_id=v_booking.id for update;
+ select rr.* into v_refund from public.srk_razorpay_refunds rr where rr.booking_id=v_booking.id for update;
  if found then
    if v_refund.status='failed' then raise exception 'PREVIOUS_REFUND_FAILED_RECONCILE_FIRST'; end if;
    update public.srk_booking_refund_requests
