@@ -1,7 +1,9 @@
--- Securely move a browser endpoint to the currently authenticated account.
--- Push endpoints are unguessable bearer-like identifiers; only the signed-in owner
--- can register the endpoint currently held by that browser.
-create or replace function public.srk_save_push_subscription(
+-- Keep the privileged ownership-transfer implementation outside exposed API schemas.
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
+create or replace function private.srk_save_push_subscription(
   p_endpoint text,
   p_p256dh text,
   p_auth text
@@ -32,6 +34,25 @@ begin
         p256dh = excluded.p256dh,
         auth = excluded.auth,
         updated_at = now();
+end;
+$$;
+
+revoke all on function private.srk_save_push_subscription(text, text, text) from public, anon;
+grant execute on function private.srk_save_push_subscription(text, text, text) to authenticated;
+
+-- Exposed RPC wrapper runs as the caller; privileged work remains in private schema.
+create or replace function public.srk_save_push_subscription(
+  p_endpoint text,
+  p_p256dh text,
+  p_auth text
+)
+returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  perform private.srk_save_push_subscription(p_endpoint, p_p256dh, p_auth);
 end;
 $$;
 
