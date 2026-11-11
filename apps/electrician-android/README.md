@@ -56,3 +56,20 @@ The Electrician App must include a clear Rate Card list. Keep the four previousl
 6. Verify responsive UI, large text, loading, offline and error states.
 
 **Status: REQUIREMENT APPROVED / NOT IMPLEMENTED.** This directory remains a README-only scaffold; no installable Android app or tested Rate Card screen exists yet.
+
+
+## Electrician ID / Profile — own category display (Owner-confirmed: 2026-11-11)
+
+The electrician must be able to identify their approved skill category directly from their own **Electrician ID / Profile** screen.
+
+- Show a prominent category name and badge: **Helper, Ordinary, Skilled, or Master**.
+- Resolve the value only from the signed-in electrician's authoritative, Admin-approved server profile/application assignment. Never trust a category label sent by the app.
+- The electrician cannot edit, upgrade, or downgrade this assignment. Only an authorized Admin workflow may change it, with audit history and versioning.
+- For pending, rejected, suspended, inactive, or missing assignments, show the real status or a clear unavailable state; never silently default to Helper or another category.
+- Expose only the signed-in electrician's own assignment. Do not reveal another electrician's private category.
+- The category shown on the ID/Profile must match the category highlighted in the Rate Card; both must use the same authoritative profile value.
+- Include accessible Hindi/English labels and mobile, loading, offline, stale-data, and server-error states.
+
+Acceptance tests: profile ownership/RLS, client-tampering rejection, Admin change audit/versioning, all application-status states, and mobile end-to-end display.
+
+**Status: REQUIREMENT APPROVED / NOT IMPLEMENTED.** The Android workspace remains a README-only scaffold.
