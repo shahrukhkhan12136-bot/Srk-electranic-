@@ -62,3 +62,21 @@ do $$ begin
  if (select payment_status from public.service_bookings where id='20000000-0000-4000-8000-000000000003')<>'refunded' then raise exception 'Timer snapshot refund did not update booking'; end if;
  if (select amount_paise from public.srk_razorpay_refunds where booking_id='20000000-0000-4000-8000-000000000003')<>100000 then raise exception 'Timer refund amount does not match immutable snapshot'; end if;
 end $$;
+
+
+-- Timer Cash refunds require an immutable confirmed cash receipt and a traceable Admin UTR.
+set role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',false);
+select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000002","role":"authenticated"}',false);
+select public.srk_customer_create_booking_refund_request('20000000-0000-4000-8000-000000000004','टाइमर कैश बुकिंग में भुगतान वापसी के लिए पूर्ण Refund अनुरोध।');
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',false);
+select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000003","role":"authenticated","is_srk_admin":"true"}',false);
+select public.srk_admin_decide_booking_refund_request((select id from public.srk_admin_list_booking_refund_requests(200) where booking_id='20000000-0000-4000-8000-000000000004'),'approved','Confirmed cash receipt matched; record refund after real transfer.');
+select public.srk_admin_finalize_timer_cash_refund((select id from public.srk_admin_list_booking_refund_requests(200) where booking_id='20000000-0000-4000-8000-000000000004'),'CASH-REFUND-UTR-001','वास्तविक नकद Refund दर्ज');
+reset role;
+do $$ begin
+ if (select payment_status from public.service_bookings where id='20000000-0000-4000-8000-000000000004')<>'refunded' then raise exception 'Timer Cash refund did not update booking'; end if;
+ if (select count(*) from public.srk_timer_cash_refund_entries where booking_id='20000000-0000-4000-8000-000000000004')<>1 then raise exception 'Timer Cash refund audit entry missing'; end if;
+end $$;
