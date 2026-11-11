@@ -171,3 +171,14 @@ A source scan of `index.html`, `electrician.html`, and `admin.html` found the fo
 - Admin `admin.html`: booking queries still select `payment_method` and `quoted_amount`; Admin controls can update `status` and `quoted_amount` directly from the browser, and the screen includes payment-status/manual-payment controls. These paths need a reviewed RPC replacement before the new workflow is enabled.
 
 This confirms the cutover is not just a server-handler task. The customer, electrician, and Admin pages all require coordinated changes. The source scan is static inspection, not an end-to-end browser test.
+
+## Isolated migration smoke-test harness added (2026-11-11)
+
+A disposable PostgreSQL 16 CI path has now been added:
+
+- `supabase/tests/timer_billing_foundation_harness.sql` creates only a minimal synthetic `auth.users` and `service_bookings` baseline plus the required Supabase role names.
+- The workflow applies `202611110001_timer_billing_materials_foundation.sql` once on a clean synthetic schema, then applies it a second time to check replay behavior.
+- `supabase/tests/timer_billing_foundation_assertions.sql` checks RLS enablement, absence of direct authenticated SELECT on final bills, service-role insert permission, the FK/unique constraint, and a synthetic booking/final-bill circular link using a 60.1-second duration.
+- The existing rollback-only arithmetic test runs in the same job.
+
+This is deliberately a migration smoke test against a minimal synthetic baseline. It does NOT reconstruct Production's 27-table schema, triggers, policies, payment dependencies, auth configuration, or function bodies. A passing CI run will therefore establish only that the migration applies/replays and its isolated assertions pass against this harness; it will not authorize applying it to TEST or Production. CI result is pending verification for the new commit.
