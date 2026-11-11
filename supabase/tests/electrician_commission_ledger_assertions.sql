@@ -55,14 +55,10 @@ begin
   select count(*) into v_count from public.srk_electrician_commissions where booking_id=v_booking;
   if v_count<>1 then raise exception 'commission ledger duplicated for one booking'; end if;
 
-  if not has_table_privilege('authenticated','public.srk_electrician_commissions','select')
-     is false then
-    null;
-  else
+  if has_table_privilege('authenticated','public.srk_electrician_commissions','select') then
     raise exception 'authenticated role unexpectedly has direct commission ledger access';
   end if;
-  if not has_function_privilege('anon','public.srk_admin_list_electrician_commissions()','execute')
-     is false then
+  if has_function_privilege('anon','public.srk_admin_list_electrician_commissions()','execute') then
     raise exception 'anon unexpectedly has Admin commission RPC access';
   end if;
 end
