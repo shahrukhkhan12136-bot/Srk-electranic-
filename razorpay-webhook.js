@@ -107,7 +107,7 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
     const lookup = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
     lookup.searchParams.set("provider", "eq.razorpay");
     lookup.searchParams.set("provider_event_id", "eq." + eventMeta.eventId);
-    lookup.searchParams.set("select", "id,processing_status,attempt_count");
+    lookup.searchParams.set("select", "id,processing_status,attempt_count,payload_sha256");
     lookup.searchParams.set("limit", "1");
     const existingResponse = await fetch(lookup, {
       headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
@@ -117,7 +117,9 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
     row = Array.isArray(rows) ? rows[0] : null;
   }
   if (!row) throw new Error("Webhook event ledger row unavailable");
+  if (row.payload_sha256 !== eventMeta.payloadHash) throw new Error("Webhook event ID payload hash conflict");
   if (row.processing_status === "processed") return { id: row.id, processed: true };
+  if (row.processing_status === "rejected") return { id: row.id, rejected: true };
   const patchUrl = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
   patchUrl.searchParams.set("id", "eq." + row.id);
   const patch = await fetch(patchUrl, {
@@ -173,6 +175,7 @@ async function updateSnapshotOrder(orderId, payment, eventMeta) {
 
   const eventRow = await startSnapshotWebhookEvent(eventMeta, orderId, payment.id);
   if (eventRow.processed) return "snapshot_event_already_processed";
+  if (eventRow.rejected) return "snapshot_event_rejected";
   if (Number(order.amount_paise) !== payment.amount || order.currency !== payment.currency) {
     await finishSnapshotWebhookEvent(eventRow.id, "rejected", "snapshot_amount_mismatch", "Captured payment amount/currency does not match the bound snapshot order.");
     return "snapshot_amount_mismatch";
@@ -262,7 +265,7 @@ exports.handler = async (event) => {
     };
     const snapshotResult = await updateSnapshotOrder(payment.order_id, payment, eventMeta);
     if (snapshotResult !== null) {
-      if (snapshotResult === "snapshot_reconciled" || snapshotResult === "snapshot_already_processed" || snapshotResult === "snapshot_event_already_processed") {
+      if (snapshotResult === "snapshot_reconciled" || snapshotResult === "snapshot_already_processed" || snapshotResult === "snapshot_event_already_processed" || snapshotResult === "snapshot_event_rejected") {
         return json(200, { success: true, reconciled: true, result: snapshotResult });
       }
       if (snapshotResult === "snapshot_amount_mismatch" || snapshotResult === "snapshot_order_not_ready") {
