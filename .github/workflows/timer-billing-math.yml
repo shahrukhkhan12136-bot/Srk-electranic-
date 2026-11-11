@@ -6,6 +6,7 @@ on:
       - "supabase/migrations/202611110001_timer_billing_materials_foundation.sql"
       - "supabase/migrations/202611110002_timer_billing_integrity_extensions.sql"
       - "supabase/migrations/202611110003_customer_approved_timer_rpcs.sql"
+      - "supabase/migrations/202611110004_scoped_timer_bill_read_rpc.sql"
       - "supabase/tests/timer_billing_math.sql"
       - "supabase/tests/timer_billing_foundation_harness.sql"
       - "supabase/tests/timer_billing_foundation_assertions.sql"
@@ -119,6 +120,20 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/tests/customer_approved_timer_rpcs_assertions.sql
+      - name: Apply scoped timer and bill read RPC migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110004_scoped_timer_bill_read_rpc.sql
+      - name: Verify scoped read RPC migration is replay-safe
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110004_scoped_timer_bill_read_rpc.sql
       - name: Run rollback-only billing arithmetic tests
         env:
           PGPASSWORD: postgres
