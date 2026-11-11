@@ -22,6 +22,7 @@ create table public.srk_razorpay_refunds(
  previous_payout_note text,last_error text,created_at timestamptz not null default now(),
  updated_at timestamptz not null default now(),processed_at timestamptz
 );
+grant all on public.srk_razorpay_refunds to service_role;
 create table public.srk_booking_payable_snapshots(
  id uuid primary key,booking_id uuid not null references public.service_bookings(id),
  total_amount numeric(12,2) not null,amount_paise bigint not null,currency text not null,created_at timestamptz not null default now(),unique(id,booking_id)
