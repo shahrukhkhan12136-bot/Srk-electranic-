@@ -15,8 +15,6 @@ on:
       - "supabase/migrations/202611110010_cash_payment_intent_receipt_confirmation.sql"
       - "supabase/migrations/202611110011_repair_payable_snapshot_rounding_constraint.sql"
       - "supabase/migrations/20261111130000_customer_cancellation_admin_decision.sql"
-      - "supabase/migrations/20261111150000_electrician_commission_ledger.sql"
-      - "supabase/tests/electrician_commission_ledger_assertions.sql"
       - "supabase/tests/customer_cancellation_admin_decision_assertions.sql"
       - "supabase/tests/material_revision_customer_approval_assertions.sql"
       - "supabase/tests/cash_payment_intent_assertions.sql"
