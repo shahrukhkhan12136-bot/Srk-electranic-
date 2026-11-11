@@ -146,3 +146,12 @@ Read-only inspection of current policies found:
 Implementation guardrail: new audit/event/bill/material/cancellation tables should have RLS enabled, no anonymous access, and no broad authenticated table writes. Customer/electrician reads should be via ownership-scoped RPCs or carefully scoped SELECT policies; event creation and decisions should be via dedicated server-side RPCs only.
 
 No RLS policy or database setting was changed; this was read-only metadata inspection.
+
+## 10. RLS enabled-state and RPC grant verification (2026-11-11)
+
+- RLS is enabled on all five inspected tables: `service_bookings`, `electrician_profiles`, `srk_electrician_payouts`, `srk_manual_payment_entries`, and `service_booking_status_history`. `FORCE ROW LEVEL SECURITY` is false on these tables; service-role/server access must therefore remain tightly controlled.
+- `srk_manual_payment_entries` has RLS enabled but the inspected policy list contained no table policies. Treat it as unavailable to direct client reads/writes; use narrowly authorized RPCs or server-side service-role access only after reviewing its grants.
+- The legacy quote submit, customer quote response, work-status, electrician cash-confirmation, Admin update and Admin manual-payment RPCs are SECURITY DEFINER and currently have EXECUTE granted to `authenticated` (and service_role). In particular, the quote submission and response RPCs remain callable, so the quotation workflow is not retired at the database permission layer.
+- The new migration must explicitly revoke old quote/work-status paths only after replacement flows are implemented and tested. For each SECURITY DEFINER RPC, explicitly set a safe fixed search_path, revoke PUBLIC/anon, grant only the intended role, validate actor identity inside the function, and test unauthenticated/unauthorized calls.
+
+This updates the prior policy note with the confirmed table RLS flags. No database policies, grants, or functions were changed.
