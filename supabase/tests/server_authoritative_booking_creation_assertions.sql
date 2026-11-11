@@ -122,6 +122,25 @@ begin
       raise exception 'booking row missing identity, category snapshot, or safe legacy defaults';
     end if;
 
+    -- Production BEFORE INSERT guard must keep new timer bookings in the
+    -- ordinary new/unpaid/unassigned state; legacy quote/payment values
+    -- supplied by a client must never survive this boundary.
+    if not exists (
+      select 1 from public.service_bookings
+      where id=v_booking and status='new' and payment_status='unpaid'
+        and assigned_electrician_id is null and commission_rate=15
+        and commission_amount is null
+    ) then
+      raise exception 'Production booking guard did not enforce new/unpaid/unassigned defaults';
+    end if;
+    if not exists (
+      select 1 from public.service_booking_status_history
+      where booking_id=v_booking and old_status is null and new_status='new'
+        and note='Booking created'
+    ) then
+      raise exception 'Production booking status history trigger did not record creation';
+    end if;
+
     select count(*) into v_count from public.job_offers
     where booking_id=v_booking and electrician_id=v_profile;
     if v_count<>1 then
