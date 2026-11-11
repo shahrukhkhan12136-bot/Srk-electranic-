@@ -122,3 +122,12 @@ Harness must test the policies under distinct synthetic identities, not only as 
 Catalog metadata for the seven booking trigger functions and `is_srk_admin()` shows all have an explicit `search_path` setting beginning with `pg_catalog` and placing `pg_temp` last. The following are SECURITY DEFINER: `broadcast_booking_job()`, `is_srk_admin()`, `srk_cancel_booking_job_offers()`, `srk_capture_admin_audit_event()`, `srk_create_electrician_payable()`, and `srk_log_service_booking_status()`. `guard_new_booking()` and `srk_calculate_booking_commission()` are not SECURITY DEFINER.
 
 This is metadata evidence only, not a full function-body security review. The isolated baseline must preserve function owners, grants, SECURITY DEFINER status, and search_path settings. Each SECURITY DEFINER function still needs a code-level review for authorization checks, dynamic SQL, object qualification, and safe external side effects.
+
+
+## Generated structural reference captured (2026-11-11)
+
+A read-only Supabase type-introspection call generated `docs/generated/production-schema-types.ts` on the Feature Branch (commit `b8d6c18`). The file records exposed public table Row/Insert/Update shapes and relationship metadata. It contains no row data or credentials.
+
+Important limitation: generated TypeScript types are not DDL. They do not fully capture CHECK constraints, indexes, triggers, policies, function bodies, ownership, grants, extension setup, storage/auth internals, or all schema dependencies. Therefore this is a useful structural reference for code review, but it is NOT the required schema-only SQL baseline and must not be used to claim that Production can be reconstructed from an empty database.
+
+The tool inventory did not expose a direct schema-only SQL dump/export action. Do not attempt to synthesize a complete SQL dump from partial metadata or generated client types. A reviewed schema-only dump from an authorized database export path, or the complete original migration history, is still required.
