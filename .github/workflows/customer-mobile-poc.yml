@@ -1,0 +1,63 @@
+name: Customer Capacitor POC
+
+on:
+  push:
+    branches:
+      - feature/production-push-notifications
+    paths:
+      - 'apps/mobile-poc/customer/**'
+      - 'assets/founder-shahrukh-khan.webp'
+      - 'srk-config.js'
+      - '.github/workflows/customer-mobile-poc.yml'
+  pull_request:
+    paths:
+      - 'apps/mobile-poc/customer/**'
+      - 'assets/founder-shahrukh-khan.webp'
+      - 'srk-config.js'
+      - '.github/workflows/customer-mobile-poc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/mobile-poc/customer/package.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install Capacitor dependencies
+        working-directory: apps/mobile-poc/customer
+        run: npm install --no-audit --no-fund
+      - name: Prepare POC web bundle
+        working-directory: apps/mobile-poc/customer
+        run: npm run build
+      - name: Check HTML and JavaScript syntax
+        working-directory: apps/mobile-poc/customer
+        run: |
+          node --check scripts/prepare-web.mjs
+          node --input-type=module -e "import fs from 'node:fs'; const h=fs.readFileSync('www/index.html','utf8'); const s=[...h.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(x=>x[1]); if(s.length!==1) throw Error('Expected one inline app script'); for(const x of s) new Function(x); if(!h.includes('customer_user_id') || !h.includes('getUser()')) throw Error('Auth-scoped read-only contract missing'); console.log('POC HTML/auth script checks passed');"
+      - name: Generate Android project and sync
+        working-directory: apps/mobile-poc/customer
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Build debug APK
+        working-directory: apps/mobile-poc/customer/android
+        run: ./gradlew --no-daemon assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: srk-customer-capacitor-poc-debug
+          path: apps/mobile-poc/customer/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
