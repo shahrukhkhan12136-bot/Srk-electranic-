@@ -355,3 +355,20 @@ No framework or app ID is selected here. Native project files must not be genera
 - Backend remains authoritative for identity, pricing, booking, timer, category, ID and settlement.
 - Android workspaces remain README-only; no native app/build is claimed.
 - **Status:** Screen inventory, navigation, action inventory, security/business contracts, architecture options/recommendation, proposed SDK/package IDs, push/offline plan, build/release plan and QA matrix documented. Owner architecture approvals, POC, native implementation, backend integration, device QA and release remain pending.
+
+
+
+## 12. Capacitor Customer POC — Owner approved (2026-11-12)
+
+Owner ने Capacitor के छोटे Customer proof-of-concept को आगे बढ़ाने की अनुमति दी है। इसलिए एक isolated POC Feature Branch में जोड़ा गया है:
+- Location: apps/mobile-poc/customer/
+- Capacitor 8.0.0; temporary appId: in.srkelectronic.poc.customer (production package ID नहीं).
+- Splash/welcome: owner-provided founder photo, centered waist-up crop, reduced top whitespace, Royal Blue / White / Gold.
+- Session restore: existing Supabase Auth session को restore करके getUser() से verify करना.
+- Dashboard: केवल read-only service_bookings summary; customer_user_id authenticated user से filter; RLS लागू; address, phone, payment और financial details query नहीं.
+- कोई OTP/SMS अपने-आप नहीं भेजा जाता; booking create/accept, timer, materials, payment, wallet mutation और Production migration/deploy नहीं.
+- CI workflow: .github/workflows/customer-mobile-poc.yml; Android debug APK generate करके 7 दिन का artifact रखेगा.
+
+**Local static validation:** POC inline JavaScript syntax passed; required session and customer-scoped query markers checked; asset preparation and Android SDK CI configuration inspected. यह native Gradle build/CI success या physical-device validation का प्रमाण नहीं है।
+
+**Current status:** POC source committed; CI build result, APK artifact, fresh-install/session test and real-device visual review pending. Android app architecture अभी final production decision नहीं है; Capacitor को पहले POC में evaluate किया जा रहा है।
