@@ -64,14 +64,15 @@ These rates are labour charges only.
 **Status: Approved business requirements / implementation pending**
 
 ## 1. Booking and visit lifecycle
-1. Customer creates a service booking.
-2. Matching electrician receives the offer and accepts it.
-3. Electrician travels to the customer's address and reaches the location.
-4. Arrival/visit is recorded separately from the paid-work timer. Merely accepting the job or travelling to the customer must not start labour billing.
-5. Once the customer and electrician are ready for work, electrician starts the work timer. The server records the authoritative start timestamp.
-6. When work is finished, electrician stops the timer. The server records the stop timestamp and calculates elapsed billable time and labour amount using the category rate saved on that booking.
-7. Customer sees the generated bill and a Cash (नकद) payment option.
-8. Electrician confirms receipt of cash. Only after this confirmation should the booking/payment show as cash received/paid. Record who confirmed and when.
+1. Customer selects the service and sees the electrician category and its hourly labour rate clearly before confirming the booking. The booking screen must display the selected category and applicable hourly charge (for example, हेल्पर इलेक्ट्रिशियन — ₹112.50/hour; साधारण इलेक्ट्रिशियन — ₹150/hour; कुशल इलेक्ट्रिशियन — ₹200/hour; मास्टर इलेक्ट्रिशियन — ₹250/hour).
+2. The selected/assigned electrician category and hourly rate are saved as a snapshot on the booking and shown to the customer before booking confirmation and in booking details. Any change must be disclosed and accepted before work starts.
+3. Matching electrician receives the offer and accepts it.
+4. Electrician travels to the customer's address and reaches the location; arrival must be recorded.
+5. Arrival/visit is recorded separately from the paid-work timer. Merely accepting the job or travelling to the customer must not start labour billing.
+6. Once the customer and electrician are ready for work, electrician starts the work timer. The server records the authoritative start timestamp.
+7. When work is finished, electrician stops the timer. The server records the stop timestamp and calculates elapsed billable time and labour amount using the category rate saved on that booking. Billable work duration is calculated on a per-minute basis, not in 15-minute or 30-minute blocks.
+8. Customer sees the generated bill and a Cash (नकद) payment option.
+9. Electrician confirms receipt of cash. Only after this confirmation should the booking/payment show as cash received/paid. Record who confirmed and when.
 
 ## 2. Four electrician categories and standard rates
 Rates are for an 8-hour standard workday; hourly equivalent is shown for server-side calculation.
@@ -100,7 +101,9 @@ The category and rate used must be snapshotted on the booking/work session so la
 - On approval, server changes booking to cancelled, records Admin ID, decision, reason, timestamp and any applicable cancellation charge; notify both parties.
 - On rejection, booking remains active and both parties are notified.
 - Customer/electrician must not be able to directly set booking status to cancelled through browser, API, RPC or database writes.
-- Apply the cancellation charge only according to an Admin-approved policy and show it clearly before final settlement. Do not invent or hard-code a fee until its amount/rule is approved.
+- If the customer requests cancellation after the electrician has actually reached the customer's address and the arrival is recorded, create a cancellation-charge record for Admin review/approval. The exact cancellation-charge amount/formula is still to be decided; do not invent or hard-code an amount.
+- If the electrician does not reach the customer's address, no cancellation charge is applied to the customer. Record the non-arrival/cancellation reason and timestamps for audit.
+- Apply/collect any cancellation charge only through the Admin-approved decision and show it clearly to the customer before settlement. Do not treat a pending cancellation request as a payable charge.
 - Admin must not accidentally cancel a completed booking through the normal cancellation flow. Any exceptional correction should be a separately authorized and audited action.
 
 ## 5. Server-side integrity and audit requirements
@@ -109,7 +112,7 @@ The category and rate used must be snapshotted on the booking/work session so la
 - Prevent duplicate active timers, stopping a timer that was never started, restarting a completed session, and overlapping work sessions for the same booking.
 - Preserve immutable start/stop timestamps, category/rate snapshot, calculated duration, labour amount, materials breakdown, payment method, cash confirmation, cancellation requests and Admin decisions.
 - Use database constraints/RLS and secure server-side functions; hiding UI controls is not sufficient.
-- Use a defined billing increment/rounding rule (for example per-minute or per-15-minute billing) only after the business owner approves it. Until then, do not silently assume a rounding rule.
+- Work duration is to be accounted for per minute. The server must calculate the amount from the authoritative timer timestamps and the saved hourly category rate; do not round up to 15-minute or 30-minute blocks. Define and document the exact treatment of partial minutes (seconds) consistently before implementation.
 - Handle disputes, timer corrections and payment reversals through audited Admin actions, not direct edits by customer/electrician.
 
 ## 6. Booking state flow (proposed)
@@ -119,11 +122,10 @@ Cancellation side-flow:
 active booking → cancellation_requested → (Admin approves → cancelled) OR (Admin rejects → return to prior active state).
 
 ## 7. Decisions still required before implementation
-1. Cancellation charge: fixed amount, percentage, or travel/visit-based amount; exact amount and when it applies.
-2. Whether cancellation charge differs for customer-requested vs electrician-requested cancellation.
-3. Whether the charge applies only after electrician reaches the customer's address, or also after acceptance/before arrival.
-4. Billable-time rounding: per minute, per 15 minutes, per half-hour, or another rule; minimum charge if any.
-5. What happens if customer disputes the cash amount or electrician does not confirm cash receipt.
-6. Whether Admin may waive a cancellation charge and what reason/audit is mandatory.
+1. Exact cancellation-charge amount/formula after the electrician reaches the customer's address; Admin approval and audit requirements.
+2. Whether the customer cancellation charge differs by reason or circumstance after arrival.
+3. Exact treatment of partial minutes/seconds in per-minute billing and whether any minimum labour charge applies.
+4. What happens if customer disputes the cash amount or electrician does not confirm cash receipt.
+5. Whether Admin may waive a cancellation charge and what reason/audit is mandatory.
 
 **No application code, database migration, production database, or production deployment is changed by this specification update.**
