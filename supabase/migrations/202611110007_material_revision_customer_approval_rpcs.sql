@@ -102,7 +102,7 @@ begin
     if jsonb_typeof(v_item) <> 'object' then
       raise exception 'INVALID_MATERIAL_ITEM_FIELDS' using errcode='22023';
     end if;
-    if exists (select 1 from jsonb_object_keys(v_item) k where k not in ('description','quantity','unit_price','supplied_by','receipt_reference')) then
+    if exists (select 1 from jsonb_object_keys(v_item) as keys(key) where key not in ('description','quantity','unit_price','supplied_by','receipt_reference')) then
       raise exception 'INVALID_MATERIAL_ITEM_FIELDS' using errcode='22023';
     end if;
 
