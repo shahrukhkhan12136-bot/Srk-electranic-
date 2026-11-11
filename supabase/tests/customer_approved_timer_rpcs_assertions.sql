@@ -7,6 +7,7 @@ do $test$
 declare
   v_customer uuid := '40000000-0000-4000-8000-000000000001';
   v_electrician uuid := '40000000-0000-4000-8000-000000000002';
+  v_outsider uuid := '40000000-0000-4000-8000-000000000005';
   v_profile uuid := '40000000-0000-4000-8000-000000000003';
   v_booking uuid := '40000000-0000-4000-8000-000000000004';
   v_start_decision uuid;
@@ -18,7 +19,7 @@ declare
   v_minutes bigint;
   v_bill_count bigint;
 begin
-  insert into auth.users(id) values (v_customer),(v_electrician);
+  insert into auth.users(id) values (v_customer),(v_electrician),(v_outsider);
   insert into public.electrician_profiles(id,user_id,active,verification_status)
   values (v_profile,v_electrician,true,'approved');
   insert into public.service_bookings(
@@ -84,6 +85,24 @@ begin
   end if;
   select count(*) into v_bill_count from public.srk_final_bills where booking_id=v_booking;
   if v_bill_count <> 1 then raise exception 'duplicate final bills were generated'; end if;
+
+  -- Customer and accepted assigned electrician can read the scoped details.
+  v_result := public.srk_get_booking_timer_bill_details(v_booking);
+  if v_result->>'booking_id' <> v_booking::text or v_result->'final_bill'->>'id' <> v_bill::text then
+    raise exception 'customer scoped bill read failed';
+  end if;
+  perform set_config('request.jwt.claim.sub',v_electrician::text,true);
+  v_result := public.srk_get_booking_timer_bill_details(v_booking);
+  if v_result->>'timer_state' <> 'stopped' then raise exception 'electrician scoped timer read failed'; end if;
+
+  -- A different authenticated user must not see the booking's timer or bill.
+  perform set_config('request.jwt.claim.sub',v_outsider::text,true);
+  begin
+    perform public.srk_get_booking_timer_bill_details(v_booking);
+    raise exception 'unrelated user unexpectedly read booking details';
+  exception when insufficient_privilege then
+    null;
+  end;
 end
 $test$;
 
