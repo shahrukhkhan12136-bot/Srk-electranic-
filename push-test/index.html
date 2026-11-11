@@ -27,6 +27,8 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
 <button id="logout" class="secondary" disabled>TEST अकाउंट लॉगआउट</button>
 <div id="status" role="status">स्थिति: अभी लॉगिन नहीं हुआ।</div>
 <p class="small">सुरक्षा: इस पेज में केवल Supabase publishable key है। कोई service-role key या निजी VAPID key नहीं है। TEST पूरा होने पर लॉगआउट करें।</p>
+
+<section id="offer-view" hidden><span class="tag">केवल TEST • Production से अलग</span><h1>आपके लिए नया काम आया है</h1><p>नोटिफिकेशन से खुला बुकिंग ऑफर</p><div id="offer-info" style="background:#f0f5f2;padding:14px;border-radius:12px;overflow-wrap:anywhere">ऑफर लोड हो रहा है…</div><button id="offer-accept" type="button">काम स्वीकार करें</button><button id="offer-reject" class="secondary" type="button">मना करें</button><p id="offer-status" role="status"></p></section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -44,13 +46,38 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
     return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
   };
+  const offerId = new URLSearchParams(location.search).get('offerId');
+  async function loadOffer() {
+    if (!offerId) return;
+    document.getElementById('login').hidden = true;
+    enable.hidden = true; logout.hidden = true;
+    document.getElementById('offer-view').hidden = false;
+    const info=document.getElementById('offer-info'), status=document.getElementById('offer-status');
+    const {data:{session}}=await client.auth.getSession();
+    if(!session){info.textContent='पहले इसी TEST पेज पर लॉगिन करें। लॉगिन के बाद यह लिंक फिर खोलें।';return;}
+    const {data,error}=await client.rpc('srk_test_get_offer',{p_offer_id:offerId});
+    if(error){info.textContent='ऑफर लोड नहीं हुआ: '+error.message;document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
+    const row=Array.isArray(data)?data[0]:null;
+    if(!row){info.textContent='यह ऑफर आपके TEST खाते के लिए उपलब्ध नहीं है।';document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
+    info.textContent='ऑफर: '+row.offer_id+' | बुकिंग: '+row.booking_id+' | स्थिति: '+row.offer_status+' | मैच: '+(row.match_level||'—');
+    if(row.offer_status!=='offered'){status.textContent='यह ऑफर अब उपलब्ध नहीं है।';document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
+    async function respond(response){
+      if(!confirm(response==='accepted'?'क्या आप यह TEST काम स्वीकार करते हैं?':'क्या आप यह TEST ऑफर मना करना चाहते हैं?'))return;
+      document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;status.textContent='जवाब सेव हो रहा है…';
+      const {data,error}=await client.rpc('srk_test_respond_to_offer',{p_offer_id:offerId,p_response:response});
+      if(error){status.textContent='जवाब सेव नहीं हुआ: '+error.message;document.getElementById('offer-accept').disabled=false;document.getElementById('offer-reject').disabled=false;return;}
+      info.textContent=info.textContent.replace('स्थिति: offered','स्थिति: '+response);status.textContent=response==='accepted'?'सफल! TEST ऑफर स्वीकार हो गया।':'सफल! TEST ऑफर मना कर दिया गया।';
+    }
+    document.getElementById('offer-accept').onclick=()=>respond('accepted');
+    document.getElementById('offer-reject').onclick=()=>respond('declined');
+  }
   async function refreshSession() {
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
     const signedIn = !!data.session;
     enable.disabled = !signedIn;
     logout.disabled = !signedIn;
-    if (signedIn) say('लॉगिन सफल। TEST User ID: ' + data.session.user.id + '\nअब Push Notification चालू करें।');
+    if (signedIn && !offerId) say('लॉगिन सफल। TEST User ID: ' + data.session.user.id + '\nअब Push Notification चालू करें।');
   }
   document.getElementById('login').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -104,6 +131,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     say('TEST अकाउंट लॉगआउट हो गया।');
   });
   refreshSession().catch(error => say('स्थिति जाँच त्रुटि: ' + error.message));
+  if (offerId) loadOffer().catch(error => document.getElementById('offer-status').textContent='त्रुटि: '+error.message);
 })();
 </script></body></html>
 <!-- redeploy trigger: 2026-11-11 explicit workflow -->
