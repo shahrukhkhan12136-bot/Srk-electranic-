@@ -274,7 +274,7 @@ async function loadCustomerBookings() {
   if (!session) return;
   box.textContent = 'आपकी बुकिंग लोड हो रही हैं…';
   const { data, error } = await customerSb.from('service_bookings')
-    .select('id,service_type,status,payment_method,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
+    .select('id,service_type,status,payment_status,final_bill_id,service_category_label,hourly_rate_snapshot,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
     .eq('customer_user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -288,7 +288,8 @@ async function loadCustomerBookings() {
     const canCall = contact && /^[0-9]{10,15}$/.test(phone);
     return '<article class="card" style="margin:10px 0;padding:13px">' +
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
-    '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
+    (row.service_category_label ? '<p>इलेक्ट्रिशियन श्रेणी: <b>'+customerEsc(row.service_category_label)+'</b> • मेहनताना: ₹'+customerEsc(Number(row.hourly_rate_snapshot||0).toFixed(3))+'/घंटा</p>' : '') +
+    '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + (row.final_bill_id ? customerEsc(row.payment_status) : 'अभी देय नहीं') + '</p>' +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
     (row.quote_status && row.quote_status!=='not_submitted' ? '<div class="job"><b>इलेक्ट्रिशियन का कोटेशन</b><p>सर्विस / मेहनताना: ₹'+customerEsc(Number(row.service_charge||0).toFixed(2))+'</p><p>सामान / पार्ट्स: ₹'+customerEsc(Number(row.materials_amount||0).toFixed(2))+'</p><p><b>कुल: ₹'+customerEsc(Number(row.quoted_amount||0).toFixed(2))+'</b></p><p>स्थिति: '+customerEsc(row.quote_status)+'</p>'+(row.quote_note?'<p>'+customerEsc(row.quote_note)+'</p>':'')+(row.quote_status==='pending'&&row.status==='awaiting_quote_approval'?'<button type="button" onclick="customerQuoteResponse(\''+row.id+'\',\'approved\')">कोटेशन मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerQuoteResponse(\''+row.id+'\',\'rejected\')">कोटेशन अस्वीकार करें</button>':'')+'</div>':'') +
     (row.quoted_amount != null ? '<p>कुल तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
