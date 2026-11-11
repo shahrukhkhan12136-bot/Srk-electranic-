@@ -43,6 +43,7 @@ exports.handler=async event=>{
    amount:Number(state.amount_paise),currency:state.currency,receipt:("SRK-"+snapshotId).slice(0,40),
    notes:{service:"SRK ELECTRONIC",booking_id:booking.id,payable_snapshot_id:snapshotId,bill_id:snapshot.bill_id}
   })});
+  if(order.status!=="created"||order.amount!==Number(state.amount_paise)||order.currency!==state.currency)throw new Error("Razorpay returned an order that does not match the payable snapshot");
   const bound=await rpc("srk_bind_razorpay_snapshot_order",{
    p_snapshot_id:snapshotId,p_creation_token:token,p_provider_order_id:order.id,
    p_amount_paise:Number(order.amount),p_currency:order.currency
