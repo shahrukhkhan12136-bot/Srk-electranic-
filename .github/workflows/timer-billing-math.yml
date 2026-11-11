@@ -34,6 +34,7 @@ on:
       - "supabase/migrations/202611110005_server_authoritative_booking_creation.sql"
       - "supabase/migrations/202611110006_preserve_labour_calculation_precision.sql"
       - "supabase/migrations/202611110007_material_revision_customer_approval_rpcs.sql"
+      - "supabase/migrations/202611110008_customer_payable_snapshot_rpc.sql"
       - "supabase/tests/material_revision_customer_approval_assertions.sql"
       - "index.html"
       - "admin.html"
