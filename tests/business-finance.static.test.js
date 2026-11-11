@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 
 const baseline = fs.readFileSync("supabase/migrations/20261110080448_srk_business_finance_dashboard.sql", "utf8");
+const reportingDates = fs.readFileSync("supabase/migrations/20261111043852_srk_business_finance_reporting_dates.sql", "utf8");
 const migration = fs.readFileSync("supabase/migrations/20261111090000_harden_business_finance_dashboard.sql", "utf8");
 const admin = fs.readFileSync("admin.html", "utf8");
 
@@ -11,6 +12,7 @@ assert.match(baseline, /CREATE TABLE IF NOT EXISTS private\.srk_business_expense
 assert.match(baseline, /ENABLE ROW LEVEL SECURITY/i);
 assert.match(baseline, /REVOKE ALL ON TABLE private\.srk_business_expenses FROM PUBLIC, anon, authenticated/i);
 assert.match(baseline, /auth\.uid\(\) IS NULL OR NOT public\.is_srk_admin\(\)/i);
+assert.ok(reportingDates.includes("AT TIME ZONE 'Asia/Kolkata'"));
 
 assert.match(migration, /ADD COLUMN IF NOT EXISTS entry_type text NOT NULL DEFAULT 'actual'/i);
 assert.match(migration, /entry_type IN \('actual','estimate'\)/i);
@@ -30,6 +32,10 @@ assert.match(migration, /entry_type='estimate'/i);
 assert.match(migration, /projected_net_profit/i);
 assert.match(migration, /net_profit.*actual_expenses/i);
 assert.match(migration, /unmatched_paid_completed_bookings/i);
+assert.ok(migration.includes("(coalesce(h.completed_at,b.created_at) AT TIME ZONE 'Asia/Kolkata')::date"));
+assert.ok(migration.includes("(b.payment_verified_at AT TIME ZONE 'Asia/Kolkata')::date"));
+assert.ok(migration.includes("(paid_at AT TIME ZONE 'Asia/Kolkata')::date"));
+assert.ok(migration.includes("(created_at AT TIME ZONE 'Asia/Kolkata')::date"));
 assert.doesNotMatch(migration, /GRANT\s+SELECT\s+ON\s+TABLE\s+private\.srk_business_expenses\s+TO\s+authenticated/i);
 
 assert.match(admin, /Business Expense &amp; Profit Dashboard/);
@@ -41,6 +47,8 @@ assert.match(admin, /वास्तविक खर्च/);
 assert.match(admin, /अनुमानित खर्च/);
 assert.match(admin, /financePeriod/);
 assert.match(admin, /financeAnchorDate/);
+assert.ok(admin.includes("timeZone:'Asia/Kolkata'"));
+assert.match(admin, /formatToParts/);
 assert.match(admin, /बदला गया/);
 assert.match(admin, /Payout राशि को खर्च में दोबारा नहीं घटाया गया है/);
 assert.match(admin, /loadBusinessFinanceDashboard\(\)\]\);/);
