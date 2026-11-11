@@ -1,0 +1,44 @@
+name: Timer billing arithmetic tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/tests/timer_billing_math.sql"
+      - ".github/workflows/timer-billing-math.yml"
+  push:
+    branches:
+      - "feature/production-push-notifications"
+    paths:
+      - "supabase/tests/timer_billing_math.sql"
+      - ".github/workflows/timer-billing-math.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-arithmetic:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: srk_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d srk_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Run rollback-only billing arithmetic tests
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/tests/timer_billing_math.sql
