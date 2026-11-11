@@ -128,3 +128,18 @@ The workflow now creates a separate disposable PostgreSQL 16 database, loads the
 GitHub Actions run `43043353051` passed on commit `cfaeab4ec970e9490e7a5569afbe358965115261`. The new Production-shaped replay step (workflow step 46) completed successfully, including all migrations applied twice and both preservation assertions. The workflow trigger path list was subsequently deduplicated without changing the fixture or migration test logic.
 
 **Scope limitation:** this is now a materially closer, Production-shaped legacy schema fixture, but it is still not a complete dump of every Production table, policy, grant, function, trigger or Supabase Auth runtime behavior. It specifically closes the high-risk `service_bookings` / electrician profile / applications / payout / legacy quote-payout / audit-trigger compatibility gap. Remaining full-schema parity, real Auth/RLS and provider/browser tests are still release blockers.
+
+
+## Migration-history reconciliation — push and legacy cash-payment entries
+
+Read-only Production migration history confirms:
+- `20261111072823 add_electrician_push_subscriptions`
+- `20261111072827 secure_push_subscription_upsert`
+- `20261111073357 enable_pg_net_for_electrician_push`
+- `20261111075205 wire_job_offer_push_webhook`
+- `20261111082515 add_assigned_electrician_cash_payment_status`
+- `20261111083811 add_assigned_electrician_cash_payment_status`
+
+The Feature Branch contains later-numbered files for push table/upsert (`20261111090000`, `20261111120000`) and a single `20261111082515` legacy assigned-cash-payment function migration. Main Production already has the push table, owner-scoped RLS policies, private SECURITY DEFINER upsert implementation and public SECURITY INVOKER wrapper; it also already records the pg_net/webhook push migrations and the duplicate-named cash-payment history entries. These branch files are not part of the new timer release sequence and must not be replayed or marked applied again. The current production catalog—not migration names alone—remains the authority for this reconciliation.
+
+The proposed forward-only release scope therefore remains the 11 timer/billing foundation and dependent migrations, followed by cancellation and commission integration (13 files total), with no duplicate push or legacy cash-payment migration included. This is a planning conclusion only; no new forward migration files have been generated or applied to Production.
