@@ -113,13 +113,6 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/migrations/202611110003_customer_approved_timer_rpcs.sql
-      - name: Test customer-approved timer lifecycle and bill calculation
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql "postgresql://postgres@localhost:5432/srk_test" \
-            -v ON_ERROR_STOP=1 \
-            -f supabase/tests/customer_approved_timer_rpcs_assertions.sql
       - name: Apply scoped timer and bill read RPC migration
         env:
           PGPASSWORD: postgres
@@ -134,6 +127,13 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/migrations/202611110004_scoped_timer_bill_read_rpc.sql
+      - name: Test customer-approved timer lifecycle and bill calculation
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/tests/customer_approved_timer_rpcs_assertions.sql
       - name: Run rollback-only billing arithmetic tests
         env:
           PGPASSWORD: postgres
