@@ -11,6 +11,8 @@ on:
       - "supabase/migrations/202611110006_preserve_labour_calculation_precision.sql"
       - "supabase/migrations/202611110007_material_revision_customer_approval_rpcs.sql"
       - "supabase/migrations/202611110008_customer_payable_snapshot_rpc.sql"
+      - "supabase/migrations/202611110009_razorpay_snapshot_order_ledger.sql"
+      - "supabase/migrations/202611110009_razorpay_snapshot_order_ledger.sql"
       - "supabase/migrations/202611110008_customer_payable_snapshot_rpc.sql"
       - "supabase/tests/material_revision_customer_approval_assertions.sql"
       - "supabase/tests/timer_billing_math.sql"
@@ -229,6 +231,20 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/migrations/202611110008_customer_payable_snapshot_rpc.sql
+      - name: Apply Razorpay snapshot order ledger migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110009_razorpay_snapshot_order_ledger.sql
+      - name: Verify Razorpay snapshot order ledger migration is replay-safe
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110009_razorpay_snapshot_order_ledger.sql
       - name: Test separate material proposals and customer approval
         env:
           PGPASSWORD: postgres
