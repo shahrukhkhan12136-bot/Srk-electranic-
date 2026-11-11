@@ -82,3 +82,33 @@ Rates are labour-only and must be copied onto the booking as immutable rate snap
 ## 5. Safety and current status
 
 This audit is a factual implementation map, not a claim of completion. No Production schema, data, RPC, payment configuration or deployment was changed during this audit. The next implementation must be performed on the Feature Branch and a representative isolated TEST database. Legacy quote data and payment history must remain intact for audit and reconciliation.
+
+## 6. Deeper code and schema verification (2026-11-11 follow-up)
+
+### Confirmed repository locations
+- Root-level Netlify function sources are `create-booking.js`, `create-order.js`, `verify-payment.js`, and `razorpay-webhook.js`; the `netlify/functions/*.js` files are thin wrappers. Changes must be made to the root sources and then checked against wrapper routing.
+- The actual migration directory is `supabase/migrations/`. It contains the quote workflow migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql`, the follow-up cash payment migration `20261111082515_add_assigned_electrician_cash_payment_status.sql`, and prior security/commission/wallet/Route/contact migrations. This resolves the earlier uncertainty about migration paths.
+- Main UI files are root `index.html`, `electrician.html`, and `admin.html`.
+
+### Confirmed database constraints and triggers
+- The current booking status CHECK constraint explicitly includes the three quote states and `inspection`; the assignment constraint also requires an assigned electrician for those states. A replacement state constraint must be coordinated with every dependent RPC, trigger, view, and UI query before legacy states are retired.
+- Current payment status constraint is `unpaid/pending/paid/refunded/failed`; existing quote amount and service/material non-negative constraints are present.
+- Existing booking triggers include booking initialization, job-offer broadcast, audit capture, commission calculation, job-offer cancellation, status history, and electrician payable creation. Commission and payable triggers must be reviewed against timer labour and material separation before changing bill fields.
+- Do not drop old quote columns or constraints in the first migration. Historical bookings and payment reconciliation depend on them.
+
+### Confirmed critical legacy authorization/workflow gaps
+- `srk_update_booking_work_status` currently looks up the electrician by `user_id = auth.uid()` only, while other assigned-electrician functions accept either `user_id` or `auth_user_id`. New timer RPCs must use the established dual-link validation and verify the exact assigned profile.
+- Existing customer and electrician contact RPCs expose full numbers only when a booking is in a hard-coded list of assigned/quote/work statuses. Their filters need to be updated to the new active states, while continuing to require customer ownership or assigned electrician identity and an approved active electrician profile.
+- Existing cash confirmation marks the booking paid directly from `quoted_amount`; it does not require a separate immutable customer-approved timer bill. The new confirmation must bind to the final bill ID/version and reject any changed or unpaid material line.
+- Existing Admin manual-payment RPC requires a quote-approved completed booking and a manually entered reference. This is not a substitute for the approved customer cash → assigned electrician receipt-confirmation flow and must remain separate or be redesigned with explicit Admin audit semantics.
+- Existing Admin booking update RPC accepts direct status changes including cancellation and legacy quote states. This is another path that must be restricted so Admin cancellation decisions are recorded through the new cancellation decision ledger, not a generic status edit.
+- Existing quote submission and customer quote-response RPCs are still callable by authenticated users under their current grants. Hiding the old controls alone would leave the legacy workflow active; grants and function behaviour must be explicitly retired only after new RPCs and UI are ready.
+
+### Payment API dependencies confirmed
+- `create-order.js`, `verify-payment.js`, and `razorpay-webhook.js` all validate completion/quote approval and reconcile the amount using `quoted_amount`, `service_charge`, and `materials_amount`. All three must be migrated together to the final bill ledger; updating only order creation would leave inconsistent verification/webhook behaviour.
+- `create-booking.js` currently defaults the payment method to Cash when the client omits it and accepts a client-supplied `quoted_amount`. The new endpoint must ignore/reject client-supplied financial values and persist only a server-validated category/rate snapshot, with no payment method at booking creation.
+- Admin and commission reporting currently uses `service_charge` as the labour basis. The new commission calculation must be explicitly reviewed against the business-approved commission policy; do not assume materials are commissionable or alter the percentage without approval.
+
+### Verification status
+- These are source-code and read-only Production metadata/function inspections. No migration was applied, no function or policy was changed, no payment was created, no booking/customer record was modified, and no deployment was run.
+- The next safe implementation unit is an additive schema/RPC migration plus automated database tests, reviewed together with the four payment/booking API sources. It must be validated on a complete isolated schema before any Production rollout.
