@@ -115,3 +115,16 @@ Do not rename or mark the historical migration files as applied. Prepare a new, 
 - In commit `3aa552580f68d705ca41c9653d4f8bb50ce7ce0f`, all four SECURITY DEFINER functions in `20261111150000_timer_commission_cash_online_integration.sql` were changed to `SET search_path = ''`. Their application objects are schema-qualified; this removes reliance on mutable schemas in privileged execution.
 - GitHub Actions run `43042917794` passed on that commit. All 45 workflow steps completed successfully, including Cash, material approval, cancellation, commission/remittance, legacy preservation and rollback arithmetic.
 - This security change is still Feature Branch only. It has not been applied to Main Production.
+
+
+## Production-shaped legacy compatibility fixture — 2026-11-11
+
+Added two disposable-only SQL fixtures:
+- `supabase/tests/production_parity_legacy_baseline.sql` reproduces the observed Production `electrician_applications` shape (including the absence of `user_id`), extends the electrician profile shape, and creates the observed legacy payout table columns, checks, foreign keys, indexes, audit trigger shape, legacy commission trigger and quote-based payout function. It creates one representative paid legacy quote booking with its pending payout. No Production user data is copied.
+- `supabase/tests/production_parity_legacy_assertions.sql` verifies that the paid legacy booking and payout values survive the timer/cancellation/commission migrations unchanged, no duplicate payout appears, the booking guard/status-history triggers remain, the payout audit trigger remains, and the application fixture retains the actual schema contract.
+
+The workflow now creates a separate disposable PostgreSQL 16 database, loads the normal timer baseline plus this Production-shaped legacy overlay, then applies each of the 13 timer/cancellation/commission migrations twice in dependency order. It runs both paid-legacy and completed-unpaid legacy preservation assertions afterward.
+
+GitHub Actions run `43043353051` passed on commit `cfaeab4ec970e9490e7a5569afbe358965115261`. The new Production-shaped replay step (workflow step 46) completed successfully, including all migrations applied twice and both preservation assertions. The workflow trigger path list was subsequently deduplicated without changing the fixture or migration test logic.
+
+**Scope limitation:** this is now a materially closer, Production-shaped legacy schema fixture, but it is still not a complete dump of every Production table, policy, grant, function, trigger or Supabase Auth runtime behavior. It specifically closes the high-risk `service_bookings` / electrician profile / applications / payout / legacy quote-payout / audit-trigger compatibility gap. Remaining full-schema parity, real Auth/RLS and provider/browser tests are still release blockers.
