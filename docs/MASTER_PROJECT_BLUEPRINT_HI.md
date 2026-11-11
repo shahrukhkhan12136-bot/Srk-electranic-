@@ -131,12 +131,12 @@ Update this blueprint when owner decisions change. Record date, decision, impact
 
 Electrician App में स्पष्ट और आसानी से पढ़ी जाने वाली **Rate Card** स्क्रीन/सूची अनिवार्य होगी। अभी स्वीकृत चारों 8-hour Labour rates यथावत रहेंगे; ₹899–₹999 की नई/सीमित range लागू नहीं होगी।
 
-| Category | 8 घंटे का Labour charge (gross) | 15% SRK commission | Electrician का net Labour share |
-|---|---:|---:|---:|
-| Helper | ₹899.00 | ₹134.85 | ₹764.15 |
-| Ordinary | ₹1,199.00 | ₹179.85 | ₹1,019.15 |
-| Skilled | ₹1,599.00 | ₹239.85 | ₹1,359.15 |
-| Master | ₹1,999.00 | ₹299.85 | ₹1,699.15 |
+| Category | 8 घंटे का Labour charge | Electrician को मिलने वाली Labour राशि |
+|---|---:|---:|
+| Helper | ₹899.00 | ₹764.15 |
+| Ordinary | ₹1,199.00 | ₹1,019.15 |
+| Skilled | ₹1,599.00 | ₹1,359.15 |
+| Master | ₹1,999.00 | ₹1,699.15 |
 
 ### Rate Card display and assignment rules
 - चारों categories की पूरी सूची दिखाई जाए; प्रत्येक row/card में category, 8-hour gross Labour charge, 15% commission deduction और electrician को मिलने वाला net Labour amount साफ-साफ दिखे।
