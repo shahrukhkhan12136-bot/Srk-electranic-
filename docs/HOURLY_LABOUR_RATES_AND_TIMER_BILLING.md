@@ -72,8 +72,8 @@ These rates are labour charges only.
 6. Mutual-consent timer start: the electrician presses **Start Timer** to send a start request to the customer. The timer must remain NOT RUNNING while customer approval is pending. The customer reviews and accepts the start request; only then does the server record the authoritative start timestamp and mark the timer as running. If the customer rejects the request, the timer does not start and the rejection is recorded.
 7. Mutual-consent timer stop: after finishing the work, the electrician presses **Finish / Request Stop** to send a stop request to the customer. The timer continues running while customer approval is pending; it must not stop merely because the electrician requested a stop. The customer reviews and accepts the stop request; only then does the server record the authoritative stop timestamp and stop the timer. If the customer rejects the stop request, the timer remains running and the rejection is recorded so the parties can resolve the discrepancy.
 8. The server calculates elapsed billable time between the accepted start timestamp and accepted stop timestamp, using the category rate saved on that booking. Billable work duration is accounted for per minute, not in 15-minute or 30-minute blocks. Both parties see the approved start/stop timestamps, elapsed duration and calculated labour bill.
-8. Customer sees the generated bill and a Cash (नकद) payment option.
-9. Electrician confirms receipt of cash. Only after this confirmation should the booking/payment show as cash received/paid. Record who confirmed and when.
+9. Only after the electrician requests timer stop and the customer accepts that stop request (so the timer is actually stopped) does the system generate/show the final bill and reveal payment options. Before this point, no payment button, Cash option, Online Payment option, payment collection request, or checkout flow is shown.
+10. After the final bill is generated, the customer may choose either Cash (नकद) or Online Payment. For Cash, the electrician confirms actual receipt; only after that confirmation should the booking/payment show as cash received/paid, recording who confirmed and when. For Online Payment, create/enable the online payment flow only at this post-completion stage and mark payment paid only after verified provider confirmation/webhook.
 
 ## 2. Four electrician categories and standard rates
 Rates are for an 8-hour standard workday; hourly equivalent is shown for server-side calculation.
@@ -153,3 +153,13 @@ active booking → cancellation_requested → (Admin approves → cancelled) OR 
 - Update customer, electrician and Admin screens and all payment/commission calculations so they use the approved timer-generated labour bill and separately approved materials, not the old quote amount.
 - Do not simply hide the quotation button while leaving the old quote-gated state machine in place: replace the underlying workflow and test booking → assignment → arrival → customer-approved timer start/stop → final bill → payment end-to-end.
 - Until that replacement is implemented and tested, do not claim the quotation system has been removed from the live app. This decision is recorded in the Feature Branch specification only; no production code or database has been changed by this update.
+
+
+## 10. Payment options are shown only after customer-approved timer completion
+- At booking time, show only the selected electrician category and its 8-hour/hourly labour rate as price information. Do not show a Pay Now button, cash payment choice, online payment choice, payment collection screen, or create a payment order at booking time.
+- During electrician travel, arrival, timer-start request, active work, and timer-stop request pending customer approval, do not expose payment options or initiate payment collection.
+- Only after the customer accepts the electrician's timer-stop request and the server records the timer as stopped may the system calculate the final per-minute labour bill and display the final amount with two payment methods: Cash (नकद) and Online Payment.
+- Cash: customer pays the electrician after the final bill; electrician confirms actual cash receipt in the app. Do not mark paid before confirmation.
+- Online: customer can initiate online payment only after the final bill is generated; use the verified payment gateway flow, signature/webhook validation and idempotency protections. Do not mark paid based only on a client-side success screen.
+- If separately approved materials are added, show them as distinct line items in the final bill; do not merge them into the labour rate. The payment choices still appear only after the timer has been stopped with customer approval and the final bill is ready.
+- Booking-time category/hourly rates are informational price display, not a request to pay the full 8-hour amount in advance. The actual labour payable is calculated from the approved timer duration.
