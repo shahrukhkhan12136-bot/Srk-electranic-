@@ -153,9 +153,69 @@ begin
 end
 $function$;
 
+create or replace function public.srk_get_customer_booking_cancellation(
+  p_booking_id uuid
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path=''
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_result jsonb;
+begin
+  if v_uid is null then raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000'; end if;
+  if not exists(select 1 from public.service_bookings b where b.id=p_booking_id and b.customer_user_id=v_uid) then
+    raise exception 'CUSTOMER_BOOKING_NOT_FOUND' using errcode='42501';
+  end if;
+  select jsonb_build_object(
+    'request_id',r.id,'decision',r.decision,'reason',r.reason,
+    'requested_at',r.requested_at,'decided_at',r.decided_at,
+    'cancellation_fee',r.cancellation_fee,'admin_note',r.admin_note
+  ) into v_result
+  from public.srk_booking_cancellation_requests r
+  where r.booking_id=p_booking_id
+  order by r.requested_at desc limit 1;
+  return coalesce(v_result,'null'::jsonb);
+end
+$function$;
+
+create or replace function public.srk_admin_list_booking_cancellation_requests()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path=''
+as $function$
+declare
+  v_result jsonb;
+begin
+  if auth.uid() is null then raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000'; end if;
+  if not coalesce(public.is_srk_admin(),false) then raise exception 'ADMIN_ONLY' using errcode='42501'; end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'request_id',r.id,'booking_id',r.booking_id,'customer_name',b.customer_name,
+    'customer_phone',b.phone,'reason',r.reason,'requester_role',r.requester_role,
+    'requested_at',r.requested_at,'arrival_evidence_at_request',r.arrival_evidence_at_request,
+    'decision',r.decision,'cancellation_fee',r.cancellation_fee,
+    'decided_at',r.decided_at,'admin_note',r.admin_note
+  ) order by r.requested_at desc),'[]'::jsonb)
+  into v_result
+  from public.srk_booking_cancellation_requests r
+  join public.service_bookings b on b.id=r.booking_id
+  where r.decision='pending';
+  return v_result;
+end
+$function$;
+
 revoke all on function public.srk_customer_request_booking_cancellation(uuid,text) from public,anon;
 revoke all on function public.srk_admin_decide_booking_cancellation(uuid,text,text) from public,anon;
+revoke all on function public.srk_get_customer_booking_cancellation(uuid) from public,anon;
+revoke all on function public.srk_admin_list_booking_cancellation_requests() from public,anon;
 grant execute on function public.srk_customer_request_booking_cancellation(uuid,text) to authenticated;
 grant execute on function public.srk_admin_decide_booking_cancellation(uuid,text,text) to authenticated;
+grant execute on function public.srk_get_customer_booking_cancellation(uuid) to authenticated;
+grant execute on function public.srk_admin_list_booking_cancellation_requests() to authenticated;
 
 commit;
