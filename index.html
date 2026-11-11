@@ -329,7 +329,7 @@ async function loadCustomerBookings() {
 }
 
 function customerRefundCardHtml(row, request, loadError) {
-  if(row.payment_status!=='paid'||!row.amount_paid)return '';
+  if(!request&&(row.payment_status!=='paid'||!row.amount_paid))return '';
   if(loadError)return '<div class="job"><b>Refund अनुरोध</b><p class="small">Refund स्थिति अभी लोड नहीं हुई। Refresh करें।</p></div>';
   const labels={requested:'अनुरोध दर्ज',in_review:'Admin जाँच में',approved:'मंजूर',rejected:'अस्वीकृत',processing:'Refund भेजा गया — प्रक्रिया जारी',unknown:'Refund की पुष्टि बाकी',processed:'Refund पूरा'};
   if(request)return '<div class="pay-note"><b>↩️ Refund अनुरोध</b><p>राशि: ₹'+customerEsc(Number(request.amount).toFixed(2))+'</p><p>स्थिति: <b>'+customerEsc(labels[request.status]||request.status)+'</b></p><p>'+customerEsc(request.reason)+'</p>'+(request.admin_note?'<p><b>Admin का जवाब:</b> '+customerEsc(request.admin_note)+'</p>':'')+'<p class="small">अनुरोध: '+customerEsc(new Date(request.created_at).toLocaleString('hi-IN'))+'</p></div>';
