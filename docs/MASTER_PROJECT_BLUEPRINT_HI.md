@@ -244,3 +244,34 @@ Acceptance: profile API/RLS ownership tests, client-tampering negative tests, Ad
 - QR verification भविष्य में जोड़ी जा सकती है, लेकिन QR में निजी data न हो और verification server-side हो।
 
 स्थिति: **ID FORMAT OWNER-APPROVED / SERVER-SIDE SEQUENCE & TRIGGER MIGRATION + ELECTRICIAN PROFILE DISPLAY + ADMIN PARTNER-LIST SEARCH COMMITTED TO FEATURE BRANCH; PRODUCTION-SHAPED POSTGRESQL 16 FIXTURE, MIGRATION/SECURITY/BEHAVIOR TESTS, 24-WAY CONCURRENT ISSUANCE (28 UNIQUE IDS) AND ELECTRICIAN/ADMIN INLINE JS SYNTAX CHECKS PASSED (CI RUN 43082442370); LIVE PRODUCTION SCHEMA READ-ONLY COMPATIBILITY REVIEW PASSED; PRODUCTION MIGRATION NOT APPLIED; LIVE BROWSER PREVIEW/E2E, REAL ADMIN AUTHORIZATION AND ANDROID ID CARD TESTING PENDING**.
+
+
+
+## 17. Mobile App Visual Reference — Splash, Customer & Electrician (Owner-confirmed: 2026-11-12)
+
+Owner ने तीन-phone reference image से Customer और Electrician Android apps की visual direction मंजूर की है। यह **design reference** है, live feature या वास्तविक data का प्रमाण नहीं।
+
+### Shared Splash / Welcome
+- Royal Blue, White और Gold brand palette; साफ़ SRK ELECTRONIC logo/header.
+- Founder की owner-supplied original high-resolution photograph; चेहरा/पहचान न बदलें। Splash पर waist-up crop, centered portrait और crisp rendering.
+- छोटा, संतुलित top header; अनावश्यक खाली ऊपरी जगह नहीं। Brand, portrait, welcome line और loading/progress को स्पष्ट visual hierarchy में रखें।
+- Loading state वास्तविक app initialization से जुड़े; नकली progress या अनंत spinner नहीं। Offline, slow-network, retry और accessibility states शामिल हों।
+
+### Customer Android App
+- Home dashboard with verified customer status, service location, new booking, my bookings, wallet/payment history and help.
+- Booking card should show real booking status and approved booking details; no hard-coded names, locations, ratings, counts, wallet balance or prices from the reference image.
+- Bottom navigation should be consistent and reachable on small screens.
+
+### Electrician Android App
+- Own profile, approval/active status and permanent Electrician ID; approved category badge.
+- New job offers with clear accept/decline actions; work history, earnings, wallet and help.
+- Earnings/rate card must follow the separately approved net-Labour-only display policy; do not expose commission or gross Labour amount.
+- Only authorized and assigned job data may appear; no sample customer data or fabricated earnings.
+
+### Shared implementation and release gates
+- Exactly two Android apps: Customer and Electrician. Admin remains a separate secure responsive web dashboard; no third Admin Android app.
+- Framework, minimum SDK, application IDs, offline/session behavior, push setup, signing, privacy disclosures and build pipeline must be documented before scaffold generation.
+- Backend/RPC/RLS remains authoritative for identity, pricing, booking, timer, payment and authorization. Never embed privileged secrets in mobile clients.
+- Implement after blueprint/architecture approval, then run device-size/accessibility, auth/RLS, offline/retry, push, booking and release-build tests. No Play Store release without explicit owner approval.
+
+**Status: VISUAL DIRECTION APPROVED / ANDROID APPS NOT IMPLEMENTED.** Both Android directories remain README-only scaffolds.
