@@ -67,6 +67,7 @@ async function enablePush(){
  finally{button.disabled=false}
 }
 document.getElementById('enablePush')?.addEventListener('click',enablePush);
-\nfunction bookingMapDirections(o){const destination=o.location_lat!=null&&o.location_lng!=null?String(o.location_lat)+','+String(o.location_lng):[o.address,o.district,o.state,o.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destination)+'&travelmode=driving'}
+
+function bookingMapDirections(o){const destination=o.location_lat!=null&&o.location_lng!=null?String(o.location_lat)+','+String(o.location_lng):[o.address,o.district,o.state,o.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destination)+'&travelmode=driving'}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}init();
 </script></body></html>
