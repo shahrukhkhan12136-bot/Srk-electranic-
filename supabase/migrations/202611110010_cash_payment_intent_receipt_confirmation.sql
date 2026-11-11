@@ -23,6 +23,9 @@ create table if not exists public.srk_cash_payment_intents (
   )
 );
 
+create unique index if not exists srk_cash_payment_intents_booking_unique
+  on public.srk_cash_payment_intents(booking_id);
+
 create index if not exists srk_cash_payment_intents_booking_idx
   on public.srk_cash_payment_intents(booking_id,selected_at desc);
 
@@ -67,7 +70,7 @@ as $function$
 begin
   if exists (
     select 1 from public.srk_cash_payment_intents ci
-    where ci.payable_snapshot_id=new.snapshot_id
+    where ci.booking_id=new.booking_id
   ) then
     raise exception 'CASH_PAYMENT_ALREADY_SELECTED' using errcode='55000';
   end if;
@@ -122,7 +125,7 @@ begin
 
   if v_snapshot.amount_paise<=0 then raise exception 'NO_CASH_PAYMENT_DUE' using errcode='22023'; end if;
   if v_booking.payment_status='paid' then raise exception 'BOOKING_ALREADY_PAID' using errcode='55000'; end if;
-  if exists(select 1 from public.srk_razorpay_orders ro where ro.snapshot_id=p_snapshot_id) then
+  if exists(select 1 from public.srk_razorpay_orders ro where ro.booking_id=v_booking.id) then
     raise exception 'RAZORPAY_PAYMENT_ALREADY_STARTED' using errcode='55000';
   end if;
 
@@ -207,7 +210,7 @@ begin
     raise exception 'FINAL_BILL_SNAPSHOT_MISMATCH' using errcode='55000';
   end if;
   if v_booking.payment_status='paid' then raise exception 'BOOKING_ALREADY_PAID' using errcode='55000'; end if;
-  if exists(select 1 from public.srk_razorpay_orders ro where ro.snapshot_id=p_snapshot_id) then
+  if exists(select 1 from public.srk_razorpay_orders ro where ro.booking_id=v_booking.id) then
     raise exception 'RAZORPAY_ORDER_EXISTS_CASH_CONFIRMATION_BLOCKED' using errcode='55000';
   end if;
 
