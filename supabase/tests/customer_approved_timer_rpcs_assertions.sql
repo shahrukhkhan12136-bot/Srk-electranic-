@@ -28,6 +28,11 @@ begin
   ) values (
     v_booking,v_customer,v_profile,'assigned','helper','Helper',112.375
   );
+  -- Production guard intentionally clears assignment and resets status on
+  -- creation. Simulate the later accepted-offer assignment transition.
+  update public.service_bookings
+  set assigned_electrician_id=v_profile,status='assigned'
+  where id=v_booking;
   insert into public.job_offers(booking_id,electrician_id,status)
   values (v_booking,v_profile,'accepted');
 
