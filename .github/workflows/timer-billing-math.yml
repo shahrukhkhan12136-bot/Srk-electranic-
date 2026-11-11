@@ -67,7 +67,7 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Check customer and electrician inline JavaScript syntax
+      - name: Check customer, electrician and Admin inline JavaScript syntax
         run: |
           node <<'NODE'
           const fs = require('fs');
