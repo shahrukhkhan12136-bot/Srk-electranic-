@@ -38,7 +38,8 @@ RLS and server-side authorization are mandatory; hiding a UI control is not auth
   - ordinary: ₹1,199 / 8 hours; hourly snapshot ₹149.875
   - skilled: ₹1,599 / 8 hours; hourly snapshot ₹199.875
   - master: ₹1,999 / 8 hours; hourly snapshot ₹249.875
-- Customer sends category code; server maps label/rate and stores immutable snapshot.
+- Customer booking के समय चारों electrician categories (Helper, Ordinary, Skilled, Master) और category-wise customer price स्पष्ट देखेगा: Helper ₹899, Ordinary ₹1,199, Skilled ₹1,599, Master ₹1,999 (8 घंटे की approved Labour booking rate)। ग्राहक अपनी जरूरत के अनुसार category चुनकर booking करेगा। ये customer-facing gross Labour prices हैं; electrician-facing Rate Card में इन्हें नहीं दिखाया जाएगा।
+- Customer sends category code only; server validates the active category and maps label/rate/version, then stores an immutable booking snapshot. Client-supplied price is never trusted.
 - No upfront payment. Final bill follows work completion and customer-approved timer stop.
 - Timer uses server timestamps; seconds ceiling and minutes ceiling; retain precision until final paise rounding half-up.
 - Cash: customer pays electrician directly; electrician confirms actual receipt; electrician remits commission to SRK; Admin confirms actual receipt; cash ledger electrician_payable=0.
@@ -149,7 +150,7 @@ Electrician App में स्पष्ट और आसानी से प�
 - Rate Card और assigned-category badge responsive, accessible और Hindi/English labels के लिए तैयार हों; खाली/अमान्य category पर गलत default न दिखे—स्पष्ट support/admin error state दिखे।
 
 ### Acceptance criteria
-1. चारों approved categories और gross/commission/net amounts ठीक ऊपर की तालिका से मेल खाते हों।
+1. चारों approved categories, 8-hour duration और electrician के net amounts ठीक ऊपर की तालिका से मेल खाते हों; electrician UI में gross/commission details न हों।
 2. Electrician केवल अपनी assigned category पहचान सके; अन्य electrician की private profile/assignment उजागर न हो।
 3. API/RLS tests साबित करें कि electrician category/rate बदल नहीं सकता और unapproved/inactive profile पर Rate Card assignment को active नहीं माना जाता।
 4. Materials को 15% commission base में शामिल न किया जाए।
@@ -158,3 +159,24 @@ Electrician App में स्पष्ट और आसानी से प�
 7. UI/README/Blueprint में feature को implemented न कहा जाए जब तक वास्तविक app code, server integration और tests प्रमाणित न हों।
 
 स्थिति: **REQUIREMENT APPROVED / IMPLEMENTATION NOT STARTED**. Electrician Android workspace अभी README-only scaffold है।
+
+
+## 12. Customer Booking — Category & Price Display (Owner-confirmed: 2026-11-11)
+
+Booking शुरू करते समय ग्राहक को electrician की चारों categories और हर category का customer price साफ़ दिखेगा। ग्राहक category चुनने के बाद उसी category के आधार पर booking request भेजेगा।
+
+| Electrician category | Customer को दिखने वाला 8-hour price |
+|---|---:|
+| Helper | ₹899.00 |
+| Ordinary | ₹1,199.00 |
+| Skilled | ₹1,599.00 |
+| Master | ₹1,999.00 |
+
+- Customer-facing booking screen पर category name और संबंधित customer price स्पष्ट हों; price ₹899 से ₹1,999 तक category के अनुसार होगा।
+- यह customer price है; इसे electrician के Rate Card से अलग रखें। Electrician Rate Card पर केवल 8 घंटे की अवधि और electrician को मिलने वाला net amount दिखेगा।
+- Category/rate की अंतिम पुष्टि server-side active, Admin-approved catalogue से हो। Client से आया price authoritative नहीं होगा।
+- Booking create होते समय category code, display label, approved rate/version और applicable duration का immutable snapshot सुरक्षित हो। बाद में rate बदलने से पुरानी booking न बदले।
+- ग्राहक को category/price चुनने से पहले कोई upfront payment न लिया जाए। Final bill approved booking snapshot, actual timer और separately approved materials के नियमों के अनुसार बने।
+- UI में सभी prices INR में दो दशमलव तक, responsive और accessible रूप में दिखें; loading/error/empty/offline states में गलत या अनुमानित price न दिखे।
+
+स्थिति: **REQUIREMENT APPROVED / CUSTOMER UI IMPLEMENTATION & E2E TEST PENDING**.
