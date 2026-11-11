@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#073b9a">
+<meta name="description" content="SRK ELECTRONIC Customer mobile proof of concept">
+<title>SRK ELECTRONIC — Customer POC</title>
+<style>
+:root{color-scheme:light;--blue:#073b9a;--bright:#0877e8;--gold:#f6c94b;--ink:#102b4d;--muted:#60738b;--paper:#f4f8ff}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 90% 10%,#dceeff,transparent 34%),var(--paper);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans Devanagari",sans-serif}
+main{width:min(100%,560px);margin:auto;padding:clamp(12px,4vw,24px);padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.brand{display:flex;align-items:center;gap:12px;padding:12px 4px 18px}.mark{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(140deg,#fff,#dceeff);color:var(--blue);font-weight:950;font-size:25px;box-shadow:0 5px 18px #073b9a22;border:1px solid #c6dcf8}.brand h1{font-size:18px;line-height:1.1;margin:0;letter-spacing:.7px}.brand p{font-size:11px;color:var(--muted);margin:4px 0 0}
+.hero{position:relative;overflow:hidden;border-radius:25px;padding:19px 18px 16px;background:linear-gradient(135deg,#052c78,#0868cf 72%,#0a83dc);color:#fff;box-shadow:0 15px 34px #073b9a2b;border:1px solid #a7d3ff}
+.hero:after{content:"";position:absolute;width:210px;height:210px;border:22px solid #ffffff16;border-radius:50%;right:-100px;top:-125px;pointer-events:none}
+.portrait{width:164px;height:205px;margin:0 auto 13px;border:4px solid white;outline:2px solid var(--gold);outline-offset:3px;border-radius:42% 42% 18px 18px;overflow:hidden;background:#dceeff;box-shadow:0 12px 24px #001e5570}
+.portrait img{width:100%;height:100%;display:block;object-fit:cover;object-position:center 14%}
+.hero h2{text-align:center;margin:5px 0 5px;font-size:clamp(24px,7vw,32px);line-height:1.15}.hero h2 span{color:#ffe082}.hero .tag{text-align:center;color:#e2f1ff;font-size:12px;line-height:1.55;margin:0}
+.status{display:flex;align-items:center;gap:10px;margin:16px 0 12px;padding:13px 14px;border-radius:15px;background:#fff;border:1px solid #dce8f7;box-shadow:0 5px 16px #17385b0c}
+.dot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:#d49b13;box-shadow:0 0 0 4px #fdf0c6}
+.status strong{display:block;font-size:13px}.status small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.card{background:#fff;border:1px solid #e0e9f5;border-radius:19px;padding:16px;margin-top:12px;box-shadow:0 8px 24px #17385b0b}
+.card h3{margin:0 0 9px;font-size:17px;color:#123c76}.muted{color:var(--muted);font-size:13px;line-height:1.55}
+button{font:inherit;border:0;border-radius:12px;padding:12px 15px;font-weight:800;background:linear-gradient(110deg,#ffdf78,#f5bd32);color:#15366c;min-height:46px}
+button.secondary{background:#eaf2ff;color:#174d91;border:1px solid #cbdff8}
+button:disabled{opacity:.55}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.booking{padding:12px 0;border-top:1px solid #e9eef5}.booking:first-child{border-top:0}.booking strong{display:block;font-size:14px}.booking small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.hidden{display:none!important}.foot{text-align:center;color:#78899d;font-size:10px;padding:18px 8px 4px}
+#message{font-size:13px;line-height:1.55;color:#53677f;white-space:pre-wrap}
+@media(max-width:370px){.hero{padding:15px 13px}.portrait{width:148px;height:186px}.card{padding:13px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./srk-config.js"></script>
+</head>
+<body>
+<main>
+  <header class="brand"><div class="mark" aria-hidden="true">⚡</div><div><h1>SRK ELECTRONIC</h1><p>Har Ghar Ki Electrical Seva</p></div></header>
+  <section class="hero" aria-labelledby="welcome-title">
+    <div class="portrait"><img src="./assets/founder-shahrukh-khan.webp" alt="SRK ELECTRONIC Founder"></div>
+    <h2 id="welcome-title">आपकी सेवा में <span>हमेशा तैयार</span></h2>
+    <p class="tag">सुरक्षित • तेज़ • भरोसेमंद सेवा</p>
+  </section>
+  <div class="status" role="status" aria-live="polite"><i class="dot"></i><div><strong id="stateTitle">ऐप तैयार हो रहा है…</strong><small id="stateDetail">सुरक्षित सेशन जाँचा जा रहा है</small></div></div>
+  <section id="signedOut" class="card hidden">
+    <h3>ग्राहक लॉगिन आवश्यक</h3>
+    <p class="muted">इस POC में OTP/SMS अपने-आप नहीं भेजा जाता। पहले से मौजूद सुरक्षित Supabase सेशन मिलने पर ही आपकी अपनी बुकिंग पढ़ी जाएगी।</p>
+    <p class="muted">अभी इस डेमो में कोई नकली बुकिंग, कीमत, पता या ग्राहक जानकारी नहीं दिखाई जाएगी।</p>
+    <div class="actions"><button class="secondary" id="retry">दोबारा जाँचें</button></div>
+  </section>
+  <section id="dashboard" class="card hidden">
+    <h3>नमस्ते! आपकी बुकिंग</h3>
+    <p class="muted" id="accountLabel">सुरक्षित ग्राहक सेशन सत्यापित। केवल पढ़ने की सुविधा।</p>
+    <div id="bookings"><p class="muted">बुकिंग लोड हो रही हैं…</p></div>
+    <div class="actions"><button class="secondary" id="refresh">↻ रिफ्रेश</button><button class="secondary" id="logout">लॉगआउट</button></div>
+  </section>
+  <section class="card"><h3>इस परीक्षण में क्या जाँचा जा रहा है?</h3><p class="muted">Welcome फोटो की स्पष्टता, ऊपर की जगह, छोटे मोबाइल पर layout, Capacitor WebView rendering, app resume और सुरक्षित session restore। यह अभी सीमित Customer POC है—पूरा Customer या Electrician App नहीं।</p></section>
+  <p id="message" class="foot" aria-live="polite">कोई OTP, भुगतान या booking action इस परीक्षण में शुरू नहीं होता।</p>
+  <footer class="foot">SRK ELECTRONIC • Internal POC • Production नहीं</footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cfg = window.SRK_CONFIG || {};
+  const setState = (title, detail) => { $('stateTitle').textContent=title; $('stateDetail').textContent=detail; };
+  const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let client = null, busy = false;
+  function showSignedOut(message) {
+    $('signedOut').classList.remove('hidden'); $('dashboard').classList.add('hidden');
+    setState('लॉगिन आवश्यक', 'कोई सक्रिय ग्राहक सेशन उपलब्ध नहीं');
+    $('message').textContent = message || 'इस POC में SMS OTP नहीं भेजा गया।';
+  }
+  async function loadBookings(user) {
+    $('bookings').innerHTML='<p class="muted">आपकी बुकिंग सुरक्षित रूप से लोड हो रही हैं…</p>';
+    const {data,error}=await client.from('service_bookings')
+      .select('id,service_type,status,preferred_date,created_at')
+      .eq('customer_user_id',user.id).order('created_at',{ascending:false}).limit(10);
+    if(error){$('bookings').textContent='बुकिंग अभी नहीं पढ़ी जा सकीं। RLS/नेटवर्क की जाँच करें और फिर कोशिश करें।';return;}
+    if(!data?.length){$('bookings').innerHTML='<p class="muted">इस खाते में अभी कोई बुकिंग उपलब्ध नहीं है।</p>';return;}
+    $('bookings').innerHTML=data.map(row=>'<article class="booking"><strong>'+esc(row.service_type||'Electrical Service')+'</strong><small>स्थिति: '+esc(row.status||'अपडेट उपलब्ध नहीं')+'</small><small>तारीख: '+esc(row.preferred_date||'अभी तय नहीं')+'</small></article>').join('');
+  }
+  async function restoreSession() {
+    if(busy||!client)return;busy=true;
+    try{
+      const {data,error}=await client.auth.getSession();
+      if(error)throw error;
+      const session=data.session;
+      if(!session){showSignedOut();return;}
+      const {data:userData,error:userError}=await client.auth.getUser();
+      if(userError||!userData.user){await client.auth.signOut();showSignedOut('सेशन सत्यापित नहीं हुआ। दोबारा लॉगिन आवश्यक है।');return;}
+      $('signedOut').classList.add('hidden');$('dashboard').classList.remove('hidden');
+      $('accountLabel').textContent='सुरक्षित ग्राहक सेशन सत्यापित • केवल पढ़ने की सुविधा';
+      setState('सेशन सत्यापित', 'आपकी बुकिंग केवल आपके खाते से पढ़ी जाती हैं');
+      await loadBookings(userData.user);
+    }catch(_){showSignedOut('सेशन जाँच में समस्या आई। इंटरनेट कनेक्शन जाँचकर फिर कोशिश करें.');}
+    finally{busy=false;}
+  }
+  async function init(){
+    if(!cfg.SUPABASE_URL||!cfg.SUPABASE_ANON_KEY||!window.supabase?.createClient){showSignedOut('Supabase configuration उपलब्ध नहीं है।');return;}
+    client=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{
+      auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+    });
+    client.auth.onAuthStateChange((_event)=>{setTimeout(restoreSession,0);});
+    $('retry').addEventListener('click',restoreSession);
+    $('refresh').addEventListener('click',restoreSession);
+    $('logout').addEventListener('click',async()=>{await client.auth.signOut();showSignedOut('आप लॉगआउट हो गए हैं।');});
+    await restoreSession();
+  }
+  window.addEventListener('online',restoreSession);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)restoreSession();});
+  init();
+})();
+</script>
+</body>
+</html>
