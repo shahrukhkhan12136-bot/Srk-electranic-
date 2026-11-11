@@ -17,6 +17,7 @@ on:
       - "tests/electrician-verification.static.test.js"
       - "tests/admin-audit-log.static.test.js"
       - "tests/business-finance.static.test.js"
+      - "tests/parse_business_finance_migrations.py"
       - "supabase/migrations/20261110080448_srk_business_finance_dashboard.sql"
       - "supabase/migrations/20261111090000_harden_business_finance_dashboard.sql"
       - "tests/razorpay-refund.static.test.js"
@@ -84,5 +85,7 @@ jobs:
           python-version: "3.x"
       - name: Install PostgreSQL parser
         run: python -m pip install pglast
+      - name: Parse business finance migration SQL
+        run: python tests/parse_business_finance_migrations.py
       - name: Parse direct-assignment migration SQL
         run: python tests/parse_direct_assignment_migration.py

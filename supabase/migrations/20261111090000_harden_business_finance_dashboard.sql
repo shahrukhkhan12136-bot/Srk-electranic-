@@ -246,7 +246,7 @@ BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
     RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501';
   END IF;
-  IF p_period NOT IN ('daily','monthly','yearly') THEN
+  IF p_period IS NULL OR p_period NOT IN ('daily','monthly','yearly') THEN
     RAISE EXCEPTION 'Period must be daily, monthly, or yearly' USING ERRCODE='22023';
   END IF;
 
