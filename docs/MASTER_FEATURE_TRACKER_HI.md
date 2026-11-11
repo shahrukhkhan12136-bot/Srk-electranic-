@@ -186,3 +186,16 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [ ] Profile/ID badge और Rate Card highlight एक ही authoritative category source इस्तेमाल करें।
 - [ ] Loading/offline/stale/error, accessibility और mobile E2E तथा RLS/authorization/tampering negative tests पास हों।
 - [~] Requirement documented; actual Android/profile UI and API implementation pending.
+
+
+## B.2 Electrician ID Number — permanent unique number (2026-11-11)
+- [ ] Proposed format: SRK-EL-000001, SRK-EL-000002…; owner confirmation pending.
+- [ ] Issue automatically from server only after Admin approval and account activation.
+- [ ] Unique, permanent, never reused; electrician cannot edit or choose it.
+- [ ] Keep internal UUID primary key separate from readable public/display ID.
+- [ ] Do not encode phone, Aadhaar, DOB or other personal information.
+- [ ] Show ID number, approved category badge and current status on electrician's own ID/Profile card.
+- [ ] Category changes must not change the permanent ID number; Admin changes remain audited/versioned.
+- [ ] Add database uniqueness, transactional sequence/concurrency, authorization and lookup tests.
+- [ ] ID alone must never authenticate a user or grant access.
+- [~] Design documented; format awaits owner confirmation; implementation pending.
