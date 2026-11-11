@@ -157,15 +157,21 @@ async function enablePush(){
  if(!user){status.textContent='पहले इलेक्ट्रिशियन लॉगिन करें।';return}
  if(!profile){status.textContent='इलेक्ट्रिशियन प्रोफाइल की जानकारी लोड हो रही है। कृपया कुछ सेकंड बाद फिर कोशिश करें।';return}if(!profile.active||profile.verification_status!=='approved'){status.textContent='Push Notification केवल Admin द्वारा Active और Approved किए गए इलेक्ट्रिशियन के लिए उपलब्ध है।';return}
  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){status.textContent='इस ब्राउज़र में Push Notification उपलब्ध नहीं है।';return}
- if(!cfg.SUPABASE_VAPID_PUBLIC_KEY){status.textContent='Push Notification का सुरक्षित VAPID सेटअप अभी बाकी है। यह सुविधा सेटअप पूरा होने के बाद चालू होगी।';return}
- button.disabled=true;unlockOfferRing();status.textContent='नोटिफिकेशन अनुमति और सदस्यता सेव की जा रही है…';
+ button.disabled=true;unlockOfferRing();status.textContent='सुरक्षित Push key प्राप्त की जा रही है…';
  try{
+  let vapidPublicKey=cfg.SUPABASE_VAPID_PUBLIC_KEY||'';
+  if(!vapidPublicKey){
+   const keyResponse=await fetch(cfg.SUPABASE_URL+'/functions/v1/push-job-offer',{method:'GET',headers:{Accept:'application/json'}});
+   const keyData=await keyResponse.json().catch(()=>({}));
+   if(!keyResponse.ok||!keyData.publicKey)throw new Error('Push public key अभी उपलब्ध नहीं है। Supabase Edge Function में VAPID_PUBLIC_KEY जाँचें।');
+   vapidPublicKey=keyData.publicKey;
+  }
   const permission=await Notification.requestPermission();
   if(permission!=='granted'){status.textContent='नोटिफिकेशन अनुमति नहीं मिली। Android Chrome Settings में Notifications चालू करें।';return}
   const registration=await navigator.serviceWorker.register('/sw.js');
   await navigator.serviceWorker.ready;
   let subscription=await registration.pushManager.getSubscription();
-  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(cfg.SUPABASE_VAPID_PUBLIC_KEY)});
+  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(vapidPublicKey)});
   const json=subscription.toJSON();
   const endpoint=json.endpoint,p256dh=json.keys?.p256dh,auth=json.keys?.auth;
   if(!endpoint||!p256dh||!auth)throw new Error('अधूरी Push Subscription जानकारी');
