@@ -13,7 +13,7 @@ select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-00000000
 do $$ begin
  if (select count(*) from public.srk_admin_list_booking_refund_requests(200))<>1 then raise exception 'Admin refund list missing request'; end if;
 end $$;
-select public.srk_admin_decide_booking_refund_request((select id from public.srk_booking_refund_requests where booking_id='20000000-0000-4000-8000-000000000001'),'approved','भुगतान और शिकायत की जाँच पूरी।');
+select public.srk_admin_decide_booking_refund_request((select id from public.srk_admin_list_booking_refund_requests(200) where booking_id='20000000-0000-4000-8000-000000000001'),'approved','भुगतान और शिकायत की जाँच पूरी।');
 select * from public.srk_admin_prepare_booking_refund((select id from public.srk_booking_refund_requests where booking_id='20000000-0000-4000-8000-000000000001'));
 reset role;
 set role service_role;
@@ -33,7 +33,7 @@ reset role;
 set role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',false);
 select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000003","role":"authenticated","is_srk_admin":"true"}',false);
-select public.srk_admin_decide_booking_refund_request((select id from public.srk_booking_refund_requests where booking_id='20000000-0000-4000-8000-000000000002'),'approved','नकद Refund का UTR मिलने पर दर्ज करें।');
+select public.srk_admin_decide_booking_refund_request((select id from public.srk_admin_list_booking_refund_requests(200) where booking_id='20000000-0000-4000-8000-000000000002'),'approved','नकद Refund का UTR मिलने पर दर्ज करें।');
 select public.srk_admin_finalize_manual_booking_refund((select id from public.srk_booking_refund_requests where booking_id='20000000-0000-4000-8000-000000000002'),'UTR-REFUND-12345','वास्तविक वापसी दर्ज');
 reset role;
 do $$ begin
@@ -51,7 +51,7 @@ reset role;
 set role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',false);
 select set_config('request.jwt.claims','{"sub":"10000000-0000-4000-8000-000000000003","role":"authenticated","is_srk_admin":"true"}',false);
-select public.srk_admin_decide_booking_refund_request((select id from public.srk_booking_refund_requests where booking_id='20000000-0000-4000-8000-000000000003'),'approved','Immutable timer snapshot and captured payment ledger matched.');
+select public.srk_admin_decide_booking_refund_request((select id from public.srk_admin_list_booking_refund_requests(200) where booking_id='20000000-0000-4000-8000-000000000003'),'approved','Immutable timer snapshot and captured payment ledger matched.');
 select * from public.srk_admin_prepare_booking_refund((select id from public.srk_booking_refund_requests where booking_id='20000000-0000-4000-8000-000000000003'));
 reset role;
 set role service_role;
