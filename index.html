@@ -91,9 +91,9 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
    <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
-   <label for="payment">भुगतान</label>
-   <select id="payment" required><option value="काम पूरा होने के बाद भुगतान">काम पूरा होने के बाद भुगतान</option></select>
-   <p class="small">पहले इलेक्ट्रिशियन घर आकर काम देखेगा और सर्विस चार्ज तथा सामान का अलग-अलग कोटेशन देगा। आपकी मंजूरी के बाद ही काम शुरू होगा। काम पूरा होने पर ही Razorpay से भुगतान होगा।</p>
+   <label for="payment">भुगतान का पसंदीदा तरीका</label>
+   <select id="payment" required><option value="नकद (Cash)">नकद (Cash) — काम पूरा होने पर</option><option value="Razorpay ऑनलाइन">ऑनलाइन (Razorpay) — काम पूरा होने पर</option></select>
+   <p class="small" id="paymentHelp">नकद चुनने पर काम पूरा होने के बाद इलेक्ट्रिशियन को नकद भुगतान करें। भुगतान मिलने की पुष्टि Admin द्वारा दर्ज की जाएगी।</p>
    <button class="btn primary" type="submit">बुकिंग भेजें</button>
   </form>
  </section>
@@ -174,7 +174,7 @@ async function loadCustomerBookings() {
   if (!session) return;
   box.textContent = 'आपकी बुकिंग लोड हो रही हैं…';
   const { data, error } = await customerSb.from('service_bookings')
-    .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
+    .select('id,service_type,status,payment_method,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
     .eq('customer_user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(50);
