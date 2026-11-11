@@ -126,7 +126,7 @@ for each row execute function public.test_broadcast_new_booking();
 -- after timer billing migrations; it must not be silently marked paid or
 -- receive a timer bill, payable snapshot, or commission payout.
 insert into public.electrician_profiles(id,active,verification_status)
-values ('20000000-0000-4000-8000-000000000001',true,'approved');
+values ('21000000-0000-4000-8000-000000000001',true,'approved');
 
 insert into public.service_bookings(
   id,customer_name,phone,state,district,pincode,address,service_type,
@@ -134,17 +134,17 @@ insert into public.service_bookings(
   commission_rate,payment_status,service_charge,materials_amount,quote_status,
   work_started_at
 ) values (
-  '10000000-0000-4000-8000-000000000001',
+  '11000000-0000-4000-8000-000000000001',
   'Legacy preservation fixture','9000000000','Uttar Pradesh','Balrampur',
   '271861','Test address','Electrical repair','Razorpay ऑनलाइन भुगतान',
-  20,'completed','20000000-0000-4000-8000-000000000001',
+  20,'completed','21000000-0000-4000-8000-000000000001',
   15,'unpaid',10,10,'approved',now()
 );
 
 insert into public.job_offers(booking_id,electrician_id,status)
 values (
-  '10000000-0000-4000-8000-000000000001',
-  '20000000-0000-4000-8000-000000000001',
+  '11000000-0000-4000-8000-000000000001',
+  '21000000-0000-4000-8000-000000000001',
   'accepted'
 );
 
