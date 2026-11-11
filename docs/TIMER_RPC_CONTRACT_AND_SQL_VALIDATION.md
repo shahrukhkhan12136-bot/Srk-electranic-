@@ -37,7 +37,7 @@ Every request must carry a bounded, non-empty idempotency key. Same booking/acti
 
 The current foundation migration checks `elapsed_seconds` against `floor(extract(epoch ...))`. That silently discards fractional seconds. For example, 60.1 seconds becomes 60 seconds and incorrectly bills one minute, although the approved rule bills 1m01s as two whole minutes.
 
-The RPC must calculate elapsed whole seconds with ceiling, not floor:
+The RPC and final-bill constraint must calculate elapsed whole seconds with ceiling, not floor. This correction is now present in Feature Branch source only:
 
 ```sql
 v_elapsed_seconds := greatest(
@@ -54,7 +54,7 @@ v_labour_amount := round(
 );
 ```
 
-The final bill constraint in the foundation migration currently encodes the floor behavior. Before applying that migration anywhere, replace that check with a definition consistent with the selected precision rule or store the authoritative elapsed seconds directly and validate it through a trusted trigger/RPC. Add tests for fractional-second boundaries (59.1s, 60.0s, 60.1s, 119.1s) as well as the whole-second cases.
+The migration's final-bill elapsed check now uses CEIL. The migration has not been applied to any database. The rollback-only arithmetic test was executed by GitHub Actions on PostgreSQL 16 and passed (run 43007068617, commit 42d4316). This proves the arithmetic test script executes successfully; it does not prove the foundation migration applies cleanly or that the RPC/state machine is implemented.
 
 ## Bill creation transaction
 
@@ -102,16 +102,18 @@ Before production use, add database guards and a controlled mutation model:
 
 ## Migration defects to fix before any application
 
-1. The final-bill elapsed check uses `floor`, which conflicts with ceiling elapsed seconds for fractional timestamps.
-2. The `ADD CONSTRAINT` statements are not guarded for reruns. Use a migration runner that guarantees atomic single application, or add catalog-checked idempotency. Do not rerun a partially applied file blindly.
-3. The final-bill FK is also unguarded and needs a clean migration replay test.
+1. The final-bill elapsed check now uses `ceil` in Feature Branch source; it has not been executed in a database.
+2. Named booking constraints now use catalog-checked guards. This is a limited rerun safeguard, not proof that an arbitrarily partially applied or schema-drifted migration can be safely replayed.
+3. The final-bill FK now uses a catalog existence guard. A clean apply, second-run, and partial-failure recovery test are still required.
 4. The circular relationship (`service_bookings.final_bill_id` -> `srk_final_bills.id` and bill -> booking) requires an explicit transaction test, including rollback and unique booking behavior.
 5. Table comments call the decision ledger append-only, but the current schema permits privileged updates/deletes. Do not claim append-only until database guards exist.
 6. RLS enabled with no authenticated policies means browser clients cannot directly read these rows; implement carefully scoped read RPCs/policies before customer, electrician and Admin screens depend on them.
 
-## Arithmetic regression test added
+## Arithmetic regression test — executed
 
-A standalone, rollback-only PostgreSQL test script is available at `supabase/tests/timer_billing_math.sql`. It covers 0s, whole and fractional minute boundaries, 8 hours, all four category rates, paise rounding, and the no-minimum-charge rule. It has not yet been executed against PostgreSQL; its existence is not evidence of a passing test.
+A standalone, rollback-only PostgreSQL test script is available at `supabase/tests/timer_billing_math.sql`. It covers 0s, whole and fractional minute boundaries, 8 hours, all four category rates, paise rounding, and the no-minimum-charge rule. GitHub Actions run `43007068617` completed successfully on PostgreSQL 16 at commit `42d4316ba95f0dbb0423231eae9643507429d0b9`. The test is arithmetic-only and rolls back; it does not apply migrations or write to Supabase.
+
+The push-notifications Deno type-check workflow also has a later successful run (`42988409388`, commit `f4d6dfec29de84530114f8e4636600dd1c6850d0`). An earlier run failed at commit `c846804`; the later successful run supersedes that earlier result for the newer source revision.
 
 ## Mandatory SQL/API tests
 
@@ -129,4 +131,4 @@ A standalone, rollback-only PostgreSQL test script is available at `supabase/tes
 
 ## Status
 
-No RPC code is implemented by this document. No TEST or Production database was changed. The next implementation must be tested against a disposable full schema before any shared database application.
+No timer RPC code is implemented by this document. No TEST or Production database was changed. The existing shared TEST Supabase project is not a representative integration target: its public schema currently contains only `electrician_profiles`, `job_offers`, and `srk_push_subscriptions`, and lacks `service_bookings` plus the booking/payment/history dependencies. Do not apply the migration there blindly. Before integration testing, build a disposable PostgreSQL/Supabase environment from the complete authoritative schema/migration history, with synthetic auth users, customer/electrician profiles, Admin identity, and representative booking/payment rows. Validate clean migration apply, second application, deliberate transaction rollback, circular FK insertion/linking, RLS/grants, and the RPC state machine in that isolated environment. Only then consider a separately approved shared TEST migration.
