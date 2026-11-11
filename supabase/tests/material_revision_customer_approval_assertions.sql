@@ -69,16 +69,6 @@ begin
   select sum(line_total) into v_total from public.srk_bill_material_items where revision_id=v_revision;
   if v_total <> 100 then raise exception 'customer supplied material was charged: %',v_total; end if;
 
-  begin
-    perform public.srk_electrician_submit_material_revision(
-      v_booking,
-      '[{"description":"No receipt","quantity":1,"unit_price":10,"supplied_by":"electrician"}]'::jsonb,
-      'material-key-no-receipt'
-    );
-    raise exception 'electrician material without receipt reference unexpectedly accepted';
-  exception when invalid_parameter_value then null;
-  end;
-
   perform set_config('request.jwt.claim.sub',v_outsider::text,true);
   begin
     perform public.srk_customer_decide_material_revision(v_revision,'approved');
@@ -91,6 +81,16 @@ begin
   if v_result->>'decision' <> 'approved' then raise exception 'customer material approval failed: %',v_result; end if;
   v_result := public.srk_customer_decide_material_revision(v_revision,'approved');
   if v_result->>'replayed' <> 'true' then raise exception 'material decision replay was not idempotent'; end if;
+
+  begin
+    perform public.srk_electrician_submit_material_revision(
+      v_booking,
+      '[{"description":"No receipt","quantity":1,"unit_price":10,"supplied_by":"electrician"}]'::jsonb,
+      'material-key-no-receipt'
+    );
+    raise exception 'electrician material without receipt reference unexpectedly accepted';
+  exception when invalid_parameter_value then null;
+  end;
 
   select count(*) into v_count from public.srk_bill_material_approvals where revision_id=v_revision and decision='approved';
   if v_count <> 1 then raise exception 'customer material approval ledger is not unique'; end if;
