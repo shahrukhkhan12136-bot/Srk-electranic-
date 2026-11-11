@@ -175,7 +175,7 @@ declare
   v_now timestamptz;
 begin
   if v_uid is null then raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000'; end if;
-  if p_decision_id is null or p_decision not in ('approved','rejected') then raise exception 'INVALID_DECISION' using errcode='22023'; end if;
+  if p_decision_id is null or p_decision is null or p_decision not in ('approved','rejected') then raise exception 'INVALID_DECISION' using errcode='22023'; end if;
 
   select b.* into v_booking
   from public.service_bookings b
@@ -239,6 +239,7 @@ declare
   v_decision public.srk_booking_timer_decisions%rowtype;
 begin
   if v_uid is null then raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000'; end if;
+  if p_booking_id is null then raise exception 'BOOKING_ID_REQUIRED' using errcode='22023'; end if;
   select b.* into v_booking from public.service_bookings b
   where b.id=p_booking_id for update;
   if not found then raise exception 'BOOKING_NOT_FOUND' using errcode='P0002'; end if;
