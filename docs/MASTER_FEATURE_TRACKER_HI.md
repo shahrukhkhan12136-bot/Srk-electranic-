@@ -15,6 +15,7 @@
 - [I] Customer authentication / OTP UI and existing booking access — verify Auth provider and full E2E.
 - [ ] Profile and address management, consent and account recovery.
 - [I] Service catalogue and booking foundation — verify every active service and validation.
+- [ ] Booking category picker: show Helper ₹899, Ordinary ₹1,199, Skilled ₹1,599, Master ₹1,999 (8-hour customer prices); server validates category/rate and stores immutable snapshot. Customer UI/E2E pending.
 - [I] PIN/district matching and offer broadcast — investigate known PIN inconsistency; negative tests.
 - [T] Electrician bid/quote and customer compare/select flow.
 - [T] Booking state transitions, duplicate prevention and retry/idempotency.
@@ -144,3 +145,11 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [~] Requirement documented in Blueprint and Electrician Android README; actual app remains README-only scaffold.
 
 
+
+
+## A.1 Customer Booking — category and price acceptance (owner-confirmed 2026-11-11)
+- [ ] Customer sees all active electrician categories and category-wise 8-hour price before placing booking: Helper ₹899.00, Ordinary ₹1,199.00, Skilled ₹1,599.00, Master ₹1,999.00.
+- [ ] Customer can select a category; server validates the Admin-approved category/rate and ignores any client-tampered price.
+- [ ] Immutable booking snapshot stores category code/label, approved rate/version and duration; subsequent catalogue changes do not alter existing bookings.
+- [ ] Customer price display is separate from electrician Rate Card: electrician Rate Card continues to show only 8-hour duration and electrician net amount, never gross Labour or commission details.
+- [ ] Verify responsive/accessibility, loading/error/offline states and customer booking E2E. No upfront payment.
