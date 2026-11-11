@@ -155,6 +155,8 @@ The workflow adds the migration and SQL assertion file to disposable PostgreSQL 
 - Admin cancellation request review and the ₹99 arrival-evidence rule still need their dedicated RPC and UI.
 - Full browser-level preview testing and isolated shared TEST validation remain outstanding; no shared TEST or Production DB changes have been made.
 
+Latest validation note (2026-11-11): the three dashboard inline-script syntax checks passed locally after the Admin/material UI changes. The updated SQL workflow includes migration 007, replay testing and the material approval assertion file, but a completed GitHub Actions result for this latest change has not yet been confirmed. The Vercel status check currently reports a build-rate-limit/upgrade block; this is a preview build restriction, not a successful deployment. Do not treat it as a production deploy or as evidence that the SQL workflow passed.
+
 ## Safety boundary
 
 All code and SQL changes described above are Feature Branch only. No shared TEST/Production migration, database write, live payment, or deployment was performed. Do not deploy until the remaining payment, timer UI, material, cancellation, audit, and full integration tests are complete and the user explicitly approves.
