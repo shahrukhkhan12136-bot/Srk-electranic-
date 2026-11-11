@@ -131,15 +131,15 @@ Update this blueprint when owner decisions change. Record date, decision, impact
 
 Electrician App में स्पष्ट और आसानी से पढ़ी जाने वाली **Rate Card** स्क्रीन/सूची अनिवार्य होगी। अभी स्वीकृत चारों 8-hour Labour rates यथावत रहेंगे; ₹899–₹999 की नई/सीमित range लागू नहीं होगी।
 
-| Category | 8 घंटे का Labour charge | Electrician को मिलने वाली Labour राशि |
-|---|---:|---:|
-| Helper | ₹899.00 | ₹764.15 |
-| Ordinary | ₹1,199.00 | ₹1,019.15 |
-| Skilled | ₹1,599.00 | ₹1,359.15 |
-| Master | ₹1,999.00 | ₹1,699.15 |
+| Category | Electrician को मिलने वाली Labour राशि |
+|---|---:|
+| Helper | ₹764.15 |
+| Ordinary | ₹1,019.15 |
+| Skilled | ₹1,359.15 |
+| Master | ₹1,699.15 |
 
 ### Rate Card display and assignment rules
-- चारों categories की पूरी सूची दिखाई जाए; प्रत्येक row/card में category, 8-hour gross Labour charge, 15% commission deduction और electrician को मिलने वाला net Labour amount साफ-साफ दिखे।
+- चारों categories की सूची दिखाई जाए; प्रत्येक row/card में केवल category और electrician को मिलने वाली net Labour राशि दिखे। 8-hour Labour charge, commission प्रतिशत/राशि और deduction का कोई विवरण Rate Card में न दिखे।
 - स्क्रीन के शीर्ष पर या स्पष्ट badge में electrician की **अपनी Admin-approved assigned category** और उसी category का net amount highlight हो।
 - Category assignment profile/application के verified server record से आए; electrician client-side से अपनी category/rate बदल न सके। Category बदलने का अधिकार केवल अधिकृत Admin workflow को हो और बदलाव audit/versioned हो।
 - 15% commission केवल Labour पर है। Materials, parts, travel या अन्य separately approved charges इस Rate Card commission calculation में शामिल नहीं होंगे; Labour और materials अलग invoice lines/receipts रहेंगे।
