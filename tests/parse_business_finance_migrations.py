@@ -9,6 +9,7 @@ from pglast import parse_sql
 
 FILES = (
     Path("supabase/migrations/20261110080448_srk_business_finance_dashboard.sql"),
+    Path("supabase/migrations/20261111043852_srk_business_finance_reporting_dates.sql"),
     Path("supabase/migrations/20261111090000_harden_business_finance_dashboard.sql"),
 )
 
