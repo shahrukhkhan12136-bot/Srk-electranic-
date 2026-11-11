@@ -83,6 +83,13 @@ begin
   if not found then raise exception 'FINAL_BILL_NOT_FOUND' using errcode='P0002'; end if;
 
   if exists (
+    select 1 from public.srk_booking_payable_snapshots ps
+    where ps.booking_id=p_booking_id and ps.bill_id=v_bill.id
+  ) then
+    raise exception 'PAYABLE_SNAPSHOT_ALREADY_CREATED_MATERIALS_LOCKED' using errcode='55000';
+  end if;
+
+  if exists (
     select 1 from public.srk_bill_material_revisions r
     where r.bill_id=v_bill.id and r.status in ('draft','pending')
   ) then
