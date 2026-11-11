@@ -29,8 +29,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: apps/mobile-poc/customer/package.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -52,6 +50,8 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+      - name: Install Android SDK platform and build tools
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
       - name: Build debug APK
         working-directory: apps/mobile-poc/customer/android
         run: ./gradlew --no-daemon assembleDebug
