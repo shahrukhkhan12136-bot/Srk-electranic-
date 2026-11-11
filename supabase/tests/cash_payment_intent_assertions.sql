@@ -53,6 +53,11 @@ begin
       and conname='srk_cash_intent_state_shape_check'
   ) then raise exception 'cash intent state shape constraint missing'; end if;
 
+  if not exists (
+    select 1 from pg_indexes
+    where schemaname='public' and indexname='srk_cash_payment_intents_booking_unique'
+  ) then raise exception 'one-cash-intent-per-booking unique index missing'; end if;
+
   if position('cash_payment_intent' in pg_get_functiondef('public.srk_get_booking_timer_bill_details(uuid)'::regprocedure))=0 then
     raise exception 'scoped booking detail RPC does not expose cash intent status';
   end if;
