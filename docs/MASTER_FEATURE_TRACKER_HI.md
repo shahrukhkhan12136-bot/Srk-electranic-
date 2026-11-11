@@ -135,7 +135,7 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 
 ## G.1 Electrician Android Rate Card — owner-confirmed 2026-11-11
 - [ ] Rate Card list showing all four approved 8-hour Labour categories.
-- [ ] Show only the amount payable to the electrician: Helper ₹764.15; Ordinary ₹1,019.15; Skilled ₹1,359.15; Master ₹1,699.15. Do not display the 8-hour Labour charge/gross amount, commission percentage, commission amount or deduction line anywhere in the electrician-facing Rate Card.
+- [ ] Show the 8-hour work duration and only the amount payable to the electrician: Helper ₹764.15; Ordinary ₹1,019.15; Skilled ₹1,359.15; Master ₹1,699.15. Do not display the 8-hour Labour charge/gross amount, commission percentage, commission amount or deduction line anywhere in the electrician-facing Rate Card.
 - [ ] Highlight the signed-in electrician's own Admin-approved assigned category and net amount from server-authoritative profile data.
 - [ ] Prevent electrician self-edit/tampering of category or rate; Admin changes must be authorized, versioned and audited.
 - [ ] Keep the backend Labour-only commission calculation internal; do not show the gross Labour charge or any commission details in electrician Rate Card. Exclude materials/parts from the calculation and preserve separate itemized billing.
