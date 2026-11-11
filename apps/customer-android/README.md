@@ -41,3 +41,9 @@ See ../../docs/MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md for the approved scre
 ## Architecture planning update (2026-11-12)
 
 The detailed mobile blueprint now records repository findings, framework comparison (Capacitor recommended for a proof-of-concept; Flutter/Kotlin remain alternatives), proposed Android API/device matrix, proposed application ID, FCM candidate, offline/security boundary, CI/AAB/signing plan and screen-action contracts. All are proposals pending owner approval. No framework is selected and no native project/build exists yet. See docs/MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md.
+
+
+
+## Capacitor feasibility POC
+
+An isolated Customer-only proof of concept is being evaluated at ../../apps/mobile-poc/customer/ using Capacitor 8.0.0. It is not the production Customer Android app and does not change this workspace's README-only status. The POC is limited to the welcome screen, existing Supabase session restore, and RLS-scoped read-only booking summaries. No OTP is sent automatically, and no booking/payment mutation or Production deployment is performed. See docs/MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md.
