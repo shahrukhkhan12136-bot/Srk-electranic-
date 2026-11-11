@@ -23,11 +23,14 @@ exports.handler=async event=>{
   if(!uuid(snapshotId))return json(400,{success:false,error:"Payable Snapshot ID सही नहीं है।"});
   const snapshots=await db("srk_booking_payable_snapshots?select=id,booking_id,bill_id,amount_paise,currency&id=eq."+encodeURIComponent(snapshotId)+"&limit=1");
   const snapshot=snapshots?.[0];if(!snapshot)return json(404,{success:false,error:"अंतिम भुगतान snapshot नहीं मिला।"});
-  const bookings=await db("service_bookings?select=id,phone,customer_user_id,payment_status,service_category_code,final_bill_id,timer_state&id=eq."+encodeURIComponent(snapshot.booking_id)+"&limit=1");
+  const bookings=await db("service_bookings?select=id,phone,customer_user_id,payment_status,payment_method,service_category_code,final_bill_id,timer_state&id=eq."+encodeURIComponent(snapshot.booking_id)+"&limit=1");
   const booking=bookings?.[0];if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
   await verifyCustomer(event.headers?.authorization||event.headers?.Authorization||"",booking);
   if(!booking.service_category_code||booking.timer_state!=="stopped"||booking.final_bill_id!==snapshot.bill_id)return json(409,{success:false,error:"यह snapshot अब इस अंतिम टाइमर बिल से मेल नहीं खाता।"});
   if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
+  if(String(booking.payment_method||"").toLowerCase()==="cash")return json(409,{success:false,error:"आपने नकद भुगतान चुना है। इलेक्ट्रिशियन की प्राप्ति पुष्टि की प्रतीक्षा करें।"});
+  const cashIntents=await db("srk_cash_payment_intents?select=id,status&payable_snapshot_id=eq."+encodeURIComponent(snapshotId)+"&limit=1");
+  if(cashIntents?.length)return json(409,{success:false,error:"इस snapshot के लिए नकद भुगतान चुना जा चुका है। Razorpay ऑर्डर नहीं बनाया जा सकता।"});
   if(snapshot.currency!=="INR"||!Number.isSafeInteger(Number(snapshot.amount_paise))||Number(snapshot.amount_paise)<100)return json(409,{success:false,error:"इस राशि के लिए Razorpay भुगतान उपलब्ध नहीं है।"});
   const token=crypto.randomUUID();
   const claim=await rpc("srk_claim_razorpay_snapshot_order",{p_snapshot_id:snapshotId,p_creation_token:token});
