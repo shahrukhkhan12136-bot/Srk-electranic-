@@ -126,3 +126,35 @@ Statuses: NOT STARTED / DESIGN / SCAFFOLD / IMPLEMENTED / TESTING / BLOCKED / VE
 - Provider sandbox credentials and final payment/Route configuration.
 
 Update this blueprint when owner decisions change. Record date, decision, impact and migration/compatibility notes.
+
+## 11. Electrician Android App — Rate Card (Owner-confirmed: 2026-11-11)
+
+Electrician App में स्पष्ट और आसानी से पढ़ी जाने वाली **Rate Card** स्क्रीन/सूची अनिवार्य होगी। अभी स्वीकृत चारों 8-hour Labour rates यथावत रहेंगे; ₹899–₹999 की नई/सीमित range लागू नहीं होगी।
+
+| Category | 8 घंटे का Labour charge (gross) | 15% SRK commission | Electrician का net Labour share |
+|---|---:|---:|---:|
+| Helper | ₹899.00 | ₹134.85 | ₹764.15 |
+| Ordinary | ₹1,199.00 | ₹179.85 | ₹1,019.15 |
+| Skilled | ₹1,599.00 | ₹239.85 | ₹1,359.15 |
+| Master | ₹1,999.00 | ₹299.85 | ₹1,699.15 |
+
+### Rate Card display and assignment rules
+- चारों categories की पूरी सूची दिखाई जाए; प्रत्येक row/card में category, 8-hour gross Labour charge, 15% commission deduction और electrician को मिलने वाला net Labour amount साफ-साफ दिखे।
+- स्क्रीन के शीर्ष पर या स्पष्ट badge में electrician की **अपनी Admin-approved assigned category** और उसी category का net amount highlight हो।
+- Category assignment profile/application के verified server record से आए; electrician client-side से अपनी category/rate बदल न सके। Category बदलने का अधिकार केवल अधिकृत Admin workflow को हो और बदलाव audit/versioned हो।
+- 15% commission केवल Labour पर है। Materials, parts, travel या अन्य separately approved charges इस Rate Card commission calculation में शामिल नहीं होंगे; Labour और materials अलग invoice lines/receipts रहेंगे।
+- Rate Card informational है; यह booking के immutable server-side rate snapshot को override नहीं करेगी। Booking के समय लागू approved rate/version snapshot सुरक्षित रखा जाए।
+- सभी रकम INR में दो दशमलव तक दिखाई जाएँ। Commission/net calculation में source precision सुरक्षित रहे और अंतिम paise rounding half-up से हो। ऊपर दिए गए 8-hour totals exact 15% calculation हैं।
+- कोई hourly net payout, tax, incentive, deduction या additional fee इस Rate Card में स्वतः न जोड़ा जाए; नई रकम/कटौती के लिए अलग owner approval और documented rule आवश्यक है।
+- Rate Card और assigned-category badge responsive, accessible और Hindi/English labels के लिए तैयार हों; खाली/अमान्य category पर गलत default न दिखे—स्पष्ट support/admin error state दिखे।
+
+### Acceptance criteria
+1. चारों approved categories और gross/commission/net amounts ठीक ऊपर की तालिका से मेल खाते हों।
+2. Electrician केवल अपनी assigned category पहचान सके; अन्य electrician की private profile/assignment उजागर न हो।
+3. API/RLS tests साबित करें कि electrician category/rate बदल नहीं सकता और unapproved/inactive profile पर Rate Card assignment को active नहीं माना जाता।
+4. Materials को 15% commission base में शामिल न किया जाए।
+5. Booking rate snapshot और Rate Card version में mismatch होने पर booking का immutable snapshot ही invoice authority रहे।
+6. Mobile screen, large text, loading, empty/error और offline states का परीक्षण हो।
+7. UI/README/Blueprint में feature को implemented न कहा जाए जब तक वास्तविक app code, server integration और tests प्रमाणित न हों।
+
+स्थिति: **REQUIREMENT APPROVED / IMPLEMENTATION NOT STARTED**. Electrician Android workspace अभी README-only scaffold है।
