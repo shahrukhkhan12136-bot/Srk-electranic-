@@ -1,6 +1,7 @@
 name: Electrician Display ID Tests
 
 on:
+  workflow_dispatch:
   push:
     branches: [feature/production-push-notifications]
     paths:
