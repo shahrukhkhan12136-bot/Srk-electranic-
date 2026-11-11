@@ -40,6 +40,10 @@ exports.handler=async event=>{
   const rp=await request("https://api.razorpay.com/v1/payments/"+encodeURIComponent(row.payment_id)+"/refund",{method:"POST",headers:{Authorization:authHeader,"Content-Type":"application/json","X-Refund-Idempotency":row.idempotency_key},body:JSON.stringify({amount:Number(row.amount_paise),receipt:"SRK-"+row.refund_record_id.replace(/-/g,"").slice(0,28),notes:{booking_id:row.booking_id,refund_record_id:row.refund_record_id,request_id:requestId}})});
   if(!rp.ok){
    console.error("Razorpay refund request rejected:",rp.status,rp.data?.error?.code||"provider_error");
+   if(rp.status>=400&&rp.status<500&&rp.status!==409){
+    await supabase("rpc/srk_service_reconcile_booking_refund",SUPABASE_KEY,{p_refund_record_id:row.refund_record_id,p_provider_refund_id:null,p_provider_status:"failed",p_error:rp.data?.error?.description||"Razorpay rejected refund request"});
+    return json(409,{success:false,pending:false,error:"Razorpay ने Refund अनुरोध अस्वीकार किया। नया Refund न भेजें; Admin Dashboard में कारण और भुगतान स्थिति का मिलान करें।"});
+   }
    return json(rp.status===409?202:502,{success:false,pending:true,error:"Razorpay ने अभी Refund की अंतिम पुष्टि नहीं दी। उसी सुरक्षित idempotency key से Admin दोबारा स्थिति जाँच सकता है।"});
   }
   const refund=rp.data;
