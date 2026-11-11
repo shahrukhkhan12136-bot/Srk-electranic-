@@ -119,7 +119,7 @@ begin
 
  -- Legacy quote and work-status RPCs must reject timer-category bookings.
  begin
-  perform public.srk_submit_booking_quote(v_booking,500,100,'must be blocked');
+  perform public.srk_submit_booking_quote(v_booking,500::numeric,100::numeric,'must be blocked');
   raise exception 'legacy quote RPC unexpectedly accepted a timer booking';
  exception when sqlstate '55000' then
   if sqlerrm <> 'TIMER_BOOKING_REQUIRES_TIMER_BILLING' then raise; end if;
