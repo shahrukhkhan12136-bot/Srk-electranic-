@@ -110,6 +110,7 @@ on:
       - "supabase/migrations/20261111160011_customer_cancellation_admin_decision.sql"
       - "supabase/migrations/20261111160012_timer_commission_cash_online_integration.sql"
       - "supabase/migrations/20261111160013_guard_legacy_quote_status_paths_from_timer_bookings.sql"
+      - "supabase/migrations/20261111160014_keep_customer_call_contact_after_completion.sql"
       - "supabase/tests/timer_billing_authenticated_role_assertions.sql"
       - ".github/workflows/timer-billing-math.yml"
       - "supabase/tests/timer_billing_math.sql"
@@ -469,7 +470,7 @@ jobs:
             supabase/migrations/20261111160010_repair_payable_snapshot_rounding_constraint.sql \
             supabase/migrations/20261111160011_customer_cancellation_admin_decision.sql \
             supabase/migrations/20261111160012_timer_commission_cash_online_integration.sql \
-            supabase/migrations/20261111160013_guard_legacy_quote_status_paths_from_timer_bookings.sql
+            supabase/migrations/20261111160013_guard_legacy_quote_status_paths_from_timer_bookings.sql \
             supabase/migrations/20261111160014_keep_customer_call_contact_after_completion.sql
           do
             psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
