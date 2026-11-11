@@ -30,6 +30,7 @@ on:
       - "supabase/migrations/20261111160011_customer_cancellation_admin_decision.sql"
       - "supabase/migrations/20261111160012_timer_commission_cash_online_integration.sql"
       - "supabase/migrations/20261111160013_guard_legacy_quote_status_paths_from_timer_bookings.sql"
+      - "supabase/migrations/20261111160014_keep_customer_call_contact_after_completion.sql"
       - "supabase/tests/legacy_commission_foundation_harness.sql"
       - "supabase/tests/legacy_completed_booking_preservation_assertions.sql"
       - "supabase/tests/customer_cancellation_admin_decision_assertions.sql"
@@ -469,6 +470,7 @@ jobs:
             supabase/migrations/20261111160011_customer_cancellation_admin_decision.sql \
             supabase/migrations/20261111160012_timer_commission_cash_online_integration.sql \
             supabase/migrations/20261111160013_guard_legacy_quote_status_paths_from_timer_bookings.sql
+            supabase/migrations/20261111160014_keep_customer_call_contact_after_completion.sql
           do
             psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
             psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
