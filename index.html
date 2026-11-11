@@ -193,6 +193,48 @@ header .hero{display:none}
 #customer-dashboard #customerRefresh,#customer-dashboard #customerLogout{min-height:44px;border-radius:12px;font-weight:750}
 @media(max-width:560px){#customer-login.panel,#customer-dashboard.panel{padding:17px;border-radius:19px}#customer-dashboard .dashboard-quick-nav .btn{flex:1 1 calc(50% - 9px);font-size:.82rem;padding:9px 10px}#customer-dashboard .founder-mini{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){#customer-dashboard .dashboard-quick-nav .btn,#customer-login input{transition:none}}
+
+/* Owner-approved mobile-first welcome composition; original high-resolution founder photo */
+header{padding:12px 16px 14px}
+header .hero{display:none}
+.wrap{padding-top:8px}
+.welcome-stage{margin:8px 0 20px}
+.welcome-portrait-wrap{min-height:390px}
+.welcome-portrait{width:min(84%,300px);height:375px}
+.welcome-portrait:after{display:none}
+.welcome-portrait img{width:100%;height:100%;object-fit:cover;object-position:center 12%;transform:scale(1.18);transform-origin:50% 12%;filter:none;-webkit-mask-image:none;mask-image:none}
+@media(max-width:650px){
+ header{padding:10px 14px 12px}
+ .top{gap:10px}
+ header .logo{width:40px;height:40px}
+ .wrap{padding:6px 12px 24px}
+ .welcome-stage{margin:6px 0 16px;padding:15px 13px 14px}
+ .welcome-brand{justify-content:center;gap:10px}
+ .welcome-mark{width:44px;height:44px;font-size:34px}
+ .welcome-brand-name{font-size:19px;letter-spacing:1.5px}
+ .welcome-brand strong{font-size:17px;letter-spacing:1px}
+ .welcome-brand small{font-size:8px}
+ .welcome-main{display:flex;flex-direction:column;gap:8px;padding:10px 0 12px}
+ .welcome-portrait-wrap{order:-1;width:100%;height:258px;min-height:258px;margin:0 auto 4px}
+ .welcome-portrait{width:206px;height:258px;border-radius:38% 38% 20px 20px}
+ .welcome-portrait-orbit{width:224px}
+ .welcome-portrait img{object-position:center 12%;transform:scale(1.18);transform-origin:50% 12%}
+ .welcome-portrait-tag{bottom:0;font-size:9px;padding:7px 12px}
+ .welcome-spark-a{top:4%;right:12%;font-size:25px}
+ .welcome-spark-b{bottom:16%;left:11%;font-size:22px}
+ .welcome-copy{width:100%;max-width:none;text-align:center}
+ .welcome-eyebrow{font-size:10px;padding:6px 10px}
+ .welcome-copy h2{font-size:clamp(25px,7.2vw,34px);line-height:1.14;margin:9px 0 7px;letter-spacing:-.6px}
+ .welcome-copy>p{font-size:12px;line-height:1.5;margin:0 auto;max-width:440px}
+ .welcome-highlights{justify-content:center;margin-top:10px;gap:6px}
+ .welcome-highlights span{font-size:9px;padding:7px 8px}
+ .welcome-panel-links{justify-content:center;margin-top:12px;gap:7px}
+ .welcome-panel-links a{min-height:40px;padding:9px 10px;font-size:10px;flex:1 1 42%}
+ .welcome-panel-links .welcome-cta-main{flex-basis:100%}
+ .welcome-bottom{padding-top:10px;gap:7px}
+ .welcome-bottom span{font-size:9px;flex-basis:42%}
+}
+
 </style>
 </head>
 <body>
@@ -209,7 +251,7 @@ header .hero{display:none}
     <div class="welcome-highlights"><span>⚡ तेज़ सेवा</span><span>✓ सत्यापित पार्टनर</span><span>🛡️ पारदर्शी बिलिंग</span></div>
     <nav class="welcome-panel-links" aria-label="पैनल चुनें"><a class="welcome-cta-main" href="#customer-login">ग्राहक लॉगिन <b>→</b></a><a href="/electrician.html">इलेक्ट्रिशियन पार्टनर</a><a href="/admin.html">एडमिन</a></nav>
    </div>
-   <div class="welcome-portrait-wrap"><div class="welcome-portrait-orbit" aria-hidden="true"></div><div class="welcome-portrait"><img src="/assets/founder-shahrukh-khan.webp?v=20261111-brand" alt="SRK ELECTRONIC Founder" width="420" height="560" fetchpriority="high"></div><span class="welcome-portrait-tag">FOUNDER <b>•</b> SRK ELECTRONIC</span><span class="welcome-spark welcome-spark-a">✦</span><span class="welcome-spark welcome-spark-b">⚡</span></div>
+   <div class="welcome-portrait-wrap"><div class="welcome-portrait-orbit" aria-hidden="true"></div><div class="welcome-portrait"><img src="/assets/founder-shahrukh-khan.webp?v=20261112-waist-up" alt="SRK ELECTRONIC Founder" width="1152" height="1536" fetchpriority="high"></div><span class="welcome-portrait-tag">FOUNDER <b>•</b> SRK ELECTRONIC</span><span class="welcome-spark welcome-spark-a">✦</span><span class="welcome-spark welcome-spark-b">⚡</span></div>
   </div>
   <div class="welcome-bottom"><span><b>01</b> भरोसेमंद इलेक्ट्रिशियन</span><span><b>02</b> साफ और अलग बिलिंग</span><span><b>03</b> आसान ऑनलाइन बुकिंग</span></div>
  </section>
