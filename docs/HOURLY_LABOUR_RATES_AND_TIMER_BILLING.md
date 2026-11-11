@@ -122,7 +122,7 @@ Cancellation side-flow:
 active booking → cancellation_requested → (Admin approves → cancelled) OR (Admin rejects → return to prior active state).
 
 ## 7. Decisions still required before implementation
-1. Exact cancellation-charge amount/formula after the electrician reaches the customer's address; Admin approval and audit requirements.
+1. Approved customer cancellation charge: ₹99 fixed when the electrician has reached the customer's address and arrival is recorded, subject to the cancellation request being approved by Admin. No charge if the electrician has not reached the address. Admin decision and audit requirements apply.
 2. Whether the customer cancellation charge differs by reason or circumstance after arrival.
 3. Exact treatment of partial minutes/seconds in per-minute billing and whether any minimum labour charge applies.
 4. What happens if customer disputes the cash amount or electrician does not confirm cash receipt.
