@@ -130,6 +130,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#3b82f6;box-sh
 @media(prefers-reduced-motion:no-preference){.welcome-portrait-orbit{animation:welcomeOrbit 18s linear infinite}@keyframes welcomeOrbit{to{transform:rotate(360deg)}}}
 @media(prefers-reduced-motion:reduce){.welcome-panel-links a{transition:none}}
 
+/* Welcome portrait: tighter waist-up / half-body framing, never full-body */
+.welcome-portrait{overflow:hidden}
+.welcome-portrait img{object-fit:cover;object-position:center 16%;transform:scale(1.28);transform-origin:50% 16%;-webkit-mask-image:none;mask-image:none}
+@media(max-width:650px){.welcome-portrait img{transform:scale(1.28);transform-origin:50% 16%}}
+
 </style>
 </head>
 <body>
