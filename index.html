@@ -293,7 +293,7 @@ async function loadCustomerBookings() {
     const timerHtml = row.service_category_label
       ? (timerResult?.error
         ? '<div class="job"><b>काम का टाइमर</b><p class="small">टाइमर विवरण अभी लोड नहीं हुआ। कृपया Refresh करें।</p></div>'
-        : customerTimerCardHtml(timerResult?.data, row.id))
+        : customerTimerCardHtml(timerResult?.data, row.id, row.payment_status))
       : '';
     const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
     const canCall = contact && /^[0-9]{10,15}$/.test(phone);
@@ -312,7 +312,7 @@ async function loadCustomerBookings() {
     '</article>';
   }).join('');
 }
-function customerTimerCardHtml(timer, bookingId) {
+function customerTimerCardHtml(timer, bookingId, paymentStatus) {
   if (!timer) return '<div class="job"><b>काम का टाइमर</b><p>टाइमर विवरण उपलब्ध नहीं है।</p></div>';
   const stateLabels = {
     not_requested: 'इलेक्ट्रिशियन के आने की प्रतीक्षा',
@@ -331,7 +331,7 @@ function customerTimerCardHtml(timer, bookingId) {
   }).join('');
   const bill = timer.final_bill;
   const materialsHtml = customerMaterialRevisionHtml(timer.material_revisions || []);
-  const snapshotHtml = customerPayableSnapshotHtml(timer, bookingId, row.payment_status);
+  const snapshotHtml = customerPayableSnapshotHtml(timer, bookingId, paymentStatus);
   return '<div class="job"><b>टाइमर स्थिति:</b> ' + customerEsc(stateLabels[timer.timer_state] || timer.timer_state) +
     '<p>श्रेणी: ' + customerEsc(timer.service_category_label || '') + ' • दर: ₹' + customerEsc(Number(timer.hourly_rate_snapshot || 0).toFixed(3)) + '/घंटा</p>' +
     (timer.electrician_arrived_at ? '<p>इलेक्ट्रिशियन पहुँचे: ' + customerEsc(new Date(timer.electrician_arrived_at).toLocaleString('hi-IN')) + '</p>' : '') +
