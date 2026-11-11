@@ -107,7 +107,7 @@ function electricianTimerCardHtml(timer,bookingId){
   (timer.timer_started_at?'<p>टाइमर शुरू: '+esc(new Date(timer.timer_started_at).toLocaleString('hi-IN'))+'</p>':'')+
   controls+
   (bill?'<div class="pay-note"><b>अंतिम मेहनताना बिल</b><p>बिल योग्य मिनट: '+esc(bill.billable_minutes)+'</p><p>मेहनताना: ₹'+esc(Number(bill.labour_amount||0).toFixed(2))+'</p><p class="small">सामान/पार्ट्स अलग itemized bill और ग्राहक की अलग मंजूरी से ही जोड़े जाएँगे।</p></div>':'')+
-  (bill&&timer.timer_state==='stopped'?electricianMaterialFormHtml(bookingId,timer.material_revisions||''):'')+
+  (bill&&timer.timer_state==='stopped'?electricianMaterialFormHtml(bookingId,timer.material_revisions||[]):'')+
   '</div>';
 }
 function electricianMaterialLineHtml(){
