@@ -180,17 +180,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#3b82f6;box-sh
    <div id="customerMapWrap" style="display:none;margin-top:10px"><iframe id="customerMap" title="बुकिंग लोकेशन का Google Map" width="100%" height="220" style="border:0;border-radius:12px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a id="customerMapLink" target="_blank" rel="noopener">Google Maps में लोकेशन खोलें</a></div>
    <label for="service">कौन-सी सर्विस चाहिए?</label>
    <select id="service"><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>होम रिपेयरिंग</option><option>अन्य</option></select>
+   <label for="serviceCategory">इलेक्ट्रिशियन की श्रेणी और मेहनताना</label>
+   <select id="serviceCategory" required>
+    <option value="">श्रेणी चुनें</option>
+    <option value="helper">Helper — 8 घंटे ₹899 • प्रति घंटा ₹112.375</option>
+    <option value="ordinary">Ordinary — 8 घंटे ₹1,199 • प्रति घंटा ₹149.875</option>
+    <option value="skilled">Skilled — 8 घंटे ₹1,599 • प्रति घंटा ₹199.875</option>
+    <option value="master">Master — 8 घंटे ₹1,999 • प्रति घंटा ₹249.875</option>
+   </select>
+   <p class="small">ये केवल मेहनताना दर हैं। काम का समय ग्राहक की मंजूरी से शुरू और बंद होगा। सामान/पार्ट्स का खर्च अलग, itemized और आपकी मंजूरी के बाद ही जोड़ा जाएगा। बुकिंग के समय कोई भुगतान नहीं लिया जाएगा।</p>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
    <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
    <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
-   <label for="payment">काम पूरा होने पर भुगतान का तरीका चुनें</label>
-   <div class="payment-choice-grid" role="group" aria-label="भुगतान का तरीका">
-    <button type="button" class="payment-choice selected" data-payment-method="नकद (Cash)" aria-pressed="true"><span class="payment-choice-icon">💵</span><span><b>नकद भुगतान</b><small>काम पूरा होने पर इलेक्ट्रिशियन को Cash दें</small></span><span class="payment-choice-check">✓</span></button>
-    <button type="button" class="payment-choice" data-payment-method="Razorpay ऑनलाइन" aria-pressed="false"><span class="payment-choice-icon">💳</span><span><b>ऑनलाइन भुगतान</b><small>काम पूरा होने पर Razorpay से भुगतान करें</small></span><span class="payment-choice-check">✓</span></button>
-   </div>
-   <select id="payment" required class="payment-value"><option value="नकद (Cash)">नकद (Cash)</option><option value="Razorpay ऑनलाइन">Razorpay ऑनलाइन</option></select>
-   <p class="small payment-help" id="paymentHelp">नकद चुनने पर काम पूरा होने के बाद इलेक्ट्रिशियन को नकद भुगतान करें। इलेक्ट्रिशियन भुगतान मिलने की पुष्टि ऐप में करेगा।</p>
    <button class="btn primary" type="submit">बुकिंग भेजें</button>
   </form>
  </section>
@@ -369,17 +371,6 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
-document.querySelectorAll('[data-payment-method]').forEach(button=>button.addEventListener('click',()=>{
- const method=button.dataset.paymentMethod;
- document.getElementById('payment').value=method;
- document.querySelectorAll('[data-payment-method]').forEach(item=>{
-  const active=item===button;
-  item.classList.toggle('selected',active);
-  item.setAttribute('aria-pressed',String(active));
- });
- const help=document.getElementById('paymentHelp');
- if(help)help.textContent=method==='नकद (Cash)'?'काम पूरा होने पर इलेक्ट्रिशियन को नकद भुगतान करें। इलेक्ट्रिशियन भुगतान मिलने की पुष्टि ऐप में करेगा।':'काम पूरा होने पर सुरक्षित Razorpay ऑनलाइन भुगतान करें।';
-}));
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
@@ -464,9 +455,7 @@ document.getElementById('customerLocate').addEventListener('click',()=>locateInt
 document.getElementById('electricianLocate').addEventListener('click',()=>locateInto('electricianLat','electricianLng','electricianLocationStatus'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
-  const amount = 0; // Quote and final amount are set after electrician inspection.
-  const method = value('payment');
-  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
+  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nइलेक्ट्रिशियन श्रेणी: ${value('serviceCategory')}\nमेहनताना दर चुनी गई श्रेणी के अनुसार; सामान अलग और मंजूरी के बाद`;
   currentBookingWhatsApp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
@@ -480,15 +469,15 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify({
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: value('service'), preferred_date: value('date'), preferred_time: value('time'),
-      work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method, quoted_amount: amount || null
+      work_details: [value('place'), value('details')].filter(Boolean).join(' | '),
+      service_category_code: value('serviceCategory'),
+      idempotency_key: window.crypto && crypto.randomUUID ? crypto.randomUUID() : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, x => (x ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> x / 4).toString(16))
     }) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
     alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
     document.getElementById('upiPanel').style.display = 'none';
-    setPaymentStatus(method === 'नकद (Cash)'
-      ? 'बुकिंग सेव हो गई। काम पूरा होने और कोटेशन मंजूर होने के बाद इलेक्ट्रिशियन को नकद भुगतान करें।'
-      : 'बुकिंग सेव हो गई। काम पूरा होने और कोटेशन मंजूर होने के बाद आपकी बुकिंग में ऑनलाइन भुगतान का बटन दिखाई देगा।');
+    setPaymentStatus('बुकिंग सेव हो गई। अभी कोई भुगतान नहीं करना है। काम पूरा होने पर ग्राहक की मंजूरी से अंतिम बिल बनेगा।');
     await loadCustomerBookings();
     document.getElementById('customer-dashboard').scrollIntoView({behavior:'smooth',block:'start'});
   } catch (err) {
