@@ -90,7 +90,9 @@ values('pay_TIMER123','20000000-0000-4000-8000-000000000003','30000000-0000-4000
 
 insert into public.service_bookings(id,customer_user_id,customer_name,phone,payment_status,payment_verified_at,amount_paid,quote_status,quoted_amount,service_charge,materials_amount,razorpay_payment_id,payment_method,service_category_code)
 values('20000000-0000-4000-8000-000000000004','10000000-0000-4000-8000-000000000002','Timer Cash Customer','9999999992','paid',now(),600,'not_submitted',null,null,null,null,'Cash','skilled');
-insert into public.srk_cash_receipts(id,booking_id,amount_paise,currency)
-values('40000000-0000-4000-8000-000000000004','20000000-0000-4000-8000-000000000004',60000,'INR');
+insert into public.srk_booking_payable_snapshots(id,booking_id,total_amount,amount_paise,currency)
+values('30000000-0000-4000-8000-000000000004','20000000-0000-4000-8000-000000000004',600,60000,'INR');
+insert into public.srk_cash_receipts(id,payable_snapshot_id,booking_id,confirmed_by,amount_paise,currency)
+values('40000000-0000-4000-8000-000000000004','30000000-0000-4000-8000-000000000004','20000000-0000-4000-8000-000000000004','10000000-0000-4000-8000-000000000003',60000,'INR');
 insert into public.srk_electrician_payouts(booking_id,payout_status,payout_note,commission_collection_status)
 values('20000000-0000-4000-8000-000000000004','blocked','Cash commission due','due');
