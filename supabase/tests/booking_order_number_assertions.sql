@@ -4,10 +4,11 @@ declare n1 text; n2 text; v record; c integer;
 begin
  select order_number into n1 from public.service_bookings where id='10000000-0000-0000-0000-000000000001';
  if n1 <> 'SRK-ORD-000001' then raise exception 'Legacy backfill wrong: %',n1; end if;
+ if (select order_number from public.service_bookings where id='10000000-0000-0000-0000-000000000003') <> 'SRK-ORD-000010' then raise exception 'Existing order number was changed'; end if;
  insert into public.service_bookings(id,customer_name,phone,address)
  values ('10000000-0000-0000-0000-000000000004','New','9000000004','New Address');
  select order_number into n2 from public.service_bookings where id='10000000-0000-0000-0000-000000000004';
- if n2 <> 'SRK-ORD-000004' then raise exception 'New booking number wrong: %',n2; end if;
+ if n2 <> 'SRK-ORD-000011' then raise exception 'Sequence did not resume after existing number: %',n2; end if;
  select count(distinct order_number) into c from public.service_bookings;
  if c <> 4 then raise exception 'Order numbers not unique'; end if;
  begin
