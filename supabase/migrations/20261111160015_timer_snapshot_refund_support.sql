@@ -134,7 +134,7 @@ begin
    return query select v_refund.id,v_refund.booking_id,v_refund.payment_id,v_refund.amount_paise,v_refund.idempotency_key,v_refund.status;
    return;
  end if;
- select * into v_payout from public.srk_electrician_payouts where booking_id=v_booking.id for update;
+ select ep.* into v_payout from public.srk_electrician_payouts ep where ep.booking_id=v_booking.id for update;
  v_has_payout:=found;
  if v_has_payout then
    if v_payout.payout_status='paid' then raise exception 'ELECTRICIAN_PAYOUT_ALREADY_PAID_RECONCILIATION_REQUIRED'; end if;
