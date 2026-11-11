@@ -143,3 +143,15 @@ Read-only Production migration history confirms:
 The Feature Branch contains later-numbered files for push table/upsert (`20261111090000`, `20261111120000`) and a single `20261111082515` legacy assigned-cash-payment function migration. Main Production already has the push table, owner-scoped RLS policies, private SECURITY DEFINER upsert implementation and public SECURITY INVOKER wrapper; it also already records the pg_net/webhook push migrations and the duplicate-named cash-payment history entries. These branch files are not part of the new timer release sequence and must not be replayed or marked applied again. The current production catalog—not migration names alone—remains the authority for this reconciliation.
 
 The proposed forward-only release scope therefore remains the 11 timer/billing foundation and dependent migrations, followed by cancellation and commission integration (13 files total), with no duplicate push or legacy cash-payment migration included. This is a planning conclusion only; no new forward migration files have been generated or applied to Production.
+
+
+## SECURITY DEFINER static audit of timer release migrations
+
+A static audit was run across all 13 timer/cancellation/commission migration files:
+- Every SECURITY DEFINER function found in the customer timer, scoped read, booking creation, material revision, payable snapshot, Razorpay, Cash, cancellation and commission RPC migrations declares an explicit empty `search_path`.
+- User-facing RPCs validate `auth.uid()`; Razorpay order claim/bind/payment reconciliation functions are intentionally service-role-only and have PUBLIC/anon/authenticated execution revoked, with execution granted only to `service_role`.
+- Internal trigger functions (Razorpay/Cash guards and the snapshot-aware payout trigger) are not exposed as callable application RPCs; their function execution is revoked from browser roles where specified.
+- Cash customer/electrician RPCs and cancellation/customer/Admin RPCs have explicit authenticated grants and public/anon revocations.
+- The redefined timer bill read RPC in the Cash migration relies on the earlier scoped-read migration's grants/revocations; that dependency is preserved in the ordered release list.
+
+This is a source-level privilege audit, not a runtime impersonation/RLS test. It does not replace testing with actual Supabase JWT claims, anon/authenticated/service_role sessions and Production policies.
