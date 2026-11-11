@@ -26,6 +26,7 @@ declare
   v_uid uuid := auth.uid();
   v_phone_claim text;
   v_phone text;
+  v_phone_digits text;
   v_category text;
   v_label text;
   v_rate numeric(12,6);
@@ -54,10 +55,11 @@ begin
   end if;
 
   v_phone := regexp_replace(coalesce(p_booking->>'phone',''), '[^0-9]', '', 'g');
+  v_phone_digits := v_phone;
   v_phone_claim := regexp_replace(coalesce(auth.jwt()->>'phone',''), '[^0-9]', '', 'g');
   if length(v_phone)=10 then v_phone := '91'||v_phone; end if;
   if length(v_phone_claim)=10 then v_phone_claim := '91'||v_phone_claim; end if;
-  if v_phone='' or v_phone_claim='' or v_phone<>v_phone_claim then
+  if length(v_phone_digits)<>10 or v_phone='' or v_phone_claim='' or v_phone<>v_phone_claim then
     raise exception 'VERIFIED_PHONE_MISMATCH' using errcode='42501';
   end if;
 
@@ -108,7 +110,7 @@ begin
     preferred_date,preferred_time,work_details,location_lat,location_lng,
     customer_user_id,service_category_code,service_category_label,hourly_rate_snapshot
   ) values (
-    btrim(p_booking->>'customer_name'),v_phone,state,district,pincode,address,service_type,
+    btrim(p_booking->>'customer_name'),v_phone_digits,btrim(p_booking->>'state'),btrim(p_booking->>'district'),p_booking->>'pincode',btrim(p_booking->>'address'),btrim(p_booking->>'service_type'),
     (p_booking->>'preferred_date')::date,(p_booking->>'preferred_time')::time,
     nullif(btrim(coalesce(p_booking->>'work_details','')),''),
     v_lat,v_lng,v_uid,v_category,v_label,v_rate
