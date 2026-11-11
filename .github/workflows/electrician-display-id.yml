@@ -43,13 +43,13 @@ jobs:
           const { spawnSync } = require('node:child_process');
           for (const file of ['electrician.html', 'admin.html']) {
             const html = fs.readFileSync(file, 'utf8');
-            const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)]
-              .filter(match => !/\\bsrc\\s*=/.test(match[1]));
+            const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+              .filter(match => !/\bsrc\s*=/.test(match[1]));
             if (scripts.length === 0) throw new Error('No inline scripts found in ' + file);
             scripts.forEach((match, index) => {
               const result = spawnSync(process.execPath, ['--check', '-'], { input: match[2], encoding: 'utf8' });
               if (result.status !== 0) {
-                process.stderr.write(file + ' inline script ' + (index + 1) + ':\\n' + result.stderr);
+                process.stderr.write(file + ' inline script ' + (index + 1) + ':\n' + result.stderr);
                 process.exit(result.status || 1);
               }
             });
