@@ -56,3 +56,74 @@ These rates are labour charges only.
 - Enforce this permission on the server/database layer as well as in the user interface; hiding or disabling a button alone is not sufficient.
 - Record the admin who cancelled the booking, the booking, timestamp, and any reason entered, so the action is auditable.
 - Test that customer and electrician cancellation attempts are rejected, while an authorized admin can cancel.
+
+
+---
+
+# Customer Visit, Cancellation Approval, Work Timer & Cash Settlement
+**Status: Approved business requirements / implementation pending**
+
+## 1. Booking and visit lifecycle
+1. Customer creates a service booking.
+2. Matching electrician receives the offer and accepts it.
+3. Electrician travels to the customer's address and reaches the location.
+4. Arrival/visit is recorded separately from the paid-work timer. Merely accepting the job or travelling to the customer must not start labour billing.
+5. Once the customer and electrician are ready for work, electrician starts the work timer. The server records the authoritative start timestamp.
+6. When work is finished, electrician stops the timer. The server records the stop timestamp and calculates elapsed billable time and labour amount using the category rate saved on that booking.
+7. Customer sees the generated bill and a Cash (नकद) payment option.
+8. Electrician confirms receipt of cash. Only after this confirmation should the booking/payment show as cash received/paid. Record who confirmed and when.
+
+## 2. Four electrician categories and standard rates
+Rates are for an 8-hour standard workday; hourly equivalent is shown for server-side calculation.
+
+| Category | 8-hour labour rate | Hourly equivalent |
+|---|---:|---:|
+| Helper Electrician (हेल्पर इलेक्ट्रिशियन) | ₹900 | ₹112.50 |
+| Ordinary Electrician (साधारण इलेक्ट्रिशियन) | ₹1,200 | ₹150.00 |
+| Skilled Electrician (कुशल इलेक्ट्रिशियन) | ₹1,600 | ₹200.00 |
+| Master Electrician (मास्टर इलेक्ट्रिशियन) | ₹2,000 | ₹250.00 |
+
+The category and rate used must be snapshotted on the booking/work session so later rate changes do not rewrite an existing bill.
+
+## 3. Labour and materials must remain separate
+- The timer calculates labour only.
+- Materials/parts are a separate itemized amount and must never be silently included in labour.
+- Customer can supply materials themselves.
+- If electrician supplies materials, show item names, quantities and prices separately; customer must approve them.
+- No unauthorized material markup or hidden charge.
+
+## 4. Cancellation is a request requiring Admin approval
+- Customer and electrician both see a **Request Cancellation** button; do not hide the button.
+- Pressing it does NOT cancel the booking. It creates a cancellation request with requester role, reason, timestamp and booking state.
+- Booking remains active/in its existing state while awaiting Admin decision. Both parties are informed that Admin approval is pending.
+- Only an authenticated/authorized Admin can approve or reject the request.
+- On approval, server changes booking to cancelled, records Admin ID, decision, reason, timestamp and any applicable cancellation charge; notify both parties.
+- On rejection, booking remains active and both parties are notified.
+- Customer/electrician must not be able to directly set booking status to cancelled through browser, API, RPC or database writes.
+- Apply the cancellation charge only according to an Admin-approved policy and show it clearly before final settlement. Do not invent or hard-code a fee until its amount/rule is approved.
+- Admin must not accidentally cancel a completed booking through the normal cancellation flow. Any exceptional correction should be a separately authorized and audited action.
+
+## 5. Server-side integrity and audit requirements
+- Server/database timestamps are authoritative; never trust client device clock or client-submitted duration/amount.
+- Start/stop actions must be authenticated, idempotent and restricted to the electrician assigned to that booking.
+- Prevent duplicate active timers, stopping a timer that was never started, restarting a completed session, and overlapping work sessions for the same booking.
+- Preserve immutable start/stop timestamps, category/rate snapshot, calculated duration, labour amount, materials breakdown, payment method, cash confirmation, cancellation requests and Admin decisions.
+- Use database constraints/RLS and secure server-side functions; hiding UI controls is not sufficient.
+- Use a defined billing increment/rounding rule (for example per-minute or per-15-minute billing) only after the business owner approves it. Until then, do not silently assume a rounding rule.
+- Handle disputes, timer corrections and payment reversals through audited Admin actions, not direct edits by customer/electrician.
+
+## 6. Booking state flow (proposed)
+new → offered → accepted/assigned → electrician_arrived → work_in_progress (timer running) → work_stopped/bill_generated → cash_pending → cash_confirmed/completed.
+
+Cancellation side-flow:
+active booking → cancellation_requested → (Admin approves → cancelled) OR (Admin rejects → return to prior active state).
+
+## 7. Decisions still required before implementation
+1. Cancellation charge: fixed amount, percentage, or travel/visit-based amount; exact amount and when it applies.
+2. Whether cancellation charge differs for customer-requested vs electrician-requested cancellation.
+3. Whether the charge applies only after electrician reaches the customer's address, or also after acceptance/before arrival.
+4. Billable-time rounding: per minute, per 15 minutes, per half-hour, or another rule; minimum charge if any.
+5. What happens if customer disputes the cash amount or electrician does not confirm cash receipt.
+6. Whether Admin may waive a cancellation charge and what reason/audit is mandatory.
+
+**No application code, database migration, production database, or production deployment is changed by this specification update.**
