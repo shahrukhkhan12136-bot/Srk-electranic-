@@ -63,7 +63,7 @@ jobs:
           pids=()
           for i in $(seq 1 24); do
             phone=$(printf '9%09d' "$i")
-            psql -h localhost -U postgres -d srk_test -v ON_ERROR_STOP=1 -c "insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,auth_user_id) values ('Concurrent Fixture $i','$phone','Uttar Pradesh','Balrampur','271861','approved',true,gen_random_uuid())" &
+            psql -h localhost -U postgres -d srk_test -v ON_ERROR_STOP=1 -c "with new_user as (insert into auth.users(id) values (gen_random_uuid()) returning id) insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,auth_user_id) select 'Concurrent Fixture $i','$phone','Uttar Pradesh','Balrampur','271861','approved',true,id from new_user" &
             pids+=("$!")
           done
           for pid in "${pids[@]}"; do wait "$pid"; done
