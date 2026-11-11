@@ -185,3 +185,26 @@ This section resolves older open questions above. If an earlier paragraph in thi
 - **Payment:** no payment method or checkout at booking. Cash and Online Payment become available only after customer-approved timer stop and final bill generation. Cash is marked paid only after the assigned electrician confirms actual receipt; online is marked paid only after verified provider confirmation.
 
 The implementation status remains pending. This document update changes no application code, database schema/data, payment configuration, or deployment.
+
+## 13. Deterministic billing test vectors (2026-11-11)
+
+These expected values use exact decimal arithmetic, the approved 8-hour rate divided by 480 billable minutes, and final-only rounding to ₹0.01 using ROUND_HALF_UP. The tests must run against the server/database billing implementation, not only a browser calculation.
+
+| Category | 1 minute | 2 minutes | 60 minutes | 61 minutes | 480 minutes |
+|---|---:|---:|---:|---:|---:|
+| Helper (₹899 / 8 hours) | ₹1.87 | ₹3.75 | ₹112.38 | ₹114.25 | ₹899.00 |
+| Ordinary (₹1,199 / 8 hours) | ₹2.50 | ₹5.00 | ₹149.88 | ₹152.37 | ₹1,199.00 |
+| Skilled (₹1,599 / 8 hours) | ₹3.33 | ₹6.66 | ₹199.88 | ₹203.21 | ₹1,599.00 |
+| Master (₹1,999 / 8 hours) | ₹4.16 | ₹8.33 | ₹249.88 | ₹254.04 | ₹1,999.00 |
+
+Required timestamp-to-minute assertions:
+- 00:00:00 elapsed → 0 billable minutes (no minimum charge is approved).
+- 00:01:00 elapsed → 1 billable minute.
+- 00:01:01 elapsed → 2 billable minutes.
+- 00:01:59 elapsed → 2 billable minutes.
+- 00:02:00 elapsed → 2 billable minutes.
+- 08:00:00 elapsed → 480 billable minutes.
+
+The test suite must additionally assert that the stored hourly/category snapshot, accepted server timestamps, computed elapsed seconds, billable whole minutes, and final rounded labour amount are consistent; client-supplied duration/amount must be ignored or rejected. A pending stop request must not produce a bill. Repeated approvals and duplicate requests must not create a second timer session or a second bill.
+
+These are calculation fixtures, not evidence that the billing code has been implemented or tested.
