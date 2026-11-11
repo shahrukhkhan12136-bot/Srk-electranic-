@@ -10,10 +10,10 @@ The standard workday is 8 hours. The approved labour rates are:
 
 | Category | 8-hour labour rate | Derived hourly rate |
 |---|---:|---:|
-| Helper Electrician (हेल्पर इलेक्ट्रिशियन) | ₹900 | ₹112.50/hour |
-| Ordinary Electrician (साधारण इलेक्ट्रिशियन) | ₹1,200 | ₹150/hour |
-| Skilled Electrician (कुशल इलेक्ट्रिशियन) | ₹1,600 | ₹200/hour |
-| Master Electrician (मास्टर इलेक्ट्रिशियन) | ₹2,000 | ₹250/hour |
+| Helper Electrician (हेल्पर इलेक्ट्रिशियन) | ₹899 | ₹112.375/hour |
+| Ordinary Electrician (साधारण इलेक्ट्रिशियन) | ₹1,199 | ₹149.875/hour |
+| Skilled Electrician (कुशल इलेक्ट्रिशियन) | ₹1,599 | ₹199.875/hour |
+| Master Electrician (मास्टर इलेक्ट्रिशियन) | ₹1,999 | ₹249.875/hour |
 
 These rates are labour charges only.
 
@@ -64,7 +64,7 @@ These rates are labour charges only.
 **Status: Approved business requirements / implementation pending**
 
 ## 1. Booking and visit lifecycle
-1. Customer selects the service and sees the electrician category and its hourly labour rate clearly before confirming the booking. The booking screen must display the selected category and applicable hourly charge (for example, हेल्पर इलेक्ट्रिशियन — ₹112.50/hour; साधारण इलेक्ट्रिशियन — ₹150/hour; कुशल इलेक्ट्रिशियन — ₹200/hour; मास्टर इलेक्ट्रिशियन — ₹250/hour).
+1. Customer selects the service and sees the electrician category and its hourly labour rate clearly before confirming the booking. The booking screen must display the selected category and applicable hourly charge (for example, हेल्पर इलेक्ट्रिशियन — ₹112.375/hour; साधारण इलेक्ट्रिशियन — ₹149.875/hour; कुशल इलेक्ट्रिशियन — ₹199.875/hour; मास्टर इलेक्ट्रिशियन — ₹249.875/hour).
 2. The selected/assigned electrician category and hourly rate are saved as a snapshot on the booking and shown to the customer before booking confirmation and in booking details. Any change must be disclosed and accepted before work starts.
 3. Matching electrician receives the offer and accepts it.
 4. Electrician travels to the customer's address and reaches the location; arrival must be recorded.
@@ -79,10 +79,10 @@ Rates are for an 8-hour standard workday; hourly equivalent is shown for server-
 
 | Category | 8-hour labour rate | Hourly equivalent |
 |---|---:|---:|
-| Helper Electrician (हेल्पर इलेक्ट्रिशियन) | ₹900 | ₹112.50 |
-| Ordinary Electrician (साधारण इलेक्ट्रिशियन) | ₹1,200 | ₹150.00 |
-| Skilled Electrician (कुशल इलेक्ट्रिशियन) | ₹1,600 | ₹200.00 |
-| Master Electrician (मास्टर इलेक्ट्रिशियन) | ₹2,000 | ₹250.00 |
+| Helper Electrician (हेल्पर इलेक्ट्रिशियन) | ₹899 | ₹112.375 |
+| Ordinary Electrician (साधारण इलेक्ट्रिशियन) | ₹1,199 | ₹149.875 |
+| Skilled Electrician (कुशल इलेक्ट्रिशियन) | ₹1,599 | ₹199.875 |
+| Master Electrician (मास्टर इलेक्ट्रिशियन) | ₹1,999 | ₹249.875 |
 
 The category and rate used must be snapshotted on the booking/work session so later rate changes do not rewrite an existing bill.
 
