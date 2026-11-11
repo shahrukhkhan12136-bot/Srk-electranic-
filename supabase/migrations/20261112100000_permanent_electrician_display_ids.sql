@@ -24,6 +24,8 @@ language plpgsql
 security definer
 set search_path = ''
 as $function$
+declare
+  v_next_id bigint;
 begin
   -- Once issued, the readable ID is immutable even if profile status changes.
   if tg_op = 'UPDATE' and old.electrician_display_id is not null then
@@ -47,14 +49,12 @@ begin
   if new.verification_status = 'approved'
      and new.active is true
      and new.user_id is not null then
+    v_next_id := pg_catalog.nextval('public.electrician_display_id_seq'::pg_catalog.regclass);
     new.electrician_display_id :=
       'SRK-EL-' ||
       pg_catalog.lpad(
-        pg_catalog.nextval('public.electrician_display_id_seq'::pg_catalog.regclass)::text,
-        pg_catalog.greatest(
-          6,
-          pg_catalog.length(pg_catalog.currval('public.electrician_display_id_seq'::pg_catalog.regclass)::text)
-        ),
+        v_next_id::text,
+        pg_catalog.greatest(6, pg_catalog.length(v_next_id::text)),
         '0'
       );
   end if;
