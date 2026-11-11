@@ -1,7 +1,7 @@
 <!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SRK ELECTRONIC | Electrician Partner</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="/srk-config.js"></script><style>
 *{box-sizing:border-box}body{margin:0;background:#f2f7f8;color:#16324f;font-family:system-ui,Arial}.hero{background:#102a43;color:white;padding:24px}.wrap{max-width:950px;margin:auto;padding:18px}.card{background:white;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 3px 16px #102a4312}input,button{font:inherit;padding:12px;border-radius:8px;border:1px solid #ccd5df}button{background:#087e8b;color:white;border:0;cursor:pointer;margin:4px}.muted{color:#627d98}.hidden{display:none}.job{border:1px solid #dce7ed;padding:14px;border-radius:12px;margin:12px 0}.pill{background:#e2f4ef;border-radius:20px;padding:4px 9px;font-size:12px}.good{color:#087e55}.bad{color:#b42318}
-</style></head><body><header class="hero"><div class="wrap"><h1>SRK ELECTRONIC — Electrician Partner</h1><p>लॉगिन करें, अपने इलाके के काम देखें और स्वीकार करें।</p></div></header><main class="wrap"><section class="card" id="login"><h2>पार्टनर लॉगिन</h2><p class="muted">आवेदन में दिया हुआ और Supabase में सत्यापित मोबाइल नंबर डालें।</p><input id="phone" placeholder="मोबाइल नंबर" inputmode="tel"><button onclick="sendOtp()">OTP भेजें</button><div id="otpbox" class="hidden"><input id="otp" placeholder="OTP" inputmode="numeric"><button onclick="verifyOtp()">लॉगिन</button></div><p id="msg"></p></section><section id="app" class="hidden"><div class="card"><button onclick="refresh()">↻ Refresh</button><button onclick="logout()">Logout</button><button id="enablePush" type="button">🔔 Push Notification चालू करें</button><p id="pushStatus" class="muted" aria-live="polite">नोटिफिकेशन सेटअप की जाँच हो रही है…</p><h2 id="name">आपका डैशबोर्ड</h2><p id="profile"></p><p id="state"></p></div><div class="card"><h2>मेरी कमाई और देय राशि</h2><p class="muted">यह आपकी देय कमाई और Admin द्वारा किए गए UPI / बैंक भुगतान का रिकॉर्ड है। Admin वास्तविक ट्रांसफर के बाद UTR दर्ज करेगा, तभी Paid दिखेगा।</p><div id="earnings">हिसाब लोड हो रहा है…</div></div><div class="card"><h2>इलेक्ट्रिशियन वॉलेट</h2><div id="partnerWallet">वॉलेट लोड हो रहा है…</div></div><div class="card"><h2>आपके लिए काम के ऑफर</h2><p class="muted">एक काम किसी एक पार्टनर द्वारा स्वीकार होने पर दूसरे ऑफर बंद हो जाएँगे। ग्राहक का नाम, फोन और पूरा पता काम आपको असाइन होने के बाद ही दिखेगा।</p><div id="jobs">लोड हो रहा है…</div></div></section></main><script>
-const cfg=window.SRK_CONFIG||{};let sb,user,profile,offersChannel,otpBusy=false,otpCooldownUntil=0,otpTimer=null;
+</style></head><body><header class="hero"><div class="wrap"><h1>SRK ELECTRONIC — Electrician Partner</h1><p>लॉगिन करें, अपने इलाके के काम देखें और स्वीकार करें।</p></div></header><main class="wrap"><section class="card" id="login"><h2>पार्टनर लॉगिन</h2><p class="muted">आवेदन में दिया हुआ और Supabase में सत्यापित मोबाइल नंबर डालें।</p><input id="phone" placeholder="मोबाइल नंबर" inputmode="tel"><button onclick="sendOtp()">OTP भेजें</button><div id="otpbox" class="hidden"><input id="otp" placeholder="OTP" inputmode="numeric"><button onclick="verifyOtp()">लॉगिन</button></div><p id="msg"></p></section><section id="app" class="hidden"><div class="card"><button onclick="refresh()">↻ Refresh</button><button onclick="logout()">Logout</button><button id="enablePush" type="button">🔔 Push Notification चालू करें</button><p id="pushStatus" class="muted" aria-live="polite">नोटिफिकेशन सेटअप की जाँच हो रही है…</p><button id="stopOfferRing" type="button" style="display:none;background:#b42318">🔕 रिंग बंद करें</button><h2 id="name">आपका डैशबोर्ड</h2><p id="profile"></p><p id="state"></p></div><div class="card"><h2>मेरी कमाई और देय राशि</h2><p class="muted">यह आपकी देय कमाई और Admin द्वारा किए गए UPI / बैंक भुगतान का रिकॉर्ड है। Admin वास्तविक ट्रांसफर के बाद UTR दर्ज करेगा, तभी Paid दिखेगा।</p><div id="earnings">हिसाब लोड हो रहा है…</div></div><div class="card"><h2>इलेक्ट्रिशियन वॉलेट</h2><div id="partnerWallet">वॉलेट लोड हो रहा है…</div></div><div class="card"><h2>आपके लिए काम के ऑफर</h2><p class="muted">एक काम किसी एक पार्टनर द्वारा स्वीकार होने पर दूसरे ऑफर बंद हो जाएँगे। ग्राहक का नाम, फोन और पूरा पता काम आपको असाइन होने के बाद ही दिखेगा।</p><div id="jobs">लोड हो रहा है…</div></div></section></main><script>
+const cfg=window.SRK_CONFIG||{};let sb,user,profile,offersChannel,otpBusy=false,otpCooldownUntil=0,otpTimer=null,ringAudioContext=null,ringTimer=null,ringStopTimer=null;
 function safeTel(v){const p=String(v??'').replace(/\D/g,'');return /^[0-9]{10,15}$/.test(p)?'tel:'+p:''}
 function init(){if(!cfg.SUPABASE_URL||!cfg.SUPABASE_ANON_KEY){document.getElementById('msg').textContent='सेटअप बाकी है। README में Supabase config सेट करें।';return}sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);sb.auth.onAuthStateChange((_e,s)=>{user=s?.user||null;show()});sb.auth.getSession().then(({data})=>{user=data.session?.user||null;show()})}
 function show(){document.getElementById('login').classList.toggle('hidden',!!user);document.getElementById('app').classList.toggle('hidden',!user);if(user)refresh()}
@@ -43,8 +43,54 @@ async function workStatus(id,status){
  const {error}=await sb.rpc('srk_update_booking_work_status',{p_booking_id:id,p_status:status});
  if(error){alert('स्थिति अपडेट नहीं हुई: '+error.message);return;}alert('बुकिंग स्थिति अपडेट हो गई।');refresh();
 }
-async function respond(id,response){if(!confirm(response==='accepted'?'यह काम स्वीकार करना है?':'यह ऑफर मना करना है?'))return;let {error}=await sb.rpc('srk_respond_to_offer',{p_offer_id:id,p_response:response});if(error)alert(error.message);else{alert(response==='accepted'?'काम आपको असाइन हो गया।':'ऑफर मना कर दिया गया।');refresh()}}
+async function respond(id,response){if(!confirm(response==='accepted'?'यह काम स्वीकार करना है?':'यह ऑफर मना करना है?'))return;stopOfferRing();let {error}=await sb.rpc('srk_respond_to_offer',{p_offer_id:id,p_response:response});if(error)alert(error.message);else{alert(response==='accepted'?'काम आपको असाइन हो गया।':'ऑफर मना कर दिया गया।');refresh()}}
 
+function unlockOfferRing(){
+ try{
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtx)return;
+  if(!ringAudioContext)ringAudioContext=new AudioCtx();
+  if(ringAudioContext.state==='suspended')ringAudioContext.resume().catch(()=>{});
+ }catch(_){}
+}
+function playRingBurst(){
+ if(!ringAudioContext||ringAudioContext.state!=='running')return;
+ const now=ringAudioContext.currentTime;
+ [0,0.42,1.05].forEach((offset,index)=>{
+  const osc=ringAudioContext.createOscillator(),gain=ringAudioContext.createGain();
+  osc.type='sine';osc.frequency.value=index===1?1040:880;
+  gain.gain.setValueAtTime(0.0001,now+offset);
+  gain.gain.exponentialRampToValueAtTime(0.16,now+offset+0.025);
+  gain.gain.setValueAtTime(0.16,now+offset+0.20);
+  gain.gain.exponentialRampToValueAtTime(0.0001,now+offset+0.28);
+  osc.connect(gain);gain.connect(ringAudioContext.destination);
+  osc.start(now+offset);osc.stop(now+offset+0.30);
+ });
+}
+function startOfferRing(){
+ unlockOfferRing();
+ stopOfferRing(false);
+ const control=document.getElementById('stopOfferRing');
+ if(control)control.style.display='inline-block';
+ playRingBurst();
+ ringTimer=setInterval(playRingBurst,2100);
+ // Keep the in-page ringing bounded; the system notification remains available.
+ ringStopTimer=setTimeout(()=>stopOfferRing(),60000);
+}
+function stopOfferRing(hide=true){
+ if(ringTimer){clearInterval(ringTimer);ringTimer=null;}
+ if(ringStopTimer){clearTimeout(ringStopTimer);ringStopTimer=null;}
+ const control=document.getElementById('stopOfferRing');
+ if(control&&hide)control.style.display='none';
+}
+navigator.serviceWorker?.addEventListener('message',event=>{
+ if(event.data?.type==='SRK_NEW_JOB_OFFER'&&user&&profile?.active&&profile?.verification_status==='approved'){
+  startOfferRing();
+  const status=document.getElementById('pushStatus');
+  if(status)status.textContent='🔔 नया काम आया है! ऑफर देखने के लिए नीचे सूची देखें।';
+ }
+});
+document.getElementById('stopOfferRing')?.addEventListener('click',()=>stopOfferRing());
 function base64UrlToBytes(value){const pad='='.repeat((4-value.length%4)%4);const raw=atob((value+pad).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(raw,c=>c.charCodeAt(0))}
 async function enablePush(){
  const status=document.getElementById('pushStatus'),button=document.getElementById('enablePush');
@@ -52,7 +98,7 @@ async function enablePush(){
  if(!profile){status.textContent='इलेक्ट्रिशियन प्रोफाइल की जानकारी लोड हो रही है। कृपया कुछ सेकंड बाद फिर कोशिश करें।';return}if(!profile.active||profile.verification_status!=='approved'){status.textContent='Push Notification केवल Admin द्वारा Active और Approved किए गए इलेक्ट्रिशियन के लिए उपलब्ध है।';return}
  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){status.textContent='इस ब्राउज़र में Push Notification उपलब्ध नहीं है।';return}
  if(!cfg.SUPABASE_VAPID_PUBLIC_KEY){status.textContent='Push Notification का सुरक्षित VAPID सेटअप अभी बाकी है। यह सुविधा सेटअप पूरा होने के बाद चालू होगी।';return}
- button.disabled=true;status.textContent='नोटिफिकेशन अनुमति और सदस्यता सेव की जा रही है…';
+ button.disabled=true;unlockOfferRing();status.textContent='नोटिफिकेशन अनुमति और सदस्यता सेव की जा रही है…';
  try{
   const permission=await Notification.requestPermission();
   if(permission!=='granted'){status.textContent='नोटिफिकेशन अनुमति नहीं मिली। Android Chrome Settings में Notifications चालू करें।';return}
