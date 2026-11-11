@@ -47,6 +47,9 @@ insert into public.service_bookings(id,service_type,state,district,pincode,prefe
 values
  ('10000000-0000-0000-0000-000000000002','Repair','UP','Balrampur','271861',current_date,'11:00','Assigned booking',200,'assigned','Assigned Customer','9000000002','Assigned Address',26.9,82.2,200,0,'approved','approved note','20000000-0000-0000-0000-000000000001'),
  ('10000000-0000-0000-0000-000000000003','Repair','UP','Balrampur','271861',current_date,'12:00','Unassigned offer',200,'new','Private Customer','9000000003','Private Address',27,82.3,200,0,'pending','private note',null);
+-- Simulate a previously-numbered booking whose suffix is ahead of the fresh sequence.
+update public.service_bookings set order_number='SRK-ORD-000010'
+where id='10000000-0000-0000-0000-000000000003';
 insert into public.job_offers(id,status,match_level,electrician_id,booking_id)
 values
  ('40000000-0000-0000-0000-000000000001','sent','same_pincode','20000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002'),
