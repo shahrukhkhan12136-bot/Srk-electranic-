@@ -31,11 +31,11 @@ begin
     v_minutes := case when v_elapsed = 0 then 0 else (v_elapsed + 59) / 60 end;
 
     if v_elapsed <> v_case.expected_elapsed then
-      raise exception 'elapsed seconds mismatch for %s: got %, expected %',
+      raise exception 'elapsed seconds mismatch for %: got %, expected %',
         v_case.duration_seconds, v_elapsed, v_case.expected_elapsed;
     end if;
     if v_minutes <> v_case.expected_minutes then
-      raise exception 'billable minutes mismatch for %s: got %, expected %',
+      raise exception 'billable minutes mismatch for %: got %, expected %',
         v_case.duration_seconds, v_minutes, v_case.expected_minutes;
     end if;
   end loop;
