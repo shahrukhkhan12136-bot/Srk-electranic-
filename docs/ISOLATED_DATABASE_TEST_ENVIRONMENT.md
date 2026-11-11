@@ -116,3 +116,9 @@ Harness must test the policies under distinct synthetic identities, not only as 
 2. Legacy commission and electrician-payable triggers fire on both INSERT and UPDATE. Their old quote/payment assumptions and material-inclusive payable basis must be reconciled before enabling the new labour-only final bill flow.
 3. Status history is trigger-driven on INSERT/UPDATE; verify it cannot be spoofed or duplicated through direct client writes.
 4. A test database loaded as a superuser alone is not sufficient evidence for RLS, grants, or role-scoped RPC behavior.
+
+
+### Trigger/helper function security metadata (read-only)
+Catalog metadata for the seven booking trigger functions and `is_srk_admin()` shows all have an explicit `search_path` setting beginning with `pg_catalog` and placing `pg_temp` last. The following are SECURITY DEFINER: `broadcast_booking_job()`, `is_srk_admin()`, `srk_cancel_booking_job_offers()`, `srk_capture_admin_audit_event()`, `srk_create_electrician_payable()`, and `srk_log_service_booking_status()`. `guard_new_booking()` and `srk_calculate_booking_commission()` are not SECURITY DEFINER.
+
+This is metadata evidence only, not a full function-body security review. The isolated baseline must preserve function owners, grants, SECURITY DEFINER status, and search_path settings. Each SECURITY DEFINER function still needs a code-level review for authorization checks, dynamic SQL, object qualification, and safe external side effects.
