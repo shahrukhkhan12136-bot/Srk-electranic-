@@ -193,14 +193,14 @@ begin
   for update;
   if not found then raise exception 'ORDER_CLAIM_NOT_FOUND' using errcode='P0002'; end if;
 
-  if v_order.status='created' and v_order.provider_order_id=p_provider_order_id then
+  if v_order.amount_paise<>p_amount_paise or v_order.currency<>p_currency then
+    raise exception 'RAZORPAY_ORDER_AMOUNT_MISMATCH' using errcode='23514';
+  end if;
+  if v_order.status in ('created','paid') and v_order.provider_order_id=p_provider_order_id then
     return jsonb_build_object('success',true,'provider_order_id',v_order.provider_order_id,'replayed',true);
   end if;
   if v_order.status<>'creating' or v_order.creation_token<>p_creation_token then
     raise exception 'ORDER_CLAIM_TOKEN_MISMATCH' using errcode='55000';
-  end if;
-  if v_order.amount_paise<>p_amount_paise or v_order.currency<>p_currency then
-    raise exception 'RAZORPAY_ORDER_AMOUNT_MISMATCH' using errcode='23514';
   end if;
 
   update public.srk_razorpay_orders
@@ -242,6 +242,9 @@ begin
   for update;
   if not found then raise exception 'RAZORPAY_ORDER_NOT_BOUND_TO_SNAPSHOT' using errcode='P0002'; end if;
 
+  if v_order.amount_paise<>p_amount_paise or v_order.currency<>p_currency then
+    raise exception 'RAZORPAY_CAPTURE_AMOUNT_MISMATCH' using errcode='23514';
+  end if;
   if v_order.status='paid' then
     if v_order.provider_payment_id=p_provider_payment_id then
       return jsonb_build_object('success',true,'replayed',true,'booking_id',v_order.booking_id);
@@ -249,9 +252,6 @@ begin
     raise exception 'RAZORPAY_ORDER_ALREADY_PAID_BY_DIFFERENT_PAYMENT' using errcode='55000';
   end if;
   if v_order.status<>'created' then raise exception 'RAZORPAY_ORDER_NOT_READY' using errcode='55000'; end if;
-  if v_order.amount_paise<>p_amount_paise or v_order.currency<>p_currency then
-    raise exception 'RAZORPAY_CAPTURE_AMOUNT_MISMATCH' using errcode='23514';
-  end if;
 
   select p.* into v_existing
   from public.srk_razorpay_payments p
