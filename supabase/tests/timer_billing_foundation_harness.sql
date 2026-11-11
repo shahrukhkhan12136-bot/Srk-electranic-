@@ -47,3 +47,13 @@ create table if not exists public.job_offers (
 
 -- Prove that the migration's reverse FK and the bill->booking FK can coexist:
 -- insert booking, insert bill referencing booking, then link booking to bill.
+
+
+-- Test-only Admin predicate. Production already has its own secured helper.
+create or replace function public.is_srk_admin()
+returns boolean
+language sql
+stable
+as $function$
+  select false
+$function$;
