@@ -25,6 +25,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
 </form>
 <button id="enable" disabled>इस फोन पर Push Notification चालू करें</button>
 <button id="logout" class="secondary" disabled>TEST अकाउंट लॉगआउट</button>
+<button id="check-offers" type="button" class="secondary" hidden>मेरे नए ऑफर देखें</button>
 <div id="status" role="status">स्थिति: अभी लॉगिन नहीं हुआ।</div>
 <p class="small">सुरक्षा: इस पेज में केवल Supabase publishable key है। कोई service-role key या निजी VAPID key नहीं है। TEST पूरा होने पर लॉगआउट करें।</p>
 
@@ -40,6 +41,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
   const status = document.getElementById('status');
   const enable = document.getElementById('enable');
   const logout = document.getElementById('logout');
+  const checkOffers = document.getElementById('check-offers');
   const say = (message) => { status.textContent = message; };
   const urlBase64ToUint8Array = (value) => {
     const padding = '='.repeat((4 - value.length % 4) % 4);
@@ -48,8 +50,9 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
   };
   let offerId = new URLSearchParams(location.search).get('offerId');
   async function loadOffer() {
-    enable.hidden = true; logout.hidden = true;
+    enable.hidden = true; logout.hidden = false; checkOffers.hidden = false;
     document.getElementById('offer-view').hidden = false;
+    document.getElementById('offer-info').textContent='आपका ऑफर सुरक्षित रूप से खोजा जा रहा है…';
     const info=document.getElementById('offer-info'), status=document.getElementById('offer-status');
     const {data:{session}}=await client.auth.getSession();
     if(!session){if(!offerId){document.getElementById('offer-view').hidden=true;return;} info.textContent='यह ऑफर देखने के लिए अपने रजिस्टर्ड TEST इलेक्ट्रिशियन खाते से नीचे लॉगिन करें। लॉगिन के बाद ऑफर अपने आप खुलेगा।';document.getElementById('login').hidden=false;document.getElementById('offer-accept').hidden=true;document.getElementById('offer-reject').hidden=true;return;}
@@ -60,8 +63,8 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     else ({data,error}=await client.rpc('srk_test_get_latest_offer'));
     
     if(error){info.textContent='ऑफर लोड नहीं हुआ: '+error.message;document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
-    const row=Array.isArray(data)?data[0]:null;
-    if(!row){info.textContent='इस TEST इलेक्ट्रिशियन खाते के लिए अभी कोई सक्रिय ऑफर नहीं मिला।';document.getElementById('offer-view').hidden=true;enable.hidden=false;logout.hidden=false;document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
+    const row=Array.isArray(data)?data[0]:(data && data.offer_id ? data : null);
+    if(!row){info.textContent='इस TEST इलेक्ट्रिशियन खाते के लिए अभी कोई नया सक्रिय ऑफर नहीं मिला। नया ऑफर आने पर इसी जगह दिखेगा।';document.getElementById('offer-accept').hidden=true;document.getElementById('offer-reject').hidden=true;document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;enable.hidden=false;logout.hidden=false;checkOffers.hidden=false;return;}
     offerId = row.offer_id; if (!new URLSearchParams(location.search).get('offerId')) history.replaceState({}, '', location.pathname+'?offerId='+encodeURIComponent(offerId));
     info.textContent='यह ऑफर आपके इलेक्ट्रिशियन खाते से मिलान करके सुरक्षित रूप से खोला गया है।\nस्थिति: '+row.offer_status+' | मैच: '+(row.match_level||'—');
     if(row.offer_status!=='offered'){status.textContent='यह ऑफर अब उपलब्ध नहीं है।';document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
@@ -95,6 +98,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     await refreshSession();
     await loadOffer();
   });
+  checkOffers.addEventListener('click', async () => { checkOffers.disabled=true; say('आपके नए ऑफर खोजे जा रहे हैं…'); try { offerId=null; history.replaceState({}, '', location.pathname); await loadOffer(); } catch(e) { say('ऑफर जाँच त्रुटि: '+(e?.message||String(e))); } finally { checkOffers.disabled=false; } });
   enable.addEventListener('click', async () => {
     try {
       if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
@@ -132,11 +136,11 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
   logout.addEventListener('click', async () => {
     const { error } = await client.auth.signOut();
     if (error) { say('लॉगआउट त्रुटि: ' + error.message); return; }
-    enable.disabled = true; logout.disabled = true;
+    enable.disabled = true; logout.disabled = true; checkOffers.hidden=true; document.getElementById('offer-view').hidden=true; document.getElementById('login').hidden=false;
     say('TEST अकाउंट लॉगआउट हो गया।');
   });
   refreshSession().catch(error => say('स्थिति जाँच त्रुटि: ' + error.message));
   client.auth.getSession().then(({data}) => { if (offerId || data.session) loadOffer(); }).catch(error => say('स्थिति जाँच त्रुटि: '+error.message));
 })();
 </script></body></html>
-<!-- redeploy trigger: 2026-11-11 explicit workflow -->
+<!-- TEST UI refresh: visible offer lookup button and clearer offer state; build 2026-11-11-v2 -->
