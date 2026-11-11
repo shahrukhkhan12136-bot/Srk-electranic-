@@ -54,3 +54,20 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h localhost -U postgres -d srk_test -v ON_ERROR_STOP=1 -f supabase/tests/electrician_display_id_behavior.sql
+      - name: Stress concurrent ID issuance
+        env:
+          PGPASSWORD: postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          pids=()
+          for i in $(seq 1 24); do
+            phone=$(printf '9%09d' "$i")
+            psql -h localhost -U postgres -d srk_test -v ON_ERROR_STOP=1 -c "insert into public.electrician_profiles (display_name,phone,state,district,pincode,verification_status,active,auth_user_id) values ('Concurrent Fixture $i','$phone','Uttar Pradesh','Balrampur','271861','approved',true,gen_random_uuid())" &
+            pids+=("$!")
+          done
+          for pid in "${pids[@]}"; do wait "$pid"; done
+          issued=$(psql -h localhost -U postgres -d srk_test -Atc "select count(*) from public.electrician_profiles where electrician_display_id is not null")
+          distinct=$(psql -h localhost -U postgres -d srk_test -Atc "select count(distinct electrician_display_id) from public.electrician_profiles where electrician_display_id is not null")
+          test "$issued" = "27"
+          test "$distinct" = "$issued"
