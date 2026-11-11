@@ -148,6 +148,8 @@ begin
   ) values (
     v_booking_online,v_customer,v_profile,'assigned','helper','Helper',120
   );
+  update public.service_bookings set assigned_electrician_id=v_profile,status='assigned'
+  where id=v_booking_online;
   insert into public.srk_final_bills(
     id,booking_id,bill_version,category_code,category_label,hourly_rate,
     started_at,stopped_at,elapsed_seconds,billable_minutes,labour_amount
