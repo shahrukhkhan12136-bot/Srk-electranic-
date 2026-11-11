@@ -15,6 +15,8 @@ on:
       - "supabase/migrations/202611110010_cash_payment_intent_receipt_confirmation.sql"
       - "supabase/migrations/202611110011_repair_payable_snapshot_rounding_constraint.sql"
       - "supabase/migrations/20261111130000_customer_cancellation_admin_decision.sql"
+      - "supabase/migrations/20261111150000_electrician_commission_ledger.sql"
+      - "supabase/tests/electrician_commission_ledger_assertions.sql"
       - "supabase/tests/customer_cancellation_admin_decision_assertions.sql"
       - "supabase/tests/material_revision_customer_approval_assertions.sql"
       - "supabase/tests/cash_payment_intent_assertions.sql"
@@ -360,6 +362,27 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/tests/customer_cancellation_admin_decision_assertions.sql
+      - name: Apply electrician commission ledger migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \\
+            -v ON_ERROR_STOP=1 \\
+            -f supabase/migrations/20261111150000_electrician_commission_ledger.sql
+      - name: Verify electrician commission migration is replay-safe
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \\
+            -v ON_ERROR_STOP=1 \\
+            -f supabase/migrations/20261111150000_electrician_commission_ledger.sql
+      - name: Test 15% labour-only commission, material exclusion and access controls
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \\
+            -v ON_ERROR_STOP=1 \\
+            -f supabase/tests/electrician_commission_ledger_assertions.sql
       - name: Run rollback-only billing arithmetic tests
         env:
           PGPASSWORD: postgres
