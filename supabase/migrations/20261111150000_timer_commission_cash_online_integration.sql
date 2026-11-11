@@ -238,6 +238,20 @@ begin
 end
 $function$;
 
+-- Ensure the established booking triggers invoke the snapshot-aware commission functions.
+drop trigger if exists srk_calculate_booking_commission on public.service_bookings;
+create trigger srk_calculate_booking_commission
+before insert or update of status,payment_status,amount_paid,commission_rate
+on public.service_bookings
+for each row execute function public.srk_calculate_booking_commission();
+
+drop trigger if exists trg_srk_create_electrician_payable on public.service_bookings;
+create trigger trg_srk_create_electrician_payable
+after insert or update of payment_status,status,quote_status,service_charge,materials_amount,
+  assigned_electrician_id,payment_verified_at,razorpay_payment_id,amount_paid
+on public.service_bookings
+for each row execute function public.srk_create_electrician_payable();
+
 -- Electrician submits a traceable remittance reference for Cash commission.
 create or replace function public.srk_electrician_submit_cash_commission_remittance(
   p_booking_id uuid,
