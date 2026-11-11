@@ -27,9 +27,6 @@ begin
   insert into auth.users(id) values (v_customer),(v_electrician),(v_outsider);
   insert into public.electrician_profiles(id,user_id,active,verification_status)
   values (v_profile,v_electrician,true,'approved');
-  -- The production RPC validates both the active profile and its approved application.
-  insert into public.electrician_applications(user_id,status,active)
-  values (v_electrician,'approved',true);
   insert into public.service_bookings(
     id,customer_user_id,assigned_electrician_id,status,
     service_category_code,service_category_label,hourly_rate_snapshot,timer_state
