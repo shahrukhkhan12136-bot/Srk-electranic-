@@ -132,3 +132,31 @@ The push-notifications Deno type-check workflow also has a later successful run 
 ## Status
 
 No timer RPC code is implemented by this document. No TEST or Production database was changed. The existing shared TEST Supabase project is not a representative integration target: its public schema currently contains only `electrician_profiles`, `job_offers`, and `srk_push_subscriptions`, and lacks `service_bookings` plus the booking/payment/history dependencies. Do not apply the migration there blindly. Before integration testing, build a disposable PostgreSQL/Supabase environment from the complete authoritative schema/migration history, with synthetic auth users, customer/electrician profiles, Admin identity, and representative booking/payment rows. Validate clean migration apply, second application, deliberate transaction rollback, circular FK insertion/linking, RLS/grants, and the RPC state machine in that isolated environment. Only then consider a separately approved shared TEST migration.
+
+
+## Cross-layer compatibility audit (2026-11-11, Feature Branch source)
+
+The current booking and Razorpay handlers were compared against the approved timer-first workflow and the proposed foundation schema. This is a source-code review only; no runtime payment calls or database writes were made.
+
+### Confirmed blockers before timer billing can be enabled
+
+1. `create-booking.js` still defaults a missing `payment_method` to Cash, accepts Cash/Razorpay as a booking-time choice, parses and validates browser-supplied `quoted_amount`, then inserts both fields. This directly conflicts with the approved no-payment-choice/no-quote-at-booking flow. The approved category/rate snapshot is also not yet written.
+2. `create-order.js` still requires `status = completed` AND `quote_status = approved`, and calculates payment from `service_charge + materials_amount` cross-checked against `quoted_amount`. It does not require a customer-approved stopped timer or a server-generated final bill.
+3. `verify-payment.js` repeats the legacy quote gate and amount calculation. It verifies the Razorpay signature and retrieves captured payment details, but the final amount source remains the legacy quote/material fields.
+4. `razorpay-webhook.js` repeats the legacy quote gate and amount calculation, then directly PATCHes `service_bookings` using the service-role REST key. It does not reconcile against `srk_final_bills` or a bill revision, and the shown code does not persist a webhook event ledger/idempotency record.
+5. The booking API, order API, verify API, and webhook all use privileged service-role REST access. Once timer/bill columns exist, client-facing APIs must not be allowed to set those protected fields through generic PATCH paths. Payment state transitions should be moved behind narrow transactional database RPCs with server-side authorization and idempotency.
+6. `findReusableOrder()` currently compares the Razorpay order amount against `quoted_amount`, while order creation computes `service_charge + materials_amount`. This inconsistency is a legacy reconciliation hazard that must be removed during the final-bill cutover.
+7. Existing browser screens contain legacy payment-choice UI and quote-related behavior. A server-only change would leave confusing or unsafe paths visible; customer, electrician, and Admin interfaces must be migrated as one coordinated release.
+
+### Required target payment contract
+
+- Order creation may start only after the booking has a customer-approved stopped timer and a persisted final bill.
+- Amount must be derived from the authoritative final-bill total plus only separately approved material revisions. Never accept an amount from browser input or legacy `quoted_amount`.
+- Labour commission/payable calculations must use labour-only final-bill amount; material amounts remain separate and are not silently included in electrician labour or commission.
+- Webhook handling must verify the provider signature, persist/claim the event idempotently, lock/reconcile the booking and bill, compare order/payment amount and currency, and atomically record payment evidence through a narrow trusted operation.
+- The browser verification endpoint may report status but must not be an alternate path that can mark a booking paid outside the same idempotent reconciliation operation.
+- Cash confirmation must also require a generated final bill and a separate electrician receipt-confirmation action.
+
+### Safe sequencing decision
+
+Do not edit these live payment handlers in isolation yet. First finish the database contract (timer RPCs, final bill/material revision model, immutable audit evidence, protected booking-column writes, scoped reads, and role/grant design), then implement all payment handlers and all three dashboards together. Until then, the new migration remains unapplied and the existing payment behavior remains legacy behavior; no claim is made that the approved timer-first flow is implemented.
