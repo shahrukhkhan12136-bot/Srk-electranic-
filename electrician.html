@@ -87,6 +87,13 @@ ${!timerEnabled&&o.booking_status==='in_progress'?'<button onclick="workStatus(\
 ${!timerEnabled&&o.booking_status==='completed'?'<p class="good">काम पूरा दर्ज है। भुगतान की स्थिति नीचे देखें।</p><div class="cash-confirm-wrap" id="cash-payment-'+esc(o.booking_id)+'" style="display:none"><p class="cash-confirm-note" id="cash-note-'+esc(o.booking_id)+'"></p><button type="button" class="cash-confirm-button" onclick="confirmCashReceived(\''+esc(o.booking_id)+'\')">💵 ग्राहक से नकद मिला — पुष्टि करें</button></div>':''}
 ${o.offer_status==='offered'&&p.active&&p.verification_status==='approved'?`<button onclick="respond('${o.offer_id}','accepted')">काम स्वीकार करें</button><button style="background:#627d98" onclick="respond('${o.offer_id}','declined')">मना करें</button>`:''}</div>`}).join(''):'अभी कोई काम का ऑफर नहीं है।';await Promise.all(rows.filter(o=>o.booking_status==='completed').map(o=>loadCashPaymentStatus(o.booking_id)));const targetOffer=new URLSearchParams(location.search).get('offerId');if(targetOffer){const target=document.getElementById('offer-'+targetOffer);if(target){target.style.border='3px solid #087e8b';target.scrollIntoView({behavior:'smooth',block:'center'});}}}
 function electricianTimerCardHtml(timer,bookingId){
+ const cashIntent=timer.cash_payment_intent||null;
+ let cashHtml='';
+ if(cashIntent?.status==='pending'){
+  cashHtml='<div class="cash-confirm-wrap"><p class="cash-confirm-note">ग्राहक ने ₹'+(Number(cashIntent.amount_paise||0)/100).toFixed(2)+' नकद भुगतान चुना है। पूरा पैसा वास्तव में मिलने के बाद ही पुष्टि करें।</p><button type="button" class="cash-confirm-button" onclick="electricianConfirmSnapshotCash(\\''+esc(cashIntent.payable_snapshot_id)+'\\')">💵 पूरा नकद भुगतान प्राप्त — पुष्टि करें</button></div>';
+ }else if(cashIntent?.status==='confirmed'){
+  cashHtml='<div class="cash-confirm-wrap"><p class="cash-confirm-note">✅ नकद भुगतान प्राप्त और दर्ज हो चुका है।</p><p class="small">पुष्टि: '+esc(cashIntent.confirmed_at||'')+'</p></div>';
+ }
  const labels={not_requested:'इलेक्ट्रिशियन के पहुँचने / टाइमर अनुरोध की प्रतीक्षा',start_pending:'ग्राहक की टाइमर शुरू करने की मंजूरी बाकी',running:'काम का समय चल रहा है',stop_pending:'ग्राहक की टाइमर रोकने की मंजूरी बाकी — तब तक समय चलता रहेगा',stopped:'काम का समय पूरा'};
  const bill=timer.final_bill;
  let controls='';
@@ -106,6 +113,7 @@ function electricianTimerCardHtml(timer,bookingId){
   (timer.electrician_arrived_at?'<p>पहुँच दर्ज: '+esc(new Date(timer.electrician_arrived_at).toLocaleString('hi-IN'))+'</p>':'')+
   (timer.timer_started_at?'<p>टाइमर शुरू: '+esc(new Date(timer.timer_started_at).toLocaleString('hi-IN'))+'</p>':'')+
   controls+
+  cashHtml+
   (bill?'<div class="pay-note"><b>अंतिम मेहनताना बिल</b><p>बिल योग्य मिनट: '+esc(bill.billable_minutes)+'</p><p>मेहनताना: ₹'+esc(Number(bill.labour_amount||0).toFixed(2))+'</p><p class="small">सामान/पार्ट्स अलग itemized bill और ग्राहक की अलग मंजूरी से ही जोड़े जाएँगे।</p></div>':'')+
   (bill&&timer.timer_state==='stopped'?electricianMaterialFormHtml(bookingId,timer.material_revisions||[]):'')+
   '</div>';
@@ -154,6 +162,19 @@ async function submitElectricianMaterials(bookingId){
  const {data,error}=await sb.rpc('srk_electrician_submit_material_revision',{p_booking_id:bookingId,p_items:lines,p_idempotency_key:key});
  if(error){alert('सामग्री सूची नहीं भेजी गई: '+error.message);return;}
  alert('अलग सामग्री सूची ग्राहक की मंजूरी के लिए भेज दी गई। कुल इलेक्ट्रिशियन-प्रदत्त सामग्री: ₹'+Number(data?.electrician_material_total||0).toFixed(2));
+ await refresh();
+}
+async function electricianConfirmSnapshotCash(snapshotId){
+ const note=prompt('वैकल्पिक रसीद / भुगतान नोट (अधिकतम 120 अक्षर):','');
+ if(note===null)return;
+ if(note.length>120){alert('नोट 120 अक्षरों से छोटा रखें।');return;}
+ if(!confirm('क्या ग्राहक से पूरा नकद भुगतान वास्तव में आपके हाथ में मिल गया है? पुष्टि के बाद बुकिंग Paid और Completed दर्ज होगी।'))return;
+ const {data,error}=await sb.rpc('srk_electrician_confirm_snapshot_cash_payment',{
+  p_snapshot_id:snapshotId,p_receipt_note:note.trim()||null
+ });
+ if(error){alert('नकद भुगतान दर्ज नहीं हुआ: '+error.message);return;}
+ if(!data?.success){alert('नकद भुगतान की पुष्टि नहीं हुई।');return;}
+ alert('नकद भुगतान प्राप्ति सफलतापूर्वक दर्ज हो गई।');
  await refresh();
 }
 async function electricianTimerAction(bookingId,action){
