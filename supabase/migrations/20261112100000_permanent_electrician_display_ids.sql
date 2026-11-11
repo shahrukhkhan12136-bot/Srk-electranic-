@@ -55,7 +55,7 @@ begin
       'SRK-EL-' ||
       pg_catalog.lpad(
         v_next_id::text,
-        pg_catalog.greatest(6, pg_catalog.length(v_next_id::text)),
+        greatest(6, pg_catalog.length(v_next_id::text)),
         '0'
       );
   end if;
