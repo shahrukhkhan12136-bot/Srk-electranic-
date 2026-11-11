@@ -136,6 +136,41 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#3b82f6;box-sh
 @media(max-width:650px){.welcome-portrait img{transform:scale(1.28);transform-origin:50% 16%}}
 
 
+
+/* Mobile-first welcome layout refinement: compact top, prominent founder portrait */
+header{padding:12px 16px 14px;border-radius:0 0 18px 18px}
+header .logo{width:42px;height:42px;border-radius:12px;font-size:16px}
+header h1{font-size:19px;line-height:1.15}
+header .hero{display:none}
+.wrap{padding-top:10px}
+.welcome-stage{margin:8px 0 20px;padding:clamp(18px,3vw,30px);border-radius:24px}
+.welcome-main{gap:16px;padding:16px 0 12px}
+.welcome-portrait-wrap{min-height:350px}
+.welcome-portrait{width:min(84%,300px);height:340px;border-radius:42% 42% 24px 24px}
+.welcome-portrait img{object-fit:cover;object-position:50% 14%;transform:scale(1.42);transform-origin:50% 15%;filter:contrast(1.08) saturate(1.06)}
+@media(max-width:650px){
+ .welcome-stage{padding:16px 14px 15px;margin:7px 0 18px}
+ .welcome-brand{gap:10px}
+ .welcome-mark{width:46px;height:46px;font-size:36px}
+ .welcome-brand-name{font-size:20px}
+ .welcome-brand strong{font-size:17px}
+ .welcome-main{display:flex;flex-direction:column;gap:10px;padding:12px 0 14px}
+ .welcome-portrait-wrap{order:-1;width:100%;min-height:245px;height:245px;margin:0 auto 6px}
+ .welcome-portrait{width:190px;height:225px;border-radius:42% 42% 20px 20px}
+ .welcome-portrait-orbit{width:205px}
+ .welcome-portrait-tag{bottom:0;font-size:9px;padding:8px 13px}
+ .welcome-spark-a{top:5%;right:13%}
+ .welcome-spark-b{bottom:17%;left:12%}
+ .welcome-copy{width:100%;max-width:none}
+ .welcome-copy h2{font-size:clamp(27px,7.5vw,36px);margin:10px 0 8px}
+ .welcome-copy>p{font-size:12px;line-height:1.55}
+ .welcome-highlights{margin-top:12px;gap:6px}
+ .welcome-highlights span{padding:7px 9px;font-size:10px}
+ .welcome-panel-links{margin-top:14px;gap:8px}
+ .welcome-panel-links a{min-height:42px}
+ .welcome-bottom{padding-top:12px}
+}
+
 /* Customer dashboard visual system — Royal Blue / White / Gold */
 #customer-login.panel,#customer-dashboard.panel{position:relative;isolation:isolate;overflow:hidden;border:1px solid #d8e4f5;border-radius:24px;background:linear-gradient(155deg,#fff 0%,#f7faff 70%,#fffaf0 100%);box-shadow:0 18px 48px rgba(7,26,43,.10);padding:clamp(18px,3.5vw,30px)}
 #customer-login.panel:before,#customer-dashboard.panel:before{content:"";position:absolute;z-index:-1;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#0b3b78 0%,#1e63b8 58%,#e2b64d 100%)}
