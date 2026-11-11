@@ -1,3 +1,4 @@
+-- Re-run marker: authenticated-role RPC execution assertions are part of branch CI.
 -- Disposable role/JWT execution test for authenticated customer and electrician RPCs.
 -- This exercises PostgreSQL role grants and auth.uid()/auth.jwt() claims, but is
 -- not a substitute for a live Supabase Auth/RLS policy test on Main Production.
