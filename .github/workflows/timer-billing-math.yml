@@ -94,6 +94,7 @@ on:
       - "netlify/functions/verify-snapshot-payment.js"
       - "electrician.html"
       - "supabase/tests/server_authoritative_booking_creation_assertions.sql"
+      - "supabase/tests/timer_billing_authenticated_role_assertions.sql"
       - ".github/workflows/timer-billing-math.yml"
       - "supabase/tests/timer_billing_math.sql"
       - "supabase/tests/timer_billing_foundation_harness.sql"
