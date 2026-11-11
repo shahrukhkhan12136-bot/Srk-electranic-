@@ -1,22 +1,28 @@
-name: Timer billing arithmetic tests
+name: Timer billing SQL tests
 
 on:
   pull_request:
     paths:
+      - "supabase/migrations/202611110001_timer_billing_materials_foundation.sql"
       - "supabase/tests/timer_billing_math.sql"
+      - "supabase/tests/timer_billing_foundation_harness.sql"
+      - "supabase/tests/timer_billing_foundation_assertions.sql"
       - ".github/workflows/timer-billing-math.yml"
   push:
     branches:
       - "feature/production-push-notifications"
     paths:
+      - "supabase/migrations/202611110001_timer_billing_materials_foundation.sql"
       - "supabase/tests/timer_billing_math.sql"
+      - "supabase/tests/timer_billing_foundation_harness.sql"
+      - "supabase/tests/timer_billing_foundation_assertions.sql"
       - ".github/workflows/timer-billing-math.yml"
 
 permissions:
   contents: read
 
 jobs:
-  postgres-arithmetic:
+  postgres-sql:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -35,6 +41,34 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+      - name: Create minimal synthetic baseline
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/tests/timer_billing_foundation_harness.sql
+      - name: Apply foundation migration on clean schema
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110001_timer_billing_materials_foundation.sql
+      - name: Verify safe second application
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110001_timer_billing_materials_foundation.sql
+      - name: Verify RLS, grants, constraints and circular bill linkage
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/tests/timer_billing_foundation_assertions.sql
       - name: Run rollback-only billing arithmetic tests
         env:
           PGPASSWORD: postgres
