@@ -109,6 +109,10 @@ Before production use, add database guards and a controlled mutation model:
 5. Table comments call the decision ledger append-only, but the current schema permits privileged updates/deletes. Do not claim append-only until database guards exist.
 6. RLS enabled with no authenticated policies means browser clients cannot directly read these rows; implement carefully scoped read RPCs/policies before customer, electrician and Admin screens depend on them.
 
+## Arithmetic regression test added
+
+A standalone, rollback-only PostgreSQL test script is available at `supabase/tests/timer_billing_math.sql`. It covers 0s, whole and fractional minute boundaries, 8 hours, all four category rates, paise rounding, and the no-minimum-charge rule. It has not yet been executed against PostgreSQL; its existence is not evidence of a passing test.
+
 ## Mandatory SQL/API tests
 
 - Caller NULL, wrong customer, unrelated customer, unassigned electrician, electrician linked only by `auth_user_id`, inactive/unapproved electrician, and non-Admin invoking Admin RPC.
