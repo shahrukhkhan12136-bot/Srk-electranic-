@@ -53,7 +53,7 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const vm = require('vm');
-          for (const file of ['index.html', 'electrician.html', 'admin.html']) {
+          for (const file of ['index.html', 'electrician.html', 'admin.html', 'apps/mobile-poc/customer/www/index.html']) {
             const html = fs.readFileSync(file, 'utf8');
             const scripts = [];
             for (const chunk of html.split(/<script\\b/i).slice(1)) {
