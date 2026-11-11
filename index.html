@@ -293,7 +293,7 @@ async function loadCustomerBookings() {
     const timerHtml = row.service_category_label
       ? (timerResult?.error
         ? '<div class="job"><b>काम का टाइमर</b><p class="small">टाइमर विवरण अभी लोड नहीं हुआ। कृपया Refresh करें।</p></div>'
-        : customerTimerCardHtml(timerResult?.data))
+        : customerTimerCardHtml(timerResult?.data, row.id))
       : '';
     const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
     const canCall = contact && /^[0-9]{10,15}$/.test(phone);
@@ -312,7 +312,7 @@ async function loadCustomerBookings() {
     '</article>';
   }).join('');
 }
-function customerTimerCardHtml(timer) {
+function customerTimerCardHtml(timer, bookingId) {
   if (!timer) return '<div class="job"><b>काम का टाइमर</b><p>टाइमर विवरण उपलब्ध नहीं है।</p></div>';
   const stateLabels = {
     not_requested: 'इलेक्ट्रिशियन के आने की प्रतीक्षा',
@@ -331,6 +331,7 @@ function customerTimerCardHtml(timer) {
   }).join('');
   const bill = timer.final_bill;
   const materialsHtml = customerMaterialRevisionHtml(timer.material_revisions || []);
+  const snapshotHtml = customerPayableSnapshotHtml(timer, bookingId);
   return '<div class="job"><b>टाइमर स्थिति:</b> ' + customerEsc(stateLabels[timer.timer_state] || timer.timer_state) +
     '<p>श्रेणी: ' + customerEsc(timer.service_category_label || '') + ' • दर: ₹' + customerEsc(Number(timer.hourly_rate_snapshot || 0).toFixed(3)) + '/घंटा</p>' +
     (timer.electrician_arrived_at ? '<p>इलेक्ट्रिशियन पहुँचे: ' + customerEsc(new Date(timer.electrician_arrived_at).toLocaleString('hi-IN')) + '</p>' : '') +
@@ -339,7 +340,26 @@ function customerTimerCardHtml(timer) {
     decisions +
     (bill ? '<div class="pay-note"><b>अंतिम मेहनताना बिल</b><p>बिल योग्य मिनट: ' + customerEsc(bill.billable_minutes) + '</p><p>मेहनताना: ₹' + customerEsc(Number(bill.labour_amount || 0).toFixed(2)) + '</p><p class="small">सामान/पार्ट्स का खर्च अलग सूची और आपकी अलग मंजूरी के बाद ही जोड़ा जाएगा।</p></div>' : '') +
     materialsHtml +
+    snapshotHtml +
     '</div>';
+}
+function customerPayableSnapshotHtml(timer,bookingId) {
+  const snapshots=timer.payable_snapshots||[];
+  const pending=(timer.material_revisions||[]).some(function(r){return r.status==='pending'||r.status==='draft';});
+  if(snapshots.length){
+    const p=snapshots[snapshots.length-1];
+    return '<div class="pay-note"><b>अंतिम भुगतान योग्य राशि — सुरक्षित snapshot</b><p>मेहनताना (सटीक गणना): ₹'+customerEsc(Number(p.labour_amount||0).toFixed(10))+'</p><p>मंजूर सामग्री: ₹'+customerEsc(Number(p.materials_amount||0).toFixed(2))+'</p><p><b>कुल देय: ₹'+customerEsc(Number(p.total_amount||0).toFixed(2))+'</b></p><p class="small">Snapshot ID: '+customerEsc(p.id)+' • '+customerEsc(p.currency)+'</p><p class="small">यह राशि अब लॉक है। भुगतान विकल्प सुरक्षित पेमेंट कनेक्शन पूरा होने पर उपलब्ध होंगे।</p></div>';
+  }
+  if(timer.timer_state!=='stopped'||!timer.final_bill)return '';
+  if(pending)return '<div class="pay-note"><b>भुगतान राशि अभी तैयार नहीं है।</b><p class="small">पहले सामग्री के लंबित प्रस्ताव को मंजूर या अस्वीकार करें।</p></div>';
+  return '<div class="pay-note"><b>अंतिम भुगतान राशि तैयार करें</b><p class="small">आपके अंतिम मेहनताना बिल और ग्राहक द्वारा मंजूर सामग्री को जोड़कर कुल राशि लॉक की जाएगी। ग्राहक द्वारा खरीदे गए सामान का कोई शुल्क नहीं जोड़ा जाएगा।</p><button type="button" onclick="customerCreatePayableSnapshot(\''+customerEsc(bookingId)+'\')">अंतिम कुल राशि तैयार करें</button></div>';
+}
+async function customerCreatePayableSnapshot(bookingId) {
+  if(!confirm('क्या आप अंतिम मेहनताना बिल और मंजूर सामग्री देखकर कुल भुगतान योग्य राशि लॉक करना चाहते हैं? इसके बाद सामग्री सूची में बदलाव नहीं किया जा सकेगा।'))return;
+  const {data,error}=await customerSb.rpc('srk_customer_create_payable_snapshot',{p_booking_id:bookingId});
+  if(error){alert('अंतिम भुगतान राशि तैयार नहीं हुई: '+error.message);return;}
+  alert('अंतिम भुगतान राशि सुरक्षित हो गई: ₹'+Number(data.total_amount||0).toFixed(2));
+  await loadCustomerBookings();
 }
 function customerMaterialRevisionHtml(revisions) {
   if (!revisions.length) return '<p class="small">सामग्री/पार्ट्स का अलग बिल अभी जमा नहीं हुआ है।</p>';
