@@ -97,7 +97,7 @@ begin
   if p_snapshot_id is null then raise exception 'PAYABLE_SNAPSHOT_ID_REQUIRED' using errcode='22023'; end if;
 
   select ps.* into v_snapshot from public.srk_booking_payable_snapshots ps
-  where ps.id=p_snapshot_id;
+  where ps.id=p_snapshot_id for update;
   if not found then raise exception 'PAYABLE_SNAPSHOT_NOT_FOUND' using errcode='P0002'; end if;
 
   select b.* into v_booking from public.service_bookings b
@@ -106,11 +106,8 @@ begin
     raise exception 'CUSTOMER_BOOKING_ACCESS_DENIED' using errcode='42501';
   end if;
 
-  select ps.* into v_snapshot from public.srk_booking_payable_snapshots ps
-  where ps.id=p_snapshot_id and ps.booking_id=v_booking.id for update;
-  if not found then raise exception 'PAYABLE_SNAPSHOT_NOT_FOUND' using errcode='P0002'; end if;
-
-  if v_booking.timer_state<>'stopped' or v_booking.final_bill_id is distinct from v_snapshot.bill_id then
+  if v_booking.service_category_code is null
+     or v_booking.timer_state<>'stopped' or v_booking.final_bill_id is distinct from v_snapshot.bill_id then
     raise exception 'FINAL_BILL_SNAPSHOT_MISMATCH' using errcode='55000';
   end if;
   if v_snapshot.amount_paise<=0 then raise exception 'NO_CASH_PAYMENT_DUE' using errcode='22023'; end if;
@@ -205,7 +202,7 @@ begin
 
   select ps.* into v_snapshot from public.srk_booking_payable_snapshots ps
   where ps.id=p_snapshot_id and ps.booking_id=v_booking.id;
-  if not found or v_booking.timer_state<>'stopped' or v_booking.final_bill_id is distinct from v_snapshot.bill_id then
+  if not found or v_booking.service_category_code is null or v_booking.timer_state<>'stopped' or v_booking.final_bill_id is distinct from v_snapshot.bill_id then
     raise exception 'FINAL_BILL_SNAPSHOT_MISMATCH' using errcode='55000';
   end if;
   if v_booking.payment_status='paid' then raise exception 'BOOKING_ALREADY_PAID' using errcode='55000'; end if;
