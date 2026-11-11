@@ -17,6 +17,7 @@ on:
       - "supabase/migrations/20261111130000_customer_cancellation_admin_decision.sql"
       - "supabase/migrations/20261111150000_timer_commission_cash_online_integration.sql"
       - "supabase/tests/legacy_commission_foundation_harness.sql"
+      - "supabase/tests/legacy_completed_booking_preservation_assertions.sql"
       - "supabase/tests/customer_cancellation_admin_decision_assertions.sql"
       - "supabase/tests/timer_commission_cash_online_assertions.sql"
       - "supabase/tests/material_revision_customer_approval_assertions.sql"
@@ -59,6 +60,7 @@ on:
       - "supabase/migrations/20261111130000_customer_cancellation_admin_decision.sql"
       - "supabase/migrations/20261111150000_timer_commission_cash_online_integration.sql"
       - "supabase/tests/legacy_commission_foundation_harness.sql"
+      - "supabase/tests/legacy_completed_booking_preservation_assertions.sql"
       - "supabase/tests/customer_cancellation_admin_decision_assertions.sql"
       - "supabase/tests/timer_commission_cash_online_assertions.sql"
       - "supabase/tests/material_revision_customer_approval_assertions.sql"
@@ -394,6 +396,14 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/tests/timer_commission_cash_online_assertions.sql
+      - name: Verify legacy completed unpaid booking remains unchanged
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/tests/legacy_completed_booking_preservation_assertions.sql
+
       - name: Run rollback-only billing arithmetic tests
         env:
           PGPASSWORD: postgres
