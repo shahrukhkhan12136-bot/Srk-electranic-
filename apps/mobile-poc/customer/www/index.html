@@ -78,7 +78,7 @@ button:disabled{opacity:.55}
   async function loadBookings(user) {
     $('bookings').innerHTML='<p class="muted">आपकी बुकिंग सुरक्षित रूप से लोड हो रही हैं…</p>';
     const {data,error}=await client.from('service_bookings')
-      .select('id,service_type,status,preferred_date,created_at')
+      .select('id,order_number,service_type,status,preferred_date,created_at')
       .eq('customer_user_id',user.id).order('created_at',{ascending:false}).limit(10);
     if(error){$('bookings').textContent='बुकिंग अभी नहीं पढ़ी जा सकीं। RLS/नेटवर्क की जाँच करें और फिर कोशिश करें।';return;}
     if(!data?.length){$('bookings').innerHTML='<p class="muted">इस खाते में अभी कोई बुकिंग उपलब्ध नहीं है।</p>';return;}
