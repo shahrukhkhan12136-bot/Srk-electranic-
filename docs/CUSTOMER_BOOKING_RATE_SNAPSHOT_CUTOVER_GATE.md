@@ -177,6 +177,22 @@ CI now applies and replays migration 008 before running the combined material-ap
 - Add electrician-confirmed Cash receipt against the same snapshot.
 - Browser-level end-to-end testing, isolated shared TEST validation, and one consolidated Production release remain outstanding.
 
+### Razorpay snapshot binding implementation update (2026-11-11)
+
+Feature Branch now contains migration `202611110009_razorpay_snapshot_order_ledger.sql` and serverless endpoint code for the snapshot payment path:
+
+- One Razorpay order row is uniquely bound to one immutable payable snapshot, booking, INR currency and paise amount.
+- A short-lived server-side creation lease prevents parallel order creation for the same snapshot; an existing created order is reused.
+- The provider order ID is bound only after the Razorpay API returns an order with the exact snapshot amount and currency.
+- Captured payments are reconciled through a service-role-only RPC. The database rechecks order binding, amount and currency, writes a unique payment ledger row, marks the order paid, and updates the booking payment state in one transaction.
+- Razorpay webhook events for snapshot orders are stored in the existing webhook event ledger; duplicate event IDs/payloads and duplicate captured payment callbacks are handled idempotently.
+- Legacy quote-based create-order and verify-payment endpoints now reject timer-category bookings. The legacy webhook reconciliation path also refuses those bookings.
+- New Netlify API routes are wired for snapshot order creation and checkout verification. The customer panel displays the locked breakdown and opens Razorpay Checkout using only the server-created order.
+
+JavaScript syntax checks passed for the customer, electrician and Admin pages, the old and new payment handlers, webhook handler, and Netlify adapters. This is syntax validation only; no live/Test Razorpay payment has been executed. SQL CI includes migration replay and assertions for snapshot precision, one-order binding, amount checks, and duplicate-payment idempotency, but a completed latest GitHub Actions result has not yet been confirmed.
+
+Remaining before release: verify the latest PostgreSQL CI result, add electrician-confirmed Cash receipt RPC/UI, execute end-to-end Razorpay Test Mode and webhook tests in an isolated environment, and perform browser testing. No shared TEST/Production database changes and no Production deployment have occurred.
+
 ## Safety boundary
 
 All code and SQL changes described above are Feature Branch only. No shared TEST/Production migration, database write, live payment, or deployment was performed. Do not deploy until the remaining payment, timer UI, material, cancellation, audit, and full integration tests are complete and the user explicitly approves.
