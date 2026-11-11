@@ -41,6 +41,7 @@ on:
       - "supabase/tests/timer_billing_foundation_assertions.sql"
       - "supabase/tests/production_parity_legacy_baseline.sql"
       - "supabase/tests/production_parity_legacy_assertions.sql"
+      - "supabase/tests/timer_billing_authenticated_role_assertions.sql"
       - "supabase/tests/timer_billing_integrity_extensions_assertions.sql"
       - "supabase/tests/customer_approved_timer_rpcs_assertions.sql"
       - "supabase/tests/server_authoritative_booking_creation_assertions.sql"
@@ -454,4 +455,5 @@ jobs:
             psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
           done
           psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/production_parity_legacy_assertions.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/timer_billing_authenticated_role_assertions.sql
           psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/legacy_completed_booking_preservation_assertions.sql
