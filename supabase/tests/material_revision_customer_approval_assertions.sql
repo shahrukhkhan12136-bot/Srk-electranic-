@@ -14,6 +14,11 @@ declare
   v_total numeric;
   v_count bigint;
   v_status text;
+  v_snapshot_id uuid;
+  v_labour_snapshot numeric(20,10);
+  v_materials_snapshot numeric(12,2);
+  v_amount numeric(12,2);
+  v_paise bigint;
 begin
   insert into auth.users(id) values (v_customer),(v_electrician),(v_outsider);
   insert into public.electrician_profiles(id,user_id,active,verification_status)
@@ -87,6 +92,38 @@ begin
   if v_count <> 1 then raise exception 'customer material approval ledger is not unique'; end if;
   select status into v_status from public.srk_bill_material_revisions where id=v_revision;
   if v_status <> 'approved' then raise exception 'material revision status not approved'; end if;
+
+  v_result := public.srk_customer_create_payable_snapshot(v_booking);
+  v_snapshot_id := (v_result->>'snapshot_id')::uuid;
+  if v_result->>'success' <> 'true' or v_result->>'replayed' <> 'false' then
+    raise exception 'customer payable snapshot creation failed: %',v_result;
+  end if;
+  select labour_amount,materials_amount,total_amount,amount_paise
+    into v_labour_snapshot,v_materials_snapshot,v_amount,v_paise
+  from public.srk_booking_payable_snapshots where id=v_snapshot_id;
+  if v_labour_snapshot <> round(112.375::numeric/60,10) then
+    raise exception 'snapshot rounded labour before final payable boundary: %',v_labour_snapshot;
+  end if;
+  if v_materials_snapshot <> 100 or v_amount <> 101.87 or v_paise <> 10187 then
+    raise exception 'snapshot payable total mismatch: labour %, materials %, total %, paise %',
+      v_labour_snapshot,v_materials_snapshot,v_amount,v_paise;
+  end if;
+
+  v_result := public.srk_customer_create_payable_snapshot(v_booking);
+  if (v_result->>'snapshot_id')::uuid <> v_snapshot_id or v_result->>'replayed' <> 'true' then
+    raise exception 'snapshot retry did not return immutable existing snapshot';
+  end if;
+
+  perform set_config('request.jwt.claim.sub',v_electrician::text,true);
+  begin
+    perform public.srk_electrician_submit_material_revision(
+      v_booking,
+      '[{"description":"Late material","quantity":1,"unit_price":10,"supplied_by":"electrician","receipt_reference":"invoice-late"}]'::jsonb,
+      'material-key-after-snapshot'
+    );
+    raise exception 'material revision unexpectedly accepted after payable snapshot';
+  exception when sqlstate '55000' then null;
+  end;
 end
 $test$;
 rollback;
