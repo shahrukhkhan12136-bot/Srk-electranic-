@@ -135,6 +135,9 @@ exports.handler = async (event) => {
     const preferred_time = clean(body.preferred_time, 8);
     const work_details = clean(body.work_details, 2000);
     const payment_method = clean(body.payment_method, 80) || "नकद (Cash)";
+    if (!["नकद (Cash)", "Razorpay ऑनलाइन"].includes(payment_method)) {
+      return json(400, { success: false, error: "कृपया नकद या Razorpay ऑनलाइन में से भुगतान का सही तरीका चुनें।" });
+    }
     const quoted_amount = body.quoted_amount == null || body.quoted_amount === ""
       ? null : Number(body.quoted_amount);
     const customer_user_id = await verifyCustomerSession(
