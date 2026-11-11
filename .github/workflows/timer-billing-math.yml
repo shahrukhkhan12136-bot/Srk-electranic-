@@ -109,8 +109,6 @@ on:
       - "supabase/tests/cash_payment_intent_flow_assertions.sql"
       - "supabase/tests/timer_billing_math.sql"
       - "supabase/tests/timer_billing_foundation_harness.sql"
-      - "supabase/tests/production_parity_legacy_baseline.sql"
-      - "supabase/tests/production_parity_legacy_assertions.sql"
       - "supabase/tests/timer_billing_foundation_assertions.sql"
       - "supabase/tests/production_parity_legacy_baseline.sql"
       - "supabase/tests/production_parity_legacy_assertions.sql"
