@@ -279,3 +279,16 @@ Owner ने तीन-phone reference image से Customer और Electrician 
 
 ## Android Screen-by-Screen Blueprint
 Detailed Customer और Electrician Android screen inventory, flows, server-authority rules, edge states और QA matrix: [MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md](MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md). यह planning artifact है; native apps अभी implemented नहीं हैं।
+
+
+
+## 18. Android Architecture Blueprint — expanded (Owner review pending: 2026-11-12)
+
+Detailed screen-by-screen UI blueprint has been expanded with repository architecture inspection, framework comparison/recommendation, proposed Android API/device matrix, proposed Customer/Electrician application IDs, FCM notification architecture, offline/secure-storage boundaries, CI/signing/release plan, screen-action contracts and explicit owner approval gates.
+
+- Main document: docs/MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md
+- Repository inspection: existing client is plain HTML/CSS/JS with PWA manifest/service worker; Android folders contain README-only scaffolds; no native Android project/build system exists yet.
+- Capacitor is the recommended first proof-of-concept candidate because it may reuse the existing web stack; Flutter and Kotlin/Compose remain alternatives. **No framework has been finally selected.**
+- API 26 minimum, proposed application IDs (in.srkelectronic.customer / in.srkelectronic.electrician), FCM and GitHub Actions AAB pipeline are proposals only, pending explicit owner approval.
+- No Firebase project/credentials, app signing, paid service, Production deployment or Play Store release was activated.
+- **Status: planning document expanded; architecture approval, POC, native implementation and device QA remain pending.**
