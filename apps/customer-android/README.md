@@ -25,3 +25,9 @@
 
 ## To initialize
 Choose and document the Android framework, minimum SDK/device support, applicationId, signing-key custody, build pipeline, crash reporting, privacy disclosures and push-notification configuration before generating the app project. Do not commit signing keys or secrets.
+
+
+
+## Owner-approved mobile visual direction (2026-11-12)
+
+The three-phone reference image establishes the visual direction for the shared splash and Customer Dashboard: Royal Blue / White / Gold, clear SRK ELECTRONIC branding, founder waist-up portrait on the splash, concise dashboard cards, clear booking shortcuts and accessible bottom navigation. Treat sample location, counts, prices, ratings, wallet balance and booking records in the image as illustrative only; render only authenticated live data. The Customer Android app remains unimplemented; this approval does not mean a native app or build exists.
