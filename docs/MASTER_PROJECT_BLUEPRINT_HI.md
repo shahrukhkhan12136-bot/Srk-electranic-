@@ -230,7 +230,7 @@ Acceptance: profile API/RLS ownership tests, client-tampering negative tests, Ad
 स्थिति: **REQUIREMENT APPROVED / IMPLEMENTATION & TESTING PENDING**.
 
 
-## 16. Electrician ID Number — permanent unique identifier (Owner decision proposed: 2026-11-11)
+## 16. Electrician ID Number — permanent unique identifier (Owner-approved: 2026-11-12)
 
 हर electrician को एक अलग, स्थायी और unique **SRK ELECTRONIC Electrician ID Number** दिया जाएगा। प्रस्तावित readable format: **SRK-EL-000001**, अगला **SRK-EL-000002**, फिर **SRK-EL-000003** आदि।
 
@@ -243,4 +243,4 @@ Acceptance: profile API/RLS ownership tests, client-tampering negative tests, Ad
 - Admin dashboard में ID lookup/search हो; customer-facing screens पर electrician ID केवल जरूरत/अनुमति के अनुसार दिखे। किसी ID number को अकेले authentication या account access का प्रमाण न मानें।
 - QR verification भविष्य में जोड़ी जा सकती है, लेकिन QR में निजी data न हो और verification server-side हो।
 
-स्थिति: **ID FORMAT DESIGN PROPOSED / OWNER CONFIRMATION & IMPLEMENTATION PENDING**.
+स्थिति: **ID FORMAT OWNER-APPROVED / DATABASE, PROFILE UI, AUTHORIZATION & TESTING PENDING**.
