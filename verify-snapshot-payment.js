@@ -21,13 +21,15 @@ exports.handler=async event=>{
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(snapshotId||"")||!/^pay_[A-Za-z0-9]+$/.test(payId||"")||!/^order_[A-Za-z0-9]+$/.test(orderId||"")||!/^[a-f0-9]{64}$/i.test(sig||""))return json(400,{success:false,error:"भुगतान विवरण सही नहीं हैं।"});
   const expected=crypto.createHmac("sha256",RAZORPAY_KEY_SECRET).update(orderId+"|"+payId).digest("hex"),a=Buffer.from(expected,"hex"),b=Buffer.from(sig,"hex");
   if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return json(400,{success:false,error:"भुगतान signature सत्यापित नहीं हुआ।"});
-  const orders=await db("srk_razorpay_orders?select=snapshot_id,booking_id,provider_order_id,amount_paise,currency,status&provider_order_id=eq."+encodeURIComponent(orderId)+"&snapshot_id=eq."+encodeURIComponent(snapshotId)+"&limit=1");
+  const orders=await db("srk_razorpay_orders?select=snapshot_id,booking_id,provider_order_id,amount_paise,currency,status,provider_payment_id&provider_order_id=eq."+encodeURIComponent(orderId)+"&snapshot_id=eq."+encodeURIComponent(snapshotId)+"&limit=1");
   const order=orders?.[0];if(!order)return json(404,{success:false,error:"यह Razorpay ऑर्डर इस payable snapshot से जुड़ा नहीं है।"});
+  const snapshots=await db("srk_booking_payable_snapshots?select=id,bill_id,amount_paise,currency&id=eq."+encodeURIComponent(snapshotId)+"&limit=1");
+  const snapshot=snapshots?.[0];if(!snapshot||Number(snapshot.amount_paise)!==Number(order.amount_paise)||snapshot.currency!==order.currency)return json(409,{success:false,error:"पेमेंट ऑर्डर और अंतिम snapshot का हिसाब मेल नहीं खाता।"});
   const bookings=await db("service_bookings?select=id,phone,customer_user_id,payment_status,service_category_code,final_bill_id,timer_state&id=eq."+encodeURIComponent(order.booking_id)+"&limit=1");
   const booking=bookings?.[0];if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
   await verifyCustomer(event.headers?.authorization||event.headers?.Authorization||"",booking);
-  if(!booking.service_category_code||booking.timer_state!=="stopped"||booking.final_bill_id!==snapshotId&&booking.final_bill_id==null)return json(409,{success:false,error:"बुकिंग का अंतिम टाइमर बिल सत्यापित नहीं हुआ।"});
-  if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही दर्ज है।"});
+  if(!booking.service_category_code||booking.timer_state!=="stopped"||booking.final_bill_id!==snapshot.bill_id)return json(409,{success:false,error:"बुकिंग का अंतिम टाइमर बिल सत्यापित नहीं हुआ।"});
+  if(booking.payment_status==="paid"&&order.provider_payment_id!==payId)return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही दर्ज है।"});
   const captured=await payment(payId);
   if(captured.order_id!==orderId||captured.status!=="captured"||captured.currency!==order.currency||captured.amount!==Number(order.amount_paise))return json(409,{success:false,error:"भुगतान captured नहीं है या राशि/ऑर्डर मेल नहीं खाते।"});
   const result=await rpc("srk_reconcile_razorpay_snapshot_payment",{
