@@ -7,11 +7,13 @@ on:
       - "supabase/migrations/202611110002_timer_billing_integrity_extensions.sql"
       - "supabase/migrations/202611110003_customer_approved_timer_rpcs.sql"
       - "supabase/migrations/202611110004_scoped_timer_bill_read_rpc.sql"
+      - "supabase/migrations/202611110005_server_authoritative_booking_creation.sql"
       - "supabase/tests/timer_billing_math.sql"
       - "supabase/tests/timer_billing_foundation_harness.sql"
       - "supabase/tests/timer_billing_foundation_assertions.sql"
       - "supabase/tests/timer_billing_integrity_extensions_assertions.sql"
       - "supabase/tests/customer_approved_timer_rpcs_assertions.sql"
+      - "supabase/tests/server_authoritative_booking_creation_assertions.sql"
       - ".github/workflows/timer-billing-math.yml"
   push:
     branches:
@@ -134,6 +136,27 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_test" \
             -v ON_ERROR_STOP=1 \
             -f supabase/tests/customer_approved_timer_rpcs_assertions.sql
+      - name: Apply server-authoritative booking creation RPC
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110005_server_authoritative_booking_creation.sql
+      - name: Verify booking creation RPC migration is replay-safe
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/202611110005_server_authoritative_booking_creation.sql
+      - name: Test server-authoritative booking creation and category rates
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql "postgresql://postgres@localhost:5432/srk_test" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/tests/server_authoritative_booking_creation_assertions.sql
       - name: Run rollback-only billing arithmetic tests
         env:
           PGPASSWORD: postgres
