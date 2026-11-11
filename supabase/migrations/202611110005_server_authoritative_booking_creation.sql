@@ -46,8 +46,8 @@ begin
   end if;
 
   if exists (
-    select 1 from jsonb_object_keys(p_booking) k
-    where k not in ('customer_name','phone','state','district','pincode','address',
+    select 1 from jsonb_object_keys(p_booking) as keys(key)
+    where key not in ('customer_name','phone','state','district','pincode','address',
       'service_type','preferred_date','preferred_time','work_details',
       'location_lat','location_lng','service_category_code')
   ) then
