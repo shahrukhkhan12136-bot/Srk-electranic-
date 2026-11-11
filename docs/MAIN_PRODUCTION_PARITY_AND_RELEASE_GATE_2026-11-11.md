@@ -147,7 +147,7 @@ The proposed forward-only release scope remains the 11 timer/billing foundation 
 
 ## SECURITY DEFINER static audit of timer release migrations
 
-A static audit was run across all 13 timer/cancellation/commission migration files:
+A static audit was run across all 14 timer/cancellation/commission/call-contact migration files:
 - Every SECURITY DEFINER function found in the customer timer, scoped read, booking creation, material revision, payable snapshot, Razorpay, Cash, cancellation and commission RPC migrations declares an explicit empty `search_path`.
 - User-facing RPCs validate `auth.uid()`; Razorpay order claim/bind/payment reconciliation functions are intentionally service-role-only and have PUBLIC/anon/authenticated execution revoked, with execution granted only to `service_role`.
 - Internal trigger functions (Razorpay/Cash guards and the snapshot-aware payout trigger) are not exposed as callable application RPCs; their function execution is revoked from browser roles where specified.
@@ -159,19 +159,19 @@ This is a source-level privilege audit, not a runtime impersonation/RLS test. It
 
 ## Forward-only release migration copies and CI replay — 2026-11-11
 
-Created 14 separately versioned release migration copies in strict order after Production's latest migration 20261111142316:
+Created 15 separately versioned release migration copies in strict order after Production's latest migration 20261111142316:
 
 - 20261111160000–20261111160010: timer, materials, payable snapshot, Razorpay snapshot, Cash receipt and rounding foundation/dependent migrations.
 - 20261111160011: customer cancellation and Admin decision.
 - 20261111160012: timer commission, Cash commission remittance and Online payout integration.
-- 20261111160013: guard legacy quote submission, quote approval, work-status, Admin update and quote-detail RPCs from timer-category bookings; prevent a timer booking without its immutable payable snapshot from falling through to the legacy quote-based payout trigger.
+- 20261111160013: guard legacy quote submission, quote approval, work-status, Admin update and quote-detail RPCs from timer-category bookings; prevent a timer booking without its immutable payable snapshot from falling through to the legacy quote-based payout trigger.\n- 20261111160014: preserve customer-to-electrician direct-call contact after an accepted booking is completed. Assignment is the durable accepted-offer marker; the scoped private lookup still returns only the customer's own assigned electrician.
 
 The copies preserve the ordered SQL from the reviewed Feature Branch migrations; only source-only warning comments were changed to describe their forward-only release status. Push-subscription migrations and the legacy assigned-cash migration are excluded.
 
 Added `supabase/tests/timer_billing_authenticated_role_assertions.sql` to exercise the customer booking, electrician arrival, customer-approved timer start/stop and scoped bill read RPCs under the actual PostgreSQL `authenticated` role with simulated `auth.uid()` / `auth.jwt()` claims. It also checks `anon`/`authenticated`/`service_role` function execution grants. GitHub Actions run 43045431011 passed all 49 steps, including this role-based RPC test. The first attempt exposed a test-only mistake (the authenticated role directly selected from the service-only final-bill table); the assertion was corrected to use the intended scoped bill-read RPC, without weakening table grants.
 
-GitHub Actions run 43044978141 (https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/43044978141) passed with 49 completed workflow steps. The Production-shaped disposable PostgreSQL fixture replayed the 14 new forward-only migration copies in order, applied each copy twice, then passed paid-legacy and completed-unpaid legacy preservation assertions. The existing synthetic SQL, authorization/grant, Cash, material, cancellation, commission and arithmetic tests also passed. The authenticated-role integration test additionally exercised the customer booking, electrician arrival, customer-approved timer start/stop, scoped bill read, unrelated-user denial, and explicit blocking of legacy quote/work-status/Admin paths for timer bookings. It also verified that a timer booking cannot become paid through the legacy quote payout trigger when its immutable payable snapshot is missing.
+GitHub Actions run 43044978141 (https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/43044978141) passed with 49 completed workflow steps. The Production-shaped disposable PostgreSQL fixture replayed the 15 new forward-only migration copies in order, applied each copy twice, then passed paid-legacy and completed-unpaid legacy preservation assertions. The existing synthetic SQL, authorization/grant, Cash, material, cancellation, commission and arithmetic tests also passed. The authenticated-role integration test additionally exercised the customer booking, electrician arrival, customer-approved timer start/stop, scoped bill read, unrelated-user denial, and explicit blocking of legacy quote/work-status/Admin paths for timer bookings. It also verified that a timer booking cannot become paid through the legacy quote payout trigger when its immutable payable snapshot is missing, and that customers retain the accepted electrician's phone number after booking completion.
 
 **Important scope limitation:** this confirms SQL replay against the targeted Production-shaped fixture, not a complete Production schema clone. It does not prove actual Supabase Auth/JWT/RLS runtime, browser E2E, Razorpay Test Mode checkout/webhook/Route settlement, or production deployment readiness. No migration was applied to Main Production and no website deployment was performed.
 
-Latest validation: GitHub Actions run 43046379586 passed all 49 steps on branch commit f74077edc94e4f62758dc25b03963f351e48eb88. The prior failure was test-harness drift (the fixture omitted the Production electrician_profiles.created_at field) and has been corrected in the disposable fixture; no Production data or schema was changed.
+Latest validation: GitHub Actions run 43047603059 passed all 49 steps on branch commit 46587e5c7c21478cd164636028974be86419b818. It includes the completed-booking direct-call retention assertion and replay of all 15 forward-only migration copies twice. No Production data or schema was changed.
