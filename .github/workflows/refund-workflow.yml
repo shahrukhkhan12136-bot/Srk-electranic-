@@ -18,6 +18,7 @@ on:
   pull_request:
     paths:
       - "supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql"
+      - "supabase/migrations/20261111160015_timer_snapshot_refund_support.sql"
       - "supabase/tests/refund_workflow_*.sql"
       - "process-refund.js"
       - "razorpay-webhook.js"
