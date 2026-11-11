@@ -26,8 +26,6 @@ create table if not exists public.srk_cash_payment_intents (
 create unique index if not exists srk_cash_payment_intents_booking_unique
   on public.srk_cash_payment_intents(booking_id);
 
-create index if not exists srk_cash_payment_intents_booking_idx
-  on public.srk_cash_payment_intents(booking_id,selected_at desc);
 
 alter table public.srk_cash_payment_intents enable row level security;
 revoke all on public.srk_cash_payment_intents from public,anon,authenticated;
