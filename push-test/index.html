@@ -49,17 +49,18 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
   const offerId = new URLSearchParams(location.search).get('offerId');
   async function loadOffer() {
     if (!offerId) return;
-    document.getElementById('login').hidden = true;
     enable.hidden = true; logout.hidden = true;
     document.getElementById('offer-view').hidden = false;
     const info=document.getElementById('offer-info'), status=document.getElementById('offer-status');
     const {data:{session}}=await client.auth.getSession();
-    if(!session){info.textContent='पहले इसी TEST पेज पर लॉगिन करें। लॉगिन के बाद यह लिंक फिर खोलें।';return;}
+    if(!session){info.textContent='यह ऑफर देखने के लिए अपने रजिस्टर्ड TEST इलेक्ट्रिशियन खाते से नीचे लॉगिन करें। लॉगिन के बाद ऑफर अपने आप खुलेगा।';document.getElementById('login').hidden=false;document.getElementById('offer-accept').hidden=true;document.getElementById('offer-reject').hidden=true;return;}
+    document.getElementById('login').hidden=true;
+    document.getElementById('offer-accept').hidden=false;document.getElementById('offer-reject').hidden=false;
     const {data,error}=await client.rpc('srk_test_get_offer',{p_offer_id:offerId});
     if(error){info.textContent='ऑफर लोड नहीं हुआ: '+error.message;document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
     const row=Array.isArray(data)?data[0]:null;
     if(!row){info.textContent='यह ऑफर आपके TEST खाते के लिए उपलब्ध नहीं है।';document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
-    info.textContent='ऑफर: '+row.offer_id+' | बुकिंग: '+row.booking_id+' | स्थिति: '+row.offer_status+' | मैच: '+(row.match_level||'—');
+    info.textContent='यह ऑफर आपके इलेक्ट्रिशियन खाते से मिलान करके सुरक्षित रूप से खोला गया है।\nस्थिति: '+row.offer_status+' | मैच: '+(row.match_level||'—');
     if(row.offer_status!=='offered'){status.textContent='यह ऑफर अब उपलब्ध नहीं है।';document.getElementById('offer-accept').disabled=true;document.getElementById('offer-reject').disabled=true;return;}
     async function respond(response){
       if(!confirm(response==='accepted'?'क्या आप यह TEST काम स्वीकार करते हैं?':'क्या आप यह TEST ऑफर मना करना चाहते हैं?'))return;
@@ -89,6 +90,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
     if (error) { say('लॉगिन असफल: ' + error.message); return; }
     document.getElementById('password').value = '';
     await refreshSession();
+    if (offerId) await loadOffer();
   });
   enable.addEventListener('click', async () => {
     try {
