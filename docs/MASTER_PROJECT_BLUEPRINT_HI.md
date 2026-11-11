@@ -180,3 +180,19 @@ Booking शुरू करते समय ग्राहक को electricia
 - UI में सभी prices INR में दो दशमलव तक, responsive और accessible रूप में दिखें; loading/error/empty/offline states में गलत या अनुमानित price न दिखे।
 
 स्थिति: **REQUIREMENT APPROVED / CUSTOMER UI IMPLEMENTATION & E2E TEST PENDING**.
+
+
+## 13. Customer Booking — selectable duration 1–8 hours (Owner-confirmed: 2026-11-11)
+
+Customer booking screen में ग्राहक को **1 से 8 घंटे तक** duration चुनने का विकल्प मिलेगा। ग्राहक 1, 2, 3 … 8 घंटे में से जितने घंटे चुनता है, मोबाइल स्क्रीन पर उसी category और चुनी हुई अवधि का कुल Labour price तुरंत दिखेगा।
+
+### Pricing calculation
+- चुनी हुई category का approved 8-hour customer price आधार होगा: Helper ₹899, Ordinary ₹1,199, Skilled ₹1,599, Master ₹1,999.
+- चुनी हुई अवधि का कुल price = approved 8-hour price × selected hours ÷ 8. गणना में पूरी precision रखें और अंतिम payable paise पर half-up rounding करें; केवल display के लिए बीच में rounding करके कुल न निकालें।
+- उदाहरण: Helper के लिए 1 घंटा ₹112.38, 2 घंटे ₹224.75 और 8 घंटे ₹899.00; Ordinary के लिए 1 घंटा ₹149.88, 2 घंटे ₹299.75 और 8 घंटे ₹1,199.00. अन्य categories भी इसी exact formula से calculate होंगी।
+- Screen पर selected category, selected hours और उसी अवधि का total price स्पष्ट दिखे; duration बदलते ही price update हो। ग्राहक 1–8 घंटे में से केवल एक अवधि चुन सके।
+- Server active Admin-approved rate/version और duration bounds (integer 1–8) validate करे; client-calculated price पर भरोसा न करे। Booking में category, rate/version, selected duration और calculated Labour total का immutable snapshot store हो।
+- यह duration-based booking price है; materials/parts अलग itemized और customer-approved रहेंगे। कोई upfront payment नहीं। Timer/final bill के नियमों के साथ selected duration का व्यवहार backend contract में स्पष्ट और consistent होना चाहिए; बिना owner approval selected duration से अधिक समय का स्वतः charge न जोड़ें।
+- Offline/loading/error/invalid-duration state में stale या अनुमानित price न दिखे; server-validated price unavailable हो तो booking submit रोकें और स्पष्ट संदेश दें।
+
+स्थिति: **REQUIREMENT APPROVED / CUSTOMER UI, SERVER CONTRACT & E2E TEST PENDING**.
