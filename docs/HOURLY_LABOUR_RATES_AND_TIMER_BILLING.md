@@ -47,3 +47,12 @@ These rates are labour charges only.
 - Any policy not explicitly approved here (for example, minimum billable duration, rounding, pauses/breaks, overtime, cancellation, or timer correction) must be clarified before implementation; do not invent such rules.
 
 **Important:** This document records the user's approved rate chart and required workflow. It does not claim that timer billing has already been implemented. Production deployment remains subject to full testing and the user's explicit approval.
+
+
+## Booking cancellation authority
+
+- Customers and electricians must not be able to cancel a booking on their own.
+- A booking may be cancelled only by an authorized admin through the admin panel.
+- Enforce this permission on the server/database layer as well as in the user interface; hiding or disabling a button alone is not sufficient.
+- Record the admin who cancelled the booking, the booking, timestamp, and any reason entered, so the action is auditable.
+- Test that customer and electrician cancellation attempts are rejected, while an authorized admin can cancel.
