@@ -115,8 +115,11 @@ begin
   end if;
 
   select ci.* into v_intent from public.srk_cash_payment_intents ci
-  where ci.payable_snapshot_id=p_snapshot_id for update;
+  where ci.booking_id=v_booking.id for update;
   if found then
+    if v_intent.payable_snapshot_id<>p_snapshot_id then
+      raise exception 'CASH_PAYMENT_ALREADY_SELECTED_FOR_BOOKING' using errcode='55000';
+    end if;
     return jsonb_build_object(
       'success',true,'intent_id',v_intent.id,'status',v_intent.status,
       'amount_paise',v_intent.amount_paise,'currency',v_intent.currency,'replayed',true
