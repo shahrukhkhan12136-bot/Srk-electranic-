@@ -1,6 +1,11 @@
 -- Timer commission integration assertions; run only on disposable CI PostgreSQL.
 begin;
 
+create or replace function public.is_srk_admin()
+returns boolean language sql stable as $admin_test$
+  select current_setting('test.is_admin',true)='on'
+$admin_test$;
+
 do $test$
 declare
   v_commission numeric(12,2);
@@ -88,7 +93,7 @@ begin
     started_at,stopped_at,elapsed_seconds,billable_minutes,labour_amount
   ) values (
     v_bill_cash,v_booking_cash,1,'helper','Helper',120,
-    clock_timestamp()-interval '5 minutes',clock_timestamp(),300,5,600
+    timestamptz '2026-01-01 00:00:00+00',timestamptz '2026-01-01 00:05:00+00',300,5,600
   );
   update public.service_bookings
   set timer_state='stopped',final_bill_id=v_bill_cash
@@ -129,10 +134,6 @@ begin
   v_result := public.srk_electrician_submit_cash_commission_remittance(v_booking_cash,'CASH-UTR-9001');
   if v_result->>'status'<>'submitted' then raise exception 'Electrician cash remittance submission failed: %',v_result; end if;
 
-  create or replace function public.is_srk_admin()
-  returns boolean language sql stable as $admin_test$
-    select current_setting('test.is_admin',true)='on'
-  $admin_test$;
   perform set_config('request.jwt.claim.sub',v_customer::text,true);
   perform set_config('test.is_admin','on',true);
   v_result := public.srk_admin_confirm_cash_commission_remittance(v_booking_cash);
@@ -150,7 +151,7 @@ begin
     started_at,stopped_at,elapsed_seconds,billable_minutes,labour_amount
   ) values (
     v_bill_online,v_booking_online,1,'helper','Helper',120,
-    clock_timestamp()-interval '5 minutes',clock_timestamp(),300,5,600
+    timestamptz '2026-01-01 00:00:00+00',timestamptz '2026-01-01 00:05:00+00',300,5,600
   );
   update public.service_bookings
   set timer_state='stopped',final_bill_id=v_bill_online
