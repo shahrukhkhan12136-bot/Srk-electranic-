@@ -59,6 +59,26 @@ before update on public.srk_cash_payment_intents
 for each row execute function public.srk_guard_cash_payment_intent();
 
 -- Prevent a Razorpay order from racing with or following a customer cash selection.
+create or replace function public.srk_reject_cash_payment_evidence_mutation()
+returns trigger
+language plpgsql
+set search_path=''
+as $function$
+begin
+  raise exception 'CASH_PAYMENT_EVIDENCE_APPEND_ONLY' using errcode='55000';
+end
+$function$;
+
+drop trigger if exists srk_cash_payment_intent_no_delete_trigger on public.srk_cash_payment_intents;
+create trigger srk_cash_payment_intent_no_delete_trigger
+before delete on public.srk_cash_payment_intents
+for each row execute function public.srk_reject_cash_payment_evidence_mutation();
+
+drop trigger if exists srk_cash_receipt_append_only_trigger on public.srk_cash_receipts;
+create trigger srk_cash_receipt_append_only_trigger
+before update or delete on public.srk_cash_receipts
+for each row execute function public.srk_reject_cash_payment_evidence_mutation();
+
 create or replace function public.srk_guard_razorpay_order_cash_exclusivity()
 returns trigger
 language plpgsql
@@ -380,6 +400,7 @@ begin
 end
 $function$;
 
+revoke all on function public.srk_reject_cash_payment_evidence_mutation() from public,anon,authenticated;
 revoke all on function public.srk_guard_cash_payment_intent() from public,anon,authenticated;
 revoke all on function public.srk_guard_razorpay_order_cash_exclusivity() from public,anon,authenticated;
 revoke all on function public.srk_customer_select_cash_payment(uuid) from public,anon;
