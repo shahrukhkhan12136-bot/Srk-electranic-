@@ -142,7 +142,7 @@ Read-only Production migration history confirms:
 
 The Feature Branch contains later-numbered files for push table/upsert (`20261111090000`, `20261111120000`) and a single `20261111082515` legacy assigned-cash-payment function migration. Main Production already has the push table, owner-scoped RLS policies, private SECURITY DEFINER upsert implementation and public SECURITY INVOKER wrapper; it also already records the pg_net/webhook push migrations and the duplicate-named cash-payment history entries. These branch files are not part of the new timer release sequence and must not be replayed or marked applied again. The current production catalog—not migration names alone—remains the authority for this reconciliation.
 
-The proposed forward-only release scope therefore remains the 11 timer/billing foundation and dependent migrations, followed by cancellation and commission integration (13 files total), with no duplicate push or legacy cash-payment migration included. This is a planning conclusion only; no new forward migration files have been generated or applied to Production.
+The proposed forward-only release scope remains the 11 timer/billing foundation and dependent migrations, followed by cancellation and commission integration (13 files total), with no duplicate push or legacy cash-payment migration included. The 13 forward-only copies were subsequently generated under versions 20261111160000 through 20261111160012. They have not been applied to Production.
 
 
 ## SECURITY DEFINER static audit of timer release migrations
@@ -155,3 +155,18 @@ A static audit was run across all 13 timer/cancellation/commission migration fil
 - The redefined timer bill read RPC in the Cash migration relies on the earlier scoped-read migration's grants/revocations; that dependency is preserved in the ordered release list.
 
 This is a source-level privilege audit, not a runtime impersonation/RLS test. It does not replace testing with actual Supabase JWT claims, anon/authenticated/service_role sessions and Production policies.
+
+
+## Forward-only release migration copies and CI replay — 2026-11-11
+
+Created 13 separately versioned release migration copies in strict order after Production's latest migration 20261111142316:
+
+- 20261111160000–20261111160010: timer, materials, payable snapshot, Razorpay snapshot, Cash receipt and rounding foundation/dependent migrations.
+- 20261111160011: customer cancellation and Admin decision.
+- 20261111160012: timer commission, Cash commission remittance and Online payout integration.
+
+The copies preserve the ordered SQL from the reviewed Feature Branch migrations; only source-only warning comments were changed to describe their forward-only release status. Push-subscription migrations and the legacy assigned-cash migration are excluded.
+
+GitHub Actions run 43044978141 (https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/43044978141) passed with 49 completed workflow steps. The Production-shaped disposable PostgreSQL fixture replayed the 13 new forward-only migration copies in order, applied each copy twice, then passed paid-legacy and completed-unpaid legacy preservation assertions. The existing synthetic SQL, authorization/grant, Cash, material, cancellation, commission and arithmetic tests also passed.
+
+**Important scope limitation:** this confirms SQL replay against the targeted Production-shaped fixture, not a complete Production schema clone. It does not prove actual Supabase Auth/JWT/RLS runtime, browser E2E, Razorpay Test Mode checkout/webhook/Route settlement, or production deployment readiness. No migration was applied to Main Production and no website deployment was performed.
