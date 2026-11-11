@@ -163,3 +163,14 @@ active booking → cancellation_requested → (Admin approves → cancelled) OR 
 - Online: customer can initiate online payment only after the final bill is generated; use the verified payment gateway flow, signature/webhook validation and idempotency protections. Do not mark paid based only on a client-side success screen.
 - If separately approved materials are added, show them as distinct line items in the final bill; do not merge them into the labour rate. The payment choices still appear only after the timer has been stopped with customer approval and the final bill is ready.
 - Booking-time category/hourly rates are informational price display, not a request to pay the full 8-hour amount in advance. The actual labour payable is calculated from the approved timer duration.
+
+
+## 11. Exact per-minute billing and rounding rule (user-confirmed)
+- Labour is billed by the minute, not by 15-minute/30-minute blocks and not by per-second prorating.
+- Calculate the authoritative elapsed duration from the server-recorded, customer-approved start and stop timestamps.
+- Convert elapsed duration to billable whole minutes by rounding **any remaining seconds up to the next whole minute** (ceiling): for example, 1 minute 1 second is billed as 2 minutes; exactly 1 minute is billed as 1 minute.
+- Calculate the labour amount as: (saved hourly category rate ÷ 60) × billable whole minutes.
+- Keep full precision during calculation; round only the final labour total to the nearest ₹0.01 (one paisa), using decimal arithmetic and a documented half-up rounding mode. Do not round the hourly rate or per-minute rate before multiplying.
+- Show the customer the actual elapsed time, billable whole minutes, per-minute rate, and final rounded labour amount as separate, understandable values.
+- Apply this same deterministic rule in every server-side bill calculation, receipt, admin view, and payment amount. Never calculate the authoritative amount in the client.
+- This rule does not introduce a minimum labour charge; no minimum has been approved.
