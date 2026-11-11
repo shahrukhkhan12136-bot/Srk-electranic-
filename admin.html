@@ -25,6 +25,27 @@ table{border-collapse:separate;border-spacing:0;background:#fff}th{background:#e
 .hidden{display:none!important}
 @media(max-width:600px){.wrap{padding:13px}.card{padding:16px;border-radius:16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.grid .card{padding:13px;min-width:0}.stat{font-size:26px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+/* Responsive safety pass: admin control center */
+html{max-width:100%;overflow-x:hidden}
+body{min-width:0;overflow-x:hidden}
+main,.wrap,.card,.grid,.grid>.card{min-width:0;max-width:100%}
+img,svg,video,canvas{max-width:100%;height:auto}
+input,select,textarea{width:min(100%,440px);min-width:0}
+button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.scroll{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scroll table{width:100%;min-width:700px}
+.card,.grid>.card{overflow-wrap:anywhere}
+@media(max-width:600px){
+  .wrap{width:100%;padding:12px}
+  .card{padding:14px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid>.card{padding:12px}
+  .founder-banner{align-items:center}
+  .founder-copy{flex:1}
+  .founder-copy h2{overflow-wrap:anywhere}
+  button{min-height:42px}
+}
+@media(min-width:601px){input,select,textarea{max-width:440px}}
 
 .founder-banner{display:flex;align-items:center;gap:18px;margin:18px 0 22px;padding:16px;border-radius:22px;background:linear-gradient(115deg,#071a2b 0%,#123f68 52%,#0f766e 100%);color:#fff;box-shadow:0 14px 32px #102a4324;overflow:hidden;position:relative;border:1px solid #ffffff2b}
 .founder-banner:after{content:"";position:absolute;width:170px;height:170px;border:24px solid #ffffff12;border-radius:50%;right:-60px;top:-85px;pointer-events:none}
