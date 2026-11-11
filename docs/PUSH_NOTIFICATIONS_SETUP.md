@@ -14,7 +14,7 @@ This integration is prepared on branch `feature/production-push-notifications`. 
 1. Generate one VAPID key pair for this Production environment.
 2. Add only the VAPID public key to `window.SRK_CONFIG.SUPABASE_VAPID_PUBLIC_KEY`.
 3. Store the VAPID private key, VAPID subject, and a strong random webhook secret as Supabase Edge Function secrets. Never commit these values or put the private key in browser code.
-4. Apply the subscription-table migration to the Production database.
+4. Apply both subscription migrations to the Production database in timestamp order. The second migration adds the authenticated subscription-registration RPC; the dashboard uses this RPC instead of writing directly to the table. It validates the endpoint and atomically reassigns an existing browser endpoint to the currently signed-in account, preventing a shared-device account switch from leaving notifications attached to the previous account.
 5. Deploy the `push-job-offer` Edge Function with JWT verification disabled for the database webhook endpoint (for example, `--no-verify-jwt`). The function independently validates the high-entropy `x-srk-push-secret`; do not leave the endpoint unprotected. Verify all required Supabase/VAPID secrets are present.
 6. Configure a Supabase Database Webhook for `public.job_offers` on INSERT and UPDATE, targeting:
    `https://gnqhoaqatmoiwwhgzkgm.supabase.co/functions/v1/push-job-offer`
