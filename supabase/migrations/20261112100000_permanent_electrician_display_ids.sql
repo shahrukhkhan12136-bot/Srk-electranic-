@@ -48,7 +48,8 @@ begin
   -- Do not issue an ID for pending, rejected, suspended, inactive, or unlinked profiles.
   if new.verification_status = 'approved'
      and new.active is true
-     and new.user_id is not null then
+     and (new.user_id is not null or new.auth_user_id is not null)
+     and (new.user_id is null or new.auth_user_id is null or new.user_id = new.auth_user_id) then
     v_next_id := pg_catalog.nextval('public.electrician_display_id_seq'::pg_catalog.regclass);
     new.electrician_display_id :=
       'SRK-EL-' ||
@@ -75,13 +76,14 @@ on public.electrician_profiles
 for each row
 execute function public.srk_assign_electrician_display_id();
 
- -- Backfill only profiles already approved, active, and linked to an Auth account.
+-- Backfill only profiles already approved, active, and linked unambiguously to an Auth account.
 -- The same trigger applies the same issuance rule; inactive/unapproved rows remain blank.
 update public.electrician_profiles
    set active = active
  where verification_status = 'approved'
    and active is true
-   and user_id is not null
+   and (user_id is not null or auth_user_id is not null)
+   and (user_id is null or auth_user_id is null or user_id = auth_user_id)
    and electrician_display_id is null;
 
 comment on column public.electrician_profiles.electrician_display_id is
