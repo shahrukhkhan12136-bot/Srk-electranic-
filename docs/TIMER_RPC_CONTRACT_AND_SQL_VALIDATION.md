@@ -160,3 +160,14 @@ The current booking and Razorpay handlers were compared against the approved tim
 ### Safe sequencing decision
 
 Do not edit these live payment handlers in isolation yet. First finish the database contract (timer RPCs, final bill/material revision model, immutable audit evidence, protected booking-column writes, scoped reads, and role/grant design), then implement all payment handlers and all three dashboards together. Until then, the new migration remains unapplied and the existing payment behavior remains legacy behavior; no claim is made that the approved timer-first flow is implemented.
+
+
+### Dashboard/UI source scan — confirmed legacy surfaces
+
+A source scan of `index.html`, `electrician.html`, and `admin.html` found the following legacy dependencies:
+
+- Customer `index.html`: booking history still selects and displays `payment_method`, `quoted_amount`, `service_charge`, `materials_amount`, and `quote_status`; it renders quote approval/rejection controls and Cash-payment UI gated by quote approval; booking submission still sends `payment_method` and `quoted_amount`; Razorpay create-order and verify-payment endpoints remain wired into the page.
+- Electrician `electrician.html`: job cards still display `quoted_amount` as an estimated amount; cash receipt confirmation still displays an amount derived from `quoted_amount`. No approved timer start/stop approval workflow is evidenced by this scan; timer-related text matches in the file are mostly OTP cooldown variables, not the new work timer.
+- Admin `admin.html`: booking queries still select `payment_method` and `quoted_amount`; Admin controls can update `status` and `quoted_amount` directly from the browser, and the screen includes payment-status/manual-payment controls. These paths need a reviewed RPC replacement before the new workflow is enabled.
+
+This confirms the cutover is not just a server-handler task. The customer, electrician, and Admin pages all require coordinated changes. The source scan is static inspection, not an end-to-end browser test.
