@@ -4,6 +4,7 @@ This integration is prepared on branch `feature/production-push-notifications`. 
 
 ## Components prepared
 - `public.srk_push_subscriptions` migration with per-user RLS.
+- `public.srk_save_push_subscription(...)` authenticated RPC to safely transfer a browser endpoint to the currently signed-in account without weakening table RLS.
 - `push-job-offer` Edge Function for new-offer and offer-closed notifications.
 - Root `sw.js` push display and notification-click handling.
 - Electrician dashboard subscription button and `offerId` deep-link highlighting.
