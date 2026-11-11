@@ -68,7 +68,7 @@ begin
   from public.service_bookings where id=v_booking;
   if v_state <> 'stopped' then raise exception 'timer did not stop'; end if;
   if v_elapsed is null or v_elapsed < 0 then raise exception 'invalid elapsed seconds'; end if;
-  if v_minutes <> case when v_elapsed=0 then 0 else (v_elapsed+59)/60 end then
+  if v_minutes <> (case when v_elapsed=0 then 0 else (v_elapsed+59)/60 end) then
     raise exception 'billable minutes do not follow ceiling rule';
   end if;
   if not exists (
