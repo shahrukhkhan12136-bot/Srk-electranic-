@@ -91,8 +91,8 @@ async function loadBookingRefundRequests(){
   if(r.status!=='processed'&&r.status!=='processing'&&r.status!=='unknown'){
    action='<label for="refund-status-'+r.id+'">जाँच स्थिति</label><select id="refund-status-'+r.id+'"><option value="in_review">जाँच जारी</option><option value="approved">मंजूर</option><option value="rejected">अस्वीकृत</option></select><label for="refund-note-'+r.id+'">ग्राहक के लिए जवाब / कारण</label><textarea id="refund-note-'+r.id+'" maxlength="2000" placeholder="ग्राहक को जवाब या जाँच नोट">'+esc(r.admin_note||'')+'</textarea><button type="button" onclick="decideBookingRefund('+JSON.stringify(r.id)+')">स्थिति सेव करें</button>';
   }
-  if(r.status==='approved'&&r.razorpay_payment_id){
-   action+='<p class="small">Razorpay भुगतान ID: '+esc(r.razorpay_payment_id)+'</p><button type="button" onclick="issueRazorpayRefund('+JSON.stringify(r.id)+')">🔒 Razorpay से पूरा Refund जारी करें</button>';
+  if(['approved','processing','unknown'].includes(r.status)&&r.razorpay_payment_id){
+   action+='<p class="small">Razorpay भुगतान ID: '+esc(r.razorpay_payment_id)+'</p><button type="button" onclick="issueRazorpayRefund('+JSON.stringify(r.id)+')">'+(r.status==='approved'?'🔒 Razorpay से पूरा Refund जारी करें':'↻ Refund स्थिति पुनः जाँचें')+'</button>';
   }else if(r.status==='approved'&&r.has_manual_payment&&!r.razorpay_payment_id){
    action+='<p class="small">Manual भुगतान audit उपलब्ध है। ग्राहक को राशि लौटाने के बाद ही UTR दर्ज करें।</p><input id="manual-refund-ref-'+r.id+'" maxlength="120" placeholder="Refund UTR / रसीद (4–120 अक्षर)"><input id="manual-refund-note-'+r.id+'" maxlength="250" placeholder="नोट (वैकल्पिक)"><button type="button" onclick="recordManualBookingRefund('+JSON.stringify(r.id)+')">वास्तविक Refund दर्ज करें</button>';
   }else if(r.status==='approved'&&!r.razorpay_payment_id){
