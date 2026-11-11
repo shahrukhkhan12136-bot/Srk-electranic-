@@ -8,6 +8,11 @@ on:
       - "supabase/tests/booking_order_number_fixture.sql"
       - "supabase/tests/booking_order_number_assertions.sql"
       - ".github/workflows/booking-order-number.yml"
+      - "create-booking.js"
+      - "netlify/functions/create-booking.js"
+      - "index.html"
+      - "electrician.html"
+      - "admin.html"
   pull_request:
     paths:
       - "supabase/migrations/20261112110000_customer_booking_order_numbers.sql"
@@ -15,6 +20,11 @@ on:
       - "supabase/tests/booking_order_number_fixture.sql"
       - "supabase/tests/booking_order_number_assertions.sql"
       - ".github/workflows/booking-order-number.yml"
+      - "create-booking.js"
+      - "netlify/functions/create-booking.js"
+      - "index.html"
+      - "electrician.html"
+      - "admin.html"
 permissions:
   contents: read
 jobs:
@@ -36,6 +46,20 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Check booking handler and customer/electrician/Admin JavaScript syntax
+        run: |
+          node --check create-booking.js
+          node --check netlify/functions/create-booking.js
+          node <<'NODE'
+          const fs = require('fs');
+          const vm = require('vm');
+          for (const file of ['index.html', 'electrician.html', 'admin.html']) {
+            const html = fs.readFileSync(file, 'utf8');
+            const scripts = [...html.matchAll(/<script\\b(?![^>]*\\bsrc=)[^>]*>([\\s\\S]*?)<\\/script>/gi)];
+            scripts.forEach((match, index) => new vm.Script(match[1], { filename: file + '#inline-' + index }));
+            console.log(file + ': ' + scripts.length + ' inline script(s) passed syntax check');
+          }
+          NODE
       - name: Build disposable Production-shaped schema
         env:
           PGPASSWORD: postgres
