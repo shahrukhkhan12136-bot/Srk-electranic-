@@ -73,3 +73,23 @@ The electrician must be able to identify their approved skill category directly 
 Acceptance tests: profile ownership/RLS, client-tampering rejection, Admin change audit/versioning, all application-status states, and mobile end-to-end display.
 
 **Status: REQUIREMENT APPROVED / NOT IMPLEMENTED.** The Android workspace remains a README-only scaffold.
+
+
+## Electrician ID Number — proposed format
+
+Every approved and activated electrician receives a permanent unique display ID, for example:
+
+- SRK-EL-000001
+- SRK-EL-000002
+- SRK-EL-000003
+
+The server generates the number after Admin approval and activation. It is unique, permanent, never recycled, and cannot be edited by the electrician. Keep the internal database UUID separate from this readable ID. Do not encode phone number, Aadhaar, date of birth, or other personal data.
+
+The Electrician ID/Profile card should show:
+- SRK ELECTRONIC Electrician ID number
+- Electrician's approved category badge (Helper / Ordinary / Skilled / Master)
+- Display name and approval/account status
+
+Changing an electrician's approved category does not change their ID number. ID number alone is never an authentication credential.
+
+**Status: PROPOSED FORMAT / OWNER CONFIRMATION PENDING / NOT IMPLEMENTED.**
