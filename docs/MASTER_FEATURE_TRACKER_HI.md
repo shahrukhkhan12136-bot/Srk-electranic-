@@ -135,10 +135,10 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 
 ## G.1 Electrician Android Rate Card — owner-confirmed 2026-11-11
 - [ ] Rate Card list showing all four approved 8-hour Labour categories.
-- [ ] Show gross Labour charge, 15% Labour-only commission and electrician net share: Helper ₹899 / ₹134.85 / ₹764.15; Ordinary ₹1,199 / ₹179.85 / ₹1,019.15; Skilled ₹1,599 / ₹239.85 / ₹1,359.15; Master ₹1,999 / ₹299.85 / ₹1,699.15.
+- [ ] Show only 8-hour Labour charge and electrician net Labour amount: Helper ₹899 / ₹764.15; Ordinary ₹1,199 / ₹1,019.15; Skilled ₹1,599 / ₹1,359.15; Master ₹1,999 / ₹1,699.15. Do not display commission percentage, amount or deduction line in electrician UI.
 - [ ] Highlight the signed-in electrician's own Admin-approved assigned category and net amount from server-authoritative profile data.
 - [ ] Prevent electrician self-edit/tampering of category or rate; Admin changes must be authorized, versioned and audited.
-- [ ] Exclude materials/parts from the 15% commission base and preserve separate itemized billing.
+- [ ] Keep the backend Labour-only commission calculation internal; do not show commission in electrician Rate Card. Exclude materials/parts from the calculation and preserve separate itemized billing.
 - [ ] Keep booking immutable rate snapshots authoritative; later Rate Card changes must not rewrite existing bookings.
 - [ ] Test calculation/paise rounding, RLS/API authorization, privacy, responsive/accessibility, loading/offline/error states.
 - [~] Requirement documented in Blueprint and Electrician Android README; actual app remains README-only scaffold.
