@@ -98,6 +98,7 @@ begin
   select status into v_status from public.srk_bill_material_revisions where id=v_revision;
   if v_status <> 'approved' then raise exception 'material revision status not approved'; end if;
 
+  perform set_config('request.jwt.claim.sub',v_customer::text,true);
   v_result := public.srk_customer_create_payable_snapshot(v_booking);
   v_snapshot_id := (v_result->>'snapshot_id')::uuid;
   if v_result->>'success' <> 'true' or v_result->>'replayed' <> 'false' then
