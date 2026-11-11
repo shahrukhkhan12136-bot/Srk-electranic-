@@ -290,6 +290,8 @@ async function loadCustomerBookings() {
   const complaintResult = await customerSb.rpc('srk_customer_list_booking_complaints');
   const complaintMap = new Map();
   (complaintResult.data || []).forEach(item => { const list=complaintMap.get(item.booking_id)||[]; list.push(item); complaintMap.set(item.booking_id,list); });
+  const refundResult = await customerSb.rpc('srk_customer_list_booking_refund_requests');
+  const refundMap = new Map((refundResult.data || []).map(item => [item.booking_id,item]));
   box.innerHTML = data.map(row => {
     const contact = callMap.get(row.id);
     const timerResult = timerMap.get(row.id);
@@ -304,6 +306,7 @@ async function loadCustomerBookings() {
     );
     const complaint = complaintMap.get(row.id);
     const complaintHtml = customerComplaintCardHtml(row.id, complaint, complaintResult.error);
+    const refundHtml = customerRefundCardHtml(row, refundMap.get(row.id), refundResult.error);
     const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
     const canCall = contact && /^[0-9]{10,15}$/.test(phone);
     return '<article class="card" style="margin:10px 0;padding:13px">' +
@@ -312,6 +315,7 @@ async function loadCustomerBookings() {
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + (row.final_bill_id ? customerEsc(row.payment_status) : 'अभी देय नहीं') + '</p>' +
     timerHtml +
     cancellationHtml +
+    refundHtml +
     complaintHtml +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
     (!row.service_category_label && row.quote_status && row.quote_status!=='not_submitted' ? '<div class="job"><b>इलेक्ट्रिशियन का कोटेशन</b><p>सर्विस / मेहनताना: ₹'+customerEsc(Number(row.service_charge||0).toFixed(2))+'</p><p>सामान / पार्ट्स: ₹'+customerEsc(Number(row.materials_amount||0).toFixed(2))+'</p><p><b>कुल: ₹'+customerEsc(Number(row.quoted_amount||0).toFixed(2))+'</b></p><p>स्थिति: '+customerEsc(row.quote_status)+'</p>'+(row.quote_note?'<p>'+customerEsc(row.quote_note)+'</p>':'')+(row.quote_status==='pending'&&row.status==='awaiting_quote_approval'?'<button type="button" onclick="customerQuoteResponse(\''+row.id+'\',\'approved\')">कोटेशन मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerQuoteResponse(\''+row.id+'\',\'rejected\')">कोटेशन अस्वीकार करें</button>':'')+'</div>':'') +
@@ -322,6 +326,26 @@ async function loadCustomerBookings() {
     (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>') : '') +
     '</article>';
   }).join('');
+}
+
+function customerRefundCardHtml(row, request, loadError) {
+  if(row.payment_status!=='paid'||!row.amount_paid)return '';
+  if(loadError)return '<div class="job"><b>Refund अनुरोध</b><p class="small">Refund स्थिति अभी लोड नहीं हुई। Refresh करें।</p></div>';
+  const labels={requested:'अनुरोध दर्ज',in_review:'Admin जाँच में',approved:'मंजूर',rejected:'अस्वीकृत',processing:'Refund भेजा गया — प्रक्रिया जारी',unknown:'Refund की पुष्टि बाकी',processed:'Refund पूरा'};
+  if(request)return '<div class="pay-note"><b>↩️ Refund अनुरोध</b><p>राशि: ₹'+customerEsc(Number(request.amount).toFixed(2))+'</p><p>स्थिति: <b>'+customerEsc(labels[request.status]||request.status)+'</b></p><p>'+customerEsc(request.reason)+'</p>'+(request.admin_note?'<p><b>Admin का जवाब:</b> '+customerEsc(request.admin_note)+'</p>':'')+'<p class="small">अनुरोध: '+customerEsc(new Date(request.created_at).toLocaleString('hi-IN'))+'</p></div>';
+  return '<div class="job"><b>↩️ Refund का अनुरोध करें</b><p class="small">यह पूर्ण भुगतान की वापसी का अनुरोध है। Admin भुगतान और काम की जाँच करके निर्णय करेगा। अनुरोध भेजने से अपने-आप पैसा वापस नहीं होगा।</p><textarea id="refund-reason-'+row.id+'" minlength="20" maxlength="1000" placeholder="Refund का कारण 20 से 1000 अक्षरों में लिखें"></textarea><button type="button" onclick="customerSubmitBookingRefund('+JSON.stringify(row.id)+',this)">Refund अनुरोध भेजें</button></div>';
+}
+async function customerSubmitBookingRefund(bookingId,button) {
+  const reason=document.getElementById('refund-reason-'+bookingId)?.value.trim()||'';
+  if(reason.length<20||reason.length>1000){alert('Refund का कारण 20 से 1000 अक्षरों में लिखें।');return;}
+  if(!confirm('क्या आप इस बुकिंग की पूरी भुगतान राशि की वापसी का अनुरोध भेजना चाहते हैं?'))return;
+  if(button){button.disabled=true;button.textContent='भेजा जा रहा है…';}
+  try{
+    const {data,error}=await customerSb.rpc('srk_customer_create_booking_refund_request',{p_booking_id:bookingId,p_reason:reason});
+    if(error)throw error;
+    alert('आपका Refund अनुरोध दर्ज हो गया। संदर्भ: '+(data?.request_id||'दर्ज'));
+    await loadCustomerBookings();
+  }catch(error){alert('Refund अनुरोध दर्ज नहीं हुआ: '+(error.message||'कृपया Refresh करके दोबारा जाँचें।'));if(button){button.disabled=false;button.textContent='Refund अनुरोध भेजें';}}
 }
 
 function customerComplaintCardHtml(bookingId, complaints, loadError) {
