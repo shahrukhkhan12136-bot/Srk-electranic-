@@ -84,3 +84,27 @@ The customer booking page previously retained the same idempotency key after a s
 - Never delete an Auth user or customer record as part of broad schema cleanup.
 - No timer/payment migrations have been applied to Production in this release cycle.
 - No Production website deployment has been made.
+
+
+## Production catalog verification update — 2026-11-11
+
+The following catalog checks were run read-only against Main Production after the CI correction:
+
+- Main Production migration history ends at `20261111142316`.
+- The timer release objects are absent: `srk_final_bills`, `srk_bill_material_revisions`, `srk_bill_material_items`, `srk_booking_payable_snapshots`, `srk_razorpay_orders`, `srk_razorpay_payments`, `srk_cash_payment_intents`, `srk_cash_receipts`, and `srk_booking_cancellation_requests`. Timer RPCs and cancellation RPCs are also absent.
+- Push subscription state is already present in Production: `srk_push_subscriptions` exists with RLS enabled and four owner-scoped authenticated policies (select/insert/update/delete). `public.srk_save_push_subscription` is SECURITY INVOKER and delegates to `private.srk_save_push_subscription`, which is SECURITY DEFINER with an empty search_path and authenticated-only execution. Therefore do not replay the branch's older push table/upsert migrations as part of the timer release.
+- Production `service_bookings` has the exact existing legacy columns through `electrician_quote_kind`; timer-specific category, rate, arrival, timer-state, timestamp and final-bill columns are not yet present. Existing defaults include status `new`, payment status `unpaid`, payment method `Cash`, materials amount `0`, and commission rate `15.00`.
+- The existing `service_bookings` trigger graph includes `a_guard_booking` (BEFORE INSERT), `broadcast_new_booking`, `srk_audit_service_bookings`, `srk_calculate_booking_commission`, `srk_cancel_booking_job_offers`, `srk_log_service_booking_status`, and `trg_srk_create_electrician_payable`. The insert guard forces new rows to `new` / `unpaid` / unassigned and resets the commission snapshot to 15%; assignment must happen later through the offer acceptance transition.
+- The exact `service_booking_status_history` columns are `id`, `booking_id`, `old_status`, `new_status`, `note`, `changed_by`, and `changed_at`.
+- The existing `srk_electrician_payouts` table has no timer settlement/remittance columns yet, has an audit trigger, and currently contains zero rows. The timer integration migration will extend this existing table and replace its payable/commission trigger function; this remains a high-risk compatibility point requiring a Production-shaped fixture before release.
+- The legacy payout trigger currently runs after insert/update of payment/status/quote/service-charge/material/assignment/payment-verification/Razorpay-payment/amount-paid fields on `service_bookings`. Preserve and test this legacy path when introducing the timer snapshot branch.
+
+## Latest CI correction
+
+GitHub Actions run `43042109731` passed on commit `699e72c7f494fec865d08196838132b38575bebf`. All 45 PostgreSQL workflow steps completed successfully, including Cash receipt end-to-end, material proposal/customer approval, cancellation/Admin decision, 15% labour-only commission, legacy unpaid booking preservation and rollback-only arithmetic. The prior Cash test failure was fixed by removing an invalid attempt to insert into a nonexistent `electrician_applications(user_id,status,active)` shape in the synthetic material fixture; the actual Production application table uses a different schema. The database RPC authorization checks were not weakened.
+
+This successful run still uses the intentionally synthetic harness. It is not a full Production schema replay, real Supabase Auth/RLS runtime test, browser E2E, or Razorpay provider test.
+
+## Forward-only migration sequencing decision
+
+Do not rename or mark the historical migration files as applied. Prepare a new, separately reviewed release sequence with versions strictly greater than `20261111142316`. The timer foundation and dependent migrations must be replayed in dependency order, followed by cancellation and the commission integration. Exclude/reconcile the already-present push subscription and push upsert migrations rather than duplicating their effects. Before creating this sequence, validate every migration against a disposable fixture that reproduces the actual Production `service_bookings` columns, trigger graph, payout table and status-history table, with representative legacy rows. The existing CI harness is not yet that fixture.
