@@ -38,6 +38,20 @@ const db = supabaseUrl && serviceKey
   : null;
 
 Deno.serve(async (req) => {
+  // The VAPID public key is intentionally public; browsers need it to subscribe.
+  // Never expose the VAPID private key, webhook secret, or Supabase service key here.
+  const publicKeyCors = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "public, max-age=3600"
+  };
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: publicKeyCors });
+  if (req.method === "GET") {
+    if (!vapidPublic) return new Response(JSON.stringify({ error: "Push public key is not configured" }), { status: 503, headers: publicKeyCors });
+    return new Response(JSON.stringify({ publicKey: vapidPublic }), { status: 200, headers: publicKeyCors });
+  }
   if (req.method !== "POST" || !hookSecret || !serviceKey || !vapidPublic ||
       !vapidPrivate || !vapidSubject || !db ||
       req.headers.get("x-srk-push-secret") !== hookSecret) {
