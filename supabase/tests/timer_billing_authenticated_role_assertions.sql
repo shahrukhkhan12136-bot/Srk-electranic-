@@ -128,11 +128,11 @@ begin
   raise exception 'authenticated customer timer-stop approval failed: %',v_result;
  end if;
  v_bill := (v_result->>'bill_id')::uuid;
- if not exists (
-  select 1 from public.srk_final_bills
-  where id=v_bill and booking_id=v_booking and category_code='helper'
- ) then
-  raise exception 'authenticated role timer flow did not create the expected final bill';
+ v_result := public.srk_get_booking_timer_bill_details(v_booking);
+ if v_result->>'booking_id'<>v_booking::text
+    or v_result->'final_bill'->>'id'<>v_bill::text
+    or v_result->'final_bill'->>'category_code'<>'helper' then
+  raise exception 'authenticated customer scoped bill read did not return the expected final bill: %',v_result;
  end if;
 
  perform set_config('request.jwt.claim.sub','51000000-0000-4000-8000-000000000005',true);
