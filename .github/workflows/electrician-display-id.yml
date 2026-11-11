@@ -36,6 +36,26 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Check inline JavaScript syntax in electrician and Admin pages
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { spawnSync } = require('node:child_process');
+          for (const file of ['electrician.html', 'admin.html']) {
+            const html = fs.readFileSync(file, 'utf8');
+            const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)]
+              .filter(match => !/\\bsrc\\s*=/.test(match[1]));
+            if (scripts.length === 0) throw new Error('No inline scripts found in ' + file);
+            scripts.forEach((match, index) => {
+              const result = spawnSync(process.execPath, ['--check', '-'], { input: match[2], encoding: 'utf8' });
+              if (result.status !== 0) {
+                process.stderr.write(file + ' inline script ' + (index + 1) + ':\\n' + result.stderr);
+                process.exit(result.status || 1);
+              }
+            });
+            console.log(file + ': ' + scripts.length + ' inline script(s) passed syntax check');
+          }
+          NODE
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Prepare isolated fixture
