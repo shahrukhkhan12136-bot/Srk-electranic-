@@ -69,5 +69,5 @@ jobs:
           for pid in "${pids[@]}"; do wait "$pid"; done
           issued=$(psql -h localhost -U postgres -d srk_test -Atc "select count(*) from public.electrician_profiles where electrician_display_id is not null")
           distinct=$(psql -h localhost -U postgres -d srk_test -Atc "select count(distinct electrician_display_id) from public.electrician_profiles where electrician_display_id is not null")
-          test "$issued" = "27"
+          test "$issued" = "28"
           test "$distinct" = "$issued"
