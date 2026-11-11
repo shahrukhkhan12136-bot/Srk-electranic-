@@ -5,7 +5,7 @@
 do $test$
 declare
   v_booking public.service_bookings%rowtype;
-  v_id uuid := '10000000-0000-4000-8000-000000000001';
+  v_id uuid := '11000000-0000-4000-8000-000000000001';
 begin
   select * into v_booking
   from public.service_bookings
@@ -50,7 +50,7 @@ begin
   if not exists (
     select 1 from public.job_offers
     where booking_id=v_id
-      and electrician_id='20000000-0000-4000-8000-000000000001'
+      and electrician_id='21000000-0000-4000-8000-000000000001'
       and status='accepted'
   ) then
     raise exception 'legacy accepted electrician offer was not preserved';
