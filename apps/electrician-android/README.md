@@ -103,3 +103,9 @@ The three-phone reference image establishes the visual direction for the Electri
 
 ## Screen-by-screen UI Blueprint
 See ../../docs/MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md for the approved screen inventory, navigation, business rules, edge states and QA acceptance matrix. This is a planning document; this Android app is not implemented yet.
+
+
+
+## Architecture planning update (2026-11-12)
+
+The detailed mobile blueprint now records repository findings, framework comparison (Capacitor recommended for a proof-of-concept; Flutter/Kotlin remain alternatives), proposed Android API/device matrix, proposed application ID, FCM candidate, offline/security boundary, CI/AAB/signing plan and screen-action contracts. All are proposals pending owner approval. No framework is selected and no native project/build exists yet. See docs/MOBILE_APP_SCREEN_BY_SCREEN_BLUEPRINT_HI.md.
