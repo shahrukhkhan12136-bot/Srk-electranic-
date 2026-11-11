@@ -31,7 +31,9 @@ try {
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || defaultSecretKey;
 const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY") || "";
 const vapidPrivate = Deno.env.get("VAPID_PRIVATE_KEY") || "";
-const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "";
+const vapidSubjectRaw = Deno.env.get("VAPID_SUBJECT") || "";
+// Accept the common missing-colon typo (mailtoaddress@example.com) safely.
+const vapidSubject = vapidSubjectRaw.replace(/^mailto(?!:)/i, "mailto:");
 const hookSecret = Deno.env.get("PUSH_WEBHOOK_SECRET") || "";
 const db = supabaseUrl && serviceKey
   ? createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
