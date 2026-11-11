@@ -76,7 +76,7 @@ function setup({ admin = true, requestStatus = "approved", paymentStatus = "capt
   };
 }
 
-async function invoke({ method = "POST", authorization = "Bearer test.jwt.token", body = { request_id: requestId } } = {}) {
+async function invoke({ method = "POST", authorization = "Bearer test.jwt.token.long-enough-for-regex", body = { request_id: requestId } } = {}) {
   return handler({
     httpMethod: method,
     headers: authorization ? { authorization } : {},
