@@ -33,7 +33,7 @@ declare
 begin
   if v_uid is null then raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000'; end if;
   if p_booking_id is null then raise exception 'BOOKING_ID_REQUIRED' using errcode='22023'; end if;
-  if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) < 1 or jsonb_array_length(p_items) > 30 then
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) < 1 or jsonb_array_length(p_items) > 30 then
     raise exception 'MATERIAL_ITEMS_MUST_BE_ARRAY_1_TO_30' using errcode='22023';
   end if;
 
@@ -51,6 +51,16 @@ begin
   where b.id=p_booking_id
   for update;
   if not found then raise exception 'BOOKING_NOT_FOUND' using errcode='P0002'; end if;
+
+  select e.entity_id into v_replay
+  from public.srk_booking_audit_events e
+  where e.booking_id=p_booking_id and e.actor_user_id=v_uid
+    and e.action='material_revision_submitted' and e.idempotency_key=v_key
+  limit 1;
+  if v_replay is not null then
+    return jsonb_build_object('success',true,'revision_id',v_replay,'replayed',true);
+  end if;
+
   if v_booking.timer_state <> 'stopped' or v_booking.final_bill_id is null then
     raise exception 'FINAL_LABOUR_BILL_REQUIRED' using errcode='55000';
   end if;
@@ -100,10 +110,10 @@ begin
     v_supplied_by := v_item->>'supplied_by';
     v_receipt := nullif(btrim(coalesce(v_item->>'receipt_reference','')),'');
 
-    if length(v_description) not between 1 and 240 then raise exception 'INVALID_MATERIAL_DESCRIPTION' using errcode='22023'; end if;
-    if v_quantity <= 0 or v_quantity > 1000000 then raise exception 'INVALID_MATERIAL_QUANTITY' using errcode='22023'; end if;
-    if v_unit_price < 0 or v_unit_price > 10000000 then raise exception 'INVALID_MATERIAL_UNIT_PRICE' using errcode='22023'; end if;
-    if v_supplied_by not in ('electrician','customer') then raise exception 'INVALID_MATERIAL_SUPPLIER' using errcode='22023'; end if;
+    if v_description is null or length(v_description) not between 1 and 240 then raise exception 'INVALID_MATERIAL_DESCRIPTION' using errcode='22023'; end if;
+    if v_quantity is null or v_quantity <= 0 or v_quantity > 1000000 then raise exception 'INVALID_MATERIAL_QUANTITY' using errcode='22023'; end if;
+    if v_unit_price is null or v_unit_price < 0 or v_unit_price > 10000000 then raise exception 'INVALID_MATERIAL_UNIT_PRICE' using errcode='22023'; end if;
+    if v_supplied_by is null or v_supplied_by not in ('electrician','customer') then raise exception 'INVALID_MATERIAL_SUPPLIER' using errcode='22023'; end if;
     if v_supplied_by='electrician' and v_receipt is null then raise exception 'ELECTRICIAN_MATERIAL_RECEIPT_REQUIRED' using errcode='22023'; end if;
     if v_supplied_by='customer' and v_unit_price <> 0 then raise exception 'CUSTOMER_SUPPLIED_MATERIALS_MUST_NOT_BE_CHARGED' using errcode='22023'; end if;
 
@@ -147,7 +157,7 @@ declare
   v_total numeric(12,2);
 begin
   if v_uid is null then raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000'; end if;
-  if p_revision_id is null or p_decision not in ('approved','rejected') then
+  if p_revision_id is null or p_decision is null or p_decision not in ('approved','rejected') then
     raise exception 'INVALID_MATERIAL_DECISION' using errcode='22023';
   end if;
 
@@ -158,7 +168,9 @@ begin
   if not found then raise exception 'MATERIAL_REVISION_NOT_FOUND' using errcode='P0002'; end if;
 
   select fb.* into v_bill from public.srk_final_bills fb where fb.id=v_revision.bill_id;
+  if not found then raise exception 'FINAL_BILL_NOT_FOUND' using errcode='P0002'; end if;
   select b.* into v_booking from public.service_bookings b where b.id=v_bill.booking_id;
+  if not found then raise exception 'BOOKING_NOT_FOUND' using errcode='P0002'; end if;
   if v_booking.customer_user_id <> v_uid then
     raise exception 'BOOKING_ACCESS_DENIED' using errcode='42501';
   end if;
