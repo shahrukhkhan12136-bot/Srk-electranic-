@@ -58,6 +58,20 @@ begin
     where schemaname='public' and indexname='srk_cash_payment_intents_booking_unique'
   ) then raise exception 'one-cash-intent-per-booking unique index missing'; end if;
 
+  if not exists (
+    select 1 from pg_trigger t join pg_class c on c.oid=t.tgrelid
+    join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relname='srk_cash_payment_intents'
+      and t.tgname='srk_cash_payment_intent_no_delete_trigger' and not t.tgisinternal
+  ) then raise exception 'cash intent append-only trigger missing'; end if;
+
+  if not exists (
+    select 1 from pg_trigger t join pg_class c on c.oid=t.tgrelid
+    join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relname='srk_cash_receipts'
+      and t.tgname='srk_cash_receipt_append_only_trigger' and not t.tgisinternal
+  ) then raise exception 'cash receipt append-only trigger missing'; end if;
+
   if position('cash_payment_intent' in pg_get_functiondef('public.srk_get_booking_timer_bill_details(uuid)'::regprocedure))=0 then
     raise exception 'scoped booking detail RPC does not expose cash intent status';
   end if;
