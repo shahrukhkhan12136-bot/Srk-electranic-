@@ -31,15 +31,15 @@ Choose and document framework, minimum SDK/device support, applicationId, signin
 
 The Electrician App must include a clear Rate Card list. Keep the four previously approved 8-hour Labour rates; do not replace them with a ₹899–₹999 range.
 
-| Electrician category | Electrician को मिलने वाली Labour राशि |
-|---|---:|
-| Helper | ₹764.15 |
-| Ordinary | ₹1,019.15 |
-| Skilled | ₹1,359.15 |
-| Master | ₹1,699.15 |
+| Electrician category | काम की अवधि | Electrician को मिलने वाली Labour राशि |
+|---|---:|---:|
+| Helper | 8 घंटे | ₹764.15 |
+| Ordinary | 8 घंटे | ₹1,019.15 |
+| Skilled | 8 घंटे | ₹1,359.15 |
+| Master | 8 घंटे | ₹1,699.15 |
 
 ### Required behaviour
-- Show all four categories with **only** the net Labour amount payable to the electrician. Do not show the 8-hour Labour charge/gross amount, commission percentage, commission amount, or any deduction row/label anywhere in the electrician-facing Rate Card.
+- Show all four categories with the **8-hour work duration** and **only** the net Labour amount payable to the electrician. Do not show the 8-hour Labour charge/gross amount, commission percentage, commission amount, or any deduction row/label anywhere in the electrician-facing Rate Card.
 - Prominently identify the signed-in electrician's own Admin-approved category and highlight its net amount.
 - Read category assignment from the authoritative server profile; never trust a category or rate supplied by the app client. Electricians cannot self-upgrade or edit assigned category. Admin changes must be authorized, versioned and audited.
 - The backend calculates the net Labour amount using the approved Labour-only commission rule. Commission details remain internal and must not be exposed in the electrician-facing Rate Card. Materials/parts and other separately approved charges are excluded from this calculation and remain separately itemized.
@@ -48,7 +48,7 @@ The Electrician App must include a clear Rate Card list. Keep the four previousl
 - Include loading, unavailable-category, network-error, accessibility and small-screen states. Do not silently default a missing category.
 
 ### Acceptance tests
-1. Verify all four electrician net Labour amounts against the table above; assert that no gross Labour charge, commission label, percentage, amount or deduction row is rendered.
+1. Verify the 8-hour duration and all four electrician net Labour amounts against the table above; assert that no gross Labour charge, commission label, percentage, amount or deduction row is rendered.
 2. Verify only the signed-in electrician's own assigned category is highlighted; no other electrician's private assignment is exposed.
 3. Verify electrician cannot alter category/rate through UI or API; server authorization rejects tampering.
 4. Verify materials are excluded from the commission base.
