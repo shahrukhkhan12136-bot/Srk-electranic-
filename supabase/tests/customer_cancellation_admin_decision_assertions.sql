@@ -42,15 +42,11 @@ begin
   end if;
 
   perform set_config('request.jwt.claim.sub',v_outsider::text,true);
-  create or replace function public.is_srk_admin()
-  returns boolean language sql stable as $function$ select false $function$;
   begin
     perform public.srk_admin_decide_booking_cancellation(v_request,'approved',null);
     raise exception 'non-admin cancellation decision unexpectedly accepted';
   exception when insufficient_privilege then null;
   end;
-  create or replace function public.is_srk_admin()
-  returns boolean language sql stable as $function$ select true $function$;
 
   perform set_config('request.jwt.claim.sub',v_admin::text,true);
   v_result:=public.srk_admin_decide_booking_cancellation(v_request,'approved','Verified customer request');
