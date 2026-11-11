@@ -164,3 +164,14 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [ ] Treat selected 1–8 hours as booking preference/initial duration only—not a timer cap or final-bill cap. Timer continues under the approved timer lifecycle; final Labour bill is based on actual elapsed work time, whether shorter or longer than selected duration.
 - [ ] Show the selected-duration price at booking as the price for the chosen duration; final amount is calculated from actual server timer duration. Do not auto-stop the timer when selected hours expire.
 - [ ] Keep materials separate; no upfront payment. Test responsive/mobile, accessibility, stale/offline/error handling and end-to-end booking.
+
+
+## A.3 Customer Booking — date-only selection (owner-confirmed 2026-11-11)
+- [ ] Booking form में केवल service date का date-picker दिखे; customer time/time-slot picker पूरी तरह हटे।
+- [ ] नए booking flow में customer-selected clock-time/slot अनिवार्य न हो; booking date server-side validate और सुरक्षित हो।
+- [ ] Date-only intent को backend, availability/matching और booking API में end-to-end support करें; किसी default/कल्पित समय में silently convert न करें।
+- [ ] जहाँ वास्तविक operational time बाद में तय करना हो, वह अलग authorized scheduling workflow से हो; customer को booking के समय time चुनना आवश्यक न हो।
+- [ ] Past/invalid/unavailable dates, timezone/date-boundary, duplicate booking, reschedule/cancellation और legacy time-slot compatibility के tests पास हों।
+- [ ] Existing bookings का historical time data preserve करें; नया customer flow ही date-only हो।
+- [ ] Confirm करें कि selected 1–8 hours अभी भी केवल booking preference है; actual timer और final Labour bill वास्तविक elapsed work time पर आधारित रहें।
+- [~] Requirement documented; UI/API implementation and E2E verification pending.
