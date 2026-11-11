@@ -10,9 +10,10 @@ declare
   v_bill uuid := '30000000-0000-4000-8000-000000000003';
   v_revision uuid := '30000000-0000-4000-8000-000000000004';
   v_snapshot uuid := '30000000-0000-4000-8000-000000000005';
+  v_other_booking uuid := '30000000-0000-4000-8000-000000000006';
 begin
   insert into auth.users(id) values (v_user);
-  insert into public.service_bookings(id) values (v_booking);
+  insert into public.service_bookings(id) values (v_booking), (v_other_booking);
 
   insert into public.srk_final_bills(
     id, booking_id, category_code, category_label, hourly_rate,
@@ -42,6 +43,34 @@ begin
     v_snapshot, v_booking, v_bill, v_revision, 1,
     3.75, 20, 23.75, 2375, 'test-v1', v_user
   );
+
+  -- A bill from booking A must never be usable as booking B's payable.
+  begin
+    insert into public.srk_booking_payable_snapshots(
+      booking_id, bill_id, material_revision_id, bill_version,
+      labour_amount, materials_amount, total_amount, amount_paise,
+      calculation_version, created_by
+    ) values (
+      v_other_booking, v_bill, v_revision, 1,
+      3.75, 20, 23.75, 2375, 'test-v1', v_user
+    );
+    raise exception 'cross-booking payable snapshot unexpectedly accepted';
+  exception when foreign_key_violation then
+    null;
+  end;
+
+  insert into public.srk_cash_receipts(
+    payable_snapshot_id, booking_id, confirmed_by, amount_paise
+  ) values (v_snapshot, v_booking, v_user, 2375);
+
+  begin
+    insert into public.srk_cash_receipts(
+      payable_snapshot_id, booking_id, confirmed_by, amount_paise
+    ) values (v_snapshot, v_other_booking, v_user, 2375);
+    raise exception 'cross-booking cash receipt unexpectedly accepted';
+  exception when foreign_key_violation then
+    null;
+  end;
 
   insert into public.srk_payment_webhook_events(
     provider, provider_event_id, payload_sha256, event_type
