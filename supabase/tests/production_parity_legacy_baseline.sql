@@ -4,6 +4,7 @@
 
 -- Match the Main Production electrician_profiles column contract.
 alter table public.electrician_profiles
+  add column if not exists created_at timestamptz not null default now(),
   add column if not exists application_id uuid,
   add column if not exists display_name text,
   add column if not exists phone text,
