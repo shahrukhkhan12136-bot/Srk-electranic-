@@ -19,6 +19,10 @@ declare
   v_materials_snapshot numeric(12,2);
   v_amount numeric(12,2);
   v_paise bigint;
+  v_token uuid := '41000000-0000-4000-8000-000000000007';
+  v_order_result jsonb;
+  v_payment_result jsonb;
+  v_ledger_count bigint;
 begin
   insert into auth.users(id) values (v_customer),(v_electrician),(v_outsider);
   insert into public.electrician_profiles(id,user_id,active,verification_status)
@@ -113,6 +117,57 @@ begin
   if (v_result->>'snapshot_id')::uuid <> v_snapshot_id or v_result->>'replayed' <> 'true' then
     raise exception 'snapshot retry did not return immutable existing snapshot';
   end if;
+
+  v_order_result := public.srk_claim_razorpay_snapshot_order(v_snapshot_id,v_token);
+  if v_order_result->>'success'<>'true' or v_order_result->>'claimed'<>'true'
+     or (v_order_result->>'amount_paise')::bigint<>10187 then
+    raise exception 'snapshot Razorpay order claim failed: %',v_order_result;
+  end if;
+
+  v_order_result := public.srk_bind_razorpay_snapshot_order(
+    v_snapshot_id,v_token,'order_test001',10187,'INR'
+  );
+  if v_order_result->>'success'<>'true' or v_order_result->>'replayed'<>'false' then
+    raise exception 'snapshot Razorpay order binding failed: %',v_order_result;
+  end if;
+
+  v_order_result := public.srk_claim_razorpay_snapshot_order(
+    v_snapshot_id,'41000000-0000-4000-8000-000000000008'
+  );
+  if v_order_result->>'claimed'<>'false' or v_order_result->>'provider_order_id'<>'order_test001' then
+    raise exception 'existing provider order was not reused: %',v_order_result;
+  end if;
+
+  v_payment_result := public.srk_reconcile_razorpay_snapshot_payment(
+    'order_test001','pay_test001',10187,'INR','checkout'
+  );
+  if v_payment_result->>'success'<>'true' or v_payment_result->>'replayed'<>'false' then
+    raise exception 'snapshot payment reconciliation failed: %',v_payment_result;
+  end if;
+  v_payment_result := public.srk_reconcile_razorpay_snapshot_payment(
+    'order_test001','pay_test001',10187,'INR','webhook'
+  );
+  if v_payment_result->>'success'<>'true' or v_payment_result->>'replayed'<>'true' then
+    raise exception 'duplicate captured payment was not idempotent: %',v_payment_result;
+  end if;
+
+  select count(*) into v_ledger_count from public.srk_razorpay_payments
+  where provider_order_id='order_test001' and provider_payment_id='pay_test001'
+    and snapshot_id=v_snapshot_id and amount_paise=10187;
+  if v_ledger_count<>1 then raise exception 'Razorpay payment ledger is not unique'; end if;
+
+  select count(*) into v_ledger_count from public.service_bookings
+  where id=v_booking and payment_status='paid' and amount_paid=101.87
+    and razorpay_order_id='order_test001' and razorpay_payment_id='pay_test001';
+  if v_ledger_count<>1 then raise exception 'booking payment status was not reconciled'; end if;
+
+  begin
+    perform public.srk_reconcile_razorpay_snapshot_payment(
+      'order_test001','pay_test002',10187,'INR','webhook'
+    );
+    raise exception 'second payment ID unexpectedly accepted for one order';
+  exception when sqlstate '55000' then null;
+  end;
 
   perform set_config('request.jwt.claim.sub',v_electrician::text,true);
   begin
