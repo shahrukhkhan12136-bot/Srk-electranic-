@@ -44,9 +44,22 @@ Deno.serve(async (req) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Reject oversized webhook bodies before parsing to limit memory/CPU abuse.
+  const declaredLength = Number(req.headers.get("content-length") || "0");
+  if (Number.isFinite(declaredLength) && declaredLength > 32_768) {
+    return new Response("Payload too large", { status: 413 });
+  }
+
   let rawPayload: unknown;
-  try { rawPayload = await req.json(); }
-  catch { return new Response("Invalid JSON", { status: 400 }); }
+  try {
+    const bodyText = await req.text();
+    if (new TextEncoder().encode(bodyText).byteLength > 32_768) {
+      return new Response("Payload too large", { status: 413 });
+    }
+    rawPayload = JSON.parse(bodyText);
+  } catch {
+    return new Response("Invalid JSON", { status: 400 });
+  }
 
   if (!isObject(rawPayload) ||
       (rawPayload.type !== "INSERT" && rawPayload.type !== "UPDATE") ||
