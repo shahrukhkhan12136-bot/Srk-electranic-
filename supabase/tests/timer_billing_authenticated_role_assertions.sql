@@ -111,6 +111,8 @@ declare
  v_start uuid;
  v_stop uuid;
  v_bill uuid;
+ v_contact_count integer;
+ v_contact_phone text;
 begin
  v_result := public.srk_electrician_record_arrival(v_booking,'role-arrival-key-0001');
  if coalesce((v_result->>'success')::boolean,false) is not true then
@@ -179,6 +181,16 @@ begin
     or v_result->'final_bill'->>'id'<>v_bill::text
     or v_result->'final_bill'->>'category_code'<>'helper' then
   raise exception 'authenticated customer scoped bill read did not return the expected final bill: %',v_result;
+ end if;
+
+ -- Direct contact remains available after an accepted booking is completed.
+ update public.service_bookings set status='completed' where id=v_booking;
+ select count(*),max(electrician_phone)
+ into v_contact_count,v_contact_phone
+ from public.srk_get_customer_call_contacts();
+ if v_contact_count<>1 or v_contact_phone<>'9000000002' then
+  raise exception 'customer lost accepted electrician contact after completion: count %, phone %',
+    v_contact_count,v_contact_phone;
  end if;
 
  perform set_config('request.jwt.claim.sub','51000000-0000-4000-8000-000000000005',true);
