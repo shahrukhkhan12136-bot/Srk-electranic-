@@ -118,6 +118,8 @@ on:
       - "supabase/tests/customer_approved_timer_rpcs_assertions.sql"
       - ".github/workflows/timer-billing-math.yml"
 
+      - "supabase/tests/production_parity_legacy_baseline.sql"
+      - "supabase/tests/production_parity_legacy_assertions.sql"
 permissions:
   contents: read
 
