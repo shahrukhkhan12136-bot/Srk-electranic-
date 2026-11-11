@@ -40,6 +40,8 @@ assert.doesNotMatch(migration, /GRANT\s+SELECT\s+ON\s+TABLE\s+private\.srk_busin
 
 assert.match(admin, /Business Expense &amp; Profit Dashboard/);
 assert.match(admin, /srk_admin_finance_dashboard/);
+assert.match(admin, /requiredFinanceFields/);
+assert.match(admin, /गलत शून्य आँकड़े दिखाने से बचने/);
 assert.match(admin, /srk_admin_finance_add_expense_estimate/);
 assert.match(admin, /srk_admin_finance_replace_estimate/);
 assert.match(admin, /loadBusinessFinanceDashboard/);
