@@ -81,6 +81,28 @@ begin
   if not exists(select 1 from public.srk_booking_audit_events where booking_id=v_arrived_booking and action='booking.cancellation_approved') then
     raise exception 'Admin cancellation decision audit event missing';
   end if;
+
+  perform set_config('request.jwt.claim.sub',v_customer::text,true);
+  v_result:=public.srk_get_customer_booking_cancellation(v_arrived_booking);
+  if v_result->>'decision'<>'approved' or (v_result->>'cancellation_fee')::numeric<>99 then
+    raise exception 'customer-scoped cancellation status read failed';
+  end if;
+  perform set_config('request.jwt.claim.sub',v_outsider::text,true);
+  begin
+    perform public.srk_get_customer_booking_cancellation(v_arrived_booking);
+    raise exception 'unrelated user unexpectedly read cancellation status';
+  exception when insufficient_privilege then null;
+  end;
+  perform set_config('request.jwt.claim.sub',v_admin::text,true);
+  perform set_config('test.is_srk_admin','off',true);
+  begin
+    perform public.srk_admin_list_booking_cancellation_requests();
+    raise exception 'non-admin unexpectedly read pending cancellation queue';
+  exception when insufficient_privilege then null;
+  end;
+  perform set_config('test.is_srk_admin','on',true);
+  v_result:=public.srk_admin_list_booking_cancellation_requests();
+  if jsonb_typeof(v_result)<>'array' then raise exception 'Admin cancellation queue did not return a JSON array'; end if;
 end
 $test$;
 
