@@ -94,7 +94,7 @@ async function loadBookingRefundRequests(){
   if(['approved','processing'].includes(r.status)&&r.razorpay_payment_id){
    action+='<p class="small">Razorpay भुगतान ID: '+esc(r.razorpay_payment_id)+'</p><button type="button" onclick="issueRazorpayRefund('+JSON.stringify(r.id)+')">'+(r.status==='approved'?'🔒 Razorpay से पूरा Refund जारी करें':'↻ Refund स्थिति पुनः जाँचें')+'</button>';
   }else if(r.status==='approved'&&r.has_manual_payment&&!r.razorpay_payment_id){
-   action+='<p class="small">Manual भुगतान audit उपलब्ध है। ग्राहक को राशि लौटाने के बाद ही UTR दर्ज करें।</p><input id="manual-refund-ref-'+r.id+'" maxlength="120" placeholder="Refund UTR / रसीद (4–120 अक्षर)"><input id="manual-refund-note-'+r.id+'" maxlength="250" placeholder="नोट (वैकल्पिक)"><button type="button" onclick="recordManualBookingRefund('+JSON.stringify(r.id)+')">वास्तविक Refund दर्ज करें</button>';
+   action+='<p class="small">Manual भुगतान audit उपलब्ध है। ग्राहक को राशि लौटाने के बाद ही UTR दर्ज करें।</p><input id="manual-refund-ref-'+r.id+'" maxlength="120" placeholder="Refund UTR / रसीद (4–120 अक्षर)"><input id="manual-refund-note-'+r.id+'" maxlength="250" placeholder="नोट (वैकल्पिक)"><button type="button" onclick="recordManualBookingRefund('+JSON.stringify(r.id)+','+(r.is_timer_booking===true)+')">वास्तविक Refund दर्ज करें</button>';
   }else if(r.status==='unknown'){
    action+='<p class="small danger">Razorpay ने Refund असफल बताया या अंतिम मिलान बाकी है। नया Refund अपने-आप न भेजें; Razorpay Dashboard से स्थिति मिलाकर Admin reconciliation करें।</p>';
   }else if(r.status==='approved'&&!r.razorpay_payment_id){
@@ -126,12 +126,13 @@ async function issueRazorpayRefund(requestId){
   await loadBookingRefundRequests();
  }catch(error){box.textContent='नेटवर्क उत्तर नहीं मिला। नया Refund न बनाएं; Refresh करके उसी अनुरोध की स्थिति जाँचें।';}
 }
-async function recordManualBookingRefund(requestId){
+async function recordManualBookingRefund(requestId,isTimerBooking){
  const reference=document.getElementById('manual-refund-ref-'+requestId)?.value.trim()||'';
  const note=document.getElementById('manual-refund-note-'+requestId)?.value.trim()||null;
  if(reference.length<4||reference.length>120){alert('वास्तविक Refund UTR / रसीद 4 से 120 अक्षरों में भरें।');return;}
  if(!confirm('क्या ग्राहक को पूरी राशि वास्तव में लौटाई जा चुकी है? केवल वास्तविक बैंक/UPI/Cash Refund के बाद ही दर्ज करें।'))return;
- const {data,error}=await sb.rpc('srk_admin_finalize_manual_booking_refund',{p_request_id:requestId,p_reference:reference,p_note:note});
+ const rpcName=isTimerBooking?'srk_admin_finalize_timer_cash_refund':'srk_admin_finalize_manual_booking_refund';
+ const {data,error}=await sb.rpc(rpcName,{p_request_id:requestId,p_reference:reference,p_note:note});
  if(error){alert('Manual Refund दर्ज नहीं हुआ: '+error.message);return;}
  alert('वास्तविक Refund UTR Main Database में दर्ज हो गया।');
  await loadBookingRefundRequests();await loadAll();
