@@ -16,6 +16,17 @@ begin
     alter table public.service_bookings add constraint service_bookings_estimated_labour_snapshot_check
       check (estimated_labour_amount_snapshot is null or estimated_labour_amount_snapshot >= 0);
   end if;
+  if not exists (select 1 from pg_constraint where conrelid='public.service_bookings'::regclass and conname='service_bookings_duration_estimate_pair_check') then
+    alter table public.service_bookings add constraint service_bookings_duration_estimate_pair_check
+      check (
+        (duration_hours is null and estimated_labour_amount_snapshot is null)
+        or
+        (duration_hours between 1 and 8
+          and estimated_labour_amount_snapshot is not null
+          and hourly_rate_snapshot is not null
+          and estimated_labour_amount_snapshot = round(hourly_rate_snapshot * duration_hours, 2))
+      );
+  end if;
 end
 $constraints$;
 
