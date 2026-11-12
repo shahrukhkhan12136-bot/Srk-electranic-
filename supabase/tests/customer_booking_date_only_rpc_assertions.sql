@@ -1,5 +1,37 @@
 \set ON_ERROR_STOP on
 begin;
+do $catalogue_test$
+declare
+  v_count integer;
+  v_today_version integer;
+  v_future_version integer;
+begin
+  if not (select relrowsecurity from pg_class where oid='public.srk_rate_catalogue'::regclass) then
+    raise exception 'Rate catalogue RLS is not enabled';
+  end if;
+  if has_table_privilege('authenticated','public.srk_rate_catalogue','SELECT')
+     or has_table_privilege('anon','public.srk_rate_catalogue','SELECT') then
+    raise exception 'Rate catalogue is directly readable by client roles';
+  end if;
+  select count(*) into v_count from public.srk_rate_catalogue where version=1;
+  if v_count <> 4 then raise exception 'Expected four seeded v1 category rates, found %',v_count; end if;
+  if (select hourly_rate from public.srk_rate_catalogue where category_code='helper' and version=1) <> 112.375
+     or (select hourly_rate from public.srk_rate_catalogue where category_code='ordinary' and version=1) <> 149.875
+     or (select hourly_rate from public.srk_rate_catalogue where category_code='skilled' and version=1) <> 199.875
+     or (select hourly_rate from public.srk_rate_catalogue where category_code='master' and version=1) <> 249.875 then
+    raise exception 'Seeded catalogue v1 rates do not match approved rates';
+  end if;
+  insert into public.srk_rate_catalogue(category_code,category_label,version,hourly_rate,effective_from)
+  values('helper','Helper',2,120.125,current_date+30);
+  select version into v_today_version from public.srk_rate_catalogue
+   where category_code='helper' and effective_from<=current_date order by effective_from desc limit 1;
+  select version into v_future_version from public.srk_rate_catalogue
+   where category_code='helper' and effective_from<=current_date+30 order by effective_from desc limit 1;
+  if v_today_version <> 1 or v_future_version <> 2 then
+    raise exception 'Effective-date version selection failed: today %, future %',v_today_version,v_future_version;
+  end if;
+end
+$catalogue_test$;
 select set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000010',true);
 select set_config('request.jwt.claim.phone','+919000000010',true);
 set local role authenticated;
