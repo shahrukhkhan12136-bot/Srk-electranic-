@@ -52,3 +52,17 @@ test("customer selects 1–8 hours and sees estimates from the live approved rat
   assert.match(submitHandler, /duration_hours:\s*Number\(value\('durationHours'\)\)/);
   assert.match(submitHandler, /अनुमानित अवधि: \$\{value\('durationHours'\)\} घंटे/);
 });
+
+
+test("customer booking hides the mobile input and uses the OTP-verified account phone", () => {
+  assert.doesNotMatch(bookingForm, /id="phone"|for="phone"|मोबाइल नंबर.*input/i);
+  assert.match(bookingForm, /bookingRegisteredPhone/);
+  const submitStart = html.indexOf("document.getElementById('booking').addEventListener('submit'");
+  const submitEnd = html.indexOf("document.getElementById('payNow').addEventListener", submitStart);
+  const submitHandler = html.slice(submitStart, submitEnd);
+  assert.match(submitHandler, /customerSb\\.auth\\.getSession\\(\\)/);
+  assert.match(submitHandler, /bookingSession\\.user\\.phone/);
+  assert.match(submitHandler, /मोबाइल: \\$\\{registeredPhone\\}/);
+  assert.doesNotMatch(submitHandler, /value\\(['"]phone['"]\\)/);
+  assert.match(submitHandler, /customer_name: value\\('name'\\), state: value\\('state'\\)/);
+});
