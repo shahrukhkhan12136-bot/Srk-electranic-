@@ -9,6 +9,7 @@ on:
       - "supabase/migrations/20261111160015_timer_snapshot_refund_support.sql"
       - "supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql"
       - "supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql"
+      - "supabase/migrations/20261112200000_index_refund_payment_lookup.sql"
       - "supabase/tests/refund_workflow_*.sql"
       - "process-refund.js"
       - "create-snapshot-order.js"
@@ -77,6 +78,8 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql
           psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql
           psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql
+          psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112200000_index_refund_payment_lookup.sql
+          psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112200000_index_refund_payment_lookup.sql
           psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql
       - name: Test customer ownership, Admin approval, Razorpay reconciliation and manual UTR
         env:
