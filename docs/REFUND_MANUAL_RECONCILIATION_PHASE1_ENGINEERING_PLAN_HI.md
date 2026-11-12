@@ -96,3 +96,10 @@ The Supabase 2026-10-30 Data API change means new public-schema tables are not a
 - Asserts the workspace uses only the guarded `srk_admin_*` RPCs and contains no provider fetch or direct Supabase table write.
 - Refund Workflow CI run `43181489430` SUCCESS at commit `2dfed8c8b5a8f48f9638aeadfebe88d3f9247807`.
 - **Scope limitation:** this is a simulated two-Admin function/DOM harness, not a live browser, real Supabase Auth session, or actual disposable Production-parity database test. Those remain required before release.
+
+### Disposable database availability check — 2026-11-12
+
+- Read-only Supabase Development Branch listing for project `gnqhoaqatmoiwwhgzkgm` returned zero branches.
+- No disposable branch database is currently available for real Supabase Auth + Admin browser workflow testing.
+- Creating a Supabase development branch may incur hourly compute/usage charges. No branch was created and no cost was incurred; this step is held until an explicitly approved cost/isolated test environment is available.
+- Production database was not used for test writes or migrations.
