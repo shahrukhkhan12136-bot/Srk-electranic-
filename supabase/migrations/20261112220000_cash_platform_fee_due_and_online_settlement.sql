@@ -285,7 +285,7 @@ begin
         when entry_type in ('cash_due','cash_due_restore') then amount
         when entry_type in ('cash_due_reversal','cash_due_settlement') then -amount
         else 0 end),0),0)::numeric as due,
-      coalesce(sum(case when entry_type in ('online_fee','cash_due_settlement') then amount else 0 end),0)::numeric as collected,
+      coalesce(sum(case when entry_type in ('online_fee','cash_due_settlement') then amount when entry_type in ('online_fee_reversal','cash_due_restore') then -amount else 0 end),0)::numeric as collected,
       coalesce(sum(case when entry_type = 'online_fee' then amount else 0 end),0)::numeric as current_online_fee
     from public.srk_platform_fee_ledger
     group by electrician_profile_id
