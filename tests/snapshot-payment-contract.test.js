@@ -60,7 +60,15 @@ includesAll(webhook, [
   "srk_reconcile_razorpay_snapshot_payment"
 ], "Razorpay webhook");
 
-// Webhook event ledger is durable, server-only, unique per provider event and recoverable.\nincludesAll(webhookLedgerMigration, [\n  "srk_payment_webhook_events", "unique(provider,provider_event_id)",\n  "processing_started_at", "retryable_error", "enable row level security",\n  "revoke all on public.srk_payment_webhook_events from public,anon,authenticated",\n  "to service_role"\n], "webhook event ledger migration");\n\n// Service-role credentials must remain server-side; browser surfaces call Netlify APIs,
+// Webhook event ledger is durable, server-only, unique per provider event and recoverable.
+includesAll(webhookLedgerMigration, [
+  "srk_payment_webhook_events", "unique(provider,provider_event_id)",
+  "processing_started_at", "retryable_error", "enable row level security",
+  "revoke all on public.srk_payment_webhook_events from public,anon,authenticated",
+  "to service_role"
+], "webhook event ledger migration");
+
+// Service-role credentials must remain server-side; browser surfaces call Netlify APIs,
 // not Supabase service-role REST endpoints.
 const customer = read("index.html");
 assert.ok(customer.includes("/api/create-snapshot-order"));
