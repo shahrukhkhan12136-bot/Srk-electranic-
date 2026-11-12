@@ -182,3 +182,40 @@ The following 39 Production history rows still have no matching-name SQL file in
 6. Keep Production read-only until all release gates and explicit owner approval are satisfied.
 
 **Release decision remains NO-GO.** No Production database, data, migration history, live payment, or deployment was changed by this archive search.
+
+## अतिरिक्त स्रोत खोज + Production schema-effect inventory — 2026-11-12
+
+### GitHub history खोज
+- शुरुआती 13 unresolved security/payment-lock migrations के exact Production filename paths के लिए GitHub commit-history API जाँची गई। इन exact paths के लिए कोई commit history नहीं मिली; deleted-file recovery से भी SQL प्राप्त नहीं हुआ।
+- सभी 11 branch tips के migration trees पुनः जाँचे; unresolved keywords (RLS, payment-order lock, search_path, FK indexes, realtime, booking guards) के alternate-name migration files नहीं मिले।
+- इसका अर्थ यह नहीं कि SQL कहीं और मौजूद नहीं है; केवल inspected GitHub branches और exact paths में उपलब्ध नहीं मिला।
+
+### Production में read-only catalog से सत्यापित प्रभाव
+ये बातें live catalog की वर्तमान स्थिति हैं; ये migration source SQL या किस migration ने object बनाया, इसका प्रमाण नहीं हैं।
+
+**RLS / policies**
+- public की सभी 25 base tables पर RLS enabled है; FORCE ROW LEVEL SECURITY सभी पर false है।
+- service_bookings, electrician_profiles, job_offers, service_booking_status_history और srk_payment_order_locks पर मौजूदा policies catalog से पढ़ी गईं।
+- srk_payment_order_locks पर केवल service_role के लिए ALL policy दिखी; table का primary key booking_id है और booking FK मौजूद है।
+- service_bookings पर Admin/customer SELECT policy तथा Admin UPDATE policy मौजूद है। job_offers और electrician_profiles पर authenticated owner/Admin read policies मौजूद हैं।
+- यह वर्तमान policy set है, historical policy changes की पूरी श्रृंखला नहीं।
+
+**Payment-order lock / booking integrity**
+- srk_payment_order_locks की वर्तमान संरचना: booking_id PK/FK, lock_token, locked_until, created_at।
+- srk_claim_payment_order_lock(uuid) और srk_release_payment_order_lock(uuid,uuid) SECURITY DEFINER functions मौजूद हैं; दोनों का search_path=pg_catalog, public, pg_temp है।
+- service_bookings पर booking guard, booking broadcast, commission calculation, status history, cancellation-offer expiry और electrician-payable triggers मौजूद हैं।
+- कुछ FK/search indexes मौजूद हैं; उदाहरण: job_offers(booking_id,created_at DESC), service_booking_status_history(booking_id,changed_at DESC), srk_electrician_payouts(electrician_profile_id)। यह संपूर्ण FK-index coverage का प्रमाण नहीं है।
+
+**SECURITY DEFINER / search_path**
+- वर्तमान catalog में कई SECURITY DEFINER functions के search_path explicitly pg_catalog से शुरू होते हैं।
+- कुछ privileged functions में search_path खाली है; उदाहरण के लिए refund reconciliation और कुछ refund admin/customer RPCs। Empty search_path अपने-आप में सुरक्षित या असुरक्षित होने का अंतिम निष्कर्ष नहीं है—function bodies में object qualification और EXECUTE grants भी जाँचना आवश्यक है।
+- private.srk_save_push_subscription में search_path खाली; private.srk_notify_job_offer_push में search_path=pg_catalog है।
+- इस inventory से शुरुआती harden_security_definer_function_search_paths या tighten_legacy_definer_paths_and_history_grants migrations की exact SQL recover नहीं होती।
+
+### शेष कार्य / निष्कर्ष
+1. 13 शुरुआती unresolved migrations के exact GitHub paths पर history search खाली रही। इनके लिए owner-controlled local migration archive, Supabase CLI migration artifact, backup/export या deployment bundle आवश्यक है।
+2. अगले catalog pass में SECURITY DEFINER functions के complete definitions, EXECUTE grants (PUBLIC/anon/authenticated/service_role), FK index coverage और RLS policy expressions का per-object register बनाना होगा।
+3. Live catalog effect को candidate source के रूप में उपयोग किया जा सकता है, लेकिन historical SQL का विकल्प नहीं बनाया जाएगा।
+4. Production पर कोई SQL/DDL/DML, migration-history update, payment call या deployment नहीं किया गया।
+
+**NO-GO जारी है।** Exact historical SQL और disposable Production-parity replay मिलने तक release approval नहीं।
