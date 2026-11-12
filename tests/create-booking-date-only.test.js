@@ -7,7 +7,6 @@ const { handler } = require("../create-booking.js");
 
 const customer = {
   customer_name: "Test Customer",
-  phone: "9000000001",
   state: "Uttar Pradesh",
   district: "Balrampur",
   pincode: "271861",
@@ -72,6 +71,7 @@ test("accepts a date-only customer booking and never forwards preferred_time", a
   const payload = JSON.parse(rpcCall.options.body);
   assert.equal(payload.p_booking.preferred_date, "2026-12-01");
   assert.equal(payload.p_booking.duration_hours, 3);
+  assert.equal(payload.p_booking.phone, "9000000001");
   assert.equal(Object.hasOwn(payload.p_booking, "preferred_time"), false);
 });
 
