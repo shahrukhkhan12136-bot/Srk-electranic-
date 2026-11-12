@@ -306,3 +306,10 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [T] Legacy `srk_admin_prepare_razorpay_refund(uuid,text)` remains authenticated-executable and Admin-guarded alongside the newer refund-request preparation RPC; distinct code paths need call-site inventory and consolidation plan.
 - [T] Refund audit trigger captures refund_id, amount, status, provider_status changes, but not reason/last_error/processed_at. Audit sufficiency review pending.
 - [T] No live refund/provider/webhook tests or Production changes. Static review only; Production NO-GO remains.
+
+## Confirmed Timer Cash Refund Production drift (2026-11-12)
+- [V] Production Admin refund-list RPC omits `is_timer_booking`; `has_manual_payment` checks only `srk_manual_payment_entries`, not timer `srk_cash_receipts`.
+- [V] Production does not contain `srk_admin_finalize_timer_cash_refund(uuid,text,text)` and migration history has no `20261111160015` timer snapshot refund migration.
+- [V] Feature branch `20261111160015_timer_snapshot_refund_support.sql` contains the intended timer refund entry table, extended Admin list RPC and timer-cash finalize RPC. The current Admin UI expects this contract and conditionally calls the missing RPC.
+- [!] Timer Cash refund workflow is not production-ready; current UI/database contract mismatch. No live refund rows or customer impact were observed. Do not patch Production directly; recover migration lineage and validate ordered dependencies on a disposable Production-parity DB.
+- [ ] Check all timer release migrations and cash receipt/snapshot/payout dependencies against Production, then add this migration to the full migration disposition matrix.
