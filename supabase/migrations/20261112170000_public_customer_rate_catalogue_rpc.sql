@@ -33,7 +33,7 @@ as $function$
     select distinct on (c.category_code)
       c.category_code,c.category_label,c.version,c.hourly_rate,c.effective_from
     from public.srk_rate_catalogue c
-    where c.effective_from <= current_date
+    where c.effective_from <= (timezone('Asia/Kolkata', now()))::date
     order by c.category_code,c.effective_from desc,c.version desc
   ) active;
 $function$;
