@@ -239,3 +239,7 @@ Read-only FK-to-leading-index comparison में कुछ वर्तमा�
 - srk_manual_refund_entries.recorded_by
 - srk_razorpay_refunds.admin_user_id
 यह सूची वर्तमान Production schema के सभी FK constraints पर आधारित है। इसे तत्काल index बनाने की अनुमति या migration defect का निष्कर्ष न समझें: कुछ tables बाद के feature migrations से आए हो सकते हैं, और index की उपयोगिता/डेटा cardinality तथा query workload भी देखना होगा। शुरुआती add_missing_foreign_key_indexes migration का exact scope इस snapshot से निर्धारित नहीं किया जा सकता।
+
+### Repository-wide migration-directory commit history
+- GitHub commit-history API में supabase/migrations directory को छूने वाले commits भी जाँचे गए। उपलब्ध repository history में directory के लिए 22 commits लौटे; उनमें कई बाद की migrations/renames मौजूद हैं, लेकिन शुरुआती unresolved security/payment-lock SQL के commits नहीं मिले।
+- इससे संकेत मिलता है कि शुरुआती Production migrations संभवतः Supabase dashboard/CLI से सीधे लागू हुईं या इस GitHub repository में कभी commit नहीं हुईं। यह केवल inference है—जब तक deployment logs या original migration archive न मिले, exact execution path तय नहीं है।
