@@ -63,6 +63,7 @@ values
  ('40000000-0000-0000-0000-000000000002','sent','same_pincode','20000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000003'),
  ('40000000-0000-0000-0000-000000000003','sent','same_pincode','20000000-0000-0000-0000-000000000003','10000000-0000-0000-0000-000000000002');
 
+grant select on public.service_bookings to authenticated;
 create table public.srk_booking_creation_requests(
  customer_user_id uuid not null,
  idempotency_key uuid not null,
