@@ -148,11 +148,12 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 
 
 ## A.1 Customer Booking — category and price acceptance (owner-confirmed 2026-11-11)
-- [ ] Customer sees all active electrician categories and category-wise 8-hour price before placing booking: Helper ₹899.00, Ordinary ₹1,199.00, Skilled ₹1,599.00, Master ₹1,999.00.
-- [ ] Customer can select a category; server validates the Admin-approved category/rate and ignores any client-tampered price.
-- [ ] Immutable booking snapshot stores category code/label, approved rate/version and duration; subsequent catalogue changes do not alter existing bookings.
-- [ ] Customer price display is separate from electrician Rate Card: electrician Rate Card continues to show only 8-hour duration and electrician net amount, never gross Labour or commission details.
-- [ ] Verify responsive/accessibility, loading/error/offline states and customer booking E2E. No upfront payment.
+- [I] Customer category selector में चारों श्रेणियों के 8-hour rates दिखते हैं: Helper ₹899.00, Ordinary ₹1,199.00, Skilled ₹1,599.00, Master ₹1,999.00।
+- [I] Customer category चुनता है; API और database RPC केवल Helper/Ordinary/Skilled/Master स्वीकार करते हैं। Client से भेजी कोई price/amount property RPC whitelist में स्वीकार नहीं होती।
+- [I] Category code/label और authoritative hourly rate booking में immutable snapshot के रूप में store होते हैं; duration और estimated Labour snapshot अब इसी snapshot guard से सुरक्षित हैं।
+- [T] अलग versioned rate catalogue/history अभी बाकी है; मौजूदा RPC server-side approved fixed mapping से rates निकालता है।
+- [I] Customer price display अलग है; electrician Rate Card का gross/commission privacy rule इस customer UI change से नहीं बदला।
+- [T] Responsive/accessibility, loading/error/offline states और real customer booking E2E अभी बाकी। No upfront payment.
 
 
 ## A.2 Customer Booking — duration selector 1–8 hours (owner-confirmed 2026-11-11)
