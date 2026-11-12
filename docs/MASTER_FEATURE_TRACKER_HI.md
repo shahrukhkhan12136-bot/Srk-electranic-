@@ -176,6 +176,7 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] GitHub Actions PostgreSQL 16 disposable test run 43158132227 SUCCESS: order-number, date-only RPC migration apply/replay, electrician offer RPC, numbering/immutability/uniqueness, RPC scope, PII privacy और customer/electrician/Admin inline JavaScript syntax checks पास।
 - [I] API regression tests `tests/create-booking-date-only.test.js`: valid date-only booking accepted और RPC payload में `preferred_time` absent; impossible calendar date `2026-02-30` rejected before booking RPC. GitHub Actions run 43158591000 SUCCESS; Node test runner 2/2 pass.
 - [T] CI disposable fixture है; Main Production Supabase पर migration लागू नहीं हुई, browser/real-device E2E नहीं हुआ।
+- [I] Authenticated PostgreSQL RPC regression (`customer_booking_date_only_rpc_assertions.sql`): date-only booking stores NULL time, same idempotency key replays same booking, legacy explicit `14:30` time remains stored, invalid `25:99` is rejected. GitHub Actions run 43159142236 SUCCESS; numbering assertions are deliberately run first because PostgreSQL sequences are non-transactional.
 
 
 ## B.1 Electrician ID/Profile — own approved category badge (owner-confirmed 2026-11-11)
