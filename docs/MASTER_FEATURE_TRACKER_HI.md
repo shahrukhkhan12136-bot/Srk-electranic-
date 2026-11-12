@@ -212,3 +212,8 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [ ] Add database uniqueness, transactional sequence/concurrency, authorization and lookup tests.
 - [ ] ID alone must never authenticate a user or grant access.
 - [T] Owner-approved format; server-side sequence/trigger migration, catalog/security assertions, behavior tests (approval/activation, later Auth-link addition, mismatched/duplicate Auth-link rejection, legacy user_id-only linkage, immutability, client-supplied ID rejection, deletion/recreation non-reuse, and non-cycling sequence), electrician profile ID display, and Admin partner-list search by ID/name/phone are committed to Feature Branch. CI run 43082442370 passed on PostgreSQL 16: Production-shaped profile/Auth/FK/constraints/index/RLS/audit-trigger fixture, migration/catalog/security assertions, all behavior tests, 24 simultaneous issuance transactions with 28 total unique retained IDs, plus inline JavaScript syntax checks for electrician.html/admin.html. Live Production schema/constraints were read-only inspected and found structurally compatible; Production migration remains unapplied. Live browser Preview/E2E, real Admin authorization test, and Android ID card remain pending.
+
+
+## Master implementation plan
+- Three-panel ownership, remaining-work phases, monitoring tree, release gates और immediate execution order के लिए [REMAINING_WORK_IMPLEMENTATION_PLAN_HI.md](./REMAINING_WORK_IMPLEMENTATION_PLAN_HI.md) देखें।
+- इस योजना में कोई item केवल design या code मौजूद होने से complete नहीं होगा; प्रत्येक status के लिए test/runtime evidence आवश्यक है।
