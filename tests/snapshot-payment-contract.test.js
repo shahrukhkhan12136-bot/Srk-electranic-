@@ -45,6 +45,18 @@ includesAll(legacyVerify, [
 
 // Webhook must route snapshot-category bookings away from legacy direct booking updates
 // and maintain a durable idempotency ledger for snapshot events.
+const finishCalls = [...webhook.matchAll(/finishSnapshotWebhookEvent\\(([^)]*)\\)/g)]
+  .map(match => match[1]);
+assert.ok(finishCalls.length >= 8, "all payment and refund webhook outcomes must finish their event lease");
+for (const args of finishCalls) {
+  assert.ok(
+    args.startsWith("eventId, leaseStartedAt") ||
+    args.startsWith("eventRow.id, eventRow.leaseStartedAt") ||
+    args.startsWith("refundEvent.id, refundEvent.leaseStartedAt"),
+    "webhook completion must be bound to its claimed lease: " + args
+  );
+}
+
 includesAll(webhook, [
   "snapshot_payment_required", "srk_payment_webhook_events",
   "provider_event_id", "payload_sha256",
