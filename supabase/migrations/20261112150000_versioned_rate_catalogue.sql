@@ -140,7 +140,7 @@ begin
   select c.id,c.version,c.hourly_rate,c.category_label
     into v_rate_catalogue_id,v_rate_version,v_rate,v_label
   from public.srk_rate_catalogue c
-  where c.category_code=v_category and c.effective_from <= current_date
+  where c.category_code=v_category and c.effective_from <= (timezone('Asia/Kolkata', now()))::date
   order by c.effective_from desc,c.version desc
   limit 1;
   if v_rate_catalogue_id is null then
