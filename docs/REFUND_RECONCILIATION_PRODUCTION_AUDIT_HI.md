@@ -69,3 +69,9 @@ GitHub Actions runs for the handler and workflow are in progress at the time thi
 This change does **not** resolve an ambiguous timeout where the provider may have accepted a refund but SRK still has `requested/processing/unknown`. That path remains fail-closed for manual reconciliation when Razorpay reports any prior refunded amount. Before automatic retry/recovery is enabled, implement exact provider refund lookup and immutable correlation (refund ID / stored receipt or notes), reject zero or multiple ambiguous matches, and use the same persisted `X-Refund-Idempotency` key plus byte-equivalent request only under the verified Razorpay API contract. Do not retry with a new key. No provider API calls were made for this audit.
 
 Official Razorpay documentation checked: Normal/Instant Refund APIs support `X-Refund-Idempotency` and require the same key and identical request for retries; payment objects expose `amount_refunded` and `refund_status`. This is provider documentation review only, not a live/Test Mode API exercise.
+
+
+### CI result for completed-refund replay correction
+- Latest regression workflow **43178494303 — SUCCESS** on commit `7839f9af8fa6eeba446630d9866a255886c13752`.
+- The handler test, snapshot/payment/webhook contract, refund webhook ledger contract, ambiguous-match handler, and Netlify refund handler syntax checks all passed.
+- Earlier run **43178482734 — SUCCESS** also verified the handler flow correction before the dedicated replay regression was added.
