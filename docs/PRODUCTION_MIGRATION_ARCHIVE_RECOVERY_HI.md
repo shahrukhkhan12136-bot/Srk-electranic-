@@ -383,3 +383,9 @@ Correction:
 Verification: GitHub Actions Timer billing run 43175857392 completed SUCCESS at commit 9cbdd761f8ab7a7632ec84f3be3bf6cb43b754b3. It passed the integrated Production-shaped disposable parity replay, including timer foundation, timer cash/online/refund support, date-only/duration booking contract and webhook ledger separation assertions. A newer workflow run 43175948589 is also queued/running to include the snapshot webhook contract test in this same workflow. Independent refund workflow run after the rename is still pending at time of this note.
 
 No Production schema/data/history changes, no provider calls, no live refunds, and no deployment. CI is synthetic PostgreSQL parity, not Production rollout approval.
+
+
+### Final CI confirmation — 2026-11-12
+- Integrated Timer + date-only/duration + refund parity workflow run 43175948589: SUCCESS. This run also executed tests/snapshot-payment-contract.test.js.
+- Independent SRK Refund Workflow run 43175929837: SUCCESS, including refund handler, snapshot payment/webhook contracts, refund webhook ledger contract, ambiguous refund handler behavior, and SQL webhook ledger assertions.
+- Together these confirm the renamed event ledger and integrated disposable migration replay pass in CI. They do not establish that missing Production migrations were applied, that hosted Production schema matches the synthetic fixture exactly, or that Android/device E2E passed.
