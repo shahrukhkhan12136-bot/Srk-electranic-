@@ -831,3 +831,40 @@ Production catalog का read-only inspection:
 
 **सीमा:** यह Production catalog, function definitions, constraints और RLS policy का read-only audit था। कोई trigger, function, table, policy, grant, wallet entry, payout, refund, customer record या deployment नहीं बदला। वास्तविक user JWT, concurrent transaction, Razorpay webhook replay और UI E2E tests अभी नहीं किए गए।
 
+### 17.24 — Customer Cancellation RPC, Wallet access, Admin Finance reporting और ledger audit (13 Nov 2026)
+
+Production पर अतिरिक्त read-only verification:
+
+**Customer cancellation RPC**
+- `srk_customer_cancel_my_booking(p_booking_id)` SECURITY DEFINER है; केवल authenticated customer को अपनी `customer_user_id` वाली booking पर अनुमति देता है।
+- यह row को `FOR UPDATE` lock करता है; केवल unassigned और `new/confirmed` booking cancel कर सकता है। Assigned booking या अन्य status पर app cancellation रोकता है।
+- Function सीधे `status='cancelled'` करता है। इसमें electrician के `left home / en route / arrived` stage, ₹0/₹49/₹99 calculation, Admin decision, customer debt carry-forward, electrician wallet debit, या SRK cancellation-fee ledger posting नहीं है।
+- अतः यह मौजूदा सीमित pre-assignment cancellation path है; इसे Master के पूर्ण cancellation model का implementation नहीं माना जा सकता। नए flow में customer request और Admin-only final decision को अलग रखना होगा; existing ownership और row-lock checks सुरक्षित रखें।
+
+**Wallet read/access**
+- Wallet accounts और ledger पर authenticated role को table-level SELECT है; RLS policies केवल अपने `user_id=auth.uid()` की rows पढ़ने देती हैं।
+- इस snapshot में authenticated के लिए इन tables पर direct INSERT/UPDATE/DELETE grant नहीं मिला। `service_role` और postgres के पास operational write privileges हैं; इन्हें सामान्य client के लिए expose न करें।
+- `srk_get_my_wallet_summary()` SECURITY DEFINER और authenticated EXECUTE है; यह wallet account न होने पर customer account तथा approved electrician के लिए electrician account create करता है। यानी नाम summary है लेकिन RPC read call के भीतर account-creation side effect है। Concurrent first-call व्यवहार और wallet status handling का staging test आवश्यक है।
+- यही RPC साफ कहता है कि customer top-ups और electrician bank payouts disabled हैं जब तक regulated payment flow / Razorpay Route linked-account onboarding और live approval पूरा न हो। इन्हें UI में उपलब्ध या चालू बताना गलत होगा।
+- Wallet ledger में UNIQUE idempotency_key nullable है; client-supplied arbitrary key को trusted नहीं मानना चाहिए। Server-generated deterministic, non-null key और append-only correction/reversal model जरूरी है।
+
+**Admin Finance Dashboard**
+- `srk_admin_finance_dashboard()` SECURITY DEFINER है और function body में `auth.uid()` + `is_srk_admin()` check करता है; anon EXECUTE false, authenticated EXECUTE true। Admin guard को बनाए रखना होगा।
+- Dashboard paid+completed bookings से customer payments, commission, electrician share, paid/pending payout और private expense totals निकालता है। अभी यह पुराने `amount_paid`, `commission_amount`, `service_charge`, `commission_rate` और `srk_electrician_payouts` पर निर्भर है।
+- `net_profit` फिलहाल platform commission minus recorded expenses है। इसमें नए cancellation receipts/debts, wallet fee due/collection, cash-vs-online settlement, refund/reversal और unpaid liabilities के अलग totals नहीं हैं। इसे पूर्ण accounting profit न माना जाए।
+- Finance dashboard का `electrician_share = gross customer payments - platform commission` में materials भी शामिल हो सकते हैं; यह customer-to-electrician payable का gross share है, actual payout paid नहीं। UI में इसे वास्तविक paid payout से स्पष्ट अलग label करना होगा।
+
+**Audit trail**
+- `service_bookings` audit trigger केवल allow-list में status, payment, amount_paid, quote, service/material, assignment और commission fields रखता है। नए timer start/stop request, approval timestamps, actual minutes, cancellation stage/decision, platform fee, cash-cycle count/reservation और wallet debt fields शामिल नहीं हैं।
+- `srk_electrician_payouts` और Razorpay refunds पर audit triggers मौजूद हैं। इस inspection में `srk_wallet_ledger` और `srk_wallet_accounts` पर कोई audit trigger नहीं मिला। Wallet ledger को append-only ledger बनाना और हर posting/reversal को actor, source, booking, idempotency key और timestamp सहित audit करना आवश्यक है।
+- Status history trigger booking status परिवर्तन दर्ज करता है, लेकिन उससे अलग timer/cancellation/financial sub-events की पूरी history सिद्ध नहीं होती।
+
+**अगले सुधार के लिए blocking requirements**
+1. Existing customer cancellation RPC को Master cancellation request + Admin decision state machine में migrate करें; पुराने unassigned cancellation behavior का backward-compatible mapping तय करें।
+2. Wallet writes केवल trusted server-side RPC/service path से हों; ledger mutation रोकने, reversal entry से correction और mandatory idempotency key के नियम तय हों।
+3. Cash-cycle eligibility, reservation, release-on-failure और Platform Fee due को booking row/account lock के साथ एक transaction में लागू करें।
+4. Admin finance report में labour revenue, materials pass-through, platform fee earned/collected/due, cash collection, online settlement, cancellation fees/debt, refunds, payouts, expenses और net profit अलग reconcile हों।
+5. वास्तविक customer/electrician JWT, role negative tests, parallel cancellation/payment requests, duplicate webhook, duplicate ledger posting और refund-vs-payout race tests staging में चलें।
+
+**सीमा:** यह Production database catalog, function definitions, grants, RLS policies और triggers का read-only निरीक्षण था। कोई cancellation, wallet, ledger, payout, refund, permission, trigger, function, table, customer record या deployment बदला नहीं।
+
