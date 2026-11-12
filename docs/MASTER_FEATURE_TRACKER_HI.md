@@ -227,3 +227,12 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] Booking/order/rate workflow PR path filters सुधारे गए ताकि date, duration, versioned rate catalogue, Admin rate management, public rate RPC और electrician offer RPC के बदलाव पर समान SQL regression suite चले। इस workflow का current-HEAD run अभी verify होना बाकी है।
 - [T] Full 57-migration canonical dependency graph, exact Production migration history comparison और sanitized Production-parity clean replay अभी खुले हैं। Production पर कोई migration नहीं लगी।
 - [T] NO-GO for Production जारी; website deployment, live Razorpay, real-money test और Play Store release नहीं किए गए।
+
+
+
+## B.4 Electrician Auth identity relink guard (2026-11-12)
+- [I] Display-ID trigger audit में एक edge case मिला: पहले से permanent ID वाले profile का Auth identity दूसरे profile के legacy `user_id` से conflict होने पर update trigger identity-conflict check से पहले return कर सकता था।
+- [I] Feature Branch migration में identity-conflict validation को permanent-ID preservation से पहले चलाया गया; conflicting relink अब SQLSTATE 23505 से reject होता है। Existing ambiguous legacy INSERT बिना ID के retained रहता है ताकि historical profile creation अनावश्यक रूप से block न हो।
+- [I] Regression test जोड़ा: issued profile को दूसरे profile के Auth identity से relink करने का प्रयास reject हो और पुराना Auth link अपरिवर्तित रहे।
+- [I] GitHub Actions run 43169829039 SUCCESS at commit `0b1dd1a7`: disposable PostgreSQL fixture, migration/catalog security assertions, issuance/immutability/client-supplied ID behavior, duplicate identity relink rejection और 24 concurrent ID issuance stress tests pass।
+- [T] यह CI disposable fixture evidence है; Production schema पर migration लागू नहीं हुई और वास्तविक Admin/Android UI E2E बाकी है।
