@@ -43,6 +43,7 @@ on:
       - "supabase/tests/timer_billing_foundation_assertions.sql"
       - "supabase/tests/production_parity_legacy_baseline.sql"
       - "supabase/tests/production_parity_legacy_assertions.sql"
+      - "tests/timer-panel-contract.test.js"
       - "supabase/tests/timer_billing_authenticated_role_assertions.sql"
       - "supabase/tests/timer_billing_integrity_extensions_assertions.sql"
       - "supabase/tests/customer_approved_timer_rpcs_assertions.sql"
@@ -164,6 +165,7 @@ jobs:
           node --check razorpay-webhook.js
           node --check create-snapshot-order.js
           node --check verify-snapshot-payment.js
+          node tests/timer-panel-contract.test.js
           node --check netlify/functions/create-snapshot-order.js
           node --check netlify/functions/verify-snapshot-payment.js
       - name: Create minimal synthetic baseline
