@@ -89,6 +89,12 @@ begin
  if p_refund_record_id is null or p_action_id is null then raise exception 'INVALID_RECONCILIATION_CASE' using errcode='22023'; end if;
  select * into v_refund from public.srk_razorpay_refunds where id=p_refund_record_id;
  if not found then raise exception 'REFUND_RECORD_NOT_FOUND'; end if;
+ -- Preserve access to an existing case after the linked refund reaches a terminal state.
+ -- Only creation of a new case is restricted to reviewable refund states.
+ select * into v_case from public.srk_refund_reconciliation_cases where refund_record_id=p_refund_record_id;
+ if found then
+  return jsonb_build_object('success',true,'case_id',v_case.id,'created',false,'existing',true);
+ end if;
  if v_refund.status not in ('requested','processing','failed','unknown') then
   raise exception 'REFUND_STATUS_NOT_ELIGIBLE_FOR_EVIDENCE_REVIEW' using errcode='55000';
  end if;
