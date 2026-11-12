@@ -81,7 +81,7 @@ begin
     or p_hourly_rate <> round(p_hourly_rate,3) then
    raise exception 'INVALID_HOURLY_RATE_MAX_THREE_DECIMALS' using errcode='22023';
  end if;
- if p_effective_from is null or p_effective_from < current_date then
+ if p_effective_from is null or p_effective_from < (timezone('Asia/Kolkata', now()))::date then
    raise exception 'RATE_EFFECTIVE_DATE_MUST_NOT_BE_PAST' using errcode='22023';
  end if;
  if length(v_reason)<10 or length(v_reason)>500 then
