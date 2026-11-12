@@ -67,7 +67,7 @@ includesAll(webhook, [
   "leaseStartedAt", "Webhook processing lease was lost before completion",
   "snapshot_event_in_progress",
   "refundEventMeta", "startSnapshotWebhookEvent(refundEventMeta, null, refund.payment_id)",
-  "refundEvent.inProgress", "refund_reconcile_error", "refund_" + providerStatus,
+  "refundEvent.inProgress", "refund_reconcile_error", "\"refund_\" + providerStatus",
   "Webhook event claim was not acquired",
   "srk_reconcile_razorpay_snapshot_payment"
 ], "Razorpay webhook");
