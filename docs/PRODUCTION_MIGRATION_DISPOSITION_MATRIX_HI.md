@@ -108,3 +108,16 @@ Generated 2026-11-12 from the current Production Supabase migration history and 
 - Investigate both cash-payment versions independently, including migration file history and schema effects.
 - Only after all source evidence is recovered, create a dependency-ordered replay plan for a disposable Production-parity database and replay twice.
 - Production remains read-only until separate explicit approval.
+
+
+## Cross-branch source consistency check (2026-11-12)
+
+A second scan compared GitHub blob hashes for each candidate path across all 11 branches:
+
+- All branch copies of a given candidate path had the same blob hash; branch repetition is not independent evidence of Production provenance.
+- The 26 timestamp-mismatch rows resolve to 27 distinct candidate paths because the Production push-subscription row has two different historical candidate paths: `20261111020000_add_electrician_push_subscriptions.sql` and `20261111090000_add_electrician_push_subscriptions.sql`. These are not interchangeable; prior SQL comparison found material differences.
+- The duplicate cash-payment history row `20261111083811` only has the `20261111082515_add_assigned_electrician_cash_payment_status.sql` source candidate. This is not proof that the second Production migration was a duplicate/no-op.
+- Two exact version+name source rows have divergent branch blob copies: `srk_business_finance_dashboard` and `srk_business_finance_reporting_dates`. Therefore even an exact filename/version row requires branch-specific content provenance and SQL comparison before being called an exact applied source.
+- The other exact-name copies were byte-identical by Git blob hash across scanned branches, but still have not been proven identical to Production-applied SQL.
+
+**Disposition remains unchanged:** no migration is approved for skip/replay/mark-applied from GitHub filename or branch repetition alone. The Production schema-object comparison and trusted original archive recovery are still mandatory.
