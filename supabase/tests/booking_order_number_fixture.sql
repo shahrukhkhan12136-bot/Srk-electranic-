@@ -9,7 +9,10 @@ $roles$;
 create schema if not exists auth;
 create or replace function auth.uid() returns uuid
 language sql stable
-as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+as $ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $;
+create or replace function auth.jwt() returns jsonb
+language sql stable
+as $ select jsonb_build_object('sub',current_setting('request.jwt.claim.sub',true),'phone',current_setting('request.jwt.claim.phone',true)) $;
 create table public.service_bookings(
  id uuid primary key default gen_random_uuid(),
  service_type text, state text, district text, pincode text,
@@ -19,7 +22,11 @@ create table public.service_bookings(
  location_lat double precision, location_lng double precision,
  service_charge numeric, materials_amount numeric, quote_status text, quote_note text,
  assigned_electrician_id uuid,
- created_at timestamptz not null default now()
+ created_at timestamptz not null default now(),
+ customer_user_id uuid,
+ service_category_code text,
+ service_category_label text,
+ hourly_rate_snapshot numeric(12,6)
 );
 create table public.electrician_profiles(
  id uuid primary key default gen_random_uuid(),
@@ -55,3 +62,11 @@ values
  ('40000000-0000-0000-0000-000000000001','sent','same_pincode','20000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000002'),
  ('40000000-0000-0000-0000-000000000002','sent','same_pincode','20000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000003'),
  ('40000000-0000-0000-0000-000000000003','sent','same_pincode','20000000-0000-0000-0000-000000000003','10000000-0000-0000-0000-000000000002');
+
+create table public.srk_booking_creation_requests(
+ customer_user_id uuid not null,
+ idempotency_key uuid not null,
+ booking_id uuid not null references public.service_bookings(id),
+ created_at timestamptz not null default now(),
+ primary key(customer_user_id,idempotency_key)
+);
