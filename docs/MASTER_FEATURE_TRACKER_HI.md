@@ -329,3 +329,9 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Existing timer-billing CI replays 16000–16014 twice on a disposable Production-shaped baseline and verifies legacy payout preservation, but does not include 16015 in that same parity loop. Refund workflow separately tests 16015 on a synthetic refund harness. Integrated timer+refund+date-only/duration parity replay remains required.
 - 16014 preserves customer access to electrician phone after accepted assignment even after completion; keep consistent with approved contact policy.
 - Production remains without Timer foundation. All work remains read-only against Production; no deployment.
+
+
+### Post-acceptance phone visibility audit (2026-11-12)
+- Production srk_respond_to_offer confirms assigned_electrician_id is written only on accepted offer; this is the durable acceptance marker.
+- Feature RPC only reveals customer phone to matching assigned electrician; customer contact RPC only returns assigned electrician phone for owned booking with assignment. Customer contact remains available after completion via migration 16014.
+- Added source/UI contract assertions in tests/timer-panel-contract.test.js (commit a8e4a41). Awaiting CI result; no device E2E claim.
