@@ -47,6 +47,9 @@ includesAll(legacyVerify, [
 includesAll(webhook, [
   "snapshot_payment_required", "srk_payment_webhook_events",
   "provider_event_id", "payload_sha256",
+  'processing_status", "eq." + row.processing_status',
+  '["received", "retryable_error"]', "inProgress",
+  "Webhook event claim reconciliation failed",
   "srk_reconcile_razorpay_snapshot_payment"
 ], "Razorpay webhook");
 
