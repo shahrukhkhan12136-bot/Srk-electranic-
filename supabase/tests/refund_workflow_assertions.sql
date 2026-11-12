@@ -80,3 +80,58 @@ do $$ begin
  if (select payment_status from public.service_bookings where id='20000000-0000-4000-8000-000000000004')<>'refunded' then raise exception 'Timer Cash refund did not update booking'; end if;
  if (select count(*) from public.srk_timer_cash_refund_entries where booking_id='20000000-0000-4000-8000-000000000004')<>1 then raise exception 'Timer Cash refund audit entry missing'; end if;
 end $$;
+
+
+-- Provider refund IDs are immutable, and terminal provider states cannot regress.
+set role service_role;
+select set_config('request.jwt.claims','{"role":"service_role"}',false);
+
+do $$
+declare
+ v_refund_id uuid;
+ v_result jsonb;
+begin
+ select id into v_refund_id from public.srk_razorpay_refunds
+ where booking_id='20000000-0000-4000-8000-000000000001';
+
+ begin
+  perform public.srk_service_reconcile_booking_refund(v_refund_id,'rfnd_DIFFERENT123','processed',null);
+  raise exception 'Conflicting provider refund ID was accepted';
+ exception when sqlstate '23505' then
+  null;
+ end;
+
+ insert into public.srk_razorpay_refunds
+ (booking_id,payment_id,amount,amount_paise,idempotency_key,status,reason,admin_user_id)
+ values
+ ('20000000-0000-4000-8000-000000000002','pay_MANUALTEST',500,50000,
+  'refund-terminal-state-test-001','requested','Terminal status regression test',
+  '10000000-0000-4000-8000-000000000003');
+
+ select id into v_refund_id from public.srk_razorpay_refunds
+ where booking_id='20000000-0000-4000-8000-000000000002';
+
+ perform public.srk_service_reconcile_booking_refund(v_refund_id,'rfnd_FAILED123','failed','provider failure');
+ v_result:=public.srk_service_reconcile_booking_refund(v_refund_id,'rfnd_FAILED123','pending',null);
+ if v_result->>'status'<>'failed' or v_result->>'stale_event_ignored'<>'true' then
+  raise exception 'Stale pending refund event was not safely ignored';
+ end if;
+ if (select status from public.srk_razorpay_refunds where id=v_refund_id)<>'failed' then
+  raise exception 'Failed refund status was downgraded by stale pending event';
+ end if;
+ if (select provider_status from public.srk_razorpay_refunds where id=v_refund_id)<>'failed' then
+  raise exception 'Failed provider status was overwritten by stale pending event';
+ end if;
+ if (select refund_id from public.srk_razorpay_refunds where id=v_refund_id)<>'rfnd_FAILED123' then
+  raise exception 'Provider refund ID changed unexpectedly';
+ end if;
+
+ begin
+  perform public.srk_service_reconcile_booking_refund(v_refund_id,'rfnd_FAILED123','processed',null);
+  raise exception 'Failed terminal refund unexpectedly changed to processed';
+ exception when sqlstate '55000' then
+  null;
+ end;
+end $$;
+
+reset role;
