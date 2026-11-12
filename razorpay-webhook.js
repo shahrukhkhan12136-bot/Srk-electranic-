@@ -106,7 +106,7 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
   const lookup = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
   lookup.searchParams.set("provider", "eq.razorpay");
   lookup.searchParams.set("provider_event_id", "eq." + eventMeta.eventId);
-  lookup.searchParams.set("select", "id,processing_status,attempt_count,payload_sha256");
+  lookup.searchParams.set("select", "id,processing_status,attempt_count,payload_sha256,processing_started_at");
   lookup.searchParams.set("limit", "1");
   if (!row) {
     const existingResponse = await fetch(lookup, {
@@ -120,16 +120,25 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
   if (row.payload_sha256 !== eventMeta.payloadHash) throw new Error("Webhook event ID payload hash conflict");
   if (row.processing_status === "processed") return { id: row.id, processed: true };
   if (row.processing_status === "rejected") return { id: row.id, rejected: true };
-  if (row.processing_status === "processing") return { id: row.id, inProgress: true };
+  const staleProcessing = row.processing_status === "processing" &&
+    row.processing_started_at &&
+    Date.now() - new Date(row.processing_started_at).getTime() > 5 * 60 * 1000;
+  if (row.processing_status === "processing" && !staleProcessing) {
+    return { id: row.id, inProgress: true };
+  }
 
-  // Atomically claim only a retryable/received row. Concurrent deliveries that
-  // observed the same state cannot both transition it to processing.
-  if (!["received", "retryable_error"].includes(row.processing_status)) {
+  // Conditional PATCH is the atomic lease claim. A processing lease older than
+  // five minutes is recoverable after a crashed/terminated serverless attempt.
+  if (!["received", "retryable_error"].includes(row.processing_status) && !staleProcessing) {
     throw new Error("Webhook event ledger has an unsupported processing state");
   }
+  const claimStatus = row.processing_status;
   const patchUrl = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
   patchUrl.searchParams.set("id", "eq." + row.id);
-  patchUrl.searchParams.set("processing_status", "eq." + row.processing_status);
+  patchUrl.searchParams.set("processing_status", "eq." + claimStatus);
+  if (staleProcessing) {
+    patchUrl.searchParams.set("processing_started_at", "lt." + new Date(Date.now() - 5 * 60 * 1000).toISOString());
+  }
   const patch = await fetch(patchUrl, {
     method: "PATCH",
     headers: {
@@ -140,6 +149,8 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
     },
     body: JSON.stringify({
       processing_status: "processing",
+      processing_started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       attempt_count: Number(row.attempt_count || 0) + 1
     })
   });
@@ -175,6 +186,8 @@ async function finishSnapshotWebhookEvent(eventId, status, outcomeCode, detail) 
     },
     body: JSON.stringify({
       processing_status: status,
+      processing_started_at: status === "processing" ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
       outcome_code: outcomeCode,
       outcome_detail: String(detail || "").slice(0, 300),
       processed_at: status === "processed" || status === "rejected" ? new Date().toISOString() : null
