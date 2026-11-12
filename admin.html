@@ -360,7 +360,10 @@ async function submitRefundReconciliationEvidence(caseId,refundRecordId){
  if(pending&&pending.signature!==signature){msg.textContent='पिछले प्रयास का उत्तर अस्पष्ट है। वही विवरण और वही Action ID रखें; विवरण बदलने से पहले Case Refresh करें।';return;}
  if(!pending)pending=reconEvidenceActions[key]={id:reconNewActionId(),signature};
  msg.textContent='Evidence सुरक्षित दर्ज हो रहा है…';
- const {data,error}=await sb.rpc('srk_admin_submit_refund_reconciliation_evidence',{...payload,p_action_id:pending.id});
+ let result;
+ try{result=await sb.rpc('srk_admin_submit_refund_reconciliation_evidence',{...payload,p_action_id:pending.id});}
+ catch(error){msg.textContent='नेटवर्क उत्तर नहीं मिला: '+(error?.message||String(error))+'। वही विवरण रखें; Retry पर वही Action ID रहेगी।';return;}
+ const {data,error}=result;
  if(error){msg.textContent='Evidence दर्ज नहीं हुआ/उत्तर नहीं मिला: '+error.message+'। Retry पर वही Action ID रहेगी।';return;}
  delete reconEvidenceActions[key];msg.textContent='Evidence दर्ज हो गया।';await loadRefundReconciliationCase(caseId,refundRecordId);
 }
@@ -374,7 +377,10 @@ async function reviewRefundReconciliationEvidence(evidenceId,caseId,refundRecord
  if(!pending)pending=reconReviewActions[key]={id:reconNewActionId(),signature};
  if(!confirm('यह केवल स्वतंत्र advisory review है। इससे कोई Refund जारी नहीं होगा और financial/customer status नहीं बदलेगा। क्या Review दर्ज करना है?'))return;
  msg.textContent='Review दर्ज हो रहा है…';
- const {data,error}=await sb.rpc('srk_admin_review_refund_reconciliation_evidence',{...payload,p_action_id:pending.id});
+ let result;
+ try{result=await sb.rpc('srk_admin_review_refund_reconciliation_evidence',{...payload,p_action_id:pending.id});}
+ catch(error){msg.textContent='नेटवर्क उत्तर नहीं मिला: '+(error?.message||String(error))+'। वही निर्णय/नोट रखें; Retry पर वही Action ID रहेगी।';return;}
+ const {data,error}=result;
  if(error){msg.textContent='Review दर्ज नहीं हुआ/उत्तर नहीं मिला: '+error.message+'। Retry पर वही Action ID रहेगी।';return;}
  delete reconReviewActions[key];msg.textContent='Advisory review दर्ज हो गया।';await loadRefundReconciliationCase(caseId,refundRecordId);
 }
