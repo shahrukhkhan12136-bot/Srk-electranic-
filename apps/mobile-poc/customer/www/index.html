@@ -8,14 +8,21 @@
 <title>SRK ELECTRONIC — Customer POC</title>
 <style>
 :root{color-scheme:light;--blue:#073b9a;--bright:#0877e8;--gold:#f6c94b;--ink:#102b4d;--muted:#60738b;--paper:#f4f8ff}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 90% 10%,#dceeff,transparent 34%),var(--paper);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans Devanagari",sans-serif}
-main{width:100%;max-width:560px;min-height:100svh;margin:auto;padding:0 0 calc(20px + env(safe-area-inset-bottom))}
-.brand{display:flex;align-items:center;justify-content:center;gap:12px;padding:clamp(16px,3.5svh,28px) 16px 14px;text-align:left;background:#fff}.mark{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(140deg,#fff,#dceeff);color:var(--blue);font-weight:950;font-size:25px;box-shadow:0 5px 18px #073b9a22;border:1px solid #c6dcf8}.brand h1{font-size:18px;line-height:1.1;margin:0;letter-spacing:.7px}.brand p{font-size:11px;color:var(--muted);margin:4px 0 0}.brand .service-line{font-size:12px;color:#174d91;font-weight:750;margin-top:5px;letter-spacing:.1px}
-.hero{position:relative;overflow:hidden;border-radius:0;padding:clamp(12px,2.5svh,22px) 16px 20px;background:linear-gradient(145deg,#052c78,#0868cf 68%,#0a83dc);color:#fff;box-shadow:none;border:0;min-height:calc(100svh - 92px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2svh,18px)}
-.hero:after{content:"";position:absolute;width:210px;height:210px;border:22px solid #ffffff16;border-radius:50%;right:-100px;top:-125px;pointer-events:none}
-.portrait{width:min(88vw,390px);height:min(48svh,540px);margin:0 auto;border:4px solid white;outline:2px solid var(--gold);outline-offset:3px;border-radius:18px;overflow:hidden;background:#dceeff;box-shadow:0 12px 24px #001e5570;display:grid;place-items:center}
-.portrait img{width:100%;height:100%;display:block;object-fit:contain;object-position:center;transform:none;background:#dceeff}
-.hero h2{text-align:center;margin:0;font-size:clamp(23px,6.5vw,31px);line-height:1.15}.hero h2 span{color:#ffe082}.hero .tag{text-align:center;color:#e2f1ff;font-size:14px;line-height:1.55;margin:0}.hero .service-copy{margin:0 auto;text-align:center;color:#fff;font-size:13px;line-height:1.8;font-weight:650}.hero .service-copy strong{display:block;color:#ffe082;font-size:14px;margin-bottom:3px}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#eaf3ff,#fff 48%,#e7f0ff);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans Devanagari",sans-serif}
+main{width:100%;max-width:760px;min-height:100svh;margin:auto;padding:0 12px calc(20px + env(safe-area-inset-bottom))}
+.brand{display:flex;align-items:center;justify-content:center;gap:12px;padding:18px 12px 14px;text-align:left}.mark{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(140deg,#fff,#dceeff);color:var(--blue);font-weight:950;font-size:25px;box-shadow:0 5px 18px #073b9a22;border:1px solid #c6dcf8}.brand h1{font-size:19px;line-height:1.1;margin:0;letter-spacing:.7px}.brand p{font-size:11px;color:var(--muted);margin:4px 0 0}.brand .service-line{font-size:12px;color:#174d91;font-weight:750;margin-top:5px}
+.hero{position:relative;overflow:hidden;border-radius:24px;padding:18px 14px 20px;background:linear-gradient(145deg,#05266c,#073b9a 58%,#0877c9);color:#fff;box-shadow:0 14px 34px #06285b2b;border:2px solid #f6c94b;display:flex;flex-direction:column;gap:14px}
+.hero:before{content:"";position:absolute;inset:8px;border:1px solid #ffffff35;border-radius:17px;pointer-events:none}
+.hero:after{content:"";position:absolute;width:210px;height:210px;border:22px solid #ffffff12;border-radius:50%;right:-100px;top:-125px;pointer-events:none}
+.top-message{position:relative;z-index:1;text-align:center;font-weight:900;font-size:clamp(18px,4.6vw,26px);line-height:1.35;color:#fff;padding:2px 8px 10px;border-bottom:2px solid var(--gold)}.top-message span{color:#ffe082}
+.welcome-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,1.08fr) minmax(0,1fr);align-items:center;gap:10px}
+.side-panel{display:flex;flex-direction:column;gap:9px;min-width:0}.side-title{font-size:clamp(12px,2.7vw,16px);font-weight:900;color:#ffe082;text-align:center;line-height:1.3;margin-bottom:2px}
+.service-item{display:flex;align-items:center;gap:7px;padding:8px 7px;border-radius:12px;background:#ffffff12;border:1px solid #ffffff42;font-size:clamp(10px,2.5vw,13px);font-weight:750;line-height:1.3;min-height:42px}.service-icon{width:25px;height:25px;flex:0 0 25px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#073b9a;font-size:14px}
+.portrait{width:100%;aspect-ratio:0.78;max-height:420px;margin:0 auto;border:3px solid white;outline:2px solid var(--gold);outline-offset:2px;border-radius:17px;overflow:hidden;background:#dceeff;box-shadow:0 12px 24px #001e5570;display:grid;place-items:center}
+.portrait img{width:100%;height:100%;display:block;object-fit:cover;object-position:center 25%;transform:none}
+.welcome-title{text-align:center;position:relative;z-index:1;margin:2px 0 0;padding:11px 8px;border-radius:15px;background:linear-gradient(100deg,#d71920,#a90012);border:2px solid #ffe082;box-shadow:0 5px 16px #001a4b55;font-size:clamp(22px,6vw,34px);line-height:1.15;font-weight:950;color:#fff}.welcome-title span{color:#ffe082}.welcome-sub{text-align:center;position:relative;z-index:1;margin:-6px 0 0;color:#fff;font-size:14px;font-weight:750}
+.company-note{position:relative;z-index:1;text-align:center;color:#e8f3ff;font-size:12px;line-height:1.65;margin:0}.company-note strong{display:block;color:#ffe082;font-size:14px}
+.trust-row{position:relative;z-index:1;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;border-top:1px solid #ffffff3d;padding-top:10px;font-size:10px;font-weight:750;color:#fff}.trust-row span{padding:5px 8px;border:1px solid #ffffff40;border-radius:30px;background:#ffffff10}
 .status{display:flex;align-items:center;gap:10px;margin:16px 0 12px;padding:13px 14px;border-radius:15px;background:#fff;border:1px solid #dce8f7;box-shadow:0 5px 16px #17385b0c}
 .dot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:#d49b13;box-shadow:0 0 0 4px #fdf0c6}
 .status strong{display:block;font-size:13px}.status small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
@@ -23,12 +30,11 @@ main{width:100%;max-width:560px;min-height:100svh;margin:auto;padding:0 0 calc(2
 .card h3{margin:0 0 9px;font-size:17px;color:#123c76}.muted{color:var(--muted);font-size:13px;line-height:1.55}
 button{font:inherit;border:0;border-radius:12px;padding:12px 15px;font-weight:800;background:linear-gradient(110deg,#ffdf78,#f5bd32);color:#15366c;min-height:46px}
 button.secondary{background:#eaf2ff;color:#174d91;border:1px solid #cbdff8}
-button:disabled{opacity:.55}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+button:disabled{opacity:.55}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .booking{padding:12px 0;border-top:1px solid #e9eef5}.booking:first-child{border-top:0}.booking strong{display:block;font-size:14px}.booking small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
-.hidden{display:none!important}.foot{text-align:center;color:#78899d;font-size:10px;padding:18px 8px 4px}
-#message{font-size:13px;line-height:1.55;color:#53677f;white-space:pre-wrap}
-@media(max-width:370px){.hero{padding:15px 13px}.portrait{width:148px;height:186px}.card{padding:13px}}
+.hidden{display:none!important}.foot{text-align:center;color:#78899d;font-size:10px;padding:18px 8px 4px}#message{font-size:13px;line-height:1.55;color:#53677f;white-space:pre-wrap}
+@media(max-width:480px){main{padding-left:8px;padding-right:8px}.hero{padding:14px 9px 16px;gap:11px}.welcome-grid{grid-template-columns:minmax(0,1fr) minmax(112px,1.12fr) minmax(0,1fr);gap:6px}.side-panel{gap:6px}.service-item{padding:6px 4px;gap:4px;min-height:42px;font-size:10px}.service-icon{width:21px;height:21px;flex-basis:21px;font-size:12px}.portrait{border-radius:13px}.side-title{font-size:11px}.top-message{font-size:18px}}
+@media(max-width:350px){.welcome-grid{grid-template-columns:minmax(0,1fr) minmax(98px,1fr) minmax(0,1fr);gap:4px}.service-item{font-size:9px;padding:5px 3px}.service-icon{width:18px;height:18px;flex-basis:18px}.side-title{font-size:10px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -38,13 +44,30 @@ button:disabled{opacity:.55}
 <main>
   <header class="brand"><div class="mark" aria-hidden="true">⚡</div><div><h1>SRK ELECTRONIC</h1><p>Har Ghar Ki Electrical Seva</p><p class="service-line">घर | दुकान | ऑफिस की इलेक्ट्रिकल सेवा</p></div></header>
   <section class="hero" aria-labelledby="welcome-title">
-    <h2 id="welcome-title">SRK ELECTRONIC</h2>
-    <p class="tag">हर घर की इलेक्ट्रिकल सेवा</p>
-    <p class="tag">घर | दुकान | ऑफिस की इलेक्ट्रिकल सेवा</p>
-    <div class="portrait"><img src="./assets/founder-shahrukh-khan.webp" alt="SRK ELECTRONIC Founder"></div>
-    <h2>WELCOME TO <span>SRK ELECTRONIC</span></h2>
-    <p class="tag">आपका स्वागत है</p>
-    <div class="service-copy"><strong>वायरिंग | फॉल्ट रिपेयर | फिटिंग</strong>इंस्टॉलेशन | मेंटेनेंस | इलेक्ट्रिकल समाधान<br>सुरक्षित काम | सही सलाह | भरोसेमंद सेवा</div>
+    <div class="top-message">सभी प्रकार की <span>लाइट</span> और<br><span>इलेक्ट्रिकल</span> काम के लिए संपर्क करें</div>
+    <div class="welcome-grid">
+      <div class="side-panel" aria-label="इलेक्ट्रिकल सेवाएँ">
+        <div class="side-title">हमारी सेवाएँ</div>
+        <div class="service-item"><i class="service-icon">⚡</i><span>इलेक्ट्रिकल इंस्टॉलेशन</span></div>
+        <div class="service-item"><i class="service-icon">⌂</i><span>घर की वायरिंग</span></div>
+        <div class="service-item"><i class="service-icon">▦</i><span>स्विच और सॉकेट</span></div>
+        <div class="service-item"><i class="service-icon">💡</i><span>लाइट फिटिंग</span></div>
+        <div class="service-item"><i class="service-icon">🔧</i><span>फॉल्ट रिपेयर</span></div>
+      </div>
+      <div class="portrait"><img src="./assets/founder-shahrukh-khan.webp" alt="SRK ELECTRONIC के संस्थापक"></div>
+      <div class="side-panel" aria-label="इलेक्ट्रिशियन जानकारी">
+        <div class="side-title">इलेक्ट्रिशियन</div>
+        <div class="service-item"><i class="service-icon">✓</i><span>अनुभवी सेवा</span></div>
+        <div class="service-item"><i class="service-icon">🏠</i><span>घर, दुकान, ऑफिस</span></div>
+        <div class="service-item"><i class="service-icon">🛠</i><span>मरम्मत और मेंटेनेंस</span></div>
+        <div class="service-item"><i class="service-icon">🛡</i><span>सुरक्षित काम</span></div>
+        <div class="service-item"><i class="service-icon">☎</i><span>भरोसेमंद सहायता</span></div>
+      </div>
+    </div>
+    <h2 class="welcome-title" id="welcome-title">WELCOME TO <span>SRK ELECTRONIC</span></h2>
+    <p class="welcome-sub">आपका स्वागत है</p>
+    <p class="company-note"><strong>SRK ELECTRONIC — हर घर की इलेक्ट्रिकल सेवा</strong>वायरिंग • इंस्टॉलेशन • फिटिंग • फॉल्ट रिपेयर • मेंटेनेंस<br>सही सलाह | सुरक्षित काम | भरोसेमंद इलेक्ट्रिकल समाधान</p>
+    <div class="trust-row"><span>✓ सुरक्षित सेवा</span><span>⚡ प्रोफेशनल काम</span><span>🤝 भरोसेमंद सहयोग</span></div>
   </section>
   <div class="status" role="status" aria-live="polite"><i class="dot"></i><div><strong id="stateTitle">ऐप तैयार हो रहा है…</strong><small id="stateDetail">सुरक्षित सेशन जाँचा जा रहा है</small></div></div>
   <section id="signedOut" class="card hidden">
