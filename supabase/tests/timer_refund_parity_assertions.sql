@@ -53,5 +53,23 @@ begin
     or position('v_duration := 8' in v_def)=0 then
    raise exception 'FINAL_BOOKING_RPC_DATE_ONLY_OR_DURATION_COMPATIBILITY_MISSING';
  end if;
+ -- The Timer payment webhook receipt ledger and Razorpay refund event lease ledger
+ -- are separate contracts and must never share the same relation name.
+ if not exists (
+   select 1 from information_schema.columns
+   where table_schema='public' and table_name='srk_payment_webhook_events'
+     and column_name='received_at'
+ ) then raise exception 'TIMER_PAYMENT_WEBHOOK_RECEIPT_LEDGER_MISSING'; end if;
+ if not exists (
+   select 1 from information_schema.columns
+   where table_schema='public' and table_name='srk_razorpay_webhook_event_ledger'
+     and column_name='processing_started_at'
+ ) then raise exception 'RAZORPAY_REFUND_WEBHOOK_LEASE_LEDGER_MISSING'; end if;
+ if exists (
+   select 1 from information_schema.columns
+   where table_schema='public' and table_name='srk_payment_webhook_events'
+     and column_name='processing_started_at'
+ ) then raise exception 'TIMER_PAYMENT_WEBHOOK_LEDGER_WAS_OVERWRITTEN'; end if;
+
 end
 $assert$;
