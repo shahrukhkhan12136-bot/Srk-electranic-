@@ -1,4 +1,4 @@
-\\set ON_ERROR_STOP on
+\set ON_ERROR_STOP on
 begin;
 select set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000010',true);
 select set_config('request.jwt.claim.phone','+919000000010',true);
