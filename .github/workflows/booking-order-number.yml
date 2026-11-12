@@ -18,6 +18,7 @@ on:
   pull_request:
     paths:
       - "supabase/migrations/20261112110000_customer_booking_order_numbers.sql"
+      - "supabase/migrations/20261112130000_customer_booking_date_only.sql"
       - "supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql"
       - "supabase/tests/booking_order_number_fixture.sql"
       - "supabase/tests/booking_order_number_assertions.sql"
@@ -86,7 +87,7 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql
-      - name: Verify safe replay of both migrations
+      - name: Verify safe replay of all three migrations
         env:
           PGPASSWORD: postgres
         run: |
