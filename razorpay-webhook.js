@@ -316,6 +316,16 @@ exports.handler = async (event) => {
       if (refundEvent.processed) return json(200, { success: true, refund_reconciled: true, duplicate: true });
       if (refundEvent.rejected) return json(200, { success: true, refund_reconciled: false, duplicate: true });
       if (refundEvent.inProgress) return json(500, { success: false, refund_reconciled: false, retry: true });
+      // A provider refund ID already bound to this payment ledger must never be replaced.
+      if (record.refund_id && record.refund_id !== refund.id) {
+        await finishSnapshotWebhookEvent(refundEvent.id, refundEvent.leaseStartedAt, "rejected", "refund_id_conflict", "Provider refund ID does not match the refund ledger.");
+        return json(200, { success: true, refund_reconciled: false, rejected: true, reason: "refund_id_conflict" });
+      }
+      // Out-of-order refund.created must not move a failed refund back to processing.
+      if (record.status === "failed" && providerStatus === "pending") {
+        await finishSnapshotWebhookEvent(refundEvent.id, refundEvent.leaseStartedAt, "processed", "refund_stale_pending_ignored", "Ignored stale pending event after a failed refund.");
+        return json(200, { success: true, refund_reconciled: false, status: "failed", stale_event_ignored: true });
+      }
       try {
         const reconcile = await fetch(new URL("/rest/v1/rpc/srk_service_reconcile_booking_refund", SUPABASE_URL), {
           method: "POST",
