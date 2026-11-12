@@ -4,7 +4,7 @@ values('10000000-0000-4000-8000-000000000004','919999999994')
 on conflict(id) do nothing;
 
 set role authenticated;
-do $
+do $test$
 declare
  v_refund public.srk_razorpay_refunds%rowtype;
  v_case_id uuid;
@@ -99,5 +99,5 @@ begin
   raise exception 'CLIENT_ROLE_HAS_DIRECT_RECONCILIATION_TABLE_ACCESS';
  end if;
 end
-$;
+$test$;
 reset role;
