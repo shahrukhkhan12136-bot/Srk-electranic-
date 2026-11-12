@@ -491,3 +491,15 @@ Main Admin को हर booking का timeline और linked evidence दि�
 - बदलाव commit `128dd33c47d630960082e6ef98d5e2d1fcd45a59` में है। GitHub से file दोबारा fetch करके redirect string verify की गई।
 - यह केवल route correction है; वास्तविक SMS OTP, browser session persistence, post-login booking list और mobile-browser end-to-end test अभी नहीं किए गए। Duplicate Customer OTP implementation को नए पांच-menu Customer App के निर्माण के दौरान ही हटाना/समेकित करना है।
 - Production deploy या database/auth setting में कोई बदलाव नहीं हुआ।
+
+
+### 17.8 — Customer/Electrician phone-contact RPC: completed-booking privacy finding (13 Nov 2026)
+Read-only inspection of the live Supabase function definition found a confirmed mismatch with the Master Requirement that customers must not see an electrician's phone number after work is completed:
+- The authenticated customer wrapper `srk_get_customer_call_contacts()` delegates to `private.srk_get_customer_call_contacts_impl()`.
+- The private implementation checks `auth.uid()` and customer ownership, requires an assigned electrician, but its allowed status list explicitly includes `completed`.
+- It returns `ep.phone` for every row in that list. Therefore, the RPC can return the electrician's phone number for a completed booking; this is a server/API-level privacy issue, not merely a UI display issue.
+- The function is `SECURITY DEFINER`, with a fixed search_path. The wrapper's authenticated-only EXECUTE grant was observed in the earlier audit; the private implementation definition itself confirms no completed-state exclusion.
+
+Required safe correction (NOT applied): remove `completed` from the customer contact RPC's allowed statuses, and verify that only currently active/accepted booking states return a phone number. Add negative tests proving that completed, cancelled, rejected, unassigned, and another customer's bookings return no contact details, while a valid accepted booking returns the intended contact. Review the electrician-side customer-contact path separately against the same lifecycle rules.
+
+Safety boundary: no production SQL, function, grant, table, or customer data was changed. Do not hot-edit production. Prepare a versioned, backward-compatible migration on the Feature Branch only after migration-history drift is reconciled; test it in an isolated staging/Test Mode environment, inspect function ACLs and wrapper behavior, then rerun contact-privacy regression tests before any production release. This finding is high priority because the current implementation appears to expose a number after completion contrary to the approved requirement.
