@@ -1365,3 +1365,49 @@ Feature Branch के UI और Netlify/root handlers में Cash/Online औ�
 5. Razorpay verify/webhook quote-approved state पर निर्भर हैं; नया timer approval और immutable billing timestamp integrate हुए बिना new cycle logic release नहीं होना चाहिए।
 
 No code, UI, SQL, payment provider, wallet, customer data, Production schema or deployment was changed. This is source-level caller mapping only.
+
+
+## 17.40 — Legacy Work Status से Server-Authoritative Timer तक State-Machine Design Review (13 Nov 2026)
+
+### वर्तमान Feature Branch flow का प्रमाण
+- Electrician UI `srk_update_booking_work_status` RPC को `inspection`, `in_progress`, `completed` status भेजता है। Inspection पर quote submit UI खुलता है; customer quote approve/reject करता है; quote_approved होने पर electrician in_progress और फिर completed करता है।
+- उपलब्ध Feature Branch file inventory और inspected `electrician.html`, `booking.html`, booking/payment handlers तथा relevant migrations में Master वाला timer request/Customer approval/immutable server timestamp/actual-minute billing flow नहीं मिला। यह inspected source scope का निष्कर्ष है, पूरे repository के हर hidden/generated object का दावा नहीं।
+- इसलिए मौजूदा `in_progress` को timer started मानना गलत होगा: यह केवल status transition है। Browser/mobile clock से duration निकालना भी सुरक्षित नहीं।
+- Electrician work UI अभी quote में labour amount manually भरता है और `srk_submit_booking_quote` call करता है। Customer payment UI और Razorpay handlers बाद में `quoted_amount`, `service_charge`, `materials_amount`, `quote_status` पढ़ते हैं। Timer implementation को इन callers के साथ coordinated replacement चाहिए।
+
+### प्रस्तावित canonical lifecycle (नई implementation; अभी लागू नहीं)
+1. `assigned`: offer accepted, electrician assigned, cash-cycle slot reserved; दोनों पक्षों के contact numbers केवल इस active accepted booking context में उपलब्ध।
+2. `start_requested`: assigned electrician server RPC से start request करता है; request ID/idempotency key और server received_at दर्ज। Customer को उसी booking के लिए approval prompt।
+3. `in_progress`: Customer approval RPC server transaction में start event को approved करता है और immutable `timer_started_at` server timestamp लिखता है। केवल इसी समय से billable duration शुरू। Duplicate approval उसी event का result लौटाए; दूसरा timer न बने।
+4. `completion_requested`: Electrician completion RPC भेजता है; server first receipt time immutable `completion_requested_at` लिखता है। यह timestamp billing endpoint candidate है, लेकिन अभी final नहीं।
+5. Customer completion approval: server approval event दर्ज करे और timer stop boundary को पहले server-received completion request timestamp से bind करे; Customer approval timestamp को billing end न बनाए।
+6. Customer approval न दे/विवाद करे: Admin review queue; Admin reasoned decision और actor audit के साथ accept/adjust/reject कर सकता है। Admin adjustment में original start/request/stop timestamps overwrite न हों; अलग adjustment event हो।
+7. `completed` + payment pending: immutable actual_minutes और labour amount freeze; Cash/Online method customer की पहले से saved choice रहे। Payment verify होने पर ही paid/finalized financial ledger postings हों।
+8. `cancelled`/failed/refunded: timer events delete न हों; cancellation/refund अलग event और ledger reversal से दर्ज हों।
+
+### Server-side data model requirements
+- Append-only `booking_timer_events`: booking_id, event_type, actor_user_id/role, request_id, idempotency_key NOT NULL UNIQUE, server_received_at, approval status, reason, source, created_at. Client timestamp केवल diagnostic metadata; billing के लिए नहीं।
+- Booking पर current lifecycle projection: timer_state, start_event_id, immutable timer_started_at, completion_request_event_id, immutable completion_requested_at, customer_completion_decision, decision_at, actual_minutes, labour_amount_minor/decimal, pricing_rule_version, approved_by/admin_adjustment reference. सभी fields server RPC से ही बदलें।
+- एक booking पर अधिकतम एक approved start और एक accepted completion boundary; DB unique/partial indexes और transaction locks से enforce करें। Duplicate RPC retry deterministic response दे।
+- Server function authenticated customer ownership और assigned approved+active electrician identity verify करे; Admin override अलग Admin guard और mandatory reason से। Direct client table writes revoke; RLS read access role/ownership अनुसार।
+- समय calculation UTC timestamptz से server-side; local display Asia/Kolkata. Duration seconds से actual minutes निकालने की rounding policy Master से तय होनी बाकी है (पूर्ण minute का floor/ceil/round निर्णय अभी invent न करें)।
+- Pricing formula: category 8-hour rate × billable actual minutes / 480. Existing rates and 15% labour-only Platform Fee apply; materials अलग pass-through, fee base में शून्य। Currency precision/paise rounding, 1–8 hour limit, overtime, pause/resume policy को लिखित Master decision के बिना hard-code न करें।
+
+### Required caller migration map
+- Replace Electrician `workStatus()`, inspection/quote submission UI with start request, completion request and pending-approval states.
+- Replace Customer quote approval/rejection UI with start approval and completion approval/dispute UI.
+- Replace `create-booking.js` client `quoted_amount` acceptance; booking creation must store only server-validated category/rate snapshot and chosen payment method, not a customer price.
+- Replace `create-order.js`, `verify-payment.js`, `razorpay-webhook.js`, cash confirmation and payable triggers so every amount is derived from frozen timer billing record and exact labour/material split.
+- Update payout, Platform Fee ledger, refund, cancellation, Admin dashboard, receipt/history, push/realtime, audit and support views to consume timer event IDs and immutable amount snapshot.
+- Contact RPCs must expose phones only while booking is accepted/active; after completion/cancellation no phone in RPC response, offer details, history, receipt, cache or notifications.
+
+### Release tests
+- Customer approves start; rejects start; duplicate approve; wrong customer; wrong electrician; unassigned/expired offer; disabled electrician; expired session.
+- Completion request timestamp first server receipt is retained through delayed customer approval; duplicate/reordered request; Admin review and reasoned adjustment; no client clock tampering effect.
+- Two concurrent start requests; multiple tabs; retry after network timeout; start/completion race; booking cancellation race; timer event immutability.
+- Category rates, exact minute calculation, fractional paise rounding decision, 1–8 hour boundary, overtime policy, daylight/timezone display, materials exclusion, 15% labour fee and all Cash/Online settlement paths.
+- Customer/Electrician contact negative tests immediately after terminal state; verify no PII in history/receipt/cache/realtime/push/logs.
+
+### Decision gate
+- Timer model and immutable event design are now documented, not implemented. Before code/migration, confirm unresolved Master policies: minute rounding, overtime, pause/resume, customer approval timeout/dispute, Admin adjustment limits, cancellation while timer active, and whether booking becomes completed at customer approval or after payment. Preserve legacy quote fields/data until all callers and historical records are migrated.
+- No migration file was created and no Production database, customer/payment data, provider settings, staging resource, or deployment was changed.
