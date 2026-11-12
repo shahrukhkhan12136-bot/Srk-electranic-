@@ -235,6 +235,7 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] Feature Branch migration में identity-conflict validation को permanent-ID preservation से पहले चलाया गया; conflicting relink अब SQLSTATE 23505 से reject होता है। Existing ambiguous legacy INSERT बिना ID के retained रहता है ताकि historical profile creation अनावश्यक रूप से block न हो।
 - [I] Regression test जोड़ा: issued profile को दूसरे profile के Auth identity से relink करने का प्रयास reject हो और पुराना Auth link अपरिवर्तित रहे।
 - [I] GitHub Actions run 43169829039 SUCCESS at commit `0b1dd1a7`: disposable PostgreSQL fixture, migration/catalog security assertions, issuance/immutability/client-supplied ID behavior, duplicate identity relink rejection और 24 concurrent ID issuance stress tests pass।
+- [I] GitHub Actions run 43170444750 SUCCESS at commit `1cbad155`: वही electrician display-ID migration clean fixture पर दूसरी बार भी सुरक्षित replay हुई; migration catalog/security assertions दोबारा pass हुए, फिर behavior और 24-way concurrent issuance stress tests भी pass हुए।
 - [T] यह CI disposable fixture evidence है; Production schema पर migration लागू नहीं हुई और वास्तविक Admin/Android UI E2E बाकी है।
 
 
