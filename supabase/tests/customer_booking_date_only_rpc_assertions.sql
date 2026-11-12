@@ -14,6 +14,8 @@ declare
   v_time time;
   v_duration smallint;
   v_estimate numeric(12,2);
+  v_rate_version integer;
+  v_rate_id uuid;
 begin
   v_date_only := public.srk_create_customer_booking(
     jsonb_build_object(
@@ -32,8 +34,12 @@ begin
   if v_time is not null then raise exception 'Date-only RPC unexpectedly stored a preferred time: %',v_time; end if;
   select duration_hours,estimated_labour_amount_snapshot into v_duration,v_estimate
   from public.service_bookings where id=v_date_id;
-  if v_duration <> 8 or v_estimate <> 899.00 then
-    raise exception 'Legacy caller duration default or authoritative estimate incorrect: duration %, estimate %',v_duration,v_estimate;
+  select rate_version_snapshot,rate_catalogue_id into v_rate_version,v_rate_id from public.service_bookings where id=v_date_id;
+  if v_duration <> 8 or v_estimate <> 899.00 or v_rate_version <> 1 or v_rate_id is null then
+    raise exception 'Legacy duration/estimate/version snapshot incorrect: duration %, estimate %, version %, catalogue %',v_duration,v_estimate,v_rate_version,v_rate_id;
+  end if;
+  if (v_date_only->>'rate_version')::integer <> 1 or (v_date_only->>'rate_catalogue_id')::uuid <> v_rate_id then
+    raise exception 'RPC did not return the selected catalogue version and id: %',v_date_only;
   end if;
 
   v_replay := public.srk_create_customer_booking(
@@ -112,6 +118,16 @@ begin
   begin
     update public.service_bookings set duration_hours=4 where id=v_legacy_id;
     raise exception 'Immutable duration snapshot was unexpectedly editable';
+  exception when sqlstate '55000' then null;
+  end;
+  begin
+    update public.service_bookings set rate_version_snapshot=2 where id=v_legacy_id;
+    raise exception 'Immutable rate version snapshot was unexpectedly editable';
+  exception when sqlstate '55000' then null;
+  end;
+  begin
+    update public.srk_rate_catalogue set hourly_rate=1 where id=v_rate_id;
+    raise exception 'Rate catalogue row was unexpectedly editable';
   exception when sqlstate '55000' then null;
   end;
   begin
