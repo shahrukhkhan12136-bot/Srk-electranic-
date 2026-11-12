@@ -1334,3 +1334,34 @@ Feature Branch की चार SQL migrations को source-level पर दो
 - Wallet top-up invalid signature, wrong amount/currency, duplicate provider event, timeout retry, insufficient amount, full fee clearance and only then cycle reset.
 
 Conclusion: Feature Branch SQL has useful foundations (row locks, per-electrician advisory lock, deterministic fee ledger keys, explicit customer Cash→Online choice, labour-only settlement cap), but does not yet meet the Master Requirements end-to-end. No implementation patch or schema migration was created in this step. Production database, customer/payment records, migration history, provider settings, staging resources and deployment remain unchanged.
+
+
+## 17.39 — Cash Cycle के वास्तविक UI/API Callers और Payment Flow Integration Audit (13 Nov 2026)
+
+Feature Branch के UI और Netlify/root handlers में Cash/Online और acceptance RPC callers की जाँच की गई। कोई browser session, payment, RPC mutation या live customer record इस्तेमाल नहीं किया गया।
+
+### Electrician UI
+- `electrician.html` offer acceptance/decline के लिए सीधे `srk_respond_to_offer` RPC call करता है। इसलिए acceptance-time reservation इसी RPC transaction में atomic होना चाहिए; केवल UI-side slot check सुरक्षित नहीं होगा।
+- Offer card `srk_get_my_offer_details()` से payment_method badge, quoted_amount, customer name/phone/address/location और call link render करता है। पुराने audit के अनुसार RPC में completed booking contact भी लौट सकता है; UI में इस card पर completed-state contact removal guard नहीं मिला। Contact privacy fix इस same response contract और UI render दोनों में चाहिए।
+- Electrician Earnings screen Platform Fee due के लिए अलग RPC response (`outstanding_due`, `entries`) render करता है और ledger entry labels में cash_due, cash_due_reversal, online_fee, cash_due_settlement, cash_due_restore, online_fee_reversal शामिल हैं। इस UI contract को future booking-wise allocation rows से backwards-compatible या versioned करना होगा।
+- Wallet summary UI भी है; लेकिन current wallet foundation top-ups/payouts disabled बताता है। UI दिखना वास्तविक top-up permission या verified payment flow का प्रमाण नहीं।
+
+### Customer UI
+- `booking.html` Customer booking list own customer_user_id filter से rows पढ़ती है और payment_method दिखाती है। Unassigned new/confirmed Cash booking पर Customer स्वयं “Online भुगतान चुनें” action चला सकता है।
+- यह action `srk_customer_change_payment_method` RPC को call करता है; confirmation स्पष्ट है और RPC तत्काल payment collect नहीं करता। UI reload के बाद method choice refresh होती है।
+- Customer payment action completed + approved quote + Razorpay-selected booking पर `quoted_amount` से payment amount भेजता है। यह अभी timer-derived actual-minute amount नहीं है।
+- Booking form `create-booking.js` को client-supplied `payment_method` और `quoted_amount` भेजती है। Root handler इन्हें clean/parse करके service_role insert payload में डालता है। Payment method allow-list और authoritative pricing को server-side enforce करना आवश्यक है; केवल UI select values पर भरोसा नहीं।
+
+### Online payment server handlers
+- `razorpay-webhook.js` booking को Razorpay order ID से lookup करता है; explicit Online method check करता है; फिर केवल completed + approved quote booking स्वीकारता है और `service_charge + materials_amount) को approved total मानता है। यह legacy quote contract है, timer amount नहीं।
+- `verify-payment.js` भी customer session/booking phone ownership, Razorpay signature, Online method, completed status और approved quote checks करता है; payable total quote-era amount fields से निकलता है। दोनों handlers को एक shared server-authoritative timer amount and payment-intent reconciliation contract पर लाना होगा।
+- Webhook repeated/out-of-order events, duplicate provider event ID, partial refund, amount/currency mismatch और payout/fee-ledger race के लिए end-to-end provider Test Mode tests अभी बाकी हैं।
+
+### Integration blockers
+1. Cash cycle reservation का canonical caller `srk_respond_to_offer` है; migration में persistent reservation table/state absent है।
+2. Customer Cash→Online switch unassigned stage में संभव है, लेकिन offer acceptance के समय slot enforcement के साथ transactionally coordinate होना चाहिए।
+3. Electrician UI payment badge/fee due display legacy RPC response contract पर निर्भर है; new allocation ledger/API contract साथ में update हो।
+4. Booking creation client `quoted_amount` स्वीकारती है; इसे Master timer billing से पहले source of truth नहीं बनाया जा सकता।
+5. Razorpay verify/webhook quote-approved state पर निर्भर हैं; नया timer approval और immutable billing timestamp integrate हुए बिना new cycle logic release नहीं होना चाहिए।
+
+No code, UI, SQL, payment provider, wallet, customer data, Production schema or deployment was changed. This is source-level caller mapping only.
