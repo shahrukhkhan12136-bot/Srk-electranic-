@@ -226,3 +226,16 @@ The following 39 Production history rows still have no matching-name SQL file in
 - srk_service_reconcile_booking_refund पर EXECUTE केवल postgres और service_role को मिला; body service_role assertion भी करती है।
 - Empty search_path वाले refund functions के bodies में table/function references schema-qualified हैं; यह inspected functions के लिए सकारात्मक evidence है, पर सभी SECURITY DEFINER functions का पूर्ण code audit अभी बाकी है।
 - यह current-state security evidence है; इससे historical hardening migration SQL का exact source या उस migration का पूरा effect साबित नहीं होता।
+
+### Foreign-key index coverage — current catalog snapshot
+Read-only FK-to-leading-index comparison में कुछ वर्तमान FK columns के लिए matching leading index नहीं मिला:
+- srk_admin_audit_events.actor_user_id
+- srk_booking_complaint_events.actor_user_id
+- srk_booking_complaints.customer_user_id, resolved_by, updated_by
+- srk_booking_refund_requests.customer_user_id, decided_by
+- srk_electrician_verification_documents.application_id, reviewed_by
+- srk_electrician_verification_events.actor_user_id, electrician_profile_id
+- srk_manual_payment_entries.recorded_by
+- srk_manual_refund_entries.recorded_by
+- srk_razorpay_refunds.admin_user_id
+यह सूची वर्तमान Production schema के सभी FK constraints पर आधारित है। इसे तत्काल index बनाने की अनुमति या migration defect का निष्कर्ष न समझें: कुछ tables बाद के feature migrations से आए हो सकते हैं, और index की उपयोगिता/डेटा cardinality तथा query workload भी देखना होगा। शुरुआती add_missing_foreign_key_indexes migration का exact scope इस snapshot से निर्धारित नहीं किया जा सकता।
