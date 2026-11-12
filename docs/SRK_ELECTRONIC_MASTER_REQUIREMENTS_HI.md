@@ -700,3 +700,9 @@ Live Production में `public.srk_respond_to_offer(p_offer_id, p_response)` 
 - इस evidence के आधार पर provisional lifecycle interpretation: offer acceptance/active assignment का entry point `assigned`; active work `in_progress`; terminal `completed` पर phone visibility बंद। लेकिन legacy `inspection`/quote states को हटाने का timing तभी तय होगा जब booking/timer/payment replacement लागू और regression-tested हो।
 
 इससे “accepted” शब्द का status mapping blocker स्पष्ट हुआ; कोई status/RPC/function/database object नहीं बदला गया।
+
+
+**Recovered source commit provenance (GitHub path history):**
+- `20261109190000_customer_contact_after_completion.sql` की branch commit history में commit `4de560f1db0402899126b7a47d05fe09534e525e` मिला; commit message: “Keep customer electrician contact visible after completion”; author timestamp 2026-11-09 16:06:08 UTC।
+- यह commit उसी alternate branch `work/separate-customer-electrician-portals` में है। Production migration history में दर्ज version `20261109161539` है; branch filename version `20261109190000` अलग है। Commit message और SQL body मिलकर root-cause hypothesis को मजबूत करते हैं, लेकिन commit/version mismatch के कारण Production में exactly कौन-सा file/version apply हुआ, इसकी अंतिम provenance अभी भी reconcile करनी है।
+- इसी branch में cancellation privacy migration `20261109193000_hide_customer_details_on_cancelled_bookings.sql` commit `12057a1fb9f84996e8828359b2be3185ac14a064` (“Protect customer details on cancelled electrician bookings”) भी मिली। इसका SQL और live function/table effects अलग से compare करने हैं।
