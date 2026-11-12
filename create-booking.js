@@ -212,6 +212,8 @@ exports.handler = async (event) => {
       success: true,
       booking_id: booking.id,
       order_number: orderNumber,
+      duration_hours: bookingResult.duration_hours ?? duration_hours,
+      estimated_labour_amount_snapshot: bookingResult.estimated_labour_amount_snapshot ?? null,
       replayed: bookingResult.replayed === true,
       offers_created: offersCreated,
       match_level: offersCreated ? matchLevel : null,
