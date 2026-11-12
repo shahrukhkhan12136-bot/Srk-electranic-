@@ -9,10 +9,10 @@ $roles$;
 create schema if not exists auth;
 create or replace function auth.uid() returns uuid
 language sql stable
-as $ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $;
+as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
 create or replace function auth.jwt() returns jsonb
 language sql stable
-as $ select jsonb_build_object('sub',current_setting('request.jwt.claim.sub',true),'phone',current_setting('request.jwt.claim.phone',true)) $;
+as $$ select jsonb_build_object('sub',current_setting('request.jwt.claim.sub',true),'phone',current_setting('request.jwt.claim.phone',true)) $$;
 create table public.service_bookings(
  id uuid primary key default gen_random_uuid(),
  service_type text, state text, district text, pincode text,
