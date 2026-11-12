@@ -177,6 +177,7 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] API regression tests `tests/create-booking-date-only.test.js`: valid date-only booking accepted और RPC payload में `preferred_time` absent; impossible calendar date `2026-02-30` rejected before booking RPC. GitHub Actions run 43158591000 SUCCESS; Node test runner 2/2 pass.
 - [T] CI disposable fixture है; Main Production Supabase पर migration लागू नहीं हुई, browser/real-device E2E नहीं हुआ।
 - [I] Customer date-only UI regression `tests/customer-booking-date-only-ui.test.js`: required date picker मौजूद, booking form में time/time-slot control नहीं, API/WhatsApp payload में selected clock-time नहीं, historical records का explicit preferred_time display सुरक्षित। GitHub Actions run 43159329138 SUCCESS; combined Node regression suite 5/5 pass.
+- [I] Booking API security regression `tests/create-booking-security.test.js`: non-POST reject, trusted client IP missing पर fail-closed, invalid session reject, verified Auth phone mismatch reject; सभी मामलों में booking RPC call नहीं हुई। GitHub Actions run 43159445870 SUCCESS; combined Node regression suite 9/9 pass.
 - [I] Authenticated PostgreSQL RPC regression (`customer_booking_date_only_rpc_assertions.sql`): date-only booking stores NULL time, same idempotency key replays same booking, legacy explicit `14:30` time remains stored, invalid `25:99` is rejected. GitHub Actions run 43159142236 SUCCESS; numbering assertions are deliberately run first because PostgreSQL sequences are non-transactional.
 
 
