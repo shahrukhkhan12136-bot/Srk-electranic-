@@ -580,3 +580,50 @@ Safety boundary: no production SQL, function, grant, table, or customer data was
 - Customer booking list में contact RPC के अतिरिक्त सीधे customer phone field select नहीं की जाती। यह इस एक UI path का निरीक्षण है, पूरे app/data flow की exhaustive guarantee नहीं।
 - Feature Branch `sw.js` में navigation GET responses cache किए जाते हैं; non-navigation GET भी cache-first है। Supabase contact RPC POST request होने के कारण वर्तमान service worker fetch handler उसे cache नहीं करता। इस निरीक्षण में कोई explicit phone-number localStorage/sessionStorage persistence नहीं मिली। फिर भी authenticated page/browser memory, browser history, screenshots, logs और अन्य app pages का full audit बाकी है।
 - कोई UI, service worker, cache, database या API code बदला नहीं गया। यह source inspection है; real browser/session/cache behavior का test नहीं हुआ।
+
+
+**Production history में मौजूद, लेकिन 14 scanned Git branches में समान filename से नहीं मिली 41 migrations (version + name):**
+```text
+20261108092928 harden_srk_rls_policy_performance
+20261108093725 add_atomic_payment_order_lock
+20261108093757 add_service_role_policy_payment_order_locks
+20261108094007 harden_security_definer_function_search_paths
+20261108095224 add_missing_foreign_key_indexes
+20261108095928 add_actual_paid_amount_commission_and_status_history
+20261108102159 harden_payment_order_lock_search_paths
+20261108102323 harden_booking_broadcast_search_path
+20261108102612 harden_booking_guard_trigger_search_path
+20261108102837 enable_realtime_job_offer_updates
+20261108102951 enable_realtime_electrician_profile_updates
+20261108103531 guard_booking_assignment_and_amount_integrity
+20261108115205 tighten_legacy_definer_paths_and_history_grants
+20261108181453 restrict_public_form_inserts_to_server_functions
+20261108181538 combine_admin_customer_booking_read_policy
+20261108184254 electrician_earnings_summary
+20261108184815 protect_commission_columns_and_admin_report
+20261108184938 limit_booking_updates_and_correct_earnings_timestamp
+20261109052929 harden_wallet_reporting_rpc_paths_and_route_recipient_index
+20261109053005 harden_wallet_and_commission_security_definer_paths
+20261109053301 grant_authenticated_select_service_bookings
+20261109053328 grant_authenticated_select_job_offers_for_rls_realtime
+20261109080121 lock_quote_workflow_rpcs_to_authenticated_users
+20261109081310 srk_manual_electrician_payout_ledger
+20261109082241 index_electrician_payout_foreign_keys
+20261109082620 lock_down_route_transfer_api_access
+20261109094209 add_secure_admin_booking_offer_flow
+20261109110140 align_electrician_payouts_with_booking_commission_rate
+20261109112032 allow_electricians_to_read_own_manual_payout_status
+20261109112105 consolidate_electrician_payout_read_policy
+20261109114000 protect_customer_and_electrician_phone_numbers_until_masked_calling
+20261109114642 enable_direct_customer_electrician_phone_calls
+20261109202355 razorpay_refund_tables_and_audit_type
+20261109202505 razorpay_refund_prepare_rpc
+20261109202511 razorpay_refund_list_rpc
+20261109202534 razorpay_refund_audit_trigger
+20261111073357 enable_pg_net_for_electrician_push
+20261111075205 wire_job_offer_push_webhook
+20261111142316 retire_empty_legacy_electrician_booking_tables
+20261112092620 grant_admin_booking_update_columns
+20261112182839 increase_schema_export_role_connection_limit
+```
+यह सूची filename-level inventory है, missing schema objects की final list नहीं। इनमें से कुछ SQL दूसरे नाम/timestamp से मौजूद हो सकते हैं; content hash और target schema state compare किए बिना इन्हें replay या recreate नहीं करना है।
