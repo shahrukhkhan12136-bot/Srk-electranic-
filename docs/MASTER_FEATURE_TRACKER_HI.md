@@ -156,14 +156,17 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 
 
 ## A.2 Customer Booking — duration selector 1–8 hours (owner-confirmed 2026-11-11)
-- [ ] Add a single-select duration control for 1, 2, 3, 4, 5, 6, 7 or 8 hours.
-- [ ] Recalculate and show the selected category's total customer Labour price on the customer's mobile screen immediately when duration changes.
-- [ ] Formula: approved 8-hour category price × selected integer hours ÷ 8; preserve precision and round only final payable amount to paise using half-up. Examples: Helper 1h ₹112.38, 2h ₹224.75, 8h ₹899.00; Ordinary 1h ₹149.88, 2h ₹299.75, 8h ₹1,199.00.
-- [ ] Server validates duration is an integer from 1 through 8 and recalculates from current approved rate/version; never trust client-submitted total.
-- [ ] Immutable booking snapshot stores category, rate/version, selected duration and Labour total.
-- [ ] Treat selected 1–8 hours as booking preference/initial duration only—not a timer cap or final-bill cap. Timer continues under the approved timer lifecycle; final Labour bill is based on actual elapsed work time, whether shorter or longer than selected duration.
-- [ ] Show the selected-duration price at booking as the price for the chosen duration; final amount is calculated from actual server timer duration. Do not auto-stop the timer when selected hours expire.
-- [ ] Keep materials separate; no upfront payment. Test responsive/mobile, accessibility, stale/offline/error handling and end-to-end booking.
+- [I] Customer form में required single-select duration control: 1 से 8 घंटे; default duration silently select नहीं होती।
+- [I] Category या duration बदलने पर ग्राहक स्क्रीन पर अनुमानित Labour amount तुरंत update होता है; booking WhatsApp summary में चुनी अवधि शामिल है।
+- [I] Formula: approved 8-hour category price × selected integer hours ÷ 8; full precision रखकर final amount को paise पर half-up round किया जाता है। उदाहरण: Helper 1h ₹112.38, 2h ₹224.75, 3h ₹337.13, 8h ₹899.00; Ordinary 1h ₹149.88।
+- [I] Booking API duration को integer 1–8 validate करता है; client amount स्वीकार/forward नहीं होता। Database RPC category की server-side fixed rate से amount दोबारा calculate करता है।
+- [I] service_bookings.duration_hours और estimated_labour_amount_snapshot में immutable snapshot; DB check constraint amount/rate/duration consistency enforce करता है और update trigger दोनों values बदलने से रोकता है।
+- [I] Booking confirmation में DB से लौटाया गया duration और server-calculated estimate दिखता है।
+- [T] Rate catalogue/version history अभी अलग से implement नहीं; RPC में approved category rates fixed server mapping हैं। Future rate changes के लिए versioned catalogue चाहिए।
+- [I] चुने हुए 1–8 घंटे केवल शुरुआती अनुमान/बुकिंग preference हैं—timer या final bill की सीमा नहीं। Actual final Labour bill server timer के वास्तविक elapsed time पर आधारित रहेगा; selected duration समाप्त होने पर timer auto-stop नहीं होगा।
+- [I] Materials अलग रहते हैं; booking के समय कोई upfront payment नहीं।
+- [T] Disposable PostgreSQL CI + API/UI regressions: GitHub Actions run 43160242188 SUCCESS; 11/11 Node tests, SQL order-number/RPC assertions, duration estimate/half-up rounding/invalid-duration/immutability assertions, four migrations apply और safe replay, inline JS syntax checks।
+- [T] Real browser/Android customer booking E2E, responsive/accessibility, offline/error states और live Production runtime verification अभी बाकी। Production DB/site पर कोई बदलाव नहीं किया गया।
 
 
 ## A.3 Customer Booking — date-only selection (owner-confirmed 2026-11-11)
