@@ -7,6 +7,7 @@ on:
       - "supabase/migrations/20261112130000_customer_booking_date_only.sql"
       - "supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql"
       - "supabase/tests/booking_order_number_fixture.sql"
+      - "supabase/tests/customer_booking_date_only_rpc_assertions.sql"
       - "supabase/tests/booking_order_number_assertions.sql"
       - ".github/workflows/booking-order-number.yml"
       - "create-booking.js"
@@ -97,6 +98,10 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112110000_customer_booking_order_numbers.sql
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112130000_customer_booking_date_only.sql
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql
+      - name: Assert date-only and legacy-time customer booking RPC behavior
+        env:
+          PGPASSWORD: postgres
+        run: psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/tests/customer_booking_date_only_rpc_assertions.sql
       - name: Assert numbering, immutability, uniqueness, RPC scope and PII privacy
         env:
           PGPASSWORD: postgres
