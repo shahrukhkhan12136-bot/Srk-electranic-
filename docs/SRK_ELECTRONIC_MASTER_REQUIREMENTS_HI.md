@@ -1440,3 +1440,42 @@ Production Supabase catalog से छह function definitions read-only प्�
 5. SECURITY DEFINER ACLs को per-function audit करें; blanket revoke न करें। Runtime JWT negative/positive tests और RLS/ACL checks staging में जरूरी हैं।
 
 यह definition-level source audit है। No Production function, trigger, ACL, table, row, payment, wallet balance or deployment changed.
+
+
+## 17.42 — Production Booking Constraints, RPC ACL और Trigger Release-Dependency Audit (13 Nov 2026)
+
+Production catalog से constraints, selected RPC grants और service_bookings triggers की SELECT-only जाँच की गई। कोई function execute या schema change नहीं किया।
+
+### 1. Current database constraints
+- Booking status CHECK अभी केवल `new`, `confirmed`, `assigned`, `inspection`, `awaiting_quote_approval`, `quote_approved`, `quote_rejected`, `in_progress`, `completed`, `cancelled` स्वीकारता है। Master के `start_requested`, `completion_requested`, `timer_disputed` जैसे प्रस्तावित states अभी स्वीकार नहीं होंगे; additive event model या carefully migrated state constraint चाहिए।
+- Assignment-required CHECK `assigned`, inspection, quote states, `in_progress`, `completed` पर electrician assignment अनिवार्य करता है। नए state names जोड़ने पर इसी constraint को साथ बदलना होगा; अन्यथा state update fail हो सकता है।
+- Payment status CHECK: unpaid, pending, paid, refunded, failed. Partial refund, refund_pending, partially_refunded, reversed या disputed जैसे states अभी सीधे स्वीकार नहीं होंगे। इन्हें booking payment status में जोड़ना या अलग payment/refund state tables में रखना design decision है।
+- Quote status CHECK: not_submitted, pending, approved, rejected. Legacy quote values को delete/rename न करें; old records preserve हों।
+- `amount_paid` nonnegative/range checks हैं; quoted_amount range, service_charge nonnegative, materials_amount nonnegative हैं। इस inspected set में payment_method पर CHECK constraint नहीं मिला; canonical enum/value DB/API/RPC में consistently enforce नहीं होता।
+- Location latitude/longitude pair and range checks हैं; phone exactly 10 digits, PIN exactly 6 digits. New booking schema additions को existing checks के साथ compatible रखना होगा।
+
+### 2. Selected RPC ACL snapshot
+- `srk_update_booking_work_status`, `srk_submit_booking_quote`, `srk_customer_respond_booking_quote`, `srk_get_my_assigned_booking_quote_details`, `srk_electrician_confirm_cash_payment`, `srk_get_my_assigned_cash_payment`, `srk_respond_to_offer`: anon EXECUTE false; authenticated EXECUTE true; service_role EXECUTE true.
+- यह ACL snapshot blanket revoke की अनुमति नहीं देता। Authenticated users को intended RPC access चाहिए; body-level ownership, role, assignment, lifecycle checks असली सुरक्षा हैं। service_role trusted server-only secret boundary में रहे; उसे client/browser में कभी expose न करें।
+- Query में `srk_customer_change_payment_method` selected names के result में नहीं आया; इसलिए इस Production snapshot से उसका live existence/ACL प्रमाणित नहीं हुआ। Feature Branch migration/caller का होना Production में applied होने का प्रमाण नहीं।
+
+### 3. service_bookings trigger order/dependency inventory
+- BEFORE INSERT `a_guard_booking` runs `guard_new_booking()`.
+- AFTER INSERT `broadcast_new_booking` invokes `broadcast_booking_job()`.
+- AFTER INSERT/UPDATE/DELETE `srk_audit_service_bookings` invokes Admin audit capture.
+- BEFORE INSERT/UPDATE OF status,payment_status,amount_paid,commission_rate `srk_calculate_booking_commission`.
+- AFTER UPDATE status cancelled `srk_cancel_booking_job_offers` expires/cancels offers.
+- AFTER INSERT/UPDATE status `srk_log_service_booking_status`.
+- AFTER INSERT/UPDATE OF payment_status,status,quote_status,service_charge,materials_amount,assigned_electrician_id,payment_verified_at,razorpay_payment_id,amount_paid `trg_srk_create_electrician_payable`.
+- New timer/actual-minute fields are not in the legacy payable trigger's watched column list. A future timer payment path must explicitly invoke a new idempotent payout calculation or update trigger dependency; simply adding timer columns won't create payouts. Audit trigger allow-list also needs new timer fields/events.
+- Cancellation trigger currently only cancels job offers; it does not implement stage fee, customer debt, electrician wallet debit or SRK cancellation ledger (as previously recorded in Sections 17.23–17.24).
+
+### 4. Migration sequencing requirements
+1. Reconcile Production migration history/source first; don't edit live constraints or apply an unverified migration.
+2. Add timer event and billing snapshot structures without dropping legacy quote columns/statuses.
+3. Introduce new state/transition constraints and assignment checks only after mapping all existing rows and every RPC/UI caller.
+4. Build new timer, payment, payout and refund RPCs with tested ACLs before switching UI callers.
+5. Add new audit/ledger triggers with deterministic idempotency and reversal behavior; test trigger interaction/order and webhook service_role context.
+6. Only after old callers are removed and historical records are preserved, plan deprecation of legacy quote flow.
+
+No Production constraint, grant, trigger, function, table, row, payment, wallet balance, migration history or deployment changed.
