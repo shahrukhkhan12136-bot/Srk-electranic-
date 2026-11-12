@@ -260,3 +260,9 @@ Read-only FK-to-leading-index comparison में कुछ वर्तमा�
 - Current Production body review में इन तीनों RPCs पर unassigned/new/confirmed bookings से phone return करने का path नहीं दिखा। यह static SQL review है; वास्तविक दो-account browser/device E2E अभी नहीं हुआ।
 - `accept_electrician_job()` और `srk_respond_to_offer()` offer owner/approved active electrician जाँचकर booking को assigned करते हैं; उसके बाद contact RPCs phone दिखाती हैं।
 - यह current Production implementation का observation है। User-approved contact rule में बदलाव नहीं; कोई schema/function update नहीं किया गया।
+
+### Duplicate cash-payment migration — Production effect comparison
+- Production history contains two entries with the same name `add_assigned_electrician_cash_payment_status`: versions `20261111082515` and `20261111083811`. Repository source found for the first entry is `20261111082515_add_assigned_electrician_cash_payment_status.sql`; no exact source file for the second version has been recovered.
+- Read-only `pg_get_functiondef` of Production `public.srk_get_my_assigned_cash_payment(uuid)` matches the function body in the recovered first candidate, including `auth.uid()` identity, approved/active electrician check, assigned-booking ownership, and `can_confirm_cash` eligibility calculation. Function config also matches `search_path=pg_catalog, public, auth, pg_temp`.
+- This proves the current Production function effect is consistent with the recovered first candidate. It does **not** prove the second history entry was a no-op, duplicate replay, or the same SQL; the second source may have changed another object or replaced the function again.
+- Do not mark the second migration as safely duplicated/skippable. Keep its disposition unresolved until original SQL, Supabase backup/restore artifact, or a trusted deployment artifact is found and all possible side effects are compared.
