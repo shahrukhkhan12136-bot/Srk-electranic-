@@ -252,3 +252,11 @@ Read-only FK-to-leading-index comparison में कुछ वर्तमा�
 - `private.srk_save_push_subscription()` पर authenticated EXECUTE grant है और body auth.uid() से user identity लेती है।
 - निष्कर्ष: इस catalog pass में कोई SECURITY DEFINER RPC `anon` के लिए खुला नहीं मिला। फिर भी authenticated RPCs के complete ownership checks, nested function calls, object qualification और grants की function-by-function review बाकी है।
 - यह current Production ACL/body snapshot है, historical migration SQL की recovery या end-to-end authorization proof नहीं। कोई Production परिवर्तन नहीं किया गया।
+
+### Phone-contact authorization RPCs — current Production body review
+- `srk_customer_get_my_booking_contacts()` केवल auth.uid() के customer_user_id वाली booking और assigned electrician का phone लौटाती है; booking status allowlist `assigned`, `inspection`, `awaiting_quote_approval`, `quote_approved`, `quote_rejected`, `in_progress`, `completed` है।
+- `srk_electrician_get_my_assigned_booking_contacts()` केवल उसी authenticated electrician profile की assigned bookings और customer phone लौटाती है; समान post-assignment status allowlist लागू है।
+- `private.srk_get_customer_call_contacts_impl()` भी customer ownership और assigned electrician की शर्तें जाँचती है।
+- Current Production body review में इन तीनों RPCs पर unassigned/new/confirmed bookings से phone return करने का path नहीं दिखा। यह static SQL review है; वास्तविक दो-account browser/device E2E अभी नहीं हुआ।
+- `accept_electrician_job()` और `srk_respond_to_offer()` offer owner/approved active electrician जाँचकर booking को assigned करते हैं; उसके बाद contact RPCs phone दिखाती हैं।
+- यह current Production implementation का observation है। User-approved contact rule में बदलाव नहीं; कोई schema/function update नहीं किया गया।
