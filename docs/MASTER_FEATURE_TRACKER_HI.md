@@ -321,3 +321,11 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Earlier and release-copy migration SQL mostly matches, but 15000 and 16012 differ materially. Release copy 16012 requires an immutable payable snapshot for timer bookings and changes payout trigger wiring. Do not apply 15000 as a substitute.
 - 16015 cannot be applied alone. Admin UI currently expects timer refund fields/RPC absent in Production; broader timer foundation must be designed, replayed and tested in disposable parity DB first.
 - Read-only audit only; no Production changes or deployment.
+
+
+### Extended Timer release-chain / CI review (2026-11-12)
+- Corrected full release scope: Timer release migrations span 16000–16015. Additional files 16004–16014 cover server-authoritative booking creation, labour precision, customer-approved material revisions, Razorpay order/payment ledger, cash intent/receipt confirmation, cancellation decisions, and customer call contacts after assignment.
+- 16004 initially requires preferred_time; later 20261112130000 makes it optional and 20261112140000 adds duration_hours 1–8 and estimated labour snapshot. Combined release replay must include these later migrations and assert final date-only UI/RPC behavior. No arbitrary default time.
+- Existing timer-billing CI replays 16000–16014 twice on a disposable Production-shaped baseline and verifies legacy payout preservation, but does not include 16015 in that same parity loop. Refund workflow separately tests 16015 on a synthetic refund harness. Integrated timer+refund+date-only/duration parity replay remains required.
+- 16014 preserves customer access to electrician phone after accepted assignment even after completion; keep consistent with approved contact policy.
+- Production remains without Timer foundation. All work remains read-only against Production; no deployment.
