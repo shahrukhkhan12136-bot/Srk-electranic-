@@ -22,8 +22,8 @@ function response(status, body) {
   });
 }
 
-function setup({ admin = true, requestStatus = "approved", paymentStatus = "captured", paymentAmount = amountPaise, amountRefunded = 0, refundStatus = "processed" } = {}) {
-  state = { admin, requestStatus, paymentStatus, paymentAmount, amountRefunded, refundStatus };
+function setup({ admin = true, requestStatus = "approved", paymentStatus = "captured", paymentAmount = amountPaise, amountRefunded = 0, refundStatus = "processed", ledgerStatus = "requested" } = {}) {
+  state = { admin, requestStatus, paymentStatus, paymentAmount, amountRefunded, refundStatus, ledgerStatus };
   razorpayCalls = [];
   reconcileCalls = [];
   global.fetch = async (input, options = {}) => {
@@ -46,7 +46,7 @@ function setup({ admin = true, requestStatus = "approved", paymentStatus = "capt
         payment_id: paymentId,
         amount_paise: amountPaise,
         idempotency_key: "srk-refund-idempotency-001",
-        status: "requested"
+        status: state.ledgerStatus
       }]);
     }
     if (url.endsWith("/rpc/srk_service_reconcile_booking_refund")) {
@@ -109,6 +109,12 @@ async function invoke({ method = "POST", authorization = "Bearer test.jwt.token.
   assert.equal((await invoke()).statusCode, 409, "any prior partial refund must block a second full refund");
   assert.equal(razorpayCalls.length, 1, "prior refund must be detected before any new refund POST");
 
+  setup({ amountRefunded: amountPaise, ledgerStatus: "processed" });
+  const replayed = await invoke();
+  assert.equal(replayed.statusCode, 200, "a completed ledger replay must succeed even when Razorpay reports the amount already refunded");
+  assert.equal(JSON.parse(replayed.body).status, "processed");
+  assert.equal(razorpayCalls.length, 0, "completed ledger replay must not contact Razorpay again");
+
   setup();
   const result = await invoke();
   assert.equal(result.statusCode, 200, "valid approved refund should reconcile");
@@ -128,7 +134,7 @@ async function invoke({ method = "POST", authorization = "Bearer test.jwt.token.
   assert.equal(JSON.parse(pending.body).status, "pending");
   assert.equal(reconcileCalls[0].p_provider_status, "pending");
 
-  console.log("Refund server handler tests passed (authorization, Admin gate, approval gate, captured amount, prior-refund guard, idempotency and reconciliation).");
+  console.log("Refund server handler tests passed (authorization, Admin gate, approval gate, captured amount, prior-refund guard, completed-ledger replay, idempotency and reconciliation).");
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
