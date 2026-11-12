@@ -20,7 +20,7 @@ assert.ok(existingCaseLookup >= 0 && eligibilityCheck > existingCaseLookup,
   'Existing reconciliation cases must be returned before applying new-case eligibility restrictions');
 
 const source = scripts[0];
-assert.ok(source.includes("catch(error){msg.textContent='नेटवर्क उत्तर नहीं मिला:'"),
+assert.ok(/catch\\s*\\(error\\)\\s*\\{\\s*msg\\.textContent='नेटवर्क उत्तर नहीं मिला:\\s*'/.test(source),
   'Evidence and review handlers must catch rejected network promises and preserve retry state');
 const start = source.indexOf('// --- Admin-only, advisory refund evidence reconciliation.');
 const end = source.indexOf('function esc(s){', start);
@@ -62,7 +62,7 @@ const context = {
     if(name==='srk_admin_get_refund_reconciliation_case')return {data:getCasePayload||casePayload,error:null};
     if(name==='srk_admin_submit_refund_reconciliation_evidence'){
       submitAttempts++;
-      if(failFirstSubmit&&submitAttempts===1)return {data:null,error:{message:'network timeout'}};
+      if(failFirstSubmit&&submitAttempts===1)throw new Error('network connection dropped');
       return {data:{success:true,evidence_id:'evidence-2',replayed:submitAttempts>1},error:null};
     }
     if(name==='srk_admin_review_refund_reconciliation_evidence')
