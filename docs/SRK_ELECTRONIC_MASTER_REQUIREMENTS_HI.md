@@ -1968,3 +1968,45 @@ Migration lineage पूरी तरह reconcile होने और Feature B
 3. Table owner, role membership, default privileges और service_role extra grants का origin trace।
 4. Existing event status transitions और Admin exception UI mapping का source audit।
 5. उसके बाद ही Feature Branch में additive migration design और tests; Production में कोई migration नहीं।
+
+
+## 17.54 — Webhook Inbox Migration Lineage और service_role अतिरिक्त Grants के स्रोत की जाँच (13 Nov 2026)
+
+यह जाँच Production migration history, PostgreSQL catalog ACL/default ACL/role membership तथा Feature Branch GitHub source की read-only तुलना पर आधारित है। कोई event/payment row या payload नहीं पढ़ा गया; कोई permission/schema/data परिवर्तन नहीं हुआ।
+
+### 1. Migration lineage का निष्कर्ष
+- Production migration history में 81 entries हैं; उपलब्ध सूची में `srk_razorpay_webhook_events` बनाने वाली कोई स्पष्ट migration entry/name नहीं मिला।
+- Feature Branch recursive tree में भी इस inbox table की creation/alteration migration नहीं मिली।
+- GitHub commit search में exact table identifier `srk_razorpay_webhook_events` से कोई matching commit नहीं मिला।
+- इसलिए table का exact migration version, source SQL blob और commit ancestry अभी recover नहीं हुए। Production में table मौजूद होना अपने-आप migration source/history का प्रमाण नहीं है। इसे untracked/manual/omitted source घोषित करना भी अभी जल्दबाजी होगी।
+- अगला स्रोत-पुनर्प्राप्ति चरण: उपलब्ध backup/export, historical branch refs और Supabase migration artifacts में exact CREATE TABLE/ALTER TABLE source खोजना; बिना स्रोत के कोई migration repair/replay नहीं।
+
+### 2. Table owner और effective ACL
+- Live table owner `postgres` है। Live relation ACL: postgres और service_role दोनों को `arwdDxtm` (SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER) मिला है।
+- anon/authenticated इस table की relation ACL में नहीं हैं; पिछली जाँच में कोई RLS policy भी नहीं मिली और RLS enabled है।
+- इस table के लिए service_role का व्यापक ACL एक वास्तविक least-privilege concern है; लेकिन इसे केवल इस table पर अलग से दिया गया grant मानना सही नहीं होगा।
+
+### 3. Default privileges से मिला महत्वपूर्ण कारण
+- Production `pg_default_acl` में public schema के future tables (`defaclobjtype='r'`) के लिए postgres grantor का default ACL `{postgres=arwdDxtm, anon=arwdDxtm, authenticated=arwdDxtm, service_role=arwdDxtm}` मिला।
+- Supabase_admin grantor के public-table default ACL में भी यही broad role set मौजूद है।
+- यह बताता है कि public schema में default-created tables को broad grants मिल सकने का platform/database-wide कारण मौजूद है; यह specific inbox table की exact grant provenance या ऐतिहासिक migration SQL साबित नहीं करता।
+- Role membership snapshot में authenticator और supabase_realtime_admin service_role के सदस्य हैं; postgres service_role का सदस्य है। service_role को किसी अतिरिक्त high-privilege role की membership इस query में नहीं मिली।
+- निष्कर्ष: पहले default ACL के scope/necessity और specific object ACL की उत्पत्ति अलग-अलग trace करनी होगी। Global default ACL को बदलना व्यापक प्रभाव वाला कदम होगा; अभी कोई REVOKE/ALTER DEFAULT PRIVILEGES नहीं।
+
+### 4. Webhook implementation cross-check
+- Feature Branch root `razorpay-webhook.js` signature HMAC verify करता है, लेकिन `srk_razorpay_webhook_events` को INSERT/UPDATE/SELECT नहीं करता।
+- `netlify/functions/razorpay-webhook.js` केवल root handler का adapter है; दूसरा event persistence handler नहीं।
+- `netlify/functions/verify-payment.js` भी root `verify-payment.js` adapter है।
+- Root webhook अभी केवल `payment.captured` और `order.paid` process करता है; unknown/non-payable/amount mismatch/cash booking पर durable inbox event record नहीं बनाता। Refund/transfer event lifecycle इस handler में नहीं है।
+- Feature Branch tree में event inbox table के लिए migration source भी नहीं मिला। अतः Production inbox और current branch handler के बीच integration gap बना हुआ है।
+
+### 5. अगला सुरक्षित क्रम
+1. Historical source/backup/branch artifact से inbox table की creation SQL और ACL history recover करें।
+2. Default ACL के owner/grantor scope और platform-managed grants का प्रभाव समझें; global grants को छुए बिना table-specific least-privilege proposal तैयार करें।
+3. Existing webhook handler और Admin exception UI/RPC के सभी code references की complete search करें; refund ID field consumers को verify करें।
+4. Source lineage मिलने के बाद ही Feature Branch additive migration/handler proposal बनाएं; migration timestamp अनुमान से न बनाएं।
+5. Mocked tests: duplicate event ID, signature fail, retryable DB error, out-of-order payment/refund, concurrent claim, terminal mismatch और Admin exception visibility।
+
+### 6. सुरक्षा सीमा
+- Production table, grants, default privileges, policies, functions, rows, payments, transfers और webhook settings में कोई बदलाव नहीं हुआ।
+- कोई Test Mode या Live provider API call, staging resource creation या deployment नहीं हुआ।
