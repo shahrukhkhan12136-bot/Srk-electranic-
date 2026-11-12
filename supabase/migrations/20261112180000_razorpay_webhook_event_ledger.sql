@@ -1,6 +1,6 @@
 -- Durable, server-only Razorpay webhook event ledger with recoverable processing leases.
 begin;
-create table if not exists public.srk_payment_webhook_events (
+create table if not exists public.srk_razorpay_webhook_event_ledger (
   id uuid primary key default gen_random_uuid(),
   provider text not null check (provider = 'razorpay'),
   provider_event_id text not null check (length(btrim(provider_event_id)) between 1 and 160),
@@ -17,11 +17,11 @@ create table if not exists public.srk_payment_webhook_events (
   created_at timestamptz not null default clock_timestamp(),
   updated_at timestamptz not null default clock_timestamp(),
   processed_at timestamptz,
-  constraint srk_payment_webhook_events_provider_event_unique unique(provider,provider_event_id)
+  constraint srk_razorpay_webhook_event_ledger_provider_event_unique unique(provider,provider_event_id)
 );
-create index if not exists srk_payment_webhook_events_status_created_idx
-  on public.srk_payment_webhook_events(processing_status,created_at);
-alter table public.srk_payment_webhook_events enable row level security;
-revoke all on public.srk_payment_webhook_events from public,anon,authenticated;
-grant select,insert,update on public.srk_payment_webhook_events to service_role;
+create index if not exists srk_razorpay_webhook_event_ledger_status_created_idx
+  on public.srk_razorpay_webhook_event_ledger(processing_status,created_at);
+alter table public.srk_razorpay_webhook_event_ledger enable row level security;
+revoke all on public.srk_razorpay_webhook_event_ledger from public,anon,authenticated;
+grant select,insert,update on public.srk_razorpay_webhook_event_ledger to service_role;
 commit;
