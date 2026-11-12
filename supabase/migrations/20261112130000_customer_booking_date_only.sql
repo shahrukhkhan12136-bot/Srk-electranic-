@@ -66,7 +66,7 @@ begin
      or coalesce(p_booking->>'pincode','') !~ '^[0-9]{6}$'
      or length(btrim(coalesce(p_booking->>'address','')))=0
      or length(btrim(coalesce(p_booking->>'service_type','')))=0
-     or coalesce(p_booking->>'preferred_date','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+     or coalesce(p_booking->>'preferred_date','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then
     raise exception 'REQUIRED_BOOKING_FIELDS_MISSING' using errcode='22023';
   end if;
   -- Time is optional. Preserve it only for legacy callers that explicitly supply one.
