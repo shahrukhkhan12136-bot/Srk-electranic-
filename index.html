@@ -311,11 +311,7 @@ header .hero{display:none}
    <select id="service"><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>होम रिपेयरिंग</option><option>अन्य</option></select>
    <label for="serviceCategory">इलेक्ट्रिशियन की श्रेणी और मेहनताना</label>
    <select id="serviceCategory" required>
-    <option value="">श्रेणी चुनें</option>
-    <option value="helper">Helper — 8 घंटे ₹899 • प्रति घंटा ₹112.375</option>
-    <option value="ordinary">Ordinary — 8 घंटे ₹1,199 • प्रति घंटा ₹149.875</option>
-    <option value="skilled">Skilled — 8 घंटे ₹1,599 • प्रति घंटा ₹199.875</option>
-    <option value="master">Master — 8 घंटे ₹1,999 • प्रति घंटा ₹249.875</option>
+    <option value="">श्रेणी चुनें — वर्तमान दर लोड हो रही है…</option>
    </select>
    <label for="durationHours">काम की अनुमानित अवधि</label>
    <select id="durationHours" required>
@@ -780,6 +776,7 @@ async function customerVerifyOtp() {
 async function customerLogout() { await customerSb.auth.signOut(); customerMessage('आप लॉगआउट हो गए हैं। नई बुकिंग और भुगतान के लिए OTP लॉगिन जरूरी है।'); await syncCustomerSession(); }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
+  loadCustomerRateCatalogue();
   customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
@@ -862,16 +859,51 @@ async function startRazorpayPayment() {
   }
 }
 
-const customerLabourBasePaise = { helper: 89900, ordinary: 119900, skilled: 159900, master: 199900 };
+const customerHourlyRates = Object.create(null);
+const customerRateLabels = { helper: 'Helper', ordinary: 'Ordinary', skilled: 'Skilled', master: 'Master' };
+async function loadCustomerRateCatalogue() {
+  const select = document.getElementById('serviceCategory');
+  const submit = document.querySelector('#booking button[type="submit"]');
+  const output = document.getElementById('labourEstimate');
+  select.disabled = true;
+  if (submit) submit.disabled = true;
+  output.textContent = 'वर्तमान स्वीकृत दरें लोड हो रही हैं…';
+  const { data, error } = await customerSb.rpc('srk_get_current_customer_rates');
+  const allowed = ['helper', 'ordinary', 'skilled', 'master'];
+  if (error || !Array.isArray(data) || data.length !== 4 ||
+      allowed.some(code => !data.some(row => row.category_code === code &&
+        Number.isFinite(Number(row.hourly_rate)) && Number(row.hourly_rate) > 0 &&
+        Number.isInteger(Number(row.version)) && Number(row.version) > 0))) {
+    select.innerHTML = '<option value="">वर्तमान दरें उपलब्ध नहीं हैं</option>';
+    output.textContent = 'स्वीकृत दर सूची लोड नहीं हुई। सही दर की पुष्टि होने तक बुकिंग बंद है। कृपया कुछ देर बाद दोबारा कोशिश करें।';
+    return;
+  }
+  for (const row of data) {
+    customerHourlyRates[row.category_code] = Number(row.hourly_rate);
+  }
+  select.innerHTML = '<option value="">श्रेणी चुनें</option>';
+  for (const code of allowed) {
+    const row = data.find(item => item.category_code === code);
+    const option = document.createElement('option');
+    option.value = code;
+    option.textContent = customerRateLabels[code] + ' — 8 घंटे ₹' +
+      Number(row.eight_hour_amount).toLocaleString('en-IN', {minimumFractionDigits:2,maximumFractionDigits:2}) +
+      ' • प्रति घंटा ₹' + Number(row.hourly_rate).toFixed(3);
+    select.appendChild(option);
+  }
+  select.disabled = false;
+  if (submit) submit.disabled = false;
+  updateCustomerLabourEstimate();
+}
 function updateCustomerLabourEstimate() {
   const category = value('serviceCategory');
   const hours = Number(value('durationHours'));
   const output = document.getElementById('labourEstimate');
-  if (!customerLabourBasePaise[category] || !Number.isInteger(hours) || hours < 1 || hours > 8) {
+  if (!Number.isFinite(customerHourlyRates[category]) || !Number.isInteger(hours) || hours < 1 || hours > 8) {
     output.textContent = 'श्रेणी और अवधि चुनने पर अनुमानित मेहनताना यहाँ दिखेगा।';
     return;
   }
-  const amountPaise = Math.floor((customerLabourBasePaise[category] * hours + 4) / 8);
+  const amountPaise = Math.floor(customerHourlyRates[category] * hours * 100 + 0.50000001);
   output.textContent = 'अनुमानित मेहनताना: ₹' + (amountPaise / 100).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (' + hours + ' घंटे)। अंतिम बिल वास्तविक स्वीकृत काम के समय से बनेगा। सामान अलग रहेगा।';
 }
 document.getElementById('serviceCategory').addEventListener('change', updateCustomerLabourEstimate);
