@@ -88,6 +88,22 @@ begin
     raise exception 'A duplicate Auth identity across profile link columns must not receive an ID';
   end if;
 
+  -- A profile that already has a permanent ID must not be relinked to an Auth
+  -- identity already attached to another profile through the legacy user_id column.
+  begin
+    update public.electrician_profiles
+       set auth_user_id = '00000000-0000-0000-0000-000000000009'
+     where user_id = '00000000-0000-0000-0000-000000000001';
+    raise exception 'Expected duplicate Auth identity relink to be rejected';
+  exception when unique_violation then
+    null;
+  end;
+  if (select auth_user_id from public.electrician_profiles
+      where user_id = '00000000-0000-0000-0000-000000000001')
+     <> '00000000-0000-0000-0000-000000000001' then
+    raise exception 'Rejected identity relink unexpectedly changed the existing profile';
+  end if;
+
   select count(distinct electrician_display_id) into v_count
   from public.electrician_profiles where electrician_display_id is not null;
   if v_count <> 4 then raise exception 'Expected four retained unique IDs after legacy-link tests, got %', v_count; end if;
