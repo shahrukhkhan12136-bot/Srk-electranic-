@@ -687,3 +687,16 @@ Live Production `service_bookings` check constraints से status list पढ�
 - `completed`, `cancelled`, `quote_rejected` को customer/electrician phone-contact response में रोकना चाहिए। कौन-से remaining states वास्तव में accepted active booking का प्रमाण हैं, इसे current offer acceptance RPC/trigger और booking status transition evidence से verify करना बाकी है।
 
 इस जाँच में केवल constraint definitions पढ़ी गईं; कोई status constraint, booking row या RPC नहीं बदला गया।
+
+
+### 17.17 — Offer acceptance से booking status mapping सत्यापित (13 Nov 2026)
+
+Live Production में `public.srk_respond_to_offer(p_offer_id, p_response)` function definition पढ़ी गई:
+- Function authenticated electrician की approved+active profile और उसी electrician की `offered` job offer जाँचता है।
+- `accepted` response पर booking को `assigned_electrician_id = v_electrician_id` और `status = 'assigned'` करता है; अन्य offers को `expired` करता है।
+- इसलिए वर्तमान Production schema में offer acceptance का durable booking marker `assigned` + matching `assigned_electrician_id` है; अलग booking status `accepted` नहीं।
+- पुराना `accept_electrician_job` RPC भी offer accepted होने पर booking को `assigned` करता है, लेकिन दोनों RPCs का frontend/caller और ACL use अलग से audit करना है।
+- वर्तमान work-status RPC में `assigned → inspection → quote_approved → in_progress → completed` legacy quote path है। Master Requirements में quote/inspection flow superseded है; नया timer lifecycle बनने पर active contact states को उसी नए, tested state machine से जोड़ना होगा।
+- इस evidence के आधार पर provisional lifecycle interpretation: offer acceptance/active assignment का entry point `assigned`; active work `in_progress`; terminal `completed` पर phone visibility बंद। लेकिन legacy `inspection`/quote states को हटाने का timing तभी तय होगा जब booking/timer/payment replacement लागू और regression-tested हो।
+
+इससे “accepted” शब्द का status mapping blocker स्पष्ट हुआ; कोई status/RPC/function/database object नहीं बदला गया।
