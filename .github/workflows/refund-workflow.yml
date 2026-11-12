@@ -22,6 +22,7 @@ on:
   pull_request:
     paths:
       - "supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql"
+      - "supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql"
       - "supabase/migrations/20261111160015_timer_snapshot_refund_support.sql"
       - "supabase/tests/refund_workflow_*.sql"
       - "process-refund.js"
@@ -74,6 +75,10 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/tests/refund_workflow_assertions.sql
+      - name: Test webhook ledger leases, duplicate events and access controls
+        env:
+          PGPASSWORD: postgres
+        run: psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/tests/refund_workflow_webhook_ledger_assertions.sql
       - name: Syntax check refund handler
         run: node --check process-refund.js
       - name: Syntax check snapshot order handler
