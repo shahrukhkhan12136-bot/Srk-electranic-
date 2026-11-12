@@ -52,7 +52,7 @@ test("accepts a date-only customer booking and never forwards preferred_time", a
       return response({ id: "30000000-0000-0000-0000-000000000001", phone: "+919000000001", phone_confirmed_at: "2026-01-01T00:00:00Z" });
     }
     if (String(url).includes("/rpc/srk_create_customer_booking")) {
-      return response({ success: true, booking_id: "10000000-0000-0000-0000-000000000001", replayed: false });
+      return response({ success: true, booking_id: "10000000-0000-0000-0000-000000000001", replayed: false, duration_hours: 3, estimated_labour_amount_snapshot: 337.13 });
     }
     if (String(url).includes("/service_bookings?")) return response([{ order_number: "SRK-ORD-000001" }]);
     if (String(url).includes("/job_offers?")) return response([]);
@@ -64,6 +64,8 @@ test("accepts a date-only customer booking and never forwards preferred_time", a
   const body = JSON.parse(result.body);
   assert.equal(body.success, true);
   assert.equal(body.order_number, "SRK-ORD-000001");
+  assert.equal(body.duration_hours, 3);
+  assert.equal(body.estimated_labour_amount_snapshot, 337.13);
 
   const rpcCall = calls.find((call) => call.url.includes("/rpc/srk_create_customer_booking"));
   assert.ok(rpcCall, "customer booking RPC should be called");
