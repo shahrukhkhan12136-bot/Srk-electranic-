@@ -34,6 +34,7 @@ on:
       - "verify-snapshot-payment.js"
       - "tests/snapshot-payment-contract.test.js"
       - "tests/razorpay-webhook-refund-contract.test.js"
+      - "tests/razorpay-webhook-ambiguous-refund-handler.test.js"
       - "razorpay-webhook.js"
       - "netlify/functions/process-refund.js"
       - "index.html"
