@@ -22,8 +22,8 @@ function response(status, body) {
   });
 }
 
-function setup({ admin = true, requestStatus = "approved", paymentStatus = "captured", paymentAmount = amountPaise, refundStatus = "processed" } = {}) {
-  state = { admin, requestStatus, paymentStatus, paymentAmount, refundStatus };
+function setup({ admin = true, requestStatus = "approved", paymentStatus = "captured", paymentAmount = amountPaise, amountRefunded = 0, refundStatus = "processed" } = {}) {
+  state = { admin, requestStatus, paymentStatus, paymentAmount, amountRefunded, refundStatus };
   razorpayCalls = [];
   reconcileCalls = [];
   global.fetch = async (input, options = {}) => {
@@ -59,7 +59,7 @@ function setup({ admin = true, requestStatus = "approved", paymentStatus = "capt
         id: paymentId,
         status: state.paymentStatus,
         amount: state.paymentAmount,
-        amount_refunded: 0,
+        amount_refunded: state.amountRefunded,
         currency: "INR"
       });
     }
@@ -105,6 +105,10 @@ async function invoke({ method = "POST", authorization = "Bearer test.jwt.token.
   assert.equal((await invoke()).statusCode, 409, "captured amount mismatch must be rejected");
   assert.equal(razorpayCalls.length, 1, "amount mismatch must not create a refund");
 
+  setup({ amountRefunded: 1 });
+  assert.equal((await invoke()).statusCode, 409, "any prior partial refund must block a second full refund");
+  assert.equal(razorpayCalls.length, 1, "prior refund must be detected before any new refund POST");
+
   setup();
   const result = await invoke();
   assert.equal(result.statusCode, 200, "valid approved refund should reconcile");
@@ -124,7 +128,7 @@ async function invoke({ method = "POST", authorization = "Bearer test.jwt.token.
   assert.equal(JSON.parse(pending.body).status, "pending");
   assert.equal(reconcileCalls[0].p_provider_status, "pending");
 
-  console.log("Refund server handler tests passed (authorization, Admin gate, approval gate, captured amount, idempotency and reconciliation).");
+  console.log("Refund server handler tests passed (authorization, Admin gate, approval gate, captured amount, prior-refund guard, idempotency and reconciliation).");
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;
