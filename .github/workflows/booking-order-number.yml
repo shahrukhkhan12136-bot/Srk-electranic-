@@ -4,7 +4,7 @@ on:
     branches: ["feature/production-push-notifications"]
     paths:
       - "supabase/migrations/20261112110000_customer_booking_order_numbers.sql"
-      - "supabase/migrations/20261112130000_customer_booking_date_only.sql"
+      - "supabase/migrations/20261112130000_customer_booking_date_only.sql"      - "supabase/migrations/20261112140000_customer_booking_duration_pricing.sql"
       - "supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql"
       - "supabase/tests/booking_order_number_fixture.sql"
       - "supabase/tests/customer_booking_date_only_rpc_assertions.sql"
@@ -34,6 +34,8 @@ on:
       - "index.html"
       - "electrician.html"
       - "admin.html"
+      - "tests/customer-booking-date-only-ui.test.js"
+      - "tests/create-booking-security.test.js"
       - "apps/mobile-poc/customer/www/index.html"
 permissions:
   contents: read
@@ -90,6 +92,10 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112130000_customer_booking_date_only.sql
+      - name: Apply customer duration pricing migration
+        env:
+          PGPASSWORD: postgres
+        run: psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112140000_customer_booking_duration_pricing.sql
       - name: Apply electrician offer RPC migration
         env:
           PGPASSWORD: postgres
@@ -100,6 +106,7 @@ jobs:
         run: |
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112110000_customer_booking_order_numbers.sql
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112130000_customer_booking_date_only.sql
+          psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112140000_customer_booking_duration_pricing.sql
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql
       - name: Assert numbering, immutability, uniqueness, RPC scope and PII privacy
         env:
