@@ -101,6 +101,18 @@ begin
   null;
  end;
 
+ -- A legacy processed refund without a bound provider ID must bind the first
+ -- authenticated provider ID without changing its terminal status.
+ update public.srk_razorpay_refunds set refund_id=null
+ where id=v_refund_id and status='processed';
+ perform public.srk_service_reconcile_booking_refund(v_refund_id,'rfnd_LATEBOUND123','processed',null);
+ if (select refund_id from public.srk_razorpay_refunds where id=v_refund_id)<>'rfnd_LATEBOUND123' then
+  raise exception 'Provider refund ID was not bound for a legacy processed row';
+ end if;
+ if (select status from public.srk_razorpay_refunds where id=v_refund_id)<>'processed' then
+  raise exception 'Binding late provider refund ID changed processed status';
+ end if;
+
  insert into public.srk_razorpay_refunds
  (booking_id,payment_id,amount,amount_paise,idempotency_key,status,reason,admin_user_id)
  values
