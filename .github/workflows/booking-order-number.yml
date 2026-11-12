@@ -12,6 +12,7 @@ on:
       - ".github/workflows/booking-order-number.yml"
       - "create-booking.js"
       - "tests/create-booking-date-only.test.js"
+      - "tests/create-booking-security.test.js"
       - "tests/customer-booking-date-only-ui.test.js"
       - "netlify/functions/create-booking.js"
       - "index.html"
@@ -59,7 +60,7 @@ jobs:
         run: |
           node --check create-booking.js
           node --check netlify/functions/create-booking.js
-          node --test tests/create-booking-date-only.test.js tests/customer-booking-date-only-ui.test.js
+          node --test tests/create-booking-date-only.test.js tests/customer-booking-date-only-ui.test.js tests/create-booking-security.test.js
           node <<'NODE'
           const fs = require('fs');
           const vm = require('vm');
