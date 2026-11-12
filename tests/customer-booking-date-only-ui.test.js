@@ -33,3 +33,16 @@ test("historical booking time remains visible when an older record has one", () 
   assert.match(html, /preferred_date,preferred_time/);
   assert.match(html, /row\.preferred_date\s*\|\|\s*''\)\s*\+\s*' '\s*\+\s*customerEsc\(row\.preferred_time\s*\|\|\s*''\)/);
 });
+
+test("customer selects 1–8 hours and sees a live server-priced estimate", () => {
+  assert.match(bookingForm, /<select id="durationHours" required>/);
+  for (let hours = 1; hours <= 8; hours++) assert.match(bookingForm, new RegExp('<option value="' + hours + '">'));
+  assert.match(bookingForm, /id="labourEstimate"/);
+  assert.match(html, /customerLabourBasePaise/);
+  assert.match(html, /Math\.floor\(\(customerLabourBasePaise\[category\] \* hours \+ 4\) \/ 8\)/);
+  const submitStart = html.indexOf("document.getElementById('booking').addEventListener('submit'");
+  const submitEnd = html.indexOf("document.getElementById('payNow').addEventListener", submitStart);
+  const submitHandler = html.slice(submitStart, submitEnd);
+  assert.match(submitHandler, /duration_hours:\s*Number\(value\('durationHours'\)\)/);
+  assert.match(submitHandler, /अनुमानित अवधि: \$\{value\('durationHours'\)\} घंटे/);
+});
