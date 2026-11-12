@@ -21,12 +21,6 @@ const validDate = (value) => {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 };
 
-const validTime = (value) => {
-  if (!/^\d{2}:\d{2}$/.test(value)) return false;
-  const [hour, minute] = value.split(":").map(Number);
-  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
-};
-
 async function supabase(path, options = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
@@ -132,7 +126,6 @@ exports.handler = async (event) => {
     const location_lng = body.location_lng == null || body.location_lng === '' ? null : Number(body.location_lng);
     const service_type = clean(body.service_type, 120);
     const preferred_date = clean(body.preferred_date, 10);
-    const preferred_time = clean(body.preferred_time, 8);
     const work_details = clean(body.work_details, 2000);
     const service_category_code = clean(body.service_category_code, 20);
     if (!["helper", "ordinary", "skilled", "master"].includes(service_category_code)) {
@@ -149,8 +142,8 @@ exports.handler = async (event) => {
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
-        !validDate(preferred_date) || !validTime(preferred_time)) {
-      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, तारीख और समय भरें।" });
+        !validDate(preferred_date)) {
+      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस और तारीख भरें।" });
     }
     if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
@@ -166,7 +159,7 @@ exports.handler = async (event) => {
         p_idempotency_key: idempotency_key,
         p_booking: {
           customer_name, phone, state, district, pincode, address, service_type,
-          preferred_date, preferred_time, work_details, location_lat, location_lng,
+          preferred_date, work_details, location_lat, location_lng,
           service_category_code
         }
       })
