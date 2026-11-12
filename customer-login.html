@@ -50,7 +50,7 @@
  verify.addEventListener('click',async()=>{
   if(!sb||busy)return;const phone=phoneE164(),token=otpInput.value.trim();if(!phone||!/^\d{4,8}$/.test(token)){setMessage('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}
   busy=true;verify.disabled=true;setMessage('OTP सत्यापित हो रहा है…');
-  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका सुरक्षित ग्राहक सेशन इस वेबसाइट में सेव हो गया है। अब मेरी बुकिंग देखने के लिए मुख्य पेज खोलें।');setTimeout(()=>{window.location.href='/#customer-login';},1800);}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=false;}
+  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका सुरक्षित ग्राहक सेशन इस वेबसाइट में सेव हो गया है। अब मेरी बुकिंग देखने के लिए मुख्य पेज खोलें।');setTimeout(()=>{window.location.href='/booking.html#customer-login';},1800);}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=false;}
  });
  if(!sb){send.disabled=true;setMessage('लॉगिन सेवा कॉन्फ़िगरेशन नहीं मिला।',true);}
 })();
