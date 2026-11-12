@@ -53,7 +53,7 @@ async function checkPublicRateLimit(endpoint, ipHash, limit) {
   return result === true;
 }
 
-async function verifyCustomerSession(authorization, bookingPhone) {
+async function verifyCustomerSession(authorization) {
   if (!authorization) { const error = new Error("Customer login required"); error.httpStatus = 401; throw error; }
   const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(authorization);
   if (!match || match[1].length > 8192) {
@@ -74,15 +74,13 @@ async function verifyCustomerSession(authorization, bookingPhone) {
   }
   const user = await response.json();
   const verifiedPhone = typeof user.phone === "string" ? user.phone.replace(/\D/g, "") : "";
-  const submittedPhone = bookingPhone.replace(/\D/g, "");
-  const normalizedVerified = verifiedPhone.length === 10 ? "91" + verifiedPhone : verifiedPhone;
-  const normalizedSubmitted = submittedPhone.length === 10 ? "91" + submittedPhone : submittedPhone;
-  if (!user.id || !user.phone_confirmed_at || normalizedVerified !== normalizedSubmitted) {
-    const error = new Error("Verified account phone must match booking phone");
+  const normalizedPhone = verifiedPhone.length === 12 && verifiedPhone.startsWith("91") ? verifiedPhone.slice(2) : verifiedPhone;
+  if (!user.id || !user.phone_confirmed_at || !/^[0-9]{10}$/.test(normalizedPhone)) {
+    const error = new Error("Verified account must have a confirmed Indian mobile number");
     error.httpStatus = 403;
     throw error;
   }
-  return { id: user.id, accessToken: match[1] };
+  return { id: user.id, phone: normalizedPhone, accessToken: match[1] };
 }
 
 exports.handler = async (event) => {
@@ -117,7 +115,6 @@ exports.handler = async (event) => {
   try {
     const body = JSON.parse(event.body || "{}");
     const customer_name = clean(body.customer_name, 100);
-    const phone = clean(body.phone, 10);
     const state = clean(body.state, 100);
     const district = clean(body.district, 100);
     const pincode = clean(body.pincode, 6);
@@ -140,14 +137,14 @@ exports.handler = async (event) => {
       return json(400, { success: false, error: "बुकिंग अनुरोध की पहचान सही नहीं है। कृपया दोबारा सबमिट करें।" });
     }
     const customerSession = await verifyCustomerSession(
-      event.headers?.authorization || event.headers?.Authorization || "",
-      phone
+      event.headers?.authorization || event.headers?.Authorization || ""
     );
+    const phone = customerSession.phone;
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
         !validDate(preferred_date)) {
-      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस और तारीख भरें।" });
+      return json(400, { success: false, error: "कृपया नाम, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस और तारीख भरें।" });
     }
     if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
