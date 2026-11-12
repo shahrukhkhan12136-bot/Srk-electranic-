@@ -217,3 +217,13 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 ## Master implementation plan
 - Three-panel ownership, remaining-work phases, monitoring tree, release gates और immediate execution order के लिए [REMAINING_WORK_IMPLEMENTATION_PLAN_HI.md](./REMAINING_WORK_IMPLEMENTATION_PLAN_HI.md) देखें।
 - इस योजना में कोई item केवल design या code मौजूद होने से complete नहीं होगा; प्रत्येक status के लिए test/runtime evidence आवश्यक है।
+
+
+
+## B.3 Migration Release Audit — repository inventory and CI coverage (2026-11-12)
+- [I] Feature branch पर 57 SQL migrations का inventory और feature-family classification पूरा; duplicate timer/billing family और ज्ञात material divergence को अलग दर्ज किया। कोई migration delete/rename/reorder नहीं की गई। विवरण: `docs/MIGRATION_RELEASE_SEQUENCE_AUDIT_HI.md`।
+- [I] Refund/Webhook CI run 43169304973 SUCCESS at commit `32f1d109`: isolated PostgreSQL 16 refund fixture, webhook ledger migration twice, refund assertions, atomic lease recovery/duplicate event/RLS-grant assertions, Node syntax and payment/webhook contract tests सभी pass।
+- [I] Timer Billing SQL CI run 43169284161 SUCCESS at commit `1ac783fb`: timer/billing disposable PostgreSQL tests और Production-shaped legacy baseline assertions pass; यह सभी 57 migrations का full replay नहीं है।
+- [I] Booking/order/rate workflow PR path filters सुधारे गए ताकि date, duration, versioned rate catalogue, Admin rate management, public rate RPC और electrician offer RPC के बदलाव पर समान SQL regression suite चले। इस workflow का current-HEAD run अभी verify होना बाकी है।
+- [T] Full 57-migration canonical dependency graph, exact Production migration history comparison और sanitized Production-parity clean replay अभी खुले हैं। Production पर कोई migration नहीं लगी।
+- [T] NO-GO for Production जारी; website deployment, live Razorpay, real-money test और Play Store release नहीं किए गए।
