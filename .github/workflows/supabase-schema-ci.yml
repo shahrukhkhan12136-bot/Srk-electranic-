@@ -91,7 +91,10 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          supabase db dump --remote="$SUPABASE_DB_URL" --schema=public,private --file "$RUNNER_TEMP/srk-production-schema.sql"
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          pg_dump --version
+          pg_dump --schema-only --no-owner --no-acl --schema=public --schema=private "$SUPABASE_DB_URL" > "$RUNNER_TEMP/srk-production-schema.sql"
           test -s "$RUNNER_TEMP/srk-production-schema.sql"
           if grep -Eiq '^(COPY|INSERT INTO) ' "$RUNNER_TEMP/srk-production-schema.sql"; then
             echo "::error::Unexpected data statements found in schema-only export."
