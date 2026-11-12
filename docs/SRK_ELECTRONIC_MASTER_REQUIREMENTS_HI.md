@@ -648,3 +648,18 @@ Live Production PostgreSQL function catalog में `public` और `private` 
 5. API tests में सीधे authenticated RPC calls से negative tests जरूरी हैं; केवल HTML में button छिपाना पर्याप्त नहीं।
 
 यह inventory SQL catalog और Feature Branch source inspection पर आधारित है। कोई database function, grant, frontend file, customer record या deployment बदला नहीं गया; browser/API regression tests अभी नहीं चले हैं।
+
+
+### 17.14 — Cross-branch SQL source integrity: duplicate-name content variants (13 Nov 2026)
+
+14 branches की migration trees के file SHA को compare करके Production के 81 migration names से मिलान किया गया:
+- 40/81 Production migration names के लिए कम-से-कम एक branch में same-name SQL file मिली; 41 names किसी scanned branch tree में नहीं मिलीं।
+- 40 same-name candidates में 37 नामों के लिए सभी मिले branch copies का Git blob SHA समान था। यह repository copies की content consistency है, Production में applied SQL का proof नहीं।
+- 3 same-name migrations के लिए अलग-अलग branches में अलग SQL blob SHA मिला:
+  - `srk_business_finance_dashboard` — 2 distinct blobs।
+  - `srk_business_finance_reporting_dates` — 2 distinct blobs।
+  - `add_electrician_push_subscriptions` — 2 distinct blobs; filenames में timestamps भी अलग हैं (`20261111020000` और `20261111090000`) जबकि Production history में उसी नाम की entries `20261111072823` पर है।
+- कुछ same-name source files का timestamp Production history से अलग है। उदाहरण: `add_google_maps_location_support`, `expose_assigned_booking_map_pin`, `create_secure_wallet_ledger_foundation`, `create_server_only_razorpay_route_transfer_ledger`, quote workflow, और कई manual payout/admin migrations। इसलिए migration name match को version match या SQL identity नहीं मानना है।
+- Production में `add_assigned_electrician_cash_payment_status` नाम की दो अलग history versions (`20261111082515`, `20261111083811`) हैं, जबकि scanned branches में candidate filename एक version (`20261111082515`) के साथ मिली। दोनों remote history entries की SQL/provenance अलग से verify करनी होगी।
+
+**निर्णय:** migration reconciliation अब केवल filename/version count नहीं रह गया; branch-level content divergence भी मिली है। किसी migration को timestamp rename करके, SQL hash assume करके, या alternate branch से सीधे Feature Branch में copy करके reconcile नहीं करना है। हर remote version के लिए applied schema effect, source commit, SQL body और dependency order की evidence mapping आवश्यक है। कोई migration apply/rename/delete/squash/reset नहीं की गई।
