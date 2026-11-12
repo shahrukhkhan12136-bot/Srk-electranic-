@@ -40,8 +40,8 @@ declare
  v_published jsonb;
 begin
  v_rows := public.srk_admin_list_rate_catalogue();
- if jsonb_array_length(v_rows) <> 4 then
-   raise exception 'Admin rate list should show four seeded v1 rows: %',v_rows;
+ if jsonb_array_length(v_rows) <> 5 then
+   raise exception 'Admin rate list should show the four seeded v1 rows plus the isolated future-effective test row: %',v_rows;
  end if;
  v_published := public.srk_admin_publish_rate_version(
    'master',299.999,current_date+45,'Approved annual pricing review by SRK admin'
@@ -51,8 +51,8 @@ begin
    raise exception 'Admin rate publish did not create version 2: %',v_published;
  end if;
  v_rows := public.srk_admin_list_rate_catalogue();
- if jsonb_array_length(v_rows) <> 5 then
-   raise exception 'Admin rate history should contain five versions after publishing: %',v_rows;
+ if jsonb_array_length(v_rows) <> 6 then
+   raise exception 'Admin rate history should contain six rows after publishing: %',v_rows;
  end if;
  if not exists(select 1 from public.srk_rate_catalogue_audit
    where category_code='master' and version=2 and actor_user_id='30000000-0000-0000-0000-000000000099'
