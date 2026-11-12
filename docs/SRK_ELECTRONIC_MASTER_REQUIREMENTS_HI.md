@@ -1273,3 +1273,26 @@ Production Database, wallet/ledger rows, triggers, grants, migration history, pa
 - Feature Branch में wallet foundation, cash fee ledger और third-booking guard का प्रारंभिक code है, पर यह अभी पूर्ण Cash Cycle/Top-up system नहीं है।
 - मुख्य blocker acceptance-time durable reservation है; दूसरा blocker wallet top-up provider flow disabled होना; तीसरा wallet ledger append-only + non-null idempotency enforcement।
 - इस चरण में कोई code migration/function change लागू नहीं किया गया; केवल source review और design specification दर्ज की गई है। Production DB, wallet rows, payment settings, deployment और staging resources untouched हैं।
+
+
+## 17.37 — Production Wallet/Booking/Payout Schema का Column-Level Reconciliation (13 Nov 2026)
+
+### Live Production schema snapshot (SELECT-only catalog)
+- `service_bookings` में अभी legacy `quoted_amount`, `service_charge`, `materials_amount`, `quote_status`, `commission_rate`, `commission_amount`, `work_started_at`, `payment_method`, `payment_status`, `amount_paid`, `payment_verified_at` fields मौजूद हैं। इस inventory में server timer start-request/approval/stop-request/approval, actual_minutes, timer-derived labour total, cash-cycle number/slot reservation, platform-fee-due amount या cash-fee settlement allocation columns नहीं मिले।
+- `service_bookings.payment_method` NOT NULL है और default `Cash`; इस snapshot में allowed payment-method CHECK constraint नहीं दिखा (पूर्व Section 17.31 में भी ऐसा constraint नहीं मिला)। API/RPC validation को database state transition के साथ align करना होगा।
+- `srk_wallet_accounts` में user_id, wallet_type, INR currency, account status और unique (user_id,wallet_type) हैं।
+- `srk_wallet_ledger` में positive amount, credit/debit, pending/posted/reversed/failed, reference/provider fields और unique idempotency_key है; लेकिन idempotency_key nullable है। Schema snapshot में append-only/immutable enforcement column नहीं, और prior trigger inventory में इस table पर trigger नहीं मिला।
+- `srk_electrician_payouts` में gross_service_amount, materials_amount, platform_commission, electrician_payable, payout status/method/reference/paid_by/paid_at हैं; dedicated booking-level cash fee due allocation या cycle reservation fields नहीं मिले।
+- इस query में `srk_platform_fee_ledger` Production table नहीं लौटा। यह पहले से देखे गए Feature Branch migration की Production deployment पुष्टि नहीं करता; बल्कि इस live table inventory में उसका नाम अनुपस्थित है।
+
+### Financial control implications
+- Existing wallet balance ledger SUM से बनता है; इसलिए duplicate posting, mutable historical rows, nullable idempotency और correction semantics सीधे financial integrity पर असर डालते हैं। Append-only reversal enforcement और NOT NULL idempotency DB स्तर पर लागू होने चाहिए।
+- Payout table में gross/material/platform fee/net payable fields हैं, लेकिन booking-to-cash-cycle settlement lot allocation का कोई field इस inspected schema में नहीं है। Cash due वसूली और refund के लिए separate linked allocation ledger चाहिए; payout total से historical cash dues का अनुमान नहीं लगाना चाहिए।
+- Legacy commission field का नाम Master की “Platform Fee” भाषा से मेल नहीं खाता; customer-facing copy में “commission” न दिखे। Migration में historical commission records preserve रहें और new timer-based platform fee को अलग, स्पष्ट accounting field/ledger में रखें।
+- Snapshot catalog-only है; किसी wallet/booking/payout customer row या balance को पढ़ा/बदला नहीं गया। RLS, constraints, indexes, grants, trigger definitions के अलग audits Sections 17.23–17.36 में दर्ज हैं।
+
+### Next safe work
+- Additive Feature Branch schema proposal: timer event/audit records, per-electrician cycle row, unique booking slot reservation, booking-wise fee-due lots, settlement allocation rows, append-only wallet/platform-fee ledger and deterministic non-null idempotency keys.
+- Migration plan must preserve all existing quote/payment/payout/refund rows and be rehearsed against a schema snapshot in isolated Test Mode after migration-history reconciliation. No Production migration until separately authorized.
+
+No Production schema, data, grants, triggers, wallet balances, payment configuration or deployment changed in this audit.
