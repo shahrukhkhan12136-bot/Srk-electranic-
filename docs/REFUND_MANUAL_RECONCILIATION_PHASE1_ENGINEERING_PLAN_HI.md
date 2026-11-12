@@ -86,3 +86,13 @@ The Supabase 2026-10-30 Data API change means new public-schema tables are not a
 - Refund Workflow CI run `43181068748` SUCCESS at commit `965c0f90807ecf604e04f58a1811a9fd8a061438`.
 - Two earlier UI-test runs failed because the test initially treated the standard `Array.from` helper as a direct database write. The assertion was narrowed to `sb.from`; the corrected run passed.
 - Still outstanding: real Admin browser workflow with two distinct Admin identities against a disposable Production-parity database, accessibility/mobile review, migration archive recovery, and all previously listed release gates. No Production database, Razorpay, Netlify deployment, or live-money operation was touched.
+
+### Simulated two-Admin UI workflow test — 2026-11-12
+
+- Expanded `tests/admin-refund-reconciliation-ui.test.js` from static checks into a Node VM simulation of the Admin reconciliation UI functions.
+- Simulates Admin A opening/submitting evidence and confirms Admin A does not receive a review action; simulates independent Admin B and confirms the review action is available and invokes the review RPC with the selected decision/note.
+- Simulates evidence submit timeout followed by retry and asserts the same Action ID is reused, amount is sent as integer paise, and currency is normalized.
+- Injects an HTML payload in evidence reference and asserts it is escaped before rendering.
+- Asserts the workspace uses only the guarded `srk_admin_*` RPCs and contains no provider fetch or direct Supabase table write.
+- Refund Workflow CI run `43181489430` SUCCESS at commit `2dfed8c8b5a8f48f9638aeadfebe88d3f9247807`.
+- **Scope limitation:** this is a simulated two-Admin function/DOM harness, not a live browser, real Supabase Auth session, or actual disposable Production-parity database test. Those remain required before release.
