@@ -1296,3 +1296,41 @@ Production Database, wallet/ledger rows, triggers, grants, migration history, pa
 - Migration plan must preserve all existing quote/payment/payout/refund rows and be rehearsed against a schema snapshot in isolated Test Mode after migration-history reconciliation. No Production migration until separately authorized.
 
 No Production schema, data, grants, triggers, wallet balances, payment configuration or deployment changed in this audit.
+
+
+## 17.38 — Cash Fee Ledger Migration का Financial Invariant Review और Pre-Implementation Gate (13 Nov 2026)
+
+Feature Branch की चार SQL migrations को source-level पर दोबारा पढ़ा गया; कोई migration apply नहीं की गई।
+
+### 1. Cash cycle acceptance guard अभी सुरक्षित reservation नहीं है
+- `srk_respond_to_offer` हर acceptance पर electrician profile lock लेता है, लेकिन slot count केवल completed + approved quote + paid + verified bookings से बनाता है। Pending accepted bookings reservation में शामिल नहीं होतीं। इसलिए दो active accepted bookings एक ही future slot पर निर्भर हो सकती हैं। यह P0 blocker है।
+- यह query payment_method को booking row से पढ़ती है और तीसरे slot पर exact Razorpay label की अपेक्षा करती है। UI/API के अन्य allowed labels या casing/legacy values के साथ mismatch पर valid Online booking reject हो सकती है; normalized enum/check constraint और single canonical payment method value चाहिए।
+- Cycle reset का verified wallet top-up path इस migration में नहीं है।
+
+### 2. Cash Platform Fee / Online settlement invariants
+- `srk_platform_fee_ledger` Feature Branch migration में idempotency_key NOT NULL + UNIQUE है, जो पुराने wallet ledger से बेहतर है; लेकिन table को immutable कहने वाला comment अपने-आप UPDATE/DELETE रोकता नहीं। इस table पर append-only trigger या write-only RPC boundary अलग से चाहिए।
+- Current online fee 15% labour/service amount से निकाली जाती है; materials current fee base से बाहर हैं। बाद के सुधार में previous cash due recovery को `greatest(v_service - v_current_fee, 0)` तक सीमित किया गया है, इसलिए materials से पुराने dues settle नहीं होते। इसे regression invariant रखें।
+- Ledger में previous cash dues electrician के pooled balance से SUM होते हैं; cash_due_settlement केवल उस online booking से जुड़ता है जिसने pooled balance settle किया। कौन-सी source cash booking कितनी settle हुई, इसका allocation relation नहीं है। इसी वजह से refund logic source cash booking refund के बाद किसी भी later pooled settlement को देखकर refund रोक देता है। यह data corruption रोकता है, लेकिन वैध refunds को unnecessarily block कर सकता है। Booking-wise settlement allocation table चाहिए।
+- Refund पर pending payout को refunded किया जाता है; paid payout होने पर trigger Admin reconciliation exception देता है। यह fail-safe है, पर paid payout reversal/partial recovery का पूरा Admin workflow अलग implement करना होगा।
+- `srk_create_electrician_payable` अभी completed + approved quote + verified payment और `service_charge + materials_amount = amount_paid` पर निर्भर है। इसलिए सही labour-only fee formula होने के बावजूद timer-based actual-minute amount अभी लागू नहीं हुआ।
+
+### 3. Customer payment switch
+- `srk_customer_change_payment_method` केवल authenticated owner की unassigned new/confirmed, unpaid/pending, बिना Razorpay order/payment वाली Cash booking को explicit Online में बदलता है। यह तत्काल payment collect नहीं करता; यह सही separation है।
+- इसे electrician assignment या third-slot decision से atomically integrate करना होगा, ताकि customer method switch और offer acceptance के बीच race न हो। Customer consent बिना silent switch नहीं होना चाहिए।
+
+### 4. Required immutable accounting model before coding
+- Per-electrician cycle state + booking slot reservation (unique booking_id, slot number, cycle number, status, canonical payment method, reservation idempotency key)।
+- Cash due lots keyed to originating cash booking; online settlement allocation rows linking each source due lot to the settling online booking and exact amount.
+- Wallet top-up payment intent/provider reference, verified webhook event ID, amount/currency, posted ledger entry, fee-due application and cycle reset all in one idempotent server-side transaction.
+- Append-only wallet and platform-fee ledgers: NOT NULL deterministic idempotency key; UPDATE/DELETE denied to application roles and rejected by trigger; corrections only through reversal/restore entries.
+- Refund reconciliation supports partial amounts, multiple settlement allocations, cash due reversal, online fee reversal, pending payout reversal, and separate Admin-authorized recovery after paid payout.
+- All fee and recovery calculations must use actual-minute labour amount only; materials are pass-through and excluded from 15% fee and old-fee recovery. Payout must reconcile labour + separately approved materials − current labour fee − allocated prior fee.
+
+### 5. Test gate (must pass before release)
+- 2 concurrent offer acceptances for one electrician; third slot reservation; booking cancellation/offer expiry release; reassignment; duplicate accept retry.
+- Cash due creation exactly once; repeated payment webhook; two online payments racing; exact fee rounding; materials large while labour small; no negative payout.
+- Partial and full refund before/after fee settlement; multiple due lots; paid payout; out-of-order duplicate webhook; Admin reconciliation audit.
+- Customer payment method switch vs assignment race; reject unauthenticated/other-customer/paid/order-created switch; ensure no silent method change.
+- Wallet top-up invalid signature, wrong amount/currency, duplicate provider event, timeout retry, insufficient amount, full fee clearance and only then cycle reset.
+
+Conclusion: Feature Branch SQL has useful foundations (row locks, per-electrician advisory lock, deterministic fee ledger keys, explicit customer Cash→Online choice, labour-only settlement cap), but does not yet meet the Master Requirements end-to-end. No implementation patch or schema migration was created in this step. Production database, customer/payment records, migration history, provider settings, staging resources and deployment remain unchanged.
