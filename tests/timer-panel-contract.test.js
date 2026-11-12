@@ -42,4 +42,31 @@ requireTokens(staffReadme, ["README-only scaffold", "कोई live Staff login"
 requireTokens(customerAndroid, ["README-only scaffold", "कोई installable app"], "Customer Android scope disclosure");
 requireTokens(electricianAndroid, ["README-only scaffold", "कोई installable app"], "Electrician Android scope disclosure");
 
+
+// Contact privacy: full phone numbers are exposed only after the accepted
+// assignment marker exists; the customer-side lookup remains available after completion.
+const offerRpc = read("supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql");
+const customerContactMigration = read("supabase/migrations/20261111160014_keep_customer_call_contact_after_completion.sql");
+requireTokens(offerRpc, [
+  "case when b.assigned_electrician_id = p.id",
+  "then b.phone else null end",
+  "'assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed'"
+], "Electrician post-acceptance customer contact gate");
+requireTokens(customerContactMigration, [
+  "where b.customer_user_id = v_uid",
+  "and b.assigned_electrician_id is not null"
+], "Customer post-acceptance electrician contact gate");
+requireTokens(electrician, [
+  "o.customer_phone",
+  "ग्राहक मोबाइल:",
+  "☎ ग्राहक को कॉल करें"
+], "Electrician accepted-booking call UI");
+requireTokens(customer, [
+  "srk_get_customer_call_contacts",
+  "contact?.electrician_phone",
+  "☎ इलेक्ट्रिशियन को कॉल करें"
+], "Customer accepted-booking call UI");
+assert.ok(!/then b\.phone else null end[\s\S]{0,500}where b\.assigned_electrician_id = p\.id/.test(offerRpc),
+  "Electrician contact query must not expose customer phone without the assigned-electrician identity gate");
+
 console.log("Panel contract tests passed (Customer/Electrician timer UI, Admin timer write guard, and scaffold status disclosure).");
