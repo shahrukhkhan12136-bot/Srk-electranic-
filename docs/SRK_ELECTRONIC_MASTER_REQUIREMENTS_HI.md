@@ -483,3 +483,11 @@ Main Admin को हर booking का timeline और linked evidence दि�
 - [ ] Public route hardening: सीधे `/admin.html`, `/electrician.html`, `/booking.html` खोलने पर unauthenticated state, wrong-role session, expired session और disabled/suspended account की negative tests करनी हैं। सिर्फ UI hide करना authorization नहीं है; backend RLS/RPC enforcement निर्णायक रहेगा।
 
 **Panel audit का निष्कर्ष:** कुल तीन login roles सही हैं, पर अभी landing page से तीनों panels का सुव्यवस्थित प्रवेश नहीं है; Customer login duplicate है और customer panel route गलत/अधूरा है। Electrician role gating को स्पष्ट करना, Admin MFA जोड़ना/verify करना और सभी role-bound RPC/RLS का negative testing करना बाकी है। इस चरण में कोई code, user, auth setting या production database बदला नहीं गया।
+
+
+### 17.7 Customer OTP Redirect — सुरक्षित छोटा सुधार
+- `customer-login.html` में OTP verification success के बाद redirect पहले `/#customer-login` था, जबकि landing `index.html` में ऐसा panel/anchor मौजूद नहीं था।
+- Feature Branch पर redirect को `/booking.html#customer-login` किया गया ताकि verified customer session मौजूदा embedded customer panel तक पहुँचे।
+- बदलाव commit `128dd33c47d630960082e6ef98d5e2d1fcd45a59` में है। GitHub से file दोबारा fetch करके redirect string verify की गई।
+- यह केवल route correction है; वास्तविक SMS OTP, browser session persistence, post-login booking list और mobile-browser end-to-end test अभी नहीं किए गए। Duplicate Customer OTP implementation को नए पांच-menu Customer App के निर्माण के दौरान ही हटाना/समेकित करना है।
+- Production deploy या database/auth setting में कोई बदलाव नहीं हुआ।
