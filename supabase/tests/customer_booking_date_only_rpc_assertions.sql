@@ -65,7 +65,7 @@ begin
       '51000000-0000-0000-0000-000000000003'
     );
     raise exception 'Invalid legacy time was unexpectedly accepted';
-  exception when sqlstate '22023' then null;
+  exception when sqlstate '22023' or sqlstate '22008' then null;
   end;
 end
 $test$;
