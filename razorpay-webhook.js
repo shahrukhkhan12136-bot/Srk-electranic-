@@ -133,6 +133,7 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
     throw new Error("Webhook event ledger has an unsupported processing state");
   }
   const claimStatus = row.processing_status;
+  const leaseStartedAt = new Date().toISOString();
   const patchUrl = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
   patchUrl.searchParams.set("id", "eq." + row.id);
   patchUrl.searchParams.set("processing_status", "eq." + claimStatus);
@@ -149,14 +150,14 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
     },
     body: JSON.stringify({
       processing_status: "processing",
-      processing_started_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      processing_started_at: leaseStartedAt,
+      updated_at: leaseStartedAt,
       attempt_count: Number(row.attempt_count || 0) + 1
     })
   });
   if (!patch.ok) throw new Error("Webhook event ledger claim failed");
   const claimed = await patch.json();
-  if (Array.isArray(claimed) && claimed.length) return { id: row.id, processed: false };
+  if (Array.isArray(claimed) && claimed.length) return { id: row.id, leaseStartedAt, processed: false };
 
   // Another delivery won the conditional update. Re-read its state rather
   // than processing the same provider event concurrently.
@@ -173,9 +174,11 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
   throw new Error("Webhook event claim was not acquired");
 }
 
-async function finishSnapshotWebhookEvent(eventId, status, outcomeCode, detail) {
+async function finishSnapshotWebhookEvent(eventId, leaseStartedAt, status, outcomeCode, detail) {
   const endpoint = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
   endpoint.searchParams.set("id", "eq." + eventId);
+  endpoint.searchParams.set("processing_status", "eq.processing");
+  endpoint.searchParams.set("processing_started_at", "eq." + leaseStartedAt);
   const response = await fetch(endpoint, {
     method: "PATCH",
     headers: {
@@ -186,7 +189,7 @@ async function finishSnapshotWebhookEvent(eventId, status, outcomeCode, detail) 
     },
     body: JSON.stringify({
       processing_status: status,
-      processing_started_at: status === "processing" ? new Date().toISOString() : null,
+      processing_started_at: null,
       updated_at: new Date().toISOString(),
       outcome_code: outcomeCode,
       outcome_detail: String(detail || "").slice(0, 300),
@@ -214,11 +217,11 @@ async function updateSnapshotOrder(orderId, payment, eventMeta) {
   if (eventRow.rejected) return "snapshot_event_rejected";
   if (eventRow.inProgress) return "snapshot_event_in_progress";
   if (Number(order.amount_paise) !== payment.amount || order.currency !== payment.currency) {
-    await finishSnapshotWebhookEvent(eventRow.id, "rejected", "snapshot_amount_mismatch", "Captured payment amount/currency does not match the bound snapshot order.");
+    await finishSnapshotWebhookEvent(eventRow.id, eventRow.leaseStartedAt, "rejected", "snapshot_amount_mismatch", "Captured payment amount/currency does not match the bound snapshot order.");
     return "snapshot_amount_mismatch";
   }
   if (order.status === "paid" && order.provider_payment_id === payment.id) {
-    await finishSnapshotWebhookEvent(eventRow.id, "processed", "snapshot_already_processed", "Payment was already reconciled.");
+    await finishSnapshotWebhookEvent(eventRow.id, eventRow.leaseStartedAt, "processed", "snapshot_already_processed", "Payment was already reconciled.");
     return "snapshot_already_processed";
   }
   if (order.status !== "created") {
@@ -254,7 +257,7 @@ async function updateSnapshotOrder(orderId, payment, eventMeta) {
     await finishSnapshotWebhookEvent(eventRow.id, "processed", result.replayed ? "snapshot_replayed" : "snapshot_reconciled", "Snapshot payment reconciliation completed.");
     return result.replayed ? "snapshot_already_processed" : "snapshot_reconciled";
   }
-  await finishSnapshotWebhookEvent(eventRow.id, "retryable_error", "snapshot_not_reconciled", "Reconciliation RPC returned no success.");
+  await finishSnapshotWebhookEvent(eventRow.id, eventRow.leaseStartedAt, "retryable_error", "snapshot_not_reconciled", "Reconciliation RPC returned no success.");
   return "snapshot_not_reconciled";
   } catch (error) {
     try { await finishSnapshotWebhookEvent(eventRow.id, "retryable_error", "snapshot_reconcile_error", error.message); } catch (_) {}
@@ -325,10 +328,10 @@ exports.handler = async (event) => {
         if (!reconcile.ok) throw new Error("Refund webhook reconciliation failed");
         const reconcileResult = await reconcile.json();
         if (!reconcileResult?.success) throw new Error("Refund webhook reconciliation returned no success");
-        await finishSnapshotWebhookEvent(refundEvent.id, "processed", "refund_" + providerStatus, "Razorpay refund event reconciled.");
+        await finishSnapshotWebhookEvent(refundEvent.id, refundEvent.leaseStartedAt, "processed", "refund_" + providerStatus, "Razorpay refund event reconciled.");
         return json(200, { success: true, refund_reconciled: true, status: providerStatus });
       } catch (refundError) {
-        try { await finishSnapshotWebhookEvent(refundEvent.id, "retryable_error", "refund_reconcile_error", refundError.message); } catch (_) {}
+        try { await finishSnapshotWebhookEvent(refundEvent.id, refundEvent.leaseStartedAt, "retryable_error", "refund_reconcile_error", refundError.message); } catch (_) {}
         throw refundError;
       }
     }
