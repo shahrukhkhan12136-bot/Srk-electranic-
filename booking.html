@@ -36,10 +36,6 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <header>
  <div class="top"><div class="logo">SRK</div><div><h1>SRK ELECTRONIC</h1><p>Electrical • Wiring • Home Repair</p></div></div>
  <div class="hero"><h2>घर की इलेक्ट्रिकल सर्विस,<br>अब एक ही जगह।</h2><p>वायरिंग, इलेक्ट्रिकल रिपेयर और घर की छोटी-बड़ी मरम्मत के लिए संपर्क करें।</p></div>
- <div class="actions">
-  <a class="btn call" href="tel:9920904161">☎ कॉल करें</a>
-  <a class="btn whatsapp" href="https://wa.me/919920904161?text=Namaste%20SRK%20ELECTRONIC%2C%20mujhe%20service%20chahiye." target="_blank" rel="noopener">WhatsApp</a>
- </div>
 </header>
 <main class="wrap">
  <section class="panel" id="customer-login">
@@ -104,41 +100,13 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <button class="btn primary" type="button" id="payNow">🔒 Razorpay से भुगतान करें</button>
   <p id="paymentStatus" class="small" role="status" aria-live="polite"></p>
 </section>
- <section class="panel" id="electrician-register">
-  <h2 class="section-title" style="margin-top:0">⚡ इलेक्ट्रिशियन बनें – पूरे भारत में काम पाएँ</h2>
-  <p class="small">इलेक्ट्रिशियन/टेक्नीशियन अपना आवेदन भेजें। Admin की जाँच और approval के बाद, matching PIN Code/जिले की बुकिंग के offers मिल सकते हैं।</p>
-  <form id="electricianForm">
-   <label for="eName">पूरा नाम</label><input id="eName" required placeholder="अपना नाम लिखें">
-   <label for="ePhone">मोबाइल नंबर</label><input id="ePhone" type="tel" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का मोबाइल नंबर">
-   <label for="eState">राज्य</label><select id="eState" required><option value="">राज्य चुनें</option><option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option><option>Andaman and Nicobar Islands</option><option>Chandigarh</option><option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Jammu and Kashmir</option><option>Ladakh</option><option>Lakshadweep</option><option>Puducherry</option></select>
-   <label for="eDistrict">जिला</label><input id="eDistrict" required placeholder="जिला">
-   <label for="ePin">काम का PIN Code</label><input id="ePin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="6 अंकों का PIN Code">
-   <button class="btn" type="button" id="electricianLocate" style="margin-top:8px;background:#eaf2ff;color:#164b91">📍 अपनी काम की लोकेशन चुनें</button>
-   <input type="hidden" id="electricianLat"><input type="hidden" id="electricianLng">
-   <p class="small" id="electricianLocationStatus" role="status">GPS लोकेशन वैकल्पिक है; PIN Code और जिला से भी ऑफर मिलेंगे।</p>
-   <label for="eSkills">कौन-कौन से काम आते हैं?</label><select id="eSkills" required><option value="">काम चुनें</option><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>MCB / DB / इन्वर्टर</option><option>मोटर / पंप</option><option>सभी इलेक्ट्रिकल काम</option></select>
-   <label for="eExperience">अनुभव (वर्ष)</label><input id="eExperience" type="number" min="0" max="60" required placeholder="जैसे 3">
-   <label for="eAbout">अनुभव / अतिरिक्त जानकारी</label><textarea id="eAbout" placeholder="अपनी योग्यता, उपलब्ध समय आदि लिखें"></textarea>
-   <button class="btn primary" type="submit">इलेक्ट्रिशियन आवेदन WhatsApp पर भेजें</button>
-   <p class="small">सुरक्षा: अभी Aadhaar नंबर, बैंक पासवर्ड, OTP या कार्ड की जानकारी इस फॉर्म में न डालें। KYC केवल सुरक्षित सत्यापन प्रक्रिया में होगा।</p>
-  </form>
- </section>
- <section class="panel">
-  <h2 class="section-title" style="margin-top:0">सर्विस क्षेत्र</h2>
-  <div class="coverage"><span class="pill">आजमगढ़</span><span class="pill">बलरामपुर</span><span class="pill">मुंबई</span></div>
-  <p class="small">ग्राहक भारत के किसी भी राज्य, जिले और PIN Code से अनुरोध भेज सकते हैं। फिलहाल यह nationwide enquiry है—हर इलाके में तुरंत सेवा उपलब्ध होने की गारंटी नहीं है। हमारी टीम पहले उपलब्धता की पुष्टि करेगी।</p>
-  <div class="actions">
-   <a class="btn call" href="tel:9920904161">9920904161 पर कॉल</a>
-   <a class="btn whatsapp" href="https://wa.me/919920904161" target="_blank" rel="noopener">मैसेज करें</a>
-  </div>
- </section>
+>
 </main>
 <footer>© <span id="year"></span> SRK ELECTRONIC · Shahrukh Khan</footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/srk-config.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-let currentBookingWhatsApp = '';
 let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
@@ -190,8 +158,6 @@ async function loadCustomerBookings() {
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
-    (row.quote_status && row.quote_status!=='not_submitted' ? '<div class="job"><b>इलेक्ट्रिशियन का कोटेशन</b><p>सर्विस / मेहनताना: ₹'+customerEsc(Number(row.service_charge||0).toFixed(2))+'</p><p><b>कुल: ₹'+customerEsc(Number(row.quoted_amount||0).toFixed(2))+'</b></p><p>स्थिति: '+customerEsc(row.quote_status)+'</p>'+(row.quote_note?'<p>'+customerEsc(row.quote_note)+'</p>':'')+(row.quote_status==='pending'&&row.status==='awaiting_quote_approval'?'<button type="button" onclick="customerQuoteResponse(\''+row.id+'\',\'approved\')">कोटेशन मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerQuoteResponse(\''+row.id+'\',\'rejected\')">कोटेशन अस्वीकार करें</button>':'')+'</div>':'') +
-    (row.quoted_amount != null ? '<p>कुल तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
     (['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id&&row.payment_status!=='paid'&&!row.payment_method?.toLowerCase().includes('razorpay') ? '<div class="job"><b>भुगतान का चुना हुआ तरीका:</b> '+customerEsc(row.payment_method||'नकद (Cash)')+'<p class="small">यदि इलेक्ट्रिशियन की बुकिंग के लिए Online भुगतान जरूरी हो, तो आप यहाँ स्वयं Online चुन सकते हैं। आपकी अनुमति के बिना भुगतान तरीका नहीं बदलेगा।</p><button type="button" onclick="customerChangePaymentMethod(\''+row.id+'\')">Online भुगतान चुनें</button></div>' : '') +
     (row.status==='completed'&&row.quote_status==='approved'&&row.payment_status!=='paid'&&String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'?'<button type="button" onclick="customerPayBooking(\''+row.id+'\','+Number(row.quoted_amount||0)+')">🔒 काम पूरा — अब ऑनलाइन भुगतान करें</button>':'') +
     (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
@@ -204,14 +170,7 @@ async function customerChangePaymentMethod(id){
  if(!confirm('क्या आप इस बुकिंग के लिए Cash की जगह Online (Razorpay) भुगतान स्वयं चुनना चाहते हैं? कोई भुगतान अभी नहीं लिया जाएगा।'))return;
  const {data,error}=await customerSb.rpc('srk_customer_change_payment_method',{p_booking_id:id,p_payment_method:'Razorpay ऑनलाइन भुगतान'});
  if(error){alert('भुगतान तरीका नहीं बदला: '+error.message);return;}
- alert('आपकी पसंद Online भुगतान के रूप में सुरक्षित हो गई है। भुगतान केवल काम पूरा होने और कोटेशन मंजूर होने के बाद होगा।');
- await loadCustomerBookings();
-}
-async function customerQuoteResponse(id,response){
- if(!confirm(response==='approved'?'क्या आप केवल काम के मेहनताने का कोटेशन मंजूर करते हैं?':'क्या आप यह कोटेशन अस्वीकार करते हैं?'))return;
- const {error}=await customerSb.rpc('srk_customer_respond_booking_quote',{p_booking_id:id,p_response:response});
- if(error){alert('जवाब सेव नहीं हुआ: '+error.message);return;}
- alert(response==='approved'?'कोटेशन मंजूर हो गया। अब इलेक्ट्रिशियन काम शुरू कर सकता है।':'कोटेशन अस्वीकार कर दिया गया। इलेक्ट्रिशियन संशोधित कोटेशन भेज सकता है।');
+ alert('आपकी पसंद Online भुगतान के रूप में सुरक्षित हो गई है। भुगतान काम पूरा होने के बाद होगा।');
  await loadCustomerBookings();
 }
 function customerPayBooking(id,amount){
@@ -338,8 +297,8 @@ async function startRazorpayPayment() {
           const verifyData = await verifyResponse.json();
           if (!verifyResponse.ok || !verifyData.success) throw new Error(verifyData.error || 'भुगतान सत्यापित नहीं हुआ।');
           setPaymentStatus('✅ भुगतान सफल और सत्यापित! अब बुकिंग WhatsApp पर भेजी जा रही है।');
-          const paidMessage = currentBookingWhatsApp + '%0A%0APayment: Razorpay verified' + '%0APayment ID: ' + encodeURIComponent(response.razorpay_payment_id);
-          window.location.href = paidMessage;
+          setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है।');
+          await loadCustomerBookings();
         } catch (err) { setPaymentStatus(err.message, true); }
       },
       modal: { ondismiss: function () { setPaymentStatus('आपने भुगतान विंडो बंद कर दी। अभी भुगतान की पुष्टि नहीं हुई है।', true); } }
@@ -361,7 +320,6 @@ async function startRazorpayPayment() {
 }
 
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
-document.getElementById('electricianLocate').addEventListener('click',()=>locateInto('electricianLat','electricianLng','electricianLocationStatus'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
   const amount = 0; // Quote and final amount are set after electrician inspection.
@@ -375,7 +333,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     if (!customerSb) throw new Error('ग्राहक लॉगिन सेवा उपलब्ध नहीं है।');
     const { data: customerSessionData } = await customerSb.auth.getSession();
     const customerSession = customerSessionData.session;
-    if (!customerSession) throw new Error('बुकिंग और कोटेशन मंजूरी के लिए पहले ग्राहक OTP लॉगिन करें।');
+    if (!customerSession) throw new Error('बुकिंग के लिए पहले ग्राहक OTP लॉगिन करें।');
     bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify({
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
@@ -385,29 +343,15 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
     alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
-    window.location.href = currentBookingWhatsApp;
+    await loadCustomerBookings();
   } catch (err) {
-    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`);
+    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
-document.getElementById('electricianForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const msg = `नमस्ते SRK ELECTRONIC, मैं इलेक्ट्रिशियन के रूप में रजिस्टर करना चाहता/चाहती हूँ।\nनाम: ${value('eName')}\nमोबाइल: ${value('ePhone')}\nराज्य: ${value('eState')}\nजिला: ${value('eDistrict')}\nPIN Code: ${value('ePin')}\nGoogle Maps: ${googleMapsUrl(value('electricianLat'),value('electricianLng'),[value('eDistrict'),value('eState'),value('ePin'),'India'].join(', '))}\nकौशल: ${value('eSkills')}\nअनुभव: ${value('eExperience')} वर्ष\nजानकारी: ${value('eAbout')}`;
-  const whatsapp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
-  const button = this.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'आवेदन भेजा जा रहा है…';
-  try {
-    const response = await fetch('/api/apply-electrician', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: value('eName'), phone: value('ePhone'), state: value('eState'), district: value('eDistrict'), pincode: value('ePin'), location_lat: value('electricianLat') || null, location_lng: value('electricianLng') || null, skills: value('eSkills'), experience_years: value('eExperience'), about: value('eAbout') }) });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error(result.error || 'आवेदन सेव नहीं हुआ।');
-    alert(result.message); window.location.href = whatsapp;
-  } catch (err) { alert(`${err.message}\nआवेदन डेटाबेस में सेव नहीं हुआ है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`); }
-  finally { button.disabled = false; button.textContent = 'इलेक्ट्रिशियन आवेदन भेजें'; }
-});
-
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 </script>
-<div style="padding:18px;text-align:center;background:#102a43;color:#fff"><a style="color:#fff;margin:0 10px" href="/admin.html">Admin Login</a><a style="color:#fff;margin:0 10px" href="/electrician.html">Electrician Partner Login</a><a style="color:#fff;margin:0 10px" href="/policies.html">Privacy • Terms • Refund</a></div>
+
 </body></html>
