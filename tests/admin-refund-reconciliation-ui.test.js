@@ -106,6 +106,8 @@ vm.runInContext(block,context);
   getNode('recon-evidence-msg-case-1');
   failFirstSubmit=true;submitAttempts=0;
   await context.submitRefundReconciliationEvidence('case-1','refund-1');
+  assert.ok(getNode('recon-evidence-msg-case-1').textContent.includes('नेटवर्क उत्तर नहीं मिला'),
+    'Rejected network promise must show a clear retry message');
   await context.submitRefundReconciliationEvidence('case-1','refund-1');
   const attempts=calls.filter(x=>x.name==='srk_admin_submit_refund_reconciliation_evidence');
   assert.equal(attempts.length,2);
