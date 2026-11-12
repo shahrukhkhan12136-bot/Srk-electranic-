@@ -8,6 +8,7 @@ const verify = read("verify-snapshot-payment.js");
 const webhook = read("razorpay-webhook.js");
 const legacyCreate = read("create-order.js");
 const legacyVerify = read("verify-payment.js");
+const webhookLedgerMigration = read("supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql");
 
 function includesAll(source, tokens, label) {
   for (const token of tokens) {
@@ -50,10 +51,12 @@ includesAll(webhook, [
   'processing_status", "eq." + row.processing_status',
   '["received", "retryable_error"]', "inProgress",
   "Webhook event claim reconciliation failed",
+  "processing_started_at", "staleProcessing", "5 * 60 * 1000",
+  "Webhook event claim was not acquired",
   "srk_reconcile_razorpay_snapshot_payment"
 ], "Razorpay webhook");
 
-// Service-role credentials must remain server-side; browser surfaces call Netlify APIs,
+// Webhook event ledger is durable, server-only, unique per provider event and recoverable.\nincludesAll(webhookLedgerMigration, [\n  "srk_payment_webhook_events", "unique(provider,provider_event_id)",\n  "processing_started_at", "retryable_error", "enable row level security",\n  "revoke all on public.srk_payment_webhook_events from public,anon,authenticated",\n  "to service_role"\n], "webhook event ledger migration");\n\n// Service-role credentials must remain server-side; browser surfaces call Netlify APIs,
 // not Supabase service-role REST endpoints.
 const customer = read("index.html");
 assert.ok(customer.includes("/api/create-snapshot-order"));
