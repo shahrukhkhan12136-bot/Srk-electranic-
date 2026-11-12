@@ -142,6 +142,8 @@ begin
      or v_existing.provider_payment_id<>p_provider_payment_id
      or v_existing.amount_paise<>p_amount_paise or v_existing.currency<>p_currency
      or v_existing.provider_status<>p_provider_status
+     or v_existing.provider_created_at is distinct from p_provider_created_at
+     or v_existing.provider_updated_at is distinct from p_provider_updated_at
      or v_existing.evidence_reference<>btrim(p_evidence_reference) then
    raise exception 'RECONCILIATION_ACTION_ID_CONFLICT' using errcode='23505';
   end if;
@@ -180,7 +182,9 @@ begin
  end if;
  select * into v_review from public.srk_refund_reconciliation_reviews where action_id=p_action_id;
  if found then
-  if v_review.evidence_id<>p_evidence_id or v_review.reviewed_by<>v_uid or v_review.decision<>p_decision then
+  if v_review.evidence_id<>p_evidence_id or v_review.reviewed_by<>v_uid
+     or v_review.decision<>p_decision
+     or v_review.review_note is distinct from nullif(btrim(coalesce(p_review_note,'')),'') then
    raise exception 'RECONCILIATION_ACTION_ID_CONFLICT' using errcode='23505';
   end if;
   return jsonb_build_object('success',true,'review_id',v_review.id,'decision',v_review.decision,'replayed',true);
@@ -192,7 +196,9 @@ begin
  -- Recheck after the case lock so a concurrent duplicate click replays the committed result.
  select * into v_review from public.srk_refund_reconciliation_reviews where action_id=p_action_id;
  if found then
-  if v_review.evidence_id<>p_evidence_id or v_review.reviewed_by<>v_uid or v_review.decision<>p_decision then
+  if v_review.evidence_id<>p_evidence_id or v_review.reviewed_by<>v_uid
+     or v_review.decision<>p_decision
+     or v_review.review_note is distinct from nullif(btrim(coalesce(p_review_note,'')),'') then
    raise exception 'RECONCILIATION_ACTION_ID_CONFLICT' using errcode='23505';
   end if;
   return jsonb_build_object('success',true,'review_id',v_review.id,'decision',v_review.decision,'replayed',true);
