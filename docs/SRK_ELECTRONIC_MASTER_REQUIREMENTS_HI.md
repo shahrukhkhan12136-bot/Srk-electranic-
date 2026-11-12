@@ -1821,3 +1821,55 @@ Production catalog से केवल schema metadata, constraints, policies, g
 4. फिर शेष Production migration history के high-risk payment/security sources पर यही four-way comparison।
 
 No Production schema, grant, policy, record, payment/transfer, migration history, deployment or staging resource changed. यह SELECT-only evidence और Feature Branch documentation update है।
+
+
+## 17.51 — Razorpay Route Transfer Functions, Webhook Callers और Transfer Status Path Audit (13 Nov 2026)
+
+Feature Branch source और Production catalog का read-only audit किया गया। कोई webhook invoke नहीं हुआ, Razorpay API call/transfer नहीं हुआ, और कोई DB record नहीं पढ़ा/बदला गया।
+
+### 1. Feature Branch में Route transfer implementation की स्थिति
+- Repository tree में Route transfer ledger की एक migration मिली: `20261109020000_create_server_only_razorpay_route_transfer_ledger.sql`.
+- इस migration में server-only `srk_route_transfers` table, unique idempotency key, unique (payment ID, recipient type), transfer/settlement states और RLS शामिल हैं।
+- Feature Branch source tree में Route transfer create/fetch/reverse/settlement handler, Netlify function adapter, scheduled reconciliation worker या payout-trigger caller नहीं मिला।
+- उपलब्ध payment handlers `create-order.js`, `verify-payment.js`, `razorpay-webhook.js` केवल customer order/payment verification और `service_bookings` payment status update करते हैं; Route transfer ledger में insert/update नहीं करते।
+- Netlify webhook adapter केवल root `razorpay-webhook.js` को forward करता है; अलग Route transfer logic नहीं।
+- इसलिए Route transfer ledger को live table होने के बावजूद automated transfer workflow implemented/verified नहीं माना जा सकता।
+
+### 2. Live Production catalog में Route transfer RPC/trigger evidence
+- Public/private function name scan में Route/transfer-specific create, reconcile, reverse या settlement RPC नहीं मिला।
+- `srk_route_transfers` table पर कोई database trigger नहीं मिला; इसलिए DB trigger से transfer lifecycle/audit/immutability लागू होने का evidence नहीं।
+- Table में RLS enabled, FORCE RLS false; anon/authenticated के लिए deny-all policy मौजूद है।
+- `service_role` के effective table grants में SELECT/INSERT/UPDATE के अलावा DELETE, TRUNCATE, REFERENCES और TRIGGER भी दिखे। Migration source केवल SELECT/INSERT/UPDATE grant करता है। अतिरिक्त privileges का स्रोत इस catalog check से तय नहीं हुआ; role-level/default grants और inherited membership की अलग जाँच जरूरी है।
+- अभी कोई GRANT/REVOKE नहीं किया गया। RLS deny policy के बावजूद service_role privileged server path है; broad service_role permissions को least-privilege review के बिना सुरक्षित नहीं मानना चाहिए।
+
+### 3. Existing Razorpay webhook की code-level findings
+- Webhook raw request body पर HMAC-SHA256 signature verify करता है और `payment.captured` / `order.paid` events स्वीकारता है।
+- Payment ID/order ID format, captured status, INR, amount और booking order match checks हैं।
+- लेकिन webhook event ID `x-razorpay-event-id` / payload event identity को durable event ledger में persist/dedupe नहीं करता; concurrent delivery में booking PATCH `payment_status != paid` guard पर निर्भर है।
+- Unknown booking, cash booking, amount mismatch और non-payable booking के लिए HTTP 200 with `reconciled:false` लौटता है; इससे provider retry नहीं होगा। Admin webhook exception table/function live होने का प्रमाण है, लेकिन इस root handler में exception record insert नहीं दिखा।
+- Handler payment captured होने पर केवल `service_bookings` को paid करता है; electrician/platform split transfer create नहीं करता, Route transfer state update नहीं करता।
+- यह legacy quote-approved completed booking और `service_charge + materials_amount = quoted_amount` पर निर्भर है; Master timer-based labour bill, separate materials, 15% labour-only fee से मेल नहीं खाता।
+- Verify-payment और webhook दोनों service-role PATCH से paid status finalize करते हैं; shared atomic finalization RPC/event ledger नहीं दिखा। Race handling केवल read-after-empty PATCH result पर आधारित है।
+
+### 4. Production में refund workflow (संबंधित सीमा)
+- Admin refund preparation RPC Admin guard, booking row lock, verified Razorpay payment और quote-total reconciliation करता है; payout pending हो तो block करता है; paid payout पर separate Admin reconciliation माँगता है।
+- Refund table पर audit trigger INSERT/UPDATE/DELETE रिकॉर्ड करता है, पर Route transfer reversal/partial transfer reversal linkage इस inspected function में नहीं।
+- Admin webhook exception list RPC exception/processing_error rows पढ़ता है; इससे exception table उपलब्ध है, पर inspected webhook source द्वारा rows populate होना प्रमाणित नहीं।
+
+### 5. Release blockers / आवश्यक अगला design
+1. Payment event inbox: provider event ID unique, raw payload hash, signature verification result, received/processed timestamps, retry/error state; duplicate और out-of-order events atomic तरीके से handle हों।
+2. Shared server finalization RPC: payment intent/billing snapshot, booking lock, provider payment ID/order/amount/currency, one-time ledger posting और idempotent result.
+3. Route transfer orchestrator: approved linked account, recipient split, labour-only platform fee, materials exclusion, deterministic transfer idempotency key, provider API request/response references.
+4. Transfer status webhook/reconciliation: created/pending/processed/failed/reversed/partially_reversed/manual_review transitions; provider event dedupe; periodic reconciliation; no blind duplicate transfer.
+5. Refund linkage: booking/payment/transfer recipient mapping, partial/full reversals, payout already paid recovery, cash-vs-online separation.
+6. Append-only transfer event/audit trail; ledger rows must not be deletable/truncatable by ordinary application role.
+7. Least-privilege service_role review; determine why effective DELETE/TRUNCATE/TRIGGER/REFERENCES grants exceed migration grant statement before any change.
+8. Test Mode only: duplicate webhook, out-of-order capture/refund, verify-vs-webhook race, network timeout after provider transfer, partial reversal, duplicate idempotency, unlinked account and amount mismatch.
+
+### 6. निष्कर्ष
+- Route transfer ledger schema Production में है, लेकिन इस Feature Branch snapshot में उसे operate करने वाला transfer workflow नहीं मिला।
+- Existing Razorpay payment capture webhook is not a Route transfer engine; payment paid status alone does not prove electrician payout/commission split transfer.
+- Do not enable Live Route transfer or infer payout completion from `service_bookings.payment_status='paid'`.
+- No production function, trigger, grant, table, record, payment, transfer, webhook setting, staging resource or deployment changed.
+
+यह section केवल code/catalog evidence दर्ज करता है; Route transfers अभी implemented या end-to-end tested घोषित नहीं हैं।
