@@ -45,6 +45,25 @@
 - ग्राहक 1–8 घंटे चुनता है, पर अंतिम मेहनताना वास्तविक server-recorded minutes पर आधारित होगा। चुनी अवधि से अधिक काम होने की स्थिति में timer वास्तविक समय रिकॉर्ड करेगा; overtime cap/approval UX का सटीक नियम अलग से स्पष्ट करना बाकी है।
 - पहले दिखाई जाने वाली booking amount और actual-minute final amount के बीच UI में स्पष्ट अंतर दिखाना होगा; pre-booking amount estimate/selected-duration amount है या कोई cap/advance, इसे code में लागू करने से पहले मालिक से स्पष्ट करना है। कोई hidden labour charge नहीं।
 
+
+## 2A. Electrician Panel में Net Rate List (15% Platform Fee के बाद)
+1. Electrician के अपने dashboard/profile में उसकी approved category की rate list स्पष्ट दिखाई देगी।
+2. Rate list में ग्राहक से लिया जाने वाला gross labour rate, 15% Platform Fee और Platform Fee काटने के बाद electrician का net labour share—तीनों अलग-अलग दिखेंगे।
+3. मौजूदा 8-hour category rates के अनुसार उदाहरण:
+
+| Approved category | Customer gross rate / 8h | 15% Platform Fee | Electrician net share / 8h |
+|---|---:|---:|---:|
+| Electrical Assistant | ₹899.00 | ₹134.85 | ₹764.15 |
+| Skilled Electrician | ₹1,199.00 | ₹179.85 | ₹1,019.15 |
+| Expert Electrician | ₹1,599.00 | ₹239.85 | ₹1,359.15 |
+| Premium Electrical Specialist | ₹1,999.00 | ₹299.85 | ₹1,699.15 |
+
+4. ये रकम 8-hour reference rates हैं। Actual work का final labour amount server timer के वास्तविक billable minutes के आधार पर निकलेगा; उसी actual labour amount पर 15% Platform Fee और 85% electrician share calculate होंगे।
+5. Electrician को यह भी दिखेगा कि किसी booking में gross labour कितना बना, Platform Fee कितनी कटी, पुराने cash dues/अन्य अनुमत adjustments कितने समायोजित हुए और उसके payout/net payable में कितना बचा।
+6. ग्राहक की rate list और electrician की net earning list अलग-अलग labels के साथ दिखाई जाएँगी। Electrician की net list को ग्राहक का rate बताकर नहीं दिखाना है।
+7. गणना integer paise में होगी; displayed amounts दो decimal places तक होंगे। Platform Fee और electrician share का rounding एक ही server-side rule से होगा, जिससे दोनों का जोड़ gross labour amount के बराबर रहे।
+8. Material/parts का कोई charge इस rate list या electrician labour share में शामिल नहीं होगा।
+
 ## 3. Electrician आवेदन, जाँच और डिजिटल ID
 1. Electrician अपनी पसंद की category चुनकर आवेदन कर सकता है; यह केवल requested category होगी, approved category नहीं।
 2. आवेदन में नाम, OTP-verified mobile, पता/कार्य क्षेत्र, अनुभव के वर्ष, काम/skills, पहचान दस्तावेज और योग्यता/प्रशिक्षण/अनुभव के प्रमाण माँगे जाएँ।
