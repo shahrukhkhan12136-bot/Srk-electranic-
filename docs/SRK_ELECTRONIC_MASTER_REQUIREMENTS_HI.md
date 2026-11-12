@@ -675,3 +675,15 @@ Live Production `pg_policies` का read-only निरीक्षण:
 - यह केवल SELECT policy snapshot है; INSERT/UPDATE/DELETE grants, column-level grants, सभी related tables, actual role/session negative tests और function owner/bypass behavior का पूरा audit अभी बाकी है।
 
 **निष्कर्ष:** अभी direct table RLS में इन तीन tables पर कोई broad cross-user SELECT policy नहीं दिखी; पर यह completed booking phone leakage को neutralize नहीं करती। कोई policy, grant या database object बदला नहीं गया।
+
+
+### 17.16 — Booking status constraint और contact lifecycle mapping blocker (13 Nov 2026)
+
+Live Production `service_bookings` check constraints से status list पढ़ी गई:
+- Allowed statuses: `new`, `confirmed`, `assigned`, `inspection`, `awaiting_quote_approval`, `quote_approved`, `quote_rejected`, `in_progress`, `completed`, `cancelled`।
+- Assignment-required constraint में `assigned`, `inspection`, `awaiting_quote_approval`, `quote_approved`, `quote_rejected`, `in_progress`, `completed` पर `assigned_electrician_id` non-null होना जरूरी है।
+- अलग `accepted` status इस live constraint में मौजूद नहीं है। Master Requirements के नए offer-acceptance flow में “electrician accepts” और “assigned booking” का exact state mapping तय किए बिना नई contact allow-list तय नहीं करनी है।
+- पुरानी quote/inspection states Master Requirements में superseded हैं; लेकिन Production में अभी status constraint और RPCs इन्हें allow करते हैं। केवल contact RPC से quote states हटाने पर legacy booking/payment paths प्रभावित हो सकते हैं, इसलिए नए lifecycle migration और UI/payment dependency plan के साथ ही बदलाव करना होगा।
+- `completed`, `cancelled`, `quote_rejected` को customer/electrician phone-contact response में रोकना चाहिए। कौन-से remaining states वास्तव में accepted active booking का प्रमाण हैं, इसे current offer acceptance RPC/trigger और booking status transition evidence से verify करना बाकी है।
+
+इस जाँच में केवल constraint definitions पढ़ी गईं; कोई status constraint, booking row या RPC नहीं बदला गया।
