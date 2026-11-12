@@ -115,3 +115,9 @@ A read-only aggregate over current Production data found one electrician profile
 Production `srk_razorpay_refunds` currently has a unique index on `booking_id`, a unique index on `idempotency_key`, and a unique index on nullable `refund_id`; there is no unique index and no ordinary index on `payment_id`. The current table contains zero refund rows, so no live duplicate-payment-ID case was observed. Schema semantics allow more than one refund row to reference the same provider payment ID, but only one refund row per booking. This is consistent with the webhook handler's safety behavior: if a payment-ID lookup matches multiple refund rows, it returns retryable ambiguity instead of reconciling an arbitrary row.
 
 A feature-branch migration `20261112200000_index_refund_payment_lookup.sql` now adds a **non-unique** index on `payment_id`, preserving ambiguity detection while making the handler's lookup efficient as rows grow. It is replayed twice in the refund CI workflow; that workflow passed at run 43176559688. The integrated Timer parity workflow was extended too, but a shell continuation defect was found and corrected; its newest reruns are pending. This migration is not applied to Production.
+
+
+### Final CI verification for refund payment lookup index — 2026-11-12
+- Refund workflow run 43176559688: SUCCESS; applied `20261112200000_index_refund_payment_lookup.sql` twice and all refund/webhook handler and SQL tests passed.
+- Integrated Timer parity workflow run 43176720772: SUCCESS; applied the same index migration twice after Timer 16000–16015, date-only/duration and refund chain; integrated assertions passed.
+- An earlier run failed because the workflow shell loop omitted a continuation after the reconciliation migration; the defect was corrected, and the later run passed. No Production migration applied.
