@@ -38,13 +38,15 @@ jobs:
         with:
           version: 3.0.0
 
-      - name: Initialize local Supabase configuration if missing
+      - name: Create a clean temporary Supabase project
         run: |
-          if [ ! -f supabase/config.toml ]; then
-            supabase init
-          fi
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/srk-supabase-ci"
+          cd "$RUNNER_TEMP/srk-supabase-ci"
+          supabase init
 
       - name: Verify export credential cannot read rows or alter schema
+        working-directory: ${{ runner.temp }}/srk-supabase-ci
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
@@ -83,6 +85,7 @@ jobs:
           fi
 
       - name: Export schema only from production (no table data)
+        working-directory: ${{ runner.temp }}/srk-supabase-ci
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
@@ -96,20 +99,23 @@ jobs:
           fi
 
       - name: Start isolated local Supabase stack
+        working-directory: ${{ runner.temp }}/srk-supabase-ci
         run: supabase start
 
       - name: Restore schema into isolated local database
+        working-directory: ${{ runner.temp }}/srk-supabase-ci
         run: supabase db query --file "$RUNNER_TEMP/srk-production-schema.sql"
 
       - name: Apply pending feature migrations in order
+        working-directory: ${{ runner.temp }}/srk-supabase-ci
         run: |
           set -euo pipefail
           migrations=(
-            "supabase/migrations/20261112170000_enforce_electrician_third_booking_online_payment.sql"
-            "supabase/migrations/20261112193000_labour_only_quotes_customer_supplies_materials.sql"
-            "supabase/migrations/20261112220000_cash_platform_fee_due_and_online_settlement.sql"
-            "supabase/migrations/20261112230000_show_customer_payment_choice_to_assigned_electrician.sql"
-            "supabase/migrations/20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261112170000_enforce_electrician_third_booking_online_payment.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261112193000_labour_only_quotes_customer_supplies_materials.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261112220000_cash_platform_fee_due_and_online_settlement.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261112230000_show_customer_payment_choice_to_assigned_electrician.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
@@ -118,9 +124,11 @@ jobs:
           done
 
       - name: Lint isolated database
+        working-directory: ${{ runner.temp }}/srk-supabase-ci
         run: supabase db lint --local --fail-on error
 
       - name: Verify critical schema objects exist
+        working-directory: ${{ runner.temp }}/srk-supabase-ci
         run: |
           cat > "$RUNNER_TEMP/srk-smoke-test.sql" <<'SQL'
           DO $$
@@ -140,5 +148,6 @@ jobs:
           supabase db query --file "$RUNNER_TEMP/srk-smoke-test.sql"
 
       - name: Stop local Supabase stack
+        working-directory: ${{ runner.temp }}/srk-supabase-ci
         if: always()
         run: supabase stop --no-backup
