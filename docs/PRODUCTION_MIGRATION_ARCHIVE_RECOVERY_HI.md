@@ -351,3 +351,15 @@ Additional migration dependencies:
 - 16014 changes customer call-contact RPC access after assignment; preserve the approved full-number visibility after electrician acceptance, including after completion.
 
 Production still lacks the required timer schema and related booking columns; no Production changes were made. Next release-gate task is to create a single combined disposable parity replay that includes timer 16000–16015 plus the later date-only/duration booking contract, then run all relevant assertions and safe replays. No Production DDL/DML or deployment.
+
+
+## 2026-11-12 — Post-acceptance phone visibility contract audit
+
+Read-only Production function review confirmed public.srk_respond_to_offer(uuid,text) writes service_bookings.assigned_electrician_id and status='assigned' only when p_response='accepted', only for the authenticated active/approved electrician, and only while the booking is unassigned and new/confirmed. This validates assigned_electrician_id as the accepted-offer marker in the observed Production function.
+
+Feature branch phone-visibility paths:
+- Electrician RPC srk_get_my_offer_details_v2 returns customer_name/customer_phone/address only when assigned_electrician_id matches the authenticated electrician profile and booking status is in assigned/inspection/awaiting_quote_approval/quote_approved/in_progress/completed. Before acceptance, fields remain null; electrician UI displays the call button only when customer_phone exists.
+- Customer RPC srk_get_customer_call_contacts delegates to a private implementation and returns the assigned electrician phone only when the customer owns the booking and assigned_electrician_id is non-null. Migration 16014 deliberately removes the former status cutoff so contact remains available after completion.
+- Customer and electrician UIs both render direct tel: call controls after the RPC provides the accepted counterpart number. No OTP/masked relay is required after acceptance, consistent with approved project rule.
+
+Added automated source/UI contract assertions to tests/timer-panel-contract.test.js. Commit a8e4a41. CI run was not yet visible at the time of this note; test execution remains pending CI confirmation. This static contract does not prove device-level E2E or every database identity edge case. No Production changes.
