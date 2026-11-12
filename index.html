@@ -297,7 +297,7 @@ header .hero{display:none}
   <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर निरीक्षण करेगा। वह सर्विस शुल्क और सामान का खर्च अलग-अलग देगा। आपकी मंजूरी के बिना काम शुरू नहीं होगा।</p>
   <form id="booking">
    <label for="name">आपका नाम</label><input id="name" required placeholder="नाम लिखें">
-   <label for="phone">मोबाइल नंबर</label><input id="phone" type="tel" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का मोबाइल नंबर लिखें">
+   <div class="small" id="bookingRegisteredPhone" role="status" aria-live="polite">मोबाइल नंबर आपके OTP-verified ग्राहक खाते से अपने-आप लिया जाएगा।</div>
    <label for="state">राज्य / केंद्रशासित प्रदेश</label><select id="state" required><option value="">राज्य चुनें</option><option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option><option>Andaman and Nicobar Islands</option><option>Chandigarh</option><option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Jammu and Kashmir</option><option>Ladakh</option><option>Lakshadweep</option><option>Puducherry</option></select>
    <label for="district">जिला</label><input id="district" required placeholder="अपना जिला लिखें">
    <label for="pin">PIN Code</label><input id="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="6 अंकों का PIN Code">
@@ -820,8 +820,8 @@ async function startRazorpayPayment() {
       name: 'SRK ELECTRONIC',
       description: 'Home Repairing & Electrical Service',
       order_id: orderData.order_id,
-      prefill: { name: value('name'), contact: value('phone') },
-      notes: { service: value('service'), customer_phone: value('phone') },
+      prefill: { name: value('name'), contact: (customerSession.user.phone || '').replace(/\\D/g, '').slice(-10) },
+      notes: { service: value('service') },
       theme: { color: '#0b5ed7' },
       handler: async function (response) {
         setPaymentStatus('भुगतान की जाँच हो रही है…');
@@ -912,7 +912,13 @@ document.getElementById('customerLocate').addEventListener('click',()=>locateInt
 document.getElementById('electricianLocate').addEventListener('click',()=>locateInto('electricianLat','electricianLng','electricianLocationStatus'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
-  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nकाम: ${value('details')}\nइलेक्ट्रिशियन श्रेणी: ${value('serviceCategory')}\nअनुमानित अवधि: ${value('durationHours')} घंटे\nमेहनताना चुनी गई श्रेणी और अवधि के अनुसार; सामान अलग और मंजूरी के बाद`;
+  const { data: bookingSessionData } = await customerSb.auth.getSession();
+  const bookingSession = bookingSessionData.session;
+  if (!bookingSession?.user?.phone) { alert('बुकिंग के लिए पहले अपने रजिस्टर्ड मोबाइल नंबर से OTP लॉगिन करें।'); return; }
+  const registeredPhoneDigits = String(bookingSession.user.phone).replace(/\\D/g, '');
+  const registeredPhone = registeredPhoneDigits.length === 12 && registeredPhoneDigits.startsWith('91') ? registeredPhoneDigits.slice(2) : registeredPhoneDigits;
+  if (!/^[0-9]{10}$/.test(registeredPhone)) { alert('आपके खाते में मान्य भारतीय रजिस्टर्ड मोबाइल नंबर उपलब्ध नहीं है। कृपया ग्राहक सहायता से संपर्क करें।'); return; }
+  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${registeredPhone}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nकाम: ${value('details')}\nइलेक्ट्रिशियन श्रेणी: ${value('serviceCategory')}\nअनुमानित अवधि: ${value('durationHours')} घंटे\nमेहनताना चुनी गई श्रेणी और अवधि के अनुसार; सामान अलग और मंजूरी के बाद`;
   currentBookingWhatsApp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
   const submitButton = this.querySelector('button[type="submit"]');
   if (!bookingIdempotencyKey) bookingIdempotencyKey = window.crypto.randomUUID();
@@ -925,7 +931,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     if (!customerSession) throw new Error('बुकिंग और कोटेशन मंजूरी के लिए पहले ग्राहक OTP लॉगिन करें।');
     bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify({
-      customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
+      customer_name: value('name'), state: value('state'), district: value('district'), pincode: value('pin'),
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: value('service'), preferred_date: value('date'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '),
       service_category_code: value('serviceCategory'), duration_hours: Number(value('durationHours')),
