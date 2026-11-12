@@ -719,3 +719,17 @@ Production catalog से छह संबंधित functions के owner, s
 - इस snapshot में PUBLIC/anon execute बंद है, लेकिन authenticated callers को contact RPC access मिलता है। SECURITY DEFINER होने के कारण body predicates को API boundary मानकर कठोर परीक्षण करना होगा।
 
 यह catalog/ACL-only inspection है; कोई GRANT/REVOKE, function definition या database setting बदली नहीं गई। वास्तविक authenticated customer/electrician JWT से negative/positive runtime tests अभी शेष हैं।
+
+
+### 17.19 — Phone columns वाले tables, views और direct SELECT grants की जाँच (13 Nov 2026)
+
+Live Production schema inspection:
+- public schema में phone column केवल तीन tables पर मिला: electrician_applications.phone, electrician_profiles.phone, service_bookings.phone। public/private में phone को reference करने वाला कोई ordinary SQL view pg_views में नहीं मिला। यह view inventory है; materialized views और API-generated JSON/edge logs की अलग जाँच बाकी है।
+- इन तीनों tables पर authenticated role को table-level SELECT grant है; anon/PUBLIC को SELECT grant इस snapshot में नहीं मिला। Table grant अपने-आप row access नहीं देता; RLS policy भी लागू होती है।
+- electrician_applications SELECT policy केवल Admin (is_srk_admin()) को अनुमति देती है।
+- electrician_profiles SELECT policy केवल उसी linked electrician (auth_user_id/user_id = auth.uid()) या Admin को अनुमति देती है। इसलिए सामान्य electrician दूसरे electrician profile का phone direct SELECT से नहीं पढ़ सकता।
+- service_bookings SELECT policy केवल Admin या उसी customer_user_id वाले customer को अनुमति देती है; assigned electrician को direct table SELECT policy नहीं है। Customer अपनी booking row में अपना ही phone पढ़ता है; दूसरे customer का phone नहीं।
+- इन policies के कारण inspected direct-table route पर broad cross-user phone read नहीं दिखा। फिर भी SECURITY DEFINER RPCs अलग privileged path हैं और completed-state exposure पहले से confirmed है।
+- यह table-level grants + SELECT policy snapshot है; column-level grants, inherited roles, materialized views, storage, logs, realtime payloads और सभी edge functions का exhaustive audit अभी शेष है।
+
+कोई grant, RLS policy, view या table बदला नहीं गया।
