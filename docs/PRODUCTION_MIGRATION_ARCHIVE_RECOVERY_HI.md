@@ -368,3 +368,18 @@ Added automated source/UI contract assertions to tests/timer-panel-contract.test
 ## 2026-11-12 — Contact privacy contract CI result
 
 Added contact-visibility assertions to tests/timer-panel-contract.test.js and corrected timer-billing workflow push path filters so a test-only change triggers CI. GitHub Actions run 43175321207 completed SUCCESS at workflow commit d04f039fcd6810823e03e3fb387d738994da69fe. The job passed inline JS syntax checks, timer panel contract tests (including post-acceptance contact visibility), timer billing SQL tests, migration replay checks, and Production-shaped legacy parity replay for migrations 16000–16014. This remains synthetic PostgreSQL CI, not hosted Production migration replay or mobile/device E2E. 16015 is separately covered by refund-workflow harness; integrated all-in-one 16000–16015 plus final date-only/duration parity replay remains a release gate.
+
+
+## 2026-11-12 — Integrated Timer + refund replay: collision found and corrected
+
+The first combined disposable parity replay exposed a real migration collision: 16001 creates public.srk_payment_webhook_events as the Timer payment-receipt event ledger (received_at, processed_at, attempt_count, provider/order/payment fields). The later 18000 Razorpay refund event lease migration attempted CREATE TABLE IF NOT EXISTS against the same relation name but expected a different shape (created_at, updated_at, processing_started_at). Because the table already existed, PostgreSQL skipped table creation and failed when the later migration indexed missing created_at. This was not a fixture-only typo; the two distinct event streams must not share one table.
+
+Correction:
+- Renamed the dedicated Razorpay refund webhook event ledger to public.srk_razorpay_webhook_event_ledger in migration 20261112180000.
+- Updated razorpay-webhook.js REST paths and refund webhook ledger SQL assertions to use the dedicated table.
+- Added integrated assertions that both event ledgers coexist with their separate column contracts and that the Timer ledger was not overwritten.
+- Added disposable parity overlay for the legacy refund tables and extended timer-billing workflow to replay 16000–16015, then date-only (12130000) + duration pricing (12140000), then refund request + webhook ledger + reconciliation hardening migrations twice.
+
+Verification: GitHub Actions Timer billing run 43175857392 completed SUCCESS at commit 9cbdd761f8ab7a7632ec84f3be3bf6cb43b754b3. It passed the integrated Production-shaped disposable parity replay, including timer foundation, timer cash/online/refund support, date-only/duration booking contract and webhook ledger separation assertions. A newer workflow run 43175948589 is also queued/running to include the snapshot webhook contract test in this same workflow. Independent refund workflow run after the rename is still pending at time of this note.
+
+No Production schema/data/history changes, no provider calls, no live refunds, and no deployment. CI is synthetic PostgreSQL parity, not Production rollout approval.
