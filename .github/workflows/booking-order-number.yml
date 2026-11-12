@@ -9,6 +9,7 @@ on:
       - "supabase/migrations/20261112150000_versioned_rate_catalogue.sql"
       - "supabase/migrations/20261112160000_admin_rate_catalogue_management.sql"
       - "supabase/migrations/20261112170000_public_customer_rate_catalogue_rpc.sql"
+      - "supabase/migrations/20261112170000_public_customer_rate_catalogue_rpc.sql"
       - "supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql"
       - "supabase/tests/booking_order_number_fixture.sql"
       - "supabase/tests/customer_booking_date_only_rpc_assertions.sql"
@@ -109,6 +110,10 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112160000_admin_rate_catalogue_management.sql
+      - name: Apply public customer rate catalogue RPC migration
+        env:
+          PGPASSWORD: postgres
+        run: psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112170000_public_customer_rate_catalogue_rpc.sql
       - name: Apply electrician offer RPC migration
         env:
           PGPASSWORD: postgres
