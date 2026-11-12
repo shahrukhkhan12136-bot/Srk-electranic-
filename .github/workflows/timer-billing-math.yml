@@ -43,6 +43,14 @@ on:
       - "supabase/tests/timer_billing_foundation_assertions.sql"
       - "supabase/tests/production_parity_legacy_baseline.sql"
       - "supabase/tests/production_parity_legacy_assertions.sql"
+      - "supabase/migrations/20261112130000_customer_booking_date_only.sql"
+      - "supabase/migrations/20261112140000_customer_booking_duration_pricing.sql"
+      - "supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql"
+      - "supabase/migrations/20261111160015_timer_snapshot_refund_support.sql"
+      - "supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql"
+      - "supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql"
+      - "supabase/tests/timer_refund_parity_overlay.sql"
+      - "supabase/tests/timer_refund_parity_assertions.sql"
       - "tests/timer-panel-contract.test.js"
       - "tests/timer-panel-contract.test.js"
       - "supabase/tests/timer_billing_authenticated_role_assertions.sql"
@@ -482,3 +490,26 @@ jobs:
           psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/production_parity_legacy_assertions.sql
           psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/timer_billing_authenticated_role_assertions.sql
           psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/legacy_completed_booking_preservation_assertions.sql
+
+          # Apply the final customer booking contract after the timer release copies.
+          for migration in \
+            supabase/migrations/20261112130000_customer_booking_date_only.sql \
+            supabase/migrations/20261112140000_customer_booking_duration_pricing.sql
+          do
+            psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
+            psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
+          done
+
+          # Add only the legacy refund-ledger dependencies, then exercise the real
+          # refund request + timer snapshot refund + webhook hardening chain.
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/timer_refund_parity_overlay.sql
+          for migration in \
+            supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql \
+            supabase/migrations/20261111160015_timer_snapshot_refund_support.sql \
+            supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql \
+            supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql
+          do
+            psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
+            psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
+          done
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/timer_refund_parity_assertions.sql
