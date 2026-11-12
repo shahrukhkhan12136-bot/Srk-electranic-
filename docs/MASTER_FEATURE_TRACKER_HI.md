@@ -347,3 +347,9 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Corrected by giving the refund event lease ledger its own table `srk_razorpay_webhook_event_ledger`; updated Razorpay webhook REST handler and SQL contract assertions. Added assertions that both ledgers coexist without overwriting each other.
 - Expanded disposable parity replay: Timer 16000–16015, date-only 12130000, duration pricing 12140000, refund request workflow, refund event ledger and reconciliation hardening; migrations are applied twice and checked.
 - GitHub Actions run 43175857392 SUCCESS at 9cbdd761f8ab7a7632ec84f3be3bf6cb43b754b3. New run 43175948589 is pending to include the snapshot webhook JS contract test. No Production changes or deployment.
+
+
+### CI status update (2026-11-12)
+- Timer integrated parity workflow 43175948589: SUCCESS, including snapshot payment/webhook contract JS test.
+- Independent refund workflow 43175929837: SUCCESS, including refund handler, webhook ledger, snapshot payment and ambiguous refund handling tests.
+- Synthetic disposable PostgreSQL only; Production migrations remain unapplied and device E2E remains outstanding.
