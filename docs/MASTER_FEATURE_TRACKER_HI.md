@@ -366,3 +366,9 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 ### Refund ledger cardinality review — 2026-11-12
 - Production refund ledger currently has 0 rows; `booking_id` is unique, `payment_id` is not unique and has no index. Therefore the data snapshot shows no current duplicate payment IDs, but the schema allows multiple refund records to reference one payment ID; only one refund record per booking is supported.
 - Added feature-branch migration `20261112200000_index_refund_payment_lookup.sql` for a non-unique `payment_id` index, preserving handler ambiguity detection. Refund CI run 43176559688 SUCCESS after applying the migration twice. Integrated Timer parity CI initially exposed a missing shell continuation in the migration loop; corrected in commits c09080d and 2c874d8, and reruns are pending. No Production change.
+
+
+### Refund payment lookup index CI result — 2026-11-12
+- Refund workflow 43176559688: SUCCESS with migration replay twice and refund/webhook assertions.
+- Integrated Timer parity workflow 43176720772: SUCCESS with full Timer + date-only/duration + refund chain, including the non-unique payment_id index replay twice and combined assertions.
+- The preceding Timer run failed on a shell line-continuation defect in the workflow; fixed and verified by the later success. Production unchanged.
