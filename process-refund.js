@@ -25,18 +25,22 @@ exports.handler=async event=>{
   if(!refundRequest)return json(404,{success:false,error:"Refund अनुरोध नहीं मिला।"});
   if(!["approved","processing","unknown"].includes(refundRequest.status))return json(409,{success:false,error:"पहले Refund अनुरोध को Admin से मंजूर कराएँ।"});
   if(!refundRequest.razorpay_payment_id)return json(409,{success:false,error:"इस बुकिंग का Razorpay भुगतान ID उपलब्ध नहीं है।"});
-  const authHeader="Basic "+Buffer.from(RAZORPAY_KEY_ID+":"+RAZORPAY_KEY_SECRET).toString("base64");
-  const paymentCheck=await request("https://api.razorpay.com/v1/payments/"+encodeURIComponent(refundRequest.razorpay_payment_id),{headers:{Authorization:authHeader}});
-  if(!paymentCheck.ok)return json(502,{success:false,error:"Razorpay भुगतान की वर्तमान स्थिति सत्यापित नहीं हुई।"});
-  if(paymentCheck.data?.status!=="captured"||Number(paymentCheck.data.amount_refunded||0)!==0||
-     Number(paymentCheck.data.amount)!==Math.round(Number(refundRequest.amount)*100)){
-    return json(409,{success:false,error:"Razorpay भुगतान पर पहले से Refund हुआ है, या captured राशि अनुरोध से मेल नहीं खाती। पहले Dashboard में मिलान करें।"});
-  }
+  // Prepare/lock the business refund record before contacting the provider.
+  // This makes a completed ledger replay idempotent even when Razorpay already
+  // reports amount_refunded > 0 after the original successful operation.
   const prepared=await supabase("rpc/srk_admin_prepare_booking_refund",match[1],{p_request_id:requestId});
   if(!prepared.ok){const msg=prepared.data?.message||prepared.data?.hint||"Refund की अनुमति नहीं मिली।";return json(prepared.status>=500?502:409,{success:false,error:msg});}
   const row=Array.isArray(prepared.data)?prepared.data[0]:prepared.data;
   if(!row?.refund_record_id||!row.payment_id||!Number.isSafeInteger(Number(row.amount_paise))||Number(row.amount_paise)<100||!row.idempotency_key)return json(409,{success:false,error:"Refund रिकॉर्ड अधूरा है; भुगतान न भेजें।"});
   if(row.status==="processed")return json(200,{success:true,status:"processed",message:"यह Refund पहले ही पूरा दर्ज है।",refund_id:null});
+
+  const authHeader="Basic "+Buffer.from(RAZORPAY_KEY_ID+":"+RAZORPAY_KEY_SECRET).toString("base64");
+  const paymentCheck=await request("https://api.razorpay.com/v1/payments/"+encodeURIComponent(row.payment_id),{headers:{Authorization:authHeader}});
+  if(!paymentCheck.ok)return json(502,{success:false,error:"Razorpay भुगतान की वर्तमान स्थिति सत्यापित नहीं हुई।"});
+  if(paymentCheck.data?.status!=="captured"||Number(paymentCheck.data.amount_refunded||0)!==0||
+     Number(paymentCheck.data.amount)!==Number(row.amount_paise)){
+    return json(409,{success:false,error:"Razorpay भुगतान पर पहले से Refund हुआ है, या captured राशि अनुरोध से मेल नहीं खाती। पहले Dashboard में मिलान करें।"});
+  }
   const rp=await request("https://api.razorpay.com/v1/payments/"+encodeURIComponent(row.payment_id)+"/refund",{method:"POST",headers:{Authorization:authHeader,"Content-Type":"application/json","X-Refund-Idempotency":row.idempotency_key},body:JSON.stringify({amount:Number(row.amount_paise),receipt:"SRK-"+row.refund_record_id.replace(/-/g,"").slice(0,28),notes:{booking_id:row.booking_id,refund_record_id:row.refund_record_id,request_id:requestId}})});
   if(!rp.ok){
    console.error("Razorpay refund request rejected:",rp.status,rp.data?.error?.code||"provider_error");
