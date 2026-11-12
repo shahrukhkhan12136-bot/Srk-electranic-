@@ -1,4 +1,4 @@
-name: Booking order number SQL tests
+name: Booking order number and rate catalogue SQL tests
 on:
   push:
     branches: ["feature/production-push-notifications"]
