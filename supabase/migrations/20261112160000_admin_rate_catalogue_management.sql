@@ -10,7 +10,7 @@ create table if not exists public.srk_rate_catalogue_audit (
   effective_from date not null,
   action text not null check (action in ('seeded','published')),
   reason text not null,
-  actor_user_id uuid not null,
+  actor_user_id uuid,
   created_at timestamptz not null default now()
 );
 alter table public.srk_rate_catalogue_audit enable row level security;
@@ -32,7 +32,7 @@ for each row execute function public.srk_rate_audit_append_only();
 insert into public.srk_rate_catalogue_audit
  (rate_catalogue_id,category_code,version,hourly_rate,effective_from,action,reason,actor_user_id)
 select c.id,c.category_code,c.version,c.hourly_rate,c.effective_from,'seeded',
- 'Initial approved SRK ELECTRONIC category rate catalogue v1',coalesce(c.created_by,'00000000-0000-0000-0000-000000000000'::uuid)
+ 'Initial approved SRK ELECTRONIC category rate catalogue v1',c.created_by
 from public.srk_rate_catalogue c
 where not exists(select 1 from public.srk_rate_catalogue_audit a where a.rate_catalogue_id=c.id);
 
