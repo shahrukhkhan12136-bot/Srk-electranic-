@@ -1204,3 +1204,43 @@ Production migration history में एक ही नाम की दो ent
 - इस scan से first-two Cash / third Online, fee-due ledger, top-up clear होने पर reset, booking acceptance reservation, cancellation/offer-expiry release, concurrent booking race protection और deterministic idempotency का live implementation प्रमाणित नहीं हुआ।
 - अगली जाँच: सभी cash/wallet ledger tables और columns, triggers, policies/grants, RPC callers, frontend references, Netlify handlers तथा हर उपलब्ध branch के cash-cycle migrations को अलग-अलग map करना; फिर transaction/state-machine design को Feature Branch में प्रस्तावित करना।
 - Production में कोई SQL/DDL, function, grant, wallet/account/ledger row, migration history या payment setting बदली नहीं गई। कोई deployment या staging resource create नहीं किया गया।
+
+
+## 17.35 — Cash Cycle Feature Migrations: Acceptance Reservation, Wallet Ledger और Refund Logic का Static Review (13 Nov 2026)
+
+### Feature Branch में मौजूद प्रस्तावित SQL (Production में लागू नहीं)
+- `20261112170000_enforce_electrician_third_booking_online_payment.sql` में `srk_respond_to_offer` electrician profile row पर `FOR UPDATE` lock लेता है और prior completed + approved + paid + verified bookings गिनता है। यह एक ही समय पर offer accept करने वाले transactions को serialize करता है।
+- लेकिन count केवल completed/paid bookings गिनता है; accepted/assigned मगर अभी incomplete bookings के लिए durable cycle slot reservation नहीं बनती। इसलिए लगातार कई offers स्वीकार होने पर सभी transactions वही prior count देख सकते हैं और तीसरे slot की सीमा bypass हो सकती है। केवल profile lock पर्याप्त नहीं है। अलग per-electrician cycle/slot reservation table या समकक्ष transactional state चाहिए, जिसमें accept पर slot reserve, terminal eligible payment पर consume, और decline/cancel/expiry पर policy के अनुसार release हो।
+- मौजूदा migration का नियम हर तीसरी booking को Online कहता है, पर Master का “पहली दो eligible Cash, तीसरी Online, wallet top-up से बकाया Platform Fee साफ होने पर cycle reset” नियम पूर्ण रूप से implement नहीं करता। “eligible booking” की परिभाषा भी approved final state machine से बाँधनी होगी।
+
+### Platform Fee ledger migration की समीक्षा
+- `20261112220000_cash_platform_fee_due_and_online_settlement.sql` Feature Branch में `srk_platform_fee_ledger` बनाता है; amount positive, idempotency key NOT NULL + UNIQUE और RLS enabled; PUBLIC/anon/authenticated direct privileges revoke किए गए हैं। यह सही दिशा है, लेकिन trigger/function execute grants, service_role access और ledger append-only protection को अलग verify करना होगा।
+- Cash due तथा online fee postings booking-based idempotency keys से duplicate webhook postings रोकने का प्रयास करते हैं। Per-electrician advisory transaction lock cash और online financial postings के बीच serialization देता है।
+- उसी migration में पुराने Cash dues की वसूली पहले `v_total - v_current_fee` से की जाती थी, जिसमें materials भी शामिल हो सकते थे।
+- `20261113120000_limit_cash_fee_settlement_to_labour_share.sql` इसे सुधारकर पुराने due की अधिकतम वसूली `v_service - v_current_fee` तक सीमित करता है। इससे materials/parts राशि Platform Fee debt settlement का स्रोत नहीं बनती। यह Master के labour-only सिद्धांत के अनुरूप है।
+- फिर भी दोनों migrations legacy `service_charge`, `materials_amount`, `commission_rate`, `quote_status='approved'` और `quoted_amount` आधारित completed-payment trigger पर निर्भर हैं। Timer-derived actual-minute labour amount से जुड़ना बाकी है।
+
+### Refund और payout जोखिम
+- Feature migration cash fee due, online fee, previous cash due settlement, restore और reversal के लिए अलग ledger entry types और deterministic keys रखती है। Paid payout होने पर refund trigger Admin reconciliation की माँग करता है; यह सुरक्षित रोक है, पर पूर्ण Admin recovery workflow अभी चाहिए।
+- Cash booking का fee due यदि बाद की online booking से pooled रूप में settle हो चुका हो तो cash refund को trigger रोक देता है। यह silent ledger corruption रोकता है, लेकिन pooled due की booking-wise allocation नहीं होने के कारण valid refunds भी जरूरत से ज्यादा block हो सकते हैं। हर due lot और settlement allocation को source cash booking से traceable बनाना बेहतर होगा।
+- Online refund पर जिस booking में `cash_due_settlement` entry थी, उसी booking के ledger से restore entry बनती है; partial refund, multiple later settlements, repeated/out-of-order webhook और payout already paid स्थितियों के लिए deterministic reconciliation tests जरूरी हैं।
+- Payout calculation में electrician payable का formula total (labour + materials) minus current fee minus previous fee है; पुराने due की वसूली labour share तक सीमित है। Materials को Platform Fee base से बाहर रखना अनिवार्य regression assertion बने।
+
+### Customer payment method switch
+- `20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql` customer ownership, unassigned state, unpaid/pending, no payment verification/order/payment ID की जाँच के बाद केवल explicit Cash→Razorpay switch करता है। यह payment तत्काल collect नहीं करता। Feature Branch-only; production status अलग है।
+
+### Live Production trigger coverage (read-only)
+- Live `service_bookings` में commission calculation, legacy payable creation, booking audit/status history, cancellation offer cleanup triggers मिले।
+- Live `srk_electrician_payouts` पर Admin audit trigger मिला।
+- Live `srk_wallet_ledger`, `srk_wallet_accounts` या `srk_platform_fee_ledger` पर इस query में कोई non-internal trigger नहीं मिला; Production में `srk_platform_fee_ledger` table का अस्तित्व इस inventory में प्रमाणित नहीं हुआ। इसलिए Feature Branch ledger को Production feature मानना गलत होगा।
+- Live wallet ledger में idempotency_key nullable है (Section 17.23/17.24); wallet ledger के लिए NOT NULL deterministic key और append-only reversal model अभी blocker हैं।
+
+### अगली implementation gate
+1. एक स्पष्ट cycle state machine और per-electrician slot reservation design; acceptance, completion, payment verification, cancellation, expiry और refund पर atomic transitions।
+2. Top-up flow को वास्तविक approved provider payment से जोड़ना; केवल wallet balance edit या UI flag से cycle reset नहीं।
+3. Booking-wise fee due allocation, partial settlement/refund, paid payout recovery और append-only immutable audit।
+4. Timer actual-minute labour amount, 15% labour-only fee, materials exclusion और server-side amount reconciliation।
+5. Parallel acceptance, repeated webhook, timeout/retry, cancellation race, partial/full refund और duplicate idempotency tests।
+6. सभी बदलाव Feature Branch और isolated Test Mode में; Production migration/apply/deploy से पहले अलग अनुमति।
+
+Production Database, wallet/ledger rows, triggers, grants, migration history, payment settings या deployment में कोई बदलाव नहीं किया गया। यह read-only Production catalog inspection और Feature Branch SQL static review है।
