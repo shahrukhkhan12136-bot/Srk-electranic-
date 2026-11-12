@@ -174,6 +174,7 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] Existing bookings के historical time fields preserve; booking history में पुराने time display refs जानबूझकर रखे गए।
 - [T] 1–8 hours booking preference और actual elapsed timer/final Labour bill का संयुक्त E2E अभी बाकी है।
 - [I] GitHub Actions PostgreSQL 16 disposable test run 43158132227 SUCCESS: order-number, date-only RPC migration apply/replay, electrician offer RPC, numbering/immutability/uniqueness, RPC scope, PII privacy और customer/electrician/Admin inline JavaScript syntax checks पास।
+- [I] API regression tests `tests/create-booking-date-only.test.js`: valid date-only booking accepted और RPC payload में `preferred_time` absent; impossible calendar date `2026-02-30` rejected before booking RPC. GitHub Actions run 43158591000 SUCCESS; Node test runner 2/2 pass.
 - [T] CI disposable fixture है; Main Production Supabase पर migration लागू नहीं हुई, browser/real-device E2E नहीं हुआ।
 
 
