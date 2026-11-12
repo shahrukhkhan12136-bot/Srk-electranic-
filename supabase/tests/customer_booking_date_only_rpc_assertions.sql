@@ -32,6 +32,55 @@ begin
   end if;
 end
 $catalogue_test$;
+select set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000099',true);
+set local role authenticated;
+do $admin_rate_test$
+declare
+ v_rows jsonb;
+ v_published jsonb;
+begin
+ v_rows := public.srk_admin_list_rate_catalogue();
+ if jsonb_array_length(v_rows) <> 4 then
+   raise exception 'Admin rate list should show four seeded v1 rows: %',v_rows;
+ end if;
+ v_published := public.srk_admin_publish_rate_version(
+   'master',299.999,current_date+45,'Approved annual pricing review by SRK admin'
+ );
+ if (v_published->>'version')::integer <> 2
+    or (v_published->>'hourly_rate')::numeric <> 299.999 then
+   raise exception 'Admin rate publish did not create version 2: %',v_published;
+ end if;
+ v_rows := public.srk_admin_list_rate_catalogue();
+ if jsonb_array_length(v_rows) <> 5 then
+   raise exception 'Admin rate history should contain five versions after publishing: %',v_rows;
+ end if;
+ if not exists(select 1 from public.srk_rate_catalogue_audit
+   where category_code='master' and version=2 and actor_user_id='30000000-0000-0000-0000-000000000099'
+     and action='published' and reason='Approved annual pricing review by SRK admin') then
+   raise exception 'Published rate audit actor/reason missing';
+ end if;
+end
+$admin_rate_test$;
+reset role;
+
+select set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000010',true);
+set local role authenticated;
+do $non_admin_rate_test$
+begin
+ begin
+  perform public.srk_admin_publish_rate_version('helper',130,current_date+60,'Unauthorized user test attempt');
+  raise exception 'Non-admin unexpectedly published a rate';
+ exception when sqlstate '42501' then null;
+ end;
+ begin
+  perform public.srk_admin_list_rate_catalogue();
+  raise exception 'Non-admin unexpectedly read rate catalogue';
+ exception when sqlstate '42501' then null;
+ end;
+end
+$non_admin_rate_test$;
+reset role;
+
 select set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000010',true);
 select set_config('request.jwt.claim.phone','+919000000010',true);
 set local role authenticated;
