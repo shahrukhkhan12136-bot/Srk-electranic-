@@ -167,14 +167,14 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 
 
 ## A.3 Customer Booking — date-only selection (owner-confirmed 2026-11-11)
-- [ ] Booking form में केवल service date का date-picker दिखे; customer time/time-slot picker पूरी तरह हटे।
-- [ ] नए booking flow में customer-selected clock-time/slot अनिवार्य न हो; booking date server-side validate और सुरक्षित हो।
-- [ ] Date-only intent को backend, availability/matching और booking API में end-to-end support करें; किसी default/कल्पित समय में silently convert न करें।
-- [ ] जहाँ वास्तविक operational time बाद में तय करना हो, वह अलग authorized scheduling workflow से हो; customer को booking के समय time चुनना आवश्यक न हो।
-- [ ] Past/invalid/unavailable dates, timezone/date-boundary, duplicate booking, reschedule/cancellation और legacy time-slot compatibility के tests पास हों।
-- [ ] Existing bookings का historical time data preserve करें; नया customer flow ही date-only हो।
-- [ ] Confirm करें कि selected 1–8 hours अभी भी केवल booking preference है; actual timer और final Labour bill वास्तविक elapsed work time पर आधारित रहें।
-- [~] Requirement documented; UI/API implementation and E2E verification pending.
+- [I] Booking form से customer time/time-slot picker हटाया; date-picker ही customer selection है।
+- [I] नए booking API flow में customer-selected clock-time/slot अनिवार्य नहीं; booking date server-side validate होती है।
+- [I] Date-only intent को booking API और Supabase RPC में support किया; absent time को NULL रखा जाता है, default/कल्पित समय नहीं बनाया जाता। पुराने callers द्वारा स्पष्ट रूप से भेजा गया valid time स्वीकार होता है।
+- [T] अलग authorized operational scheduling workflow, past/unavailable dates, timezone/date-boundary, reschedule/cancellation और full customer-to-electrician E2E अभी बाकी हैं।
+- [I] Existing bookings के historical time fields preserve; booking history में पुराने time display refs जानबूझकर रखे गए।
+- [T] 1–8 hours booking preference और actual elapsed timer/final Labour bill का संयुक्त E2E अभी बाकी है।
+- [I] GitHub Actions PostgreSQL 16 disposable test run 43158132227 SUCCESS: order-number, date-only RPC migration apply/replay, electrician offer RPC, numbering/immutability/uniqueness, RPC scope, PII privacy और customer/electrician/Admin inline JavaScript syntax checks पास।
+- [T] CI disposable fixture है; Main Production Supabase पर migration लागू नहीं हुई, browser/real-device E2E नहीं हुआ।
 
 
 ## B.1 Electrician ID/Profile — own approved category badge (owner-confirmed 2026-11-11)
