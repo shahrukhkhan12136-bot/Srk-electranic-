@@ -62,3 +62,15 @@ Until those gates are met, **no manual evidence review may mark a refund process
 ## Supabase platform compatibility note
 
 The Supabase 2026-10-30 Data API change means new public-schema tables are not automatically exposed by default. This plan intentionally does not grant client table access; all access remains through explicit RPC grants and server-side authorization. Verify the actual project's Data API exposure settings during parity testing rather than assuming table exposure from schema placement.
+
+
+## Phase 1 implementation progress — 2026-11-12
+
+- Feature-branch migration `20261112210000_refund_manual_reconciliation_evidence.sql` adds Admin reconciliation cases, append-only provider evidence, independent review records, and append-only audit history.
+- Narrow Admin RPCs provide case creation, evidence submission, independent review, and read-only case retrieval. Direct table grants remain revoked for client roles.
+- Review outcomes are advisory only. Even `verified_match` does not update refund ledger status, refund request status, booking payment status, payouts, or call Razorpay.
+- Case-row locking serializes evidence/review actions; stable action IDs support idempotent replay. The evidence submitter and case opener cannot review.
+- Test file `supabase/tests/refund_manual_reconciliation_assertions.sql` checks Admin authorization, non-Admin rejection, independent reviewer, self-review rejection, exact-match validation, mismatch blocking, idempotent review replay, audit row count, and no financial-state mutation.
+- Refund Workflow CI run `43180209579` SUCCESS at commit `4bf3482a4163cd61372fa9db4f3bdf305b6342e1`. The migration replayed twice in isolated PostgreSQL 16; the new evidence/review assertions and existing refund, webhook, handler and syntax tests passed.
+- This is backend Phase 1 only. Admin dashboard UI integration, browser/device validation, disposable Production-parity validation, migration archive recovery, and owner approval for any future financial-state transition remain outstanding.
+- No Production database changes, Razorpay provider calls, real-money activity, or deployment occurred.
