@@ -227,7 +227,7 @@ async function updateSnapshotOrder(orderId, payment, eventMeta) {
     return "snapshot_already_processed";
   }
   if (order.status !== "created") {
-    await finishSnapshotWebhookEvent(eventRow.id, "rejected", "snapshot_order_not_ready", "Order is not in created state.");
+    await finishSnapshotWebhookEvent(eventRow.id, eventRow.leaseStartedAt, "rejected", "snapshot_order_not_ready", "Order is not in created state.");
     return "snapshot_order_not_ready";
   }
 
@@ -256,13 +256,13 @@ async function updateSnapshotOrder(orderId, payment, eventMeta) {
   }
   const result = await rpcResponse.json();
   if (result?.success) {
-    await finishSnapshotWebhookEvent(eventRow.id, "processed", result.replayed ? "snapshot_replayed" : "snapshot_reconciled", "Snapshot payment reconciliation completed.");
+    await finishSnapshotWebhookEvent(eventRow.id, eventRow.leaseStartedAt, "processed", result.replayed ? "snapshot_replayed" : "snapshot_reconciled", "Snapshot payment reconciliation completed.");
     return result.replayed ? "snapshot_already_processed" : "snapshot_reconciled";
   }
   await finishSnapshotWebhookEvent(eventRow.id, eventRow.leaseStartedAt, "retryable_error", "snapshot_not_reconciled", "Reconciliation RPC returned no success.");
   return "snapshot_not_reconciled";
   } catch (error) {
-    try { await finishSnapshotWebhookEvent(eventRow.id, "retryable_error", "snapshot_reconcile_error", error.message); } catch (_) {}
+    try { await finishSnapshotWebhookEvent(eventRow.id, eventRow.leaseStartedAt, "retryable_error", "snapshot_reconcile_error", error.message); } catch (_) {}
     throw error;
   }
 }
