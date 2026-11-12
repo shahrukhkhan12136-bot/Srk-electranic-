@@ -175,3 +175,10 @@ A feature-branch migration `20261112200000_index_refund_payment_lookup.sql` adds
 - Refund handler checks Razorpay payment is captured, has `amount_refunded = 0`, and the captured amount exactly equals the approved request amount before it issues one full-amount refund request.
 - Therefore this implementation intentionally rejects a second refund when any partial/full amount has already been refunded. This describes the existing code behavior, not a new permanent product-policy approval. Keep the current full-only guard in place until the owner explicitly chooses whether partial/multiple refunds should be supported; any change requires policy approval and ledger redesign.
 - Added handler regression coverage for a payment with prior partial refund: it must return 409 after the payment lookup and must not POST another refund. The workflow path filter was also fixed to run when `tests/process-refund-handler.test.js` changes. CI run 43177723211 is pending/in progress at time of this note; do not claim its new assertion passed until it completes.
+
+
+### Full-only refund prior-refund guard CI result
+- Refund handler regression test now mocks `amount_refunded > 0` and asserts HTTP 409 with exactly one Razorpay call (the GET payment verification), proving no second refund POST is sent after any prior partial/full refund.
+- Refund workflow path filters include `tests/process-refund-handler.test.js` for both push and pull_request.
+- GitHub Actions run **43177723211 — SUCCESS**; refund handler, SQL workflow, webhook ledger contract, ambiguous-match handler, and syntax checks all passed.
+- This confirms current code's fail-closed full-only behavior; it does not record a user decision to permanently disallow partial/multiple refunds.
