@@ -2,16 +2,6 @@ name: Supabase isolated schema migration test
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/platform-fee-cash-online-cycle
-    paths:
-      - "supabase/migrations/20261112170000_enforce_electrician_third_booking_online_payment.sql"
-      - "supabase/migrations/20261112193000_labour_only_quotes_customer_supplies_materials.sql"
-      - "supabase/migrations/20261112220000_cash_platform_fee_due_and_online_settlement.sql"
-      - "supabase/migrations/20261112230000_show_customer_payment_choice_to_assigned_electrician.sql"
-      - "supabase/migrations/20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql"
-      - ".github/workflows/supabase-schema-ci.yml"
 
 permissions:
   contents: read
@@ -29,7 +19,7 @@ jobs:
       - name: Checkout feature branch
         uses: actions/checkout@v4
 
-      - name: Require read-only database connection secret
+      - name: Require database connection secret (stored only in GitHub Secrets)
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
