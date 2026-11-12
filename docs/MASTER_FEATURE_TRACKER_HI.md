@@ -274,3 +274,10 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [T] No Production changes or real Razorpay webhook calls performed.
 
 - [V] नवीनतम Refund CI run `43172241324` SUCCESS at commit `bdae5d797b9a41fdc6bedfd811c6f9b9f90ea642`; specifically `Test Razorpay refund webhook ledger contract` passed, along with the full PostgreSQL refund suite and handler checks.
+
+## Refund Webhook — ambiguous payment-ID handler runtime regression (2026-11-12)
+- [I] Code review confirms `razorpay-webhook.js` fetches at most two refund ledger rows for the provider payment ID and immediately returns retryable HTTP 500 with `ambiguous_refund_ledger_match` when two rows match; it does not claim the webhook event or call the reconciliation RPC for an arbitrary row.
+- [I] Added `tests/razorpay-webhook-ambiguous-refund-handler.test.js`, which loads the real handler, sends a correctly HMAC-signed refund webhook, mocks a duplicate ledger response, and asserts HTTP 500/retry, exact error code, exactly one fetch, GET-only access, and no event-claim/reconciliation write.
+- [I] Refund workflow now runs this runtime test on branch pushes and pull requests.
+- [T] GitHub Actions validation for this new runtime test is pending; do not mark it verified until the corresponding run succeeds. Prior CI `43172241324` passed the earlier static contract test, not this new runtime test.
+- [T] No live Razorpay webhook replay, Production database write, real-money transaction, or deployment performed.
