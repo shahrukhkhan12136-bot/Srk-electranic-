@@ -372,3 +372,8 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Refund workflow 43176559688: SUCCESS with migration replay twice and refund/webhook assertions.
 - Integrated Timer parity workflow 43176720772: SUCCESS with full Timer + date-only/duration + refund chain, including the non-unique payment_id index replay twice and combined assertions.
 - The preceding Timer run failed on a shell line-continuation defect in the workflow; fixed and verified by the later success. Production unchanged.
+
+
+### Refund terminal-state manual reconciliation gap — 2026-11-12
+- Hardened RPC prevents failed→processed terminal-state overwrite and preserves immutable provider refund IDs; webhook catches reconciliation errors as retryable.
+- Admin UI has manual/cash refund receipt entry but no dedicated Admin review/reconciliation path for provider terminal-state conflicts after independent provider verification. This remains a pre-live-refund blocker; do not weaken state protections. Design an audited Admin evidence/review flow before live rollout. No provider calls or live refunds.
