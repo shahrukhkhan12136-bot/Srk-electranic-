@@ -58,7 +58,7 @@ for (const args of finishCalls) {
 }
 
 includesAll(webhook, [
-  "snapshot_payment_required", "srk_payment_webhook_events",
+  "snapshot_payment_required", "srk_razorpay_webhook_event_ledger",
   "provider_event_id", "payload_sha256",
   'processing_status", "eq." + claimStatus',
   '["received", "retryable_error"]', "inProgress",
@@ -77,9 +77,9 @@ includesAll(webhook, [
 
 // Webhook event ledger is durable, server-only, unique per provider event and recoverable.
 includesAll(webhookLedgerMigration, [
-  "srk_payment_webhook_events", "unique(provider,provider_event_id)",
+  "srk_razorpay_webhook_event_ledger", "unique(provider,provider_event_id)",
   "processing_started_at", "retryable_error", "enable row level security",
-  "revoke all on public.srk_payment_webhook_events from public,anon,authenticated",
+  "revoke all on public.srk_razorpay_webhook_event_ledger from public,anon,authenticated",
   "to service_role"
 ], "webhook event ledger migration");
 
