@@ -773,3 +773,21 @@ Legacy migration `20261109193000_hide_customer_details_on_cancelled_bookings.sql
 - यह alternate branch का source है; Production में इसी exact file/blob के लागू होने का प्रमाण अभी नहीं है। इसे Production पर replay या copy नहीं करना है।
 
 कुल निष्कर्ष: inspected push notification content में customer PII नहीं मिला; प्रमुख confirmed privacy gaps अभी contact RPCs, quote-details RPC और Electrician UI के completed state पर हैं। Edge Functions केवल पढ़े गए; कोई deploy, DB बदलाव या provider call नहीं किया गया।
+
+
+### 17.22 — Booking History, Admin Audit, Realtime और Storage access audit (13 Nov 2026)
+
+Production catalog/policy snapshot:
+- `service_booking_status_history` में booking id, old/new status, note, actor UID, timestamp हैं; phone/address columns नहीं हैं। Authenticated role को SELECT grant है, लेकिन SELECT RLS policy केवल `is_srk_admin()` को अनुमति देती है। Service-role ALL policy अलग है। सामान्य Customer/Electrician को direct history-table read नहीं मिलना चाहिए; UI अगर history दिखाता है तो सुरक्षित owner/assignment-scoped RPC की आवश्यकता होगी। Runtime JWT negative test अभी बाकी है।
+- `srk_admin_audit_events` में entity/action/actor/changed_fields और before/after JSONB हैं। इस table पर authenticated role का table grant या सामान्य user policy snapshot में नहीं मिला; service_role और postgres grants मौजूद हैं। Admin read RPC/UI path अलग से सत्यापित होना बाकी है।
+- `srk_capture_admin_audit_event()` केवल allow-list fields लिखता है। Booking allow-list में अभी status, payment_status, payment_method, amount_paid, quoted_amount, quote_status, service_charge, materials_amount, assigned_electrician_id, commission_amount हैं। नए timer timestamps, actual minutes, labour amount, platform fee, wallet/cash-cycle/refund fields इसमें शामिल नहीं हैं; नए financial/timer सिस्टम से पहले allow-list और event model का versioned विस्तार आवश्यक है। फोन/पता/coordinates इस allow-list में नहीं हैं, इसलिए यह trigger उन PII fields को audit JSON में नहीं डालता।
+- `srk_push_subscriptions` में user_id और Web Push endpoint/keys हैं। RLS policies SELECT/INSERT/UPDATE/DELETE को केवल `user_id=auth.uid()` तक सीमित करती हैं। Endpoint और push keys संवेदनशील तकनीकी credentials हैं; authenticated user को केवल अपनी subscription देखनी/बदलनी चाहिए। Edge Function service role से eligible electrician की subscriptions पढ़ती है।
+- Realtime publication में केवल `electrician_profiles` और `job_offers` पाए गए; `service_bookings` और booking history publication में नहीं हैं। `electrician_profiles` SELECT policy linked user या Admin तक सीमित है; `job_offers` SELECT policy Admin या उसी approved+active electrician के अपने offers तक सीमित है। इसलिए वर्तमान policy snapshot में दूसरे users के profile phone या offer rows का broad Realtime access नहीं दिखता। JWT session आधारित runtime subscription test अभी बाकी है।
+- Storage bucket `srk-electrician-verification` private है; 5 MiB सीमा और केवल PDF/JPEG/PNG MIME allow-list है। SELECT policy uploader की UID folder या Admin तक सीमित; upload policy UID folder और linked profile check करती है; DELETE policy own folder में और document table में referenced न होने पर ही अनुमति देती है। Signed URL expiry, document metadata RLS, path traversal/foreign UID negative tests अभी बाकी हैं।
+- Trigger inventory में `service_bookings` पर booking guard, offer broadcast, admin audit, commission calculation, offer cancellation, status history और electrician payable triggers हैं। यह स्पष्ट dependency cluster है; नए timer/actual-minute billing को लागू करने से पहले इन trigger order/side effects और legacy commission/payable triggers की concurrency/idempotency जाँच अनिवार्य है।
+
+निष्कर्ष:
+- Status history direct RLS, private verification storage और own-user push subscriptions के अच्छे नियंत्रण मिले, पर runtime negative tests बाकी हैं।
+- Audit trigger नई financial/timer fields को अभी capture नहीं करेगा; इसे नए billing model से पहले update करना होगा।
+- Realtime publication में booking table नहीं है; current row-level policies profile/offer data को account scope में सीमित करती हैं।
+- केवल read-only catalog/policy inspection हुई; कोई policy, grant, trigger, table, storage object, realtime publication या production data नहीं बदला।
