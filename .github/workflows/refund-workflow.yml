@@ -7,6 +7,7 @@ on:
     paths:
       - "supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql"
       - "supabase/migrations/20261111160015_timer_snapshot_refund_support.sql"
+      - "supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql"
       - "supabase/tests/refund_workflow_*.sql"
       - "process-refund.js"
       - "create-snapshot-order.js"
@@ -72,12 +73,17 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/tests/refund_workflow_assertions.sql
-      - name: Validate serverless JavaScript syntax
-        run: |
-          node --check process-refund.js
-          node --check create-snapshot-order.js
-          node --check verify-snapshot-payment.js
-          node --check razorpay-webhook.js
-          node tests/process-refund-handler.test.js
-          node tests/snapshot-payment-contract.test.js
-          node --check netlify/functions/process-refund.js
+      - name: Syntax check refund handler
+        run: node --check process-refund.js
+      - name: Syntax check snapshot order handler
+        run: node --check create-snapshot-order.js
+      - name: Syntax check snapshot verification handler
+        run: node --check verify-snapshot-payment.js
+      - name: Syntax check Razorpay webhook handler
+        run: node --check razorpay-webhook.js
+      - name: Test refund handler
+        run: node tests/process-refund-handler.test.js
+      - name: Test snapshot payment and webhook contracts
+        run: node tests/snapshot-payment-contract.test.js
+      - name: Syntax check Netlify refund handler
+        run: node --check netlify/functions/process-refund.js
