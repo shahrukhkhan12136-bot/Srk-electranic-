@@ -1620,3 +1620,49 @@ Production Supabase catalog से केवल function definitions, owner, SEC
 5. Isolated test environment में Admin positive और Customer/Electrician/unauthorized staff negative JWT tests, duplicate/retry/concurrency और audit assertions चलाएँ।
 
 No production function, ACL, policy, table, record, payment setting, wallet, staging resource or deployment changed. यह read-only live catalog audit है और इसके निष्कर्ष Master Requirements में दर्ज किए गए।
+
+
+## 17.47 — Smart Matching और Admin RPC के लिए Live Schema Readiness / Data Model Gap (13 Nov 2026)
+
+Production `information_schema.columns` से केवल column names/types/nullability पढ़े गए। कोई customer/electrician row या PII value नहीं पढ़ी गई और कोई write नहीं हुआ।
+
+### 1. Matching के लिए उपलब्ध वर्तमान fields
+- `electrician_profiles`: active, verification_status, skills[], state, district, pincode, location_lat/lng, auth_user_id, user_id.
+- `electrician_applications`: skills text, experience_years, verification_status, active, location_lat/lng और service-area fields.
+- `service_bookings`: service_type, state/district/pincode, location_lat/lng, assigned_electrician_id, status.
+- `job_offers`: booking_id, electrician_id, status, match_level, created_at, responded_at.
+- इन tables में इस schema snapshot में अलग approved category/rate tier, verified skill evidence per skill, electrician availability schedule/current busy state, travel radius, distance rank, offer expiry/round, या unique digital electrician ID columns नहीं मिले।
+
+### 2. Smart Matching का gap
+- वर्तमान `srk_admin_offer_booking` PIN-first और district fallback करता है; nearest eligible electrician ranking और approved category/rate-tier match की पुष्टि नहीं।
+- `skills[]` मौजूद है, पर केवल text-array membership से skill का verified होना सिद्ध नहीं होता। Verified skill/category approval के लिए evidence/status/approver/audit data model चाहिए।
+- Customer की `service_type` को approved electrician category और exact service skill से map करना होगा; category downgrade/upgrade automatic नहीं होना चाहिए।
+- Location missing/invalid होने पर deterministic PIN/district fallback होना चाहिए; distance calculation के लिए valid coordinates, bounded radius, tie-breaker और privacy-safe location handling परिभाषित हों।
+- Offer creation को duplicate-safe, bounded batch, deterministic ranking और acceptance/Cash-slot reservation के साथ transactional बनाना होगा। Existing `job_offers` status timestamps हैं, पर इस column inventory में expiry/round/sequence fields नहीं।
+
+### 3. प्रस्तावित Feature Branch-only Admin RPC contracts (नाम प्रस्तावित; अभी बनाए नहीं गए)
+| Proposed RPC | सीमित जिम्मेदारी | आवश्यक सुरक्षा |
+|---|---|---|
+| `srk_admin_correct_booking_location` | address/district/state/PIN correction | Admin/staff permission, reason, validation, before/after audit |
+| `srk_admin_transition_booking` | केवल अनुमत non-financial lifecycle transition | explicit from/to allow-list, row lock, state-machine validation, idempotency |
+| `srk_admin_adjust_legacy_booking_amount` | केवल legacy quote bookings का documented correction | timer/frozen-bill bookings निषिद्ध, reason, before/after, finance audit |
+| `srk_admin_set_electrician_control_state` | active/block/suspend/emergency control | permission scope, reason, in-progress booking protection, actor audit |
+| `srk_admin_review_electrician_application` | application + approved category/verified skills review | OTP-linked identity, document evidence, category allow-list, unique ID, separate activation |
+| `srk_admin_dispatch_booking_offers` | eligible candidates rank करके offers create करना | category+verified skills, availability, distance, row lock, dedupe, Cash slot coordination |
+
+ये contract names design proposals हैं, live objects नहीं। इन्हें current Production में create या call नहीं किया गया।
+
+### 4. Migration prerequisite
+- Migration history source reconciliation अभी unresolved है (Production 81 entries; cross-branch scan में 43 names के लिए exact-version या same-name source नहीं मिला)। इसलिए अभी कोई timestamped migration या Production schema edit सुरक्षित रूप से तैयार/apply नहीं किया गया।
+- पहले source lineage और live dependencies reconcile हों; फिर additive Feature Branch migration में नई category/skill evidence, availability, offer sequence/expiry और Admin audit structures जोड़े जाएँ।
+- पुराने profiles/bookings को स्वतः category या verified-skill मानकर backfill न करें; Admin-reviewed mapping आवश्यक है।
+- Acceptance, booking slot reservation और offer state एक ही transaction में lock/commit हों; matching result केवल candidate discovery हो, authorization नहीं।
+
+### 5. अगला सुरक्षित implementation क्रम
+1. Category/service/skill mapping और verification evidence schema finalize करें।
+2. Offer eligibility और distance ranking का deterministic specification लिखें; missing coordinates fallback तय करें।
+3. Narrow Admin RPC contracts और permission matrix finalize करें।
+4. Migration lineage clear होने पर Feature Branch-only additive SQL और unit tests; फिर isolated Test Mode में concurrency, duplicate offer, wrong category, unverified skill, inactive/suspended electrician, missing location और acceptance race tests।
+5. कोई Production migration/deployment तभी जब अलग से स्पष्ट approval मिले।
+
+No production schema, data, RPC, ACL, wallet, booking, payment, staging resource or deployment changed. यह section read-only schema evidence और प्रस्तावित design दर्ज करता है।
