@@ -791,3 +791,43 @@ Production catalog/policy snapshot:
 - Audit trigger नई financial/timer fields को अभी capture नहीं करेगा; इसे नए billing model से पहले update करना होगा।
 - Realtime publication में booking table नहीं है; current row-level policies profile/offer data को account scope में सीमित करती हैं।
 - केवल read-only catalog/policy inspection हुई; कोई policy, grant, trigger, table, storage object, realtime publication या production data नहीं बदला।
+
+### 17.23 — Billing Triggers, Wallet Ledger, Payout और Refund/Cancellation dependency audit (13 Nov 2026)
+
+Production catalog का read-only inspection:
+
+**Booking triggers और legacy billing**
+- `service_bookings` पर BEFORE INSERT `guard_new_booking()` status को `new`, payment को `unpaid`, assignment को NULL, commission_rate को 15% और created_at को server time पर सेट करता है। यह नए workflow के insert defaults के साथ reconcile होना चाहिए।
+- `srk_calculate_booking_commission()` trigger केवल `status='completed'` और `payment_status='paid'` पर `service_charge × commission_rate` से `commission_amount` निकालता है। यह labour-only आधार के अनुकूल है, लेकिन अभी पुराने service_charge/commission नाम और payment lifecycle पर निर्भर है।
+- `srk_create_electrician_payable()` trigger केवल completed + paid + approved quote + verified payment पर चलता है। यह amount_paid को service_charge + materials_amount से मिलाता है, platform commission केवल service_charge पर निकालता है, और electrician payable में materials जोड़ता है। इससे पुराना quote-approved भुगतान नए timer/actual-minute billing से जुड़ा नहीं है।
+- Payable insert में booking_id पर UPSERT है और existing row केवल payout_status='pending' होने पर update होती है। यह कुछ replay protection देता है, लेकिन पूरे booking/payment/refund cycle की end-to-end idempotency या concurrent webhook व्यवहार का प्रमाण नहीं है।
+- `srk_cancel_booking_job_offers()` केवल booking cancelled होने पर offered/accepted job_offers को cancelled करता है। यह cancellation fee, wallet debit, customer debt, electrician travel stage या platform cancellation ledger नहीं बनाता।
+- `srk_log_service_booking_status()` status history लिखता है; `srk_capture_admin_audit_event()` booking financial allow-list में अभी timer/actual-minute/platform-fee/wallet/cash-cycle fields नहीं हैं।
+
+**Wallet**
+- `srk_wallet_accounts` में user + wallet_type unique है; customer/electrician wallet, INR और active/restricted/closed states हैं।
+- `srk_wallet_ledger` में credit/debit, entry_type, pending/posted/reversed/failed, reference और idempotency_key है। idempotency_key पर UNIQUE constraint मौजूद है, लेकिन nullable है; इसलिए हर posting caller को non-null deterministic key देना और duplicate retry को सुरक्षित संभालना आवश्यक है।
+- Wallet tables पर इस trigger scan में कोई ledger-posting/append-only trigger नहीं मिला। Wallet accounts और ledger पर authenticated users के लिए केवल own-user SELECT policies मिलीं; direct INSERT/UPDATE/DELETE policies नहीं मिलीं। इससे server-side posting route की जरूरत स्पष्ट होती है, पर सभी grants/role inheritance और RPC callers की runtime जाँच बाकी है।
+- `srk_get_my_wallet_summary()` जरूरत पड़ने पर wallet account INSERT करता है और posted ledger entries का balance जोड़ता है। यह read-जैसे summary RPC के भीतर write side effect है; concurrency, account status और access/ACL review जरूरी है। यह भी स्पष्ट करता है कि current wallet summary top-ups और payouts को disabled बताती है।
+
+**Cash payment और payout**
+- `srk_electrician_confirm_cash_payment()` assigned approved+active electrician और assigned booking verify करता है; completed + approved quote + cash method + unpaid/pending payment के बाद quoted_amount को paid mark करता है। यह timer-derived final amount या actual-minute billing नहीं पढ़ता।
+- `srk_get_my_assigned_cash_payment()` भी cash confirmation eligibility को completed + approved quote + quoted_amount पर आधारित करता है।
+- `srk_admin_mark_electrician_payout_paid()` Admin-only है; booking-first फिर payout row lock करता है और verified payment, completed/approved quote, service/material breakdown तथा payout ledger amount का reconciliation करता है। यह पुरानी quote fields पर निर्भर है।
+- `srk_electrician_payouts` में booking_id unique है; payout paid करने पर method/reference/paid_by/paid_at आवश्यक हैं। payout table पर Admin audit trigger मौजूद है।
+
+**Refund और cancellation**
+- Refund request table में booking_id unique है; Razorpay refund table में booking_id और idempotency_key unique हैं। Provider refund reconciliation processed state पर replay को पहचानती है।
+- Admin refund preparation verified Razorpay payment मांगता है, लेकिन अभी quote_status='approved', quoted_amount और service_charge + materials_amount का exact match भी अनिवार्य है। Timer/non-quote refund को स्पष्ट रूप से अलग reconciliation error से रोकता है।
+- Refund processed होने पर booking payment_status='refunded' किया जाता है; payable trigger केवल pending payout को refunded करता है। Paid payout की recovery अलग Admin reconciliation मांगती है।
+- इस जाँचे गए booking schema में cancellation/timer/actual-minute/platform-fee/wallet/cash-cycle नाम वाले booking columns नहीं मिले। इस finance-table scan में अलग cancellation-fee ledger/table भी नहीं मिला। इससे यह निष्कर्ष नहीं निकालना कि पूरे database में कोई अन्य cancellation implementation नहीं है; सभी functions, edge handlers और app callers की cross-reference बाकी है।
+
+**Master Requirements के अनुसार आवश्यक सुधार-पूर्व शर्तें**
+1. Timer-approved actual minutes से server-calculated labour total और 15% labour-only Platform Fee का एक authoritative calculation source बने; materials अलग रहें।
+2. Cash cycle reservation, eligible booking count और wallet fee posting को एक transaction/locking strategy और non-null idempotency keys से सुरक्षित करना होगा।
+3. Customer cancellation request और Admin-only decision के लिए stage-based ₹0/₹49/₹99 rule, customer debt carry-forward, electrician wallet debit और SRK cancellation ledger के अलग, auditable entries चाहिए।
+4. Online refund, cash settlement, cancellation reversal और पहले से paid electrician payout के लिए partial/full amount reconciliation और duplicate webhook/retry tests आवश्यक हैं।
+5. पुराने quote-based trigger/RPCs को हटाने से पहले सभी app/API/RPC callers migrate हों; ऐतिहासिक payout/refund/ledger records सुरक्षित रहें।
+
+**सीमा:** यह Production catalog, function definitions, constraints और RLS policy का read-only audit था। कोई trigger, function, table, policy, grant, wallet entry, payout, refund, customer record या deployment नहीं बदला। वास्तविक user JWT, concurrent transaction, Razorpay webhook replay और UI E2E tests अभी नहीं किए गए।
+
