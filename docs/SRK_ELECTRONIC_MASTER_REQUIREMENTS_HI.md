@@ -1873,3 +1873,54 @@ Feature Branch source और Production catalog का read-only audit किय
 - No production function, trigger, grant, table, record, payment, transfer, webhook setting, staging resource or deployment changed.
 
 यह section केवल code/catalog evidence दर्ज करता है; Route transfers अभी implemented या end-to-end tested घोषित नहीं हैं।
+
+
+## 17.52 — Existing Razorpay Webhook Event Inbox Discovery और सुरक्षित अगला Design (13 Nov 2026)
+
+यह चरण केवल Production catalog metadata और Feature Branch source का read-only निरीक्षण है। कोई webhook payload/transaction row नहीं पढ़ी गई; कोई schema/permission/data परिवर्तन नहीं किया गया।
+
+### 1. महत्वपूर्ण नई खोज: Webhook Event Inbox पहले से मौजूद है
+Production में `public.srk_razorpay_webhook_events` table पहले से मौजूद है:
+- `event_id` text PRIMARY KEY — provider event ID को unique रखने की क्षमता पहले से है।
+- `event_type`, Razorpay order/payment/refund IDs, amount paise, currency, processing status, reconciliation reason और received/processed/updated timestamps मौजूद हैं।
+- Status allow-list: received, reconciled, exception, ignored, processing_error.
+- Order/time और status/time indexes मौजूद हैं।
+- RLS enabled, FORCE RLS false; anon/authenticated के लिए कोई policy नहीं मिली।
+- Effective grants में service_role को INSERT/SELECT/UPDATE के साथ DELETE/TRUNCATE/REFERENCES/TRIGGER भी मिले। इन अतिरिक्त grants का source अभी unresolved है।
+- Table metadata में payload hash, signature verification result, attempt counter, lease/claim token, next retry time, last error class या immutable event history fields नहीं मिले।
+- वास्तविक event rows/payloads नहीं पढ़े; इसलिए table में कोई event है या handler द्वारा इस्तेमाल हो रहा है, ऐसा दावा नहीं।
+
+### 2. Existing webhook source से तुलना
+- Feature Branch `razorpay-webhook.js` अभी event ID को durable inbox में insert/upsert नहीं करता।
+- Handler केवल captured payment को legacy quote-approved completed booking पर reconcile करता है।
+- इसलिए Production में event inbox table मौजूद होना, event deduplication/processing चालू होने का प्रमाण नहीं।
+- `srk_admin_list_razorpay_webhook_exceptions(integer)` केवल exception/processing_error records पढ़ता है; inspected webhook handler उनमें event record लिखता हुआ नहीं मिला।
+
+### 3. नया table बनाने के बजाय existing inbox को सुरक्षित रूप से evolve करने का प्रस्ताव
+Migration lineage पूरी तरह reconcile होने और Feature Branch schema dependencies की पुष्टि के बाद additive design:
+- Existing `event_id` primary key को provider event dedupe key बनाए रखें; duplicate delivery पर दूसरा processing job न बने।
+- केवल आवश्यक metadata columns additive रूप से जोड़ें: raw_body_sha256, signature_verified_at/result, attempt_count, claimed_at/lease_token, next_attempt_at, last_error_code, last_error_at; raw secrets/authorization headers store न हों।
+- Full raw payload default रूप से store न करें; यदि audit आवश्यकता साबित हो तो PII minimization, retention और access policy अलग तय हो।
+- Atomic claim/lease RPC duplicate workers को रोकता हो; expired lease recovery हो; retryable और terminal exceptions अलग हों।
+- Event processing और payment finalization अलग atomic boundaries में न हों: shared DB RPC booking row lock, provider payment identity/amount/currency, frozen billing snapshot और one-time ledger entries एक transaction में verify/post करे।
+- Out-of-order events को state machine के अनुसार handle करें; पुराने event से paid/refunded/reversed state पीछे न जाए।
+- Webhook response: durable event successfully recorded/claimed हो तो 2xx; temporary DB failure पर non-2xx जिससे provider retry करे; terminal mismatch को event inbox में exception के रूप में दर्ज कर 2xx दें और Admin reconciliation queue में दिखाएँ।
+- Event inbox access server-only रहे; client direct read/write नहीं। Admin को केवल guarded, minimized exception view।
+- Append-only event transition log और controlled retention/archival; normal app role से DELETE/TRUNCATE न हो।
+
+### 4. Route transfer design पर निर्भरता
+- Event inbox payment capture/refund/transfer event identity dedupe कर सकता है, पर transfer orchestration अलग durable state machine है।
+- Route transfer creation तभी हो जब verified captured payment, frozen timer labour amount, materials excluded, approved electrician linked account, recipient amount reconciliation और per-recipient idempotency key सभी पास हों।
+- Transfer API timeout में blind retry नहीं: पहले provider transfer ID/reference से lookup/reconcile; ambiguity पर manual_review।
+- Partial/full refund के लिए original transfer mapping, amount already reversed, remaining refundable amount, payout status और append-only reversal entries अनिवार्य।
+- Payment capture event को सीधे transfer API call से जोड़ने से पहले settlement timing, provider capability/approval और Test Mode evidence validate करें।
+
+### 5. अगला काम
+1. Production migration history में `srk_razorpay_webhook_events` की exact migration version/source blob/ancestry recover करें; current catalog अकेला पर्याप्त नहीं।
+2. Admin exception RPC, table RLS/grants और existing webhook handler के सभी callers का complete map करें।
+3. Feature Branch में existing inbox-compatible additive migration और server handler architecture design करें; migration timestamp अनुमान से न बनाएं।
+4. पहले unit tests और mocked provider tests; उसके बाद approved Test Mode only, no Live transfers.
+5. Service_role extra grants का origin/default privileges/inherited membership अलग से trace करें; अभी कोई permission change नहीं।
+
+### 6. निष्कर्ष
+नया webhook event table बनाने की जरूरत अभी सिद्ध नहीं है; Production में पहले से event inbox है। सही अगला रास्ता duplicate table नहीं, बल्कि source lineage verify करके existing inbox को सुरक्षित रूप से इस्तेमाल/विस्तारित करना है। Event inbox मौजूद है, लेकिन current inspected webhook handler उसे उपयोग नहीं करता — यह मुख्य integration gap है।
