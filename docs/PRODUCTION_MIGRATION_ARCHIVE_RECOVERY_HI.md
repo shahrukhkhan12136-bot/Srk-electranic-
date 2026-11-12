@@ -394,3 +394,24 @@ No Production schema/data/history changes, no provider calls, no live refunds, a
 ## Final integrated replay result — 2026-11-12
 
 The corrected CI workflow now explicitly applies the refund-chain migrations twice after the Timer/date-only/duration migrations. GitHub Actions run **43177549032** completed SUCCESS, including the full Production-shaped disposable replay step. The independent Refund Workflow run **43177518210** also completed SUCCESS. This closes the combined synthetic replay gate for the current Timer + refund migration chain. It does not resolve the 39 missing Production history source rows, prove hosted Production parity, or authorize Production application. No Production changes or deployment.
+
+
+## अतिरिक्त रिकवरी प्रयास — GitHub commit एवं issue metadata (2026-11-12)
+
+पहले से दर्ज 11 branch recursive tree scan और छह exact-path commit-history lookups के अतिरिक्त, सात representative unresolved migration names पर repository-scoped GitHub commit search की गई:
+
+- `harden_srk_rls_policy_performance`
+- `add_atomic_payment_order_lock`
+- `razorpay_refund_prepare_rpc`
+- `enable_pg_net_for_electrician_push`
+- `wire_job_offer_push_webhook`
+- `add_missing_foreign_key_indexes`
+- `srk_manual_electrician_payout_ledger`
+
+इन सातों के लिए commit-search result शून्य था। पहले पाँच नामों के लिए repository-scoped issue/PR search भी शून्य था। यह केवल GitHub search index/commit metadata में कोई match न मिलने का प्रमाण है; यह local workstation, Supabase Dashboard SQL history, database backup/export, deployment artifacts, Git reflog या किसी unconnected repository में archive न होने का प्रमाण नहीं है।
+
+### निष्कर्ष और सुरक्षित अगला कदम
+- 39 unresolved rows को अभी भी **UNRESOLVED** ही रखा गया है; कोई synthetic SQL नहीं बनाया गया।
+- 26 timestamp-mismatch candidates के लिए भी filename/commit evidence applied SQL का प्रमाण नहीं है।
+- आगे की निर्णायक रिकवरी के लिए मूल migration folder/zip, Supabase CLI migration archive, Production backup/schema dump के साथ SQL source, या Dashboard/CI deployment artifact चाहिए।
+- कोई migration skip/mark-applied/replay नहीं की गई; Production read-only ही रहा।
