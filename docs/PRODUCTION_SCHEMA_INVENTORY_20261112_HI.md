@@ -97,3 +97,14 @@ A complete expression/grant matrix and runtime adversarial tests are still requi
 3. Review FK index coverage and migration provenance before proposing any index migration.
 4. Build a disposable Production-parity database and replay only after source recovery and dependency ordering are resolved.
 5. Keep Production read-only until separate explicit approval.
+
+
+## Electrician identity-link consistency review (read-only)
+
+Current Production function/policy definitions reveal an identity-key inconsistency:
+
+- `srk_get_my_offer_details()` filters only `electrician_profiles.user_id = auth.uid()`.
+- RLS policy `srk_read_authorized_electrician_payouts` authorizes the profile relation only through `ep.user_id = auth.uid()`.
+- In contrast, `srk_electrician_confirm_cash_payment()`, `srk_get_my_assigned_cash_payment()`, `srk_get_my_offer_price_details()`, and the electrician profile SELECT policy accept either `user_id` or `auth_user_id`.
+
+A read-only aggregate over current Production data found one electrician profile, active and approved, with both IDs set and equal; no current `auth_user_id`-only or mismatched identity record exists. Therefore this is a forward-compatibility/consistency gap, not evidence of a currently affected electrician or an authorization bypass. Keep the feature-branch v2 offer-details contract and payout access aligned with the dual-key identity model; do not modify Production or broaden policies without a separately reviewed migration and runtime tests.
