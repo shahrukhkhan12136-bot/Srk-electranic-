@@ -218,7 +218,7 @@ async function syncCustomerSession() {
   const bookingSection = document.getElementById('customer-booking-section');
   bookingSection.style.display = session ? 'block' : 'none';
   if (session) {
-    const verifiedPhone = (session.user.phone || '').replace(/^\\+91/, '').replace(/\\D/g, '').slice(-10);
+    const verifiedPhone = (session.user.phone || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     if (verifiedPhone.length === 10) {
       const bookingPhone = document.getElementById('phone');
