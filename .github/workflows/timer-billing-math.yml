@@ -49,6 +49,8 @@ on:
       - "supabase/migrations/20261111160015_timer_snapshot_refund_support.sql"
       - "supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql"
       - "supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql"
+      - "supabase/migrations/20261112200000_index_refund_payment_lookup.sql"
+      - "supabase/migrations/20261112200000_index_refund_payment_lookup.sql"
       - "supabase/tests/timer_refund_parity_overlay.sql"
       - "supabase/tests/timer_refund_parity_assertions.sql"
       - "tests/timer-panel-contract.test.js"
@@ -518,6 +520,7 @@ jobs:
             supabase/migrations/20261111160015_timer_snapshot_refund_support.sql \
             supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql \
             supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql
+            supabase/migrations/20261112200000_index_refund_payment_lookup.sql
           do
             psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
             psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
