@@ -377,3 +377,11 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 ### Refund terminal-state manual reconciliation gap — 2026-11-12
 - Hardened RPC prevents failed→processed terminal-state overwrite and preserves immutable provider refund IDs; webhook catches reconciliation errors as retryable.
 - Admin UI has manual/cash refund receipt entry but no dedicated Admin review/reconciliation path for provider terminal-state conflicts after independent provider verification. This remains a pre-live-refund blocker; do not weaken state protections. Design an audited Admin evidence/review flow before live rollout. No provider calls or live refunds.
+
+
+### Refund lookup index — final integrated CI confirmation (2026-11-12)
+- Added feature-branch migration `20261112200000_index_refund_payment_lookup.sql`, creating a non-unique index on `public.srk_razorpay_refunds(payment_id)`. It deliberately remains non-unique: the webhook handler must be able to detect multiple refund records for one provider payment and reject ambiguous reconciliation rather than silently choosing one.
+- Refund workflow applies the migration twice and asserts that the index exists, is valid, and is non-unique. Refund workflow run 43176559688: SUCCESS.
+- Integrated Timer billing workflow includes the same migration in the disposable Production-shaped parity chain and replays it twice. Runs 43176715574 and 43176720772: SUCCESS (49 completed steps each).
+- An earlier Timer run 43176589252 failed; later corrected workflow commits were re-run and both latest integrated runs succeeded. Do not count the failed run as a release blocker after the successful reruns, but retain its history.
+- No Production migration/schema/data/history changes; no Razorpay provider calls, real-money refunds, or deployment.
