@@ -503,3 +503,20 @@ Read-only inspection of the live Supabase function definition found a confirmed 
 Required safe correction (NOT applied): remove `completed` from the customer contact RPC's allowed statuses, and verify that only currently active/accepted booking states return a phone number. Add negative tests proving that completed, cancelled, rejected, unassigned, and another customer's bookings return no contact details, while a valid accepted booking returns the intended contact. Review the electrician-side customer-contact path separately against the same lifecycle rules.
 
 Safety boundary: no production SQL, function, grant, table, or customer data was changed. Do not hot-edit production. Prepare a versioned, backward-compatible migration on the Feature Branch only after migration-history drift is reconciled; test it in an isolated staging/Test Mode environment, inspect function ACLs and wrapper behavior, then rerun contact-privacy regression tests before any production release. This finding is high priority because the current implementation appears to expose a number after completion contrary to the approved requirement.
+
+
+### 17.9 — Customer-contact privacy root cause और migration-history reconciliation blocker (13 Nov 2026)
+अतिरिक्त जाँच से ये बातें पुष्ट हुईं:
+- Feature Branch की मूल migrations `20261109103038_customer_electrician_direct_call_contacts.sql` और `20261109103143_move_customer_call_contact_lookup_to_private.sql` में ग्राहक-contact RPC केवल active workflow states (`assigned`, पुराने inspection/quote states, `in_progress`) लौटाता है; `completed` मूल allow-list में नहीं था।
+- Production migration history में बाद में `20261109161539_customer_contact_after_completion` नाम की migration दर्ज है। वर्तमान live private function में `completed` status जोड़कर `ep.phone` लौटाया जा रहा है। यह production behavior के root-cause की ओर मजबूत संकेत है; उस remote-only migration का SQL source अभी Feature Branch में उपलब्ध नहीं है, इसलिए उसके exact statements का दावा नहीं किया जा रहा।
+- Live public wrapper `SECURITY INVOKER` है; private implementation `SECURITY DEFINER` है। दोनों functions के ACL snapshot में `anon`/PUBLIC execute नहीं है; `authenticated` execute मौजूद है। Private schema usage भी authenticated को मिला है।
+- Supabase migration history में 81 entries दिखाई दीं; Feature Branch में 21 SQL migration files हैं। पहले के version comparison में केवल 5 exact migration versions match हुए थे। कई production-only migrations और Feature Branch-only newer migrations हैं। यह schema/migration drift blocker है; किसी एक तरफ की history को reset, squash, replay या blind-apply करना सुरक्षित नहीं है।
+
+निर्णय/अगला सुरक्षित रास्ता:
+1. अभी कोई production SQL/function edit नहीं करना।
+2. पहले production migration history के सभी 81 versions को repository migration files/commit history से reconcile करना; remote-only migration source को उपलब्ध होने पर सुरक्षित रूप से recover करना।
+3. Supabase CLI उपलब्ध वातावरण में `supabase migration new <descriptive_name>` से नई migration बनानी है (timestamp स्वयं invent नहीं करना), फिर migration में private implementation की status allow-list से `completed` हटाना; बाकी ownership, assignment और active-state predicates यथावत रखना।
+4. Isolated staging/Test Mode पर apply करके authenticated customer-owned active booking, completed booking, cancelled/rejected/unassigned booking, और दूसरे customer की booking के positive/negative tests चलाने हैं। यह भी जाँचना है कि completed state में phone UI, API response, receipt/history और cached data से न निकले।
+5. ACL/search_path, Supabase Security Advisor और संबंधित customer/electrician contact flows का regression test पूरा होने के बाद ही release plan बनाना। Production deploy/DB migration के लिए अलग स्पष्ट अनुमति आवश्यक रहेगी।
+
+यह जाँच read-only थी। कोई live database, migration history, function, grant, customer data या production deployment बदला नहीं गया।
