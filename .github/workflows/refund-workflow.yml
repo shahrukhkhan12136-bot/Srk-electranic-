@@ -24,6 +24,7 @@ on:
       - "netlify/functions/process-refund.js"
       - "index.html"
       - "admin.html"
+      - "tests/admin-refund-reconciliation-ui.test.js"
       - "netlify.toml"
       - ".github/workflows/refund-workflow.yml"
   pull_request:
@@ -47,6 +48,7 @@ on:
       - "netlify/functions/process-refund.js"
       - "index.html"
       - "admin.html"
+      - "tests/admin-refund-reconciliation-ui.test.js"
       - "netlify.toml"
       - ".github/workflows/refund-workflow.yml"
 
@@ -115,3 +117,5 @@ jobs:
         run: node tests/razorpay-webhook-ambiguous-refund-handler.test.js
       - name: Syntax check Netlify refund handler
         run: node --check netlify/functions/process-refund.js
+      - name: Test Admin refund reconciliation UI contract
+        run: node tests/admin-refund-reconciliation-ui.test.js
