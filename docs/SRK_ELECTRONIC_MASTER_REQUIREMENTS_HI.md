@@ -1411,3 +1411,32 @@ No code, UI, SQL, payment provider, wallet, customer data, Production schema or 
 ### Decision gate
 - Timer model and immutable event design are now documented, not implemented. Before code/migration, confirm unresolved Master policies: minute rounding, overtime, pause/resume, customer approval timeout/dispute, Admin adjustment limits, cancellation while timer active, and whether booking becomes completed at customer approval or after payment. Preserve legacy quote fields/data until all callers and historical records are migrated.
 - No migration file was created and no Production database, customer/payment data, provider settings, staging resource, or deployment was changed.
+
+
+## 17.41 — Live Production Work-Status और Quote RPC की Definition-Level जाँच (13 Nov 2026)
+
+Production Supabase catalog से छह function definitions read-only प्राप्त की गईं। कोई RPC execute नहीं किया गया।
+
+### 1. `srk_update_booking_work_status(uuid,text)`
+- SECURITY DEFINER, owner postgres, fixed search_path `pg_catalog, public, auth, pg_temp`.
+- केवल `inspection`, `in_progress`, `completed` status स्वीकारता है।
+- Electrician profile lookup में `user_id = auth.uid()` है, लेकिन `auth_user_id = auth.uid()` fallback नहीं है। दूसरी identity link पर निर्भर वैध Electrician UI session इस RPC से fail हो सकती है, जबकि अन्य RPC दोनों identity fields मानते हैं। यह identity-consistency defect candidate है; live JWT test के बिना वास्तविक प्रभावित account count अज्ञात है।
+- Assignment check और booking row `FOR UPDATE` मौजूद हैं। लेकिन start केवल `quote_approved` पर `work_started_at=now()` लिखता है; completion सीधे status completed कर देता है। Customer timer approval, immutable completion-request timestamp, actual_minutes और Admin dispute path नहीं हैं।
+
+### 2. Quote RPCs
+- `srk_submit_booking_quote` authenticated approved+active electrician ढूँढता है और `user_id` या `auth_user_id` दोनों पहचान स्वीकारता है; booking assignment check + row lock करता है; electrician द्वारा service/material amounts और total manually set होते हैं।
+- `srk_customer_respond_booking_quote` authenticated booking owner check + row lock करता है; quote approve/reject पर status quote_approved/quote_rejected करता है। यह Master timer start/completion approval से अलग पुराना flow है।
+- `srk_get_my_assigned_booking_quote_details` approved+active linked electrician के assigned bookings लौटाता है और status list में completed भी शामिल है; address/location और quote/payment fields लौटते हैं। इस output में phone field नहीं, लेकिन address/location terminal state के बाद भी उपलब्ध हैं; completed contact privacy की व्यापक location/address minimization जाँच आवश्यक है।
+
+### 3. Cash confirmation और payout trigger
+- `srk_electrician_confirm_cash_payment` assignment/identity (user_id या auth_user_id), approved+active profile, booking row lock और already-paid replay check रखता है; लेकिन completed + approved quote + Cash + positive quoted_amount की शर्त पर payment paid करता है। Amount `quoted_amount` से आता है, timer billing से नहीं।
+- `srk_create_electrician_payable` trigger SECURITY DEFINER और fixed search_path है। Payout तभी बनाता है जब completed+paid+approved quote+verified payment और payment evidence मौजूद हो। It enforces amount_paid = service_charge + materials_amount; fee/commission labour service_charge पर लगती है और electrician payable में materials जोड़ता है। Existing pending payout conflict पर fields update हो सकते हैं; paid payout update नहीं होता। Refund पर केवल pending payout refunded किया जाता है; paid payout अलग Admin reconciliation माँगता है।
+
+### 4. Release/security implications
+1. New timer RPCs में electrician identity matching का एक canonical helper अपनाएँ (user_id OR auth_user_id), साथ में approved+active और assigned booking check; पुराने RPC की identity mismatch को regression test करें।
+2. Work status को client-provided arbitrary text से बदलने की जगह narrowly scoped RPCs: request_start, customer_approve_start, request_completion, customer_approve_completion, admin_resolve_timer_dispute। हर call ownership, role, assignment, booking state, row lock और non-null idempotency key enforce करे।
+3. Legacy quote RPCs/columns को तब तक preserve करें जब तक new timer, payment, cash, payout, refund, Admin, receipts and history callers migrate न हों।
+4. Customer/Electrician completed history में phone ही नहीं, live address/location/coordinates भी आवश्यकता से अधिक न लौटें; Admin access अलग audited रहे।
+5. SECURITY DEFINER ACLs को per-function audit करें; blanket revoke न करें। Runtime JWT negative/positive tests और RLS/ACL checks staging में जरूरी हैं।
+
+यह definition-level source audit है। No Production function, trigger, ACL, table, row, payment, wallet balance or deployment changed.
