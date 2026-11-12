@@ -1,4 +1,4 @@
-name: Booking and Admin rate catalogue SQL tests
+name: Verify live effective rate selection in booking RPC
 on:
   push:
     branches: ["feature/production-push-notifications"]
