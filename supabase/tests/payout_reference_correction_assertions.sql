@@ -23,7 +23,7 @@ BEGIN
   END IF;
   IF NOT has_function_privilege('authenticated', v_oid, 'EXECUTE')
      OR has_function_privilege('anon', v_oid, 'EXECUTE')
-     OR has_function_privilege('public', v_oid, 'EXECUTE') THEN
+     THEN
     RAISE EXCEPTION 'PAYOUT_REFERENCE_CORRECTION_EXECUTE_GRANTS_INVALID';
   END IF;
   IF position('public.is_srk_admin()' in v_source) = 0
@@ -40,7 +40,7 @@ BEGIN
     RAISE EXCEPTION 'PAYOUT_REFERENCE_CORRECTION_MISSING_BOOKING_FIRST_LOCK';
   END IF;
   IF position('UPDATE public.srk_electrician_payouts' in v_source) = 0
-     OR position('UPDATE public.service_bookings' in upper(v_source)) > 0 THEN
+     OR position('UPDATE PUBLIC.SERVICE_BOOKINGS' in upper(v_source)) > 0 THEN
     RAISE EXCEPTION 'PAYOUT_REFERENCE_CORRECTION_SCOPE_INVALID';
   END IF;
 
