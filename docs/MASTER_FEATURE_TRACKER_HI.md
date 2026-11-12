@@ -290,3 +290,10 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [T] cron.job relation इस Production project में उपलब्ध नहीं; cron jobs की स्थिति इस query से अज्ञात है।
 - [T] 39 migration source rows अब भी unresolved; live catalog effects original SQL का replacement नहीं। Production release NO-GO कायम।
 - [T] कोई Production schema/data/history change, Edge Function deploy, webhook, payment, या deployment नहीं किया।
+
+## Production SECURITY DEFINER + RLS ACL audit (2026-11-12)
+- [V] Public/private schemas में 61 SECURITY DEFINER functions का effective privilege audit: PUBLIC EXECUTE 0, anon EXECUTE 0। Authenticated EXECUTE वाली functions के guards का static review जारी है।
+- [V] Empty search_path वाले 8 privileged functions की definitions पढ़ीं; SQL object references schema-qualified हैं। Customer/push functions auth.uid() identity/ownership जाँचती हैं, Admin refund RPCs is_srk_admin() check करती हैं, और service refund reconcile RPC service_role check करती है।
+- [V] Public schema की 25/25 base tables में RLS enabled। 10 tables पर policies नहीं हैं, लेकिन anon/authenticated के table CRUD privileges false और service_role CRUD true मिले—वर्तमान state service-role-only/default-deny है।
+- [T] Refund reconciliation RPC पर service_role-only ACL सही होने के बावजूद पुराने Production function body में provider refund ID overwrite और stale pending/failure ordering जोखिम अभी unresolved है; hardened migration Production में लागू नहीं।
+- [T] ये catalog और function-body static checks हैं; हर authenticated RPC का adversarial multi-user runtime test और complete RLS expression register अभी बाकी है। कोई Production परिवर्तन नहीं किया।
