@@ -264,3 +264,11 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [!] 39 Production migration rows अभी unresolved हैं; 25 timestamp-mismatch candidates का exact Production SQL से comparison बाकी है। Production remains read-only and NO-GO.
 
 - [!] Production refund RPC का read-only `pg_get_functiondef` audit: existing implementation provider refund ID overwrite कर सकती है और failed state को late pending event से processing में downgrade कर सकती है। Forward fix feature branch पर CI verified है, Production पर लागू नहीं। Details: `docs/REFUND_RECONCILIATION_PRODUCTION_AUDIT_HI.md`.
+
+## Refund Webhook Ambiguity + Legacy ID Binding — 2026-11-12
+- [I] Production read-only schema inspection confirms `srk_razorpay_refunds` has unique `booking_id` and `refund_id`, but no unique index on `payment_id`. The webhook previously queried by `payment_id` with `limit=1`, which could select an arbitrary row if historical/abnormal duplicate payment IDs exist.
+- [I] `razorpay-webhook.js` now fetches up to two payment-ID matches and returns retryable HTTP 500 when more than one refund ledger row matches; it will not reconcile an arbitrary record.
+- [I] Forward migration also binds the first verified provider refund ID to legacy rows already marked `processed` but having a null `refund_id`, without changing their terminal status.
+- [I] SQL regression test covers the late-ID binding. Added `tests/razorpay-webhook-refund-contract.test.js` and wired it into Refund CI to assert the ambiguity guard and ID binding contract.
+- [T] Refund CI run `43172179292` SUCCESS for the prior commit containing SQL replay + SQL assertions. Newest run `43172241324` is still in progress/queued at this tracker update; do not treat the newest static contract assertion as verified until that run succeeds.
+- [T] No Production changes or real Razorpay webhook calls performed.
