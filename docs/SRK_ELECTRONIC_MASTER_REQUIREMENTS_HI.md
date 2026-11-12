@@ -1244,3 +1244,32 @@ Production migration history में एक ही नाम की दो ent
 6. सभी बदलाव Feature Branch और isolated Test Mode में; Production migration/apply/deploy से पहले अलग अनुमति।
 
 Production Database, wallet/ledger rows, triggers, grants, migration history, payment settings या deployment में कोई बदलाव नहीं किया गया। यह read-only Production catalog inspection और Feature Branch SQL static review है।
+
+
+## 17.36 — Wallet Foundation और Cash Slot Reservation का विस्तृत Static Review (13 Nov 2026)
+
+### Wallet foundation migration (Feature Branch only)
+- `20261109010000_create_secure_wallet_ledger_foundation.sql` में wallet account पर (user_id,wallet_type) unique है; wallet ledger में amount positive, direction credit/debit, status pending/posted/reversed/failed और idempotency_key UNIQUE है, लेकिन idempotency_key nullable है। इसलिए duplicate-safe posting अभी केवल तब मजबूत है जब caller स्वयं non-null key दे; DB constraint हर entry के लिए key अनिवार्य नहीं करता।
+- Customer top-ups और electrician payouts स्पष्ट रूप से disabled रखे गए हैं। Wallet Summary response में `topups_enabled=false`, electrician payout `payouts_enabled=false` है। इस कारण Master के “wallet top-up से fee due साफ कर Cycle reset” नियम को अभी वास्तविक provider-backed top-up flow के रूप में चालू नहीं किया जा सकता।
+- `srk_get_my_wallet_summary()` नाम read-only लगता है, पर customer wallet और approved electrician wallet insert करता है। यह side effect मौजूदा Production audit में भी देखा गया; इसे अलग idempotent provisioning RPC/trigger या स्पष्ट रूप से documented behavior में बदलने पर विचार हो। Concurrent first calls unique constraint + ON CONFLICT से duplicate account रोकते हैं, पर retry/error and authorization tests आवश्यक हैं।
+- Wallet ledger owner SELECT policies हैं; client-side direct writes revoke हैं और service_role को write access दिया गया है। Feature migration में ledger append-only trigger नहीं दिखा। Production wallet ledger में भी audit के दौरान कोई dedicated append-only trigger नहीं मिला। Corrections को पुरानी row update/delete से नहीं, नई reversal entry से करना होगा; इसके लिए DB-level enforcement आवश्यक है।
+
+### Acceptance slot algorithm — identified defect
+- Feature Branch migration `20261112170000_enforce_electrician_third_booking_online_payment.sql` acceptance पर electrician profile row lock लेता है, पर slot number completed+paid+verified bookings की COUNT से निकालता है।
+- यह “acceptance पर slot reserve” का दावा पूरा नहीं करता: accepted/in-progress लेकिन unpaid/incomplete bookings count में शामिल नहीं हैं। उदाहरण: count 1 है और दो अलग bookings electrician द्वारा क्रमशः स्वीकार हो जाती हैं; दोनों को अगला slot 2 दिखाई दे सकता है। तीसरा Online rule bypass हो सकता है।
+- केवल status count को broaden करना पर्याप्त नहीं: cancellations, expiry, reassignment, refunds, partial refunds और parallel acceptance को स्पष्ट transactional state transitions चाहिए।
+
+### प्रस्तावित सुरक्षित design (अभी लागू नहीं)
+1. Per-electrician cycle row: `electrician_profile_id` primary/unique, `cycle_number`, `next_slot` (1..3), `fee_due_amount`, `version`, `updated_at`। Row को हर acceptance/payment/top-up/cancellation transaction में `FOR UPDATE` lock करें।
+2. अलग booking slot reservation: `booking_id` unique, `electrician_profile_id`, `cycle_number`, `slot_number`, `reservation_status` (reserved/consumed/released), `required_payment_method`, server timestamps, non-null unique idempotency key। एक booking के लिए एक ही सक्रिय reservation।
+3. Acceptance transaction में profile/cycle row lock → booking row lock → existing active reservation check → अगला slot reserve → slot 3 पर Online-only enforcement → assignment/offer status update। किसी भी failure पर पूरा transaction rollback। Lock order सभी RPCs में एक जैसा रहे ताकि deadlock न हो।
+4. Slot reservation को eligibility के स्पष्ट business definition से जोड़ें। Master approval आवश्यक: slot acceptance पर reserve हो; booking eligible completed+verified paid होने पर consume हो; customer/Admin cancellation या offer expiry पर release हो; refund होने पर prior cycle को कैसे reverse/adjust करना है, अलग audited policy हो। “कभी consume नहीं” बनाम “एक बार cycle में गिनी booking” का निर्णय बिना approval न मानें।
+5. Cash due को booking-wise fee lots में रखें। Online booking पर current 15% labour fee पहले; पुराने cash due का settlement केवल उसी booking की labour share से अधिकतम उपलब्ध राशि तक। Materials कभी fee base या पुराने due settlement source न हों। हर settlement lot को source cash booking से link करें।
+6. Wallet top-up तभी cycle reset करे जब approved provider webhook signature, exact amount/currency, unique provider reference और idempotency verify हो; top-up posted होने के बाद fee due शून्य/निर्धारित सीमा तक साफ होने की transactionally verified शर्त पूरी हो। केवल client request या wallet UI balance से reset नहीं। Top-up provider approval से पहले feature disabled रहे।
+7. Ledger append-only: posted entry update/delete रोकें; reversal/restore अलग signed ledger entries हों। `idempotency_key NOT NULL`, unique deterministic keys, actor/source/booking/provider metadata और immutable audit रखें।
+8. Refund/chargeback में source cash due, प्रत्येक settlement allocation, current online fee, payout pending/paid और partial refund amount को अलग-अलग reconcile करें; paid payout पर Admin recovery flow और reasoned audit अनिवार्य हो।
+
+### निष्कर्ष
+- Feature Branch में wallet foundation, cash fee ledger और third-booking guard का प्रारंभिक code है, पर यह अभी पूर्ण Cash Cycle/Top-up system नहीं है।
+- मुख्य blocker acceptance-time durable reservation है; दूसरा blocker wallet top-up provider flow disabled होना; तीसरा wallet ledger append-only + non-null idempotency enforcement।
+- इस चरण में कोई code migration/function change लागू नहीं किया गया; केवल source review और design specification दर्ज की गई है। Production DB, wallet rows, payment settings, deployment और staging resources untouched हैं।
