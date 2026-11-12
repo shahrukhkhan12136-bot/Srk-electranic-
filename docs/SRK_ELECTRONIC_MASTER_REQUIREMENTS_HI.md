@@ -733,3 +733,20 @@ Live Production schema inspection:
 - यह table-level grants + SELECT policy snapshot है; column-level grants, inherited roles, materialized views, storage, logs, realtime payloads और सभी edge functions का exhaustive audit अभी शेष है।
 
 कोई grant, RLS policy, view या table बदला नहीं गया।
+
+
+### 17.20 — Netlify API adapters, booking/payment endpoints और UI contact exposure audit (13 Nov 2026)
+
+Feature Branch के API handlers और उनके call-sites का source audit:
+- netlify/functions/create-booking.js, create-order.js, verify-payment.js और razorpay-webhook.js केवल root-level handler modules को import/forward करते हैं। इसलिए वास्तविक business logic root files create-booking.js, create-order.js, verify-payment.js और razorpay-webhook.js में है; adapters में अलग phone filtering logic नहीं है।
+- create-booking.js Customer Supabase session की पुष्टि करता है, verified Auth phone को submitted booking phone से match करता है और फिर booking insert करता है। यह server-side match उपयोगी है; पर UI में phone field editable है, इसलिए UX को verified number से auto-fill/lock करने की जरूरत बनी रहती है।
+- create-order.js और verify-payment.js booking phone को customer session phone से मिलाते हैं। इन handlers में phone को response body में लौटाने का संकेत नहीं मिला। create-order अभी quote-era amount fields और completed/approved quote dependency पढ़ता है।
+- verify-payment.js केवल status=completed और quote_status=approved पर online payment verify करता है। यह Master के नए server timer/actual-minute billing flow से अभी मेल नहीं खाता; इसे पुराने payment dependency audit में शामिल रखना है।
+- razorpay-webhook.js booking row पर payment status update करता है; inspected matching lines में phone response/render नहीं मिला। Full handler review में signature verification, idempotency और state transition अलग से test होने चाहिए।
+- Customer booking.html own booking rows में address और location दिखाता है, और contact RPC से electrician phone map बनाता है। UI completed status पर call button छिपाता है, लेकिन server RPC completed booking में phone लौटा सकता है—UI guard अकेले पर्याप्त नहीं।
+- Electrician electrician.html srk_get_my_offer_details() से मिले customer_phone को बिना completed-status UI guard के render करता है और tel: link बनाता है। यह completed booking पर ग्राहक का फोन UI में दिखाने का सीधा जोखिम है; server RPC में भी completed allow-list पहले से confirmed है।
+- Electrician UI में assigned offer पर customer name, phone, full address और map directions दिखते हैं। Target lifecycle में यह जानकारी केवल assigned/active booking के दौरान उपलब्ध होनी चाहिए; completed/cancelled/rejected/unassigned पर server response और UI दोनों में हटे।
+- booking.html में WhatsApp message builder customer द्वारा भरे phone/address/location सहित booking विवरण को WhatsApp message में डालता है। यह legacy/manual path है और Master के in-app authenticated booking + verified phone + privacy workflow के साथ reconcile करना होगा; इसे चुपचाप live booking का विकल्प नहीं मानना चाहिए।
+- इस source scan में अलग receipt/invoice/history renderer का कोई अतिरिक्त Netlify endpoint नहीं मिला। Customer booking history स्वयं booking.html में है; बाकी receipts, exports, admin views, push payloads और logs का exhaustive scan अभी शेष है।
+
+सिर्फ source पढ़ा गया; कोई API/UI/DB code बदला नहीं गया। निष्कर्ष: Electrician UI completed booking पर customer_phone render कर सकता है; RPC और UI दोनों में सुधार आवश्यक है। Payment handlers भी अभी quote-era workflow पर निर्भर हैं।
