@@ -80,7 +80,7 @@ async function updateBooking(orderId, payment) {
 }
 
 async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
-  const endpoint = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
+  const endpoint = new URL("/rest/v1/srk_razorpay_webhook_event_ledger", SUPABASE_URL);
   endpoint.searchParams.set("on_conflict", "provider,provider_event_id");
   const insert = await fetch(endpoint, {
     method: "POST",
@@ -103,7 +103,7 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
   if (!insert.ok) throw new Error("Webhook event ledger insert failed");
   const inserted = await insert.json();
   let row = Array.isArray(inserted) ? inserted[0] : null;
-  const lookup = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
+  const lookup = new URL("/rest/v1/srk_razorpay_webhook_event_ledger", SUPABASE_URL);
   lookup.searchParams.set("provider", "eq.razorpay");
   lookup.searchParams.set("provider_event_id", "eq." + eventMeta.eventId);
   lookup.searchParams.set("select", "id,processing_status,attempt_count,payload_sha256,processing_started_at");
@@ -134,7 +134,7 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
   }
   const claimStatus = row.processing_status;
   const leaseStartedAt = new Date().toISOString();
-  const patchUrl = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
+  const patchUrl = new URL("/rest/v1/srk_razorpay_webhook_event_ledger", SUPABASE_URL);
   patchUrl.searchParams.set("id", "eq." + row.id);
   patchUrl.searchParams.set("processing_status", "eq." + claimStatus);
   if (staleProcessing) {
@@ -175,7 +175,7 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
 }
 
 async function finishSnapshotWebhookEvent(eventId, leaseStartedAt, status, outcomeCode, detail) {
-  const endpoint = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
+  const endpoint = new URL("/rest/v1/srk_razorpay_webhook_event_ledger", SUPABASE_URL);
   endpoint.searchParams.set("id", "eq." + eventId);
   endpoint.searchParams.set("processing_status", "eq.processing");
   endpoint.searchParams.set("processing_started_at", "eq." + leaseStartedAt);
