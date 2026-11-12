@@ -1,6 +1,12 @@
 -- Disposable-only overlay for exercising the real refund migrations after the Timer
 -- release chain has been replayed on the Production-shaped parity fixture.
 -- This supplies only the legacy refund-ledger tables not part of the Timer chain.
+create or replace function auth.role()
+returns text language sql stable
+as $function$
+ select coalesce(auth.jwt()->>'role',current_user)
+$function$;
+
 create table public.srk_razorpay_refunds (
  id uuid primary key default gen_random_uuid(),
  booking_id uuid not null unique references public.service_bookings(id) on delete restrict,
