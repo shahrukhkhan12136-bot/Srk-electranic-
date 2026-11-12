@@ -1587,3 +1587,36 @@ Feature Branch के पूरे `admin.html` source में `from(...)` औ
 6. Do not delete Admin controls or old fields until each action has a tested replacement and historical reconciliation.
 
 No code, live policy/grant, database row, Admin account, payment, wallet, customer data, staging resource or deployment changed. Only this source inventory and proposed migration map were documented.
+
+
+## 17.46 — पाँच Admin RPC और Admin Report/Wallet RPC की Live Production Definition + ACL जाँच (13 Nov 2026)
+
+Production Supabase catalog से केवल function definitions, owner, SECURITY DEFINER, search_path और EXECUTE ACL पढ़े गए। किसी RPC को call नहीं किया गया; कोई data row, payment या mutation execute नहीं हुआ।
+
+### 1. साझा Security Boundary
+- सातों जाँचे गए RPC postgres-owned SECURITY DEFINER हैं और fixed search_path `pg_catalog, public, auth, pg_temp` रखते हैं।
+- `is_srk_admin()` स्वयं `auth.uid()` को `srk_admin_users.user_id` से मिलाता है।
+- सातों में PUBLIC और anon EXECUTE ACL नहीं है; authenticated तथा service_role EXECUTE है।
+- छह operational/report RPC bodies में Admin check `auth.uid() IS NULL OR NOT is_srk_admin()` के रूप में मौजूद है। `is_srk_admin()` स्वयं boolean membership check है।
+- यह static body/ACL evidence है; वास्तविक Customer/Electrician/unauthorized staff JWT negative tests अभी नहीं हुए। service_role bypass और trusted server caller अलग security boundary हैं।
+
+### 2. पाँच Admin mutation RPC
+1. `srk_admin_mark_electrician_payout_paid(uuid,text,text,text)`: Admin check, method allow-list (upi/bank), reference/note validation, booking-first फिर payout row lock, केवल pending payout, verified paid booking और legacy quote/service/material/commission reconciliation। अच्छा locking pattern है; पर timer billing snapshot, booking-wise fee allocations और paid-payout refund recovery अभी शामिल नहीं।
+2. `srk_admin_record_manual_payment(uuid,text,text,text)`: Admin check, method/reference/note validation, booking row lock, completed+approved quote, assigned electrician, non-paid/non-refunded state, Razorpay IDs absent, existing manual entry rejection, quote breakdown equality; फिर manual entry insert और booking paid update एक transaction में। वर्तमान amount अभी legacy `service_charge + materials_amount = quoted_amount` है; timer bill, immutable payment intent और partial refund allocation नहीं।
+3. `srk_admin_offer_booking(uuid)`: Admin check, booking row lock, unassigned तथा new/confirmed state; active+approved+linked electrician को PIN-first, otherwise district matching के आधार पर offers। वर्तमान query में category/verified skill eligibility और nearest-distance ranking स्पष्ट नहीं; इसे Master Smart Matching के अनुरूप जाँचना/बनाना होगा। Durable Cash slot reservation इसी acceptance transaction/RPC family से coordinate हो।
+4. `srk_admin_review_application(uuid,text)`: Admin check; approved/rejected/suspended allow-list; application row lock; approval से पहले verified Auth phone match; profile create/update approved but inactive। Category approval, document verification evidence, unique digital ID issuance और staff granular permission इस definition में स्पष्ट रूप से पूर्ण नहीं।
+5. `srk_admin_wallet_overview()`: Admin check; wallet counts, posted credits/debits, pending entries और verified bank links के aggregate देता है। यह accounting dashboard नहीं: cash-fee due lots, settlement allocation, cancellation debt, refunds/reversals और actual payout liability reconciliation शामिल नहीं।
+
+### 3. Admin Reports और Role Gate
+- `srk_admin_commission_report()` Admin guard के बाद paid+completed legacy bookings से amount_paid, commission_amount और electrician earning जोड़ता है। यह timer/actual-minute fee, materials pass-through, cancellation, refund/reversal और paid payout ledger से पूर्ण financial statement नहीं।
+- `is_srk_admin()` allow-list membership check है; MFA, staff roles, permission scopes, session/device policy या emergency-control checks इस function में नहीं।
+- सभी सात definitions में fixed search_path है; ACL authenticated execution की अनुमति देता है, इसलिए प्रत्येक SECURITY DEFINER body का Admin guard अनिवार्य और अभी मौजूद है (membership helper को छोड़कर)।
+
+### 4. सुरक्षित अगला कदम
+1. Feature Branch में narrow Admin RPCs प्रस्तावित करें: location correction, legacy-only booking correction, timer billing adjustment, electrician activation/emergency block, और staff permission-aware application review।
+2. हर mutation में mandatory reason, actor, before/after audit, idempotency और row lock रखें; paid/refunded/payout-linked financial rows पर generic edits निषिद्ध हों।
+3. Offer matching में category/skill approval और distance/availability eligibility जोड़ें; Cash slot reservation को acceptance के साथ atomic करें।
+4. Manual payment और payout RPC को timer snapshot + labour-only 15% platform fee + separate materials + fee/refund allocation से जोड़ें; historical quote path को केवल legacy records के लिए रखें।
+5. Isolated test environment में Admin positive और Customer/Electrician/unauthorized staff negative JWT tests, duplicate/retry/concurrency और audit assertions चलाएँ।
+
+No production function, ACL, policy, table, record, payment setting, wallet, staging resource or deployment changed. यह read-only live catalog audit है और इसके निष्कर्ष Master Requirements में दर्ज किए गए।
