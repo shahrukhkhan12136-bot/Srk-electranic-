@@ -389,3 +389,8 @@ No Production schema/data/history changes, no provider calls, no live refunds, a
 - Integrated Timer + date-only/duration + refund parity workflow run 43175948589: SUCCESS. This run also executed tests/snapshot-payment-contract.test.js.
 - Independent SRK Refund Workflow run 43175929837: SUCCESS, including refund handler, snapshot payment/webhook contracts, refund webhook ledger contract, ambiguous refund handler behavior, and SQL webhook ledger assertions.
 - Together these confirm the renamed event ledger and integrated disposable migration replay pass in CI. They do not establish that missing Production migrations were applied, that hosted Production schema matches the synthetic fixture exactly, or that Android/device E2E passed.
+
+
+## Final integrated replay result — 2026-11-12
+
+The corrected CI workflow now explicitly applies the refund-chain migrations twice after the Timer/date-only/duration migrations. GitHub Actions run **43177549032** completed SUCCESS, including the full Production-shaped disposable replay step. The independent Refund Workflow run **43177518210** also completed SUCCESS. This closes the combined synthetic replay gate for the current Timer + refund migration chain. It does not resolve the 39 missing Production history source rows, prove hosted Production parity, or authorize Production application. No Production changes or deployment.
