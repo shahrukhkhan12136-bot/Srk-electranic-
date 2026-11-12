@@ -212,6 +212,7 @@ async function updateSnapshotOrder(orderId, payment, eventMeta) {
   const eventRow = await startSnapshotWebhookEvent(eventMeta, orderId, payment.id);
   if (eventRow.processed) return "snapshot_event_already_processed";
   if (eventRow.rejected) return "snapshot_event_rejected";
+  if (eventRow.inProgress) return "snapshot_event_in_progress";
   if (Number(order.amount_paise) !== payment.amount || order.currency !== payment.currency) {
     await finishSnapshotWebhookEvent(eventRow.id, "rejected", "snapshot_amount_mismatch", "Captured payment amount/currency does not match the bound snapshot order.");
     return "snapshot_amount_mismatch";
@@ -333,6 +334,9 @@ exports.handler = async (event) => {
     if (snapshotResult !== null) {
       if (snapshotResult === "snapshot_reconciled" || snapshotResult === "snapshot_already_processed" || snapshotResult === "snapshot_event_already_processed") {
         return json(200, { success: true, reconciled: true, result: snapshotResult });
+      }
+      if (snapshotResult === "snapshot_event_in_progress") {
+        return json(500, { success: false, reconciled: false, reason: snapshotResult });
       }
       if (snapshotResult === "snapshot_event_rejected" || snapshotResult === "snapshot_amount_mismatch" || snapshotResult === "snapshot_order_not_ready") {
         console.error("Razorpay snapshot webhook requires review:", snapshotResult);
