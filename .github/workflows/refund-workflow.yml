@@ -15,6 +15,7 @@ on:
       - "verify-snapshot-payment.js"
       - "tests/snapshot-payment-contract.test.js"
       - "tests/razorpay-webhook-refund-contract.test.js"
+      - "tests/razorpay-webhook-ambiguous-refund-handler.test.js"
       - "razorpay-webhook.js"
       - "netlify/functions/process-refund.js"
       - "index.html"
@@ -99,5 +100,7 @@ jobs:
         run: node tests/snapshot-payment-contract.test.js
       - name: Test Razorpay refund webhook ledger contract
         run: node tests/razorpay-webhook-refund-contract.test.js
+      - name: Test ambiguous refund webhook handler behavior
+        run: node tests/razorpay-webhook-ambiguous-refund-handler.test.js
       - name: Syntax check Netlify refund handler
         run: node --check netlify/functions/process-refund.js
