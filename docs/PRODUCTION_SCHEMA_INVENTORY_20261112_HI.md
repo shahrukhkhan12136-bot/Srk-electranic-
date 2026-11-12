@@ -108,3 +108,10 @@ Current Production function/policy definitions reveal an identity-key inconsiste
 - In contrast, `srk_electrician_confirm_cash_payment()`, `srk_get_my_assigned_cash_payment()`, `srk_get_my_offer_price_details()`, and the electrician profile SELECT policy accept either `user_id` or `auth_user_id`.
 
 A read-only aggregate over current Production data found one electrician profile, active and approved, with both IDs set and equal; no current `auth_user_id`-only or mismatched identity record exists. Therefore this is a forward-compatibility/consistency gap, not evidence of a currently affected electrician or an authorization bypass. Keep the feature-branch v2 offer-details contract and payout access aligned with the dual-key identity model; do not modify Production or broaden policies without a separately reviewed migration and runtime tests.
+
+
+## Refund cardinality and payment-ID lookup review (read-only)
+
+Production `srk_razorpay_refunds` currently has a unique index on `booking_id`, a unique index on `idempotency_key`, and a unique index on nullable `refund_id`; there is no unique index and no ordinary index on `payment_id`. The current table contains zero refund rows, so no live duplicate-payment-ID case was observed. Schema semantics allow more than one refund row to reference the same provider payment ID, but only one refund row per booking. This is consistent with the webhook handler's safety behavior: if a payment-ID lookup matches multiple refund rows, it returns retryable ambiguity instead of reconciling an arbitrary row.
+
+A feature-branch migration `20261112200000_index_refund_payment_lookup.sql` now adds a **non-unique** index on `payment_id`, preserving ambiguity detection while making the handler's lookup efficient as rows grow. It is replayed twice in the refund CI workflow; that workflow passed at run 43176559688. The integrated Timer parity workflow was extended too, but a shell continuation defect was found and corrected; its newest reruns are pending. This migration is not applied to Production.
