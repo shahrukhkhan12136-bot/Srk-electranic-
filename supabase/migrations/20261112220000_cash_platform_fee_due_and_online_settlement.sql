@@ -84,6 +84,11 @@ begin
                  or lower(coalesce(new.payment_method,'')) like '%नकद%';
 
     if v_is_cash then
+      -- Use the same per-electrician transaction lock as online settlements so
+      -- a concurrent cash receipt cannot be missed by the next online booking.
+      perform pg_catalog.pg_advisory_xact_lock(
+        pg_catalog.hashtextextended(v_profile_id::text, 0)
+      );
       -- Cash is paid directly to the electrician; no SRK payout is created.
       -- The fee becomes a due balance, once per booking.
       insert into public.srk_platform_fee_ledger
@@ -165,6 +170,11 @@ begin
     end if;
 
   elsif new.payment_status = 'refunded' then
+    if new.assigned_electrician_id is not null then
+      perform pg_catalog.pg_advisory_xact_lock(
+        pg_catalog.hashtextextended(new.assigned_electrician_id::text, 0)
+      );
+    end if;
     -- Refund reversals are immutable and idempotent. A refunded cash booking
     -- cancels its due; an online refund restores any old cash due it had settled.
     if exists (
