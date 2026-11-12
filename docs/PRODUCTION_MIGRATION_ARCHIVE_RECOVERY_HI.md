@@ -276,3 +276,9 @@ Read-only FK-to-leading-index comparison में कुछ वर्तमा�
 - यह current Production behavior का effect mapping है, missing migrations के exact SQL का substitute नहीं। `pg_net`, Vault secret, trigger, function deployment और Realtime publication मौजूद होने से यह सिद्ध नहीं होता कि missing migration source में और कौन-से statements थे या exact order क्या था।
 - Production refund tables पर manual refund audit trigger और Razorpay refund audit trigger मौजूद हैं। यह live effect `razorpay_refund_audit_trigger` migration के उद्देश्य से मेल खाता है, लेकिन original SQL अभी भी absent है।
 - कोई Production DDL/DML, migration history edit, Edge Function deploy, webhook send, secret read, या deployment नहीं किया गया।
+
+
+### Push subscription RLS — Production snapshot
+- `public.srk_push_subscriptions` पर RLS enabled है। Authenticated users के SELECT, INSERT, UPDATE और DELETE policies चारों `user_id = (select auth.uid())` ownership predicate लगाती हैं; UPDATE में USING और WITH CHECK दोनों मौजूद हैं।
+- यह user-owned subscription table की वर्तमान policy state का evidence है। Edge Function service-role client से subscriptions पढ़ती/expired entries delete करती है; client-side policy bypass को केवल trusted server function तक सीमित रखना आवश्यक है।
+- इस read-only pass में subscription table पर कोई policy, grant, row या schema change नहीं किया गया।
