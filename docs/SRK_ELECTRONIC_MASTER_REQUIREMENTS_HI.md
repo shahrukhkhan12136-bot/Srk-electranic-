@@ -1748,3 +1748,31 @@ No production schema, data, RPC, ACL, wallet, booking, payment, staging resource
 - कोई Production apply, paid staging resource या deployment अलग explicit approval के बिना नहीं।
 
 No production code/schema/ACL/data, payment, wallet, customer/electrician record, staging resource or deployment changed. केवल design contract documentation Feature Branch में जोड़ा गया।
+
+
+## 17.49 — Migration Commit-Ancestry Search और unresolved Cash Payment migration की source recovery (13 Nov 2026)
+
+GitHub repository के commit search और चुने गए commit diffs की जाँच की गई। यह उपलब्ध repository commit-search results तक सीमित है; deleted branches, forks, local clones, GitHub backups या Supabase dashboard के बाहर के स्रोत इसमें शामिल नहीं।
+
+### 1. Duplicate Cash Payment migration का परिणाम
+- Production migration version `20261111083811_add_assigned_electrician_cash_payment_status` के लिए exact version/name commit search में कोई result नहीं मिला।
+- `add_assigned_electrician_cash_payment_status` phrase search में भी कोई commit result नहीं मिला।
+- इसलिए दूसरी migration का source और उसका अलग applied effect अभी unresolved है। केवल live schema/functions से उसका exact historical SQL पुनर्निर्मित नहीं किया जा सकता।
+- पहले version `20261111082515` का exact source पहले sweep में मिला था; उससे दूसरे version का effect infer नहीं करना है।
+- No-op migration बनाकर history को “ठीक” करना, duplicate version को drop/rename करना या अनुमानित SQL replay करना निषिद्ध है।
+
+### 2. Commit diff में मिले अतिरिक्त lineage evidence
+- Commit `8c5a3dfefff85d4faf8c4fdff05cb7467236d96c` customer direct-call contact RPC migration जोड़ता है; active states की allow-list में completed नहीं है। यह उस commit की source history है, Production में exact body apply होने का स्वतंत्र प्रमाण नहीं।
+- Commit `04d0c02f03cd7fb27d9b699b109dedc0fa0e0bad` quote workflow का पूरा migration source जोड़ता है; पहले मौजूद one-line “Applied migration” note से source recovery संभव हुई। इससे historical quote dependency chain और commission/service-only behavior का evidence मिलता है।
+- Commit `a08a874098a9ee929c76bb94612b6dee4f93bf5e` Razorpay Route transfer reconciliation ledger का server-only schema दिखाता है; RLS enabled, anon/authenticated table privileges revoked, service_role write access. इसे live Production में मौजूद मानना अभी उचित नहीं; अलग live inventory चाहिए।
+- Commit `23fcdc2a95fcafd4ec321be02f091d0eed28802c` GPS columns और coordinate pair/range constraints का source दिखाता है; बाद के commit `762262ea9dfb64e0d4c1366d54953ec3402a90c0` में उन constraints को validate करने का evidence है।
+- Commit `c8144e4eabc4434603844f48aac335aada90fe1a` customer booking ownership column, index और own-booking SELECT policy का source दिखाता है।
+- Commit `7c13153393efbef7ab2150a5068d59e59358c847` private API rate-limit table और service_role-only RPC का source है; संबंधित filename correction commits भी मिले।
+
+### 3. निष्कर्ष और अगला सुरक्षित कदम
+- Commit search से कुछ पुराने migrations के source lineage का अतिरिक्त प्रमाण मिला, पर unresolved second Cash migration recover नहीं हुई।
+- अब प्रत्येक recovered source के लिए commit ancestry, blob SHA, Production migration version, live object definition और schema effect का अलग evidence map बनाना होगा।
+- Route transfer ledger, GPS constraints, booking ownership और rate-limit migration के live Production objects/ACLs को targeted SELECT-only catalog comparison से जाँचना होगा।
+- किसी recovered commit को अकेले Production migration का exact applied body न मानें; version/name/content/live effect का चार-तरफा मिलान आवश्यक है।
+
+No migration history, source file, branch, database object, data row, permission, payment setting or deployment changed. केवल commit-search और diff evidence Master Requirements में दर्ज किया गया।
