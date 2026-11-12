@@ -12,6 +12,8 @@ declare
  v_before_booking_status text;
  v_before_refund_status text;
  v_result jsonb;
+ v_provider_created_at timestamptz:=clock_timestamp();
+ v_provider_updated_at timestamptz:=clock_timestamp();
 begin
  select * into v_refund from public.srk_razorpay_refunds
  where booking_id='20000000-0000-4000-8000-000000000002';
@@ -27,10 +29,24 @@ begin
  if v_result->>'created'<>'true' then raise exception 'CASE_NOT_CREATED'; end if;
  v_result:=public.srk_admin_submit_refund_reconciliation_evidence(
   v_case_id,'51000000-0000-4000-8000-000000000002',v_refund.refund_id,
-  v_refund.payment_id,v_refund.amount_paise,v_refund.currency,'processed',now(),now(),
+  v_refund.payment_id,v_refund.amount_paise,v_refund.currency,'processed',v_provider_created_at,v_provider_updated_at,
   'Razorpay Dashboard evidence reference TEST-REF-001');
  v_evidence_id:=(v_result->>'evidence_id')::uuid;
  if v_result->>'replayed'<>'false' then raise exception 'EVIDENCE_FIRST_SUBMISSION_NOT_CREATED'; end if;
+ -- Exact payload replay is accepted, but changing a timestamp under the same Action ID is rejected.
+ v_result:=public.srk_admin_submit_refund_reconciliation_evidence(
+  v_case_id,'51000000-0000-4000-8000-000000000002',v_refund.refund_id,
+  v_refund.payment_id,v_refund.amount_paise,v_refund.currency,'processed',v_provider_created_at,v_provider_updated_at,
+  'Razorpay Dashboard evidence reference TEST-REF-001');
+ if v_result->>'replayed'<>'true' then raise exception 'EVIDENCE_REPLAY_NOT_IDEMPOTENT'; end if;
+ begin
+  perform public.srk_admin_submit_refund_reconciliation_evidence(
+   v_case_id,'51000000-0000-4000-8000-000000000002',v_refund.refund_id,
+   v_refund.payment_id,v_refund.amount_paise,v_refund.currency,'processed',v_provider_created_at+interval '1 second',v_provider_updated_at,
+   'Razorpay Dashboard evidence reference TEST-REF-001');
+  raise exception 'EVIDENCE_REPLAY_ACCEPTED_CHANGED_TIMESTAMP';
+ exception when sqlstate '23505' then null;
+ end;
 
  -- Same Admin cannot independently review their own evidence or case.
  begin
@@ -60,6 +76,12 @@ begin
  v_result:=public.srk_admin_review_refund_reconciliation_evidence(
   v_evidence_id,'51000000-0000-4000-8000-000000000004','verified_match','Identifiers, amount and currency match');
  if v_result->>'replayed'<>'true' then raise exception 'REVIEW_REPLAY_NOT_IDEMPOTENT'; end if;
+ begin
+  perform public.srk_admin_review_refund_reconciliation_evidence(
+   v_evidence_id,'51000000-0000-4000-8000-000000000004','verified_match','changed note must conflict');
+  raise exception 'REVIEW_REPLAY_ACCEPTED_CHANGED_NOTE';
+ exception when sqlstate '23505' then null;
+ end;
 
  -- A mismatched amount cannot be called a verified match; it can only be marked blocked.
  perform set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000003',false);
