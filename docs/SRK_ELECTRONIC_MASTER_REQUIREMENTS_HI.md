@@ -1776,3 +1776,48 @@ GitHub repository के commit search और चुने गए commit diffs �
 - किसी recovered commit को अकेले Production migration का exact applied body न मानें; version/name/content/live effect का चार-तरफा मिलान आवश्यक है।
 
 No migration history, source file, branch, database object, data row, permission, payment setting or deployment changed. केवल commit-search और diff evidence Master Requirements में दर्ज किया गया।
+
+
+## 17.50 — Recovered Migration Sources बनाम Live Production Schema/ACL का targeted comparison (13 Nov 2026)
+
+Production catalog से केवल schema metadata, constraints, policies, grants और function definition पढ़े गए। कोई table row, payment transfer, rate-limit record या customer/electrician PII नहीं पढ़ा गया।
+
+### 1. Razorpay Route Transfer Ledger — Live Production में मौजूद
+- `public.srk_route_transfers` Production में मौजूद है; RLS enabled, FORCE RLS false.
+- Live columns recovered commit `a08a8740...` के design से मेल खाते हैं: booking/payment/recipient, linked account, transfer ID, non-null idempotency key, paise amount, INR currency, transfer/settlement states, errors, timestamps.
+- Live constraints में positive amount, INR only, recipient type/user consistency, unique idempotency key, unique (payment ID, recipient type), unique transfer ID और booking/user foreign keys हैं।
+- Policy `srk_route_transfers_deny_client_api` anon और authenticated को ALL operations पर false करती है। Table grants snapshot में postgres और service_role दिखे; anon/authenticated grants नहीं दिखे।
+- Migration source ने service_role के लिए SELECT/INSERT/UPDATE लिखा था, जबकि वर्तमान `information_schema.role_table_grants` snapshot service_role पर DELETE/TRUNCATE सहित broader effective grants दिखाता है। यह अंतर जाँचने योग्य है; कोई privilege change नहीं किया गया।
+- यह schema मौजूद होने का प्रमाण है, न कि Razorpay Route live transfers चालू होने, linked account approved होने, या वास्तविक धन भेजे जाने का प्रमाण। Transfer functions/callers, triggers, service-role use और Test Mode/Live Mode permissions अलग जाँचेंगे।
+
+### 2. GPS Coordinate Constraints — तीनों tables पर validated
+- `service_bookings`, `electrician_applications`, `electrician_profiles` में latitude/longitude columns मौजूद हैं।
+- तीनों में coordinate pair और valid range constraints मौजूद हैं; सभी छह constraints `convalidated=true` हैं।
+- इसलिए GPS coordinate pair/range validation live Production में लागू और validated है।
+- इससे location permission consent, accuracy, stale location, radius policy या Smart Matching correctness प्रमाणित नहीं होती।
+
+### 3. Customer Booking Ownership — live evidence
+- `service_bookings.customer_user_id` मौजूद है और `auth.users(id)` foreign key के साथ `ON DELETE SET NULL` है।
+- Live SELECT RLS policy Admin या matching customer_user_id को booking read की अनुमति देती है। यह cross-user direct SELECT restriction का catalog evidence है; real JWT negative tests अभी बाकी हैं।
+- Historical guest/null ownership rows को automatically किसी Customer से link नहीं करना चाहिए।
+
+### 4. Public API Rate Limit — private schema में live
+- `private.srk_public_api_rate_limits` मौजूद है और RLS enabled है; FORCE RLS false. इस targeted policy query में कोई explicit table policy नहीं मिली।
+- `public.srk_check_public_rate_limit(text,text,integer)` postgres-owned SECURITY DEFINER है, fixed search_path `pg_catalog, private, pg_temp`; ACL में केवल postgres और service_role EXECUTE हैं, PUBLIC/anon/authenticated नहीं।
+- Function endpoint allow-list (booking/application), 64-char lowercase hex IP hash, limit 1–20, hourly window counter और 7-day cleanup लागू करता है।
+- Table grant snapshot में service_role पर broad privileges (DELETE/TRUNCATE सहित) दिखे; function स्वयं cleanup के लिए DELETE करता है। Least-privilege review आवश्यक है, पर अभी कोई grant बदला नहीं।
+- इससे rate-limit function/schema का live existence प्रमाणित है; production endpoint callers, IP hash derivation, actual limits और bypass resistance अभी अलग code/runtime test मांगते हैं।
+
+### 5. Migration lineage निष्कर्ष
+- Route Transfer, GPS, booking ownership और rate-limit source candidates का live schema effect काफी हद तक corroborate हुआ।
+- यह exact migration version/body applied होने का पूर्ण प्रमाण नहीं: migration history version, source blob, commit ancestry और live object effect का अलग-अलग मिलान जारी रहेगा।
+- Live GPS constraints validated हैं; Route Transfer ledger मौजूद है; private rate-limit table/function मौजूद हैं। इन features को “अभी Production में नहीं” कहना अब सही नहीं होगा।
+- दूसरी Cash Payment status migration `20261111083811` अब भी unresolved है; ऊपर के schema matches उससे संबंधित नहीं हैं।
+
+### 6. अगला सुरक्षित चरण
+1. Route Transfer के सभी functions, Netlify callers, webhook triggers, status update path और service_role usage का read-only inventory।
+2. Service_role grants के source/default privileges का catalog audit; least-privilege recommendation, बिना बदलाव।
+3. Rate-limit endpoint callers और actual per-endpoint limit values का code-to-live mapping।
+4. फिर शेष Production migration history के high-risk payment/security sources पर यही four-way comparison।
+
+No Production schema, grant, policy, record, payment/transfer, migration history, deployment or staging resource changed. यह SELECT-only evidence और Feature Branch documentation update है।
