@@ -363,3 +363,8 @@ Feature branch phone-visibility paths:
 - Customer and electrician UIs both render direct tel: call controls after the RPC provides the accepted counterpart number. No OTP/masked relay is required after acceptance, consistent with approved project rule.
 
 Added automated source/UI contract assertions to tests/timer-panel-contract.test.js. Commit a8e4a41. CI run was not yet visible at the time of this note; test execution remains pending CI confirmation. This static contract does not prove device-level E2E or every database identity edge case. No Production changes.
+
+
+## 2026-11-12 — Contact privacy contract CI result
+
+Added contact-visibility assertions to tests/timer-panel-contract.test.js and corrected timer-billing workflow push path filters so a test-only change triggers CI. GitHub Actions run 43175321207 completed SUCCESS at workflow commit d04f039fcd6810823e03e3fb387d738994da69fe. The job passed inline JS syntax checks, timer panel contract tests (including post-acceptance contact visibility), timer billing SQL tests, migration replay checks, and Production-shaped legacy parity replay for migrations 16000–16014. This remains synthetic PostgreSQL CI, not hosted Production migration replay or mobile/device E2E. 16015 is separately covered by refund-workflow harness; integrated all-in-one 16000–16015 plus final date-only/duration parity replay remains a release gate.
