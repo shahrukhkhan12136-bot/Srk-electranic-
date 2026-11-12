@@ -236,3 +236,13 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] Regression test जोड़ा: issued profile को दूसरे profile के Auth identity से relink करने का प्रयास reject हो और पुराना Auth link अपरिवर्तित रहे।
 - [I] GitHub Actions run 43169829039 SUCCESS at commit `0b1dd1a7`: disposable PostgreSQL fixture, migration/catalog security assertions, issuance/immutability/client-supplied ID behavior, duplicate identity relink rejection और 24 concurrent ID issuance stress tests pass।
 - [T] यह CI disposable fixture evidence है; Production schema पर migration लागू नहीं हुई और वास्तविक Admin/Android UI E2E बाकी है।
+
+
+
+## B.5 Production migration-history drift — read-only discovery (2026-11-12)
+- [I] Production Supabase migration history read-only मिली: 78 applied entries; Feature Branch में 57 SQL migration files। केवल 7 entries में version + name दोनों exact match हैं; 16 branch filenames के migration names Production में मिलते हैं, जिनमें कई timestamp mismatch हैं।
+- [I] Production में `add_assigned_electrician_cash_payment_status` नाम की दो अलग migration versions (11082515 और 11083811) दर्ज हैं; branch में एक ही file है।
+- [I] Read-only schema probe: पुराने refund request/refund tables मौजूद; timer payable snapshots, Razorpay snapshot order/payment ledger, rate catalogue, rate audit, webhook event ledger, booking idempotency table और नए order/duration/rate/electrician-ID columns मौजूद नहीं मिले।
+- [I] विस्तृत 78-vs-57 comparison और सुरक्षित reconciliation gate `docs/MIGRATION_RELEASE_SEQUENCE_AUDIT_HI.md` में दर्ज।
+- [T] यह migration drift अब सबसे बड़ा Production blocker है। किसी migration को timestamp/name अनुमान से apply, skip, rename या mark-applied नहीं करना। पहले प्रत्येक mismatch का SQL-level reconciliation और disposable Production-parity replay जरूरी है।
+- [T] Production DB में कोई write/migration नहीं की गई। NO-GO for Production जारी।
