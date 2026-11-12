@@ -167,6 +167,28 @@ begin
   elsif new.payment_status = 'refunded' then
     -- Refund reversals are immutable and idempotent. A refunded cash booking
     -- cancels its due; an online refund restores any old cash due it had settled.
+    if exists (
+      select 1 from public.srk_electrician_payouts
+       where booking_id = new.id and payout_status = 'paid'
+    ) then
+      raise exception 'Refund requires Admin reconciliation because the electrician payout is already marked paid';
+    end if;
+
+    -- The ledger currently settles old dues as a pooled balance. If any later
+    -- online booking has already settled this electrician's pooled due, do not
+    -- silently erase a refunded cash fee: an Admin reconciliation is required.
+    if exists (
+      select 1
+        from public.srk_platform_fee_ledger due_entry
+        join public.srk_platform_fee_ledger settlement
+          on settlement.electrician_profile_id = due_entry.electrician_profile_id
+         and settlement.entry_type = 'cash_due_settlement'
+         and settlement.created_at > due_entry.created_at
+       where due_entry.booking_id = new.id
+         and due_entry.entry_type = 'cash_due'
+    ) then
+      raise exception 'Cash refund after a later fee settlement requires Admin reconciliation; refund blocked to protect the fee ledger';
+    end if;
     insert into public.srk_platform_fee_ledger
       (electrician_profile_id,booking_id,entry_type,amount,idempotency_key,note,created_by)
     select electrician_profile_id,booking_id,'cash_due_reversal',amount,
