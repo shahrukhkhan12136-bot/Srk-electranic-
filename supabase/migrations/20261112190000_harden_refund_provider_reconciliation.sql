@@ -44,6 +44,13 @@ begin
  -- Processed and failed are terminal provider states. Ignore stale pending
  -- notifications after failure; do not silently reopen or downgrade a refund.
  if v_refund.status='processed' then
+  -- Legacy processed rows may not yet have a provider refund ID. Bind the
+  -- first verified ID without changing the terminal status or timestamps.
+  if v_refund.refund_id is null and p_provider_refund_id is not null then
+   update public.srk_razorpay_refunds
+   set refund_id=p_provider_refund_id,updated_at=clock_timestamp()
+   where id=p_refund_record_id and refund_id is null;
+  end if;
   return jsonb_build_object('success',true,'status','processed','replayed',true);
  end if;
  if v_refund.status='failed' then
