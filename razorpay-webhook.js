@@ -107,7 +107,7 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
   lookup.searchParams.set("provider", "eq.razorpay");
   lookup.searchParams.set("provider_event_id", "eq." + eventMeta.eventId);
   lookup.searchParams.set("select", "id,processing_status,attempt_count,payload_sha256,processing_started_at");
-  lookup.searchParams.set("limit", "1");
+  lookup.searchParams.set("limit", "2");
   if (!row) {
     const existingResponse = await fetch(lookup, {
       headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
@@ -302,7 +302,12 @@ exports.handler = async (event) => {
       const found = await fetch(lookup, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } });
       if (!found.ok) throw new Error("Refund ledger lookup failed");
       const rows = await found.json();
-      const record = Array.isArray(rows) ? rows[0] : null;
+      if (!Array.isArray(rows)) throw new Error("Refund ledger lookup returned an invalid response");
+      if (rows.length > 1) {
+        // Never reconcile an arbitrary ledger row when the payment ID is ambiguous.
+        return json(500, { success: false, retry: true, error: "ambiguous_refund_ledger_match" });
+      }
+      const record = rows[0] || null;
       if (!record) return json(200, { success: true, ignored: true, reason: "refund_not_managed_by_srk" });
       const providerStatus = refund.status === "processed" ? "processed" :
         refund.status === "failed" ? "failed" : "pending";
