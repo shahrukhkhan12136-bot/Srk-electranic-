@@ -1479,3 +1479,34 @@ Production catalog से constraints, selected RPC grants और service_bookin
 6. Only after old callers are removed and historical records are preserved, plan deprecation of legacy quote flow.
 
 No Production constraint, grant, trigger, function, table, row, payment, wallet balance, migration history or deployment changed.
+
+
+## 17.43 — Repository-wide Quote/Work-Status Callers और Admin Direct-Mutation Sweep (13 Nov 2026)
+
+GitHub code search और Feature Branch source excerpts से पुराने Quote/Work-Status contract के अतिरिक्त callers की जाँच की गई। Search index default-branch snapshots/excerpts देता है; जहाँ आवश्यक हो Feature Branch file source से पुष्टि की गई। यह exhaustive runtime call graph नहीं है।
+
+### Confirmed callers / dependencies
+- `electrician.html`: `srk_update_booking_work_status` (inspection/in_progress/completed), `srk_submit_booking_quote` (service + materials), `srk_respond_to_offer` (accept/decline), `srk_get_my_offer_details` (offer and booking detail). UI still shows quote amount, quote controls, customer phone/address/location and legacy statuses.
+- `index.html`: separate/older Customer quote-response UI calls `srk_customer_respond_booking_quote`; customer booking list reads quoted_amount, service_charge, materials_amount, quote_status, quote_note and displays quote approval/rejection controls. This confirms Customer quote flow has more than one page/caller and cannot be retired by editing only `booking.html`.
+- `booking.html`: customer history/payment flow reads quote fields and legacy status; Cash-to-Online selection and Online payment still depend on legacy booking state/amount.
+- `create-booking.js`: reads client `quoted_amount` and stores client-provided amount after numeric validation; authentication/phone verification alone does not make client amount authoritative.
+- `razorpay-webhook.js`: reads `quoted_amount, service_charge, materials_amount, quote_status, status, payment_status`; computes expected amount from service + materials and cross-checks quote total. Replacing the UI without replacing webhook contract would break/incorrectly reject payments.
+- `admin.html`: Admin booking table directly reads booking financial/status fields and exposes editable `quoted_amount`, payment status selector and booking status selector; separate save flow exists. It also directly edits address/district/state/PIN on booking rows. These paths need server-side, reasoned Admin RPCs and immutable before/after audit for timer amount, payment and location changes. Do not assume Admin page visibility alone enforces permissions.
+- `admin.html` separately uses controlled payout RPC `srk_admin_mark_electrician_payout_paid`, Admin wallet overview and reporting RPCs; preserve these and migrate them to the new timer/fee ledger contract rather than removing Admin financial controls.
+
+### Critical implications
+1. Customer old quote UI is present in `index.html` as well as booking flow; route consolidation and customer-panel replacement must include both entry points.
+2. Work status, quote approval, booking creation, Razorpay webhook, cash confirmation, payout trigger and Admin editing are one connected financial lifecycle. Partial UI-only replacement is unsafe.
+3. Admin direct amount/status edits are a control-plane risk for the future immutable timer bill. New Admin adjustment RPC must require a reason, validate payment/refund/payout state, preserve original bill, write an adjustment event, and audit actor + before/after + timestamp.
+4. Client `quoted_amount` should be ignored/rejected by new booking API; server must derive category price snapshot from approved service category and Master rate table. Do not silently alter old API before all clients are migrated.
+5. Razorpay order, verify and webhook handlers must consume one frozen server billing snapshot and verify booking, customer, INR currency, amount, payment method, order/payment IDs, event idempotency and out-of-order state. Materials remain separately itemized and excluded from Platform Fee basis.
+6. Legacy quote status and fields remain necessary for historical bookings and existing in-flight records until the new timer lifecycle is live and a reconciliation/backfill strategy is tested.
+
+### Next safe implementation order
+- Create an explicit caller matrix for every route/API/RPC/trigger/Admin screen, with old/new contract and rollback behavior.
+- Design additive timer event + immutable billing snapshot + adjustment event schema, then review all old migration dependencies.
+- Build and test server RPCs and payment handlers first in isolated Feature Branch; keep legacy paths readable for historical rows.
+- Migrate Electrician UI, Customer panel, Admin UI, receipts/history and notifications together behind a versioned flow; then run end-to-end Cash and Online tests.
+- Retire old quote UI/RPC only after code search, live function dependency scan, browser E2E, payment webhook regression and historical-record verification show no active caller.
+
+No application code, database function, table, ACL, payment provider, booking/customer record or deployment changed. Only this documentation section was added to the Feature Branch.
