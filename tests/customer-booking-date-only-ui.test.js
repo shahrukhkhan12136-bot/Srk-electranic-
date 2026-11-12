@@ -60,9 +60,9 @@ test("customer booking hides the mobile input and uses the OTP-verified account 
   const submitStart = html.indexOf("document.getElementById('booking').addEventListener('submit'");
   const submitEnd = html.indexOf("document.getElementById('payNow').addEventListener", submitStart);
   const submitHandler = html.slice(submitStart, submitEnd);
-  assert.match(submitHandler, /customerSb\\.auth\\.getSession\\(\\)/);
-  assert.match(submitHandler, /bookingSession\\.user\\.phone/);
-  assert.match(submitHandler, /मोबाइल: \\$\\{registeredPhone\\}/);
-  assert.doesNotMatch(submitHandler, /value\\(['"]phone['"]\\)/);
-  assert.match(submitHandler, /customer_name: value\\('name'\\), state: value\\('state'\\)/);
+  assert.ok(submitHandler.includes("customerSb.auth.getSession()"));
+  assert.ok(submitHandler.includes("bookingSession.user.phone"));
+  assert.ok(submitHandler.includes("मोबाइल: ${registeredPhone}"));
+  assert.ok(!submitHandler.includes("value('phone')"));
+  assert.ok(submitHandler.includes("customer_name: value('name'), state: value('state')"));
 });
