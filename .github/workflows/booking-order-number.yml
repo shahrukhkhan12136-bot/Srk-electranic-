@@ -1,4 +1,4 @@
-name: Verify live effective rate selection in booking RPC
+name: Verify customer and Admin effective rate catalogue flows
 on:
   push:
     branches: ["feature/production-push-notifications"]
@@ -8,6 +8,7 @@ on:
       - "supabase/migrations/20261112140000_customer_booking_duration_pricing.sql"
       - "supabase/migrations/20261112150000_versioned_rate_catalogue.sql"
       - "supabase/migrations/20261112160000_admin_rate_catalogue_management.sql"
+      - "supabase/migrations/20261112170000_public_customer_rate_catalogue_rpc.sql"
       - "supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql"
       - "supabase/tests/booking_order_number_fixture.sql"
       - "supabase/tests/customer_booking_date_only_rpc_assertions.sql"
@@ -121,6 +122,7 @@ jobs:
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112140000_customer_booking_duration_pricing.sql
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112150000_versioned_rate_catalogue.sql
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112160000_admin_rate_catalogue_management.sql
+          psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112170000_public_customer_rate_catalogue_rpc.sql
           psql "postgresql://postgres@localhost:5432/srk_order_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112120000_electrician_offer_order_number_rpc.sql
       - name: Assert numbering, immutability, uniqueness, RPC scope and PII privacy
         env:
