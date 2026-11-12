@@ -14,7 +14,8 @@ assert.ok(!html.includes('value="shahrookhkhan206@gmail.com"'), 'Page must not p
 assert.ok(worker.includes("addEventListener('push'"), 'Worker must handle push events');
 assert.ok(worker.includes("addEventListener('notificationclick'"), 'Worker must handle notification clicks');
 assert.ok(worker.includes('candidate.origin === self.location.origin'), 'Worker must reject cross-origin navigation');
-assert.ok(worker.includes("candidate.pathname === '/electrician.html'"), 'Worker must only open the electrician dashboard');
+assert.ok(worker.includes('candidate.pathname === TEST_SCOPE_PATH'), 'Worker must only open its own test-page scope');
+assert.ok(worker.includes('new URL(self.registration.scope).pathname'), 'Worker must respect GitHub Pages project-path deployments');
 
 new vm.Script(inlineScript);
 new vm.Script(worker);
