@@ -62,6 +62,7 @@ test("customer booking hides the mobile input and uses the OTP-verified account 
   const submitHandler = html.slice(submitStart, submitEnd);
   assert.ok(submitHandler.includes("customerSb.auth.getSession()"));
   assert.ok(submitHandler.includes("bookingSession.user.phone"));
+  assert.ok(submitHandler.includes("replace(/" + String.raw`\D` + "/g"));
   assert.ok(submitHandler.includes("मोबाइल: ${registeredPhone}"));
   assert.ok(!submitHandler.includes("value('phone')"));
   assert.ok(submitHandler.includes("customer_name: value('name'), state: value('state')"));
