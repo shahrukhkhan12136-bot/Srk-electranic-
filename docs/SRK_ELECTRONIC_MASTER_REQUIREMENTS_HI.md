@@ -956,3 +956,36 @@ G. **Release gate:** Security/Performance/Health advisors, migration diff, finan
 
 **अभी की स्थिति:** यह consolidated gap analysis और sequencing है। किसी gap को इस दस्तावेज़ में लिख देने से वह implemented नहीं हो जाता। Production database, live payment provider, user records, app source behavior और deployment में इस चरण पर कोई बदलाव नहीं किया गया।
 
+### 17.27 — Production Migration History बनाम वर्तमान Feature Branch: पुनःगणना और lineage blockers (13 Nov 2026)
+
+इस चरण में Supabase Production migration history को दोबारा पढ़कर वर्तमान Feature Branch के वास्तविक `supabase/migrations` tree से version-level तुलना की गई। यह read-only reconciliation है।
+
+**पुनः सत्यापित गिनती**
+- Production migration history: **81 entries**।
+- वर्तमान Feature Branch tree: **21 SQL migration files** (पिछले 21-file snapshot से मेल; earlier rough note में दिखी 23 संख्या tree parse की गलती थी, सही count 21 है)।
+- Exact 14-digit version match: केवल **5** — `20261108120608`, `20261108120658`, `20261108121115`, `20261109103038`, `20261109103143`।
+- Production history की **76 entries** के लिए इस branch में उसी exact version वाला SQL file नहीं मिला।
+- Branch के 21 files में 2 legacy filenames में 14-digit prefix नहीं है; शेष 19 में से **16 versions** Production history में exact version के रूप में नहीं मिले।
+- Production history में एक ही migration name `add_assigned_electrician_cash_payment_status` दो अलग versions पर है: `20261111082515` और `20261111083811`। यह duplicate name अपने आप duplicate SQL या safe no-op सिद्ध नहीं करता; दोनों के applied effects अलग से reconstruct करने होंगे।
+
+**Exact version overlap का अर्थ**
+- ये पाँच version matches केवल version/name alignment दिखाते हैं; Production में लागू SQL body और Feature Branch file content की equivalence अपने आप सिद्ध नहीं होती।
+- Production migration history में SQL source body उपलब्ध नहीं है। इसलिए history row को source-of-truth SQL मानना या उसी नाम वाली दूसरी branch file को exact source मान लेना सुरक्षित नहीं।
+- पहले 14-branch sweep में 40 Production migration names के same-name candidates किसी न किसी branch में मिले थे; 41 exact filenames उस sweep में नहीं मिले। उस sweep में 3 matched names के अलग-अलग Git blob SHA भी मिले थे। यह cross-branch filename discovery है, Production-applied SQL equivalence का प्रमाण नहीं।
+
+**ताज़ा blockers**
+1. 76 remote version entries की exact source recovery या applied-schema-effect reconstruction आवश्यक है।
+2. दो duplicate-name cash-payment versions के लिए दोनों version-specific SQL bodies, commit ancestry और resulting function/constraint/trigger state का मिलान आवश्यक है।
+3. बिना timestamp वाली दो Feature Branch migration filenames की CLI/parser compatibility और migration-history behavior अलग जाँचना होगा; उन्हें मनमाने timestamp से rename नहीं करना।
+4. Feature Branch-only cash-cycle, labour-only material separation, customer payment choice, explicit cash-to-online switch और cash-fee settlement migrations Production history में exact version से अनुपस्थित हैं। ये branch files अभी Production में लागू नहीं मानी जाएँगी; इनके SQL body, dependencies, tests और Master policy compatibility का review बाकी है।
+5. Remote history में मौजूद migration के लिए source नहीं मिलने पर live schema से अनुमान लगाकर पुरानी migration को दोबारा चलाना नहीं। पहले schema effect, object definitions, grants, data impact और dependencies का evidence pack बनाना होगा।
+
+**सुरक्षित निष्कर्ष**
+- Production migration history को reset, squash, rebase या replay नहीं करना।
+- Existing remote migration rows को delete/rename/repair नहीं करना।
+- Production पर कोई migration apply नहीं करना।
+- नई migration file अभी नहीं बनाई गई; Supabase CLI migration generator उपलब्ध नहीं है, और सही CLI workflow के बिना timestamp/file format गढ़ना मना है।
+- अगला सुरक्षित काम: 76 remote-only versions के नामों को cross-branch source candidates, Git commit ancestry, blob SHA और live schema object changes से एक-एक करके map करना; पहले highest-risk security/contact/payment migrations की lineage पूरी करना।
+
+**सीमा:** Production पर केवल migration history read की गई और GitHub Feature Branch tree पढ़ा गया। कोई migration apply/repair/delete/rename नहीं हुई; कोई schema/data/auth/payment/deployment बदलाव नहीं हुआ।
+
