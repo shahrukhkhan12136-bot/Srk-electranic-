@@ -10,10 +10,10 @@ create table if not exists public.srk_rate_catalogue (
   effective_from date not null,
   created_at timestamptz not null default now(),
   created_by uuid,
-  constraint srk_rate_catalogue_category_version_key unique(category_code,version),
-  constraint srk_rate_catalogue_category_effective_key unique(category_code,effective_from)
+  constraint srk_rate_catalogue_category_version_key unique(category_code,version)
 );
 
+alter table public.srk_rate_catalogue drop constraint if exists srk_rate_catalogue_category_effective_key;
 alter table public.srk_rate_catalogue enable row level security;
 revoke all on table public.srk_rate_catalogue from public, anon, authenticated;
 
@@ -141,7 +141,7 @@ begin
     into v_rate_catalogue_id,v_rate_version,v_rate,v_label
   from public.srk_rate_catalogue c
   where c.category_code=v_category and c.effective_from <= current_date
-  order by c.effective_from desc
+  order by c.effective_from desc,c.version desc
   limit 1;
   if v_rate_catalogue_id is null then
     raise exception 'RATE_NOT_CONFIGURED_FOR_DATE' using errcode='55000';
