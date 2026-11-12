@@ -243,3 +243,12 @@ Read-only FK-to-leading-index comparison में कुछ वर्तमा�
 ### Repository-wide migration-directory commit history
 - GitHub commit-history API में supabase/migrations directory को छूने वाले commits भी जाँचे गए। उपलब्ध repository history में directory के लिए 22 commits लौटे; उनमें कई बाद की migrations/renames मौजूद हैं, लेकिन शुरुआती unresolved security/payment-lock SQL के commits नहीं मिले।
 - इससे संकेत मिलता है कि शुरुआती Production migrations संभवतः Supabase dashboard/CLI से सीधे लागू हुईं या इस GitHub repository में कभी commit नहीं हुईं। यह केवल inference है—जब तक deployment logs या original migration archive न मिले, exact execution path तय नहीं है।
+
+### सभी SECURITY DEFINER RPCs के EXECUTE grants — विस्तृत read-only pass
+- Production project में कोई Supabase development branch मौजूद नहीं है (`list_branches` खाली लौटा); इसलिए इस जाँच में कोई branch create नहीं की गई और कोई compute cost नहीं हुई।
+- Catalog query में `public` और `private` schemas के सभी SECURITY DEFINER functions के EXECUTE ACLs जाँचे गए। `anon` role को किसी भी ऐसे function पर EXECUTE grant नहीं मिला।
+- जिन SECURITY DEFINER functions पर `authenticated` EXECUTE grant है, उनके bodies में `auth.uid()` का उपयोग मिला। सभी `srk_admin_*` RPCs में `public.is_srk_admin()` guard भी मिला। Customer/Electrician RPCs में auth.uid() आधारित ownership/identity checks मौजूद हैं; यह static body scan है, प्रत्येक function का adversarial runtime test नहीं।
+- `private.srk_get_customer_call_contacts_impl()` पर authenticated EXECUTE grant है, लेकिन body auth.uid() null check करती है और केवल उसी user की assigned booking के electrician contacts लौटाती है; booking status allowlist भी लागू है।
+- `private.srk_save_push_subscription()` पर authenticated EXECUTE grant है और body auth.uid() से user identity लेती है।
+- निष्कर्ष: इस catalog pass में कोई SECURITY DEFINER RPC `anon` के लिए खुला नहीं मिला। फिर भी authenticated RPCs के complete ownership checks, nested function calls, object qualification और grants की function-by-function review बाकी है।
+- यह current Production ACL/body snapshot है, historical migration SQL की recovery या end-to-end authorization proof नहीं। कोई Production परिवर्तन नहीं किया गया।
