@@ -663,3 +663,15 @@ Live Production PostgreSQL function catalog में `public` और `private` 
 - Production में `add_assigned_electrician_cash_payment_status` नाम की दो अलग history versions (`20261111082515`, `20261111083811`) हैं, जबकि scanned branches में candidate filename एक version (`20261111082515`) के साथ मिली। दोनों remote history entries की SQL/provenance अलग से verify करनी होगी।
 
 **निर्णय:** migration reconciliation अब केवल filename/version count नहीं रह गया; branch-level content divergence भी मिली है। किसी migration को timestamp rename करके, SQL hash assume करके, या alternate branch से सीधे Feature Branch में copy करके reconcile नहीं करना है। हर remote version के लिए applied schema effect, source commit, SQL body और dependency order की evidence mapping आवश्यक है। कोई migration apply/rename/delete/squash/reset नहीं की गई।
+
+
+### 17.15 — Direct table RLS बनाम SECURITY DEFINER contact paths (13 Nov 2026)
+
+Live Production `pg_policies` का read-only निरीक्षण:
+- `service_bookings` SELECT policy authenticated users को केवल Admin या उसी customer (`customer_user_id = auth.uid()`) की booking पढ़ने देती है। Electrician के लिए direct SELECT policy नहीं दिखी।
+- `electrician_profiles` SELECT policy केवल linked electrician (`auth_user_id/user_id = auth.uid()`) या Admin को profile पढ़ने देती है।
+- `job_offers` SELECT policy केवल Admin या approved+active linked electrician की अपनी offers तक सीमित है।
+- इसलिए इन तीन tables पर inspected direct RLS predicates customer/electrician cross-user contact access को सीमित करते हैं। पर SECURITY DEFINER RPCs owner privileges के साथ चल सकते हैं; उनके अपने identity/assignment/status predicates निर्णायक हैं। इसी कारण ऊपर पहचाने गए RPC return paths RLS से अलग high-priority review हैं।
+- यह केवल SELECT policy snapshot है; INSERT/UPDATE/DELETE grants, column-level grants, सभी related tables, actual role/session negative tests और function owner/bypass behavior का पूरा audit अभी बाकी है।
+
+**निष्कर्ष:** अभी direct table RLS में इन तीन tables पर कोई broad cross-user SELECT policy नहीं दिखी; पर यह completed booking phone leakage को neutralize नहीं करती। कोई policy, grant या database object बदला नहीं गया।
