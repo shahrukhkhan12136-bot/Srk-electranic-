@@ -20,6 +20,8 @@ assert.ok(existingCaseLookup >= 0 && eligibilityCheck > existingCaseLookup,
   'Existing reconciliation cases must be returned before applying new-case eligibility restrictions');
 
 const source = scripts[0];
+assert.ok(source.includes("catch(error){msg.textContent='नेटवर्क उत्तर नहीं मिला:'"),
+  'Evidence and review handlers must catch rejected network promises and preserve retry state');
 const start = source.indexOf('// --- Admin-only, advisory refund evidence reconciliation.');
 const end = source.indexOf('function esc(s){', start);
 assert.ok(start >= 0 && end > start, 'Reconciliation workspace block must exist');
