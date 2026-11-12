@@ -627,3 +627,24 @@ Safety boundary: no production SQL, function, grant, table, or customer data was
 20261112182839 increase_schema_export_role_connection_limit
 ```
 यह सूची filename-level inventory है, missing schema objects की final list नहीं। इनमें से कुछ SQL दूसरे नाम/timestamp से मौजूद हो सकते हैं; content hash और target schema state compare किए बिना इन्हें replay या recreate नहीं करना है।
+
+
+### 17.13 — Full live database phone-returning function inventory (13 Nov 2026)
+
+Live Production PostgreSQL function catalog में `public` और `private` schemas की सभी ordinary functions के source में `phone` शब्द की read-only खोज की गई। इससे एक अतिरिक्त महत्वपूर्ण Electrician-side exposure मिला:
+
+- `public.srk_get_my_offer_details()` — `SECURITY DEFINER`, anon EXECUTE नहीं, authenticated EXECUTE है। यह `p.user_id = auth.uid()`, approved और active electrician profile की जाँच करता है; फिर assigned booking के लिए customer name, phone, address, coordinates और quote details लौटाता है। लेकिन assigned booking status allow-list में `completed` भी शामिल है। इसलिए electrician completed booking के बाद भी इस RPC से customer phone और location/address पा सकता है। यह सीधे Master Requirement के विरुद्ध है।
+- Feature Branch `electrician.html` इसी `srk_get_my_offer_details` RPC से आए `o.customer_phone` को UI में render करता है और `tel:` link बनाता है। इस UI path में completed status पर phone छिपाने का अलग guard नहीं मिला। यह live function और Feature Branch UI दोनों की source-level पुष्टि है।
+- इस प्रकार अब customer-facing paths के अलावा कम-से-कम दो Electrician-facing paths में completed booking contact exposure मिला: (1) `srk_electrician_get_my_assigned_booking_contacts()`, (2) `srk_get_my_offer_details()`।
+- `srk_admin_get_booking_contacts`, `srk_admin_list_booking_complaints`, `srk_admin_list_booking_refund_requests`, `srk_admin_list_electrician_verification_documents` जैसे phone-bearing functions भी मिले; इनके definitions में Admin guard `auth.uid()` और `is_srk_admin()` मौजूद है। ये Admin-only operational functions हैं; इनको सामान्य user contact RPC से अलग review करना है, blanket revoke नहीं।
+- सभी मिले ordinary functions में ACL scan ने संबंधित phone-bearing public/private RPCs के लिए anon EXECUTE false और authenticated EXECUTE true दिखाया; Admin functions में भी authenticated role execute कर सकता है, लेकिन function body Admin authorization gate लगाता है। SECURITY DEFINER के कारण body guard/identity predicates अनिवार्य हैं।
+- Live Production में `service_bookings` status counts query ने केवल एक `completed` row लौटाई। यह सीमित production sample है; इससे सभी lifecycle states या सभी customers/electricians के व्यवहार का अनुमान नहीं लगाना है। कोई phone number या customer PII रिपोर्ट में copy नहीं किया गया।
+
+**सुधार का विस्तारित target:**
+1. Customer contact paths: `srk_get_customer_call_contacts`, `private.srk_get_customer_call_contacts_impl`, `srk_customer_get_my_booking_contacts` — completed/cancelled/rejected/unassigned पर कोई electrician contact नहीं।
+2. Electrician contact paths: `srk_electrician_get_my_assigned_booking_contacts` और `srk_get_my_offer_details` — completed/cancelled/rejected/unassigned पर customer phone/address/coordinates नहीं। केवल currently assigned/accepted active booking पर contact data।
+3. Offer history/list behavior अलग से तय करना होगा: completed booking की non-sensitive summary दिख सकती है, लेकिन customer phone, address और exact coordinates वापस न हों।
+4. Admin contact/complaint/refund/verification workflows में Admin guard और least-privilege review बनाए रखें।
+5. API tests में सीधे authenticated RPC calls से negative tests जरूरी हैं; केवल HTML में button छिपाना पर्याप्त नहीं।
+
+यह inventory SQL catalog और Feature Branch source inspection पर आधारित है। कोई database function, grant, frontend file, customer record या deployment बदला नहीं गया; browser/API regression tests अभी नहीं चले हैं।
