@@ -52,6 +52,7 @@ includesAll(webhook, [
   '["received", "retryable_error"]', "inProgress",
   "Webhook event ledger claim reconciliation failed",
   "processing_started_at", "staleProcessing", "5 * 60 * 1000",
+  "leaseStartedAt", "Webhook processing lease was lost before completion",
   "snapshot_event_in_progress",
   "refundEventMeta", "startSnapshotWebhookEvent(refundEventMeta, null, refund.payment_id)",
   "refundEvent.inProgress", "refund_reconcile_error", "refund_" + providerStatus,
