@@ -335,3 +335,8 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Production srk_respond_to_offer confirms assigned_electrician_id is written only on accepted offer; this is the durable acceptance marker.
 - Feature RPC only reveals customer phone to matching assigned electrician; customer contact RPC only returns assigned electrician phone for owned booking with assignment. Customer contact remains available after completion via migration 16014.
 - Added source/UI contract assertions in tests/timer-panel-contract.test.js (commit a8e4a41). Awaiting CI result; no device E2E claim.
+
+
+### CI confirmation — contact privacy and timer parity
+- Commit d04f039 triggered Timer billing SQL workflow run 43175321207: SUCCESS. Contact privacy assertions in timer-panel-contract.test.js passed alongside Timer SQL, replay, and synthetic Production-shaped legacy parity tests for 16000–16014.
+- This is CI fixture evidence only. It does not mean Production migrations were applied or APK/device E2E passed. Integrated 16015 + date-only/duration release parity remains outstanding.
