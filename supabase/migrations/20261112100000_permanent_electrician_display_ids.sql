@@ -27,6 +27,30 @@ as $function$
 declare
   v_next_id bigint;
 begin
+  -- A single Auth identity must not be ambiguously linked to another profile
+  -- through either legacy user_id or auth_user_id column. Existing records may
+  -- be retained on INSERT without an issued ID, but an UPDATE must not create
+  -- or preserve a conflicting identity link.
+  if exists (
+    select 1
+      from public.electrician_profiles p
+     where p.id is distinct from new.id
+       and (
+         (new.user_id is not null and
+           (p.user_id = new.user_id or p.auth_user_id = new.user_id))
+         or
+         (new.auth_user_id is not null and
+           (p.user_id = new.auth_user_id or p.auth_user_id = new.auth_user_id))
+       )
+  ) then
+    if tg_op = 'UPDATE' then
+      raise exception using
+        errcode = '23505',
+        message = 'Electrician Auth identity is already linked to another profile';
+    end if;
+    return new;
+  end if;
+
   -- Once issued, the readable ID is immutable even if profile status changes.
   if tg_op = 'UPDATE' and old.electrician_display_id is not null then
     if new.electrician_display_id is distinct from old.electrician_display_id then
@@ -43,23 +67,6 @@ begin
     raise exception using
       errcode = '22000',
       message = 'Electrician display ID is generated only by the server';
-  end if;
-
-  -- A single Auth identity must not be ambiguously linked to another profile
-  -- through either legacy user_id or auth_user_id column.
-  if exists (
-    select 1
-      from public.electrician_profiles p
-     where p.id is distinct from new.id
-       and (
-         (new.user_id is not null and
-           (p.user_id = new.user_id or p.auth_user_id = new.user_id))
-         or
-         (new.auth_user_id is not null and
-           (p.user_id = new.auth_user_id or p.auth_user_id = new.auth_user_id))
-       )
-  ) then
-    return new;
   end if;
 
   -- Do not issue an ID for pending, rejected, suspended, inactive, or unlinked profiles.
