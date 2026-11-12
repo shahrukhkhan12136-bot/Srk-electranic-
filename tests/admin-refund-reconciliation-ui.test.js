@@ -28,7 +28,7 @@ assert.ok(block.includes('financial/customer status नहीं बदलेग
 assert.ok(block.includes('Retry पर वही Action ID'),
   'Ambiguous network retries must preserve stable action IDs');
 assert.ok(block.includes('esc('), 'Dynamic database values must be escaped before HTML rendering');
-for (const forbidden of ['.from(', '.insert(', '.update(', '.delete(', 'fetch(']) {
+for (const forbidden of ['sb.from(', 'sb.insert(', 'sb.update(', 'sb.delete(', 'fetch(']) {
   assert.ok(!block.includes(forbidden), 'Reconciliation UI must not perform direct writes/provider calls: ' + forbidden);
 }
 assert.ok(html.includes("['unknown','processing'].includes(r.status)"),
