@@ -19,7 +19,7 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
 <h1>SRK ELECTRONIC Push Notification Test</h1>
 <p>इस पेज से केवल TEST Supabase अकाउंट में लॉगिन करके इस Android ब्राउज़र की Push Subscription सेव होगी। कोई ग्राहक डेटा या भुगतान इस्तेमाल नहीं होगा।</p>
 <form id="login">
-<label for="email">TEST ईमेल</label><input id="email" type="email" autocomplete="username" required value="shahrookhkhan206@gmail.com">
+<label for="email">TEST ईमेल</label><input id="email" type="email" autocomplete="username" required >
 <label for="password">TEST पासवर्ड</label><input id="password" type="password" autocomplete="current-password" required>
 <button type="submit">TEST अकाउंट लॉगिन करें</button>
 </form>
@@ -84,13 +84,12 @@ button.secondary{background:#e8efeb;color:#17392d}button:disabled{opacity:.5}
       const json = subscription.toJSON();
       const { data: userData, error: userError } = await client.auth.getUser();
       if (userError || !userData.user) throw userError || new Error('TEST लॉगिन सत्र नहीं मिला।');
-      const { error } = await client.from('srk_push_subscriptions').upsert({
-        user_id: userData.user.id,
-        endpoint: json.endpoint,
-        p256dh: json.keys.p256dh,
-        auth: json.keys.auth,
-        user_agent: navigator.userAgent
-      }, {onConflict:'endpoint'});
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) throw new Error('अधूरी Push Subscription जानकारी।');
+      const { error } = await client.rpc('srk_save_push_subscription', {
+        p_endpoint: json.endpoint,
+        p_p256dh: json.keys.p256dh,
+        p_auth: json.keys.auth
+      });
       if (error) throw error;
       say('सफल! इस फोन की Push Subscription TEST डेटाबेस में सुरक्षित हो गई।\nअब Edge Function + Database Webhook का परीक्षण बाकी है।');
     } catch (error) {
