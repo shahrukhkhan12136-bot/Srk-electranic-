@@ -272,3 +272,5 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] SQL regression test covers the late-ID binding. Added `tests/razorpay-webhook-refund-contract.test.js` and wired it into Refund CI to assert the ambiguity guard and ID binding contract.
 - [T] Refund CI run `43172179292` SUCCESS for the prior commit containing SQL replay + SQL assertions. Newest run `43172241324` is still in progress/queued at this tracker update; do not treat the newest static contract assertion as verified until that run succeeds.
 - [T] No Production changes or real Razorpay webhook calls performed.
+
+- [V] नवीनतम Refund CI run `43172241324` SUCCESS at commit `bdae5d797b9a41fdc6bedfd811c6f9b9f90ea642`; specifically `Test Razorpay refund webhook ledger contract` passed, along with the full PostgreSQL refund suite and handler checks.
