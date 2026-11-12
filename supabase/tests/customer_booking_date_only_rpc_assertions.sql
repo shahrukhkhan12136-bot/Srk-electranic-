@@ -263,5 +263,35 @@ begin
   end;
 end
 $test$;
+
+-- Public customer pricing RPC returns only the four currently effective rates.
+-- Anonymous users still cannot read the underlying catalogue table directly.
+set local role anon;
+do $public_rate_api_test$
+declare v_rates jsonb;
+begin
+  if has_table_privilege('anon','public.srk_rate_catalogue','SELECT') then
+    raise exception 'Anonymous role can directly read the private rate catalogue table';
+  end if;
+  if not has_function_privilege('anon','public.srk_get_current_customer_rates()','EXECUTE') then
+    raise exception 'Anonymous role cannot execute the customer pricing RPC';
+  end if;
+  v_rates := public.srk_get_current_customer_rates();
+  if jsonb_array_length(v_rates) <> 4 then
+    raise exception 'Customer pricing RPC must return exactly four active categories: %',v_rates;
+  end if;
+  if not exists(select 1 from jsonb_array_elements(v_rates) r
+    where r->>'category_code'='helper' and (r->>'version')::integer=3
+      and (r->>'hourly_rate')::numeric=120.125
+      and (r->>'eight_hour_amount')::numeric=961.00) then
+    raise exception 'Public RPC did not return latest same-day Helper rate: %',v_rates;
+  end if;
+  if not exists(select 1 from jsonb_array_elements(v_rates) r
+    where r->>'category_code'='master' and (r->>'version')::integer=1) then
+    raise exception 'Public RPC exposed a future Master rate prematurely: %',v_rates;
+  end if;
+end
+$public_rate_api_test$;
+reset role;
 rollback;
 select 'customer date-only + legacy-time RPC tests passed' as result;
