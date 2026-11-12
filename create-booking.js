@@ -128,8 +128,12 @@ exports.handler = async (event) => {
     const preferred_date = clean(body.preferred_date, 10);
     const work_details = clean(body.work_details, 2000);
     const service_category_code = clean(body.service_category_code, 20);
+    const duration_hours = body.duration_hours;
     if (!["helper", "ordinary", "skilled", "master"].includes(service_category_code)) {
       return json(400, { success: false, error: "कृपया इलेक्ट्रिशियन की सही श्रेणी चुनें।" });
+    }
+    if (!Number.isInteger(duration_hours) || duration_hours < 1 || duration_hours > 8) {
+      return json(400, { success: false, error: "काम की अवधि 1 से 8 घंटे के बीच चुनें।" });
     }
     const idempotency_key = clean(body.idempotency_key, 36);
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotency_key)) {
@@ -160,7 +164,7 @@ exports.handler = async (event) => {
         p_booking: {
           customer_name, phone, state, district, pincode, address, service_type,
           preferred_date, work_details, location_lat, location_lng,
-          service_category_code
+          service_category_code, duration_hours
         }
       })
     });
