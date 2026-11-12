@@ -92,7 +92,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
    <label for="payment">भुगतान</label>
-   <select id="payment" required><option value="काम पूरा होने के बाद भुगतान">काम पूरा होने के बाद भुगतान</option></select>
+   <select id="payment" required><option value="Cash">नकद (Cash)</option><option value="Razorpay ऑनलाइन भुगतान">ऑनलाइन भुगतान (Razorpay / UPI)</option></select>
    <p class="small">पहले इलेक्ट्रिशियन घर आकर काम देखेगा और सर्विस चार्ज तथा सामान का अलग-अलग कोटेशन देगा। आपकी मंजूरी के बाद ही काम शुरू होगा। काम पूरा होने पर ही Razorpay से भुगतान होगा।</p>
    <button class="btn primary" type="submit">बुकिंग भेजें</button>
   </form>
@@ -174,7 +174,7 @@ async function loadCustomerBookings() {
   if (!session) return;
   box.textContent = 'आपकी बुकिंग लोड हो रही हैं…';
   const { data, error } = await customerSb.from('service_bookings')
-    .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
+    .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
     .eq('customer_user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -360,7 +360,6 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   const method = value('payment');
   const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
   currentBookingWhatsApp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
-  if (method === 'Razorpay ऑनलाइन भुगतान' && (!Number.isFinite(amount) || amount < 1)) { alert('ऑनलाइन भुगतान के लिए कम से कम ₹1 की सही राशि भरें।'); return; }
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
@@ -378,16 +377,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
     alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
-    if (method === 'Razorpay ऑनलाइन भुगतान') {
-      pendingAmount = amount;
-      pendingBookingId = result.booking_id;
-      document.getElementById('qrAmount').textContent = 'भुगतान राशि: ₹' + amount.toFixed(2);
-      document.getElementById('upiPanel').style.display = 'block';
-      setPaymentStatus('बुकिंग सेव हो गई। भुगतान शुरू करने के लिए नीचे बटन दबाएँ।');
-      document.getElementById('upiPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      window.location.href = currentBookingWhatsApp;
-    }
+    window.location.href = currentBookingWhatsApp;
   } catch (err) {
     alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`);
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
