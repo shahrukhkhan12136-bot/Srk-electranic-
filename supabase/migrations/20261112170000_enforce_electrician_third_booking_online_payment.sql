@@ -1,7 +1,8 @@
 -- Enforce the electrician's every-third-booking online-only rule atomically.
 -- This migration is committed to the feature branch only; it is not applied to production.
 -- A booking slot is reserved when an approved electrician accepts the offer.
--- Cancelled/refunded bookings are excluded from subsequent counts.
+-- Only completed, approved, verified-paid bookings count toward the cycle.
+-- Cancelled, failed, refunded, and unpaid/incomplete bookings never consume a slot.
 create or replace function public.srk_respond_to_offer(p_offer_id uuid, p_response text)
 returns jsonb
 language plpgsql
@@ -67,7 +68,10 @@ begin
       from public.service_bookings b
      where b.assigned_electrician_id = v_electrician_id
        and b.id <> v_booking_id
-       and b.status not in ('cancelled','failed')
+       and b.status = 'completed'
+       and b.quote_status = 'approved'
+       and b.payment_status = 'paid'
+       and b.payment_verified_at is not null
        and b.payment_status not in ('refunded','failed');
 
     -- Booking numbers 3, 6, 9, ... must use the Razorpay online method.
@@ -106,4 +110,4 @@ end;
 $function$;
 
 comment on function public.srk_respond_to_offer(uuid, text) is
-'Secure offer response. Serializes electrician offer acceptance and requires Razorpay online payment on every third non-cancelled/non-refunded assigned booking.';
+'Secure offer response. Serializes electrician offer acceptance and requires Razorpay online payment when the next completed, approved, verified-paid booking slot is every third; unpaid/incomplete/cancelled/failed/refunded bookings do not consume a slot.';
