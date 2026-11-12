@@ -301,18 +301,36 @@ exports.handler = async (event) => {
       if (!record) return json(200, { success: true, ignored: true, reason: "refund_not_managed_by_srk" });
       const providerStatus = refund.status === "processed" ? "processed" :
         refund.status === "failed" ? "failed" : "pending";
-      const reconcile = await fetch(new URL("/rest/v1/rpc/srk_service_reconcile_booking_refund", SUPABASE_URL), {
-        method: "POST",
-        headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          p_refund_record_id: record.id,
-          p_provider_refund_id: refund.id,
-          p_provider_status: providerStatus,
-          p_error: providerStatus === "failed" ? "Razorpay refund.failed webhook" : null
-        })
-      });
-      if (!reconcile.ok) throw new Error("Refund webhook reconciliation failed");
-      return json(200, { success: true, refund_reconciled: true, status: providerStatus });
+      const rawEventHeader = event.headers?.["x-razorpay-event-id"] || event.headers?.["X-Razorpay-Event-Id"] || "";
+      const refundEventMeta = {
+        eventId: /^[A-Za-z0-9_:-]{1,160}$/.test(rawEventHeader) ? rawEventHeader : "sha256-" + crypto.createHash("sha256").update(rawBody).digest("hex"),
+        payloadHash: crypto.createHash("sha256").update(rawBody).digest("hex"),
+        eventType: String(eventName || "unknown").slice(0, 120)
+      };
+      const refundEvent = await startSnapshotWebhookEvent(refundEventMeta, null, refund.payment_id);
+      if (refundEvent.processed) return json(200, { success: true, refund_reconciled: true, duplicate: true });
+      if (refundEvent.rejected) return json(200, { success: true, refund_reconciled: false, duplicate: true });
+      if (refundEvent.inProgress) return json(500, { success: false, refund_reconciled: false, retry: true });
+      try {
+        const reconcile = await fetch(new URL("/rest/v1/rpc/srk_service_reconcile_booking_refund", SUPABASE_URL), {
+          method: "POST",
+          headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            p_refund_record_id: record.id,
+            p_provider_refund_id: refund.id,
+            p_provider_status: providerStatus,
+            p_error: providerStatus === "failed" ? "Razorpay refund.failed webhook" : null
+          })
+        });
+        if (!reconcile.ok) throw new Error("Refund webhook reconciliation failed");
+        const reconcileResult = await reconcile.json();
+        if (!reconcileResult?.success) throw new Error("Refund webhook reconciliation returned no success");
+        await finishSnapshotWebhookEvent(refundEvent.id, "processed", "refund_" + providerStatus, "Razorpay refund event reconciled.");
+        return json(200, { success: true, refund_reconciled: true, status: providerStatus });
+      } catch (refundError) {
+        try { await finishSnapshotWebhookEvent(refundEvent.id, "retryable_error", "refund_reconcile_error", refundError.message); } catch (_) {}
+        throw refundError;
+      }
     }
     if (eventName !== "payment.captured" && eventName !== "order.paid") {
       return json(200, { success: true, ignored: true });
