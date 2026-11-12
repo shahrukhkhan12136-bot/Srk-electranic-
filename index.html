@@ -820,7 +820,7 @@ async function startRazorpayPayment() {
       name: 'SRK ELECTRONIC',
       description: 'Home Repairing & Electrical Service',
       order_id: orderData.order_id,
-      prefill: { name: value('name'), contact: (customerSession.user.phone || '').replace(/\\D/g, '').slice(-10) },
+      prefill: { name: value('name'), contact: (customerSession.user.phone || '').replace(/\D/g, '').slice(-10) },
       notes: { service: value('service') },
       theme: { color: '#0b5ed7' },
       handler: async function (response) {
@@ -915,7 +915,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   const { data: bookingSessionData } = await customerSb.auth.getSession();
   const bookingSession = bookingSessionData.session;
   if (!bookingSession?.user?.phone) { alert('बुकिंग के लिए पहले अपने रजिस्टर्ड मोबाइल नंबर से OTP लॉगिन करें।'); return; }
-  const registeredPhoneDigits = String(bookingSession.user.phone).replace(/\\D/g, '');
+  const registeredPhoneDigits = String(bookingSession.user.phone).replace(/\D/g, '');
   const registeredPhone = registeredPhoneDigits.length === 12 && registeredPhoneDigits.startsWith('91') ? registeredPhoneDigits.slice(2) : registeredPhoneDigits;
   if (!/^[0-9]{10}$/.test(registeredPhone)) { alert('आपके खाते में मान्य भारतीय रजिस्टर्ड मोबाइल नंबर उपलब्ध नहीं है। कृपया ग्राहक सहायता से संपर्क करें।'); return; }
   const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${registeredPhone}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nकाम: ${value('details')}\nइलेक्ट्रिशियन श्रेणी: ${value('serviceCategory')}\nअनुमानित अवधि: ${value('durationHours')} घंटे\nमेहनताना चुनी गई श्रेणी और अवधि के अनुसार; सामान अलग और मंजूरी के बाद`;
