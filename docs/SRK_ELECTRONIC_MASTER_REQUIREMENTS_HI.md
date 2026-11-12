@@ -868,3 +868,41 @@ Production पर अतिरिक्त read-only verification:
 
 **सीमा:** यह Production database catalog, function definitions, grants, RLS policies और triggers का read-only निरीक्षण था। कोई cancellation, wallet, ledger, payout, refund, permission, trigger, function, table, customer record या deployment बदला नहीं।
 
+### 17.25 — Booking/Payment API से Admin UI तक End-to-End mutation path audit (13 Nov 2026)
+
+Feature Branch source inspection; live production API requests या user sessions चलाए नहीं गए:
+
+**Customer Booking API — `create-booking.js`**
+- API verified Supabase Customer session और confirmed phone को submitted booking phone से match करता है; यह आवश्यक सुरक्षा check है।
+- IP hash आधारित public rate-limit RPC भी लागू है; rate-limit service विफल हो तो API fail-closed होकर booking रोकता है।
+- फिर भी API request body से `payment_method` और `quoted_amount` स्वीकार करके service-role key से सीधे `service_bookings` में insert करता है। Browser/client द्वारा भेजी गई कीमत या payment choice को authoritative नहीं मानना चाहिए।
+- Service-role insert RLS को bypass करता है; इसलिए API में explicit allow-list, payment-method enum, category/service eligibility, pricing server-side derivation, booking idempotency और client-controlled quote fields को reject/ignore करना जरूरी है।
+- Booking insert के बाद trigger-generated job offers पढ़े जाते हैं; offer read विफल होने पर booking पहले से saved रहती है और response इसे स्पष्ट बताता है। Retry पर duplicate booking रोकने के लिए request idempotency अभी अलग से प्रमाणित नहीं है।
+
+**Online Order API — `create-order.js`**
+- Customer session, confirmed phone, booking ownership और चुने हुए Razorpay payment method की जाँच होती है।
+- प्रति-booking order lock RPC और existing order reuse का प्रयास है; lock के बाद booking दोबारा पढ़कर stale amount रोकने का प्रयास भी है।
+- लेकिन पात्रता अभी `status='completed'`, `quote_status='approved'`, `quoted_amount = service_charge + materials_amount` पर आधारित है। यह Master के Customer-approved timer completion और actual-minute labour billing से मेल नहीं खाता।
+- इसलिए नया Timer/Billing path बनने तक इस API को नया billing authority नहीं मानना चाहिए। पुराने quote flow हटाने से पहले इसका replacement और duplicate/concurrent order tests जरूरी हैं।
+
+**Payment Verification और Webhook**
+- `verify-payment.js` legacy quote-approved completion और quoted amount reconciliation पर निर्भर है; इसे timer-derived amount, payment intent binding, signature verification, amount/currency/booking reconciliation तथा idempotent finalization के साथ बदलना होगा।
+- `razorpay-webhook.js` root handler ही वास्तविक webhook logic है; Netlify adapter केवल उसे forward करता है। Signature, event deduplication, order/payment mismatch, out-of-order events और refund-vs-capture race को अलग integration tests से प्रमाणित करना बाकी है।
+- किसी webhook retry को duplicate ledger, duplicate payable या duplicate customer receipt नहीं बनाना चाहिए।
+
+**Admin UI — `admin.html`**
+- Admin login के बाद `is_srk_admin()` RPC से Admin role check करता है; लेकिन UI सीधे Supabase tables से booking list, application, profile और payout data पढ़ता है।
+- Admin booking row पर status और `quoted_amount` को सीधे table UPDATE से बदलता है; address/district/state/PIN भी सीधे UPDATE करता है। Paid booking amount बदलने और Razorpay payment status बदलने पर UI रोक लगाता है, पर direct table mutation का वास्तविक server-side policy/trigger enforcement अलग से परीक्षण योग्य है।
+- Manual payment के लिए `srk_admin_record_manual_payment` RPC और payout marking के लिए `srk_admin_mark_electrician_payout_paid` RPC इस्तेमाल होते हैं; यह direct status/payment edit से बेहतर controlled route है।
+- Admin payout table में customer/booking phone सहित related profile data दिखाई देता है; Admin-only authorization और least-privilege review जारी रखना होगा।
+- Admin UI अभी पुरानी quote राशि संपादित कर सकता है। नए system में timer-approved amount को सीधे edit नहीं करना चाहिए; केवल documented Admin adjustment workflow, reason, before/after और immutable audit event से correction हो।
+
+**API/UI consistency और blocking risks**
+1. Customer booking API में client-supplied `quoted_amount` को स्वीकार करना और service-role insert करना server-authoritative pricing के विपरीत है।
+2. Payment create/verify अभी quote-based है; इसे actual-minute labour amount, separate materials, 15% labour-only fee और selected payment method से bind करना होगा।
+3. Admin UI status/quote direct update कर सकता है; नया lifecycle केवल guarded Admin RPCs से बदले और invalid state transition database में भी reject हो।
+4. Booking create, order create, payment verify, webhook capture, cash confirmation, wallet fee posting, payout और refund सभी के लिए एक booking/payment idempotency model और deterministic ledger keys चाहिए।
+5. API response, error, logs, notification और browser cache में phone/address/payment identifiers की अनावश्यक वापसी रोकें; प्रत्येक endpoint का auth/role/ownership negative test करें।
+
+**सीमा:** यह Feature Branch source-code inspection था। कोई source file, API, UI, database, payment provider, customer booking, Admin record या deployment नहीं बदला। वास्तविक Netlify runtime secrets, HTTP request tests, Razorpay Test Mode transactions और browser E2E अभी बाकी हैं।
+
