@@ -1080,3 +1080,52 @@ Production पर केवल catalog definitions और index metadata पढ�
 
 **सीमा:** Production पर केवल `pg_get_functiondef` और `pg_indexes` metadata read हुआ। कोई function, index, grant, row, migration history, payment या deployment बदला नहीं।
 
+### 17.31 — Duplicate Cash Payment Status migrations: Live Function, Trigger, Constraint और ACL audit (13 Nov 2026)
+
+Production migration history में एक ही नाम की दो entries हैं:
+- `20261111082515_add_assigned_electrician_cash_payment_status`
+- `20261111083811_add_assigned_electrician_cash_payment_status`
+
+**Source recovery**
+- 14-branch sweep में केवल पहली version के लिए exact-version candidate मिली: `feature/production-push-notifications/supabase/migrations/20261111082515_add_assigned_electrician_cash_payment_status.sql`, blob `091b1176...`।
+- इस SQL में `public.srk_get_my_assigned_cash_payment(uuid)` function बनता/बदलता है। यह authenticated approved+active electrician की assigned booking जाँचता है और Cash confirmation की eligibility बताता है। यह legacy `status='completed'`, `quote_status='approved'`, Cash payment method और positive `quoted_amount` पर निर्भर है।
+- दूसरी version `20261111083811` के लिए exact-version या same-name SQL source उपलब्ध scanned branches में नहीं मिला। इसका अलग SQL effect अभी recover नहीं हुआ। दोनों versions का एक ही नाम होना duplicate history entries की व्याख्या नहीं करता।
+
+**Live Production functions**
+1. `srk_get_my_assigned_cash_payment(uuid)`
+   - SECURITY DEFINER, owner postgres, fixed search_path.
+   - `auth.uid()` से linked approved+active electrician profile ढूँढता है।
+   - Booking पर `assigned_electrician_id` match करता है।
+   - Response में status, payment method/status, quote status, quoted amount और `can_confirm_cash` देता है।
+   - Eligibility अभी भी completed + approved quote + Cash + unpaid/pending + positive quoted_amount पर आधारित है।
+2. `srk_electrician_confirm_cash_payment(uuid)`
+   - SECURITY DEFINER, owner postgres, fixed search_path.
+   - Linked approved+active electrician और उसी की assigned booking की जाँच करता है; booking row `FOR UPDATE` lock होती है।
+   - केवल completed + approved quote + Cash + unpaid/pending + positive quoted_amount स्वीकार करता है।
+   - `payment_status='paid'`, `amount_paid=quoted_amount`, `payment_verified_at=now()` लिखता है।
+   - पहले से paid होने पर idempotent-style already_paid response देता है; यह उसी row पर repeat confirmation रोकता है।
+   - Actual-minute/timer-approved billing amount का उपयोग नहीं करता।
+3. दोनों functions पर PUBLIC/anon execute नहीं; authenticated और service_role execute मौजूद। Runtime JWT role tests अभी बाकी हैं।
+
+**Live trigger और constraint प्रभाव**
+- `srk_calculate_booking_commission` BEFORE INSERT/UPDATE trigger: completed + paid होने पर commission `service_charge × commission_rate` से निकालता है; अन्यथा commission null करता है।
+- `trg_srk_create_electrician_payable` AFTER payment/status/quote/amount/assignment/payment-verification बदलाव पर payout trigger चलाता है। यह completed + paid + approved quote + verified payment + Razorpay/manual payment evidence मांगता है; total को service_charge + materials_amount से मिलाता है; electrician payable में materials जोड़ता है और commission केवल service_charge पर लगाता है।
+- `service_bookings_payment_status_check` में allowed states: unpaid, pending, paid, refunded, failed।
+- अलग payment_method check constraint इस catalog query में नहीं मिला।
+- Cash confirmation update के बाद commission और payable triggers fire हो सकते हैं; payout creation के लिए manual payment evidence की exact shape/amount match भी आवश्यक है। इस वजह से Cash confirmation, manual-payment record और payout ledger को साथ में integration-test करना होगा।
+
+**Master Requirements से mismatch**
+- Cash confirmation actual timer minutes से निकली approved labour amount पर आधारित नहीं।
+- Legacy quote approval अनिवार्य है।
+- Customer द्वारा Cash amount electrician को देने और उसके बाद electrician द्वारा app में receipt confirmation के लिए independent evidence/reconciliation अभी स्पष्ट नहीं।
+- Cash cycle के पहले दो eligible Cash bookings, तीसरे Online booking, wallet top-up द्वारा fee due clear/reset और concurrent reservation/release का कोई logic इन दो functions में नहीं है।
+- Platform Fee 15% labour-only policy का नया timer-based calculation यहाँ लागू नहीं।
+- Cash paid state से payout trigger का legacy path quote + service/material total पर निर्भर है।
+
+**Migration निष्कर्ष**
+- पहली migration का source candidate live `srk_get_my_assigned_cash_payment` function के साथ conceptually मेल खाता है।
+- दूसरी duplicate migration का source/effect unresolved है। Current live function bodies से यह निश्चित नहीं किया जा सकता कि दूसरा migration no-op था, function update था या अन्य object change।
+- इसलिए migration history repair, replay, delete या rename नहीं किया जाएगा। अगला कदम Git commit ancestry/PR references और live schema object chronology से दूसरी version का source/effect खोजना है।
+
+**सीमा:** Production पर केवल function definitions, ACL, service_bookings constraints और trigger definitions पढ़े गए। कोई Cash booking/payment row, payout record, wallet record या customer PII नहीं पढ़ा; कोई function execute, SQL apply, grant change, migration-history edit या deployment नहीं हुआ।
+
