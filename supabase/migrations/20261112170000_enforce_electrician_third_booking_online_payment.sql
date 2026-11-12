@@ -14,7 +14,6 @@ declare
   v_offer_status text;
   v_payment_method text;
   v_prior_booking_count bigint;
-  v_booking_status text;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required' using errcode = '42501';
@@ -51,8 +50,8 @@ begin
      for update;
 
     -- Lock the booking before checking and assigning it.
-    select payment_method, status
-      into v_payment_method, v_booking_status
+    select payment_method
+      into v_payment_method
       from public.service_bookings
      where id = v_booking_id
        and assigned_electrician_id is null
@@ -68,8 +67,8 @@ begin
       from public.service_bookings b
      where b.assigned_electrician_id = v_electrician_id
        and b.id <> v_booking_id
-       and b.status not in ('cancelled')
-       and b.payment_status not in ('refunded');
+       and b.status not in ('cancelled','failed')
+       and b.payment_status not in ('refunded','failed');
 
     -- Booking numbers 3, 6, 9, ... must use the Razorpay online method.
     if mod(v_prior_booking_count + 1, 3) = 0
