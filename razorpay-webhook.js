@@ -120,15 +120,23 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
   if (row.payload_sha256 !== eventMeta.payloadHash) throw new Error("Webhook event ID payload hash conflict");
   if (row.processing_status === "processed") return { id: row.id, processed: true };
   if (row.processing_status === "rejected") return { id: row.id, rejected: true };
+  if (row.processing_status === "processing") return { id: row.id, inProgress: true };
+
+  // Atomically claim only a retryable/received row. Concurrent deliveries that
+  // observed the same state cannot both transition it to processing.
+  if (!["received", "retryable_error"].includes(row.processing_status)) {
+    throw new Error("Webhook event ledger has an unsupported processing state");
+  }
   const patchUrl = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
   patchUrl.searchParams.set("id", "eq." + row.id);
+  patchUrl.searchParams.set("processing_status", "eq." + row.processing_status);
   const patch = await fetch(patchUrl, {
     method: "PATCH",
     headers: {
       apikey: SUPABASE_KEY,
       Authorization: "Bearer " + SUPABASE_KEY,
       "Content-Type": "application/json",
-      Prefer: "return=minimal"
+      Prefer: "return=representation"
     },
     body: JSON.stringify({
       processing_status: "processing",
@@ -136,7 +144,22 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
     })
   });
   if (!patch.ok) throw new Error("Webhook event ledger claim failed");
-  return { id: row.id, processed: false };
+  const claimed = await patch.json();
+  if (Array.isArray(claimed) && claimed.length) return { id: row.id, processed: false };
+
+  // Another delivery won the conditional update. Re-read its state rather
+  // than processing the same provider event concurrently.
+  const latestResponse = await fetch(lookup, {
+    headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
+  });
+  if (!latestResponse.ok) throw new Error("Webhook event ledger claim reconciliation failed");
+  const latestRows = await latestResponse.json();
+  const latest = Array.isArray(latestRows) ? latestRows[0] : null;
+  if (latest?.payload_sha256 !== eventMeta.payloadHash) throw new Error("Webhook event ID payload hash conflict");
+  if (latest?.processing_status === "processed") return { id: row.id, processed: true };
+  if (latest?.processing_status === "rejected") return { id: row.id, rejected: true };
+  if (latest?.processing_status === "processing") return { id: row.id, inProgress: true };
+  throw new Error("Webhook event claim was not acquired");
 }
 
 async function finishSnapshotWebhookEvent(eventId, status, outcomeCode, detail) {
