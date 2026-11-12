@@ -270,3 +270,127 @@ Main Admin को हर booking का timeline और linked evidence दि�
 - Work केवल Feature Branch पर; `main` merge, production database migration, Netlify deployment या live payment action अलग explicit approval के बिना नहीं।
 - पहले unit/integration/security/payment/timer/wallet/cancellation tests, फिर end-to-end staging/Test Mode verification, फिर consolidated deployment plan।
 - कोई भी feature “complete” तभी कहा जाए जब code, DB policy, UI, API/RPC, regression tests और relevant end-to-end behavior verify हो।
+
+
+## 14. Complete Platform Checklist — कोई सुविधा छूटनी नहीं चाहिए
+यह checklist requirements, implementation, QA और release sign-off के लिए है। हर item के साथ owner, status, test evidence और release status track होगा। यहाँ दर्ज होना implementation पूरा होने का प्रमाण नहीं है।
+
+### 14.1 Customer App और Website
+- [ ] OTP login: expiry, resend cooldown/limits, wrong-attempt limits, abuse/rate limiting, secure session और logout।
+- [ ] पाँच मुख्य मेनू: Home, My Bookings, Payments, Help & Support, My Profile।
+- [ ] Booking form: verified mobile (editable नहीं), नाम, address, map pin, PIN/district/state, work description, category और 1–8 घंटे।
+- [ ] PIN/district validation: authoritative PIN directory, mismatch warning/review queue; existing address स्वतः overwrite नहीं।
+- [ ] Category, rate, duration और estimate का स्पष्ट विवरण; estimate और final actual-minute bill अलग।
+- [ ] Submit confirmation, terms/fee disclosure और duplicate-submit protection।
+- [ ] Booking timeline: pending/offers/accepted/en route/arrived/start approval/in progress/completion review/payment/closed।
+- [ ] Accepted booking में assigned electrician का direct-call number; completion के बाद customer-facing UI/API/receipt/history में phone अनुपलब्ध।
+- [ ] यात्रा के दौरान live location/ETA; permission-denied और stale-location states; arrival/cancel/close पर tracking बंद।
+- [ ] Timer, completion approval और dispute/Admin review।
+- [ ] Bill, receipt, payment history, cancellation request/fee और पुराने dues अलग line items।
+- [ ] Help ticket, attachments, reference number, reply thread, status और history।
+- [ ] Ratings/reviews, notification preferences, saved addresses, profile/photo और account security।
+- [ ] Loading/empty/offline/error/retry states, accessibility, स्पष्ट हिंदी, responsive UI और low-bandwidth व्यवहार।
+
+### 14.2 Electrician App / Portal
+- [ ] OTP login, verified mobile, secure session/logout और account status।
+- [ ] Application, documents, experience, skills, service area, requested/approved category और unique digital ID।
+- [ ] स्पष्ट navigation/dashboard: Home, New Booking Offers, My Bookings/Work, Earnings & Wallet, Profile/ID, Help & Support (अंतिम labels UI review में confirm)।
+- [ ] Offer details: काम, category, approximate location/distance, duration/estimate और expiry; acceptance से पहले privacy-safe सीमित जानकारी।
+- [ ] Accept/decline/expiry, next eligible offer, single-winner assignment और simultaneous acceptance tests।
+- [ ] Accepted booking के दौरान ही customer phone का अनुमत access; public/unassigned context में नहीं।
+- [ ] यात्रा/arrival status, location permission, ETA और tracking stop।
+- [ ] Work-start request, customer approval, server timer, completion request और dispute/Admin review।
+- [ ] Rate List में approved category की केवल net payable 8-hour reference amount; Platform Fee विवरण नहीं।
+- [ ] Actual minutes, gross labour, Platform Fee, wallet dues/adjustments और net payable अलग statement; materials labour में नहीं।
+- [ ] Cash/Online eligibility, cash-cycle status, Platform Fee due और verified top-up history।
+- [ ] Payout status, provider reference जहाँ उचित हो, failed/reversed payout और support path।
+- [ ] Help tickets, customer ratings/reviews, electrician द्वारा customer rating और booking history।
+- [ ] Suspension/restriction, document re-verification और notification preferences।
+
+### 14.3 Admin Panel और Company Operations
+- [ ] Main Admin secure login, MFA/strong authentication विकल्प, session list/revoke और recovery controls।
+- [ ] Customer/electrician/booking/address/PIN mismatch और verification management।
+- [ ] Category/skill/document approval या rejection reason सहित।
+- [ ] Offer queue, assignment, timeline, exceptions और duplicate/race protection visibility।
+- [ ] Cancellation inbox, evidence, policy-based fee decision, reason, customer communication और dispute trail।
+- [ ] Timer/completion dispute review; Admin override reason, evidence और immutable audit।
+- [ ] Payment/provider events, refunds, wallet ledger, top-ups, cash dues, payout और reconciliation views।
+- [ ] Support inbox, ticket assignment, replies, SLA/escalation और attachment access controls।
+- [ ] Rating moderation with reason, audit and appeal path।
+- [ ] Expense entry, receipt, permitted approval, accounting heads, exports और period reports।
+- [ ] Staff roles, granular permissions, least privilege और backend/RLS enforcement।
+- [ ] Staff tasks, internal communication, login/activity history, suspicious-login handling और session revocation।
+- [ ] Dashboard metrics की स्पष्ट definitions, filters, drill-down और role-based exports।
+- [ ] Emergency controls: confirmation, reason, audit, recovery safeguards और post-action reconciliation।
+- [ ] सभी महत्वपूर्ण Admin/staff actions का actor, timestamp, before/after और reason audit।
+
+### 14.4 Payment, Razorpay, Wallet और Accounting
+- [ ] Razorpay Test Mode integration और webhook signature verification; duplicate/out-of-order webhook idempotency।
+- [ ] Order, payment, booking और provider transaction IDs का सुरक्षित linkage।
+- [ ] Created/pending/authorized/captured/failed/refunded/disputed जैसे payment states का स्पष्ट mapping।
+- [ ] Online payment success केवल server-verified capture/signature के बाद।
+- [ ] Cash confirmation, electrician cash collection acknowledgement और cash ledger reconciliation।
+- [ ] Platform Fee 15% केवल labour पर; material/parts को fee base या electrician labour payout में शामिल नहीं करना।
+- [ ] Wallet top-up केवल provider-verified; screenshot/manual claim से balance credit नहीं।
+- [ ] Cash-cycle eligibility/reservation concurrency-safe; failed/expired/cancelled bookings का counter प्रभाव लिखित रूप से तय।
+- [ ] Payout initiation, success/failure, retries, reversal और provider reference; Paid status केवल verified transfer पर।
+- [ ] Refund/partial refund/duplicate payment/chargeback/dispute और cancellation-fee reversal के स्पष्ट workflows।
+- [ ] Gross labour, Platform Fee, cancellation fees, electrician payable, wallet liabilities, refunds, expenses और net profit अलग ledgers।
+- [ ] Daily settlement/reconciliation report और unmatched transaction exception queue।
+- [ ] Live payments/transfers केवल अलग approval, provider readiness और production checklist के बाद।
+
+### 14.5 Notifications और Communication
+- [ ] Push notification permission, token registration/rotation/revocation और logout/device lifecycle।
+- [ ] Booking created, offer/acceptance, electrician en route/arrival, start approval, timer/completion, payment/refund और cancellation updates।
+- [ ] Help ticket received, Admin reply, status change और escalation notifications।
+- [ ] Notification delivery failure, retry, deduplication और in-app notification inbox।
+- [ ] SMS/OTP/push provider failure पर स्पष्ट fallback और user-facing status; secrets client में नहीं।
+- [ ] Notification content में अनावश्यक personal data, पूरा पता या payment secrets नहीं।
+
+### 14.6 Security, Privacy और Data Governance
+- [ ] सभी private tables/storage objects पर RLS और server-side authorization; role/ownership negative tests।
+- [ ] OTP abuse protection, rate limits, session expiry/revocation और brute-force safeguards।
+- [ ] Secrets केवल सुरक्षित server environment में; repository, client bundle और logs में secrets/PII नहीं।
+- [ ] Customer/electrician phone और location API/RPC स्तर पर least-privilege।
+- [ ] Upload validation: file type/size, malware scanning जहाँ उपलब्ध, private storage और signed access।
+- [ ] Audit logs tamper-resistant; financial ledgers append-only/reversal-based।
+- [ ] Data retention/deletion/export, consent, privacy notice और grievance contact policy लागू करने से पहले legal/privacy review।
+- [ ] Location collection केवल approved booking purpose और अवधि तक; access audit और retention limit।
+- [ ] Staff IP/device metadata का न्यूनतम संग्रह, सीमित access और निर्धारित retention।
+- [ ] Dependency/security scanning, vulnerable package review और incident response procedure।
+
+### 14.7 Backup, Reliability और Recovery
+- [ ] Database backup schedule, retention और encryption की पुष्टि।
+- [ ] Restore drill: backup से अलग सुरक्षित environment में वास्तविक restore test और evidence।
+- [ ] Recovery Point Objective (RPO) और Recovery Time Objective (RTO) तय और दर्ज।
+- [ ] Provider outage, webhook delay, network failure और partial transaction recovery runbooks।
+- [ ] Monitoring/alerts: API errors, failed jobs, payment mismatch, queue backlog, suspicious access और service health।
+- [ ] Emergency pause के बाद safe resume checklist और pending booking/payment reconciliation।
+
+### 14.8 QA, Accessibility और Release Sign-off
+- [ ] Unit tests: pricing/minute calculation, fee split, cash-cycle, cancellation, wallet और permissions।
+- [ ] Integration tests: frontend/API/RPC/database/webhooks/storage/notifications।
+- [ ] End-to-end tests: customer booking से electrician assignment, work timer, completion, payment, receipt और rating तक।
+- [ ] Negative/security tests: unauthorized access, phone/location leakage, RLS bypass, duplicate requests और race conditions।
+- [ ] Payment Test Mode cases: success, failure, pending, duplicate webhook, refund, payout failure और reconciliation।
+- [ ] Device/browser tests: Android के प्रमुख screen sizes, mobile browsers और desktop responsive layout।
+- [ ] Accessibility, readable Hindi, contrast, touch targets, keyboard navigation और clear error messages।
+- [ ] Performance/load tests और slow/intermittent network tests।
+- [ ] Staging/UAT sign-off, known-issues list, rollback plan और production readiness checklist।
+- [ ] सभी migrations reversible/forward-safe योजना के साथ; schema drift और existing data compatibility audit।
+- [ ] एक consolidated production deployment; अलग स्पष्ट अनुमति के बिना main merge, production DB migration, live payment या deploy नहीं।
+
+## 15. अतिरिक्त खुले निर्णय और release blockers
+नीचे के विषयों पर implementation से पहले निर्णय/प्रमाण आवश्यक हैं; checklist इन्हें स्वतः तय नहीं करती:
+1. PIN/district के लिए authoritative source और mismatch correction का approval owner।
+2. Electrician offer expiry duration, retry/offer sequence और electrician द्वारा decline करने के प्रभाव।
+3. Electrician app के अंतिम menu labels तथा earnings/payout statement का exact format।
+4. Push/SMS/OTP providers, delivery fallback, notification retention और खर्च सीमा।
+5. OTP/MFA/session security thresholds और account recovery verification।
+6. Refund, chargeback, payout retry/reversal और cancellation-fee reversal की accounting policy।
+7. Backup frequency/retention, RPO/RTO और restore test cadence।
+8. Privacy notice, consent, data retention/deletion और grievance/legal review।
+9. Monitoring alert recipients, incident severity और response SLA।
+10. QA acceptance thresholds, supported devices/browsers और release sign-off authority।
+
+हर checkbox को implementation के दौरान evidence सहित complete mark करना है। बिना test evidence के checkbox complete नहीं माना जाएगा।
