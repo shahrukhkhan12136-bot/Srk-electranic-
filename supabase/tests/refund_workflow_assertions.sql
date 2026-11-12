@@ -147,3 +147,18 @@ begin
 end $$;
 
 reset role;
+
+do $index_assert$
+begin
+ if not exists (
+   select 1 from pg_class i
+   join pg_index ix on ix.indexrelid=i.oid
+   join pg_namespace n on n.oid=i.relnamespace
+   where n.nspname='public'
+     and i.relname='srk_razorpay_refunds_payment_id_idx'
+     and ix.indisvalid and not ix.indisunique
+ ) then
+   raise exception 'NONUNIQUE_REFUND_PAYMENT_LOOKUP_INDEX_MISSING';
+ end if;
+end
+$index_assert$;
