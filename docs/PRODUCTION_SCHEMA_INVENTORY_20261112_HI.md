@@ -182,3 +182,28 @@ A feature-branch migration `20261112200000_index_refund_payment_lookup.sql` adds
 - Refund workflow path filters include `tests/process-refund-handler.test.js` for both push and pull_request.
 - GitHub Actions run **43177723211 — SUCCESS**; refund handler, SQL workflow, webhook ledger contract, ambiguous-match handler, and syntax checks all passed.
 - This confirms current code's fail-closed full-only behavior; it does not record a user decision to permanently disallow partial/multiple refunds.
+
+
+## 2026-11-12 follow-up — live Production refund RPC byte-fingerprint and index audit (read-only)
+
+Live Production catalog से पाँच refund RPC definitions फिर पढ़े गए; कोई write नहीं किया गया।
+
+| RPC | Production identity args | Production result | definition MD5 |
+|---|---|---|---|
+| `srk_admin_list_booking_refund_requests` | `p_limit integer` | 18-column TABLE; `is_timer_booking` शामिल नहीं | `b43f26598f323a43067c4ff1037fcdb1` |
+| `srk_admin_prepare_booking_refund` | `p_request_id uuid` | 6-column TABLE | `897408756c250a1e6c10a782723ad03d` |
+| `srk_service_reconcile_booking_refund` | `p_refund_record_id uuid, p_provider_refund_id text, p_provider_status text, p_error text` | jsonb | `a02504f2912b0e3438f3c57fe7e6e44b` |
+| `srk_admin_finalize_manual_booking_refund` | `p_request_id uuid, p_reference text, p_note text` | jsonb | `a9cbe1bf13c423ce7643304e97ec4f60` |
+
+**Confirmed Production safety gap:** current Production `srk_service_reconcile_booking_refund` body returns immediately only when status is already `processed`; it does not reject a different non-null provider refund ID, does not ignore a stale `pending` event after `failed`, and does not reject a contradictory `processed` event after `failed`. This matches the known pre-hardening behavior. Feature migration `20261112190000_harden_refund_provider_reconciliation.sql` is not present in Production; do not claim its protection is live. Its proposed hardened definition must be applied only after complete migration archive recovery, disposable Production-parity replay, review, and separate user approval.
+
+Production `srk_razorpay_refunds` indexes currently are:
+- Unique: primary key `id`, `booking_id`, `idempotency_key`, `refund_id`.
+- Non-unique: `(status, created_at DESC)`.
+- No `payment_id` index exists in Production. Feature branch migration `20261112200000_index_refund_payment_lookup.sql` remains unapplied there.
+
+Production constraints confirm `UNIQUE(booking_id)`, `UNIQUE(idempotency_key)`, `UNIQUE(refund_id)`; therefore the current data model is one refund ledger row per booking, not a partial/multiple-refund ledger. Current Production has zero refund rows per earlier read-only count, but zero rows do not eliminate the RPC state-transition risk for future refunds.
+
+**Admin integration mismatch reconfirmed:** Production Admin refund list RPC returns 18 columns and omits `is_timer_booking`; its `has_manual_payment` expression checks `srk_manual_payment_entries` only, not Timer cash receipts. Production lacks `srk_admin_finalize_timer_cash_refund(uuid,text,text)`. Do not activate Timer Cash refunds or assume the current Admin refund screen correctly routes Timer cash cases until a reviewed compatibility migration and UI contract test exist.
+
+No Production function, table, index, policy, migration history, data, or provider API was changed by this audit.
