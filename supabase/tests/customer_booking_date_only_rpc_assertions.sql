@@ -186,14 +186,14 @@ begin
   -- Publish a same-day rate through the Admin RPC, then prove customer booking
   -- creation resolves the new effective version rather than a hardcoded rate.
   reset role;
-  select set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000099',true);
+  perform set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000099',true);
   set local role authenticated;
   perform public.srk_admin_publish_rate_version(
     'helper',120.125,current_date,'Approved same-day rate version selection regression'
   );
   reset role;
-  select set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000010',true);
-  select set_config('request.jwt.claim.phone','+919000000010',true);
+  perform set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000010',true);
+  perform set_config('request.jwt.claim.phone','+919000000010',true);
   set local role authenticated;
   v_legacy := public.srk_create_customer_booking(
     jsonb_build_object(
