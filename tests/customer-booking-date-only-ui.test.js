@@ -34,12 +34,18 @@ test("historical booking time remains visible when an older record has one", () 
   assert.match(html, /row\.preferred_date\s*\|\|\s*''\)\s*\+\s*' '\s*\+\s*customerEsc\(row\.preferred_time\s*\|\|\s*''\)/);
 });
 
-test("customer selects 1–8 hours and sees a live server-priced estimate", () => {
+test("customer selects 1–8 hours and sees estimates from the live approved rate RPC", () => {
   assert.match(bookingForm, /<select id="durationHours" required>/);
   for (let hours = 1; hours <= 8; hours++) assert.match(bookingForm, new RegExp('<option value="' + hours + '">'));
   assert.match(bookingForm, /id="labourEstimate"/);
-  assert.match(html, /customerLabourBasePaise/);
-  assert.match(html, /Math\.floor\(\(customerLabourBasePaise\[category\] \* hours \+ 4\) \/ 8\)/);
+  assert.match(html, /customerSb\.rpc\('srk_get_current_customer_rates'\)/);
+  assert.match(html, /async function loadCustomerRateCatalogue\(\)/);
+  assert.match(html, /customerHourlyRates\[row\.category_code\]\s*=\s*Number\(row\.hourly_rate\)/);
+  assert.match(html, /Math\.floor\(customerHourlyRates\[category\] \* hours \* 100 \+ 0\.50000001\)/);
+  assert.match(html, /वर्तमान दरें उपलब्ध नहीं हैं/);
+  assert.match(html, /if \(submit\) submit\.disabled = true/);
+  assert.doesNotMatch(bookingForm, /Helper — 8 घंटे ₹899/);
+  assert.doesNotMatch(html, /customerLabourBasePaise/);
   const submitStart = html.indexOf("document.getElementById('booking').addEventListener('submit'");
   const submitEnd = html.indexOf("document.getElementById('payNow').addEventListener", submitStart);
   const submitHandler = html.slice(submitStart, submitEnd);
