@@ -14,7 +14,7 @@ declare
  v_result jsonb;
 begin
  select * into v_refund from public.srk_razorpay_refunds
- where booking_id='20000000-0000-4000-8000-000000000001';
+ where booking_id='20000000-0000-4000-8000-000000000002';
  if not found then raise exception 'TEST_REFUND_RECORD_MISSING'; end if;
  select payment_status into v_before_booking_status from public.service_bookings where id=v_refund.booking_id;
  v_before_refund_status:=v_refund.status;
