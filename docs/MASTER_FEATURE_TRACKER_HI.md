@@ -247,3 +247,11 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] विस्तृत 78-vs-57 comparison और सुरक्षित reconciliation gate `docs/MIGRATION_RELEASE_SEQUENCE_AUDIT_HI.md` तथा सभी 78 Production history entries का row-by-row status `docs/PRODUCTION_MIGRATION_HISTORY_COMPARISON_HI.md` में दर्ज। तुलना में 7 exact version+name matches, 10 Production rows same-name/different-version और 61 Production rows बिना exact-name branch source के मिले; branch में 41 exact-name Production history entry के बिना files हैं।
 - [T] यह migration drift अब सबसे बड़ा Production blocker है। किसी migration को timestamp/name अनुमान से apply, skip, rename या mark-applied नहीं करना। पहले प्रत्येक mismatch का SQL-level reconciliation और disposable Production-parity replay जरूरी है।
 - [T] Production DB में कोई write/migration नहीं की गई। NO-GO for Production जारी।
+
+## Refund Provider Reconciliation Hardening — 2026-11-12
+- [I] नया forward-only migration `20261112190000_harden_refund_provider_reconciliation.sql`: पहले से bind हुआ Razorpay provider refund ID बदला नहीं जा सकता; अलग ID आने पर SQLSTATE `23505` के साथ reject होता है।
+- [I] `processed` और `failed` terminal states सुरक्षित; failed refund पर देर से आया `pending` event ignore होता है और state/provider_status downgrade नहीं होते। Failed से उसी refund ID पर processed transition को automatic स्वीकार नहीं किया जाता; manual reconciliation आवश्यक है।
+- [I] Refund regression assertions में processed record पर conflicting provider ID, failed → stale pending, failed → processed terminal conflict और provider ID immutability की जाँच जोड़ी।
+- [I] Refund CI workflow में forward migration दो बार apply/replay और push + pull_request path coverage जोड़ी।
+- [V] GitHub Actions run `43171211161` SUCCESS at commit `69ad1262b35bcc4766385b27eb0ad93a0875aab7`; isolated PostgreSQL 16 fixture, refund SQL assertions, webhook ledger checks, migration replay, Node syntax and handler/contract tests passed.
+- [T] यह disposable CI database का प्रमाण है; Production Supabase migration लागू नहीं हुई और वास्तविक Razorpay sandbox webhook replay अभी नहीं हुआ।
