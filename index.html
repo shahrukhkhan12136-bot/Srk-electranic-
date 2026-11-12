@@ -317,6 +317,13 @@ header .hero{display:none}
     <option value="skilled">Skilled — 8 घंटे ₹1,599 • प्रति घंटा ₹199.875</option>
     <option value="master">Master — 8 घंटे ₹1,999 • प्रति घंटा ₹249.875</option>
    </select>
+   <label for="durationHours">काम की अनुमानित अवधि</label>
+   <select id="durationHours" required>
+    <option value="">अवधि चुनें</option>
+    <option value="1">1 घंटा</option><option value="2">2 घंटे</option><option value="3">3 घंटे</option><option value="4">4 घंटे</option>
+    <option value="5">5 घंटे</option><option value="6">6 घंटे</option><option value="7">7 घंटे</option><option value="8">8 घंटे</option>
+   </select>
+   <p id="labourEstimate" class="small" role="status" aria-live="polite">श्रेणी और अवधि चुनने पर अनुमानित मेहनताना यहाँ दिखेगा।</p>
    <p class="small">ये केवल मेहनताना दर हैं। काम का समय ग्राहक की मंजूरी से शुरू और बंद होगा। सामान/पार्ट्स का खर्च अलग, itemized और आपकी मंजूरी के बाद ही जोड़ा जाएगा। बुकिंग के समय कोई भुगतान नहीं लिया जाएगा।</p>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
    <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
@@ -855,6 +862,20 @@ async function startRazorpayPayment() {
   }
 }
 
+const customerLabourBasePaise = { helper: 89900, ordinary: 119900, skilled: 159900, master: 199900 };
+function updateCustomerLabourEstimate() {
+  const category = value('serviceCategory');
+  const hours = Number(value('durationHours'));
+  const output = document.getElementById('labourEstimate');
+  if (!customerLabourBasePaise[category] || !Number.isInteger(hours) || hours < 1 || hours > 8) {
+    output.textContent = 'श्रेणी और अवधि चुनने पर अनुमानित मेहनताना यहाँ दिखेगा।';
+    return;
+  }
+  const amountPaise = Math.floor((customerLabourBasePaise[category] * hours + 4) / 8);
+  output.textContent = 'अनुमानित मेहनताना: ₹' + (amountPaise / 100).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (' + hours + ' घंटे)। अंतिम बिल वास्तविक स्वीकृत काम के समय से बनेगा। सामान अलग रहेगा।';
+}
+document.getElementById('serviceCategory').addEventListener('change', updateCustomerLabourEstimate);
+document.getElementById('durationHours').addEventListener('change', updateCustomerLabourEstimate);
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
 document.getElementById('electricianLocate').addEventListener('click',()=>locateInto('electricianLat','electricianLng','electricianLocationStatus'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
@@ -875,7 +896,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: value('service'), preferred_date: value('date'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '),
-      service_category_code: value('serviceCategory'),
+      service_category_code: value('serviceCategory'), duration_hours: Number(value('durationHours')),
       idempotency_key: bookingIdempotencyKey
     }) });
     const result = await response.json();
