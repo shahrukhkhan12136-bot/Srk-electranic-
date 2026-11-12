@@ -24,7 +24,7 @@ on:
       - "netlify/functions/process-refund.js"
       - "index.html"
       - "admin.html"
-      - "tests/admin-refund-reconciliation-ui.test.js"
+      - "tests/admin-refund-reconciliation-ui.test.js"\n      - "tests/admin-payout-reference-correction.test.js"\n      - "supabase/migrations/20261112220000_safe_electrician_payout_reference_correction.sql"
       - "netlify.toml"
       - ".github/workflows/refund-workflow.yml"
   pull_request:
@@ -48,7 +48,7 @@ on:
       - "netlify/functions/process-refund.js"
       - "index.html"
       - "admin.html"
-      - "tests/admin-refund-reconciliation-ui.test.js"
+      - "tests/admin-refund-reconciliation-ui.test.js"\n      - "tests/admin-payout-reference-correction.test.js"\n      - "supabase/migrations/20261112220000_safe_electrician_payout_reference_correction.sql"
       - "netlify.toml"
       - ".github/workflows/refund-workflow.yml"
 
@@ -118,4 +118,4 @@ jobs:
       - name: Syntax check Netlify refund handler
         run: node --check netlify/functions/process-refund.js
       - name: Test Admin refund reconciliation UI contract
-        run: node tests/admin-refund-reconciliation-ui.test.js
+        run: node tests/admin-refund-reconciliation-ui.test.js\n      - name: Test Admin payout reference correction UI contract\n        run: node tests/admin-payout-reference-correction.test.js
