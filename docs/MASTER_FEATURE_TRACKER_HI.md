@@ -406,3 +406,11 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Refund Workflow run **43177518210**: SUCCESS; handler syntax, refund handler, snapshot payment/webhook contract, dedicated Razorpay event ledger contract, ambiguous payment-ID handler behavior, and SQL refund workflow passed.
 - Earlier integrated run failures were due to a shell-loop formatting defect in the CI workflow, not SQL migration failure. Replaced the loop with explicit apply-twice commands; final rerun is green.
 - These results are disposable synthetic PostgreSQL CI, not a Production migration application, real provider webhook, money movement, or Android/device E2E test.
+
+
+### Refund policy validation — current implementation is FULL-REFUND ONLY
+- Customer refund request snapshots the full verified paid amount from `service_bookings.amount_paid`; it does not accept a client-supplied amount.
+- Admin preparation recomputes the full paid amount and rejects if it changed; for Razorpay quote bookings it also verifies the paid amount equals the approved quote components.
+- Refund handler checks Razorpay payment is captured, has `amount_refunded = 0`, and the captured amount exactly equals the approved request amount before it issues one full-amount refund request.
+- Therefore this implementation intentionally rejects a second refund when any partial/full amount has already been refunded. This is the selected current behavior; do not introduce partial or multiple refunds per booking without a separate policy approval and ledger redesign.
+- Added handler regression coverage for a payment with prior partial refund: it must return 409 after the payment lookup and must not POST another refund. The workflow path filter was also fixed to run when `tests/process-refund-handler.test.js` changes. CI run 43177723211 is pending/in progress at time of this note; do not claim its new assertion passed until it completes.
