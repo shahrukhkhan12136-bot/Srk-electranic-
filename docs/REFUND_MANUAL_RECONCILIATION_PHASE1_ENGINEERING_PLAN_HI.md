@@ -2,7 +2,7 @@
 
 Date: 2026-11-12  
 Branch: `feature/production-push-notifications`  
-Status: design only; no migration, UI, provider call, or Production change in this commit.
+Status: Phase 1 backend and Admin UI implemented on feature branch; browser/device and Production-parity validation remain outstanding.
 
 ## Findings from the current feature-branch schema
 
@@ -74,3 +74,15 @@ The Supabase 2026-10-30 Data API change means new public-schema tables are not a
 - Refund Workflow CI run `43180209579` SUCCESS at commit `4bf3482a4163cd61372fa9db4f3bdf305b6342e1`. The migration replayed twice in isolated PostgreSQL 16; the new evidence/review assertions and existing refund, webhook, handler and syntax tests passed.
 - This is backend Phase 1 only. Admin dashboard UI integration, browser/device validation, disposable Production-parity validation, migration archive recovery, and owner approval for any future financial-state transition remain outstanding.
 - No Production database changes, Razorpay provider calls, real-money activity, or deployment occurred.
+
+## Admin Dashboard UI integration progress — 2026-11-12
+
+- `admin.html` now shows an **Evidence Reconciliation** workspace only on refund requests in `unknown` or `processing` state that have a linked refund ledger record.
+- Admin can open/read a case, enter factual Razorpay Dashboard evidence (provider refund/payment IDs, paise amount, currency, provider status/timestamps, and a constrained text reference), and inspect append-only evidence, reviews, and audit history.
+- Review controls are hidden for the case opener and evidence submitter. A second Admin can record one of the four advisory decisions; the confirmation text states that this does not issue a refund or change financial/customer state.
+- The UI uses only the four guarded reconciliation RPCs. It does not call Razorpay, directly write tables, or invoke manual-cash refund RPCs from this workspace.
+- Stable Action IDs are retained across ambiguous network retries while the submitted payload remains unchanged. Dynamic database values are escaped before rendering.
+- Added `tests/admin-refund-reconciliation-ui.test.js` and wired it into the refund workflow. Checks cover inline-script parsing, required RPCs, independent-review UI gating, retry ID messaging, escaped rendering, no direct table/provider calls, and visibility only for eligible request states.
+- Refund Workflow CI run `43181068748` SUCCESS at commit `965c0f90807ecf604e04f58a1811a9fd8a061438`.
+- Two earlier UI-test runs failed because the test initially treated the standard `Array.from` helper as a direct database write. The assertion was narrowed to `sb.from`; the corrected run passed.
+- Still outstanding: real Admin browser workflow with two distinct Admin identities against a disposable Production-parity database, accessibility/mobile review, migration archive recovery, and all previously listed release gates. No Production database, Razorpay, Netlify deployment, or live-money operation was touched.
