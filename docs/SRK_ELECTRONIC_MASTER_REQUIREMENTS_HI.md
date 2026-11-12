@@ -1924,3 +1924,47 @@ Migration lineage पूरी तरह reconcile होने और Feature B
 
 ### 6. निष्कर्ष
 नया webhook event table बनाने की जरूरत अभी सिद्ध नहीं है; Production में पहले से event inbox है। सही अगला रास्ता duplicate table नहीं, बल्कि source lineage verify करके existing inbox को सुरक्षित रूप से इस्तेमाल/विस्तारित करना है। Event inbox मौजूद है, लेकिन current inspected webhook handler उसे उपयोग नहीं करता — यह मुख्य integration gap है।
+
+
+## 17.53 — Production Webhook Inbox के exact columns, RLS, indexes और Admin exception RPC की पुनः पुष्टि (13 Nov 2026)
+
+यह जाँच केवल PostgreSQL catalog metadata और function definition पर आधारित है। कोई event row, customer PII, payment payload या financial record नहीं पढ़ा गया; कोई DB mutation नहीं हुई।
+
+### 1. Inbox table का exact live shape
+`public.srk_razorpay_webhook_events` में ये columns हैं:
+- `event_id` text NOT NULL (primary key)
+- `event_type` text NOT NULL
+- `razorpay_order_id`, `razorpay_payment_id`, `razorpay_refund_id` nullable text
+- `payment_amount_paise` nullable bigint, `payment_currency` nullable text
+- `processing_status` NOT NULL, default `received`
+- `reconciliation_reason` nullable text
+- `received_at` NOT NULL default now(); `processed_at` nullable; `updated_at` NOT NULL default now().
+- Indexes: unique primary key on `event_id`; order ID + received time descending; processing status + received time descending.
+- इस catalog snapshot में payload hash, signature result, attempt count, claim lease, retry schedule और last-error fields नहीं हैं।
+
+### 2. RLS और effective table grants
+- RLS enabled होने की पूर्व catalog जाँच की पुष्टि के साथ, इस बार `pg_policies` query में इस table के लिए कोई policy row नहीं मिली। अतः client API के लिए policy-based access नहीं खुलता।
+- `information_schema.role_table_grants` में postgres और service_role को SELECT/INSERT/UPDATE के अतिरिक्त DELETE, TRUNCATE, REFERENCES और TRIGGER भी मिले।
+- anon/authenticated के लिए table grants नहीं मिले।
+- अतिरिक्त service_role privileges का स्रोत अभी भी unresolved है; default privileges, role membership/inherited grants और object-level grant history की जाँच बाकी है। कोई GRANT/REVOKE नहीं किया।
+
+### 3. Admin exception RPC की वास्तविक सीमा
+- `public.srk_admin_list_razorpay_webhook_exceptions(integer)` live definition प्राप्त हुई।
+- SECURITY DEFINER, fixed search_path `pg_catalog, public, auth, pg_temp`; Admin membership guard; limit 1–100.
+- केवल `exception` और `processing_error` statuses लौटाता है।
+- Returned columns में event ID/type, order/payment IDs, amount/currency, processing status/reason और timestamps हैं; `razorpay_refund_id` लौटाया नहीं जाता।
+- यह read-only listing RPC है; इससे event insert, retry, reprocess, lease claim या refund reconciliation capability सिद्ध नहीं होती।
+
+### 4. Implementation निर्णय
+- Existing inbox table को ही आधार बनाना है; दूसरा duplicate event table नहीं बनाना।
+- Event ID dedupe, payload hash, verified-signature metadata, safe lease/attempt/retry fields और append-only event transition audit का additive proposal रखा जाए।
+- Refund event के लिए Admin exception visibility में refund ID भी शामिल हो; लेकिन RPC update से पहले exact migration lineage और dependent clients verify हों।
+- No raw payload storage unless retention/PII controls explicitly designed.
+- No event rows read/modified; no schema, policy, grants or function changed.
+
+### 5. अगला audit क्रम
+1. Inbox table की exact migration source/version/blob और Production migration history से match।
+2. सभी repository references/callers और webhook endpoint routing का search; पता करें कोई दूसरा handler event table write तो नहीं करता।
+3. Table owner, role membership, default privileges और service_role extra grants का origin trace।
+4. Existing event status transitions और Admin exception UI mapping का source audit।
+5. उसके बाद ही Feature Branch में additive migration design और tests; Production में कोई migration नहीं।
