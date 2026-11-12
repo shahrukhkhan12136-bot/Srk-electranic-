@@ -3,7 +3,8 @@ insert into auth.users(id,phone)
 values('10000000-0000-4000-8000-000000000004','919999999994')
 on conflict(id) do nothing;
 
-do $$
+set role authenticated;
+do $
 declare
  v_refund public.srk_razorpay_refunds%rowtype;
  v_case_id uuid;
@@ -98,4 +99,5 @@ begin
   raise exception 'CLIENT_ROLE_HAS_DIRECT_RECONCILIATION_TABLE_ACCESS';
  end if;
 end
-$$;
+$;
+reset role;
