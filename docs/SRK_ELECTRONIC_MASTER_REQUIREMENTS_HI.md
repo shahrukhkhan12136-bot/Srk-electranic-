@@ -1510,3 +1510,35 @@ GitHub code search और Feature Branch source excerpts से पुरान�
 - Retire old quote UI/RPC only after code search, live function dependency scan, browser E2E, payment webhook regression and historical-record verification show no active caller.
 
 No application code, database function, table, ACL, payment provider, booking/customer record or deployment changed. Only this documentation section was added to the Feature Branch.
+
+
+## 17.44 — Admin Panel Direct-Write और Razorpay Payment Finalization का Control-Boundary Audit (13 Nov 2026)
+
+Feature Branch के मौजूदा `admin.html`, `create-booking.js`, `create-order.js`, `verify-payment.js` और `razorpay-webhook.js` को source-level पर फिर जाँचा गया। कोई API request, payment, RPC या database write execute नहीं किया गया।
+
+### 1. Admin Panel के प्रत्यक्ष mutation paths
+- `admin.html` booking list में customer phone, address, district/state/PIN, location coordinates, status, quoted_amount, payment status और payment method पढ़ता है।
+- Location edit handler सीधे `service_bookings` पर `address,district,state,pincode` PATCH करता है; यह dedicated reasoned Admin RPC और before/after event के बजाय browser Supabase client से direct table update है।
+- Booking save handler पहले booking पढ़ता है, फिर non-paid booking के लिए `status` और `quoted_amount` सीधे table पर update करता है। Paid booking पर amount/payment status बदलने के कुछ UI guards हैं; ये UI-only guards हैं और server-side immutable billing authorization का विकल्प नहीं।
+- Manual payment branch controlled `srk_admin_record_manual_payment` RPC का उपयोग करती है; इसे preserve करना है, लेकिन नए timer billing snapshot, exact amount, receipt evidence, idempotency और actor audit से reconcile करना होगा।
+- Electrician active toggle भी `electrician_profiles.active` पर direct update है। इसे emergency control और staff permission matrix के साथ server-guarded mutation बनाना होगा।
+- Payout paid marking अलग Admin RPC `srk_admin_mark_electrician_payout_paid` से है; यह controlled pattern है, पर नए payout/fee allocation ledger के साथ regression tests चाहिए।
+
+### 2. Online payment finalization के मौजूदा अंतर
+- `create-order.js` order बनाने से पहले customer session/booking ownership और Online method जाँचता है; फिर completed + approved quote और `service_charge + materials_amount = quoted_amount` reconciliation पर निर्भर करता है।
+- `verify-payment.js` Razorpay signature verify करता है, provider payment fetch करके captured status, INR currency, amount और order ID मिलाता है; इसके बाद service-role PATCH से booking को paid करता है। यह legacy quote total पर आधारित है और payment-intent/billing-snapshot identity अभी नहीं दिखी।
+- `razorpay-webhook.js` webhook signature verify करता है और Online/completed/approved-quote/amount checks के बाद service-role PATCH करता है। अलग verify endpoint और webhook एक ही booking को finalize कर सकते हैं; conditional update/re-read replay safety देता है, पर event-ID ledger, shared atomic finalization RPC और concurrent webhook-vs-verify race का पूर्ण प्रमाण इस source scan में नहीं मिला।
+- दोनों finalizers payment status और amount_paid लिखते हैं; payout trigger इन्हीं legacy watched columns और quote fields पर निर्भर है। Timer billing snapshot को finalization और payout trigger दोनों में जोड़ना होगा।
+
+### 3. Security boundary और release requirements
+1. Admin direct booking amount/status/location और electrician active writes को scoped Admin RPCs में ले जाएँ; हर mutation में Admin/staff permission check, mandatory reason, before/after audit, actor, timestamp और idempotency हो।
+2. Paid/partially refunded/payout-created booking के amount/status परिवर्तन केवल explicit adjustment/refund/reconciliation workflows से हों; मूल timer bill immutable रहे।
+3. Customer booking API में client `quoted_amount` को authoritative input न मानें; server approved category/rate snapshot से amount निकाले।
+4. Order, verify और webhook एक frozen billing snapshot/payment intent को reference करें; booking/customer/order/payment/currency/amount exact match, provider event dedupe और atomic one-time finalization लागू हो।
+5. Admin location correction को अलग audited address-correction event बनाएँ; completed booking history में अनावश्यक phone/address/coordinates exposure न हो।
+6. Feature Branch में पहले unit/integration tests, फिर Razorpay Test Mode में duplicate webhook, verify+webhook simultaneous delivery, wrong amount/currency/order, stale booking, refund-before/after-payout और Admin unauthorized mutation negative tests चलें।
+
+### निष्कर्ष
+Admin Panel में कुछ नियंत्रित RPC paths मौजूद हैं, लेकिन location, booking status/quote amount और electrician active flag के लिए direct browser table writes भी हैं। Online verify और webhook दोनों legacy quote contract के तहत paid status लिखते हैं। इसलिए केवल नया UI लगाने से Admin controls या payment integrity Master Requirements के अनुरूप नहीं होंगे।
+
+No application code, database schema/function/ACL, booking/payment/wallet record, Razorpay setting, staging resource or deployment changed. केवल यह audit section Feature Branch की Master Requirements documentation में जोड़ा गया।
