@@ -262,3 +262,5 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [T] सात same-name files historical/current feature branch में byte-identical; Push subscription migration historical और current copy में materially different है।
 - [T] Detailed mapping: `docs/PRODUCTION_MIGRATION_ARCHIVE_RECOVERY_HI.md`; यह candidate-source register है, Production-applied SQL की authenticity proof नहीं।
 - [!] 39 Production migration rows अभी unresolved हैं; 25 timestamp-mismatch candidates का exact Production SQL से comparison बाकी है। Production remains read-only and NO-GO.
+
+- [!] Production refund RPC का read-only `pg_get_functiondef` audit: existing implementation provider refund ID overwrite कर सकती है और failed state को late pending event से processing में downgrade कर सकती है। Forward fix feature branch पर CI verified है, Production पर लागू नहीं। Details: `docs/REFUND_RECONCILIATION_PRODUCTION_AUDIT_HI.md`.
