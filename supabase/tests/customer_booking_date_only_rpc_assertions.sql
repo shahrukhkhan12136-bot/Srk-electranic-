@@ -6,6 +6,14 @@ declare
   v_today_version integer;
   v_future_version integer;
 begin
+  if position('Asia/Kolkata' in pg_get_functiondef('public.srk_create_customer_booking(jsonb,uuid)'::regprocedure))=0
+     or position('Asia/Kolkata' in pg_get_functiondef('public.srk_admin_publish_rate_version(text,numeric,date,text)'::regprocedure))=0
+     or position('Asia/Kolkata' in pg_get_functiondef('public.srk_get_current_customer_rates()'::regprocedure))=0 then
+    raise exception 'Rate effective-date functions must use the India business timezone';
+  end if;
+  if (timezone('Asia/Kolkata',timestamptz '2026-11-12 20:00:00+00'))::date <> date '2026-11-13' then
+    raise exception 'India midnight boundary conversion is incorrect';
+  end if;
   if not (select relrowsecurity from pg_class where oid='public.srk_rate_catalogue'::regclass) then
     raise exception 'Rate catalogue RLS is not enabled';
   end if;
