@@ -125,7 +125,29 @@ The newer booking/rate sequence has these explicit dependencies:
 
 This is not a complete 57-file global replay order. The earlier security, quote, push, commission and timer families still require a single dependency graph tied to the real target schema.
 
-## 5. CI evidence currently available
+## 5. Read-only Production migration-history comparison (2026-11-12)
+
+Production project `gnqhoaqatmoiwwhgzkgm` की migration history को read-only `list_migrations` से देखा गया:
+
+- Production migration history: **78 entries**.
+- Feature branch repository: **57 migration files**.
+- Version + name दोनों exact match: **7 entries**:
+  - `20261108120608_add_public_api_rate_limiting.sql`
+  - `20261108120658_enable_rls_public_api_rate_limits.sql`
+  - `20261108121115_add_customer_account_booking_access.sql`
+  - `20261109103038_customer_electrician_direct_call_contacts.sql`
+  - `20261109103143_move_customer_call_contact_lookup_to_private.sql`
+  - `20261111082515_add_assigned_electrician_cash_payment_status.sql`
+  - `20261111153846_srk_booking_refund_requests_workflow.sql`
+- Exact migration-name overlap: **16 branch files**. इनमें कई filenames के version timestamps Production history से अलग हैं; उदाहरण: Google Maps, assigned booking map pin, wallet ledger, Route transfer ledger, quote workflow, push subscription और quote-column repair migrations।
+- Production में `add_assigned_electrician_cash_payment_status` नाम की **दो entries** हैं: `20261111082515` और `20261111083811`; branch में केवल पहली timestamp वाली file मौजूद है।
+- Production में कई recorded migrations की corresponding source files branch tree में exact filename से मौजूद नहीं हैं; वहीं branch के कई timer, forward-copy, identity, order-number, rate-catalogue और webhook-ledger migrations Production history में recorded नहीं हैं।
+- Read-only schema probe में Production पर `srk_booking_refund_requests` और `srk_razorpay_refunds` मौजूद मिले; `srk_booking_payable_snapshots`, `srk_razorpay_orders`, `srk_razorpay_payments`, `srk_rate_catalogue`, `srk_rate_catalogue_audit`, `srk_payment_webhook_events` और `srk_booking_creation_requests` नहीं मिले। जाँचे गए नए `service_bookings` columns (`order_number`, `duration_hours`, `estimated_labour_amount_snapshot`, `rate_catalogue_id`, `rate_version_snapshot`, `service_category_code`, `final_bill_id`) तथा `electrician_profiles.electrician_display_id` भी उस read-only query में नहीं मिले।
+- इसका अर्थ: Production पर refund foundation का पुराना भाग दर्ज है, लेकिन नया timer snapshot/rate/order/ID/webhook-ledger feature set लागू नहीं है। Filename या feature similarity के आधार पर pending migrations को लागू करना सुरक्षित नहीं है।
+
+**Critical decision:** पहले Production migration history और branch source के बीच हर timestamp/name mismatch का SQL-level reconciliation करना होगा। किसी already-applied Production migration के समान SQL को नए timestamp से दोबारा चलाना duplicate DDL/data mutation करा सकता है। किसी applied migration को repo में absent होने के कारण recreate/mark-applied भी न करें, जब तक exact SQL/schema evidence न हो।
+
+## 6. CI evidence currently available
 
 - Timer/billing SQL workflow run **43169284161** — SUCCESS on commit `1ac783fb`. It applies the timer migration path and replay checks against disposable PostgreSQL 16 fixtures, including a Production-shaped legacy baseline. It is not a full replay of all 57 migrations.
 - Refund/webhook workflow run **43169304973** — SUCCESS on commit `32f1d109`. It applies the refund/webhook ledger migration twice and passes refund SQL assertions, webhook lease/duplicate/access assertions, Node syntax checks and payment/webhook contract tests.
@@ -133,7 +155,7 @@ This is not a complete 57-file global replay order. The earlier security, quote,
 - Electrician display-ID workflow run **43082442370** — previously recorded SUCCESS in the feature tracker; separate PostgreSQL 16 profile/Auth fixture, migration catalog/security assertions, behavior tests and 24 concurrent issuance transactions.
 - Booking order/date/rate workflow has earlier successful runs recorded in `MASTER_FEATURE_TRACKER_HI.md`; it tests the order-number, date-only, duration and rate-catalogue sequence on a disposable fixture. Re-run it against the current HEAD before treating that sequence as current-HEAD verified.
 
-## 6. Required release-parity work before any Production change
+## 7. Required release-parity work before any Production change
 
 1. Export exact Production migration history and compare it with the complete 57-file branch inventory.
 2. Read-only inspect Production schema, constraints, indexes, triggers, policies, grants, function definitions and data shape for every touched object.
@@ -143,6 +165,6 @@ This is not a complete 57-file global replay order. The earlier security, quote,
 6. Test role matrix, RLS, function grants, SECURITY DEFINER search paths, PII visibility, date/timezone boundaries, immutable financial snapshots and concurrency.
 7. Obtain separate explicit owner approval before any Production migration, live payment/provider action or website deployment.
 
-## 7. Release decision
+## 8. Release decision
 
 **NO-GO for Production.** This document records repository inventory and existing disposable-CI evidence only. No Production Supabase migration, live Razorpay operation, real-money test, Netlify Production deployment or Play Store release was performed or authorized.
