@@ -515,8 +515,14 @@ jobs:
           # Add only the legacy refund-ledger dependencies, then exercise the real
           # refund request + timer snapshot refund + webhook hardening chain.
           psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/timer_refund_parity_overlay.sql
-          for migration in supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql supabase/migrations/20261111160015_timer_snapshot_refund_support.sql supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql supabase/migrations/20261112200000_index_refund_payment_lookup.sql; do
-            psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
-            psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f "$migration"
-          done
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261111160015_timer_snapshot_refund_support.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261111160015_timer_snapshot_refund_support.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112200000_index_refund_payment_lookup.sql
+          psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112200000_index_refund_payment_lookup.sql
           psql "$PARITY_DB" -v ON_ERROR_STOP=1 -f supabase/tests/timer_refund_parity_assertions.sql
