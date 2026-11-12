@@ -44,6 +44,7 @@ on:
       - "supabase/tests/production_parity_legacy_baseline.sql"
       - "supabase/tests/production_parity_legacy_assertions.sql"
       - "tests/timer-panel-contract.test.js"
+      - "tests/timer-panel-contract.test.js"
       - "supabase/tests/timer_billing_authenticated_role_assertions.sql"
       - "supabase/tests/timer_billing_integrity_extensions_assertions.sql"
       - "supabase/tests/customer_approved_timer_rpcs_assertions.sql"
