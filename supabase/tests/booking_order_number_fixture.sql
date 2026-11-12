@@ -71,3 +71,12 @@ create table public.srk_booking_creation_requests(
  created_at timestamptz not null default now(),
  primary key(customer_user_id,idempotency_key)
 );
+
+-- Admin allow-list and check function used by the disposable admin RPC tests.
+create table if not exists public.srk_admin_users(user_id uuid primary key,created_at timestamptz not null default now());
+create or replace function public.is_srk_admin()
+returns boolean language sql stable security definer set search_path=''
+as $$ select exists(select 1 from public.srk_admin_users where user_id=auth.uid()) $$;
+revoke all on function public.is_srk_admin() from public,anon;
+grant execute on function public.is_srk_admin() to authenticated;
+insert into public.srk_admin_users(user_id) values('30000000-0000-0000-0000-000000000099') on conflict do nothing;
