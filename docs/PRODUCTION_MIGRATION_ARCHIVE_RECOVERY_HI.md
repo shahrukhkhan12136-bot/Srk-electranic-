@@ -219,3 +219,10 @@ The following 39 Production history rows still have no matching-name SQL file in
 4. Production पर कोई SQL/DDL/DML, migration-history update, payment call या deployment नहीं किया गया।
 
 **NO-GO जारी है।** Exact historical SQL और disposable Production-parity replay मिलने तक release approval नहीं।
+
+### SECURITY DEFINER grants और function-body checks — read-only follow-up
+- Catalog ACL inventory में audited SECURITY DEFINER functions पर PUBLIC या anon EXECUTE grant नहीं दिखा। Admin RPCs पर authenticated EXECUTE grant मौजूद है, लेकिन inspected refund Admin RPC bodies शुरुआत में auth.uid() null check और public.is_srk_admin() check करती हैं।
+- srk_customer_create_booking_refund_request authenticated caller की auth.uid() से booking ownership मिलाती है; customer refund-list RPC केवल उसी customer_user_id की rows लौटाती है।
+- srk_service_reconcile_booking_refund पर EXECUTE केवल postgres और service_role को मिला; body service_role assertion भी करती है।
+- Empty search_path वाले refund functions के bodies में table/function references schema-qualified हैं; यह inspected functions के लिए सकारात्मक evidence है, पर सभी SECURITY DEFINER functions का पूर्ण code audit अभी बाकी है।
+- यह current-state security evidence है; इससे historical hardening migration SQL का exact source या उस migration का पूरा effect साबित नहीं होता।
