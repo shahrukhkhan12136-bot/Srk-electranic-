@@ -989,3 +989,29 @@ G. **Release gate:** Security/Performance/Health advisors, migration diff, finan
 
 **सीमा:** Production पर केवल migration history read की गई और GitHub Feature Branch tree पढ़ा गया। कोई migration apply/repair/delete/rename नहीं हुई; कोई schema/data/auth/payment/deployment बदलाव नहीं हुआ।
 
+### 17.28 — 14 Branches में Migration Source Recovery का दूसरा sweep (13 Nov 2026)
+
+Production के 81 migration records को repository की सभी 14 उपलब्ध branches के migration trees से दोबारा मिलाया गया। यह filename/version discovery है; SQL equivalence या Production में वही body apply होने का प्रमाण नहीं।
+
+**नया cross-branch परिणाम**
+- Exact 14-digit version वाली source file **13/81** Production records के लिए मिली। पहले current Feature Branch में केवल 5 exact matches थे; अन्य branches में 8 अतिरिक्त exact-version candidates मिले।
+- समान migration name वाली कोई source candidate **38/81** records के लिए मिली (इनमें exact-version records भी शामिल हैं)।
+- कुल **43/81** Production migration names के लिए 14 scanned branches में exact version या same-name candidate नहीं मिला।
+- इसलिए “76 source files गायब” कहना सटीक नहीं: 76 का अर्थ केवल current Feature Branch में exact version absent था। Cross-branch sweep के बाद 13 exact-version candidates, 38 same-name candidates (overlap सहित), और 43 पूर्णतः unmatched names हैं।
+- यह 14-branch scan वर्तमान GitHub branch set पर आधारित है; deleted branches, tags, forks, private backups या developer local clones इसमें शामिल नहीं हैं।
+
+**विशेष lineage जोखिम**
+1. `20261111082515_add_assigned_electrician_cash_payment_status` का exact-version SQL केवल `feature/production-push-notifications` में मिला। Production में उसी नाम की दूसरी version `20261111083811` का अलग exact-version source नहीं मिला। इसलिए दूसरी migration का प्रभाव अलग से live function/trigger/constraint definition और commit history से reconstruct करना होगा।
+2. `20261110080448_srk_business_finance_dashboard` के same exact-version नाम के दो अलग Git blobs मिले: `69f15bf8...` और `b479f89c...`। दोनों का SQL content अलग हो सकता है; किसी एक को Production source मानना अभी सुरक्षित नहीं।
+3. `20261111043852_srk_business_finance_reporting_dates` के लिए भी दो अलग blobs मिले: `3166714b...` और `d1224b3f...`। Production-applied body प्रमाणित नहीं।
+4. `20261111072823_add_electrician_push_subscriptions` के same-name candidates दो अलग timestamps और blobs पर हैं: `20261111020000` blob `33ea8450...`, तथा `20261111090000` blob `831485c5...`। दोनों में SQL difference और live applied effect का मिलान जरूरी।
+5. `20261109161539_customer_contact_after_completion` और अन्य कुछ records के लिए same-name source केवल अलग timestamp पर मिली। नाम समान होना migration identity या exact SQL equivalence नहीं है।
+
+**अगला recovery batch**
+- पहले तीन divergent same-name migrations के दोनों blobs fetch करके SQL diff और object-by-object effect matrix बनाना।
+- फिर exact-version candidates के Git commit ancestry और production live object definitions की तुलना।
+- जिन 43 names के candidates नहीं मिले, उनके लिए commit history, alternate repository references और schema effects की targeted खोज; बिना source के historical migration replay नहीं।
+- सभी recovered SQL को केवल evidence archive/analysis में रखना; Production में apply नहीं करना।
+
+**स्थिति:** कोई migration apply, delete, rename, repair या reset नहीं हुई। कोई Production schema/data/payment/auth change नहीं। Feature Branch में केवल यह documentation section जोड़ा गया।
+
