@@ -444,3 +444,22 @@ Main Admin को हर booking का timeline और linked evidence दि�
 7. पहले Feature Branch/staging/Test Mode पर validation; main/production/live payment/deployment अलग explicit approval के बिना नहीं।
 
 **Deletion rule:** Master से टकराने वाला active user-facing behavior हटाया/बदला जाएगा; लेकिन database history, payment/refund ledger, audit trail, working Netlify handlers, secrets/configuration और rollback artifacts को dependency तथा data-retention review के बिना delete नहीं किया जाएगा।
+
+
+### 17.5 Quotation/Inspection Dependency Audit — विस्तृत निष्कर्ष
+यह जाँच 13 नवम्बर 2026 को Supabase production project पर read-only SQL और Feature Branch source inspection से की गई।
+
+- [ ] तीन quote RPC मौजूद हैं: srk_submit_booking_quote, srk_customer_respond_booking_quote और srk_get_my_assigned_booking_quote_details। तीनों SECURITY DEFINER हैं; ACL snapshot में anon EXECUTE=false और authenticated EXECUTE=true मिला। इन्हें revoke/drop करने से पहले सभी वैकल्पिक timer/payment flows deploy और verify करना अनिवार्य है।
+- [ ] Electrician UI में inspection शुरू करना, service/material quote बनाना और quote-approved होने पर work शुरू करना मौजूद है। यह Master के customer-approved start/timer/completion flow से बदलना है।
+- [ ] Booking UI customer payment button को completed + quote_status approved + quoted_amount पर निर्भर करती है; booking submit में amount शून्य रखकर inspection के बाद final quote बनने की टिप्पणी है।
+- [ ] create-order.js, verify-payment.js और razorpay-webhook.js सभी completed + approved quote तथा quoted_amount = service_charge + materials_amount validation पर निर्भर हैं। केवल UI हटाने से online payment flow टूटेगा।
+- [ ] Admin UI quoted_amount पढ़ती/लिखती है और पुराने status/amount को सीधे update करती है; इसे server-authoritative billing और Admin audit workflow से बदलना होगा।
+- [ ] Production DB में quote columns: quoted_amount, quote_status, quote_note, quote_submitted_at, quote_responded_at और electrician_quote_kind। इसके अलावा service_charge, materials_amount, customer_suggested_amount और commission_amount जैसे fields का भी नए labour-only ledger से mapping आवश्यक है।
+- [ ] service_bookings constraints अभी inspection, awaiting_quote_approval, quote_approved और quote_rejected statuses को अनुमति देते हैं; assignment check भी इन्हें assigned booking मानता है। इन्हें तभी बदलें जब नया lifecycle सभी callers में लागू और historical data mapped हो।
+- [ ] Quote fields का उपयोग अन्य SECURITY DEFINER financial/admin functions में भी मिला: srk_admin_mark_electrician_payout_paid, srk_admin_prepare_booking_refund, srk_admin_prepare_razorpay_refund, srk_admin_record_manual_payment, srk_capture_admin_audit_event, srk_create_electrician_payable, srk_electrician_confirm_cash_payment और srk_get_my_assigned_cash_payment; साथ ही srk_get_my_offer_details तथा srk_update_booking_work_status में quote-status references हैं। हर function की पूरी definition और business logic को migration design में शामिल करना होगा।
+- [ ] Refund RPCs अभी quote approval और quote amount reconciliation अनिवार्य करते हैं; एक function timer/non-quote refund को अलग reconciliation की जरूरत बताकर रोकता है। नई actual-minute billing, partial refund और cancellation reversal के लिए अलग सुरक्षित refund calculation/ledger path आवश्यक है।
+- [ ] Admin audit trigger quote-related columns को allow-list में रखता है। नई financial fields और timer events को audit में शामिल करना होगा; पुरानी audit history मिटानी नहीं है।
+- [ ] इस snapshot में service_bookings पर एक historical completed + approved + paid Cash booking मिली, जिसमें quoted_amount ₹20, service_charge ₹10 और materials_amount ₹10 थे। यह केवल historical evidence है; record को बदलना/मिटाना नहीं है। नई policy के अनुसार materials labour/fee base से अलग होंगे, इसलिए पुराने record को historical schema/version के साथ सुरक्षित रखना होगा।
+- [ ] वर्तमान query में service_bookings पर quote-specific trigger या quote-named policy नहीं मिली; फिर भी generic audit trigger और financial functions quote fields इस्तेमाल करते हैं। Dependency analysis केवल नाम-आधारित trigger/policy खोज तक सीमित नहीं रहेगा।
+
+**निर्णय:** अभी quote columns, quote RPCs, पुराने status values, financial records या audit entries को production से delete/drop नहीं करना है। पहले नई server-authoritative timer/minute-billing/payment/refund implementation Feature Branch और staging/Test Mode में तैयार व test करें। फिर backward-compatible migration, historical data preservation, dependency re-scan, advisor checks और regression tests के बाद ही legacy elements को phased retirement दें।
