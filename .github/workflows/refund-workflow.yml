@@ -27,6 +27,7 @@ on:
       - "tests/admin-refund-reconciliation-ui.test.js"
       - "tests/admin-payout-reference-correction.test.js"
       - "supabase/migrations/20261112220000_safe_electrician_payout_reference_correction.sql"
+      - "supabase/tests/payout_reference_correction_*.sql"
       - "netlify.toml"
       - ".github/workflows/refund-workflow.yml"
   pull_request:
@@ -53,6 +54,7 @@ on:
       - "tests/admin-refund-reconciliation-ui.test.js"
       - "tests/admin-payout-reference-correction.test.js"
       - "supabase/migrations/20261112220000_safe_electrician_payout_reference_correction.sql"
+      - "supabase/tests/payout_reference_correction_*.sql"
       - "netlify.toml"
       - ".github/workflows/refund-workflow.yml"
 
@@ -82,6 +84,25 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql "postgresql://postgres@localhost:5432/srk_refund_test" -v ON_ERROR_STOP=1 -f supabase/tests/refund_workflow_foundation_harness.sql
+      - name: Create isolated payout correction database
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h localhost -U postgres srk_payout_test
+      - name: Load isolated payout correction fixture
+        env:
+          PGPASSWORD: postgres
+        run: psql "postgresql://postgres@localhost:5432/srk_payout_test" -v ON_ERROR_STOP=1 -f supabase/tests/payout_reference_correction_foundation_harness.sql
+      - name: Apply payout correction migration twice
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for attempt in 1 2; do
+            psql "postgresql://postgres@localhost:5432/srk_payout_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261112220000_safe_electrician_payout_reference_correction.sql
+          done
+      - name: Test Admin-only payout reference correction and audit
+        env:
+          PGPASSWORD: postgres
+        run: psql "postgresql://postgres@localhost:5432/srk_payout_test" -v ON_ERROR_STOP=1 -f supabase/tests/payout_reference_correction_runtime_assertions.sql
       - name: Apply refund migrations twice in dependency order
         env:
           PGPASSWORD: postgres
