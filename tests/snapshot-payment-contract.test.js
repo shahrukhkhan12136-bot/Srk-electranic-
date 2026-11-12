@@ -52,6 +52,7 @@ includesAll(webhook, [
   '["received", "retryable_error"]', "inProgress",
   "Webhook event claim reconciliation failed",
   "processing_started_at", "staleProcessing", "5 * 60 * 1000",
+  "snapshot_event_in_progress",
   "Webhook event claim was not acquired",
   "srk_reconcile_razorpay_snapshot_payment"
 ], "Razorpay webhook");
