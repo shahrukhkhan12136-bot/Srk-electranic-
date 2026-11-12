@@ -16,6 +16,7 @@ const customer = {
   preferred_date: "2026-12-01",
   work_details: "Switch repair",
   service_category_code: "helper",
+  duration_hours: 3,
   idempotency_key: "123e4567-e89b-42d3-a456-426614174000"
 };
 
@@ -68,6 +69,7 @@ test("accepts a date-only customer booking and never forwards preferred_time", a
   assert.ok(rpcCall, "customer booking RPC should be called");
   const payload = JSON.parse(rpcCall.options.body);
   assert.equal(payload.p_booking.preferred_date, "2026-12-01");
+  assert.equal(payload.p_booking.duration_hours, 3);
   assert.equal(Object.hasOwn(payload.p_booking, "preferred_time"), false);
 });
 
@@ -88,5 +90,21 @@ test("rejects an impossible calendar date before calling the booking RPC", async
   const result = await handler(event({ body: JSON.stringify(invalid) }));
   assert.equal(result.statusCode, 400);
   assert.equal(JSON.parse(result.body).success, false);
+  assert.equal(calls.some((url) => url.includes("/rpc/srk_create_customer_booking")), false);
+});
+
+test("rejects duration outside the 1-to-8-hour range before booking RPC", async (t) => {
+  const originalFetch = global.fetch;
+  t.after(() => { global.fetch = originalFetch; });
+  const calls = [];
+  global.fetch = async (url) => {
+    calls.push(String(url));
+    if (String(url).includes("/rpc/srk_check_public_rate_limit")) return response(true);
+    throw new Error("Unexpected fetch: " + url);
+  };
+  for (const duration_hours of [0, 9, 1.5, "3", null]) {
+    const result = await handler(event({ body: JSON.stringify({ ...customer, duration_hours }) }));
+    assert.equal(result.statusCode, 400, "invalid duration should be rejected: " + String(duration_hours));
+  }
   assert.equal(calls.some((url) => url.includes("/rpc/srk_create_customer_booking")), false);
 });
