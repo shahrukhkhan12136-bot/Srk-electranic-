@@ -750,3 +750,26 @@ Feature Branch के API handlers और उनके call-sites का source 
 - इस source scan में अलग receipt/invoice/history renderer का कोई अतिरिक्त Netlify endpoint नहीं मिला। Customer booking history स्वयं booking.html में है; बाकी receipts, exports, admin views, push payloads और logs का exhaustive scan अभी शेष है।
 
 सिर्फ source पढ़ा गया; कोई API/UI/DB code बदला नहीं गया। निष्कर्ष: Electrician UI completed booking पर customer_phone render कर सकता है; RPC और UI दोनों में सुधार आवश्यक है। Payment handlers भी अभी quote-era workflow पर निर्भर हैं।
+
+
+### 17.21 — Production Edge Functions, Push Payload और Legacy Cancellation Migration audit (13 Nov 2026)
+
+Production Edge Function inventory:
+- `push-job-offer` ACTIVE, version 4, `verify_jwt=false`; POST path custom `x-srk-push-secret` check, allowed payload केवल `public.job_offers` INSERT/UPDATE, row shape में offer id/electrician id/booking id/status की जाँच। Push message generic है; customer phone, name, address या coordinates push body में नहीं भेजे जाते।
+- Push delivery केवल eligible electrician profile (`active`, `approved`, linked `user_id`) और उसी user की subscriptions पर होती है। Notification में offerId और `/electrician.html?offerId=...` URL है; PII नहीं। VAPID public key GET intentionally public; private key/service key/webhook secret response में expose नहीं होते। Authorized diagnostic response केवल webhook secret header से खुलता है।
+- Production DB trigger `private.srk_notify_job_offer_push()` `job_offers` row का पूरा JSON webhook को भेजता है। यह row shape वर्तमान Edge Function द्वारा सीमित रूप से validate होती है और payload में customer contact fields नहीं दिखे। फिर भी future schema expansion के लिए trigger payload को allow-listed fields तक सीमित करना बेहतर होगा; अभी कोई बदलाव नहीं किया गया।
+- `send-sms-2factor` ACTIVE, version 8, `verify_jwt=false`; request पर signed Standard Webhooks signature verify करता है, फिर Indian phone और OTP format validate करके 2Factor provider को भेजता है। Provider response/log में OTP या phone print नहीं किया जाता। Endpoint में API key server env से आती है। यह custom delivery route है; वास्तविक OTP authentication Supabase Auth verification से ही होना चाहिए। Runtime provider delivery test नहीं किया गया।
+
+Production DB function findings:
+- `srk_customer_get_my_booking_contacts()` और `srk_electrician_get_my_assigned_booking_contacts()` दोनों completed status को allow करते हैं; customer/electrician ownership binding है, पर Master lifecycle से टकराव है। दोनों में `quote_rejected` भी allow है।
+- `srk_get_my_assigned_booking_quote_details()` completed सहित legacy statuses में assigned electrician को address, location, payment/quote details देता है। इसे भी lifecycle scope में लाना होगा।
+- `srk_admin_get_booking_contacts()` पूरे recent booking set के customer/electrician phone देता है, लेकिन पहले `auth.uid()` और `is_srk_admin()` guard करता है। Admin operational access को अलग सुरक्षित Admin policy के तहत बनाए रखना है।
+- `srk_log_service_booking_status()` status changes पर `service_booking_status_history` में actor UID और old/new status लिखता है; inspected function में phone/address fields history payload में नहीं डाले जाते। History table की direct RLS/grants और other triggers अलग से जाँचने हैं।
+- `broadcast_booking_job()` approved+active electricians को job offers बनाता है; inspected definition matching के लिए PIN/state/district उपयोग करती है, customer phone/address को job_offers में copy नहीं करती। Smart Matching के nearest-distance/availability priority नियम से यह legacy logic अभी मेल नहीं खाता।
+
+Legacy migration `20261109193000_hide_customer_details_on_cancelled_bookings.sql` का recovered alternate-branch source पढ़ा:
+- Comment कहता है कि customer PII केवल actively assigned booking में उपलब्ध हो, पर SQL status allow-list में `completed` शामिल है। इसलिए migration केवल cancelled booking छिपाता है; completed booking पर customer name/phone/address/coordinates/quote fields फिर भी लौटाता है।
+- Allow-list में पुराने inspection/quote statuses भी हैं, जो Master Requirements के नए lifecycle से reconcile होने चाहिए।
+- यह alternate branch का source है; Production में इसी exact file/blob के लागू होने का प्रमाण अभी नहीं है। इसे Production पर replay या copy नहीं करना है।
+
+कुल निष्कर्ष: inspected push notification content में customer PII नहीं मिला; प्रमुख confirmed privacy gaps अभी contact RPCs, quote-details RPC और Electrician UI के completed state पर हैं। Edge Functions केवल पढ़े गए; कोई deploy, DB बदलाव या provider call नहीं किया गया।
