@@ -94,7 +94,14 @@
 
 The original timer series `202611110001`–`202611110011` and forward-copy series `20261111160000`–`20261111160010` cover overlapping objects and RPCs. Prior source comparison checked 13 pairs:
 
-- 10 pairs were SQL-equivalent or differed only in comments/formatting.
+- Repository Git blob comparison confirms **6 exact byte-identical pairs**:
+  - `202611110003_customer_approved_timer_rpcs.sql` ↔ `20261111160002_customer_approved_timer_rpcs.sql`
+  - `202611110004_scoped_timer_bill_read_rpc.sql` ↔ `20261111160003_scoped_timer_bill_read_rpc.sql`
+  - `202611110005_server_authoritative_booking_creation.sql` ↔ `20261111160004_server_authoritative_booking_creation.sql`
+  - `202611110006_preserve_labour_calculation_precision.sql` ↔ `20261111160005_preserve_labour_calculation_precision.sql`
+  - `202611110011_repair_payable_snapshot_rounding_constraint.sql` ↔ `20261111160010_repair_payable_snapshot_rounding_constraint.sql`
+  - `20261111130000_customer_cancellation_admin_decision.sql` ↔ `20261111160011_customer_cancellation_admin_decision.sql`
+- Prior semantic comparison of 13 related pairs found 10 SQL-equivalent or comments/formatting-only pairs overall; the exact-blob list above is the stricter byte-for-byte subset.
 - `20261111150000_timer_commission_cash_online_integration.sql` and `20261111160012_timer_commission_cash_online_integration.sql` are materially different; the later copy adds extra immutable payable-snapshot protection.
 - Forward additions `160013`, `160014`, and `160015` add distinct legacy-path guards, completed-booking contact behavior, and timer snapshot refund support.
 - The webhook event ledger migration `20261112180000` is a separate additive migration; it is not present in the earlier snapshot-order ledger migrations.
