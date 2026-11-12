@@ -132,6 +132,14 @@ on:
 
       - "supabase/tests/production_parity_legacy_baseline.sql"
       - "supabase/tests/production_parity_legacy_assertions.sql"
+      - "supabase/migrations/20261112130000_customer_booking_date_only.sql"
+      - "supabase/migrations/20261112140000_customer_booking_duration_pricing.sql"
+      - "supabase/migrations/20261111153846_srk_booking_refund_requests_workflow.sql"
+      - "supabase/migrations/20261111160015_timer_snapshot_refund_support.sql"
+      - "supabase/migrations/20261112180000_razorpay_webhook_event_ledger.sql"
+      - "supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql"
+      - "supabase/tests/timer_refund_parity_overlay.sql"
+      - "supabase/tests/timer_refund_parity_assertions.sql"
 permissions:
   contents: read
 
