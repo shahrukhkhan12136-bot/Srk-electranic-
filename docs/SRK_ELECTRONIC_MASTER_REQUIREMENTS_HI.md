@@ -706,3 +706,16 @@ Live Production में `public.srk_respond_to_offer(p_offer_id, p_response)` 
 - `20261109190000_customer_contact_after_completion.sql` की branch commit history में commit `4de560f1db0402899126b7a47d05fe09534e525e` मिला; commit message: “Keep customer electrician contact visible after completion”; author timestamp 2026-11-09 16:06:08 UTC।
 - यह commit उसी alternate branch `work/separate-customer-electrician-portals` में है। Production migration history में दर्ज version `20261109161539` है; branch filename version `20261109190000` अलग है। Commit message और SQL body मिलकर root-cause hypothesis को मजबूत करते हैं, लेकिन commit/version mismatch के कारण Production में exactly कौन-सा file/version apply हुआ, इसकी अंतिम provenance अभी भी reconcile करनी है।
 - इसी branch में cancellation privacy migration `20261109193000_hide_customer_details_on_cancelled_bookings.sql` commit `12057a1fb9f84996e8828359b2be3185ac14a064` (“Protect customer details on cancelled electrician bookings”) भी मिली। इसका SQL और live function/table effects अलग से compare करने हैं।
+
+
+### 17.18 — Contact RPC के वास्तविक ACL और SECURITY DEFINER owner की पुष्टि (13 Nov 2026)
+
+Production catalog से छह संबंधित functions के owner, security mode, search_path और ACL पढ़े:
+- पाँच phone/contact RPCs (private.srk_get_customer_call_contacts_impl, public.srk_admin_get_booking_contacts, public.srk_customer_get_my_booking_contacts, public.srk_electrician_get_my_assigned_booking_contacts, public.srk_get_my_offer_details) सभी owner postgres, SECURITY DEFINER, fixed search_path pg_catalog, public, auth, pg_temp हैं।
+- इन functions में PUBLIC EXECUTE = false, anon EXECUTE = false; संबंधित contact RPCs में authenticated EXECUTE = true है। इसलिए anonymous API call से direct access नहीं दिखा; authenticated user के लिए ownership/assignment/status checks ही मुख्य सीमा हैं।
+- Private implementation पर भी authenticated EXECUTE है, इसलिए इसकी internal body में customer ownership और assigned electrician checks महत्वपूर्ण हैं। इसे केवल private schema में रखने से authenticated role का execute अधिकार स्वतः समाप्त नहीं होता।
+- public.accept_electrician_job भी SECURITY DEFINER है, लेकिन ACL में केवल postgres और service_role हैं; authenticated execute false है। इसके विपरीत srk_respond_to_offer authenticated execute true है और live acceptance path के रूप में अलग से मौजूद है।
+- Admin contact RPC पर authenticated execute true है, पर function body में auth.uid() और is_srk_admin() gate है। Admin workflow को सुरक्षित रखते हुए इसी तरह role guard बनाए रखना है।
+- इस snapshot में PUBLIC/anon execute बंद है, लेकिन authenticated callers को contact RPC access मिलता है। SECURITY DEFINER होने के कारण body predicates को API boundary मानकर कठोर परीक्षण करना होगा।
+
+यह catalog/ACL-only inspection है; कोई GRANT/REVOKE, function definition या database setting बदली नहीं गई। वास्तविक authenticated customer/electrician JWT से negative/positive runtime tests अभी शेष हैं।
