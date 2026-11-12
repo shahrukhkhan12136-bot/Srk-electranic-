@@ -393,3 +393,9 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Integrated Timer billing workflow includes the same migration in the disposable Production-shaped parity chain and replays it twice. Runs 43176715574 and 43176720772: SUCCESS (49 completed steps each).
 - An earlier Timer run 43176589252 failed; later corrected workflow commits were rerun and both latest integrated runs succeeded. Keep the failed run in history, but it is superseded by successful reruns.
 - No Production migration/schema/data/history changes; no Razorpay provider calls, real-money refunds, or deployment.
+
+
+### Refund payment lookup index and Production cardinality — 2026-11-12
+- Production refund ledger currently has 0 rows; `booking_id`, `idempotency_key`, and `refund_id` are unique, while `payment_id` is not unique. This allows multiple booking-level refund records to share a provider payment ID; handler must keep ambiguous matches retryable and never select an arbitrary row.
+- Added feature-branch migration `20261112200000_index_refund_payment_lookup.sql` with a non-unique `payment_id` index and a SQL assertion. Refund Workflow CI run 43176559688 passed including migration replay and handler tests.
+- Integrated Timer workflow exposed a shell loop formatting issue after adding the new migration; changed the combined replay to explicit apply-twice commands. Latest rerun 43177549032 is queued at commit 60b0cb58cd6f3e3dcb8405521de83be1ea5d402f; awaiting final result. No Production changes.
