@@ -361,3 +361,8 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Timer release schema remains absent in Production; current existing `srk_razorpay_webhook_events` is a separate existing event table and must not be repurposed.
 - Identity-link review: `srk_get_my_offer_details()` and payout SELECT RLS use only `user_id`, while cash/offer-price/profile-read paths accept `user_id` or `auth_user_id`. Current single active approved Production profile has both IDs equal; no current auth-only profile observed. Documented as a forward-compatibility consistency gap, not an active user impact.
 - Added read-only schema inventory details to `docs/PRODUCTION_SCHEMA_INVENTORY_20261112_HI.md`. No Production changes.
+
+
+### Refund ledger cardinality review — 2026-11-12
+- Production refund ledger currently has 0 rows; `booking_id` is unique, `payment_id` is not unique and has no index. Therefore the data snapshot shows no current duplicate payment IDs, but the schema allows multiple refund records to reference one payment ID; only one refund record per booking is supported.
+- Added feature-branch migration `20261112200000_index_refund_payment_lookup.sql` for a non-unique `payment_id` index, preserving handler ambiguity detection. Refund CI run 43176559688 SUCCESS after applying the migration twice. Integrated Timer parity CI initially exposed a missing shell continuation in the migration loop; corrected in commits c09080d and 2c874d8, and reruns are pending. No Production change.
