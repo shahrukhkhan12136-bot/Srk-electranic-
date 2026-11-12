@@ -328,3 +328,26 @@ Production catalog check reconfirmed: none of srk_booking_timer_decisions, srk_f
 Duplicate-family comparison: 001 vs 16000, 002 vs 16001, 008 vs 16007 have identical executable SQL after removing comments; 003 vs 16002, 004 vs 16003, and 011 vs 16010 are byte-identical. 15000 vs 16012 is materially different: 16012 rejects timer bookings lacking immutable payable snapshots and changes trigger/function wiring; do not substitute the earlier 15000 file for release. No migration should be applied in isolation or inferred as safe from matching filenames.
 
 All checks read-only against Production. No migration/DDL/DML/ACL/policy/function changes, provider calls, refunds, or deployment performed.
+
+
+## 2026-11-12 — Extended Timer release chain and CI coverage review
+
+A second pass over the timer-billing CI workflow revealed that the complete forward-release chain is 16000 through 16015, not just the timer-named files initially grouped by filename. Additional migrations 16004–16014 include server-authoritative booking creation/rate snapshot, labour precision, material revision/customer approval RPCs, Razorpay snapshot order/payment ledger, cash payment intent/receipt confirmation, cancellation request/Admin decision, and post-acceptance customer call-contact access.
+
+Important sequencing interaction: migration 16004's initial booking RPC still requires preferred_time. Later 20261112130000_customer_booking_date_only.sql makes preferred_time optional while preserving explicit legacy callers; 20261112140000_customer_booking_duration_pricing.sql then adds duration_hours (1–8) and estimated labour snapshot. Thus timer-chain parity replay alone does not establish the final date-only + duration booking contract. The release plan must include these later booking migrations in a deliberate ordered combined replay and verify the final RPC definition/constraints/UI contract. Do not reintroduce a required time selector or default time.
+
+CI coverage found:
+- timer-billing-math workflow builds a synthetic legacy baseline, replays release migrations 16000–16014 twice in a separate disposable Production-shaped database, and asserts preservation of a representative legacy paid quote payout/booking. It does not replay 16015 in that parity loop.
+- refund-workflow.yml separately applies 16015 to a synthetic refund foundation harness and runs refund workflow assertions. This is useful but is not a single integrated timer+refund+production-parity replay.
+- The isolated 16015 test harness does not replace the missing Production timer foundation and does not prove the complete combined chain on a Production-shaped baseline.
+
+Additional migration dependencies:
+- 16004 depends on timer booking columns from 16000 and creates the idempotent booking creation request table plus server-authoritative booking RPC and immutable rate snapshot guard.
+- 16005 depends on final bills from 16000 and widens labour precision.
+- 16006 depends on timer idempotency, audit, final-bill and material-revision tables from 16001/16002.
+- 16008 depends on payable snapshots from 16001/16007 and creates Razorpay order/payment ledgers with immutable identity and reconciliation RPCs.
+- 16009 depends on cash receipts and payable snapshots, adds cash payment intent and receipt confirmation RPCs, and extends scoped timer bill read RPC.
+- 16011 adds customer cancellation request and Admin decision RPCs on the foundation cancellation table.
+- 16014 changes customer call-contact RPC access after assignment; preserve the approved full-number visibility after electrician acceptance, including after completion.
+
+Production still lacks the required timer schema and related booking columns; no Production changes were made. Next release-gate task is to create a single combined disposable parity replay that includes timer 16000–16015 plus the later date-only/duration booking contract, then run all relevant assertions and safe replays. No Production DDL/DML or deployment.
