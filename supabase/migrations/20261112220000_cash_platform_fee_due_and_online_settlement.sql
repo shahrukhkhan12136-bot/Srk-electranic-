@@ -236,6 +236,103 @@ $function$;
 
 revoke all on function public.srk_create_electrician_payable() from public, anon, authenticated;
 
+-- Admin manual receipt recording must preserve the customer's selected
+-- Cash vs Online channel; an Online-only cycle booking cannot be converted to Cash.
+create or replace function public.srk_admin_record_manual_payment(
+  p_booking_id uuid,p_method text,p_reference text,p_note text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'pg_catalog', 'public', 'auth', 'pg_temp'
+as $function$
+declare
+  v_booking public.service_bookings%rowtype;
+  v_total numeric(12,2);
+  v_method text;
+  v_reference text;
+  v_cash_selected boolean;
+  v_online_selected boolean;
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'Admin access required' using errcode = '42501';
+  end if;
+  if p_booking_id is null then raise exception 'Booking ID is required'; end if;
+  v_method := lower(trim(coalesce(p_method,'')));
+  if v_method not in ('cash','upi','bank_transfer') then
+    raise exception 'Payment method must be cash, upi, or bank_transfer';
+  end if;
+  v_reference := trim(coalesce(p_reference,''));
+  if length(v_reference) < 4 or length(v_reference) > 120 then
+    raise exception 'A valid receipt number or payment reference is required';
+  end if;
+  if p_note is not null and length(p_note) > 250 then raise exception 'Payment note is too long'; end if;
+
+  select * into v_booking from public.service_bookings
+   where id = p_booking_id for update;
+  if not found then raise exception 'Booking not found'; end if;
+  if v_booking.status <> 'completed' or v_booking.quote_status <> 'approved' then
+    raise exception 'Only completed bookings with an approved quote can be marked paid';
+  end if;
+  if v_booking.assigned_electrician_id is null then raise exception 'Booking has no assigned electrician'; end if;
+  if v_booking.payment_status in ('paid','refunded') then
+    raise exception 'Booking already has a paid or refunded payment';
+  end if;
+  if v_booking.razorpay_order_id is not null or v_booking.razorpay_payment_id is not null then
+    raise exception 'Razorpay-linked bookings must be paid only through verified Razorpay flow';
+  end if;
+  if exists (select 1 from public.srk_manual_payment_entries e where e.booking_id=p_booking_id) then
+    raise exception 'A manual payment entry already exists for this booking';
+  end if;
+
+  v_cash_selected := lower(coalesce(v_booking.payment_method,'')) like '%cash%'
+                     or lower(coalesce(v_booking.payment_method,'')) like '%नकद%';
+  v_online_selected := lower(coalesce(v_booking.payment_method,'')) like '%razorpay%'
+                       or lower(coalesce(v_booking.payment_method,'')) like '%online%'
+                       or lower(coalesce(v_booking.payment_method,'')) like '%ऑनलाइन%';
+  if v_cash_selected and v_method <> 'cash' then
+    raise exception 'This booking was selected as Cash; record only the actual Cash receipt';
+  end if;
+  if v_online_selected and v_method = 'cash' then
+    raise exception 'This booking was selected as Online; it cannot be converted to Cash';
+  end if;
+
+  if v_booking.service_charge is null or v_booking.service_charge < 0
+     or coalesce(v_booking.materials_amount,0) < 0 then
+    raise exception 'Approved quote breakdown is invalid';
+  end if;
+  v_total := round(v_booking.service_charge + coalesce(v_booking.materials_amount,0),2);
+  if v_total < 1 or v_total > 10000000
+     or round(coalesce(v_booking.quoted_amount,-1),2) <> v_total then
+    raise exception 'Approved quote total does not match the labour-only approved amount';
+  end if;
+
+  insert into public.srk_manual_payment_entries
+    (booking_id,payment_method,amount,payment_reference,note,recorded_by)
+  values
+    (p_booking_id,v_method,v_total,v_reference,nullif(trim(coalesce(p_note,'')),''),auth.uid());
+
+  update public.service_bookings
+     set payment_method = case v_method
+           when 'cash' then 'Cash'
+           when 'upi' then 'UPI'
+           else 'Bank Transfer'
+         end,
+         payment_status='paid',
+         amount_paid=v_total,
+         payment_verified_at=now()
+   where id=p_booking_id;
+
+  return jsonb_build_object(
+    'success',true,'booking_id',p_booking_id,'payment_method',v_method,
+    'amount',v_total,'reference',v_reference
+  );
+end;
+$function$;
+
+revoke all on function public.srk_admin_record_manual_payment(uuid,text,text,text) from public, anon;
+grant execute on function public.srk_admin_record_manual_payment(uuid,text,text,text) to authenticated;
+
 create or replace function public.srk_get_my_platform_fee_summary()
 returns jsonb
 language plpgsql
