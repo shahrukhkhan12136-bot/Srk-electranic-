@@ -6,6 +6,8 @@ on:
       - feature/production-push-notifications
     paths:
       - "supabase/functions/push-job-offer/**"
+      - "push-test/**"
+      - "tests/push-test-page.test.js"
       - ".github/workflows/push-notifications-deno-check.yml"
   pull_request:
     branches:
@@ -32,3 +34,6 @@ jobs:
 
       - name: Type-check Edge Function
         run: deno check --node-modules-dir=auto --no-lock supabase/functions/push-job-offer/index.ts
+
+      - name: Test push test page and service worker
+        run: node --test tests/push-test-page.test.js
