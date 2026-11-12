@@ -570,3 +570,13 @@ Safety boundary: no production SQL, function, grant, table, or customer data was
 5. Existing identity, customer ownership, assigned electrician, approved/active electrician, SECURITY DEFINER search_path और ACL checks बनाए रखें। केवल status list बदलकर बिना call-site और data-flow review के release न करें।
 
 इस चरण में चार recovered candidate migrations की SQL content पढ़ी गई और Production history के contact-related entries से तुलना की गई। कोई source file Feature Branch में copy नहीं की गई, कोई production/staging SQL नहीं चलाई गई और कोई deployment नहीं हुआ।
+
+
+### 17.12 — Customer booking UI और Service Worker cache का read-only निरीक्षण (13 Nov 2026)
+
+- Feature Branch `booking.html` में customer booking list सीधे authenticated customer की `service_bookings` rows पढ़ती है और अलग से `srk_get_customer_call_contacts` RPC call करके contact map बनाती है।
+- UI में `row.status === 'completed'` होने पर electrician phone number का call button/number नहीं दिखाया जाता और “काम पूरा हो चुका है…” संदेश दिखता है। यह अच्छा presentation guard है, लेकिन server RPC अभी completed booking पर phone लौटाता है; API leak इससे ठीक नहीं होता। इसलिए UI guard को अकेला security control नहीं मानना है।
+- UI पहले contact RPC से पूरा contact result memory में लेता है, फिर booking row के status के आधार पर render करता है। Status transition के समय stale page/tab में पहले से दिखा number हटने का real-time/refresh behavior अभी browser E2E से verify नहीं हुआ।
+- Customer booking list में contact RPC के अतिरिक्त सीधे customer phone field select नहीं की जाती। यह इस एक UI path का निरीक्षण है, पूरे app/data flow की exhaustive guarantee नहीं।
+- Feature Branch `sw.js` में navigation GET responses cache किए जाते हैं; non-navigation GET भी cache-first है। Supabase contact RPC POST request होने के कारण वर्तमान service worker fetch handler उसे cache नहीं करता। इस निरीक्षण में कोई explicit phone-number localStorage/sessionStorage persistence नहीं मिली। फिर भी authenticated page/browser memory, browser history, screenshots, logs और अन्य app pages का full audit बाकी है।
+- कोई UI, service worker, cache, database या API code बदला नहीं गया। यह source inspection है; real browser/session/cache behavior का test नहीं हुआ।
