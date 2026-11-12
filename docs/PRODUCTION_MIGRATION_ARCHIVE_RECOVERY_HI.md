@@ -308,3 +308,23 @@ Read-only FK-to-leading-index comparison में कुछ वर्तमा�
 - Consequence: timer Cash refund action cannot reliably be selected or completed by the current Production Admin UI/RPC contract. This is a confirmed release blocker / migration-drift example, not a customer refund failure observed in live data. No refund rows currently exist.
 - Do NOT manually add the missing RPC or apply this migration to Production while archive drift is unresolved. First recover exact intended migration lineage, compare all timer dependencies (`srk_cash_receipts`, payable snapshots, payout state) and validate the full ordered migration chain on a disposable Production-parity DB.
 - Dependency check विस्तार: Production में `srk_cash_receipts`, `srk_booking_payable_snapshots`, `srk_razorpay_payments`, और `srk_timer_cash_refund_entries` नाम की कोई public relation नहीं मिली; `supabase_migrations.schema_migrations` में `2026111116%` timer release entries भी शून्य हैं। Feature branch के timer refund migration को अकेले चलाना सुरक्षित नहीं होगा—उसकी पूरी ordered timer foundation chain और संबंधित booking columns/functions/triggers Production में अनुपस्थित हैं या अलग नामों पर हो सकते हैं।
+
+## 2026-11-12 — Timer migration chain dependency comparison (read-only)
+
+Feature-branch recursive migration scan found 16 Timer-related migration files. The chain has two timestamp families: early exploratory files (202611110001/002/003/004/008/011 and 20261111150000) and forward-release copies (20261111160000/001/002/003/007/010/012/013/015). Production migration history contains none of the 2026111116% versions and contains no Timer-specific migration entries from the earlier family.
+
+Dependency map from SQL source:
+- 16000 foundation: adds 16 timer/category/arrival/billing columns to service_bookings; creates srk_booking_timer_decisions, srk_final_bills, srk_bill_material_items, srk_bill_material_approvals, srk_booking_cancellation_requests; adds FK and service-role-only ACL/RLS.
+- 16001 integrity: creates srk_bill_material_revisions, srk_booking_payable_snapshots, srk_payment_webhook_events, srk_cash_receipts, srk_booking_audit_events, srk_final_bill_adjustments; links material revisions/items/approvals and adds integrity triggers/guards.
+- 16002 timer RPCs: arrival + customer-approved start/stop requests and decisions; depends on 16000/16001 tables and booking audit events.
+- 16003 scoped bill read RPC: reads timer decisions, final bills, materials/revisions, payable snapshots and cash receipts.
+- 16007 payable snapshot RPC: writes immutable payable snapshots and booking audit events; 16010 repairs its rounding constraint.
+- 16012 commission/cash/online integration: extends electrician payout schema; creates snapshot-aware commission/payable and cash commission remittance/admin confirmation/report RPCs; depends on payable snapshots, cash receipts, Razorpay payment ledger, manual payment entries and service_bookings.
+- 16013 guards legacy quote/work-status RPC paths against timer-category bookings.
+- 16015 refund support: creates srk_timer_cash_refund_entries, extends Admin refund list with is_timer_booking and cash-receipt detection, adds timer cash refund finalizer, and extends Razorpay refund preparation to payable snapshot + captured payment ledger.
+
+Production catalog check reconfirmed: none of srk_booking_timer_decisions, srk_final_bills, srk_bill_material_items, srk_bill_material_approvals, srk_booking_cancellation_requests, srk_bill_material_revisions, srk_booking_payable_snapshots, srk_payment_webhook_events, srk_cash_receipts, srk_booking_audit_events, srk_final_bill_adjustments, srk_timer_cash_refund_entries, or srk_razorpay_payments were present. Production service_bookings lacks timer/category/snapshot columns; payout table lacks timer settlement extensions. Therefore this is a complete Timer foundation release gap, not a standalone 16015 refund RPC omission.
+
+Duplicate-family comparison: 001 vs 16000, 002 vs 16001, 008 vs 16007 have identical executable SQL after removing comments; 003 vs 16002, 004 vs 16003, and 011 vs 16010 are byte-identical. 15000 vs 16012 is materially different: 16012 rejects timer bookings lacking immutable payable snapshots and changes trigger/function wiring; do not substitute the earlier 15000 file for release. No migration should be applied in isolation or inferred as safe from matching filenames.
+
+All checks read-only against Production. No migration/DDL/DML/ACL/policy/function changes, provider calls, refunds, or deployment performed.
