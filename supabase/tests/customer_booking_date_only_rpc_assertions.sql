@@ -30,11 +30,11 @@ begin
     raise exception 'Seeded catalogue v1 rates do not match approved rates';
   end if;
   insert into public.srk_rate_catalogue(category_code,category_label,version,hourly_rate,effective_from)
-  values('helper','Helper',2,120.125,current_date+30);
+  values('helper','Helper',2,120.125,(timezone('Asia/Kolkata', now()))::date+30);
   select version into v_today_version from public.srk_rate_catalogue
-   where category_code='helper' and effective_from<=current_date order by effective_from desc limit 1;
+   where category_code='helper' and effective_from<=(timezone('Asia/Kolkata', now()))::date order by effective_from desc limit 1;
   select version into v_future_version from public.srk_rate_catalogue
-   where category_code='helper' and effective_from<=current_date+30 order by effective_from desc limit 1;
+   where category_code='helper' and effective_from<=(timezone('Asia/Kolkata', now()))::date+30 order by effective_from desc limit 1;
   if v_today_version <> 1 or v_future_version <> 2 then
     raise exception 'Effective-date version selection failed: today %, future %',v_today_version,v_future_version;
   end if;
@@ -52,7 +52,7 @@ begin
    raise exception 'Admin rate list should show the four seeded v1 rows plus the isolated future-effective test row: %',v_rows;
  end if;
  v_published := public.srk_admin_publish_rate_version(
-   'master',299.999,current_date+45,'Approved annual pricing review by SRK admin'
+   'master',299.999,(timezone('Asia/Kolkata', now()))::date+45,'Approved annual pricing review by SRK admin'
  );
  if (v_published->>'version')::integer <> 2
     or (v_published->>'hourly_rate')::numeric <> 299.999 then
@@ -80,7 +80,7 @@ set local role authenticated;
 do $non_admin_rate_test$
 begin
  begin
-  perform public.srk_admin_publish_rate_version('helper',130,current_date+60,'Unauthorized user test attempt');
+  perform public.srk_admin_publish_rate_version('helper',130,(timezone('Asia/Kolkata', now()))::date+60,'Unauthorized user test attempt');
   raise exception 'Non-admin unexpectedly published a rate';
  exception when sqlstate '42501' then null;
  end;
@@ -98,7 +98,7 @@ select set_config('request.jwt.claim.phone','+919000000010',true);
 set local role authenticated;
 do $test$
 declare
-  v_date text := to_char(current_date + 10,'YYYY-MM-DD');
+  v_date text := to_char((timezone('Asia/Kolkata', now()))::date + 10,'YYYY-MM-DD');
   v_date_only jsonb;
   v_legacy jsonb;
   v_replay jsonb;
@@ -197,7 +197,7 @@ begin
   perform set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000099',true);
   set local role authenticated;
   perform public.srk_admin_publish_rate_version(
-    'helper',120.125,current_date,'Approved same-day rate version selection regression'
+    'helper',120.125,(timezone('Asia/Kolkata', now()))::date,'Approved same-day rate version selection regression'
   );
   reset role;
   perform set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000010',true);
