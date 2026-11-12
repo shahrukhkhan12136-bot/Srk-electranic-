@@ -3,7 +3,6 @@ insert into auth.users(id,phone)
 values('10000000-0000-4000-8000-000000000004','919999999994')
 on conflict(id) do nothing;
 
-set role authenticated;
 do $test$
 declare
  v_refund public.srk_razorpay_refunds%rowtype;
@@ -98,6 +97,9 @@ begin
     or has_table_privilege('anon','public.srk_refund_reconciliation_cases','select') then
   raise exception 'CLIENT_ROLE_HAS_DIRECT_RECONCILIATION_TABLE_ACCESS';
  end if;
+ if not has_function_privilege('authenticated','public.srk_admin_get_refund_reconciliation_case(uuid)','execute')
+    or has_function_privilege('anon','public.srk_admin_get_refund_reconciliation_case(uuid)','execute') then
+  raise exception 'RECONCILIATION_RPC_EXECUTE_GRANTS_INVALID';
+ end if;
 end
 $test$;
-reset role;
