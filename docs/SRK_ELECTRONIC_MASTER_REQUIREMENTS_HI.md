@@ -520,3 +520,30 @@ Safety boundary: no production SQL, function, grant, table, or customer data was
 5. ACL/search_path, Supabase Security Advisor और संबंधित customer/electrician contact flows का regression test पूरा होने के बाद ही release plan बनाना। Production deploy/DB migration के लिए अलग स्पष्ट अनुमति आवश्यक रहेगी।
 
 यह जाँच read-only थी। कोई live database, migration history, function, grant, customer data या production deployment बदला नहीं गया।
+
+
+### 17.10 — Migration source recovery और अतिरिक्त phone-contact RPC exposure (13 Nov 2026)
+
+आज की read-only reconciliation में पिछली जाँच से आगे महत्वपूर्ण तथ्य मिले:
+
+**Migration source recovery**
+- Production Supabase history: 81 migration entries; Feature Branch tree: 21 SQL migration files।
+- Numeric migration-version comparison: केवल 5 versions दोनों में match; 76 production versions के लिए उसी version वाली file Feature Branch में नहीं मिली; Feature Branch की 16 files के versions production history में नहीं मिले। यह version-level comparison है; नाम/SQL equivalence अलग से verify करनी होगी।
+- पहले अज्ञात 20261109161539_customer_contact_after_completion का SQL source दूसरी Git branch work/separate-customer-electrician-portals में मिला: supabase/migrations/20261109190000_customer_contact_after_completion.sql (blob SHA fd0dac906baed04c517ea50876c8fd4c5162b4df)। उस source में वही private function replacement है जो live Production function में मिला: completed status allow-list में जोड़ा गया और ep.phone लौटाया गया। Branch file का timestamp production migration version से अलग है; इसलिए इसे production history entry की exact file identity नहीं मानना है, लेकिन SQL body live definition से मेल खाती है। Source recover हुआ, मगर पूरे 81-version migration drift का reconciliation अभी पूरा नहीं हुआ।
+- अन्य 11 branches में इस exact migration name की file नहीं मिली; उपर्युक्त alternate branch में मिली। Source को Feature Branch में अभी copy/apply नहीं किया गया।
+
+**अतिरिक्त live phone-contact RPC audit**
+- public.srk_customer_get_my_booking_contacts() नाम का एक और SECURITY DEFINER RPC live Production में है। यह customer ownership check करता है, लेकिन status list में completed और quote_rejected शामिल हैं और ep.phone लौटाता है। इसलिए primary private RPC ठीक होने पर भी यह दूसरा RPC customer phone privacy bypass कर सकता है।
+- public.srk_electrician_get_my_assigned_booking_contacts() भी SECURITY DEFINER है; electrician identity को profile user_id/auth_user_id से बाँधता है, पर status list में completed और quote_rejected शामिल हैं और b.phone लौटाता है। Master Requirement में electrician को customer number केवल accepted/active booking के दौरान दिखना चाहिए; completed के बाद इसकी अनुमति भी पुनः जाँचना/सीमित करना होगा।
+- public.srk_admin_get_booking_contacts() Admin guard auth.uid() + is_srk_admin() जाँचता है; यह Admin operational access path है, इसे customer/electrician RPC की तरह blanket remove नहीं करना है।
+- ACL snapshot: इन customer/electrician/admin public RPCs पर anon_execute=false, authenticated_execute=true; private implementation पर भी anon_execute=false, authenticated_execute=true; public wrapper SECURITY INVOKER है। यह authenticated callers के लिए API-level authorization/row predicates की जाँच को जरूरी बनाता है।
+- Feature Branch booking.html में customer UI srk_get_customer_call_contacts call करता मिला। Electrician UI में customer phone offer detail से render होता है; अलग electrician contact RPC call उस file में नहीं मिला। यह UI scan पूरे app की exhaustive call-site proof नहीं है।
+
+**अगला सुरक्षित कदम**
+1. Migration reconciliation को सभी 81 entries तक जारी रखें: version, name, SQL source, source branch/commit, equivalent-content hash, और target schema state की mapping बनाएं। Version-only mismatch को अकेले missing schema change का प्रमाण न मानें।
+2. एक single migration में सिर्फ एक RPC ठीक करना पर्याप्त नहीं होगा। Customer के दोनों contact RPCs में completed (और rejected/cancelled states) से phone response रोकें; electrician RPC को accepted/active lifecycle तक सीमित करें; ownership/assignment/identity checks सुरक्षित रखें। Admin contact RPC को Admin-only रखें।
+3. सभी RPCs की ACL, SECURITY DEFINER/search_path, frontend/API call sites, receipts/history/cache और negative/positive tests की समीक्षा करें।
+4. इस environment में Supabase CLI/स्थानीय migration-generation shell उपलब्ध नहीं मिला। इसलिए supabase migration new से generated migration file अभी नहीं बनाई गई। कोई timestamp invent नहीं किया गया। Supabase development branch बनाने पर hourly cost हो सकती है; उपयोगकर्ता की cost approval के बिना branch नहीं बनाया गया।
+5. Production DB पर कोई SQL/function/grant/migration परिवर्तन नहीं किया गया। Staging/Test Mode पर test अभी नहीं हुआ; production release के लिए अलग explicit approval आवश्यक है।
+
+**इस चरण का सत्यापन:** live function definitions, five RPC ACLs, migration list, Feature Branch migration tree, alternate branch migration source और दो मुख्य HTML UI files read-only fetch/inspection से जाँचे गए। कोई code, database, migration history, grant, customer data या deployment बदला नहीं गया।
