@@ -23,7 +23,6 @@ function baseEvent(overrides = {}) {
     },
     body: JSON.stringify({
       customer_name: "Test Customer",
-      phone: "9000000001",
       state: "Uttar Pradesh",
       district: "Balrampur",
       pincode: "271861",
@@ -73,20 +72,25 @@ test("rejects invalid customer sessions before booking RPC", async (t) => {
   assert.equal(calls.some(url => url.includes("/rpc/srk_create_customer_booking")), false);
 });
 
-test("rejects a verified account whose phone does not match booking phone", async (t) => {
+test("booking phone is derived from the OTP-verified account, not client input", async (t) => {
   const originalFetch = global.fetch;
-  t.after(() => { global.fetch = originalFetch; });
-  const calls = [];
-  global.fetch = async (url) => {
-    calls.push(String(url));
+  t.after(() => { global.fetch = originalFetch; delete global.__bookingPhoneCaptured; });
+  global.fetch = async (url, options = {}) => {
     if (String(url).includes("/rpc/srk_check_public_rate_limit")) return response(true);
     if (String(url).includes("/auth/v1/user")) {
       return response({ id: "30000000-0000-0000-0000-000000000011", phone: "+919000000099", phone_confirmed_at: "2026-01-01T00:00:00Z" });
     }
+    if (String(url).includes("/rpc/srk_create_customer_booking")) {
+      global.__bookingPhoneCaptured = JSON.parse(options.body).p_booking.phone;
+      return response({ booking_id: "10000000-0000-0000-0000-000000000011" });
+    }
+    if (String(url).includes("/service_bookings?")) return response([{ order_number: "SRK-ORD-000011" }]);
+    if (String(url).includes("/job_offers?")) return response([]);
     throw new Error("Unexpected fetch: " + url);
   };
-  const result = await handler(baseEvent());
-  assert.equal(result.statusCode, 403);
-  assert.match(JSON.parse(result.body).error, /मोबाइल/);
-  assert.equal(calls.some(url => url.includes("/rpc/srk_create_customer_booking")), false);
+  const clientBody = JSON.parse(baseEvent().body);
+  clientBody.phone = "9000000001";
+  const result = await handler(baseEvent({ body: JSON.stringify(clientBody) }));
+  assert.equal(result.statusCode, 200);
+  assert.equal(global.__bookingPhoneCaptured, "9000000099");
 });
