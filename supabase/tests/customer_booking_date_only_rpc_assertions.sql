@@ -54,10 +54,14 @@ begin
  if jsonb_array_length(v_rows) <> 6 then
    raise exception 'Admin rate history should contain six rows after publishing: %',v_rows;
  end if;
- if not exists(select 1 from public.srk_rate_catalogue_audit
-   where category_code='master' and version=2 and actor_user_id='30000000-0000-0000-0000-000000000099'
-     and action='published' and reason='Approved annual pricing review by SRK admin') then
-   raise exception 'Published rate audit actor/reason missing';
+ if not exists(
+   select 1 from jsonb_array_elements(v_rows) as item
+   where item->>'category_code'='master' and (item->>'version')::integer=2
+     and item->>'actor_user_id'='30000000-0000-0000-0000-000000000099'
+     and item->>'action'='published'
+     and item->>'reason'='Approved annual pricing review by SRK admin'
+ ) then
+   raise exception 'Published rate audit actor/reason missing from admin history: %',v_rows;
  end if;
 end
 $admin_rate_test$;
