@@ -1129,3 +1129,36 @@ Production migration history में एक ही नाम की दो ent
 
 **सीमा:** Production पर केवल function definitions, ACL, service_bookings constraints और trigger definitions पढ़े गए। कोई Cash booking/payment row, payout record, wallet record या customer PII नहीं पढ़ा; कोई function execute, SQL apply, grant change, migration-history edit या deployment नहीं हुआ।
 
+
+
+## 17.32 — Feature Branch Cash Cycle और Platform Fee Ledger: source-level audit (13 Nov 2026)
+
+यह जाँच केवल Feature Branch `feature/platform-fee-cash-online-cycle` के source/migrations की है। नीचे वर्णित migrations Production में लागू होने का प्रमाण नहीं हैं। Production का live Cash confirmation path Section 17.31 में दर्ज legacy quote-based path ही है। कोई migration apply, SQL execution, payment, wallet mutation या deployment नहीं किया गया।
+
+### मिले हुए Feature Branch source
+- `20261112170000_enforce_electrician_third_booking_online_payment.sql` (blob `5cd370a996195056222044c9c9568ed2ca148962`) `srk_respond_to_offer` को बदलता है। यह electrician profile row lock लेकर उसी electrician के offer acceptance को serialize करता है; prior count केवल `completed + quote approved + paid + payment_verified_at` bookings का है। तीसरे slot पर Online payment method अनिवार्य करता है।
+- `20261112220000_cash_platform_fee_due_and_online_settlement.sql` (blob `5d4245451ee104eb2e8a26251cc4ed6359ee9ba6`) `srk_platform_fee_ledger` बनाता है; non-null unique idempotency keys, cash_due/online_fee/settlement/reversal entry types और electrician-level advisory transaction lock जोड़ता है। Cash पर fee due; Online पर current fee और पुराने due को electrician payable से समायोजित करने का प्रयास है। Payout में `previous_platform_fee_settled` field जोड़ा जाता है।
+- `20261113120000_limit_cash_fee_settlement_to_labour_share.sql` (blob `34360879d1670bb63515be406f2077fccdd2bdc8`) पुराने Cash due की वसूली को `v_service - v_current_fee` तक सीमित करता है, ताकि customer-supplied materials से पुराने dues न काटे जाएँ। यह Master के materials-exclusion नियम के अनुरूप सुधार है।
+- Feature Branch के Electrician UI में Cash Platform Fee due और wallet summary दिखाने के लिए `srk_get_my_platform_fee_summary` call मौजूद है। Customer UI में ग्राहक स्वयं Cash से Online चुन सकता है और `srk_customer_change_payment_method` RPC call करता है।
+- Current Feature Branch migration tree में संबंधित अतिरिक्त files: `20261112230000_show_customer_payment_choice_to_assigned_electrician.sql`, `20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql`; इनका भी full dependency/security review बाकी है।
+
+### महत्वपूर्ण blockers / defects जिन्हें staging tests से पहले सुधारना होगा
+1. **तीसरे booking rule का count acceptance reservation नहीं है।** यह केवल पहले से completed+paid+verified bookings गिनता है। दो concurrent accepted-but-not-yet-completed bookings को cycle slots में reserve नहीं करता। इसलिए actual sequence acceptance-time reservation के बजाय completion-time history पर निर्भर हो सकता है। Profile row lock offer acceptance को serialize करता है, लेकिन count में pending assigned bookings शामिल नहीं हैं।
+2. **Cash cycle eligibility की परिभाषा अधूरी है।** Migration comments कहती हैं कि cancelled, failed, refunded और unpaid/incomplete bookings slot नहीं खातीं; पर exact Master rule के लिए eligible booking, acceptance reservation, release, cancellation और refund पर slot पुनः उपलब्ध होने का authoritative state/ledger स्पष्ट नहीं है। केवल completed+paid count cancellation/failed/refund history और पुनः booking sequence को deterministic रूप से नहीं संभालता।
+3. **Wallet top-up से cycle reset का path प्रमाणित नहीं।** उपलब्ध acceptance migration में wallet top-up या outstanding fee clear होने पर cash eligibility reset करने की कोई जाँच नहीं दिखती। यह Master rule का blocker है।
+4. **Cash fee posting अभी quote-era fields पर निर्भर है।** Trigger `completed + quote_status=approved + amount_paid=service_charge+materials_amount` और `commission_rate` इस्तेमाल करता है। Actual-minute timer-approved labour amount, immutable timer approval और 15% fixed Master fee को लागू नहीं करता।
+5. **Refund reversal pooled balance पर आधारित है।** Online settlement पुराने Cash dues को pooled amount में घटाता है; refund के समय specific due-to-settlement allocation नहीं है। बाद में settled Cash booking refund को block करके Admin reconciliation माँगना सुरक्षित fail-closed व्यवहार है, पर पूर्ण automatic refund/reversal workflow नहीं।
+6. **Cash receipt evidence और trigger provenance अधूरे हैं।** Trigger `auth.uid()` को `created_by` देता है; webhook/service-role context में actor null हो सकता है। Cash payment receipt verification, electrician/customer confirmation, Admin evidence, source actor और immutable receipt proof को स्पष्ट रूप से map करना बाकी है।
+7. **Payout reconciliation risk।** Payout row पर `ON CONFLICT (booking_id) DO UPDATE` pending payout को बदल सकता है। Refund, repeated webhook, existing payout और concurrent state changes पर regression tests चाहिए। पहले से paid payout पर refund block है; Admin recovery path अलग चाहिए।
+8. **RPC grants/RLS/ledger immutability का पूर्ण प्रमाण अभी नहीं।** Ledger पर client grants revoke और RLS enable दिखते हैं, पर append-only enforcement trigger, SELECT policy, Admin visibility, RPC ACL, trigger execution role और runtime JWT negative tests की पुष्टि आवश्यक है।
+9. **Payment method string comparison brittle है।** Acceptance rule exact `Razorpay ऑनलाइन भुगतान` string compare करता है, जबकि अन्य जगह Cash/Online पहचान substring से होती है। Canonical enum/constraint और legacy normalization आवश्यक है।
+10. **Customer-initiated Cash→Online switch eligibility path।** UI में customer choice है, लेकिन RPC को server-side booking ownership, unassigned/assigned stage, third-slot enforcement, payment order creation race, audit और idempotency के साथ validate करना होगा। UI permission अकेले पर्याप्त नहीं।
+
+### अगला सुरक्षित काम
+- दूसरे duplicate Production migration version `20261111083811` का source/commit/PR ancestry खोज जारी रखें; अभी कोई source प्रमाणित नहीं।
+- सभी cash-cycle और wallet migrations को Feature Branch तथा अन्य branches में क्रम/SQL/blob के आधार पर पढ़ें; इन्हें Production implementation न मानें।
+- नई timer/actual-minute billing और cash-cycle reservation ledger को एक state machine में design करें: acceptance पर atomic slot reservation; deterministic idempotency; cancellation/offer expiry/rejection/refund पर reservation release; top-up द्वारा fee due clear होने पर documented reset; तीसरे eligible slot पर Online enforcement।
+- Cash/Online receipt, 15% labour-only fee, materials exclusion, wallet settlement, payout, refunds और audit को एक ही transactional server path में reconcile करें।
+- पहले isolated staging/Test Mode में concurrency, duplicate webhook, retries, failed payment, cancellation, refund, wallet top-up, due settlement, paid payout recovery और cross-user authorization tests चलाएँ। Staging resource/charges के लिए अलग अनुमति आवश्यक है।
+
+**निष्कर्ष:** Feature Branch में Cash Platform Fee ledger और third-booking Online enforcement का प्रारंभिक ढाँचा मौजूद है, लेकिन यह Master Requirements के लिए अभी complete या production-ready नहीं है। मुख्य P0 gap acceptance-time cycle reservation, wallet top-up reset, timer-based labour calculation और पूर्ण refund/ledger reconciliation हैं। Production untouched है।
