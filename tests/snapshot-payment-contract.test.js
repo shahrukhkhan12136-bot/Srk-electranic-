@@ -68,6 +68,9 @@ includesAll(webhook, [
   "snapshot_event_in_progress",
   "refundEventMeta", "startSnapshotWebhookEvent(refundEventMeta, null, refund.payment_id)",
   "refundEvent.inProgress", "refund_reconcile_error", "\"refund_\" + providerStatus",
+  "record.refund_id !== refund.id", "refund_id_conflict",
+  "record.status === \"failed\" && providerStatus === \"pending\"",
+  "refund_stale_pending_ignored",
   "Webhook event claim was not acquired",
   "srk_reconcile_razorpay_snapshot_payment"
 ], "Razorpay webhook");
