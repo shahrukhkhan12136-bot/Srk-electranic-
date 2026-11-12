@@ -297,3 +297,12 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [V] Public schema की 25/25 base tables में RLS enabled। 10 tables पर policies नहीं हैं, लेकिन anon/authenticated के table CRUD privileges false और service_role CRUD true मिले—वर्तमान state service-role-only/default-deny है।
 - [T] Refund reconciliation RPC पर service_role-only ACL सही होने के बावजूद पुराने Production function body में provider refund ID overwrite और stale pending/failure ordering जोखिम अभी unresolved है; hardened migration Production में लागू नहीं।
 - [T] ये catalog और function-body static checks हैं; हर authenticated RPC का adversarial multi-user runtime test और complete RLS expression register अभी बाकी है। कोई Production परिवर्तन नहीं किया।
+
+## RLS expression + refund integrity follow-up (2026-11-12)
+- [V] Current public RLS expressions reviewed: Admin guard, customer booking ownership, electrician profile identity and active/approved offer ownership, wallet/payout owner reads, active-only public services/states, explicit Route-transfer deny-all, service-role-only payment locks/status history.
+- [T] `srk_electrician_payouts` owner policy checks `electrician_profiles.user_id` only, unlike profile/offer policies accepting `user_id OR auth_user_id`. Current Production has 1 electrician profile and 0 payout rows; identity mapping edge case remains a potential read mismatch, not an observed incident.
+- [V] Refund constraints/indexes: one Razorpay refund row per booking, one refund request per booking, unique provider refund ID/idempotency key; manual refund is also one per booking/payment entry. Multiple partial refunds per booking are not currently supported.
+- [T] `service_bookings.razorpay_order_id` has partial unique index; `razorpay_payment_id` has no unique index/constraint. Current Production has 1 booking, no non-null payment ID, and 0 refund rows. Consider unique payment ID enforcement only after parity-DB/backfill validation.
+- [T] Legacy `srk_admin_prepare_razorpay_refund(uuid,text)` remains authenticated-executable and Admin-guarded alongside the newer refund-request preparation RPC; distinct code paths need call-site inventory and consolidation plan.
+- [T] Refund audit trigger captures refund_id, amount, status, provider_status changes, but not reason/last_error/processed_at. Audit sufficiency review pending.
+- [T] No live refund/provider/webhook tests or Production changes. Static review only; Production NO-GO remains.
