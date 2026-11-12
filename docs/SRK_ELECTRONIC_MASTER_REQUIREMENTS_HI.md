@@ -1183,3 +1183,24 @@ Production migration history में एक ही नाम की दो ent
 - Customer payment-method switch RPC में ownership/state guards हैं, पर third-slot eligibility server path और race/idempotency परीक्षण बाकी हैं।
 - Assigned electrician offer-details RPC में terminal booking contact/location leakage बना रहता है; Customer Payment Choice UI जोड़ने के नाम पर इस privacy defect को स्वीकार नहीं किया जा सकता। अगली implementation में payment_method को सुरक्षित field के रूप में expose करें, पर customer phone/address/coordinates केवल assigned active booking तक सीमित करें और completed/cancelled/rejected/unassigned पर null/omit करें।
 - कोई Production DB/API/UI/payment/deployment change नहीं किया गया। यह केवल source audit और documentation है।
+
+
+## 17.34 — Cash Cycle / Wallet Top-up: Live Production Function Inventory और Migration Commit-History Recheck (13 Nov 2026)
+
+### Migration source / history
+- Exact Production migration version `20261111083811` के लिए repository path `supabase/migrations/20261111083811_add_assigned_electrician_cash_payment_status.sql` की GitHub commit-path history query खाली लौटी। इससे केवल यह सिद्ध होता है कि queried repository path पर commit history नहीं मिली; किसी अन्य filename, deleted branch, fork, backup या Supabase dashboard SQL editor में source होने की संभावना इससे समाप्त नहीं होती।
+- Repository-wide commit-text search में exact version और migration name के लिए कोई commit result नहीं मिला। GitHub code search इस जाँच में Feature Branch या सभी historical branches का भरोसेमंद पूर्ण प्रमाण नहीं दे पाया; इसे “कहीं भी source नहीं” का अंतिम प्रमाण न माना जाए।
+- Migration #2 का applied effect अभी unresolved है। Production history record को हटाना, rename करना, no-op मानना या दूसरी बार SQL replay करना निषिद्ध रहेगा जब तक उसका SQL body और live effect प्रमाणित न हो।
+
+### Live Production function inventory (read-only)
+- `public.srk_electrician_confirm_cash_payment(uuid)` अभी भी completed + approved legacy quote + Cash method + unpaid/pending + positive `quoted_amount` पर निर्भर है। यह booking row lock करता है, payment_status paid और amount_paid quoted_amount करता है; timer actual-minute amount, cash-cycle slot reservation या wallet Platform Fee settlement नहीं करता।
+- `public.srk_get_my_assigned_cash_payment(uuid)` वही legacy quote/quoted_amount eligibility electrician को लौटाता है।
+- `public.srk_get_my_wallet_summary()` authenticated call पर customer wallet और approved electrician के लिए electrician wallet create करने का side effect रखता है; इसे pure read-only summary नहीं समझना चाहिए।
+- `public.srk_admin_wallet_overview()` Admin guard के साथ wallet counts और posted ledger credits/debits aggregate करता है; यह अपने-आप cash-cycle due, per-electrician booking sequence या fee settlement साबित नहीं करता।
+- Live public/private function-definition scan में `cash_cycle`, `platform_fee_due` और `wallet_top` शब्दों वाले function bodies नहीं मिले। अलग नामों या tables/Edge/Netlify logic में कोई implementation हो सकती है; इसलिए यह scoped function-text result है, पूर्ण अनुपस्थिति का प्रमाण नहीं।
+
+### निष्कर्ष / release blockers
+- Production में verified cash confirmation अभी legacy quote आधारित है; Master timer-based actual-minute billing से मेल नहीं खाता।
+- इस scan से first-two Cash / third Online, fee-due ledger, top-up clear होने पर reset, booking acceptance reservation, cancellation/offer-expiry release, concurrent booking race protection और deterministic idempotency का live implementation प्रमाणित नहीं हुआ।
+- अगली जाँच: सभी cash/wallet ledger tables और columns, triggers, policies/grants, RPC callers, frontend references, Netlify handlers तथा हर उपलब्ध branch के cash-cycle migrations को अलग-अलग map करना; फिर transaction/state-machine design को Feature Branch में प्रस्तावित करना।
+- Production में कोई SQL/DDL, function, grant, wallet/account/ledger row, migration history या payment setting बदली नहीं गई। कोई deployment या staging resource create नहीं किया गया।
