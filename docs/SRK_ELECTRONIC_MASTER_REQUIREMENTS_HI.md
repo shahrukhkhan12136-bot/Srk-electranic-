@@ -1015,3 +1015,32 @@ Production के 81 migration records को repository की सभी 14 उ
 
 **स्थिति:** कोई migration apply, delete, rename, repair या reset नहीं हुई। कोई Production schema/data/payment/auth change नहीं। Feature Branch में केवल यह documentation section जोड़ा गया।
 
+### 17.29 — Divergent Migration SQL blobs बनाम Live Production object evidence (13 Nov 2026)
+
+17.28 में मिले तीन divergent migration families के छह SQL blobs पढ़े गए और Push Subscription के live Production columns/constraints/policies का read-only catalog snapshot लिया गया।
+
+**A. `20261110080448_srk_business_finance_dashboard` — दो अलग SQL bodies**
+- Blob `69f15bf8...`: private expense table, Admin expense add/list और dashboard functions बनाता है। Expense add function में `p_category NOT IN (...)` check है, पर explicit `p_category IS NULL` guard नहीं है; SQL NULL के कारण यह validation branch bypass हो सकती है।
+- Blob `b479f89c...`: उसी feature का reproducible baseline है; इसमें explicit `p_category IS NULL` rejection मौजूद है। Dashboard calculation मूलतः paid+completed bookings, customer gross, platform commission, electrician share, payout paid/pending और expenses पर आधारित है।
+- दोनों blobs को एक migration name/version के तहत मिला है; Production में लागू exact body अभी निश्चित नहीं। Live function hashes catalog snapshot में दर्ज हुए, लेकिन इस चरण पर source-to-live byte-level equivalence प्रमाणित नहीं की गई।
+- सुरक्षा निष्कर्ष: `b479...` में category NULL validation बेहतर है, पर यह अपने आप Production source सिद्ध नहीं करता। Live function definition को पूर्ण रूप से fetch/hash compare करना आवश्यक है।
+
+**B. `20261111043852_srk_business_finance_reporting_dates` — दो अलग SQL bodies**
+- Blob `3166714b...`: India-local reporting date boundaries, booking-created count, paid payout को `paid_at` date से गिनना, pending payout को created date से गिनना, expense/index support और expense input length validations जोड़ता है।
+- Blob `d1224b3f...`: reporting dashboard function का अलग source है; इसमें India-local date handling, bookings-created और payout paid_at date logic है, पर expense-date/recorded_by/paid_at indexes तथा expense function validations वाला पूरा बदलाव इसमें नहीं है। Comment इसे intermediate reporting calculation बताता है।
+- दोनों bodies अलग हैं; सही क्रम और Production में कौन-सा हिस्सा लागू है, इसे migration timestamps के बजाय live definitions/index catalog और commit ancestry से तय करना होगा।
+
+**C. `20261111072823_add_electrician_push_subscriptions` — दो अलग SQL bodies**
+- Blob `33ea8450...` (branch timestamp 02:00): endpoint 20–4096, p256dh 20–256, auth 10–128, optional user_agent; एक broad own-row `FOR ALL` policy; authenticated CRUD grants।
+- Blob `831485c5...` (branch timestamp 09:00): endpoint 1–2048, p256dh/auth 1–256; अलग SELECT/INSERT/UPDATE/DELETE own-user policies; user_agent column नहीं।
+- Live Production `public.srk_push_subscriptions` में endpoint 1–2048, p256dh/auth 1–256 constraints, user_agent column अनुपस्थित, और चार अलग own-user policies मौजूद हैं। यह live structure दूसरे blob `831485c5...` के design से मेल खाता है; लेकिन Production migration version `20261111072823` है, जबकि source candidate filename `20261111090000` है। यह schema-effect corroboration है, exact applied migration identity का प्रमाण नहीं।
+- Live table columns/constraints/policies केवल catalog से पढ़े गए; push subscription records या endpoint/token values नहीं पढ़े गए।
+
+**अगली प्राथमिकता**
+1. Live `srk_admin_finance_dashboard`, `srk_admin_finance_add_expense`, `srk_admin_finance_list_expenses` की पूर्ण `pg_get_functiondef` को recovered SQL bodies के साथ compare करना।
+2. Reporting indexes और payout date semantics को `pg_indexes`/function body से verify करना।
+3. Push subscription lineage को live schema corroboration के साथ mark करना, पर remote migration history को rewrite नहीं करना।
+4. दोनों cash-payment migration versions के function/constraint/trigger effects अलग-अलग reconstruct करना।
+
+**सीमा:** केवल GitHub blob contents और Production system catalogs पढ़े गए। कोई SQL apply नहीं, कोई function/table/policy/index बदला नहीं, कोई push token/PII record नहीं पढ़ा, कोई deployment नहीं।
+
