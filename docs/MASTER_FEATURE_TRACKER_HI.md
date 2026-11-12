@@ -151,7 +151,8 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] Customer category selector में चारों श्रेणियों के 8-hour rates दिखते हैं: Helper ₹899.00, Ordinary ₹1,199.00, Skilled ₹1,599.00, Master ₹1,999.00।
 - [I] Customer category चुनता है; API और database RPC केवल Helper/Ordinary/Skilled/Master स्वीकार करते हैं। Client से भेजी कोई price/amount property RPC whitelist में स्वीकार नहीं होती।
 - [I] Category code/label और authoritative hourly rate booking में immutable snapshot के रूप में store होते हैं; duration और estimated Labour snapshot अब इसी snapshot guard से सुरक्षित हैं।
-- [T] अलग versioned rate catalogue/history अभी बाकी है; मौजूदा RPC server-side approved fixed mapping से rates निकालता है।
+- [I] Append-only effective-dated rate catalogue v1 migration Feature Branch में है; RPC current date के अनुसार category/version/rate server-side catalogue से चुनता है और booking में immutable catalogue UUID + version snapshot रखता है।
+- [T] Admin-authorized future-rate insertion UI/RPC, approval/audit actor validation, scheduled future-version E2E और rollback policy अभी बाकी हैं; Production migration लागू नहीं हुई।
 - [I] Customer price display अलग है; electrician Rate Card का gross/commission privacy rule इस customer UI change से नहीं बदला।
 - [T] Responsive/accessibility, loading/error/offline states और real customer booking E2E अभी बाकी। No upfront payment.
 
@@ -163,7 +164,8 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] Booking API duration को integer 1–8 validate करता है; client amount स्वीकार/forward नहीं होता। Database RPC category की server-side fixed rate से amount दोबारा calculate करता है।
 - [I] service_bookings.duration_hours और estimated_labour_amount_snapshot में immutable snapshot; DB check constraint amount/rate/duration consistency enforce करता है और update trigger दोनों values बदलने से रोकता है।
 - [I] Booking confirmation में DB से लौटाया गया duration और server-calculated estimate दिखता है।
-- [T] Rate catalogue/version history अभी अलग से implement नहीं; RPC में approved category rates fixed server mapping हैं। Future rate changes के लिए versioned catalogue चाहिए।
+- [I] Rate catalogue migration `20261112150000_versioned_rate_catalogue.sql`: चारों current rates v1 के रूप में effective-dated, append-only table में seed; RLS enabled और direct client grants revoked; booking में catalogue UUID/version snapshot जुड़ा।
+- [T] Admin-authorized future-rate insertion UI/RPC, actor audit validation, scheduled-version E2E और rollback policy बाकी।
 - [I] चुने हुए 1–8 घंटे केवल शुरुआती अनुमान/बुकिंग preference हैं—timer या final bill की सीमा नहीं। Actual final Labour bill server timer के वास्तविक elapsed time पर आधारित रहेगा; selected duration समाप्त होने पर timer auto-stop नहीं होगा।
 - [I] Materials अलग रहते हैं; booking के समय कोई upfront payment नहीं।
 - [T] Disposable PostgreSQL CI + API/UI regressions: GitHub Actions run 43160242188 SUCCESS; 11/11 Node tests, SQL order-number/RPC assertions, duration estimate/half-up rounding/invalid-duration/immutability assertions, four migrations apply और safe replay, inline JS syntax checks।
