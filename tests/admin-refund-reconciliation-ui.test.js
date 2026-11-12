@@ -9,8 +9,15 @@ const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
   .filter(source => source.includes('const cfg=window.SRK_CONFIG'));
 assert.equal(scripts.length, 1, 'Admin page should contain one application inline script');
 assert.doesNotThrow(() => new Function(scripts[0]), 'Admin inline JavaScript must parse');
-assert.ok(html.includes("['unknown','processing'].includes(r.status)"),
-  'Reconciliation action should only appear for ambiguous/processing refund requests');
+assert.ok(html.includes("if(r.refund_record_id){"),
+  'Reconciliation history should remain reachable for every linked refund ledger row');
+assert.ok(!html.includes("if(r.refund_record_id&&['unknown','processing'].includes(r.status))"),
+  'Terminal refund rows must not hide existing reconciliation history');
+const migration = fs.readFileSync('supabase/migrations/20261112210000_refund_manual_reconciliation_evidence.sql', 'utf8');
+const existingCaseLookup = migration.indexOf('select * into v_case from public.srk_refund_reconciliation_cases where refund_record_id=p_refund_record_id;');
+const eligibilityCheck = migration.indexOf("if v_refund.status not in ('requested','processing','failed','unknown') then");
+assert.ok(existingCaseLookup >= 0 && eligibilityCheck > existingCaseLookup,
+  'Existing reconciliation cases must be returned before applying new-case eligibility restrictions');
 
 const source = scripts[0];
 const start = source.indexOf('// --- Admin-only, advisory refund evidence reconciliation.');
@@ -103,6 +110,14 @@ vm.runInContext(block,context);
     'Retry after ambiguous network failure must reuse the same Action ID');
   assert.equal(attempts[1].args.p_amount_paise,12000);
   assert.equal(attempts[1].args.p_currency,'INR');
+
+  // A terminal refund still exposes its previously opened evidence and audit history.
+  getCasePayload={...casePayload,refund:{...casePayload.refund,status:'processed'}};
+  await context.openRefundReconciliationCase('refund-1');
+  assert.ok(calls.some(x=>x.name==='srk_admin_open_refund_reconciliation_case'),
+    'Dashboard should allow retrieving an existing case for a processed refund');
+  assert.ok(getNode('recon-case-refund-1').innerHTML.includes('Ledger status:'),
+    'Terminal refund case details should render');
 
   getCasePayload={...casePayload,evidence:[{...evidence,evidence_reference:'<img src=x onerror=alert(1)>'}]};
   await context.loadRefundReconciliationCase('case-1','refund-1');
