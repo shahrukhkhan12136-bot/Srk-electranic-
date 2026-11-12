@@ -296,7 +296,7 @@ async function startRazorpayPayment() {
           });
           const verifyData = await verifyResponse.json();
           if (!verifyResponse.ok || !verifyData.success) throw new Error(verifyData.error || 'भुगतान सत्यापित नहीं हुआ।');
-          setPaymentStatus('✅ भुगतान सफल और सत्यापित! अब बुकिंग WhatsApp पर भेजी जा रही है।');
+          setPaymentStatus('भुगतान सफल और सत्यापित हो गया है।');
           setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है।');
           await loadCustomerBookings();
         } catch (err) { setPaymentStatus(err.message, true); }
@@ -325,7 +325,6 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   const amount = 0; // Quote and final amount are set after electrician inspection.
   const method = value('payment');
   const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
-  currentBookingWhatsApp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
