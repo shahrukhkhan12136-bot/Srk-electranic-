@@ -1666,3 +1666,85 @@ Production `information_schema.columns` से केवल column names/types/n
 5. कोई Production migration/deployment तभी जब अलग से स्पष्ट approval मिले।
 
 No production schema, data, RPC, ACL, wallet, booking, payment, staging resource or deployment changed. यह section read-only schema evidence और प्रस्तावित design दर्ज करता है।
+
+
+## 17.48 — छह प्रस्तावित Admin RPC के Permission, Validation, Audit और State-Transition Contracts (13 Nov 2026)
+
+यह section छह RPC के implementation contracts तय करता है। ये अभी design-only हैं; कोई नया RPC, migration, permission, table या production change नहीं बनाया गया।
+
+### 1. सभी RPC के साझा अनिवार्य नियम
+- प्रत्येक RPC `SECURITY DEFINER` हो तो fixed trusted `search_path`, postgres owner, PUBLIC/anon EXECUTE revoke और केवल आवश्यक authenticated/service_role grants हों। SECURITY DEFINER अपने-आप authorization नहीं है।
+- User-facing Admin action में `auth.uid()` अनिवार्य हो; caller का Admin/staff role और exact permission scope server-side verify हो। केवल UI hide करना पर्याप्त नहीं।
+- Main Admin supreme/non-delegable रहेगा। Staff role केवल explicitly granted View/Add/Edit/Manage permission कर सके; staff स्वयं permission या role grant नहीं कर सकता।
+- हर mutation में mandatory non-empty reason, actor ID, source, server timestamp, target ID, before/after snapshot/hash और deterministic non-null idempotency key audit में हो।
+- हर multi-row action transaction में row locks और deterministic lock order अपनाए; duplicate request same result दे, conflicting replay reject हो।
+- Input allow-list, length/range checks, ownership/relationship checks, current-state precondition और explicit result code अनिवार्य। Client amount, actor ID, role, approval flag या timestamp को authoritative न मानें।
+- PII response least-privilege हो; completed/cancelled/rejected booking contact/coordinates सामान्य Customer/Electrician response में न लौटें।
+- Financial/timer snapshots immutable हों; correction नई adjustment/reversal event से हो, मूल record overwrite नहीं।
+
+### 2. RPC-specific contracts
+
+#### A. `srk_admin_correct_booking_location` — प्रस्तावित
+- Inputs: booking ID, corrected address, state, district, PIN, optional validated coordinates, reason, idempotency key.
+- Server: Admin/staff location-edit permission; booking lock; PIN/state/district validation; completed booking पर केवल historical correction event, operational dispatch location नहीं बदलना; accepted/in-progress booking में re-dispatch risk पर अलग Admin confirmation.
+- Audit: पुराने/नए address fields, actor, reason, source, timestamp; customer/electrician को केवल आवश्यक notification.
+- निषेध: amount, status, assignment, timer या payment field इस RPC से बदलना नहीं।
+
+#### B. `srk_admin_transition_booking` — प्रस्तावित
+- Inputs: booking ID, requested target action/state, reason, idempotency key.
+- Server: state-machine allow-list और explicit from→to edges; booking lock; assignment/offer/slot consistency; timer state, payment/refund और cancellation decision guard.
+- Admin को भी paid/refunded/payout-linked booking को generic status change से बदलने की अनुमति नहीं; dedicated refund/reconciliation/cancellation RPC जरूरी।
+- हर transition immutable event और notification outbox entry लिखे; duplicate request idempotent हो।
+
+#### C. `srk_admin_adjust_legacy_booking_amount` — प्रस्तावित
+- केवल legacy quote-era booking जिनमें timer bill snapshot मौजूद नहीं।
+- Inputs: booking ID, corrected labour amount, separate materials amount, reason, evidence/reference, idempotency key.
+- Server: Admin-only finance permission; row lock; non-negative amounts; original quote/payment/provider/refund/payout reconciliation; paid/refunded/payout-linked booking पर generic correction निषिद्ध या dedicated recovery workflow में भेजे।
+- Original quoted amount कभी overwrite न हो; append-only adjustment record और revised receivable/payable calculation बने।
+- Materials labour base और 15% platform fee calculation से पूरी तरह बाहर रहें।
+
+#### D. `srk_admin_set_electrician_control_state` — प्रस्तावित
+- Inputs: electrician profile ID, active/blocked/suspended state, reason, scope/duration if applicable, idempotency key.
+- Server: Admin/staff account-control permission; profile lock; identity link validation; open accepted/in-progress booking होने पर automatic assignment removal नहीं; emergency block अलग event और safe customer reassignment/notification workflow.
+- Re-enable केवल authorized Admin/staff permission से; self-approval/permission escalation निषिद्ध।
+- Audit actor, old/new state, reason, effective time और affected booking IDs रखे।
+
+#### E. `srk_admin_review_electrician_application` — प्रस्तावित
+- Inputs: application ID, decision, approved category, verified skill evidence references, reason, idempotency key.
+- Server: application lock; allowed decision; Auth phone ownership match; document evidence review status; category allow-list; per-skill verifier/approver and evidence; unique non-reusable electrician digital ID issuance.
+- Approval, active status और dispatch eligibility अलग controls हों; approved profile default inactive until activation. Rejection/suspension reason and appeal/review history retained.
+- किसी client-provided skill string को verified skill न मानें; category downgrade/upgrade automatic न हो।
+
+#### F. `srk_admin_dispatch_booking_offers` — प्रस्तावित
+- Inputs: booking ID, bounded batch size, reason/dispatch mode, idempotency key.
+- Server: booking lock; approved category + exact verified skill + active/approved profile + availability + service area + travel radius; nearest eligible first with deterministic tie-break; missing coordinates पर documented PIN/district fallback.
+- Candidate discovery और offer creation एक transaction/consistent snapshot में; unique booking/electrician offer; expiry and sequence; only one accepted electrician; duplicate/retry safe.
+- Acceptance RPC same transaction family में Cash slot reservation करे; third-slot Online rule को durable reservation से enforce करे।
+- No eligible candidate होने पर explicit no_match state; unverified/inactive/wrong-category electrician को offer नहीं।
+
+### 3. Permission matrix (minimum)
+| Action | Main Admin | Staff with exact scope | Customer/Electrician |
+|---|---|---|---|
+| Location correction | Allow + audit | Only location-edit scope | Deny |
+| Booking lifecycle transition | Allow + audit | Only booking-manage scope, non-financial edges | Deny |
+| Legacy finance adjustment | Allow + finance audit | Explicit finance-adjust scope only, optionally dual approval | Deny |
+| Electrician block/activate | Allow + emergency audit | Only account-control scope; emergency block may be Main Admin-only | Deny |
+| Application/category/skill approval | Allow + evidence audit | Only verification-review scope; final activation Main Admin-only if policy requires | Deny |
+| Offer dispatch | Allow + dispatch audit | Only dispatch-manage scope | Deny |
+
+### 4. Required negative and positive tests
+- Customer JWT, Electrician JWT, expired session, suspended Admin, staff missing exact scope, staff attempting self-escalation: deny.
+- Main Admin valid request: allow only valid transition and record audit.
+- Invalid PIN/category/skill/status, negative amount, blank reason, forged actor/time, duplicate idempotency, mismatched ownership: reject safely.
+- Two Admins editing same booking, dispatch duplicates, accept-vs-cancel race, block-vs-accept race: deterministic locking and no double assignment/slot.
+- Completed booking contact response contains no phone/address/coordinates for non-Admin; Admin contact route remains separately guarded.
+- Financial correction never changes timer snapshot; materials never enter 15% labour-only fee base.
+- Audit append-only behavior tested against UPDATE/DELETE attempts and service-role caller provenance.
+
+### 5. Implementation gate
+- पहले migration lineage gap और live ACL/RLS evidence clear करें।
+- फिर additive Feature Branch migration और RPC implementation; existing RPC callers update करें।
+- Unit tests + SQL integration + JWT negative tests + UI E2E + Razorpay Test Mode regression आवश्यक।
+- कोई Production apply, paid staging resource या deployment अलग explicit approval के बिना नहीं।
+
+No production code/schema/ACL/data, payment, wallet, customer/electrician record, staging resource or deployment changed. केवल design contract documentation Feature Branch में जोड़ा गया।
