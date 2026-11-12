@@ -1542,3 +1542,48 @@ Feature Branch के मौजूदा `admin.html`, `create-booking.js`, `cre
 Admin Panel में कुछ नियंत्रित RPC paths मौजूद हैं, लेकिन location, booking status/quote amount और electrician active flag के लिए direct browser table writes भी हैं। Online verify और webhook दोनों legacy quote contract के तहत paid status लिखते हैं। इसलिए केवल नया UI लगाने से Admin controls या payment integrity Master Requirements के अनुरूप नहीं होंगे।
 
 No application code, database schema/function/ACL, booking/payment/wallet record, Razorpay setting, staging resource or deployment changed. केवल यह audit section Feature Branch की Master Requirements documentation में जोड़ा गया।
+
+
+## 17.45 — Admin HTML के सभी Supabase Read/Write Callers की सूची और सुरक्षित बदलाव का नक्शा (13 Nov 2026)
+
+Feature Branch के पूरे `admin.html` source में `from(...)` और `rpc(...)` calls का static inventory बनाया गया। यह केवल browser source call inventory है; live RLS/ACL और runtime Admin JWT behavior का प्रमाण नहीं।
+
+### A. Read-only data paths
+| Object / RPC | Admin UI उपयोग |
+|---|---|
+| `service_bookings` SELECT | अधिकतम 300 booking rows; customer phone/address/location, status, quote/payment fields |
+| `electrician_applications` SELECT | अधिकतम 300 applications; `select('*')` |
+| `electrician_profiles` SELECT | अधिकतम 500 profiles; `select('*')` |
+| `srk_electrician_payouts` SELECT | अधिकतम 300 payouts और joined electrician display name/phone |
+| `srk_admin_commission_report` | Commission report |
+| `srk_admin_wallet_overview` | Wallet aggregate |
+| `is_srk_admin` | Admin session gate |
+
+### B. Mutation paths — RPC-controlled
+- `srk_admin_mark_electrician_payout_paid`: payout paid confirmation; preserve, but migrate to timer-derived payable and allocated fee/refund reconciliation.
+- `srk_admin_record_manual_payment`: manual payment receipt; preserve with exact frozen bill reconciliation, reference/evidence, idempotency and audit.
+- `srk_admin_offer_booking`: matching/offer creation; preserve and coordinate with durable Cash slot reservation.
+- `srk_admin_review_application`: application review; extend to category/ID approval policy only through explicit guarded workflow.
+- These RPC names/callers were found in UI source. Their current live ACL/body correctness is not inferred from the UI inventory.
+
+### C. Direct browser table writes — migrate behind guarded RPCs
+1. `service_bookings.update({address,district,state,pincode})`: direct booking location correction. Required replacement: `srk_admin_correct_booking_location` (proposed name only), mandatory reason, validated address/PIN, before/after audit and Admin/staff permission.
+2. `service_bookings.update({status,quoted_amount})`: direct booking status and amount edit for non-paid path. Required replacement: distinct narrow lifecycle decision and billing-adjustment RPCs; no arbitrary status string or overwrite of immutable timer bill. Preserve legacy correction only for explicitly identified historical bookings.
+3. `electrician_profiles.update({active})`: direct activation/deactivation. Required replacement: guarded account-control RPC with reason, actor, emergency-control state, staff permission, and audit; prevent deactivation from silently corrupting an in-progress assigned booking.
+
+### D. Additional controls
+- Admin page currently gates entry using authenticated session plus `is_srk_admin()`; this is not evidence of MFA, granular staff roles, route hardening or server-side authorization for every direct write.
+- `select('*')` on applications/profiles and payout join can fetch more personal/verification fields than each screen needs. Replace with explicit minimum columns and role-scoped views/RPC responses; never place verification documents or unnecessary PII in generic Admin list payloads.
+- Booking table UI includes payment-status selector and paid amount display, but manual receipt is routed through a dedicated RPC. Preserve this controlled path and test unauthorized direct PATCH denial with actual JWTs.
+- Offer creation, application review and payout confirmation are distinct business actions; do not collapse them into a generic Admin update RPC.
+- Emergency pause, block/unblock, staff roles and permissions must be separate auditable control-plane operations.
+
+### E. Verification required before implementation
+1. Inspect live policies/grants for UPDATE on `service_bookings` and `electrician_profiles`; confirm direct browser write is Admin-only and staff cannot bypass permission scopes.
+2. Read live definitions and ACLs of all five Admin RPCs listed above; test positive Admin and negative Customer/Electrician/staff-without-permission JWTs in isolated test environment.
+3. Verify Admin direct PATCH behavior is denied to non-Admin even if UI scripts are manually invoked.
+4. Add audit coverage for location correction, status transition, legacy amount correction, active toggle, application review, offer creation, manual receipt, payout paid.
+5. Add least-privilege select projections; inspect Admin exports, browser console/errors, cached responses and staff-device/session controls.
+6. Do not delete Admin controls or old fields until each action has a tested replacement and historical reconciliation.
+
+No code, live policy/grant, database row, Admin account, payment, wallet, customer data, staging resource or deployment changed. Only this source inventory and proposed migration map were documented.
