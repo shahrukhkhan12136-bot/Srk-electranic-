@@ -353,3 +353,11 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Timer integrated parity workflow 43175948589: SUCCESS, including snapshot payment/webhook contract JS test.
 - Independent refund workflow 43175929837: SUCCESS, including refund handler, webhook ledger, snapshot payment and ambiguous refund handling tests.
 - Synthetic disposable PostgreSQL only; Production migrations remain unapplied and device E2E remains outstanding.
+
+
+### Production catalog and electrician identity-link review — 2026-11-12
+- Read-only Production catalog snapshot: 25 public tables, 182 constraints, 15 enabled non-internal triggers, 81 indexes, 24 RLS policies; RLS enabled on all 25, FORCE RLS off on all 25.
+- Ten tables have no RLS policies, but current ACL confirms anon/authenticated have no SELECT/INSERT and service_role has CRUD. This is default-deny/service-only, not a direct client exposure finding.
+- Timer release schema remains absent in Production; current existing `srk_razorpay_webhook_events` is a separate existing event table and must not be repurposed.
+- Identity-link review: `srk_get_my_offer_details()` and payout SELECT RLS use only `user_id`, while cash/offer-price/profile-read paths accept `user_id` or `auth_user_id`. Current single active approved Production profile has both IDs equal; no current auth-only profile observed. Documented as a forward-compatibility consistency gap, not an active user impact.
+- Added read-only schema inventory details to `docs/PRODUCTION_SCHEMA_INVENTORY_20261112_HI.md`. No Production changes.
