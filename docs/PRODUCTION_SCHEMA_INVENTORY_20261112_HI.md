@@ -133,3 +133,16 @@ This is a controlled manual-reconciliation gap, not a reason to automatically ov
 ## Feature-branch refund lookup performance change (not applied to Production)
 
 Migration `20261112200000_index_refund_payment_lookup.sql` adds a non-unique index on `srk_razorpay_refunds(payment_id)`. Non-unique is intentional because more than one refund row may need to be represented for a provider payment; webhook reconciliation checks cardinality and refuses ambiguous matches. The migration is replayed twice in the refund CI workflow and in the integrated disposable Timer/refund parity workflow. This is a proposed feature-branch migration only; it has not been applied to Production and does not establish current Production index coverage.
+
+
+## Refund ledger cardinality and current Production index coverage (read-only)
+
+A direct read-only query of Production `public.srk_razorpay_refunds` returned:
+
+- Current refund rows: **0**; payment groups: **0**; multi-refund payment groups: **0**. This is only the current row count, not proof that multiple provider refunds cannot occur in the future.
+- Current constraints enforce `UNIQUE(booking_id)`, `UNIQUE(idempotency_key)`, and `UNIQUE(refund_id)`; `payment_id` has a format CHECK but no UNIQUE constraint.
+- Current indexes cover booking_id, idempotency_key, primary key, refund_id, and status/created_at. There is **no current Production payment_id lookup index**.
+- Feature-branch migration `20261112200000_index_refund_payment_lookup.sql` adds a non-unique `payment_id` index to improve webhook lookup without forbidding multiple refund rows that could share one payment ID. It is not applied in Production.
+- The webhook handler intentionally limits lookup to two rows and returns retryable `ambiguous_refund_ledger_match` when more than one record matches, rather than selecting one arbitrarily. The unique booking_id constraint means the present design supports at most one SRK refund-ledger row per booking, while the provider's possible partial/multiple-refund lifecycle for a payment remains a design question to settle before live refunds.
+
+No refund rows were inserted or changed; no provider API was called.
