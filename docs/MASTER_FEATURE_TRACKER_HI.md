@@ -255,3 +255,10 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - [I] Refund CI workflow में forward migration दो बार apply/replay और push + pull_request path coverage जोड़ी।
 - [V] GitHub Actions run `43171211161` SUCCESS at commit `69ad1262b35bcc4766385b27eb0ad93a0875aab7`; isolated PostgreSQL 16 fixture, refund SQL assertions, webhook ledger checks, migration replay, Node syntax and handler/contract tests passed.
 - [T] यह disposable CI database का प्रमाण है; Production Supabase migration लागू नहीं हुई और वास्तविक Razorpay sandbox webhook replay अभी नहीं हुआ।
+
+## Production Migration Archive Recovery — 2026-11-12
+- [T] सभी 11 repository branches के migration trees की read-only तुलना: Production history की 78 rows में 14 exact version+name source filenames, 25 same-name/different-version candidates और 39 rows के लिए कोई matching-name source नहीं मिला।
+- [T] Historical branch `work/separate-customer-electrician-portals` (commit `0fe5ef479e3ce69e9b219721599ebd52f6ba73ee`) से पुराने SQL candidates recovered; Flutter, hourly-booking और current feature branches से अतिरिक्त sources मिले।
+- [T] सात same-name files historical/current feature branch में byte-identical; Push subscription migration historical और current copy में materially different है।
+- [T] Detailed mapping: `docs/PRODUCTION_MIGRATION_ARCHIVE_RECOVERY_HI.md`; यह candidate-source register है, Production-applied SQL की authenticity proof नहीं।
+- [!] 39 Production migration rows अभी unresolved हैं; 25 timestamp-mismatch candidates का exact Production SQL से comparison बाकी है। Production remains read-only and NO-GO.
