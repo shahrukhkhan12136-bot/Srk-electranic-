@@ -50,3 +50,22 @@ The run applied the new migration twice on an isolated PostgreSQL 16 fixture, th
 **Production remains NO-GO.**
 
 The forward migration is committed only to the feature branch and has not been applied to Production. Do not run real-money refunds or live webhook replay as a substitute for the approved Razorpay Test Mode validation. A separate explicit owner approval is required before any Production migration or payment activity.
+
+
+## 2026-11-12 — completed-refund replay ordering correction
+
+A code-path review found that `process-refund.js` previously fetched the Razorpay payment and rejected any `amount_refunded > 0` **before** calling the Admin prepare RPC. This was safe against a second refund POST, but it also blocked a harmless retry for a refund already marked `processed` in SRK's ledger: Razorpay correctly reports the payment as already refunded, while SRK already has the terminal result.
+
+Feature-branch correction:
+- Call `srk_admin_prepare_booking_refund` first. Its row lock and booking-level unique ledger row serialize the business refund operation.
+- Validate the returned ledger row and return HTTP 200 immediately if its status is `processed`; do not contact Razorpay again.
+- Only unresolved/non-terminal ledger rows proceed to Razorpay payment verification and the prior-refund guard.
+- The payment amount comparison now uses the prepared ledger's immutable `amount_paise`, rather than recalculating from the request-list amount.
+
+Added a handler regression case where Razorpay payment has `amount_refunded = full amount` and the ledger already says `processed`: expected HTTP 200 and zero Razorpay API calls. Existing prior-partial-refund test remains: expected HTTP 409 and no refund POST.
+
+GitHub Actions runs for the handler and workflow are in progress at the time this note was written; do not treat the new test as passed until the run completes successfully.
+
+This change does **not** resolve an ambiguous timeout where the provider may have accepted a refund but SRK still has `requested/processing/unknown`. That path remains fail-closed for manual reconciliation when Razorpay reports any prior refunded amount. Before automatic retry/recovery is enabled, implement exact provider refund lookup and immutable correlation (refund ID / stored receipt or notes), reject zero or multiple ambiguous matches, and use the same persisted `X-Refund-Idempotency` key plus byte-equivalent request only under the verified Razorpay API contract. Do not retry with a new key. No provider API calls were made for this audit.
+
+Official Razorpay documentation checked: Normal/Instant Refund APIs support `X-Refund-Idempotency` and require the same key and identical request for retries; payment objects expose `amount_refunded` and `refund_status`. This is provider documentation review only, not a live/Test Mode API exercise.
