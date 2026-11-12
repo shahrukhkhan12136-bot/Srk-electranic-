@@ -10,6 +10,7 @@ on:
       - "supabase/tests/booking_order_number_assertions.sql"
       - ".github/workflows/booking-order-number.yml"
       - "create-booking.js"
+      - "tests/create-booking-date-only.test.js"
       - "netlify/functions/create-booking.js"
       - "index.html"
       - "electrician.html"
@@ -54,6 +55,7 @@ jobs:
         run: |
           node --check create-booking.js
           node --check netlify/functions/create-booking.js
+          node --test tests/create-booking-date-only.test.js
           node <<'NODE'
           const fs = require('fs');
           const vm = require('vm');
