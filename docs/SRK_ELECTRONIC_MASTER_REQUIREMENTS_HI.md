@@ -906,3 +906,53 @@ Feature Branch source inspection; live production API requests या user sessi
 
 **सीमा:** यह Feature Branch source-code inspection था। कोई source file, API, UI, database, payment provider, customer booking, Admin record या deployment नहीं बदला। वास्तविक Netlify runtime secrets, HTTP request tests, Razorpay Test Mode transactions और browser E2E अभी बाकी हैं।
 
+### 17.26 — Master Requirements बनाम वर्तमान Production/Feature Branch: Consolidated Gap List और सुरक्षित कार्य-क्रम (13 Nov 2026)
+
+यह सूची Sections 17.1–17.25 के अब तक के read-only निरीक्षणों का संकलन है। यह implementation-complete प्रमाणपत्र नहीं है। प्रत्येक gap को code, database, API/RPC, UI और staging tests से बंद करना होगा।
+
+#### P0 — सुरक्षा और धन-सुरक्षा के blockers
+
+1. **Completed/terminal booking contact leak:** Customer और Electrician के कई SECURITY DEFINER RPCs completed तथा कुछ rejected/अन्य terminal states में phone लौटाते हैं। दोनों पक्षों के सभी RPC, offer details, UI, receipts/history, cache और API outputs में terminal-state contact removal लागू व negative-tested होना बाकी है। Admin-only contact path अलग सुरक्षित रहे।
+2. **Server-authoritative booking price:** `create-booking.js` client-supplied `quoted_amount` स्वीकार करता है और service-role insert करता है। Client amount को reject/ignore कर category, rate, time और allowed options server से derive करने होंगे।
+3. **Timer and completion approval:** Server-side timer start/stop request, Customer approval, immutable server timestamps, Admin exception handling और actual-minute calculation अभी पुराने quote/payment flow से end-to-end जुड़े नहीं हैं।
+4. **Online payment integrity:** Create-order/verify अभी quote-approved amount पर निर्भर हैं। Timer-derived labour total, अलग materials, 15% labour-only Platform Fee, selected payment method, Razorpay order/payment identity, INR amount/currency, signature और webhook event idempotency को एक authoritative flow में जोड़ना बाकी है।
+5. **Wallet/ledger integrity:** Mandatory server-generated non-null idempotency key, append-only posting/reversal, concurrent balance safety, actor/source/booking references और wallet status enforcement लागू व tested होना बाकी है। Client को ledger write privilege नहीं देना है।
+6. **Cash fee/cycle:** पहले दो eligible Cash bookings, तीसरी Online requirement, wallet top-up से cycle reset, cash reservation/expiry/release, parallel booking protection और fee due collection का transactional implementation व tests बाकी हैं।
+7. **Cancellation and refunds:** Customer request, Admin-only decision, ₹0/₹49/₹99 stage rule, customer debt carry-forward, Electrician wallet debit, SRK cancellation ledger, online refund, partial/full reversal और paid-payout recovery का complete state machine मौजूद होने का प्रमाण नहीं मिला।
+8. **Admin mutation control:** Admin UI के direct status/quote edits को guarded server-side commands में बदलना है। Timer-approved amount पर silent direct edit न हो; हर adjustment में reason, before/after, actor और audit event जरूरी हो।
+9. **Role/session enforcement:** Customer/Electrician/Admin direct routes, wrong-role, suspended/disabled user, expired session और Admin MFA enforcement का वास्तविक JWT/browser negative test बाकी है। UI hiding अकेले authorization नहीं है।
+
+#### P1 — Core product behavior और operational correctness
+
+10. **Landing page और तीन login roles:** Landing page को एक premium hero image और केवल Customer, Electrician, Admin login actions के अनुरूप बनाना; duplicate Customer OTP implementation हटाने से पहले shared auth/session route test करना।
+11. **Customer App:** पाँच bottom menus (Home, My Bookings, Payments, Help & Support, My Profile), authenticated panel, booking history, timer approval, payment state और support history का पूर्ण E2E verification बाकी।
+12. **Electrician App:** Home, New Booking Offers, My Work/Bookings, Earnings & Wallet, Profile/ID और Help & Support; verified category, unique digital ID, offer acceptance और completed-state contact/data removal का पूर्ण verification बाकी।
+13. **Smart Matching:** Approved skill/category, nearest eligible available Electrician, no automatic category downgrade/upgrade, offer progression, expiry और concurrent acceptance tests बाकी।
+14. **Labour/material separation:** Customer labour billing और 15% Platform Fee को materials से अलग रखना; customer-supplied material default, exceptional electrician-supplied material के लिए prior approval और itemized receipt लागू व tested होना बाकी।
+15. **Cash/online selection:** Customer की चुनी payment method को server पर persist करना; silent switching रोकना और हर failure/retry पर वही choice सुरक्षित रखना।
+16. **Support and ratings:** Customer/Electrician Help & Support messages, attachments, Admin replies/history और दोनों तरफ one-per-real-booking 1–5 rating, moderation/audit की implementation व access tests बाकी।
+17. **Admin finance/accounting:** Labour revenue, materials pass-through, Platform Fee earned/collected/due, Cash collected, online settlement, cancellation fee/debt, refunds/reversals, payout paid/pending, expenses और actual net profit अलग-अलग reconcile करने हैं। मौजूदा dashboard को पूर्ण profit report न माना जाए।
+18. **Company expenses और receipts:** Expense categories, attachment/receipt, approval, reports तथा ledger reconciliation का पूर्ण परीक्षण बाकी।
+19. **Emergency Control Panel और staff permissions:** Booking/service/payment pause, Electrician block/unblock, suspicious-account restrictions, granular View/Add/Edit/Manage permissions, staff task/deadline/activity और Admin audit का implementation व negative tests बाकी।
+
+#### P0/P1 के लिए shared technical prerequisites
+
+20. **Migration history reconciliation:** Production history 81 entries बनाम Feature Branch में 21 local migration files; केवल 5 exact version matches की शुरुआती तुलना। 14 branches में 40 Production names के same-name candidates मिले, 41 exact filenames नहीं मिले; तीन matched names में divergent SQL blobs भी मिले। हर remote migration के लिए source, content hash, applied effect और dependency order प्रमाणित किए बिना कोई replay/reset/squash/apply नहीं।
+21. **Backward-compatible data model:** Existing quote, payment, payout, refund और audit history सुरक्षित रखकर नए timer/actual-minute model की additive migration और dual-read/transition plan बनाना। Historical rows को नए rules से दोबारा calculate या overwrite न करना।
+22. **Audit coverage:** Timer events, actual minutes, approvals, fee calculations, cash-cycle reservation/count, wallet posting/reversal, cancellation stage/decision, refund, payout और Admin adjustment को append-only audit/event history में जोड़ना।
+23. **RLS/ACL/SECURITY DEFINER:** सभी exposed functions की identity, ownership, assignment, role, status predicates, fixed search_path, PUBLIC/anon/authenticated/service_role grants और direct-table grants की समीक्षा। Blanket revoke/grant नहीं।
+24. **Privacy sweep:** Edge Functions, Netlify adapters, Realtime, Storage, push payloads, receipts, exports, logs, service worker/browser cache, local/session storage और Admin screens में phone/address/location/payment secrets की जरूरत-आधारित access जाँच।
+25. **Deployment architecture cleanup:** Netlify primary path और Vercel/GitHub Pages remnants के active references/integrations पहले map हों। कोई alternate deployment/workflow हटाने से पहले branch, domain, webhook, secret और rollback dependencies प्रमाणित हों।
+
+#### अनिवार्य क्रम — बिना Production परिवर्तन के
+
+A. **Inventory freeze:** Production migration history, live schema/functions/triggers/policies/grants और Feature Branch source के reproducible snapshots/hash सुरक्षित करें; migration discrepancy सूची पूर्ण करें।  
+B. **State-machine specification:** Booking, offer, timer, payment, cash-cycle, wallet, cancellation, refund और payout के valid states/transitions तथा actor permissions लिखित रूप में तय करें।  
+C. **Additive implementation:** Feature Branch में server-side calculation और नए RPC/API contracts; पुरानी quote path को अभी न हटाएँ।  
+D. **Isolated test environment:** Migration source reconciliation के बाद ही अलग staging/Test Mode पर लागू करें। कोई paid Supabase branch/resource बिना लागत बताए और अनुमति लिए न बनाएँ।  
+E. **Automated tests:** Unit, integration, RLS/JWT negative tests, concurrency/locking, duplicate/reordered webhook, duplicate ledger posting, refund-vs-payout race और historical-data regression।  
+F. **UI/E2E:** तीनों roles के mobile/desktop flows, contact privacy before/after completion, OTP/session, timer approvals, Cash/Online, receipts, support और Admin emergency controls।  
+G. **Release gate:** Security/Performance/Health advisors, migration diff, financial reconciliation, rollback plan और सभी critical tests पास होने के बाद ही अलग से explicit Production approval माँगें। एक consolidated Netlify production deployment से पहले कोई production cutover नहीं।
+
+**अभी की स्थिति:** यह consolidated gap analysis और sequencing है। किसी gap को इस दस्तावेज़ में लिख देने से वह implemented नहीं हो जाता। Production database, live payment provider, user records, app source behavior और deployment में इस चरण पर कोई बदलाव नहीं किया गया।
+
