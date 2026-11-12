@@ -121,3 +121,10 @@ A feature-branch migration `20261112200000_index_refund_payment_lookup.sql` now 
 - Refund workflow run 43176559688: SUCCESS; applied `20261112200000_index_refund_payment_lookup.sql` twice and all refund/webhook handler and SQL tests passed.
 - Integrated Timer parity workflow run 43176720772: SUCCESS; applied the same index migration twice after Timer 16000–16015, date-only/duration and refund chain; integrated assertions passed.
 - An earlier run failed because the workflow shell loop omitted a continuation after the reconciliation migration; the defect was corrected, and the later run passed. No Production migration applied.
+
+
+## Refund event-ordering and manual reconciliation gap
+
+Code review confirms the hardened reconciliation RPC treats `processed` as terminal, ignores stale `pending` after `failed`, rejects a different already-bound provider refund ID, and raises SQLSTATE `55000` for a contradictory `failed → processed` event for the same refund ID. The webhook handler currently classifies RPC reconciliation errors as retryable webhook errors. The Admin UI exposes a manual refund receipt action for manual/cash refunds, but no dedicated Admin queue/action was found to resolve a provider refund terminal-state conflict after an operator independently verifies the provider dashboard.
+
+This is a controlled manual-reconciliation gap, not a reason to automatically overwrite a terminal state. Do not weaken terminal-state protections or silently mark the event processed. Before live refund rollout, design an audited Admin review path that captures provider evidence, operator identity, reason, and the before/after state; decide whether the conflict event should remain retryable or transition to an explicit review-required state. No provider request or live refund was performed during this audit.
