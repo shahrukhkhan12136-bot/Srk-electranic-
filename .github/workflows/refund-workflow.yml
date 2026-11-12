@@ -9,6 +9,9 @@ on:
       - "supabase/migrations/20261111160015_timer_snapshot_refund_support.sql"
       - "supabase/tests/refund_workflow_*.sql"
       - "process-refund.js"
+      - "create-snapshot-order.js"
+      - "verify-snapshot-payment.js"
+      - "tests/snapshot-payment-contract.test.js"
       - "razorpay-webhook.js"
       - "netlify/functions/process-refund.js"
       - "index.html"
@@ -69,5 +72,9 @@ jobs:
       - name: Validate serverless JavaScript syntax
         run: |
           node --check process-refund.js
+          node --check create-snapshot-order.js
+          node --check verify-snapshot-payment.js
           node --check razorpay-webhook.js
+          node tests/process-refund-handler.test.js
+          node tests/snapshot-payment-contract.test.js
           node --check netlify/functions/process-refund.js
