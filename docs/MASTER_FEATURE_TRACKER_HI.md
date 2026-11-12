@@ -340,3 +340,10 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 ### CI confirmation — contact privacy and timer parity
 - Commit d04f039 triggered Timer billing SQL workflow run 43175321207: SUCCESS. Contact privacy assertions in timer-panel-contract.test.js passed alongside Timer SQL, replay, and synthetic Production-shaped legacy parity tests for 16000–16014.
 - This is CI fixture evidence only. It does not mean Production migrations were applied or APK/device E2E passed. Integrated 16015 + date-only/duration release parity remains outstanding.
+
+
+### Integrated Timer + refund migration collision — corrected (2026-11-12)
+- Found real collision: Timer migration 16001 creates `srk_payment_webhook_events` for payment receipts; refund migration 18000 reused the same relation name but expected a different lease-ledger schema. Combined replay failed on missing `created_at`.
+- Corrected by giving the refund event lease ledger its own table `srk_razorpay_webhook_event_ledger`; updated Razorpay webhook REST handler and SQL contract assertions. Added assertions that both ledgers coexist without overwriting each other.
+- Expanded disposable parity replay: Timer 16000–16015, date-only 12130000, duration pricing 12140000, refund request workflow, refund event ledger and reconciliation hardening; migrations are applied twice and checked.
+- GitHub Actions run 43175857392 SUCCESS at 9cbdd761f8ab7a7632ec84f3be3bf6cb43b754b3. New run 43175948589 is pending to include the snapshot webhook JS contract test. No Production changes or deployment.
