@@ -1162,3 +1162,24 @@ Production migration history में एक ही नाम की दो ent
 - पहले isolated staging/Test Mode में concurrency, duplicate webhook, retries, failed payment, cancellation, refund, wallet top-up, due settlement, paid payout recovery और cross-user authorization tests चलाएँ। Staging resource/charges के लिए अलग अनुमति आवश्यक है।
 
 **निष्कर्ष:** Feature Branch में Cash Platform Fee ledger और third-booking Online enforcement का प्रारंभिक ढाँचा मौजूद है, लेकिन यह Master Requirements के लिए अभी complete या production-ready नहीं है। मुख्य P0 gap acceptance-time cycle reservation, wallet top-up reset, timer-based labour calculation और पूर्ण refund/ledger reconciliation हैं। Production untouched है।
+
+
+## 17.33 — Cash Payment migration ancestry और Customer Payment Choice RPC audit (13 Nov 2026)
+
+### Duplicate Production migration version 20261111083811 — ancestry परिणाम
+- GitHub repository commit search में exact version `20261111083811`, migration नाम `add_assigned_electrician_cash_payment_status`, और cash-payment संबंधी commit-message terms के लिए कोई matching commit नहीं मिला।
+- GitHub REST path-history query में भी exact filename/path का commit result नहीं मिला। यह परिणाम केवल उपलब्ध repository/connector search scope का है; इससे यह सिद्ध नहीं होता कि migration कभी बनी ही नहीं। Production migration history में version मौजूद है, इसलिए उसका applied effect unresolved ही रहेगा।
+- इस समय पहले version `20261111082515` का source ही मिला है। दूसरे version को no-op, duplicate body या harmless migration मानना उचित नहीं। अगला source recovery route: Supabase migration metadata के साथ deployment logs/PR refs/commit tree snapshots और live object chronology का correlation; उपलब्ध प्रमाण से बाहर अनुमान नहीं।
+
+### Customer Payment Choice migrations का source review
+1. `20261112230000_show_customer_payment_choice_to_assigned_electrician.sql` (blob `76f9ed88b2bef99943f70ddf0ec2dda6cc8169ab`) `srk_get_my_offer_details()` को drop/recreate करता है और electrician को assigned booking का payment_method दिखाता है। लेकिन recreated function में booking status पर कोई active/terminal allow-list नहीं है। यह name/phone/address/coordinates के पुराने response behavior को भी जारी रखता है; इसलिए completed/cancelled/quote_rejected booking पर contact/location response बंद करने का Master privacy नियम इस migration से पूरा नहीं होता। यह Section 17.8–17.13 के completed-contact exposure से जुड़ा P0 blocker है।
+2. `20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql` (blob `3a26f7741751707b8854b38066505a0ae0b611b7`) SECURITY DEFINER RPC customer ownership, `auth.uid()`, unassigned + new/confirmed status, unpaid/pending, no Razorpay order/payment और Cash-origin checks लगाता है; explicit Online choice ही स्वीकार करता है, payment शुरू नहीं करता। यह अच्छा ownership/locking आधार है।
+3. इस RPC में explicit customer choice को सही तरह preserve किया गया है, लेकिन RPC स्वयं electrician cycle eligibility की गणना नहीं करता। यह third-booking enforcement को `srk_respond_to_offer` पर छोड़ता है। इस separation का race/state test जरूरी है: Customer switch और electrician offer acceptance एक साथ हों, दो offers parallel accept हों, या order creation switch के बीच शुरू हो।
+4. Customer choice RPC में dedicated audit event/actor/source field की पुष्टि इस source से नहीं होती। Booking row update का generic audit trigger पर्याप्त है या नहीं, उसके allow-list/actor payload की अलग जाँच जरूरी है।
+5. दोनों migrations केवल Feature Branch sources हैं। Production में लागू होने का कोई प्रमाण नहीं; live Production migration history में इन exact versions की पुष्टि अलग से करनी होगी।
+
+### निष्कर्ष और अगला कदम
+- दूसरे duplicate Cash migration version का source अभी unresolved है; कोई SQL replay या migration-history repair नहीं।
+- Customer payment-method switch RPC में ownership/state guards हैं, पर third-slot eligibility server path और race/idempotency परीक्षण बाकी हैं।
+- Assigned electrician offer-details RPC में terminal booking contact/location leakage बना रहता है; Customer Payment Choice UI जोड़ने के नाम पर इस privacy defect को स्वीकार नहीं किया जा सकता। अगली implementation में payment_method को सुरक्षित field के रूप में expose करें, पर customer phone/address/coordinates केवल assigned active booking तक सीमित करें और completed/cancelled/rejected/unassigned पर null/omit करें।
+- कोई Production DB/API/UI/payment/deployment change नहीं किया गया। यह केवल source audit और documentation है।
