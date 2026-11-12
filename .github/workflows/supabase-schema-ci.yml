@@ -1,0 +1,115 @@
+name: Supabase isolated schema migration test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/platform-fee-cash-online-cycle
+    paths:
+      - "supabase/migrations/20261112170000_enforce_electrician_third_booking_online_payment.sql"
+      - "supabase/migrations/20261112193000_labour_only_quotes_customer_supplies_materials.sql"
+      - "supabase/migrations/20261112220000_cash_platform_fee_due_and_online_settlement.sql"
+      - "supabase/migrations/20261112230000_show_customer_payment_choice_to_assigned_electrician.sql"
+      - "supabase/migrations/20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql"
+      - ".github/workflows/supabase-schema-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srk-supabase-schema-ci
+  cancel-in-progress: true
+
+jobs:
+  migration-test:
+    name: Export schema and test feature migrations locally
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+
+      - name: Require read-only database connection secret
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Add SUPABASE_DB_URL as a GitHub Actions repository secret. Never put the connection string in source code."
+            exit 1
+          fi
+          case "$SUPABASE_DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "::error::SUPABASE_DB_URL must be a PostgreSQL connection URI."; exit 1 ;;
+          esac
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: Initialize local Supabase configuration if missing
+        run: |
+          if [ ! -f supabase/config.toml ]; then
+            supabase init
+          fi
+
+      - name: Export schema only from production (no table data)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+          supabase db dump --remote="$SUPABASE_DB_URL" --file "$RUNNER_TEMP/srk-production-schema.sql"
+          test -s "$RUNNER_TEMP/srk-production-schema.sql"
+          if grep -Eiq '^(COPY|INSERT INTO) ' "$RUNNER_TEMP/srk-production-schema.sql"; then
+            echo "::error::Unexpected data statements found in schema-only export."
+            exit 1
+          fi
+
+      - name: Start isolated local Supabase stack
+        run: supabase start
+
+      - name: Restore schema into isolated local database
+        run: supabase db query --file "$RUNNER_TEMP/srk-production-schema.sql"
+
+      - name: Apply pending feature migrations in order
+        run: |
+          set -euo pipefail
+          migrations=(
+            "supabase/migrations/20261112170000_enforce_electrician_third_booking_online_payment.sql"
+            "supabase/migrations/20261112193000_labour_only_quotes_customer_supplies_materials.sql"
+            "supabase/migrations/20261112220000_cash_platform_fee_due_and_online_settlement.sql"
+            "supabase/migrations/20261112230000_show_customer_payment_choice_to_assigned_electrician.sql"
+            "supabase/migrations/20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql"
+          )
+          for migration in "${migrations[@]}"; do
+            test -s "$migration"
+            echo "Applying $migration to the isolated local database"
+            supabase db query --file "$migration"
+          done
+
+      - name: Lint isolated database
+        run: supabase db lint --local --fail-on error
+
+      - name: Verify critical schema objects exist
+        run: |
+          cat > "$RUNNER_TEMP/srk-smoke-test.sql" <<'SQL'
+          DO $$
+          BEGIN
+            IF to_regclass('public.srk_platform_fee_ledger') IS NULL THEN
+              RAISE EXCEPTION 'Missing public.srk_platform_fee_ledger';
+            END IF;
+            IF to_regprocedure('public.srk_customer_change_payment_method(uuid,text)') IS NULL THEN
+              RAISE EXCEPTION 'Missing srk_customer_change_payment_method(uuid,text)';
+            END IF;
+            IF to_regclass('public.srk_electrician_payouts') IS NULL THEN
+              RAISE EXCEPTION 'Missing public.srk_electrician_payouts';
+            END IF;
+          END
+          $$;
+          SQL
+          supabase db query --file "$RUNNER_TEMP/srk-smoke-test.sql"
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup
