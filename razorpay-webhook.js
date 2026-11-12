@@ -298,7 +298,7 @@ exports.handler = async (event) => {
       const lookup = new URL("/rest/v1/srk_razorpay_refunds", SUPABASE_URL);
       lookup.searchParams.set("payment_id", "eq." + refund.payment_id);
       lookup.searchParams.set("select", "id,refund_id,status");
-      lookup.searchParams.set("limit", "1");
+      lookup.searchParams.set("limit", "2");
       const found = await fetch(lookup, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } });
       if (!found.ok) throw new Error("Refund ledger lookup failed");
       const rows = await found.json();
