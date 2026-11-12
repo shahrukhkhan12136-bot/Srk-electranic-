@@ -1044,3 +1044,39 @@ Production के 81 migration records को repository की सभी 14 उ
 
 **सीमा:** केवल GitHub blob contents और Production system catalogs पढ़े गए। कोई SQL apply नहीं, कोई function/table/policy/index बदला नहीं, कोई push token/PII record नहीं पढ़ा, कोई deployment नहीं।
 
+### 17.30 — Finance Migration की Live Function Definitions और Indexes से तुलना (13 Nov 2026)
+
+Production पर केवल catalog definitions और index metadata पढ़कर recovered migration candidates से तुलना की गई।
+
+**1. Expense Add Function**
+- Live `srk_admin_finance_add_expense` में `p_category IS NULL` guard मौजूद है।
+- यह कमजोर पुराने candidate blob `69f15bf8...` से अलग और मजबूत candidate blob `b479f89c...` तथा reporting hardening blob `3166714b...` के validation behavior से मेल खाता है।
+- Live function में amount, description, provider, reference और notes length checks भी मौजूद हैं; ये reporting hardening source में हैं।
+- निष्कर्ष: Live function behavior reporting hardening candidate के साथ corroborate होता है; लेकिन remote migration record का exact SQL source अभी भी केवल history row से प्रमाणित नहीं किया जा सकता।
+
+**2. Finance Dashboard**
+- Live `srk_admin_finance_dashboard` में Asia/Kolkata date boundaries, `bookings_created`, paid payout को `paid_at` से गिनना और pending payout को `created_at` से गिनना मौजूद है।
+- Live body recovered `3166714b...` reporting-date migration के मुख्य calculation से मेल खाती है; यह intermediate `d1224b3f...` से आगे का payout/date calculation है।
+- Live dashboard अब भी legacy fields `amount_paid`, `commission_amount`, `service_charge`, `commission_rate` पर आधारित है। `net_profit = platform_commission - total_expenses`; cancellation, wallet fee due/collection, cash settlement, refunds/reversals और materials pass-through का पूरा ledger reconciliation इसमें शामिल नहीं।
+- `electrician_share` gross customer payment minus commission है; इसे actual payout paid नहीं समझना चाहिए। Dashboard के अलग payout fields ही payout table से आते हैं।
+
+**3. Live Index Evidence**
+- `private.srk_business_expenses`: `expense_date DESC` और `recorded_by` indexes मौजूद।
+- `public.srk_electrician_payouts`: partial `paid_at DESC` index मौजूद, केवल paid rows और non-null paid_at पर।
+- साथ में payout booking unique, electrician profile, paid_by और status/created_at indexes मौजूद।
+- ये indexes recovered reporting migration के index definitions से मेल खाते हैं।
+
+**4. ACL/Execution safety boundary**
+- इस audit में function body और index definitions पढ़े गए। कोई function call/expense insert नहीं किया गया।
+- पहले के ACL snapshot में Finance RPCs Admin guard के साथ SECURITY DEFINER और authenticated EXECUTE थे; इस चरण में grants बदलने या व्यापक रूप से revoke करने का कोई कारण नहीं मिला।
+- Runtime Admin/non-Admin JWT negative tests अभी आवश्यक हैं।
+
+**Migration lineage निष्कर्ष**
+- Finance dashboard/expense reporting के लिए recovered SQL और live object behavior में मजबूत corroboration है; `3166714b...` सबसे अच्छा available source candidate है।
+- इसे remote migration history की exact applied-body proof या migration history repair authorization नहीं माना जाए।
+- कमजोर/पुराने finance blob को Production में दोबारा चलाना या history rows बदलना आवश्यक/अनुमत नहीं।
+
+**अगला चरण:** cash-payment status की दोनों Production migration versions (`20261111082515`, `20261111083811`) के source, function bodies, constraints और triggers का अलग-अलग प्रभाव map करना; साथ ही finance RPCs के Admin/non-Admin JWT tests को staging में plan करना।
+
+**सीमा:** Production पर केवल `pg_get_functiondef` और `pg_indexes` metadata read हुआ। कोई function, index, grant, row, migration history, payment या deployment बदला नहीं।
+
