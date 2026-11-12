@@ -160,3 +160,10 @@ SRK's current database model deliberately enforces one refund record per booking
 The current handler's `payment_id` lookup intentionally fails closed when it finds more than one row. This protects against arbitrary reconciliation but is not a complete multi-refund mapping strategy. Do not change the unique booking constraint or enable partial refunds until the policy and transactional amount-cap design are reviewed and tested.
 
 Reference material: Razorpay describes partial/full refunds in its [refund FAQ](https://razorpay.com/docs/pos/refunds/faqs/?preferred-country=US) and its Refunds API announcement describes fetching multiple or single refunds for a payment (https://razorpay.com/blog/product-updates-may-2016/). Provider docs are context only; no provider API call was made.
+
+
+## Refund ledger cardinality and lookup review (read-only)
+
+Current Production `srk_razorpay_refunds` contains **0 rows** at the time of this snapshot. Its schema has a unique constraint/index on `booking_id`, a unique `idempotency_key`, and a unique `refund_id`; there is no unique index on `payment_id`. Therefore one refund record per booking is enforced, but multiple bookings/refund records can legitimately reference the same provider payment ID. A payment ID lookup must remain non-unique and the webhook handler must explicitly detect more than one matching row rather than selecting an arbitrary refund. No current Production data exists to validate real multi-refund ordering or provider event timing.
+
+A feature-branch migration `20261112200000_index_refund_payment_lookup.sql` adds a **non-unique** index on `srk_razorpay_refunds(payment_id)` to support this lookup without changing cardinality. It is not applied to Production. Refund workflow CI confirms its migration and assertion in the disposable harness; integrated Timer + refund replay is being rerun after a workflow shell-script formatting correction.
