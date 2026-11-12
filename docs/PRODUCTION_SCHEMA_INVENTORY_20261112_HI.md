@@ -146,3 +146,17 @@ A direct read-only query of Production `public.srk_razorpay_refunds` returned:
 - The webhook handler intentionally limits lookup to two rows and returns retryable `ambiguous_refund_ledger_match` when more than one record matches, rather than selecting one arbitrarily. The unique booking_id constraint means the present design supports at most one SRK refund-ledger row per booking, while the provider's possible partial/multiple-refund lifecycle for a payment remains a design question to settle before live refunds.
 
 No refund rows were inserted or changed; no provider API was called.
+
+
+## Razorpay refund capability vs SRK ledger model — policy decision required
+
+Razorpay's published materials describe partial and full refunds, and its Refunds API material refers to fetching multiple refunds for a payment. This means a provider payment can have a refund history more complex than a single refund row; however, this is not evidence that SRK must support multiple refunds for one booking.
+
+SRK's current database model deliberately enforces one refund record per booking (`UNIQUE(booking_id)`) and the current Admin/customer workflow is a single refund-request process. Before any live refund activation, product policy must explicitly choose one of these models:
+
+1. **One full refund per booking (current model):** keep `UNIQUE(booking_id)`, make sure the requested amount is the full refundable paid amount, and reject partial/additional refund operations clearly.
+2. **Partial or multiple refunds per booking:** redesign the ledger around refund attempts/entries, remove the one-row-per-booking uniqueness, preserve immutable provider refund IDs and idempotency keys per attempt, and add an aggregate cap so the sum of successful/in-flight refunds cannot exceed the captured payment amount. Webhook reconciliation must map by exact provider refund ID and payment ID, not guess a single row by payment ID.
+
+The current handler's `payment_id` lookup intentionally fails closed when it finds more than one row. This protects against arbitrary reconciliation but is not a complete multi-refund mapping strategy. Do not change the unique booking constraint or enable partial refunds until the policy and transactional amount-cap design are reviewed and tested.
+
+Reference material: Razorpay describes partial/full refunds in its [refund FAQ](https://razorpay.com/docs/pos/refunds/faqs/?preferred-country=US) and its Refunds API announcement describes fetching multiple or single refunds for a payment (https://razorpay.com/blog/product-updates-may-2016/). Provider docs are context only; no provider API call was made.
