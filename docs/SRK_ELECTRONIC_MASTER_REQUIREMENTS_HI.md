@@ -549,3 +549,24 @@ Safety boundary: no production SQL, function, grant, table, or customer data was
 5. Production DB पर कोई SQL/function/grant/migration परिवर्तन नहीं किया गया। Staging/Test Mode पर test अभी नहीं हुआ; production release के लिए अलग explicit approval आवश्यक है।
 
 **इस चरण का सत्यापन:** live function definitions, five RPC ACLs, migration list, Feature Branch migration tree, alternate branch migration source और दो मुख्य HTML UI files read-only fetch/inspection से जाँचे गए। कोई code, database, migration history, grant, customer data या deployment बदला नहीं गया।
+
+
+### 17.11 — Phone visibility migration lineage: conflicting branch implementations (13 Nov 2026)
+
+अगली जाँच में phone-contact behavior से जुड़ी अतिरिक्त migrations मिलीं। इनका source अलग-अलग branches में है; अभी इन्हें Feature Branch में merge/copy/apply नहीं किया गया।
+
+- Production migration history में `20261110142310_add_order_accepted_phone_visibility` और `20261110143332_add_admin_booking_contact_visibility` हैं। दूसरी branch `feature/flutter-mobile-apps` में इनके समान नाम/logic वाली files क्रमशः `20261110195000_add_order_accepted_phone_visibility.sql` और `20261110200000_add_admin_booking_contact_visibility.sql` के नाम से मिलीं। Timestamp अलग है, इसलिए exact migration identity/history equivalence अभी सिद्ध नहीं है।
+- Order-accepted phone visibility वाली recovered SQL में दोनों public SECURITY DEFINER RPCs बनाए गए हैं। Customer RPC के status allow-list में `completed` और `quote_rejected` हैं और वह electrician phone लौटाता है। Electrician RPC भी वही statuses स्वीकार करके customer phone लौटाता है। यह दो अतिरिक्त completed-contact exposure paths की SQL-level पुष्टि करता है।
+- Admin contact RPC अलग migration में है; उसमें `auth.uid()` और `is_srk_admin()` guard है। इसे Admin-only operational function के रूप में अलग रखा जाए।
+- दूसरी branch `feature/production-push-notifications` में `20261111160014_keep_customer_call_contact_after_completion.sql` मिली। यह private customer implementation से status allow-list और payment-status filter दोनों हटा देती है; केवल customer ownership और assigned electrician पर निर्भर रहती है। इससे completed ही नहीं, assigned booking के अन्य statuses पर भी phone return हो सकता है। इस file का timestamp/name Production history में contact-related migration के रूप में नहीं मिला; इसे Production में लागू हुआ मानना गलत होगा।
+- तीसरी branch `fix/customer-otp-gated-booking-no-public-contact` में `20261112162000_hide_customer_electrician_contact_after_payment.sql` मिली। यह private customer RPC में active states तक सीमित करती है और `payment_status = paid` पर phone रोकती है। लेकिन यह alternate branch source है, Feature Branch या live Production state का प्रमाण नहीं। यह केवल private customer RPC बदलती है; दोनों public contact RPCs को ठीक नहीं करती।
+- निष्कर्ष: repository branches में mutually conflicting phone visibility policies हैं—एक completion के बाद access जारी रखती है, दूसरी paid booking पर रोकती है, जबकि Master Requirement completion पर हमेशा phone visibility रोकने की माँग करता है। किसी alternate branch migration को बिना dependency/content/history review अपनाना सुरक्षित नहीं है।
+
+**सुधार का target behavior (Master Requirement):**
+1. Customer: electrician का phone केवल assigned/accepted active booking states में; `completed`, `cancelled`, `rejected`, unassigned और अन्य customer की booking में कोई contact row/number नहीं।
+2. Electrician: customer का phone केवल assigned/accepted active booking states में; `completed`, `cancelled`, `rejected`, unassigned और दूसरे electrician की booking में कोई contact row/number नहीं।
+3. Admin: अलग Admin guard के साथ operational access; सामान्य customer/electrician role से कभी नहीं।
+4. Paid/unpaid status को completed-state privacy का substitute न बनाएं। Work completion lifecycle ही निर्णायक है; फोन नंबर receipts, booking history, browser cache/local storage और UI में भी हटना चाहिए।
+5. Existing identity, customer ownership, assigned electrician, approved/active electrician, SECURITY DEFINER search_path और ACL checks बनाए रखें। केवल status list बदलकर बिना call-site और data-flow review के release न करें।
+
+इस चरण में चार recovered candidate migrations की SQL content पढ़ी गई और Production history के contact-related entries से तुलना की गई। कोई source file Feature Branch में copy नहीं की गई, कोई production/staging SQL नहीं चलाई गई और कोई deployment नहीं हुआ।
