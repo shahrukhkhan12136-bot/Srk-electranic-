@@ -193,7 +193,7 @@ async function loadRateCatalogue(){
  const {data,error}=await sb.rpc('srk_admin_list_rate_catalogue');
  if(error){body.innerHTML='<tr><td colspan="7" class="danger">दर इतिहास लोड नहीं हुआ: '+esc(error.message)+'</td></tr>';return;}
  const rows=Array.isArray(data)?data:[];
- body.innerHTML=rows.map(r=>'<tr><td>'+esc(r.category_label||r.category_code)+'</td><td><b>v'+Number(r.version)+'</b></td><td>₹'+Number(r.hourly_rate).toFixed(3)+'</td><td>'+esc(r.effective_from)+'</td><td><span class="tag">'+(r.action==='published'?'Admin प्रकाशित':'प्रारंभिक दर')+'</span></td><td>'+esc(r.reason||'—')+'<br><small class="muted">Actor: '+esc(r.actor_user_id||'—')+'</small></td><td>'+esc(r.audit_created_at?new Date(r.audit_created_at).toLocaleString('hi-IN'):'—')+'</td></tr>').join('')||'<tr><td colspan="7">कोई दर उपलब्ध नहीं है।</td></tr>';
+ body.innerHTML=rows.map(r=>'<tr><td>'+esc(r.category_label||r.category_code)+'</td><td><b>v'+Number(r.version)+'</b></td><td>₹'+Number(r.hourly_rate).toFixed(3)+'</td><td>'+esc(r.effective_from)+'</td><td><span class="tag">'+(r.action==='published'?'Admin प्रकाशित':'प्रारंभिक दर')+'</span></td><td>'+esc(r.reason||'—')+'<br><small class="muted">Actor: '+esc(r.actor_user_id||'System seed')+'</small></td><td>'+esc(r.audit_created_at?new Date(r.audit_created_at).toLocaleString('hi-IN'):'—')+'</td></tr>').join('')||'<tr><td colspan="7">कोई दर उपलब्ध नहीं है।</td></tr>';
  if(msg&&!rows.length)msg.textContent='दर सूची खाली है।';
 }
 async function publishRateVersion(){
