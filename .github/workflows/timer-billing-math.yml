@@ -140,6 +140,7 @@ on:
       - "supabase/migrations/20261112190000_harden_refund_provider_reconciliation.sql"
       - "supabase/tests/timer_refund_parity_overlay.sql"
       - "supabase/tests/timer_refund_parity_assertions.sql"
+      - "tests/snapshot-payment-contract.test.js"
 permissions:
   contents: read
 
@@ -183,6 +184,7 @@ jobs:
           node --check create-snapshot-order.js
           node --check verify-snapshot-payment.js
           node tests/timer-panel-contract.test.js
+          node tests/snapshot-payment-contract.test.js
           node --check netlify/functions/create-snapshot-order.js
           node --check netlify/functions/verify-snapshot-payment.js
       - name: Create minimal synthetic baseline
