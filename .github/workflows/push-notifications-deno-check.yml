@@ -14,6 +14,8 @@ on:
       - main
     paths:
       - "supabase/functions/push-job-offer/**"
+      - "push-test/**"
+      - "tests/push-test-page.test.js"
       - ".github/workflows/push-notifications-deno-check.yml"
 
 permissions:
