@@ -200,7 +200,7 @@ async function correctPayoutReference(id){
   .eq('id',id).single();
  if(readError||!row){alert('पेआउट रिकॉर्ड नहीं पढ़ा जा सका: '+(readError?.message||'रिकॉर्ड नहीं मिला'));return;}
  if(row.payout_status!=='paid'||!row.payout_reference){alert('केवल मौजूदा Paid रिकॉर्ड का संदर्भ सुधारा जा सकता है। Refresh करें।');return;}
- if(!confirm('क्या वास्तविक PhonePe / UPI रसीद देखकर यह सुधार करना है?\\n\\nराशि: ₹'+Number(row.electrician_payable).toFixed(2)+'\\nपुराना संदर्भ: '+row.payout_reference+'\\nनया UTR: '+reference+'\\n\\nPaid स्थिति और भुगतान समय नहीं बदलेंगे।'))return;
+ if(!confirm('क्या वास्तविक PhonePe / UPI रसीद देखकर यह सुधार करना है?\n\nराशि: ₹'+Number(row.electrician_payable).toFixed(2)+'\nपुराना संदर्भ: '+row.payout_reference+'\nनया UTR: '+reference+'\n\nPaid स्थिति और भुगतान समय नहीं बदलेंगे।'))return;
  const {data,error}=await sb.rpc('srk_admin_correct_electrician_payout_reference',{
   p_payout_id:id,p_expected_reference:row.payout_reference,p_new_reference:reference,p_note:note
  });
