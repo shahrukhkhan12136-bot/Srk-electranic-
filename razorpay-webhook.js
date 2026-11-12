@@ -185,7 +185,7 @@ async function finishSnapshotWebhookEvent(eventId, leaseStartedAt, status, outco
       apikey: SUPABASE_KEY,
       Authorization: "Bearer " + SUPABASE_KEY,
       "Content-Type": "application/json",
-      Prefer: "return=minimal"
+      Prefer: "return=representation"
     },
     body: JSON.stringify({
       processing_status: status,
@@ -197,6 +197,8 @@ async function finishSnapshotWebhookEvent(eventId, leaseStartedAt, status, outco
     })
   });
   if (!response.ok) throw new Error("Webhook event ledger status update failed");
+  const updated = await response.json();
+  if (!Array.isArray(updated) || updated.length !== 1) throw new Error("Webhook processing lease was lost before completion");
 }
 
 async function updateSnapshotOrder(orderId, payment, eventMeta) {
