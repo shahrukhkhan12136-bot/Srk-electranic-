@@ -103,12 +103,12 @@ async function startSnapshotWebhookEvent(eventMeta, orderId, paymentId) {
   if (!insert.ok) throw new Error("Webhook event ledger insert failed");
   const inserted = await insert.json();
   let row = Array.isArray(inserted) ? inserted[0] : null;
+  const lookup = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
+  lookup.searchParams.set("provider", "eq.razorpay");
+  lookup.searchParams.set("provider_event_id", "eq." + eventMeta.eventId);
+  lookup.searchParams.set("select", "id,processing_status,attempt_count,payload_sha256");
+  lookup.searchParams.set("limit", "1");
   if (!row) {
-    const lookup = new URL("/rest/v1/srk_payment_webhook_events", SUPABASE_URL);
-    lookup.searchParams.set("provider", "eq.razorpay");
-    lookup.searchParams.set("provider_event_id", "eq." + eventMeta.eventId);
-    lookup.searchParams.set("select", "id,processing_status,attempt_count,payload_sha256");
-    lookup.searchParams.set("limit", "1");
     const existingResponse = await fetch(lookup, {
       headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
     });
