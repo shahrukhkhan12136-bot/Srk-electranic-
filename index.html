@@ -901,7 +901,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     }) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
-    alert(`ऑर्डर नंबर: ${result.order_number || 'अभी उपलब्ध नहीं'}\nबुकिंग संदर्भ: ${result.booking_id}\n${result.message}`);
+    alert(`ऑर्डर नंबर: ${result.order_number || 'अभी उपलब्ध नहीं'}\nबुकिंग संदर्भ: ${result.booking_id}\nचुनी अवधि: ${result.duration_hours || value('durationHours')} घंटे\nसर्वर से गणना किया अनुमानित मेहनताना: ₹${Number(result.estimated_labour_amount_snapshot || 0).toFixed(2)}\n${result.message}`);
     // Keep the same key only for retries of a failed request. A successful booking
     // must get a fresh key so the customer's next booking is not replayed.
     bookingIdempotencyKey = null;
