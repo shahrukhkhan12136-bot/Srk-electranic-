@@ -399,3 +399,10 @@ This register is a planning/acceptance scaffold, not a claim that unchecked feat
 - Production refund ledger currently has 0 rows; `booking_id`, `idempotency_key`, and `refund_id` are unique, while `payment_id` is not unique. This allows multiple booking-level refund records to share a provider payment ID; handler must keep ambiguous matches retryable and never select an arbitrary row.
 - Added feature-branch migration `20261112200000_index_refund_payment_lookup.sql` with a non-unique `payment_id` index and a SQL assertion. Refund Workflow CI run 43176559688 passed including migration replay and handler tests.
 - Integrated Timer workflow exposed a shell loop formatting issue after adding the new migration; changed the combined replay to explicit apply-twice commands. Latest rerun 43177549032 is queued at commit 60b0cb58cd6f3e3dcb8405521de83be1ea5d402f; awaiting final result. No Production changes.
+
+
+### Final integrated replay confirmation — 2026-11-12
+- Timer billing SQL workflow run **43177549032**: SUCCESS at commit `60b0cb58cd6f3e3dcb8405521de83be1ea5d402f`. The full Production-shaped disposable replay step passed, including Timer release, date-only/duration booking contract, refund request workflow, Timer refund support, separate Razorpay refund event ledger, reconciliation hardening, and non-unique payment_id lookup index. Each added migration was applied twice.
+- Refund Workflow run **43177518210**: SUCCESS; handler syntax, refund handler, snapshot payment/webhook contract, dedicated Razorpay event ledger contract, ambiguous payment-ID handler behavior, and SQL refund workflow passed.
+- Earlier integrated run failures were due to a shell-loop formatting defect in the CI workflow, not SQL migration failure. Replaced the loop with explicit apply-twice commands; final rerun is green.
+- These results are disposable synthetic PostgreSQL CI, not a Production migration application, real provider webhook, money movement, or Android/device E2E test.
