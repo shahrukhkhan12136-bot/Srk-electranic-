@@ -70,6 +70,12 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h localhost -U postgres -d srk_test -v ON_ERROR_STOP=1 -f supabase/tests/electrician_display_id_assertions.sql
+      - name: Verify safe second application of the migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d srk_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261112100000_permanent_electrician_display_ids.sql
+          psql -h localhost -U postgres -d srk_test -v ON_ERROR_STOP=1 -f supabase/tests/electrician_display_id_assertions.sql
       - name: Test issuance, immutability and client-supplied ID rejection
         env:
           PGPASSWORD: postgres
