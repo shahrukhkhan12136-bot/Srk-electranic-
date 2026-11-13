@@ -376,3 +376,15 @@ test('customer complaint creation success is not reported as failure when thread
   assert.ok(source.includes("complaintCreated\n   ?'आपकी शिकायत दर्ज हो चुकी है"));
   assert.ok(source.includes('finally {\n  customerSupportComplaintCreateBusy=false;button.disabled=false;'));
 });
+
+
+test('customer support message upload locks complaint selection until completion', () => {
+  const start=html.indexOf('async function sendCustomerSupportMessage()');
+  const end=html.indexOf('\\nlet customerSessionSyncSequence',start);
+  const source=html.slice(start,end);
+  assert.ok(source.includes("const complaintSelect=document.getElementById('customerSupportComplaint');"));
+  assert.ok(source.includes("complaintSelect.disabled=true;"));
+  assert.ok(source.includes("complaintSelect.disabled=complaintSelectWasDisabled;"));
+  assert.ok(source.indexOf('complaintSelect.disabled=true;') < source.indexOf('for(const file of files)'));
+  assert.ok(source.indexOf('complaintSelect.disabled=complaintSelectWasDisabled;') > source.indexOf('finally{'));
+});
