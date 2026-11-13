@@ -1047,3 +1047,5 @@
 
 
 - Avatar regression workflow `43478827391` FAILED. Job log में Avatar-specific assertion सफल था; विफलताएँ दो पुराने Customer History source assertions में थीं: Payment History `finally` block के नए multi-line form को पुराना one-line regex पहचान नहीं रहा था, और Booking History test पुराने no-argument loader signature को खोज रहा था जबकि loader pagination के लिए `reset=true` लेता है। Test assertions अपडेट किए: `0125b97c80afaae773fe371f80041b6da6f65d05`, फिर payment/refund aria-busy checks को latest-sequence `finally` block के अनुसार ठीक किया: `6e3cf083b8e2b87c2ceb2d21fd2f68ae00f976f2`। नई CI run अभी सत्यापित नहीं हुई; इसलिए tests को PASS नहीं माना गया। Application source में इस failure से कोई runtime defect प्रमाणित नहीं हुआ।
+
+- Source regression run `43479038892` failed only at the Customer Booking History `finally` assertion: implementation restores busy flag and `aria-busy` inside a multi-line latest-sequence block, while test expected immediate one-line form. Updated assertion to inspect the guarded block: test commit `54740226e568ab8d16782922f1fc2d63ec924d85`. No app source change. New CI result pending/unverified; do not mark suite passed.
