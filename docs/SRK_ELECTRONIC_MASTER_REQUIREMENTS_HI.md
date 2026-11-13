@@ -4077,3 +4077,17 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Added tests/electrician-portal.test.cjs for safe status rendering, offer/contact UI markers, work lifecycle RPC wiring and read-only earnings/wallet/payout boundaries; test:electrician-portal script and CI workflow step also added.
 - **Status: In Progress — initial audit and one source-safety correction implemented; full Electrician role menu/features not complete.** Pending: exact offer-vs-assigned-work lifecycle audit; electrician timeline read API/UI; proper six-section navigation; profile/ID management contract; electrician support ticket/message/attachment API and RLS; rating/review and notification requirements; backend runtime and browser tests.
 - No live booking, customer/electrician contact data, payout, bank transfer, database, Auth/provider setting, production deployment or Main merge changed. Final mobile/Desktop QA remains deferred until all checklist tasks are complete.
+
+
+## 17.120 — Electrician App के छह Sections और Work/Offers विभाजन (13 Nov 2026)
+
+- Master checklist 14.1.8 के अनुसार Electrician App के छह आवश्यक भाग: Home, New Booking Offers, My Work/Bookings, Earnings & Wallet, Profile/ID और Help & Support.
+- Feature Branch `electrician.html` में पहले कोई menu navigation नहीं था; सभी cards एक ही dashboard पर थे। अब छह accessible menu tabs/panels जोड़े गए हैं, keyboard Arrow/Home/End navigation और selected-tab state सहित।
+- New Booking Offers और My Work/Bookings अब अलग-अलग views हैं। Server RPC `srk_get_my_offer_details` से प्राप्त rows को offered बनाम accepted/assigned/active/completed booking status के आधार पर विभाजित किया जाता है; existing offer/work action renderer साझा है, duplicate data/API नहीं बनाया गया।
+- Earnings & Wallet में existing earnings, payout history, Cash Platform Fee due, wallet summary/ledger और bank-link read-only display समूहित हैं। Payout/bank mutation controls सक्रिय नहीं किए गए।
+- Profile/ID panel केवल existing Admin-approved profile summary दिखाता है; sensitive approved fields को electrician self-edit करने का विकल्प नहीं जोड़ा गया।
+- Help & Support panel स्पष्ट रूप से बताता है कि electrician-specific ticket/message/attachment API और RLS अभी उपलब्ध नहीं हैं। Customer-only support RPC को गलत तरीके से reuse नहीं किया गया और कोई नकली support submission control नहीं दिखाया गया।
+- Dashboard verification status की prior XSS-safe `textContent` rendering बनी हुई है।
+- Regression suite `tests/electrician-portal.test.cjs` में six-tab order, unique panel mapping, keyboard navigation, offer/work separation, support limitation और inline JavaScript parsing के tests हैं। Run `43434702321`, SHA `ffb543f54c9eb38f33cd2a4fe6a0a6102cc6e12d` — **Success**. Earlier feature markup run `43434536078` भी Success; बीच के test parser assertion में एक syntax error आया था, जिसे ठीक कर बाद के passing run में validate किया गया।
+- **Status: In Progress — six-section navigation and separate offers/work source views verified; Electrician App पूर्ण नहीं।** Pending: electrician timeline API/UI; electrician-specific support backend/RLS/attachments; unique digital ID and document management; rating/review and notifications; accepted/completed-state contact/data removal proof; Supabase runtime/JWT tests; browser E2E; final mobile/Desktop QA.
+- कोई production DB, live booking/contact, bank transfer/payout, Auth setting, Main merge या deployment नहीं बदला।
