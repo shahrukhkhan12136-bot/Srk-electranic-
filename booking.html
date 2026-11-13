@@ -224,6 +224,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <select id="payment" required><option value="Cash">नकद (Cash)</option><option value="Razorpay ऑनलाइन भुगतान">ऑनलाइन भुगतान (Razorpay / UPI)</option></select>
    <p class="small">पहले इलेक्ट्रिशियन घर आकर काम देखेगा और केवल काम का मेहनताना स्पष्ट करेगा। आपकी मंजूरी के बाद ही काम शुरू होगा। काम पूरा होने पर आपके चुने हुए तरीके से भुगतान होगा। ऑनलाइन भुगतान चुनने पर Razorpay उपलब्ध होगा।</p>
    <button class="btn primary" type="submit">बुकिंग भेजें</button>
+   <button class="btn" type="button" id="newIdenticalBooking" style="display:none;background:#eaf2ff;color:#164b91;margin-top:8px">इसी विवरण से नई बुकिंग शुरू करें</button>
   </form>
  </section>
  <section class="panel" id="upiPanel" style="display:none">
@@ -794,7 +795,7 @@ function setSavedAddressStatus(message, isError=false) {
  el.textContent=message;
  el.style.color=isError?'#b42318':'#176b3a';
 }
-async function loadCustomerSavedAddresses() {
+async function loadCustomerSavedAddresses(options = {}) {
  const select=document.getElementById('savedAddressSelect');
  if(!customerSb) return;
  const {data:sessionData}=await customerSb.auth.getSession();
@@ -808,6 +809,14 @@ async function loadCustomerSavedAddresses() {
    '<option value="'+customerEsc(a.id)+'">'+customerEsc(({home:'घर',work:'काम की जगह',other:'अन्य'}[a.label]||a.label)+' — '+a.address_line+', '+a.district+' ('+a.pincode+')'+(a.is_default?' ★':''))+'</option>'
   ).join('');
   setSavedAddressStatus(customerSavedAddresses.length?'आपके '+customerSavedAddresses.length+' सेव किए गए पते उपलब्ध हैं।':'अभी कोई पता सेव नहीं है।');
+  if(options.applyDefault===true && !value('address') && !value('district') && !value('pin')) {
+   const defaultAddress=customerSavedAddresses.find(a=>a.is_default===true);
+   if(defaultAddress) {
+    select.value=defaultAddress.id;
+    applySelectedSavedAddress();
+    setSavedAddressStatus('आपका डिफ़ॉल्ट पता चुना गया है। बुकिंग भेजने से पहले विवरण जाँच लें।');
+   }
+  }
  } catch(e) { setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true); }
  finally {select.disabled=false;}
 }
@@ -1052,7 +1061,7 @@ async function syncCustomerSession() {
     await loadCustomerRefundHistory();
     await loadCustomerSupportBookings();
     await loadCustomerSupportComplaints();
-    await loadCustomerSavedAddresses();
+    await loadCustomerSavedAddresses({applyDefault:true});
     await loadCustomerProfile();
   } else {
     bookingPhone.value = '';
@@ -1291,14 +1300,25 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify(bookingPayload) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
-    clearCustomerBookingRequestKey(requestKey);
     pendingBookingId = result.booking_id;
+    document.getElementById('newIdenticalBooking').style.display='inline-flex';
     alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
-    await loadCustomerBookings();
+    try {
+      await loadCustomerBookings();
+    } catch(refreshError) {
+      customerMessage('बुकिंग सफलतापूर्वक सेव हो गई है (बुकिंग नंबर: '+result.booking_id+')। बुकिंग सूची अभी रिफ्रेश नहीं हो सकी; कृपया “मेरी बुकिंग” में बाद में रिफ्रेश करें।');
+    }
   } catch (err) {
     alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
+document.getElementById('newIdenticalBooking').addEventListener('click',()=>{
+ const saved=(()=>{try{return JSON.parse(sessionStorage.getItem('srk.customer.booking.pending.v1')||'null')}catch(_){return null}})();
+ if(saved?.key)clearCustomerBookingRequestKey(saved.key);
+ document.getElementById('newIdenticalBooking').style.display='none';
+ customerMessage('नई बुकिंग के लिए अनुरोध पहचान रीसेट कर दी गई है। अब बुकिंग भेजने पर नया बुकिंग अनुरोध बनेगा।');
+});
+document.getElementById('booking').addEventListener('input',()=>{document.getElementById('newIdenticalBooking').style.display='none';});
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
