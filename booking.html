@@ -1233,7 +1233,13 @@ function customerBookingRequestKey(payload){
   bytes[6]=(bytes[6]&0x0f)|0x40;bytes[8]=(bytes[8]&0x3f)|0x80;
   const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
   const key=hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
-  try{sessionStorage.setItem(storageKey,JSON.stringify({key,fingerprint}));}catch(_){}
+  try{
+    sessionStorage.setItem(storageKey,JSON.stringify({key,fingerprint}));
+    const persisted=JSON.parse(sessionStorage.getItem(storageKey)||'null');
+    if(!persisted||persisted.key!==key||persisted.fingerprint!==fingerprint)throw new Error('PENDING_KEY_NOT_PERSISTED');
+  }catch(_){
+    throw new Error('इस ब्राउज़र में सुरक्षित बुकिंग पहचान सेव नहीं हो सकी। कृपया ब्राउज़र स्टोरेज की अनुमति देकर दोबारा कोशिश करें।');
+  }
   return key;
 }
 function clearCustomerBookingRequestKey(key){
