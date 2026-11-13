@@ -1156,3 +1156,12 @@
 - कोई नया code defect इस सीमित source pass में प्रमाणित नहीं हुआ। Concurrency/rollback, RLS under real customer/electrician/Admin JWTs, trigger execution, complaint write, bill immutability, Admin audit details, payment/refund/payout integration runtime में अप्रमाणित हैं।
 - Production migration apply, Production data writes, deploy, payment/refund/payout execution या manual device QA नहीं किया। Customer App अभी Partial/In Progress; 14.1.10 को complete नहीं माना जाएगा।
 - अगला resume point: customer UI में completion pending/reject/dispute states और retry behavior की handler-to-RPC contract parity; उसके बाद SQL test execution की सुरक्षित isolated व्यवस्था की समीक्षा।
+
+
+### 14 नवम्बर 2026 — Customer completion response UI/RPC contract regression coverage
+
+- Customer booking card में pending completion के लिए तीनों action labels/handlers source-reviewed: customer approve, reject/resume timer, dispute with required 20–1000 character reason. Handler वही RPC `srk_customer_respond_work_completion` और expected `p_booking_id/p_response/p_note` args भेजता है; duplicate-submit Set guard और finally cleanup मौजूद हैं।
+- `tests/customer-menu.test.cjs` में नया source regression test जोड़ा: UI तीनों actions render करे, pending state gating, dispute length validation, RPC contract, confirmed success check और busy guard cleanup। Test source commit: `d63b4eeb2deab806917830c5601691ec206c6769`।
+- अभी इस नए test commit का CI result उपलब्ध नहीं; इसे PASS नहीं माना गया है। Test static source contract है, browser click/real RPC behavior नहीं।
+- SQL/pgTAP, real customer JWT, complaint creation, payment and final bill runtime, mobile/Desktop QA अभी बाकी। Production या deploy में कोई बदलाव नहीं।
+- अगला resume point: नए regression test का CI परिणाम जाँचना; यदि pass हो तो Customer App के booking history completion controls और refresh/error recovery का अगला audit।
