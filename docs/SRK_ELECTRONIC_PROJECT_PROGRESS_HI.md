@@ -1453,3 +1453,10 @@
 - Re-run #43497295539 completed SUCCESS: Node source regression step PASS; Production deployment guard PASS.
 - General source regression run #43497295502: all isolated source regression suites step PASS; overall job was still in progress at the time checked.
 - This is Feature Branch CI only. No migration applied, no pgTAP execution, no browser/mobile QA, and no Production changes. Remaining: isolated database behavioral/owner-isolation pgTAP, then Customer App runtime/browser checks; final consolidated mobile/Desktop QA remains deferred until all other tasks complete.
+
+
+## Customer Offer Timeline test hardening (2026-11-14)
+- Expanded `supabase/tests/database/customer_safe_offer_timeline.test.sql` from 12 to 16 structural/security assertions: unique `(offer_id,event_type)` index, duplicate suppression, trigger scope (INSERT/status update), and actual status-change mapping for expired/cancelled transitions.
+- Expanded `tests/customer-offer-timeline.test.cjs` to assert lifecycle dedupe, legacy final-state backfill, stable chronology, owner filter, and absence of electrician identifiers.
+- Node Source Regression workflow #43497630683 completed SUCCESS on `a690023e09cf46b3edae924b3a1bd71646f684a4`; `npm run test:customer-offer-timeline` and Production deployment guard both PASS.
+- These SQL assertions remain unexecuted pgTAP structural checks; they do not prove actual trigger execution, backfill behavior, duplicate inserts, or cross-customer isolation under JWT. No Supabase migration applied and Production unchanged. Next: run pgTAP only in an approved isolated non-production database (no new paid QA branch), or establish an existing safe local test database; then add behavioral fixture tests for owner A vs owner B.
