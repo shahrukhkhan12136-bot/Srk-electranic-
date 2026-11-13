@@ -1187,12 +1187,16 @@ async function loadCustomerSupportAttachments(complaintId) {
   return {...a,signedUrl:signedError?null:signed?.signedUrl||null};
  }));
 }
+let customerSupportBookingsLoadSequence=0;
 async function loadCustomerSupportBookings() {
  const select=document.getElementById('customerSupportBooking');
  if(!customerSb||!select)return;
+ const sequence=++customerSupportBookingsLoadSequence;
+ const wasDisabled=select.disabled;
  select.disabled=true;
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sequence!==customerSupportBookingsLoadSequence)return;
   if(sessionError)throw sessionError;
   const session=sessionData?.session;
   if(!session){select.replaceChildren(new Option('OTP लॉगिन आवश्यक है',''));return;}
@@ -1200,7 +1204,9 @@ async function loadCustomerSupportBookings() {
    .select('id,service_type,created_at,status')
    .eq('customer_user_id',session.user.id)
    .order('created_at',{ascending:false})
+   .order('id',{ascending:false})
    .limit(50);
+  if(sequence!==customerSupportBookingsLoadSequence)return;
   if(error)throw error;
   const rows=Array.isArray(data)?data:[];
   select.replaceChildren(new Option(rows.length?'बुकिंग चुनें':'अभी कोई बुकिंग उपलब्ध नहीं है',''));
@@ -1210,9 +1216,11 @@ async function loadCustomerSupportBookings() {
    select.add(new Option(label,row.id));
   });
  } catch(error) {
-  select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी — रीफ़्रेश करें',''));
-  supportStatus('शिकायत के लिए बुकिंग लोड नहीं हो सकी। कृपया रीफ़्रेश करें।',true);
- } finally {select.disabled=false;}
+  if(sequence===customerSupportBookingsLoadSequence){
+   select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी — रीफ़्रेश करें',''));
+   supportStatus('शिकायत के लिए बुकिंग लोड नहीं हो सकी। कृपया रीफ़्रेश करें।',true);
+  }
+ } finally {if(sequence===customerSupportBookingsLoadSequence)select.disabled=wasDisabled;}
 }
 let customerSupportComplaintCreateBusy=false;
 async function createCustomerSupportComplaint() {
