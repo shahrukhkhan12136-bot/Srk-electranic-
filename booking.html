@@ -538,7 +538,7 @@ async function loadCustomerBookings() {
       const labourMarkup=row.quote_status==='approved'&&Number(row.quoted_amount||0)>0
         ? '<div class="job"><b>स्वीकृत इलेक्ट्रिशियन मेहनताना: '+customerEsc(formatCustomerMoney(row.quoted_amount))+'</b>'+
           (row.quote_note?'<p class="small">'+customerEsc(row.quote_note)+'</p>':'')+
-          '<p class="small">यह राशि केवल मेहनताना है। सामग्री इस राशि में शामिल नहीं है; सामग्री ग्राहक स्वयं खरीदता है।</p></div>'
+          '</div>'
         : '';
       const canRequestRefund=String(row.payment_status||'').toLowerCase()==='paid'
         && Number(row.amount_paid||0)>0
