@@ -32,4 +32,4 @@ jobs:
       - run: npm run test:customer-offer-timeline
       - name: Check migration is not wired to Production deployment
         run: |
-          ! grep -R "supabase db push\|supabase migration up" .github/workflows
+          ! grep -R -E 'supabase[[:space:]]+(db[[:space:]]+push|migration[[:space:]]+up)' .github/workflows --exclude='customer-offer-timeline-ci.yml'
