@@ -228,6 +228,7 @@ async function loadCustomerProfile() {
   const profile=Array.isArray(data)?data[0]:data;
   if(profile) {
    document.getElementById('customerProfileName').value=profile.full_name||'';
+   if(profile.full_name) document.getElementById('name').value=profile.full_name;
    document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।');
   } else {
