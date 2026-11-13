@@ -24,7 +24,7 @@ BEGIN
         )
       );
   END IF;
-END
+END;
 $migration$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS service_bookings_customer_request_key_uidx
