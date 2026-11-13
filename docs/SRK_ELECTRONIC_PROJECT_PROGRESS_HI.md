@@ -1542,3 +1542,5 @@
 - `invalidateCustomerProfileAndSavedAddresses()` Auth SIGNED_IN / SIGNED_OUT / USER_UPDATED पर पुरानी profile/avatar और saved-address list तुरंत clear करके load sequence invalidate करता है; नई session sync फिर अपना data लोड करती है।
 - App commit: `43ea5700c6328b4f922690bcf3806a4829338b40`; regression test commit: `c35ad87989be11aec2f1829316cd483f21feec5a`; CI workflow updated to run `npm run test:customer-menu` alongside refund source checks: `deb89481fc5ca8a1951c788e00f52da45eb6a909`.
 - GitHub Actions result अभी pending/अज्ञात है; tests को pass नहीं माना गया है। Browser two-account test, live Supabase JWT/RLS, और final consolidated mobile/Desktop QA बाकी हैं। Production DB/configuration, payments/refunds, merge और deployment untouched हैं।
+
+- CI follow-up: first run `#43502229767` exposed an overly strict source-test regex (implementation correctly increments the two load sequences with prefix `++`); corrected assertion in test commit `6f171455ef0eabec42ec213be7c5a5ed8e1fd73c`. A fresh workflow run is expected from this test-only commit; earlier run is a test assertion failure, not a runtime/source syntax failure.
