@@ -387,3 +387,17 @@ GRANT EXECUTE ON FUNCTION public.srk_get_my_offer_details() TO authenticated;
 
 COMMENT ON TABLE public.srk_customer_category_skill_rules IS
   'Admin-configured mapping: a customer work category can be offered only to electricians with at least one matching Admin-verified skill. Empty mapping fails closed.';
+
+
+CREATE OR REPLACE FUNCTION public.srk_admin_get_category_skill_rules()
+RETURNS TABLE(category_key text,skill_key text)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+  SELECT r.category_key,r.skill_key
+  FROM public.srk_customer_category_skill_rules r
+  WHERE auth.uid() IS NOT NULL AND public.is_srk_admin()
+  ORDER BY r.category_key,r.skill_key;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_get_category_skill_rules() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_get_category_skill_rules() TO authenticated;
