@@ -1,0 +1,78 @@
+name: Timer and completion isolated pgTAP
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/platform-fee-cash-online-cycle]
+    paths:
+      - '.github/workflows/timer-completion-isolated-pgtap.yml'
+      - 'supabase/migrations/20261114010000_customer_booking_category_and_duration.sql'
+      - 'supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql'
+      - 'supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql'
+      - 'supabase/tests/fixtures/timer_completion_bootstrap.sql'
+      - 'supabase/tests/database/customer_booking_category_duration.test.sql'
+      - 'supabase/tests/database/server_authoritative_labour_timer_and_bill_snapshot.test.sql'
+      - 'supabase/tests/database/work_completion_admin_review_and_immutable_event_history.test.sql'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srk-timer-completion-pgtap
+  cancel-in-progress: true
+
+jobs:
+  isolated-pgtap:
+    if: github.ref == 'refs/heads/feature/platform-fee-cash-online-cycle'
+    name: Apply timer and completion migrations on local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v5
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.1.0
+      - name: Create disposable local project and copy pgTAP
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/srk-timer"
+          cd "$RUNNER_TEMP/srk-timer"
+          supabase init
+          mkdir -p supabase/tests/database
+          cp "$GITHUB_WORKSPACE/supabase/tests/database/customer_booking_category_duration.test.sql" supabase/tests/database/
+          cp "$GITHUB_WORKSPACE/supabase/tests/database/server_authoritative_labour_timer_and_bill_snapshot.test.sql" supabase/tests/database/
+          cp "$GITHUB_WORKSPACE/supabase/tests/database/work_completion_admin_review_and_immutable_event_history.test.sql" supabase/tests/database/
+      - name: Start isolated local Supabase
+        working-directory: ${{ runner.temp }}/srk-timer
+        run: supabase start
+      - name: Install PostgreSQL client and bootstrap synthetic schema
+        working-directory: ${{ runner.temp }}/srk-timer
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          supabase status -o env > "$RUNNER_TEMP/srk-timer.env"
+          set -a
+          source "$RUNNER_TEMP/srk-timer.env"
+          set +a
+          test -n "${DB_URL:-}"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/tests/fixtures/timer_completion_bootstrap.sql"
+      - name: Apply category, timer and completion migrations locally
+        working-directory: ${{ runner.temp }}/srk-timer
+        run: |
+          set -euo pipefail
+          set -a
+          source "$RUNNER_TEMP/srk-timer.env"
+          set +a
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261114010000_customer_booking_category_and_duration.sql"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql"
+      - name: Run timer and completion pgTAP suites
+        working-directory: ${{ runner.temp }}/srk-timer
+        run: supabase test db
+      - name: Stop local Supabase
+        working-directory: ${{ runner.temp }}/srk-timer
+        if: always()
+        run: supabase stop --no-backup
