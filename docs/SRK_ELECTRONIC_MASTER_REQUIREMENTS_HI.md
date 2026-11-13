@@ -3340,3 +3340,15 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - कोई SQL Auth internals/PII query, Auth setting mutation, secret read, user/session operation, SMS request, source change या deployment नहीं किया।
 - **Blocker:** Auth Dashboard read-only access आवश्यक है ताकि OTP expiry, SMS send limits, verification attempt limits और session policy के actual values प्रमाणित किए जा सकें। उसके बाद browser/device E2E tests (expired/replayed/wrong OTP, resend cooldown bypass attempts, logout success/failure, refresh and cross-device session) चाहिए।
 - **Status: In Progress.** Auth settings access तथा runtime tests pending; checklist item 14.1.1 अभी Verified Complete नहीं है।
+
+
+## 17.91 — Standalone Customer Login Logout Guard और OTP UI Flow Static Audit (13 नवम्बर 2026)
+- Checklist item: **14.1.1**।
+- Feature Branch `customer-login.html` में पहले से OTP send/verify, session lookup, auth-state listener, 60-second in-memory resend cooldown और logout handler मौजूद मिले। Logout section session होने पर ही visible होता है।
+- Logout handler में missing Supabase client की स्थिति के लिए explicit guard नहीं था। इसे `!sb || busy || !logout` guard से सुरक्षित किया; duplicate clicks रोकने और button restore behavior को बरकरार रखा।
+- Updated file blob SHA: `a06726bcbd3e04a833b634aeb40b77ff13f47e64`; commit: `3c0854b6ab500eb6be84af28d2c2e4a0b91744a7`.
+- Re-fetch SHA commit content SHA से match हुआ; सभी inline JavaScript blocks का V8 syntax parse PASS; missing-client/duplicate-action logout guard PASS।
+- दोनों OTP pages में resend cooldown केवल browser memory/timer पर आधारित है; reload/दूसरे device से bypass संभव है। यह server-side enforcement नहीं है।
+- Standalone login सफल OTP verification के बाद `/booking.html#customer-login` पर redirect करता है; उसी browser origin के Supabase client storage से session साझा होने की अपेक्षा है, लेकिन cross-page/cross-device runtime verification बाकी है।
+- No Production deploy, Auth setting, secret, database object, user/session, SMS request changed.
+- **Status: In Progress.** Runtime browser/mobile tests, OTP expiry/verification limits, server-side abuse controls और Auth Dashboard configuration evidence pending।
