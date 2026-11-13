@@ -1,6 +1,6 @@
 -- Customer cancellation request intake and Admin review queue contract.
 BEGIN;
-SELECT plan(27);
+SELECT plan(26);
 
 SELECT has_table('public','srk_booking_cancellation_requests','request table exists');
 SELECT has_table('public','srk_booking_cancellation_request_events','append-only event table exists');
@@ -20,11 +20,6 @@ SELECT ok(position('srk_booking_labour_bills' in pg_get_functiondef('public.srk_
 SELECT ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_start_booking_cancellation_review(uuid,text)'::regprocedure))>0,'review-start RPC is Admin gated');
 SELECT ok((SELECT (tgtype & 2)=2 AND (tgtype & 8)=8 AND (tgtype & 16)=16 FROM pg_trigger WHERE tgname='srk_guard_immutable_booking_cancellation_request_event'),'audit event mutation is blocked by a BEFORE UPDATE OR DELETE trigger');
 
-SET LOCAL ROLE supabase_auth_admin;
-INSERT INTO auth.users(id,aud,role) VALUES
- ('00000000-0000-4000-8000-000000000001','authenticated','authenticated'),
- ('00000000-0000-4000-8000-000000000002','authenticated','authenticated');
-RESET ROLE;
 INSERT INTO public.service_bookings(id,customer_user_id,status,payment_status)
 VALUES
  ('10000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','new','unpaid'),
