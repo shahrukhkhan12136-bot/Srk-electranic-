@@ -63,6 +63,9 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <input id="customerProfileName" maxlength="120" autocomplete="name" placeholder="अपना पूरा नाम">
    <label for="customerProfilePhone">सत्यापित मोबाइल नंबर</label>
    <input id="customerProfilePhone" readonly aria-readonly="true">
+   <label for="customerAvatarFile">प्रोफ़ाइल फोटो (JPEG, PNG या WebP; अधिकतम 5 MB)</label>
+   <input id="customerAvatarFile" type="file" accept="image/jpeg,image/png,image/webp">
+   <img id="customerAvatarPreview" alt="प्रोफ़ाइल फोटो का पूर्वावलोकन" style="display:none;width:88px;height:88px;border-radius:50%;object-fit:cover;margin-top:10px">
    <label for="customerProfileLanguage">ऐप की भाषा</label>
    <select id="customerProfileLanguage"><option value="hi">हिन्दी</option><option value="en">English</option></select>
    <button class="btn" type="button" id="saveCustomerProfile" style="width:100%;margin-top:12px;background:#0b5ed7;color:white">प्रोफ़ाइल सेव करें</button>
@@ -212,6 +215,22 @@ function setCustomerProfileStatus(message,isError=false) {
  const el=document.getElementById('customerProfileStatus');
  el.textContent=message;el.style.color=isError?'#b42318':'#176b3a';
 }
+let customerCurrentAvatarPath=null;
+let customerAvatarPreviewUrl=null;
+function setCustomerAvatarPreview(url) {
+ const img=document.getElementById('customerAvatarPreview');
+ if(customerAvatarPreviewUrl&&customerAvatarPreviewUrl.startsWith('blob:'))URL.revokeObjectURL(customerAvatarPreviewUrl);
+ customerAvatarPreviewUrl=url||null;
+ if(url){img.src=url;img.style.display='block';}else{img.removeAttribute('src');img.style.display='none';}
+}
+async function loadCustomerAvatar(path) {
+ if(!path||!customerSb)return;
+ try {
+  const {data,error}=await customerSb.storage.from('srk-customer-avatars').createSignedUrl(path,300);
+  if(error)throw error;
+  setCustomerAvatarPreview(data.signedUrl);
+ } catch(e){setCustomerProfileStatus('प्रोफ़ाइल फोटो लोड नहीं हो सकी।',true);}
+}
 async function loadCustomerProfile() {
  if(!customerSb)return;
  const {data:sessionData}=await customerSb.auth.getSession();
@@ -230,6 +249,8 @@ async function loadCustomerProfile() {
    document.getElementById('customerProfileName').value=profile.full_name||'';
    if(profile.full_name) document.getElementById('name').value=profile.full_name;
    document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
+   customerCurrentAvatarPath=profile.avatar_path||null;
+   if(customerCurrentAvatarPath) await loadCustomerAvatar(customerCurrentAvatarPath);
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।');
   } else {
    document.getElementById('customerProfileName').value=document.getElementById('name').value||'';
@@ -244,10 +265,33 @@ async function saveCustomerProfile() {
  if(fullName.length<2||fullName.length>120){setCustomerProfileStatus('नाम 2 से 120 अक्षरों के बीच दर्ज करें।',true);return;}
  button.disabled=true;setCustomerProfileStatus('प्रोफ़ाइल सेव हो रही है…');
  try {
+  let avatarPath=customerCurrentAvatarPath;
+  const file=document.getElementById('customerAvatarFile').files?.[0]||null;
+  if(file) {
+   const allowed=['image/jpeg','image/png','image/webp'];
+   if(!allowed.includes(file.type)||file.size>5*1024*1024||file.size===0) throw new Error('फोटो JPEG, PNG या WebP होनी चाहिए और 5 MB से छोटी होनी चाहिए।');
+   const {data:sessionData}=await customerSb.auth.getSession();
+   const userId=sessionData.session?.user?.id;
+   if(!userId)throw new Error('फोटो अपलोड करने के लिए OTP लॉगिन जरूरी है।');
+   const extension=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp' })[file.type];
+   avatarPath=userId+'/'+crypto.randomUUID()+'.'+extension;
+   const {error:uploadError}=await customerSb.storage.from('srk-customer-avatars').upload(avatarPath,file,{contentType:file.type,upsert:false});
+   if(uploadError)throw uploadError;
+  }
   const {data,error}=await customerSb.rpc('srk_customer_update_my_profile',{
-   p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:null
+   p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath
   });
-  if(error)throw error;
+  if(error) {
+   if(file&&avatarPath!==customerCurrentAvatarPath) await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]).catch(()=>{});
+   throw error;
+  }
+  const oldAvatar=customerCurrentAvatarPath;
+  customerCurrentAvatarPath=avatarPath;
+  if(file) {
+   document.getElementById('customerAvatarFile').value='';
+   await loadCustomerAvatar(avatarPath);
+   if(oldAvatar&&oldAvatar!==avatarPath) await customerSb.storage.from('srk-customer-avatars').remove([oldAvatar]);
+  }
   document.getElementById('name').value=fullName;
   setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
  } catch(e){setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||''),true);}
