@@ -78,14 +78,17 @@ AS $function$
 DECLARE v_booking public.service_bookings%rowtype;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_response NOT IN ('approved','rejected') THEN RAISE EXCEPTION 'Invalid response'; END IF;
+  IF p_response IS NULL OR p_response NOT IN ('approved','rejected') THEN RAISE EXCEPTION 'Invalid response'; END IF;
   SELECT * INTO v_booking FROM public.service_bookings
    WHERE id=p_booking_id AND customer_user_id=auth.uid() FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Customer booking not found' USING ERRCODE='42501'; END IF;
   IF v_booking.status<>'awaiting_work_start_approval' OR v_booking.work_start_approval_status<>'pending' THEN
     RAISE EXCEPTION 'No work-start request is waiting for approval';
   END IF;
-  PERFORM pg_catalog.set_config('srk.workflow_authorized','true',true);
+  IF p_response='approved' THEN
+    INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
+    VALUES (pg_catalog.txid_current(),p_booking_id,'in_progress');
+  END IF;
   UPDATE public.service_bookings SET
     work_start_approval_status=p_response,
     status=CASE WHEN p_response='approved' THEN 'in_progress' ELSE 'quote_approved' END,
@@ -93,6 +96,10 @@ BEGIN
     work_timer_running=(p_response='approved'),
     work_timer_seconds=0
   WHERE id=p_booking_id;
+  IF p_response='approved' THEN
+    DELETE FROM srk_private.work_transition_authorizations
+     WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND target_status='in_progress';
+  END IF;
   RETURN pg_catalog.jsonb_build_object('success',true,'response',p_response);
 END;
 $function$;
@@ -149,8 +156,9 @@ BEGIN
      OR v_booking.completion_requested_at IS NULL THEN
     RAISE EXCEPTION 'No completion request is waiting for your response';
   END IF;
-  PERFORM pg_catalog.set_config('srk.workflow_authorized','true',true);
   IF p_response='approved' THEN
+    INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
+    VALUES (pg_catalog.txid_current(),p_booking_id,'completed');
     UPDATE public.service_bookings SET status='completed',
       completion_approval_status='approved',customer_completed_at=pg_catalog.now(),
       work_timer_running=false
@@ -167,6 +175,10 @@ BEGIN
     UPDATE public.service_bookings SET completion_approval_status='disputed',
       work_timer_running=false
     WHERE id=p_booking_id;
+  END IF;
+  IF p_response='approved' THEN
+    DELETE FROM srk_private.work_transition_authorizations
+     WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND target_status='completed';
   END IF;
   RETURN pg_catalog.jsonb_build_object('success',true,'response',p_response);
 END;
@@ -197,8 +209,9 @@ BEGIN
      AND status IN ('new','in_review')
    ORDER BY created_at DESC LIMIT 1 FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Open work-completion dispute record not found'; END IF;
-  PERFORM pg_catalog.set_config('srk.workflow_authorized','true',true);
   IF p_resolution='approve_completion' THEN
+    INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
+    VALUES (pg_catalog.txid_current(),p_booking_id,'completed');
     UPDATE public.service_bookings SET status='completed',
       completion_approval_status='admin_approved',customer_completed_at=pg_catalog.now(),
       work_timer_running=false
@@ -208,6 +221,15 @@ BEGIN
       completion_approval_status='reopened',completion_requested_at=NULL,
       work_started_at=pg_catalog.now(),work_timer_running=true
     WHERE id=p_booking_id;
+  END IF;
+  IF p_resolution='approve_completion' THEN
+    DELETE FROM srk_private.work_transition_authorizations
+     WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND target_status='completed';
+  ELSE
+    INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
+    VALUES (pg_catalog.txid_current(),p_booking_id,'in_progress');
+    DELETE FROM srk_private.work_transition_authorizations
+     WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND target_status='in_progress';
   END IF;
   UPDATE public.srk_booking_complaints SET status='resolved',admin_note=p_admin_note,
     updated_at=pg_catalog.now(),updated_by=v_admin_id,resolved_at=pg_catalog.now(),resolved_by=v_admin_id
@@ -311,20 +333,37 @@ GRANT EXECUTE ON FUNCTION public.srk_electrician_get_work_control(uuid) TO authe
 REVOKE ALL ON FUNCTION public.srk_admin_list_work_disputes(integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_list_work_disputes(integer) TO authenticated;
 
--- Prevent direct table updates (including the legacy Admin dropdown) from
--- bypassing customer approval. Only the guarded SECURITY DEFINER RPCs above
--- set the transaction-local workflow authorization flag.
+-- A private transaction-bound authorization ledger prevents authenticated clients
+-- from bypassing the workflow by setting a custom PostgreSQL GUC themselves.
+CREATE SCHEMA IF NOT EXISTS srk_private;
+REVOKE ALL ON SCHEMA srk_private FROM PUBLIC,anon,authenticated;
+CREATE TABLE IF NOT EXISTS srk_private.work_transition_authorizations(
+  transaction_id bigint NOT NULL,
+  booking_id uuid NOT NULL,
+  target_status text NOT NULL CHECK(target_status IN ('in_progress','completed')),
+  PRIMARY KEY(transaction_id,booking_id,target_status)
+);
+REVOKE ALL ON TABLE srk_private.work_transition_authorizations FROM PUBLIC,anon,authenticated;
+
 CREATE OR REPLACE FUNCTION public.srk_guard_work_approval_transitions()
 RETURNS trigger
-LANGUAGE plpgsql
-SET search_path TO 'pg_catalog','public','auth','pg_temp'
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','srk_private','pg_temp'
 AS $function$
+DECLARE v_authorized boolean;
 BEGIN
   IF NEW.status IS DISTINCT FROM OLD.status
-     AND NEW.status IN ('in_progress','completed')
-     AND pg_catalog.current_setting('srk.workflow_authorized',true) IS DISTINCT FROM 'true' THEN
-    RAISE EXCEPTION 'Customer approval workflow is required for work start and completion'
-      USING ERRCODE='42501';
+     AND NEW.status IN ('in_progress','completed') THEN
+    SELECT EXISTS(
+      SELECT 1 FROM srk_private.work_transition_authorizations a
+      WHERE a.transaction_id=pg_catalog.txid_current()
+        AND a.booking_id=NEW.id
+        AND a.target_status=NEW.status
+    ) INTO v_authorized;
+    IF NOT v_authorized THEN
+      RAISE EXCEPTION 'Customer approval workflow is required for work start and completion'
+        USING ERRCODE='42501';
+    END IF;
   END IF;
   IF NEW.status='completed' AND NEW.status IS DISTINCT FROM OLD.status
      AND NEW.completion_approval_status NOT IN ('approved','admin_approved') THEN
