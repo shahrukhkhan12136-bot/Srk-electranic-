@@ -139,7 +139,16 @@ exports.handler = async (event) => {
     const address = clean(body.address, 1000);
     const location_lat = body.location_lat == null || body.location_lat === '' ? null : Number(body.location_lat);
     const location_lng = body.location_lng == null || body.location_lng === '' ? null : Number(body.location_lng);
-    const service_type = clean(body.service_type, 120);
+    const categoryLabels = {
+      home_wiring: "घर की वायरिंग",
+      electrical_repair: "इलेक्ट्रिकल रिपेयर",
+      light_fan_fitting: "लाइट / फैन फिटिंग",
+      home_repair: "होम रिपेयरिंग",
+      other: "अन्य"
+    };
+    const selected_category = clean(body.selected_category, 40);
+    const selected_duration_hours = Number(body.selected_duration_hours);
+    const service_type = categoryLabels[selected_category] || "";
     const preferred_date = clean(body.preferred_date, 10);
     const preferred_time = clean(body.preferred_time, 8);
     const work_details = clean(body.work_details, 2000);
@@ -153,8 +162,9 @@ exports.handler = async (event) => {
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
+        !Number.isInteger(selected_duration_hours) || selected_duration_hours < 1 || selected_duration_hours > 8 ||
         !validDate(preferred_date) || !validTime(preferred_time)) {
-      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, तारीख और समय भरें।" });
+      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, मान्य सर्विस श्रेणी, 1–8 घंटे की अवधि, तारीख और समय भरें।" });
     }
     if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
@@ -168,7 +178,7 @@ exports.handler = async (event) => {
       method: "POST",
       body: JSON.stringify([{
         customer_name, phone, state, district, pincode, address, service_type,
-        preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
+        selected_category, selected_duration_hours, preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
         status: "new", payment_status: "unpaid",
         ...(customer_user_id ? { customer_user_id } : {})
       }])
