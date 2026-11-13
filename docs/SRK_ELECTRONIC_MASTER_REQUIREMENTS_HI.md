@@ -2524,3 +2524,36 @@ Feature Branch की सभी 21 tracked Supabase migration files की inven
 - SQL migration order/Production lineage verify किए बिना migration replay, drop, rename, truncate या Production write न करें।
 
 इस audit में केवल Feature Branch migration source पढ़ा और Master Requirements update किया गया। कोई source code, SQL migration, database object/data, payment provider setting, real payment/payout/refund या deployment नहीं बदला।
+## 17.66 — Timer → Payment Handler / UI / RPC Caller End-to-End Source Audit (13 Nov 2026)
+
+Feature Branch के 10 मुख्य caller/UI/payment files का source-level inspection किया गया: create-booking.js, create-order.js, verify-payment.js, razorpay-webhook.js, Netlify adapters, electrician.html, booking.html और admin.html। यह code-path audit है; runtime, browser E2E, Razorpay Test Mode या SQL role test नहीं।
+
+### A. Customer booking
+- create-booking.js अभी request body से payment_method और quoted_amount पढ़ता है; quoted_amount validation के बाद service_bookings में insert होता है। नई व्यवस्था में booking के समय कोई final amount या payment choice authoritative नहीं होगा। Client amount/payment fields को ignore/reject करना और bill बनने के बाद Customer-only choice RPC देना होगा।
+- booking.html में booking form अभी Cash/Online dropdown दिखाता है; customer history में legacy quote amount/quote status और early Cash-to-Online switch है। इन्हें final frozen bill बनने के बाद Cash/Online chooser, bill details और receipt से बदलना होगा।
+
+### B. Electrician workflow
+- electrician.html में quote amount input/RPC srk_submit_booking_quote अभी मौजूद है; quote-approved पर electrician स्वयं in_progress और completed status बदलता है। यह user के timer rule के विरुद्ध है।
+- Existing offer details में customer का payment_method और quote/material amount भी लौटता है। नए electrician interface में केवल assigned job और timer actions हों; amount/payment method controls या materials option न हों।
+- Replace with server RPC lifecycle: electrician requests start → customer approves → server records start timestamp; electrician requests completion → server records stop boundary → customer approves/disputes. Client clock/status PATCH authoritative नहीं होगा।
+
+### C. Razorpay order / verification / webhook
+- create-order.js booking को completed + quote_approved और preselected Razorpay method पर gate करता है; service_charge + materials_amount को quoted_amount से मिलाकर Razorpay order amount बनाता है। यह legacy quote calculation है।
+- Existing order reuse check भी Razorpay order amount को quoted_amount से compare करता है। New order amount must equal frozen bill snapshot gross labour amount in integer paise; idempotent payment intent/order row must bind booking + bill version/hash + customer + INR amount.
+- verify-payment.js HMAC signature और provider payment lookup करता है, फिर service_bookings पर direct PATCH से payment_status=paid/amount_paid/payment ID लिखता है। इसे shared server-only atomic finalizer से बदलना होगा; verify endpoint और webhook अलग-अलग payment state finalizers न रखें।
+- razorpay-webhook.js raw-body signature validation मौजूद है और payment event को completed+approved quote तथा quote total से reconcile करता है; फिर direct booking PATCH करता है। Handler अभी durable event inbox/deduplication/lease processing या common finalizer use नहीं करता।
+- Netlify function wrappers मौजूद हैं; wrapper/root handler parity, method/body/header preservation और webhook raw-body signature handling को integration tests में verify करना होगा।
+
+### D. Admin
+- admin.html booking table में quoted_amount पढ़ता है और direct service_bookings update से status/quoted_amount लिखता है। Manual payment flow में पहले booking Completed अलग से save करने को कहता है, फिर payment record करता है।
+- New Admin controls में amount/status direct table edits नहीं होंगे। किसी approved adjustment के लिए reason, actor, before/after, bill version, idempotency और narrow audited RPC चाहिए; Admin भी original frozen bill overwrite नहीं करेगा।
+
+### E. Blocking implementation order
+1. Migration/RPC/trigger/view/policy lineage का पूर्ण dependency graph और live Production migration history से मिलान; missing migration source का समाधान।
+2. Timer event + customer approval RPC और immutable bill snapshot schema; rate table server controlled, no client amount input.
+3. Customer bill screen/receipt और bill-time Cash/Online selection; electrician quote/material/payment UI हटाना.
+4. Shared payment intent/order + payment finalizer + durable webhook inbox; create-order, verify, webhook और Netlify adapters एक ही bill version/paise amount use करें.
+5. Fee/payout/cash due/manual payment/refund/Route/report/Admin RPC को उसी labour-only bill से migrate करें; third-booking eligibility को post-bill choice के साथ सुरक्षित transactionally redesign करें.
+6. Role negative tests, duplicate/concurrency, out-of-order webhook, provider timeout/unknown, amount mismatch, replay, historical quote regression, UI/E2E और rollback verification.
+
+इस audit में source पढ़ा गया और कोई code, SQL, Production database, payment provider, real payment या deployment नहीं बदला।
