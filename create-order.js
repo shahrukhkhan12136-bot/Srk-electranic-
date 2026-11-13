@@ -46,22 +46,19 @@ exports.handler=async event=>{
   if(String(booking.payment_method||"").trim().toLowerCase()!=="razorpay ऑनलाइन भुगतान")return json(409,{success:false,error:"यह बुकिंग नकद भुगतान के लिए है।"});
   if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
   if(booking.status!=="completed")return json(409,{success:false,error:"भुगतान केवल ग्राहक द्वारा काम पूरा स्वीकार करने के बाद होगा।"});
-  let amount=await resolvePayableAmountPaise(booking),order=await findReusableOrder(booking,amount);
-  if(!order){
-   const claim=await db("rpc/srk_claim_payment_order_lock",{method:"POST",body:JSON.stringify({p_booking_id:bookingId})});
-   lockToken=typeof claim==="string"?claim:(Array.isArray(claim)?claim[0]:null);
-   if(!lockToken)return json(409,{success:false,error:"इस बुकिंग का पेमेंट ऑर्डर बन रहा है। 10 सेकंड बाद दोबारा कोशिश करें।"});
-   rows=await db(query);booking=rows?.[0];
-   if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
-   await verifyCustomerSession(event.headers?.authorization||event.headers?.Authorization||"",booking);
-   if(String(booking.payment_method||"").trim().toLowerCase()!=="razorpay ऑनलाइन भुगतान")return json(409,{success:false,error:"यह बुकिंग नकद भुगतान के लिए है।"});
-   if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
-   if(booking.status!=="completed")return json(409,{success:false,error:"काम पूरा होने की ग्राहक-मंजूरी जरूरी है।"});
-   amount=await resolvePayableAmountPaise(booking);
-   order=await findReusableOrder(booking,amount);
-   if(!order)order=await rp("orders",{method:"POST",body:JSON.stringify({amount,currency:"INR",receipt:bookingId.slice(0,40),notes:{booking_id:bookingId,service:"SRK ELECTRONIC",billing:"labour_only"}})});
-   await db("rpc/srk_link_payment_order",{method:"POST",body:JSON.stringify({p_booking_id:bookingId,p_lock_token:lockToken,p_razorpay_order_id:order.id,p_amount_paise:amount})});
-  }
+  const claim=await db("rpc/srk_claim_payment_order_lock",{method:"POST",body:JSON.stringify({p_booking_id:bookingId})});
+  lockToken=typeof claim==="string"?claim:(Array.isArray(claim)?claim[0]:null);
+  if(!lockToken)return json(409,{success:false,error:"इस बुकिंग का पेमेंट ऑर्डर बन रहा है। 10 सेकंड बाद दोबारा कोशिश करें।"});
+  rows=await db(query);booking=rows?.[0];
+  if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
+  await verifyCustomerSession(event.headers?.authorization||event.headers?.Authorization||"",booking);
+  if(String(booking.payment_method||"").trim().toLowerCase()!=="razorpay ऑनलाइन भुगतान")return json(409,{success:false,error:"यह बुकिंग नकद भुगतान के लिए है।"});
+  if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
+  if(booking.status!=="completed")return json(409,{success:false,error:"काम पूरा होने की ग्राहक-मंजूरी जरूरी है।"});
+  const amount=await resolvePayableAmountPaise(booking);
+  let order=await findReusableOrder(booking,amount);
+  if(!order)order=await rp("orders",{method:"POST",body:JSON.stringify({amount,currency:"INR",receipt:bookingId.slice(0,40),notes:{booking_id:bookingId,service:"SRK ELECTRONIC",billing:booking.selected_category?"labour_only":"legacy_approved_quote"}})});
+  await db("rpc/srk_link_payment_order",{method:"POST",body:JSON.stringify({p_booking_id:bookingId,p_lock_token:lockToken,p_razorpay_order_id:order.id,p_amount_paise:amount})});
   return json(200,{success:true,key_id:RAZORPAY_KEY_ID,order_id:order.id,amount:order.amount,currency:order.currency});
  }catch(e){
   if(e.httpStatus===401||e.httpStatus===403)return json(e.httpStatus,{success:false,error:e.httpStatus===401?"भुगतान के लिए ग्राहक OTP लॉगिन करें।":"यह बुकिंग आपके सत्यापित मोबाइल खाते से जुड़ी नहीं है।"});
