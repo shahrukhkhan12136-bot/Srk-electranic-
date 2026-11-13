@@ -621,3 +621,4 @@ test('booking form clearly discloses PIN syntax-only validation until authoritat
   const pinNoteEnd = html.indexOf("</p>", pinNote);
   const addressLabel = html.indexOf('<label for="address">', pinNote);
   assert.ok(pinNote >= 0 && pinNoteEnd > pinNote && addressLabel > pinNoteEnd);
+});
