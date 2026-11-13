@@ -974,6 +974,7 @@ BEGIN
           CASE
             WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
             WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='topup' AND direction='credit' THEN -amount
             ELSE 0
           END
         ),0),0) INTO v_due
@@ -1457,6 +1458,7 @@ BEGIN
     SELECT greatest(coalesce(sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END),0),0)
     INTO v_due FROM public.srk_wallet_ledger
     WHERE wallet_id=v_electrician_id AND status='posted';
@@ -1509,6 +1511,7 @@ BEGIN
     'platform_fee_due',greatest(coalesce((SELECT sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),0),
     'platform_fee_collected',coalesce((SELECT sum(amount) FROM public.srk_wallet_ledger
       WHERE status='posted' AND direction='debit'
@@ -1571,6 +1574,7 @@ BEGIN
     'total_platform_fee_due',greatest(coalesce((SELECT sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),0),
     'total_electrician_payable',t.payable,
     'partners',coalesce((SELECT jsonb_agg(to_jsonb(partners)) FROM partners),'[]'::jsonb)
@@ -1817,7 +1821,7 @@ BEGIN
       AND NOT EXISTS(
         SELECT 1 FROM public.service_bookings pending
         WHERE pending.assigned_electrician_id=e.id AND pending.status='completed'
-          AND lower(coalesce(pending.payment_method,'')) LIKE '%online%'
+          AND (lower(coalesce(pending.payment_method,'')) LIKE '%online%' OR lower(coalesce(pending.payment_method,'')) LIKE '%ऑनलाइन%' OR lower(coalesce(pending.payment_method,'')) IN ('upi','bank transfer'))
           AND coalesce(pending.payment_status,'unpaid') NOT IN ('paid','refunded'))
   ) THEN v_match_level:='pincode'; ELSE v_match_level:='district'; END IF;
 
@@ -1836,7 +1840,7 @@ BEGIN
       AND NOT EXISTS(
         SELECT 1 FROM public.service_bookings pending
         WHERE pending.assigned_electrician_id=e.id AND pending.status='completed'
-          AND lower(coalesce(pending.payment_method,'')) LIKE '%online%'
+          AND (lower(coalesce(pending.payment_method,'')) LIKE '%online%' OR lower(coalesce(pending.payment_method,'')) LIKE '%ऑनलाइन%' OR lower(coalesce(pending.payment_method,'')) IN ('upi','bank transfer'))
           AND coalesce(pending.payment_status,'unpaid') NOT IN ('paid','refunded'))
   ), inserted AS (
     INSERT INTO public.job_offers(booking_id,electrician_id,status,match_level)
@@ -1947,6 +1951,7 @@ BEGIN
     SELECT greatest(coalesce(sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='topup' AND direction='credit' THEN -amount
       WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END),0),0)
     INTO v_due FROM public.srk_wallet_ledger
@@ -2109,7 +2114,7 @@ BEGIN
       AND NOT EXISTS(
         SELECT 1 FROM public.service_bookings pending
         WHERE pending.assigned_electrician_id=e.id AND pending.status='completed'
-          AND lower(coalesce(pending.payment_method,'')) LIKE '%online%'
+          AND (lower(coalesce(pending.payment_method,'')) LIKE '%online%' OR lower(coalesce(pending.payment_method,'')) LIKE '%ऑनलाइन%' OR lower(coalesce(pending.payment_method,'')) IN ('upi','bank transfer'))
           AND coalesce(pending.payment_status,'unpaid') NOT IN ('paid','refunded'))
       AND (NOT v_is_cash OR private.srk_electrician_cash_slot_available(e.id))
   ) THEN v_match_level:='pincode'; ELSE v_match_level:='district'; END IF;
@@ -2129,7 +2134,7 @@ BEGIN
       AND NOT EXISTS(
         SELECT 1 FROM public.service_bookings pending
         WHERE pending.assigned_electrician_id=e.id AND pending.status='completed'
-          AND lower(coalesce(pending.payment_method,'')) LIKE '%online%'
+          AND (lower(coalesce(pending.payment_method,'')) LIKE '%online%' OR lower(coalesce(pending.payment_method,'')) LIKE '%ऑनलाइन%' OR lower(coalesce(pending.payment_method,'')) IN ('upi','bank transfer'))
           AND coalesce(pending.payment_status,'unpaid') NOT IN ('paid','refunded'))
       AND NOT EXISTS(SELECT 1 FROM public.job_offers o
         WHERE o.booking_id=p_booking_id AND o.electrician_id=e.id)
