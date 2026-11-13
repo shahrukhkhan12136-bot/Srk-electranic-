@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(90);
+SELECT plan(91);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -360,6 +360,13 @@ SELECT ok(pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedur
   pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure)
   ILIKE '%payment_status%',
   'Admin manual offer path uses the same verified matcher and unpaid-only guard');
+
+
+SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
+  ILIKE '%Refund reversal of platform_fee_due%'
+  AND pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
+  ILIKE '%Refund reversal of platform_fee_due_settlement%',
+  'Admin partner commission report reconciles refund reversals in cash Platform Fee due');
 
 SELECT * FROM finish();
 ROLLBACK;
