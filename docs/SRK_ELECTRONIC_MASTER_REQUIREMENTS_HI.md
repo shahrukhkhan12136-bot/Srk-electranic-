@@ -3873,3 +3873,10 @@ Audit सीमा: पहले checklist item का source-level inspection �
 
 ### 19.5 सुरक्षा सीमा
 यह source + read-only live schema/function inventory है। कोई live DDL/DML, migration apply, payment/provider action, production setting change या deployment नहीं किया गया। Material billing fields को app output से हटाने का staged work शुरू है; legacy database columns और historical accounting dependencies जानबूझकर अभी सुरक्षित रखे गए हैं।
+
+### 19.6 मालिक की rounding पुष्टि और प्रारंभिक गणना मॉड्यूल (13-11-2026)
+- मालिक ने पुष्टि की: rate8hPaise × actual_billable_minutes ÷ 480 को निकटतम integer paise तक round करना है; fractional हिस्सा ठीक 0.5 paisa या अधिक हो तो ऊपर round करें (round half up)।
+- Feature Branch में lib/labour-billing.js जोड़ा गया: versioned customer gross labour rate-card constants (₹899/₹1,199/₹1,599/₹1,999 प्रति 8 घंटे), exact BigInt numerator/denominator arithmetic, half-up rounding, 1–8 घंटे estimate helper और 8 घंटे से अधिक actual minutes पर कोई cap नहीं।
+- tests/labour-billing.test.cjs में rate card, estimate, 77-minute calculation, below/exactly/above-half rounding, zero, multi-day duration, invalid inputs और safe-integer overflow cases जोड़े गए। npm run test:labour command जोड़ा गया।
+- यह केवल pure calculation foundation है। अभी इसे booking API, approved electrician-category lookup, timer, immutable final-bill snapshot या payment provider से connect नहीं किया गया है। Customer-selected category / Admin-approved electrician category की canonical schema और server-side authorization अभी blocker हैं; अतः इस helper को अकेले production billing authority न मानें।
+- No database migration applied, no production changes, no deployment, no live payment action.
