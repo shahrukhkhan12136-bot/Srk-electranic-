@@ -3547,3 +3547,14 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - इस workflow commit पर नया CI run trigger हुआ है; उसका परिणाम अभी इस रिकॉर्ड के समय सत्यापित नहीं है। अगला कदम नए run का success और annotations जाँचना है।
 - यह बदलाव केवल Feature Branch CI workflow में है। कोई application runtime source, Supabase/Auth setting, database/migration, secret, SMS/provider, payment, customer session या Production deployment नहीं बदला।
 - Checklist item 14.1.1 अभी In Progress; CI warning remediation commit saved and refetch-verified, but new run result and real OTP/Auth E2E checks pending.
+
+
+## 17.106 — OTP CI Runtime Warning Remediation के बाद GitHub Actions Run सफल (13 Nov 2026)
+
+- उपयोगकर्ता द्वारा साझा GitHub Actions स्क्रीन के अनुसार workflow `Customer OTP source regression tests`, run `#9`, commit `3240147`, branch `feature/platform-fee-cash-online-cycle`, push-triggered, Status `Success`, कुल अवधि 12 सेकंड।
+- यह Run #9 उसी documentation commit `3240147` पर चला जिसमें Section 17.105 दर्ज हुआ; इससे workflow remediation commit `926ce5c` और उसके बाद documentation commit पर workflow का सफल execution प्रमाणित है।
+- Workflow config में Node.js 24, `actions/checkout@v5`, `actions/setup-node@v5`, और pinned `ubuntu-24.04` पहले से save/refetch-verified हैं।
+- उपलब्ध स्क्रीन में केवल overall Success और duration दिखते हैं; नया Run #9 का Annotations panel नहीं दिखता। इसलिए पुरानी Node 20 warning और Ubuntu migration notice के हटने की पुष्टि अलग से नहीं की गई है।
+- Source regression CI run सफल है; इससे वास्तविक SMS OTP delivery/expiry, Supabase Auth project limits, CAPTCHA enforcement, wrong-attempt lockout, browser/device session behavior या production logout revocation प्रमाणित नहीं होते।
+- कोई नया application source, Auth setting, database/migration, secret, SMS/provider, payment या Production deployment बदलाव इस run के रिकॉर्ड के साथ नहीं किया गया।
+- Checklist item 14.1.1 अभी In Progress; CI runtime remediation execution success verified from user-provided run summary, annotations and real OTP/Auth E2E checks pending.
