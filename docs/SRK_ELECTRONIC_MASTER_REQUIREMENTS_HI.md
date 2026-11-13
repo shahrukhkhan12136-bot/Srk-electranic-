@@ -276,7 +276,7 @@ Main Admin को हर booking का timeline और linked evidence दि�
 यह checklist requirements, implementation, QA और release sign-off के लिए है। हर item के साथ owner, status, test evidence और release status track होगा। यहाँ दर्ज होना implementation पूरा होने का प्रमाण नहीं है।
 
 ### 14.1 Customer App और Website
-- [ ] OTP login: expiry, resend cooldown/limits, wrong-attempt limits, abuse/rate limiting, secure session और logout।
+- [x] OTP login — **Source/CI जाँच Verified**: OTP send/verify source, दोनों customer pages के cooldown/duplicate-action markers, OTP input/source checks, inline JavaScript syntax, logout guards/error handling और GitHub Actions Run #9 success दर्ज। **वास्तविक OTP/Auth परीक्षण बाकी**; Production OTP expiry, server-side resend/wrong-attempt limits, CAPTCHA, abuse controls, session lifecycle/revocation और browser/device E2E अभी अंतिम batch test/config verification में लंबित हैं।
 - [ ] पाँच मुख्य मेनू: Home, My Bookings, Payments, Help & Support, My Profile।
 - [ ] Booking form: verified mobile (editable नहीं), नाम, address, map pin, PIN/district/state, work description, category और 1–8 घंटे।
 - [ ] PIN/district validation: authoritative PIN directory, mismatch warning/review queue; existing address स्वतः overwrite नहीं।
@@ -3572,3 +3572,17 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **Next safe steps:** customer-facing page/API/RPC inventory; प्रत्येक menu के लिए existing backend/data coverage map; फिर minimal-risk app-shell implementation plan और menu-by-menu source tests। कोई live customer data या account/session access नहीं किया गया।
 - इस audit में कोई application source, database/migration, Auth setting, secret, provider, SMS, payment या deployment नहीं बदला।
 - **Status: In Progress** — source audit ने पाँच-मेनू panel gap की पुष्टि की; implementation और menu-specific tests बाकी हैं। वास्तविक end-to-end tests उपयोगकर्ता के निर्देशानुसार सभी Master Checklist कार्यों के बाद एक batch में होंगे।
+
+
+## 17.108 — उपयोगकर्ता निर्देश: Source/Implementation Verification और अंतिम वास्तविक परीक्षण की अलग-अलग स्थिति (13 Nov 2026)
+
+- उपयोगकर्ता ने निर्देश दिया कि OTP item को उपलब्ध Source/CI evidence के आधार पर Verified दिखाया जाए और उसके सामने स्पष्ट लिखा जाए कि **वास्तविक परीक्षण बाकी** है। इसी प्रकार Master Checklist के सभी **96 मूल actionable items** पर अंतिम वास्तविक परीक्षण की स्थिति अलग से **बाकी** रखी जाएगी।
+- अब से हर मूल checklist item के लिए दो स्वतंत्र स्थिति-रेखाएँ रखी जाएँगी:
+  1. **Implementation / Source / Static / CI Verification:** item की वास्तविक code/config/schema/documentation स्थिति और उपलब्ध automated evidence के अनुसार item-by-item जाँची जाएगी। केवल जितना प्रमाणित है उतना ही Verified दर्ज होगा; implementation अधूरा हो तो उसे Verified नहीं कहा जाएगा।
+  2. **Final Real-World Test:** सभी 96 items की implementation/source verification प्रक्रिया पूरी होने के बाद उपयोगकर्ता के निर्देशानुसार एक consolidated batch में वास्तविक browser/device, provider, SMS/OTP, payment, role/security और end-to-end tests किए जाएँगे। तब तक हर item के सामने **वास्तविक परीक्षण: बाकी** रहेगा।
+- **OTP item 14.1.1:** Source/CI review को उपलब्ध सीमित evidence के लिए Verified दिखाया गया है: OTP send/verify source markers, दोनों pages के client cooldown/duplicate-action markers, OTP input source checks, inline JavaScript syntax checks, logout guard/error handling और user-shared GitHub Actions Run #9 Success। यह full OTP feature या Production security configuration का प्रमाण नहीं है।
+- OTP के लिए अंतिम वास्तविक परीक्षण अभी बाकी है। Supabase Production OTP expiry, वास्तविक resend/wrong-attempt limits, CAPTCHA enforcement, abuse/lockout behavior, session expiry/revocation, cross-device behavior और SMS delivery अभी प्रत्यक्ष रूप से सत्यापित नहीं। जहाँ implementation/configuration gap मिलेगा, उसे source verification में भी स्पष्ट रूप से Open/Blocked रखा जाएगा; केवल वास्तविक परीक्षण को टालने के कारण किसी अधूरे implementation को Verified नहीं कहा जाएगा।
+- **14.1.2 और शेष 95 items:** हर item को क्रम से inspect → gap analysis → implementation → source/static/automated tests → save/commit → re-fetch verification के बाद ही Source/Implementation Verified किया जाएगा। कोई item बिना evidence के bulk में Verified नहीं होगा।
+- Progress reporting में अब अलग-अलग आँकड़े दिए जाएँगे: (a) Source/Implementation Verified / 96, (b) In Progress / Blocked / Not Started, और (c) Final Real-World Tests Pending / 96। इस तरह Source verification को वास्तविक E2E completion समझने की गलती नहीं होगी।
+- इस स्थिति-विभाजन से मूल 96 actionable checklist items की गणना नहीं बदलेगी; किसी item को duplicate करके denominator नहीं बढ़ाया जाएगा।
+- इस documentation update से कोई application source, database/migration, Auth setting, secret, provider, SMS, payment, customer account/session या deployment नहीं बदला।
