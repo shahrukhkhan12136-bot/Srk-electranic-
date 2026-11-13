@@ -152,7 +152,15 @@ exports.handler = async (event) => {
     const preferred_date = clean(body.preferred_date, 10);
     const preferred_time = clean(body.preferred_time, 8);
     const work_details = clean(body.work_details, 2000);
-    const payment_method = clean(body.payment_method, 80) || "नकद (Cash)";
+    const submittedPaymentMethod = clean(body.payment_method, 80) || "Cash";
+    // Keep booking choices aligned with the customer form. Accept the older
+    // Hindi cash label as a compatibility alias, but persist one canonical value.
+    const paymentMethods = {
+      Cash: "Cash",
+      "नकद (Cash)": "Cash",
+      "Razorpay ऑनलाइन भुगतान": "Razorpay ऑनलाइन भुगतान"
+    };
+    const payment_method = paymentMethods[submittedPaymentMethod] || "";
     const quoted_amount = body.quoted_amount == null || body.quoted_amount === ""
       ? null : Number(body.quoted_amount);
     const customer_user_id = await verifyCustomerSession(
@@ -163,7 +171,7 @@ exports.handler = async (event) => {
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
         !Number.isInteger(selected_duration_hours) || selected_duration_hours < 1 || selected_duration_hours > 8 ||
-        !validDate(preferred_date) || !validTime(preferred_time)) {
+        !payment_method || !validDate(preferred_date) || !validTime(preferred_time)) {
       return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, मान्य सर्विस श्रेणी, 1–8 घंटे की अवधि, तारीख और समय भरें।" });
     }
     if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
