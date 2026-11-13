@@ -446,7 +446,11 @@ async function loadCustomerRefundHistory(reset=true){
   customerRefundHistoryOffset=requestedOffset+rows.length;
   more.style.display=rows.length===25?'block':'none';
  }catch(error){
-  if(sequence===customerRefundHistoryLoadSequence)box.textContent='रिफंड स्थिति लोड नहीं हो सकी। कृपया दोबारा कोशिश करें।';
+  if(sequence===customerRefundHistoryLoadSequence){
+   const warning='रिफंड के अगले रिकॉर्ड लोड नहीं हो सके। पहले से दिख रहे रिकॉर्ड सुरक्षित हैं; कृपया दोबारा कोशिश करें।';
+   if(reset)box.textContent='रिफंड स्थिति लोड नहीं हो सकी। कृपया दोबारा कोशिश करें.';
+   else{let note=box.querySelector('[data-refund-history-load-warning]');if(!note){note=document.createElement('p');note.className='small';note.dataset.refundHistoryLoadWarning='true';box.appendChild(note);}note.textContent=warning;}
+  }
  }finally{
   if(sequence===customerRefundHistoryLoadSequence){
    customerRefundHistoryBusy=false;box.setAttribute('aria-busy','false');more.disabled=false;
