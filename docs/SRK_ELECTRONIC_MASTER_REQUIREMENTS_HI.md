@@ -2763,3 +2763,28 @@ Audit सीमा: source + live catalog read-only inspection। कोई DDL/
 - Constraints में केवल `PRIMARY KEY(event_id)` और processing status allow-list check मिला: `received`, `reconciled`, `exception`, `ignored`, `processing_error`।
 - Live status aggregation खाली object लौटा; निरीक्षण के समय table में कोई webhook event row नहीं थी। इसका अर्थ यह नहीं कि Razorpay account में कोई event नहीं आया; केवल इस Production table में वर्तमान में कोई row नहीं मिली।
 - कोई table trigger नहीं मिला। इस कारण existing table के साथ durable writer/consumer अभी भी स्थापित/सिद्ध नहीं है।
+
+
+## 17.71 — Repository Branches, Netlify Routing और Webhook Deployment Lineage Audit (13 Nov 2026)
+
+इस pass में repository की उपलब्ध branches, Feature Branch/Main के payment-related file trees, पुराने refund implementation branch, Netlify function adapter और route configuration का read-only inspection किया गया। कोई deployment/provider dashboard या secret value access नहीं किया गया।
+
+### A. उपलब्ध repository branches और lineage
+- उपलब्ध branches में `main`, `feature/platform-fee-cash-online-cycle`, `safe-payment-refund-implementation`, अन्य feature/fix branches और `gh-pages` शामिल हैं।
+- `main` और current Feature Branch के payment-related file trees में root `razorpay-webhook.js`, `verify-payment.js`, Netlify adapters और `netlify.toml` मिले। किसी अलग inbox worker/consumer या webhook event ingestion service का स्पष्ट source path नहीं मिला।
+- `safe-payment-refund-implementation` branch में अलग `create-refund.js` और उसका Netlify adapter है, लेकिन उसका webhook handler भी quote-era booking lookup और direct booking PATCH पर आधारित है; वह durable event inbox writer/consumer का प्रमाण नहीं है। इसे Production में deployed या सुरक्षित मानकर promote न करें।
+- Branch presence अकेले deployment proof नहीं है। किस commit/branch को Netlify Production में deploy किया गया था, यह Netlify deployment metadata/dashboard से अलग सत्यापित करना होगा; इस audit में ऐसा access/verification नहीं हुआ।
+
+### B. Netlify routing evidence
+- `netlify.toml` में `/api/razorpay-webhook` को `/.netlify/functions/razorpay-webhook` पर rewrite किया गया है।
+- `netlify/functions/razorpay-webhook.js` केवल `../../razorpay-webhook.js` का handler import/export करता है। कोई queue/worker invocation या DB inbox call adapter में नहीं है।
+- `/api/verify-payment` भी corresponding Netlify adapter से root `verify-payment.js` को चलाता है।
+- यह repository configuration source-level routing दिखाती है; deployed route, function invocation logs, environment variables और Razorpay Dashboard में configured webhook URL/secret की वास्तविक स्थिति अभी independently verified नहीं है।
+
+### C. Current conclusion
+1. उपलब्ध source branches में durable webhook event writer/consumer का implementation नहीं मिला।
+2. Production में inbox table और Admin exception-list RPC मौजूद हैं, पर उनके साथ जुड़ा writer/consumer source/deployment lineage अभी unresolved है।
+3. इसलिए existing inbox को live payment handling के लिए कार्यरत मानना गलत होगा; पहले deployment logs, configured webhook endpoint, Supabase function/job/cron/queue inventory और historical external worker ownership recover करना जरूरी है।
+4. कोई नया worker, cron, queue, migration या webhook URL अभी create/change न करें। पहले exact Production deployment और provider configuration evidence लें, फिर isolated dev में implementation प्रस्तावित करें।
+
+Audit सीमा: repository source/branch/config inspection only। Netlify dashboard/deployment logs, Razorpay Dashboard webhook configuration, Supabase Edge Functions/cron/queues external deployment, secrets और live webhook delivery इस pass में inspect नहीं हुए। कोई code, database, provider configuration या deployment change नहीं हुआ।
