@@ -1,19 +1,28 @@
--- Static contract checks for failed-provider refund recovery visibility.
+-- Admin refund queue v3 exposes provider state without enabling failed retries.
 BEGIN;
-SELECT plan(5);
-SELECT has_function('public','srk_service_record_razorpay_refund_result',
-  ARRAY['uuid','text','text','text'],'service-role refund result recorder exists');
-SELECT ok(position('p_provider_status=''failed''' in pg_get_functiondef(
-  'public.srk_service_record_razorpay_refund_result(uuid,text,text,text)'::regprocedure))>0,
-  'provider failure has an explicit branch');
-SELECT ok(position('status=''unknown''' in pg_get_functiondef(
-  'public.srk_service_record_razorpay_refund_result(uuid,text,text,text)'::regprocedure))>0,
-  'failed provider result moves customer request to visible Admin-review state');
-SELECT ok(position('admin_note=' in pg_get_functiondef(
-  'public.srk_service_record_razorpay_refund_result(uuid,text,text,text)'::regprocedure))>0,
-  'failure reason is retained for Admin review');
-SELECT ok(position('admin_reconciliation_required' in pg_get_functiondef(
-  'public.srk_service_record_razorpay_refund_result(uuid,text,text,text)'::regprocedure))>0,
-  'RPC response explicitly signals reconciliation requirement');
+SELECT plan(8);
+SELECT has_function('public','srk_admin_list_booking_refund_requests_v3',
+  ARRAY[]::text[],'Admin refund queue v3 exists');
+SELECT ok(position('provider_refund_status' in pg_get_function_result(
+  'public.srk_admin_list_booking_refund_requests_v3()'::regprocedure))>0,
+  'queue returns provider intent status');
+SELECT ok(position('provider_status' in pg_get_function_result(
+  'public.srk_admin_list_booking_refund_requests_v3()'::regprocedure))>0,
+  'queue returns provider status');
+SELECT ok(position('provider_last_error' in pg_get_function_result(
+  'public.srk_admin_list_booking_refund_requests_v3()'::regprocedure))>0,
+  'queue returns provider error for Admin reconciliation');
+SELECT ok(position('ri.id=r.refund_record_id AND ri.booking_id=r.booking_id' in
+  pg_get_functiondef('public.srk_admin_list_booking_refund_requests_v3()'::regprocedure))>0,
+  'provider intent is joined by both request linkage and booking ownership');
+SELECT ok(position('auth.uid() IS NULL OR NOT public.is_srk_admin()' in
+  pg_get_functiondef('public.srk_admin_list_booking_refund_requests_v3()'::regprocedure))>0,
+  'queue remains Admin-gated');
+SELECT ok(has_function_privilege('authenticated',
+  'public.srk_admin_list_booking_refund_requests_v3()','EXECUTE'),
+  'authenticated role can call the Admin-gated RPC');
+SELECT ok(NOT has_function_privilege('anon',
+  'public.srk_admin_list_booking_refund_requests_v3()','EXECUTE'),
+  'anonymous role cannot call the Admin queue');
 SELECT * FROM finish();
 ROLLBACK;
