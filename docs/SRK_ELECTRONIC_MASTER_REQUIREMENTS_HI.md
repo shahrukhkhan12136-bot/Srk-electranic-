@@ -4029,3 +4029,9 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Insert trigger customer-approved completion RPC के transaction-scoped authorization को verify करता है, booking row FOR UPDATE lock करता है, stopped timer/pending completion approval/owner/electrician/category/rate snapshot verify करता है और billable minutes, labour paise, 15% Platform Fee paise तथा electrician net amount स्वयं दोबारा calculate करके incoming snapshot से compare करता है।
 - इससे service-role या accidental direct insert भी ग्राहक की मंजूरी, server timer और approved rate से अलग amount/bill नहीं बना सकता। Customer completion approval और bill insert एक ही transaction में रहते हैं।
 - Database test file अब 96 pgTAP assertions घोषित करती है; execute अभी बाकी है। Migration source-only/unapplied है।
+
+### 19.21 Source regression और isolated database CI विस्तार (13-11-2026)
+- Feature branch का Node regression workflow अब OTP के साथ labour calculator, booking handler, electrician application handler और Razorpay payment handler test suites भी चलाता है।
+- Isolated Supabase workflow को सभी pending feature migrations तक बढ़ाया गया; migration apply केवल temporary local Supabase database में होता है। इसके बाद सभी pgTAP database tests, schema lint और critical object smoke checks चलेंगे।
+- Supabase workflow केवल manual dispatch पर चलता है और SUPABASE_DB_URL के लिए dedicated schema-only, least-privilege credential आवश्यक है। इसे अभी dispatch नहीं किया गया; कोई production write या migration apply नहीं हुआ।
+- नवीनतम branch commits पर Vercel check अभी build-rate-limit failure दिखाता है; सफल Vercel build/CI का दावा नहीं है।
