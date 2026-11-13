@@ -827,3 +827,10 @@
 - अब `uploadCleanupFailed` flag cleanup result को outer catch तक सुरक्षित रखता है और final error में स्पष्ट बताता है कि नई अपलोड फोटो की सफाई पूरी नहीं हुई; सहायता लें। Existing successful profile save + preview failure और old-avatar cleanup warning behavior कायम।
 - `tests/customer-menu.test.cjs` में cleanup warning persistence regression जोड़ा। Source Regression Run #43468563874 — success on commit `3b56ff6f7872ab86c0e0de76a4c4716c40615e47`; Refund source regression Run #43468542234 — success on commit `5d53538a5fb8f3bc87b1b7c6aa10af3d7e1a73e3`.
 - यह source-only verification है; actual Storage cleanup failure, signed URL, avatar upload, Supabase RPC/JWT and SQL pgTAP अभी runtime tested नहीं। No Production changes/deployment.
+
+
+## 2026-11-13 — Customer Booking payment status Hindi labels
+
+- My Bookings card में `paid` को Hindi में दिखाया जाता था, लेकिन `refunded` जैसे नए payment states सीधे अंग्रेज़ी database value के रूप में दिख सकते थे। अब central `customerBookingPaymentStatusText()` helper से paid/refunded/pending/failed/processing/created सभी known payment states के Hindi labels मिलते हैं; unknown value generic Hindi fallback देता है।
+- Source Regression Run #43468833561 — success on UI commit `0a168d9558cf421c778229426e352df06d510e3d`; latest regression Run #43468859611 — success on test commit `8d388effeb5c5ec20d7428fa9bc1baa85243461a`; Refund source regression Run #43468833649 — success.
+- Browser visual/mobile QA अभी final consolidated pass में होगा।
