@@ -30,3 +30,4 @@ jobs:
           npm run test:application
           npm run test:payments
           npm run test:timeline
+          npm run test:customer-menu
