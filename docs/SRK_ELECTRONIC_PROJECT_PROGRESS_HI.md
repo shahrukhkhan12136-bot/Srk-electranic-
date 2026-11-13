@@ -870,3 +870,12 @@
 - Migration commit `3a1197726ea66fc011bdfbb1fa5dfe36a7bdacea`; source test commit `d89cdd3e56498dccfcb74589196817cc2b9be066`; pgTAP test commit `7817578ebfc82d7ab93a7764c832b7742f749121`.
 - Source Regression Run #43470164003 — success; Refund Source Regression Run #43470164015 — success (latest head `7817578ebfc82d7ab93a7764c832b7742f749121`). Earlier intermediate commits also passed: #43470149137 and #43470149291.
 - SQL pgTAP execution, Supabase runtime/RLS/JWT/concurrency checks, actual transfer/refund execution and payout-ledger reconciliation remain NOT tested. Migration is branch-only; no Production schema/data changes, deployment or money movement. Mobile/Desktop QA remains deferred to the final consolidated pass.
+
+
+## 2026-11-13 — Customer payment history RPC audit
+
+- Feature-branch migration `20261114200000_customer_payment_refund_history_rpc.sql` का source audit किया। `srk_customer_get_payment_history(integer,integer)` मूल 8-column return contract रखता है: event_id, event_type, booking_id, amount, status, payment_method, occurred_at, description; customer scope `auth.uid()` के booking ownership join से लागू है।
+- Pagination limit 1–50 और offset 0–10000 तक bounded है; ordering `occurred_at DESC NULLS LAST,event_id DESC` deterministic tie-breaker देता है।
+- Payment events केवल verified paid/refunded bookings के लिए हैं; audited manual-payment row मौजूद हो तो duplicate booking-payment event suppress होता है। Manual refund event तभी history में आता है जब manual refund audit entry मौजूद है; Razorpay refund events provider refund table से आते हैं।
+- Customer UI के receipt button को केवल `event_type='payment'` और `status='paid'` पर दिखाने का source guard देखा; receipt RPC immutable labour bill को प्राथमिकता देता है और materials को receipt amount में शामिल नहीं करता।
+- यह migration/source audit है, database execution या live JWT/RLS runtime proof नहीं। Manual payment row की वास्तविक verification semantics और provider event lifecycle को isolated DB/runtime tests में सत्यापित करना शेष है। कोई Production बदलाव या deployment नहीं।
