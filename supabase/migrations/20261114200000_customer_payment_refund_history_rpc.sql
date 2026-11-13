@@ -1,96 +1,111 @@
--- Customer-scoped, paginated payment and refund event history.
--- The original payment remains visible after a refund; the separate refund
--- event records the money returned. No internal/admin notes or provider payloads.
+-- Customer-safe, owner-scoped unified payment and refund history.
+-- Keep the original RPC return signature: CREATE OR REPLACE cannot change OUT
+-- columns without DROP, which would break dependent grants/views during rollout.
+BEGIN;
 
-create or replace function public.srk_customer_get_payment_history(
-  p_limit integer default 25,
-  p_offset integer default 0
+CREATE OR REPLACE FUNCTION public.srk_customer_get_payment_history(
+  p_limit integer DEFAULT 25,
+  p_offset integer DEFAULT 0
 )
-returns table (
+RETURNS TABLE (
+  event_id uuid,
   event_type text,
   booking_id uuid,
-  amount numeric(12,2),
-  description text,
+  amount numeric,
   status text,
   payment_method text,
-  occurred_at timestamptz
+  occurred_at timestamptz,
+  description text
 )
-language plpgsql
-stable
-security definer
-set search_path = pg_catalog, public, auth, pg_temp
-as $function$
-declare
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, auth, pg_temp
+AS $function$
+DECLARE
   v_uid uuid := auth.uid();
   v_limit integer := least(greatest(coalesce(p_limit,25),1),50);
   v_offset integer := greatest(coalesce(p_offset,0),0);
-begin
-  if v_uid is null then
-    raise exception 'AUTHENTICATION_REQUIRED' using errcode='42501';
-  end if;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Customer login required' USING ERRCODE='42501';
+  END IF;
+  IF v_offset > 10000 THEN
+    RAISE EXCEPTION 'Pagination offset is too large' USING ERRCODE='22023';
+  END IF;
 
-  return query
-  select events.event_type,events.booking_id,events.amount,
-         events.description,events.status,events.payment_method,events.occurred_at
-  from (
-    select
-      case when b.razorpay_payment_id is null and exists (select 1 from public.srk_manual_payment_entries me where me.booking_id=b.id) then 'manual_payment' else 'payment' end::text as event_type,
-      b.id as booking_id,
-      round(b.amount_paid,2)::numeric(12,2) as amount,
-      'बुकिंग का सत्यापित भुगतान'::text as description,
-      case when b.payment_status='refunded' then 'refunded' else 'paid' end::text as status,
-      case
-        when lower(coalesce(b.payment_method,'')) like '%cash%' then 'cash'
-        when lower(coalesce(b.payment_method,'')) like '%upi%' then 'upi'
-        when lower(coalesce(b.payment_method,'')) like '%card%' then 'card'
-        when lower(coalesce(b.payment_method,'')) like '%bank%' then 'bank_transfer'
-        when lower(coalesce(b.payment_method,'')) like '%razorpay%'
-          or lower(coalesce(b.payment_method,'')) like '%online%' then 'razorpay'
-        else 'other'
-      end::text as payment_method,
-      b.payment_verified_at as occurred_at
-    from public.service_bookings b
-    where b.customer_user_id=v_uid
-      and b.payment_status in ('paid','refunded')
-      and b.payment_verified_at is not null
-      and coalesce(b.amount_paid,0)>0
+  RETURN QUERY
+  WITH customer_bookings AS (
+    SELECT b.id,b.payment_method,b.payment_status,b.amount_paid,
+           b.payment_verified_at,b.created_at
+    FROM public.service_bookings b
+    WHERE b.customer_user_id=v_uid
+  ), events AS (
+    SELECT b.id AS event_id,
+      'payment'::text AS event_type,b.id AS booking_id,
+      b.amount_paid AS amount,
+      CASE WHEN b.payment_status='refunded' THEN 'refunded'
+           ELSE coalesce(nullif(b.payment_status,''),'recorded') END::text AS status,
+      CASE
+        WHEN lower(coalesce(b.payment_method,'')) IN ('cash','upi','card','online','razorpay','bank_transfer')
+          THEN lower(b.payment_method)
+        ELSE 'other'
+      END::text AS payment_method,
+      coalesce(b.payment_verified_at,b.created_at) AS occurred_at,
+      'बुकिंग भुगतान'::text AS description
+    FROM customer_bookings b
+    WHERE b.payment_status IN ('paid','refunded')
+      AND b.payment_verified_at IS NOT NULL
+      AND coalesce(b.amount_paid,0)>0
 
-    union all
+    UNION ALL
 
-    select 'refund_request'::text,r.booking_id,
-      round(r.amount,2)::numeric(12,2),
-      'बुकिंग रिफंड अनुरोध'::text,r.status::text,
-      null::text,r.created_at
-    from public.srk_booking_refund_requests r
-    where r.customer_user_id=v_uid
+    SELECT r.id,'refund_request'::text,r.booking_id,r.amount,r.status::text,
+      NULL::text,coalesce(r.updated_at,r.created_at),
+      'रिफंड अनुरोध'::text
+    FROM public.srk_booking_refund_requests r
+    JOIN customer_bookings b ON b.id=r.booking_id
+    WHERE r.customer_user_id=v_uid
 
-    union all
+    UNION ALL
 
-    select 'refund'::text,rf.booking_id,
-      round(rf.amount,2)::numeric(12,2),
-      'ऑनलाइन भुगतान का रिफंड'::text,rf.status::text,
-      'razorpay'::text,coalesce(rf.processed_at,rf.updated_at,rf.created_at)
-    from public.srk_razorpay_refunds rf
-    join public.service_bookings b on b.id=rf.booking_id
-    where b.customer_user_id=v_uid
+    SELECT rr.id,'refund'::text,rr.booking_id,rr.amount,rr.status::text,
+      'razorpay'::text,coalesce(rr.processed_at,rr.updated_at,rr.created_at),
+      'ऑनलाइन रिफंड'::text
+    FROM public.srk_razorpay_refunds rr
+    JOIN customer_bookings b ON b.id=rr.booking_id
 
-    union all
+    UNION ALL
 
-    select 'manual_refund'::text,mr.booking_id,
-      round(mr.amount,2)::numeric(12,2),
-      'मैनुअल रिफंड दर्ज'::text,'processed'::text,
-      null::text,mr.recorded_at
-    from public.srk_manual_refund_entries mr
-    join public.service_bookings b on b.id=mr.booking_id
-    where b.customer_user_id=v_uid
-  ) events
-  order by events.occurred_at desc nulls last,events.booking_id desc,events.event_type
-  limit v_limit offset v_offset;
-end;
+    SELECT mp.id,'manual_payment'::text,mp.booking_id,mp.amount,
+      'recorded'::text,
+      CASE WHEN lower(coalesce(mp.payment_method,'')) IN ('cash','upi','card','bank_transfer')
+        THEN lower(mp.payment_method) ELSE 'other' END::text,
+      mp.recorded_at,'दर्ज किया गया भुगतान'::text
+    FROM public.srk_manual_payment_entries mp
+    JOIN customer_bookings b ON b.id=mp.booking_id
+
+    UNION ALL
+
+    SELECT mr.id,'manual_refund'::text,mp.booking_id,mr.amount,
+      'recorded'::text,NULL::text,mr.recorded_at,
+      'दर्ज किया गया रिफंड'::text
+    FROM public.srk_manual_refund_entries mr
+    JOIN public.srk_manual_payment_entries mp ON mp.id=mr.payment_entry_id
+    JOIN customer_bookings b ON b.id=mp.booking_id
+  )
+  SELECT e.event_id,e.event_type,e.booking_id,e.amount,e.status,
+         e.payment_method,e.occurred_at,e.description
+  FROM events e
+  ORDER BY e.occurred_at DESC NULLS LAST,e.event_id DESC
+  LIMIT v_limit OFFSET v_offset;
+END;
 $function$;
 
-revoke all on function public.srk_customer_get_payment_history(integer,integer) from public,anon;
-grant execute on function public.srk_customer_get_payment_history(integer,integer) to authenticated;
+REVOKE ALL ON FUNCTION public.srk_customer_get_payment_history(integer,integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_customer_get_payment_history(integer,integer) TO authenticated;
 
-comment on function public.srk_customer_get_payment_history(integer,integer) is
-'Returns paginated payment/refund events only for auth.uid() customer bookings; excludes admin notes, private provider metadata and other customers.';
+COMMENT ON FUNCTION public.srk_customer_get_payment_history(integer,integer) IS
+'Returns paginated payment/refund events only for auth.uid() customer bookings; preserves the original 8-column RPC contract and excludes admin notes, private provider metadata and other customers.';
+
+COMMIT;
