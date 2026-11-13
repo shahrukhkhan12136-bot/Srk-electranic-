@@ -7,7 +7,7 @@ const originalFetch = global.fetch;
 const validBody = {
   full_name:'Test Electrician',phone:'9876543210',state:'Uttar Pradesh',
   district:'Balrampur',pincode:'271861',skills:'Wiring and repairs',
-  requested_category:'skilled_electrician',experience_years:4,about:'Test application'
+  requested_category:'skilled_electrician',requested_skill_keys:['house_wiring','fan_installation'],experience_years:4,about:'Test application'
 };
 function response(status,value){
   const raw=typeof value==='string'?value:JSON.stringify(value);
@@ -33,5 +33,9 @@ test('rejects oversized payload before network calls',async()=>{const r=await ha
 test('requires client IP for rate limiting',async()=>{const r=await handler(event({headers:{}}));assert.equal(r.statusCode,503);assert.equal(calls.length,0);});
 test('rejects rate-limited application before insert',async()=>{config.rateAllowed=false;const r=await handler(event());assert.equal(r.statusCode,429);assert.equal(inserted,null);});
 test('rejects unknown or missing requested commercial category',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_category:'home_wiring'})}));assert.equal(r.statusCode,400);assert.equal(inserted,null);});
-test('persists requested category with pending and inactive status',async()=>{const r=await handler(event());assert.equal(r.statusCode,200);assert.equal(inserted[0].requested_category,'skilled_electrician');assert.equal(inserted[0].verification_status,'pending');assert.equal(inserted[0].active,false);});
+test('persists requested category with pending and inactive status',async()=>{const r=await handler(event());assert.equal(r.statusCode,200);assert.equal(inserted[0].requested_category,'skilled_electrician');assert.deepEqual(inserted[0].requested_skill_keys,['house_wiring','fan_installation']);assert.equal(inserted[0].verification_status,'pending');assert.equal(inserted[0].active,false);});
 test('does not report success when database insert fails',async()=>{config.insertStatus=500;const r=await handler(event());assert.equal(r.statusCode,502);assert.equal(inserted[0].requested_category,'skilled_electrician');});
+
+test('rejects unknown structured skill keys',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_skill_keys:['made_up_skill']})}));assert.equal(r.statusCode,400);assert.equal(inserted,null);});
+test('rejects missing structured skills',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_skill_keys:[]})}));assert.equal(r.statusCode,400);assert.equal(inserted,null);});
+test('deduplicates declared skills before persistence',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_skill_keys:['house_wiring','house_wiring']})}));assert.equal(r.statusCode,200);assert.deepEqual(inserted[0].requested_skill_keys,['house_wiring']);});
