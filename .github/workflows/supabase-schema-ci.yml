@@ -119,12 +119,33 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261112220000_cash_platform_fee_due_and_online_settlement.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261112230000_show_customer_payment_choice_to_assigned_electrician.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113120000_harden_customer_call_contact_privacy.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113120000_limit_cash_fee_settlement_to_labour_share.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113143000_restrict_customer_booking_contacts_to_active.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113160000_hide_internal_notes_from_customer_support_rpcs.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113173000_customer_payment_history_rpc.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113180000_customer_support_messages_and_attachments.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113190000_admin_support_replies_and_attachment_linking.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113200000_customer_profile_api_and_avatar_security.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113210000_customer_saved_addresses_api.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113220000_customer_complaint_creation_rpc.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113230000_support_attachment_paths_and_admin_message_list.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113235900_harden_customer_cancellation_and_safe_refund_history.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113235930_customer_payment_receipt_rpc.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114000000_electrician_requested_and_approved_rate_tiers.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114010000_customer_booking_category_and_duration.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114030000_verified_electrician_skills_and_category_matching.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
             echo "Applying $migration to the isolated local database"
             supabase db query --file "$migration"
           done
+
+      - name: Run all database pgTAP tests against isolated schema
+        working-directory: ${{ runner.temp }}/srk-supabase-ci
+        run: supabase test db
 
       - name: Lint isolated database
         working-directory: ${{ runner.temp }}/srk-supabase-ci
@@ -144,6 +165,15 @@ jobs:
             END IF;
             IF to_regclass('public.srk_electrician_payouts') IS NULL THEN
               RAISE EXCEPTION 'Missing public.srk_electrician_payouts';
+            END IF;
+            IF to_regclass('public.srk_booking_labour_bills') IS NULL THEN
+              RAISE EXCEPTION 'Missing public.srk_booking_labour_bills';
+            END IF;
+            IF to_regprocedure('private.srk_offer_booking_to_eligible_electricians(uuid)') IS NULL THEN
+              RAISE EXCEPTION 'Missing shared verified booking matcher';
+            END IF;
+            IF to_regprocedure('public.srk_customer_get_labour_bill(uuid)') IS NULL THEN
+              RAISE EXCEPTION 'Missing customer final labour bill RPC';
             END IF;
           END
           $$;
