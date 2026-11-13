@@ -167,7 +167,8 @@ test('customer payment history RPC exists, is owner-scoped and covers all paymen
   assert.match(customerPaymentHistoryMigration, /srk_booking_refund_requests/);
   assert.match(customerPaymentHistoryMigration, /srk_razorpay_refunds/);
   assert.match(customerPaymentHistoryMigration, /srk_manual_refund_entries/);
-  assert.match(customerPaymentHistoryMigration, /'manual_payment'::text/);\n  assert.match(customerPaymentHistoryMigration, /from public\.srk_manual_payment_entries mp/);\n  assert.match(customerPaymentHistoryMigration, /event_id uuid,[\\s\\S]*?description text/);
+  assert.match(customerPaymentHistoryMigration, /'manual_payment'::text/);
+  assert.match(customerPaymentHistoryMigration, /from public\.srk_manual_payment_entries mp/);\n  assert.match(customerPaymentHistoryMigration, /event_id uuid,[\\s\\S]*?description text/);
   assert.match(customerPaymentHistoryMigration, /limit v_limit offset v_offset/);
   assert.match(customerPaymentHistoryMigration, /grant execute on function public\.srk_customer_get_payment_history\(integer,integer\) to authenticated/i);
   assert.match(customerPaymentHistoryMigration, /revoke all on function public\.srk_customer_get_payment_history\(integer,integer\) from public,anon/i);
