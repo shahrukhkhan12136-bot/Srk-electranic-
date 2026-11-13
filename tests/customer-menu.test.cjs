@@ -712,7 +712,7 @@ test('customer cancellation remains an Admin-mediated Help and Support request',
 
 test('customer support booking selector ignores stale asynchronous responses', () => {
   assert.match(html, /let customerSupportBookingsLoadSequence=0/);
-  const start = html.indexOf('async function loadCustomerSupportBookings()');
+  const start = html.indexOf('async function loadCustomerSupportBookings(reset=true)');
   const end = html.indexOf('\nlet customerSupportComplaintCreateBusy', start);
   assert.ok(start >= 0 && end > start);
   const source = html.slice(start, end);
@@ -732,7 +732,7 @@ test('customer support booking selector paginates older bookings and preserves l
   const source = html.slice(start, end);
   assert.ok(source.includes('async function loadCustomerSupportBookings(reset=true)'));
   assert.ok(source.includes('customerSupportBookingsOffset'));
-  assert.ok(source.includes('if(!reset&&customerSupportBookingsBusy)return'));
+  assert.ok(source.includes('(!reset&&customerSupportBookingsBusy)'));
   assert.ok(source.includes('.range(requestedOffset,requestedOffset+24)'));
   assert.ok(source.includes('customerSupportBookingsOffset=requestedOffset+rows.length;'));
   assert.ok(source.includes("more.style.display=rows.length===25?'block':'none';"));
