@@ -208,6 +208,38 @@ function locateInto(latId, lngId, statusId, mapWrapId, mapId, linkId) {
 function customerEsc(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+const CUSTOMER_BOOKING_STATUS_LABELS = {
+  new: 'बुकिंग प्राप्त हुई',
+  assigned: 'इलेक्ट्रिशियन असाइन हो गया',
+  inspection: 'जाँच / निरीक्षण जारी',
+  awaiting_quote_approval: 'कोटेशन आपकी मंजूरी के लिए भेजा गया',
+  quote_approved: 'कोटेशन मंजूर — काम शुरू हो सकता है',
+  quote_rejected: 'कोटेशन में बदलाव की जरूरत',
+  in_progress: 'काम चल रहा है',
+  completed: 'काम पूरा हो गया',
+  cancelled: 'बुकिंग रद्द',
+  rejected: 'बुकिंग स्वीकार नहीं हुई'
+};
+function customerStatusLabel(status) {
+  return CUSTOMER_BOOKING_STATUS_LABELS[status] || 'स्थिति अपडेट हुई';
+}
+function customerFormatTimelineDate(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  return date.toLocaleString('hi-IN', { dateStyle: 'medium', timeStyle: 'short' });
+}
+function customerRenderTimeline(events, currentStatus) {
+  const rows = Array.isArray(events) ? events : [];
+  if (!rows.length) {
+    return '<div class="small" aria-label="बुकिंग प्रगति">वर्तमान स्थिति: ' + customerEsc(customerStatusLabel(currentStatus)) + '<br>पुराने स्टेटस अपडेट उपलब्ध नहीं हैं।</div>';
+  }
+  return '<ol class="booking-timeline" aria-label="बुकिंग की स्थिति का इतिहास" style="list-style:none;padding:0;margin:12px 0;border-left:3px solid #d9e4ef">' +
+    rows.map((event, index) => '<li style="position:relative;padding:0 0 14px 14px;margin-left:8px">' +
+      '<span aria-hidden="true" style="position:absolute;left:-15px;top:4px;width:9px;height:9px;border-radius:50%;background:' + (index === rows.length - 1 ? '#16834a' : '#7893ad') + '"></span>' +
+      '<b>' + customerEsc(customerStatusLabel(event.new_status)) + '</b>' +
+      '<div class="small">' + customerEsc(customerFormatTimelineDate(event.changed_at)) + '</div>' +
+    '</li>').join('') + '</ol>';
+}
 async function loadCustomerBookings() {
   const box = document.getElementById('customerBookings');
   const { data: sessionData } = await customerSb.auth.getSession();
@@ -221,19 +253,32 @@ async function loadCustomerBookings() {
     .limit(50);
   if (error) { box.textContent = 'बुकिंग अभी लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।'; return; }
   if (!data || !data.length) { box.textContent = 'इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। आगे की बुकिंग में OTP वाला यही मोबाइल नंबर इस्तेमाल करें।'; return; }
-  const { data: callContacts } = await customerSb.rpc('srk_get_customer_call_contacts');
+  const [{ data: callContacts }, { data: historyRows, error: historyError }] = await Promise.all([
+    customerSb.rpc('srk_get_customer_call_contacts'),
+    customerSb.rpc('srk_get_customer_booking_timeline')
+  ]);
   const callMap = new Map((callContacts || []).map(item => [item.booking_id, item]));
+  const timelineMap = new Map();
+  if (!historyError && Array.isArray(historyRows)) {
+    historyRows.forEach(event => {
+      if (!timelineMap.has(event.booking_id)) timelineMap.set(event.booking_id, []);
+      timelineMap.get(event.booking_id).push(event);
+    });
+  }
   box.innerHTML = data.map(row => {
     const contact = callMap.get(row.id);
-    const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
+    const phone = String(contact?.electrician_phone || '').replace(/\\D/g, '');
     const canCall = contact && /^[0-9]{10,15}$/.test(phone);
     return '<article class="card" style="margin:10px 0;padding:13px">' +
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
-    '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
+    '<p>स्थिति: ' + customerEsc(customerStatusLabel(row.status)) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
+    '<details class="booking-progress"><summary>बुकिंग की पूरी प्रगति देखें</summary>' +
+    (historyError ? '<p class="small">स्थिति इतिहास अभी लोड नहीं हो सका। कृपया बाद में फिर देखें।</p>' : customerRenderTimeline(timelineMap.get(row.id), row.status)) +
+    '</details>' +
     '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
-    (row.quote_status && row.quote_status!=='not_submitted' ? '<div class="job"><b>इलेक्ट्रिशियन का कोटेशन</b><p>सर्विस / मेहनताना: ₹'+customerEsc(Number(row.service_charge||0).toFixed(2))+'</p><p>सामान / पार्ट्स: ₹'+customerEsc(Number(row.materials_amount||0).toFixed(2))+'</p><p><b>कुल: ₹'+customerEsc(Number(row.quoted_amount||0).toFixed(2))+'</b></p><p>स्थिति: '+customerEsc(row.quote_status)+'</p>'+(row.quote_note?'<p>'+customerEsc(row.quote_note)+'</p>':'')+(row.quote_status==='pending'&&row.status==='awaiting_quote_approval'?'<button type="button" onclick="customerQuoteResponse(\''+row.id+'\',\'approved\')">कोटेशन मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerQuoteResponse(\''+row.id+'\',\'rejected\')">कोटेशन अस्वीकार करें</button>':'')+'</div>':'') +
+    (row.quote_status && row.quote_status!=='not_submitted' ? '<div class="job"><b>इलेक्ट्रिशियन का कोटेशन</b><p>सर्विस / मेहनताना: ₹'+customerEsc(Number(row.service_charge||0).toFixed(2))+'</p><p>सामान / पार्ट्स: ₹'+customerEsc(Number(row.materials_amount||0).toFixed(2))+'</p><p><b>कुल: ₹'+customerEsc(Number(row.quoted_amount||0).toFixed(2))+'</b></p><p>स्थिति: '+customerEsc(row.quote_status)+'</p>'+(row.quote_note?'<p>'+customerEsc(row.quote_note)+'</p>':'')+(row.quote_status==='pending'&&row.status==='awaiting_quote_approval'?'<button type="button" onclick="customerQuoteResponse(\\''+row.id+'\\',\\'approved\\')">कोटेशन मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerQuoteResponse(\\''+row.id+'\\',\\'rejected\\')">कोटेशन अस्वीकार करें</button>':'')+'</div>':'') +
     (row.quoted_amount != null ? '<p>कुल तय राशि: ₹' + customerEsc(row.quoted_amount) + '</p>' : '') +
-    (row.status==='completed'&&row.quote_status==='approved'&&row.payment_status!=='paid'?'<button type="button" onclick="customerPayBooking(\''+row.id+'\','+Number(row.quoted_amount||0)+')">🔒 काम पूरा — अब भुगतान करें</button>':'') +
+    (row.status==='completed'&&row.quote_status==='approved'&&row.payment_status!=='paid'?'<button type="button" onclick="customerPayBooking(\\''+row.id+'\\','+Number(row.quoted_amount||0)+')">🔒 काम पूरा — अब भुगतान करें</button>':'') +
     (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
     '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
     (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>') : '') +
