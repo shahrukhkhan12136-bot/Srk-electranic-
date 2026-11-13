@@ -1,0 +1,18 @@
+begin;
+select plan(14);
+select ok((select relrowsecurity from pg_class where oid='public.srk_customer_saved_addresses'::regclass),'saved address table has RLS');
+select ok(has_table_privilege('authenticated','public.srk_customer_saved_addresses','SELECT'),'authenticated role has table select subject to RLS');
+select ok(not has_table_privilege('anon','public.srk_customer_saved_addresses','SELECT'),'anon cannot read saved addresses');
+select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='srk_customer_saved_addresses' and policyname='customers read own saved addresses' and qual ilike '%auth.uid%'),'read is owner scoped');
+select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='srk_customer_saved_addresses' and policyname='customers insert own saved addresses' and with_check ilike '%auth.uid%'),'insert is owner scoped');
+select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='srk_customer_saved_addresses' and policyname='customers update own saved addresses' and qual ilike '%auth.uid%' and with_check ilike '%auth.uid%'),'update validates ownership');
+select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='srk_customer_saved_addresses' and policyname='customers delete own saved addresses' and qual ilike '%auth.uid%'),'delete is owner scoped');
+select ok(has_function_privilege('authenticated','public.srk_customer_list_my_saved_addresses()','EXECUTE') and not has_function_privilege('anon','public.srk_customer_list_my_saved_addresses()','EXECUTE'),'list RPC authenticated only');
+select ok(has_function_privilege('authenticated','public.srk_customer_save_my_address(uuid,text,text,text,text,text,text,text,double precision,double precision,boolean)','EXECUTE') and not has_function_privilege('anon','public.srk_customer_save_my_address(uuid,text,text,text,text,text,text,text,double precision,double precision,boolean)','EXECUTE'),'save RPC authenticated only');
+select ok(has_function_privilege('authenticated','public.srk_customer_delete_my_saved_address(uuid)','EXECUTE') and not has_function_privilege('anon','public.srk_customer_delete_my_saved_address(uuid)','EXECUTE'),'delete RPC authenticated only');
+select ok(position('auth.uid()' in lower(pg_get_functiondef('public.srk_customer_save_my_address(uuid,text,text,text,text,text,text,text,double precision,double precision,boolean)'::regprocedure)))>0,'save RPC derives identity from auth.uid');
+select ok(position('ADDRESS_LIMIT_REACHED' in pg_get_functiondef('public.srk_customer_save_my_address(uuid,text,text,text,text,text,text,text,double precision,double precision,boolean)'::regprocedure))>0,'save RPC caps addresses at ten');
+select ok(exists(select 1 from pg_indexes where schemaname='public' and indexname='srk_customer_saved_addresses_one_default_idx'),'only one default address per customer');
+select ok(position('service_bookings' in lower(pg_get_functiondef('public.srk_customer_save_my_address(uuid,text,text,text,text,text,text,text,double precision,double precision,boolean)'::regprocedure)))=0,'saved address updates do not mutate booking history');
+select * from finish();
+rollback;
