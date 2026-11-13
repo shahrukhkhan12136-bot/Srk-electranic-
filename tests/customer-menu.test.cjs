@@ -4,6 +4,7 @@ const fs = require('node:fs');
 
 const html = fs.readFileSync('booking.html', 'utf8');
 const bookingApi = fs.readFileSync('create-booking.js', 'utf8');
+const labourBilling = require('../lib/labour-billing');
 const profileMigration = fs.readFileSync('supabase/migrations/20261113200000_customer_profile_api_and_avatar_security.sql', 'utf8');
 const supportAttachmentMigration = fs.readFileSync('supabase/migrations/20261114170000_harden_customer_support_attachment_object_integrity.sql', 'utf8');
 const customerReceiptMigration = fs.readFileSync('supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql', 'utf8');
@@ -587,6 +588,24 @@ test('customer booking disclosure no longer promises a legacy home inspection qu
   assert.doesNotMatch(html, /सर्विस चार्ज तथा सामान का अलग-अलग कोटेशन देगा/);
 });
 
+
+test('customer booking estimate rate card stays aligned with the canonical labour billing module', () => {
+  const expected = [
+    ['Electrical Assistant', 'electrical_assistant'],
+    ['Skilled Electrician', 'skilled_electrician'],
+    ['Expert Electrician', 'expert_electrician'],
+    ['Premium Electrical Specialist', 'premium_electrical_specialist']
+  ];
+  for (const [label, key] of expected) {
+    const rate = labourBilling.RATE_CARD[key].rate8hPaise;
+    assert.ok(html.includes("['" + label + "'," + rate + ']'));
+    for (let hours = 1; hours <= 8; hours += 1) {
+      const numerator = BigInt(rate) * BigInt(hours * 60);
+      const expectedPaise = (numerator + 240n) / 480n;
+      assert.equal(labourBilling.calculateEstimatePaise(key, hours), Number(expectedPaise));
+    }
+  }
+});
 
 test('customer booking shows transparent duration estimates for all published labour tiers', () => {
   assert.ok(html.includes('id="customerLabourEstimate"'));
