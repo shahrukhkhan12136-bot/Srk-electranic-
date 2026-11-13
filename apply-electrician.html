@@ -122,7 +122,7 @@ const cfg=window.SRK_CONFIG||{};
 const statusSb=(cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&window.supabase)?window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY):null;
 let statusBusy=false,statusResendAt=0,statusTimer=null;
 function statusSay(message,bad=false){statusMessage.className='status '+(bad?'err':'ok');statusMessage.textContent=message;}
-function statusPhoneE164(){const digits=statusPhone.value.replace(/\\D/g,'');return /^[0-9]{10}$/.test(digits)?'+91'+digits:null;}
+function statusPhoneE164(){const digits=statusPhone.value.replace(/\D/g,'');return /^[0-9]{10}$/.test(digits)?'+91'+digits:null;}
 function renderApplicationStatuses(rows){
  statusResults.replaceChildren();
  if(!rows.length){const p=document.createElement('p');p.className='hint';p.textContent='इस सत्यापित मोबाइल नंबर से कोई आवेदन नहीं मिला।';statusResults.appendChild(p);return;}
@@ -157,18 +157,18 @@ else{
   if(statusBusy)return;const phone=statusPhoneE164();if(!phone){statusSay('आवेदन वाला सही 10 अंकों का मोबाइल नंबर डालें।',true);return;}
   if(Date.now()<statusResendAt){statusSay('OTP दोबारा भेजने से पहले प्रतीक्षा करें।',true);return;}
   statusBusy=true;statusSend.disabled=true;statusSay('OTP भेजा जा रहा है…');
-  try{const {error}=await statusSb.auth.signInWithOtp({phone});if(error)throw error;statusOtpArea.hidden=false;statusResendAt=Date.now()+60000;statusSay('OTP भेजने का अनुरोध सफल हुआ। SMS में मिला OTP यहाँ दर्ज करें।');}
+  try{const {error}=await statusSb.auth.signInWithOtp({phone});if(error)throw error;statusOtpArea.hidden=false;statusResendAt=Date.now()+60000;let left=60;statusSend.textContent='OTP दोबारा भेजें ('+left+' सेकंड)';statusTimer=setInterval(()=>{left--;statusSend.textContent=left>0?'OTP दोबारा भेजें ('+left+' सेकंड)':'OTP दोबारा भेजें';if(left<=0){clearInterval(statusTimer);statusTimer=null;statusSend.disabled=false;}},1000);statusSay('OTP भेजने का अनुरोध सफल हुआ। SMS में मिला OTP यहाँ दर्ज करें।');}
   catch(_){statusSend.disabled=false;statusSay('OTP नहीं भेजा जा सका। नंबर और SMS सेवा जाँचें।',true);}
   finally{statusBusy=false;}
  });
  statusVerify.addEventListener('click',async()=>{
-  if(statusBusy)return;const phone=statusPhoneE164(),token=statusOtp.value.trim();if(!phone||!/^\\d{4,8}$/.test(token)){statusSay('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}
+  if(statusBusy)return;const phone=statusPhoneE164(),token=statusOtp.value.trim();if(!phone||!/^\d{4,8}$/.test(token)){statusSay('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}
   statusBusy=true;statusVerify.disabled=true;statusSay('OTP सत्यापित हो रहा है…');
   try{const {error}=await statusSb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;statusPhone.disabled=true;statusOtpArea.hidden=true;await loadApplicationStatuses();}
   catch(_){statusSay('OTP गलत या समाप्त हो गया है। नया OTP लेकर कोशिश करें।',true);}
   finally{statusBusy=false;statusVerify.disabled=false;}
  });
- statusLogout.addEventListener('click',async()=>{if(statusBusy)return;statusBusy=true;try{const {error}=await statusSb.auth.signOut();if(error)throw error;statusPhone.disabled=false;statusPhone.value='';statusOtp.value='';statusResults.replaceChildren();statusOtpArea.hidden=true;statusLogout.hidden=true;statusSay('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');}catch(_){statusSay('लॉगआउट नहीं हो सका।',true);}finally{statusBusy=false;}});
+ statusLogout.addEventListener('click',async()=>{if(statusBusy)return;statusBusy=true;try{const {error}=await statusSb.auth.signOut();if(error)throw error;statusPhone.disabled=false;statusPhone.value='';statusOtp.value='';statusResults.replaceChildren();statusOtpArea.hidden=true;statusLogout.hidden=true;if(statusTimer){clearInterval(statusTimer);statusTimer=null;}statusResendAt=0;statusSend.disabled=false;statusSend.textContent='स्थिति देखने के लिए OTP भेजें';statusSay('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');}catch(_){statusSay('लॉगआउट नहीं हो सका।',true);}finally{statusBusy=false;}});
 }
 
 form.addEventListener('submit',async(event)=>{
