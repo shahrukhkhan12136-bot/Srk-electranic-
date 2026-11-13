@@ -845,8 +845,10 @@ async function saveCustomerProfile() {
   });
   if(error) {
    if(uploadedAvatarPath) {
-    const cleanup=await customerSb.storage.from('srk-customer-avatars').remove([uploadedAvatarPath]);
-    if(cleanup.error)uploadCleanupFailed=true;
+    try {
+     const cleanup=await customerSb.storage.from('srk-customer-avatars').remove([uploadedAvatarPath]);
+     if(cleanup.error)uploadCleanupFailed=true;
+    } catch(_) {uploadCleanupFailed=true;}
    }
    throw error;
   }
@@ -858,8 +860,10 @@ async function saveCustomerProfile() {
    const previewLoaded=await loadCustomerAvatar(avatarPath);
    let cleanupWarning='';
    if(oldAvatar&&oldAvatar!==avatarPath) {
-    const cleanup=await customerSb.storage.from('srk-customer-avatars').remove([oldAvatar]);
-    if(cleanup.error)cleanupWarning=' पुरानी फोटो की सफाई पूरी नहीं हुई; प्रोफ़ाइल में नई फोटो सुरक्षित है।';
+    try {
+     const cleanup=await customerSb.storage.from('srk-customer-avatars').remove([oldAvatar]);
+     if(cleanup.error)cleanupWarning=' पुरानी फोटो की सफाई पूरी नहीं हुई; प्रोफ़ाइल में नई फोटो सुरक्षित है।';
+    } catch(_) {cleanupWarning=' पुरानी फोटो की सफाई पूरी नहीं हुई; प्रोफ़ाइल में नई फोटो सुरक्षित है।';}
    }
    setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।'+(previewLoaded?'':' फोटो सेव है, लेकिन उसका पूर्वावलोकन अभी लोड नहीं हुआ।')+cleanupWarning,Boolean(!previewLoaded||cleanupWarning));
   } else {
