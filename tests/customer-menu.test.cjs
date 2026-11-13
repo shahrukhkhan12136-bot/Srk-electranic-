@@ -369,10 +369,10 @@ test('customer complaint creation success is not reported as failure when thread
   assert.ok(source.includes("complaintCreated=true;") && source.includes("customerSupportDescription').value='';"));
   assert.ok(source.indexOf('complaintCreated=true;') < source.indexOf('await loadCustomerSupportComplaints()'));
   assert.match(source,/let refreshFailed=false/);
-  assert.match(source,/try\\{await loadCustomerSupportComplaints\\(\\)\\}catch\\(_\\)\\{refreshFailed=true\\}/);
-  assert.match(source,/try\\{await loadCustomerSupportMessages\\(\\)\\}catch\\(_\\)\\{refreshFailed=true\\}/);
+  assert.ok(source.includes('try{await loadCustomerSupportComplaints();}catch(_){refreshFailed=true;}'));
+  assert.ok(source.includes('try{await loadCustomerSupportMessages();}catch(_){refreshFailed=true;}'));
   assert.match(source,/शिकायत सफलतापूर्वक दर्ज हो गई है, लेकिन शिकायत सूची या संदेश अभी रीफ़्रेश नहीं हो सके/);
   assert.match(source,/शिकायत दोबारा दर्ज न करें/);
-  assert.match(source,/complaintCreated\\s*\\?['"]आपकी शिकायत दर्ज हो चुकी है/);
-  assert.match(source,/finally \\{[\\s\\S]*?customerSupportComplaintCreateBusy=false;button.disabled=false/);
+  assert.ok(source.includes("complaintCreated\n   ?'आपकी शिकायत दर्ज हो चुकी है"));
+  assert.ok(source.includes('finally {\n  customerSupportComplaintCreateBusy=false;button.disabled=false;'));
 });
