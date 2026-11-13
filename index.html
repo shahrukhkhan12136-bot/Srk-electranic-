@@ -83,7 +83,9 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 96px}
   <h2 class="section-title" style="margin-top:0">👤 My Profile</h2>
   <p class="small">आपका सत्यापित ग्राहक अकाउंट</p>
   <p id="customerProfilePhone" style="font-weight:750"></p>
+  <p class="small" id="profileLoginHint">अपनी बुकिंग और अकाउंट विवरण देखने के लिए पहले OTP से लॉगिन करें।</p>
   <p class="small">आपका मोबाइल नंबर OTP से सत्यापित है। इसी नंबर से जुड़ी बुकिंग यहाँ दिखाई जाएँगी।</p>
+  <a class="btn primary" id="profileLoginLink" href="#customer-login" style="display:none">OTP लॉगिन करें</a>
   <button class="btn" type="button" id="profileLogout" style="background:#eef2f7;color:#26384d">लॉगआउट</button>
  </section>
 
@@ -258,8 +260,11 @@ async function syncCustomerSession() {
   const session = data.session;
   document.getElementById('customer-login').style.display = session ? 'none' : 'block';
   document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
-  document.getElementById('profilePanel').style.display = session ? 'block' : 'none';
-  document.getElementById('customerProfilePhone').textContent = session ? (session.user.phone || 'सत्यापित ग्राहक') : '';
+  document.getElementById('profilePanel').style.display = 'block';
+  document.getElementById('customerProfilePhone').textContent = session ? (session.user.phone || 'सत्यापित ग्राहक') : 'अभी लॉगिन नहीं है';
+  document.getElementById('profileLoginHint').style.display = session ? 'none' : 'block';
+  document.getElementById('profileLogout').style.display = session ? 'inline-flex' : 'none';
+  document.getElementById('profileLoginLink').style.display = session ? 'none' : 'inline-flex';
   if (session) {
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     await loadCustomerBookings();
