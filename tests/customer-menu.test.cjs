@@ -173,6 +173,8 @@ test('customer refund history pagination prevents duplicate loads and uses bound
   assert.ok(source.includes('p_limit:25,p_offset:requestedOffset'));
   assert.ok(source.includes('customerRefundHistoryOffset=requestedOffset+rows.length;'));
   assert.ok(source.includes('if(sequence!==customerRefundHistoryLoadSequence)return;'));
+  assert.ok(source.includes('else{let note=box.querySelector(\'[data-refund-history-load-warning]\')'));
+  assert.ok(source.includes('पहले से दिख रहे रिकॉर्ड सुरक्षित हैं'));
 });
 
 test('customer payment receipt uses immutable labour amount and never infers materials', () => {
