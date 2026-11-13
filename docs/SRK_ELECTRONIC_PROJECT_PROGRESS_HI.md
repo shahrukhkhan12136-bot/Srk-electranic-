@@ -834,3 +834,11 @@
 - My Bookings card में `paid` को Hindi में दिखाया जाता था, लेकिन `refunded` जैसे नए payment states सीधे अंग्रेज़ी database value के रूप में दिख सकते थे। अब central `customerBookingPaymentStatusText()` helper से paid/refunded/pending/failed/processing/created सभी known payment states के Hindi labels मिलते हैं; unknown value generic Hindi fallback देता है।
 - Source Regression Run #43468833561 — success on UI commit `0a168d9558cf421c778229426e352df06d510e3d`; latest regression Run #43468859611 — success on test commit `8d388effeb5c5ec20d7428fa9bc1baa85243461a`; Refund source regression Run #43468833649 — success.
 - Browser visual/mobile QA अभी final consolidated pass में होगा।
+
+
+## 2026-11-13 — Customer Payment History duplicate and manual-refund status correction
+
+- Payment History में verified booking-level payment row और उसी booking की audited `srk_manual_payment_entries` row दोनों आ सकती थीं, जिससे एक ही cash/UPI/manual payment दो बार दिखाई देता। अब booking summary event तभी दिखेगा जब matching audited manual-payment row मौजूद न हो; audited manual payment अपने वास्तविक `recorded_at` के साथ एक बार दिखेगा। Legacy booking summary fallback बना रहता है जहाँ manual audit row नहीं है।
+- Manual refund audit entry केवल manual transfer evidence दर्ज होने और Admin finalization transaction में booking `payment_status='refunded'` तथा ledger/payout reversal के साथ बनती है। Customer history में उसे generic `recorded` के बजाय `processed` दिखाया जाएगा।
+- Source regression: dedupe test run #43469156977 — success (commit `1ac90dd0fb74e3e5764f0bf099b4b9d4606531dc`); finalized manual refund status migration source run #43469199920 — success (commit `a2118c88a185fb0dfb8b4439f608b9cb3ce7781f`); latest expanded source tests run #43469222453 — success (commit `5dd3c5f86d863dd54fc834629dd91a43d083c948`). Refund source checks run #43469119618 — success.
+- Database pgTAP `customer_payment_refund_history_rpc.test.sql` plan 13 updated, NOT EXECUTED. No live payment/refund records queried or changed; no Production migration apply/deploy or money movement. Manual customer UI display not browser-tested; final consolidated mobile/Desktop QA deferred.
