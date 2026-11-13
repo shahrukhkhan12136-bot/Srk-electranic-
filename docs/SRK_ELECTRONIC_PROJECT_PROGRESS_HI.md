@@ -979,3 +979,10 @@
 
 
 - Cleanup regression assertion was updated to match the new guarded `try/catch` cleanup implementation. GitHub Actions Source Regression Run #43474653510 completed successfully on commit `d85019882c845da9691ffd15e6939d65ebb17145`. This confirms source assertions only; actual Storage/network fault injection remains untested.
+
+
+## Customer avatar cleanup network-failure handling — 2026-11-13
+
+- Avatar cleanup previously handled returned Storage errors but a thrown network exception could make a successful profile update appear to have failed when deleting the old avatar.
+- Both new-upload cleanup after profile RPC failure and old-avatar cleanup after successful profile update now catch thrown exceptions. The old-avatar cleanup failure is shown as a cleanup warning while the saved profile remains correctly reported as saved.
+- Source regression coverage added. Commits: `6e8accb868392e6dba0b59dbdc2791485e62d0bf`, `138293fbee54b232c1ea620b87b2f10ccd705cca`. Workflow pending. Live Storage/network fault injection not run; no Production changes.
