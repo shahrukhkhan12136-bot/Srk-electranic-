@@ -1560,3 +1560,5 @@
 - Attachment RPC तथा प्रत्येक signed-URL await के बाद generation जाँची जाती है; stale generation पर आगे की private file links नहीं बनतीं/रेंडर नहीं होतीं।
 - App commits: `9a388461750e5a879464ad2a3c9d4b55572dce35`, corrective guard `73b4399bc778cd2d436224d96427eb2b71be9561`; source regression tests: `a98500b3771f470e6f489c2a005152e299ef2014`. Saved-address prior test assertion corrected in `1489923d2758d6ab475f78de0cc29a73ce78fb74`.
 - Earlier CI run `#43502626728` had 70/71 Customer Menu tests pass; remaining failure was a stale saved-address finally assertion. Corrected assertion commit `1489923...`. Support-specific tests are now added; final CI result pending. No browser/two-account test, live Supabase JWT/RLS, or final mobile/Desktop QA performed. Production unchanged.
+
+- CI assertion alignment: Support regression suite के पुराने sequence-only assertions अब session-aware `isCurrent()` guards और Auth listener के Support invalidation को verify करते हैं। Test commit `367f7e9d31a1b01429fb7924ce7b11084c5b89b6`; prior run #43503612615 में 65/72 Customer Menu assertions passed, 7 पुराने source expectations अपडेट किए गए। Corrected CI result अभी pending है।
