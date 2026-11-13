@@ -38,3 +38,17 @@ test("Customer form fails closed if the pending idempotency key cannot be persis
   assert.match(html, /persisted\.key!==key\|\|persisted\.fingerprint!==fingerprint/);
   assert.match(html, /इस ब्राउज़र में सुरक्षित बुकिंग पहचान सेव नहीं हो सकी/);
 });
+
+
+test("Editing a saved address restores its saved map pin", () => {
+  assert.match(html, /function editSelectedSavedAddress\(\)/);
+  assert.match(html, /सेव किए गए पते की लोकेशन लोड हुई। पता बदलने पर लोकेशन दोबारा चुनें।/);
+  assert.match(html, /customerMapLink'\)\.href=googleMapsUrl\(a\.location_lat,a\.location_lng,''\)/);
+});
+
+test("Manual address edits invalidate stale saved GPS coordinates", () => {
+  assert.match(html, /function invalidateCustomerAddressLocation\(\)/);
+  assert.match(html, /\['address','district','state','pin'\]\.forEach/);
+  assert.match(html, /lat\.value='';lng\.value='';/);
+  assert.match(html, /पते में बदलाव हुआ है। सही लोकेशन के लिए GPS लोकेशन दोबारा चुनें।/);
+});
