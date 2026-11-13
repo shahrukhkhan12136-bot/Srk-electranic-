@@ -213,3 +213,8 @@ test('customer payment history does not duplicate audited manual payment summary
   assert.match(customerPaymentHistoryMigration, /not exists\s*\(\s*select 1 from public\.srk_manual_payment_entries mp\s*where mp\.booking_id=b\.id\s*\)/i);
   assert.match(customerPaymentHistoryMigration, /from public\.srk_manual_payment_entries mp\s*join customer_bookings b on b\.id\s*=\s*mp\.booking_id/i);
 });
+
+
+test('finalized manual refund history is labeled processed, not merely recorded', () => {
+  assert.match(customerPaymentHistoryMigration, /select mr\.id,'manual_refund'::text,mp\.booking_id,mr\.amount,\s*'processed'::text/i);
+});
