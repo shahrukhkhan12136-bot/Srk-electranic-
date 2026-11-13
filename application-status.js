@@ -25,7 +25,7 @@ exports.handler = async (event) => {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return json(500, { success: false, error: "स्थिति सेवा अभी कॉन्फ़िगर नहीं है।" });
 
   const authorization = event.headers?.authorization || event.headers?.Authorization || "";
-  const tokenMatch = /^Bearer\\s+([^\\s]+)$/i.exec(authorization);
+  const tokenMatch = /^Bearer\s+([^\s]+)$/i.exec(authorization);
   if (!tokenMatch) return json(401, { success: false, error: "आवेदन की स्थिति देखने के लिए पहले मोबाइल OTP सत्यापित करें।" });
 
   const clientIp = event.headers?.["x-nf-client-connection-ip"] || event.headers?.["X-Nf-Client-Connection-Ip"];
@@ -46,7 +46,7 @@ exports.handler = async (event) => {
     if (!user || !user.id || !user.phone || !user.phone_confirmed_at) {
       return json(403, { success: false, error: "आवेदन की स्थिति के लिए सत्यापित मोबाइल नंबर आवश्यक है।" });
     }
-    const digits = String(user.phone).replace(/\\D/g, "");
+    const digits = String(user.phone).replace(/\D/g, "");
     const phone = digits.length >= 10 ? digits.slice(-10) : "";
     if (!/^[0-9]{10}$/.test(phone)) return json(403, { success: false, error: "सत्यापित मोबाइल नंबर मान्य नहीं है।" });
 
