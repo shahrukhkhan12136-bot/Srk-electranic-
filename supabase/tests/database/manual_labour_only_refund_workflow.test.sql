@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(14);
+SELECT plan(15);
 SELECT has_table('public','srk_manual_refund_intents','Manual refund intent table exists');
 SELECT has_function('public','srk_admin_prepare_manual_booking_refund','Admin can prepare manual refund');
 SELECT has_function('public','srk_admin_record_manual_refund_transfer','Admin can durably record transfer evidence');
@@ -11,6 +11,7 @@ SELECT ok(position('srk_manual_payment_entries' in pg_get_functiondef('public.sr
 SELECT ok(position('payout_status=''blocked''' in pg_get_functiondef('public.srk_admin_prepare_manual_booking_refund(uuid)'::regprocedure))>0,'Pending payout is blocked while manual refund is prepared');
 SELECT ok(position('payout_was_blocked' in pg_get_functiondef('public.srk_admin_finalize_manual_booking_refund(uuid)'::regprocedure))>0,'Finalization verifies it owns the payout block marker');
 SELECT ok(position('transfer_reference' in pg_get_functiondef('public.srk_admin_record_manual_refund_transfer(uuid,text,text)'::regprocedure))>0,'Transfer reference is stored in a separate durable step');
+SELECT ok(position('MANUAL_REFUND_AUDIT_ENTRY_CONFLICT' in pg_get_functiondef('public.srk_admin_finalize_manual_booking_refund(uuid)'::regprocedure))>0,'Finalization verifies exact immutable manual refund audit entry');
 SELECT ok(position('status=''refunded''' in pg_get_functiondef('public.srk_admin_finalize_manual_booking_refund(uuid)'::regprocedure))>0,'Finalization updates booking refund status after transfer evidence');
 SELECT ok(position('cash_due_settlement' in pg_get_functiondef('public.srk_admin_prepare_manual_booking_refund(uuid)'::regprocedure))>0,'Cash pooled-fee settlement conflict is checked');
 SELECT ok(NOT has_table_privilege('authenticated','public.srk_manual_refund_intents','SELECT'),'Manual refund intents are private');
