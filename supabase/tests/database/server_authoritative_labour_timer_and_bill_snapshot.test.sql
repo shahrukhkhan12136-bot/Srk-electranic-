@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(102);
+SELECT plan(103);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -432,6 +432,13 @@ SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedur
 SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
   ILIKE '%wallet_type=''electrician''%',
   'Admin Platform Fee collected and due totals include only electrician wallet ledger entries');
+
+
+SELECT ok(
+  position('-- End the categorized labour-only branch before legacy quote compatibility.'
+    in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
+  'categorized labour-only payout returns before the separate legacy quote compatibility branch'
+);
 
 SELECT * FROM finish();
 ROLLBACK;
