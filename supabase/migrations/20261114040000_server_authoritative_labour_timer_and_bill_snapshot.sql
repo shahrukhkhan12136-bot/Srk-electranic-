@@ -1579,3 +1579,194 @@ BEGIN
 END;
 $function$;
 
+
+
+-- Disable the retired quote/material RPC surface. The timer-based labour bill
+-- replaces electrician-entered quote totals for new work.
+REVOKE ALL ON FUNCTION public.srk_get_my_assigned_booking_quote_details() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.srk_get_my_offer_price_details() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.srk_submit_booking_quote(uuid,numeric,numeric,text) FROM PUBLIC,anon,authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_get_my_assigned_cash_payment(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_uid uuid:=auth.uid();
+  v_profile_id uuid;
+  v_booking public.service_bookings%ROWTYPE;
+  v_bill public.srk_booking_labour_bills%ROWTYPE;
+  v_can_confirm boolean:=false;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  SELECT p.id INTO v_profile_id FROM public.electrician_profiles p
+  WHERE (p.user_id=v_uid OR p.auth_user_id=v_uid)
+    AND p.verification_status='approved' AND p.active=true LIMIT 1;
+  IF v_profile_id IS NULL THEN RAISE EXCEPTION 'Approved active electrician required' USING ERRCODE='42501'; END IF;
+  SELECT * INTO v_booking FROM public.service_bookings
+  WHERE id=p_booking_id AND assigned_electrician_id=v_profile_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Assigned booking not found' USING ERRCODE='42501'; END IF;
+
+  IF v_booking.selected_category IS NOT NULL THEN
+    SELECT * INTO v_bill FROM public.srk_booking_labour_bills WHERE booking_id=p_booking_id;
+    v_can_confirm:=v_booking.status='completed'
+      AND v_booking.completion_approval_status='approved'
+      AND lower(coalesce(v_booking.payment_method,'')) IN ('cash','नकद (cash)','नकद')
+      AND coalesce(v_booking.payment_status,'unpaid') IN ('unpaid','pending')
+      AND FOUND;
+    RETURN jsonb_build_object(
+      'booking_id',v_booking.id,'status',v_booking.status,
+      'payment_method',v_booking.payment_method,'payment_status',v_booking.payment_status,
+      'can_confirm_cash',v_can_confirm,
+      'billable_minutes',CASE WHEN v_can_confirm THEN v_bill.billable_minutes ELSE NULL END,
+      'electrician_payable',CASE WHEN v_can_confirm THEN v_bill.electrician_payable ELSE NULL END
+    );
+  END IF;
+
+  -- Legacy quote cash confirmation remains internally supported but no quote
+  -- amount or material breakdown is returned to the client.
+  v_can_confirm:=v_booking.status='completed'
+    AND v_booking.quote_status='approved'
+    AND lower(coalesce(v_booking.payment_method,'')) IN ('cash','नकद (cash)','नकद')
+    AND coalesce(v_booking.payment_status,'unpaid') IN ('unpaid','pending')
+    AND coalesce(v_booking.quoted_amount,0)>0;
+  RETURN jsonb_build_object(
+    'booking_id',v_booking.id,'status',v_booking.status,
+    'payment_method',v_booking.payment_method,'payment_status',v_booking.payment_status,
+    'can_confirm_cash',v_can_confirm
+  );
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_get_my_assigned_cash_payment(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_get_my_assigned_cash_payment(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_prepare_booking_refund(p_request_id uuid)
+RETURNS TABLE(
+  refund_record_id uuid,booking_id uuid,payment_id text,amount_paise bigint,
+  idempotency_key text,status text
+)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_request public.srk_booking_refund_requests%ROWTYPE;
+  v_booking public.service_bookings%ROWTYPE;
+  v_refund public.srk_razorpay_refunds%ROWTYPE;
+  v_payout public.srk_electrician_payouts%ROWTYPE;
+  v_bill public.srk_booking_labour_bills%ROWTYPE;
+  v_amount numeric(12,2);
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO v_request FROM public.srk_booking_refund_requests
+  WHERE id=p_request_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Refund request not found'; END IF;
+  IF v_request.status NOT IN ('approved','processing','unknown') THEN
+    RAISE EXCEPTION 'Refund request must be approved first' USING ERRCODE='55000';
+  END IF;
+  SELECT * INTO v_booking FROM public.service_bookings WHERE id=v_request.booking_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found'; END IF;
+  IF v_booking.payment_status<>'paid' OR v_booking.payment_verified_at IS NULL
+     OR v_booking.razorpay_payment_id IS NULL
+     OR v_booking.razorpay_payment_id !~ '^pay_[A-Za-z0-9]+$'
+     OR coalesce(v_booking.amount_paid,0)<=0 THEN
+    RAISE EXCEPTION 'Verified Razorpay payment required' USING ERRCODE='55000';
+  END IF;
+  v_amount:=round(v_booking.amount_paid,2);
+  IF v_amount<>v_request.amount THEN
+    RAISE EXCEPTION 'Refund amount changed since request' USING ERRCODE='55000';
+  END IF;
+
+  IF v_booking.selected_category IS NOT NULL THEN
+    IF v_booking.completion_approval_status<>'approved' THEN
+      RAISE EXCEPTION 'Customer-approved final labour bill required' USING ERRCODE='55000';
+    END IF;
+    SELECT * INTO v_bill FROM public.srk_booking_labour_bills WHERE booking_id=v_booking.id;
+    IF NOT FOUND OR v_amount<>v_bill.labour_amount THEN
+      RAISE EXCEPTION 'Paid amount does not match final labour bill' USING ERRCODE='55000';
+    END IF;
+  ELSE
+    IF v_booking.quote_status<>'approved' OR v_booking.quoted_amount IS NULL
+       OR v_booking.service_charge IS NULL OR v_booking.materials_amount IS NULL
+       OR v_amount<>round(v_booking.quoted_amount,2)
+       OR v_amount<>round(v_booking.service_charge+v_booking.materials_amount,2) THEN
+      RAISE EXCEPTION 'Paid amount does not match legacy approved quote' USING ERRCODE='55000';
+    END IF;
+  END IF;
+
+  SELECT * INTO v_refund FROM public.srk_razorpay_refunds
+  WHERE booking_id=v_booking.id FOR UPDATE;
+  IF FOUND THEN
+    IF v_refund.status='failed' THEN RAISE EXCEPTION 'Previous refund failed; reconcile first'; END IF;
+    UPDATE public.srk_booking_refund_requests
+    SET status=CASE WHEN v_refund.status='processed' THEN 'processed' ELSE 'processing' END,
+        refund_record_id=v_refund.id,updated_at=clock_timestamp(),
+        processed_at=CASE WHEN v_refund.status='processed' THEN coalesce(v_refund.processed_at,clock_timestamp()) ELSE NULL END
+    WHERE id=v_request.id;
+    RETURN QUERY SELECT v_refund.id,v_refund.booking_id,v_refund.payment_id,
+      v_refund.amount_paise,v_refund.idempotency_key,v_refund.status;
+    RETURN;
+  END IF;
+
+  SELECT * INTO v_payout FROM public.srk_electrician_payouts
+  WHERE booking_id=v_booking.id FOR UPDATE;
+  IF FOUND THEN
+    IF v_payout.payout_status='paid' THEN
+      RAISE EXCEPTION 'Electrician payout already paid; recovery required';
+    END IF;
+    IF v_payout.payout_status NOT IN ('pending','blocked') THEN
+      RAISE EXCEPTION 'Electrician payout state requires reconciliation';
+    END IF;
+    UPDATE public.srk_electrician_payouts
+    SET payout_status='blocked',payout_note='Customer refund in progress',updated_at=clock_timestamp()
+    WHERE id=v_payout.id;
+  END IF;
+
+  INSERT INTO public.srk_razorpay_refunds(
+    booking_id,payment_id,amount,amount_paise,idempotency_key,status,reason,admin_user_id,previous_payout_note
+  ) VALUES(
+    v_booking.id,v_booking.razorpay_payment_id,v_amount,round(v_amount*100)::bigint,
+    replace(gen_random_uuid()::text,'-',''),'requested',
+    left('Customer refund request: '||v_request.reason,250),auth.uid(),
+    CASE WHEN v_payout.id IS NOT NULL THEN v_payout.payout_note ELSE NULL END
+  ) RETURNING * INTO v_refund;
+  UPDATE public.srk_booking_refund_requests
+  SET status='processing',refund_record_id=v_refund.id,decided_by=auth.uid(),updated_at=clock_timestamp()
+  WHERE id=v_request.id;
+  RETURN QUERY SELECT v_refund.id,v_refund.booking_id,v_refund.payment_id,
+    v_refund.amount_paise,v_refund.idempotency_key,v_refund.status;
+END;
+$function$;
+
+-- Remove the material-specific column from authenticated PostgREST access.
+-- Admin direct writes are restricted to the exact columns used by the Admin UI.
+REVOKE SELECT ON TABLE public.service_bookings FROM authenticated;
+REVOKE SELECT (materials_amount) ON TABLE public.service_bookings FROM authenticated;
+REVOKE UPDATE ON TABLE public.service_bookings FROM authenticated;
+GRANT UPDATE(status,quoted_amount,address,district,state,pincode)
+  ON TABLE public.service_bookings TO authenticated;
+
+DO $block$
+DECLARE v_columns text;
+BEGIN
+  SELECT string_agg(format('%I',column_name),',' ORDER BY ordinal_position)
+  INTO v_columns
+  FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='service_bookings'
+    AND column_name<>'materials_amount';
+  EXECUTE 'GRANT SELECT ('||v_columns||') ON TABLE public.service_bookings TO authenticated';
+
+  REVOKE SELECT ON TABLE public.srk_electrician_payouts FROM authenticated;
+  REVOKE SELECT (materials_amount) ON TABLE public.srk_electrician_payouts FROM authenticated;
+  SELECT string_agg(format('%I',column_name),',' ORDER BY ordinal_position)
+  INTO v_columns
+  FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='srk_electrician_payouts'
+    AND column_name<>'materials_amount';
+  EXECUTE 'GRANT SELECT ('||v_columns||') ON TABLE public.srk_electrician_payouts TO authenticated';
+  REVOKE UPDATE ON TABLE public.srk_electrician_payouts FROM authenticated;
+END;
+$block$;
+
