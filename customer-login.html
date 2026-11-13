@@ -37,7 +37,7 @@
  const phoneInput=document.getElementById('phone');
  const otpInput=document.getElementById('otp');
  const area=document.getElementById('otpArea');
- let busy=false, resendAt=0, timer=null, hasSession=false, pendingOtpPhone=null;
+ let busy=false, operationSequence=0, resendAt=0, timer=null, hasSession=false, pendingOtpPhone=null;
  const sb=(cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&window.supabase)?window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY):null;
  async function syncSession(){
   if(!sb)return;
@@ -58,7 +58,7 @@
  function setMessage(t,bad=false){msg.textContent=t;msg.style.color=bad?'#b42318':'#176b3a';}
  phoneInput.addEventListener('input',()=>{
   if(pendingOtpPhone && phoneE164()!==pendingOtpPhone){
-   pendingOtpPhone=null;otpInput.value='';area.classList.add('hidden');
+   operationSequence++;pendingOtpPhone=null;otpInput.value='';area.classList.add('hidden');
    setMessage('मोबाइल नंबर बदल गया है। पुराने नंबर का OTP अमान्य है; cooldown पूरा होने पर नए नंबर पर OTP भेजें।',true);
   }
  });
@@ -66,7 +66,7 @@
   const logout=document.getElementById('logout');
   if(!sb||busy||!logout)return;
   busy=true;logout.disabled=true;
-  try{const {error}=await sb.auth.signOut();if(error)throw error;area.classList.add('hidden');otpInput.value='';pendingOtpPhone=null;phoneInput.value='';if(timer){clearInterval(timer);timer=null;}resendAt=0;send.textContent='OTP भेजें';setMessage('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');await syncSession();}
+  try{operationSequence++;busy=true;const {error}=await sb.auth.signOut();if(error)throw error;area.classList.add('hidden');otpInput.value='';pendingOtpPhone=null;phoneInput.value='';if(timer){clearInterval(timer);timer=null;}resendAt=0;send.textContent='OTP भेजें';setMessage('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');await syncSession();}
   catch(_){setMessage('लॉगआउट पूरा नहीं हो सका। कृपया दोबारा कोशिश करें।',true);}
   finally{busy=false;logout.disabled=false;}
  });
@@ -76,13 +76,13 @@
   if(!sb){setMessage('लॉगिन कॉन्फ़िगरेशन उपलब्ध नहीं है।',true);return;}
   if(busy)return;const phone=phoneE164();if(!phone){setMessage('कृपया सही 10 अंकों का भारतीय मोबाइल नंबर डालें।',true);return;}
   if(Date.now()<resendAt){setMessage('OTP दोबारा भेजने से पहले कृपया प्रतीक्षा करें।',true);return;}
-  busy=true;send.disabled=true;setMessage('OTP भेजा जा रहा है…');
-  try{const {error}=await sb.auth.signInWithOtp({phone});if(error)throw error;resendAt=Date.now()+60000;if(phoneE164()!==phone){pendingOtpPhone=null;otpInput.value='';area.classList.add('hidden');setMessage('OTP अनुरोध भेजा गया था, लेकिन मोबाइल नंबर बदल गया। कृपया cooldown पूरा होने पर सही नंबर पर नया OTP लें।',true);return;}pendingOtpPhone=phone;area.classList.remove('hidden');setMessage('OTP भेजने का अनुरोध सफल हुआ। SMS देखें और OTP खुद दर्ज करें।');let left=60;send.textContent='OTP दोबारा भेजें ('+left+' सेकंड)';timer=setInterval(()=>{left--;send.textContent=left>0?'OTP दोबारा भेजें ('+left+' सेकंड)':'OTP दोबारा भेजें';send.disabled=hasSession||left>0;if(left<=0){clearInterval(timer);timer=null;}},1000);}catch(e){setMessage('OTP नहीं भेजा जा सका। मोबाइल नंबर और SMS सेवा जाँचकर फिर कोशिश करें।',true);send.disabled=false;}finally{busy=false;}
+  busy=true;const operation=++operationSequence;send.disabled=true;setMessage('OTP भेजा जा रहा है…');
+  try{const {error}=await sb.auth.signInWithOtp({phone});if(operation!==operationSequence||phoneE164()!==phone)return;if(error)throw error;resendAt=Date.now()+60000;if(phoneE164()!==phone){pendingOtpPhone=null;otpInput.value='';area.classList.add('hidden');setMessage('OTP अनुरोध भेजा गया था, लेकिन मोबाइल नंबर बदल गया। कृपया cooldown पूरा होने पर सही नंबर पर नया OTP लें।',true);return;}pendingOtpPhone=phone;area.classList.remove('hidden');setMessage('OTP भेजने का अनुरोध सफल हुआ। SMS देखें और OTP खुद दर्ज करें।');let left=60;send.textContent='OTP दोबारा भेजें ('+left+' सेकंड)';timer=setInterval(()=>{left--;send.textContent=left>0?'OTP दोबारा भेजें ('+left+' सेकंड)':'OTP दोबारा भेजें';send.disabled=hasSession||left>0;if(left<=0){clearInterval(timer);timer=null;}},1000);}catch(e){if(operation===operationSequence)setMessage('OTP नहीं भेजा जा सका। मोबाइल नंबर और SMS सेवा जाँचकर फिर कोशिश करें।',true);}finally{if(operation===operationSequence){busy=false;send.disabled=hasSession||Date.now()<resendAt;}}
  });
  verify.addEventListener('click',async()=>{
   if(!sb||busy)return;const phone=phoneE164(),token=otpInput.value.trim();if(!phone||!/^\d{4,8}$/.test(token)){setMessage('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}if(!pendingOtpPhone||phone!==pendingOtpPhone){setMessage('यह OTP उसी मोबाइल नंबर के लिए मान्य है जिस पर भेजा गया था। पहले उसी नंबर का उपयोग करें या cooldown के बाद नया OTP लें।',true);return;}
-  busy=true;verify.disabled=true;setMessage('OTP सत्यापित हो रहा है…');
-  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका सुरक्षित ग्राहक सेशन इस वेबसाइट में सेव हो गया है। अब मेरी बुकिंग देखने के लिए मुख्य पेज खोलें।');setTimeout(()=>{window.location.href='/booking.html#customer-login';},1800);}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=hasSession;}
+  busy=true;const operation=++operationSequence;const phoneWasDisabled=phoneInput.disabled;phoneInput.disabled=true;verify.disabled=true;setMessage('OTP सत्यापित हो रहा है…');
+  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(operation!==operationSequence)return;if(error)throw error;setMessage('लॉगिन सफल! आपका सुरक्षित ग्राहक सेशन इस वेबसाइट में सेव हो गया है। अब मेरी बुकिंग देखने के लिए मुख्य पेज खोलें।');setTimeout(()=>{window.location.href='/booking.html#customer-login';},1800);}catch(e){if(operation===operationSequence)setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{if(operation===operationSequence){busy=false;phoneInput.disabled=phoneWasDisabled||hasSession;verify.disabled=hasSession;}}
  });
  if(!sb){send.disabled=true;setMessage('लॉगिन सेवा कॉन्फ़िगरेशन नहीं मिला।',true);}
 })();
