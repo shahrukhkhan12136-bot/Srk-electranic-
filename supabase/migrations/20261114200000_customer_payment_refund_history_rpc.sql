@@ -94,7 +94,7 @@ BEGIN
     UNION ALL
 
     SELECT mr.id,'manual_refund'::text,mp.booking_id,mr.amount,
-      'recorded'::text,NULL::text,mr.recorded_at,
+      'processed'::text,NULL::text,mr.recorded_at,
       'दर्ज किया गया रिफंड'::text
     FROM public.srk_manual_refund_entries mr
     JOIN public.srk_manual_payment_entries mp ON mp.id=mr.payment_entry_id
