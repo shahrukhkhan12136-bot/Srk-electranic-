@@ -1005,3 +1005,21 @@ test('labour rate snapshot constraint rejects partially NULL tuples under Postgr
   assert.match(constraint,/labour_rate_card_version_snapshot IS NOT NULL/);
   assert.match(constraint,/labour_rate8h_paise_snapshot IN \(89900,119900,159900,199900\)/);
 });
+
+
+test('saved-address save, delete and default mutations cannot update a different customer session', () => {
+  for(const name of ['saveCurrentBookingAddress','deleteSelectedSavedAddress','makeSelectedAddressDefault']){
+    const start=html.indexOf('async function '+name+'()');
+    const end=html.indexOf('\nfunction ',start+10);
+    const source=html.slice(start,end>start?end:start+5000);
+    assert.match(source,/const generation=customerSessionGeneration/);
+    assert.match(source,/if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
+    assert.match(source,/finally\{if\(customerSessionOperationIsCurrent\(generation\)\)/);
+    assert.match(source,/catch\(e\)\{if\(customerSessionOperationIsCurrent\(generation\)\)/);
+  }
+  const invalidatorStart=html.indexOf('function invalidateCustomerProfileAndSavedAddresses()');
+  const invalidatorEnd=html.indexOf('async function loadCustomerProfile',invalidatorStart);
+  const invalidator=html.slice(invalidatorStart,invalidatorEnd);
+  assert.match(invalidator,/saveButton\.disabled=false/);
+  assert.match(invalidator,/for\(const id of \['editSavedAddress','deleteSavedAddress','setDefaultSavedAddress'\]\)/);
+});
