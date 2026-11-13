@@ -526,8 +526,9 @@ async function customerRespondWorkCompletion(bookingId,response){
   alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग की वर्तमान स्थिति रीफ़्रेश करके दोबारा कोशिश करें।');
  }
 }
+let customerRefundSubmissionBusy=new Set();
 async function customerSubmitBookingRefund(bookingId){
- if(!customerSb)return;
+ if(!customerSb||customerRefundSubmissionBusy.has(bookingId))return;
  const reasonEl=document.getElementById('customerRefundReason_'+bookingId);
  const button=document.getElementById('customerRefundSubmit_'+bookingId);
  const reason=String(reasonEl?.value||'').trim();
@@ -536,6 +537,7 @@ async function customerSubmitBookingRefund(bookingId){
   reasonEl?.focus();
   return;
  }
+ customerRefundSubmissionBusy.add(bookingId);
  if(button)button.disabled=true;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_create_booking_refund_request',{p_booking_id:bookingId,p_reason:reason});
@@ -543,12 +545,14 @@ async function customerSubmitBookingRefund(bookingId){
   if(!data?.success)throw new Error('Refund request was not confirmed');
   alert('रिफंड अनुरोध दर्ज हो गया है। राशि: '+formatCustomerMoney(data.amount)+'। इसकी स्थिति My Bookings और Payments मेनू में दिखाई देगी।');
   await loadCustomerBookings();
+  await Promise.all([loadCustomerRefundHistory(),loadCustomerPaymentHistory(true)]);
  }catch(error){
   const message=String(error?.message||'');
   alert(message.includes('REFUND_REQUEST_ALREADY_SUBMITTED')||message.includes('REFUND_ALREADY_EXISTS')
     ?'इस बुकिंग के लिए रिफंड अनुरोध पहले से मौजूद है। कृपया उसकी स्थिति देखें या सहायता टीम से संपर्क करें।'
     :'रिफंड अनुरोध दर्ज नहीं हो सका। कृपया विवरण जाँचकर दोबारा कोशिश करें।');
  }finally{
+  customerRefundSubmissionBusy.delete(bookingId);
   if(button)button.disabled=false;
  }
 }
@@ -653,8 +657,13 @@ async function loadCustomerBookings() {
           +'</div>'
         : '';
       const canRequestRefund=String(row.payment_status||'').toLowerCase()==='paid'
+        && row.status==='completed'
+        && row.completion_approval_status==='approved'
+        && Boolean(row.selected_category)
+        && Boolean(bill)
         && Number(row.amount_paid||0)>0
-        && Boolean(row.payment_verified_at);
+        && Boolean(row.payment_verified_at)
+        && Math.round(Number(bill.labour_amount)*100)===Math.round(Number(row.amount_paid)*100);
       let refundMarkup='';
       if(refund){
         refundMarkup='<div class="job"><b>रिफंड अनुरोध:</b> '+customerEsc(customerRefundStatusText(refund.status))+
