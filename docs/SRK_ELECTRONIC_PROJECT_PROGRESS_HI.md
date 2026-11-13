@@ -1227,3 +1227,11 @@
 - Source CI run `43487870305` had 59/60 tests passing; the remaining failure was the old selector test still asserting `.limit(50)` after pagination moved to `.range(requestedOffset, requestedOffset+24)`. Updated this test assertion in commit `71808be961ea2045c39476ffb04fc5c358bff3f1`. The new pagination and stale-response regression tests were both green in that run. Fresh CI pending.
 
 - Verification: Source Regression run `43487953782` on code/test commit `71808be961ea2045c39476ffb04fc5c358bff3f1` completed **SUCCESS** after the legacy selector assertions were aligned. This covers the Customer Menu suite including both new support-selector race/pagination tests. Tracker-only follow-up commit `52cd09b2fca286434d4b9a5d1204258a6ecbae0d` has a separate queued workflow at the time of this note; no new app code after the successful test commit. Browser, real DB/RLS, pgTAP and final mobile/Desktop QA remain unverified.
+
+
+### 14 नवम्बर 2026 — Customer Support attachment signed-link failure visibility
+
+- Support thread source audit में एक UX/diagnostic gap मिला: attachment metadata RPC सफल होने पर भी individual Storage signed URL failure को `null` में बदल दिया जाता था, लेकिन ग्राहक को यह नहीं बताया जाता था कि फ़ाइल लिंक अस्थायी रूप से उपलब्ध नहीं है।
+- अब attachment object में `signedUrlError` flag रखा जाता है और disabled link के label में स्पष्ट हिन्दी संदेश दिखता है: “फ़ाइल लिंक अभी उपलब्ध नहीं; थ्रेड रीफ़्रेश करें”. इससे broken link पर click करने की कोशिश और silent failure से बचाव होता है; signed URL न होने पर link navigation disabled ही रहती है।
+- App commit: `753b8d430f1078d8e869e9ff9764cba7cd48bbc9`. Regression test commit: `c404237978bfbe1de337ad993c69ba2e10873a08`. Fresh CI pending; not marked passed.
+- No Storage policy/runtime change, no DB/Production changes. Real signed URL expiry/failure injection, database pgTAP and final mobile/Desktop QA remain pending.
