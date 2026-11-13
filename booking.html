@@ -383,6 +383,38 @@ function customerRefundStatusText(status){
  const key=String(status||'').toLowerCase();
  return customerRefundStatusLabels[key]||'स्थिति अपडेट';
 }
+async function customerRespondWorkCompletion(bookingId,response){
+ if(!customerSb)return;
+ let note=null;
+ if(response==='disputed'){
+  const field=document.getElementById('customerCompletionDispute_'+bookingId);
+  note=String(field?.value||'').trim();
+  if(note.length<20||note.length>1000){
+   alert('विवाद का कारण 20 से 1000 अक्षरों में लिखें।');
+   field?.focus();
+   return;
+  }
+ }
+ const messages={
+  approved:'क्या आपने काम जाँच लिया है और इसे पूरा स्वीकार करते हैं?',
+  rejected:'क्या काम अभी अधूरा है? इससे इलेक्ट्रिशियन का काम टाइमर फिर से चालू होगा।',
+  disputed:'क्या आप इस काम पर औपचारिक विवाद दर्ज करना चाहते हैं?'
+ };
+ if(!confirm(messages[response]||'क्या आप आगे बढ़ना चाहते हैं?'))return;
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_respond_work_completion',{
+   p_booking_id:bookingId,p_response:response,p_note:note
+  });
+  if(error)throw error;
+  if(!data?.success)throw new Error('Completion response was not confirmed');
+  alert(response==='approved'?'काम पूरा होने की पुष्टि दर्ज हो गई।':
+   response==='rejected'?'काम अभी अधूरा दर्ज हुआ है। इलेक्ट्रिशियन का टाइमर फिर शुरू होगा।':
+   'आपका विवाद दर्ज हो गया है और Admin समीक्षा करेगा।');
+  await loadCustomerBookings();
+ }catch(error){
+  alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग की वर्तमान स्थिति रीफ़्रेश करके दोबारा कोशिश करें।');
+ }
+}
 async function customerCancelBooking(bookingId){
  if(!customerSb)return;
  if(!confirm('क्या आप इस बुकिंग को रद्द करना चाहते हैं? यह सुविधा केवल बिना भुगतान और बिना इलेक्ट्रिशियन असाइन हुई बुकिंग के लिए है।'))return;
@@ -437,7 +469,7 @@ async function loadCustomerBookings() {
     : 'आपकी बुकिंग लोड हो रही हैं…';
   try {
     const { data, error } = await customerSb.from('service_bookings')
-      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,payment_verified_at,address,state,district,pincode,location_lat,location_lng,service_charge,quote_status,quote_note')
+      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,address,state,district,pincode,location_lat,location_lng,service_charge,quote_status,quote_note')
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -483,6 +515,21 @@ async function loadCustomerBookings() {
         ? '<button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\')">बुकिंग रद्द करें</button>'
         : '';
       const refund=refundMap.get(row.id);
+      const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
+        ? '<div class="job"><b>इलेक्ट्रिशियन ने काम पूरा होने की सूचना दी है।</b><p class="small">कृपया काम जाँचें। पूरा होने पर स्वीकार करें; अधूरा होने पर अस्वीकार करें या विवाद दर्ज करें।</p>'+
+          '<button type="button" onclick="customerRespondWorkCompletion(\''+customerEsc(row.id)+'\',\'approved\')">काम पूरा स्वीकार करें</button> '+
+          '<button type="button" onclick="customerRespondWorkCompletion(\''+customerEsc(row.id)+'\',\'rejected\')">काम अभी अधूरा है</button>'+
+          '<label for="customerCompletionDispute_'+customerEsc(row.id)+'">विवाद का कारण (20–1000 अक्षर)</label>'+
+          '<textarea id="customerCompletionDispute_'+customerEsc(row.id)+'" minlength="20" maxlength="1000" placeholder="काम में क्या समस्या है, लिखें"></textarea>'+
+          '<button type="button" onclick="customerRespondWorkCompletion(\''+customerEsc(row.id)+'\',\'disputed\')">विवाद दर्ज करें</button></div>'
+        : row.completion_approval_status==='disputed'
+          ? '<p class="small" role="status">काम पूरा होने पर आपका विवाद Admin समीक्षा में है।</p>'
+          : '';
+      const labourMarkup=row.quote_status==='approved'&&Number(row.quoted_amount||0)>0
+        ? '<div class="job"><b>स्वीकृत इलेक्ट्रिशियन मेहनताना: '+customerEsc(formatCustomerMoney(row.quoted_amount))+'</b>'+
+          (row.quote_note?'<p class="small">'+customerEsc(row.quote_note)+'</p>':'')+
+          '<p class="small">यह राशि केवल मेहनताना है। सामग्री इस राशि में शामिल नहीं है; सामग्री ग्राहक स्वयं खरीदता है।</p></div>'
+        : '';
       const canRequestRefund=String(row.payment_status||'').toLowerCase()==='paid'
         && Number(row.amount_paid||0)>0
         && Boolean(row.payment_verified_at);
@@ -509,10 +556,10 @@ async function loadCustomerBookings() {
       '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
       (['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id&&row.payment_status!=='paid'&&!String(row.payment_method||'').toLowerCase().includes('razorpay') ? '<div class="job"><b>भुगतान का चुना हुआ तरीका:</b> '+customerEsc(row.payment_method||'नकद (Cash)')+'<p class="small">यदि इस बुकिंग के लिए Online भुगतान जरूरी हो, तो आप यहाँ स्वयं Online चुन सकते हैं। आपकी अनुमति के बिना भुगतान तरीका नहीं बदलेगा।</p><button type="button" onclick="customerChangePaymentMethod(\''+row.id+'\')">Online भुगतान चुनें</button></div>' : '') +
       (row.status==='completed'&&row.quote_status==='approved'&&row.payment_status!=='paid'&&String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'?'<button type="button" onclick="customerPayBooking(\''+row.id+'\','+Number(row.quoted_amount||0)+')">🔒 काम पूरा — अब ऑनलाइन भुगतान करें</button>':'') +
-      (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
+      (row.payment_status === 'paid' && row.amount_paid != null && row.payment_verified_at ? '<p><b>सत्यापित भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
       '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
       (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (row.status === 'completed' ? '<p class="small">काम पूरा हो चुका है। इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा।</p>' : (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>')) : '') +
-      cancelMarkup+refundMarkup+
+      labourMarkup+completionMarkup+cancelMarkup+refundMarkup+
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
