@@ -20,13 +20,13 @@ test('accepted customer-electrician direct contact remains available after compl
 });
 
 test('customer online payment preference change is guarded against duplicate submissions and reports refresh separately', () => {
-  const start = html.indexOf('const customerPaymentMethodChangeBusy=new Set();');
+  const start = html.indexOf('const customerPaymentMethodChangeBusy=new Map();');
   const end = html.indexOf('function setCustomerProfileStatus', start);
   assert.ok(start >= 0 && end > start);
   const handler = html.slice(start, end);
   assert.ok(handler.includes('customerPaymentMethodChangeBusy.has(id)'));
-  assert.ok(handler.includes('customerPaymentMethodChangeBusy.add(id)'));
-  assert.ok(handler.includes('customerPaymentMethodChangeBusy.delete(id)'));
+  assert.ok(handler.includes('customerPaymentMethodChangeBusy.set(id,operationToken)'));
+  assert.ok(handler.includes('customerPaymentMethodChangeBusy.get(id)===operationToken'));
   assert.ok(handler.includes('button.disabled=true'));
   assert.ok(handler.includes("srk_customer_change_payment_method"));
   assert.ok(handler.includes('saved=true'));
@@ -210,13 +210,13 @@ test('customer avatar signed-url responses cannot overwrite a newer profile sele
 
 
 test('customer work start and completion responses reject duplicate submissions and always release guards', () => {
-  assert.match(html,/let customerWorkCompletionResponseBusy=new Set\(\)/);
+  assert.match(html,/let customerWorkCompletionResponseBusy=new Map\(\)/);
   const completionStart=html.indexOf('async function customerRespondWorkCompletion(bookingId,response)');
   const completionEnd=html.indexOf('let customerRefundSubmissionBusy',completionStart);
   const completion=html.slice(completionStart,completionEnd);
   assert.match(completion,/customerWorkCompletionResponseBusy\.has\(bookingId\)/);
-  assert.ok(completion.indexOf("if(!confirm(messages[response]")<completion.indexOf('customerWorkCompletionResponseBusy.add(bookingId)'));
-  assert.match(completion,/finally\{customerWorkCompletionResponseBusy\.delete\(bookingId\);\}/);
+  assert.ok(completion.indexOf("if(!confirm(messages[response]")<completion.indexOf('customerWorkCompletionResponseBusy.set(bookingId,operationToken)'));
+  assert.match(completion,/finally\{if\(customerSessionOperationIsCurrent\(generation\)&&customerWorkCompletionResponseBusy\.get\(bookingId\)===operationToken\)customerWorkCompletionResponseBusy\.delete\(bookingId\);\}/);
   assert.match(html,/let customerWorkStartResponseBusy=new Set\(\)/);
   const start=html.indexOf('async function customerRespondWorkStart(bookingId,response)');
   const end=html.indexOf('function formatCustomerTimer',start);
@@ -679,8 +679,8 @@ test('customer completion controls match the server accept reject and dispute co
   assert.ok(source.includes("note.length<20||note.length>1000"));
   assert.ok(source.includes("p_booking_id:bookingId,p_response:response,p_note:note"));
   assert.ok(source.includes("if(!data?.success)"));
-  assert.ok(source.includes("customerWorkCompletionResponseBusy.add(bookingId)"));
-  assert.ok(source.includes("finally{customerWorkCompletionResponseBusy.delete(bookingId);}"));
+  assert.ok(source.includes("customerWorkCompletionResponseBusy.set(bookingId,operationToken)"));
+  assert.ok(source.includes("finally{if(customerSessionOperationIsCurrent(generation)&&customerWorkCompletionResponseBusy.get(bookingId)===operationToken)customerWorkCompletionResponseBusy.delete(bookingId);}"));
   assert.ok(source.includes('let responseConfirmed=false;'));
   assert.ok(source.includes('responseConfirmed=true;'));
   assert.ok(source.includes('await loadCustomerBookings();'));
@@ -814,7 +814,7 @@ test('customer logout invalidates booking payment and refund history requests', 
 test('customer mutations stop stale UI work after auth session changes', () => {
   assert.match(html, /let customerSessionGeneration=0/);
   assert.match(html, /function customerSessionOperationIsCurrent\(generation\)/);
-  assert.match(html, /onAuthStateChange\(\(event\) => \{ if\(event==='SIGNED_OUT'\|\|event==='SIGNED_IN'\|\|event==='USER_UPDATED'\)\{customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerBookingHistory\(\);invalidateCustomerPaymentHistory\(\);invalidateCustomerRefundHistory\(\);invalidateCustomerProfileAndSavedAddresses\(\);invalidateCustomerSupportPrivateState\(\);\}/);
+  assert.match(html, /onAuthStateChange\(\(event\) => \{ if\(event==='SIGNED_OUT'\|\|event==='SIGNED_IN'\|\|event==='USER_UPDATED'\)\{customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerBookingHistory\(\);invalidateCustomerPaymentHistory\(\);invalidateCustomerRefundHistory\(\);invalidateCustomerProfileAndSavedAddresses\(\);invalidateCustomerSupportPrivateState\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);\}/);
   assert.match(html, /if\(!customerSessionOperationIsCurrent\(operationGeneration\)\)return;/);
   assert.match(html, /finally\{if\(customerSessionOperationIsCurrent\(operationGeneration\)\)/);
   assert.match(html, /customerSupportMessageBusy=false;customerSupportComplaintCreateBusy=false/);
