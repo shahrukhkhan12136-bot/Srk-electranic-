@@ -32,3 +32,4 @@ jobs:
           npm run test:timeline
           npm run test:customer-menu
           npm run test:electrician-portal
+          npm run test:admin-portal
