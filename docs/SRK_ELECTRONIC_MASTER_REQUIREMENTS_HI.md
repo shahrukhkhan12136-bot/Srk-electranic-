@@ -2259,3 +2259,63 @@ G. Security review, migration lineage reconciliation, rollback plan, explicit us
 - Verified in Feature Branch: legacy quote-based work flow, quote-based order/verify/webhook, labour-only cash fee settlement logic, limited refund compensations and payout blockers.
 - Not present/verified in Feature Branch: customer-approved timer lifecycle, immutable timer bill snapshot, unified atomic payment finalizer, refund allocation ledger, Route transfer orchestrator/reversal, complete paid-payout recovery.
 - No tests were executed in this read-only source review. No code/migration/UI was changed in this section; only this requirements audit record is being added.
+
+
+## 17.59 — Admin, Customer, Electrician Earnings, Wallet and Receipt/Report Dependency Audit (13 Nov 2026)
+
+यह Feature Branch के tracked source और migration definitions का read-only audit है। UI/source में किसी सुविधा का न मिलना Production में उसका न होना सिद्ध नहीं करता; live status अलग verify करना होगा।
+
+### 1. Admin Panel — legacy amount/status और payout/report dependencies
+- `admin.html` booking list में `quoted_amount`, `payment_status`, `amount_paid`, Razorpay IDs और booking status पढ़ता है।
+- Admin booking edit path status तथा `quoted_amount` सीधे table update करता है; paid amount edit रोकता है और Razorpay-linked payment status direct बदलने से रोकता है। यह फिर भी legacy amount/status editing path है; timer frozen bill के लिए dedicated reasoned adjustment/event RPC नहीं।
+- Manual payment के लिए `srk_admin_record_manual_payment` RPC caller मौजूद है; लेकिन UI पहले booking को Completed कराकर manual payment दर्ज करने का पुराना क्रम अपनाता है।
+- Admin payout list `srk_electrician_payouts` पढ़ती है; Paid marking dedicated RPC `srk_admin_mark_electrician_payout_paid` से है और वास्तविक UTR/reference माँगती है।
+- Admin wallet overview `srk_admin_wallet_overview()` और payout panel दिखते हैं; इस UI में Refund management और Webhook Exception queue caller/section नहीं मिला (Section 17.55–17.56)।
+- Admin commission report RPC का स्रोत paid+completed booking `amount_paid` और `commission_amount` जोड़ता है; timer minutes, bill snapshot, fee allocations, cash fee due, refund/Route reversal और paid-payout recovery का consolidated statement नहीं।
+
+### 2. Customer Booking — quote total, payment status, amount paid
+- `booking.html` customer booking history में `quoted_amount`, `service_charge`, `quote_status`, `amount_paid` और `payment_status` दिखाता/पढ़ता है।
+- Online pay action केवल completed + approved quote booking के लिए है और client-side amount `quoted_amount` से आता है।
+- Paid UI केवल `amount_paid` और booking reference दिखाता है; इस inspected file में itemized immutable bill/receipt, labour minutes, rate tier, material line items, Platform Fee, refund allocations, Razorpay refund ID, Route reversal state या downloadable receipt flow नहीं मिला।
+- Customer स्वयं Cash से Online बदलने का RPC path है; यह payment method preference update है, bill snapshot/payment capture नहीं।
+
+### 3. Electrician Earnings, Fee Due and Wallet
+- `electrician.html` earnings `srk_get_my_earnings()` से पढ़ता है और `amount_received`, `commission_amount`, `electrician_earning` आधारित totals दिखाता है; ये legacy report fields हैं।
+- Payout history `srk_electrician_payouts` से `electrician_payable`, payout status, method, reference और paid_at पढ़ती है।
+- Platform Fee due summary `srk_get_my_platform_fee_summary()` से अलग दिखता है; cash due, reversal और online settlement entries के labels मौजूद हैं।
+- Wallet summary `srk_get_my_wallet_summary()` और bank-link list पढ़ी जाती है; UI text और wallet foundation migration के अनुसार bank payouts disabled हैं जब तक Route linked-account onboarding/live approval पूरा न हो। Wallet read पर account row create होने का side effect migration में मौजूद है; इसे accounting ledger posting न समझें।
+- Wallet foundation migration कहती है कि customer top-up/electrician payouts provider flow approval तक enabled नहीं; wallet ledger अलग है, जबकि payout table और Platform Fee ledger के बीच पूर्ण unified journal/reconciliation का प्रमाण नहीं।
+- Earnings display में पुराने `commission_amount` को “Platform Fee” label से दिखाया गया है; timer snapshot से गणना का path अभी नहीं।
+
+### 4. Receipt / invoice / report coverage
+- Inspected Customer और Electrician pages में formal immutable bill/receipt generator या receipt download/share component नहीं मिला।
+- Admin commission report और wallet overview मौजूद हैं, लेकिन वे timer billing + labour/material split + fee + refunds + Route reversals + payouts का एक unified financial statement नहीं।
+- इस audit में अलग receipt/invoice source file tracked tree में नहीं मिली। यह tracked Feature Branch source तक सीमित निष्कर्ष है; external provider receipts/other branches इससे बाहर हैं।
+
+### 5. Required migration map
+| क्षेत्र | वर्तमान dependency | Timer Billing में आवश्यक बदलाव |
+|---|---|---|
+| Admin booking editor | `status`, `quoted_amount` direct update | narrow reasoned RPC; frozen bill immutable; append-only adjustment |
+| Admin manual payment | completed quote + manual payment RPC | bill snapshot ID/hash + exact paise + cash/online evidence |
+| Admin payout | legacy payout amount/status | bill allocation + fee settlement + refund/recovery reconciliation |
+| Admin commission report | `amount_paid`, `commission_amount` | labour-only fee lots, material pass-through, refund/reversal and payout statement |
+| Customer history | quote fields and amount_paid | immutable itemized bill, actual minutes, rate, materials, payment/refund status |
+| Customer receipt | basic paid amount/reference only | server-generated receipt with unique ID, snapshot hash, payment/refund/fee details |
+| Electrician earnings | amount_received/commission_amount/electrician_earning | frozen bill and actual fee ledger allocations |
+| Electrician wallet | separate wallet summary/ledger + payout table | approved accounting model; no silent wallet debt/negative balance |
+| Platform Fee due | separate cash fee ledger | snapshot-based due and compensating entries, partial refund aware |
+| Refund/Route | separate/incomplete paths | linked allocation and independent provider status reconciliation |
+
+### 6. Priority blockers before implementation sign-off
+1. One canonical bill snapshot must feed Customer receipt, Electrician earnings, Admin reports, payment order, fee ledger, payout and refund.
+2. Admin cannot edit frozen amount/status through generic table update; controlled adjustment must preserve original and reason/actor/audit.
+3. Customer receipt and Electrician earning statements must distinguish labour, materials, Platform Fee, previous cash-fee settlement, net payable and refunds.
+4. Reconcile wallet ledger, payout table, platform fee ledger and Route transfer ledger; define which is accounting source of truth and avoid double counting.
+5. Define receipt number, version/hash, tax/GST treatment if applicable, refund credit/debit notes and historical quote receipt compatibility before coding.
+6. Keep bank payout disabled until approved provider onboarding and live permissions; Test Mode does not prove live settlement.
+7. No destructive quote-column/function cleanup until every historical reader, report and refund path has a compatibility plan.
+
+### 7. निष्कर्ष
+- Feature Branch में Admin payout/manual-payment, Customer booking/payment history, Electrician earnings, Platform Fee due summary और wallet overview के हिस्से मौजूद हैं।
+- ये अभी quote-era booking amount और अलग-अलग ledger/report structures पर आधारित हैं; complete Timer Bill/Receipt/Refund/Route statement नहीं।
+- इस section में कोई UI, RPC, SQL migration, schema, data, provider setting या deployment नहीं बदला; केवल audit documentation जोड़ी जा रही है।
