@@ -3403,3 +3403,21 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - OTP length compatibility भी pending: Supabase Phone Sign-in example 6 digits दिखाता है, app input 4–8 स्वीकारता है; 6-digit value उस range में आती है, लेकिन actual provider-issued length और end-to-end behavior test account पर verify करना बाकी है।
 - No source code, Auth setting, CAPTCHA provider, secret, database, customer account/session, SMS request or deployment changed.
 - **Status: In Progress.** Source audit complete for this sub-area; Dashboard CAPTCHA state, project OTP values and approved test-phone runtime validation remain pending.
+
+
+## 17.96 — Supabase Auth Rate-Limit Documentation Cross-check और Safe Test Strategy (13 नवम्बर 2026)
+
+- Checklist item: **14.1.1** — Customer OTP expiry, resend limits, wrong-attempt limits, abuse/rate limiting, secure session और logout।
+- Supabase के वर्तमान Rate Limits दस्तावेज़ (Updated 26 Oct 2026) को दोबारा cross-check किया:
+  - SMS messages sent by Supabase Auth: documented default **30 SMS/hour per project**; customizable.
+  - Same-user OTP resend: documented default **60 seconds** before another request is allowed; customizable.
+  - Sign-up/sign-in request bucket: documented default **30 requests per 5 minutes per IP**, burst capacity up to 30; customizable.
+  - OTP/token verification endpoint: documented default **30 requests per 5 minutes per IP**, burst capacity up to 30; customizable.
+  - Exceeded limits return HTTP **429 Too Many Requests**.
+- ये अलग-अलग buckets/scopes हैं। Client page का 60-second timer केवल UI-level control है; Supabase Auth server-side rate-limit buckets अलग से लागू होते हैं। इनमें से कोई भी documented default हमारे Production project की actual configured value का प्रमाण नहीं है।
+- Phone Sign-in docs OTP validity configurable बताती हैं; Hosted project की वास्तविक auth.rate_limits.otp.validity और issued OTP length अभी Dashboard/Management API से read-only verify नहीं हुई। Documentation snippets में 6-digit PIN example है; current app 4–8 digits स्वीकारता है, इसलिए controlled test account पर compatibility verify करना बाकी है।
+- CAPTCHA अभी भी recommended protection है। दोनों customer OTP pages में CAPTCHA widget/token नहीं मिला; Dashboard में CAPTCHA enforcement status unknown है। CAPTCHA को बिना approved provider, site key, secret और test/staging validation के enable या source में wire नहीं किया।
+- Safe next test strategy: Supabase Auth में dedicated test phone number + fixed test OTP configure कर के SMS delivery/cost को avoid किया जा सकता है (Supabase Phone Sign-in docs में test phone numbers का supported workflow है)। यह केवल Admin-approved test account/config में किया जाना चाहिए; real customer number या live OTP पर abuse/expiry tests नहीं चलेंगे।
+- Connected Supabase integration में Auth config GET/Management API read action अब भी उपलब्ध नहीं मिला; कोई Management API access token उपलब्ध/authorized नहीं। Dashboard access के बिना Production values अनुमानित नहीं की जाएँगी।
+- No source code, Auth setting, CAPTCHA provider, secret, database, customer account/session, SMS request, payment या deployment changed.
+- **Status: In Progress.** Documentation cross-check complete; Production Auth values, CAPTCHA state, controlled OTP negative/rate-limit tests और session lifecycle E2E अभी pending हैं।
