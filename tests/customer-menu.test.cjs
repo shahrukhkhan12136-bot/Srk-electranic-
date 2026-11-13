@@ -457,3 +457,14 @@ test('customer profile save invalidates pending profile loads and blocks overlap
   assert.ok(save.includes('++customerProfileLoadSequence;'));
   assert.ok(save.includes('finally{button.disabled=false;}'));
 });
+
+
+test('saved address selector and edit action stay locked during address save', () => {
+  const start=html.indexOf('async function saveCurrentBookingAddress()');
+  const end=html.indexOf('\\nfunction editSelectedSavedAddress()',start);
+  const source=html.slice(start,end);
+  assert.ok(source.includes("const select=document.getElementById('savedAddressSelect');"));
+  assert.ok(source.includes("const editButton=document.getElementById('editSavedAddress');"));
+  assert.ok(source.includes('button.disabled=true;select.disabled=true;editButton.disabled=true;'));
+  assert.ok(source.includes('select.disabled=selectWasDisabled;editButton.disabled=editWasDisabled;'));
+});
