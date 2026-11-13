@@ -7,6 +7,7 @@
     "razorpay": "^2.9.6"
   },
   "scripts": {
-    "test:otp": "node --test tests/otp-source.test.cjs"
+    "test:otp": "node --test tests/otp-source.test.cjs",
+    "test:labour": "node --test tests/labour-billing.test.cjs"
   }
 }
