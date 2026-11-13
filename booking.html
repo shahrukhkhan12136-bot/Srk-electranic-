@@ -1269,14 +1269,19 @@ function renderCustomerSupportThread(rows) {
  });
  box.scrollTop=box.scrollHeight;
 }
-async function loadCustomerSupportAttachments(complaintId) {
+async function loadCustomerSupportAttachments(complaintId,generation=customerSessionGeneration) {
+ const isCurrent=()=>customerSessionOperationIsCurrent(generation);
  const {data,error}=await customerSb.rpc('srk_customer_list_complaint_message_attachments',{p_complaint_id:complaintId});
+ if(!isCurrent())return [];
  if(error)throw error;
  const rows=Array.isArray(data)?data:[];
- return await Promise.all(rows.map(async a=>{
+ const signedRows=await Promise.all(rows.map(async a=>{
+  if(!isCurrent())return null;
   const {data:signed,error:signedError}=await customerSb.storage.from('srk-customer-support').createSignedUrl(a.storage_path,300);
+  if(!isCurrent())return null;
   return {...a,signedUrl:signedError?null:signed?.signedUrl||null,signedUrlError:Boolean(signedError)};
  }));
+ return isCurrent()?signedRows.filter(Boolean):[];
 }
 let customerSupportBookingsLoadSequence=0;
 let customerSupportBookingsOffset=0;
@@ -1287,6 +1292,8 @@ async function loadCustomerSupportBookings(reset=true) {
  const more=document.getElementById('customerSupportBookingsMore');
  if(!customerSb||!select||!more||(!reset&&customerSupportBookingsBusy))return;
  const sequence=++customerSupportBookingsLoadSequence;
+ const generation=customerSessionGeneration;
+ const isCurrent=()=>isCurrent()&&customerSessionOperationIsCurrent(generation);
  const requestedOffset=reset?0:customerSupportBookingsOffset;
  const wasDisabled=customerSupportBookingsBusy?customerSupportBookingsWasDisabled:select.disabled;
  if(!customerSupportBookingsBusy)customerSupportBookingsWasDisabled=select.disabled;
@@ -1295,7 +1302,7 @@ async function loadCustomerSupportBookings(reset=true) {
  if(reset){customerSupportBookingsOffset=0;more.style.display='none';select.replaceChildren(new Option('बुकिंग लोड हो रही हैं…',''));}
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
-  if(sequence!==customerSupportBookingsLoadSequence)return;
+  if(!isCurrent())return;
   if(sessionError)throw sessionError;
   const session=sessionData?.session;
   if(!session){select.replaceChildren(new Option('OTP लॉगिन आवश्यक है',''));more.style.display='none';return;}
@@ -1305,7 +1312,7 @@ async function loadCustomerSupportBookings(reset=true) {
    .order('created_at',{ascending:false})
    .order('id',{ascending:false})
    .range(requestedOffset,requestedOffset+24);
-  if(sequence!==customerSupportBookingsLoadSequence)return;
+  if(!isCurrent())return;
   if(error)throw error;
   const rows=Array.isArray(data)?data:[];
   if(reset)select.replaceChildren(new Option(rows.length?'बुकिंग चुनें':'अभी कोई बुकिंग उपलब्ध नहीं है',''));
@@ -1317,12 +1324,12 @@ async function loadCustomerSupportBookings(reset=true) {
   customerSupportBookingsOffset=requestedOffset+rows.length;
   more.style.display=rows.length===25?'block':'none';
  } catch(error) {
-  if(sequence===customerSupportBookingsLoadSequence){
+  if(isCurrent()){
    if(reset)select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी — रीफ़्रेश करें',''));
    supportStatus('शिकायत के लिए बुकिंग लोड नहीं हो सकी। कृपया रीफ़्रेश करें।',true);
   }
  } finally {
-  if(sequence===customerSupportBookingsLoadSequence){
+  if(isCurrent()){
    customerSupportBookingsBusy=false;select.disabled=wasDisabled;more.disabled=false;
   }
  } 
@@ -1389,6 +1396,8 @@ async function loadCustomerSupportComplaints() {
  if(customerSupportComplaintsBusy)return;
  customerSupportComplaintsBusy=true;
  const sequence=++customerSupportComplaintsLoadSequence;
+ const generation=customerSessionGeneration;
+ const isCurrent=()=>isCurrent()&&customerSessionOperationIsCurrent(generation);
  const select=document.getElementById('customerSupportComplaint');
  const refresh=document.getElementById('customerSupportRefresh');
  const wasDisabled=select.disabled;
@@ -1396,7 +1405,7 @@ async function loadCustomerSupportComplaints() {
  supportStatus('आपकी शिकायतें लोड हो रही हैं…');
  try {
   const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');
-  if(sequence!==customerSupportComplaintsLoadSequence)return;
+  if(!isCurrent())return;
   if(error)throw error;
   customerSupportComplaints=Array.isArray(data)?data:[];
   select.replaceChildren(new Option('शिकायत चुनें',''));
@@ -1409,22 +1418,40 @@ async function loadCustomerSupportComplaints() {
   select.value=customerSupportSelectedId||'';
   if(customerSupportSelectedId) await loadCustomerSupportMessages();
   else {renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
- } catch(e){if(sequence===customerSupportComplaintsLoadSequence)supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
- finally{if(sequence===customerSupportComplaintsLoadSequence){customerSupportComplaintsBusy=false;select.disabled=wasDisabled;if(refresh)refresh.disabled=false;}}
+ } catch(e){if(isCurrent())supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
+ finally{if(isCurrent()){customerSupportComplaintsBusy=false;select.disabled=wasDisabled;if(refresh)refresh.disabled=false;}}
+}
+function invalidateCustomerSupportPrivateState(){
+ ++customerSupportBookingsLoadSequence;customerSupportBookingsBusy=false;customerSupportBookingsOffset=0;
+ const bookingSelect=document.getElementById('customerSupportBooking');
+ const bookingMore=document.getElementById('customerSupportBookingsMore');
+ if(bookingSelect){bookingSelect.replaceChildren(new Option('नई लॉगिन के लिए बुकिंग लोड होंगी',''));bookingSelect.disabled=false;}
+ if(bookingMore){bookingMore.style.display='none';bookingMore.disabled=false;}
+ ++customerSupportComplaintsLoadSequence;customerSupportComplaintsBusy=false;
+ customerSupportComplaints=[];customerSupportSelectedId=null;
+ const complaintSelect=document.getElementById('customerSupportComplaint');
+ if(complaintSelect){complaintSelect.replaceChildren(new Option('शिकायत चुनें',''));complaintSelect.disabled=false;}
+ const refresh=document.getElementById('customerSupportRefresh');if(refresh)refresh.disabled=false;
+ ++customerSupportThreadLoadSequence;customerSupportAttachments=[];
+ renderCustomerSupportThread([]);
+ supportStatus('लॉगिन बदल गया है। आपकी नई शिकायतें और संदेश फिर से लोड होंगे।');
 }
 let customerSupportThreadLoadSequence=0;
 async function loadCustomerSupportMessages() {
  const id=document.getElementById('customerSupportComplaint').value;
  const sequence=++customerSupportThreadLoadSequence;
+ const generation=customerSessionGeneration;
+ const isCurrent=()=>sequence===customerSupportThreadLoadSequence&&customerSessionOperationIsCurrent(generation);
  if(!id){customerSupportSelectedId=null;customerSupportAttachments=[];renderCustomerSupportThread([]);return;}
  customerSupportSelectedId=id;
  try {
   const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id});
+  if(!isCurrent())return;
   if(error)throw error;
  let attachments=[];
  let attachmentLoadFailed=false;
- try{attachments=await loadCustomerSupportAttachments(id);}catch(_){attachmentLoadFailed=true;}
- if(sequence!==customerSupportThreadLoadSequence||document.getElementById('customerSupportComplaint').value!==id)return;
+ try{attachments=await loadCustomerSupportAttachments(id,generation);}catch(_){attachmentLoadFailed=true;}
+ if(!isCurrent()||document.getElementById('customerSupportComplaint').value!==id)return;
  customerSupportAttachments=attachments;
  renderCustomerSupportThread(Array.isArray(data)?data:[]);
  const complaint=customerSupportComplaints.find(c=>c.id===id);
@@ -1432,7 +1459,7 @@ async function loadCustomerSupportMessages() {
    ?'शिकायत की स्थिति: '+(complaint?.status||'अपडेट उपलब्ध नहीं')+'। कुछ संलग्न फ़ाइलें अभी लोड नहीं हो सकीं; रीफ़्रेश करें।'
    :complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):'');
  } catch(error) {
-  if(sequence===customerSupportThreadLoadSequence&&document.getElementById('customerSupportComplaint').value===id){
+  if(isCurrent()&&document.getElementById('customerSupportComplaint').value===id){
    customerSupportAttachments=[];
    renderCustomerSupportThread([]);
    supportStatus('इस शिकायत के संदेश अभी लोड नहीं हो सके। आपकी शिकायत सुरक्षित है; कृपया रीफ़्रेश करके दोबारा कोशिश करें।',true);
@@ -1665,7 +1692,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();invalidateCustomerProfileAndSavedAddresses();} setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();invalidateCustomerProfileAndSavedAddresses();invalidateCustomerSupportPrivateState();} setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerPhone').addEventListener('input', () => {
     if (customerPendingOtpPhone && customerPhoneE164() !== customerPendingOtpPhone) {
       customerPendingOtpPhone = null;
