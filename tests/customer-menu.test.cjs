@@ -845,3 +845,21 @@ test('customer booking submission stops stale responses after logout or account 
   assert.match(source, /catch \(err\) \{\s*if\(operationIsCurrent\(\)\)alert/);
   assert.match(source, /finally \{ if\(operationIsCurrent\(\)\)\{customerBookingSubmissionBusy=false/);
 });
+
+
+test('customer booking timeline explains generic status-change events using their actual status', () => {
+  assert.match(html, /function customerBookingEventText\(eventType,newStatus\)/);
+  assert.match(html, /if\(type==='booking_work_state_changed'\)/);
+  for (const phrase of [
+    'इलेक्ट्रिशियन की उपलब्धता \/ ऑफ़र की प्रतीक्षा',
+    'इलेक्ट्रिशियन असाइन हुआ',
+    'इलेक्ट्रिशियन ने बुकिंग स्वीकार की',
+    'इलेक्ट्रिशियन रास्ते में है',
+    'इलेक्ट्रिशियन पहुँच गया',
+    'काम शुरू करने की आपकी मंजूरी प्रतीक्षित',
+    'काम शुरू हुआ \/ जारी है',
+    'काम पूरा होने की आपकी पुष्टि प्रतीक्षित',
+    'काम पूरा हुआ'
+  ]) assert.match(html, new RegExp(phrase));
+  assert.match(html, /customerBookingEventText\(event\.event_type,event\.new_status\)/);
+});
