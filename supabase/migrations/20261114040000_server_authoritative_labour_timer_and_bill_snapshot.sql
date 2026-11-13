@@ -2487,3 +2487,36 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_admin_offer_booking(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_offer_booking(uuid) TO authenticated;
 
+
+
+-- New categorized labour billing is governed only by the immutable labour
+-- snapshot's Platform Fee; the legacy commission trigger must not overwrite it.
+CREATE OR REPLACE FUNCTION public.srk_calculate_booking_commission()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path TO 'pg_catalog','public','pg_temp'
+AS $function$
+BEGIN
+  IF NEW.amount_paid IS NOT NULL AND NEW.amount_paid<0 THEN
+    RAISE EXCEPTION 'amount_paid cannot be negative';
+  END IF;
+  IF NEW.service_charge IS NOT NULL AND NEW.service_charge<0 THEN
+    RAISE EXCEPTION 'service_charge cannot be negative';
+  END IF;
+  IF NEW.selected_category IS NOT NULL THEN
+    NEW.commission_amount:=NULL;
+    RETURN NEW;
+  END IF;
+  IF NEW.commission_rate IS NULL OR NEW.commission_rate<0 OR NEW.commission_rate>100 THEN
+    RAISE EXCEPTION 'commission_rate must be between 0 and 100';
+  END IF;
+  IF NEW.status='completed' AND NEW.payment_status='paid'
+     AND NEW.amount_paid IS NOT NULL AND NEW.service_charge IS NOT NULL THEN
+    NEW.commission_amount:=round(NEW.service_charge*NEW.commission_rate/100,2);
+  ELSE
+    NEW.commission_amount:=NULL;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
