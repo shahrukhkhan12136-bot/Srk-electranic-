@@ -863,3 +863,12 @@ test('customer booking timeline explains generic status-change events using thei
   ]) assert.match(html, new RegExp(phrase));
   assert.match(html, /customerBookingEventText\(event\.event_type,event\.new_status\)/);
 });
+
+test('payment receipt popup is closed when the customer session changes before private receipt data returns', () => {
+  const start=html.indexOf('async function customerPrintPaymentReceipt(');
+  const end=html.indexOf('let customerPaymentHistoryLoadSequence',start);
+  const source=html.slice(start,end);
+  assert.match(source, /const generation=customerSessionGeneration/);
+  assert.match(source, /await customerSb\.rpc\('srk_customer_get_payment_receipt'[\s\S]*?if\(!customerSessionOperationIsCurrent\(generation\)\)\{printWindow\.close\(\);return;\}/);
+  assert.match(source, /catch\(error\)\{[\s\S]*?if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
+});
