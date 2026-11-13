@@ -163,6 +163,16 @@ CREATE TRIGGER srk_guard_server_work_timer
   ON public.service_bookings
   FOR EACH ROW EXECUTE FUNCTION public.srk_guard_server_work_timer();
 
+ALTER TABLE public.srk_wallet_ledger
+  DROP CONSTRAINT IF EXISTS srk_wallet_ledger_entry_type_check;
+ALTER TABLE public.srk_wallet_ledger
+  ADD CONSTRAINT srk_wallet_ledger_entry_type_check
+  CHECK (entry_type IN (
+    'booking_payment','refund','earning','commission','payout','adjustment','topup',
+    'platform_fee_due','platform_fee_collected',
+    'platform_fee_due_settlement','platform_fee_due_recovery'
+  ));
+
 CREATE OR REPLACE FUNCTION public.srk_electrician_request_work_start(p_booking_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
@@ -832,22 +842,64 @@ $function$;
 CREATE OR REPLACE FUNCTION public.srk_create_electrician_payable()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','pg_temp'
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
 AS $function$
 DECLARE
   v_service numeric(12,2);
   v_materials numeric(12,2);
   v_total numeric(12,2);
   v_rate numeric(7,2);
-  v_commission numeric(12,2);
+  v_platform_fee numeric(12,2);
+  v_net_share numeric(12,2);
+  v_due numeric(12,2);
+  v_settlement numeric(12,2);
+  v_payout_amount numeric(12,2);
+  v_wallet_user_id uuid;
+  v_wallet_id uuid;
   v_bill public.srk_booking_labour_bills%ROWTYPE;
+  v_entry record;
 BEGIN
+  IF NEW.payment_status='refunded' THEN
+    IF EXISTS(SELECT 1 FROM public.srk_electrician_payouts p
+      WHERE p.booking_id=NEW.id AND p.payout_status='paid') THEN
+      RAISE EXCEPTION 'Paid electrician payout requires separate Admin recovery before refund';
+    END IF;
+    FOR v_entry IN
+      SELECT * FROM public.srk_wallet_ledger
+      WHERE reference_type='service_booking' AND reference_id=NEW.id::text
+        AND status='posted' AND entry_type<>'refund'
+      FOR UPDATE
+    LOOP
+      UPDATE public.srk_wallet_ledger SET status='reversed'
+      WHERE id=v_entry.id AND status='posted';
+      INSERT INTO public.srk_wallet_ledger(
+        wallet_id,user_id,wallet_type,entry_type,direction,amount,status,
+        reference_type,reference_id,provider,idempotency_key,description,posted_at
+      ) VALUES(
+        v_entry.wallet_id,v_entry.user_id,v_entry.wallet_type,'refund',
+        CASE WHEN v_entry.direction='credit' THEN 'debit' ELSE 'credit' END,
+        v_entry.amount,'posted','service_booking',NEW.id::text,'SRK_INTERNAL',
+        'srk:refund-reversal:'||NEW.id::text||':'||v_entry.id::text,
+        'Refund reversal of '||v_entry.entry_type,clock_timestamp()
+      ) ON CONFLICT(idempotency_key) DO NOTHING;
+    END LOOP;
+    UPDATE public.srk_wallet_ledger
+    SET status='reversed'
+    WHERE reference_type='service_booking' AND reference_id=NEW.id::text
+      AND entry_type='payout' AND status='pending';
+    UPDATE public.srk_electrician_payouts
+    SET payout_status='refunded',updated_at=clock_timestamp()
+    WHERE booking_id=NEW.id AND payout_status IN ('pending','blocked');
+    RETURN NEW;
+  END IF;
+
   IF NEW.payment_status='paid' AND NEW.status='completed'
      AND NEW.assigned_electrician_id IS NOT NULL AND NEW.payment_verified_at IS NOT NULL
      AND (NEW.razorpay_payment_id IS NOT NULL OR EXISTS(
        SELECT 1 FROM public.srk_manual_payment_entries e
        WHERE e.booking_id=NEW.id AND e.amount=round(coalesce(NEW.amount_paid,0),2)
      )) THEN
+
     IF NEW.selected_category IS NOT NULL THEN
       IF NEW.completion_approval_status<>'approved' THEN
         RAISE EXCEPTION 'Customer-approved labour completion required for payout';
@@ -856,49 +908,172 @@ BEGIN
       IF NOT FOUND OR round(coalesce(NEW.amount_paid,0),2)<>v_bill.labour_amount THEN
         RAISE EXCEPTION 'Verified payment does not match final labour bill; payout blocked';
       END IF;
+      SELECT coalesce(ep.auth_user_id,ep.user_id) INTO v_wallet_user_id
+      FROM public.electrician_profiles ep
+      WHERE ep.id=NEW.assigned_electrician_id
+        AND ep.verification_status='approved';
+      IF v_wallet_user_id IS NULL THEN
+        RAISE EXCEPTION 'Approved electrician wallet owner not found';
+      END IF;
+      INSERT INTO public.srk_wallet_accounts(user_id,wallet_type)
+      VALUES(v_wallet_user_id,'electrician')
+      ON CONFLICT(user_id,wallet_type) DO NOTHING;
+      SELECT id INTO v_wallet_id FROM public.srk_wallet_accounts
+      WHERE user_id=v_wallet_user_id AND wallet_type='electrician'
+      FOR UPDATE;
+      IF v_wallet_id IS NULL THEN RAISE EXCEPTION 'Electrician wallet could not be initialized'; END IF;
+
       v_service:=v_bill.labour_amount;
       v_materials:=0;
-      v_commission:=v_bill.platform_fee_amount;
-    ELSIF NEW.quote_status='approved' THEN
-      v_rate:=NEW.commission_rate;
-      IF v_rate IS NULL OR v_rate<0 OR v_rate>100 THEN
-        RAISE EXCEPTION 'Legacy commission rate must be between 0 and 100';
+      v_platform_fee:=v_bill.platform_fee_amount;
+      v_net_share:=v_bill.electrician_payable;
+
+      IF lower(trim(coalesce(NEW.payment_method,''))) IN ('cash','नकद','नकद (cash)') THEN
+        INSERT INTO public.srk_wallet_ledger(
+          wallet_id,user_id,wallet_type,entry_type,direction,amount,status,
+          reference_type,reference_id,provider,idempotency_key,description,posted_at
+        ) VALUES(
+          v_wallet_id,v_wallet_user_id,'electrician','platform_fee_due','debit',
+          v_platform_fee,'posted','service_booking',NEW.id::text,'SRK_INTERNAL',
+          'srk:platform-fee-cash-due:'||NEW.id::text,
+          'Cash booking Platform Fee due; labour-only basis',clock_timestamp()
+        ) ON CONFLICT(idempotency_key) DO NOTHING;
+        -- Cash was received directly by the electrician: no platform payout is due.
+        RETURN NEW;
       END IF;
+
+      -- If this payment event was already ledgered, reuse the original payout
+      -- amount; do not recalculate against an already-settled prior cash due.
+      IF EXISTS(SELECT 1 FROM public.srk_wallet_ledger
+        WHERE idempotency_key='srk:booking-gross-credit:'||NEW.id::text) THEN
+        SELECT amount INTO v_payout_amount FROM public.srk_wallet_ledger
+        WHERE idempotency_key='srk:payout-pending:'||NEW.id::text;
+        v_payout_amount:=coalesce(v_payout_amount,0);
+      ELSE
+        INSERT INTO public.srk_wallet_ledger(
+          wallet_id,user_id,wallet_type,entry_type,direction,amount,status,
+          reference_type,reference_id,provider,idempotency_key,description,posted_at
+        ) VALUES(
+          v_wallet_id,v_wallet_user_id,'electrician','booking_payment','credit',
+          v_service,'posted','service_booking',NEW.id::text,'SRK_INTERNAL',
+          'srk:booking-gross-credit:'||NEW.id::text,
+          'Customer payment received; gross labour only',clock_timestamp()
+        ) ON CONFLICT(idempotency_key) DO NOTHING;
+
+        INSERT INTO public.srk_wallet_ledger(
+          wallet_id,user_id,wallet_type,entry_type,direction,amount,status,
+          reference_type,reference_id,provider,idempotency_key,description,posted_at
+        ) VALUES(
+          v_wallet_id,v_wallet_user_id,'electrician','platform_fee_collected','debit',
+          v_platform_fee,'posted','service_booking',NEW.id::text,'SRK_INTERNAL',
+          'srk:platform-fee-online:'||NEW.id::text,
+          'Platform Fee collected on online labour payment',clock_timestamp()
+        ) ON CONFLICT(idempotency_key) DO NOTHING;
+
+        SELECT greatest(coalesce(sum(
+          CASE
+            WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
+            WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+            ELSE 0
+          END
+        ),0),0) INTO v_due
+        FROM public.srk_wallet_ledger
+        WHERE wallet_id=v_wallet_id AND status='posted';
+
+        v_settlement:=least(v_due,v_net_share);
+        IF v_settlement>0 THEN
+          INSERT INTO public.srk_wallet_ledger(
+            wallet_id,user_id,wallet_type,entry_type,direction,amount,status,
+            reference_type,reference_id,provider,idempotency_key,description,posted_at
+          ) VALUES(
+            v_wallet_id,v_wallet_user_id,'electrician','platform_fee_due_settlement','credit',
+            v_settlement,'posted','service_booking',NEW.id::text,'SRK_INTERNAL',
+            'srk:platform-fee-due-settlement:'||NEW.id::text,
+            'Reverse prior cash Platform Fee due as it is settled from current labour share',clock_timestamp()
+          ) ON CONFLICT(idempotency_key) DO NOTHING;
+          INSERT INTO public.srk_wallet_ledger(
+            wallet_id,user_id,wallet_type,entry_type,direction,amount,status,
+            reference_type,reference_id,provider,idempotency_key,description,posted_at
+          ) VALUES(
+            v_wallet_id,v_wallet_user_id,'electrician','platform_fee_due_recovery','debit',
+            v_settlement,'posted','service_booking',NEW.id::text,'SRK_INTERNAL',
+            'srk:platform-fee-due-recovery:'||NEW.id::text,
+            'Prior cash Platform Fee due recovered from labour share only',clock_timestamp()
+          ) ON CONFLICT(idempotency_key) DO NOTHING;
+        END IF;
+
+        v_payout_amount:=round(v_net_share-v_settlement,2);
+        IF v_payout_amount>0 THEN
+          INSERT INTO public.srk_wallet_ledger(
+            wallet_id,user_id,wallet_type,entry_type,direction,amount,status,
+            reference_type,reference_id,provider,idempotency_key,description
+          ) VALUES(
+            v_wallet_id,v_wallet_user_id,'electrician','payout','debit',
+            v_payout_amount,'pending','service_booking',NEW.id::text,'SRK_INTERNAL',
+            'srk:payout-pending:'||NEW.id::text,
+            'Pending electrician bank/UPI payout after Platform Fee and prior cash dues'
+          ) ON CONFLICT(idempotency_key) DO NOTHING;
+      END IF;
+
+      IF v_payout_amount>0 THEN
+        INSERT INTO public.srk_electrician_payouts(
+          booking_id,electrician_profile_id,razorpay_payment_id,
+          gross_service_amount,materials_amount,platform_commission,
+          electrician_payable,payout_status
+        ) VALUES(
+          NEW.id,NEW.assigned_electrician_id,NEW.razorpay_payment_id,
+          v_service,0,v_platform_fee,v_payout_amount,'pending'
+        )
+        ON CONFLICT(booking_id) DO UPDATE SET
+          electrician_profile_id=excluded.electrician_profile_id,
+          razorpay_payment_id=excluded.razorpay_payment_id,
+          gross_service_amount=excluded.gross_service_amount,
+          materials_amount=0,
+          platform_commission=excluded.platform_commission,
+          electrician_payable=excluded.electrician_payable,
+          updated_at=clock_timestamp()
+        WHERE public.srk_electrician_payouts.payout_status='pending';
+      END IF;
+      RETURN NEW;
+    END IF;
+
+    -- Legacy quote path: retain its existing commission compatibility only.
+    v_rate:=NEW.commission_rate;
+    IF v_rate IS NULL OR v_rate<0 OR v_rate>100 THEN
+      RAISE EXCEPTION 'Legacy commission rate must be between 0 and 100';
+    END IF;
+    IF NEW.quote_status='approved' THEN
       v_service:=round(coalesce(NEW.service_charge,0),2);
       v_materials:=round(coalesce(NEW.materials_amount,0),2);
       v_total:=round(v_service+v_materials,2);
       IF round(coalesce(NEW.amount_paid,0),2)<>v_total THEN
         RAISE EXCEPTION 'Legacy verified payment does not match approved quote; payout ledger not created';
       END IF;
-      v_commission:=round(v_service*v_rate/100,2);
-    ELSE
-      RETURN NEW;
+      v_platform_fee:=round(v_service*v_rate/100,2);
+      INSERT INTO public.srk_electrician_payouts(
+        booking_id,electrician_profile_id,razorpay_payment_id,
+        gross_service_amount,materials_amount,platform_commission,
+        electrician_payable,payout_status
+      ) VALUES(
+        NEW.id,NEW.assigned_electrician_id,NEW.razorpay_payment_id,
+        v_service,v_materials,v_platform_fee,round(v_service+v_materials-v_platform_fee,2),'pending'
+      )
+      ON CONFLICT(booking_id) DO UPDATE SET
+        electrician_profile_id=excluded.electrician_profile_id,
+        razorpay_payment_id=excluded.razorpay_payment_id,
+        gross_service_amount=excluded.gross_service_amount,
+        materials_amount=excluded.materials_amount,
+        platform_commission=excluded.platform_commission,
+        electrician_payable=excluded.electrician_payable,
+        updated_at=clock_timestamp()
+      WHERE public.srk_electrician_payouts.payout_status='pending';
     END IF;
-    INSERT INTO public.srk_electrician_payouts(
-      booking_id,electrician_profile_id,razorpay_payment_id,
-      gross_service_amount,materials_amount,platform_commission,
-      electrician_payable,payout_status
-    ) VALUES(
-      NEW.id,NEW.assigned_electrician_id,NEW.razorpay_payment_id,
-      v_service,v_materials,v_commission,round(v_service+v_materials-v_commission,2),'pending'
-    )
-    ON CONFLICT(booking_id) DO UPDATE SET
-      electrician_profile_id=excluded.electrician_profile_id,
-      razorpay_payment_id=excluded.razorpay_payment_id,
-      gross_service_amount=excluded.gross_service_amount,
-      materials_amount=excluded.materials_amount,
-      platform_commission=excluded.platform_commission,
-      electrician_payable=excluded.electrician_payable,
-      updated_at=clock_timestamp()
-    WHERE public.srk_electrician_payouts.payout_status='pending';
-  ELSIF NEW.payment_status='refunded' THEN
-    UPDATE public.srk_electrician_payouts
-    SET payout_status='refunded',updated_at=clock_timestamp()
-    WHERE booking_id=NEW.id AND payout_status IN ('pending','blocked');
   END IF;
   RETURN NEW;
 END;
 $function$;
+
+
 
 CREATE OR REPLACE FUNCTION public.srk_admin_mark_electrician_payout_paid(
   p_payout_id uuid,p_method text,p_reference text,p_note text DEFAULT NULL
