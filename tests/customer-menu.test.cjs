@@ -6,6 +6,7 @@ const html = fs.readFileSync('booking.html', 'utf8');
 const profileMigration = fs.readFileSync('supabase/migrations/20261113200000_customer_profile_api_and_avatar_security.sql', 'utf8');
 const supportAttachmentMigration = fs.readFileSync('supabase/migrations/20261114170000_harden_customer_support_attachment_object_integrity.sql', 'utf8');
 const customerReceiptMigration = fs.readFileSync('supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql', 'utf8');
+const customerPaymentHistoryMigration = fs.readFileSync('supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql', 'utf8');
 
 test('customer menu keeps the approved five-menu order and accessible tab controls', () => {
   const nav = html.match(/<nav class="customer-menu-nav"[\s\S]*?<\/nav>/)?.[0] || '';
@@ -152,4 +153,18 @@ test('customer payment receipt uses immutable labour amount and never infers mat
   assert.doesNotMatch(customerReceiptMigration, /materials_amount/i);
   assert.match(customerReceiptMigration, /customer_user_id = v_uid/);
   assert.match(customerReceiptMigration, /grant execute on function public\.srk_customer_get_payment_receipt\(uuid\) to authenticated/i);
+});
+
+
+test('customer payment history RPC exists, is owner-scoped and covers all payment/refund event sources', () => {
+  assert.match(customerPaymentHistoryMigration, /create or replace function public\.srk_customer_get_payment_history\(\s*p_limit integer default 25,\s*p_offset integer default 0/s);
+  assert.match(customerPaymentHistoryMigration, /b\.customer_user_id=v_uid/);
+  assert.match(customerPaymentHistoryMigration, /b\.payment_status in \('paid','refunded'\)/);
+  assert.match(customerPaymentHistoryMigration, /b\.payment_verified_at is not null/);
+  assert.match(customerPaymentHistoryMigration, /srk_booking_refund_requests/);
+  assert.match(customerPaymentHistoryMigration, /srk_razorpay_refunds/);
+  assert.match(customerPaymentHistoryMigration, /srk_manual_refund_entries/);
+  assert.match(customerPaymentHistoryMigration, /limit v_limit offset v_offset/);
+  assert.match(customerPaymentHistoryMigration, /grant execute on function public\.srk_customer_get_payment_history\(integer,integer\) to authenticated/i);
+  assert.match(customerPaymentHistoryMigration, /revoke all on function public\.srk_customer_get_payment_history\(integer,integer\) from public,anon/i);
 });
