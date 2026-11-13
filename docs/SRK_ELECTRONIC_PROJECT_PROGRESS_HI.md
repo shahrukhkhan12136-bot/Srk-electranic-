@@ -1897,3 +1897,12 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Notification preferences को push delivery मान लेना उचित नहीं: पहले supported channels, consent, opt-out semantics, event types, delivery provider, retry/de-duplication, quiet hours और account/session privacy design करना होगा। इस pass में कोई push provider या live notification channel configure नहीं किया।
 
 **निर्णय:** अभी cancellation schema या wallet enum में जल्दबाजी से बदलाव नहीं किया। अगले implementation से पहले अलग cancellation-fee receivable ledger और per-fee allocation/reversal model को existing booking, payment, refund, payout और cash-cycle के साथ transactionally specify करना होगा। कोई Production migration, live payment, payout, booking या customer data change नहीं हुआ।
+
+
+### Architecture baseline तैयार — Cancellation, Ratings और Notifications (14 नवम्बर 2026)
+- विस्तृत design दस्तावेज़ जोड़ा: `docs/SRK_ELECTRONIC_CANCELLATION_RATINGS_NOTIFICATIONS_DESIGN_HI.md` (commit `b8c8f1737db7124d65650d9c18b30e62b076f553`)।
+- Cancellation state machine, customer-owned idempotent request, Admin-only evidence-backed final decision, immutable audit events, separate per-cancellation receivable line items और refund/reversal constraints पर architecture तय किया।
+- Existing Platform Fee pooled ledger को cancellation fee में reuse करने से रोका; Cash wallet debit तभी जब cash receipt + per-item allocation + debit एक atomic transaction में हों; Online mixed bill को Razorpay capture/refund split में अलग component के रूप में reconcile करना होगा।
+- Ratings के लिए completed/approved booking eligibility, per-side unique rating, derived aggregates और reasoned moderation; Notifications के लिए preferences/consent को push tokens/outbox/provider delivery से अलग रखा।
+- यह design baseline है, implementation या test pass नहीं। कोई SQL migration नहीं बनाई/चलाई, कोई Production/live payment/wallet/notification change नहीं।
+- अगला implementation चरण: cancellation request + Admin evidence review + customer My Bookings status UI, साथ में isolated pgTAP/source regression; financial settlement तब तक निष्क्रिय रहेगा जब तक mixed payment/refund/payout dependencies end-to-end सुरक्षित न हों।
