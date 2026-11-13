@@ -48,6 +48,12 @@ jobs:
           source "$RUNNER_TEMP/srk-customer-cancellation-request.env"
           set +a
           test -n "${DB_URL:-}"
+          test -n "${API_URL:-}"
+          test -n "${SERVICE_ROLE_KEY:-}"
+          {
+            echo "API_URL=$API_URL"
+            echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
           psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/tests/fixtures/customer_cancellation_request_bootstrap.sql"
       - name: Apply cancellation request migration
         working-directory: ${{ runner.temp }}/srk-customer-cancellation-request
@@ -70,7 +76,7 @@ jobs:
               -H "apikey: $SERVICE_ROLE_KEY" \
               -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
               -H "Content-Type: application/json" \
-              -d "{\\"id\\":\\"$user_id\\",\\"email\\":\\"$user_id@example.test\\",\\"password\\":\\"Local-test-only-ChangeMe123!\\",\\"email_confirm\\":true}" >/dev/null
+              -d '{"id":"'"$user_id"'","email":"'"$user_id"'@example.test","password":"Local-test-only-ChangeMe123!","email_confirm":true}' >/dev/null
           done
       - name: Run cancellation request pgTAP
         working-directory: ${{ runner.temp }}/srk-customer-cancellation-request
