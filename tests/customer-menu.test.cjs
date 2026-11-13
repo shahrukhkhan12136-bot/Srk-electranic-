@@ -189,7 +189,10 @@ test('customer refund form only appears for completed approved immutable labour 
   const refundSubmitStart=html.indexOf('async function customerSubmitBookingRefund(');
   const refundSubmitEnd=html.indexOf('\\nlet customerBookingHistoryLoadSequence',refundSubmitStart);
   const refundSubmitSource=html.slice(refundSubmitStart,refundSubmitEnd);
-  assert.ok(refundSubmitSource.includes('Promise.allSettled(['));\n  assert.ok(refundSubmitSource.includes('loadCustomerBookings(),'));\n  assert.ok(refundSubmitSource.includes('loadCustomerRefundHistory(),'));\n  assert.ok(refundSubmitSource.includes('loadCustomerPaymentHistory(true)'));
+  assert.ok(refundSubmitSource.includes('Promise.allSettled(['));
+  assert.ok(refundSubmitSource.includes('loadCustomerBookings(),'));
+  assert.ok(refundSubmitSource.includes('loadCustomerRefundHistory(),'));
+  assert.ok(refundSubmitSource.includes('loadCustomerPaymentHistory(true)'));
   assert.match(refundSubmitSource, /रिफंड अनुरोध सुरक्षित रूप से दर्ज हो गया है, लेकिन कुछ सूची अपडेट नहीं हो सकीं/);
 });
 
