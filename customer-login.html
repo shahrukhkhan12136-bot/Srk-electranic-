@@ -13,7 +13,7 @@
 <main class="card">
 <h1>SRK ELECTRONIC</h1>
 <p class="sub">ग्राहक मोबाइल OTP लॉगिन</p>
-<section id="sessionArea" class="hidden" aria-live="polite"><p id="sessionText" class="sub"></p><button class="btn" id="logout" type="button">सुरक्षित लॉगआउट</button></section>
+<section id="sessionArea" class="hidden" aria-live="polite"><p id="sessionText" class="sub"></p><a class="btn" id="openBookings" href="/booking.html#customer-dashboard" style="display:block;text-align:center;text-decoration:none">मेरी बुकिंग खोलें</a><button class="btn" id="logout" type="button">सुरक्षित लॉगआउट</button></section>
 <p class="sub">अपना रजिस्टर्ड भारतीय मोबाइल नंबर डालें। OTP SMS से आएगा। OTP केवल इसी स्क्रीन पर खुद दर्ज करें—किसी के साथ साझा न करें।</p>
 <label for="phone">रजिस्टर्ड मोबाइल नंबर</label>
 <input id="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="15" placeholder="10 अंकों का मोबाइल नंबर">
@@ -37,7 +37,7 @@
  const phoneInput=document.getElementById('phone');
  const otpInput=document.getElementById('otp');
  const area=document.getElementById('otpArea');
- let busy=false, resendAt=0, timer=null;
+ let busy=false, resendAt=0, timer=null, hasSession=false;
  const sb=(cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&window.supabase)?window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY):null;
  async function syncSession(){
   if(!sb)return;
@@ -57,7 +57,7 @@
   const logout=document.getElementById('logout');
   if(!sb||busy||!logout)return;
   busy=true;logout.disabled=true;
-  try{const {error}=await sb.auth.signOut();if(error)throw error;area.classList.add('hidden');otpInput.value='';phoneInput.value='';setMessage('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');await syncSession();}
+  try{const {error}=await sb.auth.signOut();if(error)throw error;area.classList.add('hidden');otpInput.value='';phoneInput.value='';if(timer){clearInterval(timer);timer=null;}resendAt=0;send.textContent='OTP भेजें';setMessage('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');await syncSession();}
   catch(_){setMessage('लॉगआउट पूरा नहीं हो सका। कृपया दोबारा कोशिश करें।',true);}
   finally{busy=false;logout.disabled=false;}
  });
@@ -68,12 +68,12 @@
   if(busy)return;const phone=phoneE164();if(!phone){setMessage('कृपया सही 10 अंकों का भारतीय मोबाइल नंबर डालें।',true);return;}
   if(Date.now()<resendAt){setMessage('OTP दोबारा भेजने से पहले कृपया प्रतीक्षा करें।',true);return;}
   busy=true;send.disabled=true;setMessage('OTP भेजा जा रहा है…');
-  try{const {error}=await sb.auth.signInWithOtp({phone});if(error)throw error;area.classList.remove('hidden');resendAt=Date.now()+60000;setMessage('OTP भेजने का अनुरोध सफल हुआ। SMS देखें और OTP खुद दर्ज करें।');let left=60;send.textContent='OTP दोबारा भेजें ('+left+' सेकंड)';timer=setInterval(()=>{left--;send.textContent=left>0?'OTP दोबारा भेजें ('+left+' सेकंड)':'OTP दोबारा भेजें';if(left<=0){clearInterval(timer);send.disabled=false;}},1000);}catch(e){setMessage('OTP नहीं भेजा जा सका। मोबाइल नंबर और SMS सेवा जाँचकर फिर कोशिश करें।',true);send.disabled=false;}finally{busy=false;}
+  try{const {error}=await sb.auth.signInWithOtp({phone});if(error)throw error;area.classList.remove('hidden');resendAt=Date.now()+60000;setMessage('OTP भेजने का अनुरोध सफल हुआ। SMS देखें और OTP खुद दर्ज करें।');let left=60;send.textContent='OTP दोबारा भेजें ('+left+' सेकंड)';timer=setInterval(()=>{left--;send.textContent=left>0?'OTP दोबारा भेजें ('+left+' सेकंड)':'OTP दोबारा भेजें';send.disabled=hasSession||left>0;if(left<=0){clearInterval(timer);timer=null;}},1000);}catch(e){setMessage('OTP नहीं भेजा जा सका। मोबाइल नंबर और SMS सेवा जाँचकर फिर कोशिश करें।',true);send.disabled=false;}finally{busy=false;}
  });
  verify.addEventListener('click',async()=>{
   if(!sb||busy)return;const phone=phoneE164(),token=otpInput.value.trim();if(!phone||!/^\d{4,8}$/.test(token)){setMessage('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}
   busy=true;verify.disabled=true;setMessage('OTP सत्यापित हो रहा है…');
-  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका सुरक्षित ग्राहक सेशन इस वेबसाइट में सेव हो गया है। अब मेरी बुकिंग देखने के लिए मुख्य पेज खोलें।');setTimeout(()=>{window.location.href='/booking.html#customer-login';},1800);}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=false;}
+  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका सुरक्षित ग्राहक सेशन इस वेबसाइट में सेव हो गया है। अब मेरी बुकिंग देखने के लिए मुख्य पेज खोलें।');setTimeout(()=>{window.location.href='/booking.html#customer-login';},1800);}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=hasSession;}
  });
  if(!sb){send.disabled=true;setMessage('लॉगिन सेवा कॉन्फ़िगरेशन नहीं मिला।',true);}
 })();
