@@ -315,7 +315,7 @@ function customerPaymentLabel(row) {
  return {type:types[row.event_type]||'भुगतान रिकॉर्ड',method:methods[row.payment_method]||'',status:statusLabel};
 }
 async function customerPrintPaymentReceipt(bookingId){
- const printWindow=window.open('','_blank','noopener,noreferrer');
+ const printWindow=window.open('','_blank');
  if(!printWindow){alert('रसीद खोलने के लिए कृपया इस साइट के pop-ups की अनुमति दें।');return;}
  printWindow.document.write('<!doctype html><html lang="hi"><head><meta charset="utf-8"><title>SRK ELECTRONIC भुगतान रसीद</title></head><body style="font-family:Arial,sans-serif;padding:24px">रसीद लोड हो रही है…</body></html>');
  try{
