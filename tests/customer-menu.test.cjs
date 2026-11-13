@@ -231,9 +231,9 @@ test('booking card refund summary prioritizes processed timestamp', () => {
 
 
 test('customer booking history uses a stable ID tie-breaker for equal creation timestamps', () => {
-  const start = bookingHtml.indexOf("from('service_bookings')", bookingHtml.indexOf('async function loadCustomerBookings'));
-  const end = bookingHtml.indexOf('.limit(50)', start);
-  const query = bookingHtml.slice(start, end);
+  const start = html.indexOf("from('service_bookings')", html.indexOf('async function loadCustomerBookings'));
+  const end = html.indexOf('.limit(50)', start);
+  const query = html.slice(start, end);
   assert.match(query, /\.order\('created_at',\s*\{\s*ascending:\s*false\s*\}\)/);
   assert.match(query, /\.order\('id',\s*\{\s*ascending:\s*false\s*\}\)/);
 });
