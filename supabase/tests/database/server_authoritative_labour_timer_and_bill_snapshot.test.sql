@@ -141,8 +141,8 @@ SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) 
   'electrician offer API exposes timer but no quote/material billing fields');
 SELECT ok(pg_get_functiondef('private.srk_get_customer_call_contacts_impl()'::regprocedure)
   ILIKE '%awaiting_work_start_approval%' AND
-  pg_get_functiondef('private.srk_get_customer_call_contacts_impl()'::regprocedure) NOT ILIKE '%completed%',
-  'customer call contacts remain visible through start approval and hide after completion');
+  pg_get_functiondef('private.srk_get_customer_call_contacts_impl()'::regprocedure) ILIKE '%completed%',
+  'current customer contact RPC preserves direct calling access after completion for the assigned booking owner');
 SELECT ok(pg_get_functiondef('public.srk_customer_get_my_booking_contacts()'::regprocedure)
   ILIKE '%awaiting_work_start_approval%' AND
   pg_get_functiondef('public.srk_customer_get_my_booking_contacts()'::regprocedure) NOT ILIKE '%completed%',
