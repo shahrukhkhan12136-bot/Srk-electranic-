@@ -1044,3 +1044,6 @@
 
 
 - Avatar stale-response guard के बाद test audit में एक पुराना lifecycle assertion मिला जो `loadCustomerAvatar(path)` और बिना guard वाले call की अपेक्षा कर रहा था। उसे नए `shouldApply` guard और sequence/path-checked call के अनुरूप अपडेट किया। Test commit `3e96ea12f8a66c26008c5722990f17760f024aad`. यह assertion correction है; CI pass अभी प्रमाणित नहीं, और वास्तविक Storage/browser race test अभी बाकी है। Production/SQL में कोई बदलाव नहीं।
+
+
+- Avatar regression workflow `43478827391` FAILED. Job log में Avatar-specific assertion सफल था; विफलताएँ दो पुराने Customer History source assertions में थीं: Payment History `finally` block के नए multi-line form को पुराना one-line regex पहचान नहीं रहा था, और Booking History test पुराने no-argument loader signature को खोज रहा था जबकि loader pagination के लिए `reset=true` लेता है। Test assertions अपडेट किए: `0125b97c80afaae773fe371f80041b6da6f65d05`, फिर payment/refund aria-busy checks को latest-sequence `finally` block के अनुसार ठीक किया: `6e3cf083b8e2b87c2ceb2d21fd2f68ae00f976f2`। नई CI run अभी सत्यापित नहीं हुई; इसलिए tests को PASS नहीं माना गया। Application source में इस failure से कोई runtime defect प्रमाणित नहीं हुआ।
