@@ -1758,3 +1758,11 @@
 - Local stack `supabase stop --no-backup` से cleanly बंद। No Production database/credentials/data used; no production migration or deployment.
 - Source regression #43520600975 SUCCESS on corrected test commit; latest tracker-only source run #43520632850 status pending at time of tracker update.
 - Next: Customer App refund/payment DB local fixture + RPC tests and broader cross-dependency audit; after Customer App complete move to Electrician Portal, then Admin Panel. Final consolidated mobile/Desktop QA remains deferred.
+
+### Customer Payment/Refund History — नया isolated local DB test harness
+
+- Unified payment history RPC `srk_customer_get_payment_history(integer,integer)` के लिए 14 structural assertions और 8 synthetic behavior assertions जोड़े। Behavior test में दो अलग customer identities, payment, manual payment, refund request, Razorpay refund, manual refund, duplicate payment suppression, newest-first order और pagination शामिल हैं।
+- Existing customer refund pagination pgTAP (8 assertions) को उसी isolated harness में शामिल किया; कुल expected **30 assertions**।
+- Synthetic fixture केवल आवश्यक history tables/columns बनाता है। Workflow local-only Supabase पर `20261114200000_customer_payment_refund_history_rpc.sql` और `20261114210000_customer_refund_history_pagination.sql` apply करता है; Production connection/credentials/data का उपयोग नहीं।
+- Commits: fixture `ec8671f5daee9e8830c1810ce34a969aebfe3050`; structural test `fb23829cbce6ec735eb955b73cbfccad0feed969` (balanced SQL correction `e1e4a59b1fc9ac851eabd6a2f5829ea347c5aeb6`); behavior test `2676ecc3ced1bfb278168e6e59fe6affa8200472`; workflow `7edb4873931a5fbd26afc7abbe3297d6bb2fcda1`.
+- First workflow attempt was cancelled by a newer test-file correction while local Supabase startup was in progress; cleanup step is still finishing. Corrected run #43521128268 is pending; no pgTAP PASS claim yet. Source regression on the corrected test commit #43521128408 SUCCESS.
