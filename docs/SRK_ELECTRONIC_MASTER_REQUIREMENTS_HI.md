@@ -3897,3 +3897,12 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Current approved feature-branch `index.html` में electrician application form मौजूद नहीं है, जबकि repository search में पुराना form केवल stale indexed result में मिला। इसलिए applicant-facing requested-category selector को अभी किसी अनुमानित page में नहीं जोड़ा गया; actual current form/page locate करके उसी में integration करना आवश्यक है।
 - Admin UI में भी अभी rate-tier selector नहीं जोड़ा गया; पहले migration review/test और Admin panel के current approval flow का source integration आवश्यक है।
 - कोई production DDL/DML, migration apply, live activation, deployment या payment action नहीं हुआ।
+
+### 19.9 Timer और payment RPC का अगला read-only audit (13-11-2026)
+- Live `srk_electrician_request_work_start()` अभी `status='quote_approved'` और `quote_status='approved'` अनिवार्य करता है; estimate-only booking architecture के लिए यह legacy prerequisite हटाना होगा, लेकिन पुराने bookings का compatibility path सुरक्षित रखना होगा।
+- Live `srk_electrician_request_work_completion()` में `LEAST(604800, accumulated_seconds + server_elapsed_seconds)` है। यह 7-दिन का hard cap है और मालिक के no-cap / multi-day timer नियम से टकराता है। आगामी migration में cap हटाना आवश्यक है।
+- Completion request server time से elapsed seconds जमा करता है और timer रोकता है; Customer reject पर accumulated seconds सुरक्षित रखकर नया `work_started_at` और running timer सेट होता है। Dispute पर timer रोकता है। नई bill snapshot प्रक्रिया केवल Admin/customer-approved completion और dispute-free state पर बनेगी।
+- Live customer start approval RPC start timestamp server `now()` पर सेट करता है; timer start server-authoritative है। `work_timer_seconds` integer है, इसलिए accumulated seconds को multi-day duration में रखने के लिए 32-bit सीमा की गणना/constraint review जरूरी है।
+- Live cash confirmation और Admin manual payment अभी `quote_status='approved'`, `quoted_amount` या `service_charge + materials_amount` पर निर्भर हैं। ये legacy dependencies हैं; immutable labour-only bill snapshot से replace किए बिना इन RPCs को estimate-only model में switch करना सुरक्षित नहीं।
+- Open billing-policy decision: timer में elapsed seconds से billable whole minutes कैसे निकालें — कोई भी partial minute अगले पूरे minute तक गिना जाए (ceiling), या केवल पूरे 60-second blocks गिने जाएँ (floor)? यह निर्णय actual labour amount बदलता है; implementation से पहले owner confirmation आवश्यक है।
+- No live changes, migrations applied, payment actions or deployment.
