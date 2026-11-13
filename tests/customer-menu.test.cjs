@@ -575,3 +575,13 @@ test('saved address selector and edit action stay locked during address save', (
   assert.ok(source.includes('button.disabled=true;select.disabled=true;editButton.disabled=true;'));
   assert.ok(source.includes('select.disabled=selectWasDisabled;editButton.disabled=editWasDisabled;'));
 });
+
+
+test('customer booking disclosure no longer promises a legacy home inspection quotation', () => {
+  assert.match(html, /अलग घर-पर-कोटेशन प्रक्रिया नहीं है/);
+  assert.match(html, /अंतिम Labour Bill सर्वर द्वारा दर्ज वास्तविक काम के समय और Admin-approved rate से बनेगा/);
+  assert.match(html, /सामग्री ग्राहक स्वयं उपलब्ध कराएगा या खरीदेगा/);
+  assert.match(html, /सामग्री का खर्च Labour में शामिल नहीं है और अलग रहेगा/);
+  assert.doesNotMatch(html, /पहले इलेक्ट्रिशियन घर आकर काम देखेगा/);
+  assert.doesNotMatch(html, /सर्विस चार्ज तथा सामान का अलग-अलग कोटेशन देगा/);
+});
