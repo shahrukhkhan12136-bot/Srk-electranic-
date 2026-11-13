@@ -170,6 +170,13 @@ test('rejects duration outside the 1–8 hour booking range', async () => {
   assert.equal(insertedRows, null);
 });
 
+
+test('rejects string duration instead of accepting a coerced value', async () => {
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, selected_duration_hours: '2' }) }));
+  assert.equal(status(result), 400);
+  assert.equal(insertedRows, null);
+});
+
 test('persists canonical category and duration and derives the display label server-side', async () => {
   const result = await handler(event({ body: JSON.stringify({ ...validBody, service_type: 'forged label' }) }));
   assert.equal(status(result), 200);
