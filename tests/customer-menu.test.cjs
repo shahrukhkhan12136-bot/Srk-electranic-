@@ -217,13 +217,13 @@ test('customer work start and completion responses reject duplicate submissions 
   assert.match(completion,/customerWorkCompletionResponseBusy\.has\(bookingId\)/);
   assert.ok(completion.indexOf("if(!confirm(messages[response]")<completion.indexOf('customerWorkCompletionResponseBusy.set(bookingId,operationToken)'));
   assert.match(completion,/finally\{if\(customerSessionOperationIsCurrent\(generation\)&&customerWorkCompletionResponseBusy\.get\(bookingId\)===operationToken\)customerWorkCompletionResponseBusy\.delete\(bookingId\);\}/);
-  assert.match(html,/let customerWorkStartResponseBusy=new Set\(\)/);
+  assert.match(html,/let customerWorkStartResponseBusy=new Map\(\)/);
   const start=html.indexOf('async function customerRespondWorkStart(bookingId,response)');
   const end=html.indexOf('function formatCustomerTimer',start);
   const source=html.slice(start,end);
   assert.match(source,/customerWorkStartResponseBusy\.has\(bookingId\)/);
-  assert.match(source,/customerWorkStartResponseBusy\.add\(bookingId\)/);
-  assert.match(source,/finally\{customerWorkStartResponseBusy\.delete\(bookingId\);\}/);
+  assert.match(source,/customerWorkStartResponseBusy\.set\(bookingId,operationToken\)/);
+  assert.match(source,/finally\{if\(customerSessionOperationIsCurrent\(generation\)&&customerWorkStartResponseBusy\.get\(bookingId\)===operationToken\)customerWorkStartResponseBusy\.delete\(bookingId\);\}/);
   assert.ok(source.includes('let responseConfirmed=false;'));
   assert.ok(source.includes('responseConfirmed=true;'));
   assert.ok(source.includes('जवाब सर्वर पर दर्ज हो गया है'));
@@ -814,7 +814,7 @@ test('customer logout invalidates booking payment and refund history requests', 
 test('customer mutations stop stale UI work after auth session changes', () => {
   assert.match(html, /let customerSessionGeneration=0/);
   assert.match(html, /function customerSessionOperationIsCurrent\(generation\)/);
-  assert.match(html, /onAuthStateChange\(\(event\) => \{ if\(event==='SIGNED_OUT'\|\|event==='SIGNED_IN'\|\|event==='USER_UPDATED'\)\{customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerBookingHistory\(\);invalidateCustomerPaymentHistory\(\);invalidateCustomerRefundHistory\(\);invalidateCustomerProfileAndSavedAddresses\(\);invalidateCustomerSupportPrivateState\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);\}/);
+  assert.match(html, /onAuthStateChange\(\(event\) => \{ if\(event==='SIGNED_OUT'\|\|event==='SIGNED_IN'\|\|event==='USER_UPDATED'\)\{customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerBookingHistory\(\);invalidateCustomerPaymentHistory\(\);invalidateCustomerRefundHistory\(\);invalidateCustomerProfileAndSavedAddresses\(\);invalidateCustomerSupportPrivateState\(\);invalidateCustomerWorkStartResponses\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);\}/);
   assert.match(html, /if\(!customerSessionOperationIsCurrent\(operationGeneration\)\)return;/);
   assert.match(html, /finally\{if\(customerSessionOperationIsCurrent\(operationGeneration\)\)/);
   assert.match(html, /customerSupportMessageBusy=false;customerSupportComplaintCreateBusy=false/);
