@@ -28,12 +28,20 @@ textarea{min-height:84px;resize:vertical}.btn{display:inline-flex;justify-conten
 #qrcode{display:inline-block;background:#fff;padding:12px;border-radius:12px;min-height:220px;min-width:220px}
 #qrcode img,#qrcode canvas{margin:auto;max-width:100%}
 .pay-note{background:#fff7e6;border:1px solid #ffe0a3;border-radius:10px;padding:10px;text-align:left;font-size:13px;line-height:1.5;margin:12px 0}.coverage{display:flex;flex-wrap:wrap;gap:8px}.pill{background:#eaf2ff;color:#164b91;padding:8px 11px;border-radius:99px;font-size:13px;font-weight:650}
-footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
+footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 96px}
+/* Customer app navigation */
+.customer-nav{position:fixed;z-index:100;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:8px 6px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid #dce5ef;box-shadow:0 -8px 24px #102b4612;backdrop-filter:blur(14px)}
+.customer-nav a{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:5px 1px;color:#607086;text-decoration:none;font-size:10px;font-weight:700;border-radius:10px}
+.customer-nav a .nav-icon{font-size:19px;line-height:1.2}
+.customer-nav a.active{color:#0b5ed7;background:#eaf2ff}
+.customer-nav a:focus-visible{outline:3px solid #ffbd45;outline-offset:2px}
+#profilePanel{display:none}
+@media(min-width:760px){.customer-nav{left:50%;right:auto;transform:translateX(-50%);width:min(760px,100%);border:1px solid #dce5ef;border-bottom:0;border-radius:18px 18px 0 0}}
 @media(min-width:600px){header{padding:30px max(24px,calc((100% - 720px)/2)) 36px}.hero h2{font-size:32px}}
 </style>
 </head>
 <body>
-<header>
+<header id="home">
  <div class="top"><div class="logo">SRK</div><div><h1>SRK ELECTRONIC</h1><p>Electrical • Wiring • Home Repair</p></div></div>
  <div class="hero"><h2>घर की इलेक्ट्रिकल सर्विस,<br>अब एक ही जगह।</h2><p>वायरिंग, इलेक्ट्रिकल रिपेयर और घर की छोटी-बड़ी मरम्मत के लिए संपर्क करें।</p></div>
  <div class="actions">
@@ -41,7 +49,15 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <a class="btn whatsapp" href="https://wa.me/919920904161?text=Namaste%20SRK%20ELECTRONIC%2C%20mujhe%20service%20chahiye." target="_blank" rel="noopener">WhatsApp</a>
  </div>
 </header>
+<nav class="customer-nav" aria-label="मुख्य मेनू">
+ <a href="#home" data-nav="home" class="active"><span class="nav-icon" aria-hidden="true">🏠</span><span>Home</span></a>
+ <a href="#my-bookings" data-nav="my-bookings"><span class="nav-icon" aria-hidden="true">📋</span><span>My Bookings</span></a>
+ <a href="#payments" data-nav="payments"><span class="nav-icon" aria-hidden="true">💳</span><span>Payments</span></a>
+ <a href="#support" data-nav="support"><span class="nav-icon" aria-hidden="true">🎧</span><span>Help</span></a>
+ <a href="#profilePanel" data-nav="profilePanel"><span class="nav-icon" aria-hidden="true">👤</span><span>Profile</span></a>
+</nav>
 <main class="wrap">
+ <div id="my-bookings">
  <section class="panel" id="customer-login">
   <h2 class="section-title" style="margin-top:0">ग्राहक लॉगिन</h2>
   <p class="small">अपना मोबाइल नंबर सत्यापित करके अपनी बुकिंग देखें।</p>
@@ -61,6 +77,14 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
   <div id="customerBookings" aria-live="polite"></div>
   <button class="btn" type="button" id="customerLogout">लॉगआउट</button>
+ </section>
+ </div>
+ <section class="panel" id="profilePanel">
+  <h2 class="section-title" style="margin-top:0">👤 My Profile</h2>
+  <p class="small">आपका सत्यापित ग्राहक अकाउंट</p>
+  <p id="customerProfilePhone" style="font-weight:750"></p>
+  <p class="small">आपका मोबाइल नंबर OTP से सत्यापित है। इसी नंबर से जुड़ी बुकिंग यहाँ दिखाई जाएँगी।</p>
+  <button class="btn" type="button" id="profileLogout" style="background:#eef2f7;color:#26384d">लॉगआउट</button>
  </section>
 
  <h2 class="section-title">हमारी सेवाएँ</h2>
@@ -97,6 +121,12 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <button class="btn primary" type="submit">बुकिंग भेजें</button>
   </form>
  </section>
+ <section class="panel" id="payments">
+  <h2 class="section-title" style="margin-top:0">💳 Payments</h2>
+  <p class="small">भुगतान तभी करें जब इलेक्ट्रिशियन काम पूरा दर्ज कर दे और आपका कोटेशन मंजूर हो। सर्विस मेहनताना और सामान/पार्ट्स का खर्च अलग-अलग दिखाया जाएगा।</p>
+  <p class="small">आपकी बुकिंग का भुगतान विकल्प My Bookings में उपलब्ध होगा। वहाँ “काम पूरा — अब भुगतान करें” दबाकर Razorpay के सुरक्षित Checkout से भुगतान करें। इस पेज पर कोई अग्रिम या अनजान लिंक से भुगतान न करें।</p>
+  <a class="btn primary" href="#my-bookings">मेरी बुकिंग देखें</a>
+ </section>
  <section class="panel" id="upiPanel" style="display:none">
   <h2 class="section-title" style="margin-top:0">Razorpay से सुरक्षित भुगतान</h2>
   <p class="small">पेमेंट विंडो में UPI, Google Pay, PhonePe, Paytm, कार्ड या उपलब्ध अन्य विकल्प चुनें। भुगतान सफल होने के बाद सर्वर signature की जाँच करेगा।</p>
@@ -122,6 +152,14 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <button class="btn primary" type="submit">इलेक्ट्रिशियन आवेदन WhatsApp पर भेजें</button>
    <p class="small">सुरक्षा: अभी Aadhaar नंबर, बैंक पासवर्ड, OTP या कार्ड की जानकारी इस फॉर्म में न डालें। KYC केवल सुरक्षित सत्यापन प्रक्रिया में होगा।</p>
   </form>
+ </section>
+ <section class="panel" id="support">
+  <h2 class="section-title" style="margin-top:0">🎧 Help & Support</h2>
+  <p class="small">बुकिंग, इलेक्ट्रिशियन, कोटेशन या भुगतान में सहायता के लिए हमारी टीम से संपर्क करें।</p>
+  <div class="actions">
+   <a class="btn call" href="tel:9920904161">☎ कॉल करें</a>
+   <a class="btn whatsapp" href="https://wa.me/919920904161" target="_blank" rel="noopener">WhatsApp सहायता</a>
+  </div>
  </section>
  <section class="panel">
   <h2 class="section-title" style="margin-top:0">सर्विस क्षेत्र</h2>
@@ -220,6 +258,8 @@ async function syncCustomerSession() {
   const session = data.session;
   document.getElementById('customer-login').style.display = session ? 'none' : 'block';
   document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
+  document.getElementById('profilePanel').style.display = session ? 'block' : 'none';
+  document.getElementById('customerProfilePhone').textContent = session ? (session.user.phone || 'सत्यापित ग्राहक') : '';
   if (session) {
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     await loadCustomerBookings();
@@ -274,6 +314,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
+  document.getElementById('profileLogout').addEventListener('click', customerLogout);
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
   syncCustomerSession();
 } else {
@@ -393,6 +434,11 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
+document.querySelectorAll('.customer-nav a').forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelectorAll('.customer-nav a').forEach(item => item.classList.toggle('active', item === link));
+  });
+});
 document.getElementById('electricianForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const msg = `नमस्ते SRK ELECTRONIC, मैं इलेक्ट्रिशियन के रूप में रजिस्टर करना चाहता/चाहती हूँ।\nनाम: ${value('eName')}\nमोबाइल: ${value('ePhone')}\nराज्य: ${value('eState')}\nजिला: ${value('eDistrict')}\nPIN Code: ${value('ePin')}\nGoogle Maps: ${googleMapsUrl(value('electricianLat'),value('electricianLng'),[value('eDistrict'),value('eState'),value('ePin'),'India'].join(', '))}\nकौशल: ${value('eSkills')}\nअनुभव: ${value('eExperience')} वर्ष\nजानकारी: ${value('eAbout')}`;
