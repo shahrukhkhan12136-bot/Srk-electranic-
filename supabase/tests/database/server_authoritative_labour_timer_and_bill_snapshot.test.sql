@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(95);
+SELECT plan(96);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -389,6 +389,13 @@ SELECT ok(pg_get_functiondef('public.srk_calculate_booking_commission()'::regpro
   AND pg_get_functiondef('public.srk_calculate_booking_commission()'::regprocedure)
   ILIKE '%commission_amount:=NULL%',
   'new categorized labour billing never derives Platform Fee from legacy commission_rate');
+
+
+SELECT ok(pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()'::regprocedure)
+  ILIKE '%work_timer_authorizations%' AND
+  pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()'::regprocedure)
+  ILIKE '%actor_id=auth.uid()%',
+  'only customer-authorized completion workflow may insert final labour bill snapshot');
 
 SELECT * FROM finish();
 ROLLBACK;
