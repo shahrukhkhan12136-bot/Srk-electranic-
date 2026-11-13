@@ -3289,3 +3289,15 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Supabase Auth dashboard की OTP expiry, SMS send limits, verification attempt limits, session expiry/refresh और abuse controls अभी भी प्रत्यक्ष रूप से सत्यापित नहीं हैं। वास्तविक browser/device, SMS delivery, expired/replayed/wrong OTP, concurrent resend और logout/session revocation tests बाकी हैं।
 - **Status: In Progress.** इस सुधार से item 14.1.1 Verified Complete नहीं होता।
 - कोई Production database/Auth setting, provider secret, SMS transaction, customer account/session या deployment नहीं बदला।
+
+
+## 17.87 — Booking Page OTP Flow और Server-Side Verified Phone Binding Audit (13 नवम्बर 2026)
+- Checklist item: **14.1.1** — OTP expiry, resend cooldown/limits, wrong-attempt limits, abuse/rate limiting, secure session और logout।
+- Feature Branch `booking.html` का OTP flow और `create-booking.js` का server endpoint inspect किया।
+- `booking.html` में Supabase `signInWithOtp({ phone })`, `verifyOtp({ phone, token, type: 'sms' })`, `getSession()`, `auth.signOut()` और 60-second browser-side resend cooldown मौजूद हैं।
+- महत्त्वपूर्ण सत्यापन: booking form का phone field UI में editable है, लेकिन `create-booking.js` Bearer access token को Supabase `/auth/v1/user` से verify करता है; `user.phone_confirmed_at` आवश्यक रखता है; authenticated user के verified phone को submitted booking phone से normalize करके match करता है; mismatch पर HTTP 403 देता है; booking में verified Auth user ID को `customer_user_id` के रूप में लिखता है। इसलिए इस inspected create-booking endpoint पर केवल मनचाहा दूसरा phone डालकर booking बनना source-level पर रोका गया है।
+- Static validation: `booking.html` embedded JavaScript parse — PASS; OTP send/verify, session lookup, logout call और client cooldown presence — PASS; server-side Bearer verification, confirmed-phone check, normalized phone equality और user-ID binding — PASS।
+- सीमा: यह source-level inspection है; deployed endpoint parity, live Auth response, actual booking rejection for mismatched phone और browser/device E2E अभी execute नहीं हुए। Client-side 60-second cooldown reload/दूसरे device पर लागू नहीं रहता; Auth provider के server-side OTP limits/expiry अभी अलग से dashboard में verify करने हैं।
+- Logout handler में `signOut()` failure handling का स्पष्ट user-facing catch नहीं दिखा; इसे सुधार/functional test के लिए खुला रखा गया है। इस audit में कोई code change नहीं किया।
+- **Status: In Progress.** Verified-phone binding का source-level control मिला, लेकिन item 14.1.1 के सभी sub-requirements और runtime tests पूरे नहीं हुए।
+- कोई Production database/Auth setting, provider secret, SMS transaction, customer account/session या deployment नहीं बदला।
