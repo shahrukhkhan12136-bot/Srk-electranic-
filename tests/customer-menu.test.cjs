@@ -78,3 +78,15 @@ test('customer profile reads and writes only through validated owner-scoped RPCs
   assert.match(profileMigration, /length\(v_name\) < 2 or length\(v_name\) > 120/);
   assert.match(profileMigration, /u\.phone_confirmed_at is not null/);
 });
+
+
+test('support thread selection ignores stale async responses and blocks duplicate sends', () => {
+  assert.match(html, /let customerSupportThreadLoadSequence=0/);
+  assert.match(html, /const sequence=\+\+customerSupportThreadLoadSequence/);
+  assert.match(html, /sequence!==customerSupportThreadLoadSequence\|\|document\.getElementById\('customerSupportComplaint'\)\.value!==id/);
+  assert.match(html, /let customerSupportMessageBusy=false/);
+  assert.match(html, /if\(customerSupportMessageBusy\)return/);
+  assert.match(html, /customerSupportMessageBusy=true;button\.disabled=true/);
+  assert.match(html, /finally\{customerSupportMessageBusy=false;button\.disabled=false/);
+  assert.match(html, /कुछ संलग्न फ़ाइलें अभी लोड नहीं हो सकीं/);
+});
