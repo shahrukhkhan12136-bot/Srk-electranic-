@@ -10,6 +10,7 @@
     "test:otp": "node --test tests/otp-source.test.cjs",
     "test:labour": "node --test tests/labour-billing.test.cjs",
     "test:booking": "node --test tests/create-booking-handler.test.cjs",
-    "test:application": "node --test tests/apply-electrician.test.cjs"
+    "test:application": "node --test tests/apply-electrician.test.cjs",
+    "test:payments": "node --test tests/labour-payment-handlers.test.cjs"
   }
 }
