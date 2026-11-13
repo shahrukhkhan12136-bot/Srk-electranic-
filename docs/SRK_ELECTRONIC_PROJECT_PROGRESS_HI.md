@@ -1575,3 +1575,33 @@
 - Next: confirm full Customer App source regression and refund/account-privacy workflow results; then continue 14.1.10 isolated DB/JWT/pgTAP review. No Supabase migration applied, no Production DB/Auth/payment/refund/transfer/deployment action, no merge. Browser two-account and final consolidated mobile/Desktop QA remain deferred.
 
 - Final verification update: full Customer App source regression workflow `#43504622728` completed **SUCCESS**; refund/account-privacy source workflow `#43504622667` completed **SUCCESS** including handler/Admin syntax checks and refund + customer-menu tests. Both ran on test commit `1db53f201f59894033799424a07a80a2de500823`. This verifies source-level guards only; not DB/JWT runtime, actual account-switch browser behavior, or device QA. 14.1.10 remains Partial/In Progress.
+
+
+## Customer App — अगला account-switch audit और labour snapshot SQL hardening (2026-11-14)
+
+### ग्राहक work-start / completion / payment preference
+- Customer work-start approval handler में भी पुराने account का RPC response login switch के बाद stale alert/refresh कर सकता था; completion handler पहले ही session-bound किया गया था। अब work-start approval में session-generation checks, per-booking operation-token Map, token-owned finally cleanup और Auth-change invalidation है।
+- Cash→Online preference handler के catch path में stale error alert का एक छूटा हुआ रास्ता भी बंद किया गया; पुराने session की error नई session में नहीं दिखाई जाएगी।
+- App commit: `9989579d7f66410cc02be5214b4b27ef3e57d98f`; source/test assertion corrections के बाद latest source test commit `3b6ad864f56e51ecb0f087901fed4e2fe552e884`.
+
+### Help & Support account-switch cleanup
+- Audit में पाया कि शिकायत बनाना/संदेश भेजना generation guard तो रखते थे, लेकिन account switch पर mutation busy flags और disabled buttons reset नहीं होते थे; पुराने account की typed description/message और queued file selection भी form में रह सकती थी।
+- `invalidateCustomerSupportPrivateState()` अब complaint-create/message-send busy flags reset करता है, दोनों action buttons restore करता है, complaint selector unlock करता है, message/description drafts और selected attachment FileList clear करता है, और prior thread/attachments/complaints clear करता है। पुराने operation का finally generation guard के कारण नए session के controls नहीं बदलेगा।
+- App commit: `8f321f1efe76d3f5c06adb0d256350773df05abe`; source test commit `f21f459e9be6b7f4c9126b00e6973057f9c1bb88`; final passing test commit `3b6ad864f56e51ecb0f087901fed4e2fe552e884`.
+
+### Server timer / immutable labour bill schema audit
+- Production read-only introspection: Production project `gnqhoaqatmoiwwhgzkgm` migration history अभी `20261113081436_customer_booking_timeline` तक है; 14-Nov feature migrations Production में लागू नहीं हैं। Production `service_bookings.work_timer_seconds` अभी integer है और existing CHECK 0–604800 (7-day cap) है; approved rate-tier columns, new elapsed-seconds snapshot, `srk_booking_labour_bills`, work-event history और private timer authorization table अभी absent हैं। `work_transition_authorizations` मौजूद है।
+- उसी read-only aggregate query में Production में अभी `work_timer_running=true` या `status='in_progress'` वाले कोई booking rows नहीं मिले। कोई booking/data mutate नहीं किया।
+- Branch timer migration `20261114040000` में PostgreSQL three-valued CHECK logic का एक वास्तविक NULL loophole मिला: rate-tier snapshot constraint में paise field NULL होने पर CHECK expression NULL हो सकता था और PostgreSQL CHECK इसे pass कर देता। अब snapshot tuple के तीनों fields पर explicit `IS NOT NULL` लगाया है; all-NULL legacy state ही दूसरा valid case है।
+- Updated pgTAP plan 101→102; नया assertion constraint definition में तीनों explicit non-NULL guards verify करता है। pgTAP अभी execute नहीं हुआ; यह source-level/CI assertion है।
+- Commits: timer migration fix `d56960ca0fc031b244d0e00c4e0cbe0ed7235e62`; pgTAP `cdb33a72343987ae62459f01f3070c53baa04eb2`; Node source regression `3b6ad864f56e51ecb0f087901fed4e2fe552e884`.
+
+### CI स्थिति
+- Full Customer App source regression `#43505627440` **SUCCESS**.
+- Refund + Account Privacy source workflow `#43505627319` **SUCCESS**.
+- अतिरिक्त OTP/source regression `#43505620835` **SUCCESS**.
+- Offer Timeline source workflow `#43505386762` **SUCCESS**.
+- ये source/static regression results हैं; browser account-switch E2E, live JWT/RLS/RPC, timer concurrency/race tests, timer pgTAP execution और final consolidated mobile/Desktop QA अभी बाकी हैं।
+- कोई Production migration, Auth setting, payment/refund/transfer, merge या deployment नहीं किया गया।
+
+**अगला resume point:** Customer App private-state account-switch audit को शेष payment/refund/support/profile/booking mutations पर पूरा करें; फिर 14.1.10 timer/completion/payment integration के DB/RPC acceptance gaps और isolated pgTAP execution strategy पर आगे बढ़ें। Electrician Portal शुरू न करें जब तक Customer App acceptance gate पूरा न हो।
