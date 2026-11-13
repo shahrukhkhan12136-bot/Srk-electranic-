@@ -743,3 +743,14 @@
 - कोई migration Production में apply नहीं हुई; कोई deployment/upload/payment/refund नहीं किया गया।
 - Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
 - अगला Customer App काम: booking-history RPCs और profile/avatar lifecycle की error/retry/privacy audit; फिर Help & Support upload atomicity/cleanup acceptance cases। Electrician Portal अभी शुरू नहीं हुआ।
+
+
+## 2026-11-13 — Customer booking history partial-failure और stale-refresh hardening
+
+- `loadCustomerBookings()` में पहले booking list के बाद तीन अतिरिक्त RPC (call contacts, work timeline, refund history) और completed bookings के labour-bill RPCs चलते थे। Contacts/bill errors चुपचाप छूट सकते थे; अब मूल booking cards render रहते हैं और जो उप-जानकारी विफल हुई उसके लिए स्पष्ट Hindi warning दिखती है।
+- Timeline और refund-history failures की warnings अब एक ही partial-status message में दिखती हैं; contact RPC failure और किसी भी completed booking bill fetch failure भी बताया जाता है। Refund request की पिछली स्थिति लोड न होने पर नया refund-request button नहीं दिखाया जाता, ताकि duplicate/अनजाने अनुरोध का जोखिम न बने।
+- तेज़ी से दोबारा refresh करने पर पुराने network response से नया booking view overwrite न हो, इसके लिए `customerBookingHistoryLoadSequence` guard जोड़ा। केवल सबसे नया request render कर सकता है और वही `aria-busy` reset करता है।
+- Regression tests `tests/customer-menu.test.cjs` में stale response guard, हर partial RPC failure warning, bill failure warning और busy-state ownership की जाँच शामिल। GitHub Actions source regression Run #43463938027 — success, tested head `86def66ec4e621fc7a804394b93b242e6c4244c1`। Booking source change Run #43463914650 — success, head `232c64da294e71227f166862aa3cc8f11f0c5a1d`।
+- ये source regression tests हैं; वास्तविक Supabase RPC/RLS, multi-request browser timing, database pgTAP, mobile/Desktop QA अभी नहीं हुए। कोई production बदलाव/deployment नहीं।
+- Customer App का Booking History/Profile audit जारी है। Profile/avatar lifecycle में save के बाद preview-load failure और old-avatar cleanup failure को अलग से संभालना अगला उपकार्य है।
+- Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
