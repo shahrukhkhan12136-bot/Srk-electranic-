@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const html = fs.readFileSync('booking.html', 'utf8');
+const adminHtml = fs.readFileSync('admin.html', 'utf8');
 const bookingApi = fs.readFileSync('create-booking.js', 'utf8');
 const labourBilling = require('../lib/labour-billing');
 const profileMigration = fs.readFileSync('supabase/migrations/20261113200000_customer_profile_api_and_avatar_security.sql', 'utf8');
@@ -715,6 +716,15 @@ test('customer cancellation uses an owner-scoped Admin-mediated request and neve
   assert.ok(html.includes("srk_customer_create_booking_complaint"));
 });
 
+
+test('Admin cancellation queue only starts review and cannot finalize cancellation or fees', () => {
+  assert.ok(adminHtml.includes('id="adminCancellationRequests"'));
+  assert.ok(adminHtml.includes("sb.rpc('srk_admin_list_booking_cancellation_requests'"));
+  assert.ok(adminHtml.includes("sb.rpc('srk_admin_start_booking_cancellation_review'"));
+  assert.ok(adminHtml.includes('इससे Booking रद्द नहीं होगी'));
+  assert.ok(adminHtml.includes('कोई ₹0/₹49/₹99 शुल्क'));
+  assert.ok(!adminHtml.includes("srk_admin_decide_booking_cancellation"));
+});
 
 test('customer support booking selector ignores stale asynchronous responses', () => {
   assert.match(html, /let customerSupportBookingsLoadSequence=0/);
