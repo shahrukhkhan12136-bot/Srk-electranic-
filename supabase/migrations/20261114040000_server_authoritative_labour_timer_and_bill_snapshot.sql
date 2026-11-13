@@ -405,6 +405,9 @@ BEGIN
     RAISE EXCEPTION 'No stopped completion request is waiting for your response';
   END IF;
 
+  INSERT INTO srk_private.work_timer_authorizations(transaction_id,booking_id,actor_id)
+  VALUES (pg_catalog.txid_current(),p_booking_id,auth.uid());
+
   IF p_response='approved' THEN
     IF v_booking.selected_category IS NOT NULL THEN
       IF v_booking.labour_rate8h_paise_snapshot IS NULL
