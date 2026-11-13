@@ -1660,3 +1660,14 @@
 - This confirms source regressions only. Browser session-expiry/account-switch tests, Supabase Auth/JWT/RLS runtime, Razorpay test-mode E2E and final mobile/Desktop QA remain pending. Production remains unchanged.
 
 **अगला resume point:** proceed with Customer App acceptance/dependency audit and prepare isolated local database coverage for timer, bill snapshot, completion review and payment/refund migrations. Do not begin Electrician Portal until Customer App is fully complete.
+
+## 14 नवम्बर 2026 — Customer App payment-order migration audit और सुधार
+
+- Customer App के Razorpay order/payment SQL chain की focused audit में `20261114090000_atomic_razorpay_order_and_payment_finalization.sql` में एक गंभीर source defect मिला: valid चार RPC definitions और final COMMENT के बाद लगभग 28.7 KB malformed/duplicated SQL fragments मौजूद थे। Migration का valid हिस्सा 10,182 characters पर समाप्त होता था; trailing invalid SQL के कारण clean local migration application fail हो सकती थी।
+- Migration को सही final COMMENT पर truncate करके साफ किया; अब इसमें ठीक चार intended RPC definitions और चार `$function$;` terminators हैं। साथ ही legacy quote path में `quoted_amount IS NULL` का explicit rejection जोड़ा गया, ताकि PostgreSQL के NULL boolean semantics से missing approved quote amount reconciliation को bypass न कर सके। यह guard order-link और captured-payment finalizer दोनों में है।
+- pgTAP structural test plan 26 से 28 किया; दोनों legacy paths के NULL-amount guards के लिए assertions जोड़े।
+- नया synthetic-only local fixture और behavior test जोड़ा: payment-order lock, duplicate active lock, one-paise mismatch, valid order linking, captured amount mismatch, successful capture, same-payment idempotent retry, different payment ID conflict, missing legacy quote total rejection और authenticated-role denial।
+- नया workflow `.github/workflows/payment-order-isolated-pgtap.yml` ephemeral local Supabase stack पर migration + structural + behavior pgTAP चलाता है। इसमें Production URL/credentials/data का उपयोग नहीं है; कोई Production migration, payment, refund या payout execute नहीं किया गया।
+- Commits: migration fix `c7538bb44cd4924d3116340a6ca17573c4762ccf`; pgTAP additions `26a0300e35e4df0f3b9f55a437e7e9b7fff28633`; synthetic fixture `094263c12121ecb9c8c52aefd4fabb1fe3f0ff14`; behavior tests `88884f9f43a867adeea872ab7097224a118e89b4`; isolated workflow `7fc1da536ac22387d6e9a120b6b1819d8f632f2c`.
+- Verification at tracker update: full source-regression workflow for `7fc1da5` SUCCESS; payment-order isolated pgTAP workflow Run #43515719761 **IN PROGRESS**. इसलिए pgTAP assertions को अभी PASS नहीं माना गया है। Vercel build-rate-limit status अलग deployment check है; कोई deployment नहीं हुआ।
+- अगला कदम: isolated pgTAP run का final result पढ़ना, failure हो तो test harness सुधारना; फिर server-authoritative timer/completion chain के local-only fixture/tests पर आगे बढ़ना। Production untouched; final mobile/Desktop QA अभी स्थगित है।
