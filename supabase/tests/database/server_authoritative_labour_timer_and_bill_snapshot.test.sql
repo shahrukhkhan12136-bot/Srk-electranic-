@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(91);
+SELECT plan(94);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -367,6 +367,21 @@ SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedur
   AND pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
   ILIKE '%Refund reversal of platform_fee_due_settlement%',
   'Admin partner commission report reconciles refund reversals in cash Platform Fee due');
+
+
+SELECT has_function('public','srk_guard_immutable_booking_labour_bill',ARRAY[]::text[],
+  'immutable final labour bill guard exists');
+SELECT ok(pg_get_triggerdef(oid) ILIKE '%BEFORE INSERT OR UPDATE OR DELETE%'
+  FROM pg_trigger WHERE tgrelid='public.srk_booking_labour_bills'::regclass
+    AND tgname='srk_guard_immutable_booking_labour_bill',
+  'final labour bill table is protected against updates and deletes');
+SELECT ok(pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()'::regprocedure)
+  ILIKE '%FOR UPDATE%' AND
+  pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()'::regprocedure)
+  ILIKE '%billable_minutes%' AND
+  pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()'::regprocedure)
+  ILIKE '%platform_fee_paise%',
+  'final labour bill insert is recomputed from locked booking timer and approved rate');
 
 SELECT * FROM finish();
 ROLLBACK;
