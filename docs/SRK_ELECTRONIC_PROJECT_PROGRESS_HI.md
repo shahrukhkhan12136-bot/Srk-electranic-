@@ -1315,3 +1315,12 @@
 - App commit: `f081cfbf0bdd58679c2ad3379869a9e739169b44`. Regression test commits: `7bfab6dcea2a2323d988d38a8224e63a7f7606fb`, existing timeline assertion alignment `3206bf3be879e70281e2ff9cb8a8ebe3eb893b8f`.
 - Verification: Customer App source regression run `43491545377` completed **SUCCESS** on test commit `3206bf3be879`; Refund Source Regression run `43491421430` **SUCCESS**. Previous Customer App suite `43491302281` also **SUCCESS** for booking confirmation work.
 - Limitation: timeline RPC event capture currently records booking creation and work/status transitions, not every offer-queue internal event or payment/refund event. This change improves only statuses already recorded; payment history remains a separate view. Offer/assignment/live-tracking and payment timeline integration need their own backend dependency audit and tests. No DB/Production changes.
+
+
+### 14 नवम्बर 2026 — Customer OTP CI annotations audit और Node runtime guard
+
+- पिछले OTP source workflow Run #5 (`959b083db244`) और Run #6 (`02bc05b`) की annotations/logs जाँचीं। दोनों में 2 non-blocking deprecation annotations थीं: पुराने `actions/checkout@v4` / `actions/setup-node@v4` का Node.js 20 runtime deprecation, और Node dependency stack से `[DEP0040] punycode` deprecation warning। OTP tests स्वयं 10/10 PASS थे; ये OTP logic failures नहीं थे।
+- Current feature-branch OTP/source workflow पहले से `actions/checkout@v5`, `actions/setup-node@v5`, Node 24 पर है। इसे regression-proof करने के लिए `tests/otp-source.test.cjs` में workflow-version assertion जोड़ा; v4 actions लौटने पर CI fail होगा।
+- Test commit: `c798ff82fc37b7cb14835edd5ee36e3cfe108383`. Full Customer App source regression workflow `43491986534` completed **SUCCESS** (Node 24 setup + all isolated source suites successful).
+- Remaining OTP security items unchanged: actual OTP expiry, Supabase server-side resend/wrong-attempt rate limits, CAPTCHA/bot protection, session expiry/revocation and real SMS/browser E2E. Client-side 60-second cooldown is UX only, not server-side abuse protection. These depend on Auth provider configuration/runtime verification; no Auth settings were changed and no OTP was sent.
+- The `punycode` deprecation notice is still an upstream Node dependency warning; no package upgrade was made without dependency provenance/compatibility evidence. No Production change/deployment.
