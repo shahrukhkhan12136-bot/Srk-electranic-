@@ -698,9 +698,22 @@ async function customerSubmitBookingRefund(bookingId){
 let customerBookingHistoryLoadSequence=0;
 let customerBookingHistoryOffset=0;
 let customerBookingHistoryBusy=false;
+function invalidateCustomerBookingHistory(){
+ customerBookingHistoryLoadSequence++;
+ customerBookingHistoryBusy=false;
+ customerBookingHistoryOffset=0;
+ const box=document.getElementById('customerBookings');
+ const more=document.getElementById('customerBookingHistoryMore');
+ const refresh=document.getElementById('customerRefresh');
+ if(box){box.textContent='लॉगिन बदल गया है। नई बुकिंग सूची लोड की जा रही है।';box.setAttribute('aria-busy','false');}
+ if(more){more.style.display='none';more.disabled=false;}
+ if(refresh)refresh.disabled=false;
+}
 async function loadCustomerBookings(reset=true) {
   if(!customerSb||(!reset&&customerBookingHistoryBusy))return;
   const sequence=++customerBookingHistoryLoadSequence;
+  const generation=customerSessionGeneration;
+  const isCurrent=()=>sequence===customerBookingHistoryLoadSequence&&customerSessionOperationIsCurrent(generation);
   const box = document.getElementById('customerBookings');
   const more=document.getElementById('customerBookingHistoryMore');
   const refresh=document.getElementById('customerRefresh');
@@ -711,7 +724,7 @@ async function loadCustomerBookings(reset=true) {
   if(reset){customerBookingHistoryOffset=0;more.style.display='none';box.textContent=navigator.onLine===false?'इंटरनेट कनेक्शन उपलब्ध नहीं है। कनेक्शन लौटने पर फिर से कोशिश करें।':'आपकी बुकिंग लोड हो रही हैं…';}
   try {
     const { data: sessionData, error: sessionError } = await customerSb.auth.getSession();
-    if(sequence!==customerBookingHistoryLoadSequence)return;
+    if(!isCurrent())return;
     if(sessionError)throw sessionError;
     const session = sessionData?.session;
     if (!session) {
@@ -738,7 +751,7 @@ async function loadCustomerBookings(reset=true) {
       customerSb.rpc('srk_customer_get_my_booking_offer_timeline'),
       customerSb.rpc('srk_customer_list_my_booking_refund_requests')
     ]);
-    if(sequence!==customerBookingHistoryLoadSequence)return;
+    if(!isCurrent())return;
     const partialWarnings=[];
     if(contactsResult.error)partialWarnings.push('इलेक्ट्रिशियन संपर्क विवरण अभी लोड नहीं हो सका।');
     if(timelineResult.error)partialWarnings.push('बुकिंग की स्थिति का इतिहास अभी लोड नहीं हो सका।');
@@ -769,7 +782,7 @@ async function loadCustomerBookings(reset=true) {
       if(error)billLoadFailures++;
       else if(bill)billMap.set(row.id,bill);
     }));
-    if(sequence!==customerBookingHistoryLoadSequence)return;
+    if(!isCurrent())return;
     if(billLoadFailures)partialWarnings.push('कुछ पूरी हुई बुकिंग के अंतिम Labour Bill अभी लोड नहीं हो सके।');
     box.querySelector('[data-booking-history-load-warning]')?.remove();
     const cardsHtml = data.map(row => {
@@ -852,7 +865,7 @@ async function loadCustomerBookings(reset=true) {
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
-    if(sequence!==customerBookingHistoryLoadSequence)return;
+    if(!isCurrent())return;
     if(reset)box.innerHTML=cardsHtml;else box.insertAdjacentHTML('beforeend',cardsHtml);
     customerBookingHistoryOffset=requestedOffset+data.length;
     more.style.display=data.length===25?'block':'none';
@@ -864,12 +877,12 @@ async function loadCustomerBookings(reset=true) {
       box.prepend(note);
     }
   } catch(error) {
-    if(sequence===customerBookingHistoryLoadSequence){
+    if(isCurrent()){
       const warning=navigator.onLine===false?'इंटरनेट कनेक्शन टूट गया। पहले से दिख रही बुकिंग सुरक्षित हैं; कनेक्शन लौटने पर दोबारा कोशिश करें।':'अगली बुकिंग लोड नहीं हो सकीं। पहले से दिख रही बुकिंग सुरक्षित हैं; कृपया दोबारा कोशिश करें।';
       if(reset)box.textContent=warning;else{let note=box.querySelector('[data-booking-history-load-warning]');if(!note){note=document.createElement('p');note.className='small';note.dataset.bookingHistoryLoadWarning='true';box.appendChild(note);}note.textContent=warning;}
     }
   } finally {
-    if(sequence===customerBookingHistoryLoadSequence){customerBookingHistoryBusy=false;box.setAttribute('aria-busy','false');more.disabled=false;if(refresh)refresh.disabled=false;}
+    if(isCurrent()){customerBookingHistoryBusy=false;box.setAttribute('aria-busy','false');more.disabled=false;if(refresh)refresh.disabled=false;}
   }
 }
 let customerWorkStartResponseBusy=new Set();
@@ -1622,7 +1635,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();} setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();} setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerPhone').addEventListener('input', () => {
     if (customerPendingOtpPhone && customerPhoneE164() !== customerPendingOtpPhone) {
       customerPendingOtpPhone = null;
