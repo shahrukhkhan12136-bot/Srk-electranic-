@@ -1103,3 +1103,11 @@
 - तीनों malformed-input मामलों के लिए handler regression test जोड़ा; हर मामले में अपेक्षित HTTP 400, कोई booking insert नहीं और public rate-limit RPC call नहीं होने की assertion है।
 - Commits: handler `f50143243456fc19ed4956ebd21251f5e605ceb1`, source formatting correction `d8038fd39dc3e142b753a58954c56d97ed1feb2d`, tests `faed53ab37e40255aad3021f7bd2f224b4420737`.
 - अभी Node tests/CI execute या verify नहीं हुए हैं। Production और database में कोई बदलाव नहीं किया।
+
+
+### 13 नवम्बर 2026 — Customer App booking validation regression CI परिणाम
+
+- Booking PIN/date/time trailing-character rejection test ने 3 cases के साथ पास किया: `2718617`, `2026-12-01extra`, `10:30extra` — सभी HTTP 400, कोई booking insert नहीं, और public rate-limit RPC call नहीं। Booking handler suite में 39/39 tests पास हुए।
+- उसी push-triggered all-source regression workflow में Customer Menu test file के दो source-assertion syntax/closure दोष मिले; assertions को regex से हटाकर सुरक्षित `includes`/index checks में बदला और test block बंद किया। ये test-file defects थे, application handler failure नहीं।
+- अंतिम workflow run **43482573166** (commit `42e884c98bb656eb87435728b8b19d5d7d83573d`) — सभी isolated source regression suites **SUCCESS**।
+- इसका अर्थ source-level automated tests पास हैं; SQL/pgTAP, वास्तविक Supabase RPC/Storage, browser interaction और अंतिम mobile/Desktop QA अभी अलग से बाकी हैं। Production deployment/डेटाबेस बदलाव नहीं हुए।
