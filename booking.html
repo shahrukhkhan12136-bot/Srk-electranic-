@@ -418,9 +418,17 @@ async function customerPrintPaymentReceipt(bookingId){
  }
 }
 let customerPaymentHistoryLoadSequence=0;
+function invalidateCustomerPaymentHistory(){
+ customerPaymentHistoryLoadSequence++;customerPaymentHistoryBusy=false;customerPaymentHistoryOffset=0;
+ const box=document.getElementById('customerPaymentHistory'),more=document.getElementById('customerPaymentHistoryMore'),refresh=document.getElementById('customerPaymentHistoryRefresh');
+ if(box){box.textContent='लॉगिन बदल गया है। नया भुगतान इतिहास लोड किया जा रहा है।';box.setAttribute('aria-busy','false');}
+ if(more){more.style.display='none';more.disabled=false;}if(refresh)refresh.disabled=false;
+}
 async function loadCustomerPaymentHistory(reset=true) {
  if(!customerSb||(!reset&&customerPaymentHistoryBusy))return;
  const sequence=++customerPaymentHistoryLoadSequence;
+ const generation=customerSessionGeneration;
+ const isCurrent=()=>sequence===customerPaymentHistoryLoadSequence&&customerSessionOperationIsCurrent(generation);
  const box=document.getElementById('customerPaymentHistory');
  const more=document.getElementById('customerPaymentHistoryMore');
  const refresh=document.getElementById('customerPaymentHistoryRefresh');
@@ -433,14 +441,12 @@ async function loadCustomerPaymentHistory(reset=true) {
  if(reset){customerPaymentHistoryOffset=0;more.style.display='none';box.textContent='भुगतान रिकॉर्ड लोड हो रहे हैं…';}
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(!isCurrent())return;
   if(sessionError)throw sessionError;
-  if(!sessionData?.session){
-   if(sequence===customerPaymentHistoryLoadSequence){box.textContent='भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';more.style.display='none';}
-   return;
-  }
+  if(!sessionData?.session){if(isCurrent()){box.textContent='भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';more.style.display='none';}return;}
   const {data,error}=await customerSb.rpc('srk_customer_get_payment_history',{p_limit:25,p_offset:requestedOffset});
+  if(!isCurrent())return;
   if(error)throw error;
-  if(sequence!==customerPaymentHistoryLoadSequence)return;
   const rows=Array.isArray(data)?data:[];
   const html=rows.map(row=>{
    const label=customerPaymentLabel(row);
@@ -457,12 +463,12 @@ async function loadCustomerPaymentHistory(reset=true) {
   customerPaymentHistoryOffset=requestedOffset+rows.length;
   more.style.display=rows.length===25?'block':'none';
  }catch(error){
-  if(sequence===customerPaymentHistoryLoadSequence){
+  if(isCurrent()){
    if(reset)box.textContent='भुगतान इतिहास लोड नहीं हो सका। कृपया दोबारा कोशिश करें।';
    else{let note=box.querySelector('[data-payment-history-load-warning]');if(!note){note=document.createElement('p');note.className='small';note.dataset.paymentHistoryLoadWarning='true';note.setAttribute('role','status');box.appendChild(note);}note.textContent='अगले भुगतान रिकॉर्ड लोड नहीं हो सके। पहले से दिख रहे रिकॉर्ड सुरक्षित हैं; कृपया दोबारा कोशिश करें।';}
   }
  }finally{
-  if(sequence===customerPaymentHistoryLoadSequence){
+  if(isCurrent()){
    customerPaymentHistoryBusy=false;
    box.setAttribute('aria-busy','false');
    more.disabled=false;
@@ -473,11 +479,19 @@ async function loadCustomerPaymentHistory(reset=true) {
 let customerRefundHistoryLoadSequence=0;
 let customerRefundHistoryOffset=0;
 let customerRefundHistoryBusy=false;
+function invalidateCustomerRefundHistory(){
+ customerRefundHistoryLoadSequence++;customerRefundHistoryBusy=false;customerRefundHistoryOffset=0;
+ const box=document.getElementById('customerRefundHistory'),more=document.getElementById('customerRefundHistoryMore'),refresh=document.getElementById('customerRefundHistoryRefresh');
+ if(box){box.textContent='लॉगिन बदल गया है। नया रिफंड इतिहास लोड किया जा रहा है।';box.setAttribute('aria-busy','false');}
+ if(more){more.style.display='none';more.disabled=false;}if(refresh)refresh.disabled=false;
+}
 async function loadCustomerRefundHistory(reset=true){
  if(!customerSb||(!reset&&customerRefundHistoryBusy))return;
  const box=document.getElementById('customerRefundHistory');
  if(!box)return;
  const sequence=++customerRefundHistoryLoadSequence;
+ const generation=customerSessionGeneration;
+ const isCurrent=()=>sequence===customerRefundHistoryLoadSequence&&customerSessionOperationIsCurrent(generation);
  const more=document.getElementById('customerRefundHistoryMore');
  const refresh=document.getElementById('customerRefundHistoryRefresh');
  const requestedOffset=reset?0:customerRefundHistoryOffset;
@@ -485,11 +499,12 @@ async function loadCustomerRefundHistory(reset=true){
  box.setAttribute('aria-busy','true');if(reset){customerRefundHistoryOffset=0;more.style.display='none';box.textContent='रिफंड अनुरोध लोड हो रहे हैं…';}
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(!isCurrent())return;
   if(sessionError)throw sessionError;
-  if(!sessionData?.session){if(sequence===customerRefundHistoryLoadSequence)box.textContent='रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';return;}
+  if(!sessionData?.session){if(isCurrent())box.textContent='रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';return;}
   const {data,error}=await customerSb.rpc('srk_customer_list_my_booking_refund_requests',{p_limit:25,p_offset:requestedOffset});
+  if(!isCurrent())return;
   if(error)throw error;
-  if(sequence!==customerRefundHistoryLoadSequence)return;
   const rows=Array.isArray(data)?data:[];
   const html=rows.map(row=>{
    const date=row.processed_at||row.updated_at||row.created_at;
@@ -497,20 +512,20 @@ async function loadCustomerRefundHistory(reset=true){
    const dateText=dateValue&&!Number.isNaN(dateValue.getTime())?dateValue.toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'तारीख उपलब्ध नहीं';
    return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>बुकिंग #'+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase())+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small">स्थिति: '+customerEsc(customerRefundStatusText(row.status))+'</p><p class="small">कारण: '+customerEsc(row.reason||'—')+'</p><p class="small">अंतिम अपडेट: '+customerEsc(dateText)+'</p></article>';
   }).join('');
-  if(sequence!==customerRefundHistoryLoadSequence)return;
+  if(!isCurrent())return;
   box.querySelector('[data-refund-history-load-warning]')?.remove();
   if(reset)box.innerHTML=html||'<p class="small">अभी कोई रिफंड अनुरोध दर्ज नहीं है।</p>';
   else box.insertAdjacentHTML('beforeend',html);
   customerRefundHistoryOffset=requestedOffset+rows.length;
   more.style.display=rows.length===25?'block':'none';
  }catch(error){
-  if(sequence===customerRefundHistoryLoadSequence){
+  if(isCurrent()){
    const warning='रिफंड के अगले रिकॉर्ड लोड नहीं हो सके। पहले से दिख रहे रिकॉर्ड सुरक्षित हैं; कृपया दोबारा कोशिश करें।';
    if(reset)box.textContent='रिफंड स्थिति लोड नहीं हो सकी। कृपया दोबारा कोशिश करें.';
    else{let note=box.querySelector('[data-refund-history-load-warning]');if(!note){note=document.createElement('p');note.className='small';note.dataset.refundHistoryLoadWarning='true';box.appendChild(note);}note.textContent=warning;}
   }
  }finally{
-  if(sequence===customerRefundHistoryLoadSequence){
+  if(isCurrent()){
    customerRefundHistoryBusy=false;box.setAttribute('aria-busy','false');more.disabled=false;
    if(refresh)refresh.disabled=false;
   }
@@ -1522,13 +1537,13 @@ async function syncCustomerSession() {
       const bookingMore=document.getElementById('customerBookingHistoryMore');
       bookingMore.style.display='none';bookingMore.disabled=false;
       document.getElementById('customerBookings').removeAttribute('aria-busy');
-      ++customerPaymentHistoryLoadSequence;customerPaymentHistoryBusy=false;customerPaymentHistoryOffset=0;
+      invalidateCustomerPaymentHistory();
       const paymentMore=document.getElementById('customerPaymentHistoryMore');
       paymentMore.style.display='none';paymentMore.disabled=false;
       document.getElementById('customerPaymentHistory').removeAttribute('aria-busy');
       document.getElementById('customerPaymentHistoryRefresh').disabled=false;
       document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';
-      ++customerRefundHistoryLoadSequence;customerRefundHistoryBusy=false;customerRefundHistoryOffset=0;
+      invalidateCustomerRefundHistory();
       const refundMore=document.getElementById('customerRefundHistoryMore');
       refundMore.style.display='none';refundMore.disabled=false;
       document.getElementById('customerRefundHistory').removeAttribute('aria-busy');
@@ -1635,7 +1650,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();} setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();} setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerPhone').addEventListener('input', () => {
     if (customerPendingOtpPhone && customerPhoneE164() !== customerPendingOtpPhone) {
       customerPendingOtpPhone = null;
