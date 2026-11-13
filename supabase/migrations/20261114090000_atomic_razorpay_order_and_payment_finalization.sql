@@ -57,7 +57,7 @@ BEGIN
   IF coalesce(auth.jwt()->>'role','') <> 'service_role' THEN
     RAISE EXCEPTION 'Service role only' USING ERRCODE='42501';
   END IF;
-  IF p_booking_id IS NULL OR p_lock_token IS NULL
+  IF p_booking_id IS NULL OR p_lock_token IS NULL OR p_razorpay_order_id IS NULL
      OR p_razorpay_order_id !~ '^order_[A-Za-z0-9]+$'
      OR p_amount_paise IS NULL OR p_amount_paise<100 THEN
     RAISE EXCEPTION 'Invalid payment order details' USING ERRCODE='22023';
