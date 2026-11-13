@@ -973,3 +973,6 @@
 - Message/attachment send के दौरान complaint selector पहले enabled रहता था। ग्राहक upload के बीच दूसरी शिकायत चुन सकता था; बाद का thread refresh गलत चयनित शिकायत पर जा सकता था।
 - अब send प्रक्रिया के दौरान complaint selector disable होता है और `finally` में उसकी पिछली disabled स्थिति restore होती है। इससे upload/message operation के बीच thread बदलने से रोका गया है।
 - Source regression assertion जोड़ा गया। नया workflow result अभी pending है। यह source-level safeguard है; browser और वास्तविक Storage upload QA अभी नहीं हुआ। Production/SQL में कोई बदलाव नहीं।
+
+
+- Support attachment cleanup failure handling: orphan-object removal is now wrapped against both returned Storage errors and thrown network exceptions, so cleanup failure cannot bypass the customer-facing partial-send recovery path. Added source regression coverage. Commit `aaafcd6fbd652ba9799350e9277dd384fc5fe503`; test commit `54340a73e80cbd1e4d6cac442543c651834a01f6`. Workflow result pending at tracker update. No live Storage test or Production change.
