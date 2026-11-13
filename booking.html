@@ -598,18 +598,26 @@ async function customerRespondWorkCompletion(bookingId,response){
  };
  if(!confirm(messages[response]||'क्या आप आगे बढ़ना चाहते हैं?'))return;
  customerWorkCompletionResponseBusy.add(bookingId);
+ let responseConfirmed=false;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_respond_work_completion',{
    p_booking_id:bookingId,p_response:response,p_note:note
   });
   if(error)throw error;
   if(!data?.success)throw new Error('Completion response was not confirmed');
+  responseConfirmed=true;
   alert(response==='approved'?'काम पूरा होने की पुष्टि दर्ज हो गई।':
    response==='rejected'?'काम अभी अधूरा दर्ज हुआ है। इलेक्ट्रिशियन का टाइमर फिर शुरू होगा।':
    'आपका विवाद दर्ज हो गया है और Admin समीक्षा करेगा।');
-  await loadCustomerBookings();
+  try{
+   await loadCustomerBookings();
+  }catch(refreshError){
+   alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। कृपया केवल सूची रीफ़्रेश करें; जवाब दोबारा न भेजें।');
+  }
  }catch(error){
-  alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग की वर्तमान स्थिति रीफ़्रेश करके दोबारा कोशिश करें।');
+  alert(responseConfirmed
+   ?'आपका जवाब दर्ज हो गया है। बुकिंग की स्थिति रीफ़्रेश करें।'
+   :'आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग की वर्तमान स्थिति रीफ़्रेश करके दोबारा कोशिश करें।');
  }finally{customerWorkCompletionResponseBusy.delete(bookingId);}
 }
 let customerRefundSubmissionBusy=new Set();
