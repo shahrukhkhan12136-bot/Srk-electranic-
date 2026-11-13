@@ -4150,3 +4150,11 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - अतिरिक्त source defect fix: Electrician profile SELECT error handler पहले ऐसे #jobs element पर text लिखता था जो portal में मौजूद नहीं है, जिससे error path पर दूसरा JavaScript exception आता। अब existing #state element में generic safe message textContent से render होता है; regression test ने missing target और safe rendering दोनों assert किए हैं।
 
 - Isolated schema CI workflow (.github/workflows/supabase-schema-ci.yml) में नई electrician timeline migration apply-list और smoke assertion भी जोड़ी गई है। Workflow केवल manual dispatch पर चलता है; इसे dispatch नहीं किया गया, इसलिए PostgreSQL/pgTAP runtime परिणाम अभी उपलब्ध नहीं हैं।
+
+## 17.125 — Electrician Profile / ID और Documents Audit (13 Nov 2026)
+
+- Existing application में नाम, फोन, क्षेत्र, PIN, अनुभव, माँगी गई commercial category और self-declared skills ली जाती हैं; कोई identity-document upload field नहीं है। Application API भी document upload नहीं करता।
+- Electrician profile panel में अब profile UUID को स्पष्ट रूप से “आंतरिक पार्टनर संदर्भ ID” दिखाया जाता है। UI साफ कहता है कि यह सरकारी पहचान-पत्र या downloadable digital ID नहीं है।
+- उसी panel में document upload, private document list, expiry tracking और Admin review workflow की अनुपलब्धता स्पष्ट दिखाई जाती है। किसी document को verified बताने का झूठा UI नहीं जोड़ा गया।
+- Source regression test internal-ID label और missing-document disclosure की पुष्टि करता है।
+- Status: Partial / In Progress. वास्तविक KYC document storage, private bucket, MIME/size validation, signed upload/download, owner/admin-only RLS, review decision + audit, expiry/re-upload, activation gate और runtime negative JWT tests अभी डिजाइन/implementation बाकी हैं। Production में कोई bucket/table/policy नहीं बदली।
