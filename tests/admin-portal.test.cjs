@@ -10,7 +10,7 @@ test('Admin panel has navigable anchors for its existing operational sections', 
   const navEnd = html.indexOf('</nav>', navStart);
   assert.ok(navStart >= 0 && navEnd > navStart);
   const nav = html.slice(navStart, navEnd + 6);
-  for (const id of ['adminOverview','adminBookings','adminApplications','adminElectricians','skillMatchingAdmin','adminFinance','adminWallet','adminPlatformFee','adminSupportPanel','adminFinanceDashboard','adminStaff']) {
+  for (const id of ['adminOverview','adminBookings','adminApplications','adminElectricians','adminVerificationDocuments','skillMatchingAdmin','adminFinance','adminWallet','adminPlatformFee','adminSupportPanel','adminFinanceDashboard','adminStaff']) {
     assert.ok(nav.includes('href="#' + id + '"'), 'missing Admin navigation target: ' + id);
     assert.equal((html.match(new RegExp('id="' + id + '"','g'))||[]).length, 1, 'target must be unique: ' + id);
   }
@@ -28,6 +28,21 @@ test('Staff management is not falsely exposed before role, permission and RLS im
   assert.ok(html.includes('कोई Staff account जोड़ने, अनुमति देने या staff login करने का control सक्रिय नहीं है।'));
   assert.ok(!html.includes('srk_admin_create_staff'));
   assert.ok(!html.includes('srk_admin_grant_staff_permission'));
+});
+
+test('Admin KYC panel lists private electrician documents, signs short-lived links and records review decisions', () => {
+  assert.ok(html.includes('id="adminVerificationDocuments"'));
+  assert.ok(html.includes('srk_admin_list_electrician_verification_documents'));
+  assert.ok(html.includes("createSignedUrl(path,60)"));
+  assert.ok(html.includes("srk_admin_review_electrician_document"));
+  assert.ok(html.includes("status==='rejected'"));
+  assert.ok(html.includes("status==='needs_resubmission'"));
+  assert.ok(html.includes('window.srkVerificationDocumentPaths'));
+  assert.ok(html.includes("await Promise.all([loadSkillMatchingConfig(),loadAdminVerificationDocuments()])"));
+});
+test('Admin KYC file access uses signed URLs rather than public object URLs', () => {
+  assert.ok(html.includes("from('srk-electrician-verification').createSignedUrl"));
+  assert.ok(!html.includes('getPublicUrl(path)'));
 });
 
 test('Admin inline JavaScript parses after navigation changes', () => {
