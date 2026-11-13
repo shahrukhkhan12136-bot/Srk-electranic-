@@ -2010,3 +2010,43 @@ Migration lineage पूरी तरह reconcile होने और Feature B
 ### 6. सुरक्षा सीमा
 - Production table, grants, default privileges, policies, functions, rows, payments, transfers और webhook settings में कोई बदलाव नहीं हुआ।
 - कोई Test Mode या Live provider API call, staging resource creation या deployment नहीं हुआ।
+
+
+## 17.55 — Admin Webhook Exception UI और Repository Caller Mapping (13 Nov 2026)
+
+Feature Branch के tracked Admin UI और webhook adapter source का read-only audit किया गया। Production UI/API को कोई request या mutation नहीं भेजी गई।
+
+### 1. Admin UI की वास्तविक स्थिति
+- Feature Branch में Admin portal का tracked entry file `admin.html` है; उसमें Admin login के बाद `is_srk_admin()`, booking/application/profile data, `srk_admin_commission_report()`, wallet overview और payout/manual-payment RPC calls मिले।
+- `admin.html` में `srk_admin_list_razorpay_webhook_exceptions`, `webhook`, `exception`, `processing_error` या refund exception view का कोई matching reference नहीं मिला।
+- इसलिए Production में Admin exception-list RPC मौजूद होने के बावजूद Feature Branch Admin portal उसे call/render नहीं करता। यह UI visibility gap है; RPC का अस्तित्व UI workflow होने का प्रमाण नहीं।
+- `admin.html` में refund management UI/RPC call भी इस scan में नहीं मिला। Refund exception handling अलग से जोड़ने से पहले current Admin refund RPCs, approval process और UI architecture का complete review आवश्यक है।
+
+### 2. Webhook callers / routing
+- Root `razorpay-webhook.js` ही inspected webhook processing implementation है।
+- `netlify/functions/razorpay-webhook.js` root handler को import/export करता है; कोई स्वतंत्र processing logic नहीं।
+- `netlify/functions/verify-payment.js` root `verify-payment.js` को adapter के रूप में export करता है।
+- Root webhook event inbox table का कोई read/write नहीं करता; इसलिए Admin exception RPC के लिए इस handler से durable exception event नहीं बनता।
+- GitHub code-search endpoint पर exact table/RPC identifiers की खोज में कोई परिणाम नहीं आया; इसे अकेले repository-wide absence का निर्णायक प्रमाण नहीं मानते। Tracked tree और Admin HTML direct inspection से ऊपर के निष्कर्ष निकाले गए हैं।
+
+### 3. Migration source recovery की वर्तमान सीमा
+- Production migration history (81 entries) में inbox table की स्पष्ट creation migration नहीं मिली।
+- Feature Branch tracked migration tree में भी creation migration नहीं मिली।
+- Exact identifier पर commit search भी खाली रहा।
+- Historical branch refs/backup/database export में source recovery अभी बाकी है; वर्तमान evidence से मूल migration timestamp या SQL body बताना संभव नहीं।
+
+### 4. सुरक्षित implementation दिशा (अभी design-only)
+- Admin में exception queue केवल guarded Admin RPC से आए; raw event payload, signature header, secret या अनावश्यक PII कभी expose न हो।
+- Exception row में event ID/type, refund/payment/order reference, amount/currency, received time, status, retryability और sanitized error reason दिखें।
+- Retry/Reprocess को सीधे UI से table UPDATE न बनने दें; dedicated Admin RPC reason, actor, idempotency, state transition validation और audit event के साथ atomic claim/retry schedule करे।
+- Terminal mismatch events को automatic retry न करें; reconciliation queue/manual review में रखें।
+- Existing refund RPC/UI contracts समझे बिना refund retry या transfer reversal button न जोड़ें।
+
+### 5. अगला चरण
+1. Historical branch refs/backup/export से webhook inbox table source recover करने का प्रयास।
+2. Existing Admin refund workflow RPCs, their guards, audit triggers and table relationships inspect करना।
+3. Main Admin/staff permissions और Admin UI navigation contract से exception queue जोड़ने का design।
+4. UI/API mock tests: Admin vs non-Admin, empty queue, refund event, duplicate event, retry lock, terminal mismatch, sanitized errors.
+
+### 6. सुरक्षा सीमा
+कोई Production UI, function, table, grant, policy, event, payment, refund, transfer या deployment बदला नहीं गया। कोई Test/Live provider API call या paid staging resource नहीं बनाया गया।
