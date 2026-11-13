@@ -91,6 +91,72 @@ CREATE INDEX IF NOT EXISTS srk_booking_labour_bills_electrician_created_idx
 ALTER TABLE public.srk_booking_labour_bills ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.srk_booking_labour_bills FROM PUBLIC,anon,authenticated;
 
+-- The bill is a one-time immutable snapshot. Its INSERT trigger recomputes
+-- every monetary field from the locked booking timer/rate snapshot.
+CREATE OR REPLACE FUNCTION public.srk_guard_immutable_booking_labour_bill()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_booking public.service_bookings%ROWTYPE;
+  v_minutes bigint;
+  v_labour_paise numeric(24,0);
+  v_fee_paise numeric(24,0);
+BEGIN
+  IF TG_OP<>'INSERT' THEN
+    RAISE EXCEPTION 'Final labour bill snapshots are immutable'
+      USING ERRCODE='42501';
+  END IF;
+
+  SELECT * INTO v_booking FROM public.service_bookings
+  WHERE id=NEW.booking_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Booking for final labour bill not found'; END IF;
+
+  IF v_booking.selected_category IS NULL
+     OR v_booking.customer_user_id IS DISTINCT FROM NEW.customer_user_id
+     OR v_booking.assigned_electrician_id IS DISTINCT FROM NEW.electrician_profile_id
+     OR v_booking.status<>'in_progress'
+     OR v_booking.completion_approval_status<>'pending'
+     OR v_booking.completion_requested_at IS NULL
+     OR v_booking.work_timer_running IS TRUE
+     OR v_booking.work_started_at IS NOT NULL
+     OR v_booking.work_timer_elapsed_seconds<=0
+     OR v_booking.labour_rate_tier_snapshot IS NULL
+     OR v_booking.labour_rate8h_paise_snapshot IS NULL
+     OR v_booking.labour_rate_card_version_snapshot IS NULL THEN
+    RAISE EXCEPTION 'A stopped timer and pending customer completion approval are required';
+  END IF;
+
+  v_minutes:=ceil(v_booking.work_timer_elapsed_seconds/60)::bigint;
+  v_labour_paise:=floor(
+    v_booking.labour_rate8h_paise_snapshot::numeric*v_minutes/480+0.5
+  );
+  v_fee_paise:=floor(v_labour_paise*15/100+0.5);
+
+  IF NEW.customer_work_category IS DISTINCT FROM v_booking.selected_category
+     OR NEW.approved_rate_tier IS DISTINCT FROM v_booking.labour_rate_tier_snapshot
+     OR NEW.rate_card_version IS DISTINCT FROM v_booking.labour_rate_card_version_snapshot
+     OR NEW.rate8h_paise IS DISTINCT FROM v_booking.labour_rate8h_paise_snapshot
+     OR NEW.elapsed_seconds IS DISTINCT FROM v_booking.work_timer_elapsed_seconds
+     OR NEW.billable_minutes IS DISTINCT FROM v_minutes
+     OR NEW.labour_amount_paise IS DISTINCT FROM v_labour_paise
+     OR NEW.labour_amount IS DISTINCT FROM (v_labour_paise/100)::numeric(18,2)
+     OR NEW.platform_fee_rate IS DISTINCT FROM 15.00::numeric
+     OR NEW.platform_fee_policy_version IS DISTINCT FROM 'SRK-PLATFORM-FEE-15-2026-11-13-V1'
+     OR NEW.platform_fee_paise IS DISTINCT FROM v_fee_paise
+     OR NEW.platform_fee_amount IS DISTINCT FROM (v_fee_paise/100)::numeric(18,2)
+     OR NEW.electrician_payable IS DISTINCT FROM ((v_labour_paise-v_fee_paise)/100)::numeric(18,2) THEN
+    RAISE EXCEPTION 'Final labour bill does not reconcile with the server timer and approved rate snapshot';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_guard_immutable_booking_labour_bill() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS srk_guard_immutable_booking_labour_bill ON public.srk_booking_labour_bills;
+CREATE TRIGGER srk_guard_immutable_booking_labour_bill
+  BEFORE INSERT OR UPDATE OR DELETE ON public.srk_booking_labour_bills
+  FOR EACH ROW EXECUTE FUNCTION public.srk_guard_immutable_booking_labour_bill();
 
 -- Only the server-side workflow RPCs may change timer state or the first-start
 -- commercial rate snapshot. Admin direct table edits cannot forge elapsed time.
