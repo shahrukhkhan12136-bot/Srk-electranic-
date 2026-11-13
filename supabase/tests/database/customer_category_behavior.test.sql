@@ -5,7 +5,7 @@ INSERT INTO public.service_bookings(id,status,service_type,state,district,pincod
 VALUES
  ('11000000-0000-4000-8000-000000000001','new','पुरानी free-form category','Uttar Pradesh','Balrampur','271861','Fixture Customer','9000000001','Synthetic address'),
  ('11000000-0000-4000-8000-000000000002','new','legacy service','Uttar Pradesh','Balrampur','271862','Fixture Customer','9000000002','Synthetic address'),
- ('11000000-0000-4000-8000-000000000003','new','legacy service','Uttar Pradesh','Balrampur','271863','Fixture Customer','9000000003','Synthetic address');
+ ('11000000-0000-4000-8000-000000000003','new','legacy service','Bihar','Patna','800001','Fixture Customer','9000000003','Synthetic address');
 
 INSERT INTO public.electrician_profiles(
  id,user_id,auth_user_id,approved_rate_tier,approved_rate_card_version,
@@ -13,7 +13,7 @@ INSERT INTO public.electrician_profiles(
 ) VALUES
  ('31000000-0000-4000-8000-000000000001','21000000-0000-4000-8000-000000000001','21000000-0000-4000-8000-000000000001','skilled_electrician','SRK-RATE-V1','21000000-0000-4000-8000-000000000099',now(),'271861','Uttar Pradesh','Balrampur'),
  ('31000000-0000-4000-8000-000000000002','21000000-0000-4000-8000-000000000002','21000000-0000-4000-8000-000000000002','expert_electrician','SRK-RATE-V1','21000000-0000-4000-8000-000000000099',now(),'271861','Uttar Pradesh','Balrampur'),
- ('31000000-0000-4000-8000-000000000003','21000000-0000-4000-8000-000000000003','21000000-0000-4000-8000-000000000003',NULL,NULL,NULL,NULL,'271863','Uttar Pradesh','Balrampur');
+ ('31000000-0000-4000-8000-000000000003','21000000-0000-4000-8000-000000000003','21000000-0000-4000-8000-000000000003',NULL,NULL,NULL,NULL,'800001','Bihar','Patna');
 
 -- Legacy booking remains unclassified and is not guessed from service_type.
 SELECT is((SELECT selected_category::text FROM public.service_bookings WHERE id='11000000-0000-4000-8000-000000000001'),NULL::text,
