@@ -111,31 +111,34 @@ test('rejects oversized body before rate-limit or auth requests', async () => {
   assert.equal(calls.length, 0);
 });
 
-test('rejects malformed JSON as HTTP 400 after rate limiting', async () => {
+test('rejects malformed JSON as HTTP 400 before any rate-limit or auth requests', async () => {
   const result = await handler(event({ body: '{broken-json' }));
   assert.equal(status(result), 400);
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 0);
   assert.match(JSON.parse(result.body).error, /JSON/);
 });
 
-test('rejects missing client IP without contacting Supabase', async () => {
+test('rejects missing client IP after verifying session and checking for an existing safe retry', async () => {
   const result = await handler(event({ headers: { authorization: 'Bearer verified-test-token' } }));
   assert.equal(status(result), 503);
-  assert.equal(calls.length, 0);
+  assert.equal(calls.some(x => x.url.includes('/auth/v1/user')), true);
+  assert.equal(calls.some(x => x.url.includes('/rest/v1/service_bookings?')), true);
+  assert.equal(calls.some(x => x.url.includes('/rpc/srk_check_public_rate_limit')), false);
 });
 
-test('rejects rate-limited requests before customer authentication', async () => {
+test('rejects rate-limited new bookings after customer authentication and idempotency lookup', async () => {
   config.rateAllowed = false;
   const result = await handler(event());
   assert.equal(status(result), 429);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].url.includes('/rpc/srk_check_public_rate_limit'), true);
+  assert.equal(calls.some(x => x.url.includes('/auth/v1/user')), true);
+  assert.equal(calls.some(x => x.url.includes('/rest/v1/service_bookings?')), true);
+  assert.equal(calls.some(x => x.url.includes('/rpc/srk_check_public_rate_limit')), true);
 });
 
 test('requires a Bearer customer session', async () => {
   const result = await handler(event({ headers: { 'x-nf-client-connection-ip': '203.0.113.10' } }));
   assert.equal(status(result), 401);
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 0);
 });
 
 test('rejects invalid Supabase customer session', async () => {
@@ -238,8 +241,19 @@ test('retries an identical submission by returning the existing booking without 
   const data = JSON.parse(result.body);
   assert.equal(data.booking_id, 'booking-existing');
   assert.equal(data.idempotent_replay, true);
-  assert.equal(calls.filter(x => x.url.includes('/rest/v1/service_bookings') && x.options.method === 'POST').length, 1);
+  assert.equal(calls.filter(x => x.url.includes('/rest/v1/service_bookings') && x.options.method === 'POST').length, 0);
   assert.equal(calls.filter(x => x.url.includes('/rest/v1/service_bookings?') && x.options.method === 'GET').length, 1);
+  assert.equal(calls.some(x => x.url.includes('/rpc/srk_check_public_rate_limit')), false);
+});
+
+test('an exact idempotent retry bypasses the new-booking rate limit', async () => {
+  config.rateAllowed = false;
+  config.existingFingerprint = validFingerprint();
+  const result = await handler(event());
+  assert.equal(status(result), 200);
+  assert.equal(JSON.parse(result.body).idempotent_replay, true);
+  assert.equal(calls.some(x => x.url.includes('/rpc/srk_check_public_rate_limit')), false);
+  assert.equal(calls.filter(x => x.url.includes('/rest/v1/service_bookings') && x.options.method === 'POST').length, 0);
 });
 
 test('rejects reuse of the same idempotency key with changed booking details', async () => {
