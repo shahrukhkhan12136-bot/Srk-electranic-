@@ -976,3 +976,20 @@ test('customer work-start approval and payment-preference error handling are bou
   assert.match(payment,/catch\(_\)\{\s*if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
   assert.match(html,/invalidateCustomerWorkStartResponses\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);/);
 });
+
+
+test('support account-switch invalidation releases mutation controls and clears private drafts and queued files', () => {
+  const start=html.indexOf('function invalidateCustomerSupportPrivateState()');
+  const end=html.indexOf('let customerSupportThreadLoadSequence',start);
+  const source=html.slice(start,end);
+  for(const token of [
+    'customerSupportComplaintCreateBusy=false;customerSupportMessageBusy=false;',
+    "createButton.disabled=false;createButton.textContent='शिकायत दर्ज करें';",
+    "sendButton.disabled=false;sendButton.textContent='संदेश / फ़ाइल भेजें';",
+    "messageInput.value='';","fileInput.value='';","descriptionInput.value='';",
+    "complaintSelect.disabled=false;"
+  ]) assert.ok(source.includes(token),'Support invalidation missing: '+token);
+  assert.match(source,/customerSupportBookingsBusy=false/);
+  assert.match(source,/customerSupportComplaintsBusy=false/);
+  assert.match(source,/customerSupportAttachments=\[\]/);
+});
