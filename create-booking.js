@@ -167,6 +167,10 @@ exports.handler = async (event) => {
       event.headers?.authorization || event.headers?.Authorization || "",
       phone
     );
+    const requestKey = event.headers?.["idempotency-key"] || event.headers?.["Idempotency-Key"] || "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestKey)) {
+      return json(400, { success: false, error: "बुकिंग अनुरोध की सुरक्षा पहचान उपलब्ध नहीं है। कृपया पेज रीफ़्रेश करके दोबारा कोशिश करें।" });
+    }
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
@@ -182,17 +186,41 @@ exports.handler = async (event) => {
       return json(400, { success: false, error: "भुगतान राशि सही नहीं है।" });
     }
 
+    const fingerprintPayload = {
+      customer_name, phone, state, district, pincode, address, service_type,
+      selected_category, selected_duration_hours, preferred_date, preferred_time,
+      work_details, payment_method, quoted_amount, location_lat, location_lng
+    };
+    const requestFingerprint = crypto.createHash("sha256")
+      .update(JSON.stringify(fingerprintPayload)).digest("hex");
     const inserted = await supabase("service_bookings", {
       method: "POST",
+      headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
       body: JSON.stringify([{
         customer_name, phone, state, district, pincode, address, service_type,
         selected_category, selected_duration_hours, preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
-        status: "new", payment_status: "unpaid",
-        ...(customer_user_id ? { customer_user_id } : {})
+        customer_request_key: requestKey, customer_request_fingerprint: requestFingerprint,
+        status: "new", payment_status: "unpaid", customer_user_id
       }])
     });
-    const booking = Array.isArray(inserted) ? inserted[0] : null;
-    if (!booking || !booking.id) throw new Error("Booking insert returned no booking ID.");
+    let booking = Array.isArray(inserted) ? inserted[0] : null;
+    let idempotentReplay = false;
+    if (!booking?.id) {
+      const existing = await supabase(
+        "service_bookings?select=id,customer_request_fingerprint&customer_request_key=eq." +
+        encodeURIComponent(requestKey) + "&customer_user_id=eq." + encodeURIComponent(customer_user_id) + "&limit=1",
+        { method: "GET" }
+      );
+      const prior = Array.isArray(existing) ? existing[0] : null;
+      if (!prior?.id) {
+        return json(409, { success: false, error: "यह बुकिंग अनुरोध पहले इस्तेमाल हो चुका है। कृपया नया अनुरोध बनाकर दोबारा कोशिश करें।" });
+      }
+      if (prior.customer_request_fingerprint !== requestFingerprint) {
+        return json(409, { success: false, error: "इस बुकिंग अनुरोध की जानकारी बदल गई है। कृपया नया अनुरोध बनाकर दोबारा भेजें।" });
+      }
+      booking = { id: prior.id };
+      idempotentReplay = true;
+    }
 
     // Supabase's broadcast_new_booking trigger creates offers exactly once.
     // Read the resulting queue here; do not create duplicate job_offers from this function.
@@ -213,6 +241,7 @@ exports.handler = async (event) => {
     return json(200, {
       success: true,
       booking_id: booking.id,
+      idempotent_replay: idempotentReplay,
       offers_created: offersCreated,
       match_level: offersCreated ? matchLevel : null,
       message: !offerStatusChecked
