@@ -1205,3 +1205,5 @@
 - App commit: `54441fee51d15489766bebdafb6c29818b06fbce`. Regression test commit: `cd00c2863f5590819d0cfe3a6d2de4e79c78ddfb`. CI result अभी pending verification.
 - यह source-level race guard है; browser/network fault injection, actual Supabase JWT/RLS, database pgTAP और final mobile/Desktop QA अभी नहीं हुए। No Production changes/deploy.
 - अगला कदम: source CI verify करना और Customer App में remaining Profile/Support user-flow edge cases का audit जारी रखना।
+
+- CI follow-up: Customer App source regression run `43487261469` failed on an older saved-address test assertion that still expected unconditional `select.disabled=false`; the implementation already restores control state only for the latest sequence. Updated that assertion to match the guarded behavior in test commit `aeec34a53829085ad45440a6475c9aa95f70e2e0`. The failure was in stale test expectation, not an identified runtime defect. Fresh CI result pending; do not mark the new selector test passed until rerun succeeds.
