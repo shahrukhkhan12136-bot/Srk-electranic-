@@ -34,17 +34,17 @@ SELECT ok(
 SELECT has_function('public','srk_admin_offer_booking',ARRAY['uuid'],'Admin booking offer RPC remains available');
 SELECT has_function('public','srk_get_my_offer_details',ARRAY[]::text[],'Electrician offer details RPC remains available');
 SELECT ok(
-  pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure) ILIKE '%approved_rate_tier IS NOT NULL%'
-  AND pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure) ILIKE '%approved_rate_card_version IS NOT NULL%'
-  AND pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure) ILIKE '%rate_tier_approved_by IS NOT NULL%'
-  AND pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure) ILIKE '%rate_tier_approved_at IS NOT NULL%',
+  pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure) ILIKE '%approved_rate_tier IS NOT NULL%'
+  AND pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure) ILIKE '%approved_rate_card_version IS NOT NULL%'
+  AND pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure) ILIKE '%rate_tier_approved_by IS NOT NULL%'
+  AND pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure) ILIKE '%rate_tier_approved_at IS NOT NULL%',
   'offers require the complete Admin-approved commercial rate-tier tuple'
 );
 SELECT ok(
-  pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure) ILIKE '%e.pincode=v_booking.pincode%'
-  AND pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure) ILIKE '%e.district%'
-  AND pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure) ILIKE '%e.active=true%'
-  AND pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure) ILIKE '%e.verification_status=''approved''%',
+  pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure) ILIKE '%e.pincode=v_booking.pincode%'
+  AND pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure) ILIKE '%e.district%'
+  AND pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure) ILIKE '%e.active=true%'
+  AND pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure) ILIKE '%e.verification_status=''approved''%',
   'PIN/district matching retains active and KYC-approved eligibility'
 );
 SELECT ok(
