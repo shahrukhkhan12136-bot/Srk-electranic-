@@ -873,6 +873,15 @@ function editSelectedSavedAddress() {
  document.getElementById('place').value=a.landmark||'';
  document.getElementById('bookingLat').value=a.location_lat??'';
  document.getElementById('bookingLng').value=a.location_lng??'';
+ if(a.location_lat!=null && a.location_lng!=null) {
+  document.getElementById('customerMap').src='https://maps.google.com/maps?q='+encodeURIComponent(a.location_lat+','+a.location_lng)+'&z=16&output=embed';
+  document.getElementById('customerMapLink').href=googleMapsUrl(a.location_lat,a.location_lng,'');
+  document.getElementById('customerMapWrap').style.display='block';
+  document.getElementById('customerLocationStatus').textContent='सेव किए गए पते की लोकेशन लोड हुई। पता बदलने पर लोकेशन दोबारा चुनें।';
+ } else {
+  document.getElementById('customerMapWrap').style.display='none';
+  document.getElementById('customerLocationStatus').textContent='इस सेव पते में GPS लोकेशन नहीं है। जरूरत हो तो लोकेशन चुनें।';
+ }
  setSavedAddressStatus('पता फॉर्म में संपादन के लिए खुल गया है। बदलाव के बाद “यह पता सेव करें” दबाएँ।');
  document.getElementById('address').scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -1245,6 +1254,18 @@ function customerBookingRequestKey(payload){
 function clearCustomerBookingRequestKey(key){
   try{const saved=JSON.parse(sessionStorage.getItem('srk.customer.booking.pending.v1')||'null');if(saved?.key===key)sessionStorage.removeItem('srk.customer.booking.pending.v1');}catch(_){}
 }
+function invalidateCustomerAddressLocation(){
+ const lat=document.getElementById('bookingLat');
+ const lng=document.getElementById('bookingLng');
+ if(!lat.value&&!lng.value)return;
+ lat.value='';lng.value='';
+ document.getElementById('customerMapWrap').style.display='none';
+ document.getElementById('customerLocationStatus').textContent='पते में बदलाव हुआ है। सही लोकेशन के लिए GPS लोकेशन दोबारा चुनें।';
+}
+['address','district','state','pin'].forEach(id=>{
+ document.getElementById(id).addEventListener('input',invalidateCustomerAddressLocation);
+ document.getElementById(id).addEventListener('change',invalidateCustomerAddressLocation);
+});
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
