@@ -3501,3 +3501,19 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - सफल CI run केवल tests/otp-source.test.cjs के source-level assertions और inline JavaScript syntax checks को प्रमाणित करता है। यह वास्तविक browser UX, OTP SMS delivery/expiry, Supabase Auth के configured server-side rate limits, wrong-attempt lockout, CAPTCHA enforcement, वास्तविक session lifecycle/cross-device logout या production endpoint behavior प्रमाणित नहीं करता।
 - **Checklist item 14.1.1 अभी In Progress रहेगा**, Verified Complete नहीं: Auth dashboard settings/expiry/limits/CAPTCHA/session policy का प्रत्यक्ष प्रमाण और स्वीकृत test environment में आवश्यक runtime/E2E परीक्षण शेष हैं।
 - इस update में कोई application source, test workflow, package, Supabase Auth/DB setting, secret, SMS/provider request, customer account/session, payment या deployment नहीं बदला।
+
+
+## 17.103 — Customer OTP Source Regression Tests: पाँच GitHub Actions Runs की UI पुष्टि (13 नवम्बर 2026)
+
+- Checklist item: **14.1.1**। उपयोगकर्ता ने GitHub Actions के `Customer OTP source regression tests` workflow की Runs सूची साझा की; उसमें कुल **5 workflow runs** दिखे और पाँचों का status **completed successfully** था।
+- Run सूची का रिकॉर्ड:
+  - **Run #5** — commit `959b083`, message `docs: record successful OTP source regression workflow run`, branch `feature/platform-fee-cash-online-cycle`, लगभग 10 seconds।
+  - **Run #4** — commit `e9c62e1`, message `docs: record direct OTP source regression checks`, लगभग 14 seconds।
+  - **Run #3** — commit `9c52d18`, message `docs: record OTP CI execution status and preview blocker`, लगभग 11 seconds।
+  - **Run #2** — commit `33c2882`, message `docs: record OTP source test CI workflow`, लगभग 11 seconds।
+  - **Run #1** — commit `c55abd8`, message `ci: run customer OTP source regression tests`; साझा सूची में duration स्पष्ट नहीं था।
+- इस UI evidence से workflow के पाँचों दर्ज runs सफल होने की पुष्टि होती है। ये पाँच अलग-अलग workflow executions हैं; इन्हें पाँच अलग test suites या पाँच अलग application features की verification नहीं माना जाएगा।
+- पहले साझा latest run summary में **1 warning और 1 notice** भी दिखे थे। वर्तमान Runs सूची केवल success status और duration दिखाती है; warning/notice के वास्तविक annotation संदेश यहाँ उपलब्ध नहीं हैं। इसलिए उनका निरीक्षण अभी बाकी है।
+- CI सफलता केवल मौजूदा `tests/otp-source.test.cjs` source regression suite के सफल workflow execution को दर्शाती है। यह वास्तविक OTP SMS delivery/expiry, Supabase Auth Production settings, server-side abuse limits, CAPTCHA, wrong-attempt lockout, browser/device session lifecycle या live logout revocation का प्रमाण नहीं है।
+- **14.1.1 का status: In Progress** रहेगा; पाँच सफल CI runs के बावजूद Auth configuration और स्वीकृत runtime/E2E verification बाकी हैं।
+- इस evidence update में कोई application source, workflow, package, Supabase Auth/DB setting, secret, SMS/provider request, customer account/session, payment या deployment नहीं बदला।
