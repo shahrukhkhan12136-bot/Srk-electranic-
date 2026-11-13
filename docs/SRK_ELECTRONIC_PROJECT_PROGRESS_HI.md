@@ -1432,3 +1432,13 @@
 - pgTAP plan 10→11 किया और assert जोड़ा कि authenticated role private capture trigger function execute नहीं कर सकता। Node source regression में भी function-level revoke और broad schema revoke न होने की जाँच जोड़ी।
 - Commits: migration scope fix `91da38a29b4544791a0025c5c88c7642364d47de`; pgTAP assertion `ba828a4417f99d0792bceaf74ef807fd0d58cd86`; explicit trigger function revoke `d0639333595648d97c7d5b2c020af6622a715da9`; Node regression guard `58fe830794d3fd8d4d76a481acdf085850196471`.
 - GitHub combined status for latest commit shows only Vercel failure due account build-rate-limit URL; this is not evidence that Customer Offer Timeline source workflow passed or failed. Dedicated GitHub Actions run details were not returned in this audit. Node tests and pgTAP remain unexecuted; no Production SQL or migration apply.
+
+
+### 14 नवम्बर 2026 — Offer Timeline regression workflow और test readiness जाँच
+
+- Dedicated workflow `customer-offer-timeline-ci.yml` inspected: push trigger feature branch पर relevant files/migration changes के लिए configured है; Node 24 पर `npm run test:customer-offer-timeline` और migration auto-deploy guard चलाता है। `package.json` में test script मौजूद है।
+- Source test दो groups में UI merge/event labels और private storage/owner-scope/privilege guards जाँचता है। SQL pgTAP अब plan 11 है।
+- `fetch_commit_workflow_runs` for commit `58fe830794d3fd8d4d76a481acdf085850196471` returned zero PR-triggered workflow runs; यह push-run status बताने वाला endpoint नहीं है। इसलिए CI result अभी VERIFIED नहीं कहा जा सकता। GitHub Actions job logs/result इस interface से प्राप्त नहीं हुए।
+- pgTAP execute करने के लिए Supabase project में migration apply या database object changes जरूरी होंगे; user approval के बिना Production पर यह नहीं किया। Node source test को भी अभी executed नहीं बताया जा रहा।
+- Security hardening commits `91da38a...`, `ba828a4...`, `d063933...`, `58fe830...`; tracker commit `67fac0e...`.
+- Remaining: GitHub Actions push run का वास्तविक result पढ़ना; isolated non-production test database पर migration+pgTAP behavior (trigger transitions, duplicate idempotency, backfill, owner isolation) चलाना; फिर Customer App browser test. Production untouched.
