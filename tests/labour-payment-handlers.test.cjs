@@ -26,7 +26,7 @@ const baseBooking=()=>({
 });
 function response(status,value){const raw=JSON.stringify(value);return {ok:status>=200&&status<300,status,text:async()=>raw,json:async()=>JSON.parse(raw)}}
 function event(body,headers={}){return {httpMethod:'POST',headers,body:typeof body==='string'?body:JSON.stringify(body)}}
-function setupFetch({booking=baseBooking(),bill={booking_id:BOOKING_ID,labour_amount_paise:119900,labour_amount:1199,billable_minutes:480},capturedAmount=119900,lock=true}={}){
+function setupFetch({booking=baseBooking(),bill={booking_id:BOOKING_ID,labour_amount_paise:119900,labour_amount:1199,billable_minutes:480},capturedAmount=119900,lock=true,finalizeStatus=200,finalizeValue={success:true,already_processed:false}}={}){
  const calls=[];
  global.fetch=async(input,options={})=>{
   const url=String(input),method=options.method||'GET';calls.push({url,method,body:options.body});
@@ -34,7 +34,7 @@ function setupFetch({booking=baseBooking(),bill={booking_id:BOOKING_ID,labour_am
   if(url.includes('/rpc/srk_service_get_labour_bill_for_payment'))return response(200,bill);
   if(url.includes('/rpc/srk_claim_payment_order_lock'))return response(200,lock?'lock-token':null);
   if(url.includes('/rpc/srk_link_payment_order'))return response(200,{success:true});
-  if(url.includes('/rpc/srk_service_finalize_captured_payment'))return response(200,{success:true,already_processed:false});
+  if(url.includes('/rpc/srk_service_finalize_captured_payment'))return response(finalizeStatus,finalizeValue);
   if(url.includes('/rpc/srk_release_payment_order_lock'))return response(200,true);
   if(url.includes('api.razorpay.com/v1/orders')&&method==='POST')return response(200,{id:ORDER_ID,status:'created',amount:capturedAmount,currency:'INR'});
   if(url.includes('api.razorpay.com/v1/payments/'))return response(200,{id:PAYMENT_ID,order_id:ORDER_ID,status:'captured',currency:'INR',amount:capturedAmount});
@@ -109,6 +109,10 @@ test('webhook reconciles payment using final labour bill snapshot',async()=>{
  assert.equal(result.statusCode,200);
  assert.equal(JSON.parse(result.body).reconciled,true);
  assert.ok(calls.some(x=>x.url.includes('/rpc/srk_service_get_labour_bill_for_payment')));
+ const finalize=calls.find(x=>x.url.includes('/rpc/srk_service_finalize_captured_payment'));
+ assert.ok(finalize);
+ assert.equal(JSON.parse(finalize.body).p_amount_paise,119900);
+ assert.equal(calls.some(x=>x.method==='PATCH'),false);
 });
 
 test('webhook refuses amount mismatch with final labour bill',async()=>{
@@ -119,4 +123,18 @@ test('webhook refuses amount mismatch with final labour bill',async()=>{
  const result=await webhook(event(raw,{'x-razorpay-signature':signature}));
  assert.equal(result.statusCode,500);
  assert.equal(JSON.parse(result.body).reconciled,false);
+});
+
+test('create-order stops when another request holds the payment-order lock',async()=>{
+ const {calls}=setupFetch({lock:false});
+ const result=await createOrder(event({booking_id:BOOKING_ID},{authorization:AUTH}));
+ assert.equal(result.statusCode,409);
+ assert.equal(calls.some(x=>x.url.includes('api.razorpay.com/v1/orders')&&x.method==='POST'),false);
+});
+
+test('verify-payment refuses stale booking state at atomic database finalization',async()=>{
+ setupFetch({finalizeStatus:409,finalizeValue:{message:'Booking state changed'}});
+ const signature=crypto.createHmac('sha256',process.env.RAZORPAY_KEY_SECRET).update(ORDER_ID+'|'+PAYMENT_ID).digest('hex');
+ const result=await verifyPayment(event({razorpay_payment_id:PAYMENT_ID,razorpay_order_id:ORDER_ID,razorpay_signature:signature},{authorization:AUTH}));
+ assert.equal(result.statusCode,409);
 });
