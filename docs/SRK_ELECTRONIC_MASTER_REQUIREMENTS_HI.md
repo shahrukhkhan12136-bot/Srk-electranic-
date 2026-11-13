@@ -4120,3 +4120,19 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Production schema inspection से यह भी पुष्ट हुआ कि `SRK ELECTRONIC TEST` नाम का अलग Supabase project केवल push-subscription/job-offer test schema और 7 test migrations रखता है; उसमें पूर्ण booking/payment/Admin schema नहीं है। इसलिए उसे पूरे app के migration/pgTAP runtime test database की तरह उपयोग नहीं किया गया।
 - **सीमा/बाकी:** Existing RPC signatures में mandatory Admin reason parameter नहीं है; full before/after audit semantics इन दो operations के लिए अलग से verify/complete करनी हैं। Production migration history और Feature Branch SQL migration lineage reconciliation भी लंबित है। pgTAP/JWT runtime tests नहीं चलाए गए।
 - **Status: In Progress — direct-write source paths replaced by existing Production-verified scoped RPCs and CI passed; Admin security acceptance अभी पूर्ण नहीं।** कोई Production schema/data/Auth setting बदला नहीं; SQL queries केवल read-only थीं। No payout/payment, Main merge or deployment.
+
+
+## 17.123 — Admin Finance Summary और Company Expense Entry UI (13 Nov 2026)
+
+- Production Supabase schema को read-only inspect करके मौजूदा Finance RPCs और private expense table की पुष्टि की:
+  - `srk_admin_finance_dashboard(period, anchor_date)`
+  - `srk_admin_finance_list_expenses(start_date, end_date, limit)`
+  - `srk_admin_finance_add_expense(date, category, provider, description, amount, reference, notes)`
+  - Expense storage: `private.srk_business_expenses` (RLS enabled).
+- तीनों RPCs `SECURITY DEFINER`, fixed search_path और internal `auth.uid() + is_srk_admin()` check के साथ हैं। Production ACL read-only query में authenticated EXECUTE = true और anon EXECUTE = false मिला। कोई expense row insert नहीं किया; केवल function definitions/ACL/schema पढ़े।
+- Admin panel में Finance Overview section जोड़ा: Daily/Monthly/Yearly filter, anchor date, server summary metrics, recent expense history, और Admin-only expense entry form. Expense entry amount/date/category/description/reference/notes validation और explicit confirmation के बाद ही `srk_admin_finance_add_expense` RPC call करती है।
+- Finance summary में commission, electrician share, paid/pending payout, expense total और preliminary net indicator दिखते हैं। UI स्पष्ट करता है कि current RPC legacy commission और नई Platform Fee को पूर्णतः अलग-अलग reconcile नहीं करता; refunds, cancellation/debt, taxes, unpaid Cash collection और settlement timing भी पूर्ण रूप से शामिल नहीं। इसलिए इसे audited P&L नहीं कहा गया।
+- Receipt/document upload अभी table/API/UI में नहीं है; UI यह सीमा स्पष्ट बताता है। Expense edit/delete control नहीं जोड़ा।
+- Regression suite Finance RPC wiring, form validation/confirmation, receipt upload limitation, preliminary net disclosure और finance navigation anchor की जाँच करती है। Run `43435461042`, SHA `dd1d21842d789c53eda339cbee34f933e3736de4` — **Success**.
+- **Status: In Progress — Admin Finance summary and expense-entry source UI verified; finance/accounting acceptance अभी पूर्ण नहीं।** Pending: verified receipt upload and review/approval workflow; new Platform Fee vs legacy commission split; cash collections/fee due, refunds/cancellation/debt, Route settlements, taxes and actual expenses reconciliation; audited P&L; runtime Admin/unauthorized JWT tests; migration-lineage reconciliation; browser E2E; final mobile/Desktop QA.
+- No production expense data, payment/payout, DB schema, Auth setting, Main merge or deployment changed.
