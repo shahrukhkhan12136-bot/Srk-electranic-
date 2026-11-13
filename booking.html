@@ -633,9 +633,15 @@ async function customerRespondWorkCompletion(bookingId,response){
    :'आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग की वर्तमान स्थिति रीफ़्रेश करके दोबारा कोशिश करें।');
  }finally{customerWorkCompletionResponseBusy.delete(bookingId);}
 }
-let customerRefundSubmissionBusy=new Set();
+let customerRefundSubmissionBusy=new Map();
+function invalidateCustomerRefundSubmissions(){
+ customerRefundSubmissionBusy.clear();
+ document.querySelectorAll('[id^="customerRefundSubmit_"]').forEach(button=>{button.disabled=false;});
+}
 async function customerSubmitBookingRefund(bookingId){
  if(!customerSb||customerRefundSubmissionBusy.has(bookingId))return;
+ const generation=customerSessionGeneration;
+ const operation={generation};
  const reasonEl=document.getElementById('customerRefundReason_'+bookingId);
  const button=document.getElementById('customerRefundSubmit_'+bookingId);
  const reason=String(reasonEl?.value||'').trim();
@@ -644,29 +650,32 @@ async function customerSubmitBookingRefund(bookingId){
   reasonEl?.focus();
   return;
  }
- customerRefundSubmissionBusy.add(bookingId);
+ customerRefundSubmissionBusy.set(bookingId,operation);
  if(button)button.disabled=true;
  let requestCreated=false;
  let refundAmount=null;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_create_booking_refund_request',{p_booking_id:bookingId,p_reason:reason});
+  if(!customerSessionOperationIsCurrent(generation))return;
   if(error)throw error;
   if(!data?.success)throw new Error('Refund request was not confirmed');
   requestCreated=true;
   refundAmount=data.amount;
   if(reasonEl)reasonEl.value='';
  }catch(error){
+  if(!customerSessionOperationIsCurrent(generation))return;
   const message=String(error?.message||'');
   alert(message.includes('REFUND_REQUEST_ALREADY_SUBMITTED')||message.includes('REFUND_ALREADY_EXISTS')
     ?'इस बुकिंग के लिए रिफंड अनुरोध पहले से मौजूद है। कृपया उसकी स्थिति देखें या सहायता टीम से संपर्क करें।'
     :'रिफंड अनुरोध दर्ज नहीं हो सका। कृपया विवरण जाँचकर दोबारा कोशिश करें।');
   return;
  }finally{
-  if(!requestCreated){
+  if(!requestCreated&&customerRefundSubmissionBusy.get(bookingId)===operation){
    customerRefundSubmissionBusy.delete(bookingId);
    if(button)button.disabled=false;
   }
  }
+ if(!customerSessionOperationIsCurrent(generation))return;
  // The server has confirmed creation. Refresh failures must never be reported as a failed refund request.
  alert('रिफंड अनुरोध दर्ज हो गया है। राशि: '+formatCustomerMoney(refundAmount)+'। इसकी स्थिति My Bookings और Payments मेनू में दिखाई देगी।');
  const refreshResults=await Promise.allSettled([
@@ -674,10 +683,13 @@ async function customerSubmitBookingRefund(bookingId){
   loadCustomerRefundHistory(),
   loadCustomerPaymentHistory(true)
  ]);
+ if(!customerSessionOperationIsCurrent(generation))return;
  const refreshFailed=refreshResults.some(result=>result.status==='rejected');
  if(refreshFailed)alert('रिफंड अनुरोध सुरक्षित रूप से दर्ज हो गया है, लेकिन कुछ सूची अपडेट नहीं हो सकीं। कृपया Payments या My Bookings को रीफ़्रेश करें।');
- customerRefundSubmissionBusy.delete(bookingId);
- if(button)button.disabled=false;
+ if(customerRefundSubmissionBusy.get(bookingId)===operation){
+  customerRefundSubmissionBusy.delete(bookingId);
+  if(button)button.disabled=false;
+ }
 }
 let customerBookingHistoryLoadSequence=0;
 let customerBookingHistoryOffset=0;
@@ -1606,7 +1618,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();} setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();} setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerPhone').addEventListener('input', () => {
     if (customerPendingOtpPhone && customerPhoneE164() !== customerPendingOtpPhone) {
       customerPendingOtpPhone = null;
