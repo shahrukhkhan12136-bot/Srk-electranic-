@@ -960,3 +960,6 @@
 - नए complaint ID को select list में अस्थायी रूप से जोड़ा जाता है, ताकि list refresh failure के बावजूद ग्राहक उसी शिकायत thread को चुन सके।
 - Source regression test जोड़ा गया। GitHub Actions workflow result अभी प्राप्त नहीं हुआ है; test को passed नहीं माना गया है।
 - केवल feature branch source change; SQL/RPC schema, Production, deployment और वास्तविक Supabase runtime में कोई बदलाव/परीक्षण नहीं।
+
+
+- पहली regression run #43474003202 में test assertion regex syntax error से suite fail हुई; application source test तक execute नहीं हुआ था। Assertion को string-based check से सुधारा और rerun commit 824522d6da4fb0d8596ac2fe9c2c4a0988d2bd68 पर trigger किया है। नया workflow परिणाम आने तक test status pending है।
