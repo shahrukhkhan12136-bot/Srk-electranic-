@@ -923,3 +923,13 @@
 - Regression test जोड़ा।
 - Source Regression Run #43471742069 — success, head `fd305818f2d83d9b831f02015ada0a6166c8917d`.
 - वास्तविक Auth outage, saved-address RPC/RLS और browser/mobile interaction अभी runtime-tested नहीं हैं।
+
+
+## 2026-11-13 — Customer Auth session synchronization and Support send resilience
+
+- `syncCustomerSession()` में `getSession()` का error पहले unchecked था; अब try/catch, explicit error handling और monotonically increasing sequence guard है, ताकि पुराना Auth response नए login/logout state को overwrite न करे।
+- Session sync के दौरान हर async customer-data load के बाद sequence check जोड़ा, जिससे बीच में login state बदलने पर पुराना sync आगे काम न करे।
+- Customer Support message/file भेजते समय `getSession()` error अब स्पष्ट रूप से पकड़ा जाता है; null/invalid session से user ID पढ़ने का जोखिम हटाया।
+- Regression tests जोड़े।
+- Source Regression Run #43472067910 — success, head `2c33e8b9a38db89cb967e7edaec203f234817c09`.
+- वास्तविक Supabase Auth event race, network failure, message upload/RLS और browser/mobile UI runtime tests अभी बाकी हैं।
