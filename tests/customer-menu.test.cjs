@@ -293,9 +293,9 @@ test('customer payment history RPC exists, is owner-scoped and covers all paymen
 
 
 test('customer refund form only appears for completed approved immutable labour bill and refreshes all histories', () => {
-  assert.match(html, /let customerRefundSubmissionBusy=new Set\(\)/);
+  assert.match(html, /let customerRefundSubmissionBusy=new Map\(\)/);
   assert.match(html, /customerRefundSubmissionBusy\.has\(bookingId\)/);
-  assert.match(html, /customerRefundSubmissionBusy\.add\(bookingId\)/);
+  assert.match(html, /customerRefundSubmissionBusy\.set\(bookingId,operation\)/);
   assert.match(html, /customerRefundSubmissionBusy\.delete\(bookingId\)/);
   assert.match(html, /row\.status==='completed'[\s\S]*?row\.completion_approval_status==='approved'[\s\S]*?Boolean\(row\.selected_category\)[\s\S]*?Boolean\(bill\)/);
   assert.match(html, /Math\.round\(Number\(bill\.labour_amount\)\*100\)===Math\.round\(Number\(row\.amount_paid\)\*100\)/);
