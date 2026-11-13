@@ -1921,3 +1921,10 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Inline JavaScript syntax compile check: `booking.html` 2 scripts PASS; `admin.html` 1 script PASS।
 - कोई Production SQL/migration apply नहीं, कोई live booking/customer data change नहीं, कोई cancellation execute या fee/wallet/payment transfer नहीं।
 - **अगला exact काम:** isolated pgTAP workflow `43525453777` का वास्तविक result/log पढ़ें; यदि failure हो तो ठीक करें। उसके बाद customer request session-switch/retry/idempotency source tests बढ़ाएँ, फिर evidence-based Admin final decision और cancellation fee accounting पर लौटें। 
+
+
+#### Cancellation intake — follow-up hardening (14 नवम्बर 2026)
+- Account switch/logout पर pending cancellation request single-flight lock भी clear होता है; stale account response UI को update नहीं कर सकता। Source test assertions जोड़े गए (commit `4b3b4c7c`)।
+- Admin queue के लिए regression coverage जोड़ी: केवल review-start RPC; final cancellation/fee RPC या controls मौजूद नहीं होने चाहिए (test update commit `05d301b9`)।
+- Latest known completed source regression `43525651346` SUCCESS (commit `97243eef`); latest Admin-queue-assertion source run `43525712456` और refund source run `43525712403` इस update पर in progress हैं।
+- Cancellation pgTAP run `43525453777` local Supabase startup चरण में in progress; अभी तक migration apply/pgTAP assertions का result उपलब्ध नहीं। Earlier superseded/cancelled run को PASS नहीं गिनें।
