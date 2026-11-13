@@ -1457,6 +1457,8 @@ BEGIN
     SELECT greatest(coalesce(sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='refund' AND direction='credit' AND description ILIKE 'Refund reversal of platform_fee_due%' THEN -amount
+      WHEN entry_type='refund' AND direction='debit' AND description ILIKE 'Refund reversal of platform_fee_due_settlement%' THEN amount
       WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END),0),0)
     INTO v_due FROM public.srk_wallet_ledger
@@ -1513,6 +1515,8 @@ BEGIN
     'platform_fee_due',greatest(coalesce((SELECT sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='refund' AND direction='credit' AND description ILIKE 'Refund reversal of platform_fee_due%' THEN -amount
+      WHEN entry_type='refund' AND direction='debit' AND description ILIKE 'Refund reversal of platform_fee_due_settlement%' THEN amount
       WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),0),
     'platform_fee_collected',coalesce((SELECT sum(CASE
@@ -1586,6 +1590,8 @@ BEGIN
     'total_platform_fee_due',greatest(coalesce((SELECT sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='refund' AND direction='credit' AND description ILIKE 'Refund reversal of platform_fee_due%' THEN -amount
+      WHEN entry_type='refund' AND direction='debit' AND description ILIKE 'Refund reversal of platform_fee_due_settlement%' THEN amount
       WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),0),
     'total_electrician_payable',t.payable,
@@ -1963,6 +1969,8 @@ BEGIN
     SELECT greatest(coalesce(sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='refund' AND direction='credit' AND description ILIKE 'Refund reversal of platform_fee_due%' THEN -amount
+      WHEN entry_type='refund' AND direction='debit' AND description ILIKE 'Refund reversal of platform_fee_due_settlement%' THEN amount
       WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END),0),0)
     INTO v_due FROM public.srk_wallet_ledger
