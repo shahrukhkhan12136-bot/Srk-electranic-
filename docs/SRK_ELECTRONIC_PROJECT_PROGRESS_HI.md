@@ -1095,3 +1095,11 @@
 - Regression assertion जोड़ा कि PIN सूचना का paragraph सही तरह बंद हो और Address label उसके बाद आए।
 - Commits: markup abc098af7e755b37142e275b086ef92a82180edb; assertion 6113a88f598cea62be36653fb7625e4232e25c78.
 - Tests/CI अभी execute या verify नहीं हुए हैं।
+
+
+### 13 नवम्बर 2026 — Customer Booking structured-input validation hardening
+
+- Server handler में PIN Code, preferred date और preferred time को अब वैध लंबाई तक truncate नहीं किया जाता; malformed suffix मौजूद होने पर पूरा input validation तक पहुँचता है और format check उसे reject करता है। इससे `2718617`, `2026-12-01extra` और `10:30extra` जैसे input वैध prefix में truncate होकर स्वीकार नहीं होंगे।
+- तीनों malformed-input मामलों के लिए handler regression test जोड़ा; हर मामले में अपेक्षित HTTP 400, कोई booking insert नहीं और public rate-limit RPC call नहीं होने की assertion है।
+- Commits: handler `f50143243456fc19ed4956ebd21251f5e605ceb1`, source formatting correction `d8038fd39dc3e142b753a58954c56d97ed1feb2d`, tests `faed53ab37e40255aad3021f7bd2f224b4420737`.
+- अभी Node tests/CI execute या verify नहीं हुए हैं। Production और database में कोई बदलाव नहीं किया।
