@@ -21,6 +21,11 @@ ALTER TABLE public.service_bookings
   ADD COLUMN IF NOT EXISTS labour_rate8h_paise_snapshot bigint,
   ADD COLUMN IF NOT EXISTS labour_rate_card_version_snapshot text;
 
+-- Preserve accumulated seconds from the previous timer implementation.
+UPDATE public.service_bookings
+SET work_timer_elapsed_seconds=work_timer_seconds::numeric
+WHERE work_timer_seconds>0 AND work_timer_elapsed_seconds=0;
+
 ALTER TABLE public.service_bookings
   ADD CONSTRAINT service_bookings_work_timer_elapsed_nonnegative
   CHECK (work_timer_elapsed_seconds >= 0);
