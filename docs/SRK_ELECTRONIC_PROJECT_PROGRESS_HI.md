@@ -1510,3 +1510,12 @@
 - Added regression coverage in `tests/customer-menu.test.cjs`.
 - Refund Source Regression #43499677244 SUCCESS; Customer Offer Timeline Source Regression #43499676223 SUCCESS; full Customer App Source Regression #43499676424 SUCCESS on commit `58f43e447187e6484873a99ede025f51a01fda28`.
 - No browser session-switch test has been performed; final mobile/Desktop QA remains deferred. No Production/payment/refund action was taken.
+
+
+## Customer Booking History account-switch privacy hardening (2026-11-14)
+- Audit found `loadCustomerBookings()` only used its refresh sequence. During SIGNED_IN / SIGNED_OUT / USER_UPDATED, a prior account's in-flight booking query could still pass its sequence check before the new `syncCustomerSession()` refresh began, and render old private booking cards into the changed session.
+- Added `customerSessionGeneration` capture and a combined `isCurrent()` guard across Auth lookup, booking query, contact/work/offer/refund RPC fan-out, final bill fan-out, render, catch and finally. Stale account work cannot render cards, warnings, or unlock controls owned by a newer request.
+- Added `invalidateCustomerBookingHistory()` to auth lifecycle changes. It increments the history sequence, resets pagination/busy state, clears old booking cards immediately, and restores refresh/load-more controls before the new session loads its own history.
+- Added source regression coverage for immediate clearing, auth listener invalidation, and stale response guards. First CI attempts exposed stale test expectations; assertions were updated to the combined generation guard. Latest full Customer App Source Regression #43500436558 completed **SUCCESS** on commit `8449e7cb476d753fa6958266a20892d8110947d4`.
+- Refund Source Regression #43500272005 and Offer Timeline Source Regression #43500172169 had passed on preceding app source state; the latest full regression covers all source suites after the booking-history fix.
+- This is source-level verification only; real two-account browser switching, live Supabase JWT/RLS runtime checks, and consolidated final mobile/Desktop QA remain pending. Production remains unchanged.
