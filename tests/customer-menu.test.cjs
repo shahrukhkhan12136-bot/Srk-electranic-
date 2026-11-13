@@ -439,7 +439,7 @@ test('customer support message send checks Auth session errors before using user
   const start = html.indexOf('async function sendCustomerSupportMessage()');
   const end = html.indexOf('\nasync function ', start + 20);
   const source = html.slice(start, end);
-  assert.match(source, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\);\s*if\(sessionError\)throw sessionError;\s*const userId=sessionData\?\.session\?\.user\?\.id/);
+  assert.match(source, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\);\s*if\(!customerSessionOperationIsCurrent\(operationGeneration\)\)return;\s*if\(sessionError\)throw sessionError;\s*const userId=sessionData\?\.session\?\.user\?\.id/);
 });
 
 
