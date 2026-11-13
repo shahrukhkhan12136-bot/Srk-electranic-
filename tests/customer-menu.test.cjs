@@ -708,3 +708,17 @@ test('customer cancellation remains an Admin-mediated Help and Support request',
   assert.ok(html.includes("async function createCustomerSupportComplaint()"));
   assert.ok(html.includes("srk_customer_create_booking_complaint"));
 });
+
+
+test('customer support booking selector ignores stale asynchronous responses', () => {
+  assert.match(html, /let customerSupportBookingsLoadSequence=0/);
+  const start = html.indexOf('async function loadCustomerSupportBookings()');
+  const end = html.indexOf('\nlet customerSupportComplaintCreateBusy', start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+  assert.ok(source.includes('const sequence=++customerSupportBookingsLoadSequence;'));
+  assert.ok(source.includes('if(sequence!==customerSupportBookingsLoadSequence)return;'));
+  assert.ok(source.includes('if(sequence===customerSupportBookingsLoadSequence){'));
+  assert.ok(source.includes('finally {if(sequence===customerSupportBookingsLoadSequence)select.disabled=wasDisabled;}'));
+  assert.ok(source.includes(".eq('customer_user_id',session.user.id)"));
+});
