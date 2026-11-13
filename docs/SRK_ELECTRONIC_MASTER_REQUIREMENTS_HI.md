@@ -3276,3 +3276,16 @@ Audit सीमा: पहले checklist item का source-level inspection �
 ### Change boundary
 - यह केवल read-only source inspection और दस्तावेजीकरण है।
 - Application code, database, Auth settings, secrets, SMS provider, user/session, payment और deployment में कोई बदलाव नहीं।
+
+
+## 17.86 — Customer OTP Login: Missing-Config Runtime Guard और Source Config Search (13 नवम्बर 2026)
+- Checklist item: **14.1.1** — OTP expiry, resend cooldown/limits, wrong-attempt limits, abuse/rate limiting, secure session और logout।
+- Feature Branch source review में `customer-login.html` के Auth state listener को Supabase client उपलब्ध न होने पर सीधे `sb.auth.onAuthStateChange` call करते पाया गया; इससे missing configuration की स्थिति में page script runtime error दे सकता था।
+- न्यूनतम Feature Branch सुधार: listener को `if(sb)` guard के अंदर रखा। OTP flow, Auth provider settings, session policy या server-side enforcement नहीं बदले।
+- Commit: `4542e3dcf715a58107e352f81a533c21f1780bfa`; file blob SHA: `db3bdd7c51ddb5cfc2ddd409cd87e209851658e2`.
+- Save verification: GitHub से file दोबारा fetch की; returned blob SHA commit के blob SHA से match हुआ और guard/logout code मौजूद मिला।
+- Static validation: embedded JavaScript को V8 `new Function` से parse किया — PASS; null-config listener guard — PASS; logout call presence — PASS।
+- Repository code search में `otp_expiry`, `sms_otp_expiry`, `max_frequency`, `refresh_token_reuse_interval`, `jwt_exp`, `otp_length` तथा Supabase Auth config terms के लिए कोई matching result नहीं मिला। यह search default branch index पर था; इससे Feature Branch या Supabase Production dashboard settings की अनुपस्थिति सिद्ध नहीं होती।
+- Supabase Auth dashboard की OTP expiry, SMS send limits, verification attempt limits, session expiry/refresh और abuse controls अभी भी प्रत्यक्ष रूप से सत्यापित नहीं हैं। वास्तविक browser/device, SMS delivery, expired/replayed/wrong OTP, concurrent resend और logout/session revocation tests बाकी हैं।
+- **Status: In Progress.** इस सुधार से item 14.1.1 Verified Complete नहीं होता।
+- कोई Production database/Auth setting, provider secret, SMS transaction, customer account/session या deployment नहीं बदला।
