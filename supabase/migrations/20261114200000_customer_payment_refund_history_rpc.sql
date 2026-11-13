@@ -34,7 +34,7 @@ begin
          events.description,events.status,events.payment_method,events.occurred_at
   from (
     select
-      case when b.razorpay_payment_id is null then 'manual_payment' else 'payment' end::text as event_type,
+      case when b.razorpay_payment_id is null and exists (select 1 from public.srk_manual_payment_entries me where me.booking_id=b.id) then 'manual_payment' else 'payment' end::text as event_type,
       b.id as booking_id,
       round(b.amount_paid,2)::numeric(12,2) as amount,
       'बुकिंग का सत्यापित भुगतान'::text as description,
