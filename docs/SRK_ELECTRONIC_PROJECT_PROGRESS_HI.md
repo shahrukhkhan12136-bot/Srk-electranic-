@@ -986,3 +986,10 @@
 - Avatar cleanup previously handled returned Storage errors but a thrown network exception could make a successful profile update appear to have failed when deleting the old avatar.
 - Both new-upload cleanup after profile RPC failure and old-avatar cleanup after successful profile update now catch thrown exceptions. The old-avatar cleanup failure is shown as a cleanup warning while the saved profile remains correctly reported as saved.
 - Source regression coverage added. Commits: `6e8accb868392e6dba0b59dbdc2791485e62d0bf`, `138293fbee54b232c1ea620b87b2f10ccd705cca`. Workflow pending. Live Storage/network fault injection not run; no Production changes.
+
+
+## Saved address write/refresh outcome integrity — 2026-11-13
+
+- Saved address loader now returns an explicit success/failure result. Save, delete and set-default flows distinguish the successful database RPC from a failed subsequent list refresh.
+- Customer is no longer told that the address operation fully completed/was confirmed when the refresh failed. The UI reports the write outcome and asks to reload/check state; default success is shown only when refreshed data confirms `is_default=true`.
+- Source regression coverage added. Commits `6d3f31396236a190f49d075f7ba42340f4aa4050`, `8420941203e6b0122b86065654c47bb96eccef84`. Workflow pending. No live database/RPC or browser test; no Production change.
