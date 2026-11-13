@@ -3838,3 +3838,38 @@ Audit सीमा: पहले checklist item का source-level inspection �
 6. पुराने database columns, migrations, provider/payment/refund integrations और historical records को बिना dependency audit delete/alter न करें। Legacy material fields को customer/electrician-facing app output से हटाने के लिए safe staged changes और regression tests आवश्यक हैं।
 7. Platform Fee या अन्य शुल्क को labour amount में छिपाकर न जोड़ें और न ही इस निर्णय से कोई नया customer charge अनुमानित करें; उसकी स्वीकृत policy और ledger treatment अलग रहेंगे।
 8. यह business-rule confirmation है; इससे अपने-आप migration apply, production setting change या deployment की अनुमति नहीं मिलती।
+
+
+## 19. वास्तविक समय बिलिंग — अगला implementation audit (13 नवम्बर 2026)
+### 19.1 पुष्टि किए हुए निर्णय
+- Booking-time amount केवल Estimate है; इसे cap, advance या fixed final price नहीं कहा जाएगा।
+- Booking अवधि से आगे काम होने पर भी server-recorded वास्तविक elapsed time के आधार पर शुल्क अपने-आप लगेगा; अतिरिक्त समय के लिए अलग approval नहीं चाहिए।
+- Timer start होने के बाद server start timestamp से server stop timestamp तक uninterrupted elapsed time गिना जाएगा। कोई daily reset, 8-hour cap, auto-stop या overtime multiplier नहीं होगा; 24 घंटे/कई दिनों तक चलने पर भी यही per-minute rate लागू होगा।
+- Electrician कोई final amount manually enter नहीं करेगा; server final labour amount calculate/freeze करेगा।
+- App billing में सामग्री का कोई role नहीं: customer/electrician/admin app billing surfaces, estimate, final bill, payment history, receipt और app API/RPC outputs में material name/line/charge/field नहीं दिखेगा।
+- Published 8-hour rates: Electrical Assistant ₹899; Skilled Electrician ₹1,199; Expert Electrician ₹1,599; Premium Electrical Specialist ₹1,999. Village/city rate same. Per-minute basis = 8-hour rate / 480.
+
+### 19.2 वर्तमान live backend की जाँच
+- `service_bookings` में `work_start_approval_status`, `work_start_requested_at`, `work_timer_running`, `work_timer_seconds`, `work_started_at`, `completion_requested_at`, `completion_approval_status` और `customer_completed_at` fields पहले से मौजूद हैं।
+- Live RPCs में electrician work-start request, customer start approval, electrician completion request, customer completion approval/dispute, Admin dispute resolution और electrician work-control lookup मौजूद हैं।
+- मौजूदा start-request RPC अभी `quote_approved` + `quote_status='approved'` पर निर्भर है; यह legacy electrician-entered quote workflow से जुड़ा है। इसलिए इसे सीधे नए Estimate-only model के लिए उपयोग करना सुरक्षित नहीं।
+- मौजूदा completion request `work_timer_seconds + server elapsed seconds` से timer duration बनाती है और completion approval/dispute पर timer रोकती है। यह timer source है, लेकिन final labour invoice/bill snapshot नहीं।
+- कोई canonical category/rate-tier field/table live public schema inventory में नहीं मिला। `electrician_profiles.skills` text array अकेले Admin-approved commercial rate tier का प्रमाण नहीं है; इसे billing authority न मानें।
+- Current customer booking creation stores client-provided `quoted_amount`; this must be replaced with server-derived estimate from selected approved category + selected expected duration. Client-provided price must never be trusted.
+
+### 19.3 अभी भी implementation रोकने वाले आवश्यक निर्णय/साक्ष्य
+1. **Fractional paise rounding:** `rate_paise × actual_minutes / 480` में fractional paise आ सकते हैं। Integer-paise payment के लिए exact rounding rule अभी मालिक से स्पष्ट रूप से मंजूर नहीं हुआ है। जब तक मंजूरी न हो, rounding mode invent न करें।
+2. **Canonical category assignment:** चार rate tiers मौजूद हैं, लेकिन customer-selected requested category और Admin-approved electrician category को सुरक्षित रूप से store/verify करने वाला canonical schema अभी नहीं मिला। `skills` text array को बिना Admin-verification mapping के उपयोग न करें।
+3. **Legacy quote/payment dependency:** quote-era RPCs, payment order, webhook, cash confirmation, manual payment, commission/payable triggers और refunds `service_charge + materials_amount + quoted_amount + quote_status` पर निर्भर हैं। इन सभी consumers को versioned labour-bill snapshot से migrate किए बिना legacy columns/functions हटाना या zero करना खतरनाक है।
+4. **Immutable final bill:** final bill में booking, approved rate-card/version, server start/stop timestamps, actual elapsed whole minutes, exact calculation numerator/denominator, integer amount paise, calculation version, bill hash, approval/audit timestamps और immutable version चाहिए। Dispute पर payment/finalization रोकना होगा।
+5. **Payment binding:** Cash, Razorpay order/verify/webhook, Admin manual payment, Platform Fee, electrician payable/payout और refunds सभी exact frozen bill snapshot ID/version/hash/amount पर bind होने चाहिए; current payment handlers अभी quote-era total पर आधारित हैं।
+
+### 19.4 अगला सुरक्षित implementation क्रम
+1. पहले rate-card + requested/approved category schema और Admin approval workflow को design/test करें; customer category और electrician eligibility server-side validate हों।
+2. फिर estimate-only booking payload बनाएं: selected category, expected duration 1–8 hours, server-computed estimate; client `quoted_amount` हटे।
+3. Existing timer को uninterrupted server-authoritative start/stop model में adapt करें; old quote approval prerequisite हटाने के लिए अलग versioned RPCs बनाएं, legacy bookings का path सुरक्षित रखें।
+4. Rounding decision के बाद immutable labour-only final bill snapshot और idempotent payment intent/finalizer बनाएं।
+5. Cash/Online, webhook, Platform Fee, payout/refund और Admin reconciliation को snapshot से migrate करें; सभी legacy regression और authorization tests के बाद ही किसी environment में apply की अनुमति माँगें।
+
+### 19.5 सुरक्षा सीमा
+यह source + read-only live schema/function inventory है। कोई live DDL/DML, migration apply, payment/provider action, production setting change या deployment नहीं किया गया। Material billing fields को app output से हटाने का staged work शुरू है; legacy database columns और historical accounting dependencies जानबूझकर अभी सुरक्षित रखे गए हैं।
