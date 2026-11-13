@@ -1552,3 +1552,11 @@
 - CI follow-up #3: avatar preview callback और saved-address loader के दो अन्य पुराने source assertions भी sequence-only implementation से जुड़े थे। इन्हें अब session-aware `isCurrent()` callback/finally behavior पर अपडेट किया: `398833e34daa5a7e805e82f27ec23347075004fb`. अगला workflow result ही अंतिम pass/fail माना जाएगा।
 
 - CI follow-up #4: avatar signed-URL callback में implementation का एक closure अभी sequence-only था; इसे `isCurrent()` session+sequence guard से बाँधा। साथ ही Auth retrieval failure test में पुराना finally assertion बदला। Commits: app `7ef812c31e7c77f78ae4d7fedc0ad22f2344e208`, test `c435403e0a145d47c40c7b3c033512266f20f9bb`. पहले runs ने stale assertions और avatar callback gap पकड़ा; नया regression outcome अभी प्रतीक्षित है।
+
+
+## Customer Support session-switch privacy hardening (2026-11-14)
+- Support booking selector, complaint list, message thread और attachment signed-URL loading को `customerSessionGeneration` + per-loader sequence guards से बाँधा। पुराने account की pending RPC/Storage response नए account के Support UI में render नहीं हो सकती।
+- Auth SIGNED_IN / SIGNED_OUT / USER_UPDATED पर Support booking choices, complaint choices, thread messages और attachments तुरंत clear होते हैं; pending loader sequences invalidate होते हैं और controls restore होते हैं।
+- Attachment RPC तथा प्रत्येक signed-URL await के बाद generation जाँची जाती है; stale generation पर आगे की private file links नहीं बनतीं/रेंडर नहीं होतीं।
+- App commits: `9a388461750e5a879464ad2a3c9d4b55572dce35`, corrective guard `73b4399bc778cd2d436224d96427eb2b71be9561`; source regression tests: `a98500b3771f470e6f489c2a005152e299ef2014`. Saved-address prior test assertion corrected in `1489923d2758d6ab475f78de0cc29a73ce78fb74`.
+- Earlier CI run `#43502626728` had 70/71 Customer Menu tests pass; remaining failure was a stale saved-address finally assertion. Corrected assertion commit `1489923...`. Support-specific tests are now added; final CI result pending. No browser/two-account test, live Supabase JWT/RLS, or final mobile/Desktop QA performed. Production unchanged.
