@@ -741,3 +741,14 @@ test('customer support booking selector paginates older bookings and preserves l
   assert.ok(source.includes('customerSupportBookingsBusy?customerSupportBookingsWasDisabled:select.disabled'));
   assert.ok(source.includes('if(sequence===customerSupportBookingsLoadSequence){'));
 });
+
+
+test('customer support attachment signed-link failures are visible instead of silent disabled links', () => {
+  const start = html.indexOf('async function loadCustomerSupportAttachments(complaintId)');
+  const end = html.indexOf('\nlet customerSupportBookingsLoadSequence=0;', start);
+  assert.ok(start >= 0 && end > start);
+  const loader = html.slice(start, end);
+  assert.ok(loader.includes('signedUrlError:Boolean(signedError)'));
+  assert.ok(html.includes('फ़ाइल लिंक अभी उपलब्ध नहीं; थ्रेड रीफ़्रेश करें'));
+  assert.ok(html.includes("if(!a.signedUrl){link.removeAttribute('target');"));
+});
