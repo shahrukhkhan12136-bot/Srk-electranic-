@@ -2487,3 +2487,40 @@ Section 17.63 के अनुसार implementation शुरू करने
 
 ### इस audit की सीमा
 इस pass में मुख्य Customer/Electrician/Admin UI तथा root payment handlers का source निरीक्षण किया गया और migration inventory की शुरुआत की गई। पूर्ण migration/RPC/trigger lineage, SQL role tests, timer implementation, payment provider tests और end-to-end execution अभी बाकी हैं। कोई code/SQL/Production change या deployment नहीं किया गया।
+
+## 17.65 — Feature Branch SQL Migration / RPC Financial Dependency Audit (13 Nov 2026)
+
+Feature Branch की सभी 21 tracked Supabase migration files की inventory और timer/payment से सीधे जुड़ी quote, fee, payout, offer, payment-choice migrations का source inspection किया गया। यह source audit है; Production database में migration application या runtime behavior का प्रमाण नहीं।
+
+### A. Legacy quote और materials dependencies
+1. 20261109_electrician_inspection_quotes_and_service_only_commission.sql legacy quote RPC srk_submit_booking_quote बनाता है; यह service_charge, materials_amount, quoted_amount और quote approval/status lifecycle लिखता है। साथ में work-status transition quote_approved पर निर्भर है।
+2. 20261112193000_labour_only_quotes_customer_supplies_materials.sql non-zero materials amount अस्वीकार करता है और नए quote में materials_amount=0 लिखता है, लेकिन पुराने quote RPC और electrician-entered service amount को बनाए रखता है। यह अभी Timer Billing नहीं है।
+3. 20261112230000_show_customer_payment_choice_to_assigned_electrician.sql assigned electrician के offer RPC में quoted_amount, service_charge, materials_amount और payment_method return करता है। नए flow में electrician को customer का payment choice या bill amount दिखाने की जरूरत नहीं है; इस RPC response को redesign करना होगा।
+
+### B. Fee / payout में महत्वपूर्ण incompatibility
+4. 20261112220000_cash_platform_fee_due_and_online_settlement.sql और 20261113120000_limit_cash_fee_settlement_to_labour_share.sql के trigger में अभी भी service_charge + materials_amount को total payment माना गया है और amount_paid उसी combined total से मिलाया जाता है।
+5. नवीनतम 20261113120000 migration prior cash fee recovery को v_service - current fee तक सीमित करती है, जो सही दिशा है; लेकिन payout row में materials_amount अभी भी लिखा जाता है और electrician_payable अभी भी v_total (service + materials) से calculate होता है। इसलिए केवल fee recovery labour-only होने से पूरा payout labour-only नहीं बनता।
+6. srk_admin_record_manual_payment अभी भी approved quote breakdown service_charge + materials_amount और quoted_amount से total बनाता है। नया Cash/manual confirmation frozen labour-only bill snapshot से जुड़ना चाहिए।
+7. srk_admin_mark_electrician_payout_paid अभी भी booking paid amount, service_charge + materials_amount, payout materials_amount और quote approval का मिलान करता है। इसे नए bill snapshot और labour-only payout formula पर migrate करना आवश्यक है।
+8. पुरानी commission/report function तथा payout table में materials fields ऐतिहासिक compatibility के लिए रह सकती हैं, पर नई bill/payout rows में materials रकम शून्य/अनुपस्थित और गणना से बाहर होनी चाहिए। पुराने historical rows rewrite नहीं होंगे।
+
+### C. Payment choice timing में विरोध
+9. 20261112170000_enforce_electrician_third_booking_online_payment.sql हर तीसरी completed/approved/verified-paid booking की अगली eligibility के लिए acceptance समय पर customer payment_method को Razorpay Online होना आवश्यक करता है।
+10. 20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql केवल unassigned, unpaid, new/confirmed booking में Cash से Online switch की अनुमति देता है।
+11. ये दोनों pre-work/pre-assignment payment choice मॉडल हैं; Section 17.63 के नए नियम में final bill बनने के बाद Customer Cash या Online चुनेगा। Third-booking enforcement को नए timing में redesign करना होगा; मौजूदा नियम को सीधे हटाने से booking acceptance race/eligibility logic टूट सकता है।
+
+### D. Timer और payment architecture अभी अनुपस्थित
+12. 21 migrations में कोई canonical timer event store, server-side start/stop/approval RPC, bill snapshot table/version/hash, bill adjustment ledger या timer lifecycle migration नहीं मिली।
+13. Existing quote status और work_started_at legacy timestamps timer billing का पर्याप्त विकल्प नहीं हैं। इन्हें actual minute billing authority न मानें।
+14. Payment order/verification/webhook और refund/payout RPCs अभी quote-era data पर निर्भर हैं। नए bill snapshot पर migration और unified payment finalizer के बिना legacy columns हटाना unsafe है।
+
+### E. Implementation gates
+- नया timer lifecycle और immutable labour-only bill schema/RPC पहले बनें; start/stop server timestamps, Customer approval boundary और exact minute calculation enforce हों।
+- Cash/Online choice final bill के बाद Customer-only authenticated action हो; Electrician API/UI से amount और payment mode read/write न हो।
+- Fee, payout, manual payment, Razorpay order, verification, webhook, refund, Route और Admin payout confirmation सभी एक ही frozen bill snapshot से राशि लें।
+- New financial rows में material amount कोई गणना न बदले; legacy materials columns/records केवल historical read compatibility के लिए रहें।
+- Third-booking policy को bill-time choice के साथ transactionally enforce करने का अलग design और concurrency tests हों।
+- Historical quote records, existing payout records, cash fee dues और refund histories के before/after reconciliation report तथा rollback plan बने।
+- SQL migration order/Production lineage verify किए बिना migration replay, drop, rename, truncate या Production write न करें।
+
+इस audit में केवल Feature Branch migration source पढ़ा और Master Requirements update किया गया। कोई source code, SQL migration, database object/data, payment provider setting, real payment/payout/refund या deployment नहीं बदला।
