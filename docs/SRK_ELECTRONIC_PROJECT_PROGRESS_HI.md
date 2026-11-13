@@ -1695,3 +1695,10 @@
 - Fixture में केवल synthetic schema है; Production DB connection, Production dump, Production credentials या real customer data नहीं।
 - Commits: synthetic fixture `b190e17a598122e3b593a924ccb9cec6f250282f`; local workflow `e48f43bbd394c06d2cedeb2bedee16b2a4ed485c`.
 - Run #43517806145 अभी local Supabase startup/fixture चरण में है; migrations या pgTAP परिणाम अभी PASS नहीं माने गए हैं। अगले अपडेट में migration-application error या final test evidence दर्ज होगा।
+
+### Timer migration local-apply में मिला वास्तविक SQL defect — सुधारा गया
+
+- पहले timer/completion local run #43517806145 में category migration और synthetic fixture सफल हुए, लेकिन timer migration apply पर PostgreSQL syntax error मिला: `srk_create_electrician_payable()` में categorized labour-only branch के बाद `END IF` missing था; legacy quote compatibility path गलत nesting में था। pgTAP step इसलिए execute नहीं हुआ।
+- Feature branch migration में categorized payout branch का missing `END IF` जोड़ा और स्पष्ट boundary comment रखा, ताकि new labour-only path legacy quote branch से अलग रहे।
+- Timer structural pgTAP plan 102 से 103 किया; नया assertion categorized labour-only payout branch और legacy quote branch के boundary को verify करता है।
+- Fix commit `894542dc322f289695b398a196fbb83a3acc5abe`; pgTAP assertion commit `2a51c79734292ddf53af3d03438ab3c74bbc1845`. Corrected isolated workflow rerun #43518212636 queued/pending at this tracker update; अभी PASS घोषित नहीं।
