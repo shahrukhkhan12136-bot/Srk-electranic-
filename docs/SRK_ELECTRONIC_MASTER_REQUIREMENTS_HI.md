@@ -2401,3 +2401,36 @@ Feature Branch में उपयोगी security controls हैं: authent
 ### Implementation और deletion gate
 Feature Branch के UI, JS, SQL/RPC, triggers, reports, refund/payout logic में materials-related live dependencies की सूची बनाकर केवल नए labour-only flow में migration के बाद हटाएँ। Historical quote/payment/refund rows और audit records को सुरक्षित रखें। जब तक dependency mapping और regression tests पूरे न हों, Production columns/functions न हटाएँ।
 इस सेक्शन में Master Requirements documentation ही बदली गई है; source code, database, Production, payment provider या deployment में कोई बदलाव नहीं किया गया।
+
+
+## 17.62 — Customer-only Materials Policy: Current Feature Branch UI and Payment Dependency Audit (13 Nov 2026)
+
+Section 17.61 के बाद संबंधित Feature Branch files का प्रत्यक्ष निरीक्षण:
+
+### Customer UI — `booking.html`
+- Booking instructions में लिखा है कि इलेक्ट्रिशियन केवल मेहनताना बताएगा और जरूरी सामान ग्राहक स्वयं खरीदेगा/उपलब्ध कराएगा।
+- Customer booking payload में `quoted_amount` अभी भी भेजा जाता है; इसे नए Timer Bill का authoritative amount नहीं माना जा सकता।
+- Customer history/payment display अभी quote-era fields और completed + approved quote पर निर्भर है।
+- इस निरीक्षण में Customer को इलेक्ट्रिशियन से सामान खरीदने/मँगाने का UI option नहीं मिला; फिर भी नए UI में material amount/line item/payment का कोई स्थान नहीं होना चाहिए।
+
+### Electrician UI — `electrician.html`
+- वर्तमान quote card केवल “सर्विस / मेहनताना शुल्क” input दिखाता है; अलग materials amount input नहीं दिखा।
+- Submit caller `srk_submit_booking_quote` को `p_materials_amount: 0` भेजता है।
+- Confirmation text ग्राहक द्वारा सामान स्वयं उपलब्ध कराने की बात कहता है।
+- इसलिए UI पर अभी अलग सामान मूल्य input नहीं दिखा, लेकिन quote workflow अभी मौजूद है। नए Timer Billing लागू होने पर इस legacy quote card/RPC caller को हटाना है; Electrician UI में materials/supply/invoice/amount controls कभी नहीं जोड़ने हैं।
+
+### Admin and server-side legacy dependencies
+- `admin.html` अभी `quoted_amount` पढ़ता है और direct booking update में amount/status लिखता है।
+- `create-order.js`, `verify-payment.js`, `razorpay-webhook.js` अभी `service_charge + materials_amount = quoted_amount` legacy reconciliation करते हैं।
+- ये server payment dependencies हटाए बिना केवल materials column/UI हटाना payment verification और historical compatibility तोड़ सकता है।
+- पुराने payout/refund/fee functions और records में `materials_amount`/material-inclusive totals के संदर्भ हैं; उन्हें केवल historical versioned compatibility तक सीमित करना है, नए bill/fee/refund calculation में नहीं।
+
+### निष्कर्ष और अगला implementation क्रम
+1. नया Timer Bill schema केवल labour/service amount रखे; materials field/line item न हो।
+2. Customer/Electrician/Admin UI, API, receipt/report में materials amount, supply option, materials quote या reimbursement flow न हो।
+3. Payment order, verification और webhook को frozen labour-only bill snapshot से जोड़ें; client `quoted_amount` और legacy materials total authority न हों।
+4. Payout, Platform Fee, cash due, wallet, refund और Route calculations को labour-only bill से migrate करें।
+5. पुरानी quote/material values को read-only historical records में सुरक्षित रखें; पुराने RPC/columns केवल तब retire हों जब सभी callers migrate और tests pass हों।
+6. Required tests: customer payload में materials field भेजे जाने पर ignore/reject; electrician materials field/RPC attempt denied; payment amount exactly labour bill; fee = 15% labour only; receipt/report no materials line; old paid quote record remains readable.
+
+इस section में केवल read-only source audit और Master Requirements documentation update किया गया। कोई code, migration, Production object/data, payment या deployment नहीं बदला।
