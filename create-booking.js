@@ -104,22 +104,6 @@ exports.handler = async (event) => {
     return json(500, { success: false, error: "सर्वर कॉन्फ़िगरेशन अधूरा है। Admin से संपर्क करें।" });
   }
 
-  const clientIp = event.headers?.["x-nf-client-connection-ip"] || event.headers?.["X-Nf-Client-Connection-Ip"];
-  if (typeof clientIp !== "string" || !clientIp.trim()) {
-    return json(503, { success: false, error: "सुरक्षा जाँच अभी उपलब्ध नहीं है। कृपया थोड़ी देर बाद कोशिश करें।" });
-  }
-  try {
-    const ipHash = crypto.createHash("sha256").update(clientIp.trim()).digest("hex");
-    const allowed = await checkPublicRateLimit("booking", ipHash, 5);
-    if (!allowed) return {
-      ...json(429, { success: false, error: "इस मोबाइल नेटवर्क से बहुत अधिक बुकिंग अनुरोध आए हैं। कृपया कुछ देर बाद कोशिश करें।" }),
-      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "Retry-After": "3600" }
-    };
-  } catch (rateError) {
-    console.error("Booking rate-limit check failed:", rateError.httpStatus || rateError.name || "UnknownError");
-    return json(503, { success: false, error: "बुकिंग सुरक्षा जाँच अस्थायी रूप से उपलब्ध नहीं है। कृपया बाद में कोशिश करें।" });
-  }
-
   let body;
   try {
     body = JSON.parse(event.body || "{}");
@@ -194,33 +178,65 @@ exports.handler = async (event) => {
     };
     const requestFingerprint = crypto.createHash("sha256")
       .update(JSON.stringify(fingerprintPayload)).digest("hex");
-    const inserted = await supabase("service_bookings", {
-      method: "POST",
-      headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
-      body: JSON.stringify([{
-        customer_name, phone, state, district, pincode, address, service_type,
-        selected_category, selected_duration_hours, preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
-        customer_request_key: requestKey, customer_request_fingerprint: requestFingerprint,
-        status: "new", payment_status: "unpaid", customer_user_id
-      }])
-    });
-    let booking = Array.isArray(inserted) ? inserted[0] : null;
-    let idempotentReplay = false;
-    if (!booking?.id) {
-      const existing = await supabase(
-        "service_bookings?select=id,customer_request_fingerprint&customer_request_key=eq." +
-        encodeURIComponent(requestKey) + "&customer_user_id=eq." + encodeURIComponent(customer_user_id) + "&limit=1",
-        { method: "GET" }
-      );
-      const prior = Array.isArray(existing) ? existing[0] : null;
-      if (!prior?.id) {
-        return json(409, { success: false, error: "यह बुकिंग अनुरोध पहले इस्तेमाल हो चुका है। कृपया नया अनुरोध बनाकर दोबारा कोशिश करें।" });
+    // Resolve a previously-created request before rate limiting. Only an exact
+    // owner + key + payload match may replay; it creates no new booking.
+    const existing = await supabase(
+      "service_bookings?select=id,customer_request_fingerprint&customer_request_key=eq." +
+      encodeURIComponent(requestKey) + "&customer_user_id=eq." + encodeURIComponent(customer_user_id) + "&limit=1",
+      { method: "GET" }
+    );
+    const prior = Array.isArray(existing) ? existing[0] : null;
+    if (prior?.id && prior.customer_request_fingerprint !== requestFingerprint) {
+      return json(409, { success: false, error: "इस बुकिंग अनुरोध की जानकारी बदल गई है। कृपया नई बुकिंग शुरू करके दोबारा भेजें।" });
+    }
+
+    let booking = prior?.id ? { id: prior.id } : null;
+    let idempotentReplay = Boolean(prior?.id);
+    if (!booking) {
+      // Rate-limit only genuinely new bookings. Safe retries of an existing,
+      // identical idempotency key do not consume another submission slot.
+      const clientIp = event.headers?.["x-nf-client-connection-ip"] || event.headers?.["X-Nf-Client-Connection-Ip"];
+      if (typeof clientIp !== "string" || !clientIp.trim()) {
+        return json(503, { success: false, error: "सुरक्षा जाँच अभी उपलब्ध नहीं है। कृपया थोड़ी देर बाद कोशिश करें।" });
       }
-      if (prior.customer_request_fingerprint !== requestFingerprint) {
-        return json(409, { success: false, error: "इस बुकिंग अनुरोध की जानकारी बदल गई है। कृपया नया अनुरोध बनाकर दोबारा भेजें।" });
+      try {
+        const ipHash = crypto.createHash("sha256").update(clientIp.trim()).digest("hex");
+        const allowed = await checkPublicRateLimit("booking", ipHash, 5);
+        if (!allowed) return {
+          ...json(429, { success: false, error: "इस मोबाइल नेटवर्क से बहुत अधिक नई बुकिंग आई हैं। कृपया कुछ देर बाद कोशिश करें।" }),
+          headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "Retry-After": "3600" }
+        };
+      } catch (rateError) {
+        console.error("Booking rate-limit check failed:", rateError.httpStatus || rateError.name || "UnknownError");
+        return json(503, { success: false, error: "बुकिंग सुरक्षा जाँच अस्थायी रूप से उपलब्ध नहीं है। कृपया बाद में कोशिश करें।" });
       }
-      booking = { id: prior.id };
-      idempotentReplay = true;
+
+      const inserted = await supabase("service_bookings", {
+        method: "POST",
+        headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+        body: JSON.stringify([{
+          customer_name, phone, state, district, pincode, address, service_type,
+          selected_category, selected_duration_hours, preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
+          customer_request_key: requestKey, customer_request_fingerprint: requestFingerprint,
+          status: "new", payment_status: "unpaid", customer_user_id
+        }])
+      });
+      booking = Array.isArray(inserted) ? inserted[0] : null;
+      if (!booking?.id) {
+        // Another concurrent request may have inserted the same key after the
+        // preflight lookup. Confirm it is the same owner and exact same payload.
+        const raced = await supabase(
+          "service_bookings?select=id,customer_request_fingerprint&customer_request_key=eq." +
+          encodeURIComponent(requestKey) + "&customer_user_id=eq." + encodeURIComponent(customer_user_id) + "&limit=1",
+          { method: "GET" }
+        );
+        const racedPrior = Array.isArray(raced) ? raced[0] : null;
+        if (!racedPrior?.id || racedPrior.customer_request_fingerprint !== requestFingerprint) {
+          return json(409, { success: false, error: "यह बुकिंग अनुरोध पहले इस्तेमाल हो चुका है। कृपया नई बुकिंग शुरू करके दोबारा कोशिश करें।" });
+        }
+        booking = { id: racedPrior.id };
+        idempotentReplay = true;
+      }
     }
 
     // Supabase's broadcast_new_booking trigger creates offers exactly once.
