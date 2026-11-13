@@ -114,7 +114,15 @@ test('customer booking history reports partial RPC and labour-bill failures with
   assert.match(html, /if\(refundResult\.error\)partialWarnings\.push/);
   assert.match(html, /if\(error\)billLoadFailures\+\+/);
   assert.match(html, /कुछ पूरी हुई बुकिंग के अंतिम Labour Bill अभी लोड नहीं हो सके/);
-  assert.match(html, /if\(sequence===customerBookingHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(html, /let customerBookingHistoryOffset=0/);
+  assert.match(html, /let customerBookingHistoryBusy=false/);
+  assert.match(html, /async function loadCustomerBookings\(reset=true\)/);
+  assert.ok(html.includes('id="customerBookingHistoryMore"'));
+  assert.match(html, /\.range\(requestedOffset,requestedOffset\+24\)/);
+  assert.match(html, /customerBookingHistoryOffset=requestedOffset\+data\.length/);
+  assert.match(html, /if\(reset\)box\.innerHTML=cardsHtml;else box\.insertAdjacentHTML\('beforeend',cardsHtml\)/);
+  assert.match(html, /if\(sequence===customerBookingHistoryLoadSequence\)\{customerBookingHistoryBusy=false;box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(html, /पहले से दिख रही बुकिंग सुरक्षित हैं/);
 });
 
 
