@@ -1187,7 +1187,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify({
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), preferred_date: value('date'), preferred_time: value('time'),
-      work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method, quoted_amount: amount || null
+      work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method
     }) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
