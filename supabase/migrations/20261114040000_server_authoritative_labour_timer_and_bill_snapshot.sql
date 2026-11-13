@@ -585,7 +585,7 @@ RETURNS TABLE(
   approved_skill_keys text[],work_timer_elapsed_seconds numeric,
   work_timer_running boolean,work_started_at timestamptz,
   work_start_approval_status text,completion_approval_status text,
-  labour_rate_tier_snapshot text
+  labour_rate_tier_snapshot text,payment_status text,amount_paid numeric,payment_verified_at timestamptz
 )
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path TO 'pg_catalog','public','auth','pg_temp'
@@ -611,7 +611,7 @@ AS $function$
     p.approved_rate_tier,p.approved_skill_keys,
     b.work_timer_elapsed_seconds,b.work_timer_running,b.work_started_at,
     b.work_start_approval_status,b.completion_approval_status,
-    b.labour_rate_tier_snapshot
+    b.labour_rate_tier_snapshot,b.payment_status,b.amount_paid,b.payment_verified_at
   FROM public.job_offers o
   JOIN public.electrician_profiles p ON p.id=o.electrician_id
   JOIN public.service_bookings b ON b.id=o.booking_id
