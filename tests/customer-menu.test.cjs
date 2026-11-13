@@ -172,6 +172,22 @@ test('customer payment history pagination prevents duplicate loads and restores 
 });
 
 
+test('customer history retries clear stale warnings and invalid payment timestamps render safely', () => {
+  const paymentStart=html.indexOf('async function loadCustomerPaymentHistory(reset=true)');
+  const paymentEnd=html.indexOf('\\nlet customerRefundHistoryLoadSequence',paymentStart);
+  const payment=html.slice(paymentStart,paymentEnd);
+  assert.match(payment,/const dateValue=row\.occurred_at\?new Date\(row\.occurred_at\):null/);
+  assert.match(payment,/!Number\.isNaN\(dateValue\.getTime\(\)\)/);
+  assert.match(payment,/box\.querySelector\('\[data-payment-history-load-warning\]'\)\?\.remove\(\)/);
+  const refundStart=html.indexOf('async function loadCustomerRefundHistory(reset=true)');
+  const refundEnd=html.indexOf('\\nconst customerBookingStatusLabels',refundStart);
+  assert.match(html.slice(refundStart,refundEnd),/box\.querySelector\('\[data-refund-history-load-warning\]'\)\?\.remove\(\)/);
+  const bookingStart=html.indexOf('async function loadCustomerBookings(reset=true)');
+  const bookingEnd=html.indexOf('\\nasync function customerRespondWorkStart',bookingStart);
+  assert.match(html.slice(bookingStart,bookingEnd),/box\.querySelector\('\[data-booking-history-load-warning\]'\)\?\.remove\(\)/);
+});
+
+
 test('customer refund history pagination prevents duplicate loads and uses bounded paginated RPC', () => {
   assert.ok(html.includes('id="customerRefundHistoryMore"'));
   const start=html.indexOf('async function loadCustomerRefundHistory(reset=true)');
