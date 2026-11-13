@@ -409,3 +409,26 @@ test('customer avatar cleanup network exceptions do not misreport saved profile 
   assert.ok(source.includes('setCustomerProfileStatus(\'प्रोफ़ाइल सफलतापूर्वक सेव हो गई।\'+(previewLoaded?'));
   assert.ok(source.indexOf('customerCurrentAvatarPath=avatarPath;') < source.indexOf('if(oldAvatar&&oldAvatar!==avatarPath)'));
 });
+
+
+test('saved address writes distinguish database success from failed list refresh', () => {
+  const loaderStart=html.indexOf('let customerSavedAddressLoadSequence=0;');
+  const loaderEnd=html.indexOf('\\nasync function saveCurrentBookingAddress()',loaderStart);
+  const loader=html.slice(loaderStart,loaderEnd);
+  assert.ok(loader.includes('  return true;'));
+  assert.ok(loader.includes('return false;'));
+  const saveStart=html.indexOf('async function saveCurrentBookingAddress()');
+  const saveEnd=html.indexOf('\\nfunction editSelectedSavedAddress()',saveStart);
+  const save=html.slice(saveStart,saveEnd);
+  assert.ok(save.includes('const refreshed=await loadCustomerSavedAddresses();'));
+  assert.ok(save.includes('पता सेव हो गया है, लेकिन सेव किए गए पतों की सूची अभी रीफ़्रेश नहीं हो सकी'));
+  const deleteStart=html.indexOf('async function deleteSelectedSavedAddress()');
+  const deleteEnd=html.indexOf('\\nasync function makeSelectedAddressDefault()',deleteStart);
+  const del=html.slice(deleteStart,deleteEnd);
+  assert.ok(del.includes('पता हटाने का अनुरोध सफल हुआ, लेकिन सूची अभी रीफ़्रेश नहीं हो सकी'));
+  const defaultStart=html.indexOf('async function makeSelectedAddressDefault()');
+  const defaultEnd=html.indexOf('\\nlet customerSupportComplaints',defaultStart);
+  const makeDefault=html.slice(defaultStart,defaultEnd);
+  assert.ok(makeDefault.includes('const defaultConfirmed=refreshed&&customerSavedAddresses.some(item=>item.id===a.id&&item.is_default===true);'));
+  assert.ok(makeDefault.includes('डिफ़ॉल्ट पता अपडेट हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी'));
+});
