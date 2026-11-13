@@ -72,3 +72,10 @@ test('Admin Finance expense form validates amounts and requires confirmation bef
   assert.ok(html.includes("if(!confirm('क्या यह वास्तविक कंपनी खर्च है"));
   assert.ok(html.includes("p_amount:amount"));
 });
+
+test('Admin Finance report does not conflate legacy commission with reconciled Platform Fee or settled payout', () => {
+  assert.ok(html.includes('legacy commission और नई Platform Fee का पूर्ण अलग-अलग reconciliation'));
+  assert.ok(html.includes('Recorded Commission (legacy/new split pending)'));
+  assert.ok(html.includes('Electrician Share (settlement नहीं)'));
+  assert.ok(html.includes('Period में बने Pending Payout'));
+});
