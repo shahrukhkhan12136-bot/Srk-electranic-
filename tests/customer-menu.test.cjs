@@ -681,7 +681,7 @@ test('customer completion controls match the server accept reject and dispute co
   const historyEnd=html.indexOf('async function customerRespondWorkStart',historyStart);
   const history=html.slice(historyStart,historyEnd);
   assert.ok(history.includes("row.completion_approval_status==='pending'"));
-  assert.equal((history.match(/customerRespondWorkCompletion\\(/g)||[]).length,3);
+  assert.equal(history.split('customerRespondWorkCompletion(').length-1,3);
   assert.ok(history.includes("customerEsc(row.id)"));
   assert.ok(history.includes("'approved'"));
   assert.ok(history.includes("'rejected'"));
