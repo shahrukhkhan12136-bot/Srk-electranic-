@@ -31,7 +31,9 @@ test('electrician earnings and wallet displays use read RPCs and do not expose p
 });
 
 test('electrician dashboard exposes the six approved sections in order with accessible tab panels', () => {
-  const nav = html.match(/<nav class="partner-menu"[\\s\\S]*?<\\/nav>/)?.[0] || '';
+  const navStart = html.indexOf('<nav class="partner-menu"');
+  const navEnd = html.indexOf('</nav>', navStart);
+  const nav = navStart >= 0 && navEnd >= 0 ? html.slice(navStart, navEnd + 6) : '';
   const names = [...nav.matchAll(/data-partner-menu="([^"]+)"/g)].map(m => m[1]);
   assert.deepEqual(names, ['Home','Offers','Work','Earnings','Profile','Support']);
   assert.equal((nav.match(/role="tab"/g)||[]).length, 6);
