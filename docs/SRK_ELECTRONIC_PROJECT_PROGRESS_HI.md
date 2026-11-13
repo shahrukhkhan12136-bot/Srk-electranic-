@@ -1278,3 +1278,15 @@
 - Verification: Customer App source regression run 43490490566 completed SUCCESS (job 132110071623) on test commit 664f5595e777. Refund Source Regression on app commit d535ea8cc6a7 also completed SUCCESS (43490258584).
 - Scope limitation: ये source-level regression assertions हैं; वास्तविक browser logout बीच RPC/upload के दौरान, Supabase Auth/Storage runtime, orphaned upload cleanup, real session-switch race और final consolidated mobile/Desktop QA अभी बाकी हैं। Upload/RPC पहले से server पर स्वीकार हो चुका हो तो client-side generation guard उस server-side action को retroactively cancel नहीं कर सकता।
 - No Production changes, SQL execution, deployment, payout या payment movement.
+
+
+### 14 नवम्बर 2026 — Customer Booking submit का logout/session-switch race guard
+
+- Customer Booking submit handler audit में पाया कि booking create request के दौरान logout या दूसरे account के login पर पुराना response success/error alert और history refresh चला सकता था। साथ ही Auth getSession error को पहले स्पष्ट रूप से handle नहीं किया जा रहा था।
+- Booking submit अब `customerSessionGeneration` और अलग `customerBookingSubmissionToken` दोनों capture करता है। SIGNED_OUT/SIGNED_IN/USER_UPDATED पर pending booking operation invalidate होती है, busy lock release होता है और submit control restore होता है। पुराने operation का finally नई operation के controls को reset नहीं कर सकता।
+- Auth session lookup error अब explicit throw होता है। getSession, create-booking fetch और response JSON parse के बाद stale-operation guard है; session बदलने के बाद stale success/error UI और पुरानी booking history refresh रोक दी जाती है।
+- Payment Checkout handler को booking-only operation guard से अलग रखा गया; उसका Auth lookup error handling स्पष्ट किया और regression assertion जोड़ा कि payment function में booking operation guard reference न आए।
+- App commits: booking guard `86dfd2ba2405b1fb5d26f1709fa1c4add4413b8b`; targeted correction to keep booking-only guard out of Razorpay handler `3f3a2dbf06f3bee8146cb81ad11dd8950bc6e29c`. Regression test commits: `5c9593c852ed35c8bb6546aa4fc3d0a8086be331`, existing idempotency assertion alignment `c65cdad7b9d72d1b549b751c1bd53b17159b593a`, auth hook/payment isolation assertions `c95839db8676e574afbd45062f157f3fbf1599f9`, final test commit `9ddd82b3e61bf6d9ac3db5af5eab851311ae92ad`.
+- Verification: Customer App source regression run `43491096981` completed **SUCCESS** on test commit `9ddd82b3e61b` (job `132112183613`). Customer App source regression run `43491075004` completed **SUCCESS** on app commit `3f3a2dbf06f3`. Refund source regression run `43491075008` also **SUCCESS**.
+- Scope limitation: source-level checks only. Real browser logout during a pending API request, cross-tab session switch, actual Supabase Auth and booking API behavior, DB/RLS tests and final consolidated mobile/Desktop QA remain pending. A booking request already accepted by the server cannot be cancelled retroactively by this client guard; its idempotency key is retained for safe retry/reconciliation.
+- No Production changes, database execution, deployment or payment movement.
