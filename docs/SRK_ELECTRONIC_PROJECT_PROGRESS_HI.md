@@ -1824,3 +1824,19 @@
 - Re-read 20261114200000_customer_payment_refund_history_rpc.sql and its 13-assertion contract test. RPC preserves the original eight-column return contract, derives customer identity from auth.uid(), limits rows to the customer's own bookings, includes payment/refund/manual-payment/manual-refund/refund-request events, uses bounded pagination, and omits Admin notes/raw provider payloads.
 - Previously recorded isolated payment/refund history test batch is 30/30 PASS (synthetic local DB); the current source regression suite also passed in workflow #43523111144. No claim of Production parity, real provider event reconciliation, browser checkout or real refund execution.
 - Current Customer App work remains in progress. Continue reviewing remaining 14.1.11 cancellation/dues and receipt/history edge cases, then 14.1.12 Support and 14.1.13 Profile/ratings/preferences. Keep final mobile/Desktop QA deferred until all internal tasks finish.
+
+
+### Customer App 14.1.11 — cancellation and carry-forward dues gap audit (Nov 14)
+
+- Compared current Customer UI and cancellation/support RPCs against Master Requirements section 6.
+- Confirmed a functional gap: booking cards currently tell customers to submit a general Help & Support request; there is no dedicated “Cancel Booking” action that creates a clearly typed cancellation request for Admin review. The existing source regression test only proves direct customer self-cancellation RPCs are absent and general support complaint creation exists; it does not satisfy the dedicated cancellation-request requirement.
+- Confirmed a second major gap: no customer-facing carry-forward cancellation-fee line items or booking-bill calculation is present in the inspected Payments/booking UI. The Master Requirements require Admin-determined fee based on verified electrician state (₹0 not departed, ₹49 en route, ₹99 arrived), immutable audit evidence, separate cancellation-fee accounting, and separate line items on the next booking. Online and Cash settlement paths must differ as specified; cancellation fees must never be merged into labour or Platform Fee.
+- Existing complaint creation RPC accepts only service_quality, electrician_behavior, billing_payment, delay_no_show, safety and other. It has no booking_cancellation category, no cancellation-specific duplicate guard, no Admin fee-decision action, and no fee ledger/carry-forward RPC. The Admin Support panel can review generic complaints but is not a cancellation-fee decision workflow.
+- Do NOT treat the current generic support flow as completion. Next implementation must add a dedicated, owner-scoped, idempotent cancellation request path and Admin review dependency, preserve evidence/audit trail, and implement separate carry-forward fee ledger and next-booking settlement for both Online and Cash. Add isolated pgTAP/source regression before marking this requirement complete.
+- No cancellation was executed, no fee was assessed, no booking/customer data changed, and no Production schema or UI was modified during this audit.
+
+### Customer App 14.1.13 — Profile, Ratings and Notification Preferences gap audit (Nov 14)
+
+- Existing Profile UI currently exposes name, OTP-verified read-only phone, avatar upload, and preferred language (Hindi/English). The inspected Profile tab does not expose customer ratings/reviews or notification preference controls.
+- Profile/avatar privacy and object-integrity isolated pgTAP passed 16/16 in workflow #43523111174; this validates only the profile/avatar database contracts, not ratings or notification preference behavior.
+- Ratings/reviews and notification preference requirements remain to be reconciled against the Master Requirements and implemented/tested if required. Do not claim these controls exist based on the current profile foundation.
