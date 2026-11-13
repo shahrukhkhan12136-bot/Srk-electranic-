@@ -302,3 +302,22 @@ test('saved address list and save catch Auth session retrieval failures', () => 
   assert.match(saveSource, /if\(sessionError\)throw sessionError/);
   assert.match(saveSource, /finally \{button.disabled=false;button.textContent='यह पता सेव करें';\}/);
 });
+
+
+test('customer session synchronization handles Auth errors and ignores stale sync results', () => {
+  const start = html.indexOf('let customerSessionSyncSequence=0;');
+  const end = html.indexOf('\nasync function customerSendOtp()', start);
+  const source = html.slice(start, end);
+  assert.ok(source.indexOf('try {') < source.indexOf('customerSb.auth.getSession()'));
+  assert.match(source, /if\(sequence!==customerSessionSyncSequence\)return;\s*if\(error\)throw error/);
+  assert.match(source, /if\(sequence===customerSessionSyncSequence\)\s*\{[\s\S]*?customerMessage\(/);
+  assert.match(source, /await loadCustomerBookings\(\); if\(sequence!==customerSessionSyncSequence\)return/);
+  assert.match(source, /await loadCustomerProfile\(\)/);
+});
+
+test('customer support message send checks Auth session errors before using user identity', () => {
+  const start = html.indexOf('async function sendCustomerSupportMessage()');
+  const end = html.indexOf('\nasync function ', start + 20);
+  const source = html.slice(start, end);
+  assert.match(source, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\);\s*if\(sessionError\)throw sessionError;\s*const userId=sessionData\?\.session\?\.user\?\.id/);
+});
