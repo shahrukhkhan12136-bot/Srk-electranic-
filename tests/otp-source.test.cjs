@@ -54,3 +54,12 @@ test('standalone customer login keeps session and OTP cooldown controls consiste
   assert.match(html, /finally\{busy=false;verify\.disabled=hasSession;\}/);
   assert.match(html, /href="\/booking\.html#customer-dashboard"/);
 });
+
+
+test('OTP source workflow uses maintained Node 24 GitHub Actions runtimes', () => {
+  const workflow = fs.readFileSync('.github/workflows/otp-source-tests.yml', 'utf8');
+  assert.match(workflow, /uses:\s*actions\/checkout@v5/);
+  assert.match(workflow, /uses:\s*actions\/setup-node@v5/);
+  assert.match(workflow, /node-version:\s*24/);
+  assert.doesNotMatch(workflow, /actions\/(?:checkout|setup-node)@v4/);
+});
