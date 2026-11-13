@@ -286,3 +286,19 @@ test('customer booking history catches session retrieval failures and ignores st
   assert.match(source, /if\(sequence!==customerBookingHistoryLoadSequence\)return;\s*if\(sessionError\)throw sessionError/);
   assert.match(source, /finally\s*\{\s*if\(sequence===customerBookingHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
 });
+
+
+test('saved address list and save catch Auth session retrieval failures', () => {
+  const loadStart = html.indexOf('async function loadCustomerSavedAddresses');
+  const loadEnd = html.indexOf('\nfunction applySelectedSavedAddress', loadStart);
+  const loadSource = html.slice(loadStart, loadEnd);
+  assert.ok(loadSource.indexOf('try {') < loadSource.indexOf('customerSb.auth.getSession()'));
+  assert.match(loadSource, /if\(sessionError\)throw sessionError/);
+  assert.match(loadSource, /finally \{select.disabled=false;\}/);
+  const saveStart = html.indexOf('async function saveCurrentBookingAddress');
+  const saveEnd = html.indexOf('\nfunction editSelectedSavedAddress', saveStart);
+  const saveSource = html.slice(saveStart, saveEnd);
+  assert.ok(saveSource.indexOf('try {') < saveSource.indexOf('customerSb.auth.getSession()'));
+  assert.match(saveSource, /if\(sessionError\)throw sessionError/);
+  assert.match(saveSource, /finally \{button.disabled=false;button.textContent='यह पता सेव करें';\}/);
+});
