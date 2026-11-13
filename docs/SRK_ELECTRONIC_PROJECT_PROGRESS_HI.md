@@ -1290,3 +1290,19 @@
 - Verification: Customer App source regression run `43491096981` completed **SUCCESS** on test commit `9ddd82b3e61b` (job `132112183613`). Customer App source regression run `43491075004` completed **SUCCESS** on app commit `3f3a2dbf06f3`. Refund source regression run `43491075008` also **SUCCESS**.
 - Scope limitation: source-level checks only. Real browser logout during a pending API request, cross-tab session switch, actual Supabase Auth and booking API behavior, DB/RLS tests and final consolidated mobile/Desktop QA remain pending. A booking request already accepted by the server cannot be cancelled retroactively by this client guard; its idempotency key is retained for safe retry/reconciliation.
 - No Production changes, database execution, deployment or payment movement.
+
+
+### 14 नवम्बर 2026 — Customer Booking review confirmation और session guard verification
+
+- Booking submit के पहले अब customer को नाम, सेवा, अनुमानित अवधि, पूरा पता/PIN, तारीख-समय और चुना payment method दिखाकर स्पष्ट browser confirmation माँगा जाता है। Confirmation में दोहराया जाता है कि duration estimate है, final Labour Bill server-recorded actual time/Admin-approved rate से बनेगा, सामग्री अलग है और payment काम पूरा होने के बाद होगा। Cancel करने पर कोई create-booking request या idempotency key जारी नहीं होती; handler का finally busy control restore करता है।
+- Regression coverage में booking review confirmation के fields/terms, submit session generation guard, stale response handling और Razorpay payment handler isolation शामिल है।
+- App commits: session-scoped booking submit `3f3a2dbf06f3bee8146cb81ad11dd8950bc6e29c`; explicit pre-submit confirmation `1d972f4fa12fd91fec32db0a759e197d778ac8f2`. Regression test commits: booking race/confirmation `7006b5ab3ed96b16608dbc4f5b3a9ed5f91b352d`; final combined source tests also include idempotency assertion correction `c65cdad7b9d72d1b549b751c1bd53b17159b593a` and payment-isolation test `9ddd82b3e61bf6d9ac3db5af5eab851311ae92ad`.
+- Verification: Customer App source regression run `43491213105` completed **SUCCESS** on test/app commit `1d972f4fa12f`; Refund source regression run `43491213354` completed **SUCCESS**. Earlier booking session-guard source run `43491096981` and app-only run `43491075004` also **SUCCESS**.
+- Remaining: manual browser confirmation cancel/accept, real API request count, cross-tab/session-switch injection, Supabase Auth/RLS and database pgTAP, and final consolidated mobile/Desktop QA are not yet tested. No Production change/deploy.
+
+### 14 नवम्बर 2026 — PIN directory source decision / blocker
+
+- PIN validation source search में Department of Posts द्वारा प्रकाशित All India Pincode Directory (OGD Platform) की monthly-updated catalog/resource मिला; catalog metadata में 10 Aug 2026 तक update दर्ज है। यह official source में PIN, post-office, district और state fields बताता है। India Post का “Know Your PIN Code” portal भी official user-facing reference है।
+- इसे किसी अनधिकृत third-party PIN API या पुराने static GitHub dump से बदलना उचित नहीं होगा। OGD catalog का API/CSV resource ingestion और freshness/version policy तय किए बिना hard validation या district auto-correction नहीं जोड़ा गया। Existing address overwrite नहीं होगा; 271861 Balrampur UP और पुराने Azamgarh mismatch को अलग रखा जाएगा।
+- Blocker: official data.gov.in API access के लिए registered API key / approved bulk CSV acquisition, snapshot provenance and refresh owner चाहिए। यह key/credential अभी उपलब्ध/verified नहीं है; इसलिए 14.1.3 PIN/district validation अभी **Blocked/Partial**, syntax-only validation ही है।
+- Reference: OGD All India Pincode Directory catalog (Department of Posts): https://data.gov.in/catalog/all-india-pincode-directory-through-webservice ; India Post “Know Your PIN Code”: https://dac.indiapost.gov.in/mypincode/home . No external API dependency or production setting was added.
