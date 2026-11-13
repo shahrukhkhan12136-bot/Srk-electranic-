@@ -11,7 +11,7 @@ test("Customer Payments tab has a separate private refund request history panel"
 });
 
 test("Customer refund history reads only the authenticated customer's refund-list RPC", () => {
-  assert.match(html, /customerSb\\.rpc\\('srk_customer_list_my_booking_refund_requests',\\{p_limit:25,p_offset:requestedOffset\\}\\)/);
+  assert.match(html, /customerSb\.rpc\('srk_customer_list_my_booking_refund_requests',\{p_limit:25,p_offset:requestedOffset\}\)/);
   assert.match(html, /async function loadCustomerRefundHistory(reset=true)/);
 });
 
