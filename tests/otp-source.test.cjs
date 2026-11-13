@@ -63,3 +63,22 @@ test('OTP source workflow uses maintained Node 24 GitHub Actions runtimes', () =
   assert.match(workflow, /node-version:\s*24/);
   assert.doesNotMatch(workflow, /actions\/(?:checkout|setup-node)@v4/);
 });
+
+
+test('standalone customer OTP is bound to the phone that received it', () => {
+  const html = fs.readFileSync('customer-login.html', 'utf8');
+  assert.match(html, /pendingOtpPhone=phone/);
+  assert.match(html, /phone!==pendingOtpPhone/);
+  assert.match(html, /phoneInput\.addEventListener\('input'/);
+  assert.match(html, /phoneE164\(\)!==phone/);
+  assert.match(html, /pendingOtpPhone=null;otpInput\.value='';area\.classList\.add\('hidden'\)/);
+});
+
+test('embedded customer OTP is bound to the phone that received it', () => {
+  const html = fs.readFileSync('booking.html', 'utf8');
+  assert.match(html, /customerPendingOtpPhone = phone/);
+  assert.match(html, /phone !== customerPendingOtpPhone/);
+  assert.match(html, /customerPhoneE164\(\) !== phone/);
+  assert.match(html, /customerPhone'\)\.addEventListener\('input'/);
+  assert.match(html, /customerPendingOtpPhone = null/);
+});
