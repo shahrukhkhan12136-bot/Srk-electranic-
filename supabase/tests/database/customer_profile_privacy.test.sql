@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(11);
 
 select ok((select relrowsecurity from pg_class where oid='public.srk_customer_profiles'::regclass),'profile table has RLS enabled');
 select ok(
