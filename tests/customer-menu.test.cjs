@@ -19,6 +19,21 @@ test('accepted customer-electrician direct contact remains available after compl
   assert.ok(!html.includes('इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा'));
 });
 
+test('customer online payment preference change is guarded against duplicate submissions and reports refresh separately', () => {
+  const start = html.indexOf('const customerPaymentMethodChangeBusy=new Set();');
+  const end = html.indexOf('function setCustomerProfileStatus', start);
+  assert.ok(start >= 0 && end > start);
+  const handler = html.slice(start, end);
+  assert.ok(handler.includes('customerPaymentMethodChangeBusy.has(id)'));
+  assert.ok(handler.includes('customerPaymentMethodChangeBusy.add(id)'));
+  assert.ok(handler.includes('customerPaymentMethodChangeBusy.delete(id)'));
+  assert.ok(handler.includes('button.disabled=true'));
+  assert.ok(handler.includes("srk_customer_change_payment_method"));
+  assert.ok(handler.includes('saved=true'));
+  assert.ok(handler.includes('बुकिंग सूची रीफ़्रेश नहीं हो सकी'));
+  assert.ok(html.includes('id="customerChangePayment_'+ "'+customerEsc(row.id)+'" +''));
+});
+
 test('customer menu keeps the approved five-menu order and accessible tab controls', () => {
   const nav = html.match(/<nav class="customer-menu-nav"[\s\S]*?<\/nav>/)?.[0] || '';
   const names = [...nav.matchAll(/data-customer-menu="([^"]+)"/g)].map(match => match[1]);
