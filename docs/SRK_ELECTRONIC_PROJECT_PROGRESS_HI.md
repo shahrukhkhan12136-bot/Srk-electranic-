@@ -1709,3 +1709,9 @@
 - Feature branch का `20261113235900_harden_customer_cancellation_and_safe_refund_history.sql` अलग नाम से customer-owned, customer-safe zero-argument RPC बनाता है; `20261114210000_customer_refund_history_pagination.sql` उसी नाम का `(integer,integer)` overload बनाता है, stable `created_at DESC,id DESC` pagination के साथ। यह Production legacy RPC को overwrite नहीं करता।
 - Payment history RPC branch migration `20261114200000_customer_payment_refund_history_rpc.sql` में है; Production में अभी अनुपस्थित होना expected migration dependency है, live feature availability का प्रमाण नहीं। कोई Production DDL नहीं किया।
 - Refund history UI paginated overload को `{p_limit:25,p_offset}` के साथ call करती है; customer-visible rendering में `admin_note` नहीं दिखाया जाता। Migration application, JWT/RLS runtime और real UI अभी unverified हैं।
+
+### Timer migration fixture — दूसरा local DDL mismatch और सुधार
+
+- Corrected rerun #43518729278 ने category + timer migration को आगे तक apply किया, फिर synthetic fixture में `srk_electrician_payouts.materials_amount` column missing मिला। Migration उस legacy column की column-level SELECT privilege हटाती है; live baseline में यह column मौजूद है।
+- Synthetic fixture में `materials_amount numeric(18,2) DEFAULT 0` जोड़ा; वास्तविक application migration नहीं बदली। Fixture update commit `17399ddb256c353722e9e13f4813903e5c775fe3`.
+- नया isolated rerun #43519009375 queued/in progress है। अभी migrations और pgTAP suite PASS नहीं कहे जा सकते।
