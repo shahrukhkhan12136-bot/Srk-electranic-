@@ -3255,3 +3255,24 @@ Audit सीमा: पहले checklist item का source-level inspection �
 ### Change boundary
 - केवल Feature Branch `customer-login.html` बदला गया।
 - Production database/Auth settings, secrets, SMS provider, customer records/sessions, payments और deployment में कोई बदलाव नहीं।
+
+
+## 17.87 — Master Checklist Item 14.1.1: Feature Branch Auth Configuration and Customer OTP Entry-Point Recheck (13 Nov 2026)
+
+### अतिरिक्त source inspection
+- Feature Branch `index.html` fetch SHA `b2c2573b7338bab74ee191db054e697617f29e11`: 2,386 bytes; इसमें direct `signInWithOtp` नहीं मिला। इसलिए इस landing file को standalone customer OTP sender का प्रमाण नहीं माना।
+- Feature Branch `electrician.html` fetch SHA `794dc8cac838461eafc67c1479e61bf4b0566337`: electrician का अलग OTP flow मौजूद है; यह customer checklist item 14.1.1 का substitute नहीं और electrician authentication का अलग checklist scope है।
+- Feature Branch path `supabase/config.toml` fetch पर 404/NOT_FOUND मिला। इस path पर repository Auth config उपलब्ध होने का प्रमाण नहीं। इससे यह निष्कर्ष नहीं निकलता कि Supabase Production में configuration नहीं है।
+- GitHub code-search में `otp_exp`, `sms_otp_exp`, `max_frequency`, `refresh_token_reuse_interval`, `otp_length`, `auth.rate_limit` के लिए कोई result नहीं मिला; code search default branch scope में है, इसलिए इसे Feature Branch या Production settings का निर्णायक प्रमाण नहीं माना गया।
+- Feature Branch `customer-login.html` तथा `booking.html` में पहले से दर्ज direct Supabase OTP send/verify flows और browser-only 60-second resend timer ही वर्तमान customer evidence हैं।
+
+### निष्कर्ष और बाधाएँ
+- Repository में Supabase Auth dashboard के वास्तविक OTP expiry, SMS send frequency, verify attempt/rate limit, CAPTCHA और session policy का सत्यापित export/config नहीं मिला।
+- Connected Supabase actions में Auth dashboard settings read action उपलब्ध नहीं; Production settings को अनुमान से या database internals से नहीं बदला जाएगा।
+- OTP provider-level controls और वास्तविक device tests के बिना wrong-attempt throttling, expiry और abuse protection को PASS नहीं कहा जा सकता।
+- अगला सुरक्षित कदम: Supabase Dashboard में Auth > Providers > Phone तथा Auth > Rate Limits / Security settings की read-only जाँच; values को बिना secret/PII के दर्ज करना। फिर उन्हीं verified values के आधार पर Feature Branch implementation और test plan बनाना।
+- Item 14.1.1 अभी भी **In Progress** है।
+
+### Change boundary
+- यह केवल read-only source inspection और दस्तावेजीकरण है।
+- Application code, database, Auth settings, secrets, SMS provider, user/session, payment और deployment में कोई बदलाव नहीं।
