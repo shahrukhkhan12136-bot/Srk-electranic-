@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(32);
+SELECT plan(34);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
