@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(101);
+SELECT plan(102);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -8,6 +8,15 @@ SELECT has_column('public','service_bookings','labour_rate_tier_snapshot','comme
 SELECT has_column('public','service_bookings','labour_rate8h_paise_snapshot','eight-hour rate snapshotted in integer paise');
 SELECT has_column('public','service_bookings','labour_rate_card_version_snapshot','rate card version snapshotted per booking');
 SELECT has_table('public','srk_booking_labour_bills','final labour bill snapshot table exists');
+SELECT ok(
+  pg_get_constraintdef(oid) ILIKE '%labour_rate_tier_snapshot IS NOT NULL%'
+  AND pg_get_constraintdef(oid) ILIKE '%labour_rate8h_paise_snapshot IS NOT NULL%'
+  AND pg_get_constraintdef(oid) ILIKE '%labour_rate_card_version_snapshot IS NOT NULL%',
+  'rate snapshot all-or-none constraint explicitly closes PostgreSQL NULL CHECK loopholes'
+) FROM pg_constraint
+WHERE conrelid='public.service_bookings'::regclass
+  AND conname='service_bookings_labour_rate_snapshot_valid';
+
 SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_booking_labour_bills'::regclass),'final bill table RLS enabled');
 SELECT ok(NOT has_table_privilege('anon','public.srk_booking_labour_bills','SELECT')
   AND NOT has_table_privilege('authenticated','public.srk_booking_labour_bills','SELECT'),
