@@ -2637,3 +2637,38 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_admin_commission_report() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_commission_report() TO authenticated;
 
+
+
+-- Expose historical legacy commission separately; new categorized bookings
+-- expose the immutable Platform Fee snapshot, never legacy commission fields.
+DROP FUNCTION IF EXISTS public.srk_get_my_earnings();
+CREATE FUNCTION public.srk_get_my_earnings()
+RETURNS TABLE(
+  booking_id uuid,service_type text,booking_created_at timestamptz,
+  booking_status text,payment_status text,amount_received numeric,
+  commission_amount numeric,legacy_commission_amount numeric,
+  electrician_earning numeric
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+  SELECT b.id,b.service_type,b.created_at,b.status,b.payment_status,
+    coalesce(b.amount_paid,0),
+    CASE WHEN b.selected_category IS NOT NULL THEN coalesce(lb.platform_fee_amount,0)
+      ELSE 0::numeric END,
+    CASE WHEN b.selected_category IS NULL THEN coalesce(b.commission_amount,0)
+      ELSE 0::numeric END,
+    CASE WHEN b.status='completed' AND b.payment_status='paid'
+      THEN CASE WHEN b.selected_category IS NOT NULL THEN coalesce(lb.electrician_payable,0)
+        ELSE greatest(coalesce(b.amount_paid,0)-coalesce(b.commission_amount,0),0) END
+      ELSE 0 END
+  FROM public.electrician_profiles p
+  JOIN public.service_bookings b ON b.assigned_electrician_id=p.id
+  LEFT JOIN public.srk_booking_labour_bills lb ON lb.booking_id=b.id
+  WHERE (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
+    AND p.verification_status='approved'
+  ORDER BY b.created_at DESC LIMIT 200;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_get_my_earnings() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_get_my_earnings() TO authenticated;
+
