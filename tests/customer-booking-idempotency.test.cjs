@@ -90,5 +90,5 @@ test("Customer booking handler rejects concurrent submit events while a request 
   assert.match(html, /let customerBookingSubmissionBusy=false/);
   assert.match(html, /if\(customerBookingSubmissionBusy\)return/);
   assert.match(html, /customerBookingSubmissionBusy=true/);
-  assert.match(html, /customerBookingSubmissionBusy=false; submitButton\.disabled = false/);
+  assert.match(html, /finally \{ if\(operationIsCurrent\(\)\)\{customerBookingSubmissionBusy=false;submitButton\.disabled = false/);
 });
