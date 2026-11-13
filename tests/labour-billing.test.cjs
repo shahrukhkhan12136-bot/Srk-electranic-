@@ -130,5 +130,5 @@ test("Admin completion review keeps the original request timestamp and customer 
   assert.match(migration, /NEW\.completion_requested_at IS DISTINCT FROM v_booking\.completion_requested_at/);
   assert.match(migration, /v_booking\.completion_requested_at,v_minutes::bigint/);
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.srk_customer_respond_work_completion/);
-  assert.match(migration, /completion_requested_at,v_booking\.completion_requested_at/);
+  assert.match(migration, /rate8h_paise,elapsed_seconds,completion_requested_at,billable_minutes/);
 });
