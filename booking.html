@@ -121,6 +121,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <summary style="cursor:pointer;font-weight:600">＋ नई शिकायत दर्ज करें</summary>
     <label for="customerSupportBooking">संबंधित बुकिंग</label>
     <select id="customerSupportBooking"><option value="">बुकिंग चुनें</option></select>
+    <button class="btn" type="button" id="customerSupportBookingsMore" style="display:none">और पुरानी बुकिंग देखें</button>
     <label for="customerSupportCategory">शिकायत का विषय</label>
     <select id="customerSupportCategory">
      <option value="service_quality">काम की गुणवत्ता</option>
@@ -1188,39 +1189,51 @@ async function loadCustomerSupportAttachments(complaintId) {
  }));
 }
 let customerSupportBookingsLoadSequence=0;
-async function loadCustomerSupportBookings() {
+let customerSupportBookingsOffset=0;
+let customerSupportBookingsBusy=false;
+async function loadCustomerSupportBookings(reset=true) {
  const select=document.getElementById('customerSupportBooking');
- if(!customerSb||!select)return;
+ const more=document.getElementById('customerSupportBookingsMore');
+ if(!customerSb||!select||!more||(!reset&&customerSupportBookingsBusy))return;
  const sequence=++customerSupportBookingsLoadSequence;
+ const requestedOffset=reset?0:customerSupportBookingsOffset;
  const wasDisabled=select.disabled;
- select.disabled=true;
+ customerSupportBookingsBusy=true;
+ select.disabled=true;more.disabled=true;
+ if(reset){customerSupportBookingsOffset=0;more.style.display='none';select.replaceChildren(new Option('बुकिंग लोड हो रही हैं…',''));}
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(sequence!==customerSupportBookingsLoadSequence)return;
   if(sessionError)throw sessionError;
   const session=sessionData?.session;
-  if(!session){select.replaceChildren(new Option('OTP लॉगिन आवश्यक है',''));return;}
+  if(!session){select.replaceChildren(new Option('OTP लॉगिन आवश्यक है',''));more.style.display='none';return;}
   const {data,error}=await customerSb.from('service_bookings')
    .select('id,service_type,created_at,status')
    .eq('customer_user_id',session.user.id)
    .order('created_at',{ascending:false})
    .order('id',{ascending:false})
-   .limit(50);
+   .range(requestedOffset,requestedOffset+24);
   if(sequence!==customerSupportBookingsLoadSequence)return;
   if(error)throw error;
   const rows=Array.isArray(data)?data:[];
-  select.replaceChildren(new Option(rows.length?'बुकिंग चुनें':'अभी कोई बुकिंग उपलब्ध नहीं है',''));
+  if(reset)select.replaceChildren(new Option(rows.length?'बुकिंग चुनें':'अभी कोई बुकिंग उपलब्ध नहीं है',''));
   rows.forEach(row=>{
    const date=row.created_at?new Date(row.created_at).toLocaleDateString('hi-IN'):'तारीख उपलब्ध नहीं';
    const label=(row.service_type||'सर्विस')+' · '+date+' · '+String(row.id).slice(0,8).toUpperCase();
    select.add(new Option(label,row.id));
   });
+  customerSupportBookingsOffset=requestedOffset+rows.length;
+  more.style.display=rows.length===25?'block':'none';
  } catch(error) {
   if(sequence===customerSupportBookingsLoadSequence){
-   select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी — रीफ़्रेश करें',''));
+   if(reset)select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी — रीफ़्रेश करें',''));
    supportStatus('शिकायत के लिए बुकिंग लोड नहीं हो सकी। कृपया रीफ़्रेश करें।',true);
   }
- } finally {if(sequence===customerSupportBookingsLoadSequence)select.disabled=wasDisabled;}
+ } finally {
+  if(sequence===customerSupportBookingsLoadSequence){
+   customerSupportBookingsBusy=false;select.disabled=wasDisabled;more.disabled=false;
+  }
+ } 
 }
 let customerSupportComplaintCreateBusy=false;
 async function createCustomerSupportComplaint() {
