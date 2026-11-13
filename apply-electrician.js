@@ -67,7 +67,10 @@ exports.handler = async (event) => {
     const state = clean(body.state, 100);
     const district = clean(body.district, 100);
     const pincode = clean(body.pincode, 6);
-    const skills = clean(body.skills, 300);
+    const allowedSkills = ['घर की वायरिंग','इलेक्ट्रिकल रिपेयर','लाइट / फैन फिटिंग','MCB / DB / इन्वर्टर','मोटर / पंप','होम रिपेयरिंग','सभी इलेक्ट्रिकल काम'];
+    const submittedSkills = Array.isArray(body.skills) ? body.skills : [body.skills];
+    const skillsList = [...new Set(submittedSkills.map(value => clean(value, 80)).filter(Boolean))];
+    const skills = skillsList.join(', ');
     const about = clean(body.about, 2000);
     const location_lat = body.location_lat == null || body.location_lat === '' ? null : Number(body.location_lat);
     const location_lng = body.location_lng == null || body.location_lng === '' ? null : Number(body.location_lng);
@@ -77,7 +80,9 @@ exports.handler = async (event) => {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
     }
     if (!full_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
-        !/^[0-9]{6}$/.test(pincode) || !skills ||
+        !/^[0-9]{6}$/.test(pincode) || !skillsList.length ||
+        skillsList.some(skill => !allowedSkills.includes(skill)) ||
+        (skillsList.includes('सभी इलेक्ट्रिकल काम') && skillsList.length > 1) ||
         !Number.isInteger(experience_years) || experience_years < 0 || experience_years > 60) {
       return json(400, {
         success: false,
