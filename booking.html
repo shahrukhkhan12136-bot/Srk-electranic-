@@ -645,7 +645,10 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
   document.getElementById('customerPaymentHistoryRefresh').addEventListener('click',()=>loadCustomerPaymentHistory(true));
-  document.getElementById('customerPaymentHistoryMore').addEventListener('click',()=>loadCustomerPaymentHistory(false));\n  document.getElementById('customerSupportRefresh').addEventListener('click',loadCustomerSupportComplaints);\n  document.getElementById('customerSupportComplaint').addEventListener('change',()=>loadCustomerSupportMessages().catch(e=>supportStatus('संदेश लोड नहीं हुए। '+(e.message||''),true)));\n  document.getElementById('customerSupportSend').addEventListener('click',sendCustomerSupportMessage);
+  document.getElementById('customerPaymentHistoryMore').addEventListener('click',()=>loadCustomerPaymentHistory(false));
+  document.getElementById('customerSupportRefresh').addEventListener('click',loadCustomerSupportComplaints);
+  document.getElementById('customerSupportComplaint').addEventListener('change',()=>loadCustomerSupportMessages().catch(e=>supportStatus('संदेश लोड नहीं हुए। '+(e.message||''),true)));
+  document.getElementById('customerSupportSend').addEventListener('click',sendCustomerSupportMessage);
   document.getElementById('saveCustomerProfile').addEventListener('click', saveCustomerProfile);
   document.getElementById('savedAddressSelect').addEventListener('change', applySelectedSavedAddress);
   document.getElementById('saveCurrentAddress').addEventListener('click', saveCurrentBookingAddress);
