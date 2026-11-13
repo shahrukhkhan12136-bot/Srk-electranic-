@@ -230,6 +230,12 @@ jobs:
             IF to_regprocedure('public.srk_service_finalize_razorpay_refund(uuid)') IS NULL THEN
               RAISE EXCEPTION 'Missing provider refund finalization RPC';
             END IF;
+            IF to_regprocedure('public.srk_admin_prepare_manual_booking_refund(uuid)') IS NULL THEN
+              RAISE EXCEPTION 'Missing manual refund preparation RPC';
+            END IF;
+            IF to_regprocedure('public.srk_admin_record_manual_refund_transfer(uuid,text,text)') IS NULL THEN
+              RAISE EXCEPTION 'Missing manual refund transfer recording RPC';
+            END IF;
             IF to_regprocedure('public.srk_admin_finalize_manual_booking_refund(uuid)') IS NULL THEN
               RAISE EXCEPTION 'Missing manual refund finalization RPC';
             END IF;
