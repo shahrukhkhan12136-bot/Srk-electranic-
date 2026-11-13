@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS public.srk_booking_labour_bills (
   labour_amount_paise numeric(24,0) NOT NULL CHECK (labour_amount_paise > 0),
   labour_amount numeric(18,2) NOT NULL CHECK (labour_amount > 0),
   platform_fee_rate numeric(5,2) NOT NULL DEFAULT 15.00 CHECK (platform_fee_rate=15.00),
+  platform_fee_policy_version text NOT NULL DEFAULT 'SRK-PLATFORM-FEE-15-2026-11-13-V1',
   platform_fee_paise numeric(24,0) NOT NULL CHECK (platform_fee_paise>=0),
   platform_fee_amount numeric(18,2) NOT NULL CHECK (platform_fee_amount>=0),
   electrician_payable numeric(18,2) NOT NULL CHECK (electrician_payable>=0),
@@ -578,6 +579,7 @@ BEGIN
     'billable_minutes',v_bill.billable_minutes,
     'labour_amount_paise',v_bill.labour_amount_paise,
     'labour_amount',v_bill.labour_amount,
+    'electrician_payable',v_bill.electrician_payable,
     'created_at',v_bill.created_at,
     'document_type','final_labour_bill'
   );
@@ -846,7 +848,6 @@ BEGIN
        SELECT 1 FROM public.srk_manual_payment_entries e
        WHERE e.booking_id=NEW.id AND e.amount=round(coalesce(NEW.amount_paid,0),2)
      )) THEN
-    v_rate:=NEW.commission_rate;
     IF NEW.selected_category IS NOT NULL THEN
       IF NEW.completion_approval_status<>'approved' THEN
         RAISE EXCEPTION 'Customer-approved labour completion required for payout';
@@ -1118,6 +1119,10 @@ BEGIN
     'billable_minutes',v_bill.billable_minutes,
     'labour_amount_paise',v_bill.labour_amount_paise,
     'labour_amount',v_bill.labour_amount,
+    'platform_fee_rate',v_bill.platform_fee_rate,
+    'platform_fee_policy_version',v_bill.platform_fee_policy_version,
+    'platform_fee_amount',v_bill.platform_fee_amount,
+    'electrician_payable',v_bill.electrician_payable,
     'created_at',v_bill.created_at
   );
 END;
