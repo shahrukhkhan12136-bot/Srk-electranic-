@@ -1460,3 +1460,10 @@
 - Expanded `tests/customer-offer-timeline.test.cjs` to assert lifecycle dedupe, legacy final-state backfill, stable chronology, owner filter, and absence of electrician identifiers.
 - Node Source Regression workflow #43497630683 completed SUCCESS on `a690023e09cf46b3edae924b3a1bd71646f684a4`; `npm run test:customer-offer-timeline` and Production deployment guard both PASS.
 - These SQL assertions remain unexecuted pgTAP structural checks; they do not prove actual trigger execution, backfill behavior, duplicate inserts, or cross-customer isolation under JWT. No Supabase migration applied and Production unchanged. Next: run pgTAP only in an approved isolated non-production database (no new paid QA branch), or establish an existing safe local test database; then add behavioral fixture tests for owner A vs owner B.
+
+
+## Offer Timeline isolated DB environment assessment (2026-11-14)
+- Checked existing Supabase project `SRK ELECTRONIC TEST` (`dvzmarekhstaubyuoeeh`) read-only. It is ACTIVE_HEALTHY but is a narrow push-test schema: migrations cover push subscriptions/webhook setup, and current tables include `srk_push_subscriptions`, `electrician_profiles`, and `job_offers`; required `service_bookings` customer ownership schema is absent from the exposed table inventory.
+- Existing TEST project contains push-test records and is not a clean disposable full-app database. Did not apply Offer Timeline migration or mutate it.
+- Production project `gnqhoaqatmoiwwhgzkgm` has no development branches. No new branch created (user previously declined hourly branch cost). Production remains read-only.
+- Therefore 16 pgTAP assertions remain unexecuted. Need a genuinely isolated local PostgreSQL/Supabase test DB or owner-approved disposable environment with full prerequisite migrations; do not force the migration into the push-test project or Production.
