@@ -57,6 +57,12 @@ BEGIN
     WHERE b.payment_status IN ('paid','refunded')
       AND b.payment_verified_at IS NOT NULL
       AND coalesce(b.amount_paid,0)>0
+      -- If an audited manual-payment row exists, show that event instead of
+      -- duplicating the same booking amount as a second payment timeline item.
+      AND NOT EXISTS (
+        SELECT 1 FROM public.srk_manual_payment_entries mp
+        WHERE mp.booking_id=b.id
+      )
 
     UNION ALL
 
