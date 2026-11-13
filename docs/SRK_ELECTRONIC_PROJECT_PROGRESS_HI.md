@@ -993,3 +993,6 @@
 - Saved address loader now returns an explicit success/failure result. Save, delete and set-default flows distinguish the successful database RPC from a failed subsequent list refresh.
 - Customer is no longer told that the address operation fully completed/was confirmed when the refresh failed. The UI reports the write outcome and asks to reload/check state; default success is shown only when refreshed data confirms `is_default=true`.
 - Source regression coverage added. Commits `6d3f31396236a190f49d075f7ba42340f4aa4050`, `8420941203e6b0122b86065654c47bb96eccef84`. Workflow pending. No live database/RPC or browser test; no Production change.
+
+
+- Saved-address mutation race guard: delete/default operations now disable the address selector while the RPC and list refresh are in progress, prevent duplicate operation invocation, and restore the selector's prior disabled state in `finally`. Source regression assertions added. Commits `fd74dc8ddd75df2b4a5d1ba96ac5a24152c9a6f2`, `98bd3b163d87e36aa387e575b8673608e6a28189`. Workflow pending; no browser/concurrent interaction test or Production change.
