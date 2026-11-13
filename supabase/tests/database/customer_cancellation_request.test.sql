@@ -18,7 +18,7 @@ SELECT ok(position('customer_user_id=v_uid' in pg_get_functiondef('public.srk_cu
 SELECT ok(position('payment_status' in pg_get_functiondef('public.srk_customer_request_booking_cancellation(uuid,text,uuid)'::regprocedure))>0,'customer request blocks payment states pending reconciliation');
 SELECT ok(position('srk_booking_labour_bills' in pg_get_functiondef('public.srk_customer_request_booking_cancellation(uuid,text,uuid)'::regprocedure))>0,'customer request blocks bookings with final labour bill');
 SELECT ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_start_booking_cancellation_review(uuid,text)'::regprocedure))>0,'review-start RPC is Admin gated');
-SELECT ok(position('UPDATE OR DELETE' in pg_get_triggerdef((SELECT oid FROM pg_trigger WHERE tgname='srk_guard_immutable_booking_cancellation_request_event')))>0,'audit event mutation is blocked by trigger');
+SELECT ok((SELECT (tgtype & 2)=2 AND (tgtype & 8)=8 AND (tgtype & 16)=16 FROM pg_trigger WHERE tgname='srk_guard_immutable_booking_cancellation_request_event'),'audit event mutation is blocked by a BEFORE UPDATE OR DELETE trigger');
 
 SET LOCAL ROLE supabase_auth_admin;
 INSERT INTO auth.users(id,aud,role) VALUES
