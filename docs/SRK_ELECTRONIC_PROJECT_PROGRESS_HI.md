@@ -1244,3 +1244,13 @@
 - App commit: `73c266dce2aceb81aa6d890bec3f9ee721743aee`. Regression test commit: `48a5fcf14a39de7bf21ea49db4a9302e52340028`. Fresh CI pending.
 - Previous support attachment change: source regression `43488271607` SUCCESS on test commit `c404237978bf`; app source regression `43488248308` SUCCESS on app commit `753b8d430f10`. New no-session privacy test is not yet passed.
 - No Production changes/deploy. Browser session-expiry test, real Auth/storage checks, DB pgTAP and final mobile/Desktop QA remain pending.
+
+
+### 14 नवम्बर 2026 — Customer logout account-isolation hardening
+
+- Auth/session lifecycle audit में logout के समय stale in-flight async responses और पुराना saved-address/form data memory/DOM में रहने का जोखिम मिला। Dashboard hide होने के बावजूद पुराने account के hidden controls और pending responses दूसरे login के समय cross-account state overwrite कर सकते थे।
+- Logout/no-session branch अब Profile, Saved Address, Support Complaint/Thread और Support Booking selector के request sequence tokens invalidate करता है; busy flags/control state reset करता है ताकि stale response render न हो और अगले login पर loader stuck न रहे।
+- पुरानी saved-address list/selection, complaint/thread attachments, support booking options, profile name/phone/avatar और booking address/GPS fields clear होते हैं; map preview hide होता है।
+- App commits: `4d7138dcdc3bfbcd82699d5f6a06af2f5f2c0d08`, typo correction `e4c1ede56f7c3904b7e4969a9c43d1e50f83f215`. Regression test commit: `e29b067e89b1d674b394de7aea318c7779c07ab6`. Fresh CI pending; not marked passed.
+- Prior source CI: support attachment signed-link change run `43488271607` SUCCESS; profile no-session clearing run `43488577045` SUCCESS; associated refund source run `43488552371` SUCCESS. New logout invalidation test not yet passed.
+- No Production changes/deploy. Real Auth signout/session-switch race injection, Supabase Storage/RLS and pgTAP tests, browser, final mobile/Desktop QA remain pending.
