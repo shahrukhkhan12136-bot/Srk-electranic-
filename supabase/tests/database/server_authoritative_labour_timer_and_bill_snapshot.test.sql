@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(103);
+SELECT plan(104);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -148,6 +148,13 @@ SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) 
   AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) NOT ILIKE '%materials_amount%'
   AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) NOT ILIKE '%quoted_amount%',
   'electrician offer API exposes timer but no quote/material billing fields');
+SELECT ok(
+  pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) ILIKE '%b.work_timer_elapsed_seconds%'
+  AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) NOT ILIKE '%b.work_timer_seconds::bigint%'
+  AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) ILIKE '%awaiting_work_start_approval%'
+  AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) ILIKE '%completed%',
+  'final offer API returns accumulated server elapsed time and preserves accepted contact access through completion'
+);
 SELECT ok(pg_get_functiondef('private.srk_get_customer_call_contacts_impl()'::regprocedure)
   ILIKE '%awaiting_work_start_approval%' AND
   pg_get_functiondef('private.srk_get_customer_call_contacts_impl()'::regprocedure) ILIKE '%completed%',
