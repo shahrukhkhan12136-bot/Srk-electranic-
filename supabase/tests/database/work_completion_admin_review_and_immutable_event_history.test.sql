@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(21);
+SELECT plan(22);
 
 SELECT has_table('public','srk_booking_work_events','append-only work event history table exists');
 SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_booking_work_events'::regclass),
@@ -75,6 +75,15 @@ SELECT ok(
   AND pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)'::regprocedure) ILIKE '%completion_requested_at%'
   AND pg_get_functiondef('public.srk_admin_get_labour_bill(uuid)'::regprocedure) ILIKE '%completion_requested_at%',
   'customer, assigned electrician, and Admin bill reads expose the original completion-request timestamp');
+
+SELECT ok(
+  pg_get_functiondef('public.srk_capture_booking_work_event()'::regprocedure)
+    ILIKE '%work_completion_admin_approved%'
+  AND pg_get_functiondef('public.srk_admin_approve_work_completion(uuid,text)'::regprocedure)
+    ILIKE '%work_event_details_authorizations%'
+  AND pg_get_functiondef('public.srk_admin_approve_work_completion(uuid,text)'::regprocedure)
+    NOT ILIKE '%INSERT INTO public.srk_booking_work_events%',
+  'Admin approval records one trigger-generated event with private reason details, avoiding duplicates');
 
 SELECT * FROM finish();
 ROLLBACK;
