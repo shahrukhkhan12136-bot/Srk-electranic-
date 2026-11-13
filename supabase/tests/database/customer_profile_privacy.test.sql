@@ -2,8 +2,14 @@ begin;
 select plan(12);
 
 select ok((select relrowsecurity from pg_class where oid='public.srk_customer_profiles'::regclass),'profile table has RLS enabled');
-select ok(has_table_privilege('authenticated','public.srk_customer_profiles','SELECT'),'authenticated role can read subject to RLS');
-select ok(not has_table_privilege('anon','public.srk_customer_profiles','SELECT'),'anonymous role cannot read profiles');
+select ok(
+  not has_table_privilege('authenticated','public.srk_customer_profiles','SELECT')
+  and not has_table_privilege('authenticated','public.srk_customer_profiles','INSERT')
+  and not has_table_privilege('authenticated','public.srk_customer_profiles','UPDATE')
+  and not has_table_privilege('authenticated','public.srk_customer_profiles','DELETE')
+  and not has_table_privilege('anon','public.srk_customer_profiles','SELECT'),
+  'profile table is not directly accessible to client roles; authenticated users must use owner-scoped RPCs'
+);
 select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='srk_customer_profiles' and policyname='customers read own profile' and qual ilike '%auth.uid%'),'profile read policy is owner-scoped');
 select ok(exists(select 1 from pg_policies where schemaname='public' and tablename='srk_customer_profiles' and policyname='customers update own profile' and qual ilike '%auth.uid%' and with_check ilike '%auth.uid%'),'profile update policy checks ownership before and after update');
 select ok(has_function_privilege('authenticated','public.srk_customer_get_my_profile()','EXECUTE') and not has_function_privilege('anon','public.srk_customer_get_my_profile()','EXECUTE'),'profile read RPC is authenticated-only');
