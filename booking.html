@@ -218,6 +218,54 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <option value="7">7 घंटे</option><option value="8">8 घंटे</option>
    </select>
    <p class="small">यह अवधि केवल बुकिंग का अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना इलेक्ट्रिशियन के Admin-approved rate और सर्वर द्वारा रिकॉर्ड किए गए वास्तविक काम के समय से निकलेगा।</p>
+   <section class="job" id="customerLabourEstimate" aria-live="polite" aria-atomic="true">
+    <b>अनुमानित Labour Rate और रकम</b>
+    <p class="small">चुनी अवधि के लिए चारों प्रकाशित tiers की अनुमानित Labour रकम नीचे है। आपकी बुकिंग पर लागू वास्तविक rate, काम स्वीकार करने वाले इलेक्ट्रिशियन के Admin-approved tier के अनुसार होगा; काम का प्रकार अपने-आप rate tier तय नहीं करता।</p>
+    <p id="customerLabourEstimatePrompt" class="small">पहले काम की अनुमानित अवधि चुनें।</p>
+    <div id="customerLabourEstimateRows"></div>
+    <p class="small">यह केवल अनुमान है, advance या final bill cap नहीं। अंतिम बिल server-recorded वास्तविक billable minutes पर बनेगा। सामग्री/parts इसमें शामिल नहीं हैं।</p>
+   </section>
+   <script>
+   (() => {
+    const duration=document.getElementById('durationHours');
+    const prompt=document.getElementById('customerLabourEstimatePrompt');
+    const rows=document.getElementById('customerLabourEstimateRows');
+    if(!duration||!prompt||!rows)return;
+    const rates=[
+     ['Electrical Assistant',89900],
+     ['Skilled Electrician',119900],
+     ['Expert Electrician',159900],
+     ['Premium Electrical Specialist',199900]
+    ];
+    const money=paise=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',minimumFractionDigits:2,maximumFractionDigits:2}).format(paise/100);
+    const estimate=(rate,hours)=>{
+     const numerator=BigInt(rate)*BigInt(hours*60);
+     const denominator=480n;
+     let amount=numerator/denominator;
+     if((numerator%denominator)*2n>=denominator)amount+=1n;
+     return Number(amount);
+    };
+    const render=()=>{
+     const hours=Number(duration.value);
+     rows.replaceChildren();
+     if(!Number.isInteger(hours)||hours<1||hours>8){
+      prompt.textContent='पहले काम की अनुमानित अवधि चुनें।';
+      return;
+     }
+     prompt.textContent=hours+' घंटे के लिए अनुमान (सिर्फ Labour):';
+     const list=document.createElement('ul');
+     list.style.margin='8px 0';
+     for(const [label,rate] of rates){
+      const item=document.createElement('li');
+      item.textContent=label+' — 8 घंटे: '+money(rate)+' · '+hours+' घंटे का अनुमान: '+money(estimate(rate,hours));
+      list.appendChild(item);
+     }
+     rows.appendChild(list);
+    };
+    duration.addEventListener('change',render);
+    render();
+   })();
+   </script>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
    <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
    <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
