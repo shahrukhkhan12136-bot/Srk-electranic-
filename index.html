@@ -31,11 +31,12 @@ textarea{min-height:84px;resize:vertical}.btn{display:inline-flex;justify-conten
 footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 96px}
 /* Customer app navigation */
 .customer-nav{position:fixed;z-index:100;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:8px 6px calc(8px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid #dce5ef;box-shadow:0 -8px 24px #102b4612;backdrop-filter:blur(14px)}
-.customer-nav a{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:5px 1px;color:#607086;text-decoration:none;font-size:10px;font-weight:700;border-radius:10px}
+.customer-nav a{min-width:0;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:5px 1px;color:#607086;text-decoration:none;font-size:clamp(9px,2.7vw,11px);font-weight:700;letter-spacing:-.15px;white-space:nowrap;border-radius:10px}
 .customer-nav a .nav-icon{font-size:19px;line-height:1.2}
 .customer-nav a.active{color:#0b5ed7;background:#eaf2ff}
 .customer-nav a:focus-visible{outline:3px solid #ffbd45;outline-offset:2px}
 #profilePanel{display:block}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 @media(min-width:760px){.customer-nav{left:50%;right:auto;transform:translateX(-50%);width:min(760px,100%);border:1px solid #dce5ef;border-bottom:0;border-radius:18px 18px 0 0}}
 @media(min-width:600px){header{padding:30px max(24px,calc((100% - 720px)/2)) 36px}.hero h2{font-size:32px}}
 </style>
