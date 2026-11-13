@@ -109,6 +109,15 @@ BEGIN
       USING ERRCODE='42501';
   END IF;
 
+  IF NOT EXISTS(
+    SELECT 1 FROM srk_private.work_timer_authorizations a
+    WHERE a.transaction_id=pg_catalog.txid_current()
+      AND a.booking_id=NEW.booking_id AND a.actor_id=auth.uid()
+  ) THEN
+    RAISE EXCEPTION 'Final labour bill can only be created by the customer-approved completion workflow'
+      USING ERRCODE='42501';
+  END IF;
+
   SELECT * INTO v_booking FROM public.service_bookings
   WHERE id=NEW.booking_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Booking for final labour bill not found'; END IF;
