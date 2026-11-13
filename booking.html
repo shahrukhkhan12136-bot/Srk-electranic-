@@ -419,7 +419,7 @@ async function loadCustomerRefundHistory(){
   if(sequence!==customerRefundHistoryLoadSequence)return;
   const rows=Array.isArray(data)?data:[];
   box.innerHTML=rows.map(row=>{
-   const date=row.updated_at||row.created_at;
+   const date=row.processed_at||row.updated_at||row.created_at;
    const dateValue=date?new Date(date):null;
    const dateText=dateValue&&!Number.isNaN(dateValue.getTime())?dateValue.toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'तारीख उपलब्ध नहीं';
    return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>बुकिंग #'+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase())+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small">स्थिति: '+customerEsc(customerRefundStatusText(row.status))+'</p><p class="small">कारण: '+customerEsc(row.reason||'—')+'</p><p class="small">अंतिम अपडेट: '+customerEsc(dateText)+'</p></article>';
