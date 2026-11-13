@@ -1324,3 +1324,14 @@
 - Test commit: `c798ff82fc37b7cb14835edd5ee36e3cfe108383`. Full Customer App source regression workflow `43491986534` completed **SUCCESS** (Node 24 setup + all isolated source suites successful).
 - Remaining OTP security items unchanged: actual OTP expiry, Supabase server-side resend/wrong-attempt rate limits, CAPTCHA/bot protection, session expiry/revocation and real SMS/browser E2E. Client-side 60-second cooldown is UX only, not server-side abuse protection. These depend on Auth provider configuration/runtime verification; no Auth settings were changed and no OTP was sent.
 - The `punycode` deprecation notice is still an upstream Node dependency warning; no package upgrade was made without dependency provenance/compatibility evidence. No Production change/deployment.
+
+
+### 14 नवम्बर 2026 — Customer OTP recipient binding hardening
+
+- दोनों customer OTP entry points (`customer-login.html` और embedded `booking.html`) में OTP challenge अब उसी E.164 phone number से bind है जिस पर `signInWithOtp` request भेजी गई थी। Verification से पहले current phone और captured recipient match अनिवार्य है; user number बदलता है तो पुराना OTP input/challenge clear/hide होता है और cooldown के बाद नए नंबर के लिए नया OTP चाहिए।
+- Send request के दौरान phone field बदलने की race भी संभाली: request लौटने पर current phone captured phone से अलग हो तो पुराना challenge UI में सक्रिय नहीं किया जाता।
+- Regression tests `tests/otp-source.test.cjs` में standalone और embedded दोनों flows के recipient-binding, number-change reset और send-race guards जोड़े।
+- Commits: standalone page `562291045ba9d29b8f68bb4eb081496a6eae64e3`, verification guard `0bff7c7899dffc373fb6bdf3c6af82923edeaa29`, send-race guard `889baae8737b796786ce56c55ab2a5ad7e812787`, embedded booking flow `5f451bbd3de9a2f1d80a045fd9a48eeca1088fec`, regression tests `d0935cd5439dee298588d25116f29b8a20553f4e`.
+- Customer App source workflow Run `43492430070` completed **SUCCESS** on `d0935cd5439d`; booking source/refund checks also succeeded on `5f451bbd3de9`.
+- Read-only Supabase project lookup: `gnqhoaqatmoiwwhgzkgm` is `ACTIVE_HEALTHY`, PostgreSQL 17. Browser config contains only Supabase publishable key (no service-role secret). Existing `srk_public_api_rate_limits` migration protects only `booking` and `application` API endpoints; it is not evidence of Auth OTP throttling. Available project metadata endpoint does not expose Auth provider OTP expiry/resend/wrong-attempt/CAPTCHA configuration. These remain unverified; no Auth settings changed and no live OTP was sent.
+- Real SMS/browser E2E, server-side Auth abuse controls, session expiry/revocation and final consolidated mobile/Desktop QA remain pending. No Production SQL, Auth settings, or deployment changes.
