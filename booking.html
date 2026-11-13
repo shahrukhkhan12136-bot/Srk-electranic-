@@ -856,10 +856,11 @@ function setSavedAddressStatus(message, isError=false) {
 async function loadCustomerSavedAddresses(options = {}) {
  const select=document.getElementById('savedAddressSelect');
  if(!customerSb) return;
- const {data:sessionData}=await customerSb.auth.getSession();
- if(!sessionData.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';return;}
  select.disabled=true; setSavedAddressStatus('सेव किए गए पते लोड हो रहे हैं…');
  try {
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!sessionData?.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';setSavedAddressStatus('पते देखने के लिए OTP लॉगिन करें।');return;}
   const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
   if(error) throw error;
   customerSavedAddresses=Array.isArray(data)?data:[];
