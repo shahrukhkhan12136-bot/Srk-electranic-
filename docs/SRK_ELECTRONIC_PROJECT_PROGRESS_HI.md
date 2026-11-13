@@ -1930,3 +1930,12 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Cancellation pgTAP run `43525453777` local Supabase startup चरण में in progress; अभी तक migration apply/pgTAP assertions का result उपलब्ध नहीं। Earlier superseded/cancelled run को PASS नहीं गिनें।
 
 - Follow-up Admin queue source regression run `43525712456` SUCCESS और refund source regression `43525712403` SUCCESS (commit `05d301b9`)। इनसे Admin cancellation queue के review-only controls और existing refund source checks verify हुए; database RPC execution नहीं।
+
+
+### Customer App — Profile, Ratings और Notification source audit (14 नवम्बर 2026)
+- `booking.html` Profile source में नाम, OTP-verified read-only phone, avatar और preferred language मौजूद; notification preferences controls और rating/review UI नहीं मिले।
+- Branch migration tree में dedicated booking ratings/reviews schema या customer rating submit/list/moderation RPC migrations नहीं मिलीं। Existing completion event/bill source में genuine completion markers मौजूद हैं, लेकिन दो-तरफा rating storage/API नहीं।
+- Push source audit: `supabase/functions/push-job-offer/index.ts` मुख्यतः नए electrician job-offer तथा offer-closed push पर केंद्रित है; यह customer event preferences/consent, notification inbox, durable outbox, delivery attempts और channel-specific opt-out का प्रमाण नहीं है।
+- Customer notification preference UI/table/RPC source नहीं मिला। Push subscriptions को consent/preferences का विकल्प नहीं मानना है; transactional/security और optional promotional events अलग consent policy से संभालने होंगे।
+- Ratings implementation gate: केवल `service_bookings.status='completed'`, authoritative customer/Admin completion approval, assigned electrician mapping और one-rating-per-side-per-booking uniqueness. Customer App में electrician को rating; Electrician Portal में customer को rating बाद में, Portal phase में।
+- यह source/tree audit है; live schema parity, RLS runtime, actual push delivery और browser QA नहीं किए गए। कोई Production change नहीं।
