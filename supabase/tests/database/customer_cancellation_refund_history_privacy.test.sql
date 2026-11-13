@@ -19,7 +19,7 @@ select ok(
 
 select ok(
   position('assigned_electrician_id is not null' in lower(pg_get_functiondef('public.srk_customer_cancel_my_booking(uuid)'::regprocedure))) > 0
-  and position("status not in ('new','confirmed')" in lower(pg_get_functiondef('public.srk_customer_cancel_my_booking(uuid)'::regprocedure))) > 0,
+  and position('status not in (''new'',''confirmed'')' in lower(pg_get_functiondef('public.srk_customer_cancel_my_booking(uuid)'::regprocedure))) > 0,
   'only unassigned new or confirmed bookings can be cancelled'
 );
 
