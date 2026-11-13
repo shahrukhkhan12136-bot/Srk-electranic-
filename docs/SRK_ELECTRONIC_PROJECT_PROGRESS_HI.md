@@ -1217,3 +1217,5 @@
 - यह source-level change है; browser pagination, real Supabase RLS/JWT, DB pgTAP, Storage runtime और final mobile/Desktop QA अभी बाकी। No Production changes/deploy.
 
 - CI follow-up: Source run `43487545567` exposed two stale assertions in the newly added test itself: it searched the old no-argument loader signature and expected the pre-pagination busy guard. Updated both assertions for `loadCustomerSupportBookings(reset=true)` and the new combined guard in test commit `c825aeec7cf314c66fec3cfa754a56e986d1f9ea`. No application failure was reported by those assertions. Fresh source CI pending; do not mark selector pagination test passed until a green run.
+
+- CI run `43487632427` then caught one remaining old assertion in the first stale-response test: it expected the former single-control `finally` form, while paginated loader now restores both selector and “load older” button and resets its busy state in a guarded block. Updated that assertion in test commit `eb8e8e552a724dfa17e85afd36bf780a8ffc963d`. App code was not implicated by this assertion. Fresh CI pending.
