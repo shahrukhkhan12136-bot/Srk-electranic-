@@ -2105,3 +2105,88 @@ Observed behavior:
 
 ### 6. सुरक्षा सीमा
 यह निरीक्षण केवल Production catalog/function definitions/constraints/ACL/triggers और GitHub source का read-only audit था। कोई वास्तविक refund/payment/provider API call, refund record read, customer PII row read, Production table/function/grant/policy change, migration, staging resource या deployment नहीं किया गया।
+
+
+## 17.57 — Timer Billing + Razorpay Refund + Route Reversal का सुरक्षित एकीकृत डिज़ाइन और Test Matrix (13 Nov 2026)
+
+यह section design/test contract है; implementation या production behavior का दावा नहीं है।
+
+### 1. एकमात्र वित्तीय स्रोत: Frozen Booking Bill
+Timer completion/customer approval के बाद server-side immutable bill snapshot बने:
+- booking_id, customer_id, electrician_id, category/rate tier;
+- approved start/end server timestamps और actual billable minutes;
+- labour amount, separately approved materials amount, tax/other permitted line items (यदि लागू हों), gross payable;
+- 15% Platform Fee केवल labour amount पर; materials पर कभी नहीं;
+- payment method, payment intent/order/payment IDs, currency और captured amount;
+- bill version/hash, created_at, approval/audit event references।
+Snapshot बनने के बाद client quote/amount को payment या refund calculation में authority न मिले। Correction केवल reasoned Admin adjustment event से; original snapshot overwrite नहीं।
+
+### 2. Refund Allocation Ledger (प्रस्तावित)
+हर refund को अलग immutable allocation entries में बाँटना होगा:
+- original bill line और original captured payment से link;
+- refunded labour paise, refunded materials paise और अन्य eligible line-item paise अलग;
+- प्रत्येक line पर पहले से refunded total और शेष refundable balance;
+- provider refund ID / idempotency key / currency / status / timestamps;
+- actor, reason, request source, before-after state और audit event।
+सभी गणनाएँ integer paise में; INR के अलावा currency reject; amount शून्य/negative, over-refund, duplicate provider ID और original payment से अधिक cumulative refund reject।
+Partial refund के लिए allocation rule (Admin द्वारा line-wise चयन या स्वीकृत deterministic proportional rule) को Product/Finance approval के बाद ही freeze करना है; बिना स्वीकृत नियम स्वतः labour/material विभाजन न करें।
+
+### 3. Platform Fee और Route Reversal Invariants
+- Platform Fee का मूल आधार केवल snapshot का labour हिस्सा है; materials पर 15% fee नहीं।
+- Refund में labour allocation और materials allocation अलग रखें। Route transfer reversal केवल उस labour/platform-fee और electrician-settlement हिस्से तक सीमित हो जो वास्तव में transfer हुआ हो और refund allocation से संबंधित हो।
+- Materials pass-through को Platform Fee या electrician commission की गणना में शामिल न करें।
+- Transfer अभी pending/failed हो तो उसे completed reversal न मानें; provider-verified status आवश्यक।
+- Transfer पहले से processed हो तो full/partial reversal की provider confirmation और immutable ledger entry दोनों आवश्यक।
+- Electrician payout पहले से bank-paid हो तो केवल booking को refunded mark करना पर्याप्त नहीं; recovery/receivable, future earning offset, dispute और approval का अलग policy निर्णय चाहिए। कोई स्वतः wallet debit या negative balance policy approval के बिना नहीं।
+- Route reversal और customer refund अलग provider operations हैं; एक सफल होने से दूसरा सफल मानना निषिद्ध। दोनों के लिए स्वतंत्र idempotency key, event status और reconciliation चाहिए।
+
+### 4. Unified Refund State Machine (प्रस्तावित)
+`requested → in_review → approved → preparing → provider_pending → processed`
+वैकल्पिक terminal/exception states: `rejected`, `failed`, `unknown`, `manual_review`, `partially_processed`।
+- Customer request केवल request बनाती है; provider refund शुरू नहीं करती।
+- Admin approval amount और line allocation को reason सहित freeze करती है।
+- Server worker/RPC atomic claim/lease के साथ provider operation चलाता है; browser से secret या direct table mutation नहीं।
+- Network timeout को `unknown` रखें; उसी immutable idempotency key से provider status fetch/reconcile किए बिना नया refund request न भेजें।
+- Webhook signature verify, durable event inbox insert, unique provider event ID, payload hash, duplicate/out-of-order handling; event processor event को atomically claim करे।
+- Provider webhook और synchronous API response दोनों shared reconciliation service/RPC में converge करें; terminal `processed/failed` state को stale response overwrite न करे।
+- Customer payment refund, Route transfer reversal, electrician payout recovery और platform fee accounting अलग linked sub-ledgers हों; सबकी completion independently verified हो।
+
+### 5. Atomicity, Audit और Permission Rules
+- Booking, bill snapshot, refund request, refund allocation, payment record और transfer allocation पर deterministic lock order तय हो; deadlock/retry handling test हो।
+- Unique constraints: provider event ID, refund idempotency key, provider refund ID (जब उपलब्ध), allocation source+operation key, transfer reversal idempotency key।
+- Append-only events; correction/reversal नया compensating event हो, historical ledger row delete/update नहीं।
+- Admin RPC में Main Admin/staff exact permission scope, reason, actor, source, server timestamp, before/after, idempotency और row lock अनिवार्य।
+- Customer केवल अपनी booking/request देखे; Electrician केवल अनुमोदित सीमित status देखे; किसी पक्ष को दूसरे का phone/address/bank/provider secret न मिले।
+- Service role केवल server runtime; client table writes बंद; table-level broad DELETE/TRUNCATE grants का least-privilege review implementation से पहले।
+- Staff maker-checker/dual approval की सीमा और emergency override policy अलग तय करनी है; अभी approved नहीं मानी जाए।
+
+### 6. अनिवार्य Test Matrix (Test Mode / Mock; अभी निष्पादित नहीं)
+1. Full Online refund, labour-only; full Online refund with labour+materials.
+2. Partial labour refund; partial materials refund; mixed partial refund; repeated partial refunds; cumulative over-refund rejection.
+3. Materials amount पर 15% fee न लगना; fee केवल labour allocation पर।
+4. Route transfer pending, processed, failed, reversed और partially reversed; प्रत्येक status पर refund coordination।
+5. Customer refund processed लेकिन Route reversal pending; Route reversal processed लेकिन customer refund unknown; reconciliation resumes without duplicate provider operation.
+6. Electrician payout pending, blocked, processed और already bank-paid; paid payout recovery policy के बिना auto debit न हो।
+7. Cash booking refund; manual refund reference duplicate; cash customer/electrician/platform fee ledger reversal अलग-अलग।
+8. Provider API timeout before response, timeout after provider accepted, 4xx validation, 5xx, malformed response; same idempotency key/status fetch.
+9. Duplicate webhook, duplicate event ID with altered payload hash, out-of-order pending after processed, invalid signature, unknown refund ID, amount/currency/payment mismatch.
+10. Concurrent Admin approve, concurrent worker claim, webhook-vs-API response race, duplicate customer request, booking cancellation/refund race.
+11. Customer A vs Customer B, Electrician, unauthorised staff and Admin JWT permission tests; PII masking/visibility checks.
+12. Audit completeness, append-only enforcement, integer paise rounding, retry lease expiry, provider reconciliation after downtime.
+13. Timer boundary tests: customer approves start, completion request server timestamp, late approval, duplicate start/stop, dispute, frozen bill hash unchanged.
+14. Legacy quote booking compatibility: historical paid/refunded/cash records preserved; no automatic migration/backfill; legacy refund route isolated from new timer bill route.
+
+### 7. Implementation क्रम और Release Gates
+A. Product/Finance decisions freeze: partial allocation default, cancellation/refund eligibility, fee reversal timing, paid payout recovery, cash refund payer/receiver, tax treatment, staff approval threshold.
+B. Source/lineage recovery: refund tables/functions/webhook inbox/Route ledger migrations and ACL provenance; exact SQL blob + migration history + live catalog match.
+C. Additive schema/RPC design on approved isolated development environment only; production project पर migration नहीं।
+D. Unit + SQL invariant + concurrency tests; mocked Razorpay adapter tests; JWT role matrix.
+E. Razorpay Test Mode end-to-end: duplicate/out-of-order webhook, timeout, full/partial refund, transfer reversal, payout exception; no Live funds.
+F. Admin/customer/electrician UI integration and receipts/ledger/report reconciliation; accessibility and Hindi copy.
+G. Security review, migration lineage reconciliation, rollback plan, explicit user approval; then only one consolidated production deployment after user authorizes it.
+
+### 8. वर्तमान स्थिति और निषेध
+- ऊपर का design केवल प्रस्तावित contract है; कोई migration, table, RPC, UI, provider call या test execution इस section से नहीं हुआ।
+- अभी कोई isolated Supabase development branch नहीं बनाया गया; paid/hourly resource का खर्च user approval के बिना नहीं।
+- Product/Finance policy decisions pending होने तक partial refund, fee reversal, paid payout recovery और cash refund को auto-process नहीं करना।
+- Production schema, RLS, grants, functions, rows, payments, refunds, transfers, webhooks या deployment में कोई बदलाव नहीं।
