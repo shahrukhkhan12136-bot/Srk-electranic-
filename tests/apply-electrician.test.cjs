@@ -39,3 +39,5 @@ test('does not report success when database insert fails',async()=>{config.inser
 test('rejects unknown structured skill keys',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_skill_keys:['made_up_skill']})}));assert.equal(r.statusCode,400);assert.equal(inserted,null);});
 test('rejects missing structured skills',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_skill_keys:[]})}));assert.equal(r.statusCode,400);assert.equal(inserted,null);});
 test('deduplicates declared skills before persistence',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_skill_keys:['house_wiring','house_wiring']})}));assert.equal(r.statusCode,200);assert.deepEqual(inserted[0].requested_skill_keys,['house_wiring']);});
+
+test('rejects more than ten structured skills',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_skill_keys:Array(11).fill('house_wiring')})}));assert.equal(r.statusCode,400);assert.equal(inserted,null);});
