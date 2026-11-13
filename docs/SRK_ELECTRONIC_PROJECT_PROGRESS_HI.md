@@ -1776,3 +1776,14 @@
 - Source regression #43521128408 पहले ही SUCCESS था।
 - अगला मुख्य Customer App dependency: Refund foundation, Admin review/decision, guarded Razorpay refund preparation, durable provider result/event reconciliation तथा manual refund finalization के local integration/behavior tests। Existing pgTAP files अभी unexecuted हैं; provider secrets/webhook configuration और live Razorpay test-mode flow भी unverified हैं।
 - Production untouched; कोई deploy/merge/payment/refund/payout नहीं। Final mobile/Desktop QA सभी non-device tasks के बाद consolidated pass में होगा।
+
+
+### Refund provider-failure recovery audit — BLOCKER recorded (source review only)
+
+- Read-only source review of migrations `20261114130000`, `20261114160000`, guarded preparation `20261114120000`, `razorpay-refund.js`, and Admin refund UI found a state-machine mismatch.
+- Provider failure migration sets `srk_razorpay_refunds.status='failed'` and customer request `status='unknown'`. Admin UI currently shows the same retry action for every `processing/unknown` request, but `srk_admin_claim_razorpay_refund()` only permits refund intent statuses `requested/processing/unknown`; it rejects `failed`. The preparation RPC also treats the existing failed record as reconciliation-required and the unique booking index prevents a second intent. Therefore the UI's "same-key retry" is not executable for a provider-confirmed failure.
+- This is a confirmed source-level blocker, not a runtime failure. No provider refund was sent and no database was changed.
+- Safe next action: distinguish provider-confirmed `failed` from uncertain `unknown` in the Admin list/UI; keep retry only for uncertain outcomes with the original idempotency key. For a confirmed provider failure, require explicit Admin reconciliation and a separately designed, audited new-attempt model (including attempt history and duplicate-refund safeguards) before enabling another provider call. Do not automatically reset failed status or mint a new key.
+- The provider executor currently returns 202 on uncertain provider errors and retains the stable intent key. Provider Dashboard/webhook delivery ordering and live test-mode remain unverified.
+- Refund Foundation/Admin review/provider recovery pgTAP files are still not executed in an isolated local end-to-end fixture. Existing 30/30 payment/refund-history tests do not cover this provider failure state machine.
+- Production untouched; no deploy, merge, live payment/refund/payout, or Auth setting changes. Continue Customer App dependency work; final mobile/Desktop QA remains deferred.
