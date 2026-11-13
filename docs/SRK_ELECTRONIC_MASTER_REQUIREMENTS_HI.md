@@ -3720,3 +3720,13 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - No Production source/schema/RLS/RPC/Auth config, customer data, payment/provider, SMS, secrets or deployment changed. No real OTP or live booking test was performed.
 - स्थिति: Partial Source Fix Saved / Verification Pending — केवल read-back and SHA verification passed; static/runtime test suite और remaining sub-requirements बाकी हैं।
 - अंतिम वास्तविक परीक्षण: बाकी — मूल 96 items के consolidated real-world test batch तक pending।
+
+## 17.115 — Master Checklist Item 14.1.4: PIN / District Validation — Source and Data-Dependency Audit (13 Nov 2026)
+
+- क्रम के अनुसार 14.1.3 के बाद अगला मूल actionable item 14.1.4 PIN/district validation का audit किया गया। Feature Branch recursive tree में 66 files देखीं; PIN/postal/district नाम वाली कोई authoritative directory, CSV/JSON/GeoJSON dataset या lookup service implementation नहीं मिली। केवल map-pin/location-support migrations मिलीं; वे GPS coordinates/map display support हैं, PIN-to-state/district authority नहीं।
+- पहले के read-only Production schema inventory audit में भी कोई authoritative PIN directory table/service नहीं मिला था। मौजूदा booking form PIN, district और state अलग-अलग लेता है; server-side verified PIN→district/state match का प्रमाण उपलब्ध नहीं। इसलिए typed district/state को authoritative मानना या गलत mismatch को स्वतः overwrite करना सुरक्षित नहीं।
+- Safe acceptance design: approved authoritative PIN source and update/licensing policy तय हो; lookup returns canonical state/district and source/version; customer-entered address/locality remains unchanged; mismatch gets clear warning and controlled review path; lookup timeout/offline must fail safely without falsely marking PIN verified; server revalidates on submit and records source/version. Existing historical booking addresses must not be rewritten.
+- **स्थिति: Blocked / Dependency Not Available** — approved authoritative PIN dataset/provider and operational fallback policy required. No guessed PIN mappings, no free-text district auto-correction, and no third-party API dependency added.
+- No source code, database schema/RLS/RPC, customer records, Auth, secrets, SMS, payment/provider or deployment changed. This was a source/tree and prior schema-evidence audit only; no live PIN lookup test.
+- 14.1.3 OTP-phone UI change remains a partial source fix only; full static/runtime/mobile/API tests, category taxonomy, expected-duration persistence and remaining acceptance checks are still pending. No item was marked fully Verified from this audit.
+- Final real-world tests remain **96/96 Pending** under Section 17.108. Production deployment remains unauthorized.
