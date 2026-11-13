@@ -7,6 +7,7 @@ const {
   RATE_CARD,
   MINUTES_PER_8_HOURS,
   calculateLabourPaise,
+  calculateBillableMinutesFromElapsedSeconds,
   calculateEstimatePaise
 } = require("../lib/labour-billing.js");
 
@@ -65,4 +66,19 @@ test("rejects unknown categories and expected durations outside 1-8 hours", () =
 
 test("rejects amounts outside the safe integer range", () => {
   assert.throws(() => calculateLabourPaise(Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER), RangeError);
+});
+
+test("rounds any partial elapsed minute up to the next billable minute", () => {
+  assert.equal(calculateBillableMinutesFromElapsedSeconds(0), 0);
+  assert.equal(calculateBillableMinutesFromElapsedSeconds(1), 1);
+  assert.equal(calculateBillableMinutesFromElapsedSeconds(599), 10);
+  assert.equal(calculateBillableMinutesFromElapsedSeconds(600), 10);
+  assert.equal(calculateBillableMinutesFromElapsedSeconds(620), 11);
+  assert.equal(calculateBillableMinutesFromElapsedSeconds(86401), 1441);
+});
+
+test("rejects invalid elapsed seconds", () => {
+  for (const value of [-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => calculateBillableMinutesFromElapsedSeconds(value), TypeError);
+  }
 });
