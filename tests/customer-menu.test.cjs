@@ -369,7 +369,7 @@ test('customer refund status labels distinguish completion, review, provider fai
 
 
 test('customer booking history catches session retrieval failures and ignores stale session responses', () => {
-  const start = html.indexOf('async function loadCustomerBookings()');
+  const start = html.indexOf('async function loadCustomerBookings(reset=true)');
   const end = html.indexOf('\n}\n', start);
   const source = html.slice(start, end);
   assert.ok(source.indexOf('try {') < source.indexOf('customerSb.auth.getSession()'));
