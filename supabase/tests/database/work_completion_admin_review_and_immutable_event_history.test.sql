@@ -8,9 +8,12 @@ SELECT ok(NOT has_table_privilege('anon','public.srk_booking_work_events','SELEC
   AND NOT has_table_privilege('authenticated','public.srk_booking_work_events','SELECT')
   AND NOT has_table_privilege('authenticated','public.srk_booking_work_events','INSERT'),
   'client roles cannot directly read or write work event history');
-SELECT ok((SELECT pg_get_triggerdef(oid) ILIKE '%BEFORE UPDATE OR DELETE%'
-  FROM pg_trigger WHERE tgrelid='public.srk_booking_work_events'::regclass
-    AND tgname='srk_guard_immutable_booking_work_event'),
+SELECT ok(EXISTS(
+  SELECT 1 FROM pg_trigger
+  WHERE tgrelid='public.srk_booking_work_events'::regclass
+    AND tgname='srk_guard_immutable_booking_work_event'
+    AND (tgtype & 2)=2 AND (tgtype & 8)=8 AND (tgtype & 16)=16
+  ),
   'work event history rejects updates and deletes');
 SELECT ok((SELECT pg_get_triggerdef(oid) ILIKE '%AFTER INSERT OR UPDATE%'
   FROM pg_trigger WHERE tgrelid='public.service_bookings'::regclass
