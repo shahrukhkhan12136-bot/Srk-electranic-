@@ -307,7 +307,7 @@ test('saved address list and save catch Auth session retrieval failures', () => 
   const saveSource = html.slice(saveStart, saveEnd);
   assert.ok(saveSource.indexOf('try {') < saveSource.indexOf('customerSb.auth.getSession()'));
   assert.match(saveSource, /if\(sessionError\)throw sessionError/);
-  assert.match(saveSource, /finally \{button.disabled=false;button.textContent='यह पता सेव करें';\}/);
+  assert.match(saveSource, /finally \{button.disabled=false;select.disabled=selectWasDisabled;editButton.disabled=editWasDisabled;button.textContent='यह पता सेव करें';\}/);
 });
 
 
