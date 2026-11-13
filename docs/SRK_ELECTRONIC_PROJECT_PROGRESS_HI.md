@@ -1467,3 +1467,12 @@
 - Existing TEST project contains push-test records and is not a clean disposable full-app database. Did not apply Offer Timeline migration or mutate it.
 - Production project `gnqhoaqatmoiwwhgzkgm` has no development branches. No new branch created (user previously declined hourly branch cost). Production remains read-only.
 - Therefore 16 pgTAP assertions remain unexecuted. Need a genuinely isolated local PostgreSQL/Supabase test DB or owner-approved disposable environment with full prerequisite migrations; do not force the migration into the push-test project or Production.
+
+
+## Customer Offer Timeline isolated pgTAP execution (2026-11-14)
+- First attempt through the prior schema-export workflow stopped safely: the dedicated connection passed the no-row-read/no-DDL role check, but `pg_dump --schema-only` still requested ACCESS SHARE locks on production tables and failed on `public.services` due missing SELECT. No production rows were exported or changed; the local stack was not started in that attempt. Do not grant broad SELECT merely to satisfy pg_dump.
+- Replaced that path with a fully isolated synthetic local Supabase fixture. Added `supabase/tests/fixtures/customer_offer_timeline_bootstrap.sql` containing only synthetic booking/electrician/offer IDs and two pre-migration legacy offer states; no production connection or data required.
+- Added `supabase/tests/database/customer_safe_offer_timeline_behavior.test.sql` with 9 behavioral assertions: existing-offer backfill, acceptance actor role, cancelled transition, no-op duplicate prevention, new offer capture, and Customer A/Customer B owner isolation through the authenticated RPC.
+- Reworked `.github/workflows/supabase-schema-ci.yml` into a local-only Supabase CLI 3.1.0 workflow. It starts a temporary stack, applies the targeted migration to the synthetic baseline, copies and runs structural + behavioral pgTAP tests, and tears down the stack. It no longer reads Production schema or requires `SUPABASE_DB_URL`.
+- Workflow #43498347854 was started on commit `36a50e3171ce6ca3626d5c30ae62a3167e4c5592`; at tracker update time the Supabase stack startup step was still in progress. Node source regression workflow #43498320458 completed SUCCESS on test commit `766481bb6ab3b18aa5e49c0897e9a9a7868a9860`.
+- No production migration, deployment, or schema change. pgTAP outcome is pending until workflow #43498347854 completes.
