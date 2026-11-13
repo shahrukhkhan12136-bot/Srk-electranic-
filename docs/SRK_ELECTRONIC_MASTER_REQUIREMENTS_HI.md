@@ -4000,7 +4000,7 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Customer, Electrician और Admin UI में start approval, live display-only timer, completion approval, final labour bill, online/cash payment status, Admin bill breakdown और wallet Platform Fee due/collected display जोड़े/बदले गए। Electrician rate display में केवल approved net 8-hour rates ₹764.15 / ₹1,019.15 / ₹1,359.15 / ₹1,699.15 दिखते हैं।
 - Phone contact RPC में awaiting_work_start_approval जोड़ा और completed हटाया; customer API completion के बाद electrician phone नहीं लौटाती।
 - Razorpay handlers के लिए 7 mocked isolated runtime checks PASS: snapshot amount order creation, missing bill fail-closed, customer ownership, payment amount verification, mismatch rejection, webhook reconciliation और mismatch rejection. Admin/customer/electrician/payment-handler JavaScript syntax checks PASS.
-- Database test server_authoritative_labour_timer_and_bill_snapshot.test.sql में 91 pgTAP assertions हैं; अभी execute नहीं हुए। Migration source-only/unapplied है; live RLS/RPC/trigger/ledger, real Razorpay Test Mode, cash wallet, payout, refund और browser tests अभी बाकी हैं।
+- Database test server_authoritative_labour_timer_and_bill_snapshot.test.sql में 96 pgTAP assertions हैं; अभी execute नहीं हुए। Migration source-only/unapplied है; live RLS/RPC/trigger/ledger, real Razorpay Test Mode, cash wallet, payout, refund और browser tests अभी बाकी हैं।
 - कोई production migration apply, payment transfer, live refund, production setting change या deployment नहीं किया गया। Final consolidated mobile + desktop QA सभी checklist tasks के बाद ही होगा।
 
 ### 19.20 Automatic offer matching और electrician offer RPC privacy hardening (13-11-2026)
@@ -4011,7 +4011,7 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Electrician offer RPC से quoted_amount, service_charge, materials_amount, quote_status और quote_note return fields हटाए गए।
 - Admin Platform Fee report copy को भी ठीक किया: नई categorized booking पर अलग 15% policy स्पष्ट है; legacy historical calculation अलग रहती है; UI में सामग्री/सामान या `commission_rate` आधारित नई गणना का उल्लेख नहीं है। अब server timer seconds, selected category/duration, approved rate tier/skills और payment status जैसे जरूरी fields ही लौटते हैं।
 - Assigned active work statuses में electrician को customer contact/address मिल सकता है; completed booking पर RPC customer name/phone/address/location वापस नहीं करता।
-- Migration source में 91 pgTAP assertions मौजूद हैं; अभी execute नहीं हुए। कोई live database migration apply नहीं की गई।
+- Migration source में 96 pgTAP assertions मौजूद हैं; अभी execute नहीं हुए। कोई live database migration apply नहीं की गई।
 
 
 ### 19.21 Timer/Platform Fee regression audit follow-up (13-11-2026)
@@ -4019,3 +4019,10 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Cash Platform Fee due, online due-settlement और refund reversal का हिसाब अब wallet summary, Admin overview/report, cash eligibility और cash-offer reservation में एक समान refund-aware ledger formula से reconcile होता है। Cash fee refund होने पर पुराना due हटता है; online booking refund होने पर previously settled cash due फिर outstanding बनता है और refunded online fee collected total से घटती है।
 - admin.html के payout table से wildcard select('*') हटाकर explicit safe columns चुने गए; payout UI अब legacy materials_amount column को select नहीं करता। service_bookings और payout tables पर column-level grant design के साथ Admin UI queries align की गईं।
 - Updated SQL test file में 91 assertions घोषित हैं; अभी pgTAP execute नहीं हुआ। JavaScript syntax source checks pass; live database, payment provider और browser runtime tests अभी बाकी हैं।
+
+
+### 19.22 Immutable final labour bill snapshot hardening (13-11-2026)
+- Final labour bill table पर BEFORE INSERT/UPDATE/DELETE trigger जोड़ा गया। UPDATE/DELETE हमेशा block होंगे; bill केवल एक बार insert हो सकता है।
+- Insert trigger customer-approved completion RPC के transaction-scoped authorization को verify करता है, booking row FOR UPDATE lock करता है, stopped timer/pending completion approval/owner/electrician/category/rate snapshot verify करता है और billable minutes, labour paise, 15% Platform Fee paise तथा electrician net amount स्वयं दोबारा calculate करके incoming snapshot से compare करता है।
+- इससे service-role या accidental direct insert भी ग्राहक की मंजूरी, server timer और approved rate से अलग amount/bill नहीं बना सकता। Customer completion approval और bill insert एक ही transaction में रहते हैं।
+- Database test file अब 96 pgTAP assertions घोषित करती है; execute अभी बाकी है। Migration source-only/unapplied है।
