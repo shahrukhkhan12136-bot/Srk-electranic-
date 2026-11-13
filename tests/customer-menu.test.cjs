@@ -836,6 +836,9 @@ test('customer booking submission stops stale responses after logout or account 
   const end=html.indexOf("document.getElementById('newIdenticalBooking').addEventListener",start);
   const source=html.slice(start,end);
   assert.match(source, /const operationGeneration=customerSessionGeneration/);
+  assert.match(source, /const bookingConfirmation = \[/);
+  assert.match(source, /if\(!window\.confirm\(bookingConfirmation\)\)return/);
+  assert.match(source, /अवधि अनुमान है; अंतिम Labour Bill वास्तविक server-recorded समय और Admin-approved rate से बनेगा। सामग्री अलग रहेगी। भुगतान काम पूरा होने के बाद होगा।/);
   assert.match(source, /const operationIsCurrent=\(\)=>operationToken===customerBookingSubmissionToken&&customerSessionOperationIsCurrent\(operationGeneration\)/);
   assert.match(source, /error:customerSessionError[\s\S]*?if\(!operationIsCurrent\(\)\)return;[\s\S]*?if\(customerSessionError\)throw customerSessionError/);
   assert.match(source, /await fetch\('\/api\/create-booking'[\s\S]*?if\(!operationIsCurrent\(\)\)return;[\s\S]*?await response\.json\(\)[\s\S]*?if\(!operationIsCurrent\(\)\)return/);
