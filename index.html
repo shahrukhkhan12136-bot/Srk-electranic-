@@ -213,7 +213,8 @@ const CUSTOMER_BOOKING_STATUS_LABELS = {
   assigned: 'इलेक्ट्रिशियन असाइन हो गया',
   inspection: 'जाँच / निरीक्षण जारी',
   awaiting_quote_approval: 'कोटेशन आपकी मंजूरी के लिए भेजा गया',
-  quote_approved: 'कोटेशन मंजूर — काम शुरू हो सकता है',
+  quote_approved: 'कोटेशन मंजूर — काम शुरू होने की मंजूरी बाकी',
+    awaiting_work_start_approval: 'काम शुरू करने की आपकी मंजूरी बाकी',
   quote_rejected: 'कोटेशन में बदलाव की जरूरत',
   in_progress: 'काम चल रहा है',
   completed: 'काम पूरा हो गया',
@@ -247,7 +248,7 @@ async function loadCustomerBookings() {
   if (!session) return;
   box.textContent = 'आपकी बुकिंग लोड हो रही हैं…';
   const { data, error } = await customerSb.from('service_bookings')
-    .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note')
+    .select('id,service_type,status,payment_status,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,materials_amount,quote_status,quote_note,work_started_at,work_timer_seconds,work_timer_running,work_start_approval_status,completion_requested_at,completion_approval_status')
     .eq('customer_user_id', session.user.id)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -272,6 +273,7 @@ async function loadCustomerBookings() {
     return '<article class="card" style="margin:10px 0;padding:13px">' +
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
     '<p>स्थिति: ' + customerEsc(customerStatusLabel(row.status)) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
+    customerWorkApprovalHtml(row) +
     '<details class="booking-progress"><summary>बुकिंग की पूरी प्रगति देखें</summary>' +
     (historyError ? '<p class="small">स्थिति इतिहास अभी लोड नहीं हो सका। कृपया बाद में फिर देखें।</p>' : customerRenderTimeline(timelineMap.get(row.id), row.status)) +
     '</details>' +
@@ -284,6 +286,38 @@ async function loadCustomerBookings() {
     (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>') : '') +
     '</article>';
   }).join('');
+  customerRefreshWorkTimers();
+}
+function customerFormatWorkSeconds(total){const n=Math.max(0,Math.floor(total||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),sec=n%60;return [h,m,sec].map(v=>String(v).padStart(2,'0')).join(':');}
+function customerWorkApprovalHtml(row){
+  if(row.status==='awaiting_work_start_approval'&&row.work_start_approval_status==='pending')return '<div class="job"><b>काम शुरू करने की अनुमति</b><p>इलेक्ट्रिशियन ने काम शुरू करने की मंजूरी माँगी है। आपकी मंजूरी के बाद ही टाइमर शुरू होगा।</p><button type="button" onclick="customerRespondWorkStart(\\''+row.id+'\\',\\'approved\\')">काम शुरू करने की अनुमति दें</button><button type="button" style="background:#627d98" onclick="customerRespondWorkStart(\\''+row.id+'\\',\\'rejected\\')">अभी अनुमति न दें</button></div>';
+  if(row.status==='in_progress'){
+    const base=Number(row.work_timer_seconds||0),start=row.work_started_at?Date.parse(row.work_started_at):Date.now(),running=!!row.work_timer_running;
+    let html='<div class="job"><b>काम का टाइमर: <span class="customer-work-clock" data-start="'+(Number.isFinite(start)?start:Date.now())+'" data-base="'+base+'" data-running="'+(running?'1':'0')+'">'+customerFormatWorkSeconds(base+(running?Math.max(0,(Date.now()-start)/1000):0))+'</span></b>';
+    if(row.completion_approval_status==='pending')html+='<p>इलेक्ट्रिशियन ने काम पूरा होने की पुष्टि माँगी है। काम देखकर ही मंजूरी दें।</p><button type="button" onclick="customerRespondWorkCompletion(\\''+row.id+'\\',\\'approved\\')">काम पूरा — मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerRespondWorkCompletion(\\''+row.id+'\\',\\'rejected\\')">काम अभी अधूरा है</button><label for="work-dispute-'+row.id+'">यदि विवाद है, कारण लिखें (कम से कम 20 अक्षर)</label><textarea id="work-dispute-'+row.id+'" maxlength="1000" placeholder="काम में क्या समस्या है?"></textarea><button type="button" style="background:#b42318" onclick="customerRespondWorkCompletion(\\''+row.id+'\\',\\'disputed\\')">विवाद दर्ज करें</button>';
+    else html+='<p class="small">काम जारी है। इलेक्ट्रिशियन के पूरा करने के अनुरोध पर आप पुष्टि कर सकेंगे।</p>';
+    return html+'</div>';
+  }
+  if(row.status==='completed')return '<p class="small good">काम पूरा होने की ग्राहक/Admin से पुष्टि दर्ज है। रिकॉर्ड किया गया काम समय: '+customerFormatWorkSeconds(row.work_timer_seconds)+'</p>';
+  return '';
+}
+function customerRefreshWorkTimers(){
+  document.querySelectorAll('.customer-work-clock').forEach(el=>{const base=Number(el.dataset.base||0),start=Number(el.dataset.start||Date.now()),running=el.dataset.running==='1';el.textContent=customerFormatWorkSeconds(base+(running?Math.max(0,(Date.now()-start)/1000):0));});
+  if(!window.customerWorkClockInterval)window.customerWorkClockInterval=setInterval(customerRefreshWorkTimers,1000);
+}
+async function customerRespondWorkStart(id,response){
+  if(!confirm(response==='approved'?'क्या इलेक्ट्रिशियन को अभी काम शुरू करने की अनुमति देते हैं?':'क्या अभी काम शुरू करने की अनुमति नहीं देनी है?'))return;
+  const {error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:id,p_response:response});
+  if(error){alert('जवाब सेव नहीं हुआ: '+error.message);return;}alert(response==='approved'?'काम शुरू करने की अनुमति मिल गई। टाइमर शुरू हो गया।':'काम शुरू करने की अनुमति नहीं दी गई।');await loadCustomerBookings();
+}
+async function customerRespondWorkCompletion(id,response){
+  const note=response==='disputed'?(document.getElementById('work-dispute-'+id)?.value||'').trim():null;
+  if(response==='disputed'&&note.length<20){alert('कृपया विवाद का कारण कम से कम 20 अक्षरों में लिखें।');return;}
+  const prompts={approved:'क्या आपने काम पूरा होते हुए जाँच लिया है और मंजूरी देते हैं?',rejected:'क्या काम अभी अधूरा है और इलेक्ट्रिशियन को दोबारा काम करना चाहिए?',disputed:'क्या आप इस काम पर औपचारिक विवाद दर्ज करना चाहते हैं?'};
+  if(!confirm(prompts[response]))return;
+  const {error}=await customerSb.rpc('srk_customer_respond_work_completion',{p_booking_id:id,p_response:response,p_note:note});
+  if(error){alert('जवाब सेव नहीं हुआ: '+error.message);return;}
+  alert(response==='approved'?'काम पूरा मंजूर हुआ। अब भुगतान उपलब्ध होगा।':response==='rejected'?'काम अधूरा दर्ज हुआ। इलेक्ट्रिशियन काम जारी रख सकता है।':'विवाद Admin Review के लिए भेज दिया गया।');await loadCustomerBookings();
 }
 async function customerQuoteResponse(id,response){
  if(!confirm(response==='approved'?'क्या आप सर्विस और सामान का पूरा कोटेशन मंजूर करते हैं?':'क्या आप यह कोटेशन अस्वीकार करते हैं?'))return;
