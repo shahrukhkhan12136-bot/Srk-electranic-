@@ -778,11 +778,14 @@ async function loadCustomerAvatar(path) {
   return true;
  } catch(e){setCustomerAvatarPreview('');return false;}
 }
+let customerProfileLoadSequence=0;
 async function loadCustomerProfile() {
  if(!customerSb)return;
+ const sequence=++customerProfileLoadSequence;
  setCustomerProfileStatus('प्रोफ़ाइल लोड हो रही है…');
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sequence!==customerProfileLoadSequence)return;
   if(sessionError)throw sessionError;
   const session=sessionData?.session;
   if(!session){setCustomerProfileStatus('प्रोफ़ाइल देखने के लिए OTP से लॉगिन करें।',true);return;}
@@ -791,6 +794,7 @@ async function loadCustomerProfile() {
   const displayPhone=digits.startsWith('91')&&digits.length===12?digits.slice(2):digits;
   document.getElementById('customerProfilePhone').value=displayPhone||phone;
   const {data,error}=await customerSb.rpc('srk_customer_get_my_profile');
+  if(sequence!==customerProfileLoadSequence)return;
   if(error)throw error;
   const profile=Array.isArray(data)?data[0]:data;
   if(profile) {
@@ -798,7 +802,9 @@ async function loadCustomerProfile() {
    if(profile.full_name) document.getElementById('name').value=profile.full_name;
    document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
    customerCurrentAvatarPath=profile.avatar_path||null;
-   const avatarLoaded=customerCurrentAvatarPath?await loadCustomerAvatar(customerCurrentAvatarPath):true;
+   const avatarPath=customerCurrentAvatarPath;
+   const avatarLoaded=avatarPath?await loadCustomerAvatar(avatarPath):true;
+   if(sequence!==customerProfileLoadSequence)return;
    if(!customerCurrentAvatarPath)setCustomerAvatarPreview('');
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।'+(avatarLoaded?'':' फोटो का पूर्वावलोकन अभी उपलब्ध नहीं है।'),!avatarLoaded);
   } else {
@@ -807,7 +813,7 @@ async function loadCustomerProfile() {
    document.getElementById('customerProfileName').value=document.getElementById('name').value||'';
    setCustomerProfileStatus('नई प्रोफ़ाइल है। अपना नाम भरकर सेव करें।');
   }
- } catch(e){setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
+ } catch(e){if(sequence===customerProfileLoadSequence)setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
 }
 async function saveCustomerProfile() {
  const button=document.getElementById('saveCustomerProfile');
