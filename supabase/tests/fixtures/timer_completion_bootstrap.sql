@@ -109,6 +109,7 @@ CREATE TABLE public.srk_electrician_payouts (
  booking_id uuid,
  electrician_profile_id uuid,
  amount numeric(18,2),
+ materials_amount numeric(18,2) DEFAULT 0,
  status text,
  created_at timestamptz DEFAULT now()
 );
