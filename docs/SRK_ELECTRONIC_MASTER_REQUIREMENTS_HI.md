@@ -2700,3 +2700,57 @@ Audit सीमा: यह catalog/function inspection है, production penetr
 6. Production migration/deployment से पहले isolated dev environment, complete object/caller lineage, rollback और सभी role-based negative tests आवश्यक हैं। कोई Production DDL/DML या provider action इस audit से अधिकृत नहीं है।
 
 Audit सीमा: source/catalog inspection; live payment test, webhook replay, penetration test या production certification नहीं। इस pass में कोई database, application source, provider setting या deployment change नहीं किया गया।
+
+
+## 17.70 — Razorpay Webhook Inbox, Payment Verification और Atomic Finalization Deep Audit (13 Nov 2026)
+
+यह pass Section 17.69 के बाद सीमित read-only follow-up है। Feature Branch के root handlers और Netlify adapters के exact source versions तथा Production webhook table के live columns, grants और संबंधित database function catalog देखे गए। कोई source, database या provider state नहीं बदली।
+
+### A. Exact Feature Branch source lineage
+- `razorpay-webhook.js` blob SHA: `f45df3a4c64288028e60ba44857c83df40cf645a`
+- `verify-payment.js` blob SHA: `99518ccae34ba022c000cb9933ad80aeb359cfb6`
+- `create-order.js` blob SHA: `8d33e098f0595e7a8bed74df737be79414695025`
+- `netlify/functions/razorpay-webhook.js` blob SHA: `426a4ddd46d6127ddc600dd3aff499f063c52d5b`
+- `netlify/functions/verify-payment.js` blob SHA: `92215fac69910e886914f10cf48141592a349258`
+
+### B. Event ingestion और deduplication gaps
+1. Root webhook handler `x-razorpay-signature` से raw body HMAC-SHA256 verify करता है और timing-safe comparison करता है। यह सही सुरक्षा नियंत्रण है; raw body और signature validation को भविष्य के adapter में सुरक्षित रखना अनिवार्य है।
+2. Handler Razorpay event ID/header को durable inbox में persist नहीं करता, `srk_razorpay_webhook_events` में INSERT/UPDATE नहीं करता और event status/lease/retry lifecycle चलाता हुआ नहीं दिखता।
+3. `payment.captured` और `order.paid` दोनों एक ही captured payment को represent कर सकते हैं। Current code event-level dedupe न होने के कारण दोनों deliveries process करने की कोशिश कर सकता है। Booking PATCH में `payment_status=neq.paid` एक सीमित race guard है, पूर्ण event/payment idempotency contract नहीं।
+4. Unknown booking, wrong amount, cash booking और not-payable booking पर handler HTTP 200 लौटाकर unreconciled छोड़ देता है। ऐसी घटनाएँ durable exception queue में लिखी जानी चाहिए; provider retry को एकमात्र recovery mechanism न मानें।
+5. Webhook handler refund/Route transfer lifecycle process नहीं करता। इस audit में कोई separate Production database webhook writer/consumer function नाम नहीं मिला; इससे यह साबित नहीं होता कि कोई बाहरी/अलग service मौजूद नहीं है। उसकी deployment lineage/configuration अलग से recover करनी होगी।
+
+### C. Verification और order creation race
+- `verify-payment.js` checkout signature verify करने के बाद Razorpay Payment API से captured state, order ID, INR currency और amount जाँचता है। Customer JWT, phone confirmation और booking ownership भी जाँचे जाते हैं। लेकिन successful verification पर यह भी सीधे service-role PATCH करता है; webhook से अलग finalization path बना रहता है।
+- Webhook और verify endpoint एक ही payment पर लगभग साथ चलें तो दोनों अलग-अलग booking read/validate/PATCH कर सकते हैं। Current conditional PATCH duplicate paid-state overwrite को सीमित करता है, लेकिन atomic payment intent, unique captured payment binding, bill snapshot lock और एक shared ledger finalization guarantee नहीं देता।
+- `create-order.js` per-booking payment-order lock लेता है और lock के बाद booking दोबारा पढ़ता है; यह उपयोगी concurrency protection है। फिर भी order amount `service_charge + materials_amount` / `quoted_amount` से आता है और reusable order उसी quote total से match होता है। नया order केवल frozen labour bill snapshot के integer paise, bill version/hash और उसी payment intent से बने।
+- Netlify adapters root handlers import करते हैं; इसलिए root handler की सभी legacy सीमाएँ Netlify endpoint पर भी लागू हैं। Raw body/base64/header forwarding का deploy-runtime integration test अभी आवश्यक है।
+
+### D. Production webhook table — live catalog confirmation
+Production `public.srk_razorpay_webhook_events` में 12 columns मिले:
+`event_id`, `event_type`, `razorpay_order_id`, `razorpay_payment_id`, `payment_amount_paise`, `payment_currency`, `processing_status`, `reconciliation_reason`, `received_at`, `processed_at`, `updated_at`, `razorpay_refund_id`.
+- `event_id` और `event_type` NOT NULL हैं; status default `received` है। इस table को दोबारा create नहीं करना है।
+- इन columns में raw payload/payload hash, signature result, retry counter, lease owner/expiry, last error और bill snapshot/payment-intent binding नहीं मिले।
+- Live table grants में `service_role` को SELECT/INSERT/UPDATE/DELETE सहित table privileges मिले; `postgres` owner-level privileges रखता है। `anon` और `authenticated` के direct grants query में नहीं मिले। RLS/policy और schema exposure को grants से अलग मानकर scoped ACL review जारी रखें।
+- इस table पर trigger catalog query में कोई non-internal trigger नहीं मिला।
+- Production public function catalog में webhook नाम से केवल `srk_admin_list_razorpay_webhook_exceptions(integer)` मिला। यह Admin-guarded SECURITY DEFINER read RPC है और `exception` तथा `processing_error` rows सूचीबद्ध करता है। इस audit से कोई DB-side inbox writer, claim/lease RPC या event consumer सिद्ध नहीं हुआ।
+- निष्कर्ष: table मौजूद है, पर inspected Feature Branch handler उसका उपयोग नहीं करता; live Production event writer/consumer lineage अभी unresolved है। Existing event rows को पढ़े/मिलाए बिना schema migration या duplicate inbox निर्माण न करें।
+
+### E. Shared finalizer के लिए अनिवार्य contract
+1. Webhook और customer verification दोनों एक ही trusted server-side finalizer invoke करें; कोई handler सीधे `service_bookings.payment_status/amount_paid` PATCH न करे।
+2. Finalizer exact booking + customer + immutable labour bill snapshot ID/version/hash + expected integer paise + INR + Razorpay order/payment IDs validate करे।
+3. Unique constraints/idempotency keys event ID, payment ID और bill/payment intent पर duplicate तथा conflicting captured payments रोकें। `payment.captured` और `order.paid` दोनों event types एक ही payment को दो बार finalize न कर सकें।
+4. Transaction में booking/payment intent lock, payment ledger insert, bill snapshot reference, booking paid state, 15% labour-only fee और labour-only electrician payable एक atomic unit हों। किसी एक चरण की failure पर पूरा DB transaction rollback हो।
+5. Provider API network call database transaction के बाहर रहे; webhook inbox पहले durable receipt बने, फिर worker/consumer claim lease लेकर process करे। Provider timeout/DB outage पर event pending/retryable रहे; permanent mismatch Admin exception बने।
+6. Raw body को सीमित retention और secret/PII redaction policy के साथ store करें या cryptographic payload hash + verified signature metadata रखें। Signature secret कभी DB/log/UI में न जाए।
+7. Cash/manual payment भी उसी bill snapshot और shared accounting finalization contract में आए, लेकिन cash verification semantics अलग और auditable रहें। Refund और Route reversal अलग linked ledgers तथा independent idempotency keys के साथ चलें।
+8. Admin exception UI केवल सुरक्षित list नहीं; आगे चलकर reason, retry eligibility, controlled reprocess, immutable audit और maker-checker approval भी चाहिए। वर्तमान Admin list RPC केवल read surface है।
+
+### F. अगला सुरक्षित क्रम
+1. Production webhook inbox के existing rows, indexes, constraints, RLS, grants, schema exposure और historical statuses की read-only inventory पूरी करें; event writer source/deployment lineage खोजें।
+2. Timer bill snapshot/payment intent और shared finalizer का versioned contract बनाएं; पहले isolated development environment में लागू/परीक्षित करें।
+3. Webhook receipt/claim/lease/consumer, client verification, order creation और shared finalizer को Test Mode में जोड़कर duplicate/out-of-order/race/fault/retry/exception recovery tests चलाएँ।
+4. Fee/payout triggers को labour-only snapshot आधारित करें; पुराने quote/material paid bookings और payouts को historical compatibility mapping से सुरक्षित रखें।
+5. Customer, assigned/unassigned Electrician, Admin और service-role positive/negative authorization tests, webhook raw-body adapter tests और rollback rehearsal के बाद ही production change प्रस्तावित करें।
+
+Audit सीमा: source + live catalog read-only inspection। कोई DDL/DML, event replay, Razorpay API/provider action, refund/transfer, application source edit, deployment या live payment test नहीं किया गया।
