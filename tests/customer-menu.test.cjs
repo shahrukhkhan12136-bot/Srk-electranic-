@@ -321,3 +321,15 @@ test('customer support message send checks Auth session errors before using user
   const source = html.slice(start, end);
   assert.match(source, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\);\s*if\(sessionError\)throw sessionError;\s*const userId=sessionData\?\.session\?\.user\?\.id/);
 });
+
+
+test('customer refund success is confirmed before independent history refreshes', () => {
+  const start = html.indexOf('async function customerSubmitBookingRefund(');
+  const end = html.indexOf('\nlet customerBookingHistoryLoadSequence', start);
+  const source = html.slice(start, end);
+  assert.match(source, /requestCreated=true;\s*refundAmount=data\.amount/);
+  assert.ok(source.indexOf("alert('रिफंड अनुरोध दर्ज हो गया है।") < source.indexOf('Promise.allSettled(['));
+  assert.match(source, /Promise\.allSettled\(\[\s*loadCustomerBookings\(\),\s*loadCustomerRefundHistory\(\),\s*loadCustomerPaymentHistory\(true\)/);
+  assert.match(source, /रिफंड अनुरोध सुरक्षित रूप से दर्ज हो गया है, लेकिन कुछ सूची अपडेट नहीं हो सकीं/);
+  assert.match(source, /if\(!requestCreated\)\s*\{[\s\S]*?customerRefundSubmissionBusy\.delete\(bookingId\)/);
+});
