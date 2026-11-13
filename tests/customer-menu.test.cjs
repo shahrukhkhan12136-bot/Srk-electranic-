@@ -1071,3 +1071,14 @@ test('customer profile save control is restored when account changes mid-save', 
  assert.match(source,/profileSave=document\.getElementById\('saveCustomerProfile'\)/);
  assert.match(source,/if\(profileSave\)profileSave\.disabled=false/);
 });
+
+
+test('no-session fallback restores profile and saved-address controls', () => {
+ const start=html.indexOf('async function syncCustomerSession()');
+ const end=html.indexOf('\nasync function customerSendOtp',start);
+ const source=html.slice(start,end);
+ assert.match(source,/const profileSave=document\.getElementById\('saveCustomerProfile'\);if\(profileSave\)profileSave\.disabled=false/);
+ assert.match(source,/const avatarFile=document\.getElementById\('customerAvatarFile'\);if\(avatarFile\)avatarFile\.value=''/);
+ assert.match(source,/for\(const id of \['editSavedAddress','deleteSavedAddress','setDefaultSavedAddress'\]\)/);
+ assert.match(source,/const saveAddress=document\.getElementById\('saveCurrentAddress'\);if\(saveAddress\)\{saveAddress\.disabled=false/);
+});
