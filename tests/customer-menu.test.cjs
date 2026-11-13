@@ -276,3 +276,13 @@ test('customer refund status labels distinguish completion, review, provider fai
     assert.ok(source.includes(status + ":'" + label + "'"), 'missing refund status label: ' + status);
   }
 });
+
+
+test('customer booking history catches session retrieval failures and ignores stale session responses', () => {
+  const start = html.indexOf('async function loadCustomerBookings()');
+  const end = html.indexOf('\n}\n', start);
+  const source = html.slice(start, end);
+  assert.ok(source.indexOf('try {') < source.indexOf('customerSb.auth.getSession()'));
+  assert.match(source, /if\(sequence!==customerBookingHistoryLoadSequence\)return;\s*if\(sessionError\)throw sessionError/);
+  assert.match(source, /finally\s*\{\s*if\(sequence===customerBookingHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
+});
