@@ -2814,3 +2814,36 @@ Audit सीमा: repository source/branch/config inspection only। Netlify d
 6. जब तक live config lineage प्रमाणित न हो, webhook URL/secret, Production deploy, database writer/consumer या payment handler न बदलें।
 
 Audit सीमा: GitHub source/config inspection only। Netlify और Razorpay live dashboards/logs से कोई authenticated access नहीं हुआ। कोई deployment, webhook registration, secret change, payment, refund, transfer या Production database modification नहीं किया गया।
+
+
+## 17.73 — Supabase Production Edge Functions, pg_net और Scheduled Worker Lineage Audit (13 Nov 2026)
+
+### A. Production project snapshot
+- Project `gnqhoaqatmoiwwhgzkgm`, region `ap-south-1`, status `ACTIVE_HEALTHY`, PostgreSQL 17.11।
+- यह audit केवल read-only metadata, catalog और function source inspection पर आधारित है।
+
+### B. Active Edge Functions
+1. `send-sms-2factor`: ACTIVE, version 8, `verify_jwt=false`। Source POST-only है, `SEND_SMS_HOOK_SECRET` के साथ Standard Webhooks signature verify करता है, Supabase-generated OTP को 2Factor template `SRK_ELECTRONIC_OTP` से deliver करता है। Provider key/secret values inspect या expose नहीं किए गए।
+2. `push-job-offer`: ACTIVE, version 4, `verify_jwt=false`। GET public VAPID public key देता है; POST `x-srk-push-secret` validate करता है, payload को `public.job_offers` INSERT/UPDATE webhook shape तक सीमित करता है, approved active electrician की subscriptions पर Web Push भेजता है और expired subscriptions साफ करता है। Source में Supabase service key और VAPID private key server-side env से लिए जाते हैं; values नहीं पढ़े गए।
+
+### C. Push notification trigger lineage
+- Production में `public.job_offers` पर `trg_srk_push_job_offer` AFTER INSERT OR UPDATE trigger मिला।
+- Trigger function `private.srk_notify_job_offer_push()` SECURITY DEFINER है और `search_path=pg_catalog` सेट करता है।
+- Function Vault से `PUSH_WEBHOOK_SECRET` लेता है और `net.http_post` के माध्यम से उसी project के `push-job-offer` Edge Function को JSON payload भेजता है।
+- यह Push notification pipeline है, Razorpay payment webhook inbox/worker नहीं। इसे payment event consumer न समझें।
+
+### D. Cron/Queue inventory
+- Installed extension में `pg_net` मिला; `net.http_request_queue`, `net.http_response`, `net._http_response` मौजूद हैं। ये pg_net HTTP request/response infrastructure हैं, application-level durable payment event inbox/worker का प्रमाण नहीं।
+- Catalog में `cron` schema / `cron.job` relation नहीं मिला; इस Production database snapshot में pg_cron scheduled job inventory उपलब्ध नहीं दिखी।
+- `pgmq` या `queues` schema नहीं मिला।
+- `public/private` function name search में Razorpay exception-list Admin RPC के अतिरिक्त webhook/payment worker/claim consumer नाम का function नहीं मिला।
+- Existing `public.srk_razorpay_webhook_events` inbox table है, लेकिन इस audit में कोई writer/claim/consumer lineage नहीं मिला। Section 17.70–17.71 की findings कायम हैं।
+
+### E. निष्कर्ष और सीमा
+- Supabase project में active Edge Functions हैं, लेकिन इनमें से कोई भी Razorpay webhook event inbox consumer या payment finalizer worker नहीं है।
+- pg_net push trigger का उपयोग करता है; यह general queue worker, scheduled retry system या Razorpay processor नहीं है।
+- Database catalog inspection से इस project के बाहर चल रहे external worker, GitHub Actions scheduled workflows, Netlify scheduled functions या third-party automation का अस्तित्व न होना सिद्ध नहीं होता। External systems अभी unverified हैं।
+- No code, database, Edge Function, Vault secret, webhook, schedule, queue, payment, refund, transfer, deployment or provider configuration was changed.
+- अगला कदम: external worker/automation ownership evidence और Netlify/Razorpay live dashboard read-only verification प्राप्त करना; तब तक payment inbox या worker नया न बनाएं।
+
+Security note: Edge Function source contains secret variable names only; secret values were not queried, printed, exported or changed.
