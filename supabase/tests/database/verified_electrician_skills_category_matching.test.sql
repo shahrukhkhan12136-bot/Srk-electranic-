@@ -66,7 +66,7 @@ SELECT ok(
 );
 SELECT ok(
   pg_get_functiondef('public.srk_validate_electrician_requested_skills()') ILIKE '%srk_electrician_skill_catalog%'
-  AND pg_get_functiondef('public.srk_validate_electrician_requested_skills()') ILIKE '%cardinality(NEW.requested_skill_keys)>20%',
+  AND pg_get_functiondef('public.srk_validate_electrician_requested_skills()') ILIKE '%cardinality(NEW.requested_skill_keys)>10%',
   'application skill declarations are allowlisted and capped'
 );
 SELECT ok(
