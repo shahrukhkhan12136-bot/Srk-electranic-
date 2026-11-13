@@ -1906,3 +1906,18 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Ratings के लिए completed/approved booking eligibility, per-side unique rating, derived aggregates और reasoned moderation; Notifications के लिए preferences/consent को push tokens/outbox/provider delivery से अलग रखा।
 - यह design baseline है, implementation या test pass नहीं। कोई SQL migration नहीं बनाई/चलाई, कोई Production/live payment/wallet/notification change नहीं।
 - अगला implementation चरण: cancellation request + Admin evidence review + customer My Bookings status UI, साथ में isolated pgTAP/source regression; financial settlement तब तक निष्क्रिय रहेगा जब तक mixed payment/refund/payout dependencies end-to-end सुरक्षित न हों।
+
+
+### Customer App — Cancellation Request Intake Phase 1 (14 नवम्बर 2026)
+- Feature branch पर migration `20261115020000_customer_booking_cancellation_request_intake.sql` जोड़ी गई (commit `599a817e`)।
+  - Owner-scoped customer request RPC, UUID idempotency key, प्रति booking एक खुला request, RLS/private tables, append-only request event history।
+  - शुरुआती safe scope: केवल `new/confirmed/assigned` और unpaid booking। Paid, in-progress, timer elapsed और final labour bill वाली booking fail-closed होकर Admin reconciliation मांगती है।
+  - Admin-only queue और review-start RPC मौजूद; review-start से booking status नहीं बदलता।
+  - **Final approve/reject, booking cancellation, ₹0/₹49/₹99 fee decision, travel evidence, cancellation-fee ledger, carry-forward और Cash/Online settlement इस चरण में implement नहीं हैं।**
+- Customer `booking.html` में My Bookings पर Cancel Booking request control और request status जोड़ा गया (commit `f6313c70`)। Secure UUID/sessionStorage unavailable होने पर request submit fail-closed; uncertain retry में वही idempotency key रखी जाती है।
+- Admin Panel में केवल Cancellation Requests review queue dependency जोड़ी गई; केवल “जाँच शुरू करें” उपलब्ध है, कोई final cancel/fee/payment action नहीं (commit `c9c29b32`)।
+- Isolated pgTAP test + disposable synthetic fixture + workflow जोड़े गए (workflow `customer-cancellation-request-pgtap.yml`; test assertion plan 23)। Workflow run `43525453777` इस snapshot पर pending/queued था; इसे PASS नहीं गिना गया।
+- Source regression में पुराने Help & Support-only assertion को नए Admin-mediated request contract से बदला गया। Latest source regression run `43525500157` SUCCESS; refund source regression `43525500105` SUCCESS। दोनों branch source tests हैं, live database/runtime test नहीं।
+- Inline JavaScript syntax compile check: `booking.html` 2 scripts PASS; `admin.html` 1 script PASS।
+- कोई Production SQL/migration apply नहीं, कोई live booking/customer data change नहीं, कोई cancellation execute या fee/wallet/payment transfer नहीं।
+- **अगला exact काम:** isolated pgTAP workflow `43525453777` का वास्तविक result/log पढ़ें; यदि failure हो तो ठीक करें। उसके बाद customer request session-switch/retry/idempotency source tests बढ़ाएँ, फिर evidence-based Admin final decision और cancellation fee accounting पर लौटें। 
