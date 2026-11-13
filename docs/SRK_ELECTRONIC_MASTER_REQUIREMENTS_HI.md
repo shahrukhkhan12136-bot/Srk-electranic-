@@ -3603,3 +3603,60 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **Evidence and limits:** Production table/column inventory और `pg_policies` metadata read-only SELECT से देखे गए। No customer data read. No SQL DDL, RLS policy, RPC, Auth config, source app, payment, provider, SMS, secret or deployment changed. Static source files inspected: `index.html`, `booking.html`, `customer-login.html`, `create-booking.js`, `create-order.js`, `verify-payment.js`, `razorpay-webhook.js`, customer booking/RLS migrations and complaint/contact migrations.
 - **Status: In Progress / Blocked on safe backend contracts** — पाँच-menu implementation अभी शुरू नहीं की गई क्योंकि Support/Refund tables पर customer RLS policies अनुपस्थित हैं, Customer Profile contract नहीं है, और Payment source में labour-only billing conflict है। इन dependencies को संबंधित checklist items में क्रम से resolve/verify किए बिना menu feature को functional बताना गलत होगा। अगला कदम 14.1.2 के scope में menu-by-menu data contract और UI shell का non-destructive implementation plan तैयार करना है; implementation तभी जब निर्भर सुरक्षा/payment items के क्रम और अनुमोदित design के अनुरूप हो।
 - **अंतिम वास्तविक परीक्षण: बाकी** — 14.1.2 सहित सभी मूल 96 items के लिए उपयोगकर्ता द्वारा तय consolidated real-world test batch तक pending।
+
+
+## 17.110 — Customer Five-Menu Data Contract और Safe Build Sequence (14.1.2, 13 Nov 2026)
+
+यह section 17.109 के read-only audit पर आधारित design record है। यह implementation या test-pass का दावा नहीं है।
+
+### साझा App Shell Contract
+- Entry: OTP-verified Supabase Auth session; session restore के बाद ही private customer data load हो। Session missing/expired/revoked हो तो private screens साफ़ करके login पर लौटें; केवल UI hide करना authorization नहीं माना जाएगा।
+- Navigation labels स्थिर: **Home / My Bookings / Payments / Help & Support / My Profile**। Mobile पर accessible bottom navigation, desktop पर समान स्पष्ट navigation; current route/selected state screen-reader accessible हो।
+- हर screen के लिए loading, first-use empty, filtered-empty, recoverable error/retry, offline/stale-data और session-expired states अलग हों। Private API responses पर `Cache-Control: no-store`; service worker/localStorage में phone, address, booking/payment/support/profile private payload persist नहीं।
+- सभी requests bearer session के साथ server पर verify हों। Client द्वारा भेजा गया customer ID/phone ownership का प्रमाण नहीं; ownership केवल verified `auth.uid()` और server-side predicates/RLS से।
+- Hindi-first copy, responsive layout, keyboard/focus visibility, touch target, contrast, semantic headings/forms, reduced-motion और low-bandwidth loading लागू हों।
+
+### Menu 1 — Home
+- उद्देश्य: customer का संक्षिप्त परिचय, नया booking CTA, active booking status/next action और recent booking/payment summary।
+- Data contract: केवल verified current customer की aggregate summary; backend user identity token से निकाले, client-supplied ID न ले। Summary में address/phone का अनावश्यक पुनर्प्रदर्शन न हो।
+- Dependency: booking lifecycle/status machine और timer/payment state definitions स्थिर होने तक status labels को अनुमान से map न करें।
+- Tests: no-session denial, दूसरे customer की booking से summary leak न हो, empty/new account, multiple active/terminal bookings, delayed/stale response, offline/retry।
+
+### Menu 2 — My Bookings
+- Read path: `service_bookings` पर authenticated own-row SELECT; मौजूदा Production RLS predicate `auth.uid() = customer_user_id` लागू रहे। Admin bypass को customer client path में कभी न जोड़ें।
+- सूची/विवरण: booking reference, created date, service/category, safe status timeline, approved estimate/final labour bill के अलग labels, payment state और allowed next action। Phone/address/location केवल current lifecycle और पहले से approved privacy rules के अनुरूप; completion/cancellation के बाद दूसरे पक्ष का phone UI/API/receipt/history में नहीं।
+- Guest legacy rows: `customer_user_id IS NULL` rows को phone match के आधार पर auto-claim नहीं करना। Verified OTP proof, collision/duplicate-number review, immutable audit और explicit account-linking flow के लिए अलग security design चाहिए।
+- Tests: own/other user RLS negative tests, guest orphan handling, pagination/order stability, status transition coverage, contact visibility before/after acceptance and close, no-store/cache and logout cleanup।
+
+### Menu 3 — Payments
+- Source of truth: केवल server-verified payment events और immutable/versioned labour-only bill snapshots; client-calculated amount, legacy quote total, `materials_amount`, electrician wallet या unverified manual entry को customer payment history न मानें।
+- UI: labour amount, 15% Platform Fee केवल जहाँ customer bill contract में लागू हो उसका सही disclosure, payment method, pending/captured/failed/refunded/disputed states, receipt/reference और refund status अलग-अलग। कोई material line item नहीं।
+- Hard dependency: current `create-order.js`/`verify-payment.js` में legacy `service_charge + materials_amount` logic और webhook/finalizer race के कारण अभी customer Payments menu implement/activate नहीं करना। पहले labour-only immutable bill, common atomic finalizer, durable webhook inbox/reconciliation और historical compatibility अलग checklist sequence में ठीक व source-tested हों।
+- Tests: amount tamper, wrong customer/order, duplicate/out-of-order webhook, capture vs verify race, retry/idempotency, partial/full refund, cash-vs-online no-switch, historical legacy row display without recalculation।
+
+### Menu 4 — Help & Support
+- Browser direct table access: अभी निषिद्ध। `srk_booking_complaints`, `srk_booking_complaint_events` और refund-request table पर RLS enabled है लेकिन current audit में policies नहीं मिलीं।
+- API contract (future): authenticated create/list/detail/reply endpoints; server token से customer ID; ticket हमेशा उसी customer की booking से bind; category/description validation, rate limit, idempotency, safe status transitions, append-only actor/timestamp events; Admin/staff role और assignment checks server-side।
+- Attachments: private Storage bucket, strict MIME/size limits, malware/content scanning strategy, random object keys, per-ticket ownership authorization, short-lived signed access; public bucket नहीं। Admin reply/thread और customer-visible/internal note का स्पष्ट separation।
+- Refund request Support ticket से अलग financial action रहे; customer केवल request submit/status देखे, refund initiate/approve/amount modify न कर सके।
+- Tests: cross-customer ticket/attachment denial, forged booking ID, unauthorized staff, duplicate submit/reply, upload abuse, private attachment URL expiry, audit completeness।
+
+### Menu 5 — My Profile
+- Minimal profile contract अलग तय/बनाना होगा; अभी कोई customer profile table/page/API प्रमाणित नहीं। प्रस्तावित fields: `user_id` (Auth UID, unique), `display_name`, optional `email`, optional `preferred_language`, timestamps। Phone Auth से read-only verified identity; phone change केवल अलग OTP re-verification flow।
+- Saved addresses अलग customer-owned child records हों; booking के समय address/location immutable booking snapshot रहे ताकि पुरानी booking बदल न जाए। Profile address बदलने से historical booking address overwrite न हो।
+- Profile screen में केवल अनुमत fields; account deletion/export/data-retention/legal retention flow अलग policy/approval के बाद। कोई Auth admin credential या `auth.users` direct browser access नहीं।
+- Tests: own profile CRUD only, other UID denial, phone not editable, re-verification, duplicate/invalid address, historical booking snapshot unchanged, session revoke/logout cleanup।
+
+### Build gates और क्रम
+1. पहले dependency checklist items में customer ownership, state-machine, labour-only billing/payment finalizer, Support/RLS/Storage/staff access और account/profile data-retention decisions source-verified हों।
+2. फिर additive migration/API contracts को Feature Branch में implement करें; Production पर DDL/RLS/function/config apply नहीं।
+3. Isolated disposable/staging DB उपलब्ध और migration lineage reconciled होने पर migration + RLS/JWT negative tests चलें। Paid resource बिना लागत बताए/अनुमति लिए नहीं।
+4. इसके बाद पाँच-menu shell और प्रत्येक screen अलग-अलग जोड़ें; existing booking form/payment flow को duplicate न करें।
+5. हर source change पर unit/static tests, security negative tests, accessibility checks, build/CI, saved commit और refetch/hash verification अनिवार्य।
+6. सभी 96 items के लिए अंतिम वास्तविक device/provider/SMS/payment/E2E test batch उपयोगकर्ता के निर्देशानुसार अंत में ही होगा; अभी **96/96 वास्तविक परीक्षण बाकी**।
+
+### इस चरण का निष्कर्ष
+- Data contracts और safe build gates लिखित रूप में दर्ज; यह design/source documentation है, functional menu implementation नहीं।
+- कोई app source, Production schema/RLS, RPC, Auth config, customer data, payment/provider, secret या deployment नहीं बदला।
+- 14.1.2 **In Progress / Dependency-Blocked** रहेगा; इसे Verified नहीं किया गया। अगला क्रम checklist में आगे के items का निरीक्षण है; dependency items के क्रम पर पहुँचने पर उन्हें resolve/test किए बिना customer menu को सक्रिय नहीं करेंगे।
+- अंतिम वास्तविक परीक्षण: **बाकी**।
