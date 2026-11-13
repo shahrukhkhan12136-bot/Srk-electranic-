@@ -906,10 +906,11 @@ function applySelectedSavedAddress() {
 async function saveCurrentBookingAddress() {
  const button=document.getElementById('saveCurrentAddress');
  if(button.disabled) return;
- const {data:sessionData}=await customerSb.auth.getSession();
- if(!sessionData.session){setSavedAddressStatus('पता सेव करने के लिए पहले OTP लॉगिन करें।',true);return;}
  button.disabled=true;button.textContent='पता सेव हो रहा है…';
  try {
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!sessionData?.session)throw new Error('पता सेव करने के लिए पहले OTP लॉगिन करें।');
   const editingAddress=editingSavedAddressId?customerSavedAddresses.find(a=>a.id===editingSavedAddressId):null;
   const {data,error}=await customerSb.rpc('srk_customer_save_my_address',{
    p_id:editingSavedAddressId,p_label:document.getElementById('savedAddressLabel').value,
