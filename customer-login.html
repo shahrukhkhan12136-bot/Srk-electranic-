@@ -45,10 +45,13 @@
    const {data,error}=await sb.auth.getSession();
    if(error)throw error;
    const session=data.session;
+   hasSession=!!session;
    document.getElementById('sessionArea').classList.toggle('hidden',!session);
-   send.disabled=!!session;
-   verify.disabled=!!session;
-   document.getElementById('sessionText').textContent=session?'आप पहले से लॉगिन हैं: '+(session.user.phone||'सत्यापित मोबाइल')+'. बुकिंग देखने के लिए मुख्य पेज खोलें।':'';
+   document.getElementById('phone').disabled=hasSession;
+   send.disabled=hasSession || Date.now()<resendAt;
+   verify.disabled=hasSession;
+   area.classList.toggle('hidden',hasSession);
+   document.getElementById('sessionText').textContent=session?'आप पहले से लॉगिन हैं: '+(session.user.phone||'सत्यापित मोबाइल')+'. बुकिंग देखने के लिए मेरी बुकिंग खोलें।':'';
   }catch(_){setMessage('सेशन की स्थिति जाँची नहीं जा सकी। पेज रीफ्रेश करके फिर कोशिश करें।',true);}
  }
  function phoneE164(){const raw=phoneInput.value.trim(),d=raw.replace(/\D/g,'');if(d.length===10)return '+91'+d;if(raw.startsWith('+')&&d.length>=10&&d.length<=15)return '+'+d;return null;}
