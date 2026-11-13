@@ -1,4 +1,5 @@
 name: Customer category duration isolated pgTAP
+# Test harness is deliberately local-only; no live Supabase credentials or project ref.
 
 on:
   workflow_dispatch:
