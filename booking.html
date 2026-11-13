@@ -56,6 +56,13 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <p class="small" id="customerSignedIn"></p>
   <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
   <div id="customerBookings" aria-live="polite"></div>
+  <section class="card" id="customerPaymentHistoryPanel" style="margin-top:14px">
+   <h3 style="margin-top:0">💳 भुगतान इतिहास</h3>
+   <p class="small">आपकी बुकिंग से जुड़े दर्ज भुगतान और रिफंड यहाँ दिखेंगे। केवल सत्यापित/दर्ज रिकॉर्ड दिखाए जाते हैं।</p>
+   <button class="btn" type="button" id="customerPaymentHistoryRefresh">भुगतान इतिहास रीफ़्रेश करें</button>
+   <div id="customerPaymentHistory" aria-live="polite" aria-busy="false"></div>
+   <button class="btn" type="button" id="customerPaymentHistoryMore" style="display:none">और रिकॉर्ड देखें</button>
+  </section>
   <section class="card" id="customerProfilePanel" style="margin-top:14px">
    <h3 style="margin-top:0">👤 मेरी प्रोफ़ाइल</h3>
    <p class="small">आपका सत्यापित मोबाइल नंबर केवल पढ़ने के लिए है। नाम और भाषा यहाँ बदल सकते हैं।</p>
@@ -164,6 +171,46 @@ function locateInto(latId, lngId, statusId, mapWrapId, mapId, linkId) {
 }
 function customerEsc(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+let customerPaymentHistoryOffset=0;
+let customerPaymentHistoryBusy=false;
+function formatCustomerMoney(amount) {
+ const n=Number(amount);
+ return Number.isFinite(n)?'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'राशि उपलब्ध नहीं';
+}
+function customerPaymentLabel(row) {
+ const types={payment:'बुकिंग भुगतान',refund_request:'रिफंड अनुरोध',refund:'ऑनलाइन रिफंड',manual_payment:'दर्ज भुगतान',manual_refund:'दर्ज रिफंड'};
+ const methods={cash:'नकद',upi:'UPI',card:'कार्ड',online:'ऑनलाइन',razorpay:'Razorpay',bank_transfer:'बैंक ट्रांसफर',other:'अन्य'};
+ const status=String(row.status||'').toLowerCase();
+ const statusLabel=({paid:'सफल',captured:'सफल',recorded:'दर्ज',processed:'प्रोसेस्ड',pending:'लंबित',requested:'अनुरोध किया गया',failed:'असफल',rejected:'अस्वीकृत'})[status]||row.status||'स्थिति उपलब्ध नहीं';
+ return {type:types[row.event_type]||'भुगतान रिकॉर्ड',method:methods[row.payment_method]||'',status:statusLabel};
+}
+async function loadCustomerPaymentHistory(reset=true) {
+ if(!customerSb||customerPaymentHistoryBusy)return;
+ const box=document.getElementById('customerPaymentHistory');
+ const more=document.getElementById('customerPaymentHistoryMore');
+ const {data:sessionData}=await customerSb.auth.getSession();
+ if(!sessionData.session){box.textContent='भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';more.style.display='none';return;}
+ if(reset)customerPaymentHistoryOffset=0;
+ customerPaymentHistoryBusy=true;box.setAttribute('aria-busy','true');
+ if(reset)box.textContent='भुगतान रिकॉर्ड लोड हो रहे हैं…';
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_get_payment_history',{p_limit:25,p_offset:customerPaymentHistoryOffset});
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  const html=rows.map(row=>{
+   const label=customerPaymentLabel(row);
+   const date=row.occurred_at?new Date(row.occurred_at).toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'तारीख उपलब्ध नहीं';
+   return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>'+customerEsc(label.type)+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small" style="margin:6px 0">'+customerEsc(row.description||'')+'</p><p class="small" style="margin:4px 0">स्थिति: '+customerEsc(label.status)+(label.method?' · तरीका: '+customerEsc(label.method):'')+'</p><p class="small" style="margin:4px 0">दिनांक: '+customerEsc(date)+'</p><p class="small" style="margin:4px 0">बुकिंग संदर्भ: '+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase()||'उपलब्ध नहीं')+'</p></article>';
+  }).join('');
+  if(reset)box.innerHTML=html||'<p class="small">अभी कोई भुगतान या रिफंड रिकॉर्ड उपलब्ध नहीं है। भुगतान दर्ज होने पर यहाँ दिखाई देगा।</p>';
+  else box.insertAdjacentHTML('beforeend',html);
+  customerPaymentHistoryOffset+=rows.length;
+  more.style.display=rows.length===25?'block':'none';
+ }catch(error){
+  if(reset)box.textContent='भुगतान इतिहास लोड नहीं हो सका। कृपया दोबारा कोशिश करें।';
+  else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
+ }finally{customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');}
 }
 async function loadCustomerBookings() {
   const box = document.getElementById('customerBookings');
@@ -508,6 +555,8 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
+  document.getElementById('customerPaymentHistoryRefresh').addEventListener('click',()=>loadCustomerPaymentHistory(true));
+  document.getElementById('customerPaymentHistoryMore').addEventListener('click',()=>loadCustomerPaymentHistory(false));
   document.getElementById('saveCustomerProfile').addEventListener('click', saveCustomerProfile);
   document.getElementById('savedAddressSelect').addEventListener('change', applySelectedSavedAddress);
   document.getElementById('saveCurrentAddress').addEventListener('click', saveCurrentBookingAddress);
