@@ -185,3 +185,13 @@ test('customer refund form only appears for completed approved immutable labour 
   assert.match(html, /Math\.round\(Number\(bill\.labour_amount\)\*100\)===Math\.round\(Number\(row\.amount_paid\)\*100\)/);
   assert.match(html, /Promise\.all\(\[loadCustomerRefundHistory\(\),loadCustomerPaymentHistory\(true\)\]\)/);
 });
+
+
+test('customer support attachment partial failure never invites duplicate message resend', () => {
+  assert.match(html, /let pendingUploadPath=null,linkedCount=0,messageCreated=false/);
+  assert.match(html, /messageCreated=true;\s*input\.value=''/);
+  assert.match(html, /if\(messageCreated\)\{\s*fileInput\.value=''/);
+  assert.match(html, /दोबारा भेजते समय केवल बची हुई फ़ाइलें चुनें/);
+  assert.match(html, /संदेश दोबारा न भेजें/);
+  assert.match(html, /if\(pendingUploadPath\)\{await customerSb\.storage\.from\('srk-customer-support'\)\.remove\(\[pendingUploadPath\]\)/);
+});
