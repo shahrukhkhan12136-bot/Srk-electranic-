@@ -3782,6 +3782,20 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Final Real-World Test: इस item के लिए **बाकी**; user के dual-track निर्देश के अनुसार कुल 96/96 वास्तविक परीक्षण अंतिम consolidated batch तक Pending रहेंगे।
 
 
+### 14.1.7 Feature Branch implementation update (13-11-2026)
+- नई migration `20261114070000_customer_safe_idempotent_booking_timeline.sql` में append-only work-event table के लिए `actor_role` और unique transaction-scoped `idempotency_key` जोड़े गए। Event trigger अब customer/electrician/Admin/system actor role निर्धारित करता है और duplicate same-transaction event insert को unique key से रोकता है।
+- पुराने event rows के लिए actor role `unknown` रखा गया; कोई synthetic booking history या अनुमानित timestamp नहीं बनाया गया।
+- Customer-safe SECURITY DEFINER RPC `srk_customer_get_my_booking_work_timeline()` जोड़ा गया। यह केवल `auth.uid()` के customer-owned bookings के event rows लौटाता है; actor IDs और private `details` expose नहीं करता। PUBLIC/anon execute revoke और authenticated grant लागू हैं।
+- `booking.html` अब पुराने `srk_get_customer_booking_timeline()` के बजाय नए RPC से वास्तविक event type, server `occurred_at` और सीमित actor-role label दिखाता है। Event text escaped है; unknown event के लिए केवल generic recorded-change label है। जिन historical bookings में event नहीं है, वहाँ “इतिहास उपलब्ध नहीं” दिखता है; timeline stages गढ़े नहीं जाते।
+- `tests/work-timeline.test.cjs` में 7 source regression checks जोड़े; npm script और source CI workflow में शामिल। नवीनतम source CI Run 43432175734 PASS है।
+- **सीमाएँ:** legacy status-to-event mapping अभी पूर्ण नहीं; event idempotency key transaction-scoped है (external client request key नहीं); customer timeline API/UI source-level है, electrician timeline API अभी नहीं; वास्तविक RLS/RPC/trigger, event ordering under concurrent writes और pgTAP runtime अभी execute नहीं हुए। इसलिए इस item को Verified/Complete नहीं माना जाएगा।
+- Isolated Supabase workflow में नई migration शामिल है, पर workflow अभी dispatch नहीं किया गया। Production migration, Main merge, deployment, payment/payout या customer data परिवर्तन नहीं किए गए। Final consolidated mobile/Desktop QA अभी बाकी है।
+
+### Status and restrictions — updated
+- **14.1.7: In Progress — Feature Branch source implementation added; database/runtime verification Pending.** Unified event table, customer-safe read RPC, actor role, transaction-scoped idempotency key और customer timeline UI जोड़े गए हैं। Legacy transition mapping, electrician-facing timeline, runtime authorization/concurrency verification और pgTAP execution शेष हैं।
+- Source regression verification: **PASS** (Run 43432175734); database/pgTAP verification: **Pending**; final real-world test: **बाकी**।
+
+
 ## 17.117 — 14.1.8 Accepted Booking Phone Visibility Source Audit (2026-11-13)
 
 ### Scope and evidence
