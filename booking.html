@@ -580,6 +580,7 @@ async function loadCustomerBookings() {
       .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .limit(50);
     if (error) throw error;
     if (!data || !data.length) {
