@@ -50,16 +50,16 @@ SELECT is(
   '20000000-0000-4000-8000-000000000001'
  )->>'replayed'),'true','same idempotency key is marked replayed');
 SELECT throws_ok(
- $SELECT public.srk_customer_request_booking_cancellation(
+ $q$SELECT public.srk_customer_request_booking_cancellation(
   '10000000-0000-4000-8000-000000000004',
   'यह उसी key से दूसरी बुकिंग पर गलत अनुरोध है।',
-  '20000000-0000-4000-8000-000000000001')$,
+  '20000000-0000-4000-8000-000000000001')$q$,
  '23505','IDEMPOTENCY_KEY_REUSED_FOR_ANOTHER_BOOKING','idempotency key cannot be reused for another booking');
 SELECT throws_ok(
- $SELECT public.srk_customer_request_booking_cancellation(
+ $q$SELECT public.srk_customer_request_booking_cancellation(
   '10000000-0000-4000-8000-000000000001',
   'ग्राहक ने सेवा की आवश्यकता समाप्त होने के कारण अनुरोध भेजा है।',
-  '20000000-0000-4000-8000-000000000005')$,
+  '20000000-0000-4000-8000-000000000005')$q$,
  '23505','CANCELLATION_REQUEST_ALREADY_OPEN','a second key cannot open a duplicate request');
 SELECT throws_ok(
  $$SELECT public.srk_customer_request_booking_cancellation(
