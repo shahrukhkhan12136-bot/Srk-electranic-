@@ -1614,7 +1614,7 @@ async function syncCustomerSession() {
       await loadCustomerProfile();
     } else {
       customerSessionGeneration++;
-      invalidateCustomerBookingSubmission();
+      invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerWorkStartResponses();invalidateCustomerWorkCompletionResponses();invalidateCustomerPaymentMethodChanges();invalidateCustomerPaymentFlow();
       customerSupportMessageBusy=false;customerSupportComplaintCreateBusy=false;
       const supportSend=document.getElementById('customerSupportSend');supportSend.disabled=false;supportSend.textContent='संदेश / फ़ाइल भेजें';
       const supportCreate=document.getElementById('customerSupportCreate');supportCreate.disabled=false;supportCreate.textContent='शिकायत दर्ज करें';
