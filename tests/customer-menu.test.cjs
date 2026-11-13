@@ -83,7 +83,7 @@ test('support booking selector is populated from only the signed-in customer boo
   assert.match(html, /async function loadCustomerSupportBookings\(reset=true\)/);
   assert.match(html, /\.eq\('customer_user_id',session\.user\.id\)/);
   assert.match(html, /customerSupportBooking/);
-  assert.match(html, /\.limit\(50\)/);
+  assert.match(html, /\.range\(requestedOffset,requestedOffset\+24\)/);
 });
 
 test('new customer complaint is validated and created through the ownership-checking RPC', () => {
