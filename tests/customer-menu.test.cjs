@@ -821,3 +821,19 @@ test('customer mutations stop stale UI work after auth session changes', () => {
   assert.match(html, /supportSend\.disabled=false;supportSend\.textContent='संदेश \/ फ़ाइल भेजें'/);
   assert.match(html, /supportCreate\.disabled=false;supportCreate\.textContent='शिकायत दर्ज करें'/);
 });
+
+
+test('customer booking submission stops stale responses after logout or account switch', () => {
+  assert.match(html, /let customerBookingSubmissionToken=0/);
+  assert.match(html, /function invalidateCustomerBookingSubmission\(\)[\s\S]*?customerBookingSubmissionToken\+\+;customerBookingSubmissionBusy=false/);
+  assert.match(html, /customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\)/);
+  const start=html.indexOf("document.getElementById('booking').addEventListener('submit'");
+  const end=html.indexOf("document.getElementById('newIdenticalBooking').addEventListener",start);
+  const source=html.slice(start,end);
+  assert.match(source, /const operationGeneration=customerSessionGeneration/);
+  assert.match(source, /const operationIsCurrent=\(\)=>operationToken===customerBookingSubmissionToken&&customerSessionOperationIsCurrent\(operationGeneration\)/);
+  assert.match(source, /error:customerSessionError[\s\S]*?if\(!operationIsCurrent\(\)\)return;[\s\S]*?if\(customerSessionError\)throw customerSessionError/);
+  assert.match(source, /await fetch\('\/api\/create-booking'[\s\S]*?if\(!operationIsCurrent\(\)\)return;[\s\S]*?await response\.json\(\)[\s\S]*?if\(!operationIsCurrent\(\)\)return/);
+  assert.match(source, /catch \(err\) \{\s*if\(operationIsCurrent\(\)\)alert/);
+  assert.match(source, /finally \{ if\(operationIsCurrent\(\)\)\{customerBookingSubmissionBusy=false/);
+});
