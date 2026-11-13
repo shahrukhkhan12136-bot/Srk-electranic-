@@ -101,3 +101,16 @@ test('support attachment metadata must match stored object and linked files cann
   assert.match(supportAttachmentMigration, /customer deletes only unlinked support attachments/);
   assert.match(supportAttachmentMigration, /not exists\s*\([\s\S]*?srk_booking_complaint_message_attachments/);
 });
+
+
+test('customer booking history reports partial RPC and labour-bill failures without hiding booking data', () => {
+  assert.match(html, /let customerBookingHistoryLoadSequence=0/);
+  assert.match(html, /const sequence=\+\+customerBookingHistoryLoadSequence/);
+  assert.match(html, /if\(sequence!==customerBookingHistoryLoadSequence\)return/);
+  assert.match(html, /if\(contactsResult\.error\)partialWarnings\.push/);
+  assert.match(html, /if\(timelineResult\.error\)partialWarnings\.push/);
+  assert.match(html, /if\(refundResult\.error\)partialWarnings\.push/);
+  assert.match(html, /if\(error\)billLoadFailures\+\+/);
+  assert.match(html, /कुछ पूरी हुई बुकिंग के अंतिम Labour Bill अभी लोड नहीं हो सके/);
+  assert.match(html, /if\(sequence===customerBookingHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
+});
