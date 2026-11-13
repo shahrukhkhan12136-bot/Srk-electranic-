@@ -38,7 +38,7 @@ jobs:
           node - <<'NODE'
           const fs = require('node:fs');
           const html = fs.readFileSync('admin.html', 'utf8');
-          const scripts = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)].map(x => x[1]).filter(x => x.trim());
+          const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(x => x[1]).filter(x => x.trim());
           for (const script of scripts) new Function(script);
           console.log('Admin inline JavaScript syntax OK');
           NODE
