@@ -64,6 +64,8 @@ begin
 end;
 $function$;
 
+revoke all on function private.srk_capture_booking_offer_event() from public, anon, authenticated;
+
 drop trigger if exists trg_srk_capture_booking_offer_event on public.job_offers;
 create trigger trg_srk_capture_booking_offer_event
 after insert or update of status on public.job_offers
