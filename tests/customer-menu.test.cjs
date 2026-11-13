@@ -374,7 +374,7 @@ test('customer booking history catches session retrieval failures and ignores st
   const source = html.slice(start, end);
   assert.ok(source.indexOf('try {') < source.indexOf('customerSb.auth.getSession()'));
   assert.match(source, /if\(sequence!==customerBookingHistoryLoadSequence\)return;\s*if\(sessionError\)throw sessionError/);
-  assert.match(source, /finally\s*\{\s*if\(sequence===customerBookingHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(source, /finally\s*\{\s*if\(sequence===customerBookingHistoryLoadSequence\)\{[\s\S]*?box\.setAttribute\('aria-busy','false'\)/);
 });
 
 
