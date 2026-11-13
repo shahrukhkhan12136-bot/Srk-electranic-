@@ -883,3 +883,22 @@ test('customer booking history is cleared and stale loads invalidated immediatel
   assert.match(source, /if\(!isCurrent\(\)\)return;[\s\S]*?const partialWarnings/);
   assert.match(source, /if\(!isCurrent\(\)\)return;[\s\S]*?if\(billLoadFailures\)/);
 });
+
+
+test('customer payment and refund history loaders reject stale session responses and invalidate immediately on account changes', () => {
+  for (const [name,startToken,endToken,rpc] of [
+    ['payment','async function loadCustomerPaymentHistory(reset=true)','let customerRefundHistoryLoadSequence','srk_customer_get_payment_history'],
+    ['refund','async function loadCustomerRefundHistory(reset=true)','const customerBookingStatusLabels','srk_customer_list_my_booking_refund_requests']
+  ]) {
+    const start=html.indexOf(startToken),end=html.indexOf(endToken,start);assert.ok(start>=0&&end>start,name+' loader boundaries');
+    const source=html.slice(start,end);
+    assert.match(source,/const generation=customerSessionGeneration/);
+    assert.match(source,/const isCurrent=\(\)=>sequence===.*customerSessionOperationIsCurrent\(generation\)/);
+    assert.match(source,/await customerSb\.auth\.getSession\(\);\s*if\(!isCurrent\(\)\)return;/);
+    assert.ok(source.includes("await customerSb.rpc('"+rpc+"'"));
+    assert.match(source,/if\(!isCurrent\(\)\)return;/);
+    assert.match(source,/if\(isCurrent\(\)\)\{/);
+    assert.match(html,new RegExp('function invalidateCustomer'+(name==='payment'?'Payment':'Refund')+'History\\(\\)[\\s\\S]*?LoadSequence\\+\\+'));
+  }
+  assert.match(html,/customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerBookingHistory\(\);invalidateCustomerPaymentHistory\(\);invalidateCustomerRefundHistory\(\)/);
+});
