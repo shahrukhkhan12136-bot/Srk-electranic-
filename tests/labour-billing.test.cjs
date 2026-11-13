@@ -132,3 +132,21 @@ test("Admin completion review keeps the original request timestamp and customer 
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.srk_customer_respond_work_completion/);
   assert.match(migration, /rate8h_paise,elapsed_seconds,completion_requested_at,billable_minutes/);
 });
+
+
+test("Admin UI exposes completion review only for stopped pending or disputed new-flow work", () => {
+  const admin = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
+  assert.match(admin, /completion_approval_status,completion_requested_at,work_timer_running,work_timer_elapsed_seconds/);
+  assert.match(admin, /\['pending','disputed'\]\.includes\(x\.completion_approval_status\)/);
+  assert.match(admin, /!x\.work_timer_running/);
+  assert.match(admin, /srk_admin_approve_work_completion/);
+  assert.match(admin, /srk_admin_get_booking_work_events/);
+  assert.match(admin, /Admin निर्णय का कारण \(20–1000 अक्षर\)/);
+});
+
+test("Admin work-event history renders server events as text, not injected HTML", () => {
+  const admin = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
+  assert.match(admin, /async function loadAdminWorkEvents/);
+  assert.match(admin, /line\.textContent=when\+/);
+  assert.match(admin, /box\.appendChild\(line\)/);
+});
