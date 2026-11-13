@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const html = fs.readFileSync('booking.html', 'utf8');
+const profileMigration = fs.readFileSync('supabase/migrations/20261113200000_customer_profile_api_and_avatar_security.sql', 'utf8');
 
 test('customer menu keeps the approved five-menu order and accessible tab controls', () => {
   const nav = html.match(/<nav class="customer-menu-nav"[\s\S]*?<\/nav>/)?.[0] || '';
@@ -65,4 +66,16 @@ test('new customer complaint is validated and created through the ownership-chec
   assert.match(html, /COMPLAINT_DAILY_LIMIT_REACHED/);
   assert.match(html, /await loadCustomerSupportComplaints\(\)/);
   assert.match(html, /await loadCustomerSupportMessages\(\)/);
+});
+
+
+test('customer profile reads and writes only through validated owner-scoped RPCs', () => {
+  assert.match(html, /customerSb\.rpc\('srk_customer_get_my_profile'/);
+  assert.match(html, /customerSb\.rpc\('srk_customer_update_my_profile'/);
+  assert.match(profileMigration, /revoke all on public\.srk_customer_profiles from anon, authenticated/);
+  assert.doesNotMatch(profileMigration, /grant\s+(?:select|insert|update|all)[^;]*srk_customer_profiles\s+to\s+authenticated/i);
+  assert.match(profileMigration, /where p\.user_id=v_user_id/);
+  assert.match(profileMigration, /length\(v_name\) < 2 or length\(v_name\) > 120/);
+  assert.match(profileMigration, /u\.phone_confirmed_at is not null/);
+  assert.match(profileMigration, /phone number/i) === undefined;
 });
