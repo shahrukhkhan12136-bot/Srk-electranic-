@@ -607,3 +607,14 @@
 - Verification status: source/migration/test files committed; pgTAP and isolated schema workflow have **not** been executed. No Production schema/data, payment, refund, payout, secret, or deployment changes.
 - Checklist totals remain unchanged (96 points; 0 fully verified). Section 14.1.10 remains Partial/In Progress.
 - Next Customer App task: continue Booking Form and submission contract audit (category/duration, address/PIN validation, date/time, duplicate submission, and confirmation disclosure); then complete customer payment/refund/receipt dependency verification before moving to Electrician Portal.
+
+
+## 2026-11-13 — Customer booking idempotency hardening (follow-up)
+
+- Resolved the previous GitHub contents API version conflict by refreshing the exact branch file SHA and applying the migration update sequentially.
+- Tightened `service_bookings_customer_request_fingerprint_valid`: when an idempotency key is present, the fingerprint must now explicitly be non-NULL and match 64 lowercase hexadecimal characters. This closes PostgreSQL CHECK's NULL/UNKNOWN acceptance edge case.
+- Migration commit: `eef97766eaea08fca0bab7fbfe9cf2d64de3bcfc`.
+- Earlier Customer Booking form update also removed the `Math.random()` fallback for request-key generation; Web Crypto absence now fails closed. Commit: `8dbd6a19a7650f96c55d22f65298f6c7713bd0e3`.
+- Booking page inline JavaScript syntax check passed. Database migration and pgTAP execution, browser/device execution, and live duplicate-submit behavior remain unverified.
+- PIN-to-district authoritative validation and booking date/time cut-off policy remain open; no assumptions or historical data corrections made.
+- Checklist counts unchanged; no Production schema/data changes, deployment, payment, refund, or payout.
