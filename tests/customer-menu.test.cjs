@@ -599,3 +599,9 @@ test('customer booking shows transparent duration estimates for all published la
   assert.match(html, /सामग्री\/parts इसमें शामिल नहीं हैं/);
   assert.match(html, /server-recorded वास्तविक billable minutes/);
 });
+
+
+test('customer booking submit handler contains no unused legacy inspection quote or zero-amount message', () => {
+  assert.doesNotMatch(html, /Quote and final amount are set after electrician inspection/);
+  assert.doesNotMatch(html, /राशि: \$\{amount \? '₹'\+amount : 'अभी तय नहीं'\}/);
+});
