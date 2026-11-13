@@ -2847,3 +2847,41 @@ Audit सीमा: GitHub source/config inspection only। Netlify और Razor
 - अगला कदम: external worker/automation ownership evidence और Netlify/Razorpay live dashboard read-only verification प्राप्त करना; तब तक payment inbox या worker नया न बनाएं।
 
 Security note: Edge Function source contains secret variable names only; secret values were not queried, printed, exported or changed.
+
+
+## 17.74 — Vercel Production/Preview, GitHub Pages और Deployment Branch Lineage Audit (13 Nov 2026)
+
+### A. Vercel project और Production deployment — live metadata verified
+- Vercel team `srk-electranic`, project `srk-electranic-`; connected Git repository `shahrukhkhan12136-bot/Srk-electranic-`।
+- Project ID `prj_AZLN9fhI89k22qY7ZiI8PzsDBYdj`; team ID `team_9faMRH6X4ckmKDWZqPrIn8Sa`।
+- Project metadata में `live=false` दिखा, जबकि Production target का latest deployment state `READY` है। इन दोनों fields का अर्थ समान नहीं मानना; dashboard से custom domain/traffic routing की पुष्टि अलग से आवश्यक है।
+- Latest Production deployment ID `dpl_BaUb7Kpt2LZ1TgNv9TE4J7Pq4bkq`, state `READY`, branch `main`, commit `7f62b622e33e49b0196d0d93febf73049579c281`।
+- Production aliases: `srk-electranic.vercel.app`, `srk-electranic-srk-electranic.vercel.app`, `srk-electranic-git-main-srk-electranic.vercel.app`।
+- Latest Production deployment का commit Feature Branch के नवीनतम audit documentation commits से अलग है। Feature Branch commits के Vercel deployments `READY` हैं, लेकिन उनका `target=null` है; वे Preview deployments हैं, Production promotion नहीं।
+- Vercel project metadata में SSO protection `all_except_custom_domains` enabled है; password protection disabled है। Actual custom-domain exposure/access behavior का browser-level test इस audit में नहीं किया गया।
+- Vercel environment variable metadata query में कोई project env rows नहीं मिलीं और hidden Production env count 0 था। Values decrypt/read नहीं की गईं। यह Vercel env configuration का परिणाम है; Netlify env variables के बारे में कुछ नहीं बताता।
+
+### B. GitHub Pages alternate deployment path
+- Feature Branch और `main` दोनों में `.github/workflows/publish-pages.yml` मौजूद है; SHA `cb45002c2b6bbbf2b0a325477a9e252de5729b0e`।
+- Workflow `gh-pages` branch पर हर push और manual `workflow_dispatch` पर GitHub Pages deploy job चलाने के लिए configured है।
+- Workflow branch से repository root की सभी files GitHub Pages artifact में upload करता है।
+- `gh-pages` branch मौजूद है; वर्तमान branch commit `e61e8652be064d055b7537a485d3db38ae2a9dd6`।
+- Branch tree में customer/admin/electrician HTML, `create-order.js`, `razorpay-webhook.js`, `verify-payment.js`, Netlify adapters, `netlify.toml`, `vercel.json`, `srk-config.js` और Supabase migrations की copies मौजूद हैं।
+- इससे GitHub Pages workflow/branch alternate publishing path के रूप में configured होना सिद्ध होता है; GitHub Pages का वर्तमान published URL, latest successful workflow run या live traffic इस audit में verify नहीं हुआ।
+- GitHub Pages static hosting पर server-side Netlify Function adapters स्वयं execute नहीं होंगे। इसलिए इस branch को payment-capable production backend नहीं मानना चाहिए; stale/duplicate frontend या config exposure का अलग review आवश्यक है।
+
+### C. CI/CD lineage और deployment risk
+- Feature Branch के current `.github/workflows/` में दो workflows हैं: `publish-pages.yml` और `supabase-schema-ci.yml`। कोई GitHub Actions scheduled cron या payment/webhook worker workflow नहीं मिला।
+- `supabase-schema-ci.yml` केवल manual `workflow_dispatch` है और isolated local migration test करता है; Production migrations apply नहीं करता।
+- Vercel Feature Branch auto-builds Preview target पर दिखे; कोई automatic Production promotion प्रमाणित नहीं।
+- GitHub Pages push-triggered deployment अलग alternate publishing route है। इसे Netlify Production target के बराबर नहीं मानें।
+- Netlify अभी भी repository README का घोषित primary target है; Netlify live deployment metadata/logs तथा Razorpay Dashboard webhook configuration इस session में उपलब्ध नहीं हुए।
+
+### D. सुरक्षित अगला कदम
+1. Vercel dashboard में `live=false` status, production domain aliases, SSO/custom domain exposure और project env setup को owner के साथ reconcile करें।
+2. GitHub Actions में `publish-pages.yml` के run history और Pages settings/published URL verify करें।
+3. `gh-pages` पर `srk-config.js` और अन्य copied config files की public exposure review करें; किसी file को बिना secret/content/dependency review हटाएँ नहीं।
+4. Netlify Production deployed commit और Razorpay webhook endpoint/secret configuration का read-only verification अभी भी आवश्यक है।
+5. Master Requirements से बाहर alternate hosting paths को retire करने का निर्णय केवल dependency, domain DNS, traffic, webhook callback और rollback evidence मिलने के बाद लें।
+
+Audit सीमा: Vercel project/deployment metadata और non-decrypted env metadata read-only; GitHub branch/workflow source read-only। कोई Vercel/Netlify/GitHub Pages deployment, alias, DNS, env var, workflow, webhook, database, payment या provider configuration बदला नहीं गया।
