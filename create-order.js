@@ -29,8 +29,15 @@ async function resolvePayableAmountPaise(booking){
 }
 async function findReusableOrder(booking,amountPaise){
  if(!booking.razorpay_order_id||booking.payment_status!=="pending")return null;
- try{const old=await rp("orders/"+encodeURIComponent(booking.razorpay_order_id));if(old.status==="created"&&old.amount===amountPaise&&old.currency==="INR")return old}catch(_){}
- return null;
+ try{
+  const old=await rp("orders/"+encodeURIComponent(booking.razorpay_order_id));
+  if(old.status==="created"){
+   if(old.amount!==amountPaise||old.currency!=="INR"){const e=new Error("Existing Razorpay order does not match current approved amount");e.httpStatus=409;throw e;}
+   return old;
+  }
+  if(old.status==="paid"||old.status==="attempted"){const e=new Error("Existing Razorpay order has a payment attempt; reconciliation required");e.httpStatus=409;throw e;}
+  return null;
+ }catch(e){if(e.status===404)return null;throw e;}
 }
 exports.handler=async event=>{
  if(event.httpMethod!=="POST")return json(405,{success:false,error:"केवल POST अनुरोध स्वीकार है।"});
@@ -62,6 +69,7 @@ exports.handler=async event=>{
   return json(200,{success:true,key_id:RAZORPAY_KEY_ID,order_id:order.id,amount:order.amount,currency:order.currency});
  }catch(e){
   if(e.httpStatus===401||e.httpStatus===403)return json(e.httpStatus,{success:false,error:e.httpStatus===401?"भुगतान के लिए ग्राहक OTP लॉगिन करें।":"यह बुकिंग आपके सत्यापित मोबाइल खाते से जुड़ी नहीं है।"});
+  if(e.httpStatus===409)return json(409,{success:false,error:"पहले से बने पेमेंट ऑर्डर पर भुगतान प्रयास या राशि का अंतर मिला है। Admin जाँच के बाद ही आगे बढ़ें।"});
   console.error("create-order error:",e?.status||e?.name||"Unknown");
   return json(502,{success:false,error:"पेमेंट ऑर्डर नहीं बन पाया। कृपया कुछ देर बाद कोशिश करें।"});
  }finally{
