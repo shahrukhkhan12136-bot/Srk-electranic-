@@ -86,7 +86,7 @@ RETURNS trigger LANGUAGE plpgsql SET search_path=''
 AS $function$
 DECLARE v_allowed text[];
 BEGIN
-  IF NEW.requested_skill_keys IS NULL OR cardinality(NEW.requested_skill_keys)>20
+  IF NEW.requested_skill_keys IS NULL OR cardinality(NEW.requested_skill_keys)>10
      OR array_position(NEW.requested_skill_keys,NULL) IS NOT NULL THEN
     RAISE EXCEPTION 'Invalid requested skill list' USING ERRCODE='22023';
   END IF;
@@ -131,6 +131,10 @@ DROP TRIGGER IF EXISTS srk_guard_electrician_approved_skills ON public.electrici
 CREATE TRIGGER srk_guard_electrician_approved_skills
   BEFORE INSERT OR UPDATE OF approved_skill_keys ON public.electrician_profiles
   FOR EACH ROW EXECUTE FUNCTION public.srk_guard_electrician_approved_skills();
+
+
+REVOKE ALL ON FUNCTION public.srk_validate_electrician_requested_skills() FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.srk_guard_electrician_approved_skills() FROM PUBLIC,anon,authenticated;
 
 CREATE OR REPLACE FUNCTION public.srk_admin_set_electrician_skills(
   p_electrician_profile_id uuid,p_skill_keys text[]
