@@ -1546,3 +1546,5 @@
 - CI follow-up: first run `#43502229767` exposed an overly strict source-test regex (implementation correctly increments the two load sequences with prefix `++`); corrected assertion in test commit `6f171455ef0eabec42ec213be7c5a5ed8e1fd73c`. A fresh workflow run is expected from this test-only commit; earlier run is a test assertion failure, not a runtime/source syntax failure.
 
 - दूसरा CI audit: source suite ने पुराने Auth-listener assertion को पकड़ा, क्योंकि अब उसी listener में `invalidateCustomerProfileAndSavedAddresses()` भी जोड़ा गया है। Regression assertion को नए सुरक्षित listener contract के अनुसार अपडेट किया: `eee6bfecfccfad19abd346a957630a2b78d4ec64`. पिछले failures assertion drift के थे; अंतिम pass अभी प्रतीक्षित है।
+
+- CI follow-up #2: expanded Customer Menu suite ने दो पुराने sequence-only assertions पकड़े; अब वे combined `isCurrent()` session+sequence guard और उसके finally cleanup को verify करते हैं। Test correction commit: `3f39500f1bff35fd0b5e7d92077dce0c0f90ff41`. पहले CI attempts में केवल test expectations fail हुईं; corrected suite का अंतिम परिणाम प्रतीक्षित है।
