@@ -237,3 +237,13 @@ test('customer booking history uses a stable ID tie-breaker for equal creation t
   assert.match(query, /\.order\('created_at',\s*\{\s*ascending:\s*false\s*\}\)/);
   assert.match(query, /\.order\('id',\s*\{\s*ascending:\s*false\s*\}\)/);
 });
+
+
+test('customer refund history RPC has stable ordering and exposes no private admin/provider fields', () => {
+  const source = fs.readFileSync('supabase/migrations/20261113235900_harden_customer_cancellation_and_safe_refund_history.sql', 'utf8');
+  const fn = source.slice(source.indexOf('create or replace function public.srk_customer_list_my_booking_refund_requests'));
+  assert.match(fn, /where r\.customer_user_id = auth\.uid\(\)/i);
+  assert.match(fn, /order by r\.created_at desc, r\.id desc/i);
+  assert.match(fn, /limit 100/i);
+  assert.doesNotMatch(fn, /admin_note|razorpay_payment_id|refund_record_id|provider_response/i);
+});
