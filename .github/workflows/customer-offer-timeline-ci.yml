@@ -1,0 +1,35 @@
+name: Customer Offer Timeline Source Regression
+
+on:
+  push:
+    branches:
+      - feature/platform-fee-cash-online-cycle
+    paths:
+      - 'booking.html'
+      - 'package.json'
+      - 'tests/customer-offer-timeline.test.cjs'
+      - 'supabase/migrations/20261114230000_customer_safe_offer_timeline.sql'
+      - '.github/workflows/customer-offer-timeline-ci.yml'
+  pull_request:
+    paths:
+      - 'booking.html'
+      - 'package.json'
+      - 'tests/customer-offer-timeline.test.cjs'
+      - 'supabase/migrations/20261114230000_customer_safe_offer_timeline.sql'
+      - '.github/workflows/customer-offer-timeline-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: npm run test:customer-offer-timeline
+      - name: Check migration is not wired to Production deployment
+        run: |
+          ! grep -R "supabase db push\|supabase migration up" .github/workflows
