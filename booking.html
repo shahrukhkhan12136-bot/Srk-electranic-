@@ -1016,6 +1016,8 @@ function invalidateCustomerProfileAndSavedAddresses(){
  customerSavedAddresses=[];editingSavedAddressId=null;
  const select=document.getElementById('savedAddressSelect');
  if(select){select.replaceChildren(new Option('नया पता इस्तेमाल करें',''));select.disabled=false;}
+ const saveButton=document.getElementById('saveCurrentAddress');if(saveButton){saveButton.disabled=false;saveButton.textContent='यह पता सेव करें';}
+ for(const id of ['editSavedAddress','deleteSavedAddress','setDefaultSavedAddress']){const control=document.getElementById(id);if(control)control.disabled=false;}
  setSavedAddressStatus('लॉगिन बदल गया है। सेव किए गए पते फिर से लोड किए जा रहे हैं।');
 }
 async function loadCustomerProfile() {
@@ -1162,6 +1164,8 @@ async function loadCustomerSavedAddresses(options = {}) {
  finally {if(isCurrent())select.disabled=false;}
 }
 async function saveCurrentBookingAddress() {
+ const generation=customerSessionGeneration;
+ if(!customerSb)return;
  const button=document.getElementById('saveCurrentAddress');
  if(button.disabled) return;
  const select=document.getElementById('savedAddressSelect');
@@ -1171,6 +1175,7 @@ async function saveCurrentBookingAddress() {
  button.disabled=true;select.disabled=true;editButton.disabled=true;button.textContent='पता सेव हो रहा है…';
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(!customerSessionOperationIsCurrent(generation))return;
   if(sessionError)throw sessionError;
   if(!sessionData?.session)throw new Error('पता सेव करने के लिए पहले OTP लॉगिन करें।');
   const editingAddress=editingSavedAddressId?customerSavedAddresses.find(a=>a.id===editingSavedAddressId):null;
@@ -1182,13 +1187,15 @@ async function saveCurrentBookingAddress() {
    p_location_lng:value('bookingLng')?Number(value('bookingLng')):null,
    p_is_default:editingAddress?.is_default===true
   });
+  if(!customerSessionOperationIsCurrent(generation))return;
   if(error) throw error;
   const refreshed=await loadCustomerSavedAddresses();
+  if(!customerSessionOperationIsCurrent(generation))return;
   document.getElementById('savedAddressSelect').value=data;
   editingSavedAddressId=null;
   setSavedAddressStatus(refreshed&&customerSavedAddresses.some(a=>a.id===data)?'पता सफलतापूर्वक सेव हो गया।':'पता सेव हो गया है, लेकिन सेव किए गए पतों की सूची अभी रीफ़्रेश नहीं हो सकी। दोबारा लोड करें।',!refreshed||!customerSavedAddresses.some(a=>a.id===data));
- } catch(e) {setSavedAddressStatus(e.message==='ADDRESS_LIMIT_REACHED'?'अधिकतम 10 पते सेव हो सकते हैं। पहले कोई पुराना पता हटाना होगा.':'पता सेव नहीं हो सका। '+(e.message||''),true);}
- finally {button.disabled=false;select.disabled=selectWasDisabled;editButton.disabled=editWasDisabled;button.textContent='यह पता सेव करें';}
+ } catch(e) {if(customerSessionOperationIsCurrent(generation))setSavedAddressStatus(e.message==='ADDRESS_LIMIT_REACHED'?'अधिकतम 10 पते सेव हो सकते हैं। पहले कोई पुराना पता हटाना होगा.':'पता सेव नहीं हो सका। '+(e.message||''),true);}
+ finally {if(customerSessionOperationIsCurrent(generation)){button.disabled=false;select.disabled=selectWasDisabled;editButton.disabled=editWasDisabled;button.textContent='यह पता सेव करें';}}
 }
 function editSelectedSavedAddress() {
  const id=document.getElementById('savedAddressSelect').value;
@@ -1217,11 +1224,14 @@ function editSelectedSavedAddress() {
  document.getElementById('address').scrollIntoView({behavior:'smooth',block:'center'});
 }
 async function deleteSelectedSavedAddress() {
+ const generation=customerSessionGeneration;
+ if(!customerSb)return;
  const id=document.getElementById('savedAddressSelect').value;
  if(!id){setSavedAddressStatus('हटाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
  const a=customerSavedAddresses.find(x=>x.id===id);
  if(!a)return;
  if(!confirm('क्या आप यह सेव किया हुआ पता हमेशा के लिए हटाना चाहते हैं? पहले की बुकिंग पर इसका असर नहीं होगा。'))return;
+ if(!customerSessionOperationIsCurrent(generation))return;
  const button=document.getElementById('deleteSavedAddress');
  const select=document.getElementById('savedAddressSelect');
  if(button.disabled)return;
@@ -1229,16 +1239,20 @@ async function deleteSelectedSavedAddress() {
  button.disabled=true;select.disabled=true;
  try {
   const {data,error}=await customerSb.rpc('srk_customer_delete_my_saved_address',{p_id:id});
+  if(!customerSessionOperationIsCurrent(generation))return;
   if(error)throw error;
   if(data!==true)throw new Error('ADDRESS_NOT_FOUND');
   editingSavedAddressId=null;
   const refreshed=await loadCustomerSavedAddresses();
+  if(!customerSessionOperationIsCurrent(generation))return;
   document.getElementById('savedAddressSelect').value='';
   setSavedAddressStatus(refreshed&&!customerSavedAddresses.some(item=>item.id===id)?'पता हटा दिया गया है। पुरानी बुकिंग का पता सुरक्षित है।':'पता हटाने का अनुरोध सफल हुआ, लेकिन सूची अभी रीफ़्रेश नहीं हो सकी। दोबारा लोड करके स्थिति जाँचें।',!refreshed||customerSavedAddresses.some(item=>item.id===id));
- } catch(e){setSavedAddressStatus('पता नहीं हट सका। '+(e.message||''),true);}
- finally{button.disabled=false;select.disabled=selectWasDisabled;}
+ } catch(e){if(customerSessionOperationIsCurrent(generation))setSavedAddressStatus('पता नहीं हट सका। '+(e.message||''),true);}
+ finally{if(customerSessionOperationIsCurrent(generation)){button.disabled=false;select.disabled=selectWasDisabled;}}
 }
 async function makeSelectedAddressDefault() {
+ const generation=customerSessionGeneration;
+ if(!customerSb)return;
  const id=document.getElementById('savedAddressSelect').value;
  const a=customerSavedAddresses.find(x=>x.id===id);
  if(!a){setSavedAddressStatus('डिफ़ॉल्ट बनाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
@@ -1253,13 +1267,15 @@ async function makeSelectedAddressDefault() {
    p_landmark:a.landmark,p_pincode:a.pincode,p_district:a.district,p_state:a.state,
    p_location_lat:a.location_lat,p_location_lng:a.location_lng,p_is_default:true
   });
+  if(!customerSessionOperationIsCurrent(generation))return;
   if(error)throw error;
   const refreshed=await loadCustomerSavedAddresses();
+  if(!customerSessionOperationIsCurrent(generation))return;
   document.getElementById('savedAddressSelect').value=a.id;
   const defaultConfirmed=refreshed&&customerSavedAddresses.some(item=>item.id===a.id&&item.is_default===true);
   setSavedAddressStatus(defaultConfirmed?'डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।':'डिफ़ॉल्ट पता अपडेट हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी। दोबारा लोड करके पुष्टि करें।',!defaultConfirmed);
- } catch(e){setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
- finally{button.disabled=false;select.disabled=selectWasDisabled;}
+ } catch(e){if(customerSessionOperationIsCurrent(generation))setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
+ finally{if(customerSessionOperationIsCurrent(generation)){button.disabled=false;select.disabled=selectWasDisabled;}}
 }
 let customerSupportComplaints = [];
 let customerSupportSelectedId = null;
