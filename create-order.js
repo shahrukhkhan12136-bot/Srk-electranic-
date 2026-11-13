@@ -60,8 +60,7 @@ exports.handler=async event=>{
    amount=await resolvePayableAmountPaise(booking);
    order=await findReusableOrder(booking,amount);
    if(!order)order=await rp("orders",{method:"POST",body:JSON.stringify({amount,currency:"INR",receipt:bookingId.slice(0,40),notes:{booking_id:bookingId,service:"SRK ELECTRONIC",billing:"labour_only"}})});
-   const saved=await db("service_bookings?id=eq."+encodeURIComponent(bookingId),{method:"PATCH",body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})});
-   if(!Array.isArray(saved)||saved.length!==1)throw new Error("Payment order could not be linked to booking");
+   await db("rpc/srk_link_payment_order",{method:"POST",body:JSON.stringify({p_booking_id:bookingId,p_lock_token:lockToken,p_razorpay_order_id:order.id,p_amount_paise:amount})});
   }
   return json(200,{success:true,key_id:RAZORPAY_KEY_ID,order_id:order.id,amount:order.amount,currency:order.currency});
  }catch(e){
