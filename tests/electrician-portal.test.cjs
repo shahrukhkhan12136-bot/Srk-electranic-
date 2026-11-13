@@ -20,6 +20,16 @@ test('profile panel shows only an internal partner reference and honestly disclo
   assert.ok(!html.includes('सरकारी पहचान-पत्र जारी'));
 });
 
+test('electrician KYC upload uses private bucket, strict MIME/size checks and server registration RPC', () => {
+  assert.ok(html.includes("sb.storage.from('srk-electrician-verification').upload(path,file,{upsert:false,contentType:file.type})"));
+  assert.ok(html.includes("file.size>5242880"));
+  assert.ok(html.includes("srk_electrician_submit_verification_document"));
+  assert.ok(html.includes("srk_electrician_list_my_verification_documents"));
+  assert.ok(html.includes("crypto.randomUUID()"));
+  assert.ok(html.includes("await sb.storage.from('srk-electrician-verification').remove([path])"));
+  assert.ok(html.includes('दस्तावेज़ की वैधता/expiry अभी सिस्टम में track नहीं होती'));
+});
+
 test('electrician verification state is rendered as text, never stored HTML', () => {
   assert.ok(html.includes("stateEl.textContent="));
   assert.ok(html.includes("stateEl.className=p.active?'good':'bad'"));
