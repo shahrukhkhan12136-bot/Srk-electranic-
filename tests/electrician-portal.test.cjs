@@ -114,3 +114,9 @@ test('historical offer-detail migrations never reveal assigned customer contact 
     assert.ok(!/CASE WHEN b\.assigned_electrician_id\s*=\s*p\.id THEN/i.test(sql), name + ' must not expose contacts based on assignment alone');
   }
 });
+
+test('wallet SECURITY DEFINER RPCs pin search_path to trusted schemas', () => {
+  const wallet = fs.readFileSync('supabase/migrations/20261109010000_create_secure_wallet_ledger_foundation.sql', 'utf8');
+  assert.equal((wallet.match(/set search_path = pg_catalog, public, auth, pg_temp/gi)||[]).length, 2);
+  assert.ok(!/set search_path = public, pg_temp/i.test(wallet));
+});
