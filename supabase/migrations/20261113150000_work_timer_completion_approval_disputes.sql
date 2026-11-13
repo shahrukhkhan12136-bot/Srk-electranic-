@@ -22,6 +22,15 @@ ALTER TABLE public.service_bookings
   );
 
 ALTER TABLE public.service_bookings
+  DROP CONSTRAINT IF EXISTS service_bookings_assignment_status_requires_electrician;
+ALTER TABLE public.service_bookings
+  ADD CONSTRAINT service_bookings_assignment_status_requires_electrician CHECK (
+    status <> ALL (ARRAY['assigned','inspection','awaiting_quote_approval','quote_approved',
+      'awaiting_work_start_approval','quote_rejected','in_progress','completed'])
+    OR assigned_electrician_id IS NOT NULL
+  );
+
+ALTER TABLE public.service_bookings
   ADD CONSTRAINT service_bookings_work_start_approval_check
     CHECK (work_start_approval_status IN ('not_requested','pending','approved','rejected')),
   ADD CONSTRAINT service_bookings_completion_approval_check
@@ -243,3 +252,58 @@ GRANT EXECUTE ON FUNCTION public.srk_customer_respond_work_completion(uuid,text,
 GRANT EXECUTE ON FUNCTION public.srk_admin_resolve_work_dispute(uuid,text,text) TO authenticated;
 REVOKE ALL ON FUNCTION public.srk_update_booking_work_status(uuid,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_update_booking_work_status(uuid,text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_electrician_get_work_control(p_booking_id uuid)
+RETURNS TABLE(
+  booking_id uuid,status text,work_start_approval_status text,
+  completion_approval_status text,work_started_at timestamptz,
+  work_timer_seconds integer,work_timer_running boolean,completion_requested_at timestamptz
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_profile_id uuid;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  SELECT id INTO v_profile_id FROM public.electrician_profiles
+   WHERE (user_id=auth.uid() OR auth_user_id=auth.uid())
+     AND verification_status='approved' AND active=true
+   ORDER BY created_at DESC LIMIT 1;
+  IF v_profile_id IS NULL THEN RAISE EXCEPTION 'Approved active electrician required' USING ERRCODE='42501'; END IF;
+  RETURN QUERY SELECT b.id,b.status,b.work_start_approval_status,b.completion_approval_status,
+    b.work_started_at,b.work_timer_seconds,b.work_timer_running,b.completion_requested_at
+  FROM public.service_bookings b
+  WHERE b.id=p_booking_id AND b.assigned_electrician_id=v_profile_id;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_list_work_disputes(p_limit integer DEFAULT 100)
+RETURNS TABLE(
+  booking_id uuid,complaint_id uuid,customer_name text,customer_phone text,
+  service_type text,description text,work_timer_seconds integer,completion_requested_at timestamptz,
+  complaint_status text,created_at timestamptz
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin permission required' USING ERRCODE='42501';
+  END IF;
+  RETURN QUERY SELECT b.id,c.id,b.customer_name,b.phone,b.service_type,c.description,
+    b.work_timer_seconds,b.completion_requested_at,c.status,c.created_at
+  FROM public.service_bookings b
+  JOIN public.srk_booking_complaints c ON c.booking_id=b.id
+  WHERE b.completion_approval_status='disputed'
+    AND c.category='service_quality'
+    AND c.description LIKE 'काम पूरा होने पर विवाद:%'
+    AND c.status IN ('new','in_review')
+  ORDER BY c.created_at DESC
+  LIMIT GREATEST(1,LEAST(COALESCE(p_limit,100),300));
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.srk_electrician_get_work_control(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_electrician_get_work_control(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.srk_admin_list_work_disputes(integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_list_work_disputes(integer) TO authenticated;
