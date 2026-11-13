@@ -3227,3 +3227,31 @@ Audit सीमा: पहले checklist item का source-level inspection �
 1. Supabase Dashboard के Authentication settings में OTP expiry और SMS/Auth rate limits की read-only पुष्टि आवश्यक है।
 2. Dashboard access उपलब्ध होने के बाद sanitized setting names/values और verification date दर्ज करें; secrets या OTP values नहीं।
 3. फिर Feature Branch में missing server/provider enforcement, session/logout और verified-phone binding का scoped implementation plan तथा automated tests तैयार करें।
+
+
+## 17.86 — Master Checklist Item 14.1.1: Standalone Customer Login Session Status and Logout UI Change (13 Nov 2026)
+
+### Implementation
+- Feature Branch file `customer-login.html` में existing customer OTP flow को रखते हुए session status panel जोड़ा।
+- Page load पर `auth.getSession()` से वर्तमान session state पढ़ी जाती है; logged-in होने पर verified phone (यदि उपलब्ध) दिखता है और send/verify buttons disable होते हैं।
+- `auth.onAuthStateChange()` listener से session state UI sync होती है।
+- “सुरक्षित लॉगआउट” button `auth.signOut()` चलाता है; success पर OTP input और phone input साफ होते हैं और session panel refresh होता है।
+- Logout failure पर generic error message दिखता है; raw provider error या credentials user को प्रदर्शित नहीं किए जाते।
+- यह UI/session SDK integration change है; इससे server-side OTP limits, OTP expiry, Auth provider policy या सभी devices पर revocation का स्वतंत्र runtime प्रमाण नहीं मिलता।
+
+### Save and verification
+- File commit: `0b220d27c0ceea8216da97395694949e73d5c63d`
+- Updated blob SHA: `a0e261ee7eda3d3378074425bb83fe2837032149`
+- GitHub से file दोबारा fetch करके panel, session sync, signOut call, auth state listener और closing HTML tag verify किए।
+- Embedded JavaScript को V8 `new Function` syntax compilation से जाँचा: 1 script, syntax PASS.
+- Static checks: session panel 1, logout button 1, signOut call 1, auth state listener present.
+
+### अभी बाकी परीक्षण
+- Real browser/device पर existing session, page reload, successful logout, logout error, दूसरे tab में session change और protected booking API access tests नहीं चले।
+- Supabase Auth server/provider expiry, resend/verify rate limits, wrong-attempt throttling और abuse protection अभी unverified हैं।
+- Booking page और standalone page के cross-page session behavior तथा verified session phone बनाम booking phone binding का E2E test बाकी है।
+- इसलिए checklist item 14.1.1 **In Progress** रहेगा; Verified Complete नहीं।
+
+### Change boundary
+- केवल Feature Branch `customer-login.html` बदला गया।
+- Production database/Auth settings, secrets, SMS provider, customer records/sessions, payments और deployment में कोई बदलाव नहीं।
