@@ -207,3 +207,9 @@ test('customer booking history localizes payment states including refunded', () 
   assert.match(html, /pending:'भुगतान लंबित'/);
   assert.match(html, /const paymentLabel=customerBookingPaymentStatusText\(row\.payment_status\)/);
 });
+
+
+test('customer payment history does not duplicate audited manual payment summary rows', () => {
+  assert.match(customerPaymentHistoryMigration, /not exists\s*\(\s*select 1 from public\.srk_manual_payment_entries mp\s*where mp\.booking_id=b\.id\s*\)/i);
+  assert.match(customerPaymentHistoryMigration, /from public\.srk_manual_payment_entries mp\s*join customer_bookings b on b\.id = mp\.booking_id/i);
+});
