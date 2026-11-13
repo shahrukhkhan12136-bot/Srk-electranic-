@@ -1009,3 +1009,10 @@
 
 
 - Saved-address save-lock regression workflow `43475524612` failed only because an older Auth-recovery assertion expected the pre-lock `finally` text. The application implementation was not implicated: the actual `finally` correctly restores the prior disabled states of the selector and Edit button. Updated the stale assertion to match that behavior in test commit `499122a02039c8632305917079cbfef99f64cf66`. A fresh CI result has not yet been confirmed; do not mark the save-lock suite passed until the new run succeeds. No production, database, or live customer-data changes.
+
+
+## Customer payment-history pagination concurrency guard — 2026-11-13
+
+- Source review found `customerPaymentHistoryBusy` was declared but not used. Rapid repeated taps on “और रिकॉर्ड देखें” could start overlapping requests for the same offset and append duplicate payment-history rows.
+- `loadCustomerPaymentHistory(false)` now exits when another payment-history request is active. During a request, More and Refresh controls are disabled; only the latest request sequence restores them and clears the busy state. A deliberate Refresh can supersede an older pagination request, while stale responses remain prevented from rendering. Offset advances only after the latest successful response.
+- Source regression coverage added for duplicate-load prevention, control locking/restoration, offset advancement and stale-response guard. Commits: app `8e61d0c93d5dd188352997860ed0091d1e1a4795`; test `203de11687a7388fe5448c965f933cda12aa2246`. CI result pending; do not mark source suite passed until a successful run is confirmed. No SQL/Production changes, browser test, or mobile/Desktop QA.
