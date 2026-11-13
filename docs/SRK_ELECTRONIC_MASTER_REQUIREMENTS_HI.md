@@ -3517,3 +3517,15 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - CI सफलता केवल मौजूदा `tests/otp-source.test.cjs` source regression suite के सफल workflow execution को दर्शाती है। यह वास्तविक OTP SMS delivery/expiry, Supabase Auth Production settings, server-side abuse limits, CAPTCHA, wrong-attempt lockout, browser/device session lifecycle या live logout revocation का प्रमाण नहीं है।
 - **14.1.1 का status: In Progress** रहेगा; पाँच सफल CI runs के बावजूद Auth configuration और स्वीकृत runtime/E2E verification बाकी हैं।
 - इस evidence update में कोई application source, workflow, package, Supabase Auth/DB setting, secret, SMS/provider request, customer account/session, payment या deployment नहीं बदला।
+
+
+## 17.104 — Customer OTP Source Regression Tests: छठे GitHub Actions Run की UI पुष्टि (13 नवम्बर 2026)
+
+- Checklist item: **14.1.1**। उपयोगकर्ता ने workflow Runs सूची का नया snapshot साझा किया, जिसमें `Customer OTP source regression tests` के **6 workflow runs** दिखे; सभी छह का status **completed successfully** है।
+- नया **Run #6**: commit `02bc05b`, message `docs: record five successful customer OTP workflow runs`, branch `feature/platform-fee-cash-online-cycle`, लगभग **15 seconds**।
+- पहले के Runs #1–#5 भी उसी सूची में successful दिखे; उनके विवरण Section 17.103 में दर्ज हैं।
+- यह छठा सफल workflow execution है; इसे अलग test suite या OTP के छह अलग security/runtime scenarios की पुष्टि नहीं माना जाएगा।
+- Run #5 के summary में पहले दिखे **1 warning और 1 notice** के वास्तविक annotation messages अभी भी उपलब्ध नहीं हैं। इस नए Runs-list snapshot में annotation details नहीं हैं; उन्हें देखकर ही कारण/गंभीरता तय होगी।
+- CI success केवल workflow के configured source regression suite के सफल execution को दर्शाती है; वास्तविक SMS delivery/OTP expiry, Production Auth configuration, server-side abuse limits, CAPTCHA, wrong-attempt lockout, browser/device session lifecycle या live logout revocation का प्रमाण नहीं है।
+- **14.1.1 status: In Progress**। Auth configuration और स्वीकृत runtime/E2E verification लंबित हैं।
+- इस रिकॉर्ड update में application source, workflow, package, Supabase Auth/DB setting, secret, SMS/provider request, customer account/session, payment या deployment नहीं बदला।
