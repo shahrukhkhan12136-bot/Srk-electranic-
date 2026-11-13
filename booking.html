@@ -443,19 +443,6 @@ async function customerRespondWorkCompletion(bookingId,response){
   alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग की वर्तमान स्थिति रीफ़्रेश करके दोबारा कोशिश करें।');
  }
 }
-async function customerCancelBooking(bookingId){
- if(!customerSb)return;
- if(!confirm('क्या आप इस बुकिंग को रद्द करना चाहते हैं? यह सुविधा केवल बिना भुगतान और बिना इलेक्ट्रिशियन असाइन हुई बुकिंग के लिए है।'))return;
- try{
-  const {data,error}=await customerSb.rpc('srk_customer_cancel_my_booking',{p_booking_id:bookingId});
-  if(error)throw error;
-  if(!data?.success)throw new Error('Cancellation was not confirmed');
-  alert('आपकी बुकिंग रद्द कर दी गई है।');
-  await loadCustomerBookings();
- }catch(error){
-  alert('बुकिंग रद्द नहीं हो सकी। यदि भुगतान लंबित/सत्यापित है या इलेक्ट्रिशियन असाइन हो चुका है, तो सहायता टीम से संपर्क करें।');
- }
-}
 async function customerSubmitBookingRefund(bookingId){
  if(!customerSb)return;
  const reasonEl=document.getElementById('customerRefundReason_'+bookingId);
@@ -534,13 +521,8 @@ async function loadCustomerBookings() {
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
       const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
-      const canCancel=['new','confirmed'].includes(row.status)
-        && !row.assigned_electrician_id
-        && ['unpaid','failed'].includes(String(row.payment_status||'unpaid').toLowerCase())
-        && Number(row.amount_paid||0)===0
-        && !row.payment_verified_at;
-      const cancelMarkup=canCancel
-        ? '<button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\')">बुकिंग रद्द करें</button>'
+      const cancellationInfo=!['completed','cancelled'].includes(row.status)
+        ? '<p class="small">बुकिंग रद्द कराने के लिए Help & Support में अनुरोध भेजें। रद्द करने का अंतिम निर्णय Admin करेगा।</p>'
         : '';
       const refund=refundMap.get(row.id);
       const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
@@ -587,7 +569,7 @@ async function loadCustomerBookings() {
       (row.payment_status === 'paid' && row.amount_paid != null && row.payment_verified_at ? '<p><b>सत्यापित भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
       '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
       (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (row.status === 'completed' ? '<p class="small">काम पूरा हो चुका है। इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा।</p>' : (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>')) : '') +
-      labourMarkup+completionMarkup+cancelMarkup+refundMarkup+
+      labourMarkup+completionMarkup+cancellationInfo+refundMarkup+
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
