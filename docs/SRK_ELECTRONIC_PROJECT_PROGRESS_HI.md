@@ -819,3 +819,11 @@
 - `tests/customer-menu.test.cjs` में partial attachment failure, no duplicate resend, linked-count recovery prompt, and cleanup failure warning source assertions जोड़े।
 - Source Regression Run #43468150124 — success on commit `0c0e858bbc25f650764439a1675c8942c7e70984`; latest Source Regression Run #43468291002 — success on commit `82c165155de72c4bc3869a5378944dc42d56336f`; Refund source regression Run #43468267240 — success on `a127bce5ff250da7656593f04c71513c6c3d40d7`.
 - Multi-file upload अभी भी एक atomic transaction नहीं है; पहले से linked attachments सुरक्षित रहते हैं और शेष को अलग से resend करना पड़ता है। Storage/RPC runtime, real signed URL, network-failure cleanup, RLS/IDOR, and final mobile/Desktop QA अभी नहीं हुए। No Production change/deployment.
+
+
+## 2026-11-13 — Customer Profile avatar cleanup error visibility
+
+- Profile save flow में नई avatar upload सफल होने के बाद profile RPC fail हो और नई file cleanup भी fail हो, तो पहले cleanup warning set होती थी लेकिन outer catch उसे generic save error से overwrite कर देता था। इस कारण संभावित orphan avatar की सफाई समस्या ग्राहक को दिखाई नहीं देती थी।
+- अब `uploadCleanupFailed` flag cleanup result को outer catch तक सुरक्षित रखता है और final error में स्पष्ट बताता है कि नई अपलोड फोटो की सफाई पूरी नहीं हुई; सहायता लें। Existing successful profile save + preview failure और old-avatar cleanup warning behavior कायम।
+- `tests/customer-menu.test.cjs` में cleanup warning persistence regression जोड़ा। Source Regression Run #43468563874 — success on commit `3b56ff6f7872ab86c0e0de76a4c4716c40615e47`; Refund source regression Run #43468542234 — success on commit `5d53538a5fb8f3bc87b1b7c6aa10af3d7e1a73e3`.
+- यह source-only verification है; actual Storage cleanup failure, signed URL, avatar upload, Supabase RPC/JWT and SQL pgTAP अभी runtime tested नहीं। No Production changes/deployment.
