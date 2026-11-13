@@ -160,7 +160,7 @@ test('customer payment and refund history refreshes safely and only verified pay
 
 test('customer payment history pagination prevents duplicate loads and restores controls only for latest request', () => {
   const start=html.indexOf('async function loadCustomerPaymentHistory(reset=true)');
-  const end=html.indexOf('\\nlet customerRefundHistoryLoadSequence',start);
+  const end=html.indexOf('let customerRefundHistoryLoadSequence',start);
   const source=html.slice(start,end);
   assert.match(source,/if\(!customerSb\|\|\(!reset&&customerPaymentHistoryBusy\)\)return/);
   assert.ok(source.includes('customerPaymentHistoryBusy=true;')&&source.includes('more.disabled=true;')&&source.includes('refresh.disabled=true;'));
@@ -174,16 +174,16 @@ test('customer payment history pagination prevents duplicate loads and restores 
 
 test('customer history retries clear stale warnings and invalid payment timestamps render safely', () => {
   const paymentStart=html.indexOf('async function loadCustomerPaymentHistory(reset=true)');
-  const paymentEnd=html.indexOf('\\nlet customerRefundHistoryLoadSequence',paymentStart);
+  const paymentEnd=html.indexOf('let customerRefundHistoryLoadSequence',paymentStart);
   const payment=html.slice(paymentStart,paymentEnd);
   assert.match(payment,/const dateValue=row\.occurred_at\?new Date\(row\.occurred_at\):null/);
   assert.match(payment,/!Number\.isNaN\(dateValue\.getTime\(\)\)/);
   assert.match(payment,/box\.querySelector\('\[data-payment-history-load-warning\]'\)\?\.remove\(\)/);
   const refundStart=html.indexOf('async function loadCustomerRefundHistory(reset=true)');
-  const refundEnd=html.indexOf('\\nconst customerBookingStatusLabels',refundStart);
+  const refundEnd=html.indexOf('const customerBookingStatusLabels',refundStart);
   assert.match(html.slice(refundStart,refundEnd),/box\.querySelector\('\[data-refund-history-load-warning\]'\)\?\.remove\(\)/);
   const bookingStart=html.indexOf('async function loadCustomerBookings(reset=true)');
-  const bookingEnd=html.indexOf('\\nasync function customerRespondWorkStart',bookingStart);
+  const bookingEnd=html.indexOf('async function customerRespondWorkStart',bookingStart);
   assert.match(html.slice(bookingStart,bookingEnd),/box\.querySelector\('\[data-booking-history-load-warning\]'\)\?\.remove\(\)/);
 });
 
@@ -419,7 +419,7 @@ test('customer support complaint list refresh is serialized and stale results ca
   assert.match(html,/let customerSupportComplaintsLoadSequence=0/);
   assert.match(html,/let customerSupportComplaintsBusy=false/);
   const start=html.indexOf('async function loadCustomerSupportComplaints()');
-  const end=html.indexOf('\\nlet customerSupportThreadLoadSequence',start);
+  const end=html.indexOf('let customerSupportThreadLoadSequence',start);
   const source=html.slice(start,end);
   assert.match(source,/if\(customerSupportComplaintsBusy\)return/);
   assert.match(source,/customerSupportComplaintsBusy=true/);
