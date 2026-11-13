@@ -653,3 +653,375 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_service_get_labour_bill_for_payment(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.srk_service_get_labour_bill_for_payment(uuid) TO service_role;
 
+
+
+-- New categorized bookings settle only the immutable labour bill snapshot.
+-- Legacy NULL-category bookings retain their audited quote-based compatibility path.
+CREATE OR REPLACE FUNCTION public.srk_electrician_confirm_cash_payment(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_uid uuid:=auth.uid();
+  v_booking public.service_bookings%ROWTYPE;
+  v_bill public.srk_booking_labour_bills%ROWTYPE;
+  v_reference text;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  SELECT b.* INTO v_booking
+  FROM public.service_bookings b
+  JOIN public.electrician_profiles p ON p.id=b.assigned_electrician_id
+  WHERE b.id=p_booking_id AND (p.user_id=v_uid OR p.auth_user_id=v_uid)
+    AND p.verification_status='approved' AND p.active=true
+  FOR UPDATE OF b;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Assigned booking not found' USING ERRCODE='42501'; END IF;
+  IF v_booking.status<>'completed' THEN RAISE EXCEPTION 'Cash can only be confirmed after work is completed'; END IF;
+  IF lower(coalesce(v_booking.payment_method,'')) NOT IN ('cash','नकद (cash)','नकद') THEN
+    RAISE EXCEPTION 'This booking is not marked for cash payment';
+  END IF;
+  IF v_booking.payment_status='paid' THEN
+    IF v_booking.selected_category IS NOT NULL THEN
+      SELECT * INTO v_bill FROM public.srk_booking_labour_bills WHERE booking_id=p_booking_id;
+      IF NOT FOUND OR round(coalesce(v_booking.amount_paid,0),2)<>v_bill.labour_amount THEN
+        RAISE EXCEPTION 'Paid amount does not reconcile with final labour bill';
+      END IF;
+    END IF;
+    RETURN jsonb_build_object('success',true,'already_paid',true);
+  END IF;
+  IF v_booking.payment_status NOT IN ('unpaid','pending') THEN
+    RAISE EXCEPTION 'Payment state does not allow cash confirmation';
+  END IF;
+
+  IF v_booking.selected_category IS NOT NULL THEN
+    IF v_booking.completion_approval_status<>'approved' THEN
+      RAISE EXCEPTION 'Customer-approved completion is required';
+    END IF;
+    SELECT * INTO v_bill FROM public.srk_booking_labour_bills WHERE booking_id=p_booking_id;
+    IF NOT FOUND OR v_bill.labour_amount<1 OR v_bill.labour_amount>10000000 THEN
+      RAISE EXCEPTION 'Verified final labour bill is missing or invalid';
+    END IF;
+    IF EXISTS(SELECT 1 FROM public.srk_manual_payment_entries e WHERE e.booking_id=p_booking_id) THEN
+      RAISE EXCEPTION 'A payment entry already exists; Admin reconciliation required';
+    END IF;
+    v_reference:='CASH-'||upper(left(replace(p_booking_id::text,'-',''),16));
+    INSERT INTO public.srk_manual_payment_entries
+      (booking_id,payment_method,amount,payment_reference,note,recorded_by)
+    VALUES(p_booking_id,'cash',v_bill.labour_amount,v_reference,
+      'Cash receipt confirmed by assigned electrician',v_uid);
+    UPDATE public.service_bookings
+    SET payment_status='paid',amount_paid=v_bill.labour_amount,
+        payment_verified_at=clock_timestamp()
+    WHERE id=p_booking_id;
+    RETURN jsonb_build_object('success',true,'payment_method','cash',
+      'amount_paid',v_bill.labour_amount,'labour_only',true);
+  END IF;
+
+  -- Legacy quote-based cash confirmation.
+  IF v_booking.quote_status<>'approved' OR coalesce(v_booking.quoted_amount,0)<=0 THEN
+    RAISE EXCEPTION 'Approved legacy quote required';
+  END IF;
+  UPDATE public.service_bookings
+  SET payment_status='paid',amount_paid=v_booking.quoted_amount,payment_verified_at=clock_timestamp()
+  WHERE id=p_booking_id;
+  RETURN jsonb_build_object('success',true,'payment_method','cash','amount_paid',v_booking.quoted_amount);
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_record_manual_payment(
+  p_booking_id uuid,p_method text,p_reference text,p_note text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_booking public.service_bookings%ROWTYPE;
+  v_bill public.srk_booking_labour_bills%ROWTYPE;
+  v_total numeric(12,2);
+  v_method text:=lower(trim(coalesce(p_method,'')));
+  v_reference text:=trim(coalesce(p_reference,''));
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501';
+  END IF;
+  IF p_booking_id IS NULL OR v_method NOT IN ('cash','upi','bank_transfer')
+     OR length(v_reference) NOT BETWEEN 4 AND 120
+     OR (p_note IS NOT NULL AND length(p_note)>250) THEN
+    RAISE EXCEPTION 'Invalid manual payment details' USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found'; END IF;
+  IF v_booking.status<>'completed' OR v_booking.assigned_electrician_id IS NULL THEN
+    RAISE EXCEPTION 'Only completed assigned bookings can be marked paid';
+  END IF;
+  IF v_booking.payment_status IN ('paid','refunded') THEN
+    RAISE EXCEPTION 'Booking already has a paid or refunded payment';
+  END IF;
+  IF v_booking.razorpay_order_id IS NOT NULL OR v_booking.razorpay_payment_id IS NOT NULL THEN
+    RAISE EXCEPTION 'Razorpay-linked bookings must use verified Razorpay flow';
+  END IF;
+  IF EXISTS(SELECT 1 FROM public.srk_manual_payment_entries e WHERE e.booking_id=p_booking_id) THEN
+    RAISE EXCEPTION 'A manual payment entry already exists for this booking';
+  END IF;
+
+  IF v_booking.selected_category IS NOT NULL THEN
+    IF v_booking.completion_approval_status<>'approved' THEN
+      RAISE EXCEPTION 'Customer-approved completion is required';
+    END IF;
+    SELECT * INTO v_bill FROM public.srk_booking_labour_bills WHERE booking_id=p_booking_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Verified final labour bill is missing'; END IF;
+    v_total:=v_bill.labour_amount;
+  ELSE
+    IF v_booking.quote_status<>'approved' OR v_booking.service_charge IS NULL
+       OR v_booking.service_charge<0 OR v_booking.materials_amount<0 THEN
+      RAISE EXCEPTION 'Approved legacy quote breakdown is invalid';
+    END IF;
+    v_total:=round(v_booking.service_charge+v_booking.materials_amount,2);
+    IF round(coalesce(v_booking.quoted_amount,-1),2)<>v_total THEN
+      RAISE EXCEPTION 'Legacy approved quote total does not reconcile';
+    END IF;
+  END IF;
+  IF v_total<1 OR v_total>10000000 THEN RAISE EXCEPTION 'Payment amount outside supported range'; END IF;
+
+  INSERT INTO public.srk_manual_payment_entries
+    (booking_id,payment_method,amount,payment_reference,note,recorded_by)
+  VALUES(p_booking_id,v_method,v_total,v_reference,nullif(trim(coalesce(p_note,'')),''),auth.uid());
+
+  UPDATE public.service_bookings
+  SET payment_method=CASE v_method WHEN 'cash' THEN 'Cash' WHEN 'upi' THEN 'UPI' ELSE 'Bank Transfer' END,
+      payment_status='paid',amount_paid=v_total,payment_verified_at=clock_timestamp()
+  WHERE id=p_booking_id;
+
+  RETURN jsonb_build_object('success',true,'booking_id',p_booking_id,
+    'payment_method',v_method,'amount',v_total,'reference',v_reference,
+    'labour_only',v_booking.selected_category IS NOT NULL);
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_create_electrician_payable()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','pg_temp'
+AS $function$
+DECLARE
+  v_service numeric(12,2);
+  v_materials numeric(12,2);
+  v_total numeric(12,2);
+  v_rate numeric(7,2);
+  v_commission numeric(12,2);
+  v_bill public.srk_booking_labour_bills%ROWTYPE;
+BEGIN
+  IF NEW.payment_status='paid' AND NEW.status='completed'
+     AND NEW.assigned_electrician_id IS NOT NULL AND NEW.payment_verified_at IS NOT NULL
+     AND (NEW.razorpay_payment_id IS NOT NULL OR EXISTS(
+       SELECT 1 FROM public.srk_manual_payment_entries e
+       WHERE e.booking_id=NEW.id AND e.amount=round(coalesce(NEW.amount_paid,0),2)
+     )) THEN
+    v_rate:=NEW.commission_rate;
+    IF v_rate IS NULL OR v_rate<0 OR v_rate>100 THEN
+      RAISE EXCEPTION 'Commission rate must be between 0 and 100; payout ledger not created';
+    END IF;
+
+    IF NEW.selected_category IS NOT NULL THEN
+      IF NEW.completion_approval_status<>'approved' THEN
+        RAISE EXCEPTION 'Customer-approved labour completion required for payout';
+      END IF;
+      SELECT * INTO v_bill FROM public.srk_booking_labour_bills WHERE booking_id=NEW.id;
+      IF NOT FOUND OR round(coalesce(NEW.amount_paid,0),2)<>v_bill.labour_amount THEN
+        RAISE EXCEPTION 'Verified payment does not match final labour bill; payout blocked';
+      END IF;
+      v_service:=v_bill.labour_amount;
+      v_materials:=0;
+    ELSIF NEW.quote_status='approved' THEN
+      v_service:=round(coalesce(NEW.service_charge,0),2);
+      v_materials:=round(coalesce(NEW.materials_amount,0),2);
+      v_total:=round(v_service+v_materials,2);
+      IF round(coalesce(NEW.amount_paid,0),2)<>v_total THEN
+        RAISE EXCEPTION 'Legacy verified payment does not match approved quote; payout ledger not created';
+      END IF;
+    ELSE
+      RETURN NEW;
+    END IF;
+
+    v_commission:=round(v_service*v_rate/100,2);
+    INSERT INTO public.srk_electrician_payouts(
+      booking_id,electrician_profile_id,razorpay_payment_id,
+      gross_service_amount,materials_amount,platform_commission,
+      electrician_payable,payout_status
+    ) VALUES(
+      NEW.id,NEW.assigned_electrician_id,NEW.razorpay_payment_id,
+      v_service,v_materials,v_commission,round(v_service+v_materials-v_commission,2),'pending'
+    )
+    ON CONFLICT(booking_id) DO UPDATE SET
+      electrician_profile_id=excluded.electrician_profile_id,
+      razorpay_payment_id=excluded.razorpay_payment_id,
+      gross_service_amount=excluded.gross_service_amount,
+      materials_amount=excluded.materials_amount,
+      platform_commission=excluded.platform_commission,
+      electrician_payable=excluded.electrician_payable,
+      updated_at=clock_timestamp()
+    WHERE public.srk_electrician_payouts.payout_status='pending';
+  ELSIF NEW.payment_status='refunded' THEN
+    UPDATE public.srk_electrician_payouts
+    SET payout_status='refunded',updated_at=clock_timestamp()
+    WHERE booking_id=NEW.id AND payout_status='pending';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_mark_electrician_payout_paid(
+  p_payout_id uuid,p_method text,p_reference text,p_note text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_row public.srk_electrician_payouts%ROWTYPE;
+  v_booking public.service_bookings%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501';
+  END IF;
+  IF p_payout_id IS NULL OR p_method NOT IN ('upi','bank')
+     OR p_reference IS NULL OR length(btrim(p_reference)) NOT BETWEEN 4 AND 120
+     OR (p_note IS NOT NULL AND length(p_note)>250) THEN
+    RAISE EXCEPTION 'Invalid payout settlement details' USING ERRCODE='22023';
+  END IF;
+
+  SELECT b.* INTO v_booking
+  FROM public.service_bookings b
+  JOIN public.srk_electrician_payouts p ON p.booking_id=b.id
+  WHERE p.id=p_payout_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Payout booking not found'; END IF;
+  SELECT * INTO v_booking FROM public.service_bookings WHERE id=v_booking.id FOR UPDATE;
+  SELECT * INTO v_row FROM public.srk_electrician_payouts WHERE id=p_payout_id FOR UPDATE;
+  IF NOT FOUND OR v_row.booking_id IS DISTINCT FROM v_booking.id THEN
+    RAISE EXCEPTION 'Payout record changed; refresh and retry';
+  END IF;
+  IF v_row.payout_status<>'pending' THEN RAISE EXCEPTION 'Only pending payouts can be marked paid'; END IF;
+
+  IF v_booking.status<>'completed' OR v_booking.payment_status<>'paid'
+     OR v_booking.payment_verified_at IS NULL
+     OR v_booking.assigned_electrician_id IS DISTINCT FROM v_row.electrician_profile_id
+     OR NOT (v_booking.razorpay_payment_id IS NOT NULL OR EXISTS(
+       SELECT 1 FROM public.srk_manual_payment_entries e
+       WHERE e.booking_id=v_booking.id AND round(coalesce(e.amount,0),2)=round(coalesce(v_booking.amount_paid,0),2)
+     )) THEN
+    RAISE EXCEPTION 'Booking payment proof or assignment does not reconcile';
+  END IF;
+
+  IF v_booking.selected_category IS NOT NULL THEN
+    IF v_booking.completion_approval_status<>'approved'
+       OR NOT EXISTS(SELECT 1 FROM public.srk_booking_labour_bills b
+         WHERE b.booking_id=v_booking.id
+           AND round(b.labour_amount,2)=round(coalesce(v_booking.amount_paid,0),2)
+           AND round(b.labour_amount,2)=round(coalesce(v_row.gross_service_amount,0),2)
+           AND coalesce(v_row.materials_amount,0)=0
+           AND round(v_row.platform_commission,2)=round(b.labour_amount*v_booking.commission_rate/100,2)
+           AND round(v_row.electrician_payable,2)=round(b.labour_amount-round(b.labour_amount*v_booking.commission_rate/100,2),2)
+       ) THEN
+      RAISE EXCEPTION 'Labour bill or payout ledger does not reconcile; settlement blocked';
+    END IF;
+  ELSE
+    IF v_booking.quote_status<>'approved'
+       OR round(coalesce(v_booking.amount_paid,0),2)<>round(coalesce(v_booking.service_charge,0)+coalesce(v_booking.materials_amount,0),2)
+       OR round(coalesce(v_row.gross_service_amount,0),2)<>round(coalesce(v_booking.service_charge,0),2)
+       OR round(coalesce(v_row.materials_amount,0),2)<>round(coalesce(v_booking.materials_amount,0),2)
+       OR round(coalesce(v_row.platform_commission,0),2)<>round(coalesce(v_booking.service_charge,0)*v_booking.commission_rate/100,2)
+       OR round(coalesce(v_row.electrician_payable,0),2)<>round(coalesce(v_booking.service_charge,0)+coalesce(v_booking.materials_amount,0)-round(coalesce(v_booking.service_charge,0)*v_booking.commission_rate/100,2),2) THEN
+      RAISE EXCEPTION 'Legacy booking payment or payout ledger does not reconcile';
+    END IF;
+  END IF;
+
+  UPDATE public.srk_electrician_payouts
+  SET payout_status='paid',payout_method=p_method,payout_reference=btrim(p_reference),
+      payout_note=nullif(btrim(p_note),''),paid_by=auth.uid(),
+      paid_at=clock_timestamp(),updated_at=clock_timestamp()
+  WHERE id=p_payout_id;
+  RETURN jsonb_build_object('success',true,'payout_id',p_payout_id,'status','paid');
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_prepare_razorpay_refund(p_booking_id uuid,p_reason text)
+RETURNS TABLE(
+  refund_record_id uuid,booking_id uuid,payment_id text,amount_paise bigint,
+  idempotency_key text,status text,previous_payout_note text
+)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_booking public.service_bookings%ROWTYPE;
+  v_refund public.srk_razorpay_refunds%ROWTYPE;
+  v_payout public.srk_electrician_payouts%ROWTYPE;
+  v_bill public.srk_booking_labour_bills%ROWTYPE;
+  v_total numeric(12,2);
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501';
+  END IF;
+  IF p_booking_id IS NULL OR p_reason IS NULL OR length(btrim(p_reason)) NOT BETWEEN 20 AND 250 THEN
+    RAISE EXCEPTION 'Refund reason must be 20 to 250 characters';
+  END IF;
+  SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found'; END IF;
+  IF v_booking.payment_status<>'paid' OR v_booking.payment_verified_at IS NULL
+     OR v_booking.razorpay_payment_id IS NULL OR v_booking.amount_paid IS NULL OR v_booking.amount_paid<=0 THEN
+    RAISE EXCEPTION 'Only verified Razorpay-paid bookings can be refunded';
+  END IF;
+  IF v_booking.razorpay_payment_id !~ '^pay_[A-Za-z0-9]+$' THEN
+    RAISE EXCEPTION 'Invalid Razorpay payment ID';
+  END IF;
+
+  IF v_booking.selected_category IS NOT NULL THEN
+    IF v_booking.completion_approval_status<>'approved' THEN
+      RAISE EXCEPTION 'Customer-approved labour bill required for refund';
+    END IF;
+    SELECT * INTO v_bill FROM public.srk_booking_labour_bills WHERE booking_id=p_booking_id;
+    IF NOT FOUND OR round(v_booking.amount_paid,2)<>v_bill.labour_amount THEN
+      RAISE EXCEPTION 'Paid amount does not match final labour bill';
+    END IF;
+  ELSE
+    IF v_booking.quote_status<>'approved' OR v_booking.quoted_amount IS NULL
+       OR v_booking.service_charge IS NULL OR v_booking.materials_amount IS NULL
+       OR round(v_booking.amount_paid,2)<>round(v_booking.quoted_amount,2)
+       OR round(v_booking.amount_paid,2)<>round(v_booking.service_charge+v_booking.materials_amount,2) THEN
+      RAISE EXCEPTION 'Paid amount does not match legacy approved quote';
+    END IF;
+  END IF;
+  v_total:=round(v_booking.amount_paid,2);
+
+  SELECT * INTO v_refund FROM public.srk_razorpay_refunds WHERE booking_id=p_booking_id FOR UPDATE;
+  IF FOUND THEN
+    IF v_refund.status='failed' THEN RAISE EXCEPTION 'Previous Razorpay refund failed; reconcile before creating another request'; END IF;
+    RETURN QUERY SELECT v_refund.id,v_refund.booking_id,v_refund.payment_id,v_refund.amount_paise,
+      v_refund.idempotency_key,v_refund.status,v_refund.previous_payout_note;
+    RETURN;
+  END IF;
+
+  SELECT * INTO v_payout FROM public.srk_electrician_payouts WHERE booking_id=p_booking_id FOR UPDATE;
+  IF FOUND THEN
+    IF v_payout.payout_status='paid' THEN
+      RAISE EXCEPTION 'Electrician payout is already paid; recovery requires separate Admin reconciliation';
+    END IF;
+    IF v_payout.payout_status NOT IN ('pending','blocked') THEN
+      RAISE EXCEPTION 'Electrician payout is not pending; reconcile payout before refund';
+    END IF;
+    UPDATE public.srk_electrician_payouts
+    SET payout_status='blocked',payout_note='Razorpay refund pending',updated_at=clock_timestamp()
+    WHERE id=v_payout.id;
+  END IF;
+
+  INSERT INTO public.srk_razorpay_refunds
+    (booking_id,payment_id,amount,amount_paise,idempotency_key,status,reason,admin_user_id,previous_payout_note)
+  VALUES(p_booking_id,v_booking.razorpay_payment_id,v_total,round(v_total*100)::bigint,
+    replace(gen_random_uuid()::text,'-',''),'requested',btrim(p_reason),auth.uid(),v_payout.payout_note)
+  RETURNING * INTO v_refund;
+  RETURN QUERY SELECT v_refund.id,v_refund.booking_id,v_refund.payment_id,v_refund.amount_paise,
+    v_refund.idempotency_key,v_refund.status,v_refund.previous_payout_note;
+END;
+$function$;
+
