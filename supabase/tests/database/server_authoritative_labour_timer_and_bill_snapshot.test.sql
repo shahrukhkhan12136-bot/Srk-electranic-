@@ -139,18 +139,18 @@ SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) 
   AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) NOT ILIKE '%materials_amount%'
   AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) NOT ILIKE '%quoted_amount%',
   'electrician offer API exposes timer but no quote/material billing fields');
-SELECT ok(pg_get_functiondef('private.srk_get_customer_call_contacts_impl()')
+SELECT ok(pg_get_functiondef('private.srk_get_customer_call_contacts_impl()'::regprocedure)
   ILIKE '%awaiting_work_start_approval%' AND
-  pg_get_functiondef('private.srk_get_customer_call_contacts_impl()') NOT ILIKE '%completed%',
+  pg_get_functiondef('private.srk_get_customer_call_contacts_impl()'::regprocedure) NOT ILIKE '%completed%',
   'customer call contacts remain visible through start approval and hide after completion');
-SELECT ok(pg_get_functiondef('public.srk_customer_get_my_booking_contacts()')
+SELECT ok(pg_get_functiondef('public.srk_customer_get_my_booking_contacts()'::regprocedure)
   ILIKE '%awaiting_work_start_approval%' AND
-  pg_get_functiondef('public.srk_customer_get_my_booking_contacts()') NOT ILIKE '%completed%',
+  pg_get_functiondef('public.srk_customer_get_my_booking_contacts()'::regprocedure) NOT ILIKE '%completed%',
   'legacy customer contact RPC follows same active-only phone privacy');
 SELECT has_function('public','srk_admin_get_labour_bill',ARRAY['uuid'],'Admin final labour bill read RPC exists');
-SELECT ok(pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uuid)')
+SELECT ok(pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uuid)'::regprocedure)
   ILIKE '%auth.jwt()->>''role''%' AND
-  pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uuid)')
+  pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uuid)'::regprocedure)
   ILIKE '%service_role%',
   'payment adapter lookup checks service-role JWT');
 
