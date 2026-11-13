@@ -193,5 +193,6 @@ test('customer support attachment partial failure never invites duplicate messag
   assert.match(html, /if\(messageCreated\)\{\s*fileInput\.value=''/);
   assert.match(html, /दोबारा भेजते समय केवल बची हुई फ़ाइलें चुनें/);
   assert.match(html, /संदेश दोबारा न भेजें/);
-  assert.match(html, /if\(pendingUploadPath\)\{await customerSb\.storage\.from\('srk-customer-support'\)\.remove\(\[pendingUploadPath\]\)/);
+  assert.match(html, /if\(pendingUploadPath\)\{const \{error:cleanupError\}=await customerSb\.storage\.from\('srk-customer-support'\)\.remove\(\[pendingUploadPath\]\);orphanCleanupFailed=Boolean\(cleanupError\);\}/);
+  assert.match(html, /orphanCleanupFailed\?' अपलोड की गई असंबद्ध फ़ाइल की सफाई पूरी नहीं हुई/);
 });
