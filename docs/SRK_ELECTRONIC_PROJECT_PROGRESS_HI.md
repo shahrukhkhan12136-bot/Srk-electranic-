@@ -933,3 +933,12 @@
 - Regression tests जोड़े।
 - Source Regression Run #43472067910 — success, head `2c33e8b9a38db89cb967e7edaec203f234817c09`.
 - वास्तविक Supabase Auth event race, network failure, message upload/RLS और browser/mobile UI runtime tests अभी बाकी हैं।
+
+
+## 2026-11-13 — Customer refund submission success/refresh separation
+
+- Customer refund request RPC success को अब booking/payment/refund history refresh से अलग रखा गया है।
+- Server से request creation की पुष्टि मिलते ही UI साफ़ बताता है कि अनुरोध दर्ज हो गया; बाद में history refresh विफल होने पर अब गलत तरीके से “रिफंड अनुरोध दर्ज नहीं हो सका” नहीं दिखेगा।
+- Booking list, refund history और payment history refresh को अलग-अलग `Promise.allSettled` से चलाया; refresh समस्या पर स्पष्ट संदेश कि अनुरोध सुरक्षित है और सूची रीफ़्रेश करनी है।
+- Regression test update के बाद Source Regression Run #43472895185 — success, head `c90f278ab0f6a5f5ccd9796368aae4888bc3ea50`.
+- वास्तविक RPC/network failure, browser UI और database/RLS runtime परीक्षण अभी बाकी हैं; Production में कोई बदलाव नहीं।
