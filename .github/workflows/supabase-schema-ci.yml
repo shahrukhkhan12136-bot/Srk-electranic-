@@ -62,7 +62,7 @@ jobs:
               SELECT 1
               FROM pg_class c
               JOIN pg_namespace n ON n.oid = c.relnamespace
-              WHERE n.nspname IN ('public', 'private')
+              WHERE n.nspname IN ('public', 'private', 'srk_private')
                 AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
                 AND (
                   has_table_privilege(current_user, c.oid, 'SELECT')
@@ -94,7 +94,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
           pg_dump --version
-          pg_dump --schema-only --no-owner --no-acl --schema=public --schema=private "$SUPABASE_DB_URL" > "$RUNNER_TEMP/srk-production-schema.sql"
+          pg_dump --schema-only --no-owner --no-acl --schema=public --schema=private --schema=srk_private "$SUPABASE_DB_URL" > "$RUNNER_TEMP/srk-production-schema.sql"
           test -s "$RUNNER_TEMP/srk-production-schema.sql"
           if grep -Eiq '^(COPY|INSERT INTO) ' "$RUNNER_TEMP/srk-production-schema.sql"; then
             echo "::error::Unexpected data statements found in schema-only export."
@@ -133,9 +133,12 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261113235900_harden_customer_cancellation_and_safe_refund_history.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261113235930_customer_payment_receipt_rpc.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114000000_electrician_requested_and_approved_rate_tiers.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114000000_electrician_requested_and_approved_rate_tiers.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114010000_customer_booking_category_and_duration.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114030000_verified_electrician_skills_and_category_matching.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114050000_correct_legacy_and_platform_fee_reporting.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
@@ -168,6 +171,12 @@ jobs:
             END IF;
             IF to_regclass('public.srk_booking_labour_bills') IS NULL THEN
               RAISE EXCEPTION 'Missing public.srk_booking_labour_bills';
+            END IF;
+            IF to_regclass('public.srk_booking_work_events') IS NULL THEN
+              RAISE EXCEPTION 'Missing public.srk_booking_work_events';
+            END IF;
+            IF to_regprocedure('public.srk_admin_approve_work_completion(uuid,text)') IS NULL THEN
+              RAISE EXCEPTION 'Missing Admin completion approval RPC';
             END IF;
             IF to_regprocedure('private.srk_offer_booking_to_eligible_electricians(uuid)') IS NULL THEN
               RAISE EXCEPTION 'Missing shared verified booking matcher';
