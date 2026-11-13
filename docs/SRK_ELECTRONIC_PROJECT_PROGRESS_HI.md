@@ -809,3 +809,13 @@
 - Draft को corrected किया: existing 8-column return signature और parameter defaults preserved; payment, refund request, Razorpay refund, audited manual payment और manual refund सभी event sources शामिल; `auth.uid()` customer booking scope; limit 1–50; offset >10,000 reject; stable sort occurred_at + event_id; no provider/admin private fields; refunded booking payment state अलग दिखती है।
 - pgTAP test plan 11: original result signature preserved, auth, owner scope, verified payment, four refund/payment event sources, pagination, no private fields, authenticated-only grants. Tests अभी execute नहीं हुए।
 - Source regression workflow Run #43467914135 — success, commit `fd5774edb8a3b2e4fc9415c35565ba5afd15a773`। Earlier source workflow failures were test assertion case/format mismatches while checking SQL source; corrected source assertions now pass. No migration applied; no Production changes/deployment.
+
+
+## 2026-11-13 — Customer Help & Support partial attachment recovery
+
+- Support message RPC पहले attachments upload/link करने से पहले message row बनाता है। यदि किसी बाद की फ़ाइल upload/link या thread refresh में error आता था, catch UI “message/file नहीं भेजा” कहता और customer retry करने पर duplicate message बन सकता था।
+- अब server से message ID मिलने के तुरंत बाद message text input clear होता है और `messageCreated` state track होती है। बाद में attachment fail होने पर UI बताता है कि message पहले ही भेजा जा चुका है; कितनी फ़ाइलें जुड़ीं; शेष फ़ाइलें अलग से चुनें; message दोबारा न भेजें। Thread refresh failure पर भी duplicate resend न करने की स्पष्ट सूचना।
+- Pending unlinked object cleanup का result अब check होता है; cleanup fail होने पर ग्राहक को orphan attachment cleanup pending होने की जानकारी दी जाती है, पहले की तरह error silently ignore नहीं होता।
+- `tests/customer-menu.test.cjs` में partial attachment failure, no duplicate resend, linked-count recovery prompt, and cleanup failure warning source assertions जोड़े।
+- Source Regression Run #43468150124 — success on commit `0c0e858bbc25f650764439a1675c8942c7e70984`; latest Source Regression Run #43468291002 — success on commit `82c165155de72c4bc3869a5378944dc42d56336f`; Refund source regression Run #43468267240 — success on `a127bce5ff250da7656593f04c71513c6c3d40d7`.
+- Multi-file upload अभी भी एक atomic transaction नहीं है; पहले से linked attachments सुरक्षित रहते हैं और शेष को अलग से resend करना पड़ता है। Storage/RPC runtime, real signed URL, network-failure cleanup, RLS/IDOR, and final mobile/Desktop QA अभी नहीं हुए। No Production change/deployment.
