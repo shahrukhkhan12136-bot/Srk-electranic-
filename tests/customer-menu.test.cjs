@@ -789,3 +789,23 @@ test('customer logout invalidates pending private requests and clears prior acco
     "document.getElementById('customerMapWrap').style.display='none';"
   ]) assert.ok(noSession.includes(token), 'logout cleanup missing: '+token);
 });
+
+
+test('customer logout invalidates booking payment and refund history requests', () => {
+  const start = html.indexOf('async function syncCustomerSession()');
+  const end = html.indexOf('\nasync function customerSendOtp()', start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+  const noSession = source.slice(source.indexOf('} else {'));
+  for (const token of [
+    '++customerBookingHistoryLoadSequence;customerBookingHistoryBusy=false;customerBookingHistoryOffset=0;',
+    'bookingMore.style.display=\'none\';bookingMore.disabled=false;',
+    "document.getElementById('customerBookings').removeAttribute('aria-busy');",
+    '++customerPaymentHistoryLoadSequence;customerPaymentHistoryBusy=false;customerPaymentHistoryOffset=0;',
+    'paymentMore.style.display=\'none\';paymentMore.disabled=false;',
+    "document.getElementById('customerPaymentHistory').removeAttribute('aria-busy');",
+    '++customerRefundHistoryLoadSequence;customerRefundHistoryBusy=false;customerRefundHistoryOffset=0;',
+    'refundMore.style.display=\'none\';refundMore.disabled=false;',
+    "document.getElementById('customerRefundHistory').removeAttribute('aria-busy');"
+  ]) assert.ok(noSession.includes(token), 'history logout cleanup missing: '+token);
+});
