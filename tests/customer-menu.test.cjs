@@ -388,3 +388,13 @@ test('customer support message upload locks complaint selection until completion
   assert.ok(source.indexOf('complaintSelect.disabled=true;') < source.indexOf('for(const file of files)'));
   assert.ok(source.indexOf('complaintSelect.disabled=complaintSelectWasDisabled;') > source.indexOf('finally{'));
 });
+
+
+test('customer support attachment cleanup network exceptions do not bypass failure recovery', () => {
+  const start=html.indexOf('async function sendCustomerSupportMessage()');
+  const end=html.indexOf('\\nlet customerSessionSyncSequence',start);
+  const source=html.slice(start,end);
+  assert.ok(source.includes("if(pendingUploadPath){try{const {error:cleanupError}=await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]);orphanCleanupFailed=Boolean(cleanupError);}catch(_){orphanCleanupFailed=true;}}"));
+  assert.ok(source.indexOf('catch(_){orphanCleanupFailed=true;}') < source.indexOf('if(messageCreated)'));
+  assert.ok(source.includes("orphanCleanupFailed?' अपलोड की गई असंबद्ध फ़ाइल की सफाई पूरी नहीं हुई; सहायता टीम से संपर्क करें।':''"));
+});
