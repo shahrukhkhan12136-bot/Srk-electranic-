@@ -1476,3 +1476,10 @@
 - Reworked `.github/workflows/supabase-schema-ci.yml` into a local-only Supabase CLI 3.1.0 workflow. It starts a temporary stack, applies the targeted migration to the synthetic baseline, copies and runs structural + behavioral pgTAP tests, and tears down the stack. It no longer reads Production schema or requires `SUPABASE_DB_URL`.
 - Workflow #43498347854 was started on commit `36a50e3171ce6ca3626d5c30ae62a3167e4c5592`; at tracker update time the Supabase stack startup step was still in progress. Node source regression workflow #43498320458 completed SUCCESS on test commit `766481bb6ab3b18aa5e49c0897e9a9a7868a9860`.
 - No production migration, deployment, or schema change. pgTAP outcome is pending until workflow #43498347854 completes.
+
+
+## Offer Timeline pgTAP follow-up corrections (2026-11-14)
+- Review of new behavioral test found the declared pgTAP plan was 9 while there are 8 assertions. Corrected `customer_safe_offer_timeline_behavior.test.sql` to `plan(8)` (commit `208d347a357f8f61daead3cf7181c9ab1e52afba`).
+- Supabase CLI `test db` takes a single optional path; changed workflow to copy the two target SQL tests into its temporary project and invoke `supabase test db` so both are discovered (commit `7f5c872300e5cdfbbf206506feded23d50a5f42e`).
+- Latest isolated run #43498561119 is queued/pending; earlier run #43498347854 remains stalled at local Supabase stack startup, no migration or pgTAP execution observed yet. Treat database result as NOT RUN / pending, not pass. Source regression after assertion-count fix #43498561182 in progress at this update.
+- Production remains untouched. Continue investigating runner local-container startup; do not switch to Production or existing push-test project.
