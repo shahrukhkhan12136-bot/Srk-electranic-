@@ -2997,3 +2997,33 @@ Audit सीमा: Vercel project, deployment list, production-filtered deploym
 - जब तक Netlify Production + Razorpay webhook + DNS/custom-domain + rollback lineage का एक-दूसरे से मेल खाता प्रमाण न मिले, किसी भी hosting path को बंद/बदलना या Production promotion करना निषिद्ध रहेगा।
 
 Audit सीमा: केवल उपलब्ध connected tool/plugin discovery और public web search से access availability जाँची। कोई Netlify/Razorpay login, configuration, secret, webhook, payment, deployment, DNS या Production resource बदला नहीं गया। यह access limitation है, service outage या misconfiguration का निष्कर्ष नहीं।
+
+
+## 17.79 — PostgreSQL 17 Schema Export CI Permission Failure: Exact Root Cause and Least-Privilege Candidate (13 Nov 2026)
+
+### A. Exact failed CI evidence
+- Inspected GitHub Actions run `43282223334`, job `131406225631`, including step summaries and decoded logs.
+- `Verify export credential cannot read rows or alter schema` passed. Thus the configured connection passed the workflow's existing no-SELECT/no-write/no-schema-CREATE guard.
+- Failure occurred in `Export schema only from production (no table data)`, at `pg_dump --schema-only --no-owner --no-acl --schema=public --schema=private`.
+- PostgreSQL returned: `permission denied for table services` while executing `LOCK TABLE ... IN ACCESS SHARE MODE`. The exact lock list included public and private relations.
+- Later local stack startup, schema restore, five Feature migrations, lint and smoke checks were all skipped. No migration test passed in this run.
+- Runner installed `pg_dump 18.6` while Production server is PostgreSQL 17.11. This version difference is recorded, but the observed failure is explicitly a permission denial on ACCESS SHARE lock, not a client/server version error.
+
+### B. PostgreSQL 17 privilege rule confirmed from official documentation
+- PostgreSQL 17 `LOCK TABLE` documentation states ACCESS SHARE may be acquired with SELECT; MAINTAIN, UPDATE, DELETE or TRUNCATE also permit any lock mode.
+- PostgreSQL 17 privilege documentation defines MAINTAIN as allowing VACUUM, ANALYZE, CLUSTER, REFRESH MATERIALIZED VIEW, REINDEX and LOCK TABLE.
+- PostgreSQL 17 `pg_dump` documentation confirms `--schema-only` omits data, but does not mean pg_dump skips table locks.
+- Official references: https://www.postgresql.org/docs/17/sql-lock.html ; https://www.postgresql.org/docs/17/ddl-priv.html ; https://www.postgresql.org/docs/17/app-pgdump.html
+
+### C. Least-privilege candidate — not yet applied
+- Candidate to test in an isolated disposable PostgreSQL 17 environment: grant only `MAINTAIN` on each required relation to the dedicated schema-export role, without granting SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, schema CREATE, ownership, superuser, BYPASSRLS, service_role or role/database administration.
+- `MAINTAIN` is not risk-free: it permits maintenance operations and any table lock mode, so it must be narrowly scoped, documented, reviewed and not granted to a general application role. It does not itself grant SELECT/table-row reading.
+- Before any Production grant, first prove in a disposable PG17 test that the exact `pg_dump --schema-only` command succeeds with MAINTAIN-only permissions, that no table data is emitted, and that the workflow's credential guard explicitly validates the intended privilege boundary.
+- Update the guard to fail if the export role has unexpected relation privileges, and separately allow/verify MAINTAIN only on the explicit relation allowlist. Do not silently let MAINTAIN pass as an unexamined privilege.
+- Inspect whether views/materialized views/foreign tables and objects outside public/private need additional handling; do not broaden grants automatically. Keep PostgreSQL client major aligned with Production 17 for deterministic reproducibility, although this is not the proven cause of the present failure.
+- Alternative architecture is a reviewed catalog-based schema snapshot pipeline, but it requires object-coverage proof for tables, constraints, indexes, functions, triggers, policies, grants, types, extensions and dependencies before replacing pg_dump.
+
+### D. No changes and next gate
+- No Production GRANT/REVOKE, role, schema, table, workflow, secret, database, deployment or provider changes were made.
+- Do not grant SELECT to make pg_dump pass; do not use postgres, service_role, superuser or BYPASSRLS credentials; do not weaken/remove the existing guard.
+- Next safe step: construct and run a disposable PostgreSQL 17 permission proof with a synthetic schema and dummy rows, validate MAINTAIN-only behavior and row-read denial, then document results. Only after that should a separate approval be requested for any narrowly scoped Production privilege change.
