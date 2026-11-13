@@ -3391,3 +3391,15 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Read-only project metadata पुनः पुष्टि: project `gnqhoaqatmoiwwhgzkgm`, region `ap-south-1`, status `ACTIVE_HEALTHY`, PostgreSQL 17.11.0.018।
 - No Auth setting change, CAPTCHA setup, provider/secret change, SMS request, customer account/session operation, database/source mutation or deployment.
 - **Status: In Progress.** Current hosted Auth settings and phone OTP validity are unverified; runtime negative/abuse/session tests pending.
+
+
+## 17.95 — Hosted Phone Sign-in के विरुद्ध दोनों OTP पेजों का CAPTCHA Token और OTP Length Source Audit (13 नवम्बर 2026)
+- Checklist item: **14.1.1**।
+- Supabase के hosted Phone Sign-in docs में OTP request के बाद 6-digit PIN का उदाहरण दिया गया है और उसे 60 seconds के भीतर verify करने का निर्देश है; उसी docs page पर OTP validity और resend period को configurable project settings बताया गया है। इसलिए project की वास्तविक validity को dashboard config के बिना निश्चित नहीं माना जाएगा।
+- Feature Branch `booking.html`: `signInWithOtp({ phone })` और `verifyOtp({ phone, token, type: 'sms' })`; OTP input 4–8 digit validation पहले static audit में पुष्टि हुई। Auth request में `options.captchaToken` या कोई CAPTCHA token नहीं भेजा जाता।
+- Feature Branch `customer-login.html`: वही phone OTP send/verify calls; Auth request में `options.captchaToken` या CAPTCHA token नहीं भेजा जाता।
+- दोनों pages में hCaptcha/Turnstile UI/widget integration source search में नहीं मिली। यह source-level absence है; Supabase Dashboard में CAPTCHA enabled/disabled होने की पुष्टि नहीं। यदि project CAPTCHA enforce करता है, तो वर्तमान requests challenge token के बिना reject हो सकते हैं; actual runtime behavior अभी test नहीं किया।
+- Hosted CAPTCHA integration जोड़ने से पहले Admin को hCaptcha/Cloudflare site key और server-side secret, allowed domains, test/staging approval तथा Supabase Auth CAPTCHA configuration उपलब्ध करानी होगी। Secret browser code में कभी नहीं रखा जाएगा। No keys/secrets requested or read.
+- OTP length compatibility भी pending: Supabase Phone Sign-in example 6 digits दिखाता है, app input 4–8 स्वीकारता है; 6-digit value उस range में आती है, लेकिन actual provider-issued length और end-to-end behavior test account पर verify करना बाकी है।
+- No source code, Auth setting, CAPTCHA provider, secret, database, customer account/session, SMS request or deployment changed.
+- **Status: In Progress.** Source audit complete for this sub-area; Dashboard CAPTCHA state, project OTP values and approved test-phone runtime validation remain pending.
