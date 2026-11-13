@@ -18,7 +18,7 @@ select ok(not exists(select 1 from information_schema.columns where table_schema
 select ok(exists (select 1 from pg_indexes where schemaname='private' and tablename='srk_booking_offer_events' and indexdef ilike '%UNIQUE%' and indexdef ilike '%offer_id%' and indexdef ilike '%event_type%'),'duplicate lifecycle event key is prevented');
 select ok(position('on conflict (offer_id,event_type) do nothing' in lower(pg_get_functiondef('private.srk_capture_booking_offer_event()'::regprocedure))) > 0,'trigger suppresses duplicate transition capture');
 select ok(position('after insert or update of status on public.job_offers' in lower(pg_get_triggerdef((select oid from pg_trigger where tgname='trg_srk_capture_booking_offer_event' and not tgisinternal)))) > 0,'trigger captures offer creation and status transitions only');
-select ok(position('where o.status in' in lower(pg_get_functiondef('private.srk_capture_booking_offer_event()'::regprocedure))) = 0,'trigger function itself does not broaden status capture through unrelated columns');
+select ok(position('new.status is distinct from old.status' in lower(pg_get_functiondef('private.srk_capture_booking_offer_event()'::regprocedure))) > 0 and position('when ''expired'' then ''offer_expired''' in lower(pg_get_functiondef('private.srk_capture_booking_offer_event()'::regprocedure))) > 0 and position('when ''cancelled'' then ''offer_cancelled''' in lower(pg_get_functiondef('private.srk_capture_booking_offer_event()'::regprocedure))) > 0,'trigger maps only actual status changes and captures expired/cancelled transitions');
 
 select * from finish();
 rollback;
