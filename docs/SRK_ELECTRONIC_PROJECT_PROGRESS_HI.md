@@ -1800,3 +1800,5 @@
 - Next: verify source CI, add isolated local synthetic fixtures/behavior tests for provider failure vs uncertain retry eligibility, then continue Customer App remaining Profile/booking-history/Support audit. Do not enable a new attempt for provider-confirmed failures without a separately audited attempt-history model.
 
 - Follow-up source validation caught and corrected an escaping defect in the new Admin retry-button HTML string before CI; corrected Admin inline script now parses with new Function (1/1 PASS). Fix commit be709f7ac1b89f7bf534c7560351f52f1ab1f10c. Source CI run still not confirmed through available workflow-run retrieval; do not mark the suite passed.
+
+- Added a disposable local-only pgTAP harness for the v3 RPC: synthetic minimal schema fixture plus GitHub Actions workflow admin-refund-provider-state-pgtap.yml. It starts a fresh local Supabase instance, applies only the new v3 migration, runs the 8-assertion contract test, and stops the local stack. It does not connect to Production. Commits: fixture fd6e1c9e6d42256e9ed4e9753052d54377e8c1ad; workflow 19a3e3427b23b92d5252a01bd1b056dfa47d4603. Workflow result not yet available/confirmed.
