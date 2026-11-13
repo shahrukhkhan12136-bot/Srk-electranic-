@@ -1129,3 +1129,11 @@
 - pgTAP `customer_contacts_after_completion.test.sql` में authenticated-only execution, `auth.uid()`, booking ownership, assigned electrician और completed status के 5 assertions जोड़े। Supabase schema CI migration list और smoke check भी अपडेट किए।
 - Source regression workflow **43483271638** (commit `92c9574a163663e28a414e5675d147787e348a7a`) — **SUCCESS**।
 - pgTAP अभी execute नहीं हुआ; migration isolated DB या Production पर apply नहीं हुई; वास्तविक Supabase RPC/JWT और browser/mobile परीक्षण बाकी हैं।
+
+
+### 13 नवम्बर 2026 — Customer Online Payment Preference action safety
+
+- Booking History में Cash से Online (Razorpay) preference बदलने वाले action का audit किया। पहले repeated tap से समान RPC एक साथ चल सकता था और RPC सफल होने के बाद list refresh fail होने पर UI स्थिति अस्पष्ट हो सकती थी।
+- Per-booking in-flight guard, button disable/restore और duplicate submission रोकथाम जोड़ी। RPC success के बाद list refresh failure को payment preference failure से अलग Hindi संदेश दिया; raw backend error ग्राहक को नहीं दिखाया।
+- Source Regression workflow **43483640001** (commit `70471fe4b91cec8869b4cc306cb964d3c5e43914`) — **SUCCESS**। Refund Source Regression workflow **43483633710** (app commit `754fc2f365e9d70ee0f515ca5e0c582bf171e7b3`) — **SUCCESS**।
+- ये source-level checks हैं; live Supabase RPC, concurrent browser clicks, network failure injection और mobile/Desktop QA अभी बाकी हैं। कोई भुगतान शुरू नहीं किया गया और Production में बदलाव नहीं हुआ।
