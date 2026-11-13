@@ -308,12 +308,14 @@ async function saveCurrentBookingAddress() {
  if(!sessionData.session){setSavedAddressStatus('पता सेव करने के लिए पहले OTP लॉगिन करें।',true);return;}
  button.disabled=true;button.textContent='पता सेव हो रहा है…';
  try {
+  const editingAddress=editingSavedAddressId?customerSavedAddresses.find(a=>a.id===editingSavedAddressId):null;
   const {data,error}=await customerSb.rpc('srk_customer_save_my_address',{
    p_id:editingSavedAddressId,p_label:document.getElementById('savedAddressLabel').value,
    p_recipient_name:value('name'),p_address_line:value('address'),p_landmark:value('place')||null,
    p_pincode:value('pin'),p_district:value('district'),p_state:value('state'),
    p_location_lat:value('bookingLat')?Number(value('bookingLat')):null,
-   p_location_lng:value('bookingLng')?Number(value('bookingLng')):null,p_is_default:false
+   p_location_lng:value('bookingLng')?Number(value('bookingLng')):null,
+   p_is_default:editingAddress?.is_default===true
   });
   if(error) throw error;
   await loadCustomerSavedAddresses();
