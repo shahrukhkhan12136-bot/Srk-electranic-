@@ -165,7 +165,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
  </div>
  <section class="panel">
   <h2 class="section-title" style="margin-top:0">सर्विस बुक करें</h2>
-  <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर निरीक्षण करेगा। इलेक्ट्रिशियन केवल काम का मेहनताना बताएगा। जरूरी सामान ग्राहक स्वयं उपलब्ध कराएगा।</p>
+  <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर काम का निरीक्षण करेगा और केवल मेहनताना स्पष्ट करेगा।</p>
   <form id="booking">
    <label for="name">आपका नाम</label><input id="name" required placeholder="नाम लिखें">
    <label for="phone">OTP से सत्यापित मोबाइल नंबर</label><input id="phone" type="tel" inputmode="tel" required readonly aria-describedby="verifiedPhoneHelp" placeholder="पहले ग्राहक OTP लॉगिन करें"><small id="verifiedPhoneHelp" class="small">बुकिंग में वही मोबाइल नंबर इस्तेमाल होगा जिससे आपने OTP लॉगिन किया है। इसे यहाँ बदला नहीं जा सकता।</small>
@@ -209,14 +209,14 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <option value="5">5 घंटे</option><option value="6">6 घंटे</option>
     <option value="7">7 घंटे</option><option value="8">8 घंटे</option>
    </select>
-   <p class="small">यह अवधि केवल बुकिंग का अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना इलेक्ट्रिशियन के Admin-approved rate और सर्वर द्वारा रिकॉर्ड किए गए वास्तविक काम के समय से निकलेगा। कोई भी सामान/पार्ट्स इस मेहनताना बिल में शामिल नहीं होंगे।</p>
+   <p class="small">यह अवधि केवल बुकिंग का अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना इलेक्ट्रिशियन के Admin-approved rate और सर्वर द्वारा रिकॉर्ड किए गए वास्तविक काम के समय से निकलेगा।</p>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
    <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
    <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
    <label for="payment">भुगतान</label>
    <select id="payment" required><option value="Cash">नकद (Cash)</option><option value="Razorpay ऑनलाइन भुगतान">ऑनलाइन भुगतान (Razorpay / UPI)</option></select>
-   <p class="small">पहले इलेक्ट्रिशियन घर आकर काम देखेगा और केवल काम का मेहनताना बताएगा। जरूरी सामान ग्राहक स्वयं खरीदेगा और उपलब्ध कराएगा। आपकी मंजूरी के बाद ही काम शुरू होगा। काम पूरा होने पर आपके चुने हुए तरीके से भुगतान होगा। ऑनलाइन भुगतान चुनने पर Razorpay उपलब्ध होगा।</p>
+   <p class="small">पहले इलेक्ट्रिशियन घर आकर काम देखेगा और केवल काम का मेहनताना स्पष्ट करेगा। आपकी मंजूरी के बाद ही काम शुरू होगा। काम पूरा होने पर आपके चुने हुए तरीके से भुगतान होगा। ऑनलाइन भुगतान चुनने पर Razorpay उपलब्ध होगा।</p>
    <button class="btn primary" type="submit">बुकिंग भेजें</button>
   </form>
  </section>
