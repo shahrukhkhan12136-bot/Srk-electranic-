@@ -39,6 +39,17 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 .customer-menu-page[hidden]{display:none!important}
 .customer-menu-page{min-height:160px}
 @media(max-width:640px){.customer-menu-nav{position:sticky;bottom:8px;z-index:30;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:5px;margin:12px -8px 14px;border-radius:14px;background:rgba(248,250,252,.97);box-shadow:0 4px 18px rgba(15,23,42,.16);backdrop-filter:blur(10px)}.customer-menu-tab{min-height:58px;padding:3px 1px}.customer-menu-tab span{font-size:10px;overflow-wrap:anywhere}#customer-dashboard{padding-bottom:12px}}
+
+.customer-booking-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.customer-booking-state{display:inline-flex;padding:5px 9px;border-radius:999px;background:#eaf2ff;color:#164b91;font-size:12px;font-weight:700}
+.customer-booking-history{margin-top:12px;border-top:1px solid #e5eaf1;padding-top:10px}
+.customer-booking-history summary{cursor:pointer;font-weight:700;color:#164b91}
+.customer-booking-timeline{list-style:none;margin:12px 0 4px;padding:0 0 0 7px}
+.customer-booking-timeline li{display:flex;gap:10px;position:relative;padding:0 0 15px 0;min-height:34px}
+.customer-booking-timeline li:not(:last-child):after{content:"";position:absolute;left:4px;top:13px;bottom:-1px;width:2px;background:#d7e2f1}
+.customer-booking-timeline .timeline-dot{width:10px;height:10px;flex:0 0 10px;margin-top:4px;border-radius:50%;background:#2563eb;z-index:1}
+.customer-booking-timeline li div{display:flex;flex-direction:column;gap:3px}
+.customer-booking-timeline small{color:#64748b;font-size:12px}
 </style>
 </head>
 <body>
@@ -329,36 +340,110 @@ async function loadCustomerPaymentHistory(reset=true) {
   else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
  }finally{customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');}
 }
+const customerBookingStatusLabels = {
+  new:'बुकिंग प्राप्त हुई',
+  pending:'बुकिंग लंबित',
+  confirmed:'बुकिंग की पुष्टि',
+  assigned:'इलेक्ट्रिशियन असाइन हुआ',
+  accepted:'इलेक्ट्रिशियन ने बुकिंग स्वीकार की',
+  inspection:'निरीक्षण जारी',
+  awaiting_quote_approval:'मेहनताना स्वीकृति की प्रतीक्षा',
+  quote_approved:'मेहनताना स्वीकृत',
+  quote_rejected:'मेहनाना प्रस्ताव अस्वीकृत',
+  en_route:'इलेक्ट्रिशियन रास्ते में है',
+  travelling:'इलेक्ट्रिशियन रास्ते में है',
+  arrived:'इलेक्ट्रिशियन पहुँच गया',
+  in_progress:'काम चल रहा है',
+  completion_requested:'काम पूरा होने की पुष्टि प्रतीक्षित',
+  completed:'काम पूरा हुआ',
+  cancelled:'बुकिंग रद्द',
+  rejected:'बुकिंग स्वीकार नहीं हुई',
+  disputed:'समीक्षा / विवाद जारी'
+};
+function customerBookingStatusText(status) {
+  const key=String(status||'').toLowerCase();
+  return customerBookingStatusLabels[key] || 'स्थिति अपडेट';
+}
+function customerBookingTimeText(value) {
+  if(!value)return '';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return '';
+  return date.toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'});
+}
 async function loadCustomerBookings() {
   const box = document.getElementById('customerBookings');
-  const { data: sessionData } = await customerSb.auth.getSession();
-  const session = sessionData.session;
-  if (!session) return;
-  box.textContent = 'आपकी बुकिंग लोड हो रही हैं…';
-  const { data, error } = await customerSb.from('service_bookings')
-    .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,quote_status,quote_note')
-    .eq('customer_user_id', session.user.id)
-    .order('created_at', { ascending: false })
-    .limit(50);
-  if (error) { box.textContent = 'बुकिंग अभी लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।'; return; }
-  if (!data || !data.length) { box.textContent = 'इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। आगे की बुकिंग में OTP वाला यही मोबाइल नंबर इस्तेमाल करें।'; return; }
-  const { data: callContacts } = await customerSb.rpc('srk_get_customer_call_contacts');
-  const callMap = new Map((callContacts || []).map(item => [item.booking_id, item]));
-  box.innerHTML = data.map(row => {
-    const contact = callMap.get(row.id);
-    const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
-    const canCall = contact && /^[0-9]{10,15}$/.test(phone);
-    return '<article class="card" style="margin:10px 0;padding:13px">' +
-    '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
-    '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
-    '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
-    (['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id&&row.payment_status!=='paid'&&!row.payment_method?.toLowerCase().includes('razorpay') ? '<div class="job"><b>भुगतान का चुना हुआ तरीका:</b> '+customerEsc(row.payment_method||'नकद (Cash)')+'<p class="small">यदि इलेक्ट्रिशियन की बुकिंग के लिए Online भुगतान जरूरी हो, तो आप यहाँ स्वयं Online चुन सकते हैं। आपकी अनुमति के बिना भुगतान तरीका नहीं बदलेगा।</p><button type="button" onclick="customerChangePaymentMethod(\''+row.id+'\')">Online भुगतान चुनें</button></div>' : '') +
-    (row.status==='completed'&&row.quote_status==='approved'&&row.payment_status!=='paid'&&String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'?'<button type="button" onclick="customerPayBooking(\''+row.id+'\','+Number(row.quoted_amount||0)+')">🔒 काम पूरा — अब ऑनलाइन भुगतान करें</button>':'') +
-    (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
-    '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
-    (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (row.status === 'completed' ? '<p class="small">काम पूरा हो चुका है। इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा।</p>' : (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>')) : '') +
-    '</article>';
-  }).join('');
+  if (!customerSb) { box.textContent='ग्राहक लॉगिन सेवा अभी उपलब्ध नहीं है।'; return; }
+  const { data: sessionData, error: sessionError } = await customerSb.auth.getSession();
+  const session = sessionData?.session;
+  if (sessionError || !session) {
+    box.textContent='आपका लॉगिन सत्र समाप्त हो गया है। कृपया OTP से दोबारा लॉगिन करें।';
+    return;
+  }
+  box.setAttribute('aria-busy','true');
+  box.textContent = navigator.onLine===false
+    ? 'इंटरनेट कनेक्शन उपलब्ध नहीं है। कनेक्शन लौटने पर फिर से कोशिश करें।'
+    : 'आपकी बुकिंग लोड हो रही हैं…';
+  try {
+    const { data, error } = await customerSb.from('service_bookings')
+      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,quote_status,quote_note')
+      .eq('customer_user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    if (!data || !data.length) {
+      box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
+      return;
+    }
+    const [contactsResult,timelineResult] = await Promise.all([
+      customerSb.rpc('srk_get_customer_call_contacts'),
+      customerSb.rpc('srk_get_customer_booking_timeline')
+    ]);
+    const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
+    const timelineMap = new Map();
+    if(!timelineResult.error) {
+      (timelineResult.data || []).forEach(item=>{
+        if(!timelineMap.has(item.booking_id))timelineMap.set(item.booking_id,[]);
+        timelineMap.get(item.booking_id).push(item);
+      });
+    }
+    box.innerHTML = data.map(row => {
+      const contact = callMap.get(row.id);
+      const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
+      const canCall = Boolean(contact) && /^[0-9]{10,15}$/.test(phone);
+      const events=timelineMap.get(row.id)||[];
+      const historyMarkup=events.length
+        ? '<ol class="customer-booking-timeline" aria-label="बुकिंग स्थिति का इतिहास">'+events.map(event=>
+            '<li><span class="timeline-dot" aria-hidden="true"></span><div><b>'+customerEsc(customerBookingStatusText(event.new_status))+'</b><small>'+customerEsc(customerBookingTimeText(event.changed_at))+'</small></div></li>'
+          ).join('')+'</ol>'
+        : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
+      const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
+      return '<article class="card customer-booking-card" style="margin:10px 0;padding:13px">' +
+      '<div class="customer-booking-heading"><b>बुकिंग #' + customerEsc(row.id) + '</b><span class="customer-booking-state">'+customerEsc(customerBookingStatusText(row.status))+'</span></div>' +
+      '<p>' + customerEsc(row.service_type) + '</p>' +
+      '<p><b>वर्तमान स्थिति:</b> ' + customerEsc(customerBookingStatusText(row.status)) + ' • <b>भुगतान:</b> ' + customerEsc(paymentLabel) + '</p>' +
+      '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
+      (['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id&&row.payment_status!=='paid'&&!String(row.payment_method||'').toLowerCase().includes('razorpay') ? '<div class="job"><b>भुगतान का चुना हुआ तरीका:</b> '+customerEsc(row.payment_method||'नकद (Cash)')+'<p class="small">यदि इस बुकिंग के लिए Online भुगतान जरूरी हो, तो आप यहाँ स्वयं Online चुन सकते हैं। आपकी अनुमति के बिना भुगतान तरीका नहीं बदलेगा।</p><button type="button" onclick="customerChangePaymentMethod(\''+row.id+'\')">Online भुगतान चुनें</button></div>' : '') +
+      (row.status==='completed'&&row.quote_status==='approved'&&row.payment_status!=='paid'&&String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'?'<button type="button" onclick="customerPayBooking(\''+row.id+'\','+Number(row.quoted_amount||0)+')">🔒 काम पूरा — अब ऑनलाइन भुगतान करें</button>':'') +
+      (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
+      '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
+      (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (row.status === 'completed' ? '<p class="small">काम पूरा हो चुका है। इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा।</p>' : (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>')) : '') +
+      '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
+      '</article>';
+    }).join('');
+    if(timelineResult.error) {
+      const note=document.createElement('p');
+      note.className='small';
+      note.setAttribute('role','status');
+      note.textContent='बुकिंग की जानकारी उपलब्ध है, लेकिन स्थिति इतिहास अभी लोड नहीं हो सका।';
+      box.prepend(note);
+    }
+  } catch(error) {
+    box.textContent=navigator.onLine===false
+      ? 'इंटरनेट कनेक्शन टूट गया। कनेक्शन लौटने पर “बुकिंग फिर से देखें” दबाएँ।'
+      : 'बुकिंग लोड नहीं हो सकीं। कृपया “बुकिंग फिर से देखें” दबाकर दोबारा कोशिश करें।';
+  } finally {
+    box.setAttribute('aria-busy','false');
+  }
 }
 async function customerChangePaymentMethod(id){
  if(!confirm('क्या आप इस बुकिंग के लिए Cash की जगह Online (Razorpay) भुगतान स्वयं चुनना चाहते हैं? कोई भुगतान अभी नहीं लिया जाएगा।'))return;
