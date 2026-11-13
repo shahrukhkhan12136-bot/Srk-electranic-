@@ -454,6 +454,10 @@ function customerBookingStatusText(status) {
   const key=String(status||'').toLowerCase();
   return customerBookingStatusLabels[key] || 'स्थिति अपडेट';
 }
+function customerBookingPaymentStatusText(status){
+ const key=String(status||'pending').toLowerCase();
+ return ({paid:'भुगतान प्राप्त',refunded:'रिफंड किया गया',pending:'भुगतान लंबित',failed:'भुगतान असफल',processing:'भुगतान प्रोसेस हो रहा है',created:'भुगतान शुरू हुआ'})[key]||'भुगतान स्थिति अपडेट';
+}
 const customerBookingEventLabels={
  booking_created:'बुकिंग दर्ज हुई',
  work_start_requested:'इलेक्ट्रिशियन ने काम शुरू करने की अनुमति माँगी',
@@ -623,7 +627,7 @@ async function loadCustomerBookings() {
             '<li><span class="timeline-dot" aria-hidden="true"></span><div><b>'+customerEsc(customerBookingEventText(event.event_type))+'</b><small>'+customerEsc(customerBookingTimeText(event.occurred_at))+(customerBookingActorText(event.actor_role)?' · '+customerEsc(customerBookingActorText(event.actor_role)):'')+'</small></div></li>'
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
-      const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
+      const paymentLabel=customerBookingPaymentStatusText(row.payment_status);
       const cancellationInfo=!['completed','cancelled'].includes(row.status)
         ? '<p class="small">बुकिंग रद्द कराने के लिए Help & Support में अनुरोध भेजें। रद्द करने का अंतिम निर्णय Admin करेगा।</p>'
         : '';
