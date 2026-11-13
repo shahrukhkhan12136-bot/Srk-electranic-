@@ -918,6 +918,8 @@ async function loadCustomerAvatar(path,shouldApply=()=>true) {
  } catch(e){if(shouldApply())setCustomerAvatarPreview('');return false;}
 }
 let customerProfileLoadSequence=0;
+let customerSessionGeneration=0;
+function customerSessionOperationIsCurrent(generation){return generation===customerSessionGeneration;}
 async function loadCustomerProfile() {
  if(!customerSb||document.getElementById('saveCustomerProfile')?.disabled)return;
  const sequence=++customerProfileLoadSequence;
@@ -955,6 +957,7 @@ async function loadCustomerProfile() {
  } catch(e){if(sequence===customerProfileLoadSequence)setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
 }
 async function saveCustomerProfile() {
+ const operationGeneration=customerSessionGeneration;
  const button=document.getElementById('saveCustomerProfile');
  if(button.disabled)return;
  const fullName=document.getElementById('customerProfileName').value.trim();
@@ -972,18 +975,22 @@ async function saveCustomerProfile() {
    if(!allowed.includes(file.type)||file.size>5*1024*1024||file.size===0) throw new Error('फोटो JPEG, PNG या WebP होनी चाहिए और 5 MB से छोटी होनी चाहिए।');
    if(!window.crypto?.randomUUID)throw new Error('इस डिवाइस पर सुरक्षित फोटो पहचान उपलब्ध नहीं है। कृपया अपडेटेड ब्राउज़र इस्तेमाल करें।');
    const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+   if(!customerSessionOperationIsCurrent(operationGeneration))return;
    if(sessionError)throw sessionError;
    const userId=sessionData.session?.user?.id;
    if(!userId)throw new Error('फोटो अपलोड करने के लिए OTP लॉगिन जरूरी है।');
    const extension=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp' })[file.type];
    avatarPath=userId+'/'+window.crypto.randomUUID()+'.'+extension;
    const {error:uploadError}=await customerSb.storage.from('srk-customer-avatars').upload(avatarPath,file,{contentType:file.type,upsert:false});
+   if(!customerSessionOperationIsCurrent(operationGeneration))return;
    if(uploadError)throw uploadError;
    uploadedAvatarPath=avatarPath;
   }
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   const {data,error}=await customerSb.rpc('srk_customer_update_my_profile',{
    p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath
   });
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   if(error) {
    if(uploadedAvatarPath) {
     try {
@@ -998,7 +1005,8 @@ async function saveCustomerProfile() {
   document.getElementById('name').value=fullName;
   if(uploadedAvatarPath) {
    document.getElementById('customerAvatarFile').value='';
-   const previewLoaded=await loadCustomerAvatar(avatarPath);
+   const previewLoaded=await loadCustomerAvatar(avatarPath,()=>customerSessionOperationIsCurrent(operationGeneration));
+   if(!customerSessionOperationIsCurrent(operationGeneration))return;
    let cleanupWarning='';
    if(oldAvatar&&oldAvatar!==avatarPath) {
     try {
@@ -1010,8 +1018,8 @@ async function saveCustomerProfile() {
   } else {
    setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
   }
- } catch(e){setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||'')+(uploadCleanupFailed?' नई अपलोड फोटो की सफाई पूरी नहीं हुई; दोबारा कोशिश से पहले सहायता लें।':''),true);}
- finally{button.disabled=false;}
+ } catch(e){if(customerSessionOperationIsCurrent(operationGeneration))setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||'')+(uploadCleanupFailed?' नई अपलोड फोटो की सफाई पूरी नहीं हुई; दोबारा कोशिश से पहले सहायता लें।':''),true);}
+ finally{if(customerSessionOperationIsCurrent(operationGeneration))button.disabled=false;}
 }
 let customerSavedAddresses = [];
 let editingSavedAddressId = null;
@@ -1239,6 +1247,7 @@ async function loadCustomerSupportBookings(reset=true) {
 }
 let customerSupportComplaintCreateBusy=false;
 async function createCustomerSupportComplaint() {
+ const operationGeneration=customerSessionGeneration;
  const button=document.getElementById('customerSupportCreate');
  if(customerSupportComplaintCreateBusy)return;
  const bookingId=document.getElementById('customerSupportBooking').value;
@@ -1252,11 +1261,13 @@ async function createCustomerSupportComplaint() {
  let complaintCreated=false;
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   if(sessionError)throw sessionError;
   if(!sessionData?.session)throw new Error('शिकायत दर्ज करने के लिए OTP लॉगिन आवश्यक है।');
   const {data:complaintId,error}=await customerSb.rpc('srk_customer_create_booking_complaint',{
    p_booking_id:bookingId,p_category:category,p_description:description
   });
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   if(error) {
    const message=String(error.message||'');
    if(message.includes('COMPLAINT_DAILY_LIMIT_REACHED'))throw new Error('पिछले 24 घंटे में शिकायत दर्ज करने की सीमा पूरी हो गई है। सहायता टीम से संपर्क करें।');
@@ -1265,9 +1276,11 @@ async function createCustomerSupportComplaint() {
   }
   if(!complaintId)throw new Error('शिकायत संदर्भ प्राप्त नहीं हुआ।');
   complaintCreated=true;
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   document.getElementById('customerSupportDescription').value='';
   let refreshFailed=false;
   try{await loadCustomerSupportComplaints();}catch(_){refreshFailed=true;}
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   const select=document.getElementById('customerSupportComplaint');
   if(!Array.from(select.options).some(option=>option.value===complaintId)){
    select.add(new Option('नई शिकायत · '+String(complaintId).slice(0,8),complaintId));
@@ -1275,15 +1288,17 @@ async function createCustomerSupportComplaint() {
   }
   select.value=complaintId;customerSupportSelectedId=complaintId;
   try{await loadCustomerSupportMessages();}catch(_){refreshFailed=true;}
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   supportStatus(refreshFailed
    ?'आपकी शिकायत सफलतापूर्वक दर्ज हो गई है, लेकिन शिकायत सूची या संदेश अभी रीफ़्रेश नहीं हो सके। कृपया थ्रेड रीफ़्रेश करें; शिकायत दोबारा दर्ज न करें।'
    :'आपकी शिकायत सफलतापूर्वक दर्ज हो गई है। अब इसी थ्रेड में सहायता टीम से बात कर सकते हैं।',refreshFailed);
  } catch(error) {
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   supportStatus(complaintCreated
    ?'आपकी शिकायत दर्ज हो चुकी है, लेकिन स्क्रीन अपडेट नहीं हो सकी। कृपया रीफ़्रेश करें; शिकायत दोबारा दर्ज न करें।'
    :'शिकायत दर्ज नहीं हो सकी। '+(error.message||'कृपया दोबारा कोशिश करें।'),true);
  } finally {
-  customerSupportComplaintCreateBusy=false;button.disabled=false;button.textContent='शिकायत दर्ज करें';
+  if(customerSessionOperationIsCurrent(operationGeneration)){customerSupportComplaintCreateBusy=false;button.disabled=false;button.textContent='शिकायत दर्ज करें';}
  }
 }
 let customerSupportComplaintsLoadSequence=0;
@@ -1345,6 +1360,7 @@ async function loadCustomerSupportMessages() {
 let customerSupportMessageBusy=false;
 async function sendCustomerSupportMessage() {
  if(customerSupportMessageBusy)return;
+ const operationGeneration=customerSessionGeneration;
  const id=document.getElementById('customerSupportComplaint').value;
  const input=document.getElementById('customerSupportMessage');
  const body=input.value.trim(), fileInput=document.getElementById('customerSupportFiles');
@@ -1362,11 +1378,13 @@ async function sendCustomerSupportMessage() {
  let pendingUploadPath=null,linkedCount=0,messageCreated=false,orphanCleanupFailed=false;
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   if(sessionError)throw sessionError;
   const userId=sessionData?.session?.user?.id;if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
   const {data:messageId,error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{
    p_complaint_id:id,p_body:body||'आपके लिए फ़ाइल संलग्न की गई है।'
   });
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   if(error)throw error;
   if(!messageId)throw new Error('संदेश संदर्भ प्राप्त नहीं हुआ।');
   messageCreated=true;
@@ -1376,19 +1394,25 @@ async function sendCustomerSupportMessage() {
    const path=userId+'/'+id+'/'+crypto.randomUUID()+'.'+ext;
    pendingUploadPath=path;
    const {error:uploadError}=await customerSb.storage.from('srk-customer-support').upload(path,file,{contentType:file.type,upsert:false});
+   if(!customerSessionOperationIsCurrent(operationGeneration))return;
    if(uploadError)throw uploadError;
+   if(!customerSessionOperationIsCurrent(operationGeneration))return;
    const {error:linkError}=await customerSb.rpc('srk_customer_link_complaint_message_attachment',{
     p_complaint_id:id,p_message_id:messageId,p_storage_path:path,p_file_name:file.name.slice(0,180),
     p_mime_type:file.type,p_file_size_bytes:file.size
    });
+   if(!customerSessionOperationIsCurrent(operationGeneration))return;
    if(linkError)throw linkError;
    pendingUploadPath=null;linkedCount++;
   }
   input.value='';fileInput.value='';
   await loadCustomerSupportMessages();
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   supportStatus(files.length?'आपका संदेश और '+files.length+' फ़ाइल सफलतापूर्वक भेजी गई।':'आपका संदेश सहायता टीम को भेज दिया गया है।');
  }catch(e){
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   if(pendingUploadPath){try{const {error:cleanupError}=await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]);orphanCleanupFailed=Boolean(cleanupError);}catch(_){orphanCleanupFailed=true;}}
+  if(!customerSessionOperationIsCurrent(operationGeneration))return;
   if(messageCreated){
    fileInput.value='';
    try{await loadCustomerSupportMessages();}catch(_){}
@@ -1403,7 +1427,7 @@ async function sendCustomerSupportMessage() {
    supportStatus('संदेश या फ़ाइल भेजी नहीं जा सकी। '+(e.message||'कृपया दोबारा कोशिश करें।')+(orphanCleanupFailed?' अपलोड की गई असंबद्ध फ़ाइल की सफाई पूरी नहीं हुई; सहायता टीम से संपर्क करें।':''),true);
   }
  }
- finally{customerSupportMessageBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';complaintSelect.disabled=complaintSelectWasDisabled;}
+ finally{if(customerSessionOperationIsCurrent(operationGeneration)){customerSupportMessageBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';complaintSelect.disabled=complaintSelectWasDisabled;}}
 }
 
 let customerSessionSyncSequence=0;
@@ -1432,6 +1456,11 @@ async function syncCustomerSession() {
       await loadCustomerSavedAddresses({applyDefault:true}); if(sequence!==customerSessionSyncSequence)return;
       await loadCustomerProfile();
     } else {
+      customerSessionGeneration++;
+      customerSupportMessageBusy=false;customerSupportComplaintCreateBusy=false;
+      const supportSend=document.getElementById('customerSupportSend');supportSend.disabled=false;supportSend.textContent='संदेश / फ़ाइल भेजें';
+      const supportCreate=document.getElementById('customerSupportCreate');supportCreate.disabled=false;supportCreate.textContent='शिकायत दर्ज करें';
+      const supportComplaintSelect=document.getElementById('customerSupportComplaint');supportComplaintSelect.disabled=false;
       bookingPhone.value = '';
       bookingPhone.readOnly = true;
       document.getElementById('customerSignedIn').textContent = '';
@@ -1550,7 +1579,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'||event==='TOKEN_REFRESHED')customerSessionGeneration++; setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
