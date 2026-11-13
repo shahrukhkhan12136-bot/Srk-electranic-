@@ -40,7 +40,21 @@ a{color:#087e8b}@media(max-width:560px){.grid{grid-template-columns:1fr}.card{pa
 <option value="premium_electrical_specialist">Premium Electrical Specialist</option>
 </select>
 <p class="hint">माँगी गई category अंतिम मंजूरी नहीं है। Admin verification के बाद ही approved rate tier तय होगा।</p></div>
-<div class="field"><label for="skills">कौशल / काम का अनुभव *</label><input id="skills" name="skills" maxlength="300" placeholder="जैसे वायरिंग, MCB, पंखा, इन्वर्टर" required></div>
+<fieldset class="field" style="border:1px solid #d7e1e8;border-radius:12px;padding:14px">
+<legend style="font-weight:700;padding:0 6px">आप किन कामों में प्रशिक्षित / अनुभवी हैं? कम-से-कम एक चुनें *</legend>
+<div class="grid">
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="house_wiring" style="width:auto;min-width:18px"> घर की वायरिंग</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="electrical_fault_diagnosis" style="width:auto;min-width:18px"> बिजली की खराबी जाँचना</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="mcb_distribution_board" style="width:auto;min-width:18px"> MCB / डिस्ट्रीब्यूशन बोर्ड</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="light_installation" style="width:auto;min-width:18px"> लाइट लगाना / बदलना</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="fan_installation" style="width:auto;min-width:18px"> पंखा लगाना / बदलना</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="inverter_ups" style="width:auto;min-width:18px"> इन्वर्टर / UPS</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="earthing" style="width:auto;min-width:18px"> अर्थिंग</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="appliance_repair" style="width:auto;min-width:18px"> इलेक्ट्रिकल उपकरण मरम्मत</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="pump_motor" style="width:auto;min-width:18px"> पंप / मोटर</label>
+<label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="requested_skill_keys" value="other_electrical_work" style="width:auto;min-width:18px"> अन्य इलेक्ट्रिकल काम</label>
+</div><p class="hint">यह आपकी बताई हुई skill list है। ग्राहक की बुकिंग पर match होने से पहले Admin हर skill अलग से verify करेगा।</p></fieldset>
+<div class="field"><label for="skills">कौशल का संक्षिप्त विवरण *</label><input id="skills" name="skills" maxlength="300" placeholder="काम का अनुभव / उपकरणों की जानकारी" required></div>
 <div class="field"><label for="about">अपने बारे में / अतिरिक्त जानकारी</label><textarea id="about" name="about" maxlength="2000"></textarea></div>
 <p class="hint">आवेदन भेजने पर आपका मोबाइल और अन्य जानकारी Admin verification के लिए भेजी जाएगी। OTP या बैंक/UPI PIN कभी साझा न करें।</p>
 <button id="submitButton" type="submit">आवेदन जमा करें</button><div id="status" role="status" aria-live="polite"></div>
@@ -50,12 +64,12 @@ a{color:#087e8b}@media(max-width:560px){.grid{grid-template-columns:1fr}.card{pa
 <script>
 const form=document.getElementById('applicationForm'),button=document.getElementById('submitButton'),statusBox=document.getElementById('status');
 form.addEventListener('submit',async(event)=>{
- event.preventDefault();if(!form.reportValidity())return;
+ event.preventDefault();if(!form.reportValidity())return;if(!form.querySelector('input[name="requested_skill_keys"]:checked')){statusBox.className='status err';statusBox.textContent='कम-से-कम एक कौशल चुनें।';return;}
  const payload={
   full_name:form.full_name.value.trim(),phone:form.phone.value.trim(),
   state:form.state.value.trim(),district:form.district.value.trim(),pincode:form.pincode.value.trim(),
   experience_years:Number(form.experience_years.value),requested_category:form.requested_category.value,
-  skills:form.skills.value.trim(),about:form.about.value.trim()
+  skills:form.skills.value.trim(),requested_skill_keys:Array.from(form.querySelectorAll('input[name="requested_skill_keys"]:checked')).map(x=>x.value),about:form.about.value.trim()
  };
  button.disabled=true;button.textContent='आवेदन जमा हो रहा है…';statusBox.className='status';statusBox.textContent='कृपया प्रतीक्षा करें।';
  try{
