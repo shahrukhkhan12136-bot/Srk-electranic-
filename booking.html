@@ -533,7 +533,9 @@ async function customerSubmitBookingRefund(bookingId){
   if(button)button.disabled=false;
  }
 }
+let customerBookingHistoryLoadSequence=0;
 async function loadCustomerBookings() {
+  const sequence=++customerBookingHistoryLoadSequence;
   const box = document.getElementById('customerBookings');
   if (!customerSb) { box.textContent='ग्राहक लॉगिन सेवा अभी उपलब्ध नहीं है।'; return; }
   const { data: sessionData, error: sessionError } = await customerSb.auth.getSession();
@@ -562,6 +564,11 @@ async function loadCustomerBookings() {
       customerSb.rpc('srk_customer_get_my_booking_work_timeline'),
       customerSb.rpc('srk_customer_list_my_booking_refund_requests')
     ]);
+    if(sequence!==customerBookingHistoryLoadSequence)return;
+    const partialWarnings=[];
+    if(contactsResult.error)partialWarnings.push('इलेक्ट्रिशियन संपर्क विवरण अभी लोड नहीं हो सका।');
+    if(timelineResult.error)partialWarnings.push('बुकिंग की स्थिति का इतिहास अभी लोड नहीं हो सका।');
+    if(refundResult.error)partialWarnings.push('रिफंड अनुरोध की स्थिति अभी लोड नहीं हो सकी।');
     const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
     const timelineMap = new Map();
     if(!timelineResult.error) {
@@ -575,10 +582,14 @@ async function loadCustomerBookings() {
       (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
     }
     const billMap=new Map();
+    let billLoadFailures=0;
     await Promise.all(data.filter(row=>row.status==='completed'&&row.selected_category).map(async row=>{
       const {data:bill,error}=await customerSb.rpc('srk_customer_get_labour_bill',{p_booking_id:row.id});
-      if(!error&&bill)billMap.set(row.id,bill);
+      if(error)billLoadFailures++;
+      else if(bill)billMap.set(row.id,bill);
     }));
+    if(sequence!==customerBookingHistoryLoadSequence)return;
+    if(billLoadFailures)partialWarnings.push('कुछ पूरी हुई बुकिंग के अंतिम Labour Bill अभी लोड नहीं हो सके।');
     box.innerHTML = data.map(row => {
       const contact = callMap.get(row.id);
       const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
@@ -654,26 +665,19 @@ async function loadCustomerBookings() {
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
-    if(timelineResult.error) {
+    if(partialWarnings.length){
       const note=document.createElement('p');
       note.className='small';
       note.setAttribute('role','status');
-      note.textContent='बुकिंग की जानकारी उपलब्ध है, लेकिन स्थिति इतिहास अभी लोड नहीं हो सका।';
-      box.prepend(note);
-    }
-    if(refundResult.error){
-      const note=document.createElement('p');
-      note.className='small';
-      note.setAttribute('role','status');
-      note.textContent='रिफंड अनुरोध की स्थिति अभी लोड नहीं हो सकी।';
+      note.textContent=partialWarnings.join(' ');
       box.prepend(note);
     }
   } catch(error) {
-    box.textContent=navigator.onLine===false
+    if(sequence===customerBookingHistoryLoadSequence)box.textContent=navigator.onLine===false
       ? 'इंटरनेट कनेक्शन टूट गया। कनेक्शन लौटने पर “बुकिंग फिर से देखें” दबाएँ।'
       : 'बुकिंग लोड नहीं हो सकीं। कृपया “बुकिंग फिर से देखें” दबाकर दोबारा कोशिश करें।';
   } finally {
-    box.setAttribute('aria-busy','false');
+    if(sequence===customerBookingHistoryLoadSequence)box.setAttribute('aria-busy','false');
   }
 }
 async function customerRespondWorkStart(bookingId,response){
