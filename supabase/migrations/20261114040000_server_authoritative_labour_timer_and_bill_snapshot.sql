@@ -1025,3 +1025,44 @@ BEGIN
 END;
 $function$;
 
+
+
+-- Keep customer call contacts available during pending start approval, but never
+-- expose the electrician phone after work completion through either RPC.
+CREATE OR REPLACE FUNCTION private.srk_get_customer_call_contacts_impl()
+RETURNS TABLE(booking_id uuid,booking_status text,electrician_name text,electrician_phone text)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_uid uuid:=auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  RETURN QUERY
+  SELECT b.id,b.status,ep.display_name,ep.phone
+  FROM public.service_bookings b
+  JOIN public.electrician_profiles ep ON ep.id=b.assigned_electrician_id
+  WHERE b.customer_user_id=v_uid AND b.assigned_electrician_id IS NOT NULL
+    AND b.status IN ('assigned','inspection','awaiting_quote_approval','quote_approved',
+      'quote_rejected','awaiting_work_start_approval','in_progress')
+    AND ep.verification_status='approved' AND ep.active=true;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_customer_get_my_booking_contacts()
+RETURNS TABLE(booking_id uuid,electrician_phone text,booking_status text)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+  SELECT b.id,ep.phone,b.status
+  FROM public.service_bookings b
+  JOIN public.electrician_profiles ep ON ep.id=b.assigned_electrician_id
+  WHERE auth.uid() IS NOT NULL AND b.customer_user_id=auth.uid()
+    AND b.assigned_electrician_id IS NOT NULL
+    AND b.status IN ('assigned','inspection','awaiting_quote_approval','quote_approved',
+      'quote_rejected','awaiting_work_start_approval','in_progress')
+    AND ep.verification_status='approved' AND ep.active=true
+  ORDER BY b.created_at DESC LIMIT 100;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_customer_get_my_booking_contacts() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_customer_get_my_booking_contacts() TO authenticated;
+
