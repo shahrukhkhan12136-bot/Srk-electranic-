@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(8);
+SELECT plan(10);
 
 SELECT has_function('public','srk_get_my_earnings',ARRAY[]::text[],
   'electrician earnings RPC exists after reporting contract update');
@@ -39,6 +39,19 @@ SELECT ok(has_function_privilege('authenticated','public.srk_admin_commission_re
 SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
   ILIKE '%public.is_srk_admin()%',
   'Admin report continues to enforce Admin role inside the security-definer RPC');
+
+
+SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
+  ILIKE '%awaiting_work_start_approval%' AND
+  pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
+  ILIKE '%THEN b.phone ELSE NULL END%',
+  'assigned electrician retains customer phone visibility during pending work-start approval');
+
+SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
+  ILIKE '%b.assigned_electrician_id=p.id%' AND
+  pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
+  ILIKE '%p.active=true%',
+  'customer contact visibility remains restricted to the assigned active electrician');
 
 SELECT * FROM finish();
 ROLLBACK;
