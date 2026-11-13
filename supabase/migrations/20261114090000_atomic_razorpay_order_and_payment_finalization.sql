@@ -129,7 +129,11 @@ BEGIN
     RAISE EXCEPTION 'Service role only' USING ERRCODE='42501';
   END IF;
   IF p_booking_id IS NULL
-     OR p_razorpay_order_id IS NULL OR p_razorpay_order_id !~ '^order_[A-Za-z0-9]+
+     OR p_razorpay_order_id IS NULL OR left(p_razorpay_order_id,6)<>'order_' OR length(p_razorpay_order_id)<7
+     OR p_razorpay_payment_id IS NULL OR left(p_razorpay_payment_id,4)<>'pay_' OR length(p_razorpay_payment_id)<5
+     OR p_amount_paise IS NULL OR p_amount_paise<100
+     OR p_currency IS DISTINCT FROM 'INR' THEN
+    RAISE EXCEPTION 'Invalid captured payment details' USING ERRCODE='22023';
   END IF;
   SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found' USING ERRCODE='P0002'; END IF;
