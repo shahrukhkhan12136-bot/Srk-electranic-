@@ -15,6 +15,7 @@
     "test:timeline": "node --test tests/work-timeline.test.cjs",
     "test:customer-menu": "node --test tests/customer-menu.test.cjs",
     "test:electrician-portal": "node --test tests/electrician-portal.test.cjs",
-    "test:admin-portal": "node --test tests/admin-portal.test.cjs"
+    "test:admin-portal": "node --test tests/admin-portal.test.cjs",
+    "test:electrician-push": "node --test tests/electrician-push.test.cjs"
   }
 }
