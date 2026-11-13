@@ -1,12 +1,12 @@
 BEGIN;
-SELECT plan(12);
+SELECT plan(13);
 SELECT has_table('public','srk_razorpay_refund_events','Durable provider event inbox exists');
 SELECT has_function('public','srk_admin_claim_razorpay_refund','Admin claim RPC exists');
 SELECT has_function('public','srk_service_record_razorpay_refund_result','Provider result persistence RPC exists');
 SELECT has_function('public','srk_service_finalize_razorpay_refund','Internal refund finalization RPC exists');
 SELECT has_function('public','srk_service_capture_razorpay_refund_event','Provider event capture RPC exists');
 SELECT ok(position('is_srk_admin()' in pg_get_functiondef('public.srk_admin_claim_razorpay_refund(uuid)'::regprocedure))>0,'Claim is Admin-gated');
-SELECT ok(position('X' in 'X')=1,'Test harness sanity');
+SELECT has_pk('public','srk_razorpay_refund_events','Provider event ID is the deduplication primary key');
 SELECT ok(position('auth.role()' in pg_get_functiondef('public.srk_service_record_razorpay_refund_result(uuid,text,text,text)'::regprocedure))>0,'Provider result requires service role');
 SELECT ok(position('auth.role()' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund(uuid)'::regprocedure))>0,'Finalization requires service role');
 SELECT ok(position('payment_status=''refunded''' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund(uuid)'::regprocedure))>0,'Booking is marked refunded only after provider processed state');
