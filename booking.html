@@ -334,7 +334,7 @@ function customerPaymentLabel(row) {
  const types={payment:'बुकिंग भुगतान',refund_request:'रिफंड अनुरोध',refund:'ऑनलाइन रिफंड',manual_payment:'दर्ज भुगतान',manual_refund:'दर्ज रिफंड'};
  const methods={cash:'नकद',upi:'UPI',card:'कार्ड',online:'ऑनलाइन',razorpay:'Razorpay',bank_transfer:'बैंक ट्रांसफर',other:'अन्य'};
  const status=String(row.status||'').toLowerCase();
- const statusLabel=({paid:'सफल',captured:'सफल',recorded:'दर्ज',processed:'प्रोसेस्ड',pending:'लंबित',requested:'अनुरोध किया गया',in_review:'Admin समीक्षा में',approved:'रिफंड स्वीकृत',processing:'रिफंड प्रोसेस हो रहा है',unknown:'Admin जाँच आवश्यक',requires_reconciliation:'Admin जाँच आवश्यक',failed:'असफल',rejected:'अस्वीकृत'})[status]||row.status||'स्थिति उपलब्ध नहीं';
+ const statusLabel=({paid:'सफल',captured:'सफल',refunded:'रिफंड किया गया',recorded:'दर्ज',processed:'प्रोसेस्ड',pending:'लंबित',requested:'अनुरोध किया गया',in_review:'Admin समीक्षा में',approved:'रिफंड स्वीकृत',processing:'रिफंड प्रोसेस हो रहा है',unknown:'Admin जाँच आवश्यक',requires_reconciliation:'Admin जाँच आवश्यक',failed:'असफल',rejected:'अस्वीकृत'})[status]||row.status||'स्थिति उपलब्ध नहीं';
  return {type:types[row.event_type]||'भुगतान रिकॉर्ड',method:methods[row.payment_method]||'',status:statusLabel};
 }
 async function customerPrintPaymentReceipt(bookingId){
