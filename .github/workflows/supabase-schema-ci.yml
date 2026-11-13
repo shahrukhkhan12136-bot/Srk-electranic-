@@ -143,6 +143,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114090000_atomic_razorpay_order_and_payment_finalization.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114100000_reproducible_labour_only_refund_foundation.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114110000_admin_refund_review_queue_and_decisions.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114120000_guarded_labour_only_razorpay_refund_preparation.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
@@ -220,6 +221,9 @@ jobs:
             END IF;
             IF to_regprocedure('public.srk_admin_decide_booking_refund_request(uuid,text,text)') IS NULL THEN
               RAISE EXCEPTION 'Missing Admin refund decision RPC';
+            END IF;
+            IF to_regprocedure('public.srk_admin_prepare_booking_refund(uuid)') IS NULL THEN
+              RAISE EXCEPTION 'Missing guarded Admin refund preparation RPC';
             END IF;
           END
           $$;
