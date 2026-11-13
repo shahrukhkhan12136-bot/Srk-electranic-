@@ -530,8 +530,10 @@ function customerRefundStatusText(status){
  const key=String(status||'').toLowerCase();
  return customerRefundStatusLabels[key]||'स्थिति अपडेट';
 }
+let customerWorkCompletionResponseBusy=new Set();
 async function customerRespondWorkCompletion(bookingId,response){
- if(!customerSb)return;
+ if(!customerSb||customerWorkCompletionResponseBusy.has(bookingId))return;
+ customerWorkCompletionResponseBusy.add(bookingId);
  let note=null;
  if(response==='disputed'){
   const field=document.getElementById('customerCompletionDispute_'+bookingId);
@@ -560,7 +562,7 @@ async function customerRespondWorkCompletion(bookingId,response){
   await loadCustomerBookings();
  }catch(error){
   alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग की वर्तमान स्थिति रीफ़्रेश करके दोबारा कोशिश करें।');
- }
+ }finally{customerWorkCompletionResponseBusy.delete(bookingId);}
 }
 let customerRefundSubmissionBusy=new Set();
 async function customerSubmitBookingRefund(bookingId){
@@ -777,12 +779,15 @@ async function loadCustomerBookings(reset=true) {
     if(sequence===customerBookingHistoryLoadSequence){customerBookingHistoryBusy=false;box.setAttribute('aria-busy','false');more.disabled=false;if(refresh)refresh.disabled=false;}
   }
 }
+let customerWorkStartResponseBusy=new Set();
 async function customerRespondWorkStart(bookingId,response){
- if(!['approved','rejected'].includes(response))return;
+ if(!customerSb||!['approved','rejected'].includes(response)||customerWorkStartResponseBusy.has(bookingId))return;
  const question=response==='approved'?'क्या आप इलेक्ट्रिशियन को अभी काम शुरू करने की अनुमति देते हैं?':'क्या आप अभी काम शुरू करने की अनुमति रोकना चाहते हैं?';
  if(!confirm(question))return;
+ customerWorkStartResponseBusy.add(bookingId);
  try{const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});if(error)throw error;if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');await loadCustomerBookings();}
  catch(e){alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग रीफ़्रेश करें।');}
+ finally{customerWorkStartResponseBusy.delete(bookingId);}
 }
 function formatCustomerTimer(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');}
 function updateCustomerTimers(){document.querySelectorAll('[id^="customerTimer_"]').forEach(el=>{let seconds=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))seconds+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatCustomerTimer(seconds);});}
