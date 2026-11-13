@@ -3904,5 +3904,13 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Completion request server time से elapsed seconds जमा करता है और timer रोकता है; Customer reject पर accumulated seconds सुरक्षित रखकर नया `work_started_at` और running timer सेट होता है। Dispute पर timer रोकता है। नई bill snapshot प्रक्रिया केवल Admin/customer-approved completion और dispute-free state पर बनेगी।
 - Live customer start approval RPC start timestamp server `now()` पर सेट करता है; timer start server-authoritative है। `work_timer_seconds` integer है, इसलिए accumulated seconds को multi-day duration में रखने के लिए 32-bit सीमा की गणना/constraint review जरूरी है।
 - Live cash confirmation और Admin manual payment अभी `quote_status='approved'`, `quoted_amount` या `service_charge + materials_amount` पर निर्भर हैं। ये legacy dependencies हैं; immutable labour-only bill snapshot से replace किए बिना इन RPCs को estimate-only model में switch करना सुरक्षित नहीं।
-- Open billing-policy decision: timer में elapsed seconds से billable whole minutes कैसे निकालें — कोई भी partial minute अगले पूरे minute तक गिना जाए (ceiling), या केवल पूरे 60-second blocks गिने जाएँ (floor)? यह निर्णय actual labour amount बदलता है; implementation से पहले owner confirmation आवश्यक है।
+- **Billable whole-minute policy — मालिक की पुष्टि 13-11-2026 (विकल्प 1):** server-recorded elapsed seconds को billable minutes में बदलते समय कोई भी positive partial minute अगले पूरे minute तक गिना जाएगा (ceiling)। उदाहरण: 10 मिनट 20 सेकंड = 11 billable minutes; ठीक 10 मिनट = 10 minutes; शून्य seconds = 0। यह elapsed-time conversion है और monetary amount की half-up paisa rounding से अलग चरण है।
 - No live changes, migrations applied, payment actions or deployment.
+
+
+### 19.10 Billable minute conversion — मालिक की पुष्टि और unit tests (13-11-2026)
+- मालिक ने विकल्प 1 चुना: किसी भी positive partial minute को अगले पूरे billable minute तक round up (ceiling) किया जाएगा। इसलिए 10 मिनट 20 सेकंड का bill 11 मिनट पर बनेगा; केवल पूरे 60-second blocks गिनने वाला floor नियम लागू नहीं होगा।
+- Feature Branch के `lib/labour-billing.js` में `calculateBillableMinutesFromElapsedSeconds(elapsedSeconds)` helper जोड़ा गया। यह non-negative safe integer seconds validate करता है और ceiling conversion करता है। इसे monetary half-up rounding से अलग रखा गया है।
+- Unit tests में 0, 1, 599, 600, 620 और 86,401 seconds के cases तथा invalid inputs शामिल किए गए। ये pure helper tests हैं; server timer RPC, final bill snapshot, payment binding या live runtime integration का प्रमाण नहीं हैं।
+- Combined final labour formula: पहले server elapsed seconds → billable whole minutes (ceiling); फिर approved 8-hour rate × billable minutes ÷ 480 → nearest integer paisa, exact half paisa rounds up.
+- कोई live migration apply, production change, payment action या deployment नहीं हुआ।
