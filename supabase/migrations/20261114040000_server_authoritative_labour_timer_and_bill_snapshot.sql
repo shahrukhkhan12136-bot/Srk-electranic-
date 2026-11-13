@@ -1425,3 +1425,157 @@ BEGIN
 END;
 $function$;
 
+
+
+CREATE OR REPLACE FUNCTION public.srk_get_my_wallet_summary()
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_uid uuid:=auth.uid();
+  v_customer_id uuid;
+  v_electrician_id uuid;
+  v_result jsonb;
+  v_due numeric(14,2):=0;
+  v_collected numeric(14,2):=0;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  INSERT INTO public.srk_wallet_accounts(user_id,wallet_type)
+  VALUES(v_uid,'customer') ON CONFLICT(user_id,wallet_type) DO NOTHING;
+  IF EXISTS(SELECT 1 FROM public.electrician_profiles ep
+    WHERE coalesce(ep.auth_user_id,ep.user_id)=v_uid AND ep.verification_status='approved') THEN
+    INSERT INTO public.srk_wallet_accounts(user_id,wallet_type)
+    VALUES(v_uid,'electrician') ON CONFLICT(user_id,wallet_type) DO NOTHING;
+  END IF;
+  SELECT id INTO v_customer_id FROM public.srk_wallet_accounts
+  WHERE user_id=v_uid AND wallet_type='customer';
+  SELECT id INTO v_electrician_id FROM public.srk_wallet_accounts
+  WHERE user_id=v_uid AND wallet_type='electrician';
+
+  IF v_electrician_id IS NOT NULL THEN
+    SELECT greatest(coalesce(sum(CASE
+      WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
+      WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      ELSE 0 END),0),0)
+    INTO v_due FROM public.srk_wallet_ledger
+    WHERE wallet_id=v_electrician_id AND status='posted';
+    SELECT coalesce(sum(amount),0) INTO v_collected
+    FROM public.srk_wallet_ledger
+    WHERE wallet_id=v_electrician_id AND status='posted'
+      AND entry_type IN ('platform_fee_collected','platform_fee_due_recovery')
+      AND direction='debit';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'customer',jsonb_build_object(
+      'wallet_id',v_customer_id,
+      'balance',coalesce((SELECT sum(CASE WHEN direction='credit' THEN amount ELSE -amount END)
+        FROM public.srk_wallet_ledger WHERE wallet_id=v_customer_id AND status='posted'),0),
+      'currency','INR','topups_enabled',false,
+      'note','Customer deposits are disabled until the regulated payment flow is approved.'
+    ),
+    'electrician',CASE WHEN v_electrician_id IS NULL THEN NULL ELSE jsonb_build_object(
+      'wallet_id',v_electrician_id,
+      'balance',coalesce((SELECT sum(CASE WHEN direction='credit' THEN amount ELSE -amount END)
+        FROM public.srk_wallet_ledger WHERE wallet_id=v_electrician_id AND status='posted'),0),
+      'platform_fee_due',v_due,
+      'platform_fee_collected',v_collected,
+      'currency','INR','payouts_enabled',false,
+      'note','यह आंतरिक Platform Fee ledger है; वास्तविक बैंक भुगतान Admin reference के बाद ही Paid होगा.'
+    ) END
+  ) INTO v_result;
+  RETURN v_result;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_wallet_overview()
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501';
+  END IF;
+  SELECT jsonb_build_object(
+    'customer_wallets',(SELECT count(*) FROM public.srk_wallet_accounts WHERE wallet_type='customer'),
+    'electrician_wallets',(SELECT count(*) FROM public.srk_wallet_accounts WHERE wallet_type='electrician'),
+    'posted_ledger_credits',coalesce((SELECT sum(amount) FROM public.srk_wallet_ledger WHERE status='posted' AND direction='credit'),0),
+    'posted_ledger_debits',coalesce((SELECT sum(amount) FROM public.srk_wallet_ledger WHERE status='posted' AND direction='debit'),0),
+    'pending_entries',(SELECT count(*) FROM public.srk_wallet_ledger WHERE status='pending'),
+    'verified_bank_links',(SELECT count(*) FROM public.srk_wallet_bank_links WHERE verification_status='verified'),
+    'platform_fee_due',greatest(coalesce((SELECT sum(CASE
+      WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
+      WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),0),
+    'platform_fee_collected',coalesce((SELECT sum(amount) FROM public.srk_wallet_ledger
+      WHERE status='posted' AND direction='debit'
+        AND entry_type IN ('platform_fee_collected','platform_fee_due_recovery')),0),
+    'pending_electrician_payouts',coalesce((SELECT sum(amount) FROM public.srk_wallet_ledger
+      WHERE status='pending' AND direction='debit' AND entry_type='payout'),0)
+  ) INTO v_result;
+  RETURN v_result;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_commission_report()
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501';
+  END IF;
+  WITH paid_completed AS (
+    SELECT b.assigned_electrician_id,coalesce(b.amount_paid,0)::numeric AS gross,
+      CASE WHEN b.selected_category IS NOT NULL THEN coalesce(lb.platform_fee_amount,0)::numeric
+        ELSE coalesce(b.commission_amount,0)::numeric END AS platform_fee
+    FROM public.service_bookings b
+    LEFT JOIN public.srk_booking_labour_bills lb ON lb.booking_id=b.id
+    WHERE b.status='completed' AND b.payment_status='paid'
+  ), totals AS (
+    SELECT coalesce(sum(gross),0)::numeric AS collected,
+      coalesce(sum(platform_fee),0)::numeric AS fee,
+      coalesce(sum(gross-platform_fee),0)::numeric AS payable
+    FROM paid_completed
+  ), partners AS (
+    SELECT p.id AS electrician_id,p.display_name,
+      count(pc.*)::integer AS paid_completed_jobs,
+      coalesce(sum(pc.gross),0)::numeric AS gross_received,
+      coalesce(sum(pc.platform_fee),0)::numeric AS company_commission,
+      coalesce(sum(pc.gross-pc.platform_fee),0)::numeric AS electrician_earning,
+      greatest(coalesce((SELECT sum(CASE
+        WHEN wl.entry_type='platform_fee_due' AND wl.direction='debit' THEN wl.amount
+        WHEN wl.entry_type='platform_fee_due_settlement' AND wl.direction='credit' THEN -wl.amount
+        ELSE 0 END)
+        FROM public.srk_wallet_ledger wl
+        JOIN public.srk_wallet_accounts wa ON wa.id=wl.wallet_id
+        WHERE wa.user_id=coalesce(p.auth_user_id,p.user_id)
+          AND wa.wallet_type='electrician' AND wl.status='posted'),0),0)::numeric AS platform_fee_due
+    FROM public.electrician_profiles p
+    LEFT JOIN paid_completed pc ON pc.assigned_electrician_id=p.id
+    GROUP BY p.id,p.display_name,p.auth_user_id,p.user_id
+    ORDER BY p.display_name
+  )
+  SELECT jsonb_build_object(
+    'total_collected',t.collected,
+    'total_commission',t.fee,
+    'total_platform_fee',t.fee,
+    'total_platform_fee_collected',coalesce((SELECT sum(amount) FROM public.srk_wallet_ledger
+      WHERE status='posted' AND direction='debit'
+        AND entry_type IN ('platform_fee_collected','platform_fee_due_recovery')),0),
+    'total_platform_fee_due',greatest(coalesce((SELECT sum(CASE
+      WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
+      WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),0),
+    'total_electrician_payable',t.payable,
+    'partners',coalesce((SELECT jsonb_agg(to_jsonb(partners)) FROM partners),'[]'::jsonb)
+  ) INTO v_result FROM totals t;
+  RETURN v_result;
+END;
+$function$;
+
