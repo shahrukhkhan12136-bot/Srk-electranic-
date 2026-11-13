@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(28);
+SELECT plan(26);
 
 SELECT has_schema('srk_private','private schema exists for payment order locks');
 SELECT has_table('srk_private','payment_order_locks','payment order lock table exists');
