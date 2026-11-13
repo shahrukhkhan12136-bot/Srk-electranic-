@@ -665,3 +665,26 @@ test('booking form clearly discloses PIN syntax-only validation until authoritat
   const addressLabel = html.indexOf('<label for="address">', pinNote);
   assert.ok(pinNote >= 0 && pinNoteEnd > pinNote && addressLabel > pinNoteEnd);
 });
+
+
+test('customer completion controls match the server accept reject and dispute contract', () => {
+  const start=html.indexOf('async function customerRespondWorkCompletion(bookingId,response)');
+  const end=html.indexOf('let customerRefundSubmissionBusy',start);
+  const source=html.slice(start,end);
+  assert.ok(source.includes("response==='disputed'"));
+  assert.ok(source.includes("note.length<20||note.length>1000"));
+  assert.ok(source.includes("p_booking_id:bookingId,p_response:response,p_note:note"));
+  assert.ok(source.includes("if(!data?.success)"));
+  assert.ok(source.includes("customerWorkCompletionResponseBusy.add(bookingId)"));
+  assert.ok(source.includes("finally{customerWorkCompletionResponseBusy.delete(bookingId);}"));
+  const historyStart=html.indexOf('async function loadCustomerBookings(reset=true)');
+  const historyEnd=html.indexOf('async function customerRespondWorkStart',historyStart);
+  const history=html.slice(historyStart,historyEnd);
+  assert.ok(history.includes("row.completion_approval_status==='pending'"));
+  assert.ok(history.includes("customerRespondWorkCompletion('\\'+customerEsc(row.id)+'\\',\\'approved\\')"));
+  assert.ok(history.includes("customerRespondWorkCompletion('\\'+customerEsc(row.id)+'\\',\\'rejected\\')"));
+  assert.ok(history.includes("customerRespondWorkCompletion('\\'+customerEsc(row.id)+'\\',\\'disputed\\')"));
+  assert.ok(history.includes('काम पूरा स्वीकार करें'));
+  assert.ok(history.includes('काम अभी अधूरा है'));
+  assert.ok(history.includes('विवाद दर्ज करें'));
+});
