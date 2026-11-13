@@ -671,7 +671,7 @@ async function loadCustomerBookings() {
       let refundMarkup='';
       if(refund){
         refundMarkup='<div class="job"><b>रिफंड अनुरोध:</b> '+customerEsc(customerRefundStatusText(refund.status))+
-          '<p class="small">अनुरोधित राशि: '+customerEsc(formatCustomerMoney(refund.amount))+' · '+customerEsc(customerBookingTimeText(refund.updated_at||refund.created_at))+'</p>'+
+          '<p class="small">अनुरोधित राशि: '+customerEsc(formatCustomerMoney(refund.amount))+' · '+customerEsc(customerBookingTimeText(refund.processed_at||refund.updated_at||refund.created_at))+'</p>'+
           (String(refund.status||'').toLowerCase()==='rejected'&&canRequestRefund
             ? '<label for="customerRefundReason_'+customerEsc(row.id)+'">नया कारण (20–1000 अक्षर)</label><textarea id="customerRefundReason_'+customerEsc(row.id)+'" minlength="20" maxlength="1000"></textarea><button id="customerRefundSubmit_'+customerEsc(row.id)+'" type="button" onclick="customerSubmitBookingRefund(\''+customerEsc(row.id)+'\')">दोबारा रिफंड अनुरोध करें</button>'
             :'')+'</div>';
