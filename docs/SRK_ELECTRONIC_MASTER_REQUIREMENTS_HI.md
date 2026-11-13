@@ -3155,3 +3155,50 @@ Audit सीमा: केवल पाँच Feature Branch migration files क
 - इस protocol को लागू करने के बाद अगला काम Master Checklist के पहले actionable item से शुरू होगा; पुराने audits केवल संबंधित item के evidence के रूप में उपयोग होंगे, और जहाँ evidence अधूरा/पुराना हो वहाँ पुनःजाँच और retest होगा।
 
 Audit सीमा: इस section में केवल कार्य-प्रक्रिया, status model और progress calculation नियम दर्ज किए गए हैं। कोई application code, database, migration, secret, provider setting या deployment नहीं बदला गया।
+
+
+## 17.84 — Master Checklist Item 14.1.1: Customer OTP Login — Initial Source Audit (13 Nov 2026)
+
+**Checklist item (exact requirement):** “OTP login: expiry, resend cooldown/limits, wrong-attempt limits, abuse/rate limiting, secure session और logout।”
+
+### A. क्रम और scope
+- यह Master Checklist का पहला actionable checkbox है: Section 14.1, line 279 in the fetched Feature Branch document.
+- इस item के भीतर OTP expiry, resend cooldown/limits, wrong-attempt limits, abuse/rate limiting, secure session और logout सभी को verify करना है। केवल OTP भेजने/सत्यापित करने का UI मौजूद होना पर्याप्त नहीं है।
+- Audit Feature Branch source और उपलब्ध Supabase project metadata तक सीमित रहा। Live customer OTP भेजकर/verify करके परीक्षण नहीं किया गया।
+
+### B. मौजूदा implementation का निरीक्षण
+- `customer-login.html` (blob SHA `984d3f3f75383a6a21417eab14502fc3d73cfe6b`) में Supabase `signInWithOtp({phone})` और `verifyOtp({phone, token, type:'sms'})` मौजूद हैं। OTP input 4–8 digits स्वीकार करता है।
+- Standalone login page में 60-second resend cooldown केवल browser JavaScript variable/timer (`resendAt`) से लागू है। Page reload, दूसरा device/browser या direct Auth API request इस client-side timer को bypass कर सकता है। Server-side per-phone/IP resend enforcement का प्रमाण इस page में नहीं मिला।
+- Standalone login page में explicit logout/session-revocation UI/action नहीं मिला। Login success पर booking page पर redirect होता है।
+- `booking.html` (blob SHA `c5568eb56251e9aa6c9a4397ddccb289ebaeb754`) में भी 60-second client-side resend cooldown है; `verifyOtp` और `getSession` इस्तेमाल होते हैं; इस page पर `auth.signOut()` logout action मौजूद है।
+- Booking page का अलग customer phone input editable है। OTP-authenticated session phone और booking form phone के बीच server-side equality enforcement का प्रमाण इस source review में स्थापित नहीं हुआ। यह verified-mobile requirement से जुड़ा adjacent blocker है; इसे इसी login item के acceptance tests में शामिल किया जाएगा, पर बिना dependency review के booking flow नहीं बदला गया।
+- दोनों pages `createClient` को बिना explicit auth options के initialize करते हैं। Source में custom session lifetime, inactivity timeout, token revocation policy या session lifecycle configuration नहीं दिखी। Supabase client defaults अकेले project-wide secure-session policy का प्रमाण नहीं हैं।
+- Wrong OTP message generic है, लेकिन source में per-user/per-IP wrong-attempt counter, lockout/backoff या abuse telemetry नहीं है। Provider-side protection हो सकती है, पर उपलब्ध source/config evidence से उसका actual setting/limit verify नहीं हुआ।
+- Existing migration `20261108120608_add_public_api_rate_limiting.sql` का rate limiter केवल `booking` और `application` endpoints स्वीकार करता है; यह OTP send/verify abuse controls का प्रमाण नहीं है। अगली migration `20261108120658_enable_rls_public_api_rate_limits.sql` केवल उस table पर RLS enable करती है।
+- Supabase project metadata से project ACTIVE_HEALTHY और PostgreSQL 17.11 verify हुआ। उपलब्ध connected Supabase actions में Auth OTP expiry/rate-limit settings पढ़ने का endpoint नहीं मिला; provider dashboard settings, SMS delivery configuration और Auth logs का सत्यापन अभी बाकी है।
+
+### C. Gap / status
+**Status: In Progress — implementation और end-to-end testing बाकी।**
+1. Resend cooldown अभी client-only है; server/provider enforced per-phone and per-IP limits का प्रमाण नहीं।
+2. Wrong-attempt limit, progressive backoff/lockout और abuse monitoring verify नहीं हुए।
+3. OTP expiry अवधि और provider-side OTP verification attempt limits verify नहीं हुए।
+4. Standalone login page में explicit logout/session-revocation action नहीं।
+5. Session persistence/refresh/expiry/revocation policy और cross-device logout behavior verify नहीं।
+6. Booking form का editable phone authenticated verified phone से enforceably bound है या नहीं, यह verify नहीं।
+7. Browser/device reload, concurrent requests, OTP replay, expired OTP, repeated wrong OTP, resend abuse, logout और protected-resource access के tests नहीं चले।
+
+### D. सुरक्षित अगला implementation/test क्रम
+- पहले Supabase Auth dashboard में OTP expiry, SMS provider limits, send/verify rate limits और session settings की read-only पुष्टि; कोई setting बदले बिना values/policy का sanitized evidence दर्ज करना।
+- फिर OTP send/verify के लिए provider-enforced limits और server-side abuse controls का design; मौजूदा booking/application limiter को OTP protection मानकर reuse न करना।
+- Standalone login में authenticated-session state और explicit sign-out जोड़ने का scoped Feature Branch change design करना; booking page तथा standalone page के session behavior को एकसमान करना।
+- Booking submission पर verified session phone को server-side authoritative बनाना; editable form phone को trust न करना। Existing customer/legacy booking compatibility और data impact पहले map करना।
+- Unit/integration tests में expiry, cooldown bypass attempts, wrong-attempt threshold, IP/phone abuse, OTP replay, session refresh/expiry, logout/revocation, direct protected API access, phone mismatch और duplicate/concurrent requests शामिल करना।
+- Provider credentials/OTP या वास्तविक customer data को test evidence में न रखें। Production Auth settings, secrets या live SMS/provider configuration बिना अलग explicit approval न बदलें।
+
+### E. Test evidence और change boundary
+- Source review: Pass (static inspection only); runtime/functional/security tests: Not Run.
+- Supabase Auth dashboard settings and logs: Not accessible through available connected actions; verification Blocked.
+- No source file, migration, database object, Auth setting, secret, SMS provider, customer account/session, payment or deployment was changed.
+- इस item को Verified Complete नहीं माना गया है। अगला कदम provider configuration read-only verification और फिर Feature Branch implementation/test plan है।
+
+Audit सीमा: पहले checklist item का source-level inspection किया गया; कोई code या Production change नहीं किया गया।
