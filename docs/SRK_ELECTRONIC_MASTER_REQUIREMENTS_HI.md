@@ -3490,3 +3490,14 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - GitHub Actions run record अभी भी connector से उपलब्ध नहीं; Vercel Preview status OTP CI result नहीं है।
 - कोई application source, package, workflow, Auth/DB setting, secret, SMS/provider request, customer session, payment या deployment नहीं बदला।
 - **Status: In Progress.** Static source checks 10/10 PASS; CI command result और आवश्यक runtime/security verification लंबित।
+
+
+## 17.102 — Customer OTP Source Regression Tests: GitHub Actions Run सफल (13 नवम्बर 2026)
+
+- Checklist item: **14.1.1**।
+- उपयोगकर्ता ने GitHub Actions के नवीनतम otp-source-tests run का परिणाम साझा किया: **succeeded**, लगभग 10 seconds में पूरा।
+- Run summary में **1 warning और 1 notice** दिखे। साझा किए गए output में इनके annotation details नहीं थे; इसलिए warning/notice को अनदेखा या harmless घोषित नहीं किया गया। अगला निरीक्षण: Annotations खोलकर दोनों के वास्तविक संदेश और संबंधित step/line जाँचना।
+- यह पहली बार है जब GitHub Actions workflow का वास्तविक successful run उपयोगकर्ता द्वारा UI से पुष्ट हुआ। अतः Section 17.99–17.101 में दर्ज CI execution/result pending blocker अब केवल test-run execution के लिए बंद माना जाएगा; workflow source regression job सफल है।
+- सफल CI run केवल tests/otp-source.test.cjs के source-level assertions और inline JavaScript syntax checks को प्रमाणित करता है। यह वास्तविक browser UX, OTP SMS delivery/expiry, Supabase Auth के configured server-side rate limits, wrong-attempt lockout, CAPTCHA enforcement, वास्तविक session lifecycle/cross-device logout या production endpoint behavior प्रमाणित नहीं करता।
+- **Checklist item 14.1.1 अभी In Progress रहेगा**, Verified Complete नहीं: Auth dashboard settings/expiry/limits/CAPTCHA/session policy का प्रत्यक्ष प्रमाण और स्वीकृत test environment में आवश्यक runtime/E2E परीक्षण शेष हैं।
+- इस update में कोई application source, test workflow, package, Supabase Auth/DB setting, secret, SMS/provider request, customer account/session, payment या deployment नहीं बदला।
