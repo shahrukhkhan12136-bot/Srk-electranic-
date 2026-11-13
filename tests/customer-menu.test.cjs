@@ -719,7 +719,7 @@ test('customer support booking selector ignores stale asynchronous responses', (
   assert.ok(source.includes('const sequence=++customerSupportBookingsLoadSequence;'));
   assert.ok(source.includes('if(sequence!==customerSupportBookingsLoadSequence)return;'));
   assert.ok(source.includes('if(sequence===customerSupportBookingsLoadSequence){'));
-  assert.ok(source.includes('finally {if(sequence===customerSupportBookingsLoadSequence)select.disabled=wasDisabled;}'));
+  assert.ok(source.includes('if(sequence===customerSupportBookingsLoadSequence){\n   customerSupportBookingsBusy=false;select.disabled=wasDisabled;more.disabled=false;'));
   assert.ok(source.includes(".eq('customer_user_id',session.user.id)"));
 });
 
