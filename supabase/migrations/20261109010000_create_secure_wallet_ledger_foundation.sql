@@ -83,7 +83,7 @@ create or replace function public.srk_get_my_wallet_summary()
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, auth, pg_temp
 as $$
 declare
   v_uid uuid := auth.uid();
@@ -151,7 +151,7 @@ create or replace function public.srk_admin_wallet_overview()
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public, auth, pg_temp
 as $$
 declare v_result jsonb;
 begin
