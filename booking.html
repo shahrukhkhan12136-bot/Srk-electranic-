@@ -1438,18 +1438,37 @@ async function syncCustomerSession() {
       document.getElementById('customerBookings').textContent = '';
       document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';
       document.getElementById('customerRefundHistory').textContent = 'रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';
+      ++customerProfileLoadSequence;
+      document.getElementById('customerProfileName').value = '';
+      document.getElementById('customerProfilePhone').value = '';
+      customerCurrentAvatarPath = null;
+      setCustomerAvatarPreview('');
+      ++customerSavedAddressLoadSequence;
+      customerSavedAddresses=[];editingSavedAddressId=null;
+      const savedAddressSelect=document.getElementById('savedAddressSelect');
+      savedAddressSelect.replaceChildren(new Option('नया पता इस्तेमाल करें',''));
+      savedAddressSelect.disabled=false;
+      setSavedAddressStatus('सेव किए गए पते देखने के लिए OTP लॉगिन करें।');
       document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));
+      document.getElementById('customerSupportComplaint').disabled=false;
+      document.getElementById('customerSupportRefresh').disabled=false;
+      ++customerSupportComplaintsLoadSequence;customerSupportComplaintsBusy=false;
+      ++customerSupportThreadLoadSequence;
       document.getElementById('customerSupportBooking').replaceChildren(new Option('बुकिंग चुनें',''));
+      ++customerSupportBookingsLoadSequence;customerSupportBookingsBusy=false;
+      document.getElementById('customerSupportBookingsMore').style.display='none';
+      document.getElementById('customerSupportBookingsMore').disabled=false;
+      document.getElementById('customerSupportBooking').disabled=false;
       document.getElementById('customerSupportDescription').value='';
       document.getElementById('customerSupportThread').textContent='';
       document.getElementById('customerSupportMessage').value='';
       document.getElementById('customerSupportFiles').value='';customerSupportAttachments=[];
-      customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें。');
-      document.getElementById('customerProfileName').value = '';
-      document.getElementById('customerProfilePhone').value = '';
+      customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें।');
       customerPaymentHistoryOffset = 0;
-      customerCurrentAvatarPath = null;
-      setCustomerAvatarPreview(null);
+      customerSavedAddressSelect.value='';
+      ['name','address','district','pin','place','bookingLat','bookingLng'].forEach(id=>{document.getElementById(id).value='';});
+      document.getElementById('customerMapWrap').style.display='none';
+      document.getElementById('customerLocationStatus').textContent='पता और लोकेशन भरने के लिए लॉगिन करें।';
     }
   } catch(error) {
     if(sequence===customerSessionSyncSequence) {
