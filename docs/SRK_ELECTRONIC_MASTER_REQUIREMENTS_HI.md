@@ -3698,3 +3698,12 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **सुरक्षित अगला चरण:** दोनों image assets को अलग-अलग responsive compositions के रूप में तैयार करना, text HTML में रखना, Feature Branch में optimized assets जोड़ना और entry/home page में integrate करना। Existing login/booking/auth behavior को न बदलें। Source verification के बाद भी consolidated real-world visual/device test pending रहेगा।
 - **स्थिति: Requirement Captured / Implementation Pending.** No source/assets/database/Auth/payment/provider/SMS/secret/deployment changes in this update.
 - **अंतिम वास्तविक परीक्षण: बाकी** — मूल 96 items के consolidated real-world test batch तक pending।
+
+### 17.113 — Founder Welcome Screen Design Approval and Photo Clarity Gate (2026-11-13)
+- User approved the proposed premium navy-blue/gold welcome-screen composition and requested it be used on the SRK ELECTRONIC welcome screen.
+- The founder image must be the user's previously saved original reference photo (single-person garden portrait, black button-up shirt and black trousers), not an AI-generated lookalike or a substituted electrician stock photo.
+- Photo acceptance gate: face and eyes clearly in focus; natural facial detail retained; no blur, pixelation, excessive smoothing, face distortion, artificial replacement, or text overlay on the face; preserve a high-resolution source and use optimized responsive derivatives without visibly degrading clarity.
+- Keep the agreed hierarchy: top headline “भरोसे की पहचान, बेहतरीन सेवा का वादा!”, supporting Hindi brand statement, founder photo as the dominant central visual, then “Welcome to SRK ELECTRONIC”, “आपकी सुरक्षा, हमारी जिम्मेदारी।” and “आपकी जरूरत, हमारी सर्विस — भरोसे के साथ।”.
+- The welcome screen design approval does not approve unrelated homepage-banner copy/assets or production deployment. Homepage banner remains a separate component under Section 17.112.
+- Implementation status remains Pending until the actual saved photo asset is integrated into the Feature Branch welcome screen and source/static/mobile visual checks pass. The earlier generated mockup is a design reference only and must not replace the user's original photo.
+- Final real-world device/browser visual verification remains pending under the 96-item dual-track policy. No Production deployment is authorized.
