@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(94);
+SELECT plan(95);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -382,6 +382,13 @@ SELECT ok(pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()':
   pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()'::regprocedure)
   ILIKE '%platform_fee_paise%',
   'final labour bill insert is recomputed from locked booking timer and approved rate');
+
+
+SELECT ok(pg_get_functiondef('public.srk_calculate_booking_commission()'::regprocedure)
+  ILIKE '%selected_category IS NOT NULL%'
+  AND pg_get_functiondef('public.srk_calculate_booking_commission()'::regprocedure)
+  ILIKE '%commission_amount:=NULL%',
+  'new categorized labour billing never derives Platform Fee from legacy commission_rate');
 
 SELECT * FROM finish();
 ROLLBACK;
