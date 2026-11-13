@@ -1886,3 +1886,278 @@ BEGIN
 END;
 $function$;
 
+
+
+-- Race-safe cash cycle: two accepted eligible Cash bookings per verified-topup cycle.
+CREATE TABLE IF NOT EXISTS srk_private.electrician_cash_cycles (
+  electrician_profile_id uuid PRIMARY KEY REFERENCES public.electrician_profiles(id) ON DELETE CASCADE,
+  cycle_number integer NOT NULL DEFAULT 1 CHECK(cycle_number>0),
+  cash_bookings_used smallint NOT NULL DEFAULT 0 CHECK(cash_bookings_used BETWEEN 0 AND 2),
+  last_verified_topup_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
+CREATE TABLE IF NOT EXISTS srk_private.cash_offer_reservations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id uuid NOT NULL REFERENCES public.service_bookings(id) ON DELETE CASCADE,
+  electrician_profile_id uuid NOT NULL REFERENCES public.electrician_profiles(id) ON DELETE CASCADE,
+  cycle_number integer NOT NULL,
+  status text NOT NULL DEFAULT 'reserved'
+    CHECK(status IN ('reserved','accepted','released')),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  responded_at timestamptz,
+  CONSTRAINT srk_cash_offer_reservation_unique UNIQUE(booking_id,electrician_profile_id)
+);
+CREATE INDEX IF NOT EXISTS srk_cash_offer_reservations_profile_status_idx
+  ON srk_private.cash_offer_reservations(electrician_profile_id,status);
+
+REVOKE ALL ON TABLE srk_private.electrician_cash_cycles FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON TABLE srk_private.cash_offer_reservations FROM PUBLIC,anon,authenticated;
+
+CREATE OR REPLACE FUNCTION private.srk_electrician_cash_slot_available(p_electrician_profile_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_user_id uuid;
+  v_cycle srk_private.electrician_cash_cycles%ROWTYPE;
+  v_wallet_id uuid;
+  v_due numeric(14,2):=0;
+  v_reserved integer:=0;
+BEGIN
+  SELECT coalesce(p.auth_user_id,p.user_id) INTO v_user_id
+  FROM public.electrician_profiles p
+  WHERE p.id=p_electrician_profile_id AND p.active=true
+    AND p.verification_status='approved'
+    AND p.auth_user_id IS NOT NULL AND p.user_id=p.auth_user_id
+    AND p.approved_rate_tier IS NOT NULL
+    AND p.approved_rate_card_version IS NOT NULL
+    AND p.rate_tier_approved_by IS NOT NULL AND p.rate_tier_approved_at IS NOT NULL;
+  IF v_user_id IS NULL THEN RETURN false; END IF;
+
+  INSERT INTO srk_private.electrician_cash_cycles(electrician_profile_id)
+  VALUES(p_electrician_profile_id) ON CONFLICT(electrician_profile_id) DO NOTHING;
+  SELECT * INTO v_cycle FROM srk_private.electrician_cash_cycles
+  WHERE electrician_profile_id=p_electrician_profile_id FOR UPDATE;
+
+  SELECT id INTO v_wallet_id FROM public.srk_wallet_accounts
+  WHERE user_id=v_user_id AND wallet_type='electrician';
+  IF v_wallet_id IS NOT NULL THEN
+    SELECT greatest(coalesce(sum(CASE
+      WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
+      WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+      WHEN entry_type='topup' AND direction='credit' THEN -amount
+      ELSE 0 END),0),0)
+    INTO v_due FROM public.srk_wallet_ledger
+    WHERE wallet_id=v_wallet_id AND status='posted';
+  END IF;
+  IF v_due>0 THEN RETURN false; END IF;
+
+  SELECT count(*)::integer INTO v_reserved
+  FROM srk_private.cash_offer_reservations
+  WHERE electrician_profile_id=p_electrician_profile_id AND status='reserved';
+  RETURN v_cycle.cash_bookings_used+v_reserved<2;
+END;
+$function$;
+REVOKE ALL ON FUNCTION private.srk_electrician_cash_slot_available(uuid) FROM PUBLIC,anon,authenticated;
+
+CREATE OR REPLACE FUNCTION private.srk_reserve_electrician_cash_offer_slot(
+  p_booking_id uuid,p_electrician_profile_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_cycle_number integer; v_rows integer;
+BEGIN
+  IF NOT private.srk_electrician_cash_slot_available(p_electrician_profile_id) THEN RETURN false; END IF;
+  SELECT cycle_number INTO v_cycle_number FROM srk_private.electrician_cash_cycles
+  WHERE electrician_profile_id=p_electrician_profile_id FOR UPDATE;
+  INSERT INTO srk_private.cash_offer_reservations(
+    booking_id,electrician_profile_id,cycle_number,status
+  ) VALUES(p_booking_id,p_electrician_profile_id,v_cycle_number,'reserved')
+  ON CONFLICT(booking_id,electrician_profile_id) DO NOTHING;
+  GET DIAGNOSTICS v_rows=ROW_COUNT;
+  RETURN v_rows=1;
+END;
+$function$;
+REVOKE ALL ON FUNCTION private.srk_reserve_electrician_cash_offer_slot(uuid,uuid) FROM PUBLIC,anon,authenticated;
+
+CREATE OR REPLACE FUNCTION private.srk_handle_cash_offer_reservation()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_payment_method text;
+  v_cycle_number integer;
+  v_rows integer;
+BEGIN
+  IF OLD.status='offered' AND NEW.status='accepted' THEN
+    SELECT payment_method INTO v_payment_method FROM public.service_bookings
+    WHERE id=NEW.booking_id FOR UPDATE;
+    IF lower(trim(coalesce(v_payment_method,''))) IN ('cash','नकद','नकद (cash)') THEN
+      UPDATE srk_private.cash_offer_reservations
+      SET status='accepted',responded_at=clock_timestamp()
+      WHERE booking_id=NEW.booking_id AND electrician_profile_id=NEW.electrician_id
+        AND status='reserved'
+      RETURNING cycle_number INTO v_cycle_number;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'Cash offer reservation missing or expired; choose Online payment or request Admin review';
+      END IF;
+      UPDATE srk_private.electrician_cash_cycles
+      SET cash_bookings_used=cash_bookings_used+1,updated_at=clock_timestamp()
+      WHERE electrician_profile_id=NEW.electrician_id
+        AND cycle_number=v_cycle_number AND cash_bookings_used<2;
+      IF NOT FOUND THEN RAISE EXCEPTION 'Cash cycle limit reached; Online payment required'; END IF;
+      UPDATE srk_private.cash_offer_reservations
+      SET status='released',responded_at=clock_timestamp()
+      WHERE booking_id=NEW.booking_id AND electrician_profile_id<>NEW.electrician_id
+        AND status='reserved';
+    END IF;
+  ELSIF OLD.status='offered' AND NEW.status IN ('declined','expired','cancelled') THEN
+    UPDATE srk_private.cash_offer_reservations
+    SET status='released',responded_at=clock_timestamp()
+    WHERE booking_id=NEW.booking_id AND electrician_profile_id=NEW.electrician_id
+      AND status='reserved';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION private.srk_handle_cash_offer_reservation() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS trg_srk_cash_offer_reservation ON public.job_offers;
+CREATE TRIGGER trg_srk_cash_offer_reservation
+AFTER UPDATE OF status ON public.job_offers
+FOR EACH ROW EXECUTE FUNCTION private.srk_handle_cash_offer_reservation();
+
+CREATE OR REPLACE FUNCTION private.srk_release_prework_cash_cycle_on_cancel()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_profile_id uuid; v_cycle_number integer;
+BEGIN
+  IF NEW.status='cancelled' AND OLD.status IS DISTINCT FROM NEW.status
+     AND OLD.status IN ('assigned','inspection','awaiting_work_start_approval')
+     AND coalesce(NEW.payment_status,'unpaid')<>'paid'
+     AND NEW.work_started_at IS NULL
+     AND coalesce(NEW.work_timer_elapsed_seconds,0)=0 THEN
+    UPDATE srk_private.cash_offer_reservations
+    SET status='released',responded_at=clock_timestamp()
+    WHERE booking_id=NEW.id AND status='accepted'
+    RETURNING electrician_profile_id,cycle_number INTO v_profile_id,v_cycle_number;
+    IF FOUND THEN
+      UPDATE srk_private.electrician_cash_cycles
+      SET cash_bookings_used=greatest(0,cash_bookings_used-1),updated_at=clock_timestamp()
+      WHERE electrician_profile_id=v_profile_id AND cycle_number=v_cycle_number;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION private.srk_release_prework_cash_cycle_on_cancel() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS trg_srk_release_prework_cash_cycle_on_cancel ON public.service_bookings;
+CREATE TRIGGER trg_srk_release_prework_cash_cycle_on_cancel
+AFTER UPDATE OF status ON public.service_bookings
+FOR EACH ROW EXECUTE FUNCTION private.srk_release_prework_cash_cycle_on_cancel();
+
+CREATE OR REPLACE FUNCTION private.srk_offer_booking_to_eligible_electricians(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_booking public.service_bookings%ROWTYPE;
+  v_match_level text;
+  v_eligible integer:=0;
+  v_created integer:=0;
+  v_has_rules boolean:=false;
+  v_is_cash boolean:=false;
+BEGIN
+  IF p_booking_id IS NULL THEN RAISE EXCEPTION 'Booking ID required' USING ERRCODE='22023'; END IF;
+  SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found' USING ERRCODE='P0002'; END IF;
+  IF v_booking.assigned_electrician_id IS NOT NULL THEN
+    RETURN jsonb_build_object('success',false,'code','already_assigned','eligible_count',0,'offers_created',0);
+  END IF;
+  IF v_booking.status NOT IN ('new','confirmed') THEN
+    RETURN jsonb_build_object('success',false,'code','booking_not_offerable','eligible_count',0,'offers_created',0);
+  END IF;
+  v_is_cash:=lower(trim(coalesce(v_booking.payment_method,''))) IN ('cash','नकद','नकद (cash)');
+
+  IF v_booking.selected_category IS NOT NULL THEN
+    SELECT EXISTS(SELECT 1 FROM public.srk_customer_category_skill_rules r
+      WHERE r.category_key=v_booking.selected_category) INTO v_has_rules;
+    IF NOT v_has_rules THEN
+      RETURN jsonb_build_object('success',false,'code','category_skill_mapping_missing',
+        'message','इस काम की Category के लिए Admin ने अभी verified skill mapping सेट नहीं की है।',
+        'match_level',null,'eligible_count',0,'offers_created',0);
+    END IF;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.electrician_profiles e
+    WHERE e.active=true AND e.verification_status='approved'
+      AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
+      AND e.approved_rate_tier IS NOT NULL AND e.approved_rate_card_version IS NOT NULL
+      AND e.rate_tier_approved_by IS NOT NULL AND e.rate_tier_approved_at IS NOT NULL
+      AND e.pincode=v_booking.pincode AND lower(trim(e.state))=lower(trim(v_booking.state))
+      AND (v_booking.selected_category IS NULL OR EXISTS(
+        SELECT 1 FROM public.srk_customer_category_skill_rules r
+        WHERE r.category_key=v_booking.selected_category AND r.skill_key=ANY(e.approved_skill_keys)))
+      AND NOT EXISTS(
+        SELECT 1 FROM public.service_bookings pending
+        WHERE pending.assigned_electrician_id=e.id AND pending.status='completed'
+          AND lower(coalesce(pending.payment_method,'')) LIKE '%online%'
+          AND coalesce(pending.payment_status,'unpaid') NOT IN ('paid','refunded'))
+      AND (NOT v_is_cash OR private.srk_electrician_cash_slot_available(e.id))
+  ) THEN v_match_level:='pincode'; ELSE v_match_level:='district'; END IF;
+
+  WITH candidates AS MATERIALIZED (
+    SELECT e.id FROM public.electrician_profiles e
+    WHERE e.active=true AND e.verification_status='approved'
+      AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
+      AND e.approved_rate_tier IS NOT NULL AND e.approved_rate_card_version IS NOT NULL
+      AND e.rate_tier_approved_by IS NOT NULL AND e.rate_tier_approved_at IS NOT NULL
+      AND lower(trim(e.state))=lower(trim(v_booking.state))
+      AND ((v_match_level='pincode' AND e.pincode=v_booking.pincode)
+        OR (v_match_level='district' AND lower(trim(e.district))=lower(trim(v_booking.district))))
+      AND (v_booking.selected_category IS NULL OR EXISTS(
+        SELECT 1 FROM public.srk_customer_category_skill_rules r
+        WHERE r.category_key=v_booking.selected_category AND r.skill_key=ANY(e.approved_skill_keys)))
+      AND NOT EXISTS(
+        SELECT 1 FROM public.service_bookings pending
+        WHERE pending.assigned_electrician_id=e.id AND pending.status='completed'
+          AND lower(coalesce(pending.payment_method,'')) LIKE '%online%'
+          AND coalesce(pending.payment_status,'unpaid') NOT IN ('paid','refunded'))
+      AND NOT EXISTS(SELECT 1 FROM public.job_offers o
+        WHERE o.booking_id=p_booking_id AND o.electrician_id=e.id)
+    ORDER BY e.id
+  ), eligible AS MATERIALIZED (
+    SELECT c.id FROM candidates c
+    WHERE NOT v_is_cash OR private.srk_reserve_electrician_cash_offer_slot(p_booking_id,c.id)
+  ), inserted AS (
+    INSERT INTO public.job_offers(booking_id,electrician_id,status,match_level)
+    SELECT p_booking_id,e.id,'offered',v_match_level FROM eligible e
+    ON CONFLICT(booking_id,electrician_id) DO NOTHING RETURNING id
+  )
+  SELECT (SELECT count(*) FROM eligible),(SELECT count(*) FROM inserted)
+  INTO v_eligible,v_created;
+
+  IF v_eligible=0 THEN
+    RETURN jsonb_build_object('success',false,
+      'code',CASE WHEN v_is_cash THEN 'cash_not_available' ELSE 'no_verified_skill_match' END,
+      'message',CASE WHEN v_is_cash
+        THEN 'Cash अभी उपलब्ध नहीं है: Cash cycle limit या Platform Fee बकाया हो सकता है। Online भुगतान चुनें या Admin से संपर्क करें।'
+        ELSE 'इस PIN/जिले में verified skill, approved rate tier और settled payment status वाला Active इलेक्ट्रिशियन उपलब्ध नहीं है।' END,
+      'match_level',v_match_level,'eligible_count',0,'offers_created',0);
+  END IF;
+  RETURN jsonb_build_object('success',true,
+    'message',CASE WHEN v_match_level='pincode'
+      THEN 'उसी PIN के verified-skill और rate-tier-approved इलेक्ट्रिशियनों को ऑफर भेजे गए।'
+      ELSE 'PIN पर योग्य पार्टनर नहीं मिला; जिले के verified-skill और rate-tier-approved पार्टनर को ऑफर भेजे गए।' END,
+    'match_level',v_match_level,'eligible_count',v_eligible,'offers_created',v_created);
+END;
+$function$;
+
