@@ -609,13 +609,15 @@ test('customer booking submit handler contains no unused legacy inspection quote
 
 
 test('booking API rejects past dates using India business timezone without inventing same-day cutoff', () => {
-  assert.match(bookingApi, /timeZone: "Asia\\/Kolkata"/);
-  assert.match(bookingApi, /preferred_date < indiaToday\(\)/);
-  assert.match(bookingApi, /Same-day cutoff\/business hours remain an explicit/);
+  assert.ok(bookingApi.includes('timeZone: "Asia/Kolkata"'));
+  assert.ok(bookingApi.includes("preferred_date < indiaToday()"));
+  assert.ok(bookingApi.includes("Same-day cutoff/business hours remain an explicit"));
 });
 
 test('booking form clearly discloses PIN syntax-only validation until authoritative postal matching exists', () => {
   assert.match(html, /id="pinValidationNote"/);
   assert.match(html, /डाक-विभागीय मिलान अभी सत्यापित नहीं है/);
-  assert.match(html, /id="pinValidationNote"[^>]*>[\\s\\S]*?<\\/p>\\s*<label for="address">/);
-});
+  const pinNote = html.indexOf('id="pinValidationNote"');
+  const pinNoteEnd = html.indexOf("</p>", pinNote);
+  const addressLabel = html.indexOf('<label for="address">', pinNote);
+  assert.ok(pinNote >= 0 && pinNoteEnd > pinNote && addressLabel > pinNoteEnd);
