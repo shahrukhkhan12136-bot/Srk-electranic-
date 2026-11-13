@@ -1,0 +1,70 @@
+name: Customer cancellation request isolated pgTAP
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/platform-fee-cash-online-cycle]
+    paths:
+      - '.github/workflows/customer-cancellation-request-pgtap.yml'
+      - 'supabase/migrations/20261115020000_customer_booking_cancellation_request_intake.sql'
+      - 'supabase/tests/fixtures/customer_cancellation_request_bootstrap.sql'
+      - 'supabase/tests/database/customer_cancellation_request.test.sql'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srk-customer-cancellation-request-pgtap
+  cancel-in-progress: true
+
+jobs:
+  isolated-pgtap:
+    if: github.ref == 'refs/heads/feature/platform-fee-cash-online-cycle'
+    name: Test customer cancellation request locally
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v5
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.1.0
+      - name: Create disposable local project and copy pgTAP
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/srk-customer-cancellation-request"
+          cd "$RUNNER_TEMP/srk-customer-cancellation-request"
+          supabase init
+          mkdir -p supabase/tests/database
+          cp "$GITHUB_WORKSPACE/supabase/tests/database/customer_cancellation_request.test.sql" supabase/tests/database/
+      - name: Start isolated local Supabase
+        working-directory: ${{ runner.temp }}/srk-customer-cancellation-request
+        run: supabase start
+      - name: Install PostgreSQL client and bootstrap synthetic schema
+        working-directory: ${{ runner.temp }}/srk-customer-cancellation-request
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          supabase status -o env > "$RUNNER_TEMP/srk-customer-cancellation-request.env"
+          set -a
+          source "$RUNNER_TEMP/srk-customer-cancellation-request.env"
+          set +a
+          test -n "${DB_URL:-}"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/tests/fixtures/customer_cancellation_request_bootstrap.sql"
+      - name: Apply cancellation request migration
+        working-directory: ${{ runner.temp }}/srk-customer-cancellation-request
+        run: |
+          set -euo pipefail
+          set -a
+          source "$RUNNER_TEMP/srk-customer-cancellation-request.env"
+          set +a
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261115020000_customer_booking_cancellation_request_intake.sql"
+      - name: Run cancellation request pgTAP
+        working-directory: ${{ runner.temp }}/srk-customer-cancellation-request
+        run: supabase test db
+      - name: Stop local Supabase
+        working-directory: ${{ runner.temp }}/srk-customer-cancellation-request
+        if: always()
+        run: supabase stop --no-backup
