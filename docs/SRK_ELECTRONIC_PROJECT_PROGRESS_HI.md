@@ -1646,3 +1646,6 @@
 - Browser two-phone/OTP flow, actual network race, and consolidated final mobile/Desktop QA remain pending. Production unchanged.
 
 **अगला resume point:** Customer App में शेष payment/refund/profile/support private state एवं customer-facing flows की acceptance audit जारी रखें; फिर server-authoritative timer/completion/bill/payment migrations के local isolated DB tests और API/JWT integration gaps पर काम करें।
+
+- अतिरिक्त Profile audit: profile avatar upload/RPC के दौरान account switch होने पर session-generation guard stale UI रोकता था, लेकिन Save Profile button disabled रह सकता था क्योंकि पुराने operation का finally जानबूझकर नए session को unlock नहीं करता। Auth invalidator अब Profile Save button restore करता है; regression test जोड़ा। App commit ab0bb7fdeed0144de9e2940531e952bf2e65f95f; test commit acd5c9714ebeab8a4ae4658ea6cd788f9ad1c18c.
+- इस सुधार के बाद Customer App full source regression #43508138339 SUCCESS, Refund + Account Privacy #43508138399 SUCCESS, Offer Timeline + deployment guard #43508138474 SUCCESS। Source-only checks; browser/device runtime अभी pending।
