@@ -5,15 +5,15 @@ const fs = require('node:fs');
 const html = fs.readFileSync('electrician.html', 'utf8');
 
 test('electrician verification state is rendered as text, never stored HTML', () => {
-  assert.match(html, /stateEl\\.textContent/);
-  assert.match(html, /stateEl\\.className=p\\.active\\?'good':'bad'/);
-  assert.doesNotMatch(html, /getElementById\\('state'\\)\\.innerHTML/);
+  assert.ok(html.includes("stateEl.textContent="));
+  assert.ok(html.includes("stateEl.className=p.active?'good':'bad'"));
+  assert.ok(!html.includes("getElementById('state').innerHTML"));
 });
 
 test('electrician portal keeps customer contact data behind assigned-offer response fields', () => {
-  assert.match(html, /ग्राहक का विवरण काम आपको असाइन होने के बाद दिखेगा/);
-  assert.match(html, /o\\.customer_name\\?/);
-  assert.match(html, /o\\.customer_phone\\?/);
+  assert.ok(html.includes('ग्राहक का विवरण काम आपको असाइन होने के बाद दिखेगा'));
+  assert.ok(html.includes('o.customer_name?'));
+  assert.ok(html.includes('o.customer_phone?'));
 });
 
 test('electrician portal exposes server-authoritative work start, completion, bill and cash confirmation RPCs', () => {
@@ -23,8 +23,9 @@ test('electrician portal exposes server-authoritative work start, completion, bi
 });
 
 test('electrician earnings and wallet displays use read RPCs and do not expose payout mutation controls', () => {
-  assert.match(html, /srk_get_my_earnings/);
-  assert.match(html, /srk_get_my_wallet_summary/);
-  assert.match(html, /बैंक खाता जोड़ना और निकासी अभी बंद है/);
-  assert.doesNotMatch(html, /srk_electrician_request_payout|srk_electrician_add_bank_account/);
+  assert.ok(html.includes('srk_get_my_earnings'));
+  assert.ok(html.includes('srk_get_my_wallet_summary'));
+  assert.ok(html.includes('बैंक खाता जोड़ना और निकासी अभी बंद है'));
+  assert.ok(!html.includes('srk_electrician_request_payout'));
+  assert.ok(!html.includes('srk_electrician_add_bank_account'));
 });
