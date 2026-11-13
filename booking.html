@@ -78,6 +78,11 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <label for="savedAddressSelect">सेव किया हुआ पता चुनें</label>
     <select id="savedAddressSelect"><option value="">नया पता इस्तेमाल करें</option></select>
     <p id="savedAddressStatus" class="small" role="status" aria-live="polite"></p>
+    <div class="actions">
+     <button class="btn" type="button" id="editSavedAddress" style="background:#eaf2ff;color:#164b91">चुना पता संपादित करें</button>
+     <button class="btn" type="button" id="deleteSavedAddress" style="background:#fff0f0;color:#a32121">चुना पता हटाएँ</button>
+    </div>
+    <button class="btn" type="button" id="setDefaultSavedAddress" style="width:100%;margin-top:9px;background:#fff7e6;color:#805000">इसे डिफ़ॉल्ट पता बनाएँ</button>
     <label for="savedAddressLabel">इस पते का नाम</label>
     <select id="savedAddressLabel"><option value="home">घर</option><option value="work">काम की जगह</option><option value="other">अन्य</option></select>
     <button class="btn" type="button" id="saveCurrentAddress" style="width:100%;margin-top:10px;background:#eaf2ff;color:#164b91">यह पता सेव करें</button>
@@ -192,6 +197,7 @@ function customerPayBooking(id,amount){
  document.getElementById('upiPanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
 let customerSavedAddresses = [];
+let editingSavedAddressId = null;
 function setSavedAddressStatus(message, isError=false) {
  const el=document.getElementById('savedAddressStatus');
  el.textContent=message;
@@ -215,6 +221,7 @@ async function loadCustomerSavedAddresses() {
  finally {select.disabled=false;}
 }
 function applySelectedSavedAddress() {
+ editingSavedAddressId=null;
  const id=document.getElementById('savedAddressSelect').value;
  if(!id) return;
  const a=customerSavedAddresses.find(x=>x.id===id);
@@ -245,7 +252,7 @@ async function saveCurrentBookingAddress() {
  button.disabled=true;button.textContent='पता सेव हो रहा है…';
  try {
   const {data,error}=await customerSb.rpc('srk_customer_save_my_address',{
-   p_id:null,p_label:document.getElementById('savedAddressLabel').value,
+   p_id:editingSavedAddressId,p_label:document.getElementById('savedAddressLabel').value,
    p_recipient_name:value('name'),p_address_line:value('address'),p_landmark:value('place')||null,
    p_pincode:value('pin'),p_district:value('district'),p_state:value('state'),
    p_location_lat:value('bookingLat')?Number(value('bookingLat')):null,
@@ -254,9 +261,63 @@ async function saveCurrentBookingAddress() {
   if(error) throw error;
   await loadCustomerSavedAddresses();
   document.getElementById('savedAddressSelect').value=data;
+  editingSavedAddressId=null;
   setSavedAddressStatus('पता सफलतापूर्वक सेव हो गया।');
  } catch(e) {setSavedAddressStatus(e.message==='ADDRESS_LIMIT_REACHED'?'अधिकतम 10 पते सेव हो सकते हैं। पहले कोई पुराना पता हटाना होगा.':'पता सेव नहीं हो सका। '+(e.message||''),true);}
  finally {button.disabled=false;button.textContent='यह पता सेव करें';}
+}
+function editSelectedSavedAddress() {
+ const id=document.getElementById('savedAddressSelect').value;
+ const a=customerSavedAddresses.find(x=>x.id===id);
+ if(!a){setSavedAddressStatus('संपादित करने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
+ editingSavedAddressId=a.id;
+ document.getElementById('savedAddressLabel').value=a.label;
+ document.getElementById('name').value=a.recipient_name;
+ document.getElementById('state').value=a.state;
+ document.getElementById('district').value=a.district;
+ document.getElementById('pin').value=a.pincode;
+ document.getElementById('address').value=a.address_line;
+ document.getElementById('place').value=a.landmark||'';
+ document.getElementById('bookingLat').value=a.location_lat??'';
+ document.getElementById('bookingLng').value=a.location_lng??'';
+ setSavedAddressStatus('पता फॉर्म में संपादन के लिए खुल गया है। बदलाव के बाद “यह पता सेव करें” दबाएँ।');
+ document.getElementById('address').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function deleteSelectedSavedAddress() {
+ const id=document.getElementById('savedAddressSelect').value;
+ if(!id){setSavedAddressStatus('हटाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
+ const a=customerSavedAddresses.find(x=>x.id===id);
+ if(!a)return;
+ if(!confirm('क्या आप यह सेव किया हुआ पता हमेशा के लिए हटाना चाहते हैं? पहले की बुकिंग पर इसका असर नहीं होगा。'))return;
+ const button=document.getElementById('deleteSavedAddress');button.disabled=true;
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_delete_my_saved_address',{p_id:id});
+  if(error)throw error;
+  if(data!==true)throw new Error('ADDRESS_NOT_FOUND');
+  editingSavedAddressId=null;
+  await loadCustomerSavedAddresses();
+  document.getElementById('savedAddressSelect').value='';
+  setSavedAddressStatus('पता हटा दिया गया है। पुरानी बुकिंग का पता सुरक्षित है।');
+ } catch(e){setSavedAddressStatus('पता नहीं हट सका। '+(e.message||''),true);}
+ finally{button.disabled=false;}
+}
+async function makeSelectedAddressDefault() {
+ const id=document.getElementById('savedAddressSelect').value;
+ const a=customerSavedAddresses.find(x=>x.id===id);
+ if(!a){setSavedAddressStatus('डिफ़ॉल्ट बनाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
+ const button=document.getElementById('setDefaultSavedAddress');button.disabled=true;
+ try {
+  const {error}=await customerSb.rpc('srk_customer_save_my_address',{
+   p_id:a.id,p_label:a.label,p_recipient_name:a.recipient_name,p_address_line:a.address_line,
+   p_landmark:a.landmark,p_pincode:a.pincode,p_district:a.district,p_state:a.state,
+   p_location_lat:a.location_lat,p_location_lng:a.location_lng,p_is_default:true
+  });
+  if(error)throw error;
+  await loadCustomerSavedAddresses();
+  document.getElementById('savedAddressSelect').value=a.id;
+  setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।');
+ } catch(e){setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
+ finally{button.disabled=false;}
 }
 async function syncCustomerSession() {
   if (!customerSb) return;
@@ -345,6 +406,9 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
   document.getElementById('savedAddressSelect').addEventListener('change', applySelectedSavedAddress);
   document.getElementById('saveCurrentAddress').addEventListener('click', saveCurrentBookingAddress);
+  document.getElementById('editSavedAddress').addEventListener('click', editSelectedSavedAddress);
+  document.getElementById('deleteSavedAddress').addEventListener('click', deleteSelectedSavedAddress);
+  document.getElementById('setDefaultSavedAddress').addEventListener('click', makeSelectedAddressDefault);
   syncCustomerSession();
 } else {
   customerMessage('ग्राहक लॉगिन सेटअप अभी उपलब्ध नहीं है। OTP लॉगिन सेवा ठीक होने तक बुकिंग नहीं की जा सकेगी।');
