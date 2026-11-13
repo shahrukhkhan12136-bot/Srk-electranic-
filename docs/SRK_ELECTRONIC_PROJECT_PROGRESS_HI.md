@@ -1533,3 +1533,12 @@
 - Full isolated source regression workflow #43501768722 completed **SUCCESS** on test commit `1bf9e282ce456d19eb3363cac691776962259a8d`; all nine source regression suites completed, including the updated Customer Menu tests.
 - Earlier runs #43501383276, #43501563657 and #43501645417 failed only on stale assertions that expected sequence-only guards/direct inline logout resets and the previous Auth listener shape. Those assertions were updated to require the stronger session-generation guard and shared invalidation helpers; latest full run is green.
 - Vercel status on the app/test commits is a separate account build-rate-limit failure; it is not the source regression result and no deployment was attempted.
+
+
+## Customer Profile और Saved Address session-race hardening (2026-11-14)
+- Audit में Profile और Saved Address loaders में request-sequence guard था, लेकिन Auth session generation binding नहीं थी। Shared device पर account switch के समय पुरानी profile/avatar या saved-address response नई session में render हो सकती थी।
+- `loadCustomerProfile()` अब request sequence + `customerSessionGeneration` दोनों validate करता है; Auth lookup, profile RPC, avatar signed-URL await, catch और stale response paths पुराने session के UI को बदल नहीं सकते।
+- `loadCustomerSavedAddresses()` भी Auth lookup, owner RPC, error और finally/control restoration पर combined generation guard लगाता है। पुरानी session का finally नए session के address selector को unlock नहीं करेगा।
+- `invalidateCustomerProfileAndSavedAddresses()` Auth SIGNED_IN / SIGNED_OUT / USER_UPDATED पर पुरानी profile/avatar और saved-address list तुरंत clear करके load sequence invalidate करता है; नई session sync फिर अपना data लोड करती है।
+- App commit: `43ea5700c6328b4f922690bcf3806a4829338b40`; regression test commit: `c35ad87989be11aec2f1829316cd483f21feec5a`; CI workflow updated to run `npm run test:customer-menu` alongside refund source checks: `deb89481fc5ca8a1951c788e00f52da45eb6a909`.
+- GitHub Actions result अभी pending/अज्ञात है; tests को pass नहीं माना गया है। Browser two-account test, live Supabase JWT/RLS, और final consolidated mobile/Desktop QA बाकी हैं। Production DB/configuration, payments/refunds, merge और deployment untouched हैं।
