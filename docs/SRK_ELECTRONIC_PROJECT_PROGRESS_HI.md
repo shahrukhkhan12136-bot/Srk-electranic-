@@ -1306,3 +1306,12 @@
 - इसे किसी अनधिकृत third-party PIN API या पुराने static GitHub dump से बदलना उचित नहीं होगा। OGD catalog का API/CSV resource ingestion और freshness/version policy तय किए बिना hard validation या district auto-correction नहीं जोड़ा गया। Existing address overwrite नहीं होगा; 271861 Balrampur UP और पुराने Azamgarh mismatch को अलग रखा जाएगा।
 - Blocker: official data.gov.in API access के लिए registered API key / approved bulk CSV acquisition, snapshot provenance and refresh owner चाहिए। यह key/credential अभी उपलब्ध/verified नहीं है; इसलिए 14.1.3 PIN/district validation अभी **Blocked/Partial**, syntax-only validation ही है।
 - Reference: OGD All India Pincode Directory catalog (Department of Posts): https://data.gov.in/catalog/all-india-pincode-directory-through-webservice ; India Post “Know Your PIN Code”: https://dac.indiapost.gov.in/mypincode/home . No external API dependency or production setting was added.
+
+
+### 14 नवम्बर 2026 — Customer booking timeline status-change labels
+
+- Customer booking history timeline audit में पाया कि status-change events (`booking_work_state_changed`) के लिए UI हमेशा generic “बुकिंग की स्थिति अपडेट हुई” दिखा रहा था, जबकि safe timeline RPC पहले से `new_status` देता है। इससे pending/assigned/accepted/en-route/arrived/start-approval/in-progress/completion-review/completed जैसे वास्तविक चरण ग्राहक को स्पष्ट नहीं दिखते थे।
+- Timeline formatter अब `event_type` के साथ `new_status` भी देखता है और ज्ञात booking statuses के लिए स्पष्ट हिन्दी labels दिखाता है। Unknown status पर सुरक्षित generic fallback रहता है; event timestamps/actor roles और customer-owned RPC contract नहीं बदले।
+- App commit: `f081cfbf0bdd58679c2ad3379869a9e739169b44`. Regression test commits: `7bfab6dcea2a2323d988d38a8224e63a7f7606fb`, existing timeline assertion alignment `3206bf3be879e70281e2ff9cb8a8ebe3eb893b8f`.
+- Verification: Customer App source regression run `43491545377` completed **SUCCESS** on test commit `3206bf3be879`; Refund Source Regression run `43491421430` **SUCCESS**. Previous Customer App suite `43491302281` also **SUCCESS** for booking confirmation work.
+- Limitation: timeline RPC event capture currently records booking creation and work/status transitions, not every offer-queue internal event or payment/refund event. This change improves only statuses already recorded; payment history remains a separate view. Offer/assignment/live-tracking and payment timeline integration need their own backend dependency audit and tests. No DB/Production changes.
