@@ -112,6 +112,28 @@ BEGIN
     RAISE EXCEPTION 'BOOKING_NOT_FOUND_OR_NOT_OWNED' USING ERRCODE='42501';
   END IF;
 
+  -- Recheck the idempotency key after acquiring the booking lock. Concurrent
+  -- requests with the same key must converge on the first committed request.
+  SELECT * INTO v_existing
+    FROM public.srk_booking_cancellation_requests
+   WHERE customer_user_id=v_uid AND idempotency_key=p_idempotency_key;
+  IF FOUND THEN
+    IF v_existing.booking_id<>p_booking_id THEN
+      RAISE EXCEPTION 'IDEMPOTENCY_KEY_REUSED_FOR_ANOTHER_BOOKING' USING ERRCODE='23505';
+    END IF;
+    RETURN jsonb_build_object(
+      'success',true,'request_id',v_existing.id,'booking_id',v_existing.booking_id,
+      'status',v_existing.status,'replayed',true
+    );
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.srk_booking_cancellation_requests
+     WHERE booking_id=p_booking_id AND status IN ('requested','in_review')
+  ) THEN
+    RAISE EXCEPTION 'CANCELLATION_REQUEST_ALREADY_OPEN' USING ERRCODE='23505';
+  END IF;
+
   -- Only early, unpaid booking states are accepted in this first safe phase.
   -- Work, completion, payment, refund and legacy states require separate reconciliation.
   IF v_booking.status NOT IN ('new','confirmed','assigned')
