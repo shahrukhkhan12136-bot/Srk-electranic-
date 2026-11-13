@@ -617,4 +617,5 @@ test('booking API rejects past dates using India business timezone without inven
 test('booking form clearly discloses PIN syntax-only validation until authoritative postal matching exists', () => {
   assert.match(html, /id="pinValidationNote"/);
   assert.match(html, /डाक-विभागीय मिलान अभी सत्यापित नहीं है/);
+  assert.match(html, /id="pinValidationNote"[^>]*>[\\s\\S]*?<\\/p>\\s*<label for="address">/);
 });
