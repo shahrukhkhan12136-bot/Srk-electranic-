@@ -4012,7 +4012,9 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - नई 15% Platform Fee और पुराने records की historical commission अब अलग fields/totals हैं; legacy commission को Platform Fee total में नहीं जोड़ा जाता। Electrician earnings और Admin report दोनों में अलग दिखता है।
 - Admin Platform Fee report copy को भी ठीक किया: नई categorized booking पर अलग 15% policy स्पष्ट है; legacy historical calculation अलग रहती है; UI में सामग्री/सामान या `commission_rate` आधारित नई गणना का उल्लेख नहीं है। अब server timer seconds, selected category/duration, approved rate tier/skills और payment status जैसे जरूरी fields ही लौटते हैं।
 - Assigned active work statuses में electrician को customer contact/address मिल सकता है; completed booking पर RPC customer name/phone/address/location वापस नहीं करता।
-- Migration source में 96 pgTAP assertions मौजूद हैं; अभी execute नहीं हुए। कोई live database migration apply नहीं की गई।
+- Migration source में 101 pgTAP assertions मौजूद हैं;
+- Admin finance report और electrician earnings RPC में नई categorized booking की immutable Platform Fee तथा legacy booking की पुरानी commission अलग-अलग fields/totals में दिखाई जाती हैं। Global fee collected/due totals केवल `wallet_type='electrician'` ledger से बनते हैं; legacy commission को नई Platform Fee नहीं माना जाता।
+ अभी execute नहीं हुए। कोई live database migration apply नहीं की गई।
 
 
 ### 19.21 Timer/Platform Fee regression audit follow-up (13-11-2026)
