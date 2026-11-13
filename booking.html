@@ -721,11 +721,13 @@ async function customerSubmitBookingRefund(bookingId){
   if(button)button.disabled=false;
  }
 }
+let customerCancellationRequestBusy=new Map();
 let customerBookingHistoryLoadSequence=0;
 let customerBookingHistoryOffset=0;
 let customerBookingHistoryBusy=false;
 function invalidateCustomerBookingHistory(){
  customerBookingHistoryLoadSequence++;
+ customerCancellationRequestBusy.clear();
  customerBookingHistoryBusy=false;
  customerBookingHistoryOffset=0;
  const box=document.getElementById('customerBookings');
@@ -923,7 +925,6 @@ async function loadCustomerBookings(reset=true) {
     if(isCurrent()){customerBookingHistoryBusy=false;box.setAttribute('aria-busy','false');more.disabled=false;if(refresh)refresh.disabled=false;}
   }
 }
-const customerCancellationRequestBusy=new Map();
 async function customerRequestBookingCancellation(bookingId){
  if(!customerSb||!bookingId||customerCancellationRequestBusy.has(bookingId))return;
  const generation=customerSessionGeneration;
