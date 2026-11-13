@@ -1649,3 +1649,14 @@
 
 - अतिरिक्त Profile audit: profile avatar upload/RPC के दौरान account switch होने पर session-generation guard stale UI रोकता था, लेकिन Save Profile button disabled रह सकता था क्योंकि पुराने operation का finally जानबूझकर नए session को unlock नहीं करता। Auth invalidator अब Profile Save button restore करता है; regression test जोड़ा। App commit ab0bb7fdeed0144de9e2940531e952bf2e65f95f; test commit acd5c9714ebeab8a4ae4658ea6cd788f9ad1c18c.
 - इस सुधार के बाद Customer App full source regression #43508138339 SUCCESS, Refund + Account Privacy #43508138399 SUCCESS, Offer Timeline + deployment guard #43508138474 SUCCESS। Source-only checks; browser/device runtime अभी pending।
+
+
+## Customer App — no-session fallback control recovery (2026-11-14)
+
+- Additional audit of `syncCustomerSession()` found the no-session fallback manually cleared profile/address state but did not restore every control that Auth-event invalidation already restored. This can matter if session lookup returns no session without a corresponding Auth event (for example, an expired/missing session discovered during refresh).
+- No-session fallback now re-enables Profile Save, clears queued avatar file, re-enables Edit/Delete/Default saved-address actions and restores Save Address button/label. Regression test covers all four control groups.
+- App commit: `336bc5d9e7ccacc7f59e383eae49ff897333c4ef`; test commit: `c5a4df72c6ddee6940f21299a4ddf35ca642ed7c`.
+- Final CI: Customer App full source regression `#43514125356` **SUCCESS**; Refund + Account Privacy `#43514125429` **SUCCESS**; Offer Timeline source + Production deployment guard `#43514125318` test steps **SUCCESS**.
+- This confirms source regressions only. Browser session-expiry/account-switch tests, Supabase Auth/JWT/RLS runtime, Razorpay test-mode E2E and final mobile/Desktop QA remain pending. Production remains unchanged.
+
+**अगला resume point:** proceed with Customer App acceptance/dependency audit and prepare isolated local database coverage for timer, bill snapshot, completion review and payment/refund migrations. Do not begin Electrician Portal until Customer App is fully complete.
