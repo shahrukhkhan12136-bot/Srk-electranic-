@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(18);
+SELECT plan(20);
 
 SELECT has_table('public','srk_booking_work_events','append-only work event history table exists');
 SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_booking_work_events'::regclass),
@@ -61,6 +61,14 @@ SELECT ok(pg_get_functiondef('public.srk_admin_approve_work_completion(uuid,text
   ILIKE '%platform_fee_paise%' AND pg_get_functiondef('public.srk_admin_approve_work_completion(uuid,text)'::regprocedure)
   ILIKE '%electrician_payable%',
   'Admin approval retains separate Platform Fee and electrician net calculations');
+SELECT ok(pg_get_functiondef('public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure)
+  ILIKE '%completion_requested_at%' AND
+  pg_get_functiondef('public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure)
+  ILIKE '%work_timer_elapsed_seconds%',
+  'customer-approved final bill preserves the original completion-request timestamp');
+SELECT ok(position('completion_requested_at' in pg_get_functiondef(
+  'public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure))>0,
+  'customer completion RPC is replaced after adding the immutable bill timestamp column');
 
 SELECT * FROM finish();
 ROLLBACK;
