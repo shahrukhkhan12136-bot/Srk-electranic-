@@ -914,3 +914,12 @@
 - Regression assertion जोड़ा गया।
 - Source Regression Run #43471437666 — success, head `89648207d551fa52272cbe2f75449920ebced17b`.
 - वास्तविक Auth/network outage simulation, browser interaction और mobile/Desktop QA अभी बाकी हैं।
+
+
+## 2026-11-13 — Customer Saved Address Auth resilience
+
+- `loadCustomerSavedAddresses()` और `saveCurrentBookingAddress()` में Auth `getSession()` पहले try/catch के बाहर था; नेटवर्क/Auth failure पर unhandled rejection हो सकता था और disabled state अटक सकती थी।
+- दोनों functions में session lookup अब try/catch के अंदर है; session error स्पष्ट रूप से handle होता है; list/save controls finally में पुनः enable होते हैं।
+- Regression test जोड़ा।
+- Source Regression Run #43471742069 — success, head `fd305818f2d83d9b831f02015ada0a6166c8917d`.
+- वास्तविक Auth outage, saved-address RPC/RLS और browser/mobile interaction अभी runtime-tested नहीं हैं।
