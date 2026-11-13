@@ -2,6 +2,12 @@ name: Supabase isolated schema migration test
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feature/platform-fee-cash-online-cycle]
+    paths:
+      - '.github/workflows/supabase-schema-ci.yml'
+      - 'supabase/migrations/20261114230000_customer_safe_offer_timeline.sql'
+      - 'supabase/tests/database/customer_safe_offer_timeline.test.sql'
 
 permissions:
   contents: read
@@ -18,7 +24,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout feature branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Require database connection secret (stored only in GitHub Secrets)
         env:
@@ -154,6 +160,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114210000_customer_refund_history_pagination.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114220000_customer_contacts_after_completion.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114230000_customer_safe_offer_timeline.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
@@ -262,6 +269,12 @@ jobs:
             END IF;
             IF to_regclass('public.service_bookings_customer_request_key_uidx') IS NULL THEN
               RAISE EXCEPTION 'Missing unique customer booking idempotency index';
+            END IF;
+            IF to_regclass('private.srk_booking_offer_events') IS NULL THEN
+              RAISE EXCEPTION 'Missing private customer-safe offer event table';
+            END IF;
+            IF to_regprocedure('public.srk_customer_get_my_booking_offer_timeline()') IS NULL THEN
+              RAISE EXCEPTION 'Missing customer-safe offer timeline RPC';
             END IF;
           END
           $$;
