@@ -4104,3 +4104,19 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Regression suite `tests/admin-portal.test.cjs` navigation targets uniqueness, Main Admin server allow-list guard, Staff placeholder boundary और inline JavaScript parsing जाँचती है। Workflow Run `43434803850`, SHA `2f44a7798e8f5494d06796a48d3b24de075ddfb4` — **Success**.
 - **Status: In Progress — Admin section navigation and honest Staff boundary source-verified; Admin/Staff acceptance पूर्ण नहीं।** Pending: audited Admin mutation RPCs; Main Admin vs Staff permission schema/API; preset/custom roles; per-module permissions; account/session revocation; staff audit/tasks/messages/announcements; negative JWT tests; MFA/device/session controls; browser E2E; runtime database verification; final mobile/Desktop QA.
 - Staff permissions और admin mutations को लागू करने से पहले Production migration history/schema drift reconciliation आवश्यक है। कोई DB migration execute/apply नहीं की गई। No production data, Auth setting, payout/payment, Main merge or deployment changed.
+
+
+## 17.122 — Admin Direct-Write हटाकर उपलब्ध Server RPC का उपयोग; Production Schema Read-Only जाँच (13 Nov 2026)
+
+- Supabase Production project का केवल read-only निरीक्षण किया। Public schema में staff/role/permission/task नाम वाली कोई table और staff/role/permission नाम वाली कोई function नहीं मिली। `pg_policies` में `service_bookings` और `electrician_profiles` के privileged UPDATE policies `is_srk_admin()` allow-list से gated हैं; कोई Staff permission predicate मौजूद नहीं।
+- Production में `srk_admin_update_booking(uuid,text,text,text,text,text)` और `srk_admin_set_electrician_active(uuid,boolean)` की वास्तविक function definitions पढ़ीं। पहला row-lock, address/PIN validation और booking-stage validation करता है; दूसरा OTP-linked, Admin-approved profile तथा latest identity/address documents दोनों approved होने पर ही activation देता है।
+- Admin UI के तीन direct write paths बदले:
+  1. `saveCustomerLocation()` अब `srk_admin_update_booking` RPC बुलाता है।
+  2. `saveBooking()` अब status transition के लिए उसी server RPC को बुलाता है; status validation database पर रहती है।
+  3. `toggleActive()` अब `srk_admin_set_electrician_active` RPC बुलाता है; frontend direct profile UPDATE हटाया।
+- Legacy `quoted_amount` input को read-only किया ताकि पुराने financial amount को इस UI से बिना dedicated audited adjustment workflow के edit न किया जा सके। Manual payment अभी भी अलग verified `srk_admin_record_manual_payment` RPC से दर्ज होता है।
+- Regression suite `tests/admin-portal.test.cjs` अब सुनिश्चित करती है कि booking/location और electrician activation के लिए direct table UPDATE नहीं है, expected RPCs मौजूद हैं और legacy amount disabled/read-only है।
+- CI Run `43435110712`, SHA `651263ed41be28d4b08b531876e70e3f42ed1ad3` — **Success**.
+- Production schema inspection से यह भी पुष्ट हुआ कि `SRK ELECTRONIC TEST` नाम का अलग Supabase project केवल push-subscription/job-offer test schema और 7 test migrations रखता है; उसमें पूर्ण booking/payment/Admin schema नहीं है। इसलिए उसे पूरे app के migration/pgTAP runtime test database की तरह उपयोग नहीं किया गया।
+- **सीमा/बाकी:** Existing RPC signatures में mandatory Admin reason parameter नहीं है; full before/after audit semantics इन दो operations के लिए अलग से verify/complete करनी हैं। Production migration history और Feature Branch SQL migration lineage reconciliation भी लंबित है। pgTAP/JWT runtime tests नहीं चलाए गए।
+- **Status: In Progress — direct-write source paths replaced by existing Production-verified scoped RPCs and CI passed; Admin security acceptance अभी पूर्ण नहीं।** कोई Production schema/data/Auth setting बदला नहीं; SQL queries केवल read-only थीं। No payout/payment, Main merge or deployment.
