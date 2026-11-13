@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(57);
+SELECT plan(63);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -191,6 +191,42 @@ SELECT ok(pg_get_functiondef('public.srk_customer_get_labour_bill(uuid)'::regpro
   pg_get_functiondef('public.srk_admin_get_labour_bill(uuid)'::regprocedure)
   ILIKE '%platform_fee_amount%',
   'customer sees gross labour, electrician sees net payable, Admin sees separate fee breakdown');
+
+
+SELECT ok((SELECT pg_get_constraintdef(oid) ILIKE '%platform_fee_due%'
+  AND pg_get_constraintdef(oid) ILIKE '%platform_fee_collected%'
+  FROM pg_constraint WHERE conname='srk_wallet_ledger_entry_type_check'
+    AND conrelid='public.srk_wallet_ledger'::regclass),
+  'wallet ledger allows separate Platform Fee due/collected and settlement entry types');
+SELECT ok(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%platform_fee_due%' AND
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%platform_fee_collected%' AND
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%srk:booking-gross-credit:%',
+  'cash and online labour payments create idempotent wallet ledger entries');
+SELECT ok(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%Cash was received directly by the electrician: no platform payout is due%'
+  AND pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%srk:platform-fee-cash-due:%',
+  'cash labour payment creates Platform Fee due without a bank payout');
+SELECT ok(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%srk:platform-fee-due-settlement:%'
+  AND pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%srk:platform-fee-due-recovery:%'
+  AND pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%srk:payout-pending:%',
+  'online labour share settles prior cash dues before creating pending net payout');
+SELECT ok(pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)
+  ILIKE '%srk:payout-pending:%' AND
+  pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)
+  ILIKE '%status=''posted''%',
+  'Admin payout marks wallet debit posted only after actual transfer confirmation');
+SELECT ok(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%refund-reversal:%' AND
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%entry_type<>''refund''%',
+  'refund reverses original booking wallet entries idempotently without recursive reversal');
 
 SELECT * FROM finish();
 ROLLBACK;
