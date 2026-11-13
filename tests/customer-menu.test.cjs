@@ -9,6 +9,15 @@ const profileMigration = fs.readFileSync('supabase/migrations/20261113200000_cus
 const supportAttachmentMigration = fs.readFileSync('supabase/migrations/20261114170000_harden_customer_support_attachment_object_integrity.sql', 'utf8');
 const customerReceiptMigration = fs.readFileSync('supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql', 'utf8');
 const customerPaymentHistoryMigration = fs.readFileSync('supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql', 'utf8');
+const customerCallContactsMigration = fs.readFileSync('supabase/migrations/20261114220000_customer_contacts_after_completion.sql', 'utf8');
+
+test('accepted customer-electrician direct contact remains available after completion', () => {
+  assert.ok(customerCallContactsMigration.includes("'completed'"));
+  assert.ok(customerCallContactsMigration.includes("b.customer_user_id = v_uid"));
+  assert.ok(customerCallContactsMigration.includes("b.assigned_electrician_id is not null"));
+  assert.ok(html.includes("customerEsc(phone) + '</p><a class=\"btn call\" href=\"tel:' + phone"));
+  assert.ok(!html.includes('इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा'));
+});
 
 test('customer menu keeps the approved five-menu order and accessible tab controls', () => {
   const nav = html.match(/<nav class="customer-menu-nav"[\s\S]*?<\/nav>/)?.[0] || '';
