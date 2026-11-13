@@ -3053,3 +3053,30 @@ Audit सीमा: केवल उपलब्ध connected tool/plugin discov
 - SELECT grant, broad MAINTAIN grant, service_role/postgres/superuser use, guard weakening, Production schema/role/ACL changes और workflow secret/config changes निषिद्ध रहेंगे।
 
 Audit सीमा: केवल local runtime executable/driver availability जाँची और PostgreSQL 17 official privilege rules को test-plan में बदला। कोई database, role, privilege, migration, workflow, secret, deployment या provider setting नहीं बदली।
+
+
+## 17.81 — Schema CI Export-Role Guard and Supabase CLI v3 Command Audit (13 Nov 2026)
+
+### A. Workflow source facts
+- Feature Branch workflow `.github/workflows/supabase-schema-ci.yml` SHA `eddf175d30f8b3bec3a1fa527e1c64563082737c` को read-only inspect किया। यह केवल `workflow_dispatch` पर चलता है और `github.ref` को Feature Branch तक सीमित करता है।
+- Workflow Supabase CLI `3.0.0` pin करता है; export credential केवल GitHub Secret `SUPABASE_DB_URL` से environment में आता है। Secret value पढ़ी या प्रदर्शित नहीं की गई।
+- Workflow `supabase db query --remote="$SUPABASE_DB_URL" --read-only` से credential guard चलाता है; फिर अलग system `pg_dump` से `--schema-only` dump बनाता है; उसके बाद local Supabase stack, restore, पाँच feature migrations, lint और smoke test चलाने का इरादा है।
+- `supabase/config.toml` इस Feature Branch path पर नहीं मिला (GitHub API 404); workflow फिर भी temporary directory में `supabase init` करता है। `package.json` में केवल Razorpay runtime dependency है; इससे CI PostgreSQL client version pin नहीं होता।
+
+### B. Credential guard coverage gap
+- वर्तमान guard superuser/BYPASSRLS/CREATEROLE/CREATEDB/replication attributes, public/private table SELECT, column SELECT, INSERT/UPDATE/DELETE/TRUNCATE/TRIGGER और schema CREATE को reject करता है।
+- Guard वर्तमान में `MAINTAIN` privilege की presence, relation-level MAINTAIN allowlist, unexpected relation privileges, object ownership, role membership/inherited privileges और exact required object scope को explicitly validate नहीं करता। इसलिए केवल `safe_schema_export_role=true` वर्तमान query से यह सिद्ध नहीं करता कि candidate MAINTAIN-only permission boundary ठीक उसी allowlist तक सीमित है।
+- Section 17.79 का proposed MAINTAIN-only grant यदि भविष्य में लागू किया जाए, तो मौजूदा guard उसे संभवतः अनजाने में pass कर देगा; यह अपने आप में उस grant का validation नहीं होगा। Guard को fail-closed ACL matrix बनानी होगी: प्रत्येक relation पर allowed privileges स्पष्ट रूप से सूचीबद्ध हों; MAINTAIN केवल approved relation allowlist पर; अन्य relation पर MAINTAIN या कोई अनपेक्षित privilege मिले तो failure। Ownership/role membership/inheritance से मिले effective privileges भी जाँचे जाएँ।
+- `has_table_privilege`/`has_any_column_privilege` effective privilege checks हैं; फिर भी allowlist का प्रमाण देने के लिए catalog ACL/owner/role-membership inspection अलग से आवश्यक है। `PUBLIC`/inherited grants और default privileges को भी privilege provenance के साथ enumerate करना होगा।
+
+### C. CLI v3 behavior and version reproducibility
+- Supabase CLI v3.0.0 documentation/changelog (4 Nov 2026) के अनुसार database commands local target default करते हैं; hosted database URL के लिए `--remote=<postgres-url>` supported है। `db query --read-only` read-only hosted query path है और it rejects statements that do not begin with approved read-only forms. Existing guard starts with SELECT, so its command form is consistent with the documented v3 target model.
+- Workflow's `apt-get install postgresql-client` is not pinned to PostgreSQL 17, so observed runner installed pg_dump 18.6 while Production server is 17.11. Pinning Supabase CLI alone does not pin this separately installed PostgreSQL client. This is reproducibility/version drift, not proof that version mismatch caused the ACCESS SHARE permission error.
+- For a deterministic future CI run, install an explicit PostgreSQL 17 client package/repository and assert `pg_dump --version` major is 17 before connecting. Keep target confirmation explicit and ensure no command can fall back to a hosted target unintentionally.
+
+### D. No change / next test gate
+- No workflow/source file, GitHub Secret, role, ACL, database, Production resource or deployment was changed; no workflow was dispatched or rerun.
+- Next safe test remains disposable PostgreSQL 17 synthetic database proof (Section 17.80), then unit-test the guard against: no MAINTAIN; allowlisted MAINTAIN only; out-of-allowlist MAINTAIN; SELECT via direct/inherited/PUBLIC grants; owner role; role membership; schema CREATE; and DML grants. Test both positive and negative cases before any separate Production approval.
+- Official references: Supabase CLI v3 changelog https://supabase.com/changelog/supabase-cli-v3 ; CLI db query reference https://supabase.com/docs/reference/cli/supabase-db-query ; PostgreSQL 17 privileges https://www.postgresql.org/docs/17/ddl-priv.html ; PostgreSQL 17 LOCK TABLE https://www.postgresql.org/docs/17/sql-lock.html .
+
+Audit सीमा: केवल Feature Branch workflow, package metadata और official CLI documentation का read-only review किया। कोई workflow, code, secret, role, privilege, database, deployment या provider setting नहीं बदली।
