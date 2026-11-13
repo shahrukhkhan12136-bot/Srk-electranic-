@@ -66,6 +66,7 @@ async function loadAdminRefundRequests(){
    if(x.request_status==='requested')actions='<button type="button" onclick="reviewRefundRequest(\''+x.request_id+'\',\'in_review\')">जाँच शुरू करें</button>';
    else if(x.request_status==='in_review')actions='<button type="button" onclick="reviewRefundRequest(\''+x.request_id+'\',\'approved\')">रिफंड अनुरोध मंजूर</button><button class="alt" type="button" onclick="reviewRefundRequest(\''+x.request_id+'\',\'rejected\')">अस्वीकार करें</button>';
     else if(x.request_status==='approved')actions='<button type="button" onclick="prepareRazorpayRefund(\''+x.request_id+'\')">सुरक्षित Razorpay रिफंड तैयार करें और भेजें</button>';
+    else if(x.request_status==='processing'||x.request_status==='unknown')actions='<button type="button" onclick="retryRazorpayRefund(\''+x.request_id+'\')">उसी सुरक्षित key से रिफंड स्थिति जाँचें / retry</button>';
    return '<tr><td>'+esc(x.customer_name||'ग्राहक')+'<br>'+esc(x.customer_phone||'')+'<br><small>'+esc(x.booking_id)+'</small></td><td><b>₹'+Number(x.refund_amount||0).toFixed(2)+'</b></td><td>'+esc(x.payment_method||'—')+' / '+esc(x.payment_status||'—')+'<br>Payment ID: '+esc(x.razorpay_payment_id||'—')+'<br>Labour Bill: ₹'+Number(x.labour_amount||0).toFixed(2)+' ('+esc(x.labour_amount_paise??'—')+' paise)</td><td>'+esc(x.reason)+'</td><td>'+statusTag+'<br><small>'+esc(x.admin_note||'कोई Admin नोट नहीं')+'</small><br><small>'+esc(new Date(x.created_at).toLocaleString('en-IN'))+'</small></td><td>'+actions+'</td></tr>';
   }).join('')||'<tr><td colspan="6">अभी कोई रिफंड अनुरोध नहीं है।</td></tr>';
   status.textContent='कुल अनुरोध: '+rows.length+' • मंजूरी से पैसा अपने-आप नहीं भेजा जाएगा।';
@@ -82,6 +83,15 @@ async function prepareRazorpayRefund(id){
   const result=await response.json().catch(()=>({}));
   if(!response.ok&&!result.requires_reconciliation){alert('रिफंड सुरक्षित रूप से पूरा नहीं हुआ: '+(result.error||'Server error'));await loadAdminRefundRequests();return;}
   alert('रिफंड स्थिति: '+(result.internal_status||'जाँच आवश्यक')+' • राशि ₹'+(Number(result.amount_paise||data.amount_paise||0)/100).toFixed(2)+'. यदि reconciliation pending है तो भुगतान दोबारा न भेजें; Admin जाँच आवश्यक है।');
+  await loadAdminRefundRequests();
+}
+async function retryRazorpayRefund(id){
+  if(!confirm('इसी पहले से सुरक्षित idempotency key से Razorpay की स्थिति जाँचें/उसी अनुरोध को retry करें? नया refund request नहीं बनाया जाएगा।'))return;
+  const session=await sb.auth.getSession(),token=session?.data?.session?.access_token;
+  if(!token){alert('Admin session उपलब्ध नहीं है।');return;}
+  const response=await fetch('/api/razorpay-refund',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({request_id:id})});
+  const result=await response.json().catch(()=>({}));
+  alert('Refund status: '+(result.internal_status||result.provider_status||result.error||'जाँच आवश्यक')+'. Reconciliation pending होने पर दूसरा भुगतान/नया refund न बनाएं।');
   await loadAdminRefundRequests();
 }
 async function reviewRefundRequest(id,decision){
