@@ -421,7 +421,7 @@ test('saved address list and save catch Auth session retrieval failures', () => 
   const saveSource = html.slice(saveStart, saveEnd);
   assert.ok(saveSource.indexOf('try {') < saveSource.indexOf('customerSb.auth.getSession()'));
   assert.match(saveSource, /if\(sessionError\)throw sessionError/);
-  assert.match(saveSource, /finally \{button.disabled=false;select.disabled=selectWasDisabled;editButton.disabled=editWasDisabled;button.textContent='यह पता सेव करें';\}/);
+  assert.match(saveSource, /finally \{if\(customerSessionOperationIsCurrent\(generation\)\)\{button.disabled=false;select.disabled=selectWasDisabled;editButton.disabled=editWasDisabled;button.textContent='यह पता सेव करें';\}\}/);
 });
 
 
@@ -1014,7 +1014,7 @@ test('saved-address save, delete and default mutations cannot update a different
     const source=html.slice(start,end>start?end:start+5000);
     assert.match(source,/const generation=customerSessionGeneration/);
     assert.match(source,/if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
-    assert.match(source,/finally\{if\(customerSessionOperationIsCurrent\(generation\)\)/);
+    assert.match(source,/finally\s*\{if\(customerSessionOperationIsCurrent\(generation\)\)/);
     assert.match(source,/catch\(e\)\{if\(customerSessionOperationIsCurrent\(generation\)\)/);
   }
   const invalidatorStart=html.indexOf('function invalidateCustomerProfileAndSavedAddresses()');
