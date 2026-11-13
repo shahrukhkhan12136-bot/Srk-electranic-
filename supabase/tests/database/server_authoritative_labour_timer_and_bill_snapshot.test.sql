@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(75);
+SELECT plan(78);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -278,6 +278,19 @@ SELECT ok(pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::re
 SELECT ok(pg_get_function_result('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure)
   NOT ILIKE '%materials_amount%',
   'customer refund preparation response contains no material fields');
+
+
+SELECT has_function('private','srk_offer_booking_to_eligible_electricians',ARRAY['uuid'],'single verified matching engine exists for triggers and Admin');
+SELECT ok(pg_get_functiondef('public.broadcast_booking_job()'::regprocedure)
+  ILIKE '%srk_offer_booking_to_eligible_electricians%',
+  'automatic booking insert trigger cannot bypass verified skill/rate-tier matching');
+SELECT ok(pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure)
+  ILIKE '%approved_skill_keys%' AND
+  pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure)
+  ILIKE '%approved_rate_tier%' AND
+  pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure)
+  ILIKE '%payment_status%',
+  'automatic and Admin matching filters approved skills, rate tier and unsettled online payments');
 
 SELECT * FROM finish();
 ROLLBACK;
