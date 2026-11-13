@@ -25,3 +25,12 @@ test("Customer-visible refund statuses explain Admin review and reconciliation",
   assert.match(html, /unknown:'Admin जाँच आवश्यक'/);
   assert.match(html, /processing:'रिफंड प्रोसेस हो रहा है'/);
 });
+
+test("refund submission is invalidated on auth/session changes and stale responses cannot update the new session", () => {
+  assert.match(html, /let customerRefundSubmissionBusy=new Map\(\)/);
+  assert.match(html, /function invalidateCustomerRefundSubmissions\(\)[\s\S]*?customerRefundSubmissionBusy\.clear\(\)/);
+  assert.match(html, /const generation=customerSessionGeneration;[\s\S]*?const \{data,error\}=await customerSb\.rpc\('srk_customer_create_booking_refund_request'/);
+  assert.match(html, /if\(!customerSessionOperationIsCurrent\(generation\)\)return;[\s\S]*?if\(error\)throw error/);
+  assert.match(html, /customerRefundSubmissionBusy\.get\(bookingId\)===operation/);
+  assert.match(html, /customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\)/);
+});
