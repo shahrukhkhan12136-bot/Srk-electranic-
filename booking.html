@@ -565,17 +565,19 @@ async function loadCustomerBookings() {
   const sequence=++customerBookingHistoryLoadSequence;
   const box = document.getElementById('customerBookings');
   if (!customerSb) { box.textContent='ग्राहक लॉगिन सेवा अभी उपलब्ध नहीं है।'; return; }
-  const { data: sessionData, error: sessionError } = await customerSb.auth.getSession();
-  const session = sessionData?.session;
-  if (sessionError || !session) {
-    box.textContent='आपका लॉगिन सत्र समाप्त हो गया है। कृपया OTP से दोबारा लॉगिन करें।';
-    return;
-  }
   box.setAttribute('aria-busy','true');
   box.textContent = navigator.onLine===false
     ? 'इंटरनेट कनेक्शन उपलब्ध नहीं है। कनेक्शन लौटने पर फिर से कोशिश करें।'
     : 'आपकी बुकिंग लोड हो रही हैं…';
   try {
+    const { data: sessionData, error: sessionError } = await customerSb.auth.getSession();
+    if(sequence!==customerBookingHistoryLoadSequence)return;
+    if(sessionError)throw sessionError;
+    const session = sessionData?.session;
+    if (!session) {
+      box.textContent='आपका लॉगिन सत्र समाप्त हो गया है। कृपया OTP से दोबारा लॉगिन करें।';
+      return;
+    }
     const { data, error } = await customerSb.from('service_bookings')
       .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
       .eq('customer_user_id', session.user.id)
