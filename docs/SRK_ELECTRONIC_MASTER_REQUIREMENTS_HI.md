@@ -2050,3 +2050,58 @@ Feature Branch के tracked Admin UI और webhook adapter source का read
 
 ### 6. सुरक्षा सीमा
 कोई Production UI, function, table, grant, policy, event, payment, refund, transfer या deployment बदला नहीं गया। कोई Test/Live provider API call या paid staging resource नहीं बनाया गया।
+
+
+## 17.56 — Admin Refund Workflow, RPC, Ledger, Audit और Historical Handler Audit (13 Nov 2026)
+
+### 1. Production Refund RPC और State Flow (catalog read-only)
+Production में निम्न refund functions की live definitions पढ़ी गईं:
+- Customer: `srk_customer_create_booking_refund_request`, `srk_customer_list_booking_refund_requests`
+- Admin: `srk_admin_list_booking_refund_requests`, `srk_admin_decide_booking_refund_request`, `srk_admin_prepare_booking_refund`, `srk_admin_list_razorpay_refunds`, `srk_admin_prepare_razorpay_refund`, `srk_admin_record_manual_refund`, `srk_admin_finalize_manual_booking_refund`
+- Service reconciliation: `srk_service_reconcile_booking_refund`
+- Audit trigger function: `srk_capture_razorpay_refund_audit_event`
+
+Observed behavior:
+- Customer request RPC `auth.uid()` और booking.customer_user_id ownership check करता है; केवल verified paid booking और positive amount पर request लेता है; reason 20–1000 chars; प्रति booking unique request; rejected request को दोबारा submit किया जा सकता है।
+- Admin list/decision/preparation/manual-refund RPCs Admin guard लगाते हैं; decision RPC row lock लेता है और processing/unknown/processed को दोबारा decision से रोकता है।
+- Razorpay prepare RPC booking row lock लेता है; verified Razorpay payment, payment ID format और amount-paid reconciliation जाँचता है; quote approved और `quoted_amount = service_charge + materials_amount = amount_paid` अनिवार्य है। Timer/non-quote refund explicitly blocked है।
+- Existing refund record मिलने पर वही record लौटाया जाता है; failed refund पर नया attempt रोककर manual reconciliation माँगी जाती है।
+- Pending payout को blocked किया जाता है; paid payout पर recovery/reconciliation error आता है।
+- Service reconcile RPC केवल service_role स्वीकारता है; provider status pending/processed/failed allow-list; refund row lock; processed terminal replay handling; processed होने पर booking payment_status refunded और संबंधित request processed; failed होने पर request unknown। यह refund retry orchestration स्वयं नहीं करता।
+- Manual refund RPC verified paid manual-payment booking, matching manual payment audit entry और duplicate रोकथाम जाँचता है; paid electrician payout पर रोकता है; audit entry बनाकर booking को refunded करता है।
+
+### 2. Live Tables, Constraints, RLS और Audit
+तीन live tables catalog में मौजूद हैं:
+- `srk_booking_refund_requests`: प्रति booking unique request; status allow-list requested/in_review/approved/rejected/processing/unknown/processed; amount > 0; booking/customer/admin/refund FKs।
+- `srk_razorpay_refunds`: प्रति booking unique refund; unique idempotency key और provider refund ID; INR only; payment/refund ID format checks; status requested/processing/unknown/processed/failed।
+- `srk_manual_refund_entries`: प्रति booking और प्रति payment-entry unique; positive amount; reference validation; booking/payment/actor FKs।
+- तीनों tables RLS enabled, FORCE RLS false; catalog ACL में postgres और service_role के broad table privileges हैं; anon/authenticated table ACL grant नहीं दिखा। Service role grants में DELETE/TRUNCATE सहित व्यापक अधिकार हैं; इन्हें अभी नहीं बदला गया।
+- `srk_razorpay_refunds` पर INSERT/UPDATE/DELETE audit trigger `srk_capture_razorpay_refund_audit_event` है; manual refund entries पर `srk_capture_admin_audit_event` trigger है। Razorpay audit function refund_id/amount/status/provider_status के before/after बदलाव, actor और action को Admin audit events में लिखता है।
+- Refund request table पर अलग audit trigger इस निरीक्षण में नहीं मिला; request state changes का पूर्ण before/after audit coverage अभी प्रमाणित नहीं।
+
+### 3. Refund UI और Historical Feature Branch का अंतर
+- वर्तमान Feature Branch `feature/platform-fee-cash-online-cycle` के `admin.html` में Refund section, refund RPC caller या refund button नहीं मिला; यह वर्तमान Admin UI gap है।
+- Historical branch `safe-payment-refund-implementation` में `admin.html` में Razorpay Refund रिकॉर्ड table, `srk_admin_list_razorpay_refunds` caller, Manual Refund और Razorpay Refund actions मिले। उसी branch में `create-refund.js` और Netlify adapter मौजूद हैं। इसे current Feature Branch या Production में deployed/active मानने का प्रमाण नहीं है।
+- Historical `create-refund.js` flow Admin token और Admin RPC से refund prepare करता है, फिर server-side Razorpay API call करता है; refund record/payout/booking state पर direct service-role REST PATCH भी करता है। Provider timeout/uncertain response को unknown बताकर same idempotency key से retry की बात करता है। Provider API call वास्तव में execute नहीं किया गया।
+- Historical handler के direct table PATCH path और live service reconciliation RPC के बीच single atomic state transition प्रमाणित नहीं; delayed response/webhook race तथा payout restoration/settlement paths को tests से verify करना बाकी है।
+- Current Feature Branch root webhook में refund event handling/reconciliation नहीं मिला; historical refund handler alone webhook lifecycle की पुष्टि नहीं करता।
+
+### 4. Master Requirements से महत्वपूर्ण अंतर / Blockers
+1. Refund calculation अभी legacy quote total पर आधारित है; timer actual-minute labour, separate materials, labour-only 15% platform fee और partial refund allocation से जुड़ा नहीं।
+2. Razorpay refund schema/function में एक refund per booking और full paid amount assumption है; partial/multiple refunds का समर्थित allocation नहीं।
+3. Paid electrician payout के बाद refund recovery ledger/workflow नहीं; केवल रोक/exception है।
+4. Cash/manual refund में payout recovery और cancellation/fee/wallet reversal accounting का पूर्ण path नहीं।
+5. Refund event inbox dedupe, provider refund webhook reconciliation, out-of-order handling और periodic status fetch/reconciliation का current Feature Branch integration नहीं मिला।
+6. Failed/unknown refund के लिए audited retry/reprocess RPC/UI नहीं; failed state पर नया prepare रोकता है, unknown को retryable कहने से पहले provider-side status verification चाहिए।
+7. Refund request state का append-only audit/actor reason coverage, staff-scoped permissions, maker-checker approval और immutable event history अभी प्रमाणित नहीं।
+8. Admin UI में current refund visibility/action path absent है; historical UI को बिना वर्तमान Master Requirements से मिलान किए वापस नहीं लाना।
+
+### 5. आगे का सुरक्षित काम
+- Historical branch के migration/source/commit ancestry को live definitions से मिलाना; historical code को सीधे restore न करना।
+- Refund architecture को timer bill snapshot, full/partial refund allocation, separate materials, platform fee, payout recovery, cash/online ledgers और provider webhook inbox के साथ redesign करना।
+- Dedicated server-side provider adapter, shared atomic reconciliation RPC, unique provider event/refund IDs, deterministic idempotency, retry lease/claim, immutable audit और safe Admin queue का contract बनाना।
+- Admin/customer UI केवल अनुमोदित RPC contract पर बनाना; refund reason, actor, amount breakdown और terminal/unknown state स्पष्ट दिखाना।
+- Test Mode में duplicate/out-of-order refund webhook, provider timeout, same-idempotency retry, partial/full refund, failed refund, paid payout recovery, concurrent Admin action और non-Admin JWT denial tests आवश्यक।
+
+### 6. सुरक्षा सीमा
+यह निरीक्षण केवल Production catalog/function definitions/constraints/ACL/triggers और GitHub source का read-only audit था। कोई वास्तविक refund/payment/provider API call, refund record read, customer PII row read, Production table/function/grant/policy change, migration, staging resource या deployment नहीं किया गया।
