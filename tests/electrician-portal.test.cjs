@@ -104,3 +104,13 @@ test('electrician inline JavaScript parses after navigation and work-panel chang
   assert.ok(start >= 0 && end > start);
   assert.doesNotThrow(() => new vm.Script(html.slice(start + 8, end)));
 });
+
+test('historical offer-detail migrations never reveal assigned customer contact after a terminal or unapproved state', () => {
+  const early = fs.readFileSync('supabase/migrations/20261109002000_expose_assigned_booking_map_pin.sql', 'utf8');
+  const quote = fs.readFileSync('supabase/migrations/20261109075837_electrician_inspection_quotes_and_service_only_commission.sql', 'utf8');
+  const allowed = "('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')";
+  for (const [name, sql] of [['map-pin migration', early], ['quote-workflow migration', quote]]) {
+    assert.ok(sql.includes('b.status IN ' + allowed), name + ' must gate customer contact fields by active assigned-work state');
+    assert.ok(!/CASE WHEN b\\.assigned_electrician_id\\s*=\\s*p\\.id THEN/i.test(sql), name + ' must not expose contacts based on assignment alone');
+  }
+});
