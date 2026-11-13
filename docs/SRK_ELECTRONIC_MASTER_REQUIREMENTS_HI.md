@@ -3329,3 +3329,14 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - यह static/source-level fix है; browser/device पर real signOut, offline/network failure, token invalidation, दूसरे device पर session behavior और protected API access का runtime test अभी बाकी है।
 - No Production deployment, Auth setting, secret, database object, account/session या SMS transaction changed.
 - **Status: In Progress** — logout handler source fix और static parse verified; runtime/logout lifecycle और OTP expiry/abuse controls pending।
+
+
+## 17.90 — Supabase Auth Configuration Access Boundary और Session Defaults Audit (13 नवम्बर 2026)
+- Checklist item: **14.1.1** — OTP expiry, resend cooldown/limits, wrong-attempt limits, abuse/rate limiting, secure session और logout।
+- Supabase project metadata read-only: project `gnqhoaqatmoiwwhgzkgm`, region `ap-south-1`, status `ACTIVE_HEALTHY`, PostgreSQL `17.11.0.018`।
+- उपलब्ध connected Supabase actions की खोज में Auth OTP expiry, SMS rate limits, verification attempt limits, session lifetime, refresh-token reuse, या Auth provider settings पढ़ने का कोई dedicated configuration getter उपलब्ध नहीं मिला। इसलिए dashboard Auth settings को यहाँ से पढ़ना/सत्यापित करना संभव नहीं हुआ।
+- Feature Branch `booking.html` और `customer-login.html` दोनों में `createClient(SUPABASE_URL, SUPABASE_ANON_KEY)` बिना explicit `persistSession`, `autoRefreshToken`, `detectSessionInUrl`, custom storage या session lifetime options के initialize होता है। `srk-config.js` केवल browser-safe URL/publishable anon key config रखता है; कोई service-role/secret key value expose या retrieve नहीं की गई।
+- Explicit client options न होने का अर्थ Supabase JS defaults का उपयोग होना है; यह Production project की JWT expiry, refresh-token policy, OTP expiry या server-side session policy का प्रमाण नहीं है।
+- कोई SQL Auth internals/PII query, Auth setting mutation, secret read, user/session operation, SMS request, source change या deployment नहीं किया।
+- **Blocker:** Auth Dashboard read-only access आवश्यक है ताकि OTP expiry, SMS send limits, verification attempt limits और session policy के actual values प्रमाणित किए जा सकें। उसके बाद browser/device E2E tests (expired/replayed/wrong OTP, resend cooldown bypass attempts, logout success/failure, refresh and cross-device session) चाहिए।
+- **Status: In Progress.** Auth settings access तथा runtime tests pending; checklist item 14.1.1 अभी Verified Complete नहीं है।
