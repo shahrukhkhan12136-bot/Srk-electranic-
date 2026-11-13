@@ -1068,6 +1068,7 @@ async function createCustomerSupportComplaint() {
  if(!validCategories.includes(category)){supportStatus('शिकायत का सही विषय चुनें।',true);return;}
  if(description.length<20||description.length>2000){supportStatus('समस्या का विवरण 20 से 2000 अक्षरों के बीच लिखें।',true);return;}
  customerSupportComplaintCreateBusy=true;button.disabled=true;button.textContent='शिकायत दर्ज हो रही है…';
+ let complaintCreated=false;
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(sessionError)throw sessionError;
@@ -1082,14 +1083,24 @@ async function createCustomerSupportComplaint() {
    throw error;
   }
   if(!complaintId)throw new Error('शिकायत संदर्भ प्राप्त नहीं हुआ।');
+  complaintCreated=true;
   document.getElementById('customerSupportDescription').value='';
-  await loadCustomerSupportComplaints();
+  let refreshFailed=false;
+  try{await loadCustomerSupportComplaints();}catch(_){refreshFailed=true;}
   const select=document.getElementById('customerSupportComplaint');
+  if(!Array.from(select.options).some(option=>option.value===complaintId)){
+   select.add(new Option('नई शिकायत · '+String(complaintId).slice(0,8),complaintId));
+   refreshFailed=true;
+  }
   select.value=complaintId;customerSupportSelectedId=complaintId;
-  await loadCustomerSupportMessages();
-  supportStatus('आपकी शिकायत सफलतापूर्वक दर्ज हो गई है। अब इसी थ्रेड में सहायता टीम से बात कर सकते हैं।');
+  try{await loadCustomerSupportMessages();}catch(_){refreshFailed=true;}
+  supportStatus(refreshFailed
+   ?'आपकी शिकायत सफलतापूर्वक दर्ज हो गई है, लेकिन शिकायत सूची या संदेश अभी रीफ़्रेश नहीं हो सके। कृपया थ्रेड रीफ़्रेश करें; शिकायत दोबारा दर्ज न करें।'
+   :'आपकी शिकायत सफलतापूर्वक दर्ज हो गई है। अब इसी थ्रेड में सहायता टीम से बात कर सकते हैं।',refreshFailed);
  } catch(error) {
-  supportStatus('शिकायत दर्ज नहीं हो सकी। '+(error.message||'कृपया दोबारा कोशिश करें।'),true);
+  supportStatus(complaintCreated
+   ?'आपकी शिकायत दर्ज हो चुकी है, लेकिन स्क्रीन अपडेट नहीं हो सकी। कृपया रीफ़्रेश करें; शिकायत दोबारा दर्ज न करें।'
+   :'शिकायत दर्ज नहीं हो सकी। '+(error.message||'कृपया दोबारा कोशिश करें।'),true);
  } finally {
   customerSupportComplaintCreateBusy=false;button.disabled=false;button.textContent='शिकायत दर्ज करें';
  }
