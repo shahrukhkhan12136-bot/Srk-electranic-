@@ -1725,3 +1725,9 @@
 - Test corrections: offer eligibility assertions canonical private matcher पर; payout assertion actual immutable bill `platform_fee_amount/electrician_payable` बनाम legacy commission path पर; append-only trigger check अब `pg_trigger.tgtype` bits पर। Synthetic payout fixture में वास्तविक required `electrician_payable` और related columns जोड़े।
 - Relevant commits: category test `26b70f741dd92f9cc9c21ad8a215df1b311e8d13`; offer RPC `aebd031e6d5ad0addb96f29fdefa5a3e7040f4f6`; contact status `c99d7240b15ef6937a8ece83243509419c1ef8b0`; fixture `f9756a07e058c2c31c2da28744a08ddd4cd2ec83`; payout test `4cc562ceeca21389e4eab8cd0b496a9ad7ddf4a7`; append-only test `bbd8b3999296722865ae9f27df213af5a2673834`; workflow migration chain `5e83bc4e64e17c96993f3bcdfce47c92f50ac6ce`.
 - Corrected isolated rerun #43519675977 queued/pending at tracker update; no timer/completion pgTAP pass claim yet. Source Regression on #43519676009 running.
+
+### Timer offer API regression guard — नया assertion
+
+- Timer test suite plan 103→104 किया: final electrician offer RPC को accumulated `b.work_timer_elapsed_seconds` ही return करना चाहिए, पुराने `b.work_timer_seconds::bigint` को नहीं; accepted contact visibility में `awaiting_work_start_approval` और `completed` दोनों status शामिल रहें।
+- Test commit `834c69b26d99a28715a207945b602b0885255dbe`.
+- Corrected local run #43519928198 इस नवीनतम test/fixture/migration chain पर queued है। पिछला run #43519675977 पुरानी SHA पर Supabase start चरण में अटका रहा; नए run का result आने तक कोई pgTAP PASS claim नहीं।
