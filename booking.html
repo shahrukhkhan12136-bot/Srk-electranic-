@@ -1212,8 +1212,9 @@ async function loadCustomerSupportMessages() {
  const sequence=++customerSupportThreadLoadSequence;
  if(!id){customerSupportSelectedId=null;customerSupportAttachments=[];renderCustomerSupportThread([]);return;}
  customerSupportSelectedId=id;
- const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id});
- if(error)throw error;
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id});
+  if(error)throw error;
  let attachments=[];
  let attachmentLoadFailed=false;
  try{attachments=await loadCustomerSupportAttachments(id);}catch(_){attachmentLoadFailed=true;}
@@ -1221,9 +1222,16 @@ async function loadCustomerSupportMessages() {
  customerSupportAttachments=attachments;
  renderCustomerSupportThread(Array.isArray(data)?data:[]);
  const complaint=customerSupportComplaints.find(c=>c.id===id);
- supportStatus(attachmentLoadFailed
-  ?'शिकायत की स्थिति: '+(complaint?.status||'अपडेट उपलब्ध नहीं')+'। कुछ संलग्न फ़ाइलें अभी लोड नहीं हो सकीं; रीफ़्रेश करें।'
-  :complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):'');
+  supportStatus(attachmentLoadFailed
+   ?'शिकायत की स्थिति: '+(complaint?.status||'अपडेट उपलब्ध नहीं')+'। कुछ संलग्न फ़ाइलें अभी लोड नहीं हो सकीं; रीफ़्रेश करें।'
+   :complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):'');
+ } catch(error) {
+  if(sequence===customerSupportThreadLoadSequence&&document.getElementById('customerSupportComplaint').value===id){
+   customerSupportAttachments=[];
+   renderCustomerSupportThread([]);
+   supportStatus('इस शिकायत के संदेश अभी लोड नहीं हो सके। आपकी शिकायत सुरक्षित है; कृपया रीफ़्रेश करके दोबारा कोशिश करें।',true);
+  }
+ }
 }
 let customerSupportMessageBusy=false;
 async function sendCustomerSupportMessage() {
