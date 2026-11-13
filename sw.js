@@ -39,13 +39,20 @@ self.addEventListener('fetch',event=>{
 self.addEventListener('push',event=>{
   let payload={};
   try{payload=event.data?event.data.json():{};}catch(_){payload={body:event.data?event.data.text():'आपके लिए नया अपडेट उपलब्ध है।'};}
+  const offerId=typeof payload.offerId==='string'?payload.offerId:'';
+  if(payload.action==='close'&&offerId){
+    event.waitUntil(self.registration.getNotifications().then(items=>{
+      items.filter(item=>item.data&&item.data.offerId===offerId).forEach(item=>item.close());
+    }));
+    return;
+  }
   const title=typeof payload.title==='string'&&payload.title.trim()?payload.title.trim():'SRK ELECTRONIC';
   const options={
     body:typeof payload.body==='string'?payload.body:'आपके लिए नया काम या अपडेट उपलब्ध है।',
     icon:'/icon.svg',
     badge:'/icon.svg',
-    tag:typeof payload.tag==='string'?payload.tag:'srk-electrician-update',
-    data:{url:typeof payload.url==='string'?payload.url:'/electrician.html'}
+    tag:typeof payload.tag==='string'?payload.tag:(offerId?'srk-offer-'+offerId:'srk-electrician-update'),
+    data:{url:typeof payload.url==='string'?payload.url:'/electrician.html',offerId}
   };
   event.waitUntil(self.registration.showNotification(title,options));
 });
