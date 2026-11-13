@@ -1196,3 +1196,12 @@
 - Regression test added: `tests/customer-menu.test.cjs` verifies Admin-mediated cancellation wording, absence of direct customer-cancel RPC calls, and Help & Support complaint path. Commit `255eeb590f3a64f9426a0f686ebe88b21dbcad11`. Fresh CI pending; not marked passed.
 - No new app code change required in this pass. Remaining proof gaps: DB pgTAP execution, actual authenticated customer JWT/RPC, attachment Storage failure injection, browser interactions, payment/refund runtime, final mobile/Desktop QA. No Production changes/deploy.
 - Next: verify source CI; then continue Customer App profile/address and support thread error/retry contract review before considering Customer App complete.
+
+
+### 14 नवम्बर 2026 — Customer Support booking selector async-race hardening
+
+- Help & Support के संबंधित बुकिंग selector में stale async response race मिली: तेज़ refresh/session change के दौरान पुरानी request नई request के बाद लौटकर विकल्पों को overwrite कर सकती थी और selector को गलत समय पर enable कर सकती थी।
+- `loadCustomerSupportBookings()` में monotonically increasing request sequence जोड़ा; Auth session response और booking query response दोनों के बाद latest-sequence guard; केवल latest request error UI बदलती है और केवल वही request selector की पिछली disabled state restore करती है। Query में `created_at DESC, id DESC` deterministic ordering भी जोड़ी। Customer ownership filter `customer_user_id=session.user.id` कायम है।
+- App commit: `54441fee51d15489766bebdafb6c29818b06fbce`. Regression test commit: `cd00c2863f5590819d0cfe3a6d2de4e79c78ddfb`. CI result अभी pending verification.
+- यह source-level race guard है; browser/network fault injection, actual Supabase JWT/RLS, database pgTAP और final mobile/Desktop QA अभी नहीं हुए। No Production changes/deploy.
+- अगला कदम: source CI verify करना और Customer App में remaining Profile/Support user-flow edge cases का audit जारी रखना।
