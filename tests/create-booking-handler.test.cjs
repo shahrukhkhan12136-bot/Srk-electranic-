@@ -271,3 +271,23 @@ test('rejects an idempotency key already owned by another customer', async () =>
   assert.equal(status(result), 409);
   assert.match(JSON.parse(result.body).error, /पहले इस्तेमाल हो चुका है/);
 });
+
+
+test('rejects a booking date before the current India business date', async () => {
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, preferred_date: '2020-01-01' }) }));
+  assert.equal(status(result), 400);
+  assert.equal(insertedRows, null);
+  assert.match(JSON.parse(result.body).error, /पिछली तारीख/);
+  assert.equal(calls.some(x => x.url.includes('/rpc/srk_check_public_rate_limit')), false);
+});
+
+test('accepts valid 23:59 time and rejects out-of-range 24:00 time', async () => {
+  const valid = await handler(event({ body: JSON.stringify({ ...validBody, preferred_time: '23:59' }) }));
+  assert.equal(status(valid), 200);
+  assert.equal(insertedRows[0].preferred_time, '23:59');
+
+  mockFetch();
+  const invalid = await handler(event({ body: JSON.stringify({ ...validBody, preferred_time: '24:00' }) }));
+  assert.equal(status(invalid), 400);
+  assert.equal(insertedRows, null);
+});
