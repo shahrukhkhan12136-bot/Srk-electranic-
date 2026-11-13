@@ -1,6 +1,8 @@
 "use strict";
 
 const test = require("node:test");
+const fs = require("node:fs");
+const path = require("node:path");
 const assert = require("node:assert/strict");
 const {
   RATE_CARD_VERSION,
@@ -81,4 +83,22 @@ test("rejects invalid elapsed seconds", () => {
   for (const value of [-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => calculateBillableMinutesFromElapsedSeconds(value), TypeError);
   }
+});
+
+
+test("finance reporting migration exposes separate new Platform Fee and legacy commission fields", () => {
+  const migrationPath = path.join(__dirname, "../supabase/migrations/20261114050000_correct_legacy_and_platform_fee_reporting.sql");
+  const migration = fs.readFileSync(migrationPath, "utf8");
+  assert.match(migration, /platform_fee_amount numeric/);
+  assert.match(migration, /legacy_commission_amount numeric/);
+  assert.match(migration, /'total_platform_fee',t\.platform_fee/);
+  assert.match(migration, /'total_legacy_commission',t\.legacy_commission/);
+  assert.match(migration, /AS legacy_commission/);
+});
+
+test("electrician earnings UI renders Platform Fee and historical commission independently", () => {
+  const html = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
+  assert.match(html, /Number\(x\.platform_fee_amount\|\|0\)/);
+  assert.match(html, /Number\(x\.legacy_commission_amount\|\|0\)/);
+  assert.match(html, /पुरानी कमीशन/);
 });
