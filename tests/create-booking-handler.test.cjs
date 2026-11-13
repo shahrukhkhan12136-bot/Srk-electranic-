@@ -152,11 +152,25 @@ test('valid booking derives customer UUID from verified Auth and does not create
   assert.equal(insertedRows[0].customer_user_id, 'auth-user-verified-123');
   assert.equal(insertedRows[0].status, 'new');
   assert.equal(insertedRows[0].payment_status, 'unpaid');
+  assert.equal(insertedRows[0].payment_method, 'Cash');
   assert.equal(insertedRows[0].customer_user_id === 'attacker-controlled-id', false);
   assert.equal(calls.filter(x => x.url.includes('/rest/v1/job_offers?')).length, 1);
   assert.equal(calls.some(x => x.url.includes('/rest/v1/job_offers') && x.options.method === 'POST'), false);
 });
 
+
+test('rejects payment methods outside the customer form allowlist', async () => {
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, payment_method: 'pay_later_by_unknown_provider' }) }));
+  assert.equal(status(result), 400);
+  assert.equal(insertedRows, null);
+});
+
+test('accepts the online payment choice without treating it as a completed payment', async () => {
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, payment_method: 'Razorpay ऑनलाइन भुगतान' }) }));
+  assert.equal(status(result), 200);
+  assert.equal(insertedRows[0].payment_method, 'Razorpay ऑनलाइन भुगतान');
+  assert.equal(insertedRows[0].payment_status, 'unpaid');
+});
 
 test('rejects unknown canonical customer category', async () => {
   const result = await handler(event({ body: JSON.stringify({ ...validBody, selected_category: 'premium_electrical_specialist' }) }));
