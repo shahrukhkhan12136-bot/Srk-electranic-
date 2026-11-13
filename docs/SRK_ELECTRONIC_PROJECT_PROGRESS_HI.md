@@ -1165,3 +1165,5 @@
 - अभी इस नए test commit का CI result उपलब्ध नहीं; इसे PASS नहीं माना गया है। Test static source contract है, browser click/real RPC behavior नहीं।
 - SQL/pgTAP, real customer JWT, complaint creation, payment and final bill runtime, mobile/Desktop QA अभी बाकी। Production या deploy में कोई बदलाव नहीं।
 - अगला resume point: नए regression test का CI परिणाम जाँचना; यदि pass हो तो Customer App के booking history completion controls और refresh/error recovery का अगला audit।
+
+- Regression CI follow-up: run `43485649409` failed 56/57 only because the newly added test expected an incorrectly escaped inline HTML template string; application source was not implicated. Corrected the test to assert the three rendered handler occurrences and each response action separately in commit `c92313d7031ac0ba365cca3c1e4be3907c1c7e0a`. Fresh CI result is pending; do not mark the new test pass yet.
