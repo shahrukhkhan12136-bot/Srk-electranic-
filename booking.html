@@ -543,22 +543,38 @@ async function customerSubmitBookingRefund(bookingId){
  }
  customerRefundSubmissionBusy.add(bookingId);
  if(button)button.disabled=true;
+ let requestCreated=false;
+ let refundAmount=null;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_create_booking_refund_request',{p_booking_id:bookingId,p_reason:reason});
   if(error)throw error;
   if(!data?.success)throw new Error('Refund request was not confirmed');
-  alert('रिफंड अनुरोध दर्ज हो गया है। राशि: '+formatCustomerMoney(data.amount)+'। इसकी स्थिति My Bookings और Payments मेनू में दिखाई देगी।');
-  await loadCustomerBookings();
-  await Promise.all([loadCustomerRefundHistory(),loadCustomerPaymentHistory(true)]);
+  requestCreated=true;
+  refundAmount=data.amount;
+  if(reasonEl)reasonEl.value='';
  }catch(error){
   const message=String(error?.message||'');
   alert(message.includes('REFUND_REQUEST_ALREADY_SUBMITTED')||message.includes('REFUND_ALREADY_EXISTS')
     ?'इस बुकिंग के लिए रिफंड अनुरोध पहले से मौजूद है। कृपया उसकी स्थिति देखें या सहायता टीम से संपर्क करें।'
     :'रिफंड अनुरोध दर्ज नहीं हो सका। कृपया विवरण जाँचकर दोबारा कोशिश करें।');
+  return;
  }finally{
-  customerRefundSubmissionBusy.delete(bookingId);
-  if(button)button.disabled=false;
+  if(!requestCreated){
+   customerRefundSubmissionBusy.delete(bookingId);
+   if(button)button.disabled=false;
+  }
  }
+ // The server has confirmed creation. Refresh failures must never be reported as a failed refund request.
+ alert('रिफंड अनुरोध दर्ज हो गया है। राशि: '+formatCustomerMoney(refundAmount)+'। इसकी स्थिति My Bookings और Payments मेनू में दिखाई देगी।');
+ const refreshResults=await Promise.allSettled([
+  loadCustomerBookings(),
+  loadCustomerRefundHistory(),
+  loadCustomerPaymentHistory(true)
+ ]);
+ const refreshFailed=refreshResults.some(result=>result.status==='rejected');
+ if(refreshFailed)alert('रिफंड अनुरोध सुरक्षित रूप से दर्ज हो गया है, लेकिन कुछ सूची अपडेट नहीं हो सकीं। कृपया Payments या My Bookings को रीफ़्रेश करें।');
+ customerRefundSubmissionBusy.delete(bookingId);
+ if(button)button.disabled=false;
 }
 let customerBookingHistoryLoadSequence=0;
 async function loadCustomerBookings() {
