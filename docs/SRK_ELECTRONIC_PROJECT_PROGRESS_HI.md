@@ -715,3 +715,17 @@
 - SQL pgTAP test अभी execute नहीं हुआ; migration Production या किसी live database पर apply नहीं हुई। Storage bucket, avatar MIME/object metadata enforcement और actual signed-URL access की runtime जांच अभी बाकी है। कोई deployment/Production बदलाव नहीं।
 - Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
 - अगला क्रम Customer App में Help & Support attachment authorization/metadata और booking-history/profile error states का source audit है। Electrician Portal शुरू नहीं हुआ।
+
+
+## 2026-11-13 — Customer Help & Support thread race hardening
+
+- Customer Support UI source audit में एक async race मिली: ग्राहक शिकायत A खोलकर तुरंत शिकायत B चुनता तो A का धीमा message/attachment response बाद में आकर B की स्क्रीन पर दिखाई दे सकता था।
+- `booking.html` में monotonically increasing thread-load sequence जोड़ी। Message और signed-attachment requests पूरी होने के बाद UI तभी render होती है जब sequence अभी नवीनतम हो और dropdown में वही complaint ID चयनित हो। Empty selection पर पुरानी attachments state भी साफ होती है।
+- Attachment load failure पहले silently ignore हो रही थी; अब message thread दिखेगा लेकिन status में स्पष्ट बताया जाएगा कि कुछ फ़ाइलें अभी नहीं खुलीं और रीफ़्रेश करना है।
+- Send button disable होने के बावजूद simultaneous submit event की race रोकने के लिए explicit `customerSupportMessageBusy` guard जोड़ा; finally block में guard और button दोनों reset होते हैं।
+- `tests/customer-menu.test.cjs` में stale-response guard, selected complaint match, duplicate-send guard और attachment error feedback के source regression assertions जोड़े।
+- GitHub Actions source regression workflow Run #43463185911 — success; tested head commit 2f9c6b32635e0581a489d71c00ba8ebf5aba5eab।
+- ये source-level/isolated tests हैं; live Supabase RLS/Storage policies, signed URL expiry, actual uploads/downloads, cross-customer IDOR और mobile/Desktop interaction अभी runtime में verify नहीं हुए। कोई migration apply, Production change या deployment नहीं।
+- Known limitation retained: multi-file upload partial failure पर पहले से सफलतापूर्वक linked attachments बने रहते हैं; UI सफल फ़ाइलों की संख्या बताती है। पूरे message + सभी attachments के लिए atomic transaction अभी उपलब्ध नहीं; retry behavior को future acceptance test में अलग से verify करना है।
+- Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
+- अगला Customer App audit: complaint/message attachment cleanup and metadata integrity, customer booking-history partial RPC failures, profile/avatar lifecycle. Electrician Portal अभी शुरू नहीं हुआ।
