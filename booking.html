@@ -919,6 +919,9 @@ async function loadCustomerAvatar(path,shouldApply=()=>true) {
 }
 let customerProfileLoadSequence=0;
 let customerSessionGeneration=0;
+let customerBookingSubmissionBusy=false;
+let customerBookingSubmissionToken=0;
+function invalidateCustomerBookingSubmission(){customerBookingSubmissionToken++;customerBookingSubmissionBusy=false;const button=document.querySelector('#booking button[type="submit"]');if(button){button.disabled=false;button.textContent='बुकिंग भेजें';}}
 function customerSessionOperationIsCurrent(generation){return generation===customerSessionGeneration;}
 async function loadCustomerProfile() {
  if(!customerSb||document.getElementById('saveCustomerProfile')?.disabled)return;
@@ -1457,6 +1460,7 @@ async function syncCustomerSession() {
       await loadCustomerProfile();
     } else {
       customerSessionGeneration++;
+      invalidateCustomerBookingSubmission();
       customerSupportMessageBusy=false;customerSupportComplaintCreateBusy=false;
       const supportSend=document.getElementById('customerSupportSend');supportSend.disabled=false;supportSend.textContent='संदेश / फ़ाइल भेजें';
       const supportCreate=document.getElementById('customerSupportCreate');supportCreate.disabled=false;supportCreate.textContent='शिकायत दर्ज करें';
@@ -1579,7 +1583,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED')customerSessionGeneration++; setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();} setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
@@ -1620,8 +1624,10 @@ async function startRazorpayPayment() {
   button.textContent = 'कृपया प्रतीक्षा करें…';
   setPaymentStatus('पेमेंट ऑर्डर बनाया जा रहा है…');
   try {
-    const { data: customerSessionData } = await customerSb.auth.getSession();
-    const customerSession = customerSessionData.session;
+    const { data: customerSessionData,error:customerSessionError } = await customerSb.auth.getSession();
+    if(!operationIsCurrent())return;
+    if(customerSessionError)throw customerSessionError;
+    const customerSession = customerSessionData?.session;
     if (!customerSession) throw new Error('भुगतान के लिए पहले ग्राहक OTP लॉगिन करें।');
     const paymentHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + customerSession.access_token };
     const orderResponse = await fetch('/api/create-order', {
@@ -1715,11 +1721,13 @@ function invalidateCustomerAddressLocation(){
  document.getElementById(id).addEventListener('change',invalidateCustomerAddressLocation);
 });
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
-let customerBookingSubmissionBusy=false;
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
   if(customerBookingSubmissionBusy)return;
   customerBookingSubmissionBusy=true;
+  const operationGeneration=customerSessionGeneration;
+  const operationToken=++customerBookingSubmissionToken;
+  const operationIsCurrent=()=>operationToken===customerBookingSubmissionToken&&customerSessionOperationIsCurrent(operationGeneration);
   const method = value('payment');
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
@@ -1738,7 +1746,9 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const requestKey = customerBookingRequestKey(bookingPayload);
     bookingHeaders['Idempotency-Key'] = requestKey;
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify(bookingPayload) });
+    if(!operationIsCurrent())return;
     const result = await response.json();
+    if(!operationIsCurrent())return;
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
     pendingBookingId = result.booking_id;
     document.getElementById('newIdenticalBooking').style.display='inline-flex';
@@ -1749,8 +1759,8 @@ document.getElementById('booking').addEventListener('submit', async function (e)
       customerMessage('बुकिंग सफलतापूर्वक सेव हो गई है (बुकिंग नंबर: '+result.booking_id+')। बुकिंग सूची अभी रिफ्रेश नहीं हो सकी; कृपया “मेरी बुकिंग” में बाद में रिफ्रेश करें।');
     }
   } catch (err) {
-    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
-  } finally { customerBookingSubmissionBusy=false; submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
+    if(operationIsCurrent())alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
+  } finally { if(operationIsCurrent()){customerBookingSubmissionBusy=false;submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें';} }
 });
 document.getElementById('newIdenticalBooking').addEventListener('click',()=>{
  const saved=(()=>{try{return JSON.parse(sessionStorage.getItem('srk.customer.booking.pending.v1')||'null')}catch(_){return null}})();
