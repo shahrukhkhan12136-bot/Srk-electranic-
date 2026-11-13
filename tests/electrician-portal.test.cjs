@@ -5,6 +5,12 @@ const vm = require('node:vm');
 
 const html = fs.readFileSync('electrician.html', 'utf8');
 
+
+test('electrician profile lookup errors render safely into an existing status element', () => {
+  assert.ok(html.includes("stateEl.textContent='प्रोफाइल जानकारी अभी लोड नहीं हुई। कृपया Refresh करें।'"));
+  assert.ok(!html.includes("getElementById('jobs')"));
+});
+
 test('electrician verification state is rendered as text, never stored HTML', () => {
   assert.ok(html.includes("stateEl.textContent="));
   assert.ok(html.includes("stateEl.className=p.active?'good':'bad'"));
