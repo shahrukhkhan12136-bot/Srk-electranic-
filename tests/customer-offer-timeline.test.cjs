@@ -28,3 +28,20 @@ test('offer event storage is private and customer RPC is owner scoped', () => {
   assert.doesNotMatch(migration, /select\s+[^;]*electrician_id/i);
   assert.match(migration, /grant execute on function public\.srk_customer_get_my_booking_offer_timeline\(\) to authenticated/i);
 });
+
+
+test('offer timeline captures status transitions once and backfills legacy final states', () => {
+  assert.match(migration, /unique \(offer_id,event_type\)/i);
+  assert.match(migration, /on conflict \(offer_id,event_type\) do nothing/i);
+  assert.match(migration, /after insert or update of status on public\.job_offers/i);
+  assert.match(migration, /new\.status is distinct from old\.status/i);
+  assert.match(migration, /where o\.status in \('accepted','declined','expired','cancelled'\)/i);
+  assert.match(migration, /coalesce\(o\.responded_at,o\.created_at,now\(\)\)/i);
+});
+
+test('customer offer timeline RPC returns only owner bookings in chronological order', () => {
+  assert.match(migration, /b\.customer_user_id=auth\.uid\(\)/i);
+  assert.match(migration, /order by e\.occurred_at asc,e\.id asc/i);
+  assert.match(migration, /limit 1000/i);
+  assert.doesNotMatch(migration, /electrician_id/i);
+});
