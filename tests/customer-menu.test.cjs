@@ -959,3 +959,20 @@ test('work completion responses and payment-method changes cannot leak stale UI 
   assert.match(html,/function invalidateCustomerPaymentMethodChanges\(\)\{customerPaymentMethodChangeBusy\.clear\(\);\}/);
   assert.match(html,/invalidateCustomerSupportPrivateState\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);/);
 });
+
+
+test('customer work-start approval and payment-preference error handling are bound to the active session', () => {
+  const start=html.indexOf('async function customerRespondWorkStart(bookingId,response)');
+  const end=html.indexOf('let customerWorkCompletionResponseBusy',start);
+  const source=html.slice(start,end);
+  assert.match(source,/const generation=customerSessionGeneration/);
+  assert.match(source,/if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
+  assert.match(source,/customerWorkStartResponseBusy\.set\(bookingId,operationToken\)/);
+  assert.match(source,/customerWorkStartResponseBusy\.get\(bookingId\)===operationToken/);
+  assert.match(html,/function invalidateCustomerWorkStartResponses\(\)\{customerWorkStartResponseBusy\.clear\(\);\}/);
+  const paymentStart=html.indexOf('async function customerChangePaymentMethod');
+  const paymentEnd=html.indexOf('function customerPayBooking',paymentStart);
+  const payment=html.slice(paymentStart,paymentEnd);
+  assert.match(payment,/catch\(_\)\{\s*if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
+  assert.match(html,/invalidateCustomerWorkStartResponses\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);/);
+});
