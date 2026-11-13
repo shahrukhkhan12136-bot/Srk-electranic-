@@ -150,6 +150,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114160000_surface_failed_provider_refunds_for_admin_reconciliation.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114170000_harden_customer_support_attachment_object_integrity.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114180000_harden_customer_avatar_object_integrity.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
