@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(45);
+SELECT plan(46);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -144,6 +144,7 @@ SELECT ok(pg_get_functiondef('public.srk_customer_get_my_booking_contacts()')
   ILIKE '%awaiting_work_start_approval%' AND
   pg_get_functiondef('public.srk_customer_get_my_booking_contacts()') NOT ILIKE '%completed%',
   'legacy customer contact RPC follows same active-only phone privacy');
+SELECT has_function('public','srk_admin_get_labour_bill',ARRAY['uuid'],'Admin final labour bill read RPC exists');
 SELECT ok(pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uuid)')
   ILIKE '%auth.jwt()->>''role''%' AND
   pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uuid)')
