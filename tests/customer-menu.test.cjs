@@ -162,6 +162,8 @@ test('customer payment history RPC exists, is owner-scoped and covers all paymen
   assert.match(customerPaymentHistoryMigration, /b\.customer_user_id=v_uid/);
   assert.match(customerPaymentHistoryMigration, /b\.payment_status in \('paid','refunded'\)/);
   assert.match(customerPaymentHistoryMigration, /b\.payment_verified_at is not null/);
+  assert.match(customerPaymentHistoryMigration, /case when b\.payment_status='refunded' then 'refunded' else 'paid' end/);
+  assert.match(html, /refunded:'रिफंड किया गया'/);
   assert.match(customerPaymentHistoryMigration, /srk_booking_refund_requests/);
   assert.match(customerPaymentHistoryMigration, /srk_razorpay_refunds/);
   assert.match(customerPaymentHistoryMigration, /srk_manual_refund_entries/);
