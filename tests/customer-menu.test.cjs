@@ -432,3 +432,14 @@ test('saved address writes distinguish database success from failed list refresh
   assert.ok(makeDefault.includes('const defaultConfirmed=refreshed&&customerSavedAddresses.some(item=>item.id===a.id&&item.is_default===true);'));
   assert.ok(makeDefault.includes('डिफ़ॉल्ट पता अपडेट हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी'));
 });
+
+
+test('saved address selection stays locked during delete and default mutations', () => {
+  const start=html.indexOf('async function deleteSelectedSavedAddress()');
+  const end=html.indexOf('\\nlet customerSupportComplaints',start);
+  const source=html.slice(start,end);
+  assert.equal((source.match(/select.disabled=true;/g)||[]).length,2);
+  assert.equal((source.match(/select.disabled=selectWasDisabled;/g)||[]).length,2);
+  assert.equal((source.match(/if\(button.disabled\)return;/g)||[]).length,2);
+  assert.ok(source.includes('button.disabled=true;select.disabled=true;'));
+});
