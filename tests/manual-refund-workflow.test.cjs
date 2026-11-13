@@ -50,3 +50,13 @@ test("Admin UI exposes preparation, transfer evidence, and ledger finalization s
   assert.match(admin, /srk_admin_record_manual_refund_transfer/);
   assert.match(admin, /srk_admin_finalize_manual_booking_refund/);
 });
+
+
+test("manual refund finalization retries return idempotent success before payout checks", () => {
+  const finalize = migration.slice(migration.indexOf("CREATE OR REPLACE FUNCTION public.srk_admin_finalize_manual_booking_refund"));
+  const retryGuard = finalize.indexOf("IF v_intent.status='processed' THEN");
+  const payoutChecks = finalize.indexOf("SELECT * INTO v_payout");
+  assert.ok(retryGuard >= 0 && payoutChecks > retryGuard);
+  assert.match(finalize, /already_finalized',true/);
+  assert.match(finalize, /PROCESSED_MANUAL_REFUND_STATE_MISMATCH/);
+});
