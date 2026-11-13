@@ -147,6 +147,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114130000_durable_razorpay_refund_provider_reconciliation.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114140000_manual_labour_only_refund_workflow.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114150000_customer_booking_submission_idempotency.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114160000_surface_failed_provider_refunds_for_admin_reconciliation.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
