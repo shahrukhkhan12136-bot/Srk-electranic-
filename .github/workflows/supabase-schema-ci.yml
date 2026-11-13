@@ -138,6 +138,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114050000_correct_legacy_and_platform_fee_reporting.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114070000_customer_safe_idempotent_booking_timeline.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
@@ -176,6 +177,9 @@ jobs:
             END IF;
             IF to_regprocedure('public.srk_admin_approve_work_completion(uuid,text)') IS NULL THEN
               RAISE EXCEPTION 'Missing Admin completion approval RPC';
+            END IF;
+            IF to_regprocedure('public.srk_customer_get_my_booking_work_timeline()') IS NULL THEN
+              RAISE EXCEPTION 'Missing customer-safe booking timeline RPC';
             END IF;
             IF to_regprocedure('private.srk_offer_booking_to_eligible_electricians(uuid)') IS NULL THEN
               RAISE EXCEPTION 'Missing shared verified booking matcher';
