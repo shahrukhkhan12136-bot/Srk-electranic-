@@ -4252,3 +4252,16 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Regression tests जोड़े: valid coordinate persistence, missing pair/out-of-range rejection और form picker/payload wiring. Tests source में जोड़े गए हैं; अभी execute/CI result उपलब्ध नहीं है।
 - सीमा: यह वर्तमान device की लोकेशन लेता है, map पर pin drag/drop या address reverse-geocoding नहीं करता। आवेदन स्थिति देखने की सुविधा अभी सुरक्षित रूप से लागू नहीं है; केवल application reference लौटता है। फोन नंबर मात्र से status lookup बनाना निजी आवेदन जानकारी उजागर कर सकता है; इसके लिए authenticated/OTP-verified applicant access contract चाहिए।
 - कोई Production DB/Auth/payment setting, live applicant data, deployment या Main merge नहीं बदला गया। Manual mobile QA अंतिम consolidated pass तक deferred है।
+
+
+## 17.131 — Electrician आवेदन की OTP-सत्यापित स्थिति जाँच (13 Nov 2026)
+
+- आवेदन फॉर्म में “अपने आवेदन की स्थिति देखें” सेक्शन जोड़ा गया। उपयोगकर्ता आवेदन में दिए गए मोबाइल नंबर पर SMS OTP सत्यापित करके अपने मोबाइल से जुड़े आवेदन देख सकता है।
+- Browser Supabase Auth session से access token लेकर `/api/electrician-application-status` endpoint को भेजता है। Server token को Supabase Auth `/auth/v1/user` से validate करता है; केवल verified phone (`phone_confirmed_at`) स्वीकार होता है। JWT payload को decode करके अकेले भरोसा नहीं किया जाता।
+- Server verified Auth phone के अंतिम 10 अंकों से ही `electrician_applications.phone` मिलाता है। Client से phone/application ID लेकर lookup नहीं होता; इसलिए दूसरे व्यक्ति का application ID जानना पर्याप्त नहीं है।
+- Response में केवल application reference, verification status, submitted date, requested category और district/state/PIN लौटते हैं। नाम, फोन, पूरा पता, दस्तावेज़, Admin notes या अन्य निजी fields नहीं लौटते। UI values को DOM text nodes के रूप में render करता है; HTML interpolation नहीं।
+- API पर existing public rate-limit RPC से IP-hash आधारित सीमा (10 status requests) लागू है; response `Cache-Control: no-store` देता है। Invalid/missing bearer, unverified phone, rate-limit और database errors अलग सुरक्षित responses देते हैं।
+- Netlify function wrapper और `/api/electrician-application-status` redirect जोड़े। कोई नया Supabase table/RPC/migration आवश्यक नहीं; मौजूदा `electrician_applications`, Supabase Phone OTP और server-only service-role configuration उपयोग होते हैं।
+- Regression tests जोड़े: missing/invalid session, unverified phone, rate limiting, verified-phone match, minimal response fields, empty result, OTP UI और Netlify route. वर्तमान commit के लिए GitHub Actions workflow run उपलब्ध नहीं मिला; इसलिए tests लिखे गए हैं, execute/pass होने का दावा नहीं है। Production OTP/SMS delivery, Auth get-user response और real DB query का runtime test अभी बाकी है।
+- यदि browser में पहले से किसी दूसरे नंबर का Supabase session मौजूद है तो पहले “लॉगआउट” करके आवेदन वाला नंबर OTP से सत्यापित करना होगा। SMS resend cooldown 60 सेकंड है।
+- कोई Production DB/Auth/SMS setting, payment, live applicant data, deployment या Main merge नहीं बदला गया। Manual mobile/Desktop QA अंतिम consolidated pass तक deferred है।
