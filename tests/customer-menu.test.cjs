@@ -134,7 +134,7 @@ test('support attachment metadata must match stored object and linked files cann
 test('customer booking history reports partial RPC and labour-bill failures without hiding booking data', () => {
   assert.match(html, /let customerBookingHistoryLoadSequence=0/);
   assert.match(html, /const sequence=\+\+customerBookingHistoryLoadSequence/);
-  assert.match(html, /if\(sequence!==customerBookingHistoryLoadSequence\)return/);
+  assert.match(html, /const generation=customerSessionGeneration;[\s\S]*?const isCurrent=\(\)=>sequence===customerBookingHistoryLoadSequence&&customerSessionOperationIsCurrent\(generation\)/);
   assert.match(html, /if\(contactsResult\.error\)partialWarnings\.push/);
   assert.match(html, /if\(timelineResult\.error\)partialWarnings\.push/);
   assert.match(html, /if\(refundResult\.error\)partialWarnings\.push/);
@@ -403,8 +403,8 @@ test('customer booking history catches session retrieval failures and ignores st
   const end = html.indexOf('\n}\n', start);
   const source = html.slice(start, end);
   assert.ok(source.indexOf('try {') < source.indexOf('customerSb.auth.getSession()'));
-  assert.match(source, /if\(sequence!==customerBookingHistoryLoadSequence\)return;\s*if\(sessionError\)throw sessionError/);
-  assert.match(source, /finally\s*\{\s*if\(sequence===customerBookingHistoryLoadSequence\)\{[\s\S]*?box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(source, /if\(!isCurrent\(\)\)return;\s*if\(sessionError\)throw sessionError/);
+  assert.match(source, /finally\s*\{\s*if\(isCurrent\(\)\)\{[\s\S]*?box\.setAttribute\('aria-busy','false'\)/);
 });
 
 
@@ -871,4 +871,15 @@ test('payment receipt popup is closed when the customer session changes before p
   assert.match(source, /const generation=customerSessionGeneration/);
   assert.match(source, /await customerSb\.rpc\('srk_customer_get_payment_receipt'[\s\S]*?if\(!customerSessionOperationIsCurrent\(generation\)\)\{printWindow\.close\(\);return;\}/);
   assert.match(source, /catch\(error\)\{[\s\S]*?if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
+});
+
+test('customer booking history is cleared and stale loads invalidated immediately on account changes', () => {
+  assert.match(html, /function invalidateCustomerBookingHistory\(\)[\s\S]*?customerBookingHistoryLoadSequence\+\+[\s\S]*?customerBookingHistoryBusy=false[\s\S]*?box\.textContent='लॉगिन बदल गया है/);
+  assert.match(html, /customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerBookingHistory\(\)/);
+  const start=html.indexOf('async function loadCustomerBookings(reset=true)');
+  const end=html.indexOf('let customerWorkStartResponseBusy',start);
+  const source=html.slice(start,end);
+  assert.match(source, /if\(!isCurrent\(\)\)return;[\s\S]*?customerSb\.from\('service_bookings'\)/);
+  assert.match(source, /if\(!isCurrent\(\)\)return;[\s\S]*?const partialWarnings/);
+  assert.match(source, /if\(!isCurrent\(\)\)return;[\s\S]*?if\(billLoadFailures\)/);
 });
