@@ -1187,3 +1187,12 @@
 - उसी failure mode को work-start approval में पाया: `srk_customer_respond_work_start` सफल होने के बाद booking list refresh fail होने पर पुराना catch “जवाब दर्ज नहीं हुआ” दिखाता था। इसे अलग किया। अब server confirmation के बाद refresh fail हो तो ग्राहक को बताया जाता है कि मंजूरी दर्ज है और केवल सूची refresh करें, जवाब दोबारा न भेजें।
 - App commit `38641c1d5a8dc4642160f947e96af6c2ec863786`; regression test commit `9c101243cb428e7eadca515949316bee1c7018da`। CI अभी pending; इसे pass न मानें।
 - No DB/Production write, deploy, payment action or manual device QA. अगला कदम नए source CI की जाँच और Customer App के booking-action recovery audit को जारी रखना है।
+
+
+### 14 नवम्बर 2026 — Customer booking actions / cancellation / refund / support recovery audit
+
+- Customer booking actions की source review की: work-start approval और completion response server-confirmed-success बनाम list-refresh failure को अलग करते हैं; payment method change भी confirmed RPC के बाद refresh failure को success के रूप में सुरक्षित बताता है; refund request server success के बाद तीन history lists को independent refresh करता है और partial refresh failure बताता है; support complaint/message paths server-created complaint/message को refresh failure पर दोबारा भेजने से रोकते हैं।
+- Cancellation policy parity: Customer booking card स्पष्ट रूप से कहता है कि cancellation के लिए Help & Support में request भेजें और अंतिम निर्णय Admin करेगा। Customer UI में direct self-cancel RPC action नहीं मिला। Help & Support complaint creation RPC इस request path का आधार है।
+- Regression test added: `tests/customer-menu.test.cjs` verifies Admin-mediated cancellation wording, absence of direct customer-cancel RPC calls, and Help & Support complaint path. Commit `255eeb590f3a64f9426a0f686ebe88b21dbcad11`. Fresh CI pending; not marked passed.
+- No new app code change required in this pass. Remaining proof gaps: DB pgTAP execution, actual authenticated customer JWT/RPC, attachment Storage failure injection, browser interactions, payment/refund runtime, final mobile/Desktop QA. No Production changes/deploy.
+- Next: verify source CI; then continue Customer App profile/address and support thread error/retry contract review before considering Customer App complete.
