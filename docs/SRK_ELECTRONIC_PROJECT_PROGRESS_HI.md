@@ -1562,3 +1562,5 @@
 - Earlier CI run `#43502626728` had 70/71 Customer Menu tests pass; remaining failure was a stale saved-address finally assertion. Corrected assertion commit `1489923...`. Support-specific tests are now added; final CI result pending. No browser/two-account test, live Supabase JWT/RLS, or final mobile/Desktop QA performed. Production unchanged.
 
 - CI assertion alignment: Support regression suite के पुराने sequence-only assertions अब session-aware `isCurrent()` guards और Auth listener के Support invalidation को verify करते हैं। Test commit `367f7e9d31a1b01429fb7924ce7b11084c5b89b6`; prior run #43503612615 में 65/72 Customer Menu assertions passed, 7 पुराने source expectations अपडेट किए गए। Corrected CI result अभी pending है।
+
+- Corrected CI outcomes: full Customer App source regression workflow `#43503823632` completed **SUCCESS**; refund/account-privacy workflow `#43503823509` completed all test and syntax steps **SUCCESS**. Customer Support loaders and attachment guards are covered by the updated source tests. These are source-level regressions only; no browser/two-account, live Supabase JWT/RLS, or mobile/Desktop QA claim. Production remains unchanged.
