@@ -156,6 +156,15 @@ CREATE TABLE srk_private.work_transition_authorizations (
  PRIMARY KEY(transaction_id,booking_id,target_status)
 );
 
+-- Legacy RPC signatures exist in the live baseline and are revoked by the
+-- new timer migration. Stubs model only those names/signatures for local DDL.
+CREATE OR REPLACE FUNCTION public.srk_get_my_assigned_booking_quote_details()
+RETURNS void LANGUAGE sql AS $function$ SELECT; $function$;
+CREATE OR REPLACE FUNCTION public.srk_get_my_offer_price_details()
+RETURNS void LANGUAGE sql AS $function$ SELECT; $function$;
+CREATE OR REPLACE FUNCTION public.srk_submit_booking_quote(uuid,numeric,numeric,text)
+RETURNS void LANGUAGE sql AS $function$ SELECT; $function$;
+
 CREATE OR REPLACE FUNCTION public.is_srk_admin()
 RETURNS boolean LANGUAGE sql STABLE
 AS $function$
