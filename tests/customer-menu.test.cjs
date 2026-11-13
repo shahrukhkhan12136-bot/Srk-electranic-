@@ -399,6 +399,19 @@ test('customer profile loader ignores stale profile and avatar responses', () =>
 });
 
 
+test('customer support complaint list refresh is serialized and stale results cannot replace the latest list', () => {
+  assert.match(html,/let customerSupportComplaintsLoadSequence=0/);
+  assert.match(html,/let customerSupportComplaintsBusy=false/);
+  const start=html.indexOf('async function loadCustomerSupportComplaints()');
+  const end=html.indexOf('\\nlet customerSupportThreadLoadSequence',start);
+  const source=html.slice(start,end);
+  assert.match(source,/if\(customerSupportComplaintsBusy\)return/);
+  assert.match(source,/customerSupportComplaintsBusy=true/);
+  assert.match(source,/if\(sequence!==customerSupportComplaintsLoadSequence\)return/);
+  assert.match(source,/customerSupportComplaintsBusy=false;select\.disabled=wasDisabled/);
+});
+
+
 test('customer complaint creation success is not reported as failure when thread refresh fails', () => {
   const start=html.indexOf('async function createCustomerSupportComplaint()');
   const end=html.indexOf('\\nasync function loadCustomerSupportComplaints()',start);
