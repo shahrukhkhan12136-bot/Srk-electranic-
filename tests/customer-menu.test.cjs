@@ -192,7 +192,7 @@ test('customer payment history pagination prevents duplicate loads and restores 
   assert.ok(source.includes('customerPaymentHistoryBusy=true;')&&source.includes('more.disabled=true;')&&source.includes('refresh.disabled=true;'));
   assert.ok(source.includes('customerPaymentHistoryBusy=false;')&&source.includes('more.disabled=false;')&&source.includes('refresh.disabled=false;'));
   assert.match(source,/customerPaymentHistoryOffset=requestedOffset\+rows\.length/);
-  assert.match(source,/if\(sequence!==customerPaymentHistoryLoadSequence\)return/);
+  assert.match(source,/if\(!isCurrent\(\)\)return/);
   assert.ok(source.includes('data-payment-history-load-warning'));
   assert.ok(source.includes('पहले से दिख रहे रिकॉर्ड सुरक्षित हैं'));
 });
@@ -257,7 +257,7 @@ test('customer refund history pagination prevents duplicate loads and uses bound
   assert.ok(source.includes('customerRefundHistoryBusy=false;')&&source.includes('more.disabled=false;'));
   assert.ok(source.includes('p_limit:25,p_offset:requestedOffset'));
   assert.ok(source.includes('customerRefundHistoryOffset=requestedOffset+rows.length;'));
-  assert.ok(source.includes('if(sequence!==customerRefundHistoryLoadSequence)return;'));
+  assert.ok(source.includes('if(!isCurrent())return;'));
   assert.ok(source.includes('else{let note=box.querySelector(\'[data-refund-history-load-warning]\')'));
   assert.ok(source.includes('पहले से दिख रहे रिकॉर्ड सुरक्षित हैं'));
 });
@@ -801,10 +801,10 @@ test('customer logout invalidates booking payment and refund history requests', 
     '++customerBookingHistoryLoadSequence;customerBookingHistoryBusy=false;customerBookingHistoryOffset=0;',
     'bookingMore.style.display=\'none\';bookingMore.disabled=false;',
     "document.getElementById('customerBookings').removeAttribute('aria-busy');",
-    '++customerPaymentHistoryLoadSequence;customerPaymentHistoryBusy=false;customerPaymentHistoryOffset=0;',
+    'invalidateCustomerPaymentHistory();',
     'paymentMore.style.display=\'none\';paymentMore.disabled=false;',
     "document.getElementById('customerPaymentHistory').removeAttribute('aria-busy');",
-    '++customerRefundHistoryLoadSequence;customerRefundHistoryBusy=false;customerRefundHistoryOffset=0;',
+    'invalidateCustomerRefundHistory();',
     'refundMore.style.display=\'none\';refundMore.disabled=false;',
     "document.getElementById('customerRefundHistory').removeAttribute('aria-busy');"
   ]) assert.ok(noSession.includes(token), 'history logout cleanup missing: '+token);
