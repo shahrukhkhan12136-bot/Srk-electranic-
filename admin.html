@@ -189,7 +189,7 @@ async function loadAdminFinance(){
  const dateInput=document.getElementById('financeAnchorDate');
  const today=new Date();const todayText=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
  const anchorDate=dateInput?.value||todayText;
- if(dateInput&&!dateInput.value)dateInput.value=anchorDate;
+ if(dateInput&&!dateInput.value)dateInput.value=anchorDate;const expenseDateInput=document.getElementById('expenseDate');if(expenseDateInput&&!expenseDateInput.value)expenseDateInput.value=todayText;
  const status=document.getElementById('financeReportStatus');
  const [{data:summary,error:summaryError},{data:expenses,error:expensesError}]=await Promise.all([
   sb.rpc('srk_admin_finance_dashboard',{p_period:period,p_anchor_date:anchorDate}),
