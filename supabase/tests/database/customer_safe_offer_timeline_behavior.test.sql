@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(9);
+SELECT plan(8);
 
 SELECT is(
   (SELECT count(*) FROM private.srk_booking_offer_events WHERE offer_id='40000000-0000-4000-8000-000000000001'),
