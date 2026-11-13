@@ -67,7 +67,7 @@ exports.handler = async (event) => {
     const state = clean(body.state, 100);
     const district = clean(body.district, 100);
     const pincode = clean(body.pincode, 6);
-    const allowedSkills = ['घर की वायरिंग','इलेक्ट्रिकल रिपेयर','लाइट / फैन फिटिंग','MCB / DB / इन्वर्टर','मोटर / पंप','होम रिपेयरिंग','सभी इलेक्ट्रिकल काम'];
+    const allowedSkills = ['घर की वायरिंग','इलेक्ट्रिकल रिपेयर','लाइट / फैन फिटिंग','MCB / DB / इन्वर्टर','मोटर / पंप','होम रिपेयरिंग','अन्य इलेक्ट्रिकल काम','सभी इलेक्ट्रिकल काम'];
     const submittedSkills = Array.isArray(body.skills) ? body.skills : [body.skills];
     const skillsList = [...new Set(submittedSkills.map(value => clean(value, 80)).filter(Boolean))];
     const skills = skillsList.join(', ');
