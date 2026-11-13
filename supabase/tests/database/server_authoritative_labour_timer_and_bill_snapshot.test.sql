@@ -175,20 +175,20 @@ SELECT ok(pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid
 SELECT ok(pg_get_functiondef('public.srk_calculate_booking_commission()'::regprocedure)
   ILIKE '%IF NEW.selected_category IS NOT NULL THEN%NEW.commission_amount:=NULL%',
   'new labour bookings do not infer Platform Fee from legacy commission_rate');
-SELECT ok(pg_get_functiondef('public.srk_get_my_earnings()')
-  ILIKE '%lb.platform_fee_amount%' AND pg_get_functiondef('public.srk_get_my_earnings()')
+SELECT ok(pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)
+  ILIKE '%lb.platform_fee_amount%' AND pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)
   ILIKE '%lb.electrician_payable%',
   'electrician earnings read explicit Platform Fee and net payable snapshots');
-SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()')
+SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
   ILIKE '%lb.platform_fee_amount%',
   'Admin finance report reads explicit Platform Fee snapshot');
-SELECT ok(pg_get_functiondef('public.srk_customer_get_labour_bill(uuid)')
+SELECT ok(pg_get_functiondef('public.srk_customer_get_labour_bill(uuid)'::regprocedure)
   NOT ILIKE '%platform_fee%' AND
-  pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)')
+  pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)'::regprocedure)
   ILIKE '%electrician_payable%' AND
-  pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)')
+  pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)'::regprocedure)
   NOT ILIKE '%platform_fee%' AND
-  pg_get_functiondef('public.srk_admin_get_labour_bill(uuid)')
+  pg_get_functiondef('public.srk_admin_get_labour_bill(uuid)'::regprocedure)
   ILIKE '%platform_fee_amount%',
   'customer sees gross labour, electrician sees net payable, Admin sees separate fee breakdown');
 
