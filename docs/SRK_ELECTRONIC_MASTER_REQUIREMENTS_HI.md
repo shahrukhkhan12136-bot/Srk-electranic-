@@ -2972,3 +2972,28 @@ Audit सीमा: केवल GitHub read-only tree/blob/workflow source औ�
 - अगला safe step: Netlify dashboard/connected integration access उपलब्ध होने पर Production deploy commit, function inventory/logs और env-var names/presence (secret values नहीं) verify करें; Razorpay Dashboard में webhook URL, subscribed event names और delivery status केवल read-only inspect करें।
 
 Audit सीमा: Vercel project, deployment list, production-filtered deployment list, feature-branch deployment list, project domain list और aliases केवल read-only देखे। कोई deployment, promotion, alias, DNS, environment variable, protection या billing setting नहीं बदली।
+
+
+## 17.78 — Netlify Production और Razorpay Dashboard Verification Access Boundary (13 Nov 2026)
+
+### A. Connected access और discovery result
+- उपलब्ध connected account actions और plugin directory को Netlify तथा Razorpay के लिए खोजा; इस session में कोई Netlify site/deployment/function/log/environment read integration और कोई Razorpay merchant dashboard/webhook/delivery read integration उपलब्ध या connected नहीं मिला।
+- Netlify और Razorpay के नाम से plugin discovery में कोई matching plugin result नहीं मिला। Vercel integration उपलब्ध है, लेकिन उससे Netlify या Razorpay account data प्रमाणित नहीं होता।
+- Public web search से SRK ELECTRONIC के Netlify Production deployment या Razorpay merchant webhook configuration का authoritative evidence नहीं मिला। समान नाम वाली unrelated websites को इस project का deployment नहीं माना गया।
+- इसलिए Netlify Production का live commit, deployment state, functions, function logs, environment-variable names/presence, custom domain mapping और Razorpay webhook URL/events/delivery attempts/secret presence अभी **unverified** हैं। Repo `netlify.toml` या source handler code इन live dashboard facts का विकल्प नहीं है।
+
+### B. Safe verification checklist — read-only only
+1. Netlify account owner/dashboard में सही site ID और site URL identify करें; latest Production deploy commit SHA, deploy state/time, publish directory, functions directory और deploy log inspect करें।
+2. Netlify Functions list और recent logs inspect करें; `/api/razorpay-webhook` तथा `/api/verify-payment` के live route resolution और runtime errors verify करें।
+3. Netlify environment settings में केवल required variable names और presence/target context (Production/Deploy Preview) देखें; कोई secret value reveal/copy/export न करें।
+4. Razorpay Dashboard में Webhooks screen पर configured endpoint URL, subscribed event names, enabled status, recent delivery status/HTTP response/retry history inspect करें। Secret value न खोलें, न rotate करें।
+5. Razorpay endpoint को live Netlify function URL और current Production deployment source से correlate करें; event deliveries का समय Netlify function logs और Supabase inbox records से मिलाएँ।
+6. कोई endpoint edit, secret rotation, webhook resend, payment/refund/transfer, deploy, rollback या environment change इस read-only audit में शामिल नहीं है; इसके लिए अलग स्पष्ट approval आवश्यक होगा।
+
+### C. Current deployment decision
+- Vercel का latest confirmed Production deployment पुराना `main` commit है; Feature Branch केवल Preview है।
+- GitHub Pages पर सफल static publication है, पर वहाँ Netlify Functions execute नहीं होतीं।
+- Netlify को repository README में primary target कहा गया है, लेकिन live Netlify deployment का प्रमाण अभी उपलब्ध नहीं।
+- जब तक Netlify Production + Razorpay webhook + DNS/custom-domain + rollback lineage का एक-दूसरे से मेल खाता प्रमाण न मिले, किसी भी hosting path को बंद/बदलना या Production promotion करना निषिद्ध रहेगा।
+
+Audit सीमा: केवल उपलब्ध connected tool/plugin discovery और public web search से access availability जाँची। कोई Netlify/Razorpay login, configuration, secret, webhook, payment, deployment, DNS या Production resource बदला नहीं गया। यह access limitation है, service outage या misconfiguration का निष्कर्ष नहीं।
