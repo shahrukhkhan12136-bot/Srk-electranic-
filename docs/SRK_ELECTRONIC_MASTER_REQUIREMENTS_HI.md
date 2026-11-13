@@ -3112,3 +3112,46 @@ Audit सीमा: केवल Feature Branch workflow, package metadata औ�
 - Before any implementation, design a versioned reservation ledger and immutable labour bill snapshot; map old quote/payout records; review all dependent triggers/RPCs/UI; then run disposable PostgreSQL 17 tests including concurrency, idempotency, rollback, RLS/ACL, post-completion contact denial and cash/online/refund reconciliation. Production remains unchanged.
 
 Audit सीमा: केवल पाँच Feature Branch migration files का source review किया। कोई migration, SQL, database, role, secret, payment, deployment या provider setting नहीं बदली।
+
+
+## 17.83 — Master Checklist का क्रमबद्ध Page-by-Page Execution और Evidence-Based Progress Protocol (13 Nov 2026)
+
+### A. अनिवार्य कार्य-संकल्प
+- Master Checklist को पहले item से अंतिम item तक निर्धारित क्रम में चलाया जाएगा। किसी item/page को केवल पढ़कर या चर्चा करके पूरा नहीं माना जाएगा।
+- हर item पर यह क्रम अनिवार्य होगा: (1) मौजूदा requirement और dependencies पढ़ना, (2) वर्तमान implementation/state की जाँच, (3) requirement से gap पहचानना, (4) आवश्यक बदलाव का सुरक्षित design, (5) स्वीकृत सीमा में implementation, (6) संबंधित tests चलाना, (7) test evidence और परिणाम दर्ज करना, (8) code/config/schema/documentation जहाँ लागू हो वहाँ save/commit करना, (9) saved state दोबारा fetch करके verify करना, (10) तभी अगले item पर बढ़ना।
+- एक item के सभी आवश्यक tests पास न हों तो उसे Complete नहीं माना जाएगा। उसे Blocked / In Progress / Failed में स्पष्ट कारण और अगला कदम सहित रखा जाएगा।
+- कोई item बिना जाँच के skip नहीं होगा। यदि dependency, user decision, provider access, staging, खर्च या explicit approval की कमी हो तो item को Blocked दर्ज करके उस dependency का प्रभाव स्पष्ट किया जाएगा। केवल स्वतंत्र और सुरक्षित items पर ही क्रम बनाए रखते हुए आगे काम हो सकता है; blocked item को छिपाकर complete नहीं दिखाया जाएगा।
+- किसी एक page/section के सभी items का evidence review होने के बाद ही उस page/section को बंद करके अगली section पर बढ़ा जाएगा। बाद में regression या नई dependency मिलने पर पुराने item को फिर खोलकर retest किया जाएगा।
+
+### B. प्रत्येक item का अनिवार्य status और evidence record
+हर checklist item के लिए कम-से-कम ये fields track होंगे:
+1. Checklist ID और exact requirement.
+2. Status: Not Started / In Progress / Blocked / Implemented—Testing Pending / Test Failed / Verified Complete.
+3. जाँचे गए source files, database objects, UI/API/RPC/provider paths.
+4. किया गया बदलाव और उसका scope; कोई बदलाव नहीं हुआ तो कारण.
+5. Test case, test environment, date, result (Pass/Fail/Not Run) और उपलब्ध evidence/reference.
+6. बचा हुआ जोखिम, dependency, approval या unresolved decision.
+7. Save/commit reference और saved content को दोबारा fetch करके verification.
+8. अगला item/अगला सुरक्षित कदम.
+
+### C. वास्तविक प्रतिशत की गणना
+- कुल denominator Master Checklist के वर्तमान version में मौजूद सभी unique, actionable checkbox items होंगे। नई checklist entry जुड़ने या duplicate/retired item को औपचारिक रूप से reconcile करने पर denominator बदलेगा और version/date दर्ज होगी।
+- केवल Verified Complete status वाले items numerator में गिने जाएँगे। केवल code मौजूद होना, migration file लिखी होना, UI दिखाई देना, audit करना, documentation करना या test plan बनना अपने आप completion नहीं है।
+- Completion % = (Verified Complete items ÷ कुल actionable checklist items) × 100.
+- Remaining % = 100 − Completion %; साथ में शेष items की संख्या भी दिखाई जाएगी।
+- In Progress, Blocked, Implemented—Testing Pending, Test Failed और Not Started items complete numerator में नहीं आएँगे।
+- यदि किसी item पर user approval, live provider access या Production release gate बाकी है, तो वह final release के लिए Verified Complete नहीं होगा; यदि उसके केवल pre-production substeps पूरे हैं तो उन्हें अलग evidence सहित दर्ज किया जाएगा।
+- हर progress report में numerator, denominator, percentage, verified complete count, in-progress count, blocked count, failed count, not-started count और last verified date बताया जाएगा। अनुमानित प्रतिशत को वास्तविक प्रतिशत के रूप में प्रस्तुत नहीं किया जाएगा।
+
+### D. सुरक्षा और release boundaries
+- यह protocol पहले से तय SRK ELECTRONIC Master Requirements, no-destructive-change/data-preservation rules और explicit approval gates को नहीं बदलता।
+- Production DDL/migrations, live code deployment, payment/refund/transfer, provider API action, paid staging, secrets/config changes या Production deployment के लिए आवश्यक अलग explicit approval अनिवार्य रहेगा।
+- Production deployment तब तक नहीं होगा जब तक सभी आवश्यक checklist items evidence सहित verify न हों, known blockers/risks का निर्णय न हो और user एक consolidated deployment को स्पष्ट अनुमति न दे।
+- Test evidence में वास्तविक customer PII, OTP, secret values या payment credentials दर्ज/प्रदर्शित नहीं किए जाएँगे।
+
+### E. वर्तमान baseline
+- 13 Nov 2026 को Master Checklist sections 14–16 में 96 checkbox items गिने गए; इनमें 0 items अभी checkbox में [x] के रूप में marked हैं।
+- यह केवल document checkbox baseline है; इसे वास्तविक implementation completion 0% नहीं माना जाएगा। पहले item-by-item audit से वास्तविक verified numerator स्थापित किया जाएगा।
+- इस protocol को लागू करने के बाद अगला काम Master Checklist के पहले actionable item से शुरू होगा; पुराने audits केवल संबंधित item के evidence के रूप में उपयोग होंगे, और जहाँ evidence अधूरा/पुराना हो वहाँ पुनःजाँच और retest होगा।
+
+Audit सीमा: इस section में केवल कार्य-प्रक्रिया, status model और progress calculation नियम दर्ज किए गए हैं। कोई application code, database, migration, secret, provider setting या deployment नहीं बदला गया।
