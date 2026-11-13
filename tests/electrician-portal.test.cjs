@@ -61,6 +61,18 @@ test('electrician support panel does not call customer-only support APIs or clai
   assert.ok(!html.includes('srk_customer_send_booking_complaint_message'));
 });
 
+
+test('electrician work history is read through a dedicated assigned-profile-scoped RPC', () => {
+  assert.ok(html.includes('srk_electrician_get_my_booking_work_timeline'));
+  assert.ok(html.includes('कार्य इतिहास देखें'));
+  assert.ok(html.includes('function loadElectricianTimeline(bookingId)'));
+  assert.ok(html.includes("row.booking_id===bookingId"));
+  assert.ok(html.includes('row.occurred_at'));
+  assert.ok(html.includes('ELECTRICIAN_EVENT_LABELS'));
+  assert.ok(!html.includes('row.actor_id'));
+  assert.ok(!html.includes('row.details'));
+});
+
 test('electrician inline JavaScript parses after navigation and work-panel changes', () => {
   const start = html.lastIndexOf('<script>');
   const end = html.lastIndexOf('</script>');
