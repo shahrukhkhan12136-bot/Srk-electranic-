@@ -1939,3 +1939,13 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Customer notification preference UI/table/RPC source नहीं मिला। Push subscriptions को consent/preferences का विकल्प नहीं मानना है; transactional/security और optional promotional events अलग consent policy से संभालने होंगे।
 - Ratings implementation gate: केवल `service_bookings.status='completed'`, authoritative customer/Admin completion approval, assigned electrician mapping और one-rating-per-side-per-booking uniqueness. Customer App में electrician को rating; Electrician Portal में customer को rating बाद में, Portal phase में।
 - यह source/tree audit है; live schema parity, RLS runtime, actual push delivery और browser QA नहीं किए गए। कोई Production change नहीं।
+
+
+#### Cancellation intake — pgTAP failure analysis and harness correction (14 नवम्बर 2026)
+- पहले वास्तविक isolated pgTAP run `43526073504` **FAIL** हुआ। Migration apply सफल था; failure test harness में था: test role को `supabase_auth_admin` में switch करने की अनुमति नहीं थी, और immutable-trigger metadata assertion गलत लिखी थी। इसलिए इसे feature failure या PASS न मानें।
+- Test harness में synthetic Auth users बनाने के लिए privileged SQL role बदलने के बजाय disposable local Supabase Auth Admin API seed step जोड़ा; कोई production credentials/data उपयोग नहीं।
+- Trigger assertion को PostgreSQL `tgtype` के BEFORE + UPDATE + DELETE bits से verify किया। Assertion plan/SQL exception quoting भी सुधारी।
+- Workflow `customer-cancellation-request-pgtap.yml` में बाद के commits से self-cancellation रोकने हेतु concurrency `cancel-in-progress: false` किया; workflow अब local disposable Supabase only है।
+- नवीनतम corrected pgTAP run `43527007387` commit `7f4357e1` पर **in progress** है; अभी assertions का final result उपलब्ध नहीं। पिछली superseded runs को PASS नहीं गिनें।
+- Source regression run `43526939337` SUCCESS था (commit `4758b9aa`); उसके बाद SQL test harness में delimiter-only update commit `7f4357e1` हुआ, जिसका नया source regression run `43527007350` queued था।
+- अगला: latest pgTAP job के seed step और assertions का पूरा log जाँचें; यदि कोई failure है तो ठीक करके पुनः चलाएँ। Database green होने के बाद ही request idempotency, ownership, duplicate request, unpaid eligibility और Admin review-start contract को verified कहें।
