@@ -533,7 +533,6 @@ function customerRefundStatusText(status){
 let customerWorkCompletionResponseBusy=new Set();
 async function customerRespondWorkCompletion(bookingId,response){
  if(!customerSb||customerWorkCompletionResponseBusy.has(bookingId))return;
- customerWorkCompletionResponseBusy.add(bookingId);
  let note=null;
  if(response==='disputed'){
   const field=document.getElementById('customerCompletionDispute_'+bookingId);
@@ -550,6 +549,7 @@ async function customerRespondWorkCompletion(bookingId,response){
   disputed:'क्या आप इस काम पर औपचारिक विवाद दर्ज करना चाहते हैं?'
  };
  if(!confirm(messages[response]||'क्या आप आगे बढ़ना चाहते हैं?'))return;
+ customerWorkCompletionResponseBusy.add(bookingId);
  try{
   const {data,error}=await customerSb.rpc('srk_customer_respond_work_completion',{
    p_booking_id:bookingId,p_response:response,p_note:note
