@@ -149,6 +149,19 @@ test('customer payment and refund history refreshes safely and only verified pay
   assert.match(html, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
 });
 
+
+test('customer payment history pagination prevents duplicate loads and restores controls only for latest request', () => {
+  const start=html.indexOf('async function loadCustomerPaymentHistory(reset=true)');
+  const end=html.indexOf('\\nlet customerRefundHistoryLoadSequence',start);
+  const source=html.slice(start,end);
+  assert.match(source,/if\(!customerSb\|\|\(!reset&&customerPaymentHistoryBusy\)\)return/);
+  assert.match(source,/customerPaymentHistoryBusy=true;[\\s\\S]*?more\.disabled=true;[\\s\\S]*?refresh\.disabled=true/);
+  assert.match(source,/if\(sequence===customerPaymentHistoryLoadSequence\)\{[\\s\\S]*?customerPaymentHistoryBusy=false;[\\s\\S]*?more\.disabled=false;[\\s\\S]*?refresh\.disabled=false;/);
+  assert.match(source,/customerPaymentHistoryOffset=requestedOffset\+rows\.length/);
+  assert.match(source,/if\(sequence!==customerPaymentHistoryLoadSequence\)return/);
+});
+
+
 test('customer payment receipt uses immutable labour amount and never infers materials', () => {
   assert.match(customerReceiptMigration, /srk_booking_labour_bills/);
   assert.match(customerReceiptMigration, /labour_amount_paise = round\(v_booking\.amount_paid \* 100\)::bigint/);
