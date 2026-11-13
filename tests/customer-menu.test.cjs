@@ -460,8 +460,8 @@ test('saved address loader ignores stale responses and only latest request resto
   const end=html.indexOf('\\nasync function saveCurrentBookingAddress()',start);
   const source=html.slice(start,end);
   assert.ok(source.includes('const sequence=++customerSavedAddressLoadSequence;'));
-  assert.ok(source.includes('if(sequence!==customerSavedAddressLoadSequence)return;'));
-  assert.ok(source.includes('finally {if(sequence===customerSavedAddressLoadSequence)select.disabled=false;}'));
+  assert.ok(source.includes('if(!isCurrent())return;'));
+  assert.ok(source.includes('finally {if(isCurrent())select.disabled=false;}'));
 });
 
 test('customer profile loader ignores stale profile and avatar responses', () => {
@@ -469,8 +469,8 @@ test('customer profile loader ignores stale profile and avatar responses', () =>
   const end=html.indexOf('\\nasync function saveCustomerProfile()',start);
   const source=html.slice(start,end);
   assert.ok(source.includes('const sequence=++customerProfileLoadSequence;'));
-  assert.ok(source.includes('if(sequence!==customerProfileLoadSequence)return;'));
-  assert.ok(source.includes('if(sequence===customerProfileLoadSequence)setCustomerProfileStatus'));
+  assert.ok(source.includes('if(!isCurrent())return;'));
+  assert.ok(source.includes('if(isCurrent())setCustomerProfileStatus'));
 });
 
 
