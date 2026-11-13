@@ -949,13 +949,13 @@ test('work completion responses and payment-method changes cannot leak stale UI 
   assert.match(completion,/const generation=customerSessionGeneration/);
   assert.match(completion,/if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
   assert.match(completion,/customerWorkCompletionResponseBusy\.get\(bookingId\)===operationToken/);
-  assert.match(html,/function invalidateCustomerWorkCompletionResponses\(\)\{customerWorkCompletionResponseBusy\.clear\(\)\}/);
+  assert.match(html,/function invalidateCustomerWorkCompletionResponses\(\)\{customerWorkCompletionResponseBusy\.clear\(\);\}/);
   const paymentStart=html.indexOf('async function customerChangePaymentMethod');
   const paymentEnd=html.indexOf('function customerPayBooking',paymentStart);
   const payment=html.slice(paymentStart,paymentEnd);
   assert.match(payment,/const generation=customerSessionGeneration/);
   assert.match(payment,/if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
   assert.match(payment,/customerPaymentMethodChangeBusy\.get\(id\)===operationToken/);
-  assert.match(html,/function invalidateCustomerPaymentMethodChanges\(\)\{customerPaymentMethodChangeBusy\.clear\(\)\}/);
+  assert.match(html,/function invalidateCustomerPaymentMethodChanges\(\)\{customerPaymentMethodChangeBusy\.clear\(\);\}/);
   assert.match(html,/invalidateCustomerSupportPrivateState\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);/);
 });
