@@ -102,3 +102,11 @@ test("electrician earnings UI renders Platform Fee and historical commission ind
   assert.match(html, /Number\(x\.legacy_commission_amount\|\|0\)/);
   assert.match(html, /पुरानी कमीशन/);
 });
+
+
+test("accepted electrician keeps customer contact during pending work-start approval", () => {
+  const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114050000_correct_legacy_and_platform_fee_reporting.sql"), "utf8");
+  assert.match(migration, /awaiting_work_start_approval/);
+  assert.match(migration, /THEN b\.phone ELSE NULL END/);
+  assert.match(migration, /b\.assigned_electrician_id=p\.id/);
+});
