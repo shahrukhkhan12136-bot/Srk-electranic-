@@ -25,7 +25,7 @@ begin
   join public.electrician_profiles ep on ep.id = b.assigned_electrician_id
   where b.customer_user_id = v_uid
     and b.assigned_electrician_id is not null
-    and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed');
+    and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','awaiting_work_start_approval','in_progress','completed');
 end;
 $function$;
 
