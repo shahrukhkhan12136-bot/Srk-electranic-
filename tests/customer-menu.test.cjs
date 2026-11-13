@@ -451,7 +451,7 @@ test('customer refund success is confirmed before independent history refreshes'
   assert.ok(source.indexOf("alert('रिफंड अनुरोध दर्ज हो गया है।") < source.indexOf('Promise.allSettled(['));
   assert.match(source, /Promise\.allSettled\(\[\s*loadCustomerBookings\(\),\s*loadCustomerRefundHistory\(\),\s*loadCustomerPaymentHistory\(true\)/);
   assert.match(source, /रिफंड अनुरोध सुरक्षित रूप से दर्ज हो गया है, लेकिन कुछ सूची अपडेट नहीं हो सकीं/);
-  assert.match(source, /if\(!requestCreated\)\s*\{[\s\S]*?customerRefundSubmissionBusy\.delete\(bookingId\)/);
+  assert.match(source, /if\(!requestCreated&&customerRefundSubmissionBusy\.get\(bookingId\)===operation\)\s*\{[\s\S]*?customerRefundSubmissionBusy\.delete\(bookingId\)/);
 });
 
 
