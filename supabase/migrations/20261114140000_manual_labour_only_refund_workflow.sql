@@ -287,6 +287,15 @@ BEGIN
     v_intent.amount_paise::numeric/100,v_intent.transfer_reference,
     left(coalesce(v_intent.transfer_note,'Manual labour-only refund'),250),v_intent.recorded_by)
   ON CONFLICT (booking_id) DO NOTHING;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.srk_manual_refund_entries
+     WHERE booking_id=v_intent.booking_id
+       AND payment_entry_id=v_intent.payment_entry_id
+       AND round(amount*100)::bigint=v_intent.amount_paise
+       AND refund_reference=v_intent.transfer_reference
+  ) THEN
+    RAISE EXCEPTION 'MANUAL_REFUND_AUDIT_ENTRY_CONFLICT' USING ERRCODE='55000';
+  END IF;
   UPDATE public.srk_manual_refund_intents
      SET status='processed',processed_at=coalesce(processed_at,clock_timestamp()),
          updated_at=clock_timestamp(),last_error=NULL
