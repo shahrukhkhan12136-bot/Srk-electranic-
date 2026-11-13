@@ -1,0 +1,1281 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071a2b">
+<meta name="description" content="SRK ELECTRONIC – Electrical wiring, home repair and service booking.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>SRK ELECTRONIC</title>
+<style>
+:root{--navy:#071a2b;--blue:#0b5ed7;--gold:#ffbd45;--paper:#f4f7fb;--ink:#142235}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--paper);color:var(--ink)}
+header{background:linear-gradient(135deg,#071a2b,#123f68);color:white;padding:24px 18px 30px;border-radius:0 0 26px 26px}
+.top{display:flex;align-items:center;gap:12px}.logo{width:54px;height:54px;border-radius:16px;background:var(--gold);color:#071a2b;display:grid;place-items:center;font-weight:900;font-size:19px}
+h1{font-size:23px;margin:0;letter-spacing:.4px}header p{margin:5px 0 0;color:#d7e7f6;font-size:14px}
+.hero{margin-top:24px}.hero h2{font-size:26px;line-height:1.2;margin:0 0 8px}.hero p{max-width:520px;line-height:1.55}
+.wrap{max-width:760px;margin:auto;padding:18px}.section-title{font-size:19px;margin:10px 0 14px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{background:white;border-radius:17px;padding:17px;box-shadow:0 5px 18px #102b4610}
+.icon{font-size:27px}.card h3{font-size:16px;margin:8px 0 5px}.card p{font-size:13px;color:#637184;margin:0;line-height:1.45}
+.panel{background:white;border-radius:18px;padding:18px;margin-top:18px;box-shadow:0 5px 18px #102b4610}
+label{display:block;font-weight:650;font-size:13px;margin:12px 0 6px}input,select,textarea{width:100%;padding:13px;border:1px solid #d8e0ea;border-radius:11px;font:inherit;background:#fff}
+textarea{min-height:84px;resize:vertical}.btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;text-decoration:none;border:0;border-radius:12px;padding:13px 16px;font-weight:750;font-size:15px;cursor:pointer}
+.primary{background:var(--blue);color:white;width:100%;margin-top:14px}.whatsapp{background:#16a34a;color:white}.call{background:var(--gold);color:#182333}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.small{font-size:13px;color:#65758a;line-height:1.5}
+#upiPanel{display:none;text-align:center;border:1px solid #dbe5f0;background:#f8fbff;border-radius:14px;padding:16px;margin-top:14px}
+#qrcode{display:inline-block;background:#fff;padding:12px;border-radius:12px;min-height:220px;min-width:220px}
+#qrcode img,#qrcode canvas{margin:auto;max-width:100%}
+.pay-note{background:#fff7e6;border:1px solid #ffe0a3;border-radius:10px;padding:10px;text-align:left;font-size:13px;line-height:1.5;margin:12px 0}.coverage{display:flex;flex-wrap:wrap;gap:8px}.pill{background:#eaf2ff;color:#164b91;padding:8px 11px;border-radius:99px;font-size:13px;font-weight:650}
+footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
+@media(min-width:600px){header{padding:30px max(24px,calc((100% - 720px)/2)) 36px}.hero h2{font-size:32px}}
+
+.customer-menu-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 18px;padding:8px;background:#f1f5fb;border:1px solid #dce5f0;border-radius:16px}
+.customer-menu-tab{min-width:0;min-height:64px;border:0;border-radius:12px;background:transparent;color:#334155;font:inherit;font-weight:650;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.customer-menu-tab span{font-size:12px;line-height:1.2;text-align:center}
+.customer-menu-tab.is-active{background:#fff;color:#0b5ed7;box-shadow:0 2px 10px rgba(15,23,42,.10)}
+.customer-menu-tab:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+.customer-menu-page[hidden]{display:none!important}
+.customer-menu-page{min-height:160px}
+@media(max-width:640px){.customer-menu-nav{position:sticky;bottom:8px;z-index:30;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:5px;margin:12px -8px 14px;border-radius:14px;background:rgba(248,250,252,.97);box-shadow:0 4px 18px rgba(15,23,42,.16);backdrop-filter:blur(10px)}.customer-menu-tab{min-height:58px;padding:3px 1px}.customer-menu-tab span{font-size:10px;overflow-wrap:anywhere}#customer-dashboard{padding-bottom:12px}}
+
+.customer-booking-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.customer-booking-state{display:inline-flex;padding:5px 9px;border-radius:999px;background:#eaf2ff;color:#164b91;font-size:12px;font-weight:700}
+.customer-booking-history{margin-top:12px;border-top:1px solid #e5eaf1;padding-top:10px}
+.customer-booking-history summary{cursor:pointer;font-weight:700;color:#164b91}
+.customer-booking-timeline{list-style:none;margin:12px 0 4px;padding:0 0 0 7px}
+.customer-booking-timeline li{display:flex;gap:10px;position:relative;padding:0 0 15px 0;min-height:34px}
+.customer-booking-timeline li:not(:last-child):after{content:"";position:absolute;left:4px;top:13px;bottom:-1px;width:2px;background:#d7e2f1}
+.customer-booking-timeline .timeline-dot{width:10px;height:10px;flex:0 0 10px;margin-top:4px;border-radius:50%;background:#2563eb;z-index:1}
+.customer-booking-timeline li div{display:flex;flex-direction:column;gap:3px}
+.customer-booking-timeline small{color:#64748b;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+ <div class="top"><div class="logo">SRK</div><div><h1>SRK ELECTRONIC</h1><p>Electrical • Wiring • Home Repair</p></div></div>
+ <div class="hero"><h2>घर की इलेक्ट्रिकल सर्विस,<br>अब एक ही जगह।</h2><p>वायरिंग, इलेक्ट्रिकल रिपेयर और घर की छोटी-बड़ी मरम्मत के लिए संपर्क करें।</p></div>
+</header>
+<main class="wrap">
+ <section class="panel" id="customer-login">
+  <h2 class="section-title" style="margin-top:0">ग्राहक लॉगिन</h2>
+  <p class="small">अपना मोबाइल नंबर सत्यापित करके अपनी बुकिंग देखें।</p>
+  <label for="customerPhone">मोबाइल नंबर</label>
+  <input id="customerPhone" type="tel" inputmode="numeric" maxlength="15" placeholder="10 अंकों का मोबाइल नंबर">
+  <button class="btn primary" type="button" id="customerSendOtp">OTP भेजें</button>
+  <div id="customerOtpBox" style="display:none">
+   <label for="customerOtp">SMS से मिला OTP</label>
+   <input id="customerOtp" type="text" inputmode="numeric" maxlength="8" placeholder="OTP दर्ज करें">
+   <button class="btn primary" type="button" id="customerVerifyOtp">OTP सत्यापित करें</button>
+  </div>
+  <p class="small" id="customerAuthMessage" role="status" aria-live="polite"></p>
+ </section>
+ <section class="panel" id="customer-dashboard" style="display:none">
+  <nav class="customer-menu-nav" id="customerMenuNav" aria-label="ग्राहक मुख्य मेनू" role="tablist">
+   <button type="button" class="customer-menu-tab is-active" id="customerTabHome" role="tab" aria-selected="true" aria-controls="customerMenuHome" data-customer-menu="Home">🏠<span>Home</span></button>
+   <button type="button" class="customer-menu-tab" id="customerTabBookings" role="tab" aria-selected="false" aria-controls="customerMenuBookings" data-customer-menu="Bookings" tabindex="-1">📋<span>My Bookings</span></button>
+   <button type="button" class="customer-menu-tab" id="customerTabPayments" role="tab" aria-selected="false" aria-controls="customerMenuPayments" data-customer-menu="Payments" tabindex="-1">💳<span>Payments</span></button>
+   <button type="button" class="customer-menu-tab" id="customerTabSupport" role="tab" aria-selected="false" aria-controls="customerMenuSupport" data-customer-menu="Support" tabindex="-1">🛟<span>Help &amp; Support</span></button>
+   <button type="button" class="customer-menu-tab" id="customerTabProfile" role="tab" aria-selected="false" aria-controls="customerMenuProfile" data-customer-menu="Profile" tabindex="-1">👤<span>My Profile</span></button>
+  </nav>
+  <section class="customer-menu-page" id="customerMenuHome" role="tabpanel" aria-labelledby="customerTabHome">
+   <h2 class="section-title" style="margin-top:0">आपका SRK ELECTRONIC स्वागत करता है</h2>
+   <p class="small" id="customerSignedIn"></p>
+   <p>घर की इलेक्ट्रिकल सेवा बुक करें और अपनी सभी बुकिंग, भुगतान और सहायता एक ही जगह देखें।</p>
+   <button class="btn primary" type="button" id="customerHomeBookNow">नई सर्विस बुक करें</button>
+   <p class="small" style="margin-top:12px">सेव किया हुआ पता चुनने या बदलने के लिए बुकिंग फॉर्म में “आपके सेव किए गए पते” का उपयोग करें।</p>
+  </section>
+  <section class="customer-menu-page" id="customerMenuBookings" role="tabpanel" aria-labelledby="customerTabBookings" hidden>
+   <h2 class="section-title" style="margin-top:0">My Bookings</h2>
+   <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
+   <div id="customerBookings" aria-live="polite"></div>
+  </section>
+  <section class="customer-menu-page" id="customerMenuPayments" role="tabpanel" aria-labelledby="customerTabPayments" hidden>
+   <section class="card" id="customerPaymentHistoryPanel" style="margin-top:14px">
+    <h3 style="margin-top:0">💳 भुगतान इतिहास और रसीद</h3>
+    <p class="small">आपकी बुकिंग से जुड़े सत्यापित भुगतान और रिफंड यहाँ दिखेंगे। भुगतान की रसीद केवल सफल और सत्यापित भुगतान के लिए उपलब्ध है।</p>
+    <button class="btn" type="button" id="customerPaymentHistoryRefresh">भुगतान इतिहास रीफ़्रेश करें</button>
+    <div id="customerPaymentHistory" aria-live="polite" aria-busy="false"></div>
+    <button class="btn" type="button" id="customerPaymentHistoryMore" style="display:none">और रिकॉर्ड देखें</button>
+   </section>
+   <section class="card" id="customerRefundHistoryPanel" style="margin-top:14px">
+    <h3 style="margin-top:0">↩️ मेरे रिफंड अनुरोध</h3>
+    <p class="small">आपके सभी रिफंड अनुरोध, Admin समीक्षा और अंतिम स्थिति यहाँ निजी रूप से दिखाई जाएगी।</p>
+    <button class="btn" type="button" id="customerRefundHistoryRefresh">रिफंड स्थिति रीफ़्रेश करें</button>
+    <div id="customerRefundHistory" aria-live="polite" aria-busy="false"></div>
+   </section>
+  </section>
+  <section class="customer-menu-page" id="customerMenuSupport" role="tabpanel" aria-labelledby="customerTabSupport" hidden></section>
+  <section class="customer-menu-page" id="customerMenuProfile" role="tabpanel" aria-labelledby="customerTabProfile" hidden>
+   <p class="small">आपकी निजी प्रोफ़ाइल और सेव किए गए पते सुरक्षित रूप से प्रबंधित किए जाते हैं।</p>
+   <button class="btn" type="button" id="customerProfileAddressLink">सेव किए गए पते प्रबंधित करें</button>
+  </section>
+
+  <section class="card" id="customerSupportPanel" style="margin-top:14px">
+   <h3 style="margin-top:0">🛟 सहायता और शिकायत</h3>
+   <p class="small">अपनी बुकिंग से जुड़ी शिकायत दर्ज करें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।</p>
+   <details style="margin:10px 0">
+    <summary style="cursor:pointer;font-weight:600">＋ नई शिकायत दर्ज करें</summary>
+    <label for="customerSupportBooking">संबंधित बुकिंग</label>
+    <select id="customerSupportBooking"><option value="">बुकिंग चुनें</option></select>
+    <label for="customerSupportCategory">शिकायत का विषय</label>
+    <select id="customerSupportCategory">
+     <option value="service_quality">काम की गुणवत्ता</option>
+     <option value="electrician_behavior">इलेक्ट्रिशियन का व्यवहार</option>
+     <option value="billing_payment">बिल या भुगतान</option>
+     <option value="delay_no_show">देरी या इलेक्ट्रिशियन नहीं पहुँचा</option>
+     <option value="safety">सुरक्षा संबंधी समस्या</option>
+     <option value="other">अन्य</option>
+    </select>
+    <label for="customerSupportDescription">समस्या का पूरा विवरण (20–2000 अक्षर)</label>
+    <textarea id="customerSupportDescription" minlength="20" maxlength="2000" placeholder="कृपया समस्या विस्तार से लिखें"></textarea>
+    <button class="btn primary" type="button" id="customerSupportCreate">शिकायत दर्ज करें</button>
+   </details>
+   <label for="customerSupportComplaint">पहले से दर्ज शिकायत</label>
+   <select id="customerSupportComplaint"><option value="">शिकायत चुनें</option></select>
+   <button class="btn" type="button" id="customerSupportRefresh">शिकायतें रीफ़्रेश करें</button>
+   <div id="customerSupportStatus" class="small" role="status" aria-live="polite"></div>
+   <div id="customerSupportThread" style="margin-top:10px;max-height:320px;overflow:auto" aria-live="polite"></div>
+   <label for="customerSupportMessage">अपना संदेश</label>
+   <textarea id="customerSupportMessage" maxlength="4000" placeholder="अपनी समस्या या जवाब लिखें"></textarea>
+   <label for="customerSupportFiles">फोटो या PDF जोड़ें (अधिकतम 5 फ़ाइलें, प्रत्येक 10 MB)</label>
+   <input id="customerSupportFiles" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf">
+   <p class="small">स्वीकार्य फ़ाइलें: JPEG, PNG, WebP और PDF। निजी फ़ाइलें केवल संबंधित ग्राहक और Admin देख सकते हैं।</p>
+   <button class="btn primary" type="button" id="customerSupportSend">संदेश / फ़ाइल भेजें</button>
+  </section>
+  <section class="card" id="customerProfilePanel" style="margin-top:14px">
+   <h3 style="margin-top:0">👤 मेरी प्रोफ़ाइल</h3>
+   <p class="small">आपका सत्यापित मोबाइल नंबर केवल पढ़ने के लिए है। नाम और भाषा यहाँ बदल सकते हैं।</p>
+   <label for="customerProfileName">पूरा नाम</label>
+   <input id="customerProfileName" maxlength="120" autocomplete="name" placeholder="अपना पूरा नाम">
+   <label for="customerProfilePhone">सत्यापित मोबाइल नंबर</label>
+   <input id="customerProfilePhone" readonly aria-readonly="true">
+   <label for="customerAvatarFile">प्रोफ़ाइल फोटो (JPEG, PNG या WebP; अधिकतम 5 MB)</label>
+   <input id="customerAvatarFile" type="file" accept="image/jpeg,image/png,image/webp">
+   <img id="customerAvatarPreview" alt="प्रोफ़ाइल फोटो का पूर्वावलोकन" style="display:none;width:88px;height:88px;border-radius:50%;object-fit:cover;margin-top:10px">
+   <label for="customerProfileLanguage">ऐप की भाषा</label>
+   <select id="customerProfileLanguage"><option value="hi">हिन्दी</option><option value="en">English</option></select>
+   <button class="btn" type="button" id="saveCustomerProfile" style="width:100%;margin-top:12px;background:#0b5ed7;color:white">प्रोफ़ाइल सेव करें</button>
+   <p id="customerProfileStatus" class="small" role="status" aria-live="polite"></p>
+  </section>
+    <button class="btn" type="button" id="customerLogout">लॉगआउट</button>
+ </section>
+
+ <h2 class="section-title">हमारी सेवाएँ</h2>
+ <div class="grid">
+  <article class="card"><div class="icon">⚡</div><h3>घर की वायरिंग</h3><p>नई वायरिंग और इलेक्ट्रिकल फिटिंग से जुड़ी सेवाएँ।</p></article>
+  <article class="card"><div class="icon">🔧</div><h3>इलेक्ट्रिकल रिपेयर</h3><p>बिजली और घरेलू इलेक्ट्रिकल समस्याओं की मरम्मत।</p></article>
+  <article class="card"><div class="icon">💡</div><h3>लाइट व फैन फिटिंग</h3><p>लाइट, पंखे और अन्य फिटिंग का काम।</p></article>
+  <article class="card"><div class="icon">🏠</div><h3>होम रिपेयरिंग</h3><p>घर की सामान्य रिपेयरिंग और मेंटेनेंस।</p></article>
+ </div>
+ <section class="panel">
+  <h2 class="section-title" style="margin-top:0">सर्विस बुक करें</h2>
+  <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर काम का निरीक्षण करेगा और केवल मेहनताना स्पष्ट करेगा।</p>
+  <form id="booking">
+   <label for="name">आपका नाम</label><input id="name" required placeholder="नाम लिखें">
+   <label for="phone">OTP से सत्यापित मोबाइल नंबर</label><input id="phone" type="tel" inputmode="tel" required readonly aria-describedby="verifiedPhoneHelp" placeholder="पहले ग्राहक OTP लॉगिन करें"><small id="verifiedPhoneHelp" class="small">बुकिंग में वही मोबाइल नंबर इस्तेमाल होगा जिससे आपने OTP लॉगिन किया है। इसे यहाँ बदला नहीं जा सकता।</small>
+   <section id="savedAddressPanel" class="card" style="margin:14px 0;padding:14px;border:1px solid #dbe5f0" aria-labelledby="savedAddressTitle">
+    <h3 id="savedAddressTitle" style="margin:0 0 6px">📍 आपके सेव किए गए पते</h3>
+    <p class="small">पहले से सेव पता चुनें या नीचे भरा हुआ पता सेव करें। पुराने बुकिंग पते इससे नहीं बदलेंगे।</p>
+    <label for="savedAddressSelect">सेव किया हुआ पता चुनें</label>
+    <select id="savedAddressSelect"><option value="">नया पता इस्तेमाल करें</option></select>
+    <p id="savedAddressStatus" class="small" role="status" aria-live="polite"></p>
+    <div class="actions">
+     <button class="btn" type="button" id="editSavedAddress" style="background:#eaf2ff;color:#164b91">चुना पता संपादित करें</button>
+     <button class="btn" type="button" id="deleteSavedAddress" style="background:#fff0f0;color:#a32121">चुना पता हटाएँ</button>
+    </div>
+    <button class="btn" type="button" id="setDefaultSavedAddress" style="width:100%;margin-top:9px;background:#fff7e6;color:#805000">इसे डिफ़ॉल्ट पता बनाएँ</button>
+    <label for="savedAddressLabel">इस पते का नाम</label>
+    <select id="savedAddressLabel"><option value="home">घर</option><option value="work">काम की जगह</option><option value="other">अन्य</option></select>
+    <button class="btn" type="button" id="saveCurrentAddress" style="width:100%;margin-top:10px;background:#eaf2ff;color:#164b91">यह पता सेव करें</button>
+   </section>
+   <label for="state">राज्य / केंद्रशासित प्रदेश</label><select id="state" required><option value="">राज्य चुनें</option><option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option><option>Andaman and Nicobar Islands</option><option>Chandigarh</option><option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Jammu and Kashmir</option><option>Ladakh</option><option>Lakshadweep</option><option>Puducherry</option></select>
+   <label for="district">जिला</label><input id="district" required placeholder="अपना जिला लिखें">
+   <label for="pin">PIN Code</label><input id="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="6 अंकों का PIN Code">
+   <label for="address">पूरा पता</label><textarea id="address" required placeholder="मकान नंबर, गली, एरिया और शहर"></textarea>
+   <div class="small" style="margin-top:8px">📍 सही लोकेशन चुनने के लिए GPS अनुमति दें। आपकी लोकेशन बुकिंग के साथ Admin और असाइन हुए इलेक्ट्रिशियन को दिखाई जाएगी।</div>
+   <button class="btn" type="button" id="customerLocate" style="margin-top:8px;background:#eaf2ff;color:#164b91">📍 मेरी लोकेशन चुनें</button>
+   <input type="hidden" id="bookingLat"><input type="hidden" id="bookingLng">
+   <p class="small" id="customerLocationStatus" role="status" aria-live="polite">लोकेशन अभी नहीं चुनी गई है। पता लिखकर भी Google Maps में देखा जा सकेगा।</p>
+   <div id="customerMapWrap" style="display:none;margin-top:10px"><iframe id="customerMap" title="बुकिंग लोकेशन का Google Map" width="100%" height="220" style="border:0;border-radius:12px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a id="customerMapLink" target="_blank" rel="noopener">Google Maps में लोकेशन खोलें</a></div>
+   <label for="service">कौन-सी सर्विस चाहिए?</label>
+   <select id="service" required>
+    <option value="home_wiring">घर की वायरिंग</option>
+    <option value="electrical_repair">इलेक्ट्रिकल रिपेयर</option>
+    <option value="light_fan_fitting">लाइट / फैन फिटिंग</option>
+    <option value="home_repair">होम रिपेयरिंग</option>
+    <option value="other">अन्य</option>
+   </select>
+   <label for="durationHours">काम के लिए अनुमानित समय</label>
+   <select id="durationHours" required>
+    <option value="">अवधि चुनें (1–8 घंटे)</option>
+    <option value="1">1 घंटा</option><option value="2">2 घंटे</option>
+    <option value="3">3 घंटे</option><option value="4">4 घंटे</option>
+    <option value="5">5 घंटे</option><option value="6">6 घंटे</option>
+    <option value="7">7 घंटे</option><option value="8">8 घंटे</option>
+   </select>
+   <p class="small">यह अवधि केवल बुकिंग का अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना इलेक्ट्रिशियन के Admin-approved rate और सर्वर द्वारा रिकॉर्ड किए गए वास्तविक काम के समय से निकलेगा।</p>
+   <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
+   <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
+   <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
+   <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
+   <label for="payment">भुगतान</label>
+   <select id="payment" required><option value="Cash">नकद (Cash)</option><option value="Razorpay ऑनलाइन भुगतान">ऑनलाइन भुगतान (Razorpay / UPI)</option></select>
+   <p class="small">पहले इलेक्ट्रिशियन घर आकर काम देखेगा और केवल काम का मेहनताना स्पष्ट करेगा। आपकी मंजूरी के बाद ही काम शुरू होगा। काम पूरा होने पर आपके चुने हुए तरीके से भुगतान होगा। ऑनलाइन भुगतान चुनने पर Razorpay उपलब्ध होगा।</p>
+   <button class="btn primary" type="submit">बुकिंग भेजें</button>
+  </form>
+ </section>
+ <section class="panel" id="upiPanel" style="display:none">
+  <h2 class="section-title" style="margin-top:0">Razorpay से सुरक्षित भुगतान</h2>
+  <p class="small">पेमेंट विंडो में UPI, Google Pay, PhonePe, Paytm, कार्ड या उपलब्ध अन्य विकल्प चुनें। भुगतान सफल होने के बाद सर्वर signature की जाँच करेगा।</p>
+  <p><b id="qrAmount"></b></p>
+  <button class="btn primary" type="button" id="payNow">🔒 Razorpay से भुगतान करें</button>
+  <p id="paymentStatus" class="small" role="status" aria-live="polite"></p>
+</section>
+>
+</main>
+<footer>© <span id="year"></span> SRK ELECTRONIC · Shahrukh Khan</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/srk-config.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+let pendingAmount = 0;
+let pendingBookingId = null;
+let paymentBusy = false;
+document.getElementById('year').textContent = new Date().getFullYear();
+function initCustomerMenuShell(){
+ const dashboard=document.getElementById('customer-dashboard');
+ const destinations={
+  Payments:document.getElementById('customerPaymentHistoryPanel'),
+  Support:document.getElementById('customerSupportPanel'),
+  Profile:document.getElementById('customerProfilePanel')
+ };
+ Object.entries(destinations).forEach(([key,node])=>{
+  const target=document.getElementById('customerMenu'+key);
+  if(node&&target)target.appendChild(node);
+ });
+ const tabs=[...document.querySelectorAll('[data-customer-menu]')];
+ const panels={
+  Home:document.getElementById('customerMenuHome'),
+  Bookings:document.getElementById('customerMenuBookings'),
+  Payments:document.getElementById('customerMenuPayments'),
+  Support:document.getElementById('customerMenuSupport'),
+  Profile:document.getElementById('customerMenuProfile')
+ };
+ function activate(name,focus=false){
+  tabs.forEach(tab=>{
+   const active=tab.dataset.customerMenu===name;
+   tab.classList.toggle('is-active',active);
+   tab.setAttribute('aria-selected',String(active));
+   tab.tabIndex=active?0:-1;
+   if(active&&focus)tab.focus();
+  });
+  Object.entries(panels).forEach(([key,panel])=>{if(panel)panel.hidden=key!==name;});
+  if(name==='Payments'){loadCustomerPaymentHistory(true);loadCustomerRefundHistory();}
+ }
+ tabs.forEach((tab,index)=>{
+  tab.addEventListener('click',()=>activate(tab.dataset.customerMenu));
+  tab.addEventListener('keydown',event=>{
+   if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key))return;
+   event.preventDefault();
+   let next=index;
+   if(event.key==='ArrowRight')next=(index+1)%tabs.length;
+   if(event.key==='ArrowLeft')next=(index-1+tabs.length)%tabs.length;
+   if(event.key==='Home')next=0;
+   if(event.key==='End')next=tabs.length-1;
+   activate(tabs[next].dataset.customerMenu,true);
+  });
+ });
+ document.getElementById('customerHomeBookNow')?.addEventListener('click',()=>{
+  const form=document.getElementById('booking');
+  form?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('name')?.focus({preventScroll:true});
+ });
+ document.getElementById('customerProfileAddressLink')?.addEventListener('click',()=>{
+  document.getElementById('booking')?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('savedAddressSelect')?.focus({preventScroll:true});
+ });
+ activate('Home');
+}
+initCustomerMenuShell();
+
+const value = id => document.getElementById(id).value.trim();
+const customerCfg = window.SRK_CONFIG || {};
+let customerSb = null;
+let customerOtpBusy = false;
+let customerOtpUntil = 0;
+let customerOtpTimer = null;
+const customerMessage = message => { document.getElementById('customerAuthMessage').textContent = message; };
+function customerPhoneE164() {
+  const raw = document.getElementById('customerPhone').value.trim();
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return '+91' + digits;
+  if (raw.startsWith('+') && digits.length >= 10 && digits.length <= 15) return '+' + digits;
+  return null;
+}
+function googleMapsUrl(lat, lng, address) { const q = lat !== '' && lng !== '' && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) ? `${lat},${lng}` : address; return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q); }
+function locateInto(latId, lngId, statusId, mapWrapId, mapId, linkId) {
+  const status=document.getElementById(statusId); if(!navigator.geolocation){status.textContent='इस डिवाइस में GPS लोकेशन उपलब्ध नहीं है।';return;}
+  status.textContent='GPS लोकेशन प्राप्त हो रही है…';
+  navigator.geolocation.getCurrentPosition(pos=>{const lat=pos.coords.latitude.toFixed(7),lng=pos.coords.longitude.toFixed(7);document.getElementById(latId).value=lat;document.getElementById(lngId).value=lng;status.textContent='लोकेशन सफलतापूर्वक चुन ली गई।';if(mapWrapId){document.getElementById(mapId).src='https://maps.google.com/maps?q='+encodeURIComponent(lat+','+lng)+'&z=16&output=embed';document.getElementById(linkId).href=googleMapsUrl(lat,lng,'');document.getElementById(mapWrapId).style.display='block';}},()=>{status.textContent='लोकेशन नहीं मिल सकी। ब्राउज़र में Location अनुमति चालू करें या पता लिखें।';},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+}
+function customerEsc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+let customerPaymentHistoryOffset=0;
+let customerPaymentHistoryBusy=false;
+function formatCustomerMoney(amount) {
+ const n=Number(amount);
+ return Number.isFinite(n)?'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'राशि उपलब्ध नहीं';
+}
+function customerPaymentLabel(row) {
+ const types={payment:'बुकिंग भुगतान',refund_request:'रिफंड अनुरोध',refund:'ऑनलाइन रिफंड',manual_payment:'दर्ज भुगतान',manual_refund:'दर्ज रिफंड'};
+ const methods={cash:'नकद',upi:'UPI',card:'कार्ड',online:'ऑनलाइन',razorpay:'Razorpay',bank_transfer:'बैंक ट्रांसफर',other:'अन्य'};
+ const status=String(row.status||'').toLowerCase();
+ const statusLabel=({paid:'सफल',captured:'सफल',recorded:'दर्ज',processed:'प्रोसेस्ड',pending:'लंबित',requested:'अनुरोध किया गया',in_review:'Admin समीक्षा में',approved:'रिफंड स्वीकृत',processing:'रिफंड प्रोसेस हो रहा है',unknown:'Admin जाँच आवश्यक',requires_reconciliation:'Admin जाँच आवश्यक',failed:'असफल',rejected:'अस्वीकृत'})[status]||row.status||'स्थिति उपलब्ध नहीं';
+ return {type:types[row.event_type]||'भुगतान रिकॉर्ड',method:methods[row.payment_method]||'',status:statusLabel};
+}
+async function customerPrintPaymentReceipt(bookingId){
+ const printWindow=window.open('','_blank');
+ if(!printWindow){alert('रसीद खोलने के लिए कृपया इस साइट के pop-ups की अनुमति दें।');return;}
+ printWindow.document.write('<!doctype html><html lang="hi"><head><meta charset="utf-8"><title>SRK ELECTRONIC भुगतान रसीद</title></head><body style="font-family:Arial,sans-serif;padding:24px">रसीद लोड हो रही है…</body></html>');
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_get_payment_receipt',{p_booking_id:bookingId});
+  if(error)throw error;
+  if(!data||data.document_type!=='payment_receipt')throw new Error('Receipt unavailable');
+  const method=({cash:'नकद',upi:'UPI',card:'कार्ड',online:'ऑनलाइन',razorpay:'Razorpay',bank_transfer:'बैंक ट्रांसफर','bank transfer':'बैंक ट्रांसफर',other:'अन्य'})[String(data.payment_method||'').toLowerCase()]||'अन्य';
+  const paymentDate=data.payment_date?new Date(data.payment_date).toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'उपलब्ध नहीं';
+  const bookingDate=data.booking_date?new Date(data.booking_date).toLocaleDateString('hi-IN'):'उपलब्ध नहीं';
+  const labourRow=Number.isFinite(Number(data.labour_amount))&&data.labour_amount!==null
+   ? '<tr><td>इलेक्ट्रिशियन मेहनताना</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.labour_amount))+'</td></tr>'
+   : '<tr><td colspan="2">भुगतान सत्यापित है; उपलब्ध रिकॉर्ड से मेहनताना अलग से प्रमाणित नहीं हो सका।</td></tr>';
+  const address=[data.address,data.district,data.state,data.pincode].filter(Boolean).join(', ');
+  printWindow.document.open();
+  printWindow.document.write('<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+customerEsc(data.receipt_reference)+'</title><style>body{font-family:Arial,"Noto Sans Devanagari",sans-serif;color:#152536;max-width:760px;margin:24px auto;padding:24px}h1{margin-bottom:4px;color:#0b3557}.muted{color:#526477;font-size:13px}.box{border:1px solid #d8e0e8;border-radius:10px;padding:16px;margin:16px 0}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:11px 7px;border-bottom:1px solid #e3e8ee}.total{font-weight:bold;font-size:19px}button{padding:10px 18px;margin:12px 8px 0 0}@media print{button{display:none}body{margin:0;padding:8px}}</style></head><body><h1>SRK ELECTRONIC</h1><div class="muted">भुगतान रसीद · यह टैक्स इनवॉइस नहीं है</div><div class="box"><b>रसीद संदर्भ:</b> '+customerEsc(data.receipt_reference)+'<br><b>बुकिंग संदर्भ:</b> '+customerEsc(data.booking_id)+'<br><b>बुकिंग दिनांक:</b> '+customerEsc(bookingDate)+'<br><b>भुगतान दिनांक:</b> '+customerEsc(paymentDate)+'</div><div class="box"><b>ग्राहक:</b> '+customerEsc(data.customer_name)+'<br><b>सेवा:</b> '+customerEsc(data.service_type)+'<br><b>पता:</b> '+customerEsc(address||'उपलब्ध नहीं')+'</div><table><tbody>'+labourRow+'<tr class="total"><td>कुल सत्यापित भुगतान</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.amount_paid))+'</td></tr></tbody></table><div class="box"><b>भुगतान तरीका:</b> '+customerEsc(method)+'<br><b>स्थिति:</b> सत्यापित / प्राप्त</div><p class="muted">यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।</p><button onclick="window.print()">प्रिंट / PDF सेव करें</button></body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+ }catch(error){
+  printWindow.close();
+  alert('भुगतान रसीद उपलब्ध नहीं हो सकी। कृपया सत्यापित भुगतान की स्थिति जाँचें या सहायता टीम से संपर्क करें।');
+ }
+}
+async function loadCustomerPaymentHistory(reset=true) {
+ if(!customerSb||customerPaymentHistoryBusy)return;
+ const box=document.getElementById('customerPaymentHistory');
+ const more=document.getElementById('customerPaymentHistoryMore');
+ const {data:sessionData}=await customerSb.auth.getSession();
+ if(!sessionData.session){box.textContent='भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';more.style.display='none';return;}
+ if(reset)customerPaymentHistoryOffset=0;
+ customerPaymentHistoryBusy=true;box.setAttribute('aria-busy','true');
+ if(reset)box.textContent='भुगतान रिकॉर्ड लोड हो रहे हैं…';
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_get_payment_history',{p_limit:25,p_offset:customerPaymentHistoryOffset});
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  const html=rows.map(row=>{
+   const label=customerPaymentLabel(row);
+   const date=row.occurred_at?new Date(row.occurred_at).toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'तारीख उपलब्ध नहीं';
+   const receiptButton=['payment','manual_payment'].includes(row.event_type)&&row.booking_id
+    ? '<button type="button" class="btn" onclick="customerPrintPaymentReceipt(\''+customerEsc(row.booking_id)+'\')">रसीद प्रिंट / PDF सेव करें</button>'
+    : '';
+   return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>'+customerEsc(label.type)+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small" style="margin:6px 0">'+customerEsc(row.description||'')+'</p><p class="small" style="margin:4px 0">स्थिति: '+customerEsc(label.status)+(label.method?' · तरीका: '+customerEsc(label.method):'')+'</p><p class="small" style="margin:4px 0">दिनांक: '+customerEsc(date)+'</p><p class="small" style="margin:4px 0">बुकिंग संदर्भ: '+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase()||'उपलब्ध नहीं')+'</p>'+receiptButton+'</article>';
+  }).join('');
+  if(reset)box.innerHTML=html||'<p class="small">अभी कोई भुगतान या रिफंड रिकॉर्ड उपलब्ध नहीं है। भुगतान दर्ज होने पर यहाँ दिखाई देगा।</p>';
+  else box.insertAdjacentHTML('beforeend',html);
+  customerPaymentHistoryOffset+=rows.length;
+  more.style.display=rows.length===25?'block':'none';
+ }catch(error){
+  if(reset)box.textContent='भुगतान इतिहास लोड नहीं हो सका। कृपया दोबारा कोशिश करें।';
+  else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
+ }finally{customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');}
+}
+async function loadCustomerRefundHistory(){
+ if(!customerSb)return;
+ const box=document.getElementById('customerRefundHistory');
+ if(!box)return;
+ const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+ if(sessionError||!sessionData?.session){box.textContent='रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';return;}
+ box.setAttribute('aria-busy','true');box.textContent='रिफंड अनुरोध लोड हो रहे हैं…';
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_list_my_booking_refund_requests');
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  box.innerHTML=rows.map(row=>{
+   const date=row.updated_at||row.created_at;
+   const dateText=date?new Date(date).toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'तारीख उपलब्ध नहीं';
+   return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>बुकिंग #'+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase())+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small">स्थिति: '+customerEsc(customerRefundStatusText(row.status))+'</p><p class="small">कारण: '+customerEsc(row.reason||'—')+'</p><p class="small">अंतिम अपडेट: '+customerEsc(dateText)+'</p></article>';
+  }).join('')||'<p class="small">अभी कोई रिफंड अनुरोध दर्ज नहीं है।</p>';
+ }catch(error){
+  box.textContent='रिफंड स्थिति लोड नहीं हो सकी। कृपया दोबारा कोशिश करें।';
+ }finally{box.setAttribute('aria-busy','false');}
+}
+const customerBookingStatusLabels = {
+  new:'बुकिंग प्राप्त हुई',
+  pending:'बुकिंग लंबित',
+  confirmed:'बुकिंग की पुष्टि',
+  assigned:'इलेक्ट्रिशियन असाइन हुआ',
+  accepted:'इलेक्ट्रिशियन ने बुकिंग स्वीकार की',
+  inspection:'निरीक्षण जारी',
+  awaiting_quote_approval:'मेहनताना स्वीकृति की प्रतीक्षा',
+  quote_approved:'मेहनताना स्वीकृत',
+  quote_rejected:'मेहनताना प्रस्ताव अस्वीकृत',
+  en_route:'इलेक्ट्रिशियन रास्ते में है',
+  travelling:'इलेक्ट्रिशियन रास्ते में है',
+  arrived:'इलेक्ट्रिशियन पहुँच गया',
+  in_progress:'काम चल रहा है',
+  completion_requested:'काम पूरा होने की पुष्टि प्रतीक्षित',
+  completed:'काम पूरा हुआ',
+  cancelled:'बुकिंग रद्द',
+  rejected:'बुकिंग स्वीकार नहीं हुई',
+  disputed:'समीक्षा / विवाद जारी'
+};
+function customerBookingStatusText(status) {
+  const key=String(status||'').toLowerCase();
+  return customerBookingStatusLabels[key] || 'स्थिति अपडेट';
+}
+const customerBookingEventLabels={
+ booking_created:'बुकिंग दर्ज हुई',
+ work_start_requested:'इलेक्ट्रिशियन ने काम शुरू करने की अनुमति माँगी',
+ work_start_approved:'ग्राहक ने काम शुरू करने की मंजूरी दी',
+ work_start_rejected:'काम शुरू करने की मंजूरी नहीं दी गई',
+ work_timer_started:'काम का सर्वर टाइमर शुरू हुआ',
+ work_completion_requested:'इलेक्ट्रिशियन ने काम पूरा होने की सूचना दी',
+ work_completion_rejected:'काम अधूरा होने पर टाइमर फिर शुरू हुआ',
+ work_completion_disputed:'काम पूरा होने पर विवाद दर्ज हुआ',
+ work_completion_customer_approved:'ग्राहक ने काम पूरा स्वीकार किया',
+ work_completion_admin_approved:'Admin ने समीक्षा के बाद काम पूरा स्वीकार किया',
+ booking_work_state_changed:'बुकिंग की स्थिति अपडेट हुई'
+};
+function customerBookingEventText(eventType){
+ return customerBookingEventLabels[String(eventType||'')]||'बुकिंग की स्थिति में बदलाव दर्ज हुआ';
+}
+function customerBookingActorText(actorRole){
+ return ({customer:'ग्राहक',electrician:'इलेक्ट्रिशियन',admin:'Admin',system:'सिस्टम'})[String(actorRole||'')]||'';
+}
+function customerBookingTimeText(value) {
+  if(!value)return '';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return '';
+  return date.toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'});
+}
+const customerRefundStatusLabels={
+ requested:'अनुरोध प्राप्त',
+ pending:'समीक्षा लंबित',
+ in_review:'Admin समीक्षा में',
+ approved:'रिफंड स्वीकृत',
+ processing:'रिफंड प्रोसेस हो रहा है',
+ unknown:'Admin जाँच आवश्यक',
+ processed:'रिफंड पूरा हुआ',
+ rejected:'रिफंड अनुरोध अस्वीकृत',
+ failed:'रिफंड में समस्या'
+};
+function customerRefundStatusText(status){
+ const key=String(status||'').toLowerCase();
+ return customerRefundStatusLabels[key]||'स्थिति अपडेट';
+}
+async function customerRespondWorkCompletion(bookingId,response){
+ if(!customerSb)return;
+ let note=null;
+ if(response==='disputed'){
+  const field=document.getElementById('customerCompletionDispute_'+bookingId);
+  note=String(field?.value||'').trim();
+  if(note.length<20||note.length>1000){
+   alert('विवाद का कारण 20 से 1000 अक्षरों में लिखें।');
+   field?.focus();
+   return;
+  }
+ }
+ const messages={
+  approved:'क्या आपने काम जाँच लिया है और इसे पूरा स्वीकार करते हैं?',
+  rejected:'क्या काम अभी अधूरा है? इससे इलेक्ट्रिशियन का काम टाइमर फिर से चालू होगा।',
+  disputed:'क्या आप इस काम पर औपचारिक विवाद दर्ज करना चाहते हैं?'
+ };
+ if(!confirm(messages[response]||'क्या आप आगे बढ़ना चाहते हैं?'))return;
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_respond_work_completion',{
+   p_booking_id:bookingId,p_response:response,p_note:note
+  });
+  if(error)throw error;
+  if(!data?.success)throw new Error('Completion response was not confirmed');
+  alert(response==='approved'?'काम पूरा होने की पुष्टि दर्ज हो गई।':
+   response==='rejected'?'काम अभी अधूरा दर्ज हुआ है। इलेक्ट्रिशियन का टाइमर फिर शुरू होगा।':
+   'आपका विवाद दर्ज हो गया है और Admin समीक्षा करेगा।');
+  await loadCustomerBookings();
+ }catch(error){
+  alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग की वर्तमान स्थिति रीफ़्रेश करके दोबारा कोशिश करें।');
+ }
+}
+async function customerSubmitBookingRefund(bookingId){
+ if(!customerSb)return;
+ const reasonEl=document.getElementById('customerRefundReason_'+bookingId);
+ const button=document.getElementById('customerRefundSubmit_'+bookingId);
+ const reason=String(reasonEl?.value||'').trim();
+ if(reason.length<20||reason.length>1000){
+  alert('रिफंड का कारण 20 से 1000 अक्षरों में लिखें।');
+  reasonEl?.focus();
+  return;
+ }
+ if(button)button.disabled=true;
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_create_booking_refund_request',{p_booking_id:bookingId,p_reason:reason});
+  if(error)throw error;
+  if(!data?.success)throw new Error('Refund request was not confirmed');
+  alert('रिफंड अनुरोध दर्ज हो गया है। राशि: '+formatCustomerMoney(data.amount)+'। इसकी स्थिति My Bookings और Payments मेनू में दिखाई देगी।');
+  await loadCustomerBookings();
+ }catch(error){
+  const message=String(error?.message||'');
+  alert(message.includes('REFUND_REQUEST_ALREADY_SUBMITTED')||message.includes('REFUND_ALREADY_EXISTS')
+    ?'इस बुकिंग के लिए रिफंड अनुरोध पहले से मौजूद है। कृपया उसकी स्थिति देखें या सहायता टीम से संपर्क करें।'
+    :'रिफंड अनुरोध दर्ज नहीं हो सका। कृपया विवरण जाँचकर दोबारा कोशिश करें।');
+ }finally{
+  if(button)button.disabled=false;
+ }
+}
+async function loadCustomerBookings() {
+  const box = document.getElementById('customerBookings');
+  if (!customerSb) { box.textContent='ग्राहक लॉगिन सेवा अभी उपलब्ध नहीं है।'; return; }
+  const { data: sessionData, error: sessionError } = await customerSb.auth.getSession();
+  const session = sessionData?.session;
+  if (sessionError || !session) {
+    box.textContent='आपका लॉगिन सत्र समाप्त हो गया है। कृपया OTP से दोबारा लॉगिन करें।';
+    return;
+  }
+  box.setAttribute('aria-busy','true');
+  box.textContent = navigator.onLine===false
+    ? 'इंटरनेट कनेक्शन उपलब्ध नहीं है। कनेक्शन लौटने पर फिर से कोशिश करें।'
+    : 'आपकी बुकिंग लोड हो रही हैं…';
+  try {
+    const { data, error } = await customerSb.from('service_bookings')
+      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
+      .eq('customer_user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    if (!data || !data.length) {
+      box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
+      return;
+    }
+    const [contactsResult,timelineResult,refundResult] = await Promise.all([
+      customerSb.rpc('srk_get_customer_call_contacts'),
+      customerSb.rpc('srk_customer_get_my_booking_work_timeline'),
+      customerSb.rpc('srk_customer_list_my_booking_refund_requests')
+    ]);
+    const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
+    const timelineMap = new Map();
+    if(!timelineResult.error) {
+      (timelineResult.data || []).forEach(item=>{
+        if(!timelineMap.has(item.booking_id))timelineMap.set(item.booking_id,[]);
+        timelineMap.get(item.booking_id).push(item);
+      });
+    }
+    const refundMap=new Map();
+    if(!refundResult.error){
+      (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
+    }
+    const billMap=new Map();
+    await Promise.all(data.filter(row=>row.status==='completed'&&row.selected_category).map(async row=>{
+      const {data:bill,error}=await customerSb.rpc('srk_customer_get_labour_bill',{p_booking_id:row.id});
+      if(!error&&bill)billMap.set(row.id,bill);
+    }));
+    box.innerHTML = data.map(row => {
+      const contact = callMap.get(row.id);
+      const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
+      const canCall = Boolean(contact) && /^[0-9]{10,15}$/.test(phone);
+      const events=timelineMap.get(row.id)||[];
+      const historyMarkup=events.length
+        ? '<ol class="customer-booking-timeline" aria-label="बुकिंग स्थिति का इतिहास">'+events.map(event=>
+            '<li><span class="timeline-dot" aria-hidden="true"></span><div><b>'+customerEsc(customerBookingEventText(event.event_type))+'</b><small>'+customerEsc(customerBookingTimeText(event.occurred_at))+(customerBookingActorText(event.actor_role)?' · '+customerEsc(customerBookingActorText(event.actor_role)):'')+'</small></div></li>'
+          ).join('')+'</ol>'
+        : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
+      const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
+      const cancellationInfo=!['completed','cancelled'].includes(row.status)
+        ? '<p class="small">बुकिंग रद्द कराने के लिए Help & Support में अनुरोध भेजें। रद्द करने का अंतिम निर्णय Admin करेगा।</p>'
+        : '';
+      const refund=refundMap.get(row.id);
+      const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
+        ? '<div class="job"><b>इलेक्ट्रिशियन ने काम पूरा होने की सूचना दी है।</b><p class="small">कृपया काम जाँचें। पूरा होने पर स्वीकार करें; अधूरा होने पर अस्वीकार करें या विवाद दर्ज करें।</p>'+
+          '<button type="button" onclick="customerRespondWorkCompletion(\''+customerEsc(row.id)+'\',\'approved\')">काम पूरा स्वीकार करें</button> '+
+          '<button type="button" onclick="customerRespondWorkCompletion(\''+customerEsc(row.id)+'\',\'rejected\')">काम अभी अधूरा है</button>'+
+          '<label for="customerCompletionDispute_'+customerEsc(row.id)+'">विवाद का कारण (20–1000 अक्षर)</label>'+
+          '<textarea id="customerCompletionDispute_'+customerEsc(row.id)+'" minlength="20" maxlength="1000" placeholder="काम में क्या समस्या है, लिखें"></textarea>'+
+          '<button type="button" onclick="customerRespondWorkCompletion(\''+customerEsc(row.id)+'\',\'disputed\')">विवाद दर्ज करें</button></div>'
+        : row.completion_approval_status==='disputed'
+          ? '<p class="small" role="status">काम पूरा होने पर आपका विवाद Admin समीक्षा में है।</p>'
+          : '';
+      const bill=billMap.get(row.id);
+      const startMarkup=row.status==='awaiting_work_start_approval'&&row.work_start_approval_status==='pending'
+        ? '<div class="job"><b>इलेक्ट्रिशियन काम शुरू करने की अनुमति माँग रहा है।</b><p class="small">आपकी मंजूरी मिलने के बाद ही सर्वर टाइमर शुरू होगा।</p>'+
+          '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-response="approved" onclick="customerRespondWorkStart(this.dataset.bookingId,this.dataset.response)">काम शुरू करने की मंजूरी दें</button> '+
+          '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-response="rejected" onclick="customerRespondWorkStart(this.dataset.bookingId,this.dataset.response)">अभी मंजूरी न दें</button></div>'
+        : '';
+      const timerMarkup=row.selected_category&&row.status==='in_progress'
+        ? '<div class="job"><b>काम का टाइमर</b><p id="customerTimer_'+customerEsc(row.id)+'" data-running="'+(row.work_timer_running?'1':'0')+'" data-started="'+customerEsc(row.work_started_at||'')+'" data-accumulated="'+customerEsc(row.work_timer_elapsed_seconds||0)+'">'+customerEsc(formatCustomerTimer(row.work_timer_elapsed_seconds||0))+'</p><small>यह लाइव प्रदर्शन अनुमानित है; अंतिम बिल सर्वर के रिकॉर्ड समय से बनेगा।</small></div>'
+        : '';
+      const finalBillMarkup=bill
+        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>अंतिम मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p class="small">यह बिल ग्राहक की मंजूरी के बाद सर्वर ने बनाया है।</p>'+
+          (String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'&&row.payment_status!=='paid'
+            ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+Number(bill.labour_amount)+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 अंतिम Labour Bill का ऑनलाइन भुगतान करें</button>'
+            : String(row.payment_method||'').toLowerCase().includes('cash')&&row.payment_status!=='paid'
+              ? '<p class="small">नकद भुगतान सीधे इलेक्ट्रिशियन को करें। भुगतान की पुष्टि होने पर रसीद उपलब्ध होगी।</p>'
+              : '')
+          +'</div>'
+        : '';
+      const canRequestRefund=String(row.payment_status||'').toLowerCase()==='paid'
+        && Number(row.amount_paid||0)>0
+        && Boolean(row.payment_verified_at);
+      let refundMarkup='';
+      if(refund){
+        refundMarkup='<div class="job"><b>रिफंड अनुरोध:</b> '+customerEsc(customerRefundStatusText(refund.status))+
+          '<p class="small">अनुरोधित राशि: '+customerEsc(formatCustomerMoney(refund.amount))+' · '+customerEsc(customerBookingTimeText(refund.updated_at||refund.created_at))+'</p>'+
+          (String(refund.status||'').toLowerCase()==='rejected'&&canRequestRefund
+            ? '<label for="customerRefundReason_'+customerEsc(row.id)+'">नया कारण (20–1000 अक्षर)</label><textarea id="customerRefundReason_'+customerEsc(row.id)+'" minlength="20" maxlength="1000"></textarea><button id="customerRefundSubmit_'+customerEsc(row.id)+'" type="button" onclick="customerSubmitBookingRefund(\''+customerEsc(row.id)+'\')">दोबारा रिफंड अनुरोध करें</button>'
+            :'')+'</div>';
+      }else if(canRequestRefund&&!refundResult.error){
+        refundMarkup='<div class="job"><b>भुगतान सत्यापित:</b> '+customerEsc(formatCustomerMoney(row.amount_paid))+
+          '<p class="small">यदि इस भुगतान में समस्या है, तो कारण लिखकर रिफंड अनुरोध भेजें। अनुरोध की समीक्षा Admin करेगा; रिफंड अपने-आप जारी नहीं होगा।</p>'+
+          '<label for="customerRefundReason_'+customerEsc(row.id)+'">रिफंड का कारण (20–1000 अक्षर)</label>'+
+          '<textarea id="customerRefundReason_'+customerEsc(row.id)+'" minlength="20" maxlength="1000" placeholder="रिफंड का कारण विस्तार से लिखें"></textarea>'+
+          '<button id="customerRefundSubmit_'+customerEsc(row.id)+'" type="button" onclick="customerSubmitBookingRefund(\''+customerEsc(row.id)+'\')">रिफंड अनुरोध भेजें</button></div>';
+      }else if(canRequestRefund&&refundResult.error){
+        refundMarkup='<p class="small" role="status">रिफंड अनुरोध की पिछली स्थिति अभी लोड नहीं हो सकी। दोबारा कोशिश करें या सहायता टीम से संपर्क करें।</p>';
+      }
+      return '<article class="card customer-booking-card" style="margin:10px 0;padding:13px">' +
+      '<div class="customer-booking-heading"><b>बुकिंग #' + customerEsc(row.id) + '</b><span class="customer-booking-state">'+customerEsc(customerBookingStatusText(row.status))+'</span></div>' +
+      '<p>' + customerEsc(row.service_type) + '</p>' +
+      '<p><b>वर्तमान स्थिति:</b> ' + customerEsc(customerBookingStatusText(row.status)) + ' • <b>भुगतान:</b> ' + customerEsc(paymentLabel) + '</p>' +
+      '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
+      (['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id&&row.payment_status!=='paid'&&!String(row.payment_method||'').toLowerCase().includes('razorpay') ? '<div class="job"><b>भुगतान का चुना हुआ तरीका:</b> '+customerEsc(row.payment_method||'नकद (Cash)')+'<p class="small">यदि इस बुकिंग के लिए Online भुगतान जरूरी हो, तो आप यहाँ स्वयं Online चुन सकते हैं। आपकी अनुमति के बिना भुगतान तरीका नहीं बदलेगा।</p><button type="button" onclick="customerChangePaymentMethod(\''+row.id+'\')">Online भुगतान चुनें</button></div>' : '') +
+      (row.payment_status === 'paid' && row.amount_paid != null && row.payment_verified_at ? '<p><b>सत्यापित भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
+      '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
+      (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (row.status === 'completed' ? '<p class="small">काम पूरा हो चुका है। इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा।</p>' : (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>')) : '') +
+      startMarkup+timerMarkup+finalBillMarkup+completionMarkup+cancellationInfo+refundMarkup+
+      '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
+      '</article>';
+    }).join('');
+    if(timelineResult.error) {
+      const note=document.createElement('p');
+      note.className='small';
+      note.setAttribute('role','status');
+      note.textContent='बुकिंग की जानकारी उपलब्ध है, लेकिन स्थिति इतिहास अभी लोड नहीं हो सका।';
+      box.prepend(note);
+    }
+    if(refundResult.error){
+      const note=document.createElement('p');
+      note.className='small';
+      note.setAttribute('role','status');
+      note.textContent='रिफंड अनुरोध की स्थिति अभी लोड नहीं हो सकी।';
+      box.prepend(note);
+    }
+  } catch(error) {
+    box.textContent=navigator.onLine===false
+      ? 'इंटरनेट कनेक्शन टूट गया। कनेक्शन लौटने पर “बुकिंग फिर से देखें” दबाएँ।'
+      : 'बुकिंग लोड नहीं हो सकीं। कृपया “बुकिंग फिर से देखें” दबाकर दोबारा कोशिश करें।';
+  } finally {
+    box.setAttribute('aria-busy','false');
+  }
+}
+async function customerRespondWorkStart(bookingId,response){
+ if(!['approved','rejected'].includes(response))return;
+ const question=response==='approved'?'क्या आप इलेक्ट्रिशियन को अभी काम शुरू करने की अनुमति देते हैं?':'क्या आप अभी काम शुरू करने की अनुमति रोकना चाहते हैं?';
+ if(!confirm(question))return;
+ try{const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});if(error)throw error;if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');await loadCustomerBookings();}
+ catch(e){alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग रीफ़्रेश करें।');}
+}
+function formatCustomerTimer(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');}
+function updateCustomerTimers(){document.querySelectorAll('[id^="customerTimer_"]').forEach(el=>{let seconds=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))seconds+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatCustomerTimer(seconds);});}
+setInterval(updateCustomerTimers,1000);
+
+async function customerChangePaymentMethod(id){
+ if(!confirm('क्या आप इस बुकिंग के लिए Cash की जगह Online (Razorpay) भुगतान स्वयं चुनना चाहते हैं? कोई भुगतान अभी नहीं लिया जाएगा।'))return;
+ const {data,error}=await customerSb.rpc('srk_customer_change_payment_method',{p_booking_id:id,p_payment_method:'Razorpay ऑनलाइन भुगतान'});
+ if(error){alert('भुगतान तरीका नहीं बदला: '+error.message);return;}
+ alert('आपकी पसंद Online भुगतान के रूप में सुरक्षित हो गई है। भुगतान काम पूरा होने के बाद होगा।');
+ await loadCustomerBookings();
+}
+function customerPayBooking(id,amount){
+ if(!Number.isFinite(amount)||amount<1){alert('भुगतान राशि सही नहीं है।');return;}
+ pendingBookingId=id;pendingAmount=amount;
+ document.getElementById('qrAmount').textContent='भुगतान राशि: ₹'+amount.toFixed(2);
+ document.getElementById('upiPanel').style.display='block';
+ setPaymentStatus('काम पूरा दर्ज है। Razorpay से भुगतान करें।');
+ document.getElementById('upiPanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function setCustomerProfileStatus(message,isError=false) {
+ const el=document.getElementById('customerProfileStatus');
+ el.textContent=message;el.style.color=isError?'#b42318':'#176b3a';
+}
+let customerCurrentAvatarPath=null;
+let customerAvatarPreviewUrl=null;
+function setCustomerAvatarPreview(url) {
+ const img=document.getElementById('customerAvatarPreview');
+ if(customerAvatarPreviewUrl&&customerAvatarPreviewUrl.startsWith('blob:'))URL.revokeObjectURL(customerAvatarPreviewUrl);
+ customerAvatarPreviewUrl=url||null;
+ if(url){img.src=url;img.style.display='block';}else{img.removeAttribute('src');img.style.display='none';}
+}
+async function loadCustomerAvatar(path) {
+ if(!path||!customerSb)return;
+ try {
+  const {data,error}=await customerSb.storage.from('srk-customer-avatars').createSignedUrl(path,300);
+  if(error)throw error;
+  setCustomerAvatarPreview(data.signedUrl);
+ } catch(e){setCustomerProfileStatus('प्रोफ़ाइल फोटो लोड नहीं हो सकी।',true);}
+}
+async function loadCustomerProfile() {
+ if(!customerSb)return;
+ const {data:sessionData}=await customerSb.auth.getSession();
+ const session=sessionData.session;
+ if(!session)return;
+ const phone=session.user.phone||'';
+ const digits=String(phone).replace(/\\D/g,'');
+ const displayPhone=digits.startsWith('91')&&digits.length===12?digits.slice(2):digits;
+ document.getElementById('customerProfilePhone').value=displayPhone||phone;
+ setCustomerProfileStatus('प्रोफ़ाइल लोड हो रही है…');
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_get_my_profile');
+  if(error)throw error;
+  const profile=Array.isArray(data)?data[0]:data;
+  if(profile) {
+   document.getElementById('customerProfileName').value=profile.full_name||'';
+   if(profile.full_name) document.getElementById('name').value=profile.full_name;
+   document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
+   customerCurrentAvatarPath=profile.avatar_path||null;
+   if(customerCurrentAvatarPath) await loadCustomerAvatar(customerCurrentAvatarPath);
+   setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।');
+  } else {
+   document.getElementById('customerProfileName').value=document.getElementById('name').value||'';
+   setCustomerProfileStatus('नई प्रोफ़ाइल है। अपना नाम भरकर सेव करें।');
+  }
+ } catch(e){setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
+}
+async function saveCustomerProfile() {
+ const button=document.getElementById('saveCustomerProfile');
+ if(button.disabled)return;
+ const fullName=document.getElementById('customerProfileName').value.trim();
+ if(fullName.length<2||fullName.length>120){setCustomerProfileStatus('नाम 2 से 120 अक्षरों के बीच दर्ज करें।',true);return;}
+ button.disabled=true;setCustomerProfileStatus('प्रोफ़ाइल सेव हो रही है…');
+ try {
+  let avatarPath=customerCurrentAvatarPath;
+  const file=document.getElementById('customerAvatarFile').files?.[0]||null;
+  if(file) {
+   const allowed=['image/jpeg','image/png','image/webp'];
+   if(!allowed.includes(file.type)||file.size>5*1024*1024||file.size===0) throw new Error('फोटो JPEG, PNG या WebP होनी चाहिए और 5 MB से छोटी होनी चाहिए।');
+   const {data:sessionData}=await customerSb.auth.getSession();
+   const userId=sessionData.session?.user?.id;
+   if(!userId)throw new Error('फोटो अपलोड करने के लिए OTP लॉगिन जरूरी है।');
+   const extension=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp' })[file.type];
+   avatarPath=userId+'/'+crypto.randomUUID()+'.'+extension;
+   const {error:uploadError}=await customerSb.storage.from('srk-customer-avatars').upload(avatarPath,file,{contentType:file.type,upsert:false});
+   if(uploadError)throw uploadError;
+  }
+  const {data,error}=await customerSb.rpc('srk_customer_update_my_profile',{
+   p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath
+  });
+  if(error) {
+   if(file&&avatarPath!==customerCurrentAvatarPath) await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]).catch(()=>{});
+   throw error;
+  }
+  const oldAvatar=customerCurrentAvatarPath;
+  customerCurrentAvatarPath=avatarPath;
+  if(file) {
+   document.getElementById('customerAvatarFile').value='';
+   await loadCustomerAvatar(avatarPath);
+   if(oldAvatar&&oldAvatar!==avatarPath) await customerSb.storage.from('srk-customer-avatars').remove([oldAvatar]);
+  }
+  document.getElementById('name').value=fullName;
+  setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
+ } catch(e){setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||''),true);}
+ finally{button.disabled=false;}
+}
+let customerSavedAddresses = [];
+let editingSavedAddressId = null;
+function setSavedAddressStatus(message, isError=false) {
+ const el=document.getElementById('savedAddressStatus');
+ el.textContent=message;
+ el.style.color=isError?'#b42318':'#176b3a';
+}
+async function loadCustomerSavedAddresses() {
+ const select=document.getElementById('savedAddressSelect');
+ if(!customerSb) return;
+ const {data:sessionData}=await customerSb.auth.getSession();
+ if(!sessionData.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';return;}
+ select.disabled=true; setSavedAddressStatus('सेव किए गए पते लोड हो रहे हैं…');
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
+  if(error) throw error;
+  customerSavedAddresses=Array.isArray(data)?data:[];
+  select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>'+customerSavedAddresses.map(a=>
+   '<option value="'+customerEsc(a.id)+'">'+customerEsc(({home:'घर',work:'काम की जगह',other:'अन्य'}[a.label]||a.label)+' — '+a.address_line+', '+a.district+' ('+a.pincode+')'+(a.is_default?' ★':''))+'</option>'
+  ).join('');
+  setSavedAddressStatus(customerSavedAddresses.length?'आपके '+customerSavedAddresses.length+' सेव किए गए पते उपलब्ध हैं।':'अभी कोई पता सेव नहीं है।');
+ } catch(e) { setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true); }
+ finally {select.disabled=false;}
+}
+function applySelectedSavedAddress() {
+ editingSavedAddressId=null;
+ const id=document.getElementById('savedAddressSelect').value;
+ if(!id) return;
+ const a=customerSavedAddresses.find(x=>x.id===id);
+ if(!a) return;
+ document.getElementById('state').value=a.state;
+ document.getElementById('district').value=a.district;
+ document.getElementById('pin').value=a.pincode;
+ document.getElementById('address').value=a.address_line;
+ document.getElementById('place').value=a.landmark||'';
+ document.getElementById('bookingLat').value=a.location_lat??'';
+ document.getElementById('bookingLng').value=a.location_lng??'';
+ if(a.location_lat!=null && a.location_lng!=null) {
+  document.getElementById('customerMap').src='https://maps.google.com/maps?q='+encodeURIComponent(a.location_lat+','+a.location_lng)+'&z=16&output=embed';
+  document.getElementById('customerMapLink').href=googleMapsUrl(a.location_lat,a.location_lng,'');
+  document.getElementById('customerMapWrap').style.display='block';
+  document.getElementById('customerLocationStatus').textContent='सेव किए गए पते की लोकेशन लोड हुई।';
+ } else {
+  document.getElementById('customerMapWrap').style.display='none';
+  document.getElementById('customerLocationStatus').textContent='इस सेव पते में GPS लोकेशन नहीं है। जरूरत हो तो लोकेशन चुनें।';
+ }
+ setSavedAddressStatus('सेव किया हुआ पता फॉर्म में भर दिया गया है। बुकिंग भेजने से पहले विवरण जाँच लें।');
+}
+async function saveCurrentBookingAddress() {
+ const button=document.getElementById('saveCurrentAddress');
+ if(button.disabled) return;
+ const {data:sessionData}=await customerSb.auth.getSession();
+ if(!sessionData.session){setSavedAddressStatus('पता सेव करने के लिए पहले OTP लॉगिन करें।',true);return;}
+ button.disabled=true;button.textContent='पता सेव हो रहा है…';
+ try {
+  const editingAddress=editingSavedAddressId?customerSavedAddresses.find(a=>a.id===editingSavedAddressId):null;
+  const {data,error}=await customerSb.rpc('srk_customer_save_my_address',{
+   p_id:editingSavedAddressId,p_label:document.getElementById('savedAddressLabel').value,
+   p_recipient_name:value('name'),p_address_line:value('address'),p_landmark:value('place')||null,
+   p_pincode:value('pin'),p_district:value('district'),p_state:value('state'),
+   p_location_lat:value('bookingLat')?Number(value('bookingLat')):null,
+   p_location_lng:value('bookingLng')?Number(value('bookingLng')):null,
+   p_is_default:editingAddress?.is_default===true
+  });
+  if(error) throw error;
+  await loadCustomerSavedAddresses();
+  document.getElementById('savedAddressSelect').value=data;
+  editingSavedAddressId=null;
+  setSavedAddressStatus('पता सफलतापूर्वक सेव हो गया।');
+ } catch(e) {setSavedAddressStatus(e.message==='ADDRESS_LIMIT_REACHED'?'अधिकतम 10 पते सेव हो सकते हैं। पहले कोई पुराना पता हटाना होगा.':'पता सेव नहीं हो सका। '+(e.message||''),true);}
+ finally {button.disabled=false;button.textContent='यह पता सेव करें';}
+}
+function editSelectedSavedAddress() {
+ const id=document.getElementById('savedAddressSelect').value;
+ const a=customerSavedAddresses.find(x=>x.id===id);
+ if(!a){setSavedAddressStatus('संपादित करने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
+ editingSavedAddressId=a.id;
+ document.getElementById('savedAddressLabel').value=a.label;
+ document.getElementById('name').value=a.recipient_name;
+ document.getElementById('state').value=a.state;
+ document.getElementById('district').value=a.district;
+ document.getElementById('pin').value=a.pincode;
+ document.getElementById('address').value=a.address_line;
+ document.getElementById('place').value=a.landmark||'';
+ document.getElementById('bookingLat').value=a.location_lat??'';
+ document.getElementById('bookingLng').value=a.location_lng??'';
+ setSavedAddressStatus('पता फॉर्म में संपादन के लिए खुल गया है। बदलाव के बाद “यह पता सेव करें” दबाएँ।');
+ document.getElementById('address').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function deleteSelectedSavedAddress() {
+ const id=document.getElementById('savedAddressSelect').value;
+ if(!id){setSavedAddressStatus('हटाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
+ const a=customerSavedAddresses.find(x=>x.id===id);
+ if(!a)return;
+ if(!confirm('क्या आप यह सेव किया हुआ पता हमेशा के लिए हटाना चाहते हैं? पहले की बुकिंग पर इसका असर नहीं होगा。'))return;
+ const button=document.getElementById('deleteSavedAddress');button.disabled=true;
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_delete_my_saved_address',{p_id:id});
+  if(error)throw error;
+  if(data!==true)throw new Error('ADDRESS_NOT_FOUND');
+  editingSavedAddressId=null;
+  await loadCustomerSavedAddresses();
+  document.getElementById('savedAddressSelect').value='';
+  setSavedAddressStatus('पता हटा दिया गया है। पुरानी बुकिंग का पता सुरक्षित है।');
+ } catch(e){setSavedAddressStatus('पता नहीं हट सका। '+(e.message||''),true);}
+ finally{button.disabled=false;}
+}
+async function makeSelectedAddressDefault() {
+ const id=document.getElementById('savedAddressSelect').value;
+ const a=customerSavedAddresses.find(x=>x.id===id);
+ if(!a){setSavedAddressStatus('डिफ़ॉल्ट बनाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
+ const button=document.getElementById('setDefaultSavedAddress');button.disabled=true;
+ try {
+  const {error}=await customerSb.rpc('srk_customer_save_my_address',{
+   p_id:a.id,p_label:a.label,p_recipient_name:a.recipient_name,p_address_line:a.address_line,
+   p_landmark:a.landmark,p_pincode:a.pincode,p_district:a.district,p_state:a.state,
+   p_location_lat:a.location_lat,p_location_lng:a.location_lng,p_is_default:true
+  });
+  if(error)throw error;
+  await loadCustomerSavedAddresses();
+  document.getElementById('savedAddressSelect').value=a.id;
+  setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।');
+ } catch(e){setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
+ finally{button.disabled=false;}
+}
+let customerSupportComplaints = [];
+let customerSupportSelectedId = null;
+function supportStatus(message, isError=false) {
+ const el=document.getElementById('customerSupportStatus');
+ el.textContent=message; el.style.color=isError?'#b42318':'#65758a';
+}
+let customerSupportAttachments = [];
+function renderCustomerSupportThread(rows) {
+ const box=document.getElementById('customerSupportThread'); box.replaceChildren();
+ if(!rows.length){box.textContent='अभी इस शिकायत में कोई संदेश नहीं है।';return;}
+ const byMessage=new Map();
+ customerSupportAttachments.forEach(a=>{if(!byMessage.has(a.message_id))byMessage.set(a.message_id,[]);byMessage.get(a.message_id).push(a);});
+ rows.forEach(row=>{
+  const item=document.createElement('article');
+  item.style.cssText='padding:10px 12px;margin:8px 0;border-radius:12px;background:'+(row.sender_role==='customer'?'#eaf2ff':'#eef8f0');
+  const who=document.createElement('strong');who.textContent=row.sender_role==='customer'?'आप':'SRK सहायता टीम';
+  const body=document.createElement('p');body.style.cssText='white-space:pre-wrap;margin:6px 0';body.textContent=row.body||'';
+  const when=document.createElement('small');when.textContent=row.created_at?new Date(row.created_at).toLocaleString('hi-IN'):'';
+  item.append(who,body,when);
+  (byMessage.get(row.id)||[]).forEach(a=>{
+   const link=document.createElement('a');link.href=a.signedUrl||'#';link.target='_blank';link.rel='noopener noreferrer';link.textContent='📎 '+a.file_name+' ('+(Number(a.file_size_bytes)/1024/1024).toFixed(2)+' MB)';
+   link.style.cssText='display:block;margin-top:8px';if(!a.signedUrl){link.removeAttribute('target');link.addEventListener('click',e=>e.preventDefault());}
+   item.append(link);
+  });
+  box.append(item);
+ });
+ box.scrollTop=box.scrollHeight;
+}
+async function loadCustomerSupportAttachments(complaintId) {
+ const {data,error}=await customerSb.rpc('srk_customer_list_complaint_message_attachments',{p_complaint_id:complaintId});
+ if(error)throw error;
+ const rows=Array.isArray(data)?data:[];
+ customerSupportAttachments=await Promise.all(rows.map(async a=>{
+  const {data:signed,error:signedError}=await customerSb.storage.from('srk-customer-support').createSignedUrl(a.storage_path,300);
+  return {...a,signedUrl:signedError?null:signed?.signedUrl||null};
+ }));
+}
+async function loadCustomerSupportComplaints() {
+ const select=document.getElementById('customerSupportComplaint');
+ select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');
+  if(error)throw error;
+  customerSupportComplaints=Array.isArray(data)?data:[];
+  select.replaceChildren(new Option('शिकायत चुनें',''));
+  customerSupportComplaints.forEach(c=>{
+   const label=(c.category||'शिकायत')+' · '+(c.status||'स्थिति उपलब्ध नहीं')+' · '+String(c.id).slice(0,8);
+   select.add(new Option(label,c.id));
+  });
+  const stillExists=customerSupportComplaints.some(c=>c.id===customerSupportSelectedId);
+  customerSupportSelectedId=stillExists?customerSupportSelectedId:(customerSupportComplaints[0]?.id||null);
+  select.value=customerSupportSelectedId||'';
+  if(customerSupportSelectedId) await loadCustomerSupportMessages();
+  else {renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
+ } catch(e){supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
+ finally{select.disabled=false;}
+}
+async function loadCustomerSupportMessages() {
+ const id=document.getElementById('customerSupportComplaint').value;
+ if(!id){customerSupportSelectedId=null;renderCustomerSupportThread([]);return;}
+ customerSupportSelectedId=id;
+ const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id});
+ if(error)throw error;
+ try{await loadCustomerSupportAttachments(id);}catch(_){customerSupportAttachments=[];}
+ renderCustomerSupportThread(Array.isArray(data)?data:[]);
+ const complaint=customerSupportComplaints.find(c=>c.id===id);
+ supportStatus(complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):'');
+}
+async function sendCustomerSupportMessage() {
+ const id=document.getElementById('customerSupportComplaint').value;
+ const input=document.getElementById('customerSupportMessage');
+ const body=input.value.trim(), fileInput=document.getElementById('customerSupportFiles');
+ const files=Array.from(fileInput.files||[]), button=document.getElementById('customerSupportSend');
+ const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
+ if(!id){supportStatus('पहले अपनी शिकायत चुनें।',true);return;}
+ if(!body&&!files.length){supportStatus('संदेश लिखें या फ़ाइल चुनें।',true);return;}
+ if(body.length>4000){supportStatus('संदेश 4000 अक्षरों से अधिक नहीं होना चाहिए।',true);return;}
+ if(files.length>5||files.some(f=>!allowed.includes(f.type)||f.size<1||f.size>10485760)){
+  supportStatus('अधिकतम 5 फ़ाइलें चुनें। हर फ़ाइल JPEG/PNG/WebP/PDF और 10 MB से कम होनी चाहिए।',true);return;
+ }
+ button.disabled=true;button.textContent='भेजा जा रहा है…';
+ let pendingUploadPath=null,linkedCount=0;
+ try{
+  const {data:sessionData}=await customerSb.auth.getSession();
+  const userId=sessionData.session?.user?.id;if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
+  const {data:messageId,error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{
+   p_complaint_id:id,p_body:body||'आपके लिए फ़ाइल संलग्न की गई है।'
+  });
+  if(error)throw error;
+  if(!messageId)throw new Error('संदेश संदर्भ प्राप्त नहीं हुआ।');
+  for(const file of files){
+   const ext=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':file.type==='image/webp'?'webp':'pdf';
+   const path=userId+'/'+id+'/'+crypto.randomUUID()+'.'+ext;
+   pendingUploadPath=path;
+   const {error:uploadError}=await customerSb.storage.from('srk-customer-support').upload(path,file,{contentType:file.type,upsert:false});
+   if(uploadError)throw uploadError;
+   const {error:linkError}=await customerSb.rpc('srk_customer_link_complaint_message_attachment',{
+    p_complaint_id:id,p_message_id:messageId,p_storage_path:path,p_file_name:file.name.slice(0,180),
+    p_mime_type:file.type,p_file_size_bytes:file.size
+   });
+   if(linkError)throw linkError;
+   pendingUploadPath=null;linkedCount++;
+  }
+  input.value='';fileInput.value='';
+  await loadCustomerSupportMessages();
+  supportStatus(files.length?'आपका संदेश और '+files.length+' फ़ाइल सफलतापूर्वक भेजी गई।':'आपका संदेश सहायता टीम को भेज दिया गया है।');
+ }catch(e){
+  if(pendingUploadPath){await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]).catch(()=>{});}
+  supportStatus((linkedCount?'कुछ फ़ाइलें सफलतापूर्वक भेजी गईं ('+linkedCount+')। ':'संदेश या फ़ाइल भेजी नहीं जा सकी। ')+(e.message||'कृपया दोबारा कोशिश करें।'),true);
+ }
+ finally{button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}
+}
+
+async function syncCustomerSession() {
+  if (!customerSb) return;
+  const { data } = await customerSb.auth.getSession();
+  const session = data.session;
+  document.getElementById('customer-login').style.display = session ? 'none' : 'block';
+  document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
+  const bookingPhone = document.getElementById('phone');
+  if (session) {
+    const digits = String(session.user.phone || '').replace(/\\D/g, '');
+    const displayPhone = digits.startsWith('91') && digits.length === 12 ? digits.slice(2) : digits;
+    bookingPhone.value = displayPhone;
+    bookingPhone.readOnly = true;
+    document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
+    await loadCustomerBookings();
+    await loadCustomerPaymentHistory(true);
+    await loadCustomerRefundHistory();
+    await loadCustomerSupportBookings();
+    await loadCustomerSupportComplaints();
+    await loadCustomerSavedAddresses();
+    await loadCustomerProfile();
+  } else {
+    bookingPhone.value = '';
+    bookingPhone.readOnly = true;
+    document.getElementById('customerSignedIn').textContent = '';
+    document.getElementById('customerBookings').textContent = '';
+    document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';
+    document.getElementById('customerRefundHistory').textContent = 'रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';
+    document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));
+    document.getElementById('customerSupportBooking').replaceChildren(new Option('बुकिंग चुनें',''));
+    document.getElementById('customerSupportDescription').value='';
+    document.getElementById('customerSupportThread').textContent='';
+    document.getElementById('customerSupportMessage').value='';
+    document.getElementById('customerSupportFiles').value='';customerSupportAttachments=[];
+    customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें।');
+    document.getElementById('customerProfileName').value = '';
+    document.getElementById('customerProfilePhone').value = '';
+    customerPaymentHistoryOffset = 0;
+    customerCurrentAvatarPath = null;
+    setCustomerAvatarPreview(null);
+  }
+}
+async function customerSendOtp() {
+  if (customerOtpBusy) return;
+  const phone = customerPhoneE164();
+  if (!phone) { customerMessage('कृपया सही 10 अंकों का भारतीय मोबाइल नंबर डालें।'); return; }
+  if (Date.now() < customerOtpUntil) { customerMessage('कृपया OTP दोबारा भेजने से पहले प्रतीक्षा करें।'); return; }
+  customerOtpBusy = true;
+  const button = document.getElementById('customerSendOtp');
+  button.disabled = true; customerMessage('OTP भेजा जा रहा है…');
+  try {
+    const { error } = await customerSb.auth.signInWithOtp({ phone });
+    if (error) { customerMessage('OTP नहीं भेजा जा सका। कृपया कुछ देर बाद कोशिश करें।'); return; }
+    document.getElementById('customerOtpBox').style.display = 'block';
+    customerOtpUntil = Date.now() + 60000;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((customerOtpUntil - Date.now()) / 1000));
+      button.textContent = left ? 'दोबारा OTP ' + left + ' सेकंड बाद' : 'OTP दोबारा भेजें';
+      button.disabled = left > 0;
+      if (!left && customerOtpTimer) { clearInterval(customerOtpTimer); customerOtpTimer = null; }
+    };
+    if (customerOtpTimer) clearInterval(customerOtpTimer);
+    tick(); customerOtpTimer = setInterval(tick, 1000);
+    customerMessage('OTP भेज दिया गया है। OTP किसी के साथ साझा न करें।');
+  } catch (_) { customerMessage('OTP सेवा अभी उपलब्ध नहीं है।'); }
+  finally { customerOtpBusy = false; if (Date.now() >= customerOtpUntil) { button.disabled = false; button.textContent = 'OTP भेजें'; } }
+}
+async function customerVerifyOtp() {
+  if (customerOtpBusy) return;
+  const phone = customerPhoneE164();
+  const token = document.getElementById('customerOtp').value.trim();
+  if (!phone || !/^\d{4,8}$/.test(token)) { customerMessage('सही मोबाइल नंबर और SMS OTP दर्ज करें।'); return; }
+  customerOtpBusy = true;
+  const button = document.getElementById('customerVerifyOtp');
+  button.disabled = true; customerMessage('OTP सत्यापित हो रहा है…');
+  try {
+    const { error } = await customerSb.auth.verifyOtp({ phone, token, type: 'sms' });
+    if (error) { customerMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।'); return; }
+    customerMessage('लॉगिन सफल। आपकी बुकिंग दिखाई जा रही हैं।');
+    await syncCustomerSession();
+  } catch (_) { customerMessage('OTP सत्यापन अभी नहीं हो सका।'); }
+  finally { customerOtpBusy = false; button.disabled = false; }
+}
+async function customerLogout() {
+  const button = document.getElementById('customerLogout');
+  if (!customerSb || !button || button.disabled) return;
+  button.disabled = true;
+  customerMessage('लॉगआउट किया जा रहा है…');
+  try {
+    const { error } = await customerSb.auth.signOut();
+    if (error) throw error;
+    await syncCustomerSession();
+    customerMessage('आप लॉगआउट हो गए हैं। नई बुकिंग और भुगतान के लिए OTP लॉगिन जरूरी है।');
+  } catch (_) {
+    customerMessage('लॉगआउट पूरा नहीं हो सका। इंटरनेट जाँचकर दोबारा कोशिश करें।');
+  } finally {
+    button.disabled = false;
+  }
+}
+if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
+  customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
+  customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
+  document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
+  document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
+  document.getElementById('customerLogout').addEventListener('click', customerLogout);
+  document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
+  document.getElementById('customerPaymentHistoryRefresh').addEventListener('click',()=>loadCustomerPaymentHistory(true));
+  document.getElementById('customerRefundHistoryRefresh').addEventListener('click',loadCustomerRefundHistory);
+  document.getElementById('customerPaymentHistoryMore').addEventListener('click',()=>loadCustomerPaymentHistory(false));
+  document.getElementById('customerSupportRefresh').addEventListener('click',()=>{loadCustomerSupportBookings();loadCustomerSupportComplaints();});
+  document.getElementById('customerSupportCreate').addEventListener('click',createCustomerSupportComplaint);
+  document.getElementById('customerSupportComplaint').addEventListener('change',()=>loadCustomerSupportMessages().catch(e=>supportStatus('संदेश लोड नहीं हुए। '+(e.message||''),true)));
+  document.getElementById('customerSupportSend').addEventListener('click',sendCustomerSupportMessage);
+  document.getElementById('saveCustomerProfile').addEventListener('click', saveCustomerProfile);
+  document.getElementById('savedAddressSelect').addEventListener('change', applySelectedSavedAddress);
+  document.getElementById('saveCurrentAddress').addEventListener('click', saveCurrentBookingAddress);
+  document.getElementById('editSavedAddress').addEventListener('click', editSelectedSavedAddress);
+  document.getElementById('deleteSavedAddress').addEventListener('click', deleteSelectedSavedAddress);
+  document.getElementById('setDefaultSavedAddress').addEventListener('click', makeSelectedAddressDefault);
+  syncCustomerSession();
+} else {
+  customerMessage('ग्राहक लॉगिन सेटअप अभी उपलब्ध नहीं है। OTP लॉगिन सेवा ठीक होने तक बुकिंग नहीं की जा सकेगी।');
+}
+
+function setPaymentStatus(message, isError = false) {
+  const el = document.getElementById('paymentStatus');
+  el.textContent = message;
+  el.style.color = isError ? '#b42318' : '#176b3a';
+}
+
+async function startRazorpayPayment() {
+  if (paymentBusy) return;
+  if (!window.Razorpay) { setPaymentStatus('Razorpay Checkout लोड नहीं हुआ। इंटरनेट चालू करके पेज रीफ्रेश करें।', true); return; }
+  paymentBusy = true;
+  const button = document.getElementById('payNow');
+  button.disabled = true;
+  button.textContent = 'कृपया प्रतीक्षा करें…';
+  setPaymentStatus('पेमेंट ऑर्डर बनाया जा रहा है…');
+  try {
+    const { data: customerSessionData } = await customerSb.auth.getSession();
+    const customerSession = customerSessionData.session;
+    if (!customerSession) throw new Error('भुगतान के लिए पहले ग्राहक OTP लॉगिन करें।');
+    const paymentHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + customerSession.access_token };
+    const orderResponse = await fetch('/api/create-order', {
+      method: 'POST', headers: paymentHeaders,
+      body: JSON.stringify({ booking_id: pendingBookingId })
+    });
+    const orderData = await orderResponse.json();
+    if (!orderResponse.ok) throw new Error(orderData.error || 'ऑर्डर नहीं बन पाया।');
+
+    const options = {
+      key: orderData.key_id,
+      amount: orderData.amount,
+      currency: orderData.currency,
+      name: 'SRK ELECTRONIC',
+      description: 'Home Repairing & Electrical Service',
+      order_id: orderData.order_id,
+      prefill: { name: value('name'), contact: value('phone') },
+      notes: { service: value('service'), customer_phone: value('phone') },
+      theme: { color: '#0b5ed7' },
+      handler: async function (response) {
+        setPaymentStatus('भुगतान की जाँच हो रही है…');
+        try {
+          const verifyResponse = await fetch('/api/verify-payment', {
+            method: 'POST', headers: paymentHeaders,
+            body: JSON.stringify({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          });
+          const verifyData = await verifyResponse.json();
+          if (!verifyResponse.ok || !verifyData.success) throw new Error(verifyData.error || 'भुगतान सत्यापित नहीं हुआ।');
+          setPaymentStatus('भुगतान सफल और सत्यापित हो गया है।');
+          setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है।');
+          await loadCustomerBookings();
+        } catch (err) { setPaymentStatus(err.message, true); }
+      },
+      modal: { ondismiss: function () { setPaymentStatus('आपने भुगतान विंडो बंद कर दी। अभी भुगतान की पुष्टि नहीं हुई है।', true); } }
+    };
+    const checkout = new Razorpay(options);
+    checkout.on('payment.failed', function (response) {
+      const reason = response.error && response.error.description ? response.error.description : 'भुगतान असफल रहा।';
+      setPaymentStatus('❌ ' + reason, true);
+    });
+    checkout.open();
+    setPaymentStatus('Razorpay Checkout खुल रहा है…');
+  } catch (error) {
+    setPaymentStatus(error.message || 'कुछ गड़बड़ हुई। कृपया दोबारा कोशिश करें।', true);
+  } finally {
+    paymentBusy = false;
+    button.disabled = false;
+    button.textContent = '🔒 Razorpay से भुगतान करें';
+  }
+}
+
+function customerBookingRequestKey(payload){
+  const storageKey='srk.customer.booking.pending.v1';
+  const fingerprint=JSON.stringify(payload);
+  try{
+    const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');
+    if(saved&&saved.fingerprint===fingerprint&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(saved.key))return saved.key;
+  }catch(_){}
+  if(!window.crypto?.getRandomValues)throw new Error('इस डिवाइस पर सुरक्षित बुकिंग पहचान उपलब्ध नहीं है। कृपया सुरक्षित ब्राउज़र में दोबारा कोशिश करें।');
+  const bytes=new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  bytes[6]=(bytes[6]&0x0f)|0x40;bytes[8]=(bytes[8]&0x3f)|0x80;
+  const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+  const key=hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+  try{sessionStorage.setItem(storageKey,JSON.stringify({key,fingerprint}));}catch(_){}
+  return key;
+}
+function clearCustomerBookingRequestKey(key){
+  try{const saved=JSON.parse(sessionStorage.getItem('srk.customer.booking.pending.v1')||'null');if(saved?.key===key)sessionStorage.removeItem('srk.customer.booking.pending.v1');}catch(_){}
+}
+document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
+document.getElementById('booking').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const amount = 0; // Quote and final amount are set after electrician inspection.
+  const method = value('payment');
+  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${document.getElementById('service').selectedOptions[0]?.textContent || ''}\nअनुमानित अवधि: ${value('durationHours')} घंटे\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
+  const submitButton = this.querySelector('button[type="submit"]');
+  submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
+  try {
+    const bookingHeaders = { 'Content-Type': 'application/json' };
+    if (!customerSb) throw new Error('ग्राहक लॉगिन सेवा उपलब्ध नहीं है।');
+    const { data: customerSessionData } = await customerSb.auth.getSession();
+    const customerSession = customerSessionData.session;
+    if (!customerSession) throw new Error('बुकिंग के लिए पहले ग्राहक OTP लॉगिन करें।');
+    bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
+    const bookingPayload = {
+      customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
+      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), preferred_date: value('date'), preferred_time: value('time'),
+      work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method
+    };
+    const requestKey = customerBookingRequestKey(bookingPayload);
+    bookingHeaders['Idempotency-Key'] = requestKey;
+    const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify(bookingPayload) });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
+    clearCustomerBookingRequestKey(requestKey);
+    pendingBookingId = result.booking_id;
+    alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
+    await loadCustomerBookings();
+  } catch (err) {
+    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
+  } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
+});
+document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
+
+</body></html>
