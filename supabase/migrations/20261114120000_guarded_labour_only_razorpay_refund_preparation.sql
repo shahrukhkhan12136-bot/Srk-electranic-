@@ -112,6 +112,9 @@ BEGIN
       );
     END IF;
     IF v_existing.status='requested' THEN
+      UPDATE public.srk_booking_refund_requests
+         SET refund_record_id=v_existing.id,updated_at=clock_timestamp()
+       WHERE id=v_request.id AND refund_record_id IS NULL;
       RETURN jsonb_build_object(
         'success',true,'already_prepared',true,
         'refund_id',v_existing.id,'idempotency_key',v_existing.idempotency_key,
@@ -121,7 +124,7 @@ BEGIN
     RAISE EXCEPTION 'EXISTING_REFUND_RECORD_REQUIRES_ADMIN_RECONCILIATION' USING ERRCODE='55000';
   END IF;
 
-  v_idempotency_key := 'srk_rf_'||replace(gen_random_uuid()::text,'-','');
+  v_idempotency_key := 'srk_'||replace(gen_random_uuid()::text,'-','');
   INSERT INTO public.srk_razorpay_refunds
     (booking_id,payment_id,amount,amount_paise,currency,idempotency_key,
      status,reason,admin_user_id)
