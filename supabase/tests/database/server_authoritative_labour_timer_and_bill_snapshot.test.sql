@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(46);
+SELECT plan(47);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -24,6 +24,9 @@ SELECT ok(EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='srk_guard_server_work_ti
   'server timer authorization trigger installed');
 SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid='public.srk_guard_server_work_timer()'::regprocedure),
   'timer guard executes with protected definer context');
+SELECT ok(pg_get_functiondef('public.srk_guard_server_work_timer()'::regprocedure) ILIKE '%New bookings cannot be inserted with pre-populated timer%' AND
+  (SELECT pg_get_triggerdef(oid) ILIKE '%INSERT%' FROM pg_trigger WHERE tgname='srk_guard_server_work_timer'),
+  'timer guard also rejects client-supplied timer/rate snapshots on booking insert');
 SELECT ok(NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.service_bookings'::regclass
   AND pg_get_constraintdef(oid) ILIKE '%604800%'),
   'seven-day timer cap constraint removed');
