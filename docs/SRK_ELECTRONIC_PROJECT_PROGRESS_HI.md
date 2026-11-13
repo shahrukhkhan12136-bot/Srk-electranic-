@@ -1137,3 +1137,12 @@
 - Per-booking in-flight guard, button disable/restore और duplicate submission रोकथाम जोड़ी। RPC success के बाद list refresh failure को payment preference failure से अलग Hindi संदेश दिया; raw backend error ग्राहक को नहीं दिखाया।
 - Source Regression workflow **43483640001** (commit `70471fe4b91cec8869b4cc306cb964d3c5e43914`) — **SUCCESS**। Refund Source Regression workflow **43483633710** (app commit `754fc2f365e9d70ee0f515ca5e0c582bf171e7b3`) — **SUCCESS**।
 - ये source-level checks हैं; live Supabase RPC, concurrent browser clicks, network failure injection और mobile/Desktop QA अभी बाकी हैं। कोई भुगतान शुरू नहीं किया गया और Production में बदलाव नहीं हुआ।
+
+
+### 14 नवम्बर 2026 — Customer 14.1.10 timer test parity: post-completion calling rule
+
+- क्रमबद्ध 14.1.10 review के दौरान timer/billing pgTAP file में एक पुराना assertion मिला: वह वर्तमान customer contact implementation से completion के बाद फोन छिपाने की अपेक्षा कर रहा था। यह 14 नवम्बर की स्वीकृत post-acceptance direct-calling requirement और migration `20261114220000_customer_contacts_after_completion.sql` से टकराता था।
+- केवल current customer contact implementation वाले assertion को अपडेट किया: अब यह सत्यापित करता है कि assigned booking owner के लिए `completed` status पर भी संपर्क उपलब्ध रहे। Legacy `srk_customer_get_my_booking_contacts()` का अलग active-only assertion नहीं बदला; वर्तमान Customer UI उस legacy RPC को call नहीं करता और उसका पुराना restrictive व्यवहार अतिरिक्त exposure नहीं बनाता।
+- Test file commit: `b7b2722ec6056c1504cf8e90f250dbe0e1233d97`।
+- यह test-source correction है, pgTAP निष्पादन नहीं। Supabase schema CI के लिए read-only DB URL secret/isolated test execution की उपलब्धता अभी सत्यापित करनी है; कोई migration apply, Production write, deploy या mobile/Desktop QA नहीं हुआ। 14.1.10 Partial/In Progress ही रहेगा।
+- अगला resume point: 14.1.10 के completion/dispute/Admin resolution RPC, event trigger, bill creation authorization और payment/refund/payout consumer dependencies का targeted security review।
