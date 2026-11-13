@@ -119,7 +119,7 @@ test('rejects malformed JSON as HTTP 400 before any rate-limit or auth requests'
 });
 
 test('rejects missing client IP after verifying session and checking for an existing safe retry', async () => {
-  const result = await handler(event({ headers: { authorization: 'Bearer verified-test-token' } }));
+  const result = await handler(event({ headers: { authorization: 'Bearer verified-test-token', 'Idempotency-Key': '123e4567-e89b-42d3-a456-426614174000' } }));
   assert.equal(status(result), 503);
   assert.equal(calls.some(x => x.url.includes('/auth/v1/user')), true);
   assert.equal(calls.some(x => x.url.includes('/rest/v1/service_bookings?')), true);
