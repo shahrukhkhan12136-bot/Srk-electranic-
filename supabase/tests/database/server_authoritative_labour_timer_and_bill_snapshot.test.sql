@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(78);
+SELECT plan(79);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -291,6 +291,12 @@ SELECT ok(pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians
   pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure)
   ILIKE '%payment_status%',
   'automatic and Admin matching filters approved skills, rate tier and unsettled online payments');
+
+
+SELECT ok((length(pg_get_functiondef('public.srk_customer_respond_work_start(uuid,text)'::regprocedure))
+  - length(replace(pg_get_functiondef('public.srk_customer_respond_work_start(uuid,text)'::regprocedure),
+    'INSERT INTO srk_private.work_timer_authorizations','')))/length('INSERT INTO srk_private.work_timer_authorizations')=1,
+  'customer work-start approval creates exactly one transaction-scoped timer authorization');
 
 SELECT * FROM finish();
 ROLLBACK;
