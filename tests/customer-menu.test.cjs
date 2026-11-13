@@ -172,6 +172,24 @@ test('customer payment history pagination prevents duplicate loads and restores 
 });
 
 
+test('customer work start and completion responses reject duplicate submissions and always release guards', () => {
+  assert.match(html,/let customerWorkCompletionResponseBusy=new Set\(\)/);
+  const completionStart=html.indexOf('async function customerRespondWorkCompletion(bookingId,response)');
+  const completionEnd=html.indexOf('let customerRefundSubmissionBusy',completionStart);
+  const completion=html.slice(completionStart,completionEnd);
+  assert.match(completion,/customerWorkCompletionResponseBusy\.has\(bookingId\)/);
+  assert.ok(completion.indexOf("if(!confirm(messages[response]")<completion.indexOf('customerWorkCompletionResponseBusy.add(bookingId)'));
+  assert.match(completion,/finally\{customerWorkCompletionResponseBusy\.delete\(bookingId\);\}/);
+  assert.match(html,/let customerWorkStartResponseBusy=new Set\(\)/);
+  const start=html.indexOf('async function customerRespondWorkStart(bookingId,response)');
+  const end=html.indexOf('function formatCustomerTimer',start);
+  const source=html.slice(start,end);
+  assert.match(source,/customerWorkStartResponseBusy\.has\(bookingId\)/);
+  assert.match(source,/customerWorkStartResponseBusy\.add\(bookingId\)/);
+  assert.match(source,/finally\{customerWorkStartResponseBusy\.delete\(bookingId\);\}/);
+});
+
+
 test('customer history retries clear stale warnings and invalid payment timestamps render safely', () => {
   const paymentStart=html.indexOf('async function loadCustomerPaymentHistory(reset=true)');
   const paymentEnd=html.indexOf('let customerRefundHistoryLoadSequence',paymentStart);
