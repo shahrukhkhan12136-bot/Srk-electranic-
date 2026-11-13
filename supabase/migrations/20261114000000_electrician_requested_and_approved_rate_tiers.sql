@@ -151,7 +151,8 @@ $function$;
 DROP TRIGGER IF EXISTS srk_guard_electrician_rate_tier_activation
   ON public.electrician_profiles;
 CREATE TRIGGER srk_guard_electrician_rate_tier_activation
-  BEFORE INSERT OR UPDATE OF active ON public.electrician_profiles
+  BEFORE INSERT OR UPDATE OF active, approved_rate_tier, approved_rate_card_version,
+    rate_tier_approved_by, rate_tier_approved_at ON public.electrician_profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.srk_guard_electrician_rate_tier_activation();
 
