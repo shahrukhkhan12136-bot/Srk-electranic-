@@ -996,3 +996,6 @@
 
 
 - Saved-address mutation race guard: delete/default operations now disable the address selector while the RPC and list refresh are in progress, prevent duplicate operation invocation, and restore the selector's prior disabled state in `finally`. Source regression assertions added. Commits `fd74dc8ddd75df2b4a5d1ba96ac5a24152c9a6f2`, `98bd3b163d87e36aa387e575b8673608e6a28189`. Workflow pending; no browser/concurrent interaction test or Production change.
+
+
+- Customer Profile async race guard: beginning a profile save invalidates any older in-flight profile load; profile reload is skipped while save is active, preventing stale RPC/avatar responses from overwriting fields during/after a save. Source regression coverage added. Commits `9d158247b59bd9d46c006071f00f179c9dd11079`, `9d1a76e0310a1f7220aa029f338e46038da20175`. Workflow pending. No browser/network race injection or Production change.
