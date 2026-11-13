@@ -1016,6 +1016,7 @@ function invalidateCustomerProfileAndSavedAddresses(){
  const avatarFile=document.getElementById('customerAvatarFile');if(avatarFile)avatarFile.value='';
  document.getElementById('customerProfileName').value='';
  document.getElementById('customerProfilePhone').value='';
+ const profileSave=document.getElementById('saveCustomerProfile');if(profileSave)profileSave.disabled=false;
  const bookingPhone=document.getElementById('phone');if(bookingPhone)bookingPhone.value='';
  setCustomerProfileStatus('लॉगिन बदल गया है। नई प्रोफ़ाइल लोड की जा रही है।');
  customerSavedAddresses=[];editingSavedAddressId=null;
