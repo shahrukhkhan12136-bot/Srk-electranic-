@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(79);
+SELECT plan(82);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -297,6 +297,25 @@ SELECT ok((length(pg_get_functiondef('public.srk_customer_respond_work_start(uui
   - length(replace(pg_get_functiondef('public.srk_customer_respond_work_start(uuid,text)'::regprocedure),
     'INSERT INTO srk_private.work_timer_authorizations','')))/length('INSERT INTO srk_private.work_timer_authorizations')=1,
   'customer work-start approval creates exactly one transaction-scoped timer authorization');
+
+
+SELECT ok(pg_get_function_result('public.srk_get_my_offer_details()'::regprocedure)
+  NOT ILIKE '%quoted_amount%' AND
+  pg_get_function_result('public.srk_get_my_offer_details()'::regprocedure)
+  NOT ILIKE '%materials_amount%' AND
+  pg_get_function_result('public.srk_get_my_offer_details()'::regprocedure)
+  NOT ILIKE '%service_charge%',
+  'electrician offer RPC contract contains no quote or materials billing fields');
+SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
+  NOT ILIKE '%completed%' AND
+  pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
+  ILIKE '%awaiting_work_start_approval%',
+  'electrician offer RPC exposes contacts only during active assigned work and supports start approval');
+SELECT ok(pg_get_function_result('public.srk_get_my_offer_details()'::regprocedure)
+  ILIKE '%work_timer_elapsed_seconds bigint%'
+  AND pg_get_function_result('public.srk_get_my_offer_details()'::regprocedure)
+  ILIKE '%approved_rate_tier text%',
+  'electrician offer RPC returns server timer seconds and approved commercial tier');
 
 SELECT * FROM finish();
 ROLLBACK;
