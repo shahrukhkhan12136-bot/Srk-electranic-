@@ -106,11 +106,18 @@ CREATE TABLE public.srk_wallet_bank_links (
 );
 CREATE TABLE public.srk_electrician_payouts (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- booking_id uuid,
+ booking_id uuid UNIQUE,
  electrician_profile_id uuid,
+ razorpay_payment_id text,
+ gross_service_amount numeric(18,2),
  amount numeric(18,2),
  materials_amount numeric(18,2) DEFAULT 0,
+ platform_commission numeric(18,2),
+ electrician_payable numeric(18,2),
+ payout_status text,
  status text,
+ payout_note text,
+ updated_at timestamptz DEFAULT now(),
  created_at timestamptz DEFAULT now()
 );
 CREATE TABLE public.srk_razorpay_refunds (
