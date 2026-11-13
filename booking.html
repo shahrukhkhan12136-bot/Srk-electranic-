@@ -1625,7 +1625,6 @@ async function startRazorpayPayment() {
   setPaymentStatus('पेमेंट ऑर्डर बनाया जा रहा है…');
   try {
     const { data: customerSessionData,error:customerSessionError } = await customerSb.auth.getSession();
-    if(!operationIsCurrent())return;
     if(customerSessionError)throw customerSessionError;
     const customerSession = customerSessionData?.session;
     if (!customerSession) throw new Error('भुगतान के लिए पहले ग्राहक OTP लॉगिन करें।');
@@ -1734,8 +1733,10 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   try {
     const bookingHeaders = { 'Content-Type': 'application/json' };
     if (!customerSb) throw new Error('ग्राहक लॉगिन सेवा उपलब्ध नहीं है।');
-    const { data: customerSessionData } = await customerSb.auth.getSession();
-    const customerSession = customerSessionData.session;
+    const { data: customerSessionData,error:customerSessionError } = await customerSb.auth.getSession();
+    if(!operationIsCurrent())return;
+    if(customerSessionError)throw customerSessionError;
+    const customerSession = customerSessionData?.session;
     if (!customerSession) throw new Error('बुकिंग के लिए पहले ग्राहक OTP लॉगिन करें।');
     bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
     const bookingPayload = {
