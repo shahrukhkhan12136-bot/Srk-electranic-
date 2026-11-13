@@ -3364,3 +3364,17 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - No live OTP भेजा, no real phone/customer session इस्तेमाल किया, no test account बनाया, no Auth config/secret/database/source changed in this audit.
 - **Test boundary:** Real OTP expiry, invalid/replayed token, repeated wrong attempts, resend abuse, browser reload, multi-device session, logout and protected endpoint behavior को सुरक्षित तरीके से सत्यापित करने के लिए approved test phone/account और controlled test environment चाहिए। बिना इसके real SMS/customer account पर परीक्षण नहीं किया जाएगा।
 - **Status: In Progress.** Source-level validation confirmed; server-side policy and runtime E2E evidence pending।
+
+
+## 17.93 — Supabase Auth के आधिकारिक OTP Rate-Limit, Expiry और Session व्यवहार का दस्तावेज़-आधारित मिलान (13 नवम्बर 2026)
+- Checklist item: **14.1.1**।
+- Supabase के वर्तमान आधिकारिक दस्तावेज़ों (Rate Limits, Phone Sign-in, User Sessions, Signing Out) को पढ़कर Feature Branch के दोनों customer OTP pages से मिलान किया।
+- आधिकारिक docs में Auth सुरक्षा के अलग-अलग server-side controls वर्णित हैं: project-level SMS send quota (दस्तावेज़ में default 30 SMS/hour), एक ही user के लिए OTP resend window (default 60 seconds), Auth verification endpoint पर IP-based limit (दस्तावेज़ में default 30 requests/5 minutes), तथा sign-in/sign-up endpoint पर IP-based limit। Limit exceed होने पर 429 response आता है। ये Supabase Auth के built-in controls हैं; हमारे Production project पर इनके वर्तमान configured values अभी read-only तरीके से प्राप्त/verify नहीं हुए।
+- Phone OTP की documented default validity 1 hour है; OTP validity configurable है। वास्तविक project setting और provider delivery/verification behavior अभी अज्ञात हैं। UI का 60-second resend timer OTP expiry timer नहीं है।
+- Supabase docs CAPTCHA protection को SMS abuse/cost नियंत्रण के लिए recommend करते हैं; दोनों customer OTP pages में CAPTCHA integration source audit में नहीं मिली। Project-level CAPTCHA enablement dashboard/config access न होने से unverified है।
+- Session docs के अनुसार default session sign-out/अन्य termination तक indefinite रह सकता है; default JWT expiry सामान्यतः 1 hour है और refresh tokens session को आगे जारी रखते हैं। Time-box/inactivity/single-session limits Auth settings पर निर्भर हैं और कुछ controls plan-dependent हैं। Project values अभी verify नहीं।
+- Supabase JS `signOut()` का default scope `global` है। दोनों customer pages बिना scope के `signOut()` call करते हैं; इसलिए documented SDK behavior के अनुसार logout सभी active user sessions/devices को revoke करने का अनुरोध करता है, केवल current device को नहीं। Revoked access JWT अपने expiry तक valid रह सकता है; sensitive server operations में session revocation को अलग से enforce करना आवश्यक हो सकता है।
+- Design implication: वर्तमान global logout को silently local-only न बदलें; multi-device logout की user expectation और server-side sensitive-operation policy को E2E tests से confirm करें।
+- Supabase Management API का Auth config GET documented है, लेकिन connected account में Auth dashboard/Management API config read capability उपलब्ध नहीं मिली। कोई access token, secret, OTP या customer PII नहीं पढ़ा गया।
+- No Auth config mutation, CAPTCHA/provider setting change, source code change, migration, database mutation, SMS send, customer session action or deployment.
+- **Status: In Progress.** Built-in Auth protections documented but Production values, CAPTCHA, OTP expiry and session policies remain unverified; runtime tests still pending.
