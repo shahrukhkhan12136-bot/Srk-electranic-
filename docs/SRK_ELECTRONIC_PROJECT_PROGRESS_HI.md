@@ -1483,3 +1483,12 @@
 - Supabase CLI `test db` takes a single optional path; changed workflow to copy the two target SQL tests into its temporary project and invoke `supabase test db` so both are discovered (commit `7f5c872300e5cdfbbf206506feded23d50a5f42e`).
 - Latest isolated run #43498561119 is queued/pending; earlier run #43498347854 remains stalled at local Supabase stack startup, no migration or pgTAP execution observed yet. Treat database result as NOT RUN / pending, not pass. Source regression after assertion-count fix #43498561182 in progress at this update.
 - Production remains untouched. Continue investigating runner local-container startup; do not switch to Production or existing push-test project.
+
+
+## Customer Offer Timeline isolated pgTAP result (2026-11-14)
+- Local-only GitHub Actions workflow #43498578390 completed **SUCCESS** on commit `7f5c872300e5cdfbbf206506feded23d50a5f42e`.
+- Supabase CLI local stack started successfully; synthetic legacy schema/fixtures applied; migration `20261114230000_customer_safe_offer_timeline.sql` applied successfully; stack stopped cleanly.
+- `supabase test db` result: **2 files, 24 assertions, PASS**. Structural suite `customer_safe_offer_timeline.test.sql` and behavioral/owner-isolation suite `customer_safe_offer_timeline_behavior.test.sql` both `ok`.
+- Behavioral plan corrected to 8 assertions; structural plan 16. This verifies the migration against a synthetic local baseline only, including customer A/B timeline isolation, backfill, lifecycle capture, duplicate suppression, role labels and access controls. It does NOT prove compatibility with full Production schema, production migration application, or live JWT/runtime behavior.
+- Separate source regression #43498634380 SUCCESS on commit `9444e80bc3b1b4f7571f36995212f7e420c64167`.
+- Production database/configuration unchanged; no deployment or live booking changes.
