@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const html = fs.readFileSync('booking.html', 'utf8');
+const bookingApi = fs.readFileSync('create-booking.js', 'utf8');
 const profileMigration = fs.readFileSync('supabase/migrations/20261113200000_customer_profile_api_and_avatar_security.sql', 'utf8');
 const supportAttachmentMigration = fs.readFileSync('supabase/migrations/20261114170000_harden_customer_support_attachment_object_integrity.sql', 'utf8');
 const customerReceiptMigration = fs.readFileSync('supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql', 'utf8');
@@ -604,4 +605,16 @@ test('customer booking shows transparent duration estimates for all published la
 test('customer booking submit handler contains no unused legacy inspection quote or zero-amount message', () => {
   assert.doesNotMatch(html, /Quote and final amount are set after electrician inspection/);
   assert.doesNotMatch(html, /राशि: \$\{amount \? '₹'\+amount : 'अभी तय नहीं'\}/);
+});
+
+
+test('booking API rejects past dates using India business timezone without inventing same-day cutoff', () => {
+  assert.match(bookingApi, /timeZone: "Asia\\/Kolkata"/);
+  assert.match(bookingApi, /preferred_date < indiaToday\(\)/);
+  assert.match(bookingApi, /Same-day cutoff\/business hours remain an explicit/);
+});
+
+test('booking form clearly discloses PIN syntax-only validation until authoritative postal matching exists', () => {
+  assert.match(html, /id="pinValidationNote"/);
+  assert.match(html, /डाक-विभागीय मिलान अभी सत्यापित नहीं है/);
 });
