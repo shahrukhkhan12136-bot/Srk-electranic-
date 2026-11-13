@@ -1579,7 +1579,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'||event==='TOKEN_REFRESHED')customerSessionGeneration++; setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED')customerSessionGeneration++; setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
