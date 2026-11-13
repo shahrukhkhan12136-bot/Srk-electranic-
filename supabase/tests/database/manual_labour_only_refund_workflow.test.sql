@@ -1,0 +1,17 @@
+BEGIN;
+SELECT plan(13);
+SELECT has_table('public','srk_manual_refund_intents','Manual refund intent table exists');
+SELECT has_function('public','srk_admin_prepare_manual_booking_refund','Admin can prepare manual refund');
+SELECT has_function('public','srk_admin_record_manual_refund_transfer','Admin can durably record transfer evidence');
+SELECT has_function('public','srk_admin_finalize_manual_booking_refund','Admin can finalize manual refund');
+SELECT has_function('public','srk_admin_list_booking_refund_requests_v2','Admin refund queue includes manual status');
+SELECT ok(position('is_srk_admin()' in pg_get_functiondef('public.srk_admin_prepare_manual_booking_refund(uuid)'::regprocedure))>0,'Prepare RPC is Admin-gated');
+SELECT ok(position('srk_booking_labour_bills' in pg_get_functiondef('public.srk_admin_prepare_manual_booking_refund(uuid)'::regprocedure))>0,'Preparation requires immutable labour bill');
+SELECT ok(position('srk_manual_payment_entries' in pg_get_functiondef('public.srk_admin_prepare_manual_booking_refund(uuid)'::regprocedure))>0,'Preparation requires matching manual payment');
+SELECT ok(position('payout_status=''blocked''' in pg_get_functiondef('public.srk_admin_prepare_manual_booking_refund(uuid)'::regprocedure))>0,'Pending payout is blocked while manual refund is prepared');
+SELECT ok(position('transfer_reference' in pg_get_functiondef('public.srk_admin_record_manual_refund_transfer(uuid,text,text)'::regprocedure))>0,'Transfer reference is stored in a separate durable step');
+SELECT ok(position('status=''refunded''' in pg_get_functiondef('public.srk_admin_finalize_manual_booking_refund(uuid)'::regprocedure))>0,'Finalization updates booking refund status after transfer evidence');
+SELECT ok(position('cash_due_settlement' in pg_get_functiondef('public.srk_admin_prepare_manual_booking_refund(uuid)'::regprocedure))>0,'Cash pooled-fee settlement conflict is checked');
+SELECT ok(NOT has_table_privilege('authenticated','public.srk_manual_refund_intents','SELECT'),'Manual refund intents are private');
+SELECT * FROM finish();
+ROLLBACK;
