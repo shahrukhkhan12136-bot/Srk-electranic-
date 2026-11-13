@@ -38,7 +38,7 @@ begin
       b.id as booking_id,
       round(b.amount_paid,2)::numeric(12,2) as amount,
       'बुकिंग का सत्यापित भुगतान'::text as description,
-      'paid'::text as status,
+      case when b.payment_status='refunded' then 'refunded' else 'paid' end::text as status,
       case
         when lower(coalesce(b.payment_method,'')) like '%cash%' then 'cash'
         when lower(coalesce(b.payment_method,'')) like '%upi%' then 'upi'
