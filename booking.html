@@ -1744,6 +1744,20 @@ document.getElementById('booking').addEventListener('submit', async function (e)
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), preferred_date: value('date'), preferred_time: value('time'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method
     };
+    const bookingConfirmation = [
+      'कृपया बुकिंग विवरण जाँचें:',
+      'नाम: '+bookingPayload.customer_name,
+      'सेवा: '+bookingPayload.service_type,
+      'अनुमानित अवधि: '+bookingPayload.selected_duration_hours+' घंटे',
+      'पता: '+bookingPayload.address+', '+bookingPayload.district+', '+bookingPayload.state+' — '+bookingPayload.pincode,
+      'तारीख और समय: '+bookingPayload.preferred_date+' · '+bookingPayload.preferred_time,
+      'भुगतान: '+bookingPayload.payment_method,
+      '',
+      'अवधि अनुमान है; अंतिम Labour Bill वास्तविक server-recorded समय और Admin-approved rate से बनेगा। सामग्री अलग रहेगी। भुगतान काम पूरा होने के बाद होगा।',
+      '',
+      'क्या आप इसी विवरण के साथ बुकिंग भेजना चाहते हैं?'
+    ].join('\\n');
+    if(!window.confirm(bookingConfirmation))return;
     const requestKey = customerBookingRequestKey(bookingPayload);
     bookingHeaders['Idempotency-Key'] = requestKey;
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify(bookingPayload) });
