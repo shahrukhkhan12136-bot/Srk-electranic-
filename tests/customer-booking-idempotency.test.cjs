@@ -84,3 +84,11 @@ test("Booking idempotency migration requires a complete 64-character fingerprint
   assert.match(migration, /END;/);
   assert.ok(migration.includes('$migration$;'));
 });
+
+
+test("Customer booking handler rejects concurrent submit events while a request is active", () => {
+  assert.match(html, /let customerBookingSubmissionBusy=false/);
+  assert.match(html, /if\(customerBookingSubmissionBusy\)return/);
+  assert.match(html, /customerBookingSubmissionBusy=true/);
+  assert.match(html, /customerBookingSubmissionBusy=false; submitButton\.disabled = false/);
+});
