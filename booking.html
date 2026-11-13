@@ -1159,6 +1159,8 @@ async function sendCustomerSupportMessage() {
   supportStatus('अधिकतम 5 फ़ाइलें चुनें। हर फ़ाइल JPEG/PNG/WebP/PDF और 10 MB से कम होनी चाहिए।',true);return;
  }
  customerSupportMessageBusy=true;button.disabled=true;button.textContent='भेजा जा रहा है…';
+ const complaintSelect=document.getElementById('customerSupportComplaint');
+ const complaintSelectWasDisabled=complaintSelect.disabled;complaintSelect.disabled=true;
  let pendingUploadPath=null,linkedCount=0,messageCreated=false,orphanCleanupFailed=false;
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
@@ -1203,7 +1205,7 @@ async function sendCustomerSupportMessage() {
    supportStatus('संदेश या फ़ाइल भेजी नहीं जा सकी। '+(e.message||'कृपया दोबारा कोशिश करें।')+(orphanCleanupFailed?' अपलोड की गई असंबद्ध फ़ाइल की सफाई पूरी नहीं हुई; सहायता टीम से संपर्क करें।':''),true);
   }
  }
- finally{customerSupportMessageBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}
+ finally{customerSupportMessageBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';complaintSelect.disabled=complaintSelectWasDisabled;}
 }
 
 let customerSessionSyncSequence=0;
