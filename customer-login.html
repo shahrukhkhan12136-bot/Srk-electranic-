@@ -66,7 +66,7 @@
   const logout=document.getElementById('logout');
   if(!sb||busy||!logout)return;
   busy=true;logout.disabled=true;
-  try{const {error}=await sb.auth.signOut();if(error)throw error;area.classList.add('hidden');otpInput.value='';phoneInput.value='';if(timer){clearInterval(timer);timer=null;}resendAt=0;send.textContent='OTP भेजें';setMessage('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');await syncSession();}
+  try{const {error}=await sb.auth.signOut();if(error)throw error;area.classList.add('hidden');otpInput.value='';pendingOtpPhone=null;phoneInput.value='';if(timer){clearInterval(timer);timer=null;}resendAt=0;send.textContent='OTP भेजें';setMessage('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');await syncSession();}
   catch(_){setMessage('लॉगआउट पूरा नहीं हो सका। कृपया दोबारा कोशिश करें।',true);}
   finally{busy=false;logout.disabled=false;}
  });
@@ -80,7 +80,7 @@
   try{const {error}=await sb.auth.signInWithOtp({phone});if(error)throw error;pendingOtpPhone=phone;area.classList.remove('hidden');resendAt=Date.now()+60000;setMessage('OTP भेजने का अनुरोध सफल हुआ। SMS देखें और OTP खुद दर्ज करें।');let left=60;send.textContent='OTP दोबारा भेजें ('+left+' सेकंड)';timer=setInterval(()=>{left--;send.textContent=left>0?'OTP दोबारा भेजें ('+left+' सेकंड)':'OTP दोबारा भेजें';send.disabled=hasSession||left>0;if(left<=0){clearInterval(timer);timer=null;}},1000);}catch(e){setMessage('OTP नहीं भेजा जा सका। मोबाइल नंबर और SMS सेवा जाँचकर फिर कोशिश करें।',true);send.disabled=false;}finally{busy=false;}
  });
  verify.addEventListener('click',async()=>{
-  if(!sb||busy)return;const phone=phoneE164(),token=otpInput.value.trim();if(!phone||!/^\d{4,8}$/.test(token)){setMessage('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}
+  if(!sb||busy)return;const phone=phoneE164(),token=otpInput.value.trim();if(!phone||!/^\d{4,8}$/.test(token)){setMessage('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}if(!pendingOtpPhone||phone!==pendingOtpPhone){setMessage('यह OTP उसी मोबाइल नंबर के लिए मान्य है जिस पर भेजा गया था। पहले उसी नंबर का उपयोग करें या cooldown के बाद नया OTP लें।',true);return;}
   busy=true;verify.disabled=true;setMessage('OTP सत्यापित हो रहा है…');
   try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका सुरक्षित ग्राहक सेशन इस वेबसाइट में सेव हो गया है। अब मेरी बुकिंग देखने के लिए मुख्य पेज खोलें।');setTimeout(()=>{window.location.href='/booking.html#customer-login';},1800);}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=hasSession;}
  });
