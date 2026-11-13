@@ -780,7 +780,7 @@ async function loadCustomerAvatar(path) {
 }
 let customerProfileLoadSequence=0;
 async function loadCustomerProfile() {
- if(!customerSb)return;
+ if(!customerSb||document.getElementById('saveCustomerProfile')?.disabled)return;
  const sequence=++customerProfileLoadSequence;
  setCustomerProfileStatus('प्रोफ़ाइल लोड हो रही है…');
  try {
@@ -820,7 +820,9 @@ async function saveCustomerProfile() {
  if(button.disabled)return;
  const fullName=document.getElementById('customerProfileName').value.trim();
  if(fullName.length<2||fullName.length>120){setCustomerProfileStatus('नाम 2 से 120 अक्षरों के बीच दर्ज करें।',true);return;}
- button.disabled=true;setCustomerProfileStatus('प्रोफ़ाइल सेव हो रही है…');
+ button.disabled=true;
+ ++customerProfileLoadSequence;
+ setCustomerProfileStatus('प्रोफ़ाइल सेव हो रही है…');
  let uploadCleanupFailed=false;
  try {
   let avatarPath=customerCurrentAvatarPath;
