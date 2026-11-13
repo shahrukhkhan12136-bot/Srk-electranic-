@@ -172,6 +172,17 @@ test('customer payment history pagination prevents duplicate loads and restores 
 });
 
 
+test('customer avatar signed-url responses cannot overwrite a newer profile selection', () => {
+  assert.match(html,/async function loadCustomerAvatar\(path,shouldApply=\(\)=>true\)/);
+  const start=html.indexOf('async function loadCustomerAvatar(path,shouldApply=()=>true)');
+  const end=html.indexOf('let customerProfileLoadSequence',start);
+  const source=html.slice(start,end);
+  assert.match(source,/if\(!shouldApply\(\)\)return false/);
+  assert.match(source,/if\(shouldApply\(\)\)setCustomerAvatarPreview\(''\)/);
+  assert.match(html,/loadCustomerAvatar\(avatarPath,\(\)=>sequence===customerProfileLoadSequence&&customerCurrentAvatarPath===avatarPath\)/);
+});
+
+
 test('customer work start and completion responses reject duplicate submissions and always release guards', () => {
   assert.match(html,/let customerWorkCompletionResponseBusy=new Set\(\)/);
   const completionStart=html.indexOf('async function customerRespondWorkCompletion(bookingId,response)');
