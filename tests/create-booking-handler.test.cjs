@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 process.env.SUPABASE_URL = 'https://unit-test.supabase.co';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'unit-test-only-not-a-real-secret';
 const { handler } = require('../create-booking.js');
+const originalFetch = global.fetch;
 
 const validBody = {
   customer_name: 'Test Customer',
@@ -76,7 +77,7 @@ function event(overrides = {}) {
 function status(result) { return result.statusCode; }
 
 test.beforeEach(mockFetch);
-test.afterEach(() => { global.fetch = globalThis.fetch; });
+test.afterEach(() => { global.fetch = originalFetch; });
 
 test('rejects non-POST without calling Supabase', async () => {
   const result = await handler(event({ httpMethod: 'GET' }));
