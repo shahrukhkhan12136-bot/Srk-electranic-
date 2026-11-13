@@ -1,0 +1,32 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const html = fs.readFileSync(path.join(__dirname, "..", "booking.html"), "utf8");
+
+test("Customer form generates a UUID v4 idempotency key", () => {
+  assert.match(html, /function customerBookingRequestKey\(payload\)/);
+  assert.match(html, /bytes\[6\]=\(bytes\[6\]&0x0f\)\|0x40/);
+  assert.match(html, /bytes\[8\]=\(bytes\[8\]&0x3f\)\|0x80/);
+});
+
+test("Customer form persists the pending key across retries in session storage", () => {
+  assert.match(html, /srk\.customer\.booking\.pending\.v1/);
+  assert.match(html, /saved\.fingerprint===fingerprint/);
+  assert.match(html, /sessionStorage\.setItem\(storageKey/);
+});
+
+test("Changed booking details generate a new key and successful submit clears only its own key", () => {
+  assert.match(html, /saved\.fingerprint===fingerprint/);
+  assert.match(html, /function clearCustomerBookingRequestKey\(key\)/);
+  assert.match(html, /if\(saved\?\.key===key\)sessionStorage\.removeItem/);
+});
+
+test("Booking API receives the idempotency key and reuses it with the same payload", () => {
+  assert.match(html, /bookingHeaders\['Idempotency-Key'\] = requestKey/);
+  assert.match(html, /body: JSON\.stringify\(bookingPayload\)/);
+});
+
+test("Successful booking preserves its ID for the next online payment step", () => {
+  assert.match(html, /pendingBookingId = result\.booking_id/);
+});
