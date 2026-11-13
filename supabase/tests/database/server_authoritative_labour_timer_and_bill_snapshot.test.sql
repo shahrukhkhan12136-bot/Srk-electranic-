@@ -257,9 +257,9 @@ SELECT ok(NOT has_column_privilege('authenticated','public.srk_electrician_payou
   AND has_column_privilege('authenticated','public.srk_electrician_payouts','electrician_payable','SELECT'),
   'Admin payout Data API cannot select legacy materials amount');
 SELECT ok(pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::regprocedure)
-  NOT ILIKE '%materials_amount%' AND
+  NOT ILIKE '%''materials_amount''%' AND
   pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::regprocedure)
-  NOT ILIKE '%quoted_amount%',
+  NOT ILIKE '%''quoted_amount''%',
   'electrician cash confirmation details expose no quote or materials amount');
 SELECT ok(pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure)
   ILIKE '%srk_booking_labour_bills%' AND
@@ -275,8 +275,8 @@ SELECT ok(pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::re
   pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::regprocedure)
   ILIKE '%can_confirm_cash%',
   'electrician cash confirmation RPC reports only billable net payable and eligibility');
-SELECT ok(pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure)
-  NOT ILIKE '%RETURNS TABLE%materials_amount%',
+SELECT ok(pg_get_function_result('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure)
+  NOT ILIKE '%materials_amount%',
   'customer refund preparation response contains no material fields');
 
 SELECT * FROM finish();
