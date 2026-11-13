@@ -10,7 +10,7 @@
 <title>SRK ELECTRONIC</title>
 <style>
 :root{--navy:#071a2b;--blue:#0b5ed7;--gold:#ffbd45;--paper:#f4f7fb;--ink:#142235}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--paper);color:var(--ink);scroll-behavior:smooth}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-bottom:96px}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--paper);color:var(--ink)}
 header{background:linear-gradient(135deg,#071a2b,#123f68);color:white;padding:24px 18px 30px;border-radius:0 0 26px 26px}
 .top{display:flex;align-items:center;gap:12px}.logo{width:54px;height:54px;border-radius:16px;background:var(--gold);color:#071a2b;display:grid;place-items:center;font-weight:900;font-size:19px}
 h1{font-size:23px;margin:0;letter-spacing:.4px}header p{margin:5px 0 0;color:#d7e7f6;font-size:14px}
@@ -439,16 +439,29 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
-document.querySelectorAll('.customer-nav a').forEach(link => {
-  link.addEventListener('click', () => {
-    document.querySelectorAll('.customer-nav a').forEach(item => {
-      const active = item === link;
-      item.classList.toggle('active', active);
-      if (active) item.setAttribute('aria-current', 'page');
-      else item.removeAttribute('aria-current');
-    });
+const customerNavLinks = [...document.querySelectorAll('.customer-nav a')];
+function setCustomerNavActive(id) {
+  customerNavLinks.forEach(item => {
+    const active = item.dataset.nav === id;
+    item.classList.toggle('active', active);
+    if (active) item.setAttribute('aria-current', 'page');
+    else item.removeAttribute('aria-current');
   });
+}
+customerNavLinks.forEach(link => {
+  link.addEventListener('click', () => setCustomerNavActive(link.dataset.nav));
 });
+if ('IntersectionObserver' in window) {
+  const customerNavObserver = new IntersectionObserver(entries => {
+    const visible = entries.filter(entry => entry.isIntersecting)
+      .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+    if (visible) setCustomerNavActive(visible.target.id);
+  }, { rootMargin: '-15% 0px -35% 0px', threshold: [0.1, 0.25, 0.5] });
+  ['home', 'my-bookings', 'payments', 'support', 'profilePanel'].forEach(id => {
+    const target = document.getElementById(id);
+    if (target) customerNavObserver.observe(target);
+  });
+}
 document.getElementById('electricianForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const msg = `नमस्ते SRK ELECTRONIC, मैं इलेक्ट्रिशियन के रूप में रजिस्टर करना चाहता/चाहती हूँ।\nनाम: ${value('eName')}\nमोबाइल: ${value('ePhone')}\nराज्य: ${value('eState')}\nजिला: ${value('eDistrict')}\nPIN Code: ${value('ePin')}\nGoogle Maps: ${googleMapsUrl(value('electricianLat'),value('electricianLng'),[value('eDistrict'),value('eState'),value('ePin'),'India'].join(', '))}\nकौशल: ${value('eSkills')}\nअनुभव: ${value('eExperience')} वर्ष\nजानकारी: ${value('eAbout')}`;
