@@ -919,3 +919,24 @@ test('profile and saved-address loaders bind every response and cleanup to the c
   assert.match(html,/function invalidateCustomerProfileAndSavedAddresses\(\)[\s\S]*?\+\+customerProfileLoadSequence;\+\+customerSavedAddressLoadSequence/);
   assert.match(html,/invalidateCustomerRefundHistory\(\);invalidateCustomerProfileAndSavedAddresses\(\);/);
 });
+
+
+test('support bookings, complaints, messages and signed attachments are bound to the active auth session', () => {
+  for (const [name,seq,phrase] of [
+    ['loadCustomerSupportBookings','customerSupportBookingsLoadSequence','customerSessionOperationIsCurrent(generation)'],
+    ['loadCustomerSupportComplaints','customerSupportComplaintsLoadSequence','customerSessionOperationIsCurrent(generation)'],
+    ['loadCustomerSupportMessages','customerSupportThreadLoadSequence','customerSessionOperationIsCurrent(generation)']
+  ]) {
+    const start=html.indexOf('async function '+name);
+    const end=html.indexOf('\\nasync function ',start+10);
+    const source=html.slice(start,end>0?end:start+9000);
+    assert.match(source,new RegExp('const generation=customerSessionGeneration'));
+    assert.ok(source.includes(phrase));
+    assert.ok(source.includes('if(!isCurrent())return'));
+  }
+  const attachments=html.slice(html.indexOf('async function loadCustomerSupportAttachments'),html.indexOf('\\nlet customerSupportBookingsLoadSequence'));
+  assert.match(attachments,/generation=customerSessionGeneration/);
+  assert.match(attachments,/if\(!isCurrent\(\)\)return null/);
+  assert.match(html,/function invalidateCustomerSupportPrivateState\(\)[\s\S]*?\+\+customerSupportThreadLoadSequence;customerSupportAttachments=\[\]/);
+  assert.match(html,/invalidateCustomerProfileAndSavedAddresses\(\);invalidateCustomerSupportPrivateState\(\);/);
+});
