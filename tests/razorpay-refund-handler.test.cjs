@@ -51,3 +51,17 @@ test("provider failure or unknown response does not falsely mark booking refunde
   assert.match(provider, /provider_status<>'processed'/);
   assert.match(provider, /status='processed'/);
 });
+
+test("Admin refund queue exposes provider state and the UI never retries provider-confirmed failures", () => {
+  const migration = fs.readFileSync(path.join(root, "supabase/migrations/20261115010000_admin_refund_provider_state_visibility.sql"), "utf8");
+  const admin = fs.readFileSync(path.join(root, "admin.html"), "utf8");
+  assert.match(migration, /srk_admin_list_booking_refund_requests_v3/);
+  assert.match(migration, /ri\.status,ri\.provider_status,ri\.last_error/);
+  assert.match(migration, /ri\.id=r\.refund_record_id AND ri\.booking_id=r\.booking_id/);
+  assert.match(migration, /auth\.uid\(\) IS NULL OR NOT public\.is_srk_admin\(\)/);
+  assert.match(admin, /srk_admin_list_booking_refund_requests_v3/);
+  assert.match(admin, /x\.provider_refund_status==='failed'\|\|x\.provider_status==='failed'/);
+  assert.match(admin, /Razorpay ने Refund अस्वीकार किया/);
+  assert.match(admin, /Provider स्थिति की पुष्टि उपलब्ध नहीं/);
+  assert.match(admin, /\['processing','unknown'\]\.includes\(x\.provider_refund_status\)/);
+});
