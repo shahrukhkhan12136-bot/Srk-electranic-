@@ -91,7 +91,9 @@ exports.handler = async (event) => {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
     }
     if (!full_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
-        !/^[0-9]{6}$/.test(pincode) || !skills || !allowedCategories.has(requested_category) ||\n        !Array.isArray(body.requested_skill_keys) || normalizedSkillKeys.length < 1 || normalizedSkillKeys.length > 10 ||\n        normalizedSkillKeys.some(key => typeof key !== 'string' || !allowedSkillKeys.has(key)) ||
+        !/^[0-9]{6}$/.test(pincode) || !skills || !allowedCategories.has(requested_category) ||
+        !Array.isArray(body.requested_skill_keys) || normalizedSkillKeys.length < 1 || normalizedSkillKeys.length > 10 ||
+        normalizedSkillKeys.some(key => typeof key !== 'string' || !allowedSkillKeys.has(key)) ||
         !Number.isInteger(experience_years) || experience_years < 0 || experience_years > 60) {
       return json(400, {
         success: false,
