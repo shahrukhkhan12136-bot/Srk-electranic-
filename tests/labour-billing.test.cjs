@@ -150,3 +150,15 @@ test("Admin work-event history renders server events as text, not injected HTML"
   assert.match(admin, /line\.textContent=when\+/);
   assert.match(admin, /box\.appendChild\(line\)/);
 });
+
+
+test("all role-scoped final bill read RPCs expose the original completion request timestamp", () => {
+  const migrationPath = path.join(__dirname, "../supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql");
+  const migration = fs.readFileSync(migrationPath, "utf8");
+  for (const fn of ["srk_customer_get_labour_bill", "srk_electrician_get_labour_bill", "srk_admin_get_labour_bill"]) {
+    const start = migration.indexOf("CREATE OR REPLACE FUNCTION public." + fn);
+    assert.notEqual(start, -1, fn + " replacement exists");
+    const end = migration.indexOf("$function$;", start);
+    assert.match(migration.slice(start, end), /completion_requested_at/);
+  }
+});
