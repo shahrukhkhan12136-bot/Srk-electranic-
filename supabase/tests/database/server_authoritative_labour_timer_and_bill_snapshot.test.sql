@@ -134,10 +134,10 @@ SELECT ok(pg_get_functiondef('public.srk_admin_prepare_razorpay_refund(uuid,text
   pg_get_functiondef('public.srk_admin_prepare_razorpay_refund(uuid,text)'::regprocedure)
   ILIKE '%completion_approval_status%',
   'Razorpay refund amount reconciles to customer-approved labour bill');
-SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()') ILIKE '%work_timer_elapsed_seconds%'
-  AND pg_get_functiondef('public.srk_get_my_offer_details()') ILIKE '%work_start_approval_status%'
-  AND pg_get_functiondef('public.srk_get_my_offer_details()') NOT ILIKE '%materials_amount%'
-  AND pg_get_functiondef('public.srk_get_my_offer_details()') NOT ILIKE '%quoted_amount%',
+SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) ILIKE '%work_timer_elapsed_seconds%'
+  AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) ILIKE '%work_start_approval_status%'
+  AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) NOT ILIKE '%materials_amount%'
+  AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure) NOT ILIKE '%quoted_amount%',
   'electrician offer API exposes timer but no quote/material billing fields');
 SELECT ok(pg_get_functiondef('private.srk_get_customer_call_contacts_impl()')
   ILIKE '%awaiting_work_start_approval%' AND
@@ -266,8 +266,8 @@ SELECT ok(pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::re
   pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure)
   ILIKE '%completion_approval_status%',
   'Admin customer refund preparation reconciles new-flow refund to approved labour bill');
-SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()')
-  NOT ILIKE '%materials_amount%' AND pg_get_functiondef('public.srk_get_my_offer_details()')
+SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
+  NOT ILIKE '%materials_amount%' AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
   NOT ILIKE '%quoted_amount%',
   'electrician offer RPC does not return legacy quote or materials fields');
 SELECT ok(pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::regprocedure)
