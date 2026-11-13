@@ -3027,3 +3027,29 @@ Audit सीमा: केवल उपलब्ध connected tool/plugin discov
 - No Production GRANT/REVOKE, role, schema, table, workflow, secret, database, deployment or provider changes were made.
 - Do not grant SELECT to make pg_dump pass; do not use postgres, service_role, superuser or BYPASSRLS credentials; do not weaken/remove the existing guard.
 - Next safe step: construct and run a disposable PostgreSQL 17 permission proof with a synthetic schema and dummy rows, validate MAINTAIN-only behavior and row-read denial, then document results. Only after that should a separate approval be requested for any narrowly scoped Production privilege change.
+
+
+## 17.80 — Disposable PostgreSQL 17 MAINTAIN-Only Proof: Execution Environment Blocker (13 Nov 2026)
+
+### A. Environment capability check
+- अगला सुरक्षित कदम Section 17.79 के अनुसार isolated PostgreSQL 17 instance पर synthetic table + dummy rows के साथ MAINTAIN-only privilege proof चलाना था।
+- उपलब्ध local execution environment में `docker`, `podman`, `psql`, `pg_dump` और `initdb` में से कोई executable उपलब्ध नहीं मिला; Python `psycopg` driver भी उपलब्ध नहीं था। इसलिए यहाँ PostgreSQL server/client शुरू करके वास्तविक GRANT/LOCK/pg_dump behavior execute करना संभव नहीं हुआ।
+- उपलब्ध Supabase Production project इस test के लिए उपयोग नहीं किया गया। Supabase paid branch/temporary compute भी create नहीं किया गया, क्योंकि इससे लागत लग सकती है और user ने disposable paid staging को अलग approval के बिना निषिद्ध रखा है। Existing Production-export CI workflow भी trigger/rerun नहीं किया गया; वह Production connection secret पर निर्भर है और synthetic disposable database नहीं है।
+- इस environment check से केवल local test-runtime अनुपलब्ध होना सिद्ध होता है; यह MAINTAIN privilege के व्यवहार की test result नहीं है। कोई pass/fail assertion नहीं किया गया।
+
+### B. Exact proof still required in a disposable PostgreSQL 17 instance
+1. PostgreSQL server और `pg_dump` दोनों major version 17 pin करें; एक synthetic database/schema में dummy rows वाली test table बनाएँ और अलग owner तथा dedicated non-owner export role रखें।
+2. Export role को केवल connection/schema USAGE और test relation पर MAINTAIN दें; SELECT/INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER, schema CREATE, ownership, role membership, superuser और BYPASSRLS न दें।
+3. उसी role से `BEGIN; LOCK TABLE ... IN ACCESS SHARE MODE; ROLLBACK;` चलाकर lock success जाँचें।
+4. उसी role से `SELECT` करने पर permission denied अपेक्षित है; test को query result/row count leak नहीं करना चाहिए।
+5. उसी role से exact CI-style `pg_dump --schema-only --no-owner --no-acl --schema=public --schema=private` चलाएँ। Verify करें कि schema objects मौजूद हैं, table dummy row value/row INSERT/COPY data output में नहीं है, और restore disposable target पर सफल है।
+6. अलग negative controls में MAINTAIN हटाकर ACCESS SHARE lock/pg_dump failure, तथा कोई unexpected DML/schema privilege मिलने पर guard failure verify करें। Test relation allowlist से बाहर किसी relation पर MAINTAIN नहीं होना चाहिए।
+7. Views, materialized views, partitions/inheritance, foreign tables, sequences, extensions, functions और dependency closure को अलग-अलग enumerate करें; केवल successful synthetic table test के आधार पर Production object allowlist/grant तय न करें।
+8. Test SQL, exact commands, PostgreSQL server/client versions, role ACL matrix, dump scan, restore result और negative-control logs सुरक्षित रखें; secret/real data शामिल न करें।
+
+### C. Decision
+- MAINTAIN-only proposal अभी **unproven / not approved for Production** है।
+- Disposable PG17 runtime उपलब्ध होने पर ऊपर का test चलाना अगला काम है। उसके सफल होने के बाद भी Production पर narrowly scoped grant से पहले explicit separate approval, full relation inventory, ACL review, rollback/revoke plan और post-change verification आवश्यक हैं।
+- SELECT grant, broad MAINTAIN grant, service_role/postgres/superuser use, guard weakening, Production schema/role/ACL changes और workflow secret/config changes निषिद्ध रहेंगे।
+
+Audit सीमा: केवल local runtime executable/driver availability जाँची और PostgreSQL 17 official privilege rules को test-plan में बदला। कोई database, role, privilege, migration, workflow, secret, deployment या provider setting नहीं बदली।
