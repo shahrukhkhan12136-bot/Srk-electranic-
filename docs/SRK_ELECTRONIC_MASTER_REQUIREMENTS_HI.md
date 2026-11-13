@@ -2614,3 +2614,46 @@ E. `srk_labour_bill_adjustments` — केवल exceptional Admin-reviewed cor
 7. Production webhook inbox की full schema/consumer lineage और all quote/payment trigger definitions recover करना।
 
 इस pass में Production से केवल read-only schema/function inventory queries चलाई गईं। कोई DDL/DML, migration, policy, function, trigger, data, provider configuration या deployment नहीं बदला।
+## 17.68 — Production Timer/Quote/Payment Trigger और Webhook Dependency Audit
+
+यह Section 17.67 के बाद Production read-only catalog inspection पर आधारित है। कोई database object/data नहीं बदला।
+
+### A. `service_bookings` पर live triggers
+- `a_guard_booking` BEFORE INSERT → `guard_new_booking()`; नई booking validation/creation path का dependency। इसकी पूरी function body और callers को future booking payload changes से पहले review करना होगा।
+- `broadcast_new_booking` AFTER INSERT → `broadcast_booking_job()`; job offer/broadcast lifecycle को preserve करना होगा।
+- `srk_audit_service_bookings` AFTER INSERT/UPDATE/DELETE → `srk_capture_admin_audit_event()`; new timer/bill events को audit trail से जोड़ने का scope तय करना होगा।
+- `srk_calculate_booking_commission` BEFORE INSERT OR UPDATE OF status/payment_status/amount_paid/commission_rate → commission recalculation trigger। New immutable bill से legacy amount fields update होने पर गलत commission overwrite न हो, इसके लिए redesign आवश्यक।
+- `srk_cancel_booking_job_offers` AFTER status becomes cancelled → offer cleanup; new timer cancellation state के साथ compatibility test जरूरी।
+- `srk_log_service_booking_status` AFTER INSERT/UPDATE OF status → status history; timer state अलग event ledger में होगा, दोनों histories की consistency और duplicate event behavior तय करना होगा।
+- `trg_srk_create_electrician_payable` AFTER INSERT OR UPDATE OF payment_status/status/quote_status/service_charge/materials_amount/assigned_electrician_id/payment_verified_at/razorpay_payment_id/amount_paid → `srk_create_electrician_payable()`। यह quote approval और service+materials total पर निर्भर है; नया bill इसे trigger करके legacy payout गलत न बनाए।
+- `srk_electrician_payouts` पर `srk_audit_electrician_payouts` AFTER INSERT/UPDATE/DELETE audit trigger है।
+
+### B. Confirmed live legacy dependencies (function bodies inspected)
+- `srk_submit_booking_quote` electrician से service_charge और materials_amount लेता है, quoted_amount बनाता है और status `awaiting_quote_approval` करता है। New electrician UI से quote entry हटेगी; function को legacy history compatibility के लिए सुरक्षित रखकर new bookings के लिए block/retire करने की versioned strategy चाहिए।
+- `srk_customer_respond_booking_quote` Customer quote approve/reject करता है और booking status को quote_approved/quote_rejected करता है। इसे timer start approval के रूप में reuse नहीं करना चाहिए; अलग narrowly scoped RPC चाहिए।
+- `srk_update_booking_work_status` electrician को inspection → quote_approved से in_progress (work_started_at=now) → completed करने देता है। यह Customer timer approval/stop approval नहीं है; नया timer lifecycle इसे replace करेगा, लेकिन पुराने bookings के लिए compatibility path चाहिए।
+- `srk_get_my_offer_details` electrician offer result में quoted_amount, service_charge, materials_amount, quote_status और quote_note expose करता है। New offer RPC contract में कोई amount/material/payment controls/fields नहीं होने चाहिए। Customer phone visibility lifecycle भी status predicates से जुड़ा है; इसे अलग security audit में verify करना होगा।
+- `srk_get_my_offer_price_details` customer_suggested_amount, service_charge, materials_amount, quote_status, quote_note देता है। New electrician API से इसे हटाना/deny करना होगा; callers पहले खोजे जाएँ।
+- `srk_electrician_confirm_cash_payment` केवल completed + quote approved + preselected cash + quoted_amount के आधार पर booking को paid करता है। New cash confirmation को immutable bill snapshot/payment choice से bind करना होगा।
+- `srk_admin_record_manual_payment` completed + approved quote अनिवार्य करता है और total = service_charge + materials_amount = quoted_amount validate करता है। New Admin manual payment को frozen labour-only bill amount पर narrow audited action होना चाहिए।
+- `srk_create_electrician_payable` paid + completed + quote approved पर service+materials total verify करता है; payout row में materials_amount और payable = service + materials − commission लिखता है। New payout formula labour-only bill पर आधारित होगा; legacy rows को mutate नहीं करना।
+- `srk_admin_mark_electrician_payout_paid` booking-first lock order रखता है और pending payout को paid mark करता है; नए payout records को bill snapshot ID/version से जोड़ने की जरूरत है।
+
+### C. Live constraints/indexes/policies से migration cautions
+- `service_bookings.status` CHECK अभी legacy states (`inspection`, `awaiting_quote_approval`, `quote_approved`, `quote_rejected`, `in_progress`, `completed`) पर आधारित है। New timer/payment states add करने से पहले transition compatibility और constraint rollout plan जरूरी है।
+- `service_bookings` में `quote_status` CHECK केवल `not_submitted/pending/approved/rejected` है; पुराने function body `approved/rejected` लिखती है। इसे silently बदलना नहीं।
+- `service_bookings` में materials_amount nonnegative CHECK और assignment status CHECK हैं। इन्हें तुरंत drop/zero न करें; historical data और dependent functions पहले map हों।
+- `srk_electrician_payouts` में booking_id unique है; एक booking पर एक ही payout row संभव। Versioned adjustments/refund recovery के लिए उसी row को overwrite करने के बजाय append-only ledger design चाहिए।
+- `srk_razorpay_webhook_events` में event_id primary key, status CHECK (`received/reconciled/exception/ignored/processing_error`) तथा order/status indexes मौजूद हैं। इसे दोबारा create न करें। उपलब्ध columns में payload hash, signature verification result, retry count, lease owner/expiry और payment snapshot reference स्पष्ट रूप से नहीं मिले। Existing consumer/insert path अभी इस pass में prove नहीं हुआ।
+- `service_bookings` SELECT policy Admin या booking customer को देती है; Admin UPDATE policy है। Electrician offer access RPC SECURITY DEFINER से है। New timer/bill tables को direct broad table access न दें; RPC ownership checks और RLS अलग-अलग audit हों।
+- `srk_electrician_payouts` SELECT policy Admin या matching electrician profile user_id को देती है। Webhook table के लिए इस inspection में कोई pg_policies row नहीं लौटी; इसका मतलब client access सुरक्षित है ऐसा मानने से पहले table ACL और schema exposure भी जाँचना होगा।
+
+### D. आगे की सुरक्षित कार्यवाही
+1. Production में सभी trigger function definitions (`guard_new_booking`, commission trigger, status log, offer broadcast, audit, cancellation) और complete webhook writer/reader caller lineage recover करें।
+2. Feature Branch migration files और Production function bodies का object-by-object drift matrix बनाएँ; Production में कोई apply/alter/drop नहीं।
+3. New timer/bill tables के लिए isolated development branch/environment की मंजूरी और cost स्पष्ट होने तक schema apply न करें।
+4. Timer RPCs और immutable bill snapshot के साथ old trigger side effects disable/route करने की reversible migration design करें; old paid/completed/quote bookings का regression test करें।
+5. Shared payment finalizer और durable webhook inbox consumer के बाद ही payout/cash/manual/refund/Route migration करें।
+6. Constraint/trigger/policy/RPC changes पर authenticated Customer, assigned Electrician, unassigned Electrician, Admin और service-role negative/positive tests अनिवार्य।
+
+Audit सीमा: यह catalog/function inspection है, production penetration test नहीं। इस pass में केवल read-only SQL queries चलीं; कोई DDL/DML, migration, payment, webhook replay, provider action या deployment नहीं हुआ।
