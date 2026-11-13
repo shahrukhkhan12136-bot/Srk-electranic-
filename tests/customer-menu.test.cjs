@@ -1062,3 +1062,12 @@ test('no-session synchronization invalidates all pending customer action and pay
   const source=html.slice(start,end);
   assert.match(source,/customerSessionGeneration\+\+;\s*invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerWorkStartResponses\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);invalidateCustomerPaymentFlow\(\);/);
 });
+
+
+test('customer profile save control is restored when account changes mid-save', () => {
+ const start=html.indexOf('function invalidateCustomerProfileAndSavedAddresses()');
+ const end=html.indexOf('async function loadCustomerProfile',start);
+ const source=html.slice(start,end);
+ assert.match(source,/profileSave=document\.getElementById\('saveCustomerProfile'\)/);
+ assert.match(source,/if\(profileSave\)profileSave\.disabled=false/);
+});
