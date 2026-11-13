@@ -1192,45 +1192,56 @@ async function sendCustomerSupportMessage() {
  finally{customerSupportMessageBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}
 }
 
+let customerSessionSyncSequence=0;
 async function syncCustomerSession() {
   if (!customerSb) return;
-  const { data } = await customerSb.auth.getSession();
-  const session = data.session;
-  document.getElementById('customer-login').style.display = session ? 'none' : 'block';
-  document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
-  const bookingPhone = document.getElementById('phone');
-  if (session) {
-    const digits = String(session.user.phone || '').replace(/\\D/g, '');
-    const displayPhone = digits.startsWith('91') && digits.length === 12 ? digits.slice(2) : digits;
-    bookingPhone.value = displayPhone;
-    bookingPhone.readOnly = true;
-    document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
-    await loadCustomerBookings();
-    await loadCustomerPaymentHistory(true);
-    await loadCustomerRefundHistory();
-    await loadCustomerSupportBookings();
-    await loadCustomerSupportComplaints();
-    await loadCustomerSavedAddresses({applyDefault:true});
-    await loadCustomerProfile();
-  } else {
-    bookingPhone.value = '';
-    bookingPhone.readOnly = true;
-    document.getElementById('customerSignedIn').textContent = '';
-    document.getElementById('customerBookings').textContent = '';
-    document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';
-    document.getElementById('customerRefundHistory').textContent = 'रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';
-    document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));
-    document.getElementById('customerSupportBooking').replaceChildren(new Option('बुकिंग चुनें',''));
-    document.getElementById('customerSupportDescription').value='';
-    document.getElementById('customerSupportThread').textContent='';
-    document.getElementById('customerSupportMessage').value='';
-    document.getElementById('customerSupportFiles').value='';customerSupportAttachments=[];
-    customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें।');
-    document.getElementById('customerProfileName').value = '';
-    document.getElementById('customerProfilePhone').value = '';
-    customerPaymentHistoryOffset = 0;
-    customerCurrentAvatarPath = null;
-    setCustomerAvatarPreview(null);
+  const sequence=++customerSessionSyncSequence;
+  try {
+    const { data, error } = await customerSb.auth.getSession();
+    if(sequence!==customerSessionSyncSequence)return;
+    if(error)throw error;
+    const session = data?.session||null;
+    document.getElementById('customer-login').style.display = session ? 'none' : 'block';
+    document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
+    const bookingPhone = document.getElementById('phone');
+    if (session) {
+      const digits = String(session.user.phone || '').replace(/\\D/g, '');
+      const displayPhone = digits.startsWith('91') && digits.length === 12 ? digits.slice(2) : digits;
+      bookingPhone.value = displayPhone;
+      bookingPhone.readOnly = true;
+      document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
+      await loadCustomerBookings(); if(sequence!==customerSessionSyncSequence)return;
+      await loadCustomerPaymentHistory(true); if(sequence!==customerSessionSyncSequence)return;
+      await loadCustomerRefundHistory(); if(sequence!==customerSessionSyncSequence)return;
+      await loadCustomerSupportBookings(); if(sequence!==customerSessionSyncSequence)return;
+      await loadCustomerSupportComplaints(); if(sequence!==customerSessionSyncSequence)return;
+      await loadCustomerSavedAddresses({applyDefault:true}); if(sequence!==customerSessionSyncSequence)return;
+      await loadCustomerProfile();
+    } else {
+      bookingPhone.value = '';
+      bookingPhone.readOnly = true;
+      document.getElementById('customerSignedIn').textContent = '';
+      document.getElementById('customerBookings').textContent = '';
+      document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';
+      document.getElementById('customerRefundHistory').textContent = 'रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';
+      document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));
+      document.getElementById('customerSupportBooking').replaceChildren(new Option('बुकिंग चुनें',''));
+      document.getElementById('customerSupportDescription').value='';
+      document.getElementById('customerSupportThread').textContent='';
+      document.getElementById('customerSupportMessage').value='';
+      document.getElementById('customerSupportFiles').value='';customerSupportAttachments=[];
+      customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें。');
+      document.getElementById('customerProfileName').value = '';
+      document.getElementById('customerProfilePhone').value = '';
+      customerPaymentHistoryOffset = 0;
+      customerCurrentAvatarPath = null;
+      setCustomerAvatarPreview(null);
+    }
+  } catch(error) {
+    if(sequence===customerSessionSyncSequence) {
+      document.getElementById('customerSignedIn').textContent='लॉगिन स्थिति अभी जाँची नहीं जा सकी। कृपया रीफ़्रेश करें।';
+      customerMessage('ग्राहक लॉगिन स्थिति लोड नहीं हो सकी। इंटरनेट जाँचकर दोबारा कोशिश करें।');
+    }
   }
 }
 async function customerSendOtp() {
