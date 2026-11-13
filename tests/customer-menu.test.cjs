@@ -128,7 +128,7 @@ test('customer avatar lifecycle keeps profile save separate from preview and cle
   assert.match(html, /if\(cleanup\.error\)cleanupWarning=/);
   assert.match(html, /प्रोफ़ाइल सफलतापूर्वक सेव हो गई।'.*previewLoaded/s);
   assert.match(html, /प्रोफ़ाइल सफलतापूर्वक सेव हो गई।'.*cleanupWarning/s);
-  assert.match(html, /const avatarPath=customerCurrentAvatarPath;\\s*const avatarLoaded=avatarPath\\?await loadCustomerAvatar\\(avatarPath\\):true;\\s*if\\(sequence!==customerProfileLoadSequence\\)return/);
+  assert.ok(html.includes('const avatarPath=customerCurrentAvatarPath;'));\n  assert.ok(html.includes('const avatarLoaded=avatarPath?await loadCustomerAvatar(avatarPath):true;'));\n  assert.ok(html.includes('if(sequence!==customerProfileLoadSequence)return;'));
   assert.match(html, /if\(!customerCurrentAvatarPath\)setCustomerAvatarPreview\(''\)/);
   assert.match(html, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
   assert.match(html, /फोटो का पूर्वावलोकन अभी उपलब्ध नहीं है/);
