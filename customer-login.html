@@ -59,7 +59,7 @@
   catch(_){setMessage('लॉगआउट पूरा नहीं हो सका। कृपया दोबारा कोशिश करें।',true);}
   finally{busy=false;document.getElementById('logout').disabled=false;}
  });
- sb.auth.onAuthStateChange(()=>{setTimeout(syncSession,0);});
+ if(sb) sb.auth.onAuthStateChange(()=>{setTimeout(syncSession,0);});
  syncSession();
  send.addEventListener('click',async()=>{
   if(!sb){setMessage('लॉगिन कॉन्फ़िगरेशन उपलब्ध नहीं है।',true);return;}
