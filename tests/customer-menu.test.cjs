@@ -707,7 +707,9 @@ test('customer cancellation uses an owner-scoped Admin-mediated request and neve
   assert.ok(html.includes("rpc('srk_customer_request_booking_cancellation'"));
   assert.ok(html.includes("rpc('srk_customer_list_my_booking_cancellation_requests'"));
   assert.ok(html.includes('customerRequestBookingCancellation'));
-  assert.ok(html.includes('बैंकिंग अभी अपने-आप रद्द नहीं हुई है') || html.includes('बुकिंग अभी अपने-आप रद्द नहीं हुई है'));
+  assert.ok(html.includes('बुकिंग अभी अपने-आप रद्द नहीं हुई है'));
+  assert.ok(html.includes('customerCancellationRequestBusy.clear()'));
+  assert.ok(html.includes('sessionStorage.setItem(storageKey,idempotencyKey)'));
   assert.ok(!html.includes("rpc('srk_customer_cancel_booking'"));
   assert.ok(html.includes("async function createCustomerSupportComplaint()"));
   assert.ok(html.includes("srk_customer_create_booking_complaint"));
