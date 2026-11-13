@@ -443,3 +443,16 @@ test('saved address selection stays locked during delete and default mutations',
   assert.equal((source.match(/if\(button.disabled\)return;/g)||[]).length,2);
   assert.ok(source.includes('button.disabled=true;select.disabled=true;'));
 });
+
+
+test('customer profile save invalidates pending profile loads and blocks overlapping reloads', () => {
+  const loadStart=html.indexOf('async function loadCustomerProfile()');
+  const loadEnd=html.indexOf('\\nasync function saveCustomerProfile()',loadStart);
+  const load=html.slice(loadStart,loadEnd);
+  assert.ok(load.includes("if(!customerSb||document.getElementById('saveCustomerProfile')?.disabled)return;"));
+  const saveStart=html.indexOf('async function saveCustomerProfile()');
+  const saveEnd=html.indexOf('\\nlet customerSavedAddresses',saveStart);
+  const save=html.slice(saveStart,saveEnd);
+  assert.ok(save.includes("button.disabled=true;\\n ++customerProfileLoadSequence;"));
+  assert.ok(save.includes('finally{button.disabled=false;}'));
+});
