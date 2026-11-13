@@ -1423,3 +1423,12 @@
 - Production schema से status CHECK में `offered, accepted, declined, expired, cancelled` सभी values सत्यापित हुईं। Production cancellation trigger `srk_cancel_booking_job_offers` booking cancelled होने पर `offered` और `accepted` offers को `cancelled` करता है; branch offer-event trigger इस status change को capture कर सकता है।
 - Source-level risk/review: pgTAP file में 10 structural/security assertions हैं, लेकिन live behavior (insert/update/backfill/idempotency/owner-vs-other-customer result) assertions नहीं हैं। Node source test UI wiring/event labels/privacy strings check करता है। `customer-offer-timeline-ci.yml` runs `npm run test:customer-offer-timeline` और checks migration auto-deploy workflow से wired न हो।
 - इस चरण में source files या Production DB नहीं बदले; pgTAP/live Supabase execution, Node workflow result, browser UI and final mobile/Desktop QA अभी verified नहीं हैं। अगला काम: test coverage को event behavior/transition idempotency/backfill/RPC ownership तक मजबूत करना और GitHub Actions result retrieve करना; migration apply/deploy नहीं करना।
+
+
+### 14 नवम्बर 2026 — Offer Timeline migration privilege hardening
+
+- Existing migration review में broad `REVOKE ALL ON SCHEMA private FROM public, anon, authenticated` मिला। यह केवल नए Offer Events तक सीमित नहीं था और पहले से मौजूद अन्य private-schema objects के client grants को अनावश्यक रूप से प्रभावित कर सकता था। इसे हटाया; private event table पर explicit direct-access revoke यथावत रखा।
+- Trigger function `private.srk_capture_booking_offer_event()` पर PostgreSQL default PUBLIC EXECUTE privilege का जोखिम पाया। अब migration स्पष्ट रूप से PUBLIC/anon/authenticated से उस function का EXECUTE revoke करती है; trigger owner के रूप में event capture करता है।
+- pgTAP plan 10→11 किया और assert जोड़ा कि authenticated role private capture trigger function execute नहीं कर सकता। Node source regression में भी function-level revoke और broad schema revoke न होने की जाँच जोड़ी।
+- Commits: migration scope fix `91da38a29b4544791a0025c5c88c7642364d47de`; pgTAP assertion `ba828a4417f99d0792bceaf74ef807fd0d58cd86`; explicit trigger function revoke `d0639333595648d97c7d5b2c020af6622a715da9`; Node regression guard `58fe830794d3fd8d4d76a481acdf085850196471`.
+- GitHub combined status for latest commit shows only Vercel failure due account build-rate-limit URL; this is not evidence that Customer Offer Timeline source workflow passed or failed. Dedicated GitHub Actions run details were not returned in this audit. Node tests and pgTAP remain unexecuted; no Production SQL or migration apply.
