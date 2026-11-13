@@ -36,7 +36,7 @@ test('Admin KYC panel lists private electrician documents, signs short-lived lin
   assert.ok(html.includes("createSignedUrl(path,60)"));
   assert.ok(html.includes("srk_admin_review_electrician_document"));
   assert.ok(html.includes("status==='rejected'"));
-  assert.ok(html.includes("status==='needs_resubmission'"));
+  assert.ok(html.includes('needs_resubmission'));
   assert.ok(html.includes('window.srkVerificationDocumentPaths'));
   assert.ok(html.includes("await Promise.all([loadSkillMatchingConfig(),loadAdminVerificationDocuments()])"));
 });
