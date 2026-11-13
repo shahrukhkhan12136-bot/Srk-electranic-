@@ -1787,3 +1787,14 @@
 - The provider executor currently returns 202 on uncertain provider errors and retains the stable intent key. Provider Dashboard/webhook delivery ordering and live test-mode remain unverified.
 - Refund Foundation/Admin review/provider recovery pgTAP files are still not executed in an isolated local end-to-end fixture. Existing 30/30 payment/refund-history tests do not cover this provider failure state machine.
 - Production untouched; no deploy, merge, live payment/refund/payout, or Auth setting changes. Continue Customer App dependency work; final mobile/Desktop QA remains deferred.
+
+
+### Refund provider-state Admin visibility — branch implementation (Nov 15)
+
+- Added additive Admin-only RPC srk_admin_list_booking_refund_requests_v3() in migration 20261115010000_admin_refund_provider_state_visibility.sql. It preserves the v2 manual-refund fields and additionally returns linked Razorpay refund ID, intent status, provider status, last provider error, and intent timestamps. Join is constrained by both refund_record_id and booking_id; Admin authorization remains auth.uid() + is_srk_admin(). Existing v2 RPC remains unchanged for compatibility.
+- Admin UI now calls v3. Provider-confirmed failed is displayed explicitly as “Razorpay ने Refund अस्वीकार किया”; the retry button is suppressed and Admin reconciliation is required. Retry is offered only when request is processing/unknown AND the linked provider intent is itself processing/unknown AND provider status is not failed. If provider state is missing/unconfirmed, UI shows reconciliation-required and does not retry. Provider refund ID and last error are visible to Admin.
+- Added pgTAP contract checks (8 assertions) for RPC presence, returned provider-state columns, ownership-constrained join, Admin gate, authenticated execute grant and anon denial. This pgTAP file is not yet executed in an isolated DB.
+- Added source regression assertions for the v3 RPC and failed/unknown UI guard; CI workflow path filter now includes 20261115*.sql.
+- Commits: migration 4828b51733cc5ccb2b7d0d88346b3e6ec5e576b5; Admin UI 0c3f2aa770be0154b288458644b0edfdc6067b71; source test 05e7687b04c6e8f32cc0b78f8287feae93f19c5d; pgTAP 7ce2130c9aa2c946da8eaaa66b2236106fa3fc73; CI trigger 40bca9e61aa9cacdc286651e421cbe7c486dade2.
+- Verification status at tracker update: source CI run not yet confirmed; pgTAP not executed; Admin browser interaction and live provider/webhook remain untested. No refund attempt or provider call was made. Production database, payment records, Auth settings and deployment remain untouched.
+- Next: verify source CI, add isolated local synthetic fixtures/behavior tests for provider failure vs uncertain retry eligibility, then continue Customer App remaining Profile/booking-history/Support audit. Do not enable a new attempt for provider-confirmed failures without a separately audited attempt-history model.
