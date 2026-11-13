@@ -163,16 +163,16 @@ test('customer payment history pagination prevents duplicate loads and restores 
 
 
 test('customer refund history pagination prevents duplicate loads and uses bounded paginated RPC', () => {
-  assert.match(html,/id="customerRefundHistoryMore"/);
+  assert.ok(html.includes('id="customerRefundHistoryMore"'));
   const start=html.indexOf('async function loadCustomerRefundHistory(reset=true)');
-  const end=html.indexOf('\\nconst customerBookingStatusLabels',start);
+  const end=html.indexOf('const customerBookingStatusLabels',start);
   const source=html.slice(start,end);
-  assert.match(source,/if\\(!customerSb\\|\\|\\(!reset&&customerRefundHistoryBusy\\)\\)return/);
+  assert.ok(source.includes('if(!customerSb||(!reset&&customerRefundHistoryBusy))return;'));
   assert.ok(source.includes('customerRefundHistoryBusy=true;')&&source.includes('more.disabled=true;'));
   assert.ok(source.includes('customerRefundHistoryBusy=false;')&&source.includes('more.disabled=false;'));
-  assert.match(source,/p_limit:25,p_offset:requestedOffset/);
-  assert.match(source,/customerRefundHistoryOffset=requestedOffset\\+rows.length/);
-  assert.match(source,/if\\(sequence!==customerRefundHistoryLoadSequence\\)return/);
+  assert.ok(source.includes('p_limit:25,p_offset:requestedOffset'));
+  assert.ok(source.includes('customerRefundHistoryOffset=requestedOffset+rows.length;'));
+  assert.ok(source.includes('if(sequence!==customerRefundHistoryLoadSequence)return;'));
 });
 
 test('customer payment receipt uses immutable labour amount and never infers materials', () => {
