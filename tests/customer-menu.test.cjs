@@ -116,7 +116,7 @@ test('support thread selection ignores stale async responses and blocks duplicat
   assert.match(html, /let customerSupportMessageBusy=false/);
   assert.match(html, /if\(customerSupportMessageBusy\)return/);
   assert.match(html, /customerSupportMessageBusy=true;button\.disabled=true/);
-  assert.match(html, /finally\{customerSupportMessageBusy=false;button\.disabled=false/);
+  assert.match(html, /finally\{if\(customerSessionOperationIsCurrent\(operationGeneration\)\)\{customerSupportMessageBusy=false;button\.disabled=false/);
   assert.match(html, /कुछ संलग्न फ़ाइलें अभी लोड नहीं हो सकीं/);
 });
 
@@ -511,7 +511,7 @@ test('customer complaint creation success is not reported as failure when thread
   assert.match(source,/शिकायत सफलतापूर्वक दर्ज हो गई है, लेकिन शिकायत सूची या संदेश अभी रीफ़्रेश नहीं हो सके/);
   assert.match(source,/शिकायत दोबारा दर्ज न करें/);
   assert.ok(source.includes("complaintCreated\n   ?'आपकी शिकायत दर्ज हो चुकी है"));
-  assert.ok(source.includes('finally {\n  customerSupportComplaintCreateBusy=false;button.disabled=false;'));
+  assert.ok(source.includes('finally {\n  if(customerSessionOperationIsCurrent(operationGeneration)){customerSupportComplaintCreateBusy=false;button.disabled=false;'));
 });
 
 
@@ -592,7 +592,7 @@ test('customer profile save invalidates pending profile loads and blocks overlap
   const save=html.slice(saveStart,saveEnd);
   assert.ok(save.includes('button.disabled=true;'));
   assert.ok(save.includes('++customerProfileLoadSequence;'));
-  assert.ok(save.includes('finally{button.disabled=false;}'));
+  assert.ok(save.includes('finally{if(customerSessionOperationIsCurrent(operationGeneration))button.disabled=false;}'));
 });
 
 
