@@ -160,3 +160,131 @@ COMMENT ON COLUMN public.electrician_applications.requested_category IS
   'Applicant-selected requested category; not an approved commercial tier.';
 COMMENT ON COLUMN public.electrician_profiles.approved_rate_tier IS
   'Admin-approved commercial rate tier; never infer from skills or applicant request.';
+
+-- Approval fields must only be changed through the audited Admin RPC.
+-- A transaction-scoped private authorization row prevents direct table updates
+-- from bypassing the audit log, even for Admin sessions.
+CREATE TABLE IF NOT EXISTS srk_private.electrician_rate_tier_authorizations (
+  transaction_id bigint NOT NULL,
+  electrician_profile_id uuid NOT NULL REFERENCES public.electrician_profiles(id) ON DELETE CASCADE,
+  actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  PRIMARY KEY (transaction_id, electrician_profile_id)
+);
+REVOKE ALL ON TABLE srk_private.electrician_rate_tier_authorizations FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_set_electrician_rate_tier(
+  p_electrician_profile_id uuid,
+  p_rate_tier text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_profile public.electrician_profiles%ROWTYPE;
+  v_previous text;
+  v_version constant text := 'SRK-CUSTOMER-LABOUR-2026-11-13-V1';
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin only' USING ERRCODE = '42501';
+  END IF;
+  IF p_electrician_profile_id IS NULL OR p_rate_tier IS NULL OR p_rate_tier NOT IN (
+    'electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'
+  ) THEN
+    RAISE EXCEPTION 'Invalid electrician profile or rate tier' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_profile
+  FROM public.electrician_profiles
+  WHERE id = p_electrician_profile_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Electrician profile not found' USING ERRCODE = 'P0002';
+  END IF;
+  IF v_profile.verification_status <> 'approved' THEN
+    RAISE EXCEPTION 'Electrician KYC must be approved before assigning a rate tier' USING ERRCODE = '23514';
+  END IF;
+
+  v_previous := v_profile.approved_rate_tier;
+  INSERT INTO srk_private.electrician_rate_tier_authorizations
+    (transaction_id,electrician_profile_id,actor_id)
+  VALUES (pg_catalog.txid_current(),v_profile.id,auth.uid());
+
+  UPDATE public.electrician_profiles
+  SET approved_rate_tier = p_rate_tier,
+      approved_rate_card_version = v_version,
+      rate_tier_approved_by = auth.uid(),
+      rate_tier_approved_at = now()
+  WHERE id = p_electrician_profile_id;
+
+  DELETE FROM srk_private.electrician_rate_tier_authorizations
+  WHERE transaction_id=pg_catalog.txid_current()
+    AND electrician_profile_id=v_profile.id
+    AND actor_id=auth.uid();
+
+  INSERT INTO public.srk_electrician_rate_tier_audit (
+    electrician_profile_id, application_id, previous_rate_tier,
+    new_rate_tier, rate_card_version, changed_by
+  ) VALUES (
+    v_profile.id, v_profile.application_id, v_previous,
+    p_rate_tier, v_version, auth.uid()
+  );
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'electrician_profile_id', v_profile.id,
+    'approved_rate_tier', p_rate_tier,
+    'rate_card_version', v_version
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_guard_electrician_rate_tier_activation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_authorized boolean := false;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.approved_rate_tier IS NOT NULL
+       OR NEW.approved_rate_card_version IS NOT NULL
+       OR NEW.rate_tier_approved_by IS NOT NULL
+       OR NEW.rate_tier_approved_at IS NOT NULL THEN
+      RAISE EXCEPTION 'Rate tier must be assigned through the audited Admin RPC'
+        USING ERRCODE = '42501';
+    END IF;
+  ELSIF NEW.approved_rate_tier IS DISTINCT FROM OLD.approved_rate_tier
+     OR NEW.approved_rate_card_version IS DISTINCT FROM OLD.approved_rate_card_version
+     OR NEW.rate_tier_approved_by IS DISTINCT FROM OLD.rate_tier_approved_by
+     OR NEW.rate_tier_approved_at IS DISTINCT FROM OLD.rate_tier_approved_at THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM srk_private.electrician_rate_tier_authorizations a
+      WHERE a.transaction_id=pg_catalog.txid_current()
+        AND a.electrician_profile_id=NEW.id
+        AND a.actor_id=auth.uid()
+    ) INTO v_authorized;
+    IF NOT v_authorized THEN
+      RAISE EXCEPTION 'Rate tier changes require the audited Admin RPC'
+        USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
+  IF NEW.active IS TRUE AND (
+    NEW.approved_rate_tier IS NULL
+    OR NEW.approved_rate_card_version IS NULL
+    OR NEW.rate_tier_approved_by IS NULL
+    OR NEW.rate_tier_approved_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Admin must approve an electrician rate tier before activation'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.srk_guard_electrician_rate_tier_activation() FROM PUBLIC, anon, authenticated;
