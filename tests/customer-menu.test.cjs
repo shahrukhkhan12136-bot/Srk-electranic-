@@ -228,3 +228,12 @@ test('customer refund history prioritizes actual processed timestamp', () => {
 test('booking card refund summary prioritizes processed timestamp', () => {
   assert.match(html, /customerBookingTimeText\(refund\.processed_at\|\|refund\.updated_at\|\|refund\.created_at\)/);
 });
+
+
+test('customer booking history uses a stable ID tie-breaker for equal creation timestamps', () => {
+  const start = bookingHtml.indexOf("from('service_bookings')", bookingHtml.indexOf('async function loadCustomerBookings'));
+  const end = bookingHtml.indexOf('.limit(50)', start);
+  const query = bookingHtml.slice(start, end);
+  assert.match(query, /\.order\('created_at',\s*\{\s*ascending:\s*false\s*\}\)/);
+  assert.match(query, /\.order\('id',\s*\{\s*ascending:\s*false\s*\}\)/);
+});
