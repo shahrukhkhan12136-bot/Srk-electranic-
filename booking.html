@@ -1293,7 +1293,7 @@ async function loadCustomerSupportBookings(reset=true) {
  if(!customerSb||!select||!more||(!reset&&customerSupportBookingsBusy))return;
  const sequence=++customerSupportBookingsLoadSequence;
  const generation=customerSessionGeneration;
- const isCurrent=()=>isCurrent()&&customerSessionOperationIsCurrent(generation);
+ const isCurrent=()=>sequence===customerSupportBookingsLoadSequence&&customerSessionOperationIsCurrent(generation);
  const requestedOffset=reset?0:customerSupportBookingsOffset;
  const wasDisabled=customerSupportBookingsBusy?customerSupportBookingsWasDisabled:select.disabled;
  if(!customerSupportBookingsBusy)customerSupportBookingsWasDisabled=select.disabled;
@@ -1397,7 +1397,7 @@ async function loadCustomerSupportComplaints() {
  customerSupportComplaintsBusy=true;
  const sequence=++customerSupportComplaintsLoadSequence;
  const generation=customerSessionGeneration;
- const isCurrent=()=>isCurrent()&&customerSessionOperationIsCurrent(generation);
+ const isCurrent=()=>sequence===customerSupportComplaintsLoadSequence&&customerSessionOperationIsCurrent(generation);
  const select=document.getElementById('customerSupportComplaint');
  const refresh=document.getElementById('customerSupportRefresh');
  const wasDisabled=select.disabled;
