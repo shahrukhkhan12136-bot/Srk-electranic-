@@ -951,3 +951,12 @@
 - Regression assertions update किए।
 - Source Regression Run #43473708324 — success, head `6833a1175e6a68a0fb0628aaef4b7e02a766fee0`.
 - Real concurrent Supabase Auth/RPC, storage avatar, browser interaction और final mobile/Desktop QA अभी बाकी हैं। SQL/Production/deployment में कोई बदलाव नहीं।
+
+
+## 2026-11-13 — Customer Support complaint creation/refresh separation
+
+- `createCustomerSupportComplaint()` में शिकायत create RPC सफल होने के बाद complaint-list या message-thread refresh विफल होने पर पहले गलत “शिकायत दर्ज नहीं हो सकी” संदेश दिख सकता था।
+- अब server से complaint ID मिलने के बाद creation को सफल माना जाता है; list/thread refresh को अलग से संभाला जाता है। Refresh विफल होने पर शिकायत दोबारा दर्ज न करने की स्पष्ट चेतावनी और thread refresh निर्देश दिखते हैं।
+- नए complaint ID को select list में अस्थायी रूप से जोड़ा जाता है, ताकि list refresh failure के बावजूद ग्राहक उसी शिकायत thread को चुन सके।
+- Source regression test जोड़ा गया। GitHub Actions workflow result अभी प्राप्त नहीं हुआ है; test को passed नहीं माना गया है।
+- केवल feature branch source change; SQL/RPC schema, Production, deployment और वास्तविक Supabase runtime में कोई बदलाव/परीक्षण नहीं।
