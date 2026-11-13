@@ -122,7 +122,7 @@ BEGIN
       AND NEW.completion_approval_status='disputed' THEN 'work_completion_disputed'
     WHEN OLD.completion_approval_status IS DISTINCT FROM NEW.completion_approval_status
       AND NEW.completion_approval_status='approved'
-      AND public.is_srk_admin() THEN 'work_completion_admin_approved'
+      AND public.is_srk_admin() THEN 'booking_work_state_changed'
     WHEN OLD.completion_approval_status IS DISTINCT FROM NEW.completion_approval_status
       AND NEW.completion_approval_status='approved' THEN 'work_completion_customer_approved'
     WHEN OLD.work_timer_running IS DISTINCT FROM NEW.work_timer_running
@@ -387,3 +387,130 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_admin_get_booking_work_events(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_get_booking_work_events(uuid) TO authenticated;
+
+
+-- Keep the customer approval path compatible with the immutable bill's
+-- original completion-request timestamp (not the later approval timestamp).
+CREATE OR REPLACE FUNCTION public.srk_customer_respond_work_completion(
+  p_booking_id uuid,p_response text,p_note text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
+AS $function$
+DECLARE
+  v_booking public.service_bookings%ROWTYPE;
+  v_note text:=NULLIF(btrim(p_note),'');
+  v_minutes numeric;
+  v_amount_paise numeric;
+  v_amount numeric(18,2);
+  v_platform_fee_paise numeric;
+  v_platform_fee numeric(18,2);
+  v_electrician_payable numeric(18,2);
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501';
+  END IF;
+  IF p_response NOT IN ('approved','rejected','disputed') OR p_response IS NULL
+     OR (p_note IS NOT NULL AND length(p_note)>1000) THEN
+    RAISE EXCEPTION 'Invalid completion response' USING ERRCODE='22023';
+  END IF;
+  IF p_response='disputed' AND (v_note IS NULL OR length(v_note)<20) THEN
+    RAISE EXCEPTION 'विवाद का कारण कम से कम 20 अक्षरों में लिखें';
+  END IF;
+
+  SELECT * INTO v_booking FROM public.service_bookings
+  WHERE id=p_booking_id AND customer_user_id=auth.uid()
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Customer booking not found' USING ERRCODE='42501';
+  END IF;
+  IF v_booking.status<>'in_progress' OR v_booking.completion_approval_status<>'pending'
+     OR v_booking.completion_requested_at IS NULL OR v_booking.work_timer_running THEN
+    RAISE EXCEPTION 'No stopped completion request is waiting for your response';
+  END IF;
+
+  INSERT INTO srk_private.work_timer_authorizations(transaction_id,booking_id,actor_id)
+  VALUES (pg_catalog.txid_current(),p_booking_id,auth.uid());
+
+  IF p_response='approved' THEN
+    IF v_booking.selected_category IS NOT NULL THEN
+      IF v_booking.labour_rate8h_paise_snapshot IS NULL
+         OR v_booking.labour_rate_tier_snapshot IS NULL
+         OR v_booking.labour_rate_card_version_snapshot IS NULL
+         OR v_booking.work_timer_elapsed_seconds<=0 THEN
+        RAISE EXCEPTION 'Final labour bill cannot be calculated; Admin review required';
+      END IF;
+
+      v_minutes:=ceil(v_booking.work_timer_elapsed_seconds/60);
+      v_amount_paise:=floor(
+        (v_booking.labour_rate8h_paise_snapshot::numeric*v_minutes/480)+0.5
+      );
+      IF v_minutes<1 OR v_amount_paise<1 OR v_amount_paise>999999999999999999 THEN
+        RAISE EXCEPTION 'Final labour amount is outside the supported range';
+      END IF;
+      v_amount:=round(v_amount_paise/100,2);
+      v_platform_fee_paise:=floor((v_amount_paise*15/100)+0.5);
+      v_platform_fee:=round(v_platform_fee_paise/100,2);
+      v_electrician_payable:=round(v_amount-v_platform_fee,2);
+
+      INSERT INTO public.srk_booking_labour_bills(
+        booking_id,customer_user_id,electrician_profile_id,
+        customer_work_category,approved_rate_tier,rate_card_version,
+        rate8h_paise,elapsed_seconds,completion_requested_at,billable_minutes,
+        labour_amount_paise,labour_amount,platform_fee_rate,
+        platform_fee_paise,platform_fee_amount,electrician_payable
+      ) VALUES (
+        p_booking_id,v_booking.customer_user_id,v_booking.assigned_electrician_id,
+        v_booking.selected_category,v_booking.labour_rate_tier_snapshot,
+        v_booking.labour_rate_card_version_snapshot,
+        v_booking.labour_rate8h_paise_snapshot,v_booking.work_timer_elapsed_seconds,
+        v_booking.completion_requested_at,v_minutes::bigint,
+        v_amount_paise,v_amount,15.00,
+        v_platform_fee_paise,v_platform_fee,v_electrician_payable
+      );
+    END IF;
+
+    INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
+    VALUES (pg_catalog.txid_current(),p_booking_id,'completed');
+
+    UPDATE public.service_bookings
+    SET status='completed',
+        service_charge=CASE WHEN v_booking.selected_category IS NOT NULL THEN v_amount ELSE service_charge END,
+        completion_approval_status='approved',
+        customer_completed_at=clock_timestamp(),
+        work_timer_running=false,
+        work_started_at=NULL
+    WHERE id=p_booking_id;
+
+    DELETE FROM srk_private.work_transition_authorizations
+    WHERE transaction_id=pg_catalog.txid_current()
+      AND booking_id=p_booking_id AND target_status='completed';
+  ELSIF p_response='rejected' THEN
+    UPDATE public.service_bookings
+    SET completion_approval_status='rejected',
+        completion_requested_at=NULL,
+        work_started_at=clock_timestamp(),
+        work_timer_running=true
+    WHERE id=p_booking_id;
+  ELSE
+    INSERT INTO public.srk_booking_complaints(booking_id,customer_user_id,category,description)
+    VALUES (p_booking_id,auth.uid(),'service_quality','काम पूरा होने पर विवाद: '||v_note);
+    UPDATE public.service_bookings
+    SET completion_approval_status='disputed',
+        work_timer_running=false,
+        work_started_at=NULL
+    WHERE id=p_booking_id;
+  END IF;
+
+  DELETE FROM srk_private.work_timer_authorizations
+  WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND actor_id=auth.uid();
+
+  RETURN jsonb_build_object(
+    'success',true,'response',p_response,
+    'bill_created',p_response='approved' AND v_booking.selected_category IS NOT NULL
+  );
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_customer_respond_work_completion(uuid,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.srk_customer_respond_work_completion(uuid,text,text) TO authenticated;
