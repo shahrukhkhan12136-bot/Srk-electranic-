@@ -3825,3 +3825,16 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **14.1.9: In Progress / Dependency-Blocked — Source Audit दर्ज; live tracking/ETA implementation नहीं मिली।** Privacy, retention और authorized update/read contract तय किए बिना tracking चालू नहीं की जाएगी।
 - Source/implementation verification: **Verified नहीं**। कोई code, DB/RLS/RPC, customer location data, Auth, provider, secret या deployment परिवर्तन नहीं किया।
 - Final Real-World Test: **बाकी**; कुल 96/96 वास्तविक परीक्षण अंतिम consolidated batch तक Pending।
+
+
+## 18. मालिक के नवीनतम पुष्टि किए हुए बिलिंग निर्णय — 13 नवम्बर 2026
+यह अनुभाग पहले के किसी भी विरोधी सामग्री/बिलिंग कथन पर प्राथमिकता रखता है।
+
+1. **बुकिंग राशि केवल अनुमान (Estimate) है।** ग्राहक को बुकिंग से पहले चुनी category, अनुमानित अवधि और अनुमानित रकम स्पष्ट बताई जाएगी। इसे cap, advance या fixed final price नहीं कहा जाएगा।
+2. **अंतिम मेहनताना वास्तविक समय पर आधारित होगा।** Server-recorded billable minutes और स्वीकृत category के 8-hour rate से गणना होगी: category_8h_rate × actual_billable_minutes ÷ 480; monetary rounding integer paise में होगी और लागू rounding convention अलग से सत्यापित/निर्धारित होगी।
+3. **बुक की अवधि से अधिक काम होने पर वास्तविक कुल billable minutes के अनुसार शुल्क अपने-आप लगेगा।** अतिरिक्त समय के लिए अलग customer approval आवश्यक नहीं है। Timer केवल server-authoritative और सुरक्षित work-start/completion events से चलेगा; idle/pause और disputed-time handling को अलग से सुरक्षित रूप से लागू करना होगा।
+4. **ऐप में सामग्री का कोई रोल नहीं है।** Customer App, Electrician App/Portal, Admin के customer-facing bill/receipt, quotation/estimate, payment history और संबंधित app UI/API/RPC payload में सामग्री का नाम, सामग्री line item, सामग्री शुल्क या सामग्री-संबंधित billing field नहीं दिखेगा। सामग्री को ऐप के बिलिंग flow में शामिल नहीं करना है।
+5. App bill/receipt में केवल electrician labour/मेहनताना दिखेगा। यदि पुराने payment record से labour amount स्वतंत्र रूप से सत्यापित नहीं हो सकता, तो कोई अनुमानित labour split न दिखाएँ; केवल सत्यापित भुगतान राशि को स्पष्ट रूप से payment receipt के रूप में दिखाएँ, final labour invoice बताकर नहीं।
+6. पुराने database columns, migrations, provider/payment/refund integrations और historical records को बिना dependency audit delete/alter न करें। Legacy material fields को customer/electrician-facing app output से हटाने के लिए safe staged changes और regression tests आवश्यक हैं।
+7. Platform Fee या अन्य शुल्क को labour amount में छिपाकर न जोड़ें और न ही इस निर्णय से कोई नया customer charge अनुमानित करें; उसकी स्वीकृत policy और ledger treatment अलग रहेंगे।
+8. यह business-rule confirmation है; इससे अपने-आप migration apply, production setting change या deployment की अनुमति नहीं मिलती।
