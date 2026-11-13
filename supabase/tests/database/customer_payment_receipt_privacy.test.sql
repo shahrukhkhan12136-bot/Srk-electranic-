@@ -19,10 +19,10 @@ select ok(
  'receipt requires a positive paid amount'
 );
 select ok(
- position('breakdown_available' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure)) > 0
- and position('materials_amount' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure)) > 0
- and position('labour_amount' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure)) > 0,
- 'labour and materials are shown separately only when totals reconcile'
+ position('labour_amount' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure)) > 0
+ and position('materials_amount' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure)) = 0
+ and position('breakdown_available' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure)) = 0,
+ 'receipt may expose verified labour only and never includes material fields'
 );
 select ok(
  position('phone' in lower(pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))) = 0,
