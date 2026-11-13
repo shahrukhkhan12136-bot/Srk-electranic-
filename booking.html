@@ -967,6 +967,71 @@ async function loadCustomerSupportAttachments(complaintId) {
   return {...a,signedUrl:signedError?null:signed?.signedUrl||null};
  }));
 }
+async function loadCustomerSupportBookings() {
+ const select=document.getElementById('customerSupportBooking');
+ if(!customerSb||!select)return;
+ select.disabled=true;
+ try {
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  const session=sessionData?.session;
+  if(!session){select.replaceChildren(new Option('OTP लॉगिन आवश्यक है',''));return;}
+  const {data,error}=await customerSb.from('service_bookings')
+   .select('id,service_type,created_at,status')
+   .eq('customer_user_id',session.user.id)
+   .order('created_at',{ascending:false})
+   .limit(50);
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  select.replaceChildren(new Option(rows.length?'बुकिंग चुनें':'अभी कोई बुकिंग उपलब्ध नहीं है',''));
+  rows.forEach(row=>{
+   const date=row.created_at?new Date(row.created_at).toLocaleDateString('hi-IN'):'तारीख उपलब्ध नहीं';
+   const label=(row.service_type||'सर्विस')+' · '+date+' · '+String(row.id).slice(0,8).toUpperCase();
+   select.add(new Option(label,row.id));
+  });
+ } catch(error) {
+  select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी — रीफ़्रेश करें',''));
+  supportStatus('शिकायत के लिए बुकिंग लोड नहीं हो सकी। कृपया रीफ़्रेश करें।',true);
+ } finally {select.disabled=false;}
+}
+let customerSupportComplaintCreateBusy=false;
+async function createCustomerSupportComplaint() {
+ const button=document.getElementById('customerSupportCreate');
+ if(customerSupportComplaintCreateBusy)return;
+ const bookingId=document.getElementById('customerSupportBooking').value;
+ const category=document.getElementById('customerSupportCategory').value;
+ const description=document.getElementById('customerSupportDescription').value.trim();
+ const validCategories=['service_quality','electrician_behavior','billing_payment','delay_no_show','safety','other'];
+ if(!bookingId){supportStatus('शिकायत दर्ज करने के लिए संबंधित बुकिंग चुनें।',true);return;}
+ if(!validCategories.includes(category)){supportStatus('शिकायत का सही विषय चुनें।',true);return;}
+ if(description.length<20||description.length>2000){supportStatus('समस्या का विवरण 20 से 2000 अक्षरों के बीच लिखें।',true);return;}
+ customerSupportComplaintCreateBusy=true;button.disabled=true;button.textContent='शिकायत दर्ज हो रही है…';
+ try {
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!sessionData?.session)throw new Error('शिकायत दर्ज करने के लिए OTP लॉगिन आवश्यक है।');
+  const {data:complaintId,error}=await customerSb.rpc('srk_customer_create_booking_complaint',{
+   p_booking_id:bookingId,p_category:category,p_description:description
+  });
+  if(error) {
+   const message=String(error.message||'');
+   if(message.includes('COMPLAINT_DAILY_LIMIT_REACHED'))throw new Error('पिछले 24 घंटे में शिकायत दर्ज करने की सीमा पूरी हो गई है। सहायता टीम से संपर्क करें।');
+   if(message.includes('BOOKING_NOT_OWNED'))throw new Error('चुनी गई बुकिंग आपके लॉगिन से जुड़ी नहीं है।');
+   throw error;
+  }
+  if(!complaintId)throw new Error('शिकायत संदर्भ प्राप्त नहीं हुआ।');
+  document.getElementById('customerSupportDescription').value='';
+  await loadCustomerSupportComplaints();
+  const select=document.getElementById('customerSupportComplaint');
+  select.value=complaintId;customerSupportSelectedId=complaintId;
+  await loadCustomerSupportMessages();
+  supportStatus('आपकी शिकायत सफलतापूर्वक दर्ज हो गई है। अब इसी थ्रेड में सहायता टीम से बात कर सकते हैं।');
+ } catch(error) {
+  supportStatus('शिकायत दर्ज नहीं हो सकी। '+(error.message||'कृपया दोबारा कोशिश करें।'),true);
+ } finally {
+  customerSupportComplaintCreateBusy=false;button.disabled=false;button.textContent='शिकायत दर्ज करें';
+ }
+}
 async function loadCustomerSupportComplaints() {
  const select=document.getElementById('customerSupportComplaint');
  select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
