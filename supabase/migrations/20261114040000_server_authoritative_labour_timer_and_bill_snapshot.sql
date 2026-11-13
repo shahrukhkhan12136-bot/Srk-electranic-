@@ -78,6 +78,67 @@ CREATE INDEX IF NOT EXISTS srk_booking_labour_bills_electrician_created_idx
 ALTER TABLE public.srk_booking_labour_bills ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.srk_booking_labour_bills FROM PUBLIC,anon,authenticated;
 
+
+-- Only the server-side workflow RPCs may change timer state or the first-start
+-- commercial rate snapshot. Admin direct table edits cannot forge elapsed time.
+CREATE TABLE IF NOT EXISTS srk_private.work_timer_authorizations (
+  transaction_id bigint NOT NULL,
+  booking_id uuid NOT NULL REFERENCES public.service_bookings(id) ON DELETE CASCADE,
+  actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  PRIMARY KEY(transaction_id,booking_id)
+);
+REVOKE ALL ON TABLE srk_private.work_timer_authorizations FROM PUBLIC,anon,authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_guard_server_work_timer()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
+AS $function$
+DECLARE v_authorized boolean;
+BEGIN
+  IF TG_OP='UPDATE' AND (
+       NEW.work_started_at IS DISTINCT FROM OLD.work_started_at
+    OR NEW.work_timer_running IS DISTINCT FROM OLD.work_timer_running
+    OR NEW.work_timer_seconds IS DISTINCT FROM OLD.work_timer_seconds
+    OR NEW.work_timer_elapsed_seconds IS DISTINCT FROM OLD.work_timer_elapsed_seconds
+    OR NEW.work_start_origin_status IS DISTINCT FROM OLD.work_start_origin_status
+    OR NEW.labour_rate_tier_snapshot IS DISTINCT FROM OLD.labour_rate_tier_snapshot
+    OR NEW.labour_rate8h_paise_snapshot IS DISTINCT FROM OLD.labour_rate8h_paise_snapshot
+    OR NEW.labour_rate_card_version_snapshot IS DISTINCT FROM OLD.labour_rate_card_version_snapshot
+  ) THEN
+    SELECT EXISTS(
+      SELECT 1 FROM srk_private.work_timer_authorizations a
+      WHERE a.transaction_id=pg_catalog.txid_current()
+        AND a.booking_id=NEW.id
+        AND a.actor_id=auth.uid()
+    ) INTO v_authorized;
+    IF NOT v_authorized THEN
+      RAISE EXCEPTION 'Timer and rate snapshots can only be changed by the authorized server workflow'
+        USING ERRCODE='42501';
+    END IF;
+  END IF;
+
+  IF NEW.labour_rate_tier_snapshot IS NOT NULL AND (
+    (NEW.labour_rate_tier_snapshot='electrical_assistant' AND NEW.labour_rate8h_paise_snapshot<>89900)
+    OR (NEW.labour_rate_tier_snapshot='skilled_electrician' AND NEW.labour_rate8h_paise_snapshot<>119900)
+    OR (NEW.labour_rate_tier_snapshot='expert_electrician' AND NEW.labour_rate8h_paise_snapshot<>159900)
+    OR (NEW.labour_rate_tier_snapshot='premium_electrical_specialist' AND NEW.labour_rate8h_paise_snapshot<>199900)
+  ) THEN
+    RAISE EXCEPTION 'Rate tier and eight-hour rate do not match';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_guard_server_work_timer() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS srk_guard_server_work_timer ON public.service_bookings;
+CREATE TRIGGER srk_guard_server_work_timer
+  BEFORE UPDATE OF work_started_at,work_timer_running,work_timer_seconds,
+    work_timer_elapsed_seconds,work_start_origin_status,
+    labour_rate_tier_snapshot,labour_rate8h_paise_snapshot,
+    labour_rate_card_version_snapshot
+  ON public.service_bookings
+  FOR EACH ROW EXECUTE FUNCTION public.srk_guard_server_work_timer();
+
 CREATE OR REPLACE FUNCTION public.srk_electrician_request_work_start(p_booking_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
@@ -119,6 +180,8 @@ BEGIN
     RAISE EXCEPTION 'Work start approval is already pending or timer is running';
   END IF;
 
+  INSERT INTO srk_private.work_timer_authorizations(transaction_id,booking_id,actor_id)
+  VALUES (pg_catalog.txid_current(),p_booking_id,auth.uid());
   UPDATE public.service_bookings
   SET status='awaiting_work_start_approval',
       work_start_origin_status=v_booking.status,
@@ -127,6 +190,8 @@ BEGIN
       work_started_at=NULL,
       work_timer_running=false
   WHERE id=p_booking_id;
+  DELETE FROM srk_private.work_timer_authorizations
+  WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND actor_id=auth.uid();
 
   RETURN jsonb_build_object('success',true,'status','awaiting_work_start_approval');
 END;
@@ -164,6 +229,12 @@ BEGIN
      OR v_booking.work_start_approval_status<>'pending' THEN
     RAISE EXCEPTION 'No work-start request is waiting for approval';
   END IF;
+
+  INSERT INTO srk_private.work_timer_authorizations(transaction_id,booking_id,actor_id)
+  VALUES (pg_catalog.txid_current(),p_booking_id,auth.uid());
+
+  INSERT INTO srk_private.work_timer_authorizations(transaction_id,booking_id,actor_id)
+  VALUES (pg_catalog.txid_current(),p_booking_id,auth.uid());
 
   IF p_response='approved' THEN
     IF v_booking.selected_category IS NOT NULL
@@ -230,6 +301,9 @@ BEGIN
     WHERE id=p_booking_id;
   END IF;
 
+  DELETE FROM srk_private.work_timer_authorizations
+  WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND actor_id=auth.uid();
+
   RETURN jsonb_build_object('success',true,'response',p_response);
 END;
 $function$;
@@ -274,6 +348,8 @@ BEGIN
     RAISE EXCEPTION 'Accumulated timer exceeds supported whole-second storage';
   END IF;
 
+  INSERT INTO srk_private.work_timer_authorizations(transaction_id,booking_id,actor_id)
+  VALUES (pg_catalog.txid_current(),p_booking_id,auth.uid());
   UPDATE public.service_bookings
   SET work_timer_elapsed_seconds=v_elapsed,
       work_timer_seconds=v_whole_seconds::bigint,
@@ -282,6 +358,8 @@ BEGIN
       completion_requested_at=clock_timestamp(),
       completion_approval_status='pending'
   WHERE id=p_booking_id;
+  DELETE FROM srk_private.work_timer_authorizations
+  WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND actor_id=auth.uid();
 
   RETURN jsonb_build_object(
     'success',true,'completion_status','pending',
@@ -358,18 +436,14 @@ BEGIN
         v_minutes::bigint,v_amount_paise,v_amount
       );
 
-      -- Legacy reporting columns carry labour only for this new flow.
-      -- materials_amount remains untouched (normally its legacy default 0).
-      UPDATE public.service_bookings
-      SET service_charge=v_amount,commission_amount=NULL
-      WHERE id=p_booking_id;
-    END IF;
+     END IF;
 
     INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
     VALUES (pg_catalog.txid_current(),p_booking_id,'completed');
 
     UPDATE public.service_bookings
     SET status='completed',
+        service_charge=CASE WHEN v_booking.selected_category IS NOT NULL THEN v_amount ELSE service_charge END,
         completion_approval_status='approved',
         customer_completed_at=clock_timestamp(),
         work_timer_running=false,
@@ -395,6 +469,9 @@ BEGIN
         work_started_at=NULL
     WHERE id=p_booking_id;
   END IF;
+
+  DELETE FROM srk_private.work_timer_authorizations
+  WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND actor_id=auth.uid();
 
   RETURN jsonb_build_object(
     'success',true,'response',p_response,
