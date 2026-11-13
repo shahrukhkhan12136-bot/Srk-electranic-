@@ -552,8 +552,14 @@ const customerBookingEventLabels={
  work_completion_admin_approved:'Admin ने समीक्षा के बाद काम पूरा स्वीकार किया',
  booking_work_state_changed:'बुकिंग की स्थिति अपडेट हुई'
 };
-function customerBookingEventText(eventType){
- return customerBookingEventLabels[String(eventType||'')]||'बुकिंग की स्थिति में बदलाव दर्ज हुआ';
+function customerBookingEventText(eventType,newStatus){
+ const type=String(eventType||'');
+ if(type==='booking_work_state_changed'){
+  const status=String(newStatus||'').toLowerCase();
+  const statusLabels={new:'नई बुकिंग दर्ज हुई',pending:'इलेक्ट्रिशियन की उपलब्धता / ऑफ़र की प्रतीक्षा',confirmed:'बुकिंग की पुष्टि हुई',assigned:'इलेक्ट्रिशियन असाइन हुआ',accepted:'इलेक्ट्रिशियन ने बुकिंग स्वीकार की',inspection:'निरीक्षण की स्थिति में बुकिंग',awaiting_quote_approval:'मेहनताना स्वीकृति की प्रतीक्षा',quote_approved:'मेहनताना स्वीकृत',quote_rejected:'मेहनताना प्रस्ताव अस्वीकृत',en_route:'इलेक्ट्रिशियन रास्ते में है',travelling:'इलेक्ट्रिशियन रास्ते में है',arrived:'इलेक्ट्रिशियन पहुँच गया',awaiting_work_start_approval:'काम शुरू करने की आपकी मंजूरी प्रतीक्षित',in_progress:'काम शुरू हुआ / जारी है',completion_requested:'काम पूरा होने की आपकी पुष्टि प्रतीक्षित',completed:'काम पूरा हुआ',cancelled:'बुकिंग रद्द हुई',rejected:'बुकिंग स्वीकार नहीं हुई',disputed:'बुकिंग समीक्षा / विवाद में गई'};
+  return statusLabels[status]||'बुकिंग की स्थिति अपडेट हुई';
+ }
+ return customerBookingEventLabels[type]||'बुकिंग की स्थिति में बदलाव दर्ज हुआ';
 }
 function customerBookingActorText(actorRole){
  return ({customer:'ग्राहक',electrician:'इलेक्ट्रिशियन',admin:'Admin',system:'सिस्टम'})[String(actorRole||'')]||'';
@@ -743,7 +749,7 @@ async function loadCustomerBookings(reset=true) {
       const events=timelineMap.get(row.id)||[];
       const historyMarkup=events.length
         ? '<ol class="customer-booking-timeline" aria-label="बुकिंग स्थिति का इतिहास">'+events.map(event=>
-            '<li><span class="timeline-dot" aria-hidden="true"></span><div><b>'+customerEsc(customerBookingEventText(event.event_type))+'</b><small>'+customerEsc(customerBookingTimeText(event.occurred_at))+(customerBookingActorText(event.actor_role)?' · '+customerEsc(customerBookingActorText(event.actor_role)):'')+'</small></div></li>'
+            '<li><span class="timeline-dot" aria-hidden="true"></span><div><b>'+customerEsc(customerBookingEventText(event.event_type,event.new_status))+'</b><small>'+customerEsc(customerBookingTimeText(event.occurred_at))+(customerBookingActorText(event.actor_role)?' · '+customerEsc(customerBookingActorText(event.actor_role)):'')+'</small></div></li>'
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
       const paymentLabel=customerBookingPaymentStatusText(row.payment_status);
