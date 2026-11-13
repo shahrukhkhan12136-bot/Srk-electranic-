@@ -1087,3 +1087,11 @@
 - Handler regression tests जोड़े: पुरानी तारीख 400 पर reject और rate-limit/booking insert तक न पहुँचे; 23:59 वैध तथा 24:00 reject।
 - Commits: timezone formatter 26472f950ceb6c1a2ba180970ccf5ce2c706b98f; handler tests b69b7363b341f0ef9f7a6f8136752e9908ed01cf.
 - अभी source code/tests review मात्र है; test suite/CI का निष्पादन प्रमाण उपलब्ध नहीं। Same-day cutoff और booking hours अभी business decision की प्रतीक्षा में हैं। PIN-to-district authoritative validation भी अभी लागू नहीं।
+
+
+### 13 नवम्बर 2026 — Customer booking markup review
+
+- Booking form के PIN validation disclosure की HTML जाँच में paragraph closing tag की कमी मिली; उसे ठीक किया ताकि अगला Address label उसी paragraph के भीतर न रहे।
+- Regression assertion जोड़ा कि PIN सूचना का paragraph सही तरह बंद हो और Address label उसके बाद आए।
+- Commits: markup abc098af7e755b37142e275b086ef92a82180edb; assertion 6113a88f598cea62be36653fb7625e4232e25c78.
+- Tests/CI अभी execute या verify नहीं हुए हैं।
