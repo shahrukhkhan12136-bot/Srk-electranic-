@@ -1,0 +1,14 @@
+BEGIN;
+SELECT plan(10);
+SELECT has_function('public','srk_admin_prepare_booking_refund','Admin refund prepare RPC exists');
+SELECT ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure))>0,'Admin role is required');
+SELECT ok(position('completion_approval_status' in pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure))>0,'Customer-approved completion required');
+SELECT ok(position('srk_booking_labour_bills' in pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure))>0,'Immutable labour bill is source of amount');
+SELECT ok(position('amount_paise' in pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure))>0,'Refund amount checked in integer paise');
+SELECT ok(position('payout_status=''paid''' in pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure))>0,'Already-paid electrician payout blocks automatic refund');
+SELECT ok(position('cash_due_settlement' in pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure))>0,'Settled pooled cash fee blocks automatic refund');
+SELECT ok(position('pg_advisory_xact_lock' in pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure))>0,'Per-electrician financial lock is acquired');
+SELECT ok(position('provider_submitted'',false' in pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure))>0,'Preparation does not claim provider submission');
+SELECT ok(NOT has_function_privilege('anon','public.srk_admin_prepare_booking_refund(uuid)','EXECUTE') AND has_function_privilege('authenticated','public.srk_admin_prepare_booking_refund(uuid)','EXECUTE'),'RPC is not anonymously executable');
+SELECT * FROM finish();
+ROLLBACK;
