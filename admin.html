@@ -57,7 +57,7 @@ async function loadAdminRefundRequests(){
   const body=document.getElementById('adminRefundRows'),status=document.getElementById('adminRefundStatus');
   if(!body||!sb||!user)return;
   body.innerHTML='<tr><td colspan="6">रिफंड सूची लोड हो रही है…</td></tr>';
-  const {data,error}=await sb.rpc('srk_admin_list_booking_refund_requests');
+  const {data,error}=await sb.rpc('srk_admin_list_booking_refund_requests_v2');
   if(error){body.innerHTML='<tr><td colspan="6" class="danger">रिफंड सूची उपलब्ध नहीं: '+esc(error.message)+'</td></tr>';status.textContent='सुरक्षित Admin refund RPC migration लागू और verify होने के बाद ही सूची खुलेगी।';return;}
   const rows=Array.isArray(data)?data:[];
   body.innerHTML=rows.map(x=>{
@@ -65,11 +65,41 @@ async function loadAdminRefundRequests(){
    let actions='—';
    if(x.request_status==='requested')actions='<button type="button" onclick="reviewRefundRequest(\''+x.request_id+'\',\'in_review\')">जाँच शुरू करें</button>';
    else if(x.request_status==='in_review')actions='<button type="button" onclick="reviewRefundRequest(\''+x.request_id+'\',\'approved\')">रिफंड अनुरोध मंजूर</button><button class="alt" type="button" onclick="reviewRefundRequest(\''+x.request_id+'\',\'rejected\')">अस्वीकार करें</button>';
+    else if(x.request_status==='approved' && !x.razorpay_payment_id)actions='<button type="button" onclick="prepareManualRefund(\''+x.request_id+'\')">Manual Refund तैयार करें</button>';
     else if(x.request_status==='approved')actions='<button type="button" onclick="prepareRazorpayRefund(\''+x.request_id+'\')">सुरक्षित Razorpay रिफंड तैयार करें और भेजें</button>';
+    if(x.manual_refund_status==='prepared')actions='<button type="button" onclick="recordManualRefundTransfer(\''+x.request_id+'\')">वास्तविक Transfer का Reference दर्ज करें</button>';
+    else if(x.manual_refund_status==='paid')actions='<button type="button" onclick="finalizeManualRefund(\''+x.request_id+'\')">Refund Ledger Final करें</button>';
+    else if(x.manual_refund_status==='requires_reconciliation')actions='<span class="danger">Manual reconciliation आवश्यक</span>';
     else if(x.request_status==='processing'||x.request_status==='unknown')actions='<button type="button" onclick="retryRazorpayRefund(\''+x.request_id+'\')">उसी सुरक्षित key से रिफंड स्थिति जाँचें / retry</button>';
    return '<tr><td>'+esc(x.customer_name||'ग्राहक')+'<br>'+esc(x.customer_phone||'')+'<br><small>'+esc(x.booking_id)+'</small></td><td><b>₹'+Number(x.refund_amount||0).toFixed(2)+'</b></td><td>'+esc(x.payment_method||'—')+' / '+esc(x.payment_status||'—')+'<br>Payment ID: '+esc(x.razorpay_payment_id||'—')+'<br>Labour Bill: ₹'+Number(x.labour_amount||0).toFixed(2)+' ('+esc(x.labour_amount_paise??'—')+' paise)</td><td>'+esc(x.reason)+'</td><td>'+statusTag+'<br><small>'+esc(x.admin_note||'कोई Admin नोट नहीं')+'</small><br><small>'+esc(new Date(x.created_at).toLocaleString('en-IN'))+'</small></td><td>'+actions+'</td></tr>';
   }).join('')||'<tr><td colspan="6">अभी कोई रिफंड अनुरोध नहीं है।</td></tr>';
-  status.textContent='कुल अनुरोध: '+rows.length+' • मंजूरी से पैसा अपने-आप नहीं भेजा जाएगा।';
+  status.textContent='कुल अनुरोध: '+rows.length+' • Manual transfer बाहर से Admin करता है; ऐप केवल reference और ledger audit दर्ज करता है।';
+}
+async function prepareManualRefund(id){
+  if(!confirm('यह केवल manual refund intent तैयार करेगा। पैसा SRK ELECTRONIC ऐप से नहीं भेजा जाएगा। ग्राहक को Cash/UPI/Bank Transfer बाहर से लौटाने की व्यवस्था Admin को अलग से करनी होगी। आगे बढ़ें?'))return;
+  const {data,error}=await sb.rpc('srk_admin_prepare_manual_booking_refund',{p_request_id:id});
+  if(error){alert('Manual refund तैयारी रोकी गई: '+error.message);return;}
+  alert('Manual refund intent: '+data.status+' • राशि ₹'+(Number(data.amount_paise||0)/100).toFixed(2)+'. वास्तविक पैसा लौटाने के बाद ही उसका reference दर्ज करें।');
+  await loadAdminRefundRequests();
+}
+async function recordManualRefundTransfer(id){
+  const reference=prompt('ग्राहक को पैसा वास्तव में लौटाने के बाद UPI/Bank/Cash receipt reference दर्ज करें (4–120 अक्षर)।');
+  if(reference===null)return;
+  if(reference.trim().length<4){alert('मान्य transfer reference आवश्यक है।');return;}
+  if(!confirm('क्या ग्राहक को पूरी स्वीकृत Labour Bill राशि वास्तव में लौटाई जा चुकी है? केवल हाँ होने पर दर्ज करें।'))return;
+  const note=prompt('Transfer का संक्षिप्त विवरण (वैकल्पिक):')||null;
+  const {data,error}=await sb.rpc('srk_admin_record_manual_refund_transfer',{p_request_id:id,p_transfer_reference:reference.trim(),p_note:note});
+  if(error){alert('Transfer evidence सेव नहीं हुआ: '+error.message);return;}
+  alert('Transfer reference सुरक्षित रूप से दर्ज हो गया। अब अलग चरण में Refund Ledger Final करें।');
+  await loadAdminRefundRequests();
+}
+async function finalizeManualRefund(id){
+  if(!confirm('अब booking को refunded mark करके Platform Fee/Payout ledger reversal final होगा। क्या ग्राहक को लौटाई गई राशि का reference पहले से दर्ज है?'))return;
+  const {data,error}=await sb.rpc('srk_admin_finalize_manual_booking_refund',{p_request_id:id});
+  if(error){alert('Finalization विफल; Transfer evidence सुरक्षित रहना चाहिए। उसी intent पर Admin जाँच/Retry करें: '+error.message);return;}
+  if(!data?.success){alert('Refund final नहीं हुआ: '+(data?.reason||data?.status||'Admin reconciliation आवश्यक'));return;}
+  alert('Manual refund और ledger finalization सफल। राशि ₹'+(Number(data.amount_paise||0)/100).toFixed(2));
+  await loadAdminRefundRequests();
 }
 async function prepareRazorpayRefund(id){
   if(!confirm('क्या आप इस स्वीकृत Labour Bill रिफंड को Razorpay पर भेजना चाहते हैं? अनुरोध पहले सुरक्षित रूप से दर्ज होगा और उसी idempotency key से retry होगा।'))return;
