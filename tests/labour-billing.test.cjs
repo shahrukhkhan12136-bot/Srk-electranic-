@@ -110,3 +110,25 @@ test("accepted electrician keeps customer contact during pending work-start appr
   assert.match(migration, /THEN b\.phone ELSE NULL END/);
   assert.match(migration, /b\.assigned_electrician_id=p\.id/);
 });
+
+
+test("database migration adds Admin-reviewed completion and append-only work event history", () => {
+  const migrationPath = path.join(__dirname, "../supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql");
+  const migration = fs.readFileSync(migrationPath, "utf8");
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS public\.srk_booking_work_events/);
+  assert.match(migration, /BEFORE UPDATE OR DELETE ON public\.srk_booking_work_events/);
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.srk_admin_approve_work_completion/);
+  assert.match(migration, /completion_requested_at/);
+  assert.match(migration, /work_timer_elapsed_seconds/);
+  assert.match(migration, /is_srk_admin\(\)/);
+  assert.match(migration, /srk_booking_labour_bills/);
+});
+
+test("Admin completion review keeps the original request timestamp and customer bill path compatible", () => {
+  const migrationPath = path.join(__dirname, "../supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql");
+  const migration = fs.readFileSync(migrationPath, "utf8");
+  assert.match(migration, /NEW\.completion_requested_at IS DISTINCT FROM v_booking\.completion_requested_at/);
+  assert.match(migration, /v_booking\.completion_requested_at,v_minutes::bigint/);
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.srk_customer_respond_work_completion/);
+  assert.match(migration, /completion_requested_at,v_booking\.completion_requested_at/);
+});
