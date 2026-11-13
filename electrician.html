@@ -42,13 +42,6 @@ async function requestWorkCompletion(id){if(!confirm('क्या काम प
 async function loadElectricianBill(id){const box=document.getElementById('labour-bill-'+id);if(!box)return;const {data,error}=await sb.rpc('srk_electrician_get_labour_bill',{p_booking_id:id});if(error){box.textContent='अंतिम Labour Bill अभी उपलब्ध नहीं है। Admin से जाँच कराएँ।';return;}box.innerHTML='<p>वास्तविक समय: <b>'+esc(data.billable_minutes)+' मिनट</b></p><p>मंजूर Rate Tier: '+esc(data.rate_tier)+'</p><p>अंतिम Labour Amount: <b>₹'+Number(data.labour_amount).toFixed(2)+'</b></p><p class="muted">राशि सर्वर द्वारा गणना की गई है; इसे ऐप में बदला नहीं जा सकता।</p>'+(String(box.dataset.paymentMethod||'').toLowerCase().includes('cash')&&String(box.dataset.paymentStatus||'').toLowerCase()!=='paid'?'<button onclick="confirmCashPayment(\''+id+'\')">नकद भुगतान प्राप्त होने की पुष्टि करें</button>':'');}
 async function confirmCashPayment(id){if(!confirm('क्या ग्राहक ने पूरी Labour Amount नकद दे दी है? केवल वास्तविक नकद प्राप्त होने पर पुष्टि करें।'))return;const {data,error}=await sb.rpc('srk_electrician_confirm_cash_payment',{p_booking_id:id});if(error){alert('नकद भुगतान की पुष्टि नहीं हुई: '+error.message);return;}alert('नकद भुगतान की पुष्टि दर्ज हो गई।');refresh();}
 
-async function submitQuote(id){
- const service=Number(document.getElementById('service-'+id)?.value),materials=0,note=document.getElementById('note-'+id)?.value||'';
- if(!Number.isFinite(service)||service<=0){alert('काम का सही मेहनताना भरें।');return;}
- if(!confirm('ग्राहक को केवल काम के मेहनताने ₹'+service.toFixed(2)+' का कोटेशन भेजें?'))return;
- const {error}=await sb.rpc('srk_submit_booking_quote',{p_booking_id:id,p_service_charge:service,p_materials_amount:materials,p_quote_note:note});
- if(error){alert('कोटेशन नहीं भेजा गया: '+error.message);return;}alert('कोटेशन ग्राहक को भेज दिया गया।');refresh();
-}
 async function workStatus(id,status){
  const labels={inspection:'घर पर निरीक्षण शुरू करें?',in_progress:'ग्राहक की मंजूरी के बाद काम शुरू करें?',completed:'काम पूरा दर्ज करें?'};
  if(!confirm(labels[status]||'स्थिति बदलें?'))return;
