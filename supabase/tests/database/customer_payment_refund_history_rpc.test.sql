@@ -1,5 +1,9 @@
 begin;
-select plan(10);
+select plan(11);
+select ok(
+  position('event_id uuid' in pg_get_function_result('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0
+  and position('description text' in pg_get_function_result('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
+  'replacement preserves the original eight-column RPC result contract');
 select ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
  'payment history requires authenticated identity');
 select ok(position('b.customer_user_id=v_uid' in pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
