@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const html = fs.readFileSync('booking.html', 'utf8');
 const profileMigration = fs.readFileSync('supabase/migrations/20261113200000_customer_profile_api_and_avatar_security.sql', 'utf8');
 const supportAttachmentMigration = fs.readFileSync('supabase/migrations/20261114170000_harden_customer_support_attachment_object_integrity.sql', 'utf8');
+const customerReceiptMigration = fs.readFileSync('supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql', 'utf8');
 
 test('customer menu keeps the approved five-menu order and accessible tab controls', () => {
   const nav = html.match(/<nav class="customer-menu-nav"[\s\S]*?<\/nav>/)?.[0] || '';
@@ -127,4 +128,28 @@ test('customer avatar lifecycle keeps profile save separate from preview and cle
   assert.match(html, /if\(!customerCurrentAvatarPath\)setCustomerAvatarPreview\(''\)/);
   assert.match(html, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
   assert.match(html, /फोटो का पूर्वावलोकन अभी उपलब्ध नहीं है/);
+});
+
+
+test('customer payment and refund history refreshes safely and only verified payment rows offer receipts', () => {
+  assert.match(html, /let customerPaymentHistoryLoadSequence=0/);
+  assert.match(html, /const sequence=\+\+customerPaymentHistoryLoadSequence/);
+  assert.match(html, /if\(sequence!==customerPaymentHistoryLoadSequence\)return/);
+  assert.match(html, /if\(sequence===customerPaymentHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(html, /let customerRefundHistoryLoadSequence=0/);
+  assert.match(html, /const sequence=\+\+customerRefundHistoryLoadSequence/);
+  assert.match(html, /if\(sequence!==customerRefundHistoryLoadSequence\)return/);
+  assert.match(html, /if\(sequence===customerRefundHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(html, /row\.event_type==='payment'&&row\.status==='paid'&&row\.booking_id/);
+  assert.match(html, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
+});
+
+test('customer payment receipt uses immutable labour amount and never infers materials', () => {
+  assert.match(customerReceiptMigration, /srk_booking_labour_bills/);
+  assert.match(customerReceiptMigration, /labour_amount_paise = round\(v_booking\.amount_paid \* 100\)::bigint/);
+  assert.match(customerReceiptMigration, /elsif not v_has_bill/);
+  assert.match(customerReceiptMigration, /v_booking\.service_charge/);
+  assert.doesNotMatch(customerReceiptMigration, /materials_amount/i);
+  assert.match(customerReceiptMigration, /customer_user_id = v_uid/);
+  assert.match(customerReceiptMigration, /grant execute on function public\.srk_customer_get_payment_receipt\(uuid\) to authenticated/i);
 });
