@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.srk_manual_refund_intents (
   prepared_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   recorded_by uuid REFERENCES auth.users(id) ON DELETE RESTRICT,
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
   paid_at timestamptz,
   processed_at timestamptz,
   last_error text
@@ -83,6 +84,16 @@ BEGIN
       pg_catalog.hashtextextended(v_booking.assigned_electrician_id::text,0)
     );
   END IF;
+  SELECT * INTO v_intent FROM public.srk_manual_refund_intents
+   WHERE request_id=v_req.id FOR UPDATE;
+  IF FOUND THEN
+    IF v_intent.payment_entry_id<>v_payment.id OR v_intent.amount_paise<>v_amount THEN
+      RAISE EXCEPTION 'EXISTING_MANUAL_REFUND_INTENT_MISMATCH' USING ERRCODE='55000';
+    END IF;
+    RETURN jsonb_build_object('success',true,'already_prepared',true,
+      'intent_id',v_intent.id,'status',v_intent.status,'amount_paise',v_intent.amount_paise);
+  END IF;
+
   SELECT * INTO v_payout FROM public.srk_electrician_payouts
    WHERE booking_id=v_booking.id FOR UPDATE;
   IF FOUND THEN
@@ -108,15 +119,6 @@ BEGIN
     RAISE EXCEPTION 'CASH_FEE_DUE_ALREADY_SETTLED_ADMIN_RECONCILIATION_REQUIRED' USING ERRCODE='55000';
   END IF;
 
-  SELECT * INTO v_intent FROM public.srk_manual_refund_intents
-   WHERE request_id=v_req.id FOR UPDATE;
-  IF FOUND THEN
-    IF v_intent.payment_entry_id<>v_payment.id OR v_intent.amount_paise<>v_amount THEN
-      RAISE EXCEPTION 'EXISTING_MANUAL_REFUND_INTENT_MISMATCH' USING ERRCODE='55000';
-    END IF;
-    RETURN jsonb_build_object('success',true,'already_prepared',true,
-      'intent_id',v_intent.id,'status',v_intent.status,'amount_paise',v_intent.amount_paise);
-  END IF;
   INSERT INTO public.srk_manual_refund_intents
     (request_id,booking_id,payment_entry_id,amount_paise,previous_payout_note,prepared_by)
   VALUES(v_req.id,v_booking.id,v_payment.id,v_amount,v_prev_note,auth.uid())
