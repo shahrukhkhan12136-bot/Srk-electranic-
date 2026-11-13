@@ -792,6 +792,7 @@ async function saveCustomerProfile() {
  const fullName=document.getElementById('customerProfileName').value.trim();
  if(fullName.length<2||fullName.length>120){setCustomerProfileStatus('नाम 2 से 120 अक्षरों के बीच दर्ज करें।',true);return;}
  button.disabled=true;setCustomerProfileStatus('प्रोफ़ाइल सेव हो रही है…');
+ let uploadCleanupFailed=false;
  try {
   let avatarPath=customerCurrentAvatarPath;
   const file=document.getElementById('customerAvatarFile').files?.[0]||null;
@@ -816,7 +817,7 @@ async function saveCustomerProfile() {
   if(error) {
    if(uploadedAvatarPath) {
     const cleanup=await customerSb.storage.from('srk-customer-avatars').remove([uploadedAvatarPath]);
-    if(cleanup.error)setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हुई और नई अपलोड फोटो की सफाई भी नहीं हो सकी। दोबारा कोशिश से पहले सहायता लें।',true);
+    if(cleanup.error)uploadCleanupFailed=true;
    }
    throw error;
   }
@@ -835,7 +836,7 @@ async function saveCustomerProfile() {
   } else {
    setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
   }
- } catch(e){setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||''),true);}
+ } catch(e){setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||'')+(uploadCleanupFailed?' नई अपलोड फोटो की सफाई पूरी नहीं हुई; दोबारा कोशिश से पहले सहायता लें।':''),true);}
  finally{button.disabled=false;}
 }
 let customerSavedAddresses = [];
