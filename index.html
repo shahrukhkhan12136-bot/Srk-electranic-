@@ -102,7 +102,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 96px}
   <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर निरीक्षण करेगा। वह सर्विस शुल्क और सामान का खर्च अलग-अलग देगा। आपकी मंजूरी के बिना काम शुरू नहीं होगा।</p>
   <form id="booking">
    <label for="name">आपका नाम</label><input id="name" required placeholder="नाम लिखें">
-   <label for="phone">मोबाइल नंबर</label><input id="phone" type="tel" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" required placeholder="10 अंकों का मोबाइल नंबर लिखें">
+   <label for="phone">सत्यापित मोबाइल नंबर</label><input id="phone" type="tel" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" required readonly aria-readonly="true" autocomplete="tel" placeholder="OTP लॉगिन के बाद नंबर अपने आप आएगा"><p class="small">बुकिंग उसी OTP-सत्यापित मोबाइल नंबर से होगी। इस नंबर को फॉर्म में बदला नहीं जा सकता।</p>
    <label for="state">राज्य / केंद्रशासित प्रदेश</label><select id="state" required><option value="">राज्य चुनें</option><option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option><option>Andaman and Nicobar Islands</option><option>Chandigarh</option><option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Jammu and Kashmir</option><option>Ladakh</option><option>Lakshadweep</option><option>Puducherry</option></select>
    <label for="district">जिला</label><input id="district" required placeholder="अपना जिला लिखें">
    <label for="pin">PIN Code</label><input id="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required placeholder="6 अंकों का PIN Code">
@@ -259,6 +259,11 @@ async function syncCustomerSession() {
   if (!customerSb) return;
   const { data } = await customerSb.auth.getSession();
   const session = data.session;
+  const bookingPhoneInput = document.getElementById('phone');
+  const verifiedDigits = session?.user?.phone ? session.user.phone.replace(/\\D/g, '') : '';
+  bookingPhoneInput.value = verifiedDigits.length >= 10 ? verifiedDigits.slice(-10) : '';
+  bookingPhoneInput.readOnly = true;
+  bookingPhoneInput.setAttribute('aria-readonly', 'true');
   document.getElementById('customer-login').style.display = session ? 'none' : 'block';
   document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
   document.getElementById('profilePanel').style.display = 'block';
