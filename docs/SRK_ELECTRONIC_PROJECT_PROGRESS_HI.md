@@ -1404,3 +1404,12 @@
 - Supabase changelog check: current November CLI v3 breaking change means database commands target local by default and hosted modifications require explicit `--remote`/confirmation. This work did not invoke CLI or modify hosted DB. (Reference: Supabase CLI v3 migration guide.)
 - Commits: migration `dc458ba2d053f52c395d66e1d622e5261543c1ca`; customer UI `9d8e97a8ba9bbae3e325a27adbb928aa193796b2`; source test `8eb2329b4cf9bd07c4b8f7110a6f1c2cf073097f`; pgTAP `b5fe1c3a2f55327f7c0750b1f056d4bfd5f4deed`; package script `8383b65740a083f77d7c7a3e918c5683997ec280`; workflow `bc97da22ebdfb477852e08a20f0782a2cb05371a`.
 - Next: retrieve CI result and fix any source-test failures; then static review of SQL against Production catalog and feature migration dependencies. Keep migration unapplied until isolated database/JWT/RLS tests and separate approval. Customer App remains active; do not move to Electrician Portal.
+
+
+### 14 नवम्बर 2026 — Offer Expiry Scheduler और Push Trigger की अतिरिक्त Production जाँच
+
+- Production extensions में `pg_net` 0.20.4 मौजूद; `pg_cron` extension मौजूद नहीं और `cron`/`pgagent` schema नहीं मिला। इसलिए इस project DB में pg_cron-आधारित offer timeout scheduler का प्रमाण नहीं है। बाहरी scheduler/Edge Function schedule अभी अलग से सत्यापित करना होगा; पूर्ण निष्कर्ष “कोई scheduler नहीं” नहीं है।
+- `job_offers` पर वास्तविक trigger `trg_srk_push_job_offer` AFTER INSERT OR UPDATE मौजूद है; यह `private.srk_notify_job_offer_push()` चलाता है। Function Vault के `PUSH_WEBHOOK_SECRET` को पढ़कर `net.http_post` से `push-job-offer` Edge Function को webhook payload भेजता है। Secret अनुपलब्ध/कमज़ोर होने पर warning देता है और notification request queue नहीं करता। यह push notification है, expiry scheduler या customer timeline event नहीं।
+- `service_bookings` पर `broadcast_new_booking` AFTER INSERT और `guard_new_booking` BEFORE INSERT मौजूद हैं। Broadcast function PIN match के बाद ही district fallback करता है।
+- Production customer timeline `srk_get_customer_booking_timeline()` status history से ही आता है; branch का richer `srk_customer_get_my_booking_work_timeline()` नाम Production catalog query में नहीं मिला। Branch/Production RPC contract parity अभी अनसुलझी है।
+- अगले implementation gate: Feature Branch का वास्तविक HEAD/tree और migrations directory resolve करना; फिर additive offer-event migration + tests उसी branch पर बनाना। इस session में कोई schema migration या app source change नहीं किया गया; केवल audit/tracker update।
