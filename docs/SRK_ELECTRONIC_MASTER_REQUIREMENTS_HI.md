@@ -3447,3 +3447,15 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - ये source regression checks हैं, वास्तविक DOM interaction/browser E2E tests नहीं। ये Supabase Auth expiry, server-side rate limits, wrong-attempt lockout, CAPTCHA enforcement, SMS delivery या cross-device session behavior प्रमाणित नहीं करते।
 - No third-party dependency install, package lock change, application OTP flow change, Auth config, secret, database, customer session, SMS request, payment or deployment changed.
 - **Status: In Progress.** Harness committed; execution, test fixes if any, browser/device E2E and Production Auth config verification pending.
+
+
+## 17.99 — OTP Source Test के लिए Branch-scoped GitHub Actions Workflow (13 नवम्बर 2026)
+
+- Checklist item: **14.1.1**; क्रमबद्ध execution जारी।
+- `.github/workflows/otp-source-tests.yml` जोड़ा। यह केवल `feature/platform-fee-cash-online-cycle` branch पर push और manual `workflow_dispatch` पर चलता है; Node.js 20 setup करके `npm run test:otp` चलाता है। Permissions केवल `contents: read`; कोई deployment step, secret, production environment या provider call नहीं।
+- Workflow commit: `c55abd82d53f95ddf723436d4935944413ecb1f8`; file refetch SHA `e8bc8b737db2633e816337ec3c848c9a53b95e31`; workflow content re-fetch verified।
+- `package.json` refetch में `test:otp = node --test tests/otp-source.test.cjs` verified। Current test file refetch SHA `55066f3983d8aa1b6238a3810669ece28edfd4d5`; source assertions और inline-script parser content inspect किया।
+- Commit combined status में Vercel Preview check `success` दिखा; यह **OTP test result नहीं** है। Commit-specific workflow-run lookup ने कोई run return नहीं किया और connected GitHub Actions tools में all-branch push run listing उपलब्ध नहीं। इसलिए GitHub Actions job का actual execution/result अभी प्रमाणित नहीं है; tests को PASS नहीं माना गया।
+- Test harness source-level checks हैं; browser interaction, Supabase Auth expiry/rate limits, wrong-attempt lockout, CAPTCHA, SMS delivery या session revocation का प्रमाण नहीं।
+- No Production deployment, Supabase/Auth setting, DB migration, secret, SMS/provider request, payment, customer account/session or production configuration changed. Workflow is scoped to Feature Branch and does not deploy.
+- **Status: In Progress.** Workflow saved/refetched; CI test execution/result and real browser/Auth verification pending.
