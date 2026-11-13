@@ -17,6 +17,6 @@
     "test:electrician-portal": "node --test tests/electrician-portal.test.cjs",
     "test:admin-portal": "node --test tests/admin-portal.test.cjs",
     "test:electrician-push": "node --test tests/electrician-push.test.cjs",
-    "test:refund": "node --test tests/razorpay-refund-handler.test.cjs"
+    "test:refund": "node --test tests/razorpay-refund-handler.test.cjs tests/manual-refund-workflow.test.cjs"
   }
 }
