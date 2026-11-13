@@ -41,3 +41,21 @@ test('rejects missing structured skills',async()=>{const r=await handler(event({
 test('deduplicates declared skills before persistence',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_skill_keys:['house_wiring','house_wiring']})}));assert.equal(r.statusCode,200);assert.deepEqual(inserted[0].requested_skill_keys,['house_wiring']);});
 
 test('rejects more than ten structured skills',async()=>{const r=await handler(event({body:JSON.stringify({...validBody,requested_skill_keys:Array(11).fill('house_wiring')})}));assert.equal(r.statusCode,400);assert.equal(inserted,null);});
+
+test('persists optional applicant map coordinates',async()=>{
+ const r=await handler(event({body:JSON.stringify({...validBody,location_lat:27.43,location_lng:82.18})}));
+ assert.equal(r.statusCode,200);assert.equal(inserted[0].location_lat,27.43);assert.equal(inserted[0].location_lng,82.18);
+});
+test('rejects partial or out-of-range applicant coordinates',async()=>{
+ for(const coordinates of [{location_lat:27.43,location_lng:null},{location_lat:91,location_lng:82.18},{location_lat:27.43,location_lng:181}]){
+  const r=await handler(event({body:JSON.stringify({...validBody,...coordinates})}));
+  assert.equal(r.statusCode,400);assert.equal(inserted,null);
+ }
+});
+test('applicant form exposes optional geolocation picker and submits coordinates',()=>{
+ const fs=require('node:fs');const source=fs.readFileSync(require.resolve('../apply-electrician.html'),'utf8');
+ assert.ok(source.includes('id="captureLocation"'));
+ assert.ok(source.includes('navigator.geolocation.getCurrentPosition'));
+ assert.ok(source.includes('location_lat:form.location_lat.value||null'));
+ assert.ok(source.includes('location_lng:form.location_lng.value||null'));
+});
