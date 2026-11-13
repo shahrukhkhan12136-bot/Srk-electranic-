@@ -771,11 +771,12 @@ async function loadCustomerBookings(reset=true) {
       more.style.display='none';
       return;
     }
-    const [contactsResult,timelineResult,offerTimelineResult,refundResult] = await Promise.all([
+    const [contactsResult,timelineResult,offerTimelineResult,refundResult,cancellationResult] = await Promise.all([
       customerSb.rpc('srk_get_customer_call_contacts'),
       customerSb.rpc('srk_customer_get_my_booking_work_timeline'),
       customerSb.rpc('srk_customer_get_my_booking_offer_timeline'),
-      customerSb.rpc('srk_customer_list_my_booking_refund_requests')
+      customerSb.rpc('srk_customer_list_my_booking_refund_requests'),
+      customerSb.rpc('srk_customer_list_my_booking_cancellation_requests',{p_limit:100,p_offset:0})
     ]);
     if(!isCurrent())return;
     const partialWarnings=[];
@@ -783,6 +784,7 @@ async function loadCustomerBookings(reset=true) {
     if(timelineResult.error)partialWarnings.push('बुकिंग की स्थिति का इतिहास अभी लोड नहीं हो सका।');
     if(offerTimelineResult.error)partialWarnings.push('इलेक्ट्रिशियन ऑफ़र का इतिहास अभी लोड नहीं हो सका।');
     if(refundResult.error)partialWarnings.push('रिफंड अनुरोध की स्थिति अभी लोड नहीं हो सकी।');
+    if(cancellationResult.error)partialWarnings.push('रद्द करने के अनुरोध की स्थिति अभी लोड नहीं हो सकी; नया अनुरोध भेजने से पहले सूची रीफ़्रेश करें।');
     const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
     const timelineMap = new Map();
     const addTimelineRows=(rows)=>{
@@ -800,6 +802,10 @@ async function loadCustomerBookings(reset=true) {
     const refundMap=new Map();
     if(!refundResult.error){
       (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
+    }
+    const cancellationMap=new Map();
+    if(!cancellationResult.error){
+      (cancellationResult.data||[]).forEach(item=>cancellationMap.set(item.booking_id,item));
     }
     const billMap=new Map();
     let billLoadFailures=0;
@@ -822,9 +828,15 @@ async function loadCustomerBookings(reset=true) {
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
       const paymentLabel=customerBookingPaymentStatusText(row.payment_status);
-      const cancellationInfo=!['completed','cancelled'].includes(row.status)
-        ? '<p class="small">बुकिंग रद्द कराने के लिए Help & Support में अनुरोध भेजें। रद्द करने का अंतिम निर्णय Admin करेगा।</p>'
-        : '';
+      const cancellation=cancellationMap.get(row.id);
+      const cancellationEligible=['new','confirmed','assigned'].includes(row.status)&&String(row.payment_status||'unpaid').toLowerCase()==='unpaid';
+      const cancellationInfo=cancellation
+        ? '<div class="job"><b>रद्द करने का अनुरोध:</b> '+customerEsc(cancellation.status==='in_review'?'Admin समीक्षा में':'अनुरोध दर्ज')+'<p class="small">कारण: '+customerEsc(cancellation.customer_reason)+' · '+customerEsc(customerBookingTimeText(cancellation.created_at))+'</p><p class="small">आपकी बुकिंग अभी अपने-आप रद्द नहीं हुई है। अंतिम निर्णय Admin करेगा।</p></div>'
+        : cancellationResult.error
+          ? (cancellationEligible?'<p class="small" role="status">अनुरोध स्थिति सत्यापित नहीं हुई। सुरक्षित रहने के लिए पहले सूची रीफ़्रेश करें।</p>':'')
+          : cancellationEligible
+            ? '<div class="job"><b>बुकिंग रद्द करने का अनुरोध</b><p class="small">अनुरोध भेजने से बुकिंग रद्द नहीं होगी। Admin कारण और उपलब्ध प्रमाण जाँचकर अंतिम निर्णय करेगा। इस शुरुआती चरण में केवल unpaid नई/confirmed/assigned बुकिंग स्वीकार होगी।</p><button type="button" data-booking-id="'+customerEsc(row.id)+'" onclick="customerRequestBookingCancellation(this.dataset.bookingId)">Cancel Booking अनुरोध भेजें</button></div>'
+            : '';
       const refund=refundMap.get(row.id);
       const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
         ? '<div class="job"><b>इलेक्ट्रिशियन ने काम पूरा होने की सूचना दी है।</b><p class="small">कृपया काम जाँचें। पूरा होने पर स्वीकार करें; अधूरा होने पर अस्वीकार करें या विवाद दर्ज करें।</p>'+
@@ -910,6 +922,41 @@ async function loadCustomerBookings(reset=true) {
   } finally {
     if(isCurrent()){customerBookingHistoryBusy=false;box.setAttribute('aria-busy','false');more.disabled=false;if(refresh)refresh.disabled=false;}
   }
+}
+const customerCancellationRequestBusy=new Map();
+async function customerRequestBookingCancellation(bookingId){
+ if(!customerSb||!bookingId||customerCancellationRequestBusy.has(bookingId))return;
+ const generation=customerSessionGeneration;
+ const reason=prompt('बुकिंग रद्द कराने का कारण लिखें (कम-से-कम 20 अक्षर):');
+ if(reason===null)return;
+ const cleanReason=reason.trim();
+ if(cleanReason.length<20||cleanReason.length>1000){alert('कारण 20 से 1000 अक्षरों के बीच होना चाहिए।');return;}
+ if(!customerSessionOperationIsCurrent(generation))return;
+ let idempotencyKey;
+ const storageKey='srk-cancel-request:'+bookingId;
+ try{
+  idempotencyKey=sessionStorage.getItem(storageKey);
+  if(!idempotencyKey){
+   if(!globalThis.crypto?.randomUUID)throw new Error('SECURE_UUID_UNAVAILABLE');
+   idempotencyKey=crypto.randomUUID();
+   sessionStorage.setItem(storageKey,idempotencyKey);
+  }
+ }catch(error){alert('सुरक्षित अनुरोध पहचान तैयार नहीं हो सकी। Browser storage/secure context जाँचकर दोबारा कोशिश करें।');return;}
+ const operation=Symbol('customer-cancellation-request');
+ customerCancellationRequestBusy.set(bookingId,operation);
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_request_booking_cancellation',{p_booking_id:bookingId,p_reason:cleanReason,p_idempotency_key:idempotencyKey});
+  if(!customerSessionOperationIsCurrent(generation))return;
+  if(error)throw error;
+  if(!data?.success)throw new Error('REQUEST_NOT_CONFIRMED');
+  try{sessionStorage.removeItem(storageKey);}catch{}
+  alert('रद्द करने का अनुरोध सुरक्षित रूप से दर्ज हो गया है। बुकिंग अभी रद्द नहीं हुई है; Admin समीक्षा के बाद स्थिति यहाँ दिखाई देगी।');
+  await loadCustomerBookings();
+ }catch(error){
+  if(customerSessionOperationIsCurrent(generation))alert('अनुरोध की पुष्टि नहीं हो सकी। वही सुरक्षित अनुरोध पहचान रखी गई है; My Bookings रीफ़्रेश करके दोबारा कोशिश करें।');
+ }finally{
+  if(customerSessionOperationIsCurrent(generation)&&customerCancellationRequestBusy.get(bookingId)===operation)customerCancellationRequestBusy.delete(bookingId);
+ }
 }
 let customerWorkStartResponseBusy=new Map();
 function invalidateCustomerWorkStartResponses(){customerWorkStartResponseBusy.clear();}
