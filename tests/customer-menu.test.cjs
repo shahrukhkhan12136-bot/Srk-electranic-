@@ -161,6 +161,20 @@ test('customer payment history pagination prevents duplicate loads and restores 
   assert.match(source,/if\(sequence!==customerPaymentHistoryLoadSequence\)return/);
 });
 
+
+test('customer refund history pagination prevents duplicate loads and uses bounded paginated RPC', () => {
+  assert.match(html,/id="customerRefundHistoryMore"/);
+  const start=html.indexOf('async function loadCustomerRefundHistory(reset=true)');
+  const end=html.indexOf('\\nconst customerBookingStatusLabels',start);
+  const source=html.slice(start,end);
+  assert.match(source,/if\\(!customerSb\\|\\|\\(!reset&&customerRefundHistoryBusy\\)\\)return/);
+  assert.ok(source.includes('customerRefundHistoryBusy=true;')&&source.includes('more.disabled=true;'));
+  assert.ok(source.includes('customerRefundHistoryBusy=false;')&&source.includes('more.disabled=false;'));
+  assert.match(source,/p_limit:25,p_offset:requestedOffset/);
+  assert.match(source,/customerRefundHistoryOffset=requestedOffset\\+rows.length/);
+  assert.match(source,/if\\(sequence!==customerRefundHistoryLoadSequence\\)return/);
+});
+
 test('customer payment receipt uses immutable labour amount and never infers materials', () => {
   assert.match(customerReceiptMigration, /srk_booking_labour_bills/);
   assert.match(customerReceiptMigration, /labour_amount_paise = round\(v_booking\.amount_paid \* 100\)::bigint/);
