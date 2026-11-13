@@ -1,0 +1,38 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+
+const html = fs.readFileSync('admin.html', 'utf8');
+
+test('Admin panel has navigable anchors for its existing operational sections', () => {
+  const navStart = html.indexOf('<nav class="admin-menu"');
+  const navEnd = html.indexOf('</nav>', navStart);
+  assert.ok(navStart >= 0 && navEnd > navStart);
+  const nav = html.slice(navStart, navEnd + 6);
+  for (const id of ['adminOverview','adminBookings','adminApplications','adminElectricians','skillMatchingAdmin','adminFinance','adminWallet','adminPlatformFee','adminSupportPanel','adminStaff']) {
+    assert.ok(nav.includes('href="#' + id + '"'), 'missing Admin navigation target: ' + id);
+    assert.equal((html.match(new RegExp('id="' + id + '"','g'))||[]).length, 1, 'target must be unique: ' + id);
+  }
+});
+
+test('Admin access still requires server-side Main Admin allow-list check', () => {
+  assert.ok(html.includes("sb.rpc('is_srk_admin')"));
+  assert.ok(html.includes("if(error||data!==true)"));
+  assert.ok(html.includes("await sb.auth.signOut()"));
+});
+
+test('Staff management is not falsely exposed before role, permission and RLS implementation', () => {
+  assert.ok(html.includes('Authorized Staff Management अभी लागू नहीं है।'));
+  assert.ok(html.includes('View / Add / Edit / Manage permissions'));
+  assert.ok(html.includes('कोई Staff account जोड़ने, अनुमति देने या staff login करने का control सक्रिय नहीं है।'));
+  assert.ok(!html.includes('srk_admin_create_staff'));
+  assert.ok(!html.includes('srk_admin_grant_staff_permission'));
+});
+
+test('Admin inline JavaScript parses after navigation changes', () => {
+  const start = html.lastIndexOf('<script>');
+  const end = html.lastIndexOf('</script>');
+  assert.ok(start >= 0 && end > start);
+  assert.doesNotThrow(() => new vm.Script(html.slice(start + 8, end)));
+});
