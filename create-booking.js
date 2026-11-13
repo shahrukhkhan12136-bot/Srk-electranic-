@@ -30,13 +30,16 @@ const validTime = (value) => {
 // Booking dates are interpreted in the business timezone, not the server's
 // deployment timezone. Same-day cutoff/business hours remain an explicit
 // policy decision and are deliberately not inferred here.
-const indiaToday = (now = new Date()) =>
-  new Intl.DateTimeFormat("en-CA", {
+const indiaToday = (now = new Date()) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Kolkata",
     year: "numeric",
     month: "2-digit",
     day: "2-digit"
-  }).format(now);
+  }).formatToParts(now);
+  const part = (type) => parts.find((item) => item.type === type)?.value || "";
+  return part("year") + "-" + part("month") + "-" + part("day");
+};
 
 async function supabase(path, options = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
