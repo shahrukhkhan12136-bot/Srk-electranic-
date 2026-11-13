@@ -58,7 +58,9 @@ begin
       coalesce(b.payment_verified_at, b.created_at) as occurred_at,
       'बुकिंग भुगतान'::text as description
     from customer_bookings b
-    where coalesce(b.amount_paid, 0) > 0
+    where b.payment_status = 'paid'
+      and b.payment_verified_at is not null
+      and coalesce(b.amount_paid, 0) > 0
 
     union all
 
