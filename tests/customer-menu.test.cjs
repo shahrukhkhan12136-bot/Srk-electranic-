@@ -699,3 +699,12 @@ test('customer completion controls match the server accept reject and dispute co
   assert.ok(history.includes('काम अभी अधूरा है'));
   assert.ok(history.includes('विवाद दर्ज करें'));
 });
+
+
+test('customer cancellation remains an Admin-mediated Help and Support request', () => {
+  assert.ok(html.includes('बुकिंग रद्द कराने के लिए Help & Support में अनुरोध भेजें। रद्द करने का अंतिम निर्णय Admin करेगा।'));
+  assert.ok(!html.includes("rpc('srk_customer_cancel_booking'"));
+  assert.ok(!html.includes("rpc('srk_customer_request_booking_cancellation'"));
+  assert.ok(html.includes("async function createCustomerSupportComplaint()"));
+  assert.ok(html.includes("srk_customer_create_booking_complaint"));
+});
