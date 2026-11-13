@@ -585,3 +585,17 @@ test('customer booking disclosure no longer promises a legacy home inspection qu
   assert.doesNotMatch(html, /पहले इलेक्ट्रिशियन घर आकर काम देखेगा/);
   assert.doesNotMatch(html, /सर्विस चार्ज तथा सामान का अलग-अलग कोटेशन देगा/);
 });
+
+
+test('customer booking shows transparent duration estimates for all published labour tiers', () => {
+  assert.ok(html.includes('id="customerLabourEstimate"'));
+  assert.ok(html.includes('id="customerLabourEstimatePrompt"'));
+  assert.ok(html.includes('id="customerLabourEstimateRows"'));
+  for (const rate of ['89900', '119900', '159900', '199900']) assert.ok(html.includes(rate));
+  assert.match(html, /const estimate=\(rate,hours\)=>[\s\S]*?BigInt\(rate\)\*BigInt\(hours\*60\)/);
+  assert.match(html, /if\(\(numerator%denominator\)\*2n>=denominator\)amount\+=1n/);
+  assert.match(html, /duration\.addEventListener\('change',render\)/);
+  assert.match(html, /काम का प्रकार अपने-आप rate tier तय नहीं करता/);
+  assert.match(html, /सामग्री\/parts इसमें शामिल नहीं हैं/);
+  assert.match(html, /server-recorded वास्तविक billable minutes/);
+});
