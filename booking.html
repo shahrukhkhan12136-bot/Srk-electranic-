@@ -908,27 +908,34 @@ async function loadCustomerBookings(reset=true) {
     if(isCurrent()){customerBookingHistoryBusy=false;box.setAttribute('aria-busy','false');more.disabled=false;if(refresh)refresh.disabled=false;}
   }
 }
-let customerWorkStartResponseBusy=new Set();
+let customerWorkStartResponseBusy=new Map();
+function invalidateCustomerWorkStartResponses(){customerWorkStartResponseBusy.clear();}
 async function customerRespondWorkStart(bookingId,response){
  if(!customerSb||!['approved','rejected'].includes(response)||customerWorkStartResponseBusy.has(bookingId))return;
+ const generation=customerSessionGeneration;
+ const operationToken=Symbol('customer-work-start');
  const question=response==='approved'?'क्या आप इलेक्ट्रिशियन को अभी काम शुरू करने की अनुमति देते हैं?':'क्या आप अभी काम शुरू करने की अनुमति रोकना चाहते हैं?';
  if(!confirm(question))return;
- customerWorkStartResponseBusy.add(bookingId);
+ if(!customerSessionOperationIsCurrent(generation))return;
+ customerWorkStartResponseBusy.set(bookingId,operationToken);
  let responseConfirmed=false;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});
+  if(!customerSessionOperationIsCurrent(generation))return;
   if(error)throw error;
   if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');
   responseConfirmed=true;
   alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');
   try{
+   if(!customerSessionOperationIsCurrent(generation))return;
    await loadCustomerBookings();
   }catch(refreshError){
-   alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। कृपया केवल सूची रीफ़्रेश करें; जवाब दोबारा न भेजें।');
+   if(customerSessionOperationIsCurrent(generation))alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। कृपया केवल सूची रीफ़्रेश करें; जवाब दोबारा न भेजें।');
   }
  }catch(e){
+  if(!customerSessionOperationIsCurrent(generation))return;
   alert(responseConfirmed?'आपका जवाब दर्ज हो गया है। बुकिंग की स्थिति रीफ़्रेश करें।':'आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग रीफ़्रेश करें।');
- }finally{customerWorkStartResponseBusy.delete(bookingId);}
+ }finally{if(customerSessionOperationIsCurrent(generation)&&customerWorkStartResponseBusy.get(bookingId)===operationToken)customerWorkStartResponseBusy.delete(bookingId);}
 }
 function formatCustomerTimer(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');}
 function updateCustomerTimers(){document.querySelectorAll('[id^="customerTimer_"]').forEach(el=>{let seconds=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))seconds+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatCustomerTimer(seconds);});}
@@ -958,6 +965,7 @@ async function customerChangePaymentMethod(id){
   try{if(!customerSessionOperationIsCurrent(generation))return;await loadCustomerBookings();}
   catch(_){if(customerSessionOperationIsCurrent(generation))alert('Online भुगतान की पसंद सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। कृपया सूची को रीफ़्रेश करें।');}
  }catch(_){
+  if(!customerSessionOperationIsCurrent(generation))return;
   alert(saved?'Online भुगतान की पसंद सुरक्षित है। सूची रीफ़्रेश करें।':'भुगतान तरीका नहीं बदला जा सका। कृपया बुकिंग रीफ़्रेश करके दोबारा कोशिश करें।');
  }finally{
   if(customerSessionOperationIsCurrent(generation)&&customerPaymentMethodChangeBusy.get(id)===operationToken){customerPaymentMethodChangeBusy.delete(id);const currentButton=document.getElementById('customerChangePayment_'+id);if(currentButton)currentButton.disabled=wasDisabled;}
@@ -1704,7 +1712,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();invalidateCustomerProfileAndSavedAddresses();invalidateCustomerSupportPrivateState();invalidateCustomerWorkCompletionResponses();invalidateCustomerPaymentMethodChanges();} setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();invalidateCustomerProfileAndSavedAddresses();invalidateCustomerSupportPrivateState();invalidateCustomerWorkStartResponses();invalidateCustomerWorkCompletionResponses();invalidateCustomerPaymentMethodChanges();} setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerPhone').addEventListener('input', () => {
     if (customerPendingOtpPhone && customerPhoneE164() !== customerPendingOtpPhone) {
       customerPendingOtpPhone = null;
