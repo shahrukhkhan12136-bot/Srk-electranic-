@@ -1220,6 +1220,25 @@ async function startRazorpayPayment() {
   }
 }
 
+function customerBookingRequestKey(payload){
+  const storageKey='srk.customer.booking.pending.v1';
+  const fingerprint=JSON.stringify(payload);
+  try{
+    const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');
+    if(saved&&saved.fingerprint===fingerprint&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(saved.key))return saved.key;
+  }catch(_){}
+  const bytes=new Uint8Array(16);
+  if(window.crypto?.getRandomValues)window.crypto.getRandomValues(bytes);
+  else for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);
+  bytes[6]=(bytes[6]&0x0f)|0x40;bytes[8]=(bytes[8]&0x3f)|0x80;
+  const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+  const key=hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+  try{sessionStorage.setItem(storageKey,JSON.stringify({key,fingerprint}));}catch(_){}
+  return key;
+}
+function clearCustomerBookingRequestKey(key){
+  try{const saved=JSON.parse(sessionStorage.getItem('srk.customer.booking.pending.v1')||'null');if(saved?.key===key)sessionStorage.removeItem('srk.customer.booking.pending.v1');}catch(_){}
+}
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
@@ -1235,13 +1254,18 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const customerSession = customerSessionData.session;
     if (!customerSession) throw new Error('बुकिंग के लिए पहले ग्राहक OTP लॉगिन करें।');
     bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
-    const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify({
+    const bookingPayload = {
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), preferred_date: value('date'), preferred_time: value('time'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method
-    }) });
+    };
+    const requestKey = customerBookingRequestKey(bookingPayload);
+    bookingHeaders['Idempotency-Key'] = requestKey;
+    const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify(bookingPayload) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
+    clearCustomerBookingRequestKey(requestKey);
+    pendingBookingId = result.booking_id;
     alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
     await loadCustomerBookings();
   } catch (err) {
