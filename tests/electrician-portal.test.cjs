@@ -11,6 +11,15 @@ test('electrician profile lookup errors render safely into an existing status el
   assert.ok(!html.includes("getElementById('jobs')"));
 });
 
+
+test('profile panel shows only an internal partner reference and honestly discloses missing document workflow', () => {
+  assert.ok(html.includes('id="partnerReferenceId"'));
+  assert.ok(html.includes("आंतरिक पार्टनर संदर्भ ID: '+String(p.id||'उपलब्ध नहीं')"));
+  assert.ok(html.includes('यह UUID केवल आंतरिक पार्टनर संदर्भ है'));
+  assert.ok(html.includes('दस्तावेज़ अपलोड, सुरक्षित दस्तावेज़ सूची, expiry tracking और Admin review'));
+  assert.ok(!html.includes('सरकारी पहचान-पत्र जारी'));
+});
+
 test('electrician verification state is rendered as text, never stored HTML', () => {
   assert.ok(html.includes("stateEl.textContent="));
   assert.ok(html.includes("stateEl.className=p.active?'good':'bad'"));
