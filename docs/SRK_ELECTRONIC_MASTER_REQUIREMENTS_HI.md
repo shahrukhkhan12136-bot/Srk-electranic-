@@ -3433,3 +3433,17 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - सुरक्षित अगला engineering step: Feature Branch में isolated OTP test harness प्रस्तावित करना, जिसमें mocked Supabase Auth responses से UI validation, cooldown, duplicate-click, invalid-code errors, session UI और logout failure handling जाँचे जाएँ। वास्तविक OTP expiry, server-side limits, CAPTCHA enforcement तथा cross-device session behavior के लिए अलग approved Supabase test project/test phone और E2E credentials चाहिए; इन्हें mock tests से PASS घोषित नहीं किया जाएगा।
 - इस audit में package manifest, dependencies, source code, CI workflow, Auth setting, secret, database, SMS provider, user/session या deployment में कोई बदलाव नहीं किया।
 - **Status: In Progress.** Test infrastructure gap का targeted evidence दर्ज; harness implementation, automated tests, Auth dashboard values और controlled runtime tests pending।
+
+
+## 17.98 — Customer OTP के लिए Node Built-in Source Regression Test Harness जोड़ा (13 नवम्बर 2026)
+
+- Checklist item: **14.1.1**।
+- Feature Branch में `tests/otp-source.test.cjs` जोड़ा। यह Node.js built-in `node:test`, `assert` और `vm` पर निर्भर है; कोई नया third-party package install नहीं किया।
+- Test coverage: दोनों customer OTP pages में `signInWithOtp` और SMS `verifyOtp` calls; client cooldown/duplicate-action guards; 4–8 digit input source marker; सभी inline JavaScript blocks का syntax compilation; standalone login logout missing-client/duplicate-action/finally guard; booking logout error handling/finally presence।
+- `package.json` में `test:otp` script जोड़ा: `node --test tests/otp-source.test.cjs`। Package file refetch SHA `5321cb08db24a525cf0c1394d76f7ba17ff19803` था।
+- Test file save/refetch के दौरान source assertions को दोबारा inspect और regex escaping correction की; final test file blob SHA `29d92ed5a8504c8c7100bc0f41eaa0269ea12bd6` (इसके बाद final assertion simplification के लिए latest blob SHA नीचे commit में)।
+- Save commits: package script `f7d030da1f0c76582334b2cb1a194aa0031e72e5`; test file initial `ac88bc2049b453b19811e0fdfcce0008004e3e46`; test assertion corrections `7bc5848bd35b3dc6a2b7637909462d7a4a5748f7` और `625844811ac33d3e78122d659ca9aa02a1d55f52`। Final test file को GitHub से re-fetch कर latest SHA verify किया गया।
+- **Execution boundary:** इस session में repository checkout/local Node runtime या configured CI runner उपलब्ध नहीं था; इसलिए `npm run test:otp` execute नहीं हुआ। Test files save/refetch verified हैं, लेकिन कोई test PASS घोषित नहीं किया जा रहा। CI execution या authorized local checkout पर run आवश्यक है।
+- ये source regression checks हैं, वास्तविक DOM interaction/browser E2E tests नहीं। ये Supabase Auth expiry, server-side rate limits, wrong-attempt lockout, CAPTCHA enforcement, SMS delivery या cross-device session behavior प्रमाणित नहीं करते।
+- No third-party dependency install, package lock change, application OTP flow change, Auth config, secret, database, customer session, SMS request, payment or deployment changed.
+- **Status: In Progress.** Harness committed; execution, test fixes if any, browser/device E2E and Production Auth config verification pending.
