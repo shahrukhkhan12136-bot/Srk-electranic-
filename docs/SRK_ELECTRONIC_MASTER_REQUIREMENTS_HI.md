@@ -2587,7 +2587,7 @@ E. `srk_labour_bill_adjustments` — केवल exceptional Admin-reviewed cor
 - `raw_amount = approved_8h_rate × billable_minutes / 480`; केवल labour/service amount। कोई सामान/parts जोड़ नहीं।
 - Currency calculation integer paise में होनी चाहिए। 480 से भाग देने पर fractional paise संभव हैं; अंतिम paise rounding mode अभी Product decision के लिए खुला है। तब तक exact rounding mode invent न करें।
 - Existing agreed rate amounts ऊपर दिए गए हैं। Category mapping, rate tier pinning और 8 घंटे से अधिक अवधि का formula/maximum अभी स्पष्ट रूप से freeze होना बाकी है।
-- Pause/resume, idle-time exclusion, multiple sessions, timer correction और timer boundary semantics अभी अनिर्णीत हैं। इनका निर्णय हुए बिना production billing migration नहीं।
+- Pause/resume, idle-time exclusion, multiple sessions, timer correction और timer boundary semantics अभी अनिर्णीत हैं। स्पष्ट नियम: एक session चालू रहने पर समय लगातार गिना जाएगा; दो दिन तक भी auto-stop नहीं होगा। इनका निर्णय हुए बिना production billing migration नहीं।
 
 ### 5. Customer approval और payment binding
 - Start approval Customer के authenticated account/verified identity से हो; assigned electrician स्वयं अपनी start request approve नहीं कर सकता।
@@ -2606,7 +2606,7 @@ E. `srk_labour_bill_adjustments` — केवल exceptional Admin-reviewed cor
 
 ### 7. अगली implementation से पहले जरूरी decisions / blockers
 1. Paise rounding rule (nearest paise half-up, half-even या अन्य) की स्पष्ट मंजूरी।
-2. 8 घंटे के बाद rate: same per-minute rate जारी, cap, या अलग overtime rule?
+2. 8 घंटे से आगे का नियम तय: वही approved 8-hour rate ÷ 480 प्रति मिनट, पूरी वास्तविक अवधि पर लगातार लागू; कोई cap/daily reset/overtime multiplier नहीं।
 3. Pause/resume होगा या timer uninterrupted elapsed time होगा?
 4. Customer start/completion approval के लिए timeout और no-response policy; auto-approval निषिद्ध जब तक स्पष्ट मंजूरी न हो।
 5. Dispute resolution और Admin adjustment limits / maker-checker।
@@ -2614,6 +2614,13 @@ E. `srk_labour_bill_adjustments` — केवल exceptional Admin-reviewed cor
 7. Production webhook inbox की full schema/consumer lineage और all quote/payment trigger definitions recover करना।
 
 इस pass में Production से केवल read-only schema/function inventory queries चलाई गईं। कोई DDL/DML, migration, policy, function, trigger, data, provider configuration या deployment नहीं बदला।
+### 17.67A — User clarification: 8 घंटे से अधिक Timer और निरंतर Billing (13 Nov 2026)
+- User ने स्पष्ट किया: Timer शुरू होने के बाद Timer बंद होने तक पूरी अवधि के अनुसार ही रकम निकलेगी। 8 घंटे, 15 घंटे, 24 घंटे, लगातार 2 दिन या उससे अधिक—कोई समय सीमा नहीं।
+- 8-hour category rate केवल reference rate है। पूरे elapsed billable minutes पर समान per-minute rate = approved 8-hour rate / 480 लागू होगा।
+- Timer के चलते रहने पर daily reset, 8-hour cap, auto-stop या overtime multiplier नहीं होगा। Server start timestamp और server stop timestamp से total duration निकलेगा। Timer बंद होने पर ही अंतिम रकम calculate/freeze होगी।
+- उदाहरण (सिर्फ गणना समझाने के लिए): 48 घंटे = 2,880 मिनट; labour amount = 8-hour rate × 2,880 / 480 = 6 × 8-hour rate।
+- User ने यह भी स्पष्ट किया कि रकम Timer बंद होने पर system/server अपने आप निकालेगा; Electrician कोई amount enter नहीं करेगा।
+- अभी भी अलग निर्णय शेष: fractional paise की rounding policy; Pause/Resume/idle-time exclusion; Customer approval/dispute timeout. इन पर कोई अनुमान नहीं लगाया जाएगा।
 ## 17.68 — Production Timer/Quote/Payment Trigger और Webhook Dependency Audit
 
 यह Section 17.67 के बाद Production read-only catalog inspection पर आधारित है। कोई database object/data नहीं बदला।
