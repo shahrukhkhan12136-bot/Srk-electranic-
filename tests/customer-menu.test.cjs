@@ -47,3 +47,22 @@ test('customer payment menu only reads verified history and receipt through cust
   assert.match(html, /data\.document_type!=='payment_receipt'/);
   assert.match(html, /यह टैक्स इनवॉइस नहीं है/);
 });
+
+
+test('support booking selector is populated from only the signed-in customer bookings', () => {
+  assert.match(html, /async function loadCustomerSupportBookings\(\)/);
+  assert.match(html, /\.eq\('customer_user_id',session\.user\.id\)/);
+  assert.match(html, /customerSupportBooking/);
+  assert.match(html, /\.limit\(50\)/);
+});
+
+test('new customer complaint is validated and created through the ownership-checking RPC', () => {
+  assert.match(html, /async function createCustomerSupportComplaint\(\)/);
+  assert.match(html, /customerSupportComplaintCreateBusy/);
+  assert.match(html, /description\.length<20\|\|description\.length>2000/);
+  assert.match(html, /srk_customer_create_booking_complaint/);
+  assert.match(html, /p_booking_id:bookingId,p_category:category,p_description:description/);
+  assert.match(html, /COMPLAINT_DAILY_LIMIT_REACHED/);
+  assert.match(html, /await loadCustomerSupportComplaints\(\)/);
+  assert.match(html, /await loadCustomerSupportMessages\(\)/);
+});
