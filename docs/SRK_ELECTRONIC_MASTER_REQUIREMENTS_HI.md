@@ -3558,3 +3558,17 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Source regression CI run सफल है; इससे वास्तविक SMS OTP delivery/expiry, Supabase Auth project limits, CAPTCHA enforcement, wrong-attempt lockout, browser/device session behavior या production logout revocation प्रमाणित नहीं होते।
 - कोई नया application source, Auth setting, database/migration, secret, SMS/provider, payment या Production deployment बदलाव इस run के रिकॉर्ड के साथ नहीं किया गया।
 - Checklist item 14.1.1 अभी In Progress; CI runtime remediation execution success verified from user-provided run summary, annotations and real OTP/Auth E2E checks pending.
+
+
+## 17.107 — Customer App के पाँच मुख्य मेनू (Checklist 14.1.2) का प्रारंभिक Source Audit (13 Nov 2026)
+
+- क्रमबद्ध Master Checklist के अगले item **14.1.2 — Home, My Bookings, Payments, Help & Support, My Profile** का निरीक्षण शुरू किया गया।
+- Feature Branch source ref: `feature/platform-fee-cash-online-cycle`।
+- `index.html` SHA: `b2c2573b7338bab74ee191db054e697617f29e11`। इसमें SRK branding/tagline और चार promotional service cards हैं; कोई customer navigation, login action या पाँच-मेनू customer panel नहीं है।
+- `booking.html` SHA: `5edcade782121c8984f888a04368bcc266391a79`। इसमें embedded OTP login, एक “मेरी बुकिंग” section, booking form और payment UI है; पाँच मुख्य menu navigation/sections नहीं हैं। “Help & Support” और “My Profile” के customer menu/functional sections नहीं मिले।
+- `customer-login.html` SHA: `a06726bcbd3e04a833b634aeb40b77ff13f47e64`। यह standalone OTP login/session/logout screen है; पाँच-मेनू customer app नहीं।
+- Feature Branch root directory inspection में अलग customer dashboard/app shell file नहीं मिली। उपलब्ध customer-facing entry files इस audit में `index.html`, `customer-login.html`, और `booking.html` हैं।
+- **Gap:** पाँच-मेनू customer app अभी इस source snapshot में implement नहीं है। Existing booking/payment UI को बिना architecture review के menu में wrap करना पर्याप्त नहीं होगा; पहले प्रत्येक menu का data source, authenticated access, ownership/RLS, empty/loading/error/offline states, navigation और mobile accessibility map करना होगा। Existing booking/payment logic को तोड़ने वाला जल्दबाज़ी का UI rewrite नहीं किया जाएगा।
+- **Next safe steps:** customer-facing page/API/RPC inventory; प्रत्येक menu के लिए existing backend/data coverage map; फिर minimal-risk app-shell implementation plan और menu-by-menu source tests। कोई live customer data या account/session access नहीं किया गया।
+- इस audit में कोई application source, database/migration, Auth setting, secret, provider, SMS, payment या deployment नहीं बदला।
+- **Status: In Progress** — source audit ने पाँच-मेनू panel gap की पुष्टि की; implementation और menu-specific tests बाकी हैं। वास्तविक end-to-end tests उपयोगकर्ता के निर्देशानुसार सभी Master Checklist कार्यों के बाद एक batch में होंगे।
