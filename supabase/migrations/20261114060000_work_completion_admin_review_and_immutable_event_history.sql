@@ -514,3 +514,83 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_customer_respond_work_completion(uuid,text,text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.srk_customer_respond_work_completion(uuid,text,text) TO authenticated;
+
+
+-- Expose the original completion-request timestamp in all role-scoped bill
+-- read RPCs so the customer, assigned electrician, and Admin see the same
+-- immutable timing evidence alongside the final actual-duration calculation.
+CREATE OR REPLACE FUNCTION public.srk_customer_get_labour_bill(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_bill public.srk_booking_labour_bills%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  SELECT * INTO v_bill FROM public.srk_booking_labour_bills
+  WHERE booking_id=p_booking_id AND customer_user_id=auth.uid();
+  IF NOT FOUND THEN RAISE EXCEPTION 'Final labour bill not found' USING ERRCODE='42501'; END IF;
+  RETURN jsonb_build_object(
+    'booking_id',v_bill.booking_id,'category',v_bill.customer_work_category,
+    'rate_tier',v_bill.approved_rate_tier,'rate_card_version',v_bill.rate_card_version,
+    'rate8h_paise',v_bill.rate8h_paise,'elapsed_seconds',v_bill.elapsed_seconds,
+    'completion_requested_at',v_bill.completion_requested_at,
+    'billable_minutes',v_bill.billable_minutes,'labour_amount_paise',v_bill.labour_amount_paise,
+    'labour_amount',v_bill.labour_amount,'created_at',v_bill.created_at,
+    'document_type','final_labour_bill'
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_electrician_get_labour_bill(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_bill public.srk_booking_labour_bills%ROWTYPE; v_profile_id uuid;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  SELECT p.id INTO v_profile_id FROM public.electrician_profiles p
+  WHERE (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
+  ORDER BY p.created_at DESC LIMIT 1;
+  IF v_profile_id IS NULL THEN RAISE EXCEPTION 'Electrician profile not found' USING ERRCODE='42501'; END IF;
+  SELECT * INTO v_bill FROM public.srk_booking_labour_bills
+  WHERE booking_id=p_booking_id AND electrician_profile_id=v_profile_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Final labour bill not found' USING ERRCODE='42501'; END IF;
+  RETURN jsonb_build_object(
+    'booking_id',v_bill.booking_id,'category',v_bill.customer_work_category,
+    'rate_tier',v_bill.approved_rate_tier,'rate_card_version',v_bill.rate_card_version,
+    'rate8h_paise',v_bill.rate8h_paise,'elapsed_seconds',v_bill.elapsed_seconds,
+    'completion_requested_at',v_bill.completion_requested_at,
+    'billable_minutes',v_bill.billable_minutes,'labour_amount_paise',v_bill.labour_amount_paise,
+    'labour_amount',v_bill.labour_amount,'electrician_payable',v_bill.electrician_payable,
+    'created_at',v_bill.created_at,'document_type','final_labour_bill'
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_get_labour_bill(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_bill public.srk_booking_labour_bills%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin permission required' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO v_bill FROM public.srk_booking_labour_bills WHERE booking_id=p_booking_id;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN jsonb_build_object(
+    'booking_id',v_bill.booking_id,'customer_work_category',v_bill.customer_work_category,
+    'approved_rate_tier',v_bill.approved_rate_tier,'rate_card_version',v_bill.rate_card_version,
+    'rate8h_paise',v_bill.rate8h_paise,'elapsed_seconds',v_bill.elapsed_seconds,
+    'completion_requested_at',v_bill.completion_requested_at,
+    'billable_minutes',v_bill.billable_minutes,'labour_amount_paise',v_bill.labour_amount_paise,
+    'labour_amount',v_bill.labour_amount,'platform_fee_rate',v_bill.platform_fee_rate,
+    'platform_fee_policy_version',v_bill.platform_fee_policy_version,
+    'platform_fee_amount',v_bill.platform_fee_amount,'electrician_payable',v_bill.electrician_payable,
+    'created_at',v_bill.created_at
+  );
+END;
+$function$;
