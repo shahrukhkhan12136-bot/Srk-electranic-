@@ -610,9 +610,12 @@ function customerRefundStatusText(status){
  const key=String(status||'').toLowerCase();
  return customerRefundStatusLabels[key]||'स्थिति अपडेट';
 }
-let customerWorkCompletionResponseBusy=new Set();
+let customerWorkCompletionResponseBusy=new Map();
+function invalidateCustomerWorkCompletionResponses(){customerWorkCompletionResponseBusy.clear();}
 async function customerRespondWorkCompletion(bookingId,response){
  if(!customerSb||customerWorkCompletionResponseBusy.has(bookingId))return;
+ const generation=customerSessionGeneration;
+ const operationToken=Symbol('customer-work-completion');
  let note=null;
  if(response==='disputed'){
   const field=document.getElementById('customerCompletionDispute_'+bookingId);
@@ -629,28 +632,32 @@ async function customerRespondWorkCompletion(bookingId,response){
   disputed:'क्या आप इस काम पर औपचारिक विवाद दर्ज करना चाहते हैं?'
  };
  if(!confirm(messages[response]||'क्या आप आगे बढ़ना चाहते हैं?'))return;
- customerWorkCompletionResponseBusy.add(bookingId);
+ customerWorkCompletionResponseBusy.set(bookingId,operationToken);
  let responseConfirmed=false;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_respond_work_completion',{
    p_booking_id:bookingId,p_response:response,p_note:note
   });
+  if(!customerSessionOperationIsCurrent(generation))return;
   if(error)throw error;
   if(!data?.success)throw new Error('Completion response was not confirmed');
   responseConfirmed=true;
+  if(!customerSessionOperationIsCurrent(generation))return;
   alert(response==='approved'?'काम पूरा होने की पुष्टि दर्ज हो गई।':
    response==='rejected'?'काम अभी अधूरा दर्ज हुआ है। इलेक्ट्रिशियन का टाइमर फिर शुरू होगा।':
    'आपका विवाद दर्ज हो गया है और Admin समीक्षा करेगा।');
   try{
+   if(!customerSessionOperationIsCurrent(generation))return;
    await loadCustomerBookings();
   }catch(refreshError){
-   alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। कृपया केवल सूची रीफ़्रेश करें; जवाब दोबारा न भेजें।');
+   if(customerSessionOperationIsCurrent(generation))alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। कृपया केवल सूची रीफ़्रेश करें; जवाब दोबारा न भेजें।');
   }
  }catch(error){
+  if(!customerSessionOperationIsCurrent(generation))return;
   alert(responseConfirmed
    ?'आपका जवाब दर्ज हो गया है। बुकिंग की स्थिति रीफ़्रेश करें।'
    :'आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग की वर्तमान स्थिति रीफ़्रेश करके दोबारा कोशिश करें।');
- }finally{customerWorkCompletionResponseBusy.delete(bookingId);}
+ }finally{if(customerSessionOperationIsCurrent(generation)&&customerWorkCompletionResponseBusy.get(bookingId)===operationToken)customerWorkCompletionResponseBusy.delete(bookingId);}
 }
 let customerRefundSubmissionBusy=new Map();
 function invalidateCustomerRefundSubmissions(){
@@ -926,29 +933,32 @@ function formatCustomerTimer(seconds){const n=Math.max(0,Math.floor(Number(secon
 function updateCustomerTimers(){document.querySelectorAll('[id^="customerTimer_"]').forEach(el=>{let seconds=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))seconds+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatCustomerTimer(seconds);});}
 setInterval(updateCustomerTimers,1000);
 
-const customerPaymentMethodChangeBusy=new Set();
+const customerPaymentMethodChangeBusy=new Map();
+function invalidateCustomerPaymentMethodChanges(){customerPaymentMethodChangeBusy.clear();}
 async function customerChangePaymentMethod(id){
  if(!customerSb||!id||customerPaymentMethodChangeBusy.has(id))return;
+ const generation=customerSessionGeneration;
+ const operationToken=Symbol('customer-payment-method');
  if(!confirm('क्या आप इस बुकिंग के लिए Cash की जगह Online (Razorpay) भुगतान स्वयं चुनना चाहते हैं? कोई भुगतान अभी नहीं लिया जाएगा।'))return;
  const button=document.getElementById('customerChangePayment_'+id);
  const wasDisabled=button?.disabled||false;
- customerPaymentMethodChangeBusy.add(id);
+ customerPaymentMethodChangeBusy.set(id,operationToken);
  if(button)button.disabled=true;
  let saved=false;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_change_payment_method',{p_booking_id:id,p_payment_method:'Razorpay ऑनलाइन भुगतान'});
+  if(!customerSessionOperationIsCurrent(generation))return;
   if(error)throw error;
   if(data?.success===false)throw new Error('PAYMENT_METHOD_NOT_UPDATED');
   saved=true;
+  if(!customerSessionOperationIsCurrent(generation))return;
   alert('आपकी पसंद Online भुगतान के रूप में सुरक्षित हो गई है। भुगतान काम पूरा होने के बाद होगा।');
-  try{await loadCustomerBookings();}
-  catch(_){alert('Online भुगतान की पसंद सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। कृपया सूची को रीफ़्रेश करें।');}
+  try{if(!customerSessionOperationIsCurrent(generation))return;await loadCustomerBookings();}
+  catch(_){if(customerSessionOperationIsCurrent(generation))alert('Online भुगतान की पसंद सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। कृपया सूची को रीफ़्रेश करें।');}
  }catch(_){
   alert(saved?'Online भुगतान की पसंद सुरक्षित है। सूची रीफ़्रेश करें।':'भुगतान तरीका नहीं बदला जा सका। कृपया बुकिंग रीफ़्रेश करके दोबारा कोशिश करें।');
  }finally{
-  customerPaymentMethodChangeBusy.delete(id);
-  const currentButton=document.getElementById('customerChangePayment_'+id);
-  if(currentButton)currentButton.disabled=wasDisabled;
+  if(customerSessionOperationIsCurrent(generation)&&customerPaymentMethodChangeBusy.get(id)===operationToken){customerPaymentMethodChangeBusy.delete(id);const currentButton=document.getElementById('customerChangePayment_'+id);if(currentButton)currentButton.disabled=wasDisabled;}
  }
 }
 function customerPayBooking(id,amount){
@@ -1692,7 +1702,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();invalidateCustomerProfileAndSavedAddresses();invalidateCustomerSupportPrivateState();} setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();invalidateCustomerProfileAndSavedAddresses();invalidateCustomerSupportPrivateState();invalidateCustomerWorkCompletionResponses();invalidateCustomerPaymentMethodChanges();} setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerPhone').addEventListener('input', () => {
     if (customerPendingOtpPhone && customerPhoneE164() !== customerPendingOtpPhone) {
       customerPendingOtpPhone = null;
