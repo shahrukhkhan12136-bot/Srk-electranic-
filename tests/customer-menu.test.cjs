@@ -359,3 +359,20 @@ test('customer profile loader ignores stale profile and avatar responses', () =>
   assert.ok(source.includes('if(sequence!==customerProfileLoadSequence)return;'));
   assert.ok(source.includes('if(sequence===customerProfileLoadSequence)setCustomerProfileStatus'));
 });
+
+
+test('customer complaint creation success is not reported as failure when thread refresh fails', () => {
+  const start=html.indexOf('async function createCustomerSupportComplaint()');
+  const end=html.indexOf('\\nasync function loadCustomerSupportComplaints()',start);
+  const source=html.slice(start,end);
+  assert.match(source,/let complaintCreated=false/);
+  assert.match(source,/complaintCreated=true;[\\s\\S]*?customerSupportDescription'\\)\\.value=''/);
+  assert.ok(source.indexOf('complaintCreated=true;') < source.indexOf('await loadCustomerSupportComplaints()'));
+  assert.match(source,/let refreshFailed=false/);
+  assert.match(source,/try\\{await loadCustomerSupportComplaints\\(\\)\\}catch\\(_\\)\\{refreshFailed=true\\}/);
+  assert.match(source,/try\\{await loadCustomerSupportMessages\\(\\)\\}catch\\(_\\)\\{refreshFailed=true\\}/);
+  assert.match(source,/शिकायत सफलतापूर्वक दर्ज हो गई है, लेकिन शिकायत सूची या संदेश अभी रीफ़्रेश नहीं हो सके/);
+  assert.match(source,/शिकायत दोबारा दर्ज न करें/);
+  assert.match(source,/complaintCreated\\s*\\?['"]आपकी शिकायत दर्ज हो चुकी है/);
+  assert.match(source,/finally \\{[\\s\\S]*?customerSupportComplaintCreateBusy=false;button.disabled=false/);
+});
