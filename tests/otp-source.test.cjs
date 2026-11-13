@@ -109,3 +109,14 @@ test('phone edits and logout invalidate pending OTP operations', () => {
   assert.match(html,/\+\+customerOtpOperationSequence;customerPendingOtpPhone = null/);
   assert.match(html,/\+\+customerOtpOperationSequence;customerOtpBusy=false;customerPendingOtpPhone=null/);
 });
+
+
+test('standalone customer login OTP actions are bound to phone and operation identity', () => {
+ const html=fs.readFileSync('customer-login.html','utf8');
+ assert.match(html,/operationSequence\+\+;pendingOtpPhone=null/);
+ assert.match(html,/const operation=\+\+operationSequence;send\.disabled=true/);
+ assert.match(html,/operation!==operationSequence\|\|phoneE164\(\)!==phone/);
+ assert.match(html,/finally\{if\(operation===operationSequence\)\{busy=false;send\.disabled=hasSession\|\|Date\.now\(\)<resendAt;\}\}/);
+ assert.match(html,/const phoneWasDisabled=phoneInput\.disabled;phoneInput\.disabled=true/);
+ assert.match(html,/phoneInput\.disabled=phoneWasDisabled\|\|hasSession/);
+});
