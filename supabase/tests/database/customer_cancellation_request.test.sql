@@ -20,9 +20,11 @@ SELECT ok(position('srk_booking_labour_bills' in pg_get_functiondef('public.srk_
 SELECT ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_start_booking_cancellation_review(uuid,text)'::regprocedure))>0,'review-start RPC is Admin gated');
 SELECT ok(position('UPDATE OR DELETE' in pg_get_triggerdef((SELECT oid FROM pg_trigger WHERE tgname='srk_guard_immutable_booking_cancellation_request_event')))>0,'audit event mutation is blocked by trigger');
 
-INSERT INTO auth.users(id) VALUES
- ('00000000-0000-4000-8000-000000000001'),
- ('00000000-0000-4000-8000-000000000002');
+SET LOCAL ROLE supabase_auth_admin;
+INSERT INTO auth.users(id,aud,role) VALUES
+ ('00000000-0000-4000-8000-000000000001','authenticated','authenticated'),
+ ('00000000-0000-4000-8000-000000000002','authenticated','authenticated');
+RESET ROLE;
 INSERT INTO public.service_bookings(id,customer_user_id,status,payment_status)
 VALUES
  ('10000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','new','unpaid'),
