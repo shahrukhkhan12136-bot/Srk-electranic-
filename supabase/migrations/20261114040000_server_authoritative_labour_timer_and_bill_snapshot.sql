@@ -70,9 +70,16 @@ CREATE TABLE IF NOT EXISTS public.srk_booking_labour_bills (
   billable_minutes bigint NOT NULL CHECK (billable_minutes > 0),
   labour_amount_paise numeric(24,0) NOT NULL CHECK (labour_amount_paise > 0),
   labour_amount numeric(18,2) NOT NULL CHECK (labour_amount > 0),
+  platform_fee_rate numeric(5,2) NOT NULL DEFAULT 15.00 CHECK (platform_fee_rate=15.00),
+  platform_fee_paise numeric(24,0) NOT NULL CHECK (platform_fee_paise>=0),
+  platform_fee_amount numeric(18,2) NOT NULL CHECK (platform_fee_amount>=0),
+  electrician_payable numeric(18,2) NOT NULL CHECK (electrician_payable>=0),
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   CONSTRAINT srk_booking_labour_bill_amount_reconciles
-    CHECK (labour_amount = labour_amount_paise / 100.0)
+    CHECK (labour_amount = labour_amount_paise / 100.0),
+  CONSTRAINT srk_booking_labour_bill_platform_fee_reconciles
+    CHECK (platform_fee_amount=platform_fee_paise/100.0
+      AND labour_amount=platform_fee_amount+electrician_payable)
 );
 
 CREATE INDEX IF NOT EXISTS srk_booking_labour_bills_customer_created_idx
@@ -398,6 +405,9 @@ DECLARE
   v_minutes numeric;
   v_amount_paise numeric;
   v_amount numeric(18,2);
+  v_platform_fee_paise numeric;
+  v_platform_fee numeric(18,2);
+  v_electrician_payable numeric(18,2);
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501';
@@ -441,18 +451,25 @@ BEGIN
         RAISE EXCEPTION 'Final labour amount is outside the supported range';
       END IF;
       v_amount:=round(v_amount_paise/100,2);
+      -- Platform Fee is a separately approved 15% policy, never inferred from
+      -- electrician_profiles/booking commission_rate.
+      v_platform_fee_paise:=floor((v_amount_paise*15/100)+0.5);
+      v_platform_fee:=round(v_platform_fee_paise/100,2);
+      v_electrician_payable:=round(v_amount-v_platform_fee,2);
 
       INSERT INTO public.srk_booking_labour_bills(
         booking_id,customer_user_id,electrician_profile_id,
         customer_work_category,approved_rate_tier,rate_card_version,
         rate8h_paise,elapsed_seconds,billable_minutes,
-        labour_amount_paise,labour_amount
+        labour_amount_paise,labour_amount,platform_fee_rate,
+        platform_fee_paise,platform_fee_amount,electrician_payable
       ) VALUES (
         p_booking_id,v_booking.customer_user_id,v_booking.assigned_electrician_id,
         v_booking.selected_category,v_booking.labour_rate_tier_snapshot,
         v_booking.labour_rate_card_version_snapshot,
         v_booking.labour_rate8h_paise_snapshot,v_booking.work_timer_elapsed_seconds,
-        v_minutes::bigint,v_amount_paise,v_amount
+        v_minutes::bigint,v_amount_paise,v_amount,15.00,
+        v_platform_fee_paise,v_platform_fee,v_electrician_payable
       );
 
      END IF;
