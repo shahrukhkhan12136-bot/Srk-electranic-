@@ -294,7 +294,8 @@ function customerWorkApprovalHtml(row){
   if(row.status==='in_progress'){
     const base=Number(row.work_timer_seconds||0),start=row.work_started_at?Date.parse(row.work_started_at):Date.now(),running=!!row.work_timer_running;
     let html='<div class="job"><b>काम का टाइमर: <span class="customer-work-clock" data-start="'+(Number.isFinite(start)?start:Date.now())+'" data-base="'+base+'" data-running="'+(running?'1':'0')+'">'+customerFormatWorkSeconds(base+(running?Math.max(0,(Date.now()-start)/1000):0))+'</span></b>';
-    if(row.completion_approval_status==='pending')html+='<p>इलेक्ट्रिशियन ने काम पूरा होने की पुष्टि माँगी है। काम देखकर ही मंजूरी दें।</p><button type="button" onclick="customerRespondWorkCompletion(\''+row.id+'\',\'approved\')">काम पूरा — मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerRespondWorkCompletion(\''+row.id+'\',\'rejected\')">काम अभी अधूरा है</button><label for="work-dispute-'+row.id+'">यदि विवाद है, कारण लिखें (कम से कम 20 अक्षर)</label><textarea id="work-dispute-'+row.id+'" maxlength="1000" placeholder="काम में क्या समस्या है?"></textarea><button type="button" style="background:#b42318" onclick="customerRespondWorkCompletion(\''+row.id+'\',\'disputed\')">विवाद दर्ज करें</button>';
+    if(row.completion_approval_status==='disputed')html+='<p class="bad">आपका विवाद Admin Review में है। जाँच पूरी होने तक टाइमर रुका रहेगा।</p>';
+    else if(row.completion_approval_status==='pending')html+='<p>इलेक्ट्रिशियन ने काम पूरा होने की पुष्टि माँगी है। काम देखकर ही मंजूरी दें।</p><button type="button" onclick="customerRespondWorkCompletion(\''+row.id+'\',\'approved\')">काम पूरा — मंजूर करें</button><button type="button" style="background:#627d98" onclick="customerRespondWorkCompletion(\''+row.id+'\',\'rejected\')">काम अभी अधूरा है</button><label for="work-dispute-'+row.id+'">यदि विवाद है, कारण लिखें (कम से कम 20 अक्षर)</label><textarea id="work-dispute-'+row.id+'" maxlength="1000" placeholder="काम में क्या समस्या है?"></textarea><button type="button" style="background:#b42318" onclick="customerRespondWorkCompletion(\''+row.id+'\',\'disputed\')">विवाद दर्ज करें</button>';
     else html+='<p class="small">काम जारी है। इलेक्ट्रिशियन के पूरा करने के अनुरोध पर आप पुष्टि कर सकेंगे।</p>';
     return html+'</div>';
   }
@@ -323,7 +324,7 @@ async function customerQuoteResponse(id,response){
  if(!confirm(response==='approved'?'क्या आप सर्विस और सामान का पूरा कोटेशन मंजूर करते हैं?':'क्या आप यह कोटेशन अस्वीकार करते हैं?'))return;
  const {error}=await customerSb.rpc('srk_customer_respond_booking_quote',{p_booking_id:id,p_response:response});
  if(error){alert('जवाब सेव नहीं हुआ: '+error.message);return;}
- alert(response==='approved'?'कोटेशन मंजूर हो गया। अब इलेक्ट्रिशियन काम शुरू कर सकता है।':'कोटेशन अस्वीकार कर दिया गया। इलेक्ट्रिशियन संशोधित कोटेशन भेज सकता है।');
+ alert(response==='approved'?'कोटेशन मंजूर हो गया। इलेक्ट्रिशियन अब आपसे काम शुरू करने की अनुमति माँगेगा।':'कोटेशन अस्वीकार कर दिया गया। इलेक्ट्रिशियन संशोधित कोटेशन भेज सकता है।');
  await loadCustomerBookings();
 }
 function customerPayBooking(id,amount){
