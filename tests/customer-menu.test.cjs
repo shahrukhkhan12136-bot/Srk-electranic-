@@ -916,6 +916,6 @@ test('profile and saved-address loaders bind every response and cleanup to the c
   assert.match(addresses,/const generation=customerSessionGeneration/);
   assert.match(addresses,/const isCurrent=\(\)=>sequence===customerSavedAddressLoadSequence&&customerSessionOperationIsCurrent\(generation\)/);
   assert.match(addresses,/finally \{if\(isCurrent\(\)\)select\.disabled=false;\}/);
-  assert.match(html,/function invalidateCustomerProfileAndSavedAddresses\(\)[\s\S]*?customerProfileLoadSequence\+\+;\+\+customerSavedAddressLoadSequence/);
+  assert.match(html,/function invalidateCustomerProfileAndSavedAddresses\(\)[\s\S]*?\+\+customerProfileLoadSequence;\+\+customerSavedAddressLoadSequence/);
   assert.match(html,/invalidateCustomerRefundHistory\(\);invalidateCustomerProfileAndSavedAddresses\(\);/);
 });
