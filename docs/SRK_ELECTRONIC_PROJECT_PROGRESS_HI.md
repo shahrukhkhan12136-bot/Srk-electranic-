@@ -1550,3 +1550,5 @@
 - CI follow-up #2: expanded Customer Menu suite ने दो पुराने sequence-only assertions पकड़े; अब वे combined `isCurrent()` session+sequence guard और उसके finally cleanup को verify करते हैं। Test correction commit: `3f39500f1bff35fd0b5e7d92077dce0c0f90ff41`. पहले CI attempts में केवल test expectations fail हुईं; corrected suite का अंतिम परिणाम प्रतीक्षित है।
 
 - CI follow-up #3: avatar preview callback और saved-address loader के दो अन्य पुराने source assertions भी sequence-only implementation से जुड़े थे। इन्हें अब session-aware `isCurrent()` callback/finally behavior पर अपडेट किया: `398833e34daa5a7e805e82f27ec23347075004fb`. अगला workflow result ही अंतिम pass/fail माना जाएगा।
+
+- CI follow-up #4: avatar signed-URL callback में implementation का एक closure अभी sequence-only था; इसे `isCurrent()` session+sequence guard से बाँधा। साथ ही Auth retrieval failure test में पुराना finally assertion बदला। Commits: app `7ef812c31e7c77f78ae4d7fedc0ad22f2344e208`, test `c435403e0a145d47c40c7b3c033512266f20f9bb`. पहले runs ने stale assertions और avatar callback gap पकड़ा; नया regression outcome अभी प्रतीक्षित है।
