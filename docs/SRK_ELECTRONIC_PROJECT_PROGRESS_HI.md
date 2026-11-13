@@ -1702,3 +1702,10 @@
 - Feature branch migration में categorized payout branch का missing `END IF` जोड़ा और स्पष्ट boundary comment रखा, ताकि new labour-only path legacy quote branch से अलग रहे।
 - Timer structural pgTAP plan 102 से 103 किया; नया assertion categorized labour-only payout branch और legacy quote branch के boundary को verify करता है।
 - Fix commit `894542dc322f289695b398a196fbb83a3acc5abe`; pgTAP assertion commit `2a51c79734292ddf53af3d03438ab3c74bbc1845`. Corrected isolated workflow rerun #43518212636 queued/pending at this tracker update; अभी PASS घोषित नहीं।
+
+### Customer refund/payment history — Production RPC parity read-only verification
+
+- Production catalog में केवल `srk_customer_list_booking_refund_requests()` मिला; इसका return contract पुराने fields में `admin_note` भी शामिल करता है। Production में branch UI वाला `srk_customer_list_my_booking_refund_requests()` और नया `srk_customer_get_payment_history(integer,integer)` नहीं मिला।
+- Feature branch का `20261113235900_harden_customer_cancellation_and_safe_refund_history.sql` अलग नाम से customer-owned, customer-safe zero-argument RPC बनाता है; `20261114210000_customer_refund_history_pagination.sql` उसी नाम का `(integer,integer)` overload बनाता है, stable `created_at DESC,id DESC` pagination के साथ। यह Production legacy RPC को overwrite नहीं करता।
+- Payment history RPC branch migration `20261114200000_customer_payment_refund_history_rpc.sql` में है; Production में अभी अनुपस्थित होना expected migration dependency है, live feature availability का प्रमाण नहीं। कोई Production DDL नहीं किया।
+- Refund history UI paginated overload को `{p_limit:25,p_offset}` के साथ call करती है; customer-visible rendering में `admin_note` नहीं दिखाया जाता। Migration application, JWT/RLS runtime और real UI अभी unverified हैं।
