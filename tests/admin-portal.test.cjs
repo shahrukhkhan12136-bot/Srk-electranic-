@@ -10,7 +10,7 @@ test('Admin panel has navigable anchors for its existing operational sections', 
   const navEnd = html.indexOf('</nav>', navStart);
   assert.ok(navStart >= 0 && navEnd > navStart);
   const nav = html.slice(navStart, navEnd + 6);
-  for (const id of ['adminOverview','adminBookings','adminApplications','adminElectricians','skillMatchingAdmin','adminFinance','adminWallet','adminPlatformFee','adminSupportPanel','adminStaff']) {
+  for (const id of ['adminOverview','adminBookings','adminApplications','adminElectricians','skillMatchingAdmin','adminFinance','adminWallet','adminPlatformFee','adminSupportPanel','adminFinanceDashboard','adminStaff']) {
     assert.ok(nav.includes('href="#' + id + '"'), 'missing Admin navigation target: ' + id);
     assert.equal((html.match(new RegExp('id="' + id + '"','g'))||[]).length, 1, 'target must be unique: ' + id);
   }
