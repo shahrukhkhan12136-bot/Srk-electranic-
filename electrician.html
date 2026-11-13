@@ -11,7 +11,9 @@
 <button type="button" role="tab" id="partnerTabProfile" aria-controls="partnerPanelProfile" aria-selected="false" data-partner-menu="Profile">Profile / ID</button>
 <button type="button" role="tab" id="partnerTabSupport" aria-controls="partnerPanelSupport" aria-selected="false" data-partner-menu="Support">Help & Support</button>
 </nav>
-<section id="partnerPanelHome" class="card partner-panel" role="tabpanel" aria-labelledby="partnerTabHome"><h2>Home</h2><p>आपकी पार्टनर स्थिति और नए अपडेट यहाँ दिखेंगे।</p><p class="muted">काम स्वीकार करने से पहले ग्राहक का निजी संपर्क विवरण उपलब्ध नहीं होगा।</p></section>
+<section id="partnerPanelHome" class="card partner-panel" role="tabpanel" aria-labelledby="partnerTabHome"><h2>Home</h2><p>आपकी पार्टनर स्थिति और नए अपडेट यहाँ दिखेंगे।</p><p class="muted">काम स्वीकार करने से पहले ग्राहक का निजी संपर्क विवरण उपलब्ध नहीं होगा।</p>
+<div class="job" id="partnerPushCard"><h3>🔔 काम के नए नोटिफिकेशन</h3><p id="partnerPushStatus" class="muted" role="status" aria-live="polite">Notification सेटिंग जाँची जा रही है…</p><button type="button" id="partnerPushEnable" onclick="enablePartnerPush()" disabled>इस डिवाइस पर नोटिफिकेशन चालू करें</button><button type="button" id="partnerPushDisable" onclick="disablePartnerPush()" style="background:#627d98" disabled>इस डिवाइस पर नोटिफिकेशन बंद करें</button><p class="muted">यह केवल इस डिवाइस/ब्राउज़र की अनुमति नियंत्रित करता है। Browser notification permission आप अपने फोन की Settings से भी बदल सकते हैं।</p></div>
+</section>
 <section id="partnerPanelOffers" class="card partner-panel hidden" role="tabpanel" aria-labelledby="partnerTabOffers" hidden><h2>New Booking Offers</h2><p class="muted">एक काम किसी एक पार्टनर द्वारा स्वीकार होने पर दूसरे ऑफर बंद हो जाएँगे। ग्राहक का नाम, फोन और पूरा पता काम आपको असाइन होने के बाद ही दिखेगा।</p><div id="newOffers">नए ऑफर लोड हो रहे हैं…</div></section>
 <section id="partnerPanelWork" class="card partner-panel hidden" role="tabpanel" aria-labelledby="partnerTabWork" hidden><h2>My Work / Bookings</h2><p class="muted">स्वीकार किए गए और जारी/पूरे हुए कामों की स्थिति, सर्वर टाइमर और अंतिम बिल यहाँ दिखेंगे।</p><div id="myWork">आपके काम लोड हो रहे हैं…</div></section>
 <section id="partnerPanelEarnings" class="card partner-panel hidden" role="tabpanel" aria-labelledby="partnerTabEarnings" hidden>
@@ -26,17 +28,75 @@ const cfg=window.SRK_CONFIG||{};let sb,user,profile,offersChannel,otpBusy=false,
 function safeTel(v){const p=String(v??'').replace(/\D/g,'');return /^[0-9]{10,15}$/.test(p)?'tel:'+p:''}
 function activatePartnerMenu(name,focus=false){const tabs=[...document.querySelectorAll('[data-partner-menu]')];for(const tab of tabs){const active=tab.dataset.partnerMenu===name;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;const panel=document.getElementById(tab.getAttribute('aria-controls'));if(panel){panel.hidden=!active;panel.classList.toggle('hidden',!active);}if(active&&focus)tab.focus();}}
 document.querySelectorAll('[data-partner-menu]').forEach(tab=>{tab.addEventListener('click',()=>activatePartnerMenu(tab.dataset.partnerMenu));tab.addEventListener('keydown',event=>{const tabs=[...document.querySelectorAll('[data-partner-menu]')],i=tabs.indexOf(tab);let next=null;if(event.key==='ArrowRight')next=(i+1)%tabs.length;else if(event.key==='ArrowLeft')next=(i-1+tabs.length)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;if(next!==null){event.preventDefault();activatePartnerMenu(tabs[next].dataset.partnerMenu,true);}});});
+
+// Device-specific Web Push controls. The public VAPID key must be configured explicitly;
+// never reuse the separate TEST project's key in Production.
+function partnerPushSay(message,bad=false){const el=document.getElementById('partnerPushStatus');if(el){el.textContent=message;el.className=bad?'bad':'muted';}}
+function partnerPushKeyBytes(value){const padding='='.repeat((4-value.length%4)%4);const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));}
+async function refreshPartnerPushState(){
+ const enable=document.getElementById('partnerPushEnable'),disable=document.getElementById('partnerPushDisable');
+ if(!enable||!disable)return;
+ const supported='serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+ if(!supported){partnerPushSay('इस browser में Web Push समर्थित नहीं है। काम के ऑफर ऐप में उपलब्ध रहेंगे।',true);enable.disabled=true;disable.disabled=true;return;}
+ if(!user){partnerPushSay('पहले OTP से लॉगिन करें।');enable.disabled=true;disable.disabled=true;return;}
+ try{
+  const registration=await navigator.serviceWorker.getRegistration('/');
+  const subscription=registration?await registration.pushManager.getSubscription():null;
+  disable.disabled=!subscription;
+  const vapid=String(cfg.VAPID_PUBLIC_KEY||'').trim();
+  enable.disabled=!!subscription||!vapid||Notification.permission==='denied';
+  if(subscription)partnerPushSay('इस डिवाइस पर Push Subscription चालू है।');
+  else if(Notification.permission==='denied')partnerPushSay('Browser में Notifications block हैं। Browser Settings से अनुमति दें।',true);
+  else if(!vapid)partnerPushSay('Push सेवा का public VAPID key अभी सुरक्षित configuration में उपलब्ध नहीं है। अभी कोई fake notification नहीं भेजा जाएगा।',true);
+  else partnerPushSay('इस डिवाइस पर नोटिफिकेशन चालू करने के लिए बटन दबाएँ।');
+ }catch(_){partnerPushSay('Notification स्थिति नहीं जाँची जा सकी। कृपया Refresh करें।',true);enable.disabled=true;disable.disabled=true;}
+}
+async function enablePartnerPush(){
+ const enable=document.getElementById('partnerPushEnable');if(!user||!sb||!enable)return;
+ const vapid=String(cfg.VAPID_PUBLIC_KEY||'').trim();if(!vapid){partnerPushSay('Push सेवा का public VAPID key configure नहीं है। TEST project की key यहाँ उपयोग नहीं की जाएगी।',true);return;}
+ if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window)){partnerPushSay('इस browser में Web Push समर्थित नहीं है।',true);return;}
+ enable.disabled=true;partnerPushSay('Notification अनुमति माँगी जा रही है…');
+ try{
+  if(!window.isSecureContext)throw new Error('Push के लिए HTTPS आवश्यक है।');
+  const permission=await Notification.requestPermission();if(permission!=='granted')throw new Error('Notification अनुमति नहीं मिली।');
+  const registration=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+  await navigator.serviceWorker.ready;
+  let subscription=await registration.pushManager.getSubscription();
+  if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:partnerPushKeyBytes(vapid)});
+  const json=subscription.toJSON(),keys=json.keys||{};
+  if(!json.endpoint||!keys.p256dh||!keys.auth)throw new Error('Browser subscription अधूरी है।');
+  const {error}=await sb.rpc('srk_save_push_subscription',{p_endpoint:json.endpoint,p_p256dh:keys.p256dh,p_auth:keys.auth});
+  if(error){await subscription.unsubscribe();throw new Error('Subscription server पर सुरक्षित नहीं हुई। कृपया Admin से सेवा जाँच कराएँ।');}
+  partnerPushSay('इस डिवाइस पर नोटिफिकेशन चालू हो गए। नए काम के ऑफर आने पर browser notification मिल सकती है।');
+ }catch(error){partnerPushSay(error.message||'Notification चालू नहीं हो सके।',true);}
+ await refreshPartnerPushState();
+}
+async function disablePartnerPush(){
+ if(!user)return;const btn=document.getElementById('partnerPushDisable');btn.disabled=true;
+ try{
+  const registration=await navigator.serviceWorker.getRegistration('/');
+  const subscription=registration?await registration.pushManager.getSubscription():null;
+  if(!subscription){partnerPushSay('इस डिवाइस पर Push Subscription पहले से बंद है।');return;}
+  const endpoint=subscription.endpoint;
+  const {error}=await sb.from('srk_push_subscriptions').delete().eq('user_id',user.id).eq('endpoint',endpoint);
+  if(error)throw new Error('Server पर subscription हटाई नहीं जा सकी।');
+  const ok=await subscription.unsubscribe();if(!ok)throw new Error('Browser subscription बंद नहीं हुई।');
+  partnerPushSay('इस डिवाइस पर नोटिफिकेशन बंद कर दिए गए।');
+ }catch(error){partnerPushSay(error.message||'Notification बंद नहीं हो सके।',true);}
+ await refreshPartnerPushState();
+}
+
 async function loadMyVerificationDocuments(){const box=document.getElementById('myVerificationDocuments');if(!box||!user||!profile)return;const {data,error}=await sb.rpc('srk_electrician_list_my_verification_documents');if(error){box.textContent='दस्तावेज़ स्थिति नहीं खुली। कृपया Refresh करें।';return;}const rows=Array.isArray(data)?data:[];const labels={identity_proof:'पहचान प्रमाण',address_proof:'पता प्रमाण',skill_certificate:'कौशल प्रमाणपत्र'},states={pending:'जाँच बाकी',approved:'Admin ने मंजूर किया',rejected:'अस्वीकृत',needs_resubmission:'दोबारा जमा करें'};box.innerHTML=rows.length?rows.map(x=>'<div class="job"><b>'+esc(labels[x.document_type]||x.document_type)+'</b><p>'+esc(x.file_name)+'</p><span class="pill">'+esc(states[x.review_status]||x.review_status)+'</span>'+(x.admin_note?'<p class="muted">Admin टिप्पणी: '+esc(x.admin_note)+'</p>':'')+'<small class="muted">जमा: '+esc(x.uploaded_at?new Date(x.uploaded_at).toLocaleString('hi-IN'):'—')+'</small></div>').join(''):'अभी कोई दस्तावेज़ जमा नहीं किया गया है।';}
 async function submitElectricianVerificationDocument(){const status=document.getElementById('verificationDocumentStatus'),file=document.getElementById('verificationDocumentFile')?.files?.[0],type=document.getElementById('verificationDocumentType')?.value;if(!user||!profile){status.textContent='OTP से लिंक किया हुआ Electrician profile आवश्यक है।';return;}if(!file){status.textContent='पहले दस्तावेज़ फ़ाइल चुनें।';return;}const allowed=['application/pdf','image/jpeg','image/png'];if(!allowed.includes(file.type)||file.size<1||file.size>5242880){status.textContent='केवल PDF, JPG या PNG फ़ाइल, अधिकतम 5 MB, स्वीकार है।';return;}const ext={'application/pdf':'pdf','image/jpeg':'jpg','image/png':'png'}[file.type],path=user.id+'/'+type+'/'+crypto.randomUUID()+'.'+ext,cleanName=String(file.name||'document').replace(/[\\/\\\\\\u0000-\\u001f]/g,'_').slice(0,180);status.textContent='निजी रूप से अपलोड हो रहा है…';const {error:uploadError}=await sb.storage.from('srk-electrician-verification').upload(path,file,{upsert:false,contentType:file.type});if(uploadError){status.textContent='अपलोड नहीं हुआ। कृपया फ़ाइल और नेटवर्क जाँचें।';return;}const {data,error}=await sb.rpc('srk_electrician_submit_verification_document',{p_document_type:type,p_storage_path:path,p_file_name:cleanName,p_mime_type:file.type,p_file_size_bytes:file.size});if(error||!data){await sb.storage.from('srk-electrician-verification').remove([path]);status.textContent='दस्तावेज़ रिकॉर्ड नहीं हुआ। दोबारा कोशिश करें।';return;}document.getElementById('verificationDocumentFile').value='';status.textContent='दस्तावेज़ सुरक्षित रूप से जमा हुआ। Admin review बाकी है।';await loadMyVerificationDocuments();}
 function init(){if(!cfg.SUPABASE_URL||!cfg.SUPABASE_ANON_KEY){document.getElementById('msg').textContent='सेटअप बाकी है। README में Supabase config सेट करें।';return}sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);sb.auth.onAuthStateChange((_e,s)=>{user=s?.user||null;show()});sb.auth.getSession().then(({data})=>{user=data.session?.user||null;show()})}
-function show(){document.getElementById('login').classList.toggle('hidden',!!user);document.getElementById('app').classList.toggle('hidden',!user);if(user)refresh()}
+function show(){document.getElementById('login').classList.toggle('hidden',!!user);document.getElementById('app').classList.toggle('hidden',!user);if(user){refresh();refreshPartnerPushState()}else partnerPushSay('पहले OTP से लॉगिन करें।')}
 function normalizedPhone(){const raw=document.getElementById('phone').value.trim();const digits=raw.replace(/\D/g,'');if(digits.length===10)return '+91'+digits;if(raw.startsWith('+')&&digits.length>=10&&digits.length<=15)return '+'+digits;return null}
 function startOtpCooldown(){otpCooldownUntil=Date.now()+60000;const btn=document.querySelector('#login button[onclick="sendOtp()"]');if(otpTimer)clearInterval(otpTimer);const tick=()=>{const left=Math.max(0,Math.ceil((otpCooldownUntil-Date.now())/1000));btn.disabled=left>0;btn.textContent=left>0?'दोबारा OTP '+left+' सेकंड बाद':'OTP दोबारा भेजें';if(!left){clearInterval(otpTimer);otpTimer=null}};tick();otpTimer=setInterval(tick,1000)}
 async function sendOtp(){if(otpBusy)return;const p=normalizedPhone(),msg=document.getElementById('msg');if(!p){msg.textContent='कृपया सही 10 अंकों का भारतीय मोबाइल नंबर डालें।';return}if(Date.now()<otpCooldownUntil){msg.textContent='नया OTP भेजने से पहले कृपया प्रतीक्षा करें।';return}otpBusy=true;const btn=document.querySelector('#login button[onclick="sendOtp()"]');btn.disabled=true;msg.textContent='OTP भेजा जा रहा है…';try{const {error}=await sb.auth.signInWithOtp({phone:p});if(error){msg.textContent='OTP नहीं भेजा जा सका। कुछ देर बाद फिर कोशिश करें।';return}msg.textContent='OTP भेज दिया गया है। किसी के साथ OTP साझा न करें।';document.getElementById('otpbox').classList.remove('hidden');startOtpCooldown()}catch(e){msg.textContent='अभी OTP सेवा उपलब्ध नहीं है। कृपया बाद में कोशिश करें।'}finally{otpBusy=false;if(Date.now()>=otpCooldownUntil){btn.disabled=false;btn.textContent='OTP भेजें'}}}
 async function verifyOtp(){if(otpBusy)return;const p=normalizedPhone(),token=document.getElementById('otp').value.trim(),msg=document.getElementById('msg');if(!p){msg.textContent='पहले सही मोबाइल नंबर डालें।';return}if(!/^\d{4,8}$/.test(token)){msg.textContent='कृपया SMS में मिला सही OTP डालें।';return}otpBusy=true;msg.textContent='OTP सत्यापित हो रहा है…';try{const {error}=await sb.auth.verifyOtp({phone:p,token,type:'sms'});msg.textContent=error?'OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।':'लॉगिन सफल।'}catch(e){msg.textContent='OTP सत्यापन अभी नहीं हो सका। कृपया फिर कोशिश करें।'}finally{otpBusy=false}}
 async function logout(){if(offersChannel){await sb.removeChannel(offersChannel);offersChannel=null;}await sb.auth.signOut()}
 async function refresh(){if(!user)return;let {data:p,error}=await sb.from('electrician_profiles').select('*').eq('user_id',user.id).maybeSingle();if(error){const stateEl=document.getElementById('state');stateEl.textContent='प्रोफाइल जानकारी अभी लोड नहीं हुई। कृपया Refresh करें।';stateEl.className='bad';return}profile=p;
-if(p){await loadEarnings();await loadPlatformFeeSummary();await loadPartnerWallet();await loadMyVerificationDocuments();}
+if(p){await loadEarnings();await loadPlatformFeeSummary();await loadPartnerWallet();await loadMyVerificationDocuments();await refreshPartnerPushState();}
 if(p&&p.active&&p.verification_status==='approved'&&!offersChannel){
   offersChannel=sb.channel('srk-partner-live-'+user.id)
     .on('postgres_changes',{event:'*',schema:'public',table:'job_offers'},()=>refresh())
