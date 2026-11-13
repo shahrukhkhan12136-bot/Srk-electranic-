@@ -4,6 +4,7 @@ const fs = require('node:fs');
 
 const html = fs.readFileSync('booking.html', 'utf8');
 const profileMigration = fs.readFileSync('supabase/migrations/20261113200000_customer_profile_api_and_avatar_security.sql', 'utf8');
+const supportAttachmentMigration = fs.readFileSync('supabase/migrations/20261114170000_harden_customer_support_attachment_object_integrity.sql', 'utf8');
 
 test('customer menu keeps the approved five-menu order and accessible tab controls', () => {
   const nav = html.match(/<nav class="customer-menu-nav"[\s\S]*?<\/nav>/)?.[0] || '';
@@ -89,4 +90,14 @@ test('support thread selection ignores stale async responses and blocks duplicat
   assert.match(html, /customerSupportMessageBusy=true;button\.disabled=true/);
   assert.match(html, /finally\{customerSupportMessageBusy=false;button\.disabled=false/);
   assert.match(html, /कुछ संलग्न फ़ाइलें अभी लोड नहीं हो सकीं/);
+});
+
+
+test('support attachment metadata must match stored object and linked files cannot be customer-deleted', () => {
+  assert.match(supportAttachmentMigration, /metadata->>'mimetype'/);
+  assert.match(supportAttachmentMigration, /metadata->>'size'/);
+  assert.match(supportAttachmentMigration, /ATTACHMENT_OBJECT_METADATA_MISMATCH/);
+  assert.match(supportAttachmentMigration, /\[0-9a-fA-F-\]\{36\}\\\./);
+  assert.match(supportAttachmentMigration, /customer deletes only unlinked support attachments/);
+  assert.match(supportAttachmentMigration, /not exists\s*\([\s\S]*?srk_booking_complaint_message_attachments/);
 });
