@@ -1113,6 +1113,8 @@ BEGIN
       END IF;
       RETURN NEW;
     END IF;
+    -- End the categorized labour-only branch before legacy quote compatibility.
+    END IF;
 
     -- Legacy quote path: retain its existing commission compatibility only.
     v_rate:=NEW.commission_rate;
