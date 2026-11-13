@@ -1864,3 +1864,16 @@
 - कोई migration लागू नहीं की गई; कोई booking, fee, payment, refund, wallet या customer data नहीं बदला। Production/Auth/deployment/payout settings अपरिवर्तित हैं।
 
 **अगला काम:** booking status/event lineage और cash-cycle / payout / refund reversal consumers का शेष source mapping; उसके बाद ही cancellation request + Admin decision schema/API design।
+
+
+### Customer App requirement cross-check — cancellation, support, profile (14 नवम्बर 2026)
+
+Master Requirements के sections 1.2, 6, 8.1 और 8.2 को वर्तमान Customer/Admin source के साथ फिर मिलाया:
+
+- Customer My Bookings में cancellation request status का स्पष्ट requirement है और Cancel Booking request सीधे Admin Dashboard में जानी चाहिए। मौजूदा generic complaint inbox/reply/status workflow केवल support complaint संभालता है; यह cancellation approval/fee workflow का विकल्प नहीं है।
+- Help & Support requirement में customer/electrician के अलग entry points, attachments, reference/status, Admin inbox/reply और पूरा timestamped conversation history शामिल हैं। Customer support के existing flows पहले harden हुए हैं; इस pass में उन्हें cancellation से अलग concern के रूप में रखा गया है।
+- Profile requirement केवल नाम/photo/verified mobile तक सीमित नहीं: saved addresses/location, ratings/reviews, notifications, privacy/security और logout भी अपेक्षित हैं। वर्तमान Customer Profile में नाम, OTP-verified mobile, avatar, language तथा saved-address/session/logout work मौजूद है; Profile UI inspection में ratings/reviews और notification preference controls अभी नहीं मिले। इसलिए Profile को पूर्ण नहीं माना गया।
+- Two-way ratings requirement: वास्तविक completed booking पर customer→electrician और electrician→customer, प्रति booking प्रत्येक पक्ष की एक 1–5 star rating, optional written/dimension review और profile average। इन flows का implementation/test evidence अभी इस audit में स्थापित नहीं हुआ।
+- यह requirements-to-source audit है, runtime/browser validation नहीं। कोई customer data या Production setting नहीं बदली।
+
+**Customer App अगला क्रम:** पहले cancellation request/admin review dependency और settlement/reversal design को सुरक्षित रूप से पूरा करना; साथ में ratings/reviews तथा notifications requirements का schema/RPC/UI dependency audit। उसके बाद Customer App completion evidence और consolidated manual QA; तब तक Electrician Portal शुरू नहीं होगा।
