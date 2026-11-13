@@ -132,7 +132,8 @@ exports.handler = async (event) => {
 
   try {
     const customer_name = clean(body.customer_name, 100);
-    const phone = clean(body.phone, 10);
+    // Do not truncate malformed phone input into a different, apparently valid number.
+    const phone = clean(body.phone, 20);
     const state = clean(body.state, 100);
     const district = clean(body.district, 100);
     const pincode = clean(body.pincode, 6);
