@@ -63,6 +63,18 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <div id="customerPaymentHistory" aria-live="polite" aria-busy="false"></div>
    <button class="btn" type="button" id="customerPaymentHistoryMore" style="display:none">और रिकॉर्ड देखें</button>
   </section>
+  <section class="card" id="customerSupportPanel" style="margin-top:14px">
+   <h3 style="margin-top:0">🛟 सहायता और शिकायत</h3>
+   <p class="small">अपनी दर्ज शिकायत चुनें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।</p>
+   <label for="customerSupportComplaint">आपकी शिकायत</label>
+   <select id="customerSupportComplaint"><option value="">शिकायत चुनें</option></select>
+   <button class="btn" type="button" id="customerSupportRefresh">शिकायतें रीफ़्रेश करें</button>
+   <div id="customerSupportStatus" class="small" role="status" aria-live="polite"></div>
+   <div id="customerSupportThread" style="margin-top:10px;max-height:320px;overflow:auto" aria-live="polite"></div>
+   <label for="customerSupportMessage">अपना संदेश</label>
+   <textarea id="customerSupportMessage" maxlength="4000" placeholder="अपनी समस्या या जवाब लिखें"></textarea>
+   <button class="btn primary" type="button" id="customerSupportSend">संदेश भेजें</button>
+  </section>
   <section class="card" id="customerProfilePanel" style="margin-top:14px">
    <h3 style="margin-top:0">👤 मेरी प्रोफ़ाइल</h3>
    <p class="small">आपका सत्यापित मोबाइल नंबर केवल पढ़ने के लिए है। नाम और भाषा यहाँ बदल सकते हैं।</p>
@@ -469,7 +481,70 @@ async function makeSelectedAddressDefault() {
  } catch(e){setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
  finally{button.disabled=false;}
 }
-async function syncCustomerSession() {
+let customerSupportComplaints = [];
+let customerSupportSelectedId = null;
+function supportStatus(message, isError=false) {
+ const el=document.getElementById('customerSupportStatus');
+ el.textContent=message; el.style.color=isError?'#b42318':'#65758a';
+}
+function renderCustomerSupportThread(rows) {
+ const box=document.getElementById('customerSupportThread'); box.replaceChildren();
+ if(!rows.length){box.textContent='अभी इस शिकायत में कोई संदेश नहीं है।';return;}
+ rows.forEach(row=>{
+  const item=document.createElement('article');
+  item.style.cssText='padding:10px 12px;margin:8px 0;border-radius:12px;background:'+(row.sender_role==='customer'?'#eaf2ff':'#eef8f0');
+  const who=document.createElement('strong');who.textContent=row.sender_role==='customer'?'आप':'SRK सहायता टीम';
+  const body=document.createElement('p');body.style.cssText='white-space:pre-wrap;margin:6px 0';body.textContent=row.body||'';
+  const when=document.createElement('small');when.textContent=row.created_at?new Date(row.created_at).toLocaleString('hi-IN'):'';
+  item.append(who,body,when);box.append(item);
+ });
+ box.scrollTop=box.scrollHeight;
+}
+async function loadCustomerSupportComplaints() {
+ const select=document.getElementById('customerSupportComplaint');
+ select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');
+  if(error)throw error;
+  customerSupportComplaints=Array.isArray(data)?data:[];
+  select.replaceChildren(new Option('शिकायत चुनें',''));
+  customerSupportComplaints.forEach(c=>{
+   const label=(c.category||'शिकायत')+' · '+(c.status||'स्थिति उपलब्ध नहीं')+' · '+String(c.id).slice(0,8);
+   select.add(new Option(label,c.id));
+  });
+  const stillExists=customerSupportComplaints.some(c=>c.id===customerSupportSelectedId);
+  customerSupportSelectedId=stillExists?customerSupportSelectedId:(customerSupportComplaints[0]?.id||null);
+  select.value=customerSupportSelectedId||'';
+  if(customerSupportSelectedId) await loadCustomerSupportMessages();
+  else {renderCustomerSupportThread([]);supportStatus('अभी आपके खाते में कोई दर्ज शिकायत नहीं मिली। नई शिकायत दर्ज करने की सुविधा अगली कड़ी में जोड़ी जाएगी।');}
+ } catch(e){supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
+ finally{select.disabled=false;}
+}
+async function loadCustomerSupportMessages() {
+ const id=document.getElementById('customerSupportComplaint').value;
+ if(!id){customerSupportSelectedId=null;renderCustomerSupportThread([]);return;}
+ customerSupportSelectedId=id;
+ const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id});
+ if(error)throw error;
+ renderCustomerSupportThread(Array.isArray(data)?data:[]);
+ const complaint=customerSupportComplaints.find(c=>c.id===id);
+ supportStatus(complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):'');
+}
+async function sendCustomerSupportMessage() {
+ const id=document.getElementById('customerSupportComplaint').value;
+ const input=document.getElementById('customerSupportMessage');
+ const body=input.value.trim(); const button=document.getElementById('customerSupportSend');
+ if(!id){supportStatus('पहले अपनी शिकायत चुनें।',true);return;}
+ if(!body||body.length>4000){supportStatus('कृपया 1 से 4000 अक्षरों का संदेश लिखें।',true);return;}
+ button.disabled=true;button.textContent='भेजा जा रहा है…';
+ try{
+  const {error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{p_complaint_id:id,p_body:body});
+  if(error)throw error;
+  input.value='';await loadCustomerSupportMessages();supportStatus('आपका संदेश सहायता टीम को भेज दिया गया है।');
+ }catch(e){supportStatus(e.message==='COMPLAINT_NOT_AVAILABLE'?'यह शिकायत बंद है या उपलब्ध नहीं है।':'संदेश नहीं भेजा जा सका। '+(e.message||''),true);}
+ finally{button.disabled=false;button.textContent='संदेश भेजें';}
+}
+\nasync function syncCustomerSession() {
   if (!customerSb) return;
   const { data } = await customerSb.auth.getSession();
   const session = data.session;
@@ -483,7 +558,7 @@ async function syncCustomerSession() {
     bookingPhone.readOnly = true;
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     await loadCustomerBookings();
-    await loadCustomerPaymentHistory(true);
+    await loadCustomerPaymentHistory(true);\n    await loadCustomerSupportComplaints();
     await loadCustomerSavedAddresses();
     await loadCustomerProfile();
   } else {
@@ -491,7 +566,7 @@ async function syncCustomerSession() {
     bookingPhone.readOnly = true;
     document.getElementById('customerSignedIn').textContent = '';
     document.getElementById('customerBookings').textContent = '';
-    document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';
+    document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';\n    document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));\n    document.getElementById('customerSupportThread').textContent='';\n    document.getElementById('customerSupportMessage').value='';\n    customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें।');
     document.getElementById('customerProfileName').value = '';
     document.getElementById('customerProfilePhone').value = '';
     customerPaymentHistoryOffset = 0;
@@ -564,7 +639,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
   document.getElementById('customerPaymentHistoryRefresh').addEventListener('click',()=>loadCustomerPaymentHistory(true));
-  document.getElementById('customerPaymentHistoryMore').addEventListener('click',()=>loadCustomerPaymentHistory(false));
+  document.getElementById('customerPaymentHistoryMore').addEventListener('click',()=>loadCustomerPaymentHistory(false));\n  document.getElementById('customerSupportRefresh').addEventListener('click',loadCustomerSupportComplaints);\n  document.getElementById('customerSupportComplaint').addEventListener('change',()=>loadCustomerSupportMessages().catch(e=>supportStatus('संदेश लोड नहीं हुए। '+(e.message||''),true)));\n  document.getElementById('customerSupportSend').addEventListener('click',sendCustomerSupportMessage);
   document.getElementById('saveCustomerProfile').addEventListener('click', saveCustomerProfile);
   document.getElementById('savedAddressSelect').addEventListener('change', applySelectedSavedAddress);
   document.getElementById('saveCurrentAddress').addEventListener('click', saveCurrentBookingAddress);
