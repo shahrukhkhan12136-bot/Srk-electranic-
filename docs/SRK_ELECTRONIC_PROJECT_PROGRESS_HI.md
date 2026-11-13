@@ -801,3 +801,11 @@
 - UI gate browser source checks तक verified; live RPC/database eligibility, concurrent request locking और refund state provider lifecycle अभी runtime tested नहीं। SQL pgTAP बाकी; no Production changes/deployment/refund movement.
 
 - अतिरिक्त classification सुधार: `manual_payment` event label अब तभी दिया जाता है जब उसी booking के लिए वास्तविक audited `srk_manual_payment_entries` row मौजूद हो; केवल `razorpay_payment_id` NULL होने से किसी legacy/अन्य payment को manual नहीं कहा जाएगा। Source regression Run #43467154570 — success, commit `850c7c3d02eaeaeed9569d15ce77d7f4e4653353`।
+
+
+## 2026-11-13 — Payment History RPC compatibility review/correction
+
+- Deep compatibility audit में पता चला कि पहले draft `20261114200000_customer_payment_refund_history_rpc.sql` ने existing RPC के 8 output columns (event_id, event_type, booking_id, amount, status, payment_method, occurred_at, description) को बदलकर 7 columns कर दिया था। PostgreSQL `CREATE OR REPLACE FUNCTION` से OUT/RETURNS TABLE signature नहीं बदल सकता; इससे migration apply fail होती। यह migration अभी कहीं apply नहीं हुई थी।
+- Draft को corrected किया: existing 8-column return signature और parameter defaults preserved; payment, refund request, Razorpay refund, audited manual payment और manual refund सभी event sources शामिल; `auth.uid()` customer booking scope; limit 1–50; offset >10,000 reject; stable sort occurred_at + event_id; no provider/admin private fields; refunded booking payment state अलग दिखती है।
+- pgTAP test plan 11: original result signature preserved, auth, owner scope, verified payment, four refund/payment event sources, pagination, no private fields, authenticated-only grants. Tests अभी execute नहीं हुए।
+- Source regression workflow Run #43467914135 — success, commit `fd5774edb8a3b2e4fc9415c35565ba5afd15a773`। Earlier source workflow failures were test assertion case/format mismatches while checking SQL source; corrected source assertions now pass. No migration applied; no Production changes/deployment.
