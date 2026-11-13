@@ -52,3 +52,24 @@ test("Manual address edits invalidate stale saved GPS coordinates", () => {
   assert.match(html, /lat\.value='';lng\.value='';/);
   assert.match(html, /पते में बदलाव हुआ है। सही लोकेशन के लिए GPS लोकेशन दोबारा चुनें।/);
 });
+
+
+test("Default saved address is applied only during initial customer session load", () => {
+  assert.match(html, /async function loadCustomerSavedAddresses\(options = \{\}\)/);
+  assert.match(html, /options\.applyDefault===true/);
+  assert.match(html, /customerSavedAddresses\.find\(a=>a\.is_default===true\)/);
+  assert.match(html, /loadCustomerSavedAddresses\(\{applyDefault:true\}\)/);
+});
+
+test("Successful booking keeps the same idempotency key for safe retry", () => {
+  const success = html.slice(html.indexOf("const response = await fetch('/api/create-booking'"), html.indexOf("document.getElementById('newIdenticalBooking').addEventListener"));
+  assert.match(success, /pendingBookingId = result\.booking_id/);
+  assert.doesNotMatch(success, /clearCustomerBookingRequestKey\(requestKey\)/);
+  assert.match(success, /बुकिंग सफलतापूर्वक सेव हो गई है/);
+});
+
+test("Customer can explicitly start an identical new booking after successful booking", () => {
+  assert.match(html, /id="newIdenticalBooking"/);
+  assert.match(html, /clearCustomerBookingRequestKey\(saved\.key\)/);
+  assert.match(html, /नई बुकिंग के लिए अनुरोध पहचान रीसेट कर दी गई है/);
+});
