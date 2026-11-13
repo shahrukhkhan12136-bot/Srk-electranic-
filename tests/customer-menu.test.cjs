@@ -398,3 +398,14 @@ test('customer support attachment cleanup network exceptions do not bypass failu
   assert.ok(source.indexOf('catch(_){orphanCleanupFailed=true;}') < source.indexOf('if(messageCreated)'));
   assert.ok(source.includes("orphanCleanupFailed?' अपलोड की गई असंबद्ध फ़ाइल की सफाई पूरी नहीं हुई; सहायता टीम से संपर्क करें।':''"));
 });
+
+
+test('customer avatar cleanup network exceptions do not misreport saved profile as failed', () => {
+  const start=html.indexOf('async function saveCustomerProfile()');
+  const end=html.indexOf('\\nlet customerSavedAddresses =',start);
+  const source=html.slice(start,end);
+  assert.ok(source.includes('} catch(_) {uploadCleanupFailed=true;}'));
+  assert.ok(source.includes("} catch(_) {cleanupWarning=' पुरानी फोटो की सफाई पूरी नहीं हुई; प्रोफ़ाइल में नई फोटो सुरक्षित है।';}"));
+  assert.ok(source.includes('setCustomerProfileStatus(\'प्रोफ़ाइल सफलतापूर्वक सेव हो गई।\'+(previewLoaded?'));
+  assert.ok(source.indexOf('customerCurrentAvatarPath=avatarPath;') < source.indexOf('if(oldAvatar&&oldAvatar!==avatarPath)'));
+});
