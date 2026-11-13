@@ -976,3 +976,6 @@
 
 
 - Support attachment cleanup failure handling: orphan-object removal is now wrapped against both returned Storage errors and thrown network exceptions, so cleanup failure cannot bypass the customer-facing partial-send recovery path. Added source regression coverage. Commit `aaafcd6fbd652ba9799350e9277dd384fc5fe503`; test commit `54340a73e80cbd1e4d6cac442543c651834a01f6`. Workflow result pending at tracker update. No live Storage test or Production change.
+
+
+- Cleanup regression assertion was updated to match the new guarded `try/catch` cleanup implementation. GitHub Actions Source Regression Run #43474653510 completed successfully on commit `d85019882c845da9691ffd15e6939d65ebb17145`. This confirms source assertions only; actual Storage/network fault injection remains untested.
