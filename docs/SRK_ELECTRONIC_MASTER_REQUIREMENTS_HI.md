@@ -3473,3 +3473,20 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - कोई नया retry, workflow dispatch, deployment, paid plan upgrade या Production action नहीं किया।
 - अगला आवश्यक verification: GitHub Actions UI में `Customer OTP source regression tests` workflow का run खोलकर `Run OTP source regression tests` step का output देखना, या authorized Node 20 checkout में `npm run test:otp` चलाकर पूरा output सुरक्षित रखना। यदि failure हो तो पहले failing assertion/source inspect और fix; फिर rerun।
 - **Status: In Progress.** No tests marked PASS; no checklist item closed.
+
+
+## 17.101 — Customer OTP Source Regression Checks का Direct Re-run (13 नवम्बर 2026)
+
+- Checklist item: **14.1.1**।
+- Feature Branch से वर्तमान `customer-login.html` और `booking.html` पुनः fetch किए; blob SHA क्रमशः `a06726bcbd3e04a833b634aeb40b77ff13f47e64` और `5edcade782121c8984f888a04368bcc266391a79`।
+- दोनों फाइलों पर workflow test harness के अनुरूप 10 direct source checks चलाए:
+  1. दोनों पेजों में OTP send और SMS verify source markers — PASS (2 checks)।
+  2. दोनों में client cooldown और busy/duplicate-action markers — PASS (2)।
+  3. दोनों में bounded numeric OTP input markers — PASS (2)।
+  4. दोनों पेजों के सभी inline JavaScript blocks V8 `new Function` parse — PASS (2)।
+  5. Standalone login logout guard/signOut/finally — PASS (1)।
+  6. Booking logout signOut error handling/finally — PASS (1)।
+- कुल **10/10 direct source checks PASS**। ये Feature Branch के fetched source पर किए गए स्वतंत्र static checks हैं; इन्होंने GitHub Actions runner पर `npm run test:otp` चलने का प्रमाण नहीं दिया, और OTP delivery, expiry, Auth server-side rate limits, CAPTCHA, wrong-attempt lockout, browser/device session या वास्तविक logout revocation का runtime प्रमाण नहीं हैं।
+- GitHub Actions run record अभी भी connector से उपलब्ध नहीं; Vercel Preview status OTP CI result नहीं है।
+- कोई application source, package, workflow, Auth/DB setting, secret, SMS/provider request, customer session, payment या deployment नहीं बदला।
+- **Status: In Progress.** Static source checks 10/10 PASS; CI command result और आवश्यक runtime/security verification लंबित।
