@@ -3801,3 +3801,27 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **14.1.8: Partial Source Evidence / Implementation Verification Pending.** Customer-side private lookup में authenticated ownership और active-status allowlist मौजूद है; पर पूरे requirement की दोनों-पक्षीय visibility, सभी surfaces और runtime behavior सिद्ध नहीं।
 - इस audit में कोई code/schema/RLS/Auth/customer data/provider/payment/secret/deployment परिवर्तन नहीं किया।
 - Final Real-World Test: **बाकी**; कुल वास्तविक परीक्षण 96/96 Pending रहेंगे।
+
+
+## 17.118 — 14.1.9 यात्रा के दौरान Live Location / ETA Source Audit (2026-11-13)
+
+### Scope and evidence
+- Feature Branch `booking.html` (SHA `411c226d5835299c6a15142dcfa1c6639739e050`) में GPS केवल customer booking address के लिए `navigator.geolocation.getCurrentPosition` से एक बार लिया जाता है। यह electrician की यात्रा के दौरान tracking नहीं है।
+- `create-booking.js` (पूर्व audit में दर्ज SHA `72b3618b0cf1ffcd0537992cec224d846886ffdc`) booking पर optional `location_lat/location_lng` pair validate/store करता है। Migration `20261109001000_add_google_maps_location_support.sql` booking और electrician application में map coordinates columns जोड़ती है; ये स्थिर location pins हैं।
+- `electrician.html` (SHA `794dc8cac838461eafc67c1479e61bf4b0566337`) assigned booking के लिए Google Maps directions link बनाती है, लेकिन continuous location updates, en-route/arrived controls या ETA calculation नहीं दिखाती।
+- `netlify.toml` में geolocation Permissions-Policy `geolocation=(self)` है। Customer GPS capture में unsupported/permission/error case का message है; यह electrician tracking permission lifecycle या stale-location handling का प्रमाण नहीं।
+- Repository code search में live tracking/ETA/realtime location update source नहीं मिला; यह code-search evidence है, नाम/implementation के सभी सम्भव रूपों का पूर्ण absence proof नहीं।
+
+### Gaps / safe implementation requirements
+1. अलग privacy-guarded electrician-location stream/table और authenticated server endpoint/RPC; booking assignment, active work state और actor ownership हर update पर validate हो।
+2. स्पष्ट consent/permission UI, permission-denied fallback, accuracy, captured_at/server_received_at, stale threshold, throttling/rate limits और offline/retry states।
+3. Customer को केवल अपनी currently assigned active booking की सीमित location/ETA; अन्य ग्राहक/partner/Admin role के data isolation tests।
+4. ETA को अनुमान के रूप में label करना; unavailable/stale स्थिति में “ETA उपलब्ध नहीं” दिखाना, नकली live marker नहीं।
+5. यात्रा शुरू होने, arrival, cancellation, reassignment और completion पर tracking start/stop/revoke; terminal booking के बाद location stream से कोई नया read/write नहीं।
+6. Location retention/deletion policy, access audit, abuse controls, battery/network impact और low-bandwidth/device/browser tests।
+7. Existing booking GPS pin को live electrician location न समझें; historical location को वर्तमान position के रूप में कभी न दिखाएँ।
+
+### Status and restrictions
+- **14.1.9: In Progress / Dependency-Blocked — Source Audit दर्ज; live tracking/ETA implementation नहीं मिली।** Privacy, retention और authorized update/read contract तय किए बिना tracking चालू नहीं की जाएगी।
+- Source/implementation verification: **Verified नहीं**। कोई code, DB/RLS/RPC, customer location data, Auth, provider, secret या deployment परिवर्तन नहीं किया।
+- Final Real-World Test: **बाकी**; कुल 96/96 वास्तविक परीक्षण अंतिम consolidated batch तक Pending।
