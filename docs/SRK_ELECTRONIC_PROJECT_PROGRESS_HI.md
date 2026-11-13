@@ -1519,3 +1519,12 @@
 - Added source regression coverage for immediate clearing, auth listener invalidation, and stale response guards. First CI attempts exposed stale test expectations; assertions were updated to the combined generation guard. Latest full Customer App Source Regression #43500436558 completed **SUCCESS** on commit `8449e7cb476d753fa6958266a20892d8110947d4`.
 - Refund Source Regression #43500272005 and Offer Timeline Source Regression #43500172169 had passed on preceding app source state; the latest full regression covers all source suites after the booking-history fix.
 - This is source-level verification only; real two-account browser switching, live Supabase JWT/RLS runtime checks, and consolidated final mobile/Desktop QA remain pending. Production remains unchanged.
+
+
+## Customer Payment / Refund History account-switch privacy hardening (2026-11-14)
+- Audit found payment and refund history loaders used per-loader request sequences but did not bind in-flight requests to `customerSessionGeneration`. A response from the previous account could therefore still be rendered if it completed before the next session's Payments refresh began.
+- Both loaders now capture the current session generation and use a combined sequence + session-current guard after Auth lookup, after the owner-scoped history RPC, before render, in error handling, and in `finally`. An old request cannot render another account's payment/refund records or release controls owned by a newer request.
+- Added `invalidateCustomerPaymentHistory()` and `invalidateCustomerRefundHistory()`: they increment request sequences, reset pagination/busy state, immediately clear private history UI, and restore pagination/refresh controls on account changes. Auth SIGNED_IN / SIGNED_OUT / USER_UPDATED invokes both invalidators; logout cleanup reuses them.
+- Added regression assertions in `tests/customer-menu.test.cjs` for generation guards, Auth/RPC await boundaries, stale-response prevention and immediate invalidation.
+- Source commits: app `376860c1e742d493c30284190bb48657a50f2f89`; regression test `8fa195782810fe5436be8e2213659d70747e24fe`. Full source regression workflow status has not yet been confirmed; do not mark tests passed until the GitHub Actions result is inspected.
+- No live browser/two-account test, Supabase JWT/RLS runtime test, Production DB/configuration change, payment/refund action, merge or deployment. Final consolidated mobile/Desktop QA remains deferred until all Customer App work is complete.
