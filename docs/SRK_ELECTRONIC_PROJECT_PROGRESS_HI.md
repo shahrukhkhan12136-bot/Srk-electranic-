@@ -1444,3 +1444,12 @@
 - Remaining: GitHub Actions push run का वास्तविक result पढ़ना; isolated non-production test database पर migration+pgTAP behavior (trigger transitions, duplicate idempotency, backfill, owner isolation) चलाना; फिर Customer App browser test. Production untouched.
 
 - Follow-up security test: pgTAP plan 11→12; added explicit assertion that `anon` cannot execute `private.srk_capture_booking_offer_event()` (authenticated-role assertion already present). Commit `6cef3afdf03cb6e8bde2878efc7f6e1fda5f2884`. This is a test-source change only; pgTAP not executed.
+
+
+## Customer Offer Timeline Source CI correction (2026-11-14)
+- GitHub Actions audit found the Customer Offer Timeline Node source test step itself had passed on run #43496809867, but the workflow's Production-deployment guard failed because grep matched its own literal pattern in the workflow file.
+- Fixed .github/workflows/customer-offer-timeline-ci.yml to search deployment commands with a whitespace-tolerant regex while excluding its own workflow file. This preserves detection in other workflows without self-matching.
+- Corrected workflow commit: `4a39fa7e405c098c3c621f766d0a4afd2177ea70`.
+- Re-run #43497295539 completed SUCCESS: Node source regression step PASS; Production deployment guard PASS.
+- General source regression run #43497295502: all isolated source regression suites step PASS; overall job was still in progress at the time checked.
+- This is Feature Branch CI only. No migration applied, no pgTAP execution, no browser/mobile QA, and no Production changes. Remaining: isolated database behavioral/owner-isolation pgTAP, then Customer App runtime/browser checks; final consolidated mobile/Desktop QA remains deferred until all other tasks complete.
