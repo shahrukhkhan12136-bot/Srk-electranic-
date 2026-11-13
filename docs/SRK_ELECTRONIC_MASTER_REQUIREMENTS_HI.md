@@ -2190,3 +2190,72 @@ G. Security review, migration lineage reconciliation, rollback plan, explicit us
 - अभी कोई isolated Supabase development branch नहीं बनाया गया; paid/hourly resource का खर्च user approval के बिना नहीं।
 - Product/Finance policy decisions pending होने तक partial refund, fee reversal, paid payout recovery और cash refund को auto-process नहीं करना।
 - Production schema, RLS, grants, functions, rows, payments, refunds, transfers, webhooks या deployment में कोई बदलाव नहीं।
+
+
+## 17.58 — Current Feature Branch Timer → Bill → Payment → Fee → Refund Dependency Map (13 Nov 2026)
+
+यह GitHub Feature Branch का source audit है; यह Production deployment या live behavior का प्रमाण नहीं है।
+
+### 1. Timer lifecycle: वर्तमान code में नहीं मिला
+- Recursive tracked tree में timer-specific migration/file या timer start/stop/approval/bill-snapshot implementation नहीं मिला।
+- `electrician.html` अभी `assigned → inspection → quote → quote_approved → in_progress → completed` flow दिखाता है।
+- Electrician स्वयं `workStatus(id,'in_progress')` और `workStatus(id,'completed')` करता है; Customer द्वारा start approval/stop approval और immutable server-time boundary का UI/RPC path इस file में नहीं मिला।
+- Quote submit `srk_submit_booking_quote` से `service_charge`, `materials_amount`, `quote_note` भेजता है; पुराने inspection/quote lifecycle पर निर्भर है।
+- `booking.html` Customer payment UI में completed + quote approved + quoted_amount पर निर्भर है; timer snapshot/actual minutes नहीं पढ़ता।
+- इसलिए Section 17.57 का frozen bill अभी design-only है; कोई timer invoice source मौजूद होने का प्रमाण नहीं।
+
+### 2. Booking create और amount trust boundary
+- `create-booking.js` client payload से `payment_method` और optional `quoted_amount` पढ़कर booking insert करता है; यह केवल प्रारंभिक request data है, final price authority नहीं होना चाहिए।
+- `booking.html` submit के समय `quoted_amount` client से भेजता है।
+- भविष्य में booking create पर final price स्वीकार न हो; bill केवल approved category/rate + server timer + approved material lines से बने। Client-sent total को payment amount न मानें।
+
+### 3. Online payment chain: सभी तीन हिस्से legacy quote पर
+- `create-order.js` booking में `quoted_amount`, `service_charge + materials_amount`, `status='completed'`, `quote_status='approved'` validate करता है; Razorpay order amount quote total से बनाता/reuses करता है।
+- `verify-payment.js` signature, provider captured status, order ID, INR और amount verify करता है; फिर `service_bookings.payment_status='paid'` direct service-role PATCH करता है। Amount source legacy approved quote है।
+- `razorpay-webhook.js` `payment.captured/order.paid` events पर वही quote/status/amount validation करता है और booking paid PATCH करता है। Durable event inbox write और shared atomic finalization RPC current handler में नहीं।
+- Customer UI भी quoted_amount से online pay button amount दिखाती है।
+- इन तीनों payment paths को एक shared atomic finalization function और frozen bill snapshot पर migrate करना होगा; अलग-अलग legacy validation/updates को साथ-साथ न छोड़ें।
+
+### 4. Platform Fee / Cash settlement chain: quote-era fields पर आधारित
+- Feature Branch migration `20261112220000_cash_platform_fee_due_and_online_settlement.sql` `service_bookings.payment_status='paid'` + `status='completed'` पर payout/fee trigger चलाती है।
+- `20261113120000_limit_cash_fee_settlement_to_labour_share.sql` उसी trigger का संशोधित source है; current fee `service_charge × commission_rate` के रूप में निकाला जाता है, materials को अलग रखता है; पुराने Cash dues को अगले Online booking के labour share से सीमित करके settle करता है।
+- Cash booking पर electrician को direct customer cash मिलता है और SRK ledger में labour-only Platform Fee due बनता है। Online booking पर electrician payable/payout record बनता है और पुराने cash fee dues को online receipt से settle किया जा सकता है।
+- Refund trigger path paid payout पर रोकता है; Cash due पहले ही बाद की booking में settle हो चुका हो तो Cash refund को Admin reconciliation तक block करता है; Online refund पुराने settled cash due को restore करता है।
+- यह logic अभी `service_charge`, `materials_amount`, `commission_rate`, legacy payout rows और `payment_status='refunded'` transition पर निर्भर है; timer bill allocations/partial refund/provider Route reversal को consume नहीं करता।
+- Migration file में `srk_platform_fee_ledger` Feature Branch schema है; इसकी Production presence इस audit में पुनः verify नहीं की गई। इसे live मानकर code/deploy नहीं करना।
+
+### 5. Refund और payout integration की सीमा
+- पहले दर्ज Section 17.56 के अनुसार live refund RPC quote-total equality पर आधारित हैं; current Feature Branch Admin refund UI अनुपस्थित है।
+- Cash fee trigger में refund होने पर ledger compensation की कुछ स्थितियाँ हैं, पर already-settled cash dues तथा paid payout cases जानबूझकर block होते हैं और Admin reconciliation माँगते हैं।
+- Razorpay refund provider call, refund webhook event inbox, Route transfer/reversal ledger, paid payout recovery और timer line-item allocation का end-to-end bridge नहीं मिला।
+- इसलिए `payment_status='refunded'` को अकेले पूरे financial refund का प्रमाण नहीं मानना चाहिए; customer refund, Platform Fee reversal, electrician earning/payout recovery और Route reversal अलग-अलग reconcile हों।
+
+### 6. End-to-end dependency order (implementation contract)
+1. Timer event store + Customer start/stop approval + dispute boundary.
+2. Immutable bill snapshot: labour minutes/rate, separate material items, total, fee basis and hash.
+3. Payment intent/order bound to snapshot ID/hash and immutable paise amount.
+4. One atomic payment finalizer used by verify endpoint and webhook; durable event inbox and dedupe.
+5. Fee/payout/cash-cycle ledger posting from snapshot, not quote fields; booking slot reservation and concurrency lock.
+6. Refund allocation ledger tied to original snapshot/payment; partial/full cumulative cap.
+7. Provider refund and Route transfer/reversal orchestration as separate idempotent operations.
+8. Payout recovery and cash-fee restore/reversal compensating entries.
+9. Admin/customer/electrician UI, receipt, earnings, finance reports and audit migrated together.
+10. Legacy quote path read-only compatibility for historical records; no blanket backfill or destructive column/function drop.
+
+### 7. High-risk integration test cases (source-driven)
+- Timer stop request vs Customer approval delay: bill uses documented server boundary, not browser clock.
+- Materials-only amount change does not change 15% fee; labour change recalculates only before bill freeze.
+- Verify endpoint and webhook simultaneously receive same captured payment: one payment ledger/payout/fee posting only.
+- Webhook duplicate/out-of-order and unknown booking: durable event/exception queue, no silent HTTP-200 loss.
+- Razorpay order reuse after bill snapshot version/hash change: old order rejected, new authorized order only.
+- Cash cycle slot reservation race across two electricians/booking accepts; third slot policy enforced atomically.
+- Cash fee due settled from later online labour share, then original cash booking refund: compensation/restore reconciles once.
+- Online booking refund after cash dues settlement: restore exactly the previously settled due, no materials deduction.
+- Full/partial refund with pending vs paid payout; paid payout must route to approved recovery workflow.
+- Route transfer success while customer refund fails, and inverse; independent status and retry.
+- Legacy paid/refunded/quote records remain unchanged and visible in historical reporting.
+
+### 8. निष्कर्ष
+- Verified in Feature Branch: legacy quote-based work flow, quote-based order/verify/webhook, labour-only cash fee settlement logic, limited refund compensations and payout blockers.
+- Not present/verified in Feature Branch: customer-approved timer lifecycle, immutable timer bill snapshot, unified atomic payment finalizer, refund allocation ledger, Route transfer orchestrator/reversal, complete paid-payout recovery.
+- No tests were executed in this read-only source review. No code/migration/UI was changed in this section; only this requirements audit record is being added.
