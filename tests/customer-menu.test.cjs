@@ -768,3 +768,24 @@ test('customer profile clears private profile and avatar state when OTP session 
   assert.ok(branch.includes("setCustomerAvatarPreview('')"));
   assert.ok(branch.includes('OTP से लॉगिन करें'));
 });
+
+
+test('customer logout invalidates pending private requests and clears prior account data', () => {
+  const start = html.indexOf('async function syncCustomerSession()');
+  const end = html.indexOf('\nasync function customerSendOtp()', start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+  const noSession = source.slice(source.indexOf('} else {'));
+  for (const token of [
+    '++customerProfileLoadSequence;',
+    '++customerSavedAddressLoadSequence;',
+    'customerSavedAddresses=[];editingSavedAddressId=null;',
+    "savedAddressSelect.replaceChildren(new Option('नया पता इस्तेमाल करें',''));",
+    '++customerSupportComplaintsLoadSequence;customerSupportComplaintsBusy=false;',
+    '++customerSupportThreadLoadSequence;',
+    '++customerSupportBookingsLoadSequence;customerSupportBookingsBusy=false;',
+    "document.getElementById('customerSupportBookingsMore').style.display='none';",
+    "['name','address','district','pin','place','bookingLat','bookingLng']",
+    "document.getElementById('customerMapWrap').style.display='none';"
+  ]) assert.ok(noSession.includes(token), 'logout cleanup missing: '+token);
+});
