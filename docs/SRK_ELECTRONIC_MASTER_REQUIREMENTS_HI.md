@@ -3529,3 +3529,21 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - CI success केवल workflow के configured source regression suite के सफल execution को दर्शाती है; वास्तविक SMS delivery/OTP expiry, Production Auth configuration, server-side abuse limits, CAPTCHA, wrong-attempt lockout, browser/device session lifecycle या live logout revocation का प्रमाण नहीं है।
 - **14.1.1 status: In Progress**। Auth configuration और स्वीकृत runtime/E2E verification लंबित हैं।
 - इस रिकॉर्ड update में application source, workflow, package, Supabase Auth/DB setting, secret, SMS/provider request, customer account/session, payment या deployment नहीं बदला।
+
+
+## 17.105 — Customer OTP CI Annotations का समाधान: Node 24 Actions और स्थिर Ubuntu Runner (13 Nov 2026)
+
+- उपयोगकर्ता ने Run #5 (commit `959b083`) के वास्तविक annotations साझा किए:
+  1. Warning: `actions/checkout@v4` और `actions/setup-node@v4` Node.js 20 runtime घोषित करते हैं; GitHub runner उन्हें Node.js 24 पर force कर रहा है। यह उस run में test failure नहीं था, लेकिन पुराने action majors का deprecation warning है।
+  2. Notice: `ubuntu-latest` label का Ubuntu 26 पर migration 19 Oct 2026 से शुरू होना था। यह environment drift का notice है, test failure नहीं।
+- Feature Branch workflow `.github/workflows/otp-source-tests.yml` को सुरक्षित CI-only बदलाव के साथ अपडेट किया:
+  - `actions/checkout@v4` → `@v5` (Node 24 runtime)
+  - `actions/setup-node@v4` → `@v5` (Node 24 runtime)
+  - test runtime `node-version: 20` → `24`
+  - moving `ubuntu-latest` → pinned `ubuntu-24.04`, ताकि Ubuntu image migration अपने-आप इस workflow को न बदले।
+- आधिकारिक action release notes के अनुसार checkout v5 और setup-node v5 Node 24 runtime पर हैं और runner v2.327.1+ चाहते हैं; GitHub-hosted runner पर workflow execution अगला प्रमाण होगा।
+- Workflow commit: `926ce5cdc08798d24dee89c13735b64157e29102`.
+- Updated workflow blob SHA: `d407198b9c27f731850e7766f634c8cd6bb226ef`; GitHub से दोबारा fetch करके समान SHA सत्यापित किया गया।
+- इस workflow commit पर नया CI run trigger हुआ है; उसका परिणाम अभी इस रिकॉर्ड के समय सत्यापित नहीं है। अगला कदम नए run का success और annotations जाँचना है।
+- यह बदलाव केवल Feature Branch CI workflow में है। कोई application runtime source, Supabase/Auth setting, database/migration, secret, SMS/provider, payment, customer session या Production deployment नहीं बदला।
+- Checklist item 14.1.1 अभी In Progress; CI warning remediation commit saved and refetch-verified, but new run result and real OTP/Auth E2E checks pending.
