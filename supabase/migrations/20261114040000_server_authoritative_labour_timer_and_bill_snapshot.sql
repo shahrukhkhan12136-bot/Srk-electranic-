@@ -2386,3 +2386,30 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.broadcast_booking_job() FROM PUBLIC,anon,authenticated;
 
+
+
+CREATE OR REPLACE FUNCTION public.srk_admin_offer_booking(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_booking public.service_bookings%ROWTYPE; v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin permission required' USING ERRCODE='42501';
+  END IF;
+  IF p_booking_id IS NULL THEN RAISE EXCEPTION 'Booking ID required' USING ERRCODE='22023'; END IF;
+  SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found' USING ERRCODE='P0002'; END IF;
+  IF v_booking.assigned_electrician_id IS NOT NULL THEN RAISE EXCEPTION 'Booking already has an assigned electrician'; END IF;
+  IF v_booking.status NOT IN ('new','confirmed')
+     OR coalesce(v_booking.payment_status,'unpaid')<>'unpaid' THEN
+    RAISE EXCEPTION 'Only new, confirmed and unpaid bookings can be offered' USING ERRCODE='55000';
+  END IF;
+  v_result:=private.srk_offer_booking_to_eligible_electricians(p_booking_id);
+  RETURN v_result;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_offer_booking(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_offer_booking(uuid) TO authenticated;
+
