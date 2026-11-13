@@ -1,0 +1,162 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.SUPABASE_URL = 'https://unit-test.supabase.co';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'unit-test-only-not-a-real-secret';
+const { handler } = require('../create-booking.js');
+
+const validBody = {
+  customer_name: 'Test Customer',
+  phone: '9876543210',
+  state: 'Uttar Pradesh',
+  district: 'Balrampur',
+  pincode: '271861',
+  address: 'Test address, Balrampur',
+  service_type: 'Electrical repair',
+  preferred_date: '2026-12-01',
+  preferred_time: '10:30',
+  work_details: 'Switch board repair',
+  payment_method: 'नकद (Cash)'
+};
+
+function response(status, value) {
+  const raw = typeof value === 'string' ? value : JSON.stringify(value);
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => raw,
+    json: async () => JSON.parse(raw)
+  };
+}
+
+let calls;
+let config;
+let insertedRows;
+
+function mockFetch() {
+  calls = [];
+  insertedRows = null;
+  config = { rateAllowed: true, authStatus: 200, insertStatus: 201, offers: [] };
+  global.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), options });
+    if (String(url).includes('/rpc/srk_check_public_rate_limit')) {
+      return response(200, config.rateAllowed);
+    }
+    if (String(url).includes('/auth/v1/user')) {
+      return response(config.authStatus, {
+        id: 'auth-user-verified-123',
+        phone: '+919876543210',
+        phone_confirmed_at: '2026-11-01T00:00:00Z'
+      });
+    }
+    if (String(url).includes('/rest/v1/service_bookings')) {
+      insertedRows = JSON.parse(options.body);
+      if (config.insertStatus >= 400) return response(config.insertStatus, { code: 'insert_failed' });
+      return response(201, [{ id: 'booking-123' }]);
+    }
+    if (String(url).includes('/rest/v1/job_offers?')) {
+      return response(200, config.offers);
+    }
+    throw new Error('Unexpected mocked fetch: ' + url);
+  };
+}
+
+function event(overrides = {}) {
+  return {
+    httpMethod: 'POST',
+    headers: {
+      'x-nf-client-connection-ip': '203.0.113.10',
+      authorization: 'Bearer verified-test-token'
+    },
+    body: JSON.stringify(validBody),
+    ...overrides
+  };
+}
+
+function status(result) { return result.statusCode; }
+
+test.beforeEach(mockFetch);
+test.afterEach(() => { global.fetch = globalThis.fetch; });
+
+test('rejects non-POST without calling Supabase', async () => {
+  const result = await handler(event({ httpMethod: 'GET' }));
+  assert.equal(status(result), 405);
+  assert.equal(calls.length, 0);
+});
+
+test('rejects oversized body before rate-limit or auth requests', async () => {
+  const result = await handler(event({ body: 'x'.repeat(16385) }));
+  assert.equal(status(result), 413);
+  assert.equal(calls.length, 0);
+});
+
+test('rejects malformed JSON as HTTP 400 after rate limiting', async () => {
+  const result = await handler(event({ body: '{broken-json' }));
+  assert.equal(status(result), 400);
+  assert.equal(calls.length, 1);
+  assert.match(JSON.parse(result.body).error, /JSON/);
+});
+
+test('rejects missing client IP without contacting Supabase', async () => {
+  const result = await handler(event({ headers: { authorization: 'Bearer verified-test-token' } }));
+  assert.equal(status(result), 503);
+  assert.equal(calls.length, 0);
+});
+
+test('rejects rate-limited requests before customer authentication', async () => {
+  config.rateAllowed = false;
+  const result = await handler(event());
+  assert.equal(status(result), 429);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.includes('/rpc/srk_check_public_rate_limit'), true);
+});
+
+test('requires a Bearer customer session', async () => {
+  const result = await handler(event({ headers: { 'x-nf-client-connection-ip': '203.0.113.10' } }));
+  assert.equal(status(result), 401);
+  assert.equal(calls.length, 1);
+});
+
+test('rejects invalid Supabase customer session', async () => {
+  config.authStatus = 401;
+  const result = await handler(event());
+  assert.equal(status(result), 401);
+});
+
+test('rejects booking phone that differs from verified Auth phone', async () => {
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, phone: '9123456780' }) }));
+  assert.equal(status(result), 403);
+  assert.equal(insertedRows, null);
+});
+
+test('rejects invalid booking fields after session verification', async () => {
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, pincode: '123' }) }));
+  assert.equal(status(result), 400);
+  assert.equal(insertedRows, null);
+});
+
+test('rejects non-object JSON payload', async () => {
+  const result = await handler(event({ body: '[]' }));
+  assert.equal(status(result), 400);
+  assert.equal(insertedRows, null);
+});
+
+test('valid booking derives customer UUID from verified Auth and does not create duplicate offers', async () => {
+  config.offers = [{ id: 'offer-1', match_level: 'pincode' }];
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, customer_user_id: 'attacker-controlled-id' }) }));
+  assert.equal(status(result), 200);
+  assert.equal(insertedRows.length, 1);
+  assert.equal(insertedRows[0].customer_user_id, 'auth-user-verified-123');
+  assert.equal(insertedRows[0].status, 'new');
+  assert.equal(insertedRows[0].payment_status, 'unpaid');
+  assert.equal(insertedRows[0].customer_user_id === 'attacker-controlled-id', false);
+  assert.equal(calls.filter(x => x.url.includes('/rest/v1/job_offers?')).length, 1);
+  assert.equal(calls.some(x => x.url.includes('/rest/v1/job_offers') && x.options.method === 'POST'), false);
+});
+
+test('maps database insert failure to a safe generic HTTP 500 response', async () => {
+  config.insertStatus = 500;
+  const result = await handler(event());
+  assert.equal(status(result), 500);
+  assert.match(JSON.parse(result.body).error, /बुकिंग सेव नहीं हो सकी/);
+});
