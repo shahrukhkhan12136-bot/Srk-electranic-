@@ -3080,3 +3080,35 @@ Audit सीमा: केवल local runtime executable/driver availability �
 - Official references: Supabase CLI v3 changelog https://supabase.com/changelog/supabase-cli-v3 ; CLI db query reference https://supabase.com/docs/reference/cli/supabase-db-query ; PostgreSQL 17 privileges https://www.postgresql.org/docs/17/ddl-priv.html ; PostgreSQL 17 LOCK TABLE https://www.postgresql.org/docs/17/sql-lock.html .
 
 Audit सीमा: केवल Feature Branch workflow, package metadata और official CLI documentation का read-only review किया। कोई workflow, code, secret, role, privilege, database, deployment या provider setting नहीं बदली।
+
+
+## 17.82 — Five Pending Feature Migrations: Business-Rule and Security Blocker Review (13 Nov 2026)
+
+### A. Third-booking online reservation logic — sequence race / reservation gap
+- Migration `20261112170000_enforce_electrician_third_booking_online_payment.sql` serializes acceptance per electrician by locking the profile row, but computes the next slot using only already completed, approved, verified-paid bookings.
+- Binding requirement says the booking slot is reserved at acceptance. Two or more accepted but not-yet-completed bookings are therefore not counted in the next sequence number. Repeated acceptances before earlier jobs complete can assign multiple jobs to the same apparent sequence slot; the third-booking rule is not reliably reserved in acceptance order.
+- A dedicated atomic per-electrician sequence/reservation ledger or counter is needed, with reservation on acceptance and explicit release/reconciliation on decline/cancel/failure/refund according to approved rules. Do not infer the reservation lifecycle or modify this migration until those state transitions are specified and tested.
+- The current count checks completed+approved+paid and `payment_verified_at`, but the `payment_status='paid'` predicate makes the additional `NOT IN ('refunded','failed')` redundant. No real concurrency test was run.
+
+### B. Labour-only / customer-supplied materials — legacy financial paths remain
+- Migration `20261112193000_labour_only_quotes_customer_supplies_materials.sql` rejects non-zero materials in the quote RPC and stores zero for newly submitted quotes; this aligns that one entry point with the current customer-supplies rule.
+- However migration `20261112220000_cash_platform_fee_due_and_online_settlement.sql` still calculates `v_total = service_charge + materials_amount`, validates `amount_paid` against that total, uses `service_charge + materials_amount` for old cash-due settlement capacity, writes `materials_amount` to payouts, includes it in electrician payable, and uses it in payout validation/reporting. This directly conflicts with the latest binding rule that materials are outside SRK booking/payment/payout/fee/refund accounting. It also contains `v_materials` in the new financial trigger.
+- The same migration calculates the fee using `new.commission_rate` without enforcing the binding fixed 15% rate. Existing row values must be audited/versioned; do not silently rewrite historical payouts or legacy quote rows. A versioned labour-only snapshot/finalizer must replace these financial calculations after dependency compatibility review.
+- `srk_admin_record_manual_payment` also uses service plus materials and can record UPI/bank transfer as a manual payment. This legacy path must be reconciled with the immutable bill snapshot and verified Razorpay/cash payment contracts before enabling the migration.
+
+### C. Electrician offer-details RPC — prohibited materials and contact lifecycle exposure
+- Migration `20261112230000_show_customer_payment_choice_to_assigned_electrician.sql` adds `payment_method` to the offer-details return, but also returns `materials_amount` and customer phone/address/location whenever `assigned_electrician_id = p.id`.
+- It does not require booking status to remain active; therefore the same assigned electrician can continue receiving customer contact/location and materials fields after completion or cancellation unless another independent access layer blocks it. That conflicts with the binding rule to hide both parties' phone numbers after completion/cancellation and with the no-materials option/data exposure rule.
+- The RPC filters profile ownership only through `p.user_id = auth.uid()` while other project RPCs also accept `auth_user_id`; verify canonical identity mapping and profile uniqueness before relying on this endpoint. Function is SECURITY DEFINER, so its explicit row/column predicates are the access boundary and require adversarial tests.
+- Do not remove the required payment_method visibility after assignment; instead redesign the return contract to expose only necessary fields, no materials fields, and contact data only while the booking is in an allowed active state. Verify customer/electrician mutual contact hiding on completed/cancelled records across all APIs, history and receipts.
+
+### D. Customer Cash-to-Online switch — partial safeguards only
+- Migration `20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql` correctly limits the RPC to the authenticated customer's own unassigned, unpaid Cash booking and does not create a payment order or collect money.
+- It checks status, assignment, payment state and existing Razorpay identifiers under a booking row lock. However, full integration still requires acceptance-cycle reservation, frozen bill snapshot, exact order/payment binding, idempotency, webhook/verify common finalizer and customer UI refresh/error handling tests; this migration alone does not establish the complete online payment lifecycle.
+
+### E. Overall decision / no changes
+- All five files were read-only inspected on Feature Branch. No SQL was executed against Production, no migration was applied, and no source file was changed.
+- The five migrations are not ready for Production. Highest-priority blockers: acceptance-time booking-slot reservation, complete removal of materials from new financial paths while preserving historical records, fixed 15% labour-only fee basis, contact/material field minimization in SECURITY DEFINER RPC, and end-to-end payment finalizer integration.
+- Before any implementation, design a versioned reservation ledger and immutable labour bill snapshot; map old quote/payout records; review all dependent triggers/RPCs/UI; then run disposable PostgreSQL 17 tests including concurrency, idempotency, rollback, RLS/ACL, post-completion contact denial and cash/online/refund reconciliation. Production remains unchanged.
+
+Audit सीमा: केवल पाँच Feature Branch migration files का source review किया। कोई migration, SQL, database, role, secret, payment, deployment या provider setting नहीं बदली।
