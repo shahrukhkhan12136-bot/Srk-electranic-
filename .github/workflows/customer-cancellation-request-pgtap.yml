@@ -13,10 +13,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: srk-customer-cancellation-request-pgtap
-  cancel-in-progress: false
-
 jobs:
   isolated-pgtap:
     if: github.ref == 'refs/heads/feature/platform-fee-cash-online-cycle'
