@@ -1179,3 +1179,11 @@
 - App change commit: `404f0dfa863c16166a698feaafb2548d11089e48`; regression assertion commit: `5d4e502bcd36e494c25ecdc0418a746b6dca68f4`। Fresh CI result अभी pending; test pass का दावा नहीं।
 - कोई DB migration apply, Production write, payment/refund, deploy या manual mobile/Desktop QA नहीं किया।
 - अगला resume point: fresh source CI verify करना; फिर इसी response/refresh failure pattern को customer work-start response और other booking actions में जाँचना।
+
+
+### 14 नवम्बर 2026 — Customer work-start response refresh recovery
+
+- Completion response hardening पर CI सत्यापित: source regression run `43486182243` SUCCESS और combined Customer App source suite `43486203914` SUCCESS।
+- उसी failure mode को work-start approval में पाया: `srk_customer_respond_work_start` सफल होने के बाद booking list refresh fail होने पर पुराना catch “जवाब दर्ज नहीं हुआ” दिखाता था। इसे अलग किया। अब server confirmation के बाद refresh fail हो तो ग्राहक को बताया जाता है कि मंजूरी दर्ज है और केवल सूची refresh करें, जवाब दोबारा न भेजें।
+- App commit `38641c1d5a8dc4642160f947e96af6c2ec863786`; regression test commit `9c101243cb428e7eadca515949316bee1c7018da`। CI अभी pending; इसे pass न मानें।
+- No DB/Production write, deploy, payment action or manual device QA. अगला कदम नए source CI की जाँच और Customer App के booking-action recovery audit को जारी रखना है।
