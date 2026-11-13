@@ -15,6 +15,7 @@ on:
       - "booking.html"
       - "package.json"
       - "supabase/migrations/202611141*.sql"
+      - "supabase/migrations/20261115*.sql"
       - "supabase/tests/database/*refund*.sql"
       - ".github/workflows/refund-source-ci.yml"
   pull_request:
