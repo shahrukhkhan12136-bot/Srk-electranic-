@@ -171,12 +171,12 @@ SELECT ok((SELECT bool_and(platform_fee_rate=15.00) FROM public.srk_booking_labo
   OR NOT EXISTS(SELECT 1 FROM public.srk_booking_labour_bills),
   'Platform Fee rate is fixed at the approved 15 percent policy');
 SELECT ok(
-  position('v_commission:=v_bill.platform_fee_amount' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
-  AND position('v_commission:=round(v_service*v_rate/100,2)' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>
-      position('ELSIF NEW.quote_status' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)),
-  'new payout uses explicit Platform Fee snapshot; commission_rate remains legacy-only'
-);
-SELECT ok(pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)
+  position('v_platform_fee:=v_bill.platform_fee_amount' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
+  AND position('v_net_share:=v_bill.electrician_payable' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
+  AND position('v_platform_fee:=round(v_service*v_rate/100,2)' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>
+      position('IF NEW.selected_category IS NOT NULL THEN' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)),
+  'new payout uses immutable bill Platform Fee and net payable; commission_rate remains legacy-only'
+);SELECT ok(pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)
   ILIKE '%b.platform_fee_amount%' AND
   pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)
   ILIKE '%b.electrician_payable%',
