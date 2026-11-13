@@ -186,7 +186,11 @@ test('customer refund form only appears for completed approved immutable labour 
   assert.match(html, /customerRefundSubmissionBusy\.delete\(bookingId\)/);
   assert.match(html, /row\.status==='completed'[\s\S]*?row\.completion_approval_status==='approved'[\s\S]*?Boolean\(row\.selected_category\)[\s\S]*?Boolean\(bill\)/);
   assert.match(html, /Math\.round\(Number\(bill\.labour_amount\)\*100\)===Math\.round\(Number\(row\.amount_paid\)\*100\)/);
-  assert.match(html, /Promise\.all\(\[loadCustomerRefundHistory\(\),loadCustomerPaymentHistory\(true\)\]\)/);
+  const refundSubmitStart=html.indexOf('async function customerSubmitBookingRefund(');
+  const refundSubmitEnd=html.indexOf('\\nlet customerBookingHistoryLoadSequence',refundSubmitStart);
+  const refundSubmitSource=html.slice(refundSubmitStart,refundSubmitEnd);
+  assert.match(refundSubmitSource, /Promise\\.allSettled\\(\\[\\s*loadCustomerBookings\\(\\),\\s*loadCustomerRefundHistory\\(\\),\\s*loadCustomerPaymentHistory\\(true\\)/);
+  assert.match(refundSubmitSource, /रिफंड अनुरोध सुरक्षित रूप से दर्ज हो गया है, लेकिन कुछ सूची अपडेट नहीं हो सकीं/);
 });
 
 
