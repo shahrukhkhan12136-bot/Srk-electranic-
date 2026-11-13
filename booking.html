@@ -915,7 +915,11 @@ async function loadCustomerSavedAddresses(options = {}) {
 async function saveCurrentBookingAddress() {
  const button=document.getElementById('saveCurrentAddress');
  if(button.disabled) return;
- button.disabled=true;button.textContent='पता सेव हो रहा है…';
+ const select=document.getElementById('savedAddressSelect');
+ const editButton=document.getElementById('editSavedAddress');
+ const selectWasDisabled=select.disabled;
+ const editWasDisabled=editButton.disabled;
+ button.disabled=true;select.disabled=true;editButton.disabled=true;button.textContent='पता सेव हो रहा है…';
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(sessionError)throw sessionError;
@@ -935,7 +939,7 @@ async function saveCurrentBookingAddress() {
   editingSavedAddressId=null;
   setSavedAddressStatus(refreshed&&customerSavedAddresses.some(a=>a.id===data)?'पता सफलतापूर्वक सेव हो गया।':'पता सेव हो गया है, लेकिन सेव किए गए पतों की सूची अभी रीफ़्रेश नहीं हो सकी। दोबारा लोड करें।',!refreshed||!customerSavedAddresses.some(a=>a.id===data));
  } catch(e) {setSavedAddressStatus(e.message==='ADDRESS_LIMIT_REACHED'?'अधिकतम 10 पते सेव हो सकते हैं। पहले कोई पुराना पता हटाना होगा.':'पता सेव नहीं हो सका। '+(e.message||''),true);}
- finally {button.disabled=false;button.textContent='यह पता सेव करें';}
+ finally {button.disabled=false;select.disabled=selectWasDisabled;editButton.disabled=editWasDisabled;button.textContent='यह पता सेव करें';}
 }
 function editSelectedSavedAddress() {
  const id=document.getElementById('savedAddressSelect').value;
