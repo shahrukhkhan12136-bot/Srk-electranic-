@@ -27,7 +27,7 @@ begin
          r.created_at, r.updated_at, r.processed_at
     from public.srk_booking_refund_requests r
    where r.customer_user_id = auth.uid()
-   order by r.created_at desc
+   order by r.created_at desc, r.id desc
    limit 100;
 end;
 $function$;
