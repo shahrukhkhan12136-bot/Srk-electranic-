@@ -2317,6 +2317,9 @@ $function$;
 -- The client has no need for quote, materials, or material-charge columns.
 -- Contact data is available only after assignment and while work is active;
 -- completed jobs no longer return customer contact details.
+-- Keep the final offer API aligned with the authoritative timer and labour-only model.
+-- Never expose legacy quote/material fields. An accepted assignment retains direct
+-- contact access through completion, including the pending customer start approval.
 DROP FUNCTION IF EXISTS public.srk_get_my_offer_details();
 CREATE FUNCTION public.srk_get_my_offer_details()
 RETURNS TABLE(
@@ -2324,42 +2327,38 @@ RETURNS TABLE(
   booking_id uuid,service_type text,state text,district text,pincode text,
   preferred_date date,preferred_time time,work_details text,
   booking_status text,customer_name text,customer_phone text,address text,
-  location_lat double precision,location_lng double precision,
-  selected_category text,selected_duration_hours smallint,
-  approved_rate_tier text,approved_skill_keys text[],
-  payment_method text,payment_status text,amount_paid numeric,
-  work_timer_elapsed_seconds bigint,work_started_at timestamptz,
-  work_timer_running boolean
+  location_lat double precision,location_lng double precision,payment_method text,
+  selected_category text,selected_duration_hours smallint,approved_rate_tier text,
+  approved_skill_keys text[],work_timer_elapsed_seconds numeric,
+  work_timer_running boolean,work_started_at timestamptz,
+  work_start_approval_status text,completion_approval_status text,
+  labour_rate_tier_snapshot text,payment_status text,amount_paid numeric,payment_verified_at timestamptz
 )
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path TO 'pg_catalog','public','auth','pg_temp'
 AS $function$
-  SELECT o.id,o.status,o.match_level,o.created_at,b.id,b.service_type,
-    b.state,b.district,b.pincode,b.preferred_date,b.preferred_time,b.work_details,
-    b.status,
+  SELECT o.id,o.status,o.match_level,o.created_at,b.id,b.service_type,b.state,b.district,b.pincode,
+    b.preferred_date,b.preferred_time,b.work_details,b.status,
     CASE WHEN b.assigned_electrician_id=p.id AND b.status IN
-      ('assigned','inspection','awaiting_quote_approval','quote_approved',
-       'awaiting_work_start_approval','in_progress')
+      ('assigned','inspection','awaiting_work_start_approval','in_progress','completed')
       THEN b.customer_name ELSE NULL END,
     CASE WHEN b.assigned_electrician_id=p.id AND b.status IN
-      ('assigned','inspection','awaiting_quote_approval','quote_approved',
-       'awaiting_work_start_approval','in_progress')
+      ('assigned','inspection','awaiting_work_start_approval','in_progress','completed')
       THEN b.phone ELSE NULL END,
     CASE WHEN b.assigned_electrician_id=p.id AND b.status IN
-      ('assigned','inspection','awaiting_quote_approval','quote_approved',
-       'awaiting_work_start_approval','in_progress')
+      ('assigned','inspection','awaiting_work_start_approval','in_progress','completed')
       THEN b.address ELSE NULL END,
     CASE WHEN b.assigned_electrician_id=p.id AND b.status IN
-      ('assigned','inspection','awaiting_quote_approval','quote_approved',
-       'awaiting_work_start_approval','in_progress')
+      ('assigned','inspection','awaiting_work_start_approval','in_progress','completed')
       THEN b.location_lat ELSE NULL END,
     CASE WHEN b.assigned_electrician_id=p.id AND b.status IN
-      ('assigned','inspection','awaiting_quote_approval','quote_approved',
-       'awaiting_work_start_approval','in_progress')
+      ('assigned','inspection','awaiting_work_start_approval','in_progress','completed')
       THEN b.location_lng ELSE NULL END,
-    b.selected_category,b.selected_duration_hours,p.approved_rate_tier,
-    p.approved_skill_keys,b.payment_method,b.payment_status,b.amount_paid,
-    b.work_timer_seconds::bigint,b.work_started_at,b.work_timer_running
+    b.payment_method,b.selected_category,b.selected_duration_hours,
+    p.approved_rate_tier,p.approved_skill_keys,
+    b.work_timer_elapsed_seconds,b.work_timer_running,b.work_started_at,
+    b.work_start_approval_status,b.completion_approval_status,
+    b.labour_rate_tier_snapshot,b.payment_status,b.amount_paid,b.payment_verified_at
   FROM public.job_offers o
   JOIN public.electrician_profiles p ON p.id=o.electrician_id
   JOIN public.service_bookings b ON b.id=o.booking_id
