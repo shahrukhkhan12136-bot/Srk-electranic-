@@ -9,6 +9,7 @@ on:
       - 'supabase/migrations/20261114010000_customer_booking_category_and_duration.sql'
       - 'supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql'
       - 'supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql'
+      - 'supabase/migrations/20261114220000_customer_contacts_after_completion.sql'
       - 'supabase/tests/fixtures/timer_completion_bootstrap.sql'
       - 'supabase/tests/database/customer_booking_category_duration.test.sql'
       - 'supabase/tests/database/server_authoritative_labour_timer_and_bill_snapshot.test.sql'
@@ -69,6 +70,7 @@ jobs:
           psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261114010000_customer_booking_category_and_duration.sql"
           psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql"
           psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261114220000_customer_contacts_after_completion.sql"
       - name: Run timer and completion pgTAP suites
         working-directory: ${{ runner.temp }}/srk-timer
         run: supabase test db
