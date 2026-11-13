@@ -414,7 +414,7 @@ test('saved address list and save catch Auth session retrieval failures', () => 
   const loadSource = html.slice(loadStart, loadEnd);
   assert.ok(loadSource.indexOf('try {') < loadSource.indexOf('customerSb.auth.getSession()'));
   assert.match(loadSource, /if\(sessionError\)throw sessionError/);
-  assert.match(loadSource, /finally \{select.disabled=false;\}/);
+  assert.match(loadSource, /finally \{if\(sequence===customerSavedAddressLoadSequence\)select.disabled=false;\}/);
   const saveStart = html.indexOf('async function saveCurrentBookingAddress');
   const saveEnd = html.indexOf('\nfunction editSelectedSavedAddress', saveStart);
   const saveSource = html.slice(saveStart, saveEnd);
