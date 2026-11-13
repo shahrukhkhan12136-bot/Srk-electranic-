@@ -295,6 +295,8 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
+let customerActiveRazorpayCheckout=null;
+let customerPaymentFlowSequence=0;
 document.getElementById('year').textContent = new Date().getFullYear();
 function initCustomerMenuShell(){
  const dashboard=document.getElementById('customer-dashboard');
@@ -1738,7 +1740,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();invalidateCustomerProfileAndSavedAddresses();invalidateCustomerSupportPrivateState();invalidateCustomerWorkStartResponses();invalidateCustomerWorkCompletionResponses();invalidateCustomerPaymentMethodChanges();} setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();invalidateCustomerProfileAndSavedAddresses();invalidateCustomerSupportPrivateState();invalidateCustomerWorkStartResponses();invalidateCustomerWorkCompletionResponses();invalidateCustomerPaymentMethodChanges();invalidateCustomerPaymentFlow();} setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerPhone').addEventListener('input', () => {
     if (customerPendingOtpPhone && customerPhoneE164() !== customerPendingOtpPhone) {
       customerPendingOtpPhone = null;
@@ -1777,26 +1779,55 @@ function setPaymentStatus(message, isError = false) {
   el.textContent = message;
   el.style.color = isError ? '#b42318' : '#176b3a';
 }
+function finishCustomerPaymentFlow(generation,sequence,checkout=null){
+  if(sequence!==customerPaymentFlowSequence||!customerSessionOperationIsCurrent(generation))return;
+  paymentBusy=false;
+  if(!checkout||customerActiveRazorpayCheckout===checkout)customerActiveRazorpayCheckout=null;
+  const button=document.getElementById('payNow');
+  if(button){button.disabled=false;button.textContent='🔒 Razorpay से भुगतान करें';}
+}
+function invalidateCustomerPaymentFlow(){
+  customerPaymentFlowSequence++;
+  paymentBusy=false;
+  const checkout=customerActiveRazorpayCheckout;
+  customerActiveRazorpayCheckout=null;
+  if(checkout){try{checkout.close();}catch(_){}}
+  pendingBookingId=null;pendingAmount=0;
+  const panel=document.getElementById('upiPanel');if(panel)panel.style.display='none';
+  const button=document.getElementById('payNow');
+  if(button){button.disabled=false;button.textContent='🔒 Razorpay से भुगतान करें';}
+  setPaymentStatus('लॉगिन बदल गया है। पुराने खाते का भुगतान पैनल बंद कर दिया गया है।',true);
+}
 
 async function startRazorpayPayment() {
   if (paymentBusy) return;
   if (!window.Razorpay) { setPaymentStatus('Razorpay Checkout लोड नहीं हुआ। इंटरनेट चालू करके पेज रीफ्रेश करें।', true); return; }
+  const generation=customerSessionGeneration;
+  const sequence=++customerPaymentFlowSequence;
+  const isCurrent=()=>sequence===customerPaymentFlowSequence&&customerSessionOperationIsCurrent(generation);
+  const bookingId=pendingBookingId;
+  if(!customerSb||!bookingId){setPaymentStatus('भुगतान के लिए वैध बुकिंग और ग्राहक OTP लॉगिन जरूरी है।',true);return;}
   paymentBusy = true;
   const button = document.getElementById('payNow');
   button.disabled = true;
   button.textContent = 'कृपया प्रतीक्षा करें…';
   setPaymentStatus('पेमेंट ऑर्डर बनाया जा रहा है…');
+  let checkoutOpened=false;
+  let checkout=null;
   try {
     const { data: customerSessionData,error:customerSessionError } = await customerSb.auth.getSession();
+    if(!isCurrent())return;
     if(customerSessionError)throw customerSessionError;
     const customerSession = customerSessionData?.session;
     if (!customerSession) throw new Error('भुगतान के लिए पहले ग्राहक OTP लॉगिन करें।');
     const paymentHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + customerSession.access_token };
     const orderResponse = await fetch('/api/create-order', {
       method: 'POST', headers: paymentHeaders,
-      body: JSON.stringify({ booking_id: pendingBookingId })
+      body: JSON.stringify({ booking_id: bookingId })
     });
+    if(!isCurrent())return;
     const orderData = await orderResponse.json();
+    if(!isCurrent())return;
     if (!orderResponse.ok) throw new Error(orderData.error || 'ऑर्डर नहीं बन पाया।');
 
     const options = {
@@ -1810,8 +1841,9 @@ async function startRazorpayPayment() {
       notes: { service: value('service'), customer_phone: value('phone') },
       theme: { color: '#0b5ed7' },
       handler: async function (response) {
-        setPaymentStatus('भुगतान की जाँच हो रही है…');
+        if(isCurrent())setPaymentStatus('भुगतान की जाँच हो रही है…');
         try {
+          // Verify using the initiating customer's captured token even if the UI session changes mid-checkout.
           const verifyResponse = await fetch('/api/verify-payment', {
             method: 'POST', headers: paymentHeaders,
             body: JSON.stringify({
@@ -1822,26 +1854,33 @@ async function startRazorpayPayment() {
           });
           const verifyData = await verifyResponse.json();
           if (!verifyResponse.ok || !verifyData.success) throw new Error(verifyData.error || 'भुगतान सत्यापित नहीं हुआ।');
-          setPaymentStatus('भुगतान सफल और सत्यापित हो गया है।');
-          setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है।');
-          await loadCustomerBookings();
-        } catch (err) { setPaymentStatus(err.message, true); }
+          if(isCurrent()){
+            setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है।');
+            await loadCustomerBookings();
+          }
+        } catch (err) { if(isCurrent())setPaymentStatus(err.message, true); }
+        finally {finishCustomerPaymentFlow(generation,sequence,checkout);}
       },
-      modal: { ondismiss: function () { setPaymentStatus('आपने भुगतान विंडो बंद कर दी। अभी भुगतान की पुष्टि नहीं हुई है।', true); } }
+      modal: { ondismiss: function () {
+        if(isCurrent()){setPaymentStatus('आपने भुगतान विंडो बंद कर दी। अभी भुगतान की पुष्टि नहीं हुई है।', true);finishCustomerPaymentFlow(generation,sequence,checkout);}
+      } }
     };
-    const checkout = new Razorpay(options);
+    checkout = new Razorpay(options);
+    customerActiveRazorpayCheckout=checkout;
     checkout.on('payment.failed', function (response) {
+      if(!isCurrent())return;
       const reason = response.error && response.error.description ? response.error.description : 'भुगतान असफल रहा।';
       setPaymentStatus('❌ ' + reason, true);
+      try{checkout.close();}catch(_){}
+      finishCustomerPaymentFlow(generation,sequence,checkout);
     });
     checkout.open();
-    setPaymentStatus('Razorpay Checkout खुल रहा है…');
+    checkoutOpened=true;
+    if(isCurrent())setPaymentStatus('Razorpay Checkout खुल रहा है…');
   } catch (error) {
-    setPaymentStatus(error.message || 'कुछ गड़बड़ हुई। कृपया दोबारा कोशिश करें।', true);
+    if(isCurrent())setPaymentStatus(error.message || 'कुछ गड़बड़ हुई। कृपया दोबारा कोशिश करें।', true);
   } finally {
-    paymentBusy = false;
-    button.disabled = false;
-    button.textContent = '🔒 Razorpay से भुगतान करें';
+    if(isCurrent()&&!checkoutOpened)finishCustomerPaymentFlow(generation,sequence,checkout);
   }
 }
 
