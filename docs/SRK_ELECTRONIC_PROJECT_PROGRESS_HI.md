@@ -1877,3 +1877,23 @@ Master Requirements के sections 1.2, 6, 8.1 और 8.2 को वर्त�
 - यह requirements-to-source audit है, runtime/browser validation नहीं। कोई customer data या Production setting नहीं बदली।
 
 **Customer App अगला क्रम:** पहले cancellation request/admin review dependency और settlement/reversal design को सुरक्षित रूप से पूरा करना; साथ में ratings/reviews तथा notifications requirements का schema/RPC/UI dependency audit। उसके बाद Customer App completion evidence और consolidated manual QA; तब तक Electrician Portal शुरू नहीं होगा।
+
+
+### Deep dependency audit — cancellation carry-forward, ratings और notifications (14 नवम्बर 2026)
+
+Feature branch recursive Git tree तथा संबंधित migrations की जाँच:
+
+**Cancellation / settlement:**
+- `20261113235900_harden_customer_cancellation_and_safe_refund_history.sql` में customer refund-request history है; dedicated cancellation request, Admin fee decision या fee ledger नहीं।
+- `20261112220000_cash_platform_fee_due_and_online_settlement.sql` और `20261113120100_limit_cash_fee_settlement_to_labour_share.sql` electrician के Platform Fee dues के लिए अलग `srk_platform_fee_ledger` रखते हैं। यह ग्राहक की cancellation fee से अलग accounting head है; इसे reuse करना policy violation होगा।
+- मौजूदा Platform Fee ledger पुराने dues को pooled balance में settle करता है। Refund migration स्पष्ट रूप से बताती है कि बाद के online settlement के बाद पुराने cash fee refund को safely reverse करना Admin reconciliation मांगता है। Cancellation dues के लिए user/booking-wise अलग line-item allocation और उसी item की reversal/settlement identity आवश्यक है; pooled balance पर्याप्त नहीं।
+- Secure wallet foundation में generic `srk_wallet_ledger` के प्रकार सीमित हैं और wallet top-ups/payouts disabled हैं। इसलिए ग्राहक की cancellation liability को customer stored-value wallet या मौजूदा Platform Fee ledger में डालना उचित नहीं। Cash booking पर electrician liability/debit का अर्थ और settlement recipient भी अलग accounting design से तय होना चाहिए।
+- Customer complaint RPC के allowed categories में `booking_cancellation` नहीं है; generic complaint create करना dedicated Admin cancellation request का विकल्प नहीं।
+- मौजूदा cancellation hardening migration केवल refund history function पर केंद्रित है; उससे यह निष्कर्ष नहीं निकालना कि customer cancellation feature मौजूद है।
+
+**Ratings / Notifications:**
+- Feature branch recursive migration tree में rating/review या customer notification-preference schema migration नहीं मिली। Repository-wide code search में भी dedicated rating submit RPC / notification preference RPC का प्रमाण नहीं मिला।
+- इसलिए दो-तरफा rating (per completed booking unique per side, 1–5 stars, optional review/dimensions, aggregate profile average), abuse/moderation policy, RLS और customer/electrician visibility अभी unverified/remaining हैं।
+- Notification preferences को push delivery मान लेना उचित नहीं: पहले supported channels, consent, opt-out semantics, event types, delivery provider, retry/de-duplication, quiet hours और account/session privacy design करना होगा। इस pass में कोई push provider या live notification channel configure नहीं किया।
+
+**निर्णय:** अभी cancellation schema या wallet enum में जल्दबाजी से बदलाव नहीं किया। अगले implementation से पहले अलग cancellation-fee receivable ledger और per-fee allocation/reversal model को existing booking, payment, refund, payout और cash-cycle के साथ transactionally specify करना होगा। कोई Production migration, live payment, payout, booking या customer data change नहीं हुआ।
