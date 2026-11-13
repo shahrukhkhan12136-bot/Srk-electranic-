@@ -637,3 +637,14 @@
 - Commits: `c1f65a03c9ccdac2a3f5dcb3c25c22367d66b73f` (booking form), `d7c98e03b7fba72894985cde203a771a3eed0293` (initial test), `634d08ef1b4cd5bdd06fc8276e6c9de9c937d6b5` (corrected test assertion).
 - Initial CI runs failed because the new static test regex represented `||` incorrectly; the assertion was corrected. Latest source regression workflow run `43459149685` completed successfully on commit `634d08ef1b4cd5bdd06fc8276e6c9de9c937d6b5`. This is source-level CI only; browser runtime, real sessionStorage-denial simulation, API/database concurrency, and mobile/Desktop QA remain unverified.
 - Resume point: continue Customer App form audit (saved-address load/save/default/edit behavior, map/location handling, and duplicate submission/error recovery). Do not start Electrician Portal until Customer App is complete.
+
+
+## 2026-11-13 — Customer App saved-address / GPS consistency audit
+- Saved-address API source review: customer list/save/delete RPCs derive identity from `auth.uid()`; saved-address table has owner-scoped RLS, authenticated-only RPC execution, 10-address limit, one-default partial unique index, paired/range-checked coordinates, and saved-address changes do not rewrite historical bookings. The existing 14-assertion pgTAP file is present but has NOT been executed.
+- Found a customer UX/data-consistency issue: when a saved address with GPS coordinates was edited, the map preview/link was not restored in edit mode; changing address/district/state/PIN after selecting a saved address could leave the old GPS coordinates attached to the new address.
+- Updated `booking.html`: editing a saved address now restores its saved map preview/link; manual edits to address, district, state, or PIN clear stale coordinates and hide the old map until the customer chooses GPS again.
+- Added source regression assertions to `tests/customer-booking-idempotency.test.cjs` for saved-map restoration and stale-coordinate invalidation.
+- Commits: `8413c12c7adc785875346f0d4adff401c5e3be4b` (form logic), `b70ba1621bd420e8384dd389be2c472880103936` (regression tests).
+- Source regression workflow run `43459618523` passed on test commit `b70ba1621bd420e8384dd389be2c472880103936`. Refund source workflow run `43459589339` also passed on preceding code commit.
+- Not yet verified: browser behavior, live Supabase RPC execution, saved-address RLS under real customer JWTs, concurrent default-address updates, GPS permission/denial flows, and final mobile/Desktop QA. No production data/schema was changed.
+- Resume point: continue Customer App audit with booking form payload/duplicate-submit recovery and saved-address default-selection semantics; then proceed through remaining Customer App items only.
