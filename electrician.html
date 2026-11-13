@@ -24,7 +24,7 @@
 <section id="partnerPanelProfile" class="card partner-panel hidden" role="tabpanel" aria-labelledby="partnerTabProfile" hidden><h2>Profile / ID</h2><p id="profile"></p><p id="partnerReferenceId" class="pill">पार्टनर संदर्भ ID लोड हो रही है…</p><p class="muted">यह UUID केवल आंतरिक पार्टनर संदर्भ है; यह सरकारी पहचान-पत्र या डाउनलोड करने योग्य डिजिटल ID नहीं है। नाम, मोबाइल, क्षेत्र, स्वीकृत Rate Tier और Verified Skills Admin-अनुमोदित रिकॉर्ड हैं। बदलाव के लिए Admin verification आवश्यक है।</p><div class="job"><b>पहचान और दस्तावेज़ सत्यापन</b><p class="muted">पहचान और पते का प्रमाण जमा करें। केवल PDF, JPG या PNG; अधिकतम 5 MB प्रति फ़ाइल। दस्तावेज़ निजी Storage में रहेगा और केवल आप तथा अधिकृत Admin उसे देख सकते हैं।</p><label for="verificationDocumentType">दस्तावेज़ का प्रकार</label><select id="verificationDocumentType"><option value="identity_proof">पहचान प्रमाण</option><option value="address_proof">पता प्रमाण</option><option value="skill_certificate">कौशल प्रमाणपत्र (वैकल्पिक)</option></select><label for="verificationDocumentFile">फ़ाइल चुनें</label><input id="verificationDocumentFile" type="file" accept="application/pdf,image/jpeg,image/png"><button type="button" onclick="submitElectricianVerificationDocument()">दस्तावेज़ जमा करें</button><p id="verificationDocumentStatus" role="status" class="muted"></p><h3>मेरे जमा दस्तावेज़</h3><div id="myVerificationDocuments">दस्तावेज़ स्थिति लोड हो रही है…</div><p class="muted">दस्तावेज़ की वैधता/expiry अभी सिस्टम में track नहीं होती। पहचान और पते के नवीनतम दोनों प्रमाण Admin द्वारा मंजूर होने तक पार्टनर Active नहीं हो सकता।</p></div></section>
 <section id="partnerPanelSupport" class="card partner-panel hidden" role="tabpanel" aria-labelledby="partnerTabSupport" hidden><h2>Help & Support</h2><p>इलेक्ट्रिशियन सहायता टिकट और संदेश सुविधा अभी उपलब्ध नहीं है।</p><p class="muted">ग्राहक सहायता API को इलेक्ट्रिशियन खाते से उपयोग करना सुरक्षित नहीं है। इलेक्ट्रिशियन-विशिष्ट ticket, message, attachment और RLS अधिकार लागू व जाँचे जाने के बाद ही यह सुविधा चालू होगी।</p></section>
 </section></main><script>
-const cfg=window.SRK_CONFIG||{};let sb,user,profile,offersChannel,otpBusy=false,otpCooldownUntil=0,otpTimer=null;
+const cfg=window.SRK_CONFIG||{};let sb,user,profile,offersChannel,otpBusy=false,otpCooldownUntil=0,otpTimer=null,partnerVapidPublicKey='',partnerVapidCheckedAt=0;
 function safeTel(v){const p=String(v??'').replace(/\D/g,'');return /^[0-9]{10,15}$/.test(p)?'tel:'+p:''}
 function activatePartnerMenu(name,focus=false){const tabs=[...document.querySelectorAll('[data-partner-menu]')];for(const tab of tabs){const active=tab.dataset.partnerMenu===name;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;const panel=document.getElementById(tab.getAttribute('aria-controls'));if(panel){panel.hidden=!active;panel.classList.toggle('hidden',!active);}if(active&&focus)tab.focus();}}
 document.querySelectorAll('[data-partner-menu]').forEach(tab=>{tab.addEventListener('click',()=>activatePartnerMenu(tab.dataset.partnerMenu));tab.addEventListener('keydown',event=>{const tabs=[...document.querySelectorAll('[data-partner-menu]')],i=tabs.indexOf(tab);let next=null;if(event.key==='ArrowRight')next=(i+1)%tabs.length;else if(event.key==='ArrowLeft')next=(i-1+tabs.length)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;if(next!==null){event.preventDefault();activatePartnerMenu(tabs[next].dataset.partnerMenu,true);}});});
@@ -33,6 +33,14 @@ document.querySelectorAll('[data-partner-menu]').forEach(tab=>{tab.addEventListe
 // never reuse the separate TEST project's key in Production.
 function partnerPushSay(message,bad=false){const el=document.getElementById('partnerPushStatus');if(el){el.textContent=message;el.className=bad?'bad':'muted';}}
 function partnerPushKeyBytes(value){const padding='='.repeat((4-value.length%4)%4);const base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));}
+async function loadPartnerVapidKey(force=false){
+ if(partnerVapidPublicKey&&!force&&Date.now()-partnerVapidCheckedAt<3600000)return partnerVapidPublicKey;
+ const response=await fetch(cfg.SUPABASE_URL+'/functions/v1/push-job-offer',{method:'GET',cache:'no-store'});
+ const result=await response.json().catch(()=>({}));
+ partnerVapidCheckedAt=Date.now();
+ if(!response.ok||result.pushReady!==true||typeof result.publicKey!=='string'||!result.publicKey)throw new Error('Push सेवा अभी सर्वर पर तैयार नहीं है।');
+ partnerVapidPublicKey=result.publicKey;return partnerVapidPublicKey;
+}
 async function refreshPartnerPushState(){
  const enable=document.getElementById('partnerPushEnable'),disable=document.getElementById('partnerPushDisable');
  if(!enable||!disable)return;
@@ -47,17 +55,16 @@ async function refreshPartnerPushState(){
    partnerPushSay('Push सुविधा केवल Admin-अनुमोदित Active Electrician पार्टनर के लिए उपलब्ध है।',true);
    enable.disabled=true;return;
   }
-  const vapid=String(cfg.VAPID_PUBLIC_KEY||'').trim();
-  enable.disabled=!!subscription||!vapid||Notification.permission==='denied';
-  if(subscription)partnerPushSay('इस डिवाइस पर Push Subscription चालू है।');
-  else if(Notification.permission==='denied')partnerPushSay('Browser में Notifications block हैं। Browser Settings से अनुमति दें।',true);
-  else if(!vapid)partnerPushSay('Push सेवा का public VAPID key अभी सुरक्षित configuration में उपलब्ध नहीं है। अभी कोई fake notification नहीं भेजा जाएगा।',true);
-  else partnerPushSay('इस डिवाइस पर नोटिफिकेशन चालू करने के लिए बटन दबाएँ।');
+  if(subscription){enable.disabled=true;partnerPushSay('इस डिवाइस पर Push Subscription चालू है।');return;}
+  if(Notification.permission==='denied'){enable.disabled=true;partnerPushSay('Browser में Notifications block हैं। Browser Settings से अनुमति दें।',true);return;}
+  enable.disabled=true;partnerPushSay('Push सेवा की सुरक्षित सार्वजनिक configuration जाँची जा रही है…');
+  try{await loadPartnerVapidKey();enable.disabled=false;partnerPushSay('इस डिवाइस पर नोटिफिकेशन चालू करने के लिए बटन दबाएँ।');}
+  catch(_){partnerPushSay('Push सेवा अभी सर्वर पर तैयार नहीं है। VAPID configuration की जाँच आवश्यक है।',true);}
  }catch(_){partnerPushSay('Notification स्थिति नहीं जाँची जा सकी। कृपया Refresh करें।',true);enable.disabled=true;disable.disabled=true;}
 }
 async function enablePartnerPush(){
  const enable=document.getElementById('partnerPushEnable');if(!user||!sb||!enable)return;
- const vapid=String(cfg.VAPID_PUBLIC_KEY||'').trim();if(!vapid){partnerPushSay('Push सेवा का public VAPID key configure नहीं है। TEST project की key यहाँ उपयोग नहीं की जाएगी।',true);return;}
+ let vapid='';try{vapid=await loadPartnerVapidKey(true);}catch(error){partnerPushSay(error.message||'Push सेवा तैयार नहीं है।',true);return;}
  if(!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window)){partnerPushSay('इस browser में Web Push समर्थित नहीं है।',true);return;}
  enable.disabled=true;partnerPushSay('Notification अनुमति माँगी जा रही है…');
  try{
