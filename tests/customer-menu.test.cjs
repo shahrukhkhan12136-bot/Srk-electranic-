@@ -167,6 +167,8 @@ test('customer payment history pagination prevents duplicate loads and restores 
   assert.ok(source.includes('customerPaymentHistoryBusy=false;')&&source.includes('more.disabled=false;')&&source.includes('refresh.disabled=false;'));
   assert.match(source,/customerPaymentHistoryOffset=requestedOffset\+rows\.length/);
   assert.match(source,/if\(sequence!==customerPaymentHistoryLoadSequence\)return/);
+  assert.ok(source.includes('data-payment-history-load-warning'));
+  assert.ok(source.includes('पहले से दिख रहे रिकॉर्ड सुरक्षित हैं'));
 });
 
 
