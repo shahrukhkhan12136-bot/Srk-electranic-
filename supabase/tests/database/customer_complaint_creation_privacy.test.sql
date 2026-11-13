@@ -7,7 +7,7 @@ select ok(
   'complaint creation RPC is authenticated only'
 );
 select ok(
-  position('set search_path = ''''' in lower(pg_get_functiondef('public.srk_customer_create_booking_complaint(uuid,text,text)'::regprocedure))) > 0,
+  position('set search_path to ''''' in lower(pg_get_functiondef('public.srk_customer_create_booking_complaint(uuid,text,text)'::regprocedure))) > 0,
   'security definer RPC uses an empty search_path'
 );
 select ok(
