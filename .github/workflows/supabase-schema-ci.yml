@@ -142,6 +142,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114080000_electrician_safe_booking_work_timeline.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114090000_atomic_razorpay_order_and_payment_finalization.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114100000_reproducible_labour_only_refund_foundation.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114110000_admin_refund_review_queue_and_decisions.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
@@ -213,6 +214,12 @@ jobs:
             END IF;
             IF to_regprocedure('public.srk_customer_create_booking_refund_request(uuid,text)') IS NULL THEN
               RAISE EXCEPTION 'Missing customer labour-only refund request RPC';
+            END IF;
+            IF to_regprocedure('public.srk_admin_list_booking_refund_requests()') IS NULL THEN
+              RAISE EXCEPTION 'Missing Admin refund queue RPC';
+            END IF;
+            IF to_regprocedure('public.srk_admin_decide_booking_refund_request(uuid,text,text)') IS NULL THEN
+              RAISE EXCEPTION 'Missing Admin refund decision RPC';
             END IF;
           END
           $$;
