@@ -2376,3 +2376,28 @@ G. Security review, migration lineage reconciliation, rollback plan, explicit us
 ### 7. निष्कर्ष
 Feature Branch में उपयोगी security controls हैं: authenticated customer booking, confirmed phone match, rate limits, public INSERT restrictions, contact ownership filters, selected fixed-search-path functions, client write revocation on sensitive ledgers, and idempotency keys. फिर भी ये controls full security sign-off नहीं हैं। मुख्य blockers timer/payment/refund/Route lifecycle, full contact privacy matrix, broad service_role/default ACL, webhook lineage, financial audit/immutability, and unexecuted tests हैं।
 इस section में केवल Master Requirements documentation बदली गई; कोई source code, SQL migration, Production object/data, grant, provider setting, staging resource या deployment नहीं बदला।
+
+
+## 17.61 — सामग्री (सामान) पूरी तरह Customer की जिम्मेदारी; Electrician का कोई संबंध नहीं (13 Nov 2026)
+
+यह उपयोगकर्ता का स्पष्ट और नवीनतम निर्णय है। यह Master Requirements में पहले लिखे उन सभी विकल्पों/वाक्यों को supersede करता है जिनमें इलेक्ट्रिशियन द्वारा सामान लाने, सामान सप्लाई करने, सामान का बिल देने, सामग्री की कीमत जोड़ने या ग्राहक द्वारा इलेक्ट्रिशियन से सामान खरीदने की संभावना बताई गई थी।
+
+### अनिवार्य नियम
+1. सारा सामान/पार्ट्स ग्राहक खुद खरीदेगा और खुद लेकर आएगा।
+2. सामान खरीदने, चुनने, लाने, उपलब्ध कराने, बदलने, उसकी कीमत तय करने या उसका बिल देने से इलेक्ट्रिशियन का कोई संबंध नहीं होगा।
+3. Electrician App में सामान/Materials का कोई विकल्प, बटन, फ़ील्ड, सूची, quotation, amount input या supply workflow नहीं होना चाहिए।
+4. Customer Booking/App में भी SRK के माध्यम से सामान खरीदने या इलेक्ट्रिशियन से सामान मँगाने का कोई विकल्प नहीं होगा। ग्राहक अपने स्तर पर सामान की व्यवस्था करेगा।
+5. SRK booking, timer bill, invoice/receipt, payment, payout, electrician earnings, Platform Fee, wallet, refund और financial reports में सामान की कीमत शामिल नहीं होगी।
+6. इलेक्ट्रिशियन की कमाई और Platform Fee केवल स्वीकृत labour/service charge और लागू timer billing के आधार पर होंगे। 15% Platform Fee का आधार labour amount ही रहेगा।
+7. यदि काम के दौरान सामान की जरूरत पड़े और ग्राहक के पास न हो, तो इलेक्ट्रिशियन ग्राहक को जरूरत बता सकता है; ग्राहक स्वयं सामान लाएगा/व्यवस्था करेगा। इलेक्ट्रिशियन की ओर से खरीद, advance, reimbursement, markup या सामान के पैसे का लेन-देन SRK workflow में नहीं होगा।
+8. पुराने Quote-era `materials_amount`, `service_charge + materials_amount` और material-inclusive payout/refund calculations केवल ऐतिहासिक रिकॉर्ड/compatibility के लिए सुरक्षित रहेंगे। इन्हें नए billing, payment या fee calculation में उपयोग नहीं करना है। पुराने डेटा को मिटाना या चुपचाप शून्य करना मना है; versioned migration और historical reporting mapping आवश्यक है।
+
+### पुराने विरोधी नियमों का निस्तारण
+- “इलेक्ट्रिशियन सामान दे सकता है और अलग itemized bill देगा” वाला नियम रद्द।
+- “ग्राहक सामान खुद खरीद सकता है या इलेक्ट्रिशियन से खरीद सकता है” वाला विकल्प रद्द।
+- नया नियम: सामान हमेशा ग्राहक की जिम्मेदारी; इलेक्ट्रिशियन और SRK सामान की खरीद/बिक्री/राशि से अलग रहेंगे।
+- इस नीति के कारण Timer Bill/Receipt में केवल labour/service billing और लागू Platform Fee दिखेगी; materials line/amount नहीं होगा।
+
+### Implementation और deletion gate
+Feature Branch के UI, JS, SQL/RPC, triggers, reports, refund/payout logic में materials-related live dependencies की सूची बनाकर केवल नए labour-only flow में migration के बाद हटाएँ। Historical quote/payment/refund rows और audit records को सुरक्षित रखें। जब तक dependency mapping और regression tests पूरे न हों, Production columns/functions न हटाएँ।
+इस सेक्शन में Master Requirements documentation ही बदली गई है; source code, database, Production, payment provider या deployment में कोई बदलाव नहीं किया गया।
