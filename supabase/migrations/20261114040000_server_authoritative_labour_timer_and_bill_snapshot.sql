@@ -847,10 +847,6 @@ BEGIN
        WHERE e.booking_id=NEW.id AND e.amount=round(coalesce(NEW.amount_paid,0),2)
      )) THEN
     v_rate:=NEW.commission_rate;
-    IF v_rate IS NULL OR v_rate<0 OR v_rate>100 THEN
-      RAISE EXCEPTION 'Commission rate must be between 0 and 100; payout ledger not created';
-    END IF;
-
     IF NEW.selected_category IS NOT NULL THEN
       IF NEW.completion_approval_status<>'approved' THEN
         RAISE EXCEPTION 'Customer-approved labour completion required for payout';
@@ -861,18 +857,22 @@ BEGIN
       END IF;
       v_service:=v_bill.labour_amount;
       v_materials:=0;
+      v_commission:=v_bill.platform_fee_amount;
     ELSIF NEW.quote_status='approved' THEN
+      v_rate:=NEW.commission_rate;
+      IF v_rate IS NULL OR v_rate<0 OR v_rate>100 THEN
+        RAISE EXCEPTION 'Legacy commission rate must be between 0 and 100';
+      END IF;
       v_service:=round(coalesce(NEW.service_charge,0),2);
       v_materials:=round(coalesce(NEW.materials_amount,0),2);
       v_total:=round(v_service+v_materials,2);
       IF round(coalesce(NEW.amount_paid,0),2)<>v_total THEN
         RAISE EXCEPTION 'Legacy verified payment does not match approved quote; payout ledger not created';
       END IF;
+      v_commission:=round(v_service*v_rate/100,2);
     ELSE
       RETURN NEW;
     END IF;
-
-    v_commission:=round(v_service*v_rate/100,2);
     INSERT INTO public.srk_electrician_payouts(
       booking_id,electrician_profile_id,razorpay_payment_id,
       gross_service_amount,materials_amount,platform_commission,
@@ -948,8 +948,8 @@ BEGIN
            AND round(b.labour_amount,2)=round(coalesce(v_booking.amount_paid,0),2)
            AND round(b.labour_amount,2)=round(coalesce(v_row.gross_service_amount,0),2)
            AND coalesce(v_row.materials_amount,0)=0
-           AND round(v_row.platform_commission,2)=round(b.labour_amount*v_booking.commission_rate/100,2)
-           AND round(v_row.electrician_payable,2)=round(b.labour_amount-round(b.labour_amount*v_booking.commission_rate/100,2),2)
+           AND round(v_row.platform_commission,2)=round(b.platform_fee_amount,2)
+           AND round(v_row.electrician_payable,2)=round(b.electrician_payable,2)
        ) THEN
       RAISE EXCEPTION 'Labour bill or payout ledger does not reconcile; settlement blocked';
     END IF;
@@ -1124,4 +1124,107 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_admin_get_labour_bill(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_get_labour_bill(uuid) TO authenticated;
+
+
+
+-- New categorized bookings use the separately approved Platform Fee policy.
+-- The legacy commission_rate field is not used to infer the new-flow fee.
+CREATE OR REPLACE FUNCTION public.srk_calculate_booking_commission()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path TO 'pg_catalog','public','pg_temp'
+AS $function$
+BEGIN
+  IF NEW.amount_paid IS NOT NULL AND NEW.amount_paid<0 THEN
+    RAISE EXCEPTION 'amount_paid cannot be negative';
+  END IF;
+  IF NEW.service_charge IS NOT NULL AND NEW.service_charge<0 THEN
+    RAISE EXCEPTION 'service_charge cannot be negative';
+  END IF;
+  IF NEW.selected_category IS NOT NULL THEN
+    NEW.commission_amount:=NULL;
+    RETURN NEW;
+  END IF;
+  IF NEW.commission_rate IS NULL OR NEW.commission_rate<0 OR NEW.commission_rate>100 THEN
+    RAISE EXCEPTION 'commission_rate must be between 0 and 100';
+  END IF;
+  IF NEW.status='completed' AND NEW.payment_status='paid'
+     AND NEW.amount_paid IS NOT NULL AND NEW.service_charge IS NOT NULL THEN
+    NEW.commission_amount:=round(NEW.service_charge*NEW.commission_rate/100,2);
+  ELSE
+    NEW.commission_amount:=NULL;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_get_my_earnings()
+RETURNS TABLE(
+  booking_id uuid,service_type text,booking_created_at timestamptz,
+  booking_status text,payment_status text,amount_received numeric,
+  commission_amount numeric,electrician_earning numeric
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+  SELECT b.id,b.service_type,b.created_at,b.status,b.payment_status,
+    coalesce(b.amount_paid,0),
+    CASE WHEN b.selected_category IS NOT NULL THEN coalesce(lb.platform_fee_amount,0)
+      ELSE coalesce(b.commission_amount,0) END,
+    CASE WHEN b.status='completed' AND b.payment_status='paid'
+      THEN CASE WHEN b.selected_category IS NOT NULL THEN coalesce(lb.electrician_payable,0)
+        ELSE greatest(coalesce(b.amount_paid,0)-coalesce(b.commission_amount,0),0) END
+      ELSE 0 END
+  FROM public.electrician_profiles p
+  JOIN public.service_bookings b ON b.assigned_electrician_id=p.id
+  LEFT JOIN public.srk_booking_labour_bills lb ON lb.booking_id=b.id
+  WHERE (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
+    AND p.verification_status='approved'
+  ORDER BY b.created_at DESC LIMIT 200;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_commission_report()
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_result jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501';
+  END IF;
+  WITH paid_completed AS (
+    SELECT b.assigned_electrician_id,
+      coalesce(b.amount_paid,0)::numeric AS gross,
+      CASE WHEN b.selected_category IS NOT NULL THEN coalesce(lb.platform_fee_amount,0)::numeric
+        ELSE coalesce(b.commission_amount,0)::numeric END AS platform_fee
+    FROM public.service_bookings b
+    LEFT JOIN public.srk_booking_labour_bills lb ON lb.booking_id=b.id
+    WHERE b.status='completed' AND b.payment_status='paid'
+  ), totals AS (
+    SELECT coalesce(sum(gross),0)::numeric AS collected,
+      coalesce(sum(platform_fee),0)::numeric AS fee,
+      coalesce(sum(gross-platform_fee),0)::numeric AS payable
+    FROM paid_completed
+  ), partners AS (
+    SELECT p.id AS electrician_id,p.display_name,
+      count(pc.*)::integer AS paid_completed_jobs,
+      coalesce(sum(pc.gross),0)::numeric AS gross_received,
+      coalesce(sum(pc.platform_fee),0)::numeric AS company_commission,
+      coalesce(sum(pc.gross-pc.platform_fee),0)::numeric AS electrician_earning
+    FROM public.electrician_profiles p
+    LEFT JOIN paid_completed pc ON pc.assigned_electrician_id=p.id
+    GROUP BY p.id,p.display_name
+    ORDER BY p.display_name
+  )
+  SELECT jsonb_build_object(
+    'total_collected',t.collected,
+    'total_commission',t.fee,
+    'total_platform_fee',t.fee,
+    'total_electrician_payable',t.payable,
+    'partners',coalesce((SELECT jsonb_agg(to_jsonb(partners)) FROM partners),'[]'::jsonb)
+  ) INTO v_result FROM totals t;
+  RETURN v_result;
+END;
+$function$;
 
