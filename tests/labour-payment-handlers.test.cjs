@@ -33,6 +33,8 @@ function setupFetch({booking=baseBooking(),bill={booking_id:BOOKING_ID,labour_am
   if(url.includes('/auth/v1/user'))return response(200,{id:USER_ID,phone:'+919876543210',phone_confirmed_at:'2026-01-01T00:00:00Z'});
   if(url.includes('/rpc/srk_service_get_labour_bill_for_payment'))return response(200,bill);
   if(url.includes('/rpc/srk_claim_payment_order_lock'))return response(200,lock?'lock-token':null);
+  if(url.includes('/rpc/srk_link_payment_order'))return response(200,{success:true});
+  if(url.includes('/rpc/srk_service_finalize_captured_payment'))return response(200,{success:true,already_processed:false});
   if(url.includes('/rpc/srk_release_payment_order_lock'))return response(200,true);
   if(url.includes('api.razorpay.com/v1/orders')&&method==='POST')return response(200,{id:ORDER_ID,status:'created',amount:capturedAmount,currency:'INR'});
   if(url.includes('api.razorpay.com/v1/payments/'))return response(200,{id:PAYMENT_ID,order_id:ORDER_ID,status:'captured',currency:'INR',amount:capturedAmount});
@@ -55,6 +57,11 @@ test('create-order uses final labour bill snapshot, not quote or legacy material
  assert.ok(orderCall);
  assert.equal(JSON.parse(orderCall.body).amount,119900);
  assert.ok(calls.some(x=>x.url.includes('/rpc/srk_service_get_labour_bill_for_payment')));
+ const link=calls.find(x=>x.url.includes('/rpc/srk_link_payment_order'));
+ assert.ok(link);
+ assert.equal(JSON.parse(link.body).p_amount_paise,119900);
+ assert.equal(JSON.parse(link.body).p_razorpay_order_id,ORDER_ID);
+ assert.ok(calls.findIndex(x=>x.url.includes('/rpc/srk_claim_payment_order_lock'))<calls.findIndex(x=>x.url.includes('api.razorpay.com/v1/orders')&&x.method==='POST'));
 });
 
 test('create-order fails closed when final labour bill snapshot is absent',async()=>{
@@ -75,8 +82,15 @@ test('verify-payment accepts captured amount only when it matches final labour s
  const result=await verifyPayment(event({razorpay_payment_id:PAYMENT_ID,razorpay_order_id:ORDER_ID,razorpay_signature:signature},{authorization:AUTH}));
  assert.equal(result.statusCode,200);
  assert.ok(calls.some(x=>x.url.includes('/rpc/srk_service_get_labour_bill_for_payment')));
- const patch=calls.find(x=>x.method==='PATCH');
- assert.equal(JSON.parse(patch.body).amount_paid,1199);
+ const finalize=calls.find(x=>x.url.includes('/rpc/srk_service_finalize_captured_payment'));
+ assert.ok(finalize);
+ const args=JSON.parse(finalize.body);
+ assert.equal(args.p_booking_id,BOOKING_ID);
+ assert.equal(args.p_razorpay_order_id,ORDER_ID);
+ assert.equal(args.p_razorpay_payment_id,PAYMENT_ID);
+ assert.equal(args.p_amount_paise,119900);
+ assert.equal(args.p_currency,'INR');
+ assert.equal(calls.some(x=>x.method==='PATCH'),false);
 });
 
 test('verify-payment rejects captured payment whose amount differs from final bill',async()=>{
@@ -103,6 +117,6 @@ test('webhook refuses amount mismatch with final labour bill',async()=>{
  const raw=JSON.stringify(payload);
  const signature=crypto.createHmac('sha256',process.env.RAZORPAY_WEBHOOK_SECRET).update(raw).digest('hex');
  const result=await webhook(event(raw,{'x-razorpay-signature':signature}));
- assert.equal(result.statusCode,200);
+ assert.equal(result.statusCode,500);
  assert.equal(JSON.parse(result.body).reconciled,false);
 });
