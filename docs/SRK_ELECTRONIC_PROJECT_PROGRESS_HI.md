@@ -1528,3 +1528,8 @@
 - Added regression assertions in `tests/customer-menu.test.cjs` for generation guards, Auth/RPC await boundaries, stale-response prevention and immediate invalidation.
 - Source commits: app `376860c1e742d493c30284190bb48657a50f2f89`; regression test `8fa195782810fe5436be8e2213659d70747e24fe`. Full source regression workflow status has not yet been confirmed; do not mark tests passed until the GitHub Actions result is inspected.
 - No live browser/two-account test, Supabase JWT/RLS runtime test, Production DB/configuration change, payment/refund action, merge or deployment. Final consolidated mobile/Desktop QA remains deferred until all Customer App work is complete.
+
+### Payment / Refund History regression outcome
+- Full isolated source regression workflow #43501768722 completed **SUCCESS** on test commit `1bf9e282ce456d19eb3363cac691776962259a8d`; all nine source regression suites completed, including the updated Customer Menu tests.
+- Earlier runs #43501383276, #43501563657 and #43501645417 failed only on stale assertions that expected sequence-only guards/direct inline logout resets and the previous Auth listener shape. Those assertions were updated to require the stronger session-generation guard and shared invalidation helpers; latest full run is green.
+- Vercel status on the app/test commits is a separate account build-rate-limit failure; it is not the source regression result and no deployment was attempted.
