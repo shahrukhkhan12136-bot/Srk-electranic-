@@ -65,8 +65,25 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   </section>
   <section class="card" id="customerSupportPanel" style="margin-top:14px">
    <h3 style="margin-top:0">🛟 सहायता और शिकायत</h3>
-   <p class="small">अपनी दर्ज शिकायत चुनें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।</p>
-   <label for="customerSupportComplaint">आपकी शिकायत</label>
+   <p class="small">अपनी बुकिंग से जुड़ी शिकायत दर्ज करें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।</p>
+   <details style="margin:10px 0">
+    <summary style="cursor:pointer;font-weight:600">＋ नई शिकायत दर्ज करें</summary>
+    <label for="customerSupportBooking">संबंधित बुकिंग</label>
+    <select id="customerSupportBooking"><option value="">बुकिंग चुनें</option></select>
+    <label for="customerSupportCategory">शिकायत का विषय</label>
+    <select id="customerSupportCategory">
+     <option value="service_quality">काम की गुणवत्ता</option>
+     <option value="electrician_behavior">इलेक्ट्रिशियन का व्यवहार</option>
+     <option value="billing_payment">बिल या भुगतान</option>
+     <option value="delay_no_show">देरी या इलेक्ट्रिशियन नहीं पहुँचा</option>
+     <option value="safety">सुरक्षा संबंधी समस्या</option>
+     <option value="other">अन्य</option>
+    </select>
+    <label for="customerSupportDescription">समस्या का पूरा विवरण (20–2000 अक्षर)</label>
+    <textarea id="customerSupportDescription" minlength="20" maxlength="2000" placeholder="कृपया समस्या विस्तार से लिखें"></textarea>
+    <button class="btn primary" type="button" id="customerSupportCreate">शिकायत दर्ज करें</button>
+   </details>
+   <label for="customerSupportComplaint">पहले से दर्ज शिकायत</label>
    <select id="customerSupportComplaint"><option value="">शिकायत चुनें</option></select>
    <button class="btn" type="button" id="customerSupportRefresh">शिकायतें रीफ़्रेश करें</button>
    <div id="customerSupportStatus" class="small" role="status" aria-live="polite"></div>
@@ -500,6 +517,52 @@ function renderCustomerSupportThread(rows) {
  });
  box.scrollTop=box.scrollHeight;
 }
+async function loadCustomerSupportBookings() {
+ const select=document.getElementById('customerSupportBooking');
+ select.disabled=true;
+ try {
+  const {data:sessionData}=await customerSb.auth.getSession();
+  const userId=sessionData.session?.user?.id;
+  if(!userId) throw new Error('OTP लॉगिन आवश्यक है।');
+  const {data,error}=await customerSb.from('service_bookings')
+   .select('id,service_type,preferred_date,preferred_time,created_at')
+   .eq('customer_user_id',userId).order('created_at',{ascending:false}).limit(50);
+  if(error)throw error;
+  select.replaceChildren(new Option('बुकिंग चुनें',''));
+  (data||[]).forEach(row=>{
+   const date=[row.preferred_date,row.preferred_time].filter(Boolean).join(' ');
+   select.add(new Option((row.service_type||'सर्विस')+' · '+date+' · #'+String(row.id).slice(0,8),row.id));
+  });
+  if(!data?.length) select.add(new Option('अभी कोई बुकिंग उपलब्ध नहीं',''));
+ } catch(e) {
+  select.replaceChildren(new Option('बुकिंग लोड नहीं हुई',''));
+  supportStatus('शिकायत दर्ज करने के लिए बुकिंग लोड नहीं हो सकी। दोबारा रीफ़्रेश करें।',true);
+ } finally {select.disabled=false;}
+}
+async function createCustomerSupportComplaint() {
+ const bookingId=document.getElementById('customerSupportBooking').value;
+ const category=document.getElementById('customerSupportCategory').value;
+ const description=document.getElementById('customerSupportDescription').value.trim();
+ const button=document.getElementById('customerSupportCreate');
+ if(!bookingId){supportStatus('कृपया संबंधित बुकिंग चुनें।',true);return;}
+ if(description.length<20||description.length>2000){supportStatus('समस्या का विवरण 20 से 2000 अक्षरों में लिखें।',true);return;}
+ button.disabled=true;button.textContent='शिकायत दर्ज हो रही है…';
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_create_booking_complaint',{
+   p_booking_id:bookingId,p_category:category,p_description:description
+  });
+  if(error)throw error;
+  if(!data)throw new Error('शिकायत संदर्भ प्राप्त नहीं हुआ।');
+  document.getElementById('customerSupportDescription').value='';
+  await loadCustomerSupportComplaints();
+  document.getElementById('customerSupportComplaint').value=data;
+  await loadCustomerSupportMessages();
+  supportStatus('आपकी शिकायत सफलतापूर्वक दर्ज हो गई है। संदर्भ: '+String(data).slice(0,8).toUpperCase());
+ } catch(e) {
+  const msg=String(e.message||'');
+  supportStatus(msg.includes('Booking not found')?'चुनी गई बुकिंग आपके खाते में उपलब्ध नहीं है।':msg.includes('Daily complaint limit')?'24 घंटे में शिकायत दर्ज करने की सीमा पूरी हो गई है।':'शिकायत दर्ज नहीं हो सकी। कृपया विवरण जाँचकर दोबारा कोशिश करें।',true);
+ } finally {button.disabled=false;button.textContent='शिकायत दर्ज करें';}
+}
 async function loadCustomerSupportComplaints() {
  const select=document.getElementById('customerSupportComplaint');
  select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
@@ -516,7 +579,7 @@ async function loadCustomerSupportComplaints() {
   customerSupportSelectedId=stillExists?customerSupportSelectedId:(customerSupportComplaints[0]?.id||null);
   select.value=customerSupportSelectedId||'';
   if(customerSupportSelectedId) await loadCustomerSupportMessages();
-  else {renderCustomerSupportThread([]);supportStatus('अभी आपके खाते में कोई दर्ज शिकायत नहीं मिली। नई शिकायत दर्ज करने की सुविधा अगली कड़ी में जोड़ी जाएगी।');}
+  else {renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
  } catch(e){supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
  finally{select.disabled=false;}
 }
@@ -560,6 +623,7 @@ async function syncCustomerSession() {
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     await loadCustomerBookings();
     await loadCustomerPaymentHistory(true);
+    await loadCustomerSupportBookings();
     await loadCustomerSupportComplaints();
     await loadCustomerSavedAddresses();
     await loadCustomerProfile();
@@ -570,6 +634,8 @@ async function syncCustomerSession() {
     document.getElementById('customerBookings').textContent = '';
     document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';
     document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));
+    document.getElementById('customerSupportBooking').replaceChildren(new Option('बुकिंग चुनें',''));
+    document.getElementById('customerSupportDescription').value='';
     document.getElementById('customerSupportThread').textContent='';
     document.getElementById('customerSupportMessage').value='';
     customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें।');
@@ -646,7 +712,8 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
   document.getElementById('customerPaymentHistoryRefresh').addEventListener('click',()=>loadCustomerPaymentHistory(true));
   document.getElementById('customerPaymentHistoryMore').addEventListener('click',()=>loadCustomerPaymentHistory(false));
-  document.getElementById('customerSupportRefresh').addEventListener('click',loadCustomerSupportComplaints);
+  document.getElementById('customerSupportRefresh').addEventListener('click',()=>{loadCustomerSupportBookings();loadCustomerSupportComplaints();});
+  document.getElementById('customerSupportCreate').addEventListener('click',createCustomerSupportComplaint);
   document.getElementById('customerSupportComplaint').addEventListener('change',()=>loadCustomerSupportMessages().catch(e=>supportStatus('संदेश लोड नहीं हुए। '+(e.message||''),true)));
   document.getElementById('customerSupportSend').addEventListener('click',sendCustomerSupportMessage);
   document.getElementById('saveCustomerProfile').addEventListener('click', saveCustomerProfile);
