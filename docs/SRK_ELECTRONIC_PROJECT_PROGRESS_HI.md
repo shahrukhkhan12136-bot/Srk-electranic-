@@ -729,3 +729,17 @@
 - Known limitation retained: multi-file upload partial failure पर पहले से सफलतापूर्वक linked attachments बने रहते हैं; UI सफल फ़ाइलों की संख्या बताती है। पूरे message + सभी attachments के लिए atomic transaction अभी उपलब्ध नहीं; retry behavior को future acceptance test में अलग से verify करना है।
 - Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
 - अगला Customer App audit: complaint/message attachment cleanup and metadata integrity, customer booking-history partial RPC failures, profile/avatar lifecycle. Electrician Portal अभी शुरू नहीं हुआ।
+
+
+## 2026-11-13 — Customer Support attachment object-integrity hardening
+
+- Existing attachment-link RPC केवल client द्वारा भेजे MIME type और file size को validate कर रही थी; Storage object के वास्तविक metadata से तुलना नहीं थी। अब नई migration `20261114170000_harden_customer_support_attachment_object_integrity.sql` में `storage.objects.metadata.mimetype` और `metadata.size` को requested metadata से exact match कराया गया है; missing/mismatched metadata पर link reject होता है।
+- Object path को authenticated customer UID + complaint UUID + UUID filename + allowed extension तक सीमित किया है। Complaint ownership, open status, own customer message और actual object existence checks भी बने हुए हैं।
+- पहले customer delete policy अपने complaint के सभी objects हटाने देती थी, जिसमें पहले से message history से linked attachment भी शामिल हो सकता था। नई policy customer cleanup को केवल unlinked/orphan objects तक सीमित करती है; linked attachments history से हटाए नहीं जा सकते।
+- pgTAP file `supabase/tests/database/customer_support_attachment_object_integrity.test.sql` में 4 assertions जोड़े: actual Storage MIME/size check, mismatch rejection, cleanup policy existence, linked-file delete denial।
+- `.github/workflows/supabase-schema-ci.yml` की isolated migration list में नई migration जोड़ी।
+- Source regression `tests/customer-menu.test.cjs` में migration के metadata validation, path constraint और linked-file delete protection assertions जोड़े। GitHub Actions source regression Run #43463628709 — success; tested head commit `3b03a61114d8238029e04d3cd7805820c34a3b71`।
+- Database pgTAP अभी execute नहीं हुआ; schema workflow का production schema-export secret मौजूद/usable मानकर नहीं चला और कोई production schema/data access/write नहीं किया। Supabase Storage runtime metadata shape और policy evaluation अभी isolated DB run में verify होने बाकी हैं। File bytes का malware/content signature scan अभी उपलब्ध नहीं है; MIME metadata check actual content signature scanning का विकल्प नहीं है।
+- कोई migration Production में apply नहीं हुई; कोई deployment/upload/payment/refund नहीं किया गया।
+- Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
+- अगला Customer App काम: booking-history RPCs और profile/avatar lifecycle की error/retry/privacy audit; फिर Help & Support upload atomicity/cleanup acceptance cases। Electrician Portal अभी शुरू नहीं हुआ।
