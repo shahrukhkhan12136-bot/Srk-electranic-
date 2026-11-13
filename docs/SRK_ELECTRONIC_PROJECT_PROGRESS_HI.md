@@ -1492,3 +1492,13 @@
 - Behavioral plan corrected to 8 assertions; structural plan 16. This verifies the migration against a synthetic local baseline only, including customer A/B timeline isolation, backfill, lifecycle capture, duplicate suppression, role labels and access controls. It does NOT prove compatibility with full Production schema, production migration application, or live JWT/runtime behavior.
 - Separate source regression #43498634380 SUCCESS on commit `9444e80bc3b1b4f7571f36995212f7e420c64167`.
 - Production database/configuration unchanged; no deployment or live booking changes.
+
+
+## Customer refund submission session-race hardening (2026-11-14)
+- Audit found `customerSubmitBookingRefund()` could finish after SIGNED_OUT / SIGNED_IN / USER_UPDATED and display a stale success/error alert or refresh the newly authenticated customer's lists. The per-booking busy Set also had no safe ownership token for an old operation's `finally` after a new session began.
+- Replaced the busy Set with an operation-token Map; captured `customerSessionGeneration` before RPC; stale response/error and post-refresh UI are ignored; cleanup only releases the lock if the current operation still owns that booking key.
+- Added `invalidateCustomerRefundSubmissions()` to auth lifecycle invalidation; it clears old operations and restores stale disabled submit controls. It does not cancel a server-side RPC already in flight; server-side owner authorization remains authoritative.
+- Added source regression assertions in `tests/customer-refund-history.test.cjs`; updated existing Customer Menu assertions for Map-based lock and auth listener invalidation.
+- Refund Source Regression #43499286974 completed SUCCESS (runs `npm run test:refund`, including customer refund history tests). Full Customer App source regression #43499524801 completed SUCCESS on commit `9cd3d28bac0f49f5dd8ef989b0159bdaa9099f6b`.
+- Intermediate full-suite failures were stale test expectations (auth listener guard and Set→Map lock), corrected; latest full source regression is SUCCESS.
+- No production database, payment, refund, or deployment action occurred. Browser/runtime session-switch verification and final consolidated mobile/Desktop QA remain pending.
