@@ -142,6 +142,7 @@ test('customer payment and refund history refreshes safely and only verified pay
   assert.match(html, /if\(sequence!==customerRefundHistoryLoadSequence\)return/);
   assert.match(html, /if\(sequence===customerRefundHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
   assert.match(html, /row\.event_type==='payment'&&row\.status==='paid'&&row\.booking_id/);
+  assert.match(html, /if\(reset\)\{customerPaymentHistoryOffset=0;more\.style\.display='none';box\.textContent=/);
   assert.match(html, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
 });
 
