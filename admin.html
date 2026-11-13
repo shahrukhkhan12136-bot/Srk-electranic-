@@ -48,7 +48,12 @@ async function saveBooking(id){
  await loadAll();
 }
 async function review(id,decision){if(!confirm('आवेदन '+decision+' करना है?'))return;let {error}=await sb.rpc('srk_admin_review_application',{p_application_id:id,p_decision:decision});if(error)alert(error.message);else loadAll()}
-async function toggleActive(id,active){let {error}=await sb.from('electrician_profiles').update({active}).eq('id',id);if(error)alert(error.message);else loadAll()}
+async function toggleActive(id,active){
+ if(!confirm(active?'क्या पहचान और पता दोनों दस्तावेज़ Admin से मंजूर होने के बाद ही इलेक्ट्रिशियन सक्रिय करें?':'क्या इस इलेक्ट्रिशियन को निष्क्रिय करना है?'))return;
+ const {data,error}=await sb.rpc('srk_admin_set_electrician_active',{p_profile_id:id,p_active:active});
+ if(error||!data?.success){alert('स्थिति अपडेट नहीं हुई: '+(error?.message||'Admin approval, OTP linking और दोनों दस्तावेज़ों की मंजूरी जाँचें।'));return;}
+ await loadAll();
+}
 function mapUrl(x){const q=(x.location_lat!=null&&x.location_lng!=null)?`${x.location_lat},${x.location_lng}`:[x.address,x.district,x.state,x.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}init();
 </script></body></html>
