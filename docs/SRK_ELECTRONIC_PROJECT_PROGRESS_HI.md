@@ -905,3 +905,12 @@
 - Refund History UI के requested, in_review, approved, processing, unknown, processed, rejected, failed status labels की अलग regression coverage जोड़ी।
 - Source Regression Run #43471201722 — success, head `c9956d98ec7ac4e2765924136b7cd2c0cc617662`.
 - यह static/source regression है; actual RPC response fixtures, SQL pgTAP, live Supabase runtime और browser/mobile display tests अभी बाकी हैं।
+
+
+## 2026-11-13 — Customer Booking History session/error handling
+
+- `loadCustomerBookings()` में Supabase Auth `getSession()` पहले try/catch के बाहर था; session retrieval/network error पर unhandled rejection हो सकता था और loading state ठीक से संभल नहीं सकती थी।
+- Session retrieval अब guarded try/catch के अंदर है; stale async session response sequence token से ignore होता है; error पर उपयोगकर्ता को पुनः प्रयास संदेश और latest request के लिए `aria-busy=false` मिलता है।
+- Regression assertion जोड़ा गया।
+- Source Regression Run #43471437666 — success, head `89648207d551fa52272cbe2f75449920ebced17b`.
+- वास्तविक Auth/network outage simulation, browser interaction और mobile/Desktop QA अभी बाकी हैं।
