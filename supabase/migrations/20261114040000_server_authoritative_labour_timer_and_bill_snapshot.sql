@@ -2601,7 +2601,6 @@ BEGIN
         WHEN wl.entry_type='platform_fee_due_settlement' AND wl.direction='credit' THEN -wl.amount
         WHEN wl.entry_type='refund' AND wl.direction='credit' AND wl.description ILIKE 'Refund reversal of platform_fee_due%' THEN -wl.amount
         WHEN wl.entry_type='refund' AND wl.direction='debit' AND wl.description ILIKE 'Refund reversal of platform_fee_due_settlement%' THEN wl.amount
-        WHEN wl.entry_type='topup' AND wl.direction='credit' THEN -wl.amount
         ELSE 0 END)
         FROM public.srk_wallet_ledger wl
         JOIN public.srk_wallet_accounts wa ON wa.id=wl.wallet_id
@@ -2622,14 +2621,13 @@ BEGIN
       WHEN entry_type='refund' AND direction='credit'
         AND (description ILIKE 'Refund reversal of platform_fee_collected%'
           OR description ILIKE 'Refund reversal of platform_fee_due_recovery%') THEN -amount
-      ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),
+      ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted' AND wallet_type='electrician'),0),
     'total_platform_fee_due',greatest(coalesce((SELECT sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
       WHEN entry_type='refund' AND direction='credit' AND description ILIKE 'Refund reversal of platform_fee_due%' THEN -amount
       WHEN entry_type='refund' AND direction='debit' AND description ILIKE 'Refund reversal of platform_fee_due_settlement%' THEN amount
-      WHEN entry_type='topup' AND direction='credit' THEN -amount
-      ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),0),
+      ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted' AND wallet_type='electrician'),0),0),
     'total_electrician_payable',t.payable,
     'partners',coalesce((SELECT jsonb_agg(to_jsonb(partners)) FROM partners),'[]'::jsonb)
   ) INTO v_result FROM totals t;
