@@ -865,7 +865,7 @@ BEGIN
   ELSIF NEW.payment_status='refunded' THEN
     UPDATE public.srk_electrician_payouts
     SET payout_status='refunded',updated_at=clock_timestamp()
-    WHERE booking_id=NEW.id AND payout_status='pending';
+    WHERE booking_id=NEW.id AND payout_status IN ('pending','blocked');
   END IF;
   RETURN NEW;
 END;
@@ -1065,4 +1065,35 @@ AS $function$
 $function$;
 REVOKE ALL ON FUNCTION public.srk_customer_get_my_booking_contacts() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_customer_get_my_booking_contacts() TO authenticated;
+
+
+
+CREATE OR REPLACE FUNCTION public.srk_admin_get_labour_bill(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_bill public.srk_booking_labour_bills%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin permission required' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO v_bill FROM public.srk_booking_labour_bills WHERE booking_id=p_booking_id;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN jsonb_build_object(
+    'booking_id',v_bill.booking_id,
+    'customer_work_category',v_bill.customer_work_category,
+    'approved_rate_tier',v_bill.approved_rate_tier,
+    'rate_card_version',v_bill.rate_card_version,
+    'rate8h_paise',v_bill.rate8h_paise,
+    'elapsed_seconds',v_bill.elapsed_seconds,
+    'billable_minutes',v_bill.billable_minutes,
+    'labour_amount_paise',v_bill.labour_amount_paise,
+    'labour_amount',v_bill.labour_amount,
+    'created_at',v_bill.created_at
+  );
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_get_labour_bill(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_get_labour_bill(uuid) TO authenticated;
 
