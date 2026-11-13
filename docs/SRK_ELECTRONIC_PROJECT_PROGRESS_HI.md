@@ -1809,3 +1809,18 @@
 
 - Admin provider-state isolated pgTAP: workflow #43522600137 completed SUCCESS. The synthetic local Supabase applied migration 20261115010000 and `supabase test db` reported all tests successful (8 assertions in the v3 contract suite). This is local synthetic validation only, not Production schema/runtime parity.
 - Customer Profile/Avatar audit found a test-plan mismatch: `customer_profile_privacy.test.sql` declared 12 tests but contained 11 assertions. Corrected the plan to 11 (commit 877a362d09594b58578a29248f4e8690e717c93a). Added an isolated local Supabase pgTAP workflow for profile and avatar migrations plus the 11-assertion profile privacy and 5-assertion avatar integrity suites (workflow file commit 855b4ed1dfe025c110b38cd57f140ec26da9facd). Workflow #43523101814 was in progress at last poll; do not count its database assertions as passed until it completes. Source regression workflow #43522803396 passed on prior tracker commit.
+
+
+### Customer Profile/Avatar isolated DB verification — updated result (Nov 14)
+
+- Isolated workflow #43523111174 completed SUCCESS on feature branch commit 855b4ed1dfe025c110b38cd57f140ec26da9facd. The disposable local Supabase job successfully started, applied the profile/avatar migrations, ran both pgTAP suites, and shut down.
+- Verified assertions: Customer profile privacy 11/11 and avatar object integrity 5/5 — total 16/16 PASS. The earlier workflow #43523101814 was cancelled by concurrency and is not counted.
+- Full customer source regression workflow #43523111144 also completed SUCCESS. This is source/isolated synthetic DB evidence only; it does not prove Production schema parity, real JWT/RLS runtime, Storage upload behavior in a real customer session, or browser/device QA.
+- No Production migration, Auth setting, live profile/avatar object, deployment or merge was changed.
+
+### Customer App 14.1.11 — receipt and payment/refund history audit (Nov 14)
+
+- Re-read 20261114190000_customer_receipt_immutable_labour_amount.sql and its 7-assertion contract test. Receipt RPC requires authenticated customer ownership, verified paid status, and immutable labour bill amount equal to the captured amount. Legacy fallback is allowed only when no immutable bill exists and service_charge exactly equals amount_paid. It does not include materials; UI correctly labels it as a payment receipt, not a tax invoice.
+- Re-read 20261114200000_customer_payment_refund_history_rpc.sql and its 13-assertion contract test. RPC preserves the original eight-column return contract, derives customer identity from auth.uid(), limits rows to the customer's own bookings, includes payment/refund/manual-payment/manual-refund/refund-request events, uses bounded pagination, and omits Admin notes/raw provider payloads.
+- Previously recorded isolated payment/refund history test batch is 30/30 PASS (synthetic local DB); the current source regression suite also passed in workflow #43523111144. No claim of Production parity, real provider event reconciliation, browser checkout or real refund execution.
+- Current Customer App work remains in progress. Continue reviewing remaining 14.1.11 cancellation/dues and receipt/history edge cases, then 14.1.12 Support and 14.1.13 Profile/ratings/preferences. Keep final mobile/Desktop QA deferred until all internal tasks finish.
