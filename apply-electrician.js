@@ -92,7 +92,7 @@ exports.handler = async (event) => {
     }
     if (!full_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !skills || !allowedCategories.has(requested_category) ||
-        !Array.isArray(body.requested_skill_keys) || normalizedSkillKeys.length < 1 || normalizedSkillKeys.length > 10 ||
+        !Array.isArray(body.requested_skill_keys) || requested_skill_keys.length < 1 || requested_skill_keys.length > 10 || normalizedSkillKeys.length < 1 || normalizedSkillKeys.length > 10 ||
         normalizedSkillKeys.some(key => typeof key !== 'string' || !allowedSkillKeys.has(key)) ||
         !Number.isInteger(experience_years) || experience_years < 0 || experience_years > 60) {
       return json(400, {
