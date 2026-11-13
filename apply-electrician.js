@@ -69,6 +69,13 @@ exports.handler = async (event) => {
     const pincode = clean(body.pincode, 6);
     const skills = clean(body.skills, 300);
     const requested_category = clean(body.requested_category, 40);
+    const requested_skill_keys = Array.isArray(body.requested_skill_keys) ? body.requested_skill_keys : [];
+    const allowedSkillKeys = new Set([
+      "house_wiring","electrical_fault_diagnosis","mcb_distribution_board",
+      "light_installation","fan_installation","inverter_ups","earthing",
+      "appliance_repair","pump_motor","other_electrical_work"
+    ]);
+    const normalizedSkillKeys = [...new Set(requested_skill_keys)];
     const allowedCategories = new Set([
       "electrical_assistant",
       "skilled_electrician",
@@ -84,11 +91,11 @@ exports.handler = async (event) => {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
     }
     if (!full_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
-        !/^[0-9]{6}$/.test(pincode) || !skills || !allowedCategories.has(requested_category) ||
+        !/^[0-9]{6}$/.test(pincode) || !skills || !allowedCategories.has(requested_category) ||\n        !Array.isArray(body.requested_skill_keys) || normalizedSkillKeys.length < 1 || normalizedSkillKeys.length > 10 ||\n        normalizedSkillKeys.some(key => typeof key !== 'string' || !allowedSkillKeys.has(key)) ||
         !Number.isInteger(experience_years) || experience_years < 0 || experience_years > 60) {
       return json(400, {
         success: false,
-        error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, मान्य माँगी गई commercial category, कौशल और 0 से 60 वर्ष का अनुभव भरें।"
+        error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, मान्य commercial category, कम-से-कम एक मान्य structured skill और 0 से 60 वर्ष का अनुभव भरें।"
       });
     }
 
@@ -104,7 +111,7 @@ exports.handler = async (event) => {
         },
         body: JSON.stringify([{
           full_name, phone, state, district, pincode, location_lat, location_lng, skills,
-          requested_category, experience_years, about: about || null,
+          requested_category, requested_skill_keys: normalizedSkillKeys, experience_years, about: about || null,
           verification_status: "pending",
           active: false
         }])
