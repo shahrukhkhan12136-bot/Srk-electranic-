@@ -153,6 +153,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114210000_customer_refund_history_pagination.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114220000_customer_contacts_after_completion.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
@@ -176,6 +177,9 @@ jobs:
           BEGIN
             IF to_regclass('public.srk_platform_fee_ledger') IS NULL THEN
               RAISE EXCEPTION 'Missing public.srk_platform_fee_ledger';
+            END IF;
+            IF to_regprocedure('public.srk_get_customer_call_contacts()') IS NULL THEN
+              RAISE EXCEPTION 'Missing public.srk_get_customer_call_contacts';
             END IF;
             IF to_regprocedure('public.srk_customer_change_payment_method(uuid,text)') IS NULL THEN
               RAISE EXCEPTION 'Missing srk_customer_change_payment_method(uuid,text)';
