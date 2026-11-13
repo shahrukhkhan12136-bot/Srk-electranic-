@@ -135,7 +135,7 @@ AS $function$
 DECLARE v_booking public.service_bookings%rowtype; v_note text:=NULLIF(pg_catalog.btrim(p_note),'');
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_response NOT IN ('approved','rejected','disputed') OR (p_note IS NOT NULL AND pg_catalog.length(p_note)>1000) THEN
+  IF p_response IS NULL OR p_response NOT IN ('approved','rejected','disputed') OR (p_note IS NOT NULL AND pg_catalog.length(p_note)>1000) THEN
     RAISE EXCEPTION 'Invalid completion response';
   END IF;
   IF p_response='disputed' AND (v_note IS NULL OR pg_catalog.length(v_note)<20) THEN
@@ -182,7 +182,7 @@ BEGIN
   IF v_admin_id IS NULL OR NOT public.is_srk_admin() THEN
     RAISE EXCEPTION 'Admin permission required' USING ERRCODE='42501';
   END IF;
-  IF p_resolution NOT IN ('approve_completion','reopen_work')
+  IF p_resolution IS NULL OR p_resolution NOT IN ('approve_completion','reopen_work')
      OR p_admin_note IS NULL OR pg_catalog.length(pg_catalog.btrim(p_admin_note))<10
      OR pg_catalog.length(p_admin_note)>2000 THEN RAISE EXCEPTION 'Valid resolution and admin note required'; END IF;
   SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
