@@ -1215,3 +1215,5 @@
 - Next-page failure पर पहले से दिख रहे booking options सुरक्षित रहते हैं और offset आगे नहीं बढ़ता; retry उसी page को फिर से लोड कर सकता है। Refresh नई sequence से पुराने response को निष्क्रिय करता है और original disabled state को भी सुरक्षित रखता है।
 - App commits: `538422cae74e2087d228f7847b3eb8558a0c7e15`, `222f17c3ccfd8db2dfd46b60ba27bc088813fbc4`. Regression test commit: `80bef1698f6b7601cd49e591e487767875fc6893`. CI pending; not marked passed.
 - यह source-level change है; browser pagination, real Supabase RLS/JWT, DB pgTAP, Storage runtime और final mobile/Desktop QA अभी बाकी। No Production changes/deploy.
+
+- CI follow-up: Source run `43487545567` exposed two stale assertions in the newly added test itself: it searched the old no-argument loader signature and expected the pre-pagination busy guard. Updated both assertions for `loadCustomerSupportBookings(reset=true)` and the new combined guard in test commit `c825aeec7cf314c66fec3cfa754a56e986d1f9ea`. No application failure was reported by those assertions. Fresh source CI pending; do not mark selector pagination test passed until a green run.
