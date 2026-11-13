@@ -21,6 +21,8 @@ test('customer booking history loads and merges safe offer lifecycle events', ()
 test('offer event storage is private and customer RPC is owner scoped', () => {
   assert.match(migration, /create table if not exists private\.srk_booking_offer_events/i);
   assert.match(migration, /enable row level security/i);
+  assert.match(migration, /revoke all on function private\.srk_capture_booking_offer_event\(\) from public, anon, authenticated/i);
+  assert.doesNotMatch(migration, /revoke all on schema private/i);
   assert.match(migration, /revoke all on table private\.srk_booking_offer_events from public, anon, authenticated/i);
   assert.match(migration, /b\.customer_user_id=auth\.uid\(\)/i);
   assert.doesNotMatch(migration, /select\s+[^;]*electrician_id/i);
