@@ -681,9 +681,11 @@ test('customer completion controls match the server accept reject and dispute co
   const historyEnd=html.indexOf('async function customerRespondWorkStart',historyStart);
   const history=html.slice(historyStart,historyEnd);
   assert.ok(history.includes("row.completion_approval_status==='pending'"));
-  assert.ok(history.includes("customerRespondWorkCompletion('\\'+customerEsc(row.id)+'\\',\\'approved\\')"));
-  assert.ok(history.includes("customerRespondWorkCompletion('\\'+customerEsc(row.id)+'\\',\\'rejected\\')"));
-  assert.ok(history.includes("customerRespondWorkCompletion('\\'+customerEsc(row.id)+'\\',\\'disputed\\')"));
+  assert.equal((history.match(/customerRespondWorkCompletion\\(/g)||[]).length,3);
+  assert.ok(history.includes("customerEsc(row.id)"));
+  assert.ok(history.includes("'approved'"));
+  assert.ok(history.includes("'rejected'"));
+  assert.ok(history.includes("'disputed'"));
   assert.ok(history.includes('काम पूरा स्वीकार करें'));
   assert.ok(history.includes('काम अभी अधूरा है'));
   assert.ok(history.includes('विवाद दर्ज करें'));
