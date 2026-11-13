@@ -1678,3 +1678,13 @@
 - Runtime behavior evidence: duplicate active lock returns no token; one-paise order/capture mismatch rejected; correct amount order link/capture succeeds; same payment retry idempotent; different payment ID rejected; NULL legacy `quoted_amount` rejected; authenticated JWT denied from service-only RPC.
 - Source Regression Run #43515719502 SUCCESS. Local Supabase stack cleanly stopped. Workflow warning only: upstream `supabase/setup-cli@v1` Node 20 deprecation annotation; test steps all passed.
 - यह synthetic local fixture का प्रमाण है, Production schema parity, Production migration apply, real Razorpay Test Mode/provider callbacks या real customer session का प्रमाण नहीं।
+
+## 14 नवम्बर 2026 — Customer category/duration isolated DB tests
+
+- `20261114010000_customer_booking_category_and_duration.sql` के लिए नया local-only pgTAP harness जोड़ा: synthetic `service_bookings`, `electrician_profiles`, `job_offers` fixture; migration local Supabase पर apply होती है; Production project/credentials/data का उपयोग नहीं।
+- Structural suite 14/14 और behavior suite 10/10 — कुल **24/24 pgTAP assertions PASS** (Run #43517333667)।
+- Behavior में legacy NULL category/duration preservation, valid category + 1–8h duration, unknown category rejection, >8h rejection, category-duration pair enforcement, Admin offer PIN matching, district fallback, और incomplete Admin-approved rate-tier partner exclusion शामिल हैं।
+- पहले दो isolated runs में behavior fixture ने district fallback के कारण दो योग्य Balrampur electricians को match किया, जबकि test गलती से zero अपेक्षित कर रहा था। Fixture को अलग Bihar/Patna district पर isolate करके assertion intent ठीक किया; final run SUCCESS। यह product logic failure नहीं, test-fixture expectation correction था।
+- Source Regression Run #43517333674 SUCCESS। Local Supabase stack cleanly stopped. `supabase/setup-cli@v1` पर केवल upstream Node 20 deprecation annotation; tests passed.
+- Commits: fixture `858fafe0d085bedef6c428458696a9683f238a9d`; behavior `7bb70fa3b4630182eb1101939a3463a56b47b884`; workflow `78d75fcf196b72330f6a45e8f4c45925a5189744`; corrected isolated partner `01ca8a84de565e8b2bebba879a39f671fab13937`.
+- अगला Customer App DB gate: server-authoritative timer, customer start/completion decisions, immutable labour bill, Admin review और work-event history के लिए full migration-chain-compatible synthetic local fixture। मौजूदा 102 + 22 pgTAP structural assertions अभी अलग से unexecuted हैं। Production untouched; final mobile/Desktop QA स्थगित।
