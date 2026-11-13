@@ -34,7 +34,7 @@ test("Successful booking preserves its ID for the next online payment step", () 
 
 test("Customer form fails closed if the pending idempotency key cannot be persisted", () => {
   assert.match(html, /sessionStorage\.setItem\(storageKey/);
-  assert.match(html, /const persisted=JSON\.parse\(sessionStorage\.getItem\(storageKey\)\|'null'\)/);
+  assert.match(html, /const persisted=JSON\.parse\(sessionStorage\.getItem\(storageKey\)\|\|'null'\)/);
   assert.match(html, /persisted\.key!==key\|\|persisted\.fingerprint!==fingerprint/);
   assert.match(html, /इस ब्राउज़र में सुरक्षित बुकिंग पहचान सेव नहीं हो सकी/);
 });
