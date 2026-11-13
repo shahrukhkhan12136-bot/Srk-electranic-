@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(98);
+SELECT plan(101);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -408,6 +408,21 @@ SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedur
   AND pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
   ILIKE '%total_platform_fee%',
   'Admin report keeps historical commission outside the Platform Fee total');
+
+
+SELECT ok(pg_get_function_result('public.srk_get_my_earnings()'::regprocedure)
+  ILIKE '%legacy_commission_amount numeric%'
+  AND pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)
+  ILIKE '%selected_category IS NULL%',
+  'electrician earnings keep historical commission separate from new Platform Fee');
+SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
+  ILIKE '%total_legacy_commission%' AND
+  pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
+  ILIKE '%total_platform_fee%',
+  'Admin report totals show legacy commission and new Platform Fee as separate amounts');
+SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
+  ILIKE '%wallet_type=''electrician''%',
+  'Admin Platform Fee collected and due totals include only electrician wallet ledger entries');
 
 SELECT * FROM finish();
 ROLLBACK;
