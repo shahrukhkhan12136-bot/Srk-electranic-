@@ -69,8 +69,25 @@ a{color:#087e8b}@media(max-width:560px){.grid{grid-template-columns:1fr}.card{pa
 <p class="hint">आवेदन भेजने पर आपका मोबाइल और अन्य जानकारी Admin verification के लिए भेजी जाएगी। OTP या बैंक/UPI PIN कभी साझा न करें।</p>
 <button id="submitButton" type="submit">आवेदन जमा करें</button><div id="status" role="status" aria-live="polite"></div>
 </form>
+</section>
+<section class="card" id="applicationStatusCard">
+<h2>अपने आवेदन की स्थिति देखें</h2>
+<p class="hint">जिस मोबाइल नंबर से आवेदन किया था, उसी नंबर पर SMS OTP सत्यापित करें। केवल सत्यापित मोबाइल से जुड़े आवेदन दिखेंगे।</p>
+<div class="field"><label for="statusPhone">आवेदन वाला मोबाइल नंबर</label><input id="statusPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" pattern="[0-9]{10}" placeholder="10 अंकों का मोबाइल नंबर"></div>
+<button id="statusSendOtp" type="button">स्थिति देखने के लिए OTP भेजें</button>
+<div id="statusOtpArea" hidden>
+<div class="field"><label for="statusOtp">SMS OTP</label><input id="statusOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="OTP दर्ज करें"></div>
+<button id="statusVerifyOtp" type="button">OTP सत्यापित करें</button>
+</div>
+<div id="applicationStatusMessage" class="status" role="status" aria-live="polite"></div>
+<div id="applicationStatusResults" aria-live="polite"></div>
+<button id="statusLogout" type="button" hidden style="background:#60758a;margin-top:10px">स्थिति देखने से लॉगआउट करें</button>
+<p class="hint">OTP किसी के साथ साझा न करें। हम यहाँ केवल आवेदन की स्थिति और आवेदन संदर्भ दिखाते हैं।</p>
+</section>
 <p class="hint"><a href="/electrician.html">पहले से approved पार्टनर हैं? यहाँ लॉगिन करें।</a></p>
 </section></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/srk-config.js"></script>
 <script>
 const form=document.getElementById('applicationForm'),button=document.getElementById('submitButton'),statusBox=document.getElementById('status');
 const locationStatus=document.getElementById('locationStatus');
@@ -91,6 +108,68 @@ document.getElementById('clearLocation').addEventListener('click',()=>{
  document.getElementById('location_lng').value='';
  locationStatus.textContent='मैप लोकेशन हटा दी गई है। जिला और PIN Code से आवेदन जारी रहेगा।';
 });
+
+// Status lookup requires a Supabase phone-confirmed session; the API independently validates it.
+const statusMessage=document.getElementById('applicationStatusMessage');
+const statusResults=document.getElementById('applicationStatusResults');
+const statusSend=document.getElementById('statusSendOtp');
+const statusVerify=document.getElementById('statusVerifyOtp');
+const statusPhone=document.getElementById('statusPhone');
+const statusOtp=document.getElementById('statusOtp');
+const statusOtpArea=document.getElementById('statusOtpArea');
+const statusLogout=document.getElementById('statusLogout');
+const cfg=window.SRK_CONFIG||{};
+const statusSb=(cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&window.supabase)?window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY):null;
+let statusBusy=false,statusResendAt=0,statusTimer=null;
+function statusSay(message,bad=false){statusMessage.className='status '+(bad?'err':'ok');statusMessage.textContent=message;}
+function statusPhoneE164(){const digits=statusPhone.value.replace(/\\D/g,'');return /^[0-9]{10}$/.test(digits)?'+91'+digits:null;}
+function renderApplicationStatuses(rows){
+ statusResults.replaceChildren();
+ if(!rows.length){const p=document.createElement('p');p.className='hint';p.textContent='इस सत्यापित मोबाइल नंबर से कोई आवेदन नहीं मिला।';statusResults.appendChild(p);return;}
+ const labels={pending:'जाँच लंबित',approved:'मंजूर',rejected:'अस्वीकृत',suspended:'निलंबित'};
+ rows.forEach(row=>{
+  const card=document.createElement('article');card.className='card';card.style.margin='12px 0';card.style.border='1px solid #d7e1e8';card.style.boxShadow='none';
+  const title=document.createElement('h3');title.textContent='आवेदन: '+String(row.application_id||'—');
+  const state=document.createElement('p');state.textContent='स्थिति: '+(labels[row.status]||'जाँच में')+' ('+String(row.status||'unknown')+')';
+  const place=document.createElement('p');place.textContent=[row.district,row.state,row.pincode].filter(Boolean).join(', ');
+  const category=document.createElement('p');category.textContent='माँगी गई श्रेणी: '+String(row.requested_category||'—');
+  const date=document.createElement('p');date.className='hint';date.textContent='जमा: '+(row.submitted_at?new Date(row.submitted_at).toLocaleString('hi-IN'):'—');
+  card.append(title,state,place,category,date);statusResults.appendChild(card);
+ });
+}
+async function loadApplicationStatuses(){
+ const {data,error}=await statusSb.auth.getSession();
+ if(error||!data.session){statusSay('स्थिति देखने के लिए पहले उसी मोबाइल नंबर से OTP सत्यापित करें।',true);return;}
+ statusSend.disabled=true;statusVerify.disabled=true;statusLogout.hidden=false;
+ try{
+  const response=await fetch('/api/electrician-application-status',{headers:{Authorization:'Bearer '+data.session.access_token}});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||!result.success)throw new Error(result.error||'स्थिति नहीं मिल सकी।');
+  renderApplicationStatuses(result.applications||[]);
+  statusSay(result.message||'आपके आवेदन की नवीनतम स्थिति नीचे दी गई है।');
+ }catch(error){statusSay(error.message||'स्थिति नहीं मिल सकी।',true);}
+ finally{statusSend.disabled=false;statusVerify.disabled=false;}
+}
+if(!statusSb){statusSend.disabled=true;statusSay('OTP सेवा कॉन्फ़िगरेशन उपलब्ध नहीं है।',true);}
+else{
+ statusSb.auth.getSession().then(({data,error})=>{if(error)statusSay('लॉगिन सेशन जाँचा नहीं जा सका।',true);else if(data.session){statusPhone.disabled=true;statusOtpArea.hidden=true;loadApplicationStatuses();}});
+ statusSend.addEventListener('click',async()=>{
+  if(statusBusy)return;const phone=statusPhoneE164();if(!phone){statusSay('आवेदन वाला सही 10 अंकों का मोबाइल नंबर डालें।',true);return;}
+  if(Date.now()<statusResendAt){statusSay('OTP दोबारा भेजने से पहले प्रतीक्षा करें।',true);return;}
+  statusBusy=true;statusSend.disabled=true;statusSay('OTP भेजा जा रहा है…');
+  try{const {error}=await statusSb.auth.signInWithOtp({phone});if(error)throw error;statusOtpArea.hidden=false;statusResendAt=Date.now()+60000;statusSay('OTP भेजने का अनुरोध सफल हुआ। SMS में मिला OTP यहाँ दर्ज करें।');}
+  catch(_){statusSend.disabled=false;statusSay('OTP नहीं भेजा जा सका। नंबर और SMS सेवा जाँचें।',true);}
+  finally{statusBusy=false;}
+ });
+ statusVerify.addEventListener('click',async()=>{
+  if(statusBusy)return;const phone=statusPhoneE164(),token=statusOtp.value.trim();if(!phone||!/^\\d{4,8}$/.test(token)){statusSay('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}
+  statusBusy=true;statusVerify.disabled=true;statusSay('OTP सत्यापित हो रहा है…');
+  try{const {error}=await statusSb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;statusPhone.disabled=true;statusOtpArea.hidden=true;await loadApplicationStatuses();}
+  catch(_){statusSay('OTP गलत या समाप्त हो गया है। नया OTP लेकर कोशिश करें।',true);}
+  finally{statusBusy=false;statusVerify.disabled=false;}
+ });
+ statusLogout.addEventListener('click',async()=>{if(statusBusy)return;statusBusy=true;try{const {error}=await statusSb.auth.signOut();if(error)throw error;statusPhone.disabled=false;statusPhone.value='';statusOtp.value='';statusResults.replaceChildren();statusOtpArea.hidden=true;statusLogout.hidden=true;statusSay('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');}catch(_){statusSay('लॉगआउट नहीं हो सका।',true);}finally{statusBusy=false;}});
+}
 
 form.addEventListener('submit',async(event)=>{
  event.preventDefault();if(!form.reportValidity())return;if(!form.querySelector('input[name="requested_skill_keys"]:checked')){statusBox.className='status err';statusBox.textContent='कम-से-कम एक कौशल चुनें।';return;}
