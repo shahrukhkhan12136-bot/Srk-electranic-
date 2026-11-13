@@ -2319,3 +2319,60 @@ G. Security review, migration lineage reconciliation, rollback plan, explicit us
 - Feature Branch में Admin payout/manual-payment, Customer booking/payment history, Electrician earnings, Platform Fee due summary और wallet overview के हिस्से मौजूद हैं।
 - ये अभी quote-era booking amount और अलग-अलग ledger/report structures पर आधारित हैं; complete Timer Bill/Receipt/Refund/Route statement नहीं।
 - इस section में कोई UI, RPC, SQL migration, schema, data, provider setting या deployment नहीं बदला; केवल audit documentation जोड़ी जा रही है।
+
+
+## 17.60 — Feature Branch Security, Access-Control and Final Legacy-Cleanup Readiness Audit (13 Nov 2026)
+
+यह source-level review है; Production security certification या penetration test नहीं। कोई live JWT, PII, payment, provider या database mutation test नहीं किया गया।
+
+### 1. Public booking/application endpoints
+- `create-booking.js` और `apply-electrician.js` POST-only हैं; 16 KB body cap, input validation, Netlify client-IP header, SHA-256 IP hash और server-side rate-limit RPC इस्तेमाल करते हैं।
+- Feature Branch limits: booking 5/hour/IP hash, electrician application 3/hour/IP hash; rate-limit backend unavailable होने पर fail-closed 503.
+- Customer booking endpoint Supabase Auth user token verify करता है, confirmed phone और submitted 10-digit phone match करता है।
+- Public direct INSERT policies हटाने और anon/authenticated INSERT revoke करने का migration source मौजूद; writes server-side service_role endpoint से।
+- सीमाएँ: IP-based throttling shared NAT/mobile network users को प्रभावित कर सकती है; IP hash में server-side secret/HMAC नहीं, इसलिए hash को anonymization या strong anti-abuse identity न मानें। Rate-limit test, trusted Netlify header behavior और proxy spoofing boundary production-like environment में verify होनी चाहिए।
+- Booking endpoint अभी client-sent `payment_method` और `quoted_amount` insert करता है। इसे authoritative price/payment decision न बनने दें; timer bill/payment intent server-generated होना चाहिए।
+
+### 2. Authenticated RPC and contact privacy
+- Customer call-contact migration में customer ownership `customer_user_id = auth.uid()`, assigned electrician और active booking states filter हैं; completed/cancelled states excluded.
+- Feature Branch का private implementation + public SECURITY INVOKER wrapper pattern मौजूद है; private function SECURITY DEFINER और `search_path=public,pg_temp` पर है। Fixed trusted path और object qualification review आवश्यक है।
+- Earlier migration version public SECURITY DEFINER contact function थी; later migration replaces it with private implementation. Migration ordering/Production applied state exact source lineage के बिना assume न करें।
+- Section 17.45 में Production-side other contact RPCs/offer details में completed-state leakage concern दर्ज है। Branch में सभी customer/electrician/admin contact functions को single privacy policy से reconcile करना बाकी है।
+- Master phone policy: before acceptance numbers hidden; after assignment visible; after completion/cancellation no mutual phone exposure. हर RPC, table/API, receipt/history and UI must enforce same state boundary. Negative JWT tests (wrong customer, wrong electrician, unassigned, completed, cancelled, anon) required.
+
+### 3. SECURITY DEFINER / grants / service-role boundary
+- Feature Branch migration files contain SECURITY DEFINER functions for rate limiting, work status/quotes, wallet overview, cash fee settlement, offer acceptance and related flows. Fixed search_path is present in some, but not all historical functions have identical path configuration.
+- Service-role writes in Netlify functions bypass RLS by design; every endpoint must independently authenticate actor, validate ownership/role, validate allowed fields and amounts, and avoid logging secrets/PII.
+- Existing wallet and Route/fee ledgers have RLS enabled and client write access revoked in migration sources; service_role receives broad write privileges. Ledger immutability is not fully guaranteed by RLS alone; DELETE/TRUNCATE grants, table owner, triggers and role inheritance/default privileges must be checked separately.
+- Production audit Sections 17.50–17.54 found broader effective service_role ACL/default privileges and webhook inbox source lineage unresolved. No global default ACL or service_role grants should be changed without a scoped dependency/rollback plan.
+
+### 4. High-risk business-state and race conditions
+- Offer acceptance migration serializes same-electrician acceptances with profile row lock and booking lock; it calculates third-booking rule from completed, quote-approved, paid, payment-verified records. It is still quote-era and does not implement the new timer billing snapshot.
+- Cash fee migration uses per-electrician advisory transaction lock and idempotency keys; however pooled cash dues can later be settled by a different online booking, making original cash booking refund require Admin reconciliation. Paid payout refunds are also blocked for manual reconciliation.
+- Webhook and verify-payment still update booking paid state via separate service-role PATCH paths; no common atomic finalizer was found. Duplicate/out-of-order event inbox processing is not connected in current handler.
+- No concurrency/JWT/provider fault-injection tests were run in this source audit.
+
+### 5. Legacy code and data cleanup — safe deletion criteria
+किसी पुराने component को सिर्फ इसलिए delete नहीं करना है कि वह Master Requirements में नहीं है। पहले ये gates पूरे हों:
+1. All callers and dynamic references (HTML, JS, RPC, trigger, webhook, scheduled job, Admin tool) identified.
+2. Historical booking, quote, payment, payout, refund and audit data retention/receipt/report compatibility documented.
+3. New timer bill, payment, fee, cash, wallet, refund and Route path implemented and verified in isolated approved test environment.
+4. RLS/ACL/SECURITY DEFINER and role-negative tests pass.
+5. Duplicate webhook, concurrent acceptance/payment, refund timeout, paid payout and cash-fee restore/reversal tests pass.
+6. Read-only compatibility period and rollback/restore plan signed off.
+7. Only then remove unreachable UI/callers/RPCs/triggers/columns in ordered, reversible migrations; never delete historical financial records or blindly drop shared columns/functions.
+
+### 6. Release gates still open
+- Source/migration lineage reconciliation: unresolved second Cash migration history item and webhook inbox origin (Sections 17.49, 17.54).
+- Timer lifecycle and frozen bill: not implemented.
+- Unified payment finalizer/event inbox integration: not implemented.
+- Route create/status/reversal orchestration: not implemented.
+- Refund allocation/partial refund/paid payout recovery: not implemented.
+- Receipt/invoice and unified financial reports: not implemented.
+- Contact privacy full RPC matrix and Admin/staff scopes/MFA: not fully verified.
+- JWT role tests, RLS/ACL tests, concurrency and provider Test Mode integration: not executed.
+- No approved isolated Supabase development environment has been provisioned; do not create a potentially billable branch without explicit approval.
+
+### 7. निष्कर्ष
+Feature Branch में उपयोगी security controls हैं: authenticated customer booking, confirmed phone match, rate limits, public INSERT restrictions, contact ownership filters, selected fixed-search-path functions, client write revocation on sensitive ledgers, and idempotency keys. फिर भी ये controls full security sign-off नहीं हैं। मुख्य blockers timer/payment/refund/Route lifecycle, full contact privacy matrix, broad service_role/default ACL, webhook lineage, financial audit/immutability, and unexecuted tests हैं।
+इस section में केवल Master Requirements documentation बदली गई; कोई source code, SQL migration, Production object/data, grant, provider setting, staging resource या deployment नहीं बदला।
