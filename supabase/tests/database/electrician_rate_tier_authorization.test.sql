@@ -17,7 +17,7 @@ SELECT ok((SELECT count(*)=4 FROM unnest(ARRAY['electrical_assistant','skilled_e
 
 
 SELECT has_table('srk_private','electrician_rate_tier_authorizations','private transaction authorization table exists');
-SELECT ok(NOT has_table_privilege('authenticated','srk_private.electrician_rate_tier_authorizations','SELECT,INSERT,UPDATE,DELETE'),'authenticated cannot read or write private rate-tier authorization rows');
+SELECT ok(NOT has_table_privilege('authenticated','srk_private.electrician_rate_tier_authorizations','SELECT') AND NOT has_table_privilege('authenticated','srk_private.electrician_rate_tier_authorizations','INSERT') AND NOT has_table_privilege('authenticated','srk_private.electrician_rate_tier_authorizations','UPDATE') AND NOT has_table_privilege('authenticated','srk_private.electrician_rate_tier_authorizations','DELETE'),'authenticated cannot read or write private rate-tier authorization rows');
 SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid='public.srk_guard_electrician_rate_tier_activation()'::regprocedure),'rate-tier trigger guard executes with protected definer privileges');
 SELECT ok((SELECT pg_get_functiondef('public.srk_admin_set_electrician_rate_tier(uuid,text)'::regprocedure) ILIKE '%electrician_rate_tier_authorizations%' AND pg_get_functiondef('public.srk_admin_set_electrician_rate_tier(uuid,text)'::regprocedure) ILIKE '%srk_electrician_rate_tier_audit%'),'Admin rate-tier RPC uses private transaction authorization and writes audit log');
 
