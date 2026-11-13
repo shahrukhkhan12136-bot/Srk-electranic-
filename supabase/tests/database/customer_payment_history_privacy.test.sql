@@ -44,7 +44,7 @@ select ok(
 );
 
 select ok(
-  position("b.payment_status = 'paid'" in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))) > 0
+  position('b.payment_status = ''paid''' in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))) > 0
   and position('b.payment_verified_at is not null' in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))) > 0,
   'booking payment summary requires paid status and a verification timestamp'
 );
