@@ -387,9 +387,12 @@ SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedur
 
 SELECT has_function('public','srk_guard_immutable_booking_labour_bill',ARRAY[]::text[],
   'immutable final labour bill guard exists');
-SELECT ok((SELECT pg_get_triggerdef(oid) ILIKE '%BEFORE INSERT OR UPDATE OR DELETE%'
-  FROM pg_trigger WHERE tgrelid='public.srk_booking_labour_bills'::regclass
-    AND tgname='srk_guard_immutable_booking_labour_bill'),
+SELECT ok(EXISTS(
+  SELECT 1 FROM pg_trigger
+  WHERE tgrelid='public.srk_booking_labour_bills'::regclass
+    AND tgname='srk_guard_immutable_booking_labour_bill'
+    AND (tgtype & 2)=2 AND (tgtype & 4)=4 AND (tgtype & 8)=8 AND (tgtype & 16)=16
+  ),
   'final labour bill table is protected against updates and deletes');
 SELECT ok(pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()'::regprocedure)
   ILIKE '%FOR UPDATE%' AND
@@ -417,7 +420,7 @@ SELECT ok(pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()':
 SELECT ok(pg_get_function_result('public.srk_get_my_earnings()'::regprocedure)
   ILIKE '%legacy_commission_amount numeric%'
   AND pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)
-  ILIKE '%THEN 0::numeric%',
+  ILIKE '%ELSE 0::numeric%',
   'electrician earnings separates historical commission from new Platform Fee');
 SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
   ILIKE '%total_legacy_commission%'
