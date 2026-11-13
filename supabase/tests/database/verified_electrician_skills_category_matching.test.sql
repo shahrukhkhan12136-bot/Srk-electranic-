@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(24);
+SELECT plan(25);
 
 SELECT has_column('public','electrician_applications','requested_skill_keys','applications store canonical requested skills');
 SELECT has_column('public','electrician_profiles','requested_skill_keys','profiles retain applicant-declared skills');
@@ -14,6 +14,7 @@ SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_customer_ca
 
 SELECT has_function('public','srk_admin_set_electrician_skills',ARRAY['uuid','text[]'],'Admin skill verification RPC exists');
 SELECT has_function('public','srk_admin_set_category_skill_rules',ARRAY['text','text[]'],'Admin category mapping RPC exists');
+SELECT has_function('public','srk_admin_get_category_skill_rules',ARRAY[]::text[],'Admin-only category mapping read RPC exists');
 
 SELECT ok(
   pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure) ILIKE '%srk_customer_category_skill_rules%'
