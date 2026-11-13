@@ -112,7 +112,7 @@ test('customer profile reads and writes only through validated owner-scoped RPCs
 test('support thread selection ignores stale async responses and blocks duplicate sends', () => {
   assert.match(html, /let customerSupportThreadLoadSequence=0/);
   assert.match(html, /const sequence=\+\+customerSupportThreadLoadSequence/);
-  assert.match(html, /sequence!==customerSupportThreadLoadSequence\|\|document\.getElementById\('customerSupportComplaint'\)\.value!==id/);
+  assert.match(html, /!isCurrent\(\)\|\|document\.getElementById\('customerSupportComplaint'\)\.value!==id/);
   assert.match(html, /let customerSupportMessageBusy=false/);
   assert.match(html, /if\(customerSupportMessageBusy\)return/);
   assert.match(html, /customerSupportMessageBusy=true;button\.disabled=true/);
@@ -482,7 +482,7 @@ test('customer support complaint list refresh is serialized and stale results ca
   const source=html.slice(start,end);
   assert.match(source,/if\(customerSupportComplaintsBusy\)return/);
   assert.match(source,/customerSupportComplaintsBusy=true/);
-  assert.match(source,/if\(sequence!==customerSupportComplaintsLoadSequence\)return/);
+  assert.match(source,/if\(!isCurrent\(\)\)return/);
   assert.match(source,/customerSupportComplaintsBusy=false;select\.disabled=wasDisabled/);
 });
 
@@ -493,7 +493,7 @@ test('customer support thread RPC failures are handled without unhandled rejecti
   const source=html.slice(start,end);
   assert.match(source,/try \{/);
   assert.match(source,/catch\(error\)/);
-  assert.match(source,/if\(sequence===customerSupportThreadLoadSequence&&document\.getElementById\('customerSupportComplaint'\)\.value===id\)/);
+  assert.match(source,/if\(isCurrent\(\)&&document\.getElementById\('customerSupportComplaint'\)\.value===id\)/);
   assert.match(source,/इस शिकायत के संदेश अभी लोड नहीं हो सके/);
   assert.match(source,/कृपया रीफ़्रेश करके दोबारा कोशिश करें/);
 });
@@ -744,7 +744,7 @@ test('customer support booking selector paginates older bookings and preserves l
 
 
 test('customer support attachment signed-link failures are visible instead of silent disabled links', () => {
-  const start = html.indexOf('async function loadCustomerSupportAttachments(complaintId)');
+  const start = html.indexOf('async function loadCustomerSupportAttachments(complaintId,generation=customerSessionGeneration)');
   const end = html.indexOf('\nlet customerSupportBookingsLoadSequence=0;', start);
   assert.ok(start >= 0 && end > start);
   const loader = html.slice(start, end);
@@ -814,7 +814,7 @@ test('customer logout invalidates booking payment and refund history requests', 
 test('customer mutations stop stale UI work after auth session changes', () => {
   assert.match(html, /let customerSessionGeneration=0/);
   assert.match(html, /function customerSessionOperationIsCurrent\(generation\)/);
-  assert.match(html, /onAuthStateChange\(\(event\) => \{ if\(event==='SIGNED_OUT'\|\|event==='SIGNED_IN'\|\|event==='USER_UPDATED'\)\{customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerBookingHistory\(\);invalidateCustomerPaymentHistory\(\);invalidateCustomerRefundHistory\(\);invalidateCustomerProfileAndSavedAddresses\(\);\}/);
+  assert.match(html, /onAuthStateChange\(\(event\) => \{ if\(event==='SIGNED_OUT'\|\|event==='SIGNED_IN'\|\|event==='USER_UPDATED'\)\{customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerBookingHistory\(\);invalidateCustomerPaymentHistory\(\);invalidateCustomerRefundHistory\(\);invalidateCustomerProfileAndSavedAddresses\(\);invalidateCustomerSupportPrivateState\(\);\}/);
   assert.match(html, /if\(!customerSessionOperationIsCurrent\(operationGeneration\)\)return;/);
   assert.match(html, /finally\{if\(customerSessionOperationIsCurrent\(operationGeneration\)\)/);
   assert.match(html, /customerSupportMessageBusy=false;customerSupportComplaintCreateBusy=false/);
