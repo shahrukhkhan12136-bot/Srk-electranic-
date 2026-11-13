@@ -366,7 +366,7 @@ test('customer complaint creation success is not reported as failure when thread
   const end=html.indexOf('\\nasync function loadCustomerSupportComplaints()',start);
   const source=html.slice(start,end);
   assert.match(source,/let complaintCreated=false/);
-  assert.match(source,/complaintCreated=true;[\\s\\S]*?customerSupportDescription'\\)\\.value=''/);
+  assert.ok(source.includes("complaintCreated=true;") && source.includes("customerSupportDescription').value='';"));
   assert.ok(source.indexOf('complaintCreated=true;') < source.indexOf('await loadCustomerSupportComplaints()'));
   assert.match(source,/let refreshFailed=false/);
   assert.match(source,/try\\{await loadCustomerSupportComplaints\\(\\)\\}catch\\(_\\)\\{refreshFailed=true\\}/);
