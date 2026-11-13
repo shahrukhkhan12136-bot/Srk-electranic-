@@ -1190,7 +1190,7 @@ async function sendCustomerSupportMessage() {
   await loadCustomerSupportMessages();
   supportStatus(files.length?'आपका संदेश और '+files.length+' फ़ाइल सफलतापूर्वक भेजी गई।':'आपका संदेश सहायता टीम को भेज दिया गया है।');
  }catch(e){
-  if(pendingUploadPath){const {error:cleanupError}=await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]);orphanCleanupFailed=Boolean(cleanupError);}
+  if(pendingUploadPath){try{const {error:cleanupError}=await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]);orphanCleanupFailed=Boolean(cleanupError);}catch(_){orphanCleanupFailed=true;}}
   if(messageCreated){
    fileInput.value='';
    try{await loadCustomerSupportMessages();}catch(_){}
