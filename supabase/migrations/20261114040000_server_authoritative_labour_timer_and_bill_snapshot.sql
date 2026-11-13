@@ -1952,7 +1952,6 @@ BEGIN
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
       WHEN entry_type='topup' AND direction='credit' THEN -amount
-      WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END),0),0)
     INTO v_due FROM public.srk_wallet_ledger
     WHERE wallet_id=v_wallet_id AND status='posted';
@@ -1961,10 +1960,14 @@ BEGIN
 
   SELECT count(*)::integer INTO v_reserved
   FROM srk_private.cash_offer_reservations
-  WHERE electrician_profile_id=p_electrician_profile_id AND status='reserved';
+  WHERE electrician_profile_id=p_electrician_profile_id
+    AND cycle_number=v_cycle.cycle_number AND status='reserved';
   RETURN v_cycle.cash_bookings_used+v_reserved<2;
 END;
 $function$;
+REVOKE ALL ON FUNCTION private.srk_electrician_cash_slot_available(uuid) FROM PUBLIC,anon,authenticated;
+
+
 REVOKE ALL ON FUNCTION private.srk_electrician_cash_slot_available(uuid) FROM PUBLIC,anon,authenticated;
 
 CREATE OR REPLACE FUNCTION private.srk_reserve_electrician_cash_offer_slot(
@@ -1997,17 +2000,55 @@ AS $function$
 DECLARE
   v_payment_method text;
   v_cycle_number integer;
-  v_rows integer;
+  v_user_id uuid;
+  v_wallet_id uuid;
+  v_due numeric(14,2):=0;
 BEGIN
   IF OLD.status='offered' AND NEW.status='accepted' THEN
     SELECT payment_method INTO v_payment_method FROM public.service_bookings
     WHERE id=NEW.booking_id FOR UPDATE;
+    SELECT coalesce(auth_user_id,user_id) INTO v_user_id
+    FROM public.electrician_profiles WHERE id=NEW.electrician_id
+      AND verification_status='approved' AND active=true;
+    IF EXISTS(
+      SELECT 1 FROM public.service_bookings pending
+      WHERE pending.assigned_electrician_id=NEW.electrician_id
+        AND pending.status='completed'
+        AND (lower(coalesce(pending.payment_method,'')) LIKE '%online%'
+          OR lower(coalesce(pending.payment_method,'')) LIKE '%ऑनलाइन%'
+          OR lower(coalesce(pending.payment_method,'')) IN ('upi','bank transfer'))
+        AND (coalesce(pending.payment_status,'unpaid') NOT IN ('paid','refunded')
+          OR (pending.payment_status='paid' AND pending.payment_verified_at IS NULL))
+    ) THEN
+      RAISE EXCEPTION 'Previous online payment is pending or unverified; settle it before accepting another job';
+    END IF;
+
     IF lower(trim(coalesce(v_payment_method,''))) IN ('cash','नकद','नकद (cash)') THEN
+      INSERT INTO srk_private.electrician_cash_cycles(electrician_profile_id)
+      VALUES(NEW.electrician_id) ON CONFLICT(electrician_profile_id) DO NOTHING;
+      SELECT cycle_number INTO v_cycle_number
+      FROM srk_private.electrician_cash_cycles
+      WHERE electrician_profile_id=NEW.electrician_id FOR UPDATE;
+
+      SELECT id INTO v_wallet_id FROM public.srk_wallet_accounts
+      WHERE user_id=v_user_id AND wallet_type='electrician';
+      IF v_wallet_id IS NOT NULL THEN
+        SELECT greatest(coalesce(sum(CASE
+          WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
+          WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
+          WHEN entry_type='topup' AND direction='credit' THEN -amount
+          ELSE 0 END),0),0)
+        INTO v_due FROM public.srk_wallet_ledger
+        WHERE wallet_id=v_wallet_id AND status='posted';
+      END IF;
+      IF v_due>0 THEN
+        RAISE EXCEPTION 'Cash unavailable while Platform Fee is outstanding; choose Online payment';
+      END IF;
+
       UPDATE srk_private.cash_offer_reservations
       SET status='accepted',responded_at=clock_timestamp()
       WHERE booking_id=NEW.booking_id AND electrician_profile_id=NEW.electrician_id
-        AND status='reserved'
-      RETURNING cycle_number INTO v_cycle_number;
+        AND status='reserved' AND cycle_number=v_cycle_number;
       IF NOT FOUND THEN
         RAISE EXCEPTION 'Cash offer reservation missing or expired; choose Online payment or request Admin review';
       END IF;
@@ -2030,6 +2071,9 @@ BEGIN
   RETURN NEW;
 END;
 $function$;
+REVOKE ALL ON FUNCTION private.srk_handle_cash_offer_reservation() FROM PUBLIC,anon,authenticated;
+
+
 REVOKE ALL ON FUNCTION private.srk_handle_cash_offer_reservation() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS trg_srk_cash_offer_reservation ON public.job_offers;
 CREATE TRIGGER trg_srk_cash_offer_reservation
