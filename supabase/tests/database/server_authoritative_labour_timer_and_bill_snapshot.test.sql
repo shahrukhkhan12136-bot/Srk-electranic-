@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(66);
+SELECT plan(75);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -241,6 +241,43 @@ SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedur
   ILIKE '%platform_fee_due%' AND pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
   ILIKE '%platform_fee_collected%',
   'Admin partner report includes Platform Fee due and collected totals');
+
+
+SELECT ok(NOT has_function_privilege('authenticated','public.srk_get_my_assigned_booking_quote_details()','EXECUTE')
+  AND NOT has_function_privilege('authenticated','public.srk_get_my_offer_price_details()','EXECUTE')
+  AND NOT has_function_privilege('authenticated','public.srk_submit_booking_quote(uuid,numeric,numeric,text)','EXECUTE'),
+  'legacy quote/material RPCs are no longer executable by app users');
+SELECT ok(NOT has_column_privilege('authenticated','public.service_bookings','materials_amount','SELECT')
+  AND has_column_privilege('authenticated','public.service_bookings','status','SELECT'),
+  'authenticated booking reads cannot select the legacy materials amount column');
+SELECT ok(NOT has_column_privilege('authenticated','public.service_bookings','materials_amount','UPDATE')
+  AND has_column_privilege('authenticated','public.service_bookings','status','UPDATE'),
+  'Admin direct booking updates cannot change the legacy materials amount column');
+SELECT ok(NOT has_column_privilege('authenticated','public.srk_electrician_payouts','materials_amount','SELECT')
+  AND has_column_privilege('authenticated','public.srk_electrician_payouts','electrician_payable','SELECT'),
+  'Admin payout Data API cannot select legacy materials amount');
+SELECT ok(pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::regprocedure)
+  NOT ILIKE '%materials_amount%' AND
+  pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::regprocedure)
+  NOT ILIKE '%quoted_amount%',
+  'electrician cash confirmation details expose no quote or materials amount');
+SELECT ok(pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure)
+  ILIKE '%srk_booking_labour_bills%' AND
+  pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure)
+  ILIKE '%completion_approval_status%',
+  'Admin customer refund preparation reconciles new-flow refund to approved labour bill');
+SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()')
+  NOT ILIKE '%materials_amount%' AND pg_get_functiondef('public.srk_get_my_offer_details()')
+  NOT ILIKE '%quoted_amount%',
+  'electrician offer RPC does not return legacy quote or materials fields');
+SELECT ok(pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::regprocedure)
+  ILIKE '%electrician_payable%' AND
+  pg_get_functiondef('public.srk_get_my_assigned_cash_payment(uuid)'::regprocedure)
+  ILIKE '%can_confirm_cash%',
+  'electrician cash confirmation RPC reports only billable net payable and eligibility');
+SELECT ok(pg_get_functiondef('public.srk_admin_prepare_booking_refund(uuid)'::regprocedure)
+  NOT ILIKE '%RETURNS TABLE%materials_amount%',
+  'customer refund preparation response contains no material fields');
 
 SELECT * FROM finish();
 ROLLBACK;
