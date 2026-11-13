@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 
 process.env.SUPABASE_URL = 'https://unit-test.supabase.co';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'unit-test-only-not-a-real-secret';
@@ -39,7 +40,7 @@ let insertedRows;
 function mockFetch() {
   calls = [];
   insertedRows = null;
-  config = { rateAllowed: true, authStatus: 200, insertStatus: 201, offers: [] };
+  config = { rateAllowed: true, authStatus: 200, insertStatus: 201, offers: [], duplicateInsert: false, existingFingerprint: null };
   global.fetch = async (url, options = {}) => {
     calls.push({ url: String(url), options });
     if (String(url).includes('/rpc/srk_check_public_rate_limit')) {
@@ -52,10 +53,13 @@ function mockFetch() {
         phone_confirmed_at: '2026-11-01T00:00:00Z'
       });
     }
+    if (String(url).includes('/rest/v1/service_bookings?')) {
+      return response(200, config.existingFingerprint ? [{ id: 'booking-existing', customer_request_fingerprint: config.existingFingerprint }] : []);
+    }
     if (String(url).includes('/rest/v1/service_bookings')) {
       insertedRows = JSON.parse(options.body);
       if (config.insertStatus >= 400) return response(config.insertStatus, { code: 'insert_failed' });
-      return response(201, [{ id: 'booking-123' }]);
+      return response(201, config.duplicateInsert ? [] : [{ id: 'booking-123' }]);
     }
     if (String(url).includes('/rest/v1/job_offers?')) {
       return response(200, config.offers);
@@ -69,7 +73,8 @@ function event(overrides = {}) {
     httpMethod: 'POST',
     headers: {
       'x-nf-client-connection-ip': '203.0.113.10',
-      authorization: 'Bearer verified-test-token'
+      authorization: 'Bearer verified-test-token',
+      'Idempotency-Key': '123e4567-e89b-42d3-a456-426614174000'
     },
     body: JSON.stringify(validBody),
     ...overrides
@@ -77,6 +82,19 @@ function event(overrides = {}) {
 }
 
 function status(result) { return result.statusCode; }
+
+function validFingerprint(overrides = {}) {
+  const payload = {
+    customer_name: 'Test Customer', phone: '9876543210', state: 'Uttar Pradesh',
+    district: 'Balrampur', pincode: '271861', address: 'Test address, Balrampur',
+    service_type: 'इलेक्ट्रिकल रिपेयर', selected_category: 'electrical_repair',
+    selected_duration_hours: 2, preferred_date: '2026-12-01', preferred_time: '10:30',
+    work_details: 'Switch board repair', payment_method: 'Cash',
+    quoted_amount: null, location_lat: null, location_lng: null
+  };
+  return crypto.createHash('sha256').update(JSON.stringify({ ...payload, ...overrides })).digest('hex');
+}
+
 
 test.beforeEach(mockFetch);
 test.afterEach(() => { global.fetch = originalFetch; });
@@ -204,4 +222,38 @@ test('maps database insert failure to a safe generic HTTP 500 response', async (
   const result = await handler(event());
   assert.equal(status(result), 500);
   assert.match(JSON.parse(result.body).error, /बुकिंग सेव नहीं हो सकी/);
+});
+
+test('requires a UUID idempotency key before creating a booking', async () => {
+  const result = await handler(event({ headers: { 'x-nf-client-connection-ip': '203.0.113.10', authorization: 'Bearer verified-test-token' } }));
+  assert.equal(status(result), 400);
+  assert.equal(insertedRows, null);
+});
+
+test('retries an identical submission by returning the existing booking without a second insert', async () => {
+  config.duplicateInsert = true;
+  config.existingFingerprint = validFingerprint();
+  const result = await handler(event());
+  assert.equal(status(result), 200);
+  const data = JSON.parse(result.body);
+  assert.equal(data.booking_id, 'booking-existing');
+  assert.equal(data.idempotent_replay, true);
+  assert.equal(calls.filter(x => x.url.includes('/rest/v1/service_bookings') && x.options.method === 'POST').length, 1);
+  assert.equal(calls.filter(x => x.url.includes('/rest/v1/service_bookings?') && x.options.method === 'GET').length, 1);
+});
+
+test('rejects reuse of the same idempotency key with changed booking details', async () => {
+  config.duplicateInsert = true;
+  config.existingFingerprint = 'a'.repeat(64);
+  const result = await handler(event());
+  assert.equal(status(result), 409);
+  assert.match(JSON.parse(result.body).error, /जानकारी बदल गई है/);
+});
+
+test('rejects an idempotency key already owned by another customer', async () => {
+  config.duplicateInsert = true;
+  config.existingFingerprint = null;
+  const result = await handler(event());
+  assert.equal(status(result), 409);
+  assert.match(JSON.parse(result.body).error, /पहले इस्तेमाल हो चुका है/);
 });
