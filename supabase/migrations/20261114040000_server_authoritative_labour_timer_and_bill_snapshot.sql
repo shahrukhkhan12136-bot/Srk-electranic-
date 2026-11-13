@@ -1459,11 +1459,14 @@ BEGIN
       ELSE 0 END),0),0)
     INTO v_due FROM public.srk_wallet_ledger
     WHERE wallet_id=v_electrician_id AND status='posted';
-    SELECT coalesce(sum(amount),0) INTO v_collected
+    SELECT coalesce(sum(CASE
+      WHEN entry_type IN ('platform_fee_collected','platform_fee_due_recovery') AND direction='debit' THEN amount
+      WHEN entry_type='refund' AND direction='credit'
+        AND (description ILIKE 'Refund reversal of platform_fee_collected%'
+          OR description ILIKE 'Refund reversal of platform_fee_due_recovery%') THEN -amount
+      ELSE 0 END),0) INTO v_collected
     FROM public.srk_wallet_ledger
-    WHERE wallet_id=v_electrician_id AND status='posted'
-      AND entry_type IN ('platform_fee_collected','platform_fee_due_recovery')
-      AND direction='debit';
+    WHERE wallet_id=v_electrician_id AND status='posted';
   END IF;
 
   SELECT jsonb_build_object(
@@ -1510,9 +1513,12 @@ BEGIN
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
       WHEN entry_type='topup' AND direction='credit' THEN -amount
       ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),0),
-    'platform_fee_collected',coalesce((SELECT sum(amount) FROM public.srk_wallet_ledger
-      WHERE status='posted' AND direction='debit'
-        AND entry_type IN ('platform_fee_collected','platform_fee_due_recovery')),0),
+    'platform_fee_collected',coalesce((SELECT sum(CASE
+      WHEN entry_type IN ('platform_fee_collected','platform_fee_due_recovery') AND direction='debit' THEN amount
+      WHEN entry_type='refund' AND direction='credit'
+        AND (description ILIKE 'Refund reversal of platform_fee_collected%'
+          OR description ILIKE 'Refund reversal of platform_fee_due_recovery%') THEN -amount
+      ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),
     'pending_electrician_payouts',coalesce((SELECT sum(amount) FROM public.srk_wallet_ledger
       WHERE status='pending' AND direction='debit' AND entry_type='payout'),0)
   ) INTO v_result;
@@ -1551,6 +1557,10 @@ BEGIN
       greatest(coalesce((SELECT sum(CASE
         WHEN wl.entry_type='platform_fee_due' AND wl.direction='debit' THEN wl.amount
         WHEN wl.entry_type='platform_fee_due_settlement' AND wl.direction='credit' THEN -wl.amount
+        WHEN wl.entry_type='refund' AND wl.direction='credit'
+          AND wl.description ILIKE 'Refund reversal of platform_fee_due%' THEN -wl.amount
+        WHEN wl.entry_type='refund' AND wl.direction='debit'
+          AND wl.description ILIKE 'Refund reversal of platform_fee_due_settlement%' THEN wl.amount
         ELSE 0 END)
         FROM public.srk_wallet_ledger wl
         JOIN public.srk_wallet_accounts wa ON wa.id=wl.wallet_id
@@ -1565,9 +1575,12 @@ BEGIN
     'total_collected',t.collected,
     'total_commission',t.fee,
     'total_platform_fee',t.fee,
-    'total_platform_fee_collected',coalesce((SELECT sum(amount) FROM public.srk_wallet_ledger
-      WHERE status='posted' AND direction='debit'
-        AND entry_type IN ('platform_fee_collected','platform_fee_due_recovery')),0),
+    'total_platform_fee_collected',coalesce((SELECT sum(CASE
+      WHEN entry_type IN ('platform_fee_collected','platform_fee_due_recovery') AND direction='debit' THEN amount
+      WHEN entry_type='refund' AND direction='credit'
+        AND (description ILIKE 'Refund reversal of platform_fee_collected%'
+          OR description ILIKE 'Refund reversal of platform_fee_due_recovery%') THEN -amount
+      ELSE 0 END) FROM public.srk_wallet_ledger WHERE status='posted'),0),
     'total_platform_fee_due',greatest(coalesce((SELECT sum(CASE
       WHEN entry_type='platform_fee_due' AND direction='debit' THEN amount
       WHEN entry_type='platform_fee_due_settlement' AND direction='credit' THEN -amount
