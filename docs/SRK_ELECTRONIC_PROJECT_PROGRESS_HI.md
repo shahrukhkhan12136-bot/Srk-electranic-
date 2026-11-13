@@ -1742,3 +1742,10 @@
 - तीनों stale assertions सही contract/function पर अपडेट: accepted contact through completion, exact `numeric` elapsed seconds, और private cash-offer reservation trigger। Test plan 104 ही है।
 - Run #43519928198 अभी **FAIL** है, इसलिए timer suite pass नहीं माना गया। Corrected rerun #43520275491 queued है।
 - Corrective test commit `845a74bc2409f406f9705be1c8e93c45e9de01fc`. Source Regression run #43519928149 SUCCESS; latest source run for corrective commit pending.
+
+### Timer/Completion pgTAP — तीसरा local run: 138/140 assertions pass
+
+- Run #43520275491 में तीनों migrations और local fixture सफलतापूर्वक apply हुए। कुल 140 assertions execute हुए: category/duration **14/14 PASS**, completion/event/Admin review **22/22 PASS**, timer/bill **102/104 PASS**।
+- Timer suite के केवल test 95 और 99 fail हुए: immutable bill trigger के SQL text में PostgreSQL event order canonicalization के कारण पुराना exact-string check brittle था; earnings test `THEN 0::numeric` खोज रहा था जबकि सही SQL `ELSE 0::numeric` है।
+- दोनों assertions सुधारे: trigger अब `pg_trigger.tgtype` के BEFORE+INSERT+UPDATE+DELETE bits से verify होता है; earnings assertion वास्तविक `ELSE 0::numeric` branch जाँचता है। यह test-only correction है; कोई नया source defect नहीं मिला।
+- Test correction commit `6dd95eca3d781017cd332ea828cdbfcee378a915`. Corrected rerun #43520600868 queued है। इसलिए timer suite अभी PASS घोषित नहीं।
