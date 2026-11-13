@@ -28,7 +28,7 @@ test("customer timeline returns ordered safe event fields without private detail
  assert.ok(!rpc.includes("e.details"));
 });
 test("customer booking page uses safe timeline RPC and real event timestamps",()=>{
- for(const value of ["rpc('srk_customer_get_my_booking_work_timeline')","customerBookingEventLabels","customerBookingTimeText(event.occurred_at)","customerEsc(customerBookingEventText(event.event_type))"]) assert.ok(booking.includes(value),value);
+ for(const value of ["rpc('srk_customer_get_my_booking_work_timeline')","customerBookingEventLabels","customerBookingTimeText(event.occurred_at)","customerEsc(customerBookingEventText(event.event_type,event.new_status))"]) assert.ok(booking.includes(value),value);
  assert.ok(!booking.includes("rpc('srk_get_customer_booking_timeline')"));
 });
 test("timeline UI labels only known observed event types and preserves no-history message",()=>{
