@@ -192,6 +192,15 @@ jobs:
             IF to_regprocedure('public.srk_customer_get_labour_bill(uuid)') IS NULL THEN
               RAISE EXCEPTION 'Missing customer final labour bill RPC';
             END IF;
+            IF to_regprocedure('public.srk_claim_payment_order_lock(uuid)') IS NULL THEN
+              RAISE EXCEPTION 'Missing atomic Razorpay payment-order lock RPC';
+            END IF;
+            IF to_regprocedure('public.srk_link_payment_order(uuid,uuid,text,bigint)') IS NULL THEN
+              RAISE EXCEPTION 'Missing atomic Razorpay order-link RPC';
+            END IF;
+            IF to_regprocedure('public.srk_service_finalize_captured_payment(uuid,text,text,bigint,text)') IS NULL THEN
+              RAISE EXCEPTION 'Missing atomic captured-payment finalizer RPC';
+            END IF;
           END
           $$;
           SQL
