@@ -65,9 +65,18 @@ async function loadAdminRefundRequests(){
    let actions='—';
    if(x.request_status==='requested')actions='<button type="button" onclick="reviewRefundRequest(\''+x.request_id+'\',\'in_review\')">जाँच शुरू करें</button>';
    else if(x.request_status==='in_review')actions='<button type="button" onclick="reviewRefundRequest(\''+x.request_id+'\',\'approved\')">रिफंड अनुरोध मंजूर</button><button class="alt" type="button" onclick="reviewRefundRequest(\''+x.request_id+'\',\'rejected\')">अस्वीकार करें</button>';
+    else if(x.request_status==='approved')actions='<button type="button" onclick="prepareRazorpayRefund(\''+x.request_id+'\')">Razorpay रिफंड की सुरक्षित तैयारी</button>';
    return '<tr><td>'+esc(x.customer_name||'ग्राहक')+'<br>'+esc(x.customer_phone||'')+'<br><small>'+esc(x.booking_id)+'</small></td><td><b>₹'+Number(x.refund_amount||0).toFixed(2)+'</b></td><td>'+esc(x.payment_method||'—')+' / '+esc(x.payment_status||'—')+'<br>Payment ID: '+esc(x.razorpay_payment_id||'—')+'<br>Labour Bill: ₹'+Number(x.labour_amount||0).toFixed(2)+' ('+esc(x.labour_amount_paise??'—')+' paise)</td><td>'+esc(x.reason)+'</td><td>'+statusTag+'<br><small>'+esc(x.admin_note||'कोई Admin नोट नहीं')+'</small><br><small>'+esc(new Date(x.created_at).toLocaleString('en-IN'))+'</small></td><td>'+actions+'</td></tr>';
   }).join('')||'<tr><td colspan="6">अभी कोई रिफंड अनुरोध नहीं है।</td></tr>';
   status.textContent='कुल अनुरोध: '+rows.length+' • मंजूरी से पैसा अपने-आप नहीं भेजा जाएगा।';
+}
+async function prepareRazorpayRefund(id){
+  if(!confirm('क्या आप इस स्वीकृत अनुरोध के लिए Labour Bill आधारित Razorpay refund intent तैयार करना चाहते हैं? अभी Razorpay को पैसा भेजने का अनुरोध नहीं जाएगा।'))return;
+  const {data,error}=await sb.rpc('srk_admin_prepare_booking_refund',{p_request_id:id});
+  if(error){alert('रिफंड तैयारी रोकी गई: '+error.message);return;}
+  if(!data?.success){alert('रिफंड को Admin reconciliation चाहिए: '+(data?.status||'अज्ञात स्थिति'));return;}
+  alert('सुरक्षित रिफंड intent तैयार है। राशि: ₹'+(Number(data.amount_paise||0)/100).toFixed(2)+'. Provider पर अभी submit नहीं हुआ है।');
+  await loadAdminRefundRequests();
 }
 async function reviewRefundRequest(id,decision){
   const labels={in_review:'जाँच शुरू',approved:'रिफंड अनुरोध मंजूर',rejected:'रिफंड अनुरोध अस्वीकार'};
