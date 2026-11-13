@@ -45,7 +45,7 @@ async function execute(event){
  let providerRefund;
  try{
   const payment=await razorpay("payments/"+encodeURIComponent(payment_id));
-  if(payment.id!==payment_id||payment.status!=="captured"||payment.currency!=="INR"||!Number.isSafeInteger(payment.amount)||payment.amount<amount_paise)
+  if(payment.id!==payment_id||payment.status!=="captured"||payment.currency!=="INR"||!Number.isSafeInteger(payment.amount)||payment.amount!==amount_paise||Number(payment.amount_refunded||0)!==0)
     return json(409,{success:false,error:"Captured payment or refundable balance does not match approved labour amount."});
   if(refund_id){
    providerRefund=await razorpay("refunds/"+encodeURIComponent(refund_id));
