@@ -1015,7 +1015,7 @@ test('saved-address save, delete and default mutations cannot update a different
     assert.match(source,/const generation=customerSessionGeneration/);
     assert.match(source,/if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
     assert.match(source,/finally\s*\{if\(customerSessionOperationIsCurrent\(generation\)\)/);
-    assert.match(source,/catch\(e\)\{if\(customerSessionOperationIsCurrent\(generation\)\)/);
+    assert.match(source,/catch\(e\)\s*\{if\(customerSessionOperationIsCurrent\(generation\)\)/);
   }
   const invalidatorStart=html.indexOf('function invalidateCustomerProfileAndSavedAddresses()');
   const invalidatorEnd=html.indexOf('async function loadCustomerProfile',invalidatorStart);
