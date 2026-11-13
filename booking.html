@@ -1167,11 +1167,17 @@ async function createCustomerSupportComplaint() {
   customerSupportComplaintCreateBusy=false;button.disabled=false;button.textContent='शिकायत दर्ज करें';
  }
 }
+let customerSupportComplaintsLoadSequence=0;
 async function loadCustomerSupportComplaints() {
+ const sequence=++customerSupportComplaintsLoadSequence;
  const select=document.getElementById('customerSupportComplaint');
- select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
+ const refresh=document.getElementById('customerSupportRefresh');
+ const wasDisabled=select.disabled;
+ select.disabled=true;if(refresh)refresh.disabled=true;
+ supportStatus('आपकी शिकायतें लोड हो रही हैं…');
  try {
   const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');
+  if(sequence!==customerSupportComplaintsLoadSequence)return;
   if(error)throw error;
   customerSupportComplaints=Array.isArray(data)?data:[];
   select.replaceChildren(new Option('शिकायत चुनें',''));
@@ -1184,8 +1190,8 @@ async function loadCustomerSupportComplaints() {
   select.value=customerSupportSelectedId||'';
   if(customerSupportSelectedId) await loadCustomerSupportMessages();
   else {renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
- } catch(e){supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
- finally{select.disabled=false;}
+ } catch(e){if(sequence===customerSupportComplaintsLoadSequence)supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
+ finally{if(sequence===customerSupportComplaintsLoadSequence){select.disabled=wasDisabled;if(refresh)refresh.disabled=false;}}
 }
 let customerSupportThreadLoadSequence=0;
 async function loadCustomerSupportMessages() {
