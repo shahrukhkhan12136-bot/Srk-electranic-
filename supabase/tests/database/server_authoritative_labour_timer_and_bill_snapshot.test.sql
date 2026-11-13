@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(34);
+SELECT plan(45);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -99,6 +99,56 @@ SELECT ok(pg_get_functiondef('public.srk_customer_respond_work_completion(uuid,t
   pg_get_functiondef('public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure)
   ILIKE '%work_transition_authorizations%',
   'customer completion keeps both timer and status-transition authorization guards');
+
+
+SELECT has_function('public','srk_service_get_labour_bill_for_payment',ARRAY['uuid'],'service-role payment amount lookup exists');
+SELECT ok(has_function_privilege('service_role','public.srk_service_get_labour_bill_for_payment(uuid)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.srk_service_get_labour_bill_for_payment(uuid)','EXECUTE')
+  AND NOT has_function_privilege('authenticated','public.srk_service_get_labour_bill_for_payment(uuid)','EXECUTE'),
+  'payment amount lookup is service-role-only');
+SELECT ok(pg_get_functiondef('public.srk_electrician_confirm_cash_payment(uuid)'::regprocedure)
+  ILIKE '%srk_booking_labour_bills%' AND
+  pg_get_functiondef('public.srk_electrician_confirm_cash_payment(uuid)'::regprocedure)
+  ILIKE '%labour_amount%',
+  'electrician cash confirmation uses verified labour bill snapshot');
+SELECT ok(pg_get_functiondef('public.srk_admin_record_manual_payment(uuid,text,text,text)'::regprocedure)
+  ILIKE '%srk_booking_labour_bills%' AND
+  pg_get_functiondef('public.srk_admin_record_manual_payment(uuid,text,text,text)'::regprocedure)
+  ILIKE '%completion_approval_status%',
+  'Admin manual payment requires customer-approved final labour bill');
+SELECT ok(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%srk_booking_labour_bills%' AND
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
+  ILIKE '%v_materials:=0%',
+  'new-flow electrician payout uses labour only and zero legacy materials amount');
+SELECT ok(pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)
+  ILIKE '%srk_booking_labour_bills%' AND
+  pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)
+  ILIKE '%coalesce(v_row.materials_amount,0)=0%',
+  'Admin payout settlement reconciles labour-only bill');
+SELECT ok(pg_get_functiondef('public.srk_admin_prepare_razorpay_refund(uuid,text)'::regprocedure)
+  ILIKE '%srk_booking_labour_bills%' AND
+  pg_get_functiondef('public.srk_admin_prepare_razorpay_refund(uuid,text)'::regprocedure)
+  ILIKE '%completion_approval_status%',
+  'Razorpay refund amount reconciles to customer-approved labour bill');
+SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()') ILIKE '%work_timer_elapsed_seconds%'
+  AND pg_get_functiondef('public.srk_get_my_offer_details()') ILIKE '%work_start_approval_status%'
+  AND pg_get_functiondef('public.srk_get_my_offer_details()') NOT ILIKE '%materials_amount%'
+  AND pg_get_functiondef('public.srk_get_my_offer_details()') NOT ILIKE '%quoted_amount%',
+  'electrician offer API exposes timer but no quote/material billing fields');
+SELECT ok(pg_get_functiondef('private.srk_get_customer_call_contacts_impl()')
+  ILIKE '%awaiting_work_start_approval%' AND
+  pg_get_functiondef('private.srk_get_customer_call_contacts_impl()') NOT ILIKE '%completed%',
+  'customer call contacts remain visible through start approval and hide after completion');
+SELECT ok(pg_get_functiondef('public.srk_customer_get_my_booking_contacts()')
+  ILIKE '%awaiting_work_start_approval%' AND
+  pg_get_functiondef('public.srk_customer_get_my_booking_contacts()') NOT ILIKE '%completed%',
+  'legacy customer contact RPC follows same active-only phone privacy');
+SELECT ok(pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uuid)')
+  ILIKE '%auth.jwt()->>''role''%' AND
+  pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uuid)')
+  ILIKE '%service_role%',
+  'payment adapter lookup checks service-role JWT');
 
 SELECT * FROM finish();
 ROLLBACK;
