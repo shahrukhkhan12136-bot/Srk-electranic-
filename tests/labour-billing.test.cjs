@@ -23,7 +23,7 @@ test("calculates one-hour and eight-hour estimates exactly", () => {
 });
 
 test("calculates actual 77 billable minutes from the approved rate", () => {
-  assert.equal(calculateLabourPaise(89900, 77), 14401);
+  assert.equal(calculateLabourPaise(89900, 77), 14421);
 });
 
 test("applies half-up rounding when the fraction is exactly half a paisa", () => {
