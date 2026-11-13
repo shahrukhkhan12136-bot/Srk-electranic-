@@ -217,6 +217,8 @@ BEGIN
       work_timer_running=false
     WHERE id=p_booking_id;
   ELSE
+    INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
+    VALUES (pg_catalog.txid_current(),p_booking_id,'in_progress');
     UPDATE public.service_bookings SET status='in_progress',
       completion_approval_status='reopened',completion_requested_at=NULL,
       work_started_at=pg_catalog.now(),work_timer_running=true
@@ -226,8 +228,6 @@ BEGIN
     DELETE FROM srk_private.work_transition_authorizations
      WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND target_status='completed';
   ELSE
-    INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
-    VALUES (pg_catalog.txid_current(),p_booking_id,'in_progress');
     DELETE FROM srk_private.work_transition_authorizations
      WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id AND target_status='in_progress';
   END IF;
