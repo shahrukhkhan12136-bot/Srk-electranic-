@@ -20,7 +20,6 @@ create index if not exists srk_booking_offer_events_customer_timeline_idx
 
 alter table private.srk_booking_offer_events enable row level security;
 revoke all on table private.srk_booking_offer_events from public, anon, authenticated;
-revoke all on schema private from public, anon, authenticated;
 
 create or replace function private.srk_capture_booking_offer_event()
 returns trigger
