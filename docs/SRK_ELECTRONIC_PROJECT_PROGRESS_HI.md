@@ -1383,3 +1383,12 @@
 - Production `job_offers` पर `trg_srk_push_job_offer` AFTER INSERT OR UPDATE भी है, जो Vault में `PUSH_WEBHOOK_SECRET` उपलब्ध होने पर `push-job-offer` Edge Function को HTTP POST भेजता है। यह push notification trigger है, Customer Timeline event feed नहीं।
 - Migration history में `expire_job_offers_when_booking_cancelled` मौजूद है। इस audit में अलग wall-clock timeout/cron expiry mechanism की पुष्टि नहीं हुई; इसलिए automatic time-based expiry अभी भी unverified है।
 - सुधारित निष्कर्ष: Production में offer generation/response definitions मौजूद और सत्यापित हैं। Feature Branch की tracked active migration files में उन्हीं definitions की reproducible parity अभी नहीं मिली। पिछली रिपोर्ट का Production definition “अप्रमाणित” वाला भाग इस read-only evidence से superseded है। कोई SQL write, migration apply, deployment या live booking नहीं की गई।
+
+
+### 14 नवम्बर 2026 — Offer RLS, Schema और Customer Timeline की Production जाँच
+
+- Production `public.job_offers` schema में columns: `id`, `booking_id`, `electrician_id`, `status`, `match_level`, `created_at`, `responded_at`; अलग offer-expiry timestamp/lease column नहीं मिला।
+- `job_offers` पर RLS policy `electrician_and_admin_read_offers` authenticated SELECT तक सीमित है: Admin या संबंधित active + approved electrician profile owner अपने offers पढ़ सकता है। Table grants में authenticated को केवल SELECT मिला; INSERT/UPDATE/DELETE नहीं।
+- Production `srk_get_customer_booking_timeline()` सिर्फ `service_booking_status_history` को customer-owned `service_bookings` से join करके पढ़ता है; यह `job_offers` events नहीं लौटाता। इसलिए customer को offer-created/declined/expired/accepted history इस RPC से नहीं मिलती।
+- Production query में `cron.job` relation उपलब्ध नहीं था; इस जांच से pg_cron offer-expiry job की पुष्टि नहीं हुई। इसे “scheduler नहीं है” का निर्णायक प्रमाण नहीं मानना; extension/schema/alternative scheduler की जाँच बाकी है।
+- कोई production write नहीं किया। अगला implementation design: offer event audit table + atomic offer lifecycle event capture (creation/respond/expiry/cancel), customer-owned safe read RPC, deterministic ordering/pagination, RLS/grant review और pgTAP coverage। Existing job_offers RLS/privileges यथावत रखें; ग्राहक को electrician IDs/phone/private fields expose न हों। साथ में Feature Branch में production offer trigger/response migration definitions की reproducible parity restore/verify करनी है।
