@@ -65,9 +65,6 @@ jobs:
           psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261115020000_customer_booking_cancellation_request_intake.sql"
       - name: Seed disposable synthetic Auth users
         working-directory: ${{ runner.temp }}/srk-customer-cancellation-request
-        env:
-          API_URL: ${{ env.API_URL }}
-          SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
         run: |
           set -euo pipefail
           for user_id in 00000000-0000-4000-8000-000000000001 00000000-0000-4000-8000-000000000002; do
