@@ -120,8 +120,17 @@ exports.handler = async (event) => {
     return json(503, { success: false, error: "बुकिंग सुरक्षा जाँच अस्थायी रूप से उपलब्ध नहीं है। कृपया बाद में कोशिश करें।" });
   }
 
+  let body;
   try {
-    const body = JSON.parse(event.body || "{}");
+    body = JSON.parse(event.body || "{}");
+  } catch {
+    return json(400, { success: false, error: "अनुरोध का डेटा सही JSON प्रारूप में नहीं है। कृपया दोबारा कोशिश करें।" });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return json(400, { success: false, error: "बुकिंग की जानकारी सही प्रारूप में नहीं है।" });
+  }
+
+  try {
     const customer_name = clean(body.customer_name, 100);
     const phone = clean(body.phone, 10);
     const state = clean(body.state, 100);
