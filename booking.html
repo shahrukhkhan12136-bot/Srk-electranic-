@@ -544,7 +544,8 @@ async function sendCustomerSupportMessage() {
  }catch(e){supportStatus(e.message==='COMPLAINT_NOT_AVAILABLE'?'यह शिकायत बंद है या उपलब्ध नहीं है।':'संदेश नहीं भेजा जा सका। '+(e.message||''),true);}
  finally{button.disabled=false;button.textContent='संदेश भेजें';}
 }
-\nasync function syncCustomerSession() {
+
+async function syncCustomerSession() {
   if (!customerSb) return;
   const { data } = await customerSb.auth.getSession();
   const session = data.session;
