@@ -131,6 +131,10 @@ BEGIN
      'requested',left(v_request.reason,250),auth.uid())
   RETURNING * INTO v_existing;
 
+  UPDATE public.srk_booking_refund_requests
+     SET refund_record_id=v_existing.id,updated_at=clock_timestamp()
+   WHERE id=v_request.id AND status='approved';
+
   RETURN jsonb_build_object(
     'success',true,'prepared',true,'provider_submitted',false,
     'refund_id',v_existing.id,'idempotency_key',v_existing.idempotency_key,
