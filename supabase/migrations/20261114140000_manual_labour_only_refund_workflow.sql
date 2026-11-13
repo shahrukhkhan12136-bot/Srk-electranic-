@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.srk_manual_refund_intents (
   transfer_reference text CHECK (transfer_reference IS NULL OR length(btrim(transfer_reference)) BETWEEN 4 AND 120),
   transfer_note text CHECK (transfer_note IS NULL OR length(transfer_note) <= 500),
   previous_payout_note text,
+  payout_was_blocked boolean NOT NULL DEFAULT false,
   prepared_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   recorded_by uuid REFERENCES auth.users(id) ON DELETE RESTRICT,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -40,6 +41,7 @@ DECLARE
   v_intent public.srk_manual_refund_intents%ROWTYPE;
   v_amount bigint;
   v_prev_note text;
+  v_payout_was_blocked boolean := false;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
     RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501';
@@ -90,6 +92,15 @@ BEGIN
     IF v_intent.payment_entry_id<>v_payment.id OR v_intent.amount_paise<>v_amount THEN
       RAISE EXCEPTION 'EXISTING_MANUAL_REFUND_INTENT_MISMATCH' USING ERRCODE='55000';
     END IF;
+    SELECT * INTO v_payout FROM public.srk_electrician_payouts
+     WHERE booking_id=v_booking.id FOR UPDATE;
+    IF v_intent.payout_was_blocked AND
+       (NOT FOUND OR v_payout.payout_status<>'blocked'
+        OR v_payout.payout_note IS DISTINCT FROM 'SRK_MANUAL_REFUND:'||v_booking.id::text) THEN
+      RAISE EXCEPTION 'MANUAL_REFUND_PAYOUT_BLOCK_MARKER_MISMATCH' USING ERRCODE='55000';
+    ELSIF NOT v_intent.payout_was_blocked AND FOUND THEN
+      RAISE EXCEPTION 'UNEXPECTED_PAYOUT_CREATED_AFTER_MANUAL_REFUND_PREPARATION' USING ERRCODE='55000';
+    END IF;
     RETURN jsonb_build_object('success',true,'already_prepared',true,
       'intent_id',v_intent.id,'status',v_intent.status,'amount_paise',v_intent.amount_paise);
   END IF;
@@ -97,6 +108,15 @@ BEGIN
   SELECT * INTO v_payout FROM public.srk_electrician_payouts
    WHERE booking_id=v_booking.id FOR UPDATE;
   IF FOUND THEN
+    IF NOT v_intent.payout_was_blocked THEN
+      UPDATE public.srk_manual_refund_intents SET status='requires_reconciliation',
+        last_error='A payout row appeared after refund preparation; Admin reconciliation required.',
+        updated_at=clock_timestamp() WHERE id=v_intent.id;
+      UPDATE public.srk_booking_refund_requests SET status='unknown',updated_at=clock_timestamp()
+       WHERE id=v_req.id;
+      RETURN jsonb_build_object('success',false,'requires_reconciliation',true,
+        'status','requires_reconciliation','reason','UNEXPECTED_PAYOUT_AFTER_PREPARATION');
+    END IF;
     IF v_payout.payout_status='paid' THEN
       RAISE EXCEPTION 'ELECTRICIAN_PAYOUT_ALREADY_PAID_ADMIN_RECONCILIATION_REQUIRED' USING ERRCODE='55000';
     END IF;
@@ -104,6 +124,7 @@ BEGIN
       RAISE EXCEPTION 'PAYOUT_STATE_REQUIRES_ADMIN_RECONCILIATION' USING ERRCODE='55000';
     END IF;
     v_prev_note:=v_payout.payout_note;
+    v_payout_was_blocked:=true;
     UPDATE public.srk_electrician_payouts SET payout_status='blocked',
       payout_note='SRK_MANUAL_REFUND:'||v_booking.id::text,
       updated_at=clock_timestamp() WHERE id=v_payout.id;
@@ -120,8 +141,8 @@ BEGIN
   END IF;
 
   INSERT INTO public.srk_manual_refund_intents
-    (request_id,booking_id,payment_entry_id,amount_paise,previous_payout_note,prepared_by)
-  VALUES(v_req.id,v_booking.id,v_payment.id,v_amount,v_prev_note,auth.uid())
+    (request_id,booking_id,payment_entry_id,amount_paise,previous_payout_note,payout_was_blocked,prepared_by)
+  VALUES(v_req.id,v_booking.id,v_payment.id,v_amount,v_prev_note,v_payout_was_blocked,auth.uid())
   RETURNING * INTO v_intent;
   RETURN jsonb_build_object('success',true,'intent_id',v_intent.id,
     'status',v_intent.status,'amount_paise',v_intent.amount_paise,
@@ -245,6 +266,16 @@ BEGIN
        SET payout_status='pending',payout_note=v_intent.previous_payout_note,
            updated_at=clock_timestamp()
      WHERE id=v_payout.id;
+  END IF;
+
+  IF NOT FOUND AND v_intent.payout_was_blocked THEN
+    UPDATE public.srk_manual_refund_intents SET status='requires_reconciliation',
+      last_error='The payout row blocked during preparation is missing; Admin reconciliation required.',
+      updated_at=clock_timestamp() WHERE id=v_intent.id;
+    UPDATE public.srk_booking_refund_requests SET status='unknown',updated_at=clock_timestamp()
+     WHERE id=v_req.id;
+    RETURN jsonb_build_object('success',false,'requires_reconciliation',true,
+      'status','requires_reconciliation','reason','PREVIOUSLY_BLOCKED_PAYOUT_MISSING');
   END IF;
 
   IF v_booking.payment_status<>'refunded' THEN
