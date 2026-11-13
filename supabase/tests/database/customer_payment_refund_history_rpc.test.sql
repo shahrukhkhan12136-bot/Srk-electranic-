@@ -1,5 +1,5 @@
 begin;
-select plan(11);
+select plan(12);
 select ok(
   position('event_id uuid' in pg_get_function_result('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0
   and position('description text' in pg_get_function_result('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
@@ -16,6 +16,10 @@ select ok(position('srk_booking_refund_requests' in pg_get_functiondef('public.s
  'customer refund request history is included');
 select ok(position('srk_razorpay_refunds' in pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
  'online refund events are included');
+select ok(
+  position('not exists' in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure)))>0
+  and position('srk_manual_payment_entries' in pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
+  'audited manual payment rows replace the booking summary event to prevent duplicate amounts');
 select ok(position('srk_manual_refund_entries' in pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
  'manual refund events are included');
 select ok(position('limit v_limit offset v_offset' in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure)))>0,
