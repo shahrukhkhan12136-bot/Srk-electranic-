@@ -3202,3 +3202,28 @@ Audit सीमा: इस section में केवल कार्य-प्
 - इस item को Verified Complete नहीं माना गया है। अगला कदम provider configuration read-only verification और फिर Feature Branch implementation/test plan है।
 
 Audit सीमा: पहले checklist item का source-level inspection किया गया; कोई code या Production change नहीं किया गया।
+
+
+## 17.85 — Master Checklist Item 14.1.1: Supabase Auth Logs Read-Only Follow-up (13 Nov 2026)
+
+### जाँच का दायरा
+- Production Supabase project `gnqhoaqatmoiwwhgzkgm` पर केवल unified log stream के read-only aggregate queries चलाए।
+- पहले उपलब्ध log sources की सूची देखी: `auth_logs`, `auth_audit_logs` सहित Auth और अन्य service log sources उपलब्ध हैं।
+- फिर Auth sources पर aggregate counts निकाले; raw event messages, phone numbers, OTP, email, tokens या user identifiers नहीं निकाले/दर्ज किए।
+
+### Sanitized परिणाम
+- Query के default recent 24-hour window में `auth_logs`: 27 events, जिनमें event message में “otp” शब्द का उल्लेख 9 बार; “rate/limit” उल्लेख 0; “invalid/expired/failed” शब्द-आधारित उल्लेख 0।
+- `auth_audit_logs`: 18 events; ऊपर के शब्द-आधारित counters 0।
+- Hourly aggregate में 12 Nov 2026 UTC के तीन घंटे दिखे: 09:00 पर 14 Auth events (3 OTP mentions), 10:00 पर 10 (6 OTP mentions), 14:00 पर 3 (0 OTP mentions)।
+- ये केवल log text के aggregate keyword counts हैं। इनसे सफल OTP delivery, verification, expiry duration, गलत OTP attempt count, per-phone/IP limit, lockout या abuse absence साबित नहीं होता। Keyword न दिखना feature/control के न होने का निर्णायक प्रमाण नहीं है।
+
+### Blockers यथावत
+- Connected Supabase actions में Auth configuration/dashboard settings पढ़ने का action उपलब्ध नहीं मिला; OTP expiry, send/verify rate-limit settings, SMS provider configuration और Auth-specific limits अभी verify नहीं।
+- कोई raw Auth event detail या personal identifier inspect/export नहीं किया।
+- कोई Auth setting, provider setting, secret, database object, user/session, source code या deployment नहीं बदला।
+- Checklist item 14.1.1 अभी **In Progress** है; runtime tests और configuration evidence बाकी हैं।
+
+### अगला क्रम
+1. Supabase Dashboard के Authentication settings में OTP expiry और SMS/Auth rate limits की read-only पुष्टि आवश्यक है।
+2. Dashboard access उपलब्ध होने के बाद sanitized setting names/values और verification date दर्ज करें; secrets या OTP values नहीं।
+3. फिर Feature Branch में missing server/provider enforcement, session/logout और verified-phone binding का scoped implementation plan तथा automated tests तैयार करें।
