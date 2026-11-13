@@ -213,6 +213,27 @@ BEGIN
   IF NOT FOUND OR v_intent.status NOT IN ('paid','processed') THEN
     RAISE EXCEPTION 'MANUAL_REFUND_TRANSFER_MUST_BE_RECORDED_FIRST' USING ERRCODE='55000';
   END IF;
+
+  -- A retry after successful finalization must be a read-only idempotent success.
+  -- The refund trigger may already have changed the payout row from our temporary
+  -- blocked marker to its final refunded state, so do not re-run payout checks.
+  IF v_intent.status='processed' THEN
+    SELECT * INTO v_booking FROM public.service_bookings
+     WHERE id=v_intent.booking_id FOR UPDATE;
+    IF NOT FOUND OR v_booking.payment_status<>'refunded'
+       OR NOT EXISTS (
+         SELECT 1 FROM public.srk_manual_refund_entries e
+          WHERE e.booking_id=v_intent.booking_id
+            AND e.payment_entry_id=v_intent.payment_entry_id
+            AND round(e.amount*100)::bigint=v_intent.amount_paise
+            AND e.refund_reference=v_intent.transfer_reference
+       ) THEN
+      RAISE EXCEPTION 'PROCESSED_MANUAL_REFUND_STATE_MISMATCH' USING ERRCODE='55000';
+    END IF;
+    RETURN jsonb_build_object('success',true,'already_finalized',true,
+      'status','processed','intent_id',v_intent.id,'amount_paise',v_intent.amount_paise);
+  END IF;
+
   SELECT * INTO v_booking FROM public.service_bookings
    WHERE id=v_intent.booking_id FOR UPDATE;
   IF NOT FOUND OR v_booking.razorpay_payment_id IS NOT NULL
