@@ -56,6 +56,18 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <p class="small" id="customerSignedIn"></p>
   <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
   <div id="customerBookings" aria-live="polite"></div>
+  <section class="card" id="customerProfilePanel" style="margin-top:14px">
+   <h3 style="margin-top:0">👤 मेरी प्रोफ़ाइल</h3>
+   <p class="small">आपका सत्यापित मोबाइल नंबर केवल पढ़ने के लिए है। नाम और भाषा यहाँ बदल सकते हैं।</p>
+   <label for="customerProfileName">पूरा नाम</label>
+   <input id="customerProfileName" maxlength="120" autocomplete="name" placeholder="अपना पूरा नाम">
+   <label for="customerProfilePhone">सत्यापित मोबाइल नंबर</label>
+   <input id="customerProfilePhone" readonly aria-readonly="true">
+   <label for="customerProfileLanguage">ऐप की भाषा</label>
+   <select id="customerProfileLanguage"><option value="hi">हिन्दी</option><option value="en">English</option></select>
+   <button class="btn" type="button" id="saveCustomerProfile" style="width:100%;margin-top:12px;background:#0b5ed7;color:white">प्रोफ़ाइल सेव करें</button>
+   <p id="customerProfileStatus" class="small" role="status" aria-live="polite"></p>
+  </section>
   <button class="btn" type="button" id="customerLogout">लॉगआउट</button>
  </section>
 
@@ -196,6 +208,50 @@ function customerPayBooking(id,amount){
  setPaymentStatus('काम पूरा दर्ज है। Razorpay से भुगतान करें।');
  document.getElementById('upiPanel').scrollIntoView({behavior:'smooth',block:'start'});
 }
+function setCustomerProfileStatus(message,isError=false) {
+ const el=document.getElementById('customerProfileStatus');
+ el.textContent=message;el.style.color=isError?'#b42318':'#176b3a';
+}
+async function loadCustomerProfile() {
+ if(!customerSb)return;
+ const {data:sessionData}=await customerSb.auth.getSession();
+ const session=sessionData.session;
+ if(!session)return;
+ const phone=session.user.phone||'';
+ const digits=String(phone).replace(/\\D/g,'');
+ const displayPhone=digits.startsWith('91')&&digits.length===12?digits.slice(2):digits;
+ document.getElementById('customerProfilePhone').value=displayPhone||phone;
+ setCustomerProfileStatus('प्रोफ़ाइल लोड हो रही है…');
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_get_my_profile');
+  if(error)throw error;
+  const profile=Array.isArray(data)?data[0]:data;
+  if(profile) {
+   document.getElementById('customerProfileName').value=profile.full_name||'';
+   document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
+   setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।');
+  } else {
+   document.getElementById('customerProfileName').value=document.getElementById('name').value||'';
+   setCustomerProfileStatus('नई प्रोफ़ाइल है। अपना नाम भरकर सेव करें।');
+  }
+ } catch(e){setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
+}
+async function saveCustomerProfile() {
+ const button=document.getElementById('saveCustomerProfile');
+ if(button.disabled)return;
+ const fullName=document.getElementById('customerProfileName').value.trim();
+ if(fullName.length<2||fullName.length>120){setCustomerProfileStatus('नाम 2 से 120 अक्षरों के बीच दर्ज करें।',true);return;}
+ button.disabled=true;setCustomerProfileStatus('प्रोफ़ाइल सेव हो रही है…');
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_update_my_profile',{
+   p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:null
+  });
+  if(error)throw error;
+  document.getElementById('name').value=fullName;
+  setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
+ } catch(e){setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||''),true);}
+ finally{button.disabled=false;}
+}
 let customerSavedAddresses = [];
 let editingSavedAddressId = null;
 function setSavedAddressStatus(message, isError=false) {
@@ -334,6 +390,7 @@ async function syncCustomerSession() {
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     await loadCustomerBookings();
     await loadCustomerSavedAddresses();
+    await loadCustomerProfile();
   } else {
     bookingPhone.value = '';
     bookingPhone.readOnly = true;
@@ -404,6 +461,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
+  document.getElementById('saveCustomerProfile').addEventListener('click', saveCustomerProfile);
   document.getElementById('savedAddressSelect').addEventListener('change', applySelectedSavedAddress);
   document.getElementById('saveCurrentAddress').addEventListener('click', saveCurrentBookingAddress);
   document.getElementById('editSavedAddress').addEventListener('click', editSelectedSavedAddress);
