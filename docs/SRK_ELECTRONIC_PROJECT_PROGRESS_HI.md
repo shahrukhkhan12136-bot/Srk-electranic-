@@ -1119,3 +1119,13 @@
 - प्रत्येक tier के 1–8 घंटे के estimate को integer-paise half-up formula से canonical helper के विरुद्ध जाँचा; UI में प्रकाशित rate values भी उसी canonical rate card से मिलाई जाती हैं।
 - Source regression workflow **43482879728** (commit `8e57eb253d2c323274c75874cf3326f61263a6b1`) — **SUCCESS**।
 - यह source-level test है; वास्तविक browser rendering, user interaction और DB/runtime verification अभी नहीं हुए।
+
+
+### 13 नवम्बर 2026 — स्वीकृत बुकिंग के बाद Customer–Electrician direct calling
+
+- Audit में मिला कि customer contact RPC केवल active statuses लौटाता था और Customer Booking History completed बुकिंग पर electrician का मोबाइल नंबर छिपा देती थी। यह स्वीकृत नियम से मेल नहीं खाता था: electrician द्वारा booking स्वीकार करने के बाद दोनों पक्ष full number से सीधे कॉल कर सकें।
+- नई migration `20261114220000_customer_contacts_after_completion.sql` private owner-scoped contact lookup में `completed` status भी शामिल करती है; केवल उसी ग्राहक की booking और assigned electrician का संपर्क लौटता है। `confirmed`/unassigned bookings पर नंबर नहीं खुलता।
+- Customer Booking History UI में completed status पर नंबर छिपाने वाला अलग branch हटाया; उपलब्ध owner-scoped contact पर full number और `tel:` call action दिखेगा।
+- pgTAP `customer_contacts_after_completion.test.sql` में authenticated-only execution, `auth.uid()`, booking ownership, assigned electrician और completed status के 5 assertions जोड़े। Supabase schema CI migration list और smoke check भी अपडेट किए।
+- Source regression workflow **43483271638** (commit `92c9574a163663e28a414e5675d147787e348a7a`) — **SUCCESS**।
+- pgTAP अभी execute नहीं हुआ; migration isolated DB या Production पर apply नहीं हुई; वास्तविक Supabase RPC/JWT और browser/mobile परीक्षण बाकी हैं।
