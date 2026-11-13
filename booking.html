@@ -820,14 +820,15 @@ function setCustomerAvatarPreview(url) {
  customerAvatarPreviewUrl=url||null;
  if(url){img.src=url;img.style.display='block';}else{img.removeAttribute('src');img.style.display='none';}
 }
-async function loadCustomerAvatar(path) {
- if(!path||!customerSb){setCustomerAvatarPreview('');return false;}
+async function loadCustomerAvatar(path,shouldApply=()=>true) {
+ if(!path||!customerSb){if(shouldApply())setCustomerAvatarPreview('');return false;}
  try {
   const {data,error}=await customerSb.storage.from('srk-customer-avatars').createSignedUrl(path,300);
   if(error||!data?.signedUrl)throw error||new Error('SIGNED_URL_UNAVAILABLE');
+  if(!shouldApply())return false;
   setCustomerAvatarPreview(data.signedUrl);
   return true;
- } catch(e){setCustomerAvatarPreview('');return false;}
+ } catch(e){if(shouldApply())setCustomerAvatarPreview('');return false;}
 }
 let customerProfileLoadSequence=0;
 async function loadCustomerProfile() {
@@ -854,7 +855,7 @@ async function loadCustomerProfile() {
    document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
    customerCurrentAvatarPath=profile.avatar_path||null;
    const avatarPath=customerCurrentAvatarPath;
-   const avatarLoaded=avatarPath?await loadCustomerAvatar(avatarPath):true;
+   const avatarLoaded=avatarPath?await loadCustomerAvatar(avatarPath,()=>sequence===customerProfileLoadSequence&&customerCurrentAvatarPath===avatarPath):true;
    if(sequence!==customerProfileLoadSequence)return;
    if(!customerCurrentAvatarPath)setCustomerAvatarPreview('');
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।'+(avatarLoaded?'':' फोटो का पूर्वावलोकन अभी उपलब्ध नहीं है।'),!avatarLoaded);
