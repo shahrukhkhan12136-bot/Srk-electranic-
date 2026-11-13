@@ -3780,3 +3780,24 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **14.1.7: In Progress / Dependency-Blocked — Source Audit दर्ज; implementation अभी नहीं।** Unified authoritative event contract, legacy-to-current state mapping और secure read API के बिना UI timeline बनाना भ्रामक होगा।
 - Source/implementation verification इस item के लिए अभी **Verified नहीं**। इस audit से कोई production schema, RLS, RPC, customer data, Auth, provider, payment, secret या deployment नहीं बदला।
 - Final Real-World Test: इस item के लिए **बाकी**; user के dual-track निर्देश के अनुसार कुल 96/96 वास्तविक परीक्षण अंतिम consolidated batch तक Pending रहेंगे।
+
+
+## 17.117 — 14.1.8 Accepted Booking Phone Visibility Source Audit (2026-11-13)
+
+### Scope and evidence
+- `booking.html` (Feature Branch blob SHA `411c226d5835299c6a15142dcfa1c6639739e050`) customer booking list में `srk_get_customer_call_contacts()` के परिणाम को booking ID से जोड़ती है। Contact मिलने पर phone/call link दिखता है; completed booking पर UI स्पष्ट रूप से नंबर छिपाती है।
+- `supabase/migrations/20261109103038_customer_electrician_direct_call_contacts.sql` (SHA `512eabab313721c7bc28d2034f950a0e748c4221`) शुरुआती SECURITY DEFINER public function बनाती है और केवल authenticated customer के अपने assigned booking के लिए contact लौटाती है।
+- बाद की migration `supabase/migrations/20261109103143_move_customer_call_contact_lookup_to_private.sql` (SHA `863567c8a7f2557bc0d484f8ceb2b272d144d47d`) implementation को private schema में ले जाती है; public wrapper SECURITY INVOKER है; PUBLIC/anon execute revoke और authenticated-only execute grant दर्ज हैं।
+- Private implementation केवल `assigned, inspection, awaiting_quote_approval, quote_approved, in_progress` status में contact देती है। `completed` और `cancelled` status सूची में नहीं हैं। इसलिए backend response स्तर पर भी इन terminal states में नंबर नहीं लौटना चाहिए।
+- Customer को pre-assignment/offer अवस्था में इस lookup से नंबर नहीं मिलता; ownership `customer_user_id = auth.uid()` से सीमित है। यह source-level evidence है, runtime/RLS/config test नहीं।
+
+### Gaps / required checks
+1. Requirement में “काम पूरा होने के बाद” के साथ cancellation, reassignment, electrician suspension और dispute/closed states पर भी contact hide/allow rules को स्पष्ट lifecycle contract में दर्ज करना। Current allowlist fail-closed है, लेकिन future states जोड़ने पर review अनिवार्य।
+2. Customer booking list के अलावा future receipt, notification, support/history APIs में phone fields leak न हों; इन surfaces का end-to-end data-flow audit बाकी है।
+3. Electrician-side reverse contact visibility, Admin visibility, assignment acceptance race, realtime/cache refresh तथा terminal-state transition के तुरंत बाद stale client contact removal का अलग परीक्षण बाकी।
+4. वास्तविक दो-account test: pre-accept hidden; assigned/accepted पर दोनों पक्षों के लिए approved full-number access; completed/cancelled पर customer UI/API/receipt/history से अनुपलब्ध। यह user के वर्तमान phone-visibility rule के अनुरूप verify हो।
+
+### Status and restrictions
+- **14.1.8: Partial Source Evidence / Implementation Verification Pending.** Customer-side private lookup में authenticated ownership और active-status allowlist मौजूद है; पर पूरे requirement की दोनों-पक्षीय visibility, सभी surfaces और runtime behavior सिद्ध नहीं।
+- इस audit में कोई code/schema/RLS/Auth/customer data/provider/payment/secret/deployment परिवर्तन नहीं किया।
+- Final Real-World Test: **बाकी**; कुल वास्तविक परीक्षण 96/96 Pending रहेंगे।
