@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(26);
+SELECT plan(28);
 
 SELECT has_schema('srk_private','private schema exists for payment order locks');
 SELECT has_table('srk_private','payment_order_locks','payment order lock table exists');
@@ -76,6 +76,18 @@ SELECT ok(pg_get_functiondef('public.srk_service_finalize_captured_payment(uuid,
 SELECT ok(pg_get_functiondef('public.srk_service_finalize_captured_payment(uuid,text,text,bigint,text)'::regprocedure) ILIKE '%payment_status=''paid''%'
   AND pg_get_functiondef('public.srk_service_finalize_captured_payment(uuid,text,text,bigint,text)'::regprocedure) ILIKE '%payment_verified_at%',
   'finalizer records paid state and server verification timestamp atomically');
+
+
+SELECT ok(
+  pg_get_functiondef('public.srk_link_payment_order(uuid,uuid,text,bigint)'::regprocedure)
+    ILIKE '%v_booking.quoted_amount IS NULL%',
+  'legacy order linking rejects a missing approved quote total instead of allowing SQL NULL to bypass reconciliation'
+);
+SELECT ok(
+  pg_get_functiondef('public.srk_service_finalize_captured_payment(uuid,text,text,bigint,text)'::regprocedure)
+    ILIKE '%v_booking.quoted_amount IS NULL%',
+  'captured payment finalization independently rejects a missing approved quote total'
+);
 
 SELECT * FROM finish();
 ROLLBACK;
