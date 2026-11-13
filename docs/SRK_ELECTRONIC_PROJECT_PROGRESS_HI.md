@@ -766,3 +766,14 @@
 - pgTAP अभी execute नहीं हुआ। Storage metadata shape, signed URL expiry/access, वास्तविक upload/delete, cross-user IDOR और browser/mobile/Desktop interactions अभी runtime-verified नहीं। कोई Production migration apply, deployment या customer data change नहीं।
 - Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
 - अगला Customer App audit: Payments history/receipt and refund-history RPC behavior, then full Profile/Support/Booking acceptance coverage. Electrician Portal अभी शुरू नहीं हुआ।
+
+
+## 2026-11-13 — Customer Payments History / Receipt / Refund History hardening
+
+- Payments History और Refund History के concurrent refresh पर latest-request sequence guards जोड़े; पुराने async responses नई list को overwrite नहीं कर पाएँगे। Session retrieval अब try/catch के भीतर है और `aria-busy` केवल latest request द्वारा reset होता है। Payment pagination offset केवल latest सफल response के बाद आगे बढ़ता है।
+- Receipt action अब केवल `event_type='payment'` और `status='paid'` वाले verified booking-payment row पर दिखता है; unverified/manual-recorded rows पर receipt button नहीं दिखेगा। Receipt RPC की server-side ownership और verified-payment guards कायम हैं।
+- नई migration `20261114190000_customer_receipt_immutable_labour_amount.sql` receipt में पहले immutable `srk_booking_labour_bills` से labour amount लेती है, और तभी जब bill मौजूद न हो तो legacy `service_charge` fallback लेती है—वह भी केवल जब वह पूरी verified paid राशि से exact match हो। Materials amount/line items receipt में नहीं आते। Authenticated-only grant और booking owner check कायम।
+- pgTAP `supabase/tests/database/customer_receipt_immutable_labour_amount.test.sql` में 7 assertions जोड़े; isolated Supabase schema CI migration list में नई migration शामिल।
+- Source workflow Run #43465512466 (payments/refund history UI source update) — success. New receipt migration source tests run after migration file was restored to the feature branch are awaiting push-triggered CI; earlier run #43465662448 failed only because the migration file had been created on a detached commit and was not present in the branch checkout. The migration and pgTAP file are now on the branch at commit `ac0d423cefacc1cd71e0cf21fa2c7bd87c420ced`.
+- SQL pgTAP अभी execute नहीं हुआ। Payment history RPC का runtime role/JWT isolation, refund history provider state, real receipt generation/printing, payment pagination in browser, and final mobile/Desktop QA अभी बाकी। No Production migration apply, deployment or payment/refund movement.
+- Master checklist counts unchanged: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24. Customer App work continues; Electrician Portal/Admin Panel general work not started.
