@@ -3316,3 +3316,16 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Keyword counts वास्तविक rate-limit enforcement, OTP delivery/verification success, expiry, wrong-attempt limits या abuse absence का प्रमाण नहीं हैं; edge logs में rate/limit mentions अन्य endpoints से भी हो सकते हैं।
 - No Auth settings, function source, secret, database object, user/session, SMS request, or deployment changed. Function inspection and logs query read-only रहे।
 - **Status: In Progress.** Dashboard configuration, end-to-end OTP expiry/replay/wrong-code/resend tests, per-phone/IP limits and logout/session lifecycle verification अभी बाकी हैं।
+
+
+## 17.89 — Customer Booking Logout Error Handling Fix और Static Verification (13 नवम्बर 2026)
+- Checklist item: **14.1.1** — OTP expiry, resend cooldown/limits, wrong-attempt limits, abuse/rate limiting, secure session और logout।
+- Feature Branch `booking.html` में पहले `customerLogout()` सीधे `auth.signOut()` await करता था; rejection पर कोई catch/finally नहीं था। इससे उपयोगकर्ता को स्पष्ट error message नहीं मिलता और logout button busy/disabled state में फँसने का जोखिम था।
+- Feature Branch में handler सुधारा: missing client/button और duplicate click guard; प्रक्रिया के दौरान button disable; signOut error को check; सफल logout के बाद session UI sync; failure पर स्पष्ट Hindi error message; finally में button enable restore।
+- Updated `booking.html` blob SHA: `5edcade782121c8984f888a04368bcc266391a79`; commit: `841d372813fd69246a3cf27c0c96202608519d59`.
+- Re-fetched file SHA commit output के content SHA से match हुआ।
+- पूरे inline JavaScript block का V8 syntax parse PASS; logout duplicate-click guard PASS; signOut error check PASS; finally button restore PASS।
+- `srk-config.js` में केवल browser-safe Supabase URL और publishable/anon key configuration है; कोई explicit `persistSession`, `autoRefreshToken`, `detectSessionInUrl` या custom storage/session lifetime setting नहीं मिली। Supabase client defaults लागू हो सकते हैं; actual project Auth policy अभी dashboard से सत्यापित नहीं।
+- यह static/source-level fix है; browser/device पर real signOut, offline/network failure, token invalidation, दूसरे device पर session behavior और protected API access का runtime test अभी बाकी है।
+- No Production deployment, Auth setting, secret, database object, account/session या SMS transaction changed.
+- **Status: In Progress** — logout handler source fix और static parse verified; runtime/logout lifecycle और OTP expiry/abuse controls pending।
