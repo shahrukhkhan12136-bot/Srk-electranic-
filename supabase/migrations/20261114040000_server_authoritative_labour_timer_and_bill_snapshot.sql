@@ -624,3 +624,32 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_get_my_offer_details() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_get_my_offer_details() TO authenticated;
 
+
+
+-- Narrow service-role payment lookup: payment adapters cannot select bill rows
+-- directly through the Data API and cannot invent an amount from legacy quote fields.
+CREATE OR REPLACE FUNCTION public.srk_service_get_labour_bill_for_payment(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_bill public.srk_booking_labour_bills%ROWTYPE;
+BEGIN
+  IF coalesce(auth.jwt()->>'role','')<>'service_role' THEN
+    RAISE EXCEPTION 'Service role only' USING ERRCODE='42501';
+  END IF;
+  SELECT * INTO v_bill FROM public.srk_booking_labour_bills
+  WHERE booking_id=p_booking_id;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN jsonb_build_object(
+    'booking_id',v_bill.booking_id,
+    'labour_amount_paise',v_bill.labour_amount_paise,
+    'labour_amount',v_bill.labour_amount,
+    'billable_minutes',v_bill.billable_minutes,
+    'created_at',v_bill.created_at
+  );
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_service_get_labour_bill_for_payment(uuid) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.srk_service_get_labour_bill_for_payment(uuid) TO service_role;
+
