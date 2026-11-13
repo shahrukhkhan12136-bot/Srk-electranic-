@@ -29,6 +29,16 @@ a{color:#087e8b}@media(max-width:560px){.grid{grid-template-columns:1fr}.card{pa
 <div class="field"><label for="state">राज्य *</label><input id="state" name="state" value="Uttar Pradesh" maxlength="100" required></div>
 <div class="field"><label for="district">जिला *</label><input id="district" name="district" maxlength="100" required></div>
 <div class="field"><label for="pincode">PIN Code *</label><input id="pincode" name="pincode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></div>
+<div class="field">
+<label>काम की जगह की मैप लोकेशन (वैकल्पिक)</label>
+<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+<button id="captureLocation" type="button" style="background:#17617a">📍 मेरी वर्तमान लोकेशन चुनें</button>
+<button id="clearLocation" type="button" style="background:#60758a">लोकेशन हटाएँ</button>
+</div>
+<p id="locationStatus" class="hint" role="status" aria-live="polite">लोकेशन चुनना वैकल्पिक है। जिला और PIN Code आवश्यक रहेंगे। ब्राउज़र अनुमति माँगेगा।</p>
+<input type="hidden" id="location_lat" name="location_lat">
+<input type="hidden" id="location_lng" name="location_lng">
+</div>
 <div class="field"><label for="experience_years">अनुभव (वर्ष) *</label><input id="experience_years" name="experience_years" type="number" min="0" max="60" step="1" value="0" required></div>
 </div>
 <div class="field"><label for="requested_category">आप किस commercial category के लिए आवेदन कर रहे हैं? *</label>
@@ -63,13 +73,32 @@ a{color:#087e8b}@media(max-width:560px){.grid{grid-template-columns:1fr}.card{pa
 </section></main>
 <script>
 const form=document.getElementById('applicationForm'),button=document.getElementById('submitButton'),statusBox=document.getElementById('status');
+const locationStatus=document.getElementById('locationStatus');
+document.getElementById('captureLocation').addEventListener('click',()=>{
+ if(!navigator.geolocation){locationStatus.textContent='इस ब्राउज़र में लोकेशन सुविधा उपलब्ध नहीं है। जिला और PIN Code भरकर आवेदन जारी रख सकते हैं।';return;}
+ locationStatus.textContent='आपकी लोकेशन ली जा रही है…';
+ navigator.geolocation.getCurrentPosition(position=>{
+  document.getElementById('location_lat').value=String(position.coords.latitude);
+  document.getElementById('location_lng').value=String(position.coords.longitude);
+  locationStatus.textContent='मैप लोकेशन चुन ली गई है। सटीक निर्देशांक आवेदन के साथ सुरक्षित रूप से भेजे जाएँगे।';
+ },error=>{
+  const messages={1:'लोकेशन अनुमति नहीं मिली। Browser settings में अनुमति दें या बिना लोकेशन जारी रखें।',2:'लोकेशन उपलब्ध नहीं है। बाद में कोशिश करें या बिना लोकेशन जारी रखें।',3:'लोकेशन मिलने में समय लगा। दोबारा कोशिश करें या बिना लोकेशन जारी रखें।'};
+  locationStatus.textContent=messages[error.code]||'लोकेशन नहीं मिल सकी। आप बिना लोकेशन जारी रख सकते हैं।';
+ },{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+});
+document.getElementById('clearLocation').addEventListener('click',()=>{
+ document.getElementById('location_lat').value='';
+ document.getElementById('location_lng').value='';
+ locationStatus.textContent='मैप लोकेशन हटा दी गई है। जिला और PIN Code से आवेदन जारी रहेगा।';
+});
+
 form.addEventListener('submit',async(event)=>{
  event.preventDefault();if(!form.reportValidity())return;if(!form.querySelector('input[name="requested_skill_keys"]:checked')){statusBox.className='status err';statusBox.textContent='कम-से-कम एक कौशल चुनें।';return;}
  const payload={
   full_name:form.full_name.value.trim(),phone:form.phone.value.trim(),
   state:form.state.value.trim(),district:form.district.value.trim(),pincode:form.pincode.value.trim(),
   experience_years:Number(form.experience_years.value),requested_category:form.requested_category.value,
-  skills:form.skills.value.trim(),requested_skill_keys:Array.from(form.querySelectorAll('input[name="requested_skill_keys"]:checked')).map(x=>x.value),about:form.about.value.trim()
+  skills:form.skills.value.trim(),requested_skill_keys:Array.from(form.querySelectorAll('input[name="requested_skill_keys"]:checked')).map(x=>x.value),about:form.about.value.trim(),location_lat:form.location_lat.value||null,location_lng:form.location_lng.value||null
  };
  button.disabled=true;button.textContent='आवेदन जमा हो रहा है…';statusBox.className='status';statusBox.textContent='कृपया प्रतीक्षा करें।';
  try{
