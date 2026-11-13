@@ -632,6 +632,7 @@ async function customerRespondWorkCompletion(bookingId,response){
   disputed:'क्या आप इस काम पर औपचारिक विवाद दर्ज करना चाहते हैं?'
  };
  if(!confirm(messages[response]||'क्या आप आगे बढ़ना चाहते हैं?'))return;
+ if(!customerSessionOperationIsCurrent(generation))return;
  customerWorkCompletionResponseBusy.set(bookingId,operationToken);
  let responseConfirmed=false;
  try{
@@ -940,6 +941,7 @@ async function customerChangePaymentMethod(id){
  const generation=customerSessionGeneration;
  const operationToken=Symbol('customer-payment-method');
  if(!confirm('क्या आप इस बुकिंग के लिए Cash की जगह Online (Razorpay) भुगतान स्वयं चुनना चाहते हैं? कोई भुगतान अभी नहीं लिया जाएगा।'))return;
+ if(!customerSessionOperationIsCurrent(generation))return;
  const button=document.getElementById('customerChangePayment_'+id);
  const wasDisabled=button?.disabled||false;
  customerPaymentMethodChangeBusy.set(id,operationToken);
