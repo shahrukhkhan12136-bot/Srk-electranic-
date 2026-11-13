@@ -1928,3 +1928,5 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Admin queue के लिए regression coverage जोड़ी: केवल review-start RPC; final cancellation/fee RPC या controls मौजूद नहीं होने चाहिए (test update commit `05d301b9`)।
 - Latest known completed source regression `43525651346` SUCCESS (commit `97243eef`); latest Admin-queue-assertion source run `43525712456` और refund source run `43525712403` इस update पर in progress हैं।
 - Cancellation pgTAP run `43525453777` local Supabase startup चरण में in progress; अभी तक migration apply/pgTAP assertions का result उपलब्ध नहीं। Earlier superseded/cancelled run को PASS नहीं गिनें।
+
+- Follow-up Admin queue source regression run `43525712456` SUCCESS और refund source regression `43525712403` SUCCESS (commit `05d301b9`)। इनसे Admin cancellation queue के review-only controls और existing refund source checks verify हुए; database RPC execution नहीं।
