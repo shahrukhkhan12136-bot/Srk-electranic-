@@ -363,12 +363,16 @@ async function customerPrintPaymentReceipt(bookingId){
 }
 let customerPaymentHistoryLoadSequence=0;
 async function loadCustomerPaymentHistory(reset=true) {
- if(!customerSb)return;
+ if(!customerSb||(!reset&&customerPaymentHistoryBusy))return;
  const sequence=++customerPaymentHistoryLoadSequence;
  const box=document.getElementById('customerPaymentHistory');
  const more=document.getElementById('customerPaymentHistoryMore');
+ const refresh=document.getElementById('customerPaymentHistoryRefresh');
  if(!box||!more)return;
  const requestedOffset=reset?0:customerPaymentHistoryOffset;
+ customerPaymentHistoryBusy=true;
+ more.disabled=true;
+ if(refresh)refresh.disabled=true;
  box.setAttribute('aria-busy','true');
  if(reset){customerPaymentHistoryOffset=0;more.style.display='none';box.textContent='भुगतान रिकॉर्ड लोड हो रहे हैं…';}
  try{
@@ -400,7 +404,12 @@ async function loadCustomerPaymentHistory(reset=true) {
    else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
   }
  }finally{
-  if(sequence===customerPaymentHistoryLoadSequence)box.setAttribute('aria-busy','false');
+  if(sequence===customerPaymentHistoryLoadSequence){
+   customerPaymentHistoryBusy=false;
+   box.setAttribute('aria-busy','false');
+   more.disabled=false;
+   if(refresh)refresh.disabled=false;
+  }
  }
 }
 let customerRefundHistoryLoadSequence=0;
