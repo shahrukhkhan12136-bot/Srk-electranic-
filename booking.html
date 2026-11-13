@@ -927,7 +927,7 @@ async function loadCustomerProfile() {
   if(sequence!==customerProfileLoadSequence)return;
   if(sessionError)throw sessionError;
   const session=sessionData?.session;
-  if(!session){setCustomerProfileStatus('प्रोफ़ाइल देखने के लिए OTP से लॉगिन करें।',true);return;}
+  if(!session){document.getElementById('customerProfilePhone').value='';document.getElementById('customerProfileName').value='';customerCurrentAvatarPath=null;setCustomerAvatarPreview('');setCustomerProfileStatus('प्रोफ़ाइल देखने के लिए OTP से लॉगिन करें।',true);return;}
   const phone=session.user.phone||'';
   const digits=String(phone).replace(/\D/g,'');
   const displayPhone=digits.startsWith('91')&&digits.length===12?digits.slice(2):digits;
