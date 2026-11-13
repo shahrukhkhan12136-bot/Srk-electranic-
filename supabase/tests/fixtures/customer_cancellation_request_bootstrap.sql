@@ -2,13 +2,6 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pgtap;
 -- Use Supabase's pre-provisioned auth schema and auth.uid() implementation.
--- Permit this disposable test database's connection role to seed synthetic Auth users.
-DO $grant_auth_seed$
-DECLARE v_role name := current_user;
-BEGIN
-  EXECUTE format('GRANT supabase_auth_admin TO %I',v_role);
-END
-$grant_auth_seed$;
 CREATE TABLE public.service_bookings(
  id uuid PRIMARY KEY,
  customer_user_id uuid REFERENCES auth.users(id),
