@@ -111,6 +111,6 @@ test('historical offer-detail migrations never reveal assigned customer contact 
   const allowed = "('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')";
   for (const [name, sql] of [['map-pin migration', early], ['quote-workflow migration', quote]]) {
     assert.ok(sql.includes('b.status IN ' + allowed), name + ' must gate customer contact fields by active assigned-work state');
-    assert.ok(!/CASE WHEN b\\.assigned_electrician_id\\s*=\\s*p\\.id THEN/i.test(sql), name + ' must not expose contacts based on assignment alone');
+    assert.ok(!/CASE WHEN b\.assigned_electrician_id\s*=\s*p\.id THEN/i.test(sql), name + ' must not expose contacts based on assignment alone');
   }
 });
