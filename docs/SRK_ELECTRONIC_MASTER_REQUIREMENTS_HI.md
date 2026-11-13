@@ -3378,3 +3378,16 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Supabase Management API का Auth config GET documented है, लेकिन connected account में Auth dashboard/Management API config read capability उपलब्ध नहीं मिली। कोई access token, secret, OTP या customer PII नहीं पढ़ा गया।
 - No Auth config mutation, CAPTCHA/provider setting change, source code change, migration, database mutation, SMS send, customer session action or deployment.
 - **Status: In Progress.** Built-in Auth protections documented but Production values, CAPTCHA, OTP expiry and session policies remain unverified; runtime tests still pending.
+
+
+## 17.94 — Hosted Phone OTP दस्तावेज़ों की पुनः पुष्टि, पूर्व Expiry दावे का सुधार और Auth Config Read Access Blocker (13 नवम्बर 2026)
+- Checklist item: **14.1.1**।
+- इस audit में Supabase के वर्तमान Phone Sign-in, Rate Limits, CAPTCHA और Management API दस्तावेज़ों को Supabase Docs search से दोबारा देखा।
+- **पिछले Section 17.93 का सुधार:** उसमें 1-hour OTP expiry को सामान्य Auth/Production guidance से phone OTP पर लागू मान लिया गया था। Hosted Phone Sign-in docs OTP validity को configurable `auth.rate_limits.otp.validity` बताती हैं और उसी page पर SMS PIN को 60 seconds में verify करने का निर्देश है; self-hosted phone guide अलग से 60-second default बताती है। इसलिए hosted Production project की वास्तविक phone OTP expiry को 1 hour कहना प्रमाणित नहीं है। इसे **Unknown / Dashboard config verification required** माना जाएगा। UI का 60-second resend cooldown, server-side OTP resend period और OTP validity तीन अलग बातें हैं।
+- Current Auth Rate Limits docs: hosted project में SMS send quota का documented default 30 SMS/hour (project-wide); same-user OTP resend period default 60 seconds; IP-based sign-in/sign-up requests default 30 per 5 minutes; verification endpoint default 30 requests per 5 minutes; over-limit पर HTTP 429। ये documented defaults हैं, हमारे project के actual overrides का प्रमाण नहीं।
+- Phone Sign-in docs में 6-digit SMS PIN example है; app source 4–8 digits स्वीकार करता है। Provider/project configuration और actual issued OTP length verify किए बिना इसे failure नहीं कहेंगे; test/compatibility item के रूप में रखेंगे।
+- CAPTCHA docs में hCaptcha और Cloudflare Turnstile supported हैं और Auth sign-in/OTP request में CAPTCHA token pass करना आवश्यक होता है; दोनों customer OTP pages में CAPTCHA integration नहीं मिली। Project-level CAPTCHA enablement status unknown है। बिना provider/site key/secret और dashboard approval के इसे चालू नहीं किया।
+- Supabase Management API में `GET /v1/projects/{ref}/config/auth` Auth config पढ़ने का documented endpoint है; `GET /v2/projects/{ref}/config` effective service configuration देता है और Alpha stage में है। उपलब्ध connected Supabase tools में इनमें से कोई Management API GET/config action नहीं है; कोई user Management API access token उपलब्ध/authorized नहीं है। इसलिए read-only settings retrieval blocker बना हुआ है।
+- Read-only project metadata पुनः पुष्टि: project `gnqhoaqatmoiwwhgzkgm`, region `ap-south-1`, status `ACTIVE_HEALTHY`, PostgreSQL 17.11.0.018।
+- No Auth setting change, CAPTCHA setup, provider/secret change, SMS request, customer account/session operation, database/source mutation or deployment.
+- **Status: In Progress.** Current hosted Auth settings and phone OTP validity are unverified; runtime negative/abuse/session tests pending.
