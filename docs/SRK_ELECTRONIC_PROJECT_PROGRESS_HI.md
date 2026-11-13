@@ -1003,3 +1003,6 @@
 - Regression CI attempts exposed two test-selector assertion issues (expected count too strict; newline match too literal), not application runtime failures. Assertions corrected in commit `599339ff4e63e8fe3e582bf2d5554f8e9324a15c`; rerun pending. Earlier source suite had 38/39 and then 38/40 passing; affected tests were the new assertions. Do not mark them passed until rerun succeeds.
 
 - Corrected source regression suite completed successfully: GitHub Actions run `43475351432` — SUCCESS on tested commit `599339ff4e63e8fe3e582bf2d5554f8e9324a15c`. This verifies static source assertions only; no live browser/Auth/Storage/RPC/database race test has run.
+
+
+- Saved-address save race guard: while a saved address create/update RPC and subsequent refresh are running, the saved-address selector and edit action are disabled. Their prior disabled states are restored in `finally`, preventing selection/edit changes from racing with the save completion handler. Source regression test added. Commits `d2a7f9cb07a61f780904acc41d2a6f1237aab4f3`, `7faf5f4515adde58e1209f273f40d0ef34049ff9`. Workflow pending. No browser interaction or live RPC test.
