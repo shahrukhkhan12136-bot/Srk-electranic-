@@ -999,3 +999,5 @@
 
 
 - Customer Profile async race guard: beginning a profile save invalidates any older in-flight profile load; profile reload is skipped while save is active, preventing stale RPC/avatar responses from overwriting fields during/after a save. Source regression coverage added. Commits `9d158247b59bd9d46c006071f00f179c9dd11079`, `9d1a76e0310a1f7220aa029f338e46038da20175`. Workflow pending. No browser/network race injection or Production change.
+
+- Regression CI attempts exposed two test-selector assertion issues (expected count too strict; newline match too literal), not application runtime failures. Assertions corrected in commit `599339ff4e63e8fe3e582bf2d5554f8e9324a15c`; rerun pending. Earlier source suite had 38/39 and then 38/40 passing; affected tests were the new assertions. Do not mark them passed until rerun succeeds.
