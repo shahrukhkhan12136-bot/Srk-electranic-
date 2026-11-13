@@ -967,7 +967,11 @@ async function deleteSelectedSavedAddress() {
  const a=customerSavedAddresses.find(x=>x.id===id);
  if(!a)return;
  if(!confirm('क्या आप यह सेव किया हुआ पता हमेशा के लिए हटाना चाहते हैं? पहले की बुकिंग पर इसका असर नहीं होगा。'))return;
- const button=document.getElementById('deleteSavedAddress');button.disabled=true;
+ const button=document.getElementById('deleteSavedAddress');
+ const select=document.getElementById('savedAddressSelect');
+ if(button.disabled)return;
+ const selectWasDisabled=select.disabled;
+ button.disabled=true;select.disabled=true;
  try {
   const {data,error}=await customerSb.rpc('srk_customer_delete_my_saved_address',{p_id:id});
   if(error)throw error;
@@ -977,13 +981,17 @@ async function deleteSelectedSavedAddress() {
   document.getElementById('savedAddressSelect').value='';
   setSavedAddressStatus(refreshed&&!customerSavedAddresses.some(item=>item.id===id)?'पता हटा दिया गया है। पुरानी बुकिंग का पता सुरक्षित है।':'पता हटाने का अनुरोध सफल हुआ, लेकिन सूची अभी रीफ़्रेश नहीं हो सकी। दोबारा लोड करके स्थिति जाँचें।',!refreshed||customerSavedAddresses.some(item=>item.id===id));
  } catch(e){setSavedAddressStatus('पता नहीं हट सका। '+(e.message||''),true);}
- finally{button.disabled=false;}
+ finally{button.disabled=false;select.disabled=selectWasDisabled;}
 }
 async function makeSelectedAddressDefault() {
  const id=document.getElementById('savedAddressSelect').value;
  const a=customerSavedAddresses.find(x=>x.id===id);
  if(!a){setSavedAddressStatus('डिफ़ॉल्ट बनाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
- const button=document.getElementById('setDefaultSavedAddress');button.disabled=true;
+ const button=document.getElementById('setDefaultSavedAddress');
+ const select=document.getElementById('savedAddressSelect');
+ if(button.disabled)return;
+ const selectWasDisabled=select.disabled;
+ button.disabled=true;select.disabled=true;
  try {
   const {error}=await customerSb.rpc('srk_customer_save_my_address',{
    p_id:a.id,p_label:a.label,p_recipient_name:a.recipient_name,p_address_line:a.address_line,
@@ -996,7 +1004,7 @@ async function makeSelectedAddressDefault() {
   const defaultConfirmed=refreshed&&customerSavedAddresses.some(item=>item.id===a.id&&item.is_default===true);
   setSavedAddressStatus(defaultConfirmed?'डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।':'डिफ़ॉल्ट पता अपडेट हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी। दोबारा लोड करके पुष्टि करें।',!defaultConfirmed);
  } catch(e){setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
- finally{button.disabled=false;}
+ finally{button.disabled=false;select.disabled=selectWasDisabled;}
 }
 let customerSupportComplaints = [];
 let customerSupportSelectedId = null;
