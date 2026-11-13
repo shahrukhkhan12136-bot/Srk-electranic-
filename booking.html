@@ -1024,7 +1024,7 @@ async function loadCustomerProfile() {
    document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
    customerCurrentAvatarPath=profile.avatar_path||null;
    const avatarPath=customerCurrentAvatarPath;
-   const avatarLoaded=avatarPath?await loadCustomerAvatar(avatarPath,()=>sequence===customerProfileLoadSequence&&customerCurrentAvatarPath===avatarPath):true;
+   const avatarLoaded=avatarPath?await loadCustomerAvatar(avatarPath,()=>isCurrent()&&customerCurrentAvatarPath===avatarPath):true;
    if(!isCurrent())return;
    if(!customerCurrentAvatarPath)setCustomerAvatarPreview('');
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।'+(avatarLoaded?'':' फोटो का पूर्वावलोकन अभी उपलब्ध नहीं है।'),!avatarLoaded);
