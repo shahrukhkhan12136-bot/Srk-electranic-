@@ -1733,3 +1733,12 @@
 - Corrected local run #43519928198 इस नवीनतम test/fixture/migration chain पर queued है। पिछला run #43519675977 पुरानी SHA पर Supabase start चरण में अटका रहा; नए run का result आने तक कोई pgTAP PASS claim नहीं।
 
 - Latest source regression run #43519928149 on commit `834c69b26d99` completed **SUCCESS**; the local timer/Completion pgTAP run #43519928198 is still executing the isolated Supabase setup at this check.
+
+### Timer/Completion pgTAP — दूसरा local run: migration chain सफल, 2 stale checks + 1 wrong RPC reference
+
+- Run #43519928198 में local Supabase, synthetic fixture और चार migrations (category, timer/bill, completion/events, accepted-contact parity) सभी सफलतापूर्वक apply हुए।
+- Category/duration suite **14/14 PASS**; completion/admin-review/immutable-event suite **22/22 PASS**।
+- Timer/bill suite 87/104 assertions तक चला; पहले के timer/offer API, fee snapshot, contact, payout fixture और booking matcher issues अब आगे बढ़े। शेष में test 83 पुराने नियम के अनुसार completed state में electrician contact छिपना अपेक्षित कर रहा था; यह approved accepted-contact policy के विपरीत था। Test 84 elapsed seconds को `bigint` कह रहा था जबकि exact accumulated seconds RPC contract `numeric` है। एक अतिरिक्त assertion गलत public `srk_reserve_electrician_cash_offer_slot()` नाम को refer कर रही थी; वास्तविक trigger function `private.srk_handle_cash_offer_reservation()` है।
+- तीनों stale assertions सही contract/function पर अपडेट: accepted contact through completion, exact `numeric` elapsed seconds, और private cash-offer reservation trigger। Test plan 104 ही है।
+- Run #43519928198 अभी **FAIL** है, इसलिए timer suite pass नहीं माना गया। Corrected rerun #43520275491 queued है।
+- Corrective test commit `845a74bc2409f406f9705be1c8e93c45e9de01fc`. Source Regression run #43519928149 SUCCESS; latest source run for corrective commit pending.
