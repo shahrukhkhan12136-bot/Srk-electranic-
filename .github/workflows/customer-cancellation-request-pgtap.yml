@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: srk-customer-cancellation-request-pgtap
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   isolated-pgtap:
