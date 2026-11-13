@@ -809,3 +809,15 @@ test('customer logout invalidates booking payment and refund history requests', 
     "document.getElementById('customerRefundHistory').removeAttribute('aria-busy');"
   ]) assert.ok(noSession.includes(token), 'history logout cleanup missing: '+token);
 });
+
+
+test('customer mutations stop stale UI work after auth session changes', () => {
+  assert.match(html, /let customerSessionGeneration=0/);
+  assert.match(html, /function customerSessionOperationIsCurrent\(generation\)/);
+  assert.match(html, /onAuthStateChange\(\(event\) => \{ if\(event==='SIGNED_OUT'\|\|event==='SIGNED_IN'\|\|event==='USER_UPDATED'\)customerSessionGeneration\+\+/);
+  assert.match(html, /if\(!customerSessionOperationIsCurrent\(operationGeneration\)\)return;/);
+  assert.match(html, /finally\{if\(customerSessionOperationIsCurrent\(operationGeneration\)\)/);
+  assert.match(html, /customerSupportMessageBusy=false;customerSupportComplaintCreateBusy=false/);
+  assert.match(html, /supportSend\.disabled=false;supportSend\.textContent='संदेश \/ फ़ाइल भेजें'/);
+  assert.match(html, /supportCreate\.disabled=false;supportCreate\.textContent='शिकायत दर्ज करें'/);
+});
