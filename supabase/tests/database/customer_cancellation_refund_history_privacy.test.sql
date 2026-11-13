@@ -24,7 +24,7 @@ select ok(
 );
 
 select ok(
-  position("payment_status, 'unpaid') not in ('unpaid','failed')" in lower(pg_get_functiondef('public.srk_customer_cancel_my_booking(uuid)'::regprocedure))) > 0,
+  position('payment_status, ''unpaid'') not in (''unpaid'',''failed'')' in lower(pg_get_functiondef('public.srk_customer_cancel_my_booking(uuid)'::regprocedure))) > 0,
   'pending, paid and refunded payment states cannot be cancelled directly'
 );
 
