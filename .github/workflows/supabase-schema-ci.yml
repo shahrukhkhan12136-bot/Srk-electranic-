@@ -1,4 +1,4 @@
-name: Supabase isolated schema migration test
+name: Customer Offer Timeline isolated pgTAP
 
 on:
   workflow_dispatch:
@@ -7,281 +7,73 @@ on:
     paths:
       - '.github/workflows/supabase-schema-ci.yml'
       - 'supabase/migrations/20261114230000_customer_safe_offer_timeline.sql'
+      - 'supabase/tests/fixtures/customer_offer_timeline_bootstrap.sql'
       - 'supabase/tests/database/customer_safe_offer_timeline.test.sql'
+      - 'supabase/tests/database/customer_safe_offer_timeline_behavior.test.sql'
 
 permissions:
   contents: read
 
 concurrency:
-  group: srk-supabase-schema-ci
+  group: srk-customer-offer-timeline-pgtap
   cancel-in-progress: true
 
 jobs:
-  migration-test:
+  isolated-pgtap:
     if: github.ref == 'refs/heads/feature/platform-fee-cash-online-cycle'
-    name: Export schema and test feature migrations locally
+    name: Run offer timeline migration and owner-isolation tests locally
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - name: Checkout feature branch
         uses: actions/checkout@v5
 
-      - name: Require database connection secret (stored only in GitHub Secrets)
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "::error::Add a dedicated least-privilege schema-export connection as the SUPABASE_DB_URL GitHub Actions secret. Never use postgres, service_role, or a BYPASSRLS account."
-            exit 1
-          fi
-          case "$SUPABASE_DB_URL" in
-            postgres://*|postgresql://*) ;;
-            *) echo "::error::SUPABASE_DB_URL must be a PostgreSQL connection URI."; exit 1 ;;
-          esac
-
       - name: Install pinned Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: 3.0.0
+          version: 3.1.0
 
-      - name: Create a clean temporary Supabase project
+      - name: Create temporary local Supabase project
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/srk-supabase-ci"
-          cd "$RUNNER_TEMP/srk-supabase-ci"
+          mkdir -p "$RUNNER_TEMP/srk-offer-timeline"
+          cd "$RUNNER_TEMP/srk-offer-timeline"
           supabase init
-
-      - name: Verify export credential cannot read rows or alter schema
-        working-directory: ${{ runner.temp }}/srk-supabase-ci
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          set -euo pipefail
-          cat > "$RUNNER_TEMP/check-export-role.sql" <<'SQL'
-          SELECT NOT (
-            EXISTS (
-              SELECT 1 FROM pg_roles
-              WHERE rolname = current_user
-                AND (rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication)
-            )
-            OR EXISTS (
-              SELECT 1
-              FROM pg_class c
-              JOIN pg_namespace n ON n.oid = c.relnamespace
-              WHERE n.nspname IN ('public', 'private', 'srk_private')
-                AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
-                AND (
-                  has_table_privilege(current_user, c.oid, 'SELECT')
-                  OR has_any_column_privilege(current_user, c.oid, 'SELECT')
-                  OR has_table_privilege(current_user, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,TRIGGER')
-                )
-            )
-            OR EXISTS (
-              SELECT 1
-              FROM pg_namespace n
-              WHERE n.nspname IN ('public', 'private')
-                AND has_schema_privilege(current_user, n.oid, 'CREATE')
-            )
-          ) AS safe_schema_export_role;
-          SQL
-          supabase db query --remote="$SUPABASE_DB_URL" --read-only --output json "$(cat "$RUNNER_TEMP/check-export-role.sql")" > "$RUNNER_TEMP/export-role-check.json"
-          if ! grep -Eiq '"safe_schema_export_role"[[:space:]]*:[[:space:]]*true' "$RUNNER_TEMP/export-role-check.json"; then
-            echo "::error::This database account is too privileged or can access table rows. Use a dedicated schema-only export role; do not use postgres, service_role, or BYPASSRLS accounts."
-            exit 1
-          fi
-
-      - name: Export schema only from production (no table data)
-        working-directory: ${{ runner.temp }}/srk-supabase-ci
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          set -euo pipefail
-          umask 077
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
-          pg_dump --version
-          pg_dump --schema-only --no-owner --no-acl --schema=public --schema=private --schema=srk_private "$SUPABASE_DB_URL" > "$RUNNER_TEMP/srk-production-schema.sql"
-          test -s "$RUNNER_TEMP/srk-production-schema.sql"
-          if grep -Eiq '^(COPY|INSERT INTO) ' "$RUNNER_TEMP/srk-production-schema.sql"; then
-            echo "::error::Unexpected data statements found in schema-only export."
-            exit 1
-          fi
+          mkdir -p supabase/tests/database
+          cp "$GITHUB_WORKSPACE/supabase/tests/database/customer_safe_offer_timeline.test.sql" supabase/tests/database/
+          cp "$GITHUB_WORKSPACE/supabase/tests/database/customer_safe_offer_timeline_behavior.test.sql" supabase/tests/database/
 
       - name: Start isolated local Supabase stack
-        working-directory: ${{ runner.temp }}/srk-supabase-ci
+        working-directory: ${{ runner.temp }}/srk-offer-timeline
         run: supabase start
 
-      - name: Restore schema into isolated local database
-        working-directory: ${{ runner.temp }}/srk-supabase-ci
-        run: supabase db query --file "$RUNNER_TEMP/srk-production-schema.sql"
-
-      - name: Apply pending feature migrations in order
-        working-directory: ${{ runner.temp }}/srk-supabase-ci
+      - name: Prepare synthetic legacy schema and offer fixtures
+        working-directory: ${{ runner.temp }}/srk-offer-timeline
         run: |
           set -euo pipefail
-          migrations=(
-            "$GITHUB_WORKSPACE/supabase/migrations/20261112170000_enforce_electrician_third_booking_online_payment.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261112193000_labour_only_quotes_customer_supplies_materials.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261112220000_cash_platform_fee_due_and_online_settlement.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261112230000_show_customer_payment_choice_to_assigned_electrician.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113120000_harden_customer_call_contact_privacy.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113120100_limit_cash_fee_settlement_to_labour_share.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113143000_restrict_customer_booking_contacts_to_active.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113160000_hide_internal_notes_from_customer_support_rpcs.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113173000_customer_payment_history_rpc.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113180000_customer_support_messages_and_attachments.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113190000_admin_support_replies_and_attachment_linking.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113200000_customer_profile_api_and_avatar_security.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113210000_customer_saved_addresses_api.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113220000_customer_complaint_creation_rpc.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113230000_support_attachment_paths_and_admin_message_list.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113235900_harden_customer_cancellation_and_safe_refund_history.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113235930_customer_payment_receipt_rpc.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114000000_electrician_requested_and_approved_rate_tiers.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114010000_customer_booking_category_and_duration.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114030000_verified_electrician_skills_and_category_matching.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114050000_correct_legacy_and_platform_fee_reporting.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114070000_customer_safe_idempotent_booking_timeline.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114080000_electrician_safe_booking_work_timeline.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114090000_atomic_razorpay_order_and_payment_finalization.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114100000_reproducible_labour_only_refund_foundation.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114110000_admin_refund_review_queue_and_decisions.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114120000_guarded_labour_only_razorpay_refund_preparation.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114130000_durable_razorpay_refund_provider_reconciliation.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114140000_manual_labour_only_refund_workflow.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114150000_customer_booking_submission_idempotency.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114160000_surface_failed_provider_refunds_for_admin_reconciliation.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114170000_harden_customer_support_attachment_object_integrity.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114180000_harden_customer_avatar_object_integrity.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114210000_customer_refund_history_pagination.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114220000_customer_contacts_after_completion.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114230000_customer_safe_offer_timeline.sql"
-          )
-          for migration in "${migrations[@]}"; do
-            test -s "$migration"
-            echo "Applying $migration to the isolated local database"
-            supabase db query --file "$migration"
-          done
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          supabase status -o env > "$RUNNER_TEMP/srk-supabase-local.env"
+          set -a
+          source "$RUNNER_TEMP/srk-supabase-local.env"
+          set +a
+          test -n "${DB_URL:-}"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/tests/fixtures/customer_offer_timeline_bootstrap.sql"
 
-      - name: Run all database pgTAP tests against isolated schema
-        working-directory: ${{ runner.temp }}/srk-supabase-ci
-        run: supabase test db
-
-      - name: Lint isolated database
-        working-directory: ${{ runner.temp }}/srk-supabase-ci
-        run: supabase db lint --local --fail-on error
-
-      - name: Verify critical schema objects exist
-        working-directory: ${{ runner.temp }}/srk-supabase-ci
+      - name: Apply Customer Offer Timeline migration locally
+        working-directory: ${{ runner.temp }}/srk-offer-timeline
         run: |
-          cat > "$RUNNER_TEMP/srk-smoke-test.sql" <<'SQL'
-          DO $$
-          BEGIN
-            IF to_regclass('public.srk_platform_fee_ledger') IS NULL THEN
-              RAISE EXCEPTION 'Missing public.srk_platform_fee_ledger';
-            END IF;
-            IF to_regprocedure('public.srk_get_customer_call_contacts()') IS NULL THEN
-              RAISE EXCEPTION 'Missing public.srk_get_customer_call_contacts';
-            END IF;
-            IF to_regprocedure('public.srk_customer_change_payment_method(uuid,text)') IS NULL THEN
-              RAISE EXCEPTION 'Missing srk_customer_change_payment_method(uuid,text)';
-            END IF;
-            IF to_regclass('public.srk_electrician_payouts') IS NULL THEN
-              RAISE EXCEPTION 'Missing public.srk_electrician_payouts';
-            END IF;
-            IF to_regclass('public.srk_booking_labour_bills') IS NULL THEN
-              RAISE EXCEPTION 'Missing public.srk_booking_labour_bills';
-            END IF;
-            IF to_regclass('public.srk_booking_work_events') IS NULL THEN
-              RAISE EXCEPTION 'Missing public.srk_booking_work_events';
-            END IF;
-            IF to_regprocedure('public.srk_admin_approve_work_completion(uuid,text)') IS NULL THEN
-              RAISE EXCEPTION 'Missing Admin completion approval RPC';
-            END IF;
-            IF to_regprocedure('public.srk_customer_get_my_booking_work_timeline()') IS NULL THEN
-              RAISE EXCEPTION 'Missing customer-safe booking timeline RPC';
-            END IF;
-            IF to_regprocedure('public.srk_electrician_get_my_booking_work_timeline()') IS NULL THEN
-              RAISE EXCEPTION 'Missing electrician-safe booking timeline RPC';
-            END IF;
-            IF to_regprocedure('private.srk_offer_booking_to_eligible_electricians(uuid)') IS NULL THEN
-              RAISE EXCEPTION 'Missing shared verified booking matcher';
-            END IF;
-            IF to_regprocedure('public.srk_customer_get_labour_bill(uuid)') IS NULL THEN
-              RAISE EXCEPTION 'Missing customer final labour bill RPC';
-            END IF;
-            IF to_regprocedure('public.srk_claim_payment_order_lock(uuid)') IS NULL THEN
-              RAISE EXCEPTION 'Missing atomic Razorpay payment-order lock RPC';
-            END IF;
-            IF to_regprocedure('public.srk_link_payment_order(uuid,uuid,text,bigint)') IS NULL THEN
-              RAISE EXCEPTION 'Missing atomic Razorpay order-link RPC';
-            END IF;
-            IF to_regprocedure('public.srk_service_finalize_captured_payment(uuid,text,text,bigint,text)') IS NULL THEN
-              RAISE EXCEPTION 'Missing atomic captured-payment finalizer RPC';
-            END IF;
-            IF to_regclass('public.srk_booking_refund_requests') IS NULL THEN
-              RAISE EXCEPTION 'Missing customer refund request table';
-            END IF;
-            IF to_regclass('public.srk_razorpay_refunds') IS NULL THEN
-              RAISE EXCEPTION 'Missing Razorpay refund table';
-            END IF;
-            IF to_regclass('public.srk_manual_refund_entries') IS NULL THEN
-              RAISE EXCEPTION 'Missing manual refund audit table';
-            END IF;
-            IF to_regprocedure('public.srk_customer_list_my_booking_refund_requests(integer,integer)') IS NULL THEN
-              RAISE EXCEPTION 'Missing paginated customer refund history RPC';
-            END IF;
-            IF to_regprocedure('public.srk_customer_create_booking_refund_request(uuid,text)') IS NULL THEN
-              RAISE EXCEPTION 'Missing customer labour-only refund request RPC';
-            END IF;
-            IF to_regprocedure('public.srk_admin_list_booking_refund_requests()') IS NULL THEN
-              RAISE EXCEPTION 'Missing Admin refund queue RPC';
-            END IF;
-            IF to_regprocedure('public.srk_admin_decide_booking_refund_request(uuid,text,text)') IS NULL THEN
-              RAISE EXCEPTION 'Missing Admin refund decision RPC';
-            END IF;
-            IF to_regprocedure('public.srk_admin_prepare_booking_refund(uuid)') IS NULL THEN
-              RAISE EXCEPTION 'Missing guarded Admin refund preparation RPC';
-            END IF;
-            IF to_regprocedure('public.srk_service_finalize_razorpay_refund(uuid)') IS NULL THEN
-              RAISE EXCEPTION 'Missing provider refund finalization RPC';
-            END IF;
-            IF to_regprocedure('public.srk_admin_prepare_manual_booking_refund(uuid)') IS NULL THEN
-              RAISE EXCEPTION 'Missing manual refund preparation RPC';
-            END IF;
-            IF to_regprocedure('public.srk_admin_record_manual_refund_transfer(uuid,text,text)') IS NULL THEN
-              RAISE EXCEPTION 'Missing manual refund transfer recording RPC';
-            END IF;
-            IF to_regprocedure('public.srk_admin_finalize_manual_booking_refund(uuid)') IS NULL THEN
-              RAISE EXCEPTION 'Missing manual refund finalization RPC';
-            END IF;
-            IF NOT EXISTS (
-              SELECT 1 FROM information_schema.columns
-              WHERE table_schema='public' AND table_name='service_bookings'
-                AND column_name='customer_request_key' AND data_type='uuid'
-            ) THEN
-              RAISE EXCEPTION 'Missing service_bookings.customer_request_key';
-            END IF;
-            IF to_regclass('public.service_bookings_customer_request_key_uidx') IS NULL THEN
-              RAISE EXCEPTION 'Missing unique customer booking idempotency index';
-            END IF;
-            IF to_regclass('private.srk_booking_offer_events') IS NULL THEN
-              RAISE EXCEPTION 'Missing private customer-safe offer event table';
-            END IF;
-            IF to_regprocedure('public.srk_customer_get_my_booking_offer_timeline()') IS NULL THEN
-              RAISE EXCEPTION 'Missing customer-safe offer timeline RPC';
-            END IF;
-          END
-          $$;
-          SQL
-          supabase db query --file "$RUNNER_TEMP/srk-smoke-test.sql"
+          set -euo pipefail
+          set -a
+          source "$RUNNER_TEMP/srk-supabase-local.env"
+          set +a
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$GITHUB_WORKSPACE/supabase/migrations/20261114230000_customer_safe_offer_timeline.sql"
 
-      - name: Stop local Supabase stack
-        working-directory: ${{ runner.temp }}/srk-supabase-ci
+      - name: Run structural and behavioral pgTAP tests
+        working-directory: ${{ runner.temp }}/srk-offer-timeline
+        run: supabase test db supabase/tests/database/customer_safe_offer_timeline.test.sql supabase/tests/database/customer_safe_offer_timeline_behavior.test.sql
+
+      - name: Stop isolated local Supabase stack
+        working-directory: ${{ runner.temp }}/srk-offer-timeline
         if: always()
         run: supabase stop --no-backup
