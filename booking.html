@@ -390,11 +390,14 @@ function customerPaymentLabel(row) {
  return {type:types[row.event_type]||'भुगतान रिकॉर्ड',method:methods[row.payment_method]||'',status:statusLabel};
 }
 async function customerPrintPaymentReceipt(bookingId){
+ if(!customerSb)return;
+ const generation=customerSessionGeneration;
  const printWindow=window.open('','_blank');
  if(!printWindow){alert('रसीद खोलने के लिए कृपया इस साइट के pop-ups की अनुमति दें।');return;}
  printWindow.document.write('<!doctype html><html lang="hi"><head><meta charset="utf-8"><title>SRK ELECTRONIC भुगतान रसीद</title></head><body style="font-family:Arial,sans-serif;padding:24px">रसीद लोड हो रही है…</body></html>');
  try{
   const {data,error}=await customerSb.rpc('srk_customer_get_payment_receipt',{p_booking_id:bookingId});
+  if(!customerSessionOperationIsCurrent(generation)){printWindow.close();return;}
   if(error)throw error;
   if(!data||data.document_type!=='payment_receipt')throw new Error('Receipt unavailable');
   const method=({cash:'नकद',upi:'UPI',card:'कार्ड',online:'ऑनलाइन',razorpay:'Razorpay',bank_transfer:'बैंक ट्रांसफर','bank transfer':'बैंक ट्रांसफर',other:'अन्य'})[String(data.payment_method||'').toLowerCase()]||'अन्य';
@@ -410,6 +413,7 @@ async function customerPrintPaymentReceipt(bookingId){
   printWindow.focus();
  }catch(error){
   printWindow.close();
+  if(!customerSessionOperationIsCurrent(generation))return;
   alert('भुगतान रसीद उपलब्ध नहीं हो सकी। कृपया सत्यापित भुगतान की स्थिति जाँचें या सहायता टीम से संपर्क करें।');
  }
 }
