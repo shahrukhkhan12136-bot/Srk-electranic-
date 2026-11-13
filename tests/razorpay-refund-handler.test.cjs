@@ -16,6 +16,7 @@ test("refund request uses Razorpay documented idempotency header and stable stor
   assert.match(handler, /X-Refund-Idempotency/);
   assert.match(handler, /idempotency_key/);
   assert.match(prep, /idempotency_key/);
+  assert.match(prep, /srk_/);
 });
 
 test("refund executor requires exact INR captured labour amount and no prior refund", () => {
@@ -35,7 +36,8 @@ test("webhook verifies HMAC and captures unique provider event before reconcilia
   assert.match(handler, /timingSafeEqual/);
   assert.match(handler, /x-razorpay-event-id/);
   assert.match(handler, /srk_service_capture_razorpay_refund_event/);
-  assert.ok(handler.indexOf("srk_service_capture_razorpay_refund_event") < handler.indexOf("srk_service_record_razorpay_refund_result"));
+  const webhook = handler.slice(handler.indexOf("async function webhook"));
+  assert.ok(webhook.indexOf("srk_service_capture_razorpay_refund_event") < webhook.indexOf("reconcile(row.id,refund)"));
 });
 
 test("service reconciliation functions are service-role only and webhook inbox is private", () => {
