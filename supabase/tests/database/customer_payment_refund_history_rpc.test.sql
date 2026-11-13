@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(13);
 select ok(
   position('event_id uuid' in pg_get_function_result('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0
   and position('description text' in pg_get_function_result('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
@@ -27,6 +27,9 @@ select ok(position('limit v_limit offset v_offset' in lower(pg_get_functiondef('
 select ok(position('admin_note' in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure)))=0
  and position('payload' in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure)))=0,
  'history does not expose admin notes or raw provider payloads');
+select ok(
+  position('''processed''::text' in pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
+  'a durable manual refund audit entry is shown as processed after finalization');
 select ok(has_function_privilege('authenticated','public.srk_customer_get_payment_history(integer,integer)','EXECUTE')
  and not has_function_privilege('anon','public.srk_customer_get_payment_history(integer,integer)','EXECUTE'),
  'payment history RPC is authenticated-only');
