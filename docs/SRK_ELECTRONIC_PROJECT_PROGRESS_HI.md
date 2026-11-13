@@ -859,3 +859,14 @@
 - Refund flow audit confirms customer history RPC is owner-scoped and returns `processed_at`; UI statuses cover requested/in_review/approved/rejected/processing/unknown/processed. Customer duplicate submit guard and backend one-request-per-booking checks exist.
 - Important remaining cross-phase/backend dependency: manual-payment refund request can be created, but a complete Admin-authorized manual refund finalization workflow (manual transfer evidence validation, exact labour-only amount, payout/fee ledger reconciliation, idempotent audit, and customer state transition) is not yet implemented/verified. Do not show manual refund as complete until this exists. Razorpay provider execution remains source-only and not runtime-tested.
 - SQL pgTAP/RPC execution, Supabase RLS/JWT, provider/manual refund integration and final consolidated mobile/Desktop QA remain unverified. No Production changes/deployment/money movement.
+
+
+## 2026-11-13 — Manual Refund finalization retry safety
+
+- Manual/Cash refund का Admin workflow branch पर पहले से मौजूद था: Admin-only prepare → वास्तविक transfer reference अलग से durable record → booking/payment और platform-fee/payout ledger finalization। पिछली स्थिति-रिपोर्ट में इसे “अभी implement होना बाकी” कहना stale था; source audit से migration `20261114140000_manual_labour_only_refund_workflow.sql`, Admin UI actions और pgTAP/source tests मौजूद मिले।
+- Deep retry audit में एक वास्तविक idempotency defect मिला: सफल manual refund के बाद refund trigger payout row को अंतिम refunded state में बदल सकता है। यदि Admin उसी finalization RPC को retry करता, तो पुराना code उसी payout row को फिर temporary `blocked` marker मानने की कोशिश कर सकता था और processed refund को reconciliation में डाल सकता था।
+- Migration में अब `status='processed'` के लिए early read-only idempotent success path है। यह booking के refunded state और exact manual refund audit entry (booking, payment entry, amount in paise, transfer reference) verify करता है; mismatch पर error देता है; सही होने पर payout/ledger mutation दोबारा चलाए बिना `already_finalized=true` लौटाता है।
+- Source regression test और pgTAP assertion जोड़े गए; pgTAP plan 15 से 16 किया।
+- Migration commit `3a1197726ea66fc011bdfbb1fa5dfe36a7bdacea`; source test commit `d89cdd3e56498dccfcb74589196817cc2b9be066`; pgTAP test commit `7817578ebfc82d7ab93a7764c832b7742f749121`.
+- Source Regression Run #43470164003 — success; Refund Source Regression Run #43470164015 — success (latest head `7817578ebfc82d7ab93a7764c832b7742f749121`). Earlier intermediate commits also passed: #43470149137 and #43470149291.
+- SQL pgTAP execution, Supabase runtime/RLS/JWT/concurrency checks, actual transfer/refund execution and payout-ledger reconciliation remain NOT tested. Migration is branch-only; no Production schema/data changes, deployment or money movement. Mobile/Desktop QA remains deferred to the final consolidated pass.
