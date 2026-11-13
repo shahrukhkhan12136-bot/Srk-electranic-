@@ -3352,3 +3352,15 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Standalone login सफल OTP verification के बाद `/booking.html#customer-login` पर redirect करता है; उसी browser origin के Supabase client storage से session साझा होने की अपेक्षा है, लेकिन cross-page/cross-device runtime verification बाकी है।
 - No Production deploy, Auth setting, secret, database object, user/session, SMS request changed.
 - **Status: In Progress.** Runtime browser/mobile tests, OTP expiry/verification limits, server-side abuse controls और Auth Dashboard configuration evidence pending।
+
+
+## 17.92 — दोनों Customer OTP UI Flows का Cooldown/Validation Audit और E2E Test-Harness खोज (13 नवम्बर 2026)
+- Checklist item: **14.1.1**।
+- Feature Branch `customer-login.html` और `booking.html` का OTP send/verify source दोबारा inspect किया।
+- दोनों pages में OTP send से पहले E.164 phone validation, client-side busy/duplicate-click guard, 60-second in-memory resend cooldown और 4–8 digit OTP input validation मौजूद है।
+- Booking page send handler timer को clear/recreate करता है; standalone login page 60-second interval पूरा होने पर timer clear करता है। दोनों cooldown page reload/दूसरे device पर persist नहीं होते; इसलिए ये केवल UX guard हैं, authoritative abuse protection नहीं।
+- दोनों pages generic OTP verification error दिखाते हैं; client source में wrong-attempt counter, lockout, progressive backoff या abuse telemetry नहीं मिली। Provider-side enforcement अभी भी unverified है।
+- GitHub repository search में OTP-specific Playwright/browser test, customer login E2E suite या dedicated OTP test harness नहीं मिला। यह repository search का परिणाम है; किसी external CI secret-backed test environment की अनुपलब्धता का पूर्ण प्रमाण नहीं।
+- No live OTP भेजा, no real phone/customer session इस्तेमाल किया, no test account बनाया, no Auth config/secret/database/source changed in this audit.
+- **Test boundary:** Real OTP expiry, invalid/replayed token, repeated wrong attempts, resend abuse, browser reload, multi-device session, logout and protected endpoint behavior को सुरक्षित तरीके से सत्यापित करने के लिए approved test phone/account और controlled test environment चाहिए। बिना इसके real SMS/customer account पर परीक्षण नहीं किया जाएगा।
+- **Status: In Progress.** Source-level validation confirmed; server-side policy and runtime E2E evidence pending।
