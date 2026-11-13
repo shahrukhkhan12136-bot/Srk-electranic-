@@ -1256,3 +1256,11 @@
 - No Production changes/deploy. Real Auth signout/session-switch race injection, Supabase Storage/RLS and pgTAP tests, browser, final mobile/Desktop QA remain pending.
 
 - Verification update: Customer App source regression run `43488811755` completed **SUCCESS** (job `132104230681`) on test commit `e29b067e89b1`; this includes the logout account-isolation regression test. Earlier app source run `43488754507` was also **SUCCESS** on app commit `4d7138dcdc3b`, and Refund Source Regression run `43488754454` was **SUCCESS**. These are source-level tests only, not browser/Auth runtime or database proof.
+
+
+### 14 नवम्बर 2026 — Customer booking/payment/refund history logout race fix
+
+- अगले auth-isolation audit में पाया कि booking, payment और refund history के अपने async request sequence थे। Logout पर इन्हें invalidate नहीं किया जा रहा था; pending पुराना response logout के बाद hidden dashboard/history में लिख सकता था और busy/aria-busy/pagination controls अटके रह सकते थे।
+- No-session branch अब तीनों history sequence counters बढ़ाता है, busy flags और offsets reset करता है, “और रिकॉर्ड” controls hide/enable करता है, refresh controls restore करता है और aria-busy हटाता है। इससे stale in-flight responses render नहीं होने चाहिए और अगला login clean history load से शुरू होता है।
+- App commit: `6a8202b306c7bebbd3c2610baa313ff1fd37d3df`. Regression test commit: `fca8c835cc4db1eef295e87d86a3b8a474240792`. CI pending.
+- No Production changes/deploy. Auth/session race injection, browser testing, database pgTAP and final consolidated mobile/Desktop QA remain pending.
