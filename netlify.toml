@@ -19,6 +19,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/electrician-application-status"
+  to = "/.netlify/functions/application-status"
+  status = 200
+
+[[redirects]]
   from = "/api/create-order"
   to = "/.netlify/functions/create-order"
   status = 200
