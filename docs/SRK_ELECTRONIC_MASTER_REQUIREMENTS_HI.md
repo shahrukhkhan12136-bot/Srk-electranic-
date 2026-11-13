@@ -2754,3 +2754,12 @@ Production `public.srk_razorpay_webhook_events` में 12 columns मिल�
 5. Customer, assigned/unassigned Electrician, Admin और service-role positive/negative authorization tests, webhook raw-body adapter tests और rollback rehearsal के बाद ही production change प्रस्तावित करें।
 
 Audit सीमा: source + live catalog read-only inspection। कोई DDL/DML, event replay, Razorpay API/provider action, refund/transfer, application source edit, deployment या live payment test नहीं किया गया।
+
+
+### G. Production webhook inbox inventory — अतिरिक्त live verification
+- RLS enabled है; `FORCE ROW LEVEL SECURITY` enabled नहीं है। कोई table policy row नहीं मिली।
+- Effective privilege checks में `anon` और `authenticated` को direct SELECT नहीं मिला; `service_role` को SELECT/INSERT/UPDATE मिला। Schema USAGE दोनों public roles को है, लेकिन table privilege न होने के कारण direct table read नहीं मिला।
+- तीन indexes मिले: `event_id` primary-key unique index, `(razorpay_order_id, received_at DESC)`, और `(processing_status, received_at DESC)`।
+- Constraints में केवल `PRIMARY KEY(event_id)` और processing status allow-list check मिला: `received`, `reconciled`, `exception`, `ignored`, `processing_error`।
+- Live status aggregation खाली object लौटा; निरीक्षण के समय table में कोई webhook event row नहीं थी। इसका अर्थ यह नहीं कि Razorpay account में कोई event नहीं आया; केवल इस Production table में वर्तमान में कोई row नहीं मिली।
+- कोई table trigger नहीं मिला। इस कारण existing table के साथ durable writer/consumer अभी भी स्थापित/सिद्ध नहीं है।
