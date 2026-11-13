@@ -1,0 +1,16 @@
+BEGIN;
+SELECT plan(12);
+SELECT has_column('public','srk_booking_work_events','actor_role','work events store actor role');
+SELECT has_column('public','srk_booking_work_events','idempotency_key','work events store an idempotency key');
+SELECT ok(EXISTS(SELECT 1 FROM pg_indexes WHERE schemaname='public' AND tablename='srk_booking_work_events' AND indexname='srk_booking_work_events_idempotency_key_uidx' AND indexdef ILIKE '%UNIQUE%'), 'event idempotency key has a unique index');
+SELECT has_function('public','srk_customer_get_my_booking_work_timeline',ARRAY[]::text[],'customer work timeline RPC exists');
+SELECT ok(NOT has_function_privilege('anon','public.srk_customer_get_my_booking_work_timeline()','EXECUTE') AND has_function_privilege('authenticated','public.srk_customer_get_my_booking_work_timeline()','EXECUTE'), 'customer timeline RPC is authenticated-only');
+SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid='public.srk_customer_get_my_booking_work_timeline()'::regprocedure), 'customer timeline RPC uses a protected definer function');
+SELECT ok(pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline()'::regprocedure) ILIKE '%b.customer_user_id=auth.uid()%', 'customer timeline is filtered by authenticated booking ownership');
+SELECT ok(pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline()'::regprocedure) ILIKE '%e.actor_role%' AND pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline()'::regprocedure) ILIKE '%e.occurred_at%', 'customer timeline returns actor role and server event timestamp');
+SELECT ok(pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline()'::regprocedure) NOT ILIKE '%e.details%' AND pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline()'::regprocedure) NOT ILIKE '%e.actor_id%', 'customer timeline excludes private details and actor identifiers');
+SELECT ok(pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline()'::regprocedure) ILIKE '%ORDER BY e.booking_id,e.occurred_at,e.id%', 'customer timeline uses deterministic chronological ordering');
+SELECT ok(pg_get_functiondef('public.srk_capture_booking_work_event()'::regprocedure) ILIKE '%ON CONFLICT (idempotency_key) DO NOTHING%' AND pg_get_functiondef('public.srk_capture_booking_work_event()'::regprocedure) ILIKE '%v_actor_role%', 'event trigger stores actor role and suppresses duplicate transaction event keys');
+SELECT ok((SELECT convalidated FROM pg_constraint WHERE conrelid='public.srk_booking_work_events'::regclass AND conname='srk_booking_work_events_actor_role_check'), 'actor role values are constrained to the approved set');
+SELECT * FROM finish();
+ROLLBACK;
