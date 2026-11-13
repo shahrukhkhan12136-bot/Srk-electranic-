@@ -113,7 +113,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 96px}
    <p class="small" id="customerLocationStatus" role="status" aria-live="polite">लोकेशन अभी नहीं चुनी गई है। पता लिखकर भी Google Maps में देखा जा सकेगा।</p>
    <div id="customerMapWrap" style="display:none;margin-top:10px"><iframe id="customerMap" title="बुकिंग लोकेशन का Google Map" width="100%" height="220" style="border:0;border-radius:12px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a id="customerMapLink" target="_blank" rel="noopener">Google Maps में लोकेशन खोलें</a></div>
    <label for="service">कौन-सी सर्विस चाहिए?</label>
-   <select id="service"><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>होम रिपेयरिंग</option><option>अन्य</option></select>
+   <select id="service" required><option value="">सर्विस चुनें</option><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>MCB / DB / इन्वर्टर</option><option>मोटर / पंप</option><option>होम रिपेयरिंग</option><option>अन्य इलेक्ट्रिकल काम</option></select>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
    <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
    <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
@@ -149,7 +149,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 96px}
    <button class="btn" type="button" id="electricianLocate" style="margin-top:8px;background:#eaf2ff;color:#164b91">📍 अपनी काम की लोकेशन चुनें</button>
    <input type="hidden" id="electricianLat"><input type="hidden" id="electricianLng">
    <p class="small" id="electricianLocationStatus" role="status">GPS लोकेशन वैकल्पिक है; PIN Code और जिला से भी ऑफर मिलेंगे।</p>
-   <label for="eSkills">कौन-कौन से काम आते हैं?</label><select id="eSkills" required><option value="">काम चुनें</option><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>MCB / DB / इन्वर्टर</option><option>मोटर / पंप</option><option>सभी इलेक्ट्रिकल काम</option></select>
+   <label for="eSkills">आप कौन-कौन से काम कर सकते हैं? (एक से अधिक चुनें)</label><select id="eSkills" multiple required size="7" aria-describedby="eSkillsHelp"><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>MCB / DB / इन्वर्टर</option><option>मोटर / पंप</option><option>होम रिपेयरिंग</option><option>सभी इलेक्ट्रिकल काम</option></select><p class="small" id="eSkillsHelp">मोबाइल में कई काम चुनने के लिए विकल्पों पर टैप करें। “सभी इलेक्ट्रिकल काम” चुनने पर बाकी विकल्प चुनने की जरूरत नहीं है।</p>
    <label for="eExperience">अनुभव (वर्ष)</label><input id="eExperience" type="number" min="0" max="60" required placeholder="जैसे 3">
    <label for="eAbout">अनुभव / अतिरिक्त जानकारी</label><textarea id="eAbout" placeholder="अपनी योग्यता, उपलब्ध समय आदि लिखें"></textarea>
    <button class="btn primary" type="submit">इलेक्ट्रिशियन आवेदन WhatsApp पर भेजें</button>
@@ -474,7 +474,7 @@ document.getElementById('electricianForm').addEventListener('submit', async func
   const whatsapp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
   const button = this.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'आवेदन भेजा जा रहा है…';
   try {
-    const response = await fetch('/api/apply-electrician', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: value('eName'), phone: value('ePhone'), state: value('eState'), district: value('eDistrict'), pincode: value('ePin'), location_lat: value('electricianLat') || null, location_lng: value('electricianLng') || null, skills: value('eSkills'), experience_years: value('eExperience'), about: value('eAbout') }) });
+    const response = await fetch('/api/apply-electrician', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: value('eName'), phone: value('ePhone'), state: value('eState'), district: value('eDistrict'), pincode: value('ePin'), location_lat: value('electricianLat') || null, location_lng: value('electricianLng') || null, skills: Array.from(document.getElementById('eSkills').selectedOptions, option => option.value), experience_years: value('eExperience'), about: value('eAbout') }) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'आवेदन सेव नहीं हुआ।');
     alert(result.message); window.location.href = whatsapp;
