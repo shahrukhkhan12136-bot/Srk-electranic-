@@ -902,3 +902,20 @@ test('customer payment and refund history loaders reject stale session responses
   }
   assert.match(html,/customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerBookingHistory\(\);invalidateCustomerPaymentHistory\(\);invalidateCustomerRefundHistory\(\)/);
 });
+
+test('profile and saved-address loaders bind every response and cleanup to the current auth session', () => {
+  const profileStart=html.indexOf('async function loadCustomerProfile()');
+  const profileEnd=html.indexOf('\\nasync function saveCustomerProfile()',profileStart);
+  const profile=html.slice(profileStart,profileEnd);
+  assert.match(profile,/const generation=customerSessionGeneration/);
+  assert.match(profile,/const isCurrent=\(\)=>sequence===customerProfileLoadSequence&&customerSessionOperationIsCurrent\(generation\)/);
+  assert.match(profile,/await customerSb\.rpc\('srk_customer_get_my_profile'\)[\s\S]*?if\(!isCurrent\(\)\)return/);
+  const addressStart=html.indexOf('async function loadCustomerSavedAddresses');
+  const addressEnd=html.indexOf('\\nasync function saveCurrentBookingAddress',addressStart);
+  const addresses=html.slice(addressStart,addressEnd);
+  assert.match(addresses,/const generation=customerSessionGeneration/);
+  assert.match(addresses,/const isCurrent=\(\)=>sequence===customerSavedAddressLoadSequence&&customerSessionOperationIsCurrent\(generation\)/);
+  assert.match(addresses,/finally \{if\(isCurrent\(\)\)select\.disabled=false;\}/);
+  assert.match(html,/function invalidateCustomerProfileAndSavedAddresses\(\)[\s\S]*?customerProfileLoadSequence\+\+;\+\+customerSavedAddressLoadSequence/);
+  assert.match(html,/invalidateCustomerRefundHistory\(\);invalidateCustomerProfileAndSavedAddresses\(\);/);
+});
