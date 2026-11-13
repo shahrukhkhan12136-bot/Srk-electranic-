@@ -79,7 +79,7 @@ BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
     RAISE EXCEPTION 'Admin only' USING ERRCODE = '42501';
   END IF;
-  IF p_electrician_profile_id IS NULL OR p_rate_tier NOT IN (
+  IF p_electrician_profile_id IS NULL OR p_rate_tier IS NULL OR p_rate_tier NOT IN (
     'electrical_assistant',
     'skilled_electrician',
     'expert_electrician',
