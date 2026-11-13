@@ -371,9 +371,9 @@ SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedur
 
 SELECT has_function('public','srk_guard_immutable_booking_labour_bill',ARRAY[]::text[],
   'immutable final labour bill guard exists');
-SELECT ok(pg_get_triggerdef(oid) ILIKE '%BEFORE INSERT OR UPDATE OR DELETE%'
+SELECT ok((SELECT pg_get_triggerdef(oid) ILIKE '%BEFORE INSERT OR UPDATE OR DELETE%'
   FROM pg_trigger WHERE tgrelid='public.srk_booking_labour_bills'::regclass
-    AND tgname='srk_guard_immutable_booking_labour_bill',
+    AND tgname='srk_guard_immutable_booking_labour_bill'),
   'final labour bill table is protected against updates and deletes');
 SELECT ok(pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()'::regprocedure)
   ILIKE '%FOR UPDATE%' AND
