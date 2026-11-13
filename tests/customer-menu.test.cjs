@@ -147,11 +147,11 @@ test('customer payment and refund history refreshes safely and only verified pay
   assert.match(html, /let customerPaymentHistoryLoadSequence=0/);
   assert.match(html, /const sequence=\+\+customerPaymentHistoryLoadSequence/);
   assert.match(html, /if\(sequence!==customerPaymentHistoryLoadSequence\)return/);
-  assert.match(html, /if\(sequence===customerPaymentHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(html, /if\(sequence===customerPaymentHistoryLoadSequence\)\{[\s\S]*?box\.setAttribute\('aria-busy','false'\)/);
   assert.match(html, /let customerRefundHistoryLoadSequence=0/);
   assert.match(html, /const sequence=\+\+customerRefundHistoryLoadSequence/);
   assert.match(html, /if\(sequence!==customerRefundHistoryLoadSequence\)return/);
-  assert.match(html, /if\(sequence===customerRefundHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(html, /if\(sequence===customerRefundHistoryLoadSequence\)\{[\s\S]*?box\.setAttribute\('aria-busy','false'\)/);
   assert.match(html, /row\.event_type==='payment'&&row\.status==='paid'&&row\.booking_id/);
   assert.match(html, /if\(reset\)\{customerPaymentHistoryOffset=0;more\.style\.display='none';box\.textContent=/);
   assert.match(html, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
