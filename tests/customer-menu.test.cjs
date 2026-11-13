@@ -677,6 +677,11 @@ test('customer completion controls match the server accept reject and dispute co
   assert.ok(source.includes("if(!data?.success)"));
   assert.ok(source.includes("customerWorkCompletionResponseBusy.add(bookingId)"));
   assert.ok(source.includes("finally{customerWorkCompletionResponseBusy.delete(bookingId);}"));
+  assert.ok(source.includes('let responseConfirmed=false;'));
+  assert.ok(source.includes('responseConfirmed=true;'));
+  assert.ok(source.includes('await loadCustomerBookings();'));
+  assert.ok(source.includes('जवाब सर्वर पर दर्ज हो गया है'));
+  assert.ok(source.includes('जवाब दोबारा न भेजें'));
   const historyStart=html.indexOf('async function loadCustomerBookings(reset=true)');
   const historyEnd=html.indexOf('async function customerRespondWorkStart',historyStart);
   const history=html.slice(historyStart,historyEnd);
