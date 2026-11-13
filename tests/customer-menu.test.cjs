@@ -825,6 +825,11 @@ test('customer mutations stop stale UI work after auth session changes', () => {
 
 test('customer booking submission stops stale responses after logout or account switch', () => {
   assert.match(html, /let customerBookingSubmissionToken=0/);
+  const paymentStart=html.indexOf('async function startRazorpayPayment');
+  const paymentEnd=html.indexOf('function customerBookingRequestKey',paymentStart);
+  const paymentSource=html.slice(paymentStart,paymentEnd);
+  assert.doesNotMatch(paymentSource, /operationIsCurrent/);
+  assert.match(paymentSource, /if\(customerSessionError\)throw customerSessionError/);
   assert.match(html, /function invalidateCustomerBookingSubmission\(\)[\s\S]*?customerBookingSubmissionToken\+\+;customerBookingSubmissionBusy=false/);
   assert.match(html, /customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\)/);
   const start=html.indexOf("document.getElementById('booking').addEventListener('submit'");
