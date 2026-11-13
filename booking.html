@@ -1171,7 +1171,7 @@ function renderCustomerSupportThread(rows) {
   const when=document.createElement('small');when.textContent=row.created_at?new Date(row.created_at).toLocaleString('hi-IN'):'';
   item.append(who,body,when);
   (byMessage.get(row.id)||[]).forEach(a=>{
-   const link=document.createElement('a');link.href=a.signedUrl||'#';link.target='_blank';link.rel='noopener noreferrer';link.textContent='📎 '+a.file_name+' ('+(Number(a.file_size_bytes)/1024/1024).toFixed(2)+' MB)';
+   const link=document.createElement('a');link.href=a.signedUrl||'#';link.target='_blank';link.rel='noopener noreferrer';link.textContent='📎 '+a.file_name+' ('+(Number(a.file_size_bytes)/1024/1024).toFixed(2)+' MB)'+(a.signedUrlError?' — फ़ाइल लिंक अभी उपलब्ध नहीं; थ्रेड रीफ़्रेश करें':'');
    link.style.cssText='display:block;margin-top:8px';if(!a.signedUrl){link.removeAttribute('target');link.addEventListener('click',e=>e.preventDefault());}
    item.append(link);
   });
@@ -1185,7 +1185,7 @@ async function loadCustomerSupportAttachments(complaintId) {
  const rows=Array.isArray(data)?data:[];
  return await Promise.all(rows.map(async a=>{
   const {data:signed,error:signedError}=await customerSb.storage.from('srk-customer-support').createSignedUrl(a.storage_path,300);
-  return {...a,signedUrl:signedError?null:signed?.signedUrl||null};
+  return {...a,signedUrl:signedError?null:signed?.signedUrl||null,signedUrlError:Boolean(signedError)};
  }));
 }
 let customerSupportBookingsLoadSequence=0;
