@@ -4148,3 +4148,5 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - कोई नई Supabase QA branch नहीं बनाई गई और कोई अतिरिक्त hourly cost नहीं हुई। सभी बदलाव केवल existing feature branch पर हैं; Production, Main, Auth, payment/payout और live customer data untouched हैं।
 
 - अतिरिक्त source defect fix: Electrician profile SELECT error handler पहले ऐसे #jobs element पर text लिखता था जो portal में मौजूद नहीं है, जिससे error path पर दूसरा JavaScript exception आता। अब existing #state element में generic safe message textContent से render होता है; regression test ने missing target और safe rendering दोनों assert किए हैं।
+
+- Isolated schema CI workflow (.github/workflows/supabase-schema-ci.yml) में नई electrician timeline migration apply-list और smoke assertion भी जोड़ी गई है। Workflow केवल manual dispatch पर चलता है; इसे dispatch नहीं किया गया, इसलिए PostgreSQL/pgTAP runtime परिणाम अभी उपलब्ध नहीं हैं।
