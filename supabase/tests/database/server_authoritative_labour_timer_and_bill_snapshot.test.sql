@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(63);
+SELECT plan(66);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -227,6 +227,20 @@ SELECT ok(pg_get_functiondef('public.srk_create_electrician_payable()'::regproce
   pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)
   ILIKE '%entry_type<>''refund''%',
   'refund reverses original booking wallet entries idempotently without recursive reversal');
+
+
+SELECT ok(pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure)
+  ILIKE '%platform_fee_due%' AND pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure)
+  ILIKE '%platform_fee_collected%',
+  'electrician wallet summary returns outstanding and collected Platform Fee');
+SELECT ok(pg_get_functiondef('public.srk_admin_wallet_overview()'::regprocedure)
+  ILIKE '%platform_fee_due%' AND pg_get_functiondef('public.srk_admin_wallet_overview()'::regprocedure)
+  ILIKE '%pending_electrician_payouts%',
+  'Admin wallet overview returns cash fee due and pending electrician payouts');
+SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
+  ILIKE '%platform_fee_due%' AND pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
+  ILIKE '%platform_fee_collected%',
+  'Admin partner report includes Platform Fee due and collected totals');
 
 SELECT * FROM finish();
 ROLLBACK;
