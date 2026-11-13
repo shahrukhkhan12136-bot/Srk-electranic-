@@ -4000,7 +4000,7 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Customer, Electrician और Admin UI में start approval, live display-only timer, completion approval, final labour bill, online/cash payment status, Admin bill breakdown और wallet Platform Fee due/collected display जोड़े/बदले गए। Electrician rate display में केवल approved net 8-hour rates ₹764.15 / ₹1,019.15 / ₹1,359.15 / ₹1,699.15 दिखते हैं।
 - Phone contact RPC में awaiting_work_start_approval जोड़ा और completed हटाया; customer API completion के बाद electrician phone नहीं लौटाती।
 - Razorpay handlers के लिए 7 mocked isolated runtime checks PASS: snapshot amount order creation, missing bill fail-closed, customer ownership, payment amount verification, mismatch rejection, webhook reconciliation और mismatch rejection. Admin/customer/electrician/payment-handler JavaScript syntax checks PASS.
-- Database test server_authoritative_labour_timer_and_bill_snapshot.test.sql में 66 pgTAP assertions हैं; अभी execute नहीं हुए। Migration source-only/unapplied है; live RLS/RPC/trigger/ledger, real Razorpay Test Mode, cash wallet, payout, refund और browser tests अभी बाकी हैं।
+- Database test server_authoritative_labour_timer_and_bill_snapshot.test.sql में 91 pgTAP assertions हैं; अभी execute नहीं हुए। Migration source-only/unapplied है; live RLS/RPC/trigger/ledger, real Razorpay Test Mode, cash wallet, payout, refund और browser tests अभी बाकी हैं।
 - कोई production migration apply, payment transfer, live refund, production setting change या deployment नहीं किया गया। Final consolidated mobile + desktop QA सभी checklist tasks के बाद ही होगा।
 
 ### 19.20 Automatic offer matching और electrician offer RPC privacy hardening (13-11-2026)
@@ -4010,4 +4010,11 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - PIN match प्राथमिक; योग्य PIN partner न मिलने पर उसी state/district में fallback। Legacy NULL-category booking में skill mapping नहीं थोपी जाती, लेकिन approved rate-tier guard लागू रहता है।
 - Electrician offer RPC से quoted_amount, service_charge, materials_amount, quote_status और quote_note return fields हटाए गए। अब server timer seconds, selected category/duration, approved rate tier/skills और payment status जैसे जरूरी fields ही लौटते हैं।
 - Assigned active work statuses में electrician को customer contact/address मिल सकता है; completed booking पर RPC customer name/phone/address/location वापस नहीं करता।
-- Migration source में 90 pgTAP assertions मौजूद हैं; अभी execute नहीं हुए। कोई live database migration apply नहीं की गई।
+- Migration source में 91 pgTAP assertions मौजूद हैं; अभी execute नहीं हुए। कोई live database migration apply नहीं की गई।
+
+
+### 19.21 Timer/Platform Fee regression audit follow-up (13-11-2026)
+- Customer work-start approval में duplicate transaction authorization INSERT मिला था, जिससे unique key conflict के कारण approval fail हो सकता था। Duplicate हटाया; अब exactly one transaction-scoped authorization बनता है। pgTAP regression assertion जोड़ा।
+- Cash Platform Fee due, online due-settlement और refund reversal का हिसाब अब wallet summary, Admin overview/report, cash eligibility और cash-offer reservation में एक समान refund-aware ledger formula से reconcile होता है। Cash fee refund होने पर पुराना due हटता है; online booking refund होने पर previously settled cash due फिर outstanding बनता है और refunded online fee collected total से घटती है।
+- admin.html के payout table से wildcard select('*') हटाकर explicit safe columns चुने गए; payout UI अब legacy materials_amount column को select नहीं करता। service_bookings और payout tables पर column-level grant design के साथ Admin UI queries align की गईं।
+- Updated SQL test file में 91 assertions घोषित हैं; अभी pgTAP execute नहीं हुआ। JavaScript syntax source checks pass; live database, payment provider और browser runtime tests अभी बाकी हैं।
