@@ -1,6 +1,6 @@
 -- Customer cancellation request intake and Admin review queue contract.
 BEGIN;
-SELECT plan(18);
+SELECT plan(23);
 
 SELECT has_table('public','srk_booking_cancellation_requests','request table exists');
 SELECT has_table('public','srk_booking_cancellation_request_events','append-only event table exists');
