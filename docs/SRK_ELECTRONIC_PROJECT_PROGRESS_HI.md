@@ -1111,3 +1111,11 @@
 - उसी push-triggered all-source regression workflow में Customer Menu test file के दो source-assertion syntax/closure दोष मिले; assertions को regex से हटाकर सुरक्षित `includes`/index checks में बदला और test block बंद किया। ये test-file defects थे, application handler failure नहीं।
 - अंतिम workflow run **43482573166** (commit `42e884c98bb656eb87435728b8b19d5d7d83573d`) — सभी isolated source regression suites **SUCCESS**।
 - इसका अर्थ source-level automated tests पास हैं; SQL/pgTAP, वास्तविक Supabase RPC/Storage, browser interaction और अंतिम mobile/Desktop QA अभी अलग से बाकी हैं। Production deployment/डेटाबेस बदलाव नहीं हुए।
+
+
+### 13 नवम्बर 2026 — Customer Labour Estimate और canonical rate-card parity
+
+- Customer booking estimate के चारों tier rates को canonical `lib/labour-billing.js` rate card से जोड़कर regression test में parity assertion जोड़ी।
+- प्रत्येक tier के 1–8 घंटे के estimate को integer-paise half-up formula से canonical helper के विरुद्ध जाँचा; UI में प्रकाशित rate values भी उसी canonical rate card से मिलाई जाती हैं।
+- Source regression workflow **43482879728** (commit `8e57eb253d2c323274c75874cf3326f61263a6b1`) — **SUCCESS**।
+- यह source-level test है; वास्तविक browser rendering, user interaction और DB/runtime verification अभी नहीं हुए।
