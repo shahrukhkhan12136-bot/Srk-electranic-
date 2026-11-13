@@ -36,10 +36,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <header>
  <div class="top"><div class="logo">SRK</div><div><h1>SRK ELECTRONIC</h1><p>Electrical • Wiring • Home Repair</p></div></div>
  <div class="hero"><h2>घर की इलेक्ट्रिकल सर्विस,<br>अब एक ही जगह।</h2><p>वायरिंग, इलेक्ट्रिकल रिपेयर और घर की छोटी-बड़ी मरम्मत के लिए संपर्क करें।</p></div>
- <div class="actions">
-  <a class="btn call" href="tel:9920904161">☎ कॉल करें</a>
-  <a class="btn whatsapp" href="https://wa.me/919920904161?text=Namaste%20SRK%20ELECTRONIC%2C%20mujhe%20service%20chahiye." target="_blank" rel="noopener">WhatsApp</a>
- </div>
+
 </header>
 <main class="wrap">
  <section class="panel" id="customer-login">
@@ -70,8 +67,9 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <article class="card"><div class="icon">💡</div><h3>लाइट व फैन फिटिंग</h3><p>लाइट, पंखे और अन्य फिटिंग का काम।</p></article>
   <article class="card"><div class="icon">🏠</div><h3>होम रिपेयरिंग</h3><p>घर की सामान्य रिपेयरिंग और मेंटेनेंस।</p></article>
  </div>
- <section class="panel">
+ <section class="panel" id="customer-booking-section" style="display:none">
   <h2 class="section-title" style="margin-top:0">सर्विस बुक करें</h2>
+  <p class="small">बुकिंग फॉर्म देखने और अनुरोध भेजने के लिए पहले मोबाइल OTP सत्यापित करें।</p>
   <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर निरीक्षण करेगा। वह सर्विस शुल्क और सामान का खर्च अलग-अलग देगा। आपकी मंजूरी के बिना काम शुरू नहीं होगा।</p>
   <form id="booking">
    <label for="name">आपका नाम</label><input id="name" required placeholder="नाम लिखें">
@@ -119,7 +117,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <label for="eSkills">कौन-कौन से काम आते हैं?</label><select id="eSkills" required><option value="">काम चुनें</option><option>घर की वायरिंग</option><option>इलेक्ट्रिकल रिपेयर</option><option>लाइट / फैन फिटिंग</option><option>MCB / DB / इन्वर्टर</option><option>मोटर / पंप</option><option>सभी इलेक्ट्रिकल काम</option></select>
    <label for="eExperience">अनुभव (वर्ष)</label><input id="eExperience" type="number" min="0" max="60" required placeholder="जैसे 3">
    <label for="eAbout">अनुभव / अतिरिक्त जानकारी</label><textarea id="eAbout" placeholder="अपनी योग्यता, उपलब्ध समय आदि लिखें"></textarea>
-   <button class="btn primary" type="submit">इलेक्ट्रिशियन आवेदन WhatsApp पर भेजें</button>
+   <button class="btn primary" type="submit">इलेक्ट्रिशियन आवेदन भेजें</button>
    <p class="small">सुरक्षा: अभी Aadhaar नंबर, बैंक पासवर्ड, OTP या कार्ड की जानकारी इस फॉर्म में न डालें। KYC केवल सुरक्षित सत्यापन प्रक्रिया में होगा।</p>
   </form>
  </section>
@@ -127,10 +125,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <h2 class="section-title" style="margin-top:0">सर्विस क्षेत्र</h2>
   <div class="coverage"><span class="pill">आजमगढ़</span><span class="pill">बलरामपुर</span><span class="pill">मुंबई</span></div>
   <p class="small">ग्राहक भारत के किसी भी राज्य, जिले और PIN Code से अनुरोध भेज सकते हैं। फिलहाल यह nationwide enquiry है—हर इलाके में तुरंत सेवा उपलब्ध होने की गारंटी नहीं है। हमारी टीम पहले उपलब्धता की पुष्टि करेगी।</p>
-  <div class="actions">
-   <a class="btn call" href="tel:9920904161">9920904161 पर कॉल</a>
-   <a class="btn whatsapp" href="https://wa.me/919920904161" target="_blank" rel="noopener">मैसेज करें</a>
-  </div>
+
  </section>
 </main>
 <footer>© <span id="year"></span> SRK ELECTRONIC · Shahrukh Khan</footer>
@@ -138,7 +133,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <script src="/srk-config.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-let currentBookingWhatsApp = '';
+
 let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
@@ -185,7 +180,7 @@ async function loadCustomerBookings() {
   box.innerHTML = data.map(row => {
     const contact = callMap.get(row.id);
     const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
-    const canCall = contact && /^[0-9]{10,15}$/.test(phone);
+    const canCall = contact && row.payment_status !== 'paid' && /^[0-9]{10,15}$/.test(phone);
     return '<article class="card" style="margin:10px 0;padding:13px">' +
     '<b>बुकिंग #' + customerEsc(row.id) + '</b><p>' + customerEsc(row.service_type) + '</p>' +
     '<p>स्थिति: ' + customerEsc(row.status) + ' • भुगतान: ' + customerEsc(row.payment_status) + '</p>' +
@@ -220,10 +215,24 @@ async function syncCustomerSession() {
   const session = data.session;
   document.getElementById('customer-login').style.display = session ? 'none' : 'block';
   document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
+  const bookingSection = document.getElementById('customer-booking-section');
+  bookingSection.style.display = session ? 'block' : 'none';
   if (session) {
+    const verifiedPhone = (session.user.phone || '').replace(/^\+91/, '').replace(/\D/g, '').slice(-10);
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
+    if (verifiedPhone.length === 10) {
+      const bookingPhone = document.getElementById('phone');
+      bookingPhone.value = verifiedPhone;
+      bookingPhone.readOnly = true;
+      bookingPhone.setAttribute('aria-readonly', 'true');
+    }
     await loadCustomerBookings();
-
+  } else {
+    const bookingPhone = document.getElementById('phone');
+    bookingPhone.value = '';
+    bookingPhone.readOnly = false;
+    bookingPhone.removeAttribute('aria-readonly');
+    document.getElementById('upiPanel').style.display = 'none';
   }
 }
 async function customerSendOtp() {
@@ -329,9 +338,7 @@ async function startRazorpayPayment() {
           });
           const verifyData = await verifyResponse.json();
           if (!verifyResponse.ok || !verifyData.success) throw new Error(verifyData.error || 'भुगतान सत्यापित नहीं हुआ।');
-          setPaymentStatus('✅ भुगतान सफल और सत्यापित! अब बुकिंग WhatsApp पर भेजी जा रही है।');
-          const paidMessage = currentBookingWhatsApp + '%0A%0APayment: Razorpay verified' + '%0APayment ID: ' + encodeURIComponent(response.razorpay_payment_id);
-          window.location.href = paidMessage;
+          setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है। आपकी बुकिंग का भुगतान रिकॉर्ड अपडेट कर दिया गया है।');
         } catch (err) { setPaymentStatus(err.message, true); }
       },
       modal: { ondismiss: function () { setPaymentStatus('आपने भुगतान विंडो बंद कर दी। अभी भुगतान की पुष्टि नहीं हुई है।', true); } }
@@ -358,8 +365,6 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   e.preventDefault();
   const amount = 0; // Quote and final amount are set after electrician inspection.
   const method = value('payment');
-  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${value('service')}\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
-  currentBookingWhatsApp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
   if (method === 'Razorpay ऑनलाइन भुगतान' && (!Number.isFinite(amount) || amount < 1)) { alert('ऑनलाइन भुगतान के लिए कम से कम ₹1 की सही राशि भरें।'); return; }
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
@@ -386,24 +391,25 @@ document.getElementById('booking').addEventListener('submit', async function (e)
       setPaymentStatus('बुकिंग सेव हो गई। भुगतान शुरू करने के लिए नीचे बटन दबाएँ।');
       document.getElementById('upiPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
-      window.location.href = currentBookingWhatsApp;
+      alert('आपकी बुकिंग सफलतापूर्वक दर्ज हो गई है। OTP लॉगिन में मेरी बुकिंग से इसकी स्थिति देख सकते हैं।');
     }
   } catch (err) {
-    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`);
+    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। कृपया OTP लॉगिन और इंटरनेट कनेक्शन जाँचकर दोबारा कोशिश करें।`);
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
 document.getElementById('electricianForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  const msg = `नमस्ते SRK ELECTRONIC, मैं इलेक्ट्रिशियन के रूप में रजिस्टर करना चाहता/चाहती हूँ।\nनाम: ${value('eName')}\nमोबाइल: ${value('ePhone')}\nराज्य: ${value('eState')}\nजिला: ${value('eDistrict')}\nPIN Code: ${value('ePin')}\nGoogle Maps: ${googleMapsUrl(value('electricianLat'),value('electricianLng'),[value('eDistrict'),value('eState'),value('ePin'),'India'].join(', '))}\nकौशल: ${value('eSkills')}\nअनुभव: ${value('eExperience')} वर्ष\nजानकारी: ${value('eAbout')}`;
-  const whatsapp = 'https://wa.me/919920904161?text=' + encodeURIComponent(msg);
   const button = this.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = 'आवेदन भेजा जा रहा है…';
   try {
     const response = await fetch('/api/apply-electrician', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ full_name: value('eName'), phone: value('ePhone'), state: value('eState'), district: value('eDistrict'), pincode: value('ePin'), location_lat: value('electricianLat') || null, location_lng: value('electricianLng') || null, skills: value('eSkills'), experience_years: value('eExperience'), about: value('eAbout') }) });
     const result = await response.json();
     if (!response.ok || !result.success) throw new Error(result.error || 'आवेदन सेव नहीं हुआ।');
-    alert(result.message); window.location.href = whatsapp;
-  } catch (err) { alert(`${err.message}\nआवेदन डेटाबेस में सेव नहीं हुआ है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`); }
+    alert(result.message || 'आपका आवेदन सफलतापूर्वक जमा हो गया है। Admin की जाँच के बाद आपसे संपर्क किया जाएगा।');
+    this.reset();
+    document.getElementById('electricianLat').value = '';
+    document.getElementById('electricianLng').value = '';
+  } catch (err) { alert(`${err.message}\nआवेदन डेटाबेस में सेव नहीं हुआ है। कृपया जानकारी जाँचकर दोबारा कोशिश करें।`); }
   finally { button.disabled = false; button.textContent = 'इलेक्ट्रिशियन आवेदन भेजें'; }
 });
 
