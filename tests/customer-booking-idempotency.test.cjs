@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const html = fs.readFileSync(path.join(__dirname, "..", "booking.html"), "utf8");
+const migration = fs.readFileSync(path.join(__dirname, "..", "supabase", "migrations", "20261114150000_customer_booking_submission_idempotency.sql"), "utf8");
 
 test("Customer form generates a UUID v4 idempotency key", () => {
   assert.match(html, /function customerBookingRequestKey\(payload\)/);
@@ -72,4 +73,12 @@ test("Customer can explicitly start an identical new booking after successful bo
   assert.match(html, /id="newIdenticalBooking"/);
   assert.match(html, /clearCustomerBookingRequestKey\(saved\.key\)/);
   assert.match(html, /नई बुकिंग के लिए अनुरोध पहचान रीसेट कर दी गई है/);
+});
+
+
+test("Booking idempotency migration requires a complete 64-character fingerprint", () => {
+  assert.match(migration, /customer_request_fingerprint IS NOT NULL/);
+  assert.match(migration, /customer_request_fingerprint ~ '\^\[a-f0-9\]\{64\}\$'/);
+  assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS service_bookings_customer_request_key_uidx/);
+  assert.match(migration, /DO \$migration\$/);
 });
