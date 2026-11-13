@@ -1191,13 +1191,15 @@ async function loadCustomerSupportAttachments(complaintId) {
 let customerSupportBookingsLoadSequence=0;
 let customerSupportBookingsOffset=0;
 let customerSupportBookingsBusy=false;
+let customerSupportBookingsWasDisabled=false;
 async function loadCustomerSupportBookings(reset=true) {
  const select=document.getElementById('customerSupportBooking');
  const more=document.getElementById('customerSupportBookingsMore');
  if(!customerSb||!select||!more||(!reset&&customerSupportBookingsBusy))return;
  const sequence=++customerSupportBookingsLoadSequence;
  const requestedOffset=reset?0:customerSupportBookingsOffset;
- const wasDisabled=select.disabled;
+ const wasDisabled=customerSupportBookingsBusy?customerSupportBookingsWasDisabled:select.disabled;
+ if(!customerSupportBookingsBusy)customerSupportBookingsWasDisabled=select.disabled;
  customerSupportBookingsBusy=true;
  select.disabled=true;more.disabled=true;
  if(reset){customerSupportBookingsOffset=0;more.style.display='none';select.replaceChildren(new Option('बुकिंग लोड हो रही हैं…',''));}
