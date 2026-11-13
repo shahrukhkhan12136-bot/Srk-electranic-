@@ -717,9 +717,9 @@ test('customer support booking selector ignores stale asynchronous responses', (
   assert.ok(start >= 0 && end > start);
   const source = html.slice(start, end);
   assert.ok(source.includes('const sequence=++customerSupportBookingsLoadSequence;'));
-  assert.ok(source.includes('if(sequence!==customerSupportBookingsLoadSequence)return;'));
-  assert.ok(source.includes('if(sequence===customerSupportBookingsLoadSequence){'));
-  assert.ok(source.includes('if(sequence===customerSupportBookingsLoadSequence){\n   customerSupportBookingsBusy=false;select.disabled=wasDisabled;more.disabled=false;'));
+  assert.ok(source.includes('if(!isCurrent\(\))return;'));
+  assert.ok(source.includes('if(isCurrent\(\)){'));
+  assert.ok(source.includes('if(isCurrent\(\)){\n   customerSupportBookingsBusy=false;select.disabled=wasDisabled;more.disabled=false;'));
   assert.ok(source.includes(".eq('customer_user_id',session.user.id)"));
 });
 
@@ -739,7 +739,7 @@ test('customer support booking selector paginates older bookings and preserves l
   assert.ok(source.includes("more.style.display=rows.length===25?'block':'none';"));
   assert.ok(source.includes("if(reset)select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी — रीफ़्रेश करें',''));"));
   assert.ok(source.includes('customerSupportBookingsBusy?customerSupportBookingsWasDisabled:select.disabled'));
-  assert.ok(source.includes('if(sequence===customerSupportBookingsLoadSequence){'));
+  assert.ok(source.includes('if(isCurrent\(\)){'));
 });
 
 
