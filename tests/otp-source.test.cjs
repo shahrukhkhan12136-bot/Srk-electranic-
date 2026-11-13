@@ -43,3 +43,14 @@ test('booking logout handles signOut failure', () => {
   assert.match(html, /if\s*\(\s*error\s*\)\s*throw\s+error/);
   assert.match(html, /finally/);
 });
+
+
+test('standalone customer login keeps session and OTP cooldown controls consistent', () => {
+  const html = fs.readFileSync('customer-login.html', 'utf8');
+  assert.match(html, /let busy=false, resendAt=0, timer=null, hasSession=false/);
+  assert.match(html, /hasSession=!!session/);
+  assert.match(html, /send\.disabled=hasSession\s*\|\|\s*Date\.now\(\)<resendAt/);
+  assert.match(html, /send\.disabled=hasSession\|\|left>0/);
+  assert.match(html, /finally\{busy=false;verify\.disabled=hasSession;\}/);
+  assert.match(html, /href="\/booking\.html#customer-dashboard"/);
+});
