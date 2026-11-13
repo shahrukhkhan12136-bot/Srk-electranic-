@@ -47,6 +47,11 @@ jobs:
         working-directory: ${{ runner.temp }}/srk-customer-profile-avatar
         run: supabase start
 
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
       - name: Apply customer profile and avatar migrations locally
         working-directory: ${{ runner.temp }}/srk-customer-profile-avatar
         run: |
