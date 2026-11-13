@@ -218,3 +218,8 @@ test('customer payment history does not duplicate audited manual payment summary
 test('finalized manual refund history is labeled processed, not merely recorded', () => {
   assert.match(customerPaymentHistoryMigration, /select mr\.id,'manual_refund'::text,mp\.booking_id,mr\.amount,\s*'processed'::text/i);
 });
+
+
+test('customer refund history prioritizes actual processed timestamp', () => {
+  assert.match(html, /const date=row\.processed_at\|\|row\.updated_at\|\|row\.created_at/);
+});
