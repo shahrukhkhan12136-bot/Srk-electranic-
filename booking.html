@@ -987,13 +987,26 @@ let customerBookingSubmissionBusy=false;
 let customerBookingSubmissionToken=0;
 function invalidateCustomerBookingSubmission(){customerBookingSubmissionToken++;customerBookingSubmissionBusy=false;const button=document.querySelector('#booking button[type="submit"]');if(button){button.disabled=false;button.textContent='बुकिंग भेजें';}}
 function customerSessionOperationIsCurrent(generation){return generation===customerSessionGeneration;}
+function invalidateCustomerProfileAndSavedAddresses(){
+ ++customerProfileLoadSequence;++customerSavedAddressLoadSequence;
+ customerCurrentAvatarPath=null;setCustomerAvatarPreview('');
+ document.getElementById('customerProfileName').value='';
+ document.getElementById('customerProfilePhone').value='';
+ setCustomerProfileStatus('लॉगिन बदल गया है। नई प्रोफ़ाइल लोड की जा रही है।');
+ customerSavedAddresses=[];editingSavedAddressId=null;
+ const select=document.getElementById('savedAddressSelect');
+ if(select){select.replaceChildren(new Option('नया पता इस्तेमाल करें',''));select.disabled=false;}
+ setSavedAddressStatus('लॉगिन बदल गया है। सेव किए गए पते फिर से लोड किए जा रहे हैं।');
+}
 async function loadCustomerProfile() {
  if(!customerSb||document.getElementById('saveCustomerProfile')?.disabled)return;
  const sequence=++customerProfileLoadSequence;
+ const generation=customerSessionGeneration;
+ const isCurrent=()=>sequence===customerProfileLoadSequence&&customerSessionOperationIsCurrent(generation);
  setCustomerProfileStatus('प्रोफ़ाइल लोड हो रही है…');
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
-  if(sequence!==customerProfileLoadSequence)return;
+  if(!isCurrent())return;
   if(sessionError)throw sessionError;
   const session=sessionData?.session;
   if(!session){document.getElementById('customerProfilePhone').value='';document.getElementById('customerProfileName').value='';customerCurrentAvatarPath=null;setCustomerAvatarPreview('');setCustomerProfileStatus('प्रोफ़ाइल देखने के लिए OTP से लॉगिन करें।',true);return;}
@@ -1002,7 +1015,7 @@ async function loadCustomerProfile() {
   const displayPhone=digits.startsWith('91')&&digits.length===12?digits.slice(2):digits;
   document.getElementById('customerProfilePhone').value=displayPhone||phone;
   const {data,error}=await customerSb.rpc('srk_customer_get_my_profile');
-  if(sequence!==customerProfileLoadSequence)return;
+  if(!isCurrent())return;
   if(error)throw error;
   const profile=Array.isArray(data)?data[0]:data;
   if(profile) {
@@ -1012,7 +1025,7 @@ async function loadCustomerProfile() {
    customerCurrentAvatarPath=profile.avatar_path||null;
    const avatarPath=customerCurrentAvatarPath;
    const avatarLoaded=avatarPath?await loadCustomerAvatar(avatarPath,()=>sequence===customerProfileLoadSequence&&customerCurrentAvatarPath===avatarPath):true;
-   if(sequence!==customerProfileLoadSequence)return;
+   if(!isCurrent())return;
    if(!customerCurrentAvatarPath)setCustomerAvatarPreview('');
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।'+(avatarLoaded?'':' फोटो का पूर्वावलोकन अभी उपलब्ध नहीं है।'),!avatarLoaded);
   } else {
@@ -1021,7 +1034,7 @@ async function loadCustomerProfile() {
    document.getElementById('customerProfileName').value=document.getElementById('name').value||'';
    setCustomerProfileStatus('नई प्रोफ़ाइल है। अपना नाम भरकर सेव करें।');
   }
- } catch(e){if(sequence===customerProfileLoadSequence)setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
+ } catch(e){if(isCurrent())setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
 }
 async function saveCustomerProfile() {
  const operationGeneration=customerSessionGeneration;
@@ -1100,14 +1113,16 @@ async function loadCustomerSavedAddresses(options = {}) {
  const select=document.getElementById('savedAddressSelect');
  if(!customerSb) return;
  const sequence=++customerSavedAddressLoadSequence;
+ const generation=customerSessionGeneration;
+ const isCurrent=()=>sequence===customerSavedAddressLoadSequence&&customerSessionOperationIsCurrent(generation);
  select.disabled=true; setSavedAddressStatus('सेव किए गए पते लोड हो रहे हैं…');
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
-  if(sequence!==customerSavedAddressLoadSequence)return false;
+  if(!isCurrent())return false;
   if(sessionError)throw sessionError;
   if(!sessionData?.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';setSavedAddressStatus('पते देखने के लिए OTP लॉगिन करें।');return false;}
   const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
-  if(sequence!==customerSavedAddressLoadSequence)return;
+  if(!isCurrent())return;
   if(error) throw error;
   customerSavedAddresses=Array.isArray(data)?data:[];
   select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>'+customerSavedAddresses.map(a=>
@@ -1123,8 +1138,8 @@ async function loadCustomerSavedAddresses(options = {}) {
    }
   }
   return true;
- } catch(e) { if(sequence===customerSavedAddressLoadSequence)setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true);return false; }
- finally {if(sequence===customerSavedAddressLoadSequence)select.disabled=false;}
+ } catch(e) { if(isCurrent())setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true);return false; }
+ finally {if(isCurrent())select.disabled=false;}
 }
 async function saveCurrentBookingAddress() {
  const button=document.getElementById('saveCurrentAddress');
@@ -1650,7 +1665,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();} setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();invalidateCustomerRefundSubmissions();invalidateCustomerBookingHistory();invalidateCustomerPaymentHistory();invalidateCustomerRefundHistory();invalidateCustomerProfileAndSavedAddresses();} setTimeout(syncCustomerSession, 0); });
   document.getElementById('customerPhone').addEventListener('input', () => {
     if (customerPendingOtpPhone && customerPhoneE164() !== customerPendingOtpPhone) {
       customerPendingOtpPhone = null;
