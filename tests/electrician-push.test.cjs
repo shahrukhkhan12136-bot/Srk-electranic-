@@ -22,3 +22,14 @@ test('existing cache strategy remains and push handlers are additive',()=>{
  assert.ok(sw.includes("const CACHE='srk-electronic-v5'"));
  assert.ok(sw.includes("self.addEventListener('fetch'"));
 });
+
+test('restored push Edge Function exposes only public VAPID data on GET and authenticates webhook POST',()=>{
+ const source=fs.readFileSync('supabase/functions/push-job-offer/index.ts','utf8');
+ assert.ok(source.includes('if (req.method === "GET")'));
+ assert.ok(source.includes('publicKey: vapidPublic, pushReady: vapidReady'));
+ assert.ok(source.includes('if (req.method !== "POST"'));
+ assert.ok(source.includes('req.headers.get("x-srk-push-secret") !== hookSecret'));
+ assert.ok(source.includes('Deno.env.get("VAPID_PRIVATE_KEY")'));
+ assert.ok(!source.includes('JSON.stringify({ publicKey: vapidPublic, privateKey: vapidPrivate'));
+ assert.ok(source.includes('profile.active')&&source.includes('profile.verification_status !== "approved"'));
+});
