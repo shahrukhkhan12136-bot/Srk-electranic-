@@ -1266,3 +1266,15 @@
 - No Production changes/deploy. Auth/session race injection, browser testing, database pgTAP and final consolidated mobile/Desktop QA remain pending.
 
 - Verification update: Customer App source regression run `43489083654` completed **SUCCESS** on test commit `fca8c835cc4d`; logout history invalidation assertions passed. App source regression run `43489059944` **SUCCESS** on app commit `6a8202b306c7`; Refund source regression `43489059892` **SUCCESS** on the same app commit. These remain source-level checks only.
+
+
+### 14 नवम्बर 2026 — Customer App async mutation session-generation guard
+
+- Logout/account-isolation audit में केवल read loaders नहीं, बल्कि चल रहे customer mutations भी जोखिम में थे: Support message + attachment upload/link, नई complaint creation और Profile/avatar save. Session बदलने के बाद इनका पुराना response स्क्रीन/controls को अपडेट कर सकता था या अगला attachment upload शुरू कर सकता था।
+- अलग customerSessionGeneration guard जोड़ा गया। SIGNED_OUT, SIGNED_IN और USER_UPDATED auth events पर generation बदलती है; routine TOKEN_REFRESHED पर नहीं, ताकि सामान्य token refresh के कारण वैध काम अनावश्यक रूप से abort न हो।
+- Support message flow में Auth lookup, message RPC, प्रत्येक upload, प्रत्येक attachment-link और thread refresh के बाद generation जाँची जाती है। Session बदलने के बाद अगली upload/link या stale success/error UI update नहीं चलती।
+- Complaint creation और Profile save में भी awaited RPC/upload/preview/refresh के बाद generation guard जोड़ा गया। पुराने operation का finally नई session के controls/busy flags को unlock या overwrite नहीं करता; no-session cleanup Support action buttons और busy flags reset करता है।
+- App commits: 8a96969a5e25cf8689ff879e23b57924fe5f8780, follow-up token-refresh behavior d535ea8cc6a70aa7a0b5fdc1681defd42f81eba9. Regression test commits: 7037d60b0d165910cb842eb1c59c6f976241c47f, assertion alignment 47b50fa1f278c0e99e4a841e6fa826d313968a68, final assertion correction 664f5595e777f30ab202e6eed487c8364de8eeac.
+- Verification: Customer App source regression run 43490490566 completed SUCCESS (job 132110071623) on test commit 664f5595e777. Refund Source Regression on app commit d535ea8cc6a7 also completed SUCCESS (43490258584).
+- Scope limitation: ये source-level regression assertions हैं; वास्तविक browser logout बीच RPC/upload के दौरान, Supabase Auth/Storage runtime, orphaned upload cleanup, real session-switch race और final consolidated mobile/Desktop QA अभी बाकी हैं। Upload/RPC पहले से server पर स्वीकार हो चुका हो तो client-side generation guard उस server-side action को retroactively cancel नहीं कर सकता।
+- No Production changes, SQL execution, deployment, payout या payment movement.
