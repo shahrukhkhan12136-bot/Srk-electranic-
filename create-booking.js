@@ -27,6 +27,17 @@ const validTime = (value) => {
   return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
 };
 
+// Booking dates are interpreted in the business timezone, not the server's
+// deployment timezone. Same-day cutoff/business hours remain an explicit
+// policy decision and are deliberately not inferred here.
+const indiaToday = (now = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(now);
+
 async function supabase(path, options = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
@@ -160,8 +171,8 @@ exports.handler = async (event) => {
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
         !Number.isInteger(selected_duration_hours) || selected_duration_hours < 1 || selected_duration_hours > 8 ||
-        !payment_method || !validDate(preferred_date) || !validTime(preferred_time)) {
-      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, मान्य सर्विस श्रेणी, 1–8 घंटे की अवधि, तारीख और समय भरें।" });
+        !payment_method || !validDate(preferred_date) || preferred_date < indiaToday() || !validTime(preferred_time)) {
+      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, मान्य सर्विस श्रेणी, 1–8 घंटे की अवधि और सही तारीख/समय भरें। पिछली तारीख की बुकिंग स्वीकार नहीं है।" });
     }
     if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
