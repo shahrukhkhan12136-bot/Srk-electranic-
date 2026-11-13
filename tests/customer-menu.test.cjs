@@ -80,7 +80,7 @@ test('customer payment menu only reads verified history and receipt through cust
 
 
 test('support booking selector is populated from only the signed-in customer bookings', () => {
-  assert.match(html, /async function loadCustomerSupportBookings\(\)/);
+  assert.match(html, /async function loadCustomerSupportBookings\(reset=true\)/);
   assert.match(html, /\.eq\('customer_user_id',session\.user\.id\)/);
   assert.match(html, /customerSupportBooking/);
   assert.match(html, /\.limit\(50\)/);
