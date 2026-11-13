@@ -726,6 +726,7 @@ test('customer support booking selector ignores stale asynchronous responses', (
 
 test('customer support booking selector paginates older bookings and preserves loaded choices on retryable failure', () => {
   assert.ok(html.includes('id="customerSupportBookingsMore"'));
+  assert.ok(html.includes("customerSupportBookingsMore').addEventListener('click',()=>loadCustomerSupportBookings(false)"));
   const start = html.indexOf('let customerSupportBookingsLoadSequence=0;');
   const end = html.indexOf('\nlet customerSupportComplaintCreateBusy', start);
   assert.ok(start >= 0 && end > start);
