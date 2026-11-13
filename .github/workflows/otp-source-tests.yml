@@ -29,3 +29,4 @@ jobs:
           npm run test:booking
           npm run test:application
           npm run test:payments
+          npm run test:timeline
