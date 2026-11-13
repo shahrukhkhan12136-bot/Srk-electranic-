@@ -74,7 +74,6 @@ BEGIN
      OR v_booking.payment_status NOT IN ('unpaid','pending')
      OR v_booking.payment_verified_at IS NOT NULL
      OR v_booking.razorpay_payment_id IS NOT NULL
-     OR (v_booking.razorpay_order_id IS NOT NULL AND v_booking.razorpay_order_id<>p_razorpay_order_id)
      OR (v_booking.selected_category IS NOT NULL AND v_booking.completion_approval_status<>'approved')
      OR (v_booking.selected_category IS NULL AND v_booking.quote_status<>'approved') THEN
     RAISE EXCEPTION 'Booking state changed; payment order cannot be linked';
