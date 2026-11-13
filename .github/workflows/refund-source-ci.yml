@@ -11,6 +11,7 @@ on:
       - "tests/razorpay-refund-handler.test.cjs"
       - "tests/manual-refund-workflow.test.cjs"
       - "tests/customer-refund-history.test.cjs"
+      - "tests/customer-menu.test.cjs"
       - "booking.html"
       - "package.json"
       - "supabase/migrations/202611141*.sql"
@@ -45,5 +46,7 @@ jobs:
           for (const script of scripts) new Function(script);
           console.log('Admin inline JavaScript syntax OK');
           NODE
-      - name: Run refund source regression tests
-        run: npm run test:refund
+      - name: Run refund and customer account-privacy source regression tests
+        run: |
+          npm run test:refund
+          npm run test:customer-menu
