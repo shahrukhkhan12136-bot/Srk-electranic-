@@ -1630,3 +1630,6 @@
 - कोई Production payment, refund, Auth setting, migration, merge या deployment नहीं हुआ।
 
 **अगला resume point:** customer private-state inventory में बाकी UI/actions और account-change behavior की audit जारी रखें; फिर 14.1.10 timer/payment integration के DB/RPC runtime acceptance, migration parity और isolated test execution gaps पर काम करें।
+
+- Follow-up: no-session fallback in syncCustomerSession() also now invalidates pending refund submissions, work-start/work-completion actions, payment-method changes and Razorpay checkout when getSession() returns no session without relying only on an Auth event. Regression commit 010b6cc5d6b281a04eb5d979ff871e90f7fe2a94; test commit b9a70c01e308721816ccdfe20f4dfadf44b0685a.
+- Final verification for this pass: Customer App full source regression #43506928099 SUCCESS; Refund + Account Privacy #43506928361 SUCCESS; Customer Offer Timeline source #43506928088 test and deployment guard SUCCESS. These are source checks only; actual browser/account-switch and Razorpay test-mode E2E remain unrun.
