@@ -45,16 +45,15 @@ exports.handler=async event=>{
   }
   const expectedAmount=await resolvePayableAmountPaise(booking),p=await payment(payId);
   if(p.order_id!==orderId||p.status!=="captured"||p.currency!=="INR"||p.amount!==expectedAmount)return json(409,{success:false,error:"भुगतान अभी captured नहीं है या अंतिम Labour Bill की राशि से मेल नहीं खाता।"});
-  const updated=await db("service_bookings?id=eq."+encodeURIComponent(booking.id)+"&razorpay_order_id=eq."+encodeURIComponent(orderId)+"&payment_status=neq.paid",{method:"PATCH",body:JSON.stringify({payment_status:"paid",amount_paid:Number((p.amount/100).toFixed(2)),razorpay_payment_id:payId,payment_verified_at:new Date().toISOString()})});
-  if(!Array.isArray(updated)||updated.length===0){
-   const latestRows=await db("service_bookings?select=payment_status,razorpay_payment_id&id=eq."+encodeURIComponent(booking.id)+"&limit=1"),latest=latestRows?.[0];
-   if(latest?.payment_status==="paid"&&latest.razorpay_payment_id===payId)return json(200,{success:true,message:"यह भुगतान पहले ही सत्यापित हो चुका है।"});
-   if(latest?.payment_status==="paid")return json(409,{success:false,error:"इस ऑर्डर पर दूसरा भुगतान ID पहले से दर्ज है।"});
-   return json(409,{success:false,error:"भुगतान स्थिति अपडेट नहीं हो सकी। Admin से संपर्क करें।"});
-  }
+  const finalized=await db("rpc/srk_service_finalize_captured_payment",{method:"POST",body:JSON.stringify({
+   p_booking_id:booking.id,p_razorpay_order_id:orderId,p_razorpay_payment_id:payId,
+   p_amount_paise:p.amount,p_currency:p.currency
+  })});
+  if(finalized?.already_processed)return json(200,{success:true,message:"यह भुगतान पहले ही सत्यापित हो चुका है।"});
   return json(200,{success:true,message:"भुगतान सफल और सत्यापित है।"});
  }catch(e){
   if(e.httpStatus===401||e.httpStatus===403)return json(e.httpStatus,{success:false,error:e.httpStatus===401?"भुगतान सत्यापन के लिए ग्राहक OTP लॉगिन करें।":"यह बुकिंग आपके सत्यापित मोबाइल खाते से जुड़ी नहीं है।"});
+  if([400,409,422].includes(e.status))return json(409,{success:false,error:"भुगतान बुकिंग की वर्तमान स्थिति या स्वीकृत राशि से मेल नहीं खाता। Admin से जाँच कराएँ।"});
   console.error("verify-payment error:",e?.status||e?.name||"Unknown");
   return json(502,{success:false,error:"भुगतान सत्यापित नहीं हो सका। कृपया Admin से संपर्क करें。"});
  }
