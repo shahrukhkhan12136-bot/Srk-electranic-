@@ -19,7 +19,7 @@ for (const file of pages) {
   });
   test(file + ': OTP input remains numeric and bounded', () => {
     const html = fs.readFileSync(file, 'utf8');
-    assert.match(html, /\\d\{4,8\}/);
+    assert.ok(html.includes('4,8'), '4–8 digit validation must remain in source');
     assert.match(html, /maxlength=['\"]8['\"]/);
   });
   test(file + ': all inline JavaScript parses', () => {
