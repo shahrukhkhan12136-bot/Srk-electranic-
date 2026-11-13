@@ -47,11 +47,11 @@ test('booking logout handles signOut failure', () => {
 
 test('standalone customer login keeps session and OTP cooldown controls consistent', () => {
   const html = fs.readFileSync('customer-login.html', 'utf8');
-  assert.match(html, /let busy=false, resendAt=0, timer=null, hasSession=false/);
+  assert.match(html, /let busy=false, operationSequence=0, resendAt=0, timer=null, hasSession=false/);
   assert.match(html, /hasSession=!!session/);
   assert.match(html, /send\.disabled=hasSession\s*\|\|\s*Date\.now\(\)<resendAt/);
   assert.match(html, /send\.disabled=hasSession\|\|left>0/);
-  assert.match(html, /finally\{busy=false;verify\.disabled=hasSession;\}/);
+  assert.match(html, /finally\{if\(operation===operationSequence\)\{busy=false;phoneInput\.disabled=phoneWasDisabled\|\|hasSession;verify\.disabled=hasSession;\}\}/);
   assert.match(html, /href="\/booking\.html#customer-dashboard"/);
 });
 
@@ -105,7 +105,7 @@ test('customer OTP verification locks phone identity and restores only its own c
 });
 test('phone edits and logout invalidate pending OTP operations', () => {
   const html=fs.readFileSync('booking.html','utf8');
-  assert.match(html,/\+\+customerOtpOperationSequence;customerPendingOtpPhone=null/);
+  assert.match(html,/\+\+customerOtpOperationSequence;customerPendingOtpPhone = null/);
   assert.match(html,/\+\+customerOtpOperationSequence;customerPendingOtpPhone = null/);
   assert.match(html,/\+\+customerOtpOperationSequence;customerOtpBusy=false;customerPendingOtpPhone=null/);
 });
