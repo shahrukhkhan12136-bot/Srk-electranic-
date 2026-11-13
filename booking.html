@@ -499,7 +499,7 @@ async function loadCustomerBookings() {
     : 'आपकी बुकिंग लोड हो रही हैं…';
   try {
     const { data, error } = await customerSb.from('service_bookings')
-      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,address,state,district,pincode,location_lat,location_lng,service_charge,quote_status,quote_note')
+      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -525,6 +525,11 @@ async function loadCustomerBookings() {
     if(!refundResult.error){
       (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
     }
+    const billMap=new Map();
+    await Promise.all(data.filter(row=>row.status==='completed'&&row.selected_category).map(async row=>{
+      const {data:bill,error}=await customerSb.rpc('srk_customer_get_labour_bill',{p_booking_id:row.id});
+      if(!error&&bill)billMap.set(row.id,bill);
+    }));
     box.innerHTML = data.map(row => {
       const contact = callMap.get(row.id);
       const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
@@ -550,10 +555,23 @@ async function loadCustomerBookings() {
         : row.completion_approval_status==='disputed'
           ? '<p class="small" role="status">काम पूरा होने पर आपका विवाद Admin समीक्षा में है।</p>'
           : '';
-      const labourMarkup=row.quote_status==='approved'&&Number(row.quoted_amount||0)>0
-        ? '<div class="job"><b>स्वीकृत इलेक्ट्रिशियन मेहनताना: '+customerEsc(formatCustomerMoney(row.quoted_amount))+'</b>'+
-          (row.quote_note?'<p class="small">'+customerEsc(row.quote_note)+'</p>':'')+
-          '</div>'
+      const bill=billMap.get(row.id);
+      const startMarkup=row.status==='awaiting_work_start_approval'&&row.work_start_approval_status==='pending'
+        ? '<div class="job"><b>इलेक्ट्रिशियन काम शुरू करने की अनुमति माँग रहा है।</b><p class="small">आपकी मंजूरी मिलने के बाद ही सर्वर टाइमर शुरू होगा।</p>'+
+          '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-response="approved" onclick="customerRespondWorkStart(this.dataset.bookingId,this.dataset.response)">काम शुरू करने की मंजूरी दें</button> '+
+          '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-response="rejected" onclick="customerRespondWorkStart(this.dataset.bookingId,this.dataset.response)">अभी मंजूरी न दें</button></div>'
+        : '';
+      const timerMarkup=row.selected_category&&row.status==='in_progress'
+        ? '<div class="job"><b>काम का टाइमर</b><p id="customerTimer_'+customerEsc(row.id)+'" data-running="'+(row.work_timer_running?'1':'0')+'" data-started="'+customerEsc(row.work_started_at||'')+'" data-accumulated="'+customerEsc(row.work_timer_elapsed_seconds||0)+'">'+customerEsc(formatCustomerTimer(row.work_timer_elapsed_seconds||0))+'</p><small>यह लाइव प्रदर्शन अनुमानित है; अंतिम बिल सर्वर के रिकॉर्ड समय से बनेगा।</small></div>'
+        : '';
+      const finalBillMarkup=bill
+        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>अंतिम मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p class="small">यह बिल ग्राहक की मंजूरी के बाद सर्वर ने बनाया है।</p>'+
+          (String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'&&row.payment_status!=='paid'
+            ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+Number(bill.labour_amount)+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 अंतिम Labour Bill का ऑनलाइन भुगतान करें</button>'
+            : String(row.payment_method||'').toLowerCase().includes('cash')&&row.payment_status!=='paid'
+              ? '<p class="small">नकद भुगतान सीधे इलेक्ट्रिशियन को करें। भुगतान की पुष्टि होने पर रसीद उपलब्ध होगी।</p>'
+              : '')
+          +'</div>'
         : '';
       const canRequestRefund=String(row.payment_status||'').toLowerCase()==='paid'
         && Number(row.amount_paid||0)>0
@@ -584,7 +602,7 @@ async function loadCustomerBookings() {
       (row.payment_status === 'paid' && row.amount_paid != null && row.payment_verified_at ? '<p><b>सत्यापित भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
       '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
       (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (row.status === 'completed' ? '<p class="small">काम पूरा हो चुका है। इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा।</p>' : (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>')) : '') +
-      labourMarkup+completionMarkup+cancellationInfo+refundMarkup+
+      startMarkup+timerMarkup+finalBillMarkup+completionMarkup+cancellationInfo+refundMarkup+
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
@@ -610,6 +628,17 @@ async function loadCustomerBookings() {
     box.setAttribute('aria-busy','false');
   }
 }
+async function customerRespondWorkStart(bookingId,response){
+ if(!['approved','rejected'].includes(response))return;
+ const question=response==='approved'?'क्या आप इलेक्ट्रिशियन को अभी काम शुरू करने की अनुमति देते हैं?':'क्या आप अभी काम शुरू करने की अनुमति रोकना चाहते हैं?';
+ if(!confirm(question))return;
+ try{const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});if(error)throw error;if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');await loadCustomerBookings();}
+ catch(e){alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग रीफ़्रेश करें।');}
+}
+function formatCustomerTimer(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');}
+function updateCustomerTimers(){document.querySelectorAll('[id^="customerTimer_"]').forEach(el=>{let seconds=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))seconds+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatCustomerTimer(seconds);});}
+setInterval(updateCustomerTimers,1000);
+
 async function customerChangePaymentMethod(id){
  if(!confirm('क्या आप इस बुकिंग के लिए Cash की जगह Online (Razorpay) भुगतान स्वयं चुनना चाहते हैं? कोई भुगतान अभी नहीं लिया जाएगा।'))return;
  const {data,error}=await customerSb.rpc('srk_customer_change_payment_method',{p_booking_id:id,p_payment_method:'Razorpay ऑनलाइन भुगतान'});
