@@ -1443,6 +1443,14 @@ async function loadCustomerSupportComplaints() {
 }
 function invalidateCustomerSupportPrivateState(){
  ++customerSupportBookingsLoadSequence;customerSupportBookingsBusy=false;customerSupportBookingsOffset=0;
+ customerSupportComplaintCreateBusy=false;customerSupportMessageBusy=false;
+ const createButton=document.getElementById('customerSupportCreate');
+ if(createButton){createButton.disabled=false;createButton.textContent='शिकायत दर्ज करें';}
+ const sendButton=document.getElementById('customerSupportSend');
+ if(sendButton){sendButton.disabled=false;sendButton.textContent='संदेश / फ़ाइल भेजें';}
+ const messageInput=document.getElementById('customerSupportMessage');if(messageInput)messageInput.value='';
+ const fileInput=document.getElementById('customerSupportFiles');if(fileInput)fileInput.value='';
+ const descriptionInput=document.getElementById('customerSupportDescription');if(descriptionInput)descriptionInput.value='';
  const bookingSelect=document.getElementById('customerSupportBooking');
  const bookingMore=document.getElementById('customerSupportBookingsMore');
  if(bookingSelect){bookingSelect.replaceChildren(new Option('नई लॉगिन के लिए बुकिंग लोड होंगी',''));bookingSelect.disabled=false;}
