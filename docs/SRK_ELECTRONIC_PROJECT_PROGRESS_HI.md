@@ -942,3 +942,12 @@
 - Booking list, refund history और payment history refresh को अलग-अलग `Promise.allSettled` से चलाया; refresh समस्या पर स्पष्ट संदेश कि अनुरोध सुरक्षित है और सूची रीफ़्रेश करनी है।
 - Regression test update के बाद Source Regression Run #43472895185 — success, head `c90f278ab0f6a5f5ccd9796368aae4888bc3ea50`.
 - वास्तविक RPC/network failure, browser UI और database/RLS runtime परीक्षण अभी बाकी हैं; Production में कोई बदलाव नहीं।
+
+
+## 2026-11-13 — Customer saved-address and profile stale-load race protection
+
+- Saved-address loader में sequence guard जोड़ा: पुराने Auth/RPC response अब नए address list, selected default या control enabled/disabled state को overwrite नहीं करेंगे।
+- Customer profile loader में sequence guard जोड़ा: पुराने profile/avatar fetch अब नए profile state को overwrite नहीं करेंगे; avatar preview के बाद भी latest-request check है।
+- Regression assertions update किए।
+- Source Regression Run #43473708324 — success, head `6833a1175e6a68a0fb0628aaef4b7e02a766fee0`.
+- Real concurrent Supabase Auth/RPC, storage avatar, browser interaction और final mobile/Desktop QA अभी बाकी हैं। SQL/Production/deployment में कोई बदलाव नहीं।
