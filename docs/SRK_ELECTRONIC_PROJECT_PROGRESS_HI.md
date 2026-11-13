@@ -1502,3 +1502,11 @@
 - Refund Source Regression #43499286974 completed SUCCESS (runs `npm run test:refund`, including customer refund history tests). Full Customer App source regression #43499524801 completed SUCCESS on commit `9cd3d28bac0f49f5dd8ef989b0159bdaa9099f6b`.
 - Intermediate full-suite failures were stale test expectations (auth listener guard and Set→Map lock), corrected; latest full source regression is SUCCESS.
 - No production database, payment, refund, or deployment action occurred. Browser/runtime session-switch verification and final consolidated mobile/Desktop QA remain pending.
+
+
+## Customer private payment-receipt session-race hardening (2026-11-14)
+- Audit found a payment receipt popup could receive and render the prior session's private receipt after a shared-device account switch while the receipt RPC was in flight.
+- `customerPrintPaymentReceipt()` now captures `customerSessionGeneration`, checks it immediately after the receipt RPC and closes the pending popup without rendering or showing stale error UI when the session changed. The RPC remains server-side owner-scoped; this is an additional client stale-response guard.
+- Added regression coverage in `tests/customer-menu.test.cjs`.
+- Refund Source Regression #43499677244 SUCCESS; Customer Offer Timeline Source Regression #43499676223 SUCCESS; full Customer App Source Regression #43499676424 SUCCESS on commit `58f43e447187e6484873a99ede025f51a01fda28`.
+- No browser session-switch test has been performed; final mobile/Desktop QA remains deferred. No Production/payment/refund action was taken.
