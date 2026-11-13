@@ -888,3 +888,11 @@
 - Source regression test जोड़ा। पहली test run में test fixture variable का नाम गलत (`bookingHtml`) था; run #43470587772 fail हुआ। Test fixture को वास्तविक `html` variable से ठीक किया और rerun किया।
 - Source Regression Run #43470667452 — success, head `a19f6935d80a338fef1d03aaa95ebd4852d46daa`.
 - यह केवल deterministic ordering है; current UI अभी पहली 50 bookings तक सीमित है, infinite/history pagination नहीं जोड़ी गई। Browser/mobile QA deferred; SQL/runtime/Production changes नहीं।
+
+
+## 2026-11-13 — Customer refund history stable ordering and privacy regression
+
+- Refund history RPC `srk_customer_list_my_booking_refund_requests()` पहले केवल `created_at DESC` पर sort करता था; समान timestamp पर क्रम स्थिर नहीं था।
+- अब secondary `id DESC` tie-breaker जोड़ा गया। Customer-only filter `customer_user_id = auth.uid()`, bounded result `LIMIT 100`, और output में admin note / Razorpay provider metadata / internal refund record ID शामिल न होने की source assertions जोड़ीं।
+- Source Regression Run #43470921740 — success, head `f319f81e653ea3b55cc9a513f65aaf63058347c1`.
+- यह source-level verification है; SQL/pgTAP, Supabase JWT/RLS runtime और actual refund workflow अभी execute नहीं हुए। No Production migration, deployment, or money movement.
