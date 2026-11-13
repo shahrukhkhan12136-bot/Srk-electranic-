@@ -30,6 +30,15 @@ textarea{min-height:84px;resize:vertical}.btn{display:inline-flex;justify-conten
 .pay-note{background:#fff7e6;border:1px solid #ffe0a3;border-radius:10px;padding:10px;text-align:left;font-size:13px;line-height:1.5;margin:12px 0}.coverage{display:flex;flex-wrap:wrap;gap:8px}.pill{background:#eaf2ff;color:#164b91;padding:8px 11px;border-radius:99px;font-size:13px;font-weight:650}
 footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 @media(min-width:600px){header{padding:30px max(24px,calc((100% - 720px)/2)) 36px}.hero h2{font-size:32px}}
+
+.customer-menu-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 18px;padding:8px;background:#f1f5fb;border:1px solid #dce5f0;border-radius:16px}
+.customer-menu-tab{min-width:0;min-height:64px;border:0;border-radius:12px;background:transparent;color:#334155;font:inherit;font-weight:650;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.customer-menu-tab span{font-size:12px;line-height:1.2;text-align:center}
+.customer-menu-tab.is-active{background:#fff;color:#0b5ed7;box-shadow:0 2px 10px rgba(15,23,42,.10)}
+.customer-menu-tab:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+.customer-menu-page[hidden]{display:none!important}
+.customer-menu-page{min-height:160px}
+@media(max-width:640px){.customer-menu-nav{position:sticky;bottom:8px;z-index:30;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:5px;margin:12px -8px 14px;border-radius:14px;background:rgba(248,250,252,.97);box-shadow:0 4px 18px rgba(15,23,42,.16);backdrop-filter:blur(10px)}.customer-menu-tab{min-height:58px;padding:3px 1px}.customer-menu-tab span{font-size:10px;overflow-wrap:anywhere}#customer-dashboard{padding-bottom:12px}}
 </style>
 </head>
 <body>
@@ -52,10 +61,32 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <p class="small" id="customerAuthMessage" role="status" aria-live="polite"></p>
  </section>
  <section class="panel" id="customer-dashboard" style="display:none">
-  <h2 class="section-title" style="margin-top:0">मेरी बुकिंग</h2>
-  <p class="small" id="customerSignedIn"></p>
-  <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
-  <div id="customerBookings" aria-live="polite"></div>
+  <nav class="customer-menu-nav" id="customerMenuNav" aria-label="ग्राहक मुख्य मेनू" role="tablist">
+   <button type="button" class="customer-menu-tab is-active" id="customerTabHome" role="tab" aria-selected="true" aria-controls="customerMenuHome" data-customer-menu="Home">🏠<span>Home</span></button>
+   <button type="button" class="customer-menu-tab" id="customerTabBookings" role="tab" aria-selected="false" aria-controls="customerMenuBookings" data-customer-menu="Bookings" tabindex="-1">📋<span>My Bookings</span></button>
+   <button type="button" class="customer-menu-tab" id="customerTabPayments" role="tab" aria-selected="false" aria-controls="customerMenuPayments" data-customer-menu="Payments" tabindex="-1">💳<span>Payments</span></button>
+   <button type="button" class="customer-menu-tab" id="customerTabSupport" role="tab" aria-selected="false" aria-controls="customerMenuSupport" data-customer-menu="Support" tabindex="-1">🛟<span>Help &amp; Support</span></button>
+   <button type="button" class="customer-menu-tab" id="customerTabProfile" role="tab" aria-selected="false" aria-controls="customerMenuProfile" data-customer-menu="Profile" tabindex="-1">👤<span>My Profile</span></button>
+  </nav>
+  <section class="customer-menu-page" id="customerMenuHome" role="tabpanel" aria-labelledby="customerTabHome">
+   <h2 class="section-title" style="margin-top:0">आपका SRK ELECTRONIC स्वागत करता है</h2>
+   <p class="small" id="customerSignedIn"></p>
+   <p>घर की इलेक्ट्रिकल सेवा बुक करें और अपनी सभी बुकिंग, भुगतान और सहायता एक ही जगह देखें।</p>
+   <button class="btn primary" type="button" id="customerHomeBookNow">नई सर्विस बुक करें</button>
+   <p class="small" style="margin-top:12px">सेव किया हुआ पता चुनने या बदलने के लिए बुकिंग फॉर्म में “आपके सेव किए गए पते” का उपयोग करें।</p>
+  </section>
+  <section class="customer-menu-page" id="customerMenuBookings" role="tabpanel" aria-labelledby="customerTabBookings" hidden>
+   <h2 class="section-title" style="margin-top:0">My Bookings</h2>
+   <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
+   <div id="customerBookings" aria-live="polite"></div>
+  </section>
+  <section class="customer-menu-page" id="customerMenuPayments" role="tabpanel" aria-labelledby="customerTabPayments" hidden></section>
+  <section class="customer-menu-page" id="customerMenuSupport" role="tabpanel" aria-labelledby="customerTabSupport" hidden></section>
+  <section class="customer-menu-page" id="customerMenuProfile" role="tabpanel" aria-labelledby="customerTabProfile" hidden>
+   <p class="small">आपकी निजी प्रोफ़ाइल और सेव किए गए पते सुरक्षित रूप से प्रबंधित किए जाते हैं।</p>
+   <button class="btn" type="button" id="customerProfileAddressLink">सेव किए गए पते प्रबंधित करें</button>
+  </section>
+
   <section class="card" id="customerPaymentHistoryPanel" style="margin-top:14px">
    <h3 style="margin-top:0">💳 भुगतान इतिहास</h3>
    <p class="small">आपकी बुकिंग से जुड़े दर्ज भुगतान और रिफंड यहाँ दिखेंगे। केवल सत्यापित/दर्ज रिकॉर्ड दिखाए जाते हैं।</p>
@@ -110,7 +141,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <button class="btn" type="button" id="saveCustomerProfile" style="width:100%;margin-top:12px;background:#0b5ed7;color:white">प्रोफ़ाइल सेव करें</button>
    <p id="customerProfileStatus" class="small" role="status" aria-live="polite"></p>
   </section>
-  <button class="btn" type="button" id="customerLogout">लॉगआउट</button>
+    <button class="btn" type="button" id="customerLogout">लॉगआउट</button>
  </section>
 
  <h2 class="section-title">हमारी सेवाएँ</h2>
@@ -180,6 +211,60 @@ let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
 document.getElementById('year').textContent = new Date().getFullYear();
+function initCustomerMenuShell(){
+ const dashboard=document.getElementById('customer-dashboard');
+ const destinations={
+  Payments:document.getElementById('customerPaymentHistoryPanel'),
+  Support:document.getElementById('customerSupportPanel'),
+  Profile:document.getElementById('customerProfilePanel')
+ };
+ Object.entries(destinations).forEach(([key,node])=>{
+  const target=document.getElementById('customerMenu'+key);
+  if(node&&target)target.appendChild(node);
+ });
+ const tabs=[...document.querySelectorAll('[data-customer-menu]')];
+ const panels={
+  Home:document.getElementById('customerMenuHome'),
+  Bookings:document.getElementById('customerMenuBookings'),
+  Payments:document.getElementById('customerMenuPayments'),
+  Support:document.getElementById('customerMenuSupport'),
+  Profile:document.getElementById('customerMenuProfile')
+ };
+ function activate(name,focus=false){
+  tabs.forEach(tab=>{
+   const active=tab.dataset.customerMenu===name;
+   tab.classList.toggle('is-active',active);
+   tab.setAttribute('aria-selected',String(active));
+   tab.tabIndex=active?0:-1;
+   if(active&&focus)tab.focus();
+  });
+  Object.entries(panels).forEach(([key,panel])=>{if(panel)panel.hidden=key!==name;});
+ }
+ tabs.forEach((tab,index)=>{
+  tab.addEventListener('click',()=>activate(tab.dataset.customerMenu));
+  tab.addEventListener('keydown',event=>{
+   if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key))return;
+   event.preventDefault();
+   let next=index;
+   if(event.key==='ArrowRight')next=(index+1)%tabs.length;
+   if(event.key==='ArrowLeft')next=(index-1+tabs.length)%tabs.length;
+   if(event.key==='Home')next=0;
+   if(event.key==='End')next=tabs.length-1;
+   activate(tabs[next].dataset.customerMenu,true);
+  });
+ });
+ document.getElementById('customerHomeBookNow')?.addEventListener('click',()=>{
+  const form=document.getElementById('booking');
+  form?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('name')?.focus({preventScroll:true});
+ });
+ document.getElementById('customerProfileAddressLink')?.addEventListener('click',()=>{
+  document.getElementById('booking')?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('savedAddressSelect')?.focus({preventScroll:true});
+ });
+ activate('Home');
+}
+initCustomerMenuShell();
 
 const value = id => document.getElementById(id).value.trim();
 const customerCfg = window.SRK_CONFIG || {};
