@@ -11,7 +11,6 @@ as $function$
 declare
   v_uid uuid := auth.uid();
   v_booking public.service_bookings%rowtype;
-  v_breakdown_available boolean;
 begin
   if v_uid is null then
     raise exception 'Customer login required' using errcode = '42501';
@@ -36,12 +35,6 @@ begin
       using errcode = '55000';
   end if;
 
-  v_breakdown_available :=
-    v_booking.service_charge is not null
-    and v_booking.materials_amount is not null
-    and round(v_booking.service_charge + v_booking.materials_amount,2)
-        = round(v_booking.amount_paid,2);
-
   return jsonb_build_object(
     'receipt_reference', 'SRK-PAY-' || upper(left(replace(v_booking.id::text,'-',''),12)),
     'booking_id', v_booking.id,
@@ -60,11 +53,9 @@ begin
       else 'other'
     end,
     'amount_paid', round(v_booking.amount_paid,2),
-    'breakdown_available', v_breakdown_available,
-    'labour_amount', case when v_breakdown_available
+    'labour_amount', case when v_booking.service_charge is not null
+      and round(v_booking.service_charge,2) = round(v_booking.amount_paid,2)
       then round(v_booking.service_charge,2) else null end,
-    'materials_amount', case when v_breakdown_available
-      then round(v_booking.materials_amount,2) else null end,
     'description', 'सत्यापित बुकिंग भुगतान की रसीद',
     'document_type', 'payment_receipt'
   );
@@ -75,4 +66,4 @@ revoke all on function public.srk_customer_get_payment_receipt(uuid) from public
 grant execute on function public.srk_customer_get_payment_receipt(uuid) to authenticated;
 
 comment on function public.srk_customer_get_payment_receipt(uuid) is
-'Returns only the authenticated customer own verified payment receipt. This is not a tax invoice; it does not expose phone, provider IDs, internal notes, or staff identifiers.';
+'Returns only the authenticated customer own verified payment receipt. This is not a tax invoice; it exposes no material names, material amounts, phone numbers, provider IDs, internal notes, or staff identifiers.';
