@@ -814,7 +814,7 @@ test('customer logout invalidates booking payment and refund history requests', 
 test('customer mutations stop stale UI work after auth session changes', () => {
   assert.match(html, /let customerSessionGeneration=0/);
   assert.match(html, /function customerSessionOperationIsCurrent\(generation\)/);
-  assert.match(html, /onAuthStateChange\(\(event\) => \{ if\(event==='SIGNED_OUT'\|\|event==='SIGNED_IN'\|\|event==='USER_UPDATED'\)\{customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);\}/);
+  assert.match(html, /onAuthStateChange\(\(event\) => \{ if\(event==='SIGNED_OUT'\|\|event==='SIGNED_IN'\|\|event==='USER_UPDATED'\)\{customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);\}/);
   assert.match(html, /if\(!customerSessionOperationIsCurrent\(operationGeneration\)\)return;/);
   assert.match(html, /finally\{if\(customerSessionOperationIsCurrent\(operationGeneration\)\)/);
   assert.match(html, /customerSupportMessageBusy=false;customerSupportComplaintCreateBusy=false/);
