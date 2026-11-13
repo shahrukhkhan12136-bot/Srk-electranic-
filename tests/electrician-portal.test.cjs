@@ -29,3 +29,31 @@ test('electrician earnings and wallet displays use read RPCs and do not expose p
   assert.ok(!html.includes('srk_electrician_request_payout'));
   assert.ok(!html.includes('srk_electrician_add_bank_account'));
 });
+
+test('electrician dashboard exposes the six approved sections in order with accessible tab panels', () => {
+  const nav = html.match(/<nav class="partner-menu"[\\s\\S]*?<\\/nav>/)?.[0] || '';
+  const names = [...nav.matchAll(/data-partner-menu="([^"]+)"/g)].map(m => m[1]);
+  assert.deepEqual(names, ['Home','Offers','Work','Earnings','Profile','Support']);
+  assert.equal((nav.match(/role="tab"/g)||[]).length, 6);
+  for (const key of ['Home','Offers','Work','Earnings','Profile','Support']) {
+    assert.equal((html.match(new RegExp('id="partnerPanel'+key+'"','g'))||[]).length, 1);
+  }
+  assert.ok(html.includes("function activatePartnerMenu(name,focus=false)"));
+  assert.ok(html.includes("event.key==='ArrowRight'"));
+  assert.ok(html.includes("event.key==='ArrowLeft'"));
+});
+
+test('electrician offers and accepted work are rendered into separate menu panels without duplicate records', () => {
+  assert.ok(html.includes("const offerRows=rows.filter(o=>o.offer_status==='offered')"));
+  assert.ok(html.includes("const workRows=rows.filter(o=>o.offer_status==='accepted'||"));
+  assert.ok(html.includes("offerRows.map(o=>renderElectricianJob(o,p))"));
+  assert.ok(html.includes("workRows.map(o=>renderElectricianJob(o,p))"));
+  assert.ok(html.includes('id="newOffers"'));
+  assert.ok(html.includes('id="myWork"'));
+});
+
+test('electrician support panel does not call customer-only support APIs or claim unavailable tools are live', () => {
+  assert.ok(html.includes('इलेक्ट्रिशियन सहायता टिकट और संदेश सुविधा अभी उपलब्ध नहीं है।'));
+  assert.ok(html.includes('इलेक्ट्रिशियन-विशिष्ट ticket, message, attachment और RLS अधिकार'));
+  assert.ok(!html.includes('srk_customer_send_booking_complaint_message'));
+});
