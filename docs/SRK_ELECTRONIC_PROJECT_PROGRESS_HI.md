@@ -1264,3 +1264,5 @@
 - No-session branch अब तीनों history sequence counters बढ़ाता है, busy flags और offsets reset करता है, “और रिकॉर्ड” controls hide/enable करता है, refresh controls restore करता है और aria-busy हटाता है। इससे stale in-flight responses render नहीं होने चाहिए और अगला login clean history load से शुरू होता है।
 - App commit: `6a8202b306c7bebbd3c2610baa313ff1fd37d3df`. Regression test commit: `fca8c835cc4db1eef295e87d86a3b8a474240792`. CI pending.
 - No Production changes/deploy. Auth/session race injection, browser testing, database pgTAP and final consolidated mobile/Desktop QA remain pending.
+
+- Verification update: Customer App source regression run `43489083654` completed **SUCCESS** on test commit `fca8c835cc4d`; logout history invalidation assertions passed. App source regression run `43489059944` **SUCCESS** on app commit `6a8202b306c7`; Refund source regression `43489059892` **SUCCESS** on the same app commit. These remain source-level checks only.
