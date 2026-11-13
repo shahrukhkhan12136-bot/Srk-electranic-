@@ -85,6 +85,7 @@ BEGIN
   IF v_booking.status<>'awaiting_work_start_approval' OR v_booking.work_start_approval_status<>'pending' THEN
     RAISE EXCEPTION 'No work-start request is waiting for approval';
   END IF;
+  PERFORM pg_catalog.set_config('srk.workflow_authorized','true',true);
   UPDATE public.service_bookings SET
     work_start_approval_status=p_response,
     status=CASE WHEN p_response='approved' THEN 'in_progress' ELSE 'quote_approved' END,
@@ -148,6 +149,7 @@ BEGIN
      OR v_booking.completion_requested_at IS NULL THEN
     RAISE EXCEPTION 'No completion request is waiting for your response';
   END IF;
+  PERFORM pg_catalog.set_config('srk.workflow_authorized','true',true);
   IF p_response='approved' THEN
     UPDATE public.service_bookings SET status='completed',
       completion_approval_status='approved',customer_completed_at=pg_catalog.now(),
@@ -195,6 +197,7 @@ BEGIN
      AND status IN ('new','in_review')
    ORDER BY created_at DESC LIMIT 1 FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'Open work-completion dispute record not found'; END IF;
+  PERFORM pg_catalog.set_config('srk.workflow_authorized','true',true);
   IF p_resolution='approve_completion' THEN
     UPDATE public.service_bookings SET status='completed',
       completion_approval_status='admin_approved',customer_completed_at=pg_catalog.now(),
@@ -307,3 +310,36 @@ REVOKE ALL ON FUNCTION public.srk_electrician_get_work_control(uuid) FROM PUBLIC
 GRANT EXECUTE ON FUNCTION public.srk_electrician_get_work_control(uuid) TO authenticated;
 REVOKE ALL ON FUNCTION public.srk_admin_list_work_disputes(integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_list_work_disputes(integer) TO authenticated;
+
+-- Prevent direct table updates (including the legacy Admin dropdown) from
+-- bypassing customer approval. Only the guarded SECURITY DEFINER RPCs above
+-- set the transaction-local workflow authorization flag.
+CREATE OR REPLACE FUNCTION public.srk_guard_work_approval_transitions()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+BEGIN
+  IF NEW.status IS DISTINCT FROM OLD.status
+     AND NEW.status IN ('in_progress','completed')
+     AND pg_catalog.current_setting('srk.workflow_authorized',true) IS DISTINCT FROM 'true' THEN
+    RAISE EXCEPTION 'Customer approval workflow is required for work start and completion'
+      USING ERRCODE='42501';
+  END IF;
+  IF NEW.status='completed' AND NEW.status IS DISTINCT FROM OLD.status
+     AND NEW.completion_approval_status NOT IN ('approved','admin_approved') THEN
+    RAISE EXCEPTION 'Customer or Admin completion approval is required';
+  END IF;
+  IF NEW.status='in_progress' AND NEW.status IS DISTINCT FROM OLD.status
+     AND NEW.work_start_approval_status<>'approved'
+     AND NEW.completion_approval_status<>'reopened' THEN
+    RAISE EXCEPTION 'Customer work-start approval is required';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS srk_guard_work_approval_transitions ON public.service_bookings;
+CREATE TRIGGER srk_guard_work_approval_transitions
+BEFORE UPDATE OF status ON public.service_bookings
+FOR EACH ROW EXECUTE FUNCTION public.srk_guard_work_approval_transitions();
