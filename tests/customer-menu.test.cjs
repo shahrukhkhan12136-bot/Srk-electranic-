@@ -247,3 +247,32 @@ test('customer refund history RPC has stable ordering and exposes no private adm
   assert.match(fn, /limit 100/i);
   assert.doesNotMatch(fn, /admin_note|razorpay_payment_id|refund_record_id|provider_response/i);
 });
+
+
+test('customer payment history labels every RPC event type and refund reconciliation state', () => {
+  const start = html.indexOf('function customerPaymentLabel(row)');
+  const end = html.indexOf('async function customerPrintPaymentReceipt', start);
+  const source = html.slice(start, end);
+  for (const eventType of ['payment','refund_request','refund','manual_payment','manual_refund']) {
+    assert.match(source, new RegExp(eventType + ':'));
+  }
+  for (const status of ['paid','captured','refunded','recorded','processed','requested','in_review','approved','processing','unknown','requires_reconciliation','failed','rejected']) {
+    assert.match(source, new RegExp(status + ':'));
+  }
+  assert.match(source, /unknown:'Admin जाँच आवश्यक'/);
+  assert.match(source, /requires_reconciliation:'Admin जाँच आवश्यक'/);
+});
+
+test('customer refund status labels distinguish completion, review, provider failure and reconciliation', () => {
+  const start = html.indexOf('const customerRefundStatusLabels=');
+  const end = html.indexOf('function customerRefundStatusText', start);
+  const source = html.slice(start, end);
+  for (const [status,label] of [
+    ['requested','अनुरोध प्राप्त'],['in_review','Admin समीक्षा में'],
+    ['approved','रिफंड स्वीकृत'],['processing','रिफंड प्रोसेस हो रहा है'],
+    ['unknown','Admin जाँच आवश्यक'],['processed','रिफंड पूरा हुआ'],
+    ['rejected','रिफंड अनुरोध अस्वीकृत'],['failed','रिफंड में समस्या']
+  ]) {
+    assert.ok(source.includes(status + ":'" + label + "'"), 'missing refund status label: ' + status);
+  }
+});
