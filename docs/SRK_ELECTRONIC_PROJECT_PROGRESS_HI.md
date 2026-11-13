@@ -790,3 +790,12 @@
 - Earlier two source runs failed because new migration/test files had been created in detached commits and were not present on branch checkout; files were restored onto the approved feature branch before the passing full run. Those failures were not code-test failures.
 - SQL pgTAP/schema workflow and real Supabase RPC/JWT tests have NOT run. Receipt print/browser testing, refund provider status lifecycle runtime verification, payment list pagination in a browser and final mobile/Desktop QA remain outstanding. No Production schema apply, deployment, payout or refund movement.
 - Master checklist counts unchanged: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24. Customer App remains active; Electrician Portal/Admin Panel general work not started.
+
+
+## 2026-11-13 — Customer Refund Request Eligibility / Duplicate Submit hardening
+
+- Customer Booking UI पहले verified paid booking पर refund request दिखा सकता था, जबकि server RPC केवल `completed` + customer-approved completion + selected category + immutable labour bill + paid amount exact match वाली booking स्वीकार करता है। इससे legacy/ineligible booking पर ग्राहक को ऐसा form दिखता था जो server पर reject होता।
+- अब UI refund request केवल तभी दिखाता है जब booking completed हो, customer ने completion approve की हो, selected category मौजूद हो, immutable bill loaded हो, payment verified हो और bill labour amount paise में paid amount से exact match हो। Server-side RPC validation authoritative बनी हुई है।
+- Refund submit पर प्रति booking Set-based busy guard जोड़ा ताकि duplicate event submissions न हों। सफल अनुरोध के बाद Booking History, Refund History और Payment History तीनों refresh होते हैं।
+- Source regression tests ने eligibility, amount match, duplicate guard और तीनों histories refresh assertions जोड़े। Source Regression Run #43467024941 — success; Refund source regression Run #43467024908 — success; दोनों commit `31eb2f33748dd084024a9130ab9898d30b4ea7ca` पर।
+- UI gate browser source checks तक verified; live RPC/database eligibility, concurrent request locking और refund state provider lifecycle अभी runtime tested नहीं। SQL pgTAP बाकी; no Production changes/deployment/refund movement.
