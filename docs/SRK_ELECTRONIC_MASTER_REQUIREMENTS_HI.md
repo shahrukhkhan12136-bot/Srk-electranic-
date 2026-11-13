@@ -2885,3 +2885,42 @@ Security note: Edge Function source contains secret variable names only; secret 
 5. Master Requirements से बाहर alternate hosting paths को retire करने का निर्णय केवल dependency, domain DNS, traffic, webhook callback और rollback evidence मिलने के बाद लें।
 
 Audit सीमा: Vercel project/deployment metadata और non-decrypted env metadata read-only; GitHub branch/workflow source read-only। कोई Vercel/Netlify/GitHub Pages deployment, alias, DNS, env var, workflow, webhook, database, payment या provider configuration बदला नहीं गया।
+
+
+## 17.75 — GitHub Pages Live Deployment Evidence और Supabase Schema CI Failure Root Cause (13 Nov 2026)
+
+### A. GitHub Pages deployment अब प्रमाणित
+- GitHub Actions workflow `.github/workflows/publish-pages.yml` SHA `cb45002c2b6bbbf2b0a325477a9e252de5729b0e` की run history में दो successful manual deployments मिले: run IDs `42915375937` और `42913902399`; दोनों 10 Nov 2026 को `main` branch से `workflow_dispatch` द्वारा चलाए गए।
+- Run `42915375937`, job `130176332993`: Checkout published branch, Configure Pages, Upload static site और Deploy to GitHub Pages सभी सफल।
+- Deploy log ने प्रकाशित URL `https://shahrukhkhan12136-bot.github.io/Srk-electranic/` लौटाया और Pages deployment success report किया।
+- Deploy artifact ID `13808428749`; artifact size 69,638 bytes। Workflow ने `gh-pages` branch checkout करके repository root को static artifact बनाया।
+- इसलिए GitHub Pages केवल configured workflow नहीं है; कम-से-कम 10 Nov 2026 को सफल publish हुआ था। वर्तमान HTTP reachability/traffic इस tool session में independently verify नहीं हो सका।
+- Workflow trigger `gh-pages` push और manual dispatch है; उपलब्ध दो runs दोनों manual `main` dispatch हैं। इसका अर्थ यह नहीं कि हर push पर deployment सफल हुआ।
+
+### B. GitHub Pages पर प्रकाशित configuration की समीक्षा
+- `gh-pages/srk-config.js` SHA `0b2efc073bc0c70dacac11fa7a90daa11f47aeda` inspect किया।
+- File में Supabase project URL और browser-facing `SUPABASE_ANON_KEY` है; file स्वयं इसे browser-safe publishable key बताती है। कोई `service_role`/secret key इस file में नहीं मिली।
+- Anon/publishable key का public होना अपने-आप में secret leak नहीं है; वास्तविक सुरक्षा Supabase RLS, grants और exposed RPC policies पर निर्भर है। इस audit में key value को report या copy नहीं किया गया।
+- Pages artifact में HTML, config, Netlify adapters, Razorpay root handlers और migration files की copies शामिल थीं। Static GitHub Pages hosting इन Netlify serverless adapters को execute नहीं करती। अतः Pages copy को working payment backend या active Razorpay webhook processor न मानें।
+- Public Pages copy की पूर्ण secret scan, browser network test, form submission/payment test और current traffic verification अभी शेष हैं।
+
+### C. Supabase isolated schema CI — नवीनतम failure का root cause
+- Feature Branch `.github/workflows/supabase-schema-ci.yml` SHA `eddf175d30f8b3bec3a1fa527e1c64563082737c`।
+- Latest run `43282223334` (12 Nov 2026 18:40 UTC), manual `workflow_dispatch`, completed with `failure`।
+- Job `131406225631` में secret-presence check, pinned Supabase CLI install, clean temporary project creation और restricted export-role privilege check सफल हुए।
+- Export-role check ने confirm किया कि account superuser/BYPASSRLS नहीं था और public/private tables का SELECT/modify access नहीं रखता।
+- अगला `pg_dump --schema-only --no-owner --no-acl --schema=public --schema=private` step `public.services` पर `LOCK TABLE ... IN ACCESS SHARE MODE` के दौरान `permission denied for table services` से fail हुआ।
+- इसलिए schema export बना ही नहीं; local stack restore, पाँच pending Feature migrations, lint और smoke tests सभी skip हुए। इसे migration failure या Production schema failure कहना गलत होगा; CI अभी source schema सुरक्षित ढंग से export नहीं कर पाया।
+- Recent preceding runs `43281436323`, `43279241291`, `43277167040` और `43249594748` भी इसी workflow में failure हुए। Run `43282223334` का detailed log ऊपर का exact blocker दिखाता है।
+- Root-cause interpretation: workflow का “no table-row SELECT privilege” security guard सफल है, लेकिन चुना हुआ `pg_dump` तरीका schema-only dump से पहले table locks मांगता है। Restricted role को बिना table data पढ़ने की अनुमति दिए आवश्यक metadata/lock operation उपलब्ध कराने का सुरक्षित तरीका अभी तय नहीं हुआ।
+- PostgreSQL version 17.11 Production होने के कारण संभावित dedicated `MAINTAIN`/catalog-only approach को version-specific least-privilege review और isolated test के बिना लागू न करें। `SELECT` grant देना या privileged `postgres/service_role/BYPASSRLS` credential से dump लेना स्वीकार्य workaround नहीं है।
+- CI workflow में पाँच pending migration paths भी दर्ज हैं: third-booking online payment, labour-only/customer-supplied materials, cash platform-fee due/online settlement, electrician payment-choice visibility और customer cash-to-online switch। ये इस failed run में execute नहीं हुए; इनका Production में लागू होना इस evidence से सिद्ध नहीं होता।
+
+### D. सुरक्षित सुधार योजना — अभी कोई बदलाव नहीं
+1. Schema export strategy को Production पर privilege grant किए बिना isolated environment में validate करें; पहले catalog-only export या narrowly scoped `MAINTAIN`-based pg_dump compatibility जाँचें।
+2. Restricted export role की कोई privilege change आवश्यक हो तो अलग approval और explicit rollback plan के बिना न करें।
+3. CI को सफल करने के बाद ही पाँचों pending migrations का clean isolated apply, lint, smoke और rollback review करें।
+4. GitHub Pages की public copy पर पूर्ण secret/config scan और browser-side functionality audit करें; static host पर backend-dependent actions को स्पष्ट रूप से disabled/redirected रखना आवश्यक है।
+5. GitHub Pages, Vercel Preview/Production और Netlify को अलग deployment targets मानकर domain/DNS/webhook ownership verify किए बिना कोई alternate path बंद न करें।
+
+Audit सीमा: GitHub Actions run metadata/job logs, workflow source, `gh-pages` branch config और published artifact metadata read-only inspect किए। कोई workflow rerun, secret read, permission grant, migration execution, Pages/Vercel/Netlify deployment या Production change नहीं किया।
