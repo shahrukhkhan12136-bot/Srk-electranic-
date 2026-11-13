@@ -1023,3 +1023,13 @@ test('saved-address save, delete and default mutations cannot update a different
   assert.match(invalidator,/saveButton\.disabled=false/);
   assert.match(invalidator,/for\(const id of \['editSavedAddress','deleteSavedAddress','setDefaultSavedAddress'\]\)/);
 });
+
+
+test('customer account-switch cleanup clears prior verified phone and queued avatar file', () => {
+  const start=html.indexOf('function invalidateCustomerProfileAndSavedAddresses()');
+  const end=html.indexOf('async function loadCustomerProfile',start);
+  const source=html.slice(start,end);
+  assert.match(source,/avatarFile\.value='';/);
+  assert.match(source,/customerProfilePhone'\)\.value='';/);
+  assert.match(source,/bookingPhone\)bookingPhone\.value='';/);
+});
