@@ -2924,3 +2924,27 @@ Audit सीमा: Vercel project/deployment metadata और non-decrypted env 
 5. GitHub Pages, Vercel Preview/Production और Netlify को अलग deployment targets मानकर domain/DNS/webhook ownership verify किए बिना कोई alternate path बंद न करें।
 
 Audit सीमा: GitHub Actions run metadata/job logs, workflow source, `gh-pages` branch config और published artifact metadata read-only inspect किए। कोई workflow rerun, secret read, permission grant, migration execution, Pages/Vercel/Netlify deployment या Production change नहीं किया।
+
+
+## 17.76 — GitHub Pages Public Artifact Static Secret-Pattern Scan और CI Export Permission Compatibility (13 Nov 2026)
+
+### A. gh-pages artifact inventory और static scan
+- Audited published `gh-pages` commit `e61e8652be064d055b7537a485d3db38ae2a9dd6`; recursive tree में 58 entries मिले, कोई truncated tree नहीं।
+- Inventory में customer/admin/electrician HTML, browser config, payment handlers, Netlify adapters, push-test pages, package manifest, setup/schema SQL और 12 से अधिक migration/config/documentation files शामिल हैं।
+- निम्न 20 source/config files में static pattern scan किया: `COMPLETE_DATABASE_SETUP.sql`, `ADMIN_EMAIL_LOGIN_SETUP.sql`, `PORTAL_SCHEMA.sql`, `PORTAL_SECURITY_UPDATE.sql`, `SUPABASE_SCHEMA.sql`, `supabase-connection-test.html`, `admin.html`, `index.html`, `customer-login.html`, `electrician.html`, `create-order.js`, `razorpay-webhook.js`, `verify-payment.js`, `apply-electrician.js`, `create-booking.js`, `push-test/index.html`, `push-test/offer.html`, `push-test/sw.js`, `package.json`, `README.md`।
+- Scan में literal AWS access-key pattern, hard-coded JWT-shaped token, Razorpay secret-shaped key, private-key PEM block, credential-bearing PostgreSQL URL या long secret/password/token assignment नहीं मिला।
+- Payment/backend handler files में `service_role` शब्द/reference मिले; inspected matches credential literals नहीं, server-side environment/authorization references हैं। वास्तविक environment secret values न पढ़े गए, न log किए गए।
+- `gh-pages/srk-config.js` में केवल browser-facing Supabase URL और Anon/publishable key का configuration है; service_role secret नहीं। Anon key public design का हिस्सा है; RLS/ACL और exposed RPC policy ही data सुरक्षा तय करते हैं।
+- यह static pattern scan है, पूर्ण DLP/secret-scanning certification नहीं। Encoded/obfuscated credentials, historical commits, binary artifacts, third-party dependencies, live runtime responses और external logs इस scan के दायरे में नहीं थे।
+- प्रकाशित root artifact में setup SQL, migrations, internal deployment documentation, server handler source और push-test pages भी हैं। भले उनमें कोई literal credential pattern न मिला हो, production public website के लिए यह अनावश्यक source/schema disclosure और stale endpoint exposure बढ़ाता है। अगली सुरक्षित release में root-wide copy के बजाय explicit public-file allowlist अपनाने का प्रस्ताव है; अभी कोई file हटाई या publish workflow बदला नहीं गया।
+- GitHub Pages static hosting Netlify adapters/functions को execute नहीं करती। इसलिए वहाँ मौजूद Razorpay webhook/create-order/verify-payment source को operational backend न समझें।
+
+### B. Supabase CI export failure — permission mismatch स्पष्ट
+- Latest CI run `43282223334`, job `131406225631` के logs से पता चला कि workflow पहले restricted role check पास करता है, जो role को table-row SELECT और write privileges से वंचित रखता है।
+- इसके तुरंत बाद `pg_dump --schema-only` सभी public/private tables पर ACCESS SHARE lock माँगता है और `public.services` पर `permission denied` से रुकता है।
+- इसलिए वर्तमान workflow के दो design goals में compatibility gap है: “table data read न कर सकने वाला role” और “pg_dump को tables पर lock लेने देना”। Failure को केवल credential गलत होने का निष्कर्ष न मानें; restricted role check सफल था।
+- CI workflow में `pg_dump` का installed client version 18.6 था जबकि Production PostgreSQL 17.11 है। यह अकेले failure का प्रमाणित कारण नहीं; exact logged blocker table lock permission है। Client/server major-version compatibility को भी supported-version policy के अनुसार align/verify करना शेष है।
+- इस audit में कोई grant/revoke, role change, secret update या workflow edit नहीं किया गया। `SELECT` देना, privileged postgres/service_role credential का उपयोग करना या सुरक्षा guard हटाना स्वीकार्य quick fix नहीं है।
+- अगला विकल्प: production credentials को छुए बिना isolated fixture में export strategies जाँचें; यदि pg_dump को ACCESS SHARE permission चाहिए तो dedicated read-only schema-export role की privilege boundary को PostgreSQL 17 के आधिकारिक privilege model के साथ review करें। जब तक row access न होने और schema metadata extraction दोनों की guarantee सिद्ध न हो, workflow को Production export के लिए enable/modify न करें।
+
+Audit सीमा: केवल GitHub read-only tree/blob/workflow source और पहले से उपलब्ध run logs inspect किए। कोई source file, branch, Pages artifact, workflow, Supabase role, secret, database object, deployment या provider setting बदली नहीं गई।
