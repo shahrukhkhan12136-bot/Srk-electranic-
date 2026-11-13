@@ -24,7 +24,7 @@ const baseBooking=()=>({
  payment_method:'Razorpay ऑनलाइन भुगतान',razorpay_order_id:null,
  razorpay_payment_id:null,status:'completed'
 });
-function response(status,value){const raw=typeof value==='string'?value:JSON.stringify(value);return {ok:status>=200&&status<300,status,text:async()=>raw,json:async()=>JSON.parse(raw)}}
+function response(status,value){const raw=JSON.stringify(value);return {ok:status>=200&&status<300,status,text:async()=>raw,json:async()=>JSON.parse(raw)}}
 function event(body,headers={}){return {httpMethod:'POST',headers,body:typeof body==='string'?body:JSON.stringify(body)}}
 function setupFetch({booking=baseBooking(),bill={booking_id:BOOKING_ID,labour_amount_paise:119900,labour_amount:1199,billable_minutes:480},capturedAmount=119900,lock=true}={}){
  const calls=[];
