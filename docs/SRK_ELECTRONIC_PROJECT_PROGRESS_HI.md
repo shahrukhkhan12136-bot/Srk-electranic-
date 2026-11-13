@@ -1078,3 +1078,12 @@
 - Commits: API `f92b88d3a8365007132e90344f2f9944be74df0e`; UI `a62858632820b45271d3ec5ce51fe9dcef73ff83`; tests `427057c154ac2392f5b2b8bb450c46fa3a596b32`.
 - अभी ये source changes हैं; GitHub Actions result, runtime API test और database verification की पुष्टि बाकी है। PIN/district matching तब तक blocked रहेगा जब तक authoritative India Post PIN directory और mismatch handling तय/जोड़ी न जाए।
 - अगला कदम: regression CI परिणाम देखना, फिर booking date/time validation के लिए boundary tests जोड़ना; same-day cutoff/business hours के लिए कोई नियम स्वयं न गढ़ना।
+
+
+### 13 नवम्बर 2026 — Booking date/time boundary hardening
+
+- India business date formatter को locale-dependent en-CA output से बदलकर formatToParts() आधारित YYYY-MM-DD बनाया; इससे runtime locale formatting पर निर्भरता नहीं रहती।
+- Server validation पिछली तारीख रोकता है; तारीख की तुलना Asia/Kolkata business date से होती है।
+- Handler regression tests जोड़े: पुरानी तारीख 400 पर reject और rate-limit/booking insert तक न पहुँचे; 23:59 वैध तथा 24:00 reject।
+- Commits: timezone formatter 26472f950ceb6c1a2ba180970ccf5ce2c706b98f; handler tests b69b7363b341f0ef9f7a6f8136752e9908ed01cf.
+- अभी source code/tests review मात्र है; test suite/CI का निष्पादन प्रमाण उपलब्ध नहीं। Same-day cutoff और booking hours अभी business decision की प्रतीक्षा में हैं। PIN-to-district authoritative validation भी अभी लागू नहीं।
