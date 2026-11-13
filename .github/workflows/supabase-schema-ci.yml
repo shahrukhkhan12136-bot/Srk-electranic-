@@ -71,7 +71,7 @@ jobs:
 
       - name: Run structural and behavioral pgTAP tests
         working-directory: ${{ runner.temp }}/srk-offer-timeline
-        run: supabase test db supabase/tests/database/customer_safe_offer_timeline.test.sql supabase/tests/database/customer_safe_offer_timeline_behavior.test.sql
+        run: supabase test db
 
       - name: Stop isolated local Supabase stack
         working-directory: ${{ runner.temp }}/srk-offer-timeline
