@@ -10,6 +10,8 @@ on:
       - "admin.html"
       - "tests/razorpay-refund-handler.test.cjs"
       - "tests/manual-refund-workflow.test.cjs"
+      - "tests/customer-refund-history.test.cjs"
+      - "booking.html"
       - "package.json"
       - "supabase/migrations/202611141*.sql"
       - "supabase/tests/database/*refund*.sql"
