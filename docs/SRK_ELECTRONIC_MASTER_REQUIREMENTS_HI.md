@@ -2557,3 +2557,60 @@ Feature Branch के 10 मुख्य caller/UI/payment files का source-l
 6. Role negative tests, duplicate/concurrency, out-of-order webhook, provider timeout/unknown, amount mismatch, replay, historical quote regression, UI/E2E और rollback verification.
 
 इस audit में source पढ़ा गया और कोई code, SQL, Production database, payment provider, real payment या deployment नहीं बदला।
+## 17.67 — Server-authoritative Timer और Immutable Labour Bill का Database Design (13 Nov 2026)
+
+यह design Feature Branch source तथा Production schema/function inventory देखकर तैयार किया गया है। यह design specification है, लागू migration नहीं। Production में read-only schema inspection में service_bookings पर legacy work_started_at मौजूद है, पर canonical timer session/event/bill snapshot table नहीं मिली।
+
+### 1. मौजूदा Production schema से मिली सीमाएँ
+- service_bookings में status, assigned_electrician_id, customer_user_id, work_started_at, quote_status, quoted_amount, service_charge, materials_amount, payment_method, payment_status और Razorpay IDs हैं। ये पुराने quote/payment workflow के columns हैं।
+- Production में srk_electrician_payouts में gross_service_amount और materials_amount दोनों मौजूद हैं। इन्हें historical compatibility के लिए रखना होगा; नए payout formula में materials का योगदान शून्य होगा।
+- srk_razorpay_webhook_events table Production में मौजूद है और event_id primary key है; इसे duplicate बनाने के बजाय उसकी पूरी definition, policies, indexes और consumers recover करके नए payment finalizer से integrate करना होगा।
+- Production RPC inventory में srk_submit_booking_quote, srk_customer_respond_booking_quote, srk_update_booking_work_status, srk_get_my_assigned_booking_quote_details, srk_get_my_offer_details, srk_admin_record_manual_payment और srk_create_electrician_payable सहित quote-era callers मौजूद हैं। इनका exact definition/trigger/dependency lineage migration plan से पहले recover करना अनिवार्य है।
+
+### 2. प्रस्तावित logical data model (नए नाम; existing Production में अभी नहीं)
+A. `srk_booking_timer_sessions` — प्रति booking एक canonical work session (unique booking_id); booking_id, customer_user_id, electrician_profile_id, approved rate_card_id/version, timer_state, start_requested_at, started_at, completion_requested_at, stopped_at, customer_approved_at, dispute state, created_at/updated_at. Server timestamps ही authority होंगे।
+B. `srk_booking_timer_events` — append-only event ledger; unique event/idempotency key, booking/session IDs, event_type, actor_user_id/role, server_recorded_at, request correlation ID, optional safe metadata. Event types: start_requested, start_approved, timer_started, completion_requested, timer_stopped, completion_approved, disputed, admin_resolved, cancelled. कोई client timestamp bill calculation में इस्तेमाल नहीं होगा।
+C. `srk_labour_rate_cards` — server-managed versioned rate catalog; category/rate tier, 8-hour reference minutes=480, reference price paise, effective_from/to, active flag, version, Admin audit. Existing agreed reference rates: Assistant ₹899, Skilled ₹1,199, Expert ₹1,599, Premium Specialist ₹1,999; village/city same. Rate snapshot timer start पर pin होगा ताकि बाद में rate edit होने से running booking न बदले।
+D. `srk_labour_bill_snapshots` — प्रति bill version immutable snapshot; unique booking_id + version; session_id, customer/electrician IDs, rate card/version, started_at/stopped_at, billable_minutes, reference_rate_paise, calculation numerator/denominator, labour_amount_paise, currency INR, rounding_policy_version, bill_hash, status, generated_at, customer_approved_at, created_by/system actor. कोई materials field/line item नहीं।
+E. `srk_labour_bill_adjustments` — केवल exceptional Admin-reviewed correction; append-only adjustment amount in paise, reason, actor, reviewer if required, source bill version, idempotency key, timestamp. Original snapshot overwrite नहीं होगा; नया version/adjustment reference बनेगा। Adjustment permissions/limits और maker-checker अभी तय नहीं।
+
+### 3. Proposed state transitions
+- assigned → start_requested (Electrician request only) → awaiting_customer_start_approval → running (Customer approval पर server now() timestamp)।
+- running → completion_requested (Electrician request) → stopped_pending_customer_approval (server stop boundary) → completed_bill_pending (Customer approval)।
+- Customer dispute होने पर disputed_admin_review; Admin resolution reason/audit के बाद ही final bill snapshot बने।
+- Final bill snapshot बनने के बाद payment_due; Customer उसी frozen amount पर Cash या Online चुने। Payment flow से पहले bill version/hash immutable रहे।
+- Duplicate/replayed requests idempotent response दें; wrong actor, wrong booking, unassigned electrician, cancelled/terminal booking, invalid transition deny हों।
+- Customer approval न मिलने का timeout, electrician/customer offline, emergency stop और dispute SLA अभी तय नहीं; इन्हें auto-approve नहीं मानना है।
+
+### 4. Labour amount calculation contract
+- `billable_minutes = server_stopped_at - server_started_at` से निकले वास्तविक पूरे elapsed minutes; client clock निषिद्ध।
+- `raw_amount = approved_8h_rate × billable_minutes / 480`; केवल labour/service amount। कोई सामान/parts जोड़ नहीं।
+- Currency calculation integer paise में होनी चाहिए। 480 से भाग देने पर fractional paise संभव हैं; अंतिम paise rounding mode अभी Product decision के लिए खुला है। तब तक exact rounding mode invent न करें।
+- Existing agreed rate amounts ऊपर दिए गए हैं। Category mapping, rate tier pinning और 8 घंटे से अधिक अवधि का formula/maximum अभी स्पष्ट रूप से freeze होना बाकी है।
+- Pause/resume, idle-time exclusion, multiple sessions, timer correction और timer boundary semantics अभी अनिर्णीत हैं। इनका निर्णय हुए बिना production billing migration नहीं।
+
+### 5. Customer approval और payment binding
+- Start approval Customer के authenticated account/verified identity से हो; assigned electrician स्वयं अपनी start request approve नहीं कर सकता।
+- Completion approval Customer के authenticated account से हो; dispute पर bill/payment रोकें और Admin review करें।
+- Final snapshot बनते समय server एक बार labour amount, bill version/hash और INR paise amount freeze करे।
+- `srk_customer_choose_bill_payment` जैसा narrow RPC केवल bill owner को final bill पर Cash/Online चुनने दे; Electrician payment choice न देखे/बदले।
+- Razorpay order, verification, webhook, Cash confirmation, fee ledger, payout, refund और receipt सभी exact bill_snapshot_id + version + hash + amount_paise से bind हों। Client-supplied quoted_amount/payment_method financial authority नहीं होंगे।
+- 15% Platform Fee केवल labour amount पर; Electrician payable = labour amount minus current Platform Fee minus legitimately settled prior cash fee dues. Cash collection customer और electrician के बीच; SRK केवल fee due ledger रखे।
+
+### 6. Security / consistency requirements
+- Browser सीधे timer/session/event/bill/payment ledger tables में INSERT/UPDATE/DELETE नहीं करेगा। सभी state transitions narrowly scoped RPC/server endpoints से।
+- SECURITY DEFINER केवल आवश्यक होने पर; private/non-exposed schema, fixed search_path, auth.uid()/role + booking ownership/assignment checks, explicit revoke/grant, RLS defense-in-depth और function ACL audit।
+- Lock order booking → timer session → bill/payment intent → electrician fee ledger एक documented order में; idempotency unique constraints, transaction locks और race tests।
+- Timer events और bill snapshots append-only; corrections compensating events/versioned adjustments से। Historical quote rows untouched।
+- PII/contact data event metadata में अनावश्यक रूप से copy नहीं करना। Admin access audited और least-privilege।
+
+### 7. अगली implementation से पहले जरूरी decisions / blockers
+1. Paise rounding rule (nearest paise half-up, half-even या अन्य) की स्पष्ट मंजूरी।
+2. 8 घंटे के बाद rate: same per-minute rate जारी, cap, या अलग overtime rule?
+3. Pause/resume होगा या timer uninterrupted elapsed time होगा?
+4. Customer start/completion approval के लिए timeout और no-response policy; auto-approval निषिद्ध जब तक स्पष्ट मंजूरी न हो।
+5. Dispute resolution और Admin adjustment limits / maker-checker।
+6. Timer को किस verified category/rate tier से bind करना है; वर्तमान schema में approved category/rate tier का canonical verified evidence मौजूद होने का प्रमाण नहीं।
+7. Production webhook inbox की full schema/consumer lineage और all quote/payment trigger definitions recover करना।
+
+इस pass में Production से केवल read-only schema/function inventory queries चलाई गईं। कोई DDL/DML, migration, policy, function, trigger, data, provider configuration या deployment नहीं बदला।
