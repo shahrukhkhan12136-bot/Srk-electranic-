@@ -43,6 +43,10 @@ async function refreshPartnerPushState(){
   const registration=await navigator.serviceWorker.getRegistration('/');
   const subscription=registration?await registration.pushManager.getSubscription():null;
   disable.disabled=!subscription;
+  if(!profile||!profile.active||profile.verification_status!=='approved'){
+   partnerPushSay('Push सुविधा केवल Admin-अनुमोदित Active Electrician पार्टनर के लिए उपलब्ध है।',true);
+   enable.disabled=true;return;
+  }
   const vapid=String(cfg.VAPID_PUBLIC_KEY||'').trim();
   enable.disabled=!!subscription||!vapid||Notification.permission==='denied';
   if(subscription)partnerPushSay('इस डिवाइस पर Push Subscription चालू है।');
