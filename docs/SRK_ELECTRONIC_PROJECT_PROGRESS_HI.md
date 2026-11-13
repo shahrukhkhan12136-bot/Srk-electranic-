@@ -1146,3 +1146,13 @@
 - Test file commit: `b7b2722ec6056c1504cf8e90f250dbe0e1233d97`।
 - यह test-source correction है, pgTAP निष्पादन नहीं। Supabase schema CI के लिए read-only DB URL secret/isolated test execution की उपलब्धता अभी सत्यापित करनी है; कोई migration apply, Production write, deploy या mobile/Desktop QA नहीं हुआ। 14.1.10 Partial/In Progress ही रहेगा।
 - अगला resume point: 14.1.10 के completion/dispute/Admin resolution RPC, event trigger, bill creation authorization और payment/refund/payout consumer dependencies का targeted security review।
+
+
+### 14 नवम्बर 2026 — Customer completion / dispute / immutable bill targeted source audit
+
+- Feature branch पर `20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql` और `20261114060000_work_completion_admin_review_and_immutable_event_history.sql` की source-level समीक्षा की।
+- Confirmed in source: electrician completion request केवल assigned approved/active electrician के लिए है, booking row lock लेता है और server clock से timer रोककर original completion-request timestamp रखता है; customer decision owner-scoped है; rejected completion timer फिर server clock से resume करता है; dispute के लिए कम-से-कम 20 अक्षर का कारण, complaint entry और paused timer है; Admin approval Admin-gated है, booking lock करता है, 20–1000 अक्षर कारण मांगता है और केवल stopped pending/disputed categorized booking पर bill बनाता है; immutable bill guard scoped transaction authorization, booking ownership/assigned electrician, original request timestamp और rate snapshot reconcile करता है; Admin work-event details private authorization से एक trigger-generated event में दर्ज होते हैं।
+- दोनों मुख्य pgTAP files के declared plan और top-level assertion count मिलाए: timer/bill suite 101/101; Admin completion/event suite 22/22। यह केवल test-source count है, pgTAP execution नहीं।
+- कोई नया code defect इस सीमित source pass में प्रमाणित नहीं हुआ। Concurrency/rollback, RLS under real customer/electrician/Admin JWTs, trigger execution, complaint write, bill immutability, Admin audit details, payment/refund/payout integration runtime में अप्रमाणित हैं।
+- Production migration apply, Production data writes, deploy, payment/refund/payout execution या manual device QA नहीं किया। Customer App अभी Partial/In Progress; 14.1.10 को complete नहीं माना जाएगा।
+- अगला resume point: customer UI में completion pending/reject/dispute states और retry behavior की handler-to-RPC contract parity; उसके बाद SQL test execution की सुरक्षित isolated व्यवस्था की समीक्षा।
