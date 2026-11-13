@@ -147,7 +147,7 @@ exports.handler = async (event) => {
       other: "अन्य"
     };
     const selected_category = clean(body.selected_category, 40);
-    const selected_duration_hours = Number(body.selected_duration_hours);
+    const selected_duration_hours = body.selected_duration_hours;
     const service_type = categoryLabels[selected_category] || "";
     const preferred_date = clean(body.preferred_date, 10);
     const preferred_time = clean(body.preferred_time, 8);
