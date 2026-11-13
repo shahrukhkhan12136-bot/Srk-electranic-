@@ -3888,3 +3888,12 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - इसलिए नई category/rate-tier schema को केवल column जोड़कर नहीं छोड़ना है: application requested tier, Admin-approved tier, approver identity/time, versioned rate-card reference और booking-time immutable category/rate snapshot को सुरक्षित constraints/RPC/RLS तथा audit के साथ लागू करना होगा। Existing commission/payable triggers के function bodies और payment consumers की dependency review के बिना उन्हें बदलना/बायपास करना मना है।
 - 11/11 pure calculator unit tests सफल हुए (Node test runner, isolated verification run में branch के समान source/test content के साथ)। यह unit-level arithmetic evidence है; GitHub CI, deployed runtime, Supabase RPC, booking/payment integration या browser QA का प्रमाण नहीं है।
 - No live schema changes, migrations applied, production settings changed, deployment or live payment action.
+
+### 19.8 Electrician requested category और Admin-approved rate tier का source draft (13-11-2026)
+- Feature Branch में migration draft `20261114000000_electrician_requested_and_approved_rate_tiers.sql` जोड़ा गया। यह आवेदन का `requested_category` अलग रखता है और प्रोफाइल में Admin-approved `approved_rate_tier`, rate-card version, approver UUID तथा approval timestamp अलग रखता है।
+- चार मान्य tiers केवल `electrical_assistant`, `skilled_electrician`, `expert_electrician`, `premium_electrical_specialist` हैं। Skills text/array से rate tier infer नहीं होगा।
+- Admin-only guarded RPC `srk_admin_set_electrician_rate_tier` हर बदलाव को audit table में दर्ज करता है। नया activation guard rate-tier approval के बिना electrician profile को active करने से रोकता है। पुराने profiles के tier null छोड़े गए हैं; कोई legacy tier अनुमान से backfill नहीं होगा।
+- pgTAP source test `supabase/tests/database/electrician_rate_tier_authorization.test.sql` जोड़ा गया। अभी database migration apply नहीं हुई और pgTAP test run नहीं हुआ।
+- Current approved feature-branch `index.html` में electrician application form मौजूद नहीं है, जबकि repository search में पुराना form केवल stale indexed result में मिला। इसलिए applicant-facing requested-category selector को अभी किसी अनुमानित page में नहीं जोड़ा गया; actual current form/page locate करके उसी में integration करना आवश्यक है।
+- Admin UI में भी अभी rate-tier selector नहीं जोड़ा गया; पहले migration review/test और Admin panel के current approval flow का source integration आवश्यक है।
+- कोई production DDL/DML, migration apply, live activation, deployment या payment action नहीं हुआ।
