@@ -370,7 +370,7 @@ async function loadCustomerPaymentHistory(reset=true) {
  if(!box||!more)return;
  const requestedOffset=reset?0:customerPaymentHistoryOffset;
  box.setAttribute('aria-busy','true');
- if(reset)box.textContent='भुगतान रिकॉर्ड लोड हो रहे हैं…';
+ if(reset){customerPaymentHistoryOffset=0;more.style.display='none';box.textContent='भुगतान रिकॉर्ड लोड हो रहे हैं…';}
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(sessionError)throw sessionError;
