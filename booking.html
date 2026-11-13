@@ -1276,8 +1276,11 @@ function invalidateCustomerAddressLocation(){
  document.getElementById(id).addEventListener('change',invalidateCustomerAddressLocation);
 });
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
+let customerBookingSubmissionBusy=false;
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
+  if(customerBookingSubmissionBusy)return;
+  customerBookingSubmissionBusy=true;
   const amount = 0; // Quote and final amount are set after electrician inspection.
   const method = value('payment');
   const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${document.getElementById('service').selectedOptions[0]?.textContent || ''}\nअनुमानित अवधि: ${value('durationHours')} घंटे\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
@@ -1310,7 +1313,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     }
   } catch (err) {
     alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
-  } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
+  } finally { customerBookingSubmissionBusy=false; submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
 document.getElementById('newIdenticalBooking').addEventListener('click',()=>{
  const saved=(()=>{try{return JSON.parse(sessionStorage.getItem('srk.customer.booking.pending.v1')||'null')}catch(_){return null}})();
