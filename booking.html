@@ -569,7 +569,10 @@ async function syncCustomerSession() {
     document.getElementById('customerSignedIn').textContent = '';
     document.getElementById('customerBookings').textContent = '';
     document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';
-    document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));\n    document.getElementById('customerSupportThread').textContent='';\n    document.getElementById('customerSupportMessage').value='';\n    customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें।');
+    document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));
+    document.getElementById('customerSupportThread').textContent='';
+    document.getElementById('customerSupportMessage').value='';
+    customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें।');
     document.getElementById('customerProfileName').value = '';
     document.getElementById('customerProfilePhone').value = '';
     customerPaymentHistoryOffset = 0;
