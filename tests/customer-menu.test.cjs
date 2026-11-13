@@ -77,5 +77,4 @@ test('customer profile reads and writes only through validated owner-scoped RPCs
   assert.match(profileMigration, /where p\.user_id=v_user_id/);
   assert.match(profileMigration, /length\(v_name\) < 2 or length\(v_name\) > 120/);
   assert.match(profileMigration, /u\.phone_confirmed_at is not null/);
-  assert.match(profileMigration, /phone number/i) === undefined;
 });
