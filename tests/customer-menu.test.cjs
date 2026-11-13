@@ -10,6 +10,7 @@ const supportAttachmentMigration = fs.readFileSync('supabase/migrations/20261114
 const customerReceiptMigration = fs.readFileSync('supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql', 'utf8');
 const customerPaymentHistoryMigration = fs.readFileSync('supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql', 'utf8');
 const customerCallContactsMigration = fs.readFileSync('supabase/migrations/20261114220000_customer_contacts_after_completion.sql', 'utf8');
+const labourTimerMigration = fs.readFileSync('supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql', 'utf8');
 
 test('accepted customer-electrician direct contact remains available after completion', () => {
   assert.ok(customerCallContactsMigration.includes("'completed'"));
@@ -992,4 +993,15 @@ test('support account-switch invalidation releases mutation controls and clears 
   assert.match(source,/customerSupportBookingsBusy=false/);
   assert.match(source,/customerSupportComplaintsBusy=false/);
   assert.match(source,/customerSupportAttachments=\[\]/);
+});
+
+
+test('labour rate snapshot constraint rejects partially NULL tuples under PostgreSQL three-valued CHECK semantics', () => {
+  const start=labourTimerMigration.indexOf('ADD CONSTRAINT service_bookings_labour_rate_snapshot_valid');
+  const end=labourTimerMigration.indexOf(';',start);
+  const constraint=labourTimerMigration.slice(start,end);
+  assert.match(constraint,/labour_rate_tier_snapshot IS NOT NULL/);
+  assert.match(constraint,/labour_rate8h_paise_snapshot IS NOT NULL/);
+  assert.match(constraint,/labour_rate_card_version_snapshot IS NOT NULL/);
+  assert.match(constraint,/labour_rate8h_paise_snapshot IN \(89900,119900,159900,199900\)/);
 });
