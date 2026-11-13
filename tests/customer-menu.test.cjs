@@ -957,7 +957,7 @@ test('work completion responses and payment-method changes cannot leak stale UI 
   assert.match(payment,/if\(!customerSessionOperationIsCurrent\(generation\)\)return;/);
   assert.match(payment,/customerPaymentMethodChangeBusy\.get\(id\)===operationToken/);
   assert.match(html,/function invalidateCustomerPaymentMethodChanges\(\)\{customerPaymentMethodChangeBusy\.clear\(\);\}/);
-  assert.match(html,/invalidateCustomerSupportPrivateState\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);/);
+  assert.match(html,/invalidateCustomerSupportPrivateState\(\);invalidateCustomerWorkStartResponses\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);/);
 });
 
 
