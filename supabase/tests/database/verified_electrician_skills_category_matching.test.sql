@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(21);
+SELECT plan(24);
 
 SELECT has_column('public','electrician_applications','requested_skill_keys','applications store canonical requested skills');
 SELECT has_column('public','electrician_profiles','requested_skill_keys','profiles retain applicant-declared skills');
