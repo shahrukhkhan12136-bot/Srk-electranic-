@@ -390,12 +390,14 @@ async function loadCustomerPaymentHistory(reset=true) {
   const rows=Array.isArray(data)?data:[];
   const html=rows.map(row=>{
    const label=customerPaymentLabel(row);
-   const date=row.occurred_at?new Date(row.occurred_at).toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'तारीख उपलब्ध नहीं';
+   const dateValue=row.occurred_at?new Date(row.occurred_at):null;
+   const date=dateValue&&!Number.isNaN(dateValue.getTime())?dateValue.toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'तारीख उपलब्ध नहीं';
    const receiptButton=row.event_type==='payment'&&row.status==='paid'&&row.booking_id
     ? '<button type="button" class="btn" onclick="customerPrintPaymentReceipt(\''+customerEsc(row.booking_id)+'\')">रसीद प्रिंट / PDF सेव करें</button>'
     : '';
    return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>'+customerEsc(label.type)+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small" style="margin:6px 0">'+customerEsc(row.description||'')+'</p><p class="small" style="margin:4px 0">स्थिति: '+customerEsc(label.status)+(label.method?' · तरीका: '+customerEsc(label.method):'')+'</p><p class="small" style="margin:4px 0">दिनांक: '+customerEsc(date)+'</p><p class="small" style="margin:4px 0">बुकिंग संदर्भ: '+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase()||'उपलब्ध नहीं')+'</p>'+receiptButton+'</article>';
   }).join('');
+  box.querySelector('[data-payment-history-load-warning]')?.remove();
   if(reset)box.innerHTML=html||'<p class="small">अभी कोई भुगतान या रिफंड रिकॉर्ड उपलब्ध नहीं है। भुगतान दर्ज होने पर यहाँ दिखाई देगा।</p>';
   else box.insertAdjacentHTML('beforeend',html);
   customerPaymentHistoryOffset=requestedOffset+rows.length;
@@ -442,6 +444,7 @@ async function loadCustomerRefundHistory(reset=true){
    return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>बुकिंग #'+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase())+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small">स्थिति: '+customerEsc(customerRefundStatusText(row.status))+'</p><p class="small">कारण: '+customerEsc(row.reason||'—')+'</p><p class="small">अंतिम अपडेट: '+customerEsc(dateText)+'</p></article>';
   }).join('');
   if(sequence!==customerRefundHistoryLoadSequence)return;
+  box.querySelector('[data-refund-history-load-warning]')?.remove();
   if(reset)box.innerHTML=html||'<p class="small">अभी कोई रिफंड अनुरोध दर्ज नहीं है।</p>';
   else box.insertAdjacentHTML('beforeend',html);
   customerRefundHistoryOffset=requestedOffset+rows.length;
@@ -673,6 +676,7 @@ async function loadCustomerBookings(reset=true) {
     }));
     if(sequence!==customerBookingHistoryLoadSequence)return;
     if(billLoadFailures)partialWarnings.push('कुछ पूरी हुई बुकिंग के अंतिम Labour Bill अभी लोड नहीं हो सके।');
+    box.querySelector('[data-booking-history-load-warning]')?.remove();
     const cardsHtml = data.map(row => {
       const contact = callMap.get(row.id);
       const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
