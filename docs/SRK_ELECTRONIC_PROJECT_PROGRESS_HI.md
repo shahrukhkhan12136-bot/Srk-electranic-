@@ -628,3 +628,12 @@
 - Important limitation: PIN-to-district/state matching is NOT implemented; district is free text and PIN is syntax-only. No district was auto-corrected, including the previously noted historical 271861 mismatch. A trustworthy postal directory/data source and defined UX for mismatches are still needed.
 - Booking form inline JavaScript syntax check passed after the secure-key correction; source check confirms no `Math.random()` fallback remains. Node booking-handler tests, browser/device tests, database migration/pgTAP and actual duplicate-submit behavior remain unexecuted in this pass.
 - No business date/time policy was invented. No Production schema/data change, deployment, live booking, payment, refund or payout occurred. Checklist totals unchanged.
+
+
+## 2026-11-13 — Customer Booking Form idempotency storage hardening
+- Booking form retry-key audit found that `sessionStorage.setItem()` failures were silently ignored. In that case, the first request could reach the server but a retry after a timeout/reload might receive a new UUID and risk creating a duplicate booking.
+- Updated `customerBookingRequestKey()` to write the pending key, read it back, and verify both UUID and payload fingerprint before sending the API request. If storage is unavailable, denied, or fails verification, the form now fails closed with a clear Hindi message rather than sending a request without durable retry identity.
+- Added a customer booking idempotency source regression test for persistence/read-back verification and fail-closed behavior.
+- Commits: `c1f65a03c9ccdac2a3f5dcb3c25c22367d66b73f` (booking form), `d7c98e03b7fba72894985cde203a771a3eed0293` (test).
+- This is source-level hardening only. Browser runtime, real sessionStorage-denial simulation, API/database concurrency, and mobile/Desktop QA remain unverified. CI status must be checked before calling the regression test passed.
+- Resume point: continue Customer App form audit (saved-address load/save/default/edit behavior, map/location handling, and duplicate submission/error recovery). Do not start Electrician Portal until Customer App is complete.
