@@ -896,3 +896,12 @@
 - अब secondary `id DESC` tie-breaker जोड़ा गया। Customer-only filter `customer_user_id = auth.uid()`, bounded result `LIMIT 100`, और output में admin note / Razorpay provider metadata / internal refund record ID शामिल न होने की source assertions जोड़ीं।
 - Source Regression Run #43470921740 — success, head `f319f81e653ea3b55cc9a513f65aaf63058347c1`.
 - यह source-level verification है; SQL/pgTAP, Supabase JWT/RLS runtime और actual refund workflow अभी execute नहीं हुए। No Production migration, deployment, or money movement.
+
+
+## 2026-11-13 — Customer Payment/Refund status label regression coverage
+
+- Customer Payment History RPC के पाँच event types (`payment`, `refund_request`, `refund`, `manual_payment`, `manual_refund`) के लिए UI label mapping source-checked।
+- Status mapping में paid/captured/refunded, recorded/processed, requested/in_review/approved/processing, unknown/requires_reconciliation, failed/rejected labels की regression coverage जोड़ी।
+- Refund History UI के requested, in_review, approved, processing, unknown, processed, rejected, failed status labels की अलग regression coverage जोड़ी।
+- Source Regression Run #43471201722 — success, head `c9956d98ec7ac4e2765924136b7cd2c0cc617662`.
+- यह static/source regression है; actual RPC response fixtures, SQL pgTAP, live Supabase runtime और browser/mobile display tests अभी बाकी हैं।
