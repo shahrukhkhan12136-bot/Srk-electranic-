@@ -122,6 +122,9 @@ test('customer avatar lifecycle keeps profile save separate from preview and cle
   assert.match(html, /async function loadCustomerAvatar\(path\)[\s\S]*?return true;[\s\S]*?return false;/);
   assert.match(html, /if\(!window\.crypto\?\.randomUUID\)throw new Error/);
   assert.match(html, /let uploadedAvatarPath=null/);
+  assert.match(html, /let uploadCleanupFailed=false/);
+  assert.match(html, /if\(cleanup\.error\)uploadCleanupFailed=true/);
+  assert.match(html, /uploadCleanupFailed\?' नई अपलोड फोटो की सफाई पूरी नहीं हुई/);
   assert.match(html, /if\(cleanup\.error\)cleanupWarning=/);
   assert.match(html, /प्रोफ़ाइल सफलतापूर्वक सेव हो गई।'.*previewLoaded/s);
   assert.match(html, /प्रोफ़ाइल सफलतापूर्वक सेव हो गई।'.*cleanupWarning/s);
