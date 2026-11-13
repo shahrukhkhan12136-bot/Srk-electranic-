@@ -966,3 +966,10 @@
 
 
 - Corrected source regression assertions after two test-only failures (regex escaping/match assumptions). Final GitHub Actions Source Regression Run #43474230056 completed successfully on commit `274c7c465045235c6113ecc3fd6fa72189082af0`. This verifies source-level regression suite only; it does not prove live Supabase RPC, Storage, browser or device behavior.
+
+
+## Customer Support attachment thread consistency — 2026-11-13
+
+- Message/attachment send के दौरान complaint selector पहले enabled रहता था। ग्राहक upload के बीच दूसरी शिकायत चुन सकता था; बाद का thread refresh गलत चयनित शिकायत पर जा सकता था।
+- अब send प्रक्रिया के दौरान complaint selector disable होता है और `finally` में उसकी पिछली disabled स्थिति restore होती है। इससे upload/message operation के बीच thread बदलने से रोका गया है।
+- Source regression assertion जोड़ा गया। नया workflow result अभी pending है। यह source-level safeguard है; browser और वास्तविक Storage upload QA अभी नहीं हुआ। Production/SQL में कोई बदलाव नहीं।
