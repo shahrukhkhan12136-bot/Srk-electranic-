@@ -91,20 +91,21 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
    <div id="customerBookings" aria-live="polite"></div>
   </section>
-  <section class="customer-menu-page" id="customerMenuPayments" role="tabpanel" aria-labelledby="customerTabPayments" hidden></section>
+  <section class="customer-menu-page" id="customerMenuPayments" role="tabpanel" aria-labelledby="customerTabPayments" hidden>
+   <section class="card" id="customerPaymentHistoryPanel" style="margin-top:14px">
+    <h3 style="margin-top:0">💳 भुगतान इतिहास और रसीद</h3>
+    <p class="small">आपकी बुकिंग से जुड़े सत्यापित भुगतान और रिफंड यहाँ दिखेंगे। भुगतान की रसीद केवल सफल और सत्यापित भुगतान के लिए उपलब्ध है।</p>
+    <button class="btn" type="button" id="customerPaymentHistoryRefresh">भुगतान इतिहास रीफ़्रेश करें</button>
+    <div id="customerPaymentHistory" aria-live="polite" aria-busy="false"></div>
+    <button class="btn" type="button" id="customerPaymentHistoryMore" style="display:none">और रिकॉर्ड देखें</button>
+   </section>
+  </section>
   <section class="customer-menu-page" id="customerMenuSupport" role="tabpanel" aria-labelledby="customerTabSupport" hidden></section>
   <section class="customer-menu-page" id="customerMenuProfile" role="tabpanel" aria-labelledby="customerTabProfile" hidden>
    <p class="small">आपकी निजी प्रोफ़ाइल और सेव किए गए पते सुरक्षित रूप से प्रबंधित किए जाते हैं।</p>
    <button class="btn" type="button" id="customerProfileAddressLink">सेव किए गए पते प्रबंधित करें</button>
   </section>
 
-  <section class="card" id="customerPaymentHistoryPanel" style="margin-top:14px">
-   <h3 style="margin-top:0">💳 भुगतान इतिहास</h3>
-   <p class="small">आपकी बुकिंग से जुड़े दर्ज भुगतान और रिफंड यहाँ दिखेंगे। केवल सत्यापित/दर्ज रिकॉर्ड दिखाए जाते हैं।</p>
-   <button class="btn" type="button" id="customerPaymentHistoryRefresh">भुगतान इतिहास रीफ़्रेश करें</button>
-   <div id="customerPaymentHistory" aria-live="polite" aria-busy="false"></div>
-   <button class="btn" type="button" id="customerPaymentHistoryMore" style="display:none">और रिकॉर्ड देखें</button>
-  </section>
   <section class="card" id="customerSupportPanel" style="margin-top:14px">
    <h3 style="margin-top:0">🛟 सहायता और शिकायत</h3>
    <p class="small">अपनी बुकिंग से जुड़ी शिकायत दर्ज करें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।</p>
@@ -313,6 +314,30 @@ function customerPaymentLabel(row) {
  const statusLabel=({paid:'सफल',captured:'सफल',recorded:'दर्ज',processed:'प्रोसेस्ड',pending:'लंबित',requested:'अनुरोध किया गया',failed:'असफल',rejected:'अस्वीकृत'})[status]||row.status||'स्थिति उपलब्ध नहीं';
  return {type:types[row.event_type]||'भुगतान रिकॉर्ड',method:methods[row.payment_method]||'',status:statusLabel};
 }
+async function customerPrintPaymentReceipt(bookingId){
+ const printWindow=window.open('','_blank','noopener,noreferrer');
+ if(!printWindow){alert('रसीद खोलने के लिए कृपया इस साइट के pop-ups की अनुमति दें।');return;}
+ printWindow.document.write('<!doctype html><html lang="hi"><head><meta charset="utf-8"><title>SRK ELECTRONIC भुगतान रसीद</title></head><body style="font-family:Arial,sans-serif;padding:24px">रसीद लोड हो रही है…</body></html>');
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_get_payment_receipt',{p_booking_id:bookingId});
+  if(error)throw error;
+  if(!data||data.document_type!=='payment_receipt')throw new Error('Receipt unavailable');
+  const method=({cash:'नकद',upi:'UPI',card:'कार्ड',online:'ऑनलाइन',razorpay:'Razorpay',bank_transfer:'बैंक ट्रांसफर','bank transfer':'बैंक ट्रांसफर',other:'अन्य'})[String(data.payment_method||'').toLowerCase()]||'अन्य';
+  const paymentDate=data.payment_date?new Date(data.payment_date).toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'उपलब्ध नहीं';
+  const bookingDate=data.booking_date?new Date(data.booking_date).toLocaleDateString('hi-IN'):'उपलब्ध नहीं';
+  const breakdown=data.breakdown_available
+   ? '<tr><td>इलेक्ट्रिशियन मेहनताना</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.labour_amount))+'</td></tr><tr><td>सामग्री (अलग मद)</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.materials_amount))+'</td></tr>'
+   : '<tr><td colspan="2">पुराने भुगतान का मदवार विवरण उपलब्ध नहीं है; नीचे केवल सत्यापित भुगतान राशि दी गई है।</td></tr>';
+  const address=[data.address,data.district,data.state,data.pincode].filter(Boolean).join(', ');
+  printWindow.document.open();
+  printWindow.document.write('<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+customerEsc(data.receipt_reference)+'</title><style>body{font-family:Arial,"Noto Sans Devanagari",sans-serif;color:#152536;max-width:760px;margin:24px auto;padding:24px}h1{margin-bottom:4px;color:#0b3557}.muted{color:#526477;font-size:13px}.box{border:1px solid #d8e0e8;border-radius:10px;padding:16px;margin:16px 0}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:11px 7px;border-bottom:1px solid #e3e8ee}.total{font-weight:bold;font-size:19px}button{padding:10px 18px;margin:12px 8px 0 0}@media print{button{display:none}body{margin:0;padding:8px}}</style></head><body><h1>SRK ELECTRONIC</h1><div class="muted">भुगतान रसीद · यह टैक्स इनवॉइस नहीं है</div><div class="box"><b>रसीद संदर्भ:</b> '+customerEsc(data.receipt_reference)+'<br><b>बुकिंग संदर्भ:</b> '+customerEsc(data.booking_id)+'<br><b>बुकिंग दिनांक:</b> '+customerEsc(bookingDate)+'<br><b>भुगतान दिनांक:</b> '+customerEsc(paymentDate)+'</div><div class="box"><b>ग्राहक:</b> '+customerEsc(data.customer_name)+'<br><b>सेवा:</b> '+customerEsc(data.service_type)+'<br><b>पता:</b> '+customerEsc(address||'उपलब्ध नहीं')+'</div><table><tbody>'+breakdown+'<tr class="total"><td>कुल सत्यापित भुगतान</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.amount_paid))+'</td></tr></tbody></table><div class="box"><b>भुगतान तरीका:</b> '+customerEsc(method)+'<br><b>स्थिति:</b> सत्यापित / प्राप्त</div><p class="muted">यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है। वास्तविक सामग्री की खरीद/बिल ग्राहक और सामग्री विक्रेता के बीच अलग है। पुराने रिकॉर्ड में मदवार राशि उपलब्ध न होने पर कोई अनुमान नहीं जोड़ा गया है।</p><button onclick="window.print()">प्रिंट / PDF सेव करें</button></body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+ }catch(error){
+  printWindow.close();
+  alert('भुगतान रसीद उपलब्ध नहीं हो सकी। कृपया सत्यापित भुगतान की स्थिति जाँचें या सहायता टीम से संपर्क करें।');
+ }
+}
 async function loadCustomerPaymentHistory(reset=true) {
  if(!customerSb||customerPaymentHistoryBusy)return;
  const box=document.getElementById('customerPaymentHistory');
@@ -329,7 +354,10 @@ async function loadCustomerPaymentHistory(reset=true) {
   const html=rows.map(row=>{
    const label=customerPaymentLabel(row);
    const date=row.occurred_at?new Date(row.occurred_at).toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'}):'तारीख उपलब्ध नहीं';
-   return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>'+customerEsc(label.type)+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small" style="margin:6px 0">'+customerEsc(row.description||'')+'</p><p class="small" style="margin:4px 0">स्थिति: '+customerEsc(label.status)+(label.method?' · तरीका: '+customerEsc(label.method):'')+'</p><p class="small" style="margin:4px 0">दिनांक: '+customerEsc(date)+'</p><p class="small" style="margin:4px 0">बुकिंग संदर्भ: '+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase()||'उपलब्ध नहीं')+'</p></article>';
+   const receiptButton=['payment','manual_payment'].includes(row.event_type)&&row.booking_id
+    ? '<button type="button" class="btn" onclick="customerPrintPaymentReceipt(\''+customerEsc(row.booking_id)+'\')">रसीद प्रिंट / PDF सेव करें</button>'
+    : '';
+   return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><strong>'+customerEsc(label.type)+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small" style="margin:6px 0">'+customerEsc(row.description||'')+'</p><p class="small" style="margin:4px 0">स्थिति: '+customerEsc(label.status)+(label.method?' · तरीका: '+customerEsc(label.method):'')+'</p><p class="small" style="margin:4px 0">दिनांक: '+customerEsc(date)+'</p><p class="small" style="margin:4px 0">बुकिंग संदर्भ: '+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase()||'उपलब्ध नहीं')+'</p>'+receiptButton+'</article>';
   }).join('');
   if(reset)box.innerHTML=html||'<p class="small">अभी कोई भुगतान या रिफंड रिकॉर्ड उपलब्ध नहीं है। भुगतान दर्ज होने पर यहाँ दिखाई देगा।</p>';
   else box.insertAdjacentHTML('beforeend',html);
