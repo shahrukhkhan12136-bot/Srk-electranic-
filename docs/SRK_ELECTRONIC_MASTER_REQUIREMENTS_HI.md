@@ -3756,3 +3756,27 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **Status: In Progress / Blocked on approved current booking/pricing flow and consent/idempotency contract.** Existing UI button-disable is a partial interaction safeguard only; it does not prove robust server idempotency. No source, schema, migration, RPC, RLS, customer data, Auth, secrets, SMS, payment/provider or deployment changed in this audit.
 - **Evidence limits:** Static source inspection only; no automated unit/integration test, browser double-click/retry simulation, live booking, consent capture or payment was performed. The booking API's rate-limit guard is not counted as idempotency verification.
 - **अंतिम वास्तविक परीक्षण: बाकी** — मूल 96 actionable items के consolidated real-world test batch तक 96/96 pending। Production deployment अभी अधिकृत नहीं है。
+
+
+## 17.116 — 14.1.7 Booking Timeline Source Audit (2026-11-13)
+
+### Scope and evidence
+- Feature Branch `feature/platform-fee-cash-online-cycle` पर `booking.html` (blob SHA `411c226d5835299c6a15142dcfa1c6639739e050`) और `index.html` (blob SHA `b2c2573b7338bab74ee191db054e697617f29e11`) जाँचे। Customer booking list में status को raw `row.status` text के रूप में दिखाया जाता है; कोई ordered visual timeline/stepper, per-stage timestamp या booking event history render नहीं होती।
+- `supabase/migrations/20261109_electrician_inspection_quotes_and_service_only_commission.sql` (SHA `014699d3190e45aacde4022ac7e7fa9ca4fec006`) में status constraint के states `new, confirmed, assigned, inspection, awaiting_quote_approval, quote_approved, quote_rejected, in_progress, completed, cancelled` हैं। उसी migration में electrician-side transitions inspection → quote approval → in_progress → completed हैं।
+- Customer contact lookup migration `20261109103038_customer_electrician_direct_call_contacts.sql` (SHA `512eabab313721c7bc28d2034f950a0e748c4221`) direct-call contact केवल assigned/inspection/awaiting_quote_approval/quote_approved/in_progress states में लौटाती है; यह timeline/history API नहीं है।
+- Payment status, quote status और booking status अलग-अलग fields हैं; इन्हें एक ही linear status में मिलाने से गलत timeline बन सकती है। Current source में यात्रा/en-route, arrived, customer start approval, completion review/dispute, payment-due और closed के लिए प्रमाणित unified event stream/timestamps नहीं मिले।
+- Repository code search में `srk_booking_events` या `status_history` नाम का event/history source नहीं मिला; यह code-search finding है, पूरे repository के हर सम्भव नाम के न होने का पूर्ण प्रमाण नहीं।
+
+### Gaps / required design
+1. Customer-facing timeline को केवल server-authoritative state/event data से बनाना; client-side अनुमानित timestamps नहीं।
+2. मौजूदा status values को approved lifecycle में map करने से पहले legacy/quote-era states और current timer-based lifecycle का versioned transition map बनाना।
+3. हर transition के लिए immutable event ID, booking ID, event type, actor role/ID, server timestamp, idempotency key और safe display metadata; privileged/private fields अलग रखना।
+4. Pending/offers/accepted/en route/arrived/start approval/in progress/completion review/payment/closed stages तभी दिखें जब संबंधित backend event/state वास्तव में मौजूद हो। Rejected/expired/cancelled/disputed paths के स्पष्ट terminal/branch states हों।
+5. यात्रा/ETA/location events को timeline से अलग privacy-guarded stream मानना; tracking stop conditions और customer/electrician visibility rules लागू हों।
+6. Customer ownership, electrician assignment, Admin access, RLS/RPC authorization, event immutability, duplicate/concurrent transition handling तथा event ordering के automated tests अनिवार्य।
+7. Existing historical bookings के लिए synthetic timestamps/events न गढ़ें; पुरानी स्थिति को “इतिहास उपलब्ध नहीं” के रूप में स्पष्ट दिखाएँ।
+
+### Status and restrictions
+- **14.1.7: In Progress / Dependency-Blocked — Source Audit दर्ज; implementation अभी नहीं।** Unified authoritative event contract, legacy-to-current state mapping और secure read API के बिना UI timeline बनाना भ्रामक होगा।
+- Source/implementation verification इस item के लिए अभी **Verified नहीं**। इस audit से कोई production schema, RLS, RPC, customer data, Auth, provider, payment, secret या deployment नहीं बदला।
+- Final Real-World Test: इस item के लिए **बाकी**; user के dual-track निर्देश के अनुसार कुल 96/96 वास्तविक परीक्षण अंतिम consolidated batch तक Pending रहेंगे।
