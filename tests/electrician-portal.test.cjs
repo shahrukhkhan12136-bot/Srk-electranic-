@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 
 const html = fs.readFileSync('electrician.html', 'utf8');
 
@@ -58,4 +59,11 @@ test('electrician support panel does not call customer-only support APIs or clai
   assert.ok(html.includes('इलेक्ट्रिशियन सहायता टिकट और संदेश सुविधा अभी उपलब्ध नहीं है।'));
   assert.ok(html.includes('इलेक्ट्रिशियन-विशिष्ट ticket, message, attachment और RLS अधिकार'));
   assert.ok(!html.includes('srk_customer_send_booking_complaint_message'));
+});
+
+test('electrician inline JavaScript parses after navigation and work-panel changes', () => {
+  const start = html.lastIndexOf('<script>');
+  const end = html.lastIndexOf('</script>');
+  assert.ok(start >= 0 && end > start);
+  assert.doesNotThrow(() => new vm.Script(html.slice(start + 8, end)));
 });
