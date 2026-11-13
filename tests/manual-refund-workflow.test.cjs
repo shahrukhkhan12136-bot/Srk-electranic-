@@ -45,7 +45,7 @@ test("finalization restores only its own payout block marker and records manual 
 });
 
 test("Admin UI exposes preparation, transfer evidence, and ledger finalization separately", () => {
-  assert.match(admin, /srk_admin_list_booking_refund_requests_v2/);
+  assert.match(admin, /srk_admin_list_booking_refund_requests_v3/);
   assert.match(admin, /srk_admin_prepare_manual_booking_refund/);
   assert.match(admin, /srk_admin_record_manual_refund_transfer/);
   assert.match(admin, /srk_admin_finalize_manual_booking_refund/);
