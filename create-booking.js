@@ -134,7 +134,7 @@ exports.handler = async (event) => {
     const phone = clean(body.phone, 20);
     const state = clean(body.state, 100);
     const district = clean(body.district, 100);
-    const pincode = clean(body.pincode, 6);
+    // Preserve malformed suffixes so validation rejects them instead of truncating into a valid PIN.\n    const pincode = clean(body.pincode, 32);
     const address = clean(body.address, 1000);
     const location_lat = body.location_lat == null || body.location_lat === '' ? null : Number(body.location_lat);
     const location_lng = body.location_lng == null || body.location_lng === '' ? null : Number(body.location_lng);
@@ -148,8 +148,8 @@ exports.handler = async (event) => {
     const selected_category = clean(body.selected_category, 40);
     const selected_duration_hours = body.selected_duration_hours;
     const service_type = categoryLabels[selected_category] || "";
-    const preferred_date = clean(body.preferred_date, 10);
-    const preferred_time = clean(body.preferred_time, 8);
+    // Date/time inputs are structured values: never truncate malformed suffixes into valid values.\n    const preferred_date = clean(body.preferred_date, 32);
+    const preferred_time = clean(body.preferred_time, 32);
     const work_details = clean(body.work_details, 2000);
     const submittedPaymentMethod = clean(body.payment_method, 80) || "Cash";
     // Keep booking choices aligned with the customer form. Accept the older
