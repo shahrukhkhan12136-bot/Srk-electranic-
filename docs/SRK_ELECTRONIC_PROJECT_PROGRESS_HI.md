@@ -1671,3 +1671,10 @@
 - Commits: migration fix `c7538bb44cd4924d3116340a6ca17573c4762ccf`; pgTAP additions `26a0300e35e4df0f3b9f55a437e7e9b7fff28633`; synthetic fixture `094263c12121ecb9c8c52aefd4fabb1fe3f0ff14`; behavior tests `88884f9f43a867adeea872ab7097224a118e89b4`; isolated workflow `7fc1da536ac22387d6e9a120b6b1819d8f632f2c`.
 - Verification at tracker update: full source-regression workflow for `7fc1da5` SUCCESS; payment-order isolated pgTAP workflow Run #43515719761 **IN PROGRESS**. इसलिए pgTAP assertions को अभी PASS नहीं माना गया है। Vercel build-rate-limit status अलग deployment check है; कोई deployment नहीं हुआ।
 - अगला कदम: isolated pgTAP run का final result पढ़ना, failure हो तो test harness सुधारना; फिर server-authoritative timer/completion chain के local-only fixture/tests पर आगे बढ़ना। Production untouched; final mobile/Desktop QA अभी स्थगित है।
+
+### Payment-order isolated pgTAP परिणाम — SUCCESS
+
+- GitHub Actions Run #43515719761 SUCCESS: local synthetic schema पर migration `20261114090000_atomic_razorpay_order_and_payment_finalization.sql` सफलतापूर्वक apply हुई। Structural suite 28/28 और behavior suite 15/15 — कुल **43/43 pgTAP assertions PASS**।
+- Runtime behavior evidence: duplicate active lock returns no token; one-paise order/capture mismatch rejected; correct amount order link/capture succeeds; same payment retry idempotent; different payment ID rejected; NULL legacy `quoted_amount` rejected; authenticated JWT denied from service-only RPC.
+- Source Regression Run #43515719502 SUCCESS. Local Supabase stack cleanly stopped. Workflow warning only: upstream `supabase/setup-cli@v1` Node 20 deprecation annotation; test steps all passed.
+- यह synthetic local fixture का प्रमाण है, Production schema parity, Production migration apply, real Razorpay Test Mode/provider callbacks या real customer session का प्रमाण नहीं।
