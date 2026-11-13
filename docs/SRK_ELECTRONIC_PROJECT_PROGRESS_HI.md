@@ -963,3 +963,6 @@
 
 
 - पहली regression run #43474003202 में test assertion regex syntax error से suite fail हुई; application source test तक execute नहीं हुआ था। Assertion को string-based check से सुधारा और rerun commit 824522d6da4fb0d8596ac2fe9c2c4a0988d2bd68 पर trigger किया है। नया workflow परिणाम आने तक test status pending है।
+
+
+- Corrected source regression assertions after two test-only failures (regex escaping/match assumptions). Final GitHub Actions Source Regression Run #43474230056 completed successfully on commit `274c7c465045235c6113ecc3fd6fa72189082af0`. This verifies source-level regression suite only; it does not prove live Supabase RPC, Storage, browser or device behavior.
