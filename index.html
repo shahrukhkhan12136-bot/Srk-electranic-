@@ -260,7 +260,7 @@ async function syncCustomerSession() {
   const { data } = await customerSb.auth.getSession();
   const session = data.session;
   const bookingPhoneInput = document.getElementById('phone');
-  const verifiedDigits = session?.user?.phone ? session.user.phone.replace(/\\D/g, '') : '';
+  const verifiedDigits = session?.user?.phone ? session.user.phone.replace(/\D/g, '') : '';
   bookingPhoneInput.value = verifiedDigits.length >= 10 ? verifiedDigits.slice(-10) : '';
   bookingPhoneInput.readOnly = true;
   bookingPhoneInput.setAttribute('aria-readonly', 'true');
