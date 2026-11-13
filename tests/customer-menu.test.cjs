@@ -461,9 +461,9 @@ test('customer support thread RPC failures are handled without unhandled rejecti
   const start=html.indexOf('async function loadCustomerSupportMessages()');
   const end=html.indexOf('\\n}',start);
   const source=html.slice(start,end);
-  assert.match(source,/try \\{/);
-  assert.match(source,/catch\\(error\\)/);
-  assert.match(source,/if\\(sequence===customerSupportThreadLoadSequence&&document\\.getElementById\\('customerSupportComplaint'\\)\\.value===id\\)/);
+  assert.match(source,/try \{/);
+  assert.match(source,/catch\(error\)/);
+  assert.match(source,/if\(sequence===customerSupportThreadLoadSequence&&document\.getElementById\('customerSupportComplaint'\)\.value===id\)/);
   assert.match(source,/इस शिकायत के संदेश अभी लोड नहीं हो सके/);
   assert.match(source,/कृपया रीफ़्रेश करके दोबारा कोशिश करें/);
 });
