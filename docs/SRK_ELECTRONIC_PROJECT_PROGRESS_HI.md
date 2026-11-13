@@ -1207,3 +1207,11 @@
 - अगला कदम: source CI verify करना और Customer App में remaining Profile/Support user-flow edge cases का audit जारी रखना।
 
 - CI follow-up: Customer App source regression run `43487261469` failed on an older saved-address test assertion that still expected unconditional `select.disabled=false`; the implementation already restores control state only for the latest sequence. Updated that assertion to match the guarded behavior in test commit `aeec34a53829085ad45440a6475c9aa95f70e2e0`. The failure was in stale test expectation, not an identified runtime defect. Fresh CI result pending; do not mark the new selector test passed until rerun succeeds.
+
+
+### 14 नवम्बर 2026 — Customer Support booking selector pagination
+
+- Help & Support शिकायत फॉर्म में संबंधित बुकिंग selector पहले केवल नवीनतम 50 बुकिंग दिखाता था; पुराने ग्राहक की बुकिंग शिकायत से जोड़ने में छूट सकती थी। इसे 25-record pages में बदला: `customerSupportBookingsMore` “और पुरानी बुकिंग देखें”, deterministic `created_at DESC, id DESC`, owner filter कायम, stable offset, duplicate next-page guard और stale-request sequence guard।
+- Next-page failure पर पहले से दिख रहे booking options सुरक्षित रहते हैं और offset आगे नहीं बढ़ता; retry उसी page को फिर से लोड कर सकता है। Refresh नई sequence से पुराने response को निष्क्रिय करता है और original disabled state को भी सुरक्षित रखता है।
+- App commits: `538422cae74e2087d228f7847b3eb8558a0c7e15`, `222f17c3ccfd8db2dfd46b60ba27bc088813fbc4`. Regression test commit: `80bef1698f6b7601cd49e591e487767875fc6893`. CI pending; not marked passed.
+- यह source-level change है; browser pagination, real Supabase RLS/JWT, DB pgTAP, Storage runtime और final mobile/Desktop QA अभी बाकी। No Production changes/deploy.
