@@ -146,6 +146,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114120000_guarded_labour_only_razorpay_refund_preparation.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114130000_durable_razorpay_refund_provider_reconciliation.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114140000_manual_labour_only_refund_workflow.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114150000_customer_booking_submission_idempotency.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
@@ -238,6 +239,16 @@ jobs:
             END IF;
             IF to_regprocedure('public.srk_admin_finalize_manual_booking_refund(uuid)') IS NULL THEN
               RAISE EXCEPTION 'Missing manual refund finalization RPC';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema='public' AND table_name='service_bookings'
+                AND column_name='customer_request_key' AND data_type='uuid'
+            ) THEN
+              RAISE EXCEPTION 'Missing service_bookings.customer_request_key';
+            END IF;
+            IF to_regclass('public.service_bookings_customer_request_key_uidx') IS NULL THEN
+              RAISE EXCEPTION 'Missing unique customer booking idempotency index';
             END IF;
           END
           $$;
