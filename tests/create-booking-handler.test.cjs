@@ -14,6 +14,8 @@ const validBody = {
   pincode: '271861',
   address: 'Test address, Balrampur',
   service_type: 'Electrical repair',
+  selected_category: 'electrical_repair',
+  selected_duration_hours: 2,
   preferred_date: '2026-12-01',
   preferred_time: '10:30',
   work_details: 'Switch board repair',
@@ -153,6 +155,27 @@ test('valid booking derives customer UUID from verified Auth and does not create
   assert.equal(insertedRows[0].customer_user_id === 'attacker-controlled-id', false);
   assert.equal(calls.filter(x => x.url.includes('/rest/v1/job_offers?')).length, 1);
   assert.equal(calls.some(x => x.url.includes('/rest/v1/job_offers') && x.options.method === 'POST'), false);
+});
+
+
+test('rejects unknown canonical customer category', async () => {
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, selected_category: 'premium_electrical_specialist' }) }));
+  assert.equal(status(result), 400);
+  assert.equal(insertedRows, null);
+});
+
+test('rejects duration outside the 1–8 hour booking range', async () => {
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, selected_duration_hours: 9 }) }));
+  assert.equal(status(result), 400);
+  assert.equal(insertedRows, null);
+});
+
+test('persists canonical category and duration and derives the display label server-side', async () => {
+  const result = await handler(event({ body: JSON.stringify({ ...validBody, service_type: 'forged label' }) }));
+  assert.equal(status(result), 200);
+  assert.equal(insertedRows[0].selected_category, 'electrical_repair');
+  assert.equal(insertedRows[0].selected_duration_hours, 2);
+  assert.equal(insertedRows[0].service_type, 'इलेक्ट्रिकल रिपेयर');
 });
 
 test('maps database insert failure to a safe generic HTTP 500 response', async () => {
