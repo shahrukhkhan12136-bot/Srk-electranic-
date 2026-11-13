@@ -3421,3 +3421,15 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Connected Supabase integration में Auth config GET/Management API read action अब भी उपलब्ध नहीं मिला; कोई Management API access token उपलब्ध/authorized नहीं। Dashboard access के बिना Production values अनुमानित नहीं की जाएँगी।
 - No source code, Auth setting, CAPTCHA provider, secret, database, customer account/session, SMS request, payment या deployment changed.
 - **Status: In Progress.** Documentation cross-check complete; Production Auth values, CAPTCHA state, controlled OTP negative/rate-limit tests और session lifecycle E2E अभी pending हैं।
+
+
+## 17.97 — Feature Branch OTP Browser-Test Infrastructure और Test Command Read-only Audit (13 नवम्बर 2026)
+
+- Checklist item: **14.1.1**।
+- Feature Branch पर `package.json` fetch SHA `e04b0cd92ab40ad9f8cf98aca242cfeb67476b78` inspect किया। इसमें केवल package metadata और `razorpay` dependency है; कोई `scripts` section, test command, Playwright, Vitest या browser automation dependency घोषित नहीं है।
+- उसी Feature Branch पर `playwright.config.js`, `playwright.config.ts`, `vitest.config.js` paths fetch किए; तीनों NOT_FOUND लौटे। `netlify.toml` में Node 20 और Netlify Functions routing मौजूद है; इससे OTP browser test runner या test command स्थापित होने का प्रमाण नहीं मिलता।
+- `customer-login.html` तथा `booking.html` दोबारा fetch किए; वर्तमान blob SHA क्रमशः `a06726bcbd3e04a833b634aeb40b77ff13f47e64` और `5edcade782121c8984f888a04368bcc266391a79` हैं। दोनों में OTP send/verify flows मौजूद; CAPTCHA token integration नहीं मिली।
+- यह targeted path audit है, पूरे repository tree या सभी CI workflows की exhaustive inventory नहीं। इसलिए निष्कर्ष केवल इतना है कि inspected manifest/config paths में runnable browser test harness घोषित नहीं है; अन्य directory या external CI में test setup होने की संभावना को पूर्णतः नकारा नहीं गया।
+- सुरक्षित अगला engineering step: Feature Branch में isolated OTP test harness प्रस्तावित करना, जिसमें mocked Supabase Auth responses से UI validation, cooldown, duplicate-click, invalid-code errors, session UI और logout failure handling जाँचे जाएँ। वास्तविक OTP expiry, server-side limits, CAPTCHA enforcement तथा cross-device session behavior के लिए अलग approved Supabase test project/test phone और E2E credentials चाहिए; इन्हें mock tests से PASS घोषित नहीं किया जाएगा।
+- इस audit में package manifest, dependencies, source code, CI workflow, Auth setting, secret, database, SMS provider, user/session या deployment में कोई बदलाव नहीं किया।
+- **Status: In Progress.** Test infrastructure gap का targeted evidence दर्ज; harness implementation, automated tests, Auth dashboard values और controlled runtime tests pending।
