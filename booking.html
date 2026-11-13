@@ -370,6 +370,58 @@ function customerBookingTimeText(value) {
   if(Number.isNaN(date.getTime()))return '';
   return date.toLocaleString('hi-IN',{dateStyle:'medium',timeStyle:'short'});
 }
+const customerRefundStatusLabels={
+ requested:'अनुरोध प्राप्त',
+ pending:'समीक्षा लंबित',
+ approved:'रिफंड स्वीकृत',
+ processing:'रिफंड प्रोसेस हो रहा है',
+ processed:'रिफंड पूरा हुआ',
+ rejected:'रिफंड अनुरोध अस्वीकृत',
+ failed:'रिफंड में समस्या'
+};
+function customerRefundStatusText(status){
+ const key=String(status||'').toLowerCase();
+ return customerRefundStatusLabels[key]||'स्थिति अपडेट';
+}
+async function customerCancelBooking(bookingId){
+ if(!customerSb)return;
+ if(!confirm('क्या आप इस बुकिंग को रद्द करना चाहते हैं? यह सुविधा केवल बिना भुगतान और बिना इलेक्ट्रिशियन असाइन हुई बुकिंग के लिए है।'))return;
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_cancel_my_booking',{p_booking_id:bookingId});
+  if(error)throw error;
+  if(!data?.success)throw new Error('Cancellation was not confirmed');
+  alert('आपकी बुकिंग रद्द कर दी गई है।');
+  await loadCustomerBookings();
+ }catch(error){
+  alert('बुकिंग रद्द नहीं हो सकी। यदि भुगतान लंबित/सत्यापित है या इलेक्ट्रिशियन असाइन हो चुका है, तो सहायता टीम से संपर्क करें।');
+ }
+}
+async function customerSubmitBookingRefund(bookingId){
+ if(!customerSb)return;
+ const reasonEl=document.getElementById('customerRefundReason_'+bookingId);
+ const button=document.getElementById('customerRefundSubmit_'+bookingId);
+ const reason=String(reasonEl?.value||'').trim();
+ if(reason.length<20||reason.length>1000){
+  alert('रिफंड का कारण 20 से 1000 अक्षरों में लिखें।');
+  reasonEl?.focus();
+  return;
+ }
+ if(button)button.disabled=true;
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_create_booking_refund_request',{p_booking_id:bookingId,p_reason:reason});
+  if(error)throw error;
+  if(!data?.success)throw new Error('Refund request was not confirmed');
+  alert('रिफंड अनुरोध दर्ज हो गया है। राशि: '+formatCustomerMoney(data.amount)+'। इसकी स्थिति Payments मेनू में उपलब्ध होने पर दिखाई जाएगी।');
+  await loadCustomerBookings();
+ }catch(error){
+  const message=String(error?.message||'');
+  alert(message.includes('REFUND_REQUEST_ALREADY_SUBMITTED')||message.includes('REFUND_ALREADY_EXISTS')
+    ?'इस बुकिंग के लिए रिफंड अनुरोध पहले से मौजूद है। कृपया उसकी स्थिति देखें या सहायता टीम से संपर्क करें।'
+    :'रिफंड अनुरोध दर्ज नहीं हो सका। कृपया विवरण जाँचकर दोबारा कोशिश करें।');
+ }finally{
+  if(button)button.disabled=false;
+ }
+}
 async function loadCustomerBookings() {
   const box = document.getElementById('customerBookings');
   if (!customerSb) { box.textContent='ग्राहक लॉगिन सेवा अभी उपलब्ध नहीं है।'; return; }
@@ -385,7 +437,7 @@ async function loadCustomerBookings() {
     : 'आपकी बुकिंग लोड हो रही हैं…';
   try {
     const { data, error } = await customerSb.from('service_bookings')
-      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,address,state,district,pincode,location_lat,location_lng,service_charge,quote_status,quote_note')
+      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,quoted_amount,amount_paid,payment_verified_at,address,state,district,pincode,location_lat,location_lng,service_charge,quote_status,quote_note')
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -394,9 +446,10 @@ async function loadCustomerBookings() {
       box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
       return;
     }
-    const [contactsResult,timelineResult] = await Promise.all([
+    const [contactsResult,timelineResult,refundResult] = await Promise.all([
       customerSb.rpc('srk_get_customer_call_contacts'),
-      customerSb.rpc('srk_get_customer_booking_timeline')
+      customerSb.rpc('srk_get_customer_booking_timeline'),
+      customerSb.rpc('srk_customer_list_my_booking_refund_requests')
     ]);
     const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
     const timelineMap = new Map();
@@ -405,6 +458,10 @@ async function loadCustomerBookings() {
         if(!timelineMap.has(item.booking_id))timelineMap.set(item.booking_id,[]);
         timelineMap.get(item.booking_id).push(item);
       });
+    }
+    const refundMap=new Map();
+    if(!refundResult.error){
+      (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
     }
     box.innerHTML = data.map(row => {
       const contact = callMap.get(row.id);
@@ -417,6 +474,34 @@ async function loadCustomerBookings() {
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
       const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
+      const canCancel=['new','confirmed'].includes(row.status)
+        && !row.assigned_electrician_id
+        && ['unpaid','failed'].includes(String(row.payment_status||'unpaid').toLowerCase())
+        && Number(row.amount_paid||0)===0
+        && !row.payment_verified_at;
+      const cancelMarkup=canCancel
+        ? '<button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\')">बुकिंग रद्द करें</button>'
+        : '';
+      const refund=refundMap.get(row.id);
+      const canRequestRefund=String(row.payment_status||'').toLowerCase()==='paid'
+        && Number(row.amount_paid||0)>0
+        && Boolean(row.payment_verified_at);
+      let refundMarkup='';
+      if(refund){
+        refundMarkup='<div class="job"><b>रिफंड अनुरोध:</b> '+customerEsc(customerRefundStatusText(refund.status))+
+          '<p class="small">अनुरोधित राशि: '+customerEsc(formatCustomerMoney(refund.amount))+' · '+customerEsc(customerBookingTimeText(refund.updated_at||refund.created_at))+'</p>'+
+          (String(refund.status||'').toLowerCase()==='rejected'&&canRequestRefund
+            ? '<label for="customerRefundReason_'+customerEsc(row.id)+'">नया कारण (20–1000 अक्षर)</label><textarea id="customerRefundReason_'+customerEsc(row.id)+'" minlength="20" maxlength="1000"></textarea><button id="customerRefundSubmit_'+customerEsc(row.id)+'" type="button" onclick="customerSubmitBookingRefund(\''+customerEsc(row.id)+'\')">दोबारा रिफंड अनुरोध करें</button>'
+            :'')+'</div>';
+      }else if(canRequestRefund&&!refundResult.error){
+        refundMarkup='<div class="job"><b>भुगतान सत्यापित:</b> '+customerEsc(formatCustomerMoney(row.amount_paid))+
+          '<p class="small">यदि इस भुगतान में समस्या है, तो कारण लिखकर रिफंड अनुरोध भेजें। अनुरोध की समीक्षा Admin करेगा; रिफंड अपने-आप जारी नहीं होगा।</p>'+
+          '<label for="customerRefundReason_'+customerEsc(row.id)+'">रिफंड का कारण (20–1000 अक्षर)</label>'+
+          '<textarea id="customerRefundReason_'+customerEsc(row.id)+'" minlength="20" maxlength="1000" placeholder="रिफंड का कारण विस्तार से लिखें"></textarea>'+
+          '<button id="customerRefundSubmit_'+customerEsc(row.id)+'" type="button" onclick="customerSubmitBookingRefund(\''+customerEsc(row.id)+'\')">रिफंड अनुरोध भेजें</button></div>';
+      }else if(canRequestRefund&&refundResult.error){
+        refundMarkup='<p class="small" role="status">रिफंड अनुरोध की पिछली स्थिति अभी लोड नहीं हो सकी। दोबारा कोशिश करें या सहायता टीम से संपर्क करें।</p>';
+      }
       return '<article class="card customer-booking-card" style="margin:10px 0;padding:13px">' +
       '<div class="customer-booking-heading"><b>बुकिंग #' + customerEsc(row.id) + '</b><span class="customer-booking-state">'+customerEsc(customerBookingStatusText(row.status))+'</span></div>' +
       '<p>' + customerEsc(row.service_type) + '</p>' +
@@ -427,6 +512,7 @@ async function loadCustomerBookings() {
       (row.payment_status === 'paid' && row.amount_paid != null ? '<p><b>वास्तव में प्राप्त भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
       '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
       (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (row.status === 'completed' ? '<p class="small">काम पूरा हो चुका है। इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा।</p>' : (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>')) : '') +
+      cancelMarkup+refundMarkup+
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
@@ -435,6 +521,13 @@ async function loadCustomerBookings() {
       note.className='small';
       note.setAttribute('role','status');
       note.textContent='बुकिंग की जानकारी उपलब्ध है, लेकिन स्थिति इतिहास अभी लोड नहीं हो सका।';
+      box.prepend(note);
+    }
+    if(refundResult.error){
+      const note=document.createElement('p');
+      note.className='small';
+      note.setAttribute('role','status');
+      note.textContent='रिफंड अनुरोध की स्थिति अभी लोड नहीं हो सकी।';
       box.prepend(note);
     }
   } catch(error) {
