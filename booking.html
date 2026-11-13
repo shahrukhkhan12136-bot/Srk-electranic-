@@ -272,6 +272,7 @@ function initCustomerMenuShell(){
    if(active&&focus)tab.focus();
   });
   Object.entries(panels).forEach(([key,panel])=>{if(panel)panel.hidden=key!==name;});
+  if(name==='Payments'){loadCustomerPaymentHistory(true);loadCustomerRefundHistory();}
  }
  tabs.forEach((tab,index)=>{
   tab.addEventListener('click',()=>activate(tab.dataset.customerMenu));
@@ -1037,6 +1038,7 @@ async function syncCustomerSession() {
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     await loadCustomerBookings();
     await loadCustomerPaymentHistory(true);
+    await loadCustomerRefundHistory();
     await loadCustomerSupportBookings();
     await loadCustomerSupportComplaints();
     await loadCustomerSavedAddresses();
@@ -1047,6 +1049,7 @@ async function syncCustomerSession() {
     document.getElementById('customerSignedIn').textContent = '';
     document.getElementById('customerBookings').textContent = '';
     document.getElementById('customerPaymentHistory').textContent = 'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';
+    document.getElementById('customerRefundHistory').textContent = 'रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';
     document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));
     document.getElementById('customerSupportBooking').replaceChildren(new Option('बुकिंग चुनें',''));
     document.getElementById('customerSupportDescription').value='';
