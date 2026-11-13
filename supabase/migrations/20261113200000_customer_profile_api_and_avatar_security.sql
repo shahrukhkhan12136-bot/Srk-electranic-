@@ -18,7 +18,6 @@ create table if not exists public.srk_customer_profiles (
 
 alter table public.srk_customer_profiles enable row level security;
 revoke all on public.srk_customer_profiles from anon, authenticated;
-grant select, insert, update on public.srk_customer_profiles to authenticated;
 
 create policy "customers read own profile"
 on public.srk_customer_profiles for select to authenticated
