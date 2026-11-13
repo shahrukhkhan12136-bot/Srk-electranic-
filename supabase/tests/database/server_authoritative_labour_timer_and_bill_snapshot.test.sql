@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(86);
+SELECT plan(90);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -338,6 +338,28 @@ SELECT ok(pg_get_functiondef('public.srk_reserve_electrician_cash_offer_slot()':
   AND pg_get_functiondef('public.srk_reserve_electrician_cash_offer_slot()'::regprocedure)
   ILIKE '%Refund reversal of platform_fee_due_settlement%',
   'cash offer reservation trigger uses refund-aware Platform Fee outstanding balance');
+
+
+SELECT ok(pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure)
+  ILIKE '%approved_skill_keys%' AND
+  pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure)
+  ILIKE '%approved_rate_tier%' AND
+  pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure)
+  ILIKE '%payment_status%',
+  'automatic booking offer matcher requires verified skills, approved rate tier and unpaid booking');
+SELECT ok(pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure)
+  ILIKE '%category_skill_mapping_missing%' AND
+  pg_get_functiondef('private.srk_offer_booking_to_eligible_electricians(uuid)'::regprocedure)
+  ILIKE '%no_verified_skill_match%',
+  'automatic matching fails closed when category mapping or eligible verified skills are missing');
+SELECT ok(pg_get_functiondef('public.broadcast_booking_job()'::regprocedure)
+  ILIKE '%srk_offer_booking_to_eligible_electricians%',
+  'booking insert trigger delegates to the shared verified matching engine');
+SELECT ok(pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure)
+  ILIKE '%srk_offer_booking_to_eligible_electricians%' AND
+  pg_get_functiondef('public.srk_admin_offer_booking(uuid)'::regprocedure)
+  ILIKE '%payment_status%',
+  'Admin manual offer path uses the same verified matcher and unpaid-only guard');
 
 SELECT * FROM finish();
 ROLLBACK;
