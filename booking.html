@@ -841,9 +841,21 @@ async function customerRespondWorkStart(bookingId,response){
  const question=response==='approved'?'क्या आप इलेक्ट्रिशियन को अभी काम शुरू करने की अनुमति देते हैं?':'क्या आप अभी काम शुरू करने की अनुमति रोकना चाहते हैं?';
  if(!confirm(question))return;
  customerWorkStartResponseBusy.add(bookingId);
- try{const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});if(error)throw error;if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');await loadCustomerBookings();}
- catch(e){alert('आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग रीफ़्रेश करें।');}
- finally{customerWorkStartResponseBusy.delete(bookingId);}
+ let responseConfirmed=false;
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});
+  if(error)throw error;
+  if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');
+  responseConfirmed=true;
+  alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');
+  try{
+   await loadCustomerBookings();
+  }catch(refreshError){
+   alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। कृपया केवल सूची रीफ़्रेश करें; जवाब दोबारा न भेजें।');
+  }
+ }catch(e){
+  alert(responseConfirmed?'आपका जवाब दर्ज हो गया है। बुकिंग की स्थिति रीफ़्रेश करें।':'आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग रीफ़्रेश करें।');
+ }finally{customerWorkStartResponseBusy.delete(bookingId);}
 }
 function formatCustomerTimer(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');}
 function updateCustomerTimers(){document.querySelectorAll('[id^="customerTimer_"]').forEach(el=>{let seconds=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))seconds+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatCustomerTimer(seconds);});}
