@@ -3301,3 +3301,18 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Logout handler में `signOut()` failure handling का स्पष्ट user-facing catch नहीं दिखा; इसे सुधार/functional test के लिए खुला रखा गया है। इस audit में कोई code change नहीं किया।
 - **Status: In Progress.** Verified-phone binding का source-level control मिला, लेकिन item 14.1.1 के सभी sub-requirements और runtime tests पूरे नहीं हुए।
 - कोई Production database/Auth setting, provider secret, SMS transaction, customer account/session या deployment नहीं बदला।
+
+
+## 17.88 — Production SMS OTP Edge Function और Aggregate Logs Read-Only Audit (13 नवम्बर 2026)
+- Checklist item: **14.1.1** — OTP expiry, resend cooldown/limits, wrong-attempt limits, abuse/rate limiting, secure session और logout।
+- Supabase Production project `gnqhoaqatmoiwwhgzkgm` की Edge Function सूची read-only प्राप्त की। `send-sms-2factor` ACTIVE v8, `verify_jwt=false`; deployed source read-only inspect किया।
+- Function Supabase Auth के signed webhook payload को `SEND_SMS_HOOK_SECRET` से verify करती है; phone/OTP format validate करती है; 2Factor `SRK_ELECTRONIC_OTP` template से SMS delivery request करती है; provider request timeout 4.2 seconds है; provider failures पर sanitized error logging है।
+- Source में इस function के भीतर per-phone/per-IP OTP send quota, wrong-verification attempt counter, lockout/backoff या OTP expiry policy लागू नहीं दिखी। यह केवल इस custom delivery handler का निष्कर्ष है; Supabase Auth की अपनी provider-side limits/expiry अलग हो सकती हैं और dashboard access अभी उपलब्ध नहीं।
+- Last-24-hour unified log aggregate (केवल counts/keyword counters; raw messages, phone, OTP, tokens या user IDs नहीं पढ़े):
+  - `auth_logs`: 27 events; 9 OTP keyword mentions; 0 rate/limit keyword mentions; 3 error/fail/invalid keyword mentions।
+  - `auth_audit_logs`: 18 events; इन चुने हुए keyword counters में 0।
+  - `edge_logs`: 449 events; 5 OTP keyword mentions; 177 rate/limit keyword mentions।
+  - `function_edge_logs`: 6 events; चुने हुए OTP/rate/error keyword counters 0।
+- Keyword counts वास्तविक rate-limit enforcement, OTP delivery/verification success, expiry, wrong-attempt limits या abuse absence का प्रमाण नहीं हैं; edge logs में rate/limit mentions अन्य endpoints से भी हो सकते हैं।
+- No Auth settings, function source, secret, database object, user/session, SMS request, or deployment changed. Function inspection and logs query read-only रहे।
+- **Status: In Progress.** Dashboard configuration, end-to-end OTP expiry/replay/wrong-code/resend tests, per-phone/IP limits and logout/session lifecycle verification अभी बाकी हैं।
