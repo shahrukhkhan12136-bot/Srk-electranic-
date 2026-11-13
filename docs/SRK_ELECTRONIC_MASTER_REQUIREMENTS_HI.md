@@ -2788,3 +2788,29 @@ Audit सीमा: source + live catalog read-only inspection। कोई DDL/
 4. कोई नया worker, cron, queue, migration या webhook URL अभी create/change न करें। पहले exact Production deployment और provider configuration evidence लें, फिर isolated dev में implementation प्रस्तावित करें।
 
 Audit सीमा: repository source/branch/config inspection only। Netlify dashboard/deployment logs, Razorpay Dashboard webhook configuration, Supabase Edge Functions/cron/queues external deployment, secrets और live webhook delivery इस pass में inspect नहीं हुए। कोई code, database, provider configuration या deployment change नहीं हुआ।
+
+
+## 17.72 — Netlify/Razorpay Live Dashboard Access Boundary और CI/CD Routing Audit (13 Nov 2026)
+
+### A. Repository/CI configuration से सत्यापित तथ्य
+- `main` और `feature/platform-fee-cash-online-cycle` दोनों में `netlify.toml` का SHA समान है: `a6a91b088ca71f6e67622a0c37bb755bf4025f77`।
+- Netlify build config publish directory `.`, functions directory `netlify/functions`, Node.js `20`, esbuild bundler है।
+- `/api/razorpay-webhook` और `/api/verify-payment` के redirects संबंधित Netlify Functions पर हैं। यह केवल repository config है, live Netlify deploy state का प्रमाण नहीं।
+- Inspected GitHub workflow `.github/workflows/supabase-schema-ci.yml` SHA `8cdd128fb69227fee82b5084f8b78634f13ffcb2` केवल manual `workflow_dispatch` पर चलता है और Feature Branch के लिए local isolated Supabase schema migration test बनाता है। इसमें Netlify deploy या Razorpay webhook registration step नहीं है।
+- Workflow Production schema-only export के लिए dedicated low-privilege GitHub secret मांगता है, row data export रोकता है, फिर migrations local Supabase stack में चलाता है। यह CI workflow खुद Production migration apply नहीं करता।
+
+### B. Live dashboard verification की सीमा
+- इस session में Netlify account/site/deployment/logs/environment variables और Razorpay Dashboard webhook endpoint/events/secrets पढ़ने वाला connected action उपलब्ध नहीं मिला।
+- इसलिए वर्तमान live Netlify Production commit, deploy status, function logs, configured webhook URL, active/inactive webhook secret, delivery attempts और recent provider events सत्यापित नहीं किए जा सके।
+- कोई अनुमान नहीं लगाया गया; repository config को live deployment status नहीं माना गया।
+- Vercel integration उपलब्ध होना Netlify account access का विकल्प नहीं है; Vercel deployment को Netlify Production का प्रमाण नहीं माना जाएगा।
+
+### C. सुरक्षित अगला कदम
+1. Netlify site की latest Production deployment metadata और deployed commit SHA पढ़ें; कोई deploy/rollback trigger न करें।
+2. उसी deployed commit के root webhook handler और Netlify adapter hashes compare करें।
+3. Function invocation/error logs से raw-body/header handling और HTTP response behavior जाँचें; logs में secret/token/PII expose न करें।
+4. Razorpay Dashboard में webhook URL, subscribed event names, delivery status और secret rotation metadata को बिना secret value देखे verify करें।
+5. Netlify environment variables में केवल variable names/presence/last-updated metadata जाँचें; secret values कभी print/export न करें।
+6. जब तक live config lineage प्रमाणित न हो, webhook URL/secret, Production deploy, database writer/consumer या payment handler न बदलें।
+
+Audit सीमा: GitHub source/config inspection only। Netlify और Razorpay live dashboards/logs से कोई authenticated access नहीं हुआ। कोई deployment, webhook registration, secret change, payment, refund, transfer या Production database modification नहीं किया गया।
