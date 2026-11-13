@@ -101,6 +101,17 @@ SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
 AS $function$
 DECLARE v_authorized boolean;
 BEGIN
+  IF TG_OP='INSERT' AND (
+       NEW.work_timer_seconds<>0 OR NEW.work_timer_elapsed_seconds<>0
+    OR NEW.work_timer_running IS TRUE OR NEW.work_started_at IS NOT NULL
+    OR NEW.work_start_origin_status IS NOT NULL
+    OR NEW.labour_rate_tier_snapshot IS NOT NULL
+    OR NEW.labour_rate8h_paise_snapshot IS NOT NULL
+    OR NEW.labour_rate_card_version_snapshot IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'New bookings cannot be inserted with pre-populated timer or rate snapshots'
+      USING ERRCODE='42501';
+  END IF;
   IF TG_OP='UPDATE' AND (
        NEW.work_started_at IS DISTINCT FROM OLD.work_started_at
     OR NEW.work_timer_running IS DISTINCT FROM OLD.work_timer_running
@@ -137,7 +148,7 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_guard_server_work_timer() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS srk_guard_server_work_timer ON public.service_bookings;
 CREATE TRIGGER srk_guard_server_work_timer
-  BEFORE UPDATE OF work_started_at,work_timer_running,work_timer_seconds,
+  BEFORE INSERT OR UPDATE OF work_started_at,work_timer_running,work_timer_seconds,
     work_timer_elapsed_seconds,work_start_origin_status,
     labour_rate_tier_snapshot,labour_rate8h_paise_snapshot,
     labour_rate_card_version_snapshot
