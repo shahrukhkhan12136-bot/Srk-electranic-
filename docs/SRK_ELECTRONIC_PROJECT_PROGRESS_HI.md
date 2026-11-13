@@ -1006,3 +1006,6 @@
 
 
 - Saved-address save race guard: while a saved address create/update RPC and subsequent refresh are running, the saved-address selector and edit action are disabled. Their prior disabled states are restored in `finally`, preventing selection/edit changes from racing with the save completion handler. Source regression test added. Commits `d2a7f9cb07a61f780904acc41d2a6f1237aab4f3`, `7faf5f4515adde58e1209f273f40d0ef34049ff9`. Workflow pending. No browser interaction or live RPC test.
+
+
+- Saved-address save-lock regression workflow `43475524612` failed only because an older Auth-recovery assertion expected the pre-lock `finally` text. The application implementation was not implicated: the actual `finally` correctly restores the prior disabled states of the selector and Edit button. Updated the stale assertion to match that behavior in test commit `499122a02039c8632305917079cbfef99f64cf66`. A fresh CI result has not yet been confirmed; do not mark the save-lock suite passed until the new run succeeds. No production, database, or live customer-data changes.
