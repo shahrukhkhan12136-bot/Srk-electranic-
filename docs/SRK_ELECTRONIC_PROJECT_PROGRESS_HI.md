@@ -681,3 +681,24 @@
 - Added regression coverage for both functions and the customer ownership filter. Inline JavaScript syntax check passed (1 script block). Customer source regression workflow run `43461629230` passed on commit `a5136fde613dca93204e08a51e297f71225f7b2e`; Refund source regression run `43461595108` passed on commit `ec0ee7292ec8b79f4f05ac5d89e737ee0de38baa`.
 - This was a source audit correction: no live database migration or RPC was executed, no browser/mobile/Desktop interaction test, no production change, no deploy, and no customer data modification. The actual RPC must be available after the approved database migration set is applied; this branch-only source work does not activate it in Production.
 - Resume point: continue Customer App Support/Payments/Profile audit and cross-check remaining runtime references against actual function definitions. Keep Electrician Portal and general Admin Panel deferred until Customer App completion.
+
+
+## 2026-11-13 — Customer Booking API: सुरक्षित retry और rate-limit सुधार
+
+- Source audit में मिला कि booking API पहले IP rate-limit consume करती थी, उसके बाद JSON parsing, customer Auth verification और idempotency lookup होता था। इससे network timeout / response खो जाने पर उसी booking को सुरक्षित रूप से retry करने पर भी नया submission slot खर्च होता था; पाँचवीं से अधिक retry वैध booking ग्राहक को 429 दे सकती थी।
+- create-booking.js में क्रम बदला:
+  1. HTTP method/body-size और JSON shape जाँच।
+  2. Supabase Auth session + verified phone जाँच।
+  3. UUID v4 idempotency key, booking fields और canonical payload fingerprint जाँच।
+  4. Authenticated customer + उसी key से पहले की booking lookup।
+  5. यदि exact fingerprint match है तो existing booking replay; नया insert नहीं, IP rate-limit slot भी consume नहीं।
+  6. यदि key मौजूद है लेकिन fingerprint बदला है तो 409 conflict।
+  7. केवल नई booking insert से पहले IP rate limit लागू; rate-limit failure पर fail closed।
+  8. Concurrent first submissions में unique-key conflict के बाद दोबारा owner/key/fingerprint पढ़कर exact match को replay; अन्यथा 409।
+- इससे safe retries की reliability सुधरी, जबकि genuinely new booking पर existing 5-request IP limit बनी रहती है। ग्राहक Auth verification को rate-limit bypass करने के लिए छोड़ा नहीं गया।
+- Regression tests tests/create-booking-handler.test.cjs में malformed JSON, missing IP, unauthenticated request, new-booking rate limit, exact retry, changed-payload conflict और rate-limit bypass cases जोड़े/अपडेट किए।
+- GitHub Actions source regression workflow Run #43462252356 — success; tested head commit 63851c41d4146f1fe5f2d6ac0fe68b790fd18b29। इसमें workflow के सभी configured source suites पास हुए।
+- पहले दो runs में पुरानी test expectations / missing test idempotency header के कारण failures आए; assertions ठीक करके अंतिम run दोबारा चलाया गया और success मिला। किसी test failure को pass नहीं माना गया।
+- यह source/isolated mock verification है; live Supabase rate-limit RPC, database concurrency, वास्तविक Netlify IP headers और browser/device E2E अभी verify नहीं हुए। कोई SQL migration, Production change, deployment या payment/refund execution नहीं हुआ।
+- Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
+- अगला Customer App काम: customer profile, booking history, Help & Support तथा उनके role-scoped RPC/RLS/error/retry व्यवहार का source audit; उसके बाद बाकी Customer App requirements। Electrician Portal शुरू नहीं हुआ।
