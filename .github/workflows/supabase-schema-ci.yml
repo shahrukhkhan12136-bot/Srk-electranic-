@@ -133,7 +133,6 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261113235900_harden_customer_cancellation_and_safe_refund_history.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261113235930_customer_payment_receipt_rpc.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114000000_electrician_requested_and_approved_rate_tiers.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261114000000_electrician_requested_and_approved_rate_tiers.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114010000_customer_booking_category_and_duration.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114030000_verified_electrician_skills_and_category_matching.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql"
