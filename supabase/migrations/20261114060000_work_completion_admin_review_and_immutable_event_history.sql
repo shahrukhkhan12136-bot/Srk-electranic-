@@ -73,6 +73,18 @@ CREATE TRIGGER srk_guard_immutable_booking_work_event
   BEFORE UPDATE OR DELETE ON public.srk_booking_work_events
   FOR EACH ROW EXECUTE FUNCTION public.srk_guard_immutable_booking_work_event();
 
+-- Private, transaction-scoped details let privileged RPCs enrich the single
+-- trigger-generated event without allowing clients to write audit history.
+CREATE TABLE IF NOT EXISTS srk_private.work_event_details_authorizations (
+  transaction_id bigint NOT NULL,
+  booking_id uuid NOT NULL REFERENCES public.service_bookings(id) ON DELETE CASCADE,
+  actor_id uuid NOT NULL,
+  event_type text NOT NULL,
+  details jsonb NOT NULL,
+  PRIMARY KEY (transaction_id, booking_id)
+);
+REVOKE ALL ON TABLE srk_private.work_event_details_authorizations FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.srk_capture_booking_work_event()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER
@@ -81,6 +93,7 @@ AS $function$
 DECLARE
   v_event_type text;
   v_actor uuid := auth.uid();
+  v_details jsonb := '{}'::jsonb;
 BEGIN
   IF TG_OP='INSERT' THEN
     v_event_type := 'booking_created';
@@ -122,13 +135,22 @@ BEGIN
       AND NEW.completion_approval_status='disputed' THEN 'work_completion_disputed'
     WHEN OLD.completion_approval_status IS DISTINCT FROM NEW.completion_approval_status
       AND NEW.completion_approval_status='approved'
-      AND public.is_srk_admin() THEN 'booking_work_state_changed'
+      AND public.is_srk_admin() THEN 'work_completion_admin_approved'
     WHEN OLD.completion_approval_status IS DISTINCT FROM NEW.completion_approval_status
       AND NEW.completion_approval_status='approved' THEN 'work_completion_customer_approved'
     WHEN OLD.work_timer_running IS DISTINCT FROM NEW.work_timer_running
       AND NEW.work_timer_running IS TRUE THEN 'work_timer_started'
     ELSE 'booking_work_state_changed'
   END;
+
+  IF v_event_type='work_completion_admin_approved' THEN
+    SELECT a.details INTO v_details
+    FROM srk_private.work_event_details_authorizations a
+    WHERE a.transaction_id=pg_catalog.txid_current()
+      AND a.booking_id=NEW.id AND a.actor_id=v_actor
+      AND a.event_type=v_event_type;
+    v_details := COALESCE(v_details,'{}'::jsonb);
+  END IF;
 
   INSERT INTO public.srk_booking_work_events(
     booking_id, actor_id, event_type,
@@ -138,7 +160,7 @@ BEGIN
     old_elapsed_seconds, new_elapsed_seconds,
     old_start_approval_status, new_start_approval_status,
     old_completion_approval_status, new_completion_approval_status,
-    completion_requested_at
+    completion_requested_at, details
   ) VALUES (
     NEW.id, v_actor, v_event_type,
     OLD.status, NEW.status,
@@ -147,7 +169,7 @@ BEGIN
     OLD.work_timer_elapsed_seconds, NEW.work_timer_elapsed_seconds,
     OLD.work_start_approval_status, NEW.work_start_approval_status,
     OLD.completion_approval_status, NEW.completion_approval_status,
-    NEW.completion_requested_at
+    NEW.completion_requested_at, v_details
   );
   RETURN NEW;
 END;
@@ -309,6 +331,15 @@ BEGIN
   INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
   VALUES (pg_catalog.txid_current(),p_booking_id,'completed');
 
+  INSERT INTO srk_private.work_event_details_authorizations(
+    transaction_id,booking_id,actor_id,event_type,details
+  ) VALUES (
+    pg_catalog.txid_current(),p_booking_id,auth.uid(),'work_completion_admin_approved',
+    jsonb_build_object('reason',btrim(p_reason),'billable_minutes',v_minutes,
+      'labour_amount',v_labour,'platform_fee_amount',v_fee,
+      'electrician_payable',v_electrician_payable)
+  );
+
   UPDATE public.service_bookings
   SET status='completed',
       service_charge=v_labour,
@@ -318,21 +349,8 @@ BEGIN
       work_started_at=NULL
   WHERE id=p_booking_id;
 
-  INSERT INTO public.srk_booking_work_events(
-    booking_id,actor_id,event_type,old_status,new_status,
-    old_timer_running,new_timer_running,old_elapsed_seconds,new_elapsed_seconds,
-    old_completion_approval_status,new_completion_approval_status,
-    completion_requested_at,details
-  ) VALUES (
-    p_booking_id,auth.uid(),'work_completion_admin_approved',
-    v_booking.status,'completed',v_booking.work_timer_running,false,
-    v_booking.work_timer_elapsed_seconds,v_booking.work_timer_elapsed_seconds,
-    v_booking.completion_approval_status,'approved',
-    v_booking.completion_requested_at,
-    jsonb_build_object('reason',btrim(p_reason),'billable_minutes',v_minutes,
-      'labour_amount',v_labour,'approved_at',clock_timestamp())
-  );
-
+  DELETE FROM srk_private.work_event_details_authorizations
+  WHERE transaction_id=pg_catalog.txid_current() AND booking_id=p_booking_id;
   DELETE FROM srk_private.work_transition_authorizations
   WHERE transaction_id=pg_catalog.txid_current()
     AND booking_id=p_booking_id AND target_status='completed';
