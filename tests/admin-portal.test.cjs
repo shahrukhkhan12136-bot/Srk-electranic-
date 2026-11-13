@@ -51,3 +51,24 @@ test('legacy booking amount is read-only while workflow status remains server-va
   assert.ok(html.includes("p_status:status"));
   assert.ok(html.includes("p_address:booking.address"));
 });
+
+test('Admin Finance UI reads server summary and private expense history through Admin RPCs', () => {
+  assert.ok(html.includes("sb.rpc('srk_admin_finance_dashboard'"));
+  assert.ok(html.includes("sb.rpc('srk_admin_finance_list_expenses'"));
+  assert.ok(html.includes("sb.rpc('srk_admin_finance_add_expense'"));
+  assert.ok(html.includes('id="financeExpenseRows"'));
+  assert.ok(html.includes('id="expenseAmount"'));
+});
+
+test('Admin Finance UI labels preliminary net result honestly and does not claim receipt upload exists', () => {
+  assert.ok(html.includes('preliminary indicator'));
+  assert.ok(html.includes('इसे audited final P&amp;L न मानें'));
+  assert.ok(html.includes('अभी receipt/document upload नहीं है'));
+  assert.ok(!html.includes('expenseReceiptUpload'));
+});
+
+test('Admin Finance expense form validates amounts and requires confirmation before ledger write', () => {
+  assert.ok(html.includes('amount<=0||amount>100000000'));
+  assert.ok(html.includes("if(!confirm('क्या यह वास्तविक कंपनी खर्च है"));
+  assert.ok(html.includes("p_amount:amount"));
+});
