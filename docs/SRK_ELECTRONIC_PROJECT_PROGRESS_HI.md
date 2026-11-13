@@ -1548,3 +1548,5 @@
 - दूसरा CI audit: source suite ने पुराने Auth-listener assertion को पकड़ा, क्योंकि अब उसी listener में `invalidateCustomerProfileAndSavedAddresses()` भी जोड़ा गया है। Regression assertion को नए सुरक्षित listener contract के अनुसार अपडेट किया: `eee6bfecfccfad19abd346a957630a2b78d4ec64`. पिछले failures assertion drift के थे; अंतिम pass अभी प्रतीक्षित है।
 
 - CI follow-up #2: expanded Customer Menu suite ने दो पुराने sequence-only assertions पकड़े; अब वे combined `isCurrent()` session+sequence guard और उसके finally cleanup को verify करते हैं। Test correction commit: `3f39500f1bff35fd0b5e7d92077dce0c0f90ff41`. पहले CI attempts में केवल test expectations fail हुईं; corrected suite का अंतिम परिणाम प्रतीक्षित है।
+
+- CI follow-up #3: avatar preview callback और saved-address loader के दो अन्य पुराने source assertions भी sequence-only implementation से जुड़े थे। इन्हें अब session-aware `isCurrent()` callback/finally behavior पर अपडेट किया: `398833e34daa5a7e805e82f27ec23347075004fb`. अगला workflow result ही अंतिम pass/fail माना जाएगा।
