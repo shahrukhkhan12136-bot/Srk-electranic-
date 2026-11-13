@@ -1054,3 +1054,11 @@ test('Razorpay checkout remains single-flight and cannot render old-account paym
   assert.match(html,/paymentBusy=false/);
   assert.match(html,/customerActiveRazorpayCheckout=checkout/);
 });
+
+
+test('no-session synchronization invalidates all pending customer action and payment flows', () => {
+  const start=html.indexOf('async function syncCustomerSession()');
+  const end=html.indexOf('\nasync function customerSendOtp',start);
+  const source=html.slice(start,end);
+  assert.match(source,/customerSessionGeneration\+\+;\s*invalidateCustomerBookingSubmission\(\);invalidateCustomerRefundSubmissions\(\);invalidateCustomerWorkStartResponses\(\);invalidateCustomerWorkCompletionResponses\(\);invalidateCustomerPaymentMethodChanges\(\);invalidateCustomerPaymentFlow\(\);/);
+});
