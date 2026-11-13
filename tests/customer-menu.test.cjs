@@ -223,3 +223,8 @@ test('finalized manual refund history is labeled processed, not merely recorded'
 test('customer refund history prioritizes actual processed timestamp', () => {
   assert.match(html, /const date=row\.processed_at\|\|row\.updated_at\|\|row\.created_at/);
 });
+
+
+test('booking card refund summary prioritizes processed timestamp', () => {
+  assert.match(html, /customerBookingTimeText\(refund\.processed_at\|\|refund\.updated_at\|\|refund\.created_at\)/);
+});
