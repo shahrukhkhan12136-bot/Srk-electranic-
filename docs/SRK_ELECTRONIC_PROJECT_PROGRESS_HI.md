@@ -1169,3 +1169,13 @@
 - Regression CI follow-up: run `43485649409` failed 56/57 only because the newly added test expected an incorrectly escaped inline HTML template string; application source was not implicated. Corrected the test to assert the three rendered handler occurrences and each response action separately in commit `c92313d7031ac0ba365cca3c1e4be3907c1c7e0a`. Fresh CI result is pending; do not mark the new test pass yet.
 
 - Second CI attempt `43485736582` failed before executing the customer-menu suite because the corrected assertion still contained an over-escaped regular expression (syntax error). Replaced regex counting with plain string split counting in commit `ccd98e8a2b4b3d4d2a31374f4b067cea25a27f56`. Application source remains unchanged; test suite remains unverified until a fresh green CI run.
+
+
+### 14 नवम्बर 2026 — Completion response refresh failure को सुरक्षित अलग किया
+
+- Source Regression runs `43485803175` (completion test fix commit) और `43485824596` (tracker update) SUCCESS हुए। नए completion controls/RPC source contract test सहित suite green है; यह static source regression है, वास्तविक browser/DB test नहीं।
+- UI/RPC contract cross-check में एक UX reliability defect मिला: customer completion response RPC सफल होने के बाद `loadCustomerBookings()` refresh fail होने पर पुराने catch block “जवाब दर्ज नहीं हुआ” दिखा सकता था, जबकि server ने response पहले ही commit कर दिया होता। इससे ग्राहक duplicate response retry कर सकता था।
+- `booking.html` में server-confirmed response और subsequent history refresh को अलग किया: confirmation के बाद refresh failure पर स्पष्ट बताया जाता है कि जवाब दर्ज है, केवल सूची refresh करें और response दोबारा न भेजें। Busy guard finally में release होता है।
+- App change commit: `404f0dfa863c16166a698feaafb2548d11089e48`; regression assertion commit: `5d4e502bcd36e494c25ecdc0418a746b6dca68f4`। Fresh CI result अभी pending; test pass का दावा नहीं।
+- कोई DB migration apply, Production write, payment/refund, deploy या manual mobile/Desktop QA नहीं किया।
+- अगला resume point: fresh source CI verify करना; फिर इसी response/refresh failure pattern को customer work-start response और other booking actions में जाँचना।
