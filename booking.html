@@ -356,6 +356,7 @@ const value = id => document.getElementById(id).value.trim();
 const customerCfg = window.SRK_CONFIG || {};
 let customerSb = null;
 let customerOtpBusy = false;
+let customerPendingOtpPhone = null;
 let customerOtpUntil = 0;
 let customerOtpTimer = null;
 const customerMessage = message => { document.getElementById('customerAuthMessage').textContent = message; };
@@ -1541,8 +1542,10 @@ async function customerSendOtp() {
   try {
     const { error } = await customerSb.auth.signInWithOtp({ phone });
     if (error) { customerMessage('OTP नहीं भेजा जा सका। कृपया कुछ देर बाद कोशिश करें।'); return; }
-    document.getElementById('customerOtpBox').style.display = 'block';
     customerOtpUntil = Date.now() + 60000;
+    if (customerPhoneE164() !== phone) { customerPendingOtpPhone = null; document.getElementById('customerOtp').value = ''; document.getElementById('customerOtpBox').style.display = 'none'; customerMessage('OTP अनुरोध भेजा गया था, लेकिन मोबाइल नंबर बदल गया। cooldown पूरा होने पर सही नंबर पर नया OTP लें।'); return; }
+    customerPendingOtpPhone = phone;
+    document.getElementById('customerOtpBox').style.display = 'block';
     const tick = () => {
       const left = Math.max(0, Math.ceil((customerOtpUntil - Date.now()) / 1000));
       button.textContent = left ? 'दोबारा OTP ' + left + ' सेकंड बाद' : 'OTP दोबारा भेजें';
@@ -1560,6 +1563,7 @@ async function customerVerifyOtp() {
   const phone = customerPhoneE164();
   const token = document.getElementById('customerOtp').value.trim();
   if (!phone || !/^\d{4,8}$/.test(token)) { customerMessage('सही मोबाइल नंबर और SMS OTP दर्ज करें।'); return; }
+  if (!customerPendingOtpPhone || phone !== customerPendingOtpPhone) { customerMessage('यह OTP उसी मोबाइल नंबर के लिए मान्य है जिस पर भेजा गया था। पहले उसी नंबर का उपयोग करें या cooldown के बाद नया OTP लें।'); return; }
   customerOtpBusy = true;
   const button = document.getElementById('customerVerifyOtp');
   button.disabled = true; customerMessage('OTP सत्यापित हो रहा है…');
@@ -1590,6 +1594,14 @@ async function customerLogout() {
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange((event) => { if(event==='SIGNED_OUT'||event==='SIGNED_IN'||event==='USER_UPDATED'){customerSessionGeneration++;invalidateCustomerBookingSubmission();} setTimeout(syncCustomerSession, 0); });
+  document.getElementById('customerPhone').addEventListener('input', () => {
+    if (customerPendingOtpPhone && customerPhoneE164() !== customerPendingOtpPhone) {
+      customerPendingOtpPhone = null;
+      document.getElementById('customerOtp').value = '';
+      document.getElementById('customerOtpBox').style.display = 'none';
+      customerMessage('मोबाइल नंबर बदल गया है। पुराने नंबर का OTP अमान्य है; cooldown पूरा होने पर नए नंबर पर OTP भेजें।');
+    }
+  });
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
