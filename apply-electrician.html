@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#102a43">
+<title>इलेक्ट्रिशियन पार्टनर आवेदन | SRK ELECTRONIC</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#18324b;background:#f3f7fa}
+*{box-sizing:border-box}body{margin:0}.hero{background:linear-gradient(120deg,#102a43,#17617a);color:white;padding:28px 18px}
+.wrap{width:min(100% - 28px,760px);margin:auto}.hero h1{margin:0 0 8px;font-size:clamp(24px,5vw,36px)}.hero p{margin:0;color:#e4f2f8}
+.card{background:white;margin:22px auto;padding:22px;border-radius:18px;box-shadow:0 12px 34px #17324b12}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+label{display:block;font-weight:650;margin:0 0 6px}input,select,textarea{width:100%;font:inherit;padding:12px;border:1px solid #cbd6df;border-radius:10px;background:#fff;color:#17324b}
+.field{margin-bottom:15px}textarea{min-height:105px;resize:vertical}.hint{font-size:13px;color:#60758a;line-height:1.5}
+button{width:100%;border:0;border-radius:11px;padding:14px;background:#087e8b;color:white;font:700 16px inherit;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}.status{padding:12px;border-radius:10px;margin-top:14px;white-space:pre-wrap}.ok{background:#e8f7ef;color:#12643b}.err{background:#fff0ee;color:#a52b20}
+a{color:#087e8b}@media(max-width:560px){.grid{grid-template-columns:1fr}.card{padding:17px}}
+</style></head>
+<body>
+<header class="hero"><div class="wrap"><h1>SRK ELECTRONIC — इलेक्ट्रिशियन पार्टनर आवेदन</h1><p>अपनी जानकारी भरें। आपकी माँगी गई commercial category Admin जाँच और मंजूरी के अधीन है।</p></div></header>
+<main class="wrap">
+<section class="card">
+<h2>पार्टनर बनने के लिए आवेदन करें</h2>
+<p class="hint">यह आवेदन है, rate-tier approval नहीं। Admin आपकी योग्यता और दस्तावेज़ जाँचकर अलग से commercial tier approve करेगा। आवेदन भेजने से काम अपने-आप Active नहीं होगा।</p>
+<form id="applicationForm">
+<div class="grid">
+<div class="field"><label for="full_name">पूरा नाम *</label><input id="full_name" name="full_name" maxlength="100" autocomplete="name" required></div>
+<div class="field"><label for="phone">मोबाइल नंबर *</label><input id="phone" name="phone" inputmode="numeric" autocomplete="tel-national" pattern="[0-9]{10}" maxlength="10" placeholder="10 अंकों का नंबर" required></div>
+<div class="field"><label for="state">राज्य *</label><input id="state" name="state" value="Uttar Pradesh" maxlength="100" required></div>
+<div class="field"><label for="district">जिला *</label><input id="district" name="district" maxlength="100" required></div>
+<div class="field"><label for="pincode">PIN Code *</label><input id="pincode" name="pincode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></div>
+<div class="field"><label for="experience_years">अनुभव (वर्ष) *</label><input id="experience_years" name="experience_years" type="number" min="0" max="60" step="1" value="0" required></div>
+</div>
+<div class="field"><label for="requested_category">आप किस commercial category के लिए आवेदन कर रहे हैं? *</label>
+<select id="requested_category" name="requested_category" required>
+<option value="">Category चुनें</option>
+<option value="electrical_assistant">Electrical Assistant</option>
+<option value="skilled_electrician">Skilled Electrician</option>
+<option value="expert_electrician">Expert Electrician</option>
+<option value="premium_electrical_specialist">Premium Electrical Specialist</option>
+</select>
+<p class="hint">माँगी गई category अंतिम मंजूरी नहीं है। Admin verification के बाद ही approved rate tier तय होगा।</p></div>
+<div class="field"><label for="skills">कौशल / काम का अनुभव *</label><input id="skills" name="skills" maxlength="300" placeholder="जैसे वायरिंग, MCB, पंखा, इन्वर्टर" required></div>
+<div class="field"><label for="about">अपने बारे में / अतिरिक्त जानकारी</label><textarea id="about" name="about" maxlength="2000"></textarea></div>
+<p class="hint">आवेदन भेजने पर आपका मोबाइल और अन्य जानकारी Admin verification के लिए भेजी जाएगी। OTP या बैंक/UPI PIN कभी साझा न करें।</p>
+<button id="submitButton" type="submit">आवेदन जमा करें</button><div id="status" role="status" aria-live="polite"></div>
+</form>
+<p class="hint"><a href="/electrician.html">पहले से approved पार्टनर हैं? यहाँ लॉगिन करें।</a></p>
+</section></main>
+<script>
+const form=document.getElementById('applicationForm'),button=document.getElementById('submitButton'),statusBox=document.getElementById('status');
+form.addEventListener('submit',async(event)=>{
+ event.preventDefault();if(!form.reportValidity())return;
+ const payload={
+  full_name:form.full_name.value.trim(),phone:form.phone.value.trim(),
+  state:form.state.value.trim(),district:form.district.value.trim(),pincode:form.pincode.value.trim(),
+  experience_years:Number(form.experience_years.value),requested_category:form.requested_category.value,
+  skills:form.skills.value.trim(),about:form.about.value.trim()
+ };
+ button.disabled=true;button.textContent='आवेदन जमा हो रहा है…';statusBox.className='status';statusBox.textContent='कृपया प्रतीक्षा करें।';
+ try{
+  const response=await fetch('/api/apply-electrician',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||!result.success)throw new Error(result.error||'आवेदन जमा नहीं हो सका।');
+  statusBox.className='status ok';statusBox.textContent=result.message+'\nआवेदन संदर्भ: '+result.application_id;
+  form.reset();document.getElementById('state').value='Uttar Pradesh';
+ }catch(error){statusBox.className='status err';statusBox.textContent=error.message||'नेटवर्क समस्या। दोबारा कोशिश करें।'}
+ finally{button.disabled=false;button.textContent='आवेदन जमा करें'}
+});
+</script></body></html>
