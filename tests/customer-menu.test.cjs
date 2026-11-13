@@ -199,3 +199,11 @@ test('customer support attachment partial failure never invites duplicate messag
   assert.match(html, /if\(pendingUploadPath\)\{const \{error:cleanupError\}=await customerSb\.storage\.from\('srk-customer-support'\)\.remove\(\[pendingUploadPath\]\);orphanCleanupFailed=Boolean\(cleanupError\);\}/);
   assert.match(html, /orphanCleanupFailed\?' अपलोड की गई असंबद्ध फ़ाइल की सफाई पूरी नहीं हुई/);
 });
+
+
+test('customer booking history localizes payment states including refunded', () => {
+  assert.match(html, /function customerBookingPaymentStatusText\(status\)/);
+  assert.match(html, /refunded:'रिफंड किया गया'/);
+  assert.match(html, /pending:'भुगतान लंबित'/);
+  assert.match(html, /const paymentLabel=customerBookingPaymentStatusText\(row\.payment_status\)/);
+});
