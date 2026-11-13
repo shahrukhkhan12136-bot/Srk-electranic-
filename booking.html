@@ -1465,7 +1465,7 @@ async function syncCustomerSession() {
       document.getElementById('customerSupportFiles').value='';customerSupportAttachments=[];
       customerSupportComplaints=[];customerSupportSelectedId=null;supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें।');
       customerPaymentHistoryOffset = 0;
-      customerSavedAddressSelect.value='';
+      savedAddressSelect.value='';
       ['name','address','district','pin','place','bookingLat','bookingLng'].forEach(id=>{document.getElementById(id).value='';});
       document.getElementById('customerMapWrap').style.display='none';
       document.getElementById('customerLocationStatus').textContent='पता और लोकेशन भरने के लिए लॉगिन करें।';
