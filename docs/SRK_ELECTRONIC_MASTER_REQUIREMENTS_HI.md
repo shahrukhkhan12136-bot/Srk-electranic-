@@ -2462,3 +2462,28 @@ Section 17.61 के बाद संबंधित Feature Branch files का
 - Historical quote-era paid records पढ़े जा सकते हैं और अपरिवर्तित रहते हैं।
 
 यह section Master Requirements में निर्णय दर्ज करता है; इसे implementation समझा न जाए। इस update में source code, SQL migration, Production database/provider settings या deployment नहीं बदले गए।
+
+## 17.64 — Timer Bill / Payment Choice Implementation से पहले Feature Branch Caller Audit (13 Nov 2026)
+
+Section 17.63 के अनुसार implementation शुरू करने से पहले tracked source में वर्तमान caller/dependency का प्रारंभिक प्रत्यक्ष निरीक्षण किया गया। यह अभी पूर्ण migration-lineage या runtime test नहीं है।
+
+### प्रत्यक्ष रूप से मिले blockers
+1. electrician.html में अभी legacy quote flow मौजूद है: srk_submit_booking_quote को service amount, materials amount और note भेजे जाते हैं। नया timer flow लागू होने पर इस quote entry/caller को हटाना होगा; Electrician से कोई रकम नहीं भरवानी।
+2. Electrician offer/work UI में quote_approved state के आधार पर काम शुरू करने का button है। यह timer start के लिए Customer approval + server timestamp वाले नए lifecycle से बदलेगा।
+3. booking.html में Customer अभी booking बनाते समय Cash/Online चुनता है; payment choice pre-work है। नए नियम में final server bill बनने के बाद Customer को Cash/Online चुनना होगा। पुराने customer history में quote fields भी पढ़े जाते हैं।
+4. create-booking.js client payload से payment_method और quoted_amount स्वीकार करके booking में लिखता है। नए flow में booking creation के समय amount/payment choice को अंतिम भुगतान निर्णय नहीं मानना; client amount को financial authority से हटाना होगा।
+5. create-order.js अभी quoted_amount, service_charge + materials_amount, quote approval और पहले से चुने Online method पर निर्भर है। यह नया timer bill नहीं पढ़ता और इसे frozen labour-only bill snapshot से order बनाना होगा।
+6. verify-payment.js और razorpay-webhook.js भी quote-era service_charge + materials_amount = quoted_amount जांचते हैं और paid state अलग-अलग PATCH करते हैं। इन्हें एक साझा, idempotent server finalizer और frozen bill snapshot पर migrate करना होगा।
+7. admin.html booking list/edit में quoted_amount और direct status/amount update अभी मौजूद हैं। नए timer bill में Admin amount editing केवल narrowly scoped, audited adjustment workflow से ही हो सकती है; सामान्य direct edit नहीं।
+8. प्रारंभिक migration scan में 20261109002000_expose_assigned_booking_map_pin.sql offer result में quoted_amount expose करता है और 20261109003000_secure_commission_reporting.sql में booking update grant quoted_amount शामिल है। इन्हें caller/security dependency map में शामिल करना है; तुरंत हटाना नहीं।
+9. Root-level payment handlers के साथ netlify/functions/ wrappers भी हैं। बदलाव में canonical handler और deployment wrapper दोनों का parity test जरूरी है।
+
+### अगला सुरक्षित implementation क्रम
+- पहले पूरे Feature Branch tree और सभी migrations/RPC/triggers/views/policies में timer, quote, amount, materials, payment method, commission, cash settlement और refund dependencies की पूर्ण inventory बनाना।
+- फिर server-authoritative timer event lifecycle और immutable/versioned labour-only bill snapshot का schema/RPC contract तय करना।
+- उसके बाद Customer approval boundary, bill calculation, Cash/Online choice, Razorpay order, unified finalizer, fee/payout/refund/receipt/report callers को क्रमशः जोड़ना।
+- Existing quote-era rows/functions को read-only historical compatibility में रखना; migration + caller switch + tests + rollback proof से पहले drop/rename/rewrite नहीं करना।
+- हर चरण में Customer/Electrician/Admin role negative tests, duplicate/concurrency tests, provider timeout/webhook tests और historical-record regression tests करना।
+
+### इस audit की सीमा
+इस pass में मुख्य Customer/Electrician/Admin UI तथा root payment handlers का source निरीक्षण किया गया और migration inventory की शुरुआत की गई। पूर्ण migration/RPC/trigger lineage, SQL role tests, timer implementation, payment provider tests और end-to-end execution अभी बाकी हैं। कोई code/SQL/Production change या deployment नहीं किया गया।
