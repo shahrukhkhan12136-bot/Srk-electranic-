@@ -85,6 +85,7 @@ test('embedded customer OTP is bound to the phone that received it', () => {
 
 
 test('customer OTP send response and cleanup are bound to the same phone operation', () => {
+  const html=fs.readFileSync('booking.html','utf8');
   const start=html.indexOf('async function customerSendOtp()');
   const end=html.indexOf('\nasync function customerVerifyOtp',start);
   const source=html.slice(start,end);
@@ -93,6 +94,7 @@ test('customer OTP send response and cleanup are bound to the same phone operati
   assert.match(source,/finally \{ if\(operation===customerOtpOperationSequence\)/);
 });
 test('customer OTP verification locks phone identity and restores only its own controls', () => {
+  const html=fs.readFileSync('booking.html','utf8');
   const start=html.indexOf('async function customerVerifyOtp()');
   const end=html.indexOf('\nasync function customerLogout',start);
   const source=html.slice(start,end);
@@ -102,6 +104,7 @@ test('customer OTP verification locks phone identity and restores only its own c
   assert.match(source,/phoneInput\.disabled=phoneWasDisabled/);
 });
 test('phone edits and logout invalidate pending OTP operations', () => {
+  const html=fs.readFileSync('booking.html','utf8');
   assert.match(html,/\+\+customerOtpOperationSequence;customerPendingOtpPhone=null/);
   assert.match(html,/\+\+customerOtpOperationSequence;customerPendingOtpPhone = null/);
   assert.match(html,/\+\+customerOtpOperationSequence;customerOtpBusy=false;customerPendingOtpPhone=null/);
