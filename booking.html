@@ -1644,6 +1644,8 @@ async function syncCustomerSession() {
       ++customerProfileLoadSequence;
       document.getElementById('customerProfileName').value = '';
       document.getElementById('customerProfilePhone').value = '';
+      const profileSave=document.getElementById('saveCustomerProfile');if(profileSave)profileSave.disabled=false;
+      const avatarFile=document.getElementById('customerAvatarFile');if(avatarFile)avatarFile.value='';
       customerCurrentAvatarPath = null;
       setCustomerAvatarPreview('');
       ++customerSavedAddressLoadSequence;
@@ -1651,6 +1653,8 @@ async function syncCustomerSession() {
       const savedAddressSelect=document.getElementById('savedAddressSelect');
       savedAddressSelect.replaceChildren(new Option('नया पता इस्तेमाल करें',''));
       savedAddressSelect.disabled=false;
+      for(const id of ['editSavedAddress','deleteSavedAddress','setDefaultSavedAddress']){const control=document.getElementById(id);if(control)control.disabled=false;}
+      const saveAddress=document.getElementById('saveCurrentAddress');if(saveAddress){saveAddress.disabled=false;saveAddress.textContent='यह पता सेव करें';}
       setSavedAddressStatus('सेव किए गए पते देखने के लिए OTP लॉगिन करें।');
       document.getElementById('customerSupportComplaint').replaceChildren(new Option('शिकायत चुनें',''));
       document.getElementById('customerSupportComplaint').disabled=false;
