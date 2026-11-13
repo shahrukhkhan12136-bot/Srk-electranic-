@@ -82,3 +82,27 @@ test('embedded customer OTP is bound to the phone that received it', () => {
   assert.match(html, /customerPhone'\)\.addEventListener\('input'/);
   assert.match(html, /customerPendingOtpPhone = null/);
 });
+
+
+test('customer OTP send response and cleanup are bound to the same phone operation', () => {
+  const start=html.indexOf('async function customerSendOtp()');
+  const end=html.indexOf('\nasync function customerVerifyOtp',start);
+  const source=html.slice(start,end);
+  assert.match(source,/const operation=\+\+customerOtpOperationSequence/);
+  assert.match(source,/if\(operation!==customerOtpOperationSequence\|\|customerPhoneE164\(\)!==phone\)return/);
+  assert.match(source,/finally \{ if\(operation===customerOtpOperationSequence\)/);
+});
+test('customer OTP verification locks phone identity and restores only its own controls', () => {
+  const start=html.indexOf('async function customerVerifyOtp()');
+  const end=html.indexOf('\nasync function customerLogout',start);
+  const source=html.slice(start,end);
+  assert.match(source,/const operation=\+\+customerOtpOperationSequence/);
+  assert.match(source,/phoneInput\.disabled=true/);
+  assert.match(source,/finally \{ if\(operation===customerOtpOperationSequence\)/);
+  assert.match(source,/phoneInput\.disabled=phoneWasDisabled/);
+});
+test('phone edits and logout invalidate pending OTP operations', () => {
+  assert.match(html,/\+\+customerOtpOperationSequence;customerPendingOtpPhone=null/);
+  assert.match(html,/\+\+customerOtpOperationSequence;customerPendingOtpPhone = null/);
+  assert.match(html,/\+\+customerOtpOperationSequence;customerOtpBusy=false;customerPendingOtpPhone=null/);
+});
