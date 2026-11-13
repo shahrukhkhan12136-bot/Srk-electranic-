@@ -45,10 +45,15 @@ async function execute(event){
  let providerRefund;
  try{
   const payment=await razorpay("payments/"+encodeURIComponent(payment_id));
-  if(payment.id!==payment_id||payment.status!=="captured"||payment.currency!=="INR"||!Number.isSafeInteger(payment.amount)||payment.amount!==amount_paise||Number(payment.amount_refunded||0)!==0)
-    return json(409,{success:false,error:"Captured payment or refundable balance does not match approved labour amount."});
+  if(payment.id!==payment_id||payment.status!=="captured"||payment.currency!=="INR"||!Number.isSafeInteger(payment.amount)||payment.amount!==amount_paise)
+    return json(409,{success:false,error:"Captured payment does not exactly match the approved labour-only bill."});
   if(refund_id){
    providerRefund=await razorpay("refunds/"+encodeURIComponent(refund_id));
+  }else if(Number(payment.amount_refunded||0)>0){
+   const prior=await razorpay("payments/"+encodeURIComponent(payment_id)+"/refunds");
+   const items=Array.isArray(prior?.items)?prior.items:[];
+   providerRefund=items.find(x=>x.receipt===idempotency_key&&x.amount===amount_paise)||null;
+   if(!providerRefund)return json(409,{success:false,error:"An earlier refund exists but cannot be matched to this idempotency key; Admin reconciliation required."});
   }else{
    providerRefund=await razorpay("payments/"+encodeURIComponent(payment_id)+"/refund","POST",{amount:amount_paise,receipt:idempotency_key,notes:{booking_id:claim.booking_id,refund_record_id,reason:"SRK ELECTRONIC approved labour-only refund"}},{"X-Refund-Idempotency":idempotency_key});
   }
