@@ -879,3 +879,12 @@
 - Payment events केवल verified paid/refunded bookings के लिए हैं; audited manual-payment row मौजूद हो तो duplicate booking-payment event suppress होता है। Manual refund event तभी history में आता है जब manual refund audit entry मौजूद है; Razorpay refund events provider refund table से आते हैं।
 - Customer UI के receipt button को केवल `event_type='payment'` और `status='paid'` पर दिखाने का source guard देखा; receipt RPC immutable labour bill को प्राथमिकता देता है और materials को receipt amount में शामिल नहीं करता।
 - यह migration/source audit है, database execution या live JWT/RLS runtime proof नहीं। Manual payment row की वास्तविक verification semantics और provider event lifecycle को isolated DB/runtime tests में सत्यापित करना शेष है। कोई Production बदलाव या deployment नहीं।
+
+
+## 2026-11-13 — Customer booking history stable ordering
+
+- Customer App के My Bookings query में पहले केवल `created_at DESC` था। समान timestamp वाली दो bookings के बीच database order स्थिर होने की गारंटी नहीं थी।
+- अब secondary `id DESC` tie-breaker जोड़ा है, जिससे first-page 50 bookings का ordering deterministic रहता है।
+- Source regression test जोड़ा। पहली test run में test fixture variable का नाम गलत (`bookingHtml`) था; run #43470587772 fail हुआ। Test fixture को वास्तविक `html` variable से ठीक किया और rerun किया।
+- Source Regression Run #43470667452 — success, head `a19f6935d80a338fef1d03aaa95ebd4852d46daa`.
+- यह केवल deterministic ordering है; current UI अभी पहली 50 bookings तक सीमित है, infinite/history pagination नहीं जोड़ी गई। Browser/mobile QA deferred; SQL/runtime/Production changes नहीं।
