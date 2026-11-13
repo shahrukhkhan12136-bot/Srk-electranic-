@@ -1605,3 +1605,28 @@
 - कोई Production migration, Auth setting, payment/refund/transfer, merge या deployment नहीं किया गया।
 
 **अगला resume point:** Customer App private-state account-switch audit को शेष payment/refund/support/profile/booking mutations पर पूरा करें; फिर 14.1.10 timer/completion/payment integration के DB/RPC acceptance gaps और isolated pgTAP execution strategy पर आगे बढ़ें। Electrician Portal शुरू न करें जब तक Customer App acceptance gate पूरा न हो।
+
+
+## Customer App — Saved Address और Razorpay session isolation hardening (2026-11-14)
+
+### Saved Address mutations
+- Save, delete और default-address RPC flows पहले Auth session generation से बंधे नहीं थे; account switch के बाद पुराना response नई session के selector/status/buttons को बदल सकता था। तीनों handlers अब generation capture/check करते हैं, RPC और list refresh के बाद stale UI रोकते हैं, catch alerts केवल उसी session में दिखाते हैं और finally केवल उसी session के controls restore करता है।
+- Auth invalidation अब Save/Edit/Delete/Default controls restore करता है; पुराने operation का finally नई session के controls नहीं छूता।
+- Commits: app c2b03b24b7ac2dc28c23b41557609c9d0fd4057c; regression/test corrections 102d42c00aa4fc39cb6b8a6ceb0d7440825f53ed, b1ad728ff5e2df908aa4260c47185997fee9c2a9; latest phone/avatar cleanup app 01332b7136e3cd4f99a121d7d0dd9f01e739ed44, test ea4f4e713f5915f4e94b17364e4e203c547ad968.
+- Account change पर prior verified phone और queued avatar file भी clear होते हैं; new session sync नया verified phone पुनः भरता है।
+
+### Razorpay checkout flow
+- startRazorpayPayment() में session-generation और operation-sequence guard जोड़ा। Order-create response के बाद checkout केवल तभी खुलता है जब initiating customer session अभी active हो।
+- Checkout खुला रहने तक payment single-flight lock बना रहता है; duplicate Checkout launches रोकता है। Payment success/failure/dismiss पर lock/button उसी operation token और session के लिए release होता है।
+- Account switch पर checkout close, payment panel hide, pending booking/amount clear, button restore और stale status/UI updates रोक दिए जाते हैं।
+- महत्वपूर्ण financial behavior: यदि checkout से payment success callback account switch के बाद भी आता है, verification request initiating customer के captured access token से server पर जारी रहती है ताकि वास्तविक भुगतान reconcile हो सके; लेकिन पुराने customer का success/error UI या booking refresh नए account में नहीं दिखता।
+- App commit f620bc60d3fb75a3bd6b0b4b063b593c10b265fa; payment/auth test correction ecd0133129f48ee5d546dc23480c537d9301c538, latest test commit ffa1f1cce70b8db37810e6fffb94f99d6f51eb15.
+
+### Verification
+- Customer App full source regression #43506681936 SUCCESS.
+- Refund + Account Privacy source workflow #43506681692 SUCCESS.
+- दोनों workflows में Node source regression तथा Refund/Admin syntax checks पास हुए। यह source-level verification है; Razorpay test-mode/live callback, browser session-switch और payment reconciliation E2E अभी execute नहीं हुए।
+- Previous customer session hardening source results: #43506274811 OTP/source PASS, #43506274976 refund/account privacy PASS, #43506263929 Offer Timeline PASS.
+- कोई Production payment, refund, Auth setting, migration, merge या deployment नहीं हुआ।
+
+**अगला resume point:** customer private-state inventory में बाकी UI/actions और account-change behavior की audit जारी रखें; फिर 14.1.10 timer/payment integration के DB/RPC runtime acceptance, migration parity और isolated test execution gaps पर काम करें।
