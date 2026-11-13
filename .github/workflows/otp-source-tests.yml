@@ -1,4 +1,4 @@
-name: Customer OTP source regression tests
+name: SRK ELECTRONIC source regression tests
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  otp-source-tests:
+  source-regression-tests:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -22,5 +22,10 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 24
-      - name: Run OTP source regression tests
-        run: npm run test:otp
+      - name: Run all isolated source regression suites
+        run: |
+          npm run test:otp
+          npm run test:labour
+          npm run test:booking
+          npm run test:application
+          npm run test:payments
