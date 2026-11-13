@@ -719,12 +719,13 @@ function setCustomerAvatarPreview(url) {
  if(url){img.src=url;img.style.display='block';}else{img.removeAttribute('src');img.style.display='none';}
 }
 async function loadCustomerAvatar(path) {
- if(!path||!customerSb)return;
+ if(!path||!customerSb){setCustomerAvatarPreview('');return false;}
  try {
   const {data,error}=await customerSb.storage.from('srk-customer-avatars').createSignedUrl(path,300);
-  if(error)throw error;
+  if(error||!data?.signedUrl)throw error||new Error('SIGNED_URL_UNAVAILABLE');
   setCustomerAvatarPreview(data.signedUrl);
- } catch(e){setCustomerProfileStatus('प्रोफ़ाइल फोटो लोड नहीं हो सकी।',true);}
+  return true;
+ } catch(e){setCustomerAvatarPreview('');return false;}
 }
 async function loadCustomerProfile() {
  if(!customerSb)return;
@@ -762,33 +763,46 @@ async function saveCustomerProfile() {
  try {
   let avatarPath=customerCurrentAvatarPath;
   const file=document.getElementById('customerAvatarFile').files?.[0]||null;
+  let uploadedAvatarPath=null;
   if(file) {
    const allowed=['image/jpeg','image/png','image/webp'];
    if(!allowed.includes(file.type)||file.size>5*1024*1024||file.size===0) throw new Error('फोटो JPEG, PNG या WebP होनी चाहिए और 5 MB से छोटी होनी चाहिए।');
-   const {data:sessionData}=await customerSb.auth.getSession();
+   if(!window.crypto?.randomUUID)throw new Error('इस डिवाइस पर सुरक्षित फोटो पहचान उपलब्ध नहीं है। कृपया अपडेटेड ब्राउज़र इस्तेमाल करें।');
+   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+   if(sessionError)throw sessionError;
    const userId=sessionData.session?.user?.id;
    if(!userId)throw new Error('फोटो अपलोड करने के लिए OTP लॉगिन जरूरी है।');
    const extension=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp' })[file.type];
-   avatarPath=userId+'/'+crypto.randomUUID()+'.'+extension;
+   avatarPath=userId+'/'+window.crypto.randomUUID()+'.'+extension;
    const {error:uploadError}=await customerSb.storage.from('srk-customer-avatars').upload(avatarPath,file,{contentType:file.type,upsert:false});
    if(uploadError)throw uploadError;
+   uploadedAvatarPath=avatarPath;
   }
   const {data,error}=await customerSb.rpc('srk_customer_update_my_profile',{
    p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath
   });
   if(error) {
-   if(file&&avatarPath!==customerCurrentAvatarPath) await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]).catch(()=>{});
+   if(uploadedAvatarPath) {
+    const cleanup=await customerSb.storage.from('srk-customer-avatars').remove([uploadedAvatarPath]);
+    if(cleanup.error)setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हुई और नई अपलोड फोटो की सफाई भी नहीं हो सकी। दोबारा कोशिश से पहले सहायता लें।',true);
+   }
    throw error;
   }
   const oldAvatar=customerCurrentAvatarPath;
   customerCurrentAvatarPath=avatarPath;
-  if(file) {
-   document.getElementById('customerAvatarFile').value='';
-   await loadCustomerAvatar(avatarPath);
-   if(oldAvatar&&oldAvatar!==avatarPath) await customerSb.storage.from('srk-customer-avatars').remove([oldAvatar]);
-  }
   document.getElementById('name').value=fullName;
-  setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
+  if(uploadedAvatarPath) {
+   document.getElementById('customerAvatarFile').value='';
+   const previewLoaded=await loadCustomerAvatar(avatarPath);
+   let cleanupWarning='';
+   if(oldAvatar&&oldAvatar!==avatarPath) {
+    const cleanup=await customerSb.storage.from('srk-customer-avatars').remove([oldAvatar]);
+    if(cleanup.error)cleanupWarning=' पुरानी फोटो की सफाई पूरी नहीं हुई; प्रोफ़ाइल में नई फोटो सुरक्षित है।';
+   }
+   setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।'+(previewLoaded?'':' फोटो सेव है, लेकिन उसका पूर्वावलोकन अभी लोड नहीं हुआ।')+cleanupWarning,Boolean(!previewLoaded||cleanupWarning));
+  } else {
+   setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
+  }
  } catch(e){setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||''),true);}
  finally{button.disabled=false;}
 }
