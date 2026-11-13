@@ -1688,3 +1688,10 @@
 - Source Regression Run #43517333674 SUCCESS। Local Supabase stack cleanly stopped. `supabase/setup-cli@v1` पर केवल upstream Node 20 deprecation annotation; tests passed.
 - Commits: fixture `858fafe0d085bedef6c428458696a9683f238a9d`; behavior `7bb70fa3b4630182eb1101939a3463a56b47b884`; workflow `78d75fcf196b72330f6a45e8f4c45925a5189744`; corrected isolated partner `01ca8a84de565e8b2bebba879a39f671fab13937`.
 - अगला Customer App DB gate: server-authoritative timer, customer start/completion decisions, immutable labour bill, Admin review और work-event history के लिए full migration-chain-compatible synthetic local fixture। मौजूदा 102 + 22 pgTAP structural assertions अभी अलग से unexecuted हैं। Production untouched; final mobile/Desktop QA स्थगित।
+
+### Server timer/completion isolated test harness — initial run pending
+
+- Timer/completion migration chain के लिए synthetic-only fixture और अलग local Supabase workflow बनाया। यह पहले category/duration migration, फिर server-authoritative timer/labour-bill migration और Admin completion-review/event-history migration apply करता है; इसके बाद existing category 14, timer/bill 102 और completion/event 22 pgTAP assertions चलाता है।
+- Fixture में केवल synthetic schema है; Production DB connection, Production dump, Production credentials या real customer data नहीं।
+- Commits: synthetic fixture `b190e17a598122e3b593a924ccb9cec6f250282f`; local workflow `e48f43bbd394c06d2cedeb2bedee16b2a4ed485c`.
+- Run #43517806145 अभी local Supabase startup/fixture चरण में है; migrations या pgTAP परिणाम अभी PASS नहीं माने गए हैं। अगले अपडेट में migration-application error या final test evidence दर्ज होगा।
