@@ -34,3 +34,28 @@ self.addEventListener('fetch',event=>{
     caches.match(event.request).then(cached=>cached||fetch(event.request))
   );
 });
+
+
+self.addEventListener('push',event=>{
+  let payload={};
+  try{payload=event.data?event.data.json():{};}catch(_){payload={body:event.data?event.data.text():'आपके लिए नया अपडेट उपलब्ध है।'};}
+  const title=typeof payload.title==='string'&&payload.title.trim()?payload.title.trim():'SRK ELECTRONIC';
+  const options={
+    body:typeof payload.body==='string'?payload.body:'आपके लिए नया काम या अपडेट उपलब्ध है।',
+    icon:'/icon.svg',
+    badge:'/icon.svg',
+    tag:typeof payload.tag==='string'?payload.tag:'srk-electrician-update',
+    data:{url:typeof payload.url==='string'?payload.url:'/electrician.html'}
+  };
+  event.waitUntil(self.registration.showNotification(title,options));
+});
+self.addEventListener('notificationclick',event=>{
+  event.notification.close();
+  const requested=event.notification.data&&event.notification.data.url;
+  let target='/electrician.html';
+  try{const parsed=new URL(typeof requested==='string'?requested:'/electrician.html',self.location.origin);if(parsed.origin===self.location.origin)target=parsed.href;}catch(_){}
+  event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(windows=>{
+    for(const client of windows){if(new URL(client.url).origin===self.location.origin){if('focus'in client){client.navigate(target);return client.focus();}}}
+    return clients.openWindow(target);
+  }));
+});
