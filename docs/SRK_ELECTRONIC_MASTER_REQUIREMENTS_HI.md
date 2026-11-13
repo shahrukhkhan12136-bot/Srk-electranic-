@@ -4186,3 +4186,16 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Wallet foundation migration में दोनों SECURITY DEFINER wallet RPCs का search_path अब `pg_catalog, public, auth, pg_temp` है, ताकि fresh schema पर भी Production की बाद की trusted-path hardening बनी रहे। Route-transfer के extra historical hardening index/policy और wallet function hardening की अलग applied migration files अभी source branch में absent हैं; इन्हें अनुमान से merge/recreate नहीं किया गया।
 - Regression tests जोड़े: historical offer-detail migrations में status-gated contact checks और wallet SECURITY DEFINER trusted search_path assertions। Test assertion SQL keyword casing के लिए case-insensitive की गई। इन नए commits के लिए GitHub Actions source test run अभी प्राप्त/सत्यापित नहीं है; पिछला successful run पुराने commit पर था। Production schema, data, migration history और deployment untouched हैं।
 - Latest feature branch file commit: `fc4637c28799cfc8142e42f2abed7ad299d7397a` (test update); migration security changes इसी feature branch में हैं।
+
+
+## 17.127 — Missing Applied Migration Source Recovery: Targeted Git History Check (13 Nov 2026)
+
+- Production migration list को दोबारा पढ़कर wallet/Route hardening और KYC migration के exact applied identifiers दर्ज किए:
+  - `20261109052929_harden_wallet_reporting_rpc_paths_and_route_recipient_index`
+  - `20261109053005_harden_wallet_and_commission_security_definer_paths`
+  - `20261109203137_electrician_verification_documents`
+- GitHub repository path-history API पर इन तीनों exact migration file paths की history जाँची; तीनों के लिए कोई commit/file-history result नहीं मिला। GitHub commit search में exact migration identifiers/logical names भी कोई source commit नहीं लौटाते। पहले default-branch KYC exact-file fetch भी 404 था। अतः इस जाँच से original SQL source recover नहीं हुआ।
+- Razorpay Route ledger की मूल migration के लिए एक historical commit मिला: `a08a874098a9ee929c76bb94612b6dee4f93bf5e` (“Add server-only Razorpay Route transfer reconciliation ledger migration”). उस commit का diff केवल मूल table, constraints, दो indexes, RLS, service_role grants और comment बनाता है; यह Production में बाद में applied recipient-index/deny-policy hardening migrations का source नहीं है। इसे अलग hardening source के रूप में गलत नहीं माना जाएगा।
+- निष्कर्ष: तीनों exact source files अभी भी unrecovered हैं। Production catalog में live objects मौजूद होने से historical SQL, migration ordering, grants/policies या original file content स्वतः प्रमाणित नहीं होते। कोई guessed/reconstructed SQL file नहीं बनाई गई, migration history नहीं बदली गई और Production पर कोई write/apply नहीं हुआ।
+- अगला सुरक्षित चरण: missing migrations की पूर्ण object-level dependency inventory (function definitions, ACLs, RLS policies, indexes, triggers, storage policies/bucket config) तैयार करना; फिर supported Supabase CLI/local PostgreSQL environment उपलब्ध होने पर catalog-backed reconstruction को केवल isolated local schema में validate करना। जब तक यह संभव न हो, इन gaps को open blocker रखें।
+- इस targeted audit में कोई Production schema/data/Auth setting, payment/payout, Main merge, deployment या नया Supabase QA branch नहीं बदला/बनाया गया।
