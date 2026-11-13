@@ -752,3 +752,19 @@ test('customer support attachment signed-link failures are visible instead of si
   assert.ok(html.includes('फ़ाइल लिंक अभी उपलब्ध नहीं; थ्रेड रीफ़्रेश करें'));
   assert.ok(html.includes("if(!a.signedUrl){link.removeAttribute('target');"));
 });
+
+
+test('customer profile clears private profile and avatar state when OTP session is absent', () => {
+  const start = html.indexOf('async function loadCustomerProfile()');
+  const end = html.indexOf('\nasync function saveCustomerProfile()', start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+  const noSession = source.indexOf("if(!session){");
+  assert.ok(noSession >= 0);
+  const branch = source.slice(noSession, source.indexOf('return;}', noSession) + 7);
+  assert.ok(branch.includes("document.getElementById('customerProfilePhone').value=''"));
+  assert.ok(branch.includes("document.getElementById('customerProfileName').value=''"));
+  assert.ok(branch.includes('customerCurrentAvatarPath=null'));
+  assert.ok(branch.includes("setCustomerAvatarPreview('')"));
+  assert.ok(branch.includes('OTP से लॉगिन करें'));
+});
