@@ -36,3 +36,18 @@ test('Admin inline JavaScript parses after navigation changes', () => {
   assert.ok(start >= 0 && end > start);
   assert.doesNotThrow(() => new vm.Script(html.slice(start + 8, end)));
 });
+
+test('Admin booking/location and electrician activation mutations use existing server RPCs, not direct table updates', () => {
+  assert.ok(html.includes("sb.rpc('srk_admin_update_booking'"));
+  assert.ok(html.includes("sb.rpc('srk_admin_set_electrician_active'"));
+  assert.ok(!html.includes("sb.from('service_bookings').update("));
+  assert.ok(!html.includes("sb.from('electrician_profiles').update("));
+  assert.ok(html.includes("sb.rpc('srk_admin_record_manual_payment'"));
+});
+
+test('legacy booking amount is read-only while workflow status remains server-validated', () => {
+  assert.ok(html.includes('पुरानी बुकिंग राशि (Read-only)'));
+  assert.ok(html.includes('title="ऐतिहासिक राशि सुरक्षित रखने के लिए संपादन बंद है" disabled'));
+  assert.ok(html.includes("p_status:status"));
+  assert.ok(html.includes("p_address:booking.address"));
+});
