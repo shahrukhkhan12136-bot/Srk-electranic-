@@ -1148,8 +1148,9 @@ async function sendCustomerSupportMessage() {
  customerSupportMessageBusy=true;button.disabled=true;button.textContent='भेजा जा रहा है…';
  let pendingUploadPath=null,linkedCount=0,messageCreated=false,orphanCleanupFailed=false;
  try{
-  const {data:sessionData}=await customerSb.auth.getSession();
-  const userId=sessionData.session?.user?.id;if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  const userId=sessionData?.session?.user?.id;if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
   const {data:messageId,error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{
    p_complaint_id:id,p_body:body||'आपके लिए फ़ाइल संलग्न की गई है।'
   });
