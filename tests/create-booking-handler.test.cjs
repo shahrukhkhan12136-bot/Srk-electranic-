@@ -273,6 +273,21 @@ test('rejects an idempotency key already owned by another customer', async () =>
 });
 
 
+test('rejects PIN, date, and time values with trailing characters instead of truncating them', async () => {
+  const malformedCases = [
+    { pincode: '2718617' },
+    { preferred_date: '2026-12-01extra' },
+    { preferred_time: '10:30extra' }
+  ];
+  for (const changes of malformedCases) {
+    mockFetch();
+    const result = await handler(event({ body: JSON.stringify({ ...validBody, ...changes }) }));
+    assert.equal(status(result), 400, JSON.stringify(changes));
+    assert.equal(insertedRows, null, JSON.stringify(changes));
+    assert.equal(calls.some(x => x.url.includes('/rpc/srk_check_public_rate_limit')), false);
+  }
+});
+
 test('rejects a booking date before the current India business date', async () => {
   const result = await handler(event({ body: JSON.stringify({ ...validBody, preferred_date: '2020-01-01' }) }));
   assert.equal(status(result), 400);
