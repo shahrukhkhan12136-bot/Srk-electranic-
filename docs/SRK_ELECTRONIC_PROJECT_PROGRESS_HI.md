@@ -618,3 +618,13 @@
 - Booking page inline JavaScript syntax check passed. Database migration and pgTAP execution, browser/device execution, and live duplicate-submit behavior remain unverified.
 - PIN-to-district authoritative validation and booking date/time cut-off policy remain open; no assumptions or historical data corrections made.
 - Checklist counts unchanged; no Production schema/data changes, deployment, payment, refund, or payout.
+
+
+## 2026-11-13 — Customer address validation audit and secure-key correction
+
+- Re-audited the current branch source and found that the earlier tracker note claiming the `Math.random()` fallback had been removed was premature: the fallback was still present in the current `booking.html`. Corrected it now.
+- Booking request-key generation now requires `window.crypto.getRandomValues`; unsupported browsers fail closed with a Hindi error instead of using `Math.random()`. Commit: `0109888750d37043613bd88212ca3ffd4373c365`.
+- Verified server validation: PIN is exactly six digits; state and district are required; address is required and bounded to 1,000 characters; latitude/longitude must be supplied together and within geographic ranges. Customer form locality and work description are combined into `work_details`.
+- Important limitation: PIN-to-district/state matching is NOT implemented; district is free text and PIN is syntax-only. No district was auto-corrected, including the previously noted historical 271861 mismatch. A trustworthy postal directory/data source and defined UX for mismatches are still needed.
+- Booking form inline JavaScript syntax check passed after the secure-key correction; source check confirms no `Math.random()` fallback remains. Node booking-handler tests, browser/device tests, database migration/pgTAP and actual duplicate-submit behavior remain unexecuted in this pass.
+- No business date/time policy was invented. No Production schema/data change, deployment, live booking, payment, refund or payout occurred. Checklist totals unchanged.
