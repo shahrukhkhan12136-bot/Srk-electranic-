@@ -323,15 +323,15 @@ SELECT ok(pg_get_function_result('public.srk_get_my_offer_details()'::regprocedu
   NOT ILIKE '%service_charge%',
   'electrician offer RPC contract contains no quote or materials billing fields');
 SELECT ok(pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
-  NOT ILIKE '%completed%' AND
+  ILIKE '%completed%' AND
   pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
   ILIKE '%awaiting_work_start_approval%',
-  'electrician offer RPC exposes contacts only during active assigned work and supports start approval');
+  'electrician offer RPC preserves accepted customer contact access through completion and supports start approval');
 SELECT ok(pg_get_function_result('public.srk_get_my_offer_details()'::regprocedure)
-  ILIKE '%work_timer_elapsed_seconds bigint%'
+  ILIKE '%work_timer_elapsed_seconds numeric%'
   AND pg_get_function_result('public.srk_get_my_offer_details()'::regprocedure)
   ILIKE '%approved_rate_tier text%',
-  'electrician offer RPC returns server timer seconds and approved commercial tier');
+  'electrician offer RPC returns exact accumulated server elapsed seconds and approved commercial tier');
 
 
 SELECT ok(pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure)
@@ -349,9 +349,9 @@ SELECT ok(pg_get_functiondef('private.srk_electrician_cash_slot_available(uuid)'
   AND pg_get_functiondef('private.srk_electrician_cash_slot_available(uuid)'::regprocedure)
   ILIKE '%Refund reversal of platform_fee_due_settlement%',
   'cash eligibility releases only after outstanding Platform Fee is genuinely settled or refunded');
-SELECT ok(pg_get_functiondef('public.srk_reserve_electrician_cash_offer_slot()'::regprocedure)
+SELECT ok(pg_get_functiondef('private.srk_handle_cash_offer_reservation()'::regprocedure)
   ILIKE '%Refund reversal of platform_fee_due%'
-  AND pg_get_functiondef('public.srk_reserve_electrician_cash_offer_slot()'::regprocedure)
+  AND pg_get_functiondef('private.srk_handle_cash_offer_reservation()'::regprocedure)
   ILIKE '%Refund reversal of platform_fee_due_settlement%',
   'cash offer reservation trigger uses refund-aware Platform Fee outstanding balance');
 
