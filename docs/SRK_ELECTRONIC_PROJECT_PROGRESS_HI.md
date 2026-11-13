@@ -1254,3 +1254,5 @@
 - App commits: `4d7138dcdc3bfbcd82699d5f6a06af2f5f2c0d08`, typo correction `e4c1ede56f7c3904b7e4969a9c43d1e50f83f215`. Regression test commit: `e29b067e89b1d674b394de7aea318c7779c07ab6`. Fresh CI pending; not marked passed.
 - Prior source CI: support attachment signed-link change run `43488271607` SUCCESS; profile no-session clearing run `43488577045` SUCCESS; associated refund source run `43488552371` SUCCESS. New logout invalidation test not yet passed.
 - No Production changes/deploy. Real Auth signout/session-switch race injection, Supabase Storage/RLS and pgTAP tests, browser, final mobile/Desktop QA remain pending.
+
+- Verification update: Customer App source regression run `43488811755` completed **SUCCESS** (job `132104230681`) on test commit `e29b067e89b1`; this includes the logout account-isolation regression test. Earlier app source run `43488754507` was also **SUCCESS** on app commit `4d7138dcdc3b`, and Refund Source Regression run `43488754454` was **SUCCESS**. These are source-level tests only, not browser/Auth runtime or database proof.
