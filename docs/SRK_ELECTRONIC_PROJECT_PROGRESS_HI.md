@@ -1442,3 +1442,5 @@
 - pgTAP execute करने के लिए Supabase project में migration apply या database object changes जरूरी होंगे; user approval के बिना Production पर यह नहीं किया। Node source test को भी अभी executed नहीं बताया जा रहा।
 - Security hardening commits `91da38a...`, `ba828a4...`, `d063933...`, `58fe830...`; tracker commit `67fac0e...`.
 - Remaining: GitHub Actions push run का वास्तविक result पढ़ना; isolated non-production test database पर migration+pgTAP behavior (trigger transitions, duplicate idempotency, backfill, owner isolation) चलाना; फिर Customer App browser test. Production untouched.
+
+- Follow-up security test: pgTAP plan 11→12; added explicit assertion that `anon` cannot execute `private.srk_capture_booking_offer_event()` (authenticated-role assertion already present). Commit `6cef3afdf03cb6e8bde2878efc7f6e1fda5f2884`. This is a test-source change only; pgTAP not executed.
