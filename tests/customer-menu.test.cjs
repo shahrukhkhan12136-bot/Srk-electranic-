@@ -829,7 +829,14 @@ test('customer booking submission stops stale responses after logout or account 
   const paymentStart=html.indexOf('async function startRazorpayPayment');
   const paymentEnd=html.indexOf('function customerBookingRequestKey',paymentStart);
   const paymentSource=html.slice(paymentStart,paymentEnd);
-  assert.doesNotMatch(paymentSource, /operationIsCurrent/);
+  assert.match(paymentSource,/const generation=customerSessionGeneration/);
+  assert.match(paymentSource,/const isCurrent=\(\)=>sequence===customerPaymentFlowSequence&&customerSessionOperationIsCurrent\(generation\)/);
+  assert.match(paymentSource,/if\(!isCurrent\(\)\)return;/);
+  assert.match(paymentSource,/const bookingId=pendingBookingId/);
+  assert.match(paymentSource,/Verify using the initiating customer's captured token/);
+  assert.match(paymentSource,/if\(isCurrent\(\)\)\{[\s\S]*?await loadCustomerBookings\(\)/);
+  assert.match(html,/function invalidateCustomerPaymentFlow\(\)[\s\S]*?customerPaymentFlowSequence\+\+[\s\S]*?checkout\.close\(\)[\s\S]*?pendingBookingId=null/);
+  assert.match(html,/invalidateCustomerPaymentMethodChanges\(\);invalidateCustomerPaymentFlow\(\);/);
   assert.match(paymentSource, /if\(customerSessionError\)throw customerSessionError/);
   assert.match(html, /function invalidateCustomerBookingSubmission\(\)[\s\S]*?customerBookingSubmissionToken\+\+;customerBookingSubmissionBusy=false/);
   assert.match(html, /customerSessionGeneration\+\+;invalidateCustomerBookingSubmission\(\)/);
@@ -1032,4 +1039,18 @@ test('customer account-switch cleanup clears prior verified phone and queued ava
   assert.match(source,/avatarFile\.value='';/);
   assert.match(source,/customerProfilePhone'\)\.value='';/);
   assert.match(source,/bookingPhone\)bookingPhone\.value='';/);
+});
+
+
+test('Razorpay checkout remains single-flight and cannot render old-account payment UI after account switch', () => {
+  const start=html.indexOf('async function startRazorpayPayment');
+  const end=html.indexOf('function customerBookingRequestKey',start);
+  const source=html.slice(start,end);
+  assert.match(source,/let checkoutOpened=false/);
+  assert.match(source,/if\(isCurrent\(\)&&!checkoutOpened\)/);
+  assert.match(source,/if\(isCurrent\(\)\)setPaymentStatus\(err\.message, true\)/);
+  assert.match(source,/finally \{finishCustomerPaymentFlow\(generation,sequence,checkout\);\}/);
+  assert.match(html,/function finishCustomerPaymentFlow\(generation,sequence,checkout=null\)/);
+  assert.match(html,/paymentBusy=false/);
+  assert.match(html,/customerActiveRazorpayCheckout=checkout/);
 });
