@@ -799,3 +799,5 @@
 - Refund submit पर प्रति booking Set-based busy guard जोड़ा ताकि duplicate event submissions न हों। सफल अनुरोध के बाद Booking History, Refund History और Payment History तीनों refresh होते हैं।
 - Source regression tests ने eligibility, amount match, duplicate guard और तीनों histories refresh assertions जोड़े। Source Regression Run #43467024941 — success; Refund source regression Run #43467024908 — success; दोनों commit `31eb2f33748dd084024a9130ab9898d30b4ea7ca` पर।
 - UI gate browser source checks तक verified; live RPC/database eligibility, concurrent request locking और refund state provider lifecycle अभी runtime tested नहीं। SQL pgTAP बाकी; no Production changes/deployment/refund movement.
+
+- अतिरिक्त classification सुधार: `manual_payment` event label अब तभी दिया जाता है जब उसी booking के लिए वास्तविक audited `srk_manual_payment_entries` row मौजूद हो; केवल `razorpay_payment_id` NULL होने से किसी legacy/अन्य payment को manual नहीं कहा जाएगा। Source regression Run #43467154570 — success, commit `850c7c3d02eaeaeed9569d15ce77d7f4e4653353`।
