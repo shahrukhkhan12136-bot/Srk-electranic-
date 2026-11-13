@@ -2948,3 +2948,27 @@ Audit सीमा: GitHub Actions run metadata/job logs, workflow source, `gh-p
 - अगला विकल्प: production credentials को छुए बिना isolated fixture में export strategies जाँचें; यदि pg_dump को ACCESS SHARE permission चाहिए तो dedicated read-only schema-export role की privilege boundary को PostgreSQL 17 के आधिकारिक privilege model के साथ review करें। जब तक row access न होने और schema metadata extraction दोनों की guarantee सिद्ध न हो, workflow को Production export के लिए enable/modify न करें।
 
 Audit सीमा: केवल GitHub read-only tree/blob/workflow source और पहले से उपलब्ध run logs inspect किए। कोई source file, branch, Pages artifact, workflow, Supabase role, secret, database object, deployment या provider setting बदली नहीं गई।
+
+
+## 17.77 — Vercel Current Production Target, Feature Preview and Domain/Alias Reconciliation (13 Nov 2026)
+
+### A. Project metadata और current deployment
+- Vercel project `srk-electranic-`, project ID `prj_AZLN9fhI89k22qY7ZiI8PzsDBYdj`, team `team_9faMRH6X4ckmKDWZqPrIn8Sa` को live connected account से read-only पुनः जाँचा।
+- Project metadata में `live=false`; latest deployment `dpl_4D5ovJfzTLfVGZcjMrb74obGYQmg` state `READY`, target `null`, branch `fix/admin-activation-rpc-and-readme-20261113`, commit `f7568de4137596052037d3e1431439f3d1d18a0e`।
+- इस latest deployment को Vercel Production कहना सही नहीं: API target स्पष्ट रूप से null है। Project-level `live=false` का अर्थ इस audit से निश्चित नहीं किया गया; इसे deployment state या DNS/traffic status का पर्याय न मानें।
+- Latest 30 deployment records में अनेक `READY` Preview/target-null builds मिले, जिनमें Feature Branch `feature/platform-fee-cash-online-cycle` का नवीनतम उपलब्ध commit `cece990af868c71e3b8260e4f6d5ffa44c4991f2` Preview target null है।
+- अलग `target=production` filter में चार Production deployments लौटे। नवीनतम वही पुराना main deployment `dpl_BaUb7Kpt2LZ1TgNv9TE4J7Pq4bkq`, commit `7f62b622e33e49b0196d0d93febf73049579c281`, branch `main`, state `READY` है। इससे पुष्टि होती है कि Feature Branch documentation commits Production पर promote नहीं हुए।
+- Production alias `srk-electranic.vercel.app`, `srk-electranic-srk-electranic.vercel.app`, और `srk-electranic-git-main-srk-electranic.vercel.app` पुराने main Production deployment से जुड़े हैं।
+- Feature Branch के लिए `srk-electranic-git-feature-platform-fee-c-8eb82a-srk-electranic.vercel.app` alias Preview deployment `dpl_5XS99XTRZ5mKwB9LRaun8BFijWtg` से जुड़ा है; यह Production alias नहीं है।
+
+### B. Domain और protection स्थिति
+- Project domain list में केवल verified built-in `srk-electranic.vercel.app` project domain मिला; कोई custom domain इस Vercel project पर सूचीबद्ध नहीं था।
+- Project SSO protection `all_except_custom_domains` enabled है; password protection disabled है। चूँकि वर्तमान सूची में custom domain नहीं है, SSO protection के इस setting को देखते हुए किसी अलग custom-domain access behavior का दावा नहीं किया जा सकता।
+- No DNS, domain, alias, SSO, protection, deployment, environment variable या project metadata change किया गया।
+
+### C. Hosting decision gate
+- वर्तमान evidence: Vercel Production अभी भी पुराना `main` commit serve करने के लिए assigned है; Feature Branch builds Preview-only हैं; GitHub Pages की एक सफल static deployment भी मौजूद है; Netlify को README में primary target कहा गया है पर live deployment अभी स्वतंत्र रूप से verify नहीं हुआ।
+- इसलिए किसी hosting target को बंद करना, alias हटाना, project pause करना, Production promote/rollback करना या DNS बदलना अभी असुरक्षित होगा। पहले Netlify live commit/functions, Razorpay webhook endpoint, custom-domain DNS owner, वास्तविक traffic और rollback path का संयुक्त reconciliation आवश्यक है।
+- अगला safe step: Netlify dashboard/connected integration access उपलब्ध होने पर Production deploy commit, function inventory/logs और env-var names/presence (secret values नहीं) verify करें; Razorpay Dashboard में webhook URL, subscribed event names और delivery status केवल read-only inspect करें।
+
+Audit सीमा: Vercel project, deployment list, production-filtered deployment list, feature-branch deployment list, project domain list और aliases केवल read-only देखे। कोई deployment, promotion, alias, DNS, environment variable, protection या billing setting नहीं बदली।
