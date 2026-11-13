@@ -108,15 +108,6 @@ BEGIN
   SELECT * INTO v_payout FROM public.srk_electrician_payouts
    WHERE booking_id=v_booking.id FOR UPDATE;
   IF FOUND THEN
-    IF NOT v_intent.payout_was_blocked THEN
-      UPDATE public.srk_manual_refund_intents SET status='requires_reconciliation',
-        last_error='A payout row appeared after refund preparation; Admin reconciliation required.',
-        updated_at=clock_timestamp() WHERE id=v_intent.id;
-      UPDATE public.srk_booking_refund_requests SET status='unknown',updated_at=clock_timestamp()
-       WHERE id=v_req.id;
-      RETURN jsonb_build_object('success',false,'requires_reconciliation',true,
-        'status','requires_reconciliation','reason','UNEXPECTED_PAYOUT_AFTER_PREPARATION');
-    END IF;
     IF v_payout.payout_status='paid' THEN
       RAISE EXCEPTION 'ELECTRICIAN_PAYOUT_ALREADY_PAID_ADMIN_RECONCILIATION_REQUIRED' USING ERRCODE='55000';
     END IF;
@@ -242,6 +233,15 @@ BEGIN
   SELECT * INTO v_payout FROM public.srk_electrician_payouts
    WHERE booking_id=v_booking.id FOR UPDATE;
   IF FOUND THEN
+    IF NOT v_intent.payout_was_blocked THEN
+      UPDATE public.srk_manual_refund_intents SET status='requires_reconciliation',
+        last_error='A payout row appeared after refund preparation; Admin reconciliation required.',
+        updated_at=clock_timestamp() WHERE id=v_intent.id;
+      UPDATE public.srk_booking_refund_requests SET status='unknown',updated_at=clock_timestamp()
+       WHERE id=v_req.id;
+      RETURN jsonb_build_object('success',false,'requires_reconciliation',true,
+        'status','requires_reconciliation','reason','UNEXPECTED_PAYOUT_AFTER_PREPARATION');
+    END IF;
     IF v_payout.payout_status='paid' THEN
       UPDATE public.srk_manual_refund_intents SET status='requires_reconciliation',
         last_error='Electrician payout is already paid; refund/ledger requires manual reconciliation.',
