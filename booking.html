@@ -887,9 +887,9 @@ async function loadCustomerSavedAddresses(options = {}) {
  select.disabled=true; setSavedAddressStatus('सेव किए गए पते लोड हो रहे हैं…');
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
-  if(sequence!==customerSavedAddressLoadSequence)return;
+  if(sequence!==customerSavedAddressLoadSequence)return false;
   if(sessionError)throw sessionError;
-  if(!sessionData?.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';setSavedAddressStatus('पते देखने के लिए OTP लॉगिन करें।');return;}
+  if(!sessionData?.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';setSavedAddressStatus('पते देखने के लिए OTP लॉगिन करें।');return false;}
   const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
   if(sequence!==customerSavedAddressLoadSequence)return;
   if(error) throw error;
@@ -906,7 +906,8 @@ async function loadCustomerSavedAddresses(options = {}) {
     setSavedAddressStatus('आपका डिफ़ॉल्ट पता चुना गया है। बुकिंग भेजने से पहले विवरण जाँच लें।');
    }
   }
- } catch(e) { if(sequence===customerSavedAddressLoadSequence)setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true); }
+  return true;
+ } catch(e) { if(sequence===customerSavedAddressLoadSequence)setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true);return false; }
  finally {if(sequence===customerSavedAddressLoadSequence)select.disabled=false;}
 }
 async function saveCurrentBookingAddress() {
@@ -927,10 +928,10 @@ async function saveCurrentBookingAddress() {
    p_is_default:editingAddress?.is_default===true
   });
   if(error) throw error;
-  await loadCustomerSavedAddresses();
+  const refreshed=await loadCustomerSavedAddresses();
   document.getElementById('savedAddressSelect').value=data;
   editingSavedAddressId=null;
-  setSavedAddressStatus('पता सफलतापूर्वक सेव हो गया।');
+  setSavedAddressStatus(refreshed&&customerSavedAddresses.some(a=>a.id===data)?'पता सफलतापूर्वक सेव हो गया।':'पता सेव हो गया है, लेकिन सेव किए गए पतों की सूची अभी रीफ़्रेश नहीं हो सकी। दोबारा लोड करें।',!refreshed||!customerSavedAddresses.some(a=>a.id===data));
  } catch(e) {setSavedAddressStatus(e.message==='ADDRESS_LIMIT_REACHED'?'अधिकतम 10 पते सेव हो सकते हैं। पहले कोई पुराना पता हटाना होगा.':'पता सेव नहीं हो सका। '+(e.message||''),true);}
  finally {button.disabled=false;button.textContent='यह पता सेव करें';}
 }
@@ -972,9 +973,9 @@ async function deleteSelectedSavedAddress() {
   if(error)throw error;
   if(data!==true)throw new Error('ADDRESS_NOT_FOUND');
   editingSavedAddressId=null;
-  await loadCustomerSavedAddresses();
+  const refreshed=await loadCustomerSavedAddresses();
   document.getElementById('savedAddressSelect').value='';
-  setSavedAddressStatus('पता हटा दिया गया है। पुरानी बुकिंग का पता सुरक्षित है।');
+  setSavedAddressStatus(refreshed&&!customerSavedAddresses.some(item=>item.id===id)?'पता हटा दिया गया है। पुरानी बुकिंग का पता सुरक्षित है।':'पता हटाने का अनुरोध सफल हुआ, लेकिन सूची अभी रीफ़्रेश नहीं हो सकी। दोबारा लोड करके स्थिति जाँचें।',!refreshed||customerSavedAddresses.some(item=>item.id===id));
  } catch(e){setSavedAddressStatus('पता नहीं हट सका। '+(e.message||''),true);}
  finally{button.disabled=false;}
 }
@@ -990,9 +991,10 @@ async function makeSelectedAddressDefault() {
    p_location_lat:a.location_lat,p_location_lng:a.location_lng,p_is_default:true
   });
   if(error)throw error;
-  await loadCustomerSavedAddresses();
+  const refreshed=await loadCustomerSavedAddresses();
   document.getElementById('savedAddressSelect').value=a.id;
-  setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।');
+  const defaultConfirmed=refreshed&&customerSavedAddresses.some(item=>item.id===a.id&&item.is_default===true);
+  setSavedAddressStatus(defaultConfirmed?'डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।':'डिफ़ॉल्ट पता अपडेट हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी। दोबारा लोड करके पुष्टि करें।',!defaultConfirmed);
  } catch(e){setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
  finally{button.disabled=false;}
 }
