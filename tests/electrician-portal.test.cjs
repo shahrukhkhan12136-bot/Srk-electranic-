@@ -16,7 +16,7 @@ test('profile panel shows only an internal partner reference and honestly disclo
   assert.ok(html.includes('id="partnerReferenceId"'));
   assert.ok(html.includes("आंतरिक पार्टनर संदर्भ ID: '+String(p.id||'उपलब्ध नहीं')"));
   assert.ok(html.includes('यह UUID केवल आंतरिक पार्टनर संदर्भ है'));
-  assert.ok(html.includes('दस्तावेज़ अपलोड, सुरक्षित दस्तावेज़ सूची, expiry tracking और Admin review'));
+  assert.ok(html.includes('पहचान और दस्तावेज़ सत्यापन'));
   assert.ok(!html.includes('सरकारी पहचान-पत्र जारी'));
 });
 
