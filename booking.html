@@ -1168,7 +1168,10 @@ async function createCustomerSupportComplaint() {
  }
 }
 let customerSupportComplaintsLoadSequence=0;
+let customerSupportComplaintsBusy=false;
 async function loadCustomerSupportComplaints() {
+ if(customerSupportComplaintsBusy)return;
+ customerSupportComplaintsBusy=true;
  const sequence=++customerSupportComplaintsLoadSequence;
  const select=document.getElementById('customerSupportComplaint');
  const refresh=document.getElementById('customerSupportRefresh');
@@ -1191,7 +1194,7 @@ async function loadCustomerSupportComplaints() {
   if(customerSupportSelectedId) await loadCustomerSupportMessages();
   else {renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
  } catch(e){if(sequence===customerSupportComplaintsLoadSequence)supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
- finally{if(sequence===customerSupportComplaintsLoadSequence){select.disabled=wasDisabled;if(refresh)refresh.disabled=false;}}
+ finally{if(sequence===customerSupportComplaintsLoadSequence){customerSupportComplaintsBusy=false;select.disabled=wasDisabled;if(refresh)refresh.disabled=false;}}
 }
 let customerSupportThreadLoadSequence=0;
 async function loadCustomerSupportMessages() {
