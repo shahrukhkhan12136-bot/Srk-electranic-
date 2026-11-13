@@ -120,7 +120,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261112230000_show_customer_payment_choice_to_assigned_electrician.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261113090000_customer_can_explicitly_switch_cash_booking_to_online.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261113120000_harden_customer_call_contact_privacy.sql"
-            "$GITHUB_WORKSPACE/supabase/migrations/20261113120000_limit_cash_fee_settlement_to_labour_share.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261113120100_limit_cash_fee_settlement_to_labour_share.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261113143000_restrict_customer_booking_contacts_to_active.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261113160000_hide_internal_notes_from_customer_support_rpcs.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261113173000_customer_payment_history_rpc.sql"
@@ -140,6 +140,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114060000_work_completion_admin_review_and_immutable_event_history.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114070000_customer_safe_idempotent_booking_timeline.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114080000_electrician_safe_booking_work_timeline.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114090000_atomic_razorpay_order_and_payment_finalization.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
