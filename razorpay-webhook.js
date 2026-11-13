@@ -26,19 +26,11 @@ async function updateBooking(orderId,payment){
  if(booking.status!=="completed")return "booking_not_payable";
  const expectedAmount=await expectedAmountPaise(booking);
  if(!expectedAmount||payment.amount!==expectedAmount||payment.currency!=="INR")return "amount_mismatch";
- const patchUrl=new URL("/rest/v1/service_bookings",SUPABASE_URL);
- patchUrl.searchParams.set("id","eq."+booking.id);
- patchUrl.searchParams.set("razorpay_order_id","eq."+orderId);
- patchUrl.searchParams.set("payment_status","neq.paid");
- const patched=await fetch(patchUrl,{method:"PATCH",headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify({payment_status:"paid",amount_paid:Number((payment.amount/100).toFixed(2)),razorpay_payment_id:payment.id,payment_verified_at:new Date().toISOString()})});
- if(!patched.ok)throw new Error("Booking payment update failed");
- const updated=await patched.json();if(Array.isArray(updated)&&updated.length)return "updated";
- const latestResponse=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY}});
- if(!latestResponse.ok)throw new Error("Booking payment reconciliation failed");
- const latestRows=await latestResponse.json(),latest=Array.isArray(latestRows)?latestRows[0]:null;
- if(latest?.payment_status==="paid"&&latest.razorpay_payment_id===payment.id)return "already_processed";
- if(latest?.payment_status==="paid")return "payment_conflict";
- return "update_not_applied";
+ const finalized=await db("rpc/srk_service_finalize_captured_payment",{method:"POST",body:JSON.stringify({
+  p_booking_id:booking.id,p_razorpay_order_id:orderId,p_razorpay_payment_id:payment.id,
+  p_amount_paise:payment.amount,p_currency:payment.currency
+ })});
+ return finalized?.already_processed?"already_processed":"updated";
 }
 exports.handler=async event=>{
  if(event.httpMethod!=="POST")return json(405,{success:false,error:"POST only."});
@@ -55,7 +47,7 @@ exports.handler=async event=>{
   if(!payment||payment.status!=="captured"||!/^pay_[A-Za-z0-9]+$/.test(payment.id||"")||!/^order_[A-Za-z0-9]+$/.test(payment.order_id||""))return json(400,{success:false,error:"Captured payment details missing."});
   const result=await updateBooking(payment.order_id,payment);
   if(result==="update_not_applied"){console.error("Razorpay webhook update was not applied; retry requested.");return json(500,{success:false,reconciled:false,reason:result});}
-  if(["not_found","amount_mismatch","payment_conflict","booking_not_payable","cash_booking"].includes(result)){console.error("Razorpay webhook could not reconcile booking:",result);return json(200,{success:true,reconciled:false,reason:result});}
+  if(["not_found","amount_mismatch","payment_conflict","booking_not_payable","cash_booking"].includes(result)){console.error("Razorpay webhook needs payment reconciliation; retry requested:",result);return json(500,{success:false,reconciled:false,reason:result});}
   return json(200,{success:true,reconciled:true,result});
  }catch(error){console.error("Razorpay webhook processing failed:",error?.name||"UnknownError");return json(500,{success:false,error:"Webhook processing failed."});}
 };
