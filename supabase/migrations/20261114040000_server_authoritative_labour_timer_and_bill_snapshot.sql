@@ -1125,7 +1125,12 @@ BEGIN
            AND round(b.labour_amount,2)=round(coalesce(v_row.gross_service_amount,0),2)
            AND coalesce(v_row.materials_amount,0)=0
            AND round(v_row.platform_commission,2)=round(b.platform_fee_amount,2)
-           AND round(v_row.electrician_payable,2)=round(b.electrician_payable,2)
+           AND v_row.electrician_payable>0
+           AND v_row.electrician_payable<=b.electrician_payable
+           AND EXISTS(SELECT 1 FROM public.srk_wallet_ledger w
+             WHERE w.idempotency_key='srk:payout-pending:'||v_booking.id::text
+               AND w.status='pending' AND w.direction='debit'
+               AND round(w.amount,2)=round(v_row.electrician_payable,2))
        ) THEN
       RAISE EXCEPTION 'Labour bill or payout ledger does not reconcile; settlement blocked';
     END IF;
@@ -1137,6 +1142,18 @@ BEGIN
        OR round(coalesce(v_row.platform_commission,0),2)<>round(coalesce(v_booking.service_charge,0)*v_booking.commission_rate/100,2)
        OR round(coalesce(v_row.electrician_payable,0),2)<>round(coalesce(v_booking.service_charge,0)+coalesce(v_booking.materials_amount,0)-round(coalesce(v_booking.service_charge,0)*v_booking.commission_rate/100,2),2) THEN
       RAISE EXCEPTION 'Legacy booking payment or payout ledger does not reconcile';
+    END IF;
+  END IF;
+
+  IF v_booking.selected_category IS NOT NULL THEN
+    UPDATE public.srk_wallet_ledger
+    SET status='posted',posted_at=clock_timestamp(),provider_reference=btrim(p_reference),
+        description='Electrician payout transferred and reference verified by Admin'
+    WHERE idempotency_key='srk:payout-pending:'||v_booking.id::text
+      AND status='pending' AND direction='debit'
+      AND round(amount,2)=round(v_row.electrician_payable,2);
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Pending wallet payout ledger entry missing; Admin settlement blocked';
     END IF;
   END IF;
 
