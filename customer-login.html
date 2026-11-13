@@ -13,6 +13,7 @@
 <main class="card">
 <h1>SRK ELECTRONIC</h1>
 <p class="sub">ग्राहक मोबाइल OTP लॉगिन</p>
+<section id="sessionArea" class="hidden" aria-live="polite"><p id="sessionText" class="sub"></p><button class="btn" id="logout" type="button">सुरक्षित लॉगआउट</button></section>
 <p class="sub">अपना रजिस्टर्ड भारतीय मोबाइल नंबर डालें। OTP SMS से आएगा। OTP केवल इसी स्क्रीन पर खुद दर्ज करें—किसी के साथ साझा न करें।</p>
 <label for="phone">रजिस्टर्ड मोबाइल नंबर</label>
 <input id="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="15" placeholder="10 अंकों का मोबाइल नंबर">
@@ -38,8 +39,28 @@
  const area=document.getElementById('otpArea');
  let busy=false, resendAt=0, timer=null;
  const sb=(cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&window.supabase)?window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY):null;
+ async function syncSession(){
+  if(!sb)return;
+  try{
+   const {data,error}=await sb.auth.getSession();
+   if(error)throw error;
+   const session=data.session;
+   document.getElementById('sessionArea').classList.toggle('hidden',!session);
+   send.disabled=!!session;
+   verify.disabled=!!session;
+   document.getElementById('sessionText').textContent=session?'आप पहले से लॉगिन हैं: '+(session.user.phone||'सत्यापित मोबाइल')+'. बुकिंग देखने के लिए मुख्य पेज खोलें।':'';
+  }catch(_){setMessage('सेशन की स्थिति जाँची नहीं जा सकी। पेज रीफ्रेश करके फिर कोशिश करें।',true);}
+ }
  function phoneE164(){const raw=phoneInput.value.trim(),d=raw.replace(/\D/g,'');if(d.length===10)return '+91'+d;if(raw.startsWith('+')&&d.length>=10&&d.length<=15)return '+'+d;return null;}
  function setMessage(t,bad=false){msg.textContent=t;msg.style.color=bad?'#b42318':'#176b3a';}
+ document.getElementById('logout').addEventListener('click',async()=>{
+  if(busy)return;busy=true;document.getElementById('logout').disabled=true;
+  try{const {error}=await sb.auth.signOut();if(error)throw error;area.classList.add('hidden');otpInput.value='';phoneInput.value='';setMessage('आप सुरक्षित रूप से लॉगआउट हो गए हैं।');await syncSession();}
+  catch(_){setMessage('लॉगआउट पूरा नहीं हो सका। कृपया दोबारा कोशिश करें।',true);}
+  finally{busy=false;document.getElementById('logout').disabled=false;}
+ });
+ sb.auth.onAuthStateChange(()=>{setTimeout(syncSession,0);});
+ syncSession();
  send.addEventListener('click',async()=>{
   if(!sb){setMessage('लॉगिन कॉन्फ़िगरेशन उपलब्ध नहीं है।',true);return;}
   if(busy)return;const phone=phoneE164();if(!phone){setMessage('कृपया सही 10 अंकों का भारतीय मोबाइल नंबर डालें।',true);return;}
