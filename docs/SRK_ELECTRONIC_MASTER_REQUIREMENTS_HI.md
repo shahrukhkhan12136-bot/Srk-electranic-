@@ -3459,3 +3459,17 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Test harness source-level checks हैं; browser interaction, Supabase Auth expiry/rate limits, wrong-attempt lockout, CAPTCHA, SMS delivery या session revocation का प्रमाण नहीं।
 - No Production deployment, Supabase/Auth setting, DB migration, secret, SMS/provider request, payment, customer account/session or production configuration changed. Workflow is scoped to Feature Branch and does not deploy.
 - **Status: In Progress.** Workflow saved/refetched; CI test execution/result and real browser/Auth verification pending.
+
+
+## 17.100 — OTP CI Execution Status Recheck और Vercel Preview Rate-limit Blocker (13 नवम्बर 2026)
+
+- Checklist item: **14.1.1**।
+- GitHub combined commit status पुनः जाँचा:
+  - Workflow commit `c55abd82d53f95ddf723436d4935944413ecb1f8`: Vercel `success` (यह Preview build है; OTP test नहीं)।
+  - Documentation commit `33c288284c81bfc37eaa613e7cadceefd1b28ef0`: Vercel `failure`, target URL पर `upgradeToPro=build-rate-limit` संकेत। यह Vercel Preview/build-rate-limit समस्या है, OTP source test failure नहीं।
+  - Test assertion commit `625844811ac33d3e78122d659ca9aa02a1d55f52`: Vercel `failure`, वही build-rate-limit संकेत।
+- GitHub Actions commit-run lookup में इस Feature Branch push workflow का run record नहीं मिला; उपलब्ध GitHub connector में all push runs/check-runs enumerate या workflow dispatch करने का action नहीं है। Public Actions page fetch भी सफल नहीं हुआ। इसलिए test command के actual output का कोई प्रमाण नहीं।
+- Vercel `failure` को OTP test failure नहीं माना जाएगा; Vercel `success` को OTP test pass नहीं माना जाएगा।
+- कोई नया retry, workflow dispatch, deployment, paid plan upgrade या Production action नहीं किया।
+- अगला आवश्यक verification: GitHub Actions UI में `Customer OTP source regression tests` workflow का run खोलकर `Run OTP source regression tests` step का output देखना, या authorized Node 20 checkout में `npm run test:otp` चलाकर पूरा output सुरक्षित रखना। यदि failure हो तो पहले failing assertion/source inspect और fix; फिर rerun।
+- **Status: In Progress.** No tests marked PASS; no checklist item closed.
