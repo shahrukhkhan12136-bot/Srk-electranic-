@@ -403,7 +403,7 @@ async function loadCustomerPaymentHistory(reset=true) {
  }catch(error){
   if(sequence===customerPaymentHistoryLoadSequence){
    if(reset)box.textContent='भुगतान इतिहास लोड नहीं हो सका। कृपया दोबारा कोशिश करें।';
-   else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
+   else{let note=box.querySelector('[data-payment-history-load-warning]');if(!note){note=document.createElement('p');note.className='small';note.dataset.paymentHistoryLoadWarning='true';note.setAttribute('role','status');box.appendChild(note);}note.textContent='अगले भुगतान रिकॉर्ड लोड नहीं हो सके। पहले से दिख रहे रिकॉर्ड सुरक्षित हैं; कृपया दोबारा कोशिश करें।';}
   }
  }finally{
   if(sequence===customerPaymentHistoryLoadSequence){
