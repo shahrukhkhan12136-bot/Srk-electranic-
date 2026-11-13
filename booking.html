@@ -89,7 +89,8 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <section class="customer-menu-page" id="customerMenuBookings" role="tabpanel" aria-labelledby="customerTabBookings" hidden>
    <h2 class="section-title" style="margin-top:0">My Bookings</h2>
    <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
-   <div id="customerBookings" aria-live="polite"></div>
+   <div id="customerBookings" aria-live="polite" aria-busy="false"></div>
+   <button class="btn" type="button" id="customerBookingHistoryMore" style="display:none">और पुरानी बुकिंग देखें</button>
   </section>
   <section class="customer-menu-page" id="customerMenuPayments" role="tabpanel" aria-labelledby="customerTabPayments" hidden>
    <section class="card" id="customerPaymentHistoryPanel" style="margin-top:14px">
@@ -605,14 +606,19 @@ async function customerSubmitBookingRefund(bookingId){
  if(button)button.disabled=false;
 }
 let customerBookingHistoryLoadSequence=0;
-async function loadCustomerBookings() {
+let customerBookingHistoryOffset=0;
+let customerBookingHistoryBusy=false;
+async function loadCustomerBookings(reset=true) {
+  if(!customerSb||(!reset&&customerBookingHistoryBusy))return;
   const sequence=++customerBookingHistoryLoadSequence;
   const box = document.getElementById('customerBookings');
-  if (!customerSb) { box.textContent='ग्राहक लॉगिन सेवा अभी उपलब्ध नहीं है।'; return; }
+  const more=document.getElementById('customerBookingHistoryMore');
+  const refresh=document.getElementById('customerRefresh');
+  if(!box||!more)return;
+  const requestedOffset=reset?0:customerBookingHistoryOffset;
+  customerBookingHistoryBusy=true;more.disabled=true;if(refresh)refresh.disabled=true;
   box.setAttribute('aria-busy','true');
-  box.textContent = navigator.onLine===false
-    ? 'इंटरनेट कनेक्शन उपलब्ध नहीं है। कनेक्शन लौटने पर फिर से कोशिश करें।'
-    : 'आपकी बुकिंग लोड हो रही हैं…';
+  if(reset){customerBookingHistoryOffset=0;more.style.display='none';box.textContent=navigator.onLine===false?'इंटरनेट कनेक्शन उपलब्ध नहीं है। कनेक्शन लौटने पर फिर से कोशिश करें।':'आपकी बुकिंग लोड हो रही हैं…';}
   try {
     const { data: sessionData, error: sessionError } = await customerSb.auth.getSession();
     if(sequence!==customerBookingHistoryLoadSequence)return;
@@ -627,10 +633,13 @@ async function loadCustomerBookings() {
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
-      .limit(50);
+      .range(requestedOffset,requestedOffset+24);
     if (error) throw error;
     if (!data || !data.length) {
-      box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
+      if(reset)box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
+      else{const note=document.createElement('p');note.className='small';note.textContent='अब इससे पुरानी कोई बुकिंग उपलब्ध नहीं है।';box.appendChild(note);}
+      customerBookingHistoryOffset=requestedOffset;
+      more.style.display='none';
       return;
     }
     const [contactsResult,timelineResult,refundResult] = await Promise.all([
@@ -664,7 +673,7 @@ async function loadCustomerBookings() {
     }));
     if(sequence!==customerBookingHistoryLoadSequence)return;
     if(billLoadFailures)partialWarnings.push('कुछ पूरी हुई बुकिंग के अंतिम Labour Bill अभी लोड नहीं हो सके।');
-    box.innerHTML = data.map(row => {
+    const cardsHtml = data.map(row => {
       const contact = callMap.get(row.id);
       const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
       const canCall = Boolean(contact) && /^[0-9]{10,15}$/.test(phone);
@@ -744,6 +753,10 @@ async function loadCustomerBookings() {
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
+    if(sequence!==customerBookingHistoryLoadSequence)return;
+    if(reset)box.innerHTML=cardsHtml;else box.insertAdjacentHTML('beforeend',cardsHtml);
+    customerBookingHistoryOffset=requestedOffset+data.length;
+    more.style.display=data.length===25?'block':'none';
     if(partialWarnings.length){
       const note=document.createElement('p');
       note.className='small';
@@ -752,11 +765,12 @@ async function loadCustomerBookings() {
       box.prepend(note);
     }
   } catch(error) {
-    if(sequence===customerBookingHistoryLoadSequence)box.textContent=navigator.onLine===false
-      ? 'इंटरनेट कनेक्शन टूट गया। कनेक्शन लौटने पर “बुकिंग फिर से देखें” दबाएँ।'
-      : 'बुकिंग लोड नहीं हो सकीं। कृपया “बुकिंग फिर से देखें” दबाकर दोबारा कोशिश करें।';
+    if(sequence===customerBookingHistoryLoadSequence){
+      const warning=navigator.onLine===false?'इंटरनेट कनेक्शन टूट गया। पहले से दिख रही बुकिंग सुरक्षित हैं; कनेक्शन लौटने पर दोबारा कोशिश करें।':'अगली बुकिंग लोड नहीं हो सकीं। पहले से दिख रही बुकिंग सुरक्षित हैं; कृपया दोबारा कोशिश करें।';
+      if(reset)box.textContent=warning;else{let note=box.querySelector('[data-booking-history-load-warning]');if(!note){note=document.createElement('p');note.className='small';note.dataset.bookingHistoryLoadWarning='true';box.appendChild(note);}note.textContent=warning;}
+    }
   } finally {
-    if(sequence===customerBookingHistoryLoadSequence)box.setAttribute('aria-busy','false');
+    if(sequence===customerBookingHistoryLoadSequence){customerBookingHistoryBusy=false;box.setAttribute('aria-busy','false');more.disabled=false;if(refresh)refresh.disabled=false;}
   }
 }
 async function customerRespondWorkStart(bookingId,response){
@@ -1371,7 +1385,8 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
-  document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
+  document.getElementById('customerRefresh').addEventListener('click',()=>loadCustomerBookings(true));
+  document.getElementById('customerBookingHistoryMore').addEventListener('click',()=>loadCustomerBookings(false));
   document.getElementById('customerPaymentHistoryRefresh').addEventListener('click',()=>loadCustomerPaymentHistory(true));
   document.getElementById('customerRefundHistoryRefresh').addEventListener('click',()=>loadCustomerRefundHistory(true));
   document.getElementById('customerRefundHistoryMore').addEventListener('click',()=>loadCustomerRefundHistory(false));
