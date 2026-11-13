@@ -10,7 +10,7 @@
 <title>SRK ELECTRONIC</title>
 <style>
 :root{--navy:#071a2b;--blue:#0b5ed7;--gold:#ffbd45;--paper:#f4f7fb;--ink:#142235}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--paper);color:var(--ink)}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--paper);color:var(--ink);scroll-behavior:smooth}
 header{background:linear-gradient(135deg,#071a2b,#123f68);color:white;padding:24px 18px 30px;border-radius:0 0 26px 26px}
 .top{display:flex;align-items:center;gap:12px}.logo{width:54px;height:54px;border-radius:16px;background:var(--gold);color:#071a2b;display:grid;place-items:center;font-weight:900;font-size:19px}
 h1{font-size:23px;margin:0;letter-spacing:.4px}header p{margin:5px 0 0;color:#d7e7f6;font-size:14px}
@@ -35,7 +35,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 96px}
 .customer-nav a .nav-icon{font-size:19px;line-height:1.2}
 .customer-nav a.active{color:#0b5ed7;background:#eaf2ff}
 .customer-nav a:focus-visible{outline:3px solid #ffbd45;outline-offset:2px}
-#profilePanel{display:none}
+#profilePanel{display:block}
 @media(min-width:760px){.customer-nav{left:50%;right:auto;transform:translateX(-50%);width:min(760px,100%);border:1px solid #dce5ef;border-bottom:0;border-radius:18px 18px 0 0}}
 @media(min-width:600px){header{padding:30px max(24px,calc((100% - 720px)/2)) 36px}.hero h2{font-size:32px}}
 </style>
@@ -50,7 +50,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 96px}
  </div>
 </header>
 <nav class="customer-nav" aria-label="मुख्य मेनू">
- <a href="#home" data-nav="home" class="active"><span class="nav-icon" aria-hidden="true">🏠</span><span>Home</span></a>
+ <a href="#home" data-nav="home" class="active" aria-current="page"><span class="nav-icon" aria-hidden="true">🏠</span><span>Home</span></a>
  <a href="#my-bookings" data-nav="my-bookings"><span class="nav-icon" aria-hidden="true">📋</span><span>My Bookings</span></a>
  <a href="#payments" data-nav="payments"><span class="nav-icon" aria-hidden="true">💳</span><span>Payments</span></a>
  <a href="#support" data-nav="support"><span class="nav-icon" aria-hidden="true">🎧</span><span>Help</span></a>
@@ -441,7 +441,12 @@ document.getElementById('booking').addEventListener('submit', async function (e)
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
 document.querySelectorAll('.customer-nav a').forEach(link => {
   link.addEventListener('click', () => {
-    document.querySelectorAll('.customer-nav a').forEach(item => item.classList.toggle('active', item === link));
+    document.querySelectorAll('.customer-nav a').forEach(item => {
+      const active = item === link;
+      item.classList.toggle('active', active);
+      if (active) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
+    });
   });
 });
 document.getElementById('electricianForm').addEventListener('submit', async function(e) {
