@@ -702,3 +702,16 @@
 - यह source/isolated mock verification है; live Supabase rate-limit RPC, database concurrency, वास्तविक Netlify IP headers और browser/device E2E अभी verify नहीं हुए। कोई SQL migration, Production change, deployment या payment/refund execution नहीं हुआ।
 - Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
 - अगला Customer App काम: customer profile, booking history, Help & Support तथा उनके role-scoped RPC/RLS/error/retry व्यवहार का source audit; उसके बाद बाकी Customer App requirements। Electrician Portal शुरू नहीं हुआ।
+
+
+## 2026-11-13 — Customer Profile direct-table access hardening
+
+- Customer Profile frontend का source audit किया: नाम/भाषा/अवतार केवल srk_customer_get_my_profile और srk_customer_update_my_profile RPC से पढ़े/सेव किए जा रहे हैं; verified phone Supabase Auth session से read-only दिखता है।
+- Profile migration में authenticated role को srk_customer_profiles table पर SELECT/INSERT/UPDATE की direct grants मिली हुई थीं। इससे UI के validated RPC के बाहर client direct table writes कर सकता था; table constraints कुछ सीमाएँ लागू करते थे, लेकिन RPC की min-name और avatar-object existence validation bypass हो सकती थी।
+- Migration 20261113200000_customer_profile_api_and_avatar_security.sql से authenticated direct table grant हटाई; anon/authenticated direct privileges revoked ही रहते हैं। Profile access अब owner-scoped SECURITY DEFINER RPCs से होगा। RLS policies defense-in-depth के रूप में बनी रहती हैं।
+- pgTAP assertion बदली: authenticated/anon client roles के पास profile table का direct SELECT/INSERT/UPDATE/DELETE access न हो। RPC grants और ownership checks की बाकी assertions बरकरार।
+- tests/customer-menu.test.cjs में source regression जोड़ा कि frontend दोनों profile RPCs इस्तेमाल करे और migration client table grants न दे।
+- GitHub Actions source regression workflow Run #43462573520 — success; tested head commit 082125515c6e9dab60afe463de551a16d0b423de।
+- SQL pgTAP test अभी execute नहीं हुआ; migration Production या किसी live database पर apply नहीं हुई। Storage bucket, avatar MIME/object metadata enforcement और actual signed-URL access की runtime जांच अभी बाकी है। कोई deployment/Production बदलाव नहीं।
+- Master checklist counts अपरिवर्तित: Verified Complete 0/96; Partial/In Progress 65; Blocked 7; Remaining 24।
+- अगला क्रम Customer App में Help & Support attachment authorization/metadata और booking-history/profile error states का source audit है। Electrician Portal शुरू नहीं हुआ।
