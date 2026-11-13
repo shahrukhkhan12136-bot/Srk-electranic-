@@ -114,3 +114,17 @@ test('customer booking history reports partial RPC and labour-bill failures with
   assert.match(html, /कुछ पूरी हुई बुकिंग के अंतिम Labour Bill अभी लोड नहीं हो सके/);
   assert.match(html, /if\(sequence===customerBookingHistoryLoadSequence\)box\.setAttribute\('aria-busy','false'\)/);
 });
+
+
+test('customer avatar lifecycle keeps profile save separate from preview and cleanup outcomes', () => {
+  assert.match(html, /async function loadCustomerAvatar\(path\)[\s\S]*?return true;[\s\S]*?return false;/);
+  assert.match(html, /if\(!window\.crypto\?\.randomUUID\)throw new Error/);
+  assert.match(html, /let uploadedAvatarPath=null/);
+  assert.match(html, /if\(cleanup\.error\)cleanupWarning=/);
+  assert.match(html, /प्रोफ़ाइल सफलतापूर्वक सेव हो गई।'.*previewLoaded/s);
+  assert.match(html, /प्रोफ़ाइल सफलतापूर्वक सेव हो गई।'.*cleanupWarning/s);
+  assert.match(html, /const avatarLoaded=customerCurrentAvatarPath\?await loadCustomerAvatar/);
+  assert.match(html, /if\(!customerCurrentAvatarPath\)setCustomerAvatarPreview\(''\)/);
+  assert.match(html, /const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
+  assert.match(html, /फोटो का पूर्वावलोकन अभी उपलब्ध नहीं है/);
+});
