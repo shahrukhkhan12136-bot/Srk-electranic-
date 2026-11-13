@@ -171,3 +171,14 @@ test('customer payment history RPC exists, is owner-scoped and covers all paymen
   assert.match(customerPaymentHistoryMigration, /grant execute on function public\.srk_customer_get_payment_history\(integer,integer\) to authenticated/i);
   assert.match(customerPaymentHistoryMigration, /revoke all on function public\.srk_customer_get_payment_history\(integer,integer\) from public,anon/i);
 });
+
+
+test('customer refund form only appears for completed approved immutable labour bill and refreshes all histories', () => {
+  assert.match(html, /let customerRefundSubmissionBusy=new Set\(\)/);
+  assert.match(html, /customerRefundSubmissionBusy\.has\(bookingId\)/);
+  assert.match(html, /customerRefundSubmissionBusy\.add\(bookingId\)/);
+  assert.match(html, /customerRefundSubmissionBusy\.delete\(bookingId\)/);
+  assert.match(html, /row\.status==='completed'[\s\S]*?row\.completion_approval_status==='approved'[\s\S]*?Boolean\(row\.selected_category\)[\s\S]*?Boolean\(bill\)/);
+  assert.match(html, /Math\.round\(Number\(bill\.labour_amount\)\*100\)===Math\.round\(Number\(row\.amount_paid\)\*100\)/);
+  assert.match(html, /Promise\.all\(\[loadCustomerRefundHistory\(\),loadCustomerPaymentHistory\(true\)\]\)/);
+});
