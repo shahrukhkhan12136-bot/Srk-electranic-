@@ -1,6 +1,6 @@
 begin;
 
-select plan(11);
+select plan(12);
 
 select ok(
   position('auth.uid()' in pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure)) > 0,
@@ -41,6 +41,12 @@ select ok(
 select ok(
   position('v_offset > 10000' in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))) > 0,
   'offset is bounded'
+);
+
+select ok(
+  position("b.payment_status = 'paid'" in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))) > 0
+  and position('b.payment_verified_at is not null' in lower(pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))) > 0,
+  'booking payment summary requires paid status and a verification timestamp'
 );
 
 select ok(
