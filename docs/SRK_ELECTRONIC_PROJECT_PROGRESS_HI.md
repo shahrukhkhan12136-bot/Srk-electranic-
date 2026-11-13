@@ -1766,3 +1766,13 @@
 - Synthetic fixture केवल आवश्यक history tables/columns बनाता है। Workflow local-only Supabase पर `20261114200000_customer_payment_refund_history_rpc.sql` और `20261114210000_customer_refund_history_pagination.sql` apply करता है; Production connection/credentials/data का उपयोग नहीं।
 - Commits: fixture `ec8671f5daee9e8830c1810ce34a969aebfe3050`; structural test `fb23829cbce6ec735eb955b73cbfccad0feed969` (balanced SQL correction `e1e4a59b1fc9ac851eabd6a2f5829ea347c5aeb6`); behavior test `2676ecc3ced1bfb278168e6e59fe6affa8200472`; workflow `7edb4873931a5fbd26afc7abbe3297d6bb2fcda1`.
 - First workflow attempt was cancelled by a newer test-file correction while local Supabase startup was in progress; cleanup step is still finishing. Corrected run #43521128268 is pending; no pgTAP PASS claim yet. Source regression on the corrected test commit #43521128408 SUCCESS.
+
+
+### Customer Payment/Refund History — FINAL isolated local pgTAP PASS
+
+- Run #43521128268 completed SUCCESS. Disposable local Supabase में synthetic fixture पर payment-history और refund-history pagination की दोनों migrations सफलतापूर्वक apply हुईं।
+- तीन pgTAP files, कुल **30/30 assertions PASS**: payment history structural 14, payment/refund synthetic behavior 8, refund pagination 8। Behavior coverage में दो customer identities, payment/manual-payment, refund request, Razorpay refund, manual refund, duplicate payment suppression, newest-first ordering और pagination शामिल हैं।
+- Workflow logs ने All tests successful, Files=3, Tests=30 और clean supabase stop --no-backup दिखाया। केवल isolated local synthetic DB; Production connection/credentials/data या DDL का उपयोग नहीं।
+- Source regression #43521128408 पहले ही SUCCESS था।
+- अगला मुख्य Customer App dependency: Refund foundation, Admin review/decision, guarded Razorpay refund preparation, durable provider result/event reconciliation तथा manual refund finalization के local integration/behavior tests। Existing pgTAP files अभी unexecuted हैं; provider secrets/webhook configuration और live Razorpay test-mode flow भी unverified हैं।
+- Production untouched; कोई deploy/merge/payment/refund/payout नहीं। Final mobile/Desktop QA सभी non-device tasks के बाद consolidated pass में होगा।
