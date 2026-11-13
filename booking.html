@@ -234,7 +234,22 @@ async function customerVerifyOtp() {
   } catch (_) { customerMessage('OTP सत्यापन अभी नहीं हो सका।'); }
   finally { customerOtpBusy = false; button.disabled = false; }
 }
-async function customerLogout() { await customerSb.auth.signOut(); customerMessage('आप लॉगआउट हो गए हैं। नई बुकिंग और भुगतान के लिए OTP लॉगिन जरूरी है।'); await syncCustomerSession(); }
+async function customerLogout() {
+  const button = document.getElementById('customerLogout');
+  if (!customerSb || !button || button.disabled) return;
+  button.disabled = true;
+  customerMessage('लॉगआउट किया जा रहा है…');
+  try {
+    const { error } = await customerSb.auth.signOut();
+    if (error) throw error;
+    await syncCustomerSession();
+    customerMessage('आप लॉगआउट हो गए हैं। नई बुकिंग और भुगतान के लिए OTP लॉगिन जरूरी है।');
+  } catch (_) {
+    customerMessage('लॉगआउट पूरा नहीं हो सका। इंटरनेट जाँचकर दोबारा कोशिश करें।');
+  } finally {
+    button.disabled = false;
+  }
+}
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
