@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(96);
+SELECT plan(98);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -396,6 +396,18 @@ SELECT ok(pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()':
   pg_get_functiondef('public.srk_guard_immutable_booking_labour_bill()'::regprocedure)
   ILIKE '%actor_id=auth.uid()%',
   'only customer-authorized completion workflow may insert final labour bill snapshot');
+
+
+SELECT ok(pg_get_function_result('public.srk_get_my_earnings()'::regprocedure)
+  ILIKE '%legacy_commission_amount numeric%'
+  AND pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)
+  ILIKE '%THEN 0::numeric%',
+  'electrician earnings separates historical commission from new Platform Fee');
+SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
+  ILIKE '%total_legacy_commission%'
+  AND pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure)
+  ILIKE '%total_platform_fee%',
+  'Admin report keeps historical commission outside the Platform Fee total');
 
 SELECT * FROM finish();
 ROLLBACK;
