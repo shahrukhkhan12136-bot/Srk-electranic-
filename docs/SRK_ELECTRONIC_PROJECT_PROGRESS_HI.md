@@ -1235,3 +1235,12 @@
 - अब attachment object में `signedUrlError` flag रखा जाता है और disabled link के label में स्पष्ट हिन्दी संदेश दिखता है: “फ़ाइल लिंक अभी उपलब्ध नहीं; थ्रेड रीफ़्रेश करें”. इससे broken link पर click करने की कोशिश और silent failure से बचाव होता है; signed URL न होने पर link navigation disabled ही रहती है।
 - App commit: `753b8d430f1078d8e869e9ff9764cba7cd48bbc9`. Regression test commit: `c404237978bfbe1de337ad993c69ba2e10873a08`. Fresh CI pending; not marked passed.
 - No Storage policy/runtime change, no DB/Production changes. Real signed URL expiry/failure injection, database pgTAP and final mobile/Desktop QA remain pending.
+
+
+### 14 नवम्बर 2026 — Customer Profile session privacy cleanup
+
+- Profile audit में एक privacy edge case मिला: OTP session अनुपस्थित होने पर profile loader केवल login संदेश दिखाता था, पर पुराने in-memory phone/name/avatar preview को साफ़ नहीं करता था। Shared device या session expiry पर stale profile information दिखाई रह सकती थी।
+- No-session branch अब profile phone/name fields खाली करता है, current avatar path reset करता है और avatar preview clear करता है; OTP login message कायम है। Booking form का अलग contact name field जानबूझकर नहीं मिटाया गया।
+- App commit: `73c266dce2aceb81aa6d890bec3f9ee721743aee`. Regression test commit: `48a5fcf14a39de7bf21ea49db4a9302e52340028`. Fresh CI pending.
+- Previous support attachment change: source regression `43488271607` SUCCESS on test commit `c404237978bf`; app source regression `43488248308` SUCCESS on app commit `753b8d430f10`. New no-session privacy test is not yet passed.
+- No Production changes/deploy. Browser session-expiry test, real Auth/storage checks, DB pgTAP and final mobile/Desktop QA remain pending.
