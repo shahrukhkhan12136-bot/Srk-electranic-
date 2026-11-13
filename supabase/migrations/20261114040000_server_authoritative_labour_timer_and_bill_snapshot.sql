@@ -1770,3 +1770,119 @@ BEGIN
 END;
 $block$;
 
+
+
+CREATE OR REPLACE FUNCTION private.srk_offer_booking_to_eligible_electricians(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_booking public.service_bookings%ROWTYPE;
+  v_match_level text;
+  v_eligible integer:=0;
+  v_created integer:=0;
+  v_has_rules boolean:=false;
+BEGIN
+  IF p_booking_id IS NULL THEN RAISE EXCEPTION 'Booking ID required' USING ERRCODE='22023'; END IF;
+  SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found' USING ERRCODE='P0002'; END IF;
+  IF v_booking.assigned_electrician_id IS NOT NULL THEN
+    RETURN jsonb_build_object('success',false,'code','already_assigned','eligible_count',0,'offers_created',0);
+  END IF;
+  IF v_booking.status NOT IN ('new','confirmed') THEN
+    RETURN jsonb_build_object('success',false,'code','booking_not_offerable','eligible_count',0,'offers_created',0);
+  END IF;
+
+  IF v_booking.selected_category IS NOT NULL THEN
+    SELECT EXISTS(SELECT 1 FROM public.srk_customer_category_skill_rules r
+      WHERE r.category_key=v_booking.selected_category) INTO v_has_rules;
+    IF NOT v_has_rules THEN
+      RETURN jsonb_build_object('success',false,'code','category_skill_mapping_missing',
+        'message','इस काम की Category के लिए Admin ने अभी verified skill mapping सेट नहीं की है।',
+        'match_level',null,'eligible_count',0,'offers_created',0);
+    END IF;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.electrician_profiles e
+    WHERE e.active=true AND e.verification_status='approved'
+      AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
+      AND e.approved_rate_tier IS NOT NULL AND e.approved_rate_card_version IS NOT NULL
+      AND e.rate_tier_approved_by IS NOT NULL AND e.rate_tier_approved_at IS NOT NULL
+      AND e.pincode=v_booking.pincode AND lower(trim(e.state))=lower(trim(v_booking.state))
+      AND (v_booking.selected_category IS NULL OR EXISTS(
+        SELECT 1 FROM public.srk_customer_category_skill_rules r
+        WHERE r.category_key=v_booking.selected_category AND r.skill_key=ANY(e.approved_skill_keys)))
+      AND NOT EXISTS(
+        SELECT 1 FROM public.service_bookings pending
+        WHERE pending.assigned_electrician_id=e.id AND pending.status='completed'
+          AND lower(coalesce(pending.payment_method,'')) LIKE '%online%'
+          AND coalesce(pending.payment_status,'unpaid') NOT IN ('paid','refunded'))
+  ) THEN v_match_level:='pincode'; ELSE v_match_level:='district'; END IF;
+
+  WITH eligible AS (
+    SELECT e.id FROM public.electrician_profiles e
+    WHERE e.active=true AND e.verification_status='approved'
+      AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
+      AND e.approved_rate_tier IS NOT NULL AND e.approved_rate_card_version IS NOT NULL
+      AND e.rate_tier_approved_by IS NOT NULL AND e.rate_tier_approved_at IS NOT NULL
+      AND lower(trim(e.state))=lower(trim(v_booking.state))
+      AND ((v_match_level='pincode' AND e.pincode=v_booking.pincode)
+        OR (v_match_level='district' AND lower(trim(e.district))=lower(trim(v_booking.district))))
+      AND (v_booking.selected_category IS NULL OR EXISTS(
+        SELECT 1 FROM public.srk_customer_category_skill_rules r
+        WHERE r.category_key=v_booking.selected_category AND r.skill_key=ANY(e.approved_skill_keys)))
+      AND NOT EXISTS(
+        SELECT 1 FROM public.service_bookings pending
+        WHERE pending.assigned_electrician_id=e.id AND pending.status='completed'
+          AND lower(coalesce(pending.payment_method,'')) LIKE '%online%'
+          AND coalesce(pending.payment_status,'unpaid') NOT IN ('paid','refunded'))
+  ), inserted AS (
+    INSERT INTO public.job_offers(booking_id,electrician_id,status,match_level)
+    SELECT p_booking_id,e.id,'offered',v_match_level FROM eligible e
+    ON CONFLICT(booking_id,electrician_id) DO NOTHING RETURNING id
+  )
+  SELECT (SELECT count(*) FROM eligible),(SELECT count(*) FROM inserted)
+  INTO v_eligible,v_created;
+
+  IF v_eligible=0 THEN
+    RETURN jsonb_build_object('success',false,'code','no_verified_skill_match',
+      'message','इस PIN/जिले में verified skill, approved rate tier और settled payment status वाला Active इलेक्ट्रिशियन उपलब्ध नहीं है।',
+      'match_level',v_match_level,'eligible_count',0,'offers_created',0);
+  END IF;
+  RETURN jsonb_build_object('success',true,
+    'message',CASE WHEN v_match_level='pincode'
+      THEN 'उसी PIN के verified-skill और rate-tier-approved इलेक्ट्रिशियनों को ऑफर भेजे गए।'
+      ELSE 'PIN पर योग्य पार्टनर नहीं मिला; जिले के verified-skill और rate-tier-approved पार्टनर को ऑफर भेजे गए।' END,
+    'match_level',v_match_level,'eligible_count',v_eligible,'offers_created',v_created);
+END;
+$function$;
+REVOKE ALL ON FUNCTION private.srk_offer_booking_to_eligible_electricians(uuid) FROM PUBLIC,anon,authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_offer_booking(p_booking_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'Admin permission required' USING ERRCODE='42501';
+  END IF;
+  RETURN private.srk_offer_booking_to_eligible_electricians(p_booking_id);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_offer_booking(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_offer_booking(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.broadcast_booking_job()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+BEGIN
+  PERFORM private.srk_offer_booking_to_eligible_electricians(NEW.id);
+  RETURN NEW;
+END;
+$function$;
+
