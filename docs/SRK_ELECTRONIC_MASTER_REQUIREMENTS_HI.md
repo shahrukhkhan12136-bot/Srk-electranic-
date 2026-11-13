@@ -2434,3 +2434,31 @@ Section 17.61 के बाद संबंधित Feature Branch files का
 6. Required tests: customer payload में materials field भेजे जाने पर ignore/reject; electrician materials field/RPC attempt denied; payment amount exactly labour bill; fee = 15% labour only; receipt/report no materials line; old paid quote record remains readable.
 
 इस section में केवल read-only source audit और Master Requirements documentation update किया गया। कोई code, migration, Production object/data, payment या deployment नहीं बदला।
+
+
+## 17.63 — Timer समाप्त होने पर Server-calculated Bill और Customer Cash/Online विकल्प (13 Nov 2026)
+
+यह उपयोगकर्ता का स्पष्ट निर्णय है: Timer समाप्त होने पर इलेक्ट्रिशियन कोई रकम दर्ज नहीं करेगा। सिस्टम वास्तविक समय और निर्धारित rate के आधार पर server पर अपने-आप final labour amount निकालेगा। इसके बाद ग्राहक को सीधे Cash या Online Payment का विकल्प दिखेगा।
+
+### अनिवार्य व्यवहार
+1. इलेक्ट्रिशियन Timer शुरू/काम पूरा करने के आवश्यक action कर सकता है, लेकिन Timer समाप्त होने पर उसे कोई amount, मेहनताना, quote, bill total या payment amount भरने/बदलने की जरूरत नहीं होगी।
+2. Timer की start/stop timestamps server-authoritative होंगी। Client/mobile clock या electrician द्वारा typed duration/amount को bill calculation का आधार नहीं बनाना है।
+3. Server booking की approved category/rate tier और वास्तविक billable minutes के आधार पर labour amount स्वतः calculate करेगा। निर्धारित 8-hour rate को 480 से भाग देकर प्रति मिनट दर निकलेगी; वास्तविक मिनटों के अनुपात में राशि बनेगी, बिना अगले घंटे/मिनट तक round-up किए। लागू currency rounding नियम के अनुसार अंतिम रकम बनेगी।
+4. Customer की आवश्यक completion approval/dispute प्रक्रिया पूरी होने पर server frozen labour-only bill snapshot बनाएगा। Snapshot में booking, rate, actual minutes, labour amount, calculation/version और audit timestamps सुरक्षित होंगे। Snapshot बनने के बाद client-side amount बदलकर payment नहीं कराया जा सकेगा।
+5. Bill बनने के तुरंत बाद Customer App में उसी server-generated final amount के साथ दो payment विकल्प दिखेंगे: **Cash** और **Online Payment**। ग्राहक इनमें से एक चुनेगा।
+6. Cash चुनने पर मौजूदा cash-payment confirmation/verification workflow चलेगा। Online चुनने पर Razorpay order और verification/webhook उसी frozen bill snapshot की exact रकम से बंधे होंगे।
+7. Electrician App में amount भरने, Cash/Online चुनने, payment order बनाने, ग्राहक से payment mode तय कराने या bill total बदलने का कोई input/permission नहीं होगा। Electrician को केवल आवश्यक payment status दिखाई जा सकती है।
+8. Platform Fee 15% केवल server-calculated labour amount पर लागू होगी। सामान/materials की कोई रकम या line item bill, Cash/Online payment, receipt, payout या fee calculation में नहीं आएगी।
+9. Payment mode चुनने और payment status बदलने के बीच idempotency, duplicate request, concurrency, provider timeout और webhook reconciliation लागू होंगे। Client द्वारा भेजी गई रकम/payment mode को authoritative न मानें।
+10. पुराने quote-era records सुरक्षित रहेंगे; यह नया timer bill/payment flow उनसे अलग versioned होगा। पुराने रिकॉर्डों को नए नियम के अनुसार rewrite या zero नहीं करना है।
+
+### Acceptance tests
+- Timer समाप्त होने पर Electrician को amount input नहीं दिखता और कोई amount submit API आवश्यक नहीं होती।
+- Server timestamps और approved rate से independent expected amount निकलता है; client द्वारा भेजी गई बदली हुई रकम अस्वीकार/अनदेखी होती है।
+- Customer को उसी exact frozen amount के साथ Cash और Online दोनों विकल्प मिलते हैं।
+- Cash और Online दोनों paths सही booking/bill से जुड़ते हैं; duplicate clicks/webhooks से duplicate charge/ledger entry नहीं बनती।
+- Electrician API/UI से amount या payment mode बदलने का प्रयास असफल होता है।
+- Bill/receipt/fee में केवल labour amount और लागू 15% Platform Fee होती है; materials का कोई field/line नहीं।
+- Historical quote-era paid records पढ़े जा सकते हैं और अपरिवर्तित रहते हैं।
+
+यह section Master Requirements में निर्णय दर्ज करता है; इसे implementation समझा न जाए। इस update में source code, SQL migration, Production database/provider settings या deployment नहीं बदले गए।
