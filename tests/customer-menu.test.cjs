@@ -224,6 +224,10 @@ test('customer work start and completion responses reject duplicate submissions 
   assert.match(source,/customerWorkStartResponseBusy\.has\(bookingId\)/);
   assert.match(source,/customerWorkStartResponseBusy\.add\(bookingId\)/);
   assert.match(source,/finally\{customerWorkStartResponseBusy\.delete\(bookingId\);\}/);
+  assert.ok(source.includes('let responseConfirmed=false;'));
+  assert.ok(source.includes('responseConfirmed=true;'));
+  assert.ok(source.includes('जवाब सर्वर पर दर्ज हो गया है'));
+  assert.ok(source.includes('जवाब दोबारा न भेजें'));
 });
 
 
