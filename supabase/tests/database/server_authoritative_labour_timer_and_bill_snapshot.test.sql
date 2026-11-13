@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(47);
+SELECT plan(57);
 
 SELECT has_column('public','service_bookings','work_timer_seconds','timer seconds use bigint storage');
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','exact accumulated server elapsed seconds stored');
@@ -153,6 +153,44 @@ SELECT ok(pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uui
   pg_get_functiondef('public.srk_service_get_labour_bill_for_payment(uuid)')
   ILIKE '%service_role%',
   'payment adapter lookup checks service-role JWT');
+
+
+SELECT has_column('public','srk_booking_labour_bills','platform_fee_rate','separate approved Platform Fee rate is snapshotted');
+SELECT has_column('public','srk_booking_labour_bills','platform_fee_amount','Platform Fee amount is snapshotted separately');
+SELECT has_column('public','srk_booking_labour_bills','electrician_payable','net electrician payable is snapshotted');
+SELECT ok((SELECT bool_and(platform_fee_rate=15.00) FROM public.srk_booking_labour_bills)
+  OR NOT EXISTS(SELECT 1 FROM public.srk_booking_labour_bills),
+  'Platform Fee rate is fixed at the approved 15 percent policy');
+SELECT ok(
+  position('v_commission:=v_bill.platform_fee_amount' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
+  AND position('v_commission:=round(v_service*v_rate/100,2)' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>
+      position('ELSIF NEW.quote_status' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)),
+  'new payout uses explicit Platform Fee snapshot; commission_rate remains legacy-only'
+);
+SELECT ok(pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)
+  ILIKE '%b.platform_fee_amount%' AND
+  pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)
+  ILIKE '%b.electrician_payable%',
+  'Admin payout reconciliation uses explicit Platform Fee and net payable snapshots');
+SELECT ok(pg_get_functiondef('public.srk_calculate_booking_commission()'::regprocedure)
+  ILIKE '%IF NEW.selected_category IS NOT NULL THEN%NEW.commission_amount:=NULL%',
+  'new labour bookings do not infer Platform Fee from legacy commission_rate');
+SELECT ok(pg_get_functiondef('public.srk_get_my_earnings()')
+  ILIKE '%lb.platform_fee_amount%' AND pg_get_functiondef('public.srk_get_my_earnings()')
+  ILIKE '%lb.electrician_payable%',
+  'electrician earnings read explicit Platform Fee and net payable snapshots');
+SELECT ok(pg_get_functiondef('public.srk_admin_commission_report()')
+  ILIKE '%lb.platform_fee_amount%',
+  'Admin finance report reads explicit Platform Fee snapshot');
+SELECT ok(pg_get_functiondef('public.srk_customer_get_labour_bill(uuid)')
+  NOT ILIKE '%platform_fee%' AND
+  pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)')
+  ILIKE '%electrician_payable%' AND
+  pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)')
+  NOT ILIKE '%platform_fee%' AND
+  pg_get_functiondef('public.srk_admin_get_labour_bill(uuid)')
+  ILIKE '%platform_fee_amount%',
+  'customer sees gross labour, electrician sees net payable, Admin sees separate fee breakdown');
 
 SELECT * FROM finish();
 ROLLBACK;
