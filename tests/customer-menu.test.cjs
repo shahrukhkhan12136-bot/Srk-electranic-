@@ -147,7 +147,7 @@ test('customer booking history reports partial RPC and labour-bill failures with
   assert.match(html, /\.range\(requestedOffset,requestedOffset\+24\)/);
   assert.match(html, /customerBookingHistoryOffset=requestedOffset\+data\.length/);
   assert.match(html, /if\(reset\)box\.innerHTML=cardsHtml;else box\.insertAdjacentHTML\('beforeend',cardsHtml\)/);
-  assert.match(html, /if\(sequence===customerBookingHistoryLoadSequence\)\{customerBookingHistoryBusy=false;box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(html, /if\(isCurrent\(\)\)\{customerBookingHistoryBusy=false;box\.setAttribute\('aria-busy','false'\)/);
   assert.match(html, /पहले से दिख रही बुकिंग सुरक्षित हैं/);
 });
 
