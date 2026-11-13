@@ -1,0 +1,46 @@
+name: Refund source regression checks
+
+on:
+  push:
+    branches:
+      - feature/platform-fee-cash-online-cycle
+    paths:
+      - "razorpay-refund.js"
+      - "netlify/functions/razorpay-refund*.js"
+      - "admin.html"
+      - "tests/razorpay-refund-handler.test.cjs"
+      - "package.json"
+      - "supabase/migrations/202611141*.sql"
+      - "supabase/tests/database/*refund*.sql"
+      - ".github/workflows/refund-source-ci.yml"
+  pull_request:
+    branches:
+      - feature/platform-fee-cash-online-cycle
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check refund handlers and Admin script syntax
+        run: |
+          node --check razorpay-refund.js
+          node --check netlify/functions/razorpay-refund.js
+          node --check netlify/functions/razorpay-refund-webhook.js
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('admin.html', 'utf8');
+          const scripts = [...html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)].map(x => x[1]).filter(x => x.trim());
+          for (const script of scripts) new Function(script);
+          console.log('Admin inline JavaScript syntax OK');
+          NODE
+      - name: Run refund source regression tests
+        run: npm run test:refund
