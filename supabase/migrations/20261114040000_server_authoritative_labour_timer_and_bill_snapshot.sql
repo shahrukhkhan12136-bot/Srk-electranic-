@@ -36,12 +36,14 @@ ALTER TABLE public.service_bookings
     (labour_rate_tier_snapshot IS NULL AND labour_rate8h_paise_snapshot IS NULL
       AND labour_rate_card_version_snapshot IS NULL)
     OR
-    (labour_rate_tier_snapshot IN (
+    (labour_rate_tier_snapshot IS NOT NULL
+     AND labour_rate8h_paise_snapshot IS NOT NULL
+     AND labour_rate_card_version_snapshot IS NOT NULL
+     AND labour_rate_tier_snapshot IN (
        'electrical_assistant','skilled_electrician','expert_electrician',
        'premium_electrical_specialist'
      )
-     AND labour_rate8h_paise_snapshot IN (89900,119900,159900,199900)
-     AND labour_rate_card_version_snapshot IS NOT NULL)
+     AND labour_rate8h_paise_snapshot IN (89900,119900,159900,199900))
   );
 
 COMMENT ON COLUMN public.service_bookings.work_timer_elapsed_seconds IS
