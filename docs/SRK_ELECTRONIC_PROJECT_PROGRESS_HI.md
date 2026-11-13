@@ -1633,3 +1633,16 @@
 
 - Follow-up: no-session fallback in syncCustomerSession() also now invalidates pending refund submissions, work-start/work-completion actions, payment-method changes and Razorpay checkout when getSession() returns no session without relying only on an Auth event. Regression commit 010b6cc5d6b281a04eb5d979ff871e90f7fe2a94; test commit b9a70c01e308721816ccdfe20f4dfadf44b0685a.
 - Final verification for this pass: Customer App full source regression #43506928099 SUCCESS; Refund + Account Privacy #43506928361 SUCCESS; Customer Offer Timeline source #43506928088 test and deployment guard SUCCESS. These are source checks only; actual browser/account-switch and Razorpay test-mode E2E remain unrun.
+
+
+## Customer OTP — phone-operation race hardening (2026-11-14)
+
+- Embedded Customer App OTP send अब phone + operation sequence से bound है। यदि request pending रहते मोबाइल नंबर बदलता है तो पुराना response OTP challenge नहीं खोलेगा; पुराना catch/finally नई request के status/button/busy state को नहीं बदलेगा।
+- Embedded OTP verification के दौरान phone input lock रहता है; उसी request का finally phone और verify button restore करता है। Phone edit और logout pending OTP operation invalidates करते हैं।
+- Standalone `customer-login.html` में भी वही protection लागू: phone change pending send invalidates, stale send response/cleanup ignored, OTP verify के दौरान phone locked, session state के अनुसार button restore। Logout के दौरान pending OTP sequence invalidated।
+- Commits: embedded page `a23d6ca73c6f780e7ae0f9bb73109745d80b3ccb`; standalone page `568690cdd9235e085ba0befb1fcd9fc9e1011ef1`; OTP regression updates `bffc89152ad47ba8e2bd3c42ade6e7703a5d6337`.
+- OTP/source regression initially exposed stale test assumptions and a missing test-local HTML fixture; these test-only issues were corrected. Final full Customer App source regression `#43508020264` **SUCCESS** (all isolated source regression suites passed).
+- OTP Auth provider expiry, server-side resend/wrong-attempt throttling, CAPTCHA, SMS delivery, and live Auth JWT/session runtime remain unverified. No live OTP SMS or Auth setting change.
+- Browser two-phone/OTP flow, actual network race, and consolidated final mobile/Desktop QA remain pending. Production unchanged.
+
+**अगला resume point:** Customer App में शेष payment/refund/profile/support private state एवं customer-facing flows की acceptance audit जारी रखें; फिर server-authoritative timer/completion/bill/payment migrations के local isolated DB tests और API/JWT integration gaps पर काम करें।
