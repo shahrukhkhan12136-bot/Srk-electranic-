@@ -542,6 +542,11 @@ function customerBookingPaymentStatusText(status){
 }
 const customerBookingEventLabels={
  booking_created:'बुकिंग दर्ज हुई',
+ offer_created:'इलेक्ट्रिशियन को काम का ऑफ़र भेजा गया',
+ offer_accepted:'इलेक्ट्रिशियन ने काम का ऑफ़र स्वीकार किया',
+ offer_declined:'इलेक्ट्रिशियन ने काम का ऑफ़र मना किया',
+ offer_expired:'इलेक्ट्रिशियन का ऑफ़र समाप्त हुआ',
+ offer_cancelled:'बुकिंग रद्द होने पर ऑफ़र बंद हुआ',
  work_start_requested:'इलेक्ट्रिशियन ने काम शुरू करने की अनुमति माँगी',
  work_start_approved:'ग्राहक ने काम शुरू करने की मंजूरी दी',
  work_start_rejected:'काम शुरू करने की मंजूरी नहीं दी गई',
@@ -711,24 +716,32 @@ async function loadCustomerBookings(reset=true) {
       more.style.display='none';
       return;
     }
-    const [contactsResult,timelineResult,refundResult] = await Promise.all([
+    const [contactsResult,timelineResult,offerTimelineResult,refundResult] = await Promise.all([
       customerSb.rpc('srk_get_customer_call_contacts'),
       customerSb.rpc('srk_customer_get_my_booking_work_timeline'),
+      customerSb.rpc('srk_customer_get_my_booking_offer_timeline'),
       customerSb.rpc('srk_customer_list_my_booking_refund_requests')
     ]);
     if(sequence!==customerBookingHistoryLoadSequence)return;
     const partialWarnings=[];
     if(contactsResult.error)partialWarnings.push('इलेक्ट्रिशियन संपर्क विवरण अभी लोड नहीं हो सका।');
     if(timelineResult.error)partialWarnings.push('बुकिंग की स्थिति का इतिहास अभी लोड नहीं हो सका।');
+    if(offerTimelineResult.error)partialWarnings.push('इलेक्ट्रिशियन ऑफ़र का इतिहास अभी लोड नहीं हो सका।');
     if(refundResult.error)partialWarnings.push('रिफंड अनुरोध की स्थिति अभी लोड नहीं हो सकी।');
     const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
     const timelineMap = new Map();
-    if(!timelineResult.error) {
-      (timelineResult.data || []).forEach(item=>{
+    const addTimelineRows=(rows)=>{
+      (rows||[]).forEach(item=>{
         if(!timelineMap.has(item.booking_id))timelineMap.set(item.booking_id,[]);
         timelineMap.get(item.booking_id).push(item);
       });
-    }
+    };
+    if(!timelineResult.error)addTimelineRows(timelineResult.data);
+    if(!offerTimelineResult.error)addTimelineRows(offerTimelineResult.data);
+    timelineMap.forEach(events=>events.sort((a,b)=>{
+      const at=Date.parse(a.occurred_at)||0,bt=Date.parse(b.occurred_at)||0;
+      return at-bt||String(a.event_id||'').localeCompare(String(b.event_id||''));
+    }));
     const refundMap=new Map();
     if(!refundResult.error){
       (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
