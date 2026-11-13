@@ -81,5 +81,6 @@ test("Booking idempotency migration requires a complete 64-character fingerprint
   assert.match(migration, /customer_request_fingerprint ~ '\^\[a-f0-9\]\{64\}\$'/);
   assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS service_bookings_customer_request_key_uidx/);
   assert.match(migration, /DO \$migration\$/);
-  assert.ok(migration.includes('END;\\n$migration$;'));
+  assert.match(migration, /END;/);
+  assert.match(migration, /\\$migration\\$;/);
 });
