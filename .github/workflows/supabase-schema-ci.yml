@@ -145,6 +145,7 @@ jobs:
             "$GITHUB_WORKSPACE/supabase/migrations/20261114110000_admin_refund_review_queue_and_decisions.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114120000_guarded_labour_only_razorpay_refund_preparation.sql"
             "$GITHUB_WORKSPACE/supabase/migrations/20261114130000_durable_razorpay_refund_provider_reconciliation.sql"
+            "$GITHUB_WORKSPACE/supabase/migrations/20261114140000_manual_labour_only_refund_workflow.sql"
           )
           for migration in "${migrations[@]}"; do
             test -s "$migration"
@@ -228,6 +229,9 @@ jobs:
             END IF;
             IF to_regprocedure('public.srk_service_finalize_razorpay_refund(uuid)') IS NULL THEN
               RAISE EXCEPTION 'Missing provider refund finalization RPC';
+            END IF;
+            IF to_regprocedure('public.srk_admin_finalize_manual_booking_refund(uuid)') IS NULL THEN
+              RAISE EXCEPTION 'Missing manual refund finalization RPC';
             END IF;
           END
           $$;
