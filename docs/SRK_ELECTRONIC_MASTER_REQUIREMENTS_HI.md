@@ -3709,3 +3709,14 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - Final real-world device/browser visual verification remains pending under the 96-item dual-track policy. No Production deployment is authorized.
 
 - अतिरिक्त फोटो-फ्रेमिंग स्वीकृति (2026-11-13): वेलकम स्क्रीन पर फाउंडर फोटो सिर से कमर तक (waist-up), सीधी/सामने की मुद्रा में लगानी है; पैरों या पूरा शरीर दिखाने की जरूरत नहीं। चेहरा और कंधे पूरे रहें, सिर के ऊपर पर्याप्त breathing space हो, कमर के आसपास स्वाभाविक crop हो। मोबाइल/डेस्कटॉप पर responsive crop में चेहरा न कटे और फोटो स्पष्ट रहे। उपयोगकर्ता ने अभी दिखाए गए waist-up crop को वेलकम स्क्रीन के लिए चुना है। इसे approved visual reference मानें; वेबसाइट integration और source verification अभी बाकी हैं।
+
+## 17.114 — Booking Form में OTP-सत्यापित मोबाइल को Read-only करना (Checklist 14.1.3, 13 Nov 2026)
+
+- 14.1.3 के source audit में मिली स्पष्ट UI कमी का सीमित Feature Branch सुधार किया गया: पहले booking form का मोबाइल input editable था, जबकि backend पहले से Auth session के confirmed phone से submitted phone match करता था।
+- booking.html में field label अब “OTP से सत्यापित मोबाइल नंबर” है; input readonly है, manual editing हटाई गई है, और helper text बताता है कि booking में OTP login वाला ही नंबर इस्तेमाल होगा।
+- syncCustomerSession() अब authenticated session के session.user.phone से digits निकालकर booking phone field भरता है; भारतीय +91 वाले 12-digit नंबर को UI में 10-digit local display में दिखाता है। Session न होने पर field साफ़ और read-only रहती है। Submit payload इसी field का value भेजता है; server-side Auth verification authoritative बना रहता है।
+- Feature Branch source commit: fb3a910b2f951b4a5687d128f9a1d0a0a55a10b0; booking.html blob SHA: 411c226d5835299c6a15142dcfa1c6639739e050. Update के बाद file refetch किया गया और blob SHA match सत्यापित हुआ।
+- Scope सीमा: यह केवल UI phone-editability gap का source change है। OTP session restore, non-India phone formatting, logged-out submit behavior, accessibility, mobile browser behavior और full API integration की automated/runtime/device testing अभी नहीं हुई। Category taxonomy, 1–8 hour expected-duration semantics और authoritative PIN lookup अभी blocked हैं; इसलिए 14.1.3 पूर्ण Verified नहीं है।
+- No Production source/schema/RLS/RPC/Auth config, customer data, payment/provider, SMS, secrets or deployment changed. No real OTP or live booking test was performed.
+- स्थिति: Partial Source Fix Saved / Verification Pending — केवल read-back and SHA verification passed; static/runtime test suite और remaining sub-requirements बाकी हैं।
+- अंतिम वास्तविक परीक्षण: बाकी — मूल 96 items के consolidated real-world test batch तक pending।
