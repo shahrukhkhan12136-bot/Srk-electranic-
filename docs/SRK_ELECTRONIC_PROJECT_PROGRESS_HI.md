@@ -14,6 +14,12 @@
 - Commit: `1a7be771ef87759e57dcdcaf13540a38711a0c4d`.
 - कोई migration apply, Edge Function deploy, staff invitation/account creation, production change या live data mutation नहीं हुई।
 
+### 2026-11-14 — Admin Portal refresh duplication fix
+- Role-aware refresh पहले `showState()` चलाता था, जो Main Admin/Staff के लिए data loader पहले ही चलाता है; उसके बाद refresh handler वही loader दूसरी बार भी चला देता था। इससे duplicate parallel requests और अनावश्यक backend load हो सकता था।
+- Refresh अब loaded-user guard reset करके `showState()` को एक बार चलाता है; authorization और role-specific loader उसी एक flow में रहते हैं।
+- Inline JavaScript syntax compile: 1 script block(s) — PASS। यह static syntax check है, browser runtime test नहीं।
+- Commit: `a56a1e0f615bc15314bd49edf4f222505b1fcec2`. कोई live deployment या production बदलाव नहीं।
+
 ## 1. कुल प्रगति — प्रमाण आधारित
 
 इस tracker में Master Requirements के Section 14.1–14.8 के 89 checkbox points और Section 16 के 7 public-website points शामिल हैं: **कुल 96 मूल checklist points**।
