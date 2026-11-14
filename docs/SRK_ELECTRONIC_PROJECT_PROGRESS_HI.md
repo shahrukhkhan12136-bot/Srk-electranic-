@@ -850,3 +850,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin RPC `srk_admin_review_electrician_document` से approve, reject या needs_resubmission निर्णय; reject/resubmission के लिए कारण अनिवार्य। सफल निर्णय पर UI सूची refresh करता है।
 - Admin list/review RPCs और private bucket/policy पहले से मौजूद होने की read-only schema inspection में पुष्टि की गई थी।
 - Static JavaScript parse और source checks: नीचे दर्ज परिणाम। Production migration/deployment या live document review नहीं किया गया। वास्तविक Admin JWT, signed preview, status transition और electrician deactivation behavior का E2E test अंतिम संयुक्त QA में बाकी।
+
+
+## 14 नवम्बर 2026 — Electrician स्वयं प्रोफ़ाइल नाम अपडेट (source-only)
+- Electrician Dashboard के Profile card में display name edit field और save action जोड़ा।
+- नई migration: `20261114340000_electrician_self_profile_name_edit.sql`.
+- Authenticated RPC केवल `auth.uid()` से जुड़े अपने profile row (दोनों `user_id` और `auth_user_id` match) को lock करके `display_name` बदलता है। Name 2–80 characters और सीमित अक्षर/अंक/space/dot/apostrophe/hyphen नियम से validate होता है।
+- हर वास्तविक बदलाव append-only profile-name event table में old/new name, actor और timestamp सहित दर्ज होता है; table पर RLS enabled और browser direct grants revoked।
+- Phone, district, state, PIN, approved skills, rate tier, Active और verification status self-edit में शामिल नहीं हैं; ये सत्यापित/Admin-controlled रहेंगे।
+- Migration/UI source-only हैं; Production में apply नहीं। JS syntax, SQL static review और actual JWT/row lock/audit event tests final consolidated QA में बाकी।
