@@ -81,9 +81,20 @@ async function loadAdminStaff(){
  box.innerHTML='<div class="scroll"><table><thead><tr><th>नाम</th><th>भूमिका</th><th>स्थिति</th><th>आमंत्रण / सक्रिय समय</th><th>सुरक्षा</th></tr></thead><tbody>'+
  rows.map(s=>{
   const id=esc(s.user_id),state=esc(s.status);
-  const actions='<button type="button" onclick="setAdminStaffStatus(\''+id+'\',\'active\')">Active करें</button><button type="button" class="alt" onclick="setAdminStaffStatus(\''+id+'\',\'suspended\')">Suspend</button><button type="button" class="alt" onclick="setAdminStaffStatus(\''+id+'\',\'disabled\')">Disable</button><button type="button" class="alt" onclick="loadAdminStaffSessions(\''+id+'\')">Sessions देखें</button>';
-  return '<tr><td>'+esc(s.display_name)+'</td><td>Support</td><td><span class="tag">'+state+'</span></td><td>'+esc(s.created_at||'—')+'<br><small>'+esc(s.activated_at||'अभी Active नहीं')+'</small></td><td>'+actions+'<div id="staff-sessions-'+id+'" class="muted"></div></td></tr>';
+  const actions='<button type="button" onclick="setAdminStaffStatus(\''+id+'\',\'active\')">Active करें</button><button type="button" class="alt" onclick="setAdminStaffStatus(\''+id+'\',\'suspended\')">Suspend</button><button type="button" class="alt" onclick="setAdminStaffStatus(\''+id+'\',\'disabled\')">Disable</button><button type="button" class="alt" onclick="loadAdminStaffSessions(\''+id+'\')">Sessions देखें</button><button type="button" class="alt" onclick="loadAdminStaffAudit(\''+id+'\')">Audit देखें</button>';
+  return '<tr><td>'+esc(s.display_name)+'</td><td>Support</td><td><span class="tag">'+state+'</span></td><td>'+esc(s.created_at||'—')+'<br><small>'+esc(s.activated_at||'अभी Active नहीं')+'</small></td><td>'+actions+'<div id="staff-sessions-'+id+'" class="muted"></div><div id="staff-audit-'+id+'" class="muted"></div></td></tr>';
  }).join('')+'</tbody></table></div>';
+}
+async function loadAdminStaffAudit(id){
+ const box=document.getElementById('staff-audit-'+id);if(!box)return;
+ box.textContent='Activity audit लोड हो रहा है…';
+ const {data,error}=await sb.rpc('srk_admin_list_staff_audit_events',{p_staff_user_id:id,p_limit:100});
+ if(error){box.textContent='Audit history लोड नहीं हुई।';return;}
+ const rows=data||[];
+ if(!rows.length){box.textContent='अभी कोई Staff activity event नहीं है।';return;}
+ box.innerHTML='<div class="scroll"><table><thead><tr><th>समय</th><th>कार्रवाई</th><th>परिणाम</th><th>विवरण</th></tr></thead><tbody>'+
+ rows.map(e=>'<tr><td>'+esc(e.created_at)+'</td><td>'+esc(e.action)+'</td><td>'+esc(e.outcome)+'</td><td><code style="white-space:pre-wrap">'+esc(JSON.stringify(e.details||{}))+'</code></td></tr>').join('')+
+ '</tbody></table></div>';
 }
 async function setAdminStaffStatus(id,nextStatus){
  if(adminStaffBusy.has(id))return;
