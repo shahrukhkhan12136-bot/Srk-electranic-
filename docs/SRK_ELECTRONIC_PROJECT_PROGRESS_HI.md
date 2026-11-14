@@ -1505,3 +1505,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Staff customer/electrician thread read RPCs अब `is_current_staff_sender` boolean लौटाते हैं (message `sender_user_id = auth.uid()`), जिससे अपना जवाब स्पष्ट रूप से “आप (Support Staff)” दिखता है और Main Admin के जवाब “SRK सहायता टीम” रहते हैं। कोई Staff/Auth user UUID browser response में expose नहीं किया गया।
 - Customer और electrician Staff thread UI दोनों में sender labels सुधारे। Admin Staff RBAC pgTAP source suite plan/assertions 67→69, static count 69/69; वास्तविक pgTAP अभी execute नहीं हुआ।
 - Migration source commit: `3a149f3098d2c9e0dc89a92eb0b07cb5e4e73806`; UI commit: `fbba18a2c6e9c4d9d6b4c2c67c6ad4c88230268c`; test commit: `d5468c1be988bafd7f18d64e6b1062b06d75d8f3`। No migration apply, deployment, or Production change.
+
+
+### 2026-11-14 — Admin financial/cancellation permission boundary regression test
+- Main Admin / Support Staff permission design की source review की: Support role में केवल 7 explicitly seeded permissions हैं — customer/electrician support read, reply, status update और सीमित `booking.read_basic`। Main Admin की अलग `is_srk_admin()` identity bypass बनी रहती है; Staff को इससे full Admin identity नहीं मिलती।
+- Admin Staff RBAC pgTAP regression assertion को मजबूत किया: Support role में `finance.*`, `payment.*`, `wallet.*`, `refund.*`, `payout.*`, `cancellation.*`, `kyc.*`, staff/audit, cancellation-decision और private-contact permissions न हों।
+- Test plan/assertion count अब 70/70 होना चाहिए; यह source-level/static count है, pgTAP execution नहीं। PostgreSQL runtime, JWT-role integration और negative RPC execution tests अभी बाकी हैं।
+- कोई migration apply, payment/refund/payout action, production setting change, deployment या PR merge नहीं किया गया।
