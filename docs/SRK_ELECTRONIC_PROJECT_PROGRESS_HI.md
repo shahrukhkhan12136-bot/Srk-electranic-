@@ -1303,3 +1303,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin `toggleActive()` में approved rate-tier का canonical enum `premium_electrical_specialist` रखा और केवल tier string के बजाय `approved_rate_card_version`, `rate_tier_approved_by`, `rate_tier_approved_at` की मौजूदगी भी जाँची। यह database activation trigger के contract के अनुरूप है; backend trigger अंतिम authority बना रहता है।
 - Admin source commit `f7679c00052584fbc61b7ee4ce66b8a88e3dc364`; source fetch द्वारा बदलाव verify किया। कोई database migration/apply या production setting change नहीं हुआ।
 - अभी भी direct-write dependency audit बाकी है: location/booking updates और `electrician_profiles.active` के लिए सुरक्षित RPC/column-grant design तभी लागू होगा जब base policies तथा सभी app dependencies पूरी तरह map हो जाएँ।
+
+
+### 2026-11-14 — Admin electrician activation direct-write fix
+- Live Supabase read-only privilege audit में पुष्टि हुई कि `authenticated` को `electrician_profiles` पर केवल SELECT table privilege है; `active` column UPDATE grant नहीं है। इसलिए Admin का पुराना direct `.update({active})` काम नहीं कर सकता था।
+- मौजूदा `srk_admin_set_electrician_active(uuid,boolean)` RPC की वास्तविक DB definition जाँची: यह `auth.uid()` और `is_srk_admin()` verify करता है, profile row lock करता है, OTP-linked identity, latest identity/address documents की Admin approval जाँचता है, फिर `active` बदलता है। Rate-tier activation trigger अतिरिक्त approved tier metadata enforce करता है।
+- Admin UI को direct table UPDATE से हटाकर इसी audited RPC पर बदला; duplicate-click guard और UI prechecks बने रहे। Code commit `595f731080752cb2bf0c749e6b81084f4e4a862b`; source fetch द्वारा RPC call verify किया।
+- Read-only DB audit में `service_bookings` के `address`,`district`,`state`,`pincode`,`status`,`quoted_amount` के UPDATE column grants तथा Admin-only UPDATE RLS policy मौजूद मिले; customer-location और booking direct updates को अभी बदलने की जरूरत का प्रमाण नहीं मिला। कोई DB schema/permission परिवर्तन या migration apply नहीं किया।
