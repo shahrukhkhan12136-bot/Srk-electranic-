@@ -689,3 +689,31 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin सामान्य status dropdown से cancellation नहीं कर सकता।
 - Dedicated cancellation inbox + direct customer request RPC + stage evidence + ₹0/₹49/₹99 Admin decision + immutable decision audit + customer debt carry-forward + SRK cancellation-fee ledger + cash/online reconciliation अभी implement और verify होने बाकी हैं।
 - Production schema read-only निरीक्षण में wallet ledger के मौजूदा entry_type values में dedicated cancellation-fee entry type नहीं मिला; इसलिए इसे existing Platform Fee/commission/adjustment में गलत तरीके से नहीं मिलाया जाएगा।
+
+
+## 14 नवम्बर 2026 — Dedicated Admin-only Cancellation Inbox (Feature Branch)
+
+### Master Section 6 के अनुरूप जो source बनाया गया
+- Customer Help & Support complaint के सहारे cancellation request भेजने वाला अस्थायी तरीका हटाकर dedicated RPC request flow जोड़ा गया।
+- नया migration source: `20261114270000_admin_only_cancellation_requests_and_decisions.sql`.
+- नई request table में customer note, pending/approved/rejected state, verified stage, fixed fee, evidence text, Admin reason, actor और timestamps दर्ज होंगे।
+- एक booking पर एक समय में केवल एक pending request की unique constraint है; customer ownership check और booking row lock request RPC में हैं।
+- Admin-only RPC pending requests list करता है; Admin निर्णय RPC stage के अनुसार केवल ₹0/₹49/₹99 स्वीकार करता है और कम-से-कम 10 अक्षर का evidence तथा decision reason अनिवार्य करता है।
+- निर्णय से पहले booking को lock करके दोबारा जाँचा जाता है; completed/cancelled booking पर फैसला नहीं होगा।
+- Approved decision के बाद ही booking status cancelled होता है। DB trigger सामान्य client/direct status update और पुराने direct-cancel RPC को रोकता है; केवल approved request context से transition स्वीकार करता है।
+- Cancellation event log append-only है; browser roles को दोनों नई tables पर direct table access नहीं दिया गया।
+- Customer page अब dedicated request RPC call करता है और अपने booking card में pending/approved/rejected decision, verified stage, fee और Admin reason दिखाता है।
+- Admin Dashboard में dedicated Cancellation Requests Inbox, stage selection, evidence/reason fields, approve/reject actions और refresh control जोड़ा गया। सामान्य booking status dropdown से cancellation पहले की तरह रोकी गई है।
+
+### Static verification
+- `booking.html`: 4 inline scripts — सभी parse PASS.
+- `admin.html`: 3 inline scripts — सभी parse PASS.
+- Customer request/list RPC wiring, Admin list/decision RPC wiring, ₹0/₹49/₹99 stage options, direct-cancel DB guard और append-only audit source checks PASS.
+
+### अभी अधूरे/अप्रमाणित — इन्हें complete न मानें
+- Migration केवल Feature Branch में है; Supabase में apply नहीं किया गया। इसलिए live customer/Admin RPC flow अभी चलने का दावा नहीं है।
+- Admin द्वारा stage evidence text दर्ज होता है; live GPS/travel/arrival event से automatic evidence linking अभी उपलब्ध नहीं। Admin को उपलब्ध वास्तविक evidence manually verify करना होगा।
+- Approved cancellation fee अभी request record में सुरक्षित होती है, पर customer debt/carry-forward, अगली booking के bill में अलग line item, Online cancellation-fee ledger, Cash settlement में electrician wallet debit और SRK cancellation ledger अभी implement नहीं हुए।
+- Refund/reversal, duplicate/failed payment reconciliation, customer-visible multi-request debt history और full staging JWT/RLS/concurrency/E2E tests बाकी हैं।
+- Existing पुराने cancellation RPC को DB trigger रोकने का उद्देश्य है; migration लागू होने के बाद उसका legacy caller impact staging में जाँचना आवश्यक है।
+- Production database, live bookings, payments, wallet entries, settings या deployment में कोई बदलाव नहीं किया गया।
