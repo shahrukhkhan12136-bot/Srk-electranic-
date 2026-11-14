@@ -1,0 +1,16 @@
+begin;
+select plan(12);
+select has_function('public','srk_admin_list_booking_refund_requests',array[]::text[],'Admin refund queue RPC exists');
+select has_function('public','srk_admin_decide_booking_refund_request',array['uuid','text','text'],'Admin refund decision RPC exists');
+select ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure))>0,'queue is Main Admin only');
+select ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure))>0,'decision is Main Admin only');
+select ok(position('for update' in lower(pg_get_functiondef('public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure)))>0,'decision locks refund request row');
+select ok(position('length(v_note) not between 10 and 2000' in pg_get_functiondef('public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure))>0,'decision requires bounded audit note');
+select ok(position('requested' in pg_get_functiondef('public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure))>0 and position('in_review' in pg_get_functiondef('public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure))>0,'decision state machine is constrained');
+select ok(position('decided_by=case when p_decision in (''approved'',''rejected'')' in pg_get_functiondef('public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure))>0,'final decision actor is recorded');
+select ok(position('razorpay' in lower(pg_get_functiondef('public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure)))=0,'decision RPC does not call payment provider');
+select ok(position('payment_status' in lower(pg_get_functiondef('public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure)))=0,'decision RPC does not mutate payment status');
+select ok(has_function_privilege('authenticated','public.srk_admin_list_booking_refund_requests()','EXECUTE') and not has_function_privilege('anon','public.srk_admin_list_booking_refund_requests()','EXECUTE') and has_function_privilege('authenticated','public.srk_admin_decide_booking_refund_request(uuid,text,text)','EXECUTE') and not has_function_privilege('anon','public.srk_admin_decide_booking_refund_request(uuid,text,text)','EXECUTE'),'RPC execution is authenticated-only; Main Admin is enforced inside functions');
+select ok(coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc where oid='public.srk_admin_list_booking_refund_requests()'::regprocedure),false) and coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc where oid='public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure),false),'both SECURITY DEFINER RPCs use empty search_path');
+select * from finish();
+rollback;
