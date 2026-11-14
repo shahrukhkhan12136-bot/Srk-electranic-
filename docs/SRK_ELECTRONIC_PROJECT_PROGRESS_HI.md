@@ -1,3 +1,8 @@
+### 2026-11-15 — Avatar profile reference ownership check
+- Profile update RPC already checked avatar path prefix, object presence, MIME metadata and size, but did not independently verify Storage owner_id. It now requires the referenced avatar object owner_id to equal auth.uid(), preventing a path-shaped but differently owned object from being attached to the customer profile.
+- Expanded avatar object-integrity pgTAP plan from 5 to 6 assertions with an explicit owner-binding guard.
+- Feature Branch commits: migration d3c332afe1d21aabb108bb7131fec2906ac09035; test d167987265585ad4fccbc8dab008feb2ad3359b2. Source/static only; PostgreSQL/pgTAP runtime and real Storage checks remain pending. No Production changes, deployment, merge or mobile QA.
+
 ### 2026-11-15 — Customer private Storage ownership hardening
 - Support attachment linker previously validated the customer/complaint path prefix and message ownership but did not verify that the referenced object actually existed in the private support bucket or was owned by the authenticated customer. It now requires an exact storage.objects row for bucket srk-customer-support, matching object path and owner_id = auth.uid(), before creating the attachment record.
 - Customer avatar upload policy now checks both the user-id path prefix and Storage owner_id, matching the ownership boundary already used for avatar reads/deletes.
