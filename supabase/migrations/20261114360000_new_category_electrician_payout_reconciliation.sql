@@ -93,9 +93,21 @@ begin
     where public.srk_electrician_payouts.payout_status = 'pending';
 
   elsif new.payment_status = 'refunded' then
+    -- A refund deliberately blocks an unpaid payout before provider settlement.
+    -- On verified full refund, close only that refund-owned hold; never clear an
+    -- unrelated Admin block or a payout that has already been paid.
     update public.srk_electrician_payouts
-       set payout_status = 'refunded', updated_at = now()
-     where booking_id = new.id and payout_status = 'pending';
+       set payout_status = 'refunded',
+           payout_note = null,
+           updated_at = now()
+     where booking_id = new.id
+       and (
+         payout_status = 'pending'
+         or (
+           payout_status = 'blocked'
+           and payout_note in ('Razorpay refund pending','Manual refund processed')
+         )
+       );
   end if;
 
   return new;
