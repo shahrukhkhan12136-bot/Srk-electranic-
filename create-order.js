@@ -19,9 +19,24 @@ async function verifyCustomerSession(authorization, booking) {
   return user.id;
 }
 
-async function findReusableOrder(booking){
+async function paymentAmountPaise(booking){
+  if(booking.selected_category){
+    const breakdown=await db("rpc/srk_service_role_get_booking_payment_breakdown",{
+      method:"POST",body:JSON.stringify({p_booking_id:booking.id})
+    });
+    const labour=Number(breakdown?.labour_amount_paise),fees=Number(breakdown?.cancellation_fee_amount_paise),total=Number(breakdown?.total_amount_paise);
+    if(!Number.isSafeInteger(labour)||labour<1||!Number.isSafeInteger(fees)||fees<0||!Number.isSafeInteger(total)||total!==labour+fees)
+      throw new Error("Invalid immutable labour/cancellation-fee breakdown");
+    return total;
+  }
+  const approvedTotal=Number(booking.service_charge)+Number(booking.materials_amount);
+  if(!Number.isFinite(approvedTotal)||approvedTotal<1||Math.round(approvedTotal*100)!==Math.round(Number(booking.quoted_amount)*100))
+    throw new Error("Approved quote total mismatch");
+  return Math.round(approvedTotal*100);
+}
+async function findReusableOrder(booking,expectedAmount){
   if(!booking.razorpay_order_id||booking.payment_status!=="pending")return null;
-  try{const old=await rp("orders/"+encodeURIComponent(booking.razorpay_order_id));if(old.status==="created"&&old.amount===Math.round(Number(booking.quoted_amount)*100)&&old.currency==="INR")return old}catch(_){}
+  try{const old=await rp("orders/"+encodeURIComponent(booking.razorpay_order_id));if(old.status==="created"&&old.amount===expectedAmount&&old.currency==="INR")return old}catch(_){}
   return null;
 }
 exports.handler=async event=>{
@@ -31,17 +46,17 @@ exports.handler=async event=>{
   try{
     const b=JSON.parse(event.body||"{}");bookingId=b.booking_id;
     if(!uuid(bookingId))return json(400,{success:false,error:"बुकिंग ID सही नहीं है।"});
-    let rows=await db("service_bookings?select=id,phone,customer_user_id,quoted_amount,service_charge,materials_amount,payment_status,razorpay_order_id,status,quote_status&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
+    let rows=await db("service_bookings?select=id,phone,customer_user_id,quoted_amount,service_charge,materials_amount,payment_status,razorpay_order_id,status,quote_status,selected_category&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
     let booking=rows?.[0];if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
     await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "", booking);
     if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
-    if(booking.status!=="completed"||booking.quote_status!=="approved")return json(409,{success:false,error:"भुगतान केवल ग्राहक द्वारा मंजूर कोटेशन का काम पूरा होने के बाद किया जा सकता है।"});
-    const approvedTotal=Number(booking.service_charge)+Number(booking.materials_amount);
-    if(!Number.isFinite(approvedTotal)||approvedTotal<1||Math.round(approvedTotal*100)!==Math.round(Number(booking.quoted_amount)*100))return json(409,{success:false,error:"मंजूर कोटेशन की कुल राशि और सेवा/सामान का हिसाब मेल नहीं खाता। Admin से जाँच कराएँ।"});
-    let amount=Math.round(approvedTotal*100);
+    if(booking.status!=="completed")return json(409,{success:false,error:"भुगतान केवल काम पूरा होने के बाद किया जा सकता है।"});
+    if(!booking.selected_category&&booking.quote_status!=="approved")return json(409,{success:false,error:"पुरानी बुकिंग के लिए ग्राहक द्वारा मंजूर कोटेशन आवश्यक है।"});
+    let amount;
+    try{amount=await paymentAmountPaise(booking);}catch(_){return json(409,{success:false,error:"अंतिम Labour Bill / cancellation fee का हिसाब तैयार नहीं है। Admin से जाँच कराएँ।"});}
     if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
 
-    let order=await findReusableOrder(booking);
+    let order=await findReusableOrder(booking,amount);
     if(!order){
       const claim=await db("rpc/srk_claim_payment_order_lock",{method:"POST",body:JSON.stringify({p_booking_id:bookingId})});
       lockToken=typeof claim==="string"?claim:(Array.isArray(claim)?claim[0]:null);
@@ -52,13 +67,11 @@ exports.handler=async event=>{
       if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
       await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "", booking);
       if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
-      if(booking.status!=="completed"||booking.quote_status!=="approved")return json(409,{success:false,error:"भुगतान केवल ग्राहक द्वारा मंजूर कोटेशन का काम पूरा होने के बाद किया जा सकता है।"});
-      // Recalculate after acquiring the lock so an Admin price change cannot create a stale-amount order.
-      const latestTotal=Number(booking.service_charge)+Number(booking.materials_amount);
-      if(!Number.isFinite(latestTotal)||latestTotal<1||Math.round(latestTotal*100)!==Math.round(Number(booking.quoted_amount)*100))return json(409,{success:false,error:"मंजूर कोटेशन की कुल राशि और सेवा/सामान का हिसाब मेल नहीं खाता। Admin से जाँच कराएँ।"});
-      amount=Math.round(latestTotal*100);
+      if(booking.status!=="completed")return json(409,{success:false,error:"भुगतान केवल काम पूरा होने के बाद किया जा सकता है।"});
+      if(!booking.selected_category&&booking.quote_status!=="approved")return json(409,{success:false,error:"पुरानी बुकिंग के लिए ग्राहक द्वारा मंजूर कोटेशन आवश्यक है।"});
+      try{amount=await paymentAmountPaise(booking);}catch(_){return json(409,{success:false,error:"अंतिम Labour Bill / cancellation fee का हिसाब तैयार नहीं है। Admin से जाँच कराएँ।"});}
       if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
-      order=await findReusableOrder(booking);
+      order=await findReusableOrder(booking,amount);
       if(!order)order=await rp("orders",{method:"POST",body:JSON.stringify({amount,currency:"INR",receipt:bookingId.slice(0,40),notes:{booking_id:bookingId,service:"SRK ELECTRONIC"}})});
       await db("service_bookings?id=eq."+encodeURIComponent(bookingId),{method:"PATCH",body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})});
     }
