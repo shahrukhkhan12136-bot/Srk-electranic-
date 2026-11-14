@@ -566,19 +566,25 @@ async function customerSubmitBookingRefund(bookingId){
   if(button)button.disabled=false;
  }
 }
-async function customerCancelBooking(bookingId,button) {
+function customerCancelBooking(bookingId,button) {
  if(!customerSb||!bookingId)return;
- if(!confirm('क्या आप यह बुकिंग रद्द करना चाहते हैं؟ यह विकल्प केवल उस बुकिंग के लिए है जिसे अभी किसी इलेक्ट्रिशियन को असाइन नहीं किया गया है।'))return;
- if(button)button.disabled=true;
- try {
-  const {data,error}=await customerSb.rpc('srk_customer_cancel_my_booking',{p_booking_id:bookingId});
-  if(error)throw error;
-  if(!data?.success||data.status!=='cancelled')throw new Error('CANCELLATION_NOT_CONFIRMED');
-  alert('आपकी बुकिंग रद्द हो गई है। बुकिंग की स्थिति अपडेट कर दी गई है।');
-  await loadCustomerBookings();
- } catch(error) {
-  alert('यह बुकिंग ग्राहक ऐप से अभी रद्द नहीं हो सकी। यदि इलेक्ट्रिशियन असाइन हो चुका है, तो Help & Support में रद्द करने का अनुरोध भेजें।');
- } finally {if(button)button.disabled=false;}
+ const bookingOption=[...document.getElementById('customerSupportBooking').options].find(option=>option.value===bookingId);
+ if(!bookingOption){
+  alert('बुकिंग सूची अभी तैयार नहीं है। कृपया Help & Support रीफ़्रेश करके दोबारा कोशिश करें।');
+  return;
+ }
+ const description=document.getElementById('customerSupportDescription');
+ const category=document.getElementById('customerSupportCategory');
+ const panel=document.getElementById('customerSupportPanel');
+ const details=panel?.querySelector('details');
+ document.getElementById('customerSupportBooking').value=bookingId;
+ if(category)category.value='other';
+ if(description)description.value='मैं इस बुकिंग को रद्द करने का अनुरोध करता/करती हूँ। कृपया Admin सत्यापित करें कि इलेक्ट्रिशियन घर से निकला है, रास्ते में है या ग्राहक के घर पहुँच चुका है। लागू cancellation fee और उसका कारण बताकर ही अंतिम निर्णय लें। जब तक Admin निर्णय न दे, बुकिंग को रद्द न माना जाए।';
+ if(details)details.open=true;
+ document.getElementById('customerTabSupport')?.click();
+ document.getElementById('customerSupportCreate')?.scrollIntoView({behavior:'smooth',block:'center'});
+ alert('आपका अनुरोध अभी तैयार किया गया है। नीचे “शिकायत दर्ज करें” दबाकर इसे Admin Support तक भेजें। Admin के निर्णय से पहले बुकिंग रद्द नहीं होगी और कोई शुल्क अपने-आप नहीं लगेगा।');
+ if(button)button.blur();
 }
 async function loadCustomerBookings() {
   const box = document.getElementById('customerBookings');
@@ -637,12 +643,9 @@ async function loadCustomerBookings() {
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
       const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
-      const canCancelFromCustomer=['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id;
-      const cancellationInfo=canCancelFromCustomer
-        ? '<div class="job"><p class="small">इलेक्ट्रिशियन असाइन होने से पहले आप यह बुकिंग सीधे रद्द कर सकते हैं।</p><button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\',this)" style="background:#fff0f0;color:#a32121">बुकिंग रद्द करें</button></div>'
-        : (!['completed','cancelled'].includes(row.status)
-          ? '<p class="small">इलेक्ट्रिशियन असाइन होने के बाद रद्द करने के लिए Help & Support में अनुरोध भेजें। कोई रद्दीकरण शुल्क तभी लागू होगा जब उसकी अलग नीति आपको पहले बताई गई हो।</p>'
-          : '');
+      const cancellationInfo=!['completed','cancelled'].includes(row.status)
+        ? '<div class="job"><p class="small">बुकिंग रद्द करने का अंतिम निर्णय केवल Admin करेगा। अनुरोध भेजने के लिए नीचे बटन दबाएँ। Admin इलेक्ट्रिशियन की सत्यापित स्थिति देखकर लागू शुल्क और कारण बताएगा। अनुरोध भेजने से बुकिंग अपने-आप रद्द नहीं होगी।</p><button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\',this)" style="background:#fff0f0;color:#a32121">Admin से रद्द करने का अनुरोध</button></div>'
+        : '';
       const refund=refundMap.get(row.id);
       const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
         ? '<div class="job"><b>इलेक्ट्रिशियन ने काम पूरा होने की सूचना दी है।</b><p class="small">कृपया काम जाँचें। पूरा होने पर स्वीकार करें; अधूरा होने पर अस्वीकार करें या विवाद दर्ज करें।</p>'+
