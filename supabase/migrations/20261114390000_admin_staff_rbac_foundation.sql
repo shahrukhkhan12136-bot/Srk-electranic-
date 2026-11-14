@@ -572,7 +572,8 @@ security definer
 set search_path = ''
 as $function$
 begin
-  if auth.uid() is null or not public.srk_has_admin_permission('support.customer.read') then
+  if auth.uid() is null or not public.srk_has_admin_permission('support.customer.read')
+     or not public.srk_has_admin_permission('booking.read_basic') then
     raise exception 'SUPPORT_CUSTOMER_READ_REQUIRED' using errcode = '42501';
   end if;
   return query
@@ -707,7 +708,8 @@ security definer
 set search_path = ''
 as $function$
 begin
-  if auth.uid() is null or not public.srk_has_admin_permission('support.electrician.read') then
+  if auth.uid() is null or not public.srk_has_admin_permission('support.electrician.read')
+     or not public.srk_has_admin_permission('booking.read_basic') then
     raise exception 'SUPPORT_ELECTRICIAN_READ_REQUIRED' using errcode='42501';
   end if;
   return query
