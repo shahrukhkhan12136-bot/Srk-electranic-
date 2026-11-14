@@ -136,9 +136,10 @@ exports.handler = async (event) => {
     const selected_duration_hours = Number(body.selected_duration_hours);
     const rateCard = { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 };
     const rateCardVersion = "SRK-CUSTOMER-LABOUR-2026-11-13-V1";
-    const preferred_date = clean(body.preferred_date, 10);
-    const preferred_time = clean(body.preferred_time, 8);
-    const work_details = clean(body.work_details, 2000);
+    // SRK ELECTRONIC accepts immediate service requests only; ignore legacy schedule fields.
+    const preferred_date = null;
+    const preferred_time = null;
+const work_details = clean(body.work_details, 2000);
     const payment_method = clean(body.payment_method, 80) || "नकद (Cash)";
     const quoted_amount = body.quoted_amount == null || body.quoted_amount === ""
       ? null : Number(body.quoted_amount);
@@ -155,9 +156,8 @@ exports.handler = async (event) => {
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
         !["home_wiring", "electrical_repair", "light_fan_fitting", "home_repair", "other"].includes(selected_category) ||
         !Object.prototype.hasOwnProperty.call(rateCard, selected_rate_tier) ||
-        !Number.isInteger(selected_duration_hours) || selected_duration_hours < 1 || selected_duration_hours > 8 ||
-        !validDate(preferred_date) || !validTime(preferred_time)) {
-      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, तारीख और समय भरें।" });
+        !Number.isInteger(selected_duration_hours) || selected_duration_hours < 1 || selected_duration_hours > 8) {
+      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, श्रेणी और अवधि भरें।" });
     }
     if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
@@ -172,7 +172,7 @@ exports.handler = async (event) => {
     const requestFingerprint = crypto.createHash("sha256").update(JSON.stringify({
       customer_user_id, customer_name, phone, state, district, pincode, address,
       location_lat, location_lng, service_type, selected_category, selected_rate_tier,
-      selected_duration_hours, preferred_date, preferred_time, work_details, payment_method
+      selected_duration_hours, work_details, payment_method
     })).digest("hex");
     const findByRequestKey = () => supabase(
       "service_bookings?select=id,customer_user_id,customer_request_fingerprint&customer_request_key=eq." + encodeURIComponent(idempotencyKey),
