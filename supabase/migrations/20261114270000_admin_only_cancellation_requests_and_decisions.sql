@@ -211,14 +211,23 @@ begin
   if p_decision not in ('approved','rejected') then raise exception 'INVALID_DECISION'; end if;
   if length(v_reason)<10 or length(v_reason)>1000 then raise exception 'ADMIN_REASON_REQUIRED_10_TO_1000'; end if;
 
-  select * into v_request from public.srk_booking_cancellation_requests
-  where id=p_request_id for update;
+  -- Match the customer request path's lock order: Booking first, then Request.
+  -- Read the relationship without locking, acquire the Booking row,
+  -- then lock/revalidate the request. This avoids Request -> Booking inversion.
+  select r.booking_id into v_request.booking_id
+  from public.srk_booking_cancellation_requests r
+  where r.id=p_request_id;
   if not found then raise exception 'CANCELLATION_REQUEST_NOT_FOUND'; end if;
-  if v_request.request_status <> 'pending' then raise exception 'CANCELLATION_REQUEST_ALREADY_DECIDED'; end if;
+
   perform 1 from public.service_bookings b
     where b.id=v_request.booking_id and b.status not in ('completed','cancelled')
     for update;
   if not found then raise exception 'BOOKING_NO_LONGER_CANCELLABLE'; end if;
+
+  select * into v_request from public.srk_booking_cancellation_requests r
+  where r.id=p_request_id for update;
+  if not found then raise exception 'CANCELLATION_REQUEST_NOT_FOUND'; end if;
+  if v_request.request_status <> 'pending' then raise exception 'CANCELLATION_REQUEST_ALREADY_DECIDED'; end if;
 
   if p_decision='approved' then
     if p_verified_stage not in ('not_departed','en_route','arrived') then raise exception 'INVALID_VERIFIED_STAGE'; end if;
