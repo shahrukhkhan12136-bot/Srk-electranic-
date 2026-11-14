@@ -104,6 +104,12 @@ CREATE TABLE IF NOT EXISTS public.srk_razorpay_refunds (
   CONSTRAINT srk_razorpay_refunds_booking_id_key UNIQUE (booking_id)
 );
 
+ALTER TABLE public.srk_razorpay_refunds
+  DROP CONSTRAINT IF EXISTS srk_razorpay_refunds_amount_paise_match;
+ALTER TABLE public.srk_razorpay_refunds
+  ADD CONSTRAINT srk_razorpay_refunds_amount_paise_match
+  CHECK (amount_paise=round(amount*100)::bigint);
+
 CREATE TABLE IF NOT EXISTS public.srk_booking_refund_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   booking_id uuid NOT NULL REFERENCES public.service_bookings(id) ON DELETE RESTRICT,
@@ -174,6 +180,12 @@ CREATE POLICY srk_read_authorized_electrician_payouts
     )
   );
 
+CREATE INDEX IF NOT EXISTS srk_booking_labour_bills_customer_created_idx
+  ON public.srk_booking_labour_bills(customer_user_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS srk_booking_labour_bills_electrician_created_idx
+  ON public.srk_booking_labour_bills(electrician_profile_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS srk_booking_refund_requests_customer_created_idx
+  ON public.srk_booking_refund_requests(customer_user_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS srk_electrician_payouts_electrician_profile_id_idx
   ON public.srk_electrician_payouts(electrician_profile_id);
 CREATE INDEX IF NOT EXISTS srk_electrician_payouts_status_idx
