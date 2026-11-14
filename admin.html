@@ -136,8 +136,8 @@ async function saveAdminSupportComplaint(id){
  if(adminCustomerComplaintSaveBusy.has(id))return;
  const stateField=document.getElementById('admin-support-state-'+id),noteField=document.getElementById('admin-support-note-'+id);
  if(!stateField||!noteField)return;
- const state=stateField.value,note=noteField.value.trim(),button=stateField.closest('.job')?.querySelector('button');
- if(!['open','in_progress','resolved','closed'].includes(state)){alert('मान्य शिकायत स्थिति चुनें।');return;}
+ const state=stateField.value,note=noteField.value.trim(),button=stateField.closest('article.card')?.querySelector('button');
+ if(!['new','in_review','resolved','closed'].includes(state)){alert('मान्य शिकायत स्थिति चुनें।');return;}
  if(note.length>2000){alert('Admin नोट 2000 अक्षरों से अधिक नहीं होना चाहिए।');return;}
  adminCustomerComplaintSaveBusy.add(id);if(button)button.disabled=true;
  try{const {data,error}=await sb.rpc('srk_admin_update_booking_complaint',{p_complaint_id:id,p_status:state,p_admin_note:note||null});
