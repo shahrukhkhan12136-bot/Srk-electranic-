@@ -811,7 +811,7 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Upload के बाद `srk_electrician_submit_verification_document` RPC document metadata तथा audit event दर्ज करता है; `srk_electrician_list_my_verification_documents` से review status, Admin note और timestamps दिखते हैं। Failed metadata submission पर unreferenced uploaded object cleanup की कोशिश होती है।
 - Read-only Production inspection से bucket private, 5 MB limit, PDF/JPEG/PNG allowlist, upload/read/delete storage policies और संबंधित RPC signatures सत्यापित हुए। KYC tables पर direct client SELECT policy उपलब्ध नहीं मिली; इसलिए frontend private object path सीधे पढ़ने या public URL बनाने की कोशिश नहीं करता। दस्तावेज़ preview/download के लिए अलग ownership-checked signed-URL backend endpoint अभी बाकी है।
 - Static source checks: KYC UI, private bucket, upload RPC, status RPC, 5 MB check और no-public-URL checks PASS। Runtime upload/JWT/storage policy test अंतिम consolidated QA में बाकी; कोई live document upload या production schema change नहीं किया गया।
-- Availability control अभी नहीं जोड़ा गया: मौजूदा `electrician_profiles.active` Admin-controlled activation है, electrician की अपनी availability नहीं। इसे गलत तरीके से toggle नहीं किया जाएगा। अलग secure availability field/RPC और job-dispatch integration आवश्यक है। Live location update/stop controls भी अभी बाकी हैं; केवल booking customer destination directions मौजूदा UI में हैं।
+- ऐतिहासिक नोट: इस KYC UI के पहले संस्करण में electrician self-availability और live GPS controls उपलब्ध नहीं थे। बाद के 14 नवम्बर 2026 वाले Availability तथा Live Location sections में ये दोनों source-code सुविधाएँ जोड़ी गईं; migrations अभी भी Production पर लागू नहीं हैं.
 
 
 ## Electrician App — अपनी काम की उपलब्धता नियंत्रित करना (14 नवम्बर 2026)
@@ -833,3 +833,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Database trigger clears active coordinates automatically when the booking leaves the assigned travel stage, is cancelled/completed, or the assigned electrician changes. A different newly assigned electrician can start a fresh location session; the previous electrician's stopped session cannot be resumed. Moving into work-start approval therefore stops tracking.
 - Existing electrician base coordinates and customer destination coordinates are not reused as live GPS. No home/base coordinates are exposed.
 - Static source checks still required. Migration and UI are source-only; not applied to Supabase and not deployed. No live GPS permission, real tracking session, customer visibility, trigger, or RLS/RPC runtime test has been performed. Final consolidated QA only.
+
+
+## 14 नवम्बर 2026 — Electrician KYC निजी दस्तावेज़ Preview (source-only)
+- Migration: `20261114330000_electrician_private_kyc_document_preview.sql`.
+- नया authenticated RPC `srk_electrician_get_my_verification_document_path(uuid)` केवल उसी लॉगिन इलेक्ट्रिशियन के अपने KYC document का private storage path लौटाता है; दूसरे profile/document ID पर fail-closed।
+- RPC path के बाद frontend private bucket की existing owner/Admin SELECT policy से 60-second signed URL बनाता है। कोई public URL या direct public bucket access नहीं।
+- KYC सूची में पहले से मौजूद “दस्तावेज़ देखें” बटन अब preview flow से जुड़ा है; popup को user click के synchronous context में खोलकर signed URL आने पर navigate करता है।
+- Read-only schema audit में private bucket, 5 MB PDF/JPEG/PNG limit, existing owner/Admin Storage SELECT policy और KYC metadata columns सत्यापित हुए।
+- Static source checks और JS parse आगे verify होंगे। Migration source-only; Production पर apply नहीं हुई। वास्तविक signed URL generation, PDF/image preview, expiry, दूसरे user द्वारा ID guessing और Admin preview का end-to-end test अंतिम consolidated QA में बाकी।
