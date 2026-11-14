@@ -115,7 +115,8 @@ DECLARE v_uid uuid:=auth.uid(); v_req srk_private.srk_electrician_area_change_re
  v_note text:=nullif(regexp_replace(btrim(coalesce(p_note,'')),'[[:space:]]+',' ','g'),'');
 BEGIN
  IF v_uid IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
- IF p_decision NOT IN ('approved','rejected') THEN RAISE EXCEPTION 'Invalid decision' USING ERRCODE='22023'; END IF;
+ IF p_decision IS NULL OR p_decision NOT IN ('approved','rejected') THEN RAISE EXCEPTION 'Invalid decision' USING ERRCODE='22023'; END IF;
+ IF v_note IS NOT NULL AND char_length(v_note)>1000 THEN RAISE EXCEPTION 'Admin note must be at most 1000 characters' USING ERRCODE='22023'; END IF;
  IF p_decision='rejected' AND (v_note IS NULL OR char_length(v_note)<5) THEN
   RAISE EXCEPTION 'Rejection reason must contain at least 5 characters' USING ERRCODE='22023';
  END IF;
