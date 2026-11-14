@@ -1510,5 +1510,5 @@ Master Requirements Section 6 की दोबारा जाँच में �
 ### 2026-11-14 — Admin financial/cancellation permission boundary regression test
 - Main Admin / Support Staff permission design की source review की: Support role में केवल 7 explicitly seeded permissions हैं — customer/electrician support read, reply, status update और सीमित `booking.read_basic`। Main Admin की अलग `is_srk_admin()` identity bypass बनी रहती है; Staff को इससे full Admin identity नहीं मिलती।
 - Admin Staff RBAC pgTAP regression assertion को मजबूत किया: Support role में `finance.*`, `payment.*`, `wallet.*`, `refund.*`, `payout.*`, `cancellation.*`, `kyc.*`, staff/audit, cancellation-decision और private-contact permissions न हों।
-- Test plan/assertion count अब 70/70 होना चाहिए; यह source-level/static count है, pgTAP execution नहीं। PostgreSQL runtime, JWT-role integration और negative RPC execution tests अभी बाकी हैं।
+- Test plan/assertion count 69/69 है; मौजूदा permission-boundary assertion को विस्तृत किया गया, नया assertion नहीं जोड़ा। यह source-level/static count है, pgTAP execution नहीं। PostgreSQL runtime, JWT-role integration और negative RPC execution tests अभी बाकी हैं।
 - कोई migration apply, payment/refund/payout action, production setting change, deployment या PR merge नहीं किया गया।
