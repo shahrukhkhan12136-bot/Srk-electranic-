@@ -1,6 +1,9 @@
 -- Full-refund accounting reversal for cancellation-fee carry-forward.
 -- Feature branch source only. This migration is NOT applied to any database.
 -- Current refund RPCs are full-amount only; partial refunds deliberately fail closed.
+-- A debt can be reserved, refunded/reopened, and collected on a later booking.
+alter table public.srk_booking_cancellation_fee_items
+  drop constraint if exists srk_booking_cancellation_fee_items_debt_id_key;
 
 alter table public.srk_cancellation_fee_ledger
   add column if not exists reversal_of_entry_id uuid
@@ -93,7 +96,7 @@ begin
       ) values (
         v_item.debt_id,old.id,v_item.source_booking_id,old.customer_user_id,
         'reversal','debit',v_item.amount_paise,'posted',v_refund_id::text,
-        'cancel-fee:refund:online:'||v_item.debt_id::text,
+        'cancel-fee:refund:online:'||v_original.id::text,
         'Full Razorpay refund: reverse SRK cancellation-fee collection; reopen customer debt',
         v_original.id
       );
@@ -112,10 +115,15 @@ begin
 
       select wl.* into v_wallet_entry
       from public.srk_wallet_ledger wl
-      where wl.idempotency_key='cancel-fee:cash:electrician-debit:'||v_item.debt_id::text
+      where wl.reference_type='cancellation_fee_debt'
+        and wl.reference_id=v_item.debt_id::text
+        and wl.wallet_type='electrician'
         and wl.entry_type='cancellation_fee'
         and wl.direction='debit'
         and wl.status='posted'
+        and wl.created_at<=clock_timestamp()
+      order by wl.created_at desc
+      limit 1
       for update;
       if not found then
         raise exception 'ORIGINAL_ELECTRICIAN_WALLET_DEBIT_MISSING' using errcode='55000';
@@ -129,7 +137,7 @@ begin
         v_wallet_entry.wallet_id,v_wallet_entry.user_id,'electrician',
         'cancellation_fee','credit',v_item.amount_paise/100.0,'posted',
         'cancellation_fee_refund',v_item.debt_id::text,'internal',
-        v_refund_id::text,'cancel-fee:cash:refund-wallet-credit:'||v_item.debt_id::text,
+        v_refund_id::text,'cancel-fee:cash:refund-wallet-credit:'||v_wallet_entry.id::text,
         'Full customer refund: reverse the earlier SRK cancellation-fee wallet debit',
         clock_timestamp()
       );
@@ -142,7 +150,7 @@ begin
         v_item.debt_id,old.id,v_item.source_booking_id,old.customer_user_id,
         v_original.electrician_user_id,'reversal','debit',v_item.amount_paise,
         'posted',v_refund_id::text,
-        'cancel-fee:refund:cash:'||v_item.debt_id::text,
+        'cancel-fee:refund:cash:'||v_original.id::text,
         'Full cash refund: reverse SRK fee credit and restore electrician wallet debit',
         v_original.id
       );
