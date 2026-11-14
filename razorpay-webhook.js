@@ -42,7 +42,7 @@ async function completeWebhookEvent(eventId, claimToken, outcome, error) {
 async function updateBooking(orderId, payment) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
-  url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,razorpay_payment_id,selected_category");
+  url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,payment_method,razorpay_payment_id,selected_category");
 
   const response = await fetch(url, {
     method: "GET",
@@ -52,6 +52,9 @@ async function updateBooking(orderId, payment) {
   const rows = await response.json();
   const booking = Array.isArray(rows) ? rows[0] : null;
   if (!booking) return "not_found";
+  const paymentMethod = String(booking.payment_method || "").trim().toLowerCase();
+  if (!paymentMethod.includes("razorpay") && !paymentMethod.includes("online")) return "payment_method_not_online";
+  if (booking.payment_status === "refunded") return "payment_refunded";
   if (booking.selected_category) {
     if (booking.payment_status === "paid") return booking.razorpay_payment_id === payment.id ? "already_processed" : "payment_conflict";
     if (booking.status !== "completed") return "booking_not_payable";
@@ -92,6 +95,7 @@ async function updateBooking(orderId, payment) {
   patchUrl.searchParams.set("id", "eq." + booking.id);
   patchUrl.searchParams.set("razorpay_order_id", "eq." + orderId);
   patchUrl.searchParams.set("payment_status", "neq.paid");
+  patchUrl.searchParams.set("payment_status", "neq.refunded");
 
   const patched = await fetch(patchUrl, {
     method: "PATCH",
@@ -257,7 +261,7 @@ exports.handler = async (event) => {
 
     const result = await updateBooking(payment.order_id, payment);
     if (result === "update_not_applied") throw new Error("Payment reconciliation update was not applied");
-    if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict" || result === "booking_not_payable") {
+    if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict" || result === "booking_not_payable" || result === "payment_method_not_online" || result === "payment_refunded") {
       console.error("Razorpay webhook could not reconcile booking:", result);
       await completeWebhookEvent(eventId, claimToken, "ignored", result);
       claimToken = null;
