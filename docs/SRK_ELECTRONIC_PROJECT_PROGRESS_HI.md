@@ -829,7 +829,7 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added a private booking-scoped live location table; direct Data API access is revoked and RLS is enabled.
 - Added ownership-checked RPCs for electrician start/update/stop/status and customer read. Customer read is limited to the customer's own currently assigned booking and returns only fresh coordinates (maximum age 90 seconds).
 - Electrician UI now requests GPS only after an explicit button tap and confirmation, requires browser location permission and GPS accuracy <=150m, throttles updates to about 12 seconds, supports stopping on arrival, and can resume GPS updates after reconnect/page reload.
-- Customer booking UI polls every 15 seconds and shows the fresh location via Google Maps only while the booking is still in the assigned/travel stage.
+- Customer booking UI polls every 15 seconds and renders a refreshed embedded Google Map plus directions link only while the booking is still in the assigned/travel stage.
 - Database trigger clears active coordinates automatically when the booking leaves the assigned travel stage, is cancelled/completed, or the assigned electrician changes. Moving into work-start approval therefore stops tracking.
 - Existing electrician base coordinates and customer destination coordinates are not reused as live GPS. No home/base coordinates are exposed.
 - Static source checks still required. Migration and UI are source-only; not applied to Supabase and not deployed. No live GPS permission, real tracking session, customer visibility, trigger, or RLS/RPC runtime test has been performed. Final consolidated QA only.
