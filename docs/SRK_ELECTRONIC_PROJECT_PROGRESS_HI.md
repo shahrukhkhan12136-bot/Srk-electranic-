@@ -1520,3 +1520,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - pgTAP source test `cancellation_fee_refund_reversal.test.sql` में booking-first lock order assertion जोड़ा; plan 24→25।
 - Static source verification: test file में `plan(25)` और 25 assertion calls का exact match **25/25 PASS**; PostgreSQL compile, pgTAP execution और वास्तविक concurrent transaction test अभी नहीं चलाए गए।
 - यह केवल Feature Branch source change है; कोई Production migration, refund, payout, provider API call या deployment नहीं हुआ। Admin Finance/Cancellation अभी Partial है।
+
+### Refund provider webhook reconciliation — signed events and terminal-state protection (14 नवम्बर 2026)
+- `razorpay-webhook.js` पहले केवल `payment.captured` / `order.paid` संभालता था; Refund events ignore होते थे। अब signed raw-body HMAC verification के बाद `refund.created`, `refund.processed` और `refund.failed` events पहचाने जाते हैं।
+- Refund webhook handler provider refund ID, payment ID, INR currency, integer paise amount और DB refund record के payment/amount/refund ID का मिलान करता है। अस्पष्ट/गायब DB record पर 5xx देकर delivery retry माँगता है; payload/record mismatch पर business action नहीं करता और manual reconciliation संकेत देता है।
+- Verified event के बाद केवल service-role RPC `srk_service_reconcile_booking_refund` call होता है। Browser/client को service-role access नहीं मिलता।
+- RPC अब पहले से bound provider refund ID बदलने से मना करता है और `processed` / `failed` final states को terminal रखता है, ताकि late/out-of-order `refund.created` event किसी final refund को वापस `processing` न करे।
+- Refund reconciliation lock-order test पहले से 25 था; terminal-state और provider-ID binding के 2 अतिरिक्त pgTAP source assertions जोड़े: plan/assertions **27/27** exact match।
+- Source commits: migration `ed5ee9f56aadb4cfb479ed46d6ffc247e5c09946`; tests `c8001fe90b9c2250ec18e3e722214e2d9d675444`; webhook `aed7aca1f134b8929a055ae125294625ba919b1c`।
+- सीमाएँ: यह provider webhook receive/reconcile path है; outbound Admin refund initiation caller, Razorpay Test Mode end-to-end, webhook duplicate-event durable inbox, PostgreSQL/pgTAP runtime और real concurrent tests अभी बाकी हैं। कोई real refund/payment, migration apply या deployment नहीं हुआ।
