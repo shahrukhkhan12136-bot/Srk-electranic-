@@ -163,7 +163,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 
  <section class="panel" id="customerBookingPanel" hidden>
   <h2 class="section-title" style="margin-top:0">सर्विस बुक करें</h2>
-  <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर काम का निरीक्षण करेगा और केवल मेहनताना स्पष्ट करेगा।</p>
+  <p class="small">बुकिंग से पहले चुनी गई इलेक्ट्रिशियन श्रेणी, अवधि और लागू दर के आधार पर अनुमान दिखना चाहिए। निरीक्षण के बाद अलग quotation देने की प्रक्रिया नहीं है। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। सामान/पार्ट्स का खर्च अलग itemized रहेगा।</p>
   <form id="booking">
    <label for="name">आपका नाम</label><input id="name" required placeholder="नाम लिखें">
    <label for="phone">OTP से सत्यापित मोबाइल नंबर</label><input id="phone" type="tel" inputmode="tel" required readonly aria-describedby="verifiedPhoneHelp" placeholder="पहले ग्राहक OTP लॉगिन करें"><small id="verifiedPhoneHelp" class="small">बुकिंग में वही मोबाइल नंबर इस्तेमाल होगा जिससे आपने OTP लॉगिन किया है। इसे यहाँ बदला नहीं जा सकता।</small>
@@ -610,7 +610,7 @@ async function loadCustomerBookings() {
         ? '<div class="job"><b>काम का टाइमर</b><p id="customerTimer_'+customerEsc(row.id)+'" data-running="'+(row.work_timer_running?'1':'0')+'" data-started="'+customerEsc(row.work_started_at||'')+'" data-accumulated="'+customerEsc(row.work_timer_elapsed_seconds||0)+'">'+customerEsc(formatCustomerTimer(row.work_timer_elapsed_seconds||0))+'</p><small>यह लाइव प्रदर्शन अनुमानित है; अंतिम बिल सर्वर के रिकॉर्ड समय से बनेगा।</small></div>'
         : '';
       const finalBillMarkup=bill
-        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>अंतिम मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p class="small">यह बिल ग्राहक की मंजूरी के बाद सर्वर ने बनाया है।</p>'+
+        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>अंतिम मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p class="small">यह अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय के आधार पर बनाया गया है। इसमें सामान/पार्ट्स शामिल नहीं हैं; वे अलग itemized बिल में दिखेंगे।</p>'+
           (String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'&&row.payment_status!=='paid'
             ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+Number(bill.labour_amount)+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 अंतिम Labour Bill का ऑनलाइन भुगतान करें</button>'
             : String(row.payment_method||'').toLowerCase().includes('cash')&&row.payment_status!=='paid'
