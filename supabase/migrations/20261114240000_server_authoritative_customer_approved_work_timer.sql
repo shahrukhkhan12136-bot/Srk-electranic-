@@ -283,7 +283,8 @@ AS $function$
 DECLARE b public.service_bookings%ROWTYPE; v_minutes bigint; v_paise numeric(24,0); v_amount numeric(18,2); v_note text:=NULLIF(btrim(p_note),'');
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_response NOT IN ('approved','rejected') OR p_response IS NULL THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023'; END IF;
+  IF p_response NOT IN ('approved','rejected','disputed') OR p_response IS NULL OR (p_note IS NOT NULL AND length(p_note)>1000) THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023'; END IF;
+  IF p_response='disputed' AND (v_note IS NULL OR length(v_note)<20) THEN RAISE EXCEPTION 'विवाद का कारण कम से कम 20 अक्षरों में लिखें'; END IF;
   SELECT * INTO b FROM public.service_bookings WHERE id=p_booking_id AND customer_user_id=auth.uid() FOR UPDATE;
   IF NOT FOUND OR b.status<>'in_progress' OR b.completion_approval_status<>'pending'
     OR b.completion_requested_at IS NULL OR b.work_timer_running THEN
