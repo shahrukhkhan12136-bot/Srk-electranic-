@@ -111,7 +111,7 @@ ${!o.selected_category&&['inspection','quote_rejected'].includes(o.booking_statu
 ${!o.selected_category&&o.booking_status==='awaiting_quote_approval'?'<p class="muted">पुरानी बुकिंग का कोटेशन ग्राहक की मंजूरी के इंतज़ार में है।</p>':''}
 ${!o.selected_category&&o.booking_status==='quote_approved'?'<button onclick="workStatus(\''+o.booking_id+'\',\'in_progress\')">ग्राहक की मंजूरी मिली — काम शुरू करें</button>':''}
 ${!o.selected_category&&o.booking_status==='completed'?'<p class="good">पुरानी बुकिंग का काम पूरा दर्ज है।</p>':''}
-${o.offer_status==='offered'&&p.active&&p.verification_status==='approved'?`<button onclick="respond('${o.offer_id}','accepted')">काम स्वीकार करें</button><button style="background:#627d98" onclick="respond('${o.offer_id}','declined')">मना करें</button>`:''}</div>`}).join(''):'अभी कोई काम का ऑफर नहीं है।';}renderElectricianLiveLocationControls(rows,locationStates);
+${o.offer_status==='offered'&&p.active&&p.verification_status==='approved'?`<button onclick="respond(this,'${o.offer_id}','accepted')">काम स्वीकार करें</button><button style="background:#627d98" onclick="respond(this,'${o.offer_id}','declined')">मना करें</button>`:''}</div>`}).join(''):'अभी कोई काम का ऑफर नहीं है।';}renderElectricianLiveLocationControls(rows,locationStates);
 focusElectricianOfferFromNotification();
 
 async function setElectricianAvailability(available){
@@ -220,7 +220,27 @@ async function workStatus(id,status){
  const {error}=await sb.rpc('srk_update_booking_work_status',{p_booking_id:id,p_status:status});
  if(error){alert('स्थिति अपडेट नहीं हुई: '+error.message);return;}alert('बुकिंग स्थिति अपडेट हो गई।');refresh();
 }
-async function respond(id,response){if(!confirm(response==='accepted'?'यह काम स्वीकार करना है?':'यह ऑफर मना करना है?'))return;let {error}=await sb.rpc('srk_respond_to_offer',{p_offer_id:id,p_response:response});if(error)alert(error.message);else{alert(response==='accepted'?'काम आपको असाइन हो गया।':'ऑफर मना कर दिया गया।');refresh()}}
+const electricianOfferResponseBusy=new Set();
+async function respond(button,id,response){
+ if(!id||!['accepted','declined'].includes(response)||electricianOfferResponseBusy.has(id))return;
+ if(!confirm(response==='accepted'?'यह काम स्वीकार करना है?':'यह ऑफर मना कर दिया जाएगा।'))return;
+ electricianOfferResponseBusy.add(id);
+ const card=button?.closest('.job');
+ const buttons=card?[...card.querySelectorAll('button[onclick*="respond("]')]:button?[button]:[];
+ const oldLabels=buttons.map(b=>b.textContent);
+ buttons.forEach(b=>{b.disabled=true;if(b===button)b.textContent='कृपया प्रतीक्षा करें…';});
+ try{
+  const {data,error}=await sb.rpc('srk_respond_to_offer',{p_offer_id:id,p_response:response});
+  if(error||data?.success===false)throw error||new Error('Offer response was not confirmed');
+  alert(response==='accepted'?'काम आपको असाइन हो गया।':'ऑफर मना कर दिया गया।');
+  await refresh();
+ }catch(e){
+  alert('ऑफर पर आपका जवाब सुरक्षित नहीं हो सका। ऑफर रीफ़्रेश करके स्थिति जाँचें, फिर दोबारा कोशिश करें।');
+ }finally{
+  electricianOfferResponseBusy.delete(id);
+  buttons.forEach((b,i)=>{b.disabled=false;b.textContent=oldLabels[i]||'जवाब दें';});
+ }
+}
 function bookingMapDirections(o){const destination=o.location_lat!=null&&o.location_lng!=null?String(o.location_lat)+','+String(o.location_lng):[o.address,o.district,o.state,o.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destination)+'&travelmode=driving'}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}init();
 </script></body></html>
