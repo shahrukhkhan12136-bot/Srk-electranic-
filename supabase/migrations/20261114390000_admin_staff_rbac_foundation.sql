@@ -183,7 +183,6 @@ create unique index if not exists srk_admin_staff_sessions_auth_session_uidx
 create or replace function public.srk_has_admin_permission(p_permission_key text)
 returns boolean
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $function$
@@ -206,6 +205,16 @@ begin
     return false;
   end if;
   v_session_id := (auth.jwt() ->> 'session_id')::uuid;
+
+  -- Hold a shared registry lock for the duration of the caller's transaction.
+  -- Suspension/disable takes FOR UPDATE, so a Staff request cannot pass its
+  -- permission check and continue after the account has been suspended.
+  perform 1 from public.srk_admin_staff s
+   where s.user_id = v_uid and s.status = 'active'
+   for share;
+  if not found then
+    return false;
+  end if;
 
   return exists (
     select 1
@@ -587,7 +596,6 @@ returns table (
   status text, created_at timestamptz, updated_at timestamptz
 )
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $function$
@@ -611,7 +619,6 @@ grant execute on function public.srk_admin_staff_list_customer_complaints() to a
 create or replace function public.srk_admin_staff_list_customer_messages(p_complaint_id uuid)
 returns table(id uuid,sender_role text,body text,created_at timestamptz)
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $function$
@@ -727,7 +734,6 @@ returns table (
   status text, created_at timestamptz, updated_at timestamptz
 )
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $function$
@@ -751,7 +757,6 @@ grant execute on function public.srk_admin_staff_list_electrician_tickets() to a
 create or replace function public.srk_admin_staff_list_electrician_messages(p_ticket_id uuid)
 returns table(id uuid,sender_role text,body text,created_at timestamptz)
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $function$
