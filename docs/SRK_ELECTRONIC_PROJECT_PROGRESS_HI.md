@@ -1630,3 +1630,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Current branch `admin.html` में केवल Razorpay provider full-refund action panel मिला; customer refund-request inbox/decision UI नहीं मिला। Production RPC मौजूद होने से Feature Branch migration chain अपने-आप सुरक्षित/पुनरुत्पाद्य नहीं बनती।
 - Supabase CLI check: इस execution environment में `supabase` executable उपलब्ध नहीं (`supabase: command not found`)। Skill के अनुसार नई migration का नाम `supabase migration new <name>` से generate होना चाहिए; इसलिए filename हाथ से नहीं बनाया गया और कोई migration source file commit नहीं की गई। अगला सुरक्षित कदम CLI-enabled repository workspace उपलब्ध होने पर canonical customer history name, create/list migration और pgTAP tests बनाना; उसके बाद Main Admin-only inbox/decision UI को उसी branch contract से जोड़ना है।
 - यह केवल read-only Production catalog inspection और Feature Branch source inspection है। कोई Production write, migration apply, payment/refund, deploy, merge, staff invitation या mobile QA नहीं हुआ।
+
+
+### Customer Refund History RPC नाम alignment — 14 नवम्बर 2026
+- पिछले read-only Production audit में canonical history RPC `srk_customer_list_booking_refund_requests()` मिला था, जबकि Customer `booking.html` दो जगह `srk_customer_list_my_booking_refund_requests()` call कर रही थी।
+- दोनों UI call sites को Production canonical नाम `srk_customer_list_booking_refund_requests()` से align किया। Commit: `8f95421b6843a7f6ebdeabb3c0039a9df273c2ff`।
+- यह केवल frontend RPC-name correction है। Feature Branch migration chain में create/list RPC definitions अभी भी प्रमाणित नहीं; इसलिए इसे end-to-end fix या runtime verification नहीं माना जाए। SQL migration/pgTAP test अभी नहीं जोड़े गए क्योंकि इस workspace में Supabase CLI नहीं है और skill के अनुसार migration file का नाम CLI से generate होना चाहिए।
+- कोई Production change, migration apply, payment/refund, deployment, merge या mobile QA नहीं हुआ।
