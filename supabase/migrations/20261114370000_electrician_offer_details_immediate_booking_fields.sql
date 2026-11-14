@@ -21,7 +21,7 @@ RETURNS TABLE(
   booking_status text,
   selected_category text,
   selected_rate_tier text,
-  selected_duration_hours integer,
+  selected_duration_hours smallint,
   estimated_labour_paise bigint,
   work_start_approval_status text,
   completion_approval_status text,
