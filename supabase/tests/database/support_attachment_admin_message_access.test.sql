@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(11);
 
 select ok(
  has_function_privilege('authenticated','public.srk_customer_list_complaint_message_attachments(uuid)','EXECUTE')
@@ -62,6 +62,12 @@ select ok(
  and position('limit 100' in lower(pg_get_functiondef('public.srk_admin_list_complaint_message_attachments(uuid)'::regprocedure)))>0
  and position('complaint_id=p_complaint_id' in lower(pg_get_functiondef('public.srk_admin_list_complaint_message_attachments(uuid)'::regprocedure)))>0,
  'Admin attachment listing enforces Main Admin access, complaint existence, and bounded results'
+);
+
+select ok(
+ position('public.is_srk_admin()' in lower(pg_get_functiondef('public.srk_customer_support_object_access(text,boolean)'::regprocedure)))>0
+ and position('srk_customer_support_object_access(name,true)' in lower(pg_get_expr((select polqual from pg_policy where polname='srk_customer_support_read_own_or_admin' and polrelid='storage.objects'::regclass),'storage.objects'::regclass)))>0,
+ 'private support storage read policy allows verified Main Admin while retaining owner checks'
 );
 
 select * from finish();
