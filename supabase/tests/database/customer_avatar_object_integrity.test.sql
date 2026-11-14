@@ -1,9 +1,11 @@
 begin;
-select plan(5);
+select plan(6);
 select ok(position('metadata->>''mimetype''' in lower(pg_get_functiondef('public.srk_customer_update_my_profile(text,text,text)'::regprocedure)))>0,
  'avatar RPC checks actual Storage MIME metadata');
 select ok(position('metadata->>''size''' in lower(pg_get_functiondef('public.srk_customer_update_my_profile(text,text,text)'::regprocedure)))>0,
  'avatar RPC checks actual Storage object size');
+select ok(position('o.owner_id=v_user_id::text' in lower(pg_get_functiondef('public.srk_customer_update_my_profile(text,text,text)'::regprocedure)))>0,
+ 'avatar RPC requires the referenced Storage object to be owned by the authenticated customer');
 select ok(position('AVATAR_OBJECT_METADATA_MISMATCH' in pg_get_functiondef('public.srk_customer_update_my_profile(text,text,text)'::regprocedure))>0,
  'avatar RPC rejects extension and MIME mismatch');
 select ok(position('5242880' in pg_get_functiondef('public.srk_customer_update_my_profile(text,text,text)'::regprocedure))>0,
