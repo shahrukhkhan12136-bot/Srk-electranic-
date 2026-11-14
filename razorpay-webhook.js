@@ -94,8 +94,7 @@ async function updateBooking(orderId, payment) {
   const patchUrl = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   patchUrl.searchParams.set("id", "eq." + booking.id);
   patchUrl.searchParams.set("razorpay_order_id", "eq." + orderId);
-  patchUrl.searchParams.set("payment_status", "neq.paid");
-  patchUrl.searchParams.set("payment_status", "neq.refunded");
+  patchUrl.searchParams.set("payment_status", "not.in.(paid,refunded)");
 
   const patched = await fetch(patchUrl, {
     method: "PATCH",
