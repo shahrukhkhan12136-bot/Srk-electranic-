@@ -244,8 +244,9 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_row public.srk_electrician_phone_change_requests%rowtype;
-declare v_digits text;
+declare
+  v_row public.srk_electrician_phone_change_requests%rowtype;
+  v_digits text;
 begin
   if not exists(select 1 from public.srk_admin_users a where a.user_id=p_admin_id) then
     raise exception 'Admin अनुमति आवश्यक है।';
