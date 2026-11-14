@@ -566,6 +566,20 @@ async function customerSubmitBookingRefund(bookingId){
   if(button)button.disabled=false;
  }
 }
+async function customerCancelBooking(bookingId,button) {
+ if(!customerSb||!bookingId)return;
+ if(!confirm('क्या आप यह बुकिंग रद्द करना चाहते हैं؟ यह विकल्प केवल उस बुकिंग के लिए है जिसे अभी किसी इलेक्ट्रिशियन को असाइन नहीं किया गया है।'))return;
+ if(button)button.disabled=true;
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_cancel_my_booking',{p_booking_id:bookingId});
+  if(error)throw error;
+  if(!data?.success||data.status!=='cancelled')throw new Error('CANCELLATION_NOT_CONFIRMED');
+  alert('आपकी बुकिंग रद्द हो गई है। बुकिंग की स्थिति अपडेट कर दी गई है।');
+  await loadCustomerBookings();
+ } catch(error) {
+  alert('यह बुकिंग ग्राहक ऐप से अभी रद्द नहीं हो सकी। यदि इलेक्ट्रिशियन असाइन हो चुका है, तो Help & Support में रद्द करने का अनुरोध भेजें।');
+ } finally {if(button)button.disabled=false;}
+}
 async function loadCustomerBookings() {
   const box = document.getElementById('customerBookings');
   if (!customerSb) { box.textContent='ग्राहक लॉगिन सेवा अभी उपलब्ध नहीं है।'; return; }
@@ -623,9 +637,12 @@ async function loadCustomerBookings() {
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
       const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
-      const cancellationInfo=!['completed','cancelled'].includes(row.status)
-        ? '<p class="small">बुकिंग रद्द कराने के लिए Help & Support में अनुरोध भेजें। रद्द करने का अंतिम निर्णय Admin करेगा।</p>'
-        : '';
+      const canCancelFromCustomer=['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id;
+      const cancellationInfo=canCancelFromCustomer
+        ? '<div class="job"><p class="small">इलेक्ट्रिशियन असाइन होने से पहले आप यह बुकिंग सीधे रद्द कर सकते हैं।</p><button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\',this)" style="background:#fff0f0;color:#a32121">बुकिंग रद्द करें</button></div>'
+        : (!['completed','cancelled'].includes(row.status)
+          ? '<p class="small">इलेक्ट्रिशियन असाइन होने के बाद रद्द करने के लिए Help & Support में अनुरोध भेजें। कोई रद्दीकरण शुल्क तभी लागू होगा जब उसकी अलग नीति आपको पहले बताई गई हो।</p>'
+          : '');
       const refund=refundMap.get(row.id);
       const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
         ? '<div class="job"><b>इलेक्ट्रिशियन ने काम पूरा होने की सूचना दी है।</b><p class="small">कृपया काम जाँचें। पूरा होने पर स्वीकार करें; अधूरा होने पर अस्वीकार करें या विवाद दर्ज करें।</p>'+
@@ -973,6 +990,58 @@ function renderCustomerSupportThread(rows) {
   box.append(item);
  });
  box.scrollTop=box.scrollHeight;
+}
+async function loadCustomerSupportBookings() {
+ const select=document.getElementById('customerSupportBooking');
+ if(!customerSb||!select)return;
+ select.disabled=true;
+ try {
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  const session=sessionData?.session;
+  if(!session){select.replaceChildren(new Option('बुकिंग चुनें',''));return;}
+  const {data,error}=await customerSb.from('service_bookings')
+   .select('id,service_type,status,created_at')
+   .eq('customer_user_id',session.user.id)
+   .order('created_at',{ascending:false})
+   .limit(50);
+  if(error)throw error;
+  select.replaceChildren(new Option('बुकिंग चुनें',''));
+  (Array.isArray(data)?data:[]).forEach(row=>{
+   const shortId=String(row.id||'').slice(0,8).toUpperCase();
+   const label=(row.service_type||'सर्विस')+' · '+customerBookingStatusText(row.status)+' · #'+shortId;
+   select.add(new Option(label,row.id));
+  });
+  if(select.options.length===1)select.add(new Option('अभी कोई बुकिंग उपलब्ध नहीं है',''));
+ } catch(error) {
+  select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी',''));
+  supportStatus('शिकायत के लिए बुकिंग सूची लोड नहीं हो सकी। कृपया रीफ़्रेश करें।',true);
+ } finally {select.disabled=false;}
+}
+async function createCustomerSupportComplaint() {
+ const bookingId=document.getElementById('customerSupportBooking').value;
+ const category=document.getElementById('customerSupportCategory').value;
+ const description=document.getElementById('customerSupportDescription').value.trim();
+ const button=document.getElementById('customerSupportCreate');
+ if(!bookingId){supportStatus('शिकायत दर्ज करने के लिए अपनी बुकिंग चुनें।',true);return;}
+ if(description.length<20||description.length>2000){supportStatus('समस्या का विवरण 20 से 2000 अक्षरों में लिखें।',true);document.getElementById('customerSupportDescription').focus();return;}
+ if(button.disabled)return;
+ button.disabled=true;button.textContent='शिकायत दर्ज हो रही है…';
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_create_booking_complaint',{
+   p_booking_id:bookingId,p_category:category,p_description:description
+  });
+  if(error)throw error;
+  if(!data)throw new Error('COMPLAINT_NOT_CONFIRMED');
+  document.getElementById('customerSupportDescription').value='';
+  await loadCustomerSupportComplaints();
+  supportStatus('आपकी शिकायत दर्ज हो गई है। उसका reference और जवाब नीचे दिखाई देंगे।');
+ } catch(error) {
+  const msg=String(error?.message||'');
+  supportStatus(msg.includes('Daily complaint limit reached')
+   ?'आज की शिकायत सीमा पूरी हो गई है। कृपया मौजूदा शिकायत में संदेश भेजें।'
+   :'शिकायत दर्ज नहीं हो सकी। बुकिंग चुनें, विवरण जाँचें और दोबारा कोशिश करें।',true);
+ } finally {button.disabled=false;button.textContent='शिकायत दर्ज करें';}
 }
 async function loadCustomerSupportAttachments(complaintId) {
  const {data,error}=await customerSb.rpc('srk_customer_list_complaint_message_attachments',{p_complaint_id:complaintId});
