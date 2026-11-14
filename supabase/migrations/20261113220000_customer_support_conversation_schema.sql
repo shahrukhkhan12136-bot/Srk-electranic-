@@ -13,6 +13,11 @@ create table if not exists public.srk_booking_complaint_messages (
 create index if not exists srk_booking_complaint_messages_thread_idx
   on public.srk_booking_complaint_messages (complaint_id, created_at, id);
 
+-- The composite attachment FK below must reference a unique key that
+-- already exists when PostgreSQL creates the attachment table.
+create unique index if not exists srk_booking_complaint_messages_id_thread_uidx
+  on public.srk_booking_complaint_messages (id, complaint_id);
+
 create table if not exists public.srk_booking_complaint_message_attachments (
   id uuid primary key default gen_random_uuid(),
   complaint_id uuid not null references public.srk_booking_complaints(id) on delete cascade,
@@ -28,9 +33,6 @@ create table if not exists public.srk_booking_complaint_message_attachments (
     deferrable initially immediate
 );
 
--- The composite FK above needs a matching unique key on the message thread.
-create unique index if not exists srk_booking_complaint_messages_id_thread_uidx
-  on public.srk_booking_complaint_messages (id, complaint_id);
 
 alter table public.srk_booking_complaint_messages enable row level security;
 alter table public.srk_booking_complaint_message_attachments enable row level security;
