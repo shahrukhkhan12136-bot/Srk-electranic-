@@ -242,7 +242,27 @@ async function offerBooking(id){
  adminOfferActionBusy.add(id);
  try{return await offerBookingInternal(id);}finally{adminOfferActionBusy.delete(id);}
 }
-async function offerBookingInternal(id){if(!confirm('इस बुकिंग के लिए पहले उसी PIN के Active और Approved इलेक्ट्रिशियनों को ऑफर भेजेंगे। PIN पर कोई योग्य पार्टनर न मिला तो उसी जिले में भेजेंगे। आगे बढ़ें?'))return;const {data,error}=await sb.rpc('srk_admin_offer_booking',{p_booking_id:id});if(error){alert('ऑफर नहीं भेजा गया: '+error.message);return;}const result=Array.isArray(data)?data[0]:data;alert(result?.message||'ऑफर प्रक्रिया पूरी हुई।'+(result?.offers_created!==undefined?' नए ऑफर: '+result.offers_created:''));await loadAll()}
+async function offerBookingInternal(id){
+ const {data:booking,error:readError}=await sb.from('service_bookings')
+  .select('selected_category,selected_rate_tier,status,assigned_electrician_id').eq('id',id).maybeSingle();
+ if(readError||!booking){alert('बुकिंग की पात्रता जाँची नहीं जा सकी। Admin अनुमति और रिकॉर्ड जाँचें।');return;}
+ if(booking.selected_category){
+  alert('इस नई श्रेणी की बुकिंग को पुराने सामूहिक ऑफर RPC से नहीं भेजा जाएगा। इसके लिए ग्राहक की चुनी हुई Rate Category, उपलब्धता और Nearest-first Sequential Dispatcher का सुरक्षित backend rollout आवश्यक है।');
+  return;
+ }
+ if(booking.assigned_electrician_id||!['new','confirmed'].includes(booking.status)){
+  alert('यह बुकिंग अब ऑफर भेजने के योग्य नहीं है।');await loadAll();return;
+ }
+ if(!confirm('इस पुरानी-format बुकिंग के लिए PIN/जिला matching के अनुसार ऑफर भेजें?'))return;
+ try{
+  const {data,error}=await sb.rpc('srk_admin_offer_booking',{p_booking_id:id});
+  if(error)throw error;
+  const result=Array.isArray(data)?data[0]:data;
+  if(result?.success===false){alert(result.message||'कोई योग्य इलेक्ट्रिशियन उपलब्ध नहीं है।');return;}
+  alert(result?.message||'ऑफर प्रक्रिया पूरी हुई।'+(result?.offers_created!==undefined?' नए ऑफर: '+result.offers_created:''));
+  await loadAll();
+ }catch(e){alert('ऑफर नहीं भेजा गया। बुकिंग की स्थिति, matching और Admin अनुमति जाँचें।');}
+}
 async function saveBooking(id){
  if(adminBookingActionBusy.has(id))return;
  adminBookingActionBusy.add(id);
