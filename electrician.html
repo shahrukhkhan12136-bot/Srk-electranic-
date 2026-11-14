@@ -96,9 +96,13 @@ async function loadElectricianPhoneChangeHistory(){
  if(!rows.length){box.textContent='अभी कोई मोबाइल नंबर अपडेट रिक्वेस्ट नहीं है।';return;}
  const labels={otp_pending:'OTP सत्यापन बाकी',pending_admin:'OTP सत्यापित — Admin जाँच बाकी',processing:'Admin मंजूरी के बाद अपडेट हो रहा है',approved:'मंजूर — नया नंबर सक्रिय',rejected:'Admin ने अस्वीकार किया',expired:'OTP/रिक्वेस्ट समाप्त',sync_error:'तकनीकी जाँच आवश्यक'};
  box.innerHTML=rows.map(r=>'<div class="job"><b>'+esc(r.old_phone)+' → '+esc(r.new_phone)+'</b><p>'+esc(labels[r.status]||r.status)+'</p><p>कारण: '+esc(r.reason)+'</p>'+(r.admin_note?'<p>Admin टिप्पणी: '+esc(r.admin_note)+'</p>':'')+'<small>'+esc(new Date(r.created_at).toLocaleString('hi-IN'))+'</small></div>').join('');
- const pending=rows.some(r=>['otp_pending','pending_admin','processing','sync_error'].includes(r.status));
+ const latest=rows[0],pending=rows.some(r=>['otp_pending','pending_admin','processing','sync_error'].includes(r.status));
  const card=document.getElementById('electricianPhoneChangeCard');
- if(card){card.querySelectorAll('#phoneChangeNew,#phoneChangeReason,#sendPhoneChangeOtp').forEach(x=>x.disabled=pending);if(pending&&rows[0]?.status!=='otp_pending')document.getElementById('phoneChangeStatus').textContent='आपकी रिक्वेस्ट Admin की जाँच में है। निर्णय आने तक दूसरी रिक्वेस्ट नहीं भेज सकते。';}
+ if(latest?.status==='otp_pending'&&latest.otp_expires_at&&new Date(latest.otp_expires_at).getTime()>Date.now()){
+  phoneChangeRequestId=latest.id;document.getElementById('phoneChangeOtpBox').classList.remove('hidden');
+  document.getElementById('phoneChangeStatus').textContent='आपके नए नंबर पर OTP भेजा जा चुका है। 5 मिनट के भीतर OTP सत्यापित करें।';
+ }
+ if(card){card.querySelectorAll('#phoneChangeNew,#phoneChangeReason,#sendPhoneChangeOtp').forEach(x=>x.disabled=pending);if(pending&&latest?.status!=='otp_pending')document.getElementById('phoneChangeStatus').textContent='आपकी रिक्वेस्ट Admin की जाँच में है। निर्णय आने तक दूसरी रिक्वेस्ट नहीं भेज सकते।';}
 }
 async function sendElectricianPhoneChangeOtp(){
  if(phoneChangeBusy)return;
