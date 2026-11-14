@@ -1478,3 +1478,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Customer conversation (4 functions), attachment/Admin message list (2), Main Admin customer reply (1), और Electrician support (8) migrations के सभी 15 functions `SECURITY DEFINER` हैं; प्रत्येक में `SET search_path = ''` और संबंधित explicit `REVOKE ALL ... FROM PUBLIC, anon` declaration मौजूद है।
 - RBAC migration में 21 function definitions (permission helper की duplicate definition सहित), 20 SECURITY DEFINER definitions, 21 empty-search-path clauses और 21 revoke declarations मिले। यह static source audit है; runtime privilege catalog और function execution अभी सत्यापित नहीं हुए।
 - यह audit source-only रहा। कोई SQL migration apply, Edge Function deploy, production setting/data change या PR merge नहीं किया।
+
+
+### 2026-11-14 — Customer/Admin support message sender attribution
+- Customer complaint message schema में `sender_user_id` (auth.users FK, `ON DELETE SET NULL`) जोड़ा। Customer reply RPC अब `auth.uid()` persist करती है; Main Admin reply RPC भी authenticated Admin user ID persist करती है। Staff reply RPC पहले से sender ID लिखती थी; RBAC migration का `ADD COLUMN IF NOT EXISTS` अब पहले से बने column के साथ idempotent रहता है।
+- इससे customer, Main Admin और Support Staff—तीनों प्रकार के message sender का attributable record रहता है; user deletion पर पुरानी conversation rows सुरक्षित रहती हैं और केवल sender reference null होता है।
+- RBAC pgTAP suite में sender column, FK delete behavior और Customer/Admin RPC sender attribution का assertion जोड़ा। Static checks: RBAC 67/67, Customer attachment access 8/8, Electrician support 12/12; सभी plan/assertion counts match।
+- Source commits: customer schema/RPC `c5b478fed49993e4d7c31d9f0693772ea7db79ac`; Admin reply `de278f4a5da167697189dea10481b5b0bdcd1678`; test `536f6897a874b68a66bb8d58044dfbeab848912a` और FK assertion `be7f45be6aebac5791269046b5e323c85da09827`। Static verification only; pgTAP/SQL runtime नहीं चला। कोई Production mutation या deploy नहीं।
