@@ -116,3 +116,85 @@ test("same signed body cannot be replayed under a changed event header", async t
   assert.equal(JSON.parse(replay.body).duplicate, true);
   assert.equal(completionCount, 1);
 });
+
+test("does not settle a Cash booking from a captured webhook", async t => {
+  const calls = [];
+  global.fetch = async (url, options = {}) => {
+    const target = String(url);
+    const fn = rpcName(target);
+    calls.push(target);
+    if (fn === "srk_service_claim_razorpay_webhook_event") {
+      return response(200, { success: true, should_process: true, claim_token: "423e4567-e89b-42d3-a456-426614174000" });
+    }
+    if (target.includes("/rest/v1/service_bookings?")) {
+      return response(200, [{
+        id: "123e4567-e89b-42d3-a456-426614174000",
+        payment_method: "Cash",
+        payment_status: "unpaid",
+        razorpay_payment_id: null,
+        selected_category: "home_wiring",
+        status: "completed"
+      }]);
+    }
+    if (fn === "srk_service_complete_razorpay_webhook_event") {
+      const body = JSON.parse(options.body);
+      assert.equal(body.p_outcome, "ignored");
+      assert.equal(body.p_error, "payment_method_not_online");
+      return response(200, { success: true, state: "ignored" });
+    }
+    throw new Error("unexpected request " + target);
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const result = await handler(event({
+    event: "payment.captured",
+    payload: { payment: { entity: {
+      id: "pay_cash_blocked", order_id: "order_cash_blocked",
+      status: "captured", amount: 50000, currency: "INR"
+    } } }
+  }, "evt_cash_payment_blocked"));
+  assert.equal(result.statusCode, 200);
+  assert.equal(JSON.parse(result.body).reason, "payment_method_not_online");
+  assert.equal(calls.some(url => url.includes("srk_service_role_get_booking_payment_breakdown")), false);
+  assert.equal(calls.some(url => url.includes("srk_service_role_record_online_booking_payment")), false);
+});
+
+test("does not re-open a refunded booking from a captured webhook", async t => {
+  const calls = [];
+  global.fetch = async (url, options = {}) => {
+    const target = String(url);
+    const fn = rpcName(target);
+    calls.push(target);
+    if (fn === "srk_service_claim_razorpay_webhook_event") {
+      return response(200, { success: true, should_process: true, claim_token: "523e4567-e89b-42d3-a456-426614174000" });
+    }
+    if (target.includes("/rest/v1/service_bookings?")) {
+      return response(200, [{
+        id: "123e4567-e89b-42d3-a456-426614174000",
+        payment_method: "Razorpay ऑनलाइन भुगतान",
+        payment_status: "refunded",
+        razorpay_payment_id: null,
+        selected_category: "home_wiring",
+        status: "completed"
+      }]);
+    }
+    if (fn === "srk_service_complete_razorpay_webhook_event") {
+      const body = JSON.parse(options.body);
+      assert.equal(body.p_outcome, "ignored");
+      assert.equal(body.p_error, "payment_refunded");
+      return response(200, { success: true, state: "ignored" });
+    }
+    throw new Error("unexpected request " + target);
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const result = await handler(event({
+    event: "payment.captured",
+    payload: { payment: { entity: {
+      id: "pay_refund_blocked", order_id: "order_refund_blocked",
+      status: "captured", amount: 50000, currency: "INR"
+    } } }
+  }, "evt_refund_payment_blocked"));
+  assert.equal(result.statusCode, 200);
+  assert.equal(JSON.parse(result.body).reason, "payment_refunded");
+  assert.equal(calls.some(url => url.includes("srk_service_role_get_booking_payment_breakdown")), false);
+  assert.equal(calls.some(url => url.includes("srk_service_role_record_online_booking_payment")), false);
+});
