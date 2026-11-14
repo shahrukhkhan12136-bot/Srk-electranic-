@@ -33,7 +33,7 @@ async function claimWebhookEvent(eventId, eventType, payloadHash) {
 async function completeWebhookEvent(eventId, claimToken, outcome, error) {
   const result = await webhookInboxRpc("srk_service_complete_razorpay_webhook_event", {
     p_event_id: eventId, p_claim_token: claimToken,
-    p_outcome: outcome, p_error: error || null
+    p_outcome: outcome, p_error: error ? String(error).slice(0, 500) : null
   });
   if (!result?.success) throw new Error("Webhook event completion was not accepted");
   return result;
@@ -199,14 +199,16 @@ exports.handler = async (event) => {
   let claimToken = null;
   try {
     const payload = JSON.parse(rawBody.toString("utf8"));
-    const eventName = payload.event;
-    const suppliedEventId = event.headers?.["x-razorpay-event-id"] ||
-      event.headers?.["X-Razorpay-Event-Id"] || "";
-    // Event ID is the primary dedupe key. A body hash is a deterministic
-    // compatibility fallback for older webhook deliveries without that header.
-    eventId = suppliedEventId || ("sha256:" + crypto.createHash("sha256").update(rawBody).digest("hex"));
+    const eventName = typeof payload.event === "string" && payload.event.length <= 100
+      ? payload.event : "unknown";
     const payloadHash = crypto.createHash("sha256").update(rawBody).digest("hex");
-    const claim = await claimWebhookEvent(eventId, eventName || "unknown", payloadHash);
+    const suppliedEventId = String(event.headers?.["x-razorpay-event-id"] ||
+      event.headers?.["X-Razorpay-Event-Id"] || "").trim();
+    // The provider event ID is preferred, while the database also uniquely
+    // indexes the signed body hash to stop replay under a changed header.
+    eventId = suppliedEventId && suppliedEventId.length <= 128
+      ? suppliedEventId : ("sha256:" + payloadHash);
+    const claim = await claimWebhookEvent(eventId, eventName, payloadHash);
 
     if (claim?.payload_conflict) {
       console.error("Razorpay reused an event ID with a different signed payload.");
