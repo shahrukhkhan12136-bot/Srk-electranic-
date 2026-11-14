@@ -9,7 +9,34 @@ function normalizedPhone(){const raw=document.getElementById('phone').value.trim
 function startOtpCooldown(){otpCooldownUntil=Date.now()+60000;const btn=document.querySelector('#login button[onclick="sendOtp()"]');if(otpTimer)clearInterval(otpTimer);const tick=()=>{const left=Math.max(0,Math.ceil((otpCooldownUntil-Date.now())/1000));btn.disabled=left>0;btn.textContent=left>0?'दोबारा OTP '+left+' सेकंड बाद':'OTP दोबारा भेजें';if(!left){clearInterval(otpTimer);otpTimer=null}};tick();otpTimer=setInterval(tick,1000)}
 async function sendOtp(){if(otpBusy)return;const p=normalizedPhone(),msg=document.getElementById('msg');if(!p){msg.textContent='कृपया सही 10 अंकों का भारतीय मोबाइल नंबर डालें।';return}if(Date.now()<otpCooldownUntil){msg.textContent='नया OTP भेजने से पहले कृपया प्रतीक्षा करें।';return}otpBusy=true;const btn=document.querySelector('#login button[onclick="sendOtp()"]');btn.disabled=true;msg.textContent='OTP भेजा जा रहा है…';try{const {error}=await sb.auth.signInWithOtp({phone:p});if(error){msg.textContent='OTP नहीं भेजा जा सका। कुछ देर बाद फिर कोशिश करें।';return}msg.textContent='OTP भेज दिया गया है। किसी के साथ OTP साझा न करें।';document.getElementById('otpbox').classList.remove('hidden');startOtpCooldown()}catch(e){msg.textContent='अभी OTP सेवा उपलब्ध नहीं है। कृपया बाद में कोशिश करें।'}finally{otpBusy=false;if(Date.now()>=otpCooldownUntil){btn.disabled=false;btn.textContent='OTP भेजें'}}}
 async function verifyOtp(){if(otpBusy)return;const p=normalizedPhone(),token=document.getElementById('otp').value.trim(),msg=document.getElementById('msg');if(!p){msg.textContent='पहले सही मोबाइल नंबर डालें।';return}if(!/^\d{4,8}$/.test(token)){msg.textContent='कृपया SMS में मिला सही OTP डालें।';return}otpBusy=true;msg.textContent='OTP सत्यापित हो रहा है…';try{const {error}=await sb.auth.verifyOtp({phone:p,token,type:'sms'});msg.textContent=error?'OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।':'लॉगिन सफल।'}catch(e){msg.textContent='OTP सत्यापन अभी नहीं हो सका। कृपया फिर कोशिश करें।'}finally{otpBusy=false}}
-async function logout(){if(offersChannel){await sb.removeChannel(offersChannel);offersChannel=null;}await sb.auth.signOut()}
+let electricianLogoutBusy=false;
+async function logout(){
+ if(electricianLogoutBusy)return;
+ electricianLogoutBusy=true;
+ const button=document.querySelector('#app button[onclick="logout()"]');
+ if(button){button.disabled=true;button.textContent='सुरक्षित रूप से लॉगआउट…';}
+ try{
+  const activeLocationIds=[...locationWatches.keys()];
+  for(const id of activeLocationIds){
+   const watch=locationWatches.get(id);
+   if(watch!==undefined)navigator.geolocation.clearWatch(watch);
+   locationWatches.delete(id);
+  }
+  if(activeLocationIds.length&&sb&&user){
+   const results=await Promise.allSettled(activeLocationIds.map(id=>sb.rpc('srk_electrician_stop_live_location',{p_booking_id:id})));
+   const failed=results.some(r=>r.status==='rejected'||r.value?.error);
+   if(failed)console.warn('One or more live-location stop requests did not confirm before logout.');
+  }
+  if(offersChannel){await sb.removeChannel(offersChannel);offersChannel=null;}
+  const {error}=await sb.auth.signOut();
+  if(error)throw error;
+ }catch(e){
+  const msg=document.getElementById('msg');
+  if(msg)msg.textContent='लॉगआउट पूरा नहीं हो सका। कृपया फिर कोशिश करें।';
+  if(button){button.disabled=false;button.textContent='Logout';}
+  electricianLogoutBusy=false;
+ }
+}
 
 function renderElectricianLiveLocationControls(rows,states){rows.filter(o=>o.selected_category&&o.booking_status==='assigned').forEach(o=>{const box=document.getElementById('electricianLiveLocation_'+o.booking_id);if(!box)return;const st=states.get(o.booking_id)||{};box.className='job';const p=document.createElement('p');p.id='liveLocStatus_'+o.booking_id;p.textContent=st.is_active?'Live Location चालू है।':'यात्रा के दौरान Live Location साझा करें।';box.append(p);if(st.can_start===false){box.append('इस बुकिंग के लिए शेयरिंग बंद है।');return;}const b=document.createElement('button');b.textContent=st.is_active?(locationWatches.has(o.booking_id)?'पहुँच गया — Location बंद करें':'GPS अपडेट फिर शुरू करें'):'यात्रा शुरू — Location साझा करें';b.onclick=()=>st.is_active&&locationWatches.has(o.booking_id)?stopElectricianLiveLocation(o.booking_id):startElectricianLiveLocation(o.booking_id);box.append(b);});}
 async function startElectricianLiveLocation(id){const status=document.getElementById('liveLocStatus_'+id);if(locationWatches.has(id)){status.textContent='GPS अपडेट पहले से चालू है।';return;}try{if(!confirm('क्या आप यात्रा के दौरान अपना वर्तमान GPS स्थान ग्राहक से साझा करना चाहते हैं?'))return;const p=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:20000,maximumAge:0}));if(p.coords.accuracy>150)throw Error('GPS सटीकता कम है। खुले स्थान पर फिर कोशिश करें।');const {error}=await sb.rpc('srk_electrician_start_live_location',{p_booking_id:id,p_latitude:p.coords.latitude,p_longitude:p.coords.longitude,p_accuracy_meters:p.coords.accuracy});if(error)throw error;status.textContent='Live Location साझा हो रही है। GPS चालू रखें।';let last=Date.now();const watch=navigator.geolocation.watchPosition(async pos=>{if(Date.now()-last<12000||pos.coords.accuracy>150)return;last=Date.now();const r=await sb.rpc('srk_electrician_update_live_location',{p_booking_id:id,p_latitude:pos.coords.latitude,p_longitude:pos.coords.longitude,p_accuracy_meters:pos.coords.accuracy});if(r.error){status.textContent='GPS अपडेट रुक गया।';navigator.geolocation.clearWatch(watch);locationWatches.delete(id);}},()=>{status.textContent='GPS अपडेट उपलब्ध नहीं है।';},{enableHighAccuracy:true,maximumAge:5000,timeout:20000});locationWatches.set(id,watch);}catch(e){status.textContent=e.message||'लोकेशन शुरू नहीं हो सकी।';}}
