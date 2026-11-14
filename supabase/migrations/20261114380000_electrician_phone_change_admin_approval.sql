@@ -28,6 +28,10 @@ create unique index if not exists srk_phone_change_one_open_per_electrician
   on public.srk_electrician_phone_change_requests(electrician_user_id)
   where status in ('otp_pending','pending_admin','processing','sync_error');
 
+create unique index if not exists srk_phone_change_one_open_new_phone
+  on public.srk_electrician_phone_change_requests(new_phone)
+  where status in ('otp_pending','pending_admin','processing','sync_error');
+
 create index if not exists srk_phone_change_admin_queue_idx
   on public.srk_electrician_phone_change_requests(status, created_at desc);
 
@@ -189,19 +193,27 @@ $$;
 create or replace function public.srk_phone_change_my_requests(p_user_id uuid)
 returns table(
   id uuid, old_phone text, new_phone text, reason text, status text,
-  otp_verified_at timestamptz, created_at timestamptz, reviewed_at timestamptz,
-  admin_note text
+  otp_verified_at timestamptz, otp_expires_at timestamptz,
+  created_at timestamptz, reviewed_at timestamptz, admin_note text
 )
-language sql
+language plpgsql
 security definer
 set search_path = ''
 as $$
+begin
+  update public.srk_electrician_phone_change_requests r
+  set status='expired',otp_hash=null,updated_at=now()
+  where r.electrician_user_id=p_user_id and r.status='otp_pending'
+    and r.otp_expires_at <= now();
+
+  return query
   select r.id,r.old_phone,r.new_phone,r.reason,r.status,r.otp_verified_at,
-         r.created_at,r.reviewed_at,r.admin_note
+         r.otp_expires_at,r.created_at,r.reviewed_at,r.admin_note
   from public.srk_electrician_phone_change_requests r
   where r.electrician_user_id=p_user_id
   order by r.created_at desc
   limit 20;
+end;
 $$;
 
 create or replace function public.srk_admin_list_electrician_phone_change_requests()
@@ -240,7 +252,7 @@ begin
   end if;
   select * into v_row from public.srk_electrician_phone_change_requests
   where id=p_request_id for update;
-  if not found or v_row.status <> 'pending_admin' or v_row.otp_verified_at is null then
+  if not found or v_row.status not in ('pending_admin','sync_error') or v_row.otp_verified_at is null then
     raise exception 'यह रिक्वेस्ट अब लंबित या OTP-सत्यापित नहीं है।';
   end if;
   v_digits:=regexp_replace(v_row.new_phone,'[^0-9]','','g');
@@ -328,7 +340,7 @@ begin
   update public.srk_electrician_phone_change_requests
   set status='rejected',reviewed_by=p_admin_id,reviewed_at=now(),
       admin_note=btrim(p_note),otp_hash=null,updated_at=now()
-  where id=p_request_id and status='pending_admin' and otp_verified_at is not null;
+  where id=p_request_id and status in ('pending_admin','sync_error') and otp_verified_at is not null;
   if not found then raise exception 'यह रिक्वेस्ट अब लंबित नहीं है।'; end if;
   return jsonb_build_object('success',true,'status','rejected');
 end;
