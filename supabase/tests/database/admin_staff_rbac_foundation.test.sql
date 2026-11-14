@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(62);
+SELECT plan(64);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -282,6 +282,25 @@ SELECT ok(
   AND NOT has_function_privilege('authenticated','public.srk_capture_admin_staff_session_event()','EXECUTE')
   AND NOT has_function_privilege('anon','public.srk_capture_admin_staff_session_event()','EXECUTE'),
   'invite-registration is service-role-only and trigger helper cannot be invoked by browser roles'
+);
+
+
+SELECT ok(
+  position('from public.srk_admin_staff s' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure)) <
+    position('from public.srk_booking_complaints c' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure))
+  AND position('for share' in lower(pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure))) <
+    position('for update' in lower(pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure)),
+  'Main Admin assignment takes the active staff lock before the case lock to match Staff authorization lock order'
+);
+
+SELECT ok(
+  position('from public.srk_booking_complaints c' in pg_get_functiondef('public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure)) <
+    position('from public.srk_admin_support_assignments a' in pg_get_functiondef('public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure))
+  AND position('for share' in lower(pg_get_functiondef('public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure))) > 0
+  AND position('from public.srk_electrician_support_tickets t' in pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure)) <
+    position('from public.srk_admin_support_assignments a' in pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure))
+  AND position('for share' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure))) > 0,
+  'Staff thread readers lock the case and current assignment so reassignment serializes with message access'
 );
 
 SELECT * FROM finish();
