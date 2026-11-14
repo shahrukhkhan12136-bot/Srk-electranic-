@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(45);
+SELECT plan(47);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -145,6 +145,15 @@ SELECT ok(
   position('support.electrician.read' in pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure))>0
   AND position('support.electrician.read' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure))>0,
   'electrician support mutations also require electrician read permission'
+);
+
+SELECT ok(
+  position('booking.read_basic' in pg_get_functiondef('public.srk_admin_staff_list_customer_complaints()'::regprocedure))>0,
+  'customer support inbox requires explicit basic booking context permission'
+);
+SELECT ok(
+  position('booking.read_basic' in pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure))>0,
+  'electrician support inbox requires explicit basic booking context permission'
 );
 
 SELECT * FROM finish();
