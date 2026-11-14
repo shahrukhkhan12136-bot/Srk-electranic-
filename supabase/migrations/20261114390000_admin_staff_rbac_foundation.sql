@@ -617,7 +617,8 @@ begin
       join public.srk_admin_support_assignments a
         on a.case_type='customer_complaint' and a.case_id=c.id
      where a.assigned_staff_user_id=auth.uid()
-     order by c.updated_at desc,c.id desc limit 100;
+     order by c.updated_at desc,c.id desc limit 100
+     for share of c,a;
 end;
 $function$;
 revoke all on function public.srk_admin_staff_list_customer_complaints() from public,anon;
@@ -758,7 +759,8 @@ begin
       join public.srk_admin_support_assignments a
         on a.case_type='electrician_ticket' and a.case_id=t.id
      where a.assigned_staff_user_id=auth.uid()
-     order by t.updated_at desc,t.id desc limit 100;
+     order by t.updated_at desc,t.id desc limit 100
+     for share of t,a;
 end;
 $function$;
 revoke all on function public.srk_admin_staff_list_electrician_tickets() from public,anon;
