@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(50);
+SELECT plan(51);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -160,6 +160,11 @@ SELECT has_function('public','srk_capture_admin_staff_session_event',ARRAY[]::te
 SELECT has_trigger('public','srk_admin_staff_sessions','srk_admin_staff_session_audit_insert','new Staff sessions are recorded in the append-only audit log');
 
 SELECT has_function('public','srk_admin_list_staff_audit_events',ARRAY['uuid','integer'],'Main Admin can review Staff activity audit history');
+
+SELECT ok(
+  position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_staff_audit_events(uuid,integer)'::regprocedure))>0,
+  'only Main Admin can read Staff activity audit history'
+);
 
 SELECT * FROM finish();
 ROLLBACK;
