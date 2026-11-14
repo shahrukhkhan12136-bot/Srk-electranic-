@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(32);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
@@ -126,6 +126,19 @@ select ok(position('auth.jwt()->>'||quote_literal('role') in
 select ok(position('auth.jwt()->>'||quote_literal('role') in
   pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
   'refund reconciliation validates service role from the signed JWT claim');
+
+select ok(
+  position('select r.booking_id into v_request.booking_id' in lower(
+    pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure)))>0
+  and position('perform 1 from public.service_bookings' in lower(
+    pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure)))
+    < position('select * into v_request from public.srk_booking_cancellation_requests r' in lower(
+    pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure)))
+  and position('for update' in substring(lower(
+    pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))
+    from position('select * into v_request from public.srk_booking_cancellation_requests r' in lower(
+    pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))))>0,
+  'Admin cancellation decision locks Booking before Request and then locks the Request row');
 
 select * from finish();
 rollback;
