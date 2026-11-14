@@ -25,7 +25,25 @@ if(!SUPABASE_URL||!SUPABASE_KEY||!RAZORPAY_KEY_ID||!RAZORPAY_KEY_SECRET)return j
 try{const b=JSON.parse(event.body||"{}"),payId=typeof b.razorpay_payment_id==="string"?b.razorpay_payment_id:"",orderId=typeof b.razorpay_order_id==="string"?b.razorpay_order_id:"",sig=typeof b.razorpay_signature==="string"?b.razorpay_signature:"";
 if(!/^pay_[A-Za-z0-9]+$/.test(payId)||!/^order_[A-Za-z0-9]+$/.test(orderId)||!/^[a-f0-9]{64}$/i.test(sig))return json(400,{success:false,error:"भुगतान विवरण सही नहीं हैं।"});
 const expected=crypto.createHmac("sha256",RAZORPAY_KEY_SECRET).update(orderId+"|"+payId).digest("hex"),a=Buffer.from(expected,"hex"),c=Buffer.from(sig,"hex");if(a.length!==c.length||!crypto.timingSafeEqual(a,c))return json(400,{success:false,error:"भुगतान signature सत्यापित नहीं हुआ।"});
-const rows=await db("service_bookings?select=id,phone,customer_user_id,quoted_amount,service_charge,materials_amount,payment_status,razorpay_order_id,razorpay_payment_id,status,quote_status&razorpay_order_id=eq."+encodeURIComponent(orderId)+"&limit=1"),booking=rows?.[0];if(!booking)return json(404,{success:false,error:"इस पेमेंट ऑर्डर की बुकिंग नहीं मिली।"});await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "",booking);if(booking.status!=="completed"||booking.quote_status!=="approved")return json(409,{success:false,error:"भुगतान केवल मंजूर कोटेशन का काम पूरा होने के बाद स्वीकार होगा।"});
+const rows=await db("service_bookings?select=id,phone,customer_user_id,quoted_amount,service_charge,materials_amount,payment_status,razorpay_order_id,razorpay_payment_id,status,quote_status,selected_category&razorpay_order_id=eq."+encodeURIComponent(orderId)+"&limit=1"),booking=rows?.[0];if(!booking)return json(404,{success:false,error:"इस पेमेंट ऑर्डर की बुकिंग नहीं मिली।"});await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "",booking);
+if(booking.selected_category){
+ if(booking.status!=="completed")return json(409,{success:false,error:"भुगतान केवल काम पूरा होने के बाद स्वीकार होगा।"});
+ if(booking.payment_status==="paid"){
+  if(booking.razorpay_payment_id===payId)return json(200,{success:true,message:"यह भुगतान पहले ही सत्यापित हो चुका है।"});
+  return json(409,{success:false,error:"इस बुकिंग पर दूसरा भुगतान पहले से दर्ज है। Admin से जाँच कराएँ।"});
+ }
+ const breakdown=await db("rpc/srk_service_role_get_booking_payment_breakdown",{method:"POST",body:JSON.stringify({p_booking_id:booking.id})});
+ const expectedAmount=Number(breakdown?.total_amount_paise);
+ if(!Number.isSafeInteger(expectedAmount)||expectedAmount<100)return json(409,{success:false,error:"अंतिम Labour Bill और cancellation fee का हिसाब उपलब्ध नहीं है।"});
+ const p=await payment(payId);
+ if(p.order_id!==orderId||p.status!=="captured"||p.currency!=="INR"||p.amount!==expectedAmount)return json(409,{success:false,error:"भुगतान captured नहीं है या labour/cancellation fee सहित कुल राशि मेल नहीं खाती।"});
+ const settled=await db("rpc/srk_service_role_record_online_booking_payment",{method:"POST",body:JSON.stringify({
+  p_booking_id:booking.id,p_order_id:orderId,p_payment_id:payId,p_amount_paise:p.amount
+ })});
+ if(!settled?.success)return json(409,{success:false,error:"भुगतान सत्यापित हुआ, लेकिन ledger settlement पूरा नहीं हुआ। Admin reconciliation आवश्यक है।"});
+ return json(200,{success:true,message:"भुगतान और cancellation-fee ledger सफलतापूर्वक सत्यापित हुए।",cancellation_fee_amount_paise:settled.cancellation_fee_amount_paise});
+}
+if(booking.status!=="completed"||booking.quote_status!=="approved")return json(409,{success:false,error:"भुगतान केवल मंजूर कोटेशन का काम पूरा होने के बाद स्वीकार होगा।"});
 if(booking.payment_status==="paid"){if(booking.razorpay_payment_id===payId)return json(200,{success:true,message:"यह भुगतान पहले ही सत्यापित हो चुका है।"});return json(409,{success:false,error:"इस ऑर्डर पर दूसरा भुगतान ID पहले से दर्ज है। Admin से जाँच कराएँ।"});}
 const approvedTotal=Number(booking.service_charge)+Number(booking.materials_amount);if(!Number.isFinite(approvedTotal)||approvedTotal<1||Math.round(approvedTotal*100)!==Math.round(Number(booking.quoted_amount)*100))return json(409,{success:false,error:"मंजूर कोटेशन की कुल राशि और सेवा/सामान का हिसाब मेल नहीं खाता। Admin से जाँच कराएँ।"});const p=await payment(payId),expectedAmount=Math.round(approvedTotal*100);if(p.order_id!==orderId||p.status!=="captured"||p.currency!=="INR"||p.amount!==expectedAmount)return json(409,{success:false,error:"भुगतान अभी captured नहीं है या राशि/ऑर्डर मेल नहीं खाते।"});
 const updated=await db("service_bookings?id=eq."+encodeURIComponent(booking.id)+"&razorpay_order_id=eq."+encodeURIComponent(orderId)+"&payment_status=neq.paid",{method:"PATCH",body:JSON.stringify({payment_status:"paid",amount_paid:Number((p.amount/100).toFixed(2)),razorpay_payment_id:payId,payment_verified_at:new Date().toISOString()})});
