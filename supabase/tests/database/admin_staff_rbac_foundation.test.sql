@@ -337,6 +337,18 @@ SELECT ok(
        AND table_name='srk_booking_complaint_messages'
        AND column_name='sender_user_id'
   )
+  AND EXISTS (
+    SELECT 1 FROM pg_constraint fk
+     WHERE fk.conrelid='public.srk_booking_complaint_messages'::regclass
+       AND fk.contype='f'
+       AND fk.confrelid='auth.users'::regclass
+       AND fk.confdeltype='n'
+       AND (
+         SELECT array_agg(a.attname::text)
+           FROM pg_attribute a
+          WHERE a.attrelid=fk.conrelid AND a.attnum=ANY(fk.conkey)
+       )=ARRAY['sender_user_id']::text[]
+  )
   AND position('sender_user_id' in pg_get_functiondef('public.srk_customer_send_booking_complaint_message(uuid,text)'::regprocedure))>0
   AND position('v_user_id' in pg_get_functiondef('public.srk_customer_send_booking_complaint_message(uuid,text)'::regprocedure))>0
   AND position('sender_user_id' in pg_get_functiondef('public.srk_admin_send_booking_complaint_message(uuid,text)'::regprocedure))>0
