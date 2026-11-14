@@ -767,11 +767,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पहले एक debt के लिए केवल एक fee item की global uniqueness थी; उसे हटाकर प्रति booking + debt uniqueness रखी गई, ताकि refunded debt आगे की booking में फिर collect हो सके। Cash/Online collection idempotency भी per booking fee item की गई।
 - Admin summary में net online collection, net cash electrician wallet debit, refunded fee amount और reversal entry count अलग दिखाई देते हैं।
 - Razorpay refund fail होने पर previously blocked, unpaid electrician payout को वापस pending किया जाता है और पुराना payout note restore होता है।
-- नया pgTAP test: `supabase/tests/database/cancellation_fee_refund_reversal.test.sql` (18 assertions)।
+- नया pgTAP test: `supabase/tests/database/cancellation_fee_refund_reversal.test.sql` (23 assertions)।
 
 ### महत्वपूर्ण सीमाएँ / fail-closed सुरक्षा
 - मौजूदा refund APIs पूर्ण booking amount refund करती हैं; partial refund इस cancellation-fee allocation के लिए समर्थित नहीं है और matching full amount न होने पर DB transition reject होगा।
 - पहले से paid electrician payout पर refund preparation/manual refund पहले से block है; paid payout recovery को automatic नहीं माना गया। ऐसे मामले में Admin को payout/provider reconciliation अलग से करनी होगी।
+- Razorpay refund preparation को server-timed category bookings के लिए भी जोड़ा: legacy quote approval पर निर्भर हुए बिना immutable labour bill + settled cancellation fee items का exact full total verify होता है। Manual refund में pending electrician payout पहले blocked होता है; already-paid payout पर refund रोक दिया जाता है।
 - Cash reversal तभी होगा जब original cash cancellation-fee ledger और electrician wallet debit दोनों मौजूद हों; missing records पर refund booking status update rollback होगा।
 - Original Razorpay refund processing और bank settlement provider-side workflow पर निर्भर है; केवल DB status update को bank credit का प्रमाण नहीं माना जाएगा।
 - नई migrations/tests source-only हैं। Production database पर कोई DDL, payment, refund, wallet credit/debit या payout action नहीं किया गया। Staging में migration apply और end-to-end verification बाकी है।
