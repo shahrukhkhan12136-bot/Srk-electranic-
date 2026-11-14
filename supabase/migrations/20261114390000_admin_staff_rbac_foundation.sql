@@ -546,7 +546,16 @@ begin
      or length(btrim(coalesce(p_reason,''))) < 5 or length(p_reason)>500 then
     raise exception 'INVALID_SUPPORT_ASSIGNMENT' using errcode = '22023';
   end if;
-  -- Serialize assignment against close/status changes; all case mutations lock case before assignment.
+  -- Match the Staff authorization lock order: staff registry, then case, then assignment.
+  -- This avoids a cycle with Staff requests that hold their registry/session locks first.
+  perform 1 from public.srk_admin_staff s
+   where s.user_id=p_staff_user_id and s.role_key='support' and s.status='active'
+   for share;
+  if not found then
+    raise exception 'SUPPORT_STAFF_NOT_ACTIVE' using errcode = '22023';
+  end if;
+
+  -- Serialize assignment against close/status changes; case row precedes assignment row.
   if p_case_type='customer_complaint' then
     select c.status into v_case_status from public.srk_booking_complaints c
      where c.id=p_case_id for update;
@@ -559,14 +568,6 @@ begin
     if not found or v_case_status='closed' then
       raise exception 'ELECTRICIAN_TICKET_NOT_FOUND_OR_CLOSED' using errcode = 'P0002';
     end if;
-  end if;
-
-  -- Prevent a concurrent suspension/disable from racing the assignment.
-  perform 1 from public.srk_admin_staff s
-   where s.user_id=p_staff_user_id and s.role_key='support' and s.status='active'
-   for share;
-  if not found then
-    raise exception 'SUPPORT_STAFF_NOT_ACTIVE' using errcode = '22023';
   end if;
 
   select a.assigned_staff_user_id into v_previous_staff
@@ -632,11 +633,14 @@ begin
   if auth.uid() is null or not public.srk_has_admin_permission('support.customer.read') then
     raise exception 'SUPPORT_CUSTOMER_READ_REQUIRED' using errcode = '42501';
   end if;
-  if not exists (
-    select 1 from public.srk_admin_support_assignments a
-     where a.case_type='customer_complaint' and a.case_id=p_complaint_id
-       and a.assigned_staff_user_id=auth.uid()
-  ) then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode = '42501'; end if;
+  -- Lock case then assignment so a concurrent reassignment cannot expose a stale thread.
+  perform 1 from public.srk_booking_complaints c
+   where c.id=p_complaint_id for share;
+  if not found then raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND' using errcode = 'P0002'; end if;
+  perform 1 from public.srk_admin_support_assignments a
+   where a.case_type='customer_complaint' and a.case_id=p_complaint_id
+     and a.assigned_staff_user_id=auth.uid() for share;
+  if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode = '42501'; end if;
   return query
     select m.id,m.sender_role,m.body,m.created_at
       from public.srk_booking_complaint_messages m
@@ -770,11 +774,14 @@ begin
   if auth.uid() is null or not public.srk_has_admin_permission('support.electrician.read') then
     raise exception 'SUPPORT_ELECTRICIAN_READ_REQUIRED' using errcode='42501';
   end if;
-  if not exists(select 1 from public.srk_admin_support_assignments a
-    where a.case_type='electrician_ticket' and a.case_id=p_ticket_id
-      and a.assigned_staff_user_id=auth.uid()) then
-    raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501';
-  end if;
+  -- Lock case then assignment so a concurrent reassignment cannot expose a stale thread.
+  perform 1 from public.srk_electrician_support_tickets t
+   where t.id=p_ticket_id for share;
+  if not found then raise exception 'ELECTRICIAN_TICKET_NOT_FOUND' using errcode='P0002'; end if;
+  perform 1 from public.srk_admin_support_assignments a
+   where a.case_type='electrician_ticket' and a.case_id=p_ticket_id
+     and a.assigned_staff_user_id=auth.uid() for share;
+  if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
   return query select m.id,m.sender_role,m.body,m.created_at
     from public.srk_electrician_support_messages m
    where m.ticket_id=p_ticket_id order by m.created_at,m.id limit 300;
