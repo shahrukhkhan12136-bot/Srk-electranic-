@@ -26,3 +26,11 @@
 - [ ] Owner visual acceptance.
 
 **Important:** This addendum records the approved requirement and the current conversation attachment identifier. It does not mean the binary has been committed, uploaded to Vercel, integrated, or deployed. Keep Production unchanged until separately authorized.
+
+## Recovery audit — 15 November 2026, 00:20 IST
+
+- The previous Vercel Sandbox session returned `sandbox_stopped`; its filesystem could not be inspected or modified further.
+- A recursive Git tree check of the approved feature branch did not find a committed `assets/founder-portrait.webp` (or another founder-photo binary). The earlier sandbox listing is not proof of a Git commit.
+- The current branch's `index.html` redirects visitors to `/booking.html`. The customer booking page is not the required three-role website Welcome Screen.
+- Therefore, the founder photo is still **not verified as present in the repository, integrated, built, or deployed**. Do not mark these items complete until a fresh working session verifies the exact approved image and page behavior.
+- Continue only on `feat/customer-login-first-dashboard-20261114`; do not change Production or deploy without separate approval.
