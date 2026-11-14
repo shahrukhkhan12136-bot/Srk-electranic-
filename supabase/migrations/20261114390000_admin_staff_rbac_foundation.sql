@@ -848,3 +848,27 @@ end;
 $function$;
 revoke all on function public.srk_admin_list_support_assignments() from public,anon;
 grant execute on function public.srk_admin_list_support_assignments() to authenticated;
+
+
+create or replace function public.srk_capture_admin_staff_session_event()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  insert into public.srk_admin_staff_audit_events
+    (actor_user_id,target_user_id,action,outcome,details)
+  values
+    (new.staff_user_id,new.staff_user_id,'staff.session.registered','success',
+     jsonb_build_object('session_record_id',new.id,'issued_at',new.issued_at));
+  return new;
+end;
+$function$;
+revoke all on function public.srk_capture_admin_staff_session_event() from public,anon,authenticated;
+
+drop trigger if exists srk_admin_staff_session_audit_insert
+  on public.srk_admin_staff_sessions;
+create trigger srk_admin_staff_session_audit_insert
+after insert on public.srk_admin_staff_sessions
+for each row execute function public.srk_capture_admin_staff_session_event();
