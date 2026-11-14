@@ -229,6 +229,30 @@ async function loadPayouts(){
 }async function loadWalletAdmin(){const box=document.getElementById('walletAdminSummary');if(!box)return;const {data,error}=await sb.rpc('srk_admin_wallet_overview');if(error){box.textContent='वॉलेट रिपोर्ट लोड नहीं हुई। Admin अनुमति और backend स्थिति जाँचें, फिर दोबारा प्रयास करें।';return;}box.innerHTML='<p>पुराने ग्राहक लेजर खाते: <b>'+Number(data.customer_wallets||0)+'</b> (कोई ग्राहक टॉप-अप/भुगतान सुविधा नहीं)</p><p>इलेक्ट्रिशियन वॉलेट: <b>'+Number(data.electrician_wallets||0)+'</b></p><p>लेजर क्रेडिट: <b>₹'+Number(data.posted_ledger_credits||0).toFixed(2)+'</b></p><p>लेजर डेबिट: <b>₹'+Number(data.posted_ledger_debits||0).toFixed(2)+'</b></p><p>लंबित एंट्री: <b>'+Number(data.pending_entries||0)+'</b></p><p>सत्यापित बैंक लिंक: <b>'+Number(data.verified_bank_links||0)+'</b></p>';}
 
 let adminSupportRows=[],adminSupportSelectedId=null;
+let adminSupportStaffRows=[],adminSupportAssignmentRows=[];
+async function loadAdminSupportAssignmentData(){
+ const [staff,assignments]=await Promise.all([sb.rpc('srk_admin_list_staff'),sb.rpc('srk_admin_list_support_assignments')]);
+ if(staff.error||assignments.error)throw staff.error||assignments.error;
+ adminSupportStaffRows=(staff.data||[]).filter(s=>s.status==='active');
+ adminSupportAssignmentRows=assignments.data||[];
+}
+function supportAssignmentControl(type,id){
+ const current=adminSupportAssignmentRows.find(a=>a.case_type===type&&a.case_id===id);
+ const options=adminSupportStaffRows.map(s=>'<option value="'+esc(s.user_id)+'" '+(current?.assigned_staff_user_id===s.user_id?'selected':'')+'>'+esc(s.display_name)+'</option>').join('');
+ return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:10px 0;padding:9px;background:#f4f7fb;border-radius:8px"><label>जिम्मेदार Staff:</label><select id="support-assignee-'+type+'-'+id+'" '+(!adminSupportStaffRows.length?'disabled':'')+'><option value="">'+(current?'वर्तमान: '+esc(current.assigned_staff_name):'Staff चुनें')+'</option>'+options+'</select><button type="button" '+(!adminSupportStaffRows.length?'disabled':'')+' onclick="assignAdminSupportCase(\''+type+'\',\''+id+'\')">Assign / Reassign</button>'+(current?'<small>Assigned: '+esc(current.assigned_staff_name)+'</small>':'<small>अभी unassigned</small>')+'</div>';
+}
+async function assignAdminSupportCase(type,id){
+ const staffId=document.getElementById('support-assignee-'+type+'-'+id)?.value;
+ if(!staffId){alert('पहले Active Support Staff चुनें।');return;}
+ const reason=prompt('Assign / Reassign करने का कारण लिखें (कम से कम 5 अक्षर):');
+ if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ if(!confirm('यह Support case चुने गए Staff को सौंपें?'))return;
+ const {data,error}=await sb.rpc('srk_admin_assign_support_case',{p_case_type:type,p_case_id:id,p_staff_user_id:staffId,p_reason:reason.trim()});
+ if(error||data!==true){alert('Assignment सुरक्षित नहीं हुआ। कृपया सूची refresh करके जाँचें।');return;}
+ await loadAdminSupportAssignmentData();
+ if(type==='customer_complaint')await loadAdminSupportInbox();else await loadAdminElectricianSupportInbox();
+}
 async function loadAdminSupportInbox(){
  const box=document.getElementById('adminSupportInbox'),status=document.getElementById('adminSupportStatus');
  if(!sb||!user||!box)return;
@@ -236,10 +260,12 @@ async function loadAdminSupportInbox(){
  const {data,error}=await sb.rpc('srk_admin_list_booking_complaints',{p_limit:100});
  if(error){box.textContent='शिकायतें लोड नहीं हुईं। '+error.message;return;}
  adminSupportRows=Array.isArray(data)?data:[];
+ try{await loadAdminSupportAssignmentData();}catch(e){status.textContent='Assignment सूची उपलब्ध नहीं; case assign नहीं कर पाएँगे।';adminSupportStaffRows=[];adminSupportAssignmentRows=[];}
  box.innerHTML=adminSupportRows.map(c=>{
   const stateLabels={new:'नई',in_review:'जाँच में',resolved:'हल हो गई',closed:'बंद'};
   return '<article class="card" style="border:1px solid #e3ebf2"><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between"><b>'+esc(c.category||'अन्य')+' — '+esc(stateLabels[c.status]||c.status)+'</b><small>'+esc(new Date(c.created_at).toLocaleString('hi-IN'))+'</small></div>'+
   '<p><b>ग्राहक:</b> '+esc(c.customer_name)+' • '+esc(c.customer_phone)+'</p><p><b>बुकिंग:</b> <code>'+esc(c.booking_id)+'</code></p><p>'+esc(c.description)+'</p>'+
+  supportAssignmentControl('customer_complaint',c.id)+
   '<label>स्थिति</label> <select id="admin-support-state-'+c.id+'"><option value="new" '+(c.status==='new'?'selected':'')+'>नई</option><option value="in_review" '+(c.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(c.status==='resolved'?'selected':'')+'>हल हो गई</option><option value="closed" '+(c.status==='closed'?'selected':'')+'>बंद</option></select>'+
   '<label>Admin नोट</label><textarea id="admin-support-note-'+c.id+'" maxlength="2000" rows="2" style="display:block;width:100%;padding:9px;border:1px solid #ccd5df;border-radius:8px">'+esc(c.admin_note||'')+'</textarea>'+
   '<button type="button" onclick="saveAdminSupportComplaint(\''+c.id+'\')">स्थिति / नोट सुरक्षित करें</button><button class="alt" type="button" onclick="openAdminSupportThread(\''+c.id+'\')">बातचीत खोलें</button></article>';
@@ -295,8 +321,10 @@ async function loadAdminElectricianSupportInbox(){
  try{
   const {data,error}=await sb.rpc('srk_admin_list_electrician_support_tickets',{p_limit:100});if(error)throw error;
   adminElectricianSupportRows=Array.isArray(data)?data:[];
+  await loadAdminSupportAssignmentData();
   const labels={open:'खुला',in_review:'जाँच में',resolved:'हल हो गया',closed:'बंद'},cats={booking:'बुकिंग / काम',payment_payout:'कमाई / भुगतान',kyc_account:'KYC / अकाउंट',app_technical:'ऐप / तकनीकी',customer_safety:'सुरक्षा / व्यवहार',other:'अन्य'};
-  box.innerHTML=adminElectricianSupportRows.map(t=>'<article class="card"><b>'+esc(t.subject)+'</b><p>इलेक्ट्रिशियन: '+esc(t.electrician_name||'नाम उपलब्ध नहीं')+' • '+esc(t.electrician_phone||'')+'</p><p>'+esc(cats[t.category]||t.category)+' • '+esc(labels[t.status]||t.status)+'</p>'+(t.booking_id?'<p>Booking: <code>'+esc(t.booking_id)+'</code></p>':'')+'<label>स्थिति</label><select id="admin-elec-support-state-'+t.id+'"><option value="open" '+(t.status==='open'?'selected':'')+'>खुला</option><option value="in_review" '+(t.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(t.status==='resolved'?'selected':'')+'>हल हो गया</option><option value="closed" '+(t.status==='closed'?'selected':'')+'>बंद</option></select><label>Admin नोट</label><textarea id="admin-elec-support-note-'+t.id+'" maxlength="2000" rows="2" style="width:100%">'+esc(t.admin_note||'')+'</textarea><button id="admin-elec-support-save-'+t.id+'" onclick="saveAdminElectricianSupportTicket(\''+t.id+'\')">स्थिति / नोट सुरक्षित करें</button><button class="alt" onclick="openAdminElectricianSupportThread(\''+t.id+'\')">बातचीत खोलें</button></article>').join('')||'<p>अभी कोई इलेक्ट्रिशियन सहायता अनुरोध नहीं है।</p>';
+  box.innerHTML=adminElectricianSupportRows.map(t=>'<article class="card"><b>'+esc(t.subject)+'</b><p>इलेक्ट्रिशियन: '+esc(t.electrician_name||'नाम उपलब्ध नहीं')+' • '+esc(t.electrician_phone||'')+'</p><p>'+esc(cats[t.category]||t.category)+' • '+esc(labels[t.status]||t.status)+'</p>'+(t.booking_id?'<p>Booking: <code>'+esc(t.booking_id)+'</code></p>':'')+
+  supportAssignmentControl('electrician_ticket',t.id)+'<label>स्थिति</label><select id="admin-elec-support-state-'+t.id+'"><option value="open" '+(t.status==='open'?'selected':'')+'>खुला</option><option value="in_review" '+(t.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(t.status==='resolved'?'selected':'')+'>हल हो गया</option><option value="closed" '+(t.status==='closed'?'selected':'')+'>बंद</option></select><label>Admin नोट</label><textarea id="admin-elec-support-note-'+t.id+'" maxlength="2000" rows="2" style="width:100%">'+esc(t.admin_note||'')+'</textarea><button id="admin-elec-support-save-'+t.id+'" onclick="saveAdminElectricianSupportTicket(\''+t.id+'\')">स्थिति / नोट सुरक्षित करें</button><button class="alt" onclick="openAdminElectricianSupportThread(\''+t.id+'\')">बातचीत खोलें</button></article>').join('')||'<p>अभी कोई इलेक्ट्रिशियन सहायता अनुरोध नहीं है।</p>';
   status.textContent=adminElectricianSupportRows.length+' अनुरोध मिले।';
  }catch(e){box.textContent='इलेक्ट्रिशियन सहायता अनुरोध लोड नहीं हो सके। कृपया रीफ़्रेश करें।';status.textContent='';}
  finally{adminElectricianSupportLoadBusy=false;}
