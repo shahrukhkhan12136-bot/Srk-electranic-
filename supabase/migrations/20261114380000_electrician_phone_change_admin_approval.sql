@@ -64,7 +64,7 @@ begin
   select * into v_profile
   from public.electrician_profiles ep
   where ep.user_id = p_user_id or ep.auth_user_id = p_user_id
-  order by (ep.user_id = p_user_id) desc
+  order by (ep.user_id = p_user_id) desc nulls last
   limit 1
   for update;
 
@@ -72,7 +72,7 @@ begin
     raise exception 'इलेक्ट्रिशियन प्रोफ़ाइल नहीं मिली।';
   end if;
 
-  select u.phone into v_old_phone from auth.users u where u.id = p_user_id;
+  select u.phone into v_old_phone from auth.users u where u.id = p_user_id and u.phone_confirmed_at is not null;
   if v_old_phone is null or v_old_phone = '' then
     raise exception 'मौजूदा सत्यापित लॉगिन मोबाइल नंबर उपलब्ध नहीं है।';
   end if;
