@@ -6,6 +6,7 @@ create table if not exists public.srk_booking_complaint_messages (
   id uuid primary key default gen_random_uuid(),
   complaint_id uuid not null references public.srk_booking_complaints(id) on delete cascade,
   sender_role text not null check (sender_role in ('customer','admin')),
+  sender_user_id uuid references auth.users(id) on delete set null,
   body text not null check (length(btrim(body)) between 1 and 4000),
   created_at timestamptz not null default now()
 );
@@ -65,8 +66,8 @@ begin
   if not found then
     raise exception 'COMPLAINT_NOT_AVAILABLE' using errcode = '42501';
   end if;
-  insert into public.srk_booking_complaint_messages(complaint_id,sender_role,body)
-  values(p_complaint_id,'customer',btrim(p_body))
+  insert into public.srk_booking_complaint_messages(complaint_id,sender_role,sender_user_id,body)
+  values(p_complaint_id,'customer',v_user_id,btrim(p_body))
   returning id into v_message_id;
   return v_message_id;
 end;
