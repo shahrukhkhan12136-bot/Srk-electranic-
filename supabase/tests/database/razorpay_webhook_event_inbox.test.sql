@@ -42,8 +42,12 @@ select ok(position('v_event.state in ('||quote_literal('processed')||','||quote_
 select ok(position('v_event.event_type<>p_event_type' in
   pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event(text,text,text)'::regprocedure))>0
   and position('v_event.payload_sha256<>p_payload_sha256' in
+  pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event(text,text,text)'::regprocedure))>0
+  and position('canonical_event_id' in
+  pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event(text,text,text)'::regprocedure))>0
+  and position('in_progress' in
   pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event(text,text,text)'::regprocedure))>0,
-  'reused event ID with changed signed payload is detected');
+  'event ID collisions are detected and hash-based retries keep canonical lease ownership');
 select ok(position('gen_random_uuid()' in
   pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event(text,text,text)'::regprocedure))>0,
   'each claim receives a fresh fencing token');
