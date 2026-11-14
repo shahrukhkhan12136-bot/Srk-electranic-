@@ -1,5 +1,15 @@
 # SRK ELECTRONIC — मास्टर प्रोजेक्ट प्रगति सूची
 
+### 2026-11-15 — Customer Portal backend contract audit + missing foundation source added
+- Exact scan of `booking.html`: **26 distinct RPC names** are called. Read-only Production catalog comparison found **7 exact names present and 19 absent**. This is name-presence only; matching argument signatures, grants, runtime behavior and row-level authorization still require separate verification. Corrects an earlier rough count in the conversation.
+- Production `service_bookings` is missing the customer-selected category/duration/rate snapshot fields, estimate paise/version fields, booking idempotency key/fingerprint and `work_timer_elapsed_seconds`. Its existing `work_timer_seconds` is still integer, while the source timer migration changes it to bigint. Related source migrations are present in the Feature Branch but are not applied to Production.
+- Read-only Production catalog also shows no `srk_customer_profiles` or saved-address table, no customer support message/attachment tables, and neither the customer avatar nor support Storage bucket. Existing complaint and refund-request base tables are present. The current UI therefore contains profile, saved-address and attachment flows whose complete backing schema is not yet live.
+- Added Feature Branch migration `20261114201428_customer_profile_saved_addresses_private_storage.sql` (filename generated using Supabase CLI 3.1.0) to provide private customer profile and saved-address tables; authenticated customer-scoped read/save/delete RPCs; 10-address limit, per-customer write serialization and one-default-address constraint; private avatar bucket and owner-scoped policies; and a tightened support-object delete policy so linked evidence cannot be deleted by a customer. The preceding support-conversation migration remains the source for the private support bucket, upload/read helper and message/attachment schema.
+- Added `supabase/tests/database/customer_profile_saved_addresses_private_storage.test.sql` with **27 pgTAP assertions** covering table/RLS grants, RPC identity and execute grants, address limit/concurrency/default constraints, private buckets and Storage policy boundaries. Plan count matches 27.
+- Static verification: PostgreSQL outer-SQL parser accepted the migration and test files; pgTAP assertion/plan count is 27/27; whitespace check passed. **This is not a PostgreSQL execution or pgTAP PASS**: the resumed Vercel sandbox has no Docker/Podman, so local database startup and runtime test execution were unavailable. PL/pgSQL bodies, live Storage operations and customer browser flow remain unexecuted.
+- Migration and test are on the approved Feature Branch / PR #8 only. No Supabase migration was applied, no Production database or Storage object was changed, no deploy/merge occurred, and no mobile QA was performed. Do not alter the 96-point completion counts until end-to-end evidence exists.
+
+
 **स्थिति snapshot:** 14 नवम्बर 2026  
 **Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
 **काम की branch:** `feat/customer-login-first-dashboard-20261114`  
