@@ -1,5 +1,5 @@
 begin;
-select plan(13);
+select plan(14);
 
 select ok(
  has_function_privilege('authenticated','public.srk_customer_list_complaint_message_attachments(uuid)','EXECUTE')
@@ -77,6 +77,12 @@ select ok(
 select ok(
  position('p_file_size_bytes is null' in lower(pg_get_functiondef('public.srk_customer_link_complaint_message_attachment(uuid,uuid,text,text,text,bigint)'::regprocedure)))>0,
  'attachment linker explicitly rejects a NULL file size'
+);
+
+select ok(
+ position('o.bucket_id=''srk-customer-support''' in lower(pg_get_functiondef('public.srk_customer_link_complaint_message_attachment(uuid,uuid,text,text,text,bigint)'::regprocedure)))>0
+ and position('o.owner_id=v_user_id::text' in lower(pg_get_functiondef('public.srk_customer_link_complaint_message_attachment(uuid,uuid,text,text,text,bigint)'::regprocedure)))>0,
+ 'attachment linker requires an existing support-bucket object owned by the authenticated customer'
 );
 
 select * from finish();
