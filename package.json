@@ -3,5 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "description": "SRK ELECTRONIC website with Razorpay and Supabase serverless APIs on Vercel",
-  "dependencies": { "razorpay": "^2.9.6" }
+  "dependencies": {
+    "razorpay": "^2.9.6"
+  },
+  "scripts": {
+    "test:refund": "node --test tests/razorpay-refund-executor.test.js"
+  }
 }
