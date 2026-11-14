@@ -617,3 +617,35 @@
 - Verification: JavaScript syntax check passed. No functional booking API test or database test was run; no real booking or Production change.
 - Date/time business policy remains unmodified pending an approved rule; this pass only confirmed strict calendar/time format and numeric bounds. PIN-to-district postal-directory validation and same-day booking cut-off remain open.
 - Checklist totals unchanged; Customer App 14.1.10 remains Partial/In Progress.
+
+## 14 नवंबर 2026 — Customer Page checklist पुनः-जाँच (Feature Branch)
+
+यह अपडेट Section 14.1 के ग्राहक-पेज बिंदुओं को वर्तमान source के विरुद्ध जाँचकर जोड़ा गया है। यह मूल 96-point checklist का विकल्प नहीं है और किसी item को केवल UI मौजूद होने से Verified Complete नहीं मानता।
+
+### इस सत्र में किए गए source सुधार
+- Booking form में स्पष्ट शर्तें/घोषणा जोड़ी: estimate advance या maximum cap नहीं; final labour server-recorded actual minutes पर; materials/parts अलग itemized और अलग customer approval; exact selected electrician tier; payment method बिना customer consent नहीं बदलेगा।
+- Booking submit से पहले अनिवार्य checkbox और एक final review confirmation जोड़ा, जिसमें selected tier, duration, estimate और payment method दिखते हैं।
+- Client-side booking date/time validation जोड़ी ताकि अतीत का समय submit न हो।
+- Booking success message को sequential dispatch के अनुरूप किया: एक समय में एक eligible electrician को पहला offer जाता है; decline/timeout पर अगला candidate। पुराने “कई electricians को एक साथ offer” वाले संदेश को हटाया।
+- Static verification: booking.html inline JavaScript parse PASS; create-booking.js syntax parse PASS; terms checkbox, final confirmation, past-time guard और sequential-offer messaging source checks PASS।
+
+### Section 14.1 की वर्तमान स्थिति — अभी शेष
+- OTP: source मौजूद; वास्तविक SMS/Auth delivery, expiry, resend/wrong-attempt throttling और browser/device E2E बाकी।
+- पाँच मेनू: Home, My Bookings, Payments, Help & Support, My Profile के sections मौजूद और shell द्वारा सही panel में content mount होता है; हर backend flow का runtime acceptance बाकी।
+- Booking: customer verified phone read-only, address/GPS/map, 5 electrical work categories, चार approved rate tiers और 1–8 घंटे estimate source मौजूद; authoritative PIN/district directory तथा mismatch review queue अभी blocked।
+- Booking terms/confirmation और past date/time guard source में जोड़े गए; server-side runtime proof और real-world duplicate/retry tests बाकी।
+- Sequential offer source मौजूद; वास्तविक database concurrency/expiry/JWT tests बाकी।
+- Booking timeline, accepted-only contact और actual-time timer/completion source मौजूद; DB/JWT/RLS runtime और full lifecycle tests बाकी।
+- Live travel location/ETA तथा permission-denied/stale/arrival-stop behavior अभी पूर्ण रूप से प्रमाणित नहीं; blocked।
+- Payment history/refund history/receipt और Razorpay source मौजूद; provider-confirmed payment/refund lifecycle और reconciliation tests बाकी।
+- Cancellation अभी customer booking card से Help & Support request करने को कहता है; dedicated cancellation request/status/fee workflow और policy verification बाकी।
+- Help & Support ticket/message/attachment source मौजूद; backend schema/RLS/storage end-to-end tests बाकी।
+- Profile/photo/saved-address source मौजूद; account-security controls, notification preferences और full tests बाकी।
+- Customer ratings/reviews UI + moderation lifecycle अभी पर्याप्त रूप से उपलब्ध/verified नहीं।
+- Accessibility, low-bandwidth/offline, responsive and final consolidated mobile QA बाकी।
+
+### सुरक्षा/रिलीज़ स्थिति
+- सभी बदलाव केवल `feat/customer-login-first-dashboard-20261114` branch / Draft PR #8 में हैं।
+- Supabase migrations और pgTAP अभी वास्तविक database पर execute नहीं हुए।
+- कोई merge, production migration, production setting change या deployment नहीं किया गया।
+- Manual mobile QA सभी कार्य पूरे होने के बाद एक consolidated pass में ही होगा।
