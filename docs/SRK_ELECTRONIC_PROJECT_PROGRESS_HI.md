@@ -1175,3 +1175,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - srk_phone_change_cancel_send अब JSON result देता है, request owner और request ID पर ही OTP-pending row को expired करके OTP hash हटाता है, और पहले से expired row पर idempotent success देता है।
 - Edge Function अब cleanup success की पुष्टि के बाद ही सामान्य retry संदेश देती है। Cleanup की पुष्टि न हो तो स्पष्ट रूप से history refresh करने को कहती है और false success नहीं दिखाती।
 - Source-only बदलाव; migration लागू नहीं, Edge Function deploy नहीं, SMS/provider call या वास्तविक request नहीं चलाई गई। SQL/Deno runtime, SMS failure + cleanup failure, concurrent expiry/history और retry tests final consolidated QA में बाकी हैं।
+
+
+### 2026-11-14 — Admin phone-change finalize timeout recovery
+- Audit में एक जोखिम मिला: finalization RPC के response/network failure पर Edge Function Auth phone को पुराने नंबर पर rollback कर सकती थी, जबकि Database RPC संभवतः पहले ही commit होकर profile + request को approved कर चुका हो। इससे Auth और profile अलग हो सकते थे।
+- अब ambiguous finalization error पर Auth rollback नहीं होता। रिक्वेस्ट को recoverable sync_error में रखने की कोशिश होती है और Admin को queue refresh करके authoritative स्थिति जाँचने को कहा जाता है। यदि RPC पहले ही approved commit कर चुका है तो release RPC उस approved row को नहीं बदलता।
+- Finalize RPC अब उसी Admin की पहले से approved रिक्वेस्ट को तभी idempotent success देता है जब confirmed Auth phone और संबंधित electrician profile phone दोनों OTP-verified नए नंबर से मेल खाते हों। अन्य mismatch पर error रहता है।
+- Source-only; migration apply/deploy नहीं हुआ। वास्तविक Postgres lock/concurrency, lost-response, Auth update timeout और finalize retry परीक्षण final consolidated QA में बाकी हैं।
