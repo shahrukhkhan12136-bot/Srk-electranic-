@@ -871,3 +871,15 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Read-only Production audit में existing `job_offers` trigger `private.srk_notify_job_offer_push()` से `push-job-offer` Edge Function को webhook भेजता है; function currently ACTIVE version 4 है। Function source inspection में केवल नए offered INSERT और offered से non-accepted terminal update पर push send/close behavior दिखा। कोई function deploy/update नहीं किया।
 - Static verification: Electrician inline JS parse PASS; Service Worker JS parse PASS; opt-in permission, public-key fetch, own subscription upsert/delete, push event, same-origin click, offer-focus wiring checks PASS.
 - सीमाएँ: source branch में कोई push permission/subscription/notification manually execute नहीं की। Browser notification permission, Android Chrome service worker lifecycle, real push delivery/click, endpoint expiry cleanup और provider VAPID configuration का runtime test अंतिम consolidated QA में बाकी। Production Edge Function/DB/Push subscriptions में कोई बदलाव नहीं।
+
+
+## 14 नवम्बर 2026 — Electrician निजी सहायता / Admin Support Inbox (source-only)
+- Electrician Dashboard में निजी सहायता केंद्र जोड़ा: Booking/काम, कमाई/भुगतान/निकासी, KYC/अकाउंट, ऐप तकनीकी समस्या, ग्राहक सुरक्षा/व्यवहार और अन्य श्रेणियाँ।
+- इलेक्ट्रिशियन विषय (4–120 अक्षर), विवरण (20–4000 अक्षर) और वैकल्पिक Booking UUID के साथ सहायता अनुरोध बना सकता है; अपने अनुरोधों की स्थिति और Admin बातचीत देख सकता है तथा खुले अनुरोध पर जवाब दे सकता है।
+- नई migration `20261114350000_electrician_support_tickets_and_admin_inbox.sql`: private ticket/message tables, RLS enabled, direct browser table grants revoked; सभी कार्रवाइयाँ authenticated SECURITY DEFINER RPCs से।
+- Ticket creation में profile identity दोनों `user_id` और `auth_user_id` से verify होती है। वैकल्पिक Booking ID तभी स्वीकार होती है जब `service_bookings.assigned_electrician_id` उसी electrician profile ID से मेल खाए। Live schema audit के आधार पर वास्तविक column name ठीक किया।
+- प्रति इलेक्ट्रिशियन 24 घंटे में अधिकतम 10 नए tickets की server-side सीमा जोड़ी।
+- Admin-only RPCs `is_srk_admin()` से protected: inbox list, message history, reply और status/admin-note update। Customer support tables/threads से अलग electrician-only private inbox है।
+- Admin Dashboard में अलग Electrician Support Inbox, status update और reply thread जोड़ा; Admin `loadAll()` refresh में inbox शामिल।
+- Static verification: Electrician और Admin JavaScript syntax parse PASS; दोनों pages पर duplicate element IDs नहीं; RPC wiring, Admin gate, owner filter, private table grants और वास्तविक booking ownership column checks PASS।
+- Source-only: migration Production में apply नहीं हुई; वास्तविक ticket creation, unauthorized Booking ID rejection, Admin JWT access, status update/reply और दो अकाउंट के बीच private data isolation का runtime test अंतिम संयुक्त QA में बाकी।
