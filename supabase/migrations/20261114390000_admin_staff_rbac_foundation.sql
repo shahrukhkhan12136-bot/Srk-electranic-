@@ -325,6 +325,12 @@ begin
      or length(p_reason) > 500 then
     raise exception 'INVALID_STAFF_STATUS_REQUEST' using errcode = '22023';
   end if;
+  if p_status = 'active' and not exists (
+    select 1 from auth.users u
+     where u.id = p_staff_user_id and u.email_confirmed_at is not null
+  ) then
+    raise exception 'STAFF_EMAIL_NOT_VERIFIED' using errcode = '42501';
+  end if;
 
   select status into v_old_status
     from public.srk_admin_staff
@@ -795,7 +801,7 @@ begin
      or not public.srk_has_admin_permission('support.electrician.update_status') then
     raise exception 'SUPPORT_ELECTRICIAN_STATUS_REQUIRED' using errcode='42501';
   end if;
-  if p_status not in ('in_review','resolved') or p_reason is null
+  if p_status is null or p_status not in ('in_review','resolved') or p_reason is null
      or length(btrim(p_reason)) not between 5 and 500 then
     raise exception 'INVALID_SUPPORT_STATUS_UPDATE' using errcode='22023';
   end if;
