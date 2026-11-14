@@ -10,7 +10,7 @@ exports.handler = async function () {
 
   try {
     const response = await fetch(
-      supabaseUrl.replace(/\\/$/, "") + "/rest/v1/rpc/srk_expire_and_advance_booking_offers",
+      (supabaseUrl.endsWith("/") ? supabaseUrl.slice(0, -1) : supabaseUrl) + "/rest/v1/rpc/srk_expire_and_advance_booking_offers",
       {
         method: "POST",
         headers: {
