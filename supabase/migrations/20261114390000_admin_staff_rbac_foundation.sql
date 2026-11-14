@@ -623,7 +623,8 @@ declare
   v_uid uuid:=auth.uid();
   v_message_id uuid;
 begin
-  if v_uid is null or not public.srk_has_admin_permission('support.customer.reply') then
+  if v_uid is null or not public.srk_has_admin_permission('support.customer.read')
+     or not public.srk_has_admin_permission('support.customer.reply') then
     raise exception 'SUPPORT_CUSTOMER_REPLY_REQUIRED' using errcode='42501';
   end if;
   if p_body is null or length(btrim(p_body)) not between 1 and 4000 then
@@ -660,7 +661,8 @@ declare
   v_uid uuid:=auth.uid();
   v_old_status text;
 begin
-  if v_uid is null or not public.srk_has_admin_permission('support.customer.update_status') then
+  if v_uid is null or not public.srk_has_admin_permission('support.customer.read')
+     or not public.srk_has_admin_permission('support.customer.update_status') then
     raise exception 'SUPPORT_CUSTOMER_STATUS_REQUIRED' using errcode='42501';
   end if;
   if p_status is null or p_status not in ('in_review','resolved') or p_reason is null
@@ -752,7 +754,8 @@ set search_path = ''
 as $function$
 declare v_uid uuid:=auth.uid(); v_message_id uuid;
 begin
-  if v_uid is null or not public.srk_has_admin_permission('support.electrician.reply') then
+  if v_uid is null or not public.srk_has_admin_permission('support.electrician.read')
+     or not public.srk_has_admin_permission('support.electrician.reply') then
     raise exception 'SUPPORT_ELECTRICIAN_REPLY_REQUIRED' using errcode='42501';
   end if;
   if p_body is null or length(btrim(p_body)) not between 1 and 4000 then
@@ -786,7 +789,8 @@ set search_path = ''
 as $function$
 declare v_uid uuid:=auth.uid(); v_old_status text;
 begin
-  if v_uid is null or not public.srk_has_admin_permission('support.electrician.update_status') then
+  if v_uid is null or not public.srk_has_admin_permission('support.electrician.read')
+     or not public.srk_has_admin_permission('support.electrician.update_status') then
     raise exception 'SUPPORT_ELECTRICIAN_STATUS_REQUIRED' using errcode='42501';
   end if;
   if p_status not in ('in_review','resolved') or p_reason is null
