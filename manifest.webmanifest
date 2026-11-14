@@ -2,7 +2,7 @@
   "name": "SRK ELECTRONIC",
   "short_name": "SRK ELECTRIC",
   "description": "Electrical wiring and home repair service booking",
-  "start_url": "./index.html",
+  "start_url": "./index.html?app=customer",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f7fb",
