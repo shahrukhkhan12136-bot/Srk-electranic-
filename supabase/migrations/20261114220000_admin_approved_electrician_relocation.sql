@@ -31,9 +31,9 @@ CREATE OR REPLACE FUNCTION public.srk_electrician_request_area_change(
 SET search_path TO 'pg_catalog','public','auth','pg_temp'
 AS $function$
 DECLARE v_uid uuid:=auth.uid(); v_profile public.electrician_profiles%ROWTYPE;
- v_state text:=regexp_replace(btrim(coalesce(p_state,'')),'\\s+',' ','g');
- v_district text:=regexp_replace(btrim(coalesce(p_district,'')),'\\s+',' ','g');
- v_pin text:=btrim(coalesce(p_pincode,'')); v_reason text:=regexp_replace(btrim(coalesce(p_reason,'')),'\\s+',' ','g');
+ v_state text:=regexp_replace(btrim(coalesce(p_state,'')),'[[:space:]]+',' ','g');
+ v_district text:=regexp_replace(btrim(coalesce(p_district,'')),'[[:space:]]+',' ','g');
+ v_pin text:=btrim(coalesce(p_pincode,'')); v_reason text:=regexp_replace(btrim(coalesce(p_reason,'')),'[[:space:]]+',' ','g');
  v_id uuid;
 BEGIN
  IF v_uid IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
@@ -112,7 +112,7 @@ SET search_path TO 'pg_catalog','public','auth','pg_temp'
 AS $function$
 DECLARE v_uid uuid:=auth.uid(); v_req srk_private.srk_electrician_area_change_requests%ROWTYPE;
  v_profile public.electrician_profiles%ROWTYPE; v_booking_id uuid; v_advanced integer:=0;
- v_note text:=nullif(regexp_replace(btrim(coalesce(p_note,'')),'\\s+',' ','g'),'');
+ v_note text:=nullif(regexp_replace(btrim(coalesce(p_note,'')),'[[:space:]]+',' ','g'),'');
 BEGIN
  IF v_uid IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'Admin access required' USING ERRCODE='42501'; END IF;
  IF p_decision NOT IN ('approved','rejected') THEN RAISE EXCEPTION 'Invalid decision' USING ERRCODE='22023'; END IF;
