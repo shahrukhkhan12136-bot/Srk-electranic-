@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(25);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
@@ -81,6 +81,20 @@ select ok(position('p_provider_status is null' in
 select ok(position('CANCELLATION_FEE_ITEMS_NOT_SETTLED_BEFORE_REFUND' in
   pg_get_functiondef('public.srk_reverse_cancellation_fees_on_full_refund()'::regprocedure))>0,
   'refund fails closed instead of leaving reserved/unsettled cancellation debt stuck');
+
+
+select ok(
+  position('perform 1 from public.service_bookings' in lower(
+    pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure)))>0
+  and position('perform 1 from public.service_bookings' in lower(
+    pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure)))
+    < position('select * into v_refund from public.srk_razorpay_refunds' in lower(
+    pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure)))
+  and position('for update' in substring(lower(
+    pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))
+    from position('select * into v_refund from public.srk_razorpay_refunds' in lower(
+    pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))))>0,
+  'refund reconciliation locks booking before refund row to match preparation and payout lock order');
 
 select * from finish();
 rollback;
