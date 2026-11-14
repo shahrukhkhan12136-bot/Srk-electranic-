@@ -795,3 +795,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इसके बाद `20261113230000_support_attachment_paths_and_admin_message_list.sql` Admin/customer attachment paths और Admin thread reads देता है; `20261114300000_admin_customer_support_thread_replies.sql` Admin-only reply RPC जोड़ता है।
 - Storage object access के लिए SECURITY DEFINER helper में authenticated UID, complaint ownership और Admin check लागू; bucket private तथा MIME/size limits सीमित।
 - Production database पर कोई table, function, bucket या policy नहीं बनाया/बदला गया। ये migrations source-only हैं; PostgreSQL compile, migration-order execution, Storage policy behavior और customer/Admin JWT E2E अभी अंतिम consolidated testing चरण में होंगे।
+
+
+## Electrician App — स्थायी ID/Order ID प्रदर्शन (14 नवम्बर 2026)
+- Electrician dashboard profile में वास्तविक `electrician_profiles.id` UUID को `EL-<UUID>` के रूप में दिखाया गया है। यह मौजूदा server-generated primary key पर आधारित स्थायी पहचान है; कोई अनुमानित sequential number नहीं बनाया गया।
+- हर job card में वास्तविक `service_bookings.id` UUID को `ORD-<UUID>` के रूप में दिखाया गया है।
+- Payout history में भी वही Order ID दिखेगा, ताकि काम और भुगतान रिकॉर्ड का मिलान हो सके।
+- Production schema की read-only जाँच में इन दोनों tables में अभी अलग sequential human-readable ID columns नहीं मिले; इसलिए UI मौजूदा वास्तविक UUIDs को prefix के साथ दिखाता है। Sequential numbering के लिए अलग approved schema migration और data backfill की आवश्यकता होगी; अभी कोई DB/production बदलाव नहीं किया गया।
+- बदलाव source-only हैं; login, offer, timer, payout या mobile runtime परीक्षण अभी नहीं किया गया। अंतिम consolidated QA में जाँचा जाएगा।
