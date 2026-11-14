@@ -1052,3 +1052,4 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Electrician inline JavaScript syntax PASS; expiry/status UI और schedule-field absence source checks PASS।
 - Read-only production schema audit ने पुष्टि की कि वर्तमान deployed offer-details RPC में नई booking fields/expiry नहीं हैं; migration केवल feature branch में है और लागू नहीं की गई।
 - Source-only; कोई offer accept/decline, booking assignment, customer contact exposure या production DB परिवर्तन नहीं हुआ। Runtime RPC output, expiry worker cadence और sequential dispatch integration final consolidated QA में जाँचे जाएँगे।
+- Follow-up static shape check: RPC के 28 declared return fields और SELECT expressions का क्रम मिलाया; assigned-only `location_lat` तथा `location_lng` दोनों शामिल किए। SQL compile अभी migration rollout/final QA के लिए लंबित है।
