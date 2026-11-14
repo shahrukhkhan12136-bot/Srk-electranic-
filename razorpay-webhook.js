@@ -10,6 +10,35 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body)
 });
 
+async function webhookInboxRpc(functionName, body) {
+  const response = await fetch(new URL("/rest/v1/rpc/" + functionName, SUPABASE_URL), {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) throw new Error("Webhook inbox RPC failed: " + functionName);
+  return response.json();
+}
+
+async function claimWebhookEvent(eventId, eventType, payloadHash) {
+  return webhookInboxRpc("srk_service_claim_razorpay_webhook_event", {
+    p_event_id: eventId, p_event_type: eventType, p_payload_sha256: payloadHash
+  });
+}
+
+async function completeWebhookEvent(eventId, claimToken, outcome, error) {
+  const result = await webhookInboxRpc("srk_service_complete_razorpay_webhook_event", {
+    p_event_id: eventId, p_claim_token: claimToken,
+    p_outcome: outcome, p_error: error || null
+  });
+  if (!result?.success) throw new Error("Webhook event completion was not accepted");
+  return result;
+}
+
 async function updateBooking(orderId, payment) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
@@ -166,40 +195,84 @@ exports.handler = async (event) => {
     return json(400, { success: false, error: "Signature verification failed." });
   }
 
+  let eventId = null;
+  let claimToken = null;
   try {
     const payload = JSON.parse(rawBody.toString("utf8"));
     const eventName = payload.event;
+    const suppliedEventId = event.headers?.["x-razorpay-event-id"] ||
+      event.headers?.["X-Razorpay-Event-Id"] || "";
+    // Event ID is the primary dedupe key. A body hash is a deterministic
+    // compatibility fallback for older webhook deliveries without that header.
+    eventId = suppliedEventId || ("sha256:" + crypto.createHash("sha256").update(rawBody).digest("hex"));
+    const payloadHash = crypto.createHash("sha256").update(rawBody).digest("hex");
+    const claim = await claimWebhookEvent(eventId, eventName || "unknown", payloadHash);
+
+    if (claim?.payload_conflict) {
+      console.error("Razorpay reused an event ID with a different signed payload.");
+      return json(200, { success: true, reconciled: false, reason: "event_id_payload_conflict" });
+    }
+    if (claim?.duplicate) {
+      return json(200, { success: true, duplicate: true, state: claim.state });
+    }
+    if (claim?.in_progress) {
+      return json(503, { success: false, retry: true, reason: "event_processing_in_progress" });
+    }
+    if (!claim?.should_process || !claim.claim_token) {
+      throw new Error("Webhook event claim was not granted");
+    }
+    claimToken = claim.claim_token;
+
     if (eventName === "refund.created" || eventName === "refund.processed" || eventName === "refund.failed") {
       const refund = payload.payload?.refund?.entity;
       const result = await reconcileRefund(refund, eventName);
       if (result === "refund_payload_invalid" || result === "refund_record_mismatch") {
         console.error("Razorpay refund webhook requires manual reconciliation:", result);
+        await completeWebhookEvent(eventId, claimToken, "ignored", result);
+        claimToken = null;
         return json(200, { success: true, reconciled: false, reason: result });
       }
+      if (result === "refund_not_reconciled") throw new Error("Refund record was not reconciled");
+      await completeWebhookEvent(eventId, claimToken, "processed", null);
+      claimToken = null;
       return json(200, { success: true, reconciled: true, result });
     }
+
     if (eventName !== "payment.captured" && eventName !== "order.paid") {
+      await completeWebhookEvent(eventId, claimToken, "ignored", "Unsupported event type");
+      claimToken = null;
       return json(200, { success: true, ignored: true });
     }
 
     const payment = payload.payload?.payment?.entity;
     if (!payment || payment.status !== "captured" || !/^pay_[A-Za-z0-9]+$/.test(payment.id || "") ||
         !/^order_[A-Za-z0-9]+$/.test(payment.order_id || "")) {
-      return json(400, { success: false, error: "Captured payment details missing." });
+      await completeWebhookEvent(eventId, claimToken, "ignored", "Captured payment details missing or invalid");
+      claimToken = null;
+      return json(200, { success: true, reconciled: false, reason: "captured_payment_details_invalid" });
     }
 
     const result = await updateBooking(payment.order_id, payment);
-    if (result === "update_not_applied") {
-      console.error("Razorpay webhook update was not applied; retry requested.");
-      return json(500, { success: false, reconciled: false, reason: result });
-    }
+    if (result === "update_not_applied") throw new Error("Payment reconciliation update was not applied");
     if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict" || result === "booking_not_payable") {
       console.error("Razorpay webhook could not reconcile booking:", result);
+      await completeWebhookEvent(eventId, claimToken, "ignored", result);
+      claimToken = null;
       return json(200, { success: true, reconciled: false, reason: result });
     }
+
+    await completeWebhookEvent(eventId, claimToken, "processed", null);
+    claimToken = null;
     return json(200, { success: true, reconciled: true, result });
   } catch (error) {
+    if (claimToken && eventId) {
+      try {
+        await completeWebhookEvent(eventId, claimToken, "retryable", error?.message || "Webhook processing failed");
+      } catch (completionError) {
+        console.error("Razorpay webhook retry state could not be saved:", completionError?.name || "UnknownError");
+      }
+    }
     console.error("Razorpay webhook processing failed:", error?.name || "UnknownError");
-    return json(500, { success: false, error: "Webhook processing failed." });
+    return json(500, { success: false, error: "Webhook processing failed; provider retry requested." });
   }
 };
