@@ -1472,3 +1472,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नया pgTAP source file `supabase/tests/database/electrician_support_ticket_security.test.sql` जोड़ा। इसमें table existence/RLS, direct browser read/write denial, electrician/Admin RPC EXECUTE boundaries, ticket-row write serialization और category/status/sender-role constraints के 12 assertions हैं। Static plan/assertion count 12/12।
 - Related test source counts पुनः जाँचे: Admin Staff RBAC 66/66 (इस file में has_table/has_function/has_trigger assertions सहित), Customer attachment access 8/8, Electrician ticket security 12/12। ये source-count checks हैं—pgTAP अभी execute नहीं हुआ।
 - Commits: `38413db330fe92fb0f6f05d003d701bf1b00ddef` (test file); constraint coverage follow-up: `0f7792cd759fb8984521cba7876bf7538f053f5c`. कोई migration apply/deploy या Production mutation नहीं।
+
+
+### 2026-11-14 — Support RPC security-definer static audit
+- Customer conversation (4 functions), attachment/Admin message list (2), Main Admin customer reply (1), और Electrician support (8) migrations के सभी 15 functions `SECURITY DEFINER` हैं; प्रत्येक में `SET search_path = ''` और संबंधित explicit `REVOKE ALL ... FROM PUBLIC, anon` declaration मौजूद है।
+- RBAC migration में 21 function definitions (permission helper की duplicate definition सहित), 20 SECURITY DEFINER definitions, 21 empty-search-path clauses और 21 revoke declarations मिले। यह static source audit है; runtime privilege catalog और function execution अभी सत्यापित नहीं हुए।
+- यह audit source-only रहा। कोई SQL migration apply, Edge Function deploy, production setting/data change या PR merge नहीं किया।
