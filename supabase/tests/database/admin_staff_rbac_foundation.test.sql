@@ -70,8 +70,10 @@ SELECT ok(
 );
 SELECT ok(
   position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_staff_set_status(uuid,text,text)'::regprocedure))>0
-  AND position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_staff()'::regprocedure))>0,
-  'staff management list and status RPCs enforce Main Admin authorization'
+  AND position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_staff()'::regprocedure))>0
+  AND position('email_confirmed_at' in pg_get_functiondef('public.srk_admin_staff_set_status(uuid,text,text)'::regprocedure))>0
+  AND position('STAFF_EMAIL_NOT_VERIFIED' in pg_get_functiondef('public.srk_admin_staff_set_status(uuid,text,text)'::regprocedure))>0,
+  'staff management remains Main Admin-only and activation requires verified email'
 );
 SELECT has_function('public','srk_admin_list_staff_sessions',ARRAY['uuid'],'Main Admin can list staff session metadata');
 SELECT has_function('public','srk_admin_staff_revoke_session',ARRAY['uuid','text'],'Main Admin can revoke a specific staff session');
