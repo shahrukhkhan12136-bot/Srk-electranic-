@@ -972,3 +972,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin Paid RPC booking-first lock, Admin authorization, verified payment evidence, immutable bill, electrician assignment और payout arithmetic को दोबारा जाँचता है। Legacy quote payout path सुरक्षित रखा है।
 - Static source checks: category branch, immutable bill, cancellation-fee separation, pre-settlement fee timing, Admin gate, lock order, payment evidence, legacy path and function grants — PASS.
 - Read-only production schema/function inspection हुआ; कोई production SQL, payout status, wallet, bank transfer या payment data नहीं बदला। Migration अभी apply नहीं हुई। SQL runtime compilation, trigger ordering, cash/online payout creation, refund race और Admin payout execution अंतिम consolidated QA में जाँचे जाएँगे।
+
+## 2026-11-14 — Payment Flow Cross-File Static Verification
+- `create-order.js`, `verify-payment.js`, `razorpay-webhook.js` और Admin booking/payment script को एक साथ दोबारा पढ़कर cross-check किया।
+- नई category booking के लिए Razorpay order amount server-side labour + reserved cancellation fees breakdown से बनता है; browser-provided amount पर भरोसा नहीं किया जाता।
+- Verify endpoint HMAC signature, provider captured status, INR currency, exact paise amount और customer OTP session जाँचता है; settlement service-role RPC से होता है।
+- Webhook path भी exact amount और completed booking जाँचकर उसी idempotent settlement RPC को call करता है।
+- Admin manual settlement में नई category booking के लिए केवल वास्तविक Cash receipt RPC उपलब्ध है; online payment Razorpay verification से ही।
+- Static JavaScript syntax: create-order, verify-payment, Razorpay webhook और Admin scripts — PASS. सभी relevant payment reads में `selected_category` मौजूद — PASS.
+- यह source inspection/static verification है; कोई live Razorpay payment, webhook event, cash receipt या database update नहीं किया गया। End-to-end payment, duplicate webhook, captured-payment reconciliation और refund race final consolidated QA में होंगे।
