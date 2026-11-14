@@ -1020,3 +1020,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Backend raw error को सीधे alert में दिखाने के बजाय सुरक्षित Hindi error message दिया।
 - Admin inline JavaScript syntax PASS; rate-tier allowlist, दोनों action guards और safe error handling source verification PASS।
 - Source-only; किसी electrician का वास्तविक KYC, rate tier या Active status बदला नहीं गया।
+
+## 2026-11-14 — Admin Cancellation Decision Safety
+- Cancellation request पर Admin decision के लिए प्रति-request duplicate-submit guard जोड़ा।
+- Decision केवल `approved` या `rejected`; approved स्थिति केवल `not_departed`, `en_route`, `arrived` allowlist से स्वीकार होगी।
+- Existing fee evidence और Admin reason length validation कायम रखी; backend error अब raw alert में नहीं दिखता।
+- Admin inline JavaScript syntax PASS; decision/stage allowlists, duplicate guard और safe error handling source verification PASS।
+- Source-only; कोई cancellation request approve/reject नहीं हुई और कोई booking/fee/ledger record नहीं बदला।
