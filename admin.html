@@ -131,12 +131,19 @@ async function loadAdminSupportInbox(){
  }).join('')||'<p>अभी कोई ग्राहक शिकायत नहीं है।</p>';
  status.textContent=adminSupportRows.length+' शिकायतें मिलीं।';
 }
+const adminCustomerComplaintSaveBusy=new Set();
 async function saveAdminSupportComplaint(id){
- const state=document.getElementById('admin-support-state-'+id).value,note=document.getElementById('admin-support-note-'+id).value.trim();
+ if(adminCustomerComplaintSaveBusy.has(id))return;
+ const stateField=document.getElementById('admin-support-state-'+id),noteField=document.getElementById('admin-support-note-'+id);
+ if(!stateField||!noteField)return;
+ const state=stateField.value,note=noteField.value.trim(),button=stateField.closest('.job')?.querySelector('button');
+ if(!['open','in_progress','resolved','closed'].includes(state)){alert('मान्य शिकायत स्थिति चुनें।');return;}
  if(note.length>2000){alert('Admin नोट 2000 अक्षरों से अधिक नहीं होना चाहिए।');return;}
- const {data,error}=await sb.rpc('srk_admin_update_booking_complaint',{p_complaint_id:id,p_status:state,p_admin_note:note||null});
- if(error||!data?.success){alert('शिकायत अपडेट नहीं हुई। '+(error?.message||'पुष्टि नहीं मिली'));return;}
- await loadAdminSupportInbox();
+ adminCustomerComplaintSaveBusy.add(id);if(button)button.disabled=true;
+ try{const {data,error}=await sb.rpc('srk_admin_update_booking_complaint',{p_complaint_id:id,p_status:state,p_admin_note:note||null});
+ if(error||!data?.success)throw error||new Error('UPDATE_NOT_CONFIRMED');await loadAdminSupportInbox();}
+ catch(e){alert('शिकायत अपडेट नहीं हुई। कृपया Inbox रीफ़्रेश करके स्थिति जाँचें।');}
+ finally{adminCustomerComplaintSaveBusy.delete(id);if(button)button.disabled=false;}
 }
 async function openAdminSupportThread(id){
  adminSupportSelectedId=id;
@@ -147,14 +154,19 @@ async function openAdminSupportThread(id){
  const rows=Array.isArray(data)?data:[];
  box.innerHTML=rows.map(m=>'<article class="card" style="padding:10px"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक')+'</b><small style="float:right">'+esc(new Date(m.created_at).toLocaleString('hi-IN'))+'</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
 }
+let adminCustomerReplyBusy=false;
 async function sendAdminSupportReply(){
- const id=adminSupportSelectedId,field=document.getElementById('adminSupportReply'),status=document.getElementById('adminSupportReplyStatus'),body=field.value.trim();
+ if(adminCustomerReplyBusy)return;
+ const id=adminSupportSelectedId,field=document.getElementById('adminSupportReply'),status=document.getElementById('adminSupportReplyStatus');
+ if(!field||!status)return;const body=field.value.trim(),button=document.querySelector('#adminSupportThreadPanel button[onclick="sendAdminSupportReply()"]');
  if(!id){status.textContent='पहले शिकायत की बातचीत खोलें।';return;}
  if(body.length<1||body.length>4000){status.textContent='जवाब 1 से 4000 अक्षरों में लिखें।';return;}
- status.textContent='जवाब भेजा जा रहा है…';
- const {data,error}=await sb.rpc('srk_admin_send_booking_complaint_message',{p_complaint_id:id,p_body:body});
- if(error||!data){status.textContent='जवाब नहीं भेजा गया। '+(error?.message||'पुष्टि नहीं मिली');return;}
- field.value='';status.textContent='जवाब ग्राहक की शिकायत थ्रेड में भेज दिया गया।';await openAdminSupportThread(id);
+ adminCustomerReplyBusy=true;if(button)button.disabled=true;status.textContent='जवाब भेजा जा रहा है…';
+ try{const {data,error}=await sb.rpc('srk_admin_send_booking_complaint_message',{p_complaint_id:id,p_body:body});
+ if(error||!data)throw error||new Error('SEND_NOT_CONFIRMED');
+ if(id===adminSupportSelectedId)field.value='';status.textContent='जवाब ग्राहक की शिकायत थ्रेड में भेज दिया गया।';await openAdminSupportThread(id);}
+ catch(e){status.textContent='जवाब की पुष्टि नहीं हुई। थ्रेड रीफ़्रेश करके स्थिति जाँचें।';}
+ finally{adminCustomerReplyBusy=false;if(button)button.disabled=false;}
 }
 let adminElectricianSupportSelectedId=null,adminElectricianSupportRows=[];
 let adminElectricianSupportLoadBusy=false,adminElectricianSupportSaveBusy=new Set(),adminElectricianSupportReplyBusy=false,adminElectricianSupportThreadRequest=0;
