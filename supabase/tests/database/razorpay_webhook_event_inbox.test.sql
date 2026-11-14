@@ -11,8 +11,12 @@ select ok(not has_table_privilege('anon','public.srk_razorpay_webhook_events','s
 select ok(not has_table_privilege('anon','public.srk_razorpay_webhook_events','insert')
   and not has_table_privilege('authenticated','public.srk_razorpay_webhook_events','insert'),
   'browser roles cannot directly write webhook inbox');
-select ok(position('primary key (event_id)' in lower(pg_get_tabledef('public.srk_razorpay_webhook_events'::regclass)))>0,
-  'provider event ID is unique');
+select ok(exists(
+  select 1 from pg_constraint c
+  join pg_attribute a on a.attrelid=c.conrelid and a.attnum=any(c.conkey)
+  where c.conrelid='public.srk_razorpay_webhook_events'::regclass
+    and c.contype='p' and a.attname='event_id'
+), 'provider event ID is unique');
 
 select ok(position('payload_sha256 ~ '||quote_literal('^[a-f0-9]{64}$') in
   pg_get_constraintdef((select oid from pg_constraint where conrelid='public.srk_razorpay_webhook_events'::regclass and conname='srk_razorpay_webhook_payload_hash')))>0,
