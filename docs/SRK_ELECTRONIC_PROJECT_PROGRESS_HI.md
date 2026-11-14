@@ -1493,3 +1493,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin conversation UI अब messages और attachment metadata साथ लोड करती है, message के नीचे filename/size और 5-minute signed link दिखाती है; links `noopener noreferrer` के साथ खुलते हैं।
 - Support attachment pgTAP plan/assertions 8→10; static count 10/10। `admin.html`, `booking.html`, `electrician.html` inline JavaScript syntax parse checks PASS। Runtime SQL/pgTAP, signed-URL/storage runtime, browser/mobile checks अभी नहीं हुए। कोई migration apply/deploy/Production change नहीं।
 - Source commits: migration `eb72c22e08c690dade6f5359b8caaed5fad3d8b5`; test `15099928ec3db53a8000f61c326fe4d798ce84aa`; Admin UI `f07ad08765b5e3647b9ce76670642163fbd6b7a6`।
+
+
+### 2026-11-14 — Private Support Storage Admin-read policy verification
+- Customer Support attachment access की follow-up security review में पुष्टि की कि bucket private है; Storage SELECT policy `srk_customer_support_object_access(name,true)` को call करती है; helper verified Main Admin को allow करता है और अन्य authenticated users के लिए user/complaint ownership path जाँचता है। Upload/delete policies owner-only helper (`false`) का उपयोग करती हैं।
+- Attachment access pgTAP suite में policy/helper wiring का अतिरिक्त assertion जोड़ा: plan/assertions 10→11, static count 11/11। यह SQL catalog assertion source में जोड़ा गया है; वास्तविक DB पर अभी execute नहीं हुआ।
+- Test commit: `f8a2a78523c6ab56f9a2e410c32ce14f77f60f15`। No schema apply, no deployment, no Production change.
