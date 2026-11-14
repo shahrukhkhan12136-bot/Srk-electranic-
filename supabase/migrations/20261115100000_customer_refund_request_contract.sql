@@ -33,7 +33,7 @@ begin
   if not found then
     raise exception 'BOOKING_NOT_FOUND_OR_NOT_OWNED' using errcode='42501';
   end if;
-  if v_booking.payment_status<>'paid'
+  if v_booking.payment_status is distinct from 'paid'
      or v_booking.payment_verified_at is null
      or v_booking.amount_paid is null
      or v_booking.amount_paid<=0 then
@@ -41,7 +41,7 @@ begin
   end if;
 
   if v_booking.selected_category is not null then
-    if v_booking.status<>'completed' then
+    if v_booking.status is distinct from 'completed' then
       raise exception 'BOOKING_NOT_COMPLETED' using errcode='55000';
     end if;
     select bill.labour_amount_paise into v_labour_paise
