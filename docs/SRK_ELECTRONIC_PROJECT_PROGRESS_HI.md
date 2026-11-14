@@ -776,3 +776,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Cash reversal तभी होगा जब original cash cancellation-fee ledger और electrician wallet debit दोनों मौजूद हों; missing records पर refund booking status update rollback होगा।
 - Original Razorpay refund processing और bank settlement provider-side workflow पर निर्भर है; केवल DB status update को bank credit का प्रमाण नहीं माना जाएगा।
 - नई migrations/tests source-only हैं। Production database पर कोई DDL, payment, refund, wallet credit/debit या payout action नहीं किया गया। Staging में migration apply और end-to-end verification बाकी है।
+
+
+## 14 नवम्बर 2026 — Admin Customer Support Inbox और Reply Workflow (Feature Branch)
+
+- Admin Panel में dedicated **ग्राहक सहायता Inbox** जोड़ा: शिकायत सूची, ग्राहक/बुकिंग संदर्भ, category, description और created time।
+- Admin शिकायत की स्थिति `new / in_review / resolved / closed` बदल सकता है और अधिकतम 2000 अक्षरों का Admin note सुरक्षित कर सकता है; मौजूदा Admin-only `srk_admin_update_booking_complaint` RPC का उपयोग।
+- प्रत्येक शिकायत की customer–Admin message thread खोलने और संदेश पढ़ने के लिए `srk_admin_list_booking_complaint_messages` wiring जोड़ी।
+- Admin reply के लिए नई migration source `20261114300000_admin_customer_support_thread_replies.sql`: authenticated Admin check, complaint row lock, 1–4000 अक्षर validation, sender_role='admin' के साथ message insert, anon/public execute revoke और authenticated grant।
+- Admin login के बाद और Refresh पर inbox auto-load होता है। Message/notes को HTML में escape किया जाता है; reply भेजने से पहले selected complaint और length validate होते हैं।
+- Static verification: Admin inline JavaScript parse PASS; inbox/list/status/thread/reply RPC wiring checks PASS; SQL dollar-quote balance, Admin guard और grant source checks PASS।
+- सीमाएँ: नई reply migration अभी source-only है; वास्तविक DB पर apply/compile नहीं हुई। Customer/Admin JWT से message insertion, RLS/role behavior और attachment viewing का consolidated E2E test अंतिम Testing चरण में बाकी है। कोई live customer message, DB write, Production change या deployment नहीं किया गया।
