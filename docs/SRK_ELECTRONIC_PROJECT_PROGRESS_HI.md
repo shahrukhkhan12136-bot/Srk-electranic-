@@ -1073,3 +1073,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Electrician response handler अब इस विशिष्ट expiry result को अलग पहचानता है, अगले offer भेजे जाने/न मिलने का स्पष्ट Hindi संदेश दिखाता है और dashboard refresh करता है। अन्य unexpected response अब भी success नहीं माना जाता।
 - Static source inspection: RPC call, expiry code branch, next-offer result handling, refresh और success allowlist मौजूद — PASS।
 - Source-only; कोई offer accept/decline, assignment या database record नहीं बदला। वास्तविक expiry/response race अंतिम consolidated QA में जाँची जाएगी।
+
+## 2026-11-14 — Admin-Approved Electrician Relocation / Operating Area
+- Electrician App में “मेरा काम करने का क्षेत्र बदलें” UI जोड़ा: नया राज्य, जिला/शहर, छह अंकों का PIN और कारण देकर relocation request भेजी जा सकती है। Electrician अपनी request history और Admin का निर्णय देख सकता है; एक pending request रहते हुए duplicate request रोकने के लिए UI और backend guard हैं।
+- Admin Panel में relocation approval inbox जोड़ा: पुराना और नया operating area, PIN, request reason देखकर Admin approve या reject कर सकता है। Rejection पर कम से कम पाँच अक्षरों का कारण अनिवार्य है।
+- नई source-only migration `20261114220000_admin_approved_electrician_relocation.sql`: private request table, per-electrician single-pending constraint, authenticated electrician request/history RPCs और Admin-only list/review RPCs।
+- Approval पर `electrician_profiles.state/district/pincode` नया operating area बनता है; पुराने operating area को उसी profile पर बंद कर दिया जाता है। मूल electrician application/KYC address अलग और अपरिवर्तित रहता है। Accepted bookings/assignments नहीं छेड़े जाते; पुराने क्षेत्र के unaccepted offers बंद करके dispatch queue आगे बढ़ाई जाती है।
+- अतिरिक्त migration `20261114230000_recheck_electrician_current_area_before_offer.sql` dispatch के समय candidate का वर्तमान state/district फिर जाँचती है, ताकि relocation से पहले बने पुराने candidate snapshots नए जिले की बुकिंग न पा सकें।
+- Electrician और Admin inline JavaScript syntax checks PASS। Migration/function definitions और source wiring static review में मौजूद हैं।
+- **सीमाएँ:** ये source-only changes हैं। कोई Supabase migration apply नहीं की गई, कोई electrician relocation request/approval वास्तविक रूप से नहीं किया गया, और कोई production profile/booking/offer बदला नहीं गया। SQL runtime compile, Admin RPC authorization/RLS negative tests, relocation के बाद dispatch/old-queue race और full end-to-end QA final consolidated testing में बाकी हैं।
