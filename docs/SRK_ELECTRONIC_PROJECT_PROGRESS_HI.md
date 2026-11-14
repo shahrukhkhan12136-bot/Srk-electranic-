@@ -1499,3 +1499,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Customer Support attachment access की follow-up security review में पुष्टि की कि bucket private है; Storage SELECT policy `srk_customer_support_object_access(name,true)` को call करती है; helper verified Main Admin को allow करता है और अन्य authenticated users के लिए user/complaint ownership path जाँचता है। Upload/delete policies owner-only helper (`false`) का उपयोग करती हैं।
 - Attachment access pgTAP suite में policy/helper wiring का अतिरिक्त assertion जोड़ा: plan/assertions 10→11, static count 11/11। यह SQL catalog assertion source में जोड़ा गया है; वास्तविक DB पर अभी execute नहीं हुआ।
 - Test commit: `f8a2a78523c6ab56f9a2e410c32ce14f77f60f15`। No schema apply, no deployment, no Production change.
+
+
+### 2026-11-14 — Staff Support thread sender attribution
+- Staff customer/electrician thread read RPCs अब `is_current_staff_sender` boolean लौटाते हैं (message `sender_user_id = auth.uid()`), जिससे अपना जवाब स्पष्ट रूप से “आप (Support Staff)” दिखता है और Main Admin के जवाब “SRK सहायता टीम” रहते हैं। कोई Staff/Auth user UUID browser response में expose नहीं किया गया।
+- Customer और electrician Staff thread UI दोनों में sender labels सुधारे। Admin Staff RBAC pgTAP source suite plan/assertions 67→69, static count 69/69; वास्तविक pgTAP अभी execute नहीं हुआ।
+- Migration source commit: `3a149f3098d2c9e0dc89a92eb0b07cb5e4e73806`; UI commit: `fbba18a2c6e9c4d9d6b4c2c67c6ad4c88230268c`; test commit: `d5468c1be988bafd7f18d64e6b1062b06d75d8f3`। No migration apply, deployment, or Production change.
