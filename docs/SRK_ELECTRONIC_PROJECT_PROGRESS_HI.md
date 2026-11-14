@@ -1273,3 +1273,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - यह source audit है; कोई migration apply या live permission change नहीं किया गया।
 
 - अतिरिक्त Admin hardening: इलेक्ट्रिशियन relocation request के Admin approve/reject handler में duplicate-submit guard, decision allowlist, missing-result protection और request के दौरान buttons disable/restore जोड़ा गया। Commit `75218663b0efacd4a7368caecd1a880dfc939f14`; source-only, runtime test final QA में।
+
+
+### 2026-11-14 — Admin customer-support action hardening
+- ग्राहक शिकायत की स्थिति/नोट सेव करने के लिए प्रति-शिकायत duplicate-submit guard, वास्तविक workflow states (`new`, `in_review`, `resolved`, `closed`) की allowlist, missing-field handling और save के दौरान button lock जोड़ा। UI select और source validation का मिलान किया।
+- Customer support reply में concurrent duplicate send guard, button lock और selected thread बदलने पर गलत reply composer साफ न करने की सुरक्षा जोड़ी।
+- Commits: `f940000caad10e7ccc976be823b9998badd18e79`, `6d6facb23acb3d67ad94612dbd4915300265ea55`. Source-only; runtime/database tests final consolidated QA में।
