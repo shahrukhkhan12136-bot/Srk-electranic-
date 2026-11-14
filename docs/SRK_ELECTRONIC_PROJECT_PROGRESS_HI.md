@@ -8,6 +8,12 @@
 
 > यह स्थायी hand-off / resume दस्तावेज़ है। बातचीत रुक जाए तो इसी फाइल को खोलकर स्थिति, बाकी काम और अगला क्रम समझा जा सकता है। हर अगली प्रगति पर इसे update करना है।
 
+### 2026-11-14 — Admin Staff Portal source review follow-up
+- अतिरिक्त UI source review में Staff invite और Staff email sign-in दोनों के email-validation regex में double-escaped whitespace/dot pattern मिला था, जिससे सामान्य email addresses reject हो सकते थे। दोनों patterns ठीक किए और error wording को “Email sign-in link” किया।
+- Runtime regex sanity check: `support@example.com` स्वीकार और `bad-email` अस्वीकार — PASS। यह isolated JavaScript regex check है; पूरा browser/auth flow test नहीं।
+- Commit: `1a7be771ef87759e57dcdcaf13540a38711a0c4d`.
+- कोई migration apply, Edge Function deploy, staff invitation/account creation, production change या live data mutation नहीं हुई।
+
 ## 1. कुल प्रगति — प्रमाण आधारित
 
 इस tracker में Master Requirements के Section 14.1–14.8 के 89 checkbox points और Section 16 के 7 public-website points शामिल हैं: **कुल 96 मूल checklist points**।
