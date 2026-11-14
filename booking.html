@@ -605,11 +605,12 @@ async function loadCustomerBookings() {
       box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
       return;
     }
-    const [contactsResult,timelineResult,refundResult,cancellationResult] = await Promise.all([
+    const [contactsResult,timelineResult,refundResult,cancellationResult,cancellationFeeResult] = await Promise.all([
       customerSb.rpc('srk_get_customer_call_contacts'),
       customerSb.rpc('srk_customer_get_my_booking_work_timeline'),
       customerSb.rpc('srk_customer_list_my_booking_refund_requests'),
-      customerSb.rpc('srk_customer_list_booking_cancellation_requests')
+      customerSb.rpc('srk_customer_list_booking_cancellation_requests'),
+      customerSb.rpc('srk_customer_list_booking_cancellation_fee_items')
     ]);
     const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
     const timelineMap = new Map();
@@ -626,6 +627,13 @@ async function loadCustomerBookings() {
     const cancellationMap=new Map();
     if(!cancellationResult.error){
       (cancellationResult.data||[]).forEach(item=>cancellationMap.set(item.booking_id,item));
+    }
+    const cancellationFeeMap=new Map();
+    if(!cancellationFeeResult.error){
+      (cancellationFeeResult.data||[]).forEach(item=>{
+        if(!cancellationFeeMap.has(item.booking_id))cancellationFeeMap.set(item.booking_id,[]);
+        cancellationFeeMap.get(item.booking_id).push(item);
+      });
     }
     const billMap=new Map();
     await Promise.all(data.filter(row=>row.status==='completed'&&row.selected_category).map(async row=>{
@@ -673,12 +681,20 @@ async function loadCustomerBookings() {
       const timerMarkup=row.selected_category&&row.status==='in_progress'
         ? '<div class="job"><b>काम का टाइमर</b><p id="customerTimer_'+customerEsc(row.id)+'" data-running="'+(row.work_timer_running?'1':'0')+'" data-started="'+customerEsc(row.work_started_at||'')+'" data-accumulated="'+customerEsc(row.work_timer_elapsed_seconds||0)+'">'+customerEsc(formatCustomerTimer(row.work_timer_elapsed_seconds||0))+'</p><small>यह लाइव प्रदर्शन अनुमानित है; अंतिम बिल सर्वर के रिकॉर्ड समय से बनेगा।</small></div>'
         : '';
+      const cancellationFeeItems=cancellationFeeMap.get(row.id)||[];
+      const reservedFeePaise=cancellationFeeItems.filter(item=>item.status==='reserved').reduce((sum,item)=>sum+Number(item.amount_paise||0),0);
+      const cancellationFeeMarkup=cancellationFeeItems.length
+        ? '<div class="job"><b>पुरानी Cancellation Fee — अलग मद</b>'+cancellationFeeItems.map(item=>
+            '<p>पुरानी बुकिंग '+customerEsc(String(item.source_booking_id).slice(0,8))+'… : <b>₹'+(Number(item.amount_paise)/100).toFixed(2)+'</b> · '+customerEsc(item.status==='settled'?'जमा हो चुकी':item.status==='reserved'?'इस बिल में देय':item.status==='released'?'अगली बुकिंग में जोड़ी जाएगी':'समायोजित')+'</p>'
+          ).join('')+'</div>'
+        : '';
+      const finalPayTotal= bill ? Number(bill.labour_amount_paise)/100 + reservedFeePaise/100 : 0;
       const finalBillMarkup=bill
-        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>अंतिम मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p class="small">यह अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय के आधार पर बनाया गया है। इसमें सामान/पार्ट्स शामिल नहीं हैं; वे अलग itemized बिल में दिखेंगे।</p>'+
+        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>नई सेवा का मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p>पुरानी Cancellation Fee: <b>'+customerEsc(formatCustomerMoney(reservedFeePaise/100))+'</b></p><p>कुल देय राशि: <b>'+customerEsc(formatCustomerMoney(finalPayTotal))+'</b></p><p class="small">मेहनताना और पुरानी cancellation fees अलग-अलग दर्ज हैं। सामान/पार्ट्स इस labour bill में शामिल नहीं हैं।</p>'+
           (String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'&&row.payment_status!=='paid'
-            ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+Number(bill.labour_amount)+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 अंतिम Labour Bill का ऑनलाइन भुगतान करें</button>'
+            ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+finalPayTotal+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 कुल राशि Razorpay से भुगतान करें</button>'
             : String(row.payment_method||'').toLowerCase().includes('cash')&&row.payment_status!=='paid'
-              ? '<p class="small">नकद भुगतान सीधे इलेक्ट्रिशियन को करें। भुगतान की पुष्टि होने पर रसीद उपलब्ध होगी।</p>'
+              ? '<p class="small">कुल नकद राशि '+customerEsc(formatCustomerMoney(finalPayTotal))+' इलेक्ट्रिशियन को दें। Admin की भुगतान पुष्टि पर पुरानी cancellation fee अलग SRK ledger और electrician wallet में settle होगी।</p>'
               : '')
           +'</div>'
         : '';
