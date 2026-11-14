@@ -1102,3 +1102,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - OTP prepare RPC की validation में NULL expiry timestamp का edge case मिला: SQL में NULL comparison अपने-आप invalid condition नहीं बनता।
 - अब `p_otp_expires_at IS NULL` को स्पष्ट रूप से reject किया जाता है; 5-minute application expiry और database की maximum 6-minute bound कायम है।
 - GitHub से migration दोबारा fetch करके source correction सत्यापित की। यह static source review है; PostgreSQL runtime compilation/tests अभी अंतिम consolidated QA में होंगे। कोई migration apply, SMS या live account change नहीं किया।
+
+
+## 2026-11-14 — Expired OTP Request Retry Handling
+- Phone-change flow की source review में मिला कि यदि OTP 5 मिनट बाद समाप्त हो जाए और इलेक्ट्रिशियन ऐप दोबारा न खोले, तो पुरानी `otp_pending` रिक्वेस्ट नई रिक्वेस्ट को रोक सकती थी।
+- अब नई रिक्वेस्ट तैयार करते समय उसी इलेक्ट्रिशियन की समाप्त/NULL-expiry OTP रिक्वेस्ट पहले `expired` की जाती है और OTP hash साफ किया जाता है; फिर pending-request guard चलता है।
+- Migration को दोबारा fetch करके source change सत्यापित किया। PostgreSQL runtime compile/test, SMS provider verification और E2E अभी final consolidated QA में हैं। कोई migration apply या SMS नहीं भेजा गया।
