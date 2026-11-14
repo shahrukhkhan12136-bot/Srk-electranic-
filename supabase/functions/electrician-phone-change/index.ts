@@ -90,8 +90,17 @@ Deno.serve(async (req: Request) => {
     });
     if (prepareError) return reply(409, { error: prepareError.message || "मोबाइल नंबर अनुरोध तैयार नहीं हो सका।" });
     if (!await sendSms(phone, otp, apiKey)) {
-      await service.rpc("srk_phone_change_cancel_send", { p_request_id: requestId, p_user_id: actor.id });
-      return reply(502, { error: "नए नंबर पर OTP नहीं भेजा जा सका। थोड़ी देर बाद फिर कोशिश करें।" });
+      const { data: cleanup, error: cleanupError } = await service.rpc("srk_phone_change_cancel_send", {
+        p_request_id: requestId, p_user_id: actor.id,
+      });
+      if (cleanupError || cleanup?.success !== true) {
+        // Do not pretend the request was cleared: history must be refreshed before retrying.
+        return reply(503, {
+          error: "OTP नहीं भेजा जा सका और अनुरोध की स्थिति साफ़ होने की पुष्टि नहीं मिली। नया OTP भेजने से पहले ऐप में मोबाइल अपडेट इतिहास refresh करें।",
+          cleanup_pending: true,
+        });
+      }
+      return reply(502, { error: "नए नंबर पर OTP नहीं भेजा जा सका। अनुरोध बंद कर दिया गया है; थोड़ी देर बाद फिर कोशिश करें।" });
     }
     return reply(200, { success: true, request_id: requestId, message: "नए मोबाइल नंबर पर OTP भेज दिया गया है।" });
   }
