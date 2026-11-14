@@ -117,7 +117,7 @@ begin
     insert into public.srk_booking_cancellation_fee_items
       (booking_id,debt_id,customer_user_id,amount_paise)
     values(new.id,v_debt.id,new.customer_user_id,v_debt.amount_paise)
-    on conflict(debt_id) do nothing;
+    on conflict(booking_id,debt_id) do nothing;
     update public.srk_customer_cancellation_fee_debts
       set status='reserved',reserved_booking_id=new.id
       where id=v_debt.id and status='open';
@@ -411,14 +411,14 @@ begin
       reference_type,reference_id,idempotency_key,description,posted_at)
     values(v_wallet,v_electrician_user,'electrician','cancellation_fee','debit',
       v_item.amount_paise/100.0,'posted','cancellation_fee_debt',v_item.debt_id::text,
-      'cancel-fee:cash:electrician-debit:'||v_item.debt_id::text,
+      'cancel-fee:cash:electrician-debit:'||v_item.id::text,
       'Customer paid prior cancellation fee in cash; SRK recovery from electrician wallet',now())
     on conflict(idempotency_key) do nothing;
     insert into public.srk_cancellation_fee_ledger(debt_id,booking_id,source_booking_id,customer_user_id,
       electrician_user_id,entry_type,direction,amount_paise,idempotency_key,note)
     values(v_item.debt_id,p_booking_id,v_item.source_booking_id,v_booking.customer_user_id,
       v_electrician_user,'cash_electrician_debit','credit',v_item.amount_paise,
-      'cancel-fee:cash:srk-credit:'||v_item.debt_id::text,
+      'cancel-fee:cash:srk-credit:'||v_item.id::text,
       'Cash cancellation fee collected by electrician and credited to SRK receivable ledger')
     on conflict(idempotency_key) do nothing;
     update public.srk_booking_cancellation_fee_items set status='settled',settled_at=now()
@@ -483,7 +483,7 @@ begin
       customer_user_id,entry_type,direction,amount_paise,payment_reference,idempotency_key,note)
     values(v_item.debt_id,p_booking_id,v_item.source_booking_id,v_booking.customer_user_id,
       'online_collection','credit',v_item.amount_paise,p_payment_id,
-      'cancel-fee:online:srk-credit:'||v_item.debt_id::text,
+      'cancel-fee:online:srk-credit:'||v_item.id::text,
       'Online payment cancellation-fee component credited to SRK cancellation ledger')
     on conflict(idempotency_key) do nothing;
     update public.srk_booking_cancellation_fee_items set status='settled',settled_at=now()
