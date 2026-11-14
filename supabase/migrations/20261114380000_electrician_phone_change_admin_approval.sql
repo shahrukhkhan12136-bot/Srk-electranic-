@@ -56,6 +56,7 @@ declare
   v_old_phone text;
   v_new_digits text;
   v_count integer;
+  v_profile_matches integer;
 begin
   if p_request_id is null or p_user_id is null
      or p_new_phone !~ '^\+91[6-9][0-9]{9}$'
@@ -65,16 +66,21 @@ begin
     raise exception 'कृपया सही मोबाइल नंबर और 10 से 500 अक्षरों का कारण दें।';
   end if;
 
+  -- Require exactly one profile mapping. If legacy user_id/auth_user_id
+  -- columns point at different rows, do not silently change an arbitrary profile.
+  select count(distinct ep.id) into v_profile_matches
+  from public.electrician_profiles ep
+  where ep.user_id = p_user_id or ep.auth_user_id = p_user_id;
+
+  if v_profile_matches <> 1 then
+    raise exception 'इलेक्ट्रिशियन प्रोफ़ाइल मैपिंग स्पष्ट नहीं है। Admin सहायता लें।';
+  end if;
+
   select * into v_profile
   from public.electrician_profiles ep
   where ep.user_id = p_user_id or ep.auth_user_id = p_user_id
-  order by (ep.user_id = p_user_id) desc nulls last
   limit 1
   for update;
-
-  if not found then
-    raise exception 'इलेक्ट्रिशियन प्रोफ़ाइल नहीं मिली।';
-  end if;
 
   select u.phone into v_old_phone from auth.users u where u.id = p_user_id and u.phone_confirmed_at is not null;
   if v_old_phone is null or v_old_phone = '' then
