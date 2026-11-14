@@ -996,3 +996,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Customer Booking, Electrician, Admin और payment/serverless JavaScript files की syntax जाँच PASS।
 - Admin, Electrician और Customer booking UI में Schedule / Appointment / preferred date-time विकल्प या शब्द नहीं मिले। Legacy API में पुरानी date/time columns को NULL रखने की backward-compatibility logic बनी हुई है; Netlify worker का cron केवल offer expiry/dispatch backend प्रक्रिया है, customer scheduling feature नहीं।
 - यह source-only UI hardening है; live account, booking या payment data नहीं बदला।
+
+## 2026-11-14 — Electrician Offer Accept / Decline Duplicate-Action Protection
+- Electrician offer के Accept और Decline buttons अब एक ही offer पर concurrent/double submission रोकते हैं।
+- Click के बाद उस offer के दोनों action buttons disable होते हैं और clicked button पर busy label दिखता है।
+- केवल `accepted` और `declined` response values स्वीकार की जाती हैं; सफल RPC के बाद dashboard refresh होता है।
+- Failure पर raw backend error नहीं दिखता; सुरक्षित Hindi संदेश दिया जाता है और buttons retry के लिए restore होते हैं।
+- Electrician inline JavaScript syntax PASS; duplicate guard, busy state, response validation, safe failure और button wiring PASS।
+- Source-only; कोई वास्तविक offer स्वीकार/अस्वीकार नहीं किया गया। Multi-electrician offer race और actual assignment runtime test अंतिम संयुक्त QA में होंगे।
