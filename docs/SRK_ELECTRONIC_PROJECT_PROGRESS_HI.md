@@ -1,8 +1,8 @@
 # SRK ELECTRONIC — मास्टर प्रोजेक्ट प्रगति सूची
 
-**स्थिति snapshot:** 13 नवम्बर 2026  
+**स्थिति snapshot:** 14 नवम्बर 2026  
 **Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
-**काम की branch:** `feature/platform-fee-cash-online-cycle`  
+**काम की branch:** `feat/customer-login-first-dashboard-20261114`  
 **Master Epic:** [Issue #3](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/issues/3)  
 **Requirements का source of truth:** [SRK ELECTRONIC Master Requirements](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/blob/feature/platform-fee-cash-online-cycle/docs/SRK_ELECTRONIC_MASTER_REQUIREMENTS_HI.md)
 
@@ -1059,3 +1059,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Customer-selected category booking में estimated labour amount अब immutable selection snapshot के `estimated_labour_paise` से ₹ में दिखेगा; legacy booking के लिए पुराना quote display fallback रखा। Materials को labour estimate में नहीं जोड़ा।
 - Offer expiry/status UI और immediate-only booking display के साथ inline JavaScript syntax PASS।
 - Source-only; वास्तविक offer, booking, assignment, payment या production database नहीं बदला।
+
+## 2026-11-14 — Sequential Dispatch PIN-to-District Fallback Hardening
+- Sequential dispatcher migration की static review में एक edge case मिला: यदि booking बनते समय PIN-code candidates मौजूद हों, लेकिन वे बाद में offline/inactive हो जाएँ या सभी offer decline/expire हों, तो पहले version में district candidates की सूची उपलब्ध नहीं थी।
+- Migration को बदला: जब exact-tier PIN candidates हों, candidate queue में पहले सभी PIN matches (nearest-first), फिर उसी state/district के non-PIN matches (nearest-first) snapshot किए जाते हैं। हर candidate का वास्तविक match level अलग रखा जाता है। इसलिए PIN queue के skip/decline/expiry के बाद district fallback संभव है; exact selected tier, KYC/approval और availability checks हर offer dispatch पर फिर से होते हैं।
+- यदि PIN candidate मौजूद नहीं है तो district-only queue बनती है। यदि PIN candidates हैं, तो district queue उनसे पहले नहीं भेजी जाएगी।
+- Netlify expiry worker और `netlify.toml` का static inspection: worker हर मिनट scheduled है, server-side service-role key से केवल `srk_expire_and_advance_booking_offers` RPC call करता है, 10-second timeout और safe error responses हैं। कोई secret source में नहीं रखा गया।
+- Read-only production schema audit: वर्तमान deployed schema में नए category/tier columns और `job_offers.expires_at` अभी नहीं हैं; यह पुष्टि करता है कि sequential dispatch migration feature branch source-only है और production पर apply नहीं हुई।
+- कोई migration apply, deploy, booking/offer/assignment या live data परिवर्तन नहीं किया। SQL runtime compile, Netlify scheduled execution, concurrent accept/expiry और full dispatch lifecycle अंतिम consolidated QA में होंगे।
