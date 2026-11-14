@@ -143,15 +143,35 @@ $$;
 
 create or replace function public.srk_phone_change_cancel_send(
   p_request_id uuid, p_user_id uuid
-) returns void
-language sql
+) returns jsonb
+language plpgsql
 security definer
 set search_path = ''
-as $$
+as $
+declare
+  v_status text;
+begin
   update public.srk_electrician_phone_change_requests
   set status='expired', otp_hash=null, updated_at=now()
-  where id=p_request_id and electrician_user_id=p_user_id and status='otp_pending';
-$$;
+  where id=p_request_id and electrician_user_id=p_user_id and status='otp_pending'
+  returning status into v_status;
+
+  if v_status = 'expired' then
+    return jsonb_build_object('success',true,'status','expired');
+  end if;
+
+  -- Make the cleanup idempotent if a concurrent history/expiry action already closed it.
+  select r.status into v_status
+  from public.srk_electrician_phone_change_requests r
+  where r.id=p_request_id and r.electrician_user_id=p_user_id;
+
+  if v_status = 'expired' then
+    return jsonb_build_object('success',true,'status','expired');
+  end if;
+
+  return jsonb_build_object('success',false,'status',coalesce(v_status,'not_found'));
+end;
+$;
 
 create or replace function public.srk_phone_change_verify(
   p_request_id uuid,
