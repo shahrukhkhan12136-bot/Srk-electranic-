@@ -148,7 +148,7 @@ test("does not settle a Cash booking from a captured webhook", async t => {
   const result = await handler(event({
     event: "payment.captured",
     payload: { payment: { entity: {
-      id: "pay_cash_blocked", order_id: "order_cash_blocked",
+      id: "paycashblocked", order_id: "ordercashblocked",
       status: "captured", amount: 50000, currency: "INR"
     } } }
   }, "evt_cash_payment_blocked"));
@@ -189,7 +189,7 @@ test("does not re-open a refunded booking from a captured webhook", async t => {
   const result = await handler(event({
     event: "payment.captured",
     payload: { payment: { entity: {
-      id: "pay_refund_blocked", order_id: "order_refund_blocked",
+      id: "payrefundblocked", order_id: "orderrefundblocked",
       status: "captured", amount: 50000, currency: "INR"
     } } }
   }, "evt_refund_payment_blocked"));
