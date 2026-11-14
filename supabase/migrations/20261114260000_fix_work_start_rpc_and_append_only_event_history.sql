@@ -143,6 +143,11 @@ CREATE TRIGGER srk_booking_work_events_no_truncate
   EXECUTE FUNCTION public.srk_reject_booking_work_event_mutation();
 
 
+-- These two functions are redefined by the immediately preceding work-timer migrations;
+-- harden their final definitions here, after those replacements have run.
+alter function public.srk_customer_respond_work_start(uuid,text) set search_path = '';
+alter function public.srk_customer_respond_work_completion(uuid,text,text) set search_path = '';
+
 -- Customer-safe work timeline. Expose only event label, actor role and time;
 -- never return old_state/new_state JSON or internal event payloads.
 create or replace function public.srk_customer_get_my_booking_work_timeline(
