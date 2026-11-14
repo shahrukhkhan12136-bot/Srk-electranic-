@@ -161,7 +161,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <button class="btn" type="button" id="customerLogout">लॉगआउट</button>
  </section>
 
- <section class="panel">
+ <section class="panel" id="customerBookingPanel" hidden>
   <h2 class="section-title" style="margin-top:0">सर्विस बुक करें</h2>
   <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर काम का निरीक्षण करेगा और केवल मेहनताना स्पष्ट करेगा।</p>
   <form id="booking">
@@ -241,7 +241,7 @@ function initCustomerMenuShell(){
  const home=document.getElementById('customerMenuHome');
  const bookingPanel=document.getElementById('booking')?.closest('.panel');
  const checkoutPanel=document.getElementById('upiPanel');
- if(bookingPanel&&home)home.appendChild(bookingPanel);
+ if(bookingPanel&&home){home.appendChild(bookingPanel);bookingPanel.hidden=false;}
  if(checkoutPanel&&home)home.appendChild(checkoutPanel);
  const destinations={
   Payments:document.getElementById('customerPaymentHistoryPanel'),
@@ -1023,9 +1023,25 @@ async function sendCustomerSupportMessage() {
 }
 
 async function syncCustomerSession() {
-  if (!customerSb) return;
-  const { data } = await customerSb.auth.getSession();
-  const session = data.session;
+  const loginPanel = document.getElementById('customer-login');
+  const dashboard = document.getElementById('customer-dashboard');
+  if (!customerSb) {
+    loginPanel.style.display = 'block';
+    dashboard.style.display = 'none';
+    customerMessage('ग्राहक लॉगिन सेवा उपलब्ध नहीं है। कृपया बाद में दोबारा कोशिश करें।');
+    return;
+  }
+  let session = null;
+  try {
+    const { data, error } = await customerSb.auth.getSession();
+    if (error) throw error;
+    session = data?.session || null;
+  } catch (_) {
+    loginPanel.style.display = 'block';
+    dashboard.style.display = 'none';
+    customerMessage('लॉगिन सत्र की जाँच नहीं हो सकी। कृपया इंटरनेट जाँचकर दोबारा कोशिश करें।');
+    return;
+  }
   document.getElementById('customer-login').style.display = session ? 'none' : 'block';
   document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
   const bookingPhone = document.getElementById('phone');
