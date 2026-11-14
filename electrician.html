@@ -20,13 +20,13 @@ async function logout(){
   for(const id of activeLocationIds){
    const watch=locationWatches.get(id);
    if(watch!==undefined)navigator.geolocation.clearWatch(watch);
-   locationWatches.delete(id);
   }
   if(activeLocationIds.length&&sb&&user){
    const results=await Promise.allSettled(activeLocationIds.map(id=>sb.rpc('srk_electrician_stop_live_location',{p_booking_id:id})));
-   const failed=results.some(r=>r.status==='rejected'||r.value?.error);
-   if(failed)console.warn('One or more live-location stop requests did not confirm before logout.');
+   const failedIndex=results.findIndex(r=>r.status==='rejected'||r.value?.error);
+   if(failedIndex>=0)throw new Error('LIVE_LOCATION_STOP_NOT_CONFIRMED');
   }
+  activeLocationIds.forEach(id=>locationWatches.delete(id));
   if(offersChannel){await sb.removeChannel(offersChannel);offersChannel=null;}
   const {error}=await sb.auth.signOut();
   if(error)throw error;
