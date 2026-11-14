@@ -893,3 +893,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Read-only DB audit: payout status constraint में `pending/paid/blocked/refunded`; electrician SELECT policy केवल उसी profile के `user_id=auth.uid()` पर, Admin अलग से देख सकता है; Route transfer table पर anon/authenticated client API deny policy मौजूद। इसलिए Route transfer table सीधे app से पढ़ने की कोशिश नहीं की।
 - Static JavaScript syntax parse PASS; HTML IDs duplicate नहीं।
 - Source-only; वास्तविक payout sample/status rendering और mobile layout अंतिम संयुक्त QA में बाकी।
+
+## 2026-11-14 — Electrician Wallet और बैंक लिंक स्थिति की स्पष्टता
+- `electrician.html` के `loadPartnerWallet()` को बेहतर किया।
+- वॉलेट सारांश, बैंक/UPI लिंक और लेजर हिस्ट्री के लिए अलग-अलग error handling जोड़ी; डेटा लोड न होने पर अब गलत “कोई रिकॉर्ड नहीं” नहीं दिखेगा।
+- बैंक लिंक में केवल masked account last-4 और masked IFSC दिखाने की व्यवस्था; प्राथमिक बैंक लिंक और verification status को स्पष्ट किया।
+- हाल के लेजर रिकॉर्ड में जमा/निकासी दिशा, स्थिति, विवरण, reference और तारीख दिखाई जाएगी।
+- वॉलेट balance को साफ तौर पर internal ledger balance बताया; इसे बैंक भुगतान का प्रमाण नहीं बताया।
+- बैंक जोड़ना और वास्तविक निकासी अभी भी बंद है; Route onboarding/verification/Admin अनुमति से पहले कोई transfer action नहीं जोड़ा।
+- Static source checks: wallet function, bank/ledger error handling, masked IFSC, primary account, transaction references और disabled withdrawal copy — PASS. Inline JavaScript syntax parse — PASS.
+- यह source-only बदलाव है। वास्तविक bank-link/ledger rendering, अलग-अलग RLS permissions और mobile layout की जाँच अंतिम consolidated QA में होगी; कोई migration, production setting या live payout नहीं बदला।
