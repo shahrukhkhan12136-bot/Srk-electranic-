@@ -52,9 +52,25 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // Optional server-side redirect; it must also be present in Supabase Auth's redirect allow-list.
+  const redirectTo = Deno.env.get("ADMIN_PORTAL_REDIRECT_URL")?.trim();
+  if (redirectTo) {
+    try {
+      const target = new URL(redirectTo);
+      if (!["https:", "http:"].includes(target.protocol) ||
+          (target.protocol === "http:" && !["localhost", "127.0.0.1"].includes(target.hostname)) ||
+          target.username || target.password) {
+        return json(500, { error: "ADMIN_PORTAL_REDIRECT_URL must be a trusted HTTPS URL (HTTP is allowed only for localhost)." });
+      }
+    } catch {
+      return json(500, { error: "ADMIN_PORTAL_REDIRECT_URL is invalid." });
+    }
+  }
+
   // Role is deliberately fixed here: no client-supplied role can elevate privileges.
   const { data: invited, error: inviteError } = await service.auth.admin.inviteUserByEmail(email, {
     data: { full_name: displayName },
+    ...(redirectTo ? { redirectTo } : {}),
   });
   if (inviteError || !invited.user) {
     return json(409, { error: inviteError?.message || "Staff invitation could not be created." });
