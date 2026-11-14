@@ -13,7 +13,7 @@ test("refund endpoint rejects missing login",async()=>{
 const bookingId="123e4567-e89b-42d3-a456-426614174000";
 const record={refund_record_id:"223e4567-e89b-42d3-a456-426614174000",booking_id:bookingId,payment_id:"pay_ABC123456",amount_paise:12500,idempotency_key:"srkrefund123456789",status:"requested"};
 const req=()=>({httpMethod:"POST",headers:{authorization:"Bearer test-user-token-1234567890"},body:JSON.stringify({booking_id:bookingId,reason:"ग्राहक की सत्यापित शिकायत के कारण पूरा refund आवश्यक है।"})});
-const reply=(status,data)=>({ok:status>=200&&status<300,status,text:async()=>JSON.stringify(data)});
+const reply=(status,data)=>({ok:status>=200&&status<300,status,json:async()=>data,text:async()=>JSON.stringify(data)});
 const originalFetch=global.fetch;
 
 test("requires Main Admin membership before provider request",async t=>{
