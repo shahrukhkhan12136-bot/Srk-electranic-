@@ -174,13 +174,14 @@ exports.handler = async event => {
         }
       });
       if (reconciled?.success) {
+        const finalStatus = reconciled.status || refund.status;
         return json(200, {
           success: true,
-          status: reconciled.status || refund.status,
+          status: finalStatus,
           refund_id: refund.id,
-          message: refund.status === "processed"
+          message: finalStatus === "processed"
             ? "Razorpay Refund processed और ledger reconciliation सफल हुई।"
-            : refund.status === "failed"
+            : finalStatus === "failed"
               ? "Razorpay ने Refund failed बताया। Payout hold नियम के अनुसार अपडेट हुआ।"
               : "Razorpay ने Refund स्वीकार किया है; final status Webhook से अपडेट होगा।"
         });
