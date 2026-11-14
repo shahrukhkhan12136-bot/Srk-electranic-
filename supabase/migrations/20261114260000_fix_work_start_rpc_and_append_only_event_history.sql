@@ -141,3 +141,60 @@ CREATE TRIGGER srk_booking_work_events_no_truncate
   BEFORE TRUNCATE ON public.srk_booking_work_events
   FOR EACH STATEMENT
   EXECUTE FUNCTION public.srk_reject_booking_work_event_mutation();
+
+
+-- Customer-safe work timeline. Expose only event label, actor role and time;
+-- never return old_state/new_state JSON or internal event payloads.
+create or replace function public.srk_customer_get_my_booking_work_timeline(
+  p_booking_id uuid
+)
+returns table(event_type text,actor_role text,occurred_at timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_uid uuid:=auth.uid();
+begin
+  if v_uid is null then
+    raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000';
+  end if;
+  if p_booking_id is null or not exists(
+    select 1 from public.service_bookings b
+     where b.id=p_booking_id and b.customer_user_id=v_uid
+  ) then
+    raise exception 'BOOKING_NOT_AVAILABLE' using errcode='42501';
+  end if;
+
+  return query
+    select
+      case
+        when e.event_type='work_completion_approved'
+             and exists(select 1 from public.srk_admin_users a where a.user_id=e.actor_user_id)
+          then 'work_completion_admin_approved'
+        when e.event_type='work_completion_approved'
+             and e.actor_user_id=v_uid
+          then 'work_completion_customer_approved'
+        else e.event_type
+      end::text,
+      case
+        when e.actor_user_id=v_uid then 'customer'
+        when exists(select 1 from public.srk_admin_users a where a.user_id=e.actor_user_id) then 'admin'
+        when exists(select 1 from public.electrician_profiles p
+          where p.auth_user_id=e.actor_user_id or p.user_id=e.actor_user_id) then 'electrician'
+        else 'system'
+      end::text,
+      e.created_at
+    from public.srk_booking_work_events e
+   where e.booking_id=p_booking_id
+   order by e.created_at asc,e.id asc
+   limit 200;
+end;
+$function$;
+
+revoke all on function public.srk_customer_get_my_booking_work_timeline(uuid) from public,anon;
+grant execute on function public.srk_customer_get_my_booking_work_timeline(uuid) to authenticated;
+
+comment on function public.srk_customer_get_my_booking_work_timeline(uuid) is
+  'Returns customer-owned work event labels, actor roles and timestamps only; excludes private event snapshots.';
