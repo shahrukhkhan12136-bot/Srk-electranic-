@@ -144,7 +144,7 @@ select ok(
   and position('for update' in substring(lower(
     pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))
     from position('select * into v_request from public.srk_booking_cancellation_requests r' in lower(
-    pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))))>0,
+    pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure)))))>0,
   'Admin cancellation decision locks Booking before Request and then locks the Request row');
 
 select ok(position('BOOKING_ALREADY_REFUNDED' in
