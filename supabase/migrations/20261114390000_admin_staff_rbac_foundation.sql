@@ -56,8 +56,10 @@ create index if not exists srk_admin_staff_sessions_active_idx
 
 create table if not exists public.srk_admin_staff_audit_events (
   id bigint generated always as identity primary key,
-  actor_user_id uuid references auth.users(id) on delete set null,
-  target_user_id uuid references auth.users(id) on delete set null,
+  -- Keep immutable historical actor/target UUIDs without an ON DELETE action:
+  -- FK-driven SET NULL would itself UPDATE this append-only table and be blocked by its guard.
+  actor_user_id uuid,
+  target_user_id uuid,
   action text not null check (length(btrim(action)) between 3 and 100),
   outcome text not null default 'success'
     check (outcome in ('success','denied','failed')),
