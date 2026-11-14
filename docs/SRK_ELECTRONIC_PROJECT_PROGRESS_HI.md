@@ -1189,3 +1189,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Release RPC अब JSON success/status लौटाती है, उसी Admin के processing claim को release करती है और पहले से released pending/sync_error state पर idempotent success देती है। अन्य अवस्था पर स्पष्ट failure देती है।
 - Edge Function तीनों recovery paths में release result/error जाँचती है और केवल confirmed release पर queue में लौटने का संदेश देती है।
 - Source-only; migration लागू/deploy नहीं। Postgres concurrency, lost network response, claim release failure और retry tests अंतिम consolidated QA में बाकी हैं।
+
+
+### 2026-11-14 — Phone normalization consistency audit
+- Audit phát hiện Auth phone và `electrician_profiles.phone` có thể lưu cùng số Ấn Độ ở định dạng khác nhau (ví dụ `+91XXXXXXXXXX` và `XXXXXXXXXX`). So sánh chỉ loại ký tự không phải số vẫn cho kết quả khác, khiến Admin recovery bị từ chối nhầm; đồng thời kiểm tra số trùng có thể bỏ sót định dạng 10/12 chữ số.
+- Migration được chỉnh để so sánh canonical 10 chữ số cuối cho kiểm tra số cũ/mới, Auth/profile recovery, finalization và duplicate-number checks. Chuẩn lưu số mới vẫn là `+91` + 10 अंक.
+- Source-only; migration chưa लागू. Cần compile và kiểm tra uniqueness/concurrency với dữ liệu legacy के अंतिम QA में।
