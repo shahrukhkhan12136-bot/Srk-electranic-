@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(10);
 
 select ok(
  has_function_privilege('authenticated','public.srk_customer_list_complaint_message_attachments(uuid)','EXECUTE')
@@ -50,6 +50,18 @@ select ok(
        and c.convalidated
   ),
   'attachment composite foreign key is present and validated'
+);
+
+select ok(
+ has_function_privilege('authenticated','public.srk_admin_list_complaint_message_attachments(uuid)','EXECUTE')
+ and not has_function_privilege('anon','public.srk_admin_list_complaint_message_attachments(uuid)','EXECUTE'),
+ 'Admin attachment listing is authenticated-only'
+);
+select ok(
+ position('is_srk_admin()' in lower(pg_get_functiondef('public.srk_admin_list_complaint_message_attachments(uuid)'::regprocedure)))>0
+ and position('limit 100' in lower(pg_get_functiondef('public.srk_admin_list_complaint_message_attachments(uuid)'::regprocedure)))>0
+ and position('complaint_id=p_complaint_id' in lower(pg_get_functiondef('public.srk_admin_list_complaint_message_attachments(uuid)'::regprocedure)))>0,
+ 'Admin attachment listing enforces Main Admin access, complaint existence, and bounded results'
 );
 
 select * from finish();
