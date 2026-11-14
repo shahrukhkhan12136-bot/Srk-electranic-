@@ -1412,3 +1412,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - अंतिम `srk_has_admin_permission()` definition अब matching, non-revoked `srk_admin_staff_sessions` row पर `FOR SHARE` lock लेती है। Explicit revoke उसी row को update करता है, इसलिए in-flight authorized transaction पूरा होने तक revoke serialize होगा; revoke पहले commit हो तो अगली permission check deny होगी। Existing Staff registry suspension lock भी बरकरार है।
 - pgTAP source plan/assertions 56/56 किए; नया assertion specifically tracked session row के `FOR SHARE` lock की जाँच करता है। Static plan/count verification अलग से करनी है; pgTAP/PostgreSQL runtime और वास्तविक concurrent transaction test अभी execute नहीं हुए।
 - Source commits: migration `9439e276b1c16538bc44192455a2d455ff98664c`; test assertion refinement `24ffade70e46d5bbf1d8d9fb13cec335842610df`. कोई migration apply, deploy, Auth invite या production change नहीं।
+
+
+### 2026-11-14 — Admin Staff RBAC: audit immutability और assignment constraints की test coverage
+- Migration source की पुनः समीक्षा में पुष्टि की: Staff audit log पर UPDATE/DELETE के साथ BEFORE TRUNCATE trigger भी है; audit table, identity sequence और assignment table पर browser roles के direct grants revoke हैं। Assignment map में (case_type, case_id) unique constraint और सीमित case-type CHECK constraint हैं; assignment/reassignment Main Admin RPC से ही होता है और active Support staff row पर lock लेता है।
+- pgTAP source में तीन अतिरिक्त assertions जोड़े: (1) audit table पर browser TRUNCATE privilege deny + truncate trigger मौजूद, (2) assignment uniqueness और case-type vocabulary constraints, (3) browser roles assignment ownership या Staff session rows को सीधे mutate/register नहीं कर सकते।
+- Static source count: pgTAP plan 59 और assertion calls 59 — count match। यह केवल test-source/static check है; pgTAP execute, PostgreSQL migration compile, grants के live catalog audit और concurrent transaction tests अभी नहीं चले हैं।
+- Commit: test e979596c38bcd7bce362f4853d5526ab3f6fb055. Migration source में कोई बदलाव/apply नहीं; deployment, live data या production settings नहीं बदलीं।
