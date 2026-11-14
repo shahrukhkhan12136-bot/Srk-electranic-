@@ -223,6 +223,7 @@ exports.handler = async (event) => {
     if (!claim?.should_process || !claim.claim_token) {
       throw new Error("Webhook event claim was not granted");
     }
+    if (claim.canonical_event_id) eventId = claim.canonical_event_id;
     claimToken = claim.claim_token;
 
     if (eventName === "refund.created" || eventName === "refund.processed" || eventName === "refund.failed") {
