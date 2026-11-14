@@ -1302,6 +1302,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
   document.getElementById('customerPaymentHistoryRefresh').addEventListener('click',()=>loadCustomerPaymentHistory(true));
   document.getElementById('customerRefundHistoryRefresh').addEventListener('click',loadCustomerRefundHistory);
+  document.getElementById('customerCancellationFeeDebtRefresh').addEventListener('click',loadCustomerCancellationFeeDebts);
   document.getElementById('customerPaymentHistoryMore').addEventListener('click',()=>loadCustomerPaymentHistory(false));
   document.getElementById('customerSupportRefresh').addEventListener('click',()=>{loadCustomerSupportBookings();loadCustomerSupportComplaints();});
   document.getElementById('customerSupportCreate').addEventListener('click',createCustomerSupportComplaint);
