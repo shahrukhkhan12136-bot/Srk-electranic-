@@ -25,8 +25,6 @@ declare
   v_item record;
   v_original public.srk_cancellation_fee_ledger%rowtype;
   v_wallet_entry public.srk_wallet_ledger%rowtype;
-  v_debt_count integer:=0;
-  v_wallet_id uuid;
 begin
   if old.payment_status is not distinct from new.payment_status
      or new.payment_status<>'refunded' then
@@ -67,6 +65,11 @@ begin
     if v_refund_amount_paise<>round(old.amount_paid*100)::bigint then
       raise exception 'PARTIAL_REFUND_NOT_SUPPORTED_FOR_CANCELLATION_FEE_REVERSAL' using errcode='55000';
     end if;
+  end if;
+
+  if exists(select 1 from public.srk_booking_cancellation_fee_items i
+    where i.booking_id=old.id and i.status<>'settled') then
+    raise exception 'CANCELLATION_FEE_ITEMS_NOT_SETTLED_BEFORE_REFUND' using errcode='55000';
   end if;
 
   for v_item in
@@ -171,7 +174,6 @@ begin
     if not found then
       raise exception 'CANCELLATION_FEE_DEBT_STATE_CHANGED_DURING_REFUND' using errcode='55000';
     end if;
-    v_debt_count:=v_debt_count+1;
   end loop;
 
   return new;
