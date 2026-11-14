@@ -1602,3 +1602,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression test में schema + reservation-trigger assertion जोड़ा गया। Cancellation/refund pgTAP source test plan/assertion count **33/33** match; source checks में receipt/refund references के लिए column उपलब्ध है और allocation insert इसे भरता है।
 - Commits: migration `5f36545e197361194a2deff0443acbe734387672`; test `4f0483511f1e204c56513d2d81e115189375ca25`।
 - केवल feature-branch source/static verification। PostgreSQL/pgTAP runtime अभी नहीं चला; कोई migration apply, production change, payment/refund या deploy नहीं हुआ।
+
+### Razorpay refund caller branch-source parity recheck (14 नवम्बर 2026)
+- पुराने tracker note में refund provider executor को “missing/unlocated” कहा गया था। Current Feature Branch को दोबारा fetch करके यह wording supersede की जाती है: `razorpay-refund.js` मौजूद है और `netlify/functions/razorpay-refund.js` wrapper भी मौजूद है; `razorpay-webhook.js` तथा उसका Netlify wrapper भी मौजूद हैं।
+- Refund executor Main Admin JWT को Supabase Auth से verify करता है, `is_srk_admin` से membership जांचता है, DB prepare RPC से amount/payment record लेता है, Razorpay response के refund ID/payment ID/amount/currency/status को match करता है और service reconciliation RPC call करता है। Ambiguous network outcome पर वही idempotency key/body retry रखता है; कोई वास्तविक provider request इस audit में नहीं भेजी गई।
+- यह source-level caller presence और control-flow review है, live Netlify deployment/runtime या Razorpay Test Mode verification नहीं। Production function deployment parity अभी verify नहीं है।
+- इसी pass में cancellation/refund accounting source का source-booking allocation fix भी rechecked: source column/backfill/NOT NULL, reservation trigger assignment, refund reversal reference और pgTAP source assertion सभी मौजूद; test plan/assertions **33/33**।
+- Supabase trigger documentation review किया गया। Supabase changelog markdown endpoint इस pass में fetch नहीं हो सका; इस code review में कोई platform feature/API migration नहीं की गई।
+- कोई Production SQL, migration apply, deploy, payment/refund, PR merge या mobile QA नहीं हुआ।
