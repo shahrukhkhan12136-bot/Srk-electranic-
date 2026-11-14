@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(18);
+SELECT plan(19);
 
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','server accumulated timer seconds are stored');
 SELECT has_column('public','service_bookings','work_started_at','server timer start timestamp is stored');
@@ -34,6 +34,12 @@ SELECT ok(
   AND NOT has_function_privilege('anon','public.srk_electrician_request_work_start(uuid)','EXECUTE')
   AND NOT has_function_privilege('anon','public.srk_customer_respond_work_completion(uuid,text,text)','EXECUTE'),
   'anonymous users cannot invoke protected work lifecycle RPCs'
+);
+
+SELECT ok(
+  position('disputed' in lower(pg_get_functiondef('public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure)))>0
+  AND position('length(v_note)<20' in lower(pg_get_functiondef('public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure)))>0,
+  'completion disputes require a reason and create a complaint for review'
 );
 
 SELECT * FROM finish();
