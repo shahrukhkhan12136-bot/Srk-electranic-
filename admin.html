@@ -26,7 +26,24 @@ const cfg=window.SRK_CONFIG||{};let sb,user;const adminPhoneChangeBusy=new Set()
 function init(){if(!cfg.SUPABASE_URL||!cfg.SUPABASE_ANON_KEY){document.getElementById('authmsg').textContent='सेटअप बाकी: नीचे दिए README में admin.html के लिए SUPABASE_URL और SUPABASE_ANON_KEY सेट करें।';return}sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);sb.auth.onAuthStateChange((_e,s)=>{adminAuthRun++;user=s?.user||null;setTimeout(()=>showState(),0)})}
 async function showState(){const run=++adminAuthRun,activeUser=user,login=document.getElementById('login'),app=document.getElementById('app');if(!activeUser){adminLoadedUserId=null;login.classList.remove('hidden');app.classList.add('hidden');return;}document.getElementById('who').textContent=activeUser.email||'';const {data,error}=await sb.rpc('is_srk_admin');if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;if(error||data!==true){adminLoadedUserId=null;document.getElementById('authmsg').textContent='इस ईमेल को Admin अनुमति नहीं मिली है। Supabase srk_admin_users सूची जाँचें।';login.classList.remove('hidden');app.classList.add('hidden');await sb.auth.signOut();return;}login.classList.add('hidden');app.classList.remove('hidden');if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await loadAll()}}
 async function emailLogin(){const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;if(!email||!password){document.getElementById('authmsg').textContent='ईमेल और पासवर्ड दोनों भरें।';return;}const {data,error}=await sb.auth.signInWithPassword({email,password});document.getElementById('authmsg').textContent=error?.message||'लॉगिन जाँच रहे हैं…';if(!error){user=data.user;await showState();}}
-async function logout(){await sb.auth.signOut()}
+let adminLogoutBusy=false;
+async function logout(){
+ if(adminLogoutBusy||!sb)return;
+ adminLogoutBusy=true;
+ const button=document.querySelector('button[onclick="logout()"]');
+ if(button)button.disabled=true;
+ const status=document.getElementById('authmsg');
+ try{
+  const {error}=await sb.auth.signOut();
+  if(error)throw error;
+  if(status)status.textContent='सुरक्षित रूप से लॉगआउट हो गया।';
+ }catch(e){
+  if(status)status.textContent='लॉगआउट पूरा नहीं हुआ। कृपया दोबारा प्रयास करें।';
+ }finally{
+  adminLogoutBusy=false;
+  if(button)button.disabled=false;
+ }
+}
 const ADMIN_KYC_BUCKET='srk-electrician-verification';
 async function loadAdminElectricianPhoneChangeRequests(){
  const box=document.getElementById('adminPhoneChangeRequests'),status=document.getElementById('adminPhoneChangeStatus');if(!box||!user)return;
