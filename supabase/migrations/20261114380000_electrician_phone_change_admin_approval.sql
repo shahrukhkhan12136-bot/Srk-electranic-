@@ -97,6 +97,14 @@ begin
     raise exception 'यह मोबाइल नंबर पहले से किसी दूसरे अकाउंट में जुड़ा है।';
   end if;
 
+  -- Expire abandoned OTP requests here as well as in the history RPC, so an
+  -- electrician can retry even if they did not reopen the app after OTP expiry.
+  update public.srk_electrician_phone_change_requests r
+  set status='expired', otp_hash=null, updated_at=now()
+  where r.electrician_user_id=p_user_id
+    and r.status='otp_pending'
+    and (r.otp_expires_at is null or r.otp_expires_at <= now());
+
   if exists (
     select 1 from public.srk_electrician_phone_change_requests r
     where r.electrician_user_id = p_user_id
