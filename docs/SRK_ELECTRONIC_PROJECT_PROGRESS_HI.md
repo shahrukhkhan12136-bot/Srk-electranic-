@@ -767,7 +767,7 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पहले एक debt के लिए केवल एक fee item की global uniqueness थी; उसे हटाकर प्रति booking + debt uniqueness रखी गई, ताकि refunded debt आगे की booking में फिर collect हो सके। Cash/Online collection idempotency भी per booking fee item की गई।
 - Admin summary में net online collection, net cash electrician wallet debit, refunded fee amount और reversal entry count अलग दिखाई देते हैं।
 - Razorpay refund fail होने पर previously blocked, unpaid electrician payout को वापस pending किया जाता है और पुराना payout note restore होता है।
-- नया pgTAP test: `supabase/tests/database/cancellation_fee_refund_reversal.test.sql` (23 assertions)।
+- नया pgTAP test: `supabase/tests/database/cancellation_fee_refund_reversal.test.sql` (24 assertions)।
 
 ### महत्वपूर्ण सीमाएँ / fail-closed सुरक्षा
 - मौजूदा refund APIs पूर्ण booking amount refund करती हैं; partial refund इस cancellation-fee allocation के लिए समर्थित नहीं है और matching full amount न होने पर DB transition reject होगा।
