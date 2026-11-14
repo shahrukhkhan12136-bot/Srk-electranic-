@@ -1419,3 +1419,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - pgTAP source में तीन अतिरिक्त assertions जोड़े: (1) audit table पर browser TRUNCATE privilege deny + truncate trigger मौजूद, (2) assignment uniqueness और case-type vocabulary constraints, (3) browser roles assignment ownership या Staff session rows को सीधे mutate/register नहीं कर सकते।
 - Static source count: pgTAP plan 59 और assertion calls 59 — count match। यह केवल test-source/static check है; pgTAP execute, PostgreSQL migration compile, grants के live catalog audit और concurrent transaction tests अभी नहीं चले हैं।
 - Commit: test e979596c38bcd7bce362f4853d5526ab3f6fb055. Migration source में कोई बदलाव/apply नहीं; deployment, live data या production settings नहीं बदलीं।
+
+
+### 2026-11-14 — Admin Staff RBAC: RPC EXECUTE privilege boundary tests
+- सभी migration RPC grant/revoke declarations पुनः जाँचे। Authenticated Staff/Admin RPCs पर PUBLIC/anon execute हटाकर authenticated को सीमित grant है; invited-user registry RPC केवल service_role को grant है; session audit trigger helper browser roles से callable नहीं है। SECURITY DEFINER functions में empty search_path static रूप से confirmed है।
+- pgTAP में तीन assertions जोड़े: session/lifecycle/assignment RPC grants, Staff support RPC grants, और service_role-only invite registration + trigger-helper non-executability।
+- Static test-source count: plan 62, assertions 62 — exact match। अभी pgTAP execution या live role privilege catalog verification नहीं हुआ है; इसे source-level test coverage ही माना जाए।
+- Commit: test 257da4f177bb83d8a7d3dbb345b36895a6405341. कोई migration apply/deploy या production change नहीं।
