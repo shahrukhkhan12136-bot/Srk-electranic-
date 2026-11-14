@@ -157,6 +157,9 @@ GRANT ALL ON TABLE public.srk_admin_audit_events TO service_role;
 GRANT ALL ON TABLE public.srk_razorpay_refunds TO service_role;
 GRANT ALL ON TABLE public.srk_booking_refund_requests TO service_role;
 GRANT ALL ON TABLE public.srk_manual_refund_entries TO service_role;
+ALTER FUNCTION public.is_srk_admin() SET search_path='';
+REVOKE ALL ON FUNCTION public.is_srk_admin() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.is_srk_admin() TO authenticated,service_role;
 GRANT SELECT ON TABLE public.srk_electrician_payouts TO authenticated;
 
 DROP POLICY IF EXISTS srk_read_authorized_electrician_payouts ON public.srk_electrician_payouts;
