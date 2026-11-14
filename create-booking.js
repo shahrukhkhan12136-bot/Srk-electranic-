@@ -146,6 +146,10 @@ exports.handler = async (event) => {
       event.headers?.authorization || event.headers?.Authorization || "",
       phone
     );
+    const idempotencyKey = event.headers?.["idempotency-key"] || event.headers?.["Idempotency-Key"] || "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
+      return json(400, { success: false, error: "बुकिंग अनुरोध की सुरक्षित पहचान नहीं मिली। कृपया दोबारा कोशिश करें।" });
+    }
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
@@ -165,6 +169,28 @@ exports.handler = async (event) => {
 
     const rate8hPaise = rateCard[selected_rate_tier];
     const estimatedLabourPaise = Math.floor((rate8hPaise * selected_duration_hours) / 8 + 0.5);
+    const requestFingerprint = crypto.createHash("sha256").update(JSON.stringify({
+      customer_user_id, customer_name, phone, state, district, pincode, address,
+      location_lat, location_lng, service_type, selected_category, selected_rate_tier,
+      selected_duration_hours, preferred_date, preferred_time, work_details, payment_method
+    })).digest("hex");
+    const findByRequestKey = () => supabase(
+      "service_bookings?select=id,customer_user_id,customer_request_fingerprint&customer_request_key=eq." + encodeURIComponent(idempotencyKey),
+      { method: "GET" }
+    );
+    const existingRows = await findByRequestKey();
+    const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+    if (existing) {
+      if (existing.customer_user_id !== customer_user_id || existing.customer_request_fingerprint !== requestFingerprint) {
+        return json(409, { success: false, error: "यह बुकिंग अनुरोध पहचान पहले अलग जानकारी के साथ इस्तेमाल हो चुकी है। नई बुकिंग शुरू करें।" });
+      }
+      const priorOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(existing.id));
+      const priorOfferRows = Array.isArray(priorOffers) ? priorOffers : [];
+      return json(200, { success: true, booking_id: existing.id, replayed: true,
+        estimate: { amount_paise: estimatedLabourPaise, amount_rupees: (estimatedLabourPaise / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: rateCardVersion },
+        offers_created: priorOfferRows.length, match_level: priorOfferRows[0]?.match_level || null,
+        message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
+    }
     const inserted = await supabase("service_bookings", {
       method: "POST",
       body: JSON.stringify([{
@@ -172,6 +198,8 @@ exports.handler = async (event) => {
         selected_category, selected_rate_tier, selected_duration_hours,
         estimated_labour_paise: estimatedLabourPaise,
         estimate_rate_card_version: rateCardVersion,
+        customer_request_key: idempotencyKey,
+        customer_request_fingerprint: requestFingerprint,
         preferred_date, preferred_time, work_details, payment_method, quoted_amount: null, location_lat, location_lng,
         status: "new", payment_status: "unpaid",
         ...(customer_user_id ? { customer_user_id } : {})
