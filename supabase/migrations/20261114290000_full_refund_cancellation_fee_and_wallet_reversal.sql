@@ -268,6 +268,12 @@ begin
     if v_refund.status='failed' then
       raise exception 'PREVIOUS_RAZORPAY_REFUND_FAILED_RECONCILE_BEFORE_RETRY';
     end if;
+    if v_customer_request.id is not null then
+      update public.srk_booking_refund_requests
+      set status=case when v_refund.status='processed' then 'processed' else 'processing' end,
+          refund_record_id=v_refund.id,updated_at=clock_timestamp()
+      where id=v_customer_request.id;
+    end if;
     return query select v_refund.id,v_refund.booking_id,v_refund.payment_id,
       v_refund.amount_paise,v_refund.idempotency_key,v_refund.status,v_refund.previous_payout_note;
     return;
