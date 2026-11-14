@@ -75,7 +75,7 @@ BEGIN
       WHERE booking_id=p_booking_id RETURNING * INTO v_dispatch;
 
     IF EXISTS(SELECT 1 FROM public.electrician_profiles e
-      WHERE e.id=v_candidate.electrician_id AND e.active=true
+      WHERE e.id=v_candidate.electrician_id AND e.active=true AND e.available_for_work=true
         AND e.verification_status='approved' AND e.auth_user_id IS NOT NULL
         AND e.user_id=e.auth_user_id
         AND (v_booking.selected_rate_tier IS NULL OR (
@@ -134,7 +134,7 @@ BEGIN
   END IF;
 
   SELECT EXISTS(SELECT 1 FROM public.electrician_profiles e
-    WHERE e.active=true AND e.verification_status='approved'
+    WHERE e.active=true AND e.available_for_work=true AND e.verification_status='approved'
       AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
       AND (v_booking.selected_rate_tier IS NULL OR (
         e.approved_rate_tier=v_booking.selected_rate_tier
@@ -172,7 +172,7 @@ BEGIN
       ))) ELSE NULL END,
     v_match_level
   FROM public.electrician_profiles e
-  WHERE e.active=true AND e.verification_status='approved'
+  WHERE e.active=true AND e.available_for_work=true AND e.verification_status='approved'
     AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
     AND (v_booking.selected_rate_tier IS NULL OR (
       e.approved_rate_tier=v_booking.selected_rate_tier
@@ -248,7 +248,7 @@ BEGIN
   FROM public.job_offers o
   JOIN public.electrician_profiles e ON e.id=o.electrician_id
   WHERE o.id=p_offer_id AND e.user_id=auth.uid() AND e.auth_user_id=auth.uid()
-    AND e.verification_status='approved' AND e.active=true
+    AND e.verification_status='approved' AND e.active=true AND e.available_for_work=true
   FOR UPDATE OF o;
   IF v_booking_id IS NULL THEN RAISE EXCEPTION 'Offer not found or electrician is not active' USING ERRCODE='P0002'; END IF;
   IF v_offer_status<>'offered' THEN RAISE EXCEPTION 'Offer already answered or expired' USING ERRCODE='55000'; END IF;
