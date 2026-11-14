@@ -458,7 +458,7 @@ async function loadCustomerRefundHistory(){
  if(sessionError||!sessionData?.session){box.textContent='रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';return;}
  box.setAttribute('aria-busy','true');box.textContent='रिफंड अनुरोध लोड हो रहे हैं…';
  try{
-  const {data,error}=await customerSb.rpc('srk_customer_list_my_booking_refund_requests');
+  const {data,error}=await customerSb.rpc('srk_customer_list_booking_refund_requests');
   if(error)throw error;
   const rows=Array.isArray(data)?data:[];
   box.innerHTML=rows.map(row=>{
@@ -637,7 +637,7 @@ async function loadCustomerBookings() {
     const [contactsResult,timelineResult,refundResult,cancellationResult,cancellationFeeResult] = await Promise.all([
       customerSb.rpc('srk_get_customer_call_contacts'),
       customerSb.rpc('srk_customer_get_my_booking_work_timeline'),
-      customerSb.rpc('srk_customer_list_my_booking_refund_requests'),
+      customerSb.rpc('srk_customer_list_booking_refund_requests'),
       customerSb.rpc('srk_customer_list_booking_cancellation_requests'),
       customerSb.rpc('srk_customer_list_booking_cancellation_fee_items')
     ]);
