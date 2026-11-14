@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(39);
+SELECT plan(40);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -116,6 +116,8 @@ SELECT ok(
   position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure))>0,
   'only Main Admin can assign or reassign support cases'
 );
+
+SELECT has_function('public','srk_admin_list_support_assignments',ARRAY[]::text[],'Main Admin can inspect current support ownership');
 
 SELECT * FROM finish();
 ROLLBACK;
