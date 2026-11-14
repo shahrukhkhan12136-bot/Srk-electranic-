@@ -228,8 +228,6 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    </section>
    <p class="small">यह केवल अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ग्राहक की चुनी श्रेणी से अलग इलेक्ट्रिशियन नहीं भेजा जाएगा। सामान/पार्ट्स का खर्च मेहनताने से अलग itemized रहेगा।</p>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
-   <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
-   <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
    <label for="payment">भुगतान का तरीका</label>
    <select id="payment" required><option value="Cash">नकद (Cash)</option><option value="Razorpay ऑनलाइन भुगतान">ऑनलाइन भुगतान (Razorpay / UPI)</option></select>
@@ -627,7 +625,7 @@ async function loadCustomerBookings() {
     : 'आपकी बुकिंग लोड हो रही हैं…';
   try {
     const { data, error } = await customerSb.from('service_bookings')
-      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
+      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -752,7 +750,6 @@ async function loadCustomerBookings() {
       '<div class="customer-booking-heading"><b>बुकिंग #' + customerEsc(row.id) + '</b><span class="customer-booking-state">'+customerEsc(customerBookingStatusText(row.status))+'</span></div>' +
       '<p>' + customerEsc(row.service_type) + '</p>' +
       '<p><b>वर्तमान स्थिति:</b> ' + customerEsc(customerBookingStatusText(row.status)) + ' • <b>भुगतान:</b> ' + customerEsc(paymentLabel) + '</p>' +
-      '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
       (['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id&&row.payment_status!=='paid'&&!String(row.payment_method||'').toLowerCase().includes('razorpay') ? '<div class="job"><b>भुगतान का चुना हुआ तरीका:</b> '+customerEsc(row.payment_method||'नकद (Cash)')+'<p class="small">यदि इस बुकिंग के लिए Online भुगतान जरूरी हो, तो आप यहाँ स्वयं Online चुन सकते हैं। आपकी अनुमति के बिना भुगतान तरीका नहीं बदलेगा।</p><button type="button" onclick="customerChangePaymentMethod(\''+row.id+'\')">Online भुगतान चुनें</button></div>' : '') +
       (row.payment_status === 'paid' && row.amount_paid != null && row.payment_verified_at ? '<p><b>सत्यापित भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
       (row.status==='assigned'&&row.assigned_electrician_id?'<div class="job" id="customerLiveLocation_'+customerEsc(row.id)+'"><b>इलेक्ट्रिशियन की Live Location</b><p class="small">इलेक्ट्रिशियन के यात्रा के दौरान लोकेशन साझा करने पर यहाँ दिखेगी।</p></div>':'') +
@@ -1462,7 +1459,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
     const bookingPayload = {
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
-      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), preferred_date: value('date'), preferred_time: value('time'),
+      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), preferred_date: null, preferred_time: null,
       selected_rate_tier: value('rateTier'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method
     };
