@@ -98,6 +98,14 @@ AS $function$
          'assigned','inspection','awaiting_quote_approval','quote_approved',
          'quote_rejected','awaiting_work_start_approval','in_progress','completed'
        )
+      THEN b.location_lng ELSE NULL
+    END,
+    CASE
+      WHEN b.assigned_electrician_id=p.id
+       AND b.status IN (
+         'assigned','inspection','awaiting_quote_approval','quote_approved',
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+       )
       THEN b.service_charge ELSE NULL
     END,
     CASE
