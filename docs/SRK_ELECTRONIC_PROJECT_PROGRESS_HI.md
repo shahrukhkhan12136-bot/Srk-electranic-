@@ -929,3 +929,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Error संदेशों में raw backend exception text दिखाने के बजाय सुरक्षित, उपयोगकर्ता-समझने योग्य संदेश रखे।
 - Static checks: duplicate guards, disabled states, stale-thread protection, safe errors, no schedule UI — PASS. Electrician inline JavaScript syntax — PASS.
 - Source-only; कोई support ticket/message या production DB परिवर्तन नहीं किया। वास्तविक multi-account isolation और RPC runtime परीक्षण अंतिम consolidated QA में होंगे।
+
+## 2026-11-14 — Admin Electrician Support Inbox Reliability
+- Admin सहायता Inbox में एक साथ दो list-load requests चलने से रोका।
+- Ticket status/Admin note save पर प्रति-ticket duplicate-submit guard और busy button state जोड़ी।
+- Admin reply पर duplicate-submit guard और busy state जोड़ी।
+- तेजी से अलग-अलग ticket threads खोलने पर पुराने response से वर्तमान thread overwrite नहीं होगा।
+- Inbox और reply के error संदेशों से raw backend details हटाकर सुरक्षित, स्पष्ट Hindi संदेश रखे।
+- Static checks: load/save/reply guards, stale-thread protection, safe errors — PASS. Admin inline JavaScript syntax — PASS.
+- Source-only; कोई वास्तविक ticket, status या message update नहीं किया। Admin role authorization और two-account isolation का runtime test अंतिम consolidated QA में होगा।
