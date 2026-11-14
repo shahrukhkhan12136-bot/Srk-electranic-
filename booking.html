@@ -98,6 +98,12 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <div id="customerPaymentHistory" aria-live="polite" aria-busy="false"></div>
     <button class="btn" type="button" id="customerPaymentHistoryMore" style="display:none">और रिकॉर्ड देखें</button>
    </section>
+   <section class="card" id="customerCancellationFeeDebtPanel" style="margin-top:14px">
+    <h3 style="margin-top:0">📄 पुरानी Cancellation Fee / बकाया</h3>
+    <p class="small">हर पुरानी cancellation fee अलग दिखाई जाएगी। बकाया अगली booking के bill में जोड़ा जाएगा; ग्राहक wallet balance से इसे माफ नहीं किया जाएगा।</p>
+    <button class="btn" type="button" id="customerCancellationFeeDebtRefresh">बकाया रीफ़्रेश करें</button>
+    <div id="customerCancellationFeeDebts" aria-live="polite" aria-busy="false"></div>
+   </section>
    <section class="card" id="customerRefundHistoryPanel" style="margin-top:14px">
     <h3 style="margin-top:0">↩️ मेरे रिफंड अनुरोध</h3>
     <p class="small">आपके सभी रिफंड अनुरोध, Admin समीक्षा और अंतिम स्थिति यहाँ निजी रूप से दिखाई जाएगी।</p>
@@ -423,6 +429,24 @@ async function loadCustomerPaymentHistory(reset=true) {
   if(reset)box.textContent='भुगतान इतिहास लोड नहीं हो सका। कृपया दोबारा कोशिश करें।';
   else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
  }finally{customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');}
+}
+async function loadCustomerCancellationFeeDebts(){
+ if(!customerSb)return;
+ const box=document.getElementById('customerCancellationFeeDebts');
+ if(!box)return;
+ const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+ if(sessionError||!sessionData?.session){box.textContent='बकाया देखने के लिए OTP लॉगिन करें।';return;}
+ box.setAttribute('aria-busy','true');box.textContent='Cancellation fee बकाया लोड हो रहा है…';
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_list_my_cancellation_fee_debts');
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  const due=rows.filter(r=>['open','reserved'].includes(r.status));
+  const total=due.reduce((sum,r)=>sum+Number(r.amount_paise||0),0);
+  box.innerHTML='<p><b>कुल बकाया: ₹'+(total/100).toFixed(2)+'</b></p>'+
+   (rows.map(r=>'<article class="card" style="margin:8px 0;padding:10px"><b>₹'+(Number(r.amount_paise)/100).toFixed(2)+'</b><p class="small">पुरानी Booking: '+customerEsc(String(r.source_booking_id||'').slice(0,8))+'… · स्थिति: '+customerEsc(({open:'अगली booking में जोड़ी जाएगी',reserved:'अगली booking के bill में जोड़ी गई',settled:'जमा हो चुकी',reversed:'Admin द्वारा reverse'}[r.status]||r.status))+'</p><p class="small">तारीख: '+customerEsc(r.created_at?new Date(r.created_at).toLocaleString('hi-IN'):'')+'</p></article>').join('')||'<p class="small">कोई cancellation fee बकाया नहीं है।</p>');
+ }catch(e){box.textContent='Cancellation fee बकाया अभी लोड नहीं हो सका। कृपया दोबारा कोशिश करें.';}
+ finally{box.setAttribute('aria-busy','false');}
 }
 async function loadCustomerRefundHistory(){
  if(!customerSb)return;
@@ -1185,6 +1209,7 @@ async function syncCustomerSession() {
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     await loadCustomerBookings();
     await loadCustomerPaymentHistory(true);
+    await loadCustomerCancellationFeeDebts();
     await loadCustomerRefundHistory();
     await loadCustomerSupportBookings();
     await loadCustomerSupportComplaints();
