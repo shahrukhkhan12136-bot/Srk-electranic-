@@ -158,10 +158,12 @@ Deno.serve(async (req: Request) => {
     const newPhoneDigits = phoneDigits(claim.new_phone);
     if (authReadError || !authPhoneDigits ||
         (authPhoneDigits !== oldPhoneDigits && authPhoneDigits !== newPhoneDigits)) {
-      await service.rpc("srk_admin_release_electrician_phone_change", {
+      const { data: released, error: releaseError } = await service.rpc("srk_admin_release_electrician_phone_change", {
         p_request_id: requestId, p_admin_id: actor.id, p_sync_error: true,
       });
-      return reply(409, { error: "लॉगिन मोबाइल नंबर की स्थिति बदल चुकी है या पढ़ी नहीं जा सकी। रिक्वेस्ट तकनीकी जाँच के लिए सुरक्षित रखी गई है।" });
+      return reply(409, { error: releaseError || !released?.success
+        ? "लॉगिन नंबर की स्थिति पढ़ी नहीं जा सकी और रिक्वेस्ट release होने की पुष्टि नहीं मिली। Admin queue refresh करके जाँचें।"
+        : "लॉगिन मोबाइल नंबर की स्थिति बदल चुकी है या पढ़ी नहीं जा सकी। रिक्वेस्ट तकनीकी जाँच के लिए सुरक्षित रखी गई है।" });
     }
 
     // A previous interrupted attempt may already have changed Auth to the new number.
@@ -171,10 +173,12 @@ Deno.serve(async (req: Request) => {
         phone: claim.new_phone, phone_confirm: true,
       });
       if (authUpdateError) {
-        await service.rpc("srk_admin_release_electrician_phone_change", {
+        const { data: released, error: releaseError } = await service.rpc("srk_admin_release_electrician_phone_change", {
           p_request_id: requestId, p_admin_id: actor.id, p_sync_error: false,
         });
-        return reply(502, { error: "Supabase लॉगिन नंबर अपडेट नहीं हुआ। रिक्वेस्ट फिर से Admin queue में रखी गई है।" });
+        return reply(502, { error: releaseError || !released?.success
+          ? "Supabase लॉगिन नंबर अपडेट नहीं हुआ और रिक्वेस्ट release होने की पुष्टि नहीं मिली। Admin queue refresh करके जाँचें।"
+          : "Supabase लॉगिन नंबर अपडेट नहीं हुआ। रिक्वेस्ट फिर से Admin queue में रखी गई है।" });
       }
     }
 
@@ -184,10 +188,12 @@ Deno.serve(async (req: Request) => {
     if (finalizeError || !finalized?.success) {
       // The RPC may have committed even if its response was lost. Never roll Auth
       // back based only on an ambiguous network result; keep a recoverable sync state.
-      await service.rpc("srk_admin_release_electrician_phone_change", {
+      const { data: released, error: releaseError } = await service.rpc("srk_admin_release_electrician_phone_change", {
         p_request_id: requestId, p_admin_id: actor.id, p_sync_error: true,
       });
-      return reply(503, { error: "मोबाइल अपडेट की अंतिम स्थिति की पुष्टि नहीं हो सकी। लॉगिन नंबर को अपने-आप वापस नहीं बदला गया है। Admin queue refresh करके रिक्वेस्ट की स्थिति जाँचें।" });
+      return reply(503, { error: releaseError || !released?.success
+        ? "मोबाइल अपडेट की अंतिम स्थिति अनिश्चित है और रिक्वेस्ट release होने की पुष्टि नहीं मिली। लॉगिन नंबर को अपने-आप वापस नहीं बदला गया है। Admin queue refresh करके जाँचें।"
+        : "मोबाइल अपडेट की अंतिम स्थिति की पुष्टि नहीं हो सकी। लॉगिन नंबर को अपने-आप वापस नहीं बदला गया है। Admin queue refresh करके रिक्वेस्ट की स्थिति जाँचें।" });
     }
     return reply(200, { success: true, message: "नया मोबाइल नंबर सत्यापित और Admin द्वारा मंजूर करके अपडेट कर दिया गया।" });
   }
