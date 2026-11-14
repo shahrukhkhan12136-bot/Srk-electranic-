@@ -1285,3 +1285,8 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - KYC document review में प्रति-दस्तावेज़ duplicate-submit guard, decision allowlist (`approved`, `rejected`, `needs_resubmission`), rejection/resubmission reason minimum 5 chars, 1000-char note cap, in-flight button lock और safe failure message जोड़ा।
 - Customer support thread loader में request-generation guard जोड़ा ताकि पुराने धीमे response से बाद में खोली गई दूसरी शिकायत की बातचीत overwrite न हो।
 - Commit `c34cb478f208752410ad1352bbdfa6c76d9560ec`; source-only, final consolidated QA में runtime verification शेष।
+
+
+### 2026-11-14 — Admin logout reliability
+- Logout action में duplicate-click guard, in-flight button disable, Supabase signOut error handling और उपयोगकर्ता को सुरक्षित retry संदेश जोड़ा।
+- Commit `aa5d8fe909e1cc98a8ccfeb1f46eab9a1c6fba0a`; source-only change, auth session expiry/network failure runtime QA अंतिम consolidated testing में होगा।
