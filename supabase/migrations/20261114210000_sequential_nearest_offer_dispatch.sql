@@ -151,6 +151,7 @@ BEGIN
   )
   SELECT p_booking_id,
     row_number() OVER(ORDER BY
+      CASE WHEN e.pincode=v_booking.pincode THEN 0 ELSE 1 END,
       CASE WHEN v_booking.location_lat IS NOT NULL AND v_booking.location_lng IS NOT NULL
              AND e.location_lat IS NOT NULL AND e.location_lng IS NOT NULL
         THEN 0 ELSE 1 END,
