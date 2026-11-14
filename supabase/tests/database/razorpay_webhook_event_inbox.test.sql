@@ -16,12 +16,18 @@ select ok(exists(
   join pg_attribute a on a.attrelid=c.conrelid and a.attnum=any(c.conkey)
   where c.conrelid='public.srk_razorpay_webhook_events'::regclass
     and c.contype='p' and a.attname='event_id'
-), 'provider event ID is unique');
+) and exists(
+  select 1 from pg_constraint
+  where conrelid='public.srk_razorpay_webhook_events'::regclass
+    and conname='srk_razorpay_webhook_payload_hash_unique' and contype='u'
+), 'provider event ID and signed payload hash are unique');
 
 select ok(position('payload_sha256 ~ '||quote_literal('^[a-f0-9]{64}$') in
   pg_get_constraintdef((select oid from pg_constraint where conrelid='public.srk_razorpay_webhook_events'::regclass and conname='srk_razorpay_webhook_payload_hash')))>0,
   'payload hash format is constrained');
-select ok(position('coalesce(auth.jwt()->>'||quote_literal('role')||','||quote_literal('')||')' in
+select ok(position('auth.jwt()' in
+  pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event(text,text,text)'::regprocedure))>0
+  and position('service_role' in
   pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event(text,text,text)'::regprocedure))>0,
   'claim RPC requires service-role JWT');
 select ok(position('for update' in lower(
