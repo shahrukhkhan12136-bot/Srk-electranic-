@@ -3,10 +3,6 @@
 
 alter function public.srk_customer_create_booking_complaint(uuid,text,text)
   set search_path = '';
-alter function public.srk_customer_respond_work_start(uuid,text)
-  set search_path = '';
-alter function public.srk_customer_respond_work_completion(uuid,text,text)
-  set search_path = '';
 
 create or replace function public.srk_customer_list_booking_complaints()
 returns table(
