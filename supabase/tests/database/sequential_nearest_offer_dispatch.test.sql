@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(13);
+SELECT plan(14);
 
 SELECT has_column('public','job_offers','expires_at',
   'job offers carry a server-side expiry deadline');
