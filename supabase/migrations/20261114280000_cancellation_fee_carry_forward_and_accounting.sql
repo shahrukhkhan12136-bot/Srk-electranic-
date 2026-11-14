@@ -238,7 +238,7 @@ $$;
 
 create or replace function public.srk_customer_get_payment_receipt(p_booking_id uuid)
 returns jsonb language plpgsql stable security definer
-set search_path=pg_catalog,public,auth,pg_temp
+set search_path=''
 as $function$
 declare
   v_uid uuid:=auth.uid();
