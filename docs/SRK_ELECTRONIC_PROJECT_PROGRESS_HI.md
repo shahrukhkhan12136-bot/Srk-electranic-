@@ -1128,3 +1128,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - दोनों मौजूदा नंबर केवल request के captured पुराने नंबर या OTP-सत्यापित नए नंबर में से होने चाहिए; कोई तीसरा/अलग नंबर मिलने पर कार्रवाई block रहती है। इससे rollback failure के बाद `sync_error` request स्थायी रूप से फँसने से बचती है, बिना unrelated number overwrite किए।
 - Source-only; migration लागू/deploy नहीं हुई। Partial-sync permutations, duplicate-number races, Auth update idempotency और profile finalization tests अंतिम consolidated QA में बाकी हैं।
 - Commit: `178369715abfa705aba08ff7f9b6bc6474c9478d`.
+
+
+### 2026-11-14 — Phone-change OTP randomness hardening
+- Edge Function में OTP generation को modulo-based mapping से rejection sampling पर बदला। अब 32-bit cryptographically secure random sample को केवल unbiased सीमा में स्वीकार करके 6-digit OTP बनाया जाता है; इससे modulo bias हटता है।
+- Admin reject path, `processing` state exclusion, `sync_error` recovery queue, service-role-only RPC grants और OTP request throttling का static cross-review किया; कोई live action नहीं हुआ।
+- Source-only; SMS provider/template, Deno runtime, SQL compilation और वास्तविक OTP/Admin flow अंतिम consolidated QA में बाकी हैं।
+- Commit: `eb522983a9ba0c4483a7d1c41ee4279463e1711e`.
