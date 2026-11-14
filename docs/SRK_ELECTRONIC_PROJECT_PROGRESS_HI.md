@@ -1,3 +1,10 @@
+### 2026-11-15 — Customer private Storage ownership hardening
+- Support attachment linker previously validated the customer/complaint path prefix and message ownership but did not verify that the referenced object actually existed in the private support bucket or was owned by the authenticated customer. It now requires an exact storage.objects row for bucket srk-customer-support, matching object path and owner_id = auth.uid(), before creating the attachment record.
+- Customer avatar upload policy now checks both the user-id path prefix and Storage owner_id, matching the ownership boundary already used for avatar reads/deletes.
+- Expanded support attachment pgTAP structural plan from 13 to 14 and customer profile/Storage plan from 27 to 28 to guard both ownership checks.
+- Feature Branch commits: support migration 4bb11ac14b6f421b844c5ae7c9f803b4d35cfa9f; support test 3f4edfa422a97177918dd0eafaf23dacd2ee002f; avatar migration 824acaad6fc65cf5897deb83561fd156679722ec; avatar test 037d6f0d15dfcc0d5ed70be20a710fece3bb5088.
+- Source-level changes only. PostgreSQL/pgTAP runtime and actual Storage upload/link/download tests remain pending; no Production database or Storage policy was changed, no deployment/merge occurred, and mobile QA remains deferred.
+
 ### 2026-11-15 — Support attachment metadata NULL validation
 - Customer attachment-link RPC review found the same SQL three-valued-logic edge case for MIME type and file size: `NOT IN` / `NOT BETWEEN` do not evaluate TRUE for NULL inputs, so explicit guards are required rather than relying on later table constraints.
 - Added explicit `p_mime_type IS NULL` and `p_file_size_bytes IS NULL` rejection in the support attachment-link RPC and two pgTAP structural assertions (plan now 13).
