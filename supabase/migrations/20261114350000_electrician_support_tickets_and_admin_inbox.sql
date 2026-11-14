@@ -44,7 +44,7 @@ as $function$
 declare v_uid uuid:=auth.uid(); v_profile public.electrician_profiles%rowtype; v_ticket uuid;
 begin
   if v_uid is null then raise exception 'AUTHENTICATION_REQUIRED' using errcode='42501'; end if;
-  if p_category not in ('booking','payment_payout','kyc_account','app_technical','customer_safety','other')
+  if p_category is null or p_category not in ('booking','payment_payout','kyc_account','app_technical','customer_safety','other')
      or p_subject is null or length(btrim(p_subject)) not between 4 and 120
      or p_body is null or length(btrim(p_body)) not between 20 and 4000 then
     raise exception 'INVALID_SUPPORT_TICKET' using errcode='22023';
@@ -52,6 +52,9 @@ begin
   select * into v_profile from public.electrician_profiles
    where user_id=v_uid and auth_user_id=v_uid for update;
   if not found then raise exception 'ELECTRICIAN_PROFILE_NOT_FOUND' using errcode='42501'; end if;
+  if (select count(*) from public.srk_electrician_support_tickets t where t.user_id=v_uid and t.created_at>=clock_timestamp()-interval '24 hours')>=10 then
+    raise exception 'DAILY_SUPPORT_TICKET_LIMIT_REACHED' using errcode='54000';
+  end if;
   if p_booking_id is not null and not exists(
     select 1 from public.service_bookings b
      where b.id=p_booking_id and b.assigned_electrician_id=v_profile.id
