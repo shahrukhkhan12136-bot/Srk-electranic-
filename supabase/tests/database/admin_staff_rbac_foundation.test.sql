@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(40);
+SELECT plan(42);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -118,6 +118,17 @@ SELECT ok(
 );
 
 SELECT has_function('public','srk_admin_list_support_assignments',ARRAY[]::text[],'Main Admin can inspect current support ownership');
+
+SELECT ok(
+  position('p_status is null' in pg_get_functiondef('public.srk_admin_staff_update_customer_complaint(uuid,text,text)'::regprocedure))>0
+  AND position('v_old_status=''closed''' in pg_get_functiondef('public.srk_admin_staff_update_customer_complaint(uuid,text,text)'::regprocedure))>0,
+  'Staff cannot reopen a closed customer complaint and null status is rejected'
+);
+SELECT ok(
+  position('p_status is null' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure))>0
+  AND position('v_old_status=''closed''' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure))>0,
+  'Staff cannot reopen a closed electrician ticket and null status is rejected'
+);
 
 SELECT * FROM finish();
 ROLLBACK;
