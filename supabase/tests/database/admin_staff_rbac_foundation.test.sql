@@ -95,8 +95,8 @@ SELECT ok(
   'support assignment map is not directly accessible to browser roles'
 );
 SELECT ok(
-  position('assigned_staff_user_id = auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_customer_complaints()'::regprocedure))>0
-  AND position('assigned_staff_user_id = auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure))>0,
+  position('a.assigned_staff_user_id=auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_customer_complaints()'::regprocedure))>0
+  AND position('a.assigned_staff_user_id=auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure))>0,
   'both Staff inboxes are filtered to the signed-in assigned owner'
 );
 SELECT ok(
