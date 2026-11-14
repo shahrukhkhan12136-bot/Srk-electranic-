@@ -1433,7 +1433,16 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     document.getElementById(!selectedDate?'date':'time').focus();return;
   }
   if(estimatePaise===null){alert('कृपया इलेक्ट्रिशियन की श्रेणी और 1 से 8 घंटे की अवधि चुनें।');return;}
-  if(!confirm('बुकिंग की पुष्टि करें\\n\\nश्रेणी: '+tier+'\\nअवधि: '+hours+' घंटे\\nअनुमानित मेहनताना: ₹'+(estimatePaise/100).toFixed(2)+'\\nभुगतान तरीका: '+method+'\\n\\nयह अनुमान अंतिम बिल की सीमा नहीं है। वास्तविक समय के अनुसार मेहनताना बनेगा और सामान/पार्ट्स अलग होंगे। क्या बुकिंग भेजें?'))return;
+  if(!customerSb){alert('बुकिंग से पहले ग्राहक OTP लॉगिन करें।');return;}
+  const {data:debtRows,error:debtError}=await customerSb.rpc('srk_customer_list_my_cancellation_fee_debts');
+  if(debtError){alert('पुरानी cancellation fee की जाँच अभी नहीं हो सकी। Payments में बकाया रीफ़्रेश करके दोबारा कोशिश करें।');return;}
+  const priorCancellationDebts=(Array.isArray(debtRows)?debtRows:[]).filter(item=>item.status==='open');
+  const priorFeePaise=priorCancellationDebts.reduce((sum,item)=>sum+Number(item.amount_paise||0),0);
+  const priorFeeLines=priorCancellationDebts.map(item=>'पुरानी बुकिंग '+String(item.source_booking_id||'').slice(0,8).toUpperCase()+': ₹'+(Number(item.amount_paise)/100).toFixed(2)).join('\\n');
+  const priorFeeText=priorFeePaise>0
+    ? '\\nपुरानी Cancellation Fee (अलग मद): ₹'+(priorFeePaise/100).toFixed(2)+'\\n'+priorFeeLines+'\\nअभी का संयुक्त अनुमान: ₹'+((estimatePaise+priorFeePaise)/100).toFixed(2)
+    : '\\nपुरानी Cancellation Fee: ₹0.00';
+  if(!confirm('बुकिंग की पुष्टि करें\\n\\nश्रेणी: '+tier+'\\nअवधि: '+hours+' घंटे\\nअनुमानित मेहनताना: ₹'+(estimatePaise/100).toFixed(2)+priorFeeText+'\\nभुगतान तरीका: '+method+'\\n\\nपुरानी फीस अलग line items में रहेगी। यह मेहनताना अनुमान अंतिम बिल की सीमा नहीं है। वास्तविक समय के अनुसार मेहनताना बनेगा और सामान/पार्ट्स अलग होंगे। क्या बुकिंग भेजें?'))return;
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
