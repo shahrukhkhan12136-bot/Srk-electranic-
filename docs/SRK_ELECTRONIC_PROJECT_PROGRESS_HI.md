@@ -1271,3 +1271,5 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin UI वर्तमान में service_bookings पर पता/जिला/राज्य/PIN, status और quoted_amount update करता है; electrician_profiles पर active flag update करता है। Cancellation trigger सीधे cancelled status को रोकता है, लेकिन अन्य sensitive columns की सुरक्षित सीमा केवल UI validation पर नहीं छोड़ी जानी चाहिए।
 - अभी broad RLS policy को बिना Customer/Electrician portal के सभी direct-write paths और required columns का पूरा dependency map बनाए नहीं बदला; गलत column grants से अन्य portals टूट सकते हैं। अगला source task: direct-write inventory पूरी करना और Admin के अनुमत update columns को सुरक्षित RPC/column grants में migrate करने की योजना बनाना।
 - यह source audit है; कोई migration apply या live permission change नहीं किया गया।
+
+- अतिरिक्त Admin hardening: इलेक्ट्रिशियन relocation request के Admin approve/reject handler में duplicate-submit guard, decision allowlist, missing-result protection और request के दौरान buttons disable/restore जोड़ा गया। Commit `75218663b0efacd4a7368caecd1a880dfc939f14`; source-only, runtime test final QA में।
