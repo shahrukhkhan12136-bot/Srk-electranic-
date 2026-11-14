@@ -649,3 +649,11 @@
 - Supabase migrations और pgTAP अभी वास्तविक database पर execute नहीं हुए।
 - कोई merge, production migration, production setting change या deployment नहीं किया गया।
 - Manual mobile QA सभी कार्य पूरे होने के बाद एक consolidated pass में ही होगा।
+
+### Customer Page follow-up — Support और Cancellation source fixes
+- Customer script में createCustomerSupportComplaint और loadCustomerSupportBookings event/session flow से refer हो रहे थे, लेकिन function definitions मौजूद नहीं थीं। इससे initial script में ReferenceError आकर OTP event wiring और booking submit handler तक execution रुक सकता था।
+- दोनों functions जोड़े: signed-in customer की अपनी booking list भरना और srk_customer_create_booking_complaint(p_booking_id,p_category,p_description) RPC से 20–2000 अक्षर की complaint create करना; success पर complaint thread refresh।
+- srk_customer_cancel_my_booking(p_booking_id) के साथ direct cancellation action जोड़ा, केवल new/confirmed और unassigned bookings के लिए। Assigned/active booking को सीधे cancel नहीं करता; Help & Support request का रास्ता दिखाता है। कोई cancellation fee invent नहीं की गई।
+- Read-only Supabase inspection में primary project पर customer complaint create/list और pre-assignment cancellation RPCs मौजूद मिले। उसी read-only schema inspection में deployed service_bookings में नई selected-tier/timer columns नहीं मिले; इसलिए feature-branch migrations की database rollout dependency अभी बाकी है।
+- Latest static checks: booking.html inline JS PASS; create-booking.js syntax PASS; support/cancel functions defined and wired; OTP/login functions remain reachable; booking terms/past-time checks PASS।
+- वास्तविक customer OTP login, complaint insert, cancellation RPC, booking/timer/payment flows को live customer session/JWT से E2E चलाना बाकी है। कोई database write या production change नहीं किया गया।
