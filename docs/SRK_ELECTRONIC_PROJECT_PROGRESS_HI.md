@@ -1,3 +1,9 @@
+### 2026-11-15 — Support attachment metadata NULL validation
+- Customer attachment-link RPC review found the same SQL three-valued-logic edge case for MIME type and file size: `NOT IN` / `NOT BETWEEN` do not evaluate TRUE for NULL inputs, so explicit guards are required rather than relying on later table constraints.
+- Added explicit `p_mime_type IS NULL` and `p_file_size_bytes IS NULL` rejection in the support attachment-link RPC and two pgTAP structural assertions (plan now 13).
+- Feature Branch commits: migration `0fcabaf2fa91071cd6903b982201195126185a25`; test `b3bf509f92772473405e0fbb20d324f36214c2b1`. This is source/static coverage; PostgreSQL runtime and Storage policy tests remain pending.
+- No Production database, Storage object, deployment, merge, or mobile test was changed/performed.
+
 ### 2026-11-15 — Complaint category validation edge case
 - Follow-up review of the customer complaint RPC found SQL three-valued-logic behavior: `p_category NOT IN (...)` evaluates to NULL when the input category is NULL, so the validation IF could fail to reject it explicitly (depending on the table constraint).
 - Added an explicit `p_category IS NULL` rejection before the allowlist check and expanded the pgTAP structural plan from 12 to 13 assertions to guard the condition.
