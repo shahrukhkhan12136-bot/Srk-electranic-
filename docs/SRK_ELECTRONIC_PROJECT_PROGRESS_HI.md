@@ -1405,3 +1405,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - एक और TOCTOU race बंद की: permission check अब active Staff registry row पर `FOR SHARE` lock रखता है। Suspend/Disable RPC उसी row पर `FOR UPDATE` लेती है, इसलिए Staff read/write request permission check पार करके suspension के बाद जारी नहीं रह सकती। चार Staff read RPCs को VOLATILE किया ताकि वे इस transactional row lock का उपयोग कर सकें।
 - pgTAP source plan/assertions अब 55/55 हैं; अभी केवल static source-count/definition verification है, pgTAP execute नहीं हुआ। PostgreSQL compile और concurrent transaction tests शेष हैं।
 - Source commits: permission/session fix  d5e213271b2d9cdd20cb76ffd6ec60e30ce9c0e0; lock serialization 5c322ec787c931b3d8f59d9f77442f51c54ac65c; test ae9ae20dd7e1b06901ee1eaab74e7781f7ce6a8e. No migration apply, deployment, or production changes.
+
+
+### 2026-11-14 — Staff session revoke concurrency hardening
+- गहरी concurrency review में एक अतिरिक्त TOCTOU gap मिला: permission helper tracked session का non-revoked status जाँचता था, लेकिन उस session row को lock नहीं करता था। इसलिए Main Admin का explicit session revoke और उसी session से चल रही Staff request एक साथ शुरू हों तो permission check revoke commit से पहले pass कर सकता था।
+- अंतिम `srk_has_admin_permission()` definition अब matching, non-revoked `srk_admin_staff_sessions` row पर `FOR SHARE` lock लेती है। Explicit revoke उसी row को update करता है, इसलिए in-flight authorized transaction पूरा होने तक revoke serialize होगा; revoke पहले commit हो तो अगली permission check deny होगी। Existing Staff registry suspension lock भी बरकरार है।
+- pgTAP source plan/assertions 56/56 किए; नया assertion specifically tracked session row के `FOR SHARE` lock की जाँच करता है। Static plan/count verification अलग से करनी है; pgTAP/PostgreSQL runtime और वास्तविक concurrent transaction test अभी execute नहीं हुए।
+- Source commits: migration `9439e276b1c16538bc44192455a2d455ff98664c`; test assertion refinement `24ffade70e46d5bbf1d8d9fb13cec335842610df`. कोई migration apply, deploy, Auth invite या production change नहीं।
