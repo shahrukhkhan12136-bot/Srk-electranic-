@@ -307,7 +307,7 @@ begin
     raise exception 'मौजूदा मोबाइल नंबर इस रिक्वेस्ट के बाद किसी अलग नंबर पर बदल चुका है। पहले प्रोफ़ाइल और लॉगिन नंबर की स्थिति जाँचें।';
   end if;
 
-  v_digits:=regexp_replace(v_row.new_phone,'[^0-9]','','g');
+  v_digits:=right(regexp_replace(v_row.new_phone,'[^0-9]','','g'),10);
   if exists(select 1 from auth.users u where u.id<>v_row.electrician_user_id
             and right(regexp_replace(coalesce(u.phone,''),'[^0-9]','','g'),10)=v_digits)
      or exists(select 1 from public.electrician_profiles ep
