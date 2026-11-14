@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(27);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
@@ -95,6 +95,16 @@ select ok(
     from position('select * into v_refund from public.srk_razorpay_refunds' in lower(
     pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))))>0,
   'refund reconciliation locks booking before refund row to match preparation and payout lock order');
+
+
+select ok(position('v_refund.status in ('||quote_literal('processed')||','||quote_literal('failed')||')' in
+  pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
+  'processed and failed provider refund states are terminal against late out-of-order events');
+select ok(position('PROVIDER_REFUND_ID_MISMATCH' in
+  pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0
+  and position('v_refund.refund_id is distinct from p_provider_refund_id' in
+  pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
+  'a provider event cannot replace a refund ID already bound to the booking refund record');
 
 select * from finish();
 rollback;
