@@ -727,6 +727,7 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - अगली customer booking insert पर उसी customer के सभी खुले debts, पुराने created_at क्रम में, अलग-अलग booking line items के रूप में reserve होते हैं। Customer wallet balance से fee waive नहीं होती।
 - यदि वह अगली booking Admin द्वारा cancelled हो जाती है और payment नहीं हुआ, तो reserved fee items फिर open debt बनकर अगली booking के लिए release होते हैं।
 - Customer Payments में सभी fee debts (open/reserved/settled/reversed) और कुल outstanding amount दिखता है।
+- नई booking भेजने से पहले customer app खुले unpaid cancellation fees की जाँच करता है, हर source booking की fee और संयुक्त अनुमान confirmation में दिखाता है; fee lookup असफल हो तो booking submit रोकता है।
 - Customer booking card तथा payment receipt में प्रत्येक पुरानी cancellation fee source booking के साथ अलग line item है। Final payment total = immutable server labour bill + उस booking पर reserved cancellation fee items।
 - Razorpay create-order path नई server-timed booking के लिए server RPC से labour + fee total लेता है। Verify-payment और webhook captured amount, order ID, selected Online method तथा immutable labour/fee breakdown मिलाकर एक atomic RPC से booking payment और fee ledger settle करते हैं।
 - Online cancellation-fee हिस्से की अलग SRK cancellation-fee ledger entry बनती है; service labour अलग रहता है।
