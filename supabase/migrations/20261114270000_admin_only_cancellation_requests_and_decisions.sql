@@ -203,6 +203,7 @@ set search_path = ''
 as $$
 declare
   v_request public.srk_booking_cancellation_requests%rowtype;
+  v_booking_id uuid;
   v_fee numeric(10,2);
   v_reason text := btrim(coalesce(p_admin_reason,''));
   v_evidence text := btrim(coalesce(p_stage_evidence,''));
@@ -214,19 +215,22 @@ begin
   -- Match the customer request path's lock order: Booking first, then Request.
   -- Read the relationship without locking, acquire the Booking row,
   -- then lock/revalidate the request. This avoids Request -> Booking inversion.
-  select r.booking_id into v_request.booking_id
+  select r.booking_id into v_booking_id
   from public.srk_booking_cancellation_requests r
   where r.id=p_request_id;
   if not found then raise exception 'CANCELLATION_REQUEST_NOT_FOUND'; end if;
 
   perform 1 from public.service_bookings b
-    where b.id=v_request.booking_id and b.status not in ('completed','cancelled')
+    where b.id=v_booking_id and b.status not in ('completed','cancelled')
     for update;
   if not found then raise exception 'BOOKING_NO_LONGER_CANCELLABLE'; end if;
 
   select * into v_request from public.srk_booking_cancellation_requests r
   where r.id=p_request_id for update;
   if not found then raise exception 'CANCELLATION_REQUEST_NOT_FOUND'; end if;
+  if v_request.booking_id is distinct from v_booking_id then
+    raise exception 'CANCELLATION_REQUEST_BOOKING_CHANGED';
+  end if;
   if v_request.request_status <> 'pending' then raise exception 'CANCELLATION_REQUEST_ALREADY_DECIDED'; end if;
 
   if p_decision='approved' then
