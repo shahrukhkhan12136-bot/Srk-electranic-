@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(66);
+SELECT plan(67);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -328,6 +328,20 @@ SELECT ok(
        )
   ),
   'immutable audit actor and target UUIDs have no ON DELETE SET NULL foreign keys that would mutate historical rows'
+);
+
+SELECT ok(
+  EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema='public'
+       AND table_name='srk_booking_complaint_messages'
+       AND column_name='sender_user_id'
+  )
+  AND position('sender_user_id' in pg_get_functiondef('public.srk_customer_send_booking_complaint_message(uuid,text)'::regprocedure))>0
+  AND position('v_user_id' in pg_get_functiondef('public.srk_customer_send_booking_complaint_message(uuid,text)'::regprocedure))>0
+  AND position('sender_user_id' in pg_get_functiondef('public.srk_admin_send_booking_complaint_message(uuid,text)'::regprocedure))>0
+  AND position('v_admin_id' in pg_get_functiondef('public.srk_admin_send_booking_complaint_message(uuid,text)'::regprocedure))>0,
+  'customer and Main Admin complaint replies persist the authenticated sender identity'
 );
 
 SELECT * FROM finish();
