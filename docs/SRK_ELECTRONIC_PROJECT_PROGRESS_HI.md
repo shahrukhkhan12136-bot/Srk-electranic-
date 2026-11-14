@@ -912,3 +912,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin booking data query से भी schedule columns हटाए; किसी Admin schedule workflow का निर्माण नहीं किया।
 - Static verification: Customer booking UI में date/time inputs नहीं, Customer history में schedule display नहीं, Electrician offer cards में schedule display नहीं; booking/electrician/admin inline JavaScript parse PASS.
 - Source-only बदलाव। कोई production deploy, database migration या live booking नहीं की। वास्तविक deployed behavior अंतिम consolidated QA में जाँचा जाएगा।
+
+## 2026-11-14 — Electrician Logout पर Live GPS सुरक्षा
+- Electrician App के Logout flow को सुरक्षित किया।
+- Logout से पहले browser के सभी सक्रिय geolocation watches रोके जाते हैं।
+- हर सक्रिय booking के लिए `srk_electrician_stop_live_location` RPC सर्वर पर चलाया जाता है।
+- सर्वर से Location Stop की पुष्टि मिलने के बाद ही watch state हटती है और Supabase sign-out आगे बढ़ता है।
+- यदि किसी booking का stop request विफल हो, logout रोक दिया जाता है और उपयोगकर्ता को दोबारा प्रयास करने का संदेश मिलता है; pending booking IDs retry के लिए रखी जाती हैं।
+- Static verification: GPS watch clear, server stop RPC, stop confirmation before sign-out, retry state retention — PASS. Electrician inline JavaScript syntax — PASS.
+- Source-only बदलाव; कोई live GPS session, production data या deployment नहीं छुआ। वास्तविक GPS/logout behavior अंतिम consolidated QA में जाँचा जाएगा।
