@@ -392,21 +392,39 @@ $$;
 
 create or replace function public.srk_admin_release_electrician_phone_change(
   p_request_id uuid,p_admin_id uuid,p_sync_error boolean default false
-) returns void
+) returns jsonb
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $
+declare
+  v_status text;
 begin
   if not exists(select 1 from public.srk_admin_users a where a.user_id=p_admin_id) then
     raise exception 'Admin अनुमति आवश्यक है।';
   end if;
+
   update public.srk_electrician_phone_change_requests
   set status=case when p_sync_error then 'sync_error' else 'pending_admin' end,
       reviewed_by=null,reviewed_at=null,updated_at=now()
-  where id=p_request_id and status='processing' and reviewed_by=p_admin_id;
+  where id=p_request_id and status='processing' and reviewed_by=p_admin_id
+  returning status into v_status;
+
+  if v_status is not null then
+    return jsonb_build_object('success',true,'status',v_status);
+  end if;
+
+  select r.status into v_status
+  from public.srk_electrician_phone_change_requests r
+  where r.id=p_request_id;
+
+  if v_status in ('pending_admin','sync_error') then
+    return jsonb_build_object('success',true,'status',v_status,'already_released',true);
+  end if;
+
+  return jsonb_build_object('success',false,'status',coalesce(v_status,'not_found'));
 end;
-$$;
+$;
 
 create or replace function public.srk_admin_reject_electrician_phone_change(
   p_request_id uuid,p_admin_id uuid,p_note text
