@@ -60,12 +60,10 @@ BEGIN
       WHEN 'electrical_assistant' THEN 89900
       WHEN 'skilled_electrician' THEN 119900
       WHEN 'expert_electrician' THEN 159900
-      WHEN 'premium_electrician_specialist' THEN 199900
+      WHEN 'premium_electrical_specialist' THEN 199900
       ELSE NULL
     END;
 
-    -- Preserve the published canonical tier key used by the rate card.
-    IF v_tier='premium_electrician_specialist' THEN v_rate:=199900; END IF;
     IF v_rate IS NULL THEN
       RAISE EXCEPTION 'Unsupported approved rate tier';
     END IF;
