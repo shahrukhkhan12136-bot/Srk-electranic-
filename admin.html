@@ -146,9 +146,10 @@ function setAdminPortalMode(mode){
  if(who)who.textContent=(user?.email||'')+(mode==='staff'?' • Support Staff':' • Main Admin');
 }
 async function refreshAdminPortal(){
+ // Re-authorize first; showState owns the single role-specific reload.
+ // Reset the loaded-user guard so refresh reloads once, not twice.
+ adminLoadedUserId=null;
  await showState();
- if(adminPortalMode==='main_admin')await loadAll();
- else if(adminPortalMode==='staff')await loadStaffSupportInbox();
 }
 async function showState(){
  const run=++adminAuthRun,activeUser=user,login=document.getElementById('login'),app=document.getElementById('app');
