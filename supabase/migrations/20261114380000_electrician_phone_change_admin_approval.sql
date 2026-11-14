@@ -232,7 +232,7 @@ begin
          ep.display_name,r.old_phone,r.new_phone,r.reason,r.otp_verified_at,r.created_at
   from public.srk_electrician_phone_change_requests r
   join public.electrician_profiles ep on ep.id=r.electrician_profile_id
-  where r.status='pending_admin'
+  where r.status in ('pending_admin','sync_error')
   order by r.created_at asc;
 end;
 $$;
