@@ -55,8 +55,10 @@ async function loadAdminCancellationRequests(){
     '<article class="card"><small>अगली booking में आरक्षित</small><div class="stat">'+money('reserved_debt_paise')+'</div></article>'+
     '<article class="card"><small>जमा / settle हुई फीस</small><div class="stat">'+money('settled_debt_paise')+'</div></article>'+
     '<article class="card"><small>Online SRK collection</small><div class="stat">'+money('online_collected_paise')+'</div></article>'+
-    '<article class="card"><small>Cash electrician wallet debit</small><div class="stat">'+money('cash_electrician_debit_paise')+'</div></article>'+
-    '<article class="card"><small>Ledger entries</small><div class="stat">'+Number(ledgerSummary?.ledger_entries||0)+'</div></article>';
+    '<article class="card"><small>Cash electrician wallet debit (Net)</small><div class="stat">'+money('cash_electrician_debit_paise')+'</div></article>'+
+    '<article class="card"><small>Refund से reverse हुई फीस</small><div class="stat">'+money('reversed_fee_paise')+'</div></article>'+
+    '<article class="card"><small>Ledger entries</small><div class="stat">'+Number(ledgerSummary?.ledger_entries||0)+'</div></article>'+
+    '<article class="card"><small>Reversal entries</small><div class="stat">'+Number(ledgerSummary?.reversal_entries||0)+'</div></article>';
   }
  }
  if(error){box.textContent='Requests लोड नहीं हुईं: '+error.message;status.textContent='Admin RPC / migration जाँचें।';return;}
