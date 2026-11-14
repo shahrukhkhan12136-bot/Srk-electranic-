@@ -1588,3 +1588,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - `cancellation_fee_refund_reversal.test.sql` में Admin cancellation lock order regression assertion जोड़ा; pgTAP plan/assertion source count **32/32** match। यह static source verification है, PostgreSQL compile या pgTAP runtime execution नहीं।
 - Commits: migration `823355c06a85aad224014e84cb6a1ca32c17df23`, final booking-ID revalidation `59b4eba912d61bb4f6e702415801d08e839d50e1`, test `9bc85aa40f71b524a16395715b746bdde081fcfb`।
 - कोई migration apply, live data change, payment/refund/payout, deployment या PR merge नहीं हुआ।
+
+### Cancellation lock-order follow-through — later migration override fixed (14 नवम्बर 2026)
+- Follow-up audit में पता चला कि बाद की accounting migration `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` उसी `srk_admin_decide_booking_cancellation` RPC को फिर से define कर रही थी और पुराने Request → Booking lock order को वापस ला रही थी। केवल पहले वाली migration सुधारना पर्याप्त नहीं था।
+- Accounting migration की अंतिम/effective RPC definition भी Booking → Request lock order पर लाई गई: पहले booking ID पढ़ना, Booking row `FOR UPDATE`, फिर Request row `FOR UPDATE`, booking ID revalidation और pending-status check। Customer request path के साथ अब दोनों definitions का क्रम एक जैसा है।
+- Regression test अब final effective RPC definition में `v_booking_id` lock order assert करता है। Cancellation/refund pgTAP source test plan/assertion count **32/32** match; source-level checks में दोनों migrations और अंतिम override क्रम सही पाया गया।
+- Commits: final accounting migration fix `910b10182f2c58d91b730fa2497152d11525f529`; regression test `1365294fe53a6e6f3400464aeec0f7bd0703da46`।
+- यह static/source verification है; PostgreSQL compile, pgTAP runtime या concurrent transaction test नहीं चला। कोई migration apply, production change, deploy, real cancellation/payment/refund या PR merge नहीं हुआ।
