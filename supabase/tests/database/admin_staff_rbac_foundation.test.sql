@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(23);
+SELECT plan(39);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -75,6 +75,47 @@ SELECT ok(
 );
 SELECT has_function('public','srk_admin_list_staff_sessions',ARRAY['uuid'],'Main Admin can list staff session metadata');
 SELECT has_function('public','srk_admin_staff_revoke_session',ARRAY['uuid','text'],'Main Admin can revoke a specific staff session');
+
+
+SELECT has_table('public','srk_admin_support_assignments','support cases have a dedicated staff ownership map');
+SELECT has_column('public','srk_booking_complaint_messages','sender_user_id','customer support replies retain staff sender identity');
+SELECT has_function('public','srk_admin_assign_support_case',ARRAY['text','uuid','uuid','text'],'Main Admin can assign a support case');
+SELECT has_function('public','srk_admin_staff_list_customer_complaints',ARRAY[]::text[],'Staff can list assigned customer complaints only');
+SELECT has_function('public','srk_admin_staff_list_customer_messages',ARRAY['uuid'],'Staff can read assigned customer conversation only');
+SELECT has_function('public','srk_admin_staff_send_customer_message',ARRAY['uuid','text'],'Staff can reply in assigned customer conversation');
+SELECT has_function('public','srk_admin_staff_update_customer_complaint',ARRAY['uuid','text','text'],'Staff can update assigned customer complaint status');
+SELECT has_function('public','srk_admin_staff_list_electrician_tickets',ARRAY[]::text[],'Staff can list assigned electrician tickets only');
+SELECT has_function('public','srk_admin_staff_list_electrician_messages',ARRAY['uuid'],'Staff can read assigned electrician conversation only');
+SELECT has_function('public','srk_admin_staff_send_electrician_message',ARRAY['uuid','text'],'Staff can reply in assigned electrician conversation');
+SELECT has_function('public','srk_admin_staff_update_electrician_ticket',ARRAY['uuid','text','text'],'Staff can update assigned electrician ticket status');
+SELECT ok(
+  NOT has_table_privilege('anon','public.srk_admin_support_assignments','SELECT')
+  AND NOT has_table_privilege('authenticated','public.srk_admin_support_assignments','SELECT')
+  AND NOT has_table_privilege('authenticated','public.srk_admin_support_assignments','INSERT'),
+  'support assignment map is not directly accessible to browser roles'
+);
+SELECT ok(
+  position('assigned_staff_user_id = auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_customer_complaints()'::regprocedure))>0
+  AND position('assigned_staff_user_id = auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure))>0,
+  'both Staff inboxes are filtered to the signed-in assigned owner'
+);
+SELECT ok(
+  position('customer_phone' in pg_get_functiondef('public.srk_admin_staff_list_customer_complaints()'::regprocedure))=0
+  AND position('electrician_phone' in pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure))=0
+  AND position('electrician_name' in pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure))=0,
+  'Staff-safe inboxes do not return customer phone or electrician private identity fields'
+);
+SELECT ok(
+  position('support.customer.reply' in pg_get_functiondef('public.srk_admin_staff_send_customer_message(uuid,text)'::regprocedure))>0
+  AND position('assigned_staff_user_id=v_uid' in pg_get_functiondef('public.srk_admin_staff_send_customer_message(uuid,text)'::regprocedure))>0
+  AND position('support.electrician.reply' in pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure))>0
+  AND position('assigned_staff_user_id=v_uid' in pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure))>0,
+  'Staff replies require explicit reply permission and current case assignment'
+);
+SELECT ok(
+  position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure))>0,
+  'only Main Admin can assign or reassign support cases'
+);
 
 SELECT * FROM finish();
 ROLLBACK;
