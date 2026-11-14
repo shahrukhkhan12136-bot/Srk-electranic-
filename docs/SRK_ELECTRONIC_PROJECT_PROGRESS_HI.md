@@ -1121,3 +1121,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Electrician phone-change history RPC में NULL OTP expiry को भी expired माना जाएगा, ताकि malformed/legacy OTP-pending row अनिश्चितकाल तक लंबित न रहे।
 - यह केवल source change है। Migration लागू नहीं हुई, Edge Function deploy नहीं हुई, SMS/OTP या वास्तविक Admin approval नहीं किया गया। SQL compilation/runtime, concurrency, Auth/profile synchronization और rollback tests अंतिम consolidated QA में बाकी हैं।
 - Commit: `c59588bc3d1c7e7bc2d505aafb1f6965ea0385f7`.
+
+
+### 2026-11-14 — Phone-change partial-sync recovery
+- Phone-change Admin claim को recovery-safe बनाया: यदि Auth login phone या electrician profile phone में से कोई एक Auth update/finalize के बीच आंशिक रूप से नए नंबर पर पहुँच चुका हो, तो Admin उसी verified request को दोबारा claim कर सकता है और sync पूरा कर सकता है।
+- दोनों मौजूदा नंबर केवल request के captured पुराने नंबर या OTP-सत्यापित नए नंबर में से होने चाहिए; कोई तीसरा/अलग नंबर मिलने पर कार्रवाई block रहती है। इससे rollback failure के बाद `sync_error` request स्थायी रूप से फँसने से बचती है, बिना unrelated number overwrite किए।
+- Source-only; migration लागू/deploy नहीं हुई। Partial-sync permutations, duplicate-number races, Auth update idempotency और profile finalization tests अंतिम consolidated QA में बाकी हैं।
+- Commit: `178369715abfa705aba08ff7f9b6bc6474c9478d`.
