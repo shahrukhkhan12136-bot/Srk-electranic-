@@ -1,8 +1,15 @@
 begin;
-select plan(32);
+select plan(33);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
+
+select ok(exists(select 1 from information_schema.columns
+  where table_schema='public' and table_name='srk_booking_cancellation_fee_items'
+    and column_name='source_booking_id')
+  and position('source_booking_id' in
+    pg_get_functiondef('public.srk_reserve_customer_cancellation_fees_for_booking()'::regprocedure))>0,
+  'fee allocations retain the original cancellation booking for receipts and refunds');
 select ok(exists(select 1 from information_schema.columns
   where table_schema='public' and table_name='srk_cancellation_fee_ledger'
     and column_name='reversal_of_entry_id'),
