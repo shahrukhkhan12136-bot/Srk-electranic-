@@ -397,3 +397,78 @@ grant execute on function public.srk_admin_staff_register_invited_user(uuid,text
 
 comment on column public.srk_admin_staff_sessions.auth_session_id is
   'Supabase Auth session UUID from JWT session_id; never store JWTs or refresh tokens.';
+
+
+create or replace function public.srk_admin_list_staff_sessions(p_staff_user_id uuid)
+returns table (
+  session_record_id uuid,
+  issued_at timestamptz,
+  last_seen_at timestamptz,
+  revoked_at timestamptz,
+  revoke_reason text
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'ADMIN_ONLY' using errcode = '42501';
+  end if;
+  if p_staff_user_id is null then
+    raise exception 'STAFF_ID_REQUIRED' using errcode = '22023';
+  end if;
+  return query
+    select s.id,s.issued_at,s.last_seen_at,s.revoked_at,s.revoke_reason
+      from public.srk_admin_staff_sessions s
+     where s.staff_user_id = p_staff_user_id
+     order by s.issued_at desc
+     limit 100;
+end;
+$function$;
+revoke all on function public.srk_admin_list_staff_sessions(uuid) from public, anon;
+grant execute on function public.srk_admin_list_staff_sessions(uuid) to authenticated;
+
+create or replace function public.srk_admin_staff_revoke_session(
+  p_session_record_id uuid,
+  p_reason text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor uuid := auth.uid();
+  v_staff_user_id uuid;
+begin
+  if v_actor is null or not public.is_srk_admin() then
+    raise exception 'ADMIN_ONLY' using errcode = '42501';
+  end if;
+  if p_session_record_id is null or length(btrim(coalesce(p_reason,''))) < 5
+     or length(p_reason) > 500 then
+    raise exception 'INVALID_SESSION_REVOCATION' using errcode = '22023';
+  end if;
+
+  update public.srk_admin_staff_sessions
+     set revoked_at = coalesce(revoked_at,clock_timestamp()),
+         revoked_by = coalesce(revoked_by,v_actor),
+         revoke_reason = coalesce(revoke_reason,left(p_reason,500))
+   where id = p_session_record_id
+   returning staff_user_id into v_staff_user_id;
+  if not found then
+    raise exception 'STAFF_SESSION_NOT_FOUND' using errcode = 'P0002';
+  end if;
+
+  insert into public.srk_admin_staff_audit_events
+    (actor_user_id,target_user_id,action,outcome,details)
+  values
+    (v_actor,v_staff_user_id,'staff.session.revoked','success',
+     jsonb_build_object('session_record_id',p_session_record_id,'reason',left(p_reason,500)));
+
+  return true;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_revoke_session(uuid,text) from public, anon;
+grant execute on function public.srk_admin_staff_revoke_session(uuid,text) to authenticated;
