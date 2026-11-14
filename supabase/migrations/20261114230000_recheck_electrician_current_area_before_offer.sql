@@ -8,6 +8,9 @@ DECLARE
  v_booking public.service_bookings%ROWTYPE;
  v_dispatch srk_private.srk_booking_offer_dispatch%ROWTYPE;
  v_candidate srk_private.srk_booking_offer_candidates%ROWTYPE;
+ v_electrician public.electrician_profiles%ROWTYPE;
+ v_distance numeric(14,2);
+ v_match_level text;
  v_offer_id uuid;
 BEGIN
  SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
@@ -36,22 +39,34 @@ BEGIN
   END IF;
   UPDATE srk_private.srk_booking_offer_dispatch SET next_sequence=next_sequence+1,updated_at=clock_timestamp()
    WHERE booking_id=p_booking_id RETURNING * INTO v_dispatch;
-  IF EXISTS(SELECT 1 FROM public.electrician_profiles e
+  SELECT * INTO v_electrician FROM public.electrician_profiles e
    WHERE e.id=v_candidate.electrician_id AND e.active=true AND e.available_for_work=true
     AND e.verification_status='approved' AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
     AND lower(trim(e.state))=lower(trim(v_booking.state))
     AND lower(trim(e.district))=lower(trim(v_booking.district))
     AND (v_booking.selected_rate_tier IS NULL OR (
       e.approved_rate_tier=v_booking.selected_rate_tier AND e.approved_rate_card_version IS NOT NULL
-      AND e.rate_tier_approved_by IS NOT NULL AND e.rate_tier_approved_at IS NOT NULL))
-   ) AND NOT EXISTS(SELECT 1 FROM public.job_offers o
+      AND e.rate_tier_approved_by IS NOT NULL AND e.rate_tier_approved_at IS NOT NULL));
+  IF FOUND AND NOT EXISTS(SELECT 1 FROM public.job_offers o
     WHERE o.booking_id=p_booking_id AND o.electrician_id=v_candidate.electrician_id) THEN
+   -- Recompute match label and distance from the electrician's CURRENT area/location.
+   -- Relocation clears stale coordinates; never expose the old snapshot distance.
+   v_match_level:=CASE WHEN v_electrician.pincode=v_booking.pincode THEN 'pincode' ELSE 'district' END;
+   v_distance:=NULL;
+   IF v_booking.location_lat IS NOT NULL AND v_booking.location_lng IS NOT NULL
+      AND v_electrician.location_lat IS NOT NULL AND v_electrician.location_lng IS NOT NULL THEN
+     v_distance:=2*6371000*asin(sqrt(least(1,
+       power(sin(radians(v_electrician.location_lat-v_booking.location_lat)/2),2)
+       +cos(radians(v_booking.location_lat))*cos(radians(v_electrician.location_lat))
+        *power(sin(radians(v_electrician.location_lng-v_booking.location_lng)/2),2)
+     )));
+   END IF;
    INSERT INTO public.job_offers(booking_id,electrician_id,status,match_level,expires_at)
-    VALUES(p_booking_id,v_candidate.electrician_id,'offered',v_candidate.match_level,clock_timestamp()+interval '3 minutes')
+    VALUES(p_booking_id,v_candidate.electrician_id,'offered',v_match_level,clock_timestamp()+interval '3 minutes')
     RETURNING id INTO v_offer_id;
    RETURN jsonb_build_object('success',true,'code','offer_dispatched','offer_id',v_offer_id,
     'electrician_id',v_candidate.electrician_id,'sequence_no',v_candidate.sequence_no,
-    'match_level',v_candidate.match_level,'distance_meters',v_candidate.distance_meters,
+    'match_level',v_match_level,'distance_meters',v_distance,
     'expires_at',clock_timestamp()+interval '3 minutes');
   END IF;
  END LOOP;
