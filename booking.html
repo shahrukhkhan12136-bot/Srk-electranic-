@@ -634,21 +634,23 @@ async function loadCustomerBookings() {
       box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
       return;
     }
-    const [contactsResult,timelineResult,refundResult,cancellationResult,cancellationFeeResult] = await Promise.all([
+    const [contactsResult,refundResult,cancellationResult,cancellationFeeResult] = await Promise.all([
       customerSb.rpc('srk_get_customer_call_contacts'),
-      customerSb.rpc('srk_customer_get_my_booking_work_timeline'),
       customerSb.rpc('srk_customer_list_booking_refund_requests'),
       customerSb.rpc('srk_customer_list_booking_cancellation_requests'),
       customerSb.rpc('srk_customer_list_booking_cancellation_fee_items')
     ]);
     const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
     const timelineMap = new Map();
-    if(!timelineResult.error) {
-      (timelineResult.data || []).forEach(item=>{
-        if(!timelineMap.has(item.booking_id))timelineMap.set(item.booking_id,[]);
-        timelineMap.get(item.booking_id).push(item);
-      });
-    }
+    // Timeline RPC is booking-scoped. Fetch it only for the already
+    // owner-filtered bookings rather than calling it without its required ID.
+    const timelineResults = await Promise.all(data.map(async row => ({
+      bookingId: row.id,
+      result: await customerSb.rpc('srk_customer_get_my_booking_work_timeline',{p_booking_id:row.id})
+    })));
+    timelineResults.forEach(({bookingId,result})=>{
+      if(!result.error) timelineMap.set(bookingId,Array.isArray(result.data)?result.data:[]);
+    });
     const refundMap=new Map();
     if(!refundResult.error){
       (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
