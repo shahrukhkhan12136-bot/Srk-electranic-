@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(46);
+SELECT plan(49);
 
 SELECT ok(to_regclass('public.srk_booking_labour_bills') IS NOT NULL,'immutable labour bill base table exists');
 SELECT ok(to_regclass('public.srk_manual_payment_entries') IS NOT NULL,'manual payment base table exists');
@@ -43,6 +43,9 @@ SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_booking
 SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_manual_refund_entries'::regclass AND contype='f' AND pg_get_constraintdef(oid) ILIKE '%REFERENCES srk_manual_payment_entries(id)%'),'manual refund references its source manual payment');
 SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_admin_audit_events'::regclass AND conname='srk_admin_audit_events_entity_type_check' AND pg_get_constraintdef(oid) ILIKE '%razorpay_refund%'),'audit event allow-list includes Razorpay refund events');
 
+SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid='public.is_srk_admin()'::regprocedure),'Main Admin identity helper remains SECURITY DEFINER');
+SELECT ok((SELECT proconfig @> ARRAY['search_path=""'] FROM pg_proc WHERE oid='public.is_srk_admin()'::regprocedure),'Main Admin identity helper has empty search_path');
+SELECT ok(NOT has_function_privilege('anon','public.is_srk_admin()','EXECUTE') AND has_function_privilege('authenticated','public.is_srk_admin()','EXECUTE'),'Main Admin identity helper is callable only by authenticated/service roles');
 SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid='public.srk_capture_admin_audit_event()'::regprocedure),'generic audit trigger is SECURITY DEFINER');
 SELECT ok((SELECT proconfig @> ARRAY['search_path=""'] FROM pg_proc WHERE oid='public.srk_capture_admin_audit_event()'::regprocedure),'generic audit trigger has empty search_path');
 SELECT ok(NOT has_function_privilege('anon','public.srk_capture_admin_audit_event()','EXECUTE'),'anon cannot directly execute generic audit trigger');
