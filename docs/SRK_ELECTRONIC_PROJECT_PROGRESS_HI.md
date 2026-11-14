@@ -1168,3 +1168,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin मोबाइल नंबर बदलाव समीक्षा में प्रति request in-flight guard जोड़ा। Approve/Reject पर संबंधित कार्ड के buttons तुरंत disable होते हैं; repeated clicks एक साथ दूसरी Edge Function request नहीं भेजेंगे। Request समाप्त होने पर controls restore होते हैं; परिणाम अनिश्चित हो तो Admin को refresh करके authoritative status जाँचने का संदेश मिलता है।
 - Source-only UI hardening; Admin browser, concurrent request और SQL/RPC runtime परीक्षण अंतिम consolidated QA में बाकी हैं।
 - Commit: `c795e959f2d7d584b309f73e487b71375371834c`.
+
+
+### 2026-11-14 — Phone-change SMS failure cleanup confirmation
+- SMS provider से OTP भेजने में failure होने पर Edge Function पहले cancellation RPC चलाती थी, लेकिन RPC error/cleanup result को अनदेखा करके सामान्य retry संदेश दे देती थी। इससे failed SMS के बाद otp_pending row बचने और अगला अनुरोध रोकने की संभावना थी।
+- srk_phone_change_cancel_send अब JSON result देता है, request owner और request ID पर ही OTP-pending row को expired करके OTP hash हटाता है, और पहले से expired row पर idempotent success देता है।
+- Edge Function अब cleanup success की पुष्टि के बाद ही सामान्य retry संदेश देती है। Cleanup की पुष्टि न हो तो स्पष्ट रूप से history refresh करने को कहती है और false success नहीं दिखाती।
+- Source-only बदलाव; migration लागू नहीं, Edge Function deploy नहीं, SMS/provider call या वास्तविक request नहीं चलाई गई। SQL/Deno runtime, SMS failure + cleanup failure, concurrent expiry/history और retry tests final consolidated QA में बाकी हैं।
