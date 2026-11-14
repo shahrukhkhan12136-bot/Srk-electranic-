@@ -1485,3 +1485,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इससे customer, Main Admin और Support Staff—तीनों प्रकार के message sender का attributable record रहता है; user deletion पर पुरानी conversation rows सुरक्षित रहती हैं और केवल sender reference null होता है।
 - RBAC pgTAP suite में sender column, FK delete behavior और Customer/Admin RPC sender attribution का assertion जोड़ा। Static checks: RBAC 67/67, Customer attachment access 8/8, Electrician support 12/12; सभी plan/assertion counts match।
 - Source commits: customer schema/RPC `c5b478fed49993e4d7c31d9f0693772ea7db79ac`; Admin reply `de278f4a5da167697189dea10481b5b0bdcd1678`; test `536f6897a874b68a66bb8d58044dfbeab848912a` और FK assertion `be7f45be6aebac5791269046b5e323c85da09827`। Static verification only; pgTAP/SQL runtime नहीं चला। कोई Production mutation या deploy नहीं।
+
+
+### 2026-11-14 — Customer Support attachments visible in Main Admin inbox
+- Customer complaint में ग्राहक द्वारा upload की गई निजी फोटो/PDF पहले Customer Portal में दिखती थीं, लेकिन Main Admin conversation thread में attachments सूची/preview links उपलब्ध नहीं थे। यह end-to-end support workflow gap ठीक किया।
+- नई Main-Admin-only RPC `srk_admin_list_complaint_message_attachments(uuid)` complaint existence और `is_srk_admin()` जाँचती है, attachment metadata लौटाती है, और 100 records पर सीमित है। EXECUTE केवल authenticated को; anon/PUBLIC revoke। Actual file access existing private bucket policy और 5-minute signed URLs से होता है; Staff RPC को यह capability नहीं दी।
+- Admin conversation UI अब messages और attachment metadata साथ लोड करती है, message के नीचे filename/size और 5-minute signed link दिखाती है; links `noopener noreferrer` के साथ खुलते हैं।
+- Support attachment pgTAP plan/assertions 8→10; static count 10/10। `admin.html`, `booking.html`, `electrician.html` inline JavaScript syntax parse checks PASS। Runtime SQL/pgTAP, signed-URL/storage runtime, browser/mobile checks अभी नहीं हुए। कोई migration apply/deploy/Production change नहीं।
+- Source commits: migration `eb72c22e08c690dade6f5359b8caaed5fad3d8b5`; test `15099928ec3db53a8000f61c326fe4d798ce84aa`; Admin UI `f07ad08765b5e3647b9ce76670642163fbd6b7a6`।
