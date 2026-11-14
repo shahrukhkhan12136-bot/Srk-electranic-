@@ -166,7 +166,7 @@ async function showState(){
  login.classList.add('hidden');app.classList.remove('hidden');
  if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await loadStaffSupportInbox();}
 }
-let staffCustomerSelectedId=null,staffElectricianSelectedId=null;
+let staffCustomerSelectedId=null,staffElectricianSelectedId=null,staffCustomerThreadRequest=0,staffElectricianThreadRequest=0;
 let staffSupportLoadBusy=false,staffSupportReplyBusy=false;
 async function loadStaffSupportInbox(){
  if(!sb||!user||adminPortalMode!=='staff'||staffSupportLoadBusy)return;
@@ -200,10 +200,11 @@ async function updateStaffCustomerComplaint(id){
  await loadStaffSupportInbox();
 }
 async function openStaffCustomerThread(id){
- staffCustomerSelectedId=id;
+ const request=++staffCustomerThreadRequest;staffCustomerSelectedId=id;
  const panel=document.getElementById('staffCustomerThreadPanel'),box=document.getElementById('staffCustomerThread');
  panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';
  const {data,error}=await sb.rpc('srk_admin_staff_list_customer_messages',{p_complaint_id:id});
+ if(request!==staffCustomerThreadRequest||id!==staffCustomerSelectedId)return;
  if(error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
  box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक')+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
  document.getElementById('staffCustomerThreadTitle').textContent='ग्राहक बातचीत • '+id;
@@ -229,10 +230,11 @@ async function updateStaffElectricianTicket(id){
  await loadStaffSupportInbox();
 }
 async function openStaffElectricianThread(id){
- staffElectricianSelectedId=id;
+ const request=++staffElectricianThreadRequest;staffElectricianSelectedId=id;
  const panel=document.getElementById('staffElectricianThreadPanel'),box=document.getElementById('staffElectricianThread');
  panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';
  const {data,error}=await sb.rpc('srk_admin_staff_list_electrician_messages',{p_ticket_id:id});
+ if(request!==staffElectricianThreadRequest||id!==staffElectricianSelectedId)return;
  if(error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
  box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'इलेक्ट्रिशियन')+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
  document.getElementById('staffElectricianThreadTitle').textContent='इलेक्ट्रिशियन बातचीत • '+id;
