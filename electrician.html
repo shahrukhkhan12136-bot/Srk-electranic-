@@ -102,9 +102,9 @@ async function loadElectricianPhoneChangeHistory(){
 }
 async function sendElectricianPhoneChangeOtp(){
  if(phoneChangeBusy)return;
- const raw=document.getElementById('phoneChangeNew').value.trim(),digits=raw.replace(/\\D/g,''),local=digits.length===12&&digits.startsWith('91')?digits.slice(2):digits;
+ const raw=document.getElementById('phoneChangeNew').value.trim(),digits=raw.replace(/\D/g,''),local=digits.length===12&&digits.startsWith('91')?digits.slice(2):digits;
  const reason=document.getElementById('phoneChangeReason').value.trim(),button=document.getElementById('sendPhoneChangeOtp'),status=document.getElementById('phoneChangeStatus');
- if(!/^[6-9]\\d{9}$/.test(local)||reason.length<10||reason.length>500){status.textContent='सही 10 अंकों का नया भारतीय मोबाइल नंबर और कम से कम 10 अक्षरों का कारण भरें।';return;}
+ if(!/^[6-9]\d{9}$/.test(local)||reason.length<10||reason.length>500){status.textContent='सही 10 अंकों का नया भारतीय मोबाइल नंबर और कम से कम 10 अक्षरों का कारण भरें।';return;}
  if(!confirm('नए नंबर +91'+local+' पर OTP भेजें? OTP सत्यापित होने के बाद रिक्वेस्ट Admin के पास जाएगी।'))return;
  phoneChangeBusy=true;button.disabled=true;status.textContent='नए मोबाइल नंबर पर OTP भेजा जा रहा है…';
  try{
@@ -117,7 +117,7 @@ async function sendElectricianPhoneChangeOtp(){
 async function verifyElectricianPhoneChangeOtp(){
  if(phoneChangeBusy||!phoneChangeRequestId)return;
  const otp=document.getElementById('phoneChangeOtp').value.trim(),button=document.getElementById('verifyPhoneChangeOtp'),status=document.getElementById('phoneChangeStatus');
- if(!/^\\d{6}$/.test(otp)){status.textContent='कृपया नए नंबर पर मिला 6 अंकों का OTP डालें।';return;}
+ if(!/^\d{6}$/.test(otp)){status.textContent='कृपया नए नंबर पर मिला 6 अंकों का OTP डालें।';return;}
  phoneChangeBusy=true;button.disabled=true;status.textContent='OTP सत्यापित किया जा रहा है…';
  try{
   const {data,error}=await sb.functions.invoke('electrician-phone-change',{body:{action:'verify_otp',request_id:phoneChangeRequestId,otp}});
