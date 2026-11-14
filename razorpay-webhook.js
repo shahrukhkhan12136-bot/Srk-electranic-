@@ -99,6 +99,54 @@ async function updateBooking(orderId, payment) {
   return "update_not_applied";
 }
 
+async function reconcileRefund(refund, eventName) {
+  const expectedStatus = {
+    "refund.created": "pending",
+    "refund.processed": "processed",
+    "refund.failed": "failed"
+  }[eventName];
+  if (!expectedStatus || !refund ||
+      !/^rfnd_[A-Za-z0-9]+$/.test(refund.id || "") ||
+      !/^pay_[A-Za-z0-9]+$/.test(refund.payment_id || "") ||
+      refund.status !== expectedStatus ||
+      refund.currency !== "INR" ||
+      !Number.isSafeInteger(refund.amount) || refund.amount < 100) {
+    return "refund_payload_invalid";
+  }
+
+  const lookupUrl = new URL("/rest/v1/srk_razorpay_refunds", SUPABASE_URL);
+  lookupUrl.searchParams.set("payment_id", "eq." + refund.payment_id);
+  lookupUrl.searchParams.set("select", "id,payment_id,refund_id,amount_paise,status");
+  lookupUrl.searchParams.set("limit", "2");
+  const lookupResponse = await fetch(lookupUrl, {
+    method: "GET",
+    headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
+  });
+  if (!lookupResponse.ok) throw new Error("Refund record lookup failed");
+  const rows = await lookupResponse.json();
+  if (!Array.isArray(rows) || rows.length !== 1) throw new Error("Refund record missing or ambiguous");
+  const record = rows[0];
+  if (record.payment_id !== refund.payment_id ||
+      Number(record.amount_paise) !== refund.amount ||
+      (record.refund_id && record.refund_id !== refund.id)) {
+    return "refund_record_mismatch";
+  }
+
+  const reconcileResponse = await fetch(new URL("/rest/v1/rpc/srk_service_reconcile_booking_refund", SUPABASE_URL), {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      p_refund_record_id: record.id,
+      p_provider_refund_id: refund.id,
+      p_provider_status: expectedStatus,
+      p_error: expectedStatus === "failed" ? "Razorpay reported refund failed" : null
+    })
+  });
+  if (!reconcileResponse.ok) throw new Error("Refund reconciliation RPC failed");
+  const result = await reconcileResponse.json();
+  return result?.success ? (result.replayed ? "already_processed" : result.status) : "refund_not_reconciled";
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { success: false, error: "POST only." });
   if (!SUPABASE_URL || !SUPABASE_KEY || !WEBHOOK_SECRET) {
@@ -121,6 +169,15 @@ exports.handler = async (event) => {
   try {
     const payload = JSON.parse(rawBody.toString("utf8"));
     const eventName = payload.event;
+    if (eventName === "refund.created" || eventName === "refund.processed" || eventName === "refund.failed") {
+      const refund = payload.payload?.refund?.entity;
+      const result = await reconcileRefund(refund, eventName);
+      if (result === "refund_payload_invalid" || result === "refund_record_mismatch") {
+        console.error("Razorpay refund webhook requires manual reconciliation:", result);
+        return json(200, { success: true, reconciled: false, reason: result });
+      }
+      return json(200, { success: true, reconciled: true, result });
+    }
     if (eventName !== "payment.captured" && eventName !== "order.paid") {
       return json(200, { success: true, ignored: true });
     }
