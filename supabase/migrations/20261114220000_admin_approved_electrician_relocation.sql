@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS srk_private.srk_electrician_area_change_requests (
   reviewed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
+ALTER TABLE srk_private.srk_electrician_area_change_requests ENABLE ROW LEVEL SECURITY;
 CREATE UNIQUE INDEX IF NOT EXISTS srk_electrician_one_pending_area_request
   ON srk_private.srk_electrician_area_change_requests(electrician_profile_id)
   WHERE status='pending';
