@@ -131,6 +131,11 @@ exports.handler = async (event) => {
     const location_lat = body.location_lat == null || body.location_lat === '' ? null : Number(body.location_lat);
     const location_lng = body.location_lng == null || body.location_lng === '' ? null : Number(body.location_lng);
     const service_type = clean(body.service_type, 120);
+    const selected_category = clean(body.selected_category, 40);
+    const selected_rate_tier = clean(body.selected_rate_tier, 40);
+    const selected_duration_hours = Number(body.selected_duration_hours);
+    const rateCard = { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 };
+    const rateCardVersion = "SRK-CUSTOMER-LABOUR-2026-11-13-V1";
     const preferred_date = clean(body.preferred_date, 10);
     const preferred_time = clean(body.preferred_time, 8);
     const work_details = clean(body.work_details, 2000);
@@ -144,6 +149,9 @@ exports.handler = async (event) => {
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
+        !["home_wiring", "electrical_repair", "light_fan_fitting", "home_repair", "other"].includes(selected_category) ||
+        !Object.prototype.hasOwnProperty.call(rateCard, selected_rate_tier) ||
+        !Number.isInteger(selected_duration_hours) || selected_duration_hours < 1 || selected_duration_hours > 8 ||
         !validDate(preferred_date) || !validTime(preferred_time)) {
       return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, तारीख और समय भरें।" });
     }
@@ -155,11 +163,16 @@ exports.handler = async (event) => {
       return json(400, { success: false, error: "भुगतान राशि सही नहीं है।" });
     }
 
+    const rate8hPaise = rateCard[selected_rate_tier];
+    const estimatedLabourPaise = Math.floor((rate8hPaise * selected_duration_hours) / 8 + 0.5);
     const inserted = await supabase("service_bookings", {
       method: "POST",
       body: JSON.stringify([{
         customer_name, phone, state, district, pincode, address, service_type,
-        preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
+        selected_category, selected_rate_tier, selected_duration_hours,
+        estimated_labour_paise: estimatedLabourPaise,
+        estimate_rate_card_version: rateCardVersion,
+        preferred_date, preferred_time, work_details, payment_method, quoted_amount: null, location_lat, location_lng,
         status: "new", payment_status: "unpaid",
         ...(customer_user_id ? { customer_user_id } : {})
       }])
@@ -186,6 +199,7 @@ exports.handler = async (event) => {
     return json(200, {
       success: true,
       booking_id: booking.id,
+      estimate: { amount_paise: estimatedLabourPaise, amount_rupees: (estimatedLabourPaise / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: rateCardVersion },
       offers_created: offersCreated,
       match_level: offersCreated ? matchLevel : null,
       message: !offerStatusChecked
