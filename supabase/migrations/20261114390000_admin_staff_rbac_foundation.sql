@@ -171,3 +171,229 @@ comment on table public.srk_admin_staff_audit_events is
   'Append-only staff security and activity audit. Sensitive credentials and full private contact details must not be stored.';
 comment on function public.srk_has_admin_permission(text) is
   'Main Admin always passes; Support Staff pass only for an active registry record and explicit role permission.';
+
+
+-- Bind staff authorization to the current, still-existing Supabase Auth session.
+alter table public.srk_admin_staff_sessions
+  add column if not exists auth_session_id uuid;
+create unique index if not exists srk_admin_staff_sessions_auth_session_uidx
+  on public.srk_admin_staff_sessions(auth_session_id)
+  where auth_session_id is not null;
+
+create or replace function public.srk_has_admin_permission(p_permission_key text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_session_id uuid;
+begin
+  if v_uid is null or p_permission_key is null or length(p_permission_key) > 120 then
+    return false;
+  end if;
+
+  -- Preserve the existing, separate Main Admin authority model.
+  if public.is_srk_admin() then
+    return true;
+  end if;
+
+  if coalesce(auth.jwt() ->> 'session_id','') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    return false;
+  end if;
+  v_session_id := (auth.jwt() ->> 'session_id')::uuid;
+
+  return exists (
+    select 1
+      from public.srk_admin_staff s
+      join public.srk_admin_role_permissions rp on rp.role_key = s.role_key
+      join public.srk_admin_permissions p on p.permission_key = rp.permission_key
+     where s.user_id = v_uid
+       and s.status = 'active'
+       and p.permission_key = p_permission_key
+       and exists (
+         select 1 from auth.sessions auth_s
+          where auth_s.id = v_session_id and auth_s.user_id = v_uid
+       )
+       and not exists (
+         select 1 from public.srk_admin_staff_sessions tracked
+          where tracked.auth_session_id = v_session_id
+            and tracked.staff_user_id = v_uid
+            and tracked.revoked_at is not null
+       )
+  );
+end;
+$function$;
+revoke all on function public.srk_has_admin_permission(text) from public, anon;
+grant execute on function public.srk_has_admin_permission(text) to authenticated;
+
+create or replace function public.srk_admin_staff_register_session()
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_session_id uuid;
+begin
+  if v_uid is null
+     or coalesce(auth.jwt() ->> 'session_id','') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    return false;
+  end if;
+  v_session_id := (auth.jwt() ->> 'session_id')::uuid;
+
+  if not exists (
+    select 1 from public.srk_admin_staff s
+     where s.user_id = v_uid and s.status = 'active'
+  ) or not exists (
+    select 1 from auth.sessions a
+     where a.id = v_session_id and a.user_id = v_uid
+  ) then
+    return false;
+  end if;
+
+  insert into public.srk_admin_staff_sessions
+    (staff_user_id, auth_session_id, issued_at, last_seen_at)
+  values (v_uid, v_session_id, clock_timestamp(), clock_timestamp())
+  on conflict (auth_session_id) where auth_session_id is not null
+  do update set last_seen_at = clock_timestamp()
+    where public.srk_admin_staff_sessions.staff_user_id = excluded.staff_user_id
+      and public.srk_admin_staff_sessions.revoked_at is null;
+
+  return exists (
+    select 1 from public.srk_admin_staff_sessions s
+     where s.staff_user_id = v_uid
+       and s.auth_session_id = v_session_id
+       and s.revoked_at is null
+  );
+end;
+$function$;
+revoke all on function public.srk_admin_staff_register_session() from public, anon;
+grant execute on function public.srk_admin_staff_register_session() to authenticated;
+
+create or replace function public.srk_admin_list_staff()
+returns table (
+  user_id uuid,
+  display_name text,
+  role_key text,
+  status text,
+  created_at timestamptz,
+  activated_at timestamptz,
+  disabled_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'ADMIN_ONLY' using errcode = '42501';
+  end if;
+  return query
+    select s.user_id, s.display_name, s.role_key, s.status,
+           s.created_at, s.activated_at, s.disabled_at
+      from public.srk_admin_staff s
+     order by s.created_at desc;
+end;
+$function$;
+revoke all on function public.srk_admin_list_staff() from public, anon;
+grant execute on function public.srk_admin_list_staff() to authenticated;
+
+create or replace function public.srk_admin_staff_set_status(
+  p_staff_user_id uuid,
+  p_status text,
+  p_reason text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor uuid := auth.uid();
+  v_old_status text;
+begin
+  if v_actor is null or not public.is_srk_admin() then
+    raise exception 'ADMIN_ONLY' using errcode = '42501';
+  end if;
+  if p_staff_user_id is null or p_status not in ('active','suspended','disabled')
+     or length(btrim(coalesce(p_reason,''))) < 5
+     or length(p_reason) > 500 then
+    raise exception 'INVALID_STAFF_STATUS_REQUEST' using errcode = '22023';
+  end if;
+
+  select status into v_old_status
+    from public.srk_admin_staff
+   where user_id = p_staff_user_id
+   for update;
+  if not found then
+    raise exception 'STAFF_NOT_FOUND' using errcode = 'P0002';
+  end if;
+
+  update public.srk_admin_staff
+     set status = p_status,
+         activated_at = case when p_status = 'active' then coalesce(activated_at, clock_timestamp()) else activated_at end,
+         disabled_at = case when p_status = 'disabled' then clock_timestamp() else null end,
+         updated_at = clock_timestamp()
+   where user_id = p_staff_user_id;
+
+  if p_status in ('suspended','disabled') then
+    update public.srk_admin_staff_sessions
+       set revoked_at = coalesce(revoked_at, clock_timestamp()),
+           revoked_by = coalesce(revoked_by, v_actor),
+           revoke_reason = coalesce(revoke_reason, left(p_reason,500))
+     where staff_user_id = p_staff_user_id and revoked_at is null;
+  end if;
+
+  insert into public.srk_admin_staff_audit_events
+    (actor_user_id,target_user_id,action,outcome,details)
+  values
+    (v_actor,p_staff_user_id,'staff.status.' || p_status,'success',
+     jsonb_build_object('previous_status',v_old_status,'new_status',p_status,'reason',left(p_reason,500)));
+
+  return jsonb_build_object('success',true,'previous_status',v_old_status,'status',p_status);
+end;
+$function$;
+revoke all on function public.srk_admin_staff_set_status(uuid,text,text) from public, anon;
+grant execute on function public.srk_admin_staff_set_status(uuid,text,text) to authenticated;
+
+-- Auth Admin API user creation is intentionally service-role-only and called only by the
+-- separately authenticated Edge Function. It cannot grant any role except Support.
+create or replace function public.srk_admin_staff_register_invited_user(
+  p_staff_user_id uuid,
+  p_display_name text,
+  p_actor_admin_id uuid
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if p_staff_user_id is null or p_actor_admin_id is null
+     or not exists (select 1 from public.srk_admin_users a where a.user_id = p_actor_admin_id)
+     or length(btrim(coalesce(p_display_name,''))) not between 2 and 100 then
+    raise exception 'INVALID_STAFF_INVITE' using errcode = '22023';
+  end if;
+
+  insert into public.srk_admin_staff(user_id,display_name,role_key,status,invited_by)
+  values (p_staff_user_id,btrim(p_display_name),'support','invited',p_actor_admin_id);
+
+  insert into public.srk_admin_staff_audit_events
+    (actor_user_id,target_user_id,action,outcome,details)
+  values
+    (p_actor_admin_id,p_staff_user_id,'staff.invited','success',
+     jsonb_build_object('role_key','support'));
+
+  return true;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_register_invited_user(uuid,text,uuid) from public, anon, authenticated;
+grant execute on function public.srk_admin_staff_register_invited_user(uuid,text,uuid) to service_role;
+
+comment on column public.srk_admin_staff_sessions.auth_session_id is
+  'Supabase Auth session UUID from JWT session_id; never store JWTs or refresh tokens.';
