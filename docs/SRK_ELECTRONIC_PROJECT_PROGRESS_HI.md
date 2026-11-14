@@ -1053,3 +1053,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Read-only production schema audit ने पुष्टि की कि वर्तमान deployed offer-details RPC में नई booking fields/expiry नहीं हैं; migration केवल feature branch में है और लागू नहीं की गई।
 - Source-only; कोई offer accept/decline, booking assignment, customer contact exposure या production DB परिवर्तन नहीं हुआ। Runtime RPC output, expiry worker cadence और sequential dispatch integration final consolidated QA में जाँचे जाएँगे।
 - Follow-up static shape check: RPC के 28 declared return fields और SELECT expressions का क्रम मिलाया; assigned-only `location_lat` तथा `location_lng` दोनों शामिल किए। SQL compile अभी migration rollout/final QA के लिए लंबित है।
+
+## 2026-11-14 — Electrician Offer Matching Display Refinement
+- Electrician offer card में PIN-code और district match को हिंदी में दिखाया; raw backend key को UI में नहीं दिखाया जाता।
+- Customer-selected category booking में estimated labour amount अब immutable selection snapshot के `estimated_labour_paise` से ₹ में दिखेगा; legacy booking के लिए पुराना quote display fallback रखा। Materials को labour estimate में नहीं जोड़ा।
+- Offer expiry/status UI और immediate-only booking display के साथ inline JavaScript syntax PASS।
+- Source-only; वास्तविक offer, booking, assignment, payment या production database नहीं बदला।
