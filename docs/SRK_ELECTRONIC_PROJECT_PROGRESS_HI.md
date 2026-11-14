@@ -859,3 +859,15 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - हर वास्तविक बदलाव append-only profile-name event table में old/new name, actor और timestamp सहित दर्ज होता है; table पर RLS enabled और browser direct grants revoked।
 - Phone, district, state, PIN, approved skills, rate tier, Active और verification status self-edit में शामिल नहीं हैं; ये सत्यापित/Admin-controlled रहेंगे।
 - Migration/UI source-only हैं; Production में apply नहीं। JS syntax, SQL static review और actual JWT/row lock/audit event tests final consolidated QA में बाकी।
+
+
+## 14 नवम्बर 2026 — Electrician Web Push Notifications (opt-in, source-only UI/SW)
+- Electrician Dashboard में स्पष्ट opt-in controls जोड़े: इस फोन पर सूचनाएँ चालू करें और सूचनाएँ बंद करें। Notification permission केवल user के button tap पर माँगी जाती है; silent/automatic permission prompt नहीं।
+- Existing active Supabase Edge Function `push-job-offer` (version 4) के public GET endpoint से केवल VAPID public key ली जाती है; VAPID private key, webhook secret और service-role key browser को नहीं दिए जाते।
+- HTTPS/Web Push/Service Worker support, Admin-approved Active profile और logged-in user identity validate करने के बाद browser subscription बनती है और existing `srk_push_subscriptions` table में own `user_id` के साथ upsert होती है। Existing DB policy audit में SELECT/INSERT/UPDATE/DELETE सभी केवल `auth.uid()` की own row तक सीमित मिले; endpoint unique index भी मौजूद है।
+- Unsubscribe पर browser subscription बंद करके उसी authenticated user + endpoint की DB row delete की जाती है। Unsupported browser, denied permission और provider/configuration failure के लिए स्पष्ट status text है।
+- Root `sw.js` में push event से system notification display और notification click पर same-origin Electrician page खोलने का handler जोड़ा। Notification URL का origin validate होता है; बाहरी URL स्वीकार नहीं।
+- Push notification में offer ID होने पर Electrician App उसी offer card तक scroll/highlight करता है; query parameter बाद में URL से हटता है।
+- Read-only Production audit में existing `job_offers` trigger `private.srk_notify_job_offer_push()` से `push-job-offer` Edge Function को webhook भेजता है; function currently ACTIVE version 4 है। Function source inspection में केवल नए offered INSERT और offered से non-accepted terminal update पर push send/close behavior दिखा। कोई function deploy/update नहीं किया।
+- Static verification: Electrician inline JS parse PASS; Service Worker JS parse PASS; opt-in permission, public-key fetch, own subscription upsert/delete, push event, same-origin click, offer-focus wiring checks PASS.
+- सीमाएँ: source branch में कोई push permission/subscription/notification manually execute नहीं की। Browser notification permission, Android Chrome service worker lifecycle, real push delivery/click, endpoint expiry cleanup और provider VAPID configuration का runtime test अंतिम consolidated QA में बाकी। Production Edge Function/DB/Push subscriptions में कोई बदलाव नहीं।
