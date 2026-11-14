@@ -1,3 +1,10 @@
+## 2026-11-15 — Admin approval enforced before customer-requested Razorpay refund
+
+- Hardened `srk_admin_prepare_razorpay_refund(uuid,text)` in `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql`: when a customer refund request exists, only `approved`, `processing`, or `unknown` requests may proceed; `requested`, `in_review`, and `rejected` requests are blocked. Existing no-customer-request Admin refund flow remains available for legacy/admin-initiated cases.
+- The approved customer request is linked to the prepared Razorpay refund record and moves to `processing`; idempotent retries also attach the same record. Existing reconciliation function moves linked requests to `processed` or `unknown` based on provider result.
+- Added `supabase/tests/database/customer_refund_admin_approval_gate.test.sql` with 5 source/schema assertions. Commits: refund preparation guard `3871afb3`, retry-link follow-up `43061f03`, test `a24ea55b`.
+- Approval-gate pgTAP test has 5 assertions; execution remains pending. Source/static verification only. No Razorpay API call, no payment/refund, no database migration application, no Production/deployment/merge changes.
+
 ## 2026-11-15 — Customer refund submission + Main Admin review queue
 
 - Customer refund RPCs added in `20261115100000_customer_refund_request_contract.sql`; they require authenticated ownership and verified payment, serialize on the booking row, prevent duplicate refund records, permit resubmission only after rejection, and keep Admin notes out of Customer refund history. New categorized bookings require a completed booking, immutable labour bill, fully settled cancellation-fee items and exact captured-payment reconciliation. Eligibility guards use `IS DISTINCT FROM` to reject NULL payment/booking states safely.
