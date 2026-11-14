@@ -442,10 +442,10 @@ async function toggleActive(id,active){
  adminActiveToggleBusy.add(id);
  try{
   if(active){
-   const {data:profile,error:readError}=await sb.from('electrician_profiles').select('verification_status,approved_rate_tier').eq('id',id).maybeSingle();
+   const {data:profile,error:readError}=await sb.from('electrician_profiles').select('verification_status,approved_rate_tier,approved_rate_card_version,rate_tier_approved_by,rate_tier_approved_at').eq('id',id).maybeSingle();
    if(readError||!profile)throw new Error('Profile not available');
-   if(profile.verification_status!=='approved'||!['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'].includes(profile.approved_rate_tier)){
-    alert('Active करने से पहले KYC Approved और मान्य Admin-approved रेट-श्रेणी आवश्यक है।');return;
+   if(profile.verification_status!=='approved'||!['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'].includes(profile.approved_rate_tier)||!profile.approved_rate_card_version||!profile.rate_tier_approved_by||!profile.rate_tier_approved_at){
+    alert('Active करने से पहले KYC Approved और पूरा Admin-approved रेट-श्रेणी रिकॉर्ड आवश्यक है।');return;
    }
   }
   const {data:updated,error}=await sb.from('electrician_profiles').update({active}).eq('id',id).select('id').maybeSingle();
