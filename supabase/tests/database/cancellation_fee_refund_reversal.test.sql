@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(34);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
@@ -146,6 +146,10 @@ select ok(
     from position('select * into v_request from public.srk_booking_cancellation_requests r' in lower(
     pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))))>0,
   'Admin cancellation decision locks Booking before Request and then locks the Request row');
+
+select ok(position('BOOKING_ALREADY_REFUNDED' in
+  pg_get_functiondef('public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure))>0,
+  'online payment reconciliation refuses to resurrect a refunded booking');
 
 select * from finish();
 rollback;
