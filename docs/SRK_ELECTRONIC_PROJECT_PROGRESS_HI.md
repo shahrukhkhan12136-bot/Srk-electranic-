@@ -1248,3 +1248,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - अब request बनाने से पहले matching distinct profile IDs की संख्या ठीक 1 होना अनिवार्य है। शून्य या एक से अधिक mapping होने पर request सुरक्षित रूप से रोक दी जाती है; arbitrary profile चयन नहीं होता।
 - Source-only static hardening; वास्तविक database constraints/data और Postgres runtime परीक्षण अंतिम consolidated QA में बाकी हैं।
 - Migration commit: 287ea9bbd4de8fa90de27320a86dac830ea96f9c.
+
+
+### 2026-11-14 — Admin Portal authentication and privileged-trigger audit
+- Admin login initialization में दो parallel session paths (onAuthStateChange और getSession) एक साथ showState() चला सकते थे; इससे duplicate Admin data loads और stale auth response के बाद UI state race का जोखिम था। अब Supabase auth callback के अंदर async RPC नहीं चलती; callback deferred है, generation guard stale response रोकता है, और एक ही authorized user के लिए initial data केवल एक बार load होता है।
+- Admin cancellation migration audit में दो SECURITY DEFINER trigger functions के default PUBLIC execute grants मिले। srk_guard_direct_booking_cancellation() और broadcast_booking_job() पर explicit REVOKE ALL जोड़ा गया; दोनों source migrations दोबारा fetch करके बदलाव verify किए।
+- अन्य जाँचे गए Admin RPC groups (area relocation, work review, cancellation decisions, customer/electrician support, KYC document path, payouts, commission/wallet, refunds, rate-tier और booking offer) में explicit PUBLIC revoke मौजूद मिला।
+- Source-only; कोई migration apply/deploy नहीं हुई। PostgreSQL compile, RLS/role matrix, auth race runtime और full Admin action tests अंतिम consolidated QA में बाकी हैं।
+- Commits: Admin auth/UI 778d790792a9081f074d821ff4ac4118e96e22b5; cancellation trigger revoke cd5c0d8a07350fffb6be48c1f2a9481f73342b86; dispatch trigger revoke 3cc1f33df946134dfc39a2ac316de7a1063009d.
