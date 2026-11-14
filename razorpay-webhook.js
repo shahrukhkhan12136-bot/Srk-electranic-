@@ -13,7 +13,7 @@ const json = (statusCode, body) => ({
 async function updateBooking(orderId, payment) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
-  url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,razorpay_payment_id");
+  url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,razorpay_payment_id,selected_category");
 
   const response = await fetch(url, {
     method: "GET",
@@ -23,6 +23,27 @@ async function updateBooking(orderId, payment) {
   const rows = await response.json();
   const booking = Array.isArray(rows) ? rows[0] : null;
   if (!booking) return "not_found";
+  if (booking.selected_category) {
+    if (booking.payment_status === "paid") return booking.razorpay_payment_id === payment.id ? "already_processed" : "payment_conflict";
+    if (booking.status !== "completed") return "booking_not_payable";
+    const breakdownResponse = await fetch(new URL("/rest/v1/rpc/srk_service_role_get_booking_payment_breakdown", SUPABASE_URL), {
+      method: "POST",
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_booking_id: booking.id })
+    });
+    if (!breakdownResponse.ok) throw new Error("Cancellation fee breakdown lookup failed");
+    const breakdown = await breakdownResponse.json();
+    const expectedAmount = Number(breakdown?.total_amount_paise);
+    if (!Number.isSafeInteger(expectedAmount) || expectedAmount < 100 || payment.amount !== expectedAmount || payment.currency !== "INR") return "amount_mismatch";
+    const settlementResponse = await fetch(new URL("/rest/v1/rpc/srk_service_role_record_online_booking_payment", SUPABASE_URL), {
+      method: "POST",
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_booking_id: booking.id, p_order_id: payment.order_id, p_payment_id: payment.id, p_amount_paise: payment.amount })
+    });
+    if (!settlementResponse.ok) throw new Error("Cancellation fee ledger settlement failed");
+    const settlement = await settlementResponse.json();
+    return settlement?.success ? (settlement.already_processed ? "already_processed" : "updated") : "update_not_applied";
+  }
   if (booking.payment_status === "paid") return booking.razorpay_payment_id === payment.id ? "already_processed" : "payment_conflict";
 
   // Reconcile only a completed job with an explicitly approved quote.
