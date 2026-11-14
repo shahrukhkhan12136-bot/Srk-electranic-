@@ -342,7 +342,28 @@ begin
   end if;
   select * into v_row from public.srk_electrician_phone_change_requests
   where id=p_request_id for update;
-  if not found or v_row.status <> 'processing' or v_row.reviewed_by<>p_admin_id then
+  if not found or v_row.reviewed_by<>p_admin_id then
+    raise exception 'मोबाइल अपडेट की प्रक्रिया की स्थिति मेल नहीं खाती।';
+  end if;
+
+  -- A retry after a lost RPC response must recognize an already committed approval.
+  if v_row.status = 'approved' then
+    select u.phone into v_auth_phone from auth.users u
+    where u.id=v_row.electrician_user_id and u.phone_confirmed_at is not null;
+    if v_auth_phone is not null
+       and regexp_replace(v_auth_phone,'[^0-9]','','g') =
+           regexp_replace(v_row.new_phone,'[^0-9]','','g')
+       and exists(select 1 from public.electrician_profiles ep
+                  where ep.id=v_row.electrician_profile_id
+                    and (ep.user_id=v_row.electrician_user_id or ep.auth_user_id=v_row.electrician_user_id)
+                    and regexp_replace(coalesce(ep.phone,''),'[^0-9]','','g') =
+                        regexp_replace(v_row.new_phone,'[^0-9]','','g')) then
+      return jsonb_build_object('success',true,'status','approved','already_finalized',true);
+    end if;
+    raise exception 'मंजूर रिक्वेस्ट के Auth और प्रोफ़ाइल नंबर का मिलान नहीं हो रहा।';
+  end if;
+
+  if v_row.status <> 'processing' then
     raise exception 'मोबाइल अपडेट की प्रक्रिया की स्थिति मेल नहीं खाती।';
   end if;
 
