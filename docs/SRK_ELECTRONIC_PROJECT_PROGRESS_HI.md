@@ -675,3 +675,17 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Existing legacy Admin booking status dropdown में manual “cancelled” update path भी audit/guard करना बाकी है, ताकि Admin cancellation request/decision workflow bypass न हो।
 - कोई production DB/RPC, live booking, payment, migration application या deployment नहीं किया गया।
 - इस correction को complete cancellation feature न माना जाए; यह केवल customer-side direct-cancel policy mismatch को हटाता है।
+
+
+### 14 नवम्बर 2026 — Admin status-dropdown cancellation bypass बंद
+
+- Admin booking table में सामान्य status dropdown से `cancelled` चुनकर सीधे booking रद्द करने का रास्ता हटाया गया।
+- पहले से cancelled historical booking के लिए status label read-only/disabled रूप में दिखता रहेगा।
+- `saveBooking()` में server से booking का वर्तमान status दोबारा पढ़ने के बाद guard लगाया: नई cancellation को सामान्य status update से अस्वीकार किया जाएगा और सूची refresh होगी।
+- यह UI guard है; authoritative database/RPC-level enforcement अभी बाकी है। कोई live booking या production data बदला नहीं गया।
+
+### Cancellation implementation का वर्तमान सत्यापित scope
+- Customer button केवल Help & Support में cancellation request prefill करता है; ग्राहक को complaint submit करना होता है।
+- Admin सामान्य status dropdown से cancellation नहीं कर सकता।
+- Dedicated cancellation inbox + direct customer request RPC + stage evidence + ₹0/₹49/₹99 Admin decision + immutable decision audit + customer debt carry-forward + SRK cancellation-fee ledger + cash/online reconciliation अभी implement और verify होने बाकी हैं।
+- Production schema read-only निरीक्षण में wallet ledger के मौजूदा entry_type values में dedicated cancellation-fee entry type नहीं मिला; इसलिए इसे existing Platform Fee/commission/adjustment में गलत तरीके से नहीं मिलाया जाएगा।
