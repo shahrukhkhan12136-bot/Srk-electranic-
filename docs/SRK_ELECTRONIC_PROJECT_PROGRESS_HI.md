@@ -787,3 +787,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin login के बाद और Refresh पर inbox auto-load होता है। Message/notes को HTML में escape किया जाता है; reply भेजने से पहले selected complaint और length validate होते हैं।
 - Static verification: Admin inline JavaScript parse PASS; inbox/list/status/thread/reply RPC wiring checks PASS; SQL dollar-quote balance, Admin guard और grant source checks PASS।
 - सीमाएँ: नई reply migration अभी source-only है; वास्तविक DB पर apply/compile नहीं हुई। Customer/Admin JWT से message insertion, RLS/role behavior और attachment viewing का consolidated E2E test अंतिम Testing चरण में बाकी है। कोई live customer message, DB write, Production change या deployment नहीं किया गया।
+
+
+### Support backend dependency audit — 14 नवम्बर 2026
+- Read-only Production schema inspection में `srk_booking_complaint_messages` और `srk_booking_complaint_message_attachments` tables तथा customer message RPCs अनुपस्थित मिले; जबकि Customer UI पहले से इन्हें call कर रही थी। इसलिए केवल Admin Inbox UI जोड़ना पर्याप्त नहीं था।
+- Feature Branch में earlier-order migration `20261113220000_customer_support_conversation_schema.sql` जोड़ी: private message/attachment tables, thread indexes, RLS + direct table privilege revoke, customer-owned message/list/attachment-link RPCs और private Storage bucket policies।
+- इसके बाद `20261113230000_support_attachment_paths_and_admin_message_list.sql` Admin/customer attachment paths और Admin thread reads देता है; `20261114300000_admin_customer_support_thread_replies.sql` Admin-only reply RPC जोड़ता है।
+- Storage object access के लिए SECURITY DEFINER helper में authenticated UID, complaint ownership और Admin check लागू; bucket private तथा MIME/size limits सीमित।
+- Production database पर कोई table, function, bucket या policy नहीं बनाया/बदला गया। ये migrations source-only हैं; PostgreSQL compile, migration-order execution, Storage policy behavior और customer/Admin JWT E2E अभी अंतिम consolidated testing चरण में होंगे।
