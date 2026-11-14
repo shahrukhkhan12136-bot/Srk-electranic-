@@ -11,6 +11,7 @@ create table if not exists public.srk_razorpay_webhook_events (
   last_received_at timestamptz not null default clock_timestamp(),
   completed_at timestamptz,
   last_error text,
+  constraint srk_razorpay_webhook_payload_hash_unique unique (payload_sha256),
   constraint srk_razorpay_webhook_event_id_length check (length(event_id) between 1 and 128),
   constraint srk_razorpay_webhook_event_type_length check (length(event_type) between 1 and 100),
   constraint srk_razorpay_webhook_payload_hash check (payload_sha256 ~ '^[a-f0-9]{64}$')
@@ -48,7 +49,7 @@ begin
     event_id,event_type,payload_sha256,state,attempt_count,claim_token,lease_expires_at
   ) values (
     p_event_id,p_event_type,p_payload_sha256,'processing',1,v_token,clock_timestamp()+interval '2 minutes'
-  ) on conflict(event_id) do nothing;
+  ) on conflict do nothing;
 
   if found then
     return jsonb_build_object('success',true,'should_process',true,'claim_token',v_token,'attempt_count',1);
@@ -56,7 +57,18 @@ begin
 
   select * into v_event from public.srk_razorpay_webhook_events
     where event_id=p_event_id for update;
-  if not found then raise exception 'WEBHOOK_EVENT_CLAIM_RETRY'; end if;
+  if not found then
+    -- The provider event header is not part of the body HMAC. A payload-hash
+    -- unique key also prevents replaying the same signed body under a new header.
+    select * into v_event from public.srk_razorpay_webhook_events
+      where payload_sha256=p_payload_sha256 for update;
+    if found and v_event.event_type=p_event_type then
+      update public.srk_razorpay_webhook_events set last_received_at=clock_timestamp()
+        where event_id=v_event.event_id;
+      return jsonb_build_object('success',true,'duplicate',true,'should_process',false,'state',v_event.state);
+    end if;
+    if not found then raise exception 'WEBHOOK_EVENT_CLAIM_RETRY'; end if;
+  end if;
   if v_event.event_type<>p_event_type or v_event.payload_sha256<>p_payload_sha256 then
     return jsonb_build_object('success',false,'payload_conflict',true,'should_process',false);
   end if;
