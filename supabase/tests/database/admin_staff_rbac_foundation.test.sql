@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(64);
+SELECT plan(65);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -301,6 +301,12 @@ SELECT ok(
     position('from public.srk_admin_support_assignments a' in pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure))
   AND position('for share' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure))) > 0,
   'Staff thread readers lock the case and current assignment so reassignment serializes with message access'
+);
+
+SELECT ok(
+  position('for share of c,a' in lower(pg_get_functiondef('public.srk_admin_staff_list_customer_complaints()'::regprocedure)))>0
+  AND position('for share of t,a' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure)))>0,
+  'Staff inbox list reads lock both case and ownership rows so concurrent reassignment cannot return stale assigned cases'
 );
 
 SELECT * FROM finish();
