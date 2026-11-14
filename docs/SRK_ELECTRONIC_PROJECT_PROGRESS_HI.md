@@ -1,5 +1,12 @@
 # SRK ELECTRONIC — मास्टर प्रोजेक्ट प्रगति सूची
 
+### 2026-11-15 — Customer complaint history privacy hardening
+- Production RPC review found that `srk_customer_list_booking_complaints()` returned the internal `admin_note` column and raw complaint-event `note` values to the customer session, even though the current Customer UI does not render those fields. This was an unnecessary disclosure surface.
+- Added Feature Branch migration `20261114202250_customer_complaint_customer_safe_projection.sql`: preserve the existing RPC response shape for UI compatibility, but always return `NULL` for `admin_note` and an empty activity array; retain strict `auth.uid()` customer ownership filtering and authenticated-only execute grants. Also set an empty `search_path` on the customer complaint-create, complaint-list, work-start-response and work-completion-response SECURITY DEFINER RPCs.
+- Added 12 pgTAP assertions for customer ownership, omitted internal notes, empty search path and execute grants. SQL parser and 12/12 assertion-plan count checks passed statically; pgTAP was **not executed** because this sandbox has no Docker/Podman. No live RPC was altered.
+- Source and test are on Feature Branch / PR #8 only. No Production migration, deployment, merge or mobile test.
+
+
 ### 2026-11-15 — Customer Portal backend contract audit + missing foundation source added
 - Exact scan of `booking.html`: **26 distinct RPC names** are called. Read-only Production catalog comparison found **7 exact names present and 19 absent**. This is name-presence only; matching argument signatures, grants, runtime behavior and row-level authorization still require separate verification. Corrects an earlier rough count in the conversation.
 - Production `service_bookings` is missing the customer-selected category/duration/rate snapshot fields, estimate paise/version fields, booking idempotency key/fingerprint and `work_timer_elapsed_seconds`. Its existing `work_timer_seconds` is still integer, while the source timer migration changes it to bigint. Related source migrations are present in the Feature Branch but are not applied to Production.
