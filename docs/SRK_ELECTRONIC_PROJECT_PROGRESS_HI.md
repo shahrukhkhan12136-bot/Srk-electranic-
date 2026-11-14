@@ -1264,3 +1264,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin direct-write audit में service_bookings पर location/status/quoted_amount और electrician_profiles पर active flag के direct updates पहचाने गए। इनकी effective RLS/column privileges और trigger protections का migration-by-migration audit जारी है; broad policy को बिना पूरी dependency जाँचे नहीं बदला।
 - Source-only; browser runtime और वास्तविक RLS tests अंतिम consolidated QA में बाकी।
 - Commits: auth event race guard 1927912d9751751137f445142fbc49e492d9eaac; duplicate-action guards 1a9101ea997bf6b331e01f69f1860bebabb811bf.
+
+
+### 2026-11-14 — Admin RLS/column-permission audit finding
+- Admin setup migration में service_bookings के लिए is_srk_admin() आधारित UPDATE policy और electrician_profiles के लिए broad FOR ALL policy मिली। इसका अर्थ है कि Admin role को इन tables पर row-level access तो सीमित है, लेकिन policy अकेले column-level सीमाएँ लागू नहीं करती।
+- Admin UI वर्तमान में service_bookings पर पता/जिला/राज्य/PIN, status और quoted_amount update करता है; electrician_profiles पर active flag update करता है। Cancellation trigger सीधे cancelled status को रोकता है, लेकिन अन्य sensitive columns की सुरक्षित सीमा केवल UI validation पर नहीं छोड़ी जानी चाहिए।
+- अभी broad RLS policy को बिना Customer/Electrician portal के सभी direct-write paths और required columns का पूरा dependency map बनाए नहीं बदला; गलत column grants से अन्य portals टूट सकते हैं। अगला source task: direct-write inventory पूरी करना और Admin के अनुमत update columns को सुरक्षित RPC/column grants में migrate करने की योजना बनाना।
+- यह source audit है; कोई migration apply या live permission change नहीं किया गया।
