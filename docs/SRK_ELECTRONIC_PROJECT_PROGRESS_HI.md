@@ -1143,3 +1143,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Finalization fail होने पर rollback केवल तब होता है जब Auth अभी भी इसी request के नए नंबर पर हो। किसी independently बदले तीसरे नंबर को overwrite नहीं किया जाता। इससे interrupted partial-sync recovery सुरक्षित हुई।
 - Source-only; migration लागू नहीं, Edge Function deploy नहीं, SQL/Deno runtime या वास्तविक Auth/OTP flow नहीं चलाया। अंतिम consolidated QA में concurrency, Auth read/update failures, profile finalize failure और rollback permutations जाँचने हैं।
 - Commits: `bed76c5a4cf3ee5dc78d1b7bfda17db55b17aa3f`, `33c35e50c0c7e25315e0554c68c9162edea24bf3`.
+
+
+### 2026-11-14 — Phone-change expired OTP UI cleanup
+- Electrician phone-change history refresh अब OTP input panel केवल तभी दिखाता है जब सबसे नई रिक्वेस्ट `otp_pending` हो और उसकी expiry अभी बाकी हो।
+- OTP verify हो जाने, expire होने या पाँच गलत प्रयासों के बाद history refresh पर पुराना OTP request ID और input साफ़ होकर OTP panel छिप जाता है; expired OTP UI में सक्रिय नहीं दिखेगा।
+- Source-only UI correction; वास्तविक OTP/मोबाइल परीक्षण अंतिम consolidated QA में ही होगा।
+- Commit: `7077613a24eb2e3d6ee6476aa06bbaeaf21fb104`.
