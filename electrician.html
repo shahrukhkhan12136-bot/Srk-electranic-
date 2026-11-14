@@ -133,7 +133,12 @@ async function verifyElectricianPhoneChangeOtp(){
   phoneChangeRequestId=null;document.getElementById('phoneChangeOtpBox').classList.add('hidden');document.getElementById('phoneChangeOtp').value='';document.getElementById('phoneChangeNew').value='';document.getElementById('phoneChangeReason').value='';
   status.textContent='नया नंबर OTP से सत्यापित हो गया है। आपकी रिक्वेस्ट अब Admin की जाँच और अंतिम मंजूरी के लिए भेज दी गई है। मौजूदा नंबर अभी चालू रहेगा।';
   await loadElectricianPhoneChangeHistory();
- }catch(err){status.textContent=err.message||'OTP सत्यापन नहीं हो सका।';}
+ }catch(err){
+  status.textContent=err.message||'OTP सत्यापन नहीं हो सका।';
+  // Refresh authoritative request state so the fifth failed attempt/expiry
+  // immediately clears an OTP form that is no longer usable.
+  try{await loadElectricianPhoneChangeHistory();}catch(_){}
+ }
  finally{phoneChangeBusy=false;button.disabled=false;}
 }
 async function loadMyAreaChangeRequests(){
