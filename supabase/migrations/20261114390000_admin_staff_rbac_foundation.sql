@@ -627,7 +627,7 @@ revoke all on function public.srk_admin_staff_list_customer_complaints() from pu
 grant execute on function public.srk_admin_staff_list_customer_complaints() to authenticated;
 
 create or replace function public.srk_admin_staff_list_customer_messages(p_complaint_id uuid)
-returns table(id uuid,sender_role text,body text,created_at timestamptz)
+returns table(id uuid,sender_role text,body text,created_at timestamptz,is_current_staff_sender boolean)
 language plpgsql
 security definer
 set search_path = ''
@@ -645,7 +645,7 @@ begin
      and a.assigned_staff_user_id=auth.uid() for share;
   if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode = '42501'; end if;
   return query
-    select m.id,m.sender_role,m.body,m.created_at
+    select m.id,m.sender_role,m.body,m.created_at,(m.sender_user_id=auth.uid())
       from public.srk_booking_complaint_messages m
      where m.complaint_id=p_complaint_id
      order by m.created_at,m.id limit 200;
@@ -769,7 +769,7 @@ revoke all on function public.srk_admin_staff_list_electrician_tickets() from pu
 grant execute on function public.srk_admin_staff_list_electrician_tickets() to authenticated;
 
 create or replace function public.srk_admin_staff_list_electrician_messages(p_ticket_id uuid)
-returns table(id uuid,sender_role text,body text,created_at timestamptz)
+returns table(id uuid,sender_role text,body text,created_at timestamptz,is_current_staff_sender boolean)
 language plpgsql
 security definer
 set search_path = ''
@@ -786,7 +786,7 @@ begin
    where a.case_type='electrician_ticket' and a.case_id=p_ticket_id
      and a.assigned_staff_user_id=auth.uid() for share;
   if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
-  return query select m.id,m.sender_role,m.body,m.created_at
+  return query select m.id,m.sender_role,m.body,m.created_at,(m.sender_user_id=auth.uid())
     from public.srk_electrician_support_messages m
    where m.ticket_id=p_ticket_id order by m.created_at,m.id limit 300;
 end;
