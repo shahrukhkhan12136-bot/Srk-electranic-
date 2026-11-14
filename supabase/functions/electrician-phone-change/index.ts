@@ -182,25 +182,12 @@ Deno.serve(async (req: Request) => {
       p_request_id: requestId, p_admin_id: actor.id,
     });
     if (finalizeError || !finalized?.success) {
-      // Roll back only if Auth still contains the number changed by this request.
-      // Never overwrite a third number that may have been changed concurrently.
-      const { data: authAfterFailure, error: authAfterReadError } = await service.auth.admin.getUserById(claim.user_id);
-      const currentDigits = phoneDigits(authAfterFailure?.user?.phone);
-      let rollbackError: unknown = authAfterReadError || null;
-      if (!rollbackError && currentDigits === newPhoneDigits) {
-        const { error } = await service.auth.admin.updateUserById(claim.user_id, {
-          phone: claim.old_phone, phone_confirm: true,
-        });
-        rollbackError = error;
-      } else if (!rollbackError && currentDigits !== oldPhoneDigits) {
-        rollbackError = new Error("Auth phone changed independently; rollback skipped.");
-      }
+      // The RPC may have committed even if its response was lost. Never roll Auth
+      // back based only on an ambiguous network result; keep a recoverable sync state.
       await service.rpc("srk_admin_release_electrician_phone_change", {
-        p_request_id: requestId, p_admin_id: actor.id, p_sync_error: !!rollbackError,
+        p_request_id: requestId, p_admin_id: actor.id, p_sync_error: true,
       });
-      return reply(500, { error: rollbackError
-        ? "लॉगिन और प्रोफ़ाइल नंबर का मिलान नहीं हो सका। रिक्वेस्ट सुरक्षित रोक दी गई है; Admin तकनीकी जाँच आवश्यक है।"
-        : "प्रोफ़ाइल अपडेट पूरा नहीं हुआ। लॉगिन नंबर पुराने नंबर पर वापस किया गया है; Admin फिर प्रयास कर सकता है।" });
+      return reply(503, { error: "मोबाइल अपडेट की अंतिम स्थिति की पुष्टि नहीं हो सकी। लॉगिन नंबर को अपने-आप वापस नहीं बदला गया है। Admin queue refresh करके रिक्वेस्ट की स्थिति जाँचें।" });
     }
     return reply(200, { success: true, message: "नया मोबाइल नंबर सत्यापित और Admin द्वारा मंजूर करके अपडेट कर दिया गया।" });
   }
