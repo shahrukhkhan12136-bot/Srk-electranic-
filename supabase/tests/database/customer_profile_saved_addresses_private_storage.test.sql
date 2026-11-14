@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(28);
 select has_table('public','srk_customer_profiles','customer profile table exists');
 select has_table('public','srk_customer_saved_addresses','saved address table exists');
 select ok((select relrowsecurity from pg_class where oid='public.srk_customer_profiles'::regclass),'customer profile table has RLS enabled');
@@ -23,6 +23,7 @@ select ok(exists(select 1 from pg_indexes where schemaname='public' and indexnam
 select ok(exists(select 1 from storage.buckets where id='srk-customer-avatars' and public=false and file_size_limit=5242880 and allowed_mime_types @> array['image/jpeg','image/png','image/webp']),'avatar bucket is private with restricted MIME types and 5 MB limit');
 select ok(exists(select 1 from storage.buckets where id='srk-customer-support' and public=false and file_size_limit=10485760 and allowed_mime_types @> array['image/jpeg','image/png','image/webp','application/pdf']),'support bucket is private with restricted MIME types and 10 MB limit');
 select ok(exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='srk_customer_avatar_upload_own' and cmd='INSERT'),'avatar upload policy is present');
+select ok(exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='srk_customer_avatar_upload_own' and position('owner_id' in coalesce(with_check,''))>0),'avatar upload policy verifies Storage object ownership');
 select ok(exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='srk_customer_support_upload_own' and cmd='INSERT'),'support upload policy is present and complaint-scoped');
 select ok(not exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='srk_customer_support_delete_own') and exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='srk_customer_support_delete_unlinked_own'),'customers can clean up unlinked uploads but cannot delete linked support evidence');
 select ok(exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='srk_customer_avatar_delete_own' and position('srk_customer_profiles' in coalesce(qual,''))>0),'a customer cannot delete an avatar still referenced by their profile');
