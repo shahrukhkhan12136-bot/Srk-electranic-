@@ -337,6 +337,10 @@ begin
   select * into v_booking from public.service_bookings where id=p_booking_id;
   if not found then raise exception 'BOOKING_NOT_FOUND'; end if;
   if v_booking.status<>'completed' then raise exception 'BOOKING_NOT_COMPLETED'; end if;
+  if lower(coalesce(v_booking.payment_method,'')) not like '%razorpay%'
+     and lower(coalesce(v_booking.payment_method,'')) not like '%online%' then
+    raise exception 'BOOKING_PAYMENT_METHOD_IS_NOT_ONLINE';
+  end if;
   select * into v_labour from public.srk_booking_labour_bills where booking_id=p_booking_id;
   if not found then raise exception 'IMMUTABLE_LABOUR_BILL_REQUIRED'; end if;
   select coalesce(sum(i.amount_paise),0),
@@ -378,6 +382,7 @@ begin
   select * into v_booking from public.service_bookings where id=p_booking_id for update;
   if not found then raise exception 'BOOKING_NOT_FOUND'; end if;
   if v_booking.status<>'completed' or v_booking.assigned_electrician_id is null then raise exception 'COMPLETED_ASSIGNED_BOOKING_REQUIRED'; end if;
+  if lower(coalesce(v_booking.payment_method,'')) not like '%cash%' then raise exception 'BOOKING_PAYMENT_METHOD_IS_NOT_CASH'; end if;
   if v_booking.payment_status in ('paid','refunded') then raise exception 'BOOKING_ALREADY_PAID_OR_REFUNDED'; end if;
   if v_booking.razorpay_order_id is not null or v_booking.razorpay_payment_id is not null then raise exception 'RAZORPAY_BOOKING_MUST_USE_ONLINE_VERIFICATION'; end if;
   select * into v_labour from public.srk_booking_labour_bills where booking_id=p_booking_id;
