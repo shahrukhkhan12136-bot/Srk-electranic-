@@ -1221,3 +1221,6 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Static delimiter audit में Admin queue RPC के `SECURITY DEFINER` body का closing/opening dollar-quote mismatch मिला; उसे ठीक करके `$$` delimiter पुनः स्थापित किया।
 - Migration का delimiter balance और PostgreSQL compile अभी भी वास्तविक database पर अंतिम QA में verify करना बाकी है; source-only स्थिति यथावत है।
 - Commit: `ec840e8b14b6a8dab6e8fa7866c107e6a12122ae`.
+
+- अतिरिक्त static verification में JavaScript replacement-string escaping के कारण SQL delimiter correction पहले अपेक्षित रूप से लागू नहीं हुआ था; अब literal `$$` को सुरक्षित callback replacement से ठीक किया और migration में 14 balanced dollar delimiters पुनः जाँचे।
+- Corrective migration commit: `04fef336894d9b22568cc7df153b7cc989c26770`.
