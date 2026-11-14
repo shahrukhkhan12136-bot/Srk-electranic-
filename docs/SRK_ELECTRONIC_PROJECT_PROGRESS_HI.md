@@ -1012,3 +1012,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Existing business validations, cancellation restriction, payment checks और RPC/table workflows जस के तस रखे गए।
 - Source verification में दोनों guards और wrapper wiring मौजूद — PASS; Admin inline JavaScript syntax — PASS.
 - Source-only; कोई booking status, offer, assignment या payment record बदला नहीं गया।
+
+## 2026-11-14 — Admin Electrician Activation / Rate-Tier Controls Hardening
+- Admin द्वारा electrician की rate tier approve करने के action में per-electrician duplicate-request guard जोड़ा।
+- Rate tier को चार प्रकाशित commercial tier keys की allowlist से validate किया; arbitrary value RPC तक नहीं भेजी जाएगी।
+- Active/Inactive toggle में per-electrician duplicate guard, boolean validation और action से पहले स्पष्ट confirmation जोड़ा।
+- Backend raw error को सीधे alert में दिखाने के बजाय सुरक्षित Hindi error message दिया।
+- Admin inline JavaScript syntax PASS; rate-tier allowlist, दोनों action guards और safe error handling source verification PASS।
+- Source-only; किसी electrician का वास्तविक KYC, rate tier या Active status बदला नहीं गया।
