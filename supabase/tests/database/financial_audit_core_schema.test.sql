@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(49);
+SELECT plan(51);
 
 SELECT ok(to_regclass('public.srk_booking_labour_bills') IS NOT NULL,'immutable labour bill base table exists');
 SELECT ok(to_regclass('public.srk_manual_payment_entries') IS NOT NULL,'manual payment base table exists');
@@ -42,6 +42,8 @@ SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_manual_
 SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_booking_refund_requests'::regclass AND contype='f' AND pg_get_constraintdef(oid) ILIKE '%REFERENCES srk_razorpay_refunds(id)%'),'refund request references the Razorpay refund row');
 SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_manual_refund_entries'::regclass AND contype='f' AND pg_get_constraintdef(oid) ILIKE '%REFERENCES srk_manual_payment_entries(id)%'),'manual refund references its source manual payment');
 SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_admin_audit_events'::regclass AND conname='srk_admin_audit_events_entity_type_check' AND pg_get_constraintdef(oid) ILIKE '%razorpay_refund%'),'audit event allow-list includes Razorpay refund events');
+SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_razorpay_refunds'::regclass AND conname='srk_razorpay_refunds_amount_paise_match' AND pg_get_constraintdef(oid) ILIKE '%amount_paise%' AND pg_get_constraintdef(oid) ILIKE '%round%'),'Razorpay amount and integer paise must reconcile');
+SELECT ok(to_regclass('public.srk_booking_refund_requests_customer_created_idx') IS NOT NULL,'customer refund history has a customer/created index');
 
 SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid='public.is_srk_admin()'::regprocedure),'Main Admin identity helper remains SECURITY DEFINER');
 SELECT ok((SELECT proconfig @> ARRAY['search_path=""'] FROM pg_proc WHERE oid='public.is_srk_admin()'::regprocedure),'Main Admin identity helper has empty search_path');
