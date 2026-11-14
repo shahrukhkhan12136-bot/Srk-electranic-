@@ -14,6 +14,18 @@ function normalizeIndianPhone(value: unknown): string | null {
   const local = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
   return /^[6-9]\d{9}$/.test(local) ? "+91" + local : null;
 }
+function generateOtp(): string {
+  // Rejection sampling avoids modulo bias when mapping 32-bit CSPRNG output to 000000–999999.
+  const range = 0x1_0000_0000;
+  const limit = Math.floor(range / 1_000_000) * 1_000_000;
+  const value = new Uint32Array(1);
+  let sample: number;
+  do {
+    crypto.getRandomValues(value);
+    sample = value[0];
+  } while (sample >= limit);
+  return String(sample % 1_000_000).padStart(6, "0");
+}
 async function otpDigest(requestId: string, otp: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const bytes = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(requestId + ":" + otp));
@@ -67,7 +79,7 @@ Deno.serve(async (req: Request) => {
     const apiKey = Deno.env.get("2FACTOR_API_KEY");
     if (!apiKey) return reply(503, { error: "SMS सेवा अभी कॉन्फ़िगर नहीं है।" });
     const requestId = crypto.randomUUID();
-    const otp = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
+    const otp = generateOtp();
     const digest = await otpDigest(requestId, otp, serviceKey);
     const { error: prepareError } = await service.rpc("srk_phone_change_prepare", {
       p_request_id: requestId, p_user_id: actor.id, p_new_phone: phone, p_reason: reason,
