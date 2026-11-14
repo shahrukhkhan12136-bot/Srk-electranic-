@@ -1233,3 +1233,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Electrician OTP-send error path अब authoritative history refresh करता है; history न पढ़ पाने पर नया send button disabled रखता है।
 - Source-only; migration लागू नहीं, Edge Function deploy नहीं। SQL compilation, Auth/profile legacy-format uniqueness, Admin queue authorization तथा OTP/provider/network failure tests अंतिम consolidated QA में बाकी हैं।
 - SQL commit: e3395f956e2c68c8441e268d1a6ba571c71fa4a5.
+
+
+### 2026-11-14 — Phone-change SQL dollar-quote syntax correction
+- पूरे phone-change migration का static syntax audit करते समय दो PL/pgSQL functions में dollar-quote delimiters गलत मिले: srk_phone_change_cancel_send और srk_admin_release_electrician_phone_change में `as $ ... $;` था, जो PostgreSQL function body delimiter के रूप में valid नहीं है।
+- दोनों को `as $$ ... $$;` में ठीक किया। अब migration में 9 function definitions और 9 matching `as $$` / `$$;` delimiters हैं; कोई malformed single-dollar opener/closer शेष नहीं। यह static delimiter check है, PostgreSQL compile/runtime test नहीं।
+- 2Factor के प्रकाशित manual OTP API निर्देश custom template endpoint `/SMS/{phone}/{otp}/{template_name}` और सफल API response में `Status: Success` तथा `Details` session ID दिखाते हैं। मौजूदा integration का endpoint/response check इस documented pattern से मेल खाता है। API acceptance को handset delivery नहीं माना जाएगा; वास्तविक delivery के लिए provider callback/DLR और live approved template/account की जाँच अंतिम QA में आवश्यक है। कोई SMS नहीं भेजा और कोई API key configure नहीं की।
+- Source-only; migration लागू नहीं, Edge Function deploy नहीं।
+- Commits: cancel-send SQL delimiter correction `17d191a0273ef65538b6a65b502e57c3f98012ef`; Admin release SQL delimiter correction `2ca594cbcbfc439c4c62fba4b41da9e7edd17f19`.
