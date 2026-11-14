@@ -73,7 +73,8 @@ begin
   end if;
   return new;
 end;
-$$;
+$;
+revoke all on function public.srk_guard_direct_booking_cancellation() from public;
 drop trigger if exists srk_guard_direct_booking_cancellation on public.service_bookings;
 create trigger srk_guard_direct_booking_cancellation
 before update of status on public.service_bookings
