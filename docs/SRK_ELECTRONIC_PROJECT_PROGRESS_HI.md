@@ -1162,3 +1162,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Electrician phone-change history RPC यदि सफलतापूर्वक खाली सूची लौटाए, तो अब stale OTP request ID, OTP input/panel और पुराने disabled form controls साफ़ किए जाते हैं। इससे पुराने session/UI state के कारण OTP panel छिपा रहने या नया अनुरोध अनावश्यक रूप से disabled रहने की समस्या रोकी गई।
 - यह केवल source-level सुधार है। वास्तविक browser/mobile flow और history/RPC runtime परीक्षण अंतिम consolidated QA में बाकी हैं।
 - Commit: `5ac5808babd13dc69b43ad3edfd56d91b904e4f3`.
+
+
+### 2026-11-14 — Admin phone-change duplicate-action guard
+- Admin मोबाइल नंबर बदलाव समीक्षा में प्रति request in-flight guard जोड़ा। Approve/Reject पर संबंधित कार्ड के buttons तुरंत disable होते हैं; repeated clicks एक साथ दूसरी Edge Function request नहीं भेजेंगे। Request समाप्त होने पर controls restore होते हैं; परिणाम अनिश्चित हो तो Admin को refresh करके authoritative status जाँचने का संदेश मिलता है।
+- Source-only UI hardening; Admin browser, concurrent request और SQL/RPC runtime परीक्षण अंतिम consolidated QA में बाकी हैं।
+- Commit: `c795e959f2d7d584b309f73e487b71375371834c`.
