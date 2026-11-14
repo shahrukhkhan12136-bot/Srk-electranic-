@@ -566,25 +566,20 @@ async function customerSubmitBookingRefund(bookingId){
   if(button)button.disabled=false;
  }
 }
-function customerCancelBooking(bookingId,button) {
- if(!customerSb||!bookingId)return;
- const bookingOption=[...document.getElementById('customerSupportBooking').options].find(option=>option.value===bookingId);
- if(!bookingOption){
-  alert('बुकिंग सूची अभी तैयार नहीं है। कृपया Help & Support रीफ़्रेश करके दोबारा कोशिश करें।');
-  return;
- }
- const description=document.getElementById('customerSupportDescription');
- const category=document.getElementById('customerSupportCategory');
- const panel=document.getElementById('customerSupportPanel');
- const details=panel?.querySelector('details');
- document.getElementById('customerSupportBooking').value=bookingId;
- if(category)category.value='other';
- if(description)description.value='मैं इस बुकिंग को रद्द करने का अनुरोध करता/करती हूँ। कृपया Admin सत्यापित करें कि इलेक्ट्रिशियन घर से निकला है, रास्ते में है या ग्राहक के घर पहुँच चुका है। लागू cancellation fee और उसका कारण बताकर ही अंतिम निर्णय लें। जब तक Admin निर्णय न दे, बुकिंग को रद्द न माना जाए।';
- if(details)details.open=true;
- document.getElementById('customerTabSupport')?.click();
- document.getElementById('customerSupportCreate')?.scrollIntoView({behavior:'smooth',block:'center'});
- alert('आपका अनुरोध अभी तैयार किया गया है। नीचे “शिकायत दर्ज करें” दबाकर Help & Support में अनुरोध दर्ज करें। Admin के निर्णय से पहले बुकिंग रद्द नहीं होगी और कोई शुल्क अपने-आप नहीं लगेगा।');
- if(button)button.blur();
+async function customerCancelBooking(bookingId,button) {
+ if(!customerSb||!bookingId||button?.disabled)return;
+ const note='ग्राहक ने ऐप से बुकिंग रद्द करने का अनुरोध किया है। कृपया इलेक्ट्रिशियन की सत्यापित स्थिति और उपलब्ध यात्रा/आगमन प्रमाण देखकर निर्णय लें।';
+ if(!confirm('रद्द करने का अनुरोध Admin को भेजें? अभी बुकिंग रद्द नहीं होगी। Admin सत्यापित स्थिति के अनुसार ₹0, ₹49 या ₹99 तय करेगा और कारण दर्ज करेगा।'))return;
+ if(button)button.disabled=true;
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_request_booking_cancellation',{p_booking_id:bookingId,p_customer_note:note});
+  if(error)throw error;
+  if(!data?.success)throw new Error('CANCELLATION_REQUEST_NOT_CONFIRMED');
+  alert(data.already_pending?'इस बुकिंग का अनुरोध पहले से Admin के पास लंबित है।':'रद्द करने का अनुरोध Admin को भेज दिया गया है। फैसला और लागू शुल्क बुकिंग में दिखेगा।');
+  await loadCustomerBookings();
+ } catch(error) {
+  alert('अनुरोध दर्ज नहीं हो सका। कृपया इंटरनेट और लॉगिन जाँचकर दोबारा कोशिश करें। '+(error?.message||''));
+ } finally {if(button)button.disabled=false;}
 }
 async function loadCustomerBookings() {
   const box = document.getElementById('customerBookings');
@@ -610,10 +605,11 @@ async function loadCustomerBookings() {
       box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
       return;
     }
-    const [contactsResult,timelineResult,refundResult] = await Promise.all([
+    const [contactsResult,timelineResult,refundResult,cancellationResult] = await Promise.all([
       customerSb.rpc('srk_get_customer_call_contacts'),
       customerSb.rpc('srk_customer_get_my_booking_work_timeline'),
-      customerSb.rpc('srk_customer_list_my_booking_refund_requests')
+      customerSb.rpc('srk_customer_list_my_booking_refund_requests'),
+      customerSb.rpc('srk_customer_list_booking_cancellation_requests')
     ]);
     const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
     const timelineMap = new Map();
@@ -626,6 +622,10 @@ async function loadCustomerBookings() {
     const refundMap=new Map();
     if(!refundResult.error){
       (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
+    }
+    const cancellationMap=new Map();
+    if(!cancellationResult.error){
+      (cancellationResult.data||[]).forEach(item=>cancellationMap.set(item.booking_id,item));
     }
     const billMap=new Map();
     await Promise.all(data.filter(row=>row.status==='completed'&&row.selected_category).map(async row=>{
@@ -643,9 +643,16 @@ async function loadCustomerBookings() {
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
       const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
-      const cancellationInfo=!['completed','cancelled'].includes(row.status)
-        ? '<div class="job"><p class="small">बुकिंग रद्द करने का अंतिम निर्णय केवल Admin करेगा। अनुरोध भेजने के लिए नीचे बटन दबाएँ। Admin इलेक्ट्रिशियन की सत्यापित स्थिति देखकर लागू शुल्क और कारण बताएगा। अनुरोध भेजने से बुकिंग अपने-आप रद्द नहीं होगी।</p><button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\',this)" style="background:#fff0f0;color:#a32121">Admin से रद्द करने का अनुरोध</button></div>'
-        : '';
+      const cancellationRequest=cancellationMap.get(row.id);
+      const cancellationInfo=cancellationRequest
+        ? '<div class="job"><b>रद्द करने का अनुरोध: '+customerEsc(cancellationRequest.request_status==='pending'?'Admin के निर्णय की प्रतीक्षा':cancellationRequest.request_status==='approved'?'Admin ने रद्द किया':'Admin ने अनुरोध अस्वीकार किया')+'</b>'+
+          (cancellationRequest.fee_amount!==null&&cancellationRequest.fee_amount!==undefined?'<p>निर्धारित cancellation fee: <b>₹'+Number(cancellationRequest.fee_amount).toFixed(2)+'</b></p>':'')+
+          (cancellationRequest.verified_stage?'<p class="small">सत्यापित स्थिति: '+customerEsc(cancellationRequest.verified_stage==='not_departed'?'इलेक्ट्रिशियन घर से नहीं निकला':cancellationRequest.verified_stage==='en_route'?'इलेक्ट्रिशियन रास्ते में था':'इलेक्ट्रिशियन ग्राहक के घर पहुँच चुका था')+'</p>':'')+
+          (cancellationRequest.admin_reason?'<p class="small">Admin का कारण: '+customerEsc(cancellationRequest.admin_reason)+'</p>':'')+
+          (cancellationRequest.request_status==='pending'?'<p class="small">अभी अंतिम फैसला नहीं हुआ है।</p>':'')+'</div>'
+        : (!['completed','cancelled'].includes(row.status)
+          ? '<div class="job"><p class="small">रद्द करने का अनुरोध Admin को भेजें। Admin इलेक्ट्रिशियन की सत्यापित स्थिति देखकर ₹0, ₹49 या ₹99 तय करेगा और कारण दर्ज करेगा। अनुरोध भेजने से बुकिंग अपने-आप रद्द नहीं होगी।</p><button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\',this)" style="background:#fff0f0;color:#a32121">Admin से रद्द करने का अनुरोध</button></div>'
+          : '');
       const refund=refundMap.get(row.id);
       const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
         ? '<div class="job"><b>इलेक्ट्रिशियन ने काम पूरा होने की सूचना दी है।</b><p class="small">कृपया काम जाँचें। पूरा होने पर स्वीकार करें; अधूरा होने पर अस्वीकार करें या विवाद दर्ज करें।</p>'+
