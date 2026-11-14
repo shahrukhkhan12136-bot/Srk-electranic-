@@ -55,7 +55,7 @@ async function inviteSupportStaff(){
  const name=document.getElementById('newStaffName')?.value.trim()||'';
  const email=document.getElementById('newStaffEmail')?.value.trim()||'';
  const status=document.getElementById('adminStaffInviteStatus');
- if(name.length<2||name.length>100||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>254){status.textContent='सही नाम और ईमेल भरें।';return;}
+ if(name.length<2||name.length>100||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254){status.textContent='सही नाम और ईमेल भरें।';return;}
  const button=document.querySelector('#adminStaffManagementCard button[onclick="inviteSupportStaff()"]');
  if(button)button.disabled=true;
  status.textContent='सुरक्षित आमंत्रण बनाया जा रहा है…';
@@ -264,10 +264,10 @@ async function sendStaffElectricianReply(){
 }
 async function staffEmailOtpLogin(){
  const email=document.getElementById('email').value.trim(),status=document.getElementById('authmsg');
- if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>254){status.textContent='पहले आमंत्रित Staff का सही ईमेल भरें।';return;}
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254){status.textContent='पहले आमंत्रित Staff का सही ईमेल भरें।';return;}
  status.textContent='यदि यह ईमेल आमंत्रित Staff खाते से जुड़ा है, तो सुरक्षित sign-in link भेजा जाएगा…';
  const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
- status.textContent=error?'Email OTP link नहीं भेजा जा सका। ईमेल और invitation status जाँचें।':'ईमेल पर सुरक्षित sign-in link भेज दिया गया है। Link खोलकर इसी Portal में लौटें।';
+ status.textContent=error?'Email sign-in link नहीं भेजा जा सका। ईमेल और invitation status जाँचें।':'ईमेल पर सुरक्षित sign-in link भेज दिया गया है। Link खोलकर इसी Portal में लौटें।';
 }
 async function emailLogin(){const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;if(!email||!password){document.getElementById('authmsg').textContent='ईमेल और पासवर्ड दोनों भरें।';return;}const {data,error}=await sb.auth.signInWithPassword({email,password});document.getElementById('authmsg').textContent=error?.message||'लॉगिन जाँच रहे हैं…';if(!error){user=data.user;await showState();}}
 let adminLogoutBusy=false;
