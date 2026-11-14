@@ -842,3 +842,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - KYC सूची में पहले से मौजूद “दस्तावेज़ देखें” बटन अब preview flow से जुड़ा है; popup को user click के synchronous context में खोलकर signed URL आने पर navigate करता है।
 - Read-only schema audit में private bucket, 5 MB PDF/JPEG/PNG limit, existing owner/Admin Storage SELECT policy और KYC metadata columns सत्यापित हुए।
 - Static source checks और JS parse आगे verify होंगे। Migration source-only; Production पर apply नहीं हुई। वास्तविक signed URL generation, PDF/image preview, expiry, दूसरे user द्वारा ID guessing और Admin preview का end-to-end test अंतिम consolidated QA में बाकी।
+
+
+## 14 नवम्बर 2026 — Admin KYC दस्तावेज़ Review Panel (source-only)
+- Admin Dashboard में सभी जमा किए गए KYC दस्तावेज़ों की सूची, पार्टनर/इलाका, फ़ाइल metadata, upload/review समय और activity history दिखाई जाती है।
+- Admin private Storage SELECT policy से 60-second signed preview खोल सकता है; कोई public file URL नहीं बनाया गया।
+- Admin RPC `srk_admin_review_electrician_document` से approve, reject या needs_resubmission निर्णय; reject/resubmission के लिए कारण अनिवार्य। सफल निर्णय पर UI सूची refresh करता है।
+- Admin list/review RPCs और private bucket/policy पहले से मौजूद होने की read-only schema inspection में पुष्टि की गई थी।
+- Static JavaScript parse और source checks: नीचे दर्ज परिणाम। Production migration/deployment या live document review नहीं किया गया। वास्तविक Admin JWT, signed preview, status transition और electrician deactivation behavior का E2E test अंतिम संयुक्त QA में बाकी।
