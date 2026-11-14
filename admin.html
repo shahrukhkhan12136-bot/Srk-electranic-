@@ -249,7 +249,8 @@ async function saveBooking(id){
  try{return await saveBookingInternal(id);}finally{adminBookingActionBusy.delete(id);}
 }
 async function saveBookingInternal(id){
- const status=document.getElementById('st-'+id).value;
+ const status=document.getElementById('st-'+id)?.value;
+ if(!['new','confirmed','assigned','in_progress','completed'].includes(status)){alert('मान्य बुकिंग स्थिति चुनें।');return;}
  const raw=document.getElementById('amt-'+id).value;
  const payment_status=document.getElementById('pay-'+id).value;
  const manual_method=document.getElementById('manual-method-'+id).value;
@@ -257,7 +258,7 @@ async function saveBookingInternal(id){
  const {data:booking,error:readError}=await sb.from('service_bookings')
   .select('status,quoted_amount,assigned_electrician_id,razorpay_payment_id,razorpay_order_id,payment_status,amount_paid,selected_category')
   .eq('id',id).single();
- if(readError){alert('बुकिंग दोबारा पढ़ी नहीं जा सकी: '+readError.message);return;}
+ if(readError||!booking){alert('बुकिंग दोबारा पढ़ी नहीं जा सकी। Admin अनुमति और रिकॉर्ड की स्थिति जाँचें।');return;}
  if(status==='cancelled'&&booking.status!=='cancelled'){
   alert('Admin Dashboard के सामान्य status dropdown से cancellation नहीं किया जा सकता। पहले dedicated cancellation request, stage evidence, fee और audit workflow पूरा होना आवश्यक है।');
   await loadAll();return;
@@ -294,8 +295,8 @@ async function saveBookingInternal(id){
    : 'वास्तविक मैनुअल भुगतान और रसीद सुरक्षित रूप से दर्ज हो गई।');
   await loadAll();return;
  }
- const {error:updateError}=await sb.from('service_bookings').update({status,quoted_amount:quoted}).eq('id',id);
- if(updateError){alert('बुकिंग अपडेट नहीं हुई: '+updateError.message);await loadAll();return;}
+ const {data:updatedBooking,error:updateError}=await sb.from('service_bookings').update({status,quoted_amount:quoted}).eq('id',id).select('id').maybeSingle();
+ if(updateError||!updatedBooking){alert('बुकिंग अपडेट नहीं हुई। Admin अनुमति, बुकिंग स्थिति और server-side नियम जाँचें।');await loadAll();return;}
  await loadAll();
 }
 async function review(id,decision){if(!confirm('आवेदन '+decision+' करना है?'))return;let {error}=await sb.rpc('srk_admin_review_application',{p_application_id:id,p_decision:decision});if(error)alert(error.message);else loadAll()}
@@ -321,10 +322,17 @@ async function toggleActive(id,active){
  if(!confirm(active?'क्या इस स्वीकृत इलेक्ट्रिशियन को Active करना है?':'क्या इस इलेक्ट्रिशियन को Inactive करना है?'))return;
  adminActiveToggleBusy.add(id);
  try{
-  const {error}=await sb.from('electrician_profiles').update({active}).eq('id',id);
-  if(error)throw error;
+  if(active){
+   const {data:profile,error:readError}=await sb.from('electrician_profiles').select('verification_status,approved_rate_tier').eq('id',id).maybeSingle();
+   if(readError||!profile)throw new Error('Profile not available');
+   if(profile.verification_status!=='approved'||!['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'].includes(profile.approved_rate_tier)){
+    alert('Active करने से पहले KYC Approved और मान्य Admin-approved रेट-श्रेणी आवश्यक है।');return;
+   }
+  }
+  const {data:updated,error}=await sb.from('electrician_profiles').update({active}).eq('id',id).select('id').maybeSingle();
+  if(error||!updated)throw error||new Error('No profile updated');
   await loadAll();
- }catch(e){alert('इलेक्ट्रिशियन की स्थिति अपडेट नहीं हुई। Admin अनुमति और KYC स्थिति जाँचें।');}
+ }catch(e){alert('इलेक्ट्रिशियन की स्थिति अपडेट नहीं हुई। Admin अनुमति, KYC और रेट-श्रेणी जाँचें।');}
  finally{adminActiveToggleBusy.delete(id);}
 }
 function mapUrl(x){const q=(x.location_lat!=null&&x.location_lng!=null)?`${x.location_lat},${x.location_lng}`:[x.address,x.district,x.state,x.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q)}
