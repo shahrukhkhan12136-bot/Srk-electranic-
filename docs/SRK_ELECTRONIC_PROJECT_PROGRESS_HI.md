@@ -1318,3 +1318,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - `srk_admin_audit_events` पर client roles को table grants नहीं मिले; अभी audit listing RPC भी `is_srk_admin()` माँगता है। Existing audit capture trigger केवल चुनिंदा business entities/fields दर्ज करता है, इसलिए Staff identity/action/reason का पूरा audit अभी उपलब्ध नहीं।
 - Admin Portal में customer/electrician support inbox मौजूद हैं, लेकिन Staff assignment/ownership और role-based ticket scope नहीं मिला।
 - आगे का सुरक्षित क्रम: (1) अलग staff registry/role/permission schema, (2) Main Admin-only staff lifecycle RPCs, (3) permission-check helper এবং Staff-safe support RPCs, (4) सभी 30 privileged Admin RPCs की permission matrix के अनुसार समीक्षा/रूपांतरण, (5) Auth invite/disable और session revocation, (6) Admin UI + audit tests। इस audit में केवल read-only DB queries हुईं; कोई migration apply, user create, या production change नहीं हुआ।
+
+
+### 2026-11-14 — Admin Staff RBAC foundation (source-only)
+- अलग Staff registry, Support permission catalog/role map, session metadata और append-only Staff audit schema की migration source branch में जोड़ी।
+- Main Admin की full authority अभी भी केवल `srk_admin_users` / `is_srk_admin()` से आती है; Staff को Main Admin allowlist में जोड़ने का कोई रास्ता नहीं बनाया। शुरुआती Support role को केवल support read/reply/status और सीमित booking context permissions दी गईं; finance, refund, payout, KYC, private contacts, cancellation decision, staff management और audit-read permissions नहीं दी गईं।
+- सभी Staff RBAC tables पर RLS enable और browser roles के direct grants revoke किए। Permission helper SECURITY DEFINER + empty search_path के साथ active staff status और explicit role mapping जाँचता है। Staff audit पर UPDATE/DELETE/TRUNCATE रोकने वाले triggers जोड़े।
+- Database pgTAP test file में tables, grants, permission boundary, helper security definition और audit immutability के checks जोड़े।
+- Commits: migration `c8ea3339ed7ef59a913596e6c1df62b0078e17e6`; tests `374dff0b12751db4c02cb137f2013812a932c811`.
+- यह केवल Git branch source है। Migration apply नहीं हुई, Auth staff user नहीं बना, कोई production setting या paid staging branch नहीं बदली। PostgreSQL compile और pgTAP execution अभी बाकी हैं।
+- अगला काम: Main Admin-only staff lifecycle RPCs, session revoke checks, secure Auth invite/disable Edge Function और Support inbox को assignment-scoped Staff-safe RPCs में अलग करना। मौजूदा broad Admin support RPCs को अभी Staff के लिए grant नहीं किया गया।
