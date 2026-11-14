@@ -981,3 +981,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin manual settlement में नई category booking के लिए केवल वास्तविक Cash receipt RPC उपलब्ध है; online payment Razorpay verification से ही।
 - Static JavaScript syntax: create-order, verify-payment, Razorpay webhook और Admin scripts — PASS. सभी relevant payment reads में `selected_category` मौजूद — PASS.
 - यह source inspection/static verification है; कोई live Razorpay payment, webhook event, cash receipt या database update नहीं किया गया। End-to-end payment, duplicate webhook, captured-payment reconciliation और refund race final consolidated QA में होंगे।
+
+## 2026-11-14 — Electrician Payout Reconciliation Hardening
+- Immutable labour bill की वास्तविक schema definition जाँची: `labour_amount_paise` और `labour_amount` दोनों मौजूद हैं; payout गणना के लिए रुपये वाला `labour_amount` field सही है।
+- Production schema का read-only निरीक्षण: payout table के सभी referenced columns, payout status/method constraints और मौजूदा Admin RPC signature migration से मेल खाते हैं। Existing payout trigger booking update पर चलता है; कोई production function या trigger बदला नहीं।
+- Migration में Admin payout settlement अब Razorpay payment ID को booking payment ID से exact match करता है; manual cash entry तभी स्वीकार होती है जब booking payment ID NULL हो और matching receipt मौजूद हो।
+- Admin payout mark-paid path अब किसी भी अभी-reserved cancellation fee item को अस्वीकार करता है; payout amount में केवल settled fee शामिल होती है। इससे अधूरी fee settlement के बीच electrician payout mark-paid नहीं हो सकता।
+- Static source checks PASS: exact payment ID match, reserved-fee rejection, settled-fee-only accounting, booking-first lock order, Admin authorization, legacy quote path, function signature, immutable labour amount field।
+- Source-only change; migration अभी apply नहीं की गई। SQL runtime compile, concurrency, cash/online settlement और refund/payout integration final consolidated QA में होंगे।
