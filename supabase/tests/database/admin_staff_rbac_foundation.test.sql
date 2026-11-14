@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(51);
+SELECT plan(53);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -166,6 +166,25 @@ SELECT has_function('public','srk_admin_list_staff_audit_events',ARRAY['uuid','i
 SELECT ok(
   position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_staff_audit_events(uuid,integer)'::regprocedure))>0,
   'only Main Admin can read Staff activity audit history'
+);
+
+
+SELECT ok(
+  position('from public.srk_booking_complaints c' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure)) <
+    position('from public.srk_admin_support_assignments a' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure))
+  AND position('for update' in lower(pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure)))>0,
+  'Main Admin assignment locks the support case before the ownership row'
+);
+SELECT ok(
+  position('from public.srk_booking_complaints c' in pg_get_functiondef('public.srk_admin_staff_send_customer_message(uuid,text)'::regprocedure)) <
+    position('from public.srk_admin_support_assignments a' in pg_get_functiondef('public.srk_admin_staff_send_customer_message(uuid,text)'::regprocedure))
+  AND position('from public.srk_booking_complaints c' in pg_get_functiondef('public.srk_admin_staff_update_customer_complaint(uuid,text,text)'::regprocedure)) <
+    position('from public.srk_admin_support_assignments a' in pg_get_functiondef('public.srk_admin_staff_update_customer_complaint(uuid,text,text)'::regprocedure))
+  AND position('from public.srk_electrician_support_tickets t' in pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure)) <
+    position('from public.srk_admin_support_assignments a' in pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure))
+  AND position('from public.srk_electrician_support_tickets t' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)) <
+    position('from public.srk_admin_support_assignments a' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)),
+  'Staff replies and status changes lock case rows before assignment rows to avoid lock-order deadlocks'
 );
 
 SELECT * FROM finish();
