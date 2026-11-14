@@ -717,3 +717,37 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Refund/reversal, duplicate/failed payment reconciliation, customer-visible multi-request debt history और full staging JWT/RLS/concurrency/E2E tests बाकी हैं।
 - Existing पुराने cancellation RPC को DB trigger रोकने का उद्देश्य है; migration लागू होने के बाद उसका legacy caller impact staging में जाँचना आवश्यक है।
 - Production database, live bookings, payments, wallet entries, settings या deployment में कोई बदलाव नहीं किया गया।
+
+
+## 14 नवम्बर 2026 — Cancellation Fee Carry-Forward, अगली Booking Bill और अलग Ledger (Feature Branch)
+
+### जो source implementation जोड़ी गई
+- Migration: `20261114280000_cancellation_fee_carry_forward_and_accounting.sql`.
+- Admin द्वारा ₹49/₹99 cancellation decision approve होने पर customer की अलग fee-debt row बनती है; ₹0 पर कोई debt नहीं बनता। पहले से approved ₹49/₹99 requests के लिए idempotent backfill भी शामिल है।
+- अगली customer booking insert पर उसी customer के सभी खुले debts, पुराने created_at क्रम में, अलग-अलग booking line items के रूप में reserve होते हैं। Customer wallet balance से fee waive नहीं होती।
+- यदि वह अगली booking Admin द्वारा cancelled हो जाती है और payment नहीं हुआ, तो reserved fee items फिर open debt बनकर अगली booking के लिए release होते हैं।
+- Customer Payments में सभी fee debts (open/reserved/settled/reversed) और कुल outstanding amount दिखता है।
+- Customer booking card तथा payment receipt में प्रत्येक पुरानी cancellation fee source booking के साथ अलग line item है। Final payment total = immutable server labour bill + उस booking पर reserved cancellation fee items।
+- Razorpay create-order path नई server-timed booking के लिए server RPC से labour + fee total लेता है। Verify-payment और webhook captured amount, order ID, selected Online method तथा immutable labour/fee breakdown मिलाकर एक atomic RPC से booking payment और fee ledger settle करते हैं।
+- Online cancellation-fee हिस्से की अलग SRK cancellation-fee ledger entry बनती है; service labour अलग रहता है।
+- Cash payment के लिए Admin-only RPC वास्तविक receipt/reference पर booking को Paid करता है, electrician wallet में प्रत्येक fee के लिए idempotent debit और SRK cancellation ledger में matching credit एक ही DB transaction में लिखता है। Wallet balance negative हो सकता है; debt waive नहीं होता।
+- Wallet ledger में `cancellation_fee` entry type जोड़ा; SRK cancellation fee ledger append-only है।
+- Admin Dashboard में open/reserved/settled debt, online fee collection और cash electrician wallet debit के अलग totals दिखाई देते हैं।
+- Receipt RPC अब new category booking में immutable labour amount + settled fee items को अलग दिखाता है; print/PDF receipt में भी अलग fee rows हैं।
+
+### Static verification
+- `booking.html`: 4 inline scripts parse PASS.
+- `admin.html`: 3 inline scripts parse PASS.
+- `create-order.js`, `verify-payment.js`, `razorpay-webhook.js`: JavaScript parse PASS.
+- Migration source checks: fee debt table, booking allocation trigger, cash wallet debit, online settlement, separate ledger, receipt fee items और append-only ledger checks PASS.
+- कोई live customer payment, cash receipt, wallet entry या refund execute नहीं किया गया।
+
+### अभी भी बाकी / जरूरी staging gates
+- SQL migration को staging में apply करके PostgreSQL compile, trigger order, RLS/role claims, booking insert allocation, multiple fee rows, cancellation release, duplicate retries और concurrent cash/online settlement की वास्तविक tests करनी हैं। Production में apply नहीं किया गया।
+- Cash RPC केवल Admin द्वारा वास्तविक Cash receipt/reference के बाद चलती है; Admin को ग्राहक से कुल रकम मिलने का वास्तविक प्रमाण देखना होगा।
+- Online ledger entry SRK fee का accounting allocation है; Razorpay settlement/bank reconciliation और Route transfer में labour तथा cancellation fee का वास्तविक अलग settlement end-to-end verify करना बाकी है।
+- Refund/reversal: partial/full refund, settled cancellation fee का reversal, cash wallet debit reversal, पहले से paid electrician payout recovery और chargeback/dispute reconciliation अभी implement/test नहीं हुए।
+- Cash payment Admin path नई server-timed booking के लिए है; पुरानी quote-based bookings पुराने RPC पर चलती हैं। UPI/Bank manual reconciliation नई category के लिए अभी जानबूझकर बंद है; Razorpay Online या Cash ही सुरक्षित verified paths हैं।
+- Cancellation fee evidence अभी Admin द्वारा दर्ज manual verified evidence text है; live travel/arrival telemetry से automatic evidence attachment अभी उपलब्ध नहीं।
+- Migration और UI wiring source-only हैं; actual Supabase migration apply, live Razorpay test-mode transaction, customer/Admin JWT E2E, wallet balance verification और consolidated final mobile QA बाकी हैं।
+- Production deployment, merge, live DB write या payment setting में कोई बदलाव नहीं हुआ।
