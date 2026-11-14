@@ -1,5 +1,5 @@
 begin;
-select plan(28);
+select plan(31);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
@@ -117,5 +117,15 @@ select ok(
     pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
   'full refunds close only refund-owned payout holds and preserve unrelated Admin blocks');
  
+select ok(position('auth.jwt()->>'||quote_literal('role') in
+  pg_get_functiondef('public.srk_service_role_get_booking_payment_breakdown(uuid)'::regprocedure))>0,
+  'online refund breakdown validates service role from the signed JWT claim');
+select ok(position('auth.jwt()->>'||quote_literal('role') in
+  pg_get_functiondef('public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure))>0,
+  'online payment reconciliation validates service role from the signed JWT claim');
+select ok(position('auth.jwt()->>'||quote_literal('role') in
+  pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
+  'refund reconciliation validates service role from the signed JWT claim');
+
 select * from finish();
 rollback;
