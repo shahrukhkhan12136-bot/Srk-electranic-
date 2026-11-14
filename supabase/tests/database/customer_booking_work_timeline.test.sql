@@ -11,7 +11,7 @@ select ok(position('work_completion_customer_approved' in pg_get_functiondef('pu
 select ok(position('work_completion_admin_approved' in pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure))>0,'Admin completion approval gets an Admin-facing event label');
 select ok(position('srk_admin_users' in pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure))>0,'Admin actor role is resolved without exposing user IDs');
 select ok(position('electrician_profiles' in pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure))>0,'electrician actor role is resolved without exposing user IDs');
-select ok(position('limit 200' in lower(pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure))>0,'timeline response is bounded to 200 events');
+select ok(position('limit 200' in lower(pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure)))>0,'timeline response is bounded to 200 events');
 select ok(has_function_privilege('authenticated','public.srk_customer_get_my_booking_work_timeline(uuid)','EXECUTE') and not has_function_privilege('anon','public.srk_customer_get_my_booking_work_timeline(uuid)','EXECUTE'),'timeline RPC is authenticated-only');
 select ok(position('p_booking_id is null' in pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure))>0,'timeline rejects missing booking IDs');
 select * from finish();
