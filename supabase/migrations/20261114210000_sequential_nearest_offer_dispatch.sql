@@ -170,7 +170,7 @@ BEGIN
         +cos(radians(v_booking.location_lat))*cos(radians(e.location_lat))
          *power(sin(radians(e.location_lng-v_booking.location_lng)/2),2)
       ))) ELSE NULL END,
-    v_match_level
+    CASE WHEN e.pincode=v_booking.pincode THEN 'pincode' ELSE 'district' END
   FROM public.electrician_profiles e
   WHERE e.active=true AND e.available_for_work=true AND e.verification_status='approved'
     AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
@@ -180,8 +180,27 @@ BEGIN
       AND e.rate_tier_approved_by IS NOT NULL
       AND e.rate_tier_approved_at IS NOT NULL))
     AND lower(trim(e.state))=lower(trim(v_booking.state))
-    AND ((v_match_level='pincode' AND e.pincode=v_booking.pincode)
-      OR (v_match_level='district' AND lower(trim(e.district))=lower(trim(v_booking.district))));
+    AND (
+      (v_has_pincode AND (
+        e.pincode=v_booking.pincode
+        OR (lower(trim(e.district))=lower(trim(v_booking.district))
+          AND e.pincode IS DISTINCT FROM v_booking.pincode)
+      ))
+      OR (NOT v_has_pincode AND lower(trim(e.district))=lower(trim(v_booking.district)))
+    )
+  ORDER BY
+    CASE WHEN e.pincode=v_booking.pincode THEN 0 ELSE 1 END,
+    CASE WHEN v_booking.location_lat IS NOT NULL AND v_booking.location_lng IS NOT NULL
+           AND e.location_lat IS NOT NULL AND e.location_lng IS NOT NULL
+      THEN 0 ELSE 1 END,
+    CASE WHEN v_booking.location_lat IS NOT NULL AND v_booking.location_lng IS NOT NULL
+           AND e.location_lat IS NOT NULL AND e.location_lng IS NOT NULL
+      THEN 2*6371000*asin(sqrt(least(1,
+        power(sin(radians(e.location_lat-v_booking.location_lat)/2),2)
+        +cos(radians(v_booking.location_lat))*cos(radians(e.location_lat))
+         *power(sin(radians(e.location_lng-v_booking.location_lng)/2),2)
+      ))) ELSE NULL END NULLS LAST,
+    e.created_at ASC,e.id ASC;
 
   GET DIAGNOSTICS v_candidate_count=ROW_COUNT;
   IF v_candidate_count=0 THEN
