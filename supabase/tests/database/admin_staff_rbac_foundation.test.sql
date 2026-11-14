@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(47);
+SELECT plan(49);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -155,6 +155,9 @@ SELECT ok(
   position('booking.read_basic' in pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure))>0,
   'electrician support inbox requires explicit basic booking context permission'
 );
+
+SELECT has_function('public','srk_capture_admin_staff_session_event',ARRAY[]::text[],'new Staff session audit trigger function exists');
+SELECT has_trigger('public','srk_admin_staff_sessions','srk_admin_staff_session_audit_insert','new Staff sessions are recorded in the append-only audit log');
 
 SELECT * FROM finish();
 ROLLBACK;
