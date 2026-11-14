@@ -512,7 +512,7 @@ begin
   if v_actor is null or not public.is_srk_admin() then
     raise exception 'MAIN_ADMIN_ONLY' using errcode = '42501';
   end if;
-  if p_case_type not in ('customer_complaint','electrician_ticket')
+  if p_case_type is null or p_case_type not in ('customer_complaint','electrician_ticket')
      or p_case_id is null or p_staff_user_id is null
      or length(btrim(coalesce(p_reason,''))) < 5 or length(p_reason)>500 then
     raise exception 'INVALID_SUPPORT_ASSIGNMENT' using errcode = '22023';
@@ -524,14 +524,14 @@ begin
     raise exception 'SUPPORT_STAFF_NOT_ACTIVE' using errcode = '22023';
   end if;
   if p_case_type='customer_complaint' and not exists (
-    select 1 from public.srk_booking_complaints c where c.id=p_case_id
+    select 1 from public.srk_booking_complaints c where c.id=p_case_id and c.status<>'closed'
   ) then
-    raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND' using errcode = 'P0002';
+    raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND_OR_CLOSED' using errcode = 'P0002';
   end if;
   if p_case_type='electrician_ticket' and not exists (
-    select 1 from public.srk_electrician_support_tickets t where t.id=p_case_id
+    select 1 from public.srk_electrician_support_tickets t where t.id=p_case_id and t.status<>'closed'
   ) then
-    raise exception 'ELECTRICIAN_TICKET_NOT_FOUND' using errcode = 'P0002';
+    raise exception 'ELECTRICIAN_TICKET_NOT_FOUND_OR_CLOSED' using errcode = 'P0002';
   end if;
 
   select a.assigned_staff_user_id into v_previous_staff
