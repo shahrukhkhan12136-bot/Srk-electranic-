@@ -410,7 +410,7 @@ begin
     insert into public.srk_wallet_ledger(wallet_id,user_id,wallet_type,entry_type,direction,amount,status,
       reference_type,reference_id,idempotency_key,description,posted_at)
     values(v_wallet,v_electrician_user,'electrician','cancellation_fee','debit',
-      v_item.amount_paise/100.0,'posted','cancellation_fee_debt',v_item.debt_id::text,
+      v_item.amount_paise/100.0,'posted','cancellation_fee_item',v_item.id::text,
       'cancel-fee:cash:electrician-debit:'||v_item.id::text,
       'Customer paid prior cancellation fee in cash; SRK recovery from electrician wallet',now())
     on conflict(idempotency_key) do nothing;
