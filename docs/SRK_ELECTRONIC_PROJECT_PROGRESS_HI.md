@@ -657,3 +657,21 @@
 - Read-only Supabase inspection में primary project पर customer complaint create/list और pre-assignment cancellation RPCs मौजूद मिले। उसी read-only schema inspection में deployed service_bookings में नई selected-tier/timer columns नहीं मिले; इसलिए feature-branch migrations की database rollout dependency अभी बाकी है।
 - Latest static checks: booking.html inline JS PASS; create-booking.js syntax PASS; support/cancel functions defined and wired; OTP/login functions remain reachable; booking terms/past-time checks PASS।
 - वास्तविक customer OTP login, complaint insert, cancellation RPC, booking/timer/payment flows को live customer session/JWT से E2E चलाना बाकी है। कोई database write या production change नहीं किया गया।
+
+
+## 14 नवम्बर 2026 — Customer cancellation policy alignment
+
+Master Requirements Section 6 की दोबारा जाँच में एक महत्वपूर्ण mismatch मिला: ग्राहक पेज पर पहले unassigned booking को सीधे cancel करने के लिए `srk_customer_cancel_my_booking` RPC बुलाया जा रहा था, जबकि स्वीकृत नीति के अनुसार ग्राहक या electrician स्वयं booking cancel/finalize नहीं कर सकते; अंतिम निर्णय केवल Admin करेगा।
+
+### Feature Branch में किया गया corrective source change
+- Customer booking card का बटन अब **“Admin से रद्द करने का अनुरोध”** है।
+- यह सीधे booking status बदलने या cancellation RPC चलाने के बजाय Help & Support में संबंधित booking चुनकर cancellation request का विवरण prefill करता है।
+- ग्राहक को स्पष्ट बताया जाता है कि शिकायत/अनुरोध भेजने के लिए उसे “शिकायत दर्ज करें” दबाना होगा; Admin निर्णय से पहले booking cancelled नहीं मानी जाएगी।
+- Customer UI अब ₹0/₹49/₹99 में से कोई cancellation fee स्वयं नहीं लगाता; Admin सत्यापित electrician status और reason के आधार पर निर्णय करेगा।
+- Direct customer cancellation RPC call को इस UI path से हटा दिया गया है।
+
+### शेष blocker — cancellation workflow अभी पूर्ण नहीं
+- Existing Help & Support complaint के माध्यम से अनुरोध भेजना अभी temporary routing है; dedicated Admin cancellation inbox, evidence review, approved fee selection (केवल ₹0/₹49/₹99), mandatory decision reason, append-only audit, customer-visible decision/status और unpaid fee carry-forward/accounting अभी अलग से implement और verify करने हैं।
+- Existing legacy Admin booking status dropdown में manual “cancelled” update path भी audit/guard करना बाकी है, ताकि Admin cancellation request/decision workflow bypass न हो।
+- कोई production DB/RPC, live booking, payment, migration application या deployment नहीं किया गया।
+- इस correction को complete cancellation feature न माना जाए; यह केवल customer-side direct-cancel policy mismatch को हटाता है।
