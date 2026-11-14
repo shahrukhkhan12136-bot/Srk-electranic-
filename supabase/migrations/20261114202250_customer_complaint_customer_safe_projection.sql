@@ -19,6 +19,7 @@ begin
     raise exception 'Customer login required' using errcode='42501';
   end if;
   if p_booking_id is null
+     or p_category is null
      or p_category not in ('service_quality','electrician_behavior','billing_payment','delay_no_show','safety','other')
      or p_description is null
      or length(btrim(p_description)) not between 20 and 2000 then
