@@ -54,7 +54,7 @@ begin
   if not found then raise exception 'ELECTRICIAN_PROFILE_NOT_FOUND' using errcode='42501'; end if;
   if p_booking_id is not null and not exists(
     select 1 from public.service_bookings b
-     where b.id=p_booking_id and b.electrician_id=v_profile.id
+     where b.id=p_booking_id and b.assigned_electrician_id=v_profile.id
   ) then raise exception 'BOOKING_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
   insert into public.srk_electrician_support_tickets
     (electrician_profile_id,user_id,booking_id,category,subject)
