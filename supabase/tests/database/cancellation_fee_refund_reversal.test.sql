@@ -100,7 +100,7 @@ select ok(
   and position('for update' in substring(lower(
     pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))
     from position('select * into v_refund from public.srk_razorpay_refunds' in lower(
-    pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))))>0,
+    pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure)))))>0,
   'refund reconciliation locks booking before refund row to match preparation and payout lock order');
 
 
