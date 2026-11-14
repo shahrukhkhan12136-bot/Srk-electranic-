@@ -208,7 +208,8 @@ DECLARE b public.service_bookings%ROWTYPE; p public.electrician_profiles%ROWTYPE
   v_rate bigint; v_tier text; v_version text;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_response NOT IN ('approved','rejected') OR p_response IS NULL THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023'; END IF;
+  IF p_response NOT IN ('approved','rejected','disputed') OR p_response IS NULL OR (p_note IS NOT NULL AND length(p_note)>1000) THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023'; END IF;
+  IF p_response='disputed' AND (v_note IS NULL OR length(v_note)<20) THEN RAISE EXCEPTION 'विवाद का कारण कम से कम 20 अक्षरों में लिखें'; END IF;
   SELECT * INTO b FROM public.service_bookings WHERE id=p_booking_id AND customer_user_id=auth.uid() FOR UPDATE;
   IF NOT FOUND OR b.status<>'awaiting_work_start_approval' OR b.work_start_approval_status<>'pending' THEN
     RAISE EXCEPTION 'काम शुरू करने की कोई लंबित अनुमति नहीं है';
@@ -275,11 +276,11 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.srk_customer_respond_work_completion(p_booking_id uuid,p_response text)
+CREATE OR REPLACE FUNCTION public.srk_customer_respond_work_completion(p_booking_id uuid,p_response text,p_note text DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
 AS $function$
-DECLARE b public.service_bookings%ROWTYPE; v_minutes bigint; v_paise numeric(24,0); v_amount numeric(18,2);
+DECLARE b public.service_bookings%ROWTYPE; v_minutes bigint; v_paise numeric(24,0); v_amount numeric(18,2); v_note text:=NULLIF(btrim(p_note),'');
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
   IF p_response NOT IN ('approved','rejected') OR p_response IS NULL THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023'; END IF;
@@ -307,9 +308,15 @@ BEGIN
     WHERE id=p_booking_id;
     DELETE FROM srk_private.work_transition_authorizations WHERE transaction_id=pg_catalog.txid_current()
       AND booking_id=p_booking_id AND target_status='completed';
-  ELSE
+  ELSIF p_response='rejected' THEN
     UPDATE public.service_bookings SET completion_approval_status='rejected',
       completion_requested_at=NULL,work_started_at=clock_timestamp(),work_timer_running=true
+    WHERE id=p_booking_id;
+  ELSE
+    INSERT INTO public.srk_booking_complaints(booking_id,customer_user_id,category,description)
+    VALUES(p_booking_id,auth.uid(),'service_quality','काम पूरा होने पर विवाद: '||v_note);
+    UPDATE public.service_bookings SET completion_approval_status='disputed',
+      work_timer_running=false,work_started_at=NULL
     WHERE id=p_booking_id;
   END IF;
   DELETE FROM srk_private.work_timer_authorizations WHERE transaction_id=pg_catalog.txid_current()
@@ -362,8 +369,8 @@ REVOKE ALL ON FUNCTION public.srk_customer_respond_work_start(uuid,text) FROM PU
 GRANT EXECUTE ON FUNCTION public.srk_customer_respond_work_start(uuid,text) TO authenticated;
 REVOKE ALL ON FUNCTION public.srk_electrician_request_work_completion(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_electrician_request_work_completion(uuid) TO authenticated;
-REVOKE ALL ON FUNCTION public.srk_customer_respond_work_completion(uuid,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.srk_customer_respond_work_completion(uuid,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.srk_customer_respond_work_completion(uuid,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_customer_respond_work_completion(uuid,text,text) TO authenticated;
 REVOKE ALL ON FUNCTION public.srk_customer_get_labour_bill(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_customer_get_labour_bill(uuid) TO authenticated;
 REVOKE ALL ON FUNCTION public.srk_electrician_get_labour_bill(uuid) FROM PUBLIC,anon;
@@ -371,3 +378,45 @@ GRANT EXECUTE ON FUNCTION public.srk_electrician_get_labour_bill(uuid) TO authen
 
 COMMENT ON FUNCTION public.srk_customer_respond_work_completion(uuid,text) IS
 'Customer approves/rejects server-timed completion. Final bill contains labour only; materials are excluded. No separate quotation approval is used.';
+
+-- Extend the electrician's assigned-offer view with the timer fields needed by the portal.
+DROP FUNCTION IF EXISTS public.srk_get_my_offer_details();
+CREATE FUNCTION public.srk_get_my_offer_details()
+RETURNS TABLE(
+  offer_id uuid,offer_status text,match_level text,offer_created_at timestamptz,
+  booking_id uuid,service_type text,state text,district text,pincode text,
+  preferred_date date,preferred_time time,work_details text,quoted_amount numeric,
+  booking_status text,customer_name text,customer_phone text,address text,
+  location_lat double precision,location_lng double precision,service_charge numeric,
+  materials_amount numeric,quote_status text,quote_note text,
+  selected_category text,selected_duration_hours smallint,selected_rate_tier text,
+  work_start_approval_status text,completion_approval_status text,
+  completion_requested_at timestamptz,work_timer_elapsed_seconds numeric,
+  work_started_at timestamptz,work_timer_running boolean
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+  SELECT o.id,o.status,o.match_level,o.created_at,b.id,b.service_type,b.state,b.district,b.pincode,
+    b.preferred_date,b.preferred_time,b.work_details,b.quoted_amount,b.status,
+    CASE WHEN b.assigned_electrician_id=p.id THEN b.customer_name ELSE NULL END,
+    CASE WHEN b.assigned_electrician_id=p.id THEN b.phone ELSE NULL END,
+    CASE WHEN b.assigned_electrician_id=p.id THEN b.address ELSE NULL END,
+    CASE WHEN b.assigned_electrician_id=p.id THEN b.location_lat ELSE NULL END,
+    CASE WHEN b.assigned_electrician_id=p.id THEN b.location_lng ELSE NULL END,
+    CASE WHEN b.assigned_electrician_id=p.id THEN b.service_charge ELSE NULL END,
+    CASE WHEN b.assigned_electrician_id=p.id THEN b.materials_amount ELSE NULL END,
+    CASE WHEN b.assigned_electrician_id=p.id THEN b.quote_status ELSE NULL END,
+    CASE WHEN b.assigned_electrician_id=p.id THEN b.quote_note ELSE NULL END,
+    b.selected_category,b.selected_duration_hours,b.selected_rate_tier,
+    b.work_start_approval_status,b.completion_approval_status,b.completion_requested_at,
+    b.work_timer_elapsed_seconds,b.work_started_at,b.work_timer_running
+  FROM public.job_offers o
+  JOIN public.electrician_profiles p ON p.id=o.electrician_id
+  JOIN public.service_bookings b ON b.id=o.booking_id
+  WHERE (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
+    AND p.verification_status='approved' AND p.active=true
+  ORDER BY o.created_at DESC LIMIT 100;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_get_my_offer_details() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_get_my_offer_details() TO authenticated;
