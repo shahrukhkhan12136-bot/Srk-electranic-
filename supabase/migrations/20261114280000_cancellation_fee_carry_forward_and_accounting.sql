@@ -80,7 +80,7 @@ create index if not exists srk_cancellation_fee_ledger_created
 
 create or replace function public.srk_guard_cancellation_fee_ledger_immutable()
 returns trigger language plpgsql set search_path=''
-as $
+as $$
 begin
   raise exception 'CANCELLATION_FEE_LEDGER_IS_APPEND_ONLY';
 end;
@@ -284,7 +284,7 @@ grant execute on function public.srk_customer_get_payment_receipt(uuid) to authe
 
 create or replace function public.srk_customer_list_my_cancellation_fee_debts()
 returns setof jsonb language sql stable security definer set search_path=''
-as $
+as $$
   select jsonb_build_object(
     'id',d.id,'source_booking_id',d.source_booking_id,'reserved_booking_id',d.reserved_booking_id,
     'amount_paise',d.amount_paise,'amount',d.amount_paise/100.0,'status',d.status,
@@ -297,7 +297,7 @@ $$;
 
 create or replace function public.srk_admin_get_cancellation_fee_ledger_summary()
 returns jsonb language plpgsql stable security definer set search_path=''
-as $
+as $$
 begin
   if auth.uid() is null or not public.is_srk_admin() then raise exception 'ADMIN_ONLY' using errcode='42501'; end if;
   return jsonb_build_object(
@@ -313,7 +313,7 @@ $$;
 
 create or replace function public.srk_customer_list_booking_cancellation_fee_items()
 returns setof jsonb language sql stable security definer set search_path=''
-as $
+as $$
   select jsonb_build_object(
     'booking_id',i.booking_id,'debt_id',i.debt_id,'source_booking_id',i.source_booking_id,
     'amount_paise',i.amount_paise,'amount',i.amount_paise/100.0,'status',i.status,
