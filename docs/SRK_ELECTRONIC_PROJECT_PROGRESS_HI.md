@@ -1108,3 +1108,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Phone-change flow की source review में मिला कि यदि OTP 5 मिनट बाद समाप्त हो जाए और इलेक्ट्रिशियन ऐप दोबारा न खोले, तो पुरानी `otp_pending` रिक्वेस्ट नई रिक्वेस्ट को रोक सकती थी।
 - अब नई रिक्वेस्ट तैयार करते समय उसी इलेक्ट्रिशियन की समाप्त/NULL-expiry OTP रिक्वेस्ट पहले `expired` की जाती है और OTP hash साफ किया जाता है; फिर pending-request guard चलता है।
 - Migration को दोबारा fetch करके source change सत्यापित किया। PostgreSQL runtime compile/test, SMS provider verification और E2E अभी final consolidated QA में हैं। कोई migration apply या SMS नहीं भेजा गया।
+
+
+## 2026-11-14 — Relocation-Aware Dispatch Metadata Correction
+- Sequential dispatch और relocation recheck migration की cross-review में मिला कि पुरानी candidate snapshot का `match_level` और दूरी relocation के बाद stale रह सकते थे। Relocation coordinates साफ करता है, इसलिए पुराने coordinates से दूरी दिखाना गलत होता।
+- `20261114230000_recheck_electrician_current_area_before_offer.sql` में dispatch समय electrician का वर्तमान profile दोबारा पढ़कर exact PIN बनाम district match label फिर calculate किया जाता है। दूरी केवल वर्तमान booking/electrician coordinates उपलब्ध होने पर पुनर्गणित होती है; relocation के बाद cleared coordinates से पुरानी दूरी नहीं लौटेगी।
+- GitHub से migration दोबारा fetch करके source change सत्यापित किया। PostgreSQL compile, concurrent dispatch/relocation tests और runtime QA final consolidated phase में बाकी हैं। कोई migration apply या live booking/offer/profile update नहीं हुआ।
