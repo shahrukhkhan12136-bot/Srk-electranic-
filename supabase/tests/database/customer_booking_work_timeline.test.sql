@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(16);
 select has_function('public','srk_customer_get_my_booking_work_timeline',array['uuid'],'customer work timeline RPC exists');
 select ok((select prosecdef from pg_proc where oid='public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure),'customer work timeline is SECURITY DEFINER');
 select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure),'customer work timeline uses an empty search_path');
@@ -14,5 +14,7 @@ select ok(position('electrician_profiles' in pg_get_functiondef('public.srk_cust
 select ok(position('limit 200' in lower(pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure)))>0,'timeline response is bounded to 200 events');
 select ok(has_function_privilege('authenticated','public.srk_customer_get_my_booking_work_timeline(uuid)','EXECUTE') and not has_function_privilege('anon','public.srk_customer_get_my_booking_work_timeline(uuid)','EXECUTE'),'timeline RPC is authenticated-only');
 select ok(position('p_booking_id is null' in pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure))>0,'timeline rejects missing booking IDs');
+select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_respond_work_start(uuid,text)'::regprocedure),'final work-start response RPC uses an empty search_path');
+select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure),'final work-completion response RPC uses an empty search_path');
 select * from finish();
 rollback;
