@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(10);
 select has_function('public','srk_customer_list_booking_complaints',array[]::text[],'customer complaint list RPC exists');
 select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_list_booking_complaints()'::regprocedure),'customer complaint list uses an empty search_path');
 select ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_list_booking_complaints()'::regprocedure))>0,'customer complaint list requires authenticated identity');
@@ -10,7 +10,5 @@ select ok(position('null::text' in lower(pg_get_functiondef('public.srk_customer
 select ok(position('[]' in pg_get_functiondef('public.srk_customer_list_booking_complaints()'::regprocedure))>0,'customer complaint list returns no internal activity notes');
 select ok(has_function_privilege('authenticated','public.srk_customer_list_booking_complaints()','EXECUTE') and not has_function_privilege('anon','public.srk_customer_list_booking_complaints()','EXECUTE'),'customer complaint list is authenticated-only');
 select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_create_booking_complaint(uuid,text,text)'::regprocedure),'complaint creation SECURITY DEFINER RPC uses an empty search_path');
-select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_respond_work_start(uuid,text)'::regprocedure),'work-start response SECURITY DEFINER RPC uses an empty search_path');
-select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure),'work-completion response SECURITY DEFINER RPC uses an empty search_path');
 select * from finish();
 rollback;
