@@ -449,6 +449,10 @@ begin
   select * into v_booking from public.service_bookings where id=p_booking_id for update;
   if not found then raise exception 'BOOKING_NOT_FOUND'; end if;
   if v_booking.status<>'completed' then raise exception 'BOOKING_NOT_COMPLETED'; end if;
+  if lower(coalesce(v_booking.payment_method,'')) not like '%razorpay%'
+     and lower(coalesce(v_booking.payment_method,'')) not like '%online%' then
+    raise exception 'BOOKING_PAYMENT_METHOD_IS_NOT_ONLINE';
+  end if;
   select * into v_labour from public.srk_booking_labour_bills where booking_id=p_booking_id;
   if not found then raise exception 'IMMUTABLE_LABOUR_BILL_REQUIRED'; end if;
   select coalesce(sum(amount_paise),0) into v_fee from public.srk_booking_cancellation_fee_items
