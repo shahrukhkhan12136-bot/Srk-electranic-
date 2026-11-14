@@ -225,10 +225,23 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
    <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
-   <label for="payment">भुगतान</label>
+   <label for="payment">भुगतान का तरीका</label>
    <select id="payment" required><option value="Cash">नकद (Cash)</option><option value="Razorpay ऑनलाइन भुगतान">ऑनलाइन भुगतान (Razorpay / UPI)</option></select>
-   <p class="small">आपके चुने हुए इलेक्ट्रिशियन श्रेणी और अनुमान के अनुसार बुकिंग भेजी जाएगी। अलग निरीक्षण quotation या quote-approval प्रक्रिया नहीं है। सामान/पार्ट्स का खर्च अलग दिखाया और स्वीकृत किया जाएगा। भुगतान काम पूरा होने के बाद होगा।</p>
-   <button class="btn primary" type="submit">बुकिंग भेजें</button>
+   <div class="card" style="margin:12px 0;padding:14px;background:#fffaf0;border:1px solid #f2d59a">
+    <b>बुकिंग से पहले जरूरी जानकारी</b>
+    <ul class="small" style="padding-left:20px;margin:8px 0">
+     <li>दिखाई गई रकम चुनी गई श्रेणी और अवधि का अनुमान है—यह एडवांस या अंतिम बिल की अधिकतम सीमा नहीं है।</li>
+     <li>अंतिम मेहनताना सर्वर में दर्ज वास्तविक काम के मिनटों के अनुसार बनेगा।</li>
+     <li>सामान/पार्ट्स मेहनताने में शामिल नहीं हैं; उनका अलग itemized विवरण और आपकी अलग मंजूरी जरूरी है।</li>
+     <li>आपकी चुनी हुई श्रेणी ही भेजी जाएगी। उपलब्ध पार्टनर न होने पर श्रेणी अपने-आप नहीं बदलेगी।</li>
+     <li>Cash या Online भुगतान तरीका आपकी अनुमति के बिना नहीं बदलेगा। भुगतान काम पूरा होने के बाद होगा।</li>
+    </ul>
+    <label style="display:flex;align-items:flex-start;gap:9px;font-weight:600;line-height:1.45">
+     <input id="bookingTermsAccepted" type="checkbox" required style="width:19px;height:19px;flex:0 0 19px;margin:1px 0 0">
+     <span>मैंने चुनी हुई श्रेणी, अवधि, अनुमान, अलग सामान बिल और भुगतान की शर्तें पढ़ ली हैं और बुकिंग भेजने की पुष्टि करता/करती हूँ।</span>
+    </label>
+   </div>
+   <button class="btn primary" type="submit">शर्तें स्वीकार करके बुकिंग भेजें</button>
   </form>
  </section>
  <section class="panel" id="upiPanel" style="display:none">
@@ -1279,9 +1292,24 @@ function clearCustomerBookingRequestKey(key){
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
-  const amount = 0; // Quote and final amount are set after electrician inspection.
   const method = value('payment');
-  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${document.getElementById('service').selectedOptions[0]?.textContent || ''}\nअनुमानित अवधि: ${value('durationHours')} घंटे\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
+  const tier = document.getElementById('rateTier').selectedOptions[0]?.textContent || '';
+  const hours = Number(value('durationHours'));
+  const rate8h = customerRateCard[value('rateTier')];
+  const estimatePaise = Number.isInteger(hours) && hours >= 1 && hours <= 8 && rate8h
+    ? Math.floor(rate8h * hours / 8 + 0.5) : null;
+  const terms = document.getElementById('bookingTermsAccepted');
+  if (!terms?.checked) { alert('बुकिंग भेजने से पहले जरूरी शर्तें पढ़कर स्वीकार करें।'); terms?.focus(); return; }
+  const selectedDate=value('date'), selectedTime=value('time');
+  const [year,month,day]=selectedDate.split('-').map(Number);
+  const [hour,minute]=selectedTime.split(':').map(Number);
+  const requestedAt=new Date(year,month-1,day,hour,minute,0,0);
+  if(!selectedDate||!selectedTime||!Number.isFinite(requestedAt.getTime())||requestedAt<=new Date()){
+    alert('कृपया वर्तमान समय से आगे की सही बुकिंग तारीख और समय चुनें।');
+    document.getElementById(!selectedDate?'date':'time').focus();return;
+  }
+  if(estimatePaise===null){alert('कृपया इलेक्ट्रिशियन की श्रेणी और 1 से 8 घंटे की अवधि चुनें।');return;}
+  if(!confirm('बुकिंग की पुष्टि करें\\n\\nश्रेणी: '+tier+'\\nअवधि: '+hours+' घंटे\\nअनुमानित मेहनताना: ₹'+(estimatePaise/100).toFixed(2)+'\\nभुगतान तरीका: '+method+'\\n\\nयह अनुमान अंतिम बिल की सीमा नहीं है। वास्तविक समय के अनुसार मेहनताना बनेगा और सामान/पार्ट्स अलग होंगे। क्या बुकिंग भेजें?'))return;
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
@@ -1305,7 +1333,10 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     clearCustomerBookingRequestKey(requestKey);
     pendingBookingId = result.booking_id;
     const estimateText = result.estimate?.amount_rupees ? `\nअनुमानित मेहनताना: ₹${result.estimate.amount_rupees}` : '';
-    alert(`बुकिंग नंबर: ${result.booking_id}${estimateText}\n${result.message}`);
+    const offerText = Number(result.offers_created)>0
+      ? '\\nअभी एक eligible इलेक्ट्रिशियन को ऑफर भेजा गया है।'
+      : '\\nअभी चुनी हुई श्रेणी का कोई उपलब्ध और approved इलेक्ट्रिशियन नहीं मिला। आपकी श्रेणी नहीं बदली गई है।';
+    alert(`बुकिंग नंबर: ${result.booking_id}${estimateText}\n${result.message}${offerText}`);
     await loadCustomerBookings();
   } catch (err) {
     alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
