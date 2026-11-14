@@ -125,8 +125,8 @@ begin
      or p_storage_path is null
      or p_storage_path not like v_user_id::text || '/' || p_complaint_id::text || '/%'
      or p_file_name is null or length(p_file_name) not between 1 and 180
-     or p_mime_type not in ('image/jpeg','image/png','image/webp','application/pdf')
-     or p_file_size_bytes not between 1 and 10485760 then
+     or p_mime_type is null or p_mime_type not in ('image/jpeg','image/png','image/webp','application/pdf')
+     or p_file_size_bytes is null or p_file_size_bytes not between 1 and 10485760 then
     raise exception 'INVALID_SUPPORT_ATTACHMENT' using errcode = '22023';
   end if;
   if not exists(
