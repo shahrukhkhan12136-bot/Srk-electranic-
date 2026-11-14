@@ -396,7 +396,7 @@ create or replace function public.srk_admin_release_electrician_phone_change(
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_status text;
 begin
@@ -424,7 +424,7 @@ begin
 
   return jsonb_build_object('success',false,'status',coalesce(v_status,'not_found'));
 end;
-$;
+$$;
 
 create or replace function public.srk_admin_reject_electrician_phone_change(
   p_request_id uuid,p_admin_id uuid,p_note text
