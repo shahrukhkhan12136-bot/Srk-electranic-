@@ -1512,3 +1512,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin Staff RBAC pgTAP regression assertion को मजबूत किया: Support role में `finance.*`, `payment.*`, `wallet.*`, `refund.*`, `payout.*`, `cancellation.*`, `kyc.*`, staff/audit, cancellation-decision और private-contact permissions न हों।
 - Test plan/assertion count 69/69 है; मौजूदा permission-boundary assertion को विस्तृत किया गया, नया assertion नहीं जोड़ा। यह source-level/static count है, pgTAP execution नहीं। PostgreSQL runtime, JWT-role integration और negative RPC execution tests अभी बाकी हैं।
 - कोई migration apply, payment/refund/payout action, production setting change, deployment या PR merge नहीं किया गया।
+
+### Refund / payout concurrency review — booking-first lock order fix (14 नवम्बर 2026)
+- `srk_admin_prepare_razorpay_refund()` पहले Booking row lock करके उसके बाद Refund record lock करती है; payout settlement भी Booking → Payout क्रम रखता है।
+- पहले `srk_service_reconcile_booking_refund()` उलटे क्रम में Refund row `FOR UPDATE` लेकर बाद में Booking update करती थी। Provider reconciliation और Admin refund preparation एक ही booking पर साथ चलें तो lock inversion/deadlock संभव था।
+- Feature Branch migration `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` में reconciliation अब पहले refund से booking ID पढ़ती है (बिना row lock), फिर Booking `FOR UPDATE` lock करती है, फिर उसी booking से जुड़ा Refund row `FOR UPDATE` lock करती है। Record बदल/गायब होने पर fail-closed error।
+- pgTAP source test `cancellation_fee_refund_reversal.test.sql` में booking-first lock order assertion जोड़ा; plan 24→25।
+- Static source verification: test file में `plan(25)` और 25 assertion calls का exact match जाँचना बाकी; PostgreSQL compile, pgTAP execution और वास्तविक concurrent transaction test अभी नहीं चलाए गए।
+- यह केवल Feature Branch source change है; कोई Production migration, refund, payout, provider API call या deployment नहीं हुआ। Admin Finance/Cancellation अभी Partial है।
