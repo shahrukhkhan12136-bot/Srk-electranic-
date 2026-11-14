@@ -883,3 +883,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin Dashboard में अलग Electrician Support Inbox, status update और reply thread जोड़ा; Admin `loadAll()` refresh में inbox शामिल।
 - Static verification: Electrician और Admin JavaScript syntax parse PASS; दोनों pages पर duplicate element IDs नहीं; RPC wiring, Admin gate, owner filter, private table grants और वास्तविक booking ownership column checks PASS।
 - Source-only: migration Production में apply नहीं हुई; वास्तविक ticket creation, unauthorized Booking ID rejection, Admin JWT access, status update/reply और दो अकाउंट के बीच private data isolation का runtime test अंतिम संयुक्त QA में बाकी।
+
+
+## 14 नवम्बर 2026 — Electrician कमाई और पेआउट स्क्रीन सुधार (source-only)
+- Electrician Earnings में ग्राहक से प्राप्त राशि, कंपनी कमीशन, कुल देय कमाई और Admin द्वारा वास्तविक बैंक/UPI पेआउट को अलग-अलग दिखाया।
+- पेआउट इतिहास में Order ID, राशि, Admin दर्ज भुगतान स्थिति, भुगतान माध्यम, UTR/reference और तारीख दिखाई जाती है।
+- पहले छूटी हुई `blocked` स्थिति अब स्पष्ट “पेआउट रोका गया — Admin से संपर्क करें” संदेश और blocked राशि के साथ दिखाई जाती है; pending, paid और refunded स्थितियों के हिंदी लेबल भी स्पष्ट किए।
+- बैंक/UPI भुगतान चालू नहीं किया; Route onboarding/approval के बिना कोई self-withdrawal या live transfer विकल्प नहीं जोड़ा।
+- Read-only DB audit: payout status constraint में `pending/paid/blocked/refunded`; electrician SELECT policy केवल उसी profile के `user_id=auth.uid()` पर, Admin अलग से देख सकता है; Route transfer table पर anon/authenticated client API deny policy मौजूद। इसलिए Route transfer table सीधे app से पढ़ने की कोशिश नहीं की।
+- Static JavaScript syntax parse PASS; HTML IDs duplicate नहीं।
+- Source-only; वास्तविक payout sample/status rendering और mobile layout अंतिम संयुक्त QA में बाकी।
