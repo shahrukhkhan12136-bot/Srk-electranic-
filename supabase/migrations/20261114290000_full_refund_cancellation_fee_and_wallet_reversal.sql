@@ -447,46 +447,7 @@ begin
      or p_provider_status is null
      or p_provider_status not in ('pending','processed','failed')
      or (p_provider_status='processed' and p_provider_refund_id is null)
-     or (p_provider_refund_id is not null and p_provider_refund_id !~ '^rfnd_[A-Za-z0-9]+
-    return jsonb_build_object('success',true,'status','processed','replayed',true);
-  end if;
-  v_status:=case p_provider_status when 'pending' then 'processing'
-    when 'processed' then 'processed' else 'failed' end;
-
-  update public.srk_razorpay_refunds
-    set refund_id=coalesce(p_provider_refund_id,refund_id),
-        provider_status=p_provider_status,status=v_status,
-        last_error=case when p_provider_status='failed' then left(coalesce(p_error,'Refund failed'),500) else null end,
-        processed_at=case when p_provider_status='processed' then clock_timestamp() else null end,
-        updated_at=clock_timestamp()
-    where id=p_refund_record_id;
-
-  update public.srk_booking_refund_requests
-    set status=case when p_provider_status='processed' then 'processed'
-      when p_provider_status='failed' then 'unknown' else 'processing' end,
-        updated_at=clock_timestamp(),
-        processed_at=case when p_provider_status='processed' then clock_timestamp() else null end
-    where refund_record_id=p_refund_record_id;
-
-  if p_provider_status='processed' then
-    update public.service_bookings set payment_status='refunded'
-      where id=v_refund.booking_id and payment_status='paid';
-  elsif p_provider_status='failed' then
-    update public.srk_electrician_payouts
-      set payout_status='pending',payout_note=v_refund.previous_payout_note,
-          updated_at=clock_timestamp()
-      where booking_id=v_refund.booking_id
-        and payout_status='blocked'
-        and payout_note='Razorpay refund pending';
-  end if;
-
-  return jsonb_build_object('success',true,'status',v_status,'booking_id',v_refund.booking_id);
-end;
-$$;
-
-revoke all on function public.srk_service_reconcile_booking_refund(uuid,text,text,text) from public,anon,authenticated;
-grant execute on function public.srk_service_reconcile_booking_refund(uuid,text,text,text) to service_role;
-) then
+     or (p_provider_refund_id is not null and p_provider_refund_id !~ '^rfnd_[A-Za-z0-9]+$') then
     raise exception 'INVALID_PROVIDER_REFUND_RESULT' using errcode='22023';
   end if;
 
