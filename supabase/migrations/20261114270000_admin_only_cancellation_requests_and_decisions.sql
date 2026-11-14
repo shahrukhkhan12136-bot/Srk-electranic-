@@ -214,6 +214,10 @@ begin
   where id=p_request_id for update;
   if not found then raise exception 'CANCELLATION_REQUEST_NOT_FOUND'; end if;
   if v_request.request_status <> 'pending' then raise exception 'CANCELLATION_REQUEST_ALREADY_DECIDED'; end if;
+  perform 1 from public.service_bookings b
+    where b.id=v_request.booking_id and b.status not in ('completed','cancelled')
+    for update;
+  if not found then raise exception 'BOOKING_NO_LONGER_CANCELLABLE'; end if;
 
   if p_decision='approved' then
     if p_verified_stage not in ('not_departed','en_route','arrived') then raise exception 'INVALID_VERIFIED_STAGE'; end if;
