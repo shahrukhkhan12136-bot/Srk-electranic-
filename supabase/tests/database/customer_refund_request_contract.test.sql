@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(17);
 select has_function('public','srk_customer_create_booking_refund_request',array['uuid','text'],'customer refund request RPC exists');
 select has_function('public','srk_customer_list_booking_refund_requests',array[]::text[],'customer refund history RPC exists');
 select ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_create_booking_refund_request(uuid,text)'::regprocedure))>0,'refund submission requires authenticated identity');
@@ -7,6 +7,7 @@ select ok(position('customer_user_id=v_uid' in pg_get_functiondef('public.srk_cu
 select ok(position('for update' in lower(pg_get_functiondef('public.srk_customer_create_booking_refund_request(uuid,text)'::regprocedure)))>0,'booking row is locked to serialize duplicate refund requests');
 select ok(position('p_reason is null' in pg_get_functiondef('public.srk_customer_create_booking_refund_request(uuid,text)'::regprocedure))>0,'null refund reason is explicitly rejected');
 select ok(position('payment_verified_at is null' in pg_get_functiondef('public.srk_customer_create_booking_refund_request(uuid,text)'::regprocedure))>0,'refund request requires verified payment');
+select ok(position('payment_status is distinct from ''paid''' in pg_get_functiondef('public.srk_customer_create_booking_refund_request(uuid,text)'::regprocedure))>0,'null payment status is rejected explicitly');
 select ok(position('IMMUTABLE_LABOUR_BILL_REQUIRED' in pg_get_functiondef('public.srk_customer_create_booking_refund_request(uuid,text)'::regprocedure))>0,'categorized booking requires immutable final labour bill');
 select ok(position('srk_booking_cancellation_fee_items' in pg_get_functiondef('public.srk_customer_create_booking_refund_request(uuid,text)'::regprocedure))>0,'categorized booking reconciles settled cancellation fee ledger');
 select ok(position('PAID_AMOUNT_DOES_NOT_MATCH_IMMUTABLE_LABOUR_AND_FEE_LEDGER' in pg_get_functiondef('public.srk_customer_create_booking_refund_request(uuid,text)'::regprocedure))>0,'captured amount must exactly match labour and settled fees');
