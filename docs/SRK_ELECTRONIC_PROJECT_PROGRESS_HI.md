@@ -1224,3 +1224,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 
 - अतिरिक्त static verification में JavaScript replacement-string escaping के कारण SQL delimiter correction पहले अपेक्षित रूप से लागू नहीं हुआ था; अब literal `$$` को सुरक्षित callback replacement से ठीक किया और migration में 14 balanced dollar delimiters पुनः जाँचे।
 - Corrective migration commit: `04fef336894d9b22568cc7df153b7cc989c26770`.
+
+
+### 2026-11-14 — Admin phone-change duplicate check canonical digits
+- Admin claim RPC के duplicate-number guard में एक format mismatch मिला: candidate phone को 12 digits (+91 सहित) में रखा जा रहा था, जबकि Auth/profile values की तुलना अंतिम 10 digits से हो रही थी। इस कारण पहले से किसी दूसरे अकाउंट पर मौजूद वही भारतीय मोबाइल नंबर duplicate check से निकल सकता था।
+- अब candidate number भी अंतिम 10 राष्ट्रीय digits में canonicalize होता है; Auth और electrician profile duplicate checks समान format में compare करते हैं।
+- साथ में जाँचा: Admin queue RPC pending_admin, sync_error और processing recoverable states लौटाता है; phone-change request table पर RLS enabled है, browser roles के direct table grants revoke हैं, और सभी RPC execute grants केवल service_role को दिए गए हैं। Profile mapping user_id/auth_user_id दोनों को पहचानती है।
+- Electrician OTP-send error path अब authoritative history refresh करता है; history न पढ़ पाने पर नया send button disabled रखता है।
+- Source-only; migration लागू नहीं, Edge Function deploy नहीं। SQL compilation, Auth/profile legacy-format uniqueness, Admin queue authorization तथा OTP/provider/network failure tests अंतिम consolidated QA में बाकी हैं।
+- SQL commit: e3395f956e2c68c8441e268d1a6ba571c71fa4a5.
