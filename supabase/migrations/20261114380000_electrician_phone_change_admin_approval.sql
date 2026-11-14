@@ -147,7 +147,7 @@ create or replace function public.srk_phone_change_cancel_send(
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_status text;
 begin
@@ -171,7 +171,7 @@ begin
 
   return jsonb_build_object('success',false,'status',coalesce(v_status,'not_found'));
 end;
-$;
+$$;
 
 create or replace function public.srk_phone_change_verify(
   p_request_id uuid,
