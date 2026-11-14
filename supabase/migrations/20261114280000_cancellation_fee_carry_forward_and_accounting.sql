@@ -59,6 +59,18 @@ create table if not exists public.srk_booking_cancellation_fee_items (
 create index if not exists srk_booking_cancellation_fee_items_booking
   on public.srk_booking_cancellation_fee_items(booking_id,status);
 
+-- Preserve the originating cancelled booking on each carried-forward allocation.
+-- Backfill also supports an environment where this table was created by an earlier draft.
+alter table public.srk_booking_cancellation_fee_items
+  add column if not exists source_booking_id uuid
+    references public.service_bookings(id) on delete restrict;
+update public.srk_booking_cancellation_fee_items i
+  set source_booking_id=d.source_booking_id
+  from public.srk_customer_cancellation_fee_debts d
+  where d.id=i.debt_id and i.source_booking_id is null;
+alter table public.srk_booking_cancellation_fee_items
+  alter column source_booking_id set not null;
+
 create table if not exists public.srk_cancellation_fee_ledger (
   id uuid primary key default gen_random_uuid(),
   debt_id uuid not null references public.srk_customer_cancellation_fee_debts(id) on delete restrict,
@@ -108,15 +120,15 @@ begin
   if new.customer_user_id is null then return new; end if;
   perform pg_advisory_xact_lock(hashtextextended(new.customer_user_id::text, 61027));
   for v_debt in
-    select d.id,d.amount_paise
+    select d.id,d.amount_paise,d.source_booking_id
     from public.srk_customer_cancellation_fee_debts d
     where d.customer_user_id=new.customer_user_id and d.status='open'
     order by d.created_at,d.id
     for update
   loop
     insert into public.srk_booking_cancellation_fee_items
-      (booking_id,debt_id,customer_user_id,amount_paise)
-    values(new.id,v_debt.id,new.customer_user_id,v_debt.amount_paise)
+      (booking_id,debt_id,customer_user_id,amount_paise,source_booking_id)
+    values(new.id,v_debt.id,new.customer_user_id,v_debt.amount_paise,v_debt.source_booking_id)
     on conflict(booking_id,debt_id) do nothing;
     update public.srk_customer_cancellation_fee_debts
       set status='reserved',reserved_booking_id=new.id
