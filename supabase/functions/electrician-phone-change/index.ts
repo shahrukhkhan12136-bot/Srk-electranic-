@@ -15,7 +15,10 @@ function normalizeIndianPhone(value: unknown): string | null {
   return /^[6-9]\d{9}$/.test(local) ? "+91" + local : null;
 }
 function phoneDigits(value: unknown): string {
-  return String(value ?? "").replace(/\D/g, "");
+  const digits = String(value ?? "").replace(/\D/g, "");
+  // This flow only accepts Indian mobile numbers; compare the canonical national number
+  // so legacy local-format and +91-format Auth values are treated as the same phone.
+  return digits.length >= 10 ? digits.slice(-10) : digits;
 }
 function generateOtp(): string {
   // Rejection sampling avoids modulo bias when mapping 32-bit CSPRNG output to 000000–999999.
