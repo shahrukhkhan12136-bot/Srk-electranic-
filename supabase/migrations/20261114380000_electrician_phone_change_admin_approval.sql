@@ -54,7 +54,7 @@ declare
   v_count integer;
 begin
   if p_request_id is null or p_user_id is null
-     or p_new_phone !~ '^\\+91[6-9][0-9]{9}$'
+     or p_new_phone !~ '^\+91[6-9][0-9]{9}$'
      or p_otp_hash is null or length(p_otp_hash) < 32
      or p_otp_expires_at <= now() or p_otp_expires_at > now() + interval '6 minutes'
      or char_length(btrim(coalesce(p_reason,''))) not between 10 and 500 then
