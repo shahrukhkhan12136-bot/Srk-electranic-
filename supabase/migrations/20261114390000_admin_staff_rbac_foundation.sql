@@ -872,3 +872,40 @@ drop trigger if exists srk_admin_staff_session_audit_insert
 create trigger srk_admin_staff_session_audit_insert
 after insert on public.srk_admin_staff_sessions
 for each row execute function public.srk_capture_admin_staff_session_event();
+
+
+create or replace function public.srk_admin_list_staff_audit_events(
+  p_staff_user_id uuid,
+  p_limit integer default 100
+)
+returns table (
+  id bigint,
+  actor_user_id uuid,
+  target_user_id uuid,
+  action text,
+  outcome text,
+  details jsonb,
+  created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'MAIN_ADMIN_ONLY' using errcode='42501';
+  end if;
+  if p_staff_user_id is null then
+    raise exception 'STAFF_ID_REQUIRED' using errcode='22023';
+  end if;
+  return query
+    select e.id,e.actor_user_id,e.target_user_id,e.action,e.outcome,e.details,e.created_at
+      from public.srk_admin_staff_audit_events e
+     where e.actor_user_id=p_staff_user_id or e.target_user_id=p_staff_user_id
+     order by e.created_at desc,e.id desc
+     limit greatest(1,least(coalesce(p_limit,100),300));
+end;
+$function$;
+revoke all on function public.srk_admin_list_staff_audit_events(uuid,integer) from public,anon;
+grant execute on function public.srk_admin_list_staff_audit_events(uuid,integer) to authenticated;
