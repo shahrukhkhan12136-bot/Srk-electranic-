@@ -257,6 +257,9 @@ declare
   v_digits text;
   v_auth_phone text;
   v_profile_phone text;
+  v_old_digits text;
+  v_auth_digits text;
+  v_profile_digits text;
 begin
   if not exists(select 1 from public.srk_admin_users a where a.user_id=p_admin_id) then
     raise exception 'Admin अनुमति आवश्यक है।';
@@ -267,16 +270,21 @@ begin
     raise exception 'यह रिक्वेस्ट अब लंबित या OTP-सत्यापित नहीं है।';
   end if;
 
-  -- Do not overwrite a login/profile phone that changed after this request was created.
+  -- Permit safe recovery after a partial Auth/profile sync, but reject any third-party
+  -- phone value that changed independently after this request was created.
   select u.phone into v_auth_phone from auth.users u
   where u.id=v_row.electrician_user_id and u.phone_confirmed_at is not null;
   select ep.phone into v_profile_phone from public.electrician_profiles ep
   where ep.id=v_row.electrician_profile_id
     and (ep.user_id=v_row.electrician_user_id or ep.auth_user_id=v_row.electrician_user_id);
+  v_old_digits:=regexp_replace(v_row.old_phone,'[^0-9]','','g');
+  v_auth_digits:=regexp_replace(coalesce(v_auth_phone,''),'[^0-9]','','g');
+  v_profile_digits:=regexp_replace(coalesce(v_profile_phone,''),'[^0-9]','','g');
+  v_digits:=regexp_replace(v_row.new_phone,'[^0-9]','','g');
   if v_auth_phone is null or v_profile_phone is null
-     or regexp_replace(v_auth_phone,'[^0-9]','','g') <> regexp_replace(v_row.old_phone,'[^0-9]','','g')
-     or regexp_replace(v_profile_phone,'[^0-9]','','g') <> regexp_replace(v_row.old_phone,'[^0-9]','','g') then
-    raise exception 'मौजूदा मोबाइल नंबर इस रिक्वेस्ट के बाद बदल चुका है। पहले प्रोफ़ाइल और लॉगिन नंबर की स्थिति जाँचें।';
+     or v_auth_digits not in (v_old_digits,v_digits)
+     or v_profile_digits not in (v_old_digits,v_digits) then
+    raise exception 'मौजूदा मोबाइल नंबर इस रिक्वेस्ट के बाद किसी अलग नंबर पर बदल चुका है। पहले प्रोफ़ाइल और लॉगिन नंबर की स्थिति जाँचें।';
   end if;
 
   v_digits:=regexp_replace(v_row.new_phone,'[^0-9]','','g');
