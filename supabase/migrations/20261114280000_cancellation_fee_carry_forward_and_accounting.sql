@@ -445,7 +445,14 @@ declare
   v_item record;
 begin
   if auth.role()<>'service_role' then raise exception 'SERVICE_ROLE_ONLY' using errcode='42501'; end if;
-  if p_payment_id !~ '^pay_[A-Za-z0-9]+
+  if p_payment_id is null or p_order_id is null
+     or p_payment_id !~ '^pay_[A-Za-z0-9]+$'
+     or p_order_id !~ '^order_[A-Za-z0-9]+$' then
+    raise exception 'INVALID_PROVIDER_PAYMENT_OR_ORDER_ID';
+  end if;
+  if p_amount_paise is null or p_amount_paise<1 then
+    raise exception 'INVALID_CAPTURED_AMOUNT';
+  end if;
   select * into v_booking from public.service_bookings where id=p_booking_id for update;
   if not found then raise exception 'BOOKING_NOT_FOUND'; end if;
   if v_booking.status<>'completed' then raise exception 'BOOKING_NOT_COMPLETED'; end if;
