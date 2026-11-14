@@ -290,21 +290,7 @@ REVOKE ALL ON FUNCTION public.srk_expire_and_advance_booking_offers()
   FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.srk_expire_and_advance_booking_offers() TO service_role;
 
--- Use pg_cron automatically if it is already enabled; otherwise a scheduled
--- service-role worker must call srk_expire_and_advance_booking_offers() every minute.
-DO $schedule$
-BEGIN
-  IF EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_cron') THEN
-    EXECUTE $sql$
-      SELECT cron.schedule('srk-expire-and-advance-booking-offers','* * * * *',
-        'SELECT public.srk_expire_and_advance_booking_offers();')
-      WHERE NOT EXISTS(SELECT 1 FROM cron.job
-        WHERE jobname='srk-expire-and-advance-booking-offers')
-    $sql$;
-  END IF;
-END;
-$schedule$;
-
+-- Netlify scheduled worker invokes this service-role-only RPC every minute.
 COMMENT ON FUNCTION private.srk_offer_booking_to_eligible_electricians(uuid) IS
   'One offer at a time, nearest-first where both parties have coordinates; exact customer-selected rate tier only.';
 COMMENT ON COLUMN public.job_offers.expires_at IS
