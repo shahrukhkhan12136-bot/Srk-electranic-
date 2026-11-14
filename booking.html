@@ -583,7 +583,7 @@ function customerCancelBooking(bookingId,button) {
  if(details)details.open=true;
  document.getElementById('customerTabSupport')?.click();
  document.getElementById('customerSupportCreate')?.scrollIntoView({behavior:'smooth',block:'center'});
- alert('आपका अनुरोध अभी तैयार किया गया है। नीचे “शिकायत दर्ज करें” दबाकर इसे Admin Support तक भेजें। Admin के निर्णय से पहले बुकिंग रद्द नहीं होगी और कोई शुल्क अपने-आप नहीं लगेगा।');
+ alert('आपका अनुरोध अभी तैयार किया गया है। नीचे “शिकायत दर्ज करें” दबाकर Help & Support में अनुरोध दर्ज करें। Admin के निर्णय से पहले बुकिंग रद्द नहीं होगी और कोई शुल्क अपने-आप नहीं लगेगा।');
  if(button)button.blur();
 }
 async function loadCustomerBookings() {
