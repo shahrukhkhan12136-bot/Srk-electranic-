@@ -212,7 +212,7 @@ begin
   update public.srk_electrician_phone_change_requests r
   set status='expired',otp_hash=null,updated_at=now()
   where r.electrician_user_id=p_user_id and r.status='otp_pending'
-    and r.otp_expires_at <= now();
+    and (r.otp_expires_at is null or r.otp_expires_at <= now());
 
   return query
   select r.id,r.old_phone,r.new_phone,r.reason,r.status,r.otp_verified_at,
@@ -255,6 +255,8 @@ as $$
 declare
   v_row public.srk_electrician_phone_change_requests%rowtype;
   v_digits text;
+  v_auth_phone text;
+  v_profile_phone text;
 begin
   if not exists(select 1 from public.srk_admin_users a where a.user_id=p_admin_id) then
     raise exception 'Admin अनुमति आवश्यक है।';
@@ -264,6 +266,19 @@ begin
   if not found or v_row.status not in ('pending_admin','sync_error') or v_row.otp_verified_at is null then
     raise exception 'यह रिक्वेस्ट अब लंबित या OTP-सत्यापित नहीं है।';
   end if;
+
+  -- Do not overwrite a login/profile phone that changed after this request was created.
+  select u.phone into v_auth_phone from auth.users u
+  where u.id=v_row.electrician_user_id and u.phone_confirmed_at is not null;
+  select ep.phone into v_profile_phone from public.electrician_profiles ep
+  where ep.id=v_row.electrician_profile_id
+    and (ep.user_id=v_row.electrician_user_id or ep.auth_user_id=v_row.electrician_user_id);
+  if v_auth_phone is null or v_profile_phone is null
+     or regexp_replace(v_auth_phone,'[^0-9]','','g') <> regexp_replace(v_row.old_phone,'[^0-9]','','g')
+     or regexp_replace(v_profile_phone,'[^0-9]','','g') <> regexp_replace(v_row.old_phone,'[^0-9]','','g') then
+    raise exception 'मौजूदा मोबाइल नंबर इस रिक्वेस्ट के बाद बदल चुका है। पहले प्रोफ़ाइल और लॉगिन नंबर की स्थिति जाँचें।';
+  end if;
+
   v_digits:=regexp_replace(v_row.new_phone,'[^0-9]','','g');
   if exists(select 1 from auth.users u where u.id<>v_row.electrician_user_id
             and regexp_replace(coalesce(u.phone,''),'[^0-9]','','g')=v_digits)
