@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(28);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
@@ -106,5 +106,16 @@ select ok(position('PROVIDER_REFUND_ID_MISMATCH' in
   pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
   'a provider event cannot replace a refund ID already bound to the booking refund record');
 
+select ok(
+  position('payout_status = '||quote_literal('blocked') in
+    pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
+  and position('Razorpay refund pending' in
+    pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
+  and position('Manual refund processed' in
+    pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
+  and position('payout_status = '||quote_literal('refunded') in
+    pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
+  'full refunds close only refund-owned payout holds and preserve unrelated Admin blocks');
+ 
 select * from finish();
 rollback;
