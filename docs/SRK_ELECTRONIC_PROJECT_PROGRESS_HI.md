@@ -1215,3 +1215,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Migration की Admin list RPC अब `pending_admin`, `sync_error` और `processing` तीनों अवस्थाएँ लौटाती है तथा `request_status` field देती है। Admin UI स्थिति स्पष्ट दिखाती है और `processing` पर दोबारा Approve/Reject बटन नहीं देती, ताकि संभावित concurrent/ambiguous कार्रवाई दोहराई न जाए।
 - Source-only; migration लागू नहीं हुई। Stuck-processing recovery policy, SQL compile और Admin UI runtime tests अंतिम consolidated QA में बाकी हैं।
 - Commits: migration `4d35ecc9932570d53a54d32b9ce2a4901e058a5d`; Admin UI `11286150259fac99cc777ab2f4ed8c60d1e1261c`.
+
+
+### 2026-11-14 — Admin phone queue SQL delimiter verification
+- Static delimiter audit में Admin queue RPC के `SECURITY DEFINER` body का closing/opening dollar-quote mismatch मिला; उसे ठीक करके `$$` delimiter पुनः स्थापित किया।
+- Migration का delimiter balance और PostgreSQL compile अभी भी वास्तविक database पर अंतिम QA में verify करना बाकी है; source-only स्थिति यथावत है।
+- Commit: `ec840e8b14b6a8dab6e8fa7866c107e6a12122ae`.
