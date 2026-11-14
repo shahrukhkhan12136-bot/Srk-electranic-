@@ -1398,3 +1398,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - srk_admin_staff_register_session() अब Staff registry row पर FOR SHARE lock लेकर active status जाँचता है। इससे registration और status-change RPC एक-दूसरे के साथ serialize होते हैं: registration पहले हो तो suspension बाद में उसी session को revoke करती है; suspension पहले हो तो registration updated inactive status देखकर deny होती है।
 - pgTAP source में lock/status guard assertion जोड़ा; plan/assertion count 54/54 match किया जाना है। PostgreSQL compile, pgTAP execution और वास्तविक concurrent transaction test अभी नहीं चले हैं।
 - Commits: migration dc111fce9272e26195200133e97096cf18dcc0d5 (final repaired source); test fbcc2f177572b86e1aa03fdc3d178f040b79b37e. Source-only; कोई migration apply, Auth session revoke API, deploy या production change नहीं।
+
+
+### 2026-11-14 — Permission-check और suspension concurrency fix
+- Migration में बाद की duplicate function definition के कारण `srk_has_admin_permission()` की अंतिम definition tracked session / live `auth.sessions` validation को overwrite कर रही थी। अंतिम applied definition को ठीक किया: Staff permission अब exact JWT session, matching Auth session और non-revoked tracked session तीनों verify करती है। Main Admin का अलग authorization path जस का तस है।
+- एक और TOCTOU race बंद की: permission check अब active Staff registry row पर `FOR SHARE` lock रखता है। Suspend/Disable RPC उसी row पर `FOR UPDATE` लेती है, इसलिए Staff read/write request permission check पार करके suspension के बाद जारी नहीं रह सकती। चार Staff read RPCs को VOLATILE किया ताकि वे इस transactional row lock का उपयोग कर सकें।
+- pgTAP source plan/assertions अब 55/55 हैं; अभी केवल static source-count/definition verification है, pgTAP execute नहीं हुआ। PostgreSQL compile और concurrent transaction tests शेष हैं।
+- Source commits: permission/session fix  d5e213271b2d9cdd20cb76ffd6ec60e30ce9c0e0; lock serialization 5c322ec787c931b3d8f59d9f77442f51c54ac65c; test ae9ae20dd7e1b06901ee1eaab74e7781f7ce6a8e. No migration apply, deployment, or production changes.
