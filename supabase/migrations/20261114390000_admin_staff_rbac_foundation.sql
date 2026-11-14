@@ -195,11 +195,13 @@ begin
     return false;
   end if;
 
-  -- Preserve the existing, separate Main Admin authority model.
+  -- Main Admin remains a separate, full-control identity class.
   if public.is_srk_admin() then
     return true;
   end if;
 
+  -- Staff access is tied to this exact, extant Auth session and its
+  -- separately tracked, non-revoked Staff session record.
   if coalesce(auth.jwt() ->> 'session_id','') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
     return false;
   end if;
