@@ -1297,3 +1297,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Booking status/payment handlers में UI allowlists और Razorpay/manual-settlement guards मौजूद हैं; cancellation trigger direct `cancelled` status को dedicated Admin decision के बिना रोकता है। Electrician active/rate-tier activation के लिए database trigger भी मौजूद है।
 - उपलब्ध migration history में service-booking और electrician-profile के मूल व्यापक Admin UPDATE policies/column grants की पूर्ण परिभाषा इस branch के tracked migration set से स्पष्ट नहीं हुई। इसलिए column-level grants या policies बदलना अभी सुरक्षित नहीं; कोई DB migration लागू/बदली नहीं। अगला कदम base schema/policy provenance और सभी app direct-write dependencies की पुष्टि के बाद restricted Admin RPC/column-grant design करना है।
 - Audit source-only है; live database permissions, RLS behavior और concurrent update tests अंतिम consolidated QA में ही सत्यापित होंगे।
+
+
+### 2026-11-14 — Admin electrician activation contract alignment
+- Admin `toggleActive()` में approved rate-tier का canonical enum `premium_electrical_specialist` रखा और केवल tier string के बजाय `approved_rate_card_version`, `rate_tier_approved_by`, `rate_tier_approved_at` की मौजूदगी भी जाँची। यह database activation trigger के contract के अनुरूप है; backend trigger अंतिम authority बना रहता है।
+- Admin source commit `f7679c00052584fbc61b7ee4ce66b8a88e3dc364`; source fetch द्वारा बदलाव verify किया। कोई database migration/apply या production setting change नहीं हुआ।
+- अभी भी direct-write dependency audit बाकी है: location/booking updates और `electrician_profiles.active` के लिए सुरक्षित RPC/column-grant design तभी लागू होगा जब base policies तथा सभी app dependencies पूरी तरह map हो जाएँ।
