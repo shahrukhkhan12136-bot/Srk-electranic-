@@ -1195,3 +1195,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Audit phát hiện Auth phone và `electrician_profiles.phone` có thể lưu cùng số Ấn Độ ở định dạng khác nhau (ví dụ `+91XXXXXXXXXX` và `XXXXXXXXXX`). So sánh chỉ loại ký tự không phải số vẫn cho kết quả khác, khiến Admin recovery bị từ chối nhầm; đồng thời kiểm tra số trùng có thể bỏ sót định dạng 10/12 chữ số.
 - Migration được chỉnh để so sánh canonical 10 chữ số cuối cho kiểm tra số cũ/mới, Auth/profile recovery, finalization và duplicate-number checks. Chuẩn lưu số mới vẫn là `+91` + 10 अंक.
 - Source-only; migration chưa लागू. Cần compile và kiểm tra uniqueness/concurrency với dữ liệu legacy के अंतिम QA में।
+
+
+### 2026-11-14 — Edge Auth phone comparison normalization
+- Admin approval Edge Function पहले Auth phone और request phone को केवल non-digit हटाकर compare करती थी। Legacy local 10-digit बनाम `+91` 12-digit storage format में वही नंबर अलग समझा जा सकता था।
+- `phoneDigits()` अब इस Indian-only flow में अंतिम 10 national digits compare करती है; SQL canonical comparison के अनुरूप partial-sync retry और old/new Auth checks सही format-independent comparison करेंगे।
+- Source-only; deployed Edge Function पर runtime verification अंतिम consolidated QA में बाकी।
