@@ -1096,3 +1096,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - OTP-verified phone update migration की deeper PL/pgSQL review में Admin claim RPC के declaration block में दूसरा DECLARE keyword मिला, जो function compile को रोक सकता था।
 - इसे एक वैध DECLARE block में समेटा; दोबारा GitHub से migration fetch करके पुष्टि की कि malformed repeated declaration pattern अब नहीं है।
 - यह केवल source correction है। वास्तविक PostgreSQL compile/execute अभी नहीं हुआ; वह final consolidated QA में रहेगा। कोई migration apply, Edge Function deploy, SMS या live account change नहीं हुआ।
+
+
+## 2026-11-14 — Phone Change OTP Expiry Input Validation Hardening
+- OTP prepare RPC की validation में NULL expiry timestamp का edge case मिला: SQL में NULL comparison अपने-आप invalid condition नहीं बनता।
+- अब `p_otp_expires_at IS NULL` को स्पष्ट रूप से reject किया जाता है; 5-minute application expiry और database की maximum 6-minute bound कायम है।
+- GitHub से migration दोबारा fetch करके source correction सत्यापित की। यह static source review है; PostgreSQL runtime compilation/tests अभी अंतिम consolidated QA में होंगे। कोई migration apply, SMS या live account change नहीं किया।
