@@ -253,7 +253,7 @@ returns table(
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 begin
   return query
   select r.id,r.electrician_user_id,r.electrician_profile_id,
