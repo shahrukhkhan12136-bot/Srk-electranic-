@@ -45,7 +45,7 @@ begin
          round(v_bill.labour_amount + coalesce((
            select sum(i.amount_paise)::numeric / 100
              from public.srk_booking_cancellation_fee_items i
-            where i.booking_id = new.id and i.status = 'settled'
+            where i.booking_id = new.id and i.status in ('reserved','settled')
          ),0),2) then
         raise exception 'VERIFIED_PAYMENT_DOES_NOT_MATCH_LABOUR_AND_SETTLED_FEES';
       end if;
