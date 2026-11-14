@@ -1328,3 +1328,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Commits: migration `c8ea3339ed7ef59a913596e6c1df62b0078e17e6`; tests `374dff0b12751db4c02cb137f2013812a932c811`.
 - यह केवल Git branch source है। Migration apply नहीं हुई, Auth staff user नहीं बना, कोई production setting या paid staging branch नहीं बदली। PostgreSQL compile और pgTAP execution अभी बाकी हैं।
 - अगला काम: Main Admin-only staff lifecycle RPCs, session revoke checks, secure Auth invite/disable Edge Function और Support inbox को assignment-scoped Staff-safe RPCs में अलग करना। मौजूदा broad Admin support RPCs को अभी Staff के लिए grant नहीं किया गया।
+
+
+### 2026-11-14 — Admin Staff lifecycle, sessions और Main Admin UI (source-only)
+- Staff RBAC migration में Main Admin-only Staff list/status RPCs, Support invite registration RPC और Staff session register/list/revoke RPCs जोड़े। Invite registration RPC केवल `service_role` execute कर सकता है; client-supplied role स्वीकार नहीं होता और Support role fixed है।
+- Staff permission helper अब current JWT `session_id` को `auth.sessions` में live session से मिलाता है और tracked revoked session को deny करता है। Suspended/Disabled Staff के tracked sessions revoke होते हैं; fresh login के बिना पुराने session को पुनः सक्रिय नहीं किया जाता।
+- `admin-staff-management` Edge Function source जोड़ा: पहले Supabase Auth से वास्तविक user verify, फिर `is_srk_admin()` Main Admin check; invite के समय केवल fixed Support role, user metadata में सिर्फ display name; service-role key browser में नहीं जाती। Registry write असफल होने पर unregistered invited Auth user cleanup का प्रयास।
+- Admin Portal में Main Admin-only Staff Management UI जोड़ी: Support invitation, Active/Suspend/Disable, reason-required audit, session list और per-session revoke controls।
+- pgTAP test file 23 assertions तक बढ़ाई। Inline Admin JavaScript का compile-only syntax check सफल; SQL/pgTAP अभी execute नहीं हुए।
+- Commits: lifecycle/session SQL `011f0eb0ec048be1887d86fbca635966407c7a64`, session list/revoke SQL `ec2125db9cd8ec75041e6ac8b503365d1b34dcc4`, Edge Function `a4143d7b246e6a7be53688f00c0801ad7b634c8c`, tests `65b3e66986f44ca899a9d788ee34280d8c3bb070`, Admin UI `a58f56e2dcb93a40d8399f50757d5f7fed979a33`.
+- कोई migration apply या Edge Function deploy नहीं हुई; कोई Staff account/invitation नहीं भेजी गई। Staff login अभी जानबूझकर बंद है, क्योंकि support inbox assignment-scoped Staff-safe RPCs और UI isolation अगला dependency है।
