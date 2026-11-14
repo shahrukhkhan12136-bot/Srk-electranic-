@@ -472,3 +472,343 @@ end;
 $function$;
 revoke all on function public.srk_admin_staff_revoke_session(uuid,text) from public, anon;
 grant execute on function public.srk_admin_staff_revoke_session(uuid,text) to authenticated;
+
+
+-- Current ownership map for support cases. A single active owner is allowed per case.
+create table if not exists public.srk_admin_support_assignments (
+  id uuid primary key default gen_random_uuid(),
+  case_type text not null check (case_type in ('customer_complaint','electrician_ticket')),
+  case_id uuid not null,
+  assigned_staff_user_id uuid not null references public.srk_admin_staff(user_id) on delete restrict,
+  assigned_by uuid not null references auth.users(id) on delete restrict,
+  assigned_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz not null default clock_timestamp(),
+  unique(case_type,case_id)
+);
+create index if not exists srk_admin_support_assignments_staff_idx
+  on public.srk_admin_support_assignments(assigned_staff_user_id,case_type,updated_at desc);
+alter table public.srk_admin_support_assignments enable row level security;
+revoke all on public.srk_admin_support_assignments from public,anon,authenticated;
+
+-- Staff sender identity is retained on customer conversation messages without changing legacy rows.
+alter table public.srk_booking_complaint_messages
+  add column if not exists sender_user_id uuid references auth.users(id) on delete set null;
+
+create or replace function public.srk_admin_assign_support_case(
+  p_case_type text,
+  p_case_id uuid,
+  p_staff_user_id uuid,
+  p_reason text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_actor uuid := auth.uid();
+  v_previous_staff uuid;
+begin
+  if v_actor is null or not public.is_srk_admin() then
+    raise exception 'MAIN_ADMIN_ONLY' using errcode = '42501';
+  end if;
+  if p_case_type not in ('customer_complaint','electrician_ticket')
+     or p_case_id is null or p_staff_user_id is null
+     or length(btrim(coalesce(p_reason,''))) < 5 or length(p_reason)>500 then
+    raise exception 'INVALID_SUPPORT_ASSIGNMENT' using errcode = '22023';
+  end if;
+  if not exists (
+    select 1 from public.srk_admin_staff s
+     where s.user_id=p_staff_user_id and s.role_key='support' and s.status='active'
+  ) then
+    raise exception 'SUPPORT_STAFF_NOT_ACTIVE' using errcode = '22023';
+  end if;
+  if p_case_type='customer_complaint' and not exists (
+    select 1 from public.srk_booking_complaints c where c.id=p_case_id
+  ) then
+    raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND' using errcode = 'P0002';
+  end if;
+  if p_case_type='electrician_ticket' and not exists (
+    select 1 from public.srk_electrician_support_tickets t where t.id=p_case_id
+  ) then
+    raise exception 'ELECTRICIAN_TICKET_NOT_FOUND' using errcode = 'P0002';
+  end if;
+
+  select a.assigned_staff_user_id into v_previous_staff
+    from public.srk_admin_support_assignments a
+   where a.case_type=p_case_type and a.case_id=p_case_id
+   for update;
+
+  insert into public.srk_admin_support_assignments
+    (case_type,case_id,assigned_staff_user_id,assigned_by,assigned_at,updated_at)
+  values (p_case_type,p_case_id,p_staff_user_id,v_actor,clock_timestamp(),clock_timestamp())
+  on conflict (case_type,case_id) do update
+    set assigned_staff_user_id=excluded.assigned_staff_user_id,
+        assigned_by=excluded.assigned_by,
+        assigned_at=clock_timestamp(),
+        updated_at=clock_timestamp();
+
+  insert into public.srk_admin_staff_audit_events
+    (actor_user_id,target_user_id,action,outcome,details)
+  values
+    (v_actor,p_staff_user_id,'support.case.assigned','success',
+     jsonb_build_object('case_type',p_case_type,'case_id',p_case_id,
+       'previous_staff_user_id',v_previous_staff,'assigned_staff_user_id',p_staff_user_id,
+       'reason',left(p_reason,500)));
+  return true;
+end;
+$function$;
+revoke all on function public.srk_admin_assign_support_case(text,uuid,uuid,text) from public,anon;
+grant execute on function public.srk_admin_assign_support_case(text,uuid,uuid,text) to authenticated;
+
+create or replace function public.srk_admin_staff_list_customer_complaints()
+returns table (
+  id uuid, booking_id uuid, category text, description text,
+  status text, created_at timestamptz, updated_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if auth.uid() is null or not public.srk_has_admin_permission('support.customer.read') then
+    raise exception 'SUPPORT_CUSTOMER_READ_REQUIRED' using errcode = '42501';
+  end if;
+  return query
+    select c.id,c.booking_id,c.category,c.description,c.status,c.created_at,c.updated_at
+      from public.srk_booking_complaints c
+      join public.srk_admin_support_assignments a
+        on a.case_type='customer_complaint' and a.case_id=c.id
+     where a.assigned_staff_user_id=auth.uid()
+     order by c.updated_at desc,c.id desc limit 100;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_list_customer_complaints() from public,anon;
+grant execute on function public.srk_admin_staff_list_customer_complaints() to authenticated;
+
+create or replace function public.srk_admin_staff_list_customer_messages(p_complaint_id uuid)
+returns table(id uuid,sender_role text,body text,created_at timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if auth.uid() is null or not public.srk_has_admin_permission('support.customer.read') then
+    raise exception 'SUPPORT_CUSTOMER_READ_REQUIRED' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1 from public.srk_admin_support_assignments a
+     where a.case_type='customer_complaint' and a.case_id=p_complaint_id
+       and a.assigned_staff_user_id=auth.uid()
+  ) then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode = '42501'; end if;
+  return query
+    select m.id,m.sender_role,m.body,m.created_at
+      from public.srk_booking_complaint_messages m
+     where m.complaint_id=p_complaint_id
+     order by m.created_at,m.id limit 200;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_list_customer_messages(uuid) from public,anon;
+grant execute on function public.srk_admin_staff_list_customer_messages(uuid) to authenticated;
+
+create or replace function public.srk_admin_staff_send_customer_message(p_complaint_id uuid,p_body text)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_uid uuid:=auth.uid();
+  v_message_id uuid;
+begin
+  if v_uid is null or not public.srk_has_admin_permission('support.customer.reply') then
+    raise exception 'SUPPORT_CUSTOMER_REPLY_REQUIRED' using errcode='42501';
+  end if;
+  if p_body is null or length(btrim(p_body)) not between 1 and 4000 then
+    raise exception 'MESSAGE_MUST_BE_1_TO_4000_CHARACTERS' using errcode='22023';
+  end if;
+  perform 1 from public.srk_admin_support_assignments a
+   where a.case_type='customer_complaint' and a.case_id=p_complaint_id
+     and a.assigned_staff_user_id=v_uid for update;
+  if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
+  if exists(select 1 from public.srk_booking_complaints c where c.id=p_complaint_id and c.status='closed') then
+    raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000';
+  end if;
+  insert into public.srk_booking_complaint_messages(complaint_id,sender_role,sender_user_id,body)
+  values(p_complaint_id,'admin',v_uid,btrim(p_body))
+  returning id into v_message_id;
+  insert into public.srk_admin_staff_audit_events(actor_user_id,action,outcome,details)
+  values(v_uid,'support.customer.reply','success',
+    jsonb_build_object('case_id',p_complaint_id,'message_id',v_message_id));
+  return v_message_id;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_send_customer_message(uuid,text) from public,anon;
+grant execute on function public.srk_admin_staff_send_customer_message(uuid,text) to authenticated;
+
+create or replace function public.srk_admin_staff_update_customer_complaint(
+  p_complaint_id uuid,p_status text,p_reason text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_uid uuid:=auth.uid();
+  v_old_status text;
+begin
+  if v_uid is null or not public.srk_has_admin_permission('support.customer.update_status') then
+    raise exception 'SUPPORT_CUSTOMER_STATUS_REQUIRED' using errcode='42501';
+  end if;
+  if p_status not in ('in_review','resolved') or p_reason is null
+     or length(btrim(p_reason)) not between 5 and 500 then
+    raise exception 'INVALID_SUPPORT_STATUS_UPDATE' using errcode='22023';
+  end if;
+  perform 1 from public.srk_admin_support_assignments a
+   where a.case_type='customer_complaint' and a.case_id=p_complaint_id
+     and a.assigned_staff_user_id=v_uid for update;
+  if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
+  select c.status into v_old_status from public.srk_booking_complaints c
+   where c.id=p_complaint_id for update;
+  if not found then raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND' using errcode='P0002'; end if;
+
+  update public.srk_booking_complaints
+     set status=p_status,updated_at=clock_timestamp(),updated_by=v_uid,
+         resolved_at=case when p_status='resolved' then coalesce(resolved_at,clock_timestamp()) else null end,
+         resolved_by=case when p_status='resolved' then coalesce(resolved_by,v_uid) else null end
+   where id=p_complaint_id;
+  insert into public.srk_booking_complaint_events
+    (complaint_id,actor_user_id,actor_role,from_status,to_status,note)
+  values(p_complaint_id,v_uid,'admin',v_old_status,p_status,left(p_reason,500));
+  insert into public.srk_admin_staff_audit_events(actor_user_id,action,outcome,details)
+  values(v_uid,'support.customer.update_status','success',
+    jsonb_build_object('case_id',p_complaint_id,'from_status',v_old_status,
+      'to_status',p_status,'reason',left(p_reason,500)));
+  return true;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_update_customer_complaint(uuid,text,text) from public,anon;
+grant execute on function public.srk_admin_staff_update_customer_complaint(uuid,text,text) to authenticated;
+
+create or replace function public.srk_admin_staff_list_electrician_tickets()
+returns table (
+  id uuid, booking_id uuid, category text, subject text,
+  status text, created_at timestamptz, updated_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if auth.uid() is null or not public.srk_has_admin_permission('support.electrician.read') then
+    raise exception 'SUPPORT_ELECTRICIAN_READ_REQUIRED' using errcode='42501';
+  end if;
+  return query
+    select t.id,t.booking_id,t.category,t.subject,t.status,t.created_at,t.updated_at
+      from public.srk_electrician_support_tickets t
+      join public.srk_admin_support_assignments a
+        on a.case_type='electrician_ticket' and a.case_id=t.id
+     where a.assigned_staff_user_id=auth.uid()
+     order by t.updated_at desc,t.id desc limit 100;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_list_electrician_tickets() from public,anon;
+grant execute on function public.srk_admin_staff_list_electrician_tickets() to authenticated;
+
+create or replace function public.srk_admin_staff_list_electrician_messages(p_ticket_id uuid)
+returns table(id uuid,sender_role text,body text,created_at timestamptz)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if auth.uid() is null or not public.srk_has_admin_permission('support.electrician.read') then
+    raise exception 'SUPPORT_ELECTRICIAN_READ_REQUIRED' using errcode='42501';
+  end if;
+  if not exists(select 1 from public.srk_admin_support_assignments a
+    where a.case_type='electrician_ticket' and a.case_id=p_ticket_id
+      and a.assigned_staff_user_id=auth.uid()) then
+    raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501';
+  end if;
+  return query select m.id,m.sender_role,m.body,m.created_at
+    from public.srk_electrician_support_messages m
+   where m.ticket_id=p_ticket_id order by m.created_at,m.id limit 300;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_list_electrician_messages(uuid) from public,anon;
+grant execute on function public.srk_admin_staff_list_electrician_messages(uuid) to authenticated;
+
+create or replace function public.srk_admin_staff_send_electrician_message(p_ticket_id uuid,p_body text)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare v_uid uuid:=auth.uid(); v_message_id uuid;
+begin
+  if v_uid is null or not public.srk_has_admin_permission('support.electrician.reply') then
+    raise exception 'SUPPORT_ELECTRICIAN_REPLY_REQUIRED' using errcode='42501';
+  end if;
+  if p_body is null or length(btrim(p_body)) not between 1 and 4000 then
+    raise exception 'MESSAGE_MUST_BE_1_TO_4000_CHARACTERS' using errcode='22023';
+  end if;
+  perform 1 from public.srk_admin_support_assignments a
+   where a.case_type='electrician_ticket' and a.case_id=p_ticket_id
+     and a.assigned_staff_user_id=v_uid for update;
+  if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
+  if exists(select 1 from public.srk_electrician_support_tickets t where t.id=p_ticket_id and t.status='closed') then
+    raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000';
+  end if;
+  insert into public.srk_electrician_support_messages(ticket_id,sender_role,sender_user_id,body)
+  values(p_ticket_id,'admin',v_uid,btrim(p_body)) returning id into v_message_id;
+  insert into public.srk_admin_staff_audit_events(actor_user_id,action,outcome,details)
+  values(v_uid,'support.electrician.reply','success',
+    jsonb_build_object('case_id',p_ticket_id,'message_id',v_message_id));
+  return v_message_id;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_send_electrician_message(uuid,text) from public,anon;
+grant execute on function public.srk_admin_staff_send_electrician_message(uuid,text) to authenticated;
+
+create or replace function public.srk_admin_staff_update_electrician_ticket(
+  p_ticket_id uuid,p_status text,p_reason text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare v_uid uuid:=auth.uid(); v_old_status text;
+begin
+  if v_uid is null or not public.srk_has_admin_permission('support.electrician.update_status') then
+    raise exception 'SUPPORT_ELECTRICIAN_STATUS_REQUIRED' using errcode='42501';
+  end if;
+  if p_status not in ('in_review','resolved') or p_reason is null
+     or length(btrim(p_reason)) not between 5 and 500 then
+    raise exception 'INVALID_SUPPORT_STATUS_UPDATE' using errcode='22023';
+  end if;
+  perform 1 from public.srk_admin_support_assignments a
+   where a.case_type='electrician_ticket' and a.case_id=p_ticket_id
+     and a.assigned_staff_user_id=v_uid for update;
+  if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
+  select t.status into v_old_status from public.srk_electrician_support_tickets t
+   where t.id=p_ticket_id for update;
+  if not found then raise exception 'ELECTRICIAN_TICKET_NOT_FOUND' using errcode='P0002'; end if;
+  update public.srk_electrician_support_tickets
+     set status=p_status,updated_at=clock_timestamp(),updated_by=v_uid
+   where id=p_ticket_id;
+  insert into public.srk_admin_staff_audit_events(actor_user_id,action,outcome,details)
+  values(v_uid,'support.electrician.update_status','success',
+    jsonb_build_object('case_id',p_ticket_id,'from_status',v_old_status,
+      'to_status',p_status,'reason',left(p_reason,500)));
+  return true;
+end;
+$function$;
+revoke all on function public.srk_admin_staff_update_electrician_ticket(uuid,text,text) from public,anon;
+grant execute on function public.srk_admin_staff_update_electrician_ticket(uuid,text,text) to authenticated;
+
