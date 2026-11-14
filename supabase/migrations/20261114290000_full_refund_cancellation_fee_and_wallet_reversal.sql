@@ -115,8 +115,8 @@ begin
 
       select wl.* into v_wallet_entry
       from public.srk_wallet_ledger wl
-      where wl.reference_type='cancellation_fee_debt'
-        and wl.reference_id=v_item.debt_id::text
+      where wl.reference_type='cancellation_fee_item'
+        and wl.reference_id=v_item.id::text
         and wl.wallet_type='electrician'
         and wl.entry_type='cancellation_fee'
         and wl.direction='debit'
