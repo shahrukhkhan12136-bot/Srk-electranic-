@@ -1114,3 +1114,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Sequential dispatch और relocation recheck migration की cross-review में मिला कि पुरानी candidate snapshot का `match_level` और दूरी relocation के बाद stale रह सकते थे। Relocation coordinates साफ करता है, इसलिए पुराने coordinates से दूरी दिखाना गलत होता।
 - `20261114230000_recheck_electrician_current_area_before_offer.sql` में dispatch समय electrician का वर्तमान profile दोबारा पढ़कर exact PIN बनाम district match label फिर calculate किया जाता है। दूरी केवल वर्तमान booking/electrician coordinates उपलब्ध होने पर पुनर्गणित होती है; relocation के बाद cleared coordinates से पुरानी दूरी नहीं लौटेगी।
 - GitHub से migration दोबारा fetch करके source change सत्यापित किया। PostgreSQL compile, concurrent dispatch/relocation tests और runtime QA final consolidated phase में बाकी हैं। कोई migration apply या live booking/offer/profile update नहीं हुआ।
+
+
+### 2026-11-14 — Electrician phone-change approval stale-state guard
+- Phone-change Admin approval claim में अतिरिक्त consistency check जोड़ा: OTP request बनने के बाद यदि Auth login phone या electrician profile phone किसी अन्य प्रक्रिया से बदल गया हो, तो Admin approval claim अब रुक जाएगा; पुरानी request के आधार पर नया नंबर overwrite नहीं होगा। दोनों मौजूदा नंबरों का normalized digits के आधार पर request के captured old phone से मिलान आवश्यक है।
+- Electrician phone-change history RPC में NULL OTP expiry को भी expired माना जाएगा, ताकि malformed/legacy OTP-pending row अनिश्चितकाल तक लंबित न रहे।
+- यह केवल source change है। Migration लागू नहीं हुई, Edge Function deploy नहीं हुई, SMS/OTP या वास्तविक Admin approval नहीं किया गया। SQL compilation/runtime, concurrency, Auth/profile synchronization और rollback tests अंतिम consolidated QA में बाकी हैं।
+- Commit: `c59588bc3d1c7e7bc2d505aafb1f6965ea0385f7`.
