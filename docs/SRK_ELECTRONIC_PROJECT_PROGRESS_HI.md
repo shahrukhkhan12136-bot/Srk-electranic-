@@ -1,3 +1,9 @@
+### 2026-11-15 — Customer work timeline RPC contract correction
+- Detailed branch-vs-function-signature review found `booking.html` called `srk_customer_get_my_booking_work_timeline()` without an argument, while the SECURITY DEFINER RPC requires `p_booking_id uuid`. The previous customer-wide response handling also expected a `booking_id` column that the function intentionally does not return.
+- Fixed the Customer booking loader to request the timeline separately for each booking already filtered by `customer_user_id = auth.uid()`, passing `{p_booking_id: row.id}`, then map returned safe event labels/actor roles/timestamps to that booking. This retains booking-level authorization and avoids introducing a customer-wide event stream.
+- Change committed to the approved Feature Branch in commit `cc78a603f5f266e5fbab29e774fbf305b433c405`. Source re-fetch confirms the exact updated call is present. Runtime browser/E2E and Node syntax/test verification are still pending; the previous Vercel sandbox session has stopped and no replacement test environment was created.
+- No Production database, Storage bucket, payment, deployment, or setting was changed.
+
 # SRK ELECTRONIC — मास्टर प्रोजेक्ट प्रगति सूची
 
 ### 2026-11-15 — Razorpay server-side payment-method enforcement
