@@ -80,7 +80,7 @@ begin
   if v_old_phone is null or v_old_phone = '' then
     raise exception 'मौजूदा सत्यापित लॉगिन मोबाइल नंबर उपलब्ध नहीं है।';
   end if;
-  if regexp_replace(v_old_phone,'[^0-9]','','g') = regexp_replace(p_new_phone,'[^0-9]','','g') then
+  if right(regexp_replace(v_old_phone,'[^0-9]','','g'),10) = right(regexp_replace(p_new_phone,'[^0-9]','','g'),10) then
     raise exception 'नया नंबर मौजूदा नंबर से अलग होना चाहिए।';
   end if;
 
@@ -88,11 +88,11 @@ begin
   if exists (
     select 1 from auth.users u
     where u.id <> p_user_id
-      and regexp_replace(coalesce(u.phone,''),'[^0-9]','','g') = v_new_digits
+      and right(regexp_replace(coalesce(u.phone,''),'[^0-9]','','g'),10) = right(v_new_digits,10)
   ) or exists (
     select 1 from public.electrician_profiles ep
     where ep.id <> v_profile.id
-      and regexp_replace(coalesce(ep.phone,''),'[^0-9]','','g') = v_new_digits
+      and right(regexp_replace(coalesce(ep.phone,''),'[^0-9]','','g'),10) = right(v_new_digits,10)
   ) then
     raise exception 'यह मोबाइल नंबर पहले से किसी दूसरे अकाउंट में जुड़ा है।';
   end if;
@@ -297,10 +297,10 @@ begin
   select ep.phone into v_profile_phone from public.electrician_profiles ep
   where ep.id=v_row.electrician_profile_id
     and (ep.user_id=v_row.electrician_user_id or ep.auth_user_id=v_row.electrician_user_id);
-  v_old_digits:=regexp_replace(v_row.old_phone,'[^0-9]','','g');
-  v_auth_digits:=regexp_replace(coalesce(v_auth_phone,''),'[^0-9]','','g');
-  v_profile_digits:=regexp_replace(coalesce(v_profile_phone,''),'[^0-9]','','g');
-  v_digits:=regexp_replace(v_row.new_phone,'[^0-9]','','g');
+  v_old_digits:=right(regexp_replace(v_row.old_phone,'[^0-9]','','g'),10);
+  v_auth_digits:=right(regexp_replace(coalesce(v_auth_phone,''),'[^0-9]','','g'),10);
+  v_profile_digits:=right(regexp_replace(coalesce(v_profile_phone,''),'[^0-9]','','g'),10);
+  v_digits:=right(regexp_replace(v_row.new_phone,'[^0-9]','','g'),10);
   if v_auth_phone is null or v_profile_phone is null
      or v_auth_digits not in (v_old_digits,v_digits)
      or v_profile_digits not in (v_old_digits,v_digits) then
@@ -309,10 +309,10 @@ begin
 
   v_digits:=regexp_replace(v_row.new_phone,'[^0-9]','','g');
   if exists(select 1 from auth.users u where u.id<>v_row.electrician_user_id
-            and regexp_replace(coalesce(u.phone,''),'[^0-9]','','g')=v_digits)
+            and right(regexp_replace(coalesce(u.phone,''),'[^0-9]','','g'),10)=v_digits)
      or exists(select 1 from public.electrician_profiles ep
                where ep.id<>v_row.electrician_profile_id
-                 and regexp_replace(coalesce(ep.phone,''),'[^0-9]','','g')=v_digits) then
+                 and right(regexp_replace(coalesce(ep.phone,''),'[^0-9]','','g'),10)=v_digits) then
     raise exception 'नया मोबाइल नंबर अब किसी दूसरे अकाउंट में जुड़ा हुआ है।';
   end if;
   update public.srk_electrician_phone_change_requests
@@ -351,13 +351,13 @@ begin
     select u.phone into v_auth_phone from auth.users u
     where u.id=v_row.electrician_user_id and u.phone_confirmed_at is not null;
     if v_auth_phone is not null
-       and regexp_replace(v_auth_phone,'[^0-9]','','g') =
-           regexp_replace(v_row.new_phone,'[^0-9]','','g')
+       and right(regexp_replace(v_auth_phone,'[^0-9]','','g'),10) =
+           right(regexp_replace(v_row.new_phone,'[^0-9]','','g'),10)
        and exists(select 1 from public.electrician_profiles ep
                   where ep.id=v_row.electrician_profile_id
                     and (ep.user_id=v_row.electrician_user_id or ep.auth_user_id=v_row.electrician_user_id)
-                    and regexp_replace(coalesce(ep.phone,''),'[^0-9]','','g') =
-                        regexp_replace(v_row.new_phone,'[^0-9]','','g')) then
+                    and right(regexp_replace(coalesce(ep.phone,''),'[^0-9]','','g'),10) =
+                        right(regexp_replace(v_row.new_phone,'[^0-9]','','g'),10)) then
       return jsonb_build_object('success',true,'status','approved','already_finalized',true);
     end if;
     raise exception 'मंजूर रिक्वेस्ट के Auth और प्रोफ़ाइल नंबर का मिलान नहीं हो रहा।';
@@ -371,8 +371,8 @@ begin
   select u.phone into v_auth_phone from auth.users u
   where u.id=v_row.electrician_user_id and u.phone_confirmed_at is not null;
   if v_auth_phone is null
-     or regexp_replace(v_auth_phone,'[^0-9]','','g') <>
-        regexp_replace(v_row.new_phone,'[^0-9]','','g') then
+     or right(regexp_replace(v_auth_phone,'[^0-9]','','g'),10) <>
+        right(regexp_replace(v_row.new_phone,'[^0-9]','','g'),10) then
     raise exception 'Supabase लॉगिन नंबर OTP-सत्यापित नए नंबर से मेल नहीं खाता।';
   end if;
 
