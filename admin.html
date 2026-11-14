@@ -79,11 +79,52 @@ async function sendAdminSupportReply(){
  field.value='';status.textContent='जवाब ग्राहक की शिकायत थ्रेड में भेज दिया गया।';await openAdminSupportThread(id);
 }
 let adminElectricianSupportSelectedId=null,adminElectricianSupportRows=[];
-async function loadAdminElectricianSupportInbox(){const box=document.getElementById('adminElectricianSupportInbox'),status=document.getElementById('adminElectricianSupportStatus');if(!box||!sb||!user)return;box.textContent='इलेक्ट्रिशियन सहायता अनुरोध लोड हो रहे हैं…';const {data,error}=await sb.rpc('srk_admin_list_electrician_support_tickets',{p_limit:100});if(error){box.textContent='अनुरोध नहीं खुले: '+error.message;return;}adminElectricianSupportRows=Array.isArray(data)?data:[];const labels={open:'खुला',in_review:'जाँच में',resolved:'हल हो गया',closed:'बंद'},cats={booking:'बुकिंग / काम',payment_payout:'कमाई / भुगतान',kyc_account:'KYC / अकाउंट',app_technical:'ऐप / तकनीकी',customer_safety:'सुरक्षा / व्यवहार',other:'अन्य'};box.innerHTML=adminElectricianSupportRows.map(t=>'<article class="card"><b>'+esc(t.subject)+'</b><p>इलेक्ट्रिशियन: '+esc(t.electrician_name||'नाम उपलब्ध नहीं')+' • '+esc(t.electrician_phone||'')+'</p><p>'+esc(cats[t.category]||t.category)+' • '+esc(labels[t.status]||t.status)+'</p>'+(t.booking_id?'<p>Booking: <code>'+esc(t.booking_id)+'</code></p>':'')+'<label>स्थिति</label><select id="admin-elec-support-state-'+t.id+'"><option value="open" '+(t.status==='open'?'selected':'')+'>खुला</option><option value="in_review" '+(t.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(t.status==='resolved'?'selected':'')+'>हल हो गया</option><option value="closed" '+(t.status==='closed'?'selected':'')+'>बंद</option></select><label>Admin नोट</label><textarea id="admin-elec-support-note-'+t.id+'" maxlength="2000" rows="2" style="width:100%">'+esc(t.admin_note||'')+'</textarea><button onclick="saveAdminElectricianSupportTicket(\''+t.id+'\')">स्थिति / नोट सुरक्षित करें</button><button class="alt" onclick="openAdminElectricianSupportThread(\''+t.id+'\')">बातचीत खोलें</button></article>').join('')||'<p>अभी कोई इलेक्ट्रिशियन सहायता अनुरोध नहीं है।</p>';status.textContent=adminElectricianSupportRows.length+' अनुरोध मिले।';}
-async function saveAdminElectricianSupportTicket(id){const state=document.getElementById('admin-elec-support-state-'+id).value,note=document.getElementById('admin-elec-support-note-'+id).value.trim();const {data,error}=await sb.rpc('srk_admin_update_electrician_support_ticket',{p_ticket_id:id,p_status:state,p_admin_note:note||null});if(error||data!==true){alert('स्थिति सुरक्षित नहीं हुई: '+(error?.message||'पुष्टि नहीं मिली'));return;}await loadAdminElectricianSupportInbox();}
-async function openAdminElectricianSupportThread(id){adminElectricianSupportSelectedId=id;const panel=document.getElementById('adminElectricianSupportThreadPanel'),box=document.getElementById('adminElectricianSupportThread');panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';const {data,error}=await sb.rpc('srk_admin_list_electrician_support_messages',{p_ticket_id:id});if(error){box.textContent='बातचीत नहीं खुली: '+error.message;return;}box.innerHTML=(Array.isArray(data)?data:[]).map(m=>'<article class="card"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'इलेक्ट्रिशियन')+'</b><small style="float:right">'+esc(new Date(m.created_at).toLocaleString('hi-IN'))+'</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';}
-async function sendAdminElectricianSupportReply(){const body=document.getElementById('adminElectricianSupportReply').value.trim(),status=document.getElementById('adminElectricianSupportReplyStatus');if(!adminElectricianSupportSelectedId){status.textContent='पहले बातचीत खोलें।';return;}if(!body||body.length>4000){status.textContent='जवाब 1 से 4000 अक्षरों में लिखें।';return;}status.textContent='जवाब भेजा जा रहा है…';const {error}=await sb.rpc('srk_admin_send_electrician_support_message',{p_ticket_id:adminElectricianSupportSelectedId,p_body:body});if(error){status.textContent='जवाब नहीं भेजा गया: '+error.message;return;}document.getElementById('adminElectricianSupportReply').value='';status.textContent='जवाब भेज दिया गया।';await openAdminElectricianSupportThread(adminElectricianSupportSelectedId);await loadAdminElectricianSupportInbox();}
-async function loadWorkReview(){
+let adminElectricianSupportLoadBusy=false,adminElectricianSupportSaveBusy=new Set(),adminElectricianSupportReplyBusy=false,adminElectricianSupportThreadRequest=0;
+async function loadAdminElectricianSupportInbox(){
+ const box=document.getElementById('adminElectricianSupportInbox'),status=document.getElementById('adminElectricianSupportStatus');
+ if(!box||!sb||!user||adminElectricianSupportLoadBusy)return;
+ adminElectricianSupportLoadBusy=true;box.textContent='इलेक्ट्रिशियन सहायता अनुरोध लोड हो रहे हैं…';
+ try{
+  const {data,error}=await sb.rpc('srk_admin_list_electrician_support_tickets',{p_limit:100});if(error)throw error;
+  adminElectricianSupportRows=Array.isArray(data)?data:[];
+  const labels={open:'खुला',in_review:'जाँच में',resolved:'हल हो गया',closed:'बंद'},cats={booking:'बुकिंग / काम',payment_payout:'कमाई / भुगतान',kyc_account:'KYC / अकाउंट',app_technical:'ऐप / तकनीकी',customer_safety:'सुरक्षा / व्यवहार',other:'अन्य'};
+  box.innerHTML=adminElectricianSupportRows.map(t=>'<article class="card"><b>'+esc(t.subject)+'</b><p>इलेक्ट्रिशियन: '+esc(t.electrician_name||'नाम उपलब्ध नहीं')+' • '+esc(t.electrician_phone||'')+'</p><p>'+esc(cats[t.category]||t.category)+' • '+esc(labels[t.status]||t.status)+'</p>'+(t.booking_id?'<p>Booking: <code>'+esc(t.booking_id)+'</code></p>':'')+'<label>स्थिति</label><select id="admin-elec-support-state-'+t.id+'"><option value="open" '+(t.status==='open'?'selected':'')+'>खुला</option><option value="in_review" '+(t.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(t.status==='resolved'?'selected':'')+'>हल हो गया</option><option value="closed" '+(t.status==='closed'?'selected':'')+'>बंद</option></select><label>Admin नोट</label><textarea id="admin-elec-support-note-'+t.id+'" maxlength="2000" rows="2" style="width:100%">'+esc(t.admin_note||'')+'</textarea><button id="admin-elec-support-save-'+t.id+'" onclick="saveAdminElectricianSupportTicket(\''+t.id+'\')">स्थिति / नोट सुरक्षित करें</button><button class="alt" onclick="openAdminElectricianSupportThread(\''+t.id+'\')">बातचीत खोलें</button></article>').join('')||'<p>अभी कोई इलेक्ट्रिशियन सहायता अनुरोध नहीं है।</p>';
+  status.textContent=adminElectricianSupportRows.length+' अनुरोध मिले।';
+ }catch(e){box.textContent='इलेक्ट्रिशियन सहायता अनुरोध लोड नहीं हो सके। कृपया रीफ़्रेश करें।';status.textContent='';}
+ finally{adminElectricianSupportLoadBusy=false;}
+}async function saveAdminElectricianSupportTicket(id){
+ if(adminElectricianSupportSaveBusy.has(id))return;
+ const state=document.getElementById('admin-elec-support-state-'+id)?.value,note=document.getElementById('admin-elec-support-note-'+id)?.value.trim(),button=document.getElementById('admin-elec-support-save-'+id),status=document.getElementById('adminElectricianSupportStatus');
+ if(!state){status.textContent='कृपया सही स्थिति चुनें।';return;}
+ adminElectricianSupportSaveBusy.add(id);if(button){button.disabled=true;button.textContent='सुरक्षित हो रहा है…';}
+ try{
+  const {data,error}=await sb.rpc('srk_admin_update_electrician_support_ticket',{p_ticket_id:id,p_status:state,p_admin_note:note||null});
+  if(error||data!==true)throw error||new Error('UPDATE_NOT_CONFIRMED');
+  status.textContent='स्थिति और Admin नोट सुरक्षित हो गए।';await loadAdminElectricianSupportInbox();
+ }catch(e){status.textContent='स्थिति सुरक्षित नहीं हुई। कृपया फिर कोशिश करें.';}
+ finally{adminElectricianSupportSaveBusy.delete(id);if(button){button.disabled=false;button.textContent='स्थिति / नोट सुरक्षित करें';}}
+}async function openAdminElectricianSupportThread(id){
+ const request=++adminElectricianSupportThreadRequest;adminElectricianSupportSelectedId=id;
+ const panel=document.getElementById('adminElectricianSupportThreadPanel'),box=document.getElementById('adminElectricianSupportThread');
+ panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';
+ const {data,error}=await sb.rpc('srk_admin_list_electrician_support_messages',{p_ticket_id:id});
+ if(request!==adminElectricianSupportThreadRequest||id!==adminElectricianSupportSelectedId)return;
+ if(error){box.textContent='बातचीत नहीं खुली। कृपया फिर कोशिश करें।';return;}
+ box.innerHTML=(Array.isArray(data)?data:[]).map(m=>'<article class="card"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'इलेक्ट्रिशियन')+'</b><small style="float:right">'+esc(new Date(m.created_at).toLocaleString('hi-IN'))+'</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+}async function sendAdminElectricianSupportReply(){
+ if(adminElectricianSupportReplyBusy)return;
+ const body=document.getElementById('adminElectricianSupportReply').value.trim(),status=document.getElementById('adminElectricianSupportReplyStatus'),button=document.querySelector('#adminElectricianSupportThreadPanel button[onclick="sendAdminElectricianSupportReply()"]'),ticketId=adminElectricianSupportSelectedId;
+ if(!ticketId){status.textContent='पहले बातचीत खोलें।';return;}
+ if(!body||body.length>4000){status.textContent='जवाब 1 से 4000 अक्षरों में लिखें।';return;}
+ adminElectricianSupportReplyBusy=true;if(button){button.disabled=true;button.textContent='जवाब भेजा जा रहा है…';}
+ status.textContent='जवाब भेजा जा रहा है…';
+ try{
+  const {error}=await sb.rpc('srk_admin_send_electrician_support_message',{p_ticket_id:ticketId,p_body:body});if(error)throw error;
+  if(ticketId===adminElectricianSupportSelectedId)document.getElementById('adminElectricianSupportReply').value='';
+  status.textContent='जवाब भेज दिया गया।';await openAdminElectricianSupportThread(ticketId);await loadAdminElectricianSupportInbox();
+ }catch(e){status.textContent='जवाब नहीं भेजा गया। कृपया बातचीत की स्थिति जाँचकर फिर कोशिश करें।';}
+ finally{adminElectricianSupportReplyBusy=false;if(button){button.disabled=false;button.textContent='जवाब भेजें';}}
+}async function loadWorkReview(){
  const id=document.getElementById('workReviewBookingId').value.trim(),status=document.getElementById('workReviewStatus'),box=document.getElementById('workReviewResult');
  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)){status.textContent='सही Booking UUID डालें।';return;}
  status.textContent='सुरक्षित Admin रिकॉर्ड लोड हो रहा है…';box.textContent='';
