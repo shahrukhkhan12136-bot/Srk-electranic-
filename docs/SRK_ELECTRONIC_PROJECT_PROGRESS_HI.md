@@ -26,6 +26,16 @@
 - Section 14.3 और master counts समायोजित: 66 आंशिक, 7 blocked, 23 बाकी, 0 verified complete (कुल 96)। यह feature completion का प्रतिशत नहीं है।
 - कोई application code, migration, Supabase setting या live data नहीं बदला; केवल tracker documentation update है।
 
+
+### 2026-11-14 — Admin Staff Support case concurrency hardening
+- Source review में case closure/status update और Staff reassignment/reply के बीच race तथा उलटे row-lock order से संभावित deadlock मिला।
+- Main Admin assignment अब पहले complaint/ticket row को `FOR UPDATE` lock करके closed-state जाँचता है; active Support Staff registry row पर `FOR SHARE` lock रखता है ताकि concurrent suspend/disable assignment के बीच race न करे।
+- Staff customer/electrician reply और status-update RPCs अब एक consistent lock order अपनाते हैं: पहले संबंधित case row, फिर उसी case की assignment row। इससे reassignment, close और Staff mutation serialize होते हैं तथा उलटे lock order का deadlock जोखिम घटता है।
+- pgTAP में 2 lock-order assertions जोड़े; plan/assertion count **53/53** static count match।
+- Static source verification: पाँचों प्रभावित RPCs में case `FOR UPDATE` और assignment `FOR UPDATE` मौजूद, case lock assignment lock से पहले — PASS। PostgreSQL compile, pgTAP execution और वास्तविक concurrent transaction tests अभी नहीं चले।
+- Commits: migration `9c5025e2a2608398eaa8eece4c0a6e12163f7313`; pgTAP `d60f7a5fb78772675b4352a90ec7ca0830b38d9f`.
+- कोई migration apply, Edge Function deploy, production setting/data change या Staff invitation नहीं हुई।
+
 ## 1. कुल प्रगति — प्रमाण आधारित
 
 इस tracker में Master Requirements के Section 14.1–14.8 के 89 checkbox points और Section 16 के 7 public-website points शामिल हैं: **कुल 96 मूल checklist points**।
