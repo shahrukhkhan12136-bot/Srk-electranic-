@@ -150,16 +150,16 @@ async function showState(){
   if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await loadAll();}
   return;
  }
- const {data:canReadCustomer,error:permissionError}=await sb.rpc('srk_has_admin_permission',{p_permission_key:'support.customer.read'});
- if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;
- if(permissionError||canReadCustomer!==true){
-  adminLoadedUserId=null;document.getElementById('authmsg').textContent='इस खाते को Main Admin या सक्रिय Support Staff अनुमति नहीं मिली।';
-  login.classList.remove('hidden');app.classList.add('hidden');await sb.auth.signOut();return;
- }
  const {data:sessionRegistered,error:sessionError}=await sb.rpc('srk_admin_staff_register_session');
  if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;
  if(sessionError||sessionRegistered!==true){
   adminLoadedUserId=null;document.getElementById('authmsg').textContent='Support Staff session सुरक्षित रूप से register नहीं हुआ। दोबारा लॉगिन करें या Main Admin से संपर्क करें।';
+  login.classList.remove('hidden');app.classList.add('hidden');await sb.auth.signOut();return;
+ }
+ const {data:canReadCustomer,error:permissionError}=await sb.rpc('srk_has_admin_permission',{p_permission_key:'support.customer.read'});
+ if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;
+ if(permissionError||canReadCustomer!==true){
+  adminLoadedUserId=null;document.getElementById('authmsg').textContent='इस खाते को Main Admin या सक्रिय Support Staff अनुमति नहीं मिली।';
   login.classList.remove('hidden');app.classList.add('hidden');await sb.auth.signOut();return;
  }
  setAdminPortalMode('staff');
