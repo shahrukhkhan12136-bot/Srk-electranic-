@@ -80,6 +80,7 @@ REVOKE ALL ON FUNCTION private.srk_offer_booking_to_eligible_electricians(uuid) 
 
 CREATE OR REPLACE FUNCTION public.broadcast_booking_job() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'pg_catalog','public','auth','pg_temp' AS $function$
 BEGIN PERFORM private.srk_offer_booking_to_eligible_electricians(NEW.id); RETURN NEW; END;$function$;
+REVOKE ALL ON FUNCTION public.broadcast_booking_job() FROM PUBLIC,anon,authenticated;
 
 CREATE OR REPLACE FUNCTION public.srk_admin_offer_booking(p_booking_id uuid) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'pg_catalog','public','auth','pg_temp' AS $function$
 BEGIN
