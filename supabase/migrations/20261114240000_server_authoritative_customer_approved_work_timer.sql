@@ -420,3 +420,106 @@ AS $function$
 $function$;
 REVOKE ALL ON FUNCTION public.srk_get_my_offer_details() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_get_my_offer_details() TO authenticated;
+
+
+-- Legacy quotation RPCs remain usable only for historical rows without a
+-- customer-selected work category. New bookings must use the server timer.
+CREATE OR REPLACE FUNCTION public.srk_submit_booking_quote(
+  p_booking_id uuid,p_service_charge numeric,p_materials_amount numeric,p_quote_note text DEFAULT NULL
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_profile_id uuid; v_booking public.service_bookings%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF p_booking_id IS NULL OR p_service_charge IS NULL OR p_service_charge<=0
+    OR p_materials_amount IS NULL OR p_materials_amount<0
+    OR p_service_charge>10000000 OR p_materials_amount>10000000 THEN
+    RAISE EXCEPTION 'Invalid quote amounts' USING ERRCODE='22023';
+  END IF;
+  SELECT id INTO v_profile_id FROM public.electrician_profiles
+  WHERE (user_id=auth.uid() OR auth_user_id=auth.uid())
+    AND verification_status='approved' AND active=true
+  ORDER BY created_at DESC LIMIT 1;
+  IF v_profile_id IS NULL THEN RAISE EXCEPTION 'Approved active electrician required' USING ERRCODE='42501'; END IF;
+  SELECT * INTO v_booking FROM public.service_bookings
+  WHERE id=p_booking_id AND assigned_electrician_id=v_profile_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Assigned booking not found' USING ERRCODE='42501'; END IF;
+  IF v_booking.selected_category IS NOT NULL THEN
+    RAISE EXCEPTION 'नई बुकिंग में अलग कोटेशन नहीं है; ग्राहक द्वारा चुनी दर और सर्वर टाइमर लागू हैं';
+  END IF;
+  IF v_booking.status NOT IN ('assigned','inspection','quote_rejected') THEN
+    RAISE EXCEPTION 'Booking is not ready for a legacy quote';
+  END IF;
+  UPDATE public.service_bookings SET service_charge=round(p_service_charge,2),
+    materials_amount=round(p_materials_amount,2),
+    quoted_amount=round(p_service_charge+p_materials_amount,2),
+    quote_note=left(coalesce(p_quote_note,''),1000),quote_status='pending',
+    quote_submitted_at=clock_timestamp(),quote_responded_at=NULL,status='awaiting_quote_approval'
+  WHERE id=p_booking_id;
+  RETURN jsonb_build_object('success',true,'total',round(p_service_charge+p_materials_amount,2),'quote_status','pending');
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_customer_respond_booking_quote(p_booking_id uuid,p_response text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_booking public.service_bookings%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF p_response NOT IN ('approved','rejected') THEN RAISE EXCEPTION 'Invalid quote response' USING ERRCODE='22023'; END IF;
+  SELECT * INTO v_booking FROM public.service_bookings
+  WHERE id=p_booking_id AND customer_user_id=auth.uid() FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Customer booking not found' USING ERRCODE='42501'; END IF;
+  IF v_booking.selected_category IS NOT NULL THEN
+    RAISE EXCEPTION 'नई बुकिंग में कोटेशन मंजूरी लागू नहीं है';
+  END IF;
+  IF v_booking.status<>'awaiting_quote_approval' OR v_booking.quote_status<>'pending' THEN
+    RAISE EXCEPTION 'No legacy quote is waiting for approval';
+  END IF;
+  UPDATE public.service_bookings SET quote_status=p_response,quote_responded_at=clock_timestamp(),
+    status=CASE WHEN p_response='approved' THEN 'quote_approved' ELSE 'quote_rejected' END
+  WHERE id=p_booking_id;
+  RETURN jsonb_build_object('success',true,'quote_status',p_response);
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_update_booking_work_status(p_booking_id uuid,p_status text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE v_profile_id uuid; v_booking public.service_bookings%ROWTYPE;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF p_status NOT IN ('inspection','in_progress','completed') THEN RAISE EXCEPTION 'Invalid work status' USING ERRCODE='22023'; END IF;
+  SELECT id INTO v_profile_id FROM public.electrician_profiles
+  WHERE (user_id=auth.uid() OR auth_user_id=auth.uid())
+    AND verification_status='approved' AND active=true
+  ORDER BY created_at DESC LIMIT 1;
+  IF v_profile_id IS NULL THEN RAISE EXCEPTION 'Approved active electrician required' USING ERRCODE='42501'; END IF;
+  SELECT * INTO v_booking FROM public.service_bookings
+  WHERE id=p_booking_id AND assigned_electrician_id=v_profile_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Assigned booking not found' USING ERRCODE='42501'; END IF;
+  IF v_booking.selected_category IS NOT NULL THEN
+    RAISE EXCEPTION 'नई बुकिंग का Status केवल Customer-approved server timer workflow बदल सकता है' USING ERRCODE='42501';
+  END IF;
+  IF p_status='inspection' AND v_booking.status='assigned' THEN
+    UPDATE public.service_bookings SET status='inspection' WHERE id=p_booking_id;
+  ELSIF p_status='in_progress' AND v_booking.status='quote_approved' AND v_booking.quote_status='approved' THEN
+    UPDATE public.service_bookings SET status='in_progress',work_started_at=clock_timestamp() WHERE id=p_booking_id;
+  ELSIF p_status='completed' AND v_booking.status='in_progress' THEN
+    UPDATE public.service_bookings SET status='completed' WHERE id=p_booking_id;
+  ELSE
+    RAISE EXCEPTION 'Invalid legacy booking status transition';
+  END IF;
+  RETURN jsonb_build_object('success',true,'status',p_status);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.srk_submit_booking_quote(uuid,numeric,numeric,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_submit_booking_quote(uuid,numeric,numeric,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.srk_customer_respond_booking_quote(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_customer_respond_booking_quote(uuid,text) TO authenticated;
+REVOKE ALL ON FUNCTION public.srk_update_booking_work_status(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_update_booking_work_status(uuid,text) TO authenticated;
