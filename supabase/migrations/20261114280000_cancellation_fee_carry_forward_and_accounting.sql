@@ -30,6 +30,13 @@ create table if not exists public.srk_customer_cancellation_fee_debts (
 create index if not exists srk_cancellation_fee_debts_customer_status
   on public.srk_customer_cancellation_fee_debts(customer_user_id,status,created_at);
 
+insert into public.srk_customer_cancellation_fee_debts
+  (cancellation_request_id,customer_user_id,source_booking_id,amount_paise)
+select r.id,r.customer_user_id,r.booking_id,round(r.fee_amount*100)::bigint
+from public.srk_booking_cancellation_requests r
+where r.request_status='approved' and r.fee_amount in (49,99)
+on conflict(cancellation_request_id) do nothing;
+
 create table if not exists public.srk_booking_cancellation_fee_items (
   id uuid primary key default gen_random_uuid(),
   booking_id uuid not null references public.service_bookings(id) on delete restrict,
@@ -202,6 +209,78 @@ begin
   return jsonb_build_object('success',true,'request_id',v_request.id,'decision',p_decision,'fee_amount',v_fee);
 end;
 $$;
+
+create or replace function public.srk_customer_get_payment_receipt(p_booking_id uuid)
+returns jsonb language plpgsql stable security definer
+set search_path=pg_catalog,public,auth,pg_temp
+as $function$
+declare
+  v_uid uuid:=auth.uid();
+  v_booking public.service_bookings%rowtype;
+  v_bill public.srk_booking_labour_bills%rowtype;
+  v_fee_paise bigint:=0;
+  v_fee_items jsonb:='[]'::jsonb;
+  v_total_paise bigint;
+begin
+  if v_uid is null then raise exception 'Customer login required' using errcode='42501'; end if;
+  if p_booking_id is null then raise exception 'Booking ID required' using errcode='22023'; end if;
+  select * into v_booking from public.service_bookings
+    where id=p_booking_id and customer_user_id=v_uid;
+  if not found then raise exception 'Booking not found' using errcode='42501'; end if;
+  if v_booking.payment_status<>'paid' or v_booking.payment_verified_at is null or coalesce(v_booking.amount_paid,0)<=0
+    then raise exception 'Only verified paid bookings have a payment receipt' using errcode='55000'; end if;
+
+  if v_booking.selected_category is not null then
+    select * into v_bill from public.srk_booking_labour_bills where booking_id=p_booking_id and customer_user_id=v_uid;
+    if not found then raise exception 'Immutable labour bill not found' using errcode='55000'; end if;
+    select coalesce(sum(i.amount_paise),0),
+      coalesce(jsonb_agg(jsonb_build_object('source_booking_id',i.source_booking_id,
+        'amount_paise',i.amount_paise,'amount',i.amount_paise/100.0) order by i.created_at,i.id),'[]'::jsonb)
+    into v_fee_paise,v_fee_items
+    from public.srk_booking_cancellation_fee_items i
+    where i.booking_id=p_booking_id and i.status='settled';
+    v_total_paise:=v_bill.labour_amount_paise+v_fee_paise;
+    if round(v_booking.amount_paid*100)::bigint<>v_total_paise then
+      raise exception 'Paid amount does not match immutable labour and cancellation fee ledger' using errcode='55000';
+    end if;
+    return jsonb_build_object(
+      'receipt_reference','SRK-PAY-'||upper(left(replace(v_booking.id::text,'-',''),12)),
+      'booking_id',v_booking.id,'customer_name',v_booking.customer_name,
+      'service_type',v_booking.service_type,'address',v_booking.address,
+      'district',v_booking.district,'state',v_booking.state,'pincode',v_booking.pincode,
+      'booking_date',v_booking.created_at,'payment_date',v_booking.payment_verified_at,
+      'payment_method',case when lower(coalesce(v_booking.payment_method,'')) in
+        ('cash','upi','card','online','razorpay','bank_transfer','bank transfer')
+        then lower(v_booking.payment_method) else 'other' end,
+      'amount_paid',round(v_booking.amount_paid,2),
+      'labour_amount',v_bill.labour_amount,
+      'cancellation_fee_amount',v_fee_paise/100.0,
+      'cancellation_fee_items',v_fee_items,
+      'total_amount',v_total_paise/100.0,
+      'description','सत्यापित भुगतान रसीद — मेहनताना और पुरानी cancellation fee अलग-अलग',
+      'document_type','payment_receipt'
+    );
+  end if;
+
+  if v_booking.service_charge is not null and round(v_booking.service_charge,2)=round(v_booking.amount_paid,2) then
+    return jsonb_build_object(
+      'receipt_reference','SRK-PAY-'||upper(left(replace(v_booking.id::text,'-',''),12)),
+      'booking_id',v_booking.id,'customer_name',v_booking.customer_name,
+      'service_type',v_booking.service_type,'address',v_booking.address,
+      'district',v_booking.district,'state',v_booking.state,'pincode',v_booking.pincode,
+      'booking_date',v_booking.created_at,'payment_date',v_booking.payment_verified_at,
+      'payment_method',lower(coalesce(v_booking.payment_method,'other')),
+      'amount_paid',round(v_booking.amount_paid,2),'labour_amount',round(v_booking.service_charge,2),
+      'cancellation_fee_amount',0,'cancellation_fee_items','[]'::jsonb,
+      'total_amount',round(v_booking.amount_paid,2),
+      'description','सत्यापित बुकिंग भुगतान की रसीद','document_type','payment_receipt'
+    );
+  end if;
+  raise exception 'Payment receipt does not reconcile to approved service amount' using errcode='55000';
+end;
+$function$;
+revoke all on function public.srk_customer_get_payment_receipt(uuid) from public,anon;
+grant execute on function public.srk_customer_get_payment_receipt(uuid) to authenticated;
 
 create or replace function public.srk_customer_list_my_cancellation_fee_debts()
 returns setof jsonb language sql stable security definer set search_path=''
