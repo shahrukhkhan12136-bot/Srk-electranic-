@@ -1,0 +1,266 @@
+-- Customer profile, saved addresses and private customer Storage foundations.
+-- Must run before 20261114180000_harden_customer_avatar_object_integrity.sql.
+-- Feature-branch source only: do not apply to Production without approved staging verification.
+
+create table if not exists public.srk_customer_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  full_name text not null check (char_length(btrim(full_name)) between 2 and 120),
+  preferred_language text not null default 'hi' check (preferred_language in ('hi','en')),
+  avatar_path text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint srk_customer_profiles_avatar_path_owner_shape
+    check (avatar_path is null or avatar_path ~ ('^' || user_id::text || '/[0-9a-fA-F-]{36}\\.(jpg|png|webp)$'))
+);
+
+create table if not exists public.srk_customer_saved_addresses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  label text not null check (label in ('home','work','other')),
+  recipient_name text not null check (char_length(btrim(recipient_name)) between 2 and 120),
+  address_line text not null check (char_length(btrim(address_line)) between 5 and 500),
+  landmark text check (landmark is null or char_length(landmark)<=200),
+  pincode text not null check (pincode ~ '^[0-9]{6}$'),
+  district text not null check (char_length(btrim(district)) between 2 and 100),
+  state text not null check (char_length(btrim(state)) between 2 and 100),
+  location_lat double precision,
+  location_lng double precision,
+  is_default boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint srk_customer_saved_addresses_location_pair
+    check ((location_lat is null and location_lng is null) or
+      (location_lat between -90 and 90 and location_lng between -180 and 180))
+);
+
+create index if not exists srk_customer_saved_addresses_user_recent_idx
+  on public.srk_customer_saved_addresses(user_id, created_at desc, id);
+create unique index if not exists srk_customer_saved_addresses_one_default_uidx
+  on public.srk_customer_saved_addresses(user_id) where is_default;
+
+alter table public.srk_customer_profiles enable row level security;
+alter table public.srk_customer_saved_addresses enable row level security;
+revoke all on public.srk_customer_profiles from public, anon, authenticated;
+revoke all on public.srk_customer_saved_addresses from public, anon, authenticated;
+
+create or replace function public.srk_customer_get_my_profile()
+returns table(full_name text, preferred_language text, avatar_path text, updated_at timestamptz)
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select p.full_name,p.preferred_language,p.avatar_path,p.updated_at
+    from public.srk_customer_profiles p
+   where p.user_id=auth.uid()
+   limit 1;
+$function$;
+revoke all on function public.srk_customer_get_my_profile() from public, anon;
+grant execute on function public.srk_customer_get_my_profile() to authenticated;
+
+create or replace function public.srk_customer_list_my_saved_addresses()
+returns table(
+  id uuid,label text,recipient_name text,address_line text,landmark text,
+  pincode text,district text,state text,location_lat double precision,
+  location_lng double precision,is_default boolean,created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select a.id,a.label,a.recipient_name,a.address_line,a.landmark,a.pincode,
+         a.district,a.state,a.location_lat,a.location_lng,a.is_default,a.created_at
+    from public.srk_customer_saved_addresses a
+   where a.user_id=auth.uid()
+   order by a.is_default desc,a.created_at desc,a.id;
+$function$;
+revoke all on function public.srk_customer_list_my_saved_addresses() from public, anon;
+grant execute on function public.srk_customer_list_my_saved_addresses() to authenticated;
+
+create or replace function public.srk_customer_save_my_address(
+  p_id uuid,
+  p_label text,
+  p_recipient_name text,
+  p_address_line text,
+  p_landmark text,
+  p_pincode text,
+  p_district text,
+  p_state text,
+  p_location_lat double precision,
+  p_location_lng double precision,
+  p_is_default boolean
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_id uuid := p_id;
+  v_count integer;
+  v_make_default boolean := coalesce(p_is_default,false);
+begin
+  if v_uid is null then
+    raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000';
+  end if;
+  if p_label not in ('home','work','other')
+     or p_recipient_name is null or char_length(btrim(p_recipient_name)) not between 2 and 120
+     or p_address_line is null or char_length(btrim(p_address_line)) not between 5 and 500
+     or (p_landmark is not null and char_length(p_landmark)>200)
+     or p_pincode is null or p_pincode !~ '^[0-9]{6}$'
+     or p_district is null or char_length(btrim(p_district)) not between 2 and 100
+     or p_state is null or char_length(btrim(p_state)) not between 2 and 100
+     or ((p_location_lat is null) <> (p_location_lng is null))
+     or (p_location_lat is not null and (p_location_lat not between -90 and 90 or p_location_lng not between -180 and 180)) then
+    raise exception 'INVALID_ADDRESS_FIELDS' using errcode='22023';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(v_uid::text));
+
+  if v_id is null then
+    select count(*) into v_count from public.srk_customer_saved_addresses a where a.user_id=v_uid;
+    if v_count>=10 then
+      raise exception 'ADDRESS_LIMIT_REACHED' using errcode='22023';
+    end if;
+    if not exists(select 1 from public.srk_customer_saved_addresses a where a.user_id=v_uid and a.is_default) then
+      v_make_default:=true;
+    end if;
+  else
+    perform 1 from public.srk_customer_saved_addresses a
+     where a.id=v_id and a.user_id=v_uid for update;
+    if not found then
+      raise exception 'ADDRESS_NOT_FOUND' using errcode='42501';
+    end if;
+  end if;
+
+  if v_make_default then
+    update public.srk_customer_saved_addresses
+       set is_default=false,updated_at=now()
+     where user_id=v_uid and is_default and id is distinct from v_id;
+  end if;
+
+  if v_id is null then
+    insert into public.srk_customer_saved_addresses(
+      user_id,label,recipient_name,address_line,landmark,pincode,district,state,
+      location_lat,location_lng,is_default
+    ) values(
+      v_uid,p_label,btrim(p_recipient_name),btrim(p_address_line),nullif(btrim(coalesce(p_landmark,'')),''),
+      p_pincode,btrim(p_district),btrim(p_state),p_location_lat,p_location_lng,v_make_default
+    ) returning id into v_id;
+  else
+    update public.srk_customer_saved_addresses
+       set label=p_label,recipient_name=btrim(p_recipient_name),address_line=btrim(p_address_line),
+           landmark=nullif(btrim(coalesce(p_landmark,'')),''),pincode=p_pincode,
+           district=btrim(p_district),state=btrim(p_state),location_lat=p_location_lat,
+           location_lng=p_location_lng,is_default=v_make_default,updated_at=now()
+     where id=v_id and user_id=v_uid;
+  end if;
+  return v_id;
+end;
+$function$;
+revoke all on function public.srk_customer_save_my_address(uuid,text,text,text,text,text,text,text,double precision,double precision,boolean) from public, anon;
+grant execute on function public.srk_customer_save_my_address(uuid,text,text,text,text,text,text,text,double precision,double precision,boolean) to authenticated;
+
+create or replace function public.srk_customer_delete_my_saved_address(p_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_was_default boolean;
+begin
+  if v_uid is null then
+    raise exception 'AUTHENTICATION_REQUIRED' using errcode='28000';
+  end if;
+  if p_id is null then
+    raise exception 'INVALID_ADDRESS_ID' using errcode='22023';
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(v_uid::text));
+  delete from public.srk_customer_saved_addresses a
+   where a.id=p_id and a.user_id=v_uid
+   returning a.is_default into v_was_default;
+  if not found then return false; end if;
+  if v_was_default then
+    update public.srk_customer_saved_addresses a
+       set is_default=true,updated_at=now()
+     where a.id=(
+       select x.id from public.srk_customer_saved_addresses x
+        where x.user_id=v_uid order by x.created_at desc,x.id limit 1
+     );
+  end if;
+  return true;
+end;
+$function$;
+revoke all on function public.srk_customer_delete_my_saved_address(uuid) from public, anon;
+grant execute on function public.srk_customer_delete_my_saved_address(uuid) to authenticated;
+
+-- Private Storage buckets. Existing bucket settings are normalized to the
+-- exact private limits expected by the customer UI.
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values
+ ('srk-customer-avatars','srk-customer-avatars',false,5242880,array['image/jpeg','image/png','image/webp']),
+ ('srk-customer-support','srk-customer-support',false,10485760,array['image/jpeg','image/png','image/webp','application/pdf'])
+on conflict(id) do update set
+  name=excluded.name,public=false,file_size_limit=excluded.file_size_limit,
+  allowed_mime_types=excluded.allowed_mime_types;
+
+drop policy if exists srk_customer_avatar_read_own on storage.objects;
+create policy srk_customer_avatar_read_own on storage.objects
+for select to authenticated
+using(bucket_id='srk-customer-avatars' and (storage.foldername(name))[1]=auth.uid()::text);
+drop policy if exists srk_customer_avatar_upload_own on storage.objects;
+create policy srk_customer_avatar_upload_own on storage.objects
+for insert to authenticated
+with check(bucket_id='srk-customer-avatars' and (storage.foldername(name))[1]=auth.uid()::text);
+drop policy if exists srk_customer_avatar_delete_own on storage.objects;
+create policy srk_customer_avatar_delete_own on storage.objects
+for delete to authenticated
+using(bucket_id='srk-customer-avatars' and (storage.foldername(name))[1]=auth.uid()::text);
+
+drop policy if exists srk_customer_support_read_own_or_admin on storage.objects;
+create policy srk_customer_support_read_own_or_admin on storage.objects
+for select to authenticated
+using(
+  bucket_id='srk-customer-support'
+  and (
+    public.is_srk_admin()
+    or exists(
+      select 1 from public.srk_booking_complaints c
+       where c.id=case
+         when (storage.foldername(name))[2] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+         then ((storage.foldername(name))[2])::uuid else null end
+         and c.customer_user_id=auth.uid()
+    )
+  )
+);
+drop policy if exists srk_customer_support_upload_own on storage.objects;
+create policy srk_customer_support_upload_own on storage.objects
+for insert to authenticated
+with check(
+  bucket_id='srk-customer-support'
+  and (storage.foldername(name))[1]=auth.uid()::text
+  and exists(
+    select 1 from public.srk_booking_complaints c
+     where c.id=case
+       when (storage.foldername(name))[2] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       then ((storage.foldername(name))[2])::uuid else null end
+       and c.customer_user_id=auth.uid()
+  )
+);
+drop policy if exists srk_customer_support_delete_unlinked_own on storage.objects;
+create policy srk_customer_support_delete_unlinked_own on storage.objects
+for delete to authenticated
+using(
+  bucket_id='srk-customer-support'
+  and (storage.foldername(name))[1]=auth.uid()::text
+  and not exists(select 1 from public.srk_booking_complaint_message_attachments a where a.storage_path=name)
+);
+
+comment on table public.srk_customer_profiles is
+  'Private customer profile data; access only through customer-scoped RPCs.';
+comment on table public.srk_customer_saved_addresses is
+  'Private customer saved service addresses; access only through customer-scoped RPCs.';
