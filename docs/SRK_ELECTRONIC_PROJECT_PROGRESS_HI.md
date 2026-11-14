@@ -1044,3 +1044,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Read-only production function audit ने पुष्टि की कि वर्तमान deployed `srk_admin_offer_booking` legacy broad matching करता है; sequential nearest-first dispatcher केवल feature-branch migration `20261114210000...` में है और production DB में अभी लागू नहीं है।
 - Admin inline JavaScript syntax PASS; category guard और selection read source verification PASS।
 - Source-only; कोई offer, booking या electrician assignment नहीं बदला। Production RPC/migration नहीं बदली।
+
+## 2026-11-14 — Electrician Offer Details / Expiry UI Integration
+- `srk_get_my_offer_details()` के लिए source-only migration `20261114370000...` जोड़ी: immediate booking fields, customer-selected category/tier/duration/estimate, start/completion approval states और offer expiry लौटाएगा। Schedule date/time fields RPC से हटाए गए।
+- ग्राहक का नाम, मोबाइल, पता और location केवल उसी समय लौटेंगे जब booking उस electrician profile को assign हो चुकी हो और booking assigned/work stage में हो; unaccepted offer में private customer details NULL रहेंगी।
+- Electrician App में offer status का हिंदी label और server expiry deadline दिखाई जाती है।
+- Electrician inline JavaScript syntax PASS; expiry/status UI और schedule-field absence source checks PASS।
+- Read-only production schema audit ने पुष्टि की कि वर्तमान deployed offer-details RPC में नई booking fields/expiry नहीं हैं; migration केवल feature branch में है और लागू नहीं की गई।
+- Source-only; कोई offer accept/decline, booking assignment, customer contact exposure या production DB परिवर्तन नहीं हुआ। Runtime RPC output, expiry worker cadence और sequential dispatch integration final consolidated QA में जाँचे जाएँगे।
