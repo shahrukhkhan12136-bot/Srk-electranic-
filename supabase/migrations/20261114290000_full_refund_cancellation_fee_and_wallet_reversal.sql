@@ -83,6 +83,8 @@ begin
         and l.booking_id=old.id
         and l.entry_type='online_collection'
         and l.direction='credit'
+        and l.amount_paise=v_item.amount_paise
+        and l.customer_user_id=old.customer_user_id
         and l.status='posted'
       for update;
       if not found then
@@ -120,6 +122,8 @@ begin
         and wl.wallet_type='electrician'
         and wl.entry_type='cancellation_fee'
         and wl.direction='debit'
+        and wl.amount=v_item.amount_paise/100.0
+        and wl.user_id=v_original.electrician_user_id
         and wl.status='posted'
         and wl.created_at<=clock_timestamp()
       order by wl.created_at desc
@@ -240,7 +244,9 @@ begin
     raise exception 'SERVICE_ROLE_REQUIRED' using errcode='42501';
   end if;
   if p_refund_record_id is null
+     or p_provider_status is null
      or p_provider_status not in ('pending','processed','failed')
+     or (p_provider_status='processed' and p_provider_refund_id is null)
      or (p_provider_refund_id is not null and p_provider_refund_id !~ '^rfnd_[A-Za-z0-9]+$') then
     raise exception 'INVALID_PROVIDER_REFUND_RESULT' using errcode='22023';
   end if;
