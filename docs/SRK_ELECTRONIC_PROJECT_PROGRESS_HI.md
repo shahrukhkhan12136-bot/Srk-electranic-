@@ -1567,3 +1567,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Database static pgTAP source plan 28/28 assertions match: refund-owned blocked payout closure, unrelated Admin block preservation के source guards सहित। यह source inspection/count है; PostgreSQL/pgTAP runtime अभी execute नहीं हुआ।
 - Commits: payout trigger fix `d219c740286e7eef974992c245222b1f5984730a`; test `4e0f4671b6c1f1abeaf40a734b6296a9d00bf548`।
 - अभी भी source-only: कोई migration apply नहीं, कोई real/manual refund या payout नहीं, कोई production change/deploy/merge नहीं।
+
+### Payout reconciliation test coverage और Supabase JWT role hardening (14 नवम्बर 2026)
+- Electrician payout के लिए dedicated pgTAP source test जोड़ा: `supabase/tests/database/electrician_payout_reconciliation.test.sql` — 25 assertions। इसमें Main Admin-only settlement, UTR/method validation, booking→payout lock order, immutable labour bill, commission/material separation, carry-forward fee reconciliation, refund-owned payout hold closure, unrelated Admin block preservation और already-paid payout protection के source guards शामिल हैं।
+- Cancellation/refund accounting pgTAP test अब 31 assertions है। इसमें तीन service-only RPCs के लिए signed JWT role claim validation भी assert किया गया है।
+- Supabase guidance के अनुरूप नए accounting migrations में deprecated `auth.role()` checks हटाकर `coalesce(auth.jwt()->>'role','')='service_role'` guard किया। PR की सभी migration files में `auth.role()` का source scan दोबारा किया; कोई शेष match नहीं मिला।
+- Static assertion counts: payout reconciliation 25/25; cancellation/refund accounting 31/31। ये SQL source/plan checks हैं, pgTAP/PostgreSQL runtime results नहीं।
+- Commits: payout test `ec6bc3b35c977592e1d7e8ade5df8ab38621f5aa`; lock assertion correction `e8c4d906aceaba9f3f990be6d1aa2c35f5b998bc`; service JWT guard `504c90e09de1aaab0ef05bdf5279691282f1f0b3` और `c125a7d93570be28ceea39d571b0faca5fee78a6`; refund role tests `b82ec8b3dd6453a22cd36dda2574a5db11673b13`।
+- कोई migration apply नहीं की गई; कोई live payment/refund/payout, deploy, production change या merge नहीं हुआ।
