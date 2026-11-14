@@ -1241,3 +1241,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - 2Factor के प्रकाशित manual OTP API निर्देश custom template endpoint `/SMS/{phone}/{otp}/{template_name}` और सफल API response में `Status: Success` तथा `Details` session ID दिखाते हैं। मौजूदा integration का endpoint/response check इस documented pattern से मेल खाता है। API acceptance को handset delivery नहीं माना जाएगा; वास्तविक delivery के लिए provider callback/DLR और live approved template/account की जाँच अंतिम QA में आवश्यक है। कोई SMS नहीं भेजा और कोई API key configure नहीं की।
 - Source-only; migration लागू नहीं, Edge Function deploy नहीं।
 - Commits: cancel-send SQL delimiter correction `17d191a0273ef65538b6a65b502e57c3f98012ef`; Admin release SQL delimiter correction `2ca594cbcbfc439c4c62fba4b41da9e7edd17f19`.
+
+
+### 2026-11-14 — Phone-change profile mapping ambiguity guard
+- `srk_phone_change_prepare` पहले `user_id` या `auth_user_id` से मिलने वाली पहली electrician profile चुन लेता था। यदि legacy data में दोनों mapping अलग-अलग profile rows पर हों, तो गलत profile बदलने का जोखिम था।
+- अब request बनाने से पहले matching distinct profile IDs की संख्या ठीक 1 होना अनिवार्य है। शून्य या एक से अधिक mapping होने पर request सुरक्षित रूप से रोक दी जाती है; arbitrary profile चयन नहीं होता।
+- Source-only static hardening; वास्तविक database constraints/data और Postgres runtime परीक्षण अंतिम consolidated QA में बाकी हैं।
+- Migration commit: 287ea9bbd4de8fa90de27320a86dac830ea96f9c.
