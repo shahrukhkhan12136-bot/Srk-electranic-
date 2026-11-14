@@ -1067,3 +1067,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Netlify expiry worker और `netlify.toml` का static inspection: worker हर मिनट scheduled है, server-side service-role key से केवल `srk_expire_and_advance_booking_offers` RPC call करता है, 10-second timeout और safe error responses हैं। कोई secret source में नहीं रखा गया।
 - Read-only production schema audit: वर्तमान deployed schema में नए category/tier columns और `job_offers.expires_at` अभी नहीं हैं; यह पुष्टि करता है कि sequential dispatch migration feature branch source-only है और production पर apply नहीं हुई।
 - कोई migration apply, deploy, booking/offer/assignment या live data परिवर्तन नहीं किया। SQL runtime compile, Netlify scheduled execution, concurrent accept/expiry और full dispatch lifecycle अंतिम consolidated QA में होंगे।
+
+## 2026-11-14 — Electrician Offer Expiry Response UX
+- Offer response RPC का expired branch `success:false` के साथ `code='offer_expired'` और अगले dispatch का परिणाम लौटाता है। पहले UI इसे सामान्य failure मानकर dashboard refresh नहीं करता था।
+- Electrician response handler अब इस विशिष्ट expiry result को अलग पहचानता है, अगले offer भेजे जाने/न मिलने का स्पष्ट Hindi संदेश दिखाता है और dashboard refresh करता है। अन्य unexpected response अब भी success नहीं माना जाता।
+- Static source inspection: RPC call, expiry code branch, next-offer result handling, refresh और success allowlist मौजूद — PASS।
+- Source-only; कोई offer accept/decline, assignment या database record नहीं बदला। वास्तविक expiry/response race अंतिम consolidated QA में जाँची जाएगी।
