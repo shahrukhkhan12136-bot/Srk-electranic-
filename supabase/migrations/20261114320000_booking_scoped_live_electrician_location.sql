@@ -56,10 +56,14 @@ BEGIN
   VALUES(p_booking_id,v_profile.id,true,p_latitude,p_longitude,p_accuracy_meters,
          clock_timestamp(),clock_timestamp(),NULL)
   ON CONFLICT (booking_id) DO UPDATE
-    SET is_active=true,latitude=EXCLUDED.latitude,longitude=EXCLUDED.longitude,
-        accuracy_meters=EXCLUDED.accuracy_meters,updated_at=clock_timestamp()
-    WHERE srk_booking_live_locations.electrician_profile_id=EXCLUDED.electrician_profile_id
-      AND srk_booking_live_locations.stopped_at IS NULL;
+    SET electrician_profile_id=EXCLUDED.electrician_profile_id,
+        is_active=true,latitude=EXCLUDED.latitude,longitude=EXCLUDED.longitude,
+        accuracy_meters=EXCLUDED.accuracy_meters,updated_at=clock_timestamp(),
+        started_at=CASE WHEN srk_booking_live_locations.electrician_profile_id IS DISTINCT FROM EXCLUDED.electrician_profile_id
+          THEN clock_timestamp() ELSE srk_booking_live_locations.started_at END,
+        stopped_at=NULL
+    WHERE srk_booking_live_locations.stopped_at IS NULL
+       OR srk_booking_live_locations.electrician_profile_id IS DISTINCT FROM EXCLUDED.electrician_profile_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Location sharing has already been stopped for this booking' USING ERRCODE='55000'; END IF;
   RETURN jsonb_build_object('success',true,'is_active',true,'updated_at',clock_timestamp());
 END;
