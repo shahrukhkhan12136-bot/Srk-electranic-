@@ -1459,3 +1459,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Fix commit: `1431577792071921a580f2ae1ca912b5595cd2f0`. Static order check PASS: unique index statement attachment table statement से पहले है।
 - Support attachment pgTAP source plan/assertions 6 से 8 किए; composite unique index और validated composite FK के catalog checks जोड़े। Test commit: `5d07dee48c2cc34c830d766bceb682d62ed41012`. यह test-source/static count है, pgTAP execution नहीं।
 - Customer, electrician और RBAC migrations अभी source-only हैं; migration application/deploy नहीं किया। PostgreSQL compile/pgTAP runtime और primary DB parity verification बाकी हैं। कोई production write/settings change नहीं।
+
+
+### 2026-11-14 — Primary DB migration-history parity check (read-only)
+- Primary project की migration history read-only पढ़ी: लागू migrations अभी `20261113081436` तक हैं; Customer support conversation (`20261113220000`), support attachment/Admin message list (`20261113230000`), Admin customer replies (`20261114300000`), Electrician tickets/inbox (`20261114350000`) और Admin Staff RBAC (`20261114390000`) अभी applied history में नहीं हैं।
+- Catalog में `srk_booking_complaints` और `srk_booking_complaint_events` मौजूद तथा RLS-enabled हैं; `electrician_profiles` और `service_bookings` भी मौजूद/RLS-enabled हैं। चार नए conversation/ticket tables अनुपस्थित हैं, जो migration history के साथ consistent है। इसलिए missing tables के लिए अलग duplicate schema migration बनाने की जरूरत नहीं; मौजूदा ordered source migrations ही canonical creation path हैं।
+- Read-only inspection only; कोई migration apply नहीं, कोई data/settings mutation नहीं। Support migration chain को source-level fix और tests के बाद भी runtime PostgreSQL/pgTAP verification की आवश्यकता रहेगी।
