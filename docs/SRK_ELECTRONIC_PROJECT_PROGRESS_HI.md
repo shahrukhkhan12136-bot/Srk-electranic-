@@ -957,3 +957,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Raw backend errors UI में दिखाने के बजाय सुरक्षित Hindi संदेश दिए।
 - Static checks: load guard, per-payout duplicate guard, method/reference validation, busy state, safe error and actual-transfer confirmation — PASS. Admin inline JavaScript syntax — PASS.
 - Source-only; कोई payout status, बैंक ट्रांसफर या wallet ledger नहीं बदला। वास्तविक Admin RPC permission, duplicate race और payout accounting का runtime test अंतिम consolidated QA में होगा।
+
+## 2026-11-14 — Razorpay Create-Order Re-read Consistency Fix
+- पेमेंट ऑर्डर lock लेने के बाद booking को दोबारा पढ़ने वाले SELECT में `selected_category` छूट गया था। इससे नए category-based bookings का payment breakdown legacy quote path में जा सकता था।
+- Re-read SELECT में `selected_category` वापस शामिल किया, ताकि initial read और lock के बाद की read दोनों समान payment-path decision data रखें।
+- Static verification: JavaScript syntax PASS; दोनों booking SELECT statements में `selected_category` मौजूद — PASS.
+- Source-only; Razorpay order/payment या database record नहीं बनाया/बदला। वास्तविक order-lock race, amount validation और captured-payment reconciliation अंतिम consolidated QA में जाँचे जाएँगे।
