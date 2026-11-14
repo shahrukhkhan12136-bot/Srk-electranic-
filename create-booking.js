@@ -247,7 +247,7 @@ exports.handler = async (event) => {
       message: !offerStatusChecked
         ? "बुकिंग सेव हो गई है, लेकिन ऑफर की स्थिति अभी जाँची नहीं जा सकी। हमारी टीम से पुष्टि करें।"
         : offersCreated
-          ? `बुकिंग सेव हो गई। ${offersCreated} approved और active इलेक्ट्रिशियन को ${matchLevel === "pincode" ? "इसी PIN Code" : "इसी जिले"} का ऑफर बनाया गया है।`
+          ? `बुकिंग सेव हो गई। आपकी चुनी हुई श्रेणी के एक approved और active इलेक्ट्रिशियन को ${matchLevel === "pincode" ? "इसी PIN Code" : "इसी जिले"} का पहला ऑफर भेजा गया है। जवाब न मिलने या अस्वीकार होने पर अगला eligible इलेक्ट्रिशियन चुना जाएगा।`
           : "बुकिंग सेव हो गई। इस PIN Code या जिले में अभी कोई approved और active इलेक्ट्रिशियन उपलब्ध नहीं मिला।"
     });
   } catch (error) {
