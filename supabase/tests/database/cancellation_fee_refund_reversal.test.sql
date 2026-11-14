@@ -128,7 +128,7 @@ select ok(position('auth.jwt()->>'||quote_literal('role') in
   'refund reconciliation validates service role from the signed JWT claim');
 
 select ok(
-  position('select r.booking_id into v_request.booking_id' in lower(
+  position('select r.booking_id into v_booking_id' in lower(
     pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure)))>0
   and position('perform 1 from public.service_bookings' in lower(
     pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure)))
