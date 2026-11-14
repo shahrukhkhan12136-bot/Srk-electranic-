@@ -139,6 +139,16 @@ begin
   ) then
     raise exception 'ATTACHMENT_NOT_ALLOWED' using errcode = '42501';
   end if;
+  -- Link only an object that has already been uploaded to this private bucket
+  -- and whose Storage owner is the authenticated customer.
+  if not exists (
+    select 1 from storage.objects o
+     where o.bucket_id='srk-customer-support'
+       and o.name=p_storage_path
+       and o.owner_id=v_user_id::text
+  ) then
+    raise exception 'SUPPORT_ATTACHMENT_OBJECT_NOT_OWNED' using errcode = '42501';
+  end if;
   insert into public.srk_booking_complaint_message_attachments
     (complaint_id,message_id,file_name,mime_type,file_size_bytes,storage_path)
   values
