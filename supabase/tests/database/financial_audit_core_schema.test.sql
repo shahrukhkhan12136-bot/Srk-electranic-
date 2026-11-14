@@ -53,4 +53,12 @@ SELECT ok(NOT has_function_privilege('anon','public.srk_capture_razorpay_refund_
 
 SELECT ok(EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='srk_audit_service_bookings' AND tgrelid='public.service_bookings'::regclass AND NOT tgisinternal AND tgfoid='public.srk_capture_admin_audit_event()'::regprocedure),'service booking audit trigger installed');
 SELECT ok(EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='srk_audit_electrician_profiles' AND tgrelid='public.electrician_profiles'::regclass AND NOT tgisinternal AND tgfoid='public.srk_capture_admin_audit_event()'::regprocedure),'electrician profile audit trigger installed');
-SELECT ok(EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='srk_audit_electrician_applicat
+SELECT ok(EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='srk_audit_electrician_applications' AND tgrelid='public.electrician_applications'::regclass AND NOT tgisinternal AND tgfoid='public.srk_capture_admin_audit_event()'::regprocedure),'electrician application audit trigger installed');
+SELECT ok(EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='srk_audit_manual_payment_entries' AND tgrelid='public.srk_manual_payment_entries'::regclass AND NOT tgisinternal AND tgfoid='public.srk_capture_admin_audit_event()'::regprocedure),'manual payment audit trigger installed');
+SELECT ok(EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='srk_audit_manual_refund_entries' AND tgrelid='public.srk_manual_refund_entries'::regclass AND NOT tgisinternal AND tgfoid='public.srk_capture_admin_audit_event()'::regprocedure),'manual refund audit trigger installed');
+SELECT ok(EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='srk_audit_electrician_payouts' AND tgrelid='public.srk_electrician_payouts'::regclass AND NOT tgisinternal AND tgfoid='public.srk_capture_admin_audit_event()'::regprocedure),'payout audit trigger installed');
+SELECT ok(EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='srk_audit_razorpay_refunds' AND tgrelid='public.srk_razorpay_refunds'::regclass AND NOT tgisinternal AND tgfoid='public.srk_capture_razorpay_refund_audit_event()'::regprocedure),'Razorpay refund audit trigger installed');
+
+SELECT * FROM finish();
+ROLLBACK;
+
