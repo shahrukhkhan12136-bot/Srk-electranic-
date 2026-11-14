@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(67);
+select plan(69);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -354,6 +354,17 @@ SELECT ok(
   AND position('sender_user_id' in pg_get_functiondef('public.srk_admin_send_booking_complaint_message(uuid,text)'::regprocedure))>0
   AND position('v_admin_id' in pg_get_functiondef('public.srk_admin_send_booking_complaint_message(uuid,text)'::regprocedure))>0,
   'customer and Main Admin complaint replies persist the authenticated sender identity'
+);
+
+SELECT ok(
+  position('is_current_staff_sender boolean' in lower(pg_get_function_result('public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure)))>0
+  AND position('m.sender_user_id=auth.uid()' in lower(pg_get_functiondef('public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure)))>0,
+  'customer support thread identifies the current Staff sender without exposing user identifiers'
+);
+SELECT ok(
+  position('is_current_staff_sender boolean' in lower(pg_get_function_result('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure)))>0
+  AND position('m.sender_user_id=auth.uid()' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure)))>0,
+  'electrician support thread identifies the current Staff sender without exposing user identifiers'
 );
 
 SELECT * FROM finish();
