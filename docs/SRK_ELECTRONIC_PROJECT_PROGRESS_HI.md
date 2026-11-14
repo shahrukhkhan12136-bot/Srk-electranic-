@@ -1256,3 +1256,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - अन्य जाँचे गए Admin RPC groups (area relocation, work review, cancellation decisions, customer/electrician support, KYC document path, payouts, commission/wallet, refunds, rate-tier और booking offer) में explicit PUBLIC revoke मौजूद मिला।
 - Source-only; कोई migration apply/deploy नहीं हुई। PostgreSQL compile, RLS/role matrix, auth race runtime और full Admin action tests अंतिम consolidated QA में बाकी हैं।
 - Commits: Admin auth/UI 778d790792a9081f074d821ff4ac4118e96e22b5; cancellation trigger revoke cd5c0d8a07350fffb6be48c1f2a9481f73342b86; dispatch trigger revoke 3cc1f33df946134dfc39a2ac316de7a1063009d.
+
+
+### 2026-11-14 — Admin auth race और duplicate-action guards
+- Auth event आते ही Admin auth generation तुरंत invalidate होती है; deferred UI refresh के दौरान पुराने admin-check RPC का response अब नई session state पर लागू नहीं हो सकता।
+- ग्राहक booking location update और electrician application review में per-record busy guards जोड़े; double-click से duplicate concurrent updates/reviews रोके जाते हैं। इन handlers में safe error messaging भी जोड़ी गई।
+- Admin direct-write audit में service_bookings पर location/status/quoted_amount और electrician_profiles पर active flag के direct updates पहचाने गए। इनकी effective RLS/column privileges और trigger protections का migration-by-migration audit जारी है; broad policy को बिना पूरी dependency जाँचे नहीं बदला।
+- Source-only; browser runtime और वास्तविक RLS tests अंतिम consolidated QA में बाकी।
+- Commits: auth event race guard 1927912d9751751137f445142fbc49e492d9eaac; duplicate-action guards 1a9101ea997bf6b331e01f69f1860bebabb811bf.
