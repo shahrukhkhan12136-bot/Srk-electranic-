@@ -1156,3 +1156,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Electrician OTP verification में गलत OTP / server error आने पर अब request history तुरंत दोबारा पढ़ी जाती है। पाँचवाँ गलत प्रयास OTP को expire करे तो UI उसी response cycle में stale OTP box और request ID साफ़ कर देती है; valid OTP-pending request पर retry UI बनी रहती है।
 - Source-only UI hardening; वास्तविक SMS/OTP और mobile QA अंतिम consolidated चरण में होगा।
 - Commit: `7660b687943d8231920931aa05ddf0c9e0fa56dd`.
+
+
+### 2026-11-14 — Phone-change empty-history stale UI cleanup
+- Electrician phone-change history RPC यदि सफलतापूर्वक खाली सूची लौटाए, तो अब stale OTP request ID, OTP input/panel और पुराने disabled form controls साफ़ किए जाते हैं। इससे पुराने session/UI state के कारण OTP panel छिपा रहने या नया अनुरोध अनावश्यक रूप से disabled रहने की समस्या रोकी गई।
+- यह केवल source-level सुधार है। वास्तविक browser/mobile flow और history/RPC runtime परीक्षण अंतिम consolidated QA में बाकी हैं।
+- Commit: `5ac5808babd13dc69b43ad3edfd56d91b904e4f3`.
