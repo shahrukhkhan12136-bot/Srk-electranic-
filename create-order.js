@@ -49,7 +49,7 @@ exports.handler=async event=>{
     let rows=await db("service_bookings?select=id,phone,customer_user_id,payment_method,quoted_amount,service_charge,materials_amount,payment_status,razorpay_order_id,status,quote_status,selected_category&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
     let booking=rows?.[0];if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
     await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "", booking);
-    if(String(booking.payment_method||"").trim().toLowerCase()!=="razorpay ऑनलाइन भुगतान")return json(409,{success:false,error:"इस बुकिंग के लिए Razorpay ऑनलाइन भुगतान नहीं चुना गया है।"});
+    if(!["razorpay","online"].some(token=>String(booking.payment_method||"").trim().toLowerCase().includes(token)))return json(409,{success:false,error:"इस बुकिंग के लिए Razorpay ऑनलाइन भुगतान नहीं चुना गया है।"});
     if(booking.payment_status==="refunded")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही रिफंड हो चुका है। Admin से संपर्क करें।"});
     if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
     if(booking.status!=="completed")return json(409,{success:false,error:"भुगतान केवल काम पूरा होने के बाद किया जा सकता है।"});
@@ -68,7 +68,7 @@ exports.handler=async event=>{
       booking=rows?.[0];
       if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
       await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "", booking);
-    if(String(booking.payment_method||"").trim().toLowerCase()!=="razorpay ऑनलाइन भुगतान")return json(409,{success:false,error:"इस बुकिंग के लिए Razorpay ऑनलाइन भुगतान नहीं चुना गया है।"});
+    if(!["razorpay","online"].some(token=>String(booking.payment_method||"").trim().toLowerCase().includes(token)))return json(409,{success:false,error:"इस बुकिंग के लिए Razorpay ऑनलाइन भुगतान नहीं चुना गया है।"});
     if(booking.payment_status==="refunded")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही रिफंड हो चुका है। Admin से संपर्क करें।"});
       if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
       if(booking.status!=="completed")return json(409,{success:false,error:"भुगतान केवल काम पूरा होने के बाद किया जा सकता है।"});
