@@ -216,14 +216,28 @@ function customerPayBooking(id,amount){
 }
 async function syncCustomerSession() {
   if (!customerSb) return;
-  const { data } = await customerSb.auth.getSession();
-  const session = data.session;
-  document.getElementById('customer-login').style.display = session ? 'none' : 'block';
-  document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
-  if (session) {
-    document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
-    await loadCustomerBookings();
-
+  const loginPanel = document.getElementById('customer-login');
+  const dashboard = document.getElementById('customer-dashboard');
+  const signedIn = document.getElementById('customerSignedIn');
+  try {
+    const { data, error } = await customerSb.auth.getSession();
+    if (error) throw error;
+    const session = data?.session || null;
+    loginPanel.style.display = session ? 'none' : 'block';
+    dashboard.style.display = session ? 'block' : 'none';
+    if (session) {
+      signedIn.textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
+      await loadCustomerBookings();
+    } else {
+      signedIn.textContent = '';
+      document.getElementById('customerBookings').textContent = '';
+    }
+  } catch (_) {
+    loginPanel.style.display = 'block';
+    dashboard.style.display = 'none';
+    signedIn.textContent = '';
+    document.getElementById('customerBookings').textContent = 'लॉगिन स्थिति जाँची नहीं जा सकी। इंटरनेट जाँचकर दोबारा कोशिश करें।';
+    customerMessage('लॉगिन स्थिति अभी उपलब्ध नहीं है। कृपया दोबारा कोशिश करें।');
   }
 }
 async function customerSendOtp() {
@@ -267,7 +281,22 @@ async function customerVerifyOtp() {
   } catch (_) { customerMessage('OTP सत्यापन अभी नहीं हो सका।'); }
   finally { customerOtpBusy = false; button.disabled = false; }
 }
-async function customerLogout() { await customerSb.auth.signOut(); customerMessage('आप लॉगआउट हो गए हैं। नई बुकिंग और भुगतान के लिए OTP लॉगिन जरूरी है।'); await syncCustomerSession(); }
+async function customerLogout() {
+  const button = document.getElementById('customerLogout');
+  if (!customerSb || !button || button.disabled) return;
+  button.disabled = true;
+  customerMessage('लॉगआउट किया जा रहा है…');
+  try {
+    const { error } = await customerSb.auth.signOut();
+    if (error) throw error;
+    await syncCustomerSession();
+    customerMessage('आप लॉगआउट हो गए हैं। नई बुकिंग और भुगतान के लिए OTP लॉगिन जरूरी है।');
+  } catch (_) {
+    customerMessage('लॉगआउट पूरा नहीं हो सका। इंटरनेट जाँचकर दोबारा कोशिश करें।');
+  } finally {
+    button.disabled = false;
+  }
+}
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
