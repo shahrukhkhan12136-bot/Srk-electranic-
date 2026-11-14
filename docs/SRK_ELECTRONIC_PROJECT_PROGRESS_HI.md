@@ -1290,3 +1290,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 ### 2026-11-14 — Admin logout reliability
 - Logout action में duplicate-click guard, in-flight button disable, Supabase signOut error handling और उपयोगकर्ता को सुरक्षित retry संदेश जोड़ा।
 - Commit `aa5d8fe909e1cc98a8ccfeb1f46eab9a1c6fba0a`; source-only change, auth session expiry/network failure runtime QA अंतिम consolidated testing में होगा।
+
+
+### 2026-11-14 — Admin direct-write / database authority audit
+- `admin.html` के Admin direct-write points map किए: `service_bookings` पर customer location (`address`,`district`,`state`,`pincode`) तथा booking (`status`,`quoted_amount`) updates; `electrician_profiles` पर केवल `active` toggle. बाकी sensitive operations dedicated Admin RPC / Edge Function से चलते हैं।
+- Booking status/payment handlers में UI allowlists और Razorpay/manual-settlement guards मौजूद हैं; cancellation trigger direct `cancelled` status को dedicated Admin decision के बिना रोकता है। Electrician active/rate-tier activation के लिए database trigger भी मौजूद है।
+- उपलब्ध migration history में service-booking और electrician-profile के मूल व्यापक Admin UPDATE policies/column grants की पूर्ण परिभाषा इस branch के tracked migration set से स्पष्ट नहीं हुई। इसलिए column-level grants या policies बदलना अभी सुरक्षित नहीं; कोई DB migration लागू/बदली नहीं। अगला कदम base schema/policy provenance और सभी app direct-write dependencies की पुष्टि के बाद restricted Admin RPC/column-grant design करना है।
+- Audit source-only है; live database permissions, RLS behavior और concurrent update tests अंतिम consolidated QA में ही सत्यापित होंगे।
