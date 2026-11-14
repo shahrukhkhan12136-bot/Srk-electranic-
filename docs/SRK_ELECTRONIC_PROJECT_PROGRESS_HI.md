@@ -1439,3 +1439,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Inbox-list RPCs में भी reassignment race मिला: message-thread readers पर locks थे, लेकिन inbox सूची query assignment बदलते समय पुराने owner को एक stale case row लौटा सकती थी। दोनों Staff inbox queries अब case और assignment rows पर FOR SHARE लेती हैं, ताकि concurrent reassignment serialize हो और stale ownership result न निकले।
 - pgTAP static source plan/assertions 65/65 किए; दोनों inbox functions के `FOR SHARE OF case,assignment` clauses के लिए एक संयुक्त assertion जोड़ा। यह SQL source review है, executed database test नहीं। PostgreSQL compile, pgTAP run और concurrency runtime tests अभी pending हैं।
 - Commits: migration 0c60b9266434ac0c306454cbfe90a0dcf3d4194f; tests 02f2083575c6adec759de5f8ca7dd8443422e663. Migration apply/deploy या production बदलाव नहीं हुआ।
+
+
+### 2026-11-14 — Append-only audit foreign-key deletion interaction
+- Schema review में एक subtle integrity conflict मिला: immutable audit trigger `UPDATE` रोकता है, लेकिन audit actor/target पर `ON DELETE SET NULL` FK user deletion के समय उन्हीं audit rows को UPDATE करने की कोशिश करता। इससे historical audit record सुरक्षित रखने के बजाय संबंधित Auth user deletion अनपेक्षित रूप से fail हो सकती थी। Audit actor/target अब historical UUID snapshots हैं, उन पर cascading/set-null FK नहीं है; immutable audit history user deletion से mutate नहीं होगी।
+- pgTAP plan/assertions 66/66 किए; नया assertion audit actor/target columns पर FK न होने की जाँच करता है। अभी केवल source/static review; SQL parser, migration execution और pgTAP runtime run pending हैं।
+- Commits: migration ec16ac40a587fc00520baf301e152c6b1a7de23a; tests a368df7dfb50db48c32305cda16c1ab824007273. कोई production migration apply/deploy नहीं।
