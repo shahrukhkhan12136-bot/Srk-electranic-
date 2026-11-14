@@ -1426,3 +1426,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - pgTAP में तीन assertions जोड़े: session/lifecycle/assignment RPC grants, Staff support RPC grants, और service_role-only invite registration + trigger-helper non-executability।
 - Static test-source count: plan 62, assertions 62 — exact match। अभी pgTAP execution या live role privilege catalog verification नहीं हुआ है; इसे source-level test coverage ही माना जाए।
 - Commit: test 257da4f177bb83d8a7d3dbb345b36895a6405341. कोई migration apply/deploy या production change नहीं।
+
+
+### 2026-11-14 — Support assignment/thread read concurrency hardening
+- गहरी lock-order review में Admin assignment और Staff authorization के बीच संभावित deadlock cycle मिला: Admin path पहले case row और फिर Staff registry lock लेता था, जबकि Staff permission helper पहले Staff registry/session locks लेता है। Assignment RPC अब active Support staff row पर FOR SHARE पहले लेती है, फिर case row और assignment row—इससे Staff authorization के साथ lock order align होता है।
+- Customer और electrician message-thread read RPCs अब case row तथा उसी case की वर्तमान assignment row पर FOR SHARE लेते हैं। इससे concurrent reassignment thread-read के बीच ownership बदलकर पुरानी Staff session को message history पढ़ने नहीं देगी; read lock order case → assignment है।
+- pgTAP source plan/assertions 64/64 किए: assignment में Staff→case lock order और दोनों thread readers में case→assignment shared locks के static checks जोड़े। यह अभी source/static verification है; PostgreSQL compile, pgTAP execution और वास्तविक concurrent transaction tests अभी नहीं चले हैं।
+- Commits: migration 174f238105254a8be5e5d6b74009a5512feeffd4; tests d660130fca418369c34036fccdec21d81bb1c933. कोई migration apply/deploy या production change नहीं।
