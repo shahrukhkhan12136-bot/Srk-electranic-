@@ -492,6 +492,7 @@ begin
     where booking_id=p_booking_id and status='reserved';
   v_expected:=v_labour.labour_amount_paise+v_fee;
   if p_amount_paise<>v_expected then raise exception 'CAPTURED_AMOUNT_DOES_NOT_MATCH_LABOUR_PLUS_CANCELLATION_FEES'; end if;
+  if v_booking.payment_status='refunded' then raise exception 'BOOKING_ALREADY_REFUNDED'; end if;
   if v_booking.payment_status='paid' then
     if v_booking.razorpay_payment_id=p_payment_id then
       return jsonb_build_object('success',true,'already_processed',true,'total_amount_paise',v_expected);
