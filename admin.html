@@ -452,12 +452,29 @@ async function openAdminSupportThread(id){
  const request=++adminCustomerThreadRequest;adminSupportSelectedId=id;
  const panel=document.getElementById('adminSupportThreadPanel'),box=document.getElementById('adminSupportThread');
  if(!panel||!box)return;
- panel.classList.remove('hidden');document.getElementById('adminSupportThreadTitle').textContent='ग्राहक बातचीत — '+id;box.textContent='बातचीत लोड हो रही है…';
- const {data,error}=await sb.rpc('srk_admin_list_booking_complaint_messages',{p_complaint_id:id});
+ panel.classList.remove('hidden');document.getElementById('adminSupportThreadTitle').textContent='ग्राहक बातचीत — '+id;box.textContent='बातचीत और संलग्न फ़ाइलें लोड हो रही हैं…';
+ const [messagesResult,attachmentsResult]=await Promise.all([
+  sb.rpc('srk_admin_list_booking_complaint_messages',{p_complaint_id:id}),
+  sb.rpc('srk_admin_list_complaint_message_attachments',{p_complaint_id:id})
+ ]);
  if(request!==adminCustomerThreadRequest||id!==adminSupportSelectedId)return;
- if(error){box.textContent='बातचीत लोड नहीं हुई। कृपया फिर कोशिश करें।';return;}
- const rows=Array.isArray(data)?data:[];
- box.innerHTML=rows.map(m=>'<article class="card" style="padding:10px"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक')+'</b><small style="float:right">'+esc(new Date(m.created_at).toLocaleString('hi-IN'))+'</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ if(messagesResult.error){box.textContent='बातचीत लोड नहीं हुई। कृपया फिर कोशिश करें।';return;}
+ const rows=Array.isArray(messagesResult.data)?messagesResult.data:[];
+ let attachments=[];
+ if(!attachmentsResult.error){
+  attachments=await Promise.all((Array.isArray(attachmentsResult.data)?attachmentsResult.data:[]).map(async a=>{
+   const {data,error}=await sb.storage.from('srk-customer-support').createSignedUrl(a.storage_path,300);
+   return {...a,signedUrl:error?null:data?.signedUrl||null};
+  }));
+  if(request!==adminCustomerThreadRequest||id!==adminSupportSelectedId)return;
+ }
+ const byMessage=new Map();
+ attachments.forEach(a=>{if(!byMessage.has(a.message_id))byMessage.set(a.message_id,[]);byMessage.get(a.message_id).push(a);});
+ box.innerHTML=rows.map(m=>{
+  const links=(byMessage.get(m.id)||[]).map(a=>'<a href="'+(a.signedUrl?esc(a.signedUrl):'#')+'" '+(a.signedUrl?'target="_blank" rel="noopener noreferrer"':'')+' style="display:block;margin-top:7px">'+(a.signedUrl?'📎 ':'⚠️ ')+esc(a.file_name)+' ('+(Number(a.file_size_bytes)/1024/1024).toFixed(2)+' MB)'+(a.signedUrl?'':' — फ़ाइल लिंक उपलब्ध नहीं')+'</a>').join('');
+  return '<article class="card" style="padding:10px"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक')+'</b><small style="float:right">'+esc(new Date(m.created_at).toLocaleString('hi-IN'))+'</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p>'+links+'</article>';
+ }).join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ if(attachmentsResult.error)box.insertAdjacentHTML('beforeend','<p class="muted">संलग्न फ़ाइलों की सूची अभी उपलब्ध नहीं है।</p>');
 }
 let adminCustomerReplyBusy=false;
 async function sendAdminSupportReply(){
