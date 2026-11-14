@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(24);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
@@ -77,6 +77,10 @@ select ok(position('p_provider_status is null' in
   and position('p_provider_status='||quote_literal('processed') in
   pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
   'provider reconciliation rejects missing status and requires provider refund ID on success');
+
+select ok(position('CANCELLATION_FEE_ITEMS_NOT_SETTLED_BEFORE_REFUND' in
+  pg_get_functiondef('public.srk_reverse_cancellation_fees_on_full_refund()'::regprocedure))>0,
+  'refund fails closed instead of leaving reserved/unsettled cancellation debt stuck');
 
 select * from finish();
 rollback;
