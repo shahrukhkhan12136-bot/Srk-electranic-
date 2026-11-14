@@ -80,9 +80,13 @@ SELECT ok(
 );
 SELECT ok(
   position('public.srk_admin_staff_sessions tracked' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0
-  AND position('tracked.revoked_at is null' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure)) <
-      position('for share' in lower(pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure)))
-  AND position('for share' in lower(pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure)))>0,
+  AND strpos(
+    lower(substr(
+      pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure),
+      position('public.srk_admin_staff_sessions tracked' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))
+    )),
+    'for share'
+  )>0,
   'permission checks hold a shared lock on the tracked session so explicit revocation serializes with in-flight requests'
 );
 SELECT ok(
