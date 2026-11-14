@@ -248,19 +248,19 @@ create or replace function public.srk_admin_list_electrician_phone_change_reques
 returns table(
   id uuid, electrician_user_id uuid, electrician_profile_id uuid,
   electrician_name text, old_phone text, new_phone text, reason text,
-  otp_verified_at timestamptz, created_at timestamptz
+  otp_verified_at timestamptz, created_at timestamptz, request_status text
 )
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $
 begin
   return query
   select r.id,r.electrician_user_id,r.electrician_profile_id,
-         ep.display_name,r.old_phone,r.new_phone,r.reason,r.otp_verified_at,r.created_at
+         ep.display_name,r.old_phone,r.new_phone,r.reason,r.otp_verified_at,r.created_at,r.status
   from public.srk_electrician_phone_change_requests r
   join public.electrician_profiles ep on ep.id=r.electrician_profile_id
-  where r.status in ('pending_admin','sync_error')
+  where r.status in ('pending_admin','sync_error','processing')
   order by r.created_at asc;
 end;
 $$;
