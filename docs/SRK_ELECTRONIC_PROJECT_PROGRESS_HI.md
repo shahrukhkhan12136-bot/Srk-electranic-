@@ -989,3 +989,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin payout mark-paid path अब किसी भी अभी-reserved cancellation fee item को अस्वीकार करता है; payout amount में केवल settled fee शामिल होती है। इससे अधूरी fee settlement के बीच electrician payout mark-paid नहीं हो सकता।
 - Static source checks PASS: exact payment ID match, reserved-fee rejection, settled-fee-only accounting, booking-first lock order, Admin authorization, legacy quote path, function signature, immutable labour amount field।
 - Source-only change; migration अभी apply नहीं की गई। SQL runtime compile, concurrency, cash/online settlement और refund/payout integration final consolidated QA में होंगे।
+
+## 2026-11-14 — Admin / Electrician UI Safety Sweep
+- Electrician profile status UI में database से आने वाला `verification_status` अब HTML render से पहले escape होता है; पहले यह field template में सीधे insert हो रहा था।
+- Admin Wallet Overview की backend error को अब `innerHTML` में raw डालने के बजाय सुरक्षित generic Hindi `textContent` message से दिखाया जाता है।
+- Customer Booking, Electrician, Admin और payment/serverless JavaScript files की syntax जाँच PASS।
+- Admin, Electrician और Customer booking UI में Schedule / Appointment / preferred date-time विकल्प या शब्द नहीं मिले। Legacy API में पुरानी date/time columns को NULL रखने की backward-compatibility logic बनी हुई है; Netlify worker का cron केवल offer expiry/dispatch backend प्रक्रिया है, customer scheduling feature नहीं।
+- यह source-only UI hardening है; live account, booking या payment data नहीं बदला।
