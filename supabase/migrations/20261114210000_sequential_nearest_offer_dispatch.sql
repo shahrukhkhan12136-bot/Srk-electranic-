@@ -210,6 +210,24 @@ BEGIN
 END;
 $function$;
 REVOKE ALL ON FUNCTION public.broadcast_booking_job() FROM PUBLIC,anon,authenticated;
+-- Ensure exactly one AFTER INSERT trigger invokes the sequential dispatcher.
+DO $trigger$
+DECLARE v_trigger record;
+BEGIN
+  FOR v_trigger IN
+    SELECT tgname FROM pg_trigger
+    WHERE tgrelid='public.service_bookings'::regclass
+      AND NOT tgisinternal
+      AND tgfoid='public.broadcast_booking_job()'::regprocedure
+  LOOP
+    EXECUTE format('DROP TRIGGER %I ON public.service_bookings',v_trigger.tgname);
+  END LOOP;
+END;
+$trigger$;
+CREATE TRIGGER broadcast_new_booking
+  AFTER INSERT ON public.service_bookings
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_booking_job();
+
 
 CREATE OR REPLACE FUNCTION public.srk_respond_to_offer(p_offer_id uuid,p_response text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
