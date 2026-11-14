@@ -231,7 +231,13 @@ async function respond(button,id,response){
  buttons.forEach(b=>{b.disabled=true;if(b===button)b.textContent='कृपया प्रतीक्षा करें…';});
  try{
   const {data,error}=await sb.rpc('srk_respond_to_offer',{p_offer_id:id,p_response:response});
-  if(error||data?.success===false)throw error||new Error('Offer response was not confirmed');
+  if(error)throw error;
+  if(data?.code==='offer_expired'){
+   alert(data.next_offer?.success?'इस ऑफर का समय समाप्त हो गया। अगला योग्य पार्टनर ऑफर भेज दिया गया है।':'इस ऑफर का समय समाप्त हो गया। अभी इस बुकिंग के लिए कोई अगला उपलब्ध पार्टनर नहीं मिला।');
+   await refresh();
+   return;
+  }
+  if(data?.success!==true)throw new Error('Offer response was not confirmed');
   alert(response==='accepted'?'काम आपको असाइन हो गया।':'ऑफर मना कर दिया गया।');
   await refresh();
  }catch(e){
