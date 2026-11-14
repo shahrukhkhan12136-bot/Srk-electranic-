@@ -1433,3 +1433,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Customer और electrician message-thread read RPCs अब case row तथा उसी case की वर्तमान assignment row पर FOR SHARE लेते हैं। इससे concurrent reassignment thread-read के बीच ownership बदलकर पुरानी Staff session को message history पढ़ने नहीं देगी; read lock order case → assignment है।
 - pgTAP source plan/assertions 64/64 किए: assignment में Staff→case lock order और दोनों thread readers में case→assignment shared locks के static checks जोड़े। यह अभी source/static verification है; PostgreSQL compile, pgTAP execution और वास्तविक concurrent transaction tests अभी नहीं चले हैं।
 - Commits: migration 174f238105254a8be5e5d6b74009a5512feeffd4; tests d660130fca418369c34036fccdec21d81bb1c933. कोई migration apply/deploy या production change नहीं।
+
+
+### 2026-11-14 — Staff inbox ownership read-race hardening
+- Inbox-list RPCs में भी reassignment race मिला: message-thread readers पर locks थे, लेकिन inbox सूची query assignment बदलते समय पुराने owner को एक stale case row लौटा सकती थी। दोनों Staff inbox queries अब case और assignment rows पर FOR SHARE लेती हैं, ताकि concurrent reassignment serialize हो और stale ownership result न निकले।
+- pgTAP static source plan/assertions 65/65 किए; दोनों inbox functions के `FOR SHARE OF case,assignment` clauses के लिए एक संयुक्त assertion जोड़ा। यह SQL source review है, executed database test नहीं। PostgreSQL compile, pgTAP run और concurrency runtime tests अभी pending हैं।
+- Commits: migration 0c60b9266434ac0c306454cbfe90a0dcf3d4194f; tests 02f2083575c6adec759de5f8ca7dd8443422e663. Migration apply/deploy या production बदलाव नहीं हुआ।
