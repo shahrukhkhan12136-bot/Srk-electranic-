@@ -333,7 +333,7 @@ declare
   v_fees jsonb;
   v_fee_paise bigint;
 begin
-  if auth.role()<>'service_role' then raise exception 'SERVICE_ROLE_ONLY' using errcode='42501'; end if;
+  if coalesce(auth.jwt()->>'role','')<>'service_role' then raise exception 'SERVICE_ROLE_ONLY' using errcode='42501'; end if;
   select * into v_booking from public.service_bookings where id=p_booking_id;
   if not found then raise exception 'BOOKING_NOT_FOUND'; end if;
   if v_booking.status<>'completed' then raise exception 'BOOKING_NOT_COMPLETED'; end if;
@@ -444,7 +444,7 @@ declare
   v_expected bigint;
   v_item record;
 begin
-  if auth.role()<>'service_role' then raise exception 'SERVICE_ROLE_ONLY' using errcode='42501'; end if;
+  if coalesce(auth.jwt()->>'role','')<>'service_role' then raise exception 'SERVICE_ROLE_ONLY' using errcode='42501'; end if;
   if p_payment_id is null or p_order_id is null
      or p_payment_id !~ '^pay_[A-Za-z0-9]+$'
      or p_order_id !~ '^order_[A-Za-z0-9]+$' then
