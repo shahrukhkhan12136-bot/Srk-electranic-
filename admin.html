@@ -1,27 +1,731 @@
 <!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SRK ELECTRONIC | Admin</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
 :root{font-family:system-ui,Arial;color:#14213d;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}.top{background:#102a43;color:white;padding:20px}.wrap{max-width:1100px;margin:auto;padding:18px}.card{background:white;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 3px 16px #102a4312}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.stat{font-size:28px;font-weight:800;color:#087e8b}input,button,select{font:inherit;padding:11px;border-radius:8px;border:1px solid #ccd5df}button{background:#087e8b;color:white;border:0;cursor:pointer;margin:3px}button.alt{background:#334e68}table{width:100%;border-collapse:collapse;min-width:700px}td,th{text-align:left;padding:10px;border-bottom:1px solid #e6edf3;font-size:14px}.scroll{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}.muted{color:#627d98}.hidden{display:none}.danger{color:#b42318}.tag{padding:4px 8px;background:#e6f4f1;border-radius:20px;font-size:12px}
-</style></head><body><header class="top"><div class="wrap"><h1>SRK ELECTRONIC — Admin Panel</h1><p>ग्राहक बुकिंग • इलेक्ट्रिशियन • काम और कमीशन</p></div></header><main class="wrap"><section class="card" id="login"><h2>Admin लॉगिन</h2><p class="muted">अपने SRK Admin ईमेल और पासवर्ड से लॉगिन करें।</p><input id="email" type="email" autocomplete="username" placeholder="Admin ईमेल" style="width:min(100%,360px)"><br><br><input id="password" type="password" autocomplete="current-password" placeholder="पासवर्ड" style="width:min(100%,360px)"><br><br><button onclick="emailLogin()">Admin Login</button><p id="authmsg"></p></section><section id="app" class="hidden"><div class="card"><button class="alt" onclick="loadAll()">↻ Refresh</button><button class="alt" onclick="logout()">Logout</button><span id="who" class="muted"></span></div><div class="grid"><div class="card"><div class="muted">कुल बुकिंग</div><div class="stat" id="nBookings">—</div></div><div class="card"><div class="muted">नए काम</div><div class="stat" id="nNew">—</div></div><div class="card"><div class="muted">इलेक्ट्रिशियन आवेदन</div><div class="stat" id="nApps">—</div></div><div class="card"><div class="muted">सक्रिय पार्टनर</div><div class="stat" id="nPros">—</div></div></div><div class="card"><h2>नई बुकिंग और काम</h2><p class="muted">मोबाइल पर भुगतान के विकल्प देखने के लिए टेबल पर उँगली रखकर बाईं ओर सरकाएँ। Cash भुगतान दर्ज करते समय वास्तविक रसीद नंबर भरें।</p><div class="scroll"><table><thead><tr><th>ग्राहक</th><th>सेवा / पता</th><th>लोकेशन</th><th>स्टेटस</th><th>तय राशि ₹</th><th>वास्तव में मिली ₹</th><th>पेमेंट</th><th>अपडेट</th></tr></thead><tbody id="bookings"></tbody></table></div></div><div class="card"><h2>इलेक्ट्रिशियन आवेदन</h2><p class="muted">महत्वपूर्ण: Approve करने से पहले इलेक्ट्रिशियन को इसी आवेदन वाले मोबाइल नंबर से <code>/electrician.html</code> पर SMS OTP लॉगिन करके सत्यापन पूरा करना होगा। OTP सत्यापन के बिना Approval सुरक्षित रूप से अस्वीकार होगा। Approval के बाद दस्तावेज़ जाँच करके पार्टनर को अलग से Activate करें।</p><div class="scroll"><table><thead><tr><th>नाम / फोन</th><th>लोकेशन</th><th>कौशल / अनुभव</th><th>स्थिति</th><th>कार्रवाई</th></tr></thead><tbody id="applications"></tbody></table></div></div><div class="card"><h2>इलेक्ट्रिशियन पार्टनर</h2><p class="muted">स्वीकृति के बाद भी दस्तावेज़ जाँच पूरी करके ही Active करें। OTP लॉगिन के लिए आवेदन वाला मोबाइल नंबर Supabase में सत्यापित होना चाहिए।</p><div class="scroll"><table><thead><tr><th>नाम</th><th>फोन</th><th>लोकेशन</th><th>सत्यापन</th><th>काम लेना</th><th>बदलें</th></tr></thead><tbody id="pros"></tbody></table></div></div><div class="card"><h2>इलेक्ट्रिशियन पेआउट — UPI / बैंक</h2><p class="muted">ग्राहक का verified Razorpay भुगतान और काम पूरा होने के बाद ही यहाँ देय रकम आएगी। Admin वास्तविक UPI/बैंक ट्रांसफर करने के बाद UTR डालकर Paid दर्ज करे। यह बटन अपने-आप पैसा नहीं भेजता।</p><div class="grid"><div><small>लंबित पेआउट</small><div class="stat" id="payoutPending">₹0</div></div><div><small>भुगतान किए गए पेआउट</small><div class="stat" id="payoutPaid">₹0</div></div></div><div class="scroll"><table><thead><tr><th>इलेक्ट्रिशियन</th><th>बुकिंग</th><th>मेहनताना</th><th>सामान</th><th>SRK कमीशन</th><th>देय रकम</th><th>स्थिति / कार्रवाई</th></tr></thead><tbody id="payoutRows"><tr><td colspan="7">लोड हो रहा है…</td></tr></tbody></table></div><p id="payoutMsg" class="muted"></p></div><div class="card"><h2>आंतरिक लेजर सारांश (ग्राहक वॉलेट नहीं)</h2><div id="walletAdminSummary">वॉलेट रिपोर्ट लोड हो रही है…</div><p class="muted">ग्राहक टॉप-अप और इलेक्ट्रिशियन निकासी अभी बंद हैं। इस पैनल में केवल सुरक्षित लेजर सारांश दिखता है।</p></div><div class="card"><h2>कमीशन रिपोर्ट</h2><p>कमीशन प्रत्येक बुकिंग में दर्ज commission_rate के अनुसार सर्विस शुल्क पर गणना होता है; सामान की राशि पर कमीशन नहीं लगता। Razorpay भुगतान सत्यापन पर राशि अपने-आप दर्ज होगी; Cash/अन्य भुगतान में Admin वास्तविक प्राप्त राशि और भुगतान स्थिति दर्ज करे। कमीशन तभी बनेगा जब काम Completed और ग्राहक भुगतान Paid हो। इलेक्ट्रिशियन की देय कमाई वास्तविक बैंक सेटलमेंट नहीं है; Route से पुष्टि होने तक इसे भुगतान न मानें।</p><div class="grid"><div><small>वास्तव में प्राप्त भुगतान</small><div id="collected" class="stat">₹0</div></div><div><small>कंपनी का कमीशन</small><div id="commission" class="stat">₹0</div></div><div><small>इलेक्ट्रिशियन की देय कमाई</small><div id="electricianDue" class="stat">₹0</div></div></div><h3>इलेक्ट्रिशियन के अनुसार हिसाब</h3><div class="scroll"><table><thead><tr><th>इलेक्ट्रिशियन</th><th>पूरे Paid काम</th><th>प्राप्त राशि</th><th>कंपनी कमीशन</th><th>इलेक्ट्रिशियन देय कमाई (भुगतान नहीं)</th></tr></thead><tbody id="partnerEarnings"></tbody></table></div></div></section></main><script src="/srk-config.js"></script><script>
-const cfg=window.SRK_CONFIG||{};let sb,user;
-function init(){if(!cfg.SUPABASE_URL||!cfg.SUPABASE_ANON_KEY){document.getElementById('authmsg').textContent='सेटअप बाकी: नीचे दिए README में admin.html के लिए SUPABASE_URL और SUPABASE_ANON_KEY सेट करें।';return}sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);sb.auth.onAuthStateChange((_e,s)=>{user=s?.user||null;showState()});sb.auth.getSession().then(({data})=>{user=data.session?.user||null;showState()})}
-async function showState(){const login=document.getElementById('login'),app=document.getElementById('app');if(!user){login.classList.remove('hidden');app.classList.add('hidden');return;}document.getElementById('who').textContent=user.email||'';const {data,error}=await sb.rpc('is_srk_admin');if(error||data!==true){await sb.auth.signOut();document.getElementById('authmsg').textContent='इस ईमेल को Admin अनुमति नहीं मिली है। Supabase srk_admin_users सूची जाँचें।';login.classList.remove('hidden');app.classList.add('hidden');return;}login.classList.add('hidden');app.classList.remove('hidden');loadAll()}
+</style></head><body><header class="top"><div class="wrap"><h1>SRK ELECTRONIC — Admin Panel</h1><p>ग्राहक बुकिंग • इलेक्ट्रिशियन • काम और कमीशन</p></div></header><main class="wrap"><section class="card" id="login"><h2>Admin / Support Staff लॉगिन</h2><p class="muted">अपने SRK Admin ईमेल और पासवर्ड से लॉगिन करें।</p><input id="email" type="email" autocomplete="username" placeholder="Admin ईमेल" style="width:min(100%,360px)"><br><br><input id="password" type="password" autocomplete="current-password" placeholder="पासवर्ड" style="width:min(100%,360px)"><br><br><button onclick="emailLogin()">Admin पासवर्ड लॉगिन</button><br><button type="button" class="alt" onclick="staffEmailOtpLogin()">Support Staff Email Link लॉगिन</button><p class="muted">Support Staff को पहले Main Admin से invitation और activation मिलना आवश्यक है।</p><p id="authmsg"></p></section><section id="app" class="hidden"><div class="card"><button class="alt" onclick="refreshAdminPortal()">↻ Refresh</button><button class="alt" onclick="logout()">Logout</button><span id="who" class="muted"></span></div><div class="card staff-only hidden" id="staffSupportCustomerCard">
+<h2>ग्राहक सहायता — Assigned Cases</h2>
+<p class="muted">यहाँ केवल आपको सौंपे गए ग्राहक सहायता मामले दिखेंगे। ग्राहक का फोन नंबर, पता और अन्य निजी प्रोफ़ाइल जानकारी इस स्क्रीन पर उपलब्ध नहीं है।</p>
+<button type="button" class="alt" onclick="loadStaffSupportInbox()">रीफ़्रेश करें</button><span id="staffCustomerStatus" class="muted" aria-live="polite"></span>
+<div id="staffCustomerInbox" style="margin-top:12px">Assigned शिकायतें लोड हो रही हैं…</div>
+<div id="staffCustomerThreadPanel" class="card hidden"><h3 id="staffCustomerThreadTitle">ग्राहक बातचीत</h3><div id="staffCustomerThread"></div><textarea id="staffCustomerReply" rows="3" maxlength="4000" style="width:100%;padding:10px" placeholder="ग्राहक को जवाब लिखें"></textarea><button onclick="sendStaffCustomerReply()">जवाब भेजें</button><span id="staffCustomerReplyStatus" class="muted"></span></div>
+</div>
+<div class="card staff-only hidden" id="staffSupportElectricianCard">
+<h2>इलेक्ट्रिशियन सहायता — Assigned Cases</h2>
+<p class="muted">यहाँ केवल आपको सौंपे गए इलेक्ट्रिशियन सहायता मामले दिखेंगे। निजी फोन नंबर, KYC, बैंक/UPI विवरण और अन्य संवेदनशील जानकारी उपलब्ध नहीं है।</p>
+<button type="button" class="alt" onclick="loadStaffSupportInbox()">रीफ़्रेश करें</button><span id="staffElectricianStatus" class="muted" aria-live="polite"></span>
+<div id="staffElectricianInbox" style="margin-top:12px">Assigned अनुरोध लोड हो रहे हैं…</div>
+<div id="staffElectricianThreadPanel" class="card hidden"><h3 id="staffElectricianThreadTitle">इलेक्ट्रिशियन बातचीत</h3><div id="staffElectricianThread"></div><textarea id="staffElectricianReply" rows="3" maxlength="4000" style="width:100%;padding:10px" placeholder="इलेक्ट्रिशियन को जवाब लिखें"></textarea><button onclick="sendStaffElectricianReply()">जवाब भेजें</button><span id="staffElectricianReplyStatus" class="muted"></span></div>
+</div>
+<div class="card" id="adminStaffManagementCard">
+<h2>Staff Management — Support टीम</h2>
+<p class="muted">यह नियंत्रण केवल Main Admin के लिए है। नए Staff को केवल Support भूमिका मिलेगी। आमंत्रण के बाद भी Staff तब तक सिस्टम नहीं खोल पाएगा जब तक Main Admin उसे Active न करे। Finance, Refund, Payout, KYC और Cancellation Approval अधिकार Staff को नहीं मिलते।</p>
+<div class="grid">
+<div><label for="newStaffName">Staff का नाम</label><input id="newStaffName" maxlength="100" placeholder="पूरा नाम" style="width:100%"></div>
+<div><label for="newStaffEmail">ईमेल</label><input id="newStaffEmail" type="email" maxlength="254" placeholder="staff@example.com" style="width:100%"></div>
+</div>
+<button type="button" onclick="inviteSupportStaff()">Support Staff को Invite करें</button>
+<span id="adminStaffInviteStatus" class="muted" aria-live="polite"></span>
+<div style="display:flex;gap:8px;align-items:center;margin-top:14px"><button type="button" class="alt" onclick="loadAdminStaff()">Staff सूची रीफ़्रेश करें</button><span id="adminStaffStatus" class="muted" aria-live="polite"></span></div>
+<div id="adminStaffList" style="margin-top:12px">Staff सूची लोड हो रही है…</div>
+</div>
+<div class="grid"><div class="card"><div class="muted">कुल बुकिंग</div><div class="stat" id="nBookings">—</div></div><div class="card"><div class="muted">नए काम</div><div class="stat" id="nNew">—</div></div><div class="card"><div class="muted">इलेक्ट्रिशियन आवेदन</div><div class="stat" id="nApps">—</div></div><div class="card"><div class="muted">सक्रिय पार्टनर</div><div class="stat" id="nPros">—</div></div></div><div class="card"><h2>नई बुकिंग और काम</h2><p class="muted">मोबाइल पर भुगतान के विकल्प देखने के लिए टेबल पर उँगली रखकर बाईं ओर सरकाएँ। Cash भुगतान दर्ज करते समय वास्तविक रसीद नंबर भरें।</p><div class="scroll"><table><thead><tr><th>ग्राहक</th><th>सेवा / पता</th><th>लोकेशन</th><th>स्टेटस</th><th>तय राशि ₹</th><th>वास्तव में मिली ₹</th><th>पेमेंट</th><th>अपडेट</th></tr></thead><tbody id="bookings"></tbody></table></div></div>
+<div class="card"><h2>ग्राहक Cancellation Requests — Admin निर्णय</h2>
+<p class="muted">ग्राहक के अनुरोध यहाँ आएँगे। Admin को इलेक्ट्रिशियन की वास्तविक स्थिति सत्यापित करके प्रमाण और कारण दर्ज करना अनिवार्य है। शुल्क केवल स्वीकृत नियमों के अनुसार होगा: घर से नहीं निकला ₹0, रास्ते में ₹49, ग्राहक के घर पहुँच चुका ₹99। निर्णय से पहले बुकिंग रद्द नहीं होगी।</p>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="alt" type="button" onclick="loadAdminCancellationRequests()">Requests रीफ़्रेश करें</button><span id="adminCancellationStatus" class="muted" aria-live="polite"></span></div>
+<div id="adminCancellationFeeLedgerSummary" class="grid" style="margin-top:12px">Cancellation fee ledger summary लोड हो रही है…</div>
+<div id="adminCancellationInbox" class="scroll" style="margin-top:12px">Cancellation requests लोड हो रही हैं…</div>
+</div>
+<div class="card" id="adminRazorpayRefundCard">
+<h2>Razorpay Full Refund — Main Admin</h2>
+<p class="muted">केवल verified Razorpay-paid booking के लिए पूरा refund। Backend immutable labour bill / approved legacy quote और cancellation-fee ledger से exact amount निकालेगा। Refund शुरू होते ही pending electrician payout hold होगा; refund processed होने पर ही booking और fee ledger reverse होंगे। Retry पर वही idempotency key इस्तेमाल होगी।</p>
+<div class="grid">
+ <div><label for="razorpayRefundBookingId">Booking ID</label><input id="razorpayRefundBookingId" maxlength="36" placeholder="Booking UUID" style="width:100%"></div>
+ <div><label for="razorpayRefundReason">Refund का कारण (20–250 अक्षर)</label><textarea id="razorpayRefundReason" minlength="20" maxlength="250" rows="3" style="width:100%;padding:10px" placeholder="ग्राहक की समस्या और Refund का स्पष्ट कारण"></textarea></div>
+</div>
+<button type="button" onclick="startAdminRazorpayRefund()">Full Refund शुरू करें / सुरक्षित Retry</button>
+<span id="adminRazorpayRefundStatus" class="muted" aria-live="polite"></span>
+</div>
+<div class="card"><h2>ग्राहक सहायता Inbox</h2>
+<p class="muted">ग्राहक की शिकायतें, बुकिंग संदर्भ, बातचीत और स्थिति यहाँ संभालें। हर उत्तर Admin खाते से ग्राहक की निजी शिकायत थ्रेड में जाएगा।</p>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="alt" type="button" onclick="loadAdminSupportInbox()">शिकायतें रीफ़्रेश करें</button><span id="adminSupportStatus" class="muted" aria-live="polite"></span></div>
+<div id="adminSupportInbox" style="margin-top:12px">शिकायतें लोड हो रही हैं…</div>
+<div id="adminSupportThreadPanel" class="card hidden" style="margin-top:12px">
+<h3 id="adminSupportThreadTitle">ग्राहक बातचीत</h3><div id="adminSupportThread" aria-live="polite"></div>
+<label for="adminSupportReply">ग्राहक को जवाब</label><textarea id="adminSupportReply" maxlength="4000" rows="3" style="width:100%;padding:10px;border:1px solid #ccd5df;border-radius:8px" placeholder="स्पष्ट और सम्मानजनक जवाब लिखें"></textarea>
+<button type="button" onclick="sendAdminSupportReply()">जवाब भेजें</button><span id="adminSupportReplyStatus" class="muted" aria-live="polite"></span>
+</div></div>
+<div class="card"><h2>इलेक्ट्रिशियन सहायता Inbox</h2><p class="muted">इलेक्ट्रिशियन के निजी सहायता अनुरोध देखें, स्थिति अपडेट करें और उसी सुरक्षित थ्रेड में जवाब दें।</p><button class="alt" type="button" onclick="loadAdminElectricianSupportInbox()">रीफ़्रेश करें</button><span id="adminElectricianSupportStatus" class="muted" aria-live="polite"></span><div id="adminElectricianSupportInbox" style="margin-top:12px">इलेक्ट्रिशियन सहायता अनुरोध लोड हो रहे हैं…</div><div id="adminElectricianSupportThreadPanel" class="card hidden" style="margin-top:12px"><h3 id="adminElectricianSupportThreadTitle">इलेक्ट्रिशियन बातचीत</h3><div id="adminElectricianSupportThread" aria-live="polite"></div><label for="adminElectricianSupportReply">इलेक्ट्रिशियन को जवाब</label><textarea id="adminElectricianSupportReply" maxlength="4000" rows="3" style="width:100%;padding:10px" placeholder="स्पष्ट और सम्मानजनक जवाब लिखें"></textarea><button onclick="sendAdminElectricianSupportReply()">जवाब भेजें</button><p id="adminElectricianSupportReplyStatus" class="muted" aria-live="polite"></p></div></div><div class="card"><h2>काम का इतिहास और विवाद समीक्षा</h2>
+<p class="muted">बुकिंग ID डालकर Customer–Electrician work timeline, server timer, final labour bill और ग्राहक की शिकायतें सुरक्षित रूप से देखें। यह डेटा केवल Admin के लिए उपलब्ध है।</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="workReviewBookingId" placeholder="Booking ID (UUID)" style="min-width:260px;flex:1"><button onclick="loadWorkReview()">इतिहास देखें</button></div>
+<p id="workReviewStatus" class="muted" aria-live="polite"></p>
+<div id="workReviewResult" class="scroll"></div>
+</div><div class="card"><h2>इलेक्ट्रिशियन KYC दस्तावेज़ समीक्षा</h2><p class="muted">पहचान, पता और कौशल दस्तावेज़ खोलकर जाँचें। अस्वीकृति या दोबारा जमा करने के लिए स्पष्ट कारण अनिवार्य है। दस्तावेज़ private storage में रहते हैं और Preview link 60 सेकंड में समाप्त होता है।</p><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="alt" onclick="loadAdminKycDocuments()">KYC रीफ़्रेश करें</button><span id="adminKycStatus" class="muted" aria-live="polite"></span></div><div id="adminKycDocuments" style="margin-top:12px">KYC दस्तावेज़ लोड हो रहे हैं…</div></div><div class="card" id="adminPhoneChangeCard"><h2>इलेक्ट्रिशियन मोबाइल नंबर अपडेट — OTP सत्यापित रिक्वेस्ट</h2><p class="muted">यहाँ केवल नए नंबर पर OTP सत्यापित करके भेजी गई रिक्वेस्ट दिखेंगी। Admin जाँच के बाद ही Approve करें। मंजूरी से Supabase लॉगिन नंबर और इलेक्ट्रिशियन प्रोफ़ाइल नंबर दोनों अपडेट होंगे।</p><button class="alt" type="button" onclick="loadAdminElectricianPhoneChangeRequests()">रिक्वेस्ट रीफ़्रेश करें</button><span id="adminPhoneChangeStatus" class="muted" aria-live="polite"></span><div id="adminPhoneChangeRequests">रिक्वेस्ट लोड हो रही हैं…</div></div><div class="card" id="adminAreaChangeCard"><h2>इलेक्ट्रिशियन का नया काम क्षेत्र — Admin अनुमति</h2><p class="muted">इलेक्ट्रिशियन के स्थान बदलने की रिक्वेस्ट जाँचें। मंजूरी पर पुराना जिला बंद होगा और नया जिला सक्रिय होगा। पुराने KYC/आवेदन का पता नहीं बदलेगा।</p><button class="alt" type="button" onclick="loadAdminElectricianAreaRequests()">रिक्वेस्ट रीफ़्रेश करें</button><span id="adminAreaChangeStatus" class="muted" aria-live="polite"></span><div id="adminAreaChangeRequests">रिक्वेस्ट लोड हो रही हैं…</div></div><div class="card"><h2>इलेक्ट्रिशियन आवेदन</h2><p class="muted">महत्वपूर्ण: Approve करने से पहले इलेक्ट्रिशियन को इसी आवेदन वाले मोबाइल नंबर से <code>/electrician.html</code> पर SMS OTP लॉगिन करके सत्यापन पूरा करना होगा। OTP सत्यापन के बिना Approval सुरक्षित रूप से अस्वीकार होगा। Approval के बाद दस्तावेज़ जाँच करके पार्टनर को अलग से Activate करें।</p><div class="scroll"><table><thead><tr><th>नाम / फोन</th><th>लोकेशन</th><th>कौशल / अनुभव</th><th>स्थिति</th><th>कार्रवाई</th></tr></thead><tbody id="applications"></tbody></table></div></div><div class="card"><h2>इलेक्ट्रिशियन पार्टनर</h2><p class="muted">पहले KYC/दस्तावेज़ जाँच और OTP सत्यापन पूरा करें। फिर Admin-approved व्यावसायिक रेट-श्रेणी चुनकर स्वीकृत करें; उसके बाद ही पार्टनर को Active करें। बिना स्वीकृत रेट-श्रेणी के नया काम नहीं मिलेगा।</p><div class="scroll"><table><thead><tr><th>नाम</th><th>फोन</th><th>लोकेशन</th><th>सत्यापन</th><th>Admin-approved श्रेणी</th><th>काम लेना</th><th>बदलें</th></tr></thead><tbody id="pros"></tbody></table></div></div><div class="card"><h2>इलेक्ट्रिशियन पेआउट — UPI / बैंक</h2><p class="muted">ग्राहक का verified Razorpay भुगतान और काम पूरा होने के बाद ही यहाँ देय रकम आएगी। Admin वास्तविक UPI/बैंक ट्रांसफर करने के बाद UTR डालकर Paid दर्ज करे। यह बटन अपने-आप पैसा नहीं भेजता।</p><div class="grid"><div><small>लंबित पेआउट</small><div class="stat" id="payoutPending">₹0</div></div><div><small>भुगतान किए गए पेआउट</small><div class="stat" id="payoutPaid">₹0</div></div></div><div class="scroll"><table><thead><tr><th>इलेक्ट्रिशियन</th><th>बुकिंग</th><th>मेहनताना</th><th>सामान</th><th>SRK कमीशन</th><th>देय रकम</th><th>स्थिति / कार्रवाई</th></tr></thead><tbody id="payoutRows"><tr><td colspan="7">लोड हो रहा है…</td></tr></tbody></table></div><p id="payoutMsg" class="muted"></p></div><div class="card"><h2>आंतरिक लेजर सारांश (ग्राहक वॉलेट नहीं)</h2><div id="walletAdminSummary">वॉलेट रिपोर्ट लोड हो रही है…</div><p class="muted">ग्राहक टॉप-अप और इलेक्ट्रिशियन निकासी अभी बंद हैं। इस पैनल में केवल सुरक्षित लेजर सारांश दिखता है।</p></div><div class="card"><h2>कमीशन रिपोर्ट</h2><p>कमीशन प्रत्येक बुकिंग में दर्ज commission_rate के अनुसार सर्विस शुल्क पर गणना होता है; सामान की राशि पर कमीशन नहीं लगता। Razorpay भुगतान सत्यापन पर राशि अपने-आप दर्ज होगी; Cash/अन्य भुगतान में Admin वास्तविक प्राप्त राशि और भुगतान स्थिति दर्ज करे। कमीशन तभी बनेगा जब काम Completed और ग्राहक भुगतान Paid हो। इलेक्ट्रिशियन की देय कमाई वास्तविक बैंक सेटलमेंट नहीं है; Route से पुष्टि होने तक इसे भुगतान न मानें।</p><div class="grid"><div><small>वास्तव में प्राप्त भुगतान</small><div id="collected" class="stat">₹0</div></div><div><small>कंपनी का कमीशन</small><div id="commission" class="stat">₹0</div></div><div><small>इलेक्ट्रिशियन की देय कमाई</small><div id="electricianDue" class="stat">₹0</div></div></div><h3>इलेक्ट्रिशियन के अनुसार हिसाब</h3><div class="scroll"><table><thead><tr><th>इलेक्ट्रिशियन</th><th>पूरे Paid काम</th><th>प्राप्त राशि</th><th>कंपनी कमीशन</th><th>इलेक्ट्रिशियन देय कमाई (भुगतान नहीं)</th></tr></thead><tbody id="partnerEarnings"></tbody></table></div></div></section></main><script src="/srk-config.js"></script><script>
+const cfg=window.SRK_CONFIG||{};let sb,user;const adminPhoneChangeBusy=new Set();let adminAuthRun=0,adminLoadedUserId=null;
+function init(){if(!cfg.SUPABASE_URL||!cfg.SUPABASE_ANON_KEY){document.getElementById('authmsg').textContent='सेटअप बाकी: नीचे दिए README में admin.html के लिए SUPABASE_URL और SUPABASE_ANON_KEY सेट करें।';return}sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);sb.auth.onAuthStateChange((_e,s)=>{adminAuthRun++;user=s?.user||null;setTimeout(()=>showState(),0)})}
+const adminStaffBusy=new Set();
+async function inviteSupportStaff(){
+ const name=document.getElementById('newStaffName')?.value.trim()||'';
+ const email=document.getElementById('newStaffEmail')?.value.trim()||'';
+ const status=document.getElementById('adminStaffInviteStatus');
+ if(name.length<2||name.length>100||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254){status.textContent='सही नाम और ईमेल भरें।';return;}
+ const button=document.querySelector('#adminStaffManagementCard button[onclick="inviteSupportStaff()"]');
+ if(button)button.disabled=true;
+ status.textContent='सुरक्षित आमंत्रण बनाया जा रहा है…';
+ try{
+  const {data,error}=await sb.functions.invoke('admin-staff-management',{body:{action:'invite_support_staff',display_name:name,email}});
+  if(error||!data?.success)throw new Error(data?.error||error?.message||'आमंत्रण नहीं बन सका।');
+  status.textContent='आमंत्रण भेज दिया गया। Staff अभी Invited स्थिति में है; Activate करने से पहले ईमेल सत्यापन पूरा होना चाहिए।';
+  document.getElementById('newStaffName').value='';
+  document.getElementById('newStaffEmail').value='';
+  await loadAdminStaff();
+ }catch(e){status.textContent='आमंत्रण विफल: '+(e.message||'कृपया फिर प्रयास करें।');}
+ finally{if(button)button.disabled=false;}
+}
+async function loadAdminStaff(){
+ const box=document.getElementById('adminStaffList'),status=document.getElementById('adminStaffStatus');
+ if(!box||!sb||!user)return;
+ status.textContent='सूची लोड हो रही है…';
+ const {data,error}=await sb.rpc('srk_admin_list_staff');
+ if(error){status.textContent='लोड विफल';box.textContent='Staff सूची लोड नहीं हुई। Main Admin अनुमति और migration status जाँचें।';return;}
+ const rows=data||[];
+ status.textContent=rows.length+' Staff रिकॉर्ड';
+ if(!rows.length){box.textContent='अभी कोई Support Staff आमंत्रित नहीं है।';return;}
+ box.innerHTML='<div class="scroll"><table><thead><tr><th>नाम</th><th>भूमिका</th><th>स्थिति</th><th>आमंत्रण / सक्रिय समय</th><th>सुरक्षा</th></tr></thead><tbody>'+
+ rows.map(s=>{
+  const id=esc(s.user_id),state=esc(s.status);
+  const actions='<button type="button" onclick="setAdminStaffStatus(\''+id+'\',\'active\')">Active करें</button><button type="button" class="alt" onclick="setAdminStaffStatus(\''+id+'\',\'suspended\')">Suspend</button><button type="button" class="alt" onclick="setAdminStaffStatus(\''+id+'\',\'disabled\')">Disable</button><button type="button" class="alt" onclick="loadAdminStaffSessions(\''+id+'\')">Sessions देखें</button><button type="button" class="alt" onclick="loadAdminStaffAudit(\''+id+'\')">Audit देखें</button>';
+  return '<tr><td>'+esc(s.display_name)+'</td><td>Support</td><td><span class="tag">'+state+'</span></td><td>'+esc(s.created_at||'—')+'<br><small>'+esc(s.activated_at||'अभी Active नहीं')+'</small></td><td>'+actions+'<div id="staff-sessions-'+id+'" class="muted"></div><div id="staff-audit-'+id+'" class="muted"></div></td></tr>';
+ }).join('')+'</tbody></table></div>';
+}
+async function loadAdminStaffAudit(id){
+ const box=document.getElementById('staff-audit-'+id);if(!box)return;
+ box.textContent='Activity audit लोड हो रहा है…';
+ const {data,error}=await sb.rpc('srk_admin_list_staff_audit_events',{p_staff_user_id:id,p_limit:100});
+ if(error){box.textContent='Audit history लोड नहीं हुई।';return;}
+ const rows=data||[];
+ if(!rows.length){box.textContent='अभी कोई Staff activity event नहीं है।';return;}
+ box.innerHTML='<div class="scroll"><table><thead><tr><th>समय</th><th>कार्रवाई</th><th>परिणाम</th><th>विवरण</th></tr></thead><tbody>'+
+ rows.map(e=>'<tr><td>'+esc(e.created_at)+'</td><td>'+esc(e.action)+'</td><td>'+esc(e.outcome)+'</td><td><code style="white-space:pre-wrap">'+esc(JSON.stringify(e.details||{}))+'</code></td></tr>').join('')+
+ '</tbody></table></div>';
+}
+async function setAdminStaffStatus(id,nextStatus){
+ if(adminStaffBusy.has(id))return;
+ const reason=prompt('इस बदलाव का कारण लिखें (कम से कम 5 अक्षर):');
+ if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ if(!confirm('Staff स्थिति '+nextStatus+' में बदलें? इस बदलाव का audit record बनेगा।'))return;
+ adminStaffBusy.add(id);
+ try{
+  const {data,error}=await sb.rpc('srk_admin_staff_set_status',{p_staff_user_id:id,p_status:nextStatus,p_reason:reason.trim()});
+  if(error||!data?.success)throw error||new Error('बदलाव की पुष्टि नहीं हुई।');
+  await loadAdminStaff();
+ }catch(e){alert('Staff स्थिति नहीं बदली: '+(e.message||'त्रुटि'));}
+ finally{adminStaffBusy.delete(id);}
+}
+async function loadAdminStaffSessions(id){
+ const box=document.getElementById('staff-sessions-'+id);if(!box)return;
+ box.textContent='Sessions लोड हो रहे हैं…';
+ const {data,error}=await sb.rpc('srk_admin_list_staff_sessions',{p_staff_user_id:id});
+ if(error){box.textContent='Session सूची लोड नहीं हुई।';return;}
+ const rows=data||[];
+ if(!rows.length){box.textContent='कोई session record उपलब्ध नहीं है।';return;}
+ box.innerHTML='<div class="scroll"><table><thead><tr><th>Session जारी</th><th>अंतिम गतिविधि</th><th>स्थिति</th><th>कार्रवाई</th></tr></thead><tbody>'+
+ rows.map(s=>{
+  const revoked=!!s.revoked_at;
+  return '<tr><td>'+esc(s.issued_at)+'</td><td>'+esc(s.last_seen_at)+'</td><td>'+(revoked?'Revoked':'Active')+'</td><td>'+(revoked?'—':'<button type="button" class="alt" onclick="revokeAdminStaffSession(\''+esc(s.session_record_id)+'\',\''+id+'\')">Revoke</button>')+'</td></tr>';
+ }).join('')+'</tbody></table></div>';
+}
+async function revokeAdminStaffSession(sessionId,staffId){
+ const reason=prompt('Session revoke करने का कारण लिखें (कम से कम 5 अक्षर):');
+ if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ if(!confirm('इस Staff session को revoke करें?'))return;
+ const {data,error}=await sb.rpc('srk_admin_staff_revoke_session',{p_session_record_id:sessionId,p_reason:reason.trim()});
+ if(error||data!==true){alert('Session revoke की पुष्टि नहीं हुई।');return;}
+ await loadAdminStaffSessions(staffId);
+}
+let adminPortalMode='main_admin';
+function setAdminPortalMode(mode){
+ adminPortalMode=mode;
+ const app=document.getElementById('app');
+ [...app.children].forEach(el=>{
+  if(el.querySelector('button[onclick="logout()"]'))return;
+  const staffOnly=el.classList.contains('staff-only');
+  if(staffOnly)el.classList.toggle('hidden',mode!=='staff');
+  else el.classList.toggle('hidden',mode!=='main_admin');
+ });
+ const who=document.getElementById('who');
+ if(who)who.textContent=(user?.email||'')+(mode==='staff'?' • Support Staff':' • Main Admin');
+}
+async function refreshAdminPortal(){
+ // Re-authorize first; showState owns the single role-specific reload.
+ // Reset the loaded-user guard so refresh reloads once, not twice.
+ adminLoadedUserId=null;
+ await showState();
+}
+async function showState(){
+ const run=++adminAuthRun,activeUser=user,login=document.getElementById('login'),app=document.getElementById('app');
+ if(!activeUser){adminLoadedUserId=null;login.classList.remove('hidden');app.classList.add('hidden');return;}
+ const {data:isAdmin,error:adminError}=await sb.rpc('is_srk_admin');
+ if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;
+ if(!adminError&&isAdmin===true){
+  setAdminPortalMode('main_admin');
+  login.classList.add('hidden');app.classList.remove('hidden');
+  if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await loadAll();}
+  return;
+ }
+ const {data:sessionRegistered,error:sessionError}=await sb.rpc('srk_admin_staff_register_session');
+ if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;
+ if(sessionError||sessionRegistered!==true){
+  adminLoadedUserId=null;document.getElementById('authmsg').textContent='Support Staff session सुरक्षित रूप से register नहीं हुआ। दोबारा लॉगिन करें या Main Admin से संपर्क करें।';
+  login.classList.remove('hidden');app.classList.add('hidden');await sb.auth.signOut();return;
+ }
+ const {data:canReadCustomer,error:permissionError}=await sb.rpc('srk_has_admin_permission',{p_permission_key:'support.customer.read'});
+ if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;
+ if(permissionError||canReadCustomer!==true){
+  adminLoadedUserId=null;document.getElementById('authmsg').textContent='इस खाते को Main Admin या सक्रिय Support Staff अनुमति नहीं मिली।';
+  login.classList.remove('hidden');app.classList.add('hidden');await sb.auth.signOut();return;
+ }
+ setAdminPortalMode('staff');
+ login.classList.add('hidden');app.classList.remove('hidden');
+ if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await loadStaffSupportInbox();}
+}
+let staffCustomerSelectedId=null,staffElectricianSelectedId=null,staffCustomerThreadRequest=0,staffElectricianThreadRequest=0;
+let staffSupportLoadBusy=false,staffSupportReplyBusy=false;
+async function loadStaffSupportInbox(){
+ if(!sb||!user||adminPortalMode!=='staff'||staffSupportLoadBusy)return;
+ staffSupportLoadBusy=true;
+ const customerBox=document.getElementById('staffCustomerInbox'),electricianBox=document.getElementById('staffElectricianInbox');
+ const cs=document.getElementById('staffCustomerStatus'),es=document.getElementById('staffElectricianStatus');
+ customerBox.textContent='ग्राहक शिकायतें लोड हो रही हैं…';electricianBox.textContent='इलेक्ट्रिशियन अनुरोध लोड हो रहे हैं…';
+ try{
+  const [customers,electricians]=await Promise.all([
+   sb.rpc('srk_admin_staff_list_customer_complaints'),
+   sb.rpc('srk_admin_staff_list_electrician_tickets')
+  ]);
+  if(customers.error)throw customers.error;
+  if(electricians.error)throw electricians.error;
+  const cr=customers.data||[],er=electricians.data||[];
+  cs.textContent=cr.length+' assigned ग्राहक मामले';
+  es.textContent=er.length+' assigned इलेक्ट्रिशियन मामले';
+  customerBox.innerHTML=cr.map(x=>'<article class="card"><b>'+esc(x.category||'ग्राहक सहायता')+' • '+esc(x.status)+'</b><p>Booking ID: <code>'+esc(x.booking_id)+'</code></p><p style="white-space:pre-wrap">'+esc(x.description)+'</p><small>'+esc(x.created_at)+'</small><div><select id="staff-customer-status-'+x.id+'"><option value="in_review" '+(x.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(x.status==='resolved'?'selected':'')+'>हल हो गई</option></select><button onclick="updateStaffCustomerComplaint(\''+x.id+'\')">स्थिति अपडेट</button><button class="alt" onclick="openStaffCustomerThread(\''+x.id+'\')">बातचीत खोलें</button></div></article>').join('')||'<p>अभी आपको कोई ग्राहक शिकायत नहीं सौंपी गई है।</p>';
+  electricianBox.innerHTML=er.map(x=>'<article class="card"><b>'+esc(x.subject)+'</b><p>'+esc(x.category)+' • '+esc(x.status)+'</p>'+(x.booking_id?'<p>Booking ID: <code>'+esc(x.booking_id)+'</code></p>':'')+'<small>'+esc(x.created_at)+'</small><div><select id="staff-electrician-status-'+x.id+'"><option value="in_review" '+(x.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(x.status==='resolved'?'selected':'')+'>हल हो गया</option></select><button onclick="updateStaffElectricianTicket(\''+x.id+'\')">स्थिति अपडेट</button><button class="alt" onclick="openStaffElectricianThread(\''+x.id+'\')">बातचीत खोलें</button></div></article>').join('')||'<p>अभी आपको कोई इलेक्ट्रिशियन सहायता अनुरोध नहीं सौंपा गया है।</p>';
+ }catch(e){
+  customerBox.textContent='Assigned सहायता सूची लोड नहीं हुई। कृपया refresh करें।';
+  electricianBox.textContent='Assigned सहायता सूची लोड नहीं हुई। कृपया refresh करें।';
+ }finally{staffSupportLoadBusy=false;}
+}
+async function updateStaffCustomerComplaint(id){
+ const status=document.getElementById('staff-customer-status-'+id)?.value;
+ const reason=prompt('स्थिति बदलने का कारण लिखें (5–500 अक्षर):');if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ const {data,error}=await sb.rpc('srk_admin_staff_update_customer_complaint',{p_complaint_id:id,p_status:status,p_reason:reason.trim()});
+ if(error||data!==true){alert('स्थिति अपडेट नहीं हुई। यह case अब आपको assigned न हो तो Main Admin से संपर्क करें।');return;}
+ await loadStaffSupportInbox();
+}
+async function openStaffCustomerThread(id){
+ const request=++staffCustomerThreadRequest;staffCustomerSelectedId=id;
+ const panel=document.getElementById('staffCustomerThreadPanel'),box=document.getElementById('staffCustomerThread');
+ panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';
+ const {data,error}=await sb.rpc('srk_admin_staff_list_customer_messages',{p_complaint_id:id});
+ if(request!==staffCustomerThreadRequest||id!==staffCustomerSelectedId)return;
+ if(error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
+ box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.is_current_staff_sender?'आप (Support Staff)':(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक'))+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ document.getElementById('staffCustomerThreadTitle').textContent='ग्राहक बातचीत • '+id;
+}
+async function sendStaffCustomerReply(){
+ if(staffSupportReplyBusy)return;
+ const id=staffCustomerSelectedId,field=document.getElementById('staffCustomerReply'),status=document.getElementById('staffCustomerReplyStatus'),body=field.value.trim();
+ if(!id||!body||body.length>4000){status.textContent='बातचीत खोलें और 1–4000 अक्षरों का जवाब लिखें।';return;}
+ staffSupportReplyBusy=true;
+ try{
+  const {data,error}=await sb.rpc('srk_admin_staff_send_customer_message',{p_complaint_id:id,p_body:body});
+  if(error||!data)throw error||new Error('SEND_FAILED');
+  field.value='';status.textContent='जवाब भेज दिया गया।';await openStaffCustomerThread(id);
+ }catch(e){status.textContent='जवाब नहीं भेजा गया। कृपया फिर कोशिश करें.';}
+ finally{staffSupportReplyBusy=false;}
+}
+async function updateStaffElectricianTicket(id){
+ const statusValue=document.getElementById('staff-electrician-status-'+id)?.value;
+ const reason=prompt('स्थिति बदलने का कारण लिखें (5–500 अक्षर):');if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ const {data,error}=await sb.rpc('srk_admin_staff_update_electrician_ticket',{p_ticket_id:id,p_status:statusValue,p_reason:reason.trim()});
+ if(error||data!==true){alert('स्थिति अपडेट नहीं हुई। कृपया Main Admin से संपर्क करें।');return;}
+ await loadStaffSupportInbox();
+}
+async function openStaffElectricianThread(id){
+ const request=++staffElectricianThreadRequest;staffElectricianSelectedId=id;
+ const panel=document.getElementById('staffElectricianThreadPanel'),box=document.getElementById('staffElectricianThread');
+ panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';
+ const {data,error}=await sb.rpc('srk_admin_staff_list_electrician_messages',{p_ticket_id:id});
+ if(request!==staffElectricianThreadRequest||id!==staffElectricianSelectedId)return;
+ if(error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
+ box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.is_current_staff_sender?'आप (Support Staff)':(m.sender_role==='admin'?'SRK सहायता टीम':'इलेक्ट्रिशियन'))+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ document.getElementById('staffElectricianThreadTitle').textContent='इलेक्ट्रिशियन बातचीत • '+id;
+}
+async function sendStaffElectricianReply(){
+ if(staffSupportReplyBusy)return;
+ const id=staffElectricianSelectedId,field=document.getElementById('staffElectricianReply'),status=document.getElementById('staffElectricianReplyStatus'),body=field.value.trim();
+ if(!id||!body||body.length>4000){status.textContent='बातचीत खोलें और 1–4000 अक्षरों का जवाब लिखें।';return;}
+ staffSupportReplyBusy=true;
+ try{
+  const {data,error}=await sb.rpc('srk_admin_staff_send_electrician_message',{p_ticket_id:id,p_body:body});
+  if(error||!data)throw error||new Error('SEND_FAILED');
+  field.value='';status.textContent='जवाब भेज दिया गया।';await openStaffElectricianThread(id);
+ }catch(e){status.textContent='जवाब नहीं भेजा गया। कृपया फिर कोशिश करें.';}
+ finally{staffSupportReplyBusy=false;}
+}
+async function staffEmailOtpLogin(){
+ const email=document.getElementById('email').value.trim(),status=document.getElementById('authmsg');
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254){status.textContent='पहले आमंत्रित Staff का सही ईमेल भरें।';return;}
+ status.textContent='यदि यह ईमेल आमंत्रित Staff खाते से जुड़ा है, तो सुरक्षित sign-in link भेजा जाएगा…';
+ const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
+ status.textContent=error?'Email sign-in link नहीं भेजा जा सका। ईमेल और invitation status जाँचें।':'ईमेल पर सुरक्षित sign-in link भेज दिया गया है। Link खोलकर इसी Portal में लौटें।';
+}
 async function emailLogin(){const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;if(!email||!password){document.getElementById('authmsg').textContent='ईमेल और पासवर्ड दोनों भरें।';return;}const {data,error}=await sb.auth.signInWithPassword({email,password});document.getElementById('authmsg').textContent=error?.message||'लॉगिन जाँच रहे हैं…';if(!error){user=data.user;await showState();}}
-async function logout(){await sb.auth.signOut()}
-async function loadPayouts(){const body=document.getElementById('payoutRows');if(!body)return;const {data,error}=await sb.from('srk_electrician_payouts').select('*,electrician_profiles(display_name,phone)').order('created_at',{ascending:false}).limit(300);if(error){body.innerHTML='<tr><td colspan="7" class="danger">पेआउट लोड नहीं हुआ: '+esc(error.message)+'</td></tr>';return;}const rows=data||[];const pending=rows.filter(x=>x.payout_status==='pending').reduce((s,x)=>s+Number(x.electrician_payable||0),0);const paid=rows.filter(x=>x.payout_status==='paid').reduce((s,x)=>s+Number(x.electrician_payable||0),0);document.getElementById('payoutPending').textContent='₹'+pending.toFixed(2);document.getElementById('payoutPaid').textContent='₹'+paid.toFixed(2);body.innerHTML=rows.map(x=>{const partner=x.electrician_profiles||{};const action=x.payout_status==='pending'?'<div><select id="pm-'+x.id+'"><option value="upi">UPI</option><option value="bank">Bank</option></select><input id="pr-'+x.id+'" placeholder="UTR / UPI Reference" maxlength="120" style="width:170px"><input id="pn-'+x.id+'" placeholder="नोट (वैकल्पिक)" maxlength="250" style="width:140px"><button onclick="markPayoutPaid(\''+x.id+'\')">भुगतान दर्ज करें</button></div>':'<span class="tag">'+esc(x.payout_status)+'</span>'+(x.payout_reference?'<br>Ref: '+esc(x.payout_reference):'')+(x.paid_at?'<br>'+esc(new Date(x.paid_at).toLocaleString('en-IN')):'');return '<tr><td>'+esc(partner.display_name||'Electrician')+'<br>'+esc(partner.phone||'')+'</td><td>'+esc(x.booking_id)+'</td><td>₹'+Number(x.gross_service_amount).toFixed(2)+'</td><td>₹'+Number(x.materials_amount).toFixed(2)+'</td><td>₹'+Number(x.platform_commission).toFixed(2)+'</td><td><b>₹'+Number(x.electrician_payable).toFixed(2)+'</b></td><td>'+action+'</td></tr>'}).join('')||'<tr><td colspan="7">अभी कोई सत्यापित और पूर्ण काम पेआउट के लिए उपलब्ध नहीं है।</td></tr>';}
-async function markPayoutPaid(id){const method=document.getElementById('pm-'+id).value,reference=document.getElementById('pr-'+id).value.trim(),note=document.getElementById('pn-'+id).value.trim();if(reference.length<4){alert('वास्तविक बैंक UTR या UPI reference डालें।');return;}if(!confirm('क्या आपने वास्तव में इस इलेक्ट्रिशियन को भुगतान कर दिया है? केवल वास्तविक ट्रांसफर के बाद ही हाँ करें।'))return;const {data,error}=await sb.rpc('srk_admin_mark_electrician_payout_paid',{p_payout_id:id,p_method:method,p_reference:reference,p_note:note||null});if(error){document.getElementById('payoutMsg').textContent='पेआउट अपडेट नहीं हुआ: '+error.message;return;}document.getElementById('payoutMsg').textContent='पेआउट रिकॉर्ड सुरक्षित रूप से Paid दर्ज हुआ।';await loadPayouts();}
-async function loadWalletAdmin(){const box=document.getElementById('walletAdminSummary');if(!box)return;const {data,error}=await sb.rpc('srk_admin_wallet_overview');if(error){box.textContent='वॉलेट रिपोर्ट लोड नहीं हुई: '+error.message;return;}box.innerHTML='<p>पुराने ग्राहक लेजर खाते: <b>'+Number(data.customer_wallets||0)+'</b> (कोई ग्राहक टॉप-अप/भुगतान सुविधा नहीं)</p><p>इलेक्ट्रिशियन वॉलेट: <b>'+Number(data.electrician_wallets||0)+'</b></p><p>लेजर क्रेडिट: <b>₹'+Number(data.posted_ledger_credits||0).toFixed(2)+'</b></p><p>लेजर डेबिट: <b>₹'+Number(data.posted_ledger_debits||0).toFixed(2)+'</b></p><p>लंबित एंट्री: <b>'+Number(data.pending_entries||0)+'</b></p><p>सत्यापित बैंक लिंक: <b>'+Number(data.verified_bank_links||0)+'</b></p>';}
-async function loadAll(){if(!sb||!user)return;await Promise.all([loadWalletAdmin(),loadPayouts()]);let [b,a,p,report]=await Promise.all([sb.from('service_bookings').select('id,created_at,customer_name,phone,service_type,address,district,state,pincode,status,quoted_amount,payment_status,payment_method,amount_paid,assigned_electrician_id,razorpay_payment_id,razorpay_order_id,location_lat,location_lng,preferred_date,preferred_time').order('created_at',{ascending:false}).limit(300),sb.from('electrician_applications').select('*').order('created_at',{ascending:false}).limit(300),sb.from('electrician_profiles').select('*').order('created_at',{ascending:false}).limit(500),sb.rpc('srk_admin_commission_report')]);let err=b.error||a.error||p.error||report.error;if(err){alert('डेटा नहीं खुला: '+err.message+' — जाँचें कि आपका फोन srk_admin_users में Admin है।');return}document.getElementById('nBookings').textContent=b.data.length;document.getElementById('nNew').textContent=b.data.filter(x=>x.status==='new').length;document.getElementById('nApps').textContent=a.data.length;document.getElementById('nPros').textContent=p.data.filter(x=>x.active&&x.verification_status==='approved').length;document.getElementById('bookings').innerHTML=b.data.map(x=>`<tr><td>${esc(x.customer_name)}<br>${esc(x.phone)}</td><td>${esc(x.service_type)}<br>${esc(x.address)}</td><td><input id="loc-address-${x.id}" value="${esc(x.address)}" placeholder="पूरा पता" maxlength="300" style="width:190px;margin:2px"><input id="loc-district-${x.id}" value="${esc(x.district)}" placeholder="जिला" maxlength="80" style="width:130px;margin:2px"><input id="loc-state-${x.id}" value="${esc(x.state)}" placeholder="राज्य" maxlength="80" style="width:130px;margin:2px"><input id="loc-pin-${x.id}" value="${esc(x.pincode)}" placeholder="6 अंकों का PIN" inputmode="numeric" maxlength="6" style="width:110px;margin:2px"><br><a target="_blank" rel="noopener" href="${esc(mapUrl(x))}">📍 Map</a><br><button class="alt" onclick="saveCustomerLocation('${x.id}')">पता / जिला बदलें</button></td><td><span class="tag">${esc(x.status)}</span></td><td><input id="amt-${x.id}" type="number" min="0" step="0.01" value="${x.quoted_amount??''}" placeholder="राशि" style="width:95px"></td><td><input id="paid-${x.id}" type="number" min="0" step="0.01" value="" style="width:100px" disabled aria-label="दर्ज भुगतान राशि"></td><td><select id="pay-${x.id}" aria-label="भुगतान स्थिति"><option value="unpaid">unpaid</option><option value="pending">pending</option><option value="paid">paid</option></select><br><select id="manual-method-${x.id}" aria-label="मैनुअल भुगतान तरीका"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank Transfer</option></select><br><input id="ref-${x.id}" maxlength="120" placeholder="रसीद / UTR (4+)" aria-label="रसीद या UTR नंबर" style="width:150px;margin-top:4px"></td><td>${(!x.assigned_electrician_id&&['new','confirmed'].includes(x.status))? "<button class='alt' data-booking-id='"+x.id+"' onclick='offerBooking(this.dataset.bookingId)'>इलेक्ट्रिशियन को ऑफर भेजें</button><br>" : ''}<select id="st-${x.id}">${['new','confirmed','assigned','in_progress','completed','cancelled'].map(s=>`<option ${s===x.status?'selected':''}>${s}</option>`).join('')}</select><button onclick="saveBooking('${x.id}')">Save</button></td></tr>`).join('');b.data.forEach(x=>{const e=document.getElementById('pay-'+x.id);if(e)e.value=x.payment_status||'unpaid';const a=document.getElementById('paid-'+x.id);if(a){a.value=x.amount_paid??'';a.disabled=true;}const m=document.getElementById('manual-method-'+x.id);if(m)m.value='cash';});document.getElementById('applications').innerHTML=a.data.map(x=>`<tr><td>${esc(x.full_name)}<br>${esc(x.phone)}</td><td>${esc(x.district)}, ${esc(x.state)}<br>${esc(x.pincode)}<br><a target="_blank" rel="noopener" href="${esc(mapUrl({...x,address:''}))}">📍 Map</a></td><td>${esc(x.skills)}<br>${x.experience_years} वर्ष</td><td>${esc(x.verification_status)}</td><td>${x.verification_status==='pending'?`<button onclick="review('${x.id}','approved')">Approve</button><button class="alt" onclick="review('${x.id}','rejected')">Reject</button>`:'—'}</td></tr>`).join('');document.getElementById('pros').innerHTML=p.data.map(x=>`<tr><td>${esc(x.display_name)}</td><td>${esc(x.phone)}</td><td>${esc(x.district)}, ${esc(x.state)} ${esc(x.pincode)}<br><a target="_blank" rel="noopener" href="${esc(mapUrl({...x,address:''}))}">📍 Map</a></td><td>${esc(x.verification_status)}</td><td>${x.active?'Active':'Inactive'}</td><td><button onclick="toggleActive('${x.id}',${!x.active})">${x.active?'Deactivate':'Activate'}</button></td></tr>`).join('');const summary=report.data||{};document.getElementById('commission').textContent='₹'+Number(summary.total_commission||0).toFixed(2);document.getElementById('collected').textContent='₹'+Number(summary.total_collected||0).toFixed(2);document.getElementById('electricianDue').textContent='₹'+Number(summary.total_electrician_payable||0).toFixed(2);document.getElementById('partnerEarnings').innerHTML=(summary.partners||[]).map(partner=>'<tr><td>'+esc(partner.display_name)+'</td><td>'+Number(partner.paid_completed_jobs||0)+'</td><td>₹'+Number(partner.gross_received||0).toFixed(2)+'</td><td>₹'+Number(partner.company_commission||0).toFixed(2)+'</td><td>₹'+Number(partner.electrician_earning||0).toFixed(2)+'</td></tr>').join('')||'<tr><td colspan="5">अभी कोई Paid और Completed काम नहीं है।</td></tr>'}
-async function saveCustomerLocation(id){const address=document.getElementById('loc-address-'+id).value.trim(),district=document.getElementById('loc-district-'+id).value.trim(),state=document.getElementById('loc-state-'+id).value.trim(),pincode=document.getElementById('loc-pin-'+id).value.trim();if(!address||!district||!state||!/^[0-9]{6}$/.test(pincode)){alert('पूरा पता, जिला, राज्य और सही 6 अंकों का PIN भरें।');return;}if(!confirm('क्या ग्राहक की बुकिंग का पता और लोकेशन अपडेट करनी है?'))return;const {error}=await sb.from('service_bookings').update({address,district,state,pincode}).eq('id',id);if(error){alert('लोकेशन अपडेट नहीं हुई: '+error.message);return;}alert('ग्राहक की लोकेशन सुरक्षित रूप से अपडेट हो गई।');await loadAll();}
-async function offerBooking(id){if(!confirm('इस बुकिंग के लिए पहले उसी PIN के Active और Approved इलेक्ट्रिशियनों को ऑफर भेजेंगे। PIN पर कोई योग्य पार्टनर न मिला तो उसी जिले में भेजेंगे। आगे बढ़ें?'))return;const {data,error}=await sb.rpc('srk_admin_offer_booking',{p_booking_id:id});if(error){alert('ऑफर नहीं भेजा गया: '+error.message);return;}const result=Array.isArray(data)?data[0]:data;alert(result?.message||'ऑफर प्रक्रिया पूरी हुई।'+(result?.offers_created!==undefined?' नए ऑफर: '+result.offers_created:''));await loadAll()}
+let adminLogoutBusy=false;
+async function logout(){
+ if(adminLogoutBusy||!sb)return;
+ adminLogoutBusy=true;
+ const button=document.querySelector('button[onclick="logout()"]');
+ if(button)button.disabled=true;
+ const status=document.getElementById('authmsg');
+ try{
+  const {error}=await sb.auth.signOut();
+  if(error)throw error;
+  if(status)status.textContent='सुरक्षित रूप से लॉगआउट हो गया।';
+ }catch(e){
+  if(status)status.textContent='लॉगआउट पूरा नहीं हुआ। कृपया दोबारा प्रयास करें।';
+ }finally{
+  adminLogoutBusy=false;
+  if(button)button.disabled=false;
+ }
+}
+const ADMIN_KYC_BUCKET='srk-electrician-verification';
+async function loadAdminElectricianPhoneChangeRequests(){
+ const box=document.getElementById('adminPhoneChangeRequests'),status=document.getElementById('adminPhoneChangeStatus');if(!box||!user)return;
+ status.textContent=' रिक्वेस्ट लोड हो रही हैं…';
+ const {data,error}=await sb.functions.invoke('electrician-phone-change',{body:{action:'admin_list'}});
+ if(error||!data?.success){box.textContent=data?.error||'मोबाइल अपडेट रिक्वेस्ट लोड नहीं हो सकीं। Edge Function और migration की स्थिति जाँचें।';status.textContent='लोड विफल';return;}
+ const rows=data.requests||[];status.textContent=rows.length+' OTP-सत्यापित रिक्वेस्ट (लंबित / जाँचाधीन)';
+ if(!rows.length){box.textContent='अभी कोई OTP-सत्यापित मोबाइल अपडेट रिक्वेस्ट लंबित नहीं है।';return;}
+ box.innerHTML=rows.map(r=>{const state=r.request_status==='processing'?'Admin कार्रवाई चल रही है — पहले से चल रही प्रक्रिया का परिणाम जाँचें':r.request_status==='sync_error'?'तकनीकी जाँच / सुरक्षित पुनः प्रयास आवश्यक':'Admin निर्णय लंबित';const actions=r.request_status==='processing'?'<p class="bad">यह रिक्वेस्ट अभी processing स्थिति में है। सुरक्षा के लिए दोबारा Approve/Reject बटन नहीं दिखाए गए हैं। Auth और प्रोफ़ाइल नंबर की स्थिति जाँचकर ही अगला कदम लें।</p>':'<label for="phoneAdminNote_'+esc(r.id)+'">अस्वीकृति का कारण (Reject करने पर अनिवार्य)</label><input id="phoneAdminNote_'+esc(r.id)+'" maxlength="1000" placeholder="कम से कम 5 अक्षर" style="width:100%"><button type="button" onclick="reviewAdminElectricianPhoneChange(\''+esc(r.id)+'\',\'approved\')">जाँचकर मंजूरी दें</button><button type="button" class="alt" onclick="reviewAdminElectricianPhoneChange(\''+esc(r.id)+'\',\'rejected\')">अस्वीकार करें</button>';return '<div class="job"><h3>'+esc(r.electrician_name)+' • '+esc(r.electrician_profile_id)+'</h3><p><b>स्थिति:</b> '+esc(state)+'</p><p><b>पुराना नंबर:</b> '+esc(r.old_phone)+'</p><p><b>नया सत्यापित नंबर:</b> '+esc(r.new_phone)+' <span class="tag">OTP Verified</span></p><p><b>कारण:</b> '+esc(r.reason)+'</p><p class="muted">OTP सत्यापन: '+esc(new Date(r.otp_verified_at).toLocaleString('hi-IN'))+' • अनुरोध: '+esc(new Date(r.created_at).toLocaleString('hi-IN'))+'</p>'+actions+'<p id="phoneAdminResult_'+esc(r.id)+'" class="muted" aria-live="polite"></p></div>';}).join('');
+}
+async function reviewAdminElectricianPhoneChange(requestId,decision){
+ if(adminPhoneChangeBusy.has(requestId))return;
+ const note=document.getElementById('phoneAdminNote_'+requestId)?.value.trim()||'';
+ if(decision==='rejected'&&note.length<5){alert('अस्वीकृति का कारण कम से कम 5 अक्षरों में लिखें।');return;}
+ const promptText=decision==='approved'?'क्या आपने इलेक्ट्रिशियन की पहचान और नया OTP-सत्यापित नंबर जाँच लिया है? मंजूरी पर लॉगिन नंबर बदल जाएगा।':'क्या आप इस मोबाइल नंबर अपडेट रिक्वेस्ट को अस्वीकार करना चाहते हैं?';
+ if(!confirm(promptText))return;
+ const result=document.getElementById('phoneAdminResult_'+requestId);
+ const card=result?.closest('.job');
+ const buttons=card?[...card.querySelectorAll('button')]:[];
+ adminPhoneChangeBusy.add(requestId);buttons.forEach(b=>b.disabled=true);
+ if(result)result.textContent='Admin निर्णय सुरक्षित किया जा रहा है…';
+ try{
+  const {data,error}=await sb.functions.invoke('electrician-phone-change',{body:{action:'admin_review',request_id:requestId,decision,note}});
+  if(error||!data?.success){if(result)result.textContent=data?.error||'निर्णय पूरा नहीं हुआ। रिक्वेस्ट की स्थिति जाँचें।';return;}
+  if(result)result.textContent=data.message||'निर्णय सुरक्षित हो गया।';
+  await loadAdminElectricianPhoneChangeRequests();
+ }catch(e){if(result)result.textContent='निर्णय की स्थिति की पुष्टि नहीं हो सकी। रिक्वेस्ट रीफ़्रेश करके जाँचें।';}
+ finally{adminPhoneChangeBusy.delete(requestId);buttons.forEach(b=>b.disabled=false);}
+}
+async function loadAdminElectricianAreaRequests(){
+ const box=document.getElementById('adminAreaChangeRequests'),status=document.getElementById('adminAreaChangeStatus');if(!box||!user)return;
+ status.textContent=' रिक्वेस्ट लोड हो रही हैं…';
+ const {data,error}=await sb.rpc('srk_admin_list_electrician_area_requests',{p_limit:200});
+ if(error){box.textContent='रिक्वेस्ट लोड नहीं हुईं। Admin अनुमति और migration की स्थिति जाँचें।';status.textContent='लोड विफल';return;}
+ const rows=data||[];status.textContent=rows.length+' लंबित रिक्वेस्ट';
+ if(!rows.length){box.textContent='अभी कोई लंबित क्षेत्र-बदलाव रिक्वेस्ट नहीं है।';return;}
+ box.innerHTML=rows.map(r=>'<div class="job"><h3>'+esc(r.electrician_name)+' • '+esc(r.electrician_phone)+'</h3><p><b>पुराना क्षेत्र:</b> '+esc(r.old_district)+', '+esc(r.old_state)+' • PIN '+esc(r.old_pincode)+'</p><p><b>नया क्षेत्र:</b> '+esc(r.requested_district)+', '+esc(r.requested_state)+' • PIN '+esc(r.requested_pincode)+'</p><p><b>कारण:</b> '+esc(r.reason)+'</p><p class="muted">रिक्वेस्ट: '+esc(new Date(r.created_at).toLocaleString('hi-IN'))+'</p><label for="areaAdminNote_'+esc(r.id)+'">Admin टिप्पणी / अस्वीकृति का कारण</label><input id="areaAdminNote_'+esc(r.id)+'" maxlength="1000" placeholder="अस्वीकृति पर कम से कम 5 अक्षर लिखें" style="width:100%"><button type="button" onclick="reviewElectricianAreaChange(\''+esc(r.id)+'\',\'approved\')">नए क्षेत्र को मंजूरी दें</button><button type="button" class="alt" onclick="reviewElectricianAreaChange(\''+esc(r.id)+'\',\'rejected\')">अस्वीकार करें</button><p id="areaAdminResult_'+esc(r.id)+'" class="muted" aria-live="polite"></p></div>').join('');
+}
+const adminAreaReviewBusy=new Set();
+async function reviewElectricianAreaChange(id,decision){
+ if(adminAreaReviewBusy.has(id))return;
+ if(!['approved','rejected'].includes(decision)){alert('मान्य Admin निर्णय चुनें।');return;}
+ const note=document.getElementById('areaAdminNote_'+id)?.value.trim()||'';
+ if(decision==='rejected'&&note.length<5){alert('अस्वीकृति का कारण कम से कम 5 अक्षरों में लिखें।');return;}
+ const result=document.getElementById('areaAdminResult_'+id);if(!result)return;
+ if(!confirm(decision==='approved'?'मंजूरी देने पर इलेक्ट्रिशियन का पुराना काम क्षेत्र बंद होकर नया क्षेत्र सक्रिय होगा। क्या आगे बढ़ें?':'क्या आप इस रिक्वेस्ट को अस्वीकार करना चाहते हैं?'))return;
+ const card=result.closest('.job'),buttons=card?[...card.querySelectorAll('button')]:[];
+ adminAreaReviewBusy.add(id);buttons.forEach(b=>b.disabled=true);result.textContent='निर्णय सुरक्षित किया जा रहा है…';
+ try{const {data,error}=await sb.rpc('srk_admin_review_electrician_area_request',{p_request_id:id,p_decision:decision,p_note:note||null});if(error)throw error;if(!data?.success)throw new Error('निर्णय की पुष्टि नहीं हुई');result.textContent=decision==='approved'?'स्वीकृत। नया क्षेत्र सक्रिय कर दिया गया।':'रिक्वेस्ट अस्वीकार कर दी गई।';await loadAdminElectricianAreaRequests();await loadAll();}
+ catch(e){result.textContent='निर्णय पूरा नहीं हुआ। रिक्वेस्ट की स्थिति रीफ़्रेश करके जाँचें।';}
+ finally{adminAreaReviewBusy.delete(id);buttons.forEach(b=>b.disabled=false);}
+}
+async function loadAdminKycDocuments(){const box=document.getElementById('adminKycDocuments'),status=document.getElementById('adminKycStatus');if(!box||!sb||!user)return;status.textContent='दस्तावेज़ लोड हो रहे हैं…';const {data,error}=await sb.rpc('srk_admin_list_electrician_verification_documents',{p_limit:300});if(error){box.textContent='KYC दस्तावेज़ लोड नहीं हुए। Admin अनुमति और backend जाँचें।';status.textContent='लोड विफल';return;}const rows=data||[];status.textContent=rows.length+' दस्तावेज़';if(!rows.length){box.textContent='अभी कोई KYC दस्तावेज़ जमा नहीं है।';return;}box.innerHTML=rows.map(d=>{const label={identity_proof:'पहचान प्रमाण',address_proof:'पता प्रमाण',skill_certificate:'कौशल प्रमाणपत्र'}[d.document_type]||d.document_type;const events=Array.isArray(d.activity)?d.activity:[];return '<div class="job" style="margin:10px 0;padding:14px;border:1px solid #dce3ea;border-radius:10px"><b>'+esc(label)+'</b> • <span class="tag">'+esc(d.review_status)+'</span><p><b>पार्टनर:</b> '+esc(d.electrician_name)+' • '+esc(d.electrician_phone)+'</p><p><b>इलाका:</b> '+esc(d.district)+', '+esc(d.state)+' • PIN '+esc(d.pincode)+'</p><p><b>फ़ाइल:</b> '+esc(d.file_name)+' • '+esc(d.mime_type)+' • '+Math.ceil(Number(d.file_size_bytes||0)/1024)+' KB</p><p class="muted">जमा: '+esc(new Date(d.uploaded_at).toLocaleString('hi-IN'))+(d.reviewed_at?' • जाँच: '+esc(new Date(d.reviewed_at).toLocaleString('hi-IN')):'')+'</p>'+(d.admin_note?'<p><b>पिछली टिप्पणी:</b> '+esc(d.admin_note)+'</p>':'')+'<button type="button" onclick="previewAdminKycDocument(\''+esc(d.id)+'\')">दस्तावेज़ Preview करें</button><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><select id="adminKycDecision_'+esc(d.id)+'"><option value="approved">स्वीकृत</option><option value="rejected">अस्वीकृत</option><option value="needs_resubmission">दोबारा जमा करें</option></select><input id="adminKycNote_'+esc(d.id)+'" maxlength="1000" placeholder="कारण / Admin टिप्पणी" style="flex:1;min-width:220px"><button type="button" onclick="reviewAdminKycDocument(\''+esc(d.id)+'\')">निर्णय सेव करें</button></div><div id="adminKycResult_'+esc(d.id)+'" class="muted" aria-live="polite"></div>'+(events.length?'<details><summary>दस्तावेज़ गतिविधि इतिहास</summary>'+events.map(ev=>'<p class="muted">'+esc(ev.actor_role)+' • '+esc(ev.event_type)+' • '+esc(ev.note||'')+' • '+esc(new Date(ev.created_at).toLocaleString('hi-IN'))+'</p>').join('')+'</details>':'')+'</div>';}).join('');}
+async function previewAdminKycDocument(id){const win=window.open('about:blank','_blank');if(!win){alert('Preview के लिए Popup की अनुमति दें।');return;}win.opener=null;try{const {data,error}=await sb.rpc('srk_admin_list_electrician_verification_documents',{p_limit:300});if(error)throw error;const doc=(data||[]).find(x=>x.id===id);if(!doc?.storage_path)throw new Error('Document unavailable');const {data:signed,error:signError}=await sb.storage.from(ADMIN_KYC_BUCKET).createSignedUrl(doc.storage_path,60,{download:false});if(signError||!signed?.signedUrl)throw signError||new Error('Preview unavailable');win.location.replace(signed.signedUrl);}catch(e){win.close();alert('दस्तावेज़ Preview नहीं खुल सका। Admin अनुमति और private storage जाँचें।');}}
+const adminKycReviewBusy=new Set();
+async function reviewAdminKycDocument(id){
+ if(adminKycReviewBusy.has(id))return;
+ const status=document.getElementById('adminKycResult_'+id),decisionField=document.getElementById('adminKycDecision_'+id),noteField=document.getElementById('adminKycNote_'+id);
+ if(!status||!decisionField||!noteField)return;
+ const decision=decisionField.value,note=noteField.value.trim(),button=status.closest('.job')?.querySelector('button[onclick^="reviewAdminKycDocument"]');
+ if(!['approved','rejected','needs_resubmission'].includes(decision)){status.textContent='मान्य KYC निर्णय चुनें।';return;}
+ if(['rejected','needs_resubmission'].includes(decision)&&note.length<5){status.textContent='अस्वीकृति या दोबारा जमा करने का कारण कम से कम 5 अक्षरों में लिखें।';return;}
+ if(note.length>1000){status.textContent='Admin टिप्पणी 1000 अक्षरों से अधिक नहीं हो सकती।';return;}
+ if(!confirm('क्या आप इस दस्तावेज़ की समीक्षा का निर्णय सेव करना चाहते हैं?'))return;
+ adminKycReviewBusy.add(id);if(button)button.disabled=true;status.textContent='निर्णय सुरक्षित किया जा रहा है…';
+ try{const {data,error}=await sb.rpc('srk_admin_review_electrician_document',{p_document_id:id,p_review_status:decision,p_admin_note:note||null});if(error||!data?.success)throw error||new Error('REVIEW_NOT_CONFIRMED');status.textContent='निर्णय सुरक्षित हो गया।';await loadAdminKycDocuments();await loadAll();}
+ catch(e){status.textContent='निर्णय सेव नहीं हुआ। दस्तावेज़ की वर्तमान स्थिति रीफ़्रेश करके जाँचें।';}
+ finally{adminKycReviewBusy.delete(id);if(button)button.disabled=false;}
+}
+let adminPayoutLoadBusy=false,adminPayoutActionBusy=new Set();
+async function loadPayouts(){
+ const body=document.getElementById('payoutRows');if(!body||adminPayoutLoadBusy)return;
+ adminPayoutLoadBusy=true;body.innerHTML='<tr><td colspan="7">पेआउट रिकॉर्ड लोड हो रहे हैं…</td></tr>';
+ try{
+  const {data,error}=await sb.from('srk_electrician_payouts').select('*,electrician_profiles(display_name,phone)').order('created_at',{ascending:false}).limit(300);
+  if(error)throw error;
+  const rows=data||[],pending=rows.filter(x=>x.payout_status==='pending').reduce((s,x)=>s+Number(x.electrician_payable||0),0),paid=rows.filter(x=>x.payout_status==='paid').reduce((s,x)=>s+Number(x.electrician_payable||0),0);
+  document.getElementById('payoutPending').textContent='₹'+pending.toFixed(2);document.getElementById('payoutPaid').textContent='₹'+paid.toFixed(2);
+  body.innerHTML=rows.map(x=>{const partner=x.electrician_profiles||{},action=x.payout_status==='pending'?'<div><select id="pm-'+x.id+'"><option value="upi">UPI</option><option value="bank">Bank</option></select><input id="pr-'+x.id+'" placeholder="UTR / UPI Reference" maxlength="120" style="width:170px"><input id="pn-'+x.id+'" placeholder="नोट (वैकल्पिक)" maxlength="250" style="width:140px"><button id="payout-action-'+x.id+'" onclick="markPayoutPaid(\''+x.id+'\')">भुगतान दर्ज करें</button></div>':'<span class="tag">'+esc(({pending:'लंबित',paid:'भुगतान पूरा',blocked:'रोक लगा है',refunded:'रिफंड पूरा'})[x.payout_status]||x.payout_status)+'</span>'+(x.payout_note?'<br>नोट: '+esc(x.payout_note):'')+(x.payout_reference?'<br>Ref: '+esc(x.payout_reference):'')+(x.paid_at?'<br>'+esc(new Date(x.paid_at).toLocaleString('en-IN')):'');return '<tr><td>'+esc(partner.display_name||'Electrician')+'<br>'+esc(partner.phone||'')+'</td><td>'+esc(x.booking_id)+'</td><td>₹'+Number(x.gross_service_amount).toFixed(2)+'</td><td>₹'+Number(x.materials_amount).toFixed(2)+'</td><td>₹'+Number(x.platform_commission).toFixed(2)+'</td><td><b>₹'+Number(x.electrician_payable).toFixed(2)+'</b></td><td>'+action+'</td></tr>';}).join('')||'<tr><td colspan="7">अभी कोई सत्यापित और पूर्ण काम पेआउट के लिए उपलब्ध नहीं है।</td></tr>';
+  document.getElementById('payoutMsg').textContent='';
+ }catch(e){body.innerHTML='<tr><td colspan="7" class="danger">पेआउट रिकॉर्ड लोड नहीं हो सके। Admin अनुमति जाँचें और फिर कोशिश करें।</td></tr>';}
+ finally{adminPayoutLoadBusy=false;}
+}async function markPayoutPaid(id){
+ if(adminPayoutActionBusy.has(id))return;
+ const method=document.getElementById('pm-'+id)?.value,reference=document.getElementById('pr-'+id)?.value.trim(),note=document.getElementById('pn-'+id)?.value.trim(),button=document.getElementById('payout-action-'+id),msg=document.getElementById('payoutMsg');
+ if(!['upi','bank'].includes(method)){msg.textContent='भुगतान का सही तरीका चुनें।';return;}
+ if(!reference||reference.length<4){msg.textContent='वास्तविक बैंक UTR या UPI reference डालें।';return;}
+ if(reference.length>120||note.length>250){msg.textContent='Reference या नोट की लंबाई जाँचें।';return;}
+ if(!confirm('क्या आपने वास्तव में इस इलेक्ट्रिशियन को भुगतान कर दिया है? केवल वास्तविक ट्रांसफर के बाद ही पुष्टि करें।'))return;
+ adminPayoutActionBusy.add(id);if(button){button.disabled=true;button.textContent='सुरक्षित हो रहा है…';}
+ msg.textContent='वास्तविक भुगतान की पुष्टि सुरक्षित की जा रही है…';
+ try{
+  const {error}=await sb.rpc('srk_admin_mark_electrician_payout_paid',{p_payout_id:id,p_method:method,p_reference:reference,p_note:note||null});
+  if(error)throw error;
+  msg.textContent='पेआउट रिकॉर्ड Paid दर्ज हो गया। यह पुष्टि केवल वास्तविक ट्रांसफर के बाद करें।';
+  await loadPayouts();
+ }catch(e){msg.textContent='पेआउट अपडेट नहीं हुआ। भुगतान की स्थिति और Admin अनुमति जाँचकर फिर कोशिश करें।';}
+ finally{adminPayoutActionBusy.delete(id);if(button){button.disabled=false;button.textContent='भुगतान दर्ज करें';}}
+}async function loadWalletAdmin(){const box=document.getElementById('walletAdminSummary');if(!box)return;const {data,error}=await sb.rpc('srk_admin_wallet_overview');if(error){box.textContent='वॉलेट रिपोर्ट लोड नहीं हुई। Admin अनुमति और backend स्थिति जाँचें, फिर दोबारा प्रयास करें।';return;}box.innerHTML='<p>पुराने ग्राहक लेजर खाते: <b>'+Number(data.customer_wallets||0)+'</b> (कोई ग्राहक टॉप-अप/भुगतान सुविधा नहीं)</p><p>इलेक्ट्रिशियन वॉलेट: <b>'+Number(data.electrician_wallets||0)+'</b></p><p>लेजर क्रेडिट: <b>₹'+Number(data.posted_ledger_credits||0).toFixed(2)+'</b></p><p>लेजर डेबिट: <b>₹'+Number(data.posted_ledger_debits||0).toFixed(2)+'</b></p><p>लंबित एंट्री: <b>'+Number(data.pending_entries||0)+'</b></p><p>सत्यापित बैंक लिंक: <b>'+Number(data.verified_bank_links||0)+'</b></p>';}
+
+let adminSupportRows=[],adminSupportSelectedId=null;
+let adminSupportStaffRows=[],adminSupportAssignmentRows=[];
+async function loadAdminSupportAssignmentData(){
+ const [staff,assignments]=await Promise.all([sb.rpc('srk_admin_list_staff'),sb.rpc('srk_admin_list_support_assignments')]);
+ if(staff.error||assignments.error)throw staff.error||assignments.error;
+ adminSupportStaffRows=(staff.data||[]).filter(s=>s.status==='active');
+ adminSupportAssignmentRows=assignments.data||[];
+}
+function supportAssignmentControl(type,id){
+ const current=adminSupportAssignmentRows.find(a=>a.case_type===type&&a.case_id===id);
+ const options=adminSupportStaffRows.map(s=>'<option value="'+esc(s.user_id)+'" '+(current?.assigned_staff_user_id===s.user_id?'selected':'')+'>'+esc(s.display_name)+'</option>').join('');
+ return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:10px 0;padding:9px;background:#f4f7fb;border-radius:8px"><label>जिम्मेदार Staff:</label><select id="support-assignee-'+type+'-'+id+'" '+(!adminSupportStaffRows.length?'disabled':'')+'><option value="">'+(current?'वर्तमान: '+esc(current.assigned_staff_name):'Staff चुनें')+'</option>'+options+'</select><button type="button" '+(!adminSupportStaffRows.length?'disabled':'')+' onclick="assignAdminSupportCase(\''+type+'\',\''+id+'\')">Assign / Reassign</button>'+(current?'<small>Assigned: '+esc(current.assigned_staff_name)+'</small>':'<small>अभी unassigned</small>')+'</div>';
+}
+async function assignAdminSupportCase(type,id){
+ const staffId=document.getElementById('support-assignee-'+type+'-'+id)?.value;
+ if(!staffId){alert('पहले Active Support Staff चुनें।');return;}
+ const reason=prompt('Assign / Reassign करने का कारण लिखें (कम से कम 5 अक्षर):');
+ if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ if(!confirm('यह Support case चुने गए Staff को सौंपें?'))return;
+ const {data,error}=await sb.rpc('srk_admin_assign_support_case',{p_case_type:type,p_case_id:id,p_staff_user_id:staffId,p_reason:reason.trim()});
+ if(error||data!==true){alert('Assignment सुरक्षित नहीं हुआ। कृपया सूची refresh करके जाँचें।');return;}
+ await loadAdminSupportAssignmentData();
+ if(type==='customer_complaint')await loadAdminSupportInbox();else await loadAdminElectricianSupportInbox();
+}
+async function loadAdminSupportInbox(){
+ const box=document.getElementById('adminSupportInbox'),status=document.getElementById('adminSupportStatus');
+ if(!sb||!user||!box)return;
+ box.textContent='ग्राहक शिकायतें लोड हो रही हैं…';status.textContent='';
+ const {data,error}=await sb.rpc('srk_admin_list_booking_complaints',{p_limit:100});
+ if(error){box.textContent='शिकायतें लोड नहीं हुईं। '+error.message;return;}
+ adminSupportRows=Array.isArray(data)?data:[];
+ try{await loadAdminSupportAssignmentData();}catch(e){status.textContent='Assignment सूची उपलब्ध नहीं; case assign नहीं कर पाएँगे।';adminSupportStaffRows=[];adminSupportAssignmentRows=[];}
+ box.innerHTML=adminSupportRows.map(c=>{
+  const stateLabels={new:'नई',in_review:'जाँच में',resolved:'हल हो गई',closed:'बंद'};
+  return '<article class="card" style="border:1px solid #e3ebf2"><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between"><b>'+esc(c.category||'अन्य')+' — '+esc(stateLabels[c.status]||c.status)+'</b><small>'+esc(new Date(c.created_at).toLocaleString('hi-IN'))+'</small></div>'+
+  '<p><b>ग्राहक:</b> '+esc(c.customer_name)+' • '+esc(c.customer_phone)+'</p><p><b>बुकिंग:</b> <code>'+esc(c.booking_id)+'</code></p><p>'+esc(c.description)+'</p>'+
+  supportAssignmentControl('customer_complaint',c.id)+
+  '<label>स्थिति</label> <select id="admin-support-state-'+c.id+'"><option value="new" '+(c.status==='new'?'selected':'')+'>नई</option><option value="in_review" '+(c.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(c.status==='resolved'?'selected':'')+'>हल हो गई</option><option value="closed" '+(c.status==='closed'?'selected':'')+'>बंद</option></select>'+
+  '<label>Admin नोट</label><textarea id="admin-support-note-'+c.id+'" maxlength="2000" rows="2" style="display:block;width:100%;padding:9px;border:1px solid #ccd5df;border-radius:8px">'+esc(c.admin_note||'')+'</textarea>'+
+  '<button type="button" onclick="saveAdminSupportComplaint(\''+c.id+'\')">स्थिति / नोट सुरक्षित करें</button><button class="alt" type="button" onclick="openAdminSupportThread(\''+c.id+'\')">बातचीत खोलें</button></article>';
+ }).join('')||'<p>अभी कोई ग्राहक शिकायत नहीं है।</p>';
+ status.textContent=adminSupportRows.length+' शिकायतें मिलीं।';
+}
+const adminCustomerComplaintSaveBusy=new Set();
+async function saveAdminSupportComplaint(id){
+ if(adminCustomerComplaintSaveBusy.has(id))return;
+ const stateField=document.getElementById('admin-support-state-'+id),noteField=document.getElementById('admin-support-note-'+id);
+ if(!stateField||!noteField)return;
+ const state=stateField.value,note=noteField.value.trim(),button=stateField.closest('article.card')?.querySelector('button');
+ if(!['new','in_review','resolved','closed'].includes(state)){alert('मान्य शिकायत स्थिति चुनें।');return;}
+ if(note.length>2000){alert('Admin नोट 2000 अक्षरों से अधिक नहीं होना चाहिए।');return;}
+ adminCustomerComplaintSaveBusy.add(id);if(button)button.disabled=true;
+ try{const {data,error}=await sb.rpc('srk_admin_update_booking_complaint',{p_complaint_id:id,p_status:state,p_admin_note:note||null});
+ if(error||!data?.success)throw error||new Error('UPDATE_NOT_CONFIRMED');await loadAdminSupportInbox();}
+ catch(e){alert('शिकायत अपडेट नहीं हुई। कृपया Inbox रीफ़्रेश करके स्थिति जाँचें।');}
+ finally{adminCustomerComplaintSaveBusy.delete(id);if(button)button.disabled=false;}
+}
+let adminCustomerThreadRequest=0;
+async function openAdminSupportThread(id){
+ const request=++adminCustomerThreadRequest;adminSupportSelectedId=id;
+ const panel=document.getElementById('adminSupportThreadPanel'),box=document.getElementById('adminSupportThread');
+ if(!panel||!box)return;
+ panel.classList.remove('hidden');document.getElementById('adminSupportThreadTitle').textContent='ग्राहक बातचीत — '+id;box.textContent='बातचीत और संलग्न फ़ाइलें लोड हो रही हैं…';
+ const [messagesResult,attachmentsResult]=await Promise.all([
+  sb.rpc('srk_admin_list_booking_complaint_messages',{p_complaint_id:id}),
+  sb.rpc('srk_admin_list_complaint_message_attachments',{p_complaint_id:id})
+ ]);
+ if(request!==adminCustomerThreadRequest||id!==adminSupportSelectedId)return;
+ if(messagesResult.error){box.textContent='बातचीत लोड नहीं हुई। कृपया फिर कोशिश करें।';return;}
+ const rows=Array.isArray(messagesResult.data)?messagesResult.data:[];
+ let attachments=[];
+ if(!attachmentsResult.error){
+  attachments=await Promise.all((Array.isArray(attachmentsResult.data)?attachmentsResult.data:[]).map(async a=>{
+   const {data,error}=await sb.storage.from('srk-customer-support').createSignedUrl(a.storage_path,300);
+   return {...a,signedUrl:error?null:data?.signedUrl||null};
+  }));
+  if(request!==adminCustomerThreadRequest||id!==adminSupportSelectedId)return;
+ }
+ const byMessage=new Map();
+ attachments.forEach(a=>{if(!byMessage.has(a.message_id))byMessage.set(a.message_id,[]);byMessage.get(a.message_id).push(a);});
+ box.innerHTML=rows.map(m=>{
+  const links=(byMessage.get(m.id)||[]).map(a=>'<a href="'+(a.signedUrl?esc(a.signedUrl):'#')+'" '+(a.signedUrl?'target="_blank" rel="noopener noreferrer"':'')+' style="display:block;margin-top:7px">'+(a.signedUrl?'📎 ':'⚠️ ')+esc(a.file_name)+' ('+(Number(a.file_size_bytes)/1024/1024).toFixed(2)+' MB)'+(a.signedUrl?'':' — फ़ाइल लिंक उपलब्ध नहीं')+'</a>').join('');
+  return '<article class="card" style="padding:10px"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक')+'</b><small style="float:right">'+esc(new Date(m.created_at).toLocaleString('hi-IN'))+'</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p>'+links+'</article>';
+ }).join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ if(attachmentsResult.error)box.insertAdjacentHTML('beforeend','<p class="muted">संलग्न फ़ाइलों की सूची अभी उपलब्ध नहीं है।</p>');
+}
+let adminCustomerReplyBusy=false;
+async function sendAdminSupportReply(){
+ if(adminCustomerReplyBusy)return;
+ const id=adminSupportSelectedId,field=document.getElementById('adminSupportReply'),status=document.getElementById('adminSupportReplyStatus');
+ if(!field||!status)return;const body=field.value.trim(),button=document.querySelector('#adminSupportThreadPanel button[onclick="sendAdminSupportReply()"]');
+ if(!id){status.textContent='पहले शिकायत की बातचीत खोलें।';return;}
+ if(body.length<1||body.length>4000){status.textContent='जवाब 1 से 4000 अक्षरों में लिखें।';return;}
+ adminCustomerReplyBusy=true;if(button)button.disabled=true;status.textContent='जवाब भेजा जा रहा है…';
+ try{const {data,error}=await sb.rpc('srk_admin_send_booking_complaint_message',{p_complaint_id:id,p_body:body});
+ if(error||!data)throw error||new Error('SEND_NOT_CONFIRMED');
+ if(id===adminSupportSelectedId)field.value='';status.textContent='जवाब ग्राहक की शिकायत थ्रेड में भेज दिया गया।';await openAdminSupportThread(id);}
+ catch(e){status.textContent='जवाब की पुष्टि नहीं हुई। थ्रेड रीफ़्रेश करके स्थिति जाँचें।';}
+ finally{adminCustomerReplyBusy=false;if(button)button.disabled=false;}
+}
+let adminElectricianSupportSelectedId=null,adminElectricianSupportRows=[];
+let adminElectricianSupportLoadBusy=false,adminElectricianSupportSaveBusy=new Set(),adminElectricianSupportReplyBusy=false,adminElectricianSupportThreadRequest=0;
+async function loadAdminElectricianSupportInbox(){
+ const box=document.getElementById('adminElectricianSupportInbox'),status=document.getElementById('adminElectricianSupportStatus');
+ if(!box||!sb||!user||adminElectricianSupportLoadBusy)return;
+ adminElectricianSupportLoadBusy=true;box.textContent='इलेक्ट्रिशियन सहायता अनुरोध लोड हो रहे हैं…';
+ try{
+  const {data,error}=await sb.rpc('srk_admin_list_electrician_support_tickets',{p_limit:100});if(error)throw error;
+  adminElectricianSupportRows=Array.isArray(data)?data:[];
+  await loadAdminSupportAssignmentData();
+  const labels={open:'खुला',in_review:'जाँच में',resolved:'हल हो गया',closed:'बंद'},cats={booking:'बुकिंग / काम',payment_payout:'कमाई / भुगतान',kyc_account:'KYC / अकाउंट',app_technical:'ऐप / तकनीकी',customer_safety:'सुरक्षा / व्यवहार',other:'अन्य'};
+  box.innerHTML=adminElectricianSupportRows.map(t=>'<article class="card"><b>'+esc(t.subject)+'</b><p>इलेक्ट्रिशियन: '+esc(t.electrician_name||'नाम उपलब्ध नहीं')+' • '+esc(t.electrician_phone||'')+'</p><p>'+esc(cats[t.category]||t.category)+' • '+esc(labels[t.status]||t.status)+'</p>'+(t.booking_id?'<p>Booking: <code>'+esc(t.booking_id)+'</code></p>':'')+
+  supportAssignmentControl('electrician_ticket',t.id)+'<label>स्थिति</label><select id="admin-elec-support-state-'+t.id+'"><option value="open" '+(t.status==='open'?'selected':'')+'>खुला</option><option value="in_review" '+(t.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(t.status==='resolved'?'selected':'')+'>हल हो गया</option><option value="closed" '+(t.status==='closed'?'selected':'')+'>बंद</option></select><label>Admin नोट</label><textarea id="admin-elec-support-note-'+t.id+'" maxlength="2000" rows="2" style="width:100%">'+esc(t.admin_note||'')+'</textarea><button id="admin-elec-support-save-'+t.id+'" onclick="saveAdminElectricianSupportTicket(\''+t.id+'\')">स्थिति / नोट सुरक्षित करें</button><button class="alt" onclick="openAdminElectricianSupportThread(\''+t.id+'\')">बातचीत खोलें</button></article>').join('')||'<p>अभी कोई इलेक्ट्रिशियन सहायता अनुरोध नहीं है।</p>';
+  status.textContent=adminElectricianSupportRows.length+' अनुरोध मिले।';
+ }catch(e){box.textContent='इलेक्ट्रिशियन सहायता अनुरोध लोड नहीं हो सके। कृपया रीफ़्रेश करें।';status.textContent='';}
+ finally{adminElectricianSupportLoadBusy=false;}
+}async function saveAdminElectricianSupportTicket(id){
+ if(adminElectricianSupportSaveBusy.has(id))return;
+ const state=document.getElementById('admin-elec-support-state-'+id)?.value,note=document.getElementById('admin-elec-support-note-'+id)?.value.trim(),button=document.getElementById('admin-elec-support-save-'+id),status=document.getElementById('adminElectricianSupportStatus');
+ if(!state){status.textContent='कृपया सही स्थिति चुनें।';return;}
+ adminElectricianSupportSaveBusy.add(id);if(button){button.disabled=true;button.textContent='सुरक्षित हो रहा है…';}
+ try{
+  const {data,error}=await sb.rpc('srk_admin_update_electrician_support_ticket',{p_ticket_id:id,p_status:state,p_admin_note:note||null});
+  if(error||data!==true)throw error||new Error('UPDATE_NOT_CONFIRMED');
+  status.textContent='स्थिति और Admin नोट सुरक्षित हो गए।';await loadAdminElectricianSupportInbox();
+ }catch(e){status.textContent='स्थिति सुरक्षित नहीं हुई। कृपया फिर कोशिश करें.';}
+ finally{adminElectricianSupportSaveBusy.delete(id);if(button){button.disabled=false;button.textContent='स्थिति / नोट सुरक्षित करें';}}
+}async function openAdminElectricianSupportThread(id){
+ const request=++adminElectricianSupportThreadRequest;adminElectricianSupportSelectedId=id;
+ const panel=document.getElementById('adminElectricianSupportThreadPanel'),box=document.getElementById('adminElectricianSupportThread');
+ panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';
+ const {data,error}=await sb.rpc('srk_admin_list_electrician_support_messages',{p_ticket_id:id});
+ if(request!==adminElectricianSupportThreadRequest||id!==adminElectricianSupportSelectedId)return;
+ if(error){box.textContent='बातचीत नहीं खुली। कृपया फिर कोशिश करें।';return;}
+ box.innerHTML=(Array.isArray(data)?data:[]).map(m=>'<article class="card"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'इलेक्ट्रिशियन')+'</b><small style="float:right">'+esc(new Date(m.created_at).toLocaleString('hi-IN'))+'</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+}async function sendAdminElectricianSupportReply(){
+ if(adminElectricianSupportReplyBusy)return;
+ const body=document.getElementById('adminElectricianSupportReply').value.trim(),status=document.getElementById('adminElectricianSupportReplyStatus'),button=document.querySelector('#adminElectricianSupportThreadPanel button[onclick="sendAdminElectricianSupportReply()"]'),ticketId=adminElectricianSupportSelectedId;
+ if(!ticketId){status.textContent='पहले बातचीत खोलें।';return;}
+ if(!body||body.length>4000){status.textContent='जवाब 1 से 4000 अक्षरों में लिखें।';return;}
+ adminElectricianSupportReplyBusy=true;if(button){button.disabled=true;button.textContent='जवाब भेजा जा रहा है…';}
+ status.textContent='जवाब भेजा जा रहा है…';
+ try{
+  const {error}=await sb.rpc('srk_admin_send_electrician_support_message',{p_ticket_id:ticketId,p_body:body});if(error)throw error;
+  if(ticketId===adminElectricianSupportSelectedId)document.getElementById('adminElectricianSupportReply').value='';
+  status.textContent='जवाब भेज दिया गया।';await openAdminElectricianSupportThread(ticketId);await loadAdminElectricianSupportInbox();
+ }catch(e){status.textContent='जवाब नहीं भेजा गया। कृपया बातचीत की स्थिति जाँचकर फिर कोशिश करें।';}
+ finally{adminElectricianSupportReplyBusy=false;if(button){button.disabled=false;button.textContent='जवाब भेजें';}}
+}async function loadWorkReview(){
+ const id=document.getElementById('workReviewBookingId').value.trim(),status=document.getElementById('workReviewStatus'),box=document.getElementById('workReviewResult');
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)){status.textContent='सही Booking UUID डालें।';return;}
+ status.textContent='सुरक्षित Admin रिकॉर्ड लोड हो रहा है…';box.textContent='';
+ const {data,error}=await sb.rpc('srk_admin_get_booking_work_review',{p_booking_id:id});
+ if(error){status.textContent='रिकॉर्ड नहीं खुला: '+error.message;return;}
+ const escJson=v=>JSON.stringify(v,null,2);
+ const b=data?.booking||{},events=Array.isArray(data?.events)?data.events:[],complaints=Array.isArray(data?.complaints)?data.complaints:[];
+ const label={work_start_requested:'इलेक्ट्रिशियन ने काम शुरू करने की अनुमति माँगी',work_start_approved:'ग्राहक ने काम शुरू करने की मंजूरी दी',work_start_rejected:'ग्राहक ने काम शुरू करने से मना किया',work_completion_requested:'काम पूरा होने की पुष्टि माँगी गई',work_completion_approved:'ग्राहक ने काम पूरा स्वीकार किया',work_completion_rejected:'ग्राहक ने काम अधूरा बताया',work_completion_disputed:'ग्राहक ने विवाद दर्ज किया',timer_state_changed:'टाइमर रिकॉर्ड बदला',work_status_changed:'बुकिंग स्टेटस बदला'};
+ const eventHtml=events.map(e=>'<article class="card"><b>'+esc(label[e.event_type]||e.event_type)+'</b><p>'+esc(new Date(e.created_at).toLocaleString('hi-IN'))+'</p><small>Event ID: '+esc(e.id)+'</small><details><summary>पुरानी / नई स्थिति देखें</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(escJson({old:e.old_state,new:e.new_state}))+'</pre></details></article>').join('')||'<p>अभी कोई work event दर्ज नहीं है।</p>';
+ const complaintHtml=complaints.map((x,i)=>'<article class="card"><b>ग्राहक शिकायत '+(i+1)+'</b><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(escJson(x))+'</pre></article>').join('')||'<p>इस बुकिंग से जुड़ी कोई शिकायत नहीं मिली।</p>';
+ const billHtml=data.labour_bill?'<article class="card"><b>अंतिम Labour Bill</b><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(escJson(data.labour_bill))+'</pre><small>Materials / parts इस labour bill का हिस्सा नहीं हैं।</small></article>':'<p>अभी final labour bill जारी नहीं हुआ है।</p>';
+ box.innerHTML='<article class="card"><h3>बुकिंग सारांश</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(escJson(b))+'</pre></article><h3>अंतिम Labour Bill</h3>'+billHtml+'<h3>Customer–Electrician Work History ('+events.length+')</h3>'+eventHtml+'<h3>शिकायत / विवाद ('+complaints.length+')</h3>'+complaintHtml;
+ status.textContent='इतिहास सफलतापूर्वक लोड हुआ। '+events.length+' घटनाएँ और '+complaints.length+' शिकायतें मिलीं।';
+}
+
+const adminRazorpayRefundBusy=new Set();
+function selectRazorpayRefund(bookingId){
+ const field=document.getElementById('razorpayRefundBookingId');
+ const panel=document.getElementById('adminRazorpayRefundCard');
+ if(!field||!panel)return;
+ field.value=bookingId;
+ panel.scrollIntoView({behavior:'smooth',block:'center'});
+ field.focus();
+}
+async function startAdminRazorpayRefund(){
+ const bookingId=document.getElementById('razorpayRefundBookingId')?.value.trim()||'';
+ const reason=document.getElementById('razorpayRefundReason')?.value.trim()||'';
+ const status=document.getElementById('adminRazorpayRefundStatus');
+ const button=document.querySelector('#adminRazorpayRefundCard button[onclick="startAdminRazorpayRefund()"]');
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(bookingId)){status.textContent='सही Booking UUID भरें।';return;}
+ if(reason.length<20||reason.length>250){status.textContent='Refund का कारण 20 से 250 अक्षरों में लिखें।';return;}
+ if(adminRazorpayRefundBusy.has(bookingId))return;
+ if(!confirm('क्या इस Booking का पूरा Razorpay refund शुरू करना है? Amount backend ledger से निकलेगा। Refund request भेजने के बाद इसे वापस नहीं लिया जा सकता।'))return;
+ adminRazorpayRefundBusy.add(bookingId);
+ if(button){button.disabled=true;button.textContent='Razorpay Refund सुरक्षित रूप से भेजा जा रहा है…';}
+ status.textContent='Admin session और exact refund amount सत्यापित हो रहा है…';
+ try{
+  const {data:sessionData,error:sessionError}=await sb.auth.getSession();
+  const token=sessionData?.session?.access_token;
+  if(sessionError||!token)throw new Error('Admin session समाप्त है। दोबारा लॉगिन करें।');
+  const response=await fetch('/api/razorpay-refund',{
+   method:'POST',
+   headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+   body:JSON.stringify({booking_id:bookingId,reason})
+  });
+  let result=null;try{result=await response.json();}catch(_){}
+  if(!response.ok&&!result?.success)throw new Error(result?.error||'Refund request सुरक्षित नहीं हुई।');
+  status.textContent=result?.message||result?.error||('Refund स्थिति: '+(result?.status||'unknown'));
+  if(result?.refund_id)status.textContent+=' · Provider Refund ID: '+result.refund_id;
+  if(result?.status==='processed'){
+   document.getElementById('razorpayRefundReason').value='';
+   await loadAll();
+  }
+ }catch(error){
+  status.textContent='Refund परिणाम: '+(error?.message||'स्थिति स्पष्ट नहीं है। Retry से पहले वही Booking ID रखें; नया Refund रिकॉर्ड न बनाएँ।');
+ }finally{
+  adminRazorpayRefundBusy.delete(bookingId);
+  if(button){button.disabled=false;button.textContent='Full Refund शुरू करें / सुरक्षित Retry';}
+ }
+}
+async function loadAdminCancellationRequests(){
+ const box=document.getElementById('adminCancellationInbox'),status=document.getElementById('adminCancellationStatus');
+ if(!sb||!user||!box)return;
+ box.textContent='Cancellation requests लोड हो रही हैं…';status.textContent='';
+ const [{data,error},{data:ledgerSummary,error:ledgerError}]=await Promise.all([
+  sb.rpc('srk_admin_list_booking_cancellation_requests'),
+  sb.rpc('srk_admin_get_cancellation_fee_ledger_summary')
+ ]);
+ const ledgerBox=document.getElementById('adminCancellationFeeLedgerSummary');
+ if(ledgerBox){
+  if(ledgerError)ledgerBox.textContent='Cancellation fee ledger summary उपलब्ध नहीं: '+ledgerError.message;
+  else{
+   const money=key=>'₹'+(Number(ledgerSummary?.[key]||0)/100).toFixed(2);
+   ledgerBox.innerHTML='<article class="card"><small>खुला बकाया</small><div class="stat">'+money('open_debt_paise')+'</div></article>'+
+    '<article class="card"><small>अगली booking में आरक्षित</small><div class="stat">'+money('reserved_debt_paise')+'</div></article>'+
+    '<article class="card"><small>जमा / settle हुई फीस</small><div class="stat">'+money('settled_debt_paise')+'</div></article>'+
+    '<article class="card"><small>Online SRK collection</small><div class="stat">'+money('online_collected_paise')+'</div></article>'+
+    '<article class="card"><small>Cash electrician wallet debit (Net)</small><div class="stat">'+money('cash_electrician_debit_paise')+'</div></article>'+
+    '<article class="card"><small>Refund से reverse हुई फीस</small><div class="stat">'+money('reversed_fee_paise')+'</div></article>'+
+    '<article class="card"><small>Ledger entries</small><div class="stat">'+Number(ledgerSummary?.ledger_entries||0)+'</div></article>'+
+    '<article class="card"><small>Reversal entries</small><div class="stat">'+Number(ledgerSummary?.reversal_entries||0)+'</div></article>';
+  }
+ }
+ if(error){box.textContent='Requests लोड नहीं हुईं: '+error.message;status.textContent='Admin RPC / migration जाँचें।';return;}
+ const rows=Array.isArray(data)?data:[];
+ if(!rows.length){box.textContent='अभी कोई cancellation request नहीं है।';status.textContent='0 requests';return;}
+ const stageLabel={not_departed:'घर से नहीं निकला — ₹0',en_route:'रास्ते में — ₹49',arrived:'ग्राहक के घर पहुँच चुका — ₹99'};
+ box.innerHTML=rows.map(r=>{
+  const b=r.booking||{},pending=r.request_status==='pending';
+  const controls=pending
+   ? '<label for="cancel-stage-'+esc(r.id)+'">Admin द्वारा सत्यापित स्थिति</label><select id="cancel-stage-'+esc(r.id)+'"><option value="not_departed">घर से नहीं निकला — ₹0</option><option value="en_route">रास्ते में — ₹49</option><option value="arrived">ग्राहक के घर पहुँच चुका — ₹99</option></select>'+
+     '<label for="cancel-evidence-'+esc(r.id)+'">स्थिति का प्रमाण / सत्यापन (10–1000 अक्षर)</label><textarea id="cancel-evidence-'+esc(r.id)+'" minlength="10" maxlength="1000" placeholder="कॉल, ग्राहक पुष्टि, यात्रा/आगमन रिकॉर्ड आदि का सत्यापित विवरण"></textarea>'+
+     '<label for="cancel-reason-'+esc(r.id)+'">Admin निर्णय का कारण (10–1000 अक्षर)</label><textarea id="cancel-reason-'+esc(r.id)+'" minlength="10" maxlength="1000" placeholder="फैसले का स्पष्ट कारण"></textarea>'+
+     '<button type="button" onclick="decideAdminCancellation(\''+esc(r.id)+'\',\'approved\')">सत्यापित करके बुकिंग रद्द करें</button> <button class="alt" type="button" onclick="decideAdminCancellation(\''+esc(r.id)+'\',\'rejected\')">अनुरोध अस्वीकार करें</button>'
+   : '<p><b>Admin फैसला:</b> '+esc(r.request_status==='approved'?'स्वीकृत — बुकिंग रद्द': 'अस्वीकार')+'</p>'+
+     (r.verified_stage?'<p>सत्यापित स्थिति: '+esc(stageLabel[r.verified_stage]||r.verified_stage)+'</p><p>Cancellation fee: ₹'+Number(r.fee_amount||0).toFixed(2)+'</p><p>प्रमाण: '+esc(r.stage_evidence||'')+'</p>':'')+
+     '<p>कारण: '+esc(r.admin_reason||'')+'</p><p class="muted">निर्णय: '+esc(r.decided_at?new Date(r.decided_at).toLocaleString('hi-IN'):'')+'</p>';
+  return '<article class="card" style="margin:10px 0"><b>Request: '+esc(r.id)+'</b><p>Booking: '+esc(r.booking_id)+' · '+esc(r.created_at?new Date(r.created_at).toLocaleString('hi-IN'):'')+'</p><p>ग्राहक: '+esc(b.customer_name||'')+' · '+esc(b.phone||'')+'</p><p>काम: '+esc(b.service_type||'')+' · Booking status: '+esc(b.status||'')+'</p><p>पता: '+esc([b.address,b.district,b.state,b.pincode].filter(Boolean).join(', '))+'</p><p>Electrician assigned: '+(b.assigned_electrician_id?'हाँ':'नहीं')+'</p><p>ग्राहक का नोट: '+esc(r.customer_note||'—')+'</p><p>Request status: <b>'+esc(r.request_status)+'</b></p>'+controls+'</article>';
+ }).join('');
+ status.textContent=rows.filter(r=>r.request_status==='pending').length+' लंबित · '+rows.length+' कुल';
+}
+const adminCancellationDecisionBusy=new Set();
+async function decideAdminCancellation(requestId,decision){
+ if(adminCancellationDecisionBusy.has(requestId))return;
+ if(!['approved','rejected'].includes(decision)){alert('मान्य Admin निर्णय चुनें।');return;}
+ const stage=document.getElementById('cancel-stage-'+requestId)?.value||null;
+ const evidence=document.getElementById('cancel-evidence-'+requestId)?.value.trim()||null;
+ const reason=document.getElementById('cancel-reason-'+requestId)?.value.trim()||'';
+ if(reason.length<10||reason.length>1000){alert('Admin कारण 10 से 1000 अक्षरों में लिखें।');return;}
+ if(decision==='approved'){
+  if(!['not_departed','en_route','arrived'].includes(stage)){alert('इलेक्ट्रिशियन की सत्यापित स्थिति चुनें।');return;}
+  if(!evidence||evidence.length<10||evidence.length>1000){alert('सत्यापित स्थिति का प्रमाण 10 से 1000 अक्षरों में लिखें।');return;}
+  if(!confirm('सत्यापित स्थिति के अनुसार ₹'+(stage==='not_departed'?'0':stage==='en_route'?'49':'99')+' fee तय करके booking cancelled करें?'))return;
+ }else if(!confirm('क्या cancellation request अस्वीकार करनी है?'))return;
+ adminCancellationDecisionBusy.add(requestId);
+ try{
+  const {data,error}=await sb.rpc('srk_admin_decide_booking_cancellation',{
+   p_request_id:requestId,p_decision:decision,p_verified_stage:decision==='approved'?stage:null,
+   p_stage_evidence:decision==='approved'?evidence:null,p_admin_reason:reason
+  });
+  if(error||!data?.success)throw error||new Error('Decision not confirmed');
+  alert(decision==='approved'?'Admin निर्णय सुरक्षित हुआ और बुकिंग रद्द की गई।':'Cancellation request अस्वीकार की गई।');
+  await loadAll();
+ }catch(e){alert('निर्णय सुरक्षित नहीं हुआ। Request की मौजूदा स्थिति और Admin अनुमति जाँचें, फिर दोबारा प्रयास करें।');}
+ finally{adminCancellationDecisionBusy.delete(requestId);}
+}
+async function loadAll(){if(!sb||!user)return;await Promise.all([loadWalletAdmin(),loadPayouts(),loadAdminCancellationRequests(),loadAdminSupportInbox(),loadAdminElectricianSupportInbox(),loadAdminKycDocuments(),loadAdminElectricianAreaRequests(),loadAdminElectricianPhoneChangeRequests()]);let [b,a,p,report]=await Promise.all([sb.from('service_bookings').select('id,created_at,customer_name,phone,service_type,address,district,state,pincode,status,quoted_amount,payment_status,payment_method,amount_paid,assigned_electrician_id,razorpay_payment_id,razorpay_order_id,location_lat,location_lng').order('created_at',{ascending:false}).limit(300),sb.from('electrician_applications').select('*').order('created_at',{ascending:false}).limit(300),sb.from('electrician_profiles').select('*').order('created_at',{ascending:false}).limit(500),sb.rpc('srk_admin_commission_report')]);let err=b.error||a.error||p.error||report.error;if(err){alert('डेटा नहीं खुला: '+err.message+' — जाँचें कि आपका फोन srk_admin_users में Admin है।');return}document.getElementById('nBookings').textContent=b.data.length;document.getElementById('nNew').textContent=b.data.filter(x=>x.status==='new').length;document.getElementById('nApps').textContent=a.data.length;document.getElementById('nPros').textContent=p.data.filter(x=>x.active&&x.verification_status==='approved').length;document.getElementById('bookings').innerHTML=b.data.map(x=>`<tr><td>${esc(x.customer_name)}<br>${esc(x.phone)}</td><td>${esc(x.service_type)}<br>${esc(x.address)}</td><td><input id="loc-address-${x.id}" value="${esc(x.address)}" placeholder="पूरा पता" maxlength="300" style="width:190px;margin:2px"><input id="loc-district-${x.id}" value="${esc(x.district)}" placeholder="जिला" maxlength="80" style="width:130px;margin:2px"><input id="loc-state-${x.id}" value="${esc(x.state)}" placeholder="राज्य" maxlength="80" style="width:130px;margin:2px"><input id="loc-pin-${x.id}" value="${esc(x.pincode)}" placeholder="6 अंकों का PIN" inputmode="numeric" maxlength="6" style="width:110px;margin:2px"><br><a target="_blank" rel="noopener" href="${esc(mapUrl(x))}">📍 Map</a><br><button class="alt" onclick="saveCustomerLocation('${x.id}')">पता / जिला बदलें</button></td><td><span class="tag">${esc(x.status)}</span></td><td><input id="amt-${x.id}" type="number" min="0" step="0.01" value="${x.quoted_amount??''}" placeholder="राशि" style="width:95px"></td><td><input id="paid-${x.id}" type="number" min="0" step="0.01" value="" style="width:100px" disabled aria-label="दर्ज भुगतान राशि"></td><td><select id="pay-${x.id}" aria-label="भुगतान स्थिति"><option value="unpaid">unpaid</option><option value="pending">pending</option><option value="paid">paid</option></select><br><select id="manual-method-${x.id}" aria-label="मैनुअल भुगतान तरीका"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank_transfer">Bank Transfer</option></select><br><input id="ref-${x.id}" maxlength="120" placeholder="रसीद / UTR (4+)" aria-label="रसीद या UTR नंबर" style="width:150px;margin-top:4px"></td><td>${(!x.assigned_electrician_id&&['new','confirmed'].includes(x.status))? "<button class='alt' data-booking-id='"+x.id+"' onclick='offerBooking(this.dataset.bookingId)'>इलेक्ट्रिशियन को ऑफर भेजें</button><br>" : ''}<select id="st-${x.id}">${['new','confirmed','assigned','in_progress','completed'].map(s=>`<option ${s===x.status?'selected':''}>${s}</option>`).join('')}${x.status==='cancelled'?'<option selected disabled value="cancelled">cancelled (Admin decision record)</option>':''}</select><button onclick="saveBooking('${x.id}')">Save</button>${x.payment_status==='paid'&&x.razorpay_payment_id?'<br><button type="button" class="alt" onclick="selectRazorpayRefund(\''+x.id+'\')">Full Razorpay Refund</button>':''}</td></tr>`).join('');b.data.forEach(x=>{const e=document.getElementById('pay-'+x.id);if(e)e.value=x.payment_status||'unpaid';const a=document.getElementById('paid-'+x.id);if(a){a.value=x.amount_paid??'';a.disabled=true;}const m=document.getElementById('manual-method-'+x.id);if(m)m.value='cash';});document.getElementById('applications').innerHTML=a.data.map(x=>`<tr><td>${esc(x.full_name)}<br>${esc(x.phone)}</td><td>${esc(x.district)}, ${esc(x.state)}<br>${esc(x.pincode)}<br><a target="_blank" rel="noopener" href="${esc(mapUrl({...x,address:''}))}">📍 Map</a></td><td>${esc(x.skills)}<br>${x.experience_years} वर्ष</td><td>${esc(x.verification_status)}</td><td>${x.verification_status==='pending'?`<button onclick="review('${x.id}','approved')">Approve</button><button class="alt" onclick="review('${x.id}','rejected')">Reject</button>`:'—'}</td></tr>`).join('');document.getElementById('pros').innerHTML=p.data.map(x=>`<tr><td>${esc(x.display_name)}</td><td>${esc(x.phone)}</td><td>${esc(x.district)}, ${esc(x.state)} ${esc(x.pincode)}<br><a target="_blank" rel="noopener" href="${esc(mapUrl({...x,address:''}))}">📍 Map</a></td><td>${esc(x.verification_status)}</td><td><select id="rate-tier-${x.id}" aria-label="Admin-approved electrician rate tier"><option value="">श्रेणी चुनें</option><option value="electrical_assistant" ${x.approved_rate_tier==='electrical_assistant'?'selected':''}>Electrical Assistant — ₹899</option><option value="skilled_electrician" ${x.approved_rate_tier==='skilled_electrician'?'selected':''}>Skilled Electrician — ₹1,199</option><option value="expert_electrician" ${x.approved_rate_tier==='expert_electrician'?'selected':''}>Expert Electrician — ₹1,599</option><option value="premium_electrical_specialist" ${x.approved_rate_tier==='premium_electrical_specialist'?'selected':''}>Premium Specialist — ₹1,999</option></select><br><button class="alt" onclick="saveRateTier('${x.id}')">श्रेणी स्वीकृत करें</button></td><td>${x.active?'Active':'Inactive'}</td><td><button onclick="toggleActive('${x.id}',${!x.active})">${x.active?'Deactivate':'Activate'}</button></td></tr>`).join('');const summary=report.data||{};document.getElementById('commission').textContent='₹'+Number(summary.total_commission||0).toFixed(2);document.getElementById('collected').textContent='₹'+Number(summary.total_collected||0).toFixed(2);document.getElementById('electricianDue').textContent='₹'+Number(summary.total_electrician_payable||0).toFixed(2);document.getElementById('partnerEarnings').innerHTML=(summary.partners||[]).map(partner=>'<tr><td>'+esc(partner.display_name)+'</td><td>'+Number(partner.paid_completed_jobs||0)+'</td><td>₹'+Number(partner.gross_received||0).toFixed(2)+'</td><td>₹'+Number(partner.company_commission||0).toFixed(2)+'</td><td>₹'+Number(partner.electrician_earning||0).toFixed(2)+'</td></tr>').join('')||'<tr><td colspan="5">अभी कोई Paid और Completed काम नहीं है।</td></tr>'}
+const adminLocationSaveBusy=new Set();
+async function saveCustomerLocation(id){if(adminLocationSaveBusy.has(id))return;const address=document.getElementById('loc-address-'+id)?.value.trim(),district=document.getElementById('loc-district-'+id)?.value.trim(),state=document.getElementById('loc-state-'+id)?.value.trim(),pincode=document.getElementById('loc-pin-'+id)?.value.trim();if(!address||!district||!state||!/^[0-9]{6}$/.test(pincode)){alert('पूरा पता, जिला, राज्य और सही 6 अंकों का PIN भरें।');return;}if(!confirm('क्या ग्राहक की बुकिंग का पता और लोकेशन अपडेट करनी है?'))return;adminLocationSaveBusy.add(id);try{const {error}=await sb.from('service_bookings').update({address,district,state,pincode}).eq('id',id);if(error)throw error;alert('ग्राहक की लोकेशन सुरक्षित रूप से अपडेट हो गई।');await loadAll();}catch(e){alert('लोकेशन अपडेट नहीं हुई। Admin अनुमति और बुकिंग की स्थिति जाँचें।');}finally{adminLocationSaveBusy.delete(id);}}
+const adminBookingActionBusy=new Set();
+const adminOfferActionBusy=new Set();
+async function offerBooking(id){
+ if(adminOfferActionBusy.has(id))return;
+ adminOfferActionBusy.add(id);
+ try{return await offerBookingInternal(id);}finally{adminOfferActionBusy.delete(id);}
+}
+async function offerBookingInternal(id){
+ const {data:booking,error:readError}=await sb.from('service_bookings')
+  .select('selected_category,selected_rate_tier,status,assigned_electrician_id').eq('id',id).maybeSingle();
+ if(readError||!booking){alert('बुकिंग की पात्रता जाँची नहीं जा सकी। Admin अनुमति और रिकॉर्ड जाँचें।');return;}
+ if(booking.selected_category){
+  alert('इस नई श्रेणी की बुकिंग को पुराने सामूहिक ऑफर RPC से नहीं भेजा जाएगा। इसके लिए ग्राहक की चुनी हुई Rate Category, उपलब्धता और Nearest-first Sequential Dispatcher का सुरक्षित backend rollout आवश्यक है।');
+  return;
+ }
+ if(booking.assigned_electrician_id||!['new','confirmed'].includes(booking.status)){
+  alert('यह बुकिंग अब ऑफर भेजने के योग्य नहीं है।');await loadAll();return;
+ }
+ if(!confirm('इस पुरानी-format बुकिंग के लिए PIN/जिला matching के अनुसार ऑफर भेजें?'))return;
+ try{
+  const {data,error}=await sb.rpc('srk_admin_offer_booking',{p_booking_id:id});
+  if(error)throw error;
+  const result=Array.isArray(data)?data[0]:data;
+  if(result?.success===false){alert(result.message||'कोई योग्य इलेक्ट्रिशियन उपलब्ध नहीं है।');return;}
+  alert(result?.message||'ऑफर प्रक्रिया पूरी हुई।'+(result?.offers_created!==undefined?' नए ऑफर: '+result.offers_created:''));
+  await loadAll();
+ }catch(e){alert('ऑफर नहीं भेजा गया। बुकिंग की स्थिति, matching और Admin अनुमति जाँचें।');}
+}
 async function saveBooking(id){
- const status=document.getElementById('st-'+id).value;
+ if(adminBookingActionBusy.has(id))return;
+ adminBookingActionBusy.add(id);
+ try{return await saveBookingInternal(id);}finally{adminBookingActionBusy.delete(id);}
+}
+async function saveBookingInternal(id){
+ const status=document.getElementById('st-'+id)?.value;
+ if(!['new','confirmed','assigned','in_progress','completed'].includes(status)){alert('मान्य बुकिंग स्थिति चुनें।');return;}
  const raw=document.getElementById('amt-'+id).value;
  const payment_status=document.getElementById('pay-'+id).value;
  const manual_method=document.getElementById('manual-method-'+id).value;
  const payment_reference=document.getElementById('ref-'+id).value.trim();
  const {data:booking,error:readError}=await sb.from('service_bookings')
-  .select('status,quoted_amount,assigned_electrician_id,razorpay_payment_id,razorpay_order_id,payment_status,amount_paid')
+  .select('status,quoted_amount,assigned_electrician_id,razorpay_payment_id,razorpay_order_id,payment_status,amount_paid,selected_category')
   .eq('id',id).single();
- if(readError){alert('बुकिंग दोबारा पढ़ी नहीं जा सकी: '+readError.message);return;}
+ if(readError||!booking){alert('बुकिंग दोबारा पढ़ी नहीं जा सकी। Admin अनुमति और रिकॉर्ड की स्थिति जाँचें।');return;}
+ if(status==='cancelled'&&booking.status!=='cancelled'){
+  alert('Admin Dashboard के सामान्य status dropdown से cancellation नहीं किया जा सकता। पहले dedicated cancellation request, stage evidence, fee और audit workflow पूरा होना आवश्यक है।');
+  await loadAll();return;
+ }
  if(status==='assigned'&&!booking.assigned_electrician_id){alert('बिना वास्तविक electrician assignment के Assigned status नहीं लगाया जा सकता। इलेक्ट्रिशियन को offer स्वीकार करने दें।');return;}
  const quoted=raw===''?null:Number(raw);
  if(quoted!==null&&(!Number.isFinite(quoted)||quoted<0||quoted>10000000)){alert('तय राशि ₹0 से ₹1,00,00,000 के बीच रखें।');return;}
@@ -35,20 +739,66 @@ async function saveBooking(id){
   if(quoted!==currentQuoted){alert('भुगतान दर्ज करने से पहले तय राशि अलग से सेव करें। भुगतान और राशि में बदलाव एक साथ नहीं होंगे।');return;}
   if(payment_reference.length<4||payment_reference.length>120){alert('Paid दर्ज करने के लिए वास्तविक रसीद नंबर / UTR (4 से 120 अक्षर) भरें।');return;}
   if(!confirm('क्या यह भुगतान वास्तव में प्राप्त हुआ है? Cash/UPI/Bank Transfer का सही तरीका चुनकर ही पुष्टि करें।'))return;
-  const {data,error}=await sb.rpc('srk_admin_record_manual_payment',{
-   p_booking_id:id,p_method:manual_method,p_reference:payment_reference,
-   p_note:'Admin द्वारा वास्तविक मैनुअल भुगतान प्राप्ति की पुष्टि'
-  });
+  let data,error;
+  if(booking.selected_category){
+   if(manual_method!=='cash'){alert('नई server-timed booking का मैनुअल settlement अभी केवल वास्तविक Cash receipt के लिए उपलब्ध है। Online भुगतान Razorpay से ही verify होगा।');return;}
+   ({data,error}=await sb.rpc('srk_admin_record_new_booking_cash_payment',{
+    p_booking_id:id,p_reference:payment_reference,
+    p_note:'Admin द्वारा वास्तविक Cash प्राप्ति की पुष्टि; cancellation fee अलग ledger में settle'
+   }));
+  }else{
+   ({data,error}=await sb.rpc('srk_admin_record_manual_payment',{
+    p_booking_id:id,p_method:manual_method,p_reference:payment_reference,
+    p_note:'Admin द्वारा वास्तविक मैनुअल भुगतान प्राप्ति की पुष्टि'
+   }));
+  }
   if(error||!data?.success){alert('मैनुअल भुगतान दर्ज नहीं हुआ: '+(error?.message||'कृपया भुगतान की स्थिति जाँचें।'));await loadAll();return;}
-  alert('वास्तविक मैनुअल भुगतान और रसीद सुरक्षित रूप से दर्ज हो गई।');
+  alert(booking.selected_category
+   ? 'Cash payment सुरक्षित हुआ। Cancellation fee को अलग दिखाकर electrician wallet debit और SRK cancellation ledger में दर्ज किया गया।'
+   : 'वास्तविक मैनुअल भुगतान और रसीद सुरक्षित रूप से दर्ज हो गई।');
   await loadAll();return;
  }
- const {error:updateError}=await sb.from('service_bookings').update({status,quoted_amount:quoted}).eq('id',id);
- if(updateError){alert('बुकिंग अपडेट नहीं हुई: '+updateError.message);await loadAll();return;}
+ const {data:updatedBooking,error:updateError}=await sb.from('service_bookings').update({status,quoted_amount:quoted}).eq('id',id).select('id').maybeSingle();
+ if(updateError||!updatedBooking){alert('बुकिंग अपडेट नहीं हुई। Admin अनुमति, बुकिंग स्थिति और server-side नियम जाँचें।');await loadAll();return;}
  await loadAll();
 }
-async function review(id,decision){if(!confirm('आवेदन '+decision+' करना है?'))return;let {error}=await sb.rpc('srk_admin_review_application',{p_application_id:id,p_decision:decision});if(error)alert(error.message);else loadAll()}
-async function toggleActive(id,active){let {error}=await sb.from('electrician_profiles').update({active}).eq('id',id);if(error)alert(error.message);else loadAll()}
+const adminApplicationReviewBusy=new Set();
+async function review(id,decision){if(adminApplicationReviewBusy.has(id))return;if(!['approved','rejected','suspended'].includes(decision)){alert('मान्य Admin निर्णय चुनें।');return;}if(!confirm('आवेदन '+decision+' करना है?'))return;adminApplicationReviewBusy.add(id);try{const {error}=await sb.rpc('srk_admin_review_application',{p_application_id:id,p_decision:decision});if(error)throw error;await loadAll();}catch(e){alert('आवेदन का निर्णय सुरक्षित नहीं हुआ। Admin अनुमति और आवेदन की मौजूदा स्थिति जाँचें।');}finally{adminApplicationReviewBusy.delete(id);}}
+const adminRateTierBusy=new Set();
+const adminActiveToggleBusy=new Set();
+async function saveRateTier(id){
+ if(adminRateTierBusy.has(id))return;
+ const tier=document.getElementById('rate-tier-'+id)?.value;
+ if(!['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'].includes(tier)){alert('मान्य रेट-श्रेणी चुनें।');return;}
+ if(!confirm('क्या इस KYC-approved इलेक्ट्रिशियन की व्यावसायिक रेट-श्रेणी स्वीकृत करनी है?'))return;
+ adminRateTierBusy.add(id);
+ try{
+  const {error}=await sb.rpc('srk_admin_set_electrician_rate_tier',{p_electrician_profile_id:id,p_rate_tier:tier});
+  if(error)throw error;
+  alert('इलेक्ट्रिशियन की Admin-approved रेट-श्रेणी सुरक्षित हो गई। अब उसे Active किया जा सकता है।');
+  await loadAll();
+ }catch(e){alert('रेट-श्रेणी स्वीकृत नहीं हुई। KYC स्थिति और Admin अनुमति जाँचें, फिर दोबारा प्रयास करें。');}
+ finally{adminRateTierBusy.delete(id);}
+}
+async function toggleActive(id,active){
+ if(adminActiveToggleBusy.has(id))return;
+ if(typeof active!=='boolean'){alert('मान्य Active/Inactive विकल्प चुनें।');return;}
+ if(!confirm(active?'क्या इस स्वीकृत इलेक्ट्रिशियन को Active करना है?':'क्या इस इलेक्ट्रिशियन को Inactive करना है?'))return;
+ adminActiveToggleBusy.add(id);
+ try{
+  if(active){
+   const {data:profile,error:readError}=await sb.from('electrician_profiles').select('verification_status,approved_rate_tier,approved_rate_card_version,rate_tier_approved_by,rate_tier_approved_at').eq('id',id).maybeSingle();
+   if(readError||!profile)throw new Error('Profile not available');
+   if(profile.verification_status!=='approved'||!['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'].includes(profile.approved_rate_tier)||!profile.approved_rate_card_version||!profile.rate_tier_approved_by||!profile.rate_tier_approved_at){
+    alert('Active करने से पहले KYC Approved और पूरा Admin-approved रेट-श्रेणी रिकॉर्ड आवश्यक है।');return;
+   }
+  }
+  const {data:updated,error}=await sb.rpc('srk_admin_set_electrician_active',{p_profile_id:id,p_active:active});
+  if(error||!updated?.success)throw error||new Error('Activation change was not confirmed');
+  await loadAll();
+ }catch(e){alert('इलेक्ट्रिशियन की स्थिति अपडेट नहीं हुई। Admin अनुमति, KYC और रेट-श्रेणी जाँचें।');}
+ finally{adminActiveToggleBusy.delete(id);}
+}
 function mapUrl(x){const q=(x.location_lat!=null&&x.location_lng!=null)?`${x.location_lat},${x.location_lng}`:[x.address,x.district,x.state,x.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}init();
 </script></body></html>

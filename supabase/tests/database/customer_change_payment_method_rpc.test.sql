@@ -1,0 +1,18 @@
+begin;
+select plan(14);
+select has_function('public','srk_customer_change_payment_method',array['uuid','text'],'customer payment preference RPC exists');
+select ok((select pg_get_function_result(oid)='boolean' from pg_proc where oid='public.srk_customer_change_payment_method(uuid,text)'::regprocedure),'payment preference RPC returns a boolean confirmation');
+select ok((select prosecdef from pg_proc where oid='public.srk_customer_change_payment_method(uuid,text)'::regprocedure),'payment preference RPC is SECURITY DEFINER');
+select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_change_payment_method(uuid,text)'::regprocedure),'payment preference RPC uses an empty search_path');
+select ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure))>0,'payment preference RPC requires authenticated identity');
+select ok(position('customer_user_id=v_uid' in pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure))>0,'payment preference update is customer-owned');
+select ok(position('status in (''new'',''confirmed'')' in lower(pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure)))>0,'only new or confirmed bookings can change preference');
+select ok(position('assigned_electrician_id is null' in lower(pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure)))>0,'booking must remain unassigned');
+select ok(position('payment_status not in (''paid'',''refunded'')' in lower(pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure)))>0,'paid or refunded bookings cannot change preference');
+select ok(position('razorpay_order_id is null' in lower(pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure)))>0 and position('razorpay_payment_id is null' in lower(pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure)))>0,'existing provider order/payment prevents preference change');
+select ok(position('coalesce(amount_paid,0)=0' in lower(pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure)))>0,'any recorded payment prevents preference change');
+select ok(position('like ''%cash%''' in lower(pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure)))>0,'only an existing cash preference can be changed');
+select ok(position('p_payment_method is distinct from ''razorpay à¤à¤¨à¤²à¤¾à¤à¤¨ à¤­à¥à¤à¤¤à¤¾à¤¨''' in lower(pg_get_functiondef('public.srk_customer_change_payment_method(uuid,text)'::regprocedure)))>0,'target payment method is allow-listed');
+select ok(has_function_privilege('authenticated','public.srk_customer_change_payment_method(uuid,text)','EXECUTE') and not has_function_privilege('anon','public.srk_customer_change_payment_method(uuid,text)','EXECUTE'),'payment preference RPC is authenticated-only');
+select * from finish();
+rollback;

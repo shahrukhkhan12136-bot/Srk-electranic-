@@ -10,7 +10,7 @@
 <title>SRK ELECTRONIC</title>
 <style>
 :root{--navy:#071a2b;--blue:#0b5ed7;--gold:#ffbd45;--paper:#f4f7fb;--ink:#142235}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--paper);color:var(--ink)}
+*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--paper);color:var(--ink)}
 header{background:linear-gradient(135deg,#071a2b,#123f68);color:white;padding:24px 18px 30px;border-radius:0 0 26px 26px}
 .top{display:flex;align-items:center;gap:12px}.logo{width:54px;height:54px;border-radius:16px;background:var(--gold);color:#071a2b;display:grid;place-items:center;font-weight:900;font-size:19px}
 h1{font-size:23px;margin:0;letter-spacing:.4px}header p{margin:5px 0 0;color:#d7e7f6;font-size:14px}
@@ -55,7 +55,6 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <body>
 <header>
  <div class="top"><div class="logo">SRK</div><div><h1>SRK ELECTRONIC</h1><p>Electrical • Wiring • Home Repair</p></div></div>
- <div class="hero"><h2>घर की इलेक्ट्रिकल सर्विस,<br>अब एक ही जगह।</h2><p>वायरिंग, इलेक्ट्रिकल रिपेयर और घर की छोटी-बड़ी मरम्मत के लिए संपर्क करें।</p></div>
 </header>
 <main class="wrap">
  <section class="panel" id="customer-login">
@@ -98,6 +97,12 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <button class="btn" type="button" id="customerPaymentHistoryRefresh">भुगतान इतिहास रीफ़्रेश करें</button>
     <div id="customerPaymentHistory" aria-live="polite" aria-busy="false"></div>
     <button class="btn" type="button" id="customerPaymentHistoryMore" style="display:none">और रिकॉर्ड देखें</button>
+   </section>
+   <section class="card" id="customerCancellationFeeDebtPanel" style="margin-top:14px">
+    <h3 style="margin-top:0">📄 पुरानी Cancellation Fee / बकाया</h3>
+    <p class="small">हर पुरानी cancellation fee अलग दिखाई जाएगी। बकाया अगली booking के bill में जोड़ा जाएगा; ग्राहक wallet balance से इसे माफ नहीं किया जाएगा।</p>
+    <button class="btn" type="button" id="customerCancellationFeeDebtRefresh">बकाया रीफ़्रेश करें</button>
+    <div id="customerCancellationFeeDebts" aria-live="polite" aria-busy="false"></div>
    </section>
    <section class="card" id="customerRefundHistoryPanel" style="margin-top:14px">
     <h3 style="margin-top:0">↩️ मेरे रिफंड अनुरोध</h3>
@@ -162,16 +167,9 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <button class="btn" type="button" id="customerLogout">लॉगआउट</button>
  </section>
 
- <h2 class="section-title">हमारी सेवाएँ</h2>
- <div class="grid">
-  <article class="card"><div class="icon">⚡</div><h3>घर की वायरिंग</h3><p>नई वायरिंग और इलेक्ट्रिकल फिटिंग से जुड़ी सेवाएँ।</p></article>
-  <article class="card"><div class="icon">🔧</div><h3>इलेक्ट्रिकल रिपेयर</h3><p>बिजली और घरेलू इलेक्ट्रिकल समस्याओं की मरम्मत।</p></article>
-  <article class="card"><div class="icon">💡</div><h3>लाइट व फैन फिटिंग</h3><p>लाइट, पंखे और अन्य फिटिंग का काम।</p></article>
-  <article class="card"><div class="icon">🏠</div><h3>होम रिपेयरिंग</h3><p>घर की सामान्य रिपेयरिंग और मेंटेनेंस।</p></article>
- </div>
- <section class="panel">
+ <section class="panel" id="customerBookingPanel" hidden>
   <h2 class="section-title" style="margin-top:0">सर्विस बुक करें</h2>
-  <p class="small">बुकिंग के बाद verified इलेक्ट्रिशियन आपके घर आकर काम का निरीक्षण करेगा और केवल मेहनताना स्पष्ट करेगा।</p>
+  <p class="small">बुकिंग से पहले चुनी गई इलेक्ट्रिशियन श्रेणी, अवधि और लागू दर के आधार पर अनुमान दिखना चाहिए। निरीक्षण के बाद अलग quotation देने की प्रक्रिया नहीं है। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। सामान/पार्ट्स का खर्च अलग itemized रहेगा।</p>
   <form id="booking">
    <label for="name">आपका नाम</label><input id="name" required placeholder="नाम लिखें">
    <label for="phone">OTP से सत्यापित मोबाइल नंबर</label><input id="phone" type="tel" inputmode="tel" required readonly aria-describedby="verifiedPhoneHelp" placeholder="पहले ग्राहक OTP लॉगिन करें"><small id="verifiedPhoneHelp" class="small">बुकिंग में वही मोबाइल नंबर इस्तेमाल होगा जिससे आपने OTP लॉगिन किया है। इसे यहाँ बदला नहीं जा सकता।</small>
@@ -207,6 +205,14 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <option value="home_repair">होम रिपेयरिंग</option>
     <option value="other">अन्य</option>
    </select>
+   <label for="rateTier">इलेक्ट्रिशियन की श्रेणी चुनें</label>
+   <select id="rateTier" required>
+    <option value="">श्रेणी चुनें</option>
+    <option value="electrical_assistant">Electrical Assistant — 8 घंटे ₹899</option>
+    <option value="skilled_electrician">Skilled Electrician — 8 घंटे ₹1,199</option>
+    <option value="expert_electrician">Expert Electrician — 8 घंटे ₹1,599</option>
+    <option value="premium_electrical_specialist">Premium Electrical Specialist — 8 घंटे ₹1,999</option>
+   </select>
    <label for="durationHours">काम के लिए अनुमानित समय</label>
    <select id="durationHours" required>
     <option value="">अवधि चुनें (1–8 घंटे)</option>
@@ -215,15 +221,32 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <option value="5">5 घंटे</option><option value="6">6 घंटे</option>
     <option value="7">7 घंटे</option><option value="8">8 घंटे</option>
    </select>
-   <p class="small">यह अवधि केवल बुकिंग का अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना इलेक्ट्रिशियन के Admin-approved rate और सर्वर द्वारा रिकॉर्ड किए गए वास्तविक काम के समय से निकलेगा।</p>
+   <section class="card" id="labourEstimatePanel" aria-live="polite" style="margin:12px 0;border:1px solid #cfe0f5;background:#f5f9ff">
+    <div class="small">आपका अनुमानित मेहनताना</div>
+    <div id="labourEstimateAmount" style="font-size:26px;font-weight:850;color:#0b5ed7;margin:4px 0">श्रेणी और अवधि चुनें</div>
+    <div id="labourEstimateBreakdown" class="small">अनुमान चुनी गई श्रेणी की 8 घंटे की दर और अवधि के आधार पर है।</div>
+   </section>
+   <p class="small">यह केवल अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ग्राहक की चुनी श्रेणी से अलग इलेक्ट्रिशियन नहीं भेजा जाएगा। सामान/पार्ट्स का खर्च मेहनताने से अलग itemized रहेगा।</p>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
-   <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
-   <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
-   <label for="payment">भुगतान</label>
+   <label for="payment">भुगतान का तरीका</label>
    <select id="payment" required><option value="Cash">नकद (Cash)</option><option value="Razorpay ऑनलाइन भुगतान">ऑनलाइन भुगतान (Razorpay / UPI)</option></select>
-   <p class="small">पहले इलेक्ट्रिशियन घर आकर काम देखेगा और केवल काम का मेहनताना स्पष्ट करेगा। आपकी मंजूरी के बाद ही काम शुरू होगा। काम पूरा होने पर आपके चुने हुए तरीके से भुगतान होगा। ऑनलाइन भुगतान चुनने पर Razorpay उपलब्ध होगा।</p>
-   <button class="btn primary" type="submit">बुकिंग भेजें</button>
+   <div class="card" style="margin:12px 0;padding:14px;background:#fffaf0;border:1px solid #f2d59a">
+    <b>बुकिंग से पहले जरूरी जानकारी</b>
+    <ul class="small" style="padding-left:20px;margin:8px 0">
+     <li>दिखाई गई रकम चुनी गई श्रेणी और अवधि का अनुमान है—यह एडवांस या अंतिम बिल की अधिकतम सीमा नहीं है।</li>
+     <li>अंतिम मेहनताना सर्वर में दर्ज वास्तविक काम के मिनटों के अनुसार बनेगा।</li>
+     <li>सामान/पार्ट्स मेहनताने में शामिल नहीं हैं; उनका अलग itemized विवरण और आपकी अलग मंजूरी जरूरी है।</li>
+     <li>आपकी चुनी हुई श्रेणी ही भेजी जाएगी। उपलब्ध पार्टनर न होने पर श्रेणी अपने-आप नहीं बदलेगी।</li>
+     <li>Cash या Online भुगतान तरीका आपकी अनुमति के बिना नहीं बदलेगा। भुगतान काम पूरा होने के बाद होगा।</li>
+     <li>यदि कोई पुरानी cancellation fee बाकी है, तो अगली booking के bill में अलग मद के रूप में जोड़ी जाएगी और booking भेजने से पहले दिखाई जाएगी।</li>
+    </ul>
+    <label style="display:flex;align-items:flex-start;gap:9px;font-weight:600;line-height:1.45">
+     <input id="bookingTermsAccepted" type="checkbox" required style="width:19px;height:19px;flex:0 0 19px;margin:1px 0 0">
+     <span>मैंने चुनी हुई श्रेणी, अवधि, अनुमान, अलग सामान बिल और भुगतान की शर्तें पढ़ ली हैं और बुकिंग भेजने की पुष्टि करता/करती हूँ।</span>
+    </label>
+   </div>
+   <button class="btn primary" type="submit">शर्तें स्वीकार करके बुकिंग भेजें</button>
   </form>
  </section>
  <section class="panel" id="upiPanel" style="display:none">
@@ -244,8 +267,24 @@ let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
 document.getElementById('year').textContent = new Date().getFullYear();
+const customerRateCard = { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 };
+function updateLabourEstimate() {
+  const tier=document.getElementById('rateTier')?.value, hours=Number(document.getElementById('durationHours')?.value);
+  const amount=document.getElementById('labourEstimateAmount'), detail=document.getElementById('labourEstimateBreakdown');
+  if(!tier||!customerRateCard[tier]||!Number.isInteger(hours)||hours<1||hours>8){amount.textContent='श्रेणी और अवधि चुनें';detail.textContent='अनुमान चुनी गई श्रेणी की 8 घंटे की दर और अवधि के आधार पर है।';return;}
+  const paise=Math.floor(customerRateCard[tier]*hours/8+0.5);
+  amount.textContent='₹'+(paise/100).toFixed(2);
+  detail.textContent=hours+' घंटे × चुनी गई श्रेणी की दर। अंतिम रकम वास्तविक सर्वर-रिकॉर्डेड समय से बनेगी।';
+}
+document.getElementById('rateTier')?.addEventListener('change',updateLabourEstimate);
+document.getElementById('durationHours')?.addEventListener('change',updateLabourEstimate);
 function initCustomerMenuShell(){
  const dashboard=document.getElementById('customer-dashboard');
+ const home=document.getElementById('customerMenuHome');
+ const bookingPanel=document.getElementById('booking')?.closest('.panel');
+ const checkoutPanel=document.getElementById('upiPanel');
+ if(bookingPanel&&home){home.appendChild(bookingPanel);bookingPanel.hidden=false;}
+ if(checkoutPanel&&home)home.appendChild(checkoutPanel);
  const destinations={
   Payments:document.getElementById('customerPaymentHistoryPanel'),
   Support:document.getElementById('customerSupportPanel'),
@@ -350,9 +389,12 @@ async function customerPrintPaymentReceipt(bookingId){
   const labourRow=Number.isFinite(Number(data.labour_amount))&&data.labour_amount!==null
    ? '<tr><td>इलेक्ट्रिशियन मेहनताना</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.labour_amount))+'</td></tr>'
    : '<tr><td colspan="2">भुगतान सत्यापित है; उपलब्ध रिकॉर्ड से मेहनताना अलग से प्रमाणित नहीं हो सका।</td></tr>';
+  const cancellationFeeRows=(Array.isArray(data.cancellation_fee_items)?data.cancellation_fee_items:[]).map(item=>
+   '<tr><td>पुरानी Cancellation Fee · बुकिंग '+customerEsc(String(item.source_booking_id||'').slice(0,8))+'…</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(Number(item.amount_paise)/100))+'</td></tr>'
+  ).join('');
   const address=[data.address,data.district,data.state,data.pincode].filter(Boolean).join(', ');
   printWindow.document.open();
-  printWindow.document.write('<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+customerEsc(data.receipt_reference)+'</title><style>body{font-family:Arial,"Noto Sans Devanagari",sans-serif;color:#152536;max-width:760px;margin:24px auto;padding:24px}h1{margin-bottom:4px;color:#0b3557}.muted{color:#526477;font-size:13px}.box{border:1px solid #d8e0e8;border-radius:10px;padding:16px;margin:16px 0}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:11px 7px;border-bottom:1px solid #e3e8ee}.total{font-weight:bold;font-size:19px}button{padding:10px 18px;margin:12px 8px 0 0}@media print{button{display:none}body{margin:0;padding:8px}}</style></head><body><h1>SRK ELECTRONIC</h1><div class="muted">भुगतान रसीद · यह टैक्स इनवॉइस नहीं है</div><div class="box"><b>रसीद संदर्भ:</b> '+customerEsc(data.receipt_reference)+'<br><b>बुकिंग संदर्भ:</b> '+customerEsc(data.booking_id)+'<br><b>बुकिंग दिनांक:</b> '+customerEsc(bookingDate)+'<br><b>भुगतान दिनांक:</b> '+customerEsc(paymentDate)+'</div><div class="box"><b>ग्राहक:</b> '+customerEsc(data.customer_name)+'<br><b>सेवा:</b> '+customerEsc(data.service_type)+'<br><b>पता:</b> '+customerEsc(address||'उपलब्ध नहीं')+'</div><table><tbody>'+labourRow+'<tr class="total"><td>कुल सत्यापित भुगतान</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.amount_paid))+'</td></tr></tbody></table><div class="box"><b>भुगतान तरीका:</b> '+customerEsc(method)+'<br><b>स्थिति:</b> सत्यापित / प्राप्त</div><p class="muted">यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।</p><button onclick="window.print()">प्रिंट / PDF सेव करें</button></body></html>');
+  printWindow.document.write('<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+customerEsc(data.receipt_reference)+'</title><style>body{font-family:Arial,"Noto Sans Devanagari",sans-serif;color:#152536;max-width:760px;margin:24px auto;padding:24px}h1{margin-bottom:4px;color:#0b3557}.muted{color:#526477;font-size:13px}.box{border:1px solid #d8e0e8;border-radius:10px;padding:16px;margin:16px 0}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:11px 7px;border-bottom:1px solid #e3e8ee}.total{font-weight:bold;font-size:19px}button{padding:10px 18px;margin:12px 8px 0 0}@media print{button{display:none}body{margin:0;padding:8px}}</style></head><body><h1>SRK ELECTRONIC</h1><div class="muted">भुगतान रसीद · यह टैक्स इनवॉइस नहीं है</div><div class="box"><b>रसीद संदर्भ:</b> '+customerEsc(data.receipt_reference)+'<br><b>बुकिंग संदर्भ:</b> '+customerEsc(data.booking_id)+'<br><b>बुकिंग दिनांक:</b> '+customerEsc(bookingDate)+'<br><b>भुगतान दिनांक:</b> '+customerEsc(paymentDate)+'</div><div class="box"><b>ग्राहक:</b> '+customerEsc(data.customer_name)+'<br><b>सेवा:</b> '+customerEsc(data.service_type)+'<br><b>पता:</b> '+customerEsc(address||'उपलब्ध नहीं')+'</div><table><tbody>'+labourRow+cancellationFeeRows+'<tr class="total"><td>कुल सत्यापित भुगतान</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.amount_paid))+'</td></tr></tbody></table><div class="box"><b>भुगतान तरीका:</b> '+customerEsc(method)+'<br><b>स्थिति:</b> सत्यापित / प्राप्त</div><p class="muted">यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।</p><button onclick="window.print()">प्रिंट / PDF सेव करें</button></body></html>');
   printWindow.document.close();
   printWindow.focus();
  }catch(error){
@@ -390,6 +432,24 @@ async function loadCustomerPaymentHistory(reset=true) {
   else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
  }finally{customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');}
 }
+async function loadCustomerCancellationFeeDebts(){
+ if(!customerSb)return;
+ const box=document.getElementById('customerCancellationFeeDebts');
+ if(!box)return;
+ const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+ if(sessionError||!sessionData?.session){box.textContent='बकाया देखने के लिए OTP लॉगिन करें।';return;}
+ box.setAttribute('aria-busy','true');box.textContent='Cancellation fee बकाया लोड हो रहा है…';
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_list_my_cancellation_fee_debts');
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  const due=rows.filter(r=>['open','reserved'].includes(r.status));
+  const total=due.reduce((sum,r)=>sum+Number(r.amount_paise||0),0);
+  box.innerHTML='<p><b>कुल बकाया: ₹'+(total/100).toFixed(2)+'</b></p>'+
+   (rows.map(r=>'<article class="card" style="margin:8px 0;padding:10px"><b>₹'+(Number(r.amount_paise)/100).toFixed(2)+'</b><p class="small">पुरानी Booking: '+customerEsc(String(r.source_booking_id||'').slice(0,8))+'… · स्थिति: '+customerEsc(({open:'अगली booking में जोड़ी जाएगी',reserved:'अगली booking के bill में जोड़ी गई',settled:'जमा हो चुकी',reversed:'Admin द्वारा reverse'}[r.status]||r.status))+'</p><p class="small">तारीख: '+customerEsc(r.created_at?new Date(r.created_at).toLocaleString('hi-IN'):'')+'</p></article>').join('')||'<p class="small">कोई cancellation fee बकाया नहीं है।</p>');
+ }catch(e){box.textContent='Cancellation fee बकाया अभी लोड नहीं हो सका। कृपया दोबारा कोशिश करें.';}
+ finally{box.setAttribute('aria-busy','false');}
+}
 async function loadCustomerRefundHistory(){
  if(!customerSb)return;
  const box=document.getElementById('customerRefundHistory');
@@ -398,7 +458,7 @@ async function loadCustomerRefundHistory(){
  if(sessionError||!sessionData?.session){box.textContent='रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';return;}
  box.setAttribute('aria-busy','true');box.textContent='रिफंड अनुरोध लोड हो रहे हैं…';
  try{
-  const {data,error}=await customerSb.rpc('srk_customer_list_my_booking_refund_requests');
+  const {data,error}=await customerSb.rpc('srk_customer_list_booking_refund_requests');
   if(error)throw error;
   const rows=Array.isArray(data)?data:[];
   box.innerHTML=rows.map(row=>{
@@ -532,6 +592,24 @@ async function customerSubmitBookingRefund(bookingId){
   if(button)button.disabled=false;
  }
 }
+async function customerCancelBooking(bookingId,button) {
+ if(!customerSb||!bookingId||button?.disabled)return;
+ const note='ग्राहक ने ऐप से बुकिंग रद्द करने का अनुरोध किया है। कृपया इलेक्ट्रिशियन की सत्यापित स्थिति और उपलब्ध यात्रा/आगमन प्रमाण देखकर निर्णय लें।';
+ if(!confirm('रद्द करने का अनुरोध Admin को भेजें? अभी बुकिंग रद्द नहीं होगी। Admin सत्यापित स्थिति के अनुसार ₹0, ₹49 या ₹99 तय करेगा और कारण दर्ज करेगा।'))return;
+ if(button)button.disabled=true;
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_request_booking_cancellation',{p_booking_id:bookingId,p_customer_note:note});
+  if(error)throw error;
+  if(!data?.success)throw new Error('CANCELLATION_REQUEST_NOT_CONFIRMED');
+  alert(data.already_pending?'इस बुकिंग का अनुरोध पहले से Admin के पास लंबित है।':'रद्द करने का अनुरोध Admin को भेज दिया गया है। फैसला और लागू शुल्क बुकिंग में दिखेगा।');
+  await loadCustomerBookings();
+ } catch(error) {
+  alert('अनुरोध दर्ज नहीं हो सका। कृपया इंटरनेट और लॉगिन जाँचकर दोबारा कोशिश करें। '+(error?.message||''));
+ } finally {if(button)button.disabled=false;}
+}
+let customerLiveLocationBookingIds=[];let customerLiveLocationPoller=null;
+async function refreshCustomerLiveLocations(){if(!customerSb||!customerLiveLocationBookingIds.length)return;await Promise.all(customerLiveLocationBookingIds.map(async id=>{const box=document.getElementById('customerLiveLocation_'+id);if(!box)return;const {data,error}=await customerSb.rpc('srk_customer_get_live_electrician_location',{p_booking_id:id});if(error||!data?.is_active){box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small">अभी कोई ताज़ा लोकेशन उपलब्ध नहीं है। इलेक्ट्रिशियन के यात्रा के दौरान शेयरिंग शुरू करने पर यहाँ दिखेगी।</p>';return;}const lat=Number(data.latitude),lng=Number(data.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const updated=new Date(data.updated_at);const time=Number.isFinite(updated.getTime())?updated.toLocaleTimeString('hi-IN'):'अभी';const url='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng)+'&travelmode=driving';const embed='https://maps.google.com/maps?q='+encodeURIComponent(lat+','+lng)+'&z=15&output=embed';box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small">ताज़ा GPS स्थान · अपडेट: '+customerEsc(time)+' · सटीकता लगभग '+customerEsc(Math.round(Number(data.accuracy_meters)||0))+' मीटर</p><iframe title="इलेक्ट्रिशियन की वर्तमान लोकेशन" src="'+customerEsc(embed)+'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="width:100%;height:220px;border:0;border-radius:10px" allowfullscreen></iframe><a target="_blank" rel="noopener" href="'+customerEsc(url)+'">🧭 Google Maps में रास्ता देखें</a>'; }));}
+if(!customerLiveLocationPoller)customerLiveLocationPoller=setInterval(refreshCustomerLiveLocations,15000);
 async function loadCustomerBookings() {
   const box = document.getElementById('customerBookings');
   if (!customerSb) { box.textContent='ग्राहक लॉगिन सेवा अभी उपलब्ध नहीं है।'; return; }
@@ -547,7 +625,7 @@ async function loadCustomerBookings() {
     : 'आपकी बुकिंग लोड हो रही हैं…';
   try {
     const { data, error } = await customerSb.from('service_bookings')
-      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,preferred_date,preferred_time,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
+      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -556,22 +634,37 @@ async function loadCustomerBookings() {
       box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
       return;
     }
-    const [contactsResult,timelineResult,refundResult] = await Promise.all([
+    const [contactsResult,refundResult,cancellationResult,cancellationFeeResult] = await Promise.all([
       customerSb.rpc('srk_get_customer_call_contacts'),
-      customerSb.rpc('srk_customer_get_my_booking_work_timeline'),
-      customerSb.rpc('srk_customer_list_my_booking_refund_requests')
+      customerSb.rpc('srk_customer_list_booking_refund_requests'),
+      customerSb.rpc('srk_customer_list_booking_cancellation_requests'),
+      customerSb.rpc('srk_customer_list_booking_cancellation_fee_items')
     ]);
     const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
     const timelineMap = new Map();
-    if(!timelineResult.error) {
-      (timelineResult.data || []).forEach(item=>{
-        if(!timelineMap.has(item.booking_id))timelineMap.set(item.booking_id,[]);
-        timelineMap.get(item.booking_id).push(item);
-      });
-    }
+    // Timeline RPC is booking-scoped. Fetch it only for the already
+    // owner-filtered bookings rather than calling it without its required ID.
+    const timelineResults = await Promise.all(data.map(async row => ({
+      bookingId: row.id,
+      result: await customerSb.rpc('srk_customer_get_my_booking_work_timeline',{p_booking_id:row.id})
+    })));
+    timelineResults.forEach(({bookingId,result})=>{
+      if(!result.error) timelineMap.set(bookingId,Array.isArray(result.data)?result.data:[]);
+    });
     const refundMap=new Map();
     if(!refundResult.error){
       (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
+    }
+    const cancellationMap=new Map();
+    if(!cancellationResult.error){
+      (cancellationResult.data||[]).forEach(item=>cancellationMap.set(item.booking_id,item));
+    }
+    const cancellationFeeMap=new Map();
+    if(!cancellationFeeResult.error){
+      (cancellationFeeResult.data||[]).forEach(item=>{
+        if(!cancellationFeeMap.has(item.booking_id))cancellationFeeMap.set(item.booking_id,[]);
+        cancellationFeeMap.get(item.booking_id).push(item);
+      });
     }
     const billMap=new Map();
     await Promise.all(data.filter(row=>row.status==='completed'&&row.selected_category).map(async row=>{
@@ -589,9 +682,16 @@ async function loadCustomerBookings() {
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
       const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
-      const cancellationInfo=!['completed','cancelled'].includes(row.status)
-        ? '<p class="small">बुकिंग रद्द कराने के लिए Help & Support में अनुरोध भेजें। रद्द करने का अंतिम निर्णय Admin करेगा।</p>'
-        : '';
+      const cancellationRequest=cancellationMap.get(row.id);
+      const cancellationInfo=cancellationRequest
+        ? '<div class="job"><b>रद्द करने का अनुरोध: '+customerEsc(cancellationRequest.request_status==='pending'?'Admin के निर्णय की प्रतीक्षा':cancellationRequest.request_status==='approved'?'Admin ने रद्द किया':'Admin ने अनुरोध अस्वीकार किया')+'</b>'+
+          (cancellationRequest.fee_amount!==null&&cancellationRequest.fee_amount!==undefined?'<p>निर्धारित cancellation fee: <b>₹'+Number(cancellationRequest.fee_amount).toFixed(2)+'</b></p>':'')+
+          (cancellationRequest.verified_stage?'<p class="small">सत्यापित स्थिति: '+customerEsc(cancellationRequest.verified_stage==='not_departed'?'इलेक्ट्रिशियन घर से नहीं निकला':cancellationRequest.verified_stage==='en_route'?'इलेक्ट्रिशियन रास्ते में था':'इलेक्ट्रिशियन ग्राहक के घर पहुँच चुका था')+'</p>':'')+
+          (cancellationRequest.admin_reason?'<p class="small">Admin का कारण: '+customerEsc(cancellationRequest.admin_reason)+'</p>':'')+
+          (cancellationRequest.request_status==='pending'?'<p class="small">अभी अंतिम फैसला नहीं हुआ है।</p>':'')+'</div>'
+        : (!['completed','cancelled'].includes(row.status)
+          ? '<div class="job"><p class="small">रद्द करने का अनुरोध Admin को भेजें। Admin इलेक्ट्रिशियन की सत्यापित स्थिति देखकर ₹0, ₹49 या ₹99 तय करेगा और कारण दर्ज करेगा। अनुरोध भेजने से बुकिंग अपने-आप रद्द नहीं होगी।</p><button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\',this)" style="background:#fff0f0;color:#a32121">Admin से रद्द करने का अनुरोध</button></div>'
+          : '');
       const refund=refundMap.get(row.id);
       const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
         ? '<div class="job"><b>इलेक्ट्रिशियन ने काम पूरा होने की सूचना दी है।</b><p class="small">कृपया काम जाँचें। पूरा होने पर स्वीकार करें; अधूरा होने पर अस्वीकार करें या विवाद दर्ज करें।</p>'+
@@ -612,12 +712,20 @@ async function loadCustomerBookings() {
       const timerMarkup=row.selected_category&&row.status==='in_progress'
         ? '<div class="job"><b>काम का टाइमर</b><p id="customerTimer_'+customerEsc(row.id)+'" data-running="'+(row.work_timer_running?'1':'0')+'" data-started="'+customerEsc(row.work_started_at||'')+'" data-accumulated="'+customerEsc(row.work_timer_elapsed_seconds||0)+'">'+customerEsc(formatCustomerTimer(row.work_timer_elapsed_seconds||0))+'</p><small>यह लाइव प्रदर्शन अनुमानित है; अंतिम बिल सर्वर के रिकॉर्ड समय से बनेगा।</small></div>'
         : '';
+      const cancellationFeeItems=cancellationFeeMap.get(row.id)||[];
+      const reservedFeePaise=cancellationFeeItems.filter(item=>item.status==='reserved').reduce((sum,item)=>sum+Number(item.amount_paise||0),0);
+      const cancellationFeeMarkup=cancellationFeeItems.length
+        ? '<div class="job"><b>पुरानी Cancellation Fee — अलग मद</b>'+cancellationFeeItems.map(item=>
+            '<p>पुरानी बुकिंग '+customerEsc(String(item.source_booking_id).slice(0,8))+'… : <b>₹'+(Number(item.amount_paise)/100).toFixed(2)+'</b> · '+customerEsc(item.status==='settled'?'जमा हो चुकी':item.status==='reserved'?'इस बिल में देय':item.status==='released'?'अगली बुकिंग में जोड़ी जाएगी':'समायोजित')+'</p>'
+          ).join('')+'</div>'
+        : '';
+      const finalPayTotal= bill ? Number(bill.labour_amount_paise)/100 + reservedFeePaise/100 : 0;
       const finalBillMarkup=bill
-        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>अंतिम मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p class="small">यह बिल ग्राहक की मंजूरी के बाद सर्वर ने बनाया है।</p>'+
+        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>नई सेवा का मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p>पुरानी Cancellation Fee: <b>'+customerEsc(formatCustomerMoney(reservedFeePaise/100))+'</b></p><p>कुल देय राशि: <b>'+customerEsc(formatCustomerMoney(finalPayTotal))+'</b></p><p class="small">मेहनताना और पुरानी cancellation fees अलग-अलग दर्ज हैं। सामान/पार्ट्स इस labour bill में शामिल नहीं हैं।</p>'+
           (String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'&&row.payment_status!=='paid'
-            ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+Number(bill.labour_amount)+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 अंतिम Labour Bill का ऑनलाइन भुगतान करें</button>'
+            ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+finalPayTotal+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 कुल राशि Razorpay से भुगतान करें</button>'
             : String(row.payment_method||'').toLowerCase().includes('cash')&&row.payment_status!=='paid'
-              ? '<p class="small">नकद भुगतान सीधे इलेक्ट्रिशियन को करें। भुगतान की पुष्टि होने पर रसीद उपलब्ध होगी।</p>'
+              ? '<p class="small">कुल नकद राशि '+customerEsc(formatCustomerMoney(finalPayTotal))+' इलेक्ट्रिशियन को दें। Admin की भुगतान पुष्टि पर पुरानी cancellation fee अलग SRK ledger और electrician wallet में settle होगी।</p>'
               : '')
           +'</div>'
         : '';
@@ -644,15 +752,16 @@ async function loadCustomerBookings() {
       '<div class="customer-booking-heading"><b>बुकिंग #' + customerEsc(row.id) + '</b><span class="customer-booking-state">'+customerEsc(customerBookingStatusText(row.status))+'</span></div>' +
       '<p>' + customerEsc(row.service_type) + '</p>' +
       '<p><b>वर्तमान स्थिति:</b> ' + customerEsc(customerBookingStatusText(row.status)) + ' • <b>भुगतान:</b> ' + customerEsc(paymentLabel) + '</p>' +
-      '<p>' + customerEsc(row.preferred_date || '') + ' ' + customerEsc(row.preferred_time || '') + '</p>' +
       (['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id&&row.payment_status!=='paid'&&!String(row.payment_method||'').toLowerCase().includes('razorpay') ? '<div class="job"><b>भुगतान का चुना हुआ तरीका:</b> '+customerEsc(row.payment_method||'नकद (Cash)')+'<p class="small">यदि इस बुकिंग के लिए Online भुगतान जरूरी हो, तो आप यहाँ स्वयं Online चुन सकते हैं। आपकी अनुमति के बिना भुगतान तरीका नहीं बदलेगा।</p><button type="button" onclick="customerChangePaymentMethod(\''+row.id+'\')">Online भुगतान चुनें</button></div>' : '') +
       (row.payment_status === 'paid' && row.amount_paid != null && row.payment_verified_at ? '<p><b>सत्यापित भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
+      (row.status==='assigned'&&row.assigned_electrician_id?'<div class="job" id="customerLiveLocation_'+customerEsc(row.id)+'"><b>इलेक्ट्रिशियन की Live Location</b><p class="small">इलेक्ट्रिशियन के यात्रा के दौरान लोकेशन साझा करने पर यहाँ दिखेगी।</p></div>':'') +
       '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
       (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (row.status === 'completed' ? '<p class="small">काम पूरा हो चुका है। इलेक्ट्रिशियन का मोबाइल नंबर अब प्रदर्शित नहीं होगा।</p>' : (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>')) : '') +
-      startMarkup+timerMarkup+finalBillMarkup+completionMarkup+cancellationInfo+refundMarkup+
+      startMarkup+timerMarkup+finalBillMarkup+cancellationFeeMarkup+completionMarkup+cancellationInfo+refundMarkup+
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
+    customerLiveLocationBookingIds=data.filter(row=>row.status==='assigned'&&row.assigned_electrician_id).map(row=>row.id);await refreshCustomerLiveLocations();
     if(timelineResult.error) {
       const note=document.createElement('p');
       note.className='small';
@@ -919,6 +1028,7 @@ function supportStatus(message, isError=false) {
  el.textContent=message; el.style.color=isError?'#b42318':'#65758a';
 }
 let customerSupportAttachments = [];
+let customerSupportListBusy=false,customerSupportSendBusy=false,customerSupportThreadRequest=0;
 function renderCustomerSupportThread(rows) {
  const box=document.getElementById('customerSupportThread'); box.replaceChildren();
  if(!rows.length){box.textContent='अभी इस शिकायत में कोई संदेश नहीं है।';return;}
@@ -940,95 +1050,152 @@ function renderCustomerSupportThread(rows) {
  });
  box.scrollTop=box.scrollHeight;
 }
+async function loadCustomerSupportBookings() {
+ const select=document.getElementById('customerSupportBooking');
+ if(!customerSb||!select)return;
+ select.disabled=true;
+ try {
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  const session=sessionData?.session;
+  if(!session){select.replaceChildren(new Option('बुकिंग चुनें',''));return;}
+  const {data,error}=await customerSb.from('service_bookings')
+   .select('id,service_type,status,created_at')
+   .eq('customer_user_id',session.user.id)
+   .order('created_at',{ascending:false})
+   .limit(50);
+  if(error)throw error;
+  select.replaceChildren(new Option('बुकिंग चुनें',''));
+  (Array.isArray(data)?data:[]).forEach(row=>{
+   const shortId=String(row.id||'').slice(0,8).toUpperCase();
+   const label=(row.service_type||'सर्विस')+' · '+customerBookingStatusText(row.status)+' · #'+shortId;
+   select.add(new Option(label,row.id));
+  });
+  if(select.options.length===1)select.add(new Option('अभी कोई बुकिंग उपलब्ध नहीं है',''));
+ } catch(error) {
+  select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी',''));
+  supportStatus('शिकायत के लिए बुकिंग सूची लोड नहीं हो सकी। कृपया रीफ़्रेश करें।',true);
+ } finally {select.disabled=false;}
+}
+async function createCustomerSupportComplaint() {
+ const bookingId=document.getElementById('customerSupportBooking').value;
+ const category=document.getElementById('customerSupportCategory').value;
+ const description=document.getElementById('customerSupportDescription').value.trim();
+ const button=document.getElementById('customerSupportCreate');
+ if(!bookingId){supportStatus('शिकायत दर्ज करने के लिए अपनी बुकिंग चुनें।',true);return;}
+ if(description.length<20||description.length>2000){supportStatus('समस्या का विवरण 20 से 2000 अक्षरों में लिखें।',true);document.getElementById('customerSupportDescription').focus();return;}
+ if(button.disabled)return;
+ button.disabled=true;button.textContent='शिकायत दर्ज हो रही है…';
+ try {
+  const {data,error}=await customerSb.rpc('srk_customer_create_booking_complaint',{
+   p_booking_id:bookingId,p_category:category,p_description:description
+  });
+  if(error)throw error;
+  if(!data)throw new Error('COMPLAINT_NOT_CONFIRMED');
+  document.getElementById('customerSupportDescription').value='';
+  await loadCustomerSupportComplaints();
+  supportStatus('आपकी शिकायत दर्ज हो गई है। उसका reference और जवाब नीचे दिखाई देंगे।');
+ } catch(error) {
+  const msg=String(error?.message||'');
+  supportStatus(msg.includes('Daily complaint limit reached')
+   ?'आज की शिकायत सीमा पूरी हो गई है। कृपया मौजूदा शिकायत में संदेश भेजें।'
+   :'शिकायत दर्ज नहीं हो सकी। बुकिंग चुनें, विवरण जाँचें और दोबारा कोशिश करें।',true);
+ } finally {button.disabled=false;button.textContent='शिकायत दर्ज करें';}
+}
 async function loadCustomerSupportAttachments(complaintId) {
  const {data,error}=await customerSb.rpc('srk_customer_list_complaint_message_attachments',{p_complaint_id:complaintId});
  if(error)throw error;
  const rows=Array.isArray(data)?data:[];
- customerSupportAttachments=await Promise.all(rows.map(async a=>{
+ return await Promise.all(rows.map(async a=>{
   const {data:signed,error:signedError}=await customerSb.storage.from('srk-customer-support').createSignedUrl(a.storage_path,300);
   return {...a,signedUrl:signedError?null:signed?.signedUrl||null};
  }));
 }
 async function loadCustomerSupportComplaints() {
  const select=document.getElementById('customerSupportComplaint');
- select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
+ if(customerSupportListBusy)return;
+ customerSupportListBusy=true;select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
  try {
-  const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');
-  if(error)throw error;
+  const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');if(error)throw error;
   customerSupportComplaints=Array.isArray(data)?data:[];
   select.replaceChildren(new Option('शिकायत चुनें',''));
-  customerSupportComplaints.forEach(c=>{
-   const label=(c.category||'शिकायत')+' · '+(c.status||'स्थिति उपलब्ध नहीं')+' · '+String(c.id).slice(0,8);
-   select.add(new Option(label,c.id));
-  });
+  customerSupportComplaints.forEach(c=>{const label=(c.category||'शिकायत')+' · '+(c.status||'स्थिति उपलब्ध नहीं')+' · '+String(c.id).slice(0,8);select.add(new Option(label,c.id));});
   const stillExists=customerSupportComplaints.some(c=>c.id===customerSupportSelectedId);
   customerSupportSelectedId=stillExists?customerSupportSelectedId:(customerSupportComplaints[0]?.id||null);
   select.value=customerSupportSelectedId||'';
-  if(customerSupportSelectedId) await loadCustomerSupportMessages();
-  else {renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
- } catch(e){supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
- finally{select.disabled=false;}
+  if(customerSupportSelectedId)await loadCustomerSupportMessages();
+  else{customerSupportAttachments=[];renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
+ }catch(e){supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।',true);}
+ finally{customerSupportListBusy=false;select.disabled=false;}
 }
 async function loadCustomerSupportMessages() {
- const id=document.getElementById('customerSupportComplaint').value;
- if(!id){customerSupportSelectedId=null;renderCustomerSupportThread([]);return;}
- customerSupportSelectedId=id;
- const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id});
- if(error)throw error;
- try{await loadCustomerSupportAttachments(id);}catch(_){customerSupportAttachments=[];}
+ const id=document.getElementById('customerSupportComplaint').value,request=++customerSupportThreadRequest;
+ if(!id){customerSupportSelectedId=null;customerSupportAttachments=[];renderCustomerSupportThread([]);return;}
+ customerSupportSelectedId=id;renderCustomerSupportThread([]);supportStatus('बातचीत लोड हो रही है…');
+ const [{data,error},attachmentsResult]=await Promise.all([
+  customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id}),
+  loadCustomerSupportAttachments(id).then(data=>({data,error:null})).catch(error=>({data:[],error}))
+ ]);
+ if(request!==customerSupportThreadRequest||id!==customerSupportSelectedId)return;
+ if(error){supportStatus('बातचीत लोड नहीं हो सकी। कृपया फिर कोशिश करें।',true);return;}
+ customerSupportAttachments=attachmentsResult.data||[];
  renderCustomerSupportThread(Array.isArray(data)?data:[]);
  const complaint=customerSupportComplaints.find(c=>c.id===id);
- supportStatus(complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):'');
+ supportStatus(complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):(attachmentsResult.error?'कुछ संलग्न फ़ाइलें अभी उपलब्ध नहीं हैं।':''));
 }
 async function sendCustomerSupportMessage() {
- const id=document.getElementById('customerSupportComplaint').value;
- const input=document.getElementById('customerSupportMessage');
- const body=input.value.trim(), fileInput=document.getElementById('customerSupportFiles');
- const files=Array.from(fileInput.files||[]), button=document.getElementById('customerSupportSend');
+ if(customerSupportSendBusy)return;
+ const id=document.getElementById('customerSupportComplaint').value,input=document.getElementById('customerSupportMessage');
+ const body=input.value.trim(),fileInput=document.getElementById('customerSupportFiles'),files=Array.from(fileInput.files||[]),button=document.getElementById('customerSupportSend');
  const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
  if(!id){supportStatus('पहले अपनी शिकायत चुनें।',true);return;}
  if(!body&&!files.length){supportStatus('संदेश लिखें या फ़ाइल चुनें।',true);return;}
  if(body.length>4000){supportStatus('संदेश 4000 अक्षरों से अधिक नहीं होना चाहिए।',true);return;}
- if(files.length>5||files.some(f=>!allowed.includes(f.type)||f.size<1||f.size>10485760)){
-  supportStatus('अधिकतम 5 फ़ाइलें चुनें। हर फ़ाइल JPEG/PNG/WebP/PDF और 10 MB से कम होनी चाहिए।',true);return;
- }
- button.disabled=true;button.textContent='भेजा जा रहा है…';
+ if(files.length>5||files.some(f=>!allowed.includes(f.type)||f.size<1||f.size>10485760)){supportStatus('अधिकतम 5 फ़ाइलें चुनें। हर फ़ाइल JPEG/PNG/WebP/PDF और 10 MB से कम होनी चाहिए।',true);return;}
+ customerSupportSendBusy=true;button.disabled=true;button.textContent='भेजा जा रहा है…';
  let pendingUploadPath=null,linkedCount=0;
  try{
-  const {data:sessionData}=await customerSb.auth.getSession();
-  const userId=sessionData.session?.user?.id;if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
-  const {data:messageId,error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{
-   p_complaint_id:id,p_body:body||'आपके लिए फ़ाइल संलग्न की गई है।'
-  });
-  if(error)throw error;
-  if(!messageId)throw new Error('संदेश संदर्भ प्राप्त नहीं हुआ।');
+  const {data:sessionData}=await customerSb.auth.getSession(),userId=sessionData.session?.user?.id;
+  if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
+  const {data:messageId,error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{p_complaint_id:id,p_body:body||'आपके लिए फ़ाइल संलग्न की गई है।'});
+  if(error)throw error;if(!messageId)throw new Error('MESSAGE_NOT_CONFIRMED');
   for(const file of files){
-   const ext=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':file.type==='image/webp'?'webp':'pdf';
-   const path=userId+'/'+id+'/'+crypto.randomUUID()+'.'+ext;
+   const ext=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':file.type==='image/webp'?'webp':'pdf',path=userId+'/'+id+'/'+crypto.randomUUID()+'.'+ext;
    pendingUploadPath=path;
    const {error:uploadError}=await customerSb.storage.from('srk-customer-support').upload(path,file,{contentType:file.type,upsert:false});
    if(uploadError)throw uploadError;
-   const {error:linkError}=await customerSb.rpc('srk_customer_link_complaint_message_attachment',{
-    p_complaint_id:id,p_message_id:messageId,p_storage_path:path,p_file_name:file.name.slice(0,180),
-    p_mime_type:file.type,p_file_size_bytes:file.size
-   });
-   if(linkError)throw linkError;
-   pendingUploadPath=null;linkedCount++;
+   const {error:linkError}=await customerSb.rpc('srk_customer_link_complaint_message_attachment',{p_complaint_id:id,p_message_id:messageId,p_storage_path:path,p_file_name:file.name.slice(0,180),p_mime_type:file.type,p_file_size_bytes:file.size});
+   if(linkError)throw linkError;pendingUploadPath=null;linkedCount++;
   }
   input.value='';fileInput.value='';
-  await loadCustomerSupportMessages();
+  if(id===customerSupportSelectedId)await loadCustomerSupportMessages();
   supportStatus(files.length?'आपका संदेश और '+files.length+' फ़ाइल सफलतापूर्वक भेजी गई।':'आपका संदेश सहायता टीम को भेज दिया गया है।');
  }catch(e){
-  if(pendingUploadPath){await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]).catch(()=>{});}
-  supportStatus((linkedCount?'कुछ फ़ाइलें सफलतापूर्वक भेजी गईं ('+linkedCount+')। ':'संदेश या फ़ाइल भेजी नहीं जा सकी। ')+(e.message||'कृपया दोबारा कोशिश करें।'),true);
- }
- finally{button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}
+  if(pendingUploadPath)await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]).catch(()=>{});
+  supportStatus((linkedCount?'कुछ फ़ाइलें सफलतापूर्वक भेजी गईं ('+linkedCount+')। ':'संदेश या फ़ाइल भेजी नहीं जा सकी। ')+(linkedCount?'बाकी फ़ाइलें दोबारा भेजें।':'कृपया दोबारा कोशिश करें।'),true);
+ }finally{customerSupportSendBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}
 }
 
 async function syncCustomerSession() {
-  if (!customerSb) return;
-  const { data } = await customerSb.auth.getSession();
-  const session = data.session;
+  const loginPanel = document.getElementById('customer-login');
+  const dashboard = document.getElementById('customer-dashboard');
+  if (!customerSb) {
+    loginPanel.style.display = 'block';
+    dashboard.style.display = 'none';
+    customerMessage('ग्राहक लॉगिन सेवा उपलब्ध नहीं है। कृपया बाद में दोबारा कोशिश करें।');
+    return;
+  }
+  let session = null;
+  try {
+    const { data, error } = await customerSb.auth.getSession();
+    if (error) throw error;
+    session = data?.session || null;
+  } catch (_) {
+    loginPanel.style.display = 'block';
+    dashboard.style.display = 'none';
+    customerMessage('लॉगिन सत्र की जाँच नहीं हो सकी। कृपया इंटरनेट जाँचकर दोबारा कोशिश करें।');
+    return;
+  }
   document.getElementById('customer-login').style.display = session ? 'none' : 'block';
   document.getElementById('customer-dashboard').style.display = session ? 'block' : 'none';
   const bookingPhone = document.getElementById('phone');
@@ -1040,6 +1207,7 @@ async function syncCustomerSession() {
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     await loadCustomerBookings();
     await loadCustomerPaymentHistory(true);
+    await loadCustomerCancellationFeeDebts();
     await loadCustomerRefundHistory();
     await loadCustomerSupportBookings();
     await loadCustomerSupportComplaints();
@@ -1132,6 +1300,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   document.getElementById('customerRefresh').addEventListener('click', loadCustomerBookings);
   document.getElementById('customerPaymentHistoryRefresh').addEventListener('click',()=>loadCustomerPaymentHistory(true));
   document.getElementById('customerRefundHistoryRefresh').addEventListener('click',loadCustomerRefundHistory);
+  document.getElementById('customerCancellationFeeDebtRefresh').addEventListener('click',loadCustomerCancellationFeeDebts);
   document.getElementById('customerPaymentHistoryMore').addEventListener('click',()=>loadCustomerPaymentHistory(false));
   document.getElementById('customerSupportRefresh').addEventListener('click',()=>{loadCustomerSupportBookings();loadCustomerSupportComplaints();});
   document.getElementById('customerSupportCreate').addEventListener('click',createCustomerSupportComplaint);
@@ -1242,9 +1411,35 @@ function clearCustomerBookingRequestKey(key){
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
-  const amount = 0; // Quote and final amount are set after electrician inspection.
   const method = value('payment');
-  const msg = `नमस्ते SRK ELECTRONIC, मुझे सर्विस बुक करनी है।\nनाम: ${value('name')}\nमोबाइल: ${value('phone')}\nसर्विस: ${document.getElementById('service').selectedOptions[0]?.textContent || ''}\nअनुमानित अवधि: ${value('durationHours')} घंटे\nराज्य: ${value('state')}\nजिला: ${value('district')}\nPIN Code: ${value('pin')}\nGoogle Maps: ${googleMapsUrl(value('bookingLat'),value('bookingLng'),[value('address'),value('district'),value('state'),value('pin'),'India'].join(', '))}\nइलाका: ${value('place')}\nपूरा पता: ${value('address')}\nतारीख: ${value('date')}\nसमय: ${value('time')}\nकाम: ${value('details')}\nभुगतान का तरीका: ${method}\nराशि: ${amount ? '₹'+amount : 'अभी तय नहीं'}`;
+  const tier = document.getElementById('rateTier').selectedOptions[0]?.textContent || '';
+  const hours = Number(value('durationHours'));
+  const rate8h = customerRateCard[value('rateTier')];
+  const estimatePaise = Number.isInteger(hours) && hours >= 1 && hours <= 8 && rate8h
+    ? Math.floor(rate8h * hours / 8 + 0.5) : null;
+  const terms = document.getElementById('bookingTermsAccepted');
+  if (!terms?.checked) { alert('बुकिंग भेजने से पहले जरूरी शर्तें पढ़कर स्वीकार करें।'); terms?.focus(); return; }
+  const selectedDate=value('date'), selectedTime=value('time');
+  const [year,month,day]=selectedDate.split('-').map(Number);
+  const [hour,minute]=selectedTime.split(':').map(Number);
+  const requestedAt=new Date(year,month-1,day,hour,minute,0,0);
+  if(!selectedDate||!selectedTime||!Number.isFinite(requestedAt.getTime())||requestedAt<=new Date()){
+    alert('कृपया वर्तमान समय से आगे की सही बुकिंग तारीख और समय चुनें।');
+    document.getElementById(!selectedDate?'date':'time').focus();return;
+  }
+  if(estimatePaise===null){alert('कृपया इलेक्ट्रिशियन की श्रेणी और 1 से 8 घंटे की अवधि चुनें।');return;}
+  if(!customerSb){alert('बुकिंग से पहले ग्राहक OTP लॉगिन करें।');return;}
+  let debtRows=[],debtError=null;
+  try{({data:debtRows,error:debtError}=await customerSb.rpc('srk_customer_list_my_cancellation_fee_debts'));}
+  catch(_){alert('पुरानी cancellation fee की जाँच अभी नहीं हो सकी। Payments में बकाया रीफ़्रेश करके दोबारा कोशिश करें।');return;}
+  if(debtError){alert('पुरानी cancellation fee की जाँच अभी नहीं हो सकी। Payments में बकाया रीफ़्रेश करके दोबारा कोशिश करें।');return;}
+  const priorCancellationDebts=(Array.isArray(debtRows)?debtRows:[]).filter(item=>item.status==='open');
+  const priorFeePaise=priorCancellationDebts.reduce((sum,item)=>sum+Number(item.amount_paise||0),0);
+  const priorFeeLines=priorCancellationDebts.map(item=>'पुरानी बुकिंग '+String(item.source_booking_id||'').slice(0,8).toUpperCase()+': ₹'+(Number(item.amount_paise)/100).toFixed(2)).join('\\n');
+  const priorFeeText=priorFeePaise>0
+    ? '\\nपुरानी Cancellation Fee (अलग मद): ₹'+(priorFeePaise/100).toFixed(2)+'\\n'+priorFeeLines+'\\nअभी का संयुक्त अनुमान: ₹'+((estimatePaise+priorFeePaise)/100).toFixed(2)
+    : '\\nपुरानी Cancellation Fee: ₹0.00';
+  if(!confirm('बुकिंग की पुष्टि करें\\n\\nश्रेणी: '+tier+'\\nअवधि: '+hours+' घंटे\\nअनुमानित मेहनताना: ₹'+(estimatePaise/100).toFixed(2)+priorFeeText+'\\nभुगतान तरीका: '+method+'\\n\\nपुरानी फीस अलग line items में रहेगी। यह मेहनताना अनुमान अंतिम बिल की सीमा नहीं है। वास्तविक समय के अनुसार मेहनताना बनेगा और सामान/पार्ट्स अलग होंगे। क्या बुकिंग भेजें?'))return;
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
@@ -1256,7 +1451,8 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
     const bookingPayload = {
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
-      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), preferred_date: value('date'), preferred_time: value('time'),
+      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), 
+      selected_rate_tier: value('rateTier'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method
     };
     const requestKey = customerBookingRequestKey(bookingPayload);
@@ -1266,7 +1462,11 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
     clearCustomerBookingRequestKey(requestKey);
     pendingBookingId = result.booking_id;
-    alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
+    const estimateText = result.estimate?.amount_rupees ? `\nअनुमानित मेहनताना: ₹${result.estimate.amount_rupees}` : '';
+    const offerText = Number(result.offers_created)>0
+      ? '\\nअभी एक eligible इलेक्ट्रिशियन को ऑफर भेजा गया है।'
+      : '\\nअभी चुनी हुई श्रेणी का कोई उपलब्ध और approved इलेक्ट्रिशियन नहीं मिला। आपकी श्रेणी नहीं बदली गई है।';
+    alert(`बुकिंग नंबर: ${result.booking_id}${estimateText}\n${result.message}${offerText}`);
     await loadCustomerBookings();
   } catch (err) {
     alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);

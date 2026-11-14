@@ -131,9 +131,15 @@ exports.handler = async (event) => {
     const location_lat = body.location_lat == null || body.location_lat === '' ? null : Number(body.location_lat);
     const location_lng = body.location_lng == null || body.location_lng === '' ? null : Number(body.location_lng);
     const service_type = clean(body.service_type, 120);
-    const preferred_date = clean(body.preferred_date, 10);
-    const preferred_time = clean(body.preferred_time, 8);
-    const work_details = clean(body.work_details, 2000);
+    const selected_category = clean(body.selected_category, 40);
+    const selected_rate_tier = clean(body.selected_rate_tier, 40);
+    const selected_duration_hours = Number(body.selected_duration_hours);
+    const rateCard = { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 };
+    const rateCardVersion = "SRK-CUSTOMER-LABOUR-2026-11-13-V1";
+    // SRK ELECTRONIC accepts immediate service requests only; ignore legacy schedule fields.
+    const preferred_date = null;
+    const preferred_time = null;
+const work_details = clean(body.work_details, 2000);
     const payment_method = clean(body.payment_method, 80) || "नकद (Cash)";
     const quoted_amount = body.quoted_amount == null || body.quoted_amount === ""
       ? null : Number(body.quoted_amount);
@@ -141,11 +147,17 @@ exports.handler = async (event) => {
       event.headers?.authorization || event.headers?.Authorization || "",
       phone
     );
+    const idempotencyKey = event.headers?.["idempotency-key"] || event.headers?.["Idempotency-Key"] || "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
+      return json(400, { success: false, error: "बुकिंग अनुरोध की सुरक्षित पहचान नहीं मिली। कृपया दोबारा कोशिश करें।" });
+    }
 
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
-        !validDate(preferred_date) || !validTime(preferred_time)) {
-      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, तारीख और समय भरें।" });
+        !["home_wiring", "electrical_repair", "light_fan_fitting", "home_repair", "other"].includes(selected_category) ||
+        !Object.prototype.hasOwnProperty.call(rateCard, selected_rate_tier) ||
+        !Number.isInteger(selected_duration_hours) || selected_duration_hours < 1 || selected_duration_hours > 8) {
+      return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, श्रेणी और अवधि भरें।" });
     }
     if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
@@ -155,15 +167,58 @@ exports.handler = async (event) => {
       return json(400, { success: false, error: "भुगतान राशि सही नहीं है।" });
     }
 
-    const inserted = await supabase("service_bookings", {
-      method: "POST",
-      body: JSON.stringify([{
-        customer_name, phone, state, district, pincode, address, service_type,
-        preferred_date, preferred_time, work_details, payment_method, quoted_amount, location_lat, location_lng,
-        status: "new", payment_status: "unpaid",
-        ...(customer_user_id ? { customer_user_id } : {})
-      }])
-    });
+    const rate8hPaise = rateCard[selected_rate_tier];
+    const estimatedLabourPaise = Math.floor((rate8hPaise * selected_duration_hours) / 8 + 0.5);
+    const requestFingerprint = crypto.createHash("sha256").update(JSON.stringify({
+      customer_user_id, customer_name, phone, state, district, pincode, address,
+      location_lat, location_lng, service_type, selected_category, selected_rate_tier,
+      selected_duration_hours, work_details, payment_method
+    })).digest("hex");
+    const findByRequestKey = () => supabase(
+      "service_bookings?select=id,customer_user_id,customer_request_fingerprint&customer_request_key=eq." + encodeURIComponent(idempotencyKey),
+      { method: "GET" }
+    );
+    const existingRows = await findByRequestKey();
+    const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+    if (existing) {
+      if (existing.customer_user_id !== customer_user_id || existing.customer_request_fingerprint !== requestFingerprint) {
+        return json(409, { success: false, error: "यह बुकिंग अनुरोध पहचान पहले अलग जानकारी के साथ इस्तेमाल हो चुकी है। नई बुकिंग शुरू करें।" });
+      }
+      const priorOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(existing.id));
+      const priorOfferRows = Array.isArray(priorOffers) ? priorOffers : [];
+      return json(200, { success: true, booking_id: existing.id, replayed: true,
+        estimate: { amount_paise: estimatedLabourPaise, amount_rupees: (estimatedLabourPaise / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: rateCardVersion },
+        offers_created: priorOfferRows.length, match_level: priorOfferRows[0]?.match_level || null,
+        message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
+    }
+    let inserted;
+    try {
+      inserted = await supabase("service_bookings", {
+        method: "POST",
+        body: JSON.stringify([{
+          customer_name, phone, state, district, pincode, address, service_type,
+          selected_category, selected_rate_tier, selected_duration_hours,
+          estimated_labour_paise: estimatedLabourPaise,
+          estimate_rate_card_version: rateCardVersion,
+          customer_request_key: idempotencyKey,
+          customer_request_fingerprint: requestFingerprint,
+          preferred_date, preferred_time, work_details, payment_method, quoted_amount: null, location_lat, location_lng,
+          status: "new", payment_status: "unpaid",
+          ...(customer_user_id ? { customer_user_id } : {})
+        }])
+      });
+    } catch (insertError) {
+      if (insertError.dbCode !== "23505") throw insertError;
+      const racedRows = await findByRequestKey();
+      const raced = Array.isArray(racedRows) ? racedRows[0] : null;
+      if (!raced || raced.customer_user_id !== customer_user_id || raced.customer_request_fingerprint !== requestFingerprint) throw insertError;
+      const racedOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(raced.id));
+      const racedOfferRows = Array.isArray(racedOffers) ? racedOffers : [];
+      return json(200, { success: true, booking_id: raced.id, replayed: true,
+        estimate: { amount_paise: estimatedLabourPaise, amount_rupees: (estimatedLabourPaise / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: rateCardVersion },
+        offers_created: racedOfferRows.length, match_level: racedOfferRows[0]?.match_level || null,
+        message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
+    }
     const booking = Array.isArray(inserted) ? inserted[0] : null;
     if (!booking || !booking.id) throw new Error("Booking insert returned no booking ID.");
 
@@ -186,12 +241,13 @@ exports.handler = async (event) => {
     return json(200, {
       success: true,
       booking_id: booking.id,
+      estimate: { amount_paise: estimatedLabourPaise, amount_rupees: (estimatedLabourPaise / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: rateCardVersion },
       offers_created: offersCreated,
       match_level: offersCreated ? matchLevel : null,
       message: !offerStatusChecked
         ? "बुकिंग सेव हो गई है, लेकिन ऑफर की स्थिति अभी जाँची नहीं जा सकी। हमारी टीम से पुष्टि करें।"
         : offersCreated
-          ? `बुकिंग सेव हो गई। ${offersCreated} approved और active इलेक्ट्रिशियन को ${matchLevel === "pincode" ? "इसी PIN Code" : "इसी जिले"} का ऑफर बनाया गया है।`
+          ? `बुकिंग सेव हो गई। आपकी चुनी हुई श्रेणी के एक approved और active इलेक्ट्रिशियन को ${matchLevel === "pincode" ? "इसी PIN Code" : "इसी जिले"} का पहला ऑफर भेजा गया है। जवाब न मिलने या अस्वीकार होने पर अगला eligible इलेक्ट्रिशियन चुना जाएगा।`
           : "बुकिंग सेव हो गई। इस PIN Code या जिले में अभी कोई approved और active इलेक्ट्रिशियन उपलब्ध नहीं मिला।"
     });
   } catch (error) {

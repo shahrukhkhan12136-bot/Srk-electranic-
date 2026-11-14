@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(11);
 select ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
  'payment history requires authenticated identity');
 select ok(position('b.customer_user_id=v_uid' in pg_get_functiondef('public.srk_customer_get_payment_history(integer,integer)'::regprocedure))>0,
@@ -24,3 +24,5 @@ select ok(has_function_privilege('authenticated','public.srk_customer_get_paymen
  'payment history RPC is authenticated-only');
 select * from finish();
 rollback;
+select ok(coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc where oid='public.srk_customer_get_payment_history(integer,integer)'::regprocedure),false),
+ 'security definer RPC uses an empty search_path');
