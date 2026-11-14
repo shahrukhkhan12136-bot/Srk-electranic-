@@ -63,9 +63,22 @@ begin
     select * into v_event from public.srk_razorpay_webhook_events
       where payload_sha256=p_payload_sha256 for update;
     if found and v_event.event_type=p_event_type then
-      update public.srk_razorpay_webhook_events set last_received_at=clock_timestamp()
+      if v_event.state in ('processed','ignored') then
+        update public.srk_razorpay_webhook_events set last_received_at=clock_timestamp()
+          where event_id=v_event.event_id;
+        return jsonb_build_object('success',true,'duplicate',true,'should_process',false,'state',v_event.state);
+      end if;
+      if v_event.state='processing' and v_event.lease_expires_at>clock_timestamp() then
+        return jsonb_build_object('success',true,'in_progress',true,'should_process',false);
+      end if;
+      update public.srk_razorpay_webhook_events
+        set state='processing',attempt_count=attempt_count+1,claim_token=v_token,
+            lease_expires_at=clock_timestamp()+interval '2 minutes',
+            last_received_at=clock_timestamp(),last_error=null,completed_at=null
         where event_id=v_event.event_id;
-      return jsonb_build_object('success',true,'duplicate',true,'should_process',false,'state',v_event.state);
+      return jsonb_build_object('success',true,'should_process',true,
+        'claim_token',v_token,'canonical_event_id',v_event.event_id,
+        'attempt_count',v_event.attempt_count+1);
     end if;
     if not found then raise exception 'WEBHOOK_EVENT_CLAIM_RETRY'; end if;
   end if;
