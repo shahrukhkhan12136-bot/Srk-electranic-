@@ -1135,3 +1135,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin reject path, `processing` state exclusion, `sync_error` recovery queue, service-role-only RPC grants और OTP request throttling का static cross-review किया; कोई live action नहीं हुआ।
 - Source-only; SMS provider/template, Deno runtime, SQL compilation और वास्तविक OTP/Admin flow अंतिम consolidated QA में बाकी हैं।
 - Commit: `eb522983a9ba0c4483a7d1c41ee4279463e1711e`.
+
+
+### 2026-11-14 — Phone-change Auth/profile synchronization retry safety
+- Admin finalization RPC अब प्रोफ़ाइल नंबर बदलने से पहले `auth.users.phone` को OTP-सत्यापित नए नंबर से मिलाती है; mismatch पर profile finalize नहीं होती।
+- Edge Function अब claim के बाद Auth phone दोबारा पढ़ती है: यदि Auth पहले से नए नंबर पर है तो update दोहराए बिना finalization retry करती है; यदि पुराना नंबर है तभी update करती है; कोई तीसरा नंबर या read failure मिलने पर request को `sync_error` में सुरक्षित रखती है।
+- Finalization fail होने पर rollback केवल तब होता है जब Auth अभी भी इसी request के नए नंबर पर हो। किसी independently बदले तीसरे नंबर को overwrite नहीं किया जाता। इससे interrupted partial-sync recovery सुरक्षित हुई।
+- Source-only; migration लागू नहीं, Edge Function deploy नहीं, SQL/Deno runtime या वास्तविक Auth/OTP flow नहीं चलाया। अंतिम consolidated QA में concurrency, Auth read/update failures, profile finalize failure और rollback permutations जाँचने हैं।
+- Commits: `bed76c5a4cf3ee5dc78d1b7bfda17db55b17aa3f`, `33c35e50c0c7e25315e0554c68c9162edea24bf3`.
