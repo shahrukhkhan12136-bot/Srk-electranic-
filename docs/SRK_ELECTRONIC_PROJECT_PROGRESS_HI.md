@@ -1721,3 +1721,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 ### Audit entity constraint — latest Production catalog correction (14 नवम्बर 2026)
 - नवीनतम read-only `pg_constraint` introspection में Production `srk_admin_audit_events_entity_type_check` ने `razorpay_refund` को पहले से allow-list में शामिल दिखाया। इसलिए पिछली tracker note का कथन कि Production constraint में यह value missing थी, नवीनतम catalog evidence से पुष्ट नहीं होता और उसे superseded माना जाए।
 - Feature Branch migration फिर भी वही complete allow-list deterministically enforce करती है, ताकि fresh/source schema में generic audit table definition और Razorpay refund audit trigger एक-दूसरे के अनुरूप रहें। Production में कोई बदलाव नहीं किया।
+
+
+### Foundational baseline provenance — consolidated setup file located (14 नवम्बर 2026)
+- Current Feature Branch के `COMPLETE_DATABASE_SETUP.sql` में पहले से `service_bookings`, `electrician_applications`, `electrician_profiles`, `srk_admin_users` की CREATE definitions और `is_srk_admin()` function मौजूद हैं। `SUPABASE_SCHEMA.sql` में मूल तीन application tables भी हैं। इसलिए पिछली note का “repository में foundational CREATE provenance नहीं मिली” वाला व्यापक अर्थ सुधारें: definitions migration chain में नहीं, लेकिन consolidated SQL Editor bootstrap script में मौजूद हैं।
+- Migration chain को इस project की existing setup procedure के अनुरूप `COMPLETE_DATABASE_SETUP.sql` द्वारा बनाए गए base schema के बाद चलना चाहिए। New financial/refund migration इन्हीं base objects पर निर्भर है। Full bootstrap script + पूरी migration chain का end-to-end fresh database replay अभी नहीं किया गया, इसलिए उसे अभी certify नहीं कहेंगे।
+- इस baseline script में `is_srk_admin()` का मूल `search_path=public,auth` था; नई migration इसे `search_path=''` में harden करती है और Production के verified authenticated/service_role execute grants बनाए रखती है।
