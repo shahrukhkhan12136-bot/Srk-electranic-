@@ -33,13 +33,13 @@ select ok(position('length(btrim(p_reference)) < 4' in
   pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))>0,
   'payout settlement requires a bounded UTR or UPI reference');
 
-select ok(position('from public.service_bookings' in
+select ok(position('select * into v_booking' in
   pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))
-  < position('from public.srk_electrician_payouts' in
+  < position('select * into v_row' in
   pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))
   and position('for update' in
   pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))>0,
-  'settlement follows booking-first row locking before payout mutation');
+  'settlement locks the booking before locking and mutating its payout row');
 select ok(position('v_row.payout_status <> '||quote_literal('pending') in
   pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))>0,
   'only a pending payout can be marked paid');
