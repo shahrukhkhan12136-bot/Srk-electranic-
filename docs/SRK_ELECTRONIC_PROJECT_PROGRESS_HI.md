@@ -1,3 +1,12 @@
+## 2026-11-15 — Customer refund submission + Main Admin review queue
+
+- Customer refund RPCs added in `20261115100000_customer_refund_request_contract.sql`; they require authenticated ownership and verified payment, serialize on the booking row, prevent duplicate refund records, permit resubmission only after rejection, and keep Admin notes out of Customer refund history. New categorized bookings require a completed booking, immutable labour bill, fully settled cancellation-fee items and exact captured-payment reconciliation. Eligibility guards use `IS DISTINCT FROM` to reject NULL payment/booking states safely.
+- Main Admin refund queue and decision RPCs added in `20261115110000_admin_refund_review_queue_and_decisions.sql`. Queue exposes customer/booking/payment/reconciliation information only to Main Admin. Decision RPC locks the request and enforces `requested → in_review/approved/rejected` and `in_review → approved/rejected`, with a required 10–2000 character audit note and actor attribution. Approval/rejection does not call Razorpay or change payment status.
+- Added Main Admin-only Refund Requests panel to `admin.html`; it loads requests, supports review/approve/reject, and provides a shortcut to populate the separate Razorpay full-refund form after approval. Approval is clearly described as not issuing money automatically.
+- Commits: customer RPC migration `d309a206` (null-safe follow-up `98fdac5c`); customer pgTAP `70273d29` (null-safe assertion follow-up `64128829`); Admin queue migration `5b676acc`; Admin pgTAP `392d8b77`; Admin UI `1dbf1eda`.
+- Re-fetched source files and verified Customer pgTAP plan 17/17 and Admin pgTAP plan 12/12, plus null-safe eligibility, Main Admin authorization, row lock, state transitions, UI queue integration and no payment-provider side effect in the decision RPC. **Static/source verification only; pgTAP, browser and provider integration tests have not run.**
+- No database migration applied, no real customer request/approval/refund made, no Razorpay request sent, no Production/deployment/merge change. Mobile QA remains deferred to the consolidated final pass.
+
 ## 2026-11-15 — Customer refund request RPC contract added
 
 - Added `supabase/migrations/20261115100000_customer_refund_request_contract.sql` with the exact Customer Portal RPC contracts: `srk_customer_create_booking_refund_request(uuid,text)` and `srk_customer_list_booking_refund_requests()`.
