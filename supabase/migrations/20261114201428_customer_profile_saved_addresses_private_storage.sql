@@ -195,7 +195,9 @@ using(bucket_id='srk-customer-avatars' and (storage.foldername(name))[1]=auth.ui
 drop policy if exists srk_customer_avatar_upload_own on storage.objects;
 create policy srk_customer_avatar_upload_own on storage.objects
 for insert to authenticated
-with check(bucket_id='srk-customer-avatars' and (storage.foldername(name))[1]=auth.uid()::text);
+with check(bucket_id='srk-customer-avatars'
+  and (storage.foldername(name))[1]=auth.uid()::text
+  and owner_id=(select auth.uid()::text));
 drop policy if exists srk_customer_avatar_delete_own on storage.objects;
 create policy srk_customer_avatar_delete_own on storage.objects
 for delete to authenticated
