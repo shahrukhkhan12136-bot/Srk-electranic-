@@ -1361,3 +1361,5 @@ Master Requirements Section 6 की दोबारा जाँच में �
 
 
 - अतिरिक्त source review (14-11-2026): Staff activation RPC में अब `auth.users.email_confirmed_at` सत्यापित होता है; unverified ईमेल वाले invited account को Active नहीं किया जा सकता। Electrician support status RPC में NULL status की explicit rejection भी जोड़ी, जिससे PostgreSQL की NULL boolean semantics के कारण invalid status आगे न बढ़ सके। pgTAP source assertion को verified-email activation rule से align किया। Commits: migration `5f98dad697676f4a45434492414eeca001144a15`, test `df77508eba271ab80ef2324223313450ed7a79c2`. ये source-only बदलाव हैं; migration/pgTAP runtime में नहीं चलाए गए।
+
+- Staff invite flow के लिए optional server-only `ADMIN_PORTAL_REDIRECT_URL` support जोड़ा। Redirect URL malformed या non-localhost HTTP हो तो function fail-closed करता है; production redirect को Supabase Auth Redirect URLs allow-list में जोड़ना होगा। Env unset होने पर Supabase configured Site URL default रहेगा। Commit: `fb5501e4010736299f9763d156e5e465d42caff0`. Function deploy/configure नहीं किया गया; कोई invite email नहीं भेजी गई।
