@@ -4,6 +4,7 @@
 <div class="card"><h2>ग्राहक Cancellation Requests — Admin निर्णय</h2>
 <p class="muted">ग्राहक के अनुरोध यहाँ आएँगे। Admin को इलेक्ट्रिशियन की वास्तविक स्थिति सत्यापित करके प्रमाण और कारण दर्ज करना अनिवार्य है। शुल्क केवल स्वीकृत नियमों के अनुसार होगा: घर से नहीं निकला ₹0, रास्ते में ₹49, ग्राहक के घर पहुँच चुका ₹99। निर्णय से पहले बुकिंग रद्द नहीं होगी।</p>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="alt" type="button" onclick="loadAdminCancellationRequests()">Requests रीफ़्रेश करें</button><span id="adminCancellationStatus" class="muted" aria-live="polite"></span></div>
+<div id="adminCancellationFeeLedgerSummary" class="grid" style="margin-top:12px">Cancellation fee ledger summary लोड हो रही है…</div>
 <div id="adminCancellationInbox" class="scroll" style="margin-top:12px">Cancellation requests लोड हो रही हैं…</div>
 </div>
 <div class="card"><h2>काम का इतिहास और विवाद समीक्षा</h2>
@@ -41,7 +42,23 @@ async function loadAdminCancellationRequests(){
  const box=document.getElementById('adminCancellationInbox'),status=document.getElementById('adminCancellationStatus');
  if(!sb||!user||!box)return;
  box.textContent='Cancellation requests लोड हो रही हैं…';status.textContent='';
- const {data,error}=await sb.rpc('srk_admin_list_booking_cancellation_requests');
+ const [{data,error},{data:ledgerSummary,error:ledgerError}]=await Promise.all([
+  sb.rpc('srk_admin_list_booking_cancellation_requests'),
+  sb.rpc('srk_admin_get_cancellation_fee_ledger_summary')
+ ]);
+ const ledgerBox=document.getElementById('adminCancellationFeeLedgerSummary');
+ if(ledgerBox){
+  if(ledgerError)ledgerBox.textContent='Cancellation fee ledger summary उपलब्ध नहीं: '+ledgerError.message;
+  else{
+   const money=key=>'₹'+(Number(ledgerSummary?.[key]||0)/100).toFixed(2);
+   ledgerBox.innerHTML='<article class="card"><small>खुला बकाया</small><div class="stat">'+money('open_debt_paise')+'</div></article>'+
+    '<article class="card"><small>अगली booking में आरक्षित</small><div class="stat">'+money('reserved_debt_paise')+'</div></article>'+
+    '<article class="card"><small>जमा / settle हुई फीस</small><div class="stat">'+money('settled_debt_paise')+'</div></article>'+
+    '<article class="card"><small>Online SRK collection</small><div class="stat">'+money('online_collected_paise')+'</div></article>'+
+    '<article class="card"><small>Cash electrician wallet debit</small><div class="stat">'+money('cash_electrician_debit_paise')+'</div></article>'+
+    '<article class="card"><small>Ledger entries</small><div class="stat">'+Number(ledgerSummary?.ledger_entries||0)+'</div></article>';
+  }
+ }
  if(error){box.textContent='Requests लोड नहीं हुईं: '+error.message;status.textContent='Admin RPC / migration जाँचें।';return;}
  const rows=Array.isArray(data)?data:[];
  if(!rows.length){box.textContent='अभी कोई cancellation request नहीं है।';status.textContent='0 requests';return;}
