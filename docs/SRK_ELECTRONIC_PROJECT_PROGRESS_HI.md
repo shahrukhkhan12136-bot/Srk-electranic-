@@ -1575,3 +1575,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Static assertion counts: payout reconciliation 25/25; cancellation/refund accounting 31/31। ये SQL source/plan checks हैं, pgTAP/PostgreSQL runtime results नहीं।
 - Commits: payout test `ec6bc3b35c977592e1d7e8ade5df8ab38621f5aa`; lock assertion correction `e8c4d906aceaba9f3f990be6d1aa2c35f5b998bc`; service JWT guard `504c90e09de1aaab0ef05bdf5279691282f1f0b3` और `c125a7d93570be28ceea39d571b0faca5fee78a6`; refund role tests `b82ec8b3dd6453a22cd36dda2574a5db11673b13`।
 - कोई migration apply नहीं की गई; कोई live payment/refund/payout, deploy, production change या merge नहीं हुआ।
+
+### Admin payout status UI polish (14 नवम्बर 2026)
+- Admin payout table में pending/paid/blocked/refunded के लिए स्पष्ट Hindi labels जोड़े और blocked payout का सुरक्षित, escaped reason/note दिखाया। कोई payout action या payment behavior नहीं बदला।
+- Admin inline JavaScript syntax parse check: 1/1 inline script PASS।
+- Current static test source counts: payout 25/25, cancellation/refund 31/31, webhook inbox 15/15। PostgreSQL/pgTAP runtime और वास्तविक Razorpay/Netlify tests अभी शेष हैं।
+- Commit: `0a2d36c1cc59e64d9247adab934e7390cbfd5ba8`।
