@@ -1518,5 +1518,5 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पहले `srk_service_reconcile_booking_refund()` उलटे क्रम में Refund row `FOR UPDATE` लेकर बाद में Booking update करती थी। Provider reconciliation और Admin refund preparation एक ही booking पर साथ चलें तो lock inversion/deadlock संभव था।
 - Feature Branch migration `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` में reconciliation अब पहले refund से booking ID पढ़ती है (बिना row lock), फिर Booking `FOR UPDATE` lock करती है, फिर उसी booking से जुड़ा Refund row `FOR UPDATE` lock करती है। Record बदल/गायब होने पर fail-closed error।
 - pgTAP source test `cancellation_fee_refund_reversal.test.sql` में booking-first lock order assertion जोड़ा; plan 24→25।
-- Static source verification: test file में `plan(25)` और 25 assertion calls का exact match जाँचना बाकी; PostgreSQL compile, pgTAP execution और वास्तविक concurrent transaction test अभी नहीं चलाए गए।
+- Static source verification: test file में `plan(25)` और 25 assertion calls का exact match **25/25 PASS**; PostgreSQL compile, pgTAP execution और वास्तविक concurrent transaction test अभी नहीं चलाए गए।
 - यह केवल Feature Branch source change है; कोई Production migration, refund, payout, provider API call या deployment नहीं हुआ। Admin Finance/Cancellation अभी Partial है।
