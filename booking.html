@@ -1459,7 +1459,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
     const bookingPayload = {
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
-      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), preferred_date: null, preferred_time: null,
+      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), 
       selected_rate_tier: value('rateTier'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method
     };
