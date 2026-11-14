@@ -1,5 +1,5 @@
 begin;
-select plan(11);
+select plan(13);
 
 select ok(
  has_function_privilege('authenticated','public.srk_customer_list_complaint_message_attachments(uuid)','EXECUTE')
@@ -68,6 +68,15 @@ select ok(
  position('public.is_srk_admin()' in lower(pg_get_functiondef('public.srk_customer_support_object_access(text,boolean)'::regprocedure)))>0
  and position('srk_customer_support_object_access(name,true)' in lower(pg_get_expr((select polqual from pg_policy where polname='srk_customer_support_read_own_or_admin' and polrelid='storage.objects'::regclass),'storage.objects'::regclass)))>0,
  'private support storage read policy allows verified Main Admin while retaining owner checks'
+);
+
+select ok(
+ position('p_mime_type is null' in lower(pg_get_functiondef('public.srk_customer_link_complaint_message_attachment(uuid,uuid,text,text,text,bigint)'::regprocedure)))>0,
+ 'attachment linker explicitly rejects a NULL MIME type'
+);
+select ok(
+ position('p_file_size_bytes is null' in lower(pg_get_functiondef('public.srk_customer_link_complaint_message_attachment(uuid,uuid,text,text,text,bigint)'::regprocedure)))>0,
+ 'attachment linker explicitly rejects a NULL file size'
 );
 
 select * from finish();
