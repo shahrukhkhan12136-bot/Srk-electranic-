@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(21);
+SELECT plan(23);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -73,6 +73,8 @@ SELECT ok(
   AND position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_staff()'::regprocedure))>0,
   'staff management list and status RPCs enforce Main Admin authorization'
 );
+SELECT has_function('public','srk_admin_list_staff_sessions',ARRAY['uuid'],'Main Admin can list staff session metadata');
+SELECT has_function('public','srk_admin_staff_revoke_session',ARRAY['uuid','text'],'Main Admin can revoke a specific staff session');
 
 SELECT * FROM finish();
 ROLLBACK;
