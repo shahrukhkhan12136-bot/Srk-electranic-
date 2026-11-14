@@ -1279,3 +1279,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - ग्राहक शिकायत की स्थिति/नोट सेव करने के लिए प्रति-शिकायत duplicate-submit guard, वास्तविक workflow states (`new`, `in_review`, `resolved`, `closed`) की allowlist, missing-field handling और save के दौरान button lock जोड़ा। UI select और source validation का मिलान किया।
 - Customer support reply में concurrent duplicate send guard, button lock और selected thread बदलने पर गलत reply composer साफ न करने की सुरक्षा जोड़ी।
 - Commits: `f940000caad10e7ccc976be823b9998badd18e79`, `6d6facb23acb3d67ad94612dbd4915300265ea55`. Source-only; runtime/database tests final consolidated QA में।
+
+
+### 2026-11-14 — Admin KYC और customer thread hardening
+- KYC document review में प्रति-दस्तावेज़ duplicate-submit guard, decision allowlist (`approved`, `rejected`, `needs_resubmission`), rejection/resubmission reason minimum 5 chars, 1000-char note cap, in-flight button lock और safe failure message जोड़ा।
+- Customer support thread loader में request-generation guard जोड़ा ताकि पुराने धीमे response से बाद में खोली गई दूसरी शिकायत की बातचीत overwrite न हो।
+- Commit `c34cb478f208752410ad1352bbdfa6c76d9560ec`; source-only, final consolidated QA में runtime verification शेष।
