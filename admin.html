@@ -1,6 +1,19 @@
 <!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SRK ELECTRONIC | Admin</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
 :root{font-family:system-ui,Arial;color:#14213d;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}.top{background:#102a43;color:white;padding:20px}.wrap{max-width:1100px;margin:auto;padding:18px}.card{background:white;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 3px 16px #102a4312}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.stat{font-size:28px;font-weight:800;color:#087e8b}input,button,select{font:inherit;padding:11px;border-radius:8px;border:1px solid #ccd5df}button{background:#087e8b;color:white;border:0;cursor:pointer;margin:3px}button.alt{background:#334e68}table{width:100%;border-collapse:collapse;min-width:700px}td,th{text-align:left;padding:10px;border-bottom:1px solid #e6edf3;font-size:14px}.scroll{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}.muted{color:#627d98}.hidden{display:none}.danger{color:#b42318}.tag{padding:4px 8px;background:#e6f4f1;border-radius:20px;font-size:12px}
-</style></head><body><header class="top"><div class="wrap"><h1>SRK ELECTRONIC — Admin Panel</h1><p>ग्राहक बुकिंग • इलेक्ट्रिशियन • काम और कमीशन</p></div></header><main class="wrap"><section class="card" id="login"><h2>Admin लॉगिन</h2><p class="muted">अपने SRK Admin ईमेल और पासवर्ड से लॉगिन करें।</p><input id="email" type="email" autocomplete="username" placeholder="Admin ईमेल" style="width:min(100%,360px)"><br><br><input id="password" type="password" autocomplete="current-password" placeholder="पासवर्ड" style="width:min(100%,360px)"><br><br><button onclick="emailLogin()">Admin Login</button><p id="authmsg"></p></section><section id="app" class="hidden"><div class="card"><button class="alt" onclick="loadAll()">↻ Refresh</button><button class="alt" onclick="logout()">Logout</button><span id="who" class="muted"></span></div>
+</style></head><body><header class="top"><div class="wrap"><h1>SRK ELECTRONIC — Admin Panel</h1><p>ग्राहक बुकिंग • इलेक्ट्रिशियन • काम और कमीशन</p></div></header><main class="wrap"><section class="card" id="login"><h2>Admin / Support Staff लॉगिन</h2><p class="muted">अपने SRK Admin ईमेल और पासवर्ड से लॉगिन करें।</p><input id="email" type="email" autocomplete="username" placeholder="Admin ईमेल" style="width:min(100%,360px)"><br><br><input id="password" type="password" autocomplete="current-password" placeholder="पासवर्ड" style="width:min(100%,360px)"><br><br><button onclick="emailLogin()">लॉगिन</button><p id="authmsg"></p></section><section id="app" class="hidden"><div class="card"><button class="alt" onclick="refreshAdminPortal()">↻ Refresh</button><button class="alt" onclick="logout()">Logout</button><span id="who" class="muted"></span></div><div class="card staff-only hidden" id="staffSupportCustomerCard">
+<h2>ग्राहक सहायता — Assigned Cases</h2>
+<p class="muted">यहाँ केवल आपको सौंपे गए ग्राहक सहायता मामले दिखेंगे। ग्राहक का फोन नंबर, पता और अन्य निजी प्रोफ़ाइल जानकारी इस स्क्रीन पर उपलब्ध नहीं है।</p>
+<button type="button" class="alt" onclick="loadStaffSupportInbox()">रीफ़्रेश करें</button><span id="staffCustomerStatus" class="muted" aria-live="polite"></span>
+<div id="staffCustomerInbox" style="margin-top:12px">Assigned शिकायतें लोड हो रही हैं…</div>
+<div id="staffCustomerThreadPanel" class="card hidden"><h3 id="staffCustomerThreadTitle">ग्राहक बातचीत</h3><div id="staffCustomerThread"></div><textarea id="staffCustomerReply" rows="3" maxlength="4000" style="width:100%;padding:10px" placeholder="ग्राहक को जवाब लिखें"></textarea><button onclick="sendStaffCustomerReply()">जवाब भेजें</button><span id="staffCustomerReplyStatus" class="muted"></span></div>
+</div>
+<div class="card staff-only hidden" id="staffSupportElectricianCard">
+<h2>इलेक्ट्रिशियन सहायता — Assigned Cases</h2>
+<p class="muted">यहाँ केवल आपको सौंपे गए इलेक्ट्रिशियन सहायता मामले दिखेंगे। निजी फोन नंबर, KYC, बैंक/UPI विवरण और अन्य संवेदनशील जानकारी उपलब्ध नहीं है।</p>
+<button type="button" class="alt" onclick="loadStaffSupportInbox()">रीफ़्रेश करें</button><span id="staffElectricianStatus" class="muted" aria-live="polite"></span>
+<div id="staffElectricianInbox" style="margin-top:12px">Assigned अनुरोध लोड हो रहे हैं…</div>
+<div id="staffElectricianThreadPanel" class="card hidden"><h3 id="staffElectricianThreadTitle">इलेक्ट्रिशियन बातचीत</h3><div id="staffElectricianThread"></div><textarea id="staffElectricianReply" rows="3" maxlength="4000" style="width:100%;padding:10px" placeholder="इलेक्ट्रिशियन को जवाब लिखें"></textarea><button onclick="sendStaffElectricianReply()">जवाब भेजें</button><span id="staffElectricianReplyStatus" class="muted"></span></div>
+</div>
 <div class="card" id="adminStaffManagementCard">
 <h2>Staff Management — Support टीम</h2>
 <p class="muted">यह नियंत्रण केवल Main Admin के लिए है। नए Staff को केवल Support भूमिका मिलेगी। आमंत्रण के बाद भी Staff तब तक सिस्टम नहीं खोल पाएगा जब तक Main Admin उसे Active न करे। Finance, Refund, Payout, KYC और Cancellation Approval अधिकार Staff को नहीं मिलते।</p>
@@ -108,7 +121,134 @@ async function revokeAdminStaffSession(sessionId,staffId){
  if(error||data!==true){alert('Session revoke की पुष्टि नहीं हुई।');return;}
  await loadAdminStaffSessions(staffId);
 }
-async function showState(){const run=++adminAuthRun,activeUser=user,login=document.getElementById('login'),app=document.getElementById('app');if(!activeUser){adminLoadedUserId=null;login.classList.remove('hidden');app.classList.add('hidden');return;}document.getElementById('who').textContent=activeUser.email||'';const {data,error}=await sb.rpc('is_srk_admin');if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;if(error||data!==true){adminLoadedUserId=null;document.getElementById('authmsg').textContent='इस ईमेल को Admin अनुमति नहीं मिली है। Supabase srk_admin_users सूची जाँचें।';login.classList.remove('hidden');app.classList.add('hidden');await sb.auth.signOut();return;}login.classList.add('hidden');app.classList.remove('hidden');if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await loadAll()}}
+let adminPortalMode='main_admin';
+function setAdminPortalMode(mode){
+ adminPortalMode=mode;
+ const app=document.getElementById('app');
+ [...app.children].forEach(el=>{
+  if(el.querySelector('button[onclick="logout()"]'))return;
+  const staffOnly=el.classList.contains('staff-only');
+  if(staffOnly)el.classList.toggle('hidden',mode!=='staff');
+  else el.classList.toggle('hidden',mode!=='main_admin');
+ });
+ const who=document.getElementById('who');
+ if(who)who.textContent=(user?.email||'')+(mode==='staff'?' • Support Staff':' • Main Admin');
+}
+async function refreshAdminPortal(){
+ await showState();
+ if(adminPortalMode==='main_admin')await loadAll();
+ else if(adminPortalMode==='staff')await loadStaffSupportInbox();
+}
+async function showState(){
+ const run=++adminAuthRun,activeUser=user,login=document.getElementById('login'),app=document.getElementById('app');
+ if(!activeUser){adminLoadedUserId=null;login.classList.remove('hidden');app.classList.add('hidden');return;}
+ const {data:isAdmin,error:adminError}=await sb.rpc('is_srk_admin');
+ if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;
+ if(!adminError&&isAdmin===true){
+  setAdminPortalMode('main_admin');
+  login.classList.add('hidden');app.classList.remove('hidden');
+  if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await loadAll();}
+  return;
+ }
+ const {data:canReadCustomer,error:permissionError}=await sb.rpc('srk_has_admin_permission',{p_permission_key:'support.customer.read'});
+ if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;
+ if(permissionError||canReadCustomer!==true){
+  adminLoadedUserId=null;document.getElementById('authmsg').textContent='इस खाते को Main Admin या सक्रिय Support Staff अनुमति नहीं मिली।';
+  login.classList.remove('hidden');app.classList.add('hidden');await sb.auth.signOut();return;
+ }
+ const {data:sessionRegistered,error:sessionError}=await sb.rpc('srk_admin_staff_register_session');
+ if(run!==adminAuthRun||!user||user.id!==activeUser.id)return;
+ if(sessionError||sessionRegistered!==true){
+  adminLoadedUserId=null;document.getElementById('authmsg').textContent='Support Staff session सुरक्षित रूप से register नहीं हुआ। दोबारा लॉगिन करें या Main Admin से संपर्क करें।';
+  login.classList.remove('hidden');app.classList.add('hidden');await sb.auth.signOut();return;
+ }
+ setAdminPortalMode('staff');
+ login.classList.add('hidden');app.classList.remove('hidden');
+ if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await loadStaffSupportInbox();}
+}
+let staffCustomerSelectedId=null,staffElectricianSelectedId=null;
+let staffSupportLoadBusy=false,staffSupportReplyBusy=false;
+async function loadStaffSupportInbox(){
+ if(!sb||!user||adminPortalMode!=='staff'||staffSupportLoadBusy)return;
+ staffSupportLoadBusy=true;
+ const customerBox=document.getElementById('staffCustomerInbox'),electricianBox=document.getElementById('staffElectricianInbox');
+ const cs=document.getElementById('staffCustomerStatus'),es=document.getElementById('staffElectricianStatus');
+ customerBox.textContent='ग्राहक शिकायतें लोड हो रही हैं…';electricianBox.textContent='इलेक्ट्रिशियन अनुरोध लोड हो रहे हैं…';
+ try{
+  const [customers,electricians]=await Promise.all([
+   sb.rpc('srk_admin_staff_list_customer_complaints'),
+   sb.rpc('srk_admin_staff_list_electrician_tickets')
+  ]);
+  if(customers.error)throw customers.error;
+  if(electricians.error)throw electricians.error;
+  const cr=customers.data||[],er=electricians.data||[];
+  cs.textContent=cr.length+' assigned ग्राहक मामले';
+  es.textContent=er.length+' assigned इलेक्ट्रिशियन मामले';
+  customerBox.innerHTML=cr.map(x=>'<article class="card"><b>'+esc(x.category||'ग्राहक सहायता')+' • '+esc(x.status)+'</b><p>Booking ID: <code>'+esc(x.booking_id)+'</code></p><p style="white-space:pre-wrap">'+esc(x.description)+'</p><small>'+esc(x.created_at)+'</small><div><select id="staff-customer-status-'+x.id+'"><option value="in_review" '+(x.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(x.status==='resolved'?'selected':'')+'>हल हो गई</option></select><button onclick="updateStaffCustomerComplaint(\''+x.id+'\')">स्थिति अपडेट</button><button class="alt" onclick="openStaffCustomerThread(\''+x.id+'\')">बातचीत खोलें</button></div></article>').join('')||'<p>अभी आपको कोई ग्राहक शिकायत नहीं सौंपी गई है।</p>';
+  electricianBox.innerHTML=er.map(x=>'<article class="card"><b>'+esc(x.subject)+'</b><p>'+esc(x.category)+' • '+esc(x.status)+'</p>'+(x.booking_id?'<p>Booking ID: <code>'+esc(x.booking_id)+'</code></p>':'')+'<small>'+esc(x.created_at)+'</small><div><select id="staff-electrician-status-'+x.id+'"><option value="in_review" '+(x.status==='in_review'?'selected':'')+'>जाँच में</option><option value="resolved" '+(x.status==='resolved'?'selected':'')+'>हल हो गया</option></select><button onclick="updateStaffElectricianTicket(\''+x.id+'\')">स्थिति अपडेट</button><button class="alt" onclick="openStaffElectricianThread(\''+x.id+'\')">बातचीत खोलें</button></div></article>').join('')||'<p>अभी आपको कोई इलेक्ट्रिशियन सहायता अनुरोध नहीं सौंपा गया है।</p>';
+ }catch(e){
+  customerBox.textContent='Assigned सहायता सूची लोड नहीं हुई। कृपया refresh करें।';
+  electricianBox.textContent='Assigned सहायता सूची लोड नहीं हुई। कृपया refresh करें।';
+ }finally{staffSupportLoadBusy=false;}
+}
+async function updateStaffCustomerComplaint(id){
+ const status=document.getElementById('staff-customer-status-'+id)?.value;
+ const reason=prompt('स्थिति बदलने का कारण लिखें (5–500 अक्षर):');if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ const {data,error}=await sb.rpc('srk_admin_staff_update_customer_complaint',{p_complaint_id:id,p_status:status,p_reason:reason.trim()});
+ if(error||data!==true){alert('स्थिति अपडेट नहीं हुई। यह case अब आपको assigned न हो तो Main Admin से संपर्क करें।');return;}
+ await loadStaffSupportInbox();
+}
+async function openStaffCustomerThread(id){
+ staffCustomerSelectedId=id;
+ const panel=document.getElementById('staffCustomerThreadPanel'),box=document.getElementById('staffCustomerThread');
+ panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';
+ const {data,error}=await sb.rpc('srk_admin_staff_list_customer_messages',{p_complaint_id:id});
+ if(error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
+ box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक')+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ document.getElementById('staffCustomerThreadTitle').textContent='ग्राहक बातचीत • '+id;
+}
+async function sendStaffCustomerReply(){
+ if(staffSupportReplyBusy)return;
+ const id=staffCustomerSelectedId,field=document.getElementById('staffCustomerReply'),status=document.getElementById('staffCustomerReplyStatus'),body=field.value.trim();
+ if(!id||!body||body.length>4000){status.textContent='बातचीत खोलें और 1–4000 अक्षरों का जवाब लिखें।';return;}
+ staffSupportReplyBusy=true;
+ try{
+  const {data,error}=await sb.rpc('srk_admin_staff_send_customer_message',{p_complaint_id:id,p_body:body});
+  if(error||!data)throw error||new Error('SEND_FAILED');
+  field.value='';status.textContent='जवाब भेज दिया गया।';await openStaffCustomerThread(id);
+ }catch(e){status.textContent='जवाब नहीं भेजा गया। कृपया फिर कोशिश करें.';}
+ finally{staffSupportReplyBusy=false;}
+}
+async function updateStaffElectricianTicket(id){
+ const statusValue=document.getElementById('staff-electrician-status-'+id)?.value;
+ const reason=prompt('स्थिति बदलने का कारण लिखें (5–500 अक्षर):');if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ const {data,error}=await sb.rpc('srk_admin_staff_update_electrician_ticket',{p_ticket_id:id,p_status:statusValue,p_reason:reason.trim()});
+ if(error||data!==true){alert('स्थिति अपडेट नहीं हुई। कृपया Main Admin से संपर्क करें।');return;}
+ await loadStaffSupportInbox();
+}
+async function openStaffElectricianThread(id){
+ staffElectricianSelectedId=id;
+ const panel=document.getElementById('staffElectricianThreadPanel'),box=document.getElementById('staffElectricianThread');
+ panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';
+ const {data,error}=await sb.rpc('srk_admin_staff_list_electrician_messages',{p_ticket_id:id});
+ if(error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
+ box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'इलेक्ट्रिशियन')+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ document.getElementById('staffElectricianThreadTitle').textContent='इलेक्ट्रिशियन बातचीत • '+id;
+}
+async function sendStaffElectricianReply(){
+ if(staffSupportReplyBusy)return;
+ const id=staffElectricianSelectedId,field=document.getElementById('staffElectricianReply'),status=document.getElementById('staffElectricianReplyStatus'),body=field.value.trim();
+ if(!id||!body||body.length>4000){status.textContent='बातचीत खोलें और 1–4000 अक्षरों का जवाब लिखें।';return;}
+ staffSupportReplyBusy=true;
+ try{
+  const {data,error}=await sb.rpc('srk_admin_staff_send_electrician_message',{p_ticket_id:id,p_body:body});
+  if(error||!data)throw error||new Error('SEND_FAILED');
+  field.value='';status.textContent='जवाब भेज दिया गया।';await openStaffElectricianThread(id);
+ }catch(e){status.textContent='जवाब नहीं भेजा गया। कृपया फिर कोशिश करें.';}
+ finally{staffSupportReplyBusy=false;}
+}
 async function emailLogin(){const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;if(!email||!password){document.getElementById('authmsg').textContent='ईमेल और पासवर्ड दोनों भरें।';return;}const {data,error}=await sb.auth.signInWithPassword({email,password});document.getElementById('authmsg').textContent=error?.message||'लॉगिन जाँच रहे हैं…';if(!error){user=data.user;await showState();}}
 let adminLogoutBusy=false;
 async function logout(){
