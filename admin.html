@@ -448,8 +448,8 @@ async function toggleActive(id,active){
     alert('Active करने से पहले KYC Approved और पूरा Admin-approved रेट-श्रेणी रिकॉर्ड आवश्यक है।');return;
    }
   }
-  const {data:updated,error}=await sb.from('electrician_profiles').update({active}).eq('id',id).select('id').maybeSingle();
-  if(error||!updated)throw error||new Error('No profile updated');
+  const {data:updated,error}=await sb.rpc('srk_admin_set_electrician_active',{p_profile_id:id,p_active:active});
+  if(error||!updated?.success)throw error||new Error('Activation change was not confirmed');
   await loadAll();
  }catch(e){alert('इलेक्ट्रिशियन की स्थिति अपडेट नहीं हुई। Admin अनुमति, KYC और रेट-श्रेणी जाँचें।');}
  finally{adminActiveToggleBusy.delete(id);}
