@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(43);
+SELECT plan(45);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -134,6 +134,17 @@ SELECT ok(
   position('p_case_type is null' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure))>0
   AND position('status<>''closed''' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure))>0,
   'assignment rejects invalid case type and closed cases'
+);
+
+SELECT ok(
+  position('support.customer.read' in pg_get_functiondef('public.srk_admin_staff_send_customer_message(uuid,text)'::regprocedure))>0
+  AND position('support.customer.read' in pg_get_functiondef('public.srk_admin_staff_update_customer_complaint(uuid,text,text)'::regprocedure))>0,
+  'customer support mutations also require customer read permission'
+);
+SELECT ok(
+  position('support.electrician.read' in pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure))>0
+  AND position('support.electrician.read' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure))>0,
+  'electrician support mutations also require electrician read permission'
 );
 
 SELECT * FROM finish();
