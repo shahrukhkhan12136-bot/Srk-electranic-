@@ -948,3 +948,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पहले से मौजूद नई शिकायत create-button guard कायम है।
 - Static checks: message duplicate guard, list-load guard, stale-thread protection, local attachment result handling, create guard — PASS. booking.html inline JavaScript syntax — PASS.
 - Source-only; कोई वास्तविक ग्राहक शिकायत, संदेश या attachment upload नहीं किया। Customer/Admin account isolation, Storage signed URLs और partial-upload recovery का runtime परीक्षण अंतिम consolidated QA में होगा।
+
+## 2026-11-14 — Admin Electrician Payout Action Reliability
+- Admin payout list में concurrent duplicate load guard और स्पष्ट loading/error state जोड़ी।
+- प्रत्येक payout पर अलग duplicate-action guard और busy button state जोड़ी।
+- भुगतान दर्ज करने से पहले UPI/Bank method validation, वास्तविक UTR/reference की न्यूनतम लंबाई और अधिकतम field length जाँची जाती है।
+- UI दोबारा स्पष्ट करता है कि Paid केवल वास्तविक बैंक/UPI transfer के बाद ही दर्ज करें।
+- Raw backend errors UI में दिखाने के बजाय सुरक्षित Hindi संदेश दिए।
+- Static checks: load guard, per-payout duplicate guard, method/reference validation, busy state, safe error and actual-transfer confirmation — PASS. Admin inline JavaScript syntax — PASS.
+- Source-only; कोई payout status, बैंक ट्रांसफर या wallet ledger नहीं बदला। वास्तविक Admin RPC permission, duplicate race और payout accounting का runtime test अंतिम consolidated QA में होगा।
