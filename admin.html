@@ -291,16 +291,34 @@ async function saveBookingInternal(id){
  await loadAll();
 }
 async function review(id,decision){if(!confirm('आवेदन '+decision+' करना है?'))return;let {error}=await sb.rpc('srk_admin_review_application',{p_application_id:id,p_decision:decision});if(error)alert(error.message);else loadAll()}
+const adminRateTierBusy=new Set();
+const adminActiveToggleBusy=new Set();
 async function saveRateTier(id){
+ if(adminRateTierBusy.has(id))return;
  const tier=document.getElementById('rate-tier-'+id)?.value;
- if(!tier){alert('पहले इलेक्ट्रिशियन की श्रेणी चुनें।');return;}
+ if(!['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'].includes(tier)){alert('मान्य रेट-श्रेणी चुनें।');return;}
  if(!confirm('क्या इस KYC-approved इलेक्ट्रिशियन की व्यावसायिक रेट-श्रेणी स्वीकृत करनी है?'))return;
- const {data,error}=await sb.rpc('srk_admin_set_electrician_rate_tier',{p_electrician_profile_id:id,p_rate_tier:tier});
- if(error){alert('रेट-श्रेणी स्वीकृत नहीं हुई: '+error.message);return;}
- alert('इलेक्ट्रिशियन की Admin-approved रेट-श्रेणी सुरक्षित हो गई। अब उसे Active किया जा सकता है।');
- await loadAll();
+ adminRateTierBusy.add(id);
+ try{
+  const {error}=await sb.rpc('srk_admin_set_electrician_rate_tier',{p_electrician_profile_id:id,p_rate_tier:tier});
+  if(error)throw error;
+  alert('इलेक्ट्रिशियन की Admin-approved रेट-श्रेणी सुरक्षित हो गई। अब उसे Active किया जा सकता है।');
+  await loadAll();
+ }catch(e){alert('रेट-श्रेणी स्वीकृत नहीं हुई। KYC स्थिति और Admin अनुमति जाँचें, फिर दोबारा प्रयास करें。');}
+ finally{adminRateTierBusy.delete(id);}
 }
-async function toggleActive(id,active){let {error}=await sb.from('electrician_profiles').update({active}).eq('id',id);if(error)alert(error.message);else loadAll()}
+async function toggleActive(id,active){
+ if(adminActiveToggleBusy.has(id))return;
+ if(typeof active!=='boolean'){alert('मान्य Active/Inactive विकल्प चुनें।');return;}
+ if(!confirm(active?'क्या इस स्वीकृत इलेक्ट्रिशियन को Active करना है?':'क्या इस इलेक्ट्रिशियन को Inactive करना है?'))return;
+ adminActiveToggleBusy.add(id);
+ try{
+  const {error}=await sb.from('electrician_profiles').update({active}).eq('id',id);
+  if(error)throw error;
+  await loadAll();
+ }catch(e){alert('इलेक्ट्रिशियन की स्थिति अपडेट नहीं हुई। Admin अनुमति और KYC स्थिति जाँचें।');}
+ finally{adminActiveToggleBusy.delete(id);}
+}
 function mapUrl(x){const q=(x.location_lat!=null&&x.location_lng!=null)?`${x.location_lat},${x.location_lng}`:[x.address,x.district,x.state,x.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q)}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}init();
 </script></body></html>
