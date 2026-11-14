@@ -18,6 +18,12 @@ ALTER TABLE public.service_bookings
   ADD COLUMN IF NOT EXISTS labour_rate_card_version_snapshot text;
 
 ALTER TABLE public.service_bookings
+  DROP CONSTRAINT IF EXISTS service_bookings_work_timer_seconds_check;
+ALTER TABLE public.service_bookings
+  ALTER COLUMN work_timer_seconds TYPE bigint
+  USING work_timer_seconds::bigint;
+
+ALTER TABLE public.service_bookings
   DROP CONSTRAINT IF EXISTS service_bookings_status_check;
 ALTER TABLE public.service_bookings
   ADD CONSTRAINT service_bookings_status_check CHECK (status = ANY (ARRAY[
