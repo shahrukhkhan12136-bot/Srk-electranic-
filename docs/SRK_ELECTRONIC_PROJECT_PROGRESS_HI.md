@@ -1581,3 +1581,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin inline JavaScript syntax parse check: 1/1 inline script PASS।
 - Current static test source counts: payout 25/25, cancellation/refund 31/31, webhook inbox 15/15। PostgreSQL/pgTAP runtime और वास्तविक Razorpay/Netlify tests अभी शेष हैं।
 - Commit: `0a2d36c1cc59e64d9247adab934e7390cbfd5ba8`।
+
+### Admin cancellation decision lock-order hardening (14 नवम्बर 2026)
+- Cancellation review में Admin decision RPC का lock order Request → Booking था, जबकि customer cancellation request पहले Booking row lock करती है। इसे एक समान Booking → Request क्रम में बदला।
+- Admin RPC अब पहले request का booking ID बिना row lock पढ़ता है, Booking row को `FOR UPDATE` lock करता है, फिर Cancellation Request को `FOR UPDATE` lock करके booking relationship और pending status दोबारा validate करता है। इससे lock inversion/deadlock का जोखिम घटता है और stale/changed relationship पर fail-closed व्यवहार रहता है।
+- `cancellation_fee_refund_reversal.test.sql` में Admin cancellation lock order regression assertion जोड़ा; pgTAP plan/assertion source count **32/32** match। यह static source verification है, PostgreSQL compile या pgTAP runtime execution नहीं।
+- Commits: migration `823355c06a85aad224014e84cb6a1ca32c17df23`, final booking-ID revalidation `59b4eba912d61bb4f6e702415801d08e839d50e1`, test `9bc85aa40f71b524a16395715b746bdde081fcfb`।
+- कोई migration apply, live data change, payment/refund/payout, deployment या PR merge नहीं हुआ।
