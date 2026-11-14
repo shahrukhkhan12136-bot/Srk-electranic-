@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(23);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
@@ -57,6 +57,26 @@ select ok(position('v_item.id::text' in
 select ok(position('v_item.id::text' in
   pg_get_functiondef('public.srk_admin_record_new_booking_cash_payment(uuid,text,text)'::regprocedure))>0,
   'cash collection idempotency is unique per booking fee item');
+
+select ok(position('v_booking.selected_category is not null' in
+  pg_get_functiondef('public.srk_admin_prepare_razorpay_refund(uuid,text)'::regprocedure))>0
+  and position('srk_booking_labour_bills' in
+  pg_get_functiondef('public.srk_admin_prepare_razorpay_refund(uuid,text)'::regprocedure))>0,
+  'Razorpay refund preparation supports server-timed labour bills without legacy quote approval');
+select ok(position('PAID_AMOUNT_DOES_NOT_MATCH_IMMUTABLE_LABOUR_AND_FEE_LEDGER' in
+  pg_get_functiondef('public.srk_admin_prepare_razorpay_refund(uuid,text)'::regprocedure))>0,
+  'new booking refund amount reconciles to immutable labour plus settled fee items');
+select ok(position('payout_status='||quote_literal('blocked') in
+  pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
+  'manual refund blocks an unpaid electrician payout before refund completion');
+select ok(position('ELECTRICIAN_PAYOUT_ALREADY_PAID_RECOVERY_REQUIRED' in
+  pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
+  'manual refund fails closed when electrician payout is already paid');
+select ok(position('p_provider_status is null' in
+  pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0
+  and position('p_provider_status='||quote_literal('processed') in
+  pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
+  'provider reconciliation rejects missing status and requires provider refund ID on success');
 
 select * from finish();
 rollback;
