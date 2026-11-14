@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(65);
+SELECT plan(66);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -307,6 +307,27 @@ SELECT ok(
   position('for share of c,a' in lower(pg_get_functiondef('public.srk_admin_staff_list_customer_complaints()'::regprocedure)))>0
   AND position('for share of t,a' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure)))>0,
   'Staff inbox list reads lock both case and ownership rows so concurrent reassignment cannot return stale assigned cases'
+);
+
+SELECT ok(
+  NOT EXISTS (
+    SELECT 1
+      FROM pg_constraint c
+     WHERE c.conrelid='public.srk_admin_staff_audit_events'::regclass
+       AND c.contype='f'
+       AND (
+         'actor_user_id'::text = ANY (
+           SELECT a.attname::text FROM pg_attribute a
+            WHERE a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+         )
+         OR
+         'target_user_id'::text = ANY (
+           SELECT a.attname::text FROM pg_attribute a
+            WHERE a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey)
+         )
+       )
+  ),
+  'immutable audit actor and target UUIDs have no ON DELETE SET NULL foreign keys that would mutate historical rows'
 );
 
 SELECT * FROM finish();
