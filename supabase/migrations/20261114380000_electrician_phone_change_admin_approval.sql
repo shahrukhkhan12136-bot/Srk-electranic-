@@ -313,7 +313,9 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
-declare v_row public.srk_electrician_phone_change_requests%rowtype;
+declare
+  v_row public.srk_electrician_phone_change_requests%rowtype;
+  v_auth_phone text;
 begin
   if not exists(select 1 from public.srk_admin_users a where a.user_id=p_admin_id) then
     raise exception 'Admin अनुमति आवश्यक है।';
@@ -323,6 +325,16 @@ begin
   if not found or v_row.status <> 'processing' or v_row.reviewed_by<>p_admin_id then
     raise exception 'मोबाइल अपडेट की प्रक्रिया की स्थिति मेल नहीं खाती।';
   end if;
+
+  -- Finalize the profile only after Auth is confirmed on the OTP-verified number.
+  select u.phone into v_auth_phone from auth.users u
+  where u.id=v_row.electrician_user_id and u.phone_confirmed_at is not null;
+  if v_auth_phone is null
+     or regexp_replace(v_auth_phone,'[^0-9]','','g') <>
+        regexp_replace(v_row.new_phone,'[^0-9]','','g') then
+    raise exception 'Supabase लॉगिन नंबर OTP-सत्यापित नए नंबर से मेल नहीं खाता।';
+  end if;
+
   update public.electrician_profiles
   set phone=v_row.new_phone
   where id=v_row.electrician_profile_id
