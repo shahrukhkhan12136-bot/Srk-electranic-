@@ -118,7 +118,7 @@ CREATE OR REPLACE FUNCTION public.srk_reject_booking_work_event_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','pg_temp'
+SET search_path = ''
 AS $function$
 BEGIN
   RAISE EXCEPTION 'Booking work history is append-only'
