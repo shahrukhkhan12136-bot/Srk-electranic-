@@ -921,3 +921,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - यदि किसी booking का stop request विफल हो, logout रोक दिया जाता है और उपयोगकर्ता को दोबारा प्रयास करने का संदेश मिलता है; pending booking IDs retry के लिए रखी जाती हैं।
 - Static verification: GPS watch clear, server stop RPC, stop confirmation before sign-out, retry state retention — PASS. Electrician inline JavaScript syntax — PASS.
 - Source-only बदलाव; कोई live GPS session, production data या deployment नहीं छुआ। वास्तविक GPS/logout behavior अंतिम consolidated QA में जाँचा जाएगा।
+
+## 2026-11-14 — Electrician Support Messaging Reliability
+- सहायता अनुरोध बनाने और जवाब भेजने पर duplicate-submit guards जोड़े।
+- अनुरोध/जवाब भेजते समय संबंधित बटन disable और स्पष्ट busy label दिखाता है; प्रक्रिया पूरी होने पर फिर enable होता है।
+- तेज़ी से अलग-अलग सहायता बातचीत खोलने पर पुराने धीमे network response को नए thread पर overwrite करने से रोका।
+- Error संदेशों में raw backend exception text दिखाने के बजाय सुरक्षित, उपयोगकर्ता-समझने योग्य संदेश रखे।
+- Static checks: duplicate guards, disabled states, stale-thread protection, safe errors, no schedule UI — PASS. Electrician inline JavaScript syntax — PASS.
+- Source-only; कोई support ticket/message या production DB परिवर्तन नहीं किया। वास्तविक multi-account isolation और RPC runtime परीक्षण अंतिम consolidated QA में होंगे।
