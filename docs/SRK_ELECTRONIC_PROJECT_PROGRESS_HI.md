@@ -1595,3 +1595,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression test अब final effective RPC definition में `v_booking_id` lock order assert करता है। Cancellation/refund pgTAP source test plan/assertion count **32/32** match; source-level checks में दोनों migrations और अंतिम override क्रम सही पाया गया।
 - Commits: final accounting migration fix `910b10182f2c58d91b730fa2497152d11525f529`; regression test `1365294fe53a6e6f3400464aeec0f7bd0703da46`।
 - यह static/source verification है; PostgreSQL compile, pgTAP runtime या concurrent transaction test नहीं चला। कोई migration apply, production change, deploy, real cancellation/payment/refund या PR merge नहीं हुआ।
+
+### Cancellation fee allocation source-booking reference fix (14 नवम्बर 2026)
+- Accounting/refund source review में schema gap मिला: receipt, customer fee-item listing, online/cash settlement और full-refund reversal `srk_booking_cancellation_fee_items.source_booking_id` पढ़ रहे थे, लेकिन allocation table में यह column परिभाषित नहीं था। इससे संबंधित SQL functions runtime पर fail हो सकते थे।
+- Accounting migration अब column जोड़ती है, पहले से मौजूद allocations को debt table के `source_booking_id` से backfill करती है और फिर `NOT NULL` लागू करती है। Booking creation reservation trigger debt से source booking पढ़कर हर allocation में persist करता है।
+- Regression test में schema + reservation-trigger assertion जोड़ा गया। Cancellation/refund pgTAP source test plan/assertion count **33/33** match; source checks में receipt/refund references के लिए column उपलब्ध है और allocation insert इसे भरता है।
+- Commits: migration `5f36545e197361194a2deff0443acbe734387672`; test `4f0483511f1e204c56513d2d81e115189375ca25`।
+- केवल feature-branch source/static verification। PostgreSQL/pgTAP runtime अभी नहीं चला; कोई migration apply, production change, payment/refund या deploy नहीं हुआ।
