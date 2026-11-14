@@ -963,3 +963,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Re-read SELECT में `selected_category` वापस शामिल किया, ताकि initial read और lock के बाद की read दोनों समान payment-path decision data रखें।
 - Static verification: JavaScript syntax PASS; दोनों booking SELECT statements में `selected_category` मौजूद — PASS.
 - Source-only; Razorpay order/payment या database record नहीं बनाया/बदला। वास्तविक order-lock race, amount validation और captured-payment reconciliation अंतिम consolidated QA में जाँचे जाएँगे।
+
+## 2026-11-14 — New Category Booking Electrician Payout Reconciliation
+- Read-only Supabase audit में मौजूदा payout trigger और Admin payout RPC की जाँच की। वे केवल legacy `quote_status='approved'` तथा `service_charge + materials_amount` मॉडल पर निर्भर थे; नए customer-approved server-timed category bookings immutable labour bill और अलग cancellation-fee accounting इस्तेमाल करते हैं।
+- नई source migration `20261114360000_new_category_electrician_payout_reconciliation.sql` जोड़ी।
+- New-category payout immutable labour bill और assigned electrician से सत्यापित होगा; cancellation fee SRK की रहेगी और electrician earnings/commission base में नहीं जुड़ेगी। अभी materials amount शून्य रखा गया है क्योंकि materials का अलग itemized collection/payout integration इस flow में शामिल नहीं है।
+- Trigger reserved/settled cancellation-fee items दोनों को payment-trigger timing में गिनता है, क्योंकि online/cash payment RPC पहले booking को Paid करता है और उसके बाद fee items settle करता है।
+- Admin Paid RPC booking-first lock, Admin authorization, verified payment evidence, immutable bill, electrician assignment और payout arithmetic को दोबारा जाँचता है। Legacy quote payout path सुरक्षित रखा है।
+- Static source checks: category branch, immutable bill, cancellation-fee separation, pre-settlement fee timing, Admin gate, lock order, payment evidence, legacy path and function grants — PASS.
+- Read-only production schema/function inspection हुआ; कोई production SQL, payout status, wallet, bank transfer या payment data नहीं बदला। Migration अभी apply नहीं हुई। SQL runtime compilation, trigger ordering, cash/online payout creation, refund race और Admin payout execution अंतिम consolidated QA में जाँचे जाएँगे।
