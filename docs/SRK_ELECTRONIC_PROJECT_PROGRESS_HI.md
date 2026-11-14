@@ -1027,3 +1027,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Existing fee evidence और Admin reason length validation कायम रखी; backend error अब raw alert में नहीं दिखता।
 - Admin inline JavaScript syntax PASS; decision/stage allowlists, duplicate guard और safe error handling source verification PASS।
 - Source-only; कोई cancellation request approve/reject नहीं हुई और कोई booking/fee/ledger record नहीं बदला।
+
+## 2026-11-14 — Admin Booking Save / Electrician Activation Hardening
+- Admin booking status केवल अनुमत states (`new`, `confirmed`, `assigned`, `in_progress`, `completed`) में स्वीकार; cancellation dedicated Admin workflow में ही रहेगा।
+- Booking update और electrician Active/Inactive update के बाद affected row लौटने की पुष्टि; silent zero-row update को success नहीं माना जाएगा।
+- Electrician को Active करने से पहले KYC Approved और मान्य approved rate tier जाँचा जाता है।
+- Raw backend errors हटाकर सुरक्षित Hindi messages; मौजूदा duplicate-action guard कायम।
+- Admin inline JavaScript syntax PASS; allowlist, KYC/tier gate और returned-row checks source verification PASS।
+- Read-only production schema audit: Admin-only RLS UPDATE policies मौजूद; booking status/work approval और audit triggers मौजूद। कोई schema/production परिवर्तन नहीं।
+- Source-only; कोई booking status, payment, electrician Active status या KYC record नहीं बदला।
