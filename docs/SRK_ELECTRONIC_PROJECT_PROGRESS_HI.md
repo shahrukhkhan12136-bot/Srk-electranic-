@@ -938,3 +938,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Inbox और reply के error संदेशों से raw backend details हटाकर सुरक्षित, स्पष्ट Hindi संदेश रखे।
 - Static checks: load/save/reply guards, stale-thread protection, safe errors — PASS. Admin inline JavaScript syntax — PASS.
 - Source-only; कोई वास्तविक ticket, status या message update नहीं किया। Admin role authorization और two-account isolation का runtime test अंतिम consolidated QA में होगा।
+
+## 2026-11-14 — Customer Support Thread and Attachment Reliability
+- Customer support reply भेजने पर duplicate-submit guard और busy state जोड़ी।
+- शिकायत सूची के concurrent duplicate loads रोके।
+- अलग-अलग शिकायतें तेजी से खोलने पर पुराना response वर्तमान बातचीत को overwrite नहीं करेगा।
+- Attachment signed URLs अब हर request के local result में रखे जाते हैं; stale thread की फ़ाइलें दूसरे thread में नहीं मिलेंगी।
+- Customer support conversation loading errors को स्पष्ट और सुरक्षित Hindi संदेशों में बदला।
+- पहले से मौजूद नई शिकायत create-button guard कायम है।
+- Static checks: message duplicate guard, list-load guard, stale-thread protection, local attachment result handling, create guard — PASS. booking.html inline JavaScript syntax — PASS.
+- Source-only; कोई वास्तविक ग्राहक शिकायत, संदेश या attachment upload नहीं किया। Customer/Admin account isolation, Storage signed URLs और partial-upload recovery का runtime परीक्षण अंतिम consolidated QA में होगा।
