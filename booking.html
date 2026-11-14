@@ -199,6 +199,14 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <option value="home_repair">होम रिपेयरिंग</option>
     <option value="other">अन्य</option>
    </select>
+   <label for="rateTier">इलेक्ट्रिशियन की श्रेणी चुनें</label>
+   <select id="rateTier" required>
+    <option value="">श्रेणी चुनें</option>
+    <option value="electrical_assistant">Electrical Assistant — 8 घंटे ₹899</option>
+    <option value="skilled_electrician">Skilled Electrician — 8 घंटे ₹1,199</option>
+    <option value="expert_electrician">Expert Electrician — 8 घंटे ₹1,599</option>
+    <option value="premium_electrical_specialist">Premium Electrical Specialist — 8 घंटे ₹1,999</option>
+   </select>
    <label for="durationHours">काम के लिए अनुमानित समय</label>
    <select id="durationHours" required>
     <option value="">अवधि चुनें (1–8 घंटे)</option>
@@ -207,14 +215,19 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <option value="5">5 घंटे</option><option value="6">6 घंटे</option>
     <option value="7">7 घंटे</option><option value="8">8 घंटे</option>
    </select>
-   <p class="small">यह अवधि केवल बुकिंग का अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना इलेक्ट्रिशियन के Admin-approved rate और सर्वर द्वारा रिकॉर्ड किए गए वास्तविक काम के समय से निकलेगा।</p>
+   <section class="card" id="labourEstimatePanel" aria-live="polite" style="margin:12px 0;border:1px solid #cfe0f5;background:#f5f9ff">
+    <div class="small">आपका अनुमानित मेहनताना</div>
+    <div id="labourEstimateAmount" style="font-size:26px;font-weight:850;color:#0b5ed7;margin:4px 0">श्रेणी और अवधि चुनें</div>
+    <div id="labourEstimateBreakdown" class="small">अनुमान चुनी गई श्रेणी की 8 घंटे की दर और अवधि के आधार पर है।</div>
+   </section>
+   <p class="small">यह केवल अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ग्राहक की चुनी श्रेणी से अलग इलेक्ट्रिशियन नहीं भेजा जाएगा। सामान/पार्ट्स का खर्च मेहनताने से अलग itemized रहेगा।</p>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
    <label for="date">बुकिंग की तारीख</label><input id="date" type="date" required>
    <label for="time">पसंदीदा समय</label><input id="time" type="time" required>
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
    <label for="payment">भुगतान</label>
    <select id="payment" required><option value="Cash">नकद (Cash)</option><option value="Razorpay ऑनलाइन भुगतान">ऑनलाइन भुगतान (Razorpay / UPI)</option></select>
-   <p class="small">पहले इलेक्ट्रिशियन घर आकर काम देखेगा और केवल काम का मेहनताना स्पष्ट करेगा। आपकी मंजूरी के बाद ही काम शुरू होगा। काम पूरा होने पर आपके चुने हुए तरीके से भुगतान होगा। ऑनलाइन भुगतान चुनने पर Razorpay उपलब्ध होगा।</p>
+   <p class="small">आपके चुने हुए इलेक्ट्रिशियन श्रेणी और अनुमान के अनुसार बुकिंग भेजी जाएगी। अलग निरीक्षण quotation या quote-approval प्रक्रिया नहीं है। सामान/पार्ट्स का खर्च अलग दिखाया और स्वीकृत किया जाएगा। भुगतान काम पूरा होने के बाद होगा।</p>
    <button class="btn primary" type="submit">बुकिंग भेजें</button>
   </form>
  </section>
@@ -236,6 +249,17 @@ let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
 document.getElementById('year').textContent = new Date().getFullYear();
+const customerRateCard = { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 };
+function updateLabourEstimate() {
+  const tier=document.getElementById('rateTier')?.value, hours=Number(document.getElementById('durationHours')?.value);
+  const amount=document.getElementById('labourEstimateAmount'), detail=document.getElementById('labourEstimateBreakdown');
+  if(!tier||!customerRateCard[tier]||!Number.isInteger(hours)||hours<1||hours>8){amount.textContent='श्रेणी और अवधि चुनें';detail.textContent='अनुमान चुनी गई श्रेणी की 8 घंटे की दर और अवधि के आधार पर है।';return;}
+  const paise=Math.floor(customerRateCard[tier]*hours/8+0.5);
+  amount.textContent='₹'+(paise/100).toFixed(2);
+  detail.textContent=hours+' घंटे × चुनी गई श्रेणी की दर। अंतिम रकम वास्तविक सर्वर-रिकॉर्डेड समय से बनेगी।';
+}
+document.getElementById('rateTier')?.addEventListener('change',updateLabourEstimate);
+document.getElementById('durationHours')?.addEventListener('change',updateLabourEstimate);
 function initCustomerMenuShell(){
  const dashboard=document.getElementById('customer-dashboard');
  const home=document.getElementById('customerMenuHome');
@@ -1270,6 +1294,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const bookingPayload = {
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), preferred_date: value('date'), preferred_time: value('time'),
+      selected_rate_tier: value('rateTier'),
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method
     };
     const requestKey = customerBookingRequestKey(bookingPayload);
@@ -1279,7 +1304,8 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
     clearCustomerBookingRequestKey(requestKey);
     pendingBookingId = result.booking_id;
-    alert(`बुकिंग नंबर: ${result.booking_id}\n${result.message}`);
+    const estimateText = result.estimate?.amount_rupees ? `\nअनुमानित मेहनताना: ₹${result.estimate.amount_rupees}` : '';
+    alert(`बुकिंग नंबर: ${result.booking_id}${estimateText}\n${result.message}`);
     await loadCustomerBookings();
   } catch (err) {
     alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
