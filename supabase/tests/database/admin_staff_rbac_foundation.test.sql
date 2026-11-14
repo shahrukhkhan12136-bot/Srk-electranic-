@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(56);
+SELECT plan(59);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -212,6 +212,44 @@ SELECT ok(
   AND position('from public.srk_electrician_support_tickets t' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)) <
     position('from public.srk_admin_support_assignments a' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)),
   'Staff replies and status changes lock case rows before assignment rows to avoid lock-order deadlocks'
+);
+
+
+SELECT ok(
+  NOT has_table_privilege('anon','public.srk_admin_staff_audit_events','TRUNCATE')
+  AND NOT has_table_privilege('authenticated','public.srk_admin_staff_audit_events','TRUNCATE')
+  AND EXISTS (
+    SELECT 1 FROM pg_trigger
+     WHERE tgrelid='public.srk_admin_staff_audit_events'::regclass
+       AND tgname='srk_admin_staff_audit_no_truncate'
+       AND NOT tgisinternal
+  ),
+  'audit log denies browser TRUNCATE privilege and has a truncate guard trigger'
+);
+
+SELECT ok(
+  EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid='public.srk_admin_support_assignments'::regclass
+       AND contype='u'
+       AND pg_get_constraintdef(oid) ILIKE 'UNIQUE (case_type, case_id)%'
+  )
+  AND EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid='public.srk_admin_support_assignments'::regclass
+       AND conname='srk_admin_support_assignments_case_type_check'
+       AND pg_get_constraintdef(oid) ILIKE '%customer_complaint%'
+       AND pg_get_constraintdef(oid) ILIKE '%electrician_ticket%'
+  ),
+  'assignment table enforces one owner per case and a closed case-type vocabulary'
+);
+
+SELECT ok(
+  NOT has_table_privilege('anon','public.srk_admin_support_assignments','UPDATE')
+  AND NOT has_table_privilege('authenticated','public.srk_admin_support_assignments','UPDATE')
+  AND NOT has_table_privilege('anon','public.srk_admin_staff_sessions','INSERT')
+  AND NOT has_table_privilege('authenticated','public.srk_admin_staff_sessions','INSERT'),
+  'browser roles cannot mutate assignment ownership or directly register Staff sessions'
 );
 
 SELECT * FROM finish();
