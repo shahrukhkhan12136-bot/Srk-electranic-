@@ -1090,3 +1090,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नई Edge Function `supabase/functions/electrician-phone-change/index.ts`: authenticated caller की पहचान server-side verify करती है; OTP server-side generate/hash करके 2Factor SMS provider से नए नंबर पर भेजती है; केवल सही OTP के बाद Admin inbox में request आती है। Admin approval के समय Supabase Auth phone और electrician profile phone को sync करने की कोशिश की जाती है; profile sync fail होने पर Auth phone rollback का प्रयास और सुरक्षित error state रखी जाती है।
 - Read-only Supabase schema inspection से `electrician_profiles.user_id/auth_user_id/display_name/phone` और `srk_admin_users.user_id` columns की मौजूदगी की पुष्टि हुई। Electrician और Admin inline JavaScript syntax checks PASS।
 - **महत्वपूर्ण सीमाएँ:** यह feature अभी GitHub feature branch पर source-only है। Migration apply नहीं की गई, Edge Function deploy नहीं की गई, SMS provider secret `2FACTOR_API_KEY` configure/verify नहीं किया गया और कोई वास्तविक OTP/SMS या Admin approval नहीं किया गया। SMS provider template/route, Edge Function deployment, SQL runtime compilation, Admin authorization negative tests, duplicate/expiry/OTP retry tests, Auth/profile rollback और end-to-end testing अंतिम consolidated QA में बाकी हैं। Production Auth नंबर, electrician profile या किसी live account में बदलाव नहीं किया गया।
+
+
+## 2026-11-14 — Phone Change Migration SQL Syntax Correction
+- OTP-verified phone update migration की deeper PL/pgSQL review में Admin claim RPC के declaration block में दूसरा DECLARE keyword मिला, जो function compile को रोक सकता था।
+- इसे एक वैध DECLARE block में समेटा; दोबारा GitHub से migration fetch करके पुष्टि की कि malformed repeated declaration pattern अब नहीं है।
+- यह केवल source correction है। वास्तविक PostgreSQL compile/execute अभी नहीं हुआ; वह final consolidated QA में रहेगा। कोई migration apply, Edge Function deploy, SMS या live account change नहीं हुआ।
