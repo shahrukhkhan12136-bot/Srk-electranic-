@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(59);
+SELECT plan(62);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -250,6 +250,38 @@ SELECT ok(
   AND NOT has_table_privilege('anon','public.srk_admin_staff_sessions','INSERT')
   AND NOT has_table_privilege('authenticated','public.srk_admin_staff_sessions','INSERT'),
   'browser roles cannot mutate assignment ownership or directly register Staff sessions'
+);
+
+
+SELECT ok(
+  has_function_privilege('authenticated','public.srk_admin_staff_register_session()','EXECUTE')
+  AND NOT has_function_privilege('anon','public.srk_admin_staff_register_session()','EXECUTE')
+  AND has_function_privilege('authenticated','public.srk_admin_staff_set_status(uuid,text,text)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.srk_admin_staff_set_status(uuid,text,text)','EXECUTE')
+  AND has_function_privilege('authenticated','public.srk_admin_assign_support_case(text,uuid,uuid,text)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.srk_admin_assign_support_case(text,uuid,uuid,text)','EXECUTE'),
+  'authenticated-only RPC grants are present for session, Main Admin lifecycle, and assignment functions'
+);
+
+SELECT ok(
+  has_function_privilege('authenticated','public.srk_admin_staff_list_customer_complaints()','EXECUTE')
+  AND has_function_privilege('authenticated','public.srk_admin_staff_send_customer_message(uuid,text)','EXECUTE')
+  AND has_function_privilege('authenticated','public.srk_admin_staff_update_customer_complaint(uuid,text,text)','EXECUTE')
+  AND has_function_privilege('authenticated','public.srk_admin_staff_list_electrician_tickets()','EXECUTE')
+  AND has_function_privilege('authenticated','public.srk_admin_staff_send_electrician_message(uuid,text)','EXECUTE')
+  AND has_function_privilege('authenticated','public.srk_admin_staff_update_electrician_ticket(uuid,text,text)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.srk_admin_staff_list_customer_complaints()','EXECUTE')
+  AND NOT has_function_privilege('anon','public.srk_admin_staff_list_electrician_tickets()','EXECUTE'),
+  'Staff support RPCs are executable by authenticated users but not anonymous users'
+);
+
+SELECT ok(
+  has_function_privilege('service_role','public.srk_admin_staff_register_invited_user(uuid,text,uuid)','EXECUTE')
+  AND NOT has_function_privilege('authenticated','public.srk_admin_staff_register_invited_user(uuid,text,uuid)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.srk_admin_staff_register_invited_user(uuid,text,uuid)','EXECUTE')
+  AND NOT has_function_privilege('authenticated','public.srk_capture_admin_staff_session_event()','EXECUTE')
+  AND NOT has_function_privilege('anon','public.srk_capture_admin_staff_session_event()','EXECUTE'),
+  'invite-registration is service-role-only and trigger helper cannot be invoked by browser roles'
 );
 
 SELECT * FROM finish();
