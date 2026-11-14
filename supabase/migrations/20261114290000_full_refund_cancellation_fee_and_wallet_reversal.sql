@@ -462,8 +462,14 @@ begin
   select * into v_refund from public.srk_razorpay_refunds
     where id=p_refund_record_id and booking_id=v_booking_id for update;
   if not found then raise exception 'REFUND_RECORD_CHANGED_RETRY'; end if;
-  if v_refund.status='processed' then
-    return jsonb_build_object('success',true,'status','processed','replayed',true);
+  if v_refund.refund_id is not null and p_provider_refund_id is not null
+     and v_refund.refund_id is distinct from p_provider_refund_id then
+    raise exception 'PROVIDER_REFUND_ID_MISMATCH' using errcode='55000';
+  end if;
+  -- Provider refund states are terminal once processed or failed. Ignore late,
+  -- out-of-order events instead of regressing a final state back to processing.
+  if v_refund.status in ('processed','failed') then
+    return jsonb_build_object('success',true,'status',v_refund.status,'replayed',true);
   end if;
   v_status:=case p_provider_status when 'pending' then 'processing'
     when 'processed' then 'processed' else 'failed' end;
