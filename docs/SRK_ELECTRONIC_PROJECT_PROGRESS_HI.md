@@ -1004,3 +1004,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Failure पर raw backend error नहीं दिखता; सुरक्षित Hindi संदेश दिया जाता है और buttons retry के लिए restore होते हैं।
 - Electrician inline JavaScript syntax PASS; duplicate guard, busy state, response validation, safe failure और button wiring PASS।
 - Source-only; कोई वास्तविक offer स्वीकार/अस्वीकार नहीं किया गया। Multi-electrician offer race और actual assignment runtime test अंतिम संयुक्त QA में होंगे।
+
+
+## 2026-11-14 — Admin Booking Action Duplicate-Submission Guard
+- Admin booking status/quote save action में per-booking in-flight guard जोड़ा; एक ही booking पर तेज़ double-click या concurrent submission दूसरा save शुरू नहीं करेगा।
+- Admin offer-dispatch action में per-booking guard जोड़ा; एक ही booking पर duplicate offer-dispatch request रोकता है।
+- Existing business validations, cancellation restriction, payment checks और RPC/table workflows जस के तस रखे गए।
+- Source verification में दोनों guards और wrapper wiring मौजूद — PASS; Admin inline JavaScript syntax — PASS.
+- Source-only; कोई booking status, offer, assignment या payment record बदला नहीं गया।
