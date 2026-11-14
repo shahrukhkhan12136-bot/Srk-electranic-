@@ -903,3 +903,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - बैंक जोड़ना और वास्तविक निकासी अभी भी बंद है; Route onboarding/verification/Admin अनुमति से पहले कोई transfer action नहीं जोड़ा।
 - Static source checks: wallet function, bank/ledger error handling, masked IFSC, primary account, transaction references और disabled withdrawal copy — PASS. Inline JavaScript syntax parse — PASS.
 - यह source-only बदलाव है। वास्तविक bank-link/ledger rendering, अलग-अलग RLS permissions और mobile layout की जाँच अंतिम consolidated QA में होगी; कोई migration, production setting या live payout नहीं बदला।
+
+## 2026-11-14 — SRK प्लेटफॉर्म में Schedule / Appointment विकल्प हटाया
+- ग्राहक की नई बुकिंग स्क्रीन से बुकिंग तारीख और पसंदीदा समय के दोनों input पूरी तरह हटाए।
+- ग्राहक की My Bookings सूची से पुराने scheduled date/time की UI display हटाई; पुराने records के अन्य विवरण सुरक्षित हैं।
+- Electrician App के offer cards से तारीख/समय display हटाया; dashboard की बाकी rendering को restore करके syntax जाँचा।
+- Booking API अब `preferred_date` और `preferred_time` अनिवार्य नहीं मानती; नए अनुरोधों के लिए legacy columns में NULL रखती है और fingerprint में schedule fields शामिल नहीं करती।
+- Admin booking data query से भी schedule columns हटाए; किसी Admin schedule workflow का निर्माण नहीं किया।
+- Static verification: Customer booking UI में date/time inputs नहीं, Customer history में schedule display नहीं, Electrician offer cards में schedule display नहीं; booking/electrician/admin inline JavaScript parse PASS.
+- Source-only बदलाव। कोई production deploy, database migration या live booking नहीं की। वास्तविक deployed behavior अंतिम consolidated QA में जाँचा जाएगा।
