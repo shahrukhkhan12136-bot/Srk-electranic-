@@ -752,3 +752,26 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Cancellation fee evidence अभी Admin द्वारा दर्ज manual verified evidence text है; live travel/arrival telemetry से automatic evidence attachment अभी उपलब्ध नहीं।
 - Migration और UI wiring source-only हैं; actual Supabase migration apply, live Razorpay test-mode transaction, customer/Admin JWT E2E, wallet balance verification और consolidated final mobile QA बाकी हैं।
 - Production deployment, merge, live DB write या payment setting में कोई बदलाव नहीं हुआ।
+
+
+## 14 नवम्बर 2026 — Full Refund पर Cancellation Fee / Electrician Wallet Reversal (Feature Branch)
+
+### नई migration और नियम
+- Migration: `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql`.
+- Booking का `payment_status` केवल verified full refund evidence के बाद `refunded` बन सकता है: Online में processed Razorpay refund record और exact full paise amount; Cash/manual में matching manual refund entry और exact full amount।
+- Refund transition पर उसी Database Transaction में उस booking के settled cancellation-fee items reverse होते हैं। Original ledger row कभी edit/delete नहीं होती; append-only ledger में linked reversal debit entry बनती है।
+- Online refund: SRK cancellation ledger की online collection का बराबर reversal debit।
+- Cash refund: original electrician wallet debit की exact amount का wallet credit reversal, और SRK cancellation ledger में corresponding debit reversal। Original electrician wallet debit missing हो तो refund status transition fail-closed होकर rollback होगा।
+- Reversed fee debt को माफ नहीं किया जाता: debt फिर `open` होता है, ताकि ग्राहक की आगे की booking में वही fee दोबारा अलग मद के रूप में reserve/collect हो सके। Refunded booking का पुराना fee item `reversed` audit state में रहता है।
+- प्रत्येक ledger reversal अपने immutable original ledger row से `reversal_of_entry_id` के जरिए जुड़ा है; unique index duplicate reversal रोकता है।
+- पहले एक debt के लिए केवल एक fee item की global uniqueness थी; उसे हटाकर प्रति booking + debt uniqueness रखी गई, ताकि refunded debt आगे की booking में फिर collect हो सके। Cash/Online collection idempotency भी per booking fee item की गई।
+- Admin summary में net online collection, net cash electrician wallet debit, refunded fee amount और reversal entry count अलग दिखाई देते हैं।
+- Razorpay refund fail होने पर previously blocked, unpaid electrician payout को वापस pending किया जाता है और पुराना payout note restore होता है।
+- नया pgTAP test: `supabase/tests/database/cancellation_fee_refund_reversal.test.sql` (18 assertions)।
+
+### महत्वपूर्ण सीमाएँ / fail-closed सुरक्षा
+- मौजूदा refund APIs पूर्ण booking amount refund करती हैं; partial refund इस cancellation-fee allocation के लिए समर्थित नहीं है और matching full amount न होने पर DB transition reject होगा।
+- पहले से paid electrician payout पर refund preparation/manual refund पहले से block है; paid payout recovery को automatic नहीं माना गया। ऐसे मामले में Admin को payout/provider reconciliation अलग से करनी होगी।
+- Cash reversal तभी होगा जब original cash cancellation-fee ledger और electrician wallet debit दोनों मौजूद हों; missing records पर refund booking status update rollback होगा।
+- Original Razorpay refund processing और bank settlement provider-side workflow पर निर्भर है; केवल DB status update को bank credit का प्रमाण नहीं माना जाएगा।
+- नई migrations/tests source-only हैं। Production database पर कोई DDL, payment, refund, wallet credit/debit या payout action नहीं किया गया। Staging में migration apply और end-to-end verification बाकी है।
