@@ -155,19 +155,48 @@ grant execute on function public.srk_customer_link_complaint_message_attachment(
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('srk-customer-support','srk-customer-support',false,10485760,
   array['image/jpeg','image/png','image/webp','application/pdf']::text[])
-on conflict(id) do nothing;
+on conflict(id) do update set public=false,file_size_limit=10485760,allowed_mime_types=excluded.allowed_mime_types;
+
+create or replace function public.srk_customer_support_object_access(
+  p_object_name text,
+  p_allow_admin boolean default true
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+declare
+  v_user_id uuid := auth.uid();
+  v_parts text[];
+begin
+  if v_user_id is null or p_object_name is null then
+    return false;
+  end if;
+  v_parts := storage.foldername(p_object_name);
+  if p_allow_admin and public.is_srk_admin() then
+    return true;
+  end if;
+  if coalesce(array_length(v_parts,1),0) < 2 or v_parts[1] <> v_user_id::text then
+    return false;
+  end if;
+  return exists(
+    select 1 from public.srk_booking_complaints c
+    where c.id::text=v_parts[2] and c.customer_user_id=v_user_id
+  );
+end;
+$function$;
+
+revoke all on function public.srk_customer_support_object_access(text,boolean) from public,anon;
+grant execute on function public.srk_customer_support_object_access(text,boolean) to authenticated;
 
 drop policy if exists srk_customer_support_upload_own on storage.objects;
 create policy srk_customer_support_upload_own on storage.objects
 for insert to authenticated
 with check (
   bucket_id='srk-customer-support'
-  and exists (
-    select 1 from public.srk_booking_complaints c
-    where c.id::text=(storage.foldername(name))[2]
-      and c.customer_user_id=auth.uid()
-      and (storage.foldername(name))[1]=auth.uid()::text
-  )
+  and public.srk_customer_support_object_access(name,false)
 );
 
 drop policy if exists srk_customer_support_read_own_or_admin on storage.objects;
@@ -175,15 +204,7 @@ create policy srk_customer_support_read_own_or_admin on storage.objects
 for select to authenticated
 using (
   bucket_id='srk-customer-support'
-  and (
-    public.is_srk_admin()
-    or exists (
-      select 1 from public.srk_booking_complaints c
-      where c.id::text=(storage.foldername(name))[2]
-        and c.customer_user_id=auth.uid()
-        and (storage.foldername(name))[1]=auth.uid()::text
-    )
-  )
+  and public.srk_customer_support_object_access(name,true)
 );
 
 drop policy if exists srk_customer_support_delete_own on storage.objects;
@@ -191,10 +212,5 @@ create policy srk_customer_support_delete_own on storage.objects
 for delete to authenticated
 using (
   bucket_id='srk-customer-support'
-  and exists (
-    select 1 from public.srk_booking_complaints c
-    where c.id::text=(storage.foldername(name))[2]
-      and c.customer_user_id=auth.uid()
-      and (storage.foldername(name))[1]=auth.uid()::text
-  )
+  and public.srk_customer_support_object_access(name,false)
 );
