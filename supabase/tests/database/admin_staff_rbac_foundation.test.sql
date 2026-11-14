@@ -35,12 +35,15 @@ SELECT ok(
   NOT EXISTS (
     SELECT 1 FROM public.srk_admin_role_permissions
     WHERE permission_key LIKE 'finance.%'
+       OR permission_key LIKE 'payment.%'
+       OR permission_key LIKE 'wallet.%'
        OR permission_key LIKE 'refund.%'
        OR permission_key LIKE 'payout.%'
+       OR permission_key LIKE 'cancellation.%'
        OR permission_key LIKE 'kyc.%'
        OR permission_key IN ('staff.manage','audit.read','booking.cancel_decide','booking.read_private_contacts')
   ),
-  'Support receives no finance, refund, payout, KYC, staff, audit, cancellation-decision, or private-contact permission'
+  'Support receives no finance, payment, wallet, refund, payout, cancellation-fee, KYC, staff, audit, cancellation-decision, or private-contact permission'
 );
 SELECT ok(
   position('security definer' in lower(pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure)))>0
