@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(13);
 select has_function('public','srk_customer_list_booking_complaints',array[]::text[],'customer complaint list RPC exists');
 select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_list_booking_complaints()'::regprocedure),'customer complaint list uses an empty search_path');
 select ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_list_booking_complaints()'::regprocedure))>0,'customer complaint list requires authenticated identity');
@@ -12,5 +12,6 @@ select ok(has_function_privilege('authenticated','public.srk_customer_list_booki
 select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_create_booking_complaint(uuid,text,text)'::regprocedure),'complaint creation SECURITY DEFINER RPC uses an empty search_path');
 select ok(position('pg_advisory_xact_lock' in pg_get_functiondef('public.srk_customer_create_booking_complaint(uuid,text,text)'::regprocedure))>0,'complaint creation serializes concurrent submissions per customer');
 select ok(position('hashtextextended' in pg_get_functiondef('public.srk_customer_create_booking_complaint(uuid,text,text)'::regprocedure))>0,'complaint rate-limit lock key is derived from authenticated customer identity');
+select ok(position('p_category is null' in pg_get_functiondef('public.srk_customer_create_booking_complaint(uuid,text,text)'::regprocedure))>0,'complaint creation rejects a NULL category explicitly');
 select * from finish();
 rollback;
