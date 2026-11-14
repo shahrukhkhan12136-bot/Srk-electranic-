@@ -35,9 +35,9 @@ begin
   end if;
 
   insert into public.srk_booking_complaint_messages
-    (complaint_id, sender_role, body)
+    (complaint_id, sender_role, sender_user_id, body)
   values
-    (p_complaint_id, 'admin', btrim(p_body))
+    (p_complaint_id, 'admin', v_admin_id, btrim(p_body))
   returning id into v_message_id;
 
   return v_message_id;
