@@ -100,7 +100,7 @@ async function loadMyAreaChangeRequests(){
 }
 async function submitElectricianAreaChange(){
  const state=document.getElementById('areaChangeState').value.trim(),district=document.getElementById('areaChangeDistrict').value.trim(),pin=document.getElementById('areaChangePin').value.trim(),reason=document.getElementById('areaChangeReason').value.trim(),button=document.getElementById('submitAreaChange'),status=document.getElementById('areaChangeStatus');
- if(state.length<2||district.length<2||!/^\\d{6}$/.test(pin)||reason.length<10){status.textContent='राज्य, जिला, 6 अंकों का PIN और कम से कम 10 अक्षरों का कारण भरें।';return;}
+ if(state.length<2||district.length<2||!/^\d{6}$/.test(pin)||reason.length<10){status.textContent='राज्य, जिला, 6 अंकों का PIN और कम से कम 10 अक्षरों का कारण भरें।';return;}
  if(!confirm('क्या आप '+district+', '+state+' को अपना नया काम क्षेत्र बनाना चाहते हैं? Admin की मंजूरी के बाद पुराना क्षेत्र बंद हो जाएगा।'))return;
  button.disabled=true;status.textContent='रिक्वेस्ट सुरक्षित रूप से भेजी जा रही है…';
  try{const {data,error}=await sb.rpc('srk_electrician_request_area_change',{p_state:state,p_district:district,p_pincode:pin,p_reason:reason});if(error)throw error;if(!data?.success)throw new Error('Request not confirmed');status.textContent='रिक्वेस्ट Admin को भेज दी गई है। मंजूरी मिलने तक आपका मौजूदा क्षेत्र चालू रहेगा।';document.getElementById('areaChangeReason').value='';await loadMyAreaChangeRequests();}
