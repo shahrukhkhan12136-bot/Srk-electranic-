@@ -83,3 +83,36 @@ test("asks provider to retry while another worker holds an active lease", async 
   assert.equal(result.statusCode, 503);
   assert.equal(JSON.parse(result.body).retry, true);
 });
+
+test("same signed body cannot be replayed under a changed event header", async t => {
+  let firstClaim = true;
+  let completionCount = 0;
+  let firstHash = null;
+  global.fetch = async (url, options) => {
+    const fn = rpcName(url);
+    if (fn === "srk_service_claim_razorpay_webhook_event") {
+      const body = JSON.parse(options.body);
+      if (firstClaim) {
+        firstClaim = false;
+        firstHash = body.p_payload_sha256;
+        return response(200, { success: true, should_process: true, claim_token: "323e4567-e89b-42d3-a456-426614174000" });
+      }
+      assert.notEqual(body.p_event_id, "evt_replay_original");
+      assert.equal(body.p_payload_sha256, firstHash);
+      return response(200, { success: true, duplicate: true, should_process: false, state: "ignored" });
+    }
+    if (fn === "srk_service_complete_razorpay_webhook_event") {
+      completionCount++;
+      return response(200, { success: true, state: "ignored" });
+    }
+    throw new Error("unexpected RPC " + fn);
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const payload = { event: "payment.authorized" };
+  const first = await handler(event(payload, "evt_replay_original"));
+  const replay = await handler(event(payload, "evt_replay_changed_header"));
+  assert.equal(first.statusCode, 200);
+  assert.equal(replay.statusCode, 200);
+  assert.equal(JSON.parse(replay.body).duplicate, true);
+  assert.equal(completionCount, 1);
+});
