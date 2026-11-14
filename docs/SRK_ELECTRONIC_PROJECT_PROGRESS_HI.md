@@ -1150,3 +1150,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - OTP verify हो जाने, expire होने या पाँच गलत प्रयासों के बाद history refresh पर पुराना OTP request ID और input साफ़ होकर OTP panel छिप जाता है; expired OTP UI में सक्रिय नहीं दिखेगा।
 - Source-only UI correction; वास्तविक OTP/मोबाइल परीक्षण अंतिम consolidated QA में ही होगा।
 - Commit: `7077613a24eb2e3d6ee6476aa06bbaeaf21fb104`.
+
+
+### 2026-11-14 — OTP failure state refresh
+- Electrician OTP verification में गलत OTP / server error आने पर अब request history तुरंत दोबारा पढ़ी जाती है। पाँचवाँ गलत प्रयास OTP को expire करे तो UI उसी response cycle में stale OTP box और request ID साफ़ कर देती है; valid OTP-pending request पर retry UI बनी रहती है।
+- Source-only UI hardening; वास्तविक SMS/OTP और mobile QA अंतिम consolidated चरण में होगा।
+- Commit: `7660b687943d8231920931aa05ddf0c9e0fa56dd`.
