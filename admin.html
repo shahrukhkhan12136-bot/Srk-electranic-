@@ -218,7 +218,7 @@ async function openStaffCustomerThread(id){
  const {data,error}=await sb.rpc('srk_admin_staff_list_customer_messages',{p_complaint_id:id});
  if(request!==staffCustomerThreadRequest||id!==staffCustomerSelectedId)return;
  if(error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
- box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक')+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.is_current_staff_sender?'आप (Support Staff)':(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक'))+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
  document.getElementById('staffCustomerThreadTitle').textContent='ग्राहक बातचीत • '+id;
 }
 async function sendStaffCustomerReply(){
@@ -248,7 +248,7 @@ async function openStaffElectricianThread(id){
  const {data,error}=await sb.rpc('srk_admin_staff_list_electrician_messages',{p_ticket_id:id});
  if(request!==staffElectricianThreadRequest||id!==staffElectricianSelectedId)return;
  if(error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
- box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'इलेक्ट्रिशियन')+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.is_current_staff_sender?'आप (Support Staff)':(m.sender_role==='admin'?'SRK सहायता टीम':'इलेक्ट्रिशियन'))+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
  document.getElementById('staffElectricianThreadTitle').textContent='इलेक्ट्रिशियन बातचीत • '+id;
 }
 async function sendStaffElectricianReply(){
