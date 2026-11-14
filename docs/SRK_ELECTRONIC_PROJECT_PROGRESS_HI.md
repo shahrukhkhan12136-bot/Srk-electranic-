@@ -1,3 +1,9 @@
+### 2026-11-15 — Complaint category validation edge case
+- Follow-up review of the customer complaint RPC found SQL three-valued-logic behavior: `p_category NOT IN (...)` evaluates to NULL when the input category is NULL, so the validation IF could fail to reject it explicitly (depending on the table constraint).
+- Added an explicit `p_category IS NULL` rejection before the allowlist check and expanded the pgTAP structural plan from 12 to 13 assertions to guard the condition.
+- Feature Branch commits: migration `53dea2a66d50054501fa2e817d8c7cd77636d813`; test `cd28261c2faafbfb3ae7f0bef5a396093bf0bef2`. This is source-level/static test coverage only; pgTAP has not been executed against PostgreSQL.
+- No Production database, deployment, merge, or mobile test was changed/performed.
+
 ### 2026-11-15 — Customer work timeline RPC contract correction
 - Detailed branch-vs-function-signature review found `booking.html` called `srk_customer_get_my_booking_work_timeline()` without an argument, while the SECURITY DEFINER RPC requires `p_booking_id uuid`. The previous customer-wide response handling also expected a `booking_id` column that the function intentionally does not return.
 - Fixed the Customer booking loader to request the timeline separately for each booking already filtered by `customer_user_id = auth.uid()`, passing `{p_booking_id: row.id}`, then map returned safe event labels/actor roles/timestamps to that booking. This retains booking-level authorization and avoids introducing a customer-wide event stream.
