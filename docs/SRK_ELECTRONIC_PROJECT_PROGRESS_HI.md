@@ -803,3 +803,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Payout history में भी वही Order ID दिखेगा, ताकि काम और भुगतान रिकॉर्ड का मिलान हो सके।
 - Production schema की read-only जाँच में इन दोनों tables में अभी अलग sequential human-readable ID columns नहीं मिले; इसलिए UI मौजूदा वास्तविक UUIDs को prefix के साथ दिखाता है। Sequential numbering के लिए अलग approved schema migration और data backfill की आवश्यकता होगी; अभी कोई DB/production बदलाव नहीं किया गया।
 - बदलाव source-only हैं; login, offer, timer, payout या mobile runtime परीक्षण अभी नहीं किया गया। अंतिम consolidated QA में जाँचा जाएगा।
+
+
+## Electrician App — सुरक्षित KYC दस्तावेज़ जमा करना (14 नवम्बर 2026)
+- Dashboard में पहचान प्रमाण, पता प्रमाण और कौशल प्रमाणपत्र के लिए अलग upload controls जोड़े। केवल PDF/JPEG/PNG और अधिकतम 5 MB client-side पर validate होता है; server RPC भी MIME, size, document type और user-owned storage path validate करता है।
+- Upload private Storage bucket `srk-electrician-verification` में UID/document-type folder के अंदर random UUID filename के साथ होता है; public URL नहीं बनाया जाता और upsert बंद है।
+- Upload के बाद `srk_electrician_submit_verification_document` RPC document metadata तथा audit event दर्ज करता है; `srk_electrician_list_my_verification_documents` से review status, Admin note और timestamps दिखते हैं। Failed metadata submission पर unreferenced uploaded object cleanup की कोशिश होती है।
+- Read-only Production inspection से bucket private, 5 MB limit, PDF/JPEG/PNG allowlist, upload/read/delete storage policies और संबंधित RPC signatures सत्यापित हुए। KYC tables पर direct client SELECT policy उपलब्ध नहीं मिली; इसलिए frontend private object path सीधे पढ़ने या public URL बनाने की कोशिश नहीं करता। दस्तावेज़ preview/download के लिए अलग ownership-checked signed-URL backend endpoint अभी बाकी है।
+- Static source checks: KYC UI, private bucket, upload RPC, status RPC, 5 MB check और no-public-URL checks PASS। Runtime upload/JWT/storage policy test अंतिम consolidated QA में बाकी; कोई live document upload या production schema change नहीं किया गया।
+- Availability control अभी नहीं जोड़ा गया: मौजूदा `electrician_profiles.active` Admin-controlled activation है, electrician की अपनी availability नहीं। इसे गलत तरीके से toggle नहीं किया जाएगा। अलग secure availability field/RPC और job-dispatch integration आवश्यक है। Live location update/stop controls भी अभी बाकी हैं; केवल booking customer destination directions मौजूदा UI में हैं।
