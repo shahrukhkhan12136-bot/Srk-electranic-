@@ -59,7 +59,7 @@ SELECT has_function('public','srk_admin_staff_set_status',ARRAY['uuid','text','t
 SELECT has_function('public','srk_admin_staff_register_invited_user',ARRAY['uuid','text','uuid'],'service-only invited user registration RPC exists');
 SELECT ok(
   position('auth.sessions' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0
-  AND position('tracked.revoked_at is not null' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0,
+  AND position('tracked.revoked_at is null' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0,
   'staff permissions require a live Auth session and reject revoked tracked sessions'
 );
 SELECT ok(
