@@ -320,7 +320,7 @@ begin
   if v_actor is null or not public.is_srk_admin() then
     raise exception 'ADMIN_ONLY' using errcode = '42501';
   end if;
-  if p_staff_user_id is null or p_status not in ('active','suspended','disabled')
+  if p_staff_user_id is null or p_status is null or p_status not in ('active','suspended','disabled')
      or length(btrim(coalesce(p_reason,''))) < 5
      or length(p_reason) > 500 then
     raise exception 'INVALID_STAFF_STATUS_REQUEST' using errcode = '22023';
@@ -663,7 +663,7 @@ begin
   if v_uid is null or not public.srk_has_admin_permission('support.customer.update_status') then
     raise exception 'SUPPORT_CUSTOMER_STATUS_REQUIRED' using errcode='42501';
   end if;
-  if p_status not in ('in_review','resolved') or p_reason is null
+  if p_status is null or p_status not in ('in_review','resolved') or p_reason is null
      or length(btrim(p_reason)) not between 5 and 500 then
     raise exception 'INVALID_SUPPORT_STATUS_UPDATE' using errcode='22023';
   end if;
@@ -674,6 +674,7 @@ begin
   select c.status into v_old_status from public.srk_booking_complaints c
    where c.id=p_complaint_id for update;
   if not found then raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND' using errcode='P0002'; end if;
+  if v_old_status='closed' then raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000'; end if;
 
   update public.srk_booking_complaints
      set status=p_status,updated_at=clock_timestamp(),updated_by=v_uid,
@@ -799,6 +800,7 @@ begin
   select t.status into v_old_status from public.srk_electrician_support_tickets t
    where t.id=p_ticket_id for update;
   if not found then raise exception 'ELECTRICIAN_TICKET_NOT_FOUND' using errcode='P0002'; end if;
+  if v_old_status='closed' then raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000'; end if;
   update public.srk_electrician_support_tickets
      set status=p_status,updated_at=clock_timestamp(),updated_by=v_uid
    where id=p_ticket_id;
