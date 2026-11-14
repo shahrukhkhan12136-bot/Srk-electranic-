@@ -45,7 +45,7 @@ async function razorpayCreateRefund(record) {
     }
   };
   if (!Number.isSafeInteger(body.amount) || body.amount < 100 ||
-      !/^[A-Za-z0-9_-]{10,64}$/.test(record.idempotency_key || "") ||
+      !/^[A-Za-z0-9_-]{10,40}$/.test(record.idempotency_key || "") ||
       !/^pay_[A-Za-z0-9]+$/.test(record.payment_id || "")) {
     throw new Error("Prepared refund record failed validation");
   }
