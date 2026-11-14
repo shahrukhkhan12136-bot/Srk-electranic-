@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(54);
+SELECT plan(55);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -66,6 +66,17 @@ SELECT ok(
   position('auth.sessions' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0
   AND position('tracked.revoked_at is null' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0,
   'staff permissions require a live Auth session and reject revoked tracked sessions'
+);
+SELECT ok(
+  position('for share' in lower(pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure)))>0
+  AND (SELECT provolatile='v' FROM pg_proc WHERE oid='public.srk_has_admin_permission(text)'::regprocedure)
+  AND (SELECT bool_and(p.provolatile='v') FROM pg_proc p WHERE p.oid IN (
+    'public.srk_admin_staff_list_customer_complaints()'::regprocedure,
+    'public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure,
+    'public.srk_admin_staff_list_electrician_tickets()'::regprocedure,
+    'public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure
+  )),
+  'Staff permission checks lock the active registry row and all Staff read RPCs permit transactional row locking'
 );
 SELECT ok(
   has_function_privilege('service_role','public.srk_admin_staff_register_invited_user(uuid,text,uuid)','EXECUTE')
