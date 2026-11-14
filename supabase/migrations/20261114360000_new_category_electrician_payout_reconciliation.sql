@@ -184,10 +184,7 @@ begin
        or v_booking.assigned_electrician_id is distinct from v_row.electrician_profile_id
        or v_bill.electrician_profile_id is distinct from v_row.electrician_profile_id
        or round(coalesce(v_booking.amount_paid,0),2) <> round(v_expected_amount,2)
-       or (
-         v_booking.razorpay_payment_id is not null
-         and v_booking.razorpay_payment_id is distinct from v_row.razorpay_payment_id
-       )
+       or v_row.razorpay_payment_id is distinct from v_booking.razorpay_payment_id
        or (
          v_booking.razorpay_payment_id is null
          and not exists (
@@ -195,6 +192,10 @@ begin
             where e.booking_id = v_booking.id
               and round(coalesce(e.amount,0),2) = round(coalesce(v_booking.amount_paid,0),2)
          )
+       )
+       or exists (
+         select 1 from public.srk_booking_cancellation_fee_items i
+          where i.booking_id = v_booking.id and i.status = 'reserved'
        )
        or round(coalesce(v_row.gross_service_amount,0),2) <> v_expected_service
        or round(coalesce(v_row.materials_amount,0),2) <> v_expected_materials
