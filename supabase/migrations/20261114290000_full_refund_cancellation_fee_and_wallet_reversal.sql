@@ -339,7 +339,8 @@ grant execute on function public.srk_service_reconcile_booking_refund(uuid,text,
   if v_booking.selected_category is not null then
     if v_booking.status<>'completed' then raise exception 'BOOKING_NOT_COMPLETED'; end if;
     select b.labour_amount_paise into v_labour_paise
-      from public.srk_booking_labour_bills b where b.booking_id=p_booking_id;
+      from public.srk_booking_labour_bills b where b.booking_id=p_booking_id
+        and b.customer_user_id=v_booking.customer_user_id;
     if not found or v_labour_paise is null then raise exception 'IMMUTABLE_LABOUR_BILL_REQUIRED'; end if;
     select coalesce(sum(i.amount_paise),0) into v_fee_paise
       from public.srk_booking_cancellation_fee_items i
