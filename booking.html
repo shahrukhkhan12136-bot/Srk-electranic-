@@ -1026,6 +1026,7 @@ function supportStatus(message, isError=false) {
  el.textContent=message; el.style.color=isError?'#b42318':'#65758a';
 }
 let customerSupportAttachments = [];
+let customerSupportListBusy=false,customerSupportSendBusy=false,customerSupportThreadRequest=0;
 function renderCustomerSupportThread(rows) {
  const box=document.getElementById('customerSupportThread'); box.replaceChildren();
  if(!rows.length){box.textContent='अभी इस शिकायत में कोई संदेश नहीं है।';return;}
@@ -1103,85 +1104,74 @@ async function loadCustomerSupportAttachments(complaintId) {
  const {data,error}=await customerSb.rpc('srk_customer_list_complaint_message_attachments',{p_complaint_id:complaintId});
  if(error)throw error;
  const rows=Array.isArray(data)?data:[];
- customerSupportAttachments=await Promise.all(rows.map(async a=>{
+ return await Promise.all(rows.map(async a=>{
   const {data:signed,error:signedError}=await customerSb.storage.from('srk-customer-support').createSignedUrl(a.storage_path,300);
   return {...a,signedUrl:signedError?null:signed?.signedUrl||null};
  }));
 }
 async function loadCustomerSupportComplaints() {
  const select=document.getElementById('customerSupportComplaint');
- select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
+ if(customerSupportListBusy)return;
+ customerSupportListBusy=true;select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
  try {
-  const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');
-  if(error)throw error;
+  const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');if(error)throw error;
   customerSupportComplaints=Array.isArray(data)?data:[];
   select.replaceChildren(new Option('शिकायत चुनें',''));
-  customerSupportComplaints.forEach(c=>{
-   const label=(c.category||'शिकायत')+' · '+(c.status||'स्थिति उपलब्ध नहीं')+' · '+String(c.id).slice(0,8);
-   select.add(new Option(label,c.id));
-  });
+  customerSupportComplaints.forEach(c=>{const label=(c.category||'शिकायत')+' · '+(c.status||'स्थिति उपलब्ध नहीं')+' · '+String(c.id).slice(0,8);select.add(new Option(label,c.id));});
   const stillExists=customerSupportComplaints.some(c=>c.id===customerSupportSelectedId);
   customerSupportSelectedId=stillExists?customerSupportSelectedId:(customerSupportComplaints[0]?.id||null);
   select.value=customerSupportSelectedId||'';
-  if(customerSupportSelectedId) await loadCustomerSupportMessages();
-  else {renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
- } catch(e){supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें। '+(e.message||''),true);}
- finally{select.disabled=false;}
+  if(customerSupportSelectedId)await loadCustomerSupportMessages();
+  else{customerSupportAttachments=[];renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
+ }catch(e){supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।',true);}
+ finally{customerSupportListBusy=false;select.disabled=false;}
 }
 async function loadCustomerSupportMessages() {
- const id=document.getElementById('customerSupportComplaint').value;
- if(!id){customerSupportSelectedId=null;renderCustomerSupportThread([]);return;}
- customerSupportSelectedId=id;
- const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id});
- if(error)throw error;
- try{await loadCustomerSupportAttachments(id);}catch(_){customerSupportAttachments=[];}
+ const id=document.getElementById('customerSupportComplaint').value,request=++customerSupportThreadRequest;
+ if(!id){customerSupportSelectedId=null;customerSupportAttachments=[];renderCustomerSupportThread([]);return;}
+ customerSupportSelectedId=id;renderCustomerSupportThread([]);supportStatus('बातचीत लोड हो रही है…');
+ const [{data,error},attachmentsResult]=await Promise.all([
+  customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id}),
+  loadCustomerSupportAttachments(id).then(data=>({data,error:null})).catch(error=>({data:[],error}))
+ ]);
+ if(request!==customerSupportThreadRequest||id!==customerSupportSelectedId)return;
+ if(error){supportStatus('बातचीत लोड नहीं हो सकी। कृपया फिर कोशिश करें।',true);return;}
+ customerSupportAttachments=attachmentsResult.data||[];
  renderCustomerSupportThread(Array.isArray(data)?data:[]);
  const complaint=customerSupportComplaints.find(c=>c.id===id);
- supportStatus(complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):'');
+ supportStatus(complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):(attachmentsResult.error?'कुछ संलग्न फ़ाइलें अभी उपलब्ध नहीं हैं।':''));
 }
 async function sendCustomerSupportMessage() {
- const id=document.getElementById('customerSupportComplaint').value;
- const input=document.getElementById('customerSupportMessage');
- const body=input.value.trim(), fileInput=document.getElementById('customerSupportFiles');
- const files=Array.from(fileInput.files||[]), button=document.getElementById('customerSupportSend');
+ if(customerSupportSendBusy)return;
+ const id=document.getElementById('customerSupportComplaint').value,input=document.getElementById('customerSupportMessage');
+ const body=input.value.trim(),fileInput=document.getElementById('customerSupportFiles'),files=Array.from(fileInput.files||[]),button=document.getElementById('customerSupportSend');
  const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
  if(!id){supportStatus('पहले अपनी शिकायत चुनें।',true);return;}
  if(!body&&!files.length){supportStatus('संदेश लिखें या फ़ाइल चुनें।',true);return;}
  if(body.length>4000){supportStatus('संदेश 4000 अक्षरों से अधिक नहीं होना चाहिए।',true);return;}
- if(files.length>5||files.some(f=>!allowed.includes(f.type)||f.size<1||f.size>10485760)){
-  supportStatus('अधिकतम 5 फ़ाइलें चुनें। हर फ़ाइल JPEG/PNG/WebP/PDF और 10 MB से कम होनी चाहिए।',true);return;
- }
- button.disabled=true;button.textContent='भेजा जा रहा है…';
+ if(files.length>5||files.some(f=>!allowed.includes(f.type)||f.size<1||f.size>10485760)){supportStatus('अधिकतम 5 फ़ाइलें चुनें। हर फ़ाइल JPEG/PNG/WebP/PDF और 10 MB से कम होनी चाहिए।',true);return;}
+ customerSupportSendBusy=true;button.disabled=true;button.textContent='भेजा जा रहा है…';
  let pendingUploadPath=null,linkedCount=0;
  try{
-  const {data:sessionData}=await customerSb.auth.getSession();
-  const userId=sessionData.session?.user?.id;if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
-  const {data:messageId,error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{
-   p_complaint_id:id,p_body:body||'आपके लिए फ़ाइल संलग्न की गई है।'
-  });
-  if(error)throw error;
-  if(!messageId)throw new Error('संदेश संदर्भ प्राप्त नहीं हुआ।');
+  const {data:sessionData}=await customerSb.auth.getSession(),userId=sessionData.session?.user?.id;
+  if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
+  const {data:messageId,error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{p_complaint_id:id,p_body:body||'आपके लिए फ़ाइल संलग्न की गई है।'});
+  if(error)throw error;if(!messageId)throw new Error('MESSAGE_NOT_CONFIRMED');
   for(const file of files){
-   const ext=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':file.type==='image/webp'?'webp':'pdf';
-   const path=userId+'/'+id+'/'+crypto.randomUUID()+'.'+ext;
+   const ext=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':file.type==='image/webp'?'webp':'pdf',path=userId+'/'+id+'/'+crypto.randomUUID()+'.'+ext;
    pendingUploadPath=path;
    const {error:uploadError}=await customerSb.storage.from('srk-customer-support').upload(path,file,{contentType:file.type,upsert:false});
    if(uploadError)throw uploadError;
-   const {error:linkError}=await customerSb.rpc('srk_customer_link_complaint_message_attachment',{
-    p_complaint_id:id,p_message_id:messageId,p_storage_path:path,p_file_name:file.name.slice(0,180),
-    p_mime_type:file.type,p_file_size_bytes:file.size
-   });
-   if(linkError)throw linkError;
-   pendingUploadPath=null;linkedCount++;
+   const {error:linkError}=await customerSb.rpc('srk_customer_link_complaint_message_attachment',{p_complaint_id:id,p_message_id:messageId,p_storage_path:path,p_file_name:file.name.slice(0,180),p_mime_type:file.type,p_file_size_bytes:file.size});
+   if(linkError)throw linkError;pendingUploadPath=null;linkedCount++;
   }
   input.value='';fileInput.value='';
-  await loadCustomerSupportMessages();
+  if(id===customerSupportSelectedId)await loadCustomerSupportMessages();
   supportStatus(files.length?'आपका संदेश और '+files.length+' फ़ाइल सफलतापूर्वक भेजी गई।':'आपका संदेश सहायता टीम को भेज दिया गया है।');
  }catch(e){
-  if(pendingUploadPath){await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]).catch(()=>{});}
-  supportStatus((linkedCount?'कुछ फ़ाइलें सफलतापूर्वक भेजी गईं ('+linkedCount+')। ':'संदेश या फ़ाइल भेजी नहीं जा सकी। ')+(e.message||'कृपया दोबारा कोशिश करें।'),true);
- }
- finally{button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}
+  if(pendingUploadPath)await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]).catch(()=>{});
+  supportStatus((linkedCount?'कुछ फ़ाइलें सफलतापूर्वक भेजी गईं ('+linkedCount+')। ':'संदेश या फ़ाइल भेजी नहीं जा सकी। ')+(linkedCount?'बाकी फ़ाइलें दोबारा भेजें।':'कृपया दोबारा कोशिश करें।'),true);
+ }finally{customerSupportSendBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}
 }
 
 async function syncCustomerSession() {
