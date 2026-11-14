@@ -812,3 +812,31 @@ $function$;
 revoke all on function public.srk_admin_staff_update_electrician_ticket(uuid,text,text) from public,anon;
 grant execute on function public.srk_admin_staff_update_electrician_ticket(uuid,text,text) to authenticated;
 
+
+
+create or replace function public.srk_admin_list_support_assignments()
+returns table (
+  case_type text,
+  case_id uuid,
+  assigned_staff_user_id uuid,
+  assigned_staff_name text,
+  assigned_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $function$
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'MAIN_ADMIN_ONLY' using errcode='42501';
+  end if;
+  return query
+    select a.case_type,a.case_id,a.assigned_staff_user_id,s.display_name,a.assigned_at
+      from public.srk_admin_support_assignments a
+      join public.srk_admin_staff s on s.user_id=a.assigned_staff_user_id
+     order by a.updated_at desc limit 1000;
+end;
+$function$;
+revoke all on function public.srk_admin_list_support_assignments() from public,anon;
+grant execute on function public.srk_admin_list_support_assignments() to authenticated;
