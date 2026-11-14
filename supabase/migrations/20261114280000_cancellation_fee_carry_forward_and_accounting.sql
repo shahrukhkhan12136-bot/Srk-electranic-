@@ -84,7 +84,7 @@ as $
 begin
   raise exception 'CANCELLATION_FEE_LEDGER_IS_APPEND_ONLY';
 end;
-$;
+$$;
 revoke all on function public.srk_guard_cancellation_fee_ledger_immutable() from public,anon,authenticated;
 drop trigger if exists srk_cancellation_fee_ledger_no_mutation on public.srk_cancellation_fee_ledger;
 create trigger srk_cancellation_fee_ledger_no_mutation
@@ -293,7 +293,7 @@ as $
   from public.srk_customer_cancellation_fee_debts d
   where d.customer_user_id=auth.uid()
   order by d.created_at desc,d.id;
-$;
+$$;
 
 create or replace function public.srk_admin_get_cancellation_fee_ledger_summary()
 returns jsonb language plpgsql stable security definer set search_path=''
@@ -309,7 +309,7 @@ begin
     'ledger_entries',(select count(*) from public.srk_cancellation_fee_ledger)
   );
 end;
-$;
+$$;
 
 create or replace function public.srk_customer_list_booking_cancellation_fee_items()
 returns setof jsonb language sql stable security definer set search_path=''
