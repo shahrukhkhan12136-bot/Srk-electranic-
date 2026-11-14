@@ -1201,3 +1201,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin approval Edge Function पहले Auth phone और request phone को केवल non-digit हटाकर compare करती थी। Legacy local 10-digit बनाम `+91` 12-digit storage format में वही नंबर अलग समझा जा सकता था।
 - `phoneDigits()` अब इस Indian-only flow में अंतिम 10 national digits compare करती है; SQL canonical comparison के अनुरूप partial-sync retry और old/new Auth checks सही format-independent comparison करेंगे।
 - Source-only; deployed Edge Function पर runtime verification अंतिम consolidated QA में बाकी।
+
+
+### 2026-11-14 — Phone-change OTP send failure history recovery
+- Audit में पाया कि SMS send या cleanup response अनिश्चित होने पर Electrician UI error दिखाकर नया OTP बटन तुरंत फिर enable कर देती थी। इससे backend में `otp_pending` request बची होने पर duplicate/open-request retry हो सकता था।
+- अब send failure के बाद UI authoritative phone-change history दोबारा load करती है। यदि history में pending request मिले तो form disabled रहता है; यदि history load की पुष्टि न हो तो नया OTP बटन सुरक्षित रूप से disabled रहता है और Dashboard Refresh करके स्थिति जाँचने को कहता है। History loader अब success/failure boolean भी लौटाता है।
+- Source-only UI hardening; वास्तविक SMS/provider, network timeout और browser runtime tests अंतिम consolidated QA में बाकी हैं।
+- Commit: `38d11f6f466b9a2e4519fe2b6e429755c863112f`.
