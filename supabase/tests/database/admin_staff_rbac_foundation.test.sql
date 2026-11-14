@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(53);
+SELECT plan(54);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -54,6 +54,11 @@ SELECT ok(
 );
 SELECT has_trigger('public','srk_admin_staff_audit_events','srk_admin_staff_audit_no_row_mutation','audit rows are protected against update and delete');
 SELECT has_function('public','srk_admin_staff_register_session',ARRAY[]::text[],'staff session registration RPC exists');
+SELECT ok(
+  position('for share' in lower(pg_get_functiondef('public.srk_admin_staff_register_session()'::regprocedure)))>0
+  AND position('select s.status = ''active''' in pg_get_functiondef('public.srk_admin_staff_register_session()'::regprocedure))>0,
+  'session registration locks the staff registry row against concurrent suspension or disable'
+);
 SELECT has_function('public','srk_admin_list_staff',ARRAY[]::text[],'Main Admin staff listing RPC exists');
 SELECT has_function('public','srk_admin_staff_set_status',ARRAY['uuid','text','text'],'Main Admin staff status RPC exists');
 SELECT has_function('public','srk_admin_staff_register_invited_user',ARRAY['uuid','text','uuid'],'service-only invited user registration RPC exists');
