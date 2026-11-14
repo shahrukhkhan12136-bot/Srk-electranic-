@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(42);
+SELECT plan(43);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -128,6 +128,12 @@ SELECT ok(
   position('p_status is null' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure))>0
   AND position('v_old_status=''closed''' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure))>0,
   'Staff cannot reopen a closed electrician ticket and null status is rejected'
+);
+
+SELECT ok(
+  position('p_case_type is null' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure))>0
+  AND position('status<>''closed''' in pg_get_functiondef('public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure))>0,
+  'assignment rejects invalid case type and closed cases'
 );
 
 SELECT * FROM finish();
