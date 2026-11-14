@@ -70,6 +70,19 @@ create table if not exists public.srk_cancellation_fee_ledger (
 );
 create index if not exists srk_cancellation_fee_ledger_created
   on public.srk_cancellation_fee_ledger(created_at desc);
+
+create or replace function public.srk_guard_cancellation_fee_ledger_immutable()
+returns trigger language plpgsql set search_path=''
+as $
+begin
+  raise exception 'CANCELLATION_FEE_LEDGER_IS_APPEND_ONLY';
+end;
+$;
+revoke all on function public.srk_guard_cancellation_fee_ledger_immutable() from public,anon,authenticated;
+drop trigger if exists srk_cancellation_fee_ledger_no_mutation on public.srk_cancellation_fee_ledger;
+create trigger srk_cancellation_fee_ledger_no_mutation
+before update or delete or truncate on public.srk_cancellation_fee_ledger
+for each statement execute function public.srk_guard_cancellation_fee_ledger_immutable();
 alter table public.srk_customer_cancellation_fee_debts enable row level security;
 alter table public.srk_booking_cancellation_fee_items enable row level security;
 alter table public.srk_cancellation_fee_ledger enable row level security;
@@ -190,9 +203,38 @@ begin
 end;
 $$;
 
+create or replace function public.srk_customer_list_my_cancellation_fee_debts()
+returns setof jsonb language sql stable security definer set search_path=''
+as $
+  select jsonb_build_object(
+    'id',d.id,'source_booking_id',d.source_booking_id,'reserved_booking_id',d.reserved_booking_id,
+    'amount_paise',d.amount_paise,'amount',d.amount_paise/100.0,'status',d.status,
+    'created_at',d.created_at,'settled_at',d.settled_at
+  )
+  from public.srk_customer_cancellation_fee_debts d
+  where d.customer_user_id=auth.uid()
+  order by d.created_at desc,d.id;
+$;
+
+create or replace function public.srk_admin_get_cancellation_fee_ledger_summary()
+returns jsonb language plpgsql stable security definer set search_path=''
+as $
+begin
+  if auth.uid() is null or not public.is_srk_admin() then raise exception 'ADMIN_ONLY' using errcode='42501'; end if;
+  return jsonb_build_object(
+    'open_debt_paise',coalesce((select sum(amount_paise) from public.srk_customer_cancellation_fee_debts where status='open'),0),
+    'reserved_debt_paise',coalesce((select sum(amount_paise) from public.srk_customer_cancellation_fee_debts where status='reserved'),0),
+    'settled_debt_paise',coalesce((select sum(amount_paise) from public.srk_customer_cancellation_fee_debts where status='settled'),0),
+    'online_collected_paise',coalesce((select sum(amount_paise) from public.srk_cancellation_fee_ledger where entry_type='online_collection' and status='posted'),0),
+    'cash_electrician_debit_paise',coalesce((select sum(amount_paise) from public.srk_cancellation_fee_ledger where entry_type='cash_electrician_debit' and status='posted'),0),
+    'ledger_entries',(select count(*) from public.srk_cancellation_fee_ledger)
+  );
+end;
+$;
+
 create or replace function public.srk_customer_list_booking_cancellation_fee_items()
 returns setof jsonb language sql stable security definer set search_path=''
-as $$
+as $
   select jsonb_build_object(
     'booking_id',i.booking_id,'debt_id',i.debt_id,'source_booking_id',i.source_booking_id,
     'amount_paise',i.amount_paise,'amount',i.amount_paise/100.0,'status',i.status,
@@ -360,6 +402,10 @@ begin
 end;
 $$;
 
+revoke all on function public.srk_customer_list_my_cancellation_fee_debts() from public,anon;
+grant execute on function public.srk_customer_list_my_cancellation_fee_debts() to authenticated;
+revoke all on function public.srk_admin_get_cancellation_fee_ledger_summary() from public,anon;
+grant execute on function public.srk_admin_get_cancellation_fee_ledger_summary() to authenticated;
 revoke all on function public.srk_customer_list_booking_cancellation_fee_items() from public,anon;
 grant execute on function public.srk_customer_list_booking_cancellation_fee_items() to authenticated;
 revoke all on function public.srk_service_role_get_booking_payment_breakdown(uuid) from public,anon,authenticated;
