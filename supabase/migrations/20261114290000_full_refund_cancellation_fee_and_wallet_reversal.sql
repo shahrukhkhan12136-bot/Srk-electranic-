@@ -109,6 +109,8 @@ begin
         and l.booking_id=old.id
         and l.entry_type='cash_electrician_debit'
         and l.direction='credit'
+        and l.amount_paise=v_item.amount_paise
+        and l.customer_user_id=old.customer_user_id
         and l.status='posted'
       for update;
       if not found then
