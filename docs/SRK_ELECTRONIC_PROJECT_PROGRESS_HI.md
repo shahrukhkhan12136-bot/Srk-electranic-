@@ -20,6 +20,12 @@
 - Inline JavaScript syntax compile: 1 script block(s) — PASS। यह static syntax check है, browser runtime test नहीं।
 - Commit: `a56a1e0f615bc15314bd49edf4f222505b1fcec2`. कोई live deployment या production बदलाव नहीं।
 
+
+### 2026-11-14 — Admin Staff RBAC tracker accuracy correction
+- Section 14.3 की पुरानी checklist wording को वर्तमान source implementation के अनुरूप सुधारा: Support-only RBAC foundation, session-bound permissions, assignment-scoped Staff-safe inbox, isolated Staff UI और audit source अब आंशिक रूप से implemented हैं; live/runtime acceptance अभी नहीं।
+- Section 14.3 और master counts समायोजित: 66 आंशिक, 7 blocked, 23 बाकी, 0 verified complete (कुल 96)। यह feature completion का प्रतिशत नहीं है।
+- कोई application code, migration, Supabase setting या live data नहीं बदला; केवल tracker documentation update है।
+
 ## 1. कुल प्रगति — प्रमाण आधारित
 
 इस tracker में Master Requirements के Section 14.1–14.8 के 89 checkbox points और Section 16 के 7 public-website points शामिल हैं: **कुल 96 मूल checklist points**।
@@ -27,12 +33,12 @@
 | स्थिति | संख्या | अर्थ |
 |---|---:|---|
 | ✅ पूरी तरह Verified Complete | 0 | Code + backend/RLS/RPC + relevant tests + required verification evidence सभी पूरे |
-| 🟡 आंशिक / काम जारी | 65 | Audit, source changes, partial implementation या test preparation मौजूद; acceptance अभी अधूरा |
+| 🟡 आंशिक / काम जारी | 66 | Audit, source changes, partial implementation या test preparation मौजूद; acceptance अभी अधूरा |
 | 🟠 Blocked / dependency या decision बाकी | 7 | authoritative data, approved policy, backend dependency या सुरक्षित release prerequisite बाकी |
-| ⚪ बाकी / पर्याप्त प्रमाण नहीं | 24 | अभी implementation/verification का भरोसेमंद evidence उपलब्ध नहीं |
+| ⚪ बाकी / पर्याप्त प्रमाण नहीं | 23 | अभी implementation/verification का भरोसेमंद evidence उपलब्ध नहीं |
 | **कुल** | **96** |  |
 
-**महत्वपूर्ण:** 65/96 का मतलब 67.7% फीचर पूरे होना नहीं है। इसका मतलब इन बिंदुओं पर कुछ audit/source/implementation कार्य दर्ज है। **सख्त verified completion अभी 0/96 (0%) है।** किसी item को केवल UI या migration file मौजूद होने से Complete नहीं माना जाएगा।
+**महत्वपूर्ण:** 66/96 का मतलब 68.8% फीचर पूरे होना नहीं है। इसका मतलब इन बिंदुओं पर कुछ audit/source/implementation कार्य दर्ज है। **सख्त verified completion अभी 0/96 (0%) है।** किसी item को केवल UI या migration file मौजूद होने से Complete नहीं माना जाएगा।
 
 अलग से Master Epic में बताया गया **96-item real-world test batch** final acceptance test set है; वह इस 96-point requirements checklist से अलग test gate है।
 
@@ -42,14 +48,14 @@
 |---|---:|---:|---:|---:|---:|
 | ग्राहक ऐप और वेबसाइट (Section 14.1) | 14 | 8 | 4 | 2 | 0 |
 | इलेक्ट्रिशियन ऐप / पोर्टल (Section 14.2) | 14 | 11 | 0 | 3 | 0 |
-| एडमिन पैनल और कंपनी संचालन (Section 14.3) | 15 | 13 | 0 | 2 | 0 |
+| एडमिन पैनल और कंपनी संचालन (Section 14.3) | 15 | 14 | 0 | 1 | 0 |
 | पेमेंट, Razorpay, Wallet और Accounting (Section 14.4) | 13 | 11 | 1 | 1 | 0 |
 | Notifications और Communication (Section 14.5) | 6 | 4 | 0 | 2 | 0 |
 | Security, Privacy और Data Governance (Section 14.6) | 10 | 5 | 0 | 5 | 0 |
 | Backup, Reliability और Recovery (Section 14.7) | 6 | 0 | 0 | 6 | 0 |
 | QA, Accessibility और Release Sign-off (Section 14.8) | 11 | 7 | 2 | 2 | 0 |
 | Public Website / Landing Page (Section 16) | 7 | 6 | 0 | 1 | 0 |
-| **कुल** | **96** | **65** | **7** | **24** | **0** |
+| **कुल** | **96** | **66** | **7** | **23** | **0** |
 
 ## 3. मूल checklist — बिंदुवार स्थिति
 
@@ -132,13 +138,13 @@
 - **🟡 आंशिक / काम जारी** — Payment/provider events, refunds, wallet ledger, top-ups, cash dues, payout और reconciliation views।
   - स्थिति/अगला काम: Finance/wallet/payment screens/RPCs मौजूद; provider reconciliation/refund/dues complete नहीं।
 - **🟡 आंशिक / काम जारी** — Support inbox, ticket assignment, replies, SLA/escalation और attachment access controls।
-  - स्थिति/अगला काम: Admin support UI placeholder/limited; ticket inbox, assignment, replies, attachments और RLS बाकी।
+  - स्थिति/अगला काम: Main Admin inbox और assignment-scoped Support Staff inbox/reply/status RPCs तथा अलग Staff UI source में मौजूद; SLA/escalation, attachments, PostgreSQL/pgTAP runtime और ownership-negative tests बाकी।
 - **⚪ बाकी / पर्याप्त प्रमाण नहीं** — Rating moderation with reason, audit and appeal path।
   - स्थिति/अगला काम: Rating moderation/reason/appeal workflow अभी पर्याप्त source evidence से नहीं मिला।
 - **🟡 आंशिक / काम जारी** — Expense entry, receipt, permitted approval, accounting heads, exports और period reports।
   - स्थिति/अगला काम: Finance expense RPC/UI मौजूद; receipts, approval, accounting heads/exports पूर्ण नहीं।
-- **⚪ बाकी / पर्याप्त प्रमाण नहीं** — Staff roles, granular permissions, least privilege और backend/RLS enforcement।
-  - स्थिति/अगला काम: Granular staff roles/permissions backend और login controls उपलब्ध नहीं।
+- **🟡 आंशिक / काम जारी** — Staff roles, granular permissions, least privilege और backend/RLS enforcement।
+  - स्थिति/अगला काम: अलग Support-only registry/permission map, Main Admin-only lifecycle RPCs, live Auth-session-bound permission checks, assignment-scoped Staff-safe RPCs, isolated Staff login/UI और append-only activity audit source में मौजूद; केवल Support role enabled है। Migration apply, PostgreSQL compile/pgTAP execution, Edge Function deployment तथा live authorization/negative tests बाकी।
 - **🟡 आंशिक / काम जारी** — Staff tasks, internal communication, login/activity history, suspicious-login handling और session revocation।
   - स्थिति/अगला काम: Staff tasks/internal communication/activity/session revocation अभी अधूरे।
 - **🟡 आंशिक / काम जारी** — Dashboard metrics की स्पष्ट definitions, filters, drill-down और role-based exports।
