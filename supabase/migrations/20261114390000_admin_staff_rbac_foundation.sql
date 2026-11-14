@@ -514,6 +514,7 @@ as $function$
 declare
   v_actor uuid := auth.uid();
   v_previous_staff uuid;
+  v_case_status text;
 begin
   if v_actor is null or not public.is_srk_admin() then
     raise exception 'MAIN_ADMIN_ONLY' using errcode = '42501';
@@ -523,21 +524,27 @@ begin
      or length(btrim(coalesce(p_reason,''))) < 5 or length(p_reason)>500 then
     raise exception 'INVALID_SUPPORT_ASSIGNMENT' using errcode = '22023';
   end if;
-  if not exists (
-    select 1 from public.srk_admin_staff s
-     where s.user_id=p_staff_user_id and s.role_key='support' and s.status='active'
-  ) then
+  -- Serialize assignment against close/status changes; all case mutations lock case before assignment.
+  if p_case_type='customer_complaint' then
+    select c.status into v_case_status from public.srk_booking_complaints c
+     where c.id=p_case_id for update;
+    if not found or v_case_status='closed' then
+      raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND_OR_CLOSED' using errcode = 'P0002';
+    end if;
+  else
+    select t.status into v_case_status from public.srk_electrician_support_tickets t
+     where t.id=p_case_id for update;
+    if not found or v_case_status='closed' then
+      raise exception 'ELECTRICIAN_TICKET_NOT_FOUND_OR_CLOSED' using errcode = 'P0002';
+    end if;
+  end if;
+
+  -- Prevent a concurrent suspension/disable from racing the assignment.
+  perform 1 from public.srk_admin_staff s
+   where s.user_id=p_staff_user_id and s.role_key='support' and s.status='active'
+   for share;
+  if not found then
     raise exception 'SUPPORT_STAFF_NOT_ACTIVE' using errcode = '22023';
-  end if;
-  if p_case_type='customer_complaint' and not exists (
-    select 1 from public.srk_booking_complaints c where c.id=p_case_id and c.status<>'closed'
-  ) then
-    raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND_OR_CLOSED' using errcode = 'P0002';
-  end if;
-  if p_case_type='electrician_ticket' and not exists (
-    select 1 from public.srk_electrician_support_tickets t where t.id=p_case_id and t.status<>'closed'
-  ) then
-    raise exception 'ELECTRICIAN_TICKET_NOT_FOUND_OR_CLOSED' using errcode = 'P0002';
   end if;
 
   select a.assigned_staff_user_id into v_previous_staff
@@ -629,6 +636,7 @@ as $function$
 declare
   v_uid uuid:=auth.uid();
   v_message_id uuid;
+  v_case_status text;
 begin
   if v_uid is null or not public.srk_has_admin_permission('support.customer.read')
      or not public.srk_has_admin_permission('support.customer.reply') then
@@ -637,13 +645,15 @@ begin
   if p_body is null or length(btrim(p_body)) not between 1 and 4000 then
     raise exception 'MESSAGE_MUST_BE_1_TO_4000_CHARACTERS' using errcode='22023';
   end if;
+  -- Consistent lock order: case row first, then current assignment row.
+  select c.status into v_case_status from public.srk_booking_complaints c
+   where c.id=p_complaint_id for update;
+  if not found then raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND' using errcode='P0002'; end if;
+  if v_case_status='closed' then raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000'; end if;
   perform 1 from public.srk_admin_support_assignments a
    where a.case_type='customer_complaint' and a.case_id=p_complaint_id
      and a.assigned_staff_user_id=v_uid for update;
   if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
-  if exists(select 1 from public.srk_booking_complaints c where c.id=p_complaint_id and c.status='closed') then
-    raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000';
-  end if;
   insert into public.srk_booking_complaint_messages(complaint_id,sender_role,sender_user_id,body)
   values(p_complaint_id,'admin',v_uid,btrim(p_body))
   returning id into v_message_id;
@@ -676,13 +686,14 @@ begin
      or length(btrim(p_reason)) not between 5 and 500 then
     raise exception 'INVALID_SUPPORT_STATUS_UPDATE' using errcode='22023';
   end if;
+  -- Match Admin assignment and reply lock order to avoid case/assignment deadlocks.
+  select c.status into v_old_status from public.srk_booking_complaints c
+   where c.id=p_complaint_id for update;
+  if not found then raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND' using errcode='P0002'; end if;
   perform 1 from public.srk_admin_support_assignments a
    where a.case_type='customer_complaint' and a.case_id=p_complaint_id
      and a.assigned_staff_user_id=v_uid for update;
   if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
-  select c.status into v_old_status from public.srk_booking_complaints c
-   where c.id=p_complaint_id for update;
-  if not found then raise exception 'CUSTOMER_COMPLAINT_NOT_FOUND' using errcode='P0002'; end if;
   if v_old_status='closed' then raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000'; end if;
 
   update public.srk_booking_complaints
@@ -760,7 +771,7 @@ language plpgsql
 security definer
 set search_path = ''
 as $function$
-declare v_uid uuid:=auth.uid(); v_message_id uuid;
+declare v_uid uuid:=auth.uid(); v_message_id uuid; v_case_status text;
 begin
   if v_uid is null or not public.srk_has_admin_permission('support.electrician.read')
      or not public.srk_has_admin_permission('support.electrician.reply') then
@@ -769,13 +780,15 @@ begin
   if p_body is null or length(btrim(p_body)) not between 1 and 4000 then
     raise exception 'MESSAGE_MUST_BE_1_TO_4000_CHARACTERS' using errcode='22023';
   end if;
+  -- Consistent lock order: case row first, then current assignment row.
+  select t.status into v_case_status from public.srk_electrician_support_tickets t
+   where t.id=p_ticket_id for update;
+  if not found then raise exception 'ELECTRICIAN_TICKET_NOT_FOUND' using errcode='P0002'; end if;
+  if v_case_status='closed' then raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000'; end if;
   perform 1 from public.srk_admin_support_assignments a
    where a.case_type='electrician_ticket' and a.case_id=p_ticket_id
      and a.assigned_staff_user_id=v_uid for update;
   if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
-  if exists(select 1 from public.srk_electrician_support_tickets t where t.id=p_ticket_id and t.status='closed') then
-    raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000';
-  end if;
   insert into public.srk_electrician_support_messages(ticket_id,sender_role,sender_user_id,body)
   values(p_ticket_id,'admin',v_uid,btrim(p_body)) returning id into v_message_id;
   insert into public.srk_admin_staff_audit_events(actor_user_id,action,outcome,details)
@@ -805,13 +818,14 @@ begin
      or length(btrim(p_reason)) not between 5 and 500 then
     raise exception 'INVALID_SUPPORT_STATUS_UPDATE' using errcode='22023';
   end if;
+  -- Match Admin assignment and reply lock order to avoid case/assignment deadlocks.
+  select t.status into v_old_status from public.srk_electrician_support_tickets t
+   where t.id=p_ticket_id for update;
+  if not found then raise exception 'ELECTRICIAN_TICKET_NOT_FOUND' using errcode='P0002'; end if;
   perform 1 from public.srk_admin_support_assignments a
    where a.case_type='electrician_ticket' and a.case_id=p_ticket_id
      and a.assigned_staff_user_id=v_uid for update;
   if not found then raise exception 'SUPPORT_CASE_NOT_ASSIGNED_TO_YOU' using errcode='42501'; end if;
-  select t.status into v_old_status from public.srk_electrician_support_tickets t
-   where t.id=p_ticket_id for update;
-  if not found then raise exception 'ELECTRICIAN_TICKET_NOT_FOUND' using errcode='P0002'; end if;
   if v_old_status='closed' then raise exception 'SUPPORT_CASE_CLOSED' using errcode='55000'; end if;
   update public.srk_electrician_support_tickets
      set status=p_status,updated_at=clock_timestamp(),updated_by=v_uid
