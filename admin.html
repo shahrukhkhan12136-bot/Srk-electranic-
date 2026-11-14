@@ -81,7 +81,21 @@ async function reviewElectricianAreaChange(id,decision){
 }
 async function loadAdminKycDocuments(){const box=document.getElementById('adminKycDocuments'),status=document.getElementById('adminKycStatus');if(!box||!sb||!user)return;status.textContent='दस्तावेज़ लोड हो रहे हैं…';const {data,error}=await sb.rpc('srk_admin_list_electrician_verification_documents',{p_limit:300});if(error){box.textContent='KYC दस्तावेज़ लोड नहीं हुए। Admin अनुमति और backend जाँचें।';status.textContent='लोड विफल';return;}const rows=data||[];status.textContent=rows.length+' दस्तावेज़';if(!rows.length){box.textContent='अभी कोई KYC दस्तावेज़ जमा नहीं है।';return;}box.innerHTML=rows.map(d=>{const label={identity_proof:'पहचान प्रमाण',address_proof:'पता प्रमाण',skill_certificate:'कौशल प्रमाणपत्र'}[d.document_type]||d.document_type;const events=Array.isArray(d.activity)?d.activity:[];return '<div class="job" style="margin:10px 0;padding:14px;border:1px solid #dce3ea;border-radius:10px"><b>'+esc(label)+'</b> • <span class="tag">'+esc(d.review_status)+'</span><p><b>पार्टनर:</b> '+esc(d.electrician_name)+' • '+esc(d.electrician_phone)+'</p><p><b>इलाका:</b> '+esc(d.district)+', '+esc(d.state)+' • PIN '+esc(d.pincode)+'</p><p><b>फ़ाइल:</b> '+esc(d.file_name)+' • '+esc(d.mime_type)+' • '+Math.ceil(Number(d.file_size_bytes||0)/1024)+' KB</p><p class="muted">जमा: '+esc(new Date(d.uploaded_at).toLocaleString('hi-IN'))+(d.reviewed_at?' • जाँच: '+esc(new Date(d.reviewed_at).toLocaleString('hi-IN')):'')+'</p>'+(d.admin_note?'<p><b>पिछली टिप्पणी:</b> '+esc(d.admin_note)+'</p>':'')+'<button type="button" onclick="previewAdminKycDocument(\''+esc(d.id)+'\')">दस्तावेज़ Preview करें</button><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><select id="adminKycDecision_'+esc(d.id)+'"><option value="approved">स्वीकृत</option><option value="rejected">अस्वीकृत</option><option value="needs_resubmission">दोबारा जमा करें</option></select><input id="adminKycNote_'+esc(d.id)+'" maxlength="1000" placeholder="कारण / Admin टिप्पणी" style="flex:1;min-width:220px"><button type="button" onclick="reviewAdminKycDocument(\''+esc(d.id)+'\')">निर्णय सेव करें</button></div><div id="adminKycResult_'+esc(d.id)+'" class="muted" aria-live="polite"></div>'+(events.length?'<details><summary>दस्तावेज़ गतिविधि इतिहास</summary>'+events.map(ev=>'<p class="muted">'+esc(ev.actor_role)+' • '+esc(ev.event_type)+' • '+esc(ev.note||'')+' • '+esc(new Date(ev.created_at).toLocaleString('hi-IN'))+'</p>').join('')+'</details>':'')+'</div>';}).join('');}
 async function previewAdminKycDocument(id){const win=window.open('about:blank','_blank');if(!win){alert('Preview के लिए Popup की अनुमति दें।');return;}win.opener=null;try{const {data,error}=await sb.rpc('srk_admin_list_electrician_verification_documents',{p_limit:300});if(error)throw error;const doc=(data||[]).find(x=>x.id===id);if(!doc?.storage_path)throw new Error('Document unavailable');const {data:signed,error:signError}=await sb.storage.from(ADMIN_KYC_BUCKET).createSignedUrl(doc.storage_path,60,{download:false});if(signError||!signed?.signedUrl)throw signError||new Error('Preview unavailable');win.location.replace(signed.signedUrl);}catch(e){win.close();alert('दस्तावेज़ Preview नहीं खुल सका। Admin अनुमति और private storage जाँचें।');}}
-async function reviewAdminKycDocument(id){const status=document.getElementById('adminKycResult_'+id),decision=document.getElementById('adminKycDecision_'+id).value,note=document.getElementById('adminKycNote_'+id).value.trim();if(['rejected','needs_resubmission'].includes(decision)&&!note){status.textContent='अस्वीकृति या दोबारा जमा करने का कारण लिखना अनिवार्य है।';return;}if(!confirm('क्या आप इस दस्तावेज़ की समीक्षा का निर्णय सेव करना चाहते हैं?'))return;const {data,error}=await sb.rpc('srk_admin_review_electrician_document',{p_document_id:id,p_review_status:decision,p_admin_note:note||null});if(error||!data?.success){status.textContent='निर्णय सेव नहीं हुआ। Admin अधिकार और दस्तावेज़ स्थिति जाँचें।';return;}status.textContent='निर्णय सुरक्षित हो गया।';await loadAdminKycDocuments();await loadAll();}
+const adminKycReviewBusy=new Set();
+async function reviewAdminKycDocument(id){
+ if(adminKycReviewBusy.has(id))return;
+ const status=document.getElementById('adminKycResult_'+id),decisionField=document.getElementById('adminKycDecision_'+id),noteField=document.getElementById('adminKycNote_'+id);
+ if(!status||!decisionField||!noteField)return;
+ const decision=decisionField.value,note=noteField.value.trim(),button=status.closest('.job')?.querySelector('button[onclick^="reviewAdminKycDocument"]');
+ if(!['approved','rejected','needs_resubmission'].includes(decision)){status.textContent='मान्य KYC निर्णय चुनें।';return;}
+ if(['rejected','needs_resubmission'].includes(decision)&&note.length<5){status.textContent='अस्वीकृति या दोबारा जमा करने का कारण कम से कम 5 अक्षरों में लिखें।';return;}
+ if(note.length>1000){status.textContent='Admin टिप्पणी 1000 अक्षरों से अधिक नहीं हो सकती।';return;}
+ if(!confirm('क्या आप इस दस्तावेज़ की समीक्षा का निर्णय सेव करना चाहते हैं?'))return;
+ adminKycReviewBusy.add(id);if(button)button.disabled=true;status.textContent='निर्णय सुरक्षित किया जा रहा है…';
+ try{const {data,error}=await sb.rpc('srk_admin_review_electrician_document',{p_document_id:id,p_review_status:decision,p_admin_note:note||null});if(error||!data?.success)throw error||new Error('REVIEW_NOT_CONFIRMED');status.textContent='निर्णय सुरक्षित हो गया।';await loadAdminKycDocuments();await loadAll();}
+ catch(e){status.textContent='निर्णय सेव नहीं हुआ। दस्तावेज़ की वर्तमान स्थिति रीफ़्रेश करके जाँचें।';}
+ finally{adminKycReviewBusy.delete(id);if(button)button.disabled=false;}
+}
 let adminPayoutLoadBusy=false,adminPayoutActionBusy=new Set();
 async function loadPayouts(){
  const body=document.getElementById('payoutRows');if(!body||adminPayoutLoadBusy)return;
@@ -145,12 +159,15 @@ async function saveAdminSupportComplaint(id){
  catch(e){alert('शिकायत अपडेट नहीं हुई। कृपया Inbox रीफ़्रेश करके स्थिति जाँचें।');}
  finally{adminCustomerComplaintSaveBusy.delete(id);if(button)button.disabled=false;}
 }
+let adminCustomerThreadRequest=0;
 async function openAdminSupportThread(id){
- adminSupportSelectedId=id;
+ const request=++adminCustomerThreadRequest;adminSupportSelectedId=id;
  const panel=document.getElementById('adminSupportThreadPanel'),box=document.getElementById('adminSupportThread');
+ if(!panel||!box)return;
  panel.classList.remove('hidden');document.getElementById('adminSupportThreadTitle').textContent='ग्राहक बातचीत — '+id;box.textContent='बातचीत लोड हो रही है…';
  const {data,error}=await sb.rpc('srk_admin_list_booking_complaint_messages',{p_complaint_id:id});
- if(error){box.textContent='बातचीत लोड नहीं हुई। '+error.message;return;}
+ if(request!==adminCustomerThreadRequest||id!==adminSupportSelectedId)return;
+ if(error){box.textContent='बातचीत लोड नहीं हुई। कृपया फिर कोशिश करें।';return;}
  const rows=Array.isArray(data)?data:[];
  box.innerHTML=rows.map(m=>'<article class="card" style="padding:10px"><b>'+(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक')+'</b><small style="float:right">'+esc(new Date(m.created_at).toLocaleString('hi-IN'))+'</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(m.body)+'</p></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
 }
