@@ -1208,3 +1208,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - अब send failure के बाद UI authoritative phone-change history दोबारा load करती है। यदि history में pending request मिले तो form disabled रहता है; यदि history load की पुष्टि न हो तो नया OTP बटन सुरक्षित रूप से disabled रहता है और Dashboard Refresh करके स्थिति जाँचने को कहता है। History loader अब success/failure boolean भी लौटाता है।
 - Source-only UI hardening; वास्तविक SMS/provider, network timeout और browser runtime tests अंतिम consolidated QA में बाकी हैं।
 - Commit: `38d11f6f466b9a2e4519fe2b6e429755c863112f`.
+
+
+### 2026-11-14 — Admin phone-change queue visibility for in-progress requests
+- Audit में पाया कि Admin claim के बाद request `processing` में अटक जाए (उदाहरण: release RPC की पुष्टि न मिले), तो Admin queue उसे छिपा देती थी। इससे Admin को पता ही नहीं चलता कि किसी अनुरोध की स्थिति अटकी हुई है।
+- Migration की Admin list RPC अब `pending_admin`, `sync_error` और `processing` तीनों अवस्थाएँ लौटाती है तथा `request_status` field देती है। Admin UI स्थिति स्पष्ट दिखाती है और `processing` पर दोबारा Approve/Reject बटन नहीं देती, ताकि संभावित concurrent/ambiguous कार्रवाई दोहराई न जाए।
+- Source-only; migration लागू नहीं हुई। Stuck-processing recovery policy, SQL compile और Admin UI runtime tests अंतिम consolidated QA में बाकी हैं।
+- Commits: migration `4d35ecc9932570d53a54d32b9ce2a4901e058a5d`; Admin UI `11286150259fac99cc777ab2f4ed8c60d1e1261c`.
