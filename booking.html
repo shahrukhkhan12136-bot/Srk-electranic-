@@ -241,6 +241,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
      <li>सामान/पार्ट्स मेहनताने में शामिल नहीं हैं; उनका अलग itemized विवरण और आपकी अलग मंजूरी जरूरी है।</li>
      <li>आपकी चुनी हुई श्रेणी ही भेजी जाएगी। उपलब्ध पार्टनर न होने पर श्रेणी अपने-आप नहीं बदलेगी।</li>
      <li>Cash या Online भुगतान तरीका आपकी अनुमति के बिना नहीं बदलेगा। भुगतान काम पूरा होने के बाद होगा।</li>
+     <li>यदि कोई पुरानी cancellation fee बाकी है, तो अगली booking के bill में अलग मद के रूप में जोड़ी जाएगी और booking भेजने से पहले दिखाई जाएगी।</li>
     </ul>
     <label style="display:flex;align-items:flex-start;gap:9px;font-weight:600;line-height:1.45">
      <input id="bookingTermsAccepted" type="checkbox" required style="width:19px;height:19px;flex:0 0 19px;margin:1px 0 0">
@@ -1434,7 +1435,9 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   }
   if(estimatePaise===null){alert('कृपया इलेक्ट्रिशियन की श्रेणी और 1 से 8 घंटे की अवधि चुनें।');return;}
   if(!customerSb){alert('बुकिंग से पहले ग्राहक OTP लॉगिन करें।');return;}
-  const {data:debtRows,error:debtError}=await customerSb.rpc('srk_customer_list_my_cancellation_fee_debts');
+  let debtRows=[],debtError=null;
+  try{({data:debtRows,error:debtError}=await customerSb.rpc('srk_customer_list_my_cancellation_fee_debts'));}
+  catch(_){alert('पुरानी cancellation fee की जाँच अभी नहीं हो सकी। Payments में बकाया रीफ़्रेश करके दोबारा कोशिश करें।');return;}
   if(debtError){alert('पुरानी cancellation fee की जाँच अभी नहीं हो सकी। Payments में बकाया रीफ़्रेश करके दोबारा कोशिश करें।');return;}
   const priorCancellationDebts=(Array.isArray(debtRows)?debtRows:[]).filter(item=>item.status==='open');
   const priorFeePaise=priorCancellationDebts.reduce((sum,item)=>sum+Number(item.amount_paise||0),0);
