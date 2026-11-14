@@ -440,7 +440,7 @@ declare
   v_booking_id uuid;
   v_status text;
 begin
-  if auth.role()<>'service_role' then
+  if coalesce(auth.jwt()->>'role','')<>'service_role' then
     raise exception 'SERVICE_ROLE_REQUIRED' using errcode='42501';
   end if;
   if p_refund_record_id is null
