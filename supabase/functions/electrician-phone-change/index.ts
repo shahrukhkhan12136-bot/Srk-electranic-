@@ -14,6 +14,9 @@ function normalizeIndianPhone(value: unknown): string | null {
   const local = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
   return /^[6-9]\d{9}$/.test(local) ? "+91" + local : null;
 }
+function phoneDigits(value: unknown): string {
+  return String(value ?? "").replace(/\D/g, "");
+}
 function generateOtp(): string {
   // Rejection sampling avoids modulo bias when mapping 32-bit CSPRNG output to 000000–999999.
   const range = 0x1_0000_0000;
@@ -140,21 +143,49 @@ Deno.serve(async (req: Request) => {
     });
     if (claimError || !claim?.success) return reply(409, { error: claimError?.message || "रिक्वेस्ट पर कार्रवाई नहीं हो सकी।" });
 
-    const { error: authUpdateError } = await service.auth.admin.updateUserById(claim.user_id, {
-      phone: claim.new_phone, phone_confirm: true,
-    });
-    if (authUpdateError) {
-      await service.rpc("srk_admin_release_electrician_phone_change", { p_request_id: requestId, p_admin_id: actor.id, p_sync_error: false });
-      return reply(502, { error: "Supabase लॉगिन नंबर अपडेट नहीं हुआ। रिक्वेस्ट फिर से Admin queue में रखी गई है।" });
+    const { data: authBefore, error: authReadError } = await service.auth.admin.getUserById(claim.user_id);
+    const authPhoneDigits = phoneDigits(authBefore?.user?.phone);
+    const oldPhoneDigits = phoneDigits(claim.old_phone);
+    const newPhoneDigits = phoneDigits(claim.new_phone);
+    if (authReadError || !authPhoneDigits ||
+        (authPhoneDigits !== oldPhoneDigits && authPhoneDigits !== newPhoneDigits)) {
+      await service.rpc("srk_admin_release_electrician_phone_change", {
+        p_request_id: requestId, p_admin_id: actor.id, p_sync_error: true,
+      });
+      return reply(409, { error: "लॉगिन मोबाइल नंबर की स्थिति बदल चुकी है या पढ़ी नहीं जा सकी। रिक्वेस्ट तकनीकी जाँच के लिए सुरक्षित रखी गई है।" });
+    }
+
+    // A previous interrupted attempt may already have changed Auth to the new number.
+    // Do not repeat the update in that case; continue with the profile finalization.
+    if (authPhoneDigits !== newPhoneDigits) {
+      const { error: authUpdateError } = await service.auth.admin.updateUserById(claim.user_id, {
+        phone: claim.new_phone, phone_confirm: true,
+      });
+      if (authUpdateError) {
+        await service.rpc("srk_admin_release_electrician_phone_change", {
+          p_request_id: requestId, p_admin_id: actor.id, p_sync_error: false,
+        });
+        return reply(502, { error: "Supabase लॉगिन नंबर अपडेट नहीं हुआ। रिक्वेस्ट फिर से Admin queue में रखी गई है।" });
+      }
     }
 
     const { data: finalized, error: finalizeError } = await service.rpc("srk_admin_finalize_electrician_phone_change", {
       p_request_id: requestId, p_admin_id: actor.id,
     });
     if (finalizeError || !finalized?.success) {
-      const { error: rollbackError } = await service.auth.admin.updateUserById(claim.user_id, {
-        phone: claim.old_phone, phone_confirm: true,
-      });
+      // Roll back only if Auth still contains the number changed by this request.
+      // Never overwrite a third number that may have been changed concurrently.
+      const { data: authAfterFailure, error: authAfterReadError } = await service.auth.admin.getUserById(claim.user_id);
+      const currentDigits = phoneDigits(authAfterFailure?.user?.phone);
+      let rollbackError: unknown = authAfterReadError || null;
+      if (!rollbackError && currentDigits === newPhoneDigits) {
+        const { error } = await service.auth.admin.updateUserById(claim.user_id, {
+          phone: claim.old_phone, phone_confirm: true,
+        });
+        rollbackError = error;
+      } else if (!rollbackError && currentDigits !== oldPhoneDigits) {
+        rollbackError = new Error("Auth phone changed independently; rollback skipped.");
+      }
       await service.rpc("srk_admin_release_electrician_phone_change", {
         p_request_id: requestId, p_admin_id: actor.id, p_sync_error: !!rollbackError,
       });
