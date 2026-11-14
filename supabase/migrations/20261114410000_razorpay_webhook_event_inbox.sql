@@ -35,7 +35,7 @@ declare
   v_event public.srk_razorpay_webhook_events%rowtype;
   v_token uuid:=gen_random_uuid();
 begin
-  if auth.role()<>'service_role' then
+  if coalesce(auth.jwt()->>'role','')<>'service_role' then
     raise exception 'SERVICE_ROLE_REQUIRED' using errcode='42501';
   end if;
   if p_event_id is null or length(p_event_id) not between 1 and 128
@@ -93,7 +93,7 @@ as $function$
 declare
   v_event public.srk_razorpay_webhook_events%rowtype;
 begin
-  if auth.role()<>'service_role' then
+  if coalesce(auth.jwt()->>'role','')<>'service_role' then
     raise exception 'SERVICE_ROLE_REQUIRED' using errcode='42501';
   end if;
   if p_event_id is null or p_claim_token is null
