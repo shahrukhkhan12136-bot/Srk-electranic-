@@ -1716,3 +1716,8 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Read-only Production query में `srk_razorpay_refunds` पर total rows 0 और paise mismatch rows 0 मिले। Core schema migration में `srk_razorpay_refunds_amount_paise_match` constraint जोड़ा (existing relation होने पर safely replace) और `srk_booking_refund_requests(customer_user_id,created_at DESC)` index जोड़ा। Labour bill customer/electrician history indexes भी restore किए।
 - pgTAP assertions 49 से बढ़ाकर **51/51** किए: paise amount reconciliation constraint और customer refund history index verify होते हैं। Isolated PostgreSQL 18 पर migration rerun + pgTAP **51/51 PASS**; कोई `not ok` या plan mismatch नहीं।
 - Changes केवल approved Feature Branch source में हैं; Production catalog read-only ही रहा। No migration apply, no payment/refund/provider call, no deployment, no merge, no mobile QA।
+
+
+### Audit entity constraint — latest Production catalog correction (14 नवम्बर 2026)
+- नवीनतम read-only `pg_constraint` introspection में Production `srk_admin_audit_events_entity_type_check` ने `razorpay_refund` को पहले से allow-list में शामिल दिखाया। इसलिए पिछली tracker note का कथन कि Production constraint में यह value missing थी, नवीनतम catalog evidence से पुष्ट नहीं होता और उसे superseded माना जाए।
+- Feature Branch migration फिर भी वही complete allow-list deterministically enforce करती है, ताकि fresh/source schema में generic audit table definition और Razorpay refund audit trigger एक-दूसरे के अनुरूप रहें। Production में कोई बदलाव नहीं किया।
