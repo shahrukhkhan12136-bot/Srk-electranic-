@@ -136,7 +136,15 @@ BEGIN
    UPDATE public.job_offers SET status='declined',responded_at=clock_timestamp()
    WHERE electrician_id=v_profile.id AND status='offered' RETURNING booking_id
   LOOP
-   PERFORM private.srk_dispatch_next_booking_offer(v_booking_id); v_advanced:=v_advanced+1;
+   -- Reuse the existing Admin dispatch RPC; no separate dispatcher exists in this schema.
+   IF EXISTS (
+    SELECT 1 FROM public.service_bookings b
+    WHERE b.id=v_booking_id AND b.assigned_electrician_id IS NULL
+      AND b.status IN ('new','confirmed')
+   ) THEN
+    PERFORM public.srk_admin_offer_booking(v_booking_id);
+    v_advanced:=v_advanced+1;
+   END IF;
   END LOOP;
  END IF;
  UPDATE srk_private.srk_electrician_area_change_requests SET status=p_decision,
