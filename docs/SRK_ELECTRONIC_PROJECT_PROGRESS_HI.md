@@ -1036,3 +1036,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin inline JavaScript syntax PASS; allowlist, KYC/tier gate और returned-row checks source verification PASS।
 - Read-only production schema audit: Admin-only RLS UPDATE policies मौजूद; booking status/work approval और audit triggers मौजूद। कोई schema/production परिवर्तन नहीं।
 - Source-only; कोई booking status, payment, electrician Active status या KYC record नहीं बदला।
+
+## 2026-11-14 — Admin Offer Dispatch Compatibility Guard
+- Admin booking list में customer-selected category/tier fields पढ़े जाते हैं।
+- नई category booking को legacy `srk_admin_offer_booking` RPC से manually dispatch करने पर रोक लगाई; legacy RPC category-tier, `available_for_work` और nearest-first sequential eligibility लागू नहीं करता।
+- Legacy-format booking के लिए ही पुराने Admin offer RPC की अनुमति; booking state/assignment पुनः पढ़कर जाँची जाती है, duplicate guard कायम और raw backend errors सुरक्षित संदेश में बदले।
+- Read-only production function audit ने पुष्टि की कि वर्तमान deployed `srk_admin_offer_booking` legacy broad matching करता है; sequential nearest-first dispatcher केवल feature-branch migration `20261114210000...` में है और production DB में अभी लागू नहीं है।
+- Admin inline JavaScript syntax PASS; category guard और selection read source verification PASS।
+- Source-only; कोई offer, booking या electrician assignment नहीं बदला। Production RPC/migration नहीं बदली।
