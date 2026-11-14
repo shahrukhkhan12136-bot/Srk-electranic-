@@ -217,11 +217,11 @@ begin
          select 1 from auth.sessions auth_s
           where auth_s.id = v_session_id and auth_s.user_id = v_uid
        )
-       and not exists (
+       and exists (
          select 1 from public.srk_admin_staff_sessions tracked
           where tracked.auth_session_id = v_session_id
             and tracked.staff_user_id = v_uid
-            and tracked.revoked_at is not null
+            and tracked.revoked_at is null
        )
   );
 end;
