@@ -216,6 +216,18 @@ begin
     return false;
   end if;
 
+  -- Hold the tracked session row too: explicit revocation updates this row.
+  -- A concurrent revoke therefore waits for in-flight authorized work to finish;
+  -- if revocation commits first, this check observes the revoked row and denies access.
+  perform 1 from public.srk_admin_staff_sessions tracked
+   where tracked.auth_session_id = v_session_id
+     and tracked.staff_user_id = v_uid
+     and tracked.revoked_at is null
+   for share;
+  if not found then
+    return false;
+  end if;
+
   return exists (
     select 1
       from public.srk_admin_staff s
@@ -227,12 +239,6 @@ begin
        and exists (
          select 1 from auth.sessions auth_s
           where auth_s.id = v_session_id and auth_s.user_id = v_uid
-       )
-       and exists (
-         select 1 from public.srk_admin_staff_sessions tracked
-          where tracked.auth_session_id = v_session_id
-            and tracked.staff_user_id = v_uid
-            and tracked.revoked_at is null
        )
   );
 end;
