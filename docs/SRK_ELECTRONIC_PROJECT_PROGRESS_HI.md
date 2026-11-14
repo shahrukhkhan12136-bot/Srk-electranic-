@@ -1182,3 +1182,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - अब ambiguous finalization error पर Auth rollback नहीं होता। रिक्वेस्ट को recoverable sync_error में रखने की कोशिश होती है और Admin को queue refresh करके authoritative स्थिति जाँचने को कहा जाता है। यदि RPC पहले ही approved commit कर चुका है तो release RPC उस approved row को नहीं बदलता।
 - Finalize RPC अब उसी Admin की पहले से approved रिक्वेस्ट को तभी idempotent success देता है जब confirmed Auth phone और संबंधित electrician profile phone दोनों OTP-verified नए नंबर से मेल खाते हों। अन्य mismatch पर error रहता है।
 - Source-only; migration apply/deploy नहीं हुआ। वास्तविक Postgres lock/concurrency, lost-response, Auth update timeout और finalize retry परीक्षण final consolidated QA में बाकी हैं।
+
+
+### 2026-11-14 — Admin phone-change claim release confirmation
+- Audit में पाया कि Admin approval claim के बाद Auth read/update या finalize failure पर release RPC का परिणाम अनदेखा था। Release विफल होने पर request `processing` में अटक सकती थी, जबकि UI उसे queue में वापस आने की बात बता सकती थी।
+- Release RPC अब JSON success/status लौटाती है, उसी Admin के processing claim को release करती है और पहले से released pending/sync_error state पर idempotent success देती है। अन्य अवस्था पर स्पष्ट failure देती है।
+- Edge Function तीनों recovery paths में release result/error जाँचती है और केवल confirmed release पर queue में लौटने का संदेश देती है।
+- Source-only; migration लागू/deploy नहीं। Postgres concurrency, lost network response, claim release failure और retry tests अंतिम consolidated QA में बाकी हैं।
