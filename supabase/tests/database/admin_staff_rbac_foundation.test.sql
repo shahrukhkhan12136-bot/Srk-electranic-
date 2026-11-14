@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(14);
+SELECT plan(21);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -53,6 +53,26 @@ SELECT ok(
   'Main Admin remains separate and staff permissions require active status'
 );
 SELECT has_trigger('public','srk_admin_staff_audit_events','srk_admin_staff_audit_no_row_mutation','audit rows are protected against update and delete');
+SELECT has_function('public','srk_admin_staff_register_session',ARRAY[]::text[],'staff session registration RPC exists');
+SELECT has_function('public','srk_admin_list_staff',ARRAY[]::text[],'Main Admin staff listing RPC exists');
+SELECT has_function('public','srk_admin_staff_set_status',ARRAY['uuid','text','text'],'Main Admin staff status RPC exists');
+SELECT has_function('public','srk_admin_staff_register_invited_user',ARRAY['uuid','text','uuid'],'service-only invited user registration RPC exists');
+SELECT ok(
+  position('auth.sessions' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0
+  AND position('tracked.revoked_at is not null' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0,
+  'staff permissions require a live Auth session and reject revoked tracked sessions'
+);
+SELECT ok(
+  has_function_privilege('service_role','public.srk_admin_staff_register_invited_user(uuid,text,uuid)','EXECUTE')
+  AND NOT has_function_privilege('authenticated','public.srk_admin_staff_register_invited_user(uuid,text,uuid)','EXECUTE')
+  AND NOT has_function_privilege('anon','public.srk_admin_staff_register_invited_user(uuid,text,uuid)','EXECUTE'),
+  'invited-user registry RPC is callable only by service_role'
+);
+SELECT ok(
+  position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_staff_set_status(uuid,text,text)'::regprocedure))>0
+  AND position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_staff()'::regprocedure))>0,
+  'staff management list and status RPCs enforce Main Admin authorization'
+);
 
 SELECT * FROM finish();
 ROLLBACK;
