@@ -290,3 +290,19 @@
 - [ ] Deno type/runtime check और PostgreSQL migration/RPC concurrency test बाकी हैं; उपलब्ध sandbox में Deno/PostgreSQL tools नहीं थे।
 
 **सीमा:** ये Node source-contract tests हैं। Supabase migrations अभी apply नहीं हुईं; database runtime, SQL permissions/concurrency, वास्तविक push delivery और mobile QA सत्यापित नहीं हुए। कोई production बदलाव/deployment नहीं हुआ।
+
+### PostgreSQL isolated runtime + dead-letter correctness audit — 15 November 2026
+- [x] Disposable local PostgreSQL 18.6 database में minimal Supabase-compatible fixture बनाकर चारों Push migrations क्रम से apply कीं: durable outbox, per-subscription ledger, health/recovery, lease fencing। यह local throwaway DB था; Supabase project/paid branch नहीं।
+- [x] Runtime test ने Outbox claim RPC में `RETURNS TABLE(... attempt_count ...)` output variable बनाम unqualified column का वास्तविक ambiguity error पकड़ा। Migration `20261115170000` में update target alias `o` से columns qualify किए; migration re-apply और claim सफल।
+- [x] Runtime audit ने dead device rows को complete मान लेने का logic gap पकड़ा: outbox delivered हो सकता था और dead device rows manual recovery से बाहर रह जातीं। Migration `20261115180000` के claim और completion checks अब तभी complete कहते हैं जब हर device row `delivered` हो; dead row outbox को retry/dead-letter path में रखती है।
+- [x] दोनों fixes के लिए Node source-contract tests अपडेट किए।
+- [x] Outbox/device claim, claim→finish, current fencing token success और stale token rejection after reclaim execute किए।
+- [x] Outbox और per-device concurrent claim tests: transaction lock hold के दौरान दूसरा worker `SKIP LOCKED` से वही row नहीं लेता (second worker claim count 0)।
+- [x] Exhausted lease recovery execute की: outbox attempt 8 और device attempt 5 expired leases dead-letter बने।
+- [x] Unauthorized `anon` RPC execution denied; private `srk_private` table access denied। Authenticated RLS test में owner को अपनी 2 subscriptions दिखीं और दूसरे user को 0।
+- [x] Health RPC counts और manual dead-letter recovery execute की; recovery ने dead device row reset की और delivered device row को delivered ही रखा।
+- [x] Deno `check --no-config --no-lock supabase/functions/push-job-offer/index.ts` सफल; Netlify worker `node --check` सफल।
+- [x] नवीनतम source पर full `npm test`: **87/87 PASS**।
+- [ ] Supabase के वास्तविक managed project schema/roles पर parity verification और scheduled worker/Edge integration test बाकी; इसके लिए पहले approved isolated staging environment चाहिए।
+
+**सीमा:** PostgreSQL परीक्षण local disposable DB + minimal fixture पर हुआ, वास्तविक Supabase project पर नहीं। कोई production/staging migration apply, deployment, real push या mobile QA नहीं। Web Push provider timeout के बाद transport-level duplicate संभावना अभी भी बनी रहती है।
