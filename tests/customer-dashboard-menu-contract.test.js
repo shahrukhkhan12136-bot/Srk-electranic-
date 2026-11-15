@@ -125,3 +125,14 @@ test('electrician live-location update network exceptions trigger safe sharing s
   assert.match(live, /catch\(error\)\s*\{\s*await stopElectricianLiveLocationAfterGpsFailure/);
   assert.match(live, /srk_electrician_stop_live_location/);
 });
+
+
+test('customer remaining login, form and booking feedback strings are localized', () => {
+  assert.match(booking, /'10 अंकों का मोबाइल नंबर':'10-digit mobile number'/);
+  assert.match(booking, /'OTP दर्ज करें':'Enter OTP'/);
+  assert.match(booking, /'ग्राहक मुख्य मेनू':'Customer main menu'/);
+  assert.match(booking, /'बुकिंग लोकेशन का Google Map':'Booking location on Google Maps'/);
+  assert.match(booking, /'ग्राहक लॉगिन सेटअप अभी उपलब्ध नहीं है। OTP लॉगिन सेवा ठीक होने तक बुकिंग नहीं की जा सकेगी।':'Customer login setup is unavailable\./);
+  assert.match(booking, /'भुगतान सत्यापित नहीं हुआ।':'Payment could not be verified.'/);
+  assert.match(booking, /'रसीद प्रिंट \/ PDF सेव करें':'Print receipt \/ Save PDF'/);
+});
