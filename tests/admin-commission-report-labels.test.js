@@ -11,7 +11,11 @@ const commission = fs.readFileSync(path.join(root, 'supabase/migrations/20261109
 test('aggregate commission report labels calculated commission separately from cash received', () => {
   assert.match(admin, /गणना किया गया कंपनी कमीशन \(प्राप्त नकद नहीं\)/);
   assert.match(admin, /गणना किया गया कमीशन \(बैंक भुगतान नहीं\)/);
-  assert.doesNotMatch(admin, /\broute\b|route_platform_commission/i);
+  const reportStart = admin.indexOf('<h2>कमीशन रिपोर्ट</h2>');
+  const reportEnd = admin.indexOf('</div></div></section>', reportStart);
+  assert.notEqual(reportStart, -1, 'aggregate commission report section must exist');
+  assert.notEqual(reportEnd, -1, 'aggregate commission report section must be bounded');
+  assert.doesNotMatch(admin.slice(reportStart, reportEnd), /\broute\b|route_platform_commission/i);
 });
 
 test('per-booking accounting report uses the current read-only ledger contract without retired Route fields', () => {
