@@ -116,3 +116,9 @@ test('Customer booking list guards rejected auth session lookup and always clear
   assert.match(load, /finally \{\s*box\.setAttribute\('aria-busy','false'\);\s*\}/);
   assert.match(load, /बुकिंग लोड नहीं हो सकीं/);
 });
+
+test('customer booking timeline isolates a rejected per-booking RPC transport', () => {
+  const load = functionBody(customer, 'loadCustomerBookings');
+  assert.match(load, /catch\\(error\\)/);
+  assert.match(load, /return \\{ bookingId: row\\.id, result: \\{ error \\} \\};/);
+});
