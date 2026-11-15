@@ -859,6 +859,8 @@ async function loadAdminBookingAccountingReconciliation(){
   if(error||!data)throw error||new Error('Reconciliation report उपलब्ध नहीं है।');
   const r=data, exceptions=Array.isArray(r.exceptions)?r.exceptions:[];
   const payout=r.payout||null;
+  const routeTransfers=Array.isArray(r.route_transfers)?r.route_transfers:[];
+  const routeEvidenceStatus=String(r.route_settlement_evidence_status||'not_independently_verified');
   const fee=Array.isArray(r.cancellation_fee_ledger_entries)?r.cancellation_fee_ledger_entries:[];
   const wallet=Array.isArray(r.wallet_posted_entries)?r.wallet_posted_entries:[];
   const summary=(label,value)=>'<div class="card"><div class="muted">'+label+'</div><strong>'+value+'</strong></div>';
@@ -878,6 +880,9 @@ async function loadAdminBookingAccountingReconciliation(){
    summary('Cancellation Fee Ledger Net',adminAccountingMoney(r.cancellation_fee_ledger_net_paise))+
    '</div>'+
    '<h3>Electrician Payout</h3><p>'+(payout?esc(payout.status)+' · Recorded payable '+adminAccountingMoney(payout.recorded_payable_paise)+' · '+esc(payout.method||'—')+' · Reference '+esc(payout.reference||'—'):'इस Booking का payout record नहीं मिला।')+'</p>'+
+   '<h3>Razorpay Route Transfers — स्वतंत्र पुष्टि बाकी</h3>'+
+   '<div class="notice" role="alert">चेतावनी: Route ledger की processed/settled स्थिति बैंक में रकम पहुँचने का प्रमाण नहीं है। Provider settlement या bank-credit प्रमाण उपलब्ध होने तक इसे भुगतान की पुष्टि न मानें। स्थिति: '+esc(routeEvidenceStatus)+' · स्वतंत्र पुष्टि: '+(r.route_provider_settlement_verified===true?'हाँ':'नहीं')+'</div>'+
+   list(routeTransfers,'इस Booking के लिए Route transfer ledger row नहीं है।',x=>'<p>'+esc(x.recipient_type)+' · '+adminAccountingMoney(x.amount_paise)+' · Transfer: '+esc(x.transfer_status)+' · Settlement: '+esc(x.settlement_status)+' · Provider ID: '+esc(x.transfer_id||'—')+'</p>')+
    '<h3>Cancellation Fee Ledger</h3><p>इस Booking पर कुल allocation (reversed सहित): '+adminAccountingMoney(r.cancellation_fee_allocated_to_booking_paise)+' · ऐतिहासिक captured fee: '+adminAccountingMoney(r.cancellation_fee_historically_captured_paise)+' · मूल Booking का open/reserved debt: '+adminAccountingMoney(r.cancellation_fee_source_open_or_reserved_paise)+'</p>'+
    list(fee,'कोई cancellation-fee ledger entry नहीं है।',x=>'<p>'+esc(x.entry_type)+' · '+esc(x.direction)+' · '+adminAccountingMoney(x.amount_paise)+' · '+esc(x.payment_reference||'—')+'</p>')+
    '<h3>Wallet — Posted Entries Only</h3><p>Credit: '+adminAccountingMoney(r.wallet_posted_credit_paise)+' · Debit: '+adminAccountingMoney(r.wallet_posted_debit_paise)+'</p>'+
