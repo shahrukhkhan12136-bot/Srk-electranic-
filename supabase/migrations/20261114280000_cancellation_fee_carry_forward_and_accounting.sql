@@ -13,7 +13,7 @@ create table if not exists public.srk_customer_cancellation_fee_debts (
     references public.srk_booking_cancellation_requests(id) on delete restrict,
   customer_user_id uuid not null references auth.users(id) on delete restrict,
   source_booking_id uuid not null references public.service_bookings(id) on delete restrict,
-  amount_paise bigint not null check (amount_paise in (4900,9900)),
+  amount_paise bigint not null check (amount_paise = 9900),
   status text not null default 'open'
     check (status in ('open','reserved','settled','reversed')),
   reserved_booking_id uuid references public.service_bookings(id) on delete restrict,
@@ -34,7 +34,7 @@ insert into public.srk_customer_cancellation_fee_debts
   (cancellation_request_id,customer_user_id,source_booking_id,amount_paise)
 select r.id,r.customer_user_id,r.booking_id,round(r.fee_amount*100)::bigint
 from public.srk_booking_cancellation_requests r
-where r.request_status='approved' and r.fee_amount in (49,99)
+where r.request_status='approved' and r.fee_amount = 99
 on conflict(cancellation_request_id) do nothing;
 
 create table if not exists public.srk_booking_cancellation_fee_items (
@@ -42,7 +42,7 @@ create table if not exists public.srk_booking_cancellation_fee_items (
   booking_id uuid not null references public.service_bookings(id) on delete restrict,
   debt_id uuid not null unique references public.srk_customer_cancellation_fee_debts(id) on delete restrict,
   customer_user_id uuid not null references auth.users(id) on delete restrict,
-  amount_paise bigint not null check (amount_paise in (4900,9900)),
+  amount_paise bigint not null check (amount_paise = 9900),
   status text not null default 'reserved'
     check (status in ('reserved','settled','released','reversed')),
   created_at timestamptz not null default now(),
@@ -80,7 +80,7 @@ create table if not exists public.srk_cancellation_fee_ledger (
   electrician_user_id uuid references auth.users(id) on delete restrict,
   entry_type text not null check (entry_type in ('online_collection','cash_electrician_debit','reversal')),
   direction text not null check (direction in ('credit','debit')),
-  amount_paise bigint not null check (amount_paise in (4900,9900)),
+  amount_paise bigint not null check (amount_paise = 9900),
   status text not null default 'posted' check (status in ('posted','reversed')),
   payment_reference text,
   idempotency_key text not null unique,
@@ -208,7 +208,7 @@ begin
   if p_decision='approved' then
     if p_verified_stage not in ('not_departed','en_route','arrived') then raise exception 'INVALID_VERIFIED_STAGE'; end if;
     if length(v_evidence)<10 or length(v_evidence)>1000 then raise exception 'STAGE_EVIDENCE_REQUIRED_10_TO_1000'; end if;
-    v_fee:=case p_verified_stage when 'not_departed' then 0 when 'en_route' then 49 when 'arrived' then 99 end;
+    v_fee:=case p_verified_stage when 'not_departed' then 0 when 'en_route' then 0 when 'arrived' then 99 end;
     v_fee_paise:=round(v_fee*100)::bigint;
     update public.srk_booking_cancellation_requests
       set request_status='approved',verified_stage=p_verified_stage,fee_amount=v_fee,
