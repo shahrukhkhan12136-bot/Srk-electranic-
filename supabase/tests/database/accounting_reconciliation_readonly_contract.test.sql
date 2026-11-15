@@ -1,5 +1,5 @@
 begin;
-select plan(41);
+select plan(42);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -134,6 +134,12 @@ select ok(position('COMMISSION_RATE_MISSING_OR_INVALID' in pg_get_functiondef(
   and position('VERIFIED_COLLECTION_DOES_NOT_MATCH_LABOUR_AND_SETTLED_FEES' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'invalid commission rates and collection mismatches fail closed as report exceptions');
+
+select ok(position('FINAL_REFUND_PAYOUT_NOT_CLOSED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('ELECTRICIAN_TRANSFER_NOT_PROCESSED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'report flags refund/payout closure and provider transfer processing gaps');
 
 select * from finish();
 rollback;
