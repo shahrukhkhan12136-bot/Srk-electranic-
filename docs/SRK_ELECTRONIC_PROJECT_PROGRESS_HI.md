@@ -2754,3 +2754,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression checks cover all five accessible tabs and matching panels, Payments/Support/Profile panel routing, saved-address navigation from Profile, authenticated dashboard visibility, and expected customer support/profile RPC integration.
 - This is source-contract coverage only; it does not prove live Supabase RPC/RLS/storage behavior or browser/mobile runtime.
 - New test and latest branch CI result remain pending verification.
+
+
+### Customer dashboard review note — 2026-11-15
+- Static source review confirmed the menu-shell moves Payment History, Support and Profile cards into their respective tab panels; complaint list/create/message and profile read/update use customer-specific RPCs behind the authenticated dashboard.
+- Found a remaining honest-completion gap: Profile saves the `preferred_language` value, but there is no translation/apply layer in `booking.html`; Hindi/English selection is currently preference storage only, not a working language switch.
+- Added source regression coverage in `tests/customer-dashboard-menu-contract.test.js` (commit `5c202a4`). Workflow run `43706360554` was cancelled before dependency install/test execution after subsequent branch pushes; therefore the new test is **not yet verified by CI**. Do not report it as passed.
+- Live Supabase RPC/RLS/storage and browser verification remain pending.
