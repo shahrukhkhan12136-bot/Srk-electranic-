@@ -72,6 +72,25 @@ create trigger srk_electrician_kyc_events_append_only
 before update or delete on public.srk_electrician_verification_document_events
 for each row execute function public.srk_reject_electrician_kyc_event_mutation();
 
+create or replace function public.srk_electrician_can_delete_unregistered_kyc_object(p_path text)
+returns boolean
+language sql stable security definer set search_path=''
+as $function$
+  select auth.uid() is not null
+    and p_path is not null
+    and p_path like auth.uid()::text||'/%'
+    and exists(
+      select 1 from public.electrician_profiles p
+      where p.user_id=auth.uid() and p.auth_user_id=auth.uid()
+    )
+    and not exists(
+      select 1 from public.srk_electrician_verification_documents d
+      where d.storage_path=p_path
+    );
+$function$;
+revoke all on function public.srk_electrician_can_delete_unregistered_kyc_object(text) from public,anon;
+grant execute on function public.srk_electrician_can_delete_unregistered_kyc_object(text) to authenticated;
+
 -- Storage is private. Electricians can upload only into their own UID/type folder;
 -- Admin can create short-lived signed previews, but no public object access exists.
 drop policy if exists srk_electrician_kyc_owner_upload on storage.objects;
@@ -114,10 +133,7 @@ using(
     select 1 from public.electrician_profiles p
     where p.user_id=auth.uid() and p.auth_user_id=auth.uid()
   )
-  and not exists(
-    select 1 from public.srk_electrician_verification_documents d
-    where d.storage_path=storage.objects.name
-  )
+  and public.srk_electrician_can_delete_unregistered_kyc_object(storage.objects.name)
 );
 
 create or replace function public.srk_electrician_submit_verification_document(
@@ -331,6 +347,59 @@ end;
 $function$;
 revoke all on function public.srk_admin_review_electrician_document(uuid,text,text) from public,anon;
 grant execute on function public.srk_admin_review_electrician_document(uuid,text,text) to authenticated;
+
+-- Require latest identity and address evidence before changing the approved rate tier.
+create or replace function public.srk_guard_electrician_rate_tier_activation()
+returns trigger language plpgsql security definer set search_path=''
+as $function$
+declare
+  v_authorized boolean:=false;
+  v_identity_status text;
+  v_address_status text;
+begin
+  if tg_op='INSERT' then
+    if new.approved_rate_tier is not null or new.approved_rate_card_version is not null
+       or new.rate_tier_approved_by is not null or new.rate_tier_approved_at is not null then
+      raise exception 'RATE_TIER_MUST_BE_ASSIGNED_THROUGH_AUDITED_ADMIN_RPC' using errcode='42501';
+    end if;
+  elsif new.approved_rate_tier is distinct from old.approved_rate_tier
+     or new.approved_rate_card_version is distinct from old.approved_rate_card_version
+     or new.rate_tier_approved_by is distinct from old.rate_tier_approved_by
+     or new.rate_tier_approved_at is distinct from old.rate_tier_approved_at then
+    select exists(
+      select 1 from srk_private.electrician_rate_tier_authorizations a
+      where a.transaction_id=pg_catalog.txid_current()
+        and a.electrician_profile_id=new.id and a.actor_id=auth.uid()
+    ) into v_authorized;
+    if not v_authorized then
+      raise exception 'RATE_TIER_CHANGES_REQUIRE_AUDITED_ADMIN_RPC' using errcode='42501';
+    end if;
+    if new.verification_status is distinct from 'approved' then
+      raise exception 'ELECTRICIAN_APPLICATION_MUST_BE_APPROVED_BEFORE_RATE_TIER' using errcode='23514';
+    end if;
+    select d.review_status into v_identity_status
+    from public.srk_electrician_verification_documents d
+    where d.electrician_profile_id=new.id and d.document_type='identity_proof'
+    order by d.uploaded_at desc,d.id desc limit 1;
+    select d.review_status into v_address_status
+    from public.srk_electrician_verification_documents d
+    where d.electrician_profile_id=new.id and d.document_type='address_proof'
+    order by d.uploaded_at desc,d.id desc limit 1;
+    if v_identity_status is distinct from 'approved'
+       or v_address_status is distinct from 'approved' then
+      raise exception 'LATEST_IDENTITY_AND_ADDRESS_KYC_DOCUMENTS_MUST_BE_APPROVED_BEFORE_RATE_TIER' using errcode='23514';
+    end if;
+  end if;
+  if new.active is true and (
+    new.approved_rate_tier is null or new.approved_rate_card_version is null
+    or new.rate_tier_approved_by is null or new.rate_tier_approved_at is null
+  ) then
+    raise exception 'ADMIN_APPROVED_RATE_TIER_REQUIRED_BEFORE_ACTIVATION' using errcode='23514';
+  end if;
+  return new;
+end;
+$function$;
+revoke all on function public.srk_guard_electrician_rate_tier_activation() from public,anon,authenticated;
 
 -- A trigger protects direct profile-table writes as well as the Admin RPC.
 create or replace function public.srk_guard_electrician_kyc_before_activation()
