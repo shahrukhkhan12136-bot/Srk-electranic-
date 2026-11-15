@@ -259,3 +259,23 @@ Source call-sites के RPC names और payload keys को संबंधि
 | Electrician KYC submit/list/preview | submit `(p_document_type,p_storage_path,p_file_name,p_mime_type,p_file_size_bytes)` and list `()` in `20261115140000_electrician_kyc_review_and_activation_gate.sql`; preview `(p_document_id)` in `20261114330000_electrician_private_kyc_document_preview.sql` | all source keys/signatures match; private bucket owner/admin policies exist in KYC migration |
 
 **नतीजा:** इस अतिरिक्त RPC subset में कोई payload-key/signature mismatch नहीं मिला। यह static source-to-migration comparison है; Supabase runtime invocation या `authenticated` बनाम दूसरे user के actor-isolation test का विकल्प नहीं। पिछले sections के बाकी RPC mappings और GPT-2 RLS test gaps अभी लागू रहते हैं।
+
+
+## 20. Final uncovered RPC/test mapping subset — 15 Nov 2026
+
+इस pass में पिछली सूची के शेष RPC names को उनकी वास्तविक SQL declaration और उपलब्ध DB tests से जोड़ा:
+
+| UI RPC | SQL declaration | Test evidence / सीमा |
+|---|---|---|
+| `srk_customer_create_booking_refund_request(uuid,text)` और `srk_customer_list_booking_refund_requests()` | `20261115100000_customer_refund_request_contract.sql` | `customer_refund_request_contract.test.sql` में 17 pgTAP assertions: booking owner, verified paid amount, immutable labour bill, fee-ledger reconciliation, duplicate/refund guards, customer-safe projection, authenticated-only grants. |
+| `srk_customer_get_my_profile()` / saved-address list/save/delete | `20261114201428_customer_profile_saved_addresses_private_storage.sql` | `customer_profile_saved_addresses_private_storage.test.sql` में RLS, private tables, `auth.uid()` scoping, RPC grants, address cap/concurrency, private buckets और Storage policy assertions. |
+| `srk_customer_update_my_profile(text,text,text)` | `20261114180000_harden_customer_avatar_object_integrity.sql` | `customer_avatar_object_integrity.test.sql` में MIME/size/owner metadata and authenticated-only grant checks. |
+| Complaint message send/list/attachment link/list | `20261113220000_customer_support_conversation_schema.sql`; attachment list `20261113230000_support_attachment_paths_and_admin_message_list.sql` | `customer_complaint_customer_safe_projection.test.sql` customer complaint list/create projection checks; `support_attachment_admin_message_access.test.sql` Storage access checks. इन files में हर message/attachment RPC के runtime cross-user actor tests होने का दावा नहीं। |
+| `srk_electrician_update_my_display_name(text)` | `20261114340000_electrician_self_profile_name_edit.sql` | dedicated pgTAP file इस inventory में नहीं मिली; UI contract test अलग static validation है। |
+| `srk_electrician_request_area_change(text,text,text,text)` / `srk_electrician_list_my_area_requests()` | `20261114220000_admin_approved_electrician_relocation.sql` | dedicated relocation pgTAP test नहीं मिला। SQL function authenticated linked profile जाँचता है, duplicate pending request रोकता है; Admin decision अलग `is_srk_admin()` gate से guarded है। |
+| `srk_get_my_earnings()` | `20261109003000_secure_commission_reporting.sql` | payout reconciliation test payout settlement/amount logic को cover करता है; `srk_get_my_earnings()` projection के लिए dedicated pgTAP assertion इस audit में नहीं मिली। |
+| `srk_get_my_wallet_summary()` | `20261109010000_create_secure_wallet_ledger_foundation.sql` | wallet account/ledger/bank-link tables में RLS owner-read policies और authenticated RPC grant हैं; wallet-summary function/owner-vs-other-user के लिए dedicated pgTAP assertion नहीं मिली। |
+
+**महत्वपूर्ण naming reconciliation:** वर्तमान `booking.html` का refund history call `srk_customer_list_booking_refund_requests()` है और वर्तमान migration भी यही function declare/grant करती है। पुराने `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` में खोज परिणाम के अनुसार legacy नाम `srk_customer_list_my_booking_refund_requests()` का उल्लेख है; उसे वर्तमान source contract न माना जाए। यह दस्तावेज़ी drift है, वर्तमान UI/migration mismatch नहीं। GPT-1 ने GPT-2-owned SQL या legacy progress document edit नहीं किया।
+
+**Remaining evidence gaps (handoff only):** Electrician display-name, relocation, earnings projection, wallet summary तथा message/attachment RPC cross-user actor isolation के लिए dedicated DB tests की उपलब्धता GPT-2 database/security owner को verify करनी है। ये test-coverage gaps हैं; इनमें से कोई अकेले runtime vulnerability सिद्ध नहीं करता।
