@@ -21,7 +21,7 @@ test('per-subscription delivery ledger deduplicates each outbox and endpoint', (
 
 test('only due delivery targets are claimed under row locks', () => {
   assert.match(migration, /FOR UPDATE SKIP LOCKED/);
-  assert.match(migration, /locked_until=clock_timestamp\(\)\+interval '2 minutes'/);
+  assert.match(migration, /locked_until=clock_timestamp\(\)\+interval '5 minutes'/);
   assert.match(migration, /attempt_count<5/);
 });
 
@@ -54,4 +54,10 @@ test('delivery ledger and RPCs are private and service-role only', () => {
 test('subscription ledger migration refuses to run before the outbox', () => {
   assert.match(migration, /to_regclass\('srk_private\.srk_push_delivery_outbox'\)/);
   assert.match(migration, /subscription id and user_id/);
+});
+
+test('delivery ledger terminalizes expired leases at the retry cap', () => {
+  assert.match(migration, /delivery_status='processing' AND attempt_count>=5/);
+  assert.match(migration, /Delivery lease expired after maximum attempts/);
+  assert.match(migration, /auth\.role\(\) IS DISTINCT FROM 'service_role'/);
 });
