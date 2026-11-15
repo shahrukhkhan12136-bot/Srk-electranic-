@@ -37,3 +37,12 @@
 
 ## सत्यापन स्थिति
 यह दस्तावेज़ स्वीकृत आवश्यकता दर्ज करता है, लागू feature का प्रमाण नहीं है। अभी कोई SOS UI, SMS, Push, database workflow या live notification चालू होने का दावा नहीं किया जा रहा।
+
+
+## 2026-11-15 — Accidental SOS prevention (user-approved)
+- Active Work screen पर SOS बटन काम शुरू होने के बाद से काम पूरा/बुकिंग रद्द होने तक उपलब्ध रहेगा।
+- केवल SOS बटन छूने से alert नहीं भेजा जाएगा। पहला tap तीन स्वीकृत SOS कारण दिखाएगा।
+- उपयोगकर्ता एक कारण चुनेगा; फिर अलग स्पष्ट “SOS भेजें” बटन दबाने पर ही emergency request बनेगी और Admin/authorized Support को भेजी जाएगी।
+- कारण चुने बिना या अंतिम “SOS भेजें” दबाए बिना कोई alert, SMS या case create नहीं होगा। स्क्रीन बंद/वापस जाने पर अधूरा चयन discard होगा।
+- तीन कारणों के अलावा कोई नया कारण या अतिरिक्त user-entered booking/details/location field नहीं जोड़ा जाएगा। Booking/order और actor विवरण सिस्टम authenticated session/active booking से server-side निकालेगा; उपलब्ध location केवल अनुमति/उपलब्धता के अनुसार ली जाएगी, और location न होने पर SOS भेजना block नहीं होगा।
+- यह UX नियम स्वीकृत है; source implementation और runtime verification अभी बाकी हैं।
