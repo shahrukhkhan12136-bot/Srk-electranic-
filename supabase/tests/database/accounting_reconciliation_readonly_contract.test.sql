@@ -1,5 +1,5 @@
 begin;
-select plan(62);
+select plan(65);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -226,6 +226,16 @@ select ok(exists(select 1 from pg_constraint
   where conrelid='public.srk_route_transfers'::regclass and contype='u'
     and pg_get_constraintdef(oid) like '%razorpay_payment_id%' and pg_get_constraintdef(oid) like '%recipient_type%'),
   'Route transfer ledger prevents duplicate recipient rows for the same Razorpay payment');
+
+select ok((select relrowsecurity from pg_class where oid='public.srk_route_transfers'::regclass),
+  'Route transfer ledger has row-level security enabled');
+select ok(not has_table_privilege('anon','public.srk_route_transfers','select')
+  and not has_table_privilege('authenticated','public.srk_route_transfers','select'),
+  'anonymous and authenticated clients cannot read Route transfer ledger');
+select ok(has_table_privilege('service_role','public.srk_route_transfers','select')
+  and has_table_privilege('service_role','public.srk_route_transfers','insert')
+  and has_table_privilege('service_role','public.srk_route_transfers','update'),
+  'only server service role has the Route transfer ledger operational grants');
 
 select * from finish();
 rollback;
