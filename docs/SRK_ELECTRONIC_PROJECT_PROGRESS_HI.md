@@ -3048,3 +3048,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Razorpay refund executor, read-only status lookup और durable recovery endpoint का source audit: bearer token Supabase Auth से verify; Main Admin membership DB RPC से verify; refund record/payment ID/amount/currency/idempotency identity checks; ambiguous timeout पर नया refund ID नहीं बनता; status lookup provider GET-only है; recovery provider evidence को पहले append-only audit में save कर अलग accounting-finalization चरण चलाती है।
 - Refund reconciliation RPC service-role-only है, booking-first row lock लेती है, provider refund ID mismatch रोकती है और processed/failed terminal state को late event से regress नहीं होने देती। Definitive provider failure पर पहले से लगाया payout hold release करने का नियम source में मौजूद है; इसे केवल verified provider `failed` state पर लागू माना जाए।
 - यह source review और Node CI है; PostgreSQL/pgTAP runtime, live Razorpay sandbox/provider calls, browser E2E और Production DB parity सत्यापित नहीं हुए। कोई वास्तविक refund/payout, DB deployment, merge या production deployment नहीं किया गया।
+
+
+## 2026-11-15 — Electrician Profile, KYC, Earnings और Wallet audit
+
+- Profile display-name update में 2–80 characters validation और self-service RPC confirmation जाँचा।
+- Phone change flow OTP के बाद Admin approval पर निर्भर है; OTP expiry/attempt failure के बाद authoritative request history refresh होती है और मौजूदा नंबर approval तक चालू रहता है। Phone और area request history में user/admin-provided text HTML escaping से render होता है। Area change में state/district/PIN/reason validation, pending request guard और approval तक current area retention की पुष्टि की।
+- KYC में केवल identity/address/skill types, allowlisted MIME, 1–5 MB, unique non-upsert object key और metadata RPC हैं। Document preview owner-authorized RPC path से 60-second signed URL लेता है; public URL नहीं।
+- Earnings RPC और electrician-profile-scoped payout rows अलग हैं। Payout query fail होने पर UI शून्य/empty payout history नहीं दिखाता; स्पष्ट error देता है। Customer payment और Admin UTR-confirmed payout को अलग दिखाया गया है।
+- Wallet summary RPC से है; bank-link query signed-in user-scoped और ledger query user + wallet scoped है। दोनों query failures अलग दिखते हैं। UI स्पष्ट करता है कि ledger balance बैंक ट्रांसफर का प्रमाण नहीं; withdrawal/transfer initiate करने वाला action मौजूद नहीं है।
+- इन contracts के लिए `tests/electrician-accounting-kyc-contract.test.js` जोड़ा। Latest branch SHA `6b83ba1dc3423921a00d1a71564869c286cfbf22` पर दो full repository Node workflows **SUCCESS** हुए।
+- Browser runtime/visual QA अभी pending; final consolidated mobile QA deferred है। No Production changes, merge or deployment.
