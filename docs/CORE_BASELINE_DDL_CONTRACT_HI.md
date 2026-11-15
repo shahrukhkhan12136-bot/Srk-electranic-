@@ -147,3 +147,30 @@
 **GPT-2 progress:** 27/39 = **69% complete**, 12/39 = **31% remaining**.  
 **PostgreSQL/pgTAP runtime:** अभी execute नहीं हुआ।  
 **Production / merge / deployment:** कोई बदलाव नहीं।
+
+
+## 6. Complaint और Push dependencies — अतिरिक्त source audit (2026-11-15)
+
+### 6.1 `public.srk_booking_complaints` और `public.srk_booking_complaint_events`
+
+Branch की recursive migration-tree सूची और complaint-संबंधित migration files जाँची गईं। इन migration files में इन दोनों base tables की कोई `CREATE TABLE` definition नहीं मिली। इसलिए इन्हें अभी भी pre-existing platform/application baseline dependencies माना जाएगा; columns/PK/FK/checks/RLS का पूरा DDL प्रमाणित नहीं है।
+
+माइग्रेशन से केवल निम्न आवश्यक column contract प्रत्यक्ष रूप से दिखता है:
+
+- `srk_booking_complaints`: `id`, `booking_id`, `customer_user_id`, `category`, `description`, `status`, `admin_note`, `created_at`, `updated_at`, `resolved_at`। Complaint create RPC `(booking_id,customer_user_id,category,description)` में INSERT करता है और `id` लौटाता है।
+- `srk_booking_complaint_events`: `complaint_id`, `actor_user_id`, `actor_role`, `from_status`, `to_status`, `note`। Complaint create RPC event INSERT करता है; यह पूर्ण table definition नहीं है।
+- Customer-facing RPC customer ownership को `service_bookings.customer_user_id` से जाँचता है और complaint पर 24 घंटे में अधिकतम 10 submissions की सीमा लगाता है। यह RPC contract है, base table DDL का विकल्प नहीं।
+- `20261113220000_customer_support_conversation_schema.sql` में `srk_booking_complaint_messages` तथा `srk_booking_complaint_message_attachments` नई tables के रूप में बनती हैं; दोनों `srk_booking_complaints(id)` को FK करती हैं और RLS enable करती हैं। इन्हें complaint base tables के साथ भ्रमित नहीं करना चाहिए।
+
+### 6.2 `public.srk_push_subscriptions`
+
+Branch migration tree में `srk_push_subscriptions` की base `CREATE TABLE` definition नहीं मिली। `20261115170001_durable_push_delivery_outbox.sql` का preflight स्पष्ट रूप से `id`, `user_id`, `endpoint`, `p256dh`, `auth` पाँच columns माँगता है; बाद की delivery-ledger migration `id` और `user_id` पर निर्भर करती है। इससे पूरा type/default/unique/FK contract प्रमाणित नहीं होता।
+
+`20261115170001` migration table पर RLS enable करती है, PUBLIC/anon/authenticated से सभी privileges revoke करके authenticated को SELECT/INSERT/UPDATE/DELETE देती है, और चार own-row policies बनाती है जिनका predicate `user_id = (SELECT auth.uid())` है। इसी migration में नई `srk_private.srk_push_delivery_outbox` table बनती है; `20261115180001` नई `srk_private.srk_push_subscription_deliveries` table बनाती है, जिसका `subscription_id` FK `public.srk_push_subscriptions(id)` पर है। ये नई private ledger tables हैं, base subscription table नहीं।
+
+### 6.3 निष्कर्ष और सीमा
+
+- Complaint base और Push subscription base के पूर्ण DDL को अभी अनुमान से fixture में नहीं जोड़ा जाएगा।
+- Complaint message/attachment और push outbox/subscription-delivery ledger की migration-created DDL उपलब्ध है; पर ये base dependencies को replace नहीं करतीं।
+- इस चरण में कोई migration, test, application code या database बदला नहीं गया; केवल source-backed documentation update है।
+- PostgreSQL/pgTAP runtime अभी execute नहीं हुआ। GPT-2 checklist count अपरिवर्तित: **27/39 = 69% complete**, **12/39 = 31% remaining**।
