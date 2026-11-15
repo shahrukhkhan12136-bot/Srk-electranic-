@@ -132,6 +132,12 @@ begin
   end if;
   if v_booking.payment_status='refunded' and v_refund_state not in ('processed','manual_recorded') then
     v_exceptions := array_append(v_exceptions,'REFUNDED_BOOKING_WITHOUT_FINAL_REFUND_EVIDENCE');
+  elsif v_refund_state in ('processed','manual_recorded') and v_booking.payment_status<>'refunded' then
+    v_exceptions := array_append(v_exceptions,'FINAL_REFUND_EVIDENCE_BOOKING_NOT_REFUNDED');
+  end if;
+  if v_refund_state in ('processed','manual_recorded') and v_payout.id is not null
+     and v_payout.payout_status<>'refunded' then
+    v_exceptions := array_append(v_exceptions,'FINAL_REFUND_PAYOUT_NOT_CLOSED');
   end if;
 
   select coalesce(sum(i.amount_paise) filter(where i.status in ('reserved','settled')),0)::bigint,
@@ -204,7 +210,10 @@ begin
   if v_route_electrician_count>1 or v_route_platform_count>1 then
     v_exceptions := array_append(v_exceptions,'ROUTE_TRANSFER_DUPLICATE');
   end if;
-  if v_route_electrician_paise>0 and v_route_electrician_paise is distinct from v_payable_paise then
+  if v_route_electrician_paise=0 and coalesce(v_payable_paise,0)>0
+     and v_booking.razorpay_payment_id is not null then
+    v_exceptions := array_append(v_exceptions,'ELECTRICIAN_TRANSFER_NOT_CREATED');
+  elsif v_route_electrician_paise>0 and v_route_electrician_paise is distinct from v_payable_paise then
     v_exceptions := array_append(v_exceptions,'ELECTRICIAN_ROUTE_TRANSFER_MISMATCH');
   end if;
   if v_route_platform_paise>0 and v_route_platform_paise is distinct from v_commission_paise then
@@ -212,10 +221,14 @@ begin
   end if;
   if v_route_platform_paise=0 and coalesce(v_commission_paise,0)>0 and v_booking.razorpay_payment_id is not null then
     v_exceptions := array_append(v_exceptions,'COMMISSION_NOT_TRANSFERRED');
+  elsif v_route_platform_paise>0 and v_route_platform_processed_paise<v_route_platform_paise then
+    v_exceptions := array_append(v_exceptions,'COMMISSION_TRANSFER_NOT_PROCESSED');
   elsif v_route_platform_paise>0 and v_commission_paise is not null and v_route_platform_settled_paise<v_commission_paise then
     v_exceptions := array_append(v_exceptions,'COMMISSION_TRANSFER_NOT_SETTLED');
   end if;
-  if v_route_electrician_paise>0 and v_payable_paise is not null and v_route_electrician_settled_paise<v_payable_paise then
+  if v_route_electrician_paise>0 and v_route_electrician_processed_paise<v_route_electrician_paise then
+    v_exceptions := array_append(v_exceptions,'ELECTRICIAN_TRANSFER_NOT_PROCESSED');
+  elsif v_route_electrician_paise>0 and v_payable_paise is not null and v_route_electrician_settled_paise<v_payable_paise then
     v_exceptions := array_append(v_exceptions,'ELECTRICIAN_TRANSFER_NOT_SETTLED');
   end if;
 
