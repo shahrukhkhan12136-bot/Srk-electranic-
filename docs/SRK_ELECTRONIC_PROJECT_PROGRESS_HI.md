@@ -2225,3 +2225,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added two pgTAP assertions; `customer_booking_work_timeline.test.sql` plan is now 21. Tests remain source-only and unexecuted.
 - No database migration applied, no live offer accepted, no booking/payment/refund/payout/wallet mutation, no production changes, no deployment, and no mobile QA.
 - Commits: `e34f3f89` (trigger + offer-response hardening), `06803a71` (pgTAP assertions).
+
+
+## 2026-11-15 — Electrician Offer Acceptance Revalidation
+- Electrician availability, relocation और sequential dispatch source paths का मिलान किया। Dispatch समय current operating area और selected rate tier re-check करता था, लेकिन offer स्वीकार करते समय response RPC केवल profile active/available/KYC state जाँचता था।
+- Offer acceptance query अब booking के live state/district से electrician का current state/district मिलाती है और customer-selected tier के साथ Admin-approved tier/card/approval metadata भी दोबारा verify करती है। पुरानी area/tier snapshot पर पड़ा stale offer अब स्वीकार नहीं होना चाहिए।
+- Sequential offer dispatch pgTAP contract में 2 assertions जोड़े; घोषित plan 14 से 16। Tests अभी source-only हैं, execute नहीं किए गए।
+- Commits: `d6ed91e1` (acceptance revalidation), `e3707e57` (pgTAP assertions).
+- कोई migration apply नहीं, कोई वास्तविक offer accept नहीं, कोई live booking/payment/refund/payout/wallet mutation नहीं, production/deployment नहीं और mobile QA नहीं।
