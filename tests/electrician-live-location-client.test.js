@@ -10,7 +10,7 @@ test('GPS update failure stops server-side live location sharing', () => {
   assert.match(electrician, /async function stopElectricianLiveLocationAfterGpsFailure\(/);
   assert.match(electrician, /srk_electrician_stop_live_location/);
   assert.match(electrician, /if\(r\.error\)throw r\.error/);
-  assert.match(electrician, /catch\(error\)[\\s\\S]*?await stopElectricianLiveLocationAfterGpsFailure/);
+  assert.match(electrician, /catch\(error\)[\s\S]*?await stopElectricianLiveLocationAfterGpsFailure/);
 });
 
 test('GPS permission or signal error also requests server-side stop', () => {
