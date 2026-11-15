@@ -1,5 +1,5 @@
 begin;
-select plan(47);
+select plan(48);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -164,6 +164,12 @@ select ok(position('PAYOUT_ELECTRICIAN_ASSIGNMENT_MISMATCH' in pg_get_functionde
   and position('PAYOUT_EXISTS_BEFORE_BOOKING_COMPLETION' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'payout must belong to the currently assigned electrician and a completed booking');
+
+select ok(position('v_fee_captured_paise' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('''reversed''' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'historically captured cancellation fees remain reconciled after full-refund reversal');
 
 select * from finish();
 rollback;
