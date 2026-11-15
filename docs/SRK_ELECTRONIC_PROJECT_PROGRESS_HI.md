@@ -3938,3 +3938,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - PR #8 head इस समय `b948ee596e927f1abc604cd867d4b03db8f128f1`; PR Open, Draft, Unmerged है।
 - GPT-2 checklist 27/39 = 69%; कुल project 55/86 = 64%; कोई checklist item बंद नहीं।
 - कोई SQL migration, Production query/export, credential या deployment action नहीं किया।
+
+
+### मूल DDL के लिए commit/source-index पुनःखोज — 15 Nov 2026, 16:43 UTC
+- GitHub commit-search में `auth_user_id`, `amount_paid service_bookings`, `ADD COLUMN amount_paid`, और `auth_user_id electrician_profiles` के exact/combined queries से कोई commit result नहीं मिला। यह search index की सीमा के कारण पूर्ण Git history absence का प्रमाण नहीं है।
+- Repository code search में schema/setup और `service_bookings` SQL के सभी प्रासंगिक परिणाम पुनःदेखे। Starter setup, location/quote/customer-access migrations और application consumers मिले; दोनों missing base-column declarations नहीं मिलीं।
+- `amount_paid` consumers में webhook write, Admin read, receipt/history RPC, commission reporting और column grant शामिल हैं। `auth_user_id` consumers में Admin approval UPSERT और wallet ownership lookup शामिल हैं। Consumer reference से type, default, nullability, FK या constraint अनुमानित नहीं किए जा सकते।
+- PR #8 की ताज़ा स्थिति: Open, Draft, Unmerged; head `c11a6176e6aa1c4ad4192e39c3eacfb766a84ad6`।
+- कोई source migration नहीं बदली; कोई SQL, Production query/export, credential या provider operation नहीं किया। GPT-2 27/39 = 69%; कुल project 55/86 = 64% अपरिवर्तित।
+- अगला सुरक्षित कदम: owner/DB administrator से approved schema-only catalog export या original deployment SQL artifact प्राप्त करना; उसके बिना DDL बनाना/repair करना रोककर रखना।
