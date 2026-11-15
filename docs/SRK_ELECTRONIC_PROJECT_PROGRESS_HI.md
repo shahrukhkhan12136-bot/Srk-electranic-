@@ -2303,3 +2303,5 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Production Supabase read-only column inventory से पुष्टि: `job_offers.expires_at` अनुपस्थित; branch migration `20261114210000_sequential_nearest_offer_dispatch.sql` इसे जोड़ती है। Production `electrician_profiles.available_for_work` अनुपस्थित; branch migration `20261114310000_electrician_self_availability.sql` इसे जोड़ती है। इसलिए deployed Production schema branch migrations से पीछे है और वर्तमान Edge sender वहाँ deploy-संगत नहीं। अन्य inspected identity columns `electrician_profiles.user_id/auth_user_id` मौजूद हैं।
 - कोई migration apply, Edge Function/Netlify deploy, push send, production DB write/config change या mobile QA नहीं किया।
 - Commits: `82b185ce` (ledger migration), `058c2cb4` (completion RPC), `fd0cd61c` (Edge sender integration), `51116c3f` (worker), `83c61d22` (source tests)।
+
+- अतिरिक्त source review में malformed subscription delivery target का रास्ता भी harden किया: valid delivery row ID होने पर malformed subscription identity को retry/dead-letter state में भेजा जाता है, ताकि processing lease अनिश्चितकाल तक अटकी न रहे। संबंधित source assertion जोड़ा। Commits: `35993b2c`, `8001829c`।
