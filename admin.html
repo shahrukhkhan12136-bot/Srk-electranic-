@@ -49,6 +49,16 @@
 <button type="button" onclick="startAdminRazorpayRefund()">Full Refund शुरू करें / सुरक्षित Retry</button>
 <span id="adminRazorpayRefundStatus" class="muted" aria-live="polite"></span>
 </div>
+<div class="card" id="adminAccountingReconciliationCard">
+<h2>Booking Accounting Reconciliation — Main Admin</h2>
+<p class="muted">एक Booking ID डालकर verified collection/refund, Labour, Materials, Commission, Electrician payout, Route settlement, cancellation-fee ledger और posted wallet entries का read-only मिलान देखें। यह रिपोर्ट कोई payment, refund, wallet posting या payout update नहीं करती। सभी रकम integer paise से दिखाई जाती हैं।</p>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+ <input id="adminAccountingBookingId" maxlength="36" placeholder="Booking UUID" style="flex:1;min-width:240px;padding:10px">
+ <button type="button" onclick="loadAdminBookingAccountingReconciliation()">Reconciliation देखें</button>
+ <span id="adminAccountingReconciliationStatus" class="muted" aria-live="polite"></span>
+</div>
+<div id="adminAccountingReconciliationResult" style="margin-top:12px" aria-live="polite">रिपोर्ट देखने के लिए Booking UUID दर्ज करें।</div>
+</div>
 <div class="card"><h2>ग्राहक सहायता Inbox</h2>
 <p class="muted">ग्राहक की शिकायतें, बुकिंग संदर्भ, बातचीत और स्थिति यहाँ संभालें। हर उत्तर Admin खाते से ग्राहक की निजी शिकायत थ्रेड में जाएगा।</p>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="alt" type="button" onclick="loadAdminSupportInbox()">शिकायतें रीफ़्रेश करें</button><span id="adminSupportStatus" class="muted" aria-live="polite"></span></div>
@@ -804,6 +814,52 @@ async function toggleActive(id,active){
   await loadAll();
  }catch(e){alert('इलेक्ट्रिशियन की स्थिति अपडेट नहीं हुई। Admin अनुमति, KYC और रेट-श्रेणी जाँचें।');}
  finally{adminActiveToggleBusy.delete(id);}
+}
+const adminAccountingReconciliationBusy=new Set();
+function adminAccountingMoney(paise){return '₹'+(Number(paise||0)/100).toFixed(2);}
+async function loadAdminBookingAccountingReconciliation(){
+ const id=document.getElementById('adminAccountingBookingId')?.value.trim()||'';
+ const box=document.getElementById('adminAccountingReconciliationResult');
+ const status=document.getElementById('adminAccountingReconciliationStatus');
+ const button=document.querySelector('#adminAccountingReconciliationCard button[onclick="loadAdminBookingAccountingReconciliation()"]');
+ if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)){status.textContent='सही Booking UUID भरें।';return;}
+ if(adminAccountingReconciliationBusy.has(id))return;
+ adminAccountingReconciliationBusy.add(id);if(button)button.disabled=true;
+ status.textContent='Read-only accounting records मिलाए जा रहे हैं…';box.textContent='रिपोर्ट लोड हो रही है…';
+ try{
+  const {data,error}=await sb.rpc('srk_admin_get_booking_accounting_reconciliation',{p_booking_id:id});
+  if(error||!data)throw error||new Error('Reconciliation report उपलब्ध नहीं है।');
+  const r=data, exceptions=Array.isArray(r.exceptions)?r.exceptions:[];
+  const payout=r.payout||null, route=Array.isArray(r.route_transfers)?r.route_transfers:[];
+  const fee=Array.isArray(r.cancellation_fee_ledger_entries)?r.cancellation_fee_ledger_entries:[];
+  const wallet=Array.isArray(r.wallet_posted_entries)?r.wallet_posted_entries:[];
+  const summary=(label,value)=>'<div class="card"><div class="muted">'+label+'</div><strong>'+value+'</strong></div>';
+  const list=(rows,empty,render)=>rows.length?rows.map(render).join(''):'<p class="muted">'+empty+'</p>';
+  box.innerHTML=
+   '<div class="notice" role="status">'+(r.is_reconciled?'सभी लागू जाँचें मेल खाती हैं।':'ध्यान दें: '+exceptions.length+' reconciliation exception मिलीं।')+'</div>'+
+   '<p><b>Booking:</b> '+esc(r.booking_id)+' · <b>Status:</b> '+esc(r.booking_status)+' · <b>Payment:</b> '+esc(r.payment_status)+' · <b>Verified:</b> '+(r.payment_verified?'हाँ':'नहीं')+'</p>'+
+   '<div class="grid">'+
+   summary('Customer Collection',adminAccountingMoney(r.customer_collection_paise))+
+   summary('Refund',adminAccountingMoney(r.refund_paise)+' · '+esc(r.refund_status))+
+   summary('Net Collection',adminAccountingMoney(r.customer_net_collection_paise))+
+   summary('Labour Gross',adminAccountingMoney(r.labour_gross_paise))+
+   summary('Materials',adminAccountingMoney(r.materials_gross_paise))+
+   summary('Labour-only Commission',adminAccountingMoney(r.labour_only_commission_expected_paise))+
+   summary('Electrician Payable',adminAccountingMoney(r.electrician_payable_expected_paise))+
+   summary('Cancellation Fee Ledger Net',adminAccountingMoney(r.cancellation_fee_ledger_net_paise))+
+   '</div>'+
+   '<h3>Electrician Payout</h3><p>'+(payout?esc(payout.status)+' · Recorded payable '+adminAccountingMoney(payout.recorded_payable_paise)+' · '+esc(payout.method||'—')+' · Reference '+esc(payout.reference||'—'):'इस Booking का payout record नहीं मिला।')+'</p>'+
+   '<h3>Razorpay Route Transfers</h3>'+list(route,'कोई Route transfer row नहीं है।',t=>'<p>'+esc(t.recipient_type)+' · '+adminAccountingMoney(t.amount_paise)+' · Transfer '+esc(t.transfer_status)+' · Settlement '+esc(t.settlement_status)+' · Ref '+esc(t.transfer_id||'—')+'</p>')+
+   '<p>Electrician: '+adminAccountingMoney(r.route_electrician_processed_paise)+' processed / '+adminAccountingMoney(r.route_electrician_settled_paise)+' settled · Platform: '+adminAccountingMoney(r.route_platform_commission_processed_paise)+' processed / '+adminAccountingMoney(r.route_platform_commission_settled_paise)+' settled</p>'+
+   '<h3>Cancellation Fee Ledger</h3><p>इस Booking पर allocated: '+adminAccountingMoney(r.cancellation_fee_allocated_to_booking_paise)+' · मूल Booking का open/reserved debt: '+adminAccountingMoney(r.cancellation_fee_source_open_or_reserved_paise)+'</p>'+
+   list(fee,'कोई cancellation-fee ledger entry नहीं है।',x=>'<p>'+esc(x.entry_type)+' · '+esc(x.direction)+' · '+adminAccountingMoney(x.amount_paise)+' · '+esc(x.payment_reference||'—')+'</p>')+
+   '<h3>Wallet — Posted Entries Only</h3><p>Credit: '+adminAccountingMoney(r.wallet_posted_credit_paise)+' · Debit: '+adminAccountingMoney(r.wallet_posted_debit_paise)+'</p>'+
+   list(wallet,'कोई linked posted wallet entry नहीं है।',x=>'<p>'+esc(x.wallet_type)+' · '+esc(x.entry_type)+' · '+esc(x.direction)+' · '+adminAccountingMoney(x.amount_paise)+' · '+esc(x.reference_id||'—')+'</p>')+
+   '<h3>Exceptions</h3>'+(exceptions.length?'<ul>'+exceptions.map(x=>'<li><code>'+esc(x)+'</code></li>').join('')+'</ul>':'<p>कोई exception नहीं।</p>')+
+   '<p class="muted">रिपोर्ट समय: '+esc(r.report_generated_at||'—')+'. यह केवल read-only snapshot है; mismatch का समाधान अलग Admin review और प्रमाण के बाद ही करें।</p>';
+  status.textContent='Read-only report तैयार';
+ }catch(e){box.textContent='रिपोर्ट लोड नहीं हुई: '+(e?.message||'कृपया migration और Main Admin अनुमति जाँचें।');status.textContent='जाँच विफल';}
+ finally{adminAccountingReconciliationBusy.delete(id);if(button)button.disabled=false;}
 }
 const adminRefundReviewBusy=new Set();
 async function loadAdminRefundRequests(){
