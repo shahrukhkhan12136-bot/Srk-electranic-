@@ -1,3 +1,9 @@
+## 2026-11-15 — Failed refund webhook regression test
+
+- Added a signed `refund.failed` webhook test verifying that the exact provider refund ID/payment/amount is passed to the server-side reconciliation RPC and that the webhook inbox event is completed only after reconciliation succeeds.
+- Test file: `tests/razorpay-webhook-inbox.test.js`; commit `7a0ab305`.
+- Static source review only; Node test execution still pending. Provider failure reconciliation remains fail-closed and does not automatically create another refund request.
+
 ## 2026-11-15 — Refund webhook / provider response reconciliation audit
 
 - Re-audited `razorpay-refund.js`, `razorpay-webhook.js`, refund preparation/reconciliation RPCs and full-refund cancellation-fee reversal trigger.
