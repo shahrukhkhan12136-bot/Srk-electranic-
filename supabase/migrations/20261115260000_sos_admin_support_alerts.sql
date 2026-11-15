@@ -142,8 +142,9 @@ begin
        and b.selected_category is not null
        and b.status='in_progress'
      for update;
-    v_actor_name:=coalesce(nullif(btrim(v_booking.customer_name),''),'Customer');
-    v_actor_phone:=coalesce(nullif(btrim(v_booking.phone),''),'Unavailable');
+    v_actor_name:=left(coalesce(nullif(btrim(v_booking.customer_name),''),'Customer'),120);
+    v_actor_phone:=case when length(btrim(coalesce(v_booking.phone,''))) between 5 and 30
+      then btrim(v_booking.phone) else 'Unavailable' end;
   else
     v_actor_role:='electrician';
     select b,ep into v_booking,v_profile
@@ -153,8 +154,9 @@ begin
        and b.selected_category is not null
        and b.status='in_progress'
      for update of b;
-    v_actor_name:=coalesce(nullif(btrim(v_profile.display_name),''),'Electrician');
-    v_actor_phone:=coalesce(nullif(btrim(v_profile.phone),''),'Unavailable');
+    v_actor_name:=left(coalesce(nullif(btrim(v_profile.display_name),''),'Electrician'),120);
+    v_actor_phone:=case when length(btrim(coalesce(v_profile.phone,''))) between 5 and 30
+      then btrim(v_profile.phone) else 'Unavailable' end;
   end if;
 
   -- Serialize against booking completion/cancellation and duplicate SOS submissions.
