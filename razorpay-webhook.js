@@ -132,15 +132,19 @@ async function updateBooking(orderId, payment) {
 }
 
 async function reconcileRefund(refund, eventName) {
-  const expectedStatus = {
-    "refund.created": "pending",
-    "refund.processed": "processed",
-    "refund.failed": "failed"
+  // Razorpay's own refund.created sample payloads can already carry
+  // status=processed (for example, an immediately processed normal refund).
+  // Do not discard that signed terminal evidence just because the event name
+  // is refund.created. The dedicated terminal events remain strict.
+  const allowedStatuses = {
+    "refund.created": ["pending", "processed"],
+    "refund.processed": ["processed"],
+    "refund.failed": ["failed"]
   }[eventName];
-  if (!expectedStatus || !refund ||
+  if (!allowedStatuses || !refund ||
       !/^rfnd_[A-Za-z0-9]+$/.test(refund.id || "") ||
       !/^pay_[A-Za-z0-9]+$/.test(refund.payment_id || "") ||
-      refund.status !== expectedStatus ||
+      !allowedStatuses.includes(refund.status) ||
       refund.currency !== "INR" ||
       !Number.isSafeInteger(refund.amount) || refund.amount < 100) {
     return "refund_payload_invalid";
@@ -170,7 +174,7 @@ async function reconcileRefund(refund, eventName) {
     body: JSON.stringify({
       p_refund_record_id: record.id,
       p_provider_refund_id: refund.id,
-      p_provider_status: expectedStatus,
+      p_provider_status: refund.status,
       p_error: expectedStatus === "failed" ? "Razorpay reported refund failed" : null
     })
   });
