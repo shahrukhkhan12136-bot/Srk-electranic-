@@ -2663,3 +2663,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - उसके बाद Feature Branch पर Customer quote UI/test changes आने से latest observed HEAD `a924bc3` का PR Node run `43704886935` **97 PASS / 1 FAIL** हुआ। Failure `tests/customer-quote-approval-ui.test.js` के assertion में है: test पुरानी inline onclick string pattern खोज रहा है, जबकि `booking.html` में quote approve/reject handlers मौजूद हैं। यह GPT-1 Customer scope का test-contract mismatch प्रतीत होता है; इसे GPT-1 owner के साथ reconcile करना है। इसे Customer runtime bug या पूरी suite green नहीं कहना है।
 - Latest run में Admin accounting regression tests PASS रहे; current Admin accounting UI अब retired Route transfer fields/section नहीं दिखाता और reconciliation के नए migration path को पढ़ता है।
 - PR #8 अभी Open + Draft + Unmerged है। कोई merge, Production migration, deployment या live payment/provider action नहीं किया गया।
+
+
+## 2026-11-15 — GPT-2 accounting/refund source cross-check
+
+- Read-only reconciliation function को cancellation-fee full-refund trigger और wallet ledger source से मिलाया। Cash cancellation-fee refund में trigger original electrician wallet debit को `cancellation_fee_item` reference से ढूँढता है, फिर उसी debt ID और manual refund evidence ID (`provider_reference`) से exact wallet credit लिखता है; reconciliation इसी pair/amount को compare करती है। यह source-level contract alignment है, runtime SQL execution नहीं।
+- `srk_manual_refund_entries` और `srk_booking_refund_requests` दोनों पर `booking_id` unique है; manual refund एक booking पर duplicate evidence नहीं बना सकता। Manual refund RPC payment evidence/amount match, Main Admin approval (यदि request मौजूद हो), Razorpay exclusion, payout lock और final blocked→refunded close करता है।
+- Current latest observed CI run `43705001425` (HEAD `e71fbd1`): **99 PASS / 1 FAIL**। केवल शेष failure GPT-1 Customer quote UI regression test की पुरानी onclick-regex expectation है; Admin accounting regression tests PASS। इसे Customer runtime defect नहीं माना गया और GPT-1-owned files नहीं बदले।
+- Accounting/refund code अभी static-reviewed है; pgTAP runtime, live DB parity और browser E2E प्रमाण बाकी हैं। No Production mutation, migration apply, provider action, deployment, merge या go-live.
