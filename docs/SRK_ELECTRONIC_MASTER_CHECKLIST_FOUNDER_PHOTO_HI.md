@@ -313,3 +313,13 @@
 - [ ] Continue checking README endpoint and feature descriptions against current source before treating documentation as fully current.
 - Commit: `cdb9583e167659f6601effb25ad926d76fa7bfe6` (feature branch only).
 - No application behavior, database, production configuration, deployment, merge, or mobile QA changed.
+
+
+### Customer cancellation/refund access controls — 15 नवम्बर 2026
+- [x] Customer Dashboard refund history RPC का current canonical name `srk_customer_list_booking_refund_requests()` और refund submit RPC `srk_customer_create_booking_refund_request(uuid,text)` migration contract से match किया।
+- [x] Cancellation-fee debt RPC `srk_customer_list_my_cancellation_fee_debts()` और booking fee-item RPC `srk_customer_list_booking_cancellation_fee_items()` की definitions `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में verify कीं।
+- [x] दोनों SECURITY DEFINER customer projections पर explicit EXECUTE ACL hardening: PUBLIC/anon revoke, authenticated grant.
+- [x] pgTAP में दोनों RPC privilege assertions जोड़े (plan 42); runtime execution अभी बाकी है।
+- [ ] Fresh isolated database पर migration chain + pgTAP run; फिर Customer refund/cancellation RPCs के owner/non-owner/anon व्यवहार का runtime verification.
+- [ ] Admin refund queue/provider refund caller और service reconciliation का पूर्ण end-to-end source/runtime audit बाकी।
+- [ ] Production migration apply/deployment और final consolidated mobile QA नहीं हुए; existing approval guardrails यथावत।
