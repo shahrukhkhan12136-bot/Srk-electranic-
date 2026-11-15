@@ -3500,3 +3500,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - दोनों स्रोतों का विवरण `docs/CORE_BASELINE_DDL_CONTRACT_HI.md` में दर्ज किया। अभी भी exact baseline assembly, historical/current migration overlap और dependency order का audit बाकी है।
 - कोई Production/database access या बदलाव नहीं; कोई migration apply नहीं; PostgreSQL/pgTAP runtime अभी execute नहीं हुआ।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
+
+
+### 2026-11-15 — पाँच core base table DDL स्रोतों का historical mapping
+- पुराने repository commit `08e5ff8abc1cf2a5e2ae656a951f8f4d8863247b` में `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql` और consolidated setup की जाँच की।
+- `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers`, `srk_admin_users` के historical starter DDL source paths और मुख्य column/constraint contracts दस्तावेज़ में दर्ज किए।
+- स्पष्ट किया कि पुरानी `CREATE TABLE IF NOT EXISTS` setup files current Production/Feature Branch parity export नहीं हैं; वे timer, bill, refund, payout, wallet, support और अन्य बाद के contracts का पूरा आधार नहीं देतीं।
+- अगला तकनीकी कदम: current branch की सभी migrations को dependency graph में रखना, historical base sources के साथ object-by-object diff बनाना, और unresolved/duplicate timestamp blockers दर्ज करना। बिना इस reconciliation के disposable DB को parity-ready नहीं कहेंगे।
+- कोई database/Production access या बदलाव नहीं; कोई migration apply नहीं; PostgreSQL/pgTAP runtime अभी execute नहीं हुआ।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
