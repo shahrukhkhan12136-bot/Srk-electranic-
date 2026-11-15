@@ -2821,3 +2821,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added source-contract checks to ensure the Electrician App retains the server-timed lifecycle and does not reintroduce quotation UI.
 - Latest CI run `43707448254` on `172d74b204bfd283522a4e540090cb79deca73aa` — **SUCCESS**, including inline-script syntax checks and the full Node test suite.
 - Browser runtime, real device notification permission behavior, actual receipt print preview, and visual verification remain pending. No live bookings, payment actions, Production settings, deployment, or mobile QA were performed.
+
+
+## 2026-11-15 — GPT #2 Route transfer reconciliation source update
+
+- Route schema migration `20261109020000_create_server_only_razorpay_route_transfer_ledger.sql` की जाँच में वास्तविक तालिका `public.srk_route_transfers` और उसके सटीक fields मिले: booking/payment IDs, recipient type, linked account, provider transfer ID, amount_paise, transfer_status और settlement_status। तालिका service_role-only है; DB writes स्वयं पैसा नहीं भेजतीं।
+- नया Feature Branch migration `20261115170000_admin_route_transfer_accounting_reconciliation.sql` Admin read-only booking accounting report में Route transfer rows, count, electrician/commission amounts और status evidence जोड़ता है।
+- रिपोर्ट recipient-row shape, payment ID mismatch, expected payout/commission amount mismatch, failed/reversed/manual-review state, unsettled state, missing provider transfer ID और manual-paid + Route electrician transfer overlap को exception बनाती है।
+- Zero commission की स्थिति में शून्य रकम का platform transfer row अनिवार्य नहीं है; test contract में इसका source assertion जोड़ा गया।
+- pgTAP source contract अब `plan(55)` और 55 assertions है। यह केवल SQL source contract है; वास्तविक PostgreSQL/pgTAP execution अभी नहीं हुआ।
+- यह बदलाव केवल Feature Branch/PR #8 पर है। कोई provider API call, transfer, settlement, reversal, payout, Production migration या deployment नहीं किया गया। Route का live provider status polling/webhook और वास्तविक settlement proof अभी अलग से Not Verified हैं।
+- अगला चरण: migration + test source का full review, CI result की जाँच, और PostgreSQL runtime test environment उपलब्ध होने पर pgTAP चलाना।
