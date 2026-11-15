@@ -3365,3 +3365,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नया commit chain: migration `a08e6992c2accfb8a6f7a423c27b1d8fc3a9ace1`; pgTAP `fccc4eb6930743509b7ce7c383de7b1e7c7d326f`; Node test `eb7c0ff6480adc947d77abc871292ac228dd2af6`.
 - इस commit पर Node GitHub Actions run अभी उपलब्ध/दिखाई नहीं दिया; combined status में केवल Vercel build-rate-limit failure दिखा, इसलिए नया Node suite PASS घोषित नहीं है। पिछला 161/161 PASS पुराने source commit `6758f9a...` का है। pgTAP अभी वास्तविक PostgreSQL पर execute नहीं हुआ।
 - GPT-2 checklist **27/39 = 69% पूरा; 12/39 = 31% बाकी**—यह अतिरिक्त सुरक्षा hardening है, checklist closure नहीं। PR #8 Draft/Open/Unmerged; कोई Production DB migration, provider refund, payout, merge या deployment नहीं किया।
+
+
+## 2026-11-15 — Timer authorization schema qualification follow-up
+
+- Base timer migration में private authorization tables के 12 INSERT/DELETE references की जाँच की; सभी references schema-qualified `srk_private.work_timer_authorizations` या `srk_private.work_transition_authorizations` हैं। पहले test coverage केवल customer work-start/completion fix migration पर थी।
+- `tests/booking-lifecycle-serialization.test.js` में base timer migration के INSERT/DELETE schema qualification और unqualified table-name rejection के assertions जोड़े। Commit: `09313ee5`। यह source test addition है; Node test execution अभी प्रमाणित नहीं है।
+- Dispute complaint insert में `category='service_quality'` है और Customer UI में यह category मौजूद है। लेकिन इस Feature Branch audit में complaint base-table CREATE migration/schema और required columns/constraints नहीं मिले; इसलिए insert compatibility अभी unverified है। कोई अनुमानित schema या migration नहीं जोड़ी।
+- Admin work-review RPC केवल read-only review देता है; अंतिम dispute decision/rework/financial adjustment का RPC नहीं मिला। निर्णय के व्यावसायिक परिणाम अभी स्पष्ट नहीं हैं, इसलिए कोई स्वतः bill, timer restart, refund या payout बदलाव लागू नहीं किया।
+- कोई database migration लागू नहीं की गई; Production, PR merge, deployment और mobile QA अपरिवर्तित। PostgreSQL/pgTAP, Node runtime और E2E execution बाकी हैं।
