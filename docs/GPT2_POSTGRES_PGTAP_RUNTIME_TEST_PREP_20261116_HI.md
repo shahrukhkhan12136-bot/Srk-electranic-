@@ -703,3 +703,26 @@ The presence of a different 14 Nov migration does not explain the missing timer 
 - Target 14 Nov timer migration history/inventory entry: reported absent on the second check as well.
 - DBA explanation / execution provenance: not verified.
 - No independent GPT-2 Production access; no Production write, repair, replay, DDL, deployment, or GPT-1 source changes.
+
+
+## 22. Owner-confirmed Question Database replacement authorization — 16 Nov 2026
+
+The project owner explicitly clarified in this conversation:
+
+- The owner had instructed that the old Question Database be removed.
+- The owner had instructed that the new Question Database be added.
+- The owner states GPT-1 performed that replacement under the owner's direction.
+
+### Reconciliation
+
+- Record this as an **owner-authorized product/data change**, not as an unauthorized or accidental change.
+- Do not attribute the replacement to an unapproved GPT-1 action.
+- This authorization applies to the Question Database replacement described by the owner. It does not by itself establish authorization or execution of any Supabase Production migration, including `20261114240000_server_authoritative_customer_approved_work_timer`.
+- Keep historical quotation bookings (legacy quotation approval) distinct from new-category bookings (customer-approved server timer). The source migration retains legacy quote RPC behavior only for rows without a customer-selected category; this is source-code evidence, not proof of Production rollout.
+
+### Status / boundary
+
+- Owner authorization for old-to-new Question Database replacement: **CONFIRMED BY OWNER STATEMENT**.
+- Independent audit of the exact Question Database records changed: **NOT PERFORMED**.
+- Production migration provenance for the 14 Nov timer migration: **UNRESOLVED** (§21).
+- No Production write, migration repair/replay, DDL, deployment, or GPT-1 application-source change performed by GPT-2.
