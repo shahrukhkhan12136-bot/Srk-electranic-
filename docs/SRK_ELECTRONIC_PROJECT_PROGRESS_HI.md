@@ -3868,3 +3868,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पुराने `feature/platform-fee-cash-online-cycle` commit `73a4fd9d69a4b4952d7993e23fc8ad5766ebdcc2` की quote migration `20261109075837_electrician_inspection_quotes_and_service_only_commission.sql` भी `amount_paid` पढ़ती है, लेकिन स्वयं उसे add नहीं करती।
 - ये ऐतिहासिक source references dependency lineage को मजबूत करते हैं, पर मूल base-column DDL या Production migration history का विकल्प नहीं हैं। कोई DDL अनुमान से नहीं जोड़ा गया।
 - GPT-2 checklist 27/39 = 69%; कोई checklist item बंद नहीं। No DB connection, migration execution, merge or deployment.
+
+
+### GitHub repository-wide code-search से base-column DDL जाँच — 15 Nov 2026
+- Repository code search में `auth_user_id` के लिए `ADD COLUMN` और `auth_user_id uuid` के exact searches चलाए। कोई authoritative column-creation definition नहीं मिली। Search result में Google Maps migration केवल INSERT/UPSERT में `auth_user_id` लिखती है; wallet migration इसे पढ़ती है।
+- `amount_paid` के लिए `ADD COLUMN`, `amount_paid numeric` और `amount_paid decimal` exact searches चलाए। कोई स्पष्ट column-creation definition नहीं मिली। Quote/commission migrations इसे उपयोग करती हैं; quote migration के पास अन्य quote columns का ADD COLUMN है, पर `amount_paid` का नहीं।
+- पुरानी starter schema files में दोनों columns की परिभाषा नहीं मिली थी। Search index की सीमाओं के कारण इसे पूरे Git इतिहास में अनुपस्थिति का निर्णायक प्रमाण नहीं माना जा सकता।
+- अभी भी आवश्यक: मूल deployment SQL/schema export, या स्वीकृत read-only catalog output से column type, nullability, default, constraints, FK और indexes की पुष्टि। कोई अनुमानित DDL नहीं जोड़ा जाएगा।
+- GPT-2 checklist 27/39 = 69%; कोई implementation checklist item बंद नहीं। Production/remote DB पर कोई query नहीं की गई।
