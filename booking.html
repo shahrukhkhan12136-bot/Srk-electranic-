@@ -995,10 +995,11 @@ async function loadCustomerCancellationFeeDebts(){
  if(!customerSb)return;
  const box=document.getElementById('customerCancellationFeeDebts');
  if(!box)return;
- const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
- if(sessionError||!sessionData?.session){box.textContent='बकाया देखने के लिए OTP लॉगिन करें।';return;}
  box.setAttribute('aria-busy','true');box.textContent='Cancellation fee बकाया लोड हो रहा है…';
  try{
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!sessionData?.session){box.textContent='बकाया देखने के लिए OTP लॉगिन करें।';return;}
   const {data,error}=await customerSb.rpc('srk_customer_list_my_cancellation_fee_debts');
   if(error)throw error;
   const rows=Array.isArray(data)?data:[];
@@ -1013,10 +1014,11 @@ async function loadCustomerRefundHistory(){
  if(!customerSb)return;
  const box=document.getElementById('customerRefundHistory');
  if(!box)return;
- const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
- if(sessionError||!sessionData?.session){box.textContent='रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';return;}
  box.setAttribute('aria-busy','true');box.textContent='रिफंड अनुरोध लोड हो रहे हैं…';
  try{
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!sessionData?.session){box.textContent='रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';return;}
   const {data,error}=await customerSb.rpc('srk_customer_list_booking_refund_requests');
   if(error)throw error;
   const rows=Array.isArray(data)?data:[];
