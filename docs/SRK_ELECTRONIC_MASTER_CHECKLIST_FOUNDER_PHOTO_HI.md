@@ -408,7 +408,8 @@
 - [x] Admin UI में manual-payment RPC call sites की पहचान.
 - [x] `srk_admin_record_new_booking_cash_payment(uuid,text,text)` की definition `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में मिली और Main Admin guard, exact labour + reserved-fee amount, unique payment, payment evidence तथा wallet/fee-ledger transaction source-reviewed.
 - [ ] Legacy `srk_admin_record_manual_payment` की authoritative definition अभी missing; legacy quote-based booking payment path की सही accounting contract के साथ implementation/test बाकी.
-- [ ] Legacy status transition के सभी वैध रास्ते (electrician, customer quote response, Admin confirmation/cancellation, timer/completion) map करें; transaction-scoped DB authorization guard एवं regression tests लागू करें.
+- [x] Legacy electrician quote/work transitions, customer quote response, accepted-offer assignment, dedicated cancellation और Admin generic Save status choices का source-level map बनाया.
+- [ ] Legacy Admin confirmation/status editor को explicit authorized RPC transitions में बदलें; फिर सभी legacy actor paths के लिए transaction-scoped DB authorization trigger और regression tests लागू करें.
 - [ ] Old commission trigger + legacy completion transaction का isolated database runtime verification.
 - [ ] Browser/DB runtime, deployment, merge और consolidated final mobile QA बाकी. No live mutations performed.
 
