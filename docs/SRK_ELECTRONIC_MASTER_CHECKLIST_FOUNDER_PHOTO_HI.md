@@ -134,6 +134,17 @@
 
 ---
 
+
+## 2026-11-15 — GPT-1 Customer legacy quote approval
+
+- [x] Customer booking query में legacy quote display के आवश्यक fields शामिल किए: labour/service charge, materials amount, total quote, quote status और note.
+- [x] Pending legacy quote पर labour और materials अलग-अलग दिखाने तथा customer से explicit approve/reject response लेने का UI जोड़ा।
+- [x] Existing customer-owned srk_customer_respond_booking_quote RPC integration, success refresh और error handling जोड़े।
+- [x] Approved/rejected quote status customer booking card में दिखाने का source path जोड़ा।
+- [ ] tests/customer-quote-approval-ui.test.js का CI execution और PASS परिणाम verify करें; अभी कोई नया CI result उपलब्ध नहीं।
+- [ ] Browser/desktop runtime verification को final consolidated QA तक रोकें; mobile QA भी सभी implementation tasks के बाद ही।
+- [ ] Confirm करें कि legacy quote UI newer category-based fixed-duration booking flow से अलग ही रहे।
+
 ## अभी का साफ निष्कर्ष
 
 **Feature implementation:** कई मुख्य Customer, Electrician, Admin/Staff, payment/refund, KYC, timer, dispatch और Push workflows Feature Branch में implement हैं; legacy manual-payment source gap भी अभी जोड़ा गया है।  
