@@ -16,7 +16,7 @@
 - [x] Customer refund request create/history RPC; customer ownership filter और private Admin note exclusion लागू।
 - [x] Cancellation-fee debt और booking fee-item history RPC; authenticated-only execution ACL source में जोड़ी।
 - [x] Customer cancellation request/fee carry-forward और refund reversal workflow source मौजूद।
-- [x] Customer और electrician phone numbers acceptance से पहले छिपे; acceptance के बाद full number visible; Support Staff को unrestricted phone projection नहीं।
+- [x] Customer और electrician phone numbers acceptance से पहले छिपे; acceptance/assignment के बाद full number visible; Support Staff को unrestricted phone projection नहीं। `tests/customer-electrician-phone-visibility.test.js` में दोनों दिशाओं के authenticated/assignment-scoped source regression tests PASS (latest Node CI run)।
 - [x] Legacy customer receipt अब labour और materials अलग-अलग दिखाती है और total को approved quote से reconcile करती है।
 - [ ] Customer payment/refund/cancellation के सभी owner/non-owner/anon और duplicate/concurrency व्यवहार isolated database में runtime verify करें।
 
@@ -82,7 +82,6 @@
 - [x] Welcome Screen का source implementation और responsive layout मौजूद है।
 - [ ] Asset binary को owner-approved latest portrait (black button-up shirt, folded arms, waist-up crop, blue corporate background) से visually compare करके exact match स्वीकार करें; binary preview verification अभी नहीं हुई।
 - [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें।
-- [ ] Owner visual acceptance लें।
 - [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
 - [ ] Owner visual acceptance लें।
 - [ ] Desktop और responsive/mobile presentation final consolidated QA में verify करें।
@@ -124,7 +123,7 @@
 
 ## 9. Test, release और approval gates
 
-- [x] Latest available full Node test run: **87 passed / 0 failed**।
+- [x] Latest Feature Branch Node CI run `43704226538` (commit `ac956c5`): **90 passed / 1 failed**; दोनों नए Customer/Electrician phone-visibility regression tests PASS। एकमात्र failure GPT-2/Admin scope की अनुपस्थित source migration `20261115130000_admin_readonly_booking_accounting_reconciliation.sql` पढ़ने वाले `tests/admin-commission-report-labels.test.js` में है। GPT-1 Customer/Electrician test assertions PASS; full suite अभी green नहीं है।
 - [x] Push Deno check और local PostgreSQL Push migration/RPC runtime checks PASS।
 - [ ] ऊपर सूचीबद्ध शेष Customer/Electrician/Admin/Staff/legacy-payment SQL और browser workflows के isolated runtime tests पूरे करें।
 - [ ] सभी implementation और internal checks पूरे होने के बाद ही एक consolidated desktop + mobile QA pass करें; बीच में अलग mobile test नहीं।
