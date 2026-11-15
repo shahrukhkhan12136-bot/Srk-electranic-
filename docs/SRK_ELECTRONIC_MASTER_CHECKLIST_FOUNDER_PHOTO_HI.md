@@ -289,3 +289,12 @@
 - [x] Added regression coverage for support messages, prefix translation and dynamic text-node rendering.
 - [ ] Confirm latest branch-head CI before marking the new support localization tests passed.
 - [ ] Browser runtime verification remains pending; final mobile QA remains deferred.
+
+
+### 2026-11-15 — Customer old-quotation wording final cleanup
+- [x] Removed the last obsolete inspection/post-inspection quotation wording from the Customer booking page, including its Hindi/English translation dictionary entry.
+- [x] Static scan of Customer `booking.html` and Electrician `electrician.html` found no remaining quote/quotation/inspection legacy wording or quote-related identifiers.
+- [x] Added a regression assertion preventing the retired inspection-quotation wording from returning to Customer booking copy.
+- [x] Latest branch-head Node test workflows for `ef2c3fd0c6f33b52e2d9dfa5833819c6802894d1`: **SUCCESS** (full repository Node tests).
+- [ ] This retires the Customer/Electrician app wording and UI only; Admin/Accounting/Payment legacy dependencies and safe database dependency retirement remain GPT-2 work.
+- [ ] Browser runtime verification, Founder portrait visual match and final consolidated mobile QA remain pending.
