@@ -340,3 +340,13 @@ test('Electrician offers refresh on foreground and reconnect using the guarded d
   assert.match(electrician, /document\.addEventListener\('visibilitychange',[\s\S]*?scheduleElectricianResumeRefresh\(\)/);
   assert.match(electrician, /document\.visibilityState==='visible'&&user\)refresh\(\)/);
 });
+
+test('Electrician notification deep links explain unavailable or non-actionable offers', () => {
+  const focus = functionBody(electrician, 'focusElectricianOfferFromNotification');
+  assert.match(focus, /const card=document\.getElementById\('electricianOffer_\'\+offerId\)/);
+  assert.match(focus, /if\(!card\.querySelector\('button\[onclick\*="respond\("\]'\)\)notice=/);
+  assert.match(focus, /सूचना वाला ऑफर अब आपकी सूची में उपलब्ध नहीं है/);
+  assert.match(focus, /संभव है कि समय समाप्त हो गया हो/);
+  assert.match(focus, /status\.setAttribute\('role','status'\)/);
+  assert.match(focus, /params\.delete\('offerId'\)/);
+});
