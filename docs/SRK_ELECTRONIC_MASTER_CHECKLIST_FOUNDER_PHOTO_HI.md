@@ -436,3 +436,15 @@
 - [ ] Founder portrait binary/integration and owner visual acceptance remain open; the approved attachment must be recovered and committed before marking it done.
 - [ ] All other unchecked items below are actual runtime/integration/owner-approval gates unless explicitly superseded in the progress log. Mobile QA remains one consolidated final pass only; production rollout requires separate explicit approval.
 
+
+
+## Legacy manual-payment and receipt data — implementation added 15 November 2026
+
+- [x] Missing Admin RPC `srk_admin_record_manual_payment(uuid,text,text,text)` added; Main Admin-only, row lock, completed/assigned/approved-quote guards, unpaid-only, Razorpay exclusion, bounded method/reference/note.
+- [x] Payment amount reconciles exactly to labour + materials; commission applies to labour only; manual-payment evidence and payout row are written atomically.
+- [x] Customer receipt now exposes labour and materials separately and reconciles the total to the approved quote.
+- [x] Admin booking table now shows separate labour/material amounts and quote status; approved quote amount cannot be silently edited away from its itemized total.
+- [x] pgTAP source test added with plan/assertion count 18/18; Admin inline JavaScript syntax PASS.
+- [ ] Execute migration and pgTAP in approved isolated PostgreSQL/Supabase environment; verify Main Admin/anon ACL, duplicate/concurrent payment, payout trigger, customer receipt and rollback cases.
+- [ ] Browser end-to-end review after all feature implementation; final mobile QA remains one consolidated pass.
+
