@@ -274,3 +274,10 @@
 - [x] Added Welcome Screen contract test covering index redirect, Customer/Electrician/Admin role routes, founder portrait path/asset existence, alt text and reduced-motion support.
 - [ ] Latest Welcome Screen + refresh regression CI run `43708433631` is in progress; verify its final result before marking tests passed.
 - [ ] Browser runtime/visual portrait match remains pending; source-level asset presence is checked by the new test.
+
+
+### 2026-11-15 — Customer dynamic control localization follow-up
+- [x] Customer language observer now translates dynamically inserted input/textarea placeholders and title/aria-label attributes, not only visible text nodes.
+- [x] Added regression assertions for applying translations to new DOM elements and the initial full-page attribute pass.
+- [ ] Latest branch-head CI must confirm the new regression test; browser runtime language switching remains pending.
+- [ ] Founder portrait asset is present in the feature branch, but exact approved-reference visual match still needs a browser/visual review.
