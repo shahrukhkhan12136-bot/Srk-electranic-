@@ -9,7 +9,7 @@
 
 ## 1. ग्राहक (Customer) — Feature Branch implementation
 
-- [x] Customer booking form, account/login, booking history और profile source मौजूद।
+- [x] Customer booking form, account/login, booking history और profile source मौजूद। Customer OTP login में भारतीय मोबाइल normalization, SMS OTP verify, 60-sec resend cooldown और existing-session redirect source regression tests PASS (`tests/customer-electrician-otp-login.test.js`, CI `43704591567`).
 - [x] Booking submission idempotency और customer-selected rate tier/server estimate source मौजूद।
 - [x] Saved addresses और private avatar storage source मौजूद।
 - [x] Payment method change, payment history और receipt RPC source मौजूद।
@@ -22,7 +22,7 @@
 
 ## 2. इलेक्ट्रिशियन (Electrician) — Feature Branch implementation
 
-- [x] Electrician offer inbox/response और sequential nearest dispatch source मौजूद।
+- [x] Electrician offer inbox/response और sequential nearest dispatch source मौजूद। Electrician SMS OTP login, 60-sec resend cooldown और auth-session portal gating source regression tests PASS (`tests/customer-electrician-otp-login.test.js`, CI `43704591567`).
 - [x] Offer acceptance पर current location/district, active status और exact Admin-approved rate tier पुनः जाँचे जाते हैं।
 - [x] Availability toggle और relocation request/Admin approval source मौजूद।
 - [x] Labour quote और materials quote अलग-अलग; customer approval/rejection workflow source मौजूद।
@@ -123,7 +123,7 @@
 
 ## 9. Test, release और approval gates
 
-- [x] Latest Feature Branch Node CI run `43704226538` (commit `ac956c5`): **90 passed / 1 failed**; दोनों नए Customer/Electrician phone-visibility regression tests PASS। एकमात्र failure GPT-2/Admin scope की अनुपस्थित source migration `20261115130000_admin_readonly_booking_accounting_reconciliation.sql` पढ़ने वाले `tests/admin-commission-report-labels.test.js` में है। GPT-1 Customer/Electrician test assertions PASS; full suite अभी green नहीं है।
+- [x] Latest Feature Branch Node CI run `43704591567` (commit `fe90915`): **93 passed / 1 failed**। Customer/Electrician phone-visibility और तीन OTP/session regression tests PASS। एकमात्र failure GPT-2/Admin scope की अनुपस्थित source migration `20261115130000_admin_readonly_booking_accounting_reconciliation.sql` पढ़ने वाले `tests/admin-commission-report-labels.test.js` में है। GPT-1 के नए tests PASS; full suite अभी green नहीं है।
 - [x] Push Deno check और local PostgreSQL Push migration/RPC runtime checks PASS।
 - [ ] ऊपर सूचीबद्ध शेष Customer/Electrician/Admin/Staff/legacy-payment SQL और browser workflows के isolated runtime tests पूरे करें।
 - [ ] सभी implementation और internal checks पूरे होने के बाद ही एक consolidated desktop + mobile QA pass करें; बीच में अलग mobile test नहीं।
