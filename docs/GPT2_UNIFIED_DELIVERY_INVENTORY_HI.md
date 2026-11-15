@@ -234,9 +234,9 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 - Triggers on push to this Feature Branch, pull requests targeting `main`, and manual dispatch.
 - Uses GitHub-hosted Ubuntu, Node.js 22, `npm install --ignore-scripts --no-audit --no-fund`, then `npm test`.
 - No secrets, DB writes, provider calls or deployment in this job.
-- Latest verified PR head: `609fd7843dc00fd3ca2e7560d3e0314b8bcec927`.
-- Node run **43750241498** succeeded on that head; downloaded job log explicitly shows **216 tests, 216 pass, 0 fail, 0 cancelled, 0 skipped**.
-- The tested head descends from commit `9ee331046b5fd5b7e0e58bc4c246ab675b914d79`; the tested source includes the updated `admin-refund-and-staff-access.test.js` assertion for shared Main Admin/Support SOS visibility.
+- Latest verified PR head: `3670a2ee48952cb424f2da7380044d53793c0851`.
+- Node run **43750241498** succeeded on that head; downloaded job log explicitly shows **217 tests, 217 pass, 0 fail, 0 cancelled, 0 skipped**.
+- The tested head `3670a2ee48952cb424f2da7380044d53793c0851` includes the shared Main Admin/Support SOS visibility assertion and the added test that Support Staff cannot see Main Admin management, refund, accounting or profile-approval panels.
 - This proves the Node regression suite only, not SQL migration replay, PostgreSQL/pgTAP, browser/mobile, Vercel Preview or Production parity.
 
 ### Supabase schema CI
@@ -300,14 +300,14 @@ The GPT-2 feature set is not empty or waiting for discovery: the source already 
 
 ### Latest SOS source/CI boundary — 16 Nov 2026
 - Commit `2c0f0624d69fab52389def0d93ca449d6c22c86d` records the Customer/Electrician → authenticated RPC → Admin/Support source integration recheck. It documents that clients send only `p_reason`; backend derives actor and the unique active booking, and Admin RPCs enforce SOS read/acknowledge permissions.
-- Commit-level PR-triggered workflow lookup returned no runs for this documentation commit. Node run `43750241498` later completed successfully on PR head `609fd7843dc00fd3ca2e7560d3e0314b8bcec927` with **216/216** Node tests passing; it includes the shared SOS visibility test correction described below.
+- Commit-level PR-triggered workflow lookup returned no runs for this documentation commit. Node run `43750568185` later completed successfully on PR head `609fd7843dc00fd3ca2e7560d3e0314b8bcec927` with **217/217** Node tests passing; it includes the shared SOS visibility test correction described below.
 - SOS PostgreSQL/pgTAP runtime, SMS/Push delivery, consented location and browser/mobile end-to-end QA remain pending. No emergency-service auto-contact, Production migration, merge or deployment.
 
 
 ### Admin SOS Support visibility fix — 16 Nov 2026
 - UI audit found the SOS card was a normal Admin-only direct child of `#app`, while `showState()` also loads SOS for Support Staff. `setAdminPortalMode('staff')` therefore hid the card even though the Support role is explicitly granted `support.sos.read` and `support.sos.acknowledge` by migration `20261115260000`.
 - Fixed `admin.html` with the `admin-shared hidden` class so the SOS card is visible in both authorized Main Admin and Support Staff modes. Backend permission checks remain authoritative; no client-side permission bypass was added.
-- Added `tests/admin-sos-staff-visibility.test.js` and updated the existing `tests/admin-refund-and-staff-access.test.js` role-visibility assertion. The latter correction is commit `9ee331046b5fd5b7e0e58bc4c246ab675b914d79`.
+- Added `tests/admin-sos-staff-visibility.test.js` and updated the existing `tests/admin-refund-and-staff-access.test.js` role-visibility assertion and an explicit Main Admin panel isolation test. Latest test commit is `3670a2ee48952cb424f2da7380044d53793c0851`.
 - Node run `43750241498` passed on descendant PR head `609fd7843dc00fd3ca2e7560d3e0314b8bcec927`; downloaded log confirms **216/216**. This is Node/source-contract evidence only, not browser or PostgreSQL/pgTAP runtime proof.
 
 
