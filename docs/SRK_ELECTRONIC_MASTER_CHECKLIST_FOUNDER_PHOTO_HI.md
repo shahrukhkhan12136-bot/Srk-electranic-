@@ -91,9 +91,10 @@
 
 **Owner-approved asset (नवीनतम स्पष्ट निर्देश):** असली Founder Photo वही है जिसमें Founder के पीछे हरा-भरा बगीचा है। उसी फोटो को crop करके लगाना है; चेहरा/पहचान या फोटो का रूप बदलना नहीं है। पहले दर्ज blue-background portrait वाला निर्देश अब इस स्पष्ट garden-photo निर्देश से supersede होता है। Welcome Screen का crop/layout मौजूदा Founder model/reference जैसा रहेगा।
 
-- [x] Feature Branch में `assets/srk-founder.jpg` मौजूद है और `welcome.html` में `/assets/srk-founder.jpg` के रूप में wired है; `index.html` स्वागत पेज पर redirect करता है।
+- [x] `index.html` स्वागत पेज पर redirect करता है और Welcome Screen का responsive layout मौजूद है।
 - [x] Welcome Screen का source implementation और responsive layout मौजूद है।
-- [ ] Asset binary को owner-approved latest portrait (black button-up shirt, folded arms, waist-up crop, blue corporate background) से visually compare करके exact match स्वीकार करें; binary preview verification अभी नहीं हुई।
+- [x] Owner ने काली शर्ट और हरे बगीचे वाली saved Founder Photo की पहचान confirm की; original image का crop मौजूदा Founder card के अनुपात में working file में तैयार है, चेहरा/पहचान नहीं बदली।
+- [ ] Cropped original image binary को Feature Branch के `assets/srk-founder.jpg` में commit करके Welcome Screen से wire करें; अभी placeholder सुरक्षित है।
 - [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें।
 - [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
 - [ ] Owner visual acceptance लें।
