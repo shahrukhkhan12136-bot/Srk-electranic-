@@ -584,3 +584,9 @@
 - `loadCustomerSavedAddresses()` अपनी त्रुटि स्वयं दिखाकर लौटता था, लेकिन `makeSelectedAddressDefault()` उसके बाद सफलता संदेश लिख देता था। इससे सूची रीफ़्रेश विफल होने पर भी उपयोगकर्ता को सफल refresh का गलत संकेत मिल सकता था।
 - Loader अब success/failure boolean लौटाता है। Default-address mutation के बाद refresh विफल हो तो UI स्पष्ट करता है कि update request सफल रही, लेकिन सूची रीफ़्रेश नहीं हुई; सफलता का गलत संदेश नहीं दिखता।
 - Source-contract regression test जोड़ा। वास्तविक Supabase RPC/browser fault-injection अभी लंबित है।
+
+
+### 2026-11-16 — Customer Saved Address delete uncertain-result reconciliation
+- Delete RPC का response network में खो जाने पर ऐप बिना जाँच के “पता नहीं हट सका” दिखा सकता था, जबकि server पर deletion commit हो चुका हो। सफल delete के बाद सूची refresh विफल होने पर भी पुराना code success message दिखा देता था।
+- अब successful RPC के बाद refresh result जाँचा जाता है। Rejected/uncertain RPC पर authoritative saved-address list दोबारा पढ़ी जाती है: पता अनुपस्थित हो तो deletion confirmed, मौजूद हो तो retry guidance, और read भी विफल हो तो स्थिति स्पष्ट न होने का सुरक्षित संदेश।
+- Source-contract regression test जोड़ा। वास्तविक Supabase RPC/network fault-injection और browser परीक्षण लंबित हैं।
