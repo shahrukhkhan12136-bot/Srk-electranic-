@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const worker = fs.readFileSync(path.join(__dirname, '..', 'netlify/functions/deliver-push-outbox.js'), 'utf8');
-const migration = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115170000_durable_push_delivery_outbox.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115170001_durable_push_delivery_outbox.sql'), 'utf8');
 
 test('push outbox worker uses server-only credentials and bounded batch claim', () => {
   assert.match(worker, /SUPABASE_SERVICE_ROLE_KEY/);
@@ -89,7 +89,7 @@ test('worker emits structured degraded alerts and fails scheduled invocation on 
 });
 
 test('health and dead-letter recovery RPCs are service-role only and do not expose payloads', () => {
-  const monitoring = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115190000_push_delivery_health_monitoring.sql'), 'utf8');
+  const monitoring = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115190001_push_delivery_health_monitoring.sql'), 'utf8');
   assert.match(monitoring, /srk_get_push_delivery_health/);
   assert.match(monitoring, /GRANT EXECUTE ON FUNCTION public\.srk_get_push_delivery_health\(\) TO service_role/);
   assert.match(monitoring, /REVOKE ALL ON FUNCTION public\.srk_get_push_delivery_health\(\) FROM PUBLIC,anon,authenticated/);
@@ -101,7 +101,7 @@ test('health and dead-letter recovery RPCs are service-role only and do not expo
 });
 
 test('outbox finish RPC uses an attempt fencing token to reject stale workers', () => {
-  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200000_push_delivery_lease_fencing.sql'), 'utf8');
+  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200001_push_delivery_lease_fencing.sql'), 'utf8');
   assert.match(worker, /p_attempt_count: row\.attempt_count/);
   assert.match(fencing, /p_outbox_id uuid,p_attempt_count integer,p_success boolean/);
   assert.match(fencing, /v_row\.attempt_count IS DISTINCT FROM p_attempt_count/);
@@ -110,7 +110,7 @@ test('outbox finish RPC uses an attempt fencing token to reject stale workers', 
 });
 
 test('outbox fencing migration replaces the exact legacy RPC signature and grants only the new signature', () => {
-  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200000_push_delivery_lease_fencing.sql'), 'utf8');
+  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200001_push_delivery_lease_fencing.sql'), 'utf8');
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.srk_finish_push_delivery_outbox\(\s*p_outbox_id uuid, p_success boolean, p_error text DEFAULT NULL/);
   assert.match(fencing, /DROP FUNCTION IF EXISTS public\.srk_finish_push_delivery_outbox\(uuid,boolean,text\)/);
   assert.match(fencing, /CREATE FUNCTION public\.srk_finish_push_delivery_outbox\(\s*p_outbox_id uuid,p_attempt_count integer,p_success boolean/);
