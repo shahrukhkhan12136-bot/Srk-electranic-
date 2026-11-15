@@ -401,6 +401,21 @@ test('Electrician offer expiry remains server-authoritative and advances the nex
   assert.match(respond, /await refresh\(\)/);
 });
 
+test('Electrician offer response keeps a confirmed server decision distinct from a later refresh failure', () => {
+  const start = electrician.indexOf('async function respond(button,id,response){');
+  const end = electrician.indexOf('\\nfunction bookingMapDirections', start);
+  assert.ok(start >= 0 && end > start);
+  const respond = electrician.slice(start, end);
+  const confirmed = respond.indexOf("if(data?.success!==true)");
+  const successRefresh = respond.indexOf("try{await refresh();}catch(_){alert('आपका जवाब सर्वर पर दर्ज हो गया है");
+  const expiryRefresh = respond.indexOf("try{await refresh();}catch(_){alert('ऑफर समाप्त होने की पुष्टि मिल गई है");
+  const uncertainCatch = respond.indexOf("नेटवर्क जवाब नहीं मिला। ऑफर की वर्तमान स्थिति रीफ़्रेश करके जाँचें");
+  assert.ok(confirmed >= 0 && successRefresh > confirmed, 'confirmed response has its own refresh-failure handling');
+  assert.ok(expiryRefresh > confirmed, 'expired offer has its own refresh-failure handling');
+  assert.ok(uncertainCatch > successRefresh, 'uncertain RPC responses still reconcile by refreshing authoritative offers');
+  assert.match(respond, /electricianOfferResponseBusy\\.delete\\(id\\)/);
+});
+
 test('Service worker notification click routes to a validated electrician offer deep link', () => {
   assert.match(serviceWorker, /self\.addEventListener\('push'/);
   assert.match(serviceWorker, /payload\.offerId/);
