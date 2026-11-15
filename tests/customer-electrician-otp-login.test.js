@@ -12,7 +12,7 @@ test('customer OTP login normalizes Indian numbers and verifies SMS OTP before d
   assert.match(customer, /if\\(d\\.length===10\\)return '\\+91'\\+d/);
   assert.match(customer, /sb\\.auth\\.signInWithOtp\\(\\{phone\\}\\)/);
   assert.match(customer, /sb\\.auth\\.verifyOtp\\(\\{phone,token,type:'sms'\\}\\)/);
-  assert.match(customer, /window\\.location\\.replace\\('\\/booking\\.html'\\)/);
+  assert.ok(customer.includes("window.location.replace('/booking.html')"));
   assert.match(customer, /resendAt=Date\\.now\\(\\)\\+60000/);
   assert.match(customer, /busy\\)return/);
 });
