@@ -1,3 +1,11 @@
+## 2026-11-15 — Refund webhook / provider response reconciliation audit
+
+- Re-audited `razorpay-refund.js`, `razorpay-webhook.js`, refund preparation/reconciliation RPCs and full-refund cancellation-fee reversal trigger.
+- Repaired and consolidated the `srk_admin_prepare_razorpay_refund` function after detecting a malformed payment-ID guard introduced during the approval-gate edit. The function now has the complete anchored `pay_...` validation, NULL-safe paid-state validation, booking row lock, Main Admin approval gate, customer request row lock, immutable labour + settled cancellation-fee reconciliation, stable one-refund-per-booking behavior, payout hold, and request-to-refund-record linkage. Commit: `2b5358bd`.
+- Extended `tests/razorpay-webhook-inbox.test.js` with signed `refund.processed` reconciliation and amount-mismatch fail-closed tests. Commit: `4c10468b`.
+- Extended approval-gate pgTAP checks to 8 assertions. Commit: `41f11f1b`. Static checks now confirm migration function boundaries, anchored payment ID regex, approval gate located inside the function, NULL-safe payment status, booking lock, no dangling fragment; pgTAP plans/counts: Customer request 17/17, Admin queue 12/12, Approval gate 8/8.
+- Source/static verification only. Node tests and pgTAP were not executed in a runtime/database. No Razorpay request, no customer refund, no Production database change, no deployment or merge. Provider unknown/failed states remain fail-closed for manual reconciliation; do not automatically create a new refund record or release payout on an ambiguous provider result.
+
 ## 2026-11-15 — Admin approval enforced before customer-requested Razorpay refund
 
 - Hardened `srk_admin_prepare_razorpay_refund(uuid,text)` in `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql`: when a customer refund request exists, only `approved`, `processing`, or `unknown` requests may proceed; `requested`, `in_review`, and `rejected` requests are blocked. Existing no-customer-request Admin refund flow remains available for legacy/admin-initiated cases.
