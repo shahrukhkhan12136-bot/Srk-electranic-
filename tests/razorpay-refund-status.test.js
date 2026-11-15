@@ -45,7 +45,7 @@ test("fetches exact stored refund ID using GET and makes no provider writes",asy
 });
 test("does not claim no refund when first page has no matching provider record",async t=>{
  const calls=[];global.fetch=async(url,options={})=>{const target=String(url);calls.push({target,options});if(target.endsWith("/auth/v1/user"))return response(200,{id:"admin"});if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);if(target.includes("/srk_razorpay_refunds?"))return response(200,[{...record,refund_id:null}]);if(target.includes("/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);if(target.includes("/payments/"+paymentId+"/refunds?"))return response(200,{items:[]});throw new Error("unexpected "+target);};t.after(()=>{global.fetch=originalFetch;});
- const result=await handler(request());const body=JSON.parse(result.body);assert.equal(result.statusCode,202);assert.equal(body.verified,false);assert.equal(body.safe_to_retry,false);assert.equal(body.status,"provider_record_not_found_in_first_page");
+ const result=await handler(request());const body=JSON.parse(result.body);assert.equal(result.statusCode,202);assert.equal(body.verified,false);assert.equal(body.safe_to_retry,false);assert.equal(body.status,"provider_record_not_found_after_all_pages");
 });
 test("fails closed when provider refund amount or payment differs",async t=>{
  const calls=setupProvider({id:refundId,payment_id:paymentId,amount:9999,currency:"INR",status:"processed"});t.after(()=>{global.fetch=originalFetch;});
@@ -54,4 +54,29 @@ test("fails closed when provider refund amount or payment differs",async t=>{
 test("requires internal booking payment ID to match before contacting Razorpay",async t=>{
  let providerCalls=0;global.fetch=async url=>{const target=String(url);if(target.endsWith("/auth/v1/user"))return response(200,{id:"admin"});if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);if(target.includes("/srk_razorpay_refunds?"))return response(200,[record]);if(target.includes("/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:"pay_different"}]);if(target.includes("razorpay.com"))providerCalls++;throw new Error("unexpected "+target);};t.after(()=>{global.fetch=originalFetch;});
  const result=await handler(request());assert.equal(result.statusCode,409);assert.equal(providerCalls,0);
+});
+
+
+test("read-only status lookup paginates to the exact refund on page two",async t=>{
+ const calls=[],firstPage=Array.from({length:100},(_,i)=>({
+  id:"rfnd_status_other"+i,payment_id:paymentId,amount:12500,currency:"INR",status:"processed",
+  notes:{srk_refund_record_id:"other-record"},receipt:"other-receipt"
+ }));
+ const unlinkedRecord={...record,refund_id:null};
+ global.fetch=async(url,options={})=>{
+  const target=String(url);calls.push({target,options});
+  if(target.endsWith("/auth/v1/user"))return response(200,{id:"admin-1"});
+  if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);
+  if(target.includes("/rest/v1/srk_razorpay_refunds?"))return response(200,[unlinkedRecord]);
+  if(target.includes("/rest/v1/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);
+  if(target.includes("/payments/"+paymentId+"/refunds?count=100&skip=0"))return response(200,{items:firstPage});
+  if(target.includes("/payments/"+paymentId+"/refunds?count=100&skip=100"))return response(200,{items:[{id:refundId,payment_id:paymentId,amount:12500,currency:"INR",status:"processed",notes:{srk_refund_record_id:recordId},created_at:123,acquirer_data:{arn:"ARN123"}}]});
+  throw new Error("unexpected request "+target);
+ };
+ t.after(()=>{global.fetch=originalFetch;});
+ const result=await handler(request());const body=JSON.parse(result.body);
+ assert.equal(result.statusCode,200);assert.equal(body.verified,true);assert.equal(body.provider.refund_id,refundId);
+ assert.equal(body.read_only,true);
+ const pages=calls.filter(c=>c.target.includes("/payments/"+paymentId+"/refunds?"));
+ assert.equal(pages.length,2);assert.ok(pages[0].target.endsWith("count=100&skip=0"));assert.ok(pages[1].target.endsWith("count=100&skip=100"));
 });
