@@ -82,3 +82,12 @@ test('new-category manual refunds reconcile against immutable labour bill and se
   assert.match(manualRefundMigration, /v_expected_paise:=v_labour_paise\+v_fee_paise/);
   assert.match(manualRefundMigration, /MANUAL_REFUND_AMOUNT_DOES_NOT_MATCH_IMMUTABLE_LABOUR_AND_FEE_LEDGER/);
 });
+
+const refundRecoveryMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115240000_harden_refund_recovery_full_amount.sql'), 'utf8');
+
+test('Razorpay recovery finalizer rejects evidence unless refund equals full verified booking collection', () => {
+  assert.match(refundRecoveryMigration, /select \* into v_booking from public\.service_bookings where id=v_audit\.booking_id for update/i);
+  assert.match(refundRecoveryMigration, /v_audit\.amount_paise is distinct from round\(v_booking\.amount_paid\*100\)::bigint/);
+  assert.match(refundRecoveryMigration, /RECOVERY_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTION/);
+  assert.match(refundRecoveryMigration, /v_refund\.amount_paise is distinct from v_audit\.amount_paise/);
+});
