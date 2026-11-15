@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(10);
+SELECT plan(11);
 SELECT has_column('public','electrician_profiles','user_id','legacy electrician profile identity column exists');
 SELECT has_column('public','electrician_profiles','auth_user_id','Auth identity column is explicitly present');
 SELECT has_index('public','electrician_profiles','electrician_profiles_auth_user_id_uidx','one Auth user cannot be linked to multiple electrician profiles');
@@ -30,5 +30,16 @@ SELECT ok(
   position('ELECTRICIAN_PROFILE_IDENTITY_COLUMNS_MUST_MATCH' IN pg_get_functiondef('public.srk_sync_electrician_profile_identity()'::regprocedure)) > 0,
   'conflicting user_id and auth_user_id values are rejected'
 );
+
+SELECT ok(
+  (SELECT position('phone' IN pg_get_triggerdef(t.oid)) > 0
+     AND position('verification_status' IN pg_get_triggerdef(t.oid)) > 0
+   FROM pg_trigger t
+   WHERE t.tgrelid='public.electrician_profiles'::regclass
+     AND t.tgname='srk_guard_electrician_profile_identity_link'
+     AND NOT t.tgisinternal),
+  'identity guard also runs when the profile phone or approval status changes'
+);
+
 SELECT * FROM finish();
 ROLLBACK;

@@ -40,7 +40,7 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_sync_electrician_profile_identity() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS a_srk_sync_electrician_profile_identity ON public.electrician_profiles;
 CREATE TRIGGER a_srk_sync_electrician_profile_identity
-BEFORE INSERT OR UPDATE OF user_id,auth_user_id ON public.electrician_profiles
+BEFORE INSERT OR UPDATE OF user_id,auth_user_id,phone,verification_status ON public.electrician_profiles
 FOR EACH ROW EXECUTE FUNCTION public.srk_sync_electrician_profile_identity();
 
 CREATE OR REPLACE FUNCTION public.srk_guard_electrician_profile_identity_link()
