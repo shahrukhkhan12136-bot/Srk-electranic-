@@ -3382,3 +3382,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Located the Customer complaint contract migration `20261114202250_customer_complaint_customer_safe_projection.sql`: allowed categories include `service_quality`, and complaint creation uses `booking_id, customer_user_id, category, description`, matching the timer dispute insert at the column/category level. The base CREATE TABLE definition and its full constraints were not present among the inspected PR-changed migrations, so full schema compatibility remains unverified.
 - Support conversation schema adds customer/Admin messages and attachments, and Admin can send replies; this is not a dispute-resolution decision workflow. No reviewed function was found to record an Admin finding, rework order, or financial adjustment for a completion dispute.
 - No production or database changes. Runtime tests, migration-chain validation, and final dispute decision policy remain pending.
+
+
+## 2026-11-15 — GPT-1 timer/dispute UI audit (continued)
+- Electrician App review found that the completion-request button remained visible while a booking was in `disputed` state, even though the separate dispute message said to wait for Admin review.
+- Fixed the client condition so the completion/timer action is hidden for both `pending` and `disputed` completion states. Customer rejection remains eligible to resume normal work flow according to the server RPC.
+- Added a source-contract assertion to prevent the disputed-state completion action from reappearing.
+- Commits: `ec1d02286cb74c184f105bef2e199adceb191e6a` (Electrician UI), `a3be062ab70770f79542841fc66f225764735765` (contract test).
+- This is a source-level fix only. No migrations were applied, no database was changed, and no live deployment or manual mobile test was performed. Automated tests/CI have not yet been run for these commits.
+- Remaining blocker: Admin dispute resolution outcomes and any resulting timer/financial behavior require explicit business rules and GPT-2 coordination; do not implement assumptions.
