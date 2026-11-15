@@ -43,13 +43,13 @@ h1 span{display:block;color:var(--gold)}
 .trust-note{margin-top:18px;color:#aebfd2;font-size:12px;line-height:1.6}
 .visual{min-height:410px;position:relative;display:grid;place-items:center}
 .visual:before{content:"";position:absolute;width:min(92%,420px);aspect-ratio:1;border-radius:50%;border:1px solid rgba(255,255,255,.12);box-shadow:0 0 0 32px rgba(255,255,255,.018),0 0 0 66px rgba(255,255,255,.012)}
-.visual-card{width:min(100%,430px);aspect-ratio:1.05;border:1px solid rgba(255,255,255,.16);border-radius:34px;background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.035));backdrop-filter:blur(12px);box-shadow:0 30px 90px rgba(0,0,0,.24);display:grid;place-items:center;position:relative;overflow:hidden}
-.visual-card:before,.visual-card:after{content:"";position:absolute;border:1px solid rgba(255,196,91,.24);border-radius:50%;width:250px;height:250px}
-.visual-card:after{width:330px;height:330px}
-.bolt-wrap{width:180px;height:180px;border-radius:48px;background:linear-gradient(145deg,#ffda8d,#ffb63e);display:grid;place-items:center;box-shadow:0 20px 70px rgba(255,183,58,.24);position:relative;z-index:1}
-.bolt-wrap svg{width:100px;height:100px;filter:drop-shadow(0 5px 5px rgba(28,39,54,.15))}
-.float-tag{position:absolute;z-index:2;display:flex;align-items:center;gap:9px;padding:11px 14px;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(7,26,43,.84);box-shadow:0 12px 30px rgba(0,0,0,.2);font-size:12px;font-weight:750;color:#edf5ff}
-.float-tag i{width:8px;height:8px;border-radius:50%;background:#ffc45b;box-shadow:0 0 12px #ffc45b}
+.visual-card{width:min(100%,430px);aspect-ratio:.88;border:2px solid rgba(255,196,91,.78);border-radius:34px;background:linear-gradient(180deg,#0752a5,#061c38);box-shadow:0 30px 90px rgba(0,0,0,.32),0 0 36px rgba(28,112,219,.24);display:block;position:relative;overflow:hidden}
+.visual-card:before{content:"";position:absolute;inset:12px;border:1px solid rgba(255,255,255,.28);border-radius:25px;z-index:1;pointer-events:none}
+.visual-card:after{content:"";position:absolute;inset:auto 0 0;height:38%;background:linear-gradient(180deg,transparent,rgba(3,20,42,.96));pointer-events:none}
+.founder-photo{display:block;width:100%;height:100%;object-fit:cover;object-position:center 22%}
+.founder-badge{position:absolute;z-index:2;left:18px;right:18px;bottom:22px;text-align:center;padding:13px 10px;border-radius:16px;background:linear-gradient(100deg,#0647a7,#0876e8);border:1px solid rgba(255,211,125,.9);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.founder-badge strong{display:block;color:#fff;font-size:18px;letter-spacing:.08em}
+.founder-badge span{display:block;color:#ffe0a0;font-size:12px;font-weight:750;margin-top:4px;letter-spacing:.06em}
 .tag-top{top:13%;right:-3%}.tag-bottom{bottom:13%;left:-3%}
 footer{border-top:1px solid var(--line);padding:22px 0 26px;text-align:center}
 .slogan{font-size:clamp(17px,2vw,20px);font-weight:850;letter-spacing:.015em;color:var(--gold)}
@@ -91,11 +91,10 @@ footer{border-top:1px solid var(--line);padding:22px 0 26px;text-align:center}
   </div>
   <p class="trust-note">आगे बढ़ने के लिए अपना मोबाइल नंबर सत्यापित करें।</p>
  </section>
- <div class="visual" aria-hidden="true">
+ <div class="visual">
   <div class="visual-card">
-   <div class="bolt-wrap"><svg viewBox="0 0 120 120" fill="none"><path d="M68 8 28 66h26l-5 46 43-63H65l3-41Z" fill="#10243a" stroke="#10243a" stroke-width="4" stroke-linejoin="round"/></svg></div>
-   <div class="float-tag tag-top"><i></i> भरोसेमंद इलेक्ट्रिकल सेवा</div>
-   <div class="float-tag tag-bottom"><i></i> सुरक्षा सबसे पहले</div>
+   <img class="founder-photo" src="/assets/srk-founder.jpg" alt="SRK ELECTRONIC के Founder का पोर्ट्रेट" width="280" height="187" fetchpriority="high">
+   <div class="founder-badge"><strong>FOUNDER</strong><span>SRK ELECTRONIC</span></div>
   </div>
  </div>
 </main>
