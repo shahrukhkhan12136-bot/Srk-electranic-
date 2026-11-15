@@ -230,3 +230,16 @@ Older `feature/business-finance-dashboard` और `work/separate-customer-electr
 - The file contents overlap on booking status and assignment constraints. Do not delete, merge, rename, re-sequence, or repair history without establishing which version is recorded remotely and the intended source lineage. No remote history query performed.
 - Node CI for latest docs commit `a84ea1e` completed successfully. This verifies repository Node tests only; it does not validate remote Supabase migration history or execute SQL.
 - GPT-2 checklist remains 27/39 = 69%; no checklist closure claimed.
+
+
+### Duplicate 20261109 lineage — historical Git chronology recovered (15 Nov 2026)
+
+- Git path history establishes a concrete sequence:
+  1. `073d59e` (08:00:19Z): first recorded inspection-quote workflow migration commit.
+  2. `04d0c02` (08:01:17Z): the same `electrician_inspection_quotes_and_service_only_commission.sql` file changed from a one-line “Applied migration” placeholder to the full 99-line SQL migration.
+  3. `b5e5b3b` (08:04:11Z): that full migration was extended with the booking status and assignment constraints.
+  4. `cd2c46e` (08:04:25Z): a second file, `20261109_allow_quote_approval_booking_states.sql`, was newly added with only those same two constraints.
+- The full quote migration already contains the same two constraint statements at its end. The later-added second file therefore duplicates the constraint work in source; it is not an independent feature migration.
+- This chronology strongly suggests the second file was an accidental duplicate follow-up. It does **not** prove which SQL file was actually applied to the remote database or whether version `20261109` exists in its history. No remote query was run.
+- Safe decision: keep both files untouched for now. Do not delete or rename the second file, because remote history state remains unknown and migration version is the ledger key. Before cleanup, establish the remote applied-version row through an approved read-only schema/history export and reconcile with deployment records.
+- Node CI had passed on commit `a84ea1e`; no SQL replay/runtime assertion follows from that.
