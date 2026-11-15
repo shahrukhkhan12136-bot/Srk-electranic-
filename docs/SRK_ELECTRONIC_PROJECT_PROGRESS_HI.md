@@ -3321,3 +3321,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - PWA service worker cache version `srk-electronic-v10` किया और founder image को offline asset list में शामिल किया।
 - `tests/welcome-screen-contract.test.js` में वास्तविक फोटो reference और cache inclusion के contract assertions जोड़े।
 - यह feature branch पर source integration है; PR #8 अभी unmerged है, इसलिए production/live website पर फोटो दिखना अभी deployment/merge के बाद ही संभव होगा। Browser/mobile visual QA अभी pending है; consolidated final mobile QA सभी implementation के बाद ही होगा।
+
+### GPT-2 Refund Recovery pagination hardening — 15 Nov 2026
+- Razorpay payment refund-list endpoint में `count` और `skip` pagination supported है; अधिकतम 100 refunds प्रति page। अब Refund Recovery और read-only Refund Status दोनों `skip=0,100,...,900` तक bounded pages जाँचते हैं।
+- हर page पर exact Payment ID, amount, INR currency और internal refund-record note अथवा idempotency receipt match आवश्यक है। सभी उपलब्ध pages scan किए बिना unmatched refund को final “not found” नहीं कहा जाता।
+- Page overlap/duplicate IDs, malformed response या 1,000-record bound पूरा हो जाने पर lookup unresolved रहता है; कोई evidence finalization, नया refund, retry या payout release नहीं होता।
+- Regression tests में दूसरे page पर exact match और पूरे उपलब्ध pages में no-match दोनों शामिल हैं। Feature Branch Node CI run `43719423933` सफल: **159/159 PASS**। PR run `43719428584` भी सफल।
+- यह source/test coverage है; Razorpay live account pagination, PostgreSQL/pgTAP runtime, concurrent provider list mutation और Production DB अभी validate नहीं हुए।
+- GPT-2 checklist **27/39 = 69% पूरा; 12/39 = 31% बाकी**—इस quality hardening से checklist count नहीं बदला।
