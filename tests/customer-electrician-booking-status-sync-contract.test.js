@@ -27,7 +27,8 @@ function sqlFunction(source, name) {
 
 test('customer booking refresh reads authoritative owner-scoped lifecycle and timer fields', () => {
   const load = functionBody(customer, 'loadCustomerBookings');
-  assert.match(load, /select\('[^']*status[^']*work_start_approval_status[^']*completion_approval_status[^']*completion_requested_at[^']*work_timer_elapsed_seconds[^']*work_started_at[^']*work_timer_running/);
+  const projection = load.match(/\.select\('([^']+)'\)/)?.[1] || '';
+  for (const field of ['status','work_start_approval_status','completion_approval_status','completion_requested_at','work_timer_elapsed_seconds','work_started_at','work_timer_running']) assert.ok(projection.split(',').includes(field), 'customer booking projection includes ' + field);
   assert.match(load, /\.eq\('customer_user_id', session\.user\.id\)/);
   assert.match(load, /\.order\('created_at', \{ ascending: false \}\)/);
   assert.match(load, /srk_customer_get_my_booking_work_timeline/);
