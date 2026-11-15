@@ -827,3 +827,24 @@ Therefore:
 - A future safe CI job should use only an isolated local Supabase stack built from an approved, version-controlled baseline and pinned CLI/tool versions, with no remote DB URL or Production secret.
 
 No workflow was dispatched or modified. No remote schema export, database connection, migration execution, pgTAP execution, Production access, or database change occurred.
+
+
+## 28. Duplicate 20261109 migration body/dependency comparison — 16 Nov 2026
+
+Both same-prefix files were fetched directly from the current feature branch and compared at statement level.
+
+### File A — `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+This larger feature migration adds quote fields to `public.service_bookings`, quote amount/status checks, commission calculation logic, electrician quote submission/customer response/work-status RPCs, and a replacement electrician offer-details RPC with grants/revokes. At its end it drops and recreates the two booking status/assignment CHECK constraints.
+
+### File B — `20261109_allow_quote_approval_booking_states.sql`
+This file contains only the same two status/assignment CHECK constraint drop-and-recreate operations. The status values and assignment-required status set match the definitions at the end of File A.
+
+### Source-level conclusion
+- File B repeats the constraint-definition step already present at the end of File A; it adds no distinct status value relative to File A.
+- File A has materially broader schema/function/grant effects and cannot be treated as interchangeable with File B.
+- File B looks redundant if File A has already run successfully, but source redundancy alone does not prove it is safe to delete, omit, rename, or merge in a clean replay chain.
+- The two files have the same 8-digit filename prefix but distinct SQL bodies. The exact remote migration identity/order remains unverified; Git chronology and matching live constraint definitions do not resolve it.
+- Both files rely on an existing `public.service_bookings` table and other pre-existing schema objects. This comparison does not reconstruct the authoritative starter schema or prove every referenced column/function dependency exists at replay time.
+
+### Decision
+No migration file was edited, removed, renamed, merged, reordered, replayed, or repaired. Do not treat either file as approved for omission. The duplicate-version replay gate remains **BLOCKED** pending authoritative migration lineage and an approved baseline/reconciliation decision. No Supabase CLI, PostgreSQL, pgTAP, Production query, or database write was run.
