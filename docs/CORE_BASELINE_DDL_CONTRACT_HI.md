@@ -181,3 +181,17 @@ Branch migration tree में `srk_push_subscriptions` की base `CREATE TAB
 `COMPLETE_DATABASE_SETUP.sql` (402 lines), `SUPABASE_SCHEMA.sql` और `PORTAL_SCHEMA.sql` को भी complaint तथा push base-table definitions के लिए cross-check किया। इन तीनों में `srk_booking_complaints`, `srk_booking_complaint_events` या `srk_push_subscriptions` की `CREATE TABLE` definition नहीं मिली। `COMPLETE_DATABASE_SETUP.sql` में मुख्य रूप से booking/application/profile/job-offer/admin base objects हैं; इसलिए यह complaint/push dependencies का complete baseline नहीं है।
 
 GitHub code search में भी इन तीनों exact base-table `CREATE TABLE` definitions का कोई विश्वसनीय source result नहीं मिला। अतः निष्कर्ष अभी भी यही है: इनके वास्तविक source DDL/remote schema export की आवश्यकता है; केवल migration references से column types, defaults, keys, constraints और मूल RLS policies का अनुमान लगाना सुरक्षित नहीं। इस अनुपलब्धता को स्पष्ट रूप से दर्ज किया गया है; कोई Production schema या secret fetch नहीं किया गया।
+
+
+## 8. Complaint table का विस्तृत column-use contract
+
+Complaint conversation migrations को line-level पर cross-check करने से base complaint table के लिए अतिरिक्त आवश्यक references प्रमाणित हुए:
+
+- `srk_booking_complaints.id`: message/attachment tables के FK और Admin/Customer conversation RPCs में complaint lookup के लिए आवश्यक।
+- `srk_booking_complaints.customer_user_id`: customer message भेजने/पढ़ने, attachment access और customer-owned storage object authorization में ownership predicate के लिए आवश्यक।
+- `srk_booking_complaints.booking_id`, `category`, `description`, `status`, `admin_note`, `created_at`, `updated_at`, `resolved_at`: customer complaint create/list RPC के explicit INSERT/SELECT response contract में संदर्भित।
+- `srk_booking_complaint_events` के लिए उपलब्ध source evidence में explicit INSERT columns `complaint_id`, `actor_user_id`, `actor_role`, `from_status`, `to_status`, `note` हैं।
+
+यह सूची migration consumers द्वारा आवश्यक column usage है, authoritative DDL नहीं। इससे data types, nullability, defaults, PK/FK, unique/check constraints, indexes, triggers या base RLS policy set प्रमाणित नहीं होते। विशेष रूप से conversation messages/attachments की नई tables के RLS policies base complaint table की policies का विकल्प नहीं हैं।
+
+Push subscription base के लिए उपलब्ध exact consumer contract अभी `id`, `user_id`, `endpoint`, `p256dh`, `auth` ही है; `id`/`user_id` पर delivery ledger और बाकी तीन columns delivery sender payload में प्रयुक्त हैं। उनके SQL types और uniqueness/FK semantics अभी unresolved हैं।
