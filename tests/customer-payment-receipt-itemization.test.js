@@ -41,7 +41,7 @@ test('customer payment receipt HTML escapes every server-provided text field', (
     /customerEsc\(address\|\|R\(/,
     /customerEsc\(paymentDate\)/,
     /customerEsc\(bookingDate\)/,
-    /customerEsc\(String\(item\.source_booking_id\)/
+    /customerEsc\(String\(item\.source_booking_id\|\|''\)\.slice/
   ]) assert.match(fn, pattern);
   assert.match(booking, /function customerEsc\(value\)[\s\S]*?replace\(\/\[&<>"'\]\/g/);
 });
