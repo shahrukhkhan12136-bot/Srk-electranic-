@@ -1333,7 +1333,7 @@ async function loadCustomerBookings() {
       '</article>';
     }).join('');
     customerLiveLocationBookingIds=data.filter(row=>row.status==='assigned'&&row.assigned_electrician_id).map(row=>row.id);await refreshCustomerLiveLocations();
-    if(timelineResult.error) {
+    if(timelineResults.some(({result})=>result.error)) {
       const note=document.createElement('p');
       note.className='small';
       note.setAttribute('role','status');
