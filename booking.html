@@ -634,6 +634,10 @@ Object.assign(customerUiTranslations, {
  'Razorpay से सुरक्षित भुगतान':'Secure Payment with Razorpay',
  '🔒 Razorpay से भुगतान करें':'🔒 Pay with Razorpay'
 });
+Object.assign(customerUiTranslations, {
+ 'इलेक्ट्रिशियन की वर्तमान लोकेशन':'Electrician’s Current Location',
+ 'बुकिंग स्थिति का इतिहास':'Booking Status History'
+});
 function customerUiText(value) {
  const text = String(value ?? '');
  if (document.documentElement.lang !== 'en') return text;
