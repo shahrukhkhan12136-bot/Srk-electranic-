@@ -145,8 +145,13 @@ CREATE TRIGGER srk_booking_work_events_no_truncate
 
 -- These two functions are redefined by the immediately preceding work-timer migrations;
 -- harden their final definitions here, after those replacements have run.
-alter function public.srk_customer_respond_work_start(uuid,text) set search_path = '';
-alter function public.srk_customer_respond_work_completion(uuid,text,text) set search_path = '';
+-- These SECURITY DEFINER RPCs use srk_private authorization tables without
+-- schema qualification, so retain a fixed, trusted search_path rather than
+-- setting it empty (which would make those references fail at runtime).
+alter function public.srk_customer_respond_work_start(uuid,text)
+  set search_path = 'pg_catalog, public, auth, srk_private, pg_temp';
+alter function public.srk_customer_respond_work_completion(uuid,text,text)
+  set search_path = 'pg_catalog, public, auth, srk_private, pg_temp';
 
 -- Customer-safe work timeline. Expose only event label, actor role and time;
 -- never return old_state/new_state JSON or internal event payloads.
