@@ -36,8 +36,8 @@ test('Staff data access is assignment-scoped and migration has no direct private
 });
 
 
-test('new-category booking status and category changes require protected server workflow', () => {
-  assert.match(admin, /if\(booking\.selected_category&&\(status!==booking\.status\|\|quoted!==currentQuoted\)\)/);
+test('new-category booking status changes require protected server workflow', () => {
+  assert.match(admin, /status!==booking\.status&&\!\( !booking\.selected_category&&booking\.status==='new'&&status==='confirmed'\)/);
   assert.match(workMigration, /CREATE OR REPLACE FUNCTION public\.srk_guard_new_category_booking_status_transition\(\)/);
   assert.match(workMigration, /work_transition_authorizations a[\s\S]*?a\.target_status=NEW\.status/);
   assert.match(workMigration, /NEW_CATEGORY_STATUS_REQUIRES_PROTECTED_WORKFLOW/);
@@ -61,8 +61,10 @@ test('legacy booking status is no longer directly writable by authenticated clie
   assert.match(legacyStatusMigration, /set status='confirmed'/i);
 });
 
-test('Admin generic Save only edits the quote and uses the dedicated legacy confirmation RPC', () => {
-  assert.match(admin, /sb\.rpc\('srk_admin_update_legacy_booking_quote',\{p_booking_id:id,p_quoted_amount:quoted\}\)/);
+test('Admin generic Save keeps historical quote read-only and uses dedicated legacy confirmation RPC', () => {
+  assert.doesNotMatch(admin, /srk_admin_update_legacy_booking_quote/);
+  assert.doesNotMatch(admin, /id="amt-/);
+  assert.match(admin, /ऐतिहासिक रिकॉर्ड केवल पढ़ने के लिए/);
   assert.doesNotMatch(admin, /\.update\(\{quoted_amount:quoted\}\)/);
   assert.match(admin, /sb\.rpc\('srk_admin_confirm_legacy_booking',\{p_booking_id:id\}\)/);
   assert.match(admin, /status!==booking\.status&&\!\( !booking\.selected_category&&booking\.status==='new'&&status==='confirmed'\)/);
