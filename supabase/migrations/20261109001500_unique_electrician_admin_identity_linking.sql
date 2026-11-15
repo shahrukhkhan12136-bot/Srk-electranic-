@@ -1,6 +1,8 @@
 -- Run after 20261109001000, which defines the legacy Admin approval function.
 -- Replace legacy Admin approval's arbitrary LIMIT 1 phone claim with unique-only linking.
-CREATE OR REPLACE FUNCTION public.srk_admin_review_application(p_application_id uuid, p_decision text)
+-- The preceding legacy migration declared this signature RETURNS void; the baseline portal contract is jsonb.
+DROP FUNCTION IF EXISTS public.srk_admin_review_application(uuid,text);
+CREATE FUNCTION public.srk_admin_review_application(p_application_id uuid, p_decision text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth AS $function$
 DECLARE
   a public.electrician_applications%rowtype;

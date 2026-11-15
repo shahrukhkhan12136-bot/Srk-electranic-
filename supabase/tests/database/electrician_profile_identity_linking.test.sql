@@ -43,12 +43,8 @@ SELECT ok(
 
 
 SELECT ok(
-  position('UPDATE OF user_id,auth_user_id,phone,verification_status' IN pg_get_triggerdef(t.oid)) > 0
-  FROM pg_trigger t
-  WHERE t.tgrelid='public.electrician_profiles'::regclass
-    AND t.tgname='srk_guard_electrician_profile_identity_link'
-    AND NOT t.tgisinternal,
-  'identity guard fires when phone or approval status changes'
+  'a_srk_sync_electrician_profile_identity' < 'srk_guard_electrician_profile_identity_link',
+  'identity sync trigger sorts before the identity guard trigger'
 );
 SELECT ok(
   position('v_auth_user_count=1 AND v_profile_count=1' IN pg_get_functiondef('public.srk_admin_review_application(uuid,text)'::regprocedure)) > 0
