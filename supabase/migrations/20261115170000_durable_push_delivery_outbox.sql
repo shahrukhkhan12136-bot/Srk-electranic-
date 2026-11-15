@@ -112,12 +112,12 @@ BEGIN
   END IF;
   -- A worker may disappear after claiming its final allowed attempt. Turn
   -- expired exhausted leases into terminal dead letters before selecting work.
-  UPDATE srk_private.srk_push_delivery_outbox
+  UPDATE srk_private.srk_push_delivery_outbox AS o
     SET delivery_status='dead',locked_until=NULL,
-        last_error=coalesce(last_error,'Outbox lease expired after maximum attempts'),
+        last_error=coalesce(o.last_error,'Outbox lease expired after maximum attempts'),
         updated_at=clock_timestamp()
-    WHERE delivery_status='processing' AND attempt_count>=8
-      AND (locked_until IS NULL OR locked_until<=clock_timestamp());
+    WHERE o.delivery_status='processing' AND o.attempt_count>=8
+      AND (o.locked_until IS NULL OR o.locked_until<=clock_timestamp());
   RETURN QUERY
   WITH picked AS (
     SELECT o.id FROM srk_private.srk_push_delivery_outbox o
