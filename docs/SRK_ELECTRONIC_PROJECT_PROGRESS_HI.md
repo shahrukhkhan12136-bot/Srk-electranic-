@@ -2989,3 +2989,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Accounting source-contract test में दो assertions जोड़े; plan/count 69 से 71। यह केवल source-level contract है; PostgreSQL/pgTAP runtime अभी Not Run है।
 - Admin HTML में अभी Route-specific result rendering नहीं मिला; RPC का JSON response सीधे/किस रूप में प्रदर्शित होता है, browser runtime से सत्यापित नहीं। अगला कदम Admin reconciliation renderer में exception/status को स्पष्ट Hindi warning के रूप में दिखाना और Node regression test जोड़ना है।
 - No provider calls, bank checks, transfers, payouts, Production DB changes, deployment, merge or go-live.
+
+
+## 2026-11-15 — Customer App dynamic English messages and confirmation dialogs
+
+- Customer App के dynamic GPS/location feedback, payment/refund history loading and error states, complaint status, work-start approval, cancellation/booking errors, OTP/session messages, saved-address actions और payment outcomes के लिए English dictionary coverage बढ़ाई।
+- `window.confirm` को भी `customerUiText` translation wrapper से जोड़ा; अब English mode में confirmation dialogs भी translate होते हैं, केवल alerts नहीं।
+- Cancellation-fee policy confirmation का पूरा English text जोड़ा। Booking confirmation के dynamic summary में Tier, Duration, Estimated labour, Payment method और prior-fee line-item wording translate करने के fallback replacements जोड़े।
+- Dynamic messages, confirm wrapper और cancellation/booking summary के regression tests जोड़े। शुरुआती CI run में test-only wrapper variable नाम mismatch मिला; उसे ठीक किया। Latest branch SHA `3fb69b1c59858f291fd0821e658e0ee837aad5b9` पर दो full Node test workflows **SUCCESS** हुए।
+- Browser runtime language switching, backend से आने वाले अज्ञात dynamic message variants और visual QA अभी pending हैं। Final consolidated mobile QA deferred है। No Production changes, merge or deployment.
