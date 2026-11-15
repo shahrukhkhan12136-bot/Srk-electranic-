@@ -368,3 +368,13 @@ prerequisite gates. No PostgreSQL replay or Production query was run.
 - नई migration के तीन Node source-contract tests मौजूद हैं और `financial_audit_core_schema.test.sql` में तीन pgTAP assertions जोड़े गए हैं। ये test-source inventory हैं, execution result नहीं।
 - इस exact PR head पर audit के समय GitHub Actions workflow run उपलब्ध नहीं था। किसी पुराने head के Node CI परिणाम को वर्तमान head का परिणाम न मानें। Netlify Deploy Preview success और Vercel build-rate-limit failure अलग deployment-provider statuses हैं।
 - कोई PostgreSQL/pgTAP run, full ordered replay, Production catalog/history query, Production write, provider payment/refund/payout, merge या deployment नहीं किया गया। यह manifest static-only है और execution authorization नहीं देता।
+
+
+## 13. Current branch re-verification — 16 Nov 2026 (GPT-2)
+
+- Recursive tree पर फिर जाँचा: वर्तमान Feature Branch में 87 SQL migration files हैं। `service_bookings.amount_paid` का source DDL अब मौजूद है: `20261116200000_restore_service_bookings_amount_paid.sql`। यह nullable `numeric(12,2)` column जोड़ती है और nonnegative CHECK को `NOT VALID` बनाती है। इसलिए इसे अब missing-source-DDL blocker न कहें। पुराने §1, §5.6, §5.7 और §12 में जहाँ यह gap unresolved बताया गया है, वे historical audit notes हैं; वर्तमान source status इस section से supersede होता है।
+- वर्तमान tree में अभी भी समान 8-digit prefix `20261109` वाली दो अलग files हैं: `20261109_allow_quote_approval_booking_states.sql` और `20261109_electrician_inspection_quotes_and_service_only_commission.sql`। दोनों अलग SQL bodies हैं।
+- इस repository inspection से deployed Supabase `schema_migrations` / remote migration lineage नहीं दिखती। इसलिए यह तय नहीं किया जा सकता कि दोनों में से कौन-सी migration पहले/किस identifier से लागू हुई, क्या कोई manually applied state है, या clean replay के लिए approved reconciliation क्या होगी। किसी file को rename/delete/merge/resequence करना या remote migration history repair करना अनुमान होगा; ऐसा नहीं किया गया।
+- Current tree में `supabase/config.toml` नहीं मिला। अतः इस pass में CLI replay semantics को इस repo पर verify नहीं किया गया। कोई CLI migration command, local DB replay, pgTAP, Production query या write नहीं चला।
+- **वर्तमान ज्ञात source blockers:** duplicate `20261109` migration lineage का authoritative resolution; complete baseline/replay order और config/harness validation। `amount_paid` और `auth_user_id` की introducing source DDL मौजूद है।
+- अगला निर्णायक कदम owner-authorized, read-only migration-history/schema-only evidence और duplicate-version handling का disposable scratch project में pinned Supabase CLI से test है। तब तक replay blocked रहेगा।
