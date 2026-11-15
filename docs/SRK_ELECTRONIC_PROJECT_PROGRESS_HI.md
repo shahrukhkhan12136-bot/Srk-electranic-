@@ -3702,3 +3702,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - SMS/Push provider और Admin mobile recipient configuration अभी उपलब्ध/approved नहीं; इसलिए backend/UI status `not_configured` ही दिखाते हैं। Live/consented location contract भी अभी लागू नहीं; SOS case location के बिना भी दर्ज हो सकता है। पुलिस/112 को automatic notification नहीं है।
 - Node CI run `43730623836` on commit `480f90aebac56a05ce54f5c447aaec3142fd719d` SUCCESS: पूरा repository Node test job सफल। pgTAP source contract `sos_admin_support_alerts.test.sql` में plan 28 / 28 assertions है; PostgreSQL runtime अभी execute नहीं हुआ।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित; यह source foundation है, end-to-end SMS/Push/location/runtime/owner approval पूर्ण नहीं। PR #8 Draft/Open/Unmerged। कोई Production migration, SMS/Push send, real transaction, merge या deployment नहीं किया।
+
+
+### GPT-2 SOS migration review follow-up — 15 Nov 2026
+- Static review के बाद SOS queue/history RPCs को VOLATILE/default function behavior पर रखा ताकि session-bound `srk_has_admin_permission` की row-lock checks के साथ stable-function restriction न आए; acknowledgement response अब उसी stored `acknowledged_at` timestamp को लौटाता है।
+- pgTAP actor-ownership assertion को वास्तविक schema-qualified `b.customer_user_id=v_uid` expression से मिलाया।
+- Latest PR #8 head: `0679495a455d9e2b78d9ffbb2d323be07876b7ea`; Node CI run `43730886306` अभी pending/queued है, इसलिए इस latest head को PASS घोषित नहीं किया जा रहा। Earlier run `43730623836` on `480f90a` succeeded before these final hardening edits.
+- PostgreSQL/pgTAP runtime, SMS/Push provider integration, current/consented location, browser E2E और Production rollout अभी pending हैं। GPT-2 checklist **27/39 = 69%**; कोई checklist checkbox अभी close नहीं हुआ।
