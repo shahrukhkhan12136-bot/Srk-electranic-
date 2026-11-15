@@ -9,11 +9,11 @@
 
 ## त्वरित प्रोजेक्ट प्रगति — 15 नवम्बर 2026
 
-- **64% पूरा:** 55 / 86 मुख्य चेकलिस्ट आइटम।
-- **36% बाकी:** 31 / 86 मुख्य चेकलिस्ट आइटम।
+- **65% पूरा:** 56 / 86 मुख्य चेकलिस्ट आइटम।
+- **35% बाकी:** 30 / 86 मुख्य चेकलिस्ट आइटम।
 - यह प्रतिशत ऊपर के वर्तमान 9 मुख्य sections के checkbox count पर आधारित है; यह Production readiness, समय, लागत या code completion का प्रतिशत नहीं है।
 - बाकी मदों में isolated runtime/database tests, Main Production schema parity, browser/mobile visual QA और release/owner approval शामिल हैं।
-- **GPT-1 का अलग कार्यक्षेत्र:** Customer (10), Electrician (10), Welcome Screen/Founder Photo (6) — कुल 28 मदों में 20 पूर्ण, 8 शेष: **71% पूरा / 29% बाकी**। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
+- **GPT-1 का अलग कार्यक्षेत्र:** Customer (10), Electrician (10), Welcome Screen/Founder Photo (6) — कुल 28 मदों में 21 पूर्ण, 7 शेष: **75% पूरा / 25% बाकी**। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
 - Admin Panel के शीर्ष पर पूरे प्रोजेक्ट का कार्ड और GPT-2 का अलग कार्ड पहले से दर्ज हैं; GPT-1 का प्रतिशत इस checklist/progress log में अलग दिखाया जाएगा।
 - **GPT नंबर 2 का अलग कार्यक्षेत्र:** Admin/Support Staff (13), Payment/Accounting (10), Main Database audit/parity (16) — कुल 39 मदों में 27 पूर्ण, 12 शेष: **69% पूरा / 31% बाकी**। GPT-1 के Customer/Electrician कार्य इसमें शामिल नहीं हैं।
 - Admin Panel में पूरे प्रोजेक्ट के कार्ड के नीचे GPT-2 का अलग प्रगति कार्ड भी दिखाया गया है।
@@ -30,7 +30,7 @@
 - [x] Cancellation-fee debt और booking fee-item history RPC; authenticated-only execution ACL source में जोड़ी।
 - [x] Customer cancellation request/fee carry-forward और refund reversal workflow source मौजूद।
 - [x] Customer और electrician phone numbers acceptance से पहले छिपे; acceptance/assignment के बाद full number visible; Support Staff को unrestricted phone projection नहीं। `tests/customer-electrician-phone-visibility.test.js` में दोनों दिशाओं के authenticated/assignment-scoped source regression tests PASS (latest Node CI run)।
-- [ ] पुराने quotation-based customer receipt path को हटाने के बाद नए labour bill और अलग materials receipt से reconcile करना बाकी है।
+- [x] पुराने quotation-based customer receipt path को नए immutable labour bill और अलग materials receipt से reconcile किया; legacy receipt labour + materials और नई category receipt labour + settled cancellation-fee ledger को अलग लौटाती है। Migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`, source regression tests तथा Node CI 179/179 PASS। PostgreSQL/pgTAP runtime अभी अलग pending है।
 - [ ] Customer payment/refund/cancellation के सभी owner/non-owner/anon और duplicate/concurrency व्यवहार isolated database में runtime verify करें।
 
 ## 2. इलेक्ट्रिशियन (Electrician) — Feature Branch implementation
