@@ -3787,3 +3787,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Git history now shows the full quote migration was completed in `04d0c02`, had the status/assignment constraints added in `b5e5b3b`, then a second same-version file containing only those same constraints was added in `cd2c46e` 14 seconds later.
 - The duplicate looks accidental and is redundant in source, but the remote migration ledger was not queried. Both files remain unchanged pending approved read-only history evidence.
 - GPT-2 remains 27/39 = 69%; no checklist item closed.
+
+
+### Follow-up: earlier placeholder and verified Node CI — 15 Nov 2026
+- Retrieved full Git path history. `073d59e` originally added `20261109_electrician_inspection_quotes_and_service_only_commission.sql` as a one-line “Applied migration” marker referencing the separate live migration name `electrician_inspection_quotes_and_service_only_commission`.
+- `04d0c02` replaced the marker with full SQL; `b5e5b3b` added two booking-state constraints; `cd2c46e` added a second same-version file containing those same constraints. This clarifies source lineage but does not prove live migration ledger state.
+- Node CI for PR head `d106ec8` verified successful: run `43733401357`. No PostgreSQL runtime or pgTAP execution occurred.
+- Both migration files remain untouched. No remote migration repair, schema change, deployment or Production operation.
+- GPT-2 checklist remains 27/39 = 69%; no checklist item closed.
