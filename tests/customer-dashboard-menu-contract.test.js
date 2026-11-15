@@ -31,6 +31,25 @@ test('customer English dictionary covers remaining static booking and dashboard 
   }
 });
 
+test('customer dynamic status messages and confirmation dialogs support English translation', () => {
+  for (const translated of [
+    'GPS location is not available on this device.',
+    'Loading payment records…',
+    'No payment or refund records are available yet.',
+    'Could not load refund status. Please try again.',
+    'Work start is approved. The server timer has started.',
+    'Would you like to change this booking from Cash to Online (Razorpay) payment?',
+    'The cancellation request was sent to Admin.',
+    'Saving booking…',
+    'Payment was successful and verified.',
+    'You closed the payment window. Payment has not been confirmed.',
+    'The booking was not saved in the database.'
+  ]) {
+    assert.ok(booking.includes(translated), 'Missing dynamic customer translation: ' + translated);
+  }
+  assert.match(booking, /window\.confirm\s*=\s*message\s*=>\s*customerUiNativeConfirm\(customerUiText\(message\)\)/);
+});
+
 test('customer dashboard exposes all five accessible menu tabs and matching panels', () => {
   const tabs = ['Home', 'Bookings', 'Payments', 'Support', 'Profile'];
   for (const name of tabs) {
