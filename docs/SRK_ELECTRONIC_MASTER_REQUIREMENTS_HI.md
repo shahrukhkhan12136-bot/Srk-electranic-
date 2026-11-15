@@ -4300,5 +4300,7 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **Crop:** कमर से ऊपर तक half-body / waist-up portrait। कमर के नीचे का पूरा हिस्सा, पैर और full-body framing हटानी है।
 - **Pose:** दोनों हाथ छाती के सामने स्वाभाविक रूप से मुड़े/क्रॉस (arms folded across chest) हों; प्रत्येक हाथ विपरीत ऊपरी बाँह के पास टिके। हाथों की anatomy और उँगलियाँ वास्तविक और साफ़ हों।
 - **Framing:** चेहरा, बाल, दोनों कंधे और folded arms पूरे दिखाई दें; सिर के ऊपर थोड़ा breathing space रहे; व्यक्ति बीच में हो।
-- **Preserve:** वही चेहरा/पहचान, बाल, काली शर्ट और बगीचे का प्राकृतिक हरा background। Photorealistic, professional Founder portrait; कोई text, logo, badge या अतिरिक्त व्यक्ति नहीं जोड़ना।
+- **Founder model/reference:** मौजूदा तीन-फोटो वाली Founder reference में जो Founder का मॉडल/लुक दिखाया गया है, उसी जैसा मॉडल और visual appearance रखना है। बगीचे वाली पुरानी फोटो को केवल जरूरत पड़ने पर मूल पहचान/चेहरे के reference के रूप में देखना है; तीन-फोटो वाली reference को अलग से portrait बनाकर या फोन-मॉकअप सहित final image में नहीं लगाना है।
+- **Background:** बगीचे वाला पुराना background नहीं रखना; उसे बदलकर साफ़-सुथरा, premium और professional Founder-portrait background देना है। Background का चयन portrait के साथ harmonious और uncluttered हो।
+- **Preserve:** Founder का वही पहचाने जाने वाला चेहरा/लुक और काली शर्ट की styling; photorealistic, professional portrait। कोई text, logo, badge या अतिरिक्त व्यक्ति नहीं जोड़ना।
 - **Status:** स्पष्ट निर्देश Master Requirements में सुरक्षित। Image-generation tool की उपलब्धता/limit खुलने पर इसी specification से image edit बनानी है; तब तक इसे pending रखें और कोई गलत/वैकल्पिक फोटो publish न करें।
