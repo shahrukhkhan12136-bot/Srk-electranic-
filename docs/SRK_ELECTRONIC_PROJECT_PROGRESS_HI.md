@@ -2746,3 +2746,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नवीनतम HEAD `2d688adcd144e0907242bb01ca5171482248b176` पर Feature Branch Node tests run `43706094972` सफल। Job log में **100/100 PASS, 0 FAIL, 0 skipped** सत्यापित।
 - यह Node test suite है; PostgreSQL/pgTAP contract के 46 assertions इस run में execute नहीं हुए। वास्तविक Supabase/PostgreSQL connection या pgTAP runner उपलब्ध न होने से database runtime verification अभी लंबित है।
 - PR #8 Open + Draft + Unmerged है। Production/merge/deployment में कोई बदलाव नहीं।
+
+
+## 2026-11-15 — Customer dashboard navigation regression coverage (GPT-1)
+
+- Added `tests/customer-dashboard-menu-contract.test.js` (commit `5c202a4`).
+- Regression checks cover all five accessible tabs and matching panels, Payments/Support/Profile panel routing, saved-address navigation from Profile, authenticated dashboard visibility, and expected customer support/profile RPC integration.
+- This is source-contract coverage only; it does not prove live Supabase RPC/RLS/storage behavior or browser/mobile runtime.
+- New test and latest branch CI result remain pending verification.
