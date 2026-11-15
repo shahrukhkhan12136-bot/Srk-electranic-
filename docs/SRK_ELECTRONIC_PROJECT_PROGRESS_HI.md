@@ -2840,3 +2840,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - The contract test now has `plan(55)` and 55 assertions, including eight Route-specific source/schema assertions. These are source-level pgTAP contract assertions only; PostgreSQL/pgTAP runtime execution is still **Not Run**.
 - Important scope: the inspected Route migration creates a server-only ledger and explicitly says database writes do not move money. Repository search did not establish a live Route transfer executor, provider status polling/webhook, or end-to-end settlement lifecycle. This change reconciles recorded ledger evidence only; it does **not** activate Route transfers or prove that funds reached a bank.
 - No Production migration, transfer, refund, payout, deployment, merge, or go-live was performed. PR #8 remains subject to owner review/approval.
+
+
+## 2026-11-15 — Electrician Live Location stop reliability and Customer lifecycle translations
+
+- Fixed a Live Location stop failure edge case in the Electrician App: previously, the local watch handle was deleted before the server confirmed the stop. If the RPC failed, the page could no longer present the normal Stop retry action. The revised flow clears the browser GPS watch, keeps the booking handle until the server confirms stop, and suppresses concurrent duplicate stop requests. The existing UI therefore continues to offer “Location बंद करें” for retry.
+- Added a regression test for retry-handle retention and stop RPC confirmation ordering.
+- Expanded Customer App English translations for booking lifecycle and timeline states, refund outcomes, cancellation fee history, location/GPS feedback, and common booking errors/statuses. The original booking and payment data remain unchanged.
+- CI run `43707742875` on `bd1b6f1388d3f1a70cd2e069676eb6a23663cade` — **SUCCESS**, including the full Node test suite and parsing inline JavaScript from both app pages.
+- Welcome page audit: `welcome.html` routes to Customer, Electrician and Admin login pages and references `/assets/srk-founder.jpg`; the founder image asset exists in the feature branch. Exact approved portrait visual match and desktop/mobile visual preview remain unverified.
+- No Production deployment, merge, live booking, payment, GPS sharing, or Production database change was performed.
+- Remaining: browser runtime verification for language switching, receipt Print/PDF, GPS permission and stop-retry flow; then one consolidated final mobile QA pass after all implementation is complete.
