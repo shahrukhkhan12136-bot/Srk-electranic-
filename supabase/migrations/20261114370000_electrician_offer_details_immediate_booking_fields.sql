@@ -64,7 +64,7 @@ AS $function$
       WHEN b.assigned_electrician_id=p.id
        AND b.status IN (
          'assigned','inspection','awaiting_quote_approval','quote_approved',
-         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
        )
       THEN b.customer_name ELSE NULL
     END,
@@ -72,7 +72,7 @@ AS $function$
       WHEN b.assigned_electrician_id=p.id
        AND b.status IN (
          'assigned','inspection','awaiting_quote_approval','quote_approved',
-         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
        )
       THEN b.phone ELSE NULL
     END,
@@ -80,7 +80,7 @@ AS $function$
       WHEN b.assigned_electrician_id=p.id
        AND b.status IN (
          'assigned','inspection','awaiting_quote_approval','quote_approved',
-         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
        )
       THEN b.address ELSE NULL
     END,
@@ -88,7 +88,7 @@ AS $function$
       WHEN b.assigned_electrician_id=p.id
        AND b.status IN (
          'assigned','inspection','awaiting_quote_approval','quote_approved',
-         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
        )
       THEN b.location_lat ELSE NULL
     END,
@@ -96,7 +96,7 @@ AS $function$
       WHEN b.assigned_electrician_id=p.id
        AND b.status IN (
          'assigned','inspection','awaiting_quote_approval','quote_approved',
-         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
        )
       THEN b.location_lng ELSE NULL
     END,
@@ -104,7 +104,7 @@ AS $function$
       WHEN b.assigned_electrician_id=p.id
        AND b.status IN (
          'assigned','inspection','awaiting_quote_approval','quote_approved',
-         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
        )
       THEN b.service_charge ELSE NULL
     END,
@@ -112,7 +112,7 @@ AS $function$
       WHEN b.assigned_electrician_id=p.id
        AND b.status IN (
          'assigned','inspection','awaiting_quote_approval','quote_approved',
-         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
        )
       THEN b.materials_amount ELSE NULL
     END,
@@ -120,7 +120,7 @@ AS $function$
       WHEN b.assigned_electrician_id=p.id
        AND b.status IN (
          'assigned','inspection','awaiting_quote_approval','quote_approved',
-         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
        )
       THEN b.quote_status ELSE NULL
     END,
@@ -128,7 +128,7 @@ AS $function$
       WHEN b.assigned_electrician_id=p.id
        AND b.status IN (
          'assigned','inspection','awaiting_quote_approval','quote_approved',
-         'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+         'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
        )
       THEN b.quote_note ELSE NULL
     END
