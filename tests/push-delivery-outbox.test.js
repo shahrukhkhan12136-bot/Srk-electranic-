@@ -62,7 +62,7 @@ test('outbox migration atomically removes the legacy synchronous push trigger', 
 test('outbox migration fails fast when required schema prerequisites are absent', () => {
   assert.match(migration, /to_regnamespace\('srk_private'\)/);
   assert.match(migration, /job_offers\.expires_at/);
-  assert.match(migration, /electrician_profiles\.available_for_work/);
+  assert.match(migration, /table_name='electrician_profiles'[\s\S]*column_name='available_for_work'/);
   assert.match(migration, /subscription id\/user_id\/endpoint\/p256dh\/auth columns/);
 });
 
