@@ -237,3 +237,25 @@ Migration-source checks:
 - `tests/sos-two-step-ui-contract.test.js` और `tests/sos-admin-support-contract.test.js`: approved reason codes, active-booking UI, authenticated actor/booking derivation contract, private append-only case history, Admin/Support permission contracts और provider-delivery disclaimer; actual SMS/push/location delivery नहीं.
 
 इससे UI/client contract tests की सीमा स्पष्ट हुई। ऊपर के files के नाम/declared assertions का निरीक्षण किया गया; इस pass में `npm test` execute नहीं हुआ और कोई CI success claim नहीं है। DB actor-isolation, migration replay, Razorpay sandbox, Storage runtime, push/SMS providers, browser interaction और final mobile QA अलग verification gates हैं।
+
+
+## 19. Remaining Customer/Electrician RPC signature mapping — 15 Nov 2026
+
+Source call-sites के RPC names और payload keys को संबंधित migration declarations/grants के विरुद्ध जाँचा। नीचे के mappings में call-site के `p_*` keys declared SQL arguments से मेल खाते हैं:
+
+| Portal call | SQL signature / migration | Source contract observation |
+|---|---|---|
+| Customer `srk_get_customer_call_contacts()` | no args; `20261109103038_customer_electrician_direct_call_contacts.sql`, private implementation wrapper hardening `20261109103143_move_customer_call_contact_lookup_to_private.sql` | authenticated execute grant; private implementation migration मौजूद |
+| Customer `srk_customer_respond_work_start(uuid,text)` | `(p_booking_id,p_response)`; `20261114240000_server_authoritative_customer_approved_work_timer.sql`, later fix `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql` | दोनों keys और types source payload से match |
+| Customer `srk_customer_respond_work_completion(uuid,text,text)` | `(p_booking_id,p_response,p_note)`; `20261114240000_server_authoritative_customer_approved_work_timer.sql` | तीनों keys source payload से match |
+| Customer `srk_customer_request_booking_cancellation(uuid,text)` | `(p_booking_id,p_customer_note)`; `20261114270000_admin_only_cancellation_requests_and_decisions.sql` | source payload match; customer list RPC उसी migration में no-arg |
+| Customer cancellation fee RPCs | `srk_customer_list_my_cancellation_fee_debts()` और `srk_customer_list_booking_cancellation_fee_items()`; `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` | दोनों no-arg calls; SQL में `auth.uid()`-scoped customer rows |
+| Customer `srk_customer_get_live_electrician_location(uuid)` | `(p_booking_id)`; `20261114320000_booking_scoped_live_electrician_location.sql` | booking-scoped customer read; authenticated execute grant |
+| Electrician live-location RPCs | start/update `(p_booking_id,p_latitude,p_longitude,p_accuracy_meters)`; stop/status `(p_booking_id)`; `20261114320000_booking_scoped_live_electrician_location.sql` | frontend keys and SQL argument types match; numeric accuracy argument accepted by SQL signature |
+| Electrician availability | `srk_electrician_set_availability(p_available boolean)`; `20261114310000_electrician_self_availability.sql` | source boolean key matches; authenticated execute grant |
+| Electrician support RPCs | create `(p_category,p_subject,p_body,p_booking_id)`; list tickets `()`; list/send messages `(p_ticket_id)` / `(p_ticket_id,p_body)`; `20261114350000_electrician_support_tickets_and_admin_inbox.sql` | source payload keys align; SQL functions are SECURITY DEFINER and user-scoped; Admin counterparts separately permission-gated |
+| Electrician `srk_get_my_offer_details()` | no args; `20261114370000_electrician_offer_details_immediate_booking_fields.sql` and matching timer migration definition | source no-arg call matches; function resolves authenticated electrician identity |
+| Electrician `srk_respond_to_offer(uuid,text)` | `(p_offer_id,p_response)`; `20261114210000_sequential_nearest_offer_dispatch.sql` and timer migration grant reconciliation | source keys match; SQL checks authenticated owner of offer/profile |
+| Electrician KYC submit/list/preview | submit `(p_document_type,p_storage_path,p_file_name,p_mime_type,p_file_size_bytes)` and list `()` in `20261115140000_electrician_kyc_review_and_activation_gate.sql`; preview `(p_document_id)` in `20261114330000_electrician_private_kyc_document_preview.sql` | all source keys/signatures match; private bucket owner/admin policies exist in KYC migration |
+
+**नतीजा:** इस अतिरिक्त RPC subset में कोई payload-key/signature mismatch नहीं मिला। यह static source-to-migration comparison है; Supabase runtime invocation या `authenticated` बनाम दूसरे user के actor-isolation test का विकल्प नहीं। पिछले sections के बाकी RPC mappings और GPT-2 RLS test gaps अभी लागू रहते हैं।
