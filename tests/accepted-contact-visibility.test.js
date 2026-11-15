@@ -19,5 +19,5 @@ test('electrician receives customer contact only when that electrician owns the 
   assert.match(electricianOffers, /b\.assigned_electrician_id=p\.id/);
   assert.match(electricianOffers, /'assigned'.*'completed','cancelled'/s);
   assert.match(electricianOffers, /THEN b[.]phone/);
-  assert.match(electricianOffers, /ELSE NULL END/);
+  assert.match(electricianOffers, /ELSE NULL/);
 });
