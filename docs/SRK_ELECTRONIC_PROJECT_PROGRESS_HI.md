@@ -3455,3 +3455,15 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Auth/Storage roles, schemas और helper contracts को अलग test-only platform bootstrap में रखने की जरूरत दर्ज की। SQL regex scan में CTE/PLpgSQL aliases false positives दे सकते हैं; इसलिए inventory को प्रारंभिक working list कहा गया है, final schema contract नहीं।
 - नया दस्तावेज़: `docs/MIGRATION_DEPENDENCY_INVENTORY_HI.md`। कोई migration, test, workflow या GPT-1 shared source file नहीं बदली। Production/secret access नहीं; SQL runtime/pgTAP अभी execute नहीं हुआ।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित। अगला कदम: इन baseline tables के exact column/key/constraint contracts को source statements से निकालना।
+
+
+## 2026-11-15 — Core baseline DDL contract extraction (source-backed, partial)
+
+- Added `docs/CORE_BASELINE_DDL_CONTRACT_HI.md`.
+- `SUPABASE_SCHEMA.sql` और `PORTAL_SCHEMA.sql` की वास्तविक CREATE TABLE definitions से पाँच legacy objects की base contract दर्ज की: `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers`, और `srk_admin_users`. Columns, types, null/default, primary/foreign keys, base checks, indexes और RLS/policy notes अलग-अलग दर्ज हैं।
+- Booking workflow की दो `20261109` migrations और Maps coordinate migration के अतिरिक्त बदलाव अलग layer में दर्शाए; legacy base DDL को final schema नहीं कहा।
+- `srk_booking_complaints`, `srk_booking_complaint_events`, और `srk_push_subscriptions` की exact authoritative CREATE definitions अभी नहीं मिलीं; इनके लिए कोई columns/keys अनुमान से नहीं बनाए।
+- `COMPLETE_DATABASE_SETUP.sql` को बिना reconciliation पूरा baseline मानने से स्पष्ट रूप से रोका; migration version collision पर rename/reorder नहीं किया।
+- Commit: `414b1420c07c92b08ff0feb274e916c9645ebc4b`.
+- Source-only documentation; कोई migration/test/runtime/Production DB/provider/merge/deployment action नहीं। PostgreSQL और pgTAP runtime अभी असत्यापित।
+- GPT-2 checklist unchanged: 27/39 = 69%; 12/39 remaining.
