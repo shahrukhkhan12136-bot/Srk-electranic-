@@ -18,3 +18,40 @@ test('customer receipt RPC reconciles legacy payment to approved labour plus mat
   assert.match(receiptMigration, /v_materials_paise:=round\(coalesce\(v_booking\.materials_amount,0\)\*100\)::bigint/);
   assert.match(receiptMigration, /round\(v_booking\.amount_paid\*100\)::bigint<>v_total_paise/);
 });
+
+test('customer payment receipt uses the owner-scoped receipt RPC and validates its document type', () => {
+  const start = booking.indexOf('async function customerPrintPaymentReceipt(');
+  const end = booking.indexOf('\\nasync function ', start + 1);
+  const fn = booking.slice(start, end < 0 ? booking.length : end);
+  assert.match(fn, /customerSb\.rpc\('srk_customer_get_payment_receipt',\{p_booking_id:bookingId\}\)/);
+  assert.match(fn, /data\.document_type!=='payment_receipt'/);
+  assert.match(fn, /catch\(error\)\{\s*printWindow\.close\(\)/);
+  assert.match(fn, /रसीद उपलब्ध नहीं हो सकी/);
+});
+
+test('customer payment receipt HTML escapes every server-provided text field', () => {
+  const start = booking.indexOf('async function customerPrintPaymentReceipt(');
+  const end = booking.indexOf('\\nasync function ', start + 1);
+  const fn = booking.slice(start, end < 0 ? booking.length : end);
+  for (const field of [
+    'data.receipt_reference', 'data.booking_id', 'data.customer_name',
+    'data.service_type', 'address', 'paymentDate', 'bookingDate',
+    'data.source_booking_id'
+  ]) {
+    if (field === 'address' || field === 'paymentDate' || field === 'bookingDate') {
+      assert.match(fn, new RegExp('customerEsc\\(' + field.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\\)'));
+    } else {
+      assert.match(fn, new RegExp('customerEsc\\(' + field.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\\)'));
+    }
+  }
+  assert.match(booking, /function customerEsc\(value\)[\s\S]*?replace\(\/\[&<>"'\]\/g/);
+});
+
+test('receipt RPC refuses unpaid bookings and scopes receipt lookup to the authenticated customer', () => {
+  assert.match(receiptMigration, /where id=p_booking_id and customer_user_id=v_uid/);
+  assert.match(receiptMigration, /v_booking\.payment_status<>'paid'/);
+  assert.match(receiptMigration, /v_booking\.payment_verified_at is null/);
+  assert.match(receiptMigration, /Only verified paid bookings have a payment receipt/);
+  assert.match(receiptMigration, /revoke all on function public\.srk_customer_get_payment_receipt\(uuid\) from public,anon/);
+  assert.match(receiptMigration, /grant execute on function public\.srk_customer_get_payment_receipt\(uuid\) to authenticated/);
+});
