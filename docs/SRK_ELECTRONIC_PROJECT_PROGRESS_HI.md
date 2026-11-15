@@ -1923,3 +1923,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Commits: endpoint `ebebdfc0`, wrapper `8a5d84b1`, route `58106097`, tests `bb382b48`, Admin UI `d24205a4` + quote fix `9f62e050` + audit-ID visibility fix `afeee2ef`.
 - Feature Branch source only. pgTAP 16 assertions और Node tests runtime में नहीं चले; कोई migration apply नहीं हुई, Production DB untouched, कोई live Razorpay GET/POST नहीं, कोई payment/refund/wallet/payout mutation नहीं, no deploy/merge/mobile QA.
 - अगला काम: endpoint और SQL RPC contract की cross-audit; विशेषकर provider payload hash/evidence integrity, database function privileges, booking/refund/payout lock ordering और trigger rollback semantics की जाँच; फिर उपलब्ध runtime environment में Node/pgTAP suite चलाना। UI/endpoint को production deploy या database migration apply नहीं करना।
+
+
+### Refund recovery cross-audit follow-up — observation freshness (15 नवम्बर 2026)
+- Cross-audit में एक idempotency edge case मिला: Razorpay का exact JSON payload दोबारा वही रहने पर केवल payload-hash uniqueness पुराना audit ID लौटा सकती थी; 15-minute freshness guard के कारण अगली सफल GET observation भी stale मानी जा सकती थी।
+- Migration को साफ़ 208-line single-definition source के रूप में rewrite किया: एक table, एक Phase 1 RPC, एक Phase 2 RPC; हर network observation का UUID idempotency key है। Same HTTP retry वही audit ID देता है, लेकिन fresh Razorpay GET नया observation UUID बनाकर नया timestamped immutable evidence सुरक्षित कर सकता है।
+- Phase 1 RPC signature और service_role grant/revoke को exact 13-argument signature से मिलाया। Audit actor पर auth.users FK जोड़ा और booking payment state का NULL-safe guard किया।
+- pgTAP अब 17 planned assertions रखता है और exact RPC signature + observation UUID assertion जाँचता है। Static consistency: migration में table/function definitions प्रत्येक एक बार; SQL dollar-quote pairs balanced; plan 17 = assertions 17; handler/test JavaScript parse PASS.
+- Production Supabase schema का read-only catalog check पुष्टि करता है कि payout status constraint में `pending`, `paid`, `blocked`, `refunded` वैध हैं और refund amount `amount_paise` तथा currency `INR` मौजूद हैं। यह catalog-only निरीक्षण है, कोई write नहीं।
+- अभी भी SQL/pgTAP/Node runtime execute नहीं हुए; migration किसी DB पर apply नहीं हुई; Razorpay GET/POST, refund, wallet/payout mutation, deploy/merge और mobile QA नहीं हुआ।
