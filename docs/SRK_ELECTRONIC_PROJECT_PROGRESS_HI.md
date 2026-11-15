@@ -2879,3 +2879,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Updated the GPS client regression tests for the new error path. An intermediate assertion mismatch was corrected; final latest branch-head CI succeeded.
 - Latest branch head `e549574a091071f995786b009d710e4da25160c0`: GitHub Actions runs `43708098611` and `43708093433` — **SUCCESS**, full repository Node test suite.
 - Browser runtime verification and visual review are still pending. No real GPS sharing, live booking, payment, production database change or production deployment was performed by this work.
+
+
+## 2026-11-15 — GPT #2 Route live-lifecycle audit
+
+- Inspected root razorpay-webhook.js and its Netlify wrapper. The webhook validates Razorpay HMAC, claims/deduplicates signed webhook events, reconciles captured payments and refunds, but supported payment events are payment.captured/order.paid and refund.created/refund.processed/refund.failed. No Route transfer/settlement event handler is present in this source.
+- Repository code search and schema inspection found the server-only srk_route_transfers ledger and verified linked-account mapping table, but did not establish a Route transfer creation executor, transfer status polling, Route settlement webhook handler, reversal/partial-reversal executor, or bank-credit confirmation path. Do not equate ledger status with provider/bank truth.
+- Existing project log already records that Route live transfer execution and provider status polling/webhook/reversal are not proven. This audit reconfirms that gap from the current webhook source.
+- Safe next implementation boundary: add a separate server-only Route provider adapter only after approved provider API contract, secrets/environment setup, test-mode account, transfer creation/idempotency design, event types and reconciliation lifecycle are confirmed. Until then the admin report must present Route as ledger evidence / Not Verified and never auto-mark a transfer or payout paid.
+- No live API calls, transfers, refunds, payouts, Production changes, deployment, merge or go-live. Latest Node CI success applies to commit e549574a091071f995786b009d710e4da25160c0; PostgreSQL/pgTAP remains Not Run.
