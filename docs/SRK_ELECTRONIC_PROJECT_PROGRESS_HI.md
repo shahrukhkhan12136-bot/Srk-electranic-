@@ -3467,3 +3467,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Commit: `414b1420c07c92b08ff0feb274e916c9645ebc4b`.
 - Source-only documentation; कोई migration/test/runtime/Production DB/provider/merge/deployment action नहीं। PostgreSQL और pgTAP runtime अभी असत्यापित।
 - GPT-2 checklist unchanged: 27/39 = 69%; 12/39 remaining.
+
+
+### 2026-11-15 — Core baseline dependency audit विस्तार
+- `docs/CORE_BASELINE_DDL_CONTRACT_HI.md` में complaint base tables और push subscription base की source-backed dependency जानकारी जोड़ी।
+- Branch migration tree में `srk_booking_complaints`, `srk_booking_complaint_events` और `srk_push_subscriptions` की base `CREATE TABLE` definitions नहीं मिलीं; इसलिए इनके पूरे DDL को unresolved रखा गया, अनुमान से fixture नहीं बनाया।
+- Complaint RPC से आवश्यक columns और ownership/rate-limit contract दर्ज किया; complaint messages/attachments को migration-created child tables के रूप में अलग पहचाना।
+- Push outbox migration से subscription के पाँच required columns तथा RLS/grants/own-row policies दर्ज किए; private outbox और per-subscription delivery ledger को अलग migration-created objects के रूप में पहचाना।
+- केवल दस्तावेज़ बदले; कोई SQL migration, test, production DB, payment, push send या deployment नहीं किया। PostgreSQL/pgTAP runtime अब भी बाकी है।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
