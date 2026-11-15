@@ -117,3 +117,17 @@ test('customer avatar upload safely reconciles a rejected profile-save RPC befor
   assert.match(save, /if\(!latestError&&latestProfile\?\.avatar_path!==avatarPath\)/);
   assert.match(save, /throw saveError/);
 });
+
+
+test('customer default-address update does not overwrite a failed address-list refresh with a success message', () => {
+  const loadStart=booking.indexOf('async function loadCustomerSavedAddresses()');
+  const loadEnd=booking.indexOf('\nfunction applySelectedSavedAddress()',loadStart);
+  const defaultStart=booking.indexOf('async function makeSelectedAddressDefault()');
+  const defaultEnd=booking.indexOf('\nlet customerSupportComplaints',defaultStart);
+  assert.ok(loadStart>=0&&loadEnd>loadStart&&defaultStart>=0&&defaultEnd>defaultStart);
+  const load=booking.slice(loadStart,loadEnd),makeDefault=booking.slice(defaultStart,defaultEnd);
+  assert.match(load,/return true;\s*\} catch\(e\).*return false;/s);
+  assert.match(makeDefault,/const addressListRefreshed=await loadCustomerSavedAddresses\(\);/);
+  assert.match(makeDefault,/if\(!addressListRefreshed\)\{setSavedAddressStatus\('डिफ़ॉल्ट पता बदलने का अनुरोध सफल रहा, लेकिन पता सूची रीफ़्रेश नहीं हो सकी।/);
+  assert.ok(makeDefault.indexOf('if(!addressListRefreshed)')<makeDefault.indexOf("setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।')"));
+});
