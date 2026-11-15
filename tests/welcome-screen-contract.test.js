@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 
-test('welcome screen routes all roles and preserves the approved founder-photo slot without a substitute collage', () => {
+test('welcome screen routes all roles and displays the approved founder photo without a substitute placeholder', () => {
   const welcome = fs.readFileSync(path.join(root, 'welcome.html'), 'utf8');
   const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   assert.ok(index.includes("location.replace('/welcome.html')"));
@@ -13,11 +13,11 @@ test('welcome screen routes all roles and preserves the approved founder-photo s
   assert.ok(welcome.includes('href="/customer-login.html"'));
   assert.ok(welcome.includes('href="/electrician.html"'));
   assert.ok(welcome.includes('href="/admin.html"'));
-  assert.ok(welcome.includes('class="founder-photo-pending"'));
-  assert.ok(welcome.includes('Founder की स्वीकृत वास्तविक फोटो के लिए सुरक्षित स्थान'));
+  assert.ok(welcome.includes('class="founder-photo"'));
+  assert.ok(welcome.includes('src="/assets/srk-founder.jpg"'));
   assert.ok(welcome.includes('FOUNDER &amp; DIRECTOR'));
   assert.ok(welcome.includes('Smart Service... Better Life...'));
-  assert.ok(!welcome.includes('/assets/srk-founder.jpg'));
+  assert.ok(!welcome.includes('founder-photo-pending'));
   assert.match(welcome, /prefers-reduced-motion:reduce/);
 });
 
@@ -25,8 +25,8 @@ test('installed PWA opens the welcome screen and offline cache contains its entr
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
   const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
   assert.equal(manifest.start_url, './welcome.html');
-  assert.ok(sw.includes("srk-electronic-v9"));
-  assert.ok(sw.includes("'./welcome.html'"));
+  assert.ok(sw.includes("srk-electronic-v10"));
+  assert.ok(sw.includes("'./welcome.html'"));\n  assert.ok(sw.includes("'./assets/srk-founder.jpg'"));
   assert.ok(sw.includes("'./electrician.html'"));
   assert.ok(sw.includes("'./admin.html'"));
 });
