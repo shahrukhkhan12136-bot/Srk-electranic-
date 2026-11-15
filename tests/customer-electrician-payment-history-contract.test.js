@@ -113,3 +113,15 @@ test('Customer payment-method change handles rejected RPC and unconfirmed respon
   assert.match(fn, /पुष्टि किए बिना दोबारा अनुरोध न भेजें/);
   assert.match(fn, /Online भुगतान की पसंद सर्वर पर सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
 });
+
+test('Confirmed Razorpay payment remains confirmed when booking or payment-history refresh fails', () => {
+  const start = customer.indexOf('async function reconcileCustomerPaymentAfterUncertainVerification(');
+  const end = customer.indexOf('\nfunction setPaymentStatus(', start);
+  const fn = customer.slice(start, end);
+  assert.match(fn, /paymentConfirmed=rows\.some\(row=>row\.booking_id===bookingId&&\['payment','manual_payment'\]\.includes\(String\(row\.event_type\|\|''\)\)\)/);
+  assert.match(fn, /try\{await loadCustomerBookings\(\);bookingsRefreshed=true;\}catch/);
+  assert.match(fn, /try\{await loadCustomerPaymentHistory\(true\);historyRefreshed=true;\}catch/);
+  assert.match(fn, /return \{lookupSucceeded,paymentConfirmed,bookingsRefreshed,historyRefreshed\}/);
+  assert.match(customer, /भुगतान सर्वर रिकॉर्ड में सत्यापित है।'\+\(state\.bookingsRefreshed\?/);
+  assert.match(customer, /state\.historyRefreshed\?/);
+});
