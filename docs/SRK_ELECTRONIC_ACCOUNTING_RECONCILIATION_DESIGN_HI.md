@@ -111,3 +111,7 @@ pgTAP contract अब 43 planned assertions है। Static count/plan verifica
 - Payout record में electrician_profile_id वर्तमान assigned electrician से match होना चाहिए और booking completed होनी चाहिए; अन्यथा exception।
 
 इस समीक्षा के बाद pgTAP contract **47 assertions** पर है। Plan/count static check अगली verification pass में दोबारा चलाया जाएगा। Runtime pgTAP अभी भी execute नहीं हुआ।
+
+
+### Full-refund historical cancellation-fee correction
+Full refund trigger cancellation-fee item को `reversed` करता है और append-only ledger में debit reversal जोड़ता है। इसलिए report अब तीन अलग राशियाँ रखती है: वर्तमान settled allocation (ledger net से मिलाने के लिए), historical captured allocation (settled + reversed, original customer collection से मिलाने के लिए), और reserved/current allocation। इससे refund के बाद पहले captured fee गायब मानकर गलत mismatch नहीं बनता। Admin panel historical captured fee भी दिखाता है। pgTAP contract अब 48 assertions है; runtime execution pending।
