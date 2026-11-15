@@ -3876,3 +3876,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पुरानी starter schema files में दोनों columns की परिभाषा नहीं मिली थी। Search index की सीमाओं के कारण इसे पूरे Git इतिहास में अनुपस्थिति का निर्णायक प्रमाण नहीं माना जा सकता।
 - अभी भी आवश्यक: मूल deployment SQL/schema export, या स्वीकृत read-only catalog output से column type, nullability, default, constraints, FK और indexes की पुष्टि। कोई अनुमानित DDL नहीं जोड़ा जाएगा।
 - GPT-2 checklist 27/39 = 69%; कोई implementation checklist item बंद नहीं। Production/remote DB पर कोई query नहीं की गई।
+
+
+### Historical category-booking migration dependency audit — 15 Nov 2026
+- पुराने branch `feature/electrician-categories-hourly-booking` की migration `20261111010000_category_hourly_booking_foundation.sql` जाँची।
+- यह migration `electrician_profiles` में category/test/rating columns जोड़ती है, लेकिन उसी migration की RLS policies और timer RPCs `e.auth_user_id` को पढ़ती हैं। यह `auth_user_id` column स्वयं नहीं बनाती।
+- उसी migration में `service_bookings` के लिए कई नए booking/timer fields जोड़ती है, लेकिन `amount_paid` नहीं जोड़ती।
+- `20261110140000_restore_missing_customer_booking_quote_columns.sql` केवल `customer_suggested_amount` और `electrician_quote_kind` जोड़ती है; इससे `amount_paid` का origin सिद्ध नहीं होता।
+- कई पुराने branches के recursive Git trees में उपलब्ध schema/setup SQL और migration सूची जाँची; मिले हुए starter schema artifacts पहले से देखे गए उन्हीं आधार फ़ाइलों के समान lineage में हैं। इससे कोई नया प्रमाणित base-column DDL नहीं मिला।
+- नतीजा: `auth_user_id` और `amount_paid` की authoritative origin/type/constraints अभी unresolved हैं। GitHub search और branch-tree inspection पूर्ण Git-history proof नहीं हैं। कोई DDL अनुमान से नहीं जोड़ा गया; कोई remote DB access नहीं।
+- GPT-2 checklist: 27/39 = 69%; यह dependency audit है, implementation closure नहीं।
