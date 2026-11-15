@@ -2761,3 +2761,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Found a remaining honest-completion gap: Profile saves the `preferred_language` value, but there is no translation/apply layer in `booking.html`; Hindi/English selection is currently preference storage only, not a working language switch.
 - Added source regression coverage in `tests/customer-dashboard-menu-contract.test.js` (commit `5c202a4`). Workflow run `43706360554` was cancelled before dependency install/test execution after subsequent branch pushes; therefore the new test is **not yet verified by CI**. Do not report it as passed.
 - Live Supabase RPC/RLS/storage and browser verification remain pending.
+
+
+## 2026-11-15 — Customer Hindi/English language switch implementation
+
+- Updated `booking.html` with a reversible customer UI translation dictionary and DOM translation layer (commits `1db6e6c`, `ca7d505`).
+- Profile language selection now applies immediately; loading a saved profile reapplies `preferred_language`. Text inserted later into customer panels is translated while English is active.
+- Added source-contract assertions to `tests/customer-dashboard-menu-contract.test.js` (commit `c28f5b0`) for reversible language state, html lang, profile restoration and mutation observer.
+- Fixed whitespace preservation in the text-node translator after source review.
+- Coverage is deliberately described as partial: dynamic status/error copy, receipt document, remaining untranslated content and browser runtime still need work.
+- Workflow run `43706432946` was successful for the earlier menu regression commit, but it predates the final language implementation/test changes. Latest-head CI is **not yet verified**.
+- No Supabase changes, production deployment, PR merge or mobile QA performed.
