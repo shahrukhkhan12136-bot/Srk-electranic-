@@ -207,3 +207,12 @@
 - [ ] Customer Payments/Support/Profile contracts, Electrician final source checks, SQL/pgTAP runtime और सभी browser workflows बाकी।
 - [ ] पुराने quotation workflow का पूर्ण retirement अभी GPT-2 Admin/Payment/Accounting blockers के कारण अधूरा है।
 - [ ] Production migration, deployment और PR merge नहीं किया गया।
+
+
+## 2026-11-15 — Customer dashboard menu contract regression
+
+- [x] Five customer dashboard menu tabs (Home, My Bookings, Payments, Help & Support, My Profile) और उनके matching panel/ARIA wiring के लिए regression test जोड़ा।
+- [x] Payments, Support और Profile content को संबंधित tab panel में route करने वाले menu-shell contract के लिए test जोड़ा।
+- [x] Support और Profile के customer-authenticated dashboard gate तथा expected customer RPC integration के source contract checks जोड़े।
+- [ ] नया Node regression test और पूरा CI run execute होकर PASS होना बाकी।
+- [ ] वास्तविक Supabase RPC/RLS/storage/browser workflow और final consolidated mobile QA अभी pending।
