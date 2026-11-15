@@ -2341,3 +2341,16 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Sender test में malformed/expired subscription cleanup assertion को वर्तमान ledger target shape `target.subscription_id` से मिलाया।
 - Commits: `befbd4ef` (worker auth), `4336445d` (worker batch assertion), `3ff43f1d` (sender cleanup assertion), `28b401a9` (gateway auth assertions).
 - **सीमा:** यह source-level correction है। Node/Deno tests अभी execute नहीं हुए; Supabase Gateway/JWT behavior, Netlify schedule, provider delivery, retries और isolated integration flow अभी runtime में verify होने बाकी हैं। कोई Production migration, Edge Function deployment, Worker activation या real push नहीं किया गया।
+
+
+### Push delivery monitoring, failure alerts और dead-letter recovery — 15 November 2026
+- [x] Service-role-only health RPC जो Outbox और per-device Ledger के pending/processing/delivered/dead counts तथा oldest pending timestamps देता है; payload, endpoint, user ID या private error text expose नहीं करता।
+- [x] Netlify worker structured healthy/degraded logs लिखता है; sender/finish/health failures अलग event names से दर्ज होते हैं।
+- [x] Retry, health RPC failure या dead-letter मौजूद होने पर scheduled invocation HTTP 502 लौटाती है ताकि platform-level function monitoring में degraded run दिखे।
+- [x] केवल exact dead outbox UUID पर service-role-only manual recovery RPC; delivered device rows को delivered ही रखता है और केवल dead device rows reset करता है।
+- [x] Worker monitoring और guarded recovery के source-contract assertions जोड़े।
+- [ ] Approved isolated DB में health counts, unauthorized RPC denial, manual recovery state transitions और delivered-row preservation execute/verify करें।
+- [ ] Netlify scheduled invocation/log alert integration को test environment में verify करें; alert delivery अभी runtime में प्रमाणित नहीं।
+- [ ] Node test suite execute करें; अभी source assertions लिखे हैं, run result नहीं।
+ 
+**Safety boundary:** Health/recovery migration केवल Feature Branch में है; अभी किसी database पर apply नहीं हुई। कोई dead letter वास्तव में requeue नहीं किया, कोई push/provider call, production change, deployment, worker activation या mobile QA नहीं हुआ।
