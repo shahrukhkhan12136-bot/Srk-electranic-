@@ -758,8 +758,8 @@ async function loadCustomerBookings() {
           '<p>कुल कोटेशन: <b>'+customerEsc(formatCustomerMoney(row.quoted_amount))+'</b></p>'+
           (row.quote_note?'<p class="small">काम / सामान का विवरण: '+customerEsc(row.quote_note)+'</p>':'')+
           '<p class="small">मेहनताना और सामान अलग-अलग हैं। मंजूरी देने से पहले दोनों मदें जाँचें। आपकी मंजूरी के बिना काम शुरू नहीं होगा।</p>'+
-          '<button type="button" onclick="customerRespondBookingQuote(\\''+customerEsc(row.id)+'\\',\\'approved\\')">कोटेशन मंजूर करें</button> '+
-          '<button type="button" onclick="customerRespondBookingQuote(\\''+customerEsc(row.id)+'\\',\\'rejected\\')">कोटेशन अस्वीकार करें</button></div>';
+          '<button type="button" onclick="customerRespondBookingQuote(\''+customerEsc(row.id)+'\',\'approved\')">कोटेशन मंजूर करें</button> '+
+          '<button type="button" onclick="customerRespondBookingQuote(\''+customerEsc(row.id)+'\',\'rejected\')">कोटेशन अस्वीकार करें</button></div>';
       }else if(!row.selected_category&&['approved','rejected'].includes(String(row.quote_status||''))){
         quoteMarkup='<p class="small">कोटेशन स्थिति: '+customerEsc(row.quote_status==='approved'?'आपने कोटेशन मंजूर किया':'आपने कोटेशन अस्वीकार किया')+
           (row.quoted_amount!=null?' · कुल ₹'+customerEsc(Number(row.quoted_amount).toFixed(2)):'')+'</p>';
