@@ -99,3 +99,12 @@ test('health and dead-letter recovery RPCs are service-role only and do not expo
   assert.match(monitoring, /delivery_status='pending',attempt_count=0/);
   assert.match(monitoring, /GRANT EXECUTE ON FUNCTION public\.srk_retry_push_delivery_dead_letter\(uuid\) TO service_role/);
 });
+
+test('outbox finish RPC uses an attempt fencing token to reject stale workers', () => {
+  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200000_push_delivery_lease_fencing.sql'), 'utf8');
+  assert.match(worker, /p_attempt_count: row\.attempt_count/);
+  assert.match(fencing, /p_outbox_id uuid,p_attempt_count integer,p_success boolean/);
+  assert.match(fencing, /v_row\.attempt_count IS DISTINCT FROM p_attempt_count/);
+  assert.match(fencing, /v_row\.delivery_status <> 'processing'/);
+  assert.match(fencing, /RETURNS boolean/);
+});
