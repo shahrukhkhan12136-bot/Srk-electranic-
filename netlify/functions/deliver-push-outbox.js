@@ -23,7 +23,7 @@ exports.handler = async function () {
     }
     const rows = await claim.json();
     if (!Array.isArray(rows)) return { statusCode: 502, body: "Invalid outbox claim response" };
-    let delivered = 0, retry = 0;
+    let delivered = 0, retry = 0, ignored = 0, senderErrors = 0, finishErrors = 0;
     for (const row of rows) {
       let success = false, errorText = "Push sender unavailable";
       try {
@@ -34,25 +34,46 @@ exports.handler = async function () {
           signal: AbortSignal.timeout(15000)
         });
         const result = await response.json().catch(() => ({}));
-        if (response.ok && (result.ignored === true || result.complete === true)) {
+        if (response.ok && result.ignored === true) {
+          success = true;
+          ignored++;
+        } else if (response.ok && result.complete === true) {
           success = true;
         } else {
+          senderErrors++;
           errorText = "Push sender returned HTTP " + response.status + " or partial delivery failure";
         }
       } catch (error) {
+        senderErrors++;
         errorText = error && error.name ? error.name : "Push sender request failed";
       }
       const finish = await callRpc("srk_finish_push_delivery_outbox", {
         p_outbox_id: row.outbox_id, p_success: success, p_error: errorText
       });
       if (!finish.ok) {
-        console.error("Push outbox finish failed for one claimed row; lease will expire.");
+        finishErrors++;
+        console.error(JSON.stringify({ event: "push_outbox_finish_failed", outbox_id: row.outbox_id, http_status: finish.status, recovery: "lease_expiry" }));
         retry++;
       } else if (success) delivered++;
       else retry++;
     }
-    console.log("Push outbox batch finished:", { claimed: rows.length, delivered, retry });
-    return { statusCode: 200, body: JSON.stringify({ success: true, claimed: rows.length, delivered, retry }) };
+
+    // Service-role-only health summary: counts and timestamps, never endpoints or payloads.
+    let health = null;
+    try {
+      const healthResponse = await callRpc("srk_get_push_delivery_health", {});
+      if (healthResponse.ok) health = await healthResponse.json();
+      else console.error(JSON.stringify({ event: "push_outbox_health_check_failed", http_status: healthResponse.status }));
+    } catch (error) {
+      console.error(JSON.stringify({ event: "push_outbox_health_check_failed", error: error && error.name ? error.name : "unknown" }));
+    }
+    const deadOutbox = Number(health && health.outbox && health.outbox.dead || 0);
+    const deadDevices = Number(health && health.devices && health.devices.dead || 0);
+    const degraded = retry > 0 || deadOutbox > 0 || deadDevices > 0 || !health;
+    const summary = { claimed: rows.length, delivered, ignored, retry, senderErrors, finishErrors, deadOutbox, deadDevices, healthAvailable: !!health };
+    if (degraded) console.error(JSON.stringify({ event: "push_delivery_degraded", ...summary }));
+    else console.log(JSON.stringify({ event: "push_delivery_healthy", ...summary }));
+    return { statusCode: degraded ? 502 : 200, body: JSON.stringify({ success: !degraded, ...summary }) };
   } catch (error) {
     console.error("Push outbox worker failed:", error && error.name ? error.name : "unknown");
     return { statusCode: 502, body: "Push outbox worker failed" };
