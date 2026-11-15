@@ -24,6 +24,22 @@ function exactMatch(item,record){
  const notes=item.notes&&typeof item.notes==="object"?item.notes:{};
  return notes.srk_refund_record_id===record.id||item.receipt===record.idempotency_key;
 }
+async function findRefundAcrossPages(paymentId,record,cfg){
+ const seen=new Set(),matches=[];
+ for(let page=0;page<10;page++){
+  const skip=page*100;
+  const collection=await providerGet("/payments/"+encodeURIComponent(paymentId)+"/refunds?count=100&skip="+skip,cfg);
+  if(!Array.isArray(collection?.items)||collection.items.length>100)throw new Error("INVALID_REFUND_COLLECTION");
+  for(const item of collection.items){
+   if(typeof item?.id!=="string"||!item.id)return{complete:false,reason:"provider_pagination_invalid",matches:[]};
+   if(seen.has(item.id))return{complete:false,reason:"provider_pagination_unstable",matches:[]};
+   seen.add(item.id);
+   if(exactMatch(item,record))matches.push(item);
+  }
+  if(collection.items.length<100)return{complete:true,matches};
+ }
+ return{complete:false,reason:"provider_search_limit_reached",matches:[]};
+}
 exports.handler=async event=>{
  if(event.httpMethod!=="POST")return json(405,{success:false,error:"केवल POST अनुरोध स्वीकार है।"});
  const cfg=env();if(!cfg.url||!cfg.key||!cfg.rzpId||!cfg.rzpSecret)return json(500,{success:false,error:"Refund recovery server configuration is incomplete."});
@@ -49,10 +65,10 @@ exports.handler=async event=>{
    providerRefund=await providerGet("/refunds/"+encodeURIComponent(record.refund_id),cfg);
   }else{
    lookupMode="payment_refund_list";
-   const collection=await providerGet("/payments/"+encodeURIComponent(record.payment_id)+"/refunds?count=100",cfg);
-   const matches=(Array.isArray(collection?.items)?collection.items:[]).filter(item=>exactMatch(item,record));
-   if(matches.length!==1)return json(202,{success:false,evidence_saved:false,status:matches.length?"multiple_provider_matches":"provider_record_not_found_in_first_page",safe_to_retry:false,message:"Provider record का exact match नहीं मिला। Pagination/late visibility की जाँच करें; नया refund न बनाएँ।"});
-   providerRefund=matches[0];
+   const search=await findRefundAcrossPages(record.payment_id,record,cfg);
+   if(!search.complete)return json(202,{success:false,evidence_saved:false,status:search.reason,safe_to_retry:false,message:"Provider refund सूची पूरी और स्थिर तरीके से जाँची नहीं जा सकी। नया refund न बनाएँ; बाद में फिर जाँचें।"});
+   if(search.matches.length!==1)return json(202,{success:false,evidence_saved:false,status:search.matches.length?"multiple_provider_matches":"provider_record_not_found_after_all_pages",safe_to_retry:false,message:search.matches.length?"एक से अधिक provider refunds इस internal record से match हुए। Manual investigation आवश्यक है।":"सभी उपलब्ध provider pages में exact matching refund नहीं मिला। कोई नया refund न बनाएँ; manual review आवश्यक है।"});
+   providerRefund=search.matches[0];
   }
   if(!providerRefund||!REFUND.test(providerRefund.id||"")||providerRefund.id!==(record.refund_id||providerRefund.id)||!exactMatch(providerRefund,record)||!["pending","processed","failed"].includes(providerRefund.status))
    return json(409,{success:false,error:"Razorpay response did not exactly match the internal refund record.",safe_to_retry:false});
