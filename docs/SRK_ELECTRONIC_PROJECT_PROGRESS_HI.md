@@ -2178,3 +2178,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Source checks only. The new Node test and pgTAP suite have not been executed; no runtime pass is claimed.
 - Route transfer schema is server-only with integer paise, INR, separate transfer/settlement states, one payment-recipient logical row, and unique idempotency/provider transfer identifiers. No verified provider Route executor was found; automated transfers/reversals remain unimplemented/unverified and must not be described as live.
 - Commits: `46ac466c` (Admin wording), `0da7ca84` (Node source test), `e9d3c00b` (Route ledger contract assertions).
+
+
+## 2026-11-15 — Customer / Electrician Booking and Contact Visibility Audit
+- Booking creation source uses authenticated customer phone matching, required UUID idempotency key, validated customer-selected category/tier/duration, server-derived estimate in integer paise, and relies on the database broadcast trigger for a single offer queue rather than creating duplicate offers in the API handler.
+- Sequential dispatch source sends one live offer at a time, rechecks active/available/approved electrician and exact approved rate tier before each offer, and advances on decline/expiry.
+- Work lifecycle source review: electrician requests work start; customer approval snapshots Admin-approved rate tier/version and starts the server timer. Electrician completion request stops the timer; customer approval creates an immutable labour-only bill from server elapsed seconds. Customer rejection restarts the timer; dispute records a complaint and keeps booking from completing. Labour calculation uses ceil(actual seconds / 60) and integer paise half-up. Materials are excluded from the labour bill.
+- Found and fixed a confirmed contact visibility mismatch: the customer contact RPC previously stopped returning the electrician's phone after work completion, and the customer UI hid the call action. It now keeps contact available after assignment, including completed/cancelled assigned bookings. Electrician offer details likewise keep the assigned customer's phone available through completed/cancelled states, while the assigned-electrician identity gate remains required. Before assignment, customer phone remains hidden from electrician and electrician phone remains hidden from customer.
+- Added `tests/accepted-contact-visibility.test.js` as a source-level contract guard.
+- Added/updated tests remain unexecuted. No runtime test result is claimed; no mobile QA, migration apply, production setting change, booking, payment, SMS/OTP or provider call was performed.
+- Commits: `a26b81c3` (customer contact RPC), `9d2522e5` (electrician assigned-contact projection), `cb205a40` (customer call UI), `8e469b6f` (source contract test).
