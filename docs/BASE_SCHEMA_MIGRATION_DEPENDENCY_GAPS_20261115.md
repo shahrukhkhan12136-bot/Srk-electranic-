@@ -107,3 +107,10 @@ ALTER TABLE public.electrician_profiles
 - Inspected historical `work/separate-customer-electrician-portals` payment/refund/finance migrations and root SQL artifacts (`PORTAL_SCHEMA.sql`, `PORTAL_SECURITY_UPDATE.sql`, `ADMIN_EMAIL_LOGIN_SETUP.sql`, `COMPLETE_DATABASE_SETUP.sql`). They consume `amount_paid` or configure RLS, but no `ADD COLUMN amount_paid` / column declaration was found in these checked artifacts.
 - This expands checked-in branch/artifact evidence but is not proof about unreferenced Git objects, deleted refs, deployment SQL, or the live database. No Production schema or migration history was queried.
 - Required next evidence remains owner-provided original deployment SQL or an explicitly approved schema-only export. Do not infer type/default/nullability/precision or write a guessed migration.
+
+
+### 2026-11-15 18:42 UTC — amount_paid commit-diff verification
+- Repository-scoped GitHub commit search को exact terms `amount_paid`, `service_bookings amount_paid`, `ADD COLUMN amount_paid`, `service_bookings payment amount`, और `captured payment service_bookings` के साथ दोहराया। केवल दो matching commits मिले: `d7c7fc9800141195023453c7781d34b7e03bdc41` और `1983b7334dfcd138ecc3dcf0f920b81ddfe671ee`।
+- दोनों commit diffs सीधे fetch करके जाँचे: पहला Razorpay verify-payment PATCH में captured provider amount को `amount_paid` में लिखता है; दूसरा captured webhook handler में यही field लिखता है। दोनों application consumers/writers हैं, CREATE/ALTER TABLE DDL नहीं।
+- इस खोज से source-DDL blocker हल नहीं हुआ। GitHub commit search matching commits का प्रमाण है, सम्पूर्ण unreachable/deleted Git object या external deployment history का नहीं।
+- कोई अनुमानित DDL नहीं जोड़ा; Production schema/catalog/history query नहीं की; कोई payment/refund/transfer, migration apply, merge या deployment नहीं हुआ।
