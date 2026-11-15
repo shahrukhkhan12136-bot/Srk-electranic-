@@ -137,3 +137,12 @@ ALTER TABLE public.electrician_profiles
 - PR #8 वर्तमान में Open + Draft + Unmerged है; head `8a3f95aca92c9d3f06cd0e2785cc3bb34c31b091`, base `main`। कोई merge/deploy नहीं।
 - इसी head का Node CI run `43748576900`, job `132917235441`, completed success: 189 tests, 189 pass, 0 fail, 0 cancelled, 0 skipped। यह Node regression मात्र है; PostgreSQL/pgTAP, full migration replay, Production parity या deploy प्रमाण नहीं।
 - शेष confirmed source gap अब भी केवल `service_bookings.amount_paid` का introducing DDL है। अगला सुरक्षित evidence path: owner-provided original deployment SQL या अलग से explicitly approved schema-only export; अनुमानित migration नहीं बनाई जाएगी। No Production query/change, migration apply, payment/refund/transfer, merge or deployment.
+
+
+## Superseding source-status correction — 16 Nov 2026
+
+Current Feature Branch में `supabase/migrations/20261116200000_restore_service_bookings_amount_paid.sql` मौजूद है। यह `public.service_bookings.amount_paid numeric(12,2)` nullable column जोड़ती है और nonnegative CHECK को `NOT VALID` बनाती है। इसलिए पुराने इस दस्तावेज़ के वे कथन कि current branch में amount_paid का introducing DDL नहीं मिला, historical हैं और अब superseded हैं।
+
+अब ज्ञात missing-column source-DDL gap के रूप में `amount_paid` को सूचीबद्ध न करें। इससे live database पर column मौजूद होना, पुराने rows का CHECK validate होना, या Production parity सिद्ध नहीं होती।
+
+अलग और unresolved blocker अभी भी दोनों अलग files का समान 8-digit migration prefix `20261109` होना है। Remote Supabase migration history/schema-only evidence उपलब्ध नहीं है; किसी migration को rename/delete/merge/resequence करना या remote history repair करना बिना authoritative lineage के नहीं किया जाएगा। Current Feature Branch में `supabase/config.toml` भी नहीं मिला। कोई PostgreSQL replay/pgTAP या Production query/write नहीं चला।
