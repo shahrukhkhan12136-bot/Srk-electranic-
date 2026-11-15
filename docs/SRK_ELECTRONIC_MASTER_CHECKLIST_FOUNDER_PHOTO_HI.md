@@ -578,3 +578,9 @@
 - Support message में फ़ाइल upload होने के बाद attachment-link RPC का network response reject हो सकता था, जबकि Database में link सफलतापूर्वक commit हो चुका हो। पुराने catch में Storage object तुरंत delete हो जाता और committed attachment record टूटी हुई फ़ाइल की ओर संकेत कर सकता था।
 - अब cleanup से पहले complaint के authoritative attachment records दोबारा पढ़े जाते हैं। Object केवल सफल read में उसका link अनुपस्थित मिलने पर हटेगा; read विफल/अनिश्चित हो तो object सुरक्षित रखा जाएगा।
 - Source-contract regression test जोड़ा। वास्तविक Supabase RPC/Storage fault-injection, RLS और browser परीक्षण अभी लंबित हैं।
+
+
+### 2026-11-16 — Customer Saved Address default update refresh-result handling
+- `loadCustomerSavedAddresses()` अपनी त्रुटि स्वयं दिखाकर लौटता था, लेकिन `makeSelectedAddressDefault()` उसके बाद सफलता संदेश लिख देता था। इससे सूची रीफ़्रेश विफल होने पर भी उपयोगकर्ता को सफल refresh का गलत संकेत मिल सकता था।
+- Loader अब success/failure boolean लौटाता है। Default-address mutation के बाद refresh विफल हो तो UI स्पष्ट करता है कि update request सफल रही, लेकिन सूची रीफ़्रेश नहीं हुई; सफलता का गलत संदेश नहीं दिखता।
+- Source-contract regression test जोड़ा। वास्तविक Supabase RPC/browser fault-injection अभी लंबित है।
