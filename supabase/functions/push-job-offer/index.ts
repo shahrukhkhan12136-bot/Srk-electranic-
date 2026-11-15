@@ -2,7 +2,7 @@ import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 type Offer = { id: string; booking_id: string; electrician_id: string; status: string; expires_at: string | null };
-type Webhook = { type: "INSERT" | "UPDATE"; schema: "public"; table: "job_offers"; record: Offer; old_record?: Offer | null };
+type Webhook = { type: "INSERT" | "UPDATE"; schema: "public"; table: "job_offers"; record: Offer; old_record?: Offer | null; outbox_id?: string };
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
     payload = JSON.parse(new TextDecoder().decode(bytes));
   } catch { return new Response("Invalid JSON", { status: 400 }); }
   if (!isObject(payload) || (payload.type !== "INSERT" && payload.type !== "UPDATE") ||
-      payload.schema !== "public" || payload.table !== "job_offers" || !isOffer(payload.record)) {
+      payload.schema !== "public" || payload.table !== "job_offers" || !isOffer(payload.record) ||
+      typeof payload.outbox_id !== "string" || !uuid.test(payload.outbox_id)) {
     return new Response("Unsupported webhook payload", { status: 400 });
   }
   const event = payload as unknown as Webhook;
@@ -91,34 +92,57 @@ Deno.serve(async (req) => {
   if (!profile || !profile.user_id || !profile.active || !profile.available_for_work ||
       profile.verification_status !== "approved") return json({ ignored: true, reason: "electrician_not_eligible" });
 
-  const { data: subscriptions, error: subscriptionError } = await db.from("srk_push_subscriptions")
-    .select("id,endpoint,p256dh,auth").eq("user_id", profile.user_id);
-  if (subscriptionError) return json({ error: "subscription_lookup_failed" }, 500);
-  if (!subscriptions?.length) return json({ sent: 0, failed: 0, reason: "no_subscriptions" });
-
   try { webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate); }
   catch { return json({ error: "push_provider_not_configured" }, 503); }
 
+  const { data: claimed, error: claimError } = await db.rpc("srk_claim_push_subscription_deliveries", {
+    p_outbox_id: event.outbox_id, p_user_id: profile.user_id, p_limit: 100
+  });
+  if (claimError || !isObject(claimed) || !Array.isArray(claimed.targets)) {
+    return json({ error: "subscription_delivery_claim_failed" }, 500);
+  }
   const notification = JSON.stringify({
     title: "SRK ELECTRONIC — नया काम",
     body: "आपके लिए नया काम आया है। ऑफर खोलकर समय-सीमा में जवाब दें।",
     offerId: currentOffer.id
   });
-  const results = await Promise.all(subscriptions.map(async (sub) => {
-    if (typeof sub.endpoint !== "string" || !sub.endpoint.startsWith("https://") ||
-        typeof sub.p256dh !== "string" || !sub.p256dh || typeof sub.auth !== "string" || !sub.auth) {
-      await db.from("srk_push_subscriptions").delete().eq("id", sub.id);
-      return false;
+  let sent = 0, failed = 0;
+  await Promise.all(claimed.targets.map(async (target) => {
+    if (!isObject(target) || typeof target.delivery_id !== "string" || !uuid.test(target.delivery_id) ||
+        typeof target.subscription_id !== "string" || !uuid.test(target.subscription_id)) {
+      failed++; return;
+    }
+    const endpoint = target.endpoint;
+    const p256dh = target.p256dh;
+    const auth = target.auth;
+    if (typeof endpoint !== "string" || !endpoint.startsWith("https://") ||
+        typeof p256dh !== "string" || !p256dh || typeof auth !== "string" || !auth) {
+      await db.from("srk_push_subscriptions").delete().eq("id", target.subscription_id);
+      return;
     }
     try {
-      await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+      await webpush.sendNotification({ endpoint, keys: { p256dh, auth } },
         notification, { TTL: 60, urgency: "high" });
-      return true;
+      const { error } = await db.rpc("srk_finish_push_subscription_delivery", {
+        p_delivery_id: target.delivery_id, p_success: true, p_error: null
+      });
+      if (error) failed++; else sent++;
     } catch (err) {
       const status = (err as { statusCode?: number }).statusCode;
-      if (status === 404 || status === 410) await db.from("srk_push_subscriptions").delete().eq("id", sub.id);
-      return false;
+      if (status === 404 || status === 410) {
+        await db.from("srk_push_subscriptions").delete().eq("id", target.subscription_id);
+      } else {
+        await db.rpc("srk_finish_push_subscription_delivery", {
+          p_delivery_id: target.delivery_id, p_success: false,
+          p_error: status ? "Push provider HTTP " + status : "Push provider request failed"
+        });
+      }
+      failed++;
     }
   }));
-  return json({ sent: results.filter(Boolean).length, failed: results.filter(x => !x).length });
+  const { data: complete, error: completionError } = await db.rpc(
+    "srk_is_push_subscription_delivery_complete", { p_outbox_id: event.outbox_id }
+  );
+  if (completionError) return json({ error: "subscription_delivery_completion_check_failed" }, 500);
+  return json({ sent, failed, complete: complete === true });
 });
