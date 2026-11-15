@@ -59,3 +59,15 @@ test('Customer default-address updates reconcile uncertain RPC responses against
   assert.match(handler, /row\.id===id&&row\.is_default===true/);
   assert.match(handler, /अभी अनुरोध दोबारा न भेजें/);
 });
+
+test('Customer uncertain saved-address deletion refreshes the cached list and selector from server state', () => {
+  const start = source.indexOf('async function deleteSelectedSavedAddress() {');
+  const end = source.indexOf('async function makeSelectedAddressDefault()', start);
+  assert.ok(start >= 0 && end > start, 'saved-address delete handler exists');
+  const handler = source.slice(start, end);
+  assert.match(handler, /srk_customer_list_my_saved_addresses/);
+  assert.match(handler, /customerSavedAddresses=latestAddresses/);
+  assert.match(handler, /select\.innerHTML=.*latestAddresses\.map/);
+  assert.match(handler, /select\.value=deleteState==='absent'\?''\:id/);
+  assert.match(handler, /列表/);
+});
