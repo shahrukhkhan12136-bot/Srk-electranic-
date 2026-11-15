@@ -2206,3 +2206,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added `tests/admin-refund-and-staff-access.test.js` to guard processed-refund action hiding, portal separation, fixed-role Main Admin invitation, assignment scoping and absence of private phone projections. Source assertions have not been executed.
 - Scope caveat: this is source-level review only. It does not prove live staff invite delivery, email confirmation, session revocation on a running deployment, or runtime RLS/RPC behavior. No Staff account was invited, no session revoked, no refund/provider request, no payout or booking mutation, no migration apply, no deployment, and no mobile QA occurred.
 - Commit: `dfed74b1` (processed-refund UI guard), `a896d71f` (source-contract test).
+
+
+## 2026-11-15 — Server-Timed Booking Status Bypass Found and Guarded
+- A deeper Admin save-path audit found a material lifecycle bypass: the general Admin booking table wrote `service_bookings.status` directly. For new-category/server-timed bookings, an Admin could therefore attempt to set `in_progress` or `completed` without the customer-approved work-start/completion RPC and immutable final labour bill flow.
+- Fixed the Admin save handler to reject direct status or quoted-rate changes for new-category bookings. Actual manual Cash payment recording remains available only through its dedicated RPC after the booking is already completed; Razorpay payments remain verified through the provider flow.
+- Added a database trigger in the existing server-timed work migration. It makes the selected category immutable and requires protected authorization rows for work-start approval, timer start, and completion transitions; approved cancellation remains governed by the dedicated cancellation-request evidence path. Legacy bookings (`selected_category IS NULL`) retain their existing legacy flow.
+- Added three pgTAP assertions to `customer_booking_work_timeline.test.sql` (plan now 19) for trigger existence, SECURITY DEFINER/empty search_path, and protected transition authorization. Also added a Node source-contract assertion in `tests/admin-refund-and-staff-access.test.js`.
+- Static source checks confirm the Admin guard, database trigger, and regression assertions are present in the feature branch. Neither Node nor pgTAP tests have been executed; no database migration was applied.
+- No production settings changed, no booking/payment/refund/payout/wallet mutation, no provider request, no deploy, and no mobile QA performed.
+- Commits: `f0db58d9` (DB guard in existing migration), `76dcb381` (Admin save guard), `8b21e347` (Node contract test), `ee546d02` (pgTAP plan 19).
