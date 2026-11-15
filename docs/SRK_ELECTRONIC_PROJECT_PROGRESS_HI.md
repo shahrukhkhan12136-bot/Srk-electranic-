@@ -3642,3 +3642,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Google Maps migration केवल GPS coordinate columns जोड़ती है; उसी RPC में `auth_user_id` insert/update होता है। इससे usage सिद्ध है, column creation नहीं।
 - Manifest Section 5.8 में cross-branch findings दर्ज। दोनों exact column contracts अब भी unresolved; कोई अनुमानित DDL नहीं जोड़ा।
 - GPT-2 checklist **27/39 = 69%**, **12/39 शेष**।
+
+
+## 2026-11-15 — Founder/cache regression fix CI verification
+- Branch head `afbc1e756d88acc687106ee30be0f8d2a6289710` के PR #8 merge-check workflow `43728524339` सफल हुआ। Job `132855625792` में `npm test`: **164 tests, 164 pass, 0 fail**। Workflow ने PR merge commit `e322826b2ec5d5928ad84800c2182f9e335b08c0` checkout किया, जिसमें branch head शामिल था। पहले `e17d917...` पर run न दिखने की स्थिति अब इस newer branch-head check से supersede है।
+- यह Node source/contract test suite है; PostgreSQL runtime, browser/visual QA, mobile QA, Vercel Preview या Production deployment का प्रमाण नहीं। Commit status में Vercel check अभी `failure` है और target बताता है `build-rate-limit`; इसलिए Preview build उपलब्ध/सफल घोषित नहीं है।
+- SOS integration audit: Feature Branch के recursive tree में SOS-specific backend migration नहीं मिली और repository code search में `srk_create_sos_alert` implementation नहीं मिला। Customer/Electrician UI RPC call में केवल `p_reason` भेजते हैं। इसलिए secure booking/actor derivation और Admin/Support delivery अभी GPT-2 backend contract से verify नहीं हो सकते; GPT-1 client signature को अनुमान से नहीं बदलेगा।
+- GPT-1 checklist progress **20/28 = 71%** ही है; CI verification ने existing source checklist count नहीं बदला।
