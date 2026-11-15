@@ -1,5 +1,5 @@
 begin;
-select plan(9);
+select plan(10);
 select has_function('public','srk_admin_record_manual_refund',array['uuid','text','text'],'manual refund RPC exists');
 select ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
   'manual refund remains Main Admin only');
@@ -19,6 +19,12 @@ select ok(position('RAZORPAY_REFUNDS_MUST_USE_RAZORPAY_RECONCILIATION' in pg_get
 select ok(position('like ''%online%''' in lower(pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0
   and position('like ''%razorpay%''' in lower(pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0,
   'manual refund RPC rejects online payment methods even when provider IDs are missing');
+
+select ok(position('set payout_status=''refunded''' in lower(
+  pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0
+  and position('blocked_payout_could_not_be_closed_as_refunded' in lower(
+  pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0,
+  'verified manual refund closes its blocked unpaid payout as refunded');
 select ok(has_function_privilege('authenticated','public.srk_admin_record_manual_refund(uuid,text,text)','EXECUTE')
   and not has_function_privilege('anon','public.srk_admin_record_manual_refund(uuid,text,text)','EXECUTE'),
   'manual refund RPC is authenticated-only with Main Admin checked inside');
