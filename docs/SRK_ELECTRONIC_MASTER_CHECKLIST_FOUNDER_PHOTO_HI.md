@@ -546,3 +546,9 @@
 - Customer शिकायत सूची लोड होने के बाद चुनी हुई शिकायत की बातचीत RPC transport rejection को अब thread loader स्वयं सुरक्षित रूप से संभालता है; इससे बातचीत का नेटवर्क failure पूरी शिकायत सूची refresh को विफल नहीं दिखाएगा।
 - Attachment list की स्वतंत्र error handling और stale-thread request guard बरकरार हैं।
 - Regression source-contract test जोड़ा। वास्तविक browser/network और Supabase RLS परीक्षण अभी लंबित हैं।
+
+
+### Electrician App — Existing Push Subscription Re-sync
+- यदि ब्राउज़र में Push Subscription मौजूद हो लेकिन पिछली बार सर्वर पर endpoint upsert विफल हुआ हो, तो पहले UI में Enable बटन बंद हो जाता था और उसी मौजूदा subscription को दोबारा register करने का रास्ता नहीं रहता था।
+- अब मौजूदा browser subscription के साथ भी Enable उपलब्ध रहता है; enable handler उसी subscription को server table में फिर से upsert करता है। Disable क्रम और नई subscription rollback व्यवहार अपरिवर्तित हैं।
+- Regression source-contract test जोड़ा। वास्तविक browser Push, Supabase RLS और provider delivery परीक्षण अभी लंबित हैं।
