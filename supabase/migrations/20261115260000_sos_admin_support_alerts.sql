@@ -225,7 +225,6 @@ returns table(
   created_at timestamptz
 )
 language plpgsql
-stable
 security definer
 set search_path=''
 as $function$
@@ -276,7 +275,8 @@ begin
   update public.srk_sos_alerts
      set status='acknowledged',acknowledged_by=v_uid,
          acknowledged_at=clock_timestamp(),acknowledgement_note=v_note
-   where id=p_case_id;
+   where id=p_case_id
+   returning * into v_alert;
 
   insert into public.srk_sos_alert_events(alert_id,actor_user_id,event_type,details)
   values(p_case_id,v_uid,'acknowledged',jsonb_build_object('note',left(v_note,500)));
@@ -287,7 +287,7 @@ begin
 
   return jsonb_build_object(
     'success',true,'case_id',p_case_id,'status','acknowledged',
-    'acknowledged_at',clock_timestamp()
+    'acknowledged_at',v_alert.acknowledged_at
   );
 end;
 $function$;
@@ -297,7 +297,6 @@ grant execute on function public.srk_admin_acknowledge_sos_alert(uuid,text) to a
 create or replace function public.srk_admin_list_sos_alert_events(p_case_id uuid,p_limit integer default 100)
 returns table(id bigint,actor_user_id uuid,event_type text,details jsonb,created_at timestamptz)
 language plpgsql
-stable
 security definer
 set search_path=''
 as $function$
