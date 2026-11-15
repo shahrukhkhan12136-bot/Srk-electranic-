@@ -11,13 +11,13 @@ const sosMigration = fs.readFileSync(
 );
 
 test('SOS queue is visible to Support Staff as well as Main Admin', () => {
-  assert.match(admin, /<div class="card staff-only hidden" id="sosAlertCard">/);
+  assert.match(admin, /<div class="card admin-shared hidden" id="sosAlertCard">/);
   const start = admin.indexOf('function setAdminPortalMode(');
   const end = admin.indexOf('\n}', start);
   assert.ok(start >= 0 && end > start, 'portal mode switch exists');
   const modeSwitch = admin.slice(start, end);
   assert.match(modeSwitch, /if\(staffOnly\)el\.classList\.toggle\('hidden',mode!=='staff'\)/);
-  assert.match(modeSwitch, /else el\.classList\.toggle\('hidden',mode!=='main_admin'\)/);
+  assert.match(modeSwitch, /const adminShared=el\.classList\.contains\('admin-shared'\)/);\n  assert.match(modeSwitch, /else if\(adminShared\)el\.classList\.toggle\('hidden',mode!=='staff'&&mode!=='main_admin'\)/);\n  assert.match(modeSwitch, /else el\.classList\.toggle\('hidden',mode!=='main_admin'\)/);
 });
 
 test('Support role is granted SOS read and acknowledgement permissions', () => {
