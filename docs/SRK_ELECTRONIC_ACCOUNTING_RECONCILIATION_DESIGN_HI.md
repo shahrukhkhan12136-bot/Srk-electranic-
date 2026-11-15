@@ -66,7 +66,7 @@ Feature Branch source को Production catalog से अलग रखते �
 - Wallet ledger पर RLS enabled है और owner-read policy है। Route transfer ledger पर RLS enabled है तथा authenticated direct SELECT privilege नहीं है। Route amount column bigint paise है।
 - Live catalog में इस जाँच के समय srk_booking_cancellation_fee_items और srk_cancellation_fee_ledger tables उपलब्ध नहीं मिलीं; ये Feature Branch की बाद की migration chain का हिस्सा हैं। इसलिए live पर cancellation-fee side को join करके कोई reconciliation view बनाना अभी schema-safe नहीं होगा।
 
-नई static pgTAP contract file: supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql — 20 assertions। यह payout authorization/row-lock/payment proof, owner-scoped wallet access, Route client isolation और integer-paise schema guard करती है। Test अभी runtime में execute नहीं हुआ है।
+नई static pgTAP contract file: supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql — उस शुरुआती audit चरण में 20 assertions; बाद में यह 43 assertions तक बढ़ाई गई। यह payout authorization/row-lock/payment proof, owner-scoped wallet access, Route client isolation और integer-paise schema guard करती है। Test अभी runtime में execute नहीं हुआ है।
 
 ## 8. अगला सुरक्षित implementation gate
 
