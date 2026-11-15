@@ -3781,3 +3781,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पहले दर्ज “CLI 3.0.0 high-priority unresolved ordering risk” को **downgrade/correct** किया: TypeScript db-push path source-level पर ठीक किया हुआ दिखता है; runtime test इस environment में नहीं चला। CLI #6682 Go implementation का issue है, current pinned db-push TypeScript path का नहीं।
 - Exact duplicate 8-digit `20261109` version pair अलग migration-history ambiguity है; कोई rename/repair नहीं।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित।
+
+
+### Duplicate migration source lineage — 15 Nov 2026
+- Git history now shows the full quote migration was completed in `04d0c02`, had the status/assignment constraints added in `b5e5b3b`, then a second same-version file containing only those same constraints was added in `cd2c46e` 14 seconds later.
+- The duplicate looks accidental and is redundant in source, but the remote migration ledger was not queried. Both files remain unchanged pending approved read-only history evidence.
+- GPT-2 remains 27/39 = 69%; no checklist item closed.
