@@ -325,3 +325,17 @@ Repository के पुराने commit `08e5ff8abc1cf2a5e2ae656a951f8f4d886
 - Exact-text code search में कोई अलग ADD COLUMN amount_paid या ADD COLUMN auth_user_id definition नहीं मिली। पाँच historical branches की समान file copies एक ही ऐतिहासिक स्रोत की पुनरावृत्ति हो सकती हैं; उन्हें स्वतंत्र schema provenance नहीं माना गया।
 
 **निर्णय:** दोनों columns के type/nullability/default/constraint/index/ownership contract अभी भी unresolved हैं। उन्हें अनुमान से जोड़ना, migration बनाना या fixture को parity-ready घोषित करना सुरक्षित नहीं। अगला वैध स्रोत पुराने commit/tree history में अलग migration/schema snapshot या अनुमोदित schema export होगा।
+
+
+## 11.2 — Correction: `auth_user_id` migration DDL located (15 Nov 2026)
+
+ऊपर §11 और §11.1 में `auth_user_id` के introducing DDL को अनुपलब्ध बताया गया था। वह निष्कर्ष अब superseded है। Current Feature Branch में `supabase/migrations/20261109000500_harden_electrician_profile_identity_linking.sql` स्पष्ट रूप से यह DDL देता है:
+
+```sql
+ALTER TABLE public.electrician_profiles
+  ADD COLUMN IF NOT EXISTS auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+```
+
+यह nullable `uuid` column है, explicit default नहीं है, `auth.users(id)` को reference करता है और referenced Auth user हटने पर `SET NULL` लागू करता है। उसी migration में existing `user_id`/`auth_user_id` mismatch और duplicate identity links पर fail-closed checks, दोनों columns का synchronization और non-NULL `auth_user_id` पर partial unique index भी है। यह migration `20261109001000_add_google_maps_location_support.sql` से पहले आती है। इसलिए current branch के ordered migration source में इस column का DDL उपलब्ध है; इसे remaining base-DDL blocker न गिनें।
+
+**अब बचा हुआ source-DDL blocker:** `public.service_bookings.amount_paid`। Starter schema files और current migration sources में इसका authoritative introducing DDL अभी नहीं मिला। इसका exact type/precision/nullability/default/constraints/indexes/grants बिना approved source evidence के अनुमानित नहीं किए जाएँगे।
