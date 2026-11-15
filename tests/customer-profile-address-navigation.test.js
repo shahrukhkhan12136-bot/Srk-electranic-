@@ -6,9 +6,12 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '..', 'booking.html'), 'utf8');
 
 test('Profile saved-address shortcut reveals Home tab before scrolling to the booking form', () => {
-  const match = source.match(/document\\.getElementById\\('customerProfileAddressLink'\\)\\?\\.addEventListener\\('click',\\(\\)=>\\{([\\s\\S]*?)\\n \\}\\);/);
-  assert.ok(match, 'profile saved-address click handler exists');
-  const handler = match[1];
+  const marker = "document.getElementById('customerProfileAddressLink')?.addEventListener('click',()=>{";
+  const start = source.indexOf(marker);
+  assert.ok(start >= 0, 'profile saved-address click handler exists');
+  const end = source.indexOf('\\n });', start);
+  assert.ok(end > start, 'profile saved-address click handler closes');
+  const handler = source.slice(start + marker.length, end);
   const activateHome = handler.indexOf("activate('Home')");
   const scheduleScroll = handler.indexOf('requestAnimationFrame');
   const scrollBooking = handler.indexOf("getElementById('booking')?.scrollIntoView");
