@@ -2907,3 +2907,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added one pgTAP source-contract assertion; accounting contract plan/count updated from 59 to 60.
 - Important: migration is Feature Branch source only. No PostgreSQL/pgTAP runtime, existing-data duplicate preflight, Production migration, provider onboarding, or bank verification has been run. Any existing duplicate primary links require manual review before applying.
 - No live money movement, deployment, merge, or go-live.
+
+
+## 2026-11-15 — GPT #2: Route idempotency / retry boundary audit
+
+- Inspected `srk_route_transfers` schema: it already has a unique `idempotency_key`, unique provider `transfer_id`, and unique `(razorpay_payment_id, recipient_type)` constraint. This prevents duplicate ledger rows for the same payment/recipient, but does not by itself prove provider-side duplicate transfer prevention.
+- Confirmed schema has no Route transfer execution caller, provider status polling, transfer event webhook handling, reversal amount/reference lifecycle, or bank-credit evidence. Therefore no safe retry executor can be implemented without the approved Razorpay Route API contract, idempotency semantics, webhook event catalog, secrets and test-mode credentials.
+- Added two pgTAP source-contract assertions for unique idempotency key and payment/recipient uniqueness; contract plan/count now 62.
+- Retry rule for future implementation: only retry after querying provider state with the same stable idempotency key; never issue a new key on timeout/ambiguous response; any provider result conflict or missing transfer ID goes to manual review. This is a design requirement, not implemented execution behavior.
+- Runtime pgTAP, live provider calls, bank settlement confirmation and Production changes remain Not Run / Not Approved. No merge, deployment or go-live.
