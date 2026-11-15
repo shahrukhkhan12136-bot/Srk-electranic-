@@ -195,3 +195,59 @@ Complaint conversation migrations को line-level पर cross-check करन
 यह सूची migration consumers द्वारा आवश्यक column usage है, authoritative DDL नहीं। इससे data types, nullability, defaults, PK/FK, unique/check constraints, indexes, triggers या base RLS policy set प्रमाणित नहीं होते। विशेष रूप से conversation messages/attachments की नई tables के RLS policies base complaint table की policies का विकल्प नहीं हैं।
 
 Push subscription base के लिए उपलब्ध exact consumer contract अभी `id`, `user_id`, `endpoint`, `p256dh`, `auth` ही है; `id`/`user_id` पर delivery ledger और बाकी तीन columns delivery sender payload में प्रयुक्त हैं। उनके SQL types और uniqueness/FK semantics अभी unresolved हैं।
+
+
+## 9. Historical branch source recovery — Complaint और Push base DDL (2026-11-15)
+
+पहले की current-branch-only खोज में Complaint/Push base DDL नहीं मिला था। सभी उपलब्ध historical branches के migration trees जाँचने पर दो authoritative repository source files मिले। इसलिए नीचे का निष्कर्ष संशोधित है: ये definitions अब source-backed हैं; फिर भी historical migration को current release में सीधे replay करने की अनुमति/सिफारिश नहीं है।
+
+### 9.1 Complaint base tables — recovered
+
+**Source:** branch `work/separate-customer-electrician-portals`, file `supabase/migrations/20261110040000_customer_admin_complaints.sql`.
+
+इस migration में दोनों base tables की पूरी `CREATE TABLE IF NOT EXISTS` definitions हैं:
+
+- `public.srk_booking_complaints`
+  - PK `id uuid DEFAULT gen_random_uuid()`
+  - FK `booking_id → service_bookings(id) ON DELETE RESTRICT`
+  - FK `customer_user_id → auth.users(id) ON DELETE RESTRICT`
+  - category allowlist और description 20–2000 character checks
+  - status default `new`, allowed: `new/in_review/resolved/closed`
+  - optional `admin_note` max 2000 characters
+  - `created_at`, `updated_at` default `now()`; nullable `resolved_at`
+  - nullable `updated_by` और `resolved_by` FKs to `auth.users(id)`
+- `public.srk_booking_complaint_events`
+  - PK `id uuid DEFAULT gen_random_uuid()`
+  - FK `complaint_id → srk_booking_complaints(id) ON DELETE CASCADE`
+  - FK `actor_user_id → auth.users(id) ON DELETE RESTRICT`
+  - actor role allowlist `customer/admin`
+  - optional from_status, required to_status, allowed complaint states
+  - optional note max 2000 characters; `created_at DEFAULT now()`
+
+**Indexes:** complaint events on `(complaint_id, created_at ASC)`; complaints on `created_at DESC`, `(booking_id, created_at DESC)`, and `(status, created_at DESC)`.
+
+**RLS/ACL:** दोनों tables पर RLS enabled; PUBLIC, anon और authenticated से सभी table privileges revoke। इस migration में base complaint/event tables के लिए कोई direct client RLS policy नहीं बनाई गई। Access intended through the granted SECURITY DEFINER RPCs; service-side access remains separate. इसे own-row direct-table policy समझना गलत होगा।
+
+### 9.2 Push subscription base table — recovered
+
+**Source:** branch `feature/production-push-notifications`, file `supabase/migrations/20261111090000_add_electrician_push_subscriptions.sql`.
+
+`public.srk_push_subscriptions` का पूर्ण base DDL मिला:
+
+- `id uuid PRIMARY KEY DEFAULT gen_random_uuid()`
+- `user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
+- `endpoint text NOT NULL UNIQUE`
+- `p256dh text NOT NULL`, `auth text NOT NULL`
+- `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()`
+- endpoint length 1–2048; p256dh और auth length 1–256 checks
+- index `srk_push_subscriptions_user_id_idx(user_id)`
+
+**RLS/ACL:** RLS enabled; authenticated user के लिए own-row SELECT/INSERT/UPDATE/DELETE policies, predicate `user_id = (select auth.uid())`; anon और PUBLIC revoke; authenticated को SELECT/INSERT/UPDATE/DELETE grants।
+
+### 9.3 Release और baseline सुरक्षा निष्कर्ष
+
+- दोनों DDL definitions historical feature branches से recovered हैं; ये वर्तमान branch के migrations की स्वतः replay approval नहीं हैं।
+- Complaint source migration का timestamp `20261110040000` और Push source migration का `20261111090000` है। Current branch में इनके बाद के migrations मौजूद हैं, इसलिए baseline manifest में historical base DDL को एक बार शामिल कर dependency order और duplicate-object behavior जाँचना होगा।
+- Current branch की बाद की complaint/push migrations ने इन base objects को `CREATE TABLE` से दोबारा नहीं बनाया; वे इन्हें existing dependencies की तरह consume करती हैं।
+- Historical Production schema inventory में इन tables के RLS enabled होने और complaint/event tables पर direct policies न होने का catalog observation भी दर्ज है; यह inventory snapshot है, वर्तमान Production access या schema re-query नहीं।
+- कोई database/Production project/secret बदला या access नहीं किया; कोई migration apply नहीं हुई। PostgreSQL/pgTAP runtime अभी भी बाकी है।
