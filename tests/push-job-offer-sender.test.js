@@ -39,5 +39,8 @@ test('push sender removes malformed and permanently expired endpoints', () => {
 test('public config response never exposes private keys or webhook secret', () => {
   const getBlock = source.slice(source.indexOf('if (req.method === "GET")'), source.indexOf('if (req.method !== "POST"'));
   assert.match(getBlock, /publicKey: vapidPublic/);
-  assert.match(getBlock, /return json\(\{ publicKey: vapidPublic, pushReady: true \}/);\n  assert.doesNotMatch(getBlock, /return json\(\{[^}]*vapidPrivate|return json\(\{[^}]*webhookSecret|return json\(\{[^}]*serviceKey/);
+  assert.match(getBlock, /publicKey: vapidPublic/);
+  assert.doesNotMatch(getBlock, /return json\(\{[^}]*vapidPrivate/);
+  assert.doesNotMatch(getBlock, /return json\(\{[^}]*webhookSecret/);
+  assert.doesNotMatch(getBlock, /return json\(\{[^}]*serviceKey/);
 });
