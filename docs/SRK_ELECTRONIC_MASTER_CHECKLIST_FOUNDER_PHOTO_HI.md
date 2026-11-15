@@ -103,3 +103,17 @@
 - [ ] सभी implementation समाप्त होने के बाद Customer–Electrician location sharing का consolidated desktop/mobile QA करें।
 
 **Evidence boundary:** केवल source fix/review; वास्तविक GPS share, migration apply, runtime test या deployment नहीं हुआ।
+
+
+### Push Notification और New Job Offer Alert Audit — 15 November 2026
+- [x] Electrician opt-in UI, browser permission handling, VAPID public-key retrieval, service-worker registration और local subscription enable/disable source review।
+- [x] Service worker push display और same-origin notification-click navigation source review।
+- [x] Sequential offer create/decline/expiry dispatch और scheduled expiry worker source review।
+- [ ] Offer dispatch/next-offer event से trusted server-side Web Push sender जोड़ें; अभी branch में delivery invocation प्रमाणित नहीं।
+- [ ] Push subscription storage के लिए owner-scoped RLS/RPC contract और invalid endpoint cleanup verify/implement करें; current client direct table upsert/delete की authoritative policy अभी verify नहीं।
+- [ ] Durable idempotent notification outbox, bounded retries और offer-state revalidation लागू करें; केवल live active offer पर notification भेजें।
+- [ ] Notification click पर Electrician dashboard में संबंधित offer highlight/open करें।
+- [ ] Approved isolated environment में permission, delivery, duplicate/retry, expired/accepted offer, invalid endpoint और logout/account-switch tests चलाएँ।
+- [ ] Final consolidated mobile QA और production rollout सभी implementation पूरे होने और अलग explicit approval के बाद ही।
+
+**Evidence boundary:** UI/service-worker/dispatch source review पूरा; वास्तविक push delivery, subscription RLS proof, runtime test, production Edge Function inspection/deploy या mobile QA का दावा नहीं।
