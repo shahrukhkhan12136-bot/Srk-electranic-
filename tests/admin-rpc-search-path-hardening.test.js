@@ -54,3 +54,31 @@ test('Retired quotation RPC hardening remains safe on fresh migration replay', (
   assert.equal((sql.match(/set search_path = '';/g) || []).length, 3);
   assert.match(sql, /IF EXISTS keeps fresh replay safe/i);
 });
+
+test('Financial payout and manual-refund mutation RPCs pin empty search_path', () => {
+  const sql = read('20261115200000_harden_financial_admin_rpc_search_path.sql');
+  for (const fn of [
+    'srk_admin_mark_electrician_payout_paid',
+    'srk_admin_record_manual_refund'
+  ]) {
+    assert.match(sql, new RegExp('alter function public\\\\.' + fn + '\\\\('));
+  }
+  assert.equal((sql.match(/set search_path = '';/g) || []).length, 2);
+});
+
+test('Manual refund and payout mutations require Main Admin and verified financial state', () => {
+  const refund = read('20261115130000_admin_manual_refund_request_completion.sql');
+  const payout = read('20261114360000_new_category_electrician_payout_reconciliation.sql');
+  assert.match(refund, /auth\\.uid\\(\\) is null or not public\\.is_srk_admin\\(\\)/i);
+  assert.match(refund, /RAZORPAY_REFUNDS_MUST_USE_RAZORPAY_RECONCILIATION/);
+  assert.match(refund, /v_booking\\.payment_verified_at is null/);
+  assert.match(refund, /v_expected_paise<>round\\(v_booking\\.amount_paid\\*100\\)::bigint/);
+  const start = payout.indexOf('create or replace function public.srk_admin_mark_electrician_payout_paid');
+  const end = payout.indexOf('$$;', start);
+  assert.ok(start >= 0 && end > start, 'payout mutation RPC must exist');
+  const body = payout.slice(start, end);
+  assert.match(body, /auth\\.uid\\(\\) is null or not public\\.is_srk_admin\\(\\)/i);
+  assert.match(body, /for update/i);
+  assert.match(body, /v_row\\.payout_status <> 'pending'/);
+  assert.match(body, /v_booking\\.payment_verified_at is null/);
+});
