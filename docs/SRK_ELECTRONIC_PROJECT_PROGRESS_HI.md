@@ -3691,3 +3691,5 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression test `tests/customer-immediate-booking-contract.test.js` जोड़ा गया, जो nonexistent date/time reads और API contract mismatch को रोकता है।
 - Commits: UI correction `b2e2fd9bb5b9faa06629d99f90657e44100d927a`; regression test `108caea1766fc85a4a881eb7077d337d85d65f74`.
 - Source change verified by re-fetch. New CI run not yet visible; no browser/mobile runtime test, DB change, merge or deployment performed.
+
+- Follow-up test correction: SOS handler source is minified onto one line, इसलिए contract test अब handler boundary को सही blank-line delimiter से पकड़ता है और regex escaping ठीक है। Corrected test commit: `72e4cbafe5dacdc9115a4d98487d16c4c9211d30`. Exact commit source re-fetch verification: दोनों submit handlers में extra modal नहीं, reason-only RPC है; saved-address navigation Home tab खोलता है। Node/CI execution अभी pending है।
