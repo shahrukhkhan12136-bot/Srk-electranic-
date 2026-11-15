@@ -127,6 +127,13 @@ test('electrician live-location update network exceptions trigger safe sharing s
 });
 
 
+test('customer dynamically inserted controls translate placeholder, title and accessible labels', () => {
+  assert.match(booking, /function customerUiTranslateAttributes\(root, lang = document\.documentElement\.lang\)/);
+  assert.match(booking, /customerUiTranslateAttributes\(document\.body, lang\)/);
+  assert.match(booking, /node\.nodeType === Node\.ELEMENT_NODE\) customerUiTranslateAttributes\(node, 'en'\)/);
+  assert.match(booking, /input\[placeholder\],textarea\[placeholder\],\[title\],\[aria-label\]/);
+});
+
 test('customer remaining login, form and booking feedback strings are localized', () => {
   assert.match(booking, /'10 अंकों का मोबाइल नंबर':'10-digit mobile number'/);
   assert.match(booking, /'OTP दर्ज करें':'Enter OTP'/);
