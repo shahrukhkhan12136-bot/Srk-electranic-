@@ -198,7 +198,7 @@ returns table(
 )
 language plpgsql
 security definer
-set search_path='pg_catalog','public','auth','pg_temp'
+set search_path=''
 as $$
 declare
   v_booking public.service_bookings%rowtype;
@@ -219,17 +219,31 @@ begin
 
   select * into v_booking from public.service_bookings where id=p_booking_id for update;
   if not found then raise exception 'BOOKING_NOT_FOUND'; end if;
-  if v_booking.payment_status<>'paid' or v_booking.payment_verified_at is null
-     or v_booking.razorpay_payment_id is null or v_booking.amount_paid is null
-     or v_booking.amount_paid<=0 then
+  if v_booking.payment_status is distinct from 'paid'
+     or v_booking.payment_verified_at is null
+     or v_booking.razorpay_payment_id is null
+     or v_booking.amount_paid is null or v_booking.amount_paid<=0 then
     raise exception 'ONLY_VERIFIED_RAZORPAY_PAID_BOOKINGS_CAN_BE_REFUNDED';
   end if;
   if lower(coalesce(v_booking.payment_method,'')) not like '%razorpay%'
      and lower(coalesce(v_booking.payment_method,'')) not like '%online%' then
     raise exception 'BOOKING_PAYMENT_METHOD_IS_NOT_ONLINE';
   end if;
-  if v_booking.razorpay_payment_id !~ '^pay_[A-Za-z0-9]+
-    if v_booking.status<>'completed' then raise exception 'BOOKING_NOT_COMPLETED'; end if;
+  if v_booking.razorpay_payment_id !~ '^pay_[A-Za-z0-9]+$' then
+    raise exception 'INVALID_RAZORPAY_PAYMENT_ID';
+  end if;
+
+  -- A customer-submitted request must first be approved by Main Admin.
+  select * into v_customer_request
+  from public.srk_booking_refund_requests r
+  where r.booking_id=p_booking_id
+  for update;
+  if found and v_customer_request.status not in ('approved','processing','unknown') then
+    raise exception 'CUSTOMER_REFUND_REQUEST_REQUIRES_MAIN_ADMIN_APPROVAL' using errcode='55000';
+  end if;
+
+  if v_booking.selected_category is not null then
+    if v_booking.status is distinct from 'completed' then raise exception 'BOOKING_NOT_COMPLETED'; end if;
     select b.labour_amount_paise into v_labour_paise
       from public.srk_booking_labour_bills b
       where b.booking_id=p_booking_id and b.customer_user_id=v_booking.customer_user_id;
@@ -240,7 +254,7 @@ begin
       from public.srk_booking_cancellation_fee_items i
       where i.booking_id=p_booking_id and i.status='settled';
     if exists(select 1 from public.srk_booking_cancellation_fee_items i
-      where i.booking_id=p_booking_id and i.status<>'settled') then
+      where i.booking_id=p_booking_id and i.status is distinct from 'settled') then
       raise exception 'CANCELLATION_FEE_ITEMS_NOT_FULLY_SETTLED';
     end if;
     v_total_paise:=v_labour_paise+v_fee_paise;
@@ -249,7 +263,7 @@ begin
     end if;
     v_total:=v_total_paise/100.0;
   else
-    if v_booking.quote_status<>'approved'
+    if v_booking.quote_status is distinct from 'approved'
        or v_booking.quoted_amount is null or v_booking.service_charge is null
        or v_booking.materials_amount is null then
       raise exception 'ONLY_VERIFIED_APPROVED_QUOTE_BOOKINGS_CAN_BE_REFUNDED';
@@ -302,7 +316,7 @@ begin
     auth.uid(),v_payout.payout_note
   ) returning * into v_refund;
 
-  if found and v_customer_request.id is not null then
+  if v_customer_request.id is not null then
     update public.srk_booking_refund_requests
     set status='processing',refund_record_id=v_refund.id,updated_at=clock_timestamp()
     where id=v_customer_request.id;
