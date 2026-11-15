@@ -406,16 +406,18 @@
 - [x] New-category status trigger guard और legacy booking scope का अंतर दर्ज.
 - [x] Immutable labour bill trigger की completion prerequisites का निरीक्षण.
 - [x] Admin UI में manual-payment RPC call sites की पहचान.
-- [ ] `srk_admin_record_manual_payment` तथा `srk_admin_record_new_booking_cash_payment` की authoritative SQL definitions खोजें/सही migration chain में शामिल करें; authorization, amount, idempotency, reference और audit सत्यापित करें.
+- [x] `srk_admin_record_new_booking_cash_payment(uuid,text,text)` की definition `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में मिली और Main Admin guard, exact labour + reserved-fee amount, unique payment, payment evidence तथा wallet/fee-ledger transaction source-reviewed.
+- [ ] Legacy `srk_admin_record_manual_payment` की authoritative definition अभी missing; legacy quote-based booking payment path की सही accounting contract के साथ implementation/test बाकी.
 - [ ] Legacy status transition के सभी वैध रास्ते (electrician, customer quote response, Admin confirmation/cancellation, timer/completion) map करें; transaction-scoped DB authorization guard एवं regression tests लागू करें.
 - [ ] Old commission trigger + legacy completion transaction का isolated database runtime verification.
 - [ ] Browser/DB runtime, deployment, merge और consolidated final mobile QA बाकी. No live mutations performed.
 
 
 ### Follow-up — manual payment और legacy booking authorization
-- [x] पूरे feature branch (152 files), 56 migrations और setup SQL में manual payment RPC definition search; दोनों Admin RPC definitions अनुपस्थित.
-- [x] Manual payment table constraints/ACL जाँचे: unique booking, method allow-list, bounded amount/reference, recorded_by; direct client table access revoked.
-- [x] New-category completion के transaction-scoped authorization और immutable bill trigger की तुलना legacy status RPC/direct UPDATE grant से की.
+- [x] सभी 56 migrations की पुनः जाँच में `srk_admin_record_new_booking_cash_payment(uuid,text,text)` की definition `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में मिली; पिछली checklist की “दोनों RPC अनुपस्थित” टिप्पणी गलत थी.
+- [x] New-category cash RPC का Main Admin guard, completed/assigned/cash-only eligibility, Razorpay exclusion, immutable labour bill + reserved cancellation-fee exact total, unique manual payment, payment evidence और wallet/fee-ledger atomic posting source-reviewed; runtime role/concurrency test बाकी.
+- [ ] केवल legacy `srk_admin_record_manual_payment` की authoritative definition अभी missing; Admin UI caller और legacy accounting path का मिलान/implementation बाकी.
+- [x] New-category status trigger guard मौजूद है; legacy rows scope से बाहर हैं और legacy direct status UPDATE privilege bypass risk बना हुआ है.
 - [ ] Missing Admin manual payment RPC(s) को accounting/cancellation-fee ledger invariants के अनुरूप design, pgTAP regression coverage सहित implement करना.
 - [ ] Legacy Admin status dropdown के हर valid transition और सभी trusted actor workflows map करके transaction-scoped DB authorization guard implement करना.
 - [ ] Isolated PostgreSQL/pgTAP runtime और concurrency verification; no production apply.
