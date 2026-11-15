@@ -572,3 +572,9 @@
 - Avatar upload के बाद profile update RPC का transport response reject होने पर नया private Storage object orphan रह सकता था।
 - अब ऐसे uncertain result पर owner profile दोबारा पढ़ा जाता है; केवल तभी नया object हटता है जब authoritative profile में वही avatar path सेव न हो। Re-read विफल हो तो object delete नहीं किया जाता, ताकि सफल server-side save का avatar टूटे नहीं।
 - Source-contract regression test जोड़ा। वास्तविक Supabase Storage/RPC fault-injection और browser validation अभी लंबित हैं।
+
+
+### 2026-11-16 — Customer Support attachment uncertain-link cleanup
+- Support message में फ़ाइल upload होने के बाद attachment-link RPC का network response reject हो सकता था, जबकि Database में link सफलतापूर्वक commit हो चुका हो। पुराने catch में Storage object तुरंत delete हो जाता और committed attachment record टूटी हुई फ़ाइल की ओर संकेत कर सकता था।
+- अब cleanup से पहले complaint के authoritative attachment records दोबारा पढ़े जाते हैं। Object केवल सफल read में उसका link अनुपस्थित मिलने पर हटेगा; read विफल/अनिश्चित हो तो object सुरक्षित रखा जाएगा।
+- Source-contract regression test जोड़ा। वास्तविक Supabase RPC/Storage fault-injection, RLS और browser परीक्षण अभी लंबित हैं।
