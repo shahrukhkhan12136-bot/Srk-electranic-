@@ -168,7 +168,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
   assert.match(customerRefund, /दोबारा अनुरोध नहीं भेजा गया/);
   assert.match(customerCancel, /catch\(error\)/);
   assert.match(customerCancel, /finally \{if\(button\)button\.disabled=false;\}/);
-  assert.match(customerCancel, /अनुरोध दर्ज नहीं हो सका/);
+  assert.match(customerCancel, /रद्द करने के अनुरोध का परिणाम स्पष्ट नहीं है/);
   assert.match(offerResponse, /catch\(e\)/);
   assert.match(offerResponse, /finally\{/);
   assert.match(offerResponse, /electricianOfferResponseBusy\.delete\(id\)/);
@@ -183,7 +183,7 @@ test('customer live-location transport failure does not discard rendered booking
   assert.match(live, /await Promise\.all\(bookingIds\.map\(async id=>/);
   const load = functionBody(customer, 'loadCustomerBookings');
   assert.ok(load.indexOf('box.innerHTML = data.map') < load.indexOf('await refreshCustomerLiveLocations()'), 'booking cards render before location refresh');
-  assert.match(load, /finally \{\s*box\.setAttribute\('aria-busy','false'\);/);
+  assert.match(load, /finally \{\s*if \(isCurrent\(\)\) box\.setAttribute\('aria-busy','false'\);/);
 });
 
 test('customer booking list survives rejected supplementary contact, refund, and cancellation RPCs', () => {
