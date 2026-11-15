@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115200000_push_delivery_lease_fencing.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115200001_push_delivery_lease_fencing.sql'), 'utf8');
 const contract = fs.readFileSync(path.join(root, 'supabase/tests/database/push_delivery_lease_fencing.test.sql'), 'utf8');
 
 for (const [label, fnName, rowName, maxAttempts] of [
