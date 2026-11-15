@@ -2,7 +2,7 @@
 
 - Admin booking table में historical labour/material/quote fields पहले से read-only थे; उन्हें उसी रूप में रखा। Generic status dropdown को हटाकर status confirmation selector केवल unassigned legacy `new` booking पर सीमित किया, जहाँ केवल `new → confirmed` उपलब्ध है। अन्य सभी bookings (नई server-timed category bookings सहित) में status read-only दिखता है।
 - `saveBookingInternal` का dedicated `srk_admin_confirm_legacy_booking` guard अपरिवर्तित रखा; कोई direct `service_bookings` table update नहीं जोड़ा। Manual-payment controls और अलग verified payment RPC path बरकरार हैं।
-- Regression test `tests/admin-legacy-quote-retirement.test.js` जोड़ा। Remote-fetched source पर 8 focused assertions PASS: conditional status gate, read-only quote cell, dedicated RPC guard और no direct table update। GitHub Actions run इस commit के लिए अभी उपलब्ध नहीं; Node CI PASS का दावा नहीं।
+- Regression test `tests/admin-legacy-quote-retirement.test.js` जोड़ा। Remote-fetched source पर 8 focused source predicates PASS: conditional status gate, read-only quote cell, dedicated RPC guard और no direct table update। GitHub Actions run इस commit के लिए अभी उपलब्ध नहीं; Node CI PASS का दावा नहीं।
 - Feature Branch source only; कोई DB migration, payment, refund, payout, Production change, merge या deployment नहीं किया।
 
 ## 2026-11-15 — Admin प्रोजेक्ट प्रगति कार्ड का मास्टर चेकलिस्ट से मिलान
