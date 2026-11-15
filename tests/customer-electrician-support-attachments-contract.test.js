@@ -1,0 +1,87 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.resolve(__dirname, '..');
+const customer = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
+const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
+const customerSchema = fs.readFileSync(path.join(root, 'supabase/migrations/20261113220000_customer_support_conversation_schema.sql'), 'utf8');
+const customerAttachments = fs.readFileSync(path.join(root, 'supabase/migrations/20261113230000_support_attachment_paths_and_admin_message_list.sql'), 'utf8');
+const electricianSchema = fs.readFileSync(path.join(root, 'supabase/migrations/20261114350000_electrician_support_tickets_and_admin_inbox.sql'), 'utf8');
+
+function functionBody(source, name) {
+  const start = source.indexOf('async function ' + name + '(');
+  assert.ok(start >= 0, name + ' client handler exists');
+  const tail = source.slice(start + 1);
+  const next = tail.search(/\n(?:async )?function\s+[A-Za-z0-9_$]+\s*\(/);
+  return source.slice(start, next < 0 ? source.length : start + 1 + next);
+}
+
+test('customer complaint creation and thread reads use the customer-scoped RPC contracts', () => {
+  const create = functionBody(customer, 'createCustomerSupportComplaint');
+  const list = functionBody(customer, 'loadCustomerSupportComplaints');
+  const messages = functionBody(customer, 'loadCustomerSupportMessages');
+  assert.match(create, /srk_customer_create_booking_complaint/);
+  assert.match(create, /p_booking_id:bookingId,p_category:category,p_description:description/);
+  assert.match(list, /srk_customer_list_booking_complaints/);
+  assert.match(messages, /srk_customer_list_booking_complaint_messages/);
+  assert.match(messages, /request!==customerSupportThreadRequest/);
+  assert.match(customerSchema, /where c\.id=p_complaint_id and c\.customer_user_id=v_user_id/);
+});
+
+test('customer attachment upload enforces count, MIME and size before upload and links only uploaded owned objects', () => {
+  const send = functionBody(customer, 'sendCustomerSupportMessage');
+  assert.match(send, /files\.length>5/);
+  assert.match(send, /image\/jpeg','image\/png','image\/webp','application\/pdf/);
+  assert.match(send, /f\.size>10485760/);
+  assert.match(send, /srk-customer-support'\)\.upload\(path,file/);
+  assert.match(send, /srk_customer_link_complaint_message_attachment/);
+  assert.match(send, /if\(pendingUploadPath\).*?remove\(\[pendingUploadPath\]\)/s);
+  assert.match(customerSchema, /p_storage_path not like v_user_id::text \|\| '\/' \|\| p_complaint_id::text \|\| '\/%'/);
+  assert.match(customerSchema, /o\.bucket_id='srk-customer-support'[\s\S]*?o\.owner_id=v_user_id::text/);
+  assert.match(customerSchema, /p_file_size_bytes not between 1 and 10485760/);
+});
+
+test('customer attachment listing checks complaint ownership and client creates short-lived private signed URLs', () => {
+  const load = functionBody(customer, 'loadCustomerSupportAttachments');
+  assert.match(load, /srk_customer_list_complaint_message_attachments/);
+  assert.match(load, /createSignedUrl\(a\.storage_path,300\)/);
+  assert.match(customerAttachments, /where c\.id=p_complaint_id and c\.customer_user_id=v_user_id/);
+  assert.match(customerSchema, /values\('srk-customer-support','srk-customer-support',false,10485760/);
+  assert.match(customer, /link\.rel='noopener noreferrer'/);
+  assert.match(customer, /body\.textContent=row\.body\|\|''/);
+});
+
+test('electrician support client creates, lists, opens and replies through self-service RPCs', () => {
+  const create = functionBody(electrician, 'createElectricianSupportTicket');
+  const open = functionBody(electrician, 'openElectricianSupportThread');
+  const reply = functionBody(electrician, 'sendElectricianSupportReply');
+  const list = functionBody(electrician, 'loadElectricianSupportTickets');
+  assert.match(create, /srk_electrician_create_support_ticket/);
+  assert.match(list, /srk_electrician_list_my_support_tickets/);
+  assert.match(open, /srk_electrician_list_my_support_messages/);
+  assert.match(open, /request!==electricianSupportThreadRequest/);
+  assert.match(reply, /srk_electrician_send_support_message/);
+  assert.match(reply, /await openElectricianSupportThread\(ticketId\)/);
+  assert.match(open, /esc\(m\.body\)/);
+  assert.match(list, /esc\(t\.subject\)/);
+});
+
+test('electrician support backend scopes tickets to authenticated owner and rejects closed-ticket replies', () => {
+  assert.match(electricianSchema, /where user_id=v_uid\s+order by t\.updated_at desc/);
+  assert.match(electricianSchema, /where t\.id=p_ticket_id and t\.user_id=v_uid/);
+  assert.match(electricianSchema, /if v_status='closed' then raise exception 'TICKET_CLOSED'/);
+  assert.match(electricianSchema, /where b\.id=p_booking_id and b\.assigned_electrician_id=v_profile\.id/);
+  assert.match(electricianSchema, /public\.is_srk_admin\(\)/);
+  assert.match(electricianSchema, /grant execute on function public\.srk_electrician_create_support_ticket\(text,text,text,uuid\) to authenticated/i);
+});
+
+test('customer and electrician support UI validate message length and prevent duplicate sends', () => {
+  const customerSend = functionBody(customer, 'sendCustomerSupportMessage');
+  const electricianReply = functionBody(electrician, 'sendElectricianSupportReply');
+  assert.match(customerSend, /customerSupportSendBusy/);
+  assert.match(customerSend, /body\.length>4000/);
+  assert.match(electricianReply, /electricianSupportReplyBusy/);
+  assert.match(electricianReply, /body\.length>4000/);
+});
