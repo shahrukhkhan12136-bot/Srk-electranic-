@@ -971,3 +971,17 @@ Attachment linker Storage object के bucket ID, path prefix, customer ownersh
 - Source order एक उपयोगी dependency sequence देता है, लेकिन इससे Production application या migration replay safety सिद्ध नहीं होती। Duplicate 20261109 prefix, approved baseline, remote migration lineage और Production provenance gates पहले जैसे खुले हैं।
 
 यह Section 30 की “support base/Storage source नहीं मिला” वाली provisional बात को supersede करता है। Section 30 का `is_srk_admin()` provenance finding अभी भी लागू है। कोई SQL execute, migration replay, pgTAP run, Production access/change, DDL या application source modification नहीं हुआ।
+
+
+## 32. Admin Staff RBAC migration और Main Admin helper dependency — 16 Nov 2026
+
+Read-only inspection of `20261114390000_admin_staff_rbac_foundation.sql`, `20261116100000_fix_staff_permission_helper_volatility.sql`, and `20261115230000_admin_booking_direct_write_closure.sql` confirms:
+
+- `20261114390000_admin_staff_rbac_foundation.sql` introduces `public.srk_has_admin_permission(text)` and the staff/session/audit/support-assignment RPC family. Its Main Admin bypass and multiple management paths call `public.is_srk_admin()`; it does not define that Main Admin helper.
+- The staff migration explicitly keeps Main Admin identity in `public.srk_admin_users` and states that staff identities must not be inserted there. This is an important role-separation rule: delegated staff permissions are not equivalent to Main Admin identity.
+- The 16 Nov volatility-fix migration replaces `srk_has_admin_permission(text)`; it still calls `public.is_srk_admin()` and does not create the Main Admin helper.
+- The 15 Nov direct-write closure RPCs also call `public.is_srk_admin()` without defining it.
+
+Therefore the Admin helper gap is not isolated to the older complaint/commission migrations: later Staff RBAC and booking-write-closure migrations also depend on it. A future approved baseline must supply the exact Main Admin helper and its allow-list table before these dependents. Do not substitute `srk_is_admin()` or `srk_has_admin_permission()` for `is_srk_admin()`; they have different names and roles.
+
+No migration or policy was changed. No database execution, Production access, migration replay, or deployment occurred.
