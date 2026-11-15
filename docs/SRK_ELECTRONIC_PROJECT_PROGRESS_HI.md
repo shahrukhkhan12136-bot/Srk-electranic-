@@ -2576,3 +2576,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added `supabase/tests/database/legacy_manual_payment_and_itemized_receipt.test.sql`: pgTAP plan 18, source assertions 18/18. यह assertion-count/source review है; PostgreSQL pgTAP runtime अभी execute नहीं हुआ।
 - Admin inline JavaScript parse check PASS. Migration SQL अभी किसी database पर apply नहीं हुई; Node/pgTAP runtime, role/JWT, payout trigger and receipt end-to-end checks pending. No payment, booking mutation, provider call, production write, deployment, merge or mobile QA.
 - Commits: migration `75f831b`, fail-closed state correction `5019379`, pgTAP `6010327` + assertion correction `ea92edd`, Admin quote guard `5da117d`, Admin itemized breakdown `6d00474`.
+
+
+## 2026-11-15 — Master Checklist को एक authoritative tracker में consolidate किया
+
+- पुरानी 451-line checklist में 78 unchecked entries थीं; इनमें कई पुराने Push implementation items और एक ही final QA/approval gate अलग-अलग addenda में दोहराए गए थे। इन्हें progress history से मिलाकर duplicate नहीं दोहराने वाली 114-line authoritative Master Checklist बनाई। अब 23 स्पष्ट, non-duplicated open gates हैं; इनमें मुख्यतः founder portrait/Welcome Screen, non-Push runtime verification, managed Push parity/integration, अंतिम source consistency और owner approval हैं।
+- Push implementation/runtime के verified items और legacy manual-payment implementation को checklist में complete किया; local PostgreSQL Push runtime तथा Node/Deno results का evidence boundary भी दर्ज किया। Production apply/deploy/merge/mobile QA को pending/approval-gated ही रखा।
+- Legacy payment follow-up commits के बाद final migration state: `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` (last correction `0e6b01d`); pgTAP file plan/assertion count 18/18; Admin inline JavaScript parse PASS. SQL/pgTAP runtime अभी नहीं चला।
+- Master Checklist commit: `992ca92`; stale missing-RPC wording correction: `8adf5ca`; progress log commit this section.
