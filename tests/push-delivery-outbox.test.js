@@ -50,4 +50,12 @@ test('outbox migration atomically removes the legacy synchronous push trigger', 
   assert.notEqual(outboxCreate, -1);
   assert.ok(legacyDrop < outboxCreate);
   assert.match(migration, /AFTER INSERT ON public\.job_offers/);
+  assert.match(migration, /DROP TRIGGER IF EXISTS trg_srk_push_job_offer/);
+});
+
+test('outbox migration fails fast when required schema prerequisites are absent', () => {
+  assert.match(migration, /to_regnamespace\('srk_private'\)/);
+  assert.match(migration, /job_offers\.expires_at/);
+  assert.match(migration, /electrician_profiles\.available_for_work/);
+  assert.match(migration, /subscription id\/user_id\/endpoint\/p256dh\/auth columns/);
 });
