@@ -872,3 +872,50 @@ Read-only source inspection covered the repository-root files `COMPLETE_DATABASE
 The repository-root SQL files are historical setup scripts, not an approved immutable snapshot of the current Production schema or a complete clean-replay baseline. They must not be treated as a direct `supabase db reset` input without a separately reviewed baseline and dependency manifest. This finding does not imply that the historical scripts are wrong for their original purpose.
 
 No files were edited except this report. No SQL was executed, no Supabase CLI/Docker/PostgreSQL/pgTAP was run, and no Production connection, query, migration, or data change occurred.
+
+
+## 30. Support/complaint schema, Storage policy और Admin helper provenance — 16 Nov 2026
+
+इस चरण में current feature branch के source और संबंधित pgTAP test का read-only निरीक्षण किया गया। खास तौर पर complaint base tables, private Storage bucket/policies और `public.is_srk_admin()` की introducing source खोजी गई।
+
+### 30.1 Complaint base tables — introducing source अभी नहीं मिला
+
+`20261113230000_support_attachment_paths_and_admin_message_list.sql` में ये पहले से मौजूद objects उपयोग किए गए हैं:
+
+- `public.srk_booking_complaints` — customer ownership और complaint existence जाँचने के लिए;
+- `public.srk_booking_complaint_messages` — Admin message thread पढ़ने के लिए;
+- `public.srk_booking_complaint_message_attachments` — attachment metadata पढ़ने के लिए।
+
+यह migration इन तीनों base tables को CREATE नहीं करती। संबंधित support pgTAP test अतिरिक्त रूप से `srk_booking_complaint_messages_id_thread_uidx` unique index और `srk_complaint_attachment_message_thread_fk` foreign key की अपेक्षा करता है।
+
+इस read-only branch search में इन base tables/index/FK को बनाने वाली कोई अलग migration या historical starter SQL definition नहीं मिली। इसलिए इनके exact columns, constraints, indexes, RLS policies और introducing migration अभी **unverified** हैं। Search results की सीमा के कारण इसे पूरे repository में अनुपस्थिति का अंतिम प्रमाण न माना जाए; अगली inventory pass में migration tree की प्रत्यक्ष सूची और हर candidate file की जाँच आवश्यक होगी।
+
+### 30.2 Private support Storage bucket/policies — source gap
+
+Customer frontend `srk-customer-support` नाम के Storage bucket में file upload और 300-second signed URL बनाता है। Support pgTAP test इन objects/functions की मौजूदगी और सुरक्षा की अपेक्षा करता है:
+
+- `public.srk_customer_support_object_access(text,boolean)`;
+- Storage object policy `srk_customer_support_read_own_or_admin` on `storage.objects`;
+- `public.srk_customer_link_complaint_message_attachment(uuid,uuid,text,text,text,bigint)`;
+- bucket `srk-customer-support`, object owner और complaint linkage की जाँच।
+
+मौजूदा attachment-listing migration इन Storage objects/functions को define नहीं करती। Exact-name branch search में इनके introducing SQL का परिणाम नहीं मिला। इस कारण bucket creation/configuration, private/public setting, upload/read/delete policies, object ownership checks और attachment-link RPC का source provenance **unresolved** है। केवल frontend reference या test assertion से Storage bucket/policy का अस्तित्व सिद्ध नहीं होता।
+
+### 30.3 `public.is_srk_admin()` — historical setup में definition मिली, migration में नहीं
+
+अब historical root SQL में exact definition की पुष्टि हुई:
+
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` में `CREATE OR REPLACE FUNCTION public.is_srk_admin()` मौजूद है; यह `SECURITY DEFINER`, `STABLE`, `SET search_path = public, auth` है और `public.srk_admin_users` में `auth.uid()` की मौजूदगी जाँचता है। यह PUBLIC से EXECUTE revoke कर `authenticated` को grant करता है।
+- `COMPLETE_DATABASE_SETUP.sql` में इसी function की Admin email-login compatibility definition भी मौजूद है।
+- उसी historical setup में पहले `public.srk_is_admin()` नाम का अलग helper भी है। दोनों नाम अलग database objects हैं; इन्हें interchangeable नहीं माना जा सकता।
+- इस branch search में `public.is_srk_admin()` की introducing versioned migration नहीं मिली। कई बाद की migrations (booking read policy, commission reporting, wallet और support message listing) इसे dependency के रूप में call करती हैं।
+
+अतः helper का historical setup source ज्ञात है, लेकिन current migration chain में इसे स्थापित करने वाला authoritative versioned migration और clean-replay placement अभी नहीं मिला। Baseline में helper मौजूद होने की पुष्टि के बिना dependent migrations का replay सुरक्षित घोषित नहीं किया जा सकता।
+
+### 30.4 प्रभाव और अगला read-only कदम
+
+यह support area केवल attachment-listing function तक सीमित नहीं है। इसकी runtime dependency chain में complaint tables, message/attachment relational integrity, private Storage bucket/policies, attachment-link RPC और Admin helper सभी शामिल हैं। इनके बिना support pgTAP file की function/policy introspection assertions भी fail या unresolved हो सकती हैं।
+
+अगला सुरक्षित कदम migration directory की प्रत्यक्ष पूरी inventory से support/complaint/Storage candidate files पहचानना और उनके complete SQL bodies की जाँच करना है। यदि कोई introducing source वास्तव में branch में नहीं है, तो उसे स्पष्ट missing-baseline item के रूप में दर्ज किया जाए; अनुमान से नया schema या migration न बनाया जाए।
+
+**सीमा:** यह source-only निरीक्षण है। कोई SQL execute नहीं हुआ; pgTAP, Supabase CLI, Docker या PostgreSQL नहीं चलाया गया; Production से संपर्क/पढ़ाई/बदलाव नहीं हुआ; कोई migration, application source या Storage object नहीं बदला गया।
