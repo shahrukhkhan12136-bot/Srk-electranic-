@@ -3528,3 +3528,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - GPT-1 का SOS UI source + Node contract verification पूरा। Browser/mobile visual QA consolidated final mobile QA चरण तक स्थगित है।
 - SOS का वास्तविक database RPC, Admin/Support acknowledgement queue, SMS/Push delivery और end-to-end alert अभी GPT-2 backend integration के बिना पूरा नहीं माना जाएगा।
 - कोई production DB, merge, deployment या mobile QA इस चरण में नहीं किया गया।
+
+
+## 2026-11-15 — GPT-1 SOS integration gate और documentation reconciliation
+- GPT-1 ने Customer/Electrician SOS source और Node contract को पुनः पढ़ा: दोनों में तीन स्वीकृत reason codes, अलग अंतिम “SOS भेजें”, cancel/discard और केवल `p_reason` के साथ `srk_create_sos_alert` RPC call मौजूद है। SOS control Active Work `in_progress` स्थिति तक सीमित है।
+- Latest recorded CI run `43726275569`, job `132849770691`: **163/163 Node tests पास**। यह source/Node verification है; browser/mobile runtime या live backend delivery नहीं।
+- SOS requirement document में पुराना विरोधाभासी वाक्य सुधारा और GPT-1/GPT-2 integration gate दर्ज किया; commit `038f9da4096f7df16b9d5a16cb9ded2aa957b3cb`।
+- GPT-2 backend RPC, Admin/Support queue/acknowledgement, SMS/Push delivery और live E2E के लिए इस pass में सत्यापित evidence नहीं मिला; उन्हें pending ही रखा गया है। GPT-1 अगला कदम GPT-2 के वास्तविक contract/commit मिलने पर request/response और failure-state integration मिलाना है।
+- कोई Production DB/provider action, merge/deploy या mobile QA नहीं किया गया।
