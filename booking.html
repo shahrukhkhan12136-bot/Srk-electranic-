@@ -1432,15 +1432,16 @@ async function loadCustomerAvatar(path) {
 }
 async function loadCustomerProfile() {
  if(!customerSb)return;
- const {data:sessionData}=await customerSb.auth.getSession();
- const session=sessionData.session;
- if(!session)return;
- const phone=session.user.phone||'';
- const digits=String(phone).replace(/\\D/g,'');
- const displayPhone=digits.startsWith('91')&&digits.length===12?digits.slice(2):digits;
- document.getElementById('customerProfilePhone').value=displayPhone||phone;
  setCustomerProfileStatus('प्रोफ़ाइल लोड हो रही है…');
  try {
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  const session=sessionData?.session;
+  if(!session){setCustomerProfileStatus('प्रोफ़ाइल देखने के लिए OTP लॉगिन करें।',true);return;}
+  const phone=session.user.phone||'';
+ const digits=String(phone).replace(/\\D/g,'');
+ const displayPhone=digits.startsWith('91')&&digits.length===12?digits.slice(2):digits;
+  document.getElementById('customerProfilePhone').value=displayPhone||phone;
   const {data,error}=await customerSb.rpc('srk_customer_get_my_profile');
   if(error)throw error;
   const profile=Array.isArray(data)?data[0]:data;
@@ -1507,10 +1508,11 @@ function setSavedAddressStatus(message, isError=false) {
 async function loadCustomerSavedAddresses() {
  const select=document.getElementById('savedAddressSelect');
  if(!customerSb) return;
- const {data:sessionData}=await customerSb.auth.getSession();
- if(!sessionData.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';return;}
  select.disabled=true; setSavedAddressStatus('सेव किए गए पते लोड हो रहे हैं…');
  try {
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  if(!sessionData?.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';setSavedAddressStatus('सेव किए गए पते देखने के लिए OTP लॉगिन करें।');return;}
   const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
   if(error) throw error;
   customerSavedAddresses=Array.isArray(data)?data:[];
