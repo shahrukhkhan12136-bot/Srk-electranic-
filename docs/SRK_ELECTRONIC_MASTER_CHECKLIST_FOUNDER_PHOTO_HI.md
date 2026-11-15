@@ -193,3 +193,15 @@
 - [ ] Dead-letter alerting, retention/cleanup और rollback rehearsal।
 
 **नोट:** Production में आवश्यक offer expiry और electrician availability columns अभी absent हैं। इसलिए Production rollout blocked है। कोई Production write/deploy नहीं हुआ।
+
+
+### Push Retry/Lease Deep Audit — 15 November 2026
+- [x] Outbox exhausted lease (8th attempt) expiry पर dead-letter recovery।
+- [x] Device delivery exhausted lease (5th attempt) expiry पर dead-letter recovery।
+- [x] NULL lock lease भी stale/recoverable।
+- [x] सभी push SECURITY DEFINER RPCs में NULL-safe service-role guard।
+- [x] Sequential worker batch 20 से 3; database lease 5 मिनट।
+- [ ] Isolated load test में Netlify execution duration और 5-minute lease verify करना।
+- [ ] Crash/reclaim scenarios का वास्तविक database integration test चलाना।
+
+**स्थिति:** Source-level सुधार और assertions feature branch में हैं; runtime tests अभी नहीं चले। Production में कोई बदलाव नहीं।
