@@ -269,6 +269,10 @@ const customerUiTranslations = {
  'ग्राहक लॉगिन':'Customer Login',
  'अपना मोबाइल नंबर सत्यापित करके अपनी बुकिंग देखें।':'Verify your mobile number to view your bookings.',
  'मोबाइल नंबर':'Mobile Number',
+ 'अपना मोबाइल नंबर':'Enter your mobile number',
+ 'पहले ग्राहक OTP लॉगिन करें':'Please log in with customer OTP first',
+ 'अपना पूरा नाम':'Enter your full name',
+ '6 अंकों का PIN Code':'6-digit PIN Code',
  'OTP भेजें':'Send OTP',
  'SMS से मिला OTP':'OTP received by SMS',
  'OTP सत्यापित करें':'Verify OTP',
@@ -383,8 +387,8 @@ function applyCustomerUiLanguage(language) {
   const key = original.trim();
   if (!key) continue;
   const translated = lang === 'en' ? (customerUiTranslations[key] || key) : key;
-  const leading = original.match(/^\\s*/)?.[0] || '';
-  const trailing = original.match(/\\s*$/)?.[0] || '';
+  const leading = original.match(/^\s*/)?.[0] || '';
+  const trailing = original.match(/\s*$/)?.[0] || '';
   node.nodeValue = leading + translated + trailing;
  }
  document.querySelectorAll('input[placeholder],textarea[placeholder],[title],[aria-label]').forEach(el => {
@@ -412,8 +416,8 @@ const customerUiLanguageObserver = new MutationObserver(records => {
     if (!customerUiOriginalText.has(node)) customerUiOriginalText.set(node, node.nodeValue);
     const original = customerUiOriginalText.get(node), key = original.trim();
     if (customerUiTranslations[key]) {
-     const leading = original.match(/^\\s*/)?.[0] || '';
-     const trailing = original.match(/\\s*$/)?.[0] || '';
+     const leading = original.match(/^\s*/)?.[0] || '';
+     const trailing = original.match(/\s*$/)?.[0] || '';
      node.nodeValue = leading + customerUiTranslations[key] + trailing;
     }
    } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -423,8 +427,8 @@ const customerUiLanguageObserver = new MutationObserver(records => {
      if (!customerUiOriginalText.has(child)) customerUiOriginalText.set(child, child.nodeValue);
      const original = customerUiOriginalText.get(child), key = original.trim();
      if (customerUiTranslations[key]) {
-      const leading = original.match(/^\\s*/)?.[0] || '';
-      const trailing = original.match(/\\s*$/)?.[0] || '';
+      const leading = original.match(/^\s*/)?.[0] || '';
+      const trailing = original.match(/\s*$/)?.[0] || '';
       child.nodeValue = leading + customerUiTranslations[key] + trailing;
      }
     }
