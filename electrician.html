@@ -474,7 +474,8 @@ async function respond(button,id,response){
   alert(response==='accepted'?'काम आपको असाइन हो गया।':'ऑफर मना कर दिया गया।');
   await refresh();
  }catch(e){
-  alert('ऑफर पर आपका जवाब सुरक्षित नहीं हो सका। ऑफर रीफ़्रेश करके स्थिति जाँचें, फिर दोबारा कोशिश करें।');
+  try{await refresh();alert('नेटवर्क जवाब नहीं मिला। ऑफर की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}
+  catch(_){alert('नेटवर्क जवाब नहीं मिला। ऑफर सूची रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
  }finally{
   electricianOfferResponseBusy.delete(id);
   buttons.forEach((b,i)=>{b.disabled=false;b.textContent=oldLabels[i]||'जवाब दें';});
