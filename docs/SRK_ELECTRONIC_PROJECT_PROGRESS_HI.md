@@ -3297,3 +3297,5 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - यह source migration + Node regression test correction है; Database पर migration apply नहीं हुई। CI run की प्रतीक्षा है; pgTAP/runtime role tests अब भी बाकी हैं।
 
 - Follow-up CI run `43718294235` में 154 में से 153 tests पास हुए; नया regression assertion regex over-escaped होने से fail हुआ, SQL source correction नहीं। Assertion को stable literal contract checks में बदला; corrected test के लिए CI फिर चल रहा है।
+
+- अतिरिक्त hardening: fixed search_path में `public` रखना अनावश्यक object-shadowing surface बना सकता था। अब दोनों SECURITY DEFINER RPCs के सभी `srk_private` table references fully-qualified हैं और final `search_path = ''` है; regression test उसी least-privilege contract को verify करता है।
