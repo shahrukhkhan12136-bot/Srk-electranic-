@@ -3709,3 +3709,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - pgTAP actor-ownership assertion को वास्तविक schema-qualified `b.customer_user_id=v_uid` expression से मिलाया।
 - Latest PR #8 head: `0679495a455d9e2b78d9ffbb2d323be07876b7ea`; Node CI run `43730886306` अभी pending/queued है, इसलिए इस latest head को PASS घोषित नहीं किया जा रहा। Earlier run `43730623836` on `480f90a` succeeded before these final hardening edits.
 - PostgreSQL/pgTAP runtime, SMS/Push provider integration, current/consented location, browser E2E और Production rollout अभी pending हैं। GPT-2 checklist **27/39 = 69%**; कोई checklist checkbox अभी close नहीं हुआ।
+
+
+### GPT-2 SOS backend + Admin/Support integration — CI follow-up, 15 Nov 2026
+- नवीनतम PR head `cd45dcf77ba998ce8d015d7d0edf038bba2373f8` पर Feature Branch Node workflow `43731064864` SUCCESS: **186 tests, 186 pass, 0 fail, 0 cancelled, 0 skipped**। यह Node source/contract suite है; PostgreSQL/pgTAP runtime नहीं।
+- SOS migration `20261115260000_sos_admin_support_alerts.sql` और Admin Panel integration को source से re-check किया: reason-only Customer/Electrician RPC, server-derived actor/active booking, per-booking एक pending case, private RLS tables, append-only event history, dedicated Support permissions, Main Admin/active Support queue, acknowledgement note और Staff audit मौजूद हैं।
+- Admin UI RPCs `srk_admin_list_sos_alerts`, `srk_admin_acknowledge_sos_alert`, `srk_admin_list_sos_alert_events` से जुड़ा है; UI स्पष्ट बताता है कि SMS/Push provider configured नहीं और पुलिस/112 को automatic alert नहीं जाता।
+- pgTAP contract file में plan **28/28** source assertions है; अभी किसी PostgreSQL instance पर execute नहीं हुआ। SMS/Push provider delivery, consented location, browser/mobile E2E और production readiness अभी प्रमाणित नहीं।
+- Migration का electrician ownership query `electrician_profiles.auth_user_id` भी पढ़ता है। इस column का authoritative baseline DDL अभी unresolved है; इसलिए migration replay/runtime readiness को complete नहीं मानें, जब तक exact base schema contract स्थापित न हो।
+- Latest observed checks: Netlify Deploy Preview SUCCESS; Vercel check अभी free build-rate-limit के कारण FAILURE। PR #8 Draft/Open/Unmerged। कोई Production migration, SMS/Push send, merge या deployment नहीं।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित; 12/39 शेष। Source integration और Node CI success को अभी checklist completion नहीं गिना गया।
