@@ -261,3 +261,13 @@
 - [ ] Node test suite और isolated concurrent stale-worker race test execute करें।
 
 **सीमा:** अभी कोई test execute, migration apply, deployment या real push नहीं किया गया।
+
+### Push Node source-contract test execution — 15 November 2026
+- [x] Disposable Vercel Sandbox में feature branch commit `bcf6b91dc6ab641c9684616d0f4f1445500dde96` checkout करके targeted Push tests चलाए।
+- [x] `push-delivery-outbox`, `push-subscription-delivery-ledger`, `push-job-offer-sender`: **37/37 PASS**।
+- [x] Run से मिले दो test assertion defects सुधारे: availability preflight column-name matcher और public GET response secret-leak matcher; updated targeted run फिर 37/37 PASS।
+- [x] Netlify worker का `node --check` सफल।
+- [ ] पूरे repository test suite के 5 शेष unrelated failures ठीक/जाँचें: accepted electrician-contact projection; Razorpay refund GET exact stored ID; तीन refund-webhook reconciliation cases। वर्तमान full run: **82 PASS / 5 FAIL / 87 total**।
+- [ ] Deno type/runtime check और PostgreSQL migration/RPC concurrency test चलाएँ; sandbox में Deno और PostgreSQL tools उपलब्ध नहीं थे।
+
+**सीमा:** ये Node source-contract tests हैं; Supabase migrations apply नहीं हुईं, SQL runtime/permissions/concurrency सत्यापित नहीं हुए। Production या live push पर कोई कार्रवाई नहीं हुई।
