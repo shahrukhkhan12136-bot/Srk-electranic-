@@ -9,8 +9,8 @@
 
 ## त्वरित प्रोजेक्ट प्रगति — 15 नवम्बर 2026
 
-- **63% पूरा:** 54 / 86 मुख्य चेकलिस्ट आइटम।
-- **37% बाकी:** 32 / 86 मुख्य चेकलिस्ट आइटम।
+- **64% पूरा:** 55 / 86 मुख्य चेकलिस्ट आइटम।
+- **36% बाकी:** 31 / 86 मुख्य चेकलिस्ट आइटम।
 - यह प्रतिशत ऊपर के वर्तमान 9 मुख्य sections के checkbox count पर आधारित है; यह Production readiness, समय, लागत या code completion का प्रतिशत नहीं है।
 - बाकी मदों में isolated runtime/database tests, Main Production schema parity, browser/mobile visual QA और release/owner approval शामिल हैं।
 - **GPT-1 का अलग कार्यक्षेत्र:** Customer (10), Electrician (10), Welcome Screen/Founder Photo (6) — कुल 26 मदों में 19 पूर्ण, 7 शेष: **73% पूरा / 27% बाकी**। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
