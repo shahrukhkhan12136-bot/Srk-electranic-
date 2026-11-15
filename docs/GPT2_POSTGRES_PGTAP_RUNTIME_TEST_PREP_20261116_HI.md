@@ -127,3 +127,24 @@ Feature Branch पर `.github/workflows/supabase-schema-ci.yml` मिला।
 - Workflow branch guard and five migration paths inspected directly.
 - Workflow execution status: NOT RUN in this audit.
 - PostgreSQL/pgTAP: NOT RUN.
+
+
+## 9. Duplicate migration version / Supabase CLI risk — 16 Nov 2026
+
+- Feature Branch में ये दो अलग files एक ही 8-digit version prefix 20261109 से शुरू होती हैं:
+  - 20261109_electrician_inspection_quotes_and_service_only_commission.sql
+  - 20261109_allow_quote_approval_booking_states.sql
+- Supabase CLI migration convention <timestamp>_<name>.sql है; migration history table version/timestamp को track करती है। इसलिए दोनों filenames को दो स्वतंत्र, सुरक्षित रूप से ordered migration versions मानना उचित नहीं है।
+- Supabase CLI v3 के migration list / db push documentation में local filenames और remote schema_migrations versions के timestamp-based comparison का वर्णन है। GitHub issue में 8-digit और उसी prefix से शुरू होने वाले 14-digit versions के ordering mismatch का उदाहरण भी दर्ज है। यह हमारे exact two-file case का CLI reproduction नहीं है; इसलिए exact error/behavior अभी UNVERIFIED है।
+- इस वजह से duplicate prefix को संभावित version collision / ordering blocker मानें, लेकिन बिना pinned CLI scratch reproduction के निश्चित CLI error घोषित न करें।
+- अगला सुरक्षित परीक्षण: Production credentials और network access से अलग disposable scratch checkout में Supabase CLI version pin करें; पहले केवल दो minimal dummy migrations के साथ समान version prefix का parser/list/reset behavior देखें। फिर exact project files की copy पर test करें, कोई project migration rename/delete/repair किए बिना। Scratch run के logs और CLI version दर्ज करें।
+- Remote history जानने के लिए supabase migration list --remote जैसी command documented है, लेकिन इस audit में कोई remote history command नहीं चलाई गई। Production history अज्ञात ही है।
+- supabase migration repair remote history table को बदल सकता है; owner-reviewed evidence और explicit approval के बिना इसे न चलाएँ।
+
+### Updated status
+
+- Duplicate version prefixes: SOURCE CONFIRMED.
+- Exact pinned-CLI behavior on these two files: NOT TESTED.
+- Remote supabase_migrations.schema_migrations entries: NOT INSPECTED.
+- Migration rename/delete/resequence/repair: NOT PERFORMED.
+- Local PostgreSQL replay / pgTAP: NOT RUN.
