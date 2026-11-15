@@ -3675,3 +3675,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Test file और README को branch से re-fetch करके content verify किया। इस नए test का CI run अभी उपलब्ध नहीं मिला; इसे PASS नहीं कहा जा रहा। SOS backend RPC/authorization/Admin queue/SMS/Push end-to-end अभी GPT-2 contract पर निर्भर है।
 - GPT-1 checklist **20/28 = 71%** अपरिवर्तित; documentation/test coverage update को feature completion नहीं गिना गया। Founder garden photo, Vercel Preview, final runtime/browser/mobile QA और owner acceptance अभी pending हैं।
 - कोई merge, Production deploy, database migration apply या paid service/staging creation नहीं की गई।
+
+
+## 2026-11-15 — GPT-1 Customer navigation और SOS two-step correction
+- Customer Profile के “सेव किए गए पते प्रबंधित करें” बटन से booking form Home tab के अंदर hidden हो सकता था। अब यह पहले Home tab activate करता है, फिर अगले animation frame में booking form और saved-address selector पर scroll/focus करता है। Commit: `de4cba4cfeb9f34c3f52c82ceeb6efb1c40600fd`.
+- स्वीकृत SOS flow ठीक दो स्पष्ट user steps का है: SOS विकल्प खोलना/कारण चुनना, फिर अलग “SOS भेजें” बटन। पुराने अतिरिक्त browser confirm modal को Customer और Electrician submit handlers से हटाया; अंतिम बटन स्वयं explicit consent action है। Commits: Customer `e0d8185f00a36ce63e75e2feb5b6f1e6d09e9b8c`, Electrician `d40ef63f5433522d38f2ca34cc37992f71ec75d9`.
+- SOS source contract test को अतिरिक्त modal के बजाय exact two-step flow verify करने के लिए बदला। Commit: `3075d10a5e4fb0e723ccadcf2f91962bc0f46fc1`.
+- Updated source files re-fetch करके verify किए: दोनों SOS handlers reason-only RPC payload रखते हैं और extra confirm modal नहीं है। Customer saved-address navigation fix भी source में verify है। Node/CI/browser/mobile runtime test अभी इस नए commit पर प्रमाणित नहीं; कोई PASS दावा नहीं। Backend RPC/authorization/Admin queue/SMS/Push end-to-end GPT-2 dependency है।
+- GPT-1 checklist **20/28 = 71%** अपरिवर्तित; ये source/contract alignment fixes हैं, नए checklist item completion नहीं। कोई merge, Production deploy, migration apply या paid staging creation नहीं।
