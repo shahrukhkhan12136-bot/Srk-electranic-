@@ -961,7 +961,10 @@ async function customerPrintPaymentReceipt(bookingId){
   printWindow.focus();
  }catch(error){
   printWindow.close();
-  alert('भुगतान रसीद उपलब्ध नहीं होasync function loadCustomerPaymentHistory(reset=true) {
+  alert('भुगतान रसीद उपलब्ध नहीं हो सकी। कृपया सत्यापित भुगतान की स्थिति जाँचें या सहायता टीम से संपर्क करें।');
+ }
+}
+async function loadCustomerPaymentHistory(reset=true) {
  if(!customerSb)return false;
  if(customerPaymentHistoryBusy){if(reset){customerPaymentHistoryRequest++;customerPaymentHistoryResetPending=true;}return false;}
  const requestId=++customerPaymentHistoryRequest;
