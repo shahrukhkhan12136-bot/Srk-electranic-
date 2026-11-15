@@ -9,6 +9,7 @@ const staffMigration = fs.readFileSync(path.join(root, 'supabase/migrations/2026
 const staffFunction = fs.readFileSync(path.join(root, 'supabase/functions/admin-staff-management/index.ts'), 'utf8');
 const workMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261114240000_server_authoritative_customer_approved_work_timer.sql'), 'utf8');
 const legacyStatusMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115160000_legacy_booking_status_write_guard.sql'), 'utf8');
+const manualRefundMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115130000_admin_manual_refund_request_completion.sql'), 'utf8');
 
 test('Admin refund queue does not offer another launch action after a processed refund', () => {
   assert.match(admin, /state==='approved'\s*&&\s*r\.refund_record_status!=='processed'/);
@@ -69,4 +70,15 @@ test('Admin generic Save keeps historical quote read-only and uses dedicated leg
   assert.match(admin, /sb\.rpc\('srk_admin_confirm_legacy_booking',\{p_booking_id:id\}\)/);
   assert.match(admin, /status!==booking\.status&&\!\( !booking\.selected_category&&booking\.status==='new'&&status==='confirmed'\)/);
   assert.doesNotMatch(admin, /\.update\(\{status:/);
+});
+
+
+test('new-category manual refunds reconcile against immutable labour bill and settled fee ledger', () => {
+  assert.match(manualRefundMigration, /v_booking\.selected_category is not null/);
+  assert.match(manualRefundMigration, /NEW_CATEGORY_REFUND_REQUIRES_COMPLETED_BOOKING/);
+  assert.match(manualRefundMigration, /customer_user_id=v_booking\.customer_user_id/);
+  assert.match(manualRefundMigration, /electrician_profile_id is distinct from v_booking\.assigned_electrician_id/);
+  assert.match(manualRefundMigration, /CANCELLATION_FEE_ITEMS_NOT_FULLY_SETTLED/);
+  assert.match(manualRefundMigration, /v_expected_paise:=v_labour_paise\+v_fee_paise/);
+  assert.match(manualRefundMigration, /MANUAL_REFUND_AMOUNT_DOES_NOT_MATCH_IMMUTABLE_LABOUR_AND_FEE_LEDGER/);
 });
