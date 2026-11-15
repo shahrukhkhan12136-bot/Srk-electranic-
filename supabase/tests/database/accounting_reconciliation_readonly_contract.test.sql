@@ -1,5 +1,5 @@
 begin;
-select plan(65);
+select plan(67);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -236,6 +236,13 @@ select ok(has_table_privilege('service_role','public.srk_route_transfers','selec
   and has_table_privilege('service_role','public.srk_route_transfers','insert')
   and has_table_privilege('service_role','public.srk_route_transfers','update'),
   'only server service role has the Route transfer ledger operational grants');
+
+select ok(position('auth.uid() is null or not public.is_srk_admin()' in lower(pg_get_functiondef(
+  'public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)))>0,
+  'payout settlement independently requires Main Admin authorization');
+select ok(position('auth.uid() is null or not public.is_srk_admin()' in lower(pg_get_functiondef(
+  'public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0,
+  'manual refund recording independently requires Main Admin authorization');
 
 select * from finish();
 rollback;
