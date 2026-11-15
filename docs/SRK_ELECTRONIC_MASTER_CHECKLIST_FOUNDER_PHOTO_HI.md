@@ -360,3 +360,18 @@
 - [ ] Node test suite और pgTAP को isolated environment में execute करके runtime result दर्ज करना.
 - [ ] Razorpay sandbox refund + webhook.created/processed/failed ordering और retry scenarios runtime verify करना.
 - Commits: `7a5cf82`, `60eeeb6`, `8e3c185`, `146fd37`, `80c57ee`, `3ce9541`, `c8ea217`.
+
+
+### Electrician KYC documents और activation security — 15 नवम्बर 2026
+- [x] Admin/Electrician UI के सभी KYC RPC calls और existing preview migration का inventory-to-source मिलान; missing schema/RPC contracts पहचाने.
+- [x] Private 5 MB PDF/JPG/PNG KYC bucket और owner-folder upload / owner+Main Admin signed-preview read policies.
+- [x] Private document records, append-only review event history, electrician submit/list RPCs और Admin queue/review RPCs.
+- [x] Main Admin-only KYC review; rejection/resubmission के लिए कारण अनिवार्य; latest identity + address proof दोनों approve हुए बिना activation बंद.
+- [x] OTP-confirmed linked Auth profile + approved rate tier + required KYC documents के बिना Active रोकने वाला RPC और direct-table-write trigger.
+- [x] KYC status invalid होने पर active partner deactivate, availability बंद, unaccepted offers close और sequential dispatch advance; accepted bookings untouched.
+- [x] Rate-tier approval को भी latest required KYC proof से पहले रोकने वाला trigger guard.
+- [x] pgTAP source plan/assertion count 21/21; runtime execution अभी बाकी.
+- [x] Admin और Electrician inline JavaScript parse checks PASS.
+- [ ] Isolated database पर migration + pgTAP runtime; private storage owner/Admin/non-owner/anon ACL; signed URL expiry; OTP + KYC + rate tier + activation flow; concurrent review/activation और dispatch race tests.
+- [ ] Production apply/deploy/merge और consolidated final mobile QA अभी नहीं हुए.
+- Feature branch current migration blob `3b6f6f2`, KYC test blob `3e53664`.
