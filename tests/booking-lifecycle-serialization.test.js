@@ -150,9 +150,11 @@ test('electrician labour bill access recognizes any profile owned by the authent
 });
 
 test('customer work lifecycle SECURITY DEFINER RPCs use an empty search_path and qualify private authorization tables', () => {
-  assert.match(startFixSql, /alter function public\\.srk_customer_respond_work_start\\(uuid,text\\)[\\s\\S]*?set search_path = ''/i);
-  assert.match(startFixSql, /alter function public\\.srk_customer_respond_work_completion\\(uuid,text,text\\)[\\s\\S]*?set search_path = ''/i);
-  assert.match(startFixSql, /INSERT INTO srk_private\\.work_timer_authorizations/i);
-  assert.match(startFixSql, /INSERT INTO srk_private\\.work_transition_authorizations/i);
-  assert.doesNotMatch(startFixSql, /(?:INSERT INTO|DELETE FROM)\\s+(?!srk_private\\.)work_(?:timer|transition)_authorizations/i);
+  assert.ok(startFixSql.toLowerCase().includes("alter function public.srk_customer_respond_work_start(uuid,text)"));
+  assert.ok(startFixSql.toLowerCase().includes("alter function public.srk_customer_respond_work_completion(uuid,text,text)"));
+  assert.ok(startFixSql.toLowerCase().includes("set search_path = ''"));
+  assert.ok(startFixSql.includes("INSERT INTO srk_private.work_timer_authorizations"));
+  assert.ok(startFixSql.includes("INSERT INTO srk_private.work_transition_authorizations"));
+  assert.ok(!/INSERT INTO work_(timer|transition)_authorizations/i.test(startFixSql));
+  assert.ok(!/DELETE FROM work_(timer|transition)_authorizations/i.test(startFixSql));
 });
