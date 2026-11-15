@@ -389,6 +389,10 @@ async function customerPrintPaymentReceipt(bookingId){
   const labourRow=Number.isFinite(Number(data.labour_amount))&&data.labour_amount!==null
    ? '<tr><td>इलेक्ट्रिशियन मेहनताना</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.labour_amount))+'</td></tr>'
    : '<tr><td colspan="2">भुगतान सत्यापित है; उपलब्ध रिकॉर्ड से मेहनताना अलग से प्रमाणित नहीं हो सका।</td></tr>';
+  const materialsAmount=Number(data.materials_amount||0);
+  const materialsRow=Number.isFinite(materialsAmount)&&materialsAmount>0
+   ? '<tr><td>सामान / पार्ट्स</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(materialsAmount))+'</td></tr>'
+   : '';
   const cancellationFeeRows=(Array.isArray(data.cancellation_fee_items)?data.cancellation_fee_items:[]).map(item=>
    '<tr><td>पुरानी Cancellation Fee · बुकिंग '+customerEsc(String(item.source_booking_id||'').slice(0,8))+'…</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(Number(item.amount_paise)/100))+'</td></tr>'
   ).join('');
