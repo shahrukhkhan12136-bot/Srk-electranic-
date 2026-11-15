@@ -3097,3 +3097,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Full repository CI is currently failing on a separate Razorpay webhook regression test: `matches an unpersisted provider refund by its internal refund-record note`, assertion false at `tests/razorpay-webhook-inbox.test.js:361`. This is outside the lifecycle changes; do not mark full suite green until repaired/re-run.
 - pgTAP SQL tests are present but were not executed; no Production migration, live booking, payment, or deployment action occurred.
 - Production migration parity and end-to-end testing remain pending. Keep the no-paid-staging-branch rule: only discuss staging cost/approval when implementation is complete and consolidated E2E is next. Final mobile QA remains deferred.
+
+
+## 2026-11-15 — GPT-2 कार्यक्षेत्र प्रतिशत अलग दिखाना
+
+- User clarification: प्रतिशत केवल GPT-2 की अपनी जिम्मेदारी का दिखना चाहिए; GPT-1 Customer/Electrician काम को इसमें नहीं जोड़ना।
+- गणना का scope: Master Checklist section 3 Admin/Support Staff (11 done, 2 pending), section 4 Payment/Accounting (8 done, 2 pending), section 8 Main DB audit/parity (7 done, 9 pending)।
+- कुल 39 मदों में 26 पूर्ण और 13 शेष: **67% पूरा / 33% बाकी** (rounded)।
+- Admin Panel में पूरे प्रोजेक्ट के 63% कार्ड से अलग GPT-2 का 67% progress card जोड़ा।
+- यह Feature Branch checklist implementation/audit progress है; Production rollout, isolated runtime verification और owner-approved release अलग gates हैं।
+- आगे GPT-2 scope की checklist बदलने पर प्रतिशत 26/39 के पुराने मान से नहीं, नई checkbox count से दोबारा निकालना होगा।
