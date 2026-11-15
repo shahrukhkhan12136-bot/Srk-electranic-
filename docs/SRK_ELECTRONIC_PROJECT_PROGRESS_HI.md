@@ -2870,3 +2870,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added four source-contract assertions. Accounting reconciliation contract is now plan(59) with 59 select ok assertions.
 - These are source-level assertions only. PostgreSQL/pgTAP runtime remains Not Run; CI status for the newest commits must be checked separately. The checks validate ledger/mapping consistency, not provider settlement or actual bank receipt.
 - No Route API calls, transfers, payouts, refunds, Production changes, deployment, merge or go-live.
+
+
+## 2026-11-15 — Customer translation gap pass and Electrician GPS exception handling
+
+- Added further Customer English dictionary entries for login/form placeholders, booking estimate text, map labels, OTP/login/payment failure messages, complaint feedback and common form prompts.
+- Fixed Electrician Live Location watch callback so both an explicit Supabase RPC error and a thrown network/transport exception enter the safe stop flow. This avoids leaving the GPS watch and server-side location sharing running after an unhandled rejected promise.
+- Updated the GPS client regression tests for the new error path. An intermediate assertion mismatch was corrected; final latest branch-head CI succeeded.
+- Latest branch head `e549574a091071f995786b009d710e4da25160c0`: GitHub Actions runs `43708098611` and `43708093433` — **SUCCESS**, full repository Node test suite.
+- Browser runtime verification and visual review are still pending. No real GPS sharing, live booking, payment, production database change or production deployment was performed by this work.
