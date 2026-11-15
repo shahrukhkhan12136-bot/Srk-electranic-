@@ -289,3 +289,9 @@ The GPT-2 feature set is not empty or waiting for discovery: the source already 
 - `auth_user_id` को missing base-DDL blocker न गिनें। Current branch migration `20261109000500_harden_electrician_profile_identity_linking.sql` इसे `uuid REFERENCES auth.users(id) ON DELETE SET NULL` के रूप में जोड़ती है; nullable/no explicit default, mismatch/duplicate checks, sync trigger and partial unique index included. यह Google Maps consumer migration `20261109001000` से पहले है। बाद की `20261114130000` migration में defensive `ADD COLUMN IF NOT EXISTS` भी है।
 - Confirmed missing-column source DDL blocker अब केवल `service_bookings.amount_paid` है। Exact type/precision/nullability/default/constraints/indexes/grants अभी authoritative source से स्थापित नहीं।
 - Latest branch head at audit time `6bbac5a55b9b9ed98621be90290c91949a9c8156` Node CI run `43746546950` passed: 189/189, 0 failures. No claim of PostgreSQL/pgTAP/full migration replay.
+
+
+### Latest verification — 15 Nov 2026, 18:32 UTC
+- PR head `659cd151fdf83779261bed034517b92b90d4a240` Node CI run `43747168727` PASS: 189/189, 0 fail, 0 skipped.
+- This is not a PostgreSQL/pgTAP/full migration replay result and does not establish Production parity or deployment.
+- DDL blocker list is corrected: `auth_user_id` is supplied by the migration chain; only `service_bookings.amount_paid` remains confirmed missing from checked-in baseline/DDL source evidence.
