@@ -81,9 +81,16 @@ begin
     v_materials_paise := round(coalesce(v_booking.materials_amount,0)*100)::bigint;
   end if;
 
-  v_commission_paise := round((v_labour_paise::numeric *
-    coalesce(v_booking.commission_rate,0) / 100))::bigint;
-  v_payable_paise := greatest(v_labour_paise + v_materials_paise - v_commission_paise,0);
+  if v_booking.commission_rate is null
+     or v_booking.commission_rate<0 or v_booking.commission_rate>100 then
+    v_exceptions := array_append(v_exceptions,'COMMISSION_RATE_MISSING_OR_INVALID');
+    v_commission_paise := null;
+    v_payable_paise := null;
+  else
+    v_commission_paise := round((v_labour_paise::numeric *
+      v_booking.commission_rate / 100))::bigint;
+    v_payable_paise := greatest(v_labour_paise + v_materials_paise - v_commission_paise,0);
+  end if;
 
   select * into v_payout
     from public.srk_electrician_payouts p
@@ -92,10 +99,10 @@ begin
      and v_booking.assigned_electrician_id is not null then
     v_exceptions := array_append(v_exceptions,'MISSING_PAYOUT_ROW');
   elsif found then
-    if round(coalesce(v_payout.gross_service_amount,0)*100)::bigint<>v_labour_paise
-       or round(coalesce(v_payout.materials_amount,0)*100)::bigint<>v_materials_paise
-       or round(coalesce(v_payout.platform_commission,0)*100)::bigint<>v_commission_paise
-       or round(coalesce(v_payout.electrician_payable,0)*100)::bigint<>v_payable_paise then
+    if round(coalesce(v_payout.gross_service_amount,0)*100)::bigint is distinct from v_labour_paise
+       or round(coalesce(v_payout.materials_amount,0)*100)::bigint is distinct from v_materials_paise
+       or round(coalesce(v_payout.platform_commission,0)*100)::bigint is distinct from v_commission_paise
+       or round(coalesce(v_payout.electrician_payable,0)*100)::bigint is distinct from v_payable_paise then
       v_exceptions := array_append(v_exceptions,'PAYOUT_AMOUNT_MISMATCH');
     end if;
   end if;
@@ -149,6 +156,14 @@ begin
   if v_fee_ledger_net_paise<>v_fee_settled_paise then
     v_exceptions := array_append(v_exceptions,'CANCELLATION_FEE_LEDGER_UNBALANCED');
   end if;
+  if v_booking.selected_category is not null and v_payment_verified
+     and v_collection_paise is distinct from (v_labour_paise+v_fee_settled_paise) then
+    v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_LABOUR_AND_SETTLED_FEES');
+  elsif v_booking.selected_category is null and v_payment_verified
+     and v_booking.quote_status='approved'
+     and v_collection_paise is distinct from (v_labour_paise+v_materials_paise) then
+    v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_APPROVED_QUOTE');
+  end if;
 
   select
     coalesce(sum(case when w.direction='credit' then round(w.amount*100)::bigint else 0 end),0)::bigint,
@@ -189,18 +204,18 @@ begin
   if v_route_electrician_count>1 or v_route_platform_count>1 then
     v_exceptions := array_append(v_exceptions,'ROUTE_TRANSFER_DUPLICATE');
   end if;
-  if v_route_electrician_paise>0 and v_route_electrician_paise<>v_payable_paise then
+  if v_route_electrician_paise>0 and v_route_electrician_paise is distinct from v_payable_paise then
     v_exceptions := array_append(v_exceptions,'ELECTRICIAN_ROUTE_TRANSFER_MISMATCH');
   end if;
-  if v_route_platform_paise>0 and v_route_platform_paise<>v_commission_paise then
+  if v_route_platform_paise>0 and v_route_platform_paise is distinct from v_commission_paise then
     v_exceptions := array_append(v_exceptions,'PLATFORM_ROUTE_TRANSFER_MISMATCH');
   end if;
-  if v_route_platform_paise=0 and v_commission_paise>0 and v_booking.razorpay_payment_id is not null then
+  if v_route_platform_paise=0 and coalesce(v_commission_paise,0)>0 and v_booking.razorpay_payment_id is not null then
     v_exceptions := array_append(v_exceptions,'COMMISSION_NOT_TRANSFERRED');
-  elsif v_route_platform_paise>0 and v_route_platform_settled_paise<v_commission_paise then
+  elsif v_route_platform_paise>0 and v_commission_paise is not null and v_route_platform_settled_paise<v_commission_paise then
     v_exceptions := array_append(v_exceptions,'COMMISSION_TRANSFER_NOT_SETTLED');
   end if;
-  if v_route_electrician_paise>0 and v_route_electrician_settled_paise<v_payable_paise then
+  if v_route_electrician_paise>0 and v_payable_paise is not null and v_route_electrician_settled_paise<v_payable_paise then
     v_exceptions := array_append(v_exceptions,'ELECTRICIAN_TRANSFER_NOT_SETTLED');
   end if;
 
