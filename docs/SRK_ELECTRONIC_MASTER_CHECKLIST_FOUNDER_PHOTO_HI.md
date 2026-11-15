@@ -528,3 +528,9 @@
 - पहले सर्वर की `srk_push_subscriptions` endpoint row हटती है; सफल होने पर ही ब्राउज़र subscription unsubscribe होती है।
 - इससे server-side delete विफल होने पर ब्राउज़र subscription को पहले बंद करके पुराना server record छोड़ने की स्थिति नहीं बनती।
 - Regression source-contract test जोड़ा। वास्तविक Push provider/ब्राउज़र परीक्षण अभी लंबित हैं।
+
+
+### Electrician App — Push Setup विफल होने पर नई Subscription Rollback
+- Push setup में ब्राउज़र द्वारा नई Subscription बनाए जाने के बाद Supabase upsert/Auth/config चरण विफल हो, तो केवल उसी नई Subscription को best-effort unsubscribe किया जाता है।
+- पहले से मौजूद Subscription को rollback में बंद नहीं किया जाता; सफल setup पर rollback reference साफ़ कर दिया जाता है।
+- Regression source-contract test जोड़ा। वास्तविक browser Push और Supabase provider परीक्षण लंबित हैं।
