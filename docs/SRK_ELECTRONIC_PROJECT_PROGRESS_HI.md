@@ -4067,3 +4067,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Latest Node test run `43746116121` current head `efacbe55054e13f5d73dbc958c3cb218692e789f` पर PASS: 189 tests, 189 pass, 0 fail. Parallel Node run `43746113338` भी PASS।
 - यह Node regression pass है; PostgreSQL/pgTAP runtime, complete migration replay, Production schema parity या deployment का प्रमाण नहीं। Vercel status पर deployment rate limit अलग है; PR #8 अभी open और Draft है।
 - Checklist progress अपरिवर्तित: GPT-2 27/39 = 69%; overall 56/86 = 65%। No Production query/export/migration, provider operation, merge or deployment.
+
+
+### 2026-11-15 18:25 UTC — auth_user_id DDL correction and latest CI
+- Current Feature Branch migration `20261109000500_harden_electrician_profile_identity_linking.sql` को सीधे पढ़ने पर पहले छूटा हुआ authoritative DDL मिला: `electrician_profiles.auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL`। यह nullable है, explicit default नहीं; migration mismatch/duplicate checks, identity sync और non-NULL पर partial unique index भी बनाती है। यह `20261109001000` Google Maps migration से पहले है। इसलिए `auth_user_id` अब missing-DDL blocker नहीं है; पुराने progress notes का “दो blockers” निष्कर्ष इस correction से superseded है।
+- अब केवल confirmed missing-column DDL blocker `service_bookings.amount_paid` है। उसका authoritative introducing DDL अभी नहीं मिला; type/precision/nullability/default/constraints/indexes/grants अनुमान से नहीं बनाए जाएँगे।
+- Latest commit `6bbac5a55b9b9ed98621be90290c91949a9c8156` पर GitHub Actions run `43746546950` PASS: 189 tests, 189 pass, 0 fail, 0 skipped। यह Node regression suite है; PostgreSQL/pgTAP replay या Production parity का प्रमाण नहीं।
+- Checklist progress अभी भी GPT-2 27/39 = 69%, overall 56/86 = 65%; DDL discovery correction अपने-आप checklist count नहीं बदलती। PR #8 open/Draft/unmerged; no Production query/export/migration, provider operation, merge or deployment.
