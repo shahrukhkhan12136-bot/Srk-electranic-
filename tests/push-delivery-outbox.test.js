@@ -13,6 +13,12 @@ test('push outbox worker uses server-only credentials and bounded batch claim', 
   assert.match(worker, /p_limit: 3/);
 });
 
+test('push outbox worker authenticates the Supabase Edge gateway and webhook sender', () => {
+  assert.match(worker, /apikey: key/);
+  assert.match(worker, /Authorization: /);
+  assert.match(worker, /x-srk-push-secret/);
+});
+
 test('push outbox worker sends only claimed payloads to the fixed Edge Function', () => {
   assert.match(worker, /\/functions\/v1\/push-job-offer/);
   assert.match(worker, /x-srk-push-secret/);
