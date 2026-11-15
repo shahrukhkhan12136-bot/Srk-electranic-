@@ -120,6 +120,14 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <section class="card" id="customerSupportPanel" style="margin-top:14px">
    <h3 style="margin-top:0">🛟 सहायता और शिकायत</h3>
    <p class="small">अपनी बुकिंग से जुड़ी शिकायत दर्ज करें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।</p>
+   <div class="job" id="customerSosPanel" style="border:2px solid #b91c1c;background:#fff7f7">
+    <h3 style="margin-top:0;color:#b91c1c">🚨 तत्काल सहायता (SOS)</h3>
+    <p class="small">खतरा या मारपीट की स्थिति में Admin और अधिकृत Support को अलर्ट भेजें। ऐप पुलिस को अपने-आप कॉल या संदेश नहीं भेजेगा।</p>
+    <label for="customerSosBooking">संबंधित बुकिंग (वैकल्पिक)</label><select id="customerSosBooking"><option value="">बुकिंग चुनें (यदि लागू हो)</option></select>
+    <label for="customerSosReason">तत्काल सहायता का कारण</label><select id="customerSosReason"><option value="customer_at_risk">ग्राहक को इलेक्ट्रिशियन से खतरा</option><option value="electrician_at_risk">इलेक्ट्रिशियन को ग्राहक से खतरा</option><option value="violence_or_other_emergency">मारपीट या अन्य आपात स्थिति</option></select>
+    <label for="customerSosDetails">अतिरिक्त जानकारी (वैकल्पिक)</label><textarea id="customerSosDetails" maxlength="1000" placeholder="क्या हुआ है? (वैकल्पिक)"></textarea>
+    <button class="btn" type="button" id="customerSosSend" style="width:100%;margin-top:10px;background:#b91c1c;color:white" onclick="submitCustomerSosAlert()">🚨 अभी SOS भेजें</button><p id="customerSosStatus" class="small" role="status" aria-live="assertive"></p>
+   </div>
    <details style="margin:10px 0">
     <summary style="cursor:pointer;font-weight:600">＋ नई शिकायत दर्ज करें</summary>
     <label for="customerSupportBooking">संबंधित बुकिंग</label>
@@ -1085,6 +1093,25 @@ function customerRefundStatusText(status){
  return customerRefundStatusLabels[key]||'स्थिति अपडेट';
 }
 const customerLifecycleBusy=new Set();
+
+let customerSosBusy=false;
+async function submitCustomerSosAlert(){
+ const button=document.getElementById('customerSosSend'),status=document.getElementById('customerSosStatus');
+ if(!customerSb||customerSosBusy)return;
+ const reason=document.getElementById('customerSosReason').value,details=String(document.getElementById('customerSosDetails').value||'').trim(),bookingId=document.getElementById('customerSosBooking').value||null;
+ if(!['customer_at_risk','electrician_at_risk','violence_or_other_emergency'].includes(reason)){status.textContent='कृपया सहायता का कारण चुनें।';return;}
+ if(!confirm('SOS अलर्ट Admin और अधिकृत Support Staff को भेजें? पुलिस को ऐप से अपने-आप कोई कॉल या संदेश नहीं जाएगा।'))return;
+ customerSosBusy=true;button.disabled=true;status.textContent='SOS अलर्ट दर्ज किया जा रहा है…';
+ let lat=null,lng=null;
+ if(navigator.geolocation?.getCurrentPosition){try{const pos=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:5000,maximumAge:30000}));lat=pos.coords.latitude;lng=pos.coords.longitude;}catch(_){status.textContent='लोकेशन उपलब्ध नहीं हुई; बिना लोकेशन SOS भेजने की कोशिश जारी है…';}}
+ try{
+  const {data,error}=await customerSb.rpc('srk_create_sos_alert',{p_booking_id:bookingId,p_reason:reason,p_details:details||null,p_location_lat:lat,p_location_lng:lng});
+  if(error)throw error;if(!data?.success||!data?.case_id)throw new Error('SOS_CASE_NOT_CONFIRMED');
+  status.textContent='SOS केस दर्ज हुआ (#'+String(data.case_id).slice(0,8)+')। Admin/Support अलर्ट डिलीवरी की स्थिति backend पुष्टि के बाद उपलब्ध होगी।';document.getElementById('customerSosDetails').value='';
+ }catch(_){status.textContent='SOS अभी दर्ज नहीं हो सका। इंटरनेट/लॉगिन जाँचें और जरूरत हो तो दोबारा कोशिश करें। अलर्ट भेजा हुआ न मानें।';}
+ finally{customerSosBusy=false;button.disabled=false;}
+}
+
 async function customerRespondWorkCompletion(bookingId,response){
  if(!customerSb||!bookingId||customerLifecycleBusy.has(bookingId))return;
  let note=null;
@@ -1626,7 +1653,8 @@ async function loadCustomerSupportBookings() {
    .limit(50);
   if(error)throw error;
   select.replaceChildren(new Option('बुकिंग चुनें',''));
-  (Array.isArray(data)?data:[]).forEach(row=>{
+  const sosSelect=document.getElementById('customerSosBooking');if(sosSelect)sosSelect.replaceChildren(new Option('बुकिंग चुनें (यदि लागू हो)',''));
+  (Array.isArray(data)?data:[]).forEach(row=>{if(sosSelect)sosSelect.add(new Option('बुकिंग #'+String(row.id||'').slice(0,8).toUpperCase(),row.id));
    const shortId=String(row.id||'').slice(0,8).toUpperCase();
    const label=(row.service_type||'सर्विस')+' · '+customerBookingStatusText(row.status)+' · #'+shortId;
    select.add(new Option(label,row.id));
