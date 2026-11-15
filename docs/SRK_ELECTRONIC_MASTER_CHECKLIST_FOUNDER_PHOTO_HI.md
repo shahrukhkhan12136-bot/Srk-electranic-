@@ -168,3 +168,5 @@
 - [ ] Isolated integration tests (parallel claims, success replay, timeout, 404/410 cleanup, retry exhaustion) चलाएँ।
 
 **स्थिति:** Feature branch source updated; runtime tests/deploy/migration apply/push नहीं हुए। Production compatibility अभी अवरुद्ध है।
+
+- [x] Malformed per-subscription claim target को stuck processing state में छोड़ने के बजाय retry/dead-letter path में भेजने का guard और assertion।
