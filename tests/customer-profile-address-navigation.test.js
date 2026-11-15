@@ -19,3 +19,17 @@ test('Profile saved-address shortcut reveals Home tab before scrolling to the bo
   assert.ok(activateHome >= 0 && scheduleScroll > activateHome, 'Home tab is revealed before deferred navigation');
   assert.ok(scrollBooking > scheduleScroll && focusAddress > scrollBooking, 'booking form and saved-address selector are focused after Home is visible');
 });
+
+test('Customer avatar save reconciles returned and thrown RPC errors before deleting uploaded storage', () => {
+  const start = source.indexOf('let profileSaveResult=null,profileSaveError=null;');
+  const end = source.indexOf('const oldAvatar=customerCurrentAvatarPath;', start);
+  assert.ok(start >= 0 && end > start, 'profile save reconciliation block exists');
+  const block = source.slice(start, end);
+  assert.match(block, /profileSaveError=profileSaveResult\?\.error\|\|null/);
+  assert.match(block, /catch\(saveError\)\{profileSaveError=saveError;\}/);
+  assert.match(block, /srk_customer_get_my_profile/);
+  assert.match(block, /lookupSucceeded&&latestProfile\?\.avatar_path===avatarPath/);
+  assert.match(block, /if\(lookupSucceeded&&file&&avatarPath!==customerCurrentAvatarPath\)/);
+  assert.match(block, /If the read failed, leave the object in place/);
+  assert.doesNotMatch(block, /if\(error\)\s*\{\s*if\(file[\s\S]*?remove\(\[avatarPath\]\)/);
+});
