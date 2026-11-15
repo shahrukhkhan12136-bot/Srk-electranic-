@@ -252,15 +252,22 @@ async function setElectricianAvailability(available){
  try{const {data,error}=await sb.rpc('srk_electrician_set_availability',{p_available:available});if(error)throw error;if(!data?.success)throw new Error('Availability update not confirmed');alert(available?'अब आप नए काम के ऑफर पाने के लिए उपलब्ध हैं।':'आपकी उपलब्धता बंद कर दी गई है। लंबित ऑफर आगे भेज दिए गए हैं।');await refresh();}
  catch(e){alert('उपलब्धता अपडेट नहीं हुई। कृपया Refresh करके फिर कोशिश करें।');on.disabled=false;off.disabled=false;}
 }
+const electricianLifecycleBusy=new Set();
 async function electricianRequestWorkStart(bookingId){
+ if(!bookingId||electricianLifecycleBusy.has(bookingId))return;
  if(!confirm('क्या आप ग्राहक से अभी काम शुरू करने की अनुमति माँगना चाहते हैं? ग्राहक की मंजूरी के बाद ही सर्वर टाइमर शुरू होगा।'))return;
+ electricianLifecycleBusy.add(bookingId);
  try{const {data,error}=await sb.rpc('srk_electrician_request_work_start',{p_booking_id:bookingId});if(error)throw error;if(!data?.success)throw new Error('अनुमति अनुरोध की पुष्टि नहीं हुई');alert('काम शुरू करने की अनुमति ग्राहक को भेज दी गई है।');await refresh();}
  catch(e){alert('काम शुरू करने का अनुरोध नहीं भेजा जा सका। बुकिंग रीफ़्रेश करके दोबारा कोशिश करें।');}
+ finally{electricianLifecycleBusy.delete(bookingId);}
 }
 async function electricianRequestWorkCompletion(bookingId){
+ if(!bookingId||electricianLifecycleBusy.has(bookingId))return;
  if(!confirm('क्या काम पूरा हो गया है? इससे सर्वर टाइमर रुकेगा और ग्राहक से काम की पुष्टि माँगी जाएगी।'))return;
+ electricianLifecycleBusy.add(bookingId);
  try{const {data,error}=await sb.rpc('srk_electrician_request_work_completion',{p_booking_id:bookingId});if(error)throw error;if(!data?.success)throw new Error('Completion request not confirmed');alert('काम पूरा होने की सूचना ग्राहक को भेज दी गई है।');await refresh();}
  catch(e){alert('काम पूरा होने की सूचना नहीं भेजी जा सकी। बुकिंग रीफ़्रेश करके दोबारा कोशिश करें।');}
+ finally{electricianLifecycleBusy.delete(bookingId);}
 }
 function formatElectricianTimer(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');}
 function updateElectricianTimers(){document.querySelectorAll('[id^="electricianTimer_"]').forEach(el=>{let n=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))n+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatElectricianTimer(n);});}
