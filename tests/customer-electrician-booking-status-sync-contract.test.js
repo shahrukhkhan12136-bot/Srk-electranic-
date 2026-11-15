@@ -341,6 +341,19 @@ test('Customer live location polling ignores stale responses and preserves netwo
   assert.match(customer, /customerLiveLocationRefreshRequest\+\+;\s*customerLiveLocationBookingIds=\[\]/);
 });
 
+test('Customer offline event hides stale live location and invalidates in-flight polls', () => {
+  assert.match(customer, /const handleCustomerOffline = \(\) => \{/);
+  const start = customer.indexOf('const handleCustomerOffline = () => {');
+  const end = customer.indexOf("window.addEventListener('offline', handleCustomerOffline);", start);
+  assert.ok(start >= 0 && end > start, 'offline handler and listener exist');
+  const handler = customer.slice(start, end);
+  assert.match(handler, /customerLiveLocationRefreshRequest\+\+/);
+  assert.match(handler, /customerLiveLocationBookingIds\.forEach/);
+  assert.match(handler, /पुरानी लोकेशन छिपा दी गई है/);
+  assert.match(handler, /role=\\?"status\\?"/);
+  assert.match(customer, /window\.addEventListener\('online', scheduleCustomerResumeRefresh\)/);
+});
+
 test('Customer booking list refreshes on foreground and reconnect without duplicate rapid refreshes', () => {
   assert.match(customer, /let customerResumeRefreshTimer = null/);
   assert.match(customer, /const scheduleCustomerResumeRefresh = \(\) => \{/);
