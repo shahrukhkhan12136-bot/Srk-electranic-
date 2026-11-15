@@ -848,3 +848,27 @@ This file contains only the same two status/assignment CHECK constraint drop-and
 
 ### Decision
 No migration file was edited, removed, renamed, merged, reordered, replayed, or repaired. Do not treat either file as approved for omission. The duplicate-version replay gate remains **BLOCKED** pending authoritative migration lineage and an approved baseline/reconciliation decision. No Supabase CLI, PostgreSQL, pgTAP, Production query, or database write was run.
+
+
+## 29. Historical starter-schema candidates vs current migration dependencies — 16 Nov 2026
+
+Read-only source inspection covered the repository-root files `COMPLETE_DATABASE_SETUP.sql`, `SUPABASE_SCHEMA.sql`, and `PORTAL_SCHEMA.sql`, plus the customer-booking and electrician-identity migrations.
+
+### What the starter files establish
+- `SUPABASE_SCHEMA.sql` and the first section of `COMPLETE_DATABASE_SETUP.sql` define a historical starter form of `public.service_bookings`, `electrician_applications`, `electrician_profiles`, and `job_offers`.
+- They enable RLS and define early public-insert and electrician/admin access policies.
+- `PORTAL_SCHEMA.sql` adds the historical admin table, electrician `user_id) link, identity-linking trigger/function, and related portal policies/RPCs.
+- These files are useful historical design evidence, but they are not a complete current replay baseline by themselves.
+
+### Concrete differences against current migration dependencies
+- The starter `service_bookings` definition has the original status set `new/confirmed/assigned/in_progress/completed/cancelled`; later migrations add quote and work-approval states.
+- The starter table definition does not include the later `customer_user_id` column introduced by `20261108121115_add_customer_account_booking_access.sql`.
+- It does not include later quote workflow columns such as quote status/note/timestamps, nor the newer customer-approved work-start timer fields.
+- The starter `electrician_profiles` definition and portal script use `user_id`; the later hardening migration `20261109000500_harden_electrician_profile_identity_linking.sql` adds `auth_user_id`, reconciliation/synchronization logic, identity guard triggers, and a partial unique index.
+- The starter file contains `commission_rate` and `commission_amount`, but the later reporting migration `20261109003000_secure_commission_reporting.sql` references `service_bookings.amount_paid`; that column is supplied by the later restore migration, not by the historical starter table.
+- The starter SQL includes auth-linked objects and triggers on `auth.users`; a disposable local baseline must therefore use the matching Supabase Auth schema and required roles/extensions rather than plain PostgreSQL alone.
+
+### Replay-readiness conclusion
+The repository-root SQL files are historical setup scripts, not an approved immutable snapshot of the current Production schema or a complete clean-replay baseline. They must not be treated as a direct `supabase db reset` input without a separately reviewed baseline and dependency manifest. This finding does not imply that the historical scripts are wrong for their original purpose.
+
+No files were edited except this report. No SQL was executed, no Supabase CLI/Docker/PostgreSQL/pgTAP was run, and no Production connection, query, migration, or data change occurred.
