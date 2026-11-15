@@ -181,3 +181,15 @@
 - [ ] Rollback migration और monitoring/alert thresholds approve करें।
 
 **Production safety:** अभी कोई migration/trigger/deploy/worker action नहीं किया गया। Rollout plan केवल branch documentation है और अलग approval आवश्यक है।
+
+
+### Push Migration Preconditions और Isolated Integration Plan — 15 November 2026
+- [x] Outbox migration में private schema, subscription columns, `job_offers.expires_at`, `electrician_profiles.available_for_work` और electrician identity/approval columns के fail-fast guards।
+- [x] Delivery ledger migration में outbox table तथा subscription identity columns के prerequisite guards।
+- [x] दोनों migration preflight guards के source assertions।
+- [x] अलग isolated integration plan: migration ordering, grants/RLS, trigger swap, delivery matrix, retries, concurrency, stale offers, secrets, monitoring और exit criteria।
+- [ ] Isolated Supabase project और isolated Netlify site पर migration apply तथा वास्तविक integration tests (अभी नहीं बनाए/चलाए)।
+- [ ] Worker timeout बनाम 2-minute lease का load verification; जरूरत पर batch/concurrency/lease tuning।
+- [ ] Dead-letter alerting, retention/cleanup और rollback rehearsal।
+
+**नोट:** Production में आवश्यक offer expiry और electrician availability columns अभी absent हैं। इसलिए Production rollout blocked है। कोई Production write/deploy नहीं हुआ।
