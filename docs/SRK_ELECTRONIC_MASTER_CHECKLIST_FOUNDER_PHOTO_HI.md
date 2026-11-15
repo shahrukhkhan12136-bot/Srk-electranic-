@@ -94,7 +94,7 @@
 - [x] `index.html` स्वागत पेज पर redirect करता है और Welcome Screen का responsive layout मौजूद है।
 - [x] Welcome Screen का source implementation और responsive layout मौजूद है।
 - [x] Owner ने हरे-भरे बगीचे वाली original Founder Photo की पहचान और उसी फोटो को मौजूदा Founder model/card में crop करने का निर्देश confirm किया।
-- [ ] Exact original garden-photo binary उपलब्ध कराकर मौजूदा Founder card अनुपात में crop तैयार करें; फिर उसी approved crop को Welcome Screen और Customer Login दोनों में wire करें। अभी दोनों screens पर सुरक्षित placeholder है; crop तैयार होने का दावा नहीं है।
+- [ ] Library में standalone original garden-background portrait `Urban Garden Portrait.png` मिला और visual inspection किया; इसे source asset के रूप में सुरक्षित रखा है। अभी original binary को Feature Branch के `assets/` में जोड़ना, Founder card अनुपात में crop करना और Welcome Screen + Customer Login दोनों में wire करना बाकी है; collage/AI-generated substitute इस्तेमाल नहीं होगा।
 - [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें।
 - [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
 - [ ] Owner visual acceptance लें।
