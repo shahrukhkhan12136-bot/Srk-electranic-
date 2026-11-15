@@ -1935,3 +1935,6 @@ Master Requirements Section 6 की दोबारा जाँच में �
 
 
 - अतिरिक्त replay audit: existing full-refund accounting trigger payout को `refunded` करता है। इसलिए Phase 2 का replay अब completed booking + processed refund पर तभी idempotent success देता है जब मौजूद payout भी `refunded` हो; `paid` payout हमेशा manual reconciliation पर रोकता है। Non-replay path में payout का `blocked` होना अनिवार्य है। pgTAP plan अब 18/18 static assertions है; runtime अभी नहीं चला।
+
+
+- Trigger integration audit ने एक वास्तविक edge case पकड़ा: मौजूदा `srk_create_electrician_payable` trigger केवल `pending → refunded` करता है, जबकि Razorpay refund preparation payout को `blocked` करता है। इसलिए Phase 2 अब exact locked blocked payout को केवल verified `processed` evidence और booking/accounting trigger की सफलता के बाद `refunded` करता है; update न हो तो पूरा Phase 2 rollback होगा और Phase 1 evidence सुरक्षित रहेगा। pgTAP plan 19/19 static assertions।
