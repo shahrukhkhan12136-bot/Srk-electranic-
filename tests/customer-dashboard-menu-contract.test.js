@@ -10,6 +10,25 @@ test('customer booking copy does not mention the retired inspection quotation pr
   assert.doesNotMatch(booking, /post-inspection quotation|निरीक्षण के बाद अलग quotation/i);
 });
 
+test('customer English dictionary covers remaining static booking and dashboard guidance', () => {
+  for (const translated of [
+    'Your private profile and saved addresses are managed securely.',
+    'Your Saved Addresses',
+    'Allow GPS to select the correct location.',
+    'Open Location in Google Maps',
+    'Your Estimated Labour',
+    'Important Information Before Booking',
+    'Final labour is calculated from actual work minutes recorded by the server.',
+    'Materials/parts are not included in labour;',
+    'Only your selected tier will be assigned.',
+    'The payment method will not change from Cash or Online',
+    'Secure Payment with Razorpay',
+    'Pay with Razorpay'
+  ]) {
+    assert.ok(booking.includes(translated), 'Missing English customer translation: ' + translated);
+  }
+});
+
 test('customer dashboard exposes all five accessible menu tabs and matching panels', () => {
   const tabs = ['Home', 'Bookings', 'Payments', 'Support', 'Profile'];
   for (const name of tabs) {
