@@ -141,6 +141,38 @@ test('electrician profile panel transport failures do not prevent booking offers
 });
 
 
+test('customer and electrician lifecycle actions expose retry states and always release their busy guards', () => {
+  const customerStart = functionBody(customer, 'customerRespondWorkStart');
+  const customerCompletion = functionBody(customer, 'customerRespondWorkCompletion');
+  const customerRefund = functionBody(customer, 'customerSubmitBookingRefund');
+  const customerCancel = functionBody(customer, 'customerCancelBooking');
+  const electricianStart = functionBody(electrician, 'electricianRequestWorkStart');
+  const electricianCompletion = functionBody(electrician, 'electricianRequestWorkCompletion');
+  const offerResponse = functionBody(electrician, 'respond');
+
+  for (const fn of [customerStart, customerCompletion]) {
+    assert.match(fn, /catch\s*\(/);
+    assert.match(fn, /finally\s*\{\s*customerLifecycleBusy\.delete\(bookingId\)/);
+    assert.match(fn, /रीफ़्रेश करके दोबारा कोशिश करें/);
+  }
+  for (const fn of [electricianStart, electricianCompletion]) {
+    assert.match(fn, /catch\s*\(/);
+    assert.match(fn, /finally\s*\{\s*electricianLifecycleBusy\.delete\(bookingId\)/);
+    assert.match(fn, /रीफ़्रेश करके दोबारा कोशिश करें/);
+  }
+  assert.match(customerRefund, /catch\s*\(error\)/);
+  assert.match(customerRefund, /finally\s*\{\s*if\(button\)button\.disabled=false/);
+  assert.match(customerRefund, /रिफंड अनुरोध दर्ज नहीं हो सका/);
+  assert.match(customerCancel, /catch\(error\)/);
+  assert.match(customerCancel, /finally \{if\(button\)button\.disabled=false;\}/);
+  assert.match(customerCancel, /अनुरोध दर्ज नहीं हो सका/);
+  assert.match(offerResponse, /catch\(e\)/);
+  assert.match(offerResponse, /finally\{/);
+  assert.match(offerResponse, /electricianOfferResponseBusy\.delete\(id\)/);
+  assert.match(offerResponse, /buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
+  assert.match(offerResponse, /स्थिति जाँचें, फिर दोबारा कोशिश करें/);
+});
+
 test('customer booking list survives rejected supplementary contact, refund, and cancellation RPCs', () => {
   const load = functionBody(customer, 'loadCustomerBookings');
   assert.match(load, /const safeCustomerRpc = async \(name\) => \{\s*try \{ return await customerSb\.rpc\(name\); \}\s*catch \(error\) \{ return \{ data: null, error \}; \}\s*\};/);
