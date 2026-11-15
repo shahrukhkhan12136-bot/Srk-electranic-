@@ -362,7 +362,10 @@ test('Electrician offer expiry remains server-authoritative and advances the nex
   assert.match(offerDispatchSql, /WHERE o\.status='offered' AND o\.expires_at<=clock_timestamp\(\)/);
   assert.match(offerExpiryWorker, /srk_expire_and_advance_booking_offers/);
   assert.match(offerExpiryWorker, /schedule: '\* \* \* \* \*'/);
-  const respond = functionBody(electrician, 'respond');
+  const respondStart = electrician.indexOf('function respond(');
+  const respondEnd = electrician.indexOf('\nfunction bookingMapDirections', respondStart);
+  const respond = electrician.slice(respondStart, respondEnd);
+  assert.ok(respondStart >= 0 && respondEnd > respondStart);
   assert.match(respond, /data\?\.code==='offer_expired'/);
   assert.match(respond, /await refresh\(\)/);
 });
