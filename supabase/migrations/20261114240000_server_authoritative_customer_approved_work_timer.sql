@@ -635,8 +635,17 @@ BEGIN
     INTO v_booking_id,v_electrician_id,v_offer_status,v_expires_at
   FROM public.job_offers o
   JOIN public.electrician_profiles e ON e.id=o.electrician_id
+  JOIN public.service_bookings b ON b.id=o.booking_id
   WHERE o.id=p_offer_id AND e.user_id=auth.uid() AND e.auth_user_id=auth.uid()
     AND e.verification_status='approved' AND e.active=true AND e.available_for_work=true
+    AND lower(trim(e.state))=lower(trim(b.state))
+    AND lower(trim(e.district))=lower(trim(b.district))
+    AND (b.selected_rate_tier IS NULL OR (
+      e.approved_rate_tier=b.selected_rate_tier
+      AND e.approved_rate_card_version IS NOT NULL
+      AND e.rate_tier_approved_by IS NOT NULL
+      AND e.rate_tier_approved_at IS NOT NULL
+    ))
   FOR UPDATE OF o;
   IF v_booking_id IS NULL THEN RAISE EXCEPTION 'Offer not found or electrician is not active' USING ERRCODE='P0002'; END IF;
   IF v_offer_status<>'offered' THEN RAISE EXCEPTION 'Offer already answered or expired' USING ERRCODE='55000'; END IF;
