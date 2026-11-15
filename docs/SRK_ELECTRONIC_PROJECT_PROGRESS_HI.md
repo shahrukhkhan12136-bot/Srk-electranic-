@@ -1966,3 +1966,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Live catalog में cancellation-fee item/ledger tables उपलब्ध नहीं थीं; वे Feature Branch की नई migration chain में हैं। इसलिए अभी reconciliation SQL view/RPC बनाना रोककर schema-chain gate रखा गया है—अधूरे live schema पर अनुमानित joins नहीं बनाए जाएँगे।
 - नया test: supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql — 20 planned assertions; payout, wallet और Route security/data contracts। Source/static review only; pgTAP runtime अभी execute नहीं हुआ।
 - Design doc में live-vs-branch boundary और implementation gate जोड़ा। कोई migration apply, financial row write, wallet posting, Route transfer, payout, provider API call, deploy, merge या mobile QA नहीं किया।
+
+
+### 2026-11-15 — Accounting migration-chain source verification
+
+- PR #8 की changed migration सूची के आधार पर financial core, cancellation-fee carry-forward, full-refund reversal और new-category electrician payable migrations के exact source definitions पढ़े।
+- पुष्टि: cancellation-fee debt/item/ledger अलग records हैं; fee ledger integer paise, idempotency uniqueness, append-only guard और service_role-only table grants रखता है। New-category electrician payable immutable labour bill पर आधारित है; cancellation fee electrician earnings में नहीं जाती, materials अलग/शून्य रहते हैं और commission केवल labour पर है।
+- Payout recalculation केवल pending payout को refresh कर सकता है; paid/blocked/refunded row overwrite नहीं होती। Admin payout settlement booking-first locking और source amount comparison करता है।
+- Accounting security pgTAP contract को 20 से बढ़ाकर **30 assertions** किया; इसमें cancellation-fee private ledger, append-only protection और labour-only payable calculation भी शामिल है। Plan/count static check आगे फिर से किया जाएगा; runtime pgTAP अभी नहीं चला।
+- Live catalog में नई fee tables अनुपस्थित होने के कारण reconciliation RPC/view को live schema पर लागू नहीं किया गया। Feature Branch source-only; कोई migration apply, financial mutation, provider action, deploy/merge या mobile QA नहीं।
