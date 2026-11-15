@@ -7,6 +7,16 @@
 
 ---
 
+## त्वरित प्रोजेक्ट प्रगति — 15 नवम्बर 2026
+
+- **63% पूरा:** 54 / 86 मुख्य चेकलिस्ट आइटम।
+- **37% बाकी:** 32 / 86 मुख्य चेकलिस्ट आइटम।
+- यह प्रतिशत ऊपर के वर्तमान 9 मुख्य sections के checkbox count पर आधारित है; यह Production readiness, समय, लागत या code completion का प्रतिशत नहीं है।
+- बाकी मदों में isolated runtime/database tests, Main Production schema parity, browser/mobile visual QA और release/owner approval शामिल हैं।
+- Admin Panel के शीर्ष पर यही प्रगति कार्ड दिखाया गया है। Checklist के आइटम बदलने पर दोनों जगह प्रतिशत फिर से गिनकर अपडेट करना होगा।
+
+---
+
 ## 1. ग्राहक (Customer) — Feature Branch implementation
 
 - [x] Customer booking form, account/login, booking history और profile source मौजूद। Customer OTP login में भारतीय मोबाइल normalization, SMS OTP verify, 60-sec resend cooldown और existing-session redirect source regression tests PASS (`tests/customer-electrician-otp-login.test.js`, CI `43704591567`).
