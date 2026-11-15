@@ -2,11 +2,13 @@
 
 यह repository SRK ELECTRONIC की वेबसाइट और electrician booking marketplace के लिए है। वर्तमान deployment target Netlify है।
 
-## मुख्य पेज
-- `/` — Customer Login (`/customer-login.html`) पर redirect
-- `/booking.html` — Customer Dashboard, सेवा बुकिंग और अकाउंट
-- `/admin.html` — Admin / Support Staff portal
+## मुख्य पेज और प्रवेश क्रम
+- `/` — Welcome Screen (`/welcome.html`) पर redirect
+- `/welcome.html` — भूमिका चुनने की स्वागत स्क्रीन; Customer और Electrician के login links
+- `/customer-login.html` — Customer phone OTP login; सफल login के बाद `/booking.html` पर redirect
+- `/booking.html` — Customer Dashboard, सेवा बुकिंग और अकाउंट; Dashboard केवल authenticated customer session में खुलता है
 - `/electrician.html` — Electrician Partner phone OTP portal
+- `/admin.html` — Admin / Support Staff portal
 
 ## Netlify Functions
 - `/api/create-booking` — बुकिंग सेव करना और Supabase broadcast trigger से बने offers पढ़ना
