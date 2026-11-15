@@ -2772,3 +2772,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Coverage is deliberately described as partial: dynamic status/error copy, receipt document, remaining untranslated content and browser runtime still need work.
 - Workflow run `43706432946` was successful for the earlier menu regression commit, but it predates the final language implementation/test changes. Latest-head CI is **not yet verified**.
 - No Supabase changes, production deployment, PR merge or mobile QA performed.
+
+
+## 2026-11-15 — Customer dynamic message and receipt localization
+
+- Expanded the Customer App translation dictionary for payment/refund event types and statuses, login prompts, common booking/payment states and alerts.
+- Added a selected-language wrapper for customer browser alerts.
+- Printable payment receipt now uses the selected UI language for receipt headings, labels, payment method, missing-value copy and date locale. Verified payment data and itemized labour/materials/cancellation fee amounts remain unchanged.
+- Added regression assertions covering dynamic payment text, receipt `lang`, localized date formatting and ensuring the receipt-only helper does not leak into other functions.
+- Source was restored from the last intact branch revision after detecting that an intermediate localization edit had overreached its replacement scope; the corrected commit preserves the original Customer App functions.
+- Latest-head CI has not yet been returned; do not mark tests passed. Browser runtime / actual print preview remain pending.
