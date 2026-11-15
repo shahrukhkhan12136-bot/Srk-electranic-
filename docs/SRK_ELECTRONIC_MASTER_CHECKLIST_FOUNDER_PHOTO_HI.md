@@ -172,3 +172,14 @@
 - [ ] PR #8 अभी Draft है; owner की स्पष्ट अनुमति के बिना merge/deploy/Production migration नहीं।
 
 **सत्यापन सीमा:** 98/98 केवल repository Node/mock/source regression suite है। यह live DB, pgTAP, browser, Preview, SMS/OTP, Push delivery या Production readiness का प्रमाण नहीं है।
+
+
+## 2026-11-15 — Backend quotation RPC retirement (GPT-1 source change)
+
+- [x] Additive migration `20261115220000_retire_live_legacy_quotation_rpcs.sql` जोड़ी: live legacy quotation submit/respond और inspection/work-status RPCs revoke + drop किए।
+- [x] Electrician offer-details RPC से quote/inspection-only monetary projections हटाए; category, duration, rate tier, assignment-contact guard और server timer fields रखे।
+- [x] Historical booking rows, quote audit columns, पुराने paid/refund/payment records और financial evidence को delete नहीं किया।
+- [ ] GPT-2 Admin/Accounting owner से पुष्टि बाकी: Admin में legacy quote editing/approval UI और old-only manual payment path को retire/disable करने का सुरक्षित क्रम।
+- [ ] SQL migration की isolated PostgreSQL/pgTAP runtime execution और electrician offer RPC caller contract verification बाकी।
+- [ ] Status constraints/columns को अभी नहीं हटाया: पुराने paid/closed records और accounting/receipt audit इन्हें पढ़ सकते हैं। यह archival compatibility है, live quote feature नहीं।
+- [ ] Production migration, PR merge, deployment या live data change नहीं किया गया।
