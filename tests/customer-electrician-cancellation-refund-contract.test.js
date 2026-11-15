@@ -84,7 +84,7 @@ test('Customer cancellation submission reconciles a rejected write through the o
   assert.match(fn,/रद्द करने का अनुरोध Admin के पास लंबित है/);
   assert.match(fn,/दोबारा अनुरोध नहीं भेजा गया/);
   assert.match(fn,/lookupSucceeded/);
-  assert.match(fn,/try\{await loadCustomerBookings\(\)\}catch\(_\)/);
+  assert.match(fn,/try\{await loadCustomerBookings\(\);\}catch\(_\)/);
   assert.match(fn,/सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
   assert.match(fn,/अनुरोध Admin के पास लंबित है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
 });
