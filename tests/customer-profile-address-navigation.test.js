@@ -71,3 +71,14 @@ test('Customer uncertain saved-address deletion refreshes the cached list and se
   assert.match(handler, /select\.value=deleteState==='absent'\?''\:id/);
   assert.match(handler, /सूची सर्वर से अपडेट कर दी गई है/);
 });
+
+test('Customer saved-address list refresh ignores stale session and RPC responses', () => {
+  const start = source.indexOf('async function loadCustomerSavedAddresses() {');
+  const end = source.indexOf('function applySelectedSavedAddress()', start);
+  assert.ok(start >= 0 && end > start, 'saved-address list loader exists');
+  const loader = source.slice(start, end);
+  assert.match(loader, /customerSavedAddressLoadRequest=0/);
+  assert.match(loader, /const requestId=\+\+customerSavedAddressLoadRequest/);
+  assert.match(loader, /if\(!isCurrent\(\)\)return false/);
+  assert.match(loader, /finally\{if\(isCurrent\(\)\)select\.disabled=false;\}/);
+});
