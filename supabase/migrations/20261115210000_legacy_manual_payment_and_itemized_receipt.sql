@@ -107,7 +107,7 @@ begin
          payment_verified_at=clock_timestamp(),
          commission_amount=v_commission
    where id=p_booking_id
-     and payment_status not in ('paid','refunded')
+     and coalesce(payment_status,'unpaid') in ('unpaid','pending')
      and payment_verified_at is null;
   if not found then
     raise exception 'BOOKING_PAYMENT_STATE_CHANGED' using errcode='40001';
