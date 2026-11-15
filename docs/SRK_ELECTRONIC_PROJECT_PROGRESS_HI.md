@@ -2009,3 +2009,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - pgTAP plan/assertion count: **48/48**.
 - Admin panel में historical captured cancellation fee display भी मौजूद।
 - यह केवल source/static verification है। pgTAP runtime, SQL migration execution और browser runtime अभी pending हैं; कोई Production migration apply नहीं की।
+
+
+### Refund lifecycle + Route reversal audit (2026-11-15)
+
+- Razorpay refund की रकम net collection سے صرف `processed` پر کم ہوگی؛ requested/processing/unknown/failed رقم الگ unconfirmed field میں، failed پر exception۔
+- Refund request workflow status کو final refund record سے cross-check کیا۔
+- Route schema کے حقیقی `reversed/partially_reversed` transfer اور `reversed` settlement states کی جانچ شامل کی۔ Confirmed full refund کے بعد provider transfer ID ہونے پر transfer + settlement دونوں reversed ہونے چاہئیں، ورنہ exception۔
+- Admin UI میں confirmed اور unconfirmed refund الگ دکھائے جاتے ہیں۔ Partial reversal کی exact رقم موجودہ Route schema میں محفوظ نہیں؛ report اس کی رقم invent نہیں کرتی۔
+- pgTAP plan/assertions: 52؛ static verification pending immediate pass؛ runtime execution pending۔
