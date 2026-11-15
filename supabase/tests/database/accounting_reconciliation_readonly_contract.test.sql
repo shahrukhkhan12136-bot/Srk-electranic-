@@ -1,5 +1,5 @@
 begin;
-select plan(51);
+select plan(52);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -184,6 +184,10 @@ select ok(position('REFUND_REQUEST_PENDING_REVIEW' in pg_get_functiondef(
 select ok(position('ROUTE_TRANSFER_REVERSED_OR_PARTIALLY_REVERSED' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'full and partial Route transfer reversals are explicitly flagged');
+
+select ok(position('ROUTE_TRANSFER_NOT_REVERSED_AFTER_FULL_REFUND' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'provider Route transfers with a transfer ID must be reversed after a confirmed full refund');
 
 select * from finish();
 rollback;
