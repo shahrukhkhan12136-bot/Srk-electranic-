@@ -3329,3 +3329,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression tests में दूसरे page पर exact match और पूरे उपलब्ध pages में no-match दोनों शामिल हैं। Feature Branch Node CI run `43719423933` सफल: **159/159 PASS**। PR run `43719428584` भी सफल।
 - यह source/test coverage है; Razorpay live account pagination, PostgreSQL/pgTAP runtime, concurrent provider list mutation और Production DB अभी validate नहीं हुए।
 - GPT-2 checklist **27/39 = 69% पूरा; 12/39 = 31% बाकी**—इस quality hardening से checklist count नहीं बदला।
+
+## 2026-11-15 — GPT-1 CI follow-up correction
+- ऊपर दर्ज Work Timer CI failure का कारण migration में fixed search_path configuration नहीं, बल्कि regression test की over-escaped JavaScript regular expressions थीं। Test को literal source assertions से ठीक किया गया; migration की अंतिम hardening configuration search_path = '' ही रखी गई।
+- Feature Branch CI run #622 (5a6f5e0585a3448be87b22c5124cc10281686a00) SUCCESS हुआ। यह Node test suite (no secrets, no deployment) है; इससे PostgreSQL runtime/pgTAP या mobile/browser visual QA pass होने का दावा नहीं किया जा रहा।
+- server_authoritative_work_timer.test.sql में plan(20) और 20 test assertions का static count मेल खाता है। pgTAP को database पर चलाना अभी बाकी है।
+- Founder photo integration के source-contract/cache tests सहित branch Node CI अब green है। PR #8 अभी unmerged है; production deployment नहीं किया गया।
+- Work Timer / completion / dispute acceptance अभी runtime DB, role-based RPC, booking-to-bill E2E और consolidated mobile QA के बिना incomplete है।
