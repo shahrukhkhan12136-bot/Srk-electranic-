@@ -1,13 +1,13 @@
 # SRK ELECTRONIC — SOS तत्काल सहायता आवश्यकता
 तारीख: 15 नवम्बर 2026
-स्थिति: उपयोगकर्ता द्वारा स्पष्ट रूप से स्वीकृत आवश्यकता; implementation अभी बाकी है।
+स्थिति: आवश्यकता उपयोगकर्ता द्वारा स्वीकृत; GPT-1 में दो-चरणीय UI source update किया गया है। Backend integration और runtime verification अभी बाकी हैं।
 
 ## स्वीकृत निर्देश
 उपयोगकर्ता का स्पष्ट आदेश: SOS सुविधा दर्ज की जाए। SOS अलर्ट Admin/मालिक और अधिकृत Support Staff तक पहुँचे; पुलिस को ऐप की ओर से स्वतः कोई संदेश, कॉल या रिपोर्ट न भेजी जाए।
 
 ## GPT-1 UI integration contract (Feature Branch source)
-- Customer और Electrician App में तीन स्वीकृत कारणों वाला SOS control जोड़ा गया। दोनों srk_create_sos_alert RPC को समान payload भेजते हैं: p_booking_id uuid|null, p_reason text, p_details text|null, p_location_lat double precision|null, p_location_lng double precision|null। अपेक्षित success response {success:true, case_id:<uuid>} है।
-- लोकेशन केवल SOS दबाने के बाद browser permission माँगकर ली जाती है; permission/लोकेशन विफल हो तो null coordinates के साथ SOS भेजने की कोशिश जारी रहती है।
+- Customer और Electrician App में दो-चरणीय SOS UI जोड़ा गया: पहला tap केवल तीन कारण दिखाता है; कारण चुनने के बाद अलग “SOS भेजें” बटन सक्रिय होता है। Client `srk_create_sos_alert` को केवल `p_reason` भेजता है; booking/actor पहचान और समय backend को authenticated session/active booking से derive करना होगा।
+- Client SOS request में booking ID, अतिरिक्त विवरण या location input नहीं भेजता। उपलब्ध/consented location का सुरक्षित server-side integration GPT-2 backend contract में तय और सत्यापित होना बाकी है।
 - UI केवल confirmed success और case_id मिलने पर केस दर्ज दिखाता है; अन्यथा सफलता का दावा नहीं करता।
 - GPT-2 को इसी RPC, booking/actor authorization, Admin/Support queue, SMS/Push delivery status और audit workflow को implement करना होगा। जब तक backend RPC उपलब्ध और सत्यापित न हो, SOS delivery की सफलता का दावा नहीं होगा।
 
