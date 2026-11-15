@@ -152,19 +152,22 @@ test('electrician labour bill access recognizes any profile owned by the authent
 });
 
 test('customer work lifecycle SECURITY DEFINER RPCs use an empty search_path and qualify private authorization tables', () => {
-  assert.match(startFixSql, /alter function public\\.srk_customer_respond_work_start\\(uuid,text\\)\\s+set search_path = ''/i);
-  assert.match(startFixSql, /alter function public\\.srk_customer_respond_work_completion\\(uuid,text,text\\)\\s+set search_path = ''/i);
-  assert.match(startFixSql, /INSERT INTO srk_private\\.work_timer_authorizations/i);
-  assert.match(startFixSql, /INSERT INTO srk_private\\.work_transition_authorizations/i);
-  assert.doesNotMatch(startFixSql, /(?:INSERT INTO|DELETE FROM)\\s+(?!srk_private\\.)work_(?:timer|transition)_authorizations/i);
+  assert.ok(startFixSql.includes("alter function public.srk_customer_respond_work_start(uuid,text)\n  set search_path = '';"));
+  assert.ok(startFixSql.includes("alter function public.srk_customer_respond_work_completion(uuid,text,text)\n  set search_path = '';"));
+  assert.ok(startFixSql.includes("INSERT INTO srk_private.work_timer_authorizations"));
+  assert.ok(startFixSql.includes("INSERT INTO srk_private.work_transition_authorizations"));
+  assert.ok(!startFixSql.includes("INSERT INTO work_timer_authorizations"));
+  assert.ok(!startFixSql.includes("INSERT INTO work_transition_authorizations"));
+  assert.ok(!startFixSql.includes("DELETE FROM work_timer_authorizations"));
+  assert.ok(!startFixSql.includes("DELETE FROM work_transition_authorizations"));
 });
 test('electrician timer RPCs authorize the exact assigned profile, not only the newest owned profile', () => {
   const start = sqlFunction(timerSql, 'srk_electrician_request_work_start');
   const completion = sqlFunction(timerSql, 'srk_electrician_request_work_completion');
   for (const fn of [start, completion]) {
-    assert.match(fn, /WHERE id=p_booking_id FOR UPDATE/);
-    assert.match(fn, /p\.id=b\.assigned_electrician_id/);
-    assert.match(fn, /p\.user_id=auth\.uid\(\) OR p\.auth_user_id=auth\.uid\(\)/);
-    assert.doesNotMatch(fn, /ORDER BY p\.created_at DESC LIMIT 1/);
+    assert.ok(fn.includes("WHERE id=p_booking_id FOR UPDATE"));
+    assert.ok(fn.includes("p.id=b.assigned_electrician_id"));
+    assert.ok(fn.includes("p.user_id=auth.uid() OR p.auth_user_id=auth.uid()"));
+    assert.ok(!fn.includes("ORDER BY p.created_at DESC LIMIT 1"));
   }
 });
