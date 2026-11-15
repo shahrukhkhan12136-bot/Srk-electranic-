@@ -3728,3 +3728,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नवीनतम PR #8 head `3f590e692d048b05df3bf00b7154469d58963056` पर Node workflow run `43731438547` SUCCESS: **186 tests, 186 pass, 0 fail, 0 cancelled, 0 skipped**। यह Node source/contract CI है; PostgreSQL/pgTAP runtime नहीं।
 - PR #8 Draft/Open/Unmerged। Vercel check `failure` (build-rate-limit/upgrade notice), Netlify Deploy Preview `pending`। कोई Production DB access/migration, provider send/payment/payout, merge या deployment नहीं।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित; यह provenance audit checklist item close नहीं करता।
+
+
+### GPT-2 historical schema snapshot cross-branch verification — 15 Nov 2026
+- चार ऐतिहासिक branches (`feature/business-finance-dashboard`, `work/separate-customer-electrician-portals`, `feature/electrician-categories-hourly-booking`, `predeploy/verified-electrician-booking-match`) पर `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql` पुनः fetch करके जाँचे।
+- तीनों schema files के blob SHA चारों branches पर समान निकले: `SUPABASE_SCHEMA.sql` = `8ae88a7035bc963b244f22c6c1450c22618ec88f`; `PORTAL_SCHEMA.sql` = `efc14aa623a3895ffb3841b7b0f226f2015f34b1`; `COMPLETE_DATABASE_SETUP.sql` = `2b806e727f449ba18e71ad23edef805ceb2da2b5`। इसलिए ये चार independent schema witnesses नहीं, वही साझा snapshot copies हैं।
+- इन files में `service_bookings.amount_paid` या `electrician_profiles.auth_user_id` की defining DDL नहीं मिली। यह targeted snapshot scan है; सभी historical commits/tags या external approved Production schema का exhaustive proof नहीं।
+- दोनों columns का exact contract unresolved रखा; कोई guessed migration नहीं जोड़ी। अगला विश्वसनीय स्रोत approved/current schema export या मूल migration/commit है जिसने columns पहली बार बनाए।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित; यह audit progress checklist completion नहीं है।
