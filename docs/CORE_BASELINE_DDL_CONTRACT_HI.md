@@ -313,3 +313,15 @@ Repository के पुराने commit `08e5ff8abc1cf2a5e2ae656a951f8f4d886
 - Migration CLI version parsing, duplicate-version handling और existing migration-history reconciliation को अलग से validate करना होगा; production history को edit नहीं करना है।
 
 यह static source audit है। कोई migration execute नहीं हुई और कोई Production/database connection नहीं किया गया।
+
+
+### 11.1 — Cross-branch exact DDL search update (15 नवम्बर 2026)
+
+पिछले static audit के बाद अतिरिक्त cross-check:
+
+- पाँच उपलब्ध historical feature/work branches में COMPLETE_DATABASE_SETUP.sql और 20261109001000_add_google_maps_location_support.sql के समान paths पढ़े। इन setup copies में service_bookings.amount_paid का base/add-column DDL नहीं मिला; Google Maps migration copies में auth_user_id को function INSERT/UPSERT में उपयोग किया गया है, पर उसे जोड़ने वाला ADD COLUMN नहीं मिला।
+- Current code search में auth_user_id का एक और consumer 20261109010000_create_secure_wallet_ledger_foundation.sql के line 104 पर मिला: coalesce(ep.auth_user_id, ep.user_id)। अतः यह column केवल Google Maps approval function की जरूरत नहीं; wallet ownership resolution भी इसे पढ़ता है।
+- 20261109003000_secure_commission_reporting.sql amount_paid पढ़ता है, negative-value guard लगाता है और authenticated column UPDATE grant में इसे शामिल करता है। 20261109_electrician_inspection_quotes_and_service_only_commission.sql भी trigger में इसे पढ़ता है; फिर भी starter schema और उपलब्ध migration tree में authoritative column definition नहीं मिली।
+- Exact-text code search में कोई अलग ADD COLUMN amount_paid या ADD COLUMN auth_user_id definition नहीं मिली। पाँच historical branches की समान file copies एक ही ऐतिहासिक स्रोत की पुनरावृत्ति हो सकती हैं; उन्हें स्वतंत्र schema provenance नहीं माना गया।
+
+**निर्णय:** दोनों columns के type/nullability/default/constraint/index/ownership contract अभी भी unresolved हैं। उन्हें अनुमान से जोड़ना, migration बनाना या fixture को parity-ready घोषित करना सुरक्षित नहीं। अगला वैध स्रोत पुराने commit/tree history में अलग migration/schema snapshot या अनुमोदित schema export होगा।
