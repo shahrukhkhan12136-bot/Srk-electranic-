@@ -2832,3 +2832,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - pgTAP source contract अब `plan(55)` और 55 assertions है। यह केवल SQL source contract है; वास्तविक PostgreSQL/pgTAP execution अभी नहीं हुआ।
 - यह बदलाव केवल Feature Branch/PR #8 पर है। कोई provider API call, transfer, settlement, reversal, payout, Production migration या deployment नहीं किया गया। Route का live provider status polling/webhook और वास्तविक settlement proof अभी अलग से Not Verified हैं।
 - अगला चरण: migration + test source का full review, CI result की जाँच, और PostgreSQL runtime test environment उपलब्ध होने पर pgTAP चलाना।
+
+## 2026-11-15 — GPT #2: Route transfer reconciliation report added (Feature Branch only)
+
+- Added migration `supabase/migrations/20261115170000_admin_route_transfer_accounting_reconciliation.sql` after inspecting the existing server-only `srk_route_transfers` schema. The Admin read-only booking report now returns Route transfer rows, transfer/settlement statuses, provider IDs, recipient types, linked-account IDs, amounts in paise, and timestamps.
+- Added exception checks for recipient-row count, payment-ID mismatch, expected electrician/commission amount mismatch, failed/reversed/manual-review states, unsettled transfers, missing provider transfer IDs, and overlap between a Route electrician transfer and a manually marked-paid payout.
+- The contract test now has `plan(55)` and 55 assertions, including eight Route-specific source/schema assertions. These are source-level pgTAP contract assertions only; PostgreSQL/pgTAP runtime execution is still **Not Run**.
+- Important scope: the inspected Route migration creates a server-only ledger and explicitly says database writes do not move money. Repository search did not establish a live Route transfer executor, provider status polling/webhook, or end-to-end settlement lifecycle. This change reconciles recorded ledger evidence only; it does **not** activate Route transfers or prove that funds reached a bank.
+- No Production migration, transfer, refund, payout, deployment, merge, or go-live was performed. PR #8 remains subject to owner review/approval.
