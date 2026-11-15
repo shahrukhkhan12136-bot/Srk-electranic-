@@ -209,8 +209,9 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 - Triggers on push to this Feature Branch, pull requests targeting `main`, and manual dispatch.
 - Uses GitHub-hosted Ubuntu, Node.js 22, `npm install --ignore-scripts --no-audit --no-fund`, then `npm test`.
 - No secrets, DB writes, provider calls or deployment in this job.
-- Latest HEAD before this inventory: `fb49673502423c35d9c89e3b5573e396a70d6fe5`.
-- Runs **43742558516** and **43742562237** both succeeded; both logs explicitly show **187 tests, 187 pass, 0 fail, 0 skipped**.
+- Latest verified PR head: `2f2415b1845e108e9e3d737a459c0440d503b71e`.
+- Node run **43743783902** on that head succeeded; log explicitly shows **187 tests, 187 pass, 0 fail, 0 skipped**. Earlier run **43743188290** on `f8b7bcf...` also passed 187/187.
+- Commit `13afb4d92e22673b50c5eee1751f66621fdf194f` corrected the customer payment-method pgTAP assertion from mojibake to the exact UTF-8 literal `Razorpay ऑनलाइन भुगतान`; the latest Node run includes this source correction.
 - This proves Node regression suite only, not SQL migration replay, PostgreSQL/pgTAP, browser/mobile, Vercel Preview or Production parity.
 
 ### Supabase schema CI
@@ -230,13 +231,19 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 
 ## 7. Consolidated blockers — keep these in one place
 1. **Base DDL evidence:** authoritative definitions remain unresolved for `public.service_bookings.amount_paid` and `public.electrician_profiles.auth_user_id`. Do not guess SQL types, nullability, defaults, FK/index/unique/grants.
-2. **Migration lineage:** two legacy 20261109 migrations may duplicate constraints; repository chronology alone cannot establish remote Supabase applied history. Do not rename/delete/repair without approved history evidence.
-3. **Full database harness:** current schema CI is pinned to a different branch and applies only five older migrations. Need an isolated, reproducible test harness for the current migration chain after base DDL recovery.
-4. **Runtime test matrix:** run pgTAP and role/ownership/concurrency tests in isolated PostgreSQL/Supabase; run browser tests for Admin and Support actor scopes. Avoid Production as test environment.
-5. **Provider integrations:** Razorpay refund sandbox pagination/reconciliation, Route settlement evidence, push delivery provider, SMS/OTP and storage flows require authorized isolated integration tests. No live financial action.
-6. **Main DB parity:** Feature Branch source is not Production. Any schema-only export/history evidence must be explicitly owner/DB-admin approved; no Production migration/history/catalog query is authorized here.
-7. **UI/API completeness:** reconcile each Admin/Support button, field, RPC, permission, and error state to avoid dead controls/stale labels.
-8. **Release:** PR #8 remains Draft/unmerged; Vercel Preview/visual QA and owner approval remain separate gates.
+2. **Dependency-matrix freshness:** `docs/MIGRATION_DEPENDENCY_MATRIX_HI.md` records a 73-migration static scan at an earlier commit; the consolidated current inventory has 78 migrations. Treat the 73-file matrix as historical until its newer migrations are reconciled. Do not call it a complete current replay order.
+3. **Migration lineage:** two legacy 20261109 migrations may duplicate constraints; repository chronology alone cannot establish remote Supabase applied history. Do not rename/delete/repair without approved history evidence.
+4. **Full database harness:** current schema CI is pinned to a different branch and applies only five older migrations. Need an isolated, reproducible test harness for the current migration chain after base DDL recovery.
+5. **Runtime test matrix:** run pgTAP and role/ownership/concurrency tests in isolated PostgreSQL/Supabase; run browser tests for Admin and Support actor scopes. Avoid Production as test environment.
+6. **Provider integrations:** Razorpay refund sandbox pagination/reconciliation, Route settlement evidence, push delivery provider, SMS/OTP and storage flows require authorized isolated integration tests. No live financial action.
+7. **Main DB parity:** Feature Branch source is not Production. Any schema-only export/history evidence must be explicitly owner/DB-admin approved; no Production migration/history/catalog query is authorized here.
+8. **UI/API completeness:** reconcile each Admin/Support button, field, RPC, permission, and error state to avoid dead controls/stale labels.
+9. **Release:** PR #8 remains Draft/unmerged; Vercel Preview/visual QA and owner approval remain separate gates.
+
+### Additional contract finding — 15 November 2026
+- The customer payment-method SQL contract test previously expected a mojibake literal even though migration `20261115270000_fix_customer_payment_method_unicode_contract.sql` writes the canonical UTF-8 value. Corrected the SQL test in commit `13afb4d92e22673b50c5eee1751f66621fdf194f`; fetched the current branch file again and confirmed the canonical literal is present and the mojibake sequence is absent.
+- The latest Node CI run `43743783902` passed 187/187 after the correction. This does **not** execute pgTAP; the PostgreSQL runtime assertion remains unverified.
+- GPT-1's new inventory separately records missing dedicated DB tests for electrician availability, booking-scoped live-location RPCs, and phone-change approval. These are GPT-1-owned workflows; no such files were changed here. Its payment-test mismatch note predates the GPT-2 correction and should be treated as stale until GPT-1 refreshes its own inventory.
 
 ## 8. No-go boundaries
 No Production schema/history queries or migrations, no secrets, no provider refunds/transfers/payouts, no real SMS/OTP/push sends, no paid staging subscription, no PR merge, no deployment/go-live without separate explicit approval. Do not overwrite GPT-1 shared files.
