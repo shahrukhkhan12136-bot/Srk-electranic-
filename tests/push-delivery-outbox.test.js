@@ -119,3 +119,8 @@ test('outbox fencing migration replaces the exact legacy RPC signature and grant
   assert.match(worker, /p_attempt_count: row\.attempt_count/);
   assert.match(worker, /result\.complete === true/);
 });
+
+test('worker treats an HTTP-success stale fencing rejection as a failed finish', () => {
+  assert.match(worker, /finish\.ok && \(await finish\.json\(\)\.catch\(\(\) => false\)\) === true/);
+  assert.match(worker, /stale_or_rejected: finish\.ok/);
+});
