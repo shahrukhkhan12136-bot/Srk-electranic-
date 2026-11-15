@@ -42,3 +42,9 @@ test('new-category booking status and category changes require protected server 
   assert.match(workMigration, /NEW_CATEGORY_STATUS_REQUIRES_PROTECTED_WORKFLOW/);
   assert.match(workMigration, /BOOKING_CATEGORY_IS_IMMUTABLE/);
 });
+
+
+test('Admin cannot manually mark an unfinished booking completed through the generic Save path', () => {
+  assert.match(admin, /if\(status==='completed'&&booking\.status!=='completed'\)[\s\S]*?सुरक्षित completion workflow से ही दर्ज होगी/);
+  assert.match(admin, /\.update\(\{status,quoted_amount:quoted\}\)/);
+});
