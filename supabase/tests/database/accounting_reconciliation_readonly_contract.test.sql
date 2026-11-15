@@ -1,5 +1,5 @@
 begin;
-select plan(42);
+select plan(43);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -140,6 +140,12 @@ select ok(position('FINAL_REFUND_PAYOUT_NOT_CLOSED' in pg_get_functiondef(
   and position('ELECTRICIAN_TRANSFER_NOT_PROCESSED' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'report flags refund/payout closure and provider transfer processing gaps');
+
+select ok(position('ROUTE_PAYMENT_ID_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('ROUTE_ELECTRICIAN_RECIPIENT_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route transfer must match the booking payment and assigned electrician identity');
 
 select * from finish();
 rollback;
