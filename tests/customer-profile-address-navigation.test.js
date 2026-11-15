@@ -9,7 +9,7 @@ test('Profile saved-address shortcut reveals Home tab before scrolling to the bo
   const marker = "document.getElementById('customerProfileAddressLink')?.addEventListener('click',()=>{";
   const start = source.indexOf(marker);
   assert.ok(start >= 0, 'profile saved-address click handler exists');
-  const end = source.indexOf('\\n });', start);
+  const end = source.indexOf('\n });', start);
   assert.ok(end > start, 'profile saved-address click handler closes');
   const handler = source.slice(start + marker.length, end);
   const activateHome = handler.indexOf("activate('Home')");
