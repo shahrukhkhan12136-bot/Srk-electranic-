@@ -2645,3 +2645,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - GitHub Actions PR run `43704748225` — commit `059f875a2de8caffa422da9b7ae98a125acbfc7b`: **96/96 Node tests PASS, 0 FAIL**. यह repository Node suite है; pgTAP, live Supabase RPC/database parity, browser E2E, Vercel Preview और mobile QA का प्रमाण नहीं। उसी commit का push run उस समय अलग से in-progress था।
 - Manual refund completion migration में verified manual refund के बाद पहले से blocked unpaid electrician payout अब `refunded` होता है; transition न हो तो transaction fail-closed रहती है। इसका pgTAP contract plan/assertion count 10/10 source-level है; pgTAP runtime अभी नहीं चला।
 - Accounting migration/test source में Route references हटे हैं; reconciliation RPC read-only है। No Production migration, data/Auth/Storage/settings mutation, provider refund/transfer, live SMS/OTP, push send, deployment, PR merge या go-live action किया गया। PR #8 अभी review के लिए unmerged है।
+
+## 2026-11-15 — Customer legacy quote approval UI (GPT-1)
+
+- Customer booking loader में legacy electrician quotation के लिए आवश्यक quoted_amount, service_charge, materials_amount, quote_status, quote_note और submission timestamp fields जोड़े।
+- awaiting_quote_approval + pending quote पर Customer को मेहनताना और सामान/पार्ट्स की अलग-अलग रकम, कुल रकम और electrician का विवरण दिखाने वाला approval card जोड़ा।
+- Customer से explicit confirmation लेकर existing owner-scoped srk_customer_respond_booking_quote RPC को approved या rejected response भेजा जाता है। RPC success के बाद booking list reload होती है; failure पर status दर्ज होने का झूठा दावा नहीं किया जाता।
+- पहले से approved/rejected quote की स्थिति भी booking card में दिखाई जाती है। यह legacy quote workflow है; newer category-based fixed-duration booking flow में यह card नहीं दिखता।
+- Regression coverage जोड़ी: tests/customer-quote-approval-ui.test.js. Source commit f147c5f05489ed20c64986064f8a2f199e2f5941 और test commit b4977ad54f826951fd6430a5cd43697489ba3122.
+- इस update के लिए अभी कोई नया CI result उपलब्ध नहीं है; test PASS या browser/runtime verification का दावा नहीं। Next step: CI में targeted/full Node suite verify करना और उसी के बाद quote approval UI को आगे audit करना।
+- No production database/configuration change, actual quote response, booking/payment mutation, deployment, PR merge, or mobile QA.
