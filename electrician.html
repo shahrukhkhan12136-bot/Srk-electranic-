@@ -56,18 +56,56 @@ async function stopElectricianLiveLocationAfterGpsFailure(id,watch,status,messag
   electricianLocationStopBusy.delete(id);
  }
 }
-async function startElectricianLiveLocation(id){const status=document.getElementById('liveLocStatus_'+id);if(locationWatches.has(id)){status.textContent='GPS अपडेट पहले से चालू है।';return;}try{if(!confirm('क्या आप यात्रा के दौरान अपना वर्तमान GPS स्थान ग्राहक से साझा करना चाहते हैं?'))return;const p=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:20000,maximumAge:0}));if(p.coords.accuracy>150)throw Error('GPS सटीकता कम है। खुले स्थान पर फिर कोशिश करें।');const {error}=await sb.rpc('srk_electrician_start_live_location',{p_booking_id:id,p_latitude:p.coords.latitude,p_longitude:p.coords.longitude,p_accuracy_meters:p.coords.accuracy});if(error)throw error;status.textContent='Live Location साझा हो रही है। GPS चालू रखें।';let last=Date.now(),watch;watch=navigator.geolocation.watchPosition(async pos=>{
- if(Date.now()-last<12000||pos.coords.accuracy>150)return;
- last=Date.now();
- try{
-  const r=await sb.rpc('srk_electrician_update_live_location',{p_booking_id:id,p_latitude:pos.coords.latitude,p_longitude:pos.coords.longitude,p_accuracy_meters:pos.coords.accuracy});
-  if(r.error)throw r.error;
- }catch(error){
-  await stopElectricianLiveLocationAfterGpsFailure(id,watch,status,'GPS अपडेट नहीं हो सका।');
+const electricianLocationStartBusy=new Set();
+async function startElectricianLiveLocation(id){
+ const status=document.getElementById('liveLocStatus_'+id);
+ if(electricianLocationStartBusy.has(id)){
+  if(status)status.textContent='लोकेशन शुरू करने का अनुरोध पहले से चल रहा है।';
+  return;
  }
-},()=>{
- stopElectricianLiveLocationAfterGpsFailure(id,watch,status,'GPS सिग्नल उपलब्ध नहीं है।');
-},{enableHighAccuracy:true,maximumAge:5000,timeout:20000});locationWatches.set(id,watch);}catch(e){status.textContent=e.message||'लोकेशन शुरू नहीं हो सकी।';}}
+ if(locationWatches.has(id)){
+  if(status)status.textContent='GPS अपडेट पहले से चालू है।';
+  return;
+ }
+ electricianLocationStartBusy.add(id);
+ let serverStarted=false,watch;
+ try{
+  if(!confirm('क्या आप यात्रा के दौरान अपना वर्तमान GPS स्थान ग्राहक से साझा करना चाहते हैं?'))return;
+  const p=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:20000,maximumAge:0}));
+  if(p.coords.accuracy>150)throw Error('GPS सटीकता कम है। खुले स्थान पर फिर कोशिश करें।');
+  const {error}=await sb.rpc('srk_electrician_start_live_location',{p_booking_id:id,p_latitude:p.coords.latitude,p_longitude:p.coords.longitude,p_accuracy_meters:p.coords.accuracy});
+  if(error)throw error;
+  serverStarted=true;
+  if(status)status.textContent='Live Location साझा हो रही है। GPS चालू रखें।';
+  let last=Date.now();
+  watch=navigator.geolocation.watchPosition(async pos=>{
+   if(Date.now()-last<12000||pos.coords.accuracy>150)return;
+   last=Date.now();
+   try{
+    const r=await sb.rpc('srk_electrician_update_live_location',{p_booking_id:id,p_latitude:pos.coords.latitude,p_longitude:pos.coords.longitude,p_accuracy_meters:pos.coords.accuracy});
+    if(r.error)throw r.error;
+   }catch(error){
+    await stopElectricianLiveLocationAfterGpsFailure(id,watch,status,'GPS अपडेट नहीं हो सका।');
+   }
+  },()=>{
+   stopElectricianLiveLocationAfterGpsFailure(id,watch,status,'GPS सिग्नल उपलब्ध नहीं है।');
+  },{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+  locationWatches.set(id,watch);
+ }catch(e){
+  if(watch!==undefined)navigator.geolocation.clearWatch(watch);
+  if(serverStarted){
+   try{
+    const {error}=await sb.rpc('srk_electrician_stop_live_location',{p_booking_id:id});
+    if(error)throw error;
+    if(status)status.textContent='लोकेशन शुरू नहीं हो सकी; सर्वर पर sharing बंद कर दी गई है।';
+   }catch(stopError){
+    if(status)status.textContent='लोकेशन शुरू नहीं हो सकी। सर्वर पर sharing बंद होने की पुष्टि नहीं हुई; Logout से पहले दोबारा कोशिश करें।';
+   }
+  }else if(status)status.textContent=e.message||'लोकेशन शुरू नहीं हो सकी।';
+ }finally{
+  electricianLocationStartBusy.delete(id);
+ }
+}
 async function stopElectricianLiveLocation(id){
  if(electricianLocationStopBusy.has(id))return;
  electricianLocationStopBusy.add(id);
