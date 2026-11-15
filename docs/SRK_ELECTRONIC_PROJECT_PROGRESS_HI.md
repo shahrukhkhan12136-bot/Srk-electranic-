@@ -3844,3 +3844,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Static scan also confirms two legacy `20261109` files share the same version prefix, plus repeated labour-bill access correction migrations and retirement files requiring replay/history review.
 - This is source-level inventory, not a complete parser-generated transitive dependency graph and not executable replay order. No PostgreSQL/pgTAP runtime, Production schema/history query, or live provider action was performed.
 - GPT-2 remains 27/39 = 69%; no checklist item closed by documentation alone.
+
+
+### Safe PostgreSQL test-path review — 15 Nov 2026
+- Reviewed `.github/workflows/node-tests.yml` and `.github/workflows/supabase-schema-ci.yml` plus repository test/config inventory.
+- Current Node CI is secret-free and runs Node tests on feature-branch pushes / PRs to main. Existing schema workflow is manual-only, guarded to a different legacy branch, reads a dedicated schema-export secret, and runs a hard-coded five-migration subset against a local stack restored from a remote schema-only dump. It is not suitable as-is for PR #8's 73 migrations.
+- No `supabase/config.toml` or `supabase/seed.sql` exists at inspected head. Reusing the schema workflow would involve a remote Production connection, so it was not dispatched or modified to target this branch.
+- Added workflow-path assessment to `docs/MIGRATION_DEPENDENCY_MATRIX_HI.md`. A clean isolated migration replay still requires an approved baseline schema artifact (especially unresolved `amount_paid` and `auth_user_id` definitions) and a no-Production local test workflow.
+- No DB was contacted, no workflow dispatched, no migrations executed. GPT-2 remains 27/39 = 69%.
