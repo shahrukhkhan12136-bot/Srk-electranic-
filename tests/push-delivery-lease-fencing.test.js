@@ -22,8 +22,8 @@ for (const [label, fnName, rowName, maxAttempts] of [
     assert.match(fn, new RegExp(rowName + '\\.attempt_count>=' + maxAttempts));
     assert.match(fn, /delivery_status='delivered'/);
     assert.match(fn, /delivery_status='dead'/);
-    assert.match(fn, /left\\(coalesce\\(p_error/);
-    assert.match(fn, /next_attempt_at=clock_timestamp\\(\\)\\+make_interval/);
+    assert.ok(fn.includes('left(coalesce(p_error'));
+    assert.ok(fn.includes('next_attempt_at=clock_timestamp()+make_interval'));
     assert.match(fn, /WHERE id=p_(?:outbox|delivery)_id AND attempt_count=p_attempt_count AND delivery_status='processing'/);
   });
 }
