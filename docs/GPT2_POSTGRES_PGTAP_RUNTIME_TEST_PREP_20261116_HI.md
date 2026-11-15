@@ -248,3 +248,93 @@ Feature Branch पर `.github/workflows/supabase-schema-ci.yml` मिला।
 - Remote migration-history row / live schema parity: **UNKNOWN / NOT ACCESSED**.
 - Supabase CLI replay, PostgreSQL execution and pgTAP: **NOT RUN**.
 - Migration SQL or GPT-1 Customer/Electrician/Welcome source: **UNCHANGED**.
+
+## 14. Owner-run read-only Supabase history and schema evidence plan — 16 Nov 2026
+
+यह section केवल evidence collection की तैयारी है। इस execution environment में Supabase DB connector/CLI/psql access उपलब्ध नहीं है; कोई hosted DB connection नहीं किया गया। GitHub repository access को Supabase database access न समझें।
+
+### A. Owner/DBA से क्या evidence लेना है
+
+केवल project के अधिकृत Database Owner/DBA से, approved secure workstation और approved access path पर:
+
+1. Supabase project reference और environment की पुष्टि (Production/Staging/local) — connection string या password साझा किए बिना।
+2. Migration history table में 20261109 के आसपास के सभी rows; खास तौर पर version, name और यदि उपलब्ध हो तो statement metadata.
+3. public.service_bookings table का existence और status, assigned_electrician_id columns की presence/type.
+4. उन्हीं दो named CHECK constraints की live definitions, validation flags (convalidated) और deferrability.
+5. service_bookings से जुड़े अन्य constraints/indexes/triggers की सूची, यदि किसी reconciliation review में ज़रूरत हो।
+
+### B. Read-only SQL template
+
+इसे केवल DBA अपने approved SQL client में चलाए। पहले BEGIN READ ONLY से transaction read-only घोषित करें; output को approved secure channel से दें। Connection URL/password को chat, GitHub, issue, commit या report में paste न करें।
+
+```sql
+BEGIN READ ONLY;
+
+-- 1) Verify the migration history relation and its actual columns first.
+SELECT table_schema, table_name, column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'supabase_migrations'
+  AND table_name = 'schema_migrations'
+ORDER BY ordinal_position;
+
+-- 2) After confirming the columns above, retrieve the relevant history rows.
+-- Standard Supabase installations expose version and name; if this project
+-- differs, adapt only after inspecting the column list.
+SELECT version, name
+FROM supabase_migrations.schema_migrations
+WHERE version LIKE '20261109%'
+ORDER BY version, name;
+
+-- 3) Confirm the target table and the two referenced columns.
+SELECT table_schema, table_name, column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'service_bookings'
+  AND column_name IN ('status', 'assigned_electrician_id')
+ORDER BY column_name;
+
+-- 4) Read the live definitions and validation state of the two constraints.
+SELECT
+  c.conname,
+  pg_get_constraintdef(c.oid, true) AS definition,
+  c.contype,
+  c.convalidated,
+  c.condeferrable,
+  c.condeferred
+FROM pg_constraint c
+JOIN pg_class t ON t.oid = c.conrelid
+JOIN pg_namespace n ON n.oid = t.relnamespace
+WHERE n.nspname = 'public'
+  AND t.relname = 'service_bookings'
+  AND c.conname IN (
+    'service_bookings_status_check',
+    'service_bookings_assignment_status_requires_electrician'
+  )
+ORDER BY c.conname;
+
+ROLLBACK;
+```
+
+यदि history query में version/name columns नहीं हों या table न मिले, तो वहीं रुकें; schema assumptions से query बदलकर कोई write action न करें। Query errors और column listing DBA को सुरक्षित तरीके से preserve करनी चाहिए।
+
+### C. Evidence handling / interpretation
+
+- History में केवल 20261109 version row हो तो उससे यह पता चल सकता है कि version दर्ज है; उससे अपने-आप यह सिद्ध नहीं होगा कि कौन-सी local filename/body चली थी। name/stored statement metadata उपलब्ध हो तो उसे भी जाँचें।
+- Live catalog में दोनों constraints मौजूद हों तो केवल current definitions सिद्ध होंगी; यह नहीं कि किस migration file ने उन्हें बनाया।
+- convalidated=false का अर्थ constraint अभी validated नहीं है; इसे स्वतः validate/alter न करें।
+- Missing history row या missing constraint को देखकर migration run, repair, drop/add, या schema fix न करें।
+- History rows और catalog output का समय, project environment, CLI/SQL client version और evidence source record करें। Secrets, customer rows, Auth user data या business records collect न करें।
+- DBA output मिलने के बाद Git history + exact source SQL + live catalog + migration history का side-by-side reconciliation बनाएं। फिर अलग owner approval के बिना कोई remediation न करें।
+
+### D. Explicitly out of scope
+
+- supabase migration repair, supabase db push, supabase db reset, ALTER TABLE, DROP/ADD CONSTRAINT, migration rename/delete/resequence.
+- Production schema dump, data export, Auth/user inspection, payment or booking data access.
+- किसी credential/secret को chat में माँगना या store करना.
+
+### Status
+
+- Read-only evidence plan: DOCUMENTED.
+- Supabase Production connection / remote history query: NOT RUN.
+- Live catalog snapshot: NOT ACCESSED.
+- Migration repair or database write: NONE.
