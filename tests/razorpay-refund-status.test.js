@@ -13,7 +13,7 @@ const record={id:recordId,booking_id:bookingId,payment_id:paymentId,refund_id:re
 const response=(status,data)=>({ok:status>=200&&status<300,status,text:async()=>JSON.stringify(data)});
 const originalFetch=global.fetch;
 const request=()=>({httpMethod:"POST",headers:{authorization:"Bearer test-admin-token-123456789"},body:JSON.stringify({booking_id:bookingId})});
-function setupProvider(refund= {id:refundId,payment_id:paymentId,amount:12500,currency:"INR",status:"processed",created_at:123,acquirer_data:{arn:"ARN123"},notes:{srk_refund_record_id:recordId}}){
+function setupProvider(refund= {id:refundId,payment_id:paymentId,amount:12500,currency:"INR",status:"processed",notes:{srk_refund_record_id:recordId},created_at:123,acquirer_data:{arn:"ARN123"},notes:{srk_refund_record_id:recordId}}){
  const calls=[];
  global.fetch=async(url,options={})=>{
   const target=String(url);calls.push({target,options});
