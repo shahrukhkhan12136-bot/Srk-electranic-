@@ -840,7 +840,8 @@ async function loadAdminBookingAccountingReconciliation(){
    '<p><b>Booking:</b> '+esc(r.booking_id)+' · <b>Status:</b> '+esc(r.booking_status)+' · <b>Payment:</b> '+esc(r.payment_status)+' · <b>Verified:</b> '+(r.payment_verified?'हाँ':'नहीं')+'</p>'+
    '<div class="grid">'+
    summary('Customer Collection',adminAccountingMoney(r.customer_collection_paise))+
-   summary('Refund',adminAccountingMoney(r.refund_paise)+' · '+esc(r.refund_status))+
+   summary('Confirmed Refund',adminAccountingMoney(r.refund_paise)+' · '+esc(r.refund_status))+
+   summary('Requested / Unconfirmed Refund',adminAccountingMoney(r.refund_requested_or_unconfirmed_paise)+' · Request '+esc(r.customer_refund_request_status||'—'))+
    summary('Net Collection',adminAccountingMoney(r.customer_net_collection_paise))+
    summary('Labour Gross',adminAccountingMoney(r.labour_gross_paise))+
    summary('Materials',adminAccountingMoney(r.materials_gross_paise))+
