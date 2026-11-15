@@ -255,3 +255,12 @@
 - [x] Expanded Customer App English translations for booking lifecycle/timeline states, refund and cancellation history, GPS/location feedback and common booking error/status messages.
 - [x] CI run `43707742875` on code commit `bd1b6f1388d3f1a70cd2e069676eb6a23663cade` — **SUCCESS** (full Node test suite and inline Customer/Electrician JavaScript syntax parsing).
 - [ ] Real browser GPS permission / Live Location stop retry behavior, language switching and receipt Print/PDF preview still require browser runtime verification. Final mobile QA remains deferred.
+
+
+### 2026-11-15 — Customer translation gaps and Electrician GPS error handling
+- [x] Added remaining Customer English translations for login/form placeholders, booking estimate text, booking map label, common payment/OTP failures and complaint feedback.
+- [x] Electrician GPS live-location update now catches both returned Supabase RPC errors and thrown/network exceptions. Either failure initiates the existing safe server-side sharing-stop routine rather than leaving an unhandled rejected promise.
+- [x] Updated the client regression tests to match the explicit thrown-error handling and helper-based stop flow.
+- [x] Latest branch-head Node test workflows on `e549574a091071f995786b009d710e4da25160c0`: **SUCCESS** (two CI runs, full repository Node test suite).
+- [ ] Browser runtime verification remains pending: actual language selector behavior, dynamic form placeholders, payment receipt print/PDF, GPS permission and live-location stop/retry.
+- [ ] Final consolidated mobile QA remains deferred until implementation is complete.
