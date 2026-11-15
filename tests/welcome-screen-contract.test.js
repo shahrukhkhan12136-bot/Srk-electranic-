@@ -26,7 +26,8 @@ test('installed PWA opens the welcome screen and offline cache contains its entr
   const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
   assert.equal(manifest.start_url, './welcome.html');
   assert.ok(sw.includes("srk-electronic-v10"));
-  assert.ok(sw.includes("'./welcome.html'"));\n  assert.ok(sw.includes("'./assets/srk-founder.jpg'"));
+  assert.ok(sw.includes("'./welcome.html'"));
+  assert.ok(sw.includes("'./assets/srk-founder.jpg'"));
   assert.ok(sw.includes("'./electrician.html'"));
   assert.ok(sw.includes("'./admin.html'"));
 });
