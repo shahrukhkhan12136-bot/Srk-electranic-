@@ -306,3 +306,10 @@
 - [ ] Supabase के वास्तविक managed project schema/roles पर parity verification और scheduled worker/Edge integration test बाकी; इसके लिए पहले approved isolated staging environment चाहिए।
 
 **सीमा:** PostgreSQL परीक्षण local disposable DB + minimal fixture पर हुआ, वास्तविक Supabase project पर नहीं। कोई production/staging migration apply, deployment, real push या mobile QA नहीं। Web Push provider timeout के बाद transport-level duplicate संभावना अभी भी बनी रहती है।
+
+### Repository documentation consistency — 15 November 2026
+- [x] `README.md` phone-visibility section corrected to the owner-approved acceptance rule: hide both numbers before electrician acceptance; reveal full numbers to customer and accepted electrician after acceptance; no extra OTP; Admin may see both; Support Staff remains restricted.
+- [x] Removed obsolete masked-calling / Exotel requirement and ambiguous assigned-only wording from the active policy section.
+- [ ] Continue checking README endpoint and feature descriptions against current source before treating documentation as fully current.
+- Commit: `cdb9583e167659f6601effb25ad926d76fa7bfe6` (feature branch only).
+- No application behavior, database, production configuration, deployment, merge, or mobile QA changed.
