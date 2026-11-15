@@ -3391,3 +3391,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Commits: `ec1d02286cb74c184f105bef2e199adceb191e6a` (Electrician UI), `a3be062ab70770f79542841fc66f225764735765` (contract test).
 - This is a source-level fix only. No migrations were applied, no database was changed, and no live deployment or manual mobile test was performed. Automated tests/CI have not yet been run for these commits.
 - Remaining blocker: Admin dispute resolution outcomes and any resulting timer/financial behavior require explicit business rules and GPT-2 coordination; do not implement assumptions.
+
+
+## 2026-11-15 — GPT-2 Refund ↔ Payout lock-order और settlement audit (source-only)
+
+- Feature Branch migration `20261114360000_new_category_electrician_payout_reconciliation.sql` में Admin payout RPC पहले booking row lock (`FOR UPDATE`) और फिर payout row lock लेता है; केवल `pending` payout को Paid दर्ज कर सकता है। यह वास्तविक बैंक transfer नहीं करता—Admin द्वारा बाहर भुगतान के बाद UTR/reference दर्ज होता है।
+- New-category payout के लिए completed booking, verified payment, immutable labour bill और electrician assignment मिलते हैं; settled cancellation fees को booking collection में जोड़ा जाता है, पर electrician payable/commission base से अलग रखा जाता है। कोई reserved fee बची हो तो payout reject होता है।
+- Refund reconciliation migration `20261115250000_harden_refund_reconcile_full_amount.sql` और recovery finalizer `20261115240000_harden_refund_recovery_full_amount.sql` भी booking-first lock लेते हैं। Processed refund केवल पूरे captured booking amount के बराबर evidence पर स्वीकार होता है; refund hold से unrelated Admin-blocked या पहले से paid payout को स्वतः release/overwrite नहीं किया जाता।
+- Source review से booking-first lock order दोनों paths में consistent दिखा; इससे intended serialization contract स्पष्ट है, लेकिन concurrent payout-vs-refund race का PostgreSQL runtime प्रमाण नहीं है। Double-submit, refund-after-payout, trigger execution और rollback behavior अभी isolated PostgreSQL/pgTAP में चलाना बाकी है।
+- Node test file में full-amount reconcile/recovery guards के source assertions मौजूद हैं; ये SQL execution का विकल्प नहीं। Current PR #8 head `63c95b0bd4c2cade65f2aafd7a2618516c3a9a8e` का latest Node CI run `43721372919` failed हुआ: test 33 `booking-lifecycle-serialization.test.js` base Timer migration के schema-qualified INSERT को गलत Migration में ढूँढ रहा है। GPT-2 ने GPT-1 की shared test/migration files नहीं बदलीं।
+- Checklist counts अपरिवर्तित: GPT-2 **27/39 = 69%**, 12 शेष। PR #8 Draft/Open/Unmerged; कोई Production DB change, real refund/transfer, merge या deployment नहीं।
