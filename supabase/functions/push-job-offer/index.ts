@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     }
     if (typeof target.subscription_id !== "string" || !uuid.test(target.subscription_id)) {
       await db.rpc("srk_finish_push_subscription_delivery", {
-        p_delivery_id: target.delivery_id, p_success: false, p_error: "Invalid subscription identity"
+        p_delivery_id: target.delivery_id, p_attempt_count: target.attempt_count, p_success: false, p_error: "Invalid subscription identity"
       });
       failed++; return;
     }
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
       await webpush.sendNotification({ endpoint, keys: { p256dh, auth } },
         notification, { TTL: 60, urgency: "high" });
       const { error } = await db.rpc("srk_finish_push_subscription_delivery", {
-        p_delivery_id: target.delivery_id, p_success: true, p_error: null
+        p_delivery_id: target.delivery_id, p_attempt_count: target.attempt_count, p_success: true, p_error: null
       });
       if (error) failed++; else sent++;
     } catch (err) {
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
         await db.from("srk_push_subscriptions").delete().eq("id", target.subscription_id);
       } else {
         await db.rpc("srk_finish_push_subscription_delivery", {
-          p_delivery_id: target.delivery_id, p_success: false,
+          p_delivery_id: target.delivery_id, p_attempt_count: target.attempt_count, p_success: false,
           p_error: status ? "Push provider HTTP " + status : "Push provider request failed"
         });
       }
