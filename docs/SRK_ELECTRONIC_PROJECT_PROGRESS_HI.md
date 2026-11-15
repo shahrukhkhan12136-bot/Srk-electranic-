@@ -3894,3 +3894,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इसलिए पहले से पहचाने गए दो unresolved base-column contracts अब भी unresolved हैं। Commit search की सीमाओं के कारण इसे पूरे Git object history की exhaustive जाँच नहीं माना जा सकता।
 - आगे authoritative proof के लिए मूल deployment artifact या स्वीकृत read-only catalog/schema export चाहिए; Production पर कोई access/query नहीं की गई।
 - GPT-2 checklist 27/39 = 69%; कोई implementation checklist item बंद नहीं।
+
+
+### Schema-export artifact route inspection — 15 Nov 2026
+- Repository search में कोई committed `pg_dump`, schema backup/export artifact या generated Production schema file नहीं मिला। Tracked starter schema files ही उपलब्ध हैं।
+- एक मौजूदा workflow `.github/workflows/supabase-schema-ci.yml` में dedicated least-privilege credential से केवल `public,private` schema export करने, data statements रोकने, और export को temporary isolated Supabase stack में restore करने का design है।
+- Workflow केवल manual `workflow_dispatch` पर चलता है और job condition इसे `feature/platform-fee-cash-online-cycle` branch तक सीमित करती है। यह PR #8 की वर्तमान feature branch पर लागू नहीं होता। इसमें Production DB URL secret की आवश्यकता है; इसे इस audit के लिए trigger/modify नहीं किया गया।
+- Workflow का शेष migration batch भी पुराने पाँच निर्दिष्ट migrations तक सीमित है; यह अपने आप GPT-2 के सभी वर्तमान migrations का full replay नहीं है।
+- सुरक्षित अगला विकल्प: मालिक/DB administrator से स्वीकृत schema-only export को review के लिए उपलब्ध कराना, या अलग स्पष्ट अनुमति के बाद dedicated read-only schema-export workflow को वर्तमान isolated test plan के अनुरूप बनाना। इस समय कोई Production query/export नहीं किया गया।
+- `amount_paid` और `auth_user_id` की मूल column definitions अब भी unresolved हैं। GPT-2 checklist 27/39 = 69%; कोई item बंद नहीं।
