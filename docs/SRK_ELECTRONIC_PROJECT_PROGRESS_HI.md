@@ -3886,3 +3886,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - कई पुराने branches के recursive Git trees में उपलब्ध schema/setup SQL और migration सूची जाँची; मिले हुए starter schema artifacts पहले से देखे गए उन्हीं आधार फ़ाइलों के समान lineage में हैं। इससे कोई नया प्रमाणित base-column DDL नहीं मिला।
 - नतीजा: `auth_user_id` और `amount_paid` की authoritative origin/type/constraints अभी unresolved हैं। GitHub search और branch-tree inspection पूर्ण Git-history proof नहीं हैं। कोई DDL अनुमान से नहीं जोड़ा गया; कोई remote DB access नहीं।
 - GPT-2 checklist: 27/39 = 69%; यह dependency audit है, implementation closure नहीं।
+
+
+### Git commit-history follow-up — 15 Nov 2026
+- Repository commit search में `amount_paid` के लिए केवल दो संबंधित commits मिले: `1983b733` (webhook captured amount record करना) और `d7c7fc9` (verified Razorpay amount record करना)। ये application write-path changes हैं; मूल SQL column definition नहीं।
+- `auth_user_id` के लिए commit search में कोई matching commit नहीं मिला।
+- इसलिए पहले से पहचाने गए दो unresolved base-column contracts अब भी unresolved हैं। Commit search की सीमाओं के कारण इसे पूरे Git object history की exhaustive जाँच नहीं माना जा सकता।
+- आगे authoritative proof के लिए मूल deployment artifact या स्वीकृत read-only catalog/schema export चाहिए; Production पर कोई access/query नहीं की गई।
+- GPT-2 checklist 27/39 = 69%; कोई implementation checklist item बंद नहीं।
