@@ -3231,3 +3231,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Latest PR head `e013bbbf6a60c979fa3185a961fb03517ca4a54f` पर GitHub Actions run `43716991931` / job `132820552196` — **Node test suite SUCCESS**; dependencies install और `npm test` दोनों सफल।
 - pgTAP test file में नया multi-profile ownership structural assertion मौजूद है और plan 20 है; वास्तविक PostgreSQL/pgTAP execution अभी नहीं हुआ।
 - Migration केवल Feature Branch में है। Production Supabase, merge और deployment में कोई बदलाव नहीं।
+
+
+### सुरक्षित Database Test Environment की जाँच — 2026-11-15
+- Supabase organization में दो ACTIVE_HEALTHY projects मिले: `Srk electranic` और `SRK ELECTRONIC TEST`।
+- मौजूदा `SRK ELECTRONIC TEST` project की migration history में केवल electrician push-notification परीक्षण से जुड़ी 7 migrations हैं; इसमें Customer Booking / Work Timer / Labour Bill lifecycle का पूर्ण test schema प्रमाणित नहीं है।
+- इसलिए इसे इस RPC migration के लिए उपयुक्त runtime test database मानकर कोई SQL/migration लागू नहीं की। Production project पर भी कोई परीक्षण या schema परिवर्तन नहीं किया।
+- सुरक्षित अगला कदम: सभी implementation पूर्ण होने पर, पहले से तय प्रक्रिया के अनुसार, पूर्ण schema वाला approved isolated test environment उपलब्ध/स्वीकृत होने पर pgTAP और role-based RPC tests चलाना। अभी कोई नया paid Supabase branch/project नहीं बनाया।
