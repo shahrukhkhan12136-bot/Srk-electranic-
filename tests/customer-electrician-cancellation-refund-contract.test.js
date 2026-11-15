@@ -60,3 +60,28 @@ test('electrician portal displays an Admin-cancelled booking and cannot offer an
   assert.match(electrician, /o\.booking_status==="cancelled"[\s\S]*?बुकिंग Admin द्वारा रद्द/);
   assert.match(electrician, /o\.offer_status==='offered'&&o\.booking_status!=='cancelled'&&p\.active/);
 });
+
+
+test('Customer refund submission reconciles a rejected write using the owner-scoped refund request list and never auto-resubmits', () => {
+  const start=customer.indexOf('async function customerSubmitBookingRefund(');
+  const end=customer.indexOf('\nasync function customerCancelBooking(',start);
+  const fn=customer.slice(start,end);
+  assert.match(fn,/srk_customer_create_booking_refund_request/);
+  assert.match(fn,/srk_customer_list_booking_refund_requests/);
+  assert.match(fn,/requests\.find\(row=>row\.booking_id===bookingId\)/);
+  assert.match(fn,/customerRefundStatusText\(confirmedRequest\.status\)/);
+  assert.match(fn,/दोबारा अनुरोध नहीं भेजा गया/);
+  assert.doesNotMatch(fn,/catch[\s\S]*?customerSb\.rpc\('srk_customer_create_booking_refund_request'/);
+});
+
+test('Customer cancellation submission reconciles a rejected write through the owner-scoped pending request list', () => {
+  const start=customer.indexOf('async function customerCancelBooking(');
+  const end=customer.indexOf('\nlet customerLiveLocationBookingIds',start);
+  const fn=customer.slice(start,end);
+  assert.match(fn,/srk_customer_request_booking_cancellation/);
+  assert.match(fn,/srk_customer_list_booking_cancellation_requests/);
+  assert.match(fn,/requests\.find\(row=>row\.booking_id===bookingId&&row\.request_status==='pending'\)/);
+  assert.match(fn,/रद्द करने का अनुरोध Admin के पास लंबित है/);
+  assert.match(fn,/दोबारा अनुरोध नहीं भेजा गया/);
+  assert.match(fn,/lookupSucceeded/);
+});
