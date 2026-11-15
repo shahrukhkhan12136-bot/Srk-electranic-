@@ -374,3 +374,13 @@
 - [ ] Full repository CI remains blocked by separate existing Razorpay webhook test `matches an unpersisted provider refund by its internal refund-record note` (assertion false at `tests/razorpay-webhook-inbox.test.js:361`); lifecycle tests and inline-script parse passed in the same run. Do not mark full suite green.
 - [ ] SQL pgTAP/JWT runtime tests are present in the feature branch but not executed; no Production migration or live booking/payment operation performed. Production migration parity and E2E remain pending.
 - [ ] Final mobile QA remains deferred until all app/admin/backend implementation is complete.
+
+
+### 2026-11-15 — Welcome Screen / Founder Photo / PWA entry audit
+- [x] Verified `index.html` redirects to `welcome.html`; all three role routes (Customer, Electrician, Admin) are present.
+- [x] Updated Welcome Screen to the approved blue/white premium direction, included “Smart Service... Better Life...” and retained the slogan “विश्वास की शक्ति, सेवा की पहचान।”
+- [x] Found that the checked-in `assets/srk-founder.jpg` is a three-screen app collage, not the approved blue-background Founder Photo. It is no longer displayed as a portrait. No generated or unrelated face has been substituted; an accessible founder-photo slot is held until the exact approved source photo is available in the repo.
+- [x] Corrected PWA `manifest.webmanifest` start_url to `./welcome.html`; bumped Service Worker cache to v9 and added Welcome, Customer, Electrician and Admin entry pages to precache.
+- [x] Reworked `tests/welcome-screen-contract.test.js` to assert role routing, no collage substitution, approved text, PWA start URL and offline precache.
+- [ ] Exact approved blue-background founder photo is not currently present in accessible repository or Library assets; final authentic-photo placement remains pending. The user previously specified: first blue-background photo is the Founder photo; second image is design reference. Do not substitute the design reference or older generated portrait.
+- [ ] Browser visual/runtime and install/offline tests pending; final mobile QA remains deferred. No deployment or Production changes.
