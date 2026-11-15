@@ -35,3 +35,15 @@ test('support and profile remain behind the authenticated customer dashboard', (
   assert.match(booking, /srk_customer_update_my_profile/);
   assert.match(booking, /srk_customer_get_my_profile/);
 });
+
+
+test('customer profile language preference applies reversible Hindi and English UI translations', () => {
+  assert.match(booking, /const customerUiTranslations =/);
+  assert.match(booking, /function applyCustomerUiLanguage\(language\)/);
+  assert.match(booking, /document\.documentElement\.lang = lang/);
+  assert.match(booking, /customerProfileLanguage.*addEventListener\('change'/);
+  assert.match(booking, /applyCustomerUiLanguage\(profile\.preferred_language\|\|'hi'\)/);
+  assert.match(booking, /customerUiOriginalText = new WeakMap\(\)/);
+  assert.match(booking, /customerUiLanguageObserver\.observe\(document\.body/);
+  assert.match(booking, /'सर्विस बुक करें':'Book a Service'/);
+});
