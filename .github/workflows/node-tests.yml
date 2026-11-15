@@ -1,6 +1,9 @@
 name: Feature Branch Node tests
 
 on:
+  push:
+    branches:
+      - feat/customer-login-first-dashboard-20261114
   pull_request:
     branches:
       - main
@@ -26,6 +29,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Install declared dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
 
       - name: Run repository Node tests
         run: npm test
