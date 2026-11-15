@@ -48,7 +48,7 @@ exports.handler = async function () {
         errorText = error && error.name ? error.name : "Push sender request failed";
       }
       const finish = await callRpc("srk_finish_push_delivery_outbox", {
-        p_outbox_id: row.outbox_id, p_success: success, p_error: errorText
+        p_outbox_id: row.outbox_id, p_attempt_count: row.attempt_count, p_success: success, p_error: errorText
       });
       if (!finish.ok) {
         finishErrors++;
