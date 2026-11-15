@@ -833,7 +833,7 @@ async function loadAdminRefundRequests(){
    (r.refund_record_status?'<p>Provider Refund: <b>'+esc(r.refund_record_status)+'</b> · Provider status: '+esc(r.provider_status||'—')+' · Refund ID: '+esc(r.provider_refund_id||'अभी उपलब्ध नहीं')+'</p>':'<p>Provider Refund Record: अभी नहीं बना</p>')+
    (r.payout_status?'<p>Electrician Payout: <b>'+esc(r.payout_status)+'</b> · '+esc(r.payout_note||'')+'</p>':'')+
    (r.refund_last_error?'<p style="color:#9a3412">Provider error: '+esc(r.refund_last_error)+'</p>':'')+
-   (r.refund_record_status&&r.refund_record_status!=='processed'?'<button type="button" class="alt" onclick="inspectAdminProviderRefund(\''+esc(r.booking_id)+'\',\''+esc(r.request_id)+'\')">Razorpay की वास्तविक स्थिति जाँचें</button><div id="adminRefundProviderCheck_'+esc(r.request_id)+'" class="muted" aria-live="polite"></div>':'')+
+   (r.refund_record_status&&r.refund_record_status!=='processed'?'<button type="button" class="alt" onclick="inspectAdminProviderRefund(\\''+esc(r.booking_id)+'\\',\\''+esc(r.request_id)+'\\')">Razorpay की वास्तविक स्थिति जाँचें</button><div id="adminRefundProviderCheck_'+esc(r.request_id)+'" class="muted" aria-live="polite"></div><label for="adminRefundRecoveryNote_'+esc(r.request_id)+'">Recovery Audit Note (10–2000 अक्षर)</label><textarea id="adminRefundRecoveryNote_'+esc(r.request_id)+'" minlength="10" maxlength="2000" rows="2" style="width:100%;padding:10px" placeholder="Razorpay GET प्रमाण, जाँच और accounting recovery का कारण लिखें"></textarea><button type="button" onclick="recoverAdminProviderRefund(\\''+esc(r.booking_id)+'\\',\\''+esc(r.request_id)+'\\')">Verified Razorpay Refund Recovery चलाएँ</button>':'')+
    (['processing','unknown'].includes(state)||['requested','processing','failed'].includes(String(r.refund_record_status||''))?'<p class="notice" role="note">Recovery जाँच आवश्यक: पहले Razorpay Dashboard में इसी Refund ID / Payment ID की वास्तविक स्थिति मिलाएँ। बिना प्रमाण नया Refund या retry न करें; payout को manually release न करें।</p>':'')+
    (r.admin_note?'<p>पिछला Admin Note: '+esc(r.admin_note)+'</p>':'')+
    (['requested','in_review'].includes(state)?'<label for="adminRefundNote_'+esc(r.request_id)+'">Admin जाँच / निर्णय नोट (10–2000 अक्षर)</label><textarea id="adminRefundNote_'+esc(r.request_id)+'" minlength="10" maxlength="2000" rows="2" style="width:100%;padding:10px" placeholder="जाँच, प्रमाण और निर्णय का कारण लिखें"></textarea>':'')+
@@ -861,6 +861,29 @@ async function inspectAdminProviderRefund(bookingId,requestId){
   }
  }catch(error){box.textContent=(error?.message||'स्थिति verify नहीं हुई।')+' कोई नया Refund या payout release न करें।';}
  finally{adminRefundProviderCheckBusy.delete(requestId);}
+}
+const adminRefundRecoveryBusy=new Set();
+async function recoverAdminProviderRefund(bookingId,requestId){
+ if(adminRefundRecoveryBusy.has(requestId))return;
+ const box=document.getElementById('adminRefundProviderCheck_'+requestId);
+ const note=document.getElementById('adminRefundRecoveryNote_'+requestId)?.value.trim()||'';
+ if(note.length<10||note.length>2000){alert('Recovery audit note 10 से 2000 अक्षरों में लिखें।');return;}
+ if(!confirm('Razorpay की वास्तविक स्थिति GET से जाँची जाएगी। प्रमाण पहले अलग transaction में सुरक्षित होगा; उसके बाद ही processed refund की accounting finalize होगी। आगे बढ़ें?'))return;
+ adminRefundRecoveryBusy.add(requestId);if(box)box.textContent='Razorpay प्रमाण जाँचा और सुरक्षित किया जा रहा है…';
+ try{
+  const {data:sessionData,error:sessionError}=await sb.auth.getSession();
+  const token=sessionData?.session?.access_token;
+  if(sessionError||!token)throw new Error('Main Admin session समाप्त है। दोबारा लॉगिन करें।');
+  const response=await fetch('/api/razorpay-refund-recovery',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({booking_id:bookingId,admin_note:note})});
+  let result=null;try{result=await response.json();}catch(_){}
+  if(result?.evidence_saved){
+   const audit='Recovery Audit ID: '+result.recovery_audit_id+'. ';
+   if(result.accounting_finalized){if(box)box.textContent=audit+'Razorpay processed प्रमाण सुरक्षित और accounting finalization सफल।';}
+   else{if(box)box.textContent=audit+'Provider प्रमाण सुरक्षित है, लेकिन accounting अभी finalize नहीं हुई। कोई नया refund/retry या payout release न करें; Main Admin reconciliation आवश्यक है। '+(result.error||result.message||'');}
+   await loadAdminRefundRequests();
+  }else{throw new Error(result?.error||result?.message||'Recovery प्रमाण सुरक्षित नहीं हुआ। कोई नया refund न बनाएँ।');}
+ }catch(error){if(box)box.textContent=(error?.message||'Recovery पूरी नहीं हुई।')+' नया refund/retry या payout release न करें।';}
+ finally{adminRefundRecoveryBusy.delete(requestId);}
 }
 async function decideAdminRefundRequest(id,decision){
  if(!['in_review','approved','rejected'].includes(decision)||adminRefundReviewBusy.has(id))return;
