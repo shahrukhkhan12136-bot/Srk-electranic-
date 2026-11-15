@@ -209,3 +209,42 @@ Feature Branch पर `.github/workflows/supabase-schema-ci.yml` मिला।
 - Whether both files have ever run against any hosted database: **UNKNOWN**.
 - CLI replay, PostgreSQL lock/performance behavior, and pgTAP: **NOT TESTED**.
 - कोई SQL migration edit नहीं की गई।
+
+
+## 13. Git commit chronology and dependency review for 20261109 pair — 16 Nov 2026
+
+### Verified Git history
+
+दोनों paths की GitHub commit history और तीनों relevant commit diffs पढ़े गए:
+
+| UTC समय | Commit | Source change |
+|---|---|---|
+| 08:00:19 | `073d59e64672ee436783338dc3842c35e920a078` | बड़ी quote/commission migration path पहले एक-line “Applied migration…” note के रूप में record हुई। |
+| 08:01:17 | `04d0c02f03cd7fb27d9b699b109dedc0fa0e0bad` | उसी बड़ी file को पूर्ण 99-line quote/commission SQL से बदला गया। |
+| 08:04:11 | `b5e5b3bf2555bde77d17fde1e8e1d62a67b58f2b` | बड़ी file के अंत में दोनों booking CHECK constraints जोड़े गए। |
+| 08:04:25 | `cd2c46e6e938ba7813eeb6461769f2a796ad3d93` | छोटी status-only file नई बनाई गई; इसका parent commit ठीक `b5e5b3b...` है। |
+
+छोटी file के creation diff में केवल वही सात SQL lines हैं जो बड़ी file में 14 सेकंड पहले जोड़ी गई थीं। यह Git source history से पुष्टि करता है कि छोटी file का बदलाव बड़ी file के constraint update के बाद अलग से दोहराया गया। यह remote Supabase migration history का प्रमाण नहीं है।
+
+### Dependency / ordering review
+
+- दोनों constraint statements `public.service_bookings` पर निर्भर हैं और `status` तथा `assigned_electrician_id` columns को पढ़ते हैं। दोनों files स्वयं इन columns या base table को create नहीं करतीं।
+- बड़ी migration अतिरिक्त रूप से `service_bookings` के quote/payment/status fields, `electrician_profiles`, `job_offers`, `auth.uid()`, commission function और संबंधित RPC dependencies पर निर्भर है। इसलिए इसका पूरा replay base schema और पूर्व migrations के बिना सुरक्षित रूप से validate नहीं किया जा सकता।
+- बाद की migration `20261114370000_electrician_offer_details_immediate_booking_fields.sql` offer-details RPC को फिर से परिभाषित करती है और quote/category/workflow fields पर निर्भर है। इससे current source tree में आगे का dependency chain दिखता है, लेकिन यह historical remote execution order या successful deployment सिद्ध नहीं करता।
+- Git parent chain और file chronology केवल repository history बताते हैं। Supabase की `supabase_migrations.schema_migrations` table में कौन-सा version/name दर्ज है, वह अभी भी अज्ञात है।
+
+### Safe conclusion / action
+
+1. Source-level duplicate को accidental/redundant second recording कहना उचित है; exact author intent अज्ञात है।
+2. दोनों files को अभी जस का तस रखें। Rename, delete, merge, timestamp change या remote migration repair न करें।
+3. अगला निर्णायक प्रमाण authoritative remote migration-history export और matching live schema/catalog snapshot होगा—इसे केवल owner-approved, read-only process से प्राप्त किया जाए। उसके बाद pinned Supabase CLI के disposable scratch reproduction से replay behavior अलग से जाँचा जाए।
+4. Production database से कोई query, migration, repair या deployment इस pass में नहीं किया गया।
+
+### Status
+
+- Git commit chronology: **SOURCE HISTORY CONFIRMED**.
+- Duplicate file parent relation: **CONFIRMED** (`cd2c46e...` parent is `b5e5b3b...`).
+- Required base columns in the duplicate statements: **SOURCE CONFIRMED**.
+- Remote migration-history row / live schema parity: **UNKNOWN / NOT ACCESSED**.
+- Supabase CLI replay, PostgreSQL execution and pgTAP: **NOT RUN**.
+- Migration SQL or GPT-1 Customer/Electrician/Welcome source: **UNCHANGED**.
