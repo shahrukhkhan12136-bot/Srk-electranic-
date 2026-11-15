@@ -183,3 +183,15 @@
 - [ ] SQL migration की isolated PostgreSQL/pgTAP runtime execution और electrician offer RPC caller contract verification बाकी।
 - [ ] Status constraints/columns को अभी नहीं हटाया: पुराने paid/closed records और accounting/receipt audit इन्हें पढ़ सकते हैं। यह archival compatibility है, live quote feature नहीं।
 - [ ] Production migration, PR merge, deployment या live data change नहीं किया गया।
+
+
+### 2026-11-15 — quotation retirement follow-up / cross-owner blockers
+
+- [x] Offer-details RPC contract में electrician portal के आवश्यक `offer_expires_at` और `estimated_labour_paise` fields सुरक्षित रखे; पुराने quote-only fields हटाए। Assigned-only phone/address visibility और timer fields कायम रखे।
+- [x] Electrician App से आखिरी `quoted_amount` fallback हटाया; अब केवल server estimate दिखेगा, अन्यथा “श्रम अनुमान उपलब्ध नहीं”।
+- [x] Regression test `tests/electrician-legacy-quotation-retirement.test.js` जोड़ा।
+- [ ] GPT-2 Admin scope में `admin.html` का legacy quote editing/status control हटाना बाकी है।
+- [ ] GPT-2 Payment/Accounting scope में `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` और reconciliation का approved-quote dependency हटाकर नए immutable server-timed labour bill + अलग materials receipt contract से जोड़ना बाकी है। Historical paid/settled rows को audit evidence के रूप में preserve करना है।
+- [ ] Legacy status CHECK constraints और quote audit columns को अभी preserve किया है; ऐतिहासिक records के लिए हैं। New quote RPCs बंद हैं। Status constraints/columns तभी हटें जब GPT-2 accounting/receipt/archive dependency audit प्रमाणित हो।
+- [ ] Feature Branch CI run `43705891497` prior source snapshot पर success था; latest follow-up commits के बाद नया run `43705891497` नहीं, नवीनतम head CI runs `43705891497` से आगे `43705891497` नहीं; current new run IDs `43705891497` and `43705891497`? (see Actions status below). Do not treat prior pass as current-head verification.
+- [ ] SQL runtime/pgTAP execution pending; no Production migration/deploy/merge.
