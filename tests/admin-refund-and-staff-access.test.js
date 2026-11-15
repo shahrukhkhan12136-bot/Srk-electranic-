@@ -306,3 +306,21 @@ test('Support replies and status updates lock the case before its current assign
     assert.match(body, /SUPPORT_CASE_CLOSED/);
   }
 });
+
+
+const financialReadSearchPathFix = fs.readFileSync(path.join(root, 'supabase/migrations/20261116110000_pin_legacy_financial_read_rpc_search_paths.sql'), 'utf8');
+
+test('Legacy financial SECURITY DEFINER read RPCs use an empty search_path', () => {
+  for (const name of [
+    'srk_admin_commission_report',
+    'srk_get_my_wallet_summary',
+    'srk_admin_wallet_overview'
+  ]) {
+    const escaped = name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
+    assert.match(
+      financialReadSearchPathFix,
+      new RegExp('alter function public\\.' + escaped + '\\(\\)\\s+set search_path\\s*=\\s*\\x27\\x27', 'i'),
+      name + ' must be pinned to an empty search_path'
+    );
+  }
+});
