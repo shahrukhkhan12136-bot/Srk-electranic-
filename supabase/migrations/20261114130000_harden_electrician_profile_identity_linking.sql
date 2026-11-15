@@ -129,9 +129,14 @@ BEGIN
       state=excluded.state,district=excluded.district,pincode=excluded.pincode,skills=excluded.skills,
       verification_status='approved';
     v_phone:=right(regexp_replace(coalesce(a.phone,''),'[^0-9]','','g'),10);
-    SELECT count(*),min(u.id) INTO v_auth_user_count,v_auth_user_id FROM auth.users u
+    SELECT count(*) INTO v_auth_user_count FROM auth.users u
     WHERE u.phone_confirmed_at IS NOT NULL
       AND right(regexp_replace(coalesce(u.phone,''),'[^0-9]','','g'),10)=v_phone;
+    IF v_auth_user_count=1 THEN
+      SELECT u.id INTO v_auth_user_id FROM auth.users u
+      WHERE u.phone_confirmed_at IS NOT NULL
+        AND right(regexp_replace(coalesce(u.phone,''),'[^0-9]','','g'),10)=v_phone;
+    END IF;
     SELECT count(*) INTO v_profile_count FROM public.electrician_profiles p
     WHERE p.verification_status='approved'
       AND right(regexp_replace(coalesce(p.phone,''),'[^0-9]','','g'),10)=v_phone;
