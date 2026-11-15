@@ -467,12 +467,12 @@ async function respond(button,id,response){
   if(error)throw error;
   if(data?.code==='offer_expired'){
    alert(data.next_offer?.success?'इस ऑफर का समय समाप्त हो गया। अगला योग्य पार्टनर ऑफर भेज दिया गया है।':'इस ऑफर का समय समाप्त हो गया। अभी इस बुकिंग के लिए कोई अगला उपलब्ध पार्टनर नहीं मिला।');
-   await refresh();
+   try{await refresh();}catch(_){alert('ऑफर समाप्त होने की पुष्टि मिल गई है, लेकिन सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
    return;
   }
   if(data?.success!==true)throw new Error('Offer response was not confirmed');
   alert(response==='accepted'?'काम आपको असाइन हो गया।':'ऑफर मना कर दिया गया।');
-  await refresh();
+  try{await refresh();}catch(_){alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन ऑफर सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
  }catch(e){
   try{await refresh();alert('नेटवर्क जवाब नहीं मिला। ऑफर की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}
   catch(_){alert('नेटवर्क जवाब नहीं मिला। ऑफर सूची रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
