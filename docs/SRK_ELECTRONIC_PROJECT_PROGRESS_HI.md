@@ -2679,3 +2679,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Obsolete customer quote UI test हटाया।
 - यह अभी frontend retirement है; Admin, Accounting, payment, refund, payout और DB RPC/columns में legacy quote dependencies शेष हैं। उन्हें GPT-2 के साथ समन्वय कर नए fixed-duration/server-timed labour billing model पर सुरक्षित रूप से retire करना होगा।
 - Historical paid records को delete नहीं किया जाएगा। Production DB/deployment/PR merge untouched.
+
+
+## 2026-11-15 — नवीनतम Feature Branch Node CI पुनःसत्यापन (GPT-2)
+
+- PR #8 के वर्तमान HEAD `843e91abaecf0e72df343518aa36c593c1a89a06` पर GitHub Actions run `43705430363` पूरा हुआ।
+- Workflow job `Node test suite (no secrets, no deployment)`: **98/98 PASS, 0 FAIL, 0 skipped**। Test log में `1..98`, `# pass 98`, `# fail 0` की पुष्टि की।
+- इससे पिछले Customer quote UI test mismatch का CI blocker हट गया है; Admin commission/accounting regression tests भी इसी पूर्ण suite में सफल रहे।
+- यह Node/mock/source regression suite है। इससे pgTAP, live Supabase RPC/ACL, managed schema parity, browser E2E, Vercel Preview, OTP/SMS delivery या mobile QA प्रमाणित नहीं होते।
+- PR #8 जाँच के समय Open + Draft + Unmerged था। कोई PR merge, Production migration, deployment, live payment/refund/payout, real SMS/OTP या push send नहीं किया गया।
