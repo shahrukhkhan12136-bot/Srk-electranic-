@@ -26,6 +26,17 @@ test('failed stop retains the booking in the logout retry set', () => {
 });
 
 
+test('push permission is requested directly from the enable-button gesture before async account validation', () => {
+  const start = electrician.indexOf('async function enableElectricianPushNotifications()');
+  const end = electrician.indexOf('async function disableElectricianPushNotifications()', start);
+  assert.ok(start >= 0 && end > start, 'push enable handler exists');
+  const handler = electrician.slice(start, end);
+  const permission = handler.indexOf('Notification.requestPermission()');
+  const accountCheck = handler.indexOf('await getElectricianPushContext()');
+  assert.ok(permission >= 0 && accountCheck > permission, 'browser permission request precedes async Supabase/account validation');
+  assert.ok(handler.indexOf('button.disabled=true') < permission, 'prevent duplicate enable clicks before requesting permission');
+});
+
 test('push notification click opens the exact offer using a validated same-origin route', () => {
   const worker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
   assert.match(worker, /const CACHE='srk-electronic-v8'/);
