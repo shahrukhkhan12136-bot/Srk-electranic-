@@ -2030,3 +2030,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - pgTAP plan/assertions 52/52 static count verified।
 - Admin UI confirmed/unconfirmed refund अलग दिखाती है; dynamic content escaping esc() मौजूद।
 - केवल Feature Branch source changes; no SQL apply, no runtime pgTAP, no provider call, no deployment, no merge, no mobile QA।
+
+
+### Welcome Screen — Founder Photo integration (2026-11-15)
+
+- यूज़र द्वारा इसी चैट में दी गई नई Founder portrait को `assets/srk-founder.jpg` के रूप में Feature Branch में जोड़ा।
+- `welcome.html` के पुराने decorative bolt visual को Founder portrait card से बदला; responsive image sizing, cover crop, alt text और Founder badge जोड़े।
+- Source verification: Welcome markup में asset path और image alt text मौजूद; पुराना bolt-wrap markup हटाया हुआ।
+- Vercel Git Preview commit `a897fa0c446276d9a8937701e0dd281e59b04763` पर **READY**; build log में “Deployment completed”। Preview URL: `https://srk-electranic-likdfbyba-srk-electranic.vercel.app/welcome.html`.
+- Direct browser/network fetch इस जाँच वातावरण में DNS/network failure के कारण नहीं हो सका; इसलिए image का वास्तविक browser rendering अभी visually verified नहीं है।
+- Production deployment, merge और PR #8 merge नहीं किए; PR #8 Draft है।
+- Founder photo replacement के लिए पुरानी saved reference image को delete नहीं किया गया; नई portrait अभी project asset में उपयोग हो रही है।
