@@ -3483,3 +3483,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - GitHub code search में भी इन तीनों base tables के लिए भरोसेमंद DDL source नहीं मिला। `COMPLETE_DATABASE_SETUP.sql` को पूर्ण baseline मानना इसलिए गलत होगा; यह मुख्य booking/application/profile/job-offer/admin objects तक सीमित है।
 - निष्कर्ष: complaint और push base tables के लिए वास्तविक schema source अभी unresolved है। Column types, defaults, PK/FK, constraints और मूल RLS policies अनुमान से नहीं जोड़े जाएँगे। Production schema/secret का उपयोग नहीं किया गया।
 - दस्तावेज़ी audit जारी; कोई checklist item बंद नहीं हुआ। GPT-2: **27/39 = 69%**, शेष **12/39 = 31%**।
+
+
+### 2026-11-15 — Complaint/Push consumer column contract विस्तार
+- Complaint conversation, attachment, Admin reply और customer-safe projection migrations को line-level पर पढ़कर base complaint table के required consumer columns दर्ज किए: `id`, `customer_user_id` और complaint create/list RPC में प्रयुक्त booking/category/description/status/timestamp fields।
+- Complaint event INSERT के छह explicit columns दर्ज किए।
+- Push subscription के पाँच required consumer columns की सीमा दोबारा स्पष्ट की; SQL types, keys, uniqueness और base RLS अभी authoritative source के बिना unresolved हैं।
+- यह केवल source-consumer contract है, complete DDL नहीं; कोई fixture/SQL/production change नहीं किया।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
