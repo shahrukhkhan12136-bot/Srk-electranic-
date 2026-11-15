@@ -996,6 +996,7 @@ async function loadCustomerPaymentHistory(reset=true) {
   more.style.display=rows.length===25?'block':'none';
   return true;
  }catch(error){
+  if(requestId!==customerPaymentHistoryRequest)return false;
   if(reset)box.textContent='भुगतान इतिहास लोड नहीं हो सका। कृपया दोबारा कोशिश करें।';
   else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
   return false;
