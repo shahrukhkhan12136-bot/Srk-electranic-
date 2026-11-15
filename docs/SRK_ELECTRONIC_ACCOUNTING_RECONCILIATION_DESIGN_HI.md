@@ -71,3 +71,16 @@ Feature Branch source को Production catalog से अलग रखते �
 ## 8. अगला सुरक्षित implementation gate
 
 Read-only per-booking reconciliation RPC/view को Feature Branch में जोड़ने से पहले पूरे Feature Branch migration chain में cancellation-fee, refund, payout generation और Route transfer tables/columns की exact definitions और ordering को एक बार फिर मिलाना होगा। उसके बाद report को केवल Main Admin के लिए expose किया जाएगा। अभी कोई नया reconciliation RPC/view, कोई financial write या live schema change नहीं बनाया गया है।
+
+
+## 9. Feature Branch migration-chain cross-check (2026-11-15)
+
+PR #8 की वास्तविक changed-file सूची से migration ordering निकालकर इन exact definitions को पढ़ा गया: 20261114125844 financial audit core, 20261114280000 cancellation-fee carry-forward/accounting, 20261114290000 full-refund reversal, और 20261114360000 new-category electrician payout reconciliation।
+
+इससे पुष्टि हुई:
+- Cancellation debt, booking fee-item allocation और cancellation-fee ledger अलग tables हैं; ledger integer paise, unique idempotency key और append-only mutation trigger रखता है। Authenticated clients को direct table access नहीं; service_role-only grants हैं।
+- New-category payable immutable labour bill से आता है। Labour gross में cancellation fee शामिल नहीं; materials शून्य हैं; commission केवल labour पर है। Customer का कुल captured payment labour + reserved/settled cancellation fee हो सकता है, पर fee electrician payable नहीं बनती।
+- Payout upsert केवल pending row को refresh कर सकता है; paid/blocked/refunded payout को recalculate करके overwrite नहीं कर सकता। Admin paid RPC booking-first locks और exact payout snapshot reconciliation करता है।
+- Live catalog और Feature Branch migration chain अलग हैं: ऊपर की नई fee tables live में अभी मौजूद नहीं थीं। इस कारण read-only reconciliation RPC को live schema पर लागू करना निषिद्ध रहेगा; उसे केवल पूरी reviewed migration chain वाले approved isolated test environment में validate किया जा सकता है।
+
+Security contract pgTAP अब 30 planned assertions तक बढ़ा है; cancellation-fee private ledger, append-only guard, integer-paise amount और new-category payable separation भी शामिल हैं। Runtime execution अभी pending है।
