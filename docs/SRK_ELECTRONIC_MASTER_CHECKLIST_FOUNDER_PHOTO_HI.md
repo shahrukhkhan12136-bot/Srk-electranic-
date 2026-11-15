@@ -205,3 +205,14 @@
 - [ ] Crash/reclaim scenarios का वास्तविक database integration test चलाना।
 
 **स्थिति:** Source-level सुधार और assertions feature branch में हैं; runtime tests अभी नहीं चले। Production में कोई बदलाव नहीं।
+
+
+### Push delivery partial-failure / duplicate-risk audit — 15 November 2026
+- [x] Sender सभी claimed device targets पर completion की प्रतीक्षा करता है; per-device success/failure ledger RPC का source review।
+- [x] 404/410 endpoint cleanup और subscription delete पर ledger cascade का source review।
+- [x] Retry केवल pending/expired-lease delivery rows पर; confirmed delivered rows claim query से बाहर रहती हैं।
+- [x] Partial delivery, all-target completion और endpoint cleanup के लिए source-contract assertions जोड़े।
+- [ ] Node/Deno tests execute करें और approved isolated DB में concurrent claims, partial provider failure, cleanup cascade तथा lease recovery verify करें।
+- [ ] Provider timeout या provider success के बाद finish-RPC failure जैसे ambiguous outcomes के लिए metrics/alerting जोड़ें और duplicate risk monitor करें।
+
+**महत्वपूर्ण सीमा:** Web Push provider के सफल send के बाद response खो जाने या ledger success write विफल होने पर transport-level exactly-once guarantee संभव नहीं; lease expiry के बाद retry से duplicate notification संभव है। Confirmed delivered rows जानबूझकर दोबारा नहीं भेजी जातीं। अभी कोई runtime test, migration apply, real push या deployment नहीं हुआ।
