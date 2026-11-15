@@ -39,14 +39,12 @@ Service-role key और Razorpay secret को browser, GitHub या chat म�
 - The electrician can see their own pending/paid payout status and recorded reference in `/electrician.html`. RLS restricts payout rows to the owning electrician and authorized admins.
 - Never mark a payout Paid before the actual transfer succeeds. No automatic payout or real-money test is performed by this code.
 
-## Masked calling and phone privacy
+## Customer / Electrician phone visibility — owner-approved rule
 
-- Customer and electrician phone numbers are not displayed to the other party in the customer/electrician dashboards or the corresponding contact RPC results.
-- Direct phone-call buttons remain disabled until a compliant two-way masked-calling provider is enabled and end-to-end tested.
-- The current provider candidate is Exotel Lead Assist (GreenPin): it supports virtual-number proxy calling and PIN verification, but it is an account-level feature that Exotel must enable and it uses separate credentials. Do not add provider credentials to GitHub or browser code.
-- Before a call can start from a different mobile device, the caller must enter their registered account number and complete OTP ownership verification. Merely typing a number must never authorize a call.
-- Until provider activation, both parties' real numbers remain hidden and calling is unavailable through the platform.
+- Before an electrician accepts an offer, the customer and electrician must not see each other's phone numbers.
+- Once the electrician accepts/receives the booking, both parties may see each other's full, unmasked mobile numbers and call directly.
+- No additional OTP is required to reveal the numbers after acceptance.
+- Admin may see both full numbers. Support Staff must not receive unrestricted private phone projections.
+- Phone access must remain scoped to the authenticated booking owner, the assigned/accepted electrician, and authorized Admin workflows. Never expose numbers on public pages, unassigned offers, search results, or unauthenticated APIs.
 
-
-## Updated phone visibility decision (2026-11-09)
-The owner has changed the calling requirement: do **not** implement masked calling or Exotel GreenPin for now. For an assigned booking, the customer may see the assigned electrician's phone number and use a direct Call button; the assigned, approved electrician may see the customer's booking phone number and use a direct Call button. Phone numbers must remain restricted to the authenticated booking owner / assigned electrician through the existing booking-scoped RPCs. Do not expose phone numbers in public pages, unassigned offers, search results, or unauthenticated APIs. This decision supersedes the earlier masked-calling requirement above.
+This rule supersedes the older masked-calling / Exotel notes and the intermediate wording that said only "assigned booking".
