@@ -918,6 +918,8 @@ function customerEsc(value) {
 }
 let customerPaymentHistoryOffset=0;
 let customerPaymentHistoryBusy=false;
+let customerPaymentHistoryRequest=0;
+let customerPaymentHistoryResetPending=false;
 function formatCustomerMoney(amount) {
  const n=Number(amount);
  return Number.isFinite(n)?'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'राशि उपलब्ध नहीं';
@@ -959,11 +961,10 @@ async function customerPrintPaymentReceipt(bookingId){
   printWindow.focus();
  }catch(error){
   printWindow.close();
-  alert('भुगतान रसीद उपलब्ध नहीं हो सकी। कृपया सत्यापित भुगतान की स्थिति जाँचें या सहायता टीम से संपर्क करें।');
- }
-}
-async function loadCustomerPaymentHistory(reset=true) {
- if(!customerSb||customerPaymentHistoryBusy)return;
+  alert('भुगतान रसीद उपलब्ध नहीं होasync function loadCustomerPaymentHistory(reset=true) {
+ if(!customerSb)return false;
+ if(customerPaymentHistoryBusy){if(reset){customerPaymentHistoryRequest++;customerPaymentHistoryResetPending=true;}return false;}
+ const requestId=++customerPaymentHistoryRequest;
  const box=document.getElementById('customerPaymentHistory');
  const more=document.getElementById('customerPaymentHistoryMore');
  if(reset)customerPaymentHistoryOffset=0;
@@ -972,9 +973,11 @@ async function loadCustomerPaymentHistory(reset=true) {
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(sessionError)throw sessionError;
+  if(requestId!==customerPaymentHistoryRequest)return false;
   if(!sessionData?.session){box.textContent='भुगतान इतिहास देखने के लिए OTP लॉगिन करें।';more.style.display='none';return;}
   const {data,error}=await customerSb.rpc('srk_customer_get_payment_history',{p_limit:25,p_offset:customerPaymentHistoryOffset});
   if(error)throw error;
+  if(requestId!==customerPaymentHistoryRequest)return false;
   const rows=Array.isArray(data)?data:[];
   const html=rows.map(row=>{
    const label=customerPaymentLabel(row);
@@ -993,7 +996,11 @@ async function loadCustomerPaymentHistory(reset=true) {
   if(reset)box.textContent='भुगतान इतिहास लोड नहीं हो सका। कृपया दोबारा कोशिश करें।';
   else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
   return false;
- }finally{customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');}
+ }finally{
+  customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');
+  if(customerPaymentHistoryResetPending){customerPaymentHistoryResetPending=false;setTimeout(()=>loadCustomerPaymentHistory(true),0);}
+ }
+}}finally{customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');}
 }
 async function loadCustomerCancellationFeeDebts(){
  if(!customerSb)return;
@@ -2029,6 +2036,8 @@ async function syncCustomerSession() {
     await loadCustomerProfile();
   } else {
     customerBookingRefreshRequest++;
+    customerPaymentHistoryRequest++;
+    customerPaymentHistoryResetPending=false;
     customerLiveLocationRefreshRequest++;
     customerLiveLocationBookingIds=[];
     bookingPhone.value = '';
@@ -2110,7 +2119,13 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
-  customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
+  customerSb.auth.onAuthStateChange((event) => {
+    if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
+      customerPaymentHistoryRequest++;
+      customerPaymentHistoryResetPending=false;
+    }
+    setTimeout(syncCustomerSession, 0);
+  });
   const handleCustomerOffline = () => {
     customerLiveLocationRefreshRequest++;
     customerLiveLocationBookingIds.forEach(id => {
