@@ -480,10 +480,6 @@ const customerBookingStatusLabels = {
   confirmed:'बुकिंग की पुष्टि',
   assigned:'इलेक्ट्रिशियन असाइन हुआ',
   accepted:'इलेक्ट्रिशियन ने बुकिंग स्वीकार की',
-  inspection:'निरीक्षण जारी',
-  awaiting_quote_approval:'मेहनताना स्वीकृति की प्रतीक्षा',
-  quote_approved:'मेहनताना स्वीकृत',
-  quote_rejected:'मेहनताना प्रस्ताव अस्वीकृत',
   en_route:'इलेक्ट्रिशियन रास्ते में है',
   travelling:'इलेक्ट्रिशियन रास्ते में है',
   arrived:'इलेक्ट्रिशियन पहुँच गया',
@@ -596,22 +592,6 @@ async function customerSubmitBookingRefund(bookingId){
   if(button)button.disabled=false;
  }
 }
-async function customerRespondBookingQuote(bookingId,response){
- if(!customerSb||!['approved','rejected'].includes(response))return;
- const prompt=response==='approved'
-  ?'क्या आपने मेहनताना और सामान/पार्ट्स का अलग-अलग कोटेशन पढ़ लिया है और इसे मंजूर करते हैं?'
-  :'क्या आप इस कोटेशन को अस्वीकार करना चाहते हैं? इलेक्ट्रिशियन संशोधित कोटेशन भेज सकता है।';
- if(!confirm(prompt))return;
- try{
-  const {data,error}=await customerSb.rpc('srk_customer_respond_booking_quote',{p_booking_id:bookingId,p_response:response});
-  if(error)throw error;
-  if(!data?.success)throw new Error('QUOTE_RESPONSE_NOT_CONFIRMED');
-  alert(response==='approved'?'कोटेशन मंजूर हो गया। इलेक्ट्रिशियन अब काम शुरू करने की प्रक्रिया आगे बढ़ा सकता है।':'कोटेशन अस्वीकार कर दिया गया। इलेक्ट्रिशियन संशोधित कोटेशन भेज सकता है।');
-  await loadCustomerBookings();
- }catch(error){
-  alert('कोटेशन पर आपका जवाब दर्ज नहीं हो सका। कृपया बुकिंग रीफ़्रेश करके वर्तमान स्थिति जाँचें।');
- }
-}
 async function customerCancelBooking(bookingId,button) {
  if(!customerSb||!bookingId||button?.disabled)return;
  const note='ग्राहक ने ऐप से बुकिंग रद्द करने का अनुरोध किया है। कृपया इलेक्ट्रिशियन की सत्यापित स्थिति और उपलब्ध यात्रा/आगमन प्रमाण देखकर निर्णय लें।';
@@ -645,7 +625,7 @@ async function loadCustomerBookings() {
     : 'आपकी बुकिंग लोड हो रही हैं…';
   try {
     const { data, error } = await customerSb.from('service_bookings')
-      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,quoted_amount,service_charge,materials_amount,quote_status,quote_note,quote_submitted_at,address,state,district,pincode,location_lat,location_lng')
+      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -754,20 +734,6 @@ async function loadCustomerBookings() {
         && String(row.payment_status||'').toLowerCase()==='paid'
         && Number(row.amount_paid||0)>0
         && Boolean(row.payment_verified_at);
-      let quoteMarkup='';
-      if(!row.selected_category&&row.quote_status==='pending'&&row.status==='awaiting_quote_approval'){
-        quoteMarkup='<div class="job"><b>इलेक्ट्रिशियन का कोटेशन — आपकी मंजूरी जरूरी</b>'+
-          '<p>मेहनताना: <b>'+customerEsc(formatCustomerMoney(row.service_charge))+'</b></p>'+
-          '<p>सामान / पार्ट्स: <b>'+customerEsc(formatCustomerMoney(row.materials_amount))+'</b></p>'+
-          '<p>कुल कोटेशन: <b>'+customerEsc(formatCustomerMoney(row.quoted_amount))+'</b></p>'+
-          (row.quote_note?'<p class="small">काम / सामान का विवरण: '+customerEsc(row.quote_note)+'</p>':'')+
-          '<p class="small">मेहनताना और सामान अलग-अलग हैं। मंजूरी देने से पहले दोनों मदें जाँचें। आपकी मंजूरी के बिना काम शुरू नहीं होगा।</p>'+
-          '<button type="button" onclick="customerRespondBookingQuote(\''+customerEsc(row.id)+'\',\'approved\')">कोटेशन मंजूर करें</button> '+
-          '<button type="button" onclick="customerRespondBookingQuote(\''+customerEsc(row.id)+'\',\'rejected\')">कोटेशन अस्वीकार करें</button></div>';
-      }else if(!row.selected_category&&['approved','rejected'].includes(String(row.quote_status||''))){
-        quoteMarkup='<p class="small">कोटेशन स्थिति: '+customerEsc(row.quote_status==='approved'?'आपने कोटेशन मंजूर किया':'आपने कोटेशन अस्वीकार किया')+
-          (row.quoted_amount!=null?' · कुल ₹'+customerEsc(Number(row.quoted_amount).toFixed(2)):'')+'</p>';
-      }
       let refundMarkup='';
       if(refund){
         refundMarkup='<div class="job"><b>रिफंड अनुरोध:</b> '+customerEsc(customerRefundStatusText(refund.status))+
@@ -793,7 +759,7 @@ async function loadCustomerBookings() {
       (row.status==='assigned'&&row.assigned_electrician_id?'<div class="job" id="customerLiveLocation_'+customerEsc(row.id)+'"><b>इलेक्ट्रिशियन की Live Location</b><p class="small">इलेक्ट्रिशियन के यात्रा के दौरान लोकेशन साझा करने पर यहाँ दिखेगी।</p></div>':'') +
       '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
       (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>') : '') +
-      startMarkup+timerMarkup+finalBillMarkup+cancellationFeeMarkup+quoteMarkup+completionMarkup+cancellationInfo+refundMarkup+
+      startMarkup+timerMarkup+finalBillMarkup+cancellationFeeMarkup+completionMarkup+cancellationInfo+refundMarkup+
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
