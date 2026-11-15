@@ -1657,10 +1657,14 @@ async function saveCurrentBookingAddress() {
     const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
     if(!error&&Array.isArray(data)){lookupSucceeded=true;latestAddresses=data;}
    }catch(_){}
+   const normalizedText=value=>String(value??'').trim();
    const matches=latestAddresses.filter(a=>
-    a.recipient_name===payload.p_recipient_name&&a.address_line===payload.p_address_line&&
-    (a.landmark||null)===payload.p_landmark&&a.pincode===payload.p_pincode&&
-    a.district===payload.p_district&&a.state===payload.p_state&&
+    normalizedText(a.recipient_name)===normalizedText(payload.p_recipient_name)&&
+    normalizedText(a.address_line)===normalizedText(payload.p_address_line)&&
+    (normalizedText(a.landmark)||null)===(normalizedText(payload.p_landmark)||null)&&
+    a.pincode===payload.p_pincode&&
+    normalizedText(a.district)===normalizedText(payload.p_district)&&
+    normalizedText(a.state)===normalizedText(payload.p_state)&&
     a.location_lat===payload.p_location_lat&&a.location_lng===payload.p_location_lng&&a.label===payload.p_label
    );
    const savedMatch=editingId?latestAddresses.find(a=>a.id===editingId&&matches.some(m=>m.id===a.id)):(matches.length===1?matches[0]:null);
