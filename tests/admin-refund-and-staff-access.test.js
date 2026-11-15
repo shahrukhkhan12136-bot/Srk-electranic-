@@ -236,3 +236,18 @@ test('Staff invite failure warns that the invitation email may already have been
   assert.match(staffFunction, /ignore any invitation email/i);
   assert.match(staffFunction, /Auth identity cleanup failed/i);
 });
+
+
+test('Every Support Staff SECURITY DEFINER RPC pins an empty search_path and revokes public execution', () => {
+  const functions = [...staffMigration.matchAll(/create or replace function public\\.([a-z0-9_]+)\\s*\\([\\s\\S]*?\\$function\\$;/gi)];
+  assert.ok(functions.length >= 20, 'expected the complete Staff RPC set to be audited');
+  for (const match of functions) {
+    const body = match[0];
+    if (!/security definer/i.test(body)) continue;
+    assert.match(body, /set search_path\\s*=\\s*''/i, match[1] + ' must pin an empty search_path');
+    const start = staffMigration.indexOf(body);
+    const after = staffMigration.slice(start + body.length, start + body.length + 240);
+    assert.match(after, new RegExp('revoke all on function public\\\\.' + match[1] + '\\\\(', 'i'),
+      match[1] + ' must revoke default public execution');
+  }
+});
