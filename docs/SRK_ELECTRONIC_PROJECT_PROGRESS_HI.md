@@ -3819,3 +3819,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - The `ADD COLUMN auth_user_id` indexed hit was a text-context false positive: the full source contains `ADD COLUMN location_lat/location_lng`, then later an INSERT/UPSERT column list mentioning auth_user_id. It is not an auth_user_id DDL statement.
 - No authoritative type/default/nullability/FK/constraint/index DDL for `service_bookings.amount_paid` or `electrician_profiles.auth_user_id` was found in the indexed source search. Search indexing is not exhaustive, so this remains unresolved rather than a proof of nonexistence.
 - No DDL invented or added; no remote DB query. These missing baseline contracts continue to block a trustworthy local migration replay/parity fixture. GPT-2 remains 27/39 = 69%.
+
+
+### Node CI verification and further amount_paid lineage — 15 Nov 2026
+- Latest PR head `cee9ea2a569cdb1286d0112665a11fca4870127f` Node CI run `43734273584` (#943) completed with `success`.
+- This is Node test CI only; it does not execute PostgreSQL migrations, pgTAP, Supabase migration replay, or Production schema parity.
+- Inspected `20261109003000_secure_commission_reporting.sql`: it reads `amount_paid` and grants Admin column-level UPDATE on `amount_paid`, but contains no `ADD COLUMN` or base-table definition. Thus it further confirms application dependency, not the column's original DDL contract.
+- Commit search for `amount_paid` returned only two application-code commits (webhook and payment verification payloads), not a base DDL commit. Commit search for `auth_user_id` returned no matching commits; this is a search result, not proof no source exists.
+- PR #8 remains open, Draft, unmerged at head `cee9ea2`. No SQL runtime, remote DB access, migration repair, provider operation, or deployment occurred. GPT-2 remains 27/39 = 69%.
