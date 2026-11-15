@@ -988,9 +988,11 @@ async function loadCustomerPaymentHistory(reset=true) {
   else box.insertAdjacentHTML('beforeend',html);
   customerPaymentHistoryOffset+=rows.length;
   more.style.display=rows.length===25?'block':'none';
+  return true;
  }catch(error){
   if(reset)box.textContent='भुगतान इतिहास लोड नहीं हो सका। कृपया दोबारा कोशिश करें।';
   else alert('अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।');
+  return false;
  }finally{customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');}
 }
 async function loadCustomerCancellationFeeDebts(){
@@ -1413,8 +1415,10 @@ async function loadCustomerBookings() {
       note.textContent='रिफंड अनुरोध की स्थिति अभी लोड नहीं हो सकी।';
       box.prepend(note);
     }
+    return true;
   } catch(error) {
     if (!isCurrent()) return;
+    return false;
     box.textContent=navigator.onLine===false
       ? 'इंटरनेट कनेक्शन टूट गया। कनेक्शन लौटने पर “बुकिंग फिर से देखें” दबाएँ।'
       : 'बुकिंग लोड नहीं हो सकीं। कृपया “बुकिंग फिर से देखें” दबाकर दोबारा कोशिश करें।';
@@ -2157,8 +2161,8 @@ async function reconcileCustomerPaymentAfterUncertainVerification(bookingId){
   const rows=Array.isArray(data)?data:[];
   paymentConfirmed=rows.some(row=>row.booking_id===bookingId&&['payment','manual_payment'].includes(String(row.event_type||'')));
  }catch(_){/* A failed authoritative read leaves the payment outcome uncertain. */}
- try{await loadCustomerBookings();bookingsRefreshed=true;}catch(_){/* Keep the authoritative payment result even if the booking list is offline. */}
- try{await loadCustomerPaymentHistory(true);historyRefreshed=true;}catch(_){/* Keep the authoritative payment result even if history refresh fails. */}
+ try{bookingsRefreshed=await loadCustomerBookings()===true;}catch(_){/* Keep the authoritative payment result even if the booking list is offline. */}
+ try{historyRefreshed=await loadCustomerPaymentHistory(true)===true;}catch(_){/* Keep the authoritative payment result even if history refresh fails. */}
  return {lookupSucceeded,paymentConfirmed,bookingsRefreshed,historyRefreshed};
 }
 function setPaymentStatus(message, isError = false) {
@@ -2213,9 +2217,11 @@ async function startRazorpayPayment() {
           });
           const verifyData = await verifyResponse.json();
           if (!verifyResponse.ok || !verifyData.success) throw new Error(verifyData.error || 'भुगतान सत्यापित नहीं हुआ।');
-          setPaymentStatus('भुगतान सफल और सत्यापित हो गया है।');
-          setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है।');
-          await loadCustomerBookings();
+          const [bookingsRefreshed,historyRefreshed]=await Promise.all([
+            loadCustomerBookings().then(result=>result===true).catch(()=>false),
+            loadCustomerPaymentHistory(true).then(result=>result===true).catch(()=>false)
+          ]);
+          setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है।'+(bookingsRefreshed?' बुकिंग सूची रीफ़्रेश हुई।':' बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी।')+(historyRefreshed?' Payments इतिहास रीफ़्रेश हुआ।':' Payments इतिहास अभी रीफ़्रेश नहीं हो सका।'));
         } catch (err) {
           const state=await reconcileCustomerPaymentAfterUncertainVerification(paymentBookingId);
           if(state.paymentConfirmed){
