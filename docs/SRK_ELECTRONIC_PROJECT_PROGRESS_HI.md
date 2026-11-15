@@ -2150,3 +2150,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Additional payout source audit: Admin payout-paid RPC locks booking before payout, requires pending state, completed + verified-paid booking, matching assigned electrician, immutable labour bill, no reserved cancellation-fee items, and exact labour/materials/commission/payable snapshot; it only records the Admin-supplied bank/UPI reference and does not call the bank. New-category payout generation excludes cancellation fees from electrician earnings and only refreshes pending rows.
 - Source review also flagged a follow-up hardening question for the next pass: explicitly prove commission_rate is non-null and within 0..100 inside the Admin payout-paid RPC itself, rather than relying on the payout-generation path. Do not mark paid until this is verified/fixed.
 - No tests executed, no migrations applied, no wallet/payout/payment mutations, no provider requests, and no production changes.
+
+
+## 2026-11-15 — Admin payout commission validation hardening
+
+- Closed the payout settlement follow-up: `srk_admin_mark_electrician_payout_paid` now independently rejects a missing commission rate or any rate outside 0..100 before computing expected commission, for both new-category and legacy quote bookings. This avoids SQL NULL comparison behavior allowing an incomplete commission calculation to pass the final IF guard.
+- Added a pgTAP source-contract assertion; `electrician_payout_reconciliation.test.sql` now declares 26 assertions and contains 26 `select ok(...)` checks. Not executed.
+- Accounting reconciliation changes are source-only in PR #8 feature branch. No production migration apply, financial write, bank transfer, provider call, deploy or live setting change.
