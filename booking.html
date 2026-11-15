@@ -1947,6 +1947,7 @@ async function syncCustomerSession() {
     await loadCustomerProfile();
   } else {
     customerBookingRefreshRequest++;
+    customerLiveLocationRefreshRequest++;
     customerLiveLocationBookingIds=[];
     bookingPhone.value = '';
     bookingPhone.readOnly = true;
