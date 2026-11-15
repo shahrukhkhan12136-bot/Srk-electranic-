@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(41);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -128,6 +128,12 @@ select ok(position('insert into' in lower(pg_get_functiondef(
   and position('delete from' in lower(pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
   'accounting reconciliation function contains no financial write statements');
+
+select ok(position('COMMISSION_RATE_MISSING_OR_INVALID' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('VERIFIED_COLLECTION_DOES_NOT_MATCH_LABOUR_AND_SETTLED_FEES' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'invalid commission rates and collection mismatches fail closed as report exceptions');
 
 select * from finish();
 rollback;
