@@ -32,7 +32,7 @@ test('push sender requires active approved available electrician', () => {
 });
 
 test('push sender removes malformed and permanently expired endpoints', () => {
-  assert.match(source, /\.delete\(\)\.eq\("id", sub\.id\)/);
+  assert.match(source, /\.delete\(\)\.eq\("id", target\.subscription_id\)/);
   assert.match(source, /status === 404 \|\| status === 410/);
 });
 
