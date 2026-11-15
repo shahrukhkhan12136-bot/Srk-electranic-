@@ -3224,3 +3224,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Migration version audit ने अतिरिक्त पुराने duplicate timestamps भी पकड़े: `20261115120000` और `20261115130000`; संबंधित multi-profile labour-bill access migrations को unique version prefixes पर रखा और source-test file reference update किया।
 - अब 69 migration SQL files में केवल पुरानी `20261109` duplicate pair शेष है; उसे Production migration history जाँचे बिना नहीं बदला। CI ने वर्तमान PR head `df13cccbc91fceb4c03c377346e2d0e9dfc3b033` पर **SUCCESS** दिया (run `43716754914` और `43716757418`)।
 - GPT-2 checklist count अभी **27/39 = 69% complete; 12/39 = 31% remaining** है। ये अतिरिक्त security/test सुधार हैं, कोई नया checklist checkbox पूरा नहीं हुआ। PR #8 Draft/Open/Unmerged; Production DB में इस काम से कोई बदलाव नहीं।
+
+
+### CI पुनःपुष्टि — 2026-11-15
+- Multi-profile electrician bill RPC regression test को canonical migration path `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql` से align किया; पहले test fixture में पुराना timestamp/path बचा हुआ था।
+- Latest PR head `e013bbbf6a60c979fa3185a961fb03517ca4a54f` पर GitHub Actions run `43716991931` / job `132820552196` — **Node test suite SUCCESS**; dependencies install और `npm test` दोनों सफल।
+- pgTAP test file में नया multi-profile ownership structural assertion मौजूद है और plan 20 है; वास्तविक PostgreSQL/pgTAP execution अभी नहीं हुआ।
+- Migration केवल Feature Branch में है। Production Supabase, merge और deployment में कोई बदलाव नहीं।
