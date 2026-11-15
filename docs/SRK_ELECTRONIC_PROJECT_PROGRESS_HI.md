@@ -1938,3 +1938,6 @@ Master Requirements Section 6 की दोबारा जाँच में �
 
 
 - Trigger integration audit ने एक वास्तविक edge case पकड़ा: मौजूदा `srk_create_electrician_payable` trigger केवल `pending → refunded` करता है, जबकि Razorpay refund preparation payout को `blocked` करता है। इसलिए Phase 2 अब exact locked blocked payout को केवल verified `processed` evidence और booking/accounting trigger की सफलता के बाद `refunded` करता है; update न हो तो पूरा Phase 2 rollback होगा और Phase 1 evidence सुरक्षित रहेगा। pgTAP plan 19/19 static assertions।
+
+
+- अतिरिक्त actor-authentication hardening: Phase 1 RPC अब supplied audit actor UUID को `srk_admin_users.user_id` के विरुद्ध स्वयं verify करता है; केवल service-role caller होने से arbitrary user को Admin audit actor नहीं बनाया जा सकता। pgTAP plan 20/20 static assertions।
