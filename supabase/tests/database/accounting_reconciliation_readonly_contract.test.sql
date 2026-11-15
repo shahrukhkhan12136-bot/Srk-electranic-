@@ -1,5 +1,5 @@
 begin;
-select plan(60);
+select plan(62);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -217,6 +217,15 @@ select ok(position('ROUTE_SETTLED_WITHOUT_PROCESSED_TRANSFER' in pg_get_function
 
 select ok(to_regclass('public.srk_wallet_bank_links_one_primary_route_electrician_uidx') is not null,
   'database enforces at most one primary Razorpay Route electrician bank link per Auth user');
+
+select ok(exists(select 1 from pg_constraint
+  where conrelid='public.srk_route_transfers'::regclass and contype='u'
+    and pg_get_constraintdef(oid) like '%idempotency_key%'),
+  'Route transfer ledger enforces unique idempotency keys');
+select ok(exists(select 1 from pg_constraint
+  where conrelid='public.srk_route_transfers'::regclass and contype='u'
+    and pg_get_constraintdef(oid) like '%razorpay_payment_id%' and pg_get_constraintdef(oid) like '%recipient_type%'),
+  'Route transfer ledger prevents duplicate recipient rows for the same Razorpay payment');
 
 select * from finish();
 rollback;
