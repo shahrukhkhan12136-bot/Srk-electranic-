@@ -47,3 +47,15 @@ test('Customer saved-address writes reconcile uncertain RPC outcomes before allo
   assert.match(handler, /अभी वही अनुरोध दोबारा न भेजें/);
   assert.match(handler, /if\(savedMatch\)\{savedId=savedMatch\.id;\}/);
 });
+
+test('Customer default-address updates reconcile uncertain RPC responses against the authoritative list', () => {
+  const start = source.indexOf('async function makeSelectedAddressDefault() {');
+  const end = source.indexOf('let customerSupportComplaints', start);
+  assert.ok(start >= 0 && end > start, 'default-address handler exists');
+  const handler = source.slice(start, end);
+  assert.match(handler, /srk_customer_save_my_address/);
+  assert.match(handler, /returnedId!==id/);
+  assert.match(handler, /srk_customer_list_my_saved_addresses/);
+  assert.match(handler, /row\.id===id&&row\.is_default===true/);
+  assert.match(handler, /अभी अनुरोध दोबारा न भेजें/);
+});
