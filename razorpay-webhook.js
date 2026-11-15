@@ -152,7 +152,7 @@ async function reconcileRefund(refund, eventName) {
 
   const lookupUrl = new URL("/rest/v1/srk_razorpay_refunds", SUPABASE_URL);
   lookupUrl.searchParams.set("payment_id", "eq." + refund.payment_id);
-  lookupUrl.searchParams.set("select", "id,payment_id,refund_id,amount_paise,status");
+  lookupUrl.searchParams.set("select", "id,payment_id,refund_id,idempotency_key,amount_paise,status");
   lookupUrl.searchParams.set("limit", "2");
   const lookupResponse = await fetch(lookupUrl, {
     method: "GET",
@@ -166,6 +166,17 @@ async function reconcileRefund(refund, eventName) {
       Number(record.amount_paise) !== refund.amount ||
       (record.refund_id && record.refund_id !== refund.id)) {
     return "refund_record_mismatch";
+  }
+  // Before the provider refund ID is persisted, bind the webhook to the
+  // exact internal refund using the receipt or record ID sent at creation.
+  // Payment ID + amount alone is not a sufficient identity for same-payment refunds.
+  if (!record.refund_id) {
+    const notesRecordId = refund.notes?.srk_refund_record_id;
+    const receipt = refund.receipt;
+    const recordIdMatches = typeof notesRecordId === "string" && notesRecordId === record.id;
+    const receiptMatches = typeof record.idempotency_key === "string" &&
+      record.idempotency_key.length > 0 && receipt === record.idempotency_key;
+    if (!recordIdMatches && !receiptMatches) return "refund_record_mismatch";
   }
 
   const reconcileResponse = await fetch(new URL("/rest/v1/rpc/srk_service_reconcile_booking_refund", SUPABASE_URL), {
