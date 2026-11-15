@@ -27,7 +27,7 @@ select ok(position('status<>''completed''' in lower(
   pg_get_functiondef('public.srk_admin_record_manual_payment(uuid,text,text,text)'::regprocedure)))>0,
   'completed booking and electrician assignment are mandatory');
 
-select ok(position('payment_status,''unpaid'') not in (0) in lower(
+select ok(position('coalesce(v_booking.payment_status,''unpaid'') not in (''unpaid'',''pending'')' in lower(
   pg_get_functiondef('public.srk_admin_record_manual_payment(uuid,text,text,text)'::regprocedure))>0,
   'unexpected payment states fail closed');
 
