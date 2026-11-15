@@ -1,5 +1,5 @@
 begin;
-select plan(46);
+select plan(54);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -167,6 +167,34 @@ select ok(position('CASH_FEE_WALLET_REFUND_MISMATCH' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'manual full-refund reconciliation compares the exact cash-fee wallet credit to its original debit');
 
+
+select ok(to_regclass('public.srk_route_transfers') is not null,
+  'server-only Razorpay Route transfer ledger exists');
+select ok(position('route_transfers' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('route_transfer_count' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'read-only accounting report exposes Route transfer rows and count');
+select ok(position('ROUTE_TRANSFER_RECIPIENT_ROWS_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route reconciliation requires exactly one electrician and one platform commission transfer');
+select ok(position('ROUTE_TRANSFER_PAYMENT_ID_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route transfers must reference the booking Razorpay payment');
+select ok(position('ROUTE_TRANSFER_AMOUNT_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route electrician and commission transfer amounts are matched to expected payable and commission');
+select ok(position('ROUTE_TRANSFER_NOT_SETTLED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('ROUTE_TRANSFER_FAILED_REVERSED_OR_REVIEW' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'pending, failed, reversed and review-required Route states are surfaced as exceptions');
+select ok(position('ROUTE_TRANSFER_PROVIDER_ID_MISSING' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'created/processed Route transfers require a provider transfer ID');
+select ok(position('MANUAL_AND_ROUTE_ELECTRICIAN_PAYOUT_OVERLAP' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'manual paid payout and Route electrician transfer overlap is flagged for review');
 
 
 select * from finish();
