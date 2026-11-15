@@ -2655,3 +2655,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression coverage जोड़ी: tests/customer-quote-approval-ui.test.js. Source commit f147c5f05489ed20c64986064f8a2f199e2f5941 और test commit b4977ad54f826951fd6430a5cd43697489ba3122.
 - इस update के लिए अभी कोई नया CI result उपलब्ध नहीं है; test PASS या browser/runtime verification का दावा नहीं। Next step: CI में targeted/full Node suite verify करना और उसी के बाद quote approval UI को आगे audit करना।
 - No production database/configuration change, actual quote response, booking/payment mutation, deployment, PR merge, or mobile QA.
+
+
+## 2026-11-15 — CI follow-up after Customer/Electrician branch updates
+
+- GPT-2 accounting/UI correction का successful verification commit `059f875` पर हुआ: PR run `43704748225` और push run `43704745028`, दोनों **96/96 PASS**।
+- उसके बाद Feature Branch पर Customer quote UI/test changes आने से latest observed HEAD `a924bc3` का PR Node run `43704886935` **97 PASS / 1 FAIL** हुआ। Failure `tests/customer-quote-approval-ui.test.js` के assertion में है: test पुरानी inline onclick string pattern खोज रहा है, जबकि `booking.html` में quote approve/reject handlers मौजूद हैं। यह GPT-1 Customer scope का test-contract mismatch प्रतीत होता है; इसे GPT-1 owner के साथ reconcile करना है। इसे Customer runtime bug या पूरी suite green नहीं कहना है।
+- Latest run में Admin accounting regression tests PASS रहे; current Admin accounting UI अब retired Route transfer fields/section नहीं दिखाता और reconciliation के नए migration path को पढ़ता है।
+- PR #8 अभी Open + Draft + Unmerged है। कोई merge, Production migration, deployment या live payment/provider action नहीं किया गया।
