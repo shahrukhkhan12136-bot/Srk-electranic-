@@ -295,7 +295,7 @@ test("accepts a processed refund entity in refund.created as documented by Razor
       return response(200, { success: true, should_process: true, claim_token: "c23e4567-e89b-42d3-a456-426614174000" });
     }
     if (target.includes("/rest/v1/srk_razorpay_refunds?")) {
-      assert.match(target, /payment_id=eq\\.pay_createdprocessed/);
+      assert.ok(target.includes('payment_id=eq.pay_createdprocessed'));
       return response(200, [{
         id: "d23e4567-e89b-42d3-a456-426614174000",
         payment_id: "pay_createdprocessed",
