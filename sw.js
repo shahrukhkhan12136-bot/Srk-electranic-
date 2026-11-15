@@ -1,4 +1,4 @@
-const CACHE='srk-electronic-v5';
+const CACHE='srk-electronic-v6';
 const FILES=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',event=>{
