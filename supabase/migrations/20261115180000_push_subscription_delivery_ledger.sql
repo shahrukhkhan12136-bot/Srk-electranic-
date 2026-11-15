@@ -152,9 +152,12 @@ BEGIN
   IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
   END IF;
+  -- An outbox item is complete only when every known device is delivered.
+  -- Dead device rows must keep the outbox retryable/dead-letterable so the
+  -- operator recovery RPC can requeue those exact failed devices later.
   RETURN NOT EXISTS(
     SELECT 1 FROM srk_private.srk_push_subscription_deliveries d
-    WHERE d.outbox_id=p_outbox_id AND d.delivery_status IN ('pending','processing')
+    WHERE d.outbox_id=p_outbox_id AND d.delivery_status <> 'delivered'
   );
 END;
 $function$;
