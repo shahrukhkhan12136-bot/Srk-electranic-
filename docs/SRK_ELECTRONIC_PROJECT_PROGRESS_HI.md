@@ -2259,3 +2259,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Electrician page सीधे `srk_push_subscriptions` table पर browser-side upsert/delete करता है। इस branch audit में उस table की authoritative schema/RLS/grants और production Edge Function sender implementation verify नहीं हुई; इन्हें अलग से सुरक्षित तरीके से inspect करना आवश्यक है। कोई table policy या endpoint security assumption नहीं बनाई गई।
 - Confirmed gap: offer creation/next-offer dispatch को reliable notification delivery से जोड़ने वाला trusted server-side sender path feature branch में नहीं मिला। इसे पूरा मानना गलत होगा। अगला implementation चरण: subscription table का owner-scoped RLS/RPC contract, server-only VAPID secrets, durable idempotent notification outbox, accepted/expired/declined offer race checks, invalid endpoint cleanup, bounded retry और notification-click से सही offer highlight करना। यह काम feature branch में source-level design/implementation के रूप में होगा; production function deploy या real push send नहीं।
 - कोई वास्तविक push notification नहीं भेजी गई, कोई subscription/table mutation, Edge Function deploy, migration apply, booking/payment/refund/payout/wallet mutation, production change या mobile QA नहीं हुआ। Runtime tests भी execute नहीं किए गए।
+
+
+## 2026-11-15 — Push Notification Click-to-Offer Deep Link Hardening
+- Service Worker notification-click path को harden किया: अब arbitrary payload URL नहीं खोला जाता; हमेशा उसी origin/scope के Electrician Dashboard पर navigate होता है। केवल strict UUID-format offerId query parameter के रूप में जोड़ा जाता है।
+- Push payload का offerId भी UUID validation के बाद ही notification tag/data में जाता है; malformed ID से कोई offer deep link नहीं बनता। Electrician dashboard में पहले से मौजूद `focusElectricianOfferFromNotification()` query parameter से matching offer card scroll/highlight करता है; अब notification click उससे जुड़ गया।
+- Service Worker cache version v7 से v8 किया ताकि updated worker activate होकर पुराने cache को replace करे।
+- Existing client source test file में notification route, offerId validation और cache-version contract के assertions जोड़े। Test अभी execute नहीं किया गया।
+- Commits: `47c2a07e` (service worker), `ab02b7b6` (source contract test).
+- Trusted server-side Push sender, durable outbox/retry, subscription-table RLS proof और invalid endpoint cleanup अभी unresolved हैं। कोई वास्तविक push नहीं भेजी गई, Edge Function deploy नहीं, database mutation/migration apply नहीं, production change नहीं और mobile QA नहीं।
