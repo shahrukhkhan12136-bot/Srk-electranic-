@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(24);
 select ok(to_regclass('public.srk_razorpay_refund_recovery_audits') is not null,'durable refund recovery evidence table exists');
 select ok((select relrowsecurity from pg_class where oid='public.srk_razorpay_refund_recovery_audits'::regclass),'recovery evidence table has RLS enabled');
 select ok(not has_table_privilege('anon','public.srk_razorpay_refund_recovery_audits','select'),'anon cannot read private recovery evidence');
@@ -20,5 +20,10 @@ select ok(position('ELECTRICIAN_PAYOUT_MUST_REMAIN_BLOCKED_DURING_REFUND_RECOVER
 select ok(position('BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'verified full refund closes the blocked electrician payout as refunded');
 select ok(position('REFUNDED_BOOKING_PAYOUT_STATE_REQUIRES_MANUAL_RECONCILIATION' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'idempotent replay validates payout reversal state after the accounting trigger');
 select ok(position('update public.service_bookings' in lower(pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>0,'accounting finalization is a separate transaction boundary from evidence persistence');
+
+select ok(to_regclass('public.srk_cancellation_fee_ledger_one_reversal_per_entry') is not null,'each cancellation-fee ledger entry can have at most one reversal');
+select ok(to_regclass('public.srk_wallet_ledger_idempotency_key_key') is not null,'wallet reversal entries have a globally unique idempotency key');
+select ok(position('cancel-fee:cash:refund-wallet-credit:' in pg_get_functiondef('public.srk_reverse_cancellation_fees_on_full_refund()'::regprocedure))>0,'cash cancellation-fee refund restores electrician wallet with deterministic idempotency key');
+select ok(position('srk_reverse_cancellation_fees_on_full_refund' in pg_get_triggerdef((select oid from pg_trigger where tgname='srk_reverse_cancellation_fees_on_full_refund' and not tgisinternal)))>0,'full-refund accounting reversal is attached to service booking payment status');
 select * from finish();
 rollback;
