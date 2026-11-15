@@ -3627,3 +3627,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पुराने branches में duplicate `20261109` migrations अलग versioned filenames से मौजूद थीं; यह history clue है, current migration ledger repair का प्रमाणित तरीका नहीं।
 - निष्कर्ष: `amount_paid` और `auth_user_id` के exact type/nullability/default/constraint/index contracts अभी भी authoritative source से unresolved हैं। कोई अनुमानित DDL नहीं जोड़ा गया। विवरण `docs/MIGRATION_REPLAY_MANIFEST_HI.md` के Section 5.7 में दर्ज।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 शेष**। कोई database execution, Production access, migration rename, merge या deploy नहीं किया।
+
+
+## 2026-11-15 — Founder Photo checklist instruction consistency
+- Master checklist के Section 6 और पुराने contradictory historical wording को latest owner instruction के अनुरूप reconcile किया: approved photo केवल garden-background original है; blue-background/design-reference instruction superseded है।
+- Checklist से गलत दावा हटाया कि original crop working file में तैयार है। अब साफ लिखा है कि original binary/crop दोनों pending हैं और वही crop Welcome Screen तथा Customer Login दोनों में लगना है।
+- Master checklist commit `d606344e3235f05ab9f8405882b790ddab1f4cd0`। Re-fetch verification: master garden-photo instruction correct; false crop claim absent; Welcome और Customer Login दोनों में placeholder और collage-reference absent; Service Worker cache v11।
+- GPT-1 progress **20/28 = 71%** अपरिवर्तित; यह documentation consistency fix है, नया checklist completion नहीं।
