@@ -10,7 +10,7 @@ test('push outbox worker uses server-only credentials and bounded batch claim', 
   assert.match(worker, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(worker, /PUSH_WEBHOOK_SECRET/);
   assert.match(worker, /srk_claim_push_delivery_outbox/);
-  assert.match(worker, /p_limit: 20/);
+  assert.match(worker, /p_limit: 3/);
 });
 
 test('push outbox worker sends only claimed payloads to the fixed Edge Function', () => {
