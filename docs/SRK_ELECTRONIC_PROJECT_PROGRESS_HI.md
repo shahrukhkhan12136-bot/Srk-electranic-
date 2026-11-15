@@ -2470,3 +2470,5 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - No real manual refund, Razorpay request/GET, webhook, payout/wallet mutation, Production database apply, deployment, merge, or mobile QA was performed. Runtime migration/pgTAP and provider sandbox integration remain pending.
 
 **Feature Branch commits:** manual-refund migration `29da3e0`; Admin queue manual workflow `a8f41f9`, safe data-attribute reason passing `b4b1cd2`; pgTAP test `629574e`. Inline quoting follow-up `4acf07f` was superseded by the safer data-attribute implementation.
+
+- CI status snapshot for the latest checklist commit `88cc7e7`: Vercel status is `failure` with target URL indicating `upgradeToPro=build-rate-limit`. This is a Vercel build-rate-limit/account-plan blocker, not evidence of an application test failure; no successful deployment/build verification is claimed. Recheck CI when build capacity is available.
