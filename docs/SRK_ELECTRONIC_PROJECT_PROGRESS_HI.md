@@ -2018,3 +2018,15 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Route schema کے حقیقی `reversed/partially_reversed` transfer اور `reversed` settlement states کی جانچ شامل کی۔ Confirmed full refund کے بعد provider transfer ID ہونے پر transfer + settlement دونوں reversed ہونے چاہئیں، ورنہ exception۔
 - Admin UI میں confirmed اور unconfirmed refund الگ دکھائے جاتے ہیں۔ Partial reversal کی exact رقم موجودہ Route schema میں محفوظ نہیں؛ report اس کی رقم invent نہیں کرتی۔
 - pgTAP plan/assertions: 52؛ static verification pending immediate pass؛ runtime execution pending۔
+
+
+### Static verification — Refund / Payout / Route cross-audit (2026-11-15)
+
+- Refund net collection अब केवल Razorpay processed status पर घटता है; pending/unknown/failed amount अलग रहता है और failed refund exception है।
+- Refund request status बनाम final refund evidence checks source में हैं।
+- Route full/partial reversal states और confirmed full refund के बाद actual transfer ID की reversal requirement source में हैं।
+- Main Admin RPC SECURITY DEFINER + STABLE + fixed empty search_path; function body में कोई INSERT/UPDATE/DELETE नहीं।
+- Manual payment/refund evidence, payout electrician ownership/completion, cancellation-fee wallet debt reversal, और historical fee capture checks source में मौजूद।
+- pgTAP plan/assertions 52/52 static count verified।
+- Admin UI confirmed/unconfirmed refund अलग दिखाती है; dynamic content escaping esc() मौजूद।
+- केवल Feature Branch source changes; no SQL apply, no runtime pgTAP, no provider call, no deployment, no merge, no mobile QA।
