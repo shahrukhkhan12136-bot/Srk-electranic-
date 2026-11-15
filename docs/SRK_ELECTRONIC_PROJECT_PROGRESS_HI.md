@@ -3995,4 +3995,4 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नया commit: `d2a88b268bec1839a76ac3254a8dfb2a2b3eb23a`।
 - इसी commit पर workflow runs `43740831240` और `43740826924` दोनों सफल हुए। सफल job log में `npm test`: 187/187 PASS, 0 FAIL, 0 skipped सत्यापित।
 - यह केवल Node.js source-regression CI है; PostgreSQL/pgTAP runtime, Supabase migration replay, Production parity या deployment प्रमाणित नहीं करता।
-- GPT-2 checklist 27/39 = 69% और कुल project 55/86 = 64% अपरिवर्तित; CI maintenance को checklist completion नहीं गिना गया।
+- GPT-2 checklist 27/39 = 69% अपरिवर्तित। नवीनतम Master Checklist के अनुसार कुल project 56/86 = 65% है; पहले के 55/86 = 64% वाले पुराने progress log entries ऐतिहासिक snapshot हैं। CI maintenance को checklist completion नहीं गिना गया।
