@@ -3491,3 +3491,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Push subscription के पाँच required consumer columns की सीमा दोबारा स्पष्ट की; SQL types, keys, uniqueness और base RLS अभी authoritative source के बिना unresolved हैं।
 - यह केवल source-consumer contract है, complete DDL नहीं; कोई fixture/SQL/production change नहीं किया।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
+
+
+### 2026-11-15 — Historical branches से Complaint और Push base DDL recovery
+- सभी उपलब्ध historical branch migration trees में खोजने पर Complaint base DDL मिला: `work/separate-customer-electrician-portals/supabase/migrations/20261110040000_customer_admin_complaints.sql`। इसमें complaints और complaint_events की columns, types, PK/FK, CHECK constraints, indexes, RLS और ACL posture स्पष्ट है।
+- Push base DDL मिला: `feature/production-push-notifications/supabase/migrations/20261111090000_add_electrician_push_subscriptions.sql`। इसमें पूर्ण subscription table, Auth FK, unique endpoint, length checks, user index और own-row RLS/ACL स्पष्ट हैं।
+- पहले current-branch-only audit में इन्हें unresolved बताया गया था; अब historical repository source recovery के बाद DDL source-backed है। यह historical migration को current release में सीधे replay करने की अनुमति नहीं है।
+- दोनों स्रोतों का विवरण `docs/CORE_BASELINE_DDL_CONTRACT_HI.md` में दर्ज किया। अभी भी exact baseline assembly, historical/current migration overlap और dependency order का audit बाकी है।
+- कोई Production/database access या बदलाव नहीं; कोई migration apply नहीं; PostgreSQL/pgTAP runtime अभी execute नहीं हुआ।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
