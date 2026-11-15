@@ -608,3 +608,9 @@
 - Support ticket create या reply RPC का response खो जाने पर UI सीधे failure दिखा सकती थी, जबकि server write commit हो चुका हो।
 - अब create से पहले owner-scoped ticket ID snapshot और reply से पहले thread message ID snapshot लिया जाता है। RPC response reject होने पर नई IDs, ticket metadata और exact electrician message body मिलाकर committed write खोजा जाता है। पुष्टि मिलने पर सफलता/refresh; नहीं मिलने या read विफल होने पर duplicate से बचने के लिए पहले Refresh करने की सलाह। Preflight list उपलब्ध न हो तो write भेजा ही नहीं जाता।
 - दो source-contract regression tests जोड़े; live Supabase transport fault-injection और browser tests लंबित हैं।
+
+
+### 2026-11-16 — Customer Saved Address save refresh-result handling
+- Saved-address RPC सफल होने के बाद सूची refresh असफल हो सकती थी; पुराने flow में refresh helper का false result अनदेखा करके UI पूर्ण सफलता दिखाती थी।
+- अब refresh परिणाम जाँचा जाता है। सूची refresh विफल हो तो UI स्पष्ट करता है कि सेव अनुरोध सफल था लेकिन सूची अपडेट नहीं दिखी; पूर्ण सफलता संदेश नहीं दिखता।
+- Source-contract regression test जोड़ा; live Supabase/browser testing लंबित।
