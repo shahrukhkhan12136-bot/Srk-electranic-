@@ -169,3 +169,31 @@ test('Support Staff authorization and assignment use a consistent lock order and
   assert.ok(permission.includes('tracked.revoked_at is null') && permission.includes('for share'));
   assert.ok(permission.includes('auth.sessions auth_s') && permission.includes('auth_s.id = v_session_id'));
 });
+
+test('Support Staff session lifecycle and private assignment tables deny direct client access', () => {
+  const sessionRegisterStart = staffMigration.lastIndexOf('create or replace function public.srk_admin_staff_register_session');
+  const sessionRegisterEnd = staffMigration.indexOf('$function$;', sessionRegisterStart);
+  assert.ok(sessionRegisterStart >= 0 && sessionRegisterEnd > sessionRegisterStart);
+  const register = staffMigration.slice(sessionRegisterStart, sessionRegisterEnd);
+  assert.ok(register.includes('auth.sessions a'));
+  assert.ok(register.includes('a.id = v_session_id and a.user_id = v_uid'));
+  assert.ok(register.includes('revoked_at is null'));
+
+  const statusStart = staffMigration.lastIndexOf('create or replace function public.srk_admin_staff_set_status');
+  const statusEnd = staffMigration.indexOf('$function$;', statusStart);
+  const setStatus = staffMigration.slice(statusStart, statusEnd);
+  assert.ok(setStatus.includes("p_status in ('suspended','disabled')"));
+  assert.ok(setStatus.includes('set revoked_at = coalesce(revoked_at, clock_timestamp())'));
+
+  const revokeStart = staffMigration.lastIndexOf('create or replace function public.srk_admin_staff_revoke_session');
+  const revokeEnd = staffMigration.indexOf('$function$;', revokeStart);
+  const revoke = staffMigration.slice(revokeStart, revokeEnd);
+  assert.ok(revoke.includes('revoked_at = coalesce(revoked_at,clock_timestamp())'));
+  assert.ok(revoke.includes('public.is_srk_admin()'));
+
+  for (const table of ['srk_admin_staff','srk_admin_permissions','srk_admin_role_permissions','srk_admin_staff_sessions','srk_admin_staff_audit_events','srk_admin_support_assignments']) {
+    assert.ok(staffMigration.includes('revoke all on public.' + table + ' from public, anon, authenticated'),
+      table + ' must not be directly accessible to client roles');
+  }
+  assert.ok(staffMigration.includes('grant execute on function public.srk_admin_staff_register_invited_user(uuid,text,uuid) to service_role'));
+});
