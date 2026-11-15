@@ -3955,3 +3955,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - यह Node/static/mock regression suite है; PostgreSQL/pgTAP runtime, Supabase migration replay, Production schema parity या provider integration नहीं।
 - इस CI सफलता से कोई GPT-2 checklist item बंद नहीं होता: GPT-2 27/39 = 69%, कुल project 55/86 = 64%।
 - PR #8 अभी Open, Draft, Unmerged है। कोई merge, deployment, Production DB operation या payment/refund/payout action नहीं किया।
+
+
+### Isolated PostgreSQL/pgTAP runtime feasibility — 15 Nov 2026, 16:45 UTC
+- PR #8 के मौजूदा .github/workflows/supabase-schema-ci.yml को फिर पढ़ा। यह manual workflow है, केवल पुराने feature/platform-fee-cash-online-cycle ref पर चलता है, Production से schema-only export के लिए SUPABASE_DB_URL secret माँगता है, फिर GitHub runner पर local Supabase stack शुरू करता है।
+- इस workflow में केवल पाँच पुराने migrations apply होते हैं; यह GPT-2 के मौजूदा पूरे migration set या pgTAP suite का isolated replay नहीं है।
+- इसे PR #8 के लिए trigger, modify या Production export के लिए उपयोग नहीं किया। किसी Production credential/query/export का उपयोग नहीं हुआ।
+- वर्तमान PR head पर Feature Branch Node workflow run 43736953604 सफल है; job log में 187/187 Node tests PASS हैं। यह PostgreSQL runtime या pgTAP execution नहीं है।
+- सुरक्षित अगला विकल्प एक अलग GitHub Actions workflow है जो केवल disposable local PostgreSQL/Supabase instance में काम करे और Production secret/export न माँगे। लेकिन full migration replay से पहले authoritative base schema और amount_paid / auth_user_id की मूल definitions चाहिए; उन्हें अनुमान से fixture में जोड़ना स्वीकार्य नहीं।
+- इसलिए अभी pgTAP runtime को blocked रखा गया; कोई workflow/migration source नहीं बदली। GPT-2 27/39 = 69%, कुल project 55/86 = 64% अपरिवर्तित।
