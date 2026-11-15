@@ -1,5 +1,14 @@
 begin;
-select plan(40);
+select plan(42);
+
+select ok(has_function_privilege('authenticated','public.srk_customer_list_my_cancellation_fee_debts()','EXECUTE')
+  and not has_function_privilege('anon','public.srk_customer_list_my_cancellation_fee_debts()','EXECUTE')
+  and not has_function_privilege('public','public.srk_customer_list_my_cancellation_fee_debts()','EXECUTE'),
+  'customer cancellation debt projection is executable only by authenticated users');
+select ok(has_function_privilege('authenticated','public.srk_customer_list_booking_cancellation_fee_items()','EXECUTE')
+  and not has_function_privilege('anon','public.srk_customer_list_booking_cancellation_fee_items()','EXECUTE')
+  and not has_function_privilege('public','public.srk_customer_list_booking_cancellation_fee_items()','EXECUTE'),
+  'customer cancellation fee item projection is executable only by authenticated users');
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
