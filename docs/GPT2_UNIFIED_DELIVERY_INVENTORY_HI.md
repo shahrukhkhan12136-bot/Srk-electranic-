@@ -263,6 +263,7 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 - The customer payment-method SQL contract test previously expected a mojibake literal even though migration `20261115270000_fix_customer_payment_method_unicode_contract.sql` writes the canonical UTF-8 value. Corrected the SQL test in commit `13afb4d92e22673b50c5eee1751f66621fdf194f`; fetched the current branch file again and confirmed the canonical literal is present and the mojibake sequence is absent.
 - The latest Node CI run `43743783902` passed 187/187 after the correction. This does **not** execute pgTAP; the PostgreSQL runtime assertion remains unverified.
 - GPT-1's new inventory separately records missing dedicated DB tests for electrician availability, booking-scoped live-location RPCs, and phone-change approval. These are GPT-1-owned workflows; no such files were changed here. Its payment-test mismatch note predates the GPT-2 correction and should be treated as stale until GPT-1 refreshes its own inventory.
+- The GPT-2 inventory now includes §3A cross-map from feature area to migrations, pgTAP files, Node tests and UI/server entry points. The older dependency inventory (71 migrations/33 SQL contracts) and dependency matrix (73 migrations) are explicitly marked historical; the replay manifest now clarifies that complaint base/event table definitions were recovered and are no longer unresolved source blockers.
 
 ## 8. No-go boundaries
 No Production schema/history queries or migrations, no secrets, no provider refunds/transfers/payouts, no real SMS/OTP/push sends, no paid staging subscription, no PR merge, no deployment/go-live without separate explicit approval. Do not overwrite GPT-1 shared files.
@@ -271,7 +272,7 @@ No Production schema/history queries or migrations, no secrets, no provider refu
 1. Keep this document as the single inventory index and update it when a source/test/workflow is added or materially changed.
 2. Resolve original base-column DDL from historical source/deployment artifact or approved schema-only export.
 3. Repair the Supabase CI workflow so an isolated full migration replay can run on the Feature Branch only after prerequisites are authoritative.
-4. Build a feature-to-migration-to-pgTAP-to-Node-test-to-UI-RPC matrix and close missing contracts.
+4. Use the feature-to-migration-to-pgTAP-to-Node-test-to-UI/RPC matrix in §3A as the working map; update it only when source/tests change and close the identified gaps.
 5. Execute isolated DB and Admin/Support browser actor matrix.
 6. Only then update checklist percentages for actually closed items.
 
