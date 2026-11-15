@@ -1,4 +1,4 @@
-const CACHE='srk-electronic-v7';
+const CACHE='srk-electronic-v8';
 const FILES=['./','./index.html','./customer-login.html','./booking.html','./assets/srk-founder.jpg','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',event=>{
@@ -42,17 +42,22 @@ self.addEventListener('push',event=>{
     try{payload=event.data?event.data.json():{};}catch{payload={body:event.data?.text()||''};}
     const title=typeof payload.title==='string'&&payload.title?payload.title:'SRK ELECTRONIC';
     const body=typeof payload.body==='string'?payload.body:'आपके अकाउंट के लिए नई सूचना है।';
-    const offerId=typeof payload.offerId==='string'?payload.offerId:'';
-    const options={body,icon:'./icon.svg',badge:'./icon.svg',tag:offerId?'srk-offer-'+offerId:'srk-general',renotify:!!offerId,data:{url:typeof payload.url==='string'?payload.url:'./electrician.html',offerId,action:payload.action||'open'}};
+    const rawOfferId=typeof payload.offerId==='string'?payload.offerId:'';
+    const offerId=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawOfferId)?rawOfferId:'';
+    const target=new URL('./electrician.html',self.registration.scope);
+    if(offerId)target.searchParams.set('offerId',offerId);
+    const options={body,icon:'./icon.svg',badge:'./icon.svg',tag:offerId?'srk-offer-'+offerId:'srk-general',renotify:!!offerId,data:{url:target.href,offerId,action:'open'}};
     await self.registration.showNotification(title,options);
   })());
 });
 self.addEventListener('notificationclick',event=>{
   event.notification.close();
   event.waitUntil((async()=>{
-    const raw=event.notification.data?.url||'./electrician.html';
-    let target=new URL('./electrician.html',self.location.origin);
-    try{const candidate=new URL(raw,self.location.origin);if(candidate.origin===self.location.origin)target=candidate;}catch{}
+    const target=new URL('./electrician.html',self.registration.scope);
+    const offerId=event.notification.data?.offerId;
+    if(typeof offerId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(offerId)){
+      target.searchParams.set('offerId',offerId);
+    }
     const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
     for(const client of windows){if(new URL(client.url).origin===self.location.origin){await client.navigate(target.href);return client.focus();}}
     return self.clients.openWindow(target.href);
