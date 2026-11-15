@@ -1,4 +1,4 @@
-const {createHash}=require("node:crypto");
+const {createHash,randomUUID}=require("node:crypto");
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAYMENT=/^pay_[A-Za-z0-9]+$/;
 const REFUND=/^rfnd_[A-Za-z0-9]+$/;
@@ -64,7 +64,7 @@ exports.handler=async event=>{
    p_refund_record_id:record.id,p_provider_refund_id:providerRefund.id,p_payment_id:providerRefund.payment_id,
    p_amount_paise:Number(providerRefund.amount),p_currency:providerRefund.currency,p_provider_status:providerRefund.status,
    p_provider_created_at:providerCreatedAt,p_acquirer_reference:acquirerReference,p_provider_payload_sha256:payloadHash,
-   p_provider_evidence:providerRefund,p_admin_user_id:user.id,p_admin_note:note
+   p_observation_id:randomUUID(),p_provider_evidence:providerRefund,p_admin_user_id:user.id,p_admin_note:note
   },cfg);
   if(typeof evidenceId!=="string"||!UUID.test(evidenceId))return json(502,{success:false,evidence_saved:false,error:"Recovery evidence RPC did not return a valid audit ID.",safe_to_retry:false});
   if(providerRefund.status!=="processed")return json(202,{success:true,evidence_saved:true,accounting_finalized:false,recovery_audit_id:evidenceId,provider_status:providerRefund.status,safe_to_retry:false,message:"Provider प्रमाण अलग transaction में सुरक्षित हुआ। केवल processed status ही accounting finalization के योग्य है; कोई payout release या नया refund नहीं किया गया।"});
