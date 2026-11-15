@@ -6,6 +6,10 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const booking = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
 
+test('customer booking copy does not mention the retired inspection quotation process', () => {
+  assert.doesNotMatch(booking, /post-inspection quotation|निरीक्षण के बाद अलग quotation/i);
+});
+
 test('customer dashboard exposes all five accessible menu tabs and matching panels', () => {
   const tabs = ['Home', 'Bookings', 'Payments', 'Support', 'Profile'];
   for (const name of tabs) {
