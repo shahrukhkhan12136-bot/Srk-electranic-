@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const edge = fs.readFileSync(path.join(__dirname, '..', 'supabase/functions/push-job-offer/index.ts'), 'utf8');
 const worker = fs.readFileSync(path.join(__dirname, '..', 'netlify/functions/deliver-push-outbox.js'), 'utf8');
-const migration = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115180000_push_subscription_delivery_ledger.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115180001_push_subscription_delivery_ledger.sql'), 'utf8');
 
 test('outbox identity is required and passed to the Edge sender', () => {
   assert.match(edge, /outbox_id\?: string/);
@@ -83,7 +83,7 @@ test('all ledger RPCs fail closed for null or non-service roles and recover null
 });
 
 test('per-device finish RPC uses attempt fencing to reject stale sender results', () => {
-  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200000_push_delivery_lease_fencing.sql'), 'utf8');
+  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200001_push_delivery_lease_fencing.sql'), 'utf8');
   assert.match(edge, /p_attempt_count: target\.attempt_count/);
   assert.match(fencing, /p_delivery_id uuid,p_attempt_count integer,p_success boolean/);
   assert.match(fencing, /v_row\.attempt_count IS DISTINCT FROM p_attempt_count/);
@@ -92,7 +92,7 @@ test('per-device finish RPC uses attempt fencing to reject stale sender results'
 });
 
 test('per-device fencing migration replaces the exact legacy RPC signature and matches every sender finish call', () => {
-  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200000_push_delivery_lease_fencing.sql'), 'utf8');
+  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200001_push_delivery_lease_fencing.sql'), 'utf8');
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.srk_finish_push_subscription_delivery\(/);
   assert.match(fencing, /DROP FUNCTION IF EXISTS public\.srk_finish_push_subscription_delivery\(uuid,boolean,text\)/);
   assert.match(fencing, /CREATE FUNCTION public\.srk_finish_push_subscription_delivery\(\s*p_delivery_id uuid,p_attempt_count integer,p_success boolean/);
