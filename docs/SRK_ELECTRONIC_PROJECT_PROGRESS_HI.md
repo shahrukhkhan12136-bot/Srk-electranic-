@@ -2216,3 +2216,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Static source checks confirm the Admin guard, database trigger, and regression assertions are present in the feature branch. Neither Node nor pgTAP tests have been executed; no database migration was applied.
 - No production settings changed, no booking/payment/refund/payout/wallet mutation, no provider request, no deploy, and no mobile QA performed.
 - Commits: `f0db58d9` (DB guard in existing migration), `76dcb381` (Admin save guard), `8b21e347` (Node contract test), `ee546d02` (pgTAP plan 19).
+
+
+## 2026-11-15 — Sequential Offer Assignment Guard Tightened
+- Continued checking the newly added server-timed booking status trigger against the actual sequential offer dispatcher. Found that the trigger's first version allowed `new/confirmed → assigned` whenever an electrician ID was supplied, without independently proving that the electrician had accepted the active offer. The normal RPC did validate the offer, but a direct privileged status update could bypass the sequential dispatch acceptance step.
+- Tightened the trigger: a new-category booking can become `assigned` only when a matching `job_offers` row for that booking/electrician is already `accepted`.
+- Updated `srk_respond_to_offer` to mark the currently offered row accepted before updating `service_bookings`. Both writes remain in the same database transaction, so any later failure rolls back the offer acceptance too. This lets the trigger validate the genuine acceptance event.
+- Added two pgTAP assertions; `customer_booking_work_timeline.test.sql` plan is now 21. Tests remain source-only and unexecuted.
+- No database migration applied, no live offer accepted, no booking/payment/refund/payout/wallet mutation, no production changes, no deployment, and no mobile QA.
+- Commits: `e34f3f89` (trigger + offer-response hardening), `06803a71` (pgTAP assertions).
