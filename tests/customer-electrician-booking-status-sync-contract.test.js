@@ -230,3 +230,20 @@ test('Electrician area, KYC, support and phone-history loaders handle rejected t
   assert.match(phone,/Promise\.resolve\(\)\.then\(\(\)=>sb\.functions\.invoke\('electrician-phone-change'/);
   assert.match(phone,/\.catch\(error=>\(\{data:null,error\}\)\)/);
 });
+
+
+test('Electrician support ticket list uses its caught result and support thread catches transport rejection', () => {
+  const listStart=electrician.indexOf('async function loadElectricianSupportTickets(){');
+  const listEnd=electrician.indexOf('let electricianSupportCreateBusy',listStart);
+  const threadStart=electrician.indexOf('async function openElectricianSupportThread(id){');
+  const threadEnd=electrician.indexOf('async function sendElectricianSupportReply()',threadStart);
+  assert.ok(listStart>=0&&listEnd>listStart&&threadStart>listEnd&&threadEnd>threadStart);
+  const list=electrician.slice(listStart,listEnd);
+  const thread=electrician.slice(threadStart,threadEnd);
+  assert.match(list,/const \{data\}=result;/);
+  assert.doesNotMatch(list,/if\(error\).*error\.message/);
+  assert.match(list,/result\.error/);
+  assert.match(thread,/Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_electrician_list_my_support_messages'/);
+  assert.match(thread,/\.catch\(error=>\(\{data:null,error\}\)\)/);
+  assert.match(thread,/if\(error\)\{box\.textContent='बातचीत नहीं खुली/);
+});
