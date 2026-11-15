@@ -1761,9 +1761,26 @@ async function createCustomerSupportComplaint() {
   supportStatus('आपकी शिकायत दर्ज हो गई है। उसका reference और जवाब नीचे दिखाई देंगे।');
  } catch(error) {
   const msg=String(error?.message||'');
-  supportStatus(msg.includes('Daily complaint limit reached')
-   ?'आज की शिकायत सीमा पूरी हो गई है। कृपया मौजूदा शिकायत में संदेश भेजें।'
-   :'शिकायत दर्ज नहीं हो सकी। बुकिंग चुनें, विवरण जाँचें और दोबारा कोशिश करें।',true);
+  let confirmedComplaint=null,lookupSucceeded=false;
+  try{
+   const {data:complaints,error:lookupError}=await customerSb.rpc('srk_customer_list_booking_complaints');
+   if(!lookupError&&Array.isArray(complaints)){
+    lookupSucceeded=true;
+    confirmedComplaint=complaints.find(row=>row.booking_id===bookingId&&row.category===category&&row.description===description)||null;
+   }
+  }catch(_){/* If the owner-scoped list is unavailable, keep the submission outcome uncertain. */}
+  if(confirmedComplaint){
+   document.getElementById('customerSupportDescription').value='';
+   customerSupportSelectedId=confirmedComplaint.id;
+   await loadCustomerSupportComplaints();
+   supportStatus('आपकी शिकायत दर्ज हो गई है। Reference: '+String(confirmedComplaint.id).slice(0,8)+'। दोबारा शिकायत नहीं भेजी गई।');
+  }else if(msg.includes('Daily complaint limit reached')){
+   supportStatus('आज की शिकायत सीमा पूरी हो गई है। कृपया मौजूदा शिकायत में संदेश भेजें।',true);
+  }else if(lookupSucceeded){
+   supportStatus('शिकायत सूची में इस अनुरोध की पुष्टि नहीं मिली। कोई दूसरी शिकायत अपने-आप नहीं भेजी गई। कृपया सूची रीफ़्रेश करके स्थिति जाँचें।',true);
+  }else{
+   supportStatus('शिकायत दर्ज करने का परिणाम स्पष्ट नहीं है। दोबारा भेजने से पहले शिकायत सूची रीफ़्रेश करके जाँचें, ताकि डुप्लिकेट शिकायत न बने।',true);
+  }
  } finally {button.disabled=false;button.textContent='शिकायत दर्ज करें';}
 }
 async function loadCustomerSupportAttachments(complaintId) {
