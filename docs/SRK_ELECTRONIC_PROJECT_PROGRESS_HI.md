@@ -3140,3 +3140,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Test fixture को वैध Razorpay ID प्रारूप `rfnd_notematch123` किया (आवश्यक `rfnd_` prefix और उसके बाद केवल alphanumeric अक्षर); production handler में कोई ढील नहीं दी और refund identity checks यथावत रखे।
 - बदलाव Feature Branch / Draft PR #8 में commit `42de563f4cc8b276f9a7105474135d36555991bd` पर है। नवीनतम CI run अभी उपलब्ध नहीं; pass होने का दावा नहीं।
 - GPT-2 कार्यक्षेत्र प्रगति अपरिवर्तित: 26/39 = 67% पूरा, 13/39 = 33% शेष।
+
+
+## 2026-11-15 — GPT-1 progress + authentic garden Founder Photo clarification
+
+- User clarified that the authentic Founder Photo is the original photo with a green garden in the background. Use this exact photo, crop it to match the existing Founder model/layout, and preserve the person's real face/identity. This supersedes the older blue-background-photo note.
+- Do not use the design-reference/model image as the founder identity source, and do not substitute the checked-in app-screen collage.
+- Checked saved reference images and Library image search; the original garden-photo binary is not accessible in this work session. Actual crop/asset replacement therefore remains pending; no false completion claim.
+- GPT-1 progress is separately counted from Master Checklist sections Customer (10), Electrician (10), and Welcome/Founder Photo (6): **19/26 = 73% complete; 7/26 = 27% remaining**. GPT-2 tasks excluded. This is implementation checklist progress, not Production readiness.
+- Going forward, report GPT-1 and GPT-2 percentages separately in progress updates; update the counts when checklist items change.
