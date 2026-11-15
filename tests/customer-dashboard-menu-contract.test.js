@@ -112,3 +112,16 @@ test('customer booking lifecycle, refund and location feedback have English tran
   assert.match(booking, /'GPS लोकेशन प्राप्त हो रही है…':'Getting GPS location…'/);
   assert.match(booking, /'Admin ने अनुरोध अस्वीकार किया':'Admin rejected the request'/);
 });
+
+
+test('electrician live-location update network exceptions trigger safe sharing shutdown', () => {
+  const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
+  const start = electrician.indexOf('async function startElectricianLiveLocation(id)');
+  const end = electrician.indexOf('\nconst electricianLocationStopBusy', start);
+  assert.ok(start >= 0 && end > start);
+  const live = electrician.slice(start, end);
+  assert.match(live, /try\s*\{[\s\S]*?srk_electrician_update_live_location/);
+  assert.match(live, /if\(r\.error\)throw r\.error/);
+  assert.match(live, /catch\(error\)\s*\{\s*await stopElectricianLiveLocationAfterGpsFailure/);
+  assert.match(live, /srk_electrician_stop_live_location/);
+});
