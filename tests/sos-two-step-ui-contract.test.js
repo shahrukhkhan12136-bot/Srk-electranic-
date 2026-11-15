@@ -56,7 +56,7 @@ test('SOS client sends only the reason and never claims delivery without a confi
     const end = source.indexOf('\n}', start);
     assert.ok(start >= 0 && end > start, app + ' SOS submit handler exists');
     const handler = source.slice(start, end);
-    assert.match(handler, new RegExp(client + '\\.rpc\\(\\'srk_create_sos_alert\\',\\{p_reason:reason\\}\\)'));
+    assert.ok(handler.includes(client + ".rpc('srk_create_sos_alert',{p_reason:reason})"), app + ' RPC payload must contain only the selected reason');
     assert.match(handler, /!data\?\.success\|\|!data\?\.case_id/);
     assert.match(handler, /SOS अभी दर्ज नहीं हो सका। अलर्ट भेजा हुआ न मानें।/);
     assert.doesNotMatch(handler, /p_booking_id|p_user_id|p_actor_id/);
