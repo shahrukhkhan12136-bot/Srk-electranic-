@@ -175,6 +175,12 @@ begin
     raise exception 'Only pending payouts can be marked paid';
   end if;
 
+  if v_booking.commission_rate is null
+     or v_booking.commission_rate < 0
+     or v_booking.commission_rate > 100 then
+    raise exception 'COMMISSION_RATE_MISSING_OR_INVALID';
+  end if;
+
   if v_booking.selected_category is not null then
     select * into v_bill
       from public.srk_booking_labour_bills
