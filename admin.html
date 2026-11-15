@@ -883,7 +883,7 @@ async function loadAdminRefundRequests(){
    : state==='in_review'
     ? '<button type="button" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'approved\')">Approve</button> <button type="button" class="alt" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'rejected\')">Reject</button>'
     : state==='approved' && r.refund_record_status!=='processed' && r.razorpay_payment_id
-      ? '<button type="button" class="alt" onclick="prepareApprovedCustomerRefund(\''+esc(r.booking_id)+'\',\''+esc(r.request_reason).replace(/\\\\/g,'\\\\\\\').replace(/'/g,"\\\'")+'\')">Razorpay Refund के लिए चुनें</button>'
+      ? '<button type="button" class="alt" data-booking-id="'+esc(r.booking_id)+'" data-refund-reason="'+esc(r.request_reason||'')+'" onclick="prepareApprovedCustomerRefundFromButton(this)">Razorpay Refund के लिए चुनें</button>'
       : state==='approved' && r.refund_record_status!=='processed' && !r.razorpay_payment_id
        ? '<p class="notice" role="note">यह manual payment है। Razorpay API का उपयोग नहीं होगा; Admin को वास्तविक refund करके उसका receipt / UTR दर्ज करना होगा।</p><label for="manualRefundReference_'+esc(r.request_id)+'">Manual Refund Receipt / UTR (4–120 अक्षर)</label><input id="manualRefundReference_'+esc(r.request_id)+'" maxlength="120" style="width:100%;padding:10px" placeholder="बैंक / UPI / Cash refund reference"><label for="manualRefundNote_'+esc(r.request_id)+'">Refund Note (वैकल्पिक, अधिकतम 250 अक्षर)</label><input id="manualRefundNote_'+esc(r.request_id)+'" maxlength="250" style="width:100%;padding:10px" placeholder="Refund प्रमाण / टिप्पणी"><button type="button" onclick="recordAdminManualCustomerRefund(\''+esc(r.booking_id)+'\',\''+esc(r.request_id)+'\')">Manual Refund दर्ज करें</button>'
        : '';
@@ -978,6 +978,10 @@ async function decideAdminRefundRequest(id,decision){
   await loadAdminRefundRequests();
  }catch(e){alert('Refund निर्णय सुरक्षित नहीं हुआ। वर्तमान स्थिति और Main Admin अनुमति जाँचें।');}
  finally{adminRefundReviewBusy.delete(id);}
+}
+function prepareApprovedCustomerRefundFromButton(button){
+ if(!button)return;
+ prepareApprovedCustomerRefund(button.dataset.bookingId||'',button.dataset.refundReason||'');
 }
 function prepareApprovedCustomerRefund(bookingId,reason){
  const id=document.getElementById('razorpayRefundBookingId'),why=document.getElementById('razorpayRefundReason'),panel=document.getElementById('adminRazorpayRefundCard');
