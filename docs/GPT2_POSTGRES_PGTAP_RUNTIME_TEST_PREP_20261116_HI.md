@@ -449,3 +449,71 @@ Then compare the evidence with the Git source and any Database Owner-held deploy
 ### Evidence boundary
 
 This section records user-supplied Production query results; it is not an independent Production verification by GPT-2. No database connection was opened by GPT-2, no SQL was executed by GPT-2, no Production data was changed or read by GPT-2, and no GPT-1 Customer/Electrician/Welcome source was modified.
+
+## 17. Git-source expected catalog fingerprints — evidence-only — 16 Nov 2026
+
+### Purpose and boundary
+
+This section records the exact source-side definitions that can be compared with the owner/DBA's read-only Production catalog output. It does not claim that these definitions were independently observed in Production. No Production connection or SQL execution was performed.
+
+### Expected definitions from current branch source
+
+Source file:
+`supabase/migrations/20261114240000_server_authoritative_customer_approved_work_timer.sql`
+
+Current branch blob SHA:
+`e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe`
+
+The migration drops/recreates `public.service_bookings_status_check` with the following status set:
+
+```sql
+CHECK (status = ANY (ARRAY[
+  'new','confirmed','assigned','inspection','awaiting_quote_approval',
+  'quote_approved','quote_rejected','awaiting_work_start_approval',
+  'in_progress','completed','cancelled'
+]::text[]))
+```
+
+It drops/recreates `public.service_bookings_assignment_status_requires_electrician` with this predicate:
+
+```sql
+CHECK (
+  status <> ALL (ARRAY[
+    'assigned','inspection','awaiting_quote_approval','quote_approved',
+    'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+  ]::text[]) OR assigned_electrician_id IS NOT NULL
+)
+```
+
+The same migration adds the following timer/approval columns to `public.service_bookings` (among others):
+
+- `work_timer_running boolean NOT NULL DEFAULT false`
+- `work_started_at timestamptz`
+- `work_start_requested_at timestamptz`
+- `work_start_origin_status text`
+- `work_start_approval_status text NOT NULL DEFAULT 'not_requested'`
+- `completion_approval_status text NOT NULL DEFAULT 'not_requested'`
+- `completion_requested_at timestamptz`
+- `customer_completed_at timestamptz`
+- `work_timer_seconds bigint NOT NULL DEFAULT 0`
+
+Related identity source, not a Production assertion:
+`supabase/migrations/20261109000500_harden_electrician_profile_identity_linking.sql` adds `public.electrician_profiles.auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL`, backfills the identity link, and creates a partial unique index. This is relevant only if a separate catalog comparison needs that identity column; it does not establish the status constraint's deployment provenance.
+
+### Comparison checklist for DBA-supplied output
+
+Compare exact normalized `pg_get_constraintdef` output against the two predicates above, and separately record:
+
+- whether each constraint exists exactly once;
+- `convalidated`, `condeferrable`, and `condeferred`;
+- `service_bookings.status` and `service_bookings.assigned_electrician_id` data types and nullability;
+- presence, type, nullability, and defaults of the listed timer/approval columns.
+
+A textual match supports current-definition alignment only. It does not prove which migration, deployment mechanism, or operator produced the live catalog. A mismatch is a finding to document and escalate to the Database Owner, not permission to alter the schema.
+
+### Status
+
+- Current branch source definitions: READ AND RECORDED.
+- Live Production catalog comparison: PENDING OWNER/DBA OUTPUT.
+- Migration provenance: UNRESOLVED.
+- Production changes, migration repair/replay, deployment, and GPT-1 source changes: NONE.
