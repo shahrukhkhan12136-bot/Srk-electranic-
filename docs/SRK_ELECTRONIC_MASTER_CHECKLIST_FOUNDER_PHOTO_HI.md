@@ -217,5 +217,14 @@
 - [ ] नया Node regression test और पूरा CI run execute होकर PASS होना बाकी।
 - [ ] वास्तविक Supabase RPC/RLS/storage/browser workflow और final consolidated mobile QA अभी pending।
 
-- [ ] Profile language preference currently saves `preferred_language`, but Customer App does not yet apply full Hindi/English UI translations; implement before marking language switching complete.
+- [x] Profile language preference now applies a reversible Hindi/English translation layer to the main Customer Login, Dashboard, Support/Profile and booking form labels/help text; the selected preference is restored from the customer profile. Remaining dynamic status/error strings, payment receipt and complete visual QA still need coverage, so full-page localization is not yet marked complete.
 - [ ] Node CI run `43706360554` for the newly added menu regression was cancelled before test steps executed when later branch commits arrived; latest full-suite PASS is not yet established for the new test.
+
+
+### 2026-11-15 — Hindi / English customer UI implementation
+- [x] Added customer-facing Hindi/English dictionary and reversible DOM text translation in `booking.html`.
+- [x] Language selection applies immediately; saved profile preference is reapplied after profile load.
+- [x] Dynamic text nodes inserted into customer panels are translated while English is selected.
+- [x] Added regression assertions for language apply, document lang, profile preference restore and mutation observer.
+- [ ] Latest CI after these language implementation changes is still pending; earlier run `43706432946` passed before the latest language code/test commit and is not evidence for the current HEAD.
+- [ ] Dynamic status/error messages, payment receipt, complete page localization and real browser language-toggle testing remain pending.
