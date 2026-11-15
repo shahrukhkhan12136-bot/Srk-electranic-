@@ -1,3 +1,11 @@
+## 2026-11-16 — GPT-2 Payment / Accounting contract audit
+
+- Payment paths को source migrations के बीच मिलाया: Legacy booking का manual payment केवल completed + assigned + customer-approved legacy quote पर चलता है; labour और materials अलग amounts में लिए जाते हैं, total approved quote से match होता है, और platform commission केवल labour पर लगती है। नई Category Booking इस legacy manual-payment RPC से fail-closed तरीके से बाहर है।
+- Customer receipt contract: Legacy receipt में उसी रसीद पर labour और materials अलग line items हैं; नई Category Booking में immutable labour bill + settled cancellation-fee items आते हैं और materials शून्य रहते हैं। कोई अलग materials-receipt RPC नहीं मिली। Customer UI इसी receipt payload के line items render करता है।
+- Refund और payout source में भी दो contracts बने हुए हैं: नई Category Booking immutable labour bill + settled fee ledger से reconcile होती है; legacy refund/payout approved quote + labour/material split सुरक्षित रखता है। Admin reconciliation read-only है और दोनों branches को अलग-अलग जाँचता है।
+- Master Checklist की गलत “अलग materials receipt” wording सुधारी और नया source regression test जोड़ा, जो receipt, payout, refund/accounting branch split और legacy manual-payment exclusion को guard करता है।
+- यह source audit/documentation/test change है; कोई financial RPC behavior, schema, payment, refund, payout, Production DB, deployment, merge या GPT-1 code नहीं बदला। Node/pgTAP runtime परिणाम उपलब्ध होने तक PASS का दावा नहीं किया जाएगा।
+
 ## 2026-11-16 — Admin legacy quote/status control retirement (GPT-2)
 
 - Admin booking table में historical labour/material/quote fields पहले से read-only थे; उन्हें उसी रूप में रखा। Generic status dropdown को हटाकर status confirmation selector केवल unassigned legacy `new` booking पर सीमित किया, जहाँ केवल `new → confirmed` उपलब्ध है। अन्य सभी bookings (नई server-timed category bookings सहित) में status read-only दिखता है।
