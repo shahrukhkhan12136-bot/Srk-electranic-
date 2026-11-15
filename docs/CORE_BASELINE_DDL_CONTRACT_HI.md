@@ -174,3 +174,10 @@ Branch migration tree में `srk_push_subscriptions` की base `CREATE TAB
 - Complaint message/attachment और push outbox/subscription-delivery ledger की migration-created DDL उपलब्ध है; पर ये base dependencies को replace नहीं करतीं।
 - इस चरण में कोई migration, test, application code या database बदला नहीं गया; केवल source-backed documentation update है।
 - PostgreSQL/pgTAP runtime अभी execute नहीं हुआ। GPT-2 checklist count अपरिवर्तित: **27/39 = 69% complete**, **12/39 = 31% remaining**।
+
+
+## 7. Legacy consolidated setup files की cross-check
+
+`COMPLETE_DATABASE_SETUP.sql` (402 lines), `SUPABASE_SCHEMA.sql` और `PORTAL_SCHEMA.sql` को भी complaint तथा push base-table definitions के लिए cross-check किया। इन तीनों में `srk_booking_complaints`, `srk_booking_complaint_events` या `srk_push_subscriptions` की `CREATE TABLE` definition नहीं मिली। `COMPLETE_DATABASE_SETUP.sql` में मुख्य रूप से booking/application/profile/job-offer/admin base objects हैं; इसलिए यह complaint/push dependencies का complete baseline नहीं है।
+
+GitHub code search में भी इन तीनों exact base-table `CREATE TABLE` definitions का कोई विश्वसनीय source result नहीं मिला। अतः निष्कर्ष अभी भी यही है: इनके वास्तविक source DDL/remote schema export की आवश्यकता है; केवल migration references से column types, defaults, keys, constraints और मूल RLS policies का अनुमान लगाना सुरक्षित नहीं। इस अनुपलब्धता को स्पष्ट रूप से दर्ज किया गया है; कोई Production schema या secret fetch नहीं किया गया।
