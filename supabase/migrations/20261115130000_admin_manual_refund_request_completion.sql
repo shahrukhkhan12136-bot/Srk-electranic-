@@ -76,6 +76,22 @@ begin
 
   update public.service_bookings set payment_status='refunded'
     where id=p_booking_id and payment_status='paid';
+  if not found then
+    raise exception 'BOOKING_REFUND_STATE_CHANGED' using errcode='40001';
+  end if;
+
+  -- The verified manual refund is now final. Close the previously blocked
+  -- unpaid payout exactly as the Razorpay recovery path does.
+  if v_payout.id is not null then
+    update public.srk_electrician_payouts
+       set payout_status='refunded',
+           payout_note='Manual refund completed',
+           updated_at=clock_timestamp()
+     where id=v_payout.id and payout_status='blocked';
+    if not found then
+      raise exception 'BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' using errcode='55000';
+    end if;
+  end if;
 
   if v_request.id is not null then
     update public.srk_booking_refund_requests
