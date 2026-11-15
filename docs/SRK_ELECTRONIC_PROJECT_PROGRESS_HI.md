@@ -3476,3 +3476,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Push outbox migration से subscription के पाँच required columns तथा RLS/grants/own-row policies दर्ज किए; private outbox और per-subscription delivery ledger को अलग migration-created objects के रूप में पहचाना।
 - केवल दस्तावेज़ बदले; कोई SQL migration, test, production DB, payment, push send या deployment नहीं किया। PostgreSQL/pgTAP runtime अब भी बाकी है।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
+
+
+### 2026-11-15 — Legacy baseline cross-check
+- `COMPLETE_DATABASE_SETUP.sql`, `SUPABASE_SCHEMA.sql` और `PORTAL_SCHEMA.sql` में complaint base और push subscription base की `CREATE TABLE` definitions नहीं मिलीं।
+- GitHub code search में भी इन तीनों base tables के लिए भरोसेमंद DDL source नहीं मिला। `COMPLETE_DATABASE_SETUP.sql` को पूर्ण baseline मानना इसलिए गलत होगा; यह मुख्य booking/application/profile/job-offer/admin objects तक सीमित है।
+- निष्कर्ष: complaint और push base tables के लिए वास्तविक schema source अभी unresolved है। Column types, defaults, PK/FK, constraints और मूल RLS policies अनुमान से नहीं जोड़े जाएँगे। Production schema/secret का उपयोग नहीं किया गया।
+- दस्तावेज़ी audit जारी; कोई checklist item बंद नहीं हुआ। GPT-2: **27/39 = 69%**, शेष **12/39 = 31%**।
