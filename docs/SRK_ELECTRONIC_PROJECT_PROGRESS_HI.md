@@ -3252,3 +3252,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Feature-branch migration में COMMENT signature को वास्तविक तीन arguments से मिलाया और Node source-contract regression test जोड़ा।
 - यह केवल migration comment metadata + regression test का source correction है; कोई database migration apply नहीं की गई।
 - इस नए commit के लिए CI result आने तक इसे test-success नहीं माना जाएगा। pgTAP / वास्तविक role-based RPC runtime verification अभी बाकी है।
+
+### GPT-2 Admin legacy quote UI retirement — CI follow-up (15 Nov 2026)
+- First CI run exposed two stale assertions in `tests/admin-refund-and-staff-access.test.js` that still required the retired Admin quote-edit call and old `quoted` comparison; the implementation itself was not the cause. Updated both tests to assert read-only historical quote behavior and the protected new-category status guard.
+- Latest PR-head Node CI run `43717448107` (commit `75a1630a5e2ee0518c5f76b1571d1cec620ecb14`) completed **SUCCESS**; the full repository Node test suite passed. No PostgreSQL/pgTAP runtime or browser E2E was part of this run.
+- Admin `admin.html` no longer renders an editable legacy quote amount or calls `srk_admin_update_legacy_booking_quote`; historical amount/labour/materials/status remain visible read-only. Dedicated legacy new→confirmed Main Admin RPC and manual-payment paths remain. Backend legacy quote RPC is retained with its existing guards for historical compatibility; no schema or historical paid rows were deleted/rewritten.
+- GPT-2 checklist remains **27/39 = 69% complete; 12/39 = 31% remaining**; this closes the Admin UI control removal source item but does not close the legacy accounting/receipt dependency or runtime verification gates. PR #8 remains Draft/Open/Unmerged; no Production DB, deployment or merge action.
