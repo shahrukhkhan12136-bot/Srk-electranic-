@@ -2671,3 +2671,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - `srk_manual_refund_entries` और `srk_booking_refund_requests` दोनों पर `booking_id` unique है; manual refund एक booking पर duplicate evidence नहीं बना सकता। Manual refund RPC payment evidence/amount match, Main Admin approval (यदि request मौजूद हो), Razorpay exclusion, payout lock और final blocked→refunded close करता है।
 - Current latest observed CI run `43705001425` (HEAD `e71fbd1`): **99 PASS / 1 FAIL**। केवल शेष failure GPT-1 Customer quote UI regression test की पुरानी onclick-regex expectation है; Admin accounting regression tests PASS। इसे Customer runtime defect नहीं माना गया और GPT-1-owned files नहीं बदले।
 - Accounting/refund code अभी static-reviewed है; pgTAP runtime, live DB parity और browser E2E प्रमाण बाकी हैं। No Production mutation, migration apply, provider action, deployment, merge या go-live.
+
+
+## 2026-11-15 — उपयोगकर्ता निर्देश: पुराना quotation workflow हटाना
+- Customer App से legacy quote display/approval/rejection और quote-specific booking query fields हटाए।
+- Electrician App से inspection + quote submission UI और quote RPC handlers हटाए।
+- Obsolete customer quote UI test हटाया।
+- यह अभी frontend retirement है; Admin, Accounting, payment, refund, payout और DB RPC/columns में legacy quote dependencies शेष हैं। उन्हें GPT-2 के साथ समन्वय कर नए fixed-duration/server-timed labour billing model पर सुरक्षित रूप से retire करना होगा।
+- Historical paid records को delete नहीं किया जाएगा। Production DB/deployment/PR merge untouched.
