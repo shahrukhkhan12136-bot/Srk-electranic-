@@ -279,3 +279,38 @@ Source call-sites के RPC names और payload keys को संबंधि
 **महत्वपूर्ण naming reconciliation:** वर्तमान `booking.html` का refund history call `srk_customer_list_booking_refund_requests()` है और वर्तमान migration भी यही function declare/grant करती है। पुराने `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` में खोज परिणाम के अनुसार legacy नाम `srk_customer_list_my_booking_refund_requests()` का उल्लेख है; उसे वर्तमान source contract न माना जाए। यह दस्तावेज़ी drift है, वर्तमान UI/migration mismatch नहीं। GPT-1 ने GPT-2-owned SQL या legacy progress document edit नहीं किया।
 
 **Remaining evidence gaps (handoff only):** Electrician display-name, relocation, earnings projection, wallet summary तथा message/attachment RPC cross-user actor isolation के लिए dedicated DB tests की उपलब्धता GPT-2 database/security owner को verify करनी है। ये test-coverage gaps हैं; इनमें से कोई अकेले runtime vulnerability सिद्ध नहीं करता।
+
+
+## 21. GPT-1 implementation-gap reconciliation — 15 Nov 2026
+
+**Audit basis:** current `booking.html`, `electrician.html`, current master checklist sections Customer/Electrician, existing GPT-1 source/test map, and latest branch-head CI. This section separates source implementation from runtime acceptance; it does not convert test presence into runtime proof.
+
+### A. Source implementation status
+
+- Customer: current master checklist marks booking/login/dashboard, saved address/avatar, payment/history/receipt, refund/cancellation/fee history, phone visibility, and legacy/new receipt reconciliation as source-present. Prior sections 14–20 additionally map the customer UI calls to server/RPC/migration contracts. No specific missing Customer UI/API implementation item was established in this pass.
+- Electrician: current master checklist marks offer/dispatch, approved rate/location recheck, availability/relocation, timer/completion/labour bill, live-location consent/failure cleanup, KYC, support/profile/phone change/earnings/wallet, and push routing as source-present. Prior sections map their RPC and tests. No specific missing Electrician UI/API implementation item was established in this pass.
+- Therefore **no new GPT-1 source feature is authorized or evidenced for implementation from this reconciliation alone**. Do not invent enhancements to fill a percentage or reopen completed work. Welcome Screen/founder-photo integration remains closed per the user's explicit standing instruction; ignore stale historical checklist/progress notes that attempt to reopen it.
+
+### B. Remaining GPT-1 work — verification gates, not new features
+
+1. Customer payment/refund/cancellation: isolated database runtime tests for owner vs non-owner vs anon, duplicate submissions and concurrency; browser workflow after DB contract passes.
+2. Electrician KYC/Storage/OTP/activation: real isolated Auth + private Storage + Admin approval lifecycle and actor-ownership verification.
+3. Offer dispatch and lifecycle: concurrent accept/expiry race, server-authoritative timer, customer start/completion approval and immutable bill end-to-end in isolated DB.
+4. Live location and availability/relocation: actor/booking ownership, GPS permission, RPC failure/stop retry and Admin approval browser behavior.
+5. Customer language preference: browser verification of Hindi/English switching, dynamic messages/placeholders/ARIA labels, saved preference restore, and receipt print/PDF output. Source dictionary and Node contracts exist; dynamic provider/browser rendering is not runtime-proven.
+6. Customer/Electrician support and attachments: customer/electrician/admin/staff role isolation, linked attachment read/delete behavior, upload/preview and thread rendering in isolated DB/Storage/browser.
+7. One consolidated final mobile QA pass, sequentially, only after every implementation task across both GPTs is complete. Do not perform device QA now.
+
+### C. Shared release gates / ownership
+
+- GPT-2 owns Main DB baseline/replay, RLS/ACL, Admin/Support, payment/refund/payout/accounting and provider/notification backend acceptance. GPT-1 does not patch these areas from this list.
+- No paid Supabase staging branch now. When implementation is fully complete and consolidated E2E testing is next, disclose current cost and obtain explicit approval before any staging creation.
+- No Production query/export/migration, deploy, merge, financial action or provider transaction without separate explicit approval.
+
+### D. Latest CI evidence
+
+- Branch-head commit at audit start: `453bc0d97bcd153527507e92927ae7f36e39c875`.
+- GitHub Actions Node workflow run `43747308524` completed **success** on that exact SHA; all job steps including dependency install and `npm test` step succeeded. This proves the repository Node test job only; it does not prove pgTAP, migration replay, browser/device, provider, or Production runtime.
+- PR #8 remains Open / Draft / mergeable; do not merge.
+
+**Decision:** GPT-1 source implementation gaps are not evidenced by the current consolidated inventory. Remaining GPT-1 items are runtime/acceptance gates listed above. Keep work inventory-first and move to a source edit only when a concrete defect or explicitly planned missing implementation is demonstrated.
