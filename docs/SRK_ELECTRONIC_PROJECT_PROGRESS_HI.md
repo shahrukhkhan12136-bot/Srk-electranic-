@@ -4074,3 +4074,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - अब केवल confirmed missing-column DDL blocker `service_bookings.amount_paid` है। उसका authoritative introducing DDL अभी नहीं मिला; type/precision/nullability/default/constraints/indexes/grants अनुमान से नहीं बनाए जाएँगे।
 - Latest commit `6bbac5a55b9b9ed98621be90290c91949a9c8156` पर GitHub Actions run `43746546950` PASS: 189 tests, 189 pass, 0 fail, 0 skipped। यह Node regression suite है; PostgreSQL/pgTAP replay या Production parity का प्रमाण नहीं।
 - Checklist progress अभी भी GPT-2 27/39 = 69%, overall 56/86 = 65%; DDL discovery correction अपने-आप checklist count नहीं बदलती। PR #8 open/Draft/unmerged; no Production query/export/migration, provider operation, merge or deployment.
+
+
+### 2026-11-15 18:30 UTC — historical schema cross-check and latest PR-head CI
+- चार historical branches के `SUPABASE_SCHEMA.sql` files एक ही blob SHA `8ae88a7035bc963b244f22c6c1450c22618ec88f` पर हैं और इनमें `amount_paid` नहीं है; finance branch के `COMPLETE_DATABASE_SETUP.sql` में भी नहीं मिला। Commit search में केवल दो app-consumer commits मिले, schema-introduction commit नहीं। Search limitations के कारण इसे सभी deleted/unreachable Git objects की exhaustive proof नहीं कहते।
+- नवीनतम PR head `2b08300e374f3a7c06e9e3d656b0165e6bd5f216` के Node CI run `43746918575` PASS: 189/189, 0 fail, 0 skipped। दूसरा run `43746922357` अभी pending था। PostgreSQL/pgTAP/full migration replay/Production parity इससे सिद्ध नहीं होते।
+- Remaining confirmed source-DDL blocker केवल `service_bookings.amount_paid`; `auth_user_id` का DDL मिल चुका है। GPT-2 27/39 = 69%; overall 56/86 = 65% unchanged. No Production access, provider operation, merge or deployment.
