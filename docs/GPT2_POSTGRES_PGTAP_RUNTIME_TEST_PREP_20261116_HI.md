@@ -1086,3 +1086,48 @@ Finance/refund source family काफी हद तक map हो चुकी 
 ### 35.4 Test और replay निष्कर्ष
 
 Push/KYC/SOS source definitions और dependency checks अब map किए गए हैं, पर वर्तमान branch के इस GPT-2 run में कोई migration apply, PostgreSQL/pgTAP runtime test, push worker invocation, Storage write, KYC upload/review, SOS creation, provider delivery या Production query नहीं किया गया। Historical checklist/search snippets को वर्तमान branch runtime proof नहीं माना गया। Replay readiness अभी भी BLOCKED है: `srk_private` schema origin, core baseline, Main Admin helper, worker contract/version parity और authoritative remote migration lineage की पुष्टि बाकी है।
+
+
+## 36. Search-path hardening chronology और amount_paid column-order risk — 16 Nov 2026
+
+### 36.1 SECURITY DEFINER search_path pin migrations
+
+मौजूदा 16 Nov pin migrations की source-level समीक्षा:
+
+- `20261116110000`: commission report, wallet summary और Admin wallet overview functions पर empty search_path।
+- `20261116120000`: private customer-call implementation और public wrapper पर empty search_path।
+- `20261116130000`: wallet summary/Admin overview को फिर से pin करता है; साथ में electrician earnings और customer receipt RPC pin करता है।
+- `20261116140000`: electrician offer-details RPC pin।
+- `20261116150000`: Admin application-review RPC pin।
+- `20261116160000`: तीन legacy quote/work-status RPC signatures को `ALTER FUNCTION IF EXISTS` से pin; यह पहले retire किए गए installations पर missing-function error को टालता है।
+- `20261116170000`: public rate-limit RPC pin।
+
+**Duplicate pin observation:** `srk_get_my_wallet_summary()` और `srk_admin_wallet_overview()` पर 16110000 और 16130000 दोनों में वही empty search_path सेट होता है। यह duplicate hardening statement है; source text में अलग function body/ACL बदलाव नहीं। इसे अपने आप में runtime failure नहीं माना गया। Replay review में इसे harmless redundancy के रूप में note किया जाए, स्वतः edit/remove नहीं।
+
+इन ALTER statements का सफल होना उनके exact function signatures के पहले से मौजूद होने पर निर्भर है। संबंधित creator/replace migrations और IF EXISTS exceptions को replay manifest में रखना होगा। Source inspection ने इन ALTER statements को execute नहीं किया।
+
+### 36.2 `amount_paid` का chronology / clean-replay risk
+
+Current branch inventory में `service_bookings.amount_paid` जोड़ने वाला स्पष्ट DDL केवल:
+`20261116200000_restore_service_bookings_amount_paid.sql`
+में मिला; यह nullable `numeric(12,2)` column और nonnegative CHECK (`NOT VALID`) जोड़ता है।
+
+इससे पहले की source migrations में:
+- `20261109003000_secure_commission_reporting.sql` — authenticated role को column-level UPDATE grant में `amount_paid` शामिल करता है और commission reporting function इसे पढ़ता है।
+- `20261115160000_legacy_booking_status_write_guard.sql` — column-level UPDATE grant में `amount_paid` शामिल करता है।
+- `20261115230000_admin_booking_direct_write_closure.sql` — `amount_paid` का उपयोग करता है और column-level UPDATE revoke में इसे शामिल करता है।
+- `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` — payment/receipt RPC logic में `amount_paid` पढ़ता और update करता है।
+- `20261114190000` और `20261114200000` — receipt/payment-history functions में `amount_paid` पढ़ते हैं।
+
+Function body में कुछ column references PL/pgSQL runtime पर resolve हो सकते हैं, पर column-level GRANT/REVOKE statements को target column का मौजूद होना आवश्यक है। इसलिए खास तौर पर 09003000 और 15160000 के column-level grants, और 15230000 के column-level revoke, यदि उस समय column अनुपस्थित हो तो migration application रोक सकते हैं।
+
+**स्थिति को सावधानी से समझें:** यह source chronology से निकला conditional clean-replay risk है। किसी ऐतिहासिक starter SQL या live schema में column पहले से मौजूद हो सकता है; लेकिन उपलब्ध source inventory ने ऐसा authoritative starter definition स्थापित नहीं किया। बाद की 16200000 “restore” migration स्वयं इस सवाल का जवाब नहीं देती कि पहले की migrations किस baseline पर सफल हुई थीं। इसलिए:
+1. exact approved starter schema में `amount_paid` की मौजूदगी/अनुपस्थिति स्थापित करनी होगी;
+2. Production/remote migration history और execution evidence अलग से reconcile करनी होगी;
+3. उसके बाद ही migration order/forward-fix पर authorized owner निर्णय ले सकता है।
+
+इस खोज के आधार पर migration reorder, rename, edit, repair या replay नहीं किया गया।
+
+### 36.3 निष्कर्ष
+
+Search-path hardening family source-level mapped है; दो repeated ALTER statements दर्ज हैं। `amount_paid` chronology एक अधिक गंभीर conditional replay gate है और authoritative baseline के बिना clean replay को सुरक्षित घोषित नहीं किया जा सकता। कोई DB query, PostgreSQL/pgTAP execution, Production access, payment action, DDL, data change या deployment नहीं हुआ।
