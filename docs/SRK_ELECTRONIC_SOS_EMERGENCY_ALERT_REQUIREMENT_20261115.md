@@ -58,5 +58,7 @@
 - PR changed-file inventory में अभी SOS backend migration/RPC, Admin/Support queue या SMS/Push delivery implementation नहीं मिला। इसलिए end-to-end SOS alert delivery अधूरी और GPT-2 backend work पर निर्भर है।
 - कोई database migration apply नहीं की गई; production deploy/merge नहीं किया गया।
 
-- Follow-up correction: पिछली CI log में एक stale `customerSosBooking` selector reference customer support booking loader में मिला था। उसे हटाया गया; support booking selector अलग ही बना रहता है और SOS flow active booking card से चलता है।
-- इस correction के commit के लिए pull-request CI run अभी उपलब्ध नहीं है; इसलिए test pass का दावा नहीं है।
+- Follow-up correction: पिछली CI log में stale `customerSosBooking` selector reference customer support booking loader में मिला था। उसे हटाया गया; सामान्य support booking selector सुरक्षित है और SOS flow Active Work card से चलता है।
+- Commit `bf765ca26f47e020817362243131d8da3db5e73e` के workflow run `43726275569` को rerun किया गया। Latest attempt में job `132849770691` सफल रहा: **163/163 Node tests पास, 0 failed, 0 cancelled**। इसमें SOS दो-चरणीय UI contract test भी शामिल है।
+- Customer/Electrician source में पुराने SOS booking/details selector references नहीं मिले। यह source/Node-contract verification है; browser/mobile runtime QA अभी अंतिम consolidated QA चरण के लिए स्थगित है।
+- Backend RPC, Admin/Support queue, SMS/Push delivery और live end-to-end SOS अभी GPT-2 integration पर निर्भर हैं; इन्हें पूर्ण घोषित नहीं किया गया।
