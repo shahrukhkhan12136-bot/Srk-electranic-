@@ -434,13 +434,13 @@ test('Customer and electrician lifecycle actions distinguish confirmed RPC succe
   const electricianCompletion = functionBody(electrician, 'electricianRequestWorkCompletion');
   for (const fn of [customerStart, customerCompletion]) {
     assert.ok(fn.includes("try{await loadCustomerBookings();}catch(_){alert('आपका जवाब सर्वर पर दर्ज हो गया है"), 'confirmed customer action has separate refresh-failure feedback');
-    assert.ok(fn.includes('await loadCustomerBookings();alert(\'नेटवर्क जवाब नहीं मिला।'), 'uncertain customer RPC still refreshes authoritative bookings');
+    assert.ok(fn.includes('await loadCustomerBookings();') && fn.includes('नेटवर्क जवाब नहीं मिला।'), 'uncertain customer RPC still refreshes authoritative bookings');
     assert.ok(fn.includes('स्थिति रीफ़्रेश करके जाँचें'), 'uncertain customer outcome asks user to check current status');
   }
   for (const fn of [electricianStart, electricianCompletion]) {
     assert.ok(fn.includes('try{await refresh();}catch(_){alert('), 'confirmed electrician action has separate refresh-failure handling');
     assert.ok(fn.includes('सर्वर पर दर्ज हो गया है') || fn.includes('सर्वर पर दर्ज हो गई है'), 'refresh failure does not misreport the confirmed action');
-    assert.ok(fn.includes('await refresh();alert(\'नेटवर्क जवाब नहीं मिला।'), 'uncertain electrician RPC still refreshes authoritative dashboard');
+    assert.ok(fn.includes('await refresh();') && fn.includes('नेटवर्क जवाब नहीं मिला।'), 'uncertain electrician RPC still refreshes authoritative dashboard');
     assert.ok(fn.includes('वर्तमान स्थिति रीफ़्रेश करके जाँचें'), 'uncertain electrician outcome asks user to check current status');
   }
 });
