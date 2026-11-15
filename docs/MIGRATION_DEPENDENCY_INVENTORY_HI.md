@@ -81,3 +81,10 @@ Test doubles को Production schema का प्रतिनिधि न क
 - प्रारंभिक dependency scan में regex false positives संभव हैं; इस दस्तावेज़ की सूची reviewable working inventory है, final schema specification नहीं।
 - इस environment में PostgreSQL/Docker/Podman executables उपलब्ध न होने के कारण runtime execution अभी संभव नहीं।
 - GPT-2 checklist: 27/39 = 69%; यह dependency audit checklist item closure नहीं है, इसलिए प्रतिशत अपरिवर्तित।
+
+
+## स्थिति-सुधार — 15 नवम्बर 2026
+यह दस्तावेज़ प्रारंभिक 71-migration / 33-pgTAP static scan का historical working note है; इसे वर्तमान पूर्ण inventory या executable dependency order न मानें। नवीनतम unified repository inventory में 78 SQL migrations, 32 database contract files, 33 Node test files और 3 Actions workflows दर्ज हैं: `docs/GPT2_UNIFIED_DELIVERY_INVENTORY_HI.md`। वर्तमान inventory में बाद की पाँच migration additions शामिल हैं; इस पुराने 71-file scan ने उन्हें content-level पर map नहीं किया।
+- Complaint parent/event tables के बारे में इस पुराने scan की unresolved-baseline धारणा अब superseded है: `20261110040000_customer_admin_complaints.sql` पुराने branch से restore हुई और historical source से byte-for-byte समान सत्यापित है (commit `2390a7dd3db35f620f41edc22253602866999fb0`)।
+- वर्तमान unresolved original base-column DDL blockers केवल `service_bookings.amount_paid` और `electrician_profiles.auth_user_id` हैं; दोनों के exact type/constraints अभी प्रमाणित नहीं।
+- इस दस्तावेज़ का dependency overview उपयोगी प्रारंभिक संदर्भ है, पर clean replay order/Production parity प्रमाण नहीं।
