@@ -79,3 +79,23 @@ test('all outbox RPCs fail closed for null or non-service roles', () => {
   assert.equal(checks.length, 2);
   assert.match(migration, /locked_until IS NULL OR o\.locked_until < clock_timestamp\(\)/);
 });
+
+test('worker emits structured degraded alerts and fails scheduled invocation on retry/dead letters', () => {
+  assert.match(worker, /push_delivery_degraded/);
+  assert.match(worker, /deadOutbox > 0 \|\| deadDevices > 0/);
+  assert.match(worker, /statusCode: degraded \? 502 : 200/);
+  assert.match(worker, /push_outbox_finish_failed/);
+  assert.match(worker, /srk_get_push_delivery_health/);
+});
+
+test('health and dead-letter recovery RPCs are service-role only and do not expose payloads', () => {
+  const monitoring = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115190000_push_delivery_health_monitoring.sql'), 'utf8');
+  assert.match(monitoring, /srk_get_push_delivery_health/);
+  assert.match(monitoring, /GRANT EXECUTE ON FUNCTION public\.srk_get_push_delivery_health\(\) TO service_role/);
+  assert.match(monitoring, /REVOKE ALL ON FUNCTION public\.srk_get_push_delivery_health\(\) FROM PUBLIC,anon,authenticated/);
+  assert.match(monitoring, /srk_retry_push_delivery_dead_letter/);
+  assert.match(monitoring, /Only dead outbox items can be manually recovered/);
+  assert.match(monitoring, /delivery_status='delivered'/);
+  assert.match(monitoring, /delivery_status='pending',attempt_count=0/);
+  assert.match(monitoring, /GRANT EXECUTE ON FUNCTION public\.srk_retry_push_delivery_dead_letter\(uuid\) TO service_role/);
+});
