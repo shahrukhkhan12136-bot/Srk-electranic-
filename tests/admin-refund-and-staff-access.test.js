@@ -91,3 +91,12 @@ test('Razorpay recovery finalizer rejects evidence unless refund equals full ver
   assert.match(refundRecoveryMigration, /RECOVERY_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTION/);
   assert.match(refundRecoveryMigration, /v_refund\.amount_paise is distinct from v_audit\.amount_paise/);
 });
+
+const refundReconcileMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115250000_harden_refund_reconcile_full_amount.sql'), 'utf8');
+
+test('provider processed refund reconciliation independently requires the full booking collection', () => {
+  assert.match(refundReconcileMigration, /select b\.\* into v_booking[\s\S]*?for update of b/i);
+  assert.match(refundReconcileMigration, /p_provider_status='processed'[\s\S]*?v_refund\.amount_paise is distinct from round\(v_booking\.amount_paid\*100\)::bigint/i);
+  assert.match(refundReconcileMigration, /PROVIDER_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTION/);
+  assert.match(refundReconcileMigration, /grant execute on function public\.srk_service_reconcile_booking_refund\(uuid,text,text,text\) to service_role/i);
+});
