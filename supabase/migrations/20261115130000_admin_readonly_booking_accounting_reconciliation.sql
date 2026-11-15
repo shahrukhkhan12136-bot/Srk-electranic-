@@ -187,6 +187,9 @@ begin
       or w.reference_id in (
         select i.id::text from public.srk_booking_cancellation_fee_items i
          where i.booking_id=p_booking_id
+        union
+        select i.debt_id::text from public.srk_booking_cancellation_fee_items i
+         where i.booking_id=p_booking_id
       )
     );
 
@@ -267,6 +270,9 @@ begin
       w.reference_id=p_booking_id::text
       or w.reference_id in (
         select i.id::text from public.srk_booking_cancellation_fee_items i
+         where i.booking_id=p_booking_id
+        union
+        select i.debt_id::text from public.srk_booking_cancellation_fee_items i
          where i.booking_id=p_booking_id
       )
     );
