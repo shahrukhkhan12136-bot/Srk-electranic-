@@ -106,3 +106,13 @@ test('customer booking status has a clear label while electrician work-start app
   assert.match(customer, /awaiting_work_start_approval:'काम शुरू करने के लिए आपकी मंजूरी प्रतीक्षित'/);
   assert.match(customer, /row\.status==='awaiting_work_start_approval'&&row\.work_start_approval_status==='pending'/);
 });
+
+test('Customer booking list guards rejected auth session lookup and always clears loading state', () => {
+  const load = functionBody(customer, 'loadCustomerBookings');
+  const tryAt = load.indexOf('try {');
+  const sessionAt = load.indexOf('customerSb.auth.getSession()');
+  assert.ok(tryAt >= 0 && sessionAt > tryAt, 'session lookup is inside booking loader try/catch');
+  assert.match(load, /if \(sessionError \|\| !session\)/);
+  assert.match(load, /finally \{\s*box\.setAttribute\('aria-busy','false'\);\s*\}/);
+  assert.match(load, /बुकिंग लोड नहीं हो सकीं/);
+});
