@@ -182,6 +182,9 @@ begin
            and t.transfer_status in ('processed','reversed','partially_reversed')) then
       v_exceptions:=array_append(v_exceptions,'MANUAL_AND_ROUTE_ELECTRICIAN_PAYOUT_OVERLAP');
     end if;
+    -- The current application has no provider settlement webhook/polling or bank-credit proof.
+    -- Ledger statuses are not independent evidence that funds reached the recipient bank.
+    v_exceptions:=array_append(v_exceptions,'ROUTE_PROVIDER_SETTLEMENT_NOT_INDEPENDENTLY_VERIFIED');
   end if;
 
   select * into v_refund from public.srk_razorpay_refunds r
@@ -386,6 +389,9 @@ begin
     'route_electrician_transfer_paise',v_route_electrician_paise,
     'route_platform_commission_transfer_paise',v_route_commission_paise,
     'route_transfers',v_route_transfers,
+    'route_provider_settlement_verified',false,
+    'route_settlement_evidence_status',case when v_route_transfer_count=0
+      then 'no_route_transfer_ledger_rows' else 'not_independently_verified' end,
     'payout',case when v_payout.id is null then null else jsonb_build_object(
       'payout_id',v_payout.id,'status',v_payout.payout_status,
       'recorded_payable_paise',round(v_payout.electrician_payable*100)::bigint,
