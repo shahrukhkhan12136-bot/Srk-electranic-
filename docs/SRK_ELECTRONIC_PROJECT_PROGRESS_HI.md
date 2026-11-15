@@ -3544,3 +3544,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Customer/Electrician timer UI source दोबारा जाँचा: दोनों apps accumulated server seconds + server `work_started_at` से display timer बनाते हैं; हर सेकंड UI refresh होता है। इसे अनुमानित display के रूप में दिखाया गया है, अंतिम बिल server-recorded duration से ही बनेगा।
 - यह source/Node regression verification है; वास्तविक browser rendering, image crop का visual approval, mobile device, database/pgTAP और full E2E runtime अभी नहीं जाँचे गए। इन्हें final consolidated QA में रखा गया है।
 - कोई Production DB, merge या deployment नहीं किया गया।
+
+
+## 2026-11-15 — Latest PR-head Node CI and historical DDL cross-check
+- PR #8 के वर्तमान head `7b23a2c4e7ef6012413957f4553acf44a9fab7b6` पर Feature Branch Node workflow run `43727009844` सफल हुआ। Job `132851037444` में **163/163 tests pass, 0 fail, 0 cancelled**। यह Node/source test suite है; PostgreSQL/pgTAP, browser/mobile visual QA या Production parity का प्रमाण नहीं है।
+- Historical `COMPLETE_DATABASE_SETUP.sql` और `SUPABASE_SCHEMA.sql` को पढ़कर पुष्टि की कि starter `service_bookings` definition में `amount_paid` नहीं है; `PORTAL_SCHEMA.sql` में `electrician_profiles.user_id` है, `auth_user_id` की add-column definition नहीं मिली।
+- पाँच उपलब्ध historical feature/work branches में उसी Google Maps migration path और consolidated setup को cross-check किया: कोई `auth_user_id` add-column DDL या `amount_paid` base DDL नहीं मिला। यह खोज अभी भी अन्य historical commits/schema exports में source मिलने की संभावना को पूरी तरह समाप्त नहीं करती; दोनों dependencies unresolved रहेंगी।
+- कोई schema/migration apply, Production access, merge, deploy या provider payment/refund action नहीं किया।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
