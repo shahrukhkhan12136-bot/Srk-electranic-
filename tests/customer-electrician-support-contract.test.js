@@ -31,6 +31,16 @@ test('Customer support attachments are limited to five allowlisted files up to 1
   assert.match(customer, /rel='noopener noreferrer'/);
 });
 
+test('Customer support message send reconciles uncertain RPC responses before allowing a retry', () => {
+  const send = customer.slice(customer.indexOf('async function sendCustomerSupportMessage()'), customer.indexOf('async function syncCustomerSession()'));
+  assert.match(send, /srk_customer_list_booking_complaint_messages/);
+  assert.match(send, /previousMessageIds=new Set/);
+  assert.match(send, /sendAttempted=true/);
+  assert.match(send, /m\.sender_role==='customer'&&m\.body===messageBody/);
+  assert.match(send, /संदेश भेजने का परिणाम स्पष्ट नहीं है/);
+  assert.match(send, /दोबारा भेजने से पहले बातचीत Refresh करके जाँचें/);
+});
+
 test('Customer support SQL enforces complaint ownership and private storage object ownership', () => {
   assert.match(customerSupportSql, /c\.id=p_complaint_id and c\.customer_user_id=v_user_id/);
   assert.match(customerSupportSql, /o\.bucket_id='srk-customer-support'/);
