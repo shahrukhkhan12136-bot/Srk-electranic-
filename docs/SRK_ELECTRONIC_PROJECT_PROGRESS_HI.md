@@ -3719,3 +3719,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Migration का electrician ownership query `electrician_profiles.auth_user_id` भी पढ़ता है। इस column का authoritative baseline DDL अभी unresolved है; इसलिए migration replay/runtime readiness को complete नहीं मानें, जब तक exact base schema contract स्थापित न हो।
 - Latest observed checks: Netlify Deploy Preview SUCCESS; Vercel check अभी free build-rate-limit के कारण FAILURE। PR #8 Draft/Open/Unmerged। कोई Production migration, SMS/Push send, merge या deployment नहीं।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित; 12/39 शेष। Source integration और Node CI success को अभी checklist completion नहीं गिना गया।
+
+
+### GPT-2 baseline DDL provenance follow-up — 15 Nov 2026
+- पुराने Git commits की targeted search में `amount_paid` से जुड़े दो commits मिले: `1983b7334dfcd138ecc3dcf0f920b81ddfe671ee` (“Record webhook captured amount paid”) और `d7c7fc9800141195023453c7781d34b7e03bdc41` (“Record verified Razorpay amount paid”)। पहले commit का diff केवल Razorpay webhook payload में `amount_paid` लिखता है; कोई table/column DDL नहीं जोड़ता। इसलिए यह usage provenance है, schema provenance नहीं।
+- `auth_user_id` के लिए repository commit search में कोई defining commit नहीं मिला। उपलब्ध branch search में finance और separate customer/electrician portal branches दिखीं; पहले देखे गए historical setup/portal snapshots में केवल `electrician_profiles.user_id` का FK DDL मिला, `auth_user_id` का नहीं।
+- परिणाम: `service_bookings.amount_paid` और `electrician_profiles.auth_user_id` दोनों का exact type/nullability/default/FK/unique/index/ownership contract अभी भी **unresolved**। कोई guessed migration या parity fixture नहीं बनाया गया।
+- नवीनतम PR #8 head `3f590e692d048b05df3bf00b7154469d58963056` पर Node workflow run `43731438547` SUCCESS: **186 tests, 186 pass, 0 fail, 0 cancelled, 0 skipped**। यह Node source/contract CI है; PostgreSQL/pgTAP runtime नहीं।
+- PR #8 Draft/Open/Unmerged। Vercel check `failure` (build-rate-limit/upgrade notice), Netlify Deploy Preview `pending`। कोई Production DB access/migration, provider send/payment/payout, merge या deployment नहीं।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित; यह provenance audit checklist item close नहीं करता।
