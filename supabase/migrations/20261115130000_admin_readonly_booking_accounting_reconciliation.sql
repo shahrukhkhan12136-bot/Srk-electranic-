@@ -115,6 +115,12 @@ begin
      and v_booking.assigned_electrician_id is not null then
     v_exceptions := array_append(v_exceptions,'MISSING_PAYOUT_ROW');
   elsif found then
+    if v_payout.electrician_profile_id is distinct from v_booking.assigned_electrician_id then
+      v_exceptions := array_append(v_exceptions,'PAYOUT_ELECTRICIAN_ASSIGNMENT_MISMATCH');
+    end if;
+    if v_booking.status is distinct from 'completed' then
+      v_exceptions := array_append(v_exceptions,'PAYOUT_EXISTS_BEFORE_BOOKING_COMPLETION');
+    end if;
     if round(coalesce(v_payout.gross_service_amount,0)*100)::bigint is distinct from v_labour_paise
        or round(coalesce(v_payout.materials_amount,0)*100)::bigint is distinct from v_materials_paise
        or round(coalesce(v_payout.platform_commission,0)*100)::bigint is distinct from v_commission_paise
