@@ -28,7 +28,7 @@
 </div>
 <div class="grid"><div class="card"><div class="muted">कुल बुकिंग</div><div class="stat" id="nBookings">—</div></div><div class="card"><div class="muted">नए काम</div><div class="stat" id="nNew">—</div></div><div class="card"><div class="muted">इलेक्ट्रिशियन आवेदन</div><div class="stat" id="nApps">—</div></div><div class="card"><div class="muted">सक्रिय पार्टनर</div><div class="stat" id="nPros">—</div></div></div><div class="card"><h2>नई बुकिंग और काम</h2><p class="muted">मोबाइल पर भुगतान के विकल्प देखने के लिए टेबल पर उँगली रखकर बाईं ओर सरकाएँ। Cash भुगतान दर्ज करते समय वास्तविक रसीद नंबर भरें।</p><div class="scroll"><table><thead><tr><th>ग्राहक</th><th>सेवा / पता</th><th>लोकेशन</th><th>स्टेटस</th><th>तय राशि ₹</th><th>वास्तव में मिली ₹</th><th>पेमेंट</th><th>अपडेट</th></tr></thead><tbody id="bookings"></tbody></table></div></div>
 <div class="card"><h2>ग्राहक Cancellation Requests — Admin निर्णय</h2>
-<p class="muted">ग्राहक के अनुरोध यहाँ आएँगे। Admin को इलेक्ट्रिशियन की वास्तविक स्थिति सत्यापित करके प्रमाण और कारण दर्ज करना अनिवार्य है। शुल्क केवल स्वीकृत नियमों के अनुसार होगा: घर से नहीं निकला ₹0, रास्ते में ₹49, ग्राहक के घर पहुँच चुका ₹99। निर्णय से पहले बुकिंग रद्द नहीं होगी।</p>
+<p class="muted">ग्राहक के अनुरोध यहाँ आएँगे। Admin को इलेक्ट्रिशियन की वास्तविक स्थिति सत्यापित करके प्रमाण और कारण दर्ज करना अनिवार्य है। ₹99 शुल्क केवल तभी तय होगा जब ग्राहक के घर पहुँचने का प्रमाण दर्ज हो और Admin मंज़ूरी दे; घर से नहीं निकला या रास्ते में होने पर ₹0। निर्णय से पहले बुकिंग रद्द नहीं होगी।</p>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="alt" type="button" onclick="loadAdminCancellationRequests()">Requests रीफ़्रेश करें</button><span id="adminCancellationStatus" class="muted" aria-live="polite"></span></div>
 <div id="adminCancellationFeeLedgerSummary" class="grid" style="margin-top:12px">Cancellation fee ledger summary लोड हो रही है…</div>
 <div id="adminCancellationInbox" class="scroll" style="margin-top:12px">Cancellation requests लोड हो रही हैं…</div>
@@ -651,11 +651,11 @@ async function loadAdminCancellationRequests(){
  if(error){box.textContent='Requests लोड नहीं हुईं: '+error.message;status.textContent='Admin RPC / migration जाँचें।';return;}
  const rows=Array.isArray(data)?data:[];
  if(!rows.length){box.textContent='अभी कोई cancellation request नहीं है।';status.textContent='0 requests';return;}
- const stageLabel={not_departed:'घर से नहीं निकला — ₹0',en_route:'रास्ते में — ₹49',arrived:'ग्राहक के घर पहुँच चुका — ₹99'};
+ const stageLabel={not_departed:'घर से नहीं निकला — ₹0',en_route:'रास्ते में — ₹0',arrived:'ग्राहक के घर पहुँच चुका — ₹99'};
  box.innerHTML=rows.map(r=>{
   const b=r.booking||{},pending=r.request_status==='pending';
   const controls=pending
-   ? '<label for="cancel-stage-'+esc(r.id)+'">Admin द्वारा सत्यापित स्थिति</label><select id="cancel-stage-'+esc(r.id)+'"><option value="not_departed">घर से नहीं निकला — ₹0</option><option value="en_route">रास्ते में — ₹49</option><option value="arrived">ग्राहक के घर पहुँच चुका — ₹99</option></select>'+
+   ? '<label for="cancel-stage-'+esc(r.id)+'">Admin द्वारा सत्यापित स्थिति</label><select id="cancel-stage-'+esc(r.id)+'"><option value="not_departed">घर से नहीं निकला — ₹0</option><option value="en_route">रास्ते में — ₹0</option><option value="arrived">ग्राहक के घर पहुँच चुका — ₹99</option></select>'+
      '<label for="cancel-evidence-'+esc(r.id)+'">स्थिति का प्रमाण / सत्यापन (10–1000 अक्षर)</label><textarea id="cancel-evidence-'+esc(r.id)+'" minlength="10" maxlength="1000" placeholder="कॉल, ग्राहक पुष्टि, यात्रा/आगमन रिकॉर्ड आदि का सत्यापित विवरण"></textarea>'+
      '<label for="cancel-reason-'+esc(r.id)+'">Admin निर्णय का कारण (10–1000 अक्षर)</label><textarea id="cancel-reason-'+esc(r.id)+'" minlength="10" maxlength="1000" placeholder="फैसले का स्पष्ट कारण"></textarea>'+
      '<button type="button" onclick="decideAdminCancellation(\''+esc(r.id)+'\',\'approved\')">सत्यापित करके बुकिंग रद्द करें</button> <button class="alt" type="button" onclick="decideAdminCancellation(\''+esc(r.id)+'\',\'rejected\')">अनुरोध अस्वीकार करें</button>'
@@ -677,7 +677,7 @@ async function decideAdminCancellation(requestId,decision){
  if(decision==='approved'){
   if(!['not_departed','en_route','arrived'].includes(stage)){alert('इलेक्ट्रिशियन की सत्यापित स्थिति चुनें।');return;}
   if(!evidence||evidence.length<10||evidence.length>1000){alert('सत्यापित स्थिति का प्रमाण 10 से 1000 अक्षरों में लिखें।');return;}
-  if(!confirm('सत्यापित स्थिति के अनुसार ₹'+(stage==='not_departed'?'0':stage==='en_route'?'49':'99')+' fee तय करके booking cancelled करें?'))return;
+  if(!confirm('सत्यापित स्थिति के अनुसार ₹'+(stage==='arrived'?'99':'0')+' fee तय करके booking cancelled करें?'))return;
  }else if(!confirm('क्या cancellation request अस्वीकार करनी है?'))return;
  adminCancellationDecisionBusy.add(requestId);
  try{
