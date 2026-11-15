@@ -2980,3 +2980,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression test में representative static translations और accessibility labels के assertions जोड़े।
 - Feature branch head `d55c11159b865386234601df2041c998fa735d6b` पर दो full Node test workflows **SUCCESS** हुए।
 - यह static/source-level coverage है; browser में वास्तविक language switching, dynamic runtime rendering और visual review अभी बाकी हैं। Final consolidated mobile QA deferred है। No Production change, merge or deployment.
+
+
+## 2026-11-15 — GPT #2: Route settlement evidence fail-closed warning
+
+- Route ledger/reconciliation audit में पुष्टि हुई कि वर्तमान application source में Route transfer provider settlement webhook/polling और recipient bank-credit evidence path मौजूद नहीं है। इसलिए `transfer_status='processed'` और `settlement_status='settled'` अपने आप वास्तविक बैंक भुगतान का प्रमाण नहीं हैं।
+- Feature Branch accounting reconciliation RPC अब किसी भी Route ledger row पर `ROUTE_PROVIDER_SETTLEMENT_NOT_INDEPENDENTLY_VERIFIED` exception जोड़ती है और response में `route_provider_settlement_verified=false` तथा `route_settlement_evidence_status='not_independently_verified'` लौटाती है। कोई Route row न होने पर status `no_route_transfer_ledger_rows` रहता है।
+- Accounting source-contract test में दो assertions जोड़े; plan/count 69 से 71। यह केवल source-level contract है; PostgreSQL/pgTAP runtime अभी Not Run है।
+- Admin HTML में अभी Route-specific result rendering नहीं मिला; RPC का JSON response सीधे/किस रूप में प्रदर्शित होता है, browser runtime से सत्यापित नहीं। अगला कदम Admin reconciliation renderer में exception/status को स्पष्ट Hindi warning के रूप में दिखाना और Node regression test जोड़ना है।
+- No provider calls, bank checks, transfers, payouts, Production DB changes, deployment, merge or go-live.
