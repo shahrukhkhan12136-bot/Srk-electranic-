@@ -146,3 +146,10 @@ Current Feature Branch में `supabase/migrations/20261116200000_restore_ser
 अब ज्ञात missing-column source-DDL gap के रूप में `amount_paid` को सूचीबद्ध न करें। इससे live database पर column मौजूद होना, पुराने rows का CHECK validate होना, या Production parity सिद्ध नहीं होती।
 
 अलग और unresolved blocker अभी भी दोनों अलग files का समान 8-digit migration prefix `20261109` होना है। Remote Supabase migration history/schema-only evidence उपलब्ध नहीं है; किसी migration को rename/delete/merge/resequence करना या remote history repair करना बिना authoritative lineage के नहीं किया जाएगा। Current Feature Branch में `supabase/config.toml` भी नहीं मिला। कोई PostgreSQL replay/pgTAP या Production query/write नहीं चला।
+
+
+## Duplicate migration source-lineage note — 16 Nov 2026
+
+Git path history से source chronology स्पष्ट हुई: inspection/quote migration पहले placeholder, फिर पूर्ण body, फिर उसी path पर constraints follow-up के रूप में दर्ज हुई; उसके बाद अलग `20261109_allow_quote_approval_booking_states.sql` file जोड़ी गई। दोनों files के वर्तमान SQL bodies वही दो booking status/assignment CHECK constraints drop/recreate करते हैं; quote migration की अंतिम lines में भी यही DDL पहले से मौजूद है। अतः दूसरी file source-level पर repeated constraint DDL जैसी प्रतीत होती है।
+
+यह Git source chronology है, remote Supabase migration ledger या live schema का प्रमाण नहीं। इसे redundant मानकर हटाना/rename करना, या remote history बदलना बिना owner-approved migration history के नहीं किया जाएगा।
