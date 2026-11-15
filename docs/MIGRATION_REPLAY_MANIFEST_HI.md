@@ -348,3 +348,11 @@ prerequisite gates. No PostgreSQL replay or Production query was run.
 - The current unresolved base-column source contracts remain `public.service_bookings.amount_paid` and `public.electrician_profiles.auth_user_id`. The duplicate 8-digit `20261109` remote migration lineage is also unresolved.
 - The latest current inventory is 78 migrations / 32 database contract tests / 33 Node test files / 3 GitHub Actions workflows, as listed in `docs/GPT2_UNIFIED_DELIVERY_INVENTORY_HI.md`. The earlier 73-file dependency matrix and 71-file dependency inventory are historical static scans, not current replay order.
 - None of these corrections establishes PostgreSQL replay, current Production catalog parity or remote `schema_migrations` history.
+
+
+## 11. वर्तमान inventory और DDL correction — 16 Nov 2026
+- वर्तमान PR Feature Branch recursive Git tree में **86 SQL migrations**, **32 pgTAP SQL test files**, **43 Node test files**, और **3 GitHub Actions workflows** सत्यापित हुए। पुराने Section 9 के 78/33 Node-file counts और earlier inventory snapshots अब superseded हैं।
+- `electrician_profiles.auth_user_id` का authoritative ADD COLUMN DDL `20261109000500_harden_electrician_profile_identity_linking.sql` में मौजूद है: `uuid REFERENCES auth.users(id) ON DELETE SET NULL`। इसलिए इसे unresolved base-DDL blocker न गिनें।
+- इस source review में अभी केवल `service_bookings.amount_paid` का introducing column DDL नहीं मिला। इसका type/precision/nullability/default/constraints/indexes/grants अनुमान से नहीं बनाए जाएँगे।
+- Duplicate 8-digit `20261109` migration-version remote lineage अभी भी unresolved है। इस source inventory से Production `schema_migrations` या catalog की स्थिति सिद्ध नहीं होती।
+- यह recursive source-tree गणना है; PostgreSQL/pgTAP runtime, complete ordered migration replay, Production parity या deployment का प्रमाण नहीं।
