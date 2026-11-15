@@ -493,3 +493,9 @@
 - Support ticket list RPC rejection पर raw error text दिखाने के बजाय सुरक्षित Hindi retry संदेश देती है।
 - Phone-change request history Edge Function transport rejection को संभालती है; मौजूदा सुरक्षित status/error flow बना रहता है।
 - Regression source-contract test जोड़ा। वास्तविक Supabase/Edge Function/browser fault-injection और अंतिम mobile QA अभी लंबित हैं।
+
+
+### Electrician Support Ticket सूची/बातचीत — त्रुटि सुधार
+- Support ticket list loader में transport-safe result लाने के बाद पुराना undefined `error` variable reference बचा हुआ था; उसे हटाकर उसी result.error का उपयोग सुनिश्चित किया। यह वास्तविक source bug था जो सामान्य सफल response पर भी ReferenceError दे सकता था।
+- Support thread messages RPC को rejected network promise से सुरक्षित किया; failure पर बातचीत पैनल में Retry संदेश आता है।
+- Regression source-contract test जोड़ा। वास्तविक browser/network fault-injection और Supabase runtime जाँच अभी लंबित हैं।
