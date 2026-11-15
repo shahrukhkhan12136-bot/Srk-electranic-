@@ -3585,3 +3585,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इस follow-up में code/DB नहीं बदला। PR #8 Draft/Open है; इस test commit के लिए नया Actions run उपलब्ध नहीं मिला।
 - GPT-1 का उपलब्ध implementation checklist denominator अभी भी Customer 10 + Electrician 10 + Welcome/Founder 6 = 26 items है; latest recorded count **19/26 = 73%**, **7/26 शेष**। यह implementation checklist progress है, release readiness नहीं; नए regression assertion को अलग checklist item मानकर denominator नहीं बढ़ाया।
 - अगला resume point: GPT-2 के `srk_create_sos_alert` SQL/RPC implementation को fetch करके authenticated actor/booking resolution, response schema और failure behavior का exact मिलान; फिर Customer/Electrician UI contract test चलने का CI evidence सत्यापित करना। Mobile QA अभी भी अंतिम consolidated pass के लिए deferred है।
+
+
+## 2026-11-15 — 71 SQL migrations: object-level static scan
+- सभी 71 migration files को SQL text स्तर पर scan करके CREATE/ALTER table targets, functions और triggers का migration-wise inventory तैयार किया। मुख्य dependency clusters: wallet ledger → cancellation fee accounting; complaint base → support messages → RBAC; financial audit base → payout/refund/reconciliation; push subscription/outbox → delivery ledger → health/lease fencing।
+- `docs/MIGRATION_REPLAY_MANIFEST_HI.md` में object-change audit, provisional dependency clusters और unresolved ordering questions जोड़े। यह अभी static text scan है—PostgreSQL parser/runtime, pgTAP या full transitive dependency graph नहीं।
+- Hard blockers कायम: duplicate `20261109` prefix; authoritative `service_bookings.amount_paid` और `electrician_profiles.auth_user_id` DDL अनुपलब्ध; complaint base DDL वर्तमान 71-file tree से बाहर और historical source को baseline में reconcile करना बाकी।
+- कोई SQL execute/apply, Production DB access, migration rename/history repair, merge/deploy या live payment/refund/payout/push action नहीं किया।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
