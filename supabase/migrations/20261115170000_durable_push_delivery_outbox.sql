@@ -1,6 +1,41 @@
 -- Durable, retryable push delivery outbox and least-privilege subscription grants.
 -- Apply only after the feature-branch schema is reviewed in an isolated environment.
 
+-- Fail fast with a clear error if this migration is run out of order or
+-- against a schema that has not received the offer/availability prerequisites.
+DO $preflight$
+BEGIN
+  IF to_regnamespace('srk_private') IS NULL THEN
+    RAISE EXCEPTION 'Push outbox prerequisite missing: schema srk_private';
+  END IF;
+  IF to_regclass('public.srk_push_subscriptions') IS NULL THEN
+    RAISE EXCEPTION 'Push outbox prerequisite missing: public.srk_push_subscriptions';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='srk_push_subscriptions'
+      AND column_name IN ('id','user_id','endpoint','p256dh','auth')
+    GROUP BY table_name HAVING count(*)=5) THEN
+    RAISE EXCEPTION 'Push outbox prerequisite missing: subscription id/user_id/endpoint/p256dh/auth columns';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='job_offers'
+      AND column_name='expires_at') THEN
+    RAISE EXCEPTION 'Push outbox prerequisite missing: apply sequential offer dispatch migration first (job_offers.expires_at)';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='electrician_profiles'
+      AND column_name='available_for_work') THEN
+    RAISE EXCEPTION 'Push outbox prerequisite missing: apply electrician availability migration first';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='electrician_profiles'
+      AND column_name IN ('user_id','auth_user_id','active','verification_status')
+    GROUP BY table_name HAVING count(*)=4) THEN
+    RAISE EXCEPTION 'Push outbox prerequisite missing: electrician identity and approval columns';
+  END IF;
+END;
+$preflight$;
+
 ALTER TABLE public.srk_push_subscriptions ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.srk_push_subscriptions FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.srk_push_subscriptions TO authenticated;
