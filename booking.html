@@ -1471,8 +1471,9 @@ async function saveCustomerProfile() {
   if(file) {
    const allowed=['image/jpeg','image/png','image/webp'];
    if(!allowed.includes(file.type)||file.size>5*1024*1024||file.size===0) throw new Error('फोटो JPEG, PNG या WebP होनी चाहिए और 5 MB से छोटी होनी चाहिए।');
-   const {data:sessionData}=await customerSb.auth.getSession();
-   const userId=sessionData.session?.user?.id;
+   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+   if(sessionError)throw sessionError;
+   const userId=sessionData?.session?.user?.id;
    if(!userId)throw new Error('फोटो अपलोड करने के लिए OTP लॉगिन जरूरी है।');
    const extension=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp' })[file.type];
    avatarPath=userId+'/'+crypto.randomUUID()+'.'+extension;
@@ -1759,7 +1760,9 @@ async function sendCustomerSupportMessage() {
  customerSupportSendBusy=true;button.disabled=true;button.textContent='भेजा जा रहा है…';
  let pendingUploadPath=null,linkedCount=0;
  try{
-  const {data:sessionData}=await customerSb.auth.getSession(),userId=sessionData.session?.user?.id;
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(sessionError)throw sessionError;
+  const userId=sessionData?.session?.user?.id;
   if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
   const {data:messageId,error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{p_complaint_id:id,p_body:body||'आपके लिए फ़ाइल संलग्न की गई है।'});
   if(error)throw error;if(!messageId)throw new Error('MESSAGE_NOT_CONFIRMED');
@@ -1936,8 +1939,9 @@ async function startRazorpayPayment() {
   button.textContent = 'कृपया प्रतीक्षा करें…';
   setPaymentStatus('पेमेंट ऑर्डर बनाया जा रहा है…');
   try {
-    const { data: customerSessionData } = await customerSb.auth.getSession();
-    const customerSession = customerSessionData.session;
+    const { data: customerSessionData, error: sessionError } = await customerSb.auth.getSession();
+    if (sessionError) throw sessionError;
+    const customerSession = customerSessionData?.session;
     if (!customerSession) throw new Error('भुगतान के लिए पहले ग्राहक OTP लॉगिन करें।');
     const paymentHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + customerSession.access_token };
     const orderResponse = await fetch('/api/create-order', {
