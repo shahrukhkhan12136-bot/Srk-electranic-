@@ -146,3 +146,12 @@ test('customer saved-address delete reconciles uncertain RPC results and checks 
   assert.match(remove,/else if\(deleteState==='present'\)/);
   assert.match(remove,/deleteState==='unknown'/);
 });
+
+
+test('customer saved-address save does not report full success when the refreshed list fails', () => {
+  const save = body('saveCurrentBookingAddress');
+  assert.match(save, /const addressListRefreshed=await loadCustomerSavedAddresses\(\)/);
+  assert.match(save, /if\(!addressListRefreshed\)[\s\S]*?पता सेव हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी/);
+  assert.ok(save.indexOf('if(!addressListRefreshed)') < save.indexOf("setSavedAddressStatus('पता सफलतापूर्वक सेव हो गया।')"));
+  assert.match(save, /finally \{button\.disabled=false/);
+});
