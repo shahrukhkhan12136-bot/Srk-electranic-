@@ -1159,7 +1159,7 @@ async function customerSubmitBookingRefund(bookingId){
   if(error)throw error;
   if(!data?.success)throw new Error('Refund request was not confirmed');
   alert('रिफंड अनुरोध दर्ज हो गया है। राशि: '+formatCustomerMoney(data.amount)+'। इसकी स्थिति My Bookings और Payments मेनू में दिखाई देगी।');
-  await loadCustomerBookings();
+  try{await loadCustomerBookings();}catch(_){alert('रिफंड अनुरोध सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
  }catch(error){
   const message=String(error?.message||'');
   let confirmedRequest=null,lookupSucceeded=false;
@@ -1172,7 +1172,7 @@ async function customerSubmitBookingRefund(bookingId){
   }catch(_){/* An unavailable authoritative read leaves the write outcome uncertain. */}
   if(confirmedRequest){
    alert('इस बुकिंग के लिए रिफंड अनुरोध पहले से दर्ज है। वर्तमान स्थिति: '+customerRefundStatusText(confirmedRequest.status)+'। दोबारा अनुरोध नहीं भेजा गया।');
-   await loadCustomerBookings();
+   try{await loadCustomerBookings();}catch(_){alert('रिफंड अनुरोध पहले से दर्ज है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
   }else if(message.includes('REFUND_REQUEST_ALREADY_SUBMITTED')||message.includes('REFUND_ALREADY_EXISTS')||message.includes('REFUND_ALREADY_RECORDED')){
    alert('इस बुकिंग पर रिफंड अनुरोध या रिफंड रिकॉर्ड पहले से मौजूद हो सकता है। Payments में स्थिति जाँचें या सहायता टीम से संपर्क करें।');
   }else if(lookupSucceeded){
