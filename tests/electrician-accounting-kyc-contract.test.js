@@ -10,7 +10,7 @@ function body(name) {
   const start = electrician.indexOf('async function ' + name + '(');
   assert.ok(start >= 0, name + ' handler exists');
   const tail = electrician.slice(start + 1);
-  const next = tail.search(/\\n(?:async )?function\\s+[A-Za-z0-9_$]+\\s*\\(/);
+  const next = tail.search(/\n(?:async )?function\s+[A-Za-z0-9_$]+\s*\(/);
   return electrician.slice(start, next < 0 ? electrician.length : start + 1 + next);
 }
 
