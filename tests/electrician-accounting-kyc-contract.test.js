@@ -6,15 +6,16 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
 
-function body(name, nextName) {
+function body(name) {
   const start = electrician.indexOf('async function ' + name + '(');
-  const end = electrician.indexOf('\\nasync function ' + nextName + '(', start);
-  assert.ok(start >= 0 && end > start, name + ' handler exists');
-  return electrician.slice(start, end);
+  assert.ok(start >= 0, name + ' handler exists');
+  const tail = electrician.slice(start + 1);
+  const next = tail.search(/\\n(?:async )?function\\s+[A-Za-z0-9_$]+\\s*\\(/);
+  return electrician.slice(start, next < 0 ? electrician.length : start + 1 + next);
 }
 
 test('KYC uploads enforce allowlisted document types, MIME types and 5 MB size cap', () => {
-  const upload = body('uploadVerificationDocument', 'loadEarnings');
+  const upload = body('uploadVerificationDocument');
   assert.match(upload, /identity_proof','address_proof','skill_certificate/);
   assert.match(upload, /KYC_MIME_TYPES\.includes\(file\.type\)/);
   assert.match(upload, /file\.size>5242880/);
@@ -23,7 +24,7 @@ test('KYC uploads enforce allowlisted document types, MIME types and 5 MB size c
 });
 
 test('KYC document preview uses owner-scoped RPC and a short-lived signed URL', () => {
-  const preview = body('openVerificationDocument', 'uploadVerificationDocument');
+  const preview = body('openVerificationDocument');
   assert.match(preview, /srk_electrician_get_my_verification_document_path/);
   assert.match(preview, /createSignedUrl\(path,60/);
   assert.match(preview, /preview\.opener=null/);
@@ -32,7 +33,7 @@ test('KYC document preview uses owner-scoped RPC and a short-lived signed URL', 
 });
 
 test('earnings and payout history failures are displayed separately, never as an empty payout balance', () => {
-  const earnings = body('loadEarnings', 'loadPartnerWallet');
+  const earnings = body('loadEarnings');
   assert.match(earnings, /srk_get_my_earnings/);
   assert.match(earnings, /srk_electrician_payouts/);
   assert.match(earnings, /if\(error\)[\s\S]*?कमाई का हिसाब अभी नहीं खुला/);
@@ -42,7 +43,7 @@ test('earnings and payout history failures are displayed separately, never as an
 });
 
 test('wallet bank and ledger reads are owner scoped and query failures are not rendered as no records', () => {
-  const wallet = body('loadPartnerWallet', 'respond');
+  const wallet = body('loadPartnerWallet');
   assert.match(wallet, /srk_get_my_wallet_summary/);
   assert.match(wallet, /srk_wallet_bank_links/);
   assert.match(wallet, /srk_wallet_ledger/);
@@ -58,7 +59,7 @@ test('electrician app does not initiate wallet withdrawal or bank transfer actio
 });
 
 test('profile display-name updates validate input and use the self-service RPC', () => {
-  const profile = body('saveElectricianDisplayName', 'loadElectricianPhoneChangeHistory');
+  const profile = body('saveElectricianDisplayName');
   assert.match(profile, /name\.length<2\|\|name\.length>80/);
   assert.match(profile, /srk_electrician_update_my_display_name/);
   assert.match(profile, /finally\{button\.disabled=false\}/);
