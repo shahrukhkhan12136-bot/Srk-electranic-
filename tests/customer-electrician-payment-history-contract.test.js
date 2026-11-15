@@ -69,3 +69,14 @@ test('Payment history RPC includes owner-scoped request, online refund and manua
   assert.match(historySql, /from public\.srk_manual_refund_entries mr/);
   assert.match(historySql, /limit v_limit offset v_offset/);
 });
+
+test('customer payment history handles auth session lookup failures through its normal retry state', () => {
+  const start = customer.indexOf('async function loadCustomerPaymentHistory(');
+  const end = customer.indexOf('\nasync function ', start + 1);
+  const fn = customer.slice(start, end < 0 ? customer.length : end);
+  const tryAt = fn.indexOf('try{');
+  const sessionAt = fn.indexOf('customerSb.auth.getSession()');
+  assert.ok(tryAt >= 0 && sessionAt > tryAt, 'session lookup is protected by the payment history try/catch');
+  assert.match(fn, /if\(sessionError\)throw sessionError/);
+  assert.match(fn, /finally\{customerPaymentHistoryBusy=false;box\.setAttribute\('aria-busy','false'\);\}/);
+});
