@@ -2554,3 +2554,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin UI generic Save में legacy booking status choices `new/confirmed/assigned/in_progress/completed` हैं; सामान्य Save अब नए completion और cancellation को रोकता है, लेकिन legacy rows पर direct `status` UPDATE अभी भी source-level privilege risk है. Selected-category rows के status/rate direct UI edits भी block हैं.
 - सुरक्षित implementation अभी रोककर रखा: सभी legacy assignment/confirmation/quote/cancellation/admin transitions को transaction-scoped authorization में migrate किए बिना broad trigger लगाने से वैध flow टूट सकता है. अगला कदम legacy Admin status editor को सुरक्षित RPC transitions में बदलना और फिर DB trigger को exact per-transition authorization से जोड़ना है.
 - Verification boundary: migration source scan और Admin UI source review; कोई DB apply, role/JWT runtime, browser test, booking/payment mutation, deploy, merge या mobile QA नहीं हुआ.
+
+
+### Legacy booking status direct-write guard — implementation source added — 15 नवम्बर 2026
+- नई migration `20261115160000_legacy_booking_status_write_guard.sql` जोड़ी: authenticated clients से `service_bookings` पर table-wide UPDATE revoke किया; केवल मौजूदा Admin quote/payment columns का explicit grant रखा, `status` direct update privilege नहीं दिया.
+- नया SECURITY DEFINER RPC `srk_admin_confirm_legacy_booking(uuid)`: Main Admin check, booking row lock, केवल `selected_category IS NULL`, `status='new'`, no assigned electrician, no paid/refunded state और no Razorpay IDs; केवल `new → confirmed` transition करता है. Empty search_path, PUBLIC/anon revoke और authenticated EXECUTE grant.
+- Admin generic Save अब status column सीधे update नहीं करता; quote राशि अलग update होती है और legacy `new → confirmed` के लिए dedicated RPC call होता है. अन्य status बदलाव Admin generic Save से अस्वीकार हैं; assignment, electrician work/quote, customer quote response और cancellation अपने SECURITY DEFINER workflows पर निर्भर रहते हैं.
+- Regression assertions `tests/admin-refund-and-staff-access.test.js` में जोड़े; pgTAP `supabase/tests/database/legacy_booking_status_write_guard.test.sql` plan 9 (1 function check + 8 source/ACL checks) जोड़ा.
+- Source verification: Admin inline JS syntax PASS; Node regression test file JS syntax PASS; migration source and UI path inspected. **Node test suite और pgTAP runtime अभी execute नहीं हुए**; कोई DB apply नहीं हुआ. Existing RPCs के runtime behavior/role permissions और production schema parity अभी verify बाकी हैं.
+- Legacy `srk_admin_record_manual_payment` अभी missing है; उसका सही amount/commission/material/cancellation accounting contract पूरा verify किए बिना implementation नहीं जोड़ी.
+- No production migration apply, booking/payment mutation, provider call, deploy, merge or mobile QA.
