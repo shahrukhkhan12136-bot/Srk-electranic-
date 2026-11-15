@@ -173,3 +173,17 @@ Inspected the current Feature Branch source for `booking.html` and `electrician.
 - The relevant migrations inspected in this pass consistently include `SECURITY DEFINER` and a pinned `search_path` for the listed customer/electrician RPC definitions. This is a source-level check only; it does not replace role/ACL/RLS execution tests.
 - Remaining reconciliation work: finish exact definition/signature and test mapping for every remaining call-site in the 49-name inventory (including customer work timeline/labour bill/cancellation-fee RPCs and electrician earnings/wallet/area-change RPCs), and trace all client table reads/storage operations to their RLS/bucket policies. Do not treat the representative checks above as a full pass.
 - No app code, migrations, database, provider, payment/refund, Storage, Auth setting, Production configuration, deployment, or mobile QA was changed or invoked in this pass.
+
+
+## 15. शेष RPC call-sites का अगला contract pass — 15 Nov 2026
+
+इस follow-up में section 14 के खुले उदाहरणों में से निम्नलिखित भी migration definitions से मिलाए गए:
+
+- Customer work timeline: `srk_customer_get_my_booking_work_timeline(p_booking_id uuid)` — `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql`.
+- Customer/Electrician labour bill reads और work-start/completion approval RPCs — `20261114240000_server_authoritative_customer_approved_work_timer.sql`; customer completion response का optional dispute note भी signature में मौजूद है।
+- Customer cancellation-fee debt list, fee-item list और service-role payment breakdown — `20261114280000_cancellation_fee_carry_forward_and_accounting.sql`; cancellation fee ledger reversal/refund paths — `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql`.
+- Electrician area-change request/list — `20261114220000_admin_approved_electrician_relocation.sql`.
+- Electrician earnings read — `20261109003000_secure_commission_reporting.sql`; wallet summary — `20261109010000_create_secure_wallet_ledger_foundation.sql`.
+- Electrician live-location source calls (start/update/stop/status) and customer location read have matching definitions in `20261114320000_booking_scoped_live_electrician_location.sql`.
+
+इन signatures/definitions का मिलान source-level पर हुआ है; actual RPC execution, actor isolation, grants/RLS, concurrency और returned payload behavior अभी runtime-verified नहीं हैं। अब शेष प्रमुख source reconciliation काम है: सभी direct Supabase table selects/inserts/updates और Storage bucket operations को संबंधित RLS/bucket policies तथा test coverage से जोड़ना; इसके बाद केवल वास्तविक mismatch मिलने पर code change करना।
