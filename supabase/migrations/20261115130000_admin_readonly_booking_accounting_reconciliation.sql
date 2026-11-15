@@ -33,6 +33,8 @@ declare
   v_fee_source_open_paise bigint := 0;
   v_wallet_credit_paise bigint := 0;
   v_wallet_debit_paise bigint := 0;
+  v_cash_fee_expected_wallet_credit_paise bigint := 0;
+  v_cash_fee_actual_wallet_credit_paise bigint := 0;
   v_route_electrician_paise bigint := 0;
   v_route_platform_paise bigint := 0;
   v_route_electrician_processed_paise bigint := 0;
@@ -233,6 +235,46 @@ begin
          where i.booking_id=p_booking_id
       )
     );
+
+  -- For a manual full refund, prove the exact cash cancellation-fee wallet debit
+  -- was credited back. Scope credits by the refund evidence ID so a later reuse of
+  -- the same debt on another booking cannot contaminate this booking's comparison.
+  if v_manual_refund.id is not null then
+    select coalesce(sum(round(w.amount*100)::bigint),0)::bigint
+      into v_cash_fee_expected_wallet_credit_paise
+      from public.srk_booking_cancellation_fee_items i
+      join public.srk_cancellation_fee_ledger l
+        on l.debt_id=i.debt_id and l.booking_id=i.booking_id
+       and l.entry_type='cash_electrician_debit' and l.direction='credit'
+       and l.status='posted'
+      join public.srk_wallet_ledger w
+        on w.reference_type='cancellation_fee_item' and w.reference_id=i.id::text
+       and w.wallet_type='electrician' and w.entry_type='cancellation_fee'
+       and w.direction='debit' and w.status='posted'
+       and w.user_id=l.electrician_user_id
+       and round(w.amount*100)::bigint=i.amount_paise
+     where i.booking_id=p_booking_id and i.status='reversed';
+
+    select coalesce(sum(round(w.amount*100)::bigint),0)::bigint
+      into v_cash_fee_actual_wallet_credit_paise
+      from public.srk_booking_cancellation_fee_items i
+      join public.srk_cancellation_fee_ledger l
+        on l.debt_id=i.debt_id and l.booking_id=i.booking_id
+       and l.entry_type='cash_electrician_debit' and l.direction='credit'
+       and l.status='posted'
+      join public.srk_wallet_ledger w
+        on w.reference_type='cancellation_fee_refund' and w.reference_id=i.debt_id::text
+       and w.wallet_type='electrician' and w.entry_type='cancellation_fee'
+       and w.direction='credit' and w.status='posted'
+       and w.user_id=l.electrician_user_id
+       and w.provider_reference=v_manual_refund.id::text
+       and round(w.amount*100)::bigint=i.amount_paise
+     where i.booking_id=p_booking_id and i.status='reversed';
+
+    if v_cash_fee_expected_wallet_credit_paise<>v_cash_fee_actual_wallet_credit_paise then
+      v_exceptions:=array_append(v_exceptions,'CASH_FEE_WALLET_REFUND_MISMATCH');
+    end if;
+  end if;
 
   select
     coalesce(sum(t.amount_paise) filter(where t.recipient_type='electrician'),0)::bigint,
