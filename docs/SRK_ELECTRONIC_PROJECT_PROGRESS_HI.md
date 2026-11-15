@@ -2898,3 +2898,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added `tests/welcome-screen-contract.test.js`: verifies root redirect to Welcome Screen, all three role links, founder portrait source/asset existence, descriptive alt text and reduced-motion CSS.
 - CI run `43708433631` on `57cf3a7f22f31591b593a4fe96e10b1a5e6f332d` was still in progress at the time of this update; do not mark this test pass until final CI status is confirmed.
 - Browser runtime and actual portrait-to-approved-reference visual match remain pending. No production deployment or live booking/payment action was performed.
+
+
+## 2026-11-15 — GPT #2: Route bank-link uniqueness guard
+
+- Schema audit found `srk_wallet_bank_links` had a unique provider-account ID and per-user/account pair, but no database constraint preventing multiple `is_primary=true` Razorpay Route electrician links for one Auth user.
+- Added migration `20261115190000_enforce_single_primary_route_bank_link.sql`: partial unique index permits at most one primary Route electrician bank link per user. Migration first checks legacy duplicates and raises `DUPLICATE_PRIMARY_ROUTE_BANK_LINKS_REQUIRE_MANUAL_REVIEW` rather than silently selecting or deleting an account.
+- Added one pgTAP source-contract assertion; accounting contract plan/count updated from 59 to 60.
+- Important: migration is Feature Branch source only. No PostgreSQL/pgTAP runtime, existing-data duplicate preflight, Production migration, provider onboarding, or bank verification has been run. Any existing duplicate primary links require manual review before applying.
+- No live money movement, deployment, merge, or go-live.
