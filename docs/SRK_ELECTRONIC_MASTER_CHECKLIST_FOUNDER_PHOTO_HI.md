@@ -375,3 +375,11 @@
 - [ ] Isolated database पर migration + pgTAP runtime; private storage owner/Admin/non-owner/anon ACL; signed URL expiry; OTP + KYC + rate tier + activation flow; concurrent review/activation और dispatch race tests.
 - [ ] Production apply/deploy/merge और consolidated final mobile QA अभी नहीं हुए.
 - Feature branch current migration blob `3b6f6f2`, KYC test blob `3e53664`.
+
+
+### Admin cancellation decision input hardening — 15 नवम्बर 2026
+- [x] Admin cancellation RPC में SQL NULL decision fall-through बंद किया; null decision अब explicit reject.
+- [x] Approved cancellation में null verified stage explicit reject.
+- [x] Cancellation fee/refund pgTAP source plan 44 और assertions 44/44 match.
+- [ ] Isolated database पर migration chain + cancellation/refund pgTAP runtime और concurrent booking/request lock tests बाकी.
+- Commits: `e26889b`, `086f541`.
