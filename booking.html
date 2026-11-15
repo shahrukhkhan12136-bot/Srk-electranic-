@@ -1131,7 +1131,7 @@ async function customerRespondWorkCompletion(bookingId,response){
   alert(response==='approved'?'काम पूरा होने की पुष्टि दर्ज हो गई।':
    response==='rejected'?'काम अभी अधूरा दर्ज हुआ है। इलेक्ट्रिशियन का टाइमर फिर शुरू होगा।':
    'आपका विवाद दर्ज हो गया है और Admin समीक्षा करेगा।');
-  await loadCustomerBookings();
+  try{await loadCustomerBookings();}catch(_){alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
  }catch(error){
   try{
    await loadCustomerBookings();
@@ -1427,7 +1427,7 @@ async function customerRespondWorkStart(bookingId,response){
  const question=response==='approved'?'क्या आप इलेक्ट्रिशियन को अभी काम शुरू करने की अनुमति देते हैं?':'क्या आप अभी काम शुरू करने की अनुमति रोकना चाहते हैं?';
  if(!confirm(question))return;
  customerLifecycleBusy.add(bookingId);
- try{const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});if(error)throw error;if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');await loadCustomerBookings();}
+ try{const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});if(error)throw error;if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');try{await loadCustomerBookings();}catch(_){alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}}
  catch(e){try{await loadCustomerBookings();alert('नेटवर्क जवाब नहीं मिला। बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}catch(_){alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}}
  finally{customerLifecycleBusy.delete(bookingId);}
 }
