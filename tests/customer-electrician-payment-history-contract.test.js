@@ -136,3 +136,23 @@ test('Confirmed Razorpay payment remains confirmed when booking or payment-histo
   const historyFn = customer.slice(historyStart, historyEnd);
   assert.match(historyFn, /return true;[\\s\\S]*catch\(error\)[\\s\\S]*return false;/);
 });
+
+test('Customer payment-history refresh ignores stale responses after auth changes', () => {
+  const start = customer.indexOf('async function loadCustomerPaymentHistory(');
+  const end = customer.indexOf('\\nasync function loadCustomerCancellationFeeDebts(', start + 1);
+  const fn = customer.slice(start, end);
+  assert.match(fn, /const requestId=\+\+customerPaymentHistoryRequest/);
+  assert.match(fn, /if\(requestId!==customerPaymentHistoryRequest\)return false;/);
+  assert.equal((fn.match(/if\(requestId!==customerPaymentHistoryRequest\)return false;/g) || []).length, 2);
+  assert.match(customer, /customerPaymentHistoryRequest\+\+;\s*customerPaymentHistoryResetPending=false;\s*customerLiveLocationRefreshRequest\+\+/);
+  assert.match(customer, /if\(event==='SIGNED_IN'\|\|event==='SIGNED_OUT'\|\|event==='USER_DELETED'\)\{\s*customerPaymentHistoryRequest\+\+/);
+});
+
+test('Customer payment-history reset requested during pagination is queued instead of silently lost', () => {
+  const start = customer.indexOf('async function loadCustomerPaymentHistory(');
+  const end = customer.indexOf('\\nasync function loadCustomerCancellationFeeDebts(', start + 1);
+  const fn = customer.slice(start, end);
+  assert.match(fn, /if\(customerPaymentHistoryBusy\)\{if\(reset\)\{customerPaymentHistoryRequest\+\+;customerPaymentHistoryResetPending=true;\}return false;\}/);
+  assert.match(fn, /if\(customerPaymentHistoryResetPending\)\{customerPaymentHistoryResetPending=false;setTimeout\(\(\)=>loadCustomerPaymentHistory\(true\),0\);\}/);
+  assert.match(fn, /finally\{[\s\S]*customerPaymentHistoryBusy=false;[\s\S]*customerPaymentHistoryResetPending/);
+});
