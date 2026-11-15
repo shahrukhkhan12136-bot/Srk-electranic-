@@ -1932,3 +1932,6 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - pgTAP अब 17 planned assertions रखता है और exact RPC signature + observation UUID assertion जाँचता है। Static consistency: migration में table/function definitions प्रत्येक एक बार; SQL dollar-quote pairs balanced; plan 17 = assertions 17; handler/test JavaScript parse PASS.
 - Production Supabase schema का read-only catalog check पुष्टि करता है कि payout status constraint में `pending`, `paid`, `blocked`, `refunded` वैध हैं और refund amount `amount_paise` तथा currency `INR` मौजूद हैं। यह catalog-only निरीक्षण है, कोई write नहीं।
 - अभी भी SQL/pgTAP/Node runtime execute नहीं हुए; migration किसी DB पर apply नहीं हुई; Razorpay GET/POST, refund, wallet/payout mutation, deploy/merge और mobile QA नहीं हुआ।
+
+
+- अतिरिक्त replay audit: existing full-refund accounting trigger payout को `refunded` करता है। इसलिए Phase 2 का replay अब completed booking + processed refund पर तभी idempotent success देता है जब मौजूद payout भी `refunded` हो; `paid` payout हमेशा manual reconciliation पर रोकता है। Non-replay path में payout का `blocked` होना अनिवार्य है। pgTAP plan अब 18/18 static assertions है; runtime अभी नहीं चला।
