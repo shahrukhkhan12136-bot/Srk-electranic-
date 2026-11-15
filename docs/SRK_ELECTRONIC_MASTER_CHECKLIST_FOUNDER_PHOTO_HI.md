@@ -1,450 +1,113 @@
-# SRK ELECTRONIC — Master Checklist Addendum: Founder Welcome-Screen Photo
+# SRK ELECTRONIC — मुख्य मास्टर चेकलिस्ट (एकीकृत स्थिति)
 
-**Status date:** 15 November 2026  
-**Applies to:** Website Welcome Screen / founder identity visual asset  
-**Approved asset:** The latest founder portrait uploaded in the conversation on 15 November 2026 (black button-up shirt, arms folded, waist-up framing, blue corporate background).  
-**Conversation attachment ID:** `file_000000005f588210ac3459ffcfa3fdfe`  
-**Current working copy (this session):** `/mnt/data/18339.png`
-
-## Owner-approved requirement
-
-- [ ] Use the exact latest founder portrait identified above. Do not substitute the older garden portrait.
-- [ ] Preserve the subject's natural proportions; do not stretch or distort the image.
-- [ ] Display a professional waist-up crop with arms folded and sensible focal positioning.
-- [ ] Keep the final asset hosted within the SRK ELECTRONIC Vercel project; do not upload it to a third-party image-hosting website.
-- [ ] Integrate the asset into the Welcome Screen and verify the built page loads it correctly.
-- [ ] Verify desktop and responsive layout during the consolidated final mobile QA pass; do not run separate mobile QA before all implementation is complete.
-
-## Evidence / current state
-
-- [x] Owner supplied and explicitly selected the latest portrait as the final photo.
-- [ ] Persistent reference-image/library save — attempted, but the image-reference service returned `image_unavailable`; do not claim it is saved persistently yet.
-- [ ] Add the image binary to the approved feature branch repository.
-- [ ] Integrate the image into the Welcome Screen source.
-- [ ] Run relevant automated tests and build checks.
-- [ ] Confirm Vercel preview build serves the image correctly.
-- [ ] Owner visual acceptance.
-
-**Important:** This addendum records the approved requirement and the current conversation attachment identifier. It does not mean the binary has been committed, uploaded to Vercel, integrated, or deployed. Keep Production unchanged until separately authorized.
-
-## Recovery audit — 15 November 2026, 00:20 IST
-
-- The previous Vercel Sandbox session returned `sandbox_stopped`; its filesystem could not be inspected or modified further.
-- A recursive Git tree check of the approved feature branch did not find a committed `assets/founder-portrait.webp` (or another founder-photo binary). The earlier sandbox listing is not proof of a Git commit.
-- The current branch's `index.html` redirects visitors to `/booking.html`. The customer booking page is not the required three-role website Welcome Screen.
-- Therefore, the founder photo is still **not verified as present in the repository, integrated, built, or deployed**. Do not mark these items complete until a fresh working session verifies the exact approved image and page behavior.
-- Continue only on `feat/customer-login-first-dashboard-20261114`; do not change Production or deploy without separate approval.
-
+**अंतिम मिलान:** 15 नवम्बर 2026  
+**काम की branch:** `feat/customer-login-first-dashboard-20261114`  
+**Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
+**स्थिति का नियम:** [x] = Feature Branch source में implement/verified; इसका अर्थ Production पर लागू होना नहीं है। Runtime/Production/owner approval को अलग स्पष्ट रखा गया है। पुरानी विस्तृत कार्य-इतिहास `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` में है। इस checklist में duplicate पुराने pending items को बार-बार नहीं दोहराया जाएगा।
 
 ---
 
-# Project-wide Master Checklist Addendum — Admin Refund / Support Staff Audit
-
-**Status date:** 15 November 2026  
-**Working branch:** `feat/customer-login-first-dashboard-20261114`
-
-- [x] Hide customer-refund launch action after provider refund is confirmed `processed`.
-- [x] Separate Support Staff portal UI from Main Admin modules.
-- [x] Verify Staff invitation server-side Main Admin authorization and fixed Support role in source.
-- [x] Verify Staff support inbox ownership is assignment-scoped and private phone projections are absent in the reviewed RBAC migration.
-- [x] Add source-level regression tests for these contracts.
-- [ ] Execute Node source tests and database pgTAP suites in the approved test environment.
-- [ ] Verify Admin/Staff workflows end-to-end after all implementation work is complete.
-- [ ] Complete consolidated desktop/mobile QA after all implementation work is complete.
-- [ ] Obtain explicit owner approval before any production deployment or live changes.
-
-**Evidence boundary:** The checked items above are source review/code changes only. No runtime test, live Staff invitation, provider refund, migration apply, deployment or mobile QA is claimed. See `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` for detailed audit notes.
-
-
-## Additional security checklist — Server-timed booking lifecycle
-
-- [x] Admin booking save handler refuses direct status or quoted-rate changes for new-category/server-timed bookings.
-- [x] Database trigger protects new-category category immutability and requires protected workflow authorization for timer start and completion status transitions.
-- [x] Approved cancellation remains on the dedicated evidence-backed cancellation decision workflow.
-- [x] Add Node and pgTAP regression assertions (pgTAP plan 19; source only).
-- [ ] Run Node tests and pgTAP in an approved test environment; verify the legitimate offer-accept, customer work-start approval, completion approval, and cancellation paths end-to-end.
-- [ ] Keep final consolidated mobile QA and production rollout deferred until all implementation work is complete and explicit approval is obtained.
-
-**Important:** Runtime validation has not been performed. The migration is committed only as feature-branch source and has not been applied to any database.
-
-
-### Sequential offer assignment integrity
-- [x] New-category assignment requires a matching accepted `job_offers` record for the same booking and electrician.
-- [x] Offer response records acceptance before the booking assignment update in the same transaction.
-- [x] Added two pgTAP assertions (plan 21; not executed).
-- [ ] Run dispatch/acceptance, expiry/decline advancement and assignment-trigger tests in the approved test environment.
-
-
-### Electrician offer acceptance live revalidation
-- [x] Offer acceptance rechecks electrician's current state/district against the booking.
-- [x] Offer acceptance rechecks exact selected commercial tier and Admin-approved tier metadata.
-- [x] Added 2 pgTAP source assertions (sequential offer dispatch plan 16; not executed).
-- [ ] Execute relocation-vs-acceptance concurrency, stale-offer, and exact-tier acceptance tests in the approved isolated environment.
-
-
-### Electrician availability / relocation / KYC source audit — 15 November 2026
-- [x] Availability self-toggle is gated to the authenticated linked, Active, Admin-approved electrician profile.
-- [x] Offline transition closes only unaccepted offers and advances sequential dispatch; accepted assignments remain untouched in the reviewed source.
-- [x] Relocation request validates active approval, changed operating area, PIN/reason and one-pending-request constraint.
-- [x] Admin relocation review locks the request/profile, changes the active operating area only on approval, and closes/re-dispatches old-area unaccepted offers.
-- [x] Electrician KYC upload/list/preview and Admin review UI source paths reviewed, including private owner-scoped document-path RPC and short-lived signed preview.
-- [ ] Execute availability/relocation/KYC RLS, Storage and RPC tests in the approved isolated test environment.
-- [ ] Complete end-to-end electrician/Admin workflows after implementation is complete; final mobile QA remains deferred.
-
-**Evidence boundary:** This is source inspection only. No live availability/relocation/KYC mutation, migration apply, deployment or runtime verification is claimed.
-
-
-### Live Location GPS failure cleanup — 15 November 2026
-- [x] GPS watch error और location-update RPC failure अब server-side stop RPC भी चलाते हैं।
-- [x] Local retry tracking केवल server stop की पुष्टि के बाद हटती है; stop failure पर Logout retry path सुरक्षित रहता है।
-- [x] तीन source-level regression assertions जोड़े (अभी execute नहीं किए गए)।
-- [x] Live-location server source में consent, assigned-booking/customer scoping, coordinate validation, stale-read cutoff और booking transition cleanup की समीक्षा की।
-- [ ] Node source test और live-location pgTAP/RPC behavior को approved isolated test environment में चलाएँ।
-- [ ] सभी implementation समाप्त होने के बाद Customer–Electrician location sharing का consolidated desktop/mobile QA करें।
-
-**Evidence boundary:** केवल source fix/review; वास्तविक GPS share, migration apply, runtime test या deployment नहीं हुआ।
-
-
-### Push Notification और New Job Offer Alert Audit — 15 November 2026
-- [x] Electrician opt-in UI, browser permission handling, VAPID public-key retrieval, service-worker registration और local subscription enable/disable source review।
-- [x] Service worker push display और same-origin notification-click navigation source review।
-- [x] Sequential offer create/decline/expiry dispatch और scheduled expiry worker source review।
-- [x] Offer dispatch/next-offer event से trusted server-side Web Push sender जोड़ा; वर्तमान offer/booking/electrician state server पर revalidate होती है।
-- [x] Push subscription owner-scoped RLS/RPC contract, least-privilege CRUD grants और invalid endpoint cleanup जोड़ा।
-- [x] Durable outbox, per-device delivery ledger, bounded retry/backoff, lease fencing और live offer-state revalidation लागू।
-- [x] Notification click पर Electrician dashboard संबंधित offer को सुरक्षित same-origin route से highlight/open करता है।
-- [ ] Approved isolated environment में permission, delivery, duplicate/retry, expired/accepted offer, invalid endpoint और logout/account-switch tests चलाएँ।
-- [ ] Final consolidated mobile QA और production rollout सभी implementation पूरे होने और अलग explicit approval के बाद ही।
-
-**Evidence boundary:** UI/service-worker/dispatch source review पूरा; वास्तविक push delivery, subscription RLS proof, runtime test, production Edge Function inspection/deploy या mobile QA का दावा नहीं।
-
-
-### Push Notification click-to-offer routing hardening — 15 November 2026
-- [x] Notification click अब केवल same-origin Electrician Dashboard खोलता है; payload से arbitrary same-origin path स्वीकार नहीं होता।
-- [x] Valid UUID offerId dashboard URL में जोड़ा जाता है; dashboard matching offer card को scroll/highlight करता है।
-- [x] Malformed offerId reject और Service Worker cache version bump किया।
-- [x] Source-contract assertions जोड़े (अभी execute नहीं किए गए)।
-- [x] Trusted sender, durable outbox/retry, subscription RLS/RPC और invalid endpoint cleanup feature branch में implement।
-- [ ] Approved isolated environment में push delivery और race/retry/permission tests; final mobile QA implementation पूर्ण होने के बाद।
-
-**Evidence boundary:** Deep-link source change committed; वास्तविक Push delivery, runtime test, production deploy या mobile QA नहीं हुआ।
-
-
-### Push sender और subscription security — 15 November 2026
-- [x] Production read-only inspection से ACTIVE `push-job-offer` Edge Function और `job_offers` INSERT/UPDATE webhook trigger मौजूद होने की पुष्टि।
-- [x] Production subscription table पर owner-scoped RLS policies की पुष्टि; authenticated role के अनावश्यक TRUNCATE/TRIGGER/REFERENCES grants मिले — revoke करना बाकी।
-- [x] Feature branch में webhook-authenticated sender source जोड़ा: current offer/expiry, booking state/assignment और electrician active/approved/available revalidation; invalid/expired endpoints cleanup।
-- [x] Public GET response में केवल VAPID public key; private configuration response में नहीं।
-- [x] छह source-contract tests जोड़े; execute नहीं किए।
-- [x] Authenticated के अनावश्यक TRUNCATE/TRIGGER/REFERENCES privileges revoke; केवल आवश्यक subscription CRUD grants और owner-scoped RLS।
-- [x] Durable idempotent push outbox, bounded retry/backoff, per-device delivery audit और dead-letter recovery लागू।
-- [ ] Feature-branch schema और Production schema align करें; Production inventory में `job_offers.expires_at` तथा `electrician_profiles.available_for_work` अनुपस्थित दिखे, इसलिए अभी Edge Function deploy निषिद्ध।
-- [ ] Isolated environment में sender + webhook + subscription + expiry/acceptance race tests चलाएँ; उसके बाद ही final mobile QA।
-
-**Evidence boundary:** Production inspection read-only; branch Edge Function/source tests committed; runtime test, push send, migration apply, Edge Function deploy और mobile QA नहीं हुए।
-
-
-### Durable Push Outbox — 15 November 2026
-- [x] Feature-branch migration में owner-scoped subscription CRUD policies और least-privilege grants।
-- [x] Unique offer outbox row और private delivery-state table।
-- [x] Service-role-only claim/finish RPCs, lease, max attempts, exponential retry और dead-letter state।
-- [x] प्रति मिनट scheduled Netlify worker और छह source-contract assertions।
-- [x] Per-subscription delivery ledger/idempotency; partial failure retry पर पहले delivered devices सुरक्षित रहते हैं।
-- [x] Existing Production direct HTTP trigger को outbox trigger से बदलने का duplicate-safe source rollout plan और migration ordering दर्ज। Production rollout अलग approval के बिना नहीं।
-- [ ] Production/branch schema parity स्थापित करें; उसके बाद isolated DB + Edge Function + Netlify integration tests।
-- [ ] सभी implementation और internal checks पूरे होने पर consolidated final mobile QA; उससे पहले नहीं।
-
-**स्थिति:** Feature branch source और docs updated; tests run नहीं; migration/deploy/push नहीं। At-least-once retries हैं, exactly-once guarantee नहीं।
-
-
-### Per-subscription Push Delivery और Schema Parity — 15 November 2026
-- [x] Unique per-outbox/per-subscription delivery ledger; private table और service-role-only RPCs।
-- [x] Row-lock claim, per-subscription attempts, lease, retry/backoff, delivered/dead terminal states।
-- [x] Edge sender per-device result दर्ज करता है; outbox तभी delivered जब सभी target rows terminal हों।
-- [x] सात source-contract tests जोड़े; execute नहीं किए।
-- [ ] Provider timeout के ambiguous outcome को monitor/alert करें; Web Push exactly-once transport guarantee उपलब्ध नहीं।
-- [ ] Production schema parity: Production में `job_offers.expires_at` और `electrician_profiles.available_for_work` absent; पहले approved migration rollout और isolated verification चाहिए।
-- [ ] पुराने Production direct HTTP trigger और नए outbox के duplicate-safe migration plan की पुष्टि।
-- [ ] Isolated integration tests (parallel claims, success replay, timeout, 404/410 cleanup, retry exhaustion) चलाएँ।
-
-**स्थिति:** Feature branch source updated; runtime tests/deploy/migration apply/push नहीं हुए। Production compatibility अभी अवरुद्ध है।
-
-- [x] Malformed per-subscription claim target को stuck processing state में छोड़ने के बजाय retry/dead-letter path में भेजने का guard और assertion।
-
-
-### Legacy Push Trigger और सुरक्षित Rollout — 15 November 2026
-- [x] Production catalog में legacy `trg_srk_push_job_offer` (`AFTER INSERT OR UPDATE`) और direct HTTP function की पहचान; old payload में `outbox_id` नहीं।
-- [x] Outbox migration में legacy trigger को उसी transaction में drop करके INSERT-only outbox trigger बनाना।
-- [x] Source test: legacy trigger drop, outbox trigger creation से पहले होना चाहिए।
-- [ ] Isolated schema prerequisites और migration ordering verify करें; Production schema अभी branch से पीछे है।
-- [ ] Isolated rollout में worker pause → schema/trigger swap → Edge Function deploy → synthetic delivery verify → worker enable क्रम जाँचें।
-- [ ] Rollback migration और monitoring/alert thresholds approve करें।
-
-**Production safety:** अभी कोई migration/trigger/deploy/worker action नहीं किया गया। Rollout plan केवल branch documentation है और अलग approval आवश्यक है।
-
-
-### Push Migration Preconditions और Isolated Integration Plan — 15 November 2026
-- [x] Outbox migration में private schema, subscription columns, `job_offers.expires_at`, `electrician_profiles.available_for_work` और electrician identity/approval columns के fail-fast guards।
-- [x] Delivery ledger migration में outbox table तथा subscription identity columns के prerequisite guards।
-- [x] दोनों migration preflight guards के source assertions।
-- [x] अलग isolated integration plan: migration ordering, grants/RLS, trigger swap, delivery matrix, retries, concurrency, stale offers, secrets, monitoring और exit criteria।
-- [ ] Isolated Supabase project और isolated Netlify site पर migration apply तथा वास्तविक integration tests (अभी नहीं बनाए/चलाए)।
-- [ ] Worker timeout बनाम 2-minute lease का load verification; जरूरत पर batch/concurrency/lease tuning।
-- [ ] Dead-letter alerting, retention/cleanup और rollback rehearsal।
-
-**नोट:** Production में आवश्यक offer expiry और electrician availability columns अभी absent हैं। इसलिए Production rollout blocked है। कोई Production write/deploy नहीं हुआ।
-
-
-### Push Retry/Lease Deep Audit — 15 November 2026
-- [x] Outbox exhausted lease (8th attempt) expiry पर dead-letter recovery।
-- [x] Device delivery exhausted lease (5th attempt) expiry पर dead-letter recovery।
-- [x] NULL lock lease भी stale/recoverable।
-- [x] सभी push SECURITY DEFINER RPCs में NULL-safe service-role guard।
-- [x] Sequential worker batch 20 से 3; database lease 5 मिनट।
-- [ ] Isolated load test में Netlify execution duration और 5-minute lease verify करना।
-- [ ] Crash/reclaim scenarios का वास्तविक database integration test चलाना।
-
-**स्थिति:** Source-level सुधार और assertions feature branch में हैं; runtime tests अभी नहीं चले। Production में कोई बदलाव नहीं।
-
-
-### Push delivery partial-failure / duplicate-risk audit — 15 November 2026
-- [x] Sender सभी claimed device targets पर completion की प्रतीक्षा करता है; per-device success/failure ledger RPC का source review।
-- [x] 404/410 endpoint cleanup और subscription delete पर ledger cascade का source review।
-- [x] Retry केवल pending/expired-lease delivery rows पर; confirmed delivered rows claim query से बाहर रहती हैं।
-- [x] Partial delivery, all-target completion और endpoint cleanup के लिए source-contract assertions जोड़े।
-- [ ] Node/Deno tests 87/87 और Deno check PASS; local PostgreSQL में concurrent claim, lease fencing/recovery और ACL checks PASS। Partial provider-failure/cleanup-cascade तथा Edge↔Netlify integration अभी verify करें।
-- [ ] Provider timeout या provider success के बाद finish-RPC failure जैसे ambiguous outcomes के लिए metrics/alerting जोड़ें और duplicate risk monitor करें।
-
-**महत्वपूर्ण सीमा:** Web Push provider के सफल send के बाद response खो जाने या ledger success write विफल होने पर transport-level exactly-once guarantee संभव नहीं; lease expiry के बाद retry से duplicate notification संभव है। Confirmed delivered rows जानबूझकर दोबारा नहीं भेजी जातीं। अभी कोई runtime test, migration apply, real push या deployment नहीं हुआ।
-
-
-### Push delivery monitoring, failure alerts और dead-letter recovery — 15 November 2026
-- [x] Service-role-only health RPC जो Outbox और per-device Ledger के pending/processing/delivered/dead counts तथा oldest pending timestamps देता है; payload, endpoint, user ID या private error text expose नहीं करता।
-- [x] Netlify worker structured healthy/degraded logs लिखता है; sender/finish/health failures अलग event names से दर्ज होते हैं।
-- [x] Retry, health RPC failure या dead-letter मौजूद होने पर scheduled invocation HTTP 502 लौटाती है ताकि platform-level function monitoring में degraded run दिखे।
-- [x] केवल exact dead outbox UUID पर service-role-only manual recovery RPC; delivered device rows को delivered ही रखता है और केवल dead device rows reset करता है।
-- [x] Worker monitoring और guarded recovery के source-contract assertions जोड़े।
-- [x] Disposable local PostgreSQL में health counts, unauthorized RPC denial, manual recovery state transitions और delivered-row preservation runtime-verified।
-- [ ] Netlify scheduled invocation और वास्तविक log/alert delivery को isolated integration में verify करें।
-- [x] Latest feature-branch full Node suite **87/87 PASS**; छह focused security suites **55/55 PASS**।
- 
-**Safety boundary:** Health/recovery migration केवल Feature Branch में है; अभी किसी database पर apply नहीं हुई। कोई dead letter वास्तव में requeue नहीं किया, कोई push/provider call, production change, deployment, worker activation या mobile QA नहीं हुआ।
-
-
-### Final Push Security Audit — Lease Fencing सुधार — 15 November 2026
-- [x] Audit में stale-worker race मिला: यदि worker का lease expire हो और दूसरा worker उसी row को reclaim कर ले, तो पुराना worker देर से finish RPC करके नए worker की स्थिति overwrite कर सकता था।
-- [x] नया migration `20261115200000_push_delivery_lease_fencing.sql`: Outbox और per-device finish RPC अब claimed `attempt_count` fencing token मांगते हैं; status `processing` और वही attempt count न होने पर stale result reject होता है।
-- [x] Netlify worker और Edge sender अब अपने claim response का attempt count finish RPC में भेजते हैं।
-- [x] Outbox और per-device fencing के source-contract assertions जोड़े।
-- [x] Node 87/87, Deno Edge check PASS; local PostgreSQL में concurrent claim, expired-lease reclaim और stale-finish fencing runtime-verified।
-- [ ] Provider call की transport-level duplicate संभावना बनी रहती है यदि पुराना worker lease expire होने के बाद भी provider request पूरा कर दे; fencing केवल stale DB completion को रोकती है, exactly-once delivery नहीं देती।
-
-**सुरक्षा सीमा:** Migration feature branch पर ही है; अभी apply/deploy नहीं हुई। कोई production mutation, real push, worker activation या mobile QA नहीं किया गया।
-
-
-### Push RPC signature और claim/finish payload dependency audit — 15 November 2026
-- [x] Original Outbox और per-device finish RPC signatures की fencing migration के DROP FUNCTION signatures से तुलना।
-- [x] दोनों claim RPCs में attempt_count लौटने और finish calls में वही fencing token भेजे जाने का source audit।
-- [x] Edge sender के तीनों per-device finish call paths (malformed identity, success, transient failure) में attempt token verify करने के लिए regression assertion।
-- [x] Outbox और device fencing migrations के नए exact function signatures तथा service-role-only grants के source assertions।
-- [x] Health RPC के JSON keys (outbox, devices) और worker के consumed keys का मिलान; table column names (created_at, updated_at, delivery_status) source definitions से मेल खाते हैं।
-- [x] Full Node suite **87/87 PASS**; Push focused suites **37/37 PASS**।
-- [x] Push migration chain (चार migrations) local PostgreSQL में apply; grants, claim→finish RPC, stale-token rejection, health counts और recovery transitions verify।
-
-**स्थिति:** इस चरण में कोई DB query/write, migration apply, deployment या push नहीं किया गया।
-
-### Fencing RPC false-result handling — 15 November 2026
-- [x] Audit में एक acknowledgement gap मिला: fencing RPC stale attempt पर SQL `false` लौटाता था, लेकिन callers HTTP 200 के साथ `false` को सफलता मान सकते थे।
-- [x] Netlify worker अब Outbox finish RPC का JSON boolean `true` अनिवार्य मानता है; `false`/invalid response finish failure और retry/alert path में जाता है।
-- [x] Edge sender अब per-device finish RPC में `data === true` अनिवार्य मानता है; stale/rejected finish successful send count नहीं होता।
-- [x] दोनों callers के लिए source-contract regression assertions जोड़े।
-- [x] Node suite 87/87 PASS; isolated PostgreSQL में concurrent claim और stale-worker fencing checks PASS।
-
-**सीमा:** अभी कोई test execute, migration apply, deployment या real push नहीं किया गया।
-
-### Push Node source-contract test execution — 15 November 2026
-- [x] Disposable Vercel Sandbox में feature branch commit `bcf6b91dc6ab641c9684616d0f4f1445500dde96` checkout करके targeted Push tests चलाए।
-- [x] `push-delivery-outbox`, `push-subscription-delivery-ledger`, `push-job-offer-sender`: **37/37 PASS**।
-- [x] Run से मिले दो test assertion defects सुधारे: availability preflight column-name matcher और public GET response secret-leak matcher; updated targeted run फिर 37/37 PASS।
-- [x] Netlify worker का `node --check` सफल।
-- [x] पुराने 82/5 snapshot के पाँच failures latest checkout पर stale fixture/assertion mismatch निकले; final full suite **87/87 PASS**।
-- [x] बाद के disposable sandbox में Deno Edge check PASS और Push migrations/RPCs PostgreSQL 18.6 पर apply व concurrency/ACL runtime checks PASS।
-
-**सीमा:** ये Node source-contract tests हैं; Supabase migrations apply नहीं हुईं, SQL runtime/permissions/concurrency सत्यापित नहीं हुए। Production या live push पर कोई कार्रवाई नहीं हुई।
-
-### Full Node suite और Edge Function type-check — 15 November 2026
-- [x] तीनों Push test files: **37/37 PASS**।
-- [x] Full repository `npm test`: **87/87 PASS**, 0 failures।
-- [x] Test suite के पुराने/गलत fixtures और SQL-format-sensitive assertions सुधारे: customer phone CASE multiline matcher, provider refund identity note, valid Razorpay payment-ID fixtures; Push preflight और public-config assertions भी सही किए। कोई production business logic बदलने की आवश्यकता नहीं पड़ी।
-- [x] Deno `check --no-config --no-lock supabase/functions/push-job-offer/index.ts` सफल।
-- [x] Netlify worker तथा Razorpay refund/webhook Node files पर `node --check` सफल; working tree clean।
-- [x] Push की चार migrations local PostgreSQL पर apply; role grants, claim/finish RPC, concurrent claims, lease reclaim और stale token rejection runtime-verified।
-
-**सीमा:** Node/Deno checks source/runtime type checks हैं; SQL migrations अभी किसी DB पर apply नहीं हुईं।
-
-### Consolidated Node test rerun — 15 November 2026
-- [x] Latest feature-branch snapshot पर `npm test` चलाया: **87/87 PASS, 0 FAIL** (Node test runner, 87 total)।
-- [x] Six focused security/regression files भी अलग run में **55/55 PASS**: customer/electrician contact visibility, Razorpay refund status, Razorpay webhook inbox, push outbox, per-subscription ledger, push sender.
-- [x] `node --check netlify/functions/deliver-push-outbox.js` सफल।
-- [x] पुराने sandbox snapshot के पाँच failures को नवीनतम branch से दोबारा जाँचा: वे stale snapshot/test fixtures/assertions के mismatch थे; latest branch पर full suite green है। Refund-status test fixture अब provider identity note के साथ है।
-- [x] Deno Edge check और Push PostgreSQL migration/RPC concurrency checks बाद के disposable sandbox में सफल।
-
-**सीमा:** ये Node source-contract tests हैं। Supabase migrations अभी apply नहीं हुईं; database runtime, SQL permissions/concurrency, वास्तविक push delivery और mobile QA सत्यापित नहीं हुए। कोई production बदलाव/deployment नहीं हुआ।
-
-### PostgreSQL isolated runtime + dead-letter correctness audit — 15 November 2026
-- [x] Disposable local PostgreSQL 18.6 database में minimal Supabase-compatible fixture बनाकर चारों Push migrations क्रम से apply कीं: durable outbox, per-subscription ledger, health/recovery, lease fencing। यह local throwaway DB था; Supabase project/paid branch नहीं।
-- [x] Runtime test ने Outbox claim RPC में `RETURNS TABLE(... attempt_count ...)` output variable बनाम unqualified column का वास्तविक ambiguity error पकड़ा। Migration `20261115170000` में update target alias `o` से columns qualify किए; migration re-apply और claim सफल।
-- [x] Runtime audit ने dead device rows को complete मान लेने का logic gap पकड़ा: outbox delivered हो सकता था और dead device rows manual recovery से बाहर रह जातीं। Migration `20261115180000` के claim और completion checks अब तभी complete कहते हैं जब हर device row `delivered` हो; dead row outbox को retry/dead-letter path में रखती है।
-- [x] दोनों fixes के लिए Node source-contract tests अपडेट किए।
-- [x] Outbox/device claim, claim→finish, current fencing token success और stale token rejection after reclaim execute किए।
-- [x] Outbox और per-device concurrent claim tests: transaction lock hold के दौरान दूसरा worker `SKIP LOCKED` से वही row नहीं लेता (second worker claim count 0)।
-- [x] Exhausted lease recovery execute की: outbox attempt 8 और device attempt 5 expired leases dead-letter बने।
-- [x] Unauthorized `anon` RPC execution denied; private `srk_private` table access denied। Authenticated RLS test में owner को अपनी 2 subscriptions दिखीं और दूसरे user को 0।
-- [x] Health RPC counts और manual dead-letter recovery execute की; recovery ने dead device row reset की और delivered device row को delivered ही रखा।
-- [x] Deno `check --no-config --no-lock supabase/functions/push-job-offer/index.ts` सफल; Netlify worker `node --check` सफल।
-- [x] नवीनतम source पर full `npm test`: **87/87 PASS**।
-- [ ] Supabase के वास्तविक managed project schema/roles पर parity verification और scheduled worker/Edge integration test बाकी; इसके लिए पहले approved isolated staging environment चाहिए।
-
-**सीमा:** PostgreSQL परीक्षण local disposable DB + minimal fixture पर हुआ, वास्तविक Supabase project पर नहीं। कोई production/staging migration apply, deployment, real push या mobile QA नहीं। Web Push provider timeout के बाद transport-level duplicate संभावना अभी भी बनी रहती है।
-
-### Repository documentation consistency — 15 November 2026
-- [x] `README.md` phone-visibility section corrected to the owner-approved acceptance rule: hide both numbers before electrician acceptance; reveal full numbers to customer and accepted electrician after acceptance; no extra OTP; Admin may see both; Support Staff remains restricted.
-- [x] Removed obsolete masked-calling / Exotel requirement and ambiguous assigned-only wording from the active policy section.
-- [ ] Continue checking README endpoint and feature descriptions against current source before treating documentation as fully current.
-- Commit: `cdb9583e167659f6601effb25ad926d76fa7bfe6` (feature branch only).
-- No application behavior, database, production configuration, deployment, merge, or mobile QA changed.
-
-
-### Customer cancellation/refund access controls — 15 नवम्बर 2026
-- [x] Customer Dashboard refund history RPC का current canonical name `srk_customer_list_booking_refund_requests()` और refund submit RPC `srk_customer_create_booking_refund_request(uuid,text)` migration contract से match किया।
-- [x] Cancellation-fee debt RPC `srk_customer_list_my_cancellation_fee_debts()` और booking fee-item RPC `srk_customer_list_booking_cancellation_fee_items()` की definitions `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में verify कीं।
-- [x] दोनों SECURITY DEFINER customer projections पर explicit EXECUTE ACL hardening: PUBLIC/anon revoke, authenticated grant.
-- [x] pgTAP में दोनों RPC privilege assertions जोड़े (plan 42); runtime execution अभी बाकी है।
-- [ ] Fresh isolated database पर migration chain + pgTAP run; फिर Customer refund/cancellation RPCs के owner/non-owner/anon व्यवहार का runtime verification.
-- [ ] Admin refund queue/provider refund caller और service reconciliation का पूर्ण end-to-end source/runtime audit बाकी।
-- [ ] Production migration apply/deployment और final consolidated mobile QA नहीं हुए; existing approval guardrails यथावत।
-
-
-### Admin Refund Queue and manual refund completion — 15 नवम्बर 2026
-- [x] Admin refund review/list RPCs and decision state machine source-reviewed: Main Admin guard, request row lock, bounded audit note, allowed transitions, and no provider/payment mutation during approval.
-- [x] Razorpay initiator, read-only provider lookup, durable recovery evidence writer/finalizer source-reviewed; ambiguous provider outcomes retain payout hold; recovery finalization requires fresh processed evidence and separate transaction.
-- [x] Found and corrected missing manual-payment Customer refund completion: new migration `20261115130000_admin_manual_refund_request_completion.sql` requires approved request (when present), matching manual payment audit, blocks Razorpay-linked bookings, records actual manual refund reference, and marks request processed with booking refund in one transaction.
-- [x] Admin UI now distinguishes Razorpay-linked vs manual-payment approved requests; manual path requires receipt/UTR and confirms actual refund was already sent before recording.
-- [x] Added 8 pgTAP source assertions; Admin queue test source has 16/16 and durable recovery test source 34/34 matching declared plans. None of these SQL tests has been run in an isolated database yet.
-- [ ] Run all relevant migrations and pgTAP tests in a fresh isolated database; resolve any runtime failures.
-- [ ] Run provider sandbox integration for Razorpay create/status/recovery/webhook paths; no live-provider action.
-- [ ] Review manual refund UI and RPC in a browser after all feature implementation; final mobile QA remains deferred to the single consolidated pass.
-- [ ] Production migration/deployment remains blocked pending explicit approval; no merge/deploy was done.
-
-
-### Admin Refund Queue और Manual Refund flow — 15 नवम्बर 2026
-- [x] Admin refund queue/decision migration का Main Admin authorization, request row lock, state transition और audit-note validation source review.
-- [x] Razorpay initiator, read-only status lookup, webhook/recovery evidence और service reconciliation path का source review; कोई provider request नहीं भेजी.
-- [x] Approved manual-payment Customer refund requests के लिए Admin UI में receipt/UTR आधारित manual refund record workflow जोड़ा.
-- [x] Manual refund RPC को approved request lock/approval check और successful booking refund के साथ Customer request `processed` transition हेतु सुधारा.
-- [x] Manual refund RPC पर pgTAP के 8 source assertions जोड़े; test plan/assertion count मिलाया. Runtime test अभी नहीं चला.
-- [ ] Fresh isolated database पर migration chain और संबंधित Admin refund/recovery pgTAP suites चलाना.
-- [ ] Razorpay provider sandbox integration, signature/webhook delivery, ambiguous timeout और recovery race को isolated environment में runtime verify करना.
-- [ ] Main Admin बनाम Support Staff runtime authorization test; source review में privileged RPCs `is_srk_admin()` से guarded हैं.
-- [ ] Production apply/deploy/merge और consolidated mobile QA अभी नहीं हुए; सभी approval guardrails लागू हैं.
-- Feature branch commits: `29da3e0` migration, `a8f41f9` Admin manual workflow, `b4b1cd2` safe Razorpay reason passing, `629574e` pgTAP.
-
-
-### Razorpay webhook compatibility और manual payment classification — 15 नवम्बर 2026
-- [x] Official Razorpay sample में `refund.created` payload का status `processed` भी हो सकता है; webhook handler को valid processed evidence ignore न करने हेतु सुधारा.
-- [x] `refund.created` के लिए pending/processed स्वीकार; `refund.processed` और `refund.failed` event/status pairing strict रखी.
-- [x] Documented processed refund-created payload के लिए Node regression test जोड़ा; runtime अभी नहीं चला.
-- [x] Manual refund RPC अब payment method में `online`/`razorpay` होने पर IDs missing होने के बावजूद manual classification reject करता है.
-- [x] Admin UI manual refund fields केवल non-online/non-Razorpay payment methods के लिए दिखाता है.
-- [x] Manual refund pgTAP plan 9 और source assertions 9/9 मिलाए; runtime बाकी.
-- [ ] Node test suite और pgTAP को isolated environment में execute करके runtime result दर्ज करना.
-- [ ] Razorpay sandbox refund + webhook.created/processed/failed ordering और retry scenarios runtime verify करना.
-- Commits: `7a5cf82`, `60eeeb6`, `8e3c185`, `146fd37`, `80c57ee`, `3ce9541`, `c8ea217`.
-
-
-### Electrician KYC documents और activation security — 15 नवम्बर 2026
-- [x] Admin/Electrician UI के सभी KYC RPC calls और existing preview migration का inventory-to-source मिलान; missing schema/RPC contracts पहचाने.
-- [x] Private 5 MB PDF/JPG/PNG KYC bucket और owner-folder upload / owner+Main Admin signed-preview read policies.
-- [x] Private document records, append-only review event history, electrician submit/list RPCs और Admin queue/review RPCs.
-- [x] Main Admin-only KYC review; rejection/resubmission के लिए कारण अनिवार्य; latest identity + address proof दोनों approve हुए बिना activation बंद.
-- [x] OTP-confirmed linked Auth profile + approved rate tier + required KYC documents के बिना Active रोकने वाला RPC और direct-table-write trigger.
-- [x] KYC status invalid होने पर active partner deactivate, availability बंद, unaccepted offers close और sequential dispatch advance; accepted bookings untouched.
-- [x] Rate-tier approval को भी latest required KYC proof से पहले रोकने वाला trigger guard.
-- [x] pgTAP source plan/assertion count 21/21; runtime execution अभी बाकी.
-- [x] Admin और Electrician inline JavaScript parse checks PASS.
-- [ ] Isolated database पर migration + pgTAP runtime; private storage owner/Admin/non-owner/anon ACL; signed URL expiry; OTP + KYC + rate tier + activation flow; concurrent review/activation और dispatch race tests.
-- [ ] Production apply/deploy/merge और consolidated final mobile QA अभी नहीं हुए.
-- Feature branch current migration blob `3b6f6f2`, KYC test blob `3e53664`.
-
-
-### Admin cancellation decision input hardening — 15 नवम्बर 2026
-- [x] Admin cancellation RPC में SQL NULL decision fall-through बंद किया; null decision अब explicit reject.
-- [x] Approved cancellation में null verified stage explicit reject.
-- [x] Cancellation fee/refund pgTAP source plan 44 और assertions 44/44 match.
-- [ ] Isolated database पर migration chain + cancellation/refund pgTAP runtime और concurrent booking/request lock tests बाकी.
-- Commits: `e26889b`, `086f541`.
-
-
-### Razorpay refund webhook compatibility follow-up — 15 नवम्बर 2026
-- [x] `refund.created` में signed processed status को accept और reconcile करने वाला regression fix; terminal event/status pairings strict.
-- [x] Reconciliation error-note में stale variable reference हटाया; valid processed `refund.created` path पर ReferenceError बंद.
-- [x] Processed `refund.created` payload के लिए regression test जोड़ा; test file और webhook handler parse-only checks PASS.
-- [ ] Node webhook inbox suite runtime execution; SQL/pgTAP runtime; Razorpay sandbox and out-of-order/duplicate/retry integration.
-- [ ] Production DB/deploy/merge और final consolidated mobile QA अभी बाकी.
-- Commits: `7a5cf82`, `60eeeb6`, `fdead4c` (plus test assertion cleanup).
-
-
-### Admin Portal — booking completion workflow guard — 15 नवम्बर 2026
-- [x] Generic Admin Save से unfinished booking को सीधे Completed mark करने पर UI guard.
-- [x] Admin access regression test में source assertion जोड़ा.
-- [ ] Completion RPC/trigger का full backend authorization + state-transition audit और isolated runtime tests बाकी.
-- [ ] Node suite runtime, deployment, merge और consolidated final mobile QA बाकी.
-
-
-### Admin backend — legacy status एवं manual payment release blockers — 15 नवम्बर 2026
-- [x] `service_bookings` status column grant और legacy work-status RPC का source audit.
-- [x] New-category status trigger guard और legacy booking scope का अंतर दर्ज.
-- [x] Immutable labour bill trigger की completion prerequisites का निरीक्षण.
-- [x] Admin UI में manual-payment RPC call sites की पहचान.
-- [x] `srk_admin_record_new_booking_cash_payment(uuid,text,text)` की definition `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में मिली और Main Admin guard, exact labour + reserved-fee amount, unique payment, payment evidence तथा wallet/fee-ledger transaction source-reviewed.
-- [x] Legacy `srk_admin_record_manual_payment(uuid,text,text,text)` की authoritative definition migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` में जोड़ी गई; exact approved labour + materials total, labour-only commission, payment evidence और payout row लागू। Runtime tests नीचे खुले हैं.
-- [x] Legacy electrician quote/work transitions, customer quote response, accepted-offer assignment, dedicated cancellation और Admin generic Save status choices का source-level map बनाया.
-- [x] Legacy Admin generic Save से direct status update हटाया; authenticated direct `service_bookings.status` UPDATE revoke किया; Main Admin-only `srk_admin_confirm_legacy_booking` केवल legacy `new → confirmed` transition करता है.
-- [x] Regression source assertions और pgTAP plan 9 जोड़े; Admin inline JS और test JS syntax PASS.
-- [ ] pgTAP/Node runtime, existing legacy RPC actor-path regression, and DB privilege checks runtime पर चलाएँ; उसके बाद शेष Admin/assignment/cancellation transitions का end-to-end verification करें.
-- [ ] Old commission trigger + legacy completion transaction का isolated database runtime verification.
-- [ ] Browser/DB runtime, deployment, merge और consolidated final mobile QA बाकी. No live mutations performed.
-
-
-### Follow-up — manual payment और legacy booking authorization
-- [x] सभी 56 migrations की पुनः जाँच में `srk_admin_record_new_booking_cash_payment(uuid,text,text)` की definition `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में मिली; पिछली checklist की “दोनों RPC अनुपस्थित” टिप्पणी गलत थी.
-- [x] New-category cash RPC का Main Admin guard, completed/assigned/cash-only eligibility, Razorpay exclusion, immutable labour bill + reserved cancellation-fee exact total, unique manual payment, payment evidence और wallet/fee-ledger atomic posting source-reviewed; runtime role/concurrency test बाकी.
-- [x] Legacy `srk_admin_record_manual_payment` definition अब feature branch में है और Admin UI caller signature से match की गई.
-- [x] New-category status trigger guard मौजूद है; legacy rows scope से बाहर हैं और legacy direct status UPDATE privilege bypass risk बना हुआ है.
-- [x] Legacy manual-payment RPC और itemized customer receipt लागू; 18 pgTAP source assertions जोड़े (runtime अभी बाकी)।
-- [x] Legacy Admin generic status editor direct status writes नहीं करता; `new → confirmed` dedicated Main-Admin RPC से और बाकी trusted actor transitions SECURITY DEFINER workflows से चलते हैं। Runtime actor/ACL verification अभी बाकी।
-- [ ] Isolated PostgreSQL/pgTAP runtime और concurrency verification; no production apply.
-
-
-## Checklist reconciliation — 15 November 2026 (latest branch evidence)
-
-- [x] Feature-branch Push implementation is no longer an open implementation task: trusted sender, subscription least-privilege/RLS, outbox, per-device ledger, bounded retry, lease fencing, dead-letter recovery, health RPC, notification deep-link and worker source are committed.
-- [x] Push verification already performed in disposable environments: full Node suite 87/87; focused suites 55/55 (Push-specific 37/37); Deno Edge check; four Push migrations applied to local PostgreSQL 18.6; claim/finish, concurrent claim, lease fencing/reclaim, dead-row recovery, health counts and role/RLS checks passed.
-- [ ] Still genuinely open for Push: managed Supabase schema/role parity; isolated Edge-to-Netlify scheduled delivery/provider integration; real alert delivery; partial-provider-failure/cleanup-cascade matrix; rollout/rollback rehearsal. Production schema was previously observed missing required offer-expiry and electrician-availability columns, so deployment remains blocked until parity is rechecked.
-- [x] Legacy booking status direct-write guard has been added to the feature branch; only Main Admin's dedicated legacy new→confirmed RPC remains available through the Admin generic editor. Runtime ACL/actor-path tests remain open.
-- [x] Legacy Admin manual-payment RPC `srk_admin_record_manual_payment` is now implemented in feature-branch source. It reconciles approved labour + separately itemized materials, commission only on labour, exact verified amount, one receipt/payment row, payment evidence and payout/accounting effects. Customer receipt parity भी उसी migration में ठीक की गई है.
-- [ ] Founder portrait binary/integration and owner visual acceptance remain open; the approved attachment must be recovered and committed before marking it done.
-- [ ] All other unchecked items below are actual runtime/integration/owner-approval gates unless explicitly superseded in the progress log. Mobile QA remains one consolidated final pass only; production rollout requires separate explicit approval.
-
-
-
-## Legacy manual-payment and receipt data — implementation added 15 November 2026
-
-- [x] Missing Admin RPC `srk_admin_record_manual_payment(uuid,text,text,text)` added; Main Admin-only, row lock, completed/assigned/approved-quote guards, unpaid-only, Razorpay exclusion, bounded method/reference/note.
-- [x] Payment amount reconciles exactly to labour + materials; commission applies to labour only; manual-payment evidence and payout row are written atomically.
-- [x] Customer receipt now exposes labour and materials separately and reconciles the total to the approved quote.
-- [x] Admin booking table now shows separate labour/material amounts and quote status; approved quote amount cannot be silently edited away from its itemized total.
-- [x] pgTAP source test added with plan/assertion count 18/18; Admin inline JavaScript syntax PASS.
-- [ ] Execute migration and pgTAP in approved isolated PostgreSQL/Supabase environment; verify Main Admin/anon ACL, duplicate/concurrent payment, payout trigger, customer receipt and rollback cases.
-- [ ] Browser end-to-end review after all feature implementation; final mobile QA remains one consolidated pass.
+## 1. ग्राहक (Customer) — Feature Branch implementation
+
+- [x] Customer booking form, account/login, booking history और profile source मौजूद।
+- [x] Booking submission idempotency और customer-selected rate tier/server estimate source मौजूद।
+- [x] Saved addresses और private avatar storage source मौजूद।
+- [x] Payment method change, payment history और receipt RPC source मौजूद।
+- [x] Customer refund request create/history RPC; customer ownership filter और private Admin note exclusion लागू।
+- [x] Cancellation-fee debt और booking fee-item history RPC; authenticated-only execution ACL source में जोड़ी।
+- [x] Customer cancellation request/fee carry-forward और refund reversal workflow source मौजूद।
+- [x] Customer और electrician phone numbers acceptance से पहले छिपे; acceptance के बाद full number visible; Support Staff को unrestricted phone projection नहीं।
+- [x] Legacy customer receipt अब labour और materials अलग-अलग दिखाती है और total को approved quote से reconcile करती है।
+- [ ] Customer payment/refund/cancellation के सभी owner/non-owner/anon और duplicate/concurrency व्यवहार isolated database में runtime verify करें।
+
+## 2. इलेक्ट्रिशियन (Electrician) — Feature Branch implementation
+
+- [x] Electrician offer inbox/response और sequential nearest dispatch source मौजूद।
+- [x] Offer acceptance पर current location/district, active status और exact Admin-approved rate tier पुनः जाँचे जाते हैं।
+- [x] Availability toggle और relocation request/Admin approval source मौजूद।
+- [x] Labour quote और materials quote अलग-अलग; customer approval/rejection workflow source मौजूद।
+- [x] New-category booking का server-authoritative work timer, customer-approved start/completion और immutable labour bill source मौजूद।
+- [x] Live location consent, booking-scoped access और GPS/RPC failure cleanup source मौजूद।
+- [x] Electrician KYC private document bucket, upload/list/preview, Admin review/audit और activation gate source मौजूद।
+- [x] Electrician support tickets/replies, profile edit, phone-change approval, earnings/wallet projections source मौजूद।
+- [x] Push opt-in, service worker, safe notification click-to-offer routing source मौजूद।
+- [ ] KYC/Storage/OTP/activation, dispatch race, work timer, location sharing और availability/relocation के सभी actor/ownership flows isolated environment में runtime verify करें।
+
+## 3. Admin और Support Staff — Feature Branch implementation
+
+- [x] Main Admin और Support Staff role separation तथा assigned-support-inbox source मौजूद।
+- [x] Staff invitation fixed Support role और Main Admin authorization source में guarded।
+- [x] Admin refund review queue, approval/decline audit और Razorpay refund recovery evidence source मौजूद।
+- [x] Approved manual refund record करने का RPC/UI path मौजूद; यह केवल पहले से वास्तव में भेजे गए refund को दर्ज करता है, पैसा नहीं भेजता।
+- [x] Admin cancellation decision, stage evidence, reason, fee ledger और null-input hardening source मौजूद।
+- [x] Admin payout recording RPC, booking-first locks, verified payment evidence और exact payout reconciliation source मौजूद।
+- [x] KYC queue/review, rate-tier approval और activation checks source मौजूद।
+- [x] Admin generic booking editor direct status write नहीं करता; legacy `new → confirmed` dedicated Main-Admin RPC से होता है।
+- [x] Legacy Admin manual-payment RPC `srk_admin_record_manual_payment(uuid,text,text,text)` अब मौजूद; केवल Main Admin, completed/assigned/customer-approved quote, unpaid/pending, no Razorpay IDs, exact labour + materials total, receipt evidence और payout row।
+- [x] Admin booking table में labour/materials/quote-status का अलग data box; approved quote total को अलग-अलग मदों से match करना अनिवार्य।
+- [x] Read-only booking accounting reconciliation RPC/UI source मौजूद।
+- [ ] Admin/Staff role, support assignment, phone visibility, refund/cancellation/payout/KYC और सभी direct table-write ACL को isolated DB + browser में actor-by-actor runtime verify करें।
+- [ ] Admin customer-location/profile direct-edit paths और बाकी legacy direct updates का अंतिम privilege audit पूरा करें।
+
+## 4. Payment, billing और accounting — approved business rules
+
+- [x] Labour और materials अलग-अलग मदें हैं; materials पर platform commission नहीं लगाया जाता।
+- [x] Electrician-supplied materials के लिए itemized materials amount; customer स्वयं सामग्री खरीद सकता है; unauthorized markup नहीं।
+- [x] Legacy approved quote total = `service_charge + materials_amount`; manual payment RPC इसी exact total को verify करती है।
+- [x] Legacy platform commission केवल labour/service_charge पर calculate होती है; payout में labour, materials, commission और electrician payable अलग fields हैं।
+- [x] New-category billing immutable server labour bill और अलग cancellation-fee ledger से reconcile होती है।
+- [x] Billing paise में integer arithmetic और half-up rounding rule documented/implemented in approved calculation paths.
+- [x] Manual payment evidence में unique booking, method, receipt/UTR, recorder और timestamp।
+- [x] Payment और refund paths Razorpay IDs/verified provider evidence से अलग रखे गए; manual RPC Razorpay-linked booking स्वीकार नहीं करती।
+- [ ] Legacy manual payment migration + pgTAP को isolated PostgreSQL में चलाएँ; duplicate/concurrent payment, rollback, payout-row trigger और customer receipt runtime verify करें।
+- [ ] Legacy commission trigger और completion/accounting path का end-to-end runtime reconciliation करें।
+
+## 5. Push Notification — implementation और उपलब्ध verification
+
+- [x] Trusted server-side sender, live offer revalidation, private subscription ownership/RLS और least-privilege grants।
+- [x] Durable outbox, per-device delivery ledger, bounded retry/backoff, lease fencing, dead-letter recovery और health RPC।
+- [x] Worker, notification click routing और delivered-device preservation logic।
+- [x] Full Node test suite **87/87 PASS**; focused security suites **55/55 PASS**; Push-specific source tests **37/37 PASS**।
+- [x] Deno Edge Function check PASS।
+- [x] चार Push migrations disposable local PostgreSQL 18.6 में apply; claim/finish, concurrent claims, lease fencing/reclaim, stale token rejection, dead-row recovery, health counts और role/RLS checks runtime PASS।
+- [ ] Managed Supabase schema/role parity पुनः जाँचें; पिछली read-only inventory में `job_offers.expires_at` और `electrician_profiles.available_for_work` Production में अनुपस्थित थे।
+- [ ] Isolated Edge Function ↔ Netlify scheduled worker ↔ provider delivery integration, partial provider failure, cleanup cascade और real alert-delivery verify करें।
+- [ ] Worker pause → schema/trigger swap → Edge deploy → synthetic delivery → worker enable तथा rollback rehearsal करें।
+
+## 6. Welcome Screen और Founder Photo
+
+**Owner-approved asset:** 15 नवम्बर 2026 को भेजी गई latest portrait — black button-up shirt, arms folded, waist-up crop, blue corporate background. पुरानी garden photo का उपयोग नहीं करना है। Attachment ID: `file_000000005f588210ac3459ffcfa3fdfe`.
+
+- [ ] इसी exact approved portrait का binary recover करके Feature Branch में commit करें।
+- [ ] वास्तविक website Welcome Screen बनाएँ/restore करें; वर्तमान `index.html` redirect को Welcome Screen की जरूरत के अनुसार ठीक करें।
+- [ ] Portrait को natural proportions और professional crop के साथ Welcome Screen में integrate करें।
+- [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
+- [ ] Owner visual acceptance लें।
+- [ ] Desktop और responsive/mobile presentation final consolidated QA में verify करें।
+
+## 7. Documentation और source consistency
+
+- [x] README phone visibility policy owner-approved rule के अनुसार सुधारी गई।
+- [ ] README endpoints, feature descriptions और all portal UI copy को latest source से अंतिम बार मिलाएँ।
+- [ ] Customer, Electrician, Admin और Staff के हर visible button/action को source/API contract से one-by-one reconcile करें; कोई dead button, missing field, placeholder या stale label न छोड़े।
+
+## 8. Test, release और approval gates
+
+- [x] Latest available full Node test run: **87 passed / 0 failed**।
+- [x] Push Deno check और local PostgreSQL Push migration/RPC runtime checks PASS।
+- [ ] ऊपर सूचीबद्ध शेष Customer/Electrician/Admin/Staff/legacy-payment SQL और browser workflows के isolated runtime tests पूरे करें।
+- [ ] सभी implementation और internal checks पूरे होने के बाद ही एक consolidated desktop + mobile QA pass करें; बीच में अलग mobile test नहीं।
+- [ ] यदि final end-to-end testing के लिए अलग Supabase staging branch/subscription जरूरी हो, तो पहले लागत बताकर owner की स्पष्ट अनुमति लें। अभी कोई paid Development Branch न बनाएँ।
+- [ ] Vercel Preview/build सफलतापूर्वक verify करें; पिछली failure `upgradeToPro=build-rate-limit` थी, इसलिए उसे application test failure या successful build न मानें।
+- [ ] PR #8 को review-ready करें; owner की स्पष्ट अनुमति के बिना merge न करें।
+- [ ] Owner की अलग स्पष्ट अनुमति के बिना Production migration, Auth/Storage/settings, provider refund/Route, real SMS/OTP, push send, deployment या go-live न करें।
+
+---
+
+## अभी का साफ निष्कर्ष
+
+**Feature implementation:** कई मुख्य Customer, Electrician, Admin/Staff, payment/refund, KYC, timer, dispatch और Push workflows Feature Branch में implement हैं; legacy manual-payment source gap भी अभी जोड़ा गया है।  
+**अभी का सबसे स्पष्ट source-level blocker:** exact approved founder portrait binary और Welcome Screen integration।  
+**अभी का मुख्य verification blocker:** non-Push database/RPC/browser end-to-end runtime; Push के local PostgreSQL tests सफल हैं, लेकिन managed Supabase parity और Edge↔Netlify/provider integration बाकी है।  
+**Production:** कोई migration apply, merge, deployment या live payment action नहीं किया गया है।
 
