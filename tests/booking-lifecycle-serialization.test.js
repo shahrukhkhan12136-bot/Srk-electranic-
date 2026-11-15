@@ -181,7 +181,9 @@ test('electrician timer RPCs authorize the exact assigned profile, not only the 
 });
 
 test('Customer and Electrician SOS require explicit reason selection and separate final send action', () => {
-  for (const [source, openFn, cancelFn] of [[customer, 'openCustomerSosReasons', 'cancelCustomerSosSelection'], [electrician, 'openElectricianSosReasons', 'cancelElectricianSosSelection']]) {
+  const customerSos = customer.slice(customer.indexOf('let customerSosBusy=false;'), customer.indexOf('async function customerRespondWorkCompletion'));
+  const electricianSos = electrician.slice(electrician.indexOf('let electricianSosBusy=false;'), electrician.indexOf('async function electricianRequestWorkStart'));
+  for (const [source, openFn, cancelFn] of [[customerSos, 'openCustomerSosReasons', 'cancelCustomerSosSelection'], [electricianSos, 'openElectricianSosReasons', 'cancelElectricianSosSelection']]) {
     assert.match(source, /srk_create_sos_alert/);
     for (const code of ['customer_at_risk', 'electrician_at_risk', 'violence_or_other_emergency']) assert.ok(source.includes(code));
     assert.match(source, /p_reason:reason/);
@@ -190,8 +192,9 @@ test('Customer and Electrician SOS require explicit reason selection and separat
     assert.match(source, /कारण चुनें। अलर्ट केवल “SOS भेजें” दबाने पर बनेगा।/);
     assert.match(source, /disabled/);
     assert.doesNotMatch(source, /p_booking_id:|p_details:|p_location_lat:|p_location_lng:/);
-    assert.match(source, /पुलिस को ऐप से अपने-आप कॉल या संदेश नहीं जाएगा/);
   }
   assert.doesNotMatch(customer, /customerSosBooking|customerSosDetails/);
   assert.doesNotMatch(electrician, /electricianSosBooking|electricianSosDetails/);
+  assert.match(customerSos, /पुलिस को ऐप से अपने-आप कॉल या संदेश नहीं जाएगा/);
+  assert.match(electricianSos, /पुलिस को ऐप से अपने-आप कॉल या संदेश नहीं जाएगा/);
 });
