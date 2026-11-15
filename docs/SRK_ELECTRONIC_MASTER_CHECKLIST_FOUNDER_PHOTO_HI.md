@@ -236,4 +236,4 @@
 - [x] Printable verified-payment receipt now uses the selected Hindi/English language, matching HTML `lang`, localized labels and locale-formatted dates.
 - [x] Added regression assertions for dynamic payment strings, receipt language, date locale and translator scoping.
 - [ ] Remaining non-payment dynamic content and any unmapped server-provided free-text descriptions still need full coverage.
-- [ ] Latest-head CI and browser runtime verification remain pending.
+- [x] Latest-head Node CI passed on commit `70f65c1` (run `43706978870`; install + full `npm test` successful). Browser runtime verification remains pending.
