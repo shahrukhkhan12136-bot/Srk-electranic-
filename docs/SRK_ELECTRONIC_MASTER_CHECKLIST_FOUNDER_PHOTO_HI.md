@@ -15,7 +15,7 @@
 - बाकी मदों में isolated runtime/database tests, Main Production schema parity, browser/mobile visual QA और release/owner approval शामिल हैं।
 - **GPT-1 का अलग कार्यक्षेत्र:** Customer (10), Electrician (10), Welcome Screen/Founder Photo (6) — कुल 26 मदों में 20 पूर्ण, 6 शेष: **77% पूरा / 23% बाकी**। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
 - Admin Panel के शीर्ष पर पूरे प्रोजेक्ट का कार्ड और GPT-2 का अलग कार्ड पहले से दर्ज हैं; GPT-1 का प्रतिशत इस checklist/progress log में अलग दिखाया जाएगा।
-- **GPT नंबर 2 का अलग कार्यक्षेत्र:** Admin/Support Staff (13), Payment/Accounting (10), Main Database audit/parity (16) — कुल 39 मदों में 26 पूर्ण, 13 शेष: **67% पूरा / 33% बाकी**। GPT-1 के Customer/Electrician कार्य इसमें शामिल नहीं हैं।
+- **GPT नंबर 2 का अलग कार्यक्षेत्र:** Admin/Support Staff (13), Payment/Accounting (10), Main Database audit/parity (16) — कुल 39 मदों में 27 पूर्ण, 12 शेष: **69% पूरा / 31% बाकी**। GPT-1 के Customer/Electrician कार्य इसमें शामिल नहीं हैं।
 - Admin Panel में पूरे प्रोजेक्ट के कार्ड के नीचे GPT-2 का अलग प्रगति कार्ड भी दिखाया गया है।
 
 ---
@@ -60,7 +60,7 @@
 - [x] Admin booking table में labour/materials/quote-status का अलग data box; approved quote total को अलग-अलग मदों से match करना अनिवार्य।
 - [x] Read-only booking accounting reconciliation RPC/UI source मौजूद।
 - [ ] Admin/Staff role, support assignment, phone visibility, refund/cancellation/payout/KYC और सभी direct table-write ACL को isolated DB + browser में actor-by-actor runtime verify करें।
-- [ ] Admin customer-location/profile direct-edit paths और बाकी legacy direct updates का अंतिम privilege audit पूरा करें।
+- [x] Admin booking customer-location और legacy quote direct-edit paths का source/privilege audit पूरा: दोनों UI writes Main-Admin-only, row-locked RPCs पर बदले; location change before/after `srk_admin_audit_events` में दर्ज; `service_bookings` के authenticated direct UPDATE grants revoke किए। पूरे `admin.html` में कोई `.from(...).update(...)` direct table write शेष नहीं मिला। Profile/other legacy paths की runtime DB/browser verification अलग pending है।
 
 ## 4. Payment, billing और accounting — approved business rules
 
