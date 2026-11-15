@@ -1,5 +1,5 @@
 begin;
-select plan(54);
+select plan(56);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -198,6 +198,16 @@ select ok(position('CASH_FEE_WALLET_REFUND_MISMATCH' in pg_get_functiondef(
 select ok(position("v_refund_state in ('processed','manual_recorded')" in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'both provider-confirmed and manual full refunds require every created Route transfer to be reversed');
+
+
+select ok(exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass
+  and conname='srk_route_transfers_payment_recipient_uniq' and contype='u'),
+  'a provider payment has at most one logical transfer per recipient type');
+select ok(exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass
+  and contype='u' and pg_get_constraintdef(oid) like '%idempotency_key%')
+  and exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass
+  and contype='u' and pg_get_constraintdef(oid) like '%transfer_id%'),
+  'Route transfer idempotency key and provider transfer ID are unique');
 
 select * from finish();
 rollback;
