@@ -3401,3 +3401,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Source review से booking-first lock order दोनों paths में consistent दिखा; इससे intended serialization contract स्पष्ट है, लेकिन concurrent payout-vs-refund race का PostgreSQL runtime प्रमाण नहीं है। Double-submit, refund-after-payout, trigger execution और rollback behavior अभी isolated PostgreSQL/pgTAP में चलाना बाकी है।
 - Node test file में full-amount reconcile/recovery guards के source assertions मौजूद हैं; ये SQL execution का विकल्प नहीं। Current PR #8 head `63c95b0bd4c2cade65f2aafd7a2618516c3a9a8e` का latest Node CI run `43721372919` failed हुआ: test 33 `booking-lifecycle-serialization.test.js` base Timer migration के schema-qualified INSERT को गलत Migration में ढूँढ रहा है। GPT-2 ने GPT-1 की shared test/migration files नहीं बदलीं।
 - Checklist counts अपरिवर्तित: GPT-2 **27/39 = 69%**, 12 शेष। PR #8 Draft/Open/Unmerged; कोई Production DB change, real refund/transfer, merge या deployment नहीं।
+
+
+## 2026-11-15 — Disposable PostgreSQL baseline feasibility review
+
+- Feature Branch के recursive Git tree में कुल 71 SQL migration files मिलीं।
+- `COMPLETE_DATABASE_SETUP.sql` में केवल 5 base tables (`service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers`, `srk_admin_users`) हैं; यह 71 migrations के पूरे dependency baseline का प्रमाण नहीं है। `SUPABASE_SCHEMA.sql` में 4 tables और `PORTAL_SCHEMA.sql` मुख्यतः auth.users तथा portal linkage पर निर्भर है।
+- मौजूदा `.github/workflows/supabase-schema-ci.yml` पुराने branch ref पर gated है, `SUPABASE_DB_URL` secret मांगता है और Production से schema dump करता है; यह नई feature branch के लिए isolated-from-scratch migration harness नहीं है। इसे trigger नहीं किया गया। कोई production secret, schema export या database access नहीं हुआ।
+- निष्कर्ष: अभी disposable PostgreSQL/pgTAP baseline को reproducible और complete कहना संभव नहीं। अगला सुरक्षित कदम migrations की dependency graph और Supabase platform prerequisites (auth/storage/extensions/roles) को catalog करके अलग local-only fixture बनाना है; उसके बाद ही ephemeral PostgreSQL CI जोड़ना उचित होगा।
+- कोई migration/test file या workflow बदली नहीं गई; केवल यह feasibility finding progress log में दर्ज है। GPT-2 checklist **27/39 = 69%** अपरिवर्तित। PR #8 Draft/Open/Unmerged; Production पर कोई बदलाव नहीं।
