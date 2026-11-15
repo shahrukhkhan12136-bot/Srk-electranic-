@@ -399,3 +399,53 @@ If the actual history table schema differs, inspect its columns first as describ
 - Work-timer migration source: https://github.com/shahrukhkhan12136-bot/Srk-electranic-/blob/feat/customer-login-first-dashboard-20261114/supabase/migrations/20261114240000_server_authoritative_customer_approved_work_timer.sql
 - Work lifecycle history migration: https://github.com/shahrukhkhan12136-bot/Srk-electranic-/blob/feat/customer-login-first-dashboard-20261114/supabase/migrations/20261114250000_admin_work_dispute_review_and_immutable_history.sql
 - Work-start RPC correction migration: https://github.com/shahrukhkhan12136-bot/Srk-electranic-/blob/feat/customer-login-first-dashboard-20261114/supabase/migrations/20261114260000_fix_work_start_rpc_and_append_only_event_history.sql
+
+
+## 16. Owner-provided read-only Production evidence — 16 Nov 2026
+
+### Evidence supplied to GPT-2
+
+The following results were supplied by the user as the output of an additional read-only check. GPT-2 did not independently connect to Production or rerun these queries; treat them as owner-provided evidence pending preservation of the original query output.
+
+- Environment: Supabase Production.
+- Reported query: `version = '20261114240000'`.
+- Reported result: no matching row (`[]`).
+- Reported Production migration inventory's latest visible entries include:
+  - `20261115091906 — retire_unused_legacy_accept_electrician_job`
+  - `20261115092149 — retire_unused_razorpay_route_transfer_ledger`
+- Reported Live Catalog: both relevant constraints are present, and `awaiting_work_start_approval` is present.
+- Git branch source: `20261114240000_server_authoritative_customer_approved_work_timer.sql` exists.
+- Reported Git file SHA: `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe` (matches the current branch file blob SHA observed during the source review).
+- Reported migration SQL defines both constraints and includes `awaiting_work_start_approval`.
+- Reported environment metadata: PostgreSQL 17.11; SQL client version unavailable from connector.
+- Reported check timestamp: 16 Nov 2026, 03:44:48 IST.
+- Reported safety: no Production changes, no migration apply/repair, no deployment, and no customer or business records read.
+
+### Reconciliation
+
+| Evidence item | Production (owner-provided) | Git source (reviewed) | Status |
+|---|---|---|---|
+| Both booking constraints | Present in Live Catalog | Defined by source migrations | Definitions align at a high level; exact live definition text should remain attached to §14 evidence |
+| `awaiting_work_start_approval` | Present in Live Catalog | Explicitly added by `20261114240000` | State exists in both reported catalog and source |
+| Migration history version `20261114240000` | No matching row returned | File exists | **Provenance unresolved** |
+| Current Git file SHA | Not applicable | `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe` | Source identity recorded |
+
+### Updated conclusion
+
+The owner-provided evidence strengthens the observation that the Production catalog currently contains the two constraints and the `awaiting_work_start_approval` state, while the Git source migration `20261114240000` also defines them. However, the reported absence of a `20261114240000` row in Production migration history means the migration's application/provenance is **not established** by the evidence currently available.
+
+Do not infer that the migration is simply missing and do not treat the history result as authorization to repair it. Plausible explanations are not ranked or asserted here; resolving provenance requires the exact migration inventory/history output and any independently retained deployment record, reviewed by the Database Owner. A history row's absence alone does not identify how the live catalog reached its current state.
+
+### Required next evidence-only step
+
+Preserve the original read-only outputs (redacting project identifiers if desired, and never including connection strings or secrets) for:
+1. the exact history query and its empty result;
+2. the relevant inventory rows and the inventory's scope/ordering;
+3. the exact `pg_get_constraintdef` output, `convalidated`, and the relevant column metadata from §14;
+4. the Production environment label and timestamp.
+
+Then compare the evidence with the Git source and any Database Owner-held deployment record. No schema change, migration repair, migration replay, `db push`, deployment, rename, delete, reorder, or other remediation is authorized by this finding. Any future remediation requires separate explicit Database Owner approval.
+
+### Evidence boundary
+
+This section records user-supplied Production query results; it is not an independent Production verification by GPT-2. No database connection was opened by GPT-2, no SQL was executed by GPT-2, no Production data was changed or read by GPT-2, and no GPT-1 Customer/Electrician/Welcome source was modified.
