@@ -100,3 +100,14 @@ RPC: `public.srk_admin_get_booking_accounting_reconciliation(uuid)`
 - `admin.html` में Main Admin के लिए Booking UUID आधारित panel जोड़ा गया; रिपोर्ट और exception list पढ़ सकता है। यह केवल UI source integration है, runtime browser test नहीं।
 
 pgTAP contract अब 43 planned assertions है। Static count/plan verification: 43/43। pgTAP runtime अभी execute नहीं हुआ। Production catalog में नई cancellation-fee tables अनुपस्थित हैं, इसलिए यह migration live पर apply नहीं की गई; report source Feature Branch में ही है।
+
+
+## 11. Refund / Wallet / Payout evidence cross-check (2026-11-15)
+
+अगली गहरी source समीक्षा में रिपोर्ट के तीन blind spots ठीक किए:
+- Cash/manual payment को verified मानने से पहले matching `srk_manual_payment_entries` row और exact captured amount आवश्यक है; Razorpay payment ID मौजूद हो तो वह provider payment evidence के रूप में उपयोग होता है। Missing/mismatched evidence exception बनता है।
+- Refund record का Razorpay payment ID मूल booking payment से match होना चाहिए; manual refund row का payment_entry_id उसी booking की matching amount वाली manual payment entry से match होना चाहिए।
+- Cash cancellation-fee wallet refund credit का reference debt_id होता है, जबकि original electrician debit fee_item_id से जुड़ा होता है। Report अब दोनों references पढ़ती है, जिससे reversal credit छूटता नहीं।
+- Payout record में electrician_profile_id वर्तमान assigned electrician से match होना चाहिए और booking completed होनी चाहिए; अन्यथा exception।
+
+इस समीक्षा के बाद pgTAP contract **47 assertions** पर है। Plan/count static check अगली verification pass में दोबारा चलाया जाएगा। Runtime pgTAP अभी भी execute नहीं हुआ।
