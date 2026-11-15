@@ -80,3 +80,15 @@
 - [x] Offer acceptance rechecks exact selected commercial tier and Admin-approved tier metadata.
 - [x] Added 2 pgTAP source assertions (sequential offer dispatch plan 16; not executed).
 - [ ] Execute relocation-vs-acceptance concurrency, stale-offer, and exact-tier acceptance tests in the approved isolated environment.
+
+
+### Electrician availability / relocation / KYC source audit — 15 November 2026
+- [x] Availability self-toggle is gated to the authenticated linked, Active, Admin-approved electrician profile.
+- [x] Offline transition closes only unaccepted offers and advances sequential dispatch; accepted assignments remain untouched in the reviewed source.
+- [x] Relocation request validates active approval, changed operating area, PIN/reason and one-pending-request constraint.
+- [x] Admin relocation review locks the request/profile, changes the active operating area only on approval, and closes/re-dispatches old-area unaccepted offers.
+- [x] Electrician KYC upload/list/preview and Admin review UI source paths reviewed, including private owner-scoped document-path RPC and short-lived signed preview.
+- [ ] Execute availability/relocation/KYC RLS, Storage and RPC tests in the approved isolated test environment.
+- [ ] Complete end-to-end electrician/Admin workflows after implementation is complete; final mobile QA remains deferred.
+
+**Evidence boundary:** This is source inspection only. No live availability/relocation/KYC mutation, migration apply, deployment or runtime verification is claimed.
