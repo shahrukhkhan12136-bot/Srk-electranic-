@@ -30,7 +30,9 @@ begin
      or coalesce(v_booking.amount_paid,0)<=0 then
     raise exception 'ONLY_VERIFIED_PAID_BOOKINGS_CAN_BE_REFUNDED';
   end if;
-  if v_booking.razorpay_order_id is not null or v_booking.razorpay_payment_id is not null then
+  if v_booking.razorpay_order_id is not null or v_booking.razorpay_payment_id is not null
+     or lower(coalesce(v_booking.payment_method,'')) like '%razorpay%'
+     or lower(coalesce(v_booking.payment_method,'')) like '%online%' then
     raise exception 'RAZORPAY_REFUNDS_MUST_USE_RAZORPAY_RECONCILIATION';
   end if;
 
