@@ -2728,3 +2728,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इस नए pgTAP assertion के बाद current HEAD `9ef6f5d755bd6ead9b67887daa3300b9863fa55e` पर नया CI run अभी उपलब्ध नहीं दिखा।
 - सीमा: 100/100 केवल Node/mock/source regression suite है। pgTAP runtime, live Supabase ACL/RPC, managed schema parity, browser E2E और Preview अभी शेष हैं।
 - PR #8 अभी Open + Draft + Unmerged है। कोई Production migration, merge, deployment, real payment/refund/payout, SMS/OTP या push send नहीं किया।
+
+
+## 2026-11-15 — GPT-1 latest CI and Welcome source recheck
+
+- Latest feature HEAD before this documentation update: `da65832bdd07ee1238d9b4c0829045d06349f95a`।
+- GitHub Actions run `43705984415`, job `132787042217`: **completed / success**।
+- Welcome source recheck: `index.html` redirects to `/welcome.html`; Welcome page references `/assets/srk-founder.jpg` and links to Customer, Electrician and Admin entry points.
+- Founder asset is present in source reference, but exact approved portrait visual match is not verified; desktop/mobile preview remains for the final consolidated QA pass.
+- Customer OTP Auth/SMS runtime, server-side abuse controls, session lifecycle, Payments/Support/Profile contracts and browser E2E remain open.
+- Full quotation retirement remains incomplete until GPT-2 Admin, manual-payment and accounting dependencies are safely retired. Historical paid/settled evidence remains preserved.
+- No Production migration, deployment, merge, real payment/refund/payout, SMS/OTP or push send was performed.
