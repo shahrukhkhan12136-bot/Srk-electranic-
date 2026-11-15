@@ -17,7 +17,7 @@ test('Admin refund queue does not offer another launch action after a processed 
 });
 
 test('Support Staff portal is isolated from Main Admin modules', () => {
-  assert.match(admin, /if\(staffOnly\)el\.classList\.toggle\('hidden',mode!=='staff'\);\s*else el\.classList\.toggle\('hidden',mode!=='main_admin'\);/);
+  assert.match(admin, /if\(staffOnly\)el\.classList\.toggle\('hidden',mode!=='staff'\);\s*else if\(adminShared\)el\.classList\.toggle\('hidden',mode!=='staff'&&mode!=='main_admin'\);\s*else el\.classList\.toggle\('hidden',mode!=='main_admin'\);/);
   assert.match(admin, /srk_admin_staff_register_session/);
   assert.match(admin, /srk_has_admin_permission/);
 });
