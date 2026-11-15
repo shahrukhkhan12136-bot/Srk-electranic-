@@ -229,3 +229,10 @@ test('Staff invite Edge Function fixes Support role and removes an orphan Auth u
   assert.match(staffFunction, /service\.auth\.admin\.deleteUser\(invited\.user\.id\)/);
   assert.match(staffFunction, /status: "invited"/);
 });
+
+
+test('Staff invite failure warns that the invitation email may already have been sent', () => {
+  assert.match(staffFunction, /invitation email may already have been sent/i);
+  assert.match(staffFunction, /ignore any invitation email/i);
+  assert.match(staffFunction, /Auth identity cleanup failed/i);
+});
