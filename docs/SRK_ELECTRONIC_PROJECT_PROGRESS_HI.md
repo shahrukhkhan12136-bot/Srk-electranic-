@@ -1956,3 +1956,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Accounting Reconciliation Design तैयार: `docs/SRK_ELECTRONIC_ACCOUNTING_RECONCILIATION_DESIGN_HI.md`। इसमें Customer collection/refund, Labour-only Company Commission, Electrician payable, Wallet posted ledger और Razorpay Route transfer/settlement के अलग-अलग authoritative स्रोत तथा read-only per-booking reconciliation प्रस्तावित है। किसी discrepancy पर auto-post/auto-transfer नहीं होगा।
 - सुरक्षित default दर्ज: Customer top-up और Wallet cash-out disabled ही रहेंगे; Electrician payable फिलहाल payout table में रहेगा, Wallet में duplicate earning credit नहीं बनेगा; Company commission को “received” तभी दिखाएँ जब platform Route transfer provider-side settled हो। Partial refund allocation अभी unsupported/fail-closed।
 - Reconciliation guard pgTAP plan ठीक करके **34 assertions / 34 planned checks** किया। ये source-level assertions हैं; runtime pgTAP अभी execute नहीं हुआ।
+
+
+### 2026-11-15 — Accounting reconciliation: read-only catalog and security contract
+
+- Production Supabase catalog को केवल read-only SQL से जाँचा: payout table की प्रति-booking uniqueness, चार अलग रकम (labour/materials/commission/payable), paid-record evidence constraint, RLS और authorized-electrician read policy सत्यापित हुए।
+- Live payout settlement RPC source में Main Admin authorization, booking-first row locking, verified payment + completed booking checks और payout snapshot बनाम booking labour/materials/commission/payable का exact comparison मिला। यह केवल वास्तविक bank/UPI transfer reference मिलने के बाद payout record को Paid दर्ज करता है; RPC खुद पैसा transfer नहीं करता।
+- Wallet ledger owner-read RLS और Route ledger का authenticated direct-read denial तथा bigint paise amount column catalog में सत्यापित हुए।
+- Live catalog में cancellation-fee item/ledger tables उपलब्ध नहीं थीं; वे Feature Branch की नई migration chain में हैं। इसलिए अभी reconciliation SQL view/RPC बनाना रोककर schema-chain gate रखा गया है—अधूरे live schema पर अनुमानित joins नहीं बनाए जाएँगे।
+- नया test: supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql — 20 planned assertions; payout, wallet और Route security/data contracts। Source/static review only; pgTAP runtime अभी execute नहीं हुआ।
+- Design doc में live-vs-branch boundary और implementation gate जोड़ा। कोई migration apply, financial row write, wallet posting, Route transfer, payout, provider API call, deploy, merge या mobile QA नहीं किया।
