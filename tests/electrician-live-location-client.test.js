@@ -50,7 +50,7 @@ test('push permission is requested directly from the enable-button gesture befor
 
 test('push notification click opens the exact offer using a validated same-origin route', () => {
   const worker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
-  assert.match(worker, /const CACHE='srk-electronic-v9'/);
+  assert.match(worker, /const CACHE='srk-electronic-v10'/);
   assert.match(worker, /const target=new URL\('\.\/electrician\.html',self\.registration\.scope\)/);
   assert.match(worker, /target\.searchParams\.set\('offerId',offerId\)/);
   assert.match(worker, /const offerId=event\.notification\.data\?\.offerId/);
