@@ -13,6 +13,10 @@ declare
   v_payment public.srk_manual_payment_entries%rowtype;
   v_payout public.srk_electrician_payouts%rowtype;
   v_request public.srk_booking_refund_requests%rowtype;
+  v_labour public.srk_booking_labour_bills%rowtype;
+  v_labour_paise bigint;
+  v_fee_paise bigint:=0;
+  v_expected_paise bigint;
   v_reference text:=btrim(coalesce(p_reference,''));
 begin
   if auth.uid() is null or not public.is_srk_admin() then
@@ -47,6 +51,47 @@ begin
   if not found then raise exception 'MANUAL_PAYMENT_AUDIT_RECORD_NOT_FOUND'; end if;
   if round(v_booking.amount_paid,2)<>round(v_payment.amount,2) then
     raise exception 'RECORDED_PAYMENT_AMOUNT_DOES_NOT_MATCH_BOOKING_AMOUNT';
+  end if;
+
+  -- New server-timed bookings must reconcile the manual refund to the same
+  -- immutable labour bill and settled cancellation-fee ledger used at collection.
+  -- Legacy quote bookings retain their separate historical payment evidence path.
+  if v_booking.selected_category is not null then
+    if v_booking.status is distinct from 'completed' then
+      raise exception 'NEW_CATEGORY_REFUND_REQUIRES_COMPLETED_BOOKING';
+    end if;
+
+    select * into v_labour
+      from public.srk_booking_labour_bills
+     where booking_id=p_booking_id
+       and customer_user_id=v_booking.customer_user_id
+     for share;
+    if not found or v_labour.labour_amount_paise is null
+       or v_labour.labour_amount_paise<=0
+       or v_labour.electrician_profile_id is distinct from v_booking.assigned_electrician_id then
+      raise exception 'IMMUTABLE_LABOUR_BILL_MISSING_OR_ASSIGNMENT_MISMATCH';
+    end if;
+
+    perform 1 from public.srk_booking_cancellation_fee_items
+     where booking_id=p_booking_id
+     for update;
+    if exists (
+      select 1 from public.srk_booking_cancellation_fee_items
+       where booking_id=p_booking_id and status is distinct from 'settled'
+    ) then
+      raise exception 'CANCELLATION_FEE_ITEMS_NOT_FULLY_SETTLED';
+    end if;
+    select coalesce(sum(amount_paise),0)::bigint
+      into v_fee_paise
+      from public.srk_booking_cancellation_fee_items
+     where booking_id=p_booking_id and status='settled';
+
+    v_labour_paise:=v_labour.labour_amount_paise;
+    v_expected_paise:=v_labour_paise+v_fee_paise;
+    if v_expected_paise<>round(v_booking.amount_paid*100)::bigint
+       or v_expected_paise<>round(v_payment.amount*100)::bigint then
+      raise exception 'MANUAL_REFUND_AMOUNT_DOES_NOT_MATCH_IMMUTABLE_LABOUR_AND_FEE_LEDGER';
+    end if;
   end if;
   if exists(select 1 from public.srk_manual_refund_entries r where r.booking_id=p_booking_id) then
     raise exception 'A_REFUND_HAS_ALREADY_BEEN_RECORDED_FOR_THIS_BOOKING';
