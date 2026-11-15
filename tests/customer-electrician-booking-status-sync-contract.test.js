@@ -6,6 +6,9 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const customer = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
 const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
+const serviceWorker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+const offerDispatchSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114210000_sequential_nearest_offer_dispatch.sql'), 'utf8');
+const offerExpiryWorker = fs.readFileSync(path.join(root, 'netlify/functions/expire-booking-offers.js'), 'utf8');
 const offerProjection = fs.readFileSync(path.join(root, 'supabase/migrations/20261115220000_retire_live_legacy_quotation_rpcs.sql'), 'utf8');
 const timelineSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114260000_fix_work_start_rpc_and_append_only_event_history.sql'), 'utf8');
 
@@ -349,4 +352,27 @@ test('Electrician notification deep links explain unavailable or non-actionable 
   assert.match(focus, /संभव है कि समय समाप्त हो गया हो/);
   assert.match(focus, /status\.setAttribute\('role','status'\)/);
   assert.match(focus, /params\.delete\('offerId'\)/);
+});
+
+test('Electrician offer expiry remains server-authoritative and advances the next eligible offer', () => {
+  assert.match(offerDispatchSql, /v_expires_at<=clock_timestamp\(\)/);
+  assert.match(offerDispatchSql, /SET status='expired',responded_at=clock_timestamp\(\)/);
+  assert.match(offerDispatchSql, /v_next:=private\.srk_dispatch_next_booking_offer\(v_booking_id\)/);
+  assert.match(offerDispatchSql, /'code','offer_expired'/);
+  assert.match(offerDispatchSql, /WHERE o\.status='offered' AND o\.expires_at<=clock_timestamp\(\)/);
+  assert.match(offerExpiryWorker, /srk_expire_and_advance_booking_offers/);
+  assert.match(offerExpiryWorker, /schedule: '\* \* \* \* \*'/);
+  const respond = functionBody(electrician, 'respond');
+  assert.match(respond, /data\?\.code==='offer_expired'/);
+  assert.match(respond, /await refresh\(\)/);
+});
+
+test('Service worker notification click routes to a validated electrician offer deep link', () => {
+  assert.match(serviceWorker, /self\.addEventListener\('push'/);
+  assert.match(serviceWorker, /payload\.offerId/);
+  assert.match(serviceWorker, /target\.searchParams\.set\('offerId',offerId\)/);
+  assert.match(serviceWorker, /self\.addEventListener\('notificationclick'/);
+  assert.match(serviceWorker, /self\.clients\.matchAll\(\{type:'window',includeUncontrolled:true\}\)/);
+  assert.match(serviceWorker, /client\.navigate\(target\.href\)/);
+  assert.match(serviceWorker, /self\.clients\.openWindow\(target\.href\)/);
 });
