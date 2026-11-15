@@ -474,3 +474,9 @@
 - अतिरिक्त जाँच: completed booking के labour-bill RPC में rejected transport पहले पूरे booking loader को रोक सकता था। अब प्रत्येक bill request अलग try/catch में है; bill अस्थायी रूप से न आए तो booking history फिर भी दिखाई देती है। उसी test file में इस failure path का source-contract assertion जोड़ा गया।
 - Exact latest head पर CI अभी सत्यापित नहीं है; live browser/Supabase और mobile QA लंबित हैं।
 - यह source-contract test है; browser/network fault injection, live Supabase RPC/RLS और mobile QA अभी बाकी हैं।
+
+
+### 2026-11-16 — Customer payment-method change transport handling
+- Customer के “Cash से Online भुगतान चुनें” action में RPC reject होने पर कोई local try/catch नहीं था; network failure unhandled rejection बन सकती थी और ग्राहक को स्पष्ट retry संदेश नहीं मिलता था।
+- RPC call को try/catch में रखा, success response में `data.success` की पुष्टि जोड़ी, और transport/अनिश्चित response पर सुरक्षित retry संदेश दिया। सफल बदलाव के बाद booking history refresh होती है।
+- Regression test जोड़ा गया। यह source-contract जाँच है; वास्तविक payment-method RPC, browser/network fault injection और mobile QA अभी लंबित हैं।
