@@ -3536,3 +3536,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - SOS requirement document में पुराना विरोधाभासी वाक्य सुधारा और GPT-1/GPT-2 integration gate दर्ज किया; commit `038f9da4096f7df16b9d5a16cb9ded2aa957b3cb`।
 - GPT-2 backend RPC, Admin/Support queue/acknowledgement, SMS/Push delivery और live E2E के लिए इस pass में सत्यापित evidence नहीं मिला; उन्हें pending ही रखा गया है। GPT-1 अगला कदम GPT-2 के वास्तविक contract/commit मिलने पर request/response और failure-state integration मिलाना है।
 - कोई Production DB/provider action, merge/deploy या mobile QA नहीं किया गया।
+
+
+## 2026-11-15 — GPT-1 Customer/Electrician/Welcome regression verification
+- Latest documentation commit `7b23a2c4e7ef6012413957f4553acf44a9fab7b6` पर Feature Branch Node workflow run `43727009844` सफल रहा; job `132851037444` completed/success। Logs में **163 tests, 163 pass, 0 fail, 0 cancelled, 0 skipped** सत्यापित हुए।
+- उसी run में Welcome Screen contract tests 162 और 163 पास हुए: approved founder photo reference/role routes और PWA start_url/offline cache entries की source assertions। `assets/srk-founder.jpg` branch में मौजूद है (blob SHA `b3e06e17aa8eedb9a8eb40ebc9e59088ebe9e11f`); `welcome.html` इसे `/assets/srk-founder.jpg` से लोड करता है और `sw.js` v10 cache में शामिल करता है।
+- Customer/Electrician timer UI source दोबारा जाँचा: दोनों apps accumulated server seconds + server `work_started_at` से display timer बनाते हैं; हर सेकंड UI refresh होता है। इसे अनुमानित display के रूप में दिखाया गया है, अंतिम बिल server-recorded duration से ही बनेगा।
+- यह source/Node regression verification है; वास्तविक browser rendering, image crop का visual approval, mobile device, database/pgTAP और full E2E runtime अभी नहीं जाँचे गए। इन्हें final consolidated QA में रखा गया है।
+- कोई Production DB, merge या deployment नहीं किया गया।
