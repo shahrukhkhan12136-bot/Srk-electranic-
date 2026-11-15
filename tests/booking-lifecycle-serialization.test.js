@@ -8,7 +8,7 @@ const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8')
 const customer = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
 const timerSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114240000_server_authoritative_customer_approved_work_timer.sql'), 'utf8');
 const startFixSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114260000_fix_work_start_rpc_and_append_only_event_history.sql'), 'utf8');
-const multiProfileBillSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261115120001_fix_multi_profile_electrician_labour_bill_access.sql'), 'utf8');
+const multiProfileBillSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261115145900_fix_multi_profile_electrician_labour_bill_access.sql'), 'utf8');
 
 function handler(source, name) {
   const start = source.indexOf('async function ' + name + '(');
