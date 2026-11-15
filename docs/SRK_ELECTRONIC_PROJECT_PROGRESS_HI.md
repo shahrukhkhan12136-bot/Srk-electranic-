@@ -4087,3 +4087,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Earlier pending run was superseded by this successful run. This is Node regression evidence only; PostgreSQL/pgTAP runtime, full migration replay, Production parity, and deployment remain unverified.
 - DDL status unchanged: `auth_user_id` has an authoritative migration DDL; `service_bookings.amount_paid` remains the only confirmed missing-column source gap. No guessed SQL or Production access.
 - Checklist percentages unchanged: GPT-2 27/39 = 69%; overall 56/86 = 65%.
+
+
+### 2026-11-15 18:39 UTC — Admin Panel में Pending payment को Paid चिह्नित करने की user-reported सूचना
+- उपयोगकर्ता ने पुष्टि की कि पहले Pending दिख रही payment को उन्होंने Admin Panel खोलकर स्वयं Paid चिह्नित कर दिया था। इसे इस प्रोजेक्ट की operational जानकारी के रूप में दर्ज किया गया है।
+- यह अभी user-reported स्थिति है; उपलब्ध इस सत्र में संबंधित booking/payment ID, immutable payment ledger, audit event या backend row को स्वतंत्र रूप से verify नहीं किया गया। इसलिए इसे provider से वास्तविक धन प्राप्ति, Razorpay settlement या bank credit का प्रमाण नहीं माना जाएगा।
+- आगे की reconciliation में Admin Panel status change और वास्तविक captured/settled payment evidence को अलग-अलग जाँचना है; केवल UI status के आधार पर दोबारा Pending या Paid overwrite नहीं करना है। कोई नया payment/refund/transfer action नहीं किया गया।
