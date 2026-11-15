@@ -3996,3 +3996,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इसी commit पर workflow runs `43740831240` और `43740826924` दोनों सफल हुए। सफल job log में `npm test`: 187/187 PASS, 0 FAIL, 0 skipped सत्यापित।
 - यह केवल Node.js source-regression CI है; PostgreSQL/pgTAP runtime, Supabase migration replay, Production parity या deployment प्रमाणित नहीं करता।
 - GPT-2 checklist 27/39 = 69% अपरिवर्तित। नवीनतम Master Checklist के अनुसार कुल project 56/86 = 65% है; पहले के 55/86 = 64% वाले पुराने progress log entries ऐतिहासिक snapshot हैं। CI maintenance को checklist completion नहीं गिना गया।
+
+
+### Historical Push subscription base migration recovery — 15 Nov 2026, 17:26 UTC
+- पुराने branch `feature/electrician-categories-hourly-booking` में मूल staged migration `20261111020000_add_electrician_push_subscriptions.sql` मिली।
+- Git source blob SHA `33ea8450fe892d40e6fab818c535aae53caf39f1`; exact source को current Feature Branch पर restore किया, commit `c3a34066edcfd8a67a95317ea0a880fb7c766a11`।
+- DDL `public.srk_push_subscriptions` table, Auth user FK, unique endpoint, Web Push key columns, timestamps, index और own-row RLS policy define करती है।
+- बाद की outbox migration की preflight `id,user_id,endpoint,p256dh,auth` contract से मेल खाती है; delivery ledger `id` FK से जुड़ती है।
+- Migration replay manifest current tree के अनुसार 77 SQL migrations पर refresh किया; नया restored migration inventory में शामिल है। Manifest commit `8769a398f1c357cf867941d007df6522513f057e`।
+- यह historical staged source recovery है; कोई PostgreSQL/Supabase database पर apply नहीं किया गया। pgTAP/runtime replay नहीं हुआ।
+- शेष base-schema source gaps: `service_bookings.amount_paid`, `electrician_profiles.auth_user_id`, और parent table `public.srk_booking_complaints`; duplicate `20261109` remote migration lineage भी unresolved है।
+- Checklist प्रतिशत नहीं बढ़ाया: GPT-2 27/39 = 69%; कुल project 56/86 = 65%। केवल source recovery/documentation को implementation completion नहीं गिना।
