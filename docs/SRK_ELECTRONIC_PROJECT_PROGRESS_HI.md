@@ -2851,3 +2851,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Welcome page audit: `welcome.html` routes to Customer, Electrician and Admin login pages and references `/assets/srk-founder.jpg`; the founder image asset exists in the feature branch. Exact approved portrait visual match and desktop/mobile visual preview remain unverified.
 - No Production deployment, merge, live booking, payment, GPS sharing, or Production database change was performed.
 - Remaining: browser runtime verification for language switching, receipt Print/PDF, GPS permission and stop-retry flow; then one consolidated final mobile QA pass after all implementation is complete.
+
+
+## 2026-11-15 — GPT #2 Route reconciliation deeper audit (open findings)
+
+- Re-checked the exact Feature Branch files: Route ledger migration, Route reconciliation migration `20261115170000_admin_route_transfer_accounting_reconciliation.sql` and pgTAP contract. The 55-assertion plan and Route source assertions are present; this remains source inspection, not a PostgreSQL runtime result.
+- Confirmed the read-only report now returns Route transfer rows/count, amount totals, recipient type, recipient user ID, linked account ID, provider transfer ID, transfer status and settlement status. It does not create or execute transfers.
+- Additional fail-closed gaps found for the next patch: the report does not compare an electrician Route row's `recipient_user_id` with the booking's assigned electrician; it also does not enforce a valid `transfer_status` + `settlement_status` combination (for example, `settled` settlement paired with a non-`processed` transfer). Therefore a clean reconciliation result is not yet sufficient proof that the correct recipient received settled funds.
+- Linked-account ID is returned as evidence but is not validated against an authoritative recipient-to-Route-account mapping in this report. Provider-side settlement confirmation/polling/webhook and bank receipt remain unverified; ledger fields alone are not bank proof.
+- Next safe Feature Branch work: inspect the authoritative electrician-to-Route-linked-account mapping and existing transfer lifecycle source, then add recipient identity + status-transition checks and corresponding tests. If no authoritative mapping/lifecycle exists, keep the report explicitly exception/Not Verified rather than infer success.
+- No live provider calls, transfers, refunds, payout changes, Production migration, deployment, merge or go-live.
