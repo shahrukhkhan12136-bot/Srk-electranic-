@@ -3427,3 +3427,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Repository में 33 pgTAP SQL contract files मौजूद हैं; Node test केवल उनके `plan()` बनाम assertion-call counts जाँचता है, PostgreSQL पर उन्हें execute नहीं करता। इसलिए अभी SQL runtime correctness का दावा नहीं।
 - इस चरण में कोई migration, fixture, CI workflow या GPT-1 shared file नहीं बदली गई। केवल source inventory; GPT-2 checklist **27/39 = 69%** अपरिवर्तित। Production/secret access नहीं।
 - अगला कदम: minimal base schema को स्पष्ट dependency order में अलग local-only fixture के रूप में डिजाइन करना, Supabase platform stubs को test-only रखना, फिर disposable PostgreSQL में migrations और pgTAP execute करने से पहले clean-room replay का dry-run।
+
+
+## 2026-11-15 — Isolated PostgreSQL baseline design और local runtime availability
+
+- नया डिज़ाइन दस्तावेज़ `docs/LOCAL_POSTGRES_BASELINE_DESIGN_HI.md` जोड़ा। इसमें disposable-only PostgreSQL bootstrap, Auth/Storage test doubles, legacy application baseline, explicit migration replay, duplicate-version stop condition, pgTAP execution और CI isolation के acceptance gates दर्ज हैं।
+- Baseline को छह layers में अलग रखा: PostgreSQL roles/extensions/schemas, Auth, Storage, legacy application tables, migration replay और वास्तविक pgTAP execution। किसी table/column को अनुमान से जोड़ने के बजाय पहले source-backed dependency manifest बनाने का नियम रखा।
+- Local environment जाँच में `psql`, `postgres`, `docker`, `podman` और `pg_virtualenv` उपलब्ध नहीं मिले; इसलिए इस session में disposable PostgreSQL/pgTAP runtime चलाना संभव नहीं। कोई fake runtime PASS या SQL execution दावा नहीं।
+- PR #8 फिर से जाँचा: Open, Draft, Unmerged; head `92667b07b41006e084dafa1c99a50e8f1136373a`। कोई merge/deploy नहीं।
+- केवल नया Hindi design document commit किया; कोई migration, fixture, workflow, Production DB या GPT-1 shared source file नहीं बदली। GPT-2 checklist **27/39 = 69%** अपरिवर्तित।
+- अगला कदम: सभी migration SQL और pgTAP tests से exact table/column/platform-object dependency manifest निकालना; उसके बाद ही executable fixture या CI service पर काम।
