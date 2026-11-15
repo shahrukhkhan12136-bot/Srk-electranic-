@@ -124,7 +124,7 @@ BEGIN
     WHERE o.attempt_count < 8
       AND o.next_attempt_at <= clock_timestamp()
       AND (o.delivery_status='pending'
-        OR (o.delivery_status='processing' AND o.locked_until < clock_timestamp()))
+        OR (o.delivery_status='processing' AND (o.locked_until IS NULL OR o.locked_until < clock_timestamp())))
     ORDER BY o.created_at
     FOR UPDATE SKIP LOCKED
     LIMIT greatest(1,least(coalesce(p_limit,20),50))
@@ -148,7 +148,7 @@ SET search_path TO 'pg_catalog','public','srk_private','pg_temp'
 AS $function$
 DECLARE v_row srk_private.srk_push_delivery_outbox%ROWTYPE;
 BEGIN
-  IF auth.role() <> 'service_role' THEN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
   END IF;
   SELECT * INTO v_row FROM srk_private.srk_push_delivery_outbox
