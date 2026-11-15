@@ -2,7 +2,7 @@
 
 **स्थिति:** Static inventory only — यह execution-ready replay plan नहीं है।  
 **जाँचा गया commit:** `c3a34066edcfd8a67a95317ea0a880fb7c766a11`  
-**कुल SQL migrations:** 77  
+**कुल SQL migrations:** 78  
 **Production:** कोई access/apply नहीं। PostgreSQL/pgTAP runtime नहीं चला।
 
 ## 1. महत्त्वपूर्ण रोक (Do not replay yet)
@@ -13,14 +13,14 @@
    Source history में duplicate/follow-up संकेत हैं, लेकिन remote Supabase migration history और deployed body का प्रमाण नहीं है। Rename, delete या history edit न करें।
 2. Starter schema में `service_bookings.amount_paid` नहीं है। Historical source/deployment artifact से इसका exact type, precision, nullability, default और constraints अभी नहीं मिले।
 3. Starter schema `electrician_profiles.user_id` जोड़ता है, लेकिन `auth_user_id` की मूल column definition अभी नहीं मिली।
-4. Support conversation migration `srk_booking_complaints` parent table को पहले से मौजूद मानती है; जाँची गई migration files में उसका मूल CREATE TABLE source अभी नहीं मिला।
+4. Complaint parent/event tables का मूल historical migration source पुराने branch `work/separate-customer-electrician-portals` में मिला और exact DDL/functions को current Feature Branch में `20261110040000_customer_admin_complaints.sql` के रूप में restore किया गया (source commit `2390a7dd3db35f620f41edc22253602866999fb0`)। यह source recovery है; PostgreSQL replay/runtime या Production parity अभी सत्यापित नहीं।
 5. Push prerequisite के लिए historical branch `feature/electrician-categories-hourly-booking` में staged migration `20261111020000_add_electrician_push_subscriptions.sql` मिली। उसी exact 1,317-byte SQL source (blob `33ea8450fe892d40e6fab818c535aae53caf39f1`) को वर्तमान Feature Branch में पुनर्स्थापित किया गया। यह source recovery है, Production deployment या runtime validation का प्रमाण नहीं। बाद की outbox/ledger migrations आवश्यक columns से मेल खाती दिखती हैं; full replay अभी बाकी है।
 6. Historical starter SQL complete current baseline नहीं है। Production schema parity, exact column contracts, RLS/ACL, trigger/function dependencies और existing migration history सत्यापित नहीं।
 7. इसलिए नीचे की सूची executable replay order नहीं है। पहले authoritative base schema और remote history के स्वीकृत read-only प्रमाण चाहिए।
 
 ## 2. Static filename/version-sorted inventory
 
-यह सूची वर्तमान Feature Branch commit `c3a34066edcfd8a67a95317ea0a880fb7c766a11` के recursive Git tree से बनाई गई है। कुल 77 SQL migration files हैं। यह केवल filename/version inventory है; duplicate 8-digit `20261109` entries को अभी भी अलग remote migration identities मानकर replay नहीं करना है।
+यह सूची मूल 77-file inventory पर आधारित है; इसके बाद historical complaint base migration `20261110040000_customer_admin_complaints.sql` restore की गई, इसलिए वर्तमान inventory 78 SQL migration files है। यह केवल filename/version inventory है; duplicate 8-digit `20261109` entries को अभी भी अलग remote migration identities मानकर replay नहीं करना है।
 
 1. `20261108120608_add_public_api_rate_limiting.sql`
 2. `20261108120658_enable_rls_public_api_rate_limits.sql`
@@ -38,67 +38,68 @@
 14. `20261109103143_move_customer_call_contact_lookup_to_private.sql`
 15. `20261109_allow_quote_approval_booking_states.sql`
 16. `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
-17. `20261110140000_restore_missing_customer_booking_quote_columns.sql`
-18. `20261111020000_add_electrician_push_subscriptions.sql`
-19. `20261113220000_customer_support_conversation_schema.sql`
-20. `20261113230000_support_attachment_paths_and_admin_message_list.sql`
-21. `20261114125844_restore_financial_audit_core_schema.sql`
-22. `20261114130000_harden_electrician_profile_identity_linking.sql`
-23. `20261114150000_customer_booking_submission_idempotency.sql`
-24. `20261114160000_customer_selected_rate_tier_and_server_estimate.sql`
-25. `20261114180000_harden_customer_avatar_object_integrity.sql`
-26. `20261114190000_customer_receipt_immutable_labour_amount.sql`
-27. `20261114200000_customer_payment_refund_history_rpc.sql`
-28. `20261114201428_customer_profile_saved_addresses_private_storage.sql`
-29. `20261114202250_customer_complaint_customer_safe_projection.sql`
-30. `20261114202656_customer_change_payment_method_rpc.sql`
-31. `20261114210000_sequential_nearest_offer_dispatch.sql`
-32. `20261114220000_admin_approved_electrician_relocation.sql`
-33. `20261114230000_recheck_electrician_current_area_before_offer.sql`
-34. `20261114240000_server_authoritative_customer_approved_work_timer.sql`
-35. `20261114250000_admin_work_dispute_review_and_immutable_history.sql`
-36. `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql`
-37. `20261114270000_admin_only_cancellation_requests_and_decisions.sql`
-38. `20261114280000_cancellation_fee_carry_forward_and_accounting.sql`
-39. `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql`
-40. `20261114300000_admin_customer_support_thread_replies.sql`
-41. `20261114310000_electrician_self_availability.sql`
-42. `20261114320000_booking_scoped_live_electrician_location.sql`
-43. `20261114330000_electrician_private_kyc_document_preview.sql`
-44. `20261114340000_electrician_self_profile_name_edit.sql`
-45. `20261114350000_electrician_support_tickets_and_admin_inbox.sql`
-46. `20261114360000_new_category_electrician_payout_reconciliation.sql`
-47. `20261114370000_electrician_offer_details_immediate_booking_fields.sql`
-48. `20261114380000_electrician_phone_change_admin_approval.sql`
-49. `20261114390000_admin_staff_rbac_foundation.sql`
-50. `20261114410000_razorpay_webhook_event_inbox.sql`
-51. `20261115091906_retire_unused_legacy_accept_electrician_job.sql`
-52. `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql`
-53. `20261115100000_customer_refund_request_contract.sql`
-54. `20261115110000_admin_refund_review_queue_and_decisions.sql`
-55. `20261115120000_durable_razorpay_refund_recovery_evidence.sql`
-56. `20261115120001_fix_multi_profile_electrician_labour_bill_access.sql`
-57. `20261115130000_admin_manual_refund_request_completion.sql`
-58. `20261115140000_electrician_kyc_review_and_activation_gate.sql`
-59. `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql`
-60. `20261115150000_admin_readonly_booking_accounting_reconciliation.sql`
-61. `20261115160000_legacy_booking_status_write_guard.sql`
-62. `20261115170000_admin_route_transfer_accounting_reconciliation.sql`
-63. `20261115170001_durable_push_delivery_outbox.sql`
-64. `20261115180000_admin_route_recipient_and_settlement_validation.sql`
-65. `20261115180001_push_subscription_delivery_ledger.sql`
-66. `20261115190000_enforce_single_primary_route_bank_link.sql`
-67. `20261115190001_push_delivery_health_monitoring.sql`
-68. `20261115200000_harden_financial_admin_rpc_search_path.sql`
-69. `20261115200001_push_delivery_lease_fencing.sql`
-70. `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`
-71. `20261115210001_harden_legacy_financial_read_rpc_search_paths.sql`
-72. `20261115220000_retire_live_legacy_quotation_rpcs.sql`
-73. `20261115230000_admin_booking_direct_write_closure.sql`
-74. `20261115240000_harden_refund_recovery_full_amount.sql`
-75. `20261115250000_harden_refund_reconcile_full_amount.sql`
-76. `20261115260000_sos_admin_support_alerts.sql`
-77. `20261115270000_fix_customer_payment_method_unicode_contract.sql`
+17. `20261110040000_customer_admin_complaints.sql`
+18. `20261110140000_restore_missing_customer_booking_quote_columns.sql`
+19. `20261111020000_add_electrician_push_subscriptions.sql`
+20. `20261113220000_customer_support_conversation_schema.sql`
+21. `20261113230000_support_attachment_paths_and_admin_message_list.sql`
+22. `20261114125844_restore_financial_audit_core_schema.sql`
+23. `20261114130000_harden_electrician_profile_identity_linking.sql`
+24. `20261114150000_customer_booking_submission_idempotency.sql`
+25. `20261114160000_customer_selected_rate_tier_and_server_estimate.sql`
+26. `20261114180000_harden_customer_avatar_object_integrity.sql`
+27. `20261114190000_customer_receipt_immutable_labour_amount.sql`
+28. `20261114200000_customer_payment_refund_history_rpc.sql`
+29. `20261114201428_customer_profile_saved_addresses_private_storage.sql`
+30. `20261114202250_customer_complaint_customer_safe_projection.sql`
+31. `20261114202656_customer_change_payment_method_rpc.sql`
+32. `20261114210000_sequential_nearest_offer_dispatch.sql`
+33. `20261114220000_admin_approved_electrician_relocation.sql`
+34. `20261114230000_recheck_electrician_current_area_before_offer.sql`
+35. `20261114240000_server_authoritative_customer_approved_work_timer.sql`
+36. `20261114250000_admin_work_dispute_review_and_immutable_history.sql`
+37. `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql`
+38. `20261114270000_admin_only_cancellation_requests_and_decisions.sql`
+39. `20261114280000_cancellation_fee_carry_forward_and_accounting.sql`
+40. `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql`
+41. `20261114300000_admin_customer_support_thread_replies.sql`
+42. `20261114310000_electrician_self_availability.sql`
+43. `20261114320000_booking_scoped_live_electrician_location.sql`
+44. `20261114330000_electrician_private_kyc_document_preview.sql`
+45. `20261114340000_electrician_self_profile_name_edit.sql`
+46. `20261114350000_electrician_support_tickets_and_admin_inbox.sql`
+47. `20261114360000_new_category_electrician_payout_reconciliation.sql`
+48. `20261114370000_electrician_offer_details_immediate_booking_fields.sql`
+49. `20261114380000_electrician_phone_change_admin_approval.sql`
+50. `20261114390000_admin_staff_rbac_foundation.sql`
+51. `20261114410000_razorpay_webhook_event_inbox.sql`
+52. `20261115091906_retire_unused_legacy_accept_electrician_job.sql`
+53. `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql`
+54. `20261115100000_customer_refund_request_contract.sql`
+55. `20261115110000_admin_refund_review_queue_and_decisions.sql`
+56. `20261115120000_durable_razorpay_refund_recovery_evidence.sql`
+57. `20261115120001_fix_multi_profile_electrician_labour_bill_access.sql`
+58. `20261115130000_admin_manual_refund_request_completion.sql`
+59. `20261115140000_electrician_kyc_review_and_activation_gate.sql`
+60. `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql`
+61. `20261115150000_admin_readonly_booking_accounting_reconciliation.sql`
+62. `20261115160000_legacy_booking_status_write_guard.sql`
+63. `20261115170000_admin_route_transfer_accounting_reconciliation.sql`
+64. `20261115170001_durable_push_delivery_outbox.sql`
+65. `20261115180000_admin_route_recipient_and_settlement_validation.sql`
+66. `20261115180001_push_subscription_delivery_ledger.sql`
+67. `20261115190000_enforce_single_primary_route_bank_link.sql`
+68. `20261115190001_push_delivery_health_monitoring.sql`
+69. `20261115200000_harden_financial_admin_rpc_search_path.sql`
+70. `20261115200001_push_delivery_lease_fencing.sql`
+71. `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`
+72. `20261115210001_harden_legacy_financial_read_rpc_search_paths.sql`
+73. `20261115220000_retire_live_legacy_quotation_rpcs.sql`
+74. `20261115230000_admin_booking_direct_write_closure.sql`
+75. `20261115240000_harden_refund_recovery_full_amount.sql`
+76. `20261115250000_harden_refund_reconcile_full_amount.sql`
+77. `20261115260000_sos_admin_support_alerts.sql`
+78. `20261115270000_fix_customer_payment_method_unicode_contract.sql`
 
 ## 3. Dependency phases (provisional, not an apply order)
 
@@ -324,3 +325,12 @@ prerequisite gates. No PostgreSQL replay or Production query was run.
 - The current support chain therefore has two unresolved base-table contracts: `public.srk_booking_complaints` and `public.srk_booking_complaint_events`. Do not infer columns, keys, status checks, append-only behavior, RLS or grants from the insert/read consumers.
 - The unresolved clean-replay prerequisites are now four objects/columns: `service_bookings.amount_paid`, `electrician_profiles.auth_user_id`, `public.srk_booking_complaints`, and `public.srk_booking_complaint_events`. Push subscriptions are excluded from this list because their original migration source has been restored (static review only).
 - No SQL was synthesized or applied; no Production migration history or catalog was queried.
+
+
+### Historical complaint base migration recovery — 15 Nov 2026
+- सभी 18 listed branch heads के recursive Git trees में पुराने `work/separate-customer-electrician-portals` branch पर `supabase/migrations/20261110040000_customer_admin_complaints.sql` मिला।
+- उस मूल migration में `public.srk_booking_complaints` और `public.srk_booking_complaint_events` के CREATE TABLE definitions, constraints, foreign keys, indexes, RLS enablement और direct table privilege revocations मौजूद हैं।
+- दोनों table definitions सहित historical migration source को current Feature Branch में उसी path/name पर restore किया; commit `2390a7dd3db35f620f41edc22253602866999fb0`। कोई अनुमानित table DDL नहीं बनाया।
+- इससे complaint parent और event table के missing-source prerequisites हटते हैं। अभी `service_bookings.amount_paid` और `electrician_profiles.auth_user_id` के मूल column DDL unresolved हैं; duplicate `20261109` remote migration lineage भी unresolved है।
+- Restored migration के legacy RPCs को बाद की current-branch complaint RPC migration द्वारा replace/extend किया जाना है; पूरी ordered migration replay और PostgreSQL/pgTAP runtime अभी नहीं हुआ। `CREATE TABLE IF NOT EXISTS` existing remote objects की exact catalog parity सिद्ध नहीं करता।
+- कोई Production DB query/apply, secret, provider operation, merge या deployment नहीं किया। Checklist percentages नहीं बदले: GPT-2 27/39 = 69%; कुल project 56/86 = 65%।
