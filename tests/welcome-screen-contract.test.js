@@ -18,6 +18,9 @@ test('welcome screen routes all roles and never displays the unapproved collage 
   assert.ok(welcome.includes('FOUNDER &amp; DIRECTOR'));
   assert.ok(welcome.includes('Smart Service... Better Life...'));
   assert.ok(welcome.includes('असली Founder Photo शीघ्र'));
+  const customerLogin = fs.readFileSync(path.join(root, 'customer-login.html'), 'utf8');
+  assert.ok(customerLogin.includes('class="founder-photo-pending"'));
+  assert.ok(!customerLogin.includes('src="/assets/srk-founder.jpg"'));
   assert.match(welcome, /prefers-reduced-motion:reduce/);
 });
 
