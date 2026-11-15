@@ -264,3 +264,13 @@
 - [x] Latest branch-head Node test workflows on `e549574a091071f995786b009d710e4da25160c0`: **SUCCESS** (two CI runs, full repository Node test suite).
 - [ ] Browser runtime verification remains pending: actual language selector behavior, dynamic form placeholders, payment receipt print/PDF, GPS permission and live-location stop/retry.
 - [ ] Final consolidated mobile QA remains deferred until implementation is complete.
+
+
+### 2026-11-15 — Electrician booking refresh resilience and Welcome Screen regression coverage
+- [x] Electrician profile refresh now handles thrown/network failures without exposing raw backend errors to the UI.
+- [x] Offer-list refresh now shows a retry-oriented message on network/transport failures.
+- [x] Per-booking live-location status and labour-bill lookups are isolated; a failure in one booking's auxiliary RPC no longer prevents the remaining booking cards from rendering.
+- [x] Added regression coverage for profile/offer/live-location/bill refresh failures.
+- [x] Added Welcome Screen contract test covering index redirect, Customer/Electrician/Admin role routes, founder portrait path/asset existence, alt text and reduced-motion support.
+- [ ] Latest Welcome Screen + refresh regression CI run `43708433631` is in progress; verify its final result before marking tests passed.
+- [ ] Browser runtime/visual portrait match remains pending; source-level asset presence is checked by the new test.
