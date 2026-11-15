@@ -2,6 +2,24 @@
 -- transport boundary (a provider timeout can be ambiguous), but successful
 -- subscriptions are never intentionally resent on an outbox retry.
 
+-- Ensure the outbox migration and subscription schema are present first.
+DO $preflight$
+BEGIN
+  IF to_regclass('srk_private.srk_push_delivery_outbox') IS NULL THEN
+    RAISE EXCEPTION 'Push delivery ledger prerequisite missing: apply durable push outbox migration first';
+  END IF;
+  IF to_regclass('public.srk_push_subscriptions') IS NULL
+     OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='srk_push_subscriptions'
+         AND column_name='id')
+     OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='srk_push_subscriptions'
+         AND column_name='user_id') THEN
+    RAISE EXCEPTION 'Push delivery ledger prerequisite missing: subscription id and user_id';
+  END IF;
+END;
+$preflight$;
+
 CREATE TABLE IF NOT EXISTS srk_private.srk_push_subscription_deliveries (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   outbox_id uuid NOT NULL REFERENCES srk_private.srk_push_delivery_outbox(id) ON DELETE CASCADE,
