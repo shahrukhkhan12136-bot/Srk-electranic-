@@ -480,3 +480,9 @@
 - Customer के “Cash से Online भुगतान चुनें” action में RPC reject होने पर कोई local try/catch नहीं था; network failure unhandled rejection बन सकती थी और ग्राहक को स्पष्ट retry संदेश नहीं मिलता था।
 - RPC call को try/catch में रखा, success response में `data.success` की पुष्टि जोड़ी, और transport/अनिश्चित response पर सुरक्षित retry संदेश दिया। सफल बदलाव के बाद booking history refresh होती है।
 - Regression test जोड़ा गया। यह source-contract जाँच है; वास्तविक payment-method RPC, browser/network fault injection और mobile QA अभी लंबित हैं।
+
+
+### Electrician Earnings और Wallet network-failure isolation
+- Earnings panel में earnings RPC और Admin payout-history query एक Promise.all में थीं; किसी एक transport rejection पर पूरा loader reject होकर panel “लोड हो रहा है” पर अटक सकता था। दोनों requests को स्वतंत्र rejection handling दी; earnings उपलब्ध रहे तो payout-history failure अलग संदेश दिखाएगा।
+- Wallet panel में summary RPC और bank-link / ledger queries के rejected promises panel को अधूरे loading state में छोड़ सकते थे। तीनों request paths को सुरक्षित rejection result में बदला; bank-link और ledger errors अलग-अलग दिखेंगे, उपलब्ध balance summary सुरक्षित रहेगी।
+- Regression source-contract test जोड़ा। यह वास्तविक Supabase/network fault injection नहीं है; DB/RLS, browser और अंतिम mobile QA अभी लंबित हैं।
