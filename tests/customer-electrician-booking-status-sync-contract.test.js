@@ -123,7 +123,7 @@ test('Customer booking list guards rejected auth session lookup and always clear
 test('customer booking timeline isolates a rejected per-booking RPC transport', () => {
   const load = functionBody(customer, 'loadCustomerBookings');
   assert.match(load, /catch\s*\(error\)/);
-  assert.match(load, /return \\{ bookingId: row\\.id, result: \\{ error \\} \\};/);
+  assert.match(load, /return\s*\{\s*bookingId:\s*row\.id,\s*result:\s*\{\s*error\s*\}\s*\};/);
 });
 
 
@@ -165,7 +165,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
   }
   assert.match(customerRefund, /catch\s*\(error\)/);
   assert.match(customerRefund, /finally\s*\{\s*if\(button\)button\.disabled=false/);
-  assert.match(customerRefund, /रिफंड अनुरोध दर्ज नहीं हो सका/);
+  assert.match(customerRefund, /दोबारा अनुरोध नहीं भेजा गया/);
   assert.match(customerCancel, /catch\(error\)/);
   assert.match(customerCancel, /finally \{if\(button\)button\.disabled=false;\}/);
   assert.match(customerCancel, /अनुरोध दर्ज नहीं हो सका/);
@@ -180,7 +180,7 @@ test('customer live-location transport failure does not discard rendered booking
   const live = customer.slice(customer.indexOf('async function refreshCustomerLiveLocations'), customer.indexOf('if(!customerLiveLocationPoller)'));
   assert.match(live, /try\{const \{data,error\}=await customerSb\.rpc\('srk_customer_get_live_electrician_location'/);
   assert.match(live, /catch\(error\)\{if\(!isCurrent\(id\)\)return;box\.innerHTML=.*लोकेशन अभी लोड नहीं हो सकी/);
-  assert.match(live, /await Promise\.all\(customerLiveLocationBookingIds\.map\(async id=>/);
+  assert.match(live, /await Promise\.all\(bookingIds\.map\(async id=>/);
   const load = functionBody(customer, 'loadCustomerBookings');
   assert.ok(load.indexOf('box.innerHTML = data.map') < load.indexOf('await refreshCustomerLiveLocations()'), 'booking cards render before location refresh');
   assert.match(load, /finally \{\s*box\.setAttribute\('aria-busy','false'\);/);
@@ -323,7 +323,7 @@ test('Customer booking refresh ignores stale requests after session, booking, ti
   assert.match(load, /if \(!isCurrent\(\)\) return;\s*timelineResults\.forEach/);
   assert.match(load, /if \(!isCurrent\(\)\) return;\s*box\.innerHTML = data\.map/);
   assert.match(load, /if \(isCurrent\(\)\) box\.setAttribute\('aria-busy','false'\)/);
-  assert.match(customer, /customerBookingRefreshRequest\+\+;\s*customerLiveLocationBookingIds=\[\]/);
+  assert.match(customer, /customerBookingRefreshRequest\+\+;\s*customerLiveLocationRefreshRequest\+\+;\s*customerLiveLocationBookingIds=\[\]/);
 });
 
 test('Customer live location polling ignores stale responses and preserves network-error state', () => {
