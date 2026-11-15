@@ -173,16 +173,21 @@ begin
   if v_has_payout and v_payout.payout_status='paid' then
     raise exception 'ELECTRICIAN_PAYOUT_ALREADY_PAID_MANUAL_RECONCILIATION_REQUIRED' using errcode='55000';
   end if;
-  if v_has_payout and v_payout.payout_status is distinct from 'blocked' then
-    raise exception 'ELECTRICIAN_PAYOUT_MUST_REMAIN_BLOCKED_DURING_REFUND_RECOVERY' using errcode='55000';
-  end if;
   if v_booking.payment_status is distinct from 'paid' and v_booking.payment_status is distinct from 'refunded' then
     raise exception 'BOOKING_PAYMENT_STATE_NOT_RECOVERABLE' using errcode='55000';
   end if;
 
+  -- A completed refund trigger moves its payout to refunded; allow only that exact replay state.
   if v_booking.payment_status='refunded' and v_refund.status='processed' then
+    if v_has_payout and v_payout.payout_status is distinct from 'refunded' then
+      raise exception 'REFUNDED_BOOKING_PAYOUT_STATE_REQUIRES_MANUAL_RECONCILIATION' using errcode='55000';
+    end if;
     return jsonb_build_object('success',true,'status','processed','replayed',true,
       'booking_id',v_booking.id,'refund_record_id',v_refund.id,'recovery_audit_id',v_audit.id);
+  end if;
+
+  if v_has_payout and v_payout.payout_status is distinct from 'blocked' then
+    raise exception 'ELECTRICIAN_PAYOUT_MUST_REMAIN_BLOCKED_DURING_REFUND_RECOVERY' using errcode='55000';
   end if;
 
   update public.srk_razorpay_refunds set refund_id=v_audit.provider_refund_id,
