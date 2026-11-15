@@ -262,7 +262,7 @@ async function submitElectricianAreaChange(){
  catch(e){status.textContent=e.message||'रिक्वेस्ट नहीं भेजी जा सकी।';button.disabled=false;}
 }
 async function refresh(){if(!user)return;let p,error;try{const result=await sb.from('electrician_profiles').select('*').eq('user_id',user.id).maybeSingle();p=result.data;error=result.error;}catch(e){profile=null;document.getElementById('jobs').textContent='प्रोफाइल लोड नहीं हो सकी। इंटरनेट जाँचकर Refresh करें।';return}if(error){document.getElementById('jobs').textContent='प्रोफाइल लोड नहीं हो सकी। कृपया Refresh करें।';return}profile=p;
-if(p){document.getElementById("electricianCurrentPhone").textContent=p.phone||"उपलब्ध नहीं";await loadElectricianPhoneChangeHistory();await loadMyAreaChangeRequests();await loadVerificationDocuments();await loadEarnings();await loadPartnerWallet();await refreshElectricianPushState();await loadElectricianSupportTickets();}
+if(p){document.getElementById("electricianCurrentPhone").textContent=p.phone||"उपलब्ध नहीं";for(const loader of [loadElectricianPhoneChangeHistory,loadMyAreaChangeRequests,loadVerificationDocuments,loadEarnings,loadPartnerWallet,refreshElectricianPushState,loadElectricianSupportTickets]){try{await loader();}catch(e){/* Optional profile panels must not block the offer list. */}}}
 if(p&&p.active&&p.verification_status==='approved'&&!offersChannel){
   offersChannel=sb.channel('srk-partner-live-'+user.id)
     .on('postgres_changes',{event:'*',schema:'public',table:'job_offers'},()=>refresh())
