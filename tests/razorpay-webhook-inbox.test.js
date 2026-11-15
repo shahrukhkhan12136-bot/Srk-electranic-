@@ -255,3 +255,31 @@ test("does not reconcile a refund webhook whose amount differs from the prepared
   assert.equal(reconcileCalls,0);
   assert.equal(completedOutcome,"ignored");
 });
+
+test("routes a signed failed refund event through server-side reconciliation", async t => {
+  let reconciled=null,completion=null;
+  global.fetch=async (url,options={})=>{
+    const target=String(url),fn=rpcName(target);
+    if(fn==="srk_service_claim_razorpay_webhook_event")
+      return response(200,{success:true,should_process:true,claim_token:"a23e4567-e89b-42d3-a456-426614174000"});
+    if(target.includes("/rest/v1/srk_razorpay_refunds?"))
+      return response(200,[{id:"b23e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refund_failed",refund_id:"rfnd_failed123",amount_paise:12500,status:"processing"}]);
+    if(fn==="srk_service_reconcile_booking_refund"){
+      reconciled=JSON.parse(options.body);
+      return response(200,{success:true,status:"failed"});
+    }
+    if(fn==="srk_service_complete_razorpay_webhook_event"){
+      completion=JSON.parse(options.body);
+      return response(200,{success:true,state:"processed"});
+    }
+    throw new Error("unexpected request "+target);
+  };
+  t.after(()=>{global.fetch=originalFetch;});
+  const result=await handler(event({event:"refund.failed",payload:{refund:{entity:{
+    id:"rfnd_failed123",payment_id:"pay_refund_failed",amount:12500,currency:"INR",status:"failed"
+  }}}},"evt_refund_failed"));
+  assert.equal(result.statusCode,200);
+  assert.equal(reconciled.p_provider_status,"failed");
+  assert.equal(reconciled.p_provider_refund_id,"rfnd_failed123");
+  assert.equal(completion.p_outcome,"processed");
+});
