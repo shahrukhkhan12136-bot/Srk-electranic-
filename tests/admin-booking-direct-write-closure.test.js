@@ -7,9 +7,11 @@ const root = path.resolve(__dirname, '..');
 const admin = fs.readFileSync(path.join(root, 'admin.html'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115230000_admin_booking_direct_write_closure.sql'), 'utf8');
 
-test('Admin booking location and quote edits use dedicated RPCs, not direct table writes', () => {
+test('Admin booking location uses dedicated RPC; historical quotes are read-only and no direct table writes exist', () => {
   assert.match(admin, /srk_admin_update_booking_customer_location/);
-  assert.match(admin, /srk_admin_update_legacy_booking_quote/);
+  assert.doesNotMatch(admin, /srk_admin_update_legacy_booking_quote/);
+  assert.doesNotMatch(admin, /id="amt-/);
+  assert.match(admin, /ऐतिहासिक रिकॉर्ड केवल पढ़ने के लिए/);
   assert.doesNotMatch(admin, /\.from\(['"]service_bookings['"]\)\s*\.update\s*\(/);
 });
 
@@ -25,7 +27,7 @@ test('location RPC is Main-Admin-only, row-locked, validated and records before/
   assert.match(migration, /revoke all on function public\.srk_admin_update_booking_customer_location\(uuid,text,text,text,text\) from public,anon/i);
 });
 
-test('legacy quote RPC protects paid, online, approved and itemized quote states', () => {
+test('legacy quote mutation RPC remains guarded for compatibility but is no longer exposed by Admin UI', () => {
   const start = migration.indexOf('function public.srk_admin_update_legacy_booking_quote');
   const end = migration.indexOf('$function$;', start);
   const fn = migration.slice(start, end);
