@@ -2394,3 +2394,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Repository-wide `npm test`: **82 passed, 5 failed (87 total)**। शेष failures Push files में नहीं: (1) electrician customer-contact projection assertion, (2) Razorpay refund GET exact stored refund ID assertion, (3–5) three Razorpay refund webhook reconciliation assertions। इन्हें अलग-अलग investigate करना बाकी है।
 - Sandbox में Deno और PostgreSQL executables उपलब्ध नहीं थे; इसलिए Edge Function typecheck, SQL parser/apply, RPC grant behavior और concurrent stale-worker reclaim test नहीं चला।
 - कोई Supabase database/paid staging branch नहीं बनाया; migration apply, production write, Edge/Netlify deployment, worker activation, provider refund या real push नहीं किया। Disposable test sandbox के अलावा कोई rollout नहीं हुआ।
+
+
+## 2026-11-15 — Full test suite green और Deno Edge Function check
+
+- Disposable Vercel Sandbox में final feature-branch commit `95c4fc57ab3a8abbb70f0a98e8310ec774eb942c` checkout करके पूरे repository का `npm test` चलाया: **87 tests, 87 passed, 0 failed**।
+- Push-specific तीन suites का prior isolated result **37/37 PASS** है।
+- Full-suite में मिले पाँच failures code regression नहीं निकले: multiline SQL formatting पर brittle regex; provider refund verification fixture में stored-record identity note गायब; और Razorpay test fixtures में underscore वाले invalid payment IDs। Test assertions/fixtures सही किए; app/backend business logic में बदलाव नहीं किया।
+- Deno `check --no-config --no-lock supabase/functions/push-job-offer/index.ts` सफल।
+- `node --check` Netlify push worker, Razorpay refund status और webhook handlers पर सफल; final checkout working tree clean।
+- अभी भी PostgreSQL executable/local isolated DB उपलब्ध नहीं था; इसलिए SQL migration parse/apply, actual role/grant behavior, claim→finish RPC responses और concurrent stale-worker reclaim runtime test बाकी हैं।
+- Disposable sandbox बंद कर दिया। कोई Supabase branch/subscription नहीं बनाया, कोई migration apply, production write, deployment, worker activation, Razorpay provider write या वास्तविक push नहीं हुआ।
