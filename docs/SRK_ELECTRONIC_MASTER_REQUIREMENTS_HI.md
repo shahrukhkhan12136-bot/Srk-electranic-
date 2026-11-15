@@ -4292,3 +4292,13 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - अब भी exact चार applied Production migrations का original SQL branch में recover नहीं हुआ: push subscriptions table/RLS, secure upsert RPC, pg_net enablement, job-offer webhook wiring। Deployed Edge Function source अब recover हो गया है; database migration lineage अलग शेष dependency है।
 - Regression test में deployed Edge Function source के public-key-only GET, webhook secret authentication, approved-profile gate और private key exposure न होने की static जाँच जोड़ी। Tests लिखे गए हैं; अभी execute/CI pass प्रमाणित नहीं है। वास्तविक browser subscription, Edge Function GET readiness, push provider delivery, Android notification display/click/withdrawal और stale endpoint cleanup runtime tests बाकी हैं।
 - कोई Production DB/Auth/Vault/Edge Function configuration, secret, payment, live subscription, deployment या Main merge नहीं बदला गया। कोई mobile/Desktop manual QA नहीं हुआ।
+
+
+## Founder Portrait — Garden Photo Crop & Pose Specification (Pending Image Generation)
+
+- **Source photo:** पहले से सेव Founder की बगीचे/हरियाली वाली फोटो (founder-shahrukh-khan.webp)। इसी व्यक्ति और इसी मूल फोटो को आधार बनाना है; दूसरी तीन-फोन UI mockup तस्वीर को Founder portrait के रूप में बिल्कुल उपयोग नहीं करना है।
+- **Crop:** कमर से ऊपर तक half-body / waist-up portrait। कमर के नीचे का पूरा हिस्सा, पैर और full-body framing हटानी है।
+- **Pose:** दोनों हाथ छाती के सामने स्वाभाविक रूप से मुड़े/क्रॉस (arms folded across chest) हों; प्रत्येक हाथ विपरीत ऊपरी बाँह के पास टिके। हाथों की anatomy और उँगलियाँ वास्तविक और साफ़ हों।
+- **Framing:** चेहरा, बाल, दोनों कंधे और folded arms पूरे दिखाई दें; सिर के ऊपर थोड़ा breathing space रहे; व्यक्ति बीच में हो।
+- **Preserve:** वही चेहरा/पहचान, बाल, काली शर्ट और बगीचे का प्राकृतिक हरा background। Photorealistic, professional Founder portrait; कोई text, logo, badge या अतिरिक्त व्यक्ति नहीं जोड़ना।
+- **Status:** स्पष्ट निर्देश Master Requirements में सुरक्षित। Image-generation tool की उपलब्धता/limit खुलने पर इसी specification से image edit बनानी है; तब तक इसे pending रखें और कोई गलत/वैकल्पिक फोटो publish न करें।
