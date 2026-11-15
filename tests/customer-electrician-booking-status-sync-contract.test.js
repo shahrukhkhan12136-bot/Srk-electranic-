@@ -247,3 +247,14 @@ test('Electrician support ticket list uses its caught result and support thread 
   assert.match(thread,/\.catch\(error=>\(\{data:null,error\}\)\)/);
   assert.match(thread,/if\(error\)\{box\.textContent='बातचीत नहीं खुली/);
 });
+
+
+test('Electrician initial auth session lookup handles rejected promises safely', () => {
+  const initStart=electrician.indexOf('function init(){');
+  const initEnd=electrician.indexOf('\nfunction show()',initStart);
+  assert.ok(initStart>=0&&initEnd>initStart);
+  const init=electrician.slice(initStart,initEnd);
+  assert.match(init,/sb\.auth\.getSession\(\)\.then\(/);
+  assert.match(init,/\.catch\(\(\)=>\{user=null;show\(\)/);
+  assert.match(init,/लॉगिन स्थिति अभी जाँची नहीं जा सकी/);
+});
