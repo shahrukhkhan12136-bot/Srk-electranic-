@@ -121,3 +121,22 @@ Recursive Git tree (refreshed PR head) में 213 tracked files मिले;
 - This inventory refresh updates the PR-head snapshot and cross-GPT dependency references; no application source or database code was changed.
 - No application source, migration, database, Storage bucket, Auth setting, Production configuration, payment, refund, payout, provider, or deployment was changed or invoked.
 - No checklist progress percentage is changed by inventory consolidation.
+
+
+## 11. नवीनतम verification snapshot — 15 नवम्बर 2026, commit 1a96cd48cae9a5765c7465385da331fccc6aeaff
+
+- Shared Master Index commit `1a96cd48cae9a5765c7465385da331fccc6aeaff` पर GitHub Actions run `43744201207` — **Feature Branch Node tests: completed / success**। यह Node regression suite का परिणाम है; इससे pgTAP, clean migration replay, provider runtime, browser/mobile QA या Production parity सिद्ध नहीं होती।
+- उसी commit का combined status एक Vercel check में **failure** दिखाता है; target URL पर Vercel build-rate-limit / upgrade-to-Pro संकेत है। इसे application test failure नहीं कहेंगे, लेकिन Preview build उपलब्ध/सफल भी नहीं मानेंगे।
+- इस snapshot में कोई PostgreSQL/pgTAP runtime result नहीं मिला। अतः Customer payment/refund/cancellation और Electrician KYC/Storage/OTP/dispatch/timer/location/availability runtime gates अभी खुले हैं।
+- GPT-1 के source inventory में कोई नया missing primary source file नहीं मिला। पहचाने गए gaps मुख्यतः runtime evidence और dedicated SQL security coverage के हैं: availability RPC, booking-scoped live-location RPCs, और phone-change OTP/Admin approval lifecycle।
+- Customer/Electrician UI के visible buttons/actions तथा README/API copy का one-by-one source-to-contract reconciliation अभी शेष है; इसे केवल Node suite success से पूरा नहीं मानना है।
+- SOS UI दोनों portals में मौजूद है, लेकिन `srk_create_sos_alert` backend authorization, Admin/Support queue, notification/acknowledgement और append-only audit GPT-2 ownership में हैं; GPT-1 केवल contract integration के लिए GPT-2 confirmation की प्रतीक्षा करेगा।
+- Welcome Screen/founder-photo integration को owner instruction के अनुसार **complete** माना गया है; पुराने checklist के विरोधी pending text को इस inventory में काम का नया scope नहीं माना जाएगा। इसे दोबारा खोलना/बदलना नहीं है।
+
+## 12. GPT-1 अगला कार्य क्रम
+
+1. Customer/Electrician pages के हर visible action/button को existing JS handler → endpoint/RPC → migration/test mapping से एक-एक कर मिलाएँ; dead/placeholder/stale controls दर्ज करें, नया feature न जोड़ें।
+2. README और user-visible portal copy को वर्तमान contracts से मिलाएँ; केवल वास्तविक mismatch सुधारें।
+3. GPT-1 owned Node/source regression gaps को ठीक करें और CI evidence दर्ज करें।
+4. Availability, live-location और phone-change DB security tests GPT-2 से coordination लेकर ही जोड़ें/बदलें, क्योंकि SQL/RLS/RPC ownership GPT-2 की है।
+5. Isolated DB runtime tests, provider tests और consolidated mobile QA अपने-अपने approval/staging gates के बाद ही; Production/merge/deploy नहीं।
