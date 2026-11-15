@@ -3618,3 +3618,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नए Founder-guard test commit `ccd7a2346503d0c69d67def9120a0171ce8ccceb` पर Node CI run `43728237766` चला। कुल 164 में 163 tests पास और 1 fail हुआ।
 - Failure `tests/electrician-live-location-client.test.js` की stale assertion थी: वह Service Worker cache को `srk-electronic-v10` अपेक्षित कर रही थी, जबकि Founder collage हटाने के लिए वैध cache bump v11 किया गया था। यह app runtime failure नहीं, test expectation mismatch था।
 - Assertion को v11 के अनुरूप ठीक किया; commit `e17d917781d8e8865f5ceaad3639ef100e4a8598`। इस correction के बाद CI run की प्रतीक्षा है; अभी PASS नहीं कहा जा सकता।
+
+
+## 2026-11-15 — Older schema/branch provenance re-check
+- Older finance/portal branches और `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql` को cross-check किया। तीनों schema snapshots में `service_bookings.amount_paid` और `electrician_profiles.auth_user_id` की base column definition नहीं मिली।
+- Finance branch की पुरानी quote migration `service_charge`, `materials_amount`, quote fields और `work_started_at` जोड़ती है, पर `amount_paid` नहीं; उसी migration के trigger/functions `amount_paid` पढ़ते हैं। Portal branch की manual-payment migration भी `amount_paid` UPDATE/validate करती है, पर column create नहीं करती।
+- Portal branch की `20261109223000_sync_electrician_auth_profile_link.sql` `auth_user_id` में value लिखती और उसे lookup में इस्तेमाल करती है, पर column add नहीं करती। Direct electrician assignment migration भी उसे pre-existing मानती है।
+- पुराने branches में duplicate `20261109` migrations अलग versioned filenames से मौजूद थीं; यह history clue है, current migration ledger repair का प्रमाणित तरीका नहीं।
+- निष्कर्ष: `amount_paid` और `auth_user_id` के exact type/nullability/default/constraint/index contracts अभी भी authoritative source से unresolved हैं। कोई अनुमानित DDL नहीं जोड़ा गया। विवरण `docs/MIGRATION_REPLAY_MANIFEST_HI.md` के Section 5.7 में दर्ज।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 शेष**। कोई database execution, Production access, migration rename, merge या deploy नहीं किया।
