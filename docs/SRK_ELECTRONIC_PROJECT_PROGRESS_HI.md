@@ -2916,3 +2916,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added two pgTAP source-contract assertions for unique idempotency key and payment/recipient uniqueness; contract plan/count now 62.
 - Retry rule for future implementation: only retry after querying provider state with the same stable idempotency key; never issue a new key on timeout/ambiguous response; any provider result conflict or missing transfer ID goes to manual review. This is a design requirement, not implemented execution behavior.
 - Runtime pgTAP, live provider calls, bank settlement confirmation and Production changes remain Not Run / Not Approved. No merge, deployment or go-live.
+
+
+## 2026-11-15 — Customer dynamically inserted control localization
+
+- Customer UI language observer previously translated text nodes added later, but did not translate attributes on dynamically inserted controls. This could leave new placeholders, tooltips and accessible labels in Hindi while English was selected.
+- Added shared `customerUiTranslateAttributes(root, lang)` handling for placeholder, title and aria-label attributes. It runs on the initial page when applying a language and on each newly inserted element while English is active.
+- Added regression assertions in `tests/customer-dashboard-menu-contract.test.js` for the initial pass and dynamic-element observer path.
+- Feature Branch commits: Customer UI `8c0a4193`; regression test `fe5de63f`. Latest CI result for this exact head is not yet available; do not mark the new assertion as passed until workflow confirmation.
+- Welcome Screen review confirmed the Customer login route resolves to `customer-login.html`, whose successful OTP flow redirects to `booking.html`; root `index.html` redirects to `welcome.html`; all three role links and founder image path are present. Asset presence is covered by `tests/welcome-screen-contract.test.js`; exact portrait visual match and browser rendering remain pending.
+- No Production migration, deployment, merge, payment, or live booking was performed. Mobile QA remains deferred until the consolidated final pass.
