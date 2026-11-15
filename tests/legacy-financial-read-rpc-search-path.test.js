@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115210000_harden_legacy_financial_read_rpc_search_paths.sql'), 'utf8');
+const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115210001_harden_legacy_financial_read_rpc_search_paths.sql'), 'utf8');
 const contract = fs.readFileSync(path.join(root, 'supabase/tests/database/legacy_financial_read_rpc_search_path.test.sql'), 'utf8');
 
 test('legacy financial SECURITY DEFINER read RPCs pin trusted search_path', () => {
