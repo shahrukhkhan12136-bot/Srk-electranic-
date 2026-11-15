@@ -138,7 +138,7 @@ test('Support Staff customer and electrician inbox RPCs enforce active permissio
     assert.ok(match, name + ' must exist');
     assert.ok(match[0].includes(permission), name + ' must check its explicit permission');
     assert.match(match[0], /assigned_staff_user_id/);
-    assert.match(match[0], /auth\\.uid\\(\\)|v_uid/);
+    assert.ok(match[0].includes('auth.uid()') || match[0].includes('v_uid'), name + ' must bind access to current user');
   }
   assert.match(staffMigration, /if v_actor is null or not public\\.is_srk_admin\\(\\) then[\\s\\S]*?MAIN_ADMIN_ONLY/i);
 });
