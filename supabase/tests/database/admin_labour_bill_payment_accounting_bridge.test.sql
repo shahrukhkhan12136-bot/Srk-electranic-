@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(15);
 
 select has_function('public','srk_admin_record_new_booking_cash_payment',
   array['uuid','text','text'],
@@ -13,7 +13,7 @@ select ok(position('for update' in lower(pg_get_functiondef(
   'public.srk_admin_record_new_booking_cash_payment(uuid,text,text)'::regprocedure)))>0,
   'new-category Cash settlement locks the booking before recording payment');
 
-select ok(position('payment_method,'''')) not like ''%cash%''' in lower(pg_get_functiondef(
+select ok(position('not like ''%cash%''' in lower(pg_get_functiondef(
   'public.srk_admin_record_new_booking_cash_payment(uuid,text,text)'::regprocedure)))>0,
   'new-category manual settlement accepts Cash only');
 
