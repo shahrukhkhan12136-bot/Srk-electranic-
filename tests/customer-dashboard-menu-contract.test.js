@@ -50,6 +50,14 @@ test('customer dynamic status messages and confirmation dialogs support English 
   assert.match(booking, /window\.confirm\s*=\s*message\s*=>\s*customerUiNativeConfirm\(customerUiText\(message\)\)/);
 });
 
+test('customer confirmation copy translates cancellation policy and dynamic booking summary labels', () => {
+  assert.ok(booking.includes('Send a cancellation request to Admin?'));
+  assert.match(booking, /replace\(\/श्रेणी:\/g,'Tier: '/);
+  assert.match(booking, /replace\(\/अवधि:\/g,'Duration: '/);
+  assert.match(booking, /replace\(\/भुगतान तरीका:\/g,'Payment method: '/);
+  assert.match(booking, /replace\(\/\\\\bAdmin\\\\b\/g,'Admin'\)/);
+});
+
 test('customer dashboard exposes all five accessible menu tabs and matching panels', () => {
   const tabs = ['Home', 'Bookings', 'Payments', 'Support', 'Profile'];
   for (const name of tabs) {
