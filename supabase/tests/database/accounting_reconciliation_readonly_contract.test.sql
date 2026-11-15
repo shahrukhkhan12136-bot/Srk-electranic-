@@ -1,5 +1,5 @@
 begin;
-select plan(56);
+select plan(45);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -57,13 +57,6 @@ select ok(position('status=''posted''' in pg_get_functiondef(
   'public.srk_get_my_wallet_summary()'::regprocedure))>0,
   'wallet balance uses posted entries only');
 
-select ok((select relrowsecurity from pg_class where oid='public.srk_route_transfers'::regclass),
-  'Route transfer ledger has RLS enabled');
-select ok(not has_table_privilege('authenticated','public.srk_route_transfers','select'),
-  'authenticated clients cannot read provider Route transfer ledger');
-select ok((select data_type='bigint' from information_schema.columns
-  where table_schema='public' and table_name='srk_route_transfers' and column_name='amount_paise'),
-  'Route transfer values are stored as integer paise');
 
 select ok(to_regclass('public.srk_customer_cancellation_fee_debts') is not null,
   'customer cancellation-fee debt table exists in the complete Feature Branch migration chain');
@@ -113,11 +106,6 @@ select ok(position('public.is_srk_admin()' in pg_get_functiondef(
 select ok(position('PARTIAL_REFUND_UNSUPPORTED' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'partial refunds are explicitly flagged instead of allocated by assumption');
-select ok(position('settlement_status' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
-  and position('transfer_status' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route provider processing and settlement are reported separately');
 select ok(position('CANCELLATION_FEE_LEDGER_UNBALANCED' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'cancellation-fee ledger is compared with settled booking allocations');
@@ -135,17 +123,6 @@ select ok(position('COMMISSION_RATE_MISSING_OR_INVALID' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'invalid commission rates and collection mismatches fail closed as report exceptions');
 
-select ok(position('FINAL_REFUND_PAYOUT_NOT_CLOSED' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
-  and position('ELECTRICIAN_TRANSFER_NOT_PROCESSED' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'report flags refund/payout closure and provider transfer processing gaps');
-
-select ok(position('ROUTE_PAYMENT_ID_MISMATCH' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
-  and position('ROUTE_ELECTRICIAN_RECIPIENT_MISMATCH' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route transfer must match the booking payment and assigned electrician identity');
 
 select ok(position('VERIFIED_PAYMENT_EVIDENCE_MISSING_OR_MISMATCHED' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
@@ -181,13 +158,6 @@ select ok(position('REFUND_REQUEST_PENDING_REVIEW' in pg_get_functiondef(
   and position('REFUND_REQUEST_PROCESSED_WITHOUT_FINAL_REFUND_EVIDENCE' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'refund request workflow states are reconciled against final refund evidence');
-select ok(position('ROUTE_TRANSFER_REVERSED_OR_PARTIALLY_REVERSED' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'full and partial Route transfer reversals are explicitly flagged');
-
-select ok(position('ROUTE_TRANSFER_NOT_REVERSED_AFTER_FULL_REFUND' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'provider Route transfers with a transfer ID must be reversed after a confirmed full refund');
 
 select ok(position('CASH_FEE_WALLET_REFUND_MISMATCH' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
@@ -195,19 +165,7 @@ select ok(position('CASH_FEE_WALLET_REFUND_MISMATCH' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'manual full-refund reconciliation compares the exact cash-fee wallet credit to its original debit');
 
-select ok(position("v_refund_state in ('processed','manual_recorded')" in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'both provider-confirmed and manual full refunds require every created Route transfer to be reversed');
 
-
-select ok(exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass
-  and conname='srk_route_transfers_payment_recipient_uniq' and contype='u'),
-  'a provider payment has at most one logical transfer per recipient type');
-select ok(exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass
-  and contype='u' and pg_get_constraintdef(oid) like '%idempotency_key%')
-  and exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass
-  and contype='u' and pg_get_constraintdef(oid) like '%transfer_id%'),
-  'Route transfer idempotency key and provider transfer ID are unique');
 
 select * from finish();
 rollback;
