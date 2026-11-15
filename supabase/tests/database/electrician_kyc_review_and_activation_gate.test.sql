@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(21);
 select has_table('public','srk_electrician_verification_documents','private electrician KYC document table exists');
 select has_table('public','srk_electrician_verification_document_events','append-only KYC audit table exists');
 select has_function('public','srk_electrician_submit_verification_document',array['text','text','text','text','bigint'],'electrician KYC submit RPC exists');
