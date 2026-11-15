@@ -79,3 +79,11 @@
 - **Still pending:** Admin mobile recipient confirmation, SMS provider selection/credentials/cost approval, actual SMS attempt and delivery/retry worker, Push delivery integration, consented/current location integration, isolated PostgreSQL/role runtime tests, and Customer/Electrician-to-Admin end-to-end QA.
 - Until provider setup is approved, SMS/Push are explicitly `not_configured`; no delivery claim is made. If location is unavailable, SOS creation is not blocked. No police/112 auto-contact is implemented.
 - Feature Branch only. No Production migration, real SMS/Push send, merge or deployment.
+
+
+## 2026-11-15 18:49 UTC — Customer/Electrician ↔ backend ↔ Admin source integration recheck
+- Current Customer `booking.html` and Electrician client both call `srk_create_sos_alert` with only `{p_reason: reason}`; neither sends a booking ID or actor identity.
+- Backend RPC derives actor from `auth.uid()`, derives Customer booking via `customer_user_id` or Electrician booking via linked `electrician_profiles.user_id/auth_user_id`, and accepts only exactly one active `in_progress` booking with a selected category. Multiple/ambiguous or missing matches fail closed. It locks the selected booking before creating/reusing the pending case.
+- Admin UI source calls `srk_admin_list_sos_alerts`, `srk_admin_acknowledge_sos_alert`, and `srk_admin_list_sos_alert_events`; backend enforces explicit `support.sos.read` / `support.sos.acknowledge` permission checks. Node contract test checks the client signature, server-side identity/booking derivation, private tables, append-only events, permission gates, and truthful not-configured delivery labels.
+- No source-level signature mismatch found in this recheck. This is source inspection plus Node CI, not PostgreSQL runtime or live browser/mobile end-to-end proof. Current PR head CI run `43748698652`, job `132917615890`: 189 tests, 189 pass, 0 fail, 0 skipped.
+- Remaining SOS gates unchanged: approved Admin recipient and provider credentials/cost, SMS/Push delivery worker and actual delivery/retry evidence, consented location, isolated PostgreSQL/role runtime tests, browser/mobile E2E. No automatic police/112 notification. No Production migration, external send, merge or deployment.
