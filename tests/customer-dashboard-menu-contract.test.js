@@ -63,3 +63,25 @@ test('customer dynamic payment messages and printable receipt respect selected l
   assert.ok(receiptStart >= 0 && receiptEnd > receiptStart);
   assert.doesNotMatch(booking.slice(receiptEnd), /\bR\(/);
 });
+
+
+test('customer and electrician inline browser scripts are syntactically valid JavaScript', () => {
+  for (const file of ['booking.html', 'electrician.html']) {
+    const html = fs.readFileSync(path.join(root, file), 'utf8');
+    const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\\s\\S]*?)<\\/script>/gi)];
+    assert.ok(scripts.length > 0, file + ' should contain an inline application script');
+    for (const match of scripts) {
+      assert.doesNotThrow(() => new Function(match[1]), file + ' inline script should parse');
+    }
+  }
+});
+
+test('electrician app keeps the fixed-duration server-timed work lifecycle and no quotation UI', () => {
+  const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
+  assert.match(electrician, /srk_get_my_offer_details/);
+  assert.match(electrician, /srk_electrician_request_work_start/);
+  assert.match(electrician, /srk_electrician_request_work_completion/);
+  assert.match(electrician, /formatElectricianTimer/);
+  assert.match(electrician, /srk_electrician_get_labour_bill/);
+  assert.doesNotMatch(electrician, /quoted_amount|submit.*quote|quotation approval|inspection quote/i);
+});
