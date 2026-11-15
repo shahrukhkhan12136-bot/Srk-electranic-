@@ -15,7 +15,7 @@ create table if not exists public.srk_razorpay_refund_recovery_audits (
   provider_payload_sha256 text not null check (provider_payload_sha256 ~ '^[a-f0-9]{64}$'),
   observation_id uuid not null unique,
   provider_evidence jsonb not null check (jsonb_typeof(provider_evidence) = 'object'),
-  admin_user_id uuid not null,
+  admin_user_id uuid not null references auth.users(id) on delete restrict,
   admin_note text not null check (length(btrim(admin_note)) between 10 and 2000),
   recorded_at timestamptz not null default clock_timestamp()
 );
@@ -176,7 +176,7 @@ begin
   if v_has_payout and v_payout.payout_status is distinct from 'blocked' then
     raise exception 'ELECTRICIAN_PAYOUT_MUST_REMAIN_BLOCKED_DURING_REFUND_RECOVERY' using errcode='55000';
   end if;
-  if v_booking.payment_status not in ('paid','refunded') then
+  if v_booking.payment_status is distinct from 'paid' and v_booking.payment_status is distinct from 'refunded' then
     raise exception 'BOOKING_PAYMENT_STATE_NOT_RECOVERABLE' using errcode='55000';
   end if;
 
