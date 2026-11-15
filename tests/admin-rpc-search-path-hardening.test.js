@@ -79,3 +79,10 @@ test('Manual refund and payout mutations require Main Admin and verified financi
   assert.ok(body.includes("v_row.payout_status <> 'pending'"));
   assert.ok(body.includes('v_booking.payment_verified_at is null'));
 });
+
+
+test('Service-role public rate-limit RPC pins empty search_path', () => {
+  const sql = read('20261116170000_pin_public_rate_limit_rpc_search_path.sql');
+  assert.ok(sql.includes('alter function public.srk_check_public_rate_limit(text,text,integer)'));
+  assert.equal((sql.match(/set search_path = '';/g) || []).length, 1);
+});
