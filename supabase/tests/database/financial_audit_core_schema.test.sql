@@ -1,6 +1,13 @@
 BEGIN;
-SELECT plan(51);
+SELECT plan(53);
 
+SELECT ok(to_regclass('public.service_bookings') IS NOT NULL,'service bookings base table exists');
+SELECT ok(EXISTS (
+  SELECT 1 FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='service_bookings'
+    AND column_name='amount_paid' AND data_type='numeric'
+    AND numeric_precision=12 AND numeric_scale=2
+),'legacy verified payment amount column exists as numeric(12,2)');
 SELECT ok(to_regclass('public.srk_booking_labour_bills') IS NOT NULL,'immutable labour bill base table exists');
 SELECT ok(to_regclass('public.srk_manual_payment_entries') IS NOT NULL,'manual payment base table exists');
 SELECT ok(to_regclass('public.srk_electrician_payouts') IS NOT NULL,'electrician payout base table exists');
