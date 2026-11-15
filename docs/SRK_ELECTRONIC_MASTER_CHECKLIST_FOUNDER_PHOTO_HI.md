@@ -434,3 +434,9 @@
 - [x] Moved session retrieval into the existing guarded block after setting the loading state. Existing catch/finally now handles rejected session calls and clears `aria-busy`.
 - [x] Added source-contract regression coverage in `tests/customer-electrician-booking-status-sync-contract.test.js`.
 - [ ] Validate this edit on the exact latest PR head with CI. No live auth, database, browser or mobile runtime result is claimed.
+
+
+### 2026-11-16 — Electrician offer refresh isolation
+- `electrician.html`: profile के वैकल्पिक panels (phone-change history, area requests, KYC, earnings, wallet, push state, support tickets) में किसी transport rejection के कारण अब मुख्य Electrician offer list की loading रुकती नहीं; हर panel क्रम से अलग try/catch में चलता है।
+- Regression coverage: `tests/customer-electrician-booking-status-sync-contract.test.js` में test जोड़ा गया है कि optional panel failure के बाद भी `srk_get_my_offer_details` तक execution पहुँचता है।
+- यह source-level hardening है; वास्तविक browser/network failure simulation, Supabase runtime और mobile QA अभी बाकी हैं।
