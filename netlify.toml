@@ -51,3 +51,8 @@
     X-Frame-Options = "DENY"
     Permissions-Policy = "camera=(), microphone=(), geolocation=(self)"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+[[redirects]]
+  from = "/api/razorpay-refund-status"
+  to = "/.netlify/functions/razorpay-refund-status"
+  status = 200
