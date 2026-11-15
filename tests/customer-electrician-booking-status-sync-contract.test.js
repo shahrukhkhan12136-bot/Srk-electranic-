@@ -458,3 +458,13 @@ test('Customer Razorpay verification reconciles uncertain responses against auth
   assert.match(payment, /अभी दोबारा भुगतान न करें/);
   assert.doesNotMatch(payment, /catch \(err\) \{ setPaymentStatus\(err\.message, true\); \}/);
 });
+
+test('Customer booking refresh displays its network error before returning failure', () => {
+  const load = functionBody(customer, 'loadCustomerBookings');
+  const catchStart = load.indexOf('} catch(error) {');
+  const finallyStart = load.indexOf('} finally {', catchStart);
+  assert.ok(catchStart >= 0 && finallyStart > catchStart);
+  const catchBlock = load.slice(catchStart, finallyStart);
+  assert.match(catchBlock, /if \(!isCurrent\(\)\) return;\s*box\.textContent=navigator\.onLine===false[\s\S]*?return false;/);
+  assert.doesNotMatch(catchBlock, /return false;\s*box\.textContent/);
+});
