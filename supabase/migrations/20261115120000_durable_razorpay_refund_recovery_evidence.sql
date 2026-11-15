@@ -75,6 +75,12 @@ begin
     raise exception 'INVALID_REFUND_RECOVERY_EVIDENCE_OR_AUDIT_NOTE' using errcode='22023';
   end if;
 
+  if not exists (
+    select 1 from public.srk_admin_users a where a.user_id=p_admin_user_id
+  ) then
+    raise exception 'RECOVERY_ACTOR_IS_NOT_AN_AUTHORIZED_SRK_ADMIN' using errcode='42501';
+  end if;
+
   if p_provider_evidence->>'id' is distinct from p_provider_refund_id
      or p_provider_evidence->>'payment_id' is distinct from p_payment_id
      or p_provider_evidence->>'currency' is distinct from p_currency
