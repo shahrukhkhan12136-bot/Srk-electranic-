@@ -2789,3 +2789,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - GitHub Actions Node test run: `43706978870` — **SUCCESS**.
 - Install और full `npm test` step सफल; customer dashboard/language/receipt regression tests भी suite में शामिल।
 - इससे source-contract tests की पुष्टि होती है; browser में वास्तविक Hindi↔English toggle, popup receipt print preview, dynamic runtime copy और mobile visual QA अभी शेष हैं।
+
+
+## 2026-11-15 — GPT #2 Payout / Commission / Refund reconciliation cross-check
+
+- `supabase/migrations/20261114360000_new_category_electrician_payout_reconciliation.sql` और `supabase/tests/database/electrician_payout_reconciliation.test.sql` की source समीक्षा की।
+- New-category booking में payout का Labour immutable bill से आता है; Materials = 0; platform commission केवल Labour पर round होकर निकलता है। Settled/reserved cancellation fee customer collection matching में शामिल हो सकती है, लेकिन electrician payable/commission में नहीं।
+- Payout को Paid दर्ज करने से पहले Main Admin, completed + verified-paid booking, सही electrician assignment, immutable labour bill, exact commission/payable snapshot, no reserved cancellation-fee item और pending payout status जाँचे जाते हैं। Booking row पहले और payout row बाद में lock होती है। यह RPC bank/UPI transfer नहीं भेजता; Admin के दिए UTR/reference को दर्ज करता है।
+- Refund review RPC केवल request state बदलता है; provider call/payment status mutation नहीं करता। Actual provider refund executor अलग lifecycle है।
+- **महत्वपूर्ण source/document mismatch मिला:** `20261115150000_admin_readonly_booking_accounting_reconciliation.sql` के वर्तमान RPC body में Route transfer/settlement tables का कोई read/join/field नहीं है, जबकि इस Progress Log के पुराने Sections 10 और 11 में Route reconciliation को report में शामिल बताया गया है। इसलिए Route reconciliation को implemented/verified नहीं मानना है; इस report के दायरे से बाहर है।
+- **Test-count mismatch मिला:** `supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql` में वर्तमान `plan(46)` और 46 `select ok(...)` assertions हैं। पुराने दस्तावेज़ में 52 assertions लिखा है; वर्तमान source file के अनुसार 46 ही दर्ज किया जाएगा। यह static source count है, pgTAP runtime pass नहीं।
+- अगला काम: Route transfer/settlement reconciliation को अलग से exact schema/order review के बाद जोड़ने का प्रस्ताव तैयार करना; पहले pgTAP runtime execution वाले isolated test environment की पुष्टि आवश्यक। कोई Production migration, transfer, refund, payout या deployment नहीं किया गया।
