@@ -371,3 +371,10 @@ Recursive Git tree से `tests/*.test.js` की वास्तविक स�
 - चारों असफल source-contract tests Customer/Electrician UI क्षेत्र के हैं: `customer booking timeline isolates a rejected per-booking RPC transport`, `customer and electrician lifecycle actions expose retry states and always release their busy guards`, `Electrician earnings and wallet panels isolate rejected network requests`, और `customer direct-call lookup is authenticated and scoped to the booking owner`।
 - ये चारों GPT-1 स्वामित्व वाले Customer/Electrician UI टेस्ट हैं। GPT-2 ने साझा `booking.html` या `electrician.html` को बिना अनुमति नहीं बदला; GPT-1 के सुधार की प्रतीक्षा है।
 - इस रन में GPT-2 के Admin/Staff सुरक्षा वाले संबंधित Node checks पास हुए; फिर भी यह PostgreSQL/pgTAP, browser runtime, full migration replay या Production parity का प्रमाण नहीं है।
+
+### 3F. Legacy verified-payment amount DDL gap — source fix (16 Nov 2026)
+- Rechecked both root schema setup files: `COMPLETE_DATABASE_SETUP.sql` and `SUPABASE_SCHEMA.sql` define `public.service_bookings` without `amount_paid`, although later financial, webhook, receipt and accounting source references that column.
+- Added migration `20261116200000_restore_service_bookings_amount_paid.sql`: idempotently adds nullable `amount_paid numeric(12,2)` and a named nonnegative CHECK constraint marked `NOT VALID` so legacy rows are not blocked during migration validation; new/updated values are checked. Existing payment data is not rewritten.
+- Added three Node source-contract checks in `tests/legacy-amount-paid-ddl.test.js` and three pgTAP assertions in `financial_audit_core_schema.test.sql` (plan increased from 51 to 54).
+- This resolves the missing-column DDL source gap for a clean schema assembled from the tracked setup SQL plus the feature migration chain. It does not prove full migration replay or production compatibility.
+- Current source counts increase by one migration (87) and one Node test file (44), relative to the prior 86/43 snapshot. No Node, pgTAP, PostgreSQL or GitHub Actions run was observed for this change. No Production schema/data write, payment, refund, payout, merge or deployment was performed.
