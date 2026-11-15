@@ -2233,3 +2233,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Sequential offer dispatch pgTAP contract में 2 assertions जोड़े; घोषित plan 14 से 16। Tests अभी source-only हैं, execute नहीं किए गए।
 - Commits: `d6ed91e1` (acceptance revalidation), `e3707e57` (pgTAP assertions).
 - कोई migration apply नहीं, कोई वास्तविक offer accept नहीं, कोई live booking/payment/refund/payout/wallet mutation नहीं, production/deployment नहीं और mobile QA नहीं।
+
+
+## 2026-11-15 — Electrician Availability, Relocation और KYC UI Audit
+- Electrician dashboard के availability toggle, private KYC upload/list/preview, self-service operating-area request, phone-change history, earnings/wallet और offer rendering paths का source review किया।
+- Availability RPC केवल उसी authenticated linked profile पर काम करता है जो Admin-approved और Active हो; Offline होने पर केवल unaccepted offers बंद कर sequential queue आगे बढ़ती है। Accepted assignments को यह flow नहीं छूता।
+- Relocation request में linked profile, active/approved status, अलग operating area, छह अंकों का PIN, reason length और एक pending request की unique constraint जाँची। Admin approval में profile row lock, पुराने unaccepted offers बंद करना और नए area के अनुसार dispatch आगे बढ़ाना source में मौजूद है; accepted assignments सुरक्षित रखे जाते हैं।
+- KYC UI में PDF/JPG/PNG, 5 MB सीमा, per-user private object path, metadata RPC, owner-scoped document-path RPC और 60-second signed preview path जाँचे। Admin review UI में decision validation और rejection/resubmission note requirement भी जाँची।
+- इस pass में कोई नया confirmed source defect नहीं मिला। यह source audit है—Supabase RLS/RPC/Storage behavior का runtime proof नहीं। Node/pgTAP/build tests execute नहीं किए गए; कोई migration apply, live KYC upload, relocation approval, availability mutation, booking/payment/refund/payout/wallet mutation, deployment या mobile QA नहीं हुआ।
