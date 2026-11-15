@@ -3107,3 +3107,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin Panel में पूरे प्रोजेक्ट के 63% कार्ड से अलग GPT-2 का 67% progress card जोड़ा।
 - यह Feature Branch checklist implementation/audit progress है; Production rollout, isolated runtime verification और owner-approved release अलग gates हैं।
 - आगे GPT-2 scope की checklist बदलने पर प्रतिशत 26/39 के पुराने मान से नहीं, नई checkbox count से दोबारा निकालना होगा।
+
+
+## 2026-11-15 — GPT-2 प्रगति का विभागवार विवरण
+
+- Admin Panel के GPT-2 प्रगति कार्ड में विभागवार प्रतिशत जोड़े।
+- Admin/Support Staff: 11/13 = 85%; Payment/Accounting: 8/10 = 80%; Main Database audit/parity: 7/16 = 44%।
+- संयुक्त स्थिति: 26/39 = 67% पूरा, 13/39 = 33% बाकी।
+- GPT-1 के Customer/Electrician कार्य इस गणना से बाहर हैं।
