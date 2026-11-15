@@ -3437,3 +3437,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - PR #8 फिर से जाँचा: Open, Draft, Unmerged; head `92667b07b41006e084dafa1c99a50e8f1136373a`। कोई merge/deploy नहीं।
 - केवल नया Hindi design document commit किया; कोई migration, fixture, workflow, Production DB या GPT-1 shared source file नहीं बदली। GPT-2 checklist **27/39 = 69%** अपरिवर्तित।
 - अगला कदम: सभी migration SQL और pgTAP tests से exact table/column/platform-object dependency manifest निकालना; उसके बाद ही executable fixture या CI service पर काम।
+
+
+## 2026-11-15 — SOS accidental-tap protection requirement approved
+- उपयोगकर्ता ने Active Work स्क्रीन के लिए स्पष्ट SOS confirmation flow मंजूर किया: SOS control पर पहला tap केवल तीन स्वीकृत कारण दिखाएगा; कारण चुनने के बाद अलग “SOS भेजें” button दबाने पर ही alert/case बनेगा। केवल पहला tap या कारण चयन कोई alert/SMS नहीं भेजेगा।
+- SOS button काम शुरू होने से काम पूरा/बुकिंग रद्द होने तक Active Work screen पर रहेगा।
+- कोई अतिरिक्त user-entered booking ID/details/location field नहीं। Booking और actor context authenticated active booking/session से server-side निर्धारित होगा। उपलब्ध location ली जा सकती है; location unavailable/permission denied होने पर SOS block नहीं होगा।
+- Requirement document updated: `docs/SRK_ELECTRONIC_SOS_EMERGENCY_ALERT_REQUIREMENT_20261115.md`; commit `5d4296e9`।
+- **स्थिति: requirement/documentation approved; Customer/Electrician UI code change और test update अभी बाकी।** कोई Node/runtime test, DB migration, production change, merge या deployment इस update में नहीं किया गया।
