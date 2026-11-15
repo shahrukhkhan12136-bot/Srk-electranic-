@@ -22,6 +22,24 @@ test('Support Staff portal is isolated from Main Admin modules', () => {
   assert.match(admin, /srk_has_admin_permission/);
 });
 
+test('Support Staff cannot see Main Admin management, refund, accounting, payout or profile-approval panels', () => {
+  for (const id of [
+    'adminStaffManagementCard',
+    'adminCustomerRefundReviewCard',
+    'adminRazorpayRefundCard',
+    'adminAccountingReconciliationCard',
+    'adminPhoneChangeCard',
+    'adminAreaChangeCard'
+  ]) {
+    const panel = admin.match(new RegExp('<div class="([^"]*)" id="' + id + '"'));
+    assert.ok(panel, id + ' must exist');
+    assert.doesNotMatch(panel[1], /staff-only|admin-shared/, id + ' must remain Main Admin-only');
+  }
+  assert.match(admin, /class="card staff-only hidden" id="staffSupportCustomerCard"/);
+  assert.match(admin, /class="card staff-only hidden" id="staffSupportElectricianCard"/);
+  assert.match(admin, /class="card admin-shared hidden" id="sosAlertCard"/);
+});
+
 test('Staff invitation is independently authorized as Main Admin and role is fixed to support', () => {
   assert.match(staffFunction, /rpc\("is_srk_admin"\)/);
   assert.match(staffFunction, /body\.action !== "invite_support_staff"/);
