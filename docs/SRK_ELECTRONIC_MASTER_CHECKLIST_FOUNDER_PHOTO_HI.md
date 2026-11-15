@@ -128,3 +128,17 @@
 - [ ] Approved isolated environment में push delivery और race/retry/permission tests; final mobile QA implementation पूर्ण होने के बाद।
 
 **Evidence boundary:** Deep-link source change committed; वास्तविक Push delivery, runtime test, production deploy या mobile QA नहीं हुआ।
+
+
+### Push sender और subscription security — 15 November 2026
+- [x] Production read-only inspection से ACTIVE `push-job-offer` Edge Function और `job_offers` INSERT/UPDATE webhook trigger मौजूद होने की पुष्टि।
+- [x] Production subscription table पर owner-scoped RLS policies की पुष्टि; authenticated role के अनावश्यक TRUNCATE/TRIGGER/REFERENCES grants मिले — revoke करना बाकी।
+- [x] Feature branch में webhook-authenticated sender source जोड़ा: current offer/expiry, booking state/assignment और electrician active/approved/available revalidation; invalid/expired endpoints cleanup।
+- [x] Public GET response में केवल VAPID public key; private configuration response में नहीं।
+- [x] छह source-contract tests जोड़े; execute नहीं किए।
+- [ ] Migration में authenticated के TRUNCATE/TRIGGER/REFERENCES revoke करें और आवश्यक CRUD grants ही रखें; RLS owner scope verify करें।
+- [ ] Durable idempotent push outbox, bounded retry/backoff, delivery audit/dead-letter लागू करें; direct webhook request alone पर्याप्त नहीं।
+- [ ] Feature-branch schema और Production schema align करें; Production inventory में `job_offers.expires_at` तथा `electrician_profiles.available_for_work` अनुपस्थित दिखे, इसलिए अभी Edge Function deploy निषिद्ध।
+- [ ] Isolated environment में sender + webhook + subscription + expiry/acceptance race tests चलाएँ; उसके बाद ही final mobile QA।
+
+**Evidence boundary:** Production inspection read-only; branch Edge Function/source tests committed; runtime test, push send, migration apply, Edge Function deploy और mobile QA नहीं हुए।
