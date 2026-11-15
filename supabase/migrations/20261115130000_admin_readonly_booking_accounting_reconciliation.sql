@@ -308,7 +308,7 @@ begin
            and v_refund_state not in ('processed','manual_recorded'))) then
     v_exceptions := array_append(v_exceptions,'ROUTE_TRANSFER_REVERSED_OR_PARTIALLY_REVERSED');
   end if;
-  if v_refund_state='processed' and exists(
+  if v_refund_state in ('processed','manual_recorded') and exists(
     select 1 from public.srk_route_transfers t
      where t.booking_id=p_booking_id and t.transfer_id is not null
        and (t.transfer_status<>'reversed' or t.settlement_status<>'reversed')
