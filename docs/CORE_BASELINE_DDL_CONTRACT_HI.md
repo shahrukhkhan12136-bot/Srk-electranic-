@@ -286,3 +286,30 @@ Repository के पुराने commit `08e5ff8abc1cf2a5e2ae656a951f8f4d886
 - Current branch के सभी incremental migrations का dependency-ordered replay manifest और object-by-object reconciliation अभी बाकी है। Duplicate migration timestamps तथा production-vs-feature schema differences को resolve किए बिना fixture को parity-ready घोषित नहीं किया जाएगा।
 
 **सुरक्षा:** यह source recovery और दस्तावेज़ी तुलना है। कोई SQL apply, Production access, schema mutation या live operation नहीं किया गया।
+
+
+## 11. Migration dependency audit — unresolved base-column prerequisites
+
+71 migration SQL files वर्तमान Feature Branch tree में मिले। Filename/version grouping में duplicate 8-digit prefix `20261109` मिला:
+
+- `20261109_allow_quote_approval_booking_states.sql`
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+
+दोनों का version prefix समान है। इन्हें Supabase migration history में सुरक्षित रूप से कैसे represent/replay करना है, यह CLI/history reconciliation के बिना तय नहीं किया गया। किसी file का rename या migration history repair नहीं किया गया।
+
+### Static source cross-check से मिले dependency gaps
+
+1. Historical starter `SUPABASE_SCHEMA.sql` में `service_bookings` के लिए `amount_paid` column नहीं है। लेकिन `20261109_electrician_inspection_quotes_and_service_only_commission.sql` में trigger/RPC `amount_paid` को पढ़ता है। Current branch migration tree और exact-text repository search में इसका authoritative `ADD COLUMN`/base DDL source नहीं मिला।
+2. `20261109001000_add_google_maps_location_support.sql` के Admin approval function में `electrician_profiles.auth_user_id` को INSERT/UPDATE किया जाता है। Historical starter `PORTAL_SCHEMA.sql` केवल `user_id` जोड़ता है; current migration tree/repository exact-text search में `auth_user_id` का authoritative base/add-column DDL नहीं मिला।
+3. उसी Google Maps migration में `location_lat/location_lng` columns जोड़े जाते हैं; यह dependency स्पष्ट रूप से उस migration में मौजूद है।
+4. `20261108121115_add_customer_account_booking_access.sql` `service_bookings.customer_user_id` जोड़ता है; यह ग्राहक ownership migration का source-backed prerequisite है।
+5. `20261110140000_restore_missing_customer_booking_quote_columns.sql` केवल `customer_suggested_amount` और `electrician_quote_kind` जोड़ता है; यह `amount_paid` gap को resolve नहीं करता।
+
+### निष्कर्ष / सुरक्षित अगला कदम
+
+- Historical setup files + current migration files को जोड़कर अभी भी complete, self-contained, reproducible baseline नहीं बनता।
+- विशेष रूप से `amount_paid` और `auth_user_id` के लिए source-of-truth DDL या approved schema snapshot चाहिए। Production inventory में column observation होना source SQL या migration provenance के बराबर नहीं है।
+- Disposable DB fixture तब तक parity-ready नहीं होगा जब तक इन prerequisites के types, nullability, defaults, constraints, indexes और ownership semantics प्रमाणित न हों।
+- Migration CLI version parsing, duplicate-version handling और existing migration-history reconciliation को अलग से validate करना होगा; production history को edit नहीं करना है।
+
+यह static source audit है। कोई migration execute नहीं हुई और कोई Production/database connection नहीं किया गया।
