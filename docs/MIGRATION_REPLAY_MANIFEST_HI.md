@@ -316,3 +316,11 @@ prerequisite gates. No PostgreSQL replay or Production query was run.
   3. `public.srk_booking_complaints`
 - The support complaint parent table remains unresolved. The reviewed complaint/support migrations consume it but do not create it. No authoritative CREATE TABLE source has been recovered.
 - Current inventory remains 77 SQL migration files. No checklist completion percentage is increased by this documentation correction; no Production access or migration execution occurred.
+
+## 10. Support event-ledger dependency found — 15 Nov 2026
+
+- Migration `20261114202250_customer_complaint_customer_safe_projection.sql` inserts customer-created complaint events into `public.srk_booking_complaint_events`; it also reads `public.srk_booking_complaints`.
+- The inspected Feature Branch migration inventory and exact-name source search did not locate an authoritative `CREATE TABLE public.srk_booking_complaint_events` declaration. This is a separate prerequisite from the complaint parent table.
+- The current support chain therefore has two unresolved base-table contracts: `public.srk_booking_complaints` and `public.srk_booking_complaint_events`. Do not infer columns, keys, status checks, append-only behavior, RLS or grants from the insert/read consumers.
+- The unresolved clean-replay prerequisites are now four objects/columns: `service_bookings.amount_paid`, `electrician_profiles.auth_user_id`, `public.srk_booking_complaints`, and `public.srk_booking_complaint_events`. Push subscriptions are excluded from this list because their original migration source has been restored (static review only).
+- No SQL was synthesized or applied; no Production migration history or catalog was queried.
