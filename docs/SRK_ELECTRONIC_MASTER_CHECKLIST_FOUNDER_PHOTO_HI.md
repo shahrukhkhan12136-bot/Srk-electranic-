@@ -193,5 +193,6 @@
 - [ ] GPT-2 Admin scope में `admin.html` का legacy quote editing/status control हटाना बाकी है।
 - [ ] GPT-2 Payment/Accounting scope में `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` और reconciliation का approved-quote dependency हटाकर नए immutable server-timed labour bill + अलग materials receipt contract से जोड़ना बाकी है। Historical paid/settled rows को audit evidence के रूप में preserve करना है।
 - [ ] Legacy status CHECK constraints और quote audit columns को अभी preserve किया है; ऐतिहासिक records के लिए हैं। New quote RPCs बंद हैं। Status constraints/columns तभी हटें जब GPT-2 accounting/receipt/archive dependency audit प्रमाणित हो।
-- [ ] Commit `b9fd6a1` का Node CI run `43705727199` PASS हुआ था। बाद के offer-contract/UI/test commits के लिए नए Node CI runs `43705891497` और `43705887412` उस समय in-progress/pending थे; इन्हें PASS मानना अभी बाकी है।
+- [x] Commit `1468dfe` पर Node CI run `43705891497` सफल: **98/98 PASS, 0 FAIL** (job log TAP summary से सत्यापित)।
+- [ ] इसके बाद जोड़ा गया regression test `tests/electrician-legacy-quotation-retirement.test.js` और docs updates सहित नवीनतम HEAD `80a6c7d` के Node CI runs `43705953944` / `43705950245` अभी in-progress हैं; latest-head result बाकी है।
 - [ ] SQL runtime/pgTAP execution pending; no Production migration/deploy/merge.
