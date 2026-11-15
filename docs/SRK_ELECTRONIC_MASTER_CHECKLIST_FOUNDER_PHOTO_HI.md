@@ -92,3 +92,14 @@
 - [ ] Complete end-to-end electrician/Admin workflows after implementation is complete; final mobile QA remains deferred.
 
 **Evidence boundary:** This is source inspection only. No live availability/relocation/KYC mutation, migration apply, deployment or runtime verification is claimed.
+
+
+### Live Location GPS failure cleanup — 15 November 2026
+- [x] GPS watch error और location-update RPC failure अब server-side stop RPC भी चलाते हैं।
+- [x] Local retry tracking केवल server stop की पुष्टि के बाद हटती है; stop failure पर Logout retry path सुरक्षित रहता है।
+- [x] तीन source-level regression assertions जोड़े (अभी execute नहीं किए गए)।
+- [x] Live-location server source में consent, assigned-booking/customer scoping, coordinate validation, stale-read cutoff और booking transition cleanup की समीक्षा की।
+- [ ] Node source test और live-location pgTAP/RPC behavior को approved isolated test environment में चलाएँ।
+- [ ] सभी implementation समाप्त होने के बाद Customer–Electrician location sharing का consolidated desktop/mobile QA करें।
+
+**Evidence boundary:** केवल source fix/review; वास्तविक GPS share, migration apply, runtime test या deployment नहीं हुआ।
