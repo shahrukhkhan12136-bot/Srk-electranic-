@@ -802,3 +802,28 @@ A statement-level count was performed on the two existing SQL test files (splitt
 Both files therefore have internally consistent declared pgTAP plan counts by static statement counting. This does not establish that either SQL file parses or passes against PostgreSQL, nor does it validate the referenced schema objects, privileges, function definitions, or runtime behavior.
 
 No database engine, pgTAP, Supabase CLI, Docker, or CI job was run. No Production access or change occurred.
+
+
+## 26. Existing SQL test isolation and schema-workflow safety review — 16 Nov 2026
+
+### Existing pgTAP file boundaries
+
+Static inspection of both current pgTAP files confirms:
+- Each starts a transaction with `BEGIN`;
+- Each declares its existing pgTAP plan;
+- Each ends with `SELECT * FROM finish()` followed by `ROLLBACK`;
+- A line-start scan found no top-level INSERT, UPDATE, DELETE, TRUNCATE, CREATE, ALTER, DROP, GRANT, REVOKE, or role-switch statements in either test file.
+
+This supports that the test scripts are written as transactional schema/introspection assertions with rollback boundaries. It is not a guarantee that called functions or database-side hooks are side-effect free, and it is not a substitute for execution in a disposable local database.
+
+### Existing `.github/workflows/supabase-schema-ci.yml` safety finding
+
+The existing workflow is manually dispatched only and has a hard-coded branch guard for `feature/platform-fee-cash-online-cycle`, not the current GPT-2 feature branch. More importantly, its steps require a `SUPABASE_DB_URL` secret, connect to a remote database for a schema-only dump, then restore that dump into a temporary local Supabase stack and apply a fixed list of unrelated feature migrations.
+
+Therefore:
+- Do not dispatch this workflow for the current GPT-2 task.
+- Do not add or provide a Production connection secret for GPT-2 pgTAP preparation.
+- This workflow is not a disposable-local-only test harness and is not the requested timer/status-guard pgTAP job.
+- A future safe CI job should use only an isolated local Supabase stack built from an approved, version-controlled baseline and pinned CLI/tool versions, with no remote DB URL or Production secret.
+
+No workflow was dispatched or modified. No remote schema export, database connection, migration execution, pgTAP execution, Production access, or database change occurred.
