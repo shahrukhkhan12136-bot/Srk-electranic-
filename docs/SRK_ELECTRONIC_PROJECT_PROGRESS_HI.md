@@ -2926,3 +2926,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Feature Branch commits: Customer UI `8c0a4193`; regression test `fe5de63f`. Latest CI result for this exact head is not yet available; do not mark the new assertion as passed until workflow confirmation.
 - Welcome Screen review confirmed the Customer login route resolves to `customer-login.html`, whose successful OTP flow redirects to `booking.html`; root `index.html` redirects to `welcome.html`; all three role links and founder image path are present. Asset presence is covered by `tests/welcome-screen-contract.test.js`; exact portrait visual match and browser rendering remain pending.
 - No Production migration, deployment, merge, payment, or live booking was performed. Mobile QA remains deferred until the consolidated final pass.
+
+
+## 2026-11-15 — GPT #2: Route ledger access-control contract
+
+- Rechecked the Route ledger foundation: RLS is enabled, all privileges are revoked from anon/authenticated, and operational select/insert/update grants are assigned to service_role only.
+- Added three pgTAP source-contract assertions for RLS enabled, no direct anon/authenticated read, and service_role operational grants. Accounting contract plan/count is now 65.
+- This is source-level test coverage only; no PostgreSQL/pgTAP runtime has been run. No Route API caller, transfer execution, provider settlement webhook, reversal lifecycle or bank-credit proof has been added.
+- Feature Branch only. No Production migration, live provider call, money movement, deployment, merge or go-live.
