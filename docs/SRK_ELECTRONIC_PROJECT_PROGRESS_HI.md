@@ -3016,3 +3016,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - GPS start/update/stop, GPS failure पर server stop, logout retry handling, Push subscription ownership और Support ticket/thread rendering का source audit किया। मौजूदा GPS safeguards और support HTML escaping ठीक मिले। कोई real device permission prompt या Production call नहीं किया।
 - Latest full repository run में 121 में से 120 tests pass हुए; एक failure GPT-1 scope से बाहर Admin test `tests/admin-commission-report-labels.test.js` में है, जो current `admin.html` में Route commission term देखकर fail हो रहा है। यह GPT-2 Admin Panel dependency है; GPT-1 ने Admin source नहीं बदला।
 - Browser/device runtime verification pending; final consolidated mobile QA deferred. No Production changes, merge or deployment.
+
+
+## 2026-11-15 — Admin commission test scope correction
+
+- नवीनतम CI में 121 Node tests में 120 पास और 1 fail मिला। कारण: aggregate commission report का पुराना test पूरे Admin HTML में Route शब्द रोक रहा था, जबकि अलग accounting reconciliation panel में Route Transfers का नया section वैध रूप से जोड़ा गया है।
+- `tests/admin-commission-report-labels.test.js` को केवल aggregate कमीशन रिपोर्ट के HTML section तक सीमित किया; read-only accounting reconciliation migration पर retired Route-field assertions यथावत हैं।
+- Test correction commit: `0f0dd20510c845c51c0e66d0664ca14287bbcb19`. इसके बाद का नया CI run अभी प्रतीक्षित है। PostgreSQL/pgTAP runtime और browser/device QA अभी Not Run हैं।
