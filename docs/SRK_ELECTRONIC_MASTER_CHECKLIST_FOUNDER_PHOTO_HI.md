@@ -486,3 +486,10 @@
 - Earnings panel में earnings RPC और Admin payout-history query एक Promise.all में थीं; किसी एक transport rejection पर पूरा loader reject होकर panel “लोड हो रहा है” पर अटक सकता था। दोनों requests को स्वतंत्र rejection handling दी; earnings उपलब्ध रहे तो payout-history failure अलग संदेश दिखाएगा।
 - Wallet panel में summary RPC और bank-link / ledger queries के rejected promises panel को अधूरे loading state में छोड़ सकते थे। तीनों request paths को सुरक्षित rejection result में बदला; bank-link और ledger errors अलग-अलग दिखेंगे, उपलब्ध balance summary सुरक्षित रहेगी।
 - Regression source-contract test जोड़ा। यह वास्तविक Supabase/network fault injection नहीं है; DB/RLS, browser और अंतिम mobile QA अभी लंबित हैं।
+
+
+### Electrician profile/support panels — rejected transport handling
+- Area-change history और KYC document history RPC को rejected network promises से सुरक्षित किया; panel अब स्पष्ट उपलब्धता/Refresh संदेश दिखाएगा।
+- Support ticket list RPC rejection पर raw error text दिखाने के बजाय सुरक्षित Hindi retry संदेश देती है।
+- Phone-change request history Edge Function transport rejection को संभालती है; मौजूदा सुरक्षित status/error flow बना रहता है।
+- Regression source-contract test जोड़ा। वास्तविक Supabase/Edge Function/browser fault-injection और अंतिम mobile QA अभी लंबित हैं।
