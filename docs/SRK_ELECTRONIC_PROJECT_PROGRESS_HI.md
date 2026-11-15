@@ -2315,3 +2315,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Rollback में पहले scheduled worker रोकना, फिर trigger swap को explicit reviewed rollback migration से पुराने trigger पर लौटाना होगा; केवल Edge Function rollback पर्याप्त नहीं होगा। Outbox rows और delivery ledger को बिना reconciliation delete नहीं करना है।
 - Source-contract assertion जोड़ा कि legacy trigger drop, नए trigger creation से पहले और उसी migration में हो। Commit: `9f72f24d`; test commit: `3d4cfe13`।
 - कोई production trigger/DB परिवर्तन, migration apply, Edge Function deploy, worker activation या वास्तविक push नहीं किया।
+
+
+## 2026-11-15 — Push Migration Preconditions और Isolated Integration Plan
+- Production read-only catalog inventory ने पुष्टि की कि subscription table में `id,user_id,endpoint,p256dh,auth` मौजूद हैं; electrician profile में `id,user_id,auth_user_id,active,verification_status` मौजूद हैं। Production में अभी भी `job_offers.expires_at` और `electrician_profiles.available_for_work` नहीं हैं। Production में private schema के अन्य functions मौजूद हैं, पर नई outbox/ledger tables नहीं हैं। कोई write नहीं किया।
+- Durable outbox migration में fail-fast preflight जोड़ा: `srk_private`, push subscriptions के आवश्यक columns, `job_offers.expires_at`, `electrician_profiles.available_for_work` और electrician identity/approval columns अनुपस्थित हों तो स्पष्ट exception। इससे migration गलत क्रम/अधूरे schema पर चुपचाप आगे नहीं बढ़ेगी।
+- Subscription ledger migration में outbox table और subscription `id/user_id` prerequisite guard जोड़ा। दोनों के source assertions जोड़े।
+- `docs/PUSH_DELIVERY_ISOLATED_INTEGRATION_TEST_PLAN.md` में migration order, privilege checks, happy path, multiple devices, replay, partial failure, retry exhaustion, 404/410, no-subscription, stale offer, auth/body validation, parallel claims, worker timeout, monitoring, exit criteria दर्ज किए।
+- यह test plan है, executed test report नहीं। Isolated project/Netlify site अभी provision नहीं किए; कोई migration apply, deploy, push या production mutation नहीं हुई।
+- Commits: `77c6b476` (outbox preflight), `d58142e6` (ledger preflight), `76fedb8e` (integration plan), `82750f10` (outbox guard assertions), `dc9ba9f2` (ledger guard assertions)।
