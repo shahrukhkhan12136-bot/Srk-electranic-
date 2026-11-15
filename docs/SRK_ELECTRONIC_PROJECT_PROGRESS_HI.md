@@ -2429,3 +2429,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Latest branch पर फिर `npm test`: **87 passed / 0 failed**। Deno Edge check और Netlify worker syntax check भी exit code 0।
 - Remaining: वास्तविक Supabase managed schema/role parity, Edge↔Netlify scheduled integration, provider-level delivery behavior। इन्हें approved isolated staging पर ही करना है।
 - कोई Supabase hosted migration apply, paid branch/subscription, production write, deployment, real push/provider call, refund या mobile QA नहीं किया।
+
+### Repository documentation consistency — 15 November 2026
+- [x] `README.md` phone-visibility section corrected to the owner-approved acceptance rule: hide both numbers before electrician acceptance; reveal full numbers to customer and accepted electrician after acceptance; no extra OTP; Admin may see both; Support Staff remains restricted.
+- [x] Removed obsolete masked-calling / Exotel requirement and ambiguous assigned-only wording from the active policy section.
+- [ ] Continue checking README endpoint and feature descriptions against current source before treating documentation as fully current.
+- Commit: `cdb9583e167659f6601effb25ad926d76fa7bfe6` (feature branch only).
+- No application behavior, database, production configuration, deployment, merge, or mobile QA changed.
