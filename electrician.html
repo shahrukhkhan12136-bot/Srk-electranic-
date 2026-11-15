@@ -350,10 +350,11 @@ async function uploadVerificationDocument(type,inputId){
 }
 async function loadEarnings(){
  const box=document.getElementById('earnings');if(!box||!user||!profile)return;
- const [{data,error},{data:payouts,payoutError}]=await Promise.all([
-  sb.rpc('srk_get_my_earnings'),
-  sb.from('srk_electrician_payouts').select('booking_id,electrician_payable,payout_status,payout_method,payout_reference,paid_at,created_at').eq('electrician_profile_id',profile.id).order('created_at',{ascending:false}).limit(100).then(r=>({data:r.data,payoutError:r.error}))
+ const [earningsResult,payoutResult]=await Promise.all([
+  Promise.resolve().then(()=>sb.rpc('srk_get_my_earnings')).catch(error=>({data:null,error})),
+  Promise.resolve().then(()=>sb.from('srk_electrician_payouts').select('booking_id,electrician_payable,payout_status,payout_method,payout_reference,paid_at,created_at').eq('electrician_profile_id',profile.id).order('created_at',{ascending:false}).limit(100)).catch(error=>({data:null,error}))
  ]);
+ const {data,error}=earningsResult,payouts=payoutResult.data,payoutError=payoutResult.error;
  if(error){box.textContent='कमाई का हिसाब अभी नहीं खुला। कृपया Refresh करें।';return;}
  const rows=data||[],completed=rows.filter(x=>x.booking_status==='completed'),paid=completed.filter(x=>x.payment_status==='paid');
  const gross=paid.reduce((sum,x)=>sum+Number(x.amount_received||0),0),commission=paid.reduce((sum,x)=>sum+Number(x.commission_amount||0),0),net=paid.reduce((sum,x)=>sum+Number(x.electrician_earning||0),0);
@@ -371,13 +372,14 @@ async function loadEarnings(){
 async function loadPartnerWallet(){
  const box=document.getElementById('partnerWallet');if(!box||!user)return;
  box.innerHTML='<p class="muted">वॉलेट जानकारी सुरक्षित रूप से लोड हो रही है…</p>';
- const {data,error}=await sb.rpc('srk_get_my_wallet_summary');
+ const walletResult=await Promise.resolve().then(()=>sb.rpc('srk_get_my_wallet_summary')).catch(error=>({data:null,error}));
+ const {data,error}=walletResult;
  if(error){box.innerHTML='<p class="bad">वॉलेट जानकारी अभी उपलब्ध नहीं है। कृपया बाद में Refresh करें।</p>';return;}
  const w=data?.electrician;
  if(!w){box.innerHTML='<p>इलेक्ट्रिशियन वॉलेट केवल Admin द्वारा स्वीकृत पार्टनर के लिए खुलेगा।</p>';return;}
  const [bankResult,ledgerResult]=await Promise.all([
-  sb.from('srk_wallet_bank_links').select('account_holder_name,bank_name,account_last4,ifsc_masked,verification_status,is_primary,wallet_type,provider').eq('user_id',user.id).order('is_primary',{ascending:false}).order('created_at',{ascending:false}).limit(3),
-  sb.from('srk_wallet_ledger').select('entry_type,direction,amount,status,description,provider_reference,reference_id,created_at,posted_at').eq('wallet_id',w.wallet_id).eq('user_id',user.id).order('created_at',{ascending:false}).limit(10)
+  Promise.resolve().then(()=>sb.from('srk_wallet_bank_links').select('account_holder_name,bank_name,account_last4,ifsc_masked,verification_status,is_primary,wallet_type,provider').eq('user_id',user.id).order('is_primary',{ascending:false}).order('created_at',{ascending:false}).limit(3)).catch(error=>({data:null,error})),
+  Promise.resolve().then(()=>sb.from('srk_wallet_ledger').select('entry_type,direction,amount,status,description,provider_reference,reference_id,created_at,posted_at').eq('wallet_id',w.wallet_id).eq('user_id',user.id).order('created_at',{ascending:false}).limit(10)).catch(error=>({data:null,error}))
  ]);
  const bank=bankResult.data||[],ledger=ledgerResult.data||[];
  const verificationLabels={verified:'सत्यापित',pending:'जाँच बाकी',rejected:'अस्वीकृत',failed:'जाँच विफल',active:'सक्रिय'};
