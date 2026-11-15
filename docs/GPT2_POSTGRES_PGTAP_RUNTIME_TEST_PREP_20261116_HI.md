@@ -615,3 +615,91 @@ These state sets are consistent with the later Git source migration `20261114240
 - Current live constraint state is reported consistent with the later source migration's state sets.
 - The missing 14 Nov history/inventory record and its provenance remain unresolved.
 - No independent GPT-2 Production access; no Production write, migration repair/replay, DDL, deployment, or GPT-1 source change.
+
+## 21. Full Production CHECK definitions and second migration-history check — owner-provided read-only evidence — 16 Nov 2026
+
+The project owner supplied a second read-only Production audit in this conversation. GPT-2 did not independently connect to Supabase or execute the queries. The details below are attributed to that supplied audit.
+
+### Exact live CHECK definitions supplied
+
+Table: `public.service_bookings`.
+
+**A. `service_bookings_status_check`**
+
+```sql
+CHECK (
+  status = ANY (
+    ARRAY[
+      'new'::text,
+      'confirmed'::text,
+      'assigned'::text,
+      'inspection'::text,
+      'awaiting_quote_approval'::text,
+      'quote_approved'::text,
+      'awaiting_work_start_approval'::text,
+      'quote_rejected'::text,
+      'in_progress'::text,
+      'completed'::text,
+      'cancelled'::text
+    ]
+  )
+)
+```
+
+**B. `service_bookings_assignment_status_requires_electrician`**
+
+```sql
+CHECK (
+  (
+    status <> ALL (
+      ARRAY[
+        'assigned'::text,
+        'inspection'::text,
+        'awaiting_quote_approval'::text,
+        'quote_approved'::text,
+        'awaiting_work_start_approval'::text,
+        'quote_rejected'::text,
+        'in_progress'::text,
+        'completed'::text
+      ]
+    )
+  )
+  OR assigned_electrician_id IS NOT NULL
+)
+```
+
+The supplied audit reports for both constraints: `convalidated = true`, `condeferrable = false`, and `condeferred = false`.
+
+### Source comparison
+
+The exact supplied definitions contain the `awaiting_work_start_approval` state in both relevant state sets. This matches the state-set changes recorded in the Git source migration `20261114240000_server_authoritative_customer_approved_work_timer.sql` (§§17–18).
+
+This is now an exact textual SQL definition supplied by the owner, and it matches the expected logical predicates in the current Git source. It still does not establish that this specific migration executed in Production. The absence of its migration-history/inventory record remains a separate provenance question.
+
+### Second migration-history / DBA explanation check
+
+The supplied second audit reports:
+
+- Production contains migration `20261114193300`, named `admin_approved_electrician_relocation_20261114220000`.
+- Other entries dated 13 and 15 Nov are also reported present.
+- The specifically investigated `20261114240000_server_authoritative_customer_approved_work_timer` remains absent from both `supabase_migrations.schema_migrations` and the Supabase migration inventory.
+- No DBA explanation, repair record, execution log, manual SQL record, or written reason for this absence has been verified in the evidence supplied.
+
+The presence of a different 14 Nov migration does not explain the missing timer migration. No causal relationship is inferred.
+
+### Updated conclusion and safe next step
+
+1. Both full live CHECK definitions are now available and match the later Git migration's relevant state sets.
+2. Both constraints are reported validated and non-deferrable.
+3. The target 14 Nov timer migration remains absent from the checked Production history and inventory.
+4. The reason and actual provenance of the live constraint definitions remain unknown. Do not label the migration as intentionally skipped, failed, manually applied, or applied by another route without authoritative evidence.
+5. The only appropriate next evidence is a DBA/owner-held deployment or execution record, approved change record, or written explanation that accounts for the live definitions and missing history entry. If none exists, record provenance as unknown and escalate to the authorized Database Owner for a separately approved decision. Continue read-only; do not insert history rows, run/replay/repair migrations, execute DDL, alter constraints, or deploy.
+
+### Status
+
+- Full CHECK definitions: supplied and recorded.
+- Both constraints: reported validated, not deferrable.
+- 9 Nov Production history entries: reported present (§20).
+- Target 14 Nov timer migration history/inventory entry: reported absent on the second check as well.
+- DBA explanation / execution provenance: not verified.
+- No independent GPT-2 Production access; no Production write, repair, replay, DDL, deployment, or GPT-1 source changes.
