@@ -2069,6 +2069,19 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerMessage('ग्राहक लॉगिन सेटअप अभी उपलब्ध नहीं है। OTP लॉगिन सेवा ठीक होने तक बुकिंग नहीं की जा सकेगी।');
 }
 
+async function reconcileCustomerPaymentAfterUncertainVerification(bookingId){
+ let lookupSucceeded=false,paymentConfirmed=false;
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_get_payment_history',{p_limit:25,p_offset:0});
+  if(error)throw error;
+  lookupSucceeded=true;
+  const rows=Array.isArray(data)?data:[];
+  paymentConfirmed=rows.some(row=>row.booking_id===bookingId&&['payment','manual_payment'].includes(String(row.event_type||'')));
+ }catch(_){/* A failed authoritative read leaves the payment outcome uncertain. */}
+ await loadCustomerBookings();
+ await loadCustomerPaymentHistory(true);
+ return {lookupSucceeded,paymentConfirmed};
+}
 function setPaymentStatus(message, isError = false) {
   const el = document.getElementById('paymentStatus');
   el.textContent = message;
@@ -2078,7 +2091,9 @@ function setPaymentStatus(message, isError = false) {
 async function startRazorpayPayment() {
   if (paymentBusy) return;
   if (!window.Razorpay) { setPaymentStatus('Razorpay Checkout लोड नहीं हुआ। इंटरनेट चालू करके पेज रीफ्रेश करें।', true); return; }
+  if (!pendingBookingId) { setPaymentStatus('भुगतान के लिए बुकिंग संदर्भ उपलब्ध नहीं है।', true); return; }
   paymentBusy = true;
+  const paymentBookingId = pendingBookingId;
   const button = document.getElementById('payNow');
   button.disabled = true;
   button.textContent = 'कृपया प्रतीक्षा करें…';
@@ -2091,7 +2106,7 @@ async function startRazorpayPayment() {
     const paymentHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + customerSession.access_token };
     const orderResponse = await fetch('/api/create-order', {
       method: 'POST', headers: paymentHeaders,
-      body: JSON.stringify({ booking_id: pendingBookingId })
+      body: JSON.stringify({ booking_id: paymentBookingId })
     });
     const orderData = await orderResponse.json();
     if (!orderResponse.ok) throw new Error(orderData.error || 'ऑर्डर नहीं बन पाया।');
@@ -2122,7 +2137,16 @@ async function startRazorpayPayment() {
           setPaymentStatus('भुगतान सफल और सत्यापित हो गया है।');
           setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है।');
           await loadCustomerBookings();
-        } catch (err) { setPaymentStatus(err.message, true); }
+        } catch (err) {
+          const state=await reconcileCustomerPaymentAfterUncertainVerification(paymentBookingId);
+          if(state.paymentConfirmed){
+            setPaymentStatus('✅ भुगतान सर्वर रिकॉर्ड में सत्यापित है। बुकिंग और Payments इतिहास रीफ़्रेश कर दिए गए हैं।');
+          }else if(state.lookupSucceeded){
+            setPaymentStatus('भुगतान की पुष्टि अभी सर्वर रिकॉर्ड में नहीं दिखी। अभी दोबारा भुगतान न करें। कुछ देर बाद Payments इतिहास रीफ़्रेश करें; राशि कटने पर सहायता टीम से संपर्क करें।',true);
+          }else{
+            setPaymentStatus('भुगतान का परिणाम अभी स्पष्ट नहीं है और सर्वर रिकॉर्ड भी नहीं खुला। डुप्लिकेट भुगतान से बचने के लिए अभी दोबारा भुगतान न करें; इंटरनेट लौटने पर बुकिंग और Payments इतिहास जाँचें।',true);
+          }
+        }
       },
       modal: { ondismiss: function () { setPaymentStatus('आपने भुगतान विंडो बंद कर दी। अभी भुगतान की पुष्टि नहीं हुई है।', true); } }
     };
