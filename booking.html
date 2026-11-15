@@ -1442,11 +1442,18 @@ async function customerChangePaymentMethod(id){
   const {data,error}=await customerSb.rpc('srk_customer_change_payment_method',{p_booking_id:id,p_payment_method:'Razorpay ऑनलाइन भुगतान'});
   if(error)throw error;
   if(!data?.success)throw new Error('PAYMENT_METHOD_CHANGE_NOT_CONFIRMED');
-  alert('आपकी पसंद Online भुगतान के रूप में सुरक्षित हो गई है। भुगतान काम पूरा होने के बाद होगा।');
-  await loadCustomerBookings();
  }catch(error){
-  alert('भुगतान तरीका नहीं बदला। कृपया इंटरनेट और लॉगिन जाँचकर दोबारा कोशिश करें।');
+  try{
+   await loadCustomerBookings();
+   alert('सर्वर का जवाब स्पष्ट नहीं मिला। बुकिंग सूची रीफ़्रेश की गई है। भुगतान तरीका जाँचें; स्थिति की पुष्टि किए बिना दोबारा अनुरोध न भेजें।');
+  }catch(_){
+   alert('सर्वर का जवाब स्पष्ट नहीं मिला और बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करके भुगतान तरीका जाँचें; पुष्टि से पहले दोबारा अनुरोध न भेजें।');
+  }
+  return;
  }
+ alert('आपकी पसंद Online भुगतान के रूप में सुरक्षित हो गई है। भुगतान काम पूरा होने के बाद होगा।');
+ try{await loadCustomerBookings();}
+ catch(_){alert('Online भुगतान की पसंद सर्वर पर सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। Refresh करके वर्तमान स्थिति देखें।');}
 }
 function customerPayBooking(id,amount){
  if(!Number.isFinite(amount)||amount<1){alert('भुगतान राशि सही नहीं है।');return;}
