@@ -2970,3 +2970,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नई Feature Branch migration `20261115200000_harden_financial_admin_rpc_search_path.sql` दोनों RPCs का search_path खाली करती है; PostgreSQL का implicit pg_catalog resolution बना रहता है। इससे SECURITY DEFINER execution के दौरान writable/public schemas search path से हटते हैं। Existing function bodies, authorization, grants और business logic नहीं बदले।
 - Accounting source-contract test में दोनों functions के empty search_path की दो pgTAP assertions जोड़ीं; plan/count 67 से 69।
 - Static source review only: migration apply या PostgreSQL/pgTAP runtime नहीं हुआ। Apply से पहले staging DB पर function execution/smoke test आवश्यक। कोई real payout/refund, merge या deployment नहीं।
+
+
+## 2026-11-15 — Customer App static English translation audit
+
+- Customer `booking.html` के static visible Hindi text nodes और `title` / `aria-label` attributes का source audit किया। सभी static Hindi text nodes के लिए English dictionary entry मौजूद है; scan में कोई unmatched visible Hindi text node नहीं मिला।
+- Dashboard section headings, saved-address/GPS instructions, Google Maps action, electrician tier duration labels, estimate and billing terms, separate materials approval, booking terms तथा Razorpay payment actions की translations जोड़ीं।
+- शेष दो accessibility/title labels — Electrician current location और booking status history — भी translate किए।
+- Regression test में representative static translations और accessibility labels के assertions जोड़े।
+- Feature branch head `d55c11159b865386234601df2041c998fa735d6b` पर दो full Node test workflows **SUCCESS** हुए।
+- यह static/source-level coverage है; browser में वास्तविक language switching, dynamic runtime rendering और visual review अभी बाकी हैं। Final consolidated mobile QA deferred है। No Production change, merge or deployment.
