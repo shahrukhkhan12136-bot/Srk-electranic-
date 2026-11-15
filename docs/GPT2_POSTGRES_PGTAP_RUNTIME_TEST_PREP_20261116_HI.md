@@ -1000,3 +1000,56 @@ Exact-definition search और historical root SQL cross-check से निम�
 यह finding Sections 30–32 को और स्पष्ट करती है: Main Admin allow-list identity (`srk_admin_users`) और delegated staff permission helper (`srk_has_admin_permission`) अलग authorization layers हैं। Main Admin helper/table के बिना dependent migrations को replay-ready नहीं कहा जा सकता।
 
 कोई historical SQL execute नहीं किया गया; कोई Admin identity/allow-list row नहीं पढ़ी या बदली गई; Production access, migration replay, DDL या deployment नहीं हुआ।
+
+
+## 34. Finance, refunds, cancellation-fee और booking idempotency dependency audit — 16 Nov 2026
+
+इस चरण में financial/refund/cancellation migrations और उनकी table/function dependencies का source-level मिलान किया गया।
+
+### 34.1 Financial audit core — मुख्य finance base tables
+
+`20261114125844_restore_financial_audit_core_schema.sql` निम्न relations बनाती है:
+
+- `srk_booking_labour_bills`;
+- `srk_manual_payment_entries`;
+- `srk_electrician_payouts`;
+- `srk_admin_audit_events`;
+- `srk_razorpay_refunds`;
+- `srk_booking_refund_requests`;
+- `srk_manual_refund_entries`.
+
+इनमें से अधिकांश पर RLS enable, browser roles के direct table privileges revoke और service_role grants लगाए गए हैं। Payouts के लिए authenticated SELECT को Admin predicate या संबंधित electrician profile ownership से सीमित policy दी गई है। Audit/refund capture triggers भी इसी migration में बनते हैं।
+
+**Critical baseline dependency:** इसी migration में `ALTER FUNCTION public.is_srk_admin() SET search_path=''` है, फिर PUBLIC/anon execute revoke और authenticated/service_role execute grant हैं। यदि clean replay से पहले historical helper स्थापित नहीं है, तो यह migration उस बिंदु पर fail होगी। Current versioned migration inventory में helper/table का introducing migration नहीं मिला; इसलिए finance chain भी उसी unresolved Admin baseline पर निर्भर है।
+
+### 34.2 Finance/refund chain का source-level क्रम
+
+- `20261109010000_create_secure_wallet_ledger_foundation.sql` — wallet ledger foundation और Admin wallet RPCs; यह शुरुआती wallet base है।
+- `20261114125844_restore_financial_audit_core_schema.sql` — bill/payment/payout/refund/audit core relations; receipt/history consumers से पहले रखने का migration comment है।
+- `20261114190000` और `20261114200000` — customer receipt और payment-history RPCs; finance core relations पढ़ते हैं।
+- `20261114270000` — cancellation request/event tables, direct booking cancellation guard और customer/Admin cancellation RPCs।
+- `20261114280000` — wallet ledger में cancellation-fee type, cancellation-fee debt/item/ledger tables, reserve/release triggers, receipt/payment RPC replacements।
+- `20261114290000` — full-refund पर cancellation-fee ledger और wallet reversal; prior cancellation-fee schema, wallet ledger और refund records पर निर्भर।
+- `20261114410000` — Razorpay webhook event inbox और service-role claim/complete RPCs।
+- `20261115100000`–`20261115130000` — customer refund request, Admin review, durable provider recovery evidence और manual refund completion RPCs।
+- `20261115150000`, `15170000`, `15180000` — Admin accounting reconciliation RPCs की successive replacements/extensions; बाद के definitions पहले वाले function को replace करते हैं।
+- `20261115200000` — payout/manual-refund SECURITY DEFINER RPC search_path hardening; पहले उन functions का मौजूद होना आवश्यक।
+- `20261115240000` और `15250000` — refund recovery/finalization और refund reconciliation functions की successive hardening replacements।
+- `20261115210000` — legacy manual payment और itemized receipt RPCs; पहले के finance tables और booking columns पर निर्भर।
+
+यह sequence source chronology और explicit references पर आधारित dependency map है; complete executable topological order नहीं। Historical baseline, duplicate 20261109 version ambiguity और Production history reconciliation अभी बाकी हैं।
+
+### 34.3 Booking submission idempotency
+
+`20261114150000_customer_booking_submission_idempotency.sql` केवल `service_bookings` पर दो nullable columns जोड़ती है: `customer_request_key` और `customer_request_fingerprint`। साथ में fingerprint format CHECK और non-null request key पर unique partial index बनाती है। यह booking table की पहले से मौजूदगी पर निर्भर है। इस migration में client retry behavior या server RPC implementation नहीं है; वह application/RPC path में separately verify होना चाहिए। इसलिए schema idempotency columns की मौजूदगी अकेले end-to-end duplicate booking रोकने का runtime proof नहीं है।
+
+### 34.4 Cancellation-fee/refund correctness review — सीमित static observations
+
+- Cancellation-fee carry-forward migration `srk_wallet_ledger` के entry_type CHECK को replace करती है; wallet ledger की introducing migration और उसके exact prior constraint definition को replay baseline में शामिल करना होगा।
+- Full-refund reversal trigger `service_bookings.payment_status` को refunded होते समय matching processed Razorpay refund या matching manual refund record की पुष्टि करता है; partial refund के लिए fail-closed path है।
+- Cash cancellation-fee path में reversal electrician wallet ledger entry को credit करता है; इसलिए wallet ledger columns, enum/check values, unique/idempotency constraints और wallet row identity उसी exact source lineage से validate करनी होगी।
+- ये static source conditions हैं; concurrency, transaction rollback, trigger firing, financial invariants और provider webhook behavior का runtime proof नहीं।
+
+### 34.5 Current gate
+
+Finance/refund source family काफी हद तक map हो चुकी है, लेकिन इसे replay-ready नहीं कहा जा सकता। अभी भी authoritative core baseline, `is_srk_admin()` helper provenance, exact wallet schema lineage, all booking columns, remote migration history और duplicate 20261109 reconciliation आवश्यक हैं। कोई finance RPC, payment/refund operation, webhook, migration, pgTAP test या Production action execute नहीं हुआ; कोई data या schema बदला नहीं गया।
