@@ -341,3 +341,10 @@ prerequisite gates. No PostgreSQL replay or Production query was run.
 - उसी branch की manual payment/refund migrations `amount_paid` पढ़ती/लिखती हैं; इनमें भी मूल column declaration नहीं है। `20261109_electrician_inspection_quotes_and_service_only_commission.sql` में amount_paid negative-value trigger validation है, column creation नहीं।
 - Repository code search के `amount_paid double precision`, `amount_paid decimal`, `ALTER TABLE service_bookings amount_paid`, `auth_user_id ALTER TABLE electrician_profiles` और `electrician profile auth` queries से कोई authoritative declaration/introducing commit नहीं मिला। Search index/branch scan की सीमाओं के कारण यह पूरे Git object history या deployment records की अनुपस्थिति का निर्णायक प्रमाण नहीं।
 - DDL source blockers अभी दो हैं: `service_bookings.amount_paid` और `electrician_profiles.auth_user_id`। अनुमानित SQL नहीं जोड़ी जाएगी।
+
+
+## Later correction — 15 November 2026
+- Earlier notes in this manifest that listed `public.srk_booking_complaints` and `public.srk_booking_complaint_events` as unresolved source prerequisites are superseded. Their original CREATE TABLE definitions were recovered in `20261110040000_customer_admin_complaints.sql`, restored to the current branch and byte-for-byte compared with historical source (commit `2390a7dd3db35f620f41edc22253602866999fb0`).
+- The current unresolved base-column source contracts remain `public.service_bookings.amount_paid` and `public.electrician_profiles.auth_user_id`. The duplicate 8-digit `20261109` remote migration lineage is also unresolved.
+- The latest current inventory is 78 migrations / 32 database contract tests / 33 Node test files / 3 GitHub Actions workflows, as listed in `docs/GPT2_UNIFIED_DELIVERY_INVENTORY_HI.md`. The earlier 73-file dependency matrix and 71-file dependency inventory are historical static scans, not current replay order.
+- None of these corrections establishes PostgreSQL replay, current Production catalog parity or remote `schema_migrations` history.
