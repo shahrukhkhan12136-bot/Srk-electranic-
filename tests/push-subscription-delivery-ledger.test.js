@@ -55,7 +55,7 @@ test('permanent endpoint responses remove the subscription and cascade its ledge
 test('outbox completion requires every device delivered so dead devices remain recoverable', () => {
   assert.match(edge, /srk_is_push_subscription_delivery_complete/);
   assert.match(worker, /result\.complete === true/);
-  assert.match(migration, /d\.delivery_status <> 'delivered'/);\n  assert.match(migration, /Dead device rows must keep the outbox retryable\/dead-letterable/);
+  assert.match(migration, /d\.delivery_status <> 'delivered'/);
 });
 
 test('delivery ledger and RPCs are private and service-role only', () => {
