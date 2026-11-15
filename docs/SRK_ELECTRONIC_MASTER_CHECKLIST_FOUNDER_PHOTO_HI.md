@@ -440,3 +440,9 @@
 - `electrician.html`: profile के वैकल्पिक panels (phone-change history, area requests, KYC, earnings, wallet, push state, support tickets) में किसी transport rejection के कारण अब मुख्य Electrician offer list की loading रुकती नहीं; हर panel क्रम से अलग try/catch में चलता है।
 - Regression coverage: `tests/customer-electrician-booking-status-sync-contract.test.js` में test जोड़ा गया है कि optional panel failure के बाद भी `srk_get_my_offer_details` तक execution पहुँचता है।
 - यह source-level hardening है; वास्तविक browser/network failure simulation, Supabase runtime और mobile QA अभी बाकी हैं।
+
+
+### 2026-11-16 — Customer booking supplementary RPC resilience
+- `booking.html`: Customer booking list में call contacts, refund requests, cancellation requests और cancellation-fee items के supplementary RPC अब `safeCustomerRpc` से अलग-अलग transport rejection संभालते हैं। एक supplementary request reject होने पर मुख्य owner-scoped booking list को generic load failure से overwrite नहीं किया जाएगा।
+- Regression test `customer booking list survives rejected supplementary contact, refund, and cancellation RPCs` जोड़ा गया।
+- यह source-contract test है; browser/network fault injection, live Supabase RPC/RLS और mobile QA अभी बाकी हैं।
