@@ -316,10 +316,9 @@ test('Legacy financial SECURITY DEFINER read RPCs use an empty search_path', () 
     'srk_get_my_wallet_summary',
     'srk_admin_wallet_overview'
   ]) {
-    const escaped = name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
     assert.match(
       financialReadSearchPathFix,
-      new RegExp('alter function public\\.' + escaped + '\\(\\)\\s+set search_path\\s*=\\s*\\x27\\x27', 'i'),
+      new RegExp('alter function public\\.' + name + '\\(\\)\\s+set search_path\\s*=\\s*\\x27\\x27', 'i'),
       name + ' must be pinned to an empty search_path'
     );
   }
