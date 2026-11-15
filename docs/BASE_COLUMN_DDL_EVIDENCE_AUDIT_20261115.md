@@ -56,3 +56,14 @@ original deployment SQL artifact establishes the complete contracts.
 This is documentation-only evidence recording. It does not prove current
 Production state or Feature Branch/Production parity. PostgreSQL and pgTAP
 runtime tests remain pending; no checklist item is closed by this note.
+
+## 2026-11-15 — अतिरिक्त cross-branch स्रोत-जाँच
+
+इस audit के बाद पाँच refs पर समान starter-schema और संबंधित migration source को दोबारा fetch किया गया: `main`, `work/separate-customer-electrician-portals`, `feature/platform-fee-cash-online-cycle`, `safe-payment-refund-implementation`, और वर्तमान `feat/customer-login-first-dashboard-20261114`।
+
+- पाँचों refs पर `SUPABASE_SCHEMA.sql` का blob SHA समान `8ae88a7035bc963b244f22c6c1450c22618ec88f` मिला। उसमें `service_bookings` और `electrician_profiles` की starter CREATE TABLE definitions हैं, पर `amount_paid` या `auth_user_id` नहीं हैं।
+- पाँचों refs पर `20261109010000_create_secure_wallet_ledger_foundation.sql` मौजूद है। तीन refs में उसका blob SHA `6b5871d6fcc10fa225a5bbb8e26911b7027e2043`; `feature/platform-fee-cash-online-cycle` पर SHA `5394c85093a17c78dc910a4a03ee8de70c4639ba` मिला। निरीक्षित source में `auth_user_id` का उपयोग है, लेकिन column की CREATE/ADD definition नहीं मिली।
+- चार refs पर `20261109_electrician_inspection_quotes_and_service_only_commission.sql` उपलब्ध था; जहाँ उपलब्ध, उसका blob SHA `014699d3190e45aacde4022ac7e7fa9ca4fec006` है। यह `amount_paid` को trigger logic में पढ़ता है, लेकिन निरीक्षित file में column की CREATE/ADD definition नहीं मिली। `feature/platform-fee-cash-online-cycle` पर इस पुराने filename का file नहीं मिला।
+- इस सीमित cross-branch fetch से इन दो columns का authoritative DDL अभी भी नहीं मिला। यह हर Git object, deleted branch या external deployment artifact की exhaustive खोज का दावा नहीं है।
+
+**निष्कर्ष:** दोनों base-column definitions unresolved रहेंगी। कोई guessed DDL या compatibility migration नहीं जोड़ी गई; Production/remote migration history query नहीं की गई। अगला विश्वसनीय प्रमाण owner/DB Admin का स्वीकृत schema-only export या original deployment SQL artifact है।
