@@ -115,3 +115,15 @@ pgTAP contract अब 43 planned assertions है। Static count/plan verifica
 
 ### Full-refund historical cancellation-fee correction
 Full refund trigger cancellation-fee item को `reversed` करता है और append-only ledger में debit reversal जोड़ता है। इसलिए report अब तीन अलग राशियाँ रखती है: वर्तमान settled allocation (ledger net से मिलाने के लिए), historical captured allocation (settled + reversed, original customer collection से मिलाने के लिए), और reserved/current allocation। इससे refund के बाद पहले captured fee गायब मानकर गलत mismatch नहीं बनता। Admin panel historical captured fee भी दिखाता है। pgTAP contract अब 48 assertions है; runtime execution pending।
+
+
+## Refund lifecycle और Route reversal audit — 2026-11-15
+
+स्रोत schema के exact status constraints के आधार पर एक और महत्वपूर्ण गलती ठीक की गई:
+- Razorpay refund row का `amount_paise` अब केवल `status='processed'` होने पर ही confirmed refund/net collection में घटता है। `requested/processing/unknown/failed` रकम अलग `refund_requested_or_unconfirmed_paise` में दिखती है; failed refund exception है। इससे असफल या अभी-अधूरे refund को ग्राहक को लौटाया हुआ पैसा नहीं माना जाएगा।
+- Refund request workflow (`requested/in_review/approved/processing/unknown/processed`) को final provider/manual refund evidence से मिलाया जाता है।
+- Route schema के वास्तविक states `reversed` और `partially_reversed`, साथ ही settlement `reversed`, अब explicit review में आते हैं। Confirmed full refund के बाद transfer ID मौजूद हो तो Route transfer और settlement दोनों reversed होने चाहिए; अन्यथा exception। Full refund के दौरान expected reversal को गलत anomaly नहीं माना जाता।
+- Admin UI अब confirmed refund और requested/unconfirmed refund को अलग-अलग दिखाती है।
+- Route table में partial reversal की अलग रकम वाला column नहीं है; इसलिए इस version में partial reversal की exact रकम का दावा नहीं किया जाता, केवल state/exception दिखाई जाती है।
+
+pgTAP contract **52 assertions** तक बढ़ा; static count/logic verification अगली pass में दोबारा होगी। Runtime tests अभी pending हैं।
