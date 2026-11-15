@@ -161,3 +161,27 @@ Feature Branch पर `.github/workflows/supabase-schema-ci.yml` मिला।
 
 - The earlier mention of an 8-digit/14-digit shared-prefix CLI issue is only an analogous known issue. The project's exact source condition is two files with the identical 8-digit version, which is a different and more direct collision.
 - CLI/Docker executable availability checked in the current environment: neither found. No install, remote connection, or database command was attempted.
+
+## 11. Complete migration filename inventory — 16 Nov 2026
+
+वर्तमान Feature Branch के recursive Git tree से सभी `supabase/migrations/*.sql` filenames की पूरी inventory की गई:
+
+- कुल SQL migration files: **87**.
+- 14-digit timestamp prefix वाली files: **85**.
+- 8-digit timestamp prefix वाली files: **2** — दोनों केवल `20261109` वाली pair हैं.
+- Duplicate version groups: **1** — `20261109` (ठीक वही दो files जो §9–10 में सूचीबद्ध हैं).
+- Invalid/missing timestamp-prefix pattern: **0** (इस inventory में हर filename 8 या 14 digits + underscore + name + `.sql` format से match हुई).
+- किसी दूसरे duplicate timestamp group का source evidence नहीं मिला.
+
+### Existing automated guard
+
+`tests/database-migration-version-uniqueness.test.js` पहले से सभी migration filenames पढ़ता है, version prefix को 8 या 14 digits तक सीमित करता है, और duplicate groups की तुलना एक explicit allow-list से करता है। उसमें केवल `20261109` की यही दो files approved legacy collision के रूप में दर्ज हैं; कोई नया duplicate आने पर test fail होगा। यह source-level filename guard है, Supabase CLI behavior या remote migration-history reconciliation का विकल्प नहीं है।
+
+### निष्कर्ष
+
+इस inventory में पहले से ज्ञात duplicate pair के अलावा कोई अतिरिक्त filename collision या malformed timestamp prefix नहीं मिला। इसलिए अगला blocker अभी भी वही एक `20261109` pair + authoritative remote history/baseline है। किसी migration SQL या GPT-1 source file में बदलाव नहीं किया गया; केवल इस audit report को विस्तृत किया गया।
+
+- Inventory source: Feature Branch tree `7d254603176db02d1fa8e6c5fa5e204034772af9`.
+- Filename inventory: **87/87 reviewed**.
+- CLI/Docker runtime, replay, pgTAP: **NOT RUN**.
+- Production/remote migration history: **NOT ACCESSED**.
