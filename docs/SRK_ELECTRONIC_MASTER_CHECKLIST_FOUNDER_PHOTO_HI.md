@@ -54,3 +54,15 @@
 - [ ] Obtain explicit owner approval before any production deployment or live changes.
 
 **Evidence boundary:** The checked items above are source review/code changes only. No runtime test, live Staff invitation, provider refund, migration apply, deployment or mobile QA is claimed. See `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` for detailed audit notes.
+
+
+## Additional security checklist — Server-timed booking lifecycle
+
+- [x] Admin booking save handler refuses direct status or quoted-rate changes for new-category/server-timed bookings.
+- [x] Database trigger protects new-category category immutability and requires protected workflow authorization for timer start and completion status transitions.
+- [x] Approved cancellation remains on the dedicated evidence-backed cancellation decision workflow.
+- [x] Add Node and pgTAP regression assertions (pgTAP plan 19; source only).
+- [ ] Run Node tests and pgTAP in an approved test environment; verify the legitimate offer-accept, customer work-start approval, completion approval, and cancellation paths end-to-end.
+- [ ] Keep final consolidated mobile QA and production rollout deferred until all implementation work is complete and explicit approval is obtained.
+
+**Important:** Runtime validation has not been performed. The migration is committed only as feature-branch source and has not been applied to any database.
