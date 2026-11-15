@@ -407,3 +407,19 @@ test('Service worker notification click routes to a validated electrician offer 
   assert.match(serviceWorker, /client\.navigate\(target\.href\)/);
   assert.match(serviceWorker, /self\.clients\.openWindow\(target\.href\)/);
 });
+
+
+test('Customer and electrician lifecycle actions reconcile uncertain network responses by refreshing authoritative booking state', () => {
+  const customerStart = functionBody(customer, 'customerRespondWorkStart');
+  const customerCompletion = functionBody(customer, 'customerRespondWorkCompletion');
+  const electricianStart = functionBody(electrician, 'electricianRequestWorkStart');
+  const electricianCompletion = functionBody(electrician, 'electricianRequestWorkCompletion');
+  for (const fn of [customerStart, customerCompletion]) {
+    assert.match(fn, /catch\\([a-z]+\\)\\{try\\{await loadCustomerBookings\\(\\);/);
+    assert.match(fn, /स्थिति रीफ़्रेश करके जाँचें/);
+  }
+  for (const fn of [electricianStart, electricianCompletion]) {
+    assert.match(fn, /catch\\([a-z]+\\)\\{try\\{await refresh\\(\\);/);
+    assert.match(fn, /वर्तमान स्थिति रीफ़्रेश करके जाँचें/);
+  }
+});
