@@ -2024,6 +2024,14 @@ async function customerLogout() {
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
+  const handleCustomerOffline = () => {
+    customerLiveLocationRefreshRequest++;
+    customerLiveLocationBookingIds.forEach(id => {
+      const locationBox=document.getElementById('customerLiveLocation_'+id);
+      if(locationBox)locationBox.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small" role="status">इंटरनेट कनेक्शन बंद है। पुरानी लोकेशन छिपा दी गई है; कनेक्शन लौटने पर ताज़ा स्थान फिर लोड होगा।</p>';
+    });
+  };
+  window.addEventListener('offline', handleCustomerOffline);
   const scheduleCustomerResumeRefresh = () => {
     if (customerResumeRefreshTimer) clearTimeout(customerResumeRefreshTimer);
     customerResumeRefreshTimer = setTimeout(() => {
