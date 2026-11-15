@@ -144,7 +144,7 @@ test('customer saved-address delete reconciles uncertain RPC results and checks 
   assert.match(remove,/deleteState=latestAddresses\.some\(row=>row\.id===id\)\?'present':'absent'/);
   assert.match(remove,/if\(deleteState==='absent'\)/);
   assert.match(remove,/else if\(deleteState==='present'\)/);
-  assert.match(remove,/deleteState==='unknown'/);
+  assert.match(remove,/let deleteState='unknown'/);\n  assert.match(remove,/else setSavedAddressStatus\('पता हटाने का परिणाम स्पष्ट नहीं है/);
 });
 
 
