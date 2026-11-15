@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(19);
 select ok(to_regclass('public.srk_razorpay_refund_recovery_audits') is not null,'durable refund recovery evidence table exists');
 select ok((select relrowsecurity from pg_class where oid='public.srk_razorpay_refund_recovery_audits'::regclass),'recovery evidence table has RLS enabled');
 select ok(not has_table_privilege('anon','public.srk_razorpay_refund_recovery_audits','select'),'anon cannot read private recovery evidence');
@@ -16,6 +16,7 @@ select ok(position('REFUND_RECOVERY_EVIDENCE_IS_APPEND_ONLY' in pg_get_functiond
 select ok(position('ONLY_VERIFIED_PROCESSED_PROVIDER_EVIDENCE_CAN_FINALIZE' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'only provider processed evidence can finalize accounting');
 select ok(position('RECOVERY_EVIDENCE_TOO_OLD_REFRESH_PROVIDER_STATUS' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'stale evidence cannot finalize accounting');
 select ok(position('ELECTRICIAN_PAYOUT_MUST_REMAIN_BLOCKED_DURING_REFUND_RECOVERY' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'payout must remain blocked during recovery finalization');
+select ok(position('BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'verified full refund closes the blocked electrician payout as refunded');
 select ok(position('REFUNDED_BOOKING_PAYOUT_STATE_REQUIRES_MANUAL_RECONCILIATION' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'idempotent replay validates payout reversal state after the accounting trigger');
 select ok(position('update public.service_bookings' in lower(pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>0,'accounting finalization is a separate transaction boundary from evidence persistence');
 select * from finish();
