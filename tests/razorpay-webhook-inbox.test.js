@@ -342,7 +342,7 @@ test("matches an unpersisted provider refund by its internal refund-record note"
     if (fn === "srk_service_claim_razorpay_webhook_event")
       return response(200, { success: true, should_process: true, claim_token: "e23e4567-e89b-42d3-a456-426614174000" });
     if (target.includes("/rest/v1/srk_razorpay_refunds?"))
-      return response(200, [{ id: "f23e4567-e89b-42d3-a456-426614174000", payment_id: "pay_note_match", refund_id: null, idempotency_key: "key_note_match", amount_paise: 12500, status: "processing" }]);
+      return response(200, [{ id: "f23e4567-e89b-42d3-a456-426614174000", payment_id: "pay_notematch123", refund_id: null, idempotency_key: "key_note_match", amount_paise: 12500, status: "processing" }]);
     if (fn === "srk_service_reconcile_booking_refund") {
       reconciled++;
       assert.equal(JSON.parse(options.body).p_refund_record_id, "f23e4567-e89b-42d3-a456-426614174000");
@@ -354,7 +354,7 @@ test("matches an unpersisted provider refund by its internal refund-record note"
   };
   t.after(() => { global.fetch = originalFetch; });
   const result = await handler(event({ event: "refund.processed", payload: { refund: { entity: {
-    id: "rfnd_notematch123", payment_id: "pay_note_match", amount: 12500, currency: "INR", status: "processed",
+    id: "rfnd_notematch123", payment_id: "pay_notematch123", amount: 12500, currency: "INR", status: "processed",
     notes: { srk_refund_record_id: "f23e4567-e89b-42d3-a456-426614174000" }
   } } } }, "evt_refund_note_match"));
   assert.equal(result.statusCode, 200);
