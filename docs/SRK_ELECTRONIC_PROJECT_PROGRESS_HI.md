@@ -3266,3 +3266,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Timer / completion RPCs में authenticated caller checks, customer ownership checks, assigned electrician profile ownership checks, booking row locking (`FOR UPDATE`), server-side timestamps और authenticated-only execute grants का source-level पुनरीक्षण किया।
 - Multi-profile labour bill patch exact requested booking bill के `electrician_profile_id` के स्वामित्व की जाँच करता है; केवल authenticated user's `user_id` या `auth_user_id` वाले उसी profile का bill लौटाता है।
 - यह static/source review है; pgTAP runtime execution, real DB role-based RPC verification और end-to-end lifecycle test अभी नहीं हुए। कोई migration apply / production deploy नहीं किया गया।
+
+
+### Timer / Completion / Dispute audit continuation — 2026-11-15
+- Branch पर Timer, Customer completion approval, Customer/Electrician labour-bill read RPC, Admin work-review RPC और append-only event-history migration को पुनः पढ़ा।
+- नवीनतम उपलब्ध GitHub Actions run `43717598697` का job `132822385439` completed **SUCCESS**: dependency install और पूरा repository Node test suite सफल।
+- pgTAP file में plan 20 और 20 assertions का static count मेल खाता है; इसमें anonymous RPC execute denial, half-up integer-paise formula, dispute reason और exact owned electrician-profile bill access के source checks शामिल हैं।
+- Customer bill RPC customer_user_id से सीमित है; Electrician bill RPC का later migration requested booking के bill पर exact electrician_profile_id ownership जाँचता है। Admin work-review RPC admin gate के पीछे है; work-event table पर direct browser-role access revoked और mutation/truncate रोकने वाले triggers हैं।
+- वास्तविक PostgreSQL/pgTAP execution और अलग-अलग Customer/Electrician/Admin role से RPC runtime परीक्षण अब भी शेष हैं; test project में पूरा workflow schema प्रमाणित नहीं है। कोई migration apply, production change, merge या deployment नहीं किया।
+- GPT-1 Checklist 14.1.10 की अनुमानित source-work प्रगति **93%** बनी हुई है; runtime/E2E gates पास होने से पहले इसे complete नहीं माना जाएगा।
