@@ -9,6 +9,8 @@ test('Admin project progress card matches the master checklist count', () => {
   assert.match(admin, /65%<\/div><strong>56 \/ 86 आइटम<\/strong>/);
   assert.match(admin, /35%<\/div><strong>30 \/ 86 आइटम<\/strong>/);
   assert.match(admin, /aria-label="65 प्रतिशत चेकलिस्ट पूरी, 35 प्रतिशत बाकी"/);
+  assert.match(admin, /● पूरा: 56 आइटम/);
+  assert.match(admin, /● बाकी: 30 आइटम/);
   assert.match(admin, /width:65%;background:#087e8b/);
   assert.match(admin, /width:35%;background:#d69e2e/);
 });
