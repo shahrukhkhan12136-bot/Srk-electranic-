@@ -1,5 +1,5 @@
 begin;
-select plan(52);
+select plan(53);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -188,6 +188,12 @@ select ok(position('ROUTE_TRANSFER_REVERSED_OR_PARTIALLY_REVERSED' in pg_get_fun
 select ok(position('ROUTE_TRANSFER_NOT_REVERSED_AFTER_FULL_REFUND' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'provider Route transfers with a transfer ID must be reversed after a confirmed full refund');
+
+select ok(position('CASH_FEE_WALLET_REFUND_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('provider_reference=v_manual_refund.id::text' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'manual full-refund reconciliation compares the exact cash-fee wallet credit to its original debit');
 
 select * from finish();
 rollback;
