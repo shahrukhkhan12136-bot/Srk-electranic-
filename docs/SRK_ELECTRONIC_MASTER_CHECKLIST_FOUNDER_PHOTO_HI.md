@@ -447,6 +447,13 @@
 
 
 ### 2026-11-16 — Electrician offer refresh latency isolation
+
+
+### 2026-11-16 — Customer live-location transport isolation
+- Booking cards render होने के बाद Customer loader `refreshCustomerLiveLocations()` को await करता था। किसी live-location RPC का network promise reject होने पर `Promise.all` reject होकर outer booking loader catch चला जाता और पहले से render हुई booking history generic error से replace हो सकती थी।
+- हर booking की live-location RPC अब अपने try/catch में है; transport failure पर केवल उसी location panel में retry संदेश आता है, booking history बनी रहती है।
+- Regression test जोड़ा: per-booking location transport catch, cards-before-location ordering और loader busy-state cleanup जाँचता है।
+- यह source-contract सुधार है; live GPS/provider, browser और network fault-injection परीक्षण अभी नहीं हुए।
 - निरीक्षण में पाया कि optional profile panels पर rejected request संभाली जा रही थी, लेकिन हर panel को `await` करने से धीमा/लंबे समय तक pending panel मुख्य job-offer RPC को देर करा सकता था।
 - `electrician.html` में optional panel loaders अब अलग-अलग promise chain में schedule होते हैं और अपने errors catch करते हैं; मुख्य offer loading इनके पूरा होने की प्रतीक्षा नहीं करती।
 - Regression assertion अपडेट किया ताकि optional loaders schedule होने के बाद offer RPC तक बिना await dependency पहुँचना जाँचा जाए।
