@@ -421,6 +421,8 @@ begin
     'cancellation_fee_ledger_entries',v_fee_ledger,
     'wallet_posted_credit_paise',v_wallet_credit_paise,
     'wallet_posted_debit_paise',v_wallet_debit_paise,
+    'cash_fee_expected_wallet_refund_credit_paise',v_cash_fee_expected_wallet_credit_paise,
+    'cash_fee_actual_wallet_refund_credit_paise',v_cash_fee_actual_wallet_credit_paise,
     'wallet_posted_entries',v_wallet,
     'exceptions',to_jsonb(v_exceptions),
     'is_reconciled',cardinality(v_exceptions)=0,
