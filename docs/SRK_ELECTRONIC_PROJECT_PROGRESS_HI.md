@@ -3374,3 +3374,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Dispute complaint insert में `category='service_quality'` है और Customer UI में यह category मौजूद है। लेकिन इस Feature Branch audit में complaint base-table CREATE migration/schema और required columns/constraints नहीं मिले; इसलिए insert compatibility अभी unverified है। कोई अनुमानित schema या migration नहीं जोड़ी।
 - Admin work-review RPC केवल read-only review देता है; अंतिम dispute decision/rework/financial adjustment का RPC नहीं मिला। निर्णय के व्यावसायिक परिणाम अभी स्पष्ट नहीं हैं, इसलिए कोई स्वतः bill, timer restart, refund या payout बदलाव लागू नहीं किया।
 - कोई database migration लागू नहीं की गई; Production, PR merge, deployment और mobile QA अपरिवर्तित। PostgreSQL/pgTAP, Node runtime और E2E execution बाकी हैं।
+
+
+## 2026-11-15 — Timer/complaint audit clarification
+
+- Follow-up review confirmed the base timer migration already had all 12 private authorization INSERT/DELETE references qualified with the `srk_private` schema. Commit `1c97a923` did not change the SQL blob; it must not be counted as a SQL fix. The meaningful change is the added Node source-contract assertions in `09313ee5`.
+- Located the Customer complaint contract migration `20261114202250_customer_complaint_customer_safe_projection.sql`: allowed categories include `service_quality`, and complaint creation uses `booking_id, customer_user_id, category, description`, matching the timer dispute insert at the column/category level. The base CREATE TABLE definition and its full constraints were not present among the inspected PR-changed migrations, so full schema compatibility remains unverified.
+- Support conversation schema adds customer/Admin messages and attachments, and Admin can send replies; this is not a dispute-resolution decision workflow. No reviewed function was found to record an Admin finding, rework order, or financial adjustment for a completion dispute.
+- No production or database changes. Runtime tests, migration-chain validation, and final dispute decision policy remain pending.
