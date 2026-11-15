@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(17);
 select ok(to_regclass('public.srk_razorpay_refund_recovery_audits') is not null,'durable refund recovery evidence table exists');
 select ok((select relrowsecurity from pg_class where oid='public.srk_razorpay_refund_recovery_audits'::regclass),'recovery evidence table has RLS enabled');
 select ok(not has_table_privilege('anon','public.srk_razorpay_refund_recovery_audits','select'),'anon cannot read private recovery evidence');
@@ -8,9 +8,10 @@ select ok(has_function_privilege('service_role','public.srk_service_record_razor
 select ok(not has_function_privilege('authenticated','public.srk_service_record_razorpay_refund_recovery_evidence(uuid,text,text,bigint,text,text,timestamptz,text,text,uuid,jsonb,uuid,text)','execute'),'authenticated cannot persist provider evidence');
 select ok(has_function_privilege('service_role','public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)','execute'),'service role can finalize from recovery evidence');
 select ok(not has_function_privilege('authenticated','public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)','execute'),'authenticated cannot finalize from recovery evidence');
-select ok(position('SERVICE_ROLE_REQUIRED' in pg_get_functiondef('public.srk_service_record_razorpay_refund_recovery_evidence(uuid,text,text,bigint,text,text,timestamptz,text,text,jsonb,uuid,text)'::regprocedure))>0,'evidence writer independently enforces service role');
-select ok(position('length(btrim(p_admin_note)) not between 10 and 2000' in pg_get_functiondef('public.srk_service_record_razorpay_refund_recovery_evidence(uuid,text,text,bigint,text,text,timestamptz,text,text,jsonb,uuid,text)'::regprocedure))>0,'evidence writer requires a bounded Main Admin audit note');
-select ok(position('PROVIDER_EVIDENCE_FIELDS_DO_NOT_MATCH_AUDIT_ARGUMENTS' in pg_get_functiondef('public.srk_service_record_razorpay_refund_recovery_evidence(uuid,text,text,bigint,text,text,timestamptz,text,text,jsonb,uuid,text)'::regprocedure))>0,'provider payload identity and amount must match persisted evidence arguments');
+select ok(position('p_observation_id' in pg_get_functiondef('public.srk_service_record_razorpay_refund_recovery_evidence(uuid,text,text,bigint,text,text,timestamptz,text,text,uuid,jsonb,uuid,text)'::regprocedure))>0,'fresh observation UUID supports idempotent retries and fresh evidence reads');
+select ok(position('SERVICE_ROLE_REQUIRED' in pg_get_functiondef('public.srk_service_record_razorpay_refund_recovery_evidence(uuid,text,text,bigint,text,text,timestamptz,text,text,uuid,jsonb,uuid,text)'::regprocedure))>0,'evidence writer independently enforces service role');
+select ok(position('length(btrim(p_admin_note)) not between 10 and 2000' in pg_get_functiondef('public.srk_service_record_razorpay_refund_recovery_evidence(uuid,text,text,bigint,text,text,timestamptz,text,text,uuid,jsonb,uuid,text)'::regprocedure))>0,'evidence writer requires a bounded Main Admin audit note');
+select ok(position('PROVIDER_EVIDENCE_FIELDS_DO_NOT_MATCH_AUDIT_ARGUMENTS' in pg_get_functiondef('public.srk_service_record_razorpay_refund_recovery_evidence(uuid,text,text,bigint,text,text,timestamptz,text,text,uuid,jsonb,uuid,text)'::regprocedure))>0,'provider payload identity and amount must match persisted evidence arguments');
 select ok(position('REFUND_RECOVERY_EVIDENCE_IS_APPEND_ONLY' in pg_get_functiondef('public.srk_reject_razorpay_refund_recovery_audit_mutation()'::regprocedure))>0,'recovery evidence is immutable after insert');
 select ok(position('ONLY_VERIFIED_PROCESSED_PROVIDER_EVIDENCE_CAN_FINALIZE' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'only provider processed evidence can finalize accounting');
 select ok(position('RECOVERY_EVIDENCE_TOO_OLD_REFRESH_PROVIDER_STATUS' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'stale evidence cannot finalize accounting');
