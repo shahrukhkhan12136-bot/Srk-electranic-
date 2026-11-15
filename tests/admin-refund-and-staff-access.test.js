@@ -62,7 +62,8 @@ test('legacy booking status is no longer directly writable by authenticated clie
 });
 
 test('Admin generic Save only edits the quote and uses the dedicated legacy confirmation RPC', () => {
-  assert.match(admin, /\.update\(\{quoted_amount:quoted\}\)/);
+  assert.match(admin, /sb\.rpc\('srk_admin_update_legacy_booking_quote',\{p_booking_id:id,p_quoted_amount:quoted\}\)/);
+  assert.doesNotMatch(admin, /\.update\(\{quoted_amount:quoted\}\)/);
   assert.match(admin, /sb\.rpc\('srk_admin_confirm_legacy_booking',\{p_booking_id:id\}\)/);
   assert.match(admin, /status!==booking\.status&&\!\( !booking\.selected_category&&booking\.status==='new'&&status==='confirmed'\)/);
   assert.doesNotMatch(admin, /\.update\(\{status:/);
