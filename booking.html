@@ -1194,7 +1194,7 @@ async function customerCancelBooking(bookingId,button) {
   if(error)throw error;
   if(!data?.success)throw new Error('CANCELLATION_REQUEST_NOT_CONFIRMED');
   alert(data.already_pending?'इस बुकिंग का अनुरोध पहले से Admin के पास लंबित है।':'रद्द करने का अनुरोध Admin को भेज दिया गया है। फैसला और लागू शुल्क बुकिंग में दिखेगा।');
-  await loadCustomerBookings();
+  try{await loadCustomerBookings();}catch(_){alert('रद्द करने का अनुरोध सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
  } catch(error) {
   let confirmedRequest=null,lookupSucceeded=false;
   try{
@@ -1206,7 +1206,7 @@ async function customerCancelBooking(bookingId,button) {
   }catch(_){/* Keep the outcome uncertain if the owner-scoped read also fails. */}
   if(confirmedRequest){
    alert('इस बुकिंग का रद्द करने का अनुरोध Admin के पास लंबित है। दोबारा अनुरोध नहीं भेजा गया।');
-   await loadCustomerBookings();
+   try{await loadCustomerBookings();}catch(_){alert('अनुरोध Admin के पास लंबित है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
   }else if(lookupSucceeded){
    alert('अभी जाँची गई सूची में इस बुकिंग का लंबित अनुरोध नहीं मिला। कोई दूसरा अनुरोध अपने-आप नहीं भेजा गया। बुकिंग सूची रीफ़्रेश करें; फिर भी अनुरोध न दिखे तो दोबारा प्रयास करें।');
   }else{
