@@ -3150,3 +3150,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - GPT-1 progress is separately counted from Master Checklist sections Customer (10), Electrician (10), and Welcome/Founder Photo (6): **19/26 = 73% complete; 7/26 = 27% remaining**. GPT-2 tasks excluded. This is implementation checklist progress, not Production readiness.
 - Going forward, report GPT-1 and GPT-2 percentages separately in progress updates; update the counts when checklist items change.
 \n\n## 2026-11-15 — Founder Photo owner confirmation and integration\n\n- User confirmed the black-shirt portrait with the green garden background is the authentic saved SRK ELECTRONIC Founder Photo.\n- Cropped the original portrait to the existing Welcome Screen Founder card ratio (880×1000); retained the real face, clothing and garden background without generative edits.\n- Replaced the placeholder monogram with the accessible responsive `<img>` using `/assets/srk-founder.jpg`; added contract assertions for the exact asset and removed-placeholder state.\n- Updated GPT-1 implementation checklist to 20/26 = 77% complete, 6/26 = 23% remaining. Preview/runtime visual QA and final consolidated mobile QA remain pending. No production deployment or merge.\n
+
+## 2026-11-15 — GPT-2 Admin booking direct-write privilege closure
+
+- Source audit में Admin UI के दो direct `service_bookings` writes मिले: customer address/district/state/PIN edit और legacy `quoted_amount` edit।
+- Migration `20261115230000_admin_booking_direct_write_closure.sql` में दोनों के लिए अलग Main-Admin-only SECURITY DEFINER RPC जोड़े; दोनों booking row को `FOR UPDATE` lock करते हैं।
+- Location RPC address/district/state/PIN validate करती है और बदलाव का before/after `srk_admin_audit_events` में सुरक्षित करती है।
+- Legacy quote RPC नई-category, cancelled, paid/online और customer-approved quote बदलाव रोकती है; labour + materials total का exact paise मिलान करती है।
+- Admin UI को दोनों RPC पर बदला और `service_bookings` के authenticated direct UPDATE grants revoke किए। Admin page source scan में कोई `.from(...).update(...)` direct write नहीं बचा।
+- Regression test `tests/admin-booking-direct-write-closure.test.js` जोड़ा; CI अभी इस नए commit पर चलना बाकी है। PostgreSQL runtime/pgTAP और browser verification नहीं किए गए।
+- GPT-2 checkbox count अब **27/39 = 69% पूरा; 12/39 = 31% शेष**। Admin/Support Staff: **12/13 = 92%**। यह Feature Branch source progress है, Production readiness नहीं।
+- कोई Production migration, merge या deployment नहीं किया गया।
