@@ -2629,3 +2629,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इस owner-approved rule (acceptance से पहले दोनों पक्षों के phone छिपे; assignment/acceptance के बाद दोनों को full number) के लिए regression test जोड़ा: tests/customer-electrician-phone-visibility.test.js.
 - Latest Feature Branch Node workflow run 43704226538: **90 PASS / 1 FAIL**. दोनों नए phone-visibility regression tests PASS हुए। एक शेष suite failure GPT-2/Admin scope का missing source file है: supabase/migrations/20261115130000_admin_readonly_booking_accounting_reconciliation.sql; test tests/admin-commission-report-labels.test.js इसे पढ़ना चाहती है। इसे Admin/Accounting owner से reconcile करना होगा; GPT-1 ने उस migration को नहीं बदला।
 - यह Node CI source-level suite है, live Supabase/browser/OTP runtime test नहीं। No production DB change, real SMS/OTP, booking/payment mutation, deployment, PR merge, or mobile QA.
+
+## 2026-11-15 — Customer/Electrician OTP login regression audit (GPT-1)
+- Customer OTP login source reviewed: Indian mobile normalization, Supabase SMS OTP request/verification, resend cooldown, busy-state guard, existing-session redirect to Customer Dashboard.
+- Electrician OTP login source reviewed: phone normalization, SMS OTP request/verification, 60-second resend cooldown, auth-state-driven portal visibility.
+- Added `tests/customer-electrician-otp-login.test.js` for these flows and Customer dashboard session gating.
+- CI run `43704591567` on commit `fe90915`: **93 PASS / 1 FAIL**. All 3 newly added OTP/session regression tests PASS. Remaining single failure is GPT-2/Admin scope: missing `supabase/migrations/20261115130000_admin_readonly_booking_accounting_reconciliation.sql` referenced by `tests/admin-commission-report-labels.test.js`.
+- No Customer/Electrician source defect requiring modification was established by this focused audit; no production configuration, database, deploy, or PR merge was changed.
