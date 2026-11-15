@@ -155,3 +155,16 @@
 - [ ] सभी implementation और internal checks पूरे होने पर consolidated final mobile QA; उससे पहले नहीं।
 
 **स्थिति:** Feature branch source और docs updated; tests run नहीं; migration/deploy/push नहीं। At-least-once retries हैं, exactly-once guarantee नहीं।
+
+
+### Per-subscription Push Delivery और Schema Parity — 15 November 2026
+- [x] Unique per-outbox/per-subscription delivery ledger; private table और service-role-only RPCs।
+- [x] Row-lock claim, per-subscription attempts, lease, retry/backoff, delivered/dead terminal states।
+- [x] Edge sender per-device result दर्ज करता है; outbox तभी delivered जब सभी target rows terminal हों।
+- [x] सात source-contract tests जोड़े; execute नहीं किए।
+- [ ] Provider timeout के ambiguous outcome को monitor/alert करें; Web Push exactly-once transport guarantee उपलब्ध नहीं।
+- [ ] Production schema parity: Production में `job_offers.expires_at` और `electrician_profiles.available_for_work` absent; पहले approved migration rollout और isolated verification चाहिए।
+- [ ] पुराने Production direct HTTP trigger और नए outbox के duplicate-safe migration plan की पुष्टि।
+- [ ] Isolated integration tests (parallel claims, success replay, timeout, 404/410 cleanup, retry exhaustion) चलाएँ।
+
+**स्थिति:** Feature branch source updated; runtime tests/deploy/migration apply/push नहीं हुए। Production compatibility अभी अवरुद्ध है।
