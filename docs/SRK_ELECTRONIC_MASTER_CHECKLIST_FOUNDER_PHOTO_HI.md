@@ -505,3 +505,9 @@
 - App initialization में `sb.auth.getSession()` के rejected promise / session error के लिए catch जोड़ा।
 - विफलता पर unhandled promise rejection के बजाय login screen और स्पष्ट OTP retry संदेश दिखेगा।
 - Regression source-contract test जोड़ा; वास्तविक browser/network fault injection और live Supabase auth परीक्षण अभी लंबित हैं।
+
+
+### Customer App — Profile और Saved Address Auth Session Handling
+- Customer Profile तथा Saved Address loaders में `auth.getSession()` अब try/catch के अंदर है और session error को स्पष्ट रूप से संभालता है।
+- नेटवर्क/Session lookup विफल होने पर unhandled rejection के बजाय सुरक्षित हिंदी स्थिति संदेश दिखेगा; Saved Address selector का disabled state finally में वापस सक्रिय होगा।
+- Regression source-contract test जोड़ा। वास्तविक browser/network fault-injection तथा Supabase Auth runtime परीक्षण अभी लंबित हैं।
