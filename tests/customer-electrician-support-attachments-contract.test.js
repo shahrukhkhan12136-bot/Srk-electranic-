@@ -69,7 +69,7 @@ test('electrician support client creates, lists, opens and replies through self-
 });
 
 test('electrician support backend scopes tickets to authenticated owner and rejects closed-ticket replies', () => {
-  assert.match(electricianSchema, /where user_id=v_uid\s+order by t\.updated_at desc/);
+  assert.match(electricianSchema, /from public\.srk_electrician_support_tickets t where t\.user_id=v_uid[\s\S]*?order by t\.updated_at desc/);
   assert.match(electricianSchema, /where t\.id=p_ticket_id and t\.user_id=v_uid/);
   assert.match(electricianSchema, /if v_status='closed' then raise exception 'TICKET_CLOSED'/);
   assert.match(electricianSchema, /where b\.id=p_booking_id and b\.assigned_electrician_id=v_profile\.id/);
