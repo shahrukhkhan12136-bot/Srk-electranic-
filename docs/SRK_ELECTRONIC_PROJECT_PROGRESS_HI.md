@@ -2962,3 +2962,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Static scan: `booking.html` और `electrician.html` में quote/quotation/inspection terms और quote-related identifiers का कोई match नहीं मिला।
 - इस cleanup के दौरान एक CI run में test ने सही तरीके से बची हुई Hindi dictionary string पकड़ी; वह string हटाई गई। उसके बाद latest code SHA `ef2c3fd0c6f33b52e2d9dfa5833819c6802894d1` पर दो full Node test workflows **SUCCESS** हुए।
 - Customer/Electrician UI wording cleanup मात्र; Admin/Accounting/Payment/database legacy dependencies GPT-2 के दायरे में हैं। No Production changes, merge, deployment or data deletion. Browser runtime and final mobile QA remain pending.
+
+
+## 2026-11-15 — GPT #2: Financial SECURITY DEFINER search_path hardening
+
+- Admin source audit में दो financial mutation RPCs मिले जिनका authorization Main Admin-only था, लेकिन function-level search_path में public/auth और pg_temp शामिल थे: `srk_admin_mark_electrician_payout_paid(uuid,text,text,text)` और `srk_admin_record_manual_refund(uuid,text,text)`। दोनों functions के application objects पहले से schema-qualified हैं।
+- नई Feature Branch migration `20261115200000_harden_financial_admin_rpc_search_path.sql` दोनों RPCs का search_path खाली करती है; PostgreSQL का implicit pg_catalog resolution बना रहता है। इससे SECURITY DEFINER execution के दौरान writable/public schemas search path से हटते हैं। Existing function bodies, authorization, grants और business logic नहीं बदले।
+- Accounting source-contract test में दोनों functions के empty search_path की दो pgTAP assertions जोड़ीं; plan/count 67 से 69।
+- Static source review only: migration apply या PostgreSQL/pgTAP runtime नहीं हुआ। Apply से पहले staging DB पर function execution/smoke test आवश्यक। कोई real payout/refund, merge या deployment नहीं।
