@@ -1793,7 +1793,14 @@ async function sendCustomerSupportMessage() {
   if(id===customerSupportSelectedId)await loadCustomerSupportMessages();
   supportStatus(files.length?'आपका संदेश और '+files.length+' फ़ाइल सफलतापूर्वक भेजी गई।':'आपका संदेश सहायता टीम को भेज दिया गया है।');
  }catch(e){
-  if(pendingUploadPath)await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]).catch(()=>{});
+  if(pendingUploadPath){
+   let safeToRemovePendingUpload=false;
+   try{
+    const {data:linkedAttachments,error:lookupError}=await customerSb.rpc('srk_customer_list_complaint_message_attachments',{p_complaint_id:id});
+    if(!lookupError&&Array.isArray(linkedAttachments))safeToRemovePendingUpload=!linkedAttachments.some(row=>row.storage_path===pendingUploadPath);
+   }catch(_){/* An uncertain attachment link must be preserved if its state cannot be read. */}
+   if(safeToRemovePendingUpload)await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]).catch(()=>{});
+  }
   supportStatus((linkedCount?'कुछ फ़ाइलें सफलतापूर्वक भेजी गईं ('+linkedCount+')। ':'संदेश या फ़ाइल भेजी नहीं जा सकी। ')+(linkedCount?'बाकी फ़ाइलें दोबारा भेजें।':'कृपया दोबारा कोशिश करें।'),true);
  }finally{customerSupportSendBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}
 }
