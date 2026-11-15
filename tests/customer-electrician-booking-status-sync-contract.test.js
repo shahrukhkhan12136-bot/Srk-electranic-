@@ -258,3 +258,16 @@ test('Electrician initial auth session lookup handles rejected promises safely',
   assert.match(init,/\.catch\(\(\)=>\{user=null;show\(\)/);
   assert.match(init,/लॉगिन स्थिति अभी जाँची नहीं जा सकी/);
 });
+
+
+test('Electrician push disable removes server endpoint before browser unsubscribe', () => {
+  const start=electrician.indexOf('async function disableElectricianPushNotifications()');
+  const end=electrician.indexOf('\nlet electricianSupportSelectedId',start);
+  assert.ok(start>=0&&end>start);
+  const disable=electrician.slice(start,end);
+  const deleteIndex=disable.indexOf("sb.from('srk_push_subscriptions').delete()");
+  const unsubscribeIndex=disable.indexOf('sub.unsubscribe()');
+  assert.ok(deleteIndex>=0&&unsubscribeIndex>deleteIndex,'server endpoint must be removed before local subscription is stopped');
+  assert.match(disable,/if\(error\)throw error;const stopped=await sub\.unsubscribe\(\)/);
+  assert.match(disable,/finally\{await refreshElectricianPushState\(\);\}/);
+});
