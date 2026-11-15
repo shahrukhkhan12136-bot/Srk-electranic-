@@ -108,8 +108,13 @@ Deno.serve(async (req) => {
   });
   let sent = 0, failed = 0;
   await Promise.all(claimed.targets.map(async (target) => {
-    if (!isObject(target) || typeof target.delivery_id !== "string" || !uuid.test(target.delivery_id) ||
-        typeof target.subscription_id !== "string" || !uuid.test(target.subscription_id)) {
+    if (!isObject(target) || typeof target.delivery_id !== "string" || !uuid.test(target.delivery_id)) {
+      failed++; return;
+    }
+    if (typeof target.subscription_id !== "string" || !uuid.test(target.subscription_id)) {
+      await db.rpc("srk_finish_push_subscription_delivery", {
+        p_delivery_id: target.delivery_id, p_success: false, p_error: "Invalid subscription identity"
+      });
       failed++; return;
     }
     const endpoint = target.endpoint;
