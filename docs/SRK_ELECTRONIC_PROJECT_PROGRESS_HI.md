@@ -3981,3 +3981,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - `20261109223000_sync_electrician_auth_profile_link.sql` का path-history current repository में नहीं मिला; पुराने branch snapshot में file मौजूद है और दोनों identity columns का उपयोग करती है, पर DDL नहीं देती।
 - GitHub Releases list खाली मिली; Tags endpoint इस access path से सत्यापित नहीं हो सका। इसलिए release/tag evidence उपलब्ध नहीं है, ऐसा निर्णायक दावा नहीं किया गया।
 - निष्कर्ष वही: original `amount_paid` और `auth_user_id` DDL इस repository के उपलब्ध tracked setup artifacts से recover नहीं हुआ। Production schema/history access नहीं किया। कोई source migration नहीं बदली। GPT-2 27/39 = 69%; कुल project 55/86 = 64%।
+
+
+### Base-table definition search confirmation — 15 Nov 2026, 16:54 UTC
+- Exact repository searches for `CREATE TABLE IF NOT EXISTS public.service_bookings` and `CREATE TABLE IF NOT EXISTS public.electrician_profiles` return only the starter setup files `SUPABASE_SCHEMA.sql` and `COMPLETE_DATABASE_SETUP.sql` (no alternate historical base-table DDL file surfaced by these searches).
+- Exact `auth_user_id` search surfaces only current Feature Branch migration consumers: Google Maps/admin activation insert and secure wallet ownership lookup. Older branch snapshot `20261109223000_sync_electrician_auth_profile_link.sql` also uses both `user_id` and `auth_user_id`, but does not define either column.
+- Exact `amount_paid` search surfaces application writes/reads and migration consumers; no source column declaration surfaced. The original starter table definitions do not contain either `amount_paid` or `auth_user_id`.
+- This confirms a source-artifact gap, not a claim that the live database lacks either column. No database was queried and no DDL guessed. The blocker remains until approved schema-only catalog export/deployment artifact is supplied. GPT-2 27/39 = 69%; overall 55/86 = 64%.
