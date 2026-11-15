@@ -56,10 +56,10 @@ begin
   end if;
   if v_booking.status<>'completed'
      or v_booking.assigned_electrician_id is null
-     or v_booking.quote_status<>'approved' then
+     or v_booking.quote_status is distinct from 'approved' then
     raise exception 'COMPLETED_ASSIGNED_APPROVED_QUOTE_REQUIRED' using errcode='55000';
   end if;
-  if v_booking.payment_status in ('paid','refunded')
+  if coalesce(v_booking.payment_status,'unpaid') not in ('unpaid','pending')
      or v_booking.payment_verified_at is not null
      or coalesce(v_booking.amount_paid,0)<>0 then
     raise exception 'BOOKING_ALREADY_HAS_PAYMENT_STATE' using errcode='55000';
