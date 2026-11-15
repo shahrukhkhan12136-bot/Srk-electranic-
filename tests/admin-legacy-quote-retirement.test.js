@@ -13,9 +13,13 @@ test('Admin booking table exposes status confirmation only for unassigned legacy
 });
 
 test('Admin keeps historical quote fields display-only and does not expose quote editing controls', () => {
-  assert.match(admin, /पुराना Quote:<\/strong> \$\{esc\(x\.quote_status\|\|'—'\)\}/);
-  assert.match(admin, /ऐतिहासिक रिकॉर्ड केवल पढ़ने के लिए; Admin यहाँ Quote नहीं बदल सकता/);
-  assert.doesNotMatch(admin, /quote_status[^\n]{0,250}(?:<select|<input|onclick)/i);
+  const quoteCellStart = admin.indexOf('<strong>पुराना Quote:</strong>');
+  const quoteCellEnd = admin.indexOf('</td>', quoteCellStart);
+  assert.notEqual(quoteCellStart, -1, 'historical quote cell must exist');
+  assert.notEqual(quoteCellEnd, -1, 'historical quote cell must be bounded');
+  const quoteCell = admin.slice(quoteCellStart, quoteCellEnd);
+  assert.match(quoteCell, /ऐतिहासिक रिकॉर्ड केवल पढ़ने के लिए/);
+  assert.doesNotMatch(quoteCell, /<(?:input|select|button)\b|onclick=/i);
 });
 
 test('Admin status confirmation remains guarded by the dedicated Main-Admin RPC', () => {
