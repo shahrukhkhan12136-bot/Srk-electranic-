@@ -378,3 +378,16 @@ prerequisite gates. No PostgreSQL replay or Production query was run.
 - Current tree में `supabase/config.toml` नहीं मिला। अतः इस pass में CLI replay semantics को इस repo पर verify नहीं किया गया। कोई CLI migration command, local DB replay, pgTAP, Production query या write नहीं चला।
 - **वर्तमान ज्ञात source blockers:** duplicate `20261109` migration lineage का authoritative resolution; complete baseline/replay order और config/harness validation। `amount_paid` और `auth_user_id` की introducing source DDL मौजूद है।
 - अगला निर्णायक कदम owner-authorized, read-only migration-history/schema-only evidence और duplicate-version handling का disposable scratch project में pinned Supabase CLI से test है। तब तक replay blocked रहेगा।
+
+
+## 14. Duplicate 20261109 commit-lineage evidence — 16 Nov 2026
+
+दोनों समान-version files की Git path history और commit diffs की जाँच की:
+
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` का path history: placeholder file `073d59e` → full 99-line migration body `04d0c02` → उसी migration में status/assignment constraints जोड़ने वाला follow-up `b5e5b3b`।
+- उसके बाद अलग file `20261109_allow_quote_approval_booking_states.sql` commit `cd2c46e` में जोड़ी गई। Git commit chronology में यह दूसरे migration path के बाद है; दोनों paths का 8-digit filename prefix समान है।
+- दोनों files के bodies में वही दो booking status / assignment CHECK constraints हैं। पहली बड़ी migration के अंतिम हिस्से में भी ये constraints मौजूद हैं; दूसरी file का पूरा body उन्हीं constraints को drop/recreate करता है। इसलिए source-level पर दूसरी file redundant/repeated constraint DDL जैसी दिखती है।
+- **महत्त्वपूर्ण सीमा:** Git commit chronology deployed Supabase migration ledger का प्रमाण नहीं है। यदि remote पर इनमें से एक या दोनों अलग identities/क्रम में लागू हुई हों, तो केवल source diff देखकर file हटाना या rename करना सुरक्षित नहीं। Duplicate version parser व्यवहार भी pinned CLI + isolated scratch repo में जाँचना बाकी है।
+- Safe candidate for owner review: क्या `20261109_allow_quote_approval_booking_states.sql` केवल duplicate constraint repair है और क्या इसे clean baseline migration chain में रखना आवश्यक है? इसे स्वयं delete/rename/merge नहीं किया गया।
+
+इससे source-level ambiguity कम हुई है, पर replay authorization या migration-history resolution नहीं मिला।
