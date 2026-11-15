@@ -2934,3 +2934,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added three pgTAP source-contract assertions for RLS enabled, no direct anon/authenticated read, and service_role operational grants. Accounting contract plan/count is now 65.
 - This is source-level test coverage only; no PostgreSQL/pgTAP runtime has been run. No Route API caller, transfer execution, provider settlement webhook, reversal lifecycle or bank-credit proof has been added.
 - Feature Branch only. No Production migration, live provider call, money movement, deployment, merge or go-live.
+
+
+## 2026-11-15 — Customer support dynamic localization pass
+
+- Confirmed the previous Customer UI observer handled exact dictionary strings but concatenated status messages and several complaint/support states still lacked complete English mappings.
+- Added translations for support complaint loading/empty/error/validation/submission, conversation states, file attachment feedback and default-address feedback.
+- Extended `customerUiText` to translate dictionary prefixes and preserve the remaining dynamic suffix; the text-node language pass and mutation observer now use this shared translator.
+- Added regression assertions for complaint status prefix translation and representative support messages.
+- Code/test commits: `b7172dd2`, `403ef722`. New CI run is expected on the current feature branch head; confirm before treating the new assertions as passed.
+- Browser runtime language switching and visual Welcome Screen portrait review remain pending. No production deployment or data mutation; consolidated mobile QA remains deferred.
