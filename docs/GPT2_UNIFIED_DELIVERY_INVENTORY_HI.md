@@ -383,3 +383,12 @@ Recursive Git tree से `tests/*.test.js` की वास्तविक स�
 - नवीनतम दर्ज Node workflow run `43758276843` (head `68a69199e93a599b22dedbc0de38b10a06699b04`) में **280/284 पास, 4 फेल**। इस बदलाव के तीनों नए `legacy-amount-paid-ddl.test.js` checks पास हुए।
 - चार failures Customer/Electrician UI के GPT-1 स्वामित्व वाले tests हैं: customer booking timeline RPC transport, customer/electrician lifecycle retry guards, electrician earnings/wallet network errors, और customer direct-call owner scoping। GPT-2 ने इन UI files/tests को नहीं बदला।
 - यह Node/source evidence है। pgTAP, PostgreSQL migration replay, browser runtime, Production parity और deployment अभी प्रमाणित नहीं हैं।
+
+
+### 3H. नवीनतम GPT-2 स्रोत-सुधार — 16 Nov 2026 (PR head 30db813)
+- §3F में दर्ज `20261116200000_restore_service_bookings_amount_paid.sql` migration अब वर्तमान PR head में मौजूद है। यह `public.service_bookings.amount_paid` को nullable `numeric(12,2)` के रूप में idempotently जोड़ती है और named non-negative CHECK को `NOT VALID` रखती है, ताकि पुराने rows का validation स्वतः न चले। यह source-level DDL recovery है; PostgreSQL replay या Production compatibility का प्रमाण नहीं।
+- इसलिए इस PR head पर `service_bookings.amount_paid` को “missing introducing DDL” कहना अब superseded है। पुराने §3, §3A, §3F और §3G में मौजूद unresolved wording ऐतिहासिक snapshot के रूप में पढ़ें; इस §3H का status नवीनतम है।
+- `electrician_profiles.auth_user_id` का DDL पहले ही §3D/§11 में सही रूप से resolved दर्ज है। अभी भी अलग migration-history blocker: दो files का exact duplicate 8-digit version `20261109`। इसे rename/delete/resequence या remote history repair न करें।
+- Current source count prior snapshot 86 migrations / 43 Node tests से बढ़कर **87 SQL migrations / 44 Node test files** हुआ है; **32 pgTAP SQL files / 3 workflows** का पिछला count इस update में दोबारा recursive-tree से सत्यापित नहीं किया गया। नई migration के लिए तीन Node source-contract checks और `financial_audit_core_schema.test.sql` में तीन pgTAP assertions मौजूद हैं।
+- Exact PR head `${head}` पर इस audit में कोई GitHub Actions workflow run उपलब्ध नहीं था। पुराने head `68a6919` पर दर्ज 280/284 परिणाम इस head का CI परिणाम नहीं है। Netlify Deploy Preview सफल और Vercel build rate-limit failure अलग status checks हैं।
+- कोई PostgreSQL/pgTAP execution, full ordered replay, Production query/write, payment/refund/payout, merge या deployment नहीं किया गया।
