@@ -746,6 +746,10 @@ async function saveBookingInternal(id){
  const quoted=raw===''?null:Number(raw);
  if(quoted!==null&&(!Number.isFinite(quoted)||quoted<0||quoted>10000000)){alert('तय राशि ₹0 से ₹1,00,00,000 के बीच रखें।');return;}
  const currentQuoted=booking.quoted_amount==null?null:Number(booking.quoted_amount);
+ if(booking.selected_category&&(status!==booking.status||quoted!==currentQuoted)){
+  alert('नई श्रेणी की बुकिंग का Status और Labour Rate server/customer-approved workflow से ही बदल सकता है। Admin panel से सीधे बदलाव रोके गए हैं।');
+  await loadAll();return;
+ }
  if(booking.payment_status==='paid'&&payment_status!=='paid'){alert('दर्ज भुगतान को Admin पैनल से वापस Unpaid/Pending नहीं किया जा सकता।');return;}
  if(booking.payment_status==='paid'&&quoted!==currentQuoted){alert('Paid बुकिंग की तय राशि यहाँ से नहीं बदली जा सकती।');return;}
  if((booking.razorpay_payment_id||booking.razorpay_order_id)&&payment_status!==(booking.payment_status||'unpaid')){alert('Razorpay से जुड़ी बुकिंग का भुगतान केवल verified Razorpay flow से बदलेगा।');return;}
