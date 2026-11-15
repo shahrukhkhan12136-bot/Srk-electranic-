@@ -354,7 +354,7 @@ test("matches an unpersisted provider refund by its internal refund-record note"
   };
   t.after(() => { global.fetch = originalFetch; });
   const result = await handler(event({ event: "refund.processed", payload: { refund: { entity: {
-    id: "rfndnotematch123", payment_id: "pay_note_match", amount: 12500, currency: "INR", status: "processed",
+    id: "rfnd_notematch123", payment_id: "pay_note_match", amount: 12500, currency: "INR", status: "processed",
     notes: { srk_refund_record_id: "f23e4567-e89b-42d3-a456-426614174000" }
   } } } }, "evt_refund_note_match"));
   assert.equal(result.statusCode, 200);
