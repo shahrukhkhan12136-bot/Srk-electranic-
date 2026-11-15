@@ -1,5 +1,5 @@
 begin;
-select plan(54);
+select plan(55);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -177,7 +177,7 @@ select ok(position('route_transfers' in pg_get_functiondef(
   'read-only accounting report exposes Route transfer rows and count');
 select ok(position('ROUTE_TRANSFER_RECIPIENT_ROWS_MISMATCH' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route reconciliation requires exactly one electrician and one platform commission transfer');
+  'Route reconciliation requires one electrician transfer and a commission transfer only when commission is positive');
 select ok(position('ROUTE_TRANSFER_PAYMENT_ID_MISMATCH' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'Route transfers must reference the booking Razorpay payment');
@@ -196,6 +196,10 @@ select ok(position('MANUAL_AND_ROUTE_ELECTRICIAN_PAYOUT_OVERLAP' in pg_get_funct
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'manual paid payout and Route electrician transfer overlap is flagged for review');
 
+
+select ok(position('coalesce(v_commission_paise,0)>0' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'zero-commission bookings do not require a zero-value Route commission transfer row');
 
 select * from finish();
 rollback;
