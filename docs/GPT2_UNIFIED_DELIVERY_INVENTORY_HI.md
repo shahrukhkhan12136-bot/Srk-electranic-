@@ -356,3 +356,11 @@ Recursive Git tree से `tests/*.test.js` की वास्तविक स�
 - `tests/welcome-screen-contract.test.js`
 
 यह फ़ाइल-गणना है, टेस्ट निष्पादन का परिणाम नहीं। अलग Node CI run 43750241498 में कुल 216/216 टेस्ट पास हुए; PostgreSQL/pgTAP और वास्तविक browser-role runtime अभी प्रमाणित नहीं हैं।
+
+
+### 3D. नवीनतम source-tree count correction — 16 Nov 2026
+- वर्तमान PR Feature Branch recursive Git tree: **86 SQL migrations**, **32 pgTAP SQL test files**, **43 Node `.test.js` files**, और **3 GitHub Actions workflows**। §3C में दर्ज 39 Node test files पुराना snapshot है; अब superseded है।
+- §3C की 39-file सूची में बाद में जोड़ी गई चार test files: `tests/admin-rpc-search-path-hardening.test.js`, `tests/customer-electrician-booking-status-sync-contract.test.js`, `tests/customer-electrician-cancellation-refund-contract.test.js`, `tests/customer-electrician-payment-history-contract.test.js`।
+- वर्तमान PR head `9d49fbcd47d624ed205765dd1e9662c4dad4d4de` के Node CI run `43755687986` में **264 पास / 5 फेल** हुए। पाँच फेल टेस्ट Customer/Electrician UI source-contract tests हैं; यह केवल Node evidence है।
+- `auth_user_id` अब missing-DDL blocker नहीं: migration `20261109000500_harden_electrician_profile_identity_linking.sql` इसे `uuid REFERENCES auth.users(id) ON DELETE SET NULL` के रूप में जोड़ती है। शेष confirmed missing base-column DDL source gap `service_bookings.amount_paid` है।
+- ये source-tree counts और Node CI result PostgreSQL/pgTAP runtime, पूर्ण migration replay, Production parity, browser/mobile QA या deployment प्रमाणित नहीं करते।
