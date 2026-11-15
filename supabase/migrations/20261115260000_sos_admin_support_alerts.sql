@@ -146,7 +146,7 @@ begin
     v_actor_phone:=coalesce(nullif(btrim(v_booking.phone),''),'Unavailable');
   else
     v_actor_role:='electrician';
-    select b.*,ep.* into v_booking,v_profile
+    select b,ep into v_booking,v_profile
       from public.service_bookings b
       join public.electrician_profiles ep on ep.id=b.assigned_electrician_id
      where (ep.user_id=v_uid or ep.auth_user_id=v_uid)
