@@ -326,6 +326,21 @@ test('Customer booking refresh ignores stale requests after session, booking, ti
   assert.match(customer, /customerBookingRefreshRequest\+\+;\s*customerLiveLocationBookingIds=\[\]/);
 });
 
+test('Customer live location polling ignores stale responses and preserves network-error state', () => {
+  const start = customer.indexOf('async function refreshCustomerLiveLocations()');
+  const end = customer.indexOf('\nif(!customerLiveLocationPoller)', start);
+  const refresh = customer.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(refresh, /const request=\+\+customerLiveLocationRefreshRequest/);
+  assert.match(refresh, /request===customerLiveLocationRefreshRequest&&customerLiveLocationBookingIds\.includes\(id\)/);
+  assert.match(refresh, /if\(!isCurrent\(id\)\)return/);
+  assert.match(refresh, /if\(error\)\{/);
+  assert.match(refresh, /if\(!data\?\.is_active\)\{/);
+  assert.match(refresh, /navigator\.onLine===false\|\|document\.visibilityState==='hidden'/);
+  assert.match(customer, /customerLiveLocationRefreshRequest\+\+;\s*customerLiveLocationBookingIds=data\.filter/);
+  assert.match(customer, /customerLiveLocationRefreshRequest\+\+;\s*customerLiveLocationBookingIds=\[\]/);
+});
+
 test('Customer booking list refreshes on foreground and reconnect without duplicate rapid refreshes', () => {
   assert.match(customer, /let customerResumeRefreshTimer = null/);
   assert.match(customer, /const scheduleCustomerResumeRefresh = \(\) => \{/);
