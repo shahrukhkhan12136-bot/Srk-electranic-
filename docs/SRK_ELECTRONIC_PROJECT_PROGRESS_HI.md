@@ -2501,3 +2501,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Source syntax checks: Admin inline script PASS और Electrician inline script PASS. ये parse-only checks हैं; browser/storage/OTP/DB runtime tests नहीं.
 - Feature Branch migration current blob `3b6f6f2`; KYC pgTAP current blob `3e53664`. No Production migration apply, Storage bucket change, real KYC upload/review, activation, deployment, merge, or mobile QA.
 - Runtime isolation, private bucket policies, Admin-vs-Staff authorization, KYC review races, dispatch advancement, and activation end-to-end verification remain pending.
+
+
+### Admin cancellation decision null-input hardening — 15 नवम्बर 2026
+- Cancellation Admin RPC audit found a SQL three-valued-logic edge case: `IF p_decision NOT IN (...)` does not reject NULL; a NULL decision could fall through the `ELSE` branch and be treated as a rejection. Added explicit `p_decision IS NULL` guard.
+- Added explicit `p_verified_stage IS NULL` rejection for approved cancellations, rather than relying on later table constraints to roll back.
+- Expanded cancellation-fee/refund pgTAP source plan from 42 to 44; assertion count matches 44/44. Runtime not executed.
+- Commits: cancellation RPC fix `e26889b`; pgTAP additions `086f541`.
+- No booking cancellation, fee creation, wallet/payout mutation, database apply, or production action occurred.
