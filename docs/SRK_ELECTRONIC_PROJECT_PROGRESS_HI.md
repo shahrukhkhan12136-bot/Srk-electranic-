@@ -3007,3 +3007,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Node regression test `tests/admin-route-settlement-warning.test.js` जोड़ा; migration response contract और Admin warning/rendering दोनों जाँचता है।
 - अगला सत्यापन: नवीनतम branch-head Node CI पूरा होने पर इस test सहित परिणाम देखें। PostgreSQL/pgTAP runtime अभी Not Run है; browser visual/runtime QA भी बाकी है।
 - No live Route transfer/provider call, bank-credit verification, payout mutation, Production migration, deployment, merge or go-live.
+
+
+## 2026-11-15 — Electrician Push permission reliability audit
+
+- Electrician App के Push Notification enable flow में browser permission request को async Supabase account/profile validation से पहले लाया। अब button click के तुरंत बाद synchronous support checks और `Notification.requestPermission()` होते हैं; उसके बाद approved Active electrician account validation और subscription save चलता है। इससे Android Chrome में user-gesture activation खोने की संभावना घटती है।
+- Regression test जोड़ा: permission request async account validation से पहले होनी चाहिए।
+- GPS start/update/stop, GPS failure पर server stop, logout retry handling, Push subscription ownership और Support ticket/thread rendering का source audit किया। मौजूदा GPS safeguards और support HTML escaping ठीक मिले। कोई real device permission prompt या Production call नहीं किया।
+- Latest full repository run में 121 में से 120 tests pass हुए; एक failure GPT-1 scope से बाहर Admin test `tests/admin-commission-report-labels.test.js` में है, जो current `admin.html` में Route commission term देखकर fail हो रहा है। यह GPT-2 Admin Panel dependency है; GPT-1 ने Admin source नहीं बदला।
+- Browser/device runtime verification pending; final consolidated mobile QA deferred. No Production changes, merge or deployment.
