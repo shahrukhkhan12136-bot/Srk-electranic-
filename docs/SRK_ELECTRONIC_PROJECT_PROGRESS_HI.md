@@ -4080,3 +4080,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - चार historical branches के `SUPABASE_SCHEMA.sql` files एक ही blob SHA `8ae88a7035bc963b244f22c6c1450c22618ec88f` पर हैं और इनमें `amount_paid` नहीं है; finance branch के `COMPLETE_DATABASE_SETUP.sql` में भी नहीं मिला। Commit search में केवल दो app-consumer commits मिले, schema-introduction commit नहीं। Search limitations के कारण इसे सभी deleted/unreachable Git objects की exhaustive proof नहीं कहते।
 - नवीनतम PR head `2b08300e374f3a7c06e9e3d656b0165e6bd5f216` के Node CI run `43746918575` PASS: 189/189, 0 fail, 0 skipped। दूसरा run `43746922357` अभी pending था। PostgreSQL/pgTAP/full migration replay/Production parity इससे सिद्ध नहीं होते।
 - Remaining confirmed source-DDL blocker केवल `service_bookings.amount_paid`; `auth_user_id` का DDL मिल चुका है। GPT-2 27/39 = 69%; overall 56/86 = 65% unchanged. No Production access, provider operation, merge or deployment.
+
+
+### 2026-11-15 18:32 UTC — newest PR head CI verified
+- Latest PR head `659cd151fdf83779261bed034517b92b90d4a240`, run `43747168727`, completed success: Node job `132912932723`, 189 tests, 189 pass, 0 fail, 0 skipped.
+- Earlier pending run was superseded by this successful run. This is Node regression evidence only; PostgreSQL/pgTAP runtime, full migration replay, Production parity, and deployment remain unverified.
+- DDL status unchanged: `auth_user_id` has an authoritative migration DDL; `service_bookings.amount_paid` remains the only confirmed missing-column source gap. No guessed SQL or Production access.
+- Checklist percentages unchanged: GPT-2 27/39 = 69%; overall 56/86 = 65%.
