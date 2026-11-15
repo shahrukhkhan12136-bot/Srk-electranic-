@@ -143,7 +143,8 @@ test('Customer payment-history refresh ignores stale responses after auth change
   const fn = customer.slice(start, end);
   assert.match(fn, /const requestId=\+\+customerPaymentHistoryRequest/);
   assert.match(fn, /if\(requestId!==customerPaymentHistoryRequest\)return false;/);
-  assert.equal((fn.match(/if\(requestId!==customerPaymentHistoryRequest\)return false;/g) || []).length, 2);
+  assert.equal((fn.match(/if\(requestId!==customerPaymentHistoryRequest\)return false;/g) || []).length, 3);
+  assert.match(fn, /catch\(error\)\{\s*if\(requestId!==customerPaymentHistoryRequest\)return false;/);
   assert.match(customer, /customerPaymentHistoryRequest\+\+;\s*customerPaymentHistoryResetPending=false;\s*customerLiveLocationRefreshRequest\+\+/);
   assert.match(customer, /if\(event==='SIGNED_IN'\|\|event==='SIGNED_OUT'\|\|event==='USER_DELETED'\)\{\s*customerPaymentHistoryRequest\+\+/);
 });
