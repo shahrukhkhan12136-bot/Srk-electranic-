@@ -1,5 +1,5 @@
 begin;
-select plan(48);
+select plan(51);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -170,6 +170,20 @@ select ok(position('v_fee_captured_paise' in pg_get_functiondef(
   and position('''reversed''' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'historically captured cancellation fees remain reconciled after full-refund reversal');
+
+select ok(position('if v_refund.status=''processed'' then' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('REFUND_FAILED_REQUIRES_REVIEW' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'only provider-confirmed processed refunds reduce net customer collection; failed refunds are flagged');
+select ok(position('REFUND_REQUEST_PENDING_REVIEW' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('REFUND_REQUEST_PROCESSED_WITHOUT_FINAL_REFUND_EVIDENCE' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'refund request workflow states are reconciled against final refund evidence');
+select ok(position('ROUTE_TRANSFER_REVERSED_OR_PARTIALLY_REVERSED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'full and partial Route transfer reversals are explicitly flagged');
 
 select * from finish();
 rollback;
