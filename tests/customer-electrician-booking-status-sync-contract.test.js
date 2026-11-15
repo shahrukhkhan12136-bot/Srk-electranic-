@@ -297,3 +297,14 @@ test('Electrician push state allows re-syncing an existing browser subscription'
   assert.match(enable,/let sub=await reg\.pushManager\.getSubscription\(\);if\(!sub\)\{sub=await reg\.pushManager\.subscribe/);
   assert.match(enable,/sb\.from\('srk_push_subscriptions'\)\.upsert/);
 });
+
+test('Electrician dashboard refresh ignores stale profile, offer and supplementary RPC responses', () => {
+  const refresh = functionBody(electrician, 'refresh');
+  assert.match(electrician, /electricianRefreshRequest=0/);
+  assert.match(refresh, /const refreshRequest=\+\+electricianRefreshRequest,refreshUserId=user\.id,isCurrent=\(\)=>refreshRequest===electricianRefreshRequest&&user\?\.id===refreshUserId/);
+  assert.match(refresh, /await sb\.from\('electrician_profiles'[\s\S]*?if\(!isCurrent\(\)\)return/);
+  assert.match(refresh, /await sb\.rpc\('srk_get_my_offer_details'\)[\s\S]*?if\(!isCurrent\(\)\)return/);
+  assert.match(refresh, /await Promise\.all\(rows\.filter\(o=>o\.booking_status==='completed'[\s\S]*?if\(!isCurrent\(\)\)return;document\.getElementById\('jobs'\)\.innerHTML/);
+  const logout = functionBody(electrician, 'logout');
+  assert.match(logout, /electricianRefreshRequest\+\+/);
+});
