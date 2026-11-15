@@ -330,3 +330,15 @@
 - [x] GPS-failure auto-stop and the manual “Location बंद करें” action now share one in-flight Set guard, preventing duplicate concurrent `srk_electrician_stop_live_location` RPCs for the same booking.
 - [x] On failed server stop, the booking remains in the local retry set; successful stop clears the retry handle. Added regression coverage for shared guard and retry behavior.
 - [x] Updated the existing GPS network-exception test boundary after moving the shared guard declaration. Latest branch head `c57577c9f72663cf52cfc8981d72f008d95b83ef`: **two full repository Node workflows SUCCESS**.
+
+
+### 2026-11-15 — Electrician Profile, KYC, Earnings and Wallet source audit
+- [x] Profile display-name update validates 2–80 characters and uses the self-service RPC; UI displays server-confirmed name.
+- [x] Phone-number change is OTP-gated, time-limited, rate/attempt-aware via server flow, then waits for Admin approval; current number remains active until approval. Request history escapes user/admin text before HTML rendering.
+- [x] Area-change flow validates state/district/PIN/reason, blocks duplicate pending requests in UI, and preserves the current area until Admin approval.
+- [x] KYC upload allows only identity/address/skill document types, allowlisted MIME types, 1–5 MB, unique non-upsert object paths; metadata is registered via RPC. Preview obtains owner-authorized path then a 60-second signed URL; no public URL.
+- [x] Earnings and payout history are distinct: client only reads RPC earnings and profile-scoped payout records; payout query failure is shown separately, not as a zero/empty payout history. Admin UTR record is distinguished from customer payment.
+- [x] Wallet summary is RPC-based; bank-link and ledger queries are scoped to the signed-in user/wallet. Bank/ledger query failures are shown separately; UI explicitly states ledger balance is not proof of bank transfer. Withdrawal/transfer initiation remains disabled.
+- [x] Added `tests/electrician-accounting-kyc-contract.test.js` covering profile validation, KYC upload/preview privacy, earnings/payout error handling, wallet scoping and no withdrawal actions.
+- [x] Latest branch head `6b83ba1dc3423921a00d1a71564869c286cfbf22`: two full repository Node workflows **SUCCESS**.
+- [ ] Browser runtime and visual verification remain pending; final consolidated mobile QA remains deferred.
