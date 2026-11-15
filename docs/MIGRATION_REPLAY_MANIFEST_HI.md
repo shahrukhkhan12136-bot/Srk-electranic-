@@ -208,3 +208,13 @@ Older `feature/business-finance-dashboard` और `work/separate-customer-electr
 - Supabase CLI issue #6036 ने CLI 2.105.0 TypeScript path में इस pattern से false “Remote migration versions not found” sorting error दर्ज किया। Issue #6038 ने TypeScript path सुधारा, लेकिन Go implementation के लिए issue #6682 ने अलग से वही ordering defect report किया; issue body में v2.117.0 Go implementation की code inspection है। 29 Oct 2026 को issue बंद हुआ, लेकिन उपलब्ध issue thread में maintainer fix/confirmation नहीं है। यह CLI 3.0.0 पर direct execution proof नहीं है; pinned CLI implementation के कारण इसे unresolved risk मानें, not a confirmed failure.
 - Repository का `tests/database-migration-version-uniqueness.test.js` इस `20261109` pair को explicitly allow-list करता है; यह केवल filename uniqueness guard है, Supabase CLI comparator regression test नहीं।
 - इसलिए 8-digit files rename करना, history repair करना, `--include-all` चलाना या workflow trigger करना अभी नहीं। पहले isolated scratch repo में exact pinned CLI 3.0.0 पर synthetic versions का no-DB comparison/reproduction चलाएँ; इसके लिए उपलब्ध environment में CLI/PostgreSQL/Docker नहीं हैं। CLI sorting risk और actual remote history दोनों verify किए बिना कोई migration history action नहीं।
+
+
+### 8. CLI 3.0.0 source-level verification — 15 Nov 2026
+
+- Supabase CLI tag `v3.0.0` का exact source tree inspect किया। `apps/cli/src/command-internal/db-push-core.ts` का db-push path `findPendingMigrations(local, remote)` call करता है।
+- उसी tag के `migration-pending.ts` में local paths को `sortMigrationPathsByVersion` से version-order में re-sort किया जाता है; `migration-history.ts` में shared sorter है।
+- CLI 3.0.0 के `migration-pending.unit.test.ts` में खास regression test मौजूद है: 8-digit `20260420` और 14-digit `20260420010000` shared prefix pair, remote versions के same order में होने पर `kind: ok` देता है। दूसरा test mixed-width pending migrations का version order verify करता है।
+- इसलिए पहले दर्ज किया गया CLI 3.0.0 db-push sorting risk **source-level पर addressed दिखता है**; यह अब CLI 3.0.0 TypeScript db-push path के लिए confirmed blocker नहीं है। फिर भी यह source inspection है, local CLI execution नहीं।
+- Supabase CLI issue #6682 अलग Go implementation के लिए था; v3.0.0 db-push path inspected TypeScript implementation use करता है। इस issue को हमारे current pinned db-push workflow पर लागू defect नहीं मानें।
+- Repository में दो 8-digit `20261109` files की duplicate version history concern अलग से बनी हुई है: source sorting test exact prefix pair ordering cover करता है, लेकिन duplicate exact same version identifiers को दो अलग migrations के रूप में लागू करने की policy नहीं। Rename/history repair अभी भी नहीं।
