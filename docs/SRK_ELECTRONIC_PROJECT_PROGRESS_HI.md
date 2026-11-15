@@ -1999,3 +1999,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 
 
 - Full refund पर cancellation-fee items `reversed` होते हैं; report अब current settled ledger net और historical captured fee (settled + reversed) अलग रखती है। Customer की original captured amount का मिलान historical fee से होगा, जबकि current ledger net settled fee से। Admin UI में historical captured fee दिखती है। pgTAP plan अब 48 assertions तक बढ़ाया।
+
+
+### Final static verification — Accounting Reconciliation (2026-11-15)
+
+- Read-only RPC static checks: SECURITY DEFINER, STABLE, fixed search_path, Main Admin gate present.
+- Function-body DML scan: INSERT/UPDATE/DELETE नहीं मिला।
+- Refund evidence, manual payment proof, payout owner, Route payment/recipient identity, wallet reversal references और full-refund के बाद historical cancellation-fee capture की checks source में मौजूद।
+- pgTAP plan/assertion count: **48/48**.
+- Admin panel में historical captured cancellation fee display भी मौजूद।
+- यह केवल source/static verification है। pgTAP runtime, SQL migration execution और browser runtime अभी pending हैं; कोई Production migration apply नहीं की।
