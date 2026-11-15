@@ -237,3 +237,12 @@
 - [x] Added regression assertions for dynamic payment strings, receipt language, date locale and translator scoping.
 - [ ] Remaining non-payment dynamic content and any unmapped server-provided free-text descriptions still need full coverage.
 - [x] Latest-head Node CI passed on commit `70f65c1` (run `43706978870`; install + full `npm test` successful). Browser runtime verification remains pending.
+
+
+### 2026-11-15 — Customer language coverage and browser-script audit
+- [x] Expanded English translations for dynamic profile, saved-address, complaint/support, OTP/login and common payment status messages.
+- [x] Customer payment/booking history date formatting now follows the selected locale (`en-IN` or `hi-IN`).
+- [x] Restored `booking.html` from an intact feature-branch revision after source review detected malformed string substitutions in an intermediate edit; safely reapplied the translation dictionary and localized receipt function. The corrected source contains no known malformed substitution markers.
+- [x] Added regression test that parses inline JavaScript in both `booking.html` and `electrician.html`, plus electrician fixed-duration lifecycle / no-quotation source checks.
+- [x] Latest-head CI run `43707448254` on `172d74b204bfd283522a4e540090cb79deca73aa` — **SUCCESS** (full Node test suite).
+- [ ] Browser runtime verification of language switching and print preview remains pending; manual mobile QA remains deferred to the consolidated final pass.
