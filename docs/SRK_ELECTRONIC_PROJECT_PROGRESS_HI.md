@@ -2041,3 +2041,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Direct browser/network fetch इस जाँच वातावरण में DNS/network failure के कारण नहीं हो सका; इसलिए image का वास्तविक browser rendering अभी visually verified नहीं है।
 - Production deployment, merge और PR #8 merge नहीं किए; PR #8 Draft है।
 - Founder photo replacement के लिए पुरानी saved reference image को delete नहीं किया गया; नई portrait अभी project asset में उपयोग हो रही है।
+
+
+### 2026-11-15 — Founder portrait crop/pose instruction saved (pending)
+
+- User-approved edit specification recorded: use the previously saved garden-background Founder portrait only; crop to waist-up (remove all lower body/legs), keep face/hair/shoulders visible and centered, and pose both arms naturally folded/crossed across the chest with hands resting near opposite upper arms.
+- Preserve the same person, black shirt and garden background; photorealistic professional portrait; no text/logo/badge/extra person.
+- The three-phone UI mockup is not a Founder portrait and must never be substituted.
+- Image generation could not be invoked due to the current Free-plan image-generation limit. **Pending** until generation is available; no edited image has been created or integrated yet.
