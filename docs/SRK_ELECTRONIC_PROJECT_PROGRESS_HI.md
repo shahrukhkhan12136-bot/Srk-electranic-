@@ -2415,3 +2415,17 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पहले के पुराने sandbox snapshot में दिखे पाँच test failures latest branch पर दोबारा नहीं आए; stale checkout/fixture mismatch था। Razorpay refund-status test fixture में provider identity note शामिल किया गया ताकि source के exact identity-match contract को test करे।
 - Deno उपलब्ध नहीं था और PostgreSQL tools भी उपलब्ध नहीं थे; Edge Function typecheck तथा migration/RPC runtime/concurrency tests अभी बाकी हैं।
 - सभी tests disposable Vercel Sandbox में चलाए गए। कोई Supabase migration apply, production DB write, deployment, real push, refund/provider write, paid staging branch या mobile QA नहीं किया गया।
+
+
+## 2026-11-15 — PostgreSQL runtime audit में दो Push bugs मिले और ठीक किए
+
+- Disposable Vercel Sandbox में Deno 2.9.8 install करके `deno check --no-config --no-lock supabase/functions/push-job-offer/index.ts` चलाया: **सफल**। Netlify worker `node --check` भी सफल।
+- Local throwaway PostgreSQL 18.6 database (`srk_push_isolated`) में minimal Supabase-compatible schema fixture बनाया और Push की चार migrations को क्रम से apply किया: `20261115170000`, `20261115180000`, `20261115190000`, `20261115200000`। चारों migrations `ON_ERROR_STOP` के साथ सफल। यह Supabase hosted project नहीं है।
+- पहला वास्तविक RPC claim test एक SQL runtime defect पर fail हुआ: `RETURNS TABLE` के output variable `attempt_count` के कारण outbox claim function में unqualified `attempt_count` ambiguous था। `20261115170000_durable_push_delivery_outbox.sql` में update target alias `o` के साथ `o.attempt_count`, `o.delivery_status`, `o.locked_until`, `o.last_error` qualify किए। Migration re-apply के बाद claim RPC सफल।
+- दूसरे logic audit में dead device rows को complete समझा जा रहा था क्योंकि ledger claim/completion केवल pending/processing rows देखते थे। इससे outbox delivered हो सकता और dead device rows operator recovery के लिए inaccessible रह जातीं। `20261115180000_push_subscription_delivery_ledger.sql` में दोनों checks अब हर device को delivered होना अनिवार्य करते हैं; dead rows outbox को retry/dead-letter path में रखती हैं।
+- Updated ledger migration local PostgreSQL पर re-apply की; dead-only device state पर claim response `complete:false` और completion RPC `false` मिला। Manual recovery test में dead row `pending` हुई, जबकि पहले से delivered row `delivered` ही रही।
+- Runtime tests: offer INSERT trigger ने outbox row बनाई; outbox/device claim→finish सफल; पुराने fencing attempt पर `false`, वर्तमान attempt पर `true`; outbox तथा per-device concurrent claims में दूसरे worker को `SKIP LOCKED` से 0 rows; attempt 8 outbox और attempt 5 device expired leases dead-letter हुए।
+- Authorization/RLS tests: `anon` से service-role RPC denied; `srk_private` table direct read denied; authenticated owner को अपनी 2 subscriptions दिखीं, दूसरे user को 0। Health RPC ने सही counts लौटाए।
+- Latest branch पर फिर `npm test`: **87 passed / 0 failed**। Deno Edge check और Netlify worker syntax check भी exit code 0।
+- Remaining: वास्तविक Supabase managed schema/role parity, Edge↔Netlify scheduled integration, provider-level delivery behavior। इन्हें approved isolated staging पर ही करना है।
+- कोई Supabase hosted migration apply, paid branch/subscription, production write, deployment, real push/provider call, refund या mobile QA नहीं किया।
