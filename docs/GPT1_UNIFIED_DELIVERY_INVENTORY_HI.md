@@ -224,3 +224,16 @@ Migration-source checks:
 **GPT-2 को भेजने योग्य database/security verification items:** (1) Electrician own-profile SELECT policy migration chain में मौजूद है या नहीं, authoritative base schema + migration replay से तय करें; (2) customer booking own-row SELECT, electrician profile self-read, push subscription owner-only write, और wallet owner-only read के लिए अलग pgTAP actor-isolation tests जोड़ें/मौजूदा tests में exact assertions पहचानें। यह केवल test-coverage gap है, runtime vulnerability का दावा नहीं। GPT-1 ने इन GPT-2-owned SQL/RLS areas में कोई edit नहीं किया।
 
 **GPT-1 source/test reconciliation:** Customer Storage controls की dedicated pgTAP coverage मौजूद है; payout RLS contract test मौजूद है। Customer/Electrician portal के RPC/UI Node source contracts मौजूद हैं, पर वे live authenticated actor isolation या वास्तविक DB execution सिद्ध नहीं करते। Manual mobile QA और all-provider runtime QA अभी deferred हैं।
+
+
+## 18. Portal regression-test scope mapping — 15 Nov 2026
+
+`package.json` में default `npm test` script `node --test tests/*.test.js` चलाता है। इस pass में संबंधित GPT-1 test files के घोषित test cases पढ़े और UI/API source coverage की सीमा दर्ज की:
+
+- `tests/customer-immediate-booking-contract.test.js`: immediate booking payload/अनुपस्थित schedule fields का contract; live booking creation या DB persistence नहीं.
+- `tests/customer-payment-method-enforcement.test.js`: Cash/refunded booking पर order/payment रोकना और payment-method RPC UTF-8 contract; Razorpay sandbox payment नहीं.
+- `tests/electrician-accounting-kyc-contract.test.js`: KYC MIME/type/size validation, signed preview contract, earnings-vs-payout error handling, owner-scoped wallet reads, withdrawal UI निषेध, profile-name validation; live Storage/RLS/accounting execution नहीं.
+- `tests/electrician-live-location-client.test.js`: GPS error/stop cleanup, duplicate-start guard, push gesture/route और retry handling; actual GPS, realtime channel या device push delivery नहीं.
+- `tests/sos-two-step-ui-contract.test.js` और `tests/sos-admin-support-contract.test.js`: approved reason codes, active-booking UI, authenticated actor/booking derivation contract, private append-only case history, Admin/Support permission contracts और provider-delivery disclaimer; actual SMS/push/location delivery नहीं.
+
+इससे UI/client contract tests की सीमा स्पष्ट हुई। ऊपर के files के नाम/declared assertions का निरीक्षण किया गया; इस pass में `npm test` execute नहीं हुआ और कोई CI success claim नहीं है। DB actor-isolation, migration replay, Razorpay sandbox, Storage runtime, push/SMS providers, browser interaction और final mobile QA अलग verification gates हैं।
