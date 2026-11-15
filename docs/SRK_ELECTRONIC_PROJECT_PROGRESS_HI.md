@@ -3191,3 +3191,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Full Node CI commit `0149c87a44f81c824e90617e17dce215516c1e22` पर **SUCCESS**, run `43715758599`।
 - यह source-level count validation है; इससे PostgreSQL/pgTAP runtime assertions के पास होने का दावा नहीं है। अलग isolated DB runtime अभी pending है।
 - GPT-2 checklist progress अभी भी **27/39 = 69% complete; 12/39 = 31% remaining**; कोई Production migration या release action नहीं किया।
+
+
+### Supabase migration-version collision audit and correction — 15 Nov 2026
+- पूरे Feature Branch के 66 migration SQL filenames की version-prefix जाँच में चार नई duplicate pairs मिलीं: `20261115170000`, `20261115180000`, `20261115190000`, `20261115200000` (हर pair में Admin/Route और Push migration टकरा रही थीं)।
+- चार Push migrations को unique second-level versions पर rename किया: `20261115170001_durable_push_delivery_outbox.sql`, `20261115180001_push_subscription_delivery_ledger.sql`, `20261115190001_push_delivery_health_monitoring.sql`, `20261115200001_push_delivery_lease_fencing.sql`; original SQL content जस का तस रखा। Push lease Node test को नए path पर अपडेट किया।
+- अब नई duplicate collision नहीं बची; केवल पुरानी `20261109` pair शेष है: `20261109_allow_quote_approval_booking_states.sql` और `20261109_electrician_inspection_quotes_and_service_only_commission.sql`। ये पुराने version से जुड़े होने के कारण Production migration history देखकर ही resolve होंगे; इन्हें rename नहीं किया।
+- `tests/database-migration-version-uniqueness.test.js` जोड़ा: नए duplicate versions CI में fail होंगे और पुराने `20261109` collision को स्पष्ट allowlist में track किया गया है।
+- नवीनतम commit `3418ef8c13030395868fd443edab962411ec496f` पर CI run शुरू हुआ; परिणाम verify होना बाकी है। इससे पहले migration rename वाले intermediate commits पर CI fail हुआ क्योंकि Node test अभी पुराने path को refer कर रहा था; path ठीक कर दिया गया।
+- कोई Production migration, DB change, merge या deployment नहीं किया गया। GPT-2 checklist percentage **69%** ही है; migration file renaming अतिरिक्त quality work है, checklist completion checkbox नहीं।
