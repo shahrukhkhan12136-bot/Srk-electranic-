@@ -1,0 +1,33 @@
+# SRK ELECTRONIC — SOS तत्काल सहायता आवश्यकता
+तारीख: 15 नवम्बर 2026
+स्थिति: उपयोगकर्ता द्वारा स्पष्ट रूप से स्वीकृत आवश्यकता; implementation अभी बाकी है।
+
+## स्वीकृत निर्देश
+उपयोगकर्ता का स्पष्ट आदेश: SOS सुविधा दर्ज की जाए। SOS अलर्ट Admin/मालिक और अधिकृत Support Staff तक पहुँचे; पुलिस को ऐप की ओर से स्वतः कोई संदेश, कॉल या रिपोर्ट न भेजी जाए।
+
+## अपेक्षित व्यवहार
+1. Customer App और Electrician App में स्पष्ट SOS / तत्काल सहायता बटन उपलब्ध हो।
+2. SOS दबाने पर एक emergency case बने और Admin Panel तथा Support Staff Panel में तुरंत दिखाई दे।
+3. उपयोगकर्ता के Admin मोबाइल पर SMS अलर्ट भेजने का प्रयास हो; Push Notification भी उपलब्ध हो तो भेजी जाए।
+4. पुलिस/112/किसी बाहरी सरकारी एजेंसी को ऐप से स्वतः कॉल, SMS या सूचना न भेजी जाए। व्यक्ति स्वयं जरूरत पड़ने पर 112 पर कॉल कर सकता है।
+5. अलर्ट में booking ID, SOS दबाने वाले पक्ष की भूमिका, नाम/संपर्क विवरण, समय, कारण/चुना गया खतरा और उपलब्ध/अनुमत लोकेशन शामिल हों।
+6. लोकेशन केवल अधिकृत Admin और Support Staff को दिखे; न्यूनतम आवश्यक डेटा ही साझा हो।
+7. SOS केस तब तक Pending/Awaiting Acknowledgement रहे जब तक Admin या अधिकृत Support Staff उसे स्वीकार न करे। स्वीकार करने वाले का नाम/ID और समय दर्ज हो।
+8. केस की पूरी append-only activity/audit history सुरक्षित रहे; कौन-सी कार्रवाई कब हुई, दर्ज हो।
+9. SOS विकल्पों में कम-से-कम: ग्राहक को खतरा, इलेक्ट्रिशियन को खतरा, मारपीट/अन्य आपात स्थिति।
+10. SMS/Push delivery असफल होने, नेटवर्क न होने या नंबर/configuration अनुपलब्ध होने पर UI में झूठा “भेज दिया” न दिखे; delivery status और retry/fallback व्यवहार स्पष्ट हो।
+
+## सुरक्षा और संचालन सीमाएँ
+- SOS को वास्तविक दुनिया की लड़ाई/खतरे का स्वतः पता लगाने वाला feature न बताया जाए; यह user-triggered alert है।
+- SOS अलर्ट केवल Admin और अधिकृत Support Staff को जाए; पुलिस को स्वतः नहीं।
+- Admin SMS नंबर को सुरक्षित configuration से जोड़ा जाए; नंबर की पुष्टि और SMS provider/खर्च की मंजूरी implementation से पहले आवश्यक हो सकती है।
+- लोकेशन अनुमति न हो तो SOS फिर भी भेजा जा सके; location unavailable स्पष्ट दिखे।
+- False alarm/cancel प्रक्रिया, acknowledgement SLA, escalation policy, data retention और SMS provider details अभी तय/सत्यापित होने बाकी हैं।
+
+## GPT जिम्मेदारी
+- GPT-1: Customer App और Electrician App में SOS trigger/UI, user-facing status और integration contract।
+- GPT-2: Admin/Support queues, database schema/RPC, permissions/audit, SMS provider/backend delivery और operational configuration।
+- दोनों पक्षों के बीच end-to-end integration आवश्यक। किसी भी Production बदलाव/deployment से पहले अलग मंजूरी आवश्यक।
+
+## सत्यापन स्थिति
+यह दस्तावेज़ स्वीकृत आवश्यकता दर्ज करता है, लागू feature का प्रमाण नहीं है। अभी कोई SOS UI, SMS, Push, database workflow या live notification चालू होने का दावा नहीं किया जा रहा।
