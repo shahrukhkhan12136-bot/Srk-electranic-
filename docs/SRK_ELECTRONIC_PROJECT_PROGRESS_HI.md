@@ -3509,3 +3509,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - अगला तकनीकी कदम: current branch की सभी migrations को dependency graph में रखना, historical base sources के साथ object-by-object diff बनाना, और unresolved/duplicate timestamp blockers दर्ज करना। बिना इस reconciliation के disposable DB को parity-ready नहीं कहेंगे।
 - कोई database/Production access या बदलाव नहीं; कोई migration apply नहीं; PostgreSQL/pgTAP runtime अभी execute नहीं हुआ।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
+
+
+### 2026-11-15 — 71 migrations का static dependency blocker audit
+- Current Feature Branch में 71 migration SQL files गिने; duplicate version prefix `20261109` वाली दो files मिलीं। Rename/history repair नहीं किया।
+- Starter schema और migration consumers के बीच दो महत्वपूर्ण unresolved prerequisites मिले: `service_bookings.amount_paid` (quote/commission migration इसे पढ़ता है, लेकिन repository में authoritative add-column/base DDL नहीं मिला) और `electrician_profiles.auth_user_id` (Google Maps approval migration इसे लिखता है, लेकिन authoritative add-column/base DDL नहीं मिला)।
+- `customer_user_id` और GPS `location_lat/location_lng` के लिए संबंधित migration source पहचाने; `customer_suggested_amount/electrician_quote_kind` restoration migration amount_paid का विकल्प नहीं है।
+- Findings और safe next steps `docs/CORE_BASELINE_DDL_CONTRACT_HI.md` में दर्ज किए। Complete disposable parity baseline अभी blocked है; production history या schema में कोई बदलाव नहीं।
+- कोई migration execute नहीं हुई; PostgreSQL/pgTAP runtime अभी नहीं चला।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
