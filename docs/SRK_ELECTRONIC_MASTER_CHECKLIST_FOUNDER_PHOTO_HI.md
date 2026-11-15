@@ -324,3 +324,9 @@
 - [x] Reviewed GPS start/update/stop, logout stop retries, push subscription ownership, support ticket/thread rendering and dynamic status handling. Existing GPS safeguards and support HTML escaping remain in place; no production calls or device permission prompts were performed.
 - [ ] Browser/device runtime verification remains pending. Final consolidated mobile QA remains deferred.
 - [!] Latest full repository Node workflow ran 120/121 tests successfully; the only failure is outside GPT-1 scope: `tests/admin-commission-report-labels.test.js` rejects a Route commission term found in current `admin.html`. This is a GPT-2 Admin Panel dependency; do not modify it from GPT-1.
+
+
+### 2026-11-15 — Electrician GPS stop concurrency hardening
+- [x] GPS-failure auto-stop and the manual “Location बंद करें” action now share one in-flight Set guard, preventing duplicate concurrent `srk_electrician_stop_live_location` RPCs for the same booking.
+- [x] On failed server stop, the booking remains in the local retry set; successful stop clears the retry handle. Added regression coverage for shared guard and retry behavior.
+- [x] Updated the existing GPS network-exception test boundary after moving the shared guard declaration. Latest branch head `c57577c9f72663cf52cfc8981d72f008d95b83ef`: **two full repository Node workflows SUCCESS**.
