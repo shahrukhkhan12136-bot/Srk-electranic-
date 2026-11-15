@@ -3835,3 +3835,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Repository-wide indexed search surfaced no additional source files with these exact column definitions. The only `amount_paid` commit-history matches remain two application payment-write commits, not DDL. This supports that the current tracked source bundle lacks the original contracts, while acknowledging GitHub code search is not a full archival guarantee.
 - Do not add guessed columns. Need a trustworthy original database schema export/deployment artifact or a verified approved read-only catalog export before any DDL decision.
 - GPT-2 remains 27/39 = 69%; no checklist item closed. No remote DB query, SQL runtime, or production change.
+
+
+### Full 73-file migration dependency inventory — 15 Nov 2026
+- Static source scan completed for all 73 SQL files under `supabase/migrations/` at inspected head `3050e35fd0f1af9f42097f9bc1f12d4d16152965`.
+- Added `docs/MIGRATION_DEPENDENCY_MATRIX_HI.md` with object-cluster dependencies and validation gates: core booking/identity, wallet/commission, Route ledger, complaint/support, financial audit, work timer/history, cancellation-fee accounting, Admin RBAC, push delivery, KYC and SOS.
+- Highlighted hard ordering gates: missing authoritative `service_bookings.amount_paid` and `electrician_profiles.auth_user_id` DDL; complaint base tables; push subscription base table; financial audit core; wallet ledger before cancellation-fee accounting; RBAC before permission-gated SOS/support.
+- Static scan also confirms two legacy `20261109` files share the same version prefix, plus repeated labour-bill access correction migrations and retirement files requiring replay/history review.
+- This is source-level inventory, not a complete parser-generated transitive dependency graph and not executable replay order. No PostgreSQL/pgTAP runtime, Production schema/history query, or live provider action was performed.
+- GPT-2 remains 27/39 = 69%; no checklist item closed by documentation alone.
