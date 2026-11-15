@@ -85,3 +85,19 @@ test('electrician app keeps the fixed-duration server-timed work lifecycle and n
   assert.match(electrician, /srk_electrician_get_labour_bill/);
   assert.doesNotMatch(electrician, /quoted_amount|submit.*quote|quotation approval|inspection quote/i);
 });
+
+
+test('electrician live-location stop failures preserve a retryable Stop control', () => {
+  const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
+  const start = electrician.indexOf('async function stopElectricianLiveLocation(id)');
+  const end = electrician.indexOf('\nfunction focusElectricianOfferFromNotification', start);
+  assert.ok(start >= 0 && end > start);
+  const stop = electrician.slice(start, end);
+  assert.match(stop, /electricianLocationStopBusy\.has\(id\)/);
+  assert.match(stop, /navigator\.geolocation\.clearWatch\(watch\)/);
+  assert.match(stop, /srk_electrician_stop_live_location/);
+  assert.match(stop, /if\(error\)throw error/);
+  assert.match(stop, /locationWatches\.delete\(id\)/);
+  assert.match(stop, /catch\(error\)[\s\S]*?Keep the cleared watch ID as a retry handle/);
+  assert.match(electrician, /locationWatches\.has\(o\.booking_id\)\?'पहुँच गया — Location बंद करें'/);
+});
