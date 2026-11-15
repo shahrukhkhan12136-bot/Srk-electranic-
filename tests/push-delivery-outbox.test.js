@@ -42,3 +42,12 @@ test('subscription table retains owner-scoped CRUD and revokes excess privileges
   assert.match(migration, /GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public\.srk_push_subscriptions TO authenticated/);
   assert.match(migration, /WITH CHECK \(user_id = \(SELECT auth\.uid\(\)\)\)/);
 });
+
+test('outbox migration atomically removes the legacy synchronous push trigger', () => {
+  const legacyDrop = migration.indexOf('DROP TRIGGER IF EXISTS trg_srk_push_job_offer ON public.job_offers');
+  const outboxCreate = migration.indexOf('CREATE TRIGGER trg_srk_enqueue_job_offer_push');
+  assert.notEqual(legacyDrop, -1);
+  assert.notEqual(outboxCreate, -1);
+  assert.ok(legacyDrop < outboxCreate);
+  assert.match(migration, /AFTER INSERT ON public\.job_offers/);
+});
