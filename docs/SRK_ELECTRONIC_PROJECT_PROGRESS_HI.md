@@ -3683,3 +3683,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - SOS source contract test को अतिरिक्त modal के बजाय exact two-step flow verify करने के लिए बदला। Commit: `3075d10a5e4fb0e723ccadcf2f91962bc0f46fc1`.
 - Updated source files re-fetch करके verify किए: दोनों SOS handlers reason-only RPC payload रखते हैं और extra confirm modal नहीं है। Customer saved-address navigation fix भी source में verify है। Node/CI/browser/mobile runtime test अभी इस नए commit पर प्रमाणित नहीं; कोई PASS दावा नहीं। Backend RPC/authorization/Admin queue/SMS/Push end-to-end GPT-2 dependency है।
 - GPT-1 checklist **20/28 = 71%** अपरिवर्तित; ये source/contract alignment fixes हैं, नए checklist item completion नहीं। कोई merge, Production deploy, migration apply या paid staging creation नहीं।
+
+
+## 2026-11-15 — Customer immediate-booking form correction
+- Customer booking submit handler में पुराने `date`/`time` DOM fields पढ़े जा रहे थे, जबकि वर्तमान form में ये fields मौजूद नहीं हैं और `create-booking.js` स्पष्ट रूप से immediate-service dispatch करता है (`preferred_date`/`preferred_time` = `null`)। इससे submit के समय JavaScript null-element error होकर booking रुक सकती थी।
+- पुराने date/time validation और nonexistent field focus को हटाया गया; immediate booking payload/idempotency/auth flow जस का तस रखा गया।
+- Regression test `tests/customer-immediate-booking-contract.test.js` जोड़ा गया, जो nonexistent date/time reads और API contract mismatch को रोकता है।
+- Commits: UI correction `b2e2fd9bb5b9faa06629d99f90657e44100d927a`; regression test `108caea1766fc85a4a881eb7077d337d85d65f74`.
+- Source change verified by re-fetch. New CI run not yet visible; no browser/mobile runtime test, DB change, merge or deployment performed.
