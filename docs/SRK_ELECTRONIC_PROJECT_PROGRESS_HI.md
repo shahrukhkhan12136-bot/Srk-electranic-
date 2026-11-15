@@ -3066,3 +3066,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नए KYC/earnings/wallet contract test के पहले runs में केवल test helper के source-boundary extraction और regex escaping की गलतियाँ मिलीं; app source में कोई बदलाव आवश्यक नहीं हुआ।
 - Test helper को अगले function declaration तक सीमित किया और profile `finally` assertion ठीक की।
 - Latest branch head `2a7771c153b82785238256d8852e04aa540f901c` पर दोनों full repository Node workflows **SUCCESS** हुए।
+
+
+## 2026-11-15 — Admin Dashboard पर Project Progress Card
+
+- Main Admin dashboard के शीर्ष पर प्रोजेक्ट प्रगति कार्ड जोड़ा।
+- मुख्य मास्टर चेकलिस्ट के वर्तमान 9 sections में 54 पूर्ण और 32 शेष आइटम: 63% पूरा / 37% बाकी।
+- गणना का दायरा स्पष्ट किया: यह checklist-item count है; Production readiness, elapsed time या code completion का प्रतिशत नहीं।
+- बाकी मदों में isolated runtime/database tests, Main Production schema parity, browser/mobile visual QA और release/owner approval शामिल हैं।
+- Support Staff view में कार्ड नहीं दिखेगा; Admin portal के मौजूदा role-gating के कारण यह केवल Main Admin view में दिखेगा।
+- Checklist के summary section में भी यही गणना दर्ज की। नई checklist स्थिति आने पर कार्ड और दस्तावेज़ का प्रतिशत फिर से अपडेट करना होगा।
+- यह Feature Branch UI/documentation change है; Production deploy नहीं किया गया।
