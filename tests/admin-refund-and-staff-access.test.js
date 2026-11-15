@@ -212,3 +212,20 @@ test('Staff permission helper is VOLATILE because it takes row locks', () => {
   assert.ok(helper.includes('from public.srk_admin_staff_sessions tracked') && helper.includes('for share;'));
   assert.ok(staffPermissionVolatilityFix.includes('revoke all on function public.srk_has_admin_permission(text) from public, anon;'));
 });
+
+
+test('Staff invite Edge Function authenticates the bearer token and checks Main Admin through the trusted Auth user', () => {
+  assert.match(staffFunction, /authHeader\.startsWith\("Bearer "\)/);
+  assert.match(staffFunction, /userClient\.auth\.getUser\(token\)/);
+  assert.match(staffFunction, /userClient\.rpc\("is_srk_admin"\)/);
+  assert.match(staffFunction, /authData\.user\.id/);
+  assert.doesNotMatch(staffFunction, /body\.(user_id|actor_admin_id|role|is_admin)/);
+});
+
+test('Staff invite Edge Function fixes Support role and removes an orphan Auth user if registry creation fails', () => {
+  assert.match(staffFunction, /role: "support"/);
+  assert.match(staffFunction, /p_actor_admin_id: authData\.user\.id/);
+  assert.match(staffFunction, /if \(registerError \|\| registered !== true\)/);
+  assert.match(staffFunction, /service\.auth\.admin\.deleteUser\(invited\.user\.id\)/);
+  assert.match(staffFunction, /status: "invited"/);
+});
