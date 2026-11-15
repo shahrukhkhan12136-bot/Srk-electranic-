@@ -4024,3 +4024,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Complaint parent/event table source gaps अब recover हो गए। Remaining unresolved base-column DDL: `service_bookings.amount_paid` और `electrician_profiles.auth_user_id`; duplicate `20261109` remote migration lineage भी unresolved।
 - कोई SQL guessed नहीं; Production DB query/apply, migration replay, PostgreSQL/pgTAP runtime, merge या deployment नहीं हुआ। Restore source-only है; remote catalog parity का प्रमाण नहीं।
 - GPT-2 checklist 27/39 = 69%; कुल project 56/86 = 65% अपरिवर्तित। Documentation/source recovery को checklist completion नहीं गिना।
+
+
+### Historical base-column DDL search continuation — 15 Nov 2026
+- सभी 18 listed branch trees की migration inventories पुनः देखीं। पुराने `work/separate-customer-electrician-portals` branch की `20261109223000_sync_electrician_auth_profile_link.sql` में `auth_user_id` और `user_id` update/ownership checks हैं, पर column definition नहीं।
+- उसी historical branch की `20261109171621_add_admin_verified_manual_payment_workflow.sql`, `20261109171942_add_admin_verified_manual_refund_workflow.sql`, और `20261109173000_allow_manual_payment_payout_settlement.sql` `amount_paid` को consumer/validation/write रूप में उपयोग करती हैं; कोई ADD COLUMN/base CREATE TABLE definition नहीं मिली।
+- Quote migration में `NEW.amount_paid` non-negative validation है; Google Maps/admin approval migration `auth_user_id` insert/upsert करती है; wallet ownership lookup भी column पढ़ती है। ये सभी consumers हैं, original DDL source नहीं।
+- Exact/combined GitHub code searches (`amount_paid double precision`, `amount_paid decimal`, `ALTER TABLE service_bookings amount_paid`, `auth_user_id ALTER TABLE electrician_profiles`, `electrician profile auth`) से कोई authoritative introducing migration/commit नहीं मिला। Search index और inspected branch-tree सीमाओं के कारण इसे पूर्ण Git-history/deployment absence नहीं कहा जा रहा।
+- Complaint migration के बारे में भी exact-content check किया: historical branch source और current Feature Branch file दोनों 9,173 characters हैं और byte-for-byte समान हैं; content comparison सफल। इसलिए previous “exact source restored” status सही है।
+- Remaining source DDL blockers दो हैं: `service_bookings.amount_paid` और `electrician_profiles.auth_user_id`। No guessed DDL, Production query/export, migration replay, merge or deployment. GPT-2 27/39 = 69%; overall 56/86 = 65% अपरिवर्तित।
