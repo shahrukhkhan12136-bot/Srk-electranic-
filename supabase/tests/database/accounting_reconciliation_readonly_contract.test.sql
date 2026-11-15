@@ -1,5 +1,5 @@
 begin;
-select plan(67);
+select plan(69);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -243,6 +243,13 @@ select ok(position('auth.uid() is null or not public.is_srk_admin()' in lower(pg
 select ok(position('auth.uid() is null or not public.is_srk_admin()' in lower(pg_get_functiondef(
   'public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0,
   'manual refund recording independently requires Main Admin authorization');
+
+select ok(coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc
+  where oid='public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure),false),
+  'payout settlement SECURITY DEFINER RPC uses empty search_path');
+select ok(coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc
+  where oid='public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure),false),
+  'manual refund SECURITY DEFINER RPC uses empty search_path');
 
 select * from finish();
 rollback;
