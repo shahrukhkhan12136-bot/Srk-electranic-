@@ -145,3 +145,27 @@ test('Support Staff customer and electrician inbox RPCs enforce active permissio
   assert.ok(assignmentFn[0].includes('public.is_srk_admin()'));
   assert.ok(assignmentFn[0].includes('MAIN_ADMIN_ONLY'));
 });
+
+test('Support Staff authorization and assignment use a consistent lock order and live session check', () => {
+  const getStaffRpc = (name) => {
+    const start = staffMigration.lastIndexOf('create or replace function public.' + name);
+    assert.notEqual(start, -1, name + ' must exist');
+    const end = staffMigration.indexOf('$function$;', start);
+    assert.notEqual(end, -1, name + ' must have a closed function body');
+    return staffMigration.slice(start, end + '$function$;'.length);
+  };
+  const assignment = getStaffRpc('srk_admin_assign_support_case');
+  const registryLock = assignment.indexOf('for share');
+  const caseLock = assignment.indexOf('for update');
+  const assignmentLock = assignment.indexOf('for update', caseLock + 1);
+  assert.ok(registryLock >= 0 && caseLock > registryLock && assignmentLock > caseLock,
+    'assignment must lock target Staff, case, then assignment in that order');
+
+  const permissionStart = staffMigration.lastIndexOf('create or replace function public.srk_has_admin_permission');
+  const permissionEnd = staffMigration.indexOf('$function$;', permissionStart);
+  assert.ok(permissionStart >= 0 && permissionEnd > permissionStart);
+  const permission = staffMigration.slice(permissionStart, permissionEnd);
+  assert.match(permission, /tracked\\.auth_session_id = v_session_id/);
+  assert.match(permission, /tracked\\.revoked_at is null[\\s\\S]*?for share/);
+  assert.match(permission, /auth\\.sessions auth_s[\\s\\S]*?auth_s\\.id = v_session_id/);
+});
