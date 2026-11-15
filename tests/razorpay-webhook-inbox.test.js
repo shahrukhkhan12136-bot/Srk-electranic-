@@ -283,3 +283,51 @@ test("routes a signed failed refund event through server-side reconciliation", a
   assert.equal(reconciled.p_provider_refund_id,"rfnd_failed123");
   assert.equal(completion.p_outcome,"processed");
 });
+
+
+test("accepts a processed refund entity in refund.created as documented by Razorpay", async t => {
+  let reconciled = null;
+  let completed = null;
+  global.fetch = async (url, options = {}) => {
+    const target = String(url);
+    const fn = rpcName(target);
+    if (fn === "srk_service_claim_razorpay_webhook_event") {
+      return response(200, { success: true, should_process: true, claim_token: "c23e4567-e89b-42d3-a456-426614174000" });
+    }
+    if (target.includes("/rest/v1/srk_razorpay_refunds?")) {
+      assert.match(target, /payment_id=eq\\.pay_createdprocessed/);
+      return response(200, [{
+        id: "d23e4567-e89b-42d3-a456-426614174000",
+        payment_id: "pay_createdprocessed",
+        refund_id: null,
+        amount_paise: 12500,
+        status: "processing"
+      }]);
+    }
+    if (fn === "srk_service_reconcile_booking_refund") {
+      reconciled = JSON.parse(options.body);
+      return response(200, { success: true, status: "processed" });
+    }
+    if (fn === "srk_service_complete_razorpay_webhook_event") {
+      completed = JSON.parse(options.body);
+      return response(200, { success: true, state: "processed" });
+    }
+    throw new Error("unexpected request " + target);
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const result = await handler(event({
+    event: "refund.created",
+    payload: { refund: { entity: {
+      id: "rfnd_createdprocessed123",
+      payment_id: "pay_createdprocessed",
+      amount: 12500,
+      currency: "INR",
+      status: "processed"
+    } } }
+  }, "evt_refund_created_processed"));
+  assert.equal(result.statusCode, 200);
+  assert.equal(JSON.parse(result.body).reconciled, true);
+  assert.equal(reconciled.p_provider_status, "processed");
+  assert.equal(reconciled.p_provider_refund_id, "rfnd_createdprocessed123");
+  assert.equal(completed.p_outcome, "processed");
+});
