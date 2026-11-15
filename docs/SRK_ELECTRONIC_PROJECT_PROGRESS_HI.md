@@ -2688,3 +2688,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इससे पिछले Customer quote UI test mismatch का CI blocker हट गया है; Admin commission/accounting regression tests भी इसी पूर्ण suite में सफल रहे।
 - यह Node/mock/source regression suite है। इससे pgTAP, live Supabase RPC/ACL, managed schema parity, browser E2E, Vercel Preview, OTP/SMS delivery या mobile QA प्रमाणित नहीं होते।
 - PR #8 जाँच के समय Open + Draft + Unmerged था। कोई PR merge, Production migration, deployment, live payment/refund/payout, real SMS/OTP या push send नहीं किया गया।
+
+
+## 2026-11-15 — Admin accounting UI में बचा retired Route label हटाया (GPT-2)
+
+- 98/98 Node CI green run के बाद Admin reconciliation card के explanatory text में एक पुराना lowercase `Route settlement` label मिला था; वास्तविक Route ledger हट चुका है, इसलिए वह label भ्रामक था। इसे हटाया।
+- Admin commission/accounting regression test को मजबूत किया: अब पूरा Admin page retired `Route` शब्द/field के लिए case-insensitive word-boundary check से जाँचा जाएगा। Test regex escape भी source में सही रूप से verify किया।
+- Commits: Admin UI `be074d1`; test `db95b3b`, regex correction `d4f05ee`।
+- इन अंतिम दो source/test edits के बाद कोई नया CI run उपलब्ध नहीं दिखा; इसलिए **98/98 परिणाम पूर्ववर्ती tested HEAD `843e91a` के लिए है**, नवीनतम Admin label correction को अभी CI में पुनः चलाना बाकी है।
+- कोई Production DB, provider, payout, payment, deployment या merge action नहीं किया।
