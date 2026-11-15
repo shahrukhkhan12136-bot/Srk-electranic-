@@ -1,5 +1,5 @@
 begin;
-select plan(69);
+select plan(71);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -214,6 +214,15 @@ select ok(position('ROUTE_LINKED_ACCOUNT_ID_MISMATCH' in pg_get_functiondef(
 select ok(position('ROUTE_SETTLED_WITHOUT_PROCESSED_TRANSFER' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'settled Route records require processed transfer status');
+
+select ok(position('ROUTE_PROVIDER_SETTLEMENT_NOT_INDEPENDENTLY_VERIFIED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route ledger rows always remain flagged until independent provider settlement evidence exists');
+select ok(position('route_provider_settlement_verified' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('not_independently_verified' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route reconciliation explicitly reports that bank/provider settlement is not verified');
 
 select ok(to_regclass('public.srk_wallet_bank_links_one_primary_route_electrician_uidx') is not null,
   'database enforces at most one primary Razorpay Route electrician bank link per Auth user');
