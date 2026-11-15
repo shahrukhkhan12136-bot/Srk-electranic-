@@ -3972,3 +3972,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - वर्तमान financial audit migration में `amount_paid` और `auth_user_id` केवल audit allowlist में हैं; यह भी मूल column definitions नहीं देता।
 - Repository-wide exact code searches में `auth_user_id uuid`, `amount_paid numeric`, और इन columns के स्पष्ट ADD COLUMN definitions नहीं मिले। Search index की सीमा के कारण इसे सभी Git history में अनुपस्थिति का निर्णायक प्रमाण नहीं माना गया।
 - निष्कर्ष: दोनों columns के लिए मूल schema अभी भी unresolved है। कोई guessed DDL नहीं जोड़ा गया; PR source/migrations untouched। अगला विश्वसनीय प्रमाण approved read-only catalog/schema export या मूल deployment artifact ही होगा। GPT-2 27/39 = 69%; पूरा project 55/86 = 64% अपरिवर्तित।
+
+
+### Git path history और शुरुआती setup artifacts की जाँच — 15 Nov 2026, 16:51 UTC
+- GitHub REST path-history में `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` तीनों के लिए repository में एक ही उपलब्ध commit मिला: `c4b6a46f22553e57638cdae844ec33d09bf8da2c` (2026-11-08 04:15:50Z)। इन setup files के लिए repository path-history में इससे पुराना tracked revision नहीं मिला।
+- उसी शुरुआती commit पर तीनों SQL setup files और `ADMIN_SETUP_HINDI.md` फिर जाँचे; `amount_paid` या `auth_user_id` का कोई उल्लेख नहीं मिला।
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` की Git path-history में marker commit `073d59e...`, full SQL commit `04d0c02...`, और constraint follow-up `b5e5b3b...` मिले; इनसे `amount_paid` की मूल column definition स्थापित नहीं होती।
+- `20261109223000_sync_electrician_auth_profile_link.sql` का path-history current repository में नहीं मिला; पुराने branch snapshot में file मौजूद है और दोनों identity columns का उपयोग करती है, पर DDL नहीं देती।
+- GitHub Releases list खाली मिली; Tags endpoint इस access path से सत्यापित नहीं हो सका। इसलिए release/tag evidence उपलब्ध नहीं है, ऐसा निर्णायक दावा नहीं किया गया।
+- निष्कर्ष वही: original `amount_paid` और `auth_user_id` DDL इस repository के उपलब्ध tracked setup artifacts से recover नहीं हुआ। Production schema/history access नहीं किया। कोई source migration नहीं बदली। GPT-2 27/39 = 69%; कुल project 55/86 = 64%।
