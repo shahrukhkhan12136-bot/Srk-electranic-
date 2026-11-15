@@ -50,9 +50,10 @@ exports.handler = async function () {
       const finish = await callRpc("srk_finish_push_delivery_outbox", {
         p_outbox_id: row.outbox_id, p_attempt_count: row.attempt_count, p_success: success, p_error: errorText
       });
-      if (!finish.ok) {
+      const finishAccepted = finish.ok && (await finish.json().catch(() => false)) === true;
+      if (!finishAccepted) {
         finishErrors++;
-        console.error(JSON.stringify({ event: "push_outbox_finish_failed", outbox_id: row.outbox_id, http_status: finish.status, recovery: "lease_expiry" }));
+        console.error(JSON.stringify({ event: "push_outbox_finish_failed", outbox_id: row.outbox_id, http_status: finish.status, stale_or_rejected: finish.ok, recovery: "lease_expiry" }));
         retry++;
       } else if (success) delivered++;
       else retry++;
