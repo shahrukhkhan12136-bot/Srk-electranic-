@@ -218,3 +218,15 @@ Older `feature/business-finance-dashboard` और `work/separate-customer-electr
 - इसलिए पहले दर्ज किया गया CLI 3.0.0 db-push sorting risk **source-level पर addressed दिखता है**; यह अब CLI 3.0.0 TypeScript db-push path के लिए confirmed blocker नहीं है। फिर भी यह source inspection है, local CLI execution नहीं।
 - Supabase CLI issue #6682 अलग Go implementation के लिए था; v3.0.0 db-push path inspected TypeScript implementation use करता है। इस issue को हमारे current pinned db-push workflow पर लागू defect नहीं मानें।
 - Repository में दो 8-digit `20261109` files की duplicate version history concern अलग से बनी हुई है: source sorting test exact prefix pair ordering cover करता है, लेकिन duplicate exact same version identifiers को दो अलग migrations के रूप में लागू करने की policy नहीं। Rename/history repair अभी भी नहीं।
+
+
+### Exact duplicate migration version — separate unresolved history blocker (15 Nov 2026)
+
+- Re-read both exact files sharing version `20261109`:
+  - `20261109_allow_quote_approval_booking_states.sql` (adds booking status/assignment constraints)
+  - `20261109_electrician_inspection_quotes_and_service_only_commission.sql` (adds quote/workflow columns and RPCs, and repeats the booking status/assignment constraints)
+- These are not merely 8-digit vs 14-digit prefix ordering. They have the **same exact version key**. Supabase migration history stores version as the primary key, so two distinct migration files cannot safely be represented as two separate applied rows under that same key.
+- Existing Node uniqueness test explicitly allow-lists this pair as a known legacy collision. That is a detection/exception, not proof that both were applied or that remote history matches.
+- The file contents overlap on booking status and assignment constraints. Do not delete, merge, rename, re-sequence, or repair history without establishing which version is recorded remotely and the intended source lineage. No remote history query performed.
+- Node CI for latest docs commit `a84ea1e` completed successfully. This verifies repository Node tests only; it does not validate remote Supabase migration history or execute SQL.
+- GPT-2 checklist remains 27/39 = 69%; no checklist closure claimed.
