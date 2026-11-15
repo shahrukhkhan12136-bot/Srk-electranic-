@@ -209,8 +209,8 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 - Triggers on push to this Feature Branch, pull requests targeting `main`, and manual dispatch.
 - Uses GitHub-hosted Ubuntu, Node.js 22, `npm install --ignore-scripts --no-audit --no-fund`, then `npm test`.
 - No secrets, DB writes, provider calls or deployment in this job.
-- Latest verified PR head: `2f2415b1845e108e9e3d737a459c0440d503b71e`.
-- Node run **43743783902** on that head succeeded; log explicitly shows **187 tests, 187 pass, 0 fail, 0 skipped**. Earlier run **43743188290** on `f8b7bcf...` also passed 187/187.
+- Latest verified PR head: `b709322d39bea1051c2111cc01191709f1a04773`.
+- Node run **43743960808** on that head succeeded; log explicitly shows **187 tests, 187 pass, 0 fail, 0 skipped**. The immediately preceding run **43743783902** also passed 187/187 on the code-change head containing the UTF-8 pgTAP correction.
 - Commit `13afb4d92e22673b50c5eee1751f66621fdf194f` corrected the customer payment-method pgTAP assertion from mojibake to the exact UTF-8 literal `Razorpay ऑनलाइन भुगतान`; the latest Node run includes this source correction.
 - This proves Node regression suite only, not SQL migration replay, PostgreSQL/pgTAP, browser/mobile, Vercel Preview or Production parity.
 
