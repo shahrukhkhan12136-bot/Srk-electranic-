@@ -1,3 +1,12 @@
+## 2026-11-15 — Admin प्रोजेक्ट प्रगति कार्ड का मास्टर चेकलिस्ट से मिलान
+
+- Admin Panel में पूरे प्रोजेक्ट का पुराना progress card 64% (55/86) दिखा रहा था, जबकि वर्तमान Master Checklist 65% (56/86 पूर्ण; 30/86 शेष) बताती है।
+- `admin.html` में प्रतिशत, पूर्ण/शेष item counts, accessible aria-label और progress-bar widths को Master Checklist के अनुसार 65% / 35% किया।
+- GPT-2 का अलग 69% (27/39) कार्ड अपरिवर्तित रखा।
+- `tests/admin-progress-card.test.js` जोड़ा: पूरे प्रोजेक्ट के 65/35 और GPT-2 के 69% दोनों कार्डों की regression assertions। इस test को GPT-2 unified inventory की Node test सूची में दर्ज किया।
+- Remote-fetched source पर आठों expected content checks PASS; test source की regex escaping भी जाँची गई। GitHub Actions run इस नए commit के लिए अभी उपलब्ध/दिखाई नहीं दिया; इसलिए इसे Node CI PASS नहीं कहा जा रहा।
+- Checklist counts नहीं बदले; यह display consistency fix है। कोई DB, payment, Production, merge या deployment action नहीं हुआ।
+
 ## 2026-11-15 — GPT-1 SOS emergency UI integration (source-only)
 - उपयोगकर्ता के स्पष्ट आदेश के अनुसार Customer App और Electrician App में SOS control जोड़ा गया; तीन स्वीकृत कारण उपलब्ध हैं: ग्राहक को इलेक्ट्रिशियन से खतरा, इलेक्ट्रिशियन को ग्राहक से खतरा, मारपीट/अन्य आपात स्थिति।
 - दोनों UI shared `srk_create_sos_alert` RPC को केवल `p_reason` भेजते हैं। Client booking ID, actor/user ID, details या location fields नहीं भेजता। Backend को authenticated session और active booking से actor/booking derive करना होगा; उपलब्ध/consented location का सुरक्षित server-side contract अलग से सत्यापित होना बाकी है।
