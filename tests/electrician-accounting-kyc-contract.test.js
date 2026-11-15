@@ -70,8 +70,8 @@ test('electrician profile name save reports refresh failure as partial success, 
   const save = body('saveElectricianDisplayName');
   assert.match(save, /srk_electrician_update_my_display_name/);
   assert.match(save, /document\.getElementById\('name'\)\.textContent=data/);
-  assert.match(save, /try\{await refresh\(\)\}catch\(_\)\{msg\.textContent='प्रोफ़ाइल नाम अपडेट हो गया है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। कृपया Refresh करें।'/);
-  assert.ok(save.indexOf('msg.textContent=\'प्रोफ़ाइल नाम अपडेट हो गया।\'') < save.indexOf('try{await refresh()}catch'));
+  assert.match(save, /try\{await refresh\(\);?\}catch\(_\)\{msg\.textContent='प्रोफ़ाइल नाम अपडेट हो गया है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। कृपया Refresh करें।'/);
+  assert.ok(save.indexOf('msg.textContent=\'प्रोफ़ाइल नाम अपडेट हो गया।\'') < save.indexOf('try{await refresh();}catch'));
   assert.match(save, /finally\{button\.disabled=false;\}/);
 });
 
