@@ -117,3 +117,14 @@
 - [ ] Final consolidated mobile QA और production rollout सभी implementation पूरे होने और अलग explicit approval के बाद ही।
 
 **Evidence boundary:** UI/service-worker/dispatch source review पूरा; वास्तविक push delivery, subscription RLS proof, runtime test, production Edge Function inspection/deploy या mobile QA का दावा नहीं।
+
+
+### Push Notification click-to-offer routing hardening — 15 November 2026
+- [x] Notification click अब केवल same-origin Electrician Dashboard खोलता है; payload से arbitrary same-origin path स्वीकार नहीं होता।
+- [x] Valid UUID offerId dashboard URL में जोड़ा जाता है; dashboard matching offer card को scroll/highlight करता है।
+- [x] Malformed offerId reject और Service Worker cache version bump किया।
+- [x] Source-contract assertions जोड़े (अभी execute नहीं किए गए)।
+- [ ] Trusted server-side Push sender, durable idempotent outbox/retry, subscription RLS/RPC और invalid endpoint cleanup implement/verify करें।
+- [ ] Approved isolated environment में push delivery और race/retry/permission tests; final mobile QA implementation पूर्ण होने के बाद।
+
+**Evidence boundary:** Deep-link source change committed; वास्तविक Push delivery, runtime test, production deploy या mobile QA नहीं हुआ।
