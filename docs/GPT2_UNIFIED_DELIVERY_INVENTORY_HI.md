@@ -223,14 +223,18 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 - `.github/workflows/publish-pages.yml`
 - `.github/workflows/supabase-schema-ci.yml`
 
+### Additional source audit — 15 November 2026
+- Cross-branch fetch of `SUPABASE_SCHEMA.sql` on five refs found the same starter-schema blob; it contains neither `service_bookings.amount_paid` nor `electrician_profiles.auth_user_id`. The two consuming migrations were also inspected across available refs; no base-column CREATE/ADD DDL was recovered. Details: `docs/BASE_COLUMN_DDL_EVIDENCE_AUDIT_20261115.md`.
+- This narrows the repository-source search but does not prove that no deleted Git object or external deployment artifact exists. Both base DDL contracts remain unresolved; no guessed migration was added.
+
 ## 6. CI and test status — verified 15 November 2026
 ### Node CI
 - Workflow: `.github/workflows/node-tests.yml`
 - Triggers on push to this Feature Branch, pull requests targeting `main`, and manual dispatch.
 - Uses GitHub-hosted Ubuntu, Node.js 22, `npm install --ignore-scripts --no-audit --no-fund`, then `npm test`.
 - No secrets, DB writes, provider calls or deployment in this job.
-- Latest verified PR head: `b709322d39bea1051c2111cc01191709f1a04773`.
-- Node run **43743960808** on that head succeeded; log explicitly shows **187 tests, 187 pass, 0 fail, 0 skipped**. The immediately preceding run **43743783902** also passed 187/187 on the code-change head containing the UTF-8 pgTAP correction.
+- नवीनतम सत्यापित GPT-2 PR source head (इस Node run के समय): `70010d08ab74e60e5c84551f8c2295105273a7b4`.
+- Node run **43745940269** on head `70010d08ab74e60e5c84551f8c2295105273a7b4` succeeded; downloaded job log explicitly shows **189 tests, 189 pass, 0 fail, 0 skipped**. यह run नए `tests/admin-progress-card.test.js` सहित पूरे Node suite का है.
 - Commit `13afb4d92e22673b50c5eee1751f66621fdf194f` corrected the customer payment-method pgTAP assertion from mojibake to the exact UTF-8 literal `Razorpay ऑनलाइन भुगतान`; the latest Node run includes this source correction.
 - This proves Node regression suite only, not SQL migration replay, PostgreSQL/pgTAP, browser/mobile, Vercel Preview or Production parity.
 
@@ -262,7 +266,7 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 
 ### Additional contract finding — 15 November 2026
 - The customer payment-method SQL contract test previously expected a mojibake literal even though migration `20261115270000_fix_customer_payment_method_unicode_contract.sql` writes the canonical UTF-8 value. Corrected the SQL test in commit `13afb4d92e22673b50c5eee1751f66621fdf194f`; fetched the current branch file again and confirmed the canonical literal is present and the mojibake sequence is absent.
-- The latest Node CI run `43743783902` passed 187/187 after the correction. This does **not** execute pgTAP; the PostgreSQL runtime assertion remains unverified.
+- Historical Node run `43743783902` passed 187/187 after the UTF-8 correction; it is superseded by run `43745940269`, which passed 189/189. Neither Node run executes pgTAP; PostgreSQL runtime assertions remain unverified.
 - GPT-1's new inventory separately records missing dedicated DB tests for electrician availability, booking-scoped live-location RPCs, and phone-change approval. These are GPT-1-owned workflows; no such files were changed here. Its payment-test mismatch note predates the GPT-2 correction and should be treated as stale until GPT-1 refreshes its own inventory.
 - The GPT-2 inventory now includes §3A cross-map from feature area to migrations, pgTAP files, Node tests and UI/server entry points. The older dependency inventory (71 migrations/33 SQL contracts) and dependency matrix (73 migrations) are explicitly marked historical; the replay manifest now clarifies that complaint base/event table definitions were recovered and are no longer unresolved source blockers.
 
