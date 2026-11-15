@@ -3929,3 +3929,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - यह GitHub code search है, पूर्ण Git object/history या live database catalog का प्रमाण नहीं; इसलिए निष्कर्ष “इस खोज में declaration नहीं मिली” तक सीमित है।
 - DDL अनुमान से नहीं जोड़ी जाएगी। अगला प्रमाण-स्रोत अधिक पुरानी migration/tag/deployment artifact या owner-approved read-only catalog export होना चाहिए।
 - Checklist closure नहीं; GPT-2 27/39 = 69%, कुल project 55/86 = 64% अपरिवर्तित।
+
+
+### ऐतिहासिक branch-tree पुनःजाँच — 15 Nov 2026, 16:41 UTC
+- छह महत्वपूर्ण branch heads के recursive Git trees जाँचे: `work/separate-customer-electrician-portals`, `feature/production-push-notifications`, `feature/platform-fee-cash-online-cycle`, `feature/electrician-categories-hourly-booking`, `main`, और `safe-payment-refund-implementation`।
+- इन trees में `amount_paid` या `auth_user_id` बनाने वाली अलग migration/schema artifact नहीं मिली। संबंधित पुराने starter schema files ही दिखीं; portal branch में identity-sync migration मौजूद है, पर वह `auth_user_id` को पहले से मौजूद मानकर उपयोग करती है।
+- यह छह branch-head trees की जाँच है, सभी historical Git objects/tags/deployment artifacts की exhaustive जाँच नहीं। कोई absence claim पूरे repository history के लिए नहीं किया जा रहा।
+- PR #8 head इस समय `b948ee596e927f1abc604cd867d4b03db8f128f1`; PR Open, Draft, Unmerged है।
+- GPT-2 checklist 27/39 = 69%; कुल project 55/86 = 64%; कोई checklist item बंद नहीं।
+- कोई SQL migration, Production query/export, credential या deployment action नहीं किया।
