@@ -331,3 +331,21 @@ test('Customer call-contact RPCs are pinned to an empty search_path', () => {
   assert.match(customerCallSearchPathFix, /alter function private\\.srk_get_customer_call_contacts_impl\\(\\)\\s+set search_path\\s*=\\s*''/i);
   assert.match(customerCallSearchPathFix, /alter function public\\.srk_get_customer_call_contacts\\(\\)\\s+set search_path\\s*=\\s*''/i);
 });
+
+
+const walletReceiptSearchPathFix = fs.readFileSync(path.join(root, 'supabase/migrations/20261116130000_pin_wallet_and_receipt_rpc_search_paths.sql'), 'utf8');
+
+test('Wallet and customer receipt SECURITY DEFINER RPCs use an empty search_path', () => {
+  for (const [schema, name, signature] of [
+    ['public', 'srk_get_my_wallet_summary', ''],
+    ['public', 'srk_admin_wallet_overview', ''],
+    ['public', 'srk_get_my_earnings', ''],
+    ['public', 'srk_customer_get_payment_receipt', 'uuid']
+  ]) {
+    assert.match(
+      walletReceiptSearchPathFix,
+      new RegExp('alter function ' + schema + '\\.' + name + '\\(' + signature + '\\)\\s+set search_path\\s*=\\s*\\x27\\x27', 'i'),
+      name + ' must be pinned to an empty search_path'
+    );
+  }
+});
