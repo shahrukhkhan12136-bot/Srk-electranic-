@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(30);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -64,6 +64,36 @@ select ok(not has_table_privilege('authenticated','public.srk_route_transfers','
 select ok((select data_type='bigint' from information_schema.columns
   where table_schema='public' and table_name='srk_route_transfers' and column_name='amount_paise'),
   'Route transfer values are stored as integer paise');
+
+select ok(to_regclass('public.srk_customer_cancellation_fee_debts') is not null,
+  'customer cancellation-fee debt table exists in the complete Feature Branch migration chain');
+select ok(to_regclass('public.srk_booking_cancellation_fee_items') is not null,
+  'booking cancellation-fee allocation table exists');
+select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
+  'append-only cancellation-fee accounting ledger exists');
+select ok((select relrowsecurity from pg_class where oid='public.srk_cancellation_fee_ledger'::regclass)
+  and not has_table_privilege('authenticated','public.srk_cancellation_fee_ledger','select'),
+  'authenticated clients cannot directly read private cancellation-fee ledger');
+select ok((select data_type='bigint' from information_schema.columns
+  where table_schema='public' and table_name='srk_cancellation_fee_ledger' and column_name='amount_paise'),
+  'cancellation-fee ledger stores integer paise');
+select ok(exists(select 1 from pg_trigger where tgrelid='public.srk_cancellation_fee_ledger'::regclass
+  and tgname='srk_cancellation_fee_ledger_no_mutation' and not tgisinternal),
+  'cancellation-fee ledger has append-only mutation guard');
+select ok(position('CANCELLATION_FEE_LEDGER_IS_APPEND_ONLY' in
+  pg_get_functiondef('public.srk_guard_cancellation_fee_ledger_immutable()'::regprocedure))>0,
+  'cancellation-fee ledger mutation guard rejects update/delete/truncate');
+select ok(position('v_service := round(v_bill.labour_amount,2)' in
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
+  and position('v_materials := 0' in
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
+  'new-category electrician payable uses immutable labour bill and excludes cancellation fees/materials from electrician labour gross');
+select ok(position('v_commission := round(v_service * v_rate / 100,2)' in
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
+  'new-category commission is calculated only on labour');
+select ok(position('where public.srk_electrician_payouts.payout_status = ''pending''' in
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
+  'payout recalculation cannot overwrite a paid, blocked or refunded payout');
 
 select * from finish();
 rollback;
