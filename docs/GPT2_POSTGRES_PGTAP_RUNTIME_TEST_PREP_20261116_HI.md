@@ -555,3 +555,63 @@ A read-only GitHub per-file commit-history check adds the following precise chro
 This strengthens the source-repository chronology and confirms that the two 9 Nov files are a duplicate-definition group at the relevant CHECK constraints. Git commit timestamps describe repository history only. They do not establish Supabase migration application order, whether a hosted migration ran, or the provenance of current Production constraints. The reported missing Production history row for `20261114240000` therefore remains an unresolved provenance gap.
 
 No migrations were edited, renamed, deleted, replayed, or repaired. No Production access or changes occurred.
+
+## 20. Production read-only audit reconciliation — owner-provided evidence — 16 Nov 2026
+
+The following Production audit was supplied by the project owner in this conversation. GPT-2 did not independently connect to Supabase or execute these queries. All Production observations below are therefore explicitly attributed to the supplied audit.
+
+### Environment and scope reported
+
+- Project: `Srk electranic`; reference: `gnqhoaqatmoiwwhgzkgm`; environment: Production; region: `ap-south-1`.
+- Project status: `ACTIVE_HEALTHY`; PostgreSQL `17.11.0.018` / server `17.11`.
+- Audit timestamp supplied: `16-11-2026 03:44:48 IST`.
+- The audit states that it read migration metadata and catalog metadata only; no customer, Auth, payment, or booking records, and no credentials/secrets.
+- No writes, migration execution/repair, DDL, data modification, or deployment were reported.
+
+### Migration-history reconciliation
+
+The supplied audit reports that `supabase_migrations.schema_migrations` exists with columns `version text`, `statements ARRAY`, `name text`, `created_by text`, `idempotency_key text`, and `rollback ARRAY`.
+
+For `version LIKE '20261109%'`, the audit reports 38 rows and these two relevant entries:
+
+| Production version | Production name |
+|---|---|
+| `20261109075837` | `electrician_inspection_quotes_and_service_only_commission` |
+| `20261109080400` | `allow_quote_approval_booking_states` |
+
+This confirms, within the supplied audit, that both 9 Nov migrations have Production history entries. Their names correspond to the two source files discussed in §§11–13 and §19. The reported Production versions also provide a distinct migration-history timestamp sequence; Git commit timestamps in §19 remain repository chronology and must not be conflated with database migration versions.
+
+The supplied audit reports no history row for `20261114240000` and no matching item in the Production migration inventory. This is an evidence gap, not proof that the SQL never ran: the current catalog may have been produced by another approved path, but no such path is established by the evidence currently available.
+
+### Live catalog reconciliation
+
+The supplied audit reports these `public.service_bookings` columns:
+
+- `assigned_electrician_id uuid NULL`
+- `status text NOT NULL`
+
+It reports both expected CHECK constraints as present, `convalidated = true`, `condeferrable = false`, and `condeferred = false`.
+
+The supplied audit summarizes the live status CHECK as including:
+`new`, `confirmed`, `assigned`, `inspection`, `awaiting_quote_approval`, `quote_approved`, `quote_rejected`, `awaiting_work_start_approval`, `in_progress`, `completed`, and `cancelled`.
+
+It summarizes the assignment-required CHECK as requiring a non-NULL `assigned_electrician_id` for:
+`assigned`, `inspection`, `awaiting_quote_approval`, `quote_approved`, `awaiting_work_start_approval`, `quote_rejected`, `in_progress`, and `completed`.
+
+These state sets are consistent with the later Git source migration `20261114240000_server_authoritative_customer_approved_work_timer.sql` described in §§17–18, and inconsistent with the earlier 9 Nov source definitions in the precise way already documented there. This is a semantic/state-set comparison based on the audit's summary. The audit text supplied here does not include the raw `pg_get_constraintdef(...)` output, so byte-for-byte or full normalized SQL-definition equality is not independently established in this section.
+
+### Reconciled conclusion
+
+1. **9 Nov migration provenance:** the supplied Production history includes both related 9 Nov entries. This closes the earlier uncertainty about whether those two named 9 Nov migrations appear in the checked Production history.
+2. **Current live state:** the supplied catalog summary reports both CHECK constraints present and validated, with `awaiting_work_start_approval` in both relevant state sets.
+3. **14 Nov migration provenance:** still unresolved. The supplied audit reports no `20261114240000` history or inventory record, despite the live state matching the later source migration's state additions.
+4. **No repair inference:** do not infer manual DDL, an alternate deployment path, or a failed migration from the current evidence. Do not repair, insert history rows, replay migrations, alter constraints, or deploy.
+5. **Evidence needed to close the gap:** exact raw `pg_get_constraintdef(c.oid, true)` text for both constraints; relevant `convalidated` and deferrability fields (the summary is already supplied); and an authoritative DBA/deployment record explaining how the later state reached Production without the reported migration-history entry. Preserve read-only scope. Do not share secrets or connection strings.
+
+### Status
+
+- Owner-provided Production audit reconciled against the existing Git-source analysis.
+- The 9 Nov history entries are reported present.
+- Current live constraint state is reported consistent with the later source migration's state sets.
+- The missing 14 Nov history/inventory record and its provenance remain unresolved.
+- No independent GPT-2 Production access; no Production write, migration repair/replay, DDL, deployment, or GPT-1 source change.
