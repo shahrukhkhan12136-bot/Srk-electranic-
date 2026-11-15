@@ -145,11 +145,12 @@ begin
    where t.booking_id=p_booking_id;
 
   if v_route_transfer_count>0 then
-    if v_route_transfer_count<>2
+    if v_route_transfer_count<>(1+case when coalesce(v_commission_paise,0)>0 then 1 else 0 end)
        or (select count(*) from public.srk_route_transfers t
             where t.booking_id=p_booking_id and t.recipient_type='electrician')<>1
        or (select count(*) from public.srk_route_transfers t
-            where t.booking_id=p_booking_id and t.recipient_type='platform_commission')<>1 then
+            where t.booking_id=p_booking_id and t.recipient_type='platform_commission')
+          <>case when coalesce(v_commission_paise,0)>0 then 1 else 0 end then
       v_exceptions:=array_append(v_exceptions,'ROUTE_TRANSFER_RECIPIENT_ROWS_MISMATCH');
     end if;
     if exists(select 1 from public.srk_route_transfers t
