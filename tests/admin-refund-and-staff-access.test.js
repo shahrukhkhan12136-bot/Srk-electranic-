@@ -140,5 +140,5 @@ test('Support Staff customer and electrician inbox RPCs enforce active permissio
     assert.match(match[0], /assigned_staff_user_id/);
     assert.ok(match[0].includes('auth.uid()') || match[0].includes('v_uid'), name + ' must bind access to current user');
   }
-  assert.match(staffMigration, /if v_actor is null or not public\\.is_srk_admin\\(\\) then[\\s\\S]*?MAIN_ADMIN_ONLY/i);
+  const assignmentFn = staffMigration.match(/create or replace function public\\.srk_admin_assign_support_case[\\s\\S]*?\\$function\\$;/i);\n  assert.ok(assignmentFn);\n  assert.ok(assignmentFn[0].includes('public.is_srk_admin()'));\n  assert.ok(assignmentFn[0].includes('MAIN_ADMIN_ONLY'));
 });
