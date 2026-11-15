@@ -1579,15 +1579,20 @@ function setSavedAddressStatus(message, isError=false) {
  el.textContent=message;
  el.style.color=isError?'#b42318':'#176b3a';
 }
+let customerSavedAddressLoadRequest=0;
 async function loadCustomerSavedAddresses() {
  const select=document.getElementById('savedAddressSelect');
  if(!customerSb) return false;
+ const requestId=++customerSavedAddressLoadRequest;
+ const isCurrent=()=>requestId===customerSavedAddressLoadRequest;
  select.disabled=true; setSavedAddressStatus('सेव किए गए पते लोड हो रहे हैं…');
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(!isCurrent())return false;
   if(sessionError)throw sessionError;
   if(!sessionData?.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';setSavedAddressStatus('सेव किए गए पते देखने के लिए OTP लॉगिन करें।');return false;}
   const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
+  if(!isCurrent())return false;
   if(error) throw error;
   customerSavedAddresses=Array.isArray(data)?data:[];
   select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>'+customerSavedAddresses.map(a=>
@@ -1595,8 +1600,8 @@ async function loadCustomerSavedAddresses() {
   ).join('');
   setSavedAddressStatus(customerSavedAddresses.length?'आपके '+customerSavedAddresses.length+' सेव किए गए पते उपलब्ध हैं।':'अभी कोई पता सेव नहीं है।');
   return true;
- } catch(e) { setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true); return false; }
- finally {select.disabled=false;}
+ } catch(e) { if(isCurrent())setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true); return false; }
+ finally {if(isCurrent())select.disabled=false;}
 }
 function applySelectedSavedAddress() {
  editingSavedAddressId=null;
