@@ -3903,3 +3903,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Workflow का शेष migration batch भी पुराने पाँच निर्दिष्ट migrations तक सीमित है; यह अपने आप GPT-2 के सभी वर्तमान migrations का full replay नहीं है।
 - सुरक्षित अगला विकल्प: मालिक/DB administrator से स्वीकृत schema-only export को review के लिए उपलब्ध कराना, या अलग स्पष्ट अनुमति के बाद dedicated read-only schema-export workflow को वर्तमान isolated test plan के अनुरूप बनाना। इस समय कोई Production query/export नहीं किया गया।
 - `amount_paid` और `auth_user_id` की मूल column definitions अब भी unresolved हैं। GPT-2 checklist 27/39 = 69%; कोई item बंद नहीं।
+
+
+### Earlier branch artifact scan + schema export role review — 15 Nov 2026
+- सभी 18 repository branches की सूची ली; छह अतिरिक्त branch trees में schema/setup artifacts जाँचे। वहाँ भी केवल पुराने starter files (`SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`) मिले; कोई अलग generated schema dump/backup नहीं मिला।
+- `feature/platform-fee-cash-online-cycle` में पहले से मौजूद `docs/sql/create-schema-export-role.sql` मिला। यह `srk_schema_export_ci` नाम का dedicated login बनाता है: NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOINHERIT, NOREPLICATION, NOBYPASSRLS, connection limit 1; केवल database CONNECT और public/private schema USAGE; कोई table/column SELECT या write grant नहीं; default transaction read-only।
+- इस SQL में placeholder password है। इसे execute नहीं किया गया; कोई credential बनाया/देखा नहीं गया। Owner/DB admin को अलग से समीक्षा करके unique password set करना होगा। Workflow की privilege-check query भी इसे row-readable/DDL-capable न होने की पुष्टि के लिए है।
+- इस role/export route से schema metadata मिल सकता है, लेकिन यह स्वयं `amount_paid` या `auth_user_id` की definition का प्रमाण नहीं है जब तक authorized schema-only export उपलब्ध न हो।
+- GPT-2 branch में केवल दस्तावेज़ी audit update; कोई migration, secret, role या Production setting नहीं बदली। GPT-2 checklist 27/39 = 69%।
