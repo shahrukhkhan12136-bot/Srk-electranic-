@@ -3568,3 +3568,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इसी महत्वपूर्ण business rule के लिए Node contract test जोड़ा: Customer/Electrician SOS और timer केवल active in-progress booking पर render हों; Electrician completion-pending/disputed अवस्थाओं में completion timer action न दिखे।
 - Test change commit: `70cca079e60f21aafba9db9c323a5336c410f886`। इस commit के लिए नया CI run अभी उपलब्ध नहीं मिला; इसलिए नया assertion PASS घोषित नहीं है। पिछले सत्यापित CI run में 163/163 tests पास थे।
 - कोई app runtime, browser/mobile QA, DB/pgTAP, Production DB, merge या deployment नहीं किया गया। अगला कदम इस नए contract test का CI परिणाम सत्यापित करना है।
+
+
+## 2026-11-15 — 71-migration static inventory and provisional dependency phases
+- Current PR-head Git tree को recursive रूप से पढ़कर 71 SQL migration filenames/version prefixes की पूर्ण सूची निकाली; duplicate `20261109` prefix की दोनों files पुष्टि कीं। कोई unversioned migration file नहीं मिली।
+- `docs/MIGRATION_REPLAY_MANIFEST_HI.md` बनाया: सभी 71 files का filename/version-sorted inventory, provisional dependency phases, hard blockers और safe next steps दर्ज हैं। यह executable replay order नहीं है; object-level dependency graph अभी बाकी है।
+- PR #8 latest head `758fda100f9cf2e8a389347af0c79e6662fbd160` खुला Draft/Unmerged है। इस docs commit पर Vercel status `failure` दिखा और target URL build-rate-limit/upgrade notice है; इसे successful deployment/build नहीं माना गया। इस नवीनतम docs commit के लिए नया Node workflow run उपलब्ध नहीं मिला। पिछला 163/163 pass run `7b23a2c4e7ef6012413957f4553acf44a9fab7b` पर था।
+- कोई SQL execute/apply, Production DB access, migration history edit, merge, deployment या provider refund/transfer नहीं किया।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
