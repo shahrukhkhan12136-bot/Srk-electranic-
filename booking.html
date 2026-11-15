@@ -1428,10 +1428,10 @@ async function loadCustomerBookings() {
     return true;
   } catch(error) {
     if (!isCurrent()) return;
-    return false;
     box.textContent=navigator.onLine===false
       ? 'इंटरनेट कनेक्शन टूट गया। कनेक्शन लौटने पर “बुकिंग फिर से देखें” दबाएँ।'
       : 'बुकिंग लोड नहीं हो सकीं। कृपया “बुकिंग फिर से देखें” दबाकर दोबारा कोशिश करें।';
+    return false;
   } finally {
     if (isCurrent()) box.setAttribute('aria-busy','false');
   }
