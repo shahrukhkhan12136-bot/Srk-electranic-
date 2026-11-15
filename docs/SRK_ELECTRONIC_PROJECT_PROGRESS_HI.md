@@ -3208,3 +3208,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Migration version audit: 66 SQL migration files में अब केवल पुरानी `20261109` duplicate pair बची है; नई चार Push migration versions unique हैं। `20261109` pair का Production history मिलान किए बिना कोई rename नहीं होगा।
 - Node CI source tests सफल हैं; PostgreSQL/pgTAP runtime और वास्तविक Production migration status का independent verification अभी अलग pending है।
 - GPT-2 checklist progress **69% (27/39)** अपरिवर्तित; कोई Production change, merge या deployment नहीं।
+
+
+### 2026-11-15 — Electrician multi-profile labour bill access correction
+- Static review found that `srk_electrician_get_labour_bill(uuid)` selected only the newest electrician profile owned by the signed-in user. If an older owned profile held the booking assignment, that legitimate electrician could not read the final bill.
+- Added migration `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql`: bill lookup is now scoped to the requested booking and uses an `EXISTS` ownership check against the exact bill's `electrician_profile_id`, accepting either `user_id` or `auth_user_id`. This does not broaden access to another electrician's profile or bill. Authenticated-only execute grant is preserved.
+- Added a Node source-contract regression test and one pgTAP structural assertion (server timer test plan increased to 20).
+- First CI attempt exposed a migration timestamp collision with an existing refund migration; the new migration was moved to unique timestamp `20261115145900` and the colliding draft file was removed. The earlier CI failure was caused by that duplicate-version guard, not by the RPC regression assertion. Final CI for the corrected unique timestamp is awaiting confirmation.
+- Static/source change only. No pgTAP execution, no live Supabase migration, no production change, no deployment, no merge. Checklist 14.1.10 remains In Progress until runtime DB/RPC verification is complete.
