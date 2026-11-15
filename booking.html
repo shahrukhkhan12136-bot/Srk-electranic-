@@ -1714,11 +1714,19 @@ async function deleteSelectedSavedAddress() {
   let deleteState='unknown';
   try{
    const {data:latestAddresses,error:lookupError}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
-   if(!lookupError&&Array.isArray(latestAddresses))deleteState=latestAddresses.some(row=>row.id===id)?'present':'absent';
+   if(!lookupError&&Array.isArray(latestAddresses)){
+    deleteState=latestAddresses.some(row=>row.id===id)?'present':'absent';
+    customerSavedAddresses=latestAddresses;
+    const select=document.getElementById('savedAddressSelect');
+    select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>'+latestAddresses.map(row=>
+     '<option value="'+customerEsc(row.id)+'">'+customerEsc(({home:'घर',work:'काम की जगह',other:'अन्य'}[row.label]||row.label)+' — '+row.address_line+', '+row.district+' ('+row.pincode+')'+(row.is_default?' ★':''))+'</option>'
+    ).join('');
+    select.value=deleteState==='absent'?'':id;
+   }
   }catch(_){/* Preserve uncertainty when the authoritative list cannot be read. */}
   if(deleteState==='absent'){
    editingSavedAddressId=null;
-   setSavedAddressStatus('पता हट चुका है। पुरानी बुकिंग का पता सुरक्षित है। सूची रीफ़्रेश करने के लिए दोबारा लोड करें।');
+   setSavedAddressStatus('पता हट चुका है। पुरानी बुकिंग का पता सुरक्षित है। सूची सर्वर से अपडेट कर दी गई है।');
   }else if(deleteState==='present')setSavedAddressStatus('पता हटाने की पुष्टि नहीं हुई। सूची में पता अभी मौजूद है; कृपया दोबारा कोशिश करें।',true);
   else setSavedAddressStatus('पता हटाने का परिणाम स्पष्ट नहीं है। दोबारा कोशिश करने से पहले सेव किए गए पते रीफ़्रेश करें।',true);
  }
