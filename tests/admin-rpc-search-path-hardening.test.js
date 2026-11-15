@@ -59,7 +59,8 @@ test('Financial payout and manual-refund mutation RPCs pin empty search_path', (
   const sql = read('20261115200000_harden_financial_admin_rpc_search_path.sql');
   assert.ok(sql.includes('alter function public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'));
   assert.ok(sql.includes('alter function public.srk_admin_record_manual_refund(uuid,text,text)'));
-  assert.equal((sql.match(/set search_path = '';/g) || []).length, 2);
+  assert.ok(sql.includes('alter function public.srk_create_electrician_payable()'));
+  assert.equal((sql.match(/set search_path = '';/g) || []).length, 3);
 });
 
 test('Manual refund and payout mutations require Main Admin and verified financial state', () => {
