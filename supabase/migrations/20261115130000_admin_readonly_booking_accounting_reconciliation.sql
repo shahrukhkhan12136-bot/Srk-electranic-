@@ -24,6 +24,9 @@ declare
   v_collection_paise bigint := 0;
   v_refund_paise bigint := 0;
   v_fee_allocated_paise bigint := 0;
+  v_fee_settled_paise bigint := 0;
+  v_route_electrician_count integer := 0;
+  v_route_platform_count integer := 0;
   v_fee_ledger_net_paise bigint := 0;
   v_fee_source_open_paise bigint := 0;
   v_wallet_credit_paise bigint := 0;
@@ -40,7 +43,6 @@ declare
   v_wallet jsonb := '[]'::jsonb;
   v_refund_state text := 'none';
   v_payment_verified boolean := false;
-  v_expected_collection_paise bigint := 0;
   v_refund_request_status text;
 begin
   if auth.uid() is null or not public.is_srk_admin() then
@@ -115,6 +117,8 @@ begin
   end if;
   if v_refund_paise>0 and v_refund_paise<v_collection_paise then
     v_exceptions := array_append(v_exceptions,'PARTIAL_REFUND_UNSUPPORTED');
+  elsif v_refund_paise>v_collection_paise then
+    v_exceptions := array_append(v_exceptions,'REFUND_EXCEEDS_VERIFIED_COLLECTION');
   end if;
   if v_refund_state in ('requested','processing','unknown') then
     v_exceptions := array_append(v_exceptions,'REFUND_PENDING_REVIEW');
@@ -123,10 +127,11 @@ begin
     v_exceptions := array_append(v_exceptions,'REFUNDED_BOOKING_WITHOUT_FINAL_REFUND_EVIDENCE');
   end if;
 
-  select coalesce(sum(i.amount_paise),0)::bigint
-    into v_fee_allocated_paise
+  select coalesce(sum(i.amount_paise) filter(where i.status in ('reserved','settled')),0)::bigint,
+         coalesce(sum(i.amount_paise) filter(where i.status='settled'),0)::bigint
+    into v_fee_allocated_paise,v_fee_settled_paise
     from public.srk_booking_cancellation_fee_items i
-   where i.booking_id=p_booking_id and i.status in ('reserved','settled');
+   where i.booking_id=p_booking_id;
 
   select coalesce(sum(case when l.direction='credit' then l.amount_paise else -l.amount_paise end),0)::bigint
     into v_fee_ledger_net_paise
@@ -140,6 +145,9 @@ begin
 
   if v_fee_ledger_net_paise<0 then
     v_exceptions := array_append(v_exceptions,'CANCELLATION_FEE_LEDGER_NEGATIVE_NET');
+  end if;
+  if v_fee_ledger_net_paise<>v_fee_settled_paise then
+    v_exceptions := array_append(v_exceptions,'CANCELLATION_FEE_LEDGER_UNBALANCED');
   end if;
 
   select
@@ -163,6 +171,8 @@ begin
     coalesce(sum(t.amount_paise) filter(where t.recipient_type='electrician' and t.settlement_status='settled'),0)::bigint,
     coalesce(sum(t.amount_paise) filter(where t.recipient_type='platform_commission' and t.transfer_status='processed'),0)::bigint,
     coalesce(sum(t.amount_paise) filter(where t.recipient_type='platform_commission' and t.settlement_status='settled'),0)::bigint,
+    count(*) filter(where t.recipient_type='electrician')::integer,
+    count(*) filter(where t.recipient_type='platform_commission')::integer,
     coalesce(jsonb_agg(jsonb_build_object(
       'recipient_type',t.recipient_type,'recipient_user_id',t.recipient_user_id,
       'amount_paise',t.amount_paise,'transfer_status',t.transfer_status,
@@ -171,10 +181,14 @@ begin
     ) order by t.created_at,t.id),'[]'::jsonb)
   into v_route_electrician_paise,v_route_platform_paise,
        v_route_electrician_processed_paise,v_route_electrician_settled_paise,
-       v_route_platform_processed_paise,v_route_platform_settled_paise,v_route
+       v_route_platform_processed_paise,v_route_platform_settled_paise,
+       v_route_electrician_count,v_route_platform_count,v_route
   from public.srk_route_transfers t
   where t.booking_id=p_booking_id;
 
+  if v_route_electrician_count>1 or v_route_platform_count>1 then
+    v_exceptions := array_append(v_exceptions,'ROUTE_TRANSFER_DUPLICATE');
+  end if;
   if v_route_electrician_paise>0 and v_route_electrician_paise<>v_payable_paise then
     v_exceptions := array_append(v_exceptions,'ELECTRICIAN_ROUTE_TRANSFER_MISMATCH');
   end if;
@@ -256,7 +270,7 @@ begin
     'wallet_posted_entries',v_wallet,
     'exceptions',to_jsonb(v_exceptions),
     'is_reconciled',cardinality(v_exceptions)=0,
-    'report_generated_at',clock_timestamp()
+    'report_generated_at',now()
   );
 end;
 $function$;
