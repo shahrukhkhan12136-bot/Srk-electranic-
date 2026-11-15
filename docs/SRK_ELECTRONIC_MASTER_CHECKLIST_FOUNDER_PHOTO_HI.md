@@ -316,3 +316,11 @@
 - [x] Added regression coverage for dynamic messages, confirmation dialogs and cancellation/booking summary text.
 - [x] First test run caught a test-only wrapper-name mismatch; corrected the test. Latest branch-head runs on `3fb69b1c59858f291fd0821e658e0ee837aad5b9`: **SUCCESS** (two full repository Node test runs).
 - [ ] Browser runtime language switching, dynamic backend-provided message coverage and visual QA remain pending. Final consolidated mobile QA remains deferred.
+
+
+### 2026-11-15 — Electrician Push permission reliability audit
+- [x] Reordered Push enable flow so browser support checks are synchronous and `Notification.requestPermission()` is requested directly from the button gesture before awaiting Supabase/account validation. This avoids losing transient browser user activation in Android Chrome and other browsers.
+- [x] Added regression test that verifies permission request precedes asynchronous account validation.
+- [x] Reviewed GPS start/update/stop, logout stop retries, push subscription ownership, support ticket/thread rendering and dynamic status handling. Existing GPS safeguards and support HTML escaping remain in place; no production calls or device permission prompts were performed.
+- [ ] Browser/device runtime verification remains pending. Final consolidated mobile QA remains deferred.
+- [!] Latest full repository Node workflow ran 120/121 tests successfully; the only failure is outside GPT-1 scope: `tests/admin-commission-report-labels.test.js` rejects a Route commission term found in current `admin.html`. This is a GPT-2 Admin Panel dependency; do not modify it from GPT-1.
