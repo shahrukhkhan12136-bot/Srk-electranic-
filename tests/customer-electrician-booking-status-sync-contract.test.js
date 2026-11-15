@@ -173,6 +173,16 @@ test('customer and electrician lifecycle actions expose retry states and always 
   assert.match(offerResponse, /स्थिति जाँचें, फिर दोबारा कोशिश करें/);
 });
 
+test('customer live-location transport failure does not discard rendered booking history', () => {
+  const live = customer.slice(customer.indexOf('async function refreshCustomerLiveLocations'), customer.indexOf('if(!customerLiveLocationPoller)'));
+  assert.match(live, /try\{const \{data,error\}=await customerSb\.rpc\('srk_customer_get_live_electrician_location'/);
+  assert.match(live, /catch\(error\)\{box\.innerHTML=.*लोकेशन अभी लोड नहीं हो सकी/);
+  assert.match(live, /await Promise\.all\(customerLiveLocationBookingIds\.map\(async id=>/);
+  const load = functionBody(customer, 'loadCustomerBookings');
+  assert.ok(load.indexOf('box.innerHTML = data.map') < load.indexOf('await refreshCustomerLiveLocations()'), 'booking cards render before location refresh');
+  assert.match(load, /finally \{\s*box\.setAttribute\('aria-busy','false'\);/);
+});
+
 test('customer booking list survives rejected supplementary contact, refund, and cancellation RPCs', () => {
   const load = functionBody(customer, 'loadCustomerBookings');
   assert.match(load, /const safeCustomerRpc = async \(name\) => \{\s*try \{ return await customerSb\.rpc\(name\); \}\s*catch \(error\) \{ return \{ data: null, error \}; \}\s*\};/);
