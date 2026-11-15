@@ -56,3 +56,22 @@ test('push notification click opens the exact offer using a validated same-origi
   assert.match(worker, /const offerId=event\.notification\.data\?\.offerId/);
   assert.doesNotMatch(worker, /new URL\(raw,self\.location\.origin\)/);
 });
+
+
+test('live location start is guarded against duplicate in-flight requests', () => {
+  assert.match(electrician, /const electricianLocationStartBusy=new Set\\(\\)/);
+  const start = electrician.match(/async function startElectricianLiveLocation\\(id\\)\\{[\\s\\S]*?\\n\\}/);
+  assert.ok(start, 'live location start handler exists');
+  assert.match(start[0], /electricianLocationStartBusy\\.has\\(id\\)/);
+  assert.match(start[0], /electricianLocationStartBusy\\.add\\(id\\)/);
+  assert.match(start[0], /finally[\\s\\S]*?electricianLocationStartBusy\\.delete\\(id\\)/);
+  assert.match(start[0], /if\\(locationWatches\\.has\\(id\\)\\)/);
+});
+
+test('live location start failure after server activation attempts server-side cleanup', () => {
+  const start = electrician.match(/async function startElectricianLiveLocation\\(id\\)\\{[\\s\\S]*?\\n\\}/);
+  assert.ok(start, 'live location start handler exists');
+  assert.match(start[0], /serverStarted=true/);
+  assert.match(start[0], /if\\(serverStarted\\)[\\s\\S]*?srk_electrician_stop_live_location/);
+  assert.match(start[0], /सर्वर पर sharing बंद होने की पुष्टि नहीं हुई/);
+});
