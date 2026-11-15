@@ -252,3 +252,33 @@ test('Every Support Staff SECURITY DEFINER RPC pins an empty search_path and rev
       match[1] + ' must revoke default public execution');
   }
 });
+
+
+test('Staff suspension, session registration, and permission checks serialize in registry-first order', () => {
+  const getFn = (name) => {
+    const start = staffMigration.lastIndexOf('create or replace function public.' + name);
+    assert.notEqual(start, -1, name + ' must exist');
+    const end = staffMigration.indexOf('$function$;', start);
+    assert.ok(end > start, name + ' must have a closed function body');
+    return staffMigration.slice(start, end);
+  };
+  const status = getFn('srk_admin_staff_set_status');
+  const statusRegistryLock = status.indexOf('for update');
+  const sessionRevocation = status.indexOf('update public.srk_admin_staff_sessions');
+  assert.ok(statusRegistryLock >= 0 && sessionRevocation > statusRegistryLock,
+    'suspension must lock the Staff registry before revoking tracked sessions');
+
+  const register = getFn('srk_admin_staff_register_session');
+  const registerRegistryLock = register.indexOf('for share');
+  const registerInsert = register.indexOf('insert into public.srk_admin_staff_sessions');
+  assert.ok(registerRegistryLock >= 0 && registerInsert > registerRegistryLock,
+    'session registration must lock the Staff registry before writing the tracked session');
+
+  const permission = getFn('srk_has_admin_permission');
+  const permissionRegistryLock = permission.indexOf('for share');
+  const permissionSessionLock = permission.indexOf('for share', permissionRegistryLock + 1);
+  assert.ok(permissionRegistryLock >= 0 && permissionSessionLock > permissionRegistryLock,
+    'permission check must lock Staff registry before tracked session');
+  assert.ok(permission.includes('auth.sessions auth_s') && permission.includes('auth_s.id = v_session_id'),
+    'permission check must still verify the live Supabase Auth session');
+});
