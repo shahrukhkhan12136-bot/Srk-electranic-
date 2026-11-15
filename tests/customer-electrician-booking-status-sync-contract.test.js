@@ -156,7 +156,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
   for (const fn of [customerStart, customerCompletion]) {
     assert.match(fn, /catch\s*\(/);
     assert.match(fn, /finally\s*\{\s*customerLifecycleBusy\.delete\(bookingId\)/);
-    assert.match(fn, /रीफ़्रेश करके दोबारा कोशिश करें/);
+    assert.match(fn, /नेटवर्क जवाब नहीं मिला/);
   }
   for (const fn of [electricianStart, electricianCompletion]) {
     assert.match(fn, /catch\s*\(/);
@@ -173,7 +173,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
   assert.match(offerResponse, /finally\{/);
   assert.match(offerResponse, /electricianOfferResponseBusy\.delete\(id\)/);
   assert.match(offerResponse, /buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
-  assert.match(offerResponse, /स्थिति जाँचें, फिर दोबारा कोशिश करें/);
+  assert.match(offerResponse, /catch\(e\)\{\s*try\{await refresh\(\)/);
 });
 
 test('customer live-location transport failure does not discard rendered booking history', () => {
