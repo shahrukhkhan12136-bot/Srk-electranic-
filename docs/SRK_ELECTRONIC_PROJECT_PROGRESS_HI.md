@@ -1941,3 +1941,7 @@ Master Requirements Section 6 की दोबारा जाँच में �
 
 
 - अतिरिक्त actor-authentication hardening: Phase 1 RPC अब supplied audit actor UUID को `srk_admin_users.user_id` के विरुद्ध स्वयं verify करता है; केवल service-role caller होने से arbitrary user को Admin audit actor नहीं बनाया जा सकता। pgTAP plan 20/20 static assertions।
+
+
+- Cancellation-fee/Wallet ledger source audit: online fee refund में मूल posted credit के विरुद्ध linked debit reversal; cash fee refund में मूल Electrician wallet debit के विरुद्ध credit और linked cancellation-fee debit reversal; debt दोबारा open तथा item reversed होता है। Source में per-original reversal unique index और wallet global idempotency key मौजूद हैं। Recovery pgTAP static plan अब 24 assertions है; runtime execution अभी बाकी।
+- Trigger source audit पुष्टि करता है कि यह केवल `service_bookings.payment_status → refunded` पर चलता है और verified full-refund record तथा exact amount match माँगता है। Trigger/ledger integration के live runtime परिणाम उपलब्ध नहीं हैं।
