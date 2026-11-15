@@ -3664,3 +3664,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Progress document का पुराना पैरामीटर विवरण वर्तमान Customer/Electrician source और `tests/sos-two-step-ui-contract.test.js` से मेल नहीं खाता था। इसे ठीक किया गया: दोनों clients केवल `p_reason` भेजते हैं।
 - Backend RPC definition, authenticated actor/active-booking derivation, Admin/Support queue और SMS/Push delivery अभी Feature Branch में सत्यापित नहीं हैं; इसलिए SOS end-to-end को अधूरा ही माना जाएगा।
 - यह केवल documentation correction है; कोई runtime, database, deployment या production परिवर्तन नहीं किया गया।
+
+
+
+## 2026-11-15 — GPT-1 README और SOS contract coverage update
+- README के पुराने notification/status दावों को source और Main DB audit के अनुसार सुधारा: Push का source implementation मौजूद है, लेकिन provider/worker delivery और Main schema parity अभी सत्यापित नहीं; SMS/WhatsApp को सक्रिय नहीं बताया गया।
+- README में स्पष्ट किया कि Feature Branch के नए Customer profile/address/support, immutable labour bill, cancellation-fee, refund-recovery और durable Push objects को Main Supabase में उपलब्ध नहीं मानना चाहिए; migration parity और isolated runtime tests अलग release gates हैं।
+- Customer/Electrician SOS दो-चरणीय UI के लिए नया source contract test जोड़ा: active-work visibility, केवल तीन approved reasons, अलग final-send + confirmation, cancel पर selection discard, reason-only RPC payload और unconfirmed case पर success न दिखाना।
+- SOS contract test: `tests/sos-two-step-ui-contract.test.js`; commits: test creation `6eb3a4f23b351d4028d3a06574d4079cf59a14c8`, assertion correction `e0ccdd74d4767aea23848a7cb46b01890e3f419f`; README correction `542dd281a9d8815ddb67a3dbd3a805043562b0e7`.
+- Test file और README को branch से re-fetch करके content verify किया। इस नए test का CI run अभी उपलब्ध नहीं मिला; इसे PASS नहीं कहा जा रहा। SOS backend RPC/authorization/Admin queue/SMS/Push end-to-end अभी GPT-2 contract पर निर्भर है।
+- GPT-1 checklist **20/28 = 71%** अपरिवर्तित; documentation/test coverage update को feature completion नहीं गिना गया। Founder garden photo, Vercel Preview, final runtime/browser/mobile QA और owner acceptance अभी pending हैं।
+- कोई merge, Production deploy, database migration apply या paid service/staging creation नहीं की गई।
