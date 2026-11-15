@@ -374,14 +374,14 @@ const customerUiTranslations = {
  'श्रेणी और अवधि चुनें':'Choose a tier and duration',
  'बुकिंग भुगतान':'Booking Payment','रिफंड अनुरोध':'Refund Request','ऑनलाइन रिफंड':'Online Refund','दर्ज भुगतान':'Recorded Payment','दर्ज रिफंड':'Recorded Refund','भुगतान रिकॉर्ड':'Payment Record',
  'नकद':'Cash','कार्ड':'Card','ऑनलाइन':'Online','बैंक ट्रांसफर':'Bank Transfer','अन्य':'Other',
- 'सफल':'Successful','दर्ज':'Recorded','प्रोसेस्ड':'Processed','लंबित':'Pending','अनुरोध किया गया':'Requested','Admin समीक्षा में':'Under Admin Review','रिफंड स्वीकृत':'Refund Approved','रिफंड प्रोसेस हो रहा है':'Refund Processing','Admin जाँच आवश्यक':'Admin Review Required','असफल':'Failed','अस्वीकृत':'Rejected','स्थिति '+R('उपलब्ध नहीं')+'':'Status Unavailable',
+ 'सफल':'Successful','दर्ज':'Recorded','प्रोसेस्ड':'Processed','लंबित':'Pending','अनुरोध किया गया':'Requested','Admin समीक्षा में':'Under Admin Review','रिफंड स्वीकृत':'Refund Approved','रिफंड प्रोसेस हो रहा है':'Refund Processing','Admin जाँच आवश्यक':'Admin Review Required','असफल':'Failed','अस्वीकृत':'Rejected','स्थिति '+उपलब्ध नहीं+'':'Status Unavailable',
  'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।':'Log in with OTP to view payment history.','रिफंड स्थिति देखने के लिए OTP लॉगिन करें।':'Log in with OTP to view refund status.',
- 'रसीद खोलने के लिए कृपया इस साइट के pop-ups की अनुमति दें।':'Please allow pop-ups for this site to open the receipt.','रसीद लोड हो रही है…':'Loading receipt…',''+R('उपलब्ध नहीं')+'':'Not Available',
+ 'रसीद खोलने के लिए कृपया इस साइट के pop-ups की अनुमति दें।':'Please allow pop-ups for this site to open the receipt.','रसीद लोड हो रही है…':'Loading receipt…',''+उपलब्ध नहीं+'':'Not Available',
  'इलेक्ट्रिशियन मेहनताना':'Electrician Labour','भुगतान सत्यापित है; उपलब्ध रिकॉर्ड से मेहनताना अलग से प्रमाणित नहीं हो सका।':'Payment is verified; labour could not be separately confirmed from the available records.',
- 'सामान / पार्ट्स':'Materials / Parts','पुरानी Cancellation Fee':'Previous Cancellation Fee',''+R('कुल सत्यापित भुगतान')+'':'Total Verified Payment',
- 'भुगतान रसीद':'Payment Receipt','यह टैक्स इनवॉइस नहीं है':'This is not a tax invoice',''+R('रसीद संदर्भ:')+'':'Receipt Reference:',''+R('बुकिंग संदर्भ:')+'':'Booking Reference:',''+R('बुकिंग दिनांक:')+'':'Booking Date:',''+R('भुगतान दिनांक:')+'':'Payment Date:',
- ''+R('ग्राहक:')+'':'Customer:',''+R('सेवा:')+'':'Service:',''+R('पता:')+'':'Address:',''+R('भुगतान तरीका:')+'':'Payment Method:',''+R('स्थिति:')+'':'Status:',''+R('सत्यापित / प्राप्त')+'':'Verified / Received',''+R('यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।')+'':'This receipt confirms only payments verified in the SRK ELECTRONIC system.',''+R('प्रिंट / PDF सेव करें')+'':'Print / Save PDF',
- 'भुगतान रसीद '+R('उपलब्ध नहीं')+' हो सकी। कृपया सत्यापित भुगतान की स्थिति जाँचें या सहायता टीम से संपर्क करें।':'The payment receipt is unavailable. Please check the verified payment status or contact support.',
+ 'सामान / पार्ट्स':'Materials / Parts','पुरानी Cancellation Fee':'Previous Cancellation Fee',''+कुल सत्यापित भुगतान+'':'Total Verified Payment',
+ 'भुगतान रसीद':'Payment Receipt','यह टैक्स इनवॉइस नहीं है':'This is not a tax invoice',''+रसीद संदर्भ:+'':'Receipt Reference:',''+बुकिंग संदर्भ:+'':'Booking Reference:',''+बुकिंग दिनांक:+'':'Booking Date:',''+भुगतान दिनांक:+'':'Payment Date:',
+ ''+ग्राहक:+'':'Customer:',''+सेवा:+'':'Service:',''+पता:+'':'Address:',''+भुगतान तरीका:+'':'Payment Method:',''+स्थिति:+'':'Status:',''+सत्यापित / प्राप्त+'':'Verified / Received',''+यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।+'':'This receipt confirms only payments verified in the SRK ELECTRONIC system.',''+प्रिंट / PDF सेव करें+'':'Print / Save PDF',
+ 'भुगतान रसीद '+उपलब्ध नहीं+' हो सकी। कृपया सत्यापित भुगतान की स्थिति जाँचें या सहायता टीम से संपर्क करें।':'The payment receipt is unavailable. Please check the verified payment status or contact support.',
  'अगले रिकॉर्ड लोड नहीं हो सके। कृपया फिर कोशिश करें।':'Could not load more records. Please try again.',
  'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'Work start approved. The server timer has started.',
  'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।':'Work start was not approved. The timer will remain stopped.',
@@ -411,8 +411,8 @@ function customerUiText(value) {
  if (document.documentElement.lang !== 'en') return text;
  if (customerUiTranslations[text]) return customerUiTranslations[text];
  return text.replace(/राशि: /g,'Amount: ').replace(/बुकिंग नंबर:/g,'Booking number:')
-  .replace(/'+R('स्थिति:')+'/g,'Status: ').replace(/तरीका:/g,'Method: ')
-  .replace(/दिनांक:/g,'Date: ').replace(/'+R('बुकिंग संदर्भ:')+'/g,'Booking reference: ')
+  .replace(/'+स्थिति:+'/g,'Status: ').replace(/तरीका:/g,'Method: ')
+  .replace(/दिनांक:/g,'Date: ').replace(/'+बुकिंग संदर्भ:+'/g,'Booking reference: ')
   .replace(/\bAdmin\b/g,'Admin');
 }
 const customerNativeAlert = window.alert.bind(window);
@@ -575,7 +575,7 @@ function customerPhoneE164() {
 }
 function googleMapsUrl(lat, lng, address) { const q = lat !== '' && lng !== '' && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) ? `${lat},${lng}` : address; return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q); }
 function locateInto(latId, lngId, statusId, mapWrapId, mapId, linkId) {
-  const status=document.getElementById(statusId); if(!navigator.geolocation){status.textContent='इस डिवाइस में GPS लोकेशन '+R('उपलब्ध नहीं')+' है।';return;}
+  const status=document.getElementById(statusId); if(!navigator.geolocation){status.textContent='इस डिवाइस में GPS लोकेशन '+उपलब्ध नहीं+' है।';return;}
   status.textContent='GPS लोकेशन प्राप्त हो रही है…';
   navigator.geolocation.getCurrentPosition(pos=>{const lat=pos.coords.latitude.toFixed(7),lng=pos.coords.longitude.toFixed(7);document.getElementById(latId).value=lat;document.getElementById(lngId).value=lng;status.textContent='लोकेशन सफलतापूर्वक चुन ली गई।';if(mapWrapId){document.getElementById(mapId).src='https://maps.google.com/maps?q='+encodeURIComponent(lat+','+lng)+'&z=16&output=embed';document.getElementById(linkId).href=googleMapsUrl(lat,lng,'');document.getElementById(mapWrapId).style.display='block';}},()=>{status.textContent='लोकेशन नहीं मिल सकी। ब्राउज़र में Location अनुमति चालू करें या पता लिखें।';},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 }
@@ -586,19 +586,18 @@ let customerPaymentHistoryOffset=0;
 let customerPaymentHistoryBusy=false;
 function formatCustomerMoney(amount) {
  const n=Number(amount);
- return Number.isFinite(n)?'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'राशि '+R('उपलब्ध नहीं')+'';
+ return Number.isFinite(n)?'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'राशि '+उपलब्ध नहीं+'';
 }
 function customerPaymentLabel(row) {
  const types={payment:'बुकिंग भुगतान',refund_request:'रिफंड अनुरोध',refund:'ऑनलाइन रिफंड',manual_payment:'दर्ज भुगतान',manual_refund:'दर्ज रिफंड'};
  const methods={cash:'नकद',upi:'UPI',card:'कार्ड',online:'ऑनलाइन',razorpay:'Razorpay',bank_transfer:'बैंक ट्रांसफर',other:'अन्य'};
  const status=String(row.status||'').toLowerCase();
- const statusLabel=({paid:'सफल',captured:'सफल',recorded:'दर्ज',processed:'प्रोसेस्ड',pending:'लंबित',requested:'अनुरोध किया गया',in_review:'Admin समीक्षा में',approved:'रिफंड स्वीकृत',processing:'रिफंड प्रोसेस हो रहा है',unknown:'Admin जाँच आवश्यक',requires_reconciliation:'Admin जाँच आवश्यक',failed:'असफल',rejected:'अस्वीकृत'})[status]||row.status||'स्थिति '+R('उपलब्ध नहीं')+'';
+ const statusLabel=({paid:'सफल',captured:'सफल',recorded:'दर्ज',processed:'प्रोसेस्ड',pending:'लंबित',requested:'अनुरोध किया गया',in_review:'Admin समीक्षा में',approved:'रिफंड स्वीकृत',processing:'रिफंड प्रोसेस हो रहा है',unknown:'Admin जाँच आवश्यक',requires_reconciliation:'Admin जाँच आवश्यक',failed:'असफल',rejected:'अस्वीकृत'})[status]||row.status||'स्थिति '+उपलब्ध नहीं+'';
  return {type:types[row.event_type]||'भुगतान रिकॉर्ड',method:methods[row.payment_method]||'',status:statusLabel};
 }
 async function customerPrintPaymentReceipt(bookingId){
-  const receiptLang=document.documentElement.lang==='en'?'en':'hi';
-  const R=key=>receiptLang==='en'?(customerUiTranslations[key]||key):key;
-
+ const receiptLang=document.documentElement.lang==='en'?'en':'hi';
+ const R=key=>receiptLang==='en'?(customerUiTranslations[key]||key):key;
  const printWindow=window.open('','_blank');
  if(!printWindow){alert('रसीद खोलने के लिए कृपया इस साइट के pop-ups की अनुमति दें।');return;}
  printWindow.document.write('<!doctype html><html lang="'+receiptLang+'"><head><meta charset="utf-8"><title>SRK ELECTRONIC '+R('भुगतान रसीद')+'</title></head><body style="font-family:Arial,sans-serif;padding:24px">'+R('रसीद लोड हो रही है…')+'</body></html>');
@@ -607,8 +606,8 @@ async function customerPrintPaymentReceipt(bookingId){
   if(error)throw error;
   if(!data||data.document_type!=='payment_receipt')throw new Error('Receipt unavailable');
   const method=R(({cash:'नकद',upi:'UPI',card:'कार्ड',online:'ऑनलाइन',razorpay:'Razorpay',bank_transfer:'बैंक ट्रांसफर','bank transfer':'बैंक ट्रांसफर',other:'अन्य'})[String(data.payment_method||'').toLowerCase()]||'अन्य');
-  const paymentDate=data.payment_date?new Date(data.payment_date).toLocaleString(receiptLang==='en'?'en-IN':'hi-IN',{dateStyle:'medium',timeStyle:'short'}):R(''+R('उपलब्ध नहीं')+'');
-  const bookingDate=data.booking_date?new Date(data.booking_date).toLocaleDateString(receiptLang==='en'?'en-IN':'hi-IN'):R(''+R('उपलब्ध नहीं')+'');
+  const paymentDate=data.payment_date?new Date(data.payment_date).toLocaleString(receiptLang==='en'?'en-IN':'hi-IN',{dateStyle:'medium',timeStyle:'short'}):R('उपलब्ध नहीं');
+  const bookingDate=data.booking_date?new Date(data.booking_date).toLocaleDateString(receiptLang==='en'?'en-IN':'hi-IN'):R('उपलब्ध नहीं');
   const labourRow=Number.isFinite(Number(data.labour_amount))&&data.labour_amount!==null
    ? '<tr><td>'+R('इलेक्ट्रिशियन मेहनताना')+'</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.labour_amount))+'</td></tr>'
    : '<tr><td colspan="2">'+R('भुगतान सत्यापित है; उपलब्ध रिकॉर्ड से मेहनताना अलग से प्रमाणित नहीं हो सका।')+'</td></tr>';
@@ -617,19 +616,18 @@ async function customerPrintPaymentReceipt(bookingId){
    ? '<tr><td>'+R('सामान / पार्ट्स')+'</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(materialsAmount))+'</td></tr>'
    : '';
   const cancellationFeeRows=(Array.isArray(data.cancellation_fee_items)?data.cancellation_fee_items:[]).map(item=>
-   '<tr><td>'+R('पुरानी Cancellation Fee')+' · '+R(''+R('बुकिंग संदर्भ:')+'')+' '+customerEsc(String(item.source_booking_id||'').slice(0,8))+'…</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(Number(item.amount_paise)/100))+'</td></tr>'
+   '<tr><td>'+R('पुरानी Cancellation Fee')+' · '+R('बुकिंग संदर्भ:')+' '+customerEsc(String(item.source_booking_id||'').slice(0,8))+'…</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(Number(item.amount_paise)/100))+'</td></tr>'
   ).join('');
   const address=[data.address,data.district,data.state,data.pincode].filter(Boolean).join(', ');
   printWindow.document.open();
-  printWindow.document.write('<!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+customerEsc(data.receipt_reference)+'</title><style>body{font-family:Arial,"Noto Sans Devanagari",sans-serif;color:#152536;max-width:760px;margin:24px auto;padding:24px}h1{margin-bottom:4px;color:#0b3557}.muted{color:#526477;font-size:13px}.box{border:1px solid #d8e0e8;border-radius:10px;padding:16px;margin:16px 0}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:11px 7px;border-bottom:1px solid #e3e8ee}.total{font-weight:bold;font-size:19px}button{padding:10px 18px;margin:12px 8px 0 0}@media print{button{display:none}body{margin:0;padding:8px}}</style></head><body><h1>SRK ELECTRONIC</h1><div class="muted">'+R('भुगतान रसीद · यह टैक्स इनवॉइस नहीं है')+'</div><div class="box"><b>'+R('रसीद संदर्भ:')+'</b> '+customerEsc(data.receipt_reference)+'<br><b>'+R('बुकिंग संदर्भ:')+'</b> '+customerEsc(data.booking_id)+'<br><b>'+R('बुकिंग दिनांक:')+'</b> '+customerEsc(bookingDate)+'<br><b>'+R('भुगतान दिनांक:')+'</b> '+customerEsc(paymentDate)+'</div><div class="box"><b>'+R('ग्राहक:')+'</b> '+customerEsc(data.customer_name)+'<br><b>'+R('सेवा:')+'</b> '+customerEsc(data.service_type)+'<br><b>'+R('पता:')+'</b> '+customerEsc(address||''+R('उपलब्ध नहीं')+'')+'</div><table><tbody>'+labourRow+materialsRow+cancellationFeeRows+'<tr class="total"><td>'+R('कुल सत्यापित भुगतान')+'</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.amount_paid))+'</td></tr></tbody></table><div class="box"><b>'+R('भुगतान तरीका:')+'</b> '+customerEsc(method)+'<br><b>'+R('स्थिति:')+'</b> '+R('सत्यापित / प्राप्त')+'</div><p class="muted">'+R('यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।')+'</p><button onclick="window.print()">'+R('प्रिंट / PDF सेव करें')+'</button></body></html>');
+  printWindow.document.write('<!doctype html><html lang="'+receiptLang+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+customerEsc(data.receipt_reference)+'</title><style>body{font-family:Arial,"Noto Sans Devanagari",sans-serif;color:#152536;max-width:760px;margin:24px auto;padding:24px}h1{margin-bottom:4px;color:#0b3557}.muted{color:#526477;font-size:13px}.box{border:1px solid #d8e0e8;border-radius:10px;padding:16px;margin:16px 0}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:11px 7px;border-bottom:1px solid #e3e8ee}.total{font-weight:bold;font-size:19px}button{padding:10px 18px;margin:12px 8px 0 0}@media print{button{display:none}body{margin:0;padding:8px}}</style></head><body><h1>SRK ELECTRONIC</h1><div class="muted">'+R('भुगतान रसीद · यह टैक्स इनवॉइस नहीं है')+'</div><div class="box"><b>'+R('रसीद संदर्भ:')+'</b> '+customerEsc(data.receipt_reference)+'<br><b>'+R('बुकिंग संदर्भ:')+'</b> '+customerEsc(data.booking_id)+'<br><b>'+R('बुकिंग दिनांक:')+'</b> '+customerEsc(bookingDate)+'<br><b>'+R('भुगतान दिनांक:')+'</b> '+customerEsc(paymentDate)+'</div><div class="box"><b>'+R('ग्राहक:')+'</b> '+customerEsc(data.customer_name)+'<br><b>'+R('सेवा:')+'</b> '+customerEsc(data.service_type)+'<br><b>'+R('पता:')+'</b> '+customerEsc(address||R('उपलब्ध नहीं'))+'</div><table><tbody>'+labourRow+materialsRow+cancellationFeeRows+'<tr class="total"><td>'+R('कुल सत्यापित भुगतान')+'</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.amount_paid))+'</td></tr></tbody></table><div class="box"><b>'+R('भुगतान तरीका:')+'</b> '+customerEsc(method)+'<br><b>'+R('स्थिति:')+'</b> '+R('सत्यापित / प्राप्त')+'</div><p class="muted">'+R('यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।')+'</p><button onclick="window.print()">'+R('प्रिंट / PDF सेव करें')+'</button></body></html>');
   printWindow.document.close();
   printWindow.focus();
  }catch(error){
   printWindow.close();
-  alert('भुगतान रसीद '+R('उपलब्ध नहीं')+' हो सकी। कृपया सत्यापित भुगतान की स्थिति जाँचें या सहायता टीम से संपर्क करें।');
+  alert('भुगतान रसीद उपलब्ध नहीं हो सकी। कृपया सत्यापित भुगतान की स्थिति जाँचें या सहायता टीम से संपर्क करें।');
  }
-}
-async function loadCustomerPaymentHistory(reset=true) {
+}entHistory(reset=true) {
  if(!customerSb||customerPaymentHistoryBusy)return;
  const box=document.getElementById('customerPaymentHistory');
  const more=document.getElementById('customerPaymentHistoryMore');
