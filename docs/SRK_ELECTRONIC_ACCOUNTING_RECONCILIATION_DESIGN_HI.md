@@ -54,3 +54,20 @@
 ## 6. Verification boundary
 
 Source और schema audit ही हुआ है। pgTAP assertions source में जोड़े गए हैं; runtime pgTAP/Node tests अभी execute नहीं हुए। कोई migration apply, live row mutation, Razorpay request, Route transfer, wallet posting, payout, deploy या mobile QA नहीं किया गया।
+
+
+## 7. Read-only live catalog cross-check (2026-11-15)
+
+Feature Branch source को Production catalog से अलग रखते हुए read-only catalog query में निम्न बातें सत्यापित हुईं:
+
+- srk_electrician_payouts में प्रति booking unique constraint है; payout row में labour gross, materials, platform commission और electrician payable अलग numeric fields हैं। Status constraint में pending/paid/blocked/refunded हैं। Paid row के लिए method, कम-से-कम 4-character reference, paid timestamp और paid actor अनिवार्य हैं।
+- Payout table पर RLS enabled है। Anonymous SELECT बंद है; authenticated SELECT केवल srk_read_authorized_electrician_payouts policy के माध्यम से सीमित है।
+- srk_admin_mark_electrician_payout_paid(uuid,text,text,text) Main Admin check, booking-first row lock, verified paid booking, completed status और payout snapshot बनाम booking के labour/materials/commission/payable amount का पुनर्मिलान करता है। यह payout record को Paid तभी दर्ज करता है जब Admin वास्तविक transfer reference देता है; यह RPC स्वयं बैंक ट्रांसफर नहीं करता।
+- Wallet ledger पर RLS enabled है और owner-read policy है। Route transfer ledger पर RLS enabled है तथा authenticated direct SELECT privilege नहीं है। Route amount column bigint paise है।
+- Live catalog में इस जाँच के समय srk_booking_cancellation_fee_items और srk_cancellation_fee_ledger tables उपलब्ध नहीं मिलीं; ये Feature Branch की बाद की migration chain का हिस्सा हैं। इसलिए live पर cancellation-fee side को join करके कोई reconciliation view बनाना अभी schema-safe नहीं होगा।
+
+नई static pgTAP contract file: supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql — 20 assertions। यह payout authorization/row-lock/payment proof, owner-scoped wallet access, Route client isolation और integer-paise schema guard करती है। Test अभी runtime में execute नहीं हुआ है।
+
+## 8. अगला सुरक्षित implementation gate
+
+Read-only per-booking reconciliation RPC/view को Feature Branch में जोड़ने से पहले पूरे Feature Branch migration chain में cancellation-fee, refund, payout generation और Route transfer tables/columns की exact definitions और ordering को एक बार फिर मिलाना होगा। उसके बाद report को केवल Main Admin के लिए expose किया जाएगा। अभी कोई नया reconciliation RPC/view, कोई financial write या live schema change नहीं बनाया गया है।
