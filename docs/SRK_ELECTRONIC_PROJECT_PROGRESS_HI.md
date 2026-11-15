@@ -3612,3 +3612,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Commits: Login UI `d5f48bf4ab70bca2a31ff18d40c5157fbc40844d`; regression test `ccd7a2346503d0c69d67def9120a0171ce8ccceb`। नया CI run अभी उपलब्ध नहीं; test PASS घोषित नहीं है।
 - Source re-fetch के बाद जाँचे गए invariants: login placeholder मौजूद; login में collage image reference नहीं; Welcome placeholder मौजूद; Welcome में collage reference नहीं; PWA v11 और founder collage offline precache से बाहर।
 - GPT-1 checklist **20/28 = 71%**, **8/28 शेष** — अभी checklist denominator/count में बदलाव नहीं। असली garden-background founder photo उपलब्ध होने पर ही दोनों screens में उसी crop का integration होगा।
+
+
+## 2026-11-15 — PWA cache-version regression CI correction
+- नए Founder-guard test commit `ccd7a2346503d0c69d67def9120a0171ce8ccceb` पर Node CI run `43728237766` चला। कुल 164 में 163 tests पास और 1 fail हुआ।
+- Failure `tests/electrician-live-location-client.test.js` की stale assertion थी: वह Service Worker cache को `srk-electronic-v10` अपेक्षित कर रही थी, जबकि Founder collage हटाने के लिए वैध cache bump v11 किया गया था। यह app runtime failure नहीं, test expectation mismatch था।
+- Assertion को v11 के अनुरूप ठीक किया; commit `e17d917781d8e8865f5ceaad3639ef100e4a8598`। इस correction के बाद CI run की प्रतीक्षा है; अभी PASS नहीं कहा जा सकता।
