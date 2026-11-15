@@ -445,4 +445,7 @@
 ### 2026-11-16 — Customer booking supplementary RPC resilience
 - `booking.html`: Customer booking list में call contacts, refund requests, cancellation requests और cancellation-fee items के supplementary RPC अब `safeCustomerRpc` से अलग-अलग transport rejection संभालते हैं। एक supplementary request reject होने पर मुख्य owner-scoped booking list को generic load failure से overwrite नहीं किया जाएगा।
 - Regression test `customer booking list survives rejected supplementary contact, refund, and cancellation RPCs` जोड़ा गया।
+
+- अतिरिक्त जाँच: completed booking के labour-bill RPC में rejected transport पहले पूरे booking loader को रोक सकता था। अब प्रत्येक bill request अलग try/catch में है; bill अस्थायी रूप से न आए तो booking history फिर भी दिखाई देती है। उसी test file में इस failure path का source-contract assertion जोड़ा गया।
+- Exact latest head पर CI अभी सत्यापित नहीं है; live browser/Supabase और mobile QA लंबित हैं।
 - यह source-contract test है; browser/network fault injection, live Supabase RPC/RLS और mobile QA अभी बाकी हैं।
