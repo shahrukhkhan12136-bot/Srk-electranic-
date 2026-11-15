@@ -1996,3 +1996,6 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Payout का electrician_profile_id assigned electrician और booking completion से cross-check किया।
 - pgTAP contract अब 47 assertions; static plan/count verification pending immediate pass; runtime tests नहीं चले।
 - कोई DB apply/financial write/provider call/deploy/merge/mobile QA नहीं।
+
+
+- Full refund पर cancellation-fee items `reversed` होते हैं; report अब current settled ledger net और historical captured fee (settled + reversed) अलग रखती है। Customer की original captured amount का मिलान historical fee से होगा, जबकि current ledger net settled fee से। Admin UI में historical captured fee दिखती है। pgTAP plan अब 48 assertions तक बढ़ाया।
