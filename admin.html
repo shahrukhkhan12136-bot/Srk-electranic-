@@ -26,7 +26,7 @@
 <div style="display:flex;gap:8px;align-items:center;margin-top:14px"><button type="button" class="alt" onclick="loadAdminStaff()">Staff सूची रीफ़्रेश करें</button><span id="adminStaffStatus" class="muted" aria-live="polite"></span></div>
 <div id="adminStaffList" style="margin-top:12px">Staff सूची लोड हो रही है…</div>
 </div>
-<div class="grid"><div class="card"><div class="muted">कुल बुकिंग</div><div class="stat" id="nBookings">—</div></div><div class="card"><div class="muted">नए काम</div><div class="stat" id="nNew">—</div></div><div class="card"><div class="muted">इलेक्ट्रिशियन आवेदन</div><div class="stat" id="nApps">—</div></div><div class="card"><div class="muted">सक्रिय पार्टनर</div><div class="stat" id="nPros">—</div></div></div><div class="card"><h2>नई बुकिंग और काम</h2><p class="muted">मोबाइल पर भुगतान के विकल्प देखने के लिए टेबल पर उँगली रखकर बाईं ओर सरकाएँ। Cash भुगतान दर्ज करते समय वास्तविक रसीद नंबर भरें।</p><div class="scroll"><table><thead><tr><th>ग्राहक</th><th>सेवा / पता</th><th>लोकेशन</th><th>स्टेटस</th><th>तय राशि ₹</th><th>वास्तव में मिली ₹</th><th>पेमेंट</th><th>अपडेट</th></tr></thead><tbody id="bookings"></tbody></table></div></div>
+<div class="grid"><div class="card"><div class="muted">कुल बुकिंग</div><div class="stat" id="nBookings">—</div></div><div class="card"><div class="muted">नए काम</div><div class="stat" id="nNew">—</div></div><div class="card"><div class="muted">इलेक्ट्रिशियन आवेदन</div><div class="stat" id="nApps">—</div></div><div class="card"><div class="muted">सक्रिय पार्टनर</div><div class="stat" id="nPros">—</div></div></div><div class="card"><h2>नई बुकिंग और काम</h2><p class="muted">मोबाइल पर भुगतान के विकल्प देखने के लिए टेबल पर उँगली रखकर बाईं ओर सरकाएँ। Cash भुगतान दर्ज करते समय वास्तविक रसीद नंबर भरें।</p><div class="scroll"><table><thead><tr><th>ग्राहक</th><th>सेवा / पता</th><th>लोकेशन</th><th>स्टेटस</th><th>तय राशि ₹</th><th>मजदूरी / सामग्री का अलग हिसाब ₹</th><th>वास्तव में मिली ₹</th><th>पेमेंट</th><th>अपडेट</th></tr></thead><tbody id="bookings"></tbody></table></div></div>
 <div class="card"><h2>ग्राहक Cancellation Requests — Admin निर्णय</h2>
 <p class="muted">ग्राहक के अनुरोध यहाँ आएँगे। Admin को इलेक्ट्रिशियन की वास्तविक स्थिति सत्यापित करके प्रमाण और कारण दर्ज करना अनिवार्य है। ₹99 शुल्क केवल तभी तय होगा जब ग्राहक के घर पहुँचने का प्रमाण दर्ज हो और Admin मंज़ूरी दे; घर से नहीं निकला या रास्ते में होने पर ₹0। निर्णय से पहले बुकिंग रद्द नहीं होगी।</p>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="alt" type="button" onclick="loadAdminCancellationRequests()">Requests रीफ़्रेश करें</button><span id="adminCancellationStatus" class="muted" aria-live="polite"></span></div>
@@ -735,7 +735,7 @@ async function saveBookingInternal(id){
  const manual_method=document.getElementById('manual-method-'+id).value;
  const payment_reference=document.getElementById('ref-'+id).value.trim();
  const {data:booking,error:readError}=await sb.from('service_bookings')
-  .select('status,quoted_amount,assigned_electrician_id,razorpay_payment_id,razorpay_order_id,payment_status,amount_paid,selected_category')
+  .select('status,quoted_amount,service_charge,materials_amount,quote_status,assigned_electrician_id,razorpay_payment_id,razorpay_order_id,payment_status,amount_paid,selected_category')
   .eq('id',id).single();
  if(readError||!booking){alert('बुकिंग दोबारा पढ़ी नहीं जा सकी। Admin अनुमति और रिकॉर्ड की स्थिति जाँचें।');return;}
  if(status!==booking.status&&!( !booking.selected_category&&booking.status==='new'&&status==='confirmed')){
@@ -754,6 +754,15 @@ async function saveBookingInternal(id){
  const quoted=raw===''?null:Number(raw);
  if(quoted!==null&&(!Number.isFinite(quoted)||quoted<0||quoted>10000000)){alert('तय राशि ₹0 से ₹1,00,00,000 के बीच रखें।');return;}
  const currentQuoted=booking.quoted_amount==null?null:Number(booking.quoted_amount);
+ if(booking.service_charge!==null&&booking.service_charge!==undefined){
+  const splitTotal=Math.round((Number(booking.service_charge)+Number(booking.materials_amount||0))*100);
+  if(quoted===null||Math.round(quoted*100)!==splitTotal){
+   alert('स्वीकृत मजदूरी और सामग्री का जोड़ ही कुल Quote होना चाहिए। Admin यहाँ से अलग-अलग स्वीकृत मदों को बदल नहीं सकता।');return;
+  }
+  if(booking.quote_status==='approved'&&quoted!==currentQuoted){
+   alert('ग्राहक द्वारा स्वीकृत Quote की मजदूरी/सामग्री राशि बदलना बंद है। नया Quote इलेक्ट्रिशियन से भेजवाकर ग्राहक की मंज़ूरी लें।');return;
+  }
+ }
  if(booking.selected_category&&(status!==booking.status||quoted!==currentQuoted)){
   alert('नई श्रेणी की बुकिंग का Status और Labour Rate server/customer-approved workflow से ही बदल सकता है। Admin panel से सीधे बदलाव रोके गए हैं।');
   await loadAll();return;
