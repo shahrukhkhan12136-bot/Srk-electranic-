@@ -576,10 +576,43 @@ Object.assign(customerUiTranslations, {
  'भुगतान राशि: ₹':'Payment amount: ₹',
  'बुकिंग लोकेशन का Google Map':'Booking location on Google Maps'
 });
+Object.assign(customerUiTranslations, {
+ 'अभी इस शिकायत में कोई संदेश नहीं है।':'There are no messages in this complaint yet.',
+ 'बुकिंग लोड नहीं हो सकी':'Booking could not be loaded',
+ 'शिकायत के लिए बुकिंग सूची लोड नहीं हो सकी। कृपया रीफ़्रेश करें।':'The booking list for complaints could not be loaded. Please refresh.',
+ 'शिकायत दर्ज करने के लिए अपनी बुकिंग चुनें।':'Select your booking to submit a complaint.',
+ 'समस्या का विवरण 20 से 2000 अक्षरों में लिखें।':'Describe the issue in 20 to 2,000 characters.',
+ 'शिकायत दर्ज हो रही है…':'Submitting complaint…',
+ 'आपकी शिकायत दर्ज हो गई है। उसका reference और जवाब नीचे दिखाई देंगे।':'Your complaint has been submitted. Its reference and replies will appear below.',
+ 'आज की शिकायत सीमा पूरी हो गई है। कृपया मौजूदा शिकायत में संदेश भेजें।':'You have reached today’s complaint limit. Please send a message in an existing complaint.',
+ 'शिकायत दर्ज नहीं हो सकी। बुकिंग चुनें, विवरण जाँचें और दोबारा कोशिश करें।':'The complaint could not be submitted. Select a booking, check the details and try again.',
+ 'आपकी शिकायतें लोड हो रही हैं…':'Loading your complaints…',
+ 'अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।':'You have no complaints yet. Use “Submit a New Complaint” above to send one.',
+ 'शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।':'Complaints could not be loaded. Please try again.',
+ 'बातचीत लोड हो रही है…':'Loading conversation…',
+ 'बातचीत लोड नहीं हो सकी। कृपया फिर कोशिश करें।':'Conversation could not be loaded. Please try again.',
+ 'पहले अपनी शिकायत चुनें।':'Select your complaint first.',
+ 'संदेश लिखें या फ़ाइल चुनें।':'Write a message or choose a file.',
+ 'संदेश 4000 अक्षरों से अधिक नहीं होना चाहिए।':'The message must not exceed 4,000 characters.',
+ 'अधिकतम 5 फ़ाइलें चुनें। हर फ़ाइल JPEG/PNG/WebP/PDF और 10 MB से कम होनी चाहिए।':'Select up to 5 files. Each file must be JPEG/PNG/WebP/PDF and under 10 MB.',
+ 'भेजा जा रहा है…':'Sending…',
+ 'OTP लॉगिन आवश्यक है।':'OTP login is required.',
+ 'संदेश या फ़ाइल सफलतापूर्वक भेजी गई।':'Message or file sent successfully.',
+ 'आपका संदेश सहायता टीम को भेज दिया गया है।':'Your message has been sent to the support team.',
+ 'संदेश या फ़ाइल भेजी नहीं जा सकी।':'Message or file could not be sent.',
+ 'बाकी फ़ाइलें दोबारा भेजें।':'Please resend the remaining files.',
+ 'शिकायत की स्थिति: ':'Complaint status: ',
+ 'डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।':'Default address updated successfully.',
+ 'डिफ़ॉल्ट पता नहीं बदला जा सका। ':'Could not update the default address. '
+});
 function customerUiText(value) {
  const text = String(value ?? '');
  if (document.documentElement.lang !== 'en') return text;
  if (customerUiTranslations[text]) return customerUiTranslations[text];
+ const prefix = Object.keys(customerUiTranslations)
+  .filter(key => key.endsWith(' ') && text.startsWith(key))
+  .sort((a,b) => b.length-a.length)[0];
+ if (prefix) return customerUiTranslations[prefix] + customerUiText(text.slice(prefix.length));
  return text.replace(/राशि: /g,'Amount: ').replace(/बुकिंग नंबर:/g,'Booking number: ')
   .replace(/स्थिति:/g,'Status: ').replace(/तरीका:/g,'Method: ').replace(/दिनांक:/g,'Date: ')
   .replace(/\bAdmin\b/g,'Admin');
@@ -620,7 +653,7 @@ function applyCustomerUiLanguage(language) {
   const original = customerUiOriginalText.get(node);
   const key = original.trim();
   if (!key) continue;
-  const translated = lang === 'en' ? (customerUiTranslations[key] || key) : key;
+  const translated = lang === 'en' ? customerUiText(key) : key;
   const leading = original.match(/^\s*/)?.[0] || '';
   const trailing = original.match(/\s*$/)?.[0] || '';
   node.nodeValue = leading + translated + trailing;
@@ -635,10 +668,10 @@ const customerUiLanguageObserver = new MutationObserver(records => {
    if (node.nodeType === Node.TEXT_NODE) {
     if (!customerUiOriginalText.has(node)) customerUiOriginalText.set(node, node.nodeValue);
     const original = customerUiOriginalText.get(node), key = original.trim();
-    if (customerUiTranslations[key]) {
+    if (customerUiText(key) !== key) {
      const leading = original.match(/^\s*/)?.[0] || '';
      const trailing = original.match(/\s*$/)?.[0] || '';
-     node.nodeValue = leading + customerUiTranslations[key] + trailing;
+     node.nodeValue = leading + customerUiText(key) + trailing;
     }
    } else if (node.nodeType === Node.ELEMENT_NODE) {
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
@@ -646,10 +679,10 @@ const customerUiLanguageObserver = new MutationObserver(records => {
     while ((child = walker.nextNode())) {
      if (!customerUiOriginalText.has(child)) customerUiOriginalText.set(child, child.nodeValue);
      const original = customerUiOriginalText.get(child), key = original.trim();
-     if (customerUiTranslations[key]) {
+     if (customerUiText(key) !== key) {
       const leading = original.match(/^\s*/)?.[0] || '';
       const trailing = original.match(/\s*$/)?.[0] || '';
-      child.nodeValue = leading + customerUiTranslations[key] + trailing;
+      child.nodeValue = leading + customerUiText(key) + trailing;
      }
     }
    }
