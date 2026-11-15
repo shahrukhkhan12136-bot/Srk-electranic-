@@ -73,7 +73,7 @@ BEGIN
     WHERE d.outbox_id=p_outbox_id AND d.attempt_count<5
       AND d.next_attempt_at<=clock_timestamp()
       AND (d.delivery_status='pending'
-        OR (d.delivery_status='processing' AND d.locked_until<clock_timestamp()))
+        OR (d.delivery_status='processing' AND (d.locked_until IS NULL OR d.locked_until<clock_timestamp())))
     ORDER BY d.updated_at
     FOR UPDATE SKIP LOCKED
     LIMIT greatest(1,least(coalesce(p_limit,50),100))
@@ -112,7 +112,7 @@ SET search_path TO 'pg_catalog','public','srk_private','pg_temp'
 AS $function$
 DECLARE v_row srk_private.srk_push_subscription_deliveries%ROWTYPE;
 BEGIN
-  IF auth.role() <> 'service_role' THEN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
   END IF;
   SELECT * INTO v_row FROM srk_private.srk_push_subscription_deliveries
@@ -149,7 +149,7 @@ RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'pg_catalog','public','srk_private','pg_temp'
 AS $function$
 BEGIN
-  IF auth.role() <> 'service_role' THEN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
   END IF;
   RETURN NOT EXISTS(
