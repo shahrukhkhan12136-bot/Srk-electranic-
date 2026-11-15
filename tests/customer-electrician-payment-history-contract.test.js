@@ -46,3 +46,22 @@ test('Refunded completed bookings are not mislabeled as unpaid customer balances
   assert.match(electrician, /customerRefunded=completed\.filter\(x=>x\.payment_status==='refunded'\)\.length/);
   assert.match(electrician, /रिफंड \/ रिवर्सल:/);
 });
+
+test('Customer refund and payment history labels distinguish requests, processing, completion and failures', () => {
+  assert.match(customer, /refund_request:'रिफंड अनुरोध'/);
+  assert.match(customer, /refund:'ऑनलाइन रिफंड'/);
+  assert.match(customer, /manual_refund:'दर्ज रिफंड'/);
+  assert.match(customer, /requested:'अनुरोध किया गया'/);
+  assert.match(customer, /processing:'रिफंड प्रोसेस हो रहा है'/);
+  assert.match(customer, /processed:'प्रोसेस्ड'/);
+  assert.match(customer, /failed:'असफल'/);
+  assert.match(customer, /rejected:'अस्वीकृत'/);
+  assert.match(customer, /unknown:'Admin जाँच आवश्यक'/);
+  assert.match(customer, /function customerRefundStatusText\(status\)/);
+  assert.match(customer, /customerEsc\(customerRefundStatusText\(row\.status\)\)/);
+});
+
+test('Payment history RPC includes owner-scoped request, online refund and manual refund events', () => {
+  assert.match(receiptSql, /customer_user_id = v_uid/);
+  assert.match(earningsSql, /srk_customer_get_payment_history/);
+});
