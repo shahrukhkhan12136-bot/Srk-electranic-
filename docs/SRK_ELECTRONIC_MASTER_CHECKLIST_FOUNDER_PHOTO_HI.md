@@ -14,6 +14,8 @@
 - यह प्रतिशत ऊपर के वर्तमान 9 मुख्य sections के checkbox count पर आधारित है; यह Production readiness, समय, लागत या code completion का प्रतिशत नहीं है।
 - बाकी मदों में isolated runtime/database tests, Main Production schema parity, browser/mobile visual QA और release/owner approval शामिल हैं।
 - Admin Panel के शीर्ष पर यही प्रगति कार्ड दिखाया गया है। Checklist के आइटम बदलने पर दोनों जगह प्रतिशत फिर से गिनकर अपडेट करना होगा।
+- **GPT नंबर 2 का अलग कार्यक्षेत्र:** Admin/Support Staff (13), Payment/Accounting (10), Main Database audit/parity (16) — कुल 39 मदों में 26 पूर्ण, 13 शेष: **67% पूरा / 33% बाकी**। GPT-1 के Customer/Electrician कार्य इसमें शामिल नहीं हैं।
+- Admin Panel में पूरे प्रोजेक्ट के कार्ड के नीचे GPT-2 का अलग प्रगति कार्ड भी दिखाया गया है।
 
 ---
 
