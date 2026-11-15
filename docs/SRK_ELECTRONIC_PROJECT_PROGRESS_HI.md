@@ -2384,3 +2384,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Edge sender अब per-device RPC का `data === true` check करता है; rejected stale finish sent count में शामिल नहीं होता। Malformed identity और transient provider failure finish paths भी rejection को failure गिनते हैं।
 - दोनों behaviors के source-contract regression assertions जोड़े।
 - Runtime Node/Deno tests और isolated SQL concurrency tests अभी execute नहीं हुए। कोई migration apply, production write, deployment या real push नहीं किया गया।
+
+
+## 2026-11-15 — Push source tests executed in disposable sandbox
+
+- Feature branch `bcf6b91dc6ab641c9684616d0f4f1445500dde96` पर disposable Vercel Sandbox में Node test runner चलाया। तीन Push test files का परिणाम **37/37 PASS** रहा: durable outbox/worker, per-subscription delivery ledger, और Edge sender source-contract assertions।
+- पहले targeted run में दो assertions fail हुए थे, implementation नहीं: preflight test `available_for_work` column-name guard के वास्तविक SQL रूप से मेल नहीं खा रहा था; GET config test source में internal variable declarations को response leakage समझ रहा था। दोनों test matchers सुधारे और rerun 37/37 PASS।
+- `node --check netlify/functions/deliver-push-outbox.js` सफल।
+- Repository-wide `npm test`: **82 passed, 5 failed (87 total)**। शेष failures Push files में नहीं: (1) electrician customer-contact projection assertion, (2) Razorpay refund GET exact stored refund ID assertion, (3–5) three Razorpay refund webhook reconciliation assertions। इन्हें अलग-अलग investigate करना बाकी है।
+- Sandbox में Deno और PostgreSQL executables उपलब्ध नहीं थे; इसलिए Edge Function typecheck, SQL parser/apply, RPC grant behavior और concurrent stale-worker reclaim test नहीं चला।
+- कोई Supabase database/paid staging branch नहीं बनाया; migration apply, production write, Edge/Netlify deployment, worker activation, provider refund या real push नहीं किया। Disposable test sandbox के अलावा कोई rollout नहीं हुआ।
