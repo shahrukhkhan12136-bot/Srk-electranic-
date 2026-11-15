@@ -25,6 +25,7 @@ declare
   v_refund_paise bigint := 0;
   v_fee_allocated_paise bigint := 0;
   v_fee_settled_paise bigint := 0;
+  v_fee_captured_paise bigint := 0;
   v_route_electrician_count integer := 0;
   v_route_platform_count integer := 0;
   v_fee_ledger_net_paise bigint := 0;
@@ -174,9 +175,10 @@ begin
     v_exceptions := array_append(v_exceptions,'FINAL_REFUND_PAYOUT_NOT_CLOSED');
   end if;
 
-  select coalesce(sum(i.amount_paise) filter(where i.status in ('reserved','settled')),0)::bigint,
-         coalesce(sum(i.amount_paise) filter(where i.status='settled'),0)::bigint
-    into v_fee_allocated_paise,v_fee_settled_paise
+  select coalesce(sum(i.amount_paise) filter(where i.status in ('reserved','settled','reversed')),0)::bigint,
+         coalesce(sum(i.amount_paise) filter(where i.status='settled'),0)::bigint,
+         coalesce(sum(i.amount_paise) filter(where i.status in ('settled','reversed')),0)::bigint
+    into v_fee_allocated_paise,v_fee_settled_paise,v_fee_captured_paise
     from public.srk_booking_cancellation_fee_items i
    where i.booking_id=p_booking_id;
 
@@ -197,7 +199,7 @@ begin
     v_exceptions := array_append(v_exceptions,'CANCELLATION_FEE_LEDGER_UNBALANCED');
   end if;
   if v_booking.selected_category is not null and v_payment_verified
-     and v_collection_paise is distinct from (v_labour_paise+v_fee_settled_paise) then
+     and v_collection_paise is distinct from (v_labour_paise+v_fee_captured_paise) then
     v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_LABOUR_AND_SETTLED_FEES');
   elsif v_booking.selected_category is null and v_payment_verified
      and v_booking.quote_status='approved'
@@ -340,6 +342,7 @@ begin
     'route_platform_commission_processed_paise',v_route_platform_processed_paise,
     'route_platform_commission_settled_paise',v_route_platform_settled_paise,
     'cancellation_fee_allocated_to_booking_paise',v_fee_allocated_paise,
+    'cancellation_fee_historically_captured_paise',v_fee_captured_paise,
     'cancellation_fee_source_open_or_reserved_paise',v_fee_source_open_paise,
     'cancellation_fee_ledger_net_paise',v_fee_ledger_net_paise,
     'cancellation_fee_ledger_entries',v_fee_ledger,
