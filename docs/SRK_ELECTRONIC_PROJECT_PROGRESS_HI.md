@@ -3295,3 +3295,5 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Static audit में migration `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql` का final `ALTER FUNCTION ... SET search_path = ''` मिला, जबकि Customer start/completion SECURITY DEFINER RPCs के body में `srk_private.work_timer_authorizations` और `srk_private.work_transition_authorizations` references unqualified हैं। Empty search_path में ये references resolve नहीं होते और RPC runtime पर fail हो सकते थे।
 - दोनों RPCs का search_path अब fixed trusted list `pg_catalog, public, auth, srk_private, pg_temp` किया; कोई dynamic/user-controlled schema नहीं जोड़ा। Regression test जोड़ा ताकि private authorization schema भविष्य में search_path से न हटे।
 - यह source migration + Node regression test correction है; Database पर migration apply नहीं हुई। CI run की प्रतीक्षा है; pgTAP/runtime role tests अब भी बाकी हैं।
+
+- Follow-up CI run `43718294235` में 154 में से 153 tests पास हुए; नया regression assertion regex over-escaped होने से fail हुआ, SQL source correction नहीं। Assertion को stable literal contract checks में बदला; corrected test के लिए CI फिर चल रहा है।
