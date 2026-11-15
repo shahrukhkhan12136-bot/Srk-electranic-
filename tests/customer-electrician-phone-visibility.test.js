@@ -25,6 +25,6 @@ test('customer direct-call lookup is authenticated and scoped to the booking own
   assert.match(customerContacts, /where b\.customer_user_id = v_uid[\s\S]*and b\.assigned_electrician_id is not null/i);
   assert.match(customerContacts, /revoke all on function public\.srk_get_customer_call_contacts\(\) from public, anon/i);
   assert.match(customerContacts, /grant execute on function public\.srk_get_customer_call_contacts\(\) to authenticated/i);
-  assert.match(booking, /customerSb\.rpc\('srk_get_customer_call_contacts'\)/);
+  assert.match(booking, /safeCustomerRpc\('srk_get_customer_call_contacts'\)/);
   assert.doesNotMatch(booking, /\.select\([^\n]*\bphone\b[^\n]*\)\s*\.eq\('customer_user_id'/i);
 });
