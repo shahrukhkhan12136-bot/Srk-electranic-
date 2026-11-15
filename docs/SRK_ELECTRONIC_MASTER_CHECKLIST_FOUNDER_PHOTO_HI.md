@@ -170,3 +170,14 @@
 **स्थिति:** Feature branch source updated; runtime tests/deploy/migration apply/push नहीं हुए। Production compatibility अभी अवरुद्ध है।
 
 - [x] Malformed per-subscription claim target को stuck processing state में छोड़ने के बजाय retry/dead-letter path में भेजने का guard और assertion।
+
+
+### Legacy Push Trigger और सुरक्षित Rollout — 15 November 2026
+- [x] Production catalog में legacy `trg_srk_push_job_offer` (`AFTER INSERT OR UPDATE`) और direct HTTP function की पहचान; old payload में `outbox_id` नहीं।
+- [x] Outbox migration में legacy trigger को उसी transaction में drop करके INSERT-only outbox trigger बनाना।
+- [x] Source test: legacy trigger drop, outbox trigger creation से पहले होना चाहिए।
+- [ ] Isolated schema prerequisites और migration ordering verify करें; Production schema अभी branch से पीछे है।
+- [ ] Isolated rollout में worker pause → schema/trigger swap → Edge Function deploy → synthetic delivery verify → worker enable क्रम जाँचें।
+- [ ] Rollback migration और monitoring/alert thresholds approve करें।
+
+**Production safety:** अभी कोई migration/trigger/deploy/worker action नहीं किया गया। Rollout plan केवल branch documentation है और अलग approval आवश्यक है।
