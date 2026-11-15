@@ -30,11 +30,11 @@ exports.handler = async function () {
         const response = await fetch(base + "/functions/v1/push-job-offer", {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-srk-push-secret": pushSecret },
-          body: JSON.stringify(row.payload),
+          body: JSON.stringify({ ...row.payload, outbox_id: row.outbox_id }),
           signal: AbortSignal.timeout(15000)
         });
         const result = await response.json().catch(() => ({}));
-        if (response.ok && (result.ignored === true || (Number(result.failed || 0) === 0))) {
+        if (response.ok && (result.ignored === true || result.complete === true)) {
           success = true;
         } else {
           errorText = "Push sender returned HTTP " + response.status + " or partial delivery failure";
