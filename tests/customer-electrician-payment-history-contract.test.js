@@ -80,3 +80,22 @@ test('customer payment history handles auth session lookup failures through its 
   assert.match(fn, /if\(sessionError\)throw sessionError/);
   assert.match(fn, /finally\{customerPaymentHistoryBusy=false;box\.setAttribute\('aria-busy','false'\);\}/);
 });
+
+test('Customer cancellation-fee and refund history guard auth session failures with retry UI', () => {
+  for (const [name, rpc, busyText] of [
+    ['loadCustomerCancellationFeeDebts', 'srk_customer_list_my_cancellation_fee_debts', 'Cancellation fee बकाया लोड हो रहा है'],
+    ['loadCustomerRefundHistory', 'srk_customer_list_booking_refund_requests', 'रिफंड अनुरोध लोड हो रहे हैं']
+  ]) {
+    const start = customer.indexOf('async function ' + name + '(');
+    assert.ok(start >= 0, name + ' exists');
+    const end = customer.indexOf('\nasync function ', start + 1);
+    const fn = customer.slice(start, end < 0 ? customer.length : end);
+    const tryAt = fn.indexOf('try{');
+    const sessionAt = fn.indexOf('customerSb.auth.getSession()');
+    assert.ok(tryAt >= 0 && sessionAt > tryAt, name + ' protects session lookup');
+    assert.match(fn, /if\(sessionError\)throw sessionError/);
+    assert.ok(fn.includes(rpc), name + ' calls the expected owner-scoped RPC');
+    assert.ok(fn.includes(busyText), name + ' shows its loading state');
+    assert.match(fn, /finally\{box\.setAttribute\('aria-busy','false'\);\}/);
+  }
+});
