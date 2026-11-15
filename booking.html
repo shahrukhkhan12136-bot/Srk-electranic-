@@ -263,6 +263,179 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <script src="/srk-config.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
+/* Customer-facing Hindi/English UI dictionary. Original strings are retained so
+   switching languages repeatedly never translates an already translated value. */
+const customerUiTranslations = {
+ 'ग्राहक लॉगिन':'Customer Login',
+ 'अपना मोबाइल नंबर सत्यापित करके अपनी बुकिंग देखें।':'Verify your mobile number to view your bookings.',
+ 'मोबाइल नंबर':'Mobile Number',
+ 'OTP भेजें':'Send OTP',
+ 'SMS से मिला OTP':'OTP received by SMS',
+ 'OTP सत्यापित करें':'Verify OTP',
+ 'आपका SRK ELECTRONIC स्वागत करता है':'Welcome to SRK ELECTRONIC',
+ 'घर की इलेक्ट्रिकल सेवा बुक करें और अपनी सभी बुकिंग, भुगतान और सहायता एक ही जगह देखें।':'Book home electrical services and manage bookings, payments and support in one place.',
+ 'नई सर्विस बुक करें':'Book a New Service',
+ 'सेव किया हुआ पता चुनने या बदलने के लिए बुकिंग फॉर्म में “आपके सेव किए गए पते” का उपयोग करें।':'To choose or change a saved address, use “Your Saved Addresses” in the booking form.',
+ 'बुकिंग फिर से देखें':'Refresh Bookings',
+ 'भुगतान इतिहास और रसीद':'Payment History & Receipts',
+ 'आपकी बुकिंग से जुड़े सत्यापित भुगतान और रिफंड यहाँ दिखेंगे। भुगतान की रसीद केवल सफल और सत्यापित भुगतान के लिए उपलब्ध है।':'Verified payments and refunds for your bookings appear here. Receipts are available only for successful, verified payments.',
+ 'भुगतान इतिहास रीफ़्रेश करें':'Refresh Payment History',
+ 'और रिकॉर्ड देखें':'Load More Records',
+ 'पुरानी Cancellation Fee / बकाया':'Previous Cancellation Fees / Dues',
+ 'हर पुरानी cancellation fee अलग दिखाई जाएगी। बकाया अगली booking के bill में जोड़ा जाएगा; ग्राहक wallet balance से इसे माफ नहीं किया जाएगा।':'Each previous cancellation fee is shown separately. Outstanding dues are added to the next booking bill and are not waived from the customer wallet.',
+ 'बकाया रीफ़्रेश करें':'Refresh Dues',
+ 'मेरे रिफंड अनुरोध':'My Refund Requests',
+ 'आपके सभी रिफंड अनुरोध, Admin समीक्षा और अंतिम स्थिति यहाँ निजी रूप से दिखाई जाएगी।':'Your refund requests, admin reviews and final statuses are shown here privately.',
+ 'रिफंड स्थिति रीफ़्रेश करें':'Refresh Refund Status',
+ 'सेव किए गए पते प्रबंधित करें':'Manage Saved Addresses',
+ 'सहायता और शिकायत':'Help & Complaints',
+ 'अपनी बुकिंग से जुड़ी शिकायत दर्ज करें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।':'Raise a booking-related complaint, track its status and message the support team. Private conversations are available only after you log in.',
+ 'संबंधित बुकिंग':'Related Booking',
+ 'बुकिंग चुनें':'Choose a Booking',
+ 'शिकायत का विषय':'Complaint Category',
+ 'काम की गुणवत्ता':'Work Quality',
+ 'इलेक्ट्रिशियन का व्यवहार':'Electrician Conduct',
+ 'बिल या भुगतान':'Billing or Payment',
+ 'देरी या इलेक्ट्रिशियन नहीं पहुँचा':'Delay or Electrician Did Not Arrive',
+ 'सुरक्षा संबंधी समस्या':'Safety Issue',
+ 'अन्य':'Other',
+ 'समस्या का पूरा विवरण (20–2000 अक्षर)':'Describe the issue (20–2,000 characters)',
+ 'शिकायत दर्ज करें':'Submit Complaint',
+ 'पहले से दर्ज शिकायत':'Existing Complaint',
+ 'शिकायत चुनें':'Choose a Complaint',
+ 'शिकायतें रीफ़्रेश करें':'Refresh Complaints',
+ 'अपना संदेश':'Your Message',
+ 'फोटो या PDF जोड़ें (अधिकतम 5 फ़ाइलें, प्रत्येक 10 MB)':'Attach photos or PDF (up to 5 files, 10 MB each)',
+ 'स्वीकार्य फ़ाइलें: JPEG, PNG, WebP और PDF। निजी फ़ाइलें केवल संबंधित ग्राहक और Admin देख सकते हैं।':'Accepted files: JPEG, PNG, WebP and PDF. Private files are visible only to the relevant customer and Admin.',
+ 'संदेश / फ़ाइल भेजें':'Send Message / File',
+ 'मेरी प्रोफ़ाइल':'My Profile',
+ 'आपका सत्यापित मोबाइल नंबर केवल पढ़ने के लिए है। नाम और भाषा यहाँ बदल सकते हैं।':'Your verified mobile number is read-only. You can update your name and language here.',
+ 'पूरा नाम':'Full Name',
+ 'सत्यापित मोबाइल नंबर':'Verified Mobile Number',
+ 'प्रोफ़ाइल फोटो (JPEG, PNG या WebP; अधिकतम 5 MB)':'Profile Photo (JPEG, PNG or WebP; max 5 MB)',
+ 'ऐप की भाषा':'App Language',
+ 'प्रोफ़ाइल सेव करें':'Save Profile',
+ 'लॉगआउट':'Log Out',
+ 'सर्विस बुक करें':'Book a Service',
+ 'बुकिंग से पहले चुनी गई इलेक्ट्रिशियन श्रेणी, अवधि और लागू दर के आधार पर अनुमान दिखना चाहिए। निरीक्षण के बाद अलग quotation देने की प्रक्रिया नहीं है। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। सामान/पार्ट्स का खर्च अलग itemized रहेगा।':'Your estimate is based on the selected electrician tier, duration and applicable rate. There is no separate post-inspection quotation. Final labour is calculated from actual server-recorded work time. Materials and parts are itemized separately.',
+ 'आपका नाम':'Your Name',
+ 'OTP से सत्यापित मोबाइल नंबर':'Mobile Number Verified by OTP',
+ 'बुकिंग में वही मोबाइल नंबर इस्तेमाल होगा जिससे आपने OTP लॉगिन किया है। इसे यहाँ बदला नहीं जा सकता।':'Your booking uses the same mobile number verified at OTP login. It cannot be changed here.',
+ 'आपके सेव किए गए पते':'Your Saved Addresses',
+ 'पहले से सेव पता चुनें या नीचे भरा हुआ पता सेव करें। पुराने बुकिंग पते इससे नहीं बदलेंगे।':'Choose a saved address or save the address entered below. Previous booking addresses will not change.',
+ 'सेव किया हुआ पता चुनें':'Select a Saved Address',
+ 'नया पता इस्तेमाल करें':'Use a New Address',
+ 'चुना पता संपादित करें':'Edit Selected Address',
+ 'चुना पता हटाएँ':'Delete Selected Address',
+ 'इसे डिफ़ॉल्ट पता बनाएँ':'Set as Default Address',
+ 'इस पते का नाम':'Address Label',
+ 'घर':'Home',
+ 'काम की जगह':'Work',
+ 'यह पता सेव करें':'Save This Address',
+ 'राज्य / केंद्रशासित प्रदेश':'State / Union Territory',
+ 'राज्य चुनें':'Choose State',
+ 'जिला':'District',
+ 'अपना जिला लिखें':'Enter your district',
+ 'पूरा पता':'Full Address',
+ 'मकान नंबर, गली, एरिया और शहर':'House number, street, area and city',
+ 'मेरी लोकेशन चुनें':'Use My Location',
+ 'लोकेशन अभी नहीं चुनी गई है। पता लिखकर भी Google Maps में देखा जा सकेगा।':'Location has not been selected. You can also enter an address and view it on Google Maps.',
+ 'कौन-सी सर्विस चाहिए?':'What Service Do You Need?',
+ 'घर की वायरिंग':'Home Wiring',
+ 'इलेक्ट्रिकल रिपेयर':'Electrical Repair',
+ 'लाइट / फैन फिटिंग':'Light / Fan Installation',
+ 'होम रिपेयरिंग':'Home Repair',
+ 'इलेक्ट्रिशियन की श्रेणी चुनें':'Choose Electrician Tier',
+ 'श्रेणी चुनें':'Choose a Tier',
+ 'काम के लिए अनुमानित समय':'Estimated Work Duration',
+ 'अवधि चुनें (1–8 घंटे)':'Choose Duration (1–8 hours)',
+ '1 घंटा':'1 hour',
+ '2 घंटे':'2 hours',
+ '3 घंटे':'3 hours',
+ '4 घंटे':'4 hours',
+ '5 घंटे':'5 hours',
+ '6 घंटे':'6 hours',
+ '7 घंटे':'7 hours',
+ '8 घंटे':'8 hours',
+ 'यह केवल अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ग्राहक की चुनी श्रेणी से अलग इलेक्ट्रिशियन नहीं भेजा जाएगा। सामान/पार्ट्स का खर्च मेहनताने से अलग itemized रहेगा।':'This is an estimate, not an advance or bill cap. Final labour is calculated from actual server-recorded work time. An electrician from a different selected tier will not be assigned. Materials/parts are itemized separately from labour.',
+ 'आपका इलाका':'Your Area',
+ 'गाँव / शहर / एरिया':'Village / City / Area',
+ 'काम की जानकारी':'Work Details',
+ 'काम के बारे में लिखें':'Describe the work',
+ 'भुगतान का तरीका':'Payment Method',
+ 'नकद (Cash)':'Cash',
+ 'ऑनलाइन भुगतान (Razorpay / UPI)':'Online Payment (Razorpay / UPI)',
+ 'शर्तें स्वीकार करके बुकिंग भेजें':'Accept Terms & Submit Booking',
+ 'पेमेंट विंडो में UPI, Google Pay, PhonePe, Paytm, कार्ड या उपलब्ध अन्य विकल्प चुनें। भुगतान सफल होने के बाद सर्वर signature की जाँच करेगा।':'Choose UPI, Google Pay, PhonePe, Paytm, card or another available option in the payment window. The server verifies the payment signature after successful payment.',
+ 'श्रेणी और अवधि चुनें':'Choose a tier and duration',
+ 'अनुमान चुनी गई श्रेणी की 8 घंटे की दर और अवधि के आधार पर है।':'The estimate is based on the selected tier’s 8-hour rate and duration.'
+};
+const customerUiOriginalText = new WeakMap();
+const customerUiOriginalAttrs = new WeakMap();
+function applyCustomerUiLanguage(language) {
+ const lang = language === 'en' ? 'en' : 'hi';
+ document.documentElement.lang = lang;
+ const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+ let node;
+ while ((node = walker.nextNode())) {
+  if (!customerUiOriginalText.has(node)) customerUiOriginalText.set(node, node.nodeValue);
+  const original = customerUiOriginalText.get(node);
+  const key = original.trim();
+  if (!key) continue;
+  const translated = lang === 'en' ? (customerUiTranslations[key] || key) : key;
+  const leading = original.match(/^\\s*/)?.[0] || '';
+  const trailing = original.match(/\\s*$/)?.[0] || '';
+  node.nodeValue = leading + translated + trailing;
+ }
+ document.querySelectorAll('input[placeholder],textarea[placeholder],[title],[aria-label]').forEach(el => {
+  if (!customerUiOriginalAttrs.has(el)) {
+   customerUiOriginalAttrs.set(el, {
+    placeholder: el.getAttribute('placeholder'),
+    title: el.getAttribute('title'),
+    ariaLabel: el.getAttribute('aria-label')
+   });
+  }
+  const original = customerUiOriginalAttrs.get(el);
+  for (const [attr, key] of [['placeholder','placeholder'],['title','title'],['aria-label','ariaLabel']]) {
+   if (original[key] !== null && original[key] !== undefined) {
+    const value = original[key].trim();
+    el.setAttribute(attr, lang === 'en' ? (customerUiTranslations[value] || value) : original[key]);
+   }
+  }
+ });
+}
+const customerUiLanguageObserver = new MutationObserver(records => {
+ if (document.documentElement.lang !== 'en') return;
+ for (const record of records) {
+  record.addedNodes?.forEach(node => {
+   if (node.nodeType === Node.TEXT_NODE) {
+    if (!customerUiOriginalText.has(node)) customerUiOriginalText.set(node, node.nodeValue);
+    const original = customerUiOriginalText.get(node), key = original.trim();
+    if (customerUiTranslations[key]) {
+     const leading = original.match(/^\\s*/)?.[0] || '';
+     const trailing = original.match(/\\s*$/)?.[0] || '';
+     node.nodeValue = leading + customerUiTranslations[key] + trailing;
+    }
+   } else if (node.nodeType === Node.ELEMENT_NODE) {
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    let child;
+    while ((child = walker.nextNode())) {
+     if (!customerUiOriginalText.has(child)) customerUiOriginalText.set(child, child.nodeValue);
+     const original = customerUiOriginalText.get(child), key = original.trim();
+     if (customerUiTranslations[key]) {
+      const leading = original.match(/^\\s*/)?.[0] || '';
+      const trailing = original.match(/\\s*$/)?.[0] || '';
+      child.nodeValue = leading + customerUiTranslations[key] + trailing;
+     }
+    }
+   }
+  });
+ }
+});
+customerUiLanguageObserver.observe(document.body, {childList:true,subtree:true});
+document.getElementById('customerProfileLanguage')?.addEventListener('change', event => {
+ applyCustomerUiLanguage(event.target.value);
+});
 let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
@@ -850,6 +1023,7 @@ async function loadCustomerProfile() {
    document.getElementById('customerProfileName').value=profile.full_name||'';
    if(profile.full_name) document.getElementById('name').value=profile.full_name;
    document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
+   applyCustomerUiLanguage(profile.preferred_language||'hi');
    customerCurrentAvatarPath=profile.avatar_path||null;
    if(customerCurrentAvatarPath) await loadCustomerAvatar(customerCurrentAvatarPath);
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।');
