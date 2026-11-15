@@ -1,5 +1,5 @@
 begin;
-select plan(71);
+select plan(74);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -259,6 +259,16 @@ select ok(coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc
 select ok(coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc
   where oid='public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure),false),
   'manual refund SECURITY DEFINER RPC uses empty search_path');
+
+select ok(position('RAZORPAY_REFUNDS_MUST_USE_RAZORPAY_RECONCILIATION' in pg_get_functiondef(
+  'public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
+  'manual refund RPC rejects Razorpay and online payments');
+select ok(position('v_request.status is distinct from ''approved''' in pg_get_functiondef(
+  'public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
+  'manual refund RPC requires an approved customer refund request when one exists');
+select ok(position('round(v_booking.amount_paid,2)<>round(v_payment.amount,2)' in pg_get_functiondef(
+  'public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
+  'manual refund RPC matches the refund amount to recorded manual payment evidence');
 
 select * from finish();
 rollback;
