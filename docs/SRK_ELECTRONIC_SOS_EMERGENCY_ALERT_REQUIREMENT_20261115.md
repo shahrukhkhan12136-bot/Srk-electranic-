@@ -46,3 +46,14 @@
 - कारण चुने बिना या अंतिम “SOS भेजें” दबाए बिना कोई alert, SMS या case create नहीं होगा। स्क्रीन बंद/वापस जाने पर अधूरा चयन discard होगा।
 - तीन कारणों के अलावा कोई नया कारण या अतिरिक्त user-entered booking/details/location field नहीं जोड़ा जाएगा। Booking/order और actor विवरण सिस्टम authenticated session/active booking से server-side निकालेगा; उपलब्ध location केवल अनुमति/उपलब्धता के अनुसार ली जाएगी, और location न होने पर SOS भेजना block नहीं होगा।
 - यह UX नियम स्वीकृत है; source implementation और runtime verification अभी बाकी हैं।
+
+
+## 2026-11-15 — GPT-1 source implementation status
+- Customer App और Electrician App के SOS controls Active Work card के भीतर रखे गए हैं; UI condition केवल `in_progress` booking पर है।
+- दोनों ऐप में केवल तीन स्वीकृत reason codes और अलग final “SOS भेजें” action है; cancel/back करने पर चयन discard होता है।
+- RPC call केवल `p_reason` भेजती है; booking/actor identity client से नहीं भेजी जाती।
+- पुराने static/support-page SOS controls और पुराने duplicate handlers हटाए गए हैं।
+- Source-level Node test assertions को नए handler locations के अनुसार सुधारा गया है।
+- यह source-level implementation है; CI run #43725977680 cancelled हुआ और उसके test step में failure दर्ज है। बाद के commits पर नई CI सफलता अभी प्रमाणित नहीं है।
+- PR changed-file inventory में अभी SOS backend migration/RPC, Admin/Support queue या SMS/Push delivery implementation नहीं मिला। इसलिए end-to-end SOS alert delivery अधूरी और GPT-2 backend work पर निर्भर है।
+- कोई database migration apply नहीं की गई; production deploy/merge नहीं किया गया।
