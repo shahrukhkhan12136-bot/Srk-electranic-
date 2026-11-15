@@ -39,7 +39,7 @@ select ok(not has_function_privilege('anon','public.srk_create_sos_alert(text)',
   'only authenticated users can invoke SOS creation');
 select ok(position('auth.uid()' in pg_get_functiondef(
   'public.srk_create_sos_alert(text)'::regprocedure))>0
-  and position('customer_user_id=v_uid' in pg_get_functiondef(
+  and position('b.customer_user_id=v_uid' in pg_get_functiondef(
   'public.srk_create_sos_alert(text)'::regprocedure))>0
   and position('ep.user_id=v_uid' in pg_get_functiondef(
   'public.srk_create_sos_alert(text)'::regprocedure))>0,
