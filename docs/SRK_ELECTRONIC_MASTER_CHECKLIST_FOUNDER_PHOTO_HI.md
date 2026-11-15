@@ -196,3 +196,14 @@
 - [x] Commit `1468dfe` पर Node CI run `43705891497` सफल: **98/98 PASS, 0 FAIL** (job log TAP summary से सत्यापित)।
 - [ ] इसके बाद जोड़ा गया regression test `tests/electrician-legacy-quotation-retirement.test.js` और docs updates सहित नवीनतम HEAD `80a6c7d` के Node CI runs `43705953944` / `43705950245` अभी in-progress हैं; latest-head result बाकी है।
 - [ ] SQL runtime/pgTAP execution pending; no Production migration/deploy/merge.
+
+
+## 2026-11-15 — GPT-1 latest-head CI and Welcome source recheck
+
+- [x] Latest feature HEAD `da65832bdd07ee1238d9b4c0829045d06349f95a` पर Node CI run `43705984415` completed successfully; job `132787042217` conclusion `success`।
+- [x] Welcome Screen source recheck: `index.html` सीधे `/welcome.html` पर भेजता है; Welcome page में founder asset `/assets/srk-founder.jpg` और Customer, Electrician, Admin role links मौजूद हैं।
+- [ ] Founder photo का approved original से exact visual match अभी भी सत्यापित नहीं; desktop/mobile visual preview final consolidated QA में।
+- [ ] Customer OTP का real Auth/SMS, abuse controls और browser session lifecycle runtime test बाकी।
+- [ ] Customer Payments/Support/Profile contracts, Electrician final source checks, SQL/pgTAP runtime और सभी browser workflows बाकी।
+- [ ] पुराने quotation workflow का पूर्ण retirement अभी GPT-2 Admin/Payment/Accounting blockers के कारण अधूरा है।
+- [ ] Production migration, deployment और PR merge नहीं किया गया।
