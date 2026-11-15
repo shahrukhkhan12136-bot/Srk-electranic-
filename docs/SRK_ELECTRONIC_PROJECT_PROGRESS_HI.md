@@ -2636,3 +2636,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added `tests/customer-electrician-otp-login.test.js` for these flows and Customer dashboard session gating.
 - CI run `43704591567` on commit `fe90915`: **93 PASS / 1 FAIL**. All 3 newly added OTP/session regression tests PASS. Remaining single failure is GPT-2/Admin scope: missing `supabase/migrations/20261115130000_admin_readonly_booking_accounting_reconciliation.sql` referenced by `tests/admin-commission-report-labels.test.js`.
 - No Customer/Electrician source defect requiring modification was established by this focused audit; no production configuration, database, deploy, or PR merge was changed.
+
+
+## 2026-11-15 — GPT-2 accounting/UI regression correction and first green Node CI
+
+- Feature Branch Node CI की असफलता का वास्तविक कारण मिला: `tests/admin-commission-report-labels.test.js` हटाए गए पुराने migration path `20261115130000_admin_readonly_booking_accounting_reconciliation.sql` को पढ़ रहा था और पुराने `srk_route_transfers`/Route settlement fields की अपेक्षा कर रहा था। Route ledger Main DB audit में पहले ही retire किया जा चुका था; इसलिए Admin accounting UI से Route-only section/fields हटाए और payout को manual bank/UPI UTR-recorded settlement के रूप में स्पष्ट किया।
+- Regression test को current migration `20261115150000_admin_readonly_booking_accounting_reconciliation.sql` तथा current read-only ledger contract के अनुरूप किया; पूरे `tests/` folder में पुराने migration filename का कोई अन्य reference नहीं मिला।
+- GitHub Actions PR run `43704748225` — commit `059f875a2de8caffa422da9b7ae98a125acbfc7b`: **96/96 Node tests PASS, 0 FAIL**. यह repository Node suite है; pgTAP, live Supabase RPC/database parity, browser E2E, Vercel Preview और mobile QA का प्रमाण नहीं। उसी commit का push run उस समय अलग से in-progress था।
+- Manual refund completion migration में verified manual refund के बाद पहले से blocked unpaid electrician payout अब `refunded` होता है; transition न हो तो transaction fail-closed रहती है। इसका pgTAP contract plan/assertion count 10/10 source-level है; pgTAP runtime अभी नहीं चला।
+- Accounting migration/test source में Route references हटे हैं; reconciliation RPC read-only है। No Production migration, data/Auth/Storage/settings mutation, provider refund/transfer, live SMS/OTP, push send, deployment, PR merge या go-live action किया गया। PR #8 अभी review के लिए unmerged है।
