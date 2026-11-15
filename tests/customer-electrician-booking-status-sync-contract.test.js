@@ -122,3 +122,20 @@ test('customer booking timeline isolates a rejected per-booking RPC transport', 
   assert.match(load, /catch\\(error\\)/);
   assert.match(load, /return \\{ bookingId: row\\.id, result: \\{ error \\} \\};/);
 });
+
+
+test('electrician profile panel transport failures do not prevent booking offers from loading', () => {
+  const load = functionBody(electrician, 'refresh');
+  const loaders = [
+    'loadElectricianPhoneChangeHistory',
+    'loadMyAreaChangeRequests',
+    'loadVerificationDocuments',
+    'loadEarnings',
+    'loadPartnerWallet',
+    'refreshElectricianPushState',
+    'loadElectricianSupportTickets'
+  ];
+  for (const name of loaders) assert.ok(load.includes(name), 'refresh attempts ' + name);
+  assert.match(load, /for\(const loader of \[loadElectricianPhoneChangeHistory,loadMyAreaChangeRequests,loadVerificationDocuments,loadEarnings,loadPartnerWallet,refreshElectricianPushState,loadElectricianSupportTickets\]\)\{try\{await loader\(\);\}catch\(e\)\{\/\* Optional profile panels must not block the offer list\. \*\/\}\}/);
+  assert.ok(load.indexOf('catch(e){/* Optional profile panels must not block the offer list. */}') < load.indexOf("sb.rpc('srk_get_my_offer_details')"), 'offer loading continues after an optional panel failure');
+});
