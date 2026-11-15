@@ -602,3 +602,9 @@
 - Complaint create RPC का response network में reject हो सकता है जबकि server पर complaint commit हो चुकी हो। पहले UI सीधे failure दिखाती और blind retry से duplicate complaint बन सकती थी।
 - अब catch path owner-scoped `srk_customer_list_booking_complaints` पढ़कर booking, category और exact description से matching complaint खोजता है। Match मिलने पर reference दिखता है, complaint list refresh होती है और कोई दूसरा create RPC नहीं भेजा जाता। List read भी विफल हो तो परिणाम अनिश्चित बताकर पहले सूची जाँचने को कहा जाता है। Daily limit error का अलग संदेश बरकरार है।
 - Source-contract regression test जोड़ा; वास्तविक Supabase/network fault-injection और browser परीक्षण लंबित हैं।
+
+
+### 2026-11-16 — Electrician Support ticket/message uncertain-response reconciliation
+- Support ticket create या reply RPC का response खो जाने पर UI सीधे failure दिखा सकती थी, जबकि server write commit हो चुका हो।
+- अब create से पहले owner-scoped ticket ID snapshot और reply से पहले thread message ID snapshot लिया जाता है। RPC response reject होने पर नई IDs, ticket metadata और exact electrician message body मिलाकर committed write खोजा जाता है। पुष्टि मिलने पर सफलता/refresh; नहीं मिलने या read विफल होने पर duplicate से बचने के लिए पहले Refresh करने की सलाह। Preflight list उपलब्ध न हो तो write भेजा ही नहीं जाता।
+- दो source-contract regression tests जोड़े; live Supabase transport fault-injection और browser tests लंबित हैं।
