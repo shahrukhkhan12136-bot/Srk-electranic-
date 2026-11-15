@@ -99,3 +99,15 @@ test('Customer cancellation-fee and refund history guard auth session failures w
     assert.match(fn, /finally\{box\.setAttribute\('aria-busy','false'\);\}/);
   }
 });
+
+test('Customer payment-method change handles rejected RPC and unconfirmed responses safely', () => {
+  const start = customer.indexOf('async function customerChangePaymentMethod(');
+  const end = customer.indexOf('\nfunction customerPayBooking', start);
+  const fn = customer.slice(start, end < 0 ? customer.length : end);
+  assert.match(fn, /if\(!customerSb\|\|!id\)return/);
+  assert.match(fn, /try\{/);
+  assert.match(fn, /customerSb\.rpc\('srk_customer_change_payment_method'/);
+  assert.match(fn, /if\(!data\?\.success\)throw new Error/);
+  assert.match(fn, /catch\(error\)\{\s*alert\('भुगतान तरीका नहीं बदला। कृपया इंटरनेट और लॉगिन जाँचकर दोबारा कोशिश करें।'\);/);
+  assert.match(fn, /await loadCustomerBookings\(\)/);
+});
