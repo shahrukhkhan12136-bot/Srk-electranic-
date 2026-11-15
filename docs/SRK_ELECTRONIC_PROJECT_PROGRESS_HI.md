@@ -1,6 +1,6 @@
 ## 2026-11-15 — GPT-1 SOS emergency UI integration (source-only)
 - उपयोगकर्ता के स्पष्ट आदेश के अनुसार Customer App और Electrician App में SOS control जोड़ा गया; तीन स्वीकृत कारण उपलब्ध हैं: ग्राहक को इलेक्ट्रिशियन से खतरा, इलेक्ट्रिशियन को ग्राहक से खतरा, मारपीट/अन्य आपात स्थिति।
-- दोनों UI shared srk_create_sos_alert RPC contract उपयोग करते हैं: p_booking_id, p_reason, p_details, p_location_lat, p_location_lng। Booking reference वैकल्पिक है। लोकेशन केवल SOS press के बाद browser permission से ली जाती है; अनुमति न मिले तो null coordinates के साथ अनुरोध जारी रहता है।
+- दोनों UI shared `srk_create_sos_alert` RPC को केवल `p_reason` भेजते हैं। Client booking ID, actor/user ID, details या location fields नहीं भेजता। Backend को authenticated session और active booking से actor/booking derive करना होगा; उपलब्ध/consented location का सुरक्षित server-side contract अलग से सत्यापित होना बाकी है।
 - UI केवल confirmed success और case_id पर केस दर्ज दिखाता है; backend error/अनिश्चित response पर success नहीं दिखाता। पुलिस को ऐप से स्वतः कॉल/SMS नहीं जाएगा।
 - GPT-2 backend RPC, authorization, Admin/Support queue, SMS/Push delivery, acknowledgement और append-only audit अभी बाकी हैं। केवल source changes; Node test/CI, DB, browser/mobile, production, merge और deployment सत्यापित/किए नहीं गए।
 
@@ -3658,3 +3658,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Latest PR-head Node workflow run `43728664954` completed successfully; the Node test job and all listed steps passed. Test count was not extracted in this check, so no numeric count is asserted here. This is not PostgreSQL/pgTAP or browser/mobile QA.
 - Latest commit combined status: Netlify Deploy Preview is `success` at https://deploy-preview-8--srk-electronic-india.netlify.app; Vercel is `failure` with the free daily deployment limit notice. The Netlify preview success does not mean Production deployment. PR #8 remains Draft/Open/Unmerged.
 - GPT-2 checklist remains **27/39 = 69%**, **12/39 = 31% शेष**; this audit/CI work does not close an implementation checklist item. No Production DB access, merge, production deployment, provider payment/refund/transfer, SMS/OTP or real push action occurred.
+
+
+## 2026-11-15 — GPT-1 SOS contract consistency correction
+- Progress document का पुराना पैरामीटर विवरण वर्तमान Customer/Electrician source और `tests/sos-two-step-ui-contract.test.js` से मेल नहीं खाता था। इसे ठीक किया गया: दोनों clients केवल `p_reason` भेजते हैं।
+- Backend RPC definition, authenticated actor/active-booking derivation, Admin/Support queue और SMS/Push delivery अभी Feature Branch में सत्यापित नहीं हैं; इसलिए SOS end-to-end को अधूरा ही माना जाएगा।
+- यह केवल documentation correction है; कोई runtime, database, deployment या production परिवर्तन नहीं किया गया।
