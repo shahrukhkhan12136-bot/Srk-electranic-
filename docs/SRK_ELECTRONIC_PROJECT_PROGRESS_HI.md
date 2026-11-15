@@ -2717,3 +2717,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Node CI run `43705727199` commit `b9fd6a1` पर success हुआ, लेकिन बाद के contract/UI/test commits पर runs `43705891497` और `43705887412` latest check के समय pending/in-progress थे; latest-head PASS अभी प्रमाणित नहीं।
 - GPT-2 cross-owner blockers: Admin quote editing UI, legacy manual-payment approved-quote dependency, reconciliation approved-quote exception. इन्हें नए immutable server-timed labour bill और separate materials receipt से जोड़ना होगा।
 - Historical quote/status audit columns तथा old booking status constraints अभी preserve हैं; कोई paid/settled record delete नहीं किया। SQL runtime/pgTAP pending. No Production migration, deployment, PR merge or live payment action.
+
+
+## 2026-11-15 — Admin accounting cleanup CI green और DB contract hardening (GPT-2)
+
+- Admin UI का stale `Route settlement` label हटाने और regression test को पूरे Admin page पर case-insensitive retired Route reference जाँचने के बाद नवीनतम उपलब्ध Node CI run `43705953944` सफल हुआ।
+- Tested HEAD `80a6c7daf477bd732539a8fa7aa60928d47238a2` के job log में **100/100 PASS, 0 FAIL, 0 skipped** (TAP `1..100`) सत्यापित। इसमें Admin commission/accounting regression test और manual refund/payment suites शामिल हैं।
+- Admin page source में retired standalone Route/Route commission reference अब नहीं मिला।
+- अतिरिक्त DB contract hardening: `accounting_reconciliation_readonly_contract.test.sql` में SECURITY DEFINER accounting RPC के लिए empty `search_path` pin होने का pgTAP assertion जोड़ा; plan 45 से 46 किया। Commit `9ef6f5d`। यह SQL test अभी execute नहीं हुआ है; केवल source assertion count 46 verify हुआ।
+- इस नए pgTAP assertion के बाद current HEAD `9ef6f5d755bd6ead9b67887daa3300b9863fa55e` पर नया CI run अभी उपलब्ध नहीं दिखा।
+- सीमा: 100/100 केवल Node/mock/source regression suite है। pgTAP runtime, live Supabase ACL/RPC, managed schema parity, browser E2E और Preview अभी शेष हैं।
+- PR #8 अभी Open + Draft + Unmerged है। कोई Production migration, merge, deployment, real payment/refund/payout, SMS/OTP या push send नहीं किया।
