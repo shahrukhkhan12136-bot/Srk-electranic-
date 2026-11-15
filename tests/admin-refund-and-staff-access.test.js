@@ -207,8 +207,8 @@ test('Staff permission helper is VOLATILE because it takes row locks', () => {
   const functionEnd = staffPermissionVolatilityFix.indexOf('$function$;', functionStart);
   assert.ok(functionStart >= 0 && functionEnd > functionStart);
   const helper = staffPermissionVolatilityFix.slice(functionStart, functionEnd);
-  assert.match(helper, /language plpgsql\\s+volatile\\s+security definer/i);
-  assert.match(helper, /from public\\.srk_admin_staff s[\\s\\S]*?for share/i);
-  assert.match(helper, /from public\\.srk_admin_staff_sessions tracked[\\s\\S]*?for share/i);
-  assert.match(staffPermissionVolatilityFix, /revoke all on function public\\.srk_has_admin_permission\\(text\\) from public, anon/i);
+  assert.ok(helper.includes('language plpgsql\\nvolatile\\nsecurity definer'));
+  assert.ok(helper.includes('from public.srk_admin_staff s') && helper.includes('for share;'));
+  assert.ok(helper.includes('from public.srk_admin_staff_sessions tracked') && helper.includes('for share;'));
+  assert.ok(staffPermissionVolatilityFix.includes('revoke all on function public.srk_has_admin_permission(text) from public, anon;'));
 });
