@@ -61,3 +61,9 @@ test('delivery ledger terminalizes expired leases at the retry cap', () => {
   assert.match(migration, /Delivery lease expired after maximum attempts/);
   assert.match(migration, /auth\.role\(\) IS DISTINCT FROM 'service_role'/);
 });
+
+test('all ledger RPCs fail closed for null or non-service roles and recover null leases', () => {
+  const checks = migration.match(/auth\.role\(\) IS DISTINCT FROM 'service_role'/g) || [];
+  assert.equal(checks.length, 3);
+  assert.match(migration, /locked_until IS NULL OR d\.locked_until<clock_timestamp\(\)/);
+});
