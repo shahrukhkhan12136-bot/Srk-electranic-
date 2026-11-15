@@ -3307,3 +3307,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - pgTAP `admin_manual_refund_request_completion.test.sql` को 10 से **14 assertions** तक बढ़ाया; plan count **14/14**। Node regression test में new-category bill, assignment, settled-fee और exact-amount guards जोड़े।
 - Feature Branch Node CI run `43718479171` SUCCESS: **155/155 Node tests PASS**। PostgreSQL/pgTAP runtime, concurrent DB transaction, वास्तविक manual refund या wallet/ledger reversal test अभी नहीं चला।
 - यह अतिरिक्त refund compatibility/security fix है; checklist checkbox अभी close नहीं किया। GPT-2 **27/39 = 69% पूरा; 12/39 = 31% बाकी**। PR #8 Draft/Open/Unmerged; कोई Production DB change, provider refund, merge या deployment नहीं।
+
+### GPT-2 Refund Recovery identity tests and CI follow-up — 15 Nov 2026
+- `razorpay-refund-recovery.js` के उस path के लिए दो Node regression tests जोड़े जहाँ internal Refund ID अभी persist नहीं हुआ: exact `notes.srk_refund_record_id` से provider refund match होना चाहिए; समान Payment ID + amount वाला unrelated refund बिना exact note/receipt match के अस्वीकार होना चाहिए।
+- Feature Branch run `43718823062` / PR run `43718826650`: कुल **157 tests में 156 PASS, 1 FAIL**। दोनों नए Refund Recovery tests PASS हुए।
+- शेष failure `tests/booking-lifecycle-serialization.test.js` के test 31 में है: test `srk_customer_respond_work_start(uuid,text)` के लिए `SET search_path = ''` अपेक्षित करता है, जबकि संबंधित migration में explicit fixed path `pg_catalog, public, auth, srk_private, pg_temp` है। यह GPT-1 Work Timer क्षेत्र है; GPT-2 ने उसकी migration/test फाइल नहीं बदली। इसे GPT-1 के साथ review करना होगा; CI को पूर्ण PASS नहीं कहा जा सकता।
+- Refund ID absent होने पर provider list की पहली 100 entries में exact match न मिले तो endpoint `safe_to_retry=false` देता है और “refund नहीं हुआ” नहीं मानता। Pagination/late visibility की जाँच अलग operational limitation बनी हुई है; कोई नया refund अपने-आप नहीं बनाया जाता।
+- GPT-2 checklist अभी **27/39 = 69% पूरा; 12/39 = 31% बाकी**। यह test-only coverage है, checklist acceptance नहीं। कोई Production DB, provider refund, payout, merge या deployment नहीं किया।
