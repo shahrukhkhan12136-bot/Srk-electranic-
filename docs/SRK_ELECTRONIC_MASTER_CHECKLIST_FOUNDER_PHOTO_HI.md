@@ -17,7 +17,7 @@
 - [x] Cancellation-fee debt और booking fee-item history RPC; authenticated-only execution ACL source में जोड़ी।
 - [x] Customer cancellation request/fee carry-forward और refund reversal workflow source मौजूद।
 - [x] Customer और electrician phone numbers acceptance से पहले छिपे; acceptance/assignment के बाद full number visible; Support Staff को unrestricted phone projection नहीं। `tests/customer-electrician-phone-visibility.test.js` में दोनों दिशाओं के authenticated/assignment-scoped source regression tests PASS (latest Node CI run)।
-- [x] Legacy customer receipt अब labour और materials अलग-अलग दिखाती है और total को approved quote से reconcile करती है।
+- [ ] पुराने quotation-based customer receipt path को हटाने के बाद नए labour bill और अलग materials receipt से reconcile करना बाकी है।
 - [ ] Customer payment/refund/cancellation के सभी owner/non-owner/anon और duplicate/concurrency व्यवहार isolated database में runtime verify करें।
 
 ## 2. इलेक्ट्रिशियन (Electrician) — Feature Branch implementation
@@ -25,7 +25,7 @@
 - [x] Electrician offer inbox/response और sequential nearest dispatch source मौजूद। Electrician SMS OTP login, 60-sec resend cooldown और auth-session portal gating source regression tests PASS (`tests/customer-electrician-otp-login.test.js`, CI `43704591567`).
 - [x] Offer acceptance पर current location/district, active status और exact Admin-approved rate tier पुनः जाँचे जाते हैं।
 - [x] Availability toggle और relocation request/Admin approval source मौजूद।
-- [x] Labour quote और materials quote अलग-अलग; customer approval/rejection workflow source मौजूद।
+- [x] पुराने quotation approval workflow को Customer और Electrician UI से हटाया गया; कोई नया quote approval नहीं दिखाया जाएगा। Backend/Admin/payment dependencies की सुरक्षित retirement GPT-2 समन्वय में बाकी है।
 - [x] New-category booking का server-authoritative work timer, customer-approved start/completion और immutable labour bill source मौजूद।
 - [x] Live location consent, booking-scoped access और GPS/RPC failure cleanup source मौजूद।
 - [x] Electrician KYC private document bucket, upload/list/preview, Admin review/audit और activation gate source मौजूद।
@@ -152,3 +152,12 @@
 **अभी का मुख्य verification blocker:** non-Push database/RPC/browser end-to-end runtime; Push के local PostgreSQL tests सफल हैं, लेकिन managed Supabase parity और Edge↔Netlify/provider integration बाकी है।  
 **Production:** कोई migration apply, merge, deployment या live payment action नहीं किया गया है।
 
+
+
+## 2026-11-15 — पुराने quotation workflow को हटाना
+- [x] Customer App से legacy quotation fields, approval/rejection buttons, RPC response handler और quote status labels हटाए।
+- [x] Electrician App से inspection-to-quotation controls, quote submission handler और legacy quote work-status handler हटाए।
+- [x] Customer quotation UI regression test हटाया क्योंकि वह हटाए जा चुके feature को enforce कर रहा था।
+- [ ] GPT-2 के Admin/Accounting/Payment/Refund हिस्सों से legacy quote dependencies हटाकर नए server-timed labour bill contract पर migrate करना बाकी है।
+- [ ] Backend RPCs/columns/status constraints की retirement के लिए additive migration और historical paid records preservation की समीक्षा बाकी है।
+- [ ] कोई Production database migration, deployment या PR merge नहीं किया गया।
