@@ -298,3 +298,12 @@
 - [x] Latest branch-head Node test workflows for `ef2c3fd0c6f33b52e2d9dfa5833819c6802894d1`: **SUCCESS** (full repository Node tests).
 - [ ] This retires the Customer/Electrician app wording and UI only; Admin/Accounting/Payment legacy dependencies and safe database dependency retirement remain GPT-2 work.
 - [ ] Browser runtime verification, Founder portrait visual match and final consolidated mobile QA remain pending.
+
+
+### 2026-11-15 — Customer static English translation coverage audit
+- [x] Audited all static Hindi text nodes in Customer `booking.html`; every visible Hindi text node now has an English dictionary entry (static source scan: zero unmatched nodes).
+- [x] Added missing English translations for dashboard section headings, saved-address/GPS guidance, Google Maps action, tier duration labels, estimate/billing terms, separate materials approval, booking terms and Razorpay payment actions.
+- [x] Added English translations for the remaining `title` and `aria-label` attributes (Electrician current location; booking status history).
+- [x] Added regression assertions for representative new translation values and accessibility labels.
+- [x] Latest feature branch Node test workflows on `d55c11159b865386234601df2041c998fa735d6b`: **SUCCESS** (two full repository Node test runs).
+- [ ] Browser runtime language switching and visual behavior remain pending; final consolidated mobile QA remains deferred.
