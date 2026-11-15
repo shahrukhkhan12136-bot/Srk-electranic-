@@ -444,6 +444,14 @@
 
 
 
+
+
+### 2026-11-16 — Electrician offer refresh latency isolation
+- निरीक्षण में पाया कि optional profile panels पर rejected request संभाली जा रही थी, लेकिन हर panel को `await` करने से धीमा/लंबे समय तक pending panel मुख्य job-offer RPC को देर करा सकता था।
+- `electrician.html` में optional panel loaders अब अलग-अलग promise chain में schedule होते हैं और अपने errors catch करते हैं; मुख्य offer loading इनके पूरा होने की प्रतीक्षा नहीं करती।
+- Regression assertion अपडेट किया ताकि optional loaders schedule होने के बाद offer RPC तक बिना await dependency पहुँचना जाँचा जाए।
+- यह source-level सुधार है; वास्तविक slow-network/browser और live Supabase परीक्षण बाकी हैं।
+
 ### 2026-11-16 — Customer/Electrician lifecycle retry cleanup coverage
 - Customer work-start approval और completion response में per-booking busy guard का `finally` में release और retry guidance inspected.
 - Electrician work-start/completion requests में busy guard release और refresh/retry messaging inspected.
