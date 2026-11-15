@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(11);
+SELECT plan(13);
 SELECT has_column('public','electrician_profiles','user_id','legacy electrician profile identity column exists');
 SELECT has_column('public','electrician_profiles','auth_user_id','Auth identity column is explicitly present');
 SELECT has_index('public','electrician_profiles','electrician_profiles_auth_user_id_uidx','one Auth user cannot be linked to multiple electrician profiles');
@@ -39,6 +39,21 @@ SELECT ok(
      AND t.tgname='srk_guard_electrician_profile_identity_link'
      AND NOT t.tgisinternal),
   'identity guard also runs when the profile phone or approval status changes'
+);
+
+
+SELECT ok(
+  position('UPDATE OF user_id,auth_user_id,phone,verification_status' IN pg_get_triggerdef(t.oid)) > 0
+  FROM pg_trigger t
+  WHERE t.tgrelid='public.electrician_profiles'::regclass
+    AND t.tgname='srk_guard_electrician_profile_identity_link'
+    AND NOT t.tgisinternal,
+  'identity guard fires when phone or approval status changes'
+);
+SELECT ok(
+  position('v_auth_user_count=1 AND v_profile_count=1' IN pg_get_functiondef('public.srk_admin_review_application(uuid,text)'::regprocedure)) > 0
+  AND position('order by u.created_at desc limit 1' IN pg_get_functiondef('public.srk_admin_review_application(uuid,text)'::regprocedure)) = 0,
+  'Admin approval links only when both verified Auth user and approved profile are unique'
 );
 
 SELECT * FROM finish();
