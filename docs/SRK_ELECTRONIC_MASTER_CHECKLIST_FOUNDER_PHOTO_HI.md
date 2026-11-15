@@ -66,3 +66,10 @@
 - [ ] Keep final consolidated mobile QA and production rollout deferred until all implementation work is complete and explicit approval is obtained.
 
 **Important:** Runtime validation has not been performed. The migration is committed only as feature-branch source and has not been applied to any database.
+
+
+### Sequential offer assignment integrity
+- [x] New-category assignment requires a matching accepted `job_offers` record for the same booking and electrician.
+- [x] Offer response records acceptance before the booking assignment update in the same transaction.
+- [x] Added two pgTAP assertions (plan 21; not executed).
+- [ ] Run dispatch/acceptance, expiry/decline advancement and assignment-trigger tests in the approved test environment.
