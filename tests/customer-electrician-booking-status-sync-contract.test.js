@@ -193,3 +193,21 @@ test('customer booking list survives rejected supplementary contact, refund, and
   assert.match(load, /try \{\s*const \{data:bill,error\}=await customerSb\.rpc\('srk_customer_get_labour_bill'/);
   assert.match(load, /catch \(error\) \{\s*\/\/ A bill transport failure must not hide the customer's booking history\./);
 });
+
+
+test('Electrician earnings and wallet panels isolate rejected network requests', () => {
+  const earningsStart = electrician.indexOf('async function loadEarnings(){');
+  const walletStart = electrician.indexOf('async function loadPartnerWallet(){');
+  const respondStart = electrician.indexOf('const electricianOfferResponseBusy', walletStart);
+  assert.ok(earningsStart >= 0 && walletStart > earningsStart && respondStart > walletStart);
+  const earnings = electrician.slice(earningsStart, walletStart);
+  const wallet = electrician.slice(walletStart, respondStart);
+  assert.match(earnings, /Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_get_my_earnings'\)\)\.catch\(error=>\(\{data:null,error\}\)\)/);
+  assert.match(earnings, /\.catch\(error=>\(\{data:null,error\}\)\)/);
+  assert.match(earnings, /payout स्थिति लोड नहीं हुई/);
+  assert.match(wallet, /Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_get_my_wallet_summary'\)\)\.catch\(error=>\(\{data:null,error\}\)\)/);
+  assert.match(wallet, /Promise\.resolve\(\)\.then\(\(\)=>sb\.from\('srk_wallet_bank_links'\)/);
+  assert.match(wallet, /Promise\.resolve\(\)\.then\(\(\)=>sb\.from\('srk_wallet_ledger'\)/);
+  assert.match(wallet, /बैंक लिंक की स्थिति लोड नहीं हो सकी/);
+  assert.match(wallet, /वॉलेट लेन-देन सूची अभी उपलब्ध नहीं है/);
+});
