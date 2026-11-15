@@ -57,3 +57,6 @@
 - यह source-level implementation है; CI run #43725977680 cancelled हुआ और उसके test step में failure दर्ज है। बाद के commits पर नई CI सफलता अभी प्रमाणित नहीं है।
 - PR changed-file inventory में अभी SOS backend migration/RPC, Admin/Support queue या SMS/Push delivery implementation नहीं मिला। इसलिए end-to-end SOS alert delivery अधूरी और GPT-2 backend work पर निर्भर है।
 - कोई database migration apply नहीं की गई; production deploy/merge नहीं किया गया।
+
+- Follow-up correction: पिछली CI log में एक stale `customerSosBooking` selector reference customer support booking loader में मिला था। उसे हटाया गया; support booking selector अलग ही बना रहता है और SOS flow active booking card से चलता है।
+- इस correction के commit के लिए pull-request CI run अभी उपलब्ध नहीं है; इसलिए test pass का दावा नहीं है।
