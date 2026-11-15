@@ -2564,3 +2564,15 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Source verification: Admin inline JS syntax PASS; Node regression test file JS syntax PASS; migration source and UI path inspected. **Node test suite और pgTAP runtime अभी execute नहीं हुए**; कोई DB apply नहीं हुआ. Existing RPCs के runtime behavior/role permissions और production schema parity अभी verify बाकी हैं.
 - Legacy `srk_admin_record_manual_payment` अभी missing है; उसका सही amount/commission/material/cancellation accounting contract पूरा verify किए बिना implementation नहीं जोड़ी.
 - No production migration apply, booking/payment mutation, provider call, deploy, merge or mobile QA.
+
+
+## 2026-11-15 — Legacy manual payment gap closed in feature-branch source
+
+- Master Checklist के पुराने legacy Admin manual-payment blocker को दोबारा source से verify किया: Admin UI `srk_admin_record_manual_payment(uuid,text,text,text)` call कर रही थी, लेकिन migration chain में definition नहीं थी। अब नई migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` में उसी signature का Main-Admin-only SECURITY DEFINER RPC जोड़ा।
+- RPC केवल legacy booking पर चलता है: booking Completed, electrician assigned, customer-approved quote, labour/material breakdown present, exact quote total, valid commission rate; केवल unpaid/pending state; no payment verification timestamp; no Razorpay order/payment IDs. Booking row lock, bounded Cash/UPI/Bank Transfer method, 4–120 character receipt/UTR, 250-character note, unique manual-payment ledger entry और server timestamp शामिल हैं।
+- Accounting: `amount_paid = service_charge + materials_amount`; platform commission केवल labour/service_charge पर; electrician payout row में labour, materials, commission और net payable अलग-अलग सुरक्षित। Existing conflicting/non-pending payout mismatch पर पूरा transaction fail/rollback होता है। New-category booking अपने dedicated cash-settlement RPC पर ही रहती है।
+- Customer payment receipt का legacy contract ठीक किया: अब paid amount और approved quote total को labour + materials से reconcile करता है और receipt में `labour_amount` तथा `materials_amount` अलग लौटाता है। New-category immutable labour/cancellation-fee receipt path यथावत रखा।
+- Admin booking table में labour/materials/quote-status का अलग data column जोड़ा; approved quote का total इन दोनों मदों के योग से अलग हो तो Save रोकता है और approved quote की रकम सीधे बदलने नहीं देता।
+- Added `supabase/tests/database/legacy_manual_payment_and_itemized_receipt.test.sql`: pgTAP plan 18, source assertions 18/18. यह assertion-count/source review है; PostgreSQL pgTAP runtime अभी execute नहीं हुआ।
+- Admin inline JavaScript parse check PASS. Migration SQL अभी किसी database पर apply नहीं हुई; Node/pgTAP runtime, role/JWT, payout trigger and receipt end-to-end checks pending. No payment, booking mutation, provider call, production write, deployment, merge or mobile QA.
+- Commits: migration `75f831b`, fail-closed state correction `5019379`, pgTAP `6010327` + assertion correction `ea92edd`, Admin quote guard `5da117d`, Admin itemized breakdown `6d00474`.
