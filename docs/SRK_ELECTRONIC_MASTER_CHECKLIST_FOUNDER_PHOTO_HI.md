@@ -399,3 +399,14 @@
 - [x] Admin access regression test में source assertion जोड़ा.
 - [ ] Completion RPC/trigger का full backend authorization + state-transition audit और isolated runtime tests बाकी.
 - [ ] Node suite runtime, deployment, merge और consolidated final mobile QA बाकी.
+
+
+### Admin backend — legacy status एवं manual payment release blockers — 15 नवम्बर 2026
+- [x] `service_bookings` status column grant और legacy work-status RPC का source audit.
+- [x] New-category status trigger guard और legacy booking scope का अंतर दर्ज.
+- [x] Immutable labour bill trigger की completion prerequisites का निरीक्षण.
+- [x] Admin UI में manual-payment RPC call sites की पहचान.
+- [ ] `srk_admin_record_manual_payment` तथा `srk_admin_record_new_booking_cash_payment` की authoritative SQL definitions खोजें/सही migration chain में शामिल करें; authorization, amount, idempotency, reference और audit सत्यापित करें.
+- [ ] Legacy status transition के सभी वैध रास्ते (electrician, customer quote response, Admin confirmation/cancellation, timer/completion) map करें; transaction-scoped DB authorization guard एवं regression tests लागू करें.
+- [ ] Old commission trigger + legacy completion transaction का isolated database runtime verification.
+- [ ] Browser/DB runtime, deployment, merge और consolidated final mobile QA बाकी. No live mutations performed.
