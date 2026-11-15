@@ -3752,3 +3752,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Targeted repository code search ने फिर पुष्टि की कि `amount_paid` Razorpay webhook से लिखता है और booking/commission/refund/reporting flows पढ़ते हैं; `auth_user_id` Admin approval और wallet ownership paths में उपयोग होता है। Search में दोनों के defining column DDL नहीं मिले। Search index सीमित हो सकता है; इसे exhaustive proof नहीं माना गया।
 - दोनों कॉलम के exact baseline contract और local PostgreSQL runtime अभी blocker हैं। कोई अनुमानित DDL/fixture नहीं जोड़ी गई।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित; Node CI सफलता या provenance audit से कोई checklist item बंद नहीं हुआ।
+
+
+### GPT-2 latest migration inventory correction — 15 Nov 2026
+- PR #8 tree `53a9c0f1fe4d33a5b29430654a7c39fa39f32d8f` से सभी SQL migration paths गिने: वर्तमान कुल **72** हैं। पुराने replay manifest में 71 थे; नवीनतम `20261115260000_sos_admin_support_alerts.sql` छूटा था। Manifest में इसे item 72 के रूप में जोड़ा और commit reference/count सुधारा।
+- Duplicate 8-digit migration prefix `20261109` अभी भी दो files पर है; कोई rename या migration-history rewrite नहीं। SOS migration का static dependency cluster RBAC permissions/role-permissions, Admin permission/session function, `service_bookings` और `auth.users` है।
+- यह inventory/static dependency audit है, PostgreSQL migration replay या pgTAP runtime नहीं। Missing baseline column contracts `amount_paid` और `auth_user_id` अब भी unresolved हैं।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित; कोई checklist item बंद नहीं हुआ।
