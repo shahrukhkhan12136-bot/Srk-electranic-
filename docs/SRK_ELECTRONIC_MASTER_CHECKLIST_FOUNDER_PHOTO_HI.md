@@ -246,3 +246,12 @@
 - [x] Added regression test that parses inline JavaScript in both `booking.html` and `electrician.html`, plus electrician fixed-duration lifecycle / no-quotation source checks.
 - [x] Latest-head CI run `43707448254` on `172d74b204bfd283522a4e540090cb79deca73aa` — **SUCCESS** (full Node test suite).
 - [ ] Browser runtime verification of language switching and print preview remains pending; manual mobile QA remains deferred to the consolidated final pass.
+
+
+### 2026-11-15 — Electrician Live Location reliability and Customer lifecycle localization
+- [x] Electrician Live Location stop flow now retains a retryable Stop control when the server does not confirm the stop RPC. The browser GPS watch is cleared immediately; the UI keeps the booking's retry handle until server confirmation succeeds.
+- [x] Prevent duplicate stop RPCs for the same booking while a stop request is in progress.
+- [x] Added regression coverage for failed stop confirmation and retry behavior.
+- [x] Expanded Customer App English translations for booking lifecycle/timeline states, refund and cancellation history, GPS/location feedback and common booking error/status messages.
+- [x] CI run `43707742875` on code commit `bd1b6f1388d3f1a70cd2e069676eb6a23663cade` — **SUCCESS** (full Node test suite and inline Customer/Electrician JavaScript syntax parsing).
+- [ ] Real browser GPS permission / Live Location stop retry behavior, language switching and receipt Print/PDF preview still require browser runtime verification. Final mobile QA remains deferred.
