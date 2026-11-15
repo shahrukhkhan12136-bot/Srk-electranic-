@@ -29,7 +29,7 @@ exports.handler = async function () {
       try {
         const response = await fetch(base + "/functions/v1/push-job-offer", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-srk-push-secret": pushSecret },
+          headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json", "x-srk-push-secret": pushSecret },
           body: JSON.stringify({ ...row.payload, outbox_id: row.outbox_id }),
           signal: AbortSignal.timeout(15000)
         });
