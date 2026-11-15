@@ -364,3 +364,10 @@ Recursive Git tree से `tests/*.test.js` की वास्तविक स�
 - वर्तमान PR head `9d49fbcd47d624ed205765dd1e9662c4dad4d4de` के Node CI run `43755687986` में **264 पास / 5 फेल** हुए। पाँच फेल टेस्ट Customer/Electrician UI source-contract tests हैं; यह केवल Node evidence है।
 - `auth_user_id` अब missing-DDL blocker नहीं: migration `20261109000500_harden_electrician_profile_identity_linking.sql` इसे `uuid REFERENCES auth.users(id) ON DELETE SET NULL` के रूप में जोड़ती है। शेष confirmed missing base-column DDL source gap `service_bookings.amount_paid` है।
 - ये source-tree counts और Node CI result PostgreSQL/pgTAP runtime, पूर्ण migration replay, Production parity, browser/mobile QA या deployment प्रमाणित नहीं करते।
+
+
+### 3E. नवीनतम Node CI विफलता का विभागवार वर्गीकरण — 16 Nov 2026
+- PR head `a0d0f43b66a22dc4e47768bff13d36a064b55214` पर Node workflow run `43756364424` असफल हुआ: **270 में 266 पास, 4 फेल**।
+- चारों असफल source-contract tests Customer/Electrician UI क्षेत्र के हैं: `customer booking timeline isolates a rejected per-booking RPC transport`, `customer and electrician lifecycle actions expose retry states and always release their busy guards`, `Electrician earnings and wallet panels isolate rejected network requests`, और `customer direct-call lookup is authenticated and scoped to the booking owner`।
+- ये चारों GPT-1 स्वामित्व वाले Customer/Electrician UI टेस्ट हैं। GPT-2 ने साझा `booking.html` या `electrician.html` को बिना अनुमति नहीं बदला; GPT-1 के सुधार की प्रतीक्षा है।
+- इस रन में GPT-2 के Admin/Staff सुरक्षा वाले संबंधित Node checks पास हुए; फिर भी यह PostgreSQL/pgTAP, browser runtime, full migration replay या Production parity का प्रमाण नहीं है।
