@@ -251,3 +251,38 @@ Push subscription base के लिए उपलब्ध exact consumer contra
 - Current branch की बाद की complaint/push migrations ने इन base objects को `CREATE TABLE` से दोबारा नहीं बनाया; वे इन्हें existing dependencies की तरह consume करती हैं।
 - Historical Production schema inventory में इन tables के RLS enabled होने और complaint/event tables पर direct policies न होने का catalog observation भी दर्ज है; यह inventory snapshot है, वर्तमान Production access या schema re-query नहीं।
 - कोई database/Production project/secret बदला या access नहीं किया; कोई migration apply नहीं हुई। PostgreSQL/pgTAP runtime अभी भी बाकी है।
+
+
+## 10. पाँच core base tables के historical starter DDL स्रोत (2026-11-15)
+
+Repository के पुराने commit `08e5ff8abc1cf2a5e2ae656a951f8f4d8863247b` पर मौजूद setup files से पाँच core tables के प्रारंभिक DDL स्रोत मिले। यह historical starter schema है, current Production या वर्तमान Feature Branch का पूर्ण parity export नहीं।
+
+### 10.1 Source mapping
+
+| Table | Historical source |
+|---|---|
+| `public.service_bookings` | `SUPABASE_SCHEMA.sql` |
+| `public.electrician_applications` | `SUPABASE_SCHEMA.sql` |
+| `public.electrician_profiles` | `SUPABASE_SCHEMA.sql` + `PORTAL_SCHEMA.sql` alterations |
+| `public.job_offers` | `SUPABASE_SCHEMA.sql` |
+| `public.srk_admin_users` | `PORTAL_SCHEMA.sql` |
+
+`COMPLETE_DATABASE_SETUP.sql` में यही starter setup consolidated रूप में है। इसे नई/current migrations का replacement नहीं माना जा सकता।
+
+### 10.2 Base contract का संक्षिप्त सार
+
+- `service_bookings`: UUID PK; customer contact/location/service fields; optional preferred date/time और work details; payment method/quote; booking status; assigned electrician UUID; commission rate/amount; payment status; unique Razorpay order/payment IDs; payment verification timestamp। Phone/pincode format, status, payment-status और commission-rate checks मौजूद हैं।
+- `electrician_applications`: UUID PK; applicant name/phone/location/skills; experience 0–60; optional about; verification status allowlist; active flag; phone/pincode checks।
+- `electrician_profiles`: UUID PK; unique optional application FK; display name/phone/location; skills text array; active; created timestamp। Portal setup बाद में `verification_status` और unique nullable `user_id` Auth FK जोड़ता है।
+- `job_offers`: UUID PK; booking और electrician profile FKs; offer status/match-level allowlists; timestamps; unique `(booking_id,electrician_id)`; provider/status और booking indexes।
+- `srk_admin_users`: `user_id` Auth FK/PK और `created_at` timestamp; बाद के setup में RLS enabled और self-read policy।
+
+### 10.3 महत्वपूर्ण parity सीमाएँ
+
+- ये files कई बार `CREATE TABLE IF NOT EXISTS` और बाद के `ALTER TABLE ADD COLUMN IF NOT EXISTS` का उपयोग करती हैं। किसी पहले से मौजूद table पर इन्हें चलाने से existing table की पूरी definition verify नहीं होती।
+- `service_bookings.assigned_electrician_id` का शुरुआती DDL केवल UUID column है; इस source में FK constraint नहीं है।
+- ये पुरानी schema files current branch में बाद में जुड़े customer/auth identity, timer, immutable bill, refund, payout, wallet, audit, support, push-delivery और अनेक payment contracts का complete baseline नहीं हैं।
+- Historical Production inventory में 25 public tables और 182 constraints दर्ज थे; यह starter setup केवल पाँच core operational tables तथा शुरुआती portal setup दिखाता है। Counts अलग समय/स्रोत के हैं; इन्हें current parity assertion न समझें।
+- Current branch के सभी incremental migrations का dependency-ordered replay manifest और object-by-object reconciliation अभी बाकी है। Duplicate migration timestamps तथा production-vs-feature schema differences को resolve किए बिना fixture को parity-ready घोषित नहीं किया जाएगा।
+
+**सुरक्षा:** यह source recovery और दस्तावेज़ी तुलना है। कोई SQL apply, Production access, schema mutation या live operation नहीं किया गया।
