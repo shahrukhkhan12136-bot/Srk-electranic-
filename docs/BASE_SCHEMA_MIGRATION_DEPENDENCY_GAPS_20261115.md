@@ -93,3 +93,9 @@ ALTER TABLE public.electrician_profiles
 - Repository commit search में `amount_paid` के लिए दो application-consumer commits ही मिले; कोई matching schema-introduction commit नहीं मिला। GitHub code search default branch तक सीमित है, इसलिए यह सभी historical/deleted/unreachable objects की exhaustive जाँच नहीं है।
 - नवीनतम PR head `2b08300e374f3a7c06e9e3d656b0165e6bd5f216` पर run `43746918575` completed success; job `132912152246` logs: 189 tests, 189 pass, 0 fail, 0 skipped। उसी SHA का दूसरा run `43746922357` उस समय pending था।
 - निष्कर्ष अपरिवर्तित: `auth_user_id` migration-chain DDL से covered है; `service_bookings.amount_paid` एकमात्र confirmed missing source-DDL gap है। No guessed DDL, no Production access or migration, no merge/deployment.
+
+
+## Superseding status — latest verified CI, 15 Nov 2026, 18:32 UTC
+- Latest PR head `659cd151fdf83779261bed034517b92b90d4a240` run `43747168727` completed successfully. Node job `132912932723`: 189 tests, 189 pass, 0 fail, 0 skipped.
+- Earlier row in this document listing `electrician_profiles.auth_user_id` as a missing source-DDL blocker is historical and superseded by the correction above: current migration chain defines it. The sole confirmed missing source-DDL item remains `service_bookings.amount_paid`.
+- This remains Node-only CI evidence, not PostgreSQL/pgTAP execution, complete migration replay, Production parity, or deployment.
