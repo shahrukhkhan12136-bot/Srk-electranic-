@@ -271,3 +271,16 @@ test('Electrician push disable removes server endpoint before browser unsubscrib
   assert.match(disable,/if\(error\)throw error;const stopped=await sub\.unsubscribe\(\)/);
   assert.match(disable,/finally\{await refreshElectricianPushState\(\);\}/);
 });
+
+
+test('Electrician push enable rolls back only a newly created browser subscription on setup failure', () => {
+  const start=electrician.indexOf('async function enableElectricianPushNotifications(){');
+  const end=electrician.indexOf('async function disableElectricianPushNotifications()',start);
+  assert.ok(start>=0&&end>start);
+  const enable=electrician.slice(start,end);
+  assert.match(enable,/let newlyCreatedSubscription=null/);
+  assert.match(enable,/if\(!sub\)\{sub=await reg\.pushManager\.subscribe\([\s\S]*?newlyCreatedSubscription=sub;\}/);
+  assert.match(enable,/newlyCreatedSubscription=null;await refreshElectricianPushState\(\)/);
+  assert.match(enable,/catch\(err\)\{if\(newlyCreatedSubscription\)\{try\{await newlyCreatedSubscription\.unsubscribe\(\)/);
+  assert.match(enable,/button\.disabled=false/);
+});
