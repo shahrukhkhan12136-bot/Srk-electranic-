@@ -358,3 +358,11 @@ test('Electrician offer-details RPC is pinned to an empty search_path', () => {
   assert.ok(electricianOfferSearchPathFix.includes("alter function public.srk_get_my_offer_details()"));
   assert.ok(electricianOfferSearchPathFix.includes("set search_path = '';"));
 });
+
+
+const adminApplicationReviewSearchPathFix = fs.readFileSync(path.join(root, 'supabase/migrations/20261116150000_pin_admin_application_review_search_path.sql'), 'utf8');
+
+test('Admin application-review SECURITY DEFINER RPC is pinned to an empty search_path', () => {
+  assert.ok(adminApplicationReviewSearchPathFix.includes("alter function public.srk_admin_review_application(uuid, text)"));
+  assert.ok(adminApplicationReviewSearchPathFix.includes("set search_path = '';"));
+});
