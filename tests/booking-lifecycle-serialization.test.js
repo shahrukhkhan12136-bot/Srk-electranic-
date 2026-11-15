@@ -179,3 +179,17 @@ test('electrician timer RPCs authorize the exact assigned profile, not only the 
     assert.ok(!fn.includes("ORDER BY p.created_at DESC LIMIT 1"));
   }
 });
+
+test('Customer and Electrician SOS controls use the shared authenticated SOS RPC and three approved emergency categories', () => {
+  for (const source of [customer, electrician]) {
+    assert.match(source, /srk_create_sos_alert/);
+    assert.match(source, /customer_at_risk/);
+    assert.match(source, /electrician_at_risk/);
+    assert.match(source, /violence_or_other_emergency/);
+    assert.match(source, /p_location_lat:lat,p_location_lng:lng/);
+    assert.match(source, /पुलिस को ऐप से अपने-आप कोई कॉल या संदेश नहीं जाएगा/);
+    assert.match(source, /SOS_CASE_NOT_CONFIRMED/);
+  }
+  assert.match(customer, /customerSosBooking/);
+  assert.match(electrician, /electricianSosBooking/);
+});
