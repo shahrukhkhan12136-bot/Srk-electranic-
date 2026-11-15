@@ -342,3 +342,9 @@
 - [x] Added `tests/electrician-accounting-kyc-contract.test.js` covering profile validation, KYC upload/preview privacy, earnings/payout error handling, wallet scoping and no withdrawal actions.
 - [x] Latest branch head `6b83ba1dc3423921a00d1a71564869c286cfbf22`: two full repository Node workflows **SUCCESS**.
 - [ ] Browser runtime and visual verification remain pending; final consolidated mobile QA remains deferred.
+
+
+### Test harness follow-up — 2026-11-15
+- [x] The first run of the new KYC/earnings/wallet contract test exposed test-helper extraction/regex mistakes only; the application source was not changed for these fixes.
+- [x] Corrected the helper to isolate the next function declaration and corrected the profile-finally assertion.
+- [x] Latest branch head `2a7771c153b82785238256d8852e04aa540f901c`: both full repository Node workflows **SUCCESS**.
