@@ -427,21 +427,22 @@ test('Service worker notification click routes to a validated electrician offer 
 });
 
 
-test('Customer and electrician lifecycle actions reconcile uncertain network responses by refreshing authoritative booking state', () => {
+test('Customer and electrician lifecycle actions distinguish confirmed RPC success from later refresh failure', () => {
   const customerStart = functionBody(customer, 'customerRespondWorkStart');
   const customerCompletion = functionBody(customer, 'customerRespondWorkCompletion');
   const electricianStart = functionBody(electrician, 'electricianRequestWorkStart');
   const electricianCompletion = functionBody(electrician, 'electricianRequestWorkCompletion');
   for (const fn of [customerStart, customerCompletion]) {
-    assert.match(fn, /catch\s*\([a-z]+\)\s*\{\s*try\s*\{\s*await loadCustomerBookings\(\);/);
+    assert.match(fn, /try\\{await loadCustomerBookings\\(\\);\\}catch\\(_\\)\\{alert\\('आपका जवाब सर्वर पर दर्ज हो गया है/);
+    assert.match(fn, /catch\\s*\\([a-z]+\\)\\s*\\{\\s*try\\s*\\{\\s*await loadCustomerBookings\\(\\);/);
     assert.match(fn, /स्थिति रीफ़्रेश करके जाँचें/);
   }
   for (const fn of [electricianStart, electricianCompletion]) {
-    assert.match(fn, /catch\s*\([a-z]+\)\s*\{\s*try\s*\{\s*await refresh\(\);/);
+    assert.match(fn, /try\\{await refresh\\(\\);\\}catch\\(_\\)\\{alert\\('(?:अनुमति अनुरोध|काम पूरा होने की सूचना) सर्वर पर दर्ज हो गया है/);
+    assert.match(fn, /catch\\s*\\([a-z]+\\)\\s*\\{\\s*try\\s*\\{\\s*await refresh\\(\\);/);
     assert.match(fn, /वर्तमान स्थिति रीफ़्रेश करके जाँचें/);
   }
 });
-
 test('Customer Razorpay verification reconciles uncertain responses against authoritative payment history', () => {
   const reconcile = functionBody(customer, 'reconcileCustomerPaymentAfterUncertainVerification');
   assert.match(reconcile, /srk_customer_get_payment_history/);
