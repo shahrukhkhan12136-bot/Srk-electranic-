@@ -3604,3 +3604,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Original garden-background photo bytes इस session के Library/current files/reference images में नहीं मिलीं। अतः वास्तविक photo crop/integration अभी pending है; उपयोगकर्ता द्वारा भेजी गई exact photo के बिना substitute नहीं बनेगा। GPT-1 checklist नवीनतम source count **20/28 = 71%**, **8/28 शेष** ही रहेगा।
 - PR #8 Draft/Open है; कोई merge, production deployment, database change या mobile QA नहीं किया।
 - SOS cross-check: PR #8 changed-file list में अभी SOS backend migration/RPC या Admin/Support queue/SMS implementation नहीं है। GPT-1 UI `srk_create_sos_alert` को केवल `p_reason` भेजती है; GPT-2 backend contract उपलब्ध होने पर integration review बाकी है।
+
+
+## 2026-11-15 — Customer Login founder-image consistency correction
+- अतिरिक्त source audit में पाया कि Welcome Screen से गलत collage हटाने के बाद भी `customer-login.html` उसी `/assets/srk-founder.jpg` collage को Founder portrait के रूप में दिखा रहा था।
+- Customer Login पर भी उसी Founder block/layout में सुरक्षित temporary photo-slot लगाया; गलत collage का उपयोग बंद किया। `tests/welcome-screen-contract.test.js` में Customer Login पर भी यही guard जोड़ा।
+- Commits: Login UI `d5f48bf4ab70bca2a31ff18d40c5157fbc40844d`; regression test `ccd7a2346503d0c69d67def9120a0171ce8ccceb`। नया CI run अभी उपलब्ध नहीं; test PASS घोषित नहीं है।
+- Source re-fetch के बाद जाँचे गए invariants: login placeholder मौजूद; login में collage image reference नहीं; Welcome placeholder मौजूद; Welcome में collage reference नहीं; PWA v11 और founder collage offline precache से बाहर।
+- GPT-1 checklist **20/28 = 71%**, **8/28 शेष** — अभी checklist denominator/count में बदलाव नहीं। असली garden-background founder photo उपलब्ध होने पर ही दोनों screens में उसी crop का integration होगा।
