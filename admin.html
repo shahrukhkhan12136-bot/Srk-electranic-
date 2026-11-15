@@ -816,7 +816,6 @@ async function saveBooking(id){
 async function saveBookingInternal(id){
  const status=document.getElementById('st-'+id)?.value;
  if(!['new','confirmed','assigned','in_progress','completed'].includes(status)){alert('मान्य बुकिंग स्थिति चुनें।');return;}
- const raw=document.getElementById('amt-'+id).value;
  const payment_status=document.getElementById('pay-'+id).value;
  const manual_method=document.getElementById('manual-method-'+id).value;
  const payment_reference=document.getElementById('ref-'+id).value.trim();
