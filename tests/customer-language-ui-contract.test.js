@@ -131,3 +131,18 @@ test('customer default-address update does not overwrite a failed address-list r
   assert.match(makeDefault,/if\(!addressListRefreshed\)\{setSavedAddressStatus\('डिफ़ॉल्ट पता बदलने का अनुरोध सफल रहा, लेकिन पता सूची रीफ़्रेश नहीं हो सकी।/);
   assert.ok(makeDefault.indexOf('if(!addressListRefreshed)')<makeDefault.indexOf("setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।')"));
 });
+
+
+test('customer saved-address delete reconciles uncertain RPC results and checks refresh outcome', () => {
+  const start=booking.indexOf('async function deleteSelectedSavedAddress()');
+  const end=booking.indexOf('\nasync function makeSelectedAddressDefault()',start);
+  assert.ok(start>=0&&end>start);
+  const remove=booking.slice(start,end);
+  assert.match(remove,/const addressListRefreshed=await loadCustomerSavedAddresses\(\);/);
+  assert.match(remove,/if\(!addressListRefreshed\)\{setSavedAddressStatus\('पता हटाने का अनुरोध सफल रहा/);
+  assert.match(remove,/srk_customer_list_my_saved_addresses/);
+  assert.match(remove,/deleteState=latestAddresses\.some\(row=>row\.id===id\)\?'present':'absent'/);
+  assert.match(remove,/if\(deleteState==='absent'\)/);
+  assert.match(remove,/else if\(deleteState==='present'\)/);
+  assert.match(remove,/deleteState==='unknown'/);
+});
