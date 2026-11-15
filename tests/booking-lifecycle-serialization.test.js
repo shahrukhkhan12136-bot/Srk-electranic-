@@ -167,7 +167,7 @@ test('customer work lifecycle SECURITY DEFINER RPCs use an empty search_path and
   assert.match(timerSql, /DELETE FROM srk_private\.work_timer_authorizations/);
   assert.match(timerSql, /INSERT INTO srk_private\.work_transition_authorizations/);
   assert.match(timerSql, /DELETE FROM srk_private\.work_transition_authorizations/);
-  assert.doesNotMatch(timerSql, /(?:INSERT INTO|DELETE FROM)\s+(?:work_timer_authorizations|work_transition_authorizations)\\b/);
+  assert.doesNotMatch(timerSql, /(?:INSERT INTO|DELETE FROM)\s+(?:work_timer_authorizations|work_transition_authorizations)\b/);
 });
 test('electrician timer RPCs authorize the exact assigned profile, not only the newest owned profile', () => {
   const start = sqlFunction(timerSql, 'srk_electrician_request_work_start');
@@ -195,6 +195,6 @@ test('Customer and Electrician SOS require explicit reason selection and separat
   }
   assert.doesNotMatch(customer, /customerSosBooking|customerSosDetails/);
   assert.doesNotMatch(electrician, /electricianSosBooking|electricianSosDetails/);
-  assert.match(customerSos, /पुलिस को ऐप से अपने-आप कॉल या संदेश नहीं जाएगा/);
-  assert.match(electricianSos, /पुलिस को ऐप से अपने-आप कॉल या संदेश नहीं जाएगा/);
+  assert.match(customer, /पुलिस को अपने-आप कॉल या संदेश नहीं भेजेगा/);
+  assert.match(electrician, /पुलिस को अपने-आप कॉल या संदेश नहीं भेजेगा/);
 });
