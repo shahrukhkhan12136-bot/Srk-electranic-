@@ -73,3 +73,10 @@
 - [x] Offer response records acceptance before the booking assignment update in the same transaction.
 - [x] Added two pgTAP assertions (plan 21; not executed).
 - [ ] Run dispatch/acceptance, expiry/decline advancement and assignment-trigger tests in the approved test environment.
+
+
+### Electrician offer acceptance live revalidation
+- [x] Offer acceptance rechecks electrician's current state/district against the booking.
+- [x] Offer acceptance rechecks exact selected commercial tier and Admin-approved tier metadata.
+- [x] Added 2 pgTAP source assertions (sequential offer dispatch plan 16; not executed).
+- [ ] Execute relocation-vs-acceptance concurrency, stale-offer, and exact-tier acceptance tests in the approved isolated environment.
