@@ -62,3 +62,16 @@ test('customer profile restores the saved language and persists the selected pre
   assert.match(save, /p_preferred_language:document\.getElementById\('customerProfileLanguage'\)\.value/);
   assert.match(booking, /customerProfileLanguage.*addEventListener\('change'/);
 });
+
+
+test('customer profile and saved-address loaders handle rejected auth session lookups', () => {
+  const loadProfile=body('loadCustomerProfile');
+  const loadAddresses=body('loadCustomerSavedAddresses');
+  assert.match(loadProfile,/try\s*\{\s*const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
+  assert.match(loadProfile,/if\(sessionError\)throw sessionError/);
+  assert.match(loadProfile,/catch\(e\)\{setCustomerProfileStatus\('प्रोफ़ाइल लोड नहीं हो सकी/);
+  assert.match(loadAddresses,/try\s*\{\s*const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
+  assert.match(loadAddresses,/if\(sessionError\)throw sessionError/);
+  assert.match(loadAddresses,/catch\(e\) \{ setSavedAddressStatus\('सेव किए गए पते अभी लोड नहीं हो सके/);
+  assert.match(loadAddresses,/finally \{select\.disabled=false;\}/);
+});
