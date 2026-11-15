@@ -62,7 +62,18 @@ begin
 
   v_payment_verified := v_booking.payment_status in ('paid','refunded')
     and v_booking.payment_verified_at is not null
-    and coalesce(v_booking.amount_paid,0)>0;
+    and coalesce(v_booking.amount_paid,0)>0
+    and (
+      v_booking.razorpay_payment_id is not null
+      or exists (
+        select 1 from public.srk_manual_payment_entries mp
+         where mp.booking_id=p_booking_id
+           and round(mp.amount,2)=round(v_booking.amount_paid,2)
+      )
+    );
+  if v_booking.payment_status in ('paid','refunded') and not v_payment_verified then
+    v_exceptions := array_append(v_exceptions,'VERIFIED_PAYMENT_EVIDENCE_MISSING_OR_MISMATCHED');
+  end if;
   if v_payment_verified then
     v_collection_paise := round(v_booking.amount_paid*100)::bigint;
   end if;
@@ -126,6 +137,18 @@ begin
   end if;
   if v_refund.id is not null and v_manual_refund.id is not null then
     v_exceptions := array_append(v_exceptions,'MULTIPLE_REFUND_RECORDS');
+  end if;
+  if v_refund.id is not null
+     and v_refund.payment_id is distinct from v_booking.razorpay_payment_id then
+    v_exceptions := array_append(v_exceptions,'REFUND_PROVIDER_PAYMENT_ID_MISMATCH');
+  end if;
+  if v_manual_refund.id is not null and not exists(
+    select 1 from public.srk_manual_payment_entries mp
+     where mp.id=v_manual_refund.payment_entry_id
+       and mp.booking_id=p_booking_id
+       and round(mp.amount,2)=round(v_manual_refund.amount,2)
+  ) then
+    v_exceptions := array_append(v_exceptions,'MANUAL_REFUND_PAYMENT_EVIDENCE_MISMATCH');
   end if;
   if v_refund_paise>0 and v_refund_paise<v_collection_paise then
     v_exceptions := array_append(v_exceptions,'PARTIAL_REFUND_UNSUPPORTED');
