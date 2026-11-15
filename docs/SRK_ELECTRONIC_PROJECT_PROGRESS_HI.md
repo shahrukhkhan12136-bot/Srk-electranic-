@@ -2482,3 +2482,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Expanded manual refund pgTAP source test from 8 to 9 assertions; plan and assertion count match 9/9. Runtime not executed.
 - Commits: webhook compatibility fix `7a5cf82`; webhook test `60eeeb6` + assertion cleanup `8e3c185`; manual payment guard migration `146fd37`; UI guard `80c57ee`; pgTAP assertion `3ce9541` and SQL quoting correction `c8ea217`.
 - No provider request, real refund, webhook delivery, database apply, payout/wallet mutation, deployment, merge, or mobile QA was performed.
+
+
+### Admin payout / portal role-isolation source pass — 15 नवम्बर 2026
+- Reviewed Admin payout UI and `20261114360000_new_category_electrician_payout_reconciliation.sql` Main Admin RPC. It locks booking before payout, accepts only pending payout rows, requires completed + verified-paid booking, checks assigned electrician, immutable labour bill, manual payment audit or exact Razorpay payment identity, separately reconciles cancellation-fee items, and recalculates commission/payable amounts before recording UTR/UPI/bank payment. No source-level bypass was found in this pass; no payout was recorded.
+- Verified Admin portal role routing: `showState()` authorizes Main Admin via `is_srk_admin()`; otherwise it requires a registered Support Staff session and explicit `support.customer.read` permission. Staff mode loads only the assigned Support inbox and does not invoke Main Admin `loadAll()`; Main Admin-only panels are hidden in Staff mode. This is source review, not runtime role testing.
+- JavaScript parse-only checks through the code runtime: `razorpay-webhook.js` PASS, `tests/razorpay-webhook-inbox.test.js` PASS, Admin inline script PASS. These are syntax checks only; no Node test execution or browser/mobile runtime QA claimed.
+- Remaining Admin portal areas for next audit: booking direct-update boundaries and legacy payment recording, KYC/application approval and rate-tier activation, electrician profile/availability, support assignment/thread ACL, cancellation decision + fee ledger, wallet/commission projections, payout runtime race/reversal scenarios.
