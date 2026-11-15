@@ -96,3 +96,12 @@ test('customer support thread transport failure does not reject the complaint li
   assert.match(thread, /if\(messageResult\.error\)\{supportStatus\('बातचीत लोड नहीं हो सकी। शिकायत सूची उपलब्ध है/);
   assert.match(thread, /if\(request!==customerSupportThreadRequest\|\|id!==customerSupportSelectedId\)return/);
 });
+
+
+test('customer support attachment cleanup re-reads authoritative links before deleting after an uncertain link result', () => {
+  const send = functionBody(customer, 'sendCustomerSupportMessage');
+  assert.match(send, /srk_customer_list_complaint_message_attachments/);
+  assert.match(send, /safeToRemovePendingUpload=!linkedAttachments\.some\(row=>row\.storage_path===pendingUploadPath\)/);
+  assert.match(send, /if\(safeToRemovePendingUpload\)await customerSb\.storage\.from\('srk-customer-support'\)\.remove\(\[pendingUploadPath\]\)/);
+  assert.match(send, /if\(!lookupError&&Array\.isArray\(linkedAttachments\)\)/);
+});
