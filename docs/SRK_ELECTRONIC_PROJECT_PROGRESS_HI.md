@@ -3175,3 +3175,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Existing Admin source-contract test was updated to require the guarded quote RPC rather than the retired direct `.update()` call.
 - Latest full Node CI on commit `b7c50d118d25ec628e96814b2fe435bcb886b7db` — **SUCCESS** (run `43712832090`). This confirms Node/source regression coverage only; PostgreSQL runtime and browser verification remain pending.
 - GPT-2: **27/39 = 69% complete; 12/39 = 31% remaining**. Overall checklist after the same checkbox change: **55/86 = 64% complete; 31/86 = 36% remaining**.
+
+
+### Push delivery lease fencing — test coverage added (15 Nov 2026)
+- Reviewed the final push lease-fencing migration for both outbox-level and per-device delivery completion.
+- Added pgTAP contract `supabase/tests/database/push_delivery_lease_fencing.test.sql` with **20 assertions**: service-role-only execution, stale attempt rejection, processing-state requirement, row locks, terminal-state protection, retry ceilings, bounded error storage, capped exponential backoff and pinned search paths.
+- Added Node regression contract `tests/push-delivery-lease-fencing.test.js`. Full Node CI passed on commit `b4beff9661e506412cf31d4049db478263e15716` (run `43713340539`).
+- PostgreSQL/pgTAP runtime execution is still pending in an isolated database; Node CI does not execute this SQL test. No production DB access/migration, push send, merge or deployment performed.
+- GPT-2 checklist percentage remains **27/39 = 69% complete; 12/39 = 31% remaining**. This is additional test coverage, not a completed database-parity checkbox.
