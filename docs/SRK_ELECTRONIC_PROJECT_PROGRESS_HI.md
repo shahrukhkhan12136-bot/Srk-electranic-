@@ -2584,3 +2584,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Push implementation/runtime के verified items और legacy manual-payment implementation को checklist में complete किया; local PostgreSQL Push runtime तथा Node/Deno results का evidence boundary भी दर्ज किया। Production apply/deploy/merge/mobile QA को pending/approval-gated ही रखा।
 - Legacy payment follow-up commits के बाद final migration state: `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` (last correction `0e6b01d`); pgTAP file plan/assertion count 18/18; Admin inline JavaScript parse PASS. SQL/pgTAP runtime अभी नहीं चला।
 - Master Checklist commit: `992ca92`; stale missing-RPC wording correction: `8adf5ca`; progress log commit this section.
+
+
+### Verification boundary clarification — latest legacy-payment commits
+
+- Current Admin inline JavaScript syntax: PASS. Legacy manual-payment pgTAP file plan/assertion count: 18/18; this is source/count validation only, not a pgTAP runtime pass.
+- The full Node suite result 87/87 belongs to the earlier disposable-sandbox checkout documented above; it has **not yet been rerun after** the latest legacy-payment migration and Admin itemized-breakdown commits. Do not attribute 87/87 to current HEAD until rerun.
+- Current Master Checklist is 114 lines with 23 unique, non-duplicated open gates; it was updated to distinguish implementation from runtime/approval gates. Latest checklist evidence commit: `0bdc615`.
