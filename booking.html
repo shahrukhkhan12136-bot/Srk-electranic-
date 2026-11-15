@@ -1133,7 +1133,13 @@ async function customerRespondWorkCompletion(bookingId,response){
    'आपका विवाद दर्ज हो गया है और Admin समीक्षा करेगा।');
   await loadCustomerBookings();
  }catch(error){
-  const message=String(error?.message||'');finally{
+  try{
+   await loadCustomerBookings();
+   alert('नेटवर्क जवाब नहीं मिला। बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');
+  }catch(_){
+   alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');
+  }
+ }finally{
   customerLifecycleBusy.delete(bookingId);
  }
 }
