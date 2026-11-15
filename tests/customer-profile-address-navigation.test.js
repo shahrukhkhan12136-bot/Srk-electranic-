@@ -69,5 +69,5 @@ test('Customer uncertain saved-address deletion refreshes the cached list and se
   assert.match(handler, /customerSavedAddresses=latestAddresses/);
   assert.match(handler, /select\.innerHTML=.*latestAddresses\.map/);
   assert.match(handler, /select\.value=deleteState==='absent'\?''\:id/);
-  assert.match(handler, /列表/);
+  assert.match(handler, /सूची सर्वर से अपडेट कर दी गई है/);
 });
