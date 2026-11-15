@@ -3314,3 +3314,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - शेष failure `tests/booking-lifecycle-serialization.test.js` के test 31 में है: test `srk_customer_respond_work_start(uuid,text)` के लिए `SET search_path = ''` अपेक्षित करता है, जबकि संबंधित migration में explicit fixed path `pg_catalog, public, auth, srk_private, pg_temp` है। यह GPT-1 Work Timer क्षेत्र है; GPT-2 ने उसकी migration/test फाइल नहीं बदली। इसे GPT-1 के साथ review करना होगा; CI को पूर्ण PASS नहीं कहा जा सकता।
 - Refund ID absent होने पर provider list की पहली 100 entries में exact match न मिले तो endpoint `safe_to_retry=false` देता है और “refund नहीं हुआ” नहीं मानता। Pagination/late visibility की जाँच अलग operational limitation बनी हुई है; कोई नया refund अपने-आप नहीं बनाया जाता।
 - GPT-2 checklist अभी **27/39 = 69% पूरा; 12/39 = 31% बाकी**। यह test-only coverage है, checklist acceptance नहीं। कोई Production DB, provider refund, payout, merge या deployment नहीं किया।
+
+
+## 2026-11-15 — Founder portrait integration (GPT-1)
+- उपयोगकर्ता के स्पष्ट निर्देश पर पहले से अपलोड की गई स्वीकृत founder image `assets/srk-founder.jpg` को `welcome.html` के Founder card में वास्तविक `<img>` के रूप में जोड़ा गया। फोटो को AI से बदला/रीटच नहीं किया; card के `.88` aspect-ratio में CSS `object-fit: cover` से crop-fit किया गया है।
+- PWA service worker cache version `srk-electronic-v10` किया और founder image को offline asset list में शामिल किया।
+- `tests/welcome-screen-contract.test.js` में वास्तविक फोटो reference और cache inclusion के contract assertions जोड़े।
+- यह feature branch पर source integration है; PR #8 अभी unmerged है, इसलिए production/live website पर फोटो दिखना अभी deployment/merge के बाद ही संभव होगा। Browser/mobile visual QA अभी pending है; consolidated final mobile QA सभी implementation के बाद ही होगा।
