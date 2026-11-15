@@ -4041,3 +4041,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Historical `SUPABASE_SCHEMA.sql` path history में केवल मूल upload commit `c4b6a46f22553e57638cdae844ec33d09bf8da2c` मिला; इस path का कोई दूसरा historical revision नहीं मिला। पुराने branches की जाँची गई payment/identity migrations में `amount_paid` और `auth_user_id` के उपयोग मिले, पर authoritative ADD COLUMN/CREATE TABLE declarations नहीं।
 - व्यापक SQL inventory fetch प्रयास tool-call सीमा पर रुक गया; इसलिए इसे पूर्ण branch-wide content scan नहीं माना जा रहा। Remaining DDL blockers वही दो हैं: `service_bookings.amount_paid`, `electrician_profiles.auth_user_id`।
 - No guessed DDL, Production DB query/export, migration replay, provider operation, merge or deployment. GPT-2 27/39 = 69%; overall 56/86 = 65% unchanged.
+
+
+## 2026-11-15 — GPT-2 unified feature/code/test/CI inventory
+- उपयोगकर्ता के निर्देश पर बार-बार फाइलें खोजने के बजाय एक consolidated index बनाया: `docs/GPT2_UNIFIED_DELIVERY_INVENTORY_HI.md` (commit `c086163915c44f67a3c3525f55dbdcff7795280f`).
+- वर्तमान Feature Branch tree की पूरी recursive inventory से 78 SQL migrations, 32 Supabase database contract tests, 33 Node test files और 3 GitHub Actions workflows सूचीबद्ध किए। साथ में GPT-2 feature map, प्रमुख source entry points, CI trigger/configuration, test boundaries, unresolved blockers और safe work order दर्ज किए।
+- Node CI latest checked head `fb49673502423c35d9c89e3b5573e396a70d6fe5`: runs `43742558516` और `43742562237` दोनों PASS; प्रत्येक में 187/187 pass, 0 fail, 0 skipped।
+- प्रमुख harness gap: `supabase-schema-ci.yml` केवल पुराने `feature/platform-fee-cash-online-cycle` branch पर manual dispatch से चलता है और पाँच पुराने migrations तक सीमित है; वर्तमान GPT-2 Feature Branch की पूरी migration chain का CI नहीं है।
+- Inventory consolidation से checklist completion नहीं बढ़ाई: GPT-2 27/39 = 69%; overall 56/86 = 65%। अगला काम authoritative base DDL और Feature Branch-only isolated full replay harness है।
+- No Production query/export/migration, no provider action, no merge/deployment; GPT-1 shared files untouched.
