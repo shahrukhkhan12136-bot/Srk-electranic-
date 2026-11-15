@@ -108,3 +108,14 @@ test('outbox finish RPC uses an attempt fencing token to reject stale workers', 
   assert.match(fencing, /v_row\.delivery_status <> 'processing'/);
   assert.match(fencing, /RETURNS boolean/);
 });
+
+test('outbox fencing migration replaces the exact legacy RPC signature and grants only the new signature', () => {
+  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200000_push_delivery_lease_fencing.sql'), 'utf8');
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.srk_finish_push_delivery_outbox\(\s*p_outbox_id uuid, p_success boolean, p_error text DEFAULT NULL/);
+  assert.match(fencing, /DROP FUNCTION IF EXISTS public\.srk_finish_push_delivery_outbox\(uuid,boolean,text\)/);
+  assert.match(fencing, /CREATE FUNCTION public\.srk_finish_push_delivery_outbox\(\s*p_outbox_id uuid,p_attempt_count integer,p_success boolean/);
+  assert.match(fencing, /REVOKE ALL ON FUNCTION public\.srk_finish_push_delivery_outbox\(uuid,integer,boolean,text\)/);
+  assert.match(fencing, /GRANT EXECUTE ON FUNCTION public\.srk_finish_push_delivery_outbox\(uuid,integer,boolean,text\) TO service_role/);
+  assert.match(worker, /p_attempt_count: row\.attempt_count/);
+  assert.match(worker, /result\.complete === true/);
+});
