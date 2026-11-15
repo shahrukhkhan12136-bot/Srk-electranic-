@@ -3031,3 +3031,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Stop RPC fail होने पर booking retry handle में बनी रहती है; server confirmation सफल होने पर ही handle हटता है। Shared guard और retry behavior के regression tests जोड़े।
 - Guard declaration move होने के बाद existing GPS network-exception test की source boundary भी update की। Latest branch head `c57577c9f72663cf52cfc8981d72f008d95b83ef` पर दोनों full repository Node workflows **SUCCESS** हुए।
 - Browser/device runtime check और final consolidated mobile QA अभी pending हैं। No Production changes, merge or deployment.
+
+
+## 2026-11-15 — Manual Refund fail-closed contract coverage
+
+- Manual refund RPC का source audit: केवल Main Admin; verified-paid booking; Razorpay/online भुगतान को manual path से रोकता है; उपलब्ध Customer refund request approved होना आवश्यक; original manual payment audit amount से exact match; duplicate manual refund रोकता है; payout state/booking row locks और final refunded state transition लागू हैं।
+- Manual refund तथा payout mutation SECURITY DEFINER RPC का empty search_path hardening migration पहले से मौजूद है; pgTAP contract में दोनों के empty path assertions मौजूद हैं।
+- तीन अतिरिक्त pgTAP assertions जोड़े: Razorpay/online exclusion, approved request gate, और manual payment evidence amount match। Test plan 71 से 74 हुआ। Commit: 803a7f3e28037d8fcc8b686e84e75716e4730cbf.
+- Runtime PostgreSQL/pgTAP execution अभी उपलब्ध नहीं; assertions केवल source में जोड़े गए हैं, इन्हें पास घोषित नहीं किया गया।
+- Latest CI failure अब Customer Dashboard live-location network exception contract test में है (GPT-1 क्षेत्र); Admin commission report test पिछली CI failure में सुधार के बाद आगे बढ़ा। PR #8 खुला Draft है; merge/deploy नहीं किया।
