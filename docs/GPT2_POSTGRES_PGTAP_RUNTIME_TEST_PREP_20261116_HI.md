@@ -517,3 +517,26 @@ A textual match supports current-definition alignment only. It does not prove wh
 - Live Production catalog comparison: PENDING OWNER/DBA OUTPUT.
 - Migration provenance: UNRESOLVED.
 - Production changes, migration repair/replay, deployment, and GPT-1 source changes: NONE.
+
+## 18. Exact source-side delta: 9 Nov constraints → 14 Nov timer migration — 16 Nov 2026
+
+A fresh read of all three current-branch source files confirms this narrow source-side sequence:
+
+1. `20261109_allow_quote_approval_booking_states.sql` defines `service_bookings_status_check` without `awaiting_work_start_approval`. Its assignment-required CHECK also omits that state.
+2. `20261109_electrician_inspection_quotes_and_service_only_commission.sql` repeats those same two status/assignment CHECK definitions, likewise without `awaiting_work_start_approval`. It also contains separate quote/commission SQL; this does not make its two CHECK definitions different from the status-only migration.
+3. `20261114240000_server_authoritative_customer_approved_work_timer.sql` drops and recreates both constraints and adds `awaiting_work_start_approval` to each relevant state list. The same migration adds work-start approval/timer columns and server-authoritative RPC logic.
+
+Source blob SHAs on branch `feat/customer-login-first-dashboard-20261114`:
+- `20261109_allow_quote_approval_booking_states.sql`: `ef4bf8b9b8a9a35bf3ddd94ea4614c7498fb1c6d`
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql`: `014699d3190e45aacde4022ac7e7fa9ca4fec006`
+- `20261114240000_server_authoritative_customer_approved_work_timer.sql`: `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe`
+
+### Interpretation boundary
+
+This establishes the expected source evolution, not the actual order or success of hosted Production migrations. The previously user-reported absence of history version `20261114240000` therefore remains unresolved against the user-reported live presence of the later status. No source migration was changed and no repair is authorized.
+
+### Status
+
+- Three source files re-read and exact constraint delta recorded.
+- Production history/catalog: still requires original owner/DBA read-only evidence.
+- No Production connection, DDL, migration replay/repair, deployment, or GPT-1 source edits.
