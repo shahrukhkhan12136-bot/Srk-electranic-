@@ -216,3 +216,6 @@
 - [x] Support और Profile के customer-authenticated dashboard gate तथा expected customer RPC integration के source contract checks जोड़े।
 - [ ] नया Node regression test और पूरा CI run execute होकर PASS होना बाकी।
 - [ ] वास्तविक Supabase RPC/RLS/storage/browser workflow और final consolidated mobile QA अभी pending।
+
+- [ ] Profile language preference currently saves `preferred_language`, but Customer App does not yet apply full Hindi/English UI translations; implement before marking language switching complete.
+- [ ] Node CI run `43706360554` for the newly added menu regression was cancelled before test steps executed when later branch commits arrived; latest full-suite PASS is not yet established for the new test.
