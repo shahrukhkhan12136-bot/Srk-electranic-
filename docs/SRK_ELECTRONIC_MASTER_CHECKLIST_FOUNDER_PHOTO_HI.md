@@ -560,3 +560,9 @@
 - Availability change में approved-active profile gate, explicit confirmation, self-service RPC और failure पर buttons restore होने के assertions जोड़े।
 - Logout में active GPS watches clear करना, हर live-location server stop की पुष्टि, stop failure पर sign-out रोकना और Auth sign-out error handling के assertions जोड़े।
 - ये source-contract tests हैं; वास्तविक SMS/Auth, availability RPC, GPS/browser तथा live Supabase actor-isolation runtime अभी लंबित हैं। इस commit पर CI run उपलब्ध नहीं है।
+
+
+### 2026-11-16 — Electrician KYC duplicate-upload रोकथाम
+- KYC upload handler में global in-flight guard जोड़ा; एक दस्तावेज़ अपलोड रहते दूसरा KYC upload शुरू नहीं होगा।
+- अपलोड के दौरान KYC file inputs और upload/preview buttons अस्थायी रूप से disable होते हैं; completion/failure दोनों स्थितियों में उनकी पुरानी disabled state finally में restore होती है।
+- Regression source-contract test जोड़ा। यह browser/storage runtime test नहीं है; वास्तविक Storage RLS, duplicate-click fault-injection और mobile QA अभी लंबित हैं।
