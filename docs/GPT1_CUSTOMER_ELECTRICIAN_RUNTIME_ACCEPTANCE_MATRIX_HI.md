@@ -48,6 +48,8 @@
 
 ## Evidence status
 
+- Feature-branch Node CI run #1150 (`43748433148`) on PR head `34877c0cc75934cbe4c5ebb38dbf1a9476e3b62e` completed successfully: **189/189 Node tests passed, 0 failed**. This is source-level CI evidence only; it does not execute pgTAP against the live/isolated database or prove provider/browser/mobile runtime acceptance.
+
 - This is a plan/evidence map, not a claim that runtime acceptance passed.
 - Existing Node/pgTAP filenames identify source-level coverage only; execution must be recorded against exact commit and environment.
 - Any missing dedicated tests in the GPT-1 inventory remain coverage gaps until GPT-2 confirms DB suite and ownership.
