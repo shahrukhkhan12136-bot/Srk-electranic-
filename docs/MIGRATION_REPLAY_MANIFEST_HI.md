@@ -252,3 +252,52 @@ Older `feature/business-finance-dashboard` और `work/separate-customer-electr
 - This makes the likely source-history explanation clearer: the full quote migration path began as a marker for a separately named live migration, then was later populated with SQL, followed by a duplicate constraint-only migration path. It remains only a Git-source lineage finding, not proof of remote ledger rows or actual applied SQL.
 - The `d106ec8` commit's Feature Branch Node tests workflow completed successfully (run 43733401357). This is Node CI only; it does not execute PostgreSQL/pgTAP or establish Production migration parity.
 - No files renamed/deleted; no migration repair or Production operation. GPT-2 remains 27/39 = 69%.
+
+
+## अतिरिक्त prerequisite सत्यापन — 15 नवम्बर 2026
+
+### Support conversation base table
+- `20261113220000_customer_support_conversation_schema.sql` creates
+  `srk_booking_complaint_messages` and attachment rows, but its foreign keys
+  and RPCs require the pre-existing `public.srk_booking_complaints` table.
+- The migration contains references to the complaint parent; it does not
+  create the parent table itself.
+- The inspected migration tree has no authoritative
+  `CREATE TABLE srk_booking_complaints` declaration. The current search
+  surfaced only consumers, not a base-table DDL source.
+- Therefore the support conversation chain has a separate base-object gate.
+  Obtain its original schema/deployment artifact or approved schema-only
+  catalog export before replay. Do not synthesize the parent table contract.
+
+### Push subscription base table
+- `20261115170001_durable_push_delivery_outbox.sql` explicitly checks
+  `to_regclass('public.srk_push_subscriptions')` and raises a prerequisite
+  error if the base table is absent. It also checks for expected columns
+  before applying RLS and creating the durable outbox.
+- `20261115180001_push_subscription_delivery_ledger.sql` again requires
+  `public.srk_push_subscriptions` and adds delivery-ledger references to
+  its `id` column.
+- The inspected current migration tree contains consumers and prerequisite
+  checks, but no authoritative base-table CREATE declaration. The repository
+  UI's upsert is consumer evidence only; it does not establish the full table
+  definition, indexes, RLS, grants or policies.
+- Do not invent a replacement subscription table. Obtain its original
+  migration/deployment artifact or approved schema-only catalog export.
+
+### Replay inventory correction
+- Current Feature Branch recursive tree inventory: **73 SQL migration files**.
+- The earlier manifest header/list of 72 files predates the latest SOS
+  migration `20261115260000_sos_admin_support_alerts.sql`. The dependency
+  matrix already records 73. This is a documentation count correction only;
+  it does not alter migration filenames or replay history.
+
+### Updated blocking prerequisites
+A clean replay requires authoritative base contracts for:
+1. `service_bookings.amount_paid`
+2. `electrician_profiles.auth_user_id`
+3. `public.srk_booking_complaints`
+4. `public.srk_push_subscriptions`
+
+The first two are missing starter-column definitions; the latter two are
+parent/base tables assumed by later migrations. These are independent
+prerequisite gates. No PostgreSQL replay or Production query was run.
