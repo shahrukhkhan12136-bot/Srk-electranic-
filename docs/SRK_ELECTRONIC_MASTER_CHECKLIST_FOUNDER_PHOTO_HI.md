@@ -427,3 +427,10 @@
 - [x] Auth/session transport errors now use the existing safe retry message and `finally` clears the busy indicator.
 - [x] Added source-contract regression coverage for both loaders in `tests/customer-electrician-payment-history-contract.test.js`.
 - [ ] Validate these latest edits on the exact PR head with CI. No live authentication, database, browser, provider or mobile testing is claimed.
+
+
+### 2026-11-16 — Customer booking-list session failure handling
+- [x] Found `loadCustomerBookings()` read `auth.getSession()` before its guarded `try/catch`; a rejected session transport call could bypass the normal retry message and busy-state cleanup.
+- [x] Moved session retrieval into the existing guarded block after setting the loading state. Existing catch/finally now handles rejected session calls and clears `aria-busy`.
+- [x] Added source-contract regression coverage in `tests/customer-electrician-booking-status-sync-contract.test.js`.
+- [ ] Validate this edit on the exact latest PR head with CI. No live auth, database, browser or mobile runtime result is claimed.
