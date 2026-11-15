@@ -195,11 +195,6 @@ ${o.selected_category&&o.booking_status==='in_progress'&&o.completion_approval_s
 ${o.selected_category&&o.booking_status==='in_progress'&&o.completion_approval_status!=='pending'?'<div class="job"><b>सर्वर टाइमर</b><p id="electricianTimer_'+esc(o.booking_id)+'" data-running="'+(o.work_timer_running?'1':'0')+'" data-started="'+esc(o.work_started_at||'')+'" data-accumulated="'+esc(o.work_timer_elapsed_seconds||0)+'">'+esc(formatElectricianTimer(o.work_timer_elapsed_seconds||0))+'</p><small>अंतिम मेहनताना सर्वर के रिकॉर्ड समय से बनेगा।</small><button onclick="electricianRequestWorkCompletion(\''+o.booking_id+'\')">काम पूरा होने की पुष्टि ग्राहक को भेजें</button></div>':''}
 ${o.selected_category&&o.completion_approval_status==='disputed'?'<p class="muted">ग्राहक ने काम पर विवाद दर्ज किया है। सहायता/Admin समीक्षा की प्रतीक्षा करें।</p>':''}
 ${o.selected_category&&o.booking_status==='completed'&&bill?`<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक समय: ${esc(bill.billable_minutes)} मिनट</p><p>अंतिम Labour: ₹${Number(bill.labour_amount).toFixed(2)}</p><small>सामान/पार्ट्स इस Labour Bill में शामिल नहीं हैं।</small></div>`:''}
-${!o.selected_category&&o.booking_status==='assigned'?'<button onclick="workStatus(\''+o.booking_id+'\',\'inspection\')">🏠 घर पर निरीक्षण शुरू करें</button>':''}
-${!o.selected_category&&['inspection','quote_rejected'].includes(o.booking_status)?'<div class="job"><b>ग्राहक को कोटेशन भेजें</b><label>सर्विस / मेहनताना शुल्क (₹)</label><input id="service-'+o.booking_id+'" type="number" min="1" step="0.01" placeholder="जैसे 800"><label>सामान / पार्ट्स खर्च (₹)</label><input id="materials-'+o.booking_id+'" type="number" min="0" step="0.01" placeholder="जैसे 350"><label>काम / सामान का विवरण</label><input id="note-'+o.booking_id+'" maxlength="1000" placeholder="कौन-सा काम और कौन-सा सामान"><button onclick="submitQuote(\''+o.booking_id+'\')">ग्राहक को कोटेशन भेजें</button><small>सामान पर कंपनी कमीशन ₹0 रहेगा।</small></div>':''}
-${!o.selected_category&&o.booking_status==='awaiting_quote_approval'?'<p class="muted">पुरानी बुकिंग का कोटेशन ग्राहक की मंजूरी के इंतज़ार में है।</p>':''}
-${!o.selected_category&&o.booking_status==='quote_approved'?'<button onclick="workStatus(\''+o.booking_id+'\',\'in_progress\')">ग्राहक की मंजूरी मिली — काम शुरू करें</button>':''}
-${!o.selected_category&&o.booking_status==='completed'?'<p class="good">पुरानी बुकिंग का काम पूरा दर्ज है।</p>':''}
 ${o.offer_status==='offered'&&p.active&&p.verification_status==='approved'?`<button onclick="respond(this,'${o.offer_id}','accepted')">काम स्वीकार करें</button><button style="background:#627d98" onclick="respond(this,'${o.offer_id}','declined')">मना करें</button>`:''}</div>`}).join(''):'अभी कोई काम का ऑफर नहीं है।';}renderElectricianLiveLocationControls(rows,locationStates);
 focusElectricianOfferFromNotification();
 
@@ -295,19 +290,6 @@ async function loadPartnerWallet(){
  (bankResult.error?'<p class="bad">बैंक लिंक की स्थिति लोड नहीं हो सकी। निजी बैंक विवरण दिखाने के बजाय इसे छिपाया गया है।</p>':'<div class="job"><b>लिंक किया गया बैंक / UPI</b>'+(bank.length?bank.map(x=>'<p><b>'+esc(x.bank_name||x.provider||'बैंक / UPI')+'</b>'+(x.is_primary?' • प्राथमिक':'')+'<br>'+esc(x.account_holder_name||'खाताधारक नाम उपलब्ध नहीं')+'<br>'+(x.wallet_type==='bank'?'खाता ••••'+esc(x.account_last4||'----')+(x.ifsc_masked?' • IFSC '+esc(x.ifsc_masked):''):'UPI / Provider लिंक')+'<br><span class="pill">'+esc(verificationLabels[x.verification_status]||'स्थिति: '+(x.verification_status||'अज्ञात'))+'</span></p>').join(''):'<p>अभी कोई बैंक / UPI लिंक उपलब्ध नहीं है।</p>')+'</div>')+
  (ledgerResult.error?'<p class="bad">वॉलेट लेन-देन सूची अभी उपलब्ध नहीं है। कृपया बाद में Refresh करें।</p>':'<div class="job"><b>हाल के वॉलेट लेन-देन</b>'+(ledger.length?ledger.map(x=>'<p><b>'+esc(x.entry_type||'लेन-देन')+'</b> • '+esc(directionLabels[x.direction]||x.direction||'—')+' <b>'+money(x.amount)+'</b><br><span class="pill">'+esc(statusLabels[x.status]||x.status||'स्थिति अज्ञात')+'</span>'+(x.description?'<br>'+esc(x.description):'')+(x.provider_reference||x.reference_id?'<br><small>संदर्भ: '+esc(x.provider_reference||x.reference_id)+'</small>':'')+'<br><small class="muted">'+date(x.posted_at||x.created_at)+'</small></p>').join(''):'<p>अभी कोई वॉलेट लेन-देन नहीं है।</p>')+'</div>')+
  '<div class="job"><b>निकासी सुविधा</b><p>बैंक खाता जोड़ना और निकासी अभी बंद है। Route Linked Account onboarding, सत्यापन और Admin की अनुमति पूरी होने के बाद ही इसे सक्रिय किया जाएगा।</p><small class="muted">अभी इस स्क्रीन से कोई बैंक ट्रांसफर या निकासी शुरू नहीं की जा सकती।</small></div>';
-}
-async function submitQuote(id){
- const service=Number(document.getElementById('service-'+id)?.value),materials=Number(document.getElementById('materials-'+id)?.value||0),note=document.getElementById('note-'+id)?.value||'';
- if(!Number.isFinite(service)||service<=0||!Number.isFinite(materials)||materials<0){alert('सर्विस चार्ज और सामान का सही खर्च भरें।');return;}
- if(!confirm('ग्राहक को सर्विस ₹'+service.toFixed(2)+' और सामान ₹'+materials.toFixed(2)+' का कोटेशन भेजें?'))return;
- const {error}=await sb.rpc('srk_submit_booking_quote',{p_booking_id:id,p_service_charge:service,p_materials_amount:materials,p_quote_note:note});
- if(error){alert('कोटेशन नहीं भेजा गया: '+error.message);return;}alert('कोटेशन ग्राहक को भेज दिया गया।');refresh();
-}
-async function workStatus(id,status){
- const labels={inspection:'घर पर निरीक्षण शुरू करें?',in_progress:'ग्राहक की मंजूरी के बाद काम शुरू करें?',completed:'काम पूरा दर्ज करें?'};
- if(!confirm(labels[status]||'स्थिति बदलें?'))return;
- const {error}=await sb.rpc('srk_update_booking_work_status',{p_booking_id:id,p_status:status});
- if(error){alert('स्थिति अपडेट नहीं हुई: '+error.message);return;}alert('बुकिंग स्थिति अपडेट हो गई।');refresh();
 }
 const electricianOfferResponseBusy=new Set();
 async function respond(button,id,response){
