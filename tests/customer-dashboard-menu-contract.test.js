@@ -145,6 +145,16 @@ test('customer remaining login, form and booking feedback strings are localized'
 });
 
 
+test('customer support status messages and concatenated status prefixes are localized', () => {
+  assert.match(booking, /if \(prefix\) return customerUiTranslations\[prefix\] \+ customerUiText\(text\.slice\(prefix\.length\)\)/);
+  assert.match(booking, /'अभी इस शिकायत में कोई संदेश नहीं है।':'There are no messages in this complaint yet.'/);
+  assert.match(booking, /'शिकायत दर्ज हो रही है…':'Submitting complaint…'/);
+  assert.match(booking, /'बातचीत लोड नहीं हो सकी। कृपया फिर कोशिश करें।':'Conversation could not be loaded\. Please try again\.'/);
+  assert.match(booking, /'आपका संदेश सहायता टीम को भेज दिया गया है।':'Your message has been sent to the support team\.'/);
+  assert.match(booking, /'शिकायत की स्थिति: ':'Complaint status: '/);
+  assert.match(booking, /const translated = lang === 'en' \? customerUiText\(key\) : key/);
+});
+
 test('electrician booking refresh handles profile, offer and per-booking RPC failures safely', () => {
   const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
   const start = electrician.indexOf('async function refresh(){');
