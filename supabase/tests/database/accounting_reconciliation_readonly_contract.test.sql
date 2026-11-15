@@ -1,5 +1,5 @@
 begin;
-select plan(45);
+select plan(46);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -94,6 +94,8 @@ select ok((select prosecdef from pg_proc where oid='public.srk_admin_get_booking
   'accounting reconciliation RPC is SECURITY DEFINER');
 select ok((select provolatile='s' from pg_proc where oid='public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure),
   'accounting reconciliation RPC is declared STABLE');
+select ok(coalesce((select proconfig @> ARRAY['search_path=""']::text[] from pg_proc where oid='public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure),false),
+  'SECURITY DEFINER accounting RPC pins an empty search_path');
 select ok(not has_function_privilege('anon',
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)','execute'),
   'anonymous users cannot execute accounting reconciliation');
