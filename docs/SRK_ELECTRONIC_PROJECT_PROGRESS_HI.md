@@ -2280,3 +2280,15 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - अभी बाकी: migration से authenticated के TRUNCATE/TRIGGER/REFERENCES revoke; branch में owner-scoped CRUD grants/policies सुनिश्चित; durable idempotent outbox + retry/backoff/dead-letter + delivery audit; production/branch schema alignment; approved isolated environment में end-to-end tests।
 - Commits: `c28dd189` (Edge Function source), `b8e16df4` (source tests)।
 - कोई वास्तविक Push नहीं भेजी, कोई subscription/database write, production setting change, Edge Function deploy, migration apply, booking/payment/refund/payout/wallet mutation या mobile QA नहीं किया।
+
+
+## 2026-11-15 — Durable Push Outbox और Subscription Privilege Hardening (Feature Branch)
+- Migration `20261115170000_durable_push_delivery_outbox.sql` जोड़ी: `srk_push_subscriptions` पर RLS owner-scoped SELECT/INSERT/UPDATE/DELETE policies पुनःस्थापित; PUBLIC/anon/authenticated के broad grants revoke कर authenticated को केवल आवश्यक CRUD grants दिए। इससे TRUNCATE/TRIGGER/REFERENCES जैसे अनावश्यक table privileges हटते हैं।
+- `srk_private.srk_push_delivery_outbox` में प्रत्येक offer के लिए unique outbox record, private grants, attempt count, lease, due time, error और terminal state जोड़े। `job_offers` INSERT पर `offered` row का outbox event enqueue होता है।
+- Service-role-only claim/finish RPCs: SKIP LOCKED batch claim, 2-minute lease, max 8 attempts, capped exponential backoff और dead-letter terminal state।
+- Netlify scheduled worker `deliver-push-outbox.js` प्रति मिनट अधिकतम 20 events claim करके fixed Edge Function को webhook secret के साथ भेजता और परिणाम दर्ज करता है। Worker config केवल server env से लेता है।
+- छह source-contract tests `tests/push-delivery-outbox.test.js` में जोड़े। Tests execute नहीं किए गए।
+- Delivery semantics अभी at-least-once हैं: sender partial failure होने पर पूरे offer event की retry होगी, इसलिए पहले सफल subscription को duplicate notification मिल सकती है। Per-subscription idempotent delivery ledger अगला hardening item है; इसे exactly-once delivery न मानें।
+- Branch migration Production पर apply नहीं की गई। Production schema audit में branch की `job_offers.expires_at` और `electrician_profiles.available_for_work` columns अनुपस्थित थे; इसलिए schema parity के बिना Edge Function/worker deploy करना अभी निषिद्ध है। Existing Production trigger भी सीधे HTTP enqueue करता है; migration rollout में पुराने trigger के साथ duplicate sends रोकने की अलग योजना आवश्यक है।
+- Commits: `87c0f763` (outbox migration), `c383484d` (scheduled worker), `e96c8f11` (source tests), `cccbcd7e` (previous progress), `3c912f1f` (previous checklist)।
+- कोई migration apply, Edge Function/Netlify deploy, push send, production config change, database write, booking/payment/refund/payout/wallet mutation या mobile QA नहीं किया।
