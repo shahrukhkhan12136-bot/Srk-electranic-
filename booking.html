@@ -1251,8 +1251,12 @@ async function loadCustomerBookings() {
     }
     const billMap=new Map();
     await Promise.all(data.filter(row=>row.status==='completed'&&row.selected_category).map(async row=>{
-      const {data:bill,error}=await customerSb.rpc('srk_customer_get_labour_bill',{p_booking_id:row.id});
-      if(!error&&bill)billMap.set(row.id,bill);
+      try {
+        const {data:bill,error}=await customerSb.rpc('srk_customer_get_labour_bill',{p_booking_id:row.id});
+        if(!error&&bill)billMap.set(row.id,bill);
+      } catch (error) {
+        // A bill transport failure must not hide the customer's booking history.
+      }
     }));
     box.innerHTML = data.map(row => {
       const contact = callMap.get(row.id);
