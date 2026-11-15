@@ -1390,11 +1390,17 @@ function updateCustomerTimers(){document.querySelectorAll('[id^="customerTimer_"
 setInterval(updateCustomerTimers,1000);
 
 async function customerChangePaymentMethod(id){
+ if(!customerSb||!id)return;
  if(!confirm('क्या आप इस बुकिंग के लिए Cash की जगह Online (Razorpay) भुगतान स्वयं चुनना चाहते हैं? कोई भुगतान अभी नहीं लिया जाएगा।'))return;
- const {data,error}=await customerSb.rpc('srk_customer_change_payment_method',{p_booking_id:id,p_payment_method:'Razorpay ऑनलाइन भुगतान'});
- if(error){alert('भुगतान तरीका नहीं बदला: '+error.message);return;}
- alert('आपकी पसंद Online भुगतान के रूप में सुरक्षित हो गई है। भुगतान काम पूरा होने के बाद होगा।');
- await loadCustomerBookings();
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_change_payment_method',{p_booking_id:id,p_payment_method:'Razorpay ऑनलाइन भुगतान'});
+  if(error)throw error;
+  if(!data?.success)throw new Error('PAYMENT_METHOD_CHANGE_NOT_CONFIRMED');
+  alert('आपकी पसंद Online भुगतान के रूप में सुरक्षित हो गई है। भुगतान काम पूरा होने के बाद होगा।');
+  await loadCustomerBookings();
+ }catch(error){
+  alert('भुगतान तरीका नहीं बदला। कृपया इंटरनेट और लॉगिन जाँचकर दोबारा कोशिश करें।');
+ }
 }
 function customerPayBooking(id,amount){
  if(!Number.isFinite(amount)||amount<1){alert('भुगतान राशि सही नहीं है।');return;}
