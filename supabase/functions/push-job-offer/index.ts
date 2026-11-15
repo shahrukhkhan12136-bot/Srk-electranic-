@@ -141,7 +141,9 @@ Deno.serve(async (req) => {
           p_delivery_id: target.delivery_id, p_attempt_count: target.attempt_count, p_success: false,
           p_error: status ? "Push provider HTTP " + status : "Push provider request failed"
         });
-        if (finishResult.error || finishResult.data !== true) failed++;
+        if (finishResult.error || finishResult.data !== true) {
+          console.error("Push device failure result was not accepted by the delivery ledger.");
+        }
       }
       failed++;
     }
