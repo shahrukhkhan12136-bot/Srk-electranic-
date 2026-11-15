@@ -1,5 +1,5 @@
 begin;
-select plan(43);
+select plan(46);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -146,6 +146,18 @@ select ok(position('ROUTE_PAYMENT_ID_MISMATCH' in pg_get_functiondef(
   and position('ROUTE_ELECTRICIAN_RECIPIENT_MISMATCH' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'Route transfer must match the booking payment and assigned electrician identity');
+
+select ok(position('VERIFIED_PAYMENT_EVIDENCE_MISSING_OR_MISMATCHED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'paid/refunded bookings require a matching Razorpay or manual payment evidence');
+select ok(position('REFUND_PROVIDER_PAYMENT_ID_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('MANUAL_REFUND_PAYMENT_EVIDENCE_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'refund records must match their original payment evidence');
+select ok(position('select i.debt_id::text from public.srk_booking_cancellation_fee_items' in
+  pg_get_functiondef('public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'wallet reconciliation includes the debt-linked electrician wallet refund reversal');
 
 select * from finish();
 rollback;
