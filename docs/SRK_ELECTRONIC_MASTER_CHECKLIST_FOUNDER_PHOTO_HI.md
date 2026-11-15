@@ -511,3 +511,9 @@
 - Customer Profile तथा Saved Address loaders में `auth.getSession()` अब try/catch के अंदर है और session error को स्पष्ट रूप से संभालता है।
 - नेटवर्क/Session lookup विफल होने पर unhandled rejection के बजाय सुरक्षित हिंदी स्थिति संदेश दिखेगा; Saved Address selector का disabled state finally में वापस सक्रिय होगा।
 - Regression source-contract test जोड़ा। वास्तविक browser/network fault-injection तथा Supabase Auth runtime परीक्षण अभी लंबित हैं।
+
+
+### Customer App — Saved Address Save Auth Error Handling
+- `saveCurrentBookingAddress()` में Auth Session lookup पहले try/catch से बाहर था; rejected promise पर unhandled rejection और button अटका रह सकता था।
+- Session lookup को try/catch के भीतर रखा, sessionError स्पष्ट जाँचा, और मौजूदा finally से बटन restore होना सुनिश्चित किया।
+- Regression source-contract test जोड़ा। वास्तविक browser/network fault-injection तथा Supabase Auth परीक्षण लंबित हैं।
