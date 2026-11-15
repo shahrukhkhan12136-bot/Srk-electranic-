@@ -415,11 +415,11 @@ test('Customer and electrician lifecycle actions reconcile uncertain network res
   const electricianStart = functionBody(electrician, 'electricianRequestWorkStart');
   const electricianCompletion = functionBody(electrician, 'electricianRequestWorkCompletion');
   for (const fn of [customerStart, customerCompletion]) {
-    assert.match(fn, /catch\\([a-z]+\\)\\{try\\{await loadCustomerBookings\\(\\);/);
+    assert.match(fn, /catch\([a-z]+\)\{try\{await loadCustomerBookings\(\);/);
     assert.match(fn, /स्थिति रीफ़्रेश करके जाँचें/);
   }
   for (const fn of [electricianStart, electricianCompletion]) {
-    assert.match(fn, /catch\\([a-z]+\\)\\{try\\{await refresh\\(\\);/);
+    assert.match(fn, /catch\([a-z]+\)\{try\{await refresh\(\);/);
     assert.match(fn, /वर्तमान स्थिति रीफ़्रेश करके जाँचें/);
   }
 });
