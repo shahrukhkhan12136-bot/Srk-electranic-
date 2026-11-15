@@ -93,3 +93,11 @@ test('booking state changes trigger an explicit refresh after user decisions and
   for (const fn of [customerStart, customerCompletion]) assert.match(fn, /await loadCustomerBookings\(\)/);
   for (const fn of [electricianStart, electricianCompletion, offerResponse]) assert.match(fn, /await refresh\(\)/);
 });
+
+test('customer booking timeline reports partial per-booking RPC errors without throwing an undefined variable', () => {
+  const load = functionBody(customer, 'loadCustomerBookings');
+  assert.match(load, /const timelineResults = await Promise\.all\(data\.map/);
+  assert.match(load, /timelineResults\.forEach\(\(\{bookingId,result\}\)=>/);
+  assert.match(load, /if\(timelineResults\.some\(\(\{result\}\)=>result\.error\)\)\s*\{/);
+  assert.doesNotMatch(load, /if\(timelineResult\.error\)/);
+});
