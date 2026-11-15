@@ -5,6 +5,12 @@
 ## स्वीकृत निर्देश
 उपयोगकर्ता का स्पष्ट आदेश: SOS सुविधा दर्ज की जाए। SOS अलर्ट Admin/मालिक और अधिकृत Support Staff तक पहुँचे; पुलिस को ऐप की ओर से स्वतः कोई संदेश, कॉल या रिपोर्ट न भेजी जाए।
 
+## GPT-1 UI integration contract (Feature Branch source)
+- Customer और Electrician App में तीन स्वीकृत कारणों वाला SOS control जोड़ा गया। दोनों srk_create_sos_alert RPC को समान payload भेजते हैं: p_booking_id uuid|null, p_reason text, p_details text|null, p_location_lat double precision|null, p_location_lng double precision|null। अपेक्षित success response {success:true, case_id:<uuid>} है।
+- लोकेशन केवल SOS दबाने के बाद browser permission माँगकर ली जाती है; permission/लोकेशन विफल हो तो null coordinates के साथ SOS भेजने की कोशिश जारी रहती है।
+- UI केवल confirmed success और case_id मिलने पर केस दर्ज दिखाता है; अन्यथा सफलता का दावा नहीं करता।
+- GPT-2 को इसी RPC, booking/actor authorization, Admin/Support queue, SMS/Push delivery status और audit workflow को implement करना होगा। जब तक backend RPC उपलब्ध और सत्यापित न हो, SOS delivery की सफलता का दावा नहीं होगा।
+
 ## अपेक्षित व्यवहार
 1. Customer App और Electrician App में स्पष्ट SOS / तत्काल सहायता बटन उपलब्ध हो।
 2. SOS दबाने पर एक emergency case बने और Admin Panel तथा Support Staff Panel में तुरंत दिखाई दे।
