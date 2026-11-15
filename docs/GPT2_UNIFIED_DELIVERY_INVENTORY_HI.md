@@ -228,16 +228,16 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 - Cross-branch fetch of `SUPABASE_SCHEMA.sql` on five refs found the same starter-schema blob; it contains neither `service_bookings.amount_paid` nor `electrician_profiles.auth_user_id`. The latter is supplied by migration `20261109000500_harden_electrician_profile_identity_linking.sql`; the remaining checked-in base-DDL gap is `service_bookings.amount_paid`. Details: `docs/BASE_COLUMN_DDL_EVIDENCE_AUDIT_20261115.md`.
 - This narrows the repository-source search but does not prove that no deleted Git object or external deployment artifact exists. Only the `service_bookings.amount_paid` base DDL contract remains unresolved; no guessed migration was added.
 
-## 6. CI and test status — verified 15 November 2026
+## 6. CI and test status — verified 16 November 2026
 ### Node CI
 - Workflow: `.github/workflows/node-tests.yml`
 - Triggers on push to this Feature Branch, pull requests targeting `main`, and manual dispatch.
 - Uses GitHub-hosted Ubuntu, Node.js 22, `npm install --ignore-scripts --no-audit --no-fund`, then `npm test`.
 - No secrets, DB writes, provider calls or deployment in this job.
-- नवीनतम सत्यापित GPT-2 PR source head (इस Node run के समय): `70010d08ab74e60e5c84551f8c2295105273a7b4`.
-- Node run **43745940269** on head `70010d08ab74e60e5c84551f8c2295105273a7b4` succeeded; downloaded job log explicitly shows **189 tests, 189 pass, 0 fail, 0 skipped**. यह run नए `tests/admin-progress-card.test.js` सहित पूरे Node suite का है.
-- Commit `13afb4d92e22673b50c5eee1751f66621fdf194f` corrected the customer payment-method pgTAP assertion from mojibake to the exact UTF-8 literal `Razorpay ऑनलाइन भुगतान`; the latest Node run includes this source correction.
-- This proves Node regression suite only, not SQL migration replay, PostgreSQL/pgTAP, browser/mobile, Vercel Preview or Production parity.
+- Latest verified PR head: `609fd7843dc00fd3ca2e7560d3e0314b8bcec927`.
+- Node run **43750241498** succeeded on that head; downloaded job log explicitly shows **216 tests, 216 pass, 0 fail, 0 cancelled, 0 skipped**.
+- The tested head descends from commit `9ee331046b5fd5b7e0e58bc4c246ab675b914d79`; the tested source includes the updated `admin-refund-and-staff-access.test.js` assertion for shared Main Admin/Support SOS visibility.
+- This proves the Node regression suite only, not SQL migration replay, PostgreSQL/pgTAP, browser/mobile, Vercel Preview or Production parity.
 
 ### Supabase schema CI
 - Workflow: `.github/workflows/supabase-schema-ci.yml`, manual dispatch only.
@@ -300,16 +300,15 @@ The GPT-2 feature set is not empty or waiting for discovery: the source already 
 
 ### Latest SOS source/CI boundary — 16 Nov 2026
 - Commit `2c0f0624d69fab52389def0d93ca449d6c22c86d` records the Customer/Electrician → authenticated RPC → Admin/Support source integration recheck. It documents that clients send only `p_reason`; backend derives actor and the unique active booking, and Admin RPCs enforce SOS read/acknowledge permissions.
-- Commit-level PR-triggered workflow lookup returned no runs for this documentation commit. The previously verified Node run `43748698652` (189/189) remains the last verified test result; do not claim this docs commit itself was tested.
+- Commit-level PR-triggered workflow lookup returned no runs for this documentation commit. Node run `43750241498` later completed successfully on PR head `609fd7843dc00fd3ca2e7560d3e0314b8bcec927` with **216/216** Node tests passing; it includes the shared SOS visibility test correction described below.
 - SOS PostgreSQL/pgTAP runtime, SMS/Push delivery, consented location and browser/mobile end-to-end QA remain pending. No emergency-service auto-contact, Production migration, merge or deployment.
 
 
 ### Admin SOS Support visibility fix — 16 Nov 2026
 - UI audit found the SOS card was a normal Admin-only direct child of `#app`, while `showState()` also loads SOS for Support Staff. `setAdminPortalMode('staff')` therefore hid the card even though the Support role is explicitly granted `support.sos.read` and `support.sos.acknowledge` by migration `20261115260000`.
-- Fixed `admin.html` by marking the SOS card `staff-only hidden`, matching the role-mode visibility mechanism. Backend permission checks remain authoritative; no client-side permission bypass was added.
-- Added `tests/admin-sos-staff-visibility.test.js` to guard card visibility, role-mode behavior and Support permission grants. CI for these new commits is pending; no test pass is claimed yet.
-
-- Follow-up review caught a regression risk in the initial visibility patch: a `staff-only` card would hide the SOS queue from Main Admin even though Main Admin loads it. Corrected with an `admin-shared` visibility class shown in both authorized portal modes; regression test now asserts both roles. Latest code/test commits: `94e1ffd` and `2650b0f`. CI still pending.
+- Fixed `admin.html` with the `admin-shared hidden` class so the SOS card is visible in both authorized Main Admin and Support Staff modes. Backend permission checks remain authoritative; no client-side permission bypass was added.
+- Added `tests/admin-sos-staff-visibility.test.js` and updated the existing `tests/admin-refund-and-staff-access.test.js` role-visibility assertion. The latter correction is commit `9ee331046b5fd5b7e0e58bc4c246ab675b914d79`.
+- Node run `43750241498` passed on descendant PR head `609fd7843dc00fd3ca2e7560d3e0314b8bcec927`; downloaded log confirms **216/216**. This is Node/source-contract evidence only, not browser or PostgreSQL/pgTAP runtime proof.
 
 
 ### 3C. वर्तमान Feature Branch Node test inventory (2026-11-16 पुनर्गणना)
@@ -356,4 +355,4 @@ Recursive Git tree से `tests/*.test.js` की वास्तविक स�
 - `tests/sos-two-step-ui-contract.test.js`
 - `tests/welcome-screen-contract.test.js`
 
-यह फ़ाइल-गणना है, टेस्ट निष्पादन का परिणाम नहीं। नवीनतम SOS visibility regression test अभी CI/runtime में पास प्रमाणित नहीं है।
+यह फ़ाइल-गणना है, टेस्ट निष्पादन का परिणाम नहीं। अलग Node CI run 43750241498 में कुल 216/216 टेस्ट पास हुए; PostgreSQL/pgTAP और वास्तविक browser-role runtime अभी प्रमाणित नहीं हैं।
