@@ -23,7 +23,9 @@ test('customer English dictionary covers remaining static booking and dashboard 
     'Only your selected tier will be assigned.',
     'The payment method will not change from Cash or Online',
     'Secure Payment with Razorpay',
-    'Pay with Razorpay'
+    'Pay with Razorpay',
+    'Electrician’s Current Location',
+    'Booking Status History'
   ]) {
     assert.ok(booking.includes(translated), 'Missing English customer translation: ' + translated);
   }
