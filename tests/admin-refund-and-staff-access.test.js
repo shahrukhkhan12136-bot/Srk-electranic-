@@ -376,7 +376,8 @@ test('Quote and work-status SECURITY DEFINER RPCs are pinned to an empty search_
     'srk_customer_respond_booking_quote(uuid, text)',
     'srk_update_booking_work_status(uuid, text)'
   ]) {
-    assert.ok(quoteWorkSearchPathFix.includes('alter function public.' + name));
+    assert.ok(quoteWorkSearchPathFix.includes('alter function if exists public.' + name));
   }
   assert.equal((quoteWorkSearchPathFix.match(/set search_path = '';/g) || []).length, 3);
+  assert.match(quoteWorkSearchPathFix, /IF EXISTS keeps fresh replay safe/i);
 });
