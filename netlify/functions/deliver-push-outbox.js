@@ -16,7 +16,7 @@ exports.handler = async function () {
     method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(12000)
   });
   try {
-    const claim = await callRpc("srk_claim_push_delivery_outbox", { p_limit: 20 });
+    const claim = await callRpc("srk_claim_push_delivery_outbox", { p_limit: 3 });
     if (!claim.ok) {
       console.error("Push outbox claim failed with HTTP", claim.status);
       return { statusCode: 502, body: "Push outbox claim failed" };
