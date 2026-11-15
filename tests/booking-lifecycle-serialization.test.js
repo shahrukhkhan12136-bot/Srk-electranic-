@@ -92,7 +92,8 @@ function sqlFunction(source, name) {
 test('server work-start request and customer approval lock the booking and use server clock', () => {
   const request = sqlFunction(timerSql, 'srk_electrician_request_work_start');
   const approval = sqlFunction(startFixSql, 'srk_customer_respond_work_start');
-  assert.match(request, /assigned_electrician_id=v_profile FOR UPDATE/);
+  assert.match(request, /WHERE id=p_booking_id FOR UPDATE/);
+  assert.match(request, /p\.id=b\.assigned_electrician_id[\\s\\S]*?p\.user_id=auth\\.uid\\(\\) OR p\.auth_user_id=auth\\.uid\\(\\)/);
   assert.match(request, /work_start_requested_at=clock_timestamp\(\)/);
   assert.match(request, /work_timer_running=false/);
   assert.match(approval, /customer_user_id=auth\.uid\(\)[\s\S]*?FOR UPDATE/);
@@ -104,7 +105,8 @@ test('server work-start request and customer approval lock the booking and use s
 test('server completion freezes elapsed time and customer rejection resumes from server time', () => {
   const request = sqlFunction(timerSql, 'srk_electrician_request_work_completion');
   const response = sqlFunction(timerSql, 'srk_customer_respond_work_completion');
-  assert.match(request, /assigned_electrician_id=v_profile FOR UPDATE/);
+  assert.match(request, /WHERE id=p_booking_id FOR UPDATE/);
+  assert.match(request, /p\.id=b\.assigned_electrician_id[\\s\\S]*?p\.user_id=auth\\.uid\\(\\) OR p\.auth_user_id=auth\\.uid\\(\\)/);
   assert.match(request, /clock_timestamp\(\)-b\.work_started_at/);
   assert.match(request, /work_timer_running=false/);
   assert.match(request, /completion_approval_status='pending'/);
@@ -155,4 +157,14 @@ test('customer work lifecycle SECURITY DEFINER RPCs use an empty search_path and
   assert.match(startFixSql, /INSERT INTO srk_private\\.work_timer_authorizations/i);
   assert.match(startFixSql, /INSERT INTO srk_private\\.work_transition_authorizations/i);
   assert.doesNotMatch(startFixSql, /(?:INSERT INTO|DELETE FROM)\\s+(?!srk_private\\.)work_(?:timer|transition)_authorizations/i);
+});
+test('electrician timer RPCs authorize the exact assigned profile, not only the newest owned profile', () => {
+  const start = sqlFunction(timerSql, 'srk_electrician_request_work_start');
+  const completion = sqlFunction(timerSql, 'srk_electrician_request_work_completion');
+  for (const fn of [start, completion]) {
+    assert.match(fn, /WHERE id=p_booking_id FOR UPDATE/);
+    assert.match(fn, /p\.id=b\.assigned_electrician_id/);
+    assert.match(fn, /p\.user_id=auth\.uid\(\) OR p\.auth_user_id=auth\.uid\(\)/);
+    assert.doesNotMatch(fn, /ORDER BY p\.created_at DESC LIMIT 1/);
+  }
 });
