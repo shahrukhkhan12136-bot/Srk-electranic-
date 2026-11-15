@@ -34,3 +34,23 @@
 - The current branch's `index.html` redirects visitors to `/booking.html`. The customer booking page is not the required three-role website Welcome Screen.
 - Therefore, the founder photo is still **not verified as present in the repository, integrated, built, or deployed**. Do not mark these items complete until a fresh working session verifies the exact approved image and page behavior.
 - Continue only on `feat/customer-login-first-dashboard-20261114`; do not change Production or deploy without separate approval.
+
+
+---
+
+# Project-wide Master Checklist Addendum — Admin Refund / Support Staff Audit
+
+**Status date:** 15 November 2026  
+**Working branch:** `feat/customer-login-first-dashboard-20261114`
+
+- [x] Hide customer-refund launch action after provider refund is confirmed `processed`.
+- [x] Separate Support Staff portal UI from Main Admin modules.
+- [x] Verify Staff invitation server-side Main Admin authorization and fixed Support role in source.
+- [x] Verify Staff support inbox ownership is assignment-scoped and private phone projections are absent in the reviewed RBAC migration.
+- [x] Add source-level regression tests for these contracts.
+- [ ] Execute Node source tests and database pgTAP suites in the approved test environment.
+- [ ] Verify Admin/Staff workflows end-to-end after all implementation work is complete.
+- [ ] Complete consolidated desktop/mobile QA after all implementation work is complete.
+- [ ] Obtain explicit owner approval before any production deployment or live changes.
+
+**Evidence boundary:** The checked items above are source review/code changes only. No runtime test, live Staff invitation, provider refund, migration apply, deployment or mobile QA is claimed. See `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` for detailed audit notes.
