@@ -136,3 +136,20 @@ test('customer remaining login, form and booking feedback strings are localized'
   assert.match(booking, /'भुगतान सत्यापित नहीं हुआ।':'Payment could not be verified.'/);
   assert.match(booking, /'रसीद प्रिंट \/ PDF सेव करें':'Print receipt \/ Save PDF'/);
 });
+
+
+test('electrician booking refresh handles profile, offer and per-booking RPC failures safely', () => {
+  const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
+  const start = electrician.indexOf('async function refresh(){');
+  const end = electrician.indexOf('\nasync function setElectricianAvailability', start);
+  assert.ok(start >= 0 && end > start);
+  const refresh = electrician.slice(start, end);
+  assert.match(refresh, /try\{const result=await sb\.from\('electrician_profiles'\)/);
+  assert.match(refresh, /प्रोफाइल लोड नहीं हो सकी। इंटरनेट जाँचकर Refresh करें।/);
+  assert.match(refresh, /try\{const offerResult=await sb\.rpc\('srk_get_my_offer_details'\)/);
+  assert.match(refresh, /काम के ऑफर लोड नहीं हो सके। इंटरनेट जाँचकर Refresh करें।/);
+  assert.match(refresh, /try\{const r=await sb\.rpc\('srk_electrician_get_my_live_location_status'/);
+  assert.match(refresh, /Keep the location control available for a manual retry/);
+  assert.match(refresh, /srk_electrician_get_labour_bill/);
+  assert.match(refresh, /Bill can be retried on the next refresh/);
+});
