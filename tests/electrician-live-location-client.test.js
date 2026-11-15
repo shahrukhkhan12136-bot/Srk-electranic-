@@ -17,6 +17,17 @@ test('GPS permission or signal error also requests server-side stop', () => {
   assert.match(electrician, /stopElectricianLiveLocationAfterGpsFailure\(id,watch,status,'GPS सिग्नल उपलब्ध नहीं है।'\)/);
 });
 
+test('GPS failure and manual stop share one in-flight guard', () => {
+  assert.match(electrician, /const electricianLocationStopBusy=new Set\(\)/);
+  const helper = electrician.match(/async function stopElectricianLiveLocationAfterGpsFailure\([\s\S]*?\n\}/);
+  const manual = electrician.match(/async function stopElectricianLiveLocation\([\s\S]*?\n\}/);
+  assert.ok(helper && manual, 'both GPS failure and manual stop handlers exist');
+  assert.match(helper[0], /electricianLocationStopBusy\.has\(id\)/);
+  assert.match(helper[0], /electricianLocationStopBusy\.add\(id\)/);
+  assert.match(helper[0], /finally[\s\S]*?electricianLocationStopBusy\.delete\(id\)/);
+  assert.match(manual[0], /electricianLocationStopBusy\.has\(id\)/);
+});
+
 test('failed stop retains the booking in the logout retry set', () => {
   const helper = electrician.match(/async function stopElectricianLiveLocationAfterGpsFailure\([\s\S]*?\nasync function startElectricianLiveLocation/);
   assert.ok(helper, 'live location stop helper exists');
