@@ -2953,3 +2953,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Refund review migration 20261115110000_admin_refund_review_queue_and_decisions.sql की queue/decision RPC Main Admin-only है, empty search_path और request row lock रखती है। Approval केवल review state बदलता है, provider को पैसा भेजता नहीं और booking payment status mutate नहीं करता।
 - accounting_reconciliation_readonly_contract.test.sql में दो source-contract assertions जोड़े: payout settlement और manual refund record RPC दोनों independently Main Admin authorization लागू करें। Plan/count 65 से 67।
 - Static review/test-source update मात्र। PostgreSQL/pgTAP runtime अभी नहीं चला; live Staff login, refund provider, payout, browser QA और production parity सत्यापित नहीं हैं। कोई वास्तविक refund/transfer, migration apply, merge या deployment नहीं।
+
+
+## 2026-11-15 — Customer booking copy: retired quotation wording removed
+
+- Customer booking page में बचा हुआ Hindi copy और उसका English translation dictionary entry हटाया; अब page केवल selected electrician tier/duration/rate आधारित शुरुआती estimate और server-recorded actual labour time बताता है।
+- Customer regression test जोड़ा ताकि inspection/post-inspection quotation वाली पुरानी wording दोबारा न लौटे।
+- Static scan: `booking.html` और `electrician.html` में quote/quotation/inspection terms और quote-related identifiers का कोई match नहीं मिला।
+- इस cleanup के दौरान एक CI run में test ने सही तरीके से बची हुई Hindi dictionary string पकड़ी; वह string हटाई गई। उसके बाद latest code SHA `ef2c3fd0c6f33b52e2d9dfa5833819c6802894d1` पर दो full Node test workflows **SUCCESS** हुए।
+- Customer/Electrician UI wording cleanup मात्र; Admin/Accounting/Payment/database legacy dependencies GPT-2 के दायरे में हैं। No Production changes, merge, deployment or data deletion. Browser runtime and final mobile QA remain pending.
