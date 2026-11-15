@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(21);
 select has_function('public','srk_customer_get_my_booking_work_timeline',array['uuid'],'customer work timeline RPC exists');
 select ok((select prosecdef from pg_proc where oid='public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure),'customer work timeline is SECURITY DEFINER');
 select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure),'customer work timeline uses an empty search_path');
@@ -19,5 +19,7 @@ select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='p
 select has_trigger('public','service_bookings','srk_guard_new_category_booking_status_transition','new-category booking status changes have a protected workflow trigger');
 select ok((select prosecdef and proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_guard_new_category_booking_status_transition()'::regprocedure),'new-category status guard is SECURITY DEFINER with an empty search_path');
 select ok(position('work_transition_authorizations' in pg_get_functiondef('public.srk_guard_new_category_booking_status_transition()'::regprocedure))>0 and position('NEW_CATEGORY_STATUS_REQUIRES_PROTECTED_WORKFLOW' in pg_get_functiondef('public.srk_guard_new_category_booking_status_transition()'::regprocedure))>0,'new-category in-progress/completed status changes require protected transition authorization');
+select ok(position('o.status=''accepted''' in pg_get_functiondef('public.srk_guard_new_category_booking_status_transition()'::regprocedure))>0,'new-category assignment requires a matching accepted offer');
+select ok(position('UPDATE public.job_offers SET status=''accepted''' in pg_get_functiondef('public.srk_respond_to_offer(uuid,text)'::regprocedure)) < position('UPDATE public.service_bookings SET assigned_electrician_id' in pg_get_functiondef('public.srk_respond_to_offer(uuid,text)'::regprocedure)),'offer acceptance is recorded before booking assignment for trigger authorization');
 select * from finish();
 rollback;
