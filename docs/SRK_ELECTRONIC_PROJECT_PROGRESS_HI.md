@@ -4015,3 +4015,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Updated migration replay manifest to distinguish the restored push-subscription migration from the remaining complaint parent/event and two column prerequisites.
 - These are source/CI findings only. Node tests do not execute PostgreSQL/pgTAP. No Production database, migration history, or provider operation was accessed. No checklist percentage changed.
 - Vercel reported a build-rate-limit failure on this commit; it is separate from the two successful Node test jobs and does not establish deployment success.
+
+
+### Historical complaint base-schema source recovered — 15 Nov 2026
+- सभी 18 listed Git branches के recursive trees जाँचने पर पुराने `work/separate-customer-electrician-portals` branch में मूल migration `20261110040000_customer_admin_complaints.sql` मिली।
+- Migration में `public.srk_booking_complaints` और `public.srk_booking_complaint_events` की original table definitions, FK/check constraints, indexes, RLS enablement और direct table privilege revocations मौजूद हैं।
+- Exact historical migration source को current Feature Branch में restore किया; commit `2390a7dd3db35f620f41edc22253602866999fb0`। Current migration inventory 77 से 78 SQL files हुई।
+- Complaint parent/event table source gaps अब recover हो गए। Remaining unresolved base-column DDL: `service_bookings.amount_paid` और `electrician_profiles.auth_user_id`; duplicate `20261109` remote migration lineage भी unresolved।
+- कोई SQL guessed नहीं; Production DB query/apply, migration replay, PostgreSQL/pgTAP runtime, merge या deployment नहीं हुआ। Restore source-only है; remote catalog parity का प्रमाण नहीं।
+- GPT-2 checklist 27/39 = 69%; कुल project 56/86 = 65% अपरिवर्तित। Documentation/source recovery को checklist completion नहीं गिना।
