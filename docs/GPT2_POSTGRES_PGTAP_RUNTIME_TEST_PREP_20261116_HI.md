@@ -788,3 +788,17 @@ After the replay prerequisites in §§1–7 are resolved, add a dedicated test f
 7. Cleanup/rollback of all fixtures and deterministic assertion counts.
 
 This is a test-coverage finding and a future test specification only. No pgTAP test was added or executed in this step; no migration replay, Production query/write, DDL, deployment, or application-source change occurred. The local replay blockers and unknown Production provenance remain unchanged.
+
+
+## 25. Existing pgTAP plan-count static reconciliation — 16 Nov 2026
+
+A statement-level count was performed on the two existing SQL test files (splitting complete top-level SQL statements at semicolons; nested SELECT expressions inside an assertion are not counted as separate test assertions):
+
+| Test file | Declared plan | Top-level SELECT statements | Plan + assertions + finish | Result |
+|---|---:|---:|---:|---|
+| `admin_staff_rbac_foundation.test.sql` | 69 | 71 | 1 plan + 69 assertions + 1 finish | Count matches |
+| `sos_admin_support_alerts.test.sql` | 28 | 30 | 1 plan + 28 assertions + 1 finish | Count matches |
+
+Both files therefore have internally consistent declared pgTAP plan counts by static statement counting. This does not establish that either SQL file parses or passes against PostgreSQL, nor does it validate the referenced schema objects, privileges, function definitions, or runtime behavior.
+
+No database engine, pgTAP, Supabase CLI, Docker, or CI job was run. No Production access or change occurred.
