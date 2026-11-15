@@ -308,3 +308,35 @@ test('Electrician dashboard refresh ignores stale profile, offer and supplementa
   const logout = functionBody(electrician, 'logout');
   assert.match(logout, /electricianRefreshRequest\+\+/);
 });
+
+test('Customer booking refresh ignores stale requests after session, booking, timeline and bill reads', () => {
+  const load = functionBody(customer, 'loadCustomerBookings');
+  assert.match(customer, /let customerBookingRefreshRequest = 0/);
+  assert.match(load, /const request = \+\+customerBookingRefreshRequest/);
+  assert.match(load, /const isCurrent = \(\) => request === customerBookingRefreshRequest/);
+  assert.match(load, /if \(!isCurrent\(\)\) return;[\s\S]*?const \{ data, error \} = await customerSb\.from\('service_bookings'\)/);
+  assert.match(load, /if \(!isCurrent\(\)\) return;\s*if \(error\) throw error/);
+  assert.match(load, /await Promise\.all\(data\.map\(async row =>/);
+  assert.match(load, /if \(!isCurrent\(\)\) return;\s*timelineResults\.forEach/);
+  assert.match(load, /if \(!isCurrent\(\)\) return;\s*box\.innerHTML = data\.map/);
+  assert.match(load, /if \(isCurrent\(\)\) box\.setAttribute\('aria-busy','false'\)/);
+  assert.match(customer, /customerBookingRefreshRequest\+\+;\s*customerLiveLocationBookingIds=\[\]/);
+});
+
+test('Customer booking list refreshes on foreground and reconnect without duplicate rapid refreshes', () => {
+  assert.match(customer, /let customerResumeRefreshTimer = null/);
+  assert.match(customer, /const scheduleCustomerResumeRefresh = \(\) => \{/);
+  assert.match(customer, /window\.addEventListener\('focus', scheduleCustomerResumeRefresh\)/);
+  assert.match(customer, /window\.addEventListener\('online', scheduleCustomerResumeRefresh\)/);
+  assert.match(customer, /document\.addEventListener\('visibilitychange',[\s\S]*?scheduleCustomerResumeRefresh\(\)/);
+  assert.match(customer, /document\.visibilityState === 'visible'[\s\S]*?loadCustomerBookings\(\)/);
+});
+
+test('Electrician offers refresh on foreground and reconnect using the guarded dashboard refresh', () => {
+  assert.match(electrician, /let electricianResumeRefreshTimer=null/);
+  assert.match(electrician, /function scheduleElectricianResumeRefresh\(\)/);
+  assert.match(electrician, /window\.addEventListener\('focus',scheduleElectricianResumeRefresh\)/);
+  assert.match(electrician, /window\.addEventListener\('online',scheduleElectricianResumeRefresh\)/);
+  assert.match(electrician, /document\.addEventListener\('visibilitychange',[\s\S]*?scheduleElectricianResumeRefresh\(\)/);
+  assert.match(electrician, /document\.visibilityState==='visible'&&user\)refresh\(\)/);
+});
