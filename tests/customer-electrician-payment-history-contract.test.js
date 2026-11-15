@@ -38,3 +38,11 @@ test('Electrician earnings and Admin bank payout remain distinct and UI never in
   assert.match(electrician, /बैंक खाता जोड़ना और निकासी अभी बंद है/);
   assert.doesNotMatch(electrician, /srk_wallet_withdraw|srk_create_withdrawal|create_bank_transfer|razorpay_route_transfer/i);
 });
+
+test('Refunded completed bookings are not mislabeled as unpaid customer balances', () => {
+  assert.match(earningsSql, /payment_status text/);
+  assert.match(earningsSql, /b\.payment_status='paid'/);
+  assert.match(electrician, /!\['paid','refunded'\]\.includes\(x\.payment_status\)/);
+  assert.match(electrician, /customerRefunded=completed\.filter\(x=>x\.payment_status==='refunded'\)\.length/);
+  assert.match(electrician, /रिफंड \/ रिवर्सल:/);
+});
