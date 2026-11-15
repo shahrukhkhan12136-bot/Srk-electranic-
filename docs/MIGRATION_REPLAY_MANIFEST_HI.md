@@ -1,8 +1,8 @@
 # SRK ELECTRONIC — Migration Replay Manifest (Static, Hindi)
 
 **स्थिति:** Static inventory only — यह execution-ready replay plan नहीं है।  
-**जाँचा गया commit:** `deb26b55384bf6276f36d9625f750cbce215773b`  
-**कुल SQL migrations:** 71  
+**जाँचा गया commit:** `53a9c0f1fe4d33a5b29430654a7c39fa39f32d8f`  
+**कुल SQL migrations:** 72  
 **Production:** कोई access/apply नहीं। PostgreSQL/pgTAP runtime नहीं चला।
 
 ## 1. महत्त्वपूर्ण रोक (Do not replay yet)
@@ -75,7 +75,7 @@
 45. `20261114390000_admin_staff_rbac_foundation.sql`
 46. `20261114410000_razorpay_webhook_event_inbox.sql`
 
-### D. Refund, KYC, accounting, Route, Push and final financial hardening (25)
+### D. Refund, KYC, accounting, Route, Push and final financial hardening (26)
 
 47. `20261115091906_retire_unused_legacy_accept_electrician_job.sql`
 48. `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql`
@@ -102,6 +102,7 @@
 69. `20261115230000_admin_booking_direct_write_closure.sql`
 70. `20261115240000_harden_refund_recovery_full_amount.sql`
 71. `20261115250000_harden_refund_reconcile_full_amount.sql`
+72. `20261115260000_sos_admin_support_alerts.sql`
 
 ## 3. Dependency phases (provisional, not an apply order)
 
@@ -126,7 +127,7 @@
 
 ## 5. Static object-change audit — 15 नवम्बर 2026
 
-71 files की SQL text को migration-by-migration scan किया गया। नीचे सूचीबद्ध object names source में CREATE/ALTER या function definition के रूप में मिले; यह semantic SQL parser या PostgreSQL execution नहीं है। Dynamic SQL, unqualified names, `DO` blocks और indirect function calls के कारण इसे पूर्ण dependency graph नहीं माना जाए।
+72 files की SQL text को migration-by-migration scan किया गया। नीचे सूचीबद्ध object names source में CREATE/ALTER या function definition के रूप में मिले; यह semantic SQL parser या PostgreSQL execution नहीं है। Dynamic SQL, unqualified names, `DO` blocks और indirect function calls के कारण इसे पूर्ण dependency graph नहीं माना जाए।
 
 ### 5.1 Core schema / wallet / booking
 - `20261109010000_create_secure_wallet_ledger_foundation.sql`: `srk_wallet_accounts`, `srk_wallet_ledger`, `srk_wallet_bank_links` बनाता/बदलता है; wallet summary/admin overview RPCs।
@@ -190,3 +191,11 @@ Older `feature/business-finance-dashboard` और `work/separate-customer-electr
 - Direct UPI payment-report migration `amount_paid` update करती है, लेकिन उसे create नहीं करती।
 - वर्तमान Google Maps migration केवल `location_lat/location_lng` जोड़ती है; उसी migration के Admin approval RPC में `auth_user_id` insert/update होता है।
 - इन अतिरिक्त branch consumers से usage की पुष्टि होती है, पर authoritative column DDL नहीं मिलता। इसलिए दोनों base-column contracts unresolved रहेंगे।
+
+
+## 6. Latest-head inventory correction — 15 Nov 2026
+
+- PR #8 के commit `53a9c0f1fe4d33a5b29430654a7c39fa39f32d8f` पर Git tree दोबारा गिना: कुल **72 SQL migrations**। पुराने 71-file inventory में नवीनतम `20261115260000_sos_admin_support_alerts.sql` शामिल नहीं था; इसे Section D में item 72 के रूप में जोड़ा गया।
+- Duplicate 8-digit version prefix अभी भी `20261109` है और इसमें वही दो files हैं: `20261109_allow_quote_approval_booking_states.sql` तथा `20261109_electrician_inspection_quotes_and_service_only_commission.sql`। कोई rename/history rewrite नहीं किया गया।
+- SOS migration का स्पष्ट dependency cluster: पहले से मौजूद `srk_admin_permissions` और `srk_admin_role_permissions` (RBAC foundation), `service_bookings`, `auth.users`, तथा `srk_has_admin_permission` / Admin staff-session permission contract। यह केवल static source dependency observation है; replay order प्रमाणित नहीं।
+- Inventory और dependency manifest अभी भी static है; PostgreSQL parser, migration replay, pgTAP या Production parity test नहीं चला।
