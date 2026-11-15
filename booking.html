@@ -880,8 +880,12 @@ function initCustomerMenuShell(){
   document.getElementById('name')?.focus({preventScroll:true});
  });
  document.getElementById('customerProfileAddressLink')?.addEventListener('click',()=>{
-  document.getElementById('booking')?.scrollIntoView({behavior:'smooth',block:'start'});
-  document.getElementById('savedAddressSelect')?.focus({preventScroll:true});
+  // The booking form lives inside the Home tab; reveal it before scrolling.
+  activate('Home');
+  requestAnimationFrame(()=>{
+   document.getElementById('booking')?.scrollIntoView({behavior:'smooth',block:'start'});
+   document.getElementById('savedAddressSelect')?.focus({preventScroll:true});
+  });
  });
  activate('Home');
 }
