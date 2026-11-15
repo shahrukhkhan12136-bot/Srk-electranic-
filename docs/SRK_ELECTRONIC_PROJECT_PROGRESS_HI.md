@@ -3736,3 +3736,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - इन files में `service_bookings.amount_paid` या `electrician_profiles.auth_user_id` की defining DDL नहीं मिली। यह targeted snapshot scan है; सभी historical commits/tags या external approved Production schema का exhaustive proof नहीं।
 - दोनों columns का exact contract unresolved रखा; कोई guessed migration नहीं जोड़ी। अगला विश्वसनीय स्रोत approved/current schema export या मूल migration/commit है जिसने columns पहली बार बनाए।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित; यह audit progress checklist completion नहीं है।
+
+
+### GPT-2 targeted code-search provenance pass — 15 Nov 2026
+- Repository-wide targeted search में `amount_paid` के अनेक uses मिले: Razorpay webhook इसे captured payment amount से लिखता है; commission/reporting, customer booking/receipt/refund history और refund guards इसे पढ़ते हैं। लेकिन current migration hits में `service_bookings.amount_paid` का कोई defining `ADD COLUMN` नहीं मिला; पुराने `20261109_electrician_inspection_quotes_and_service_only_commission.sql` की ALTER list केवल quote/work timestamps और service/material fields जोड़ती है।
+- `electrician_profiles.auth_user_id` के uses दो प्रमुख migrations में मिले: `20261109001000_add_google_maps_location_support.sql` Admin approval insert/upsert में इसे लिखता है; `20261109010000_create_secure_wallet_ledger_foundation.sql` ownership lookup में `coalesce(auth_user_id,user_id)` पढ़ता है। दोनों में column definition नहीं मिली। Google Maps migration में service-booking location columns की ADD COLUMN DDL है, लेकिन वह electrician auth link नहीं बनाती।
+- यह code search confirms कि दोनों columns कई downstream features के लिए आवश्यक हैं; यह उनके actual SQL type, nullability, FK target, uniqueness या historical creation source को सिद्ध नहीं करता। कोई guessed DDL नहीं जोड़ी।
+- अगला सुरक्षित स्रोत: अधिकृत read-only Production schema catalog/export या वह मूल migration/commit जो इन columns को पहली बार बनाता है। बिना उसके PostgreSQL replay fixture/pgTAP runtime को authoritative baseline पर चलाना संभव नहीं।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित; audit findings को completion नहीं गिना गया।
