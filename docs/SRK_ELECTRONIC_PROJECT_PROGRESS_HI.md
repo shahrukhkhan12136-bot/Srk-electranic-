@@ -2241,3 +2241,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Relocation request में linked profile, active/approved status, अलग operating area, छह अंकों का PIN, reason length और एक pending request की unique constraint जाँची। Admin approval में profile row lock, पुराने unaccepted offers बंद करना और नए area के अनुसार dispatch आगे बढ़ाना source में मौजूद है; accepted assignments सुरक्षित रखे जाते हैं।
 - KYC UI में PDF/JPG/PNG, 5 MB सीमा, per-user private object path, metadata RPC, owner-scoped document-path RPC और 60-second signed preview path जाँचे। Admin review UI में decision validation और rejection/resubmission note requirement भी जाँची।
 - इस pass में कोई नया confirmed source defect नहीं मिला। यह source audit है—Supabase RLS/RPC/Storage behavior का runtime proof नहीं। Node/pgTAP/build tests execute नहीं किए गए; कोई migration apply, live KYC upload, relocation approval, availability mutation, booking/payment/refund/payout/wallet mutation, deployment या mobile QA नहीं हुआ।
+
+
+## 2026-11-15 — Live Location GPS Failure Cleanup Hardening
+- Live-location audit में एक privacy/lifecycle edge case मिला: browser GPS watch का error callback या server location-update RPC failure आने पर browser watch बंद हो जाता था, लेकिन server-side `is_active` location row को stop RPC से बंद नहीं किया जाता था। Customer view 90 सेकंड बाद stale location छिपा देता था, पर server state active रह सकती थी।
+- `electrician.html` में साझा cleanup helper जोड़ा। GPS signal/error या update RPC failure पर browser watch clear करके `srk_electrician_stop_live_location` call होता है; server stop confirm होने पर ही local retry entry हटती है। Stop RPC fail होने पर booking local retry set में बनी रहती है ताकि Dashboard Refresh/Logout पर फिर प्रयास हो सके।
+- `tests/electrician-live-location-client.test.js` में तीन source-contract assertions जोड़े: update failure cleanup, GPS error cleanup और failed-stop retry retention। Test अभी execute नहीं किया गया।
+- Live-location SQL source review में booking assignment/status scoping, explicit start consent, coordinate range/accuracy checks, customer ownership, 90-second stale-read cutoff और booking transition पर coordinate clearing भी जाँचे।
+- Commits: `ad3e9313` (client cleanup), `81426a92` (source test).
+- कोई GPS location live साझा नहीं की गई, कोई migration apply नहीं, कोई booking/payment/refund/payout/wallet mutation नहीं, production/deployment नहीं और mobile QA नहीं।
