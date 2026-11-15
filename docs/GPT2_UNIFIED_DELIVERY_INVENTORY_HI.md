@@ -378,3 +378,8 @@ Recursive Git tree से `tests/*.test.js` की वास्तविक स�
 - Added three Node source-contract checks in `tests/legacy-amount-paid-ddl.test.js` and three pgTAP assertions in `financial_audit_core_schema.test.sql` (plan increased from 51 to 54).
 - This resolves the missing-column DDL source gap for a clean schema assembled from the tracked setup SQL plus the feature migration chain. It does not prove full migration replay or production compatibility.
 - Current source counts increase by one migration (87) and one Node test file (44), relative to the prior 86/43 snapshot. No Node, pgTAP, PostgreSQL or GitHub Actions run was observed for this change. No Production schema/data write, payment, refund, payout, merge or deployment was performed.
+
+### 3G. Node CI परिणाम — 16 Nov 2026
+- नवीनतम दर्ज Node workflow run `43758276843` (head `68a69199e93a599b22dedbc0de38b10a06699b04`) में **280/284 पास, 4 फेल**। इस बदलाव के तीनों नए `legacy-amount-paid-ddl.test.js` checks पास हुए।
+- चार failures Customer/Electrician UI के GPT-1 स्वामित्व वाले tests हैं: customer booking timeline RPC transport, customer/electrician lifecycle retry guards, electrician earnings/wallet network errors, और customer direct-call owner scoping। GPT-2 ने इन UI files/tests को नहीं बदला।
+- यह Node/source evidence है। pgTAP, PostgreSQL migration replay, browser runtime, Production parity और deployment अभी प्रमाणित नहीं हैं।
