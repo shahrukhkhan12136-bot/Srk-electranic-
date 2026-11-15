@@ -27,11 +27,12 @@ Service-role key और Razorpay secret को browser, GitHub या chat म�
 मुख्य Supabase project: `gnqhoaqatmoiwwhgzkgm`। मौजूदा database में bookings, applications, profiles और offers tables मौजूद हैं। Admin review, electrician profile linking, offer inbox और single-winner accept RPC configured हैं।
 
 ## महत्वपूर्ण सीमाएँ
-- SMS/WhatsApp/push notifications अभी स्वचालित नहीं हैं; electrician dashboard में offer inbox है।
-- OTP login के लिए Supabase phone provider/SMS setup आवश्यक है।
-- Nationwide enquiry स्वीकार है, लेकिन हर PIN Code में तुरंत सेवा उपलब्ध होने की गारंटी नहीं है।
-- Razorpay Test Mode में end-to-end test अभी बाकी है।
-- Production से पहले KYC, refund/dispute, privacy/terms और support प्रक्रिया पूरी करें।
+- Electrician offer push notifications और durable delivery/retry का source implementation मौजूद है; इससे Production provider delivery चालू होने की पुष्टि नहीं होती। Main Supabase schema parity, worker/provider integration और वास्तविक delivery verification अभी अलग release gates हैं।
+- SMS/WhatsApp alert delivery को स्वचालित/सक्रिय न मानें; OTP login के लिए Supabase phone provider और SMS configuration आवश्यक है।
+- Nationwide enquiry स्वीकार है, लेकिन हर PIN Code में तुरंत सेवा उपलब्ध होने की गारंटी नहीं है; offer dispatch केवल eligible/available electrician मिलने पर आगे बढ़ता है।
+- Razorpay payment/refund के source workflows मौजूद हैं; Test Mode और isolated end-to-end provider verification अभी बाकी है।
+- Feature Branch के नए Customer profile/address/support, immutable labour bill, cancellation-fee, refund-recovery और durable Push schema को Main Supabase में उपलब्ध मानने से पहले migration parity verify करें। वर्तमान Main DB में इनमें से कई नए objects अभी अनुपस्थित हैं।
+- Browser/mobile visual QA, isolated database actor/ownership tests और final release/owner approval अभी अलग चरण हैं। Feature Branch source या CI success को Production readiness न समझें।
 
 ## Manual electrician payouts (UPI / Bank)
 - Automatic Razorpay Route transfers are not required for the current manual payout workflow.
