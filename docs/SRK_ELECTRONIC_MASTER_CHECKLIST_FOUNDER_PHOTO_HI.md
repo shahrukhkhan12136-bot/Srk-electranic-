@@ -93,8 +93,8 @@
 
 - [x] `index.html` स्वागत पेज पर redirect करता है और Welcome Screen का responsive layout मौजूद है।
 - [x] Welcome Screen का source implementation और responsive layout मौजूद है।
-- [x] Owner ने काली शर्ट और हरे बगीचे वाली saved Founder Photo की पहचान confirm की; original image का crop मौजूदा Founder card के अनुपात में working file में तैयार है, चेहरा/पहचान नहीं बदली।
-- [ ] Cropped original image binary को Feature Branch के `assets/srk-founder.jpg` में commit करके Welcome Screen से wire करें; अभी placeholder सुरक्षित है।
+- [x] Owner ने हरे-भरे बगीचे वाली original Founder Photo की पहचान और उसी फोटो को मौजूदा Founder model/card में crop करने का निर्देश confirm किया।
+- [ ] Exact original garden-photo binary उपलब्ध कराकर मौजूदा Founder card अनुपात में crop तैयार करें; फिर उसी approved crop को Welcome Screen और Customer Login दोनों में wire करें। अभी दोनों screens पर सुरक्षित placeholder है; crop तैयार होने का दावा नहीं है।
 - [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें।
 - [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
 - [ ] Owner visual acceptance लें।
@@ -381,10 +381,10 @@
 ### 2026-11-15 — Welcome Screen / Founder Photo / PWA entry audit
 - [x] Verified `index.html` redirects to `welcome.html`; all three role routes (Customer, Electrician, Admin) are present.
 - [x] Updated Welcome Screen to the approved blue/white premium direction, included “Smart Service... Better Life...” and retained the slogan “विश्वास की शक्ति, सेवा की पहचान।”
-- [x] Found that the checked-in `assets/srk-founder.jpg` is a three-screen app collage, not the approved blue-background Founder Photo. It is no longer displayed as a portrait. No generated or unrelated face has been substituted; an accessible founder-photo slot is held until the exact approved source photo is available in the repo.
+- [x] Found that the checked-in `assets/srk-founder.jpg` is a three-screen app collage, not the approved garden-background Founder Photo. It is no longer displayed as a portrait. No generated or unrelated face has been substituted; an accessible founder-photo slot is held until the exact approved source photo is available in the repo.
 - [x] Corrected PWA `manifest.webmanifest` start_url to `./welcome.html`; bumped Service Worker cache to v9 and added Welcome, Customer, Electrician and Admin entry pages to precache.
 - [x] Reworked `tests/welcome-screen-contract.test.js` to assert role routing, no collage substitution, approved text, PWA start URL and offline precache.
-- [ ] Exact approved blue-background founder photo is not currently present in accessible repository or Library assets; final authentic-photo placement remains pending. The user previously specified: first blue-background photo is the Founder photo; second image is design reference. Do not substitute the design reference or older generated portrait.
+- [ ] Exact approved garden-background founder photo is not currently present in accessible repository or Library assets; final authentic-photo placement remains pending. Older blue-background/design-reference wording is superseded by the user's latest explicit garden-photo instruction. Do not substitute a collage, design reference, or generated/other portrait.
 - [ ] Browser visual/runtime and install/offline tests pending; final mobile QA remains deferred. No deployment or Production changes.
 
 - [x] On branch head `3ad8d575266eea757a2084db82966b0c82b04e61`, both latest CI workflows reached the repository test step: Welcome Screen/PWA tests passed (`ok 139`, `ok 140`), and the full suite reported 139/140 pass. The sole remaining failure is the unrelated Razorpay refund-note test `matches an unpersisted provider refund by its internal refund-record note`.
@@ -396,3 +396,10 @@
 - User clarified: authentic SRK ELECTRONIC Founder Photo is the photo with a garden/greenery in the background. Crop that exact photo and use the existing Founder model/layout; do not use the blue-background alternative or the design-model image as the identity source. Preserve the real face/identity.
 - Library image search and saved-reference-image lookup returned no accessible original image bytes; the repository asset previously inspected was an app-screen collage, not a safe substitute. Therefore actual photo crop/replacement remains pending until the original garden photo asset is accessible. Do not claim photo integration is complete.
 - GPT-1 progress is counted only from checklist sections 1 Customer (10), 2 Electrician (10), and 6 Welcome/Founder Photo (6): 20/28 checked = 71% complete; 8/28 = 29% remaining. GPT-2 work is excluded. This is checklist implementation progress, not Production readiness.
+
+
+### 2026-11-15 — Founder photo checklist correction (latest owner instruction)
+- पुराने checklist इतिहास में blue-background photo और crop working-file के बारे में लिखी बातें नवीनतम owner instruction से superseded हैं। Authoritative asset अब केवल हरे-भरे बगीचे के पीछे वाली original Founder Photo है।
+- Exact original bytes अभी accessible नहीं हैं; crop तैयार नहीं है। Welcome Screen और Customer Login दोनों में गलत collage हटाकर placeholder रखा गया है।
+- उसी original garden photo को existing Founder model/card ratio में crop करना है; face/identity/retouch नहीं। दोनों screens पर वही approved crop इस्तेमाल होगा।
+- PWA cache version अब v11 है; पुराने v9 इतिहास को current cache state न मानें।
