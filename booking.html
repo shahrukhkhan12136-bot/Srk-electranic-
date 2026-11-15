@@ -2045,8 +2045,9 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   try {
     const bookingHeaders = { 'Content-Type': 'application/json' };
     if (!customerSb) throw new Error('ग्राहक लॉगिन सेवा उपलब्ध नहीं है।');
-    const { data: customerSessionData } = await customerSb.auth.getSession();
-    const customerSession = customerSessionData.session;
+    const { data: customerSessionData, error: sessionError } = await customerSb.auth.getSession();
+    if (sessionError) throw sessionError;
+    const customerSession = customerSessionData?.session;
     if (!customerSession) throw new Error('बुकिंग के लिए पहले ग्राहक OTP लॉगिन करें।');
     bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
     const bookingPayload = {
