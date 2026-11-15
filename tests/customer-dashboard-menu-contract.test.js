@@ -123,7 +123,7 @@ test('electrician live-location update network exceptions trigger safe sharing s
   assert.match(live, /try\s*\{[\s\S]*?srk_electrician_update_live_location/);
   assert.match(live, /if\(r\.error\)throw r\.error/);
   assert.match(live, /catch\(error\)\s*\{\s*await stopElectricianLiveLocationAfterGpsFailure/);
-  assert.match(live, /srk_electrician_stop_live_location/);
+  assert.match(live, /stopElectricianLiveLocationAfterGpsFailure/);
 });
 
 
