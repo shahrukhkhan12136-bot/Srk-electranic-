@@ -14,7 +14,7 @@ test('customer OTP login normalizes Indian numbers and verifies SMS OTP before d
   assert.match(customer, /sb\\.auth\\.verifyOtp\\(\\{phone,token,type:'sms'\\}\\)/);
   assert.ok(customer.includes("window.location.replace('/booking.html')"));
   assert.match(customer, /resendAt=Date\\.now\\(\\)\\+60000/);
-  assert.match(customer, /busy\\)return/);
+  assert.ok(customer.includes('busy)return'));
 });
 
 test('customer booking dashboard remains hidden until a valid session is present', () => {
