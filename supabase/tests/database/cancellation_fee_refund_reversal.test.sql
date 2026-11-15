@@ -1,5 +1,5 @@
 begin;
-select plan(42);
+select plan(44);
 
 select ok(has_function_privilege('authenticated','public.srk_customer_list_my_cancellation_fee_debts()','EXECUTE')
   and not has_function_privilege('anon','public.srk_customer_list_my_cancellation_fee_debts()','EXECUTE')
@@ -185,6 +185,12 @@ select ok(position('is_srk_admin()' in
   and position('STAGE_EVIDENCE_REQUIRED_10_TO_1000' in
   pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))>0,
   'cancellation decisions remain Main Admin-only and require recorded evidence');
+select ok(position('p_decision is null' in
+  pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))>0,
+  'Admin cancellation decision rejects a null decision instead of falling through to rejection');
+select ok(position('p_verified_stage is null' in
+  pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))>0,
+  'approved cancellation explicitly rejects a null verified stage');
 
 select ok(position('customer_user_id=v_uid' in
   pg_get_functiondef('public.srk_customer_request_booking_cancellation(uuid,text)'::regprocedure))>0,
