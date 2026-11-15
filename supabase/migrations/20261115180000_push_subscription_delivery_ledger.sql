@@ -47,7 +47,7 @@ SET search_path TO 'pg_catalog','public','srk_private','pg_temp'
 AS $function$
 DECLARE v_targets jsonb; v_complete boolean;
 BEGIN
-  IF auth.role() <> 'service_role' THEN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
   END IF;
   IF p_outbox_id IS NULL OR p_user_id IS NULL THEN
@@ -58,6 +58,15 @@ BEGIN
   SELECT p_outbox_id,s.id FROM public.srk_push_subscriptions s
   WHERE s.user_id=p_user_id
   ON CONFLICT(outbox_id,subscription_id) DO NOTHING;
+
+  -- Reclaim exhausted leases as dead letters. Otherwise a crash on attempt
+  -- five would leave a processing row that can never be claimed or completed.
+  UPDATE srk_private.srk_push_subscription_deliveries
+    SET delivery_status='dead',locked_until=NULL,
+        last_error=coalesce(last_error,'Delivery lease expired after maximum attempts'),
+        updated_at=clock_timestamp()
+    WHERE outbox_id=p_outbox_id AND delivery_status='processing' AND attempt_count>=5
+      AND (locked_until IS NULL OR locked_until<=clock_timestamp());
 
   WITH picked AS (
     SELECT d.id FROM srk_private.srk_push_subscription_deliveries d
@@ -71,7 +80,7 @@ BEGIN
   ), claimed AS (
     UPDATE srk_private.srk_push_subscription_deliveries d
       SET delivery_status='processing',attempt_count=d.attempt_count+1,
-          locked_until=clock_timestamp()+interval '2 minutes',
+          locked_until=clock_timestamp()+interval '5 minutes',
           updated_at=clock_timestamp()
     FROM picked WHERE d.id=picked.id
     RETURNING d.id,d.subscription_id,d.attempt_count
