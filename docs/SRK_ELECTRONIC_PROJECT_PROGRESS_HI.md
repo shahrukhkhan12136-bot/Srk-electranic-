@@ -4108,3 +4108,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Node contract test में दोनों actor paths के bounds assertions जोड़े। पहला CI run नई test regex की syntax त्रुटि से fail हुआ; उसे string assertions से सुधारा। Corrected commit `26f58201d7411adcdf22c7dce829f10320bae6d7`, run `43749164892`, job `132919041710`: **194 tests, 194 pass, 0 fail, 0 skipped**।
 - यह Node/source contract pass है; PostgreSQL/pgTAP execution, full migration replay, real SOS delivery, SMS/Push, consented location और browser/mobile E2E का प्रमाण नहीं। कोई Production migration, provider send, merge या deployment नहीं।
 - Checklist प्रतिशत नहीं बदला: GPT-2 **27/39 = 69%**, overall **56/86 = 65%**।
+
+
+### 2026-11-16 — GPT-2 Admin booking editor cleanup
+- `admin.html` में पुराने booking amount input का बचा हुआ JavaScript read हटाया; अब Admin Save handler उस हटाए गए input पर निर्भर नहीं है।
+- Booking table में पुराना Quote केवल historical/read-only विवरण के रूप में दिखता है; quote edit/status controls नहीं हैं। नया regression test `tests/admin-booking-editor-contract.test.js` जोड़ा गया।
+- यह source change और test addition हैं; इस commit पर Node CI execution/PASS अभी प्रमाणित नहीं है। GitHub status में Vercel build-rate-limit failure दिखा; इससे Node test result infer नहीं किया जा सकता।
+- Manual-payment SQL अभी legacy approved-quote contract पर निर्भर है। इसे नए immutable server-timed labour bill और अलग materials receipt से जोड़ना अगला accounting task है; ऐतिहासिक paid/refund/payment records सुरक्षित रहेंगे।
+- कोई Production database query/migration, real payment/refund, merge या deployment नहीं किया गया।
