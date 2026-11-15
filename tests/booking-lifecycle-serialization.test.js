@@ -162,6 +162,11 @@ test('customer work lifecycle SECURITY DEFINER RPCs use an empty search_path and
   assert.ok(!startFixSql.includes("INSERT INTO work_transition_authorizations"));
   assert.ok(!startFixSql.includes("DELETE FROM work_timer_authorizations"));
   assert.ok(!startFixSql.includes("DELETE FROM work_transition_authorizations"));
+  assert.match(timerSql, /INSERT INTO srk_private\\.work_timer_authorizations/);
+  assert.match(timerSql, /DELETE FROM srk_private\\.work_timer_authorizations/);
+  assert.match(timerSql, /INSERT INTO srk_private\\.work_transition_authorizations/);
+  assert.match(timerSql, /DELETE FROM srk_private\\.work_transition_authorizations/);
+  assert.doesNotMatch(timerSql, /(?:INSERT INTO|DELETE FROM)\\s+(?:work_timer_authorizations|work_transition_authorizations)\\b/);
 });
 test('electrician timer RPCs authorize the exact assigned profile, not only the newest owned profile', () => {
   const start = sqlFunction(timerSql, 'srk_electrician_request_work_start');
