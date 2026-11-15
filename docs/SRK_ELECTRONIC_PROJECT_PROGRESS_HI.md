@@ -3766,3 +3766,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Historical commit `d7c7fc9800141195023453c7781d34b7e03bdc41` का पूरा diff देखा: `verify-payment.js` captured Razorpay payment के `p.amount / 100` से `service_bookings.amount_paid` लिखता है। यह application write-path का प्रमाण है, column की SQL type/nullability/default/constraint या base DDL का नहीं। इसलिए missing DDL blocker यथावत है।
 - Repository commit search में `amount_paid` के दो known application commits मिले; `auth_user_id` के लिए commit search में कोई result नहीं मिला। Search index सीमित हो सकता है; इसे पूर्ण अनुपस्थिति का प्रमाण नहीं माना गया।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित; कोई checklist item बंद नहीं हुआ।
+
+
+### Supabase CLI version-ordering risk found — 15 Nov 2026
+- Workflow `.github/workflows/supabase-schema-ci.yml` CLI **3.0.0** pin करता है। Repo में 8-digit `20261109` और उसी prefix वाले 14-digit `20261109001000` आदि मौजूद हैं।
+- Supabase CLI #6036/#6038 TypeScript path तथा #6682 Go path के reports पढ़े। #6682 में v2.117.0 Go implementation के mixed 8/14-digit sorting defect की code inspection है; issue 29 Oct को बंद हुआ, लेकिन visible thread में maintainer fix confirmation नहीं। CLI 3.0.0 पर इसे reproduce नहीं किया, इसलिए इसे confirmed failure नहीं, **high-priority unresolved risk** दर्ज किया।
+- Existing uniqueness Node test legacy pair को allow-list करता है; वह CLI sorting behavior test नहीं करता। No rename, migration repair, workflow trigger, Production access or schema change.
+- Supabase workflow में Production schema export secret है और branch guard पुरानी अलग branch पर है; इसे current Feature Branch पर चलाना अभी सुरक्षित विकल्प नहीं।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित। अगला technical gate: exact CLI 3.0.0 का isolated synthetic no-DB version-order test, फिर authoritative base DDL खोज जारी।
