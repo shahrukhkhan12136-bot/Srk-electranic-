@@ -1480,9 +1480,24 @@ async function saveCustomerProfile() {
    const {error:uploadError}=await customerSb.storage.from('srk-customer-avatars').upload(avatarPath,file,{contentType:file.type,upsert:false});
    if(uploadError)throw uploadError;
   }
-  const {data,error}=await customerSb.rpc('srk_customer_update_my_profile',{
-   p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath
-  });
+  let profileSaveResult;
+  try{
+   profileSaveResult=await customerSb.rpc('srk_customer_update_my_profile',{
+    p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath
+   });
+  }catch(saveError){
+   if(file&&avatarPath!==customerCurrentAvatarPath){
+    // The RPC may have committed even if its response was lost. Re-read the
+    // authoritative profile before deleting the newly uploaded object.
+    try{
+     const {data:latestData,error:latestError}=await customerSb.rpc('srk_customer_get_my_profile');
+     const latestProfile=Array.isArray(latestData)?latestData[0]:latestData;
+     if(!latestError&&latestProfile?.avatar_path!==avatarPath)await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]);
+    }catch(_){}
+   }
+   throw saveError;
+  }
+  const {data,error}=profileSaveResult;
   if(error) {
    if(file&&avatarPath!==customerCurrentAvatarPath) await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]).catch(()=>{});
    throw error;
