@@ -3183,3 +3183,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added Node regression contract `tests/push-delivery-lease-fencing.test.js`. Full Node CI passed on commit `b4beff9661e506412cf31d4049db478263e15716` (run `43713340539`).
 - PostgreSQL/pgTAP runtime execution is still pending in an isolated database; Node CI does not execute this SQL test. No production DB access/migration, push send, merge or deployment performed.
 - GPT-2 checklist percentage remains **27/39 = 69% complete; 12/39 = 31% remaining**. This is additional test coverage, not a completed database-parity checkbox.
+
+
+### Database pgTAP test-plan audit — 15 Nov 2026
+- Feature Branch के सभी **27** `supabase/tests/database/*.test.sql` files की assertion-count जाँच की। हर file में ठीक एक `plan(n)` है और pgTAP assertion calls की संख्या उससे मेल खाती है।
+- इस audit को repeatable बनाने के लिए `tests/database-pgtap-plan-counts.test.js` जोड़ा; यह भविष्य में plan/assertion mismatch को Node CI में पकड़ता है।
+- Full Node CI commit `0149c87a44f81c824e90617e17dce215516c1e22` पर **SUCCESS**, run `43715758599`।
+- यह source-level count validation है; इससे PostgreSQL/pgTAP runtime assertions के पास होने का दावा नहीं है। अलग isolated DB runtime अभी pending है।
+- GPT-2 checklist progress अभी भी **27/39 = 69% complete; 12/39 = 31% remaining**; कोई Production migration या release action नहीं किया।
