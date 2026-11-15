@@ -87,3 +87,25 @@ test('customer saved-address save catches rejected auth session lookup and resto
   assert.match(save,/catch\(e\) \{setSavedAddressStatus/);
   assert.match(save,/finally \{button\.disabled=false;button\.textContent='यह पता सेव करें';\}/);
 });
+
+
+test('customer profile avatar, support, payment and booking check auth session errors', () => {
+  const profileStart=booking.indexOf('async function saveCustomerProfile()');
+  const profileEnd=booking.indexOf('\nlet customerSavedAddresses',profileStart);
+  const supportStart=booking.indexOf('async function sendCustomerSupportMessage()');
+  const supportEnd=booking.indexOf('\nasync function ',supportStart+10);
+  const paymentStart=booking.indexOf('async function startRazorpayPayment()');
+  const paymentEnd=booking.indexOf('\nasync function ',paymentStart+10);
+  const submitStart=booking.indexOf('const { data: customerSessionData } = await customerSb.auth.getSession();',paymentEnd);
+  assert.ok(profileStart>=0&&profileEnd>profileStart);
+  assert.ok(supportStart>=0&&supportEnd>supportStart);
+  assert.ok(paymentStart>=0&&paymentEnd>paymentStart);
+  const profile=booking.slice(profileStart,profileEnd);
+  const support=booking.slice(supportStart,supportEnd);
+  const payment=booking.slice(paymentStart,paymentEnd);
+  assert.match(profile,/error:sessionError\}=await customerSb\.auth\.getSession\(\);\s*if\(sessionError\)throw sessionError/);
+  assert.match(support,/error:sessionError\}=await customerSb\.auth\.getSession\(\);\s*if\(sessionError\)throw sessionError/);
+  assert.match(payment,/error: sessionError \} = await customerSb\.auth\.getSession\(\);\s*if \(sessionError\) throw sessionError/);
+  assert.match(booking,/error: customerSessionData, error: sessionError \} = await customerSb\.auth\.getSession\(\);/);
+  assert.ok(submitStart<0,'booking submission should no longer use the unchecked session lookup');
+});
