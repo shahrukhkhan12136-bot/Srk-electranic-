@@ -11,7 +11,7 @@ const commission = fs.readFileSync(path.join(root, 'supabase/migrations/20261109
 test('aggregate commission report labels calculated commission separately from cash received', () => {
   assert.match(admin, /गणना किया गया कंपनी कमीशन \(प्राप्त नकद नहीं\)/);
   assert.match(admin, /गणना किया गया कमीशन \(बैंक भुगतान नहीं\)/);
-  assert.doesNotMatch(admin, /\\broute\\b|route_platform_commission/i);
+  assert.doesNotMatch(admin, /\broute\b|route_platform_commission/i);
 });
 
 test('per-booking accounting report uses the current read-only ledger contract without retired Route fields', () => {
