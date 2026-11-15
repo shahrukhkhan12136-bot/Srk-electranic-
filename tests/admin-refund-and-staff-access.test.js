@@ -191,8 +191,9 @@ test('Support Staff session lifecycle and private assignment tables deny direct 
   assert.ok(revoke.includes('revoked_at = coalesce(revoked_at,clock_timestamp())'));
   assert.ok(revoke.includes('public.is_srk_admin()'));
 
+  const normalizedMigration = staffMigration.replace(/\\s+/g, '');
   for (const table of ['srk_admin_staff','srk_admin_permissions','srk_admin_role_permissions','srk_admin_staff_sessions','srk_admin_staff_audit_events','srk_admin_support_assignments']) {
-    assert.ok(staffMigration.includes('revoke all on public.' + table + ' from public, anon, authenticated'),
+    assert.ok(normalizedMigration.includes('revokeallonpublic.' + table + 'frompublic,anon,authenticated'),
       table + ' must not be directly accessible to client roles');
   }
   assert.ok(staffMigration.includes('grant execute on function public.srk_admin_staff_register_invited_user(uuid,text,uuid) to service_role'));
