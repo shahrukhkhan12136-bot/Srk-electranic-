@@ -55,7 +55,7 @@ Run only in a separately approved isolated Supabase project and isolated Netlify
 - Explicitly simulate a worker crash after the final allowed outbox attempt and a sender crash after the final allowed device attempt; expired leases must become dead-letter rows rather than remain processing forever.
 - Current worker batch is capped at 3 because requests are processed sequentially; validate actual Netlify execution time against the 5-minute lease before increasing it.
 - Alert on dead outbox rows, dead subscription rows, repeated worker failures, missing secrets, and outbox age above agreed SLO.
-- Verify worker timeout budgets fit the 5-minute database lease and scheduled cadence; the current worker claims at most 3 outbox rows sequentially. Re-measure in isolation; reduce batch/concurrency or extend the lease if observed worst-case duration approaches the lease.
+- Verify worker timeout budgets fit the 5-minute database lease and scheduled cadence; the current worker claims at most 3 outbox rows sequentially. Outbox and per-device leases are 5 minutes; expired leases at their maximum attempt count must transition to dead-letter, including null lease timestamps. Re-measure in isolation; reduce batch/concurrency or extend the lease if observed worst-case duration approaches the lease.
 - Verify cleanup/retention policy for delivered/dead outbox and ledger rows before enabling in production.
 - Document that Web Push is at-least-once: provider timeout after acceptance is ambiguous and transport-level exactly-once cannot be guaranteed.
 
