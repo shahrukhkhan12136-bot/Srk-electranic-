@@ -2188,3 +2188,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added `tests/accepted-contact-visibility.test.js` as a source-level contract guard.
 - Added/updated tests remain unexecuted. No runtime test result is claimed; no mobile QA, migration apply, production setting change, booking, payment, SMS/OTP or provider call was performed.
 - Commits: `a26b81c3` (customer contact RPC), `9d2522e5` (electrician assigned-contact projection), `cb205a40` (customer call UI), `8e469b6f` (source contract test).
+
+
+## 2026-11-15 — Customer Refund Lifecycle UI Alignment
+- Customer refund flow audit compared the customer-facing booking card with the authoritative refund-request RPC. The server requires a categorized booking to be `completed` before accepting a refund request, but the UI previously displayed the request form for any verified-paid booking. This caused a confusing form that the server would correctly reject for an unfinished categorized booking.
+- Fixed the customer UI eligibility rule: categorized bookings show the refund request only after `completed`; legacy bookings without a selected category retain the existing verified-paid eligibility. The server-side ownership, verified-payment, immutable labour bill, settled cancellation-fee and exact captured-amount checks remain authoritative and unchanged.
+- Added `tests/customer-refund-ui-lifecycle.test.js` to guard the UI/server lifecycle alignment. The source test has not been executed.
+- Customer can resubmit only after a rejected request; customer history remains owner-scoped and does not expose private Admin notes. Admin review decision RPC is Main Admin-gated, records audit notes, constrains state transitions, and does not itself call a payment provider or mutate booking payment status. Approved requests only preselect the existing full-refund workflow; no partial refund flow is enabled.
+- No migration applied, refund/provider call, payment/wallet/payout mutation, production change, deployment or mobile QA performed. Runtime tests remain unrun.
+- Commits: `6aec4e4a` (UI lifecycle gate), `5220fff2` and `68d6f72e` (test creation/correction).
