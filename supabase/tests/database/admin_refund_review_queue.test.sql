@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(16);
 select has_function('public','srk_admin_list_booking_refund_requests',array[]::text[],'Admin refund queue RPC exists');
 select has_function('public','srk_admin_decide_booking_refund_request',array['uuid','text','text'],'Admin refund decision RPC exists');
 select ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure))>0,'queue is Main Admin only');
