@@ -281,3 +281,11 @@
 - [x] Added regression assertions for applying translations to new DOM elements and the initial full-page attribute pass.
 - [ ] Latest branch-head CI must confirm the new regression test; browser runtime language switching remains pending.
 - [ ] Founder portrait asset is present in the feature branch, but exact approved-reference visual match still needs a browser/visual review.
+
+
+### 2026-11-15 — Customer support localization completeness
+- [x] Added English translations for Customer support/complaint loading, empty, validation, submission, message and attachment feedback strings.
+- [x] Dynamic text translation now supports known translated prefixes, so concatenated complaint status text can be translated without losing the server-provided status value.
+- [x] Added regression coverage for support messages, prefix translation and dynamic text-node rendering.
+- [ ] Confirm latest branch-head CI before marking the new support localization tests passed.
+- [ ] Browser runtime verification remains pending; final mobile QA remains deferred.
