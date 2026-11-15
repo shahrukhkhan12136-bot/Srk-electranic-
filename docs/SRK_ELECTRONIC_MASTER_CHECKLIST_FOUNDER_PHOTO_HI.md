@@ -240,3 +240,15 @@
 - [ ] Provider call की transport-level duplicate संभावना बनी रहती है यदि पुराना worker lease expire होने के बाद भी provider request पूरा कर दे; fencing केवल stale DB completion को रोकती है, exactly-once delivery नहीं देती।
 
 **सुरक्षा सीमा:** Migration feature branch पर ही है; अभी apply/deploy नहीं हुई। कोई production mutation, real push, worker activation या mobile QA नहीं किया गया।
+
+
+### Push RPC signature और claim/finish payload dependency audit — 15 November 2026
+- [x] Original Outbox और per-device finish RPC signatures की fencing migration के DROP FUNCTION signatures से तुलना।
+- [x] दोनों claim RPCs में attempt_count लौटने और finish calls में वही fencing token भेजे जाने का source audit।
+- [x] Edge sender के तीनों per-device finish call paths (malformed identity, success, transient failure) में attempt token verify करने के लिए regression assertion।
+- [x] Outbox और device fencing migrations के नए exact function signatures तथा service-role-only grants के source assertions।
+- [x] Health RPC के JSON keys (outbox, devices) और worker के consumed keys का मिलान; table column names (created_at, updated_at, delivery_status) source definitions से मेल खाते हैं।
+- [ ] Node test suite चलाएँ; अभी केवल assertions जोड़े/समीक्षा किए गए हैं, execution प्रमाणित नहीं।
+- [ ] Isolated PostgreSQL में migration chain apply करके SQL syntax, grants, claim→finish RPC scalar response, stale token rejection, health counts और recovery transitions verify करें।
+
+**स्थिति:** इस चरण में कोई DB query/write, migration apply, deployment या push नहीं किया गया।
