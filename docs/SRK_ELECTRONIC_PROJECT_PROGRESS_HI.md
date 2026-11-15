@@ -3216,3 +3216,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added a Node source-contract regression test and one pgTAP structural assertion (server timer test plan increased to 20).
 - First CI attempt exposed a migration timestamp collision with an existing refund migration; the new migration was moved to unique timestamp `20261115145900` and the colliding draft file was removed. The earlier CI failure was caused by that duplicate-version guard, not by the RPC regression assertion. Final CI for the corrected unique timestamp is awaiting confirmation.
 - Static/source change only. No pgTAP execution, no live Supabase migration, no production change, no deployment, no merge. Checklist 14.1.10 remains In Progress until runtime DB/RPC verification is complete.
+
+
+### Legacy financial RPC search_path hardening + migration collision follow-up — 15 Nov 2026
+- तीन legacy `SECURITY DEFINER` financial read RPCs (`srk_admin_commission_report`, `srk_get_my_wallet_summary`, `srk_admin_wallet_overview`) के लिए नया Feature Branch migration `20261115210001_harden_legacy_financial_read_rpc_search_paths.sql` जोड़ा; trusted path `pg_catalog, public, auth, pg_temp` pin किया।
+- 6 assertions वाला pgTAP contract और Node regression test जोड़ा। PostgreSQL runtime test अभी execute नहीं हुआ; Node CI source-contract coverage है।
+- Migration version audit ने अतिरिक्त पुराने duplicate timestamps भी पकड़े: `20261115120000` और `20261115130000`; संबंधित multi-profile labour-bill access migrations को unique version prefixes पर रखा और source-test file reference update किया।
+- अब 69 migration SQL files में केवल पुरानी `20261109` duplicate pair शेष है; उसे Production migration history जाँचे बिना नहीं बदला। CI ने वर्तमान PR head `df13cccbc91fceb4c03c377346e2d0e9dfc3b033` पर **SUCCESS** दिया (run `43716754914` और `43716757418`)।
+- GPT-2 checklist count अभी **27/39 = 69% complete; 12/39 = 31% remaining** है। ये अतिरिक्त security/test सुधार हैं, कोई नया checklist checkbox पूरा नहीं हुआ। PR #8 Draft/Open/Unmerged; Production DB में इस काम से कोई बदलाव नहीं।
