@@ -142,3 +142,16 @@
 - [ ] Isolated environment में sender + webhook + subscription + expiry/acceptance race tests चलाएँ; उसके बाद ही final mobile QA।
 
 **Evidence boundary:** Production inspection read-only; branch Edge Function/source tests committed; runtime test, push send, migration apply, Edge Function deploy और mobile QA नहीं हुए।
+
+
+### Durable Push Outbox — 15 November 2026
+- [x] Feature-branch migration में owner-scoped subscription CRUD policies और least-privilege grants।
+- [x] Unique offer outbox row और private delivery-state table।
+- [x] Service-role-only claim/finish RPCs, lease, max attempts, exponential retry और dead-letter state।
+- [x] प्रति मिनट scheduled Netlify worker और छह source-contract assertions।
+- [ ] Per-subscription delivery ledger/idempotency ताकि partial failure retry पर सफल recipients को duplicate push न मिले।
+- [ ] Existing Production direct HTTP trigger और नए outbox के coexistence/rollout plan को duplicate delivery से सुरक्षित करें।
+- [ ] Production/branch schema parity स्थापित करें; उसके बाद isolated DB + Edge Function + Netlify integration tests।
+- [ ] सभी implementation और internal checks पूरे होने पर consolidated final mobile QA; उससे पहले नहीं।
+
+**स्थिति:** Feature branch source और docs updated; tests run नहीं; migration/deploy/push नहीं। At-least-once retries हैं, exactly-once guarantee नहीं।
