@@ -2365,3 +2365,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - [ ] Provider call की transport-level duplicate संभावना बनी रहती है यदि पुराना worker lease expire होने के बाद भी provider request पूरा कर दे; fencing केवल stale DB completion को रोकती है, exactly-once delivery नहीं देती।
 
 **सुरक्षा सीमा:** Migration feature branch पर ही है; अभी apply/deploy नहीं हुई। कोई production mutation, real push, worker activation या mobile QA नहीं किया गया।
+
+
+## 2026-11-15 — Push RPC signature और fencing payload audit
+
+- Original Outbox finish RPC `(uuid,boolean,text)` और per-device finish RPC `(uuid,boolean,text)` signatures की जाँच की; fencing migration पुराने signatures को ठीक उसी प्रकार drop करके `(uuid,integer,boolean,text)` versions बनाती है और नई signatures पर केवल service_role execute grant करती है।
+- Outbox claim RPC `attempt_count` लौटाता है; Netlify worker उसी value को finish RPC में भेजता है। Device claim JSON प्रत्येक target में `attempt_count` देता है; Edge sender के तीनों finish paths उसी token को भेजते हैं।
+- Health RPC के `outbox`/`devices` object keys worker की monitoring reads से मेल खाते हैं; referenced timestamp/status columns संबंधित table definitions में मौजूद हैं।
+- Regression tests में exact legacy/new RPC signature, service-role grant और sender के सभी finish call paths के fencing-token assertions जोड़े।
+- **अभी test suite execute नहीं हुई।** यह source-contract review है, SQL parser/runtime verification नहीं। अगला चरण Node suite चलाना और approved isolated PostgreSQL में migration chain, RPC grants, stale-token rejection, health/recovery transitions तथा concurrent reclaim verify करना है।
+- कोई migration apply, production SQL write, Edge/Netlify deployment, worker activation या वास्तविक push नहीं किया गया।
