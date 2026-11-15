@@ -50,3 +50,8 @@ test('delivery ledger and RPCs are private and service-role only', () => {
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.srk_claim_push_subscription_deliveries/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.srk_finish_push_subscription_delivery/);
 });
+
+test('subscription ledger migration refuses to run before the outbox', () => {
+  assert.match(migration, /to_regclass\('srk_private\.srk_push_delivery_outbox'\)/);
+  assert.match(migration, /subscription id and user_id/);
+});
