@@ -252,3 +252,12 @@
 - [ ] Isolated PostgreSQL में migration chain apply करके SQL syntax, grants, claim→finish RPC scalar response, stale token rejection, health counts और recovery transitions verify करें।
 
 **स्थिति:** इस चरण में कोई DB query/write, migration apply, deployment या push नहीं किया गया।
+
+### Fencing RPC false-result handling — 15 November 2026
+- [x] Audit में एक acknowledgement gap मिला: fencing RPC stale attempt पर SQL `false` लौटाता था, लेकिन callers HTTP 200 के साथ `false` को सफलता मान सकते थे।
+- [x] Netlify worker अब Outbox finish RPC का JSON boolean `true` अनिवार्य मानता है; `false`/invalid response finish failure और retry/alert path में जाता है।
+- [x] Edge sender अब per-device finish RPC में `data === true` अनिवार्य मानता है; stale/rejected finish successful send count नहीं होता।
+- [x] दोनों callers के लिए source-contract regression assertions जोड़े।
+- [ ] Node test suite और isolated concurrent stale-worker race test execute करें।
+
+**सीमा:** अभी कोई test execute, migration apply, deployment या real push नहीं किया गया।
