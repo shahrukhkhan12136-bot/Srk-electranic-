@@ -228,3 +228,12 @@
 - [x] Added regression assertions for language apply, document lang, profile preference restore and mutation observer.
 - [ ] Latest CI after these language implementation changes is still pending; earlier run `43706432946` passed before the latest language code/test commit and is not evidence for the current HEAD.
 - [ ] Dynamic status/error messages, payment receipt, complete page localization and real browser language-toggle testing remain pending.
+
+
+### 2026-11-15 — Customer dynamic messages and payment receipt localization
+- [x] Added translations for common payment/refund statuses, login/payment prompts, booking/payment messages and common customer alerts.
+- [x] Customer browser alerts now pass through the selected-language translation helper.
+- [x] Printable verified-payment receipt now uses the selected Hindi/English language, matching HTML `lang`, localized labels and locale-formatted dates.
+- [x] Added regression assertions for dynamic payment strings, receipt language, date locale and translator scoping.
+- [ ] Remaining non-payment dynamic content and any unmapped server-provided free-text descriptions still need full coverage.
+- [ ] Latest-head CI and browser runtime verification remain pending.
