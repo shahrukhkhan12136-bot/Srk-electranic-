@@ -105,7 +105,7 @@ test("does not bind an unrelated same-payment same-amount refund without exact r
   if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);
   if(target.includes("/rest/v1/srk_razorpay_refunds?"))return response(200,[unlinkedRecord]);
   if(target.includes("/rest/v1/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);
-  if(target.includes("/payments/"+paymentId+"/refunds?count=100"))return response(200,{items:[unrelated]});
+  if(target.includes("/payments/"+paymentId+"/refunds?count=100&skip=0"))return response(200,{items:[unrelated]});
   throw new Error("unexpected request "+target);
  };
  t.after(()=>{global.fetch=originalFetch;});
