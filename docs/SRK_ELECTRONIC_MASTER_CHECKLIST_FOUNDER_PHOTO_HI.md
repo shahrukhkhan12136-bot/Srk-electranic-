@@ -91,7 +91,35 @@
 - [ ] README endpoints, feature descriptions और all portal UI copy को latest source से अंतिम बार मिलाएँ।
 - [ ] Customer, Electrician, Admin और Staff के हर visible button/action को source/API contract से one-by-one reconcile करें; कोई dead button, missing field, placeholder या stale label न छोड़े।
 
-## 8. Test, release और approval gates
+
+## 8. Main Supabase Database — checklist बनाम वास्तविक Production schema audit (15 Nov 2026)
+
+**जाँचा गया project:** `Srk electranic` — `gnqhoaqatmoiwwhgzkgm`, PostgreSQL 17.11, ACTIVE_HEALTHY. `SRK ELECTRONIC TEST` अलग project है; इसे Main DB नहीं माना। यह audit read-only catalog/table/migration inspection पर आधारित है, सिवाय नीचे दर्ज एक orphan function removal के।
+
+### Checklist से बाहर मिला और हटाया गया
+- [x] `public.accept_electrician_job(uuid)` — पुराना orphan job-acceptance SECURITY DEFINER function हटाया। Current Electrician Portal `srk_respond_to_offer` use करता है; Customer/Admin/Electrician pages, सभी 10 Netlify functions और दोनों deployed Edge Functions में इसका कोई caller नहीं मिला; database dependent object नहीं मिला; pg_stat_statements में केवल पुराने DDL statements मिले; execute ACL postgres/service_role तक सीमित थी। Drop बिना CASCADE किया और `to_regprocedure` से verify किया कि function अब मौजूद नहीं। Production migration `20261115091906_retire_unused_legacy_accept_electrician_job` दर्ज है; matching source migration Feature Branch में commit है।
+
+### अन्य database objects — हटाने योग्य साबित नहीं हुए
+- [x] Main DB की 25 public business tables और 2 private tables को checklist workflows से map किया। इनमें bookings, customers/electricians, offers, payments, payouts, wallets, audit, refunds, complaints, KYC, push subscriptions, area requests और work authorization शामिल हैं। कोई अन्य table/column/trigger/policy/function केवल “checklist में नाम नहीं” होने के आधार पर delete नहीं किया।
+- [x] `services` और `states` dropdown/reference data हैं; `states_id_seq` उनका required sequence है। इन्हें extra नहीं माना।
+- [x] `storage.*` Supabase-managed internal tables हैं; इन्हें project tables समझकर drop नहीं करना। Private `srk-electrician-verification` bucket KYC flow के लिए है।
+- [x] Installed extensions में pg_net, pgcrypto, uuid-ossp, pg_stat_statements और Supabase Vault मिले; शेष catalog entries उपलब्ध लेकिन uninstalled थीं। किसी extension को extra समझकर हटाया नहीं।
+- [x] `srk_route_transfers`, `srk_wallet_bank_links`, payment locks, wallet ledger और payout tables भले खाली हों, वे server-side financial/settlement structures हैं; empty rows उन्हें unused साबित नहीं करते। इन्हें नहीं हटाया।
+
+### Main DB में checklist/Feature Branch के मुकाबले missing या पुराना schema
+- [ ] Customer saved profile/address tables `srk_customer_profiles`, `srk_customer_saved_addresses` और customer support message/attachment tables अभी Main DB में नहीं मिले।
+- [ ] Immutable labour bill `srk_booking_labour_bills`, cancellation fee debt/items/ledger tables अभी Main DB में नहीं मिले।
+- [ ] Durable Razorpay refund recovery evidence table `srk_razorpay_refund_recovery_audits` अभी Main DB में नहीं मिली।
+- [ ] KYC document-event append-only table `srk_electrician_verification_document_events` अभी Main DB में नहीं मिली; पुराने verification event table को audit data होने के कारण नहीं हटाना।
+- [ ] Durable Push outbox और per-device delivery tables `srk_private.srk_push_delivery_outbox`, `srk_private.srk_push_subscription_deliveries` Main DB में नहीं मिले। Main DB में अभी पुराना `job_offers` push trigger मौजूद है; नया durable outbox rollout duplicate-safe migration/worker coordination के बिना नहीं करना।
+- [ ] Main DB में `job_offers.expires_at` और `electrician_profiles.available_for_work` columns नहीं मिले; नई Push/dispatch implementation के लिए schema parity जरूरी है।
+- [ ] Legacy status direct-write guard और नवीनतम itemized legacy manual-payment/receipt implementation Main DB पर लागू नहीं हैं। Existing Main DB manual-payment RPC पुरानी definition है; नई Feature Branch definition से अलग है।
+- [ ] Production migration chain में नवीनतम लागू version इस audit के समय `20261115091906` (orphan function retirement) है; Feature Branch की बाद की Customer/Admin/KYC/Push/payment migrations Production पर लागू नहीं।
+- [ ] सभी missing migrations को dependency/order और existing production data के हिसाब से migration-by-migration reconcile करें; एक साथ blind apply नहीं। Backup/rollback और maintenance/worker sequencing review के बाद ही owner-approved Production apply।
+
+**निष्कर्ष:** Checklist के बाहर स्पष्ट रूप से unused केवल एक orphan function मिला और हटाया गया। अन्य confirmed extra business table/column नहीं मिला। अभी मुख्य अंतर “फालतू database” नहीं बल्कि Main DB का Feature Branch checklist से पीछे होना और कई नई आवश्यक tables/columns/RPCs का अभी apply न होना है।
+
+## 9. Test, release और approval gates
 
 - [x] Latest available full Node test run: **87 passed / 0 failed**।
 - [x] Push Deno check और local PostgreSQL Push migration/RPC runtime checks PASS।
