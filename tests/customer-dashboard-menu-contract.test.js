@@ -47,7 +47,7 @@ test('customer dynamic status messages and confirmation dialogs support English 
   ]) {
     assert.ok(booking.includes(translated), 'Missing dynamic customer translation: ' + translated);
   }
-  assert.match(booking, /window\.confirm\s*=\s*message\s*=>\s*customerUiNativeConfirm\(customerUiText\(message\)\)/);
+  assert.match(booking, /window\.confirm\s*=\s*message\s*=>\s*customerNativeConfirm\(customerUiText\(message\)\)/);
 });
 
 test('customer confirmation copy translates cancellation policy and dynamic booking summary labels', () => {
