@@ -742,6 +742,10 @@ async function saveBookingInternal(id){
   alert('Admin Dashboard के सामान्य status dropdown से cancellation नहीं किया जा सकता। पहले dedicated cancellation request, stage evidence, fee और audit workflow पूरा होना आवश्यक है।');
   await loadAll();return;
  }
+ if(status==='completed'&&booking.status!=='completed'){
+  alert('बुकिंग को Admin के सामान्य Save बटन से Completed नहीं किया जा सकता। काम पूरा होने की पुष्टि संबंधित सुरक्षित completion workflow से ही दर्ज होगी।');
+  await loadAll();return;
+ }
  if(status==='assigned'&&!booking.assigned_electrician_id){alert('बिना वास्तविक electrician assignment के Assigned status नहीं लगाया जा सकता। इलेक्ट्रिशियन को offer स्वीकार करने दें।');return;}
  const quoted=raw===''?null:Number(raw);
  if(quoted!==null&&(!Number.isFinite(quoted)||quoted<0||quoted>10000000)){alert('तय राशि ₹0 से ₹1,00,00,000 के बीच रखें।');return;}
