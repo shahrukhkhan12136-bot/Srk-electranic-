@@ -78,9 +78,11 @@
 
 **Owner-approved asset:** 15 नवम्बर 2026 को भेजी गई latest portrait — black button-up shirt, arms folded, waist-up crop, blue corporate background. पुरानी garden photo का उपयोग नहीं करना है। Attachment ID: `file_000000005f588210ac3459ffcfa3fdfe`.
 
-- [ ] इसी exact approved portrait का binary recover करके Feature Branch में commit करें।
-- [ ] वास्तविक website Welcome Screen बनाएँ/restore करें; वर्तमान `index.html` redirect को Welcome Screen की जरूरत के अनुसार ठीक करें।
-- [ ] Portrait को natural proportions और professional crop के साथ Welcome Screen में integrate करें।
+- [x] Feature Branch में `assets/srk-founder.jpg` मौजूद है और `welcome.html` में `/assets/srk-founder.jpg` के रूप में wired है; `index.html` स्वागत पेज पर redirect करता है।
+- [x] Welcome Screen का source implementation और responsive layout मौजूद है।
+- [ ] Asset binary को owner-approved latest portrait (black button-up shirt, folded arms, waist-up crop, blue corporate background) से visually compare करके exact match स्वीकार करें; binary preview verification अभी नहीं हुई।
+- [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें।
+- [ ] Owner visual acceptance लें।
 - [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
 - [ ] Owner visual acceptance लें।
 - [ ] Desktop और responsive/mobile presentation final consolidated QA में verify करें।
@@ -136,7 +138,7 @@
 ## अभी का साफ निष्कर्ष
 
 **Feature implementation:** कई मुख्य Customer, Electrician, Admin/Staff, payment/refund, KYC, timer, dispatch और Push workflows Feature Branch में implement हैं; legacy manual-payment source gap भी अभी जोड़ा गया है।  
-**अभी का सबसे स्पष्ट source-level blocker:** exact approved founder portrait binary और Welcome Screen integration।  
+**Founder/Welcome source status:** founder asset और Welcome Screen integration अब Feature Branch में मौजूद हैं; exact approved portrait से visual match और Preview/owner acceptance अभी pending हैं।  
 **अभी का मुख्य verification blocker:** non-Push database/RPC/browser end-to-end runtime; Push के local PostgreSQL tests सफल हैं, लेकिन managed Supabase parity और Edge↔Netlify/provider integration बाकी है।  
 **Production:** कोई migration apply, merge, deployment या live payment action नहीं किया गया है।
 
