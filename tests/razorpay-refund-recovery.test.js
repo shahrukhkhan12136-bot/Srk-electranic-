@@ -111,7 +111,33 @@ test("does not bind an unrelated same-payment same-amount refund without exact r
  t.after(()=>{global.fetch=originalFetch;});
  const result=await handler(request());const body=JSON.parse(result.body);
  assert.equal(result.statusCode,202);assert.equal(body.evidence_saved,false);
- assert.equal(body.status,"provider_record_not_found_in_first_page");assert.equal(body.safe_to_retry,false);
+ assert.equal(body.status,"provider_record_not_found_after_all_pages");assert.equal(body.safe_to_retry,false);
  assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_record_razorpay_refund_recovery_evidence")),false);
  assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence")),false);
+});
+
+
+test("paginates past the first 100 refunds and recovers the exact second-page match",async t=>{
+ const calls=[],firstPage=Array.from({length:100},(_,i)=>({
+  id:"rfnd_other"+i,payment_id:paymentId,amount:12500,currency:"INR",status:"processed",
+  notes:{srk_refund_record_id:"different-record"},receipt:"different-receipt"
+ }));
+ const unlinkedRecord={...record,refund_id:null};
+ global.fetch=async(url,options={})=>{
+  const target=String(url);calls.push({target,options});
+  if(target.endsWith("/auth/v1/user"))return response(200,{id:adminId});
+  if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);
+  if(target.includes("/rest/v1/srk_razorpay_refunds?"))return response(200,[unlinkedRecord]);
+  if(target.includes("/rest/v1/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);
+  if(target.includes("/payments/"+paymentId+"/refunds?count=100&skip=0"))return response(200,{items:firstPage});
+  if(target.includes("/payments/"+paymentId+"/refunds?count=100&skip=100"))return response(200,{items:[providerRefund]});
+  if(target.endsWith("/rpc/srk_service_record_razorpay_refund_recovery_evidence"))return response(200,auditId);
+  if(target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence"))return response(200,{success:true,status:"processed"});
+  throw new Error("unexpected request "+target);
+ };
+ t.after(()=>{global.fetch=originalFetch;});
+ const result=await handler(request());const body=JSON.parse(result.body);
+ assert.equal(result.statusCode,200);assert.equal(body.accounting_finalized,true);
+ const pages=calls.filter(c=>c.target.includes("/payments/"+paymentId+"/refunds?"));
+ assert.equal(pages.length,2);assert.ok(pages[0].target.endsWith("count=100&skip=0"));assert.ok(pages[1].target.endsWith("count=100&skip=100"));
 });
