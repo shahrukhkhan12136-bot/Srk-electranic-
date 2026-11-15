@@ -175,7 +175,7 @@ async function reconcileRefund(refund, eventName) {
       p_refund_record_id: record.id,
       p_provider_refund_id: refund.id,
       p_provider_status: refund.status,
-      p_error: expectedStatus === "failed" ? "Razorpay reported refund failed" : null
+      p_error: refund.status === "failed" ? "Razorpay reported refund failed" : null
     })
   });
   if (!reconcileResponse.ok) throw new Error("Refund reconciliation RPC failed");
