@@ -1,5 +1,5 @@
 begin;
-select plan(55);
+select plan(59);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -200,6 +200,20 @@ select ok(position('MANUAL_AND_ROUTE_ELECTRICIAN_PAYOUT_OVERLAP' in pg_get_funct
 select ok(position('coalesce(v_commission_paise,0)>0' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'zero-commission bookings do not require a zero-value Route commission transfer row');
+
+
+select ok(position('ROUTE_ELECTRICIAN_RECIPIENT_USER_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route electrician recipient Auth user must match the assigned electrician profile');
+select ok(position('ROUTE_VERIFIED_PRIMARY_LINKED_ACCOUNT_MISSING_OR_AMBIGUOUS' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route transfer requires exactly one verified primary electrician linked account');
+select ok(position('ROUTE_LINKED_ACCOUNT_ID_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route electrician transfer linked account must match the verified primary bank link');
+select ok(position('ROUTE_SETTLED_WITHOUT_PROCESSED_TRANSFER' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'settled Route records require processed transfer status');
 
 select * from finish();
 rollback;
