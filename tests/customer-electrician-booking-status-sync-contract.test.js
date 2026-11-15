@@ -139,3 +139,13 @@ test('electrician profile panel transport failures do not prevent booking offers
   assert.match(load, /for\(const loader of \[loadElectricianPhoneChangeHistory,loadMyAreaChangeRequests,loadVerificationDocuments,loadEarnings,loadPartnerWallet,refreshElectricianPushState,loadElectricianSupportTickets\]\)\{try\{await loader\(\);\}catch\(e\)\{\/\* Optional profile panels must not block the offer list\. \*\/\}\}/);
   assert.ok(load.indexOf('catch(e){/* Optional profile panels must not block the offer list. */}') < load.indexOf("sb.rpc('srk_get_my_offer_details')"), 'offer loading continues after an optional panel failure');
 });
+
+
+test('customer booking list survives rejected supplementary contact, refund, and cancellation RPCs', () => {
+  const load = functionBody(customer, 'loadCustomerBookings');
+  assert.match(load, /const safeCustomerRpc = async \(name\) => \{\s*try \{ return await customerSb\.rpc\(name\); \}\s*catch \(error\) \{ return \{ data: null, error \}; \}\s*\};/);
+  for (const name of ['srk_get_customer_call_contacts','srk_customer_list_booking_refund_requests','srk_customer_list_booking_cancellation_requests','srk_customer_list_booking_cancellation_fee_items']) {
+    assert.ok(load.includes("safeCustomerRpc('" + name + "')"), 'supplementary RPC is isolated: ' + name);
+  }
+  assert.ok(load.indexOf('safeCustomerRpc') < load.indexOf('const timelineMap'), 'booking rendering continues after supplementary RPC results');
+});
