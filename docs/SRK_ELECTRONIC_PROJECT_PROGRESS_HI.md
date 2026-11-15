@@ -3336,3 +3336,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - server_authoritative_work_timer.test.sql में plan(20) और 20 test assertions का static count मेल खाता है। pgTAP को database पर चलाना अभी बाकी है।
 - Founder photo integration के source-contract/cache tests सहित branch Node CI अब green है। PR #8 अभी unmerged है; production deployment नहीं किया गया।
 - Work Timer / completion / dispute acceptance अभी runtime DB, role-based RPC, booking-to-bill E2E और consolidated mobile QA के बिना incomplete है।
+
+### GPT-2 Refund Recovery full-amount finalization guard — 15 Nov 2026
+- New migration `20261115240000_harden_refund_recovery_full_amount.sql` strengthens `srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)`: after locking the booking, provider-evidence `amount_paise` must equal `round(service_bookings.amount_paid*100)` or it raises `RECOVERY_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTION`. Partial/stale evidence cannot be promoted to full-refund booking state.
+- `supabase/tests/database/durable_razorpay_refund_recovery_evidence.test.sql` updated to plan 35; exact plan/assertion count verified 35/35 by source count. PostgreSQL/pgTAP runtime has not been executed.
+- An initial migration timestamp collided with GPT-1's `20261115210000` migration. GPT-2 renamed its migration to unique version `20261115240000`; current migration-tree audit shows only the known `20261109` legacy duplicate pair remains.
+- Latest PR #8 Node CI on shared head `16a51906ea55bf009f2935e2892eab90a72ef105`: **158/160 PASS, 2 FAIL**. Both failures are GPT-1 Booking Lifecycle source assertions (tests 25/26) still expecting the old `p.id=b.assigned_electrician_id` and `p.user_id/auth_user_id` predicate form after GPT-1's multi-profile authorization change. GPT-2 did not edit GPT-1 files. Migration-version uniqueness test now passes.
+- GPT-2 scope remains **27/39 = 69% complete; 12/39 = 31% remaining**. This is additional source hardening, not a checklist item closure. No Production DB migration, real provider refund, payout, PR merge or deployment occurred.
