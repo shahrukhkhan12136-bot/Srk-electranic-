@@ -3803,3 +3803,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Node CI for manifest commit `2dd840a` ended `cancelled` (run 43733764155); it is not a pass or a SQL test. No run was returned for progress commit `fed8b95`. PR #8 remains open, Draft, unmerged.
 - No migration path changed; no Production query or repair performed. GPT-2 remains 27/39 = 69%.
 - Next safe evidence target: recover the original deployment artifact/release record or an approved read-only migration-history export. Do not infer the remote migration version from the placeholder comment.
+
+
+### Cross-branch source-lineage verification — 15 Nov 2026
+- Checked the candidate historical branches `feature/business-finance-dashboard`, `feature/electrician-categories-hourly-booking`, `feature/production-push-notifications`, and `work/separate-customer-electrician-portals`.
+- All four contain the same timestamped migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` with identical blob SHA `014699d3190e45aacde4022ac7e7fa9ca4fec006`; all contain the same follow-up file `20261109_allow_quote_approval_booking_states.sql` with blob SHA `ef4bf8b9b8a9a35bf3ddd94ea4614c7498fb1c6d`.
+- None of those branches contains a separate file named `electrician_inspection_quotes_and_service_only_commission.sql`. This confirms repository source consistency across these branches, but does not prove remote Supabase applied-history or exact deployed body.
+- No file rename, deletion, migration-history repair, or remote database query performed. Duplicate 8-digit version remains a migration replay ambiguity. GPT-2 remains 27/39 = 69%.
+- Next safe step remains obtain an approved read-only migration-history export / original deployment artifact, then compare recorded remote version and checksum against this exact source blob before proposing any migration repair.
