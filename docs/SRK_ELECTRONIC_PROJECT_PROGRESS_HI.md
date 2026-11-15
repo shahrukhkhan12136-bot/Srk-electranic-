@@ -3258,3 +3258,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Latest PR-head Node CI run `43717448107` (commit `75a1630a5e2ee0518c5f76b1571d1cec620ecb14`) completed **SUCCESS**; the full repository Node test suite passed. No PostgreSQL/pgTAP runtime or browser E2E was part of this run.
 - Admin `admin.html` no longer renders an editable legacy quote amount or calls `srk_admin_update_legacy_booking_quote`; historical amount/labour/materials/status remain visible read-only. Dedicated legacy new→confirmed Main Admin RPC and manual-payment paths remain. Backend legacy quote RPC is retained with its existing guards for historical compatibility; no schema or historical paid rows were deleted/rewritten.
 - GPT-2 checklist remains **27/39 = 69% complete; 12/39 = 31% remaining**; this closes the Admin UI control removal source item but does not close the legacy accounting/receipt dependency or runtime verification gates. PR #8 remains Draft/Open/Unmerged; no Production DB, deployment or merge action.
+
+
+### नवीनतम CI और अतिरिक्त static security review — 2026-11-15
+- नवीनतम branch head `5fb6eda05d5c7a88208a1751c662e97eaef25f49` पर GitHub Actions Node test suite run `43717500688` SUCCESS हुआ; dependency install और repository Node tests दोनों सफल।
+- उसी branch head पर completion RPC का COMMENT अब वास्तविक `(uuid,text,text)` signature से मेल खाता है; regression assertion मौजूद है।
+- Timer / completion RPCs में authenticated caller checks, customer ownership checks, assigned electrician profile ownership checks, booking row locking (`FOR UPDATE`), server-side timestamps और authenticated-only execute grants का source-level पुनरीक्षण किया।
+- Multi-profile labour bill patch exact requested booking bill के `electrician_profile_id` के स्वामित्व की जाँच करता है; केवल authenticated user's `user_id` या `auth_user_id` वाले उसी profile का bill लौटाता है।
+- यह static/source review है; pgTAP runtime execution, real DB role-based RPC verification और end-to-end lifecycle test अभी नहीं हुए। कोई migration apply / production deploy नहीं किया गया।
