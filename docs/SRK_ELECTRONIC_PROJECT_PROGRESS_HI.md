@@ -3552,3 +3552,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - पाँच उपलब्ध historical feature/work branches में उसी Google Maps migration path और consolidated setup को cross-check किया: कोई `auth_user_id` add-column DDL या `amount_paid` base DDL नहीं मिला। यह खोज अभी भी अन्य historical commits/schema exports में source मिलने की संभावना को पूरी तरह समाप्त नहीं करती; दोनों dependencies unresolved रहेंगी।
 - कोई schema/migration apply, Production access, merge, deploy या provider payment/refund action नहीं किया।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
+
+
+## 2026-11-15 — Core-column dependency cross-branch follow-up
+- पाँच उपलब्ध historical feature/work branches में `COMPLETE_DATABASE_SETUP.sql` और Google Maps migration के समान paths cross-check किए; `service_bookings.amount_paid` तथा `electrician_profiles.auth_user_id` के authoritative ADD COLUMN/base DDL नहीं मिले।
+- अतिरिक्त consumer मिला: `20261109010000_create_secure_wallet_ledger_foundation.sql` में wallet ownership resolution `coalesce(ep.auth_user_id, ep.user_id)` पढ़ता है। `amount_paid` को commission migration पढ़ती है, negative-value guard और column UPDATE grant में भी इस्तेमाल करती है।
+- समान historical branch copies को स्वतंत्र provenance नहीं माना; exact column type/nullability/default/constraints/indexes/ownership अभी unresolved हैं। अनुमान से migration या fixture नहीं बनाया। Contract audit `docs/CORE_BASELINE_DDL_CONTRACT_HI.md` में बढ़ाया।
+- PR-head Node run `43727009844` का परिणाम 163/163 pass है, लेकिन यह commit `7b23a2c4e7ef6012413957f4553acf44a9fab7b` पर था; उसके बाद documentation-only commits आए हैं, इसलिए इसे नए head की CI validation नहीं कहा जाएगा।
+- कोई Production DB access, migration apply, merge/deploy या live provider action नहीं हुआ।
+- GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
