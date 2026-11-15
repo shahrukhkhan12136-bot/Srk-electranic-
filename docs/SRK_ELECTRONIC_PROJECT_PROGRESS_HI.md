@@ -3238,3 +3238,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - मौजूदा `SRK ELECTRONIC TEST` project की migration history में केवल electrician push-notification परीक्षण से जुड़ी 7 migrations हैं; इसमें Customer Booking / Work Timer / Labour Bill lifecycle का पूर्ण test schema प्रमाणित नहीं है।
 - इसलिए इसे इस RPC migration के लिए उपयुक्त runtime test database मानकर कोई SQL/migration लागू नहीं की। Production project पर भी कोई परीक्षण या schema परिवर्तन नहीं किया।
 - सुरक्षित अगला कदम: सभी implementation पूर्ण होने पर, पहले से तय प्रक्रिया के अनुसार, पूर्ण schema वाला approved isolated test environment उपलब्ध/स्वीकृत होने पर pgTAP और role-based RPC tests चलाना। अभी कोई नया paid Supabase branch/project नहीं बनाया।
+
+### GPT-2 Admin legacy quote controls retired — 15 Nov 2026
+- Admin booking table से editable quoted-amount input हटाया; पुराने labour/materials/total/quote status अब केवल read-only historical values हैं।
+- Admin save flow से quote amount validation/update RPC call हटाई; पुरानी नई booking को Confirm करने वाला dedicated RPC और सुरक्षित manual-payment flows यथावत रखे। नई category booking का server-timed workflow नहीं बदला।
+- Regression test अब सुनिश्चित करता है कि Admin UI में legacy quote mutation RPC या editable amount input वापस न आए; backend legacy RPC को historical compatibility के लिए guarded रखा, drop नहीं किया।
+- Feature Branch source change; Node CI pending. PostgreSQL/pgTAP, browser runtime और Production migration नहीं किए। Historical paid/settled records सुरक्षित रखे गए।
+- GPT-2 checklist item 3.1.7 (Admin legacy quote editing/status control) का UI हिस्सा बंद; accounting/receipt dependency audit अलग शेष है।
