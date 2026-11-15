@@ -2810,3 +2810,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - `supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql` को `plan(54)` / 54 source-contract assertions तक बढ़ाया गया। Migration function body का static inspection: कोई INSERT/UPDATE/DELETE या provider HTTP call नहीं।
 - **सीमा:** यह source-level implementation और static inspection है। pgTAP/PostgreSQL runtime अभी execute नहीं हुआ; वास्तविक Razorpay Route live transfer/webhook/provider reconciliation अभी अलग से प्रमाणित होना बाकी है।
 - Commits: migration `d41fd5786b5d68135f07613d881112a7d88be0cc`; pgTAP contract update `5d9e699f78b4365f5d9f4e34fc6e45c1309177b9`। कोई Production migration या transfer नहीं किया गया।
+
+## 2026-11-15 — Customer localization completion pass and Electrician source audit
+
+- Added English dictionary coverage for dynamic customer profile, saved-address, complaint/support, OTP/login and payment-related feedback.
+- Customer payment/booking/refund history date/time rendering now selects `en-IN` or `hi-IN` based on the chosen app language.
+- Payment receipt print document uses the same selected language for its title, labels, payment method, status, missing-value text, and date formatting.
+- During audit, detected malformed text substitutions in an intermediate `booking.html` edit. Restored the page from the last intact feature-branch revision and safely reapplied localization changes; then added a syntax-parse regression test to compile inline browser scripts in both Customer and Electrician pages.
+- Electrician App source reviewed: OTP/session gate, profile/name editing, support tickets, push-notification opt-in/out, availability controls, admin-approved area-change flow, phone-number change request with new-number OTP, KYC private document upload/preview, earnings/payout summary, wallet ledger, offer accept/decline, customer contact display only within the assigned-order rendering branch, server-timed work-start/completion lifecycle, and final labour bill display.
+- Added source-contract checks to ensure the Electrician App retains the server-timed lifecycle and does not reintroduce quotation UI.
+- Latest CI run `43707448254` on `172d74b204bfd283522a4e540090cb79deca73aa` — **SUCCESS**, including inline-script syntax checks and the full Node test suite.
+- Browser runtime, real device notification permission behavior, actual receipt print preview, and visual verification remain pending. No live bookings, payment actions, Production settings, deployment, or mobile QA were performed.
