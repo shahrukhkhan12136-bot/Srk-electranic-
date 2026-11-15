@@ -753,3 +753,38 @@ is not present on the current branch (GitHub file lookup returned 404). Its earl
 ### Remaining verification gate
 
 Before runtime claims, the existing blockers in §§1–7 and §§21–22 remain: authoritative base schema, duplicate 9 Nov migration-version reconciliation, isolated local Supabase configuration/harness, and the missing Production provenance explanation. The 14 Nov source guard should be included in the future disposable-local replay and pgTAP coverage once those prerequisites are resolved.
+
+
+## 24. Timer/status-guard pgTAP coverage gap — 16 Nov 2026
+
+A read-only source comparison was made between the 14 Nov timer migration and the two existing database pgTAP files:
+
+- `supabase/tests/database/admin_staff_rbac_foundation.test.sql` (declared `plan(69)`);
+- `supabase/tests/database/sos_admin_support_alerts.test.sql` (declared `plan(28)`).
+
+Neither of these two test files contains a direct assertion for
+`srk_guard_new_category_booking_status_transition`, its trigger, or the timer workflow's `awaiting_work_start_approval` transition. The SOS test has one general assertion mentioning an active new-category work booking, but that is not direct coverage of the status guard or work-start authorization.
+
+The migration source defines the guard as a SECURITY DEFINER trigger function with an empty search_path, installed as a BEFORE UPDATE OF status,selected_category trigger on `public.service_bookings`. Its explicit allow paths include:
+- Main Admin confirmation from `new` to `confirmed`;
+- assignment from `new`/`confirmed` only when the selected electrician has an accepted job offer;
+- electrician request from `assigned` to `awaiting_work_start_approval` with transaction-scoped work-timer authorization;
+- customer rejection returning the booking to `assigned` with the corresponding authorization;
+- `in_progress` and `completed` only with matching work-transition authorization;
+- cancellation only with a matching approved cancellation request.
+
+All other new-category status transitions are rejected with
+`NEW_CATEGORY_STATUS_REQUIRES_PROTECTED_WORKFLOW`; changing `selected_category` is rejected as immutable. Legacy rows with `selected_category IS NULL` are outside this new-category guard.
+
+### Recommended future disposable-local pgTAP coverage
+
+After the replay prerequisites in §§1–7 are resolved, add a dedicated test file rather than inflating unrelated RBAC/SOS tests. Its assertions should cover:
+1. Guard function and trigger existence, trigger timing/events, SECURITY DEFINER, empty search_path, and no browser-role EXECUTE grant.
+2. Rejection of direct new-category status edits that lack the protected authorization path.
+3. Rejection of selected-category mutation.
+4. Acceptance of each intended protected transition using isolated fixture identities and transaction-scoped authorization rows.
+5. Acceptance of the legacy-row exemption without weakening the new-category guard.
+6. Rejection of cancellation without a matching approved request and acceptance only with a booking-matched approved request.
+7. Cleanup/rollback of all fixtures and deterministic assertion counts.
+
+This is a test-coverage finding and a future test specification only. No pgTAP test was added or executed in this step; no migration replay, Production query/write, DDL, deployment, or application-source change occurred. The local replay blockers and unknown Production provenance remain unchanged.
