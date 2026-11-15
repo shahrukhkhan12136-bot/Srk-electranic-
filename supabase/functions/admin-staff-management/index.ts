@@ -82,12 +82,13 @@ Deno.serve(async (req: Request) => {
     p_actor_admin_id: authData.user.id,
   });
   if (registerError || registered !== true) {
-    // The invite has not been delivered as a successful operation. Remove the orphan Auth identity.
+    // inviteUserByEmail may already have sent an email. Deleting the Auth identity
+    // invalidates its link, but cannot retract an email already delivered.
     const { error: cleanupError } = await service.auth.admin.deleteUser(invited.user.id);
     return json(500, {
       error: cleanupError
-        ? "Staff registry creation failed; the Auth invitation also needs Main Admin review."
-        : "Staff registry creation failed; the unregistered Auth identity was removed.",
+        ? "Staff registry creation failed. The invitation email may already have been sent, and Auth identity cleanup failed. Main Admin review is required before retrying."
+        : "Staff registry creation failed. The invitation email may already have been sent, but the unregistered Auth identity was removed. Ask the recipient to ignore any invitation email.",
     });
   }
 
