@@ -80,3 +80,12 @@ test('all ledger RPCs fail closed for null or non-service roles and recover null
   assert.equal(checks.length, 3);
   assert.match(migration, /locked_until IS NULL OR d\.locked_until<clock_timestamp\(\)/);
 });
+
+test('per-device finish RPC uses attempt fencing to reject stale sender results', () => {
+  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200000_push_delivery_lease_fencing.sql'), 'utf8');
+  assert.match(edge, /p_attempt_count: target\.attempt_count/);
+  assert.match(fencing, /p_delivery_id uuid,p_attempt_count integer,p_success boolean/);
+  assert.match(fencing, /v_row\.attempt_count IS DISTINCT FROM p_attempt_count/);
+  assert.match(fencing, /v_row\.delivery_status <> 'processing'/);
+  assert.match(fencing, /RETURNS boolean/);
+});
