@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(40);
 
 select ok(to_regclass('public.srk_cancellation_fee_ledger') is not null,
   'cancellation fee ledger exists');
@@ -150,6 +150,40 @@ select ok(
 select ok(position('BOOKING_ALREADY_REFUNDED' in
   pg_get_functiondef('public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure))>0,
   'online payment reconciliation refuses to resurrect a refunded booking');
+
+select * from finish();
+rollback;
+
+select ok(position('when ''not_departed'' then 0 when ''en_route'' then 0 when ''arrived'' then 99' in
+  pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))>0,
+  'only verified arrival with Admin approval can create the ₹99 cancellation fee');
+
+select ok(exists(select 1 from pg_constraint
+  where conrelid='public.srk_booking_cancellation_requests'::regclass
+    and conname='srk_booking_cancellation_requests_fee_amount_check'
+    and pg_get_constraintdef(oid) not ilike '%49%'),
+  'cancellation request fee constraint excludes the unapproved ₹49 stage fee');
+
+select ok(not exists(select 1 from pg_constraint
+  where conrelid in ('public.srk_customer_cancellation_fee_debts'::regclass,
+                     'public.srk_booking_cancellation_fee_items'::regclass,
+                     'public.srk_cancellation_fee_ledger'::regclass)
+    and pg_get_constraintdef(oid) ilike '%4900%'),
+  'fee debt, allocation and ledger constraints cannot store a ₹49 fee');
+
+select ok(position('is_srk_admin()' in
+  pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))>0
+  and position('STAGE_EVIDENCE_REQUIRED_10_TO_1000' in
+  pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))>0,
+  'cancellation decisions remain Main Admin-only and require recorded evidence');
+
+select ok(position('customer_user_id=v_uid' in
+  pg_get_functiondef('public.srk_customer_request_booking_cancellation(uuid,text)'::regprocedure))>0,
+  'only the booking owner can submit a cancellation request');
+
+select ok(not exists(select 1 from public.srk_admin_role_permissions
+  where role_key='support' and permission_key ilike '%cancel%'),
+  'Support Staff cannot approve or decide cancellation fees');
 
 select * from finish();
 rollback;
