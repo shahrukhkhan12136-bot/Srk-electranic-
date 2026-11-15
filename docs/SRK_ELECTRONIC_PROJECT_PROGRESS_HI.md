@@ -2472,3 +2472,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 **Feature Branch commits:** manual-refund migration `29da3e0`; Admin queue manual workflow `a8f41f9`, safe data-attribute reason passing `b4b1cd2`; pgTAP test `629574e`. Inline quoting follow-up `4acf07f` was superseded by the safer data-attribute implementation.
 
 - CI status snapshot for the latest checklist commit `88cc7e7`: Vercel status is `failure` with target URL indicating `upgradeToPro=build-rate-limit`. This is a Vercel build-rate-limit/account-plan blocker, not evidence of an application test failure; no successful deployment/build verification is claimed. Recheck CI when build capacity is available.
+
+
+### Razorpay refund webhook compatibility + manual payment guard — 15 नवम्बर 2026
+- Official Razorpay refund webhook documentation/sample payload reviewed: `refund.created` event's sample refund entity can already have `status: "processed"`; event name alone does not guarantee `pending` status.
+- Found compatibility defect in `razorpay-webhook.js`: code previously required `refund.created => pending`, so a valid signed processed refund-created payload would be permanently marked ignored by the durable inbox. Corrected accepted states: `refund.created` accepts `pending` or `processed`; `refund.processed` still requires `processed`; `refund.failed` still requires `failed`. Actual verified entity status is passed to the service reconciliation RPC.
+- Added a Node test covering the documented `refund.created + processed` case, exact payment/amount reconciliation and inbox completion. Test source is committed; Node runtime not executed in this environment.
+- Additional guard found in the manual refund path: the previous RPC rejected Razorpay only when provider order/payment IDs existed. A malformed or incomplete online booking could have missing IDs yet still be classified as manual. Updated the Main-Admin-only RPC to also reject payment methods containing `online` or `razorpay`; Admin UI now displays manual refund entry only for explicit non-online/non-Razorpay methods with no Razorpay payment ID.
+- Expanded manual refund pgTAP source test from 8 to 9 assertions; plan and assertion count match 9/9. Runtime not executed.
+- Commits: webhook compatibility fix `7a5cf82`; webhook test `60eeeb6` + assertion cleanup `8e3c185`; manual payment guard migration `146fd37`; UI guard `80c57ee`; pgTAP assertion `3ce9541` and SQL quoting correction `c8ea217`.
+- No provider request, real refund, webhook delivery, database apply, payout/wallet mutation, deployment, merge, or mobile QA was performed.
