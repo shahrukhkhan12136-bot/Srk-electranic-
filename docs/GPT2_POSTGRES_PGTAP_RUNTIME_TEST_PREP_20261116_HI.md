@@ -726,3 +726,30 @@ The project owner explicitly clarified in this conversation:
 - Independent audit of the exact Question Database records changed: **NOT PERFORMED**.
 - Production migration provenance for the 14 Nov timer migration: **UNRESOLVED** (§21).
 - No Production write, migration repair/replay, DDL, deployment, or GPT-1 application-source change performed by GPT-2.
+
+
+## 23. New-category status guard source reconciliation — 16 Nov 2026
+
+A fresh read of the current branch's complete source file
+`supabase/migrations/20261114240000_server_authoritative_customer_approved_work_timer.sql`
+confirms that it already defines and installs:
+
+- `public.srk_guard_new_category_booking_status_transition()`;
+- trigger `srk_guard_new_category_booking_status_transition` on `public.service_bookings`;
+- protected transition checks for new-category bookings, including work-start approval, authorized in-progress/completed transitions, and approved cancellation;
+- the legacy quotation RPCs are separately restricted to rows where `selected_category IS NULL`.
+
+The previously inspected standalone draft path
+`supabase/migrations/20261115140000_guard_new_category_booking_status_transitions.sql`
+is not present on the current branch (GitHub file lookup returned 404). Its earlier add/remove commit sequence therefore does **not** establish a currently active standalone migration.
+
+### Reconciled source conclusion
+
+- The status-guard implementation is present in the 14 Nov timer migration source itself.
+- There is no source-level reason to restore the deleted standalone draft solely to obtain that guard; doing so could duplicate the implementation.
+- The current branch source does not prove that the 14 Nov migration or its trigger was applied in Production.
+- No migration was restored, replayed, repaired, renamed, or deployed. No Production schema was accessed or changed.
+
+### Remaining verification gate
+
+Before runtime claims, the existing blockers in §§1–7 and §§21–22 remain: authoritative base schema, duplicate 9 Nov migration-version reconciliation, isolated local Supabase configuration/harness, and the missing Production provenance explanation. The 14 Nov source guard should be included in the future disposable-local replay and pgTAP coverage once those prerequisites are resolved.
