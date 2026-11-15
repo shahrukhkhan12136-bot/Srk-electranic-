@@ -3811,3 +3811,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - None of those branches contains a separate file named `electrician_inspection_quotes_and_service_only_commission.sql`. This confirms repository source consistency across these branches, but does not prove remote Supabase applied-history or exact deployed body.
 - No file rename, deletion, migration-history repair, or remote database query performed. Duplicate 8-digit version remains a migration replay ambiguity. GPT-2 remains 27/39 = 69%.
 - Next safe step remains obtain an approved read-only migration-history export / original deployment artifact, then compare recorded remote version and checksum against this exact source blob before proposing any migration repair.
+
+
+### Missing base-column DDL — exact repository code-search recheck — 15 Nov 2026
+- Re-ran indexed repository searches for `amount_paid numeric`, `amount_paid decimal`, `ADD COLUMN amount_paid`, `auth_user_id uuid`, `ADD COLUMN auth_user_id`, and `auth_user_id references auth.users`.
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` adds service_charge/materials/quote/work columns but only reads `amount_paid`; it does not add it. The Google Maps migration adds only location_lat/location_lng on the three relevant tables; its Admin approval upsert writes `auth_user_id` but does not add that column. The wallet foundation reads `coalesce(ep.auth_user_id, ep.user_id)`.
+- The `ADD COLUMN auth_user_id` indexed hit was a text-context false positive: the full source contains `ADD COLUMN location_lat/location_lng`, then later an INSERT/UPSERT column list mentioning auth_user_id. It is not an auth_user_id DDL statement.
+- No authoritative type/default/nullability/FK/constraint/index DDL for `service_bookings.amount_paid` or `electrician_profiles.auth_user_id` was found in the indexed source search. Search indexing is not exhaustive, so this remains unresolved rather than a proof of nonexistence.
+- No DDL invented or added; no remote DB query. These missing baseline contracts continue to block a trustworthy local migration replay/parity fixture. GPT-2 remains 27/39 = 69%.
