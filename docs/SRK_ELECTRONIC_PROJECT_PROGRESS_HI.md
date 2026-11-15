@@ -2049,3 +2049,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Updated per user: change/remove the garden background and use a clean premium professional portrait background. Match the Founder model/look shown in the existing three-photo Founder reference; do not paste the phone mockup or its layout into the final portrait. Keep the recognizable Founder appearance and black-shirt styling; photorealistic, no text/logo/badge/extra person.
 - The three-phone UI mockup is not a Founder portrait and must never be substituted.
 - Image generation could not be invoked due to the current Free-plan image-generation limit. **Pending** until generation is available; no edited image has been created or integrated yet.
+
+
+### 2026-11-15 — Resume audit: Customer five-menu implementation checkpoint (14.1.2)
+
+- User-directed sequence reaffirmed: finish remaining Customer → Electrician → Admin/Staff implementation first; then perform a complete option-by-option audit, fix gaps, run the consolidated test phase, and only then prepare go-live. No premature completion claims.
+- Current approved working branch re-confirmed from PR #8: `feat/customer-login-first-dashboard-20261114` (PR remains Draft/open; no merge/deploy).
+- Re-fetched current `booking.html` at branch head (blob SHA `f9740cf022b0f11cf44bf6c26d499172b8a9ab08`). All five Customer menu tabs and matching tab panels are present in source: Home, My Bookings, Payments, Help & Support, My Profile. Keyboard tab navigation/ARIA attributes and menu activation handlers are present. This supersedes the older 17.107/17.109 audit statement that no five-menu shell existed; those notes describe earlier snapshots and must not be treated as current status.
+- Source also contains menu-specific data paths for payment/refund history, customer support tickets/messages/attachments, and profile/saved-address RPCs. This confirms substantial implementation, but not complete menu acceptance.
+- **Still not verified:** each menu's full feature coverage, all RPC definitions/grants/RLS and attachment access on the same branch, privacy/no-store/cache behavior, every loading/empty/error/offline/retry state, accessibility/responsive behavior, and the full Customer checklist cross-dependencies (labour-only payment, lifecycle/contact visibility, cancellation/refund). Presence of tabs or RPC call names alone is not proof of secure end-to-end completion.
+- Next execution: continue source-by-source contract audit of Customer menu and its RPC/migrations, close implementation gaps without production writes, then proceed in Master Checklist order through Customer booking items and Electrician/Admin/Staff. Keep all manual mobile/Desktop QA deferred to one final consolidated pass. Runtime database/provider/E2E tests remain a separate final test gate.
+- No app source, DB, Auth, Storage, provider, payment, customer data, deployment, merge, or mobile QA changed in this checkpoint.
