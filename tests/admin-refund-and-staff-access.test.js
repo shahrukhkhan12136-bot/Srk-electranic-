@@ -282,3 +282,27 @@ test('Staff suspension, session registration, and permission checks serialize in
   assert.ok(permission.includes('auth.sessions auth_s') && permission.includes('auth_s.id = v_session_id'),
     'permission check must still verify the live Supabase Auth session');
 });
+
+
+test('Support replies and status updates lock the case before its current assignment and reject closed cases', () => {
+  const names = [
+    'srk_admin_staff_send_customer_message',
+    'srk_admin_staff_update_customer_complaint',
+    'srk_admin_staff_send_electrician_message',
+    'srk_admin_staff_update_electrician_ticket'
+  ];
+  for (const name of names) {
+    const start = staffMigration.lastIndexOf('create or replace function public.' + name);
+    assert.notEqual(start, -1, name + ' must exist');
+    const end = staffMigration.indexOf('$function$;', start);
+    const body = staffMigration.slice(start, end);
+    const caseLock = body.indexOf('for update');
+    const assignmentLock = body.indexOf('for update', caseLock + 1);
+    assert.ok(caseLock >= 0 && assignmentLock > caseLock,
+      name + ' must lock the case before checking/locking its assignment');
+    assert.match(body, /assigned_staff_user_id\s*=\s*v_uid/);
+    assert.match(body, /v_case_status\s*=\s*'closed'|v_old_status\s*=\s*'closed'/);
+    assert.match(body, /SUPPORT_CASE_NOT_ASSIGNED_TO_YOU/);
+    assert.match(body, /SUPPORT_CASE_CLOSED/);
+  }
+});
