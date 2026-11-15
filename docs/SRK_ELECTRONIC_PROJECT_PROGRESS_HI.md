@@ -3561,3 +3561,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - PR-head Node run `43727009844` का परिणाम 163/163 pass है, लेकिन यह commit `7b23a2c4e7ef6012413957f4553acf44a9fab7b` पर था; उसके बाद documentation-only commits आए हैं, इसलिए इसे नए head की CI validation नहीं कहा जाएगा।
 - कोई Production DB access, migration apply, merge/deploy या live provider action नहीं हुआ।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
+
+
+## 2026-11-15 — GPT-1 active-work UI regression guard added
+- Customer और Electrician दोनों ऐप में timer/SOS panel की मौजूदा visibility conditions source से जाँचीं: Customer `status==='in_progress'`; Electrician `booking_status==='in_progress'`; completion review/dispute में Electrician timer action छिपा रहता है।
+- इसी महत्वपूर्ण business rule के लिए Node contract test जोड़ा: Customer/Electrician SOS और timer केवल active in-progress booking पर render हों; Electrician completion-pending/disputed अवस्थाओं में completion timer action न दिखे।
+- Test change commit: `70cca079e60f21aafba9db9c323a5336c410f886`। इस commit के लिए नया CI run अभी उपलब्ध नहीं मिला; इसलिए नया assertion PASS घोषित नहीं है। पिछले सत्यापित CI run में 163/163 tests पास थे।
+- कोई app runtime, browser/mobile QA, DB/pgTAP, Production DB, merge या deployment नहीं किया गया। अगला कदम इस नए contract test का CI परिणाम सत्यापित करना है।
