@@ -280,6 +280,7 @@ declare
   v_note text:=btrim(coalesce(p_admin_note,''));
   v_booking_id uuid;
   v_closed integer:=0;
+  v_previous_available boolean:=false;
 begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'ADMIN_ACCESS_REQUIRED' using errcode='42501';
@@ -326,18 +327,29 @@ begin
       where d.electrician_profile_id=v_document.electrician_profile_id and d.document_type='address_proof'
       order by d.uploaded_at desc,d.id desc limit 1) is distinct from 'approved'
   ) then
-    update public.electrician_profiles
-      set active=false,available_for_work=false
-      where id=v_document.electrician_profile_id and active=true;
-    for v_booking_id in
-      update public.job_offers
-      set status='declined',responded_at=clock_timestamp()
-      where electrician_id=v_document.electrician_profile_id and status='offered'
-      returning booking_id
-    loop
-      perform private.srk_dispatch_next_booking_offer(v_booking_id);
-      v_closed:=v_closed+1;
-    end loop;
+    select p.available_for_work into v_previous_available
+    from public.electrician_profiles p
+    where p.id=v_document.electrician_profile_id and p.active=true
+    for update;
+    if found then
+      update public.electrician_profiles
+        set active=false,available_for_work=false
+        where id=v_document.electrician_profile_id and active=true;
+      if coalesce(v_previous_available,false) then
+        insert into public.srk_electrician_availability_events(
+          electrician_profile_id,actor_user_id,available_for_work
+        ) values(v_document.electrician_profile_id,auth.uid(),false);
+      end if;
+      for v_booking_id in
+        update public.job_offers
+        set status='declined',responded_at=clock_timestamp()
+        where electrician_id=v_document.electrician_profile_id and status='offered'
+        returning booking_id
+      loop
+        perform private.srk_dispatch_next_booking_offer(v_booking_id);
+        v_closed:=v_closed+1;
+      end loop;
+    end if;
   end if;
 
   return jsonb_build_object('success',true,'document_id',v_document.id,
