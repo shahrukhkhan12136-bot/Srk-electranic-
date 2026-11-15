@@ -882,9 +882,11 @@ async function loadAdminRefundRequests(){
    ? '<button type="button" class="alt" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'in_review\')">Review शुरू करें</button> <button type="button" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'approved\')">Approve</button> <button type="button" class="alt" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'rejected\')">Reject</button>'
    : state==='in_review'
     ? '<button type="button" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'approved\')">Approve</button> <button type="button" class="alt" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'rejected\')">Reject</button>'
-    : state==='approved' && r.refund_record_status!=='processed'
-      ? '<button type="button" class="alt" onclick="prepareApprovedCustomerRefund(\''+esc(r.booking_id)+'\',\''+esc(r.request_reason).replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'")+'\')">Razorpay Refund के लिए चुनें</button>'
-      : '';
+    : state==='approved' && r.refund_record_status!=='processed' && r.razorpay_payment_id
+      ? '<button type="button" class="alt" onclick="prepareApprovedCustomerRefund(\\''+esc(r.booking_id)+'\\',\\''+esc(r.request_reason).replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'")+'\\')">Razorpay Refund के लिए चुनें</button>'
+      : state==='approved' && r.refund_record_status!=='processed' && !r.razorpay_payment_id
+       ? '<p class="notice" role="note">यह manual payment है। Razorpay API का उपयोग नहीं होगा; Admin को वास्तविक refund करके उसका receipt / UTR दर्ज करना होगा।</p><label for="manualRefundReference_'+esc(r.request_id)+'">Manual Refund Receipt / UTR (4–120 अक्षर)</label><input id="manualRefundReference_'+esc(r.request_id)+'" maxlength="120" style="width:100%;padding:10px" placeholder="बैंक / UPI / Cash refund reference"><label for="manualRefundNote_'+esc(r.request_id)+'">Refund Note (वैकल्पिक, अधिकतम 250 अक्षर)</label><input id="manualRefundNote_'+esc(r.request_id)+'" maxlength="250" style="width:100%;padding:10px" placeholder="Refund प्रमाण / टिप्पणी"><button type="button" onclick="recordAdminManualCustomerRefund(\\''+esc(r.booking_id)+'\\',\\''+esc(r.request_id)+'\\')">Manual Refund दर्ज करें</button>'
+       : '';
   return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><strong>Booking #'+esc(String(r.booking_id).slice(0,8).toUpperCase())+'</strong><strong>'+money+'</strong></div>'+
    '<p>ग्राहक: '+esc(r.customer_name||'—')+' · '+esc(r.customer_phone||'—')+'</p>'+
    '<p>Booking स्थिति: '+esc(r.booking_status||'—')+' · Payment: '+esc(r.payment_status||'—')+' · भुगतान: '+esc(r.amount_paid==null?'—':'₹'+Number(r.amount_paid).toFixed(2))+'</p>'+
@@ -945,6 +947,23 @@ async function recoverAdminProviderRefund(bookingId,requestId){
   }else{throw new Error(result?.error||result?.message||'Recovery प्रमाण सुरक्षित नहीं हुआ। कोई नया refund न बनाएँ।');}
  }catch(error){if(box)box.textContent=(error?.message||'Recovery पूरी नहीं हुई।')+' नया refund/retry या payout release न करें।';}
  finally{adminRefundRecoveryBusy.delete(requestId);}
+}
+const adminManualCustomerRefundBusy=new Set();
+async function recordAdminManualCustomerRefund(bookingId,requestId){
+ if(adminManualCustomerRefundBusy.has(requestId))return;
+ const reference=document.getElementById('manualRefundReference_'+requestId)?.value.trim()||'';
+ const note=document.getElementById('manualRefundNote_'+requestId)?.value.trim()||'';
+ if(reference.length<4||reference.length>120){alert('वास्तविक Refund Receipt / UTR 4 से 120 अक्षरों में दर्ज करें।');return;}
+ if(note.length>250){alert('Refund Note अधिकतम 250 अक्षरों का हो सकता है।');return;}
+ if(!confirm('क्या वास्तविक Manual Refund पहले ही ग्राहक को भेज दिया गया है और अब उसका receipt / UTR रिकॉर्ड करना है? यह दर्ज करने पर booking refunded होगी और Customer request processed दिखेगी।'))return;
+ adminManualCustomerRefundBusy.add(requestId);
+ try{
+  const {data,error}=await sb.rpc('srk_admin_record_manual_refund',{p_booking_id:bookingId,p_reference:reference,p_note:note||null});
+  if(error||!data?.success)throw error||new Error('Manual refund record was not confirmed');
+  alert('Manual Refund रिकॉर्ड सुरक्षित हुआ। Customer request processed हो गई।');
+  await loadAll();
+ }catch(error){alert('Manual Refund दर्ज नहीं हुआ। भुगतान का वास्तविक प्रमाण और वर्तमान Booking स्थिति जाँचें। '+(error?.message||''));}
+ finally{adminManualCustomerRefundBusy.delete(requestId);}
 }
 async function decideAdminRefundRequest(id,decision){
  if(!['in_review','approved','rejected'].includes(decision)||adminRefundReviewBusy.has(id))return;
