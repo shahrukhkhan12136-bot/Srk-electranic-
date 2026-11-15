@@ -243,3 +243,12 @@ Older `feature/business-finance-dashboard` और `work/separate-customer-electr
 - This chronology strongly suggests the second file was an accidental duplicate follow-up. It does **not** prove which SQL file was actually applied to the remote database or whether version `20261109` exists in its history. No remote query was run.
 - Safe decision: keep both files untouched for now. Do not delete or rename the second file, because remote history state remains unknown and migration version is the ledger key. Before cleanup, establish the remote applied-version row through an approved read-only schema/history export and reconcile with deployment records.
 - Node CI had passed on commit `a84ea1e`; no SQL replay/runtime assertion follows from that.
+
+
+### Original placeholder lineage and CI verification — 15 Nov 2026
+
+- Full Git path history adds an earlier event: `073d59e` first introduced the 8-digit quote migration path as a one-line comment saying the migration was already applied under the live Supabase migration name `electrician_inspection_quotes_and_service_only_commission`.
+- `04d0c02` replaced that one-line marker with the full SQL body; `b5e5b3b` appended the two booking-state/assignment constraints; `cd2c46e` then introduced the second same-version file containing those exact two constraints.
+- This makes the likely source-history explanation clearer: the full quote migration path began as a marker for a separately named live migration, then was later populated with SQL, followed by a duplicate constraint-only migration path. It remains only a Git-source lineage finding, not proof of remote ledger rows or actual applied SQL.
+- The `d106ec8` commit's Feature Branch Node tests workflow completed successfully (run 43733401357). This is Node CI only; it does not execute PostgreSQL/pgTAP or establish Production migration parity.
+- No files renamed/deleted; no migration repair or Production operation. GPT-2 remains 27/39 = 69%.
