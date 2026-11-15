@@ -64,3 +64,45 @@ test('profile display-name updates validate input and use the self-service RPC',
   assert.match(profile, /srk_electrician_update_my_display_name/);
   assert.match(profile, /finally\{button\.disabled=false;\}/);
 });
+
+
+test('electrician OTP login validates phone, applies resend cooldown and restores the send button', () => {
+  const send = body('sendOtp');
+  assert.match(send, /if\(otpBusy\)return/);
+  assert.match(send, /normalizedPhone\(\)/);
+  assert.match(send, /Date\.now\(\)<otpCooldownUntil/);
+  assert.match(send, /sb\.auth\.signInWithOtp\(\{phone:p\}\)/);
+  assert.match(send, /startOtpCooldown\(\)/);
+  assert.match(send, /finally\{otpBusy=false/);
+  assert.match(send, /btn\.disabled=false;btn\.textContent='OTP भेजें'/);
+});
+
+test('electrician OTP verification validates token and uses SMS phone verification', () => {
+  const verify = body('verifyOtp');
+  assert.match(verify, /normalizedPhone\(\)/);
+  assert.match(verify, /!\^\\d\{4,8\}\$/.source|never-match/);
+  assert.match(verify, /sb\.auth\.verifyOtp\(\{phone:p,token,type:'sms'\}\)/);
+  assert.match(verify, /finally\{otpBusy=false\}/);
+  assert.match(verify, /OTP गलत या समाप्त हो गया है/);
+});
+
+test('electrician availability changes require approved active profile and explicit confirmation', () => {
+  const availability = body('setElectricianAvailability');
+  assert.match(availability, /!profile\|\|!profile\.active\|\|profile\.verification_status!=='approved'/);
+  assert.match(availability, /if\(!confirm\(/);
+  assert.match(availability, /srk_electrician_set_availability/);
+  assert.match(availability, /p_available:available/);
+  assert.match(availability, /await refresh\(\)/);
+  assert.match(availability, /catch\(e\)[\s\S]*?on\.disabled=false;off\.disabled=false/);
+});
+
+test('electrician logout confirms server live-location stop before signing out', () => {
+  const logout = body('logout');
+  assert.match(logout, /locationWatches\.keys\(\)/);
+  assert.match(logout, /srk_electrician_stop_live_location/);
+  assert.match(logout, /Promise\.allSettled/);
+  assert.match(logout, /if\(failedIndex>=0\)throw/);
+  assert.ok(logout.indexOf('if(failedIndex>=0)throw') < logout.indexOf('sb.auth.signOut()'));
+  assert.match(logout, /if\(error\)throw error/);
+  assert.match(logout, /catch\(e\)[\s\S]*?electricianLogoutBusy=false/);
+});
