@@ -2944,3 +2944,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added regression assertions for complaint status prefix translation and representative support messages.
 - Code/test commits: `b7172dd2`, `403ef722`. New CI run is expected on the current feature branch head; confirm before treating the new assertions as passed.
 - Browser runtime language switching and visual Welcome Screen portrait review remain pending. No production deployment or data mutation; consolidated mobile QA remains deferred.
+
+
+## 2026-11-15 — GPT #2: Admin Refund / Payout RBAC पुनः-जाँच
+
+- Current Feature Branch admin.html में showState() पहले is_srk_admin() जाँचता है; अन्यथा tracked Support Staff session और support.customer.read permission के बिना portal access deny होता है। Staff mode केवल assigned support inbox load करता है; Main Admin-only sections (Refund review, Razorpay refund, accounting, payout/finance) UI में छिपे रहते हैं। यह UI gating है, backend authorization का विकल्प नहीं।
+- Backend source review: srk_admin_mark_electrician_payout_paid() और srk_admin_record_manual_refund() दोनों auth.uid() तथा is_srk_admin() की स्वतंत्र जाँच करते हैं। Payout RPC केवल pending payout, completed + verified-paid booking, immutable bill/legacy quote, exact commission/payable और booking-first row locks के बाद Admin द्वारा वास्तविक UTR/reference दर्ज करता है; यह स्वयं बैंक transfer नहीं करता।
+- Refund review migration 20261115110000_admin_refund_review_queue_and_decisions.sql की queue/decision RPC Main Admin-only है, empty search_path और request row lock रखती है। Approval केवल review state बदलता है, provider को पैसा भेजता नहीं और booking payment status mutate नहीं करता।
+- accounting_reconciliation_readonly_contract.test.sql में दो source-contract assertions जोड़े: payout settlement और manual refund record RPC दोनों independently Main Admin authorization लागू करें। Plan/count 65 से 67।
+- Static review/test-source update मात्र। PostgreSQL/pgTAP runtime अभी नहीं चला; live Staff login, refund provider, payout, browser QA और production parity सत्यापित नहीं हैं। कोई वास्तविक refund/transfer, migration apply, merge या deployment नहीं।
