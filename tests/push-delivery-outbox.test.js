@@ -67,7 +67,7 @@ test('outbox migration fails fast when required schema prerequisites are absent'
 });
 
 test('outbox terminalizes expired exhausted leases and uses a bounded worker batch', () => {
-  assert.match(migration, /delivery_status='processing' AND attempt_count>=8/);
+  assert.match(migration, /o\.delivery_status='processing' AND o\.attempt_count>=8/);
   assert.match(migration, /Outbox lease expired after maximum attempts/);
   assert.match(migration, /auth\.role\(\) IS DISTINCT FROM 'service_role'/);
   assert.match(worker, /p_limit: 3/);
