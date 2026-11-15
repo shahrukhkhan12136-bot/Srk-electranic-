@@ -356,3 +356,15 @@ prerequisite gates. No PostgreSQL replay or Production query was run.
 - इस source review में अभी केवल `service_bookings.amount_paid` का introducing column DDL नहीं मिला। इसका type/precision/nullability/default/constraints/indexes/grants अनुमान से नहीं बनाए जाएँगे।
 - Duplicate 8-digit `20261109` migration-version remote lineage अभी भी unresolved है। इस source inventory से Production `schema_migrations` या catalog की स्थिति सिद्ध नहीं होती।
 - यह recursive source-tree गणना है; PostgreSQL/pgTAP runtime, complete ordered migration replay, Production parity या deployment का प्रमाण नहीं।
+
+
+## 12. नवीनतम स्रोत-स्थिति सुधार — 16 Nov 2026 (PR head cb7348a)
+
+- §1–§11 में `service_bookings.amount_paid` के missing base-column DDL संबंधी पुराने कथन ऐतिहासिक audit snapshots हैं; वे वर्तमान Feature Branch status नहीं दर्शाते।
+- वर्तमान source tree में migration `supabase/migrations/20261116200000_restore_service_bookings_amount_paid.sql` मौजूद है। यह `public.service_bookings` पर nullable `amount_paid numeric(12,2)` जोड़ती है और `service_bookings_amount_paid_nonnegative_check` नाम का `CHECK (amount_paid IS NULL OR amount_paid >= 0) NOT VALID` constraint बनाती है। Constraint existence guard भी है। यह source DDL की मौजूदगी सिद्ध करता है; पुराने data का validation, PostgreSQL replay, या live catalog compatibility सिद्ध नहीं करता।
+- `electrician_profiles.auth_user_id` का authoritative ADD COLUMN DDL `20261109000500_harden_electrician_profile_identity_linking.sql` में पहले से मौजूद है; इसे भी वर्तमान missing-DDL blocker न गिनें।
+- इस source review के बाद इन दोनों columns को “missing introducing DDL” कहना गलत/पुराना होगा। फिर भी replay gate बंद नहीं होता: exact duplicate migration version `20261109` वाली दो अलग files की remote history/lineage अभी अज्ञात है। उन्हें rename, delete, merge, resequence या remote history repair न करें।
+- Current source snapshot: **87 SQL migrations** और **44 Node test files** (पहले के 86/43 snapshot में नई amount_paid migration और तीन source-contract checks शामिल नहीं थे)। **32 pgTAP SQL files / 3 workflows** पहले के inventory से संदर्भित हैं; इस manifest update में उनका fresh recursive recount नहीं किया गया।
+- नई migration के तीन Node source-contract tests मौजूद हैं और `financial_audit_core_schema.test.sql` में तीन pgTAP assertions जोड़े गए हैं। ये test-source inventory हैं, execution result नहीं।
+- इस exact PR head पर audit के समय GitHub Actions workflow run उपलब्ध नहीं था। किसी पुराने head के Node CI परिणाम को वर्तमान head का परिणाम न मानें। Netlify Deploy Preview success और Vercel build-rate-limit failure अलग deployment-provider statuses हैं।
+- कोई PostgreSQL/pgTAP run, full ordered replay, Production catalog/history query, Production write, provider payment/refund/payout, merge या deployment नहीं किया गया। यह manifest static-only है और execution authorization नहीं देता।
