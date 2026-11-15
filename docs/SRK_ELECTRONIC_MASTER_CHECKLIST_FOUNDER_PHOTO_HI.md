@@ -323,3 +323,15 @@
 - [ ] Fresh isolated database पर migration chain + pgTAP run; फिर Customer refund/cancellation RPCs के owner/non-owner/anon व्यवहार का runtime verification.
 - [ ] Admin refund queue/provider refund caller और service reconciliation का पूर्ण end-to-end source/runtime audit बाकी।
 - [ ] Production migration apply/deployment और final consolidated mobile QA नहीं हुए; existing approval guardrails यथावत।
+
+
+### Admin Refund Queue and manual refund completion — 15 नवम्बर 2026
+- [x] Admin refund review/list RPCs and decision state machine source-reviewed: Main Admin guard, request row lock, bounded audit note, allowed transitions, and no provider/payment mutation during approval.
+- [x] Razorpay initiator, read-only provider lookup, durable recovery evidence writer/finalizer source-reviewed; ambiguous provider outcomes retain payout hold; recovery finalization requires fresh processed evidence and separate transaction.
+- [x] Found and corrected missing manual-payment Customer refund completion: new migration `20261115130000_admin_manual_refund_request_completion.sql` requires approved request (when present), matching manual payment audit, blocks Razorpay-linked bookings, records actual manual refund reference, and marks request processed with booking refund in one transaction.
+- [x] Admin UI now distinguishes Razorpay-linked vs manual-payment approved requests; manual path requires receipt/UTR and confirms actual refund was already sent before recording.
+- [x] Added 8 pgTAP source assertions; Admin queue test source has 16/16 and durable recovery test source 34/34 matching declared plans. None of these SQL tests has been run in an isolated database yet.
+- [ ] Run all relevant migrations and pgTAP tests in a fresh isolated database; resolve any runtime failures.
+- [ ] Run provider sandbox integration for Razorpay create/status/recovery/webhook paths; no live-provider action.
+- [ ] Review manual refund UI and RPC in a browser after all feature implementation; final mobile QA remains deferred to the single consolidated pass.
+- [ ] Production migration/deployment remains blocked pending explicit approval; no merge/deploy was done.
