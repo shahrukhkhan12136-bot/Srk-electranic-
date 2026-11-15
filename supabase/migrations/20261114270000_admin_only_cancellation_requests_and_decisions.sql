@@ -11,7 +11,7 @@ create table if not exists public.srk_booking_cancellation_requests (
   verified_stage text
     check (verified_stage is null or verified_stage in ('not_departed','en_route','arrived')),
   fee_amount numeric(10,2)
-    check (fee_amount is null or fee_amount in (0,49,99)),
+    check (fee_amount is null or fee_amount in (0,99)),
   stage_evidence text,
   admin_reason text,
   decided_by uuid references auth.users(id),
@@ -236,7 +236,7 @@ begin
   if p_decision='approved' then
     if p_verified_stage not in ('not_departed','en_route','arrived') then raise exception 'INVALID_VERIFIED_STAGE'; end if;
     if length(v_evidence)<10 or length(v_evidence)>1000 then raise exception 'STAGE_EVIDENCE_REQUIRED_10_TO_1000'; end if;
-    v_fee := case p_verified_stage when 'not_departed' then 0 when 'en_route' then 49 when 'arrived' then 99 end;
+    v_fee := case p_verified_stage when 'not_departed' then 0 when 'en_route' then 0 when 'arrived' then 99 end;
     update public.srk_booking_cancellation_requests
       set request_status='approved',verified_stage=p_verified_stage,fee_amount=v_fee,
           stage_evidence=v_evidence,admin_reason=v_reason,decided_by=auth.uid(),
