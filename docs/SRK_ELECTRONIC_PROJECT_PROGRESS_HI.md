@@ -3115,3 +3115,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Admin/Support Staff: 11/13 = 85%; Payment/Accounting: 8/10 = 80%; Main Database audit/parity: 7/16 = 44%।
 - संयुक्त स्थिति: 26/39 = 67% पूरा, 13/39 = 33% बाकी।
 - GPT-1 के Customer/Electrician कार्य इस गणना से बाहर हैं।
+
+
+## 2026-11-15 — Welcome Screen / Founder Photo / PWA audit
+
+- Reviewed `welcome.html`, `index.html`, `manifest.webmanifest`, `sw.js` and welcome-screen contract tests. Customer, Electrician and Admin login routes are all present, and index redirects to the Welcome Screen.
+- Corrected the PWA start URL from `./customer-login.html` to `./welcome.html`; bumped the service-worker cache to v9 and added Welcome, Customer, Electrician and Admin entry pages to the offline precache list.
+- Refined the Welcome Screen to a blue/white premium theme, added “Smart Service... Better Life...” and retained the approved slogan.
+- Important asset audit: checked-in `assets/srk-founder.jpg` is a collage of three app screens, not the approved blue-background Founder Photo. Removed it from the portrait display and preserved an accessible Founder Photo slot. Did not substitute the second/design-reference image or an older generated portrait.
+- The exact approved blue-background Founder Photo is not currently accessible in the repository or Library file list. Its original upload is referenced in prior project context (first blue-background image = actual Founder Photo; second image = design model), but the image bytes are not available to this work session. Authentic photo integration is therefore still pending; do not claim it is complete or ask for unrelated photos.
+- Added Welcome Screen regression coverage for all role routes, collage exclusion, copy, PWA start URL and offline precache.
+- Browser visual/runtime and PWA offline checks remain pending; no deployment or Production change was made. Final mobile QA remains deferred.
