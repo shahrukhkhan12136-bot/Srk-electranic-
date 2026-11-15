@@ -89,3 +89,16 @@ test('per-device finish RPC uses attempt fencing to reject stale sender results'
   assert.match(fencing, /v_row\.delivery_status <> 'processing'/);
   assert.match(fencing, /RETURNS boolean/);
 });
+
+test('per-device fencing migration replaces the exact legacy RPC signature and matches every sender finish call', () => {
+  const fencing = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115200000_push_delivery_lease_fencing.sql'), 'utf8');
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\.srk_finish_push_subscription_delivery\(/);
+  assert.match(fencing, /DROP FUNCTION IF EXISTS public\.srk_finish_push_subscription_delivery\(uuid,boolean,text\)/);
+  assert.match(fencing, /CREATE FUNCTION public\.srk_finish_push_subscription_delivery\(\s*p_delivery_id uuid,p_attempt_count integer,p_success boolean/);
+  assert.match(fencing, /REVOKE ALL ON FUNCTION public\.srk_finish_push_subscription_delivery\(uuid,integer,boolean,text\)/);
+  assert.match(fencing, /GRANT EXECUTE ON FUNCTION public\.srk_finish_push_subscription_delivery\(uuid,integer,boolean,text\) TO service_role/);
+  const finishCalls = edge.match(/srk_finish_push_subscription_delivery", \{[\s\S]*?\}\)/g) || [];
+  assert.equal(finishCalls.length, 3);
+  for (const call of finishCalls) assert.match(call, /p_attempt_count: target\.attempt_count/);
+  assert.match(migration, /'attempt_count',c\.attempt_count/);
+});
