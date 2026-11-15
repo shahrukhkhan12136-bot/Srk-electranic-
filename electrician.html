@@ -353,7 +353,7 @@ async function electricianRequestWorkStart(bookingId){
  if(!bookingId||electricianLifecycleBusy.has(bookingId))return;
  if(!confirm('क्या आप ग्राहक से अभी काम शुरू करने की अनुमति माँगना चाहते हैं? ग्राहक की मंजूरी के बाद ही सर्वर टाइमर शुरू होगा।'))return;
  electricianLifecycleBusy.add(bookingId);
- try{const {data,error}=await sb.rpc('srk_electrician_request_work_start',{p_booking_id:bookingId});if(error)throw error;if(!data?.success)throw new Error('अनुमति अनुरोध की पुष्टि नहीं हुई');alert('काम शुरू करने की अनुमति ग्राहक को भेज दी गई है।');await refresh();}
+ try{const {data,error}=await sb.rpc('srk_electrician_request_work_start',{p_booking_id:bookingId});if(error)throw error;if(!data?.success)throw new Error('अनुमति अनुरोध की पुष्टि नहीं हुई');alert('काम शुरू करने की अनुमति ग्राहक को भेज दी गई है।');try{await refresh();}catch(_){alert('अनुमति अनुरोध सर्वर पर दर्ज हो गया है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। नेटवर्क ठीक होने पर Refresh करें।');}}
  catch(e){try{await refresh();alert('नेटवर्क जवाब नहीं मिला। ऑफर और बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}catch(_){alert('नेटवर्क जवाब नहीं मिला। Dashboard अभी रीफ़्रेश नहीं हो सका; दोबारा कार्रवाई से पहले Refresh करें।');}}
  finally{electricianLifecycleBusy.delete(bookingId);}
 }
@@ -361,7 +361,7 @@ async function electricianRequestWorkCompletion(bookingId){
  if(!bookingId||electricianLifecycleBusy.has(bookingId))return;
  if(!confirm('क्या काम पूरा हो गया है? इससे सर्वर टाइमर रुकेगा और ग्राहक से काम की पुष्टि माँगी जाएगी।'))return;
  electricianLifecycleBusy.add(bookingId);
- try{const {data,error}=await sb.rpc('srk_electrician_request_work_completion',{p_booking_id:bookingId});if(error)throw error;if(!data?.success)throw new Error('Completion request not confirmed');alert('काम पूरा होने की सूचना ग्राहक को भेज दी गई है।');await refresh();}
+ try{const {data,error}=await sb.rpc('srk_electrician_request_work_completion',{p_booking_id:bookingId});if(error)throw error;if(!data?.success)throw new Error('Completion request not confirmed');alert('काम पूरा होने की सूचना ग्राहक को भेज दी गई है।');try{await refresh();}catch(_){alert('काम पूरा होने की सूचना सर्वर पर दर्ज हो गई है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। नेटवर्क ठीक होने पर Refresh करें।');}}
  catch(e){try{await refresh();alert('नेटवर्क जवाब नहीं मिला। काम की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}catch(_){alert('नेटवर्क जवाब नहीं मिला। Dashboard अभी रीफ़्रेश नहीं हो सका; दोबारा कार्रवाई से पहले Refresh करें।');}}
  finally{electricianLifecycleBusy.delete(bookingId);}
 }
