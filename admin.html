@@ -878,7 +878,7 @@ async function loadAdminRefundRequests(){
    ? '<button type="button" class="alt" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'in_review\')">Review शुरू करें</button> <button type="button" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'approved\')">Approve</button> <button type="button" class="alt" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'rejected\')">Reject</button>'
    : state==='in_review'
     ? '<button type="button" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'approved\')">Approve</button> <button type="button" class="alt" onclick="decideAdminRefundRequest(\''+esc(r.request_id)+'\',\'rejected\')">Reject</button>'
-    : state==='approved'
+    : state==='approved' && r.refund_record_status!=='processed'
       ? '<button type="button" class="alt" onclick="prepareApprovedCustomerRefund(\''+esc(r.booking_id)+'\',\''+esc(r.request_reason).replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'")+'\')">Razorpay Refund के लिए चुनें</button>'
       : '';
   return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap"><strong>Booking #'+esc(String(r.booking_id).slice(0,8).toUpperCase())+'</strong><strong>'+money+'</strong></div>'+
