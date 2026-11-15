@@ -348,3 +348,15 @@
 - [ ] Main Admin बनाम Support Staff runtime authorization test; source review में privileged RPCs `is_srk_admin()` से guarded हैं.
 - [ ] Production apply/deploy/merge और consolidated mobile QA अभी नहीं हुए; सभी approval guardrails लागू हैं.
 - Feature branch commits: `29da3e0` migration, `a8f41f9` Admin manual workflow, `b4b1cd2` safe Razorpay reason passing, `629574e` pgTAP.
+
+
+### Razorpay webhook compatibility और manual payment classification — 15 नवम्बर 2026
+- [x] Official Razorpay sample में `refund.created` payload का status `processed` भी हो सकता है; webhook handler को valid processed evidence ignore न करने हेतु सुधारा.
+- [x] `refund.created` के लिए pending/processed स्वीकार; `refund.processed` और `refund.failed` event/status pairing strict रखी.
+- [x] Documented processed refund-created payload के लिए Node regression test जोड़ा; runtime अभी नहीं चला.
+- [x] Manual refund RPC अब payment method में `online`/`razorpay` होने पर IDs missing होने के बावजूद manual classification reject करता है.
+- [x] Admin UI manual refund fields केवल non-online/non-Razorpay payment methods के लिए दिखाता है.
+- [x] Manual refund pgTAP plan 9 और source assertions 9/9 मिलाए; runtime बाकी.
+- [ ] Node test suite और pgTAP को isolated environment में execute करके runtime result दर्ज करना.
+- [ ] Razorpay sandbox refund + webhook.created/processed/failed ordering और retry scenarios runtime verify करना.
+- Commits: `7a5cf82`, `60eeeb6`, `8e3c185`, `146fd37`, `80c57ee`, `3ce9541`, `c8ea217`.
