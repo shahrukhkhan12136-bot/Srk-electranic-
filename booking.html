@@ -894,6 +894,8 @@ initCustomerMenuShell();
 const value = id => document.getElementById(id).value.trim();
 const customerCfg = window.SRK_CONFIG || {};
 let customerSb = null;
+let customerBookingRefreshRequest = 0;
+let customerResumeRefreshTimer = null;
 let customerOtpBusy = false;
 let customerOtpUntil = 0;
 let customerOtpTimer = null;
@@ -1211,6 +1213,8 @@ let customerLiveLocationBookingIds=[];let customerLiveLocationPoller=null;
 async function refreshCustomerLiveLocations(){if(!customerSb||!customerLiveLocationBookingIds.length)return;await Promise.all(customerLiveLocationBookingIds.map(async id=>{const box=document.getElementById('customerLiveLocation_'+id);if(!box)return;try{const {data,error}=await customerSb.rpc('srk_customer_get_live_electrician_location',{p_booking_id:id});if(error||!data?.is_active){box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small">अभी कोई ताज़ा लोकेशन उपलब्ध नहीं है। इलेक्ट्रिशियन के यात्रा के दौरान शेयरिंग शुरू करने पर यहाँ दिखेगी।</p>';return;}const lat=Number(data.latitude),lng=Number(data.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng))return;const updated=new Date(data.updated_at);const time=Number.isFinite(updated.getTime())?updated.toLocaleTimeString('hi-IN'):'अभी';const url='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng)+'&travelmode=driving';const embed='https://maps.google.com/maps?q='+encodeURIComponent(lat+','+lng)+'&z=15&output=embed';box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small">ताज़ा GPS स्थान · अपडेट: '+customerEsc(time)+' · सटीकता लगभग '+customerEsc(Math.round(Number(data.accuracy_meters)||0))+' मीटर</p><iframe title="इलेक्ट्रिशियन की वर्तमान लोकेशन" src="'+customerEsc(embed)+'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="width:100%;height:220px;border:0;border-radius:10px" allowfullscreen></iframe><a target="_blank" rel="noopener" href="'+customerEsc(url)+'">🧭 Google Maps में रास्ता देखें</a>';}catch(error){box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small" role="status">लोकेशन अभी लोड नहीं हो सकी। बुकिंग रीफ़्रेश करके दोबारा कोशिश करें।</p>';}}));}
 if(!customerLiveLocationPoller)customerLiveLocationPoller=setInterval(refreshCustomerLiveLocations,15000);
 async function loadCustomerBookings() {
+  const request = ++customerBookingRefreshRequest;
+  const isCurrent = () => request === customerBookingRefreshRequest;
   const box = document.getElementById('customerBookings');
   if (!customerSb) { box.textContent='ग्राहक लॉगिन सेवा अभी उपलब्ध नहीं है।'; return; }
   box.setAttribute('aria-busy','true');
@@ -1220,6 +1224,7 @@ async function loadCustomerBookings() {
   try {
     const { data: sessionData, error: sessionError } = await customerSb.auth.getSession();
     const session = sessionData?.session;
+    if (!isCurrent()) return;
     if (sessionError || !session) {
       box.textContent='आपका लॉगिन सत्र समाप्त हो गया है। कृपया OTP से दोबारा लॉगिन करें।';
       return;
@@ -1229,6 +1234,7 @@ async function loadCustomerBookings() {
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
+    if (!isCurrent()) return;
     if (error) throw error;
     if (!data || !data.length) {
       box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
@@ -1261,6 +1267,7 @@ async function loadCustomerBookings() {
         return { bookingId: row.id, result: { error } };
       }
     }));
+    if (!isCurrent()) return;
     timelineResults.forEach(({bookingId,result})=>{
       if(!result.error) timelineMap.set(bookingId,Array.isArray(result.data)?result.data:[]);
     });
@@ -1288,6 +1295,7 @@ async function loadCustomerBookings() {
         // A bill transport failure must not hide the customer's booking history.
       }
     }));
+    if (!isCurrent()) return;
     box.innerHTML = data.map(row => {
       const contact = callMap.get(row.id);
       const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
@@ -1383,7 +1391,8 @@ async function loadCustomerBookings() {
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
-    customerLiveLocationBookingIds=data.filter(row=>row.status==='assigned'&&row.assigned_electrician_id).map(row=>row.id);await refreshCustomerLiveLocations();
+    customerLiveLocationBookingIds=data.filter(row=>row.status==='assigned'&&row.assigned_electrician_id).map(row=>row.id);
+    if (isCurrent()) await refreshCustomerLiveLocations();
     if(timelineResults.some(({result})=>result.error)) {
       const note=document.createElement('p');
       note.className='small';
@@ -1399,11 +1408,12 @@ async function loadCustomerBookings() {
       box.prepend(note);
     }
   } catch(error) {
+    if (!isCurrent()) return;
     box.textContent=navigator.onLine===false
       ? 'इंटरनेट कनेक्शन टूट गया। कनेक्शन लौटने पर “बुकिंग फिर से देखें” दबाएँ।'
       : 'बुकिंग लोड नहीं हो सकीं। कृपया “बुकिंग फिर से देखें” दबाकर दोबारा कोशिश करें।';
   } finally {
-    box.setAttribute('aria-busy','false');
+    if (isCurrent()) box.setAttribute('aria-busy','false');
   }
 }
 async function customerRespondWorkStart(bookingId,response){
@@ -1930,6 +1940,8 @@ async function syncCustomerSession() {
     await loadCustomerSavedAddresses();
     await loadCustomerProfile();
   } else {
+    customerBookingRefreshRequest++;
+    customerLiveLocationBookingIds=[];
     bookingPhone.value = '';
     bookingPhone.readOnly = true;
     document.getElementById('customerSignedIn').textContent = '';
@@ -2010,6 +2022,16 @@ async function customerLogout() {
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange(() => { setTimeout(syncCustomerSession, 0); });
+  const scheduleCustomerResumeRefresh = () => {
+    if (customerResumeRefreshTimer) clearTimeout(customerResumeRefreshTimer);
+    customerResumeRefreshTimer = setTimeout(() => {
+      customerResumeRefreshTimer = null;
+      if (document.visibilityState === 'visible' && document.getElementById('customer-dashboard').style.display !== 'none') loadCustomerBookings();
+    }, 500);
+  };
+  window.addEventListener('focus', scheduleCustomerResumeRefresh);
+  window.addEventListener('online', scheduleCustomerResumeRefresh);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleCustomerResumeRefresh(); });
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
