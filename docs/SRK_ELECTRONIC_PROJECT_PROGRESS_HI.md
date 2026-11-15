@@ -1986,3 +1986,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - `admin.html` में Main Admin Booking UUID report panel जोड़ा; यह केवल RPC call और read-only display करता है।
 - pgTAP contract 43 assertions तक बढ़ी; plan/count 43/43 static रूप से verified। Runtime pgTAP और browser test अभी नहीं चले।
 - कोई migration apply, Production schema/data change, provider call, financial write, payout, deployment, merge या mobile QA नहीं हुआ। Live schema में cancellation-fee tables अनुपस्थित होने से migration Feature Branch source-only रखी।
+
+
+### 2026-11-15 — Accounting report evidence cross-check hardening
+
+- Manual/cash payment को verified दिखाने से पहले exact amount वाली उसी booking की manual payment entry अनिवार्य की; evidence न मिले तो exception।
+- Razorpay refund का provider payment ID और manual refund का linked payment entry/amount original booking से मिलाया।
+- Cash cancellation-fee refund में wallet credit debt_id से linked होता है; report में अब fee_item_id और debt_id दोनों references शामिल हैं, इसलिए original debit और reversal credit दोनों दिखेंगे।
+- Payout का electrician_profile_id assigned electrician और booking completion से cross-check किया।
+- pgTAP contract अब 47 assertions; static plan/count verification pending immediate pass; runtime tests नहीं चले।
+- कोई DB apply/financial write/provider call/deploy/merge/mobile QA नहीं।
