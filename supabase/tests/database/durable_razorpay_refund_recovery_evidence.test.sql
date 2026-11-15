@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(29);
 select ok(to_regclass('public.srk_razorpay_refund_recovery_audits') is not null,'durable refund recovery evidence table exists');
 select ok((select relrowsecurity from pg_class where oid='public.srk_razorpay_refund_recovery_audits'::regclass),'recovery evidence table has RLS enabled');
 select ok(not has_table_privilege('anon','public.srk_razorpay_refund_recovery_audits','select'),'anon cannot read private recovery evidence');
@@ -25,5 +25,11 @@ select ok(to_regclass('public.srk_cancellation_fee_ledger_one_reversal_per_entry
 select ok(to_regclass('public.srk_wallet_ledger_idempotency_key_key') is not null,'wallet reversal entries have a globally unique idempotency key');
 select ok(position('cancel-fee:cash:refund-wallet-credit:' in pg_get_functiondef('public.srk_reverse_cancellation_fees_on_full_refund()'::regprocedure))>0,'cash cancellation-fee refund restores electrician wallet with deterministic idempotency key');
 select ok(position('srk_reverse_cancellation_fees_on_full_refund' in pg_get_triggerdef((select oid from pg_trigger where tgname='srk_reverse_cancellation_fees_on_full_refund' and not tgisinternal)))>0,'full-refund accounting reversal is attached to service booking payment status');
+
+select ok(position('new.service_charge * new.commission_rate / 100' in pg_get_functiondef('public.srk_calculate_booking_commission()'::regprocedure))>0,'company commission is calculated on service labour only, excluding materials');
+select ok(position('v_service + v_materials - v_commission' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,'electrician payable includes separately itemized materials less labour-only commission');
+select ok(position('payment_verified_at IS NOT NULL' in pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))>0,'Admin payout settlement requires verified booking payment');
+select ok(position('payment_status = ''paid''' in pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure))>0,'commission report excludes refunded and unpaid bookings from collected totals');
+select ok(position('status=''posted''' in pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,'wallet displayed balance includes only posted ledger entries');
 select * from finish();
 rollback;
