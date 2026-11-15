@@ -2782,3 +2782,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Added regression assertions covering dynamic payment text, receipt `lang`, localized date formatting and ensuring the receipt-only helper does not leak into other functions.
 - Source was restored from the last intact branch revision after detecting that an intermediate localization edit had overreached its replacement scope; the corrected commit preserves the original Customer App functions.
 - Latest-head CI has not yet been returned; do not mark tests passed. Browser runtime / actual print preview remain pending.
+
+
+### CI परिणाम — Customer भाषा और भुगतान रसीद
+- Latest branch commit: `70f65c1acd797ec6c494f54a8067881e6d95776b`.
+- GitHub Actions Node test run: `43706978870` — **SUCCESS**.
+- Install और full `npm test` step सफल; customer dashboard/language/receipt regression tests भी suite में शामिल।
+- इससे source-contract tests की पुष्टि होती है; browser में वास्तविक Hindi↔English toggle, popup receipt print preview, dynamic runtime copy और mobile visual QA अभी शेष हैं।
