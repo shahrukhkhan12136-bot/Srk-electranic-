@@ -102,3 +102,8 @@ test('per-device fencing migration replaces the exact legacy RPC signature and m
   for (const call of finishCalls) assert.match(call, /p_attempt_count: target\.attempt_count/);
   assert.match(migration, /'attempt_count',c\.attempt_count/);
 });
+
+test('sender does not count a stale/rejected device finish RPC as successful', () => {
+  assert.match(edge, /if \(error \|\| data !== true\) failed\+\+; else sent\+\+/);
+  assert.equal((edge.match(/finishResult\.error \|\| finishResult\.data !== true/g) || []).length, 2);
+});
