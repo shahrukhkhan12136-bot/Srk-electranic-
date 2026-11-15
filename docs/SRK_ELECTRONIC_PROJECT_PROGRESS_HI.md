@@ -2405,3 +2405,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - `node --check` Netlify push worker, Razorpay refund status और webhook handlers पर सफल; final checkout working tree clean।
 - अभी भी PostgreSQL executable/local isolated DB उपलब्ध नहीं था; इसलिए SQL migration parse/apply, actual role/grant behavior, claim→finish RPC responses और concurrent stale-worker reclaim runtime test बाकी हैं।
 - Disposable sandbox बंद कर दिया। कोई Supabase branch/subscription नहीं बनाया, कोई migration apply, production write, deployment, worker activation, Razorpay provider write या वास्तविक push नहीं हुआ।
+
+
+## 2026-11-15 — Full Node suite green
+
+- Latest feature-branch snapshot पर `npm test` सफल: **87 passed / 0 failed / 87 total**।
+- छह संबंधित security/regression suites का focused run: **55/55 passed**। इनमें contact visibility, Razorpay refund read-only verification, webhook reconciliation, push outbox, per-device ledger और Edge sender source contracts शामिल हैं।
+- Netlify push worker JavaScript syntax check (`node --check netlify/functions/deliver-push-outbox.js`) exit code 0।
+- पहले के पुराने sandbox snapshot में दिखे पाँच test failures latest branch पर दोबारा नहीं आए; stale checkout/fixture mismatch था। Razorpay refund-status test fixture में provider identity note शामिल किया गया ताकि source के exact identity-match contract को test करे।
+- Deno उपलब्ध नहीं था और PostgreSQL tools भी उपलब्ध नहीं थे; Edge Function typecheck तथा migration/RPC runtime/concurrency tests अभी बाकी हैं।
+- सभी tests disposable Vercel Sandbox में चलाए गए। कोई Supabase migration apply, production DB write, deployment, real push, refund/provider write, paid staging branch या mobile QA नहीं किया गया।
