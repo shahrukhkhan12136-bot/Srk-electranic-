@@ -281,3 +281,12 @@
 - [ ] PostgreSQL migration parser/apply, role grants, RPC behavior और concurrent lease-reclaim/stale-token test isolated DB में करें।
 
 **सीमा:** Node/Deno checks source/runtime type checks हैं; SQL migrations अभी किसी DB पर apply नहीं हुईं।
+
+### Consolidated Node test rerun — 15 November 2026
+- [x] Latest feature-branch snapshot पर `npm test` चलाया: **87/87 PASS, 0 FAIL** (Node test runner, 87 total)।
+- [x] Six focused security/regression files भी अलग run में **55/55 PASS**: customer/electrician contact visibility, Razorpay refund status, Razorpay webhook inbox, push outbox, per-subscription ledger, push sender.
+- [x] `node --check netlify/functions/deliver-push-outbox.js` सफल।
+- [x] पुराने sandbox snapshot के पाँच failures को नवीनतम branch से दोबारा जाँचा: वे stale snapshot/test fixtures/assertions के mismatch थे; latest branch पर full suite green है। Refund-status test fixture अब provider identity note के साथ है।
+- [ ] Deno type/runtime check और PostgreSQL migration/RPC concurrency test बाकी हैं; उपलब्ध sandbox में Deno/PostgreSQL tools नहीं थे।
+
+**सीमा:** ये Node source-contract tests हैं। Supabase migrations अभी apply नहीं हुईं; database runtime, SQL permissions/concurrency, वास्तविक push delivery और mobile QA सत्यापित नहीं हुए। कोई production बदलाव/deployment नहीं हुआ।
