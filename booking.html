@@ -1636,8 +1636,7 @@ async function loadCustomerSupportBookings() {
    .limit(50);
   if(error)throw error;
   select.replaceChildren(new Option('बुकिंग चुनें',''));
-  const sosSelect=document.getElementById('customerSosBooking');if(sosSelect)sosSelect.replaceChildren(new Option('बुकिंग चुनें (यदि लागू हो)',''));
-  (Array.isArray(data)?data:[]).forEach(row=>{if(sosSelect)sosSelect.add(new Option('बुकिंग #'+String(row.id||'').slice(0,8).toUpperCase(),row.id));
+  (Array.isArray(data)?data:[]).forEach(row=>{
    const shortId=String(row.id||'').slice(0,8).toUpperCase();
    const label=(row.service_type||'सर्विस')+' · '+customerBookingStatusText(row.status)+' · #'+shortId;
    select.add(new Option(label,row.id));
