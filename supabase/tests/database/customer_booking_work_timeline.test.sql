@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(19);
 select has_function('public','srk_customer_get_my_booking_work_timeline',array['uuid'],'customer work timeline RPC exists');
 select ok((select prosecdef from pg_proc where oid='public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure),'customer work timeline is SECURITY DEFINER');
 select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure),'customer work timeline uses an empty search_path');
@@ -16,5 +16,8 @@ select ok(has_function_privilege('authenticated','public.srk_customer_get_my_boo
 select ok(position('p_booking_id is null' in pg_get_functiondef('public.srk_customer_get_my_booking_work_timeline(uuid)'::regprocedure))>0,'timeline rejects missing booking IDs');
 select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_respond_work_start(uuid,text)'::regprocedure),'final work-start response RPC uses an empty search_path');
 select ok((select proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure),'final work-completion response RPC uses an empty search_path');
+select has_trigger('public','service_bookings','srk_guard_new_category_booking_status_transition','new-category booking status changes have a protected workflow trigger');
+select ok((select prosecdef and proconfig @> array['search_path=""'] from pg_proc where oid='public.srk_guard_new_category_booking_status_transition()'::regprocedure),'new-category status guard is SECURITY DEFINER with an empty search_path');
+select ok(position('work_transition_authorizations' in pg_get_functiondef('public.srk_guard_new_category_booking_status_transition()'::regprocedure))>0 and position('NEW_CATEGORY_STATUS_REQUIRES_PROTECTED_WORKFLOW' in pg_get_functiondef('public.srk_guard_new_category_booking_status_transition()'::regprocedure))>0,'new-category in-progress/completed status changes require protected transition authorization');
 select * from finish();
 rollback;
