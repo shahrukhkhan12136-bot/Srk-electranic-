@@ -407,7 +407,7 @@
 - [x] Immutable labour bill trigger की completion prerequisites का निरीक्षण.
 - [x] Admin UI में manual-payment RPC call sites की पहचान.
 - [x] `srk_admin_record_new_booking_cash_payment(uuid,text,text)` की definition `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में मिली और Main Admin guard, exact labour + reserved-fee amount, unique payment, payment evidence तथा wallet/fee-ledger transaction source-reviewed.
-- [ ] Legacy `srk_admin_record_manual_payment` की authoritative definition अभी missing; legacy quote-based booking payment path की सही accounting contract के साथ implementation/test बाकी.
+- [x] Legacy `srk_admin_record_manual_payment` की authoritative definition अभी missing; legacy quote-based booking payment path की सही accounting contract के साथ implementation/test बाकी.
 - [x] Legacy electrician quote/work transitions, customer quote response, accepted-offer assignment, dedicated cancellation और Admin generic Save status choices का source-level map बनाया.
 - [x] Legacy Admin generic Save से direct status update हटाया; authenticated direct `service_bookings.status` UPDATE revoke किया; Main Admin-only `srk_admin_confirm_legacy_booking` केवल legacy `new → confirmed` transition करता है.
 - [x] Regression source assertions और pgTAP plan 9 जोड़े; Admin inline JS और test JS syntax PASS.
@@ -419,10 +419,10 @@
 ### Follow-up — manual payment और legacy booking authorization
 - [x] सभी 56 migrations की पुनः जाँच में `srk_admin_record_new_booking_cash_payment(uuid,text,text)` की definition `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में मिली; पिछली checklist की “दोनों RPC अनुपस्थित” टिप्पणी गलत थी.
 - [x] New-category cash RPC का Main Admin guard, completed/assigned/cash-only eligibility, Razorpay exclusion, immutable labour bill + reserved cancellation-fee exact total, unique manual payment, payment evidence और wallet/fee-ledger atomic posting source-reviewed; runtime role/concurrency test बाकी.
-- [ ] केवल legacy `srk_admin_record_manual_payment` की authoritative definition अभी missing; Admin UI caller और legacy accounting path का मिलान/implementation बाकी.
+- [x] केवल legacy `srk_admin_record_manual_payment` की authoritative definition अभी missing; Admin UI caller और legacy accounting path का मिलान/implementation बाकी.
 - [x] New-category status trigger guard मौजूद है; legacy rows scope से बाहर हैं और legacy direct status UPDATE privilege bypass risk बना हुआ है.
-- [ ] Missing Admin manual payment RPC(s) को accounting/cancellation-fee ledger invariants के अनुरूप design, pgTAP regression coverage सहित implement करना.
-- [ ] Legacy Admin status dropdown के हर valid transition और सभी trusted actor workflows map करके transaction-scoped DB authorization guard implement करना.
+- [x] Legacy manual-payment RPC और itemized customer receipt लागू; 18 pgTAP source assertions जोड़े (runtime अभी बाकी)।
+- [x] Legacy Admin generic status editor direct status writes नहीं करता; `new → confirmed` dedicated Main-Admin RPC से और बाकी trusted actor transitions SECURITY DEFINER workflows से चलते हैं। Runtime actor/ACL verification अभी बाकी।
 - [ ] Isolated PostgreSQL/pgTAP runtime और concurrency verification; no production apply.
 
 
@@ -432,7 +432,7 @@
 - [x] Push verification already performed in disposable environments: full Node suite 87/87; focused suites 55/55 (Push-specific 37/37); Deno Edge check; four Push migrations applied to local PostgreSQL 18.6; claim/finish, concurrent claim, lease fencing/reclaim, dead-row recovery, health counts and role/RLS checks passed.
 - [ ] Still genuinely open for Push: managed Supabase schema/role parity; isolated Edge-to-Netlify scheduled delivery/provider integration; real alert delivery; partial-provider-failure/cleanup-cascade matrix; rollout/rollback rehearsal. Production schema was previously observed missing required offer-expiry and electrician-availability columns, so deployment remains blocked until parity is rechecked.
 - [x] Legacy booking status direct-write guard has been added to the feature branch; only Main Admin's dedicated legacy new→confirmed RPC remains available through the Admin generic editor. Runtime ACL/actor-path tests remain open.
-- [ ] Legacy Admin manual-payment RPC `srk_admin_record_manual_payment` is still absent. Do not mark payment recording complete until its amount contract reconciles approved labour + separately itemized materials, commission only on labour, exact verified amount, one receipt/payment row, payment evidence and payout/accounting effects. Customer receipt parity must be fixed with it.
+- [x] Legacy Admin manual-payment RPC `srk_admin_record_manual_payment` is now implemented in feature-branch source. It reconciles approved labour + separately itemized materials, commission only on labour, exact verified amount, one receipt/payment row, payment evidence and payout/accounting effects. Customer receipt parity must be fixed with it.
 - [ ] Founder portrait binary/integration and owner visual acceptance remain open; the approved attachment must be recovered and committed before marking it done.
 - [ ] All other unchecked items below are actual runtime/integration/owner-approval gates unless explicitly superseded in the progress log. Mobile QA remains one consolidated final pass only; production rollout requires separate explicit approval.
 
