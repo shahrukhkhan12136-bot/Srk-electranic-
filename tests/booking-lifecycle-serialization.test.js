@@ -149,8 +149,10 @@ test('electrician labour bill access recognizes any profile owned by the authent
   assert.match(multiProfileBillSql, /GRANT EXECUTE ON FUNCTION public\.srk_electrician_get_labour_bill\(uuid\) TO authenticated/);
 });
 
-test('customer work lifecycle SECURITY DEFINER RPCs retain the private authorization schema in search_path', () => {
-  assert.ok(startFixSql.includes("alter function public.srk_customer_respond_work_start(uuid,text)"));
-  assert.ok(startFixSql.includes("alter function public.srk_customer_respond_work_completion(uuid,text,text)"));
-  assert.ok((startFixSql.match(/set search_path = 'pg_catalog, public, auth, srk_private, pg_temp'/g) || []).length >= 2);
+test('customer work lifecycle SECURITY DEFINER RPCs use an empty search_path and qualify private authorization tables', () => {
+  assert.match(startFixSql, /alter function public\\.srk_customer_respond_work_start\\(uuid,text\\)[\\s\\S]*?set search_path = ''/i);
+  assert.match(startFixSql, /alter function public\\.srk_customer_respond_work_completion\\(uuid,text,text\\)[\\s\\S]*?set search_path = ''/i);
+  assert.match(startFixSql, /INSERT INTO srk_private\\.work_timer_authorizations/i);
+  assert.match(startFixSql, /INSERT INTO srk_private\\.work_transition_authorizations/i);
+  assert.doesNotMatch(startFixSql, /(?:INSERT INTO|DELETE FROM)\\s+(?!srk_private\\.)work_(?:timer|transition)_authorizations/i);
 });
