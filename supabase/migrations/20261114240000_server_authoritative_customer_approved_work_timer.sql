@@ -381,7 +381,7 @@ GRANT EXECUTE ON FUNCTION public.srk_customer_get_labour_bill(uuid) TO authentic
 REVOKE ALL ON FUNCTION public.srk_electrician_get_labour_bill(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_electrician_get_labour_bill(uuid) TO authenticated;
 
-COMMENT ON FUNCTION public.srk_customer_respond_work_completion(uuid,text) IS
+COMMENT ON FUNCTION public.srk_customer_respond_work_completion(uuid,text,text) IS
 'Customer approves/rejects server-timed completion. Final bill contains labour only; materials are excluded. No separate quotation approval is used.';
 
 -- Extend the electrician's assigned-offer view with the timer fields needed by the portal.
