@@ -51,7 +51,7 @@
 ## Evidence status
 
 - Latest completed Node CI before the new idempotency test was run #1156 (`43748698652`) on commit `088619ee27a2a37fc09bf4fa8d35d4f81fa853da`: **189/189 passed, 0 failed, 0 skipped**. Job `132917615890` log confirms the summary. This is Node-only evidence, not pgTAP/live DB/provider/browser/mobile acceptance.
-- New test `tests/customer-booking-idempotency.test.js` was added in commit `2378f4143c11cffafaa32fc5d28cbf0fec496d1b`. It is included by `npm test` (`node --test tests/*.test.js`). Exact-head CI run #1161 (`43748965351`) was observed **in progress** when this matrix was updated; do not count the new test as passed until that run completes successfully.
+- New test `tests/customer-booking-idempotency.test.js` was added in commit `2378f4143c11cffafaa32fc5d28cbf0fec496d1b` and is included by `npm test` (`node --test tests/*.test.js`). CI run #1161 (`43748965351`) on that exact source/test commit completed successfully: **193/193 passed, 0 failed, 0 skipped**; job `132918439466` log confirms it. The following current PR-head commit `c102ac5405dce9f095c97eef52b91a4f8b5bfa56` changes only this matrix document (verified by commit comparison), so the tested application and test files are unchanged. This adds mocked handler-level idempotency coverage, not real PostgreSQL concurrency proof.
 - The next documentation-only commit `e95bffed5efd92ad0030a7c686b1e020c5f0ab65` was followed by GPT-2 audit commit `088619ee27a2a37fc09bf4fa8d35d4f81fa853da`; current PR head is that latter commit. The latest CI therefore validates the exact current head at the time of this update.
 
 - This is a plan/evidence map, not a claim that runtime acceptance passed.
