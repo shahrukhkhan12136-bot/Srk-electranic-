@@ -2509,3 +2509,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Expanded cancellation-fee/refund pgTAP source plan from 42 to 44; assertion count matches 44/44. Runtime not executed.
 - Commits: cancellation RPC fix `e26889b`; pgTAP additions `086f541`.
 - No booking cancellation, fee creation, wallet/payout mutation, database apply, or production action occurred.
+
+
+### Razorpay refund.created terminal-status compatibility fix — 15 नवम्बर 2026
+- Provider/webhook source audit में एक वास्तविक regression पकड़ा: `refund.created` payload का `status=processed` स्वीकार करने के लिए event/status mapping बदली गई थी, लेकिन reconciliation error-note में पुराना `expectedStatus` identifier रह गया था. इससे उस valid payload पर ReferenceError और webhook retry होता.
+- पुराने identifier को हटाकर signed और validated refund entity के `refund.status` से failure note तय किया; `refund.created` में `pending` और `processed` स्वीकार हैं, जबकि `refund.processed`/`refund.failed` की pairing strict है.
+- Regression test जोड़ा: processed status वाले `refund.created` payload को exact payment ID, refund ID और paise amount के साथ reconcile होना चाहिए.
+- Commits: webhook compatibility `7a5cf82`, regression test `60eeeb6`, test assertion cleanup (branch history), undefined-variable correction `fdead4c`.
+- JavaScript parse-only check: `razorpay-webhook.js` PASS; `tests/razorpay-webhook-inbox.test.js` PASS. यह Node test execution नहीं है; webhook inbox suite runtime अभी नहीं चला.
+- No Razorpay API call, real refund, database apply, production deploy, merge, or mobile QA.
+- शेष runtime verification: signature/replay/duplicate delivery, provider event ordering, retry after ambiguous RPC/network outcome, Main Admin/Support Staff authorization, and database reconciliation transaction tests in isolated environment.
