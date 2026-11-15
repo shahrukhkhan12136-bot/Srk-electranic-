@@ -3289,3 +3289,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Code/test commit `12d92746fab47cdd8af0392835c6379a32c6f439` का Feature Branch Node CI run `43718088072` SUCCESS: **153/153 Node tests PASS**।
 - यह Node suite है; नया pgTAP file `admin_labour_bill_payment_accounting_bridge.test.sql` PostgreSQL में execute नहीं हुआ। PR के बाद का documentation-only HEAD `06e5659db44b36da60763ce12e6b7d10fd899cee` पर अलग CI run उपलब्ध नहीं था।
 - कोई checklist checkbox close नहीं किया; GPT-2 स्थिति **27/39 = 69%** ही है। PR #8 Draft/Open/Unmerged है।
+
+
+### GPT-1 Timer RPC search_path runtime defect correction — 2026-11-15
+- Static audit में migration `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql` का final `ALTER FUNCTION ... SET search_path = ''` मिला, जबकि Customer start/completion SECURITY DEFINER RPCs के body में `srk_private.work_timer_authorizations` और `srk_private.work_transition_authorizations` references unqualified हैं। Empty search_path में ये references resolve नहीं होते और RPC runtime पर fail हो सकते थे।
+- दोनों RPCs का search_path अब fixed trusted list `pg_catalog, public, auth, srk_private, pg_temp` किया; कोई dynamic/user-controlled schema नहीं जोड़ा। Regression test जोड़ा ताकि private authorization schema भविष्य में search_path से न हटे।
+- यह source migration + Node regression test correction है; Database पर migration apply नहीं हुई। CI run की प्रतीक्षा है; pgTAP/runtime role tests अब भी बाकी हैं।
