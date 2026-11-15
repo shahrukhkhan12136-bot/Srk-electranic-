@@ -29,7 +29,7 @@ for (const [label, fnName, rowName, maxAttempts] of [
 }
 
 test('push lease fencing SQL contract covers privilege, stale attempts and bounded retry behaviour', () => {
-  assert.match(contract, /select plan\\(20\\)/);
+  assert.ok(contract.includes('select plan(20)'));
   assert.match(contract, /stale worker attempt numbers/);
   assert.match(contract, /service-role-only/);
   assert.match(contract, /terminal rows cannot be overwritten/);
