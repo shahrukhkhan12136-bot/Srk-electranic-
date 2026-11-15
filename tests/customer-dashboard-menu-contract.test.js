@@ -101,3 +101,14 @@ test('electrician live-location stop failures preserve a retryable Stop control'
   assert.match(stop, /catch\(error\)[\s\S]*?Keep the cleared watch ID as a retry handle/);
   assert.match(electrician, /locationWatches\.has\(o\.booking_id\)\?'पहुँच गया — Location बंद करें'/);
 });
+
+
+test('customer booking lifecycle, refund and location feedback have English translations', () => {
+  assert.match(booking, /'इलेक्ट्रिशियन रास्ते में है':'Electrician is on the way'/);
+  assert.match(booking, /'काम पूरा होने की पुष्टि प्रतीक्षित':'Work completion awaiting confirmation'/);
+  assert.match(booking, /'ग्राहक ने काम पूरा स्वीकार किया':'Customer accepted work completion'/);
+  assert.match(booking, /'रिफंड अनुरोध अस्वीकृत':'Refund request rejected'/);
+  assert.match(booking, /'Cancellation fee बकाया लोड हो रहा है…':'Loading cancellation fee dues…'/);
+  assert.match(booking, /'GPS लोकेशन प्राप्त हो रही है…':'Getting GPS location…'/);
+  assert.match(booking, /'Admin ने अनुरोध अस्वीकार किया':'Admin rejected the request'/);
+});
