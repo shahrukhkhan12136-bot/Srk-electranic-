@@ -2157,3 +2157,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Closed the payout settlement follow-up: `srk_admin_mark_electrician_payout_paid` now independently rejects a missing commission rate or any rate outside 0..100 before computing expected commission, for both new-category and legacy quote bookings. This avoids SQL NULL comparison behavior allowing an incomplete commission calculation to pass the final IF guard.
 - Added a pgTAP source-contract assertion; `electrician_payout_reconciliation.test.sql` now declares 26 assertions and contains 26 `select ok(...)` checks. Not executed.
 - Accounting reconciliation changes are source-only in PR #8 feature branch. No production migration apply, financial write, bank transfer, provider call, deploy or live setting change.
+
+
+## 2026-11-15 — Route Transfer / Commission Refund Reconciliation Audit
+- Reviewed the server-only `srk_route_transfers` ledger: unique provider payment + recipient type, unique idempotency key and provider transfer ID, integer-paise amount, separate transfer and settlement state fields, and no client table grants.
+- Reviewed Admin read-only reconciliation: electrician and platform commission transfers are counted separately; provider processing and settlement totals are exposed separately; payment ID, assigned electrician, amount, duplicate rows, partial reversals and refund-related Route exceptions are checked.
+- Fixed a gap: confirmed manual full refunds (`manual_recorded`) now receive the same Route reversal requirement as provider-confirmed full refunds. If a provider transfer ID exists, both `transfer_status='reversed'` and `settlement_status='reversed'` are required; otherwise `ROUTE_TRANSFER_NOT_REVERSED_AFTER_FULL_REFUND` is reported.
+- Added one pgTAP contract assertion; accounting reconciliation test plan is now 54 assertions (declared plan/count checked in source only; runtime not executed).
+- Audit boundary: the reviewed feature-branch changes contain the Route ledger schema and read-only reconciliation, but no verified Route transfer create/settlement/reversal executor was found in the inspected changed files. Therefore no claim is made that provider transfers or reversals are automated. Provider transfer/reversal calls must remain disabled until a separately reviewed, evidence-backed, idempotent workflow exists.
+- Commission is reported as expected/ledgered/processed/settled amounts, not as cash received by the platform merely because a transfer row exists. A provider transfer marked processed is still distinct from settlement marked settled.
+- No Razorpay Route API calls, transfers, reversals, payouts, wallet mutations, migrations, or production changes were executed. Runtime tests remain unrun.
+- Commits: `07e2c333` (manual refund Route reversal gate), `eccddaa6` (54th assertion).
