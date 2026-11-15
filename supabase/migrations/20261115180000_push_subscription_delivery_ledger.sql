@@ -94,7 +94,7 @@ BEGIN
 
   SELECT NOT EXISTS(
     SELECT 1 FROM srk_private.srk_push_subscription_deliveries d
-    WHERE d.outbox_id=p_outbox_id AND d.delivery_status IN ('pending','processing')
+    WHERE d.outbox_id=p_outbox_id AND d.delivery_status <> 'delivered'
   ) INTO v_complete;
   RETURN jsonb_build_object('targets',v_targets,'complete',v_complete);
 END;
