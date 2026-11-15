@@ -2861,3 +2861,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Linked-account ID is returned as evidence but is not validated against an authoritative recipient-to-Route-account mapping in this report. Provider-side settlement confirmation/polling/webhook and bank receipt remain unverified; ledger fields alone are not bank proof.
 - Next safe Feature Branch work: inspect the authoritative electrician-to-Route-linked-account mapping and existing transfer lifecycle source, then add recipient identity + status-transition checks and corresponding tests. If no authoritative mapping/lifecycle exists, keep the report explicitly exception/Not Verified rather than infer success.
 - No live provider calls, transfers, refunds, payout changes, Production migration, deployment, merge or go-live.
+
+
+## 2026-11-15 — GPT #2 Route recipient and settlement validation patch
+
+- Existing schema inspection confirmed electrician_profiles maps the assigned profile to Auth through coalesce(auth_user_id,user_id), while srk_wallet_bank_links stores Route provider_account_id, provider, verification status and primary-link flag.
+- Added Feature Branch migration 20261115180000_admin_route_recipient_and_settlement_validation.sql: Route electrician recipient Auth user must match the booking's assigned electrician; exactly one verified primary Razorpay Route bank link is required; transfer linked-account ID must match that verified account; a settled record whose transfer status is not processed is flagged.
+- Added four source-contract assertions. Accounting reconciliation contract is now plan(59) with 59 select ok assertions.
+- These are source-level assertions only. PostgreSQL/pgTAP runtime remains Not Run; CI status for the newest commits must be checked separately. The checks validate ledger/mapping consistency, not provider settlement or actual bank receipt.
+- No Route API calls, transfers, payouts, refunds, Production changes, deployment, merge or go-live.
