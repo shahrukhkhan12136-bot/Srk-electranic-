@@ -8,6 +8,7 @@ const customer = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
 const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
 const receiptSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql'), 'utf8');
 const earningsSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261109003000_secure_commission_reporting.sql'), 'utf8');
+const historySql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql'), 'utf8');
 
 test('Customer payment history loads on Payments tab entry, login, manual refresh and paginated continuation', () => {
   assert.match(customer, /if\(name==='Payments'\)\{loadCustomerPaymentHistory\(true\);loadCustomerRefundHistory\(\);\}/);
@@ -62,6 +63,9 @@ test('Customer refund and payment history labels distinguish requests, processin
 });
 
 test('Payment history RPC includes owner-scoped request, online refund and manual refund events', () => {
-  assert.match(receiptSql, /customer_user_id = v_uid/);
-  assert.match(earningsSql, /srk_customer_get_payment_history/);
+  assert.match(historySql, /where b\.customer_user_id=v_uid/);
+  assert.match(historySql, /where r\.customer_user_id=v_uid/);
+  assert.match(historySql, /from public\.srk_razorpay_refunds rf/);
+  assert.match(historySql, /from public\.srk_manual_refund_entries mr/);
+  assert.match(historySql, /limit v_limit offset v_offset/);
 });
