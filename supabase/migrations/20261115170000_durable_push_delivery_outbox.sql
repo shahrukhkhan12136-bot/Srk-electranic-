@@ -107,9 +107,17 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'pg_catalog','public','srk_private','pg_temp'
 AS $function$
 BEGIN
-  IF auth.role() <> 'service_role' THEN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
   END IF;
+  -- A worker may disappear after claiming its final allowed attempt. Turn
+  -- expired exhausted leases into terminal dead letters before selecting work.
+  UPDATE srk_private.srk_push_delivery_outbox
+    SET delivery_status='dead',locked_until=NULL,
+        last_error=coalesce(last_error,'Outbox lease expired after maximum attempts'),
+        updated_at=clock_timestamp()
+    WHERE delivery_status='processing' AND attempt_count>=8
+      AND (locked_until IS NULL OR locked_until<=clock_timestamp());
   RETURN QUERY
   WITH picked AS (
     SELECT o.id FROM srk_private.srk_push_delivery_outbox o
@@ -123,7 +131,7 @@ BEGIN
   )
   UPDATE srk_private.srk_push_delivery_outbox o
     SET delivery_status='processing', attempt_count=o.attempt_count+1,
-        locked_until=clock_timestamp()+interval '2 minutes',
+        locked_until=clock_timestamp()+interval '5 minutes',
         updated_at=clock_timestamp()
   FROM picked WHERE o.id=picked.id
   RETURNING o.id,o.payload,o.attempt_count;
