@@ -70,3 +70,12 @@
 - इस verification pass में उपलब्ध source evidence से GPT-2 के backend RPC, Admin/Support queue, SMS/Push provider delivery और acknowledgement flow का runtime सत्यापन नहीं हुआ। इनका काम GPT-2 ownership में pending माना जाएगा, जब तक संबंधित migration/RPC/UI/CI evidence उपलब्ध न हो।
 - GPT-1 की अगली integration gate: GPT-2 backend contract/commit उपलब्ध होने पर RPC signature, response fields, failure states और case ID handling को source-level पर मिलाना; फिर अंतिम consolidated browser/mobile/E2E QA।
 - Production DB, SMS provider, merge/deploy या mobile QA नहीं किया गया।
+
+
+## 2026-11-15 — GPT-2 backend source foundation
+- Migration `20261115260000_sos_admin_support_alerts.sql` adds private SOS cases, per-booking pending deduplication, server-side actor/active-booking derivation, explicit Support Staff read/acknowledge permissions, Main Admin/Support queue RPC, acknowledgement RPC, and append-only SOS/staff audit events.
+- Admin Panel now has a permission-checked SOS queue, acknowledgement note/action, and audit-history viewer. Browser roles have no direct table access.
+- CI: Node workflow `43730623836` succeeded on commit `480f90aebac56a05ce54f5c447aaec3142fd719d`. pgTAP source contract is 28 assertions / plan 28; PostgreSQL runtime has not been executed.
+- **Still pending:** Admin mobile recipient confirmation, SMS provider selection/credentials/cost approval, actual SMS attempt and delivery/retry worker, Push delivery integration, consented/current location integration, isolated PostgreSQL/role runtime tests, and Customer/Electrician-to-Admin end-to-end QA.
+- Until provider setup is approved, SMS/Push are explicitly `not_configured`; no delivery claim is made. If location is unavailable, SOS creation is not blocked. No police/112 auto-contact is implemented.
+- Feature Branch only. No Production migration, real SMS/Push send, merge or deployment.
