@@ -121,3 +121,10 @@ ALTER TABLE public.electrician_profiles
 - Decoded job log में Node test summary: 189 tests, 189 pass, 0 fail, 0 cancelled, 0 skipped।
 - Scope केवल Node regression suite है। इससे PostgreSQL/pgTAP execution, complete migration replay, Production schema parity, payment-provider settlement, या deployment प्रमाणित नहीं होते।
 - कोई migration apply, Production परिवर्तन, payment/refund/transfer, merge या deployment नहीं हुआ।
+
+
+### 2026-11-15 18:44 UTC — root schema path history and latest branch CI
+- GitHub path history for root `SUPABASE_SCHEMA.sql` and `COMPLETE_DATABASE_SETUP.sql` each returns only the original upload commit `c4b6a46f22553e57638cdae844ec33d09bf8da2c`; no later checked-in revision of either root artifact exists in the path history.
+- Repository commit search for `amount_paid` again returned only the two already-reviewed application writer commits; search for `service_bookings` returned no additional commit matches. This narrows visible commit history but does not inspect unreachable Git objects, deleted refs, external backups, or deployment artifacts.
+- New PR branch head `456027f0f6f5e94d205077589d140e071e8c9e9c` (GPT-1 runtime acceptance matrix documentation) has GitHub Actions run `43748410761`, job `132916731999`, completed success. Decoded log: 189 tests, 189 pass, 0 fail, 0 skipped. Node regression only; no PostgreSQL/pgTAP/full migration replay/Production parity evidence.
+- No DDL guessed or added; no Production schema/history query, migration apply, payment/refund/transfer, merge, or deployment. The sole confirmed missing source-column DDL remains `service_bookings.amount_paid`.
