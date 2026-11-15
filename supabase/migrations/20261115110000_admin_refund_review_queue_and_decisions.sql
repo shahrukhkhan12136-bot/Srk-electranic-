@@ -1,5 +1,7 @@
--- Main Admin-only customer refund review queue. Approval never sends money.
-create or replace function public.srk_admin_list_booking_refund_requests()
+-- Main Admin-only customer refund review queue and recovery visibility. Approval never sends money.
+-- Return-type expansion requires a drop/recreate because PostgreSQL cannot alter OUT columns in place.
+drop function if exists public.srk_admin_list_booking_refund_requests();
+create function public.srk_admin_list_booking_refund_requests()
 returns table(
   request_id uuid,
   booking_id uuid,
@@ -18,7 +20,13 @@ returns table(
   created_at timestamptz,
   updated_at timestamptz,
   processed_at timestamptz,
-  labour_amount_paise bigint
+  labour_amount_paise bigint,
+  provider_refund_id text,
+  provider_status text,
+  refund_record_status text,
+  refund_last_error text,
+  payout_status text,
+  payout_note text
 )
 language plpgsql
 stable
@@ -34,11 +42,15 @@ begin
          b.status,b.payment_method,b.payment_status,b.amount_paid,
          b.razorpay_payment_id,r.amount,r.reason,r.status,r.admin_note,
          r.created_at,r.updated_at,r.processed_at,
-         bill.labour_amount_paise::bigint
+         bill.labour_amount_paise::bigint,
+         refund.refund_id,refund.provider_status,refund.status,refund.last_error,
+         payout.payout_status,payout.payout_note
   from public.srk_booking_refund_requests r
   join public.service_bookings b on b.id=r.booking_id
   left join public.srk_booking_labour_bills bill
     on bill.booking_id=b.id and bill.customer_user_id=r.customer_user_id
+  left join public.srk_razorpay_refunds refund on refund.booking_id=b.id
+  left join public.srk_electrician_payouts payout on payout.booking_id=b.id
   order by case r.status when 'requested' then 0 when 'in_review' then 1 else 2 end,
            r.created_at desc,r.id desc;
 end;
