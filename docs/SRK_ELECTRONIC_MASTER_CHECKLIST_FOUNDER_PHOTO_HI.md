@@ -517,3 +517,8 @@
 - `saveCurrentBookingAddress()` में Auth Session lookup पहले try/catch से बाहर था; rejected promise पर unhandled rejection और button अटका रह सकता था।
 - Session lookup को try/catch के भीतर रखा, sessionError स्पष्ट जाँचा, और मौजूदा finally से बटन restore होना सुनिश्चित किया।
 - Regression source-contract test जोड़ा। वास्तविक browser/network fault-injection तथा Supabase Auth परीक्षण लंबित हैं।
+
+
+### Customer App — Profile/Support/Payment/Booking Auth Error Checks
+- Avatar upload, support message, Razorpay payment और booking submission में Auth Session lookup का returned `error` अब स्पष्ट जाँचा जाता है; केवल session data मौजूद होने पर आगे बढ़ेंगे।
+- Source-contract regression coverage जोड़ी। ये source-level checks हैं; browser/network fault-injection और live Supabase Auth/provider testing अभी लंबित हैं।
