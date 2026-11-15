@@ -412,3 +412,11 @@
 - [x] Added `tests/customer-electrician-booking-status-sync-contract.test.js`; corrected one order-sensitive test assertion after first CI run. CI run #1211 (`43750241498`) on commit `609fd7843dc00fd3ca2e7560d3e0314b8bcec927`: **216/216 passed, 0 failed, 0 skipped** (job `132922373905`). Source-contract evidence only; no PostgreSQL or browser runtime execution.
 - [ ] Cross-app automatic realtime status refresh is not established: Customer uses explicit booking refresh/actions; Electrician realtime subscription listens to `job_offers` and `electrician_profiles`, not `service_bookings`. Keep this as a runtime/scope confirmation item; do not add new realtime behavior unless it is already in the approved checklist.
 - [ ] Isolated PostgreSQL role/JWT/concurrency tests, browser integration and final consolidated mobile QA remain pending. No Production access/migration, deployment, merge or staging branch was performed.
+
+
+### 2026-11-16 — Customer payment-history session failure handling
+- [x] Found that `loadCustomerPaymentHistory()` called `auth.getSession()` before entering its `try/catch`; a rejected auth/session transport call could escape without the normal visible retry message.
+- [x] Moved session lookup into the existing guarded block; session errors now use the same safe retry state and the `finally` block always clears the busy indicator.
+- [x] Added source-contract regression coverage in `tests/customer-electrician-payment-history-contract.test.js`.
+- [ ] Validate this change in the next exact-head Node CI run. No browser, live auth, database, or mobile runtime claim is made.
+- [ ] Similar session-lookup placement in cancellation-fee and refund-history loaders remains to be inspected separately.
