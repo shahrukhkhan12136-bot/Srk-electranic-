@@ -540,3 +540,18 @@ This establishes the expected source evolution, not the actual order or success 
 - Three source files re-read and exact constraint delta recorded.
 - Production history/catalog: still requires original owner/DBA read-only evidence.
 - No Production connection, DDL, migration replay/repair, deployment, or GPT-1 source edits.
+
+## 19. GitHub per-file commit chronology cross-check — 16 Nov 2026
+
+A read-only GitHub per-file commit-history check adds the following precise chronology (timestamps UTC):
+
+- The larger inspection/quote/commission migration's constraint update is recorded in commit `b5e5b3bf2555bde77d17fde1e8e1d62a67b58f2b` at `2026-11-09T08:04:11Z`, message: “Include quote workflow states in booking constraints”.
+- The separate status-only migration file is recorded in commit `cd2c46e6e938ba7813eeb6461769f2a796ad3d93` at `2026-11-09T08:04:25Z`, message: “Allow inspection and quote approval booking states”.
+- Thus the larger file's matching status/assignment constraint definitions were committed 14 seconds before the smaller duplicate file was added.
+- The server-authoritative timer migration first appears in Git at `9f29c1611d0c5ae5ecc052dd73b738da2ef20e40` at `2026-11-14T06:28:33Z`, message: “Add server-authoritative work timer and immutable labour-only bill”. Later commits on 14–15 Nov modify that same file; its present branch blob is recorded in §17–18.
+
+### Interpretation
+
+This strengthens the source-repository chronology and confirms that the two 9 Nov files are a duplicate-definition group at the relevant CHECK constraints. Git commit timestamps describe repository history only. They do not establish Supabase migration application order, whether a hosted migration ran, or the provenance of current Production constraints. The reported missing Production history row for `20261114240000` therefore remains an unresolved provenance gap.
+
+No migrations were edited, renamed, deleted, replayed, or repaired. No Production access or changes occurred.
