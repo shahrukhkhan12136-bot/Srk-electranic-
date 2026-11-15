@@ -161,3 +161,14 @@
 - [ ] GPT-2 के Admin/Accounting/Payment/Refund हिस्सों से legacy quote dependencies हटाकर नए server-timed labour bill contract पर migrate करना बाकी है।
 - [ ] Backend RPCs/columns/status constraints की retirement के लिए additive migration और historical paid records preservation की समीक्षा बाकी है।
 - [ ] कोई Production database migration, deployment या PR merge नहीं किया गया।
+
+
+## 2026-11-15 — CI blocker resolved: latest verified status (GPT-2)
+
+- [x] PR #8 HEAD `843e91abaecf0e72df343518aa36c593c1a89a06` पर Node CI run `43705430363` सफल: **98/98 PASS, 0 FAIL, 0 skipped**। Job log में final TAP summary सत्यापित।
+- [x] पुराने Customer quote UI test-contract mismatch के बाद अब पूर्ण Node suite green है; Admin commission/accounting regression tests भी शामिल हैं और पास हुए।
+- [ ] pgTAP/database contract suites को isolated PostgreSQL/Supabase test environment में execute करें; अभी इस 98/98 Node result से database runtime प्रमाणित नहीं होता।
+- [ ] Managed Supabase schema/role parity, सभी Admin/Staff actor ACL, browser E2E, Vercel Preview, OTP/SMS, Push provider integration और consolidated desktop/mobile QA बाकी हैं।
+- [ ] PR #8 अभी Draft है; owner की स्पष्ट अनुमति के बिना merge/deploy/Production migration नहीं।
+
+**सत्यापन सीमा:** 98/98 केवल repository Node/mock/source regression suite है। यह live DB, pgTAP, browser, Preview, SMS/OTP, Push delivery या Production readiness का प्रमाण नहीं है।
