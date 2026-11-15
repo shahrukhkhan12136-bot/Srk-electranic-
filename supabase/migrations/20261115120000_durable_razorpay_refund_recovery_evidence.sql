@@ -204,6 +204,20 @@ begin
     where id=v_booking.id and payment_status='paid';
   end if;
 
+  -- The existing payable trigger only converts pending -> refunded. Refund preparation
+  -- deliberately blocks the payout, so close that exact blocked row only after verified
+  -- processed evidence and the booking/accounting trigger have succeeded.
+  if v_has_payout then
+    update public.srk_electrician_payouts
+      set payout_status='refunded',
+          payout_note='Razorpay full refund verified; payout permanently withheld.',
+          updated_at=clock_timestamp()
+    where id=v_payout.id and payout_status='blocked';
+    if not found then
+      raise exception 'BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' using errcode='55000';
+    end if;
+  end if;
+
   return jsonb_build_object('success',true,'status','processed','replayed',false,
     'booking_id',v_booking.id,'refund_record_id',v_refund.id,'recovery_audit_id',v_audit.id);
 end;
