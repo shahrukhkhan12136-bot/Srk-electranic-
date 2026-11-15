@@ -358,3 +358,17 @@
 - [x] The first run of the new KYC/earnings/wallet contract test exposed test-helper extraction/regex mistakes only; the application source was not changed for these fixes.
 - [x] Corrected the helper to isolate the next function declaration and corrected the profile-finally assertion.
 - [x] Latest branch head `2a7771c153b82785238256d8852e04aa540f901c`: both full repository Node workflows **SUCCESS**.
+
+
+### 2026-11-15 — Booking Lifecycle / Offer / Timer / Completion source audit
+- [x] Offer response client restricts to accepted/declined, prevents duplicate in-flight response per offer, checks explicit server success and refreshes on success/expiry.
+- [x] Offer RPC source verifies the authenticated electrician identity, approved/active/available profile, state/district and approved rate tier; locks the offer and booking before assignment; checks expiry and dispatches next eligible offer.
+- [x] Electrician work-start RPC requires the assigned approved active electrician, locks the booking row and allows only assigned/rejected-start states; it records request timestamp on server and leaves timer stopped pending customer approval.
+- [x] Customer work-start RPC (corrected by later migration) locks a customer-owned booking, allows only approved/rejected, verifies approved electrician rate snapshot, and starts timer with `clock_timestamp()` only after customer approval. Rejection returns booking to assigned with timer stopped.
+- [x] Electrician completion RPC locks assigned booking and freezes elapsed time from server clock; customer completion RPC locks customer-owned booking and permits approve/reject/dispute. Approve inserts one immutable labour bill; reject resumes timer on server clock; dispute creates complaint and keeps timer stopped.
+- [x] UI timers are display-only projections of server-provided elapsed seconds/start timestamp; final bill is fetched from server RPC. No client-side timer write path found.
+- [x] Added per-booking in-flight guards on Electrician start/completion and Customer start/completion decisions to prevent duplicate concurrent RPC submissions.
+- [x] Added `tests/booking-lifecycle-serialization.test.js` covering client guards, state/UI transitions, server row locks, server-clock timer transitions, completion branches and offer assignment controls. All 9 targeted lifecycle tests passed in CI.
+- [ ] Full repository CI remains blocked by separate existing Razorpay webhook test `matches an unpersisted provider refund by its internal refund-record note` (assertion false at `tests/razorpay-webhook-inbox.test.js:361`); lifecycle tests and inline-script parse passed in the same run. Do not mark full suite green.
+- [ ] SQL pgTAP/JWT runtime tests are present in the feature branch but not executed; no Production migration or live booking/payment operation performed. Production migration parity and E2E remain pending.
+- [ ] Final mobile QA remains deferred until all app/admin/backend implementation is complete.
