@@ -2375,3 +2375,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression tests में exact legacy/new RPC signature, service-role grant और sender के सभी finish call paths के fencing-token assertions जोड़े।
 - **अभी test suite execute नहीं हुई।** यह source-contract review है, SQL parser/runtime verification नहीं। अगला चरण Node suite चलाना और approved isolated PostgreSQL में migration chain, RPC grants, stale-token rejection, health/recovery transitions तथा concurrent reclaim verify करना है।
 - कोई migration apply, production SQL write, Edge/Netlify deployment, worker activation या वास्तविक push नहीं किया गया।
+
+
+## 2026-11-15 — Fencing RPC false-result acknowledgement correction
+
+- Review में मिला कि नए finish RPC boolean `false` लौटाकर stale worker को reject करते हैं, पर Netlify/Edge callers केवल HTTP/RPC error check कर रहे थे। HTTP success के साथ boolean false आने पर callers गलत तरीके से delivery को acknowledged गिन सकते थे।
+- Netlify worker अब finish response JSON को `true` से compare करता है; `false` या invalid body finish failure माना जाता है और retry/degraded monitoring में शामिल होता है।
+- Edge sender अब per-device RPC का `data === true` check करता है; rejected stale finish sent count में शामिल नहीं होता। Malformed identity और transient provider failure finish paths भी rejection को failure गिनते हैं।
+- दोनों behaviors के source-contract regression assertions जोड़े।
+- Runtime Node/Deno tests और isolated SQL concurrency tests अभी execute नहीं हुए। कोई migration apply, production write, deployment या real push नहीं किया गया।
