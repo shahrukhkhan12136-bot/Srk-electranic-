@@ -119,3 +119,15 @@ test('verify-payment rejects a refunded booking with online preference', async (
   assert.match(JSON.parse(result.body).error, /रिफंड/);
   assert.equal(calls.filter(url => url.startsWith('https://api.razorpay.com/')).length, 0);
 });
+
+
+test('customer payment-method RPC migration uses the exact UTF-8 value sent by the dashboard', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const migration = fs.readFileSync(path.join(__dirname, '../supabase/migrations/20261115270000_fix_customer_payment_method_unicode_contract.sql'), 'utf8');
+  const dashboard = fs.readFileSync(path.join(__dirname, '../booking.html'), 'utf8');
+  assert.match(dashboard, /p_payment_method:'Razorpay ऑनलाइन भुगतान'/);
+  assert.match(migration, /p_payment_method IS DISTINCT FROM 'Razorpay ऑनलाइन भुगतान'/);
+  assert.match(migration, /SET payment_method='Razorpay ऑनलाइन भुगतान'/);
+  assert.doesNotMatch(migration, /à¤|à¥/);
+});
