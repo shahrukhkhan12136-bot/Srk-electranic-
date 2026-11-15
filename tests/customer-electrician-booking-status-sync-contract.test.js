@@ -148,4 +148,6 @@ test('customer booking list survives rejected supplementary contact, refund, and
     assert.ok(load.includes("safeCustomerRpc('" + name + "')"), 'supplementary RPC is isolated: ' + name);
   }
   assert.ok(load.indexOf('safeCustomerRpc') < load.indexOf('const timelineMap'), 'booking rendering continues after supplementary RPC results');
+  assert.match(load, /try \\{\\s*const \\{data:bill,error\\}=await customerSb\\.rpc\\('srk_customer_get_labour_bill'/);
+  assert.match(load, /catch \\(error\\) \\{\\s*\/\\/ A bill transport failure must not hide the customer's booking history\\./);
 });
