@@ -1612,7 +1612,8 @@ async function saveCurrentBookingAddress() {
    p_is_default:editingAddress?.is_default===true
   });
   if(error) throw error;
-  await loadCustomerSavedAddresses();
+  const addressListRefreshed=await loadCustomerSavedAddresses();
+  if(!addressListRefreshed){editingSavedAddressId=null;setSavedAddressStatus('पता सेव हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी। कृपया सूची दोबारा लोड करें।',true);return;}
   document.getElementById('savedAddressSelect').value=data;
   editingSavedAddressId=null;
   setSavedAddressStatus('पता सफलतापूर्वक सेव हो गया।');
