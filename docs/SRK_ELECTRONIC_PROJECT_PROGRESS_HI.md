@@ -2888,3 +2888,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Existing project log already records that Route live transfer execution and provider status polling/webhook/reversal are not proven. This audit reconfirms that gap from the current webhook source.
 - Safe next implementation boundary: add a separate server-only Route provider adapter only after approved provider API contract, secrets/environment setup, test-mode account, transfer creation/idempotency design, event types and reconciliation lifecycle are confirmed. Until then the admin report must present Route as ledger evidence / Not Verified and never auto-mark a transfer or payout paid.
 - No live API calls, transfers, refunds, payouts, Production changes, deployment, merge or go-live. Latest Node CI success applies to commit e549574a091071f995786b009d710e4da25160c0; PostgreSQL/pgTAP remains Not Run.
+
+
+## 2026-11-15 — Electrician refresh resilience and Welcome Screen contract
+
+- Improved Electrician App `refresh()`: profile and offer RPC transport failures now produce actionable Hindi retry messages instead of raw errors or unhandled rejections.
+- Isolated per-booking live-location-state and final-labour-bill lookups so one auxiliary RPC failure does not prevent the remaining booking cards from rendering. Missing auxiliary data can be retried on refresh.
+- Added `tests/customer-dashboard-menu-contract.test.js` coverage for the refresh failure paths.
+- Added `tests/welcome-screen-contract.test.js`: verifies root redirect to Welcome Screen, all three role links, founder portrait source/asset existence, descriptive alt text and reduced-motion CSS.
+- CI run `43708433631` on `57cf3a7f22f31591b593a4fe96e10b1a5e6f332d` was still in progress at the time of this update; do not mark this test pass until final CI status is confirmed.
+- Browser runtime and actual portrait-to-approved-reference visual match remain pending. No production deployment or live booking/payment action was performed.
