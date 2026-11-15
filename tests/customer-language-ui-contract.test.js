@@ -75,3 +75,15 @@ test('customer profile and saved-address loaders handle rejected auth session lo
   assert.match(loadAddresses,/catch\(e\) \{ setSavedAddressStatus\('सेव किए गए पते अभी लोड नहीं हो सके/);
   assert.match(loadAddresses,/finally \{select\.disabled=false;\}/);
 });
+
+
+test('customer saved-address save catches rejected auth session lookup and restores button', () => {
+  const start=booking.indexOf('async function saveCurrentBookingAddress()');
+  const end=booking.indexOf('\nfunction editSelectedSavedAddress()',start);
+  assert.ok(start>=0&&end>start);
+  const save=booking.slice(start,end);
+  assert.match(save,/button\.disabled=true;button\.textContent='पता सेव हो रहा है…';\s*try\s*\{\s*const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
+  assert.match(save,/if\(sessionError\)throw sessionError/);
+  assert.match(save,/catch\(e\) \{setSavedAddressStatus/);
+  assert.match(save,/finally \{button\.disabled=false;button\.textContent='यह पता सेव करें';\}/);
+});
