@@ -712,6 +712,9 @@ Object.assign(customerUiTranslations, {
  'कुछ गड़बड़ हुई। कृपया दोबारा कोशिश करें।':'Something went wrong. Please try again.',
  'बुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।':'The booking was not saved in the database. Your entered details are preserved in this form. Please try again.'
 });
+Object.assign(customerUiTranslations, {
+ 'रद्द करने का अनुरोध Admin को भेजें? अभी बुकिंग रद्द नहीं होगी। Admin प्रमाण जाँचकर निर्णय करेगा। ₹99 केवल ग्राहक के घर पहुँचने का प्रमाण दर्ज होने और Admin की मंज़ूरी पर; घर से नहीं निकला या रास्ते में होने पर ₹0।':'Send a cancellation request to Admin? The booking will not be cancelled immediately. Admin will review the evidence and decide. The ₹99 fee applies only if arrival at the customer’s home is recorded and Admin approves it; it is ₹0 if the electrician has not left or is still on the way.'
+});
 function customerUiText(value) {
  const text = String(value ?? '');
  if (document.documentElement.lang !== 'en') return text;
@@ -721,8 +724,14 @@ function customerUiText(value) {
   .sort((a,b) => b.length-a.length)[0];
  if (prefix) return customerUiTranslations[prefix] + customerUiText(text.slice(prefix.length));
  return text.replace(/राशि: /g,'Amount: ').replace(/बुकिंग नंबर:/g,'Booking number: ')
+  .replace(/श्रेणी:/g,'Tier: ').replace(/अवधि:/g,'Duration: ').replace(/अनुमानित मेहनताना:/g,'Estimated labour: ')
+  .replace(/भुगतान तरीका:/g,'Payment method: ').replace(/घंटे/g,'hours')
+  .replace(/पुरानी फीस अलग line items में रहेगी।/g,'Previous fees remain separate line items.')
+  .replace(/यह मेहनताना अनुमान अंतिम बिल की सीमा नहीं है।/g,'This labour estimate is not a cap on the final bill.')
+  .replace(/वास्तविक समय के अनुसार मेहनताना बनेगा और सामान\/पार्ट्स अलग होंगे।/g,'Labour is calculated from actual time, and materials/parts are separate.')
+  .replace(/क्या बुकिंग भेजें\?/g,'Submit this booking?')
   .replace(/स्थिति:/g,'Status: ').replace(/तरीका:/g,'Method: ').replace(/दिनांक:/g,'Date: ')
-  .replace(/\bAdmin\b/g,'Admin');
+  .replace(/\\bAdmin\\b/g,'Admin');
 }
 const customerNativeAlert = window.alert.bind(window);
 window.alert = message => customerNativeAlert(customerUiText(message));
