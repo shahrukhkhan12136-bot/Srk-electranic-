@@ -596,3 +596,9 @@
 - Refund request RPC या cancellation request RPC का network response reject होने पर पहले UI generic failure दिखा सकती थी, जबकि server transaction commit हो चुका हो सकता था। Blind retry से duplicate/गलत धारणा का जोखिम था।
 - अब catch path संबंधित owner-scoped list RPC पढ़ता है। Refund के लिए booking_id पर मौजूद request और उसका सुरक्षित status दिखता है; cancellation के लिए उसी booking का pending request खोजा जाता है। पुष्ट request मिलने पर refresh किया जाता है और कोई दूसरा write स्वतः नहीं भेजा जाता। List read भी विफल हो तो परिणाम स्पष्ट न होने का संदेश दिया जाता है।
 - दोनों flows के source-contract regression tests जोड़े। वास्तविक Supabase transport fault-injection, browser और RLS परीक्षण लंबित हैं।
+
+
+### 2026-11-16 — Customer Support complaint uncertain-response reconciliation
+- Complaint create RPC का response network में reject हो सकता है जबकि server पर complaint commit हो चुकी हो। पहले UI सीधे failure दिखाती और blind retry से duplicate complaint बन सकती थी।
+- अब catch path owner-scoped `srk_customer_list_booking_complaints` पढ़कर booking, category और exact description से matching complaint खोजता है। Match मिलने पर reference दिखता है, complaint list refresh होती है और कोई दूसरा create RPC नहीं भेजा जाता। List read भी विफल हो तो परिणाम अनिश्चित बताकर पहले सूची जाँचने को कहा जाता है। Daily limit error का अलग संदेश बरकरार है।
+- Source-contract regression test जोड़ा; वास्तविक Supabase/network fault-injection और browser परीक्षण लंबित हैं।
