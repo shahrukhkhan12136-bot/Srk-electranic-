@@ -68,3 +68,21 @@ the project completion percentages.
 - Repository commit search में `amount_paid` के केवल दो introducing application-consumer commits मिले: `d7c7fc9800141195023453c7781d34b7e03bdc41` और `1983b7334dfcd138ecc3dcf0f920b81ddfe671ee`; ये payment amount लिखने वाले commits हैं, schema DDL नहीं। `auth_user_id` के नाम से कोई introducing commit नहीं मिला।
 - यह check तीन checked-in schema files और searchable commit history तक सीमित है; GitHub connector की repository code search default branch तक सीमित है। इसे सभी deleted refs, unreachable Git objects या remote database history की exhaustive proof नहीं माना जा रहा।
 - Safe outcome अपरिवर्तित: missing column types/constraints अनुमान से नहीं बनाए जाएँगे। अगला निर्णायक प्रमाण owner-approved schema-only export/original deployment SQL या authorized migration-history evidence है।
+
+
+## Correction — `auth_user_id` source DDL found (15 Nov 2026, 18:25 UTC)
+
+A direct read of the current Feature Branch migration file `supabase/migrations/20261109000500_harden_electrician_profile_identity_linking.sql` found the authoritative column addition that the earlier search had missed:
+
+```sql
+ALTER TABLE public.electrician_profiles
+  ADD COLUMN IF NOT EXISTS auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+```
+
+- The column is `uuid`, nullable by default, has no explicit default, and references `auth.users(id)` with `ON DELETE SET NULL`.
+- The same migration checks conflicts/duplicate links, synchronizes `user_id` and `auth_user_id`, and creates a partial unique index on non-NULL `auth_user_id`.
+- It is versioned `20261109000500`, before the `20261109001000` Google Maps migration that writes both columns. The later `20261114130000_harden_electrician_profile_identity_linking.sql` repeats the `ADD COLUMN IF NOT EXISTS` defensively.
+- Therefore `auth_user_id` is **not an unresolved source-DDL blocker** on the current Feature Branch. Previous statements in this document that said its introducing DDL was missing are superseded by this correction. The historical starter schema still lacks the column, but the migration chain supplies it.
+
+### Remaining confirmed source-DDL gap
+`service_bookings.amount_paid` remains absent from the three checked-in base schema files and no authoritative introducing `ADD COLUMN`/`CREATE TABLE` source has been identified. This is now the one confirmed missing-column source blocker. Do not guess its type, precision, nullability, default, constraints, indexes, or grants.
