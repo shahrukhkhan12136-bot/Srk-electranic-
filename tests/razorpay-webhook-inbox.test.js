@@ -198,3 +198,60 @@ test("does not re-open a refunded booking from a captured webhook", async t => {
   assert.equal(calls.some(url => url.includes("srk_service_role_get_booking_payment_breakdown")), false);
   assert.equal(calls.some(url => url.includes("srk_service_role_record_online_booking_payment")), false);
 });
+
+test("reconciles a signed processed refund event against its exact payment and amount", async t => {
+  const calls=[];
+  global.fetch=async (url,options={})=>{
+    const target=String(url),fn=rpcName(target);calls.push(target);
+    if(fn==="srk_service_claim_razorpay_webhook_event")
+      return response(200,{success:true,should_process:true,claim_token:"623e4567-e89b-42d3-a456-426614174000"});
+    if(target.includes("/rest/v1/srk_razorpay_refunds?")){
+      assert.match(target,/payment_id=eq\.pay_refund_processed/);
+      return response(200,[{id:"723e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refund_processed",refund_id:null,amount_paise:12500,status:"processing"}]);
+    }
+    if(fn==="srk_service_reconcile_booking_refund"){
+      const body=JSON.parse(options.body);
+      assert.equal(body.p_refund_record_id,"723e4567-e89b-42d3-a456-426614174000");
+      assert.equal(body.p_provider_refund_id,"rfnd_processed123");
+      assert.equal(body.p_provider_status,"processed");
+      return response(200,{success:true,status:"processed"});
+    }
+    if(fn==="srk_service_complete_razorpay_webhook_event"){
+      assert.equal(JSON.parse(options.body).p_outcome,"processed");
+      return response(200,{success:true,state:"processed"});
+    }
+    throw new Error("unexpected request "+target);
+  };
+  t.after(()=>{global.fetch=originalFetch;});
+  const result=await handler(event({event:"refund.processed",payload:{refund:{entity:{
+    id:"rfnd_processed123",payment_id:"pay_refund_processed",amount:12500,currency:"INR",status:"processed"
+  }}}},"evt_refund_processed"));
+  assert.equal(result.statusCode,200);
+  assert.equal(JSON.parse(result.body).reconciled,true);
+  assert.equal(calls.some(url=>url.includes("service_bookings")),false);
+});
+
+test("does not reconcile a refund webhook whose amount differs from the prepared record", async t => {
+  let reconcileCalls=0,completedOutcome=null;
+  global.fetch=async (url,options={})=>{
+    const target=String(url),fn=rpcName(target);
+    if(fn==="srk_service_claim_razorpay_webhook_event")
+      return response(200,{success:true,should_process:true,claim_token:"823e4567-e89b-42d3-a456-426614174000"});
+    if(target.includes("/rest/v1/srk_razorpay_refunds?"))
+      return response(200,[{id:"923e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refund_mismatch",refund_id:null,amount_paise:12500,status:"processing"}]);
+    if(fn==="srk_service_reconcile_booking_refund"){reconcileCalls++;throw new Error("must not reconcile mismatch");}
+    if(fn==="srk_service_complete_razorpay_webhook_event"){
+      completedOutcome=JSON.parse(options.body).p_outcome;
+      return response(200,{success:true,state:"ignored"});
+    }
+    throw new Error("unexpected request "+target);
+  };
+  t.after(()=>{global.fetch=originalFetch;});
+  const result=await handler(event({event:"refund.processed",payload:{refund:{entity:{
+    id:"rfnd_mismatch123",payment_id:"pay_refund_mismatch",amount:9999,currency:"INR",status:"processed"
+  }}}},"evt_refund_mismatch"));
+  assert.equal(result.statusCode,200);
+  assert.equal(JSON.parse(result.body).reason,"refund_record_mismatch");
+  assert.equal(reconcileCalls,0);
+  assert.equal(completedOutcome,"ignored");
+});
