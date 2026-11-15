@@ -33,3 +33,17 @@ test('Customer avatar save reconciles returned and thrown RPC errors before dele
   assert.match(block, /If the read failed, leave the object in place/);
   assert.doesNotMatch(block, /if\(error\)\s*\{\s*if\(file[\s\S]*?remove\(\[avatarPath\]\)/);
 });
+
+test('Customer saved-address writes reconcile uncertain RPC outcomes before allowing another save', () => {
+  const start = source.indexOf('async function saveCurrentBookingAddress() {');
+  const end = source.indexOf('function editSelectedSavedAddress()', start);
+  assert.ok(start >= 0 && end > start, 'saved-address handler exists');
+  const handler = source.slice(start, end);
+  assert.match(handler, /srk_customer_save_my_address/);
+  assert.match(handler, /srk_customer_list_my_saved_addresses/);
+  assert.match(handler, /const matches=latestAddresses\.filter/);
+  assert.match(handler, /matches\.length===1\?matches\[0\]:null/);
+  assert.match(handler, /editingId\?latestAddresses\.find/);
+  assert.match(handler, /अभी वही अनुरोध दोबारा न भेजें/);
+  assert.match(handler, /if\(savedMatch\)\{savedId=savedMatch\.id;\}/);
+});
