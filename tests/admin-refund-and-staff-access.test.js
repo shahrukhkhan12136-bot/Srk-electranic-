@@ -328,6 +328,6 @@ test('Legacy financial SECURITY DEFINER read RPCs use an empty search_path', () 
 const customerCallSearchPathFix = fs.readFileSync(path.join(root, 'supabase/migrations/20261116120000_pin_customer_call_contact_rpc_search_paths.sql'), 'utf8');
 
 test('Customer call-contact RPCs are pinned to an empty search_path', () => {
-  assert.match(customerCallSearchPathFix, /alter function private\\.srk_get_customer_call_contacts_impl\\(\\)\\s+set search_path\\s*=\\s*' '/i);
-  assert.match(customerCallSearchPathFix, /alter function public\\.srk_get_customer_call_contacts\\(\\)\\s+set search_path\\s*=\\s*' '/i);
+  assert.match(customerCallSearchPathFix, /alter function private\\.srk_get_customer_call_contacts_impl\\(\\)\\s+set search_path\\s*=\\s*''/i);
+  assert.match(customerCallSearchPathFix, /alter function public\\.srk_get_customer_call_contacts\\(\\)\\s+set search_path\\s*=\\s*''/i);
 });
