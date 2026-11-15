@@ -126,6 +126,14 @@ test('missing or malformed idempotency key is rejected before booking lookup', a
   assert.equal(calls.some(call => call.target.includes('/service_bookings?select=')), false);
 });
 
+test('unsupported payment methods are rejected before booking lookup or insertion', async () => {
+  const calls = mockSupabase();
+  const result = await handler(event(bookingBody({ payment_method: 'wire_transfer' })));
+  assert.equal(result.statusCode, 400);
+  assert.match(JSON.parse(result.body).error, /Cash या Razorpay/);
+  assert.equal(calls.some(call => call.target.includes('/rest/v1/service_bookings')), false);
+});
+
 test('concurrent duplicate insert resolves to the winning booking after unique-key conflict', async () => {
   const fingerprint = require('node:crypto').createHash('sha256').update(JSON.stringify({
     customer_user_id: USER_ID,
