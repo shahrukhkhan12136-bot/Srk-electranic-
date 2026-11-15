@@ -6,11 +6,12 @@
 <meta name="theme-color" content="#071a2b">
 <title>ग्राहक OTP लॉगिन — SRK ELECTRONIC</title>
 <style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px;background:#f3f6fa;color:#142235;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}.card{width:min(100%,440px);background:#fff;border-radius:20px;padding:24px;box-shadow:0 10px 35px #102b4618}h1{margin:0;color:#071a2b;font-size:23px}.sub{color:#637184;line-height:1.55;font-size:14px}label{display:block;margin:18px 0 7px;font-weight:650;font-size:14px}input{width:100%;padding:14px;border:1px solid #ccd6e2;border-radius:11px;font:inherit}.btn{width:100%;border:0;border-radius:11px;padding:14px;margin-top:14px;background:#0b5ed7;color:#fff;font-size:15px;font-weight:750}.btn:disabled{opacity:.55}.msg{min-height:42px;color:#176b3a;font-size:14px;line-height:1.5}.hidden{display:none}.back{display:block;text-align:center;margin-top:16px;color:#0b5ed7}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:18px;background:#f3f6fa;color:#142235;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}.card{width:min(100%,440px);background:#fff;border-radius:20px;padding:24px;box-shadow:0 10px 35px #102b4618}h1{margin:0;color:#071a2b;font-size:23px}.sub{color:#637184;line-height:1.55;font-size:14px}.founder{display:flex;align-items:center;gap:13px;margin:0 0 18px}.founder img{width:82px;height:82px;flex:0 0 82px;border-radius:18px;object-fit:cover;object-position:center 22%;border:2px solid #e4ad45;box-shadow:0 5px 18px #102b4620}.founder strong{display:block;color:#071a2b;font-size:13px;letter-spacing:.08em}.founder span{display:block;color:#637184;font-size:12px;margin-top:4px}label{display:block;margin:18px 0 7px;font-weight:650;font-size:14px}input{width:100%;padding:14px;border:1px solid #ccd6e2;border-radius:11px;font:inherit}.btn{width:100%;border:0;border-radius:11px;padding:14px;margin-top:14px;background:#0b5ed7;color:#fff;font-size:15px;font-weight:750}.btn:disabled{opacity:.55}.msg{min-height:42px;color:#176b3a;font-size:14px;line-height:1.5}.hidden{display:none}.back{display:block;text-align:center;margin-top:16px;color:#0b5ed7}
 </style>
 </head>
 <body>
 <main class="card">
+<div class="founder"><img src="/assets/srk-founder.jpg" alt="SRK ELECTRONIC Founder" width="82" height="82" fetchpriority="high"><div><strong>FOUNDER</strong><span>SRK ELECTRONIC</span></div></div>
 <h1>SRK ELECTRONIC</h1>
 <p class="sub">ग्राहक मोबाइल OTP लॉगिन</p>
 <p class="sub">अपना रजिस्टर्ड भारतीय मोबाइल नंबर डालें। OTP SMS से आएगा। OTP केवल इसी स्क्रीन पर खुद दर्ज करें—किसी के साथ साझा न करें।</p>
@@ -23,7 +24,7 @@
 <button class="btn" id="verify" type="button">OTP सत्यापित करके लॉगिन करें</button>
 </section>
 <p id="message" class="msg" role="status" aria-live="polite"></p>
-<a class="back" href="/">मुख्य पेज पर वापस जाएँ</a>
+<a class="back" href="/welcome.html">स्वागत स्क्रीन देखें</a>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/srk-config.js"></script>
@@ -50,9 +51,9 @@
  verify.addEventListener('click',async()=>{
   if(!sb||busy)return;const phone=phoneE164(),token=otpInput.value.trim();if(!phone||!/^\d{4,8}$/.test(token)){setMessage('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}
   busy=true;verify.disabled=true;setMessage('OTP सत्यापित हो रहा है…');
-  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका सुरक्षित ग्राहक सेशन इस वेबसाइट में सेव हो गया है। अब मेरी बुकिंग देखने के लिए मुख्य पेज खोलें।');setTimeout(()=>{window.location.href='/#customer-login';},1800);}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=false;}
+  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका Customer Dashboard खुल रहा है…');window.location.replace('/booking.html');}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=false;}
  });
- if(!sb){send.disabled=true;setMessage('लॉगिन सेवा कॉन्फ़िगरेशन नहीं मिला।',true);}
+ if(!sb){send.disabled=true;setMessage('लॉगिन सेवा कॉन्फ़िगरेशन नहीं मिला।',true);}else{sb.auth.getSession().then(({data,error})=>{if(!error&&data?.session)window.location.replace('/booking.html');}).catch(()=>{});}
 })();
 </script>
 </body>
