@@ -417,6 +417,17 @@ function customerUiText(value) {
 }
 const customerNativeAlert = window.alert.bind(window);
 window.alert = message => customerNativeAlert(customerUiText(message));
+Object.assign(customerUiTranslations, {
+ 'कुल सत्यापित भुगतान':'Total Verified Payment',
+ 'भुगतान रसीद · यह टैक्स इनवॉइस नहीं है':'Payment Receipt · This is not a tax invoice',
+ 'रसीद संदर्भ:':'Receipt Reference:','बुकिंग संदर्भ:':'Booking Reference:','बुकिंग दिनांक:':'Booking Date:','भुगतान दिनांक:':'Payment Date:',
+ 'ग्राहक:':'Customer:','सेवा:':'Service:','पता:':'Address:','भुगतान तरीका:':'Payment Method:','स्थिति:':'Status:',
+ 'सत्यापित / प्राप्त':'Verified / Received','यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।':'This receipt confirms only payments verified in the SRK ELECTRONIC system.',
+ 'प्रिंट / PDF सेव करें':'Print / Save PDF','रसीद लोड हो रही है…':'Loading receipt…','उपलब्ध नहीं':'Not Available',
+ 'इलेक्ट्रिशियन मेहनताना':'Electrician Labour','सामान / पार्ट्स':'Materials / Parts',
+ 'भुगतान सत्यापित है; उपलब्ध रिकॉर्ड से मेहनताना अलग से प्रमाणित नहीं हो सका।':'Payment is verified; labour could not be separately confirmed from available records.',
+ 'पुरानी Cancellation Fee':'Previous Cancellation Fee','नकद':'Cash','कार्ड':'Card','ऑनलाइन':'Online','बैंक ट्रांसफर':'Bank Transfer','अन्य':'Other'
+});
 const customerUiOriginalText = new WeakMap();
 const customerUiOriginalAttrs = new WeakMap();
 function applyCustomerUiLanguage(language) {
