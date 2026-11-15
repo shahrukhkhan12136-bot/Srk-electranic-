@@ -2998,3 +2998,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Cancellation-fee policy confirmation का पूरा English text जोड़ा। Booking confirmation के dynamic summary में Tier, Duration, Estimated labour, Payment method और prior-fee line-item wording translate करने के fallback replacements जोड़े।
 - Dynamic messages, confirm wrapper और cancellation/booking summary के regression tests जोड़े। शुरुआती CI run में test-only wrapper variable नाम mismatch मिला; उसे ठीक किया। Latest branch SHA `3fb69b1c59858f291fd0821e658e0ee837aad5b9` पर दो full Node test workflows **SUCCESS** हुए।
 - Browser runtime language switching, backend से आने वाले अज्ञात dynamic message variants और visual QA अभी pending हैं। Final consolidated mobile QA deferred है। No Production changes, merge or deployment.
+
+
+## 2026-11-15 — GPT #2: Admin Route settlement warning UI
+
+- Admin booking accounting reconciliation renderer में Razorpay Route Transfers का अलग section जोड़ा। हर Route row के साथ recipient type, amount, transfer status, settlement status और provider transfer ID दिखता है।
+- स्पष्ट Hindi warning जोड़ी: ledger का `processed/settled` status बैंक में रकम पहुँचने का प्रमाण नहीं; स्वतंत्र provider settlement या bank-credit evidence के बिना भुगतान confirmed नहीं माना जाएगा। UI केवल RPC के `route_provider_settlement_verified` को true होने पर पुष्टि दिखा सकता है; वर्तमान RPC इसे false लौटाता है।
+- Node regression test `tests/admin-route-settlement-warning.test.js` जोड़ा; migration response contract और Admin warning/rendering दोनों जाँचता है।
+- अगला सत्यापन: नवीनतम branch-head Node CI पूरा होने पर इस test सहित परिणाम देखें। PostgreSQL/pgTAP runtime अभी Not Run है; browser visual/runtime QA भी बाकी है।
+- No live Route transfer/provider call, bank-credit verification, payout mutation, Production migration, deployment, merge or go-live.
