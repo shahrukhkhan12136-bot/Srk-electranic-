@@ -1523,12 +1523,12 @@ function setSavedAddressStatus(message, isError=false) {
 }
 async function loadCustomerSavedAddresses() {
  const select=document.getElementById('savedAddressSelect');
- if(!customerSb) return;
+ if(!customerSb) return false;
  select.disabled=true; setSavedAddressStatus('सेव किए गए पते लोड हो रहे हैं…');
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(sessionError)throw sessionError;
-  if(!sessionData?.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';setSavedAddressStatus('सेव किए गए पते देखने के लिए OTP लॉगिन करें।');return;}
+  if(!sessionData?.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';setSavedAddressStatus('सेव किए गए पते देखने के लिए OTP लॉगिन करें।');return false;}
   const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
   if(error) throw error;
   customerSavedAddresses=Array.isArray(data)?data:[];
@@ -1536,7 +1536,8 @@ async function loadCustomerSavedAddresses() {
    '<option value="'+customerEsc(a.id)+'">'+customerEsc(({home:'घर',work:'काम की जगह',other:'अन्य'}[a.label]||a.label)+' — '+a.address_line+', '+a.district+' ('+a.pincode+')'+(a.is_default?' ★':''))+'</option>'
   ).join('');
   setSavedAddressStatus(customerSavedAddresses.length?'आपके '+customerSavedAddresses.length+' सेव किए गए पते उपलब्ध हैं।':'अभी कोई पता सेव नहीं है।');
- } catch(e) { setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true); }
+  return true;
+ } catch(e) { setSavedAddressStatus('सेव किए गए पते अभी लोड नहीं हो सके। '+(e.message||''),true); return false; }
  finally {select.disabled=false;}
 }
 function applySelectedSavedAddress() {
@@ -1635,7 +1636,8 @@ async function makeSelectedAddressDefault() {
    p_location_lat:a.location_lat,p_location_lng:a.location_lng,p_is_default:true
   });
   if(error)throw error;
-  await loadCustomerSavedAddresses();
+  const addressListRefreshed=await loadCustomerSavedAddresses();
+  if(!addressListRefreshed){setSavedAddressStatus('डिफ़ॉल्ट पता बदलने का अनुरोध सफल रहा, लेकिन पता सूची रीफ़्रेश नहीं हो सकी। कृपया दोबारा लोड करें।',true);return;}
   document.getElementById('savedAddressSelect').value=a.id;
   setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।');
  } catch(e){setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
