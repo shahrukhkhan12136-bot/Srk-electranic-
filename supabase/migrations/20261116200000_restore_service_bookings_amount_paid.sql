@@ -16,5 +16,5 @@ BEGIN
       ADD CONSTRAINT service_bookings_amount_paid_nonnegative_check
       CHECK (amount_paid IS NULL OR amount_paid >= 0) NOT VALID;
   END IF;
-END
+END;
 $migration$;
