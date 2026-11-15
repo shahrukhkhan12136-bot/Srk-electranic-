@@ -140,3 +140,14 @@ Recursive Git tree (refreshed PR head) में 213 tracked files मिले;
 3. GPT-1 owned Node/source regression gaps को ठीक करें और CI evidence दर्ज करें।
 4. Availability, live-location और phone-change DB security tests GPT-2 से coordination लेकर ही जोड़ें/बदलें, क्योंकि SQL/RLS/RPC ownership GPT-2 की है।
 5. Isolated DB runtime tests, provider tests और consolidated mobile QA अपने-अपने approval/staging gates के बाद ही; Production/merge/deploy नहीं।
+
+
+## 13. Portal button/action static binding audit — 15 Nov 2026
+
+Inspected the current Feature Branch source for `booking.html` and `electrician.html`:
+
+- Customer Portal: 41 rendered `<button>` templates. All inline handler names found in the page resolve to a declared function (10 distinct inline handler functions). Remaining fixed-ID controls have direct event-listener bindings or the customer-menu delegated/tab reference. Two controls intentionally use native behavior: the booking form submit button and `window.print()`. No missing inline handler definition was found.
+- Electrician Portal: 27 rendered `<button>` templates. All 23 distinct inline handler names resolve to declared functions, including OTP, refresh/logout, profile, support, push, availability, area change, phone-change OTP, KYC upload/preview, work start/completion, offer response and SOS controls. No missing inline handler definition was found.
+- This is a static source-binding audit only. It does not prove click behavior, API success, role authorization, browser rendering, or mobile interaction. Dynamic rows (booking/offer/ticket/document actions) still require isolated browser/runtime verification in the final QA stage.
+- README route summary was compared with current `index.html`, `welcome.html`, and `customer-login.html`; the documented root Welcome route and OTP login entry correspond to the inspected source. No README route edit was warranted by this pass.
+
