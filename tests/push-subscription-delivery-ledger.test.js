@@ -52,10 +52,10 @@ test('permanent endpoint responses remove the subscription and cascade its ledge
   assert.match(migration, /subscription_id uuid NOT NULL REFERENCES public\.srk_push_subscriptions\(id\) ON DELETE CASCADE/);
 });
 
-test('outbox completion waits for all subscription deliveries to reach terminal state', () => {
+test('outbox completion requires every device delivered so dead devices remain recoverable', () => {
   assert.match(edge, /srk_is_push_subscription_delivery_complete/);
   assert.match(worker, /result\.complete === true/);
-  assert.match(migration, /delivery_status IN \('pending','processing'\)/);
+  assert.match(migration, /d\.delivery_status <> 'delivered'/);\n  assert.match(migration, /Dead device rows must keep the outbox retryable\/dead-letterable/);
 });
 
 test('delivery ledger and RPCs are private and service-role only', () => {
