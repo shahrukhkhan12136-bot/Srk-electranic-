@@ -383,3 +383,12 @@
 - [x] Cancellation fee/refund pgTAP source plan 44 और assertions 44/44 match.
 - [ ] Isolated database पर migration chain + cancellation/refund pgTAP runtime और concurrent booking/request lock tests बाकी.
 - Commits: `e26889b`, `086f541`.
+
+
+### Razorpay refund webhook compatibility follow-up — 15 नवम्बर 2026
+- [x] `refund.created` में signed processed status को accept और reconcile करने वाला regression fix; terminal event/status pairings strict.
+- [x] Reconciliation error-note में stale variable reference हटाया; valid processed `refund.created` path पर ReferenceError बंद.
+- [x] Processed `refund.created` payload के लिए regression test जोड़ा; test file और webhook handler parse-only checks PASS.
+- [ ] Node webhook inbox suite runtime execution; SQL/pgTAP runtime; Razorpay sandbox and out-of-order/duplicate/retry integration.
+- [ ] Production DB/deploy/merge और final consolidated mobile QA अभी बाकी.
+- Commits: `7a5cf82`, `60eeeb6`, `fdead4c` (plus test assertion cleanup).
