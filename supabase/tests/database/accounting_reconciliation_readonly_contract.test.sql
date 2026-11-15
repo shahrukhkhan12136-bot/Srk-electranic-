@@ -1,5 +1,5 @@
 begin;
-select plan(30);
+select plan(40);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -94,6 +94,40 @@ select ok(position('v_commission := round(v_service * v_rate / 100,2)' in
 select ok(position('where public.srk_electrician_payouts.payout_status = ''pending''' in
   pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
   'payout recalculation cannot overwrite a paid, blocked or refunded payout');
+
+select ok(to_regprocedure('public.srk_admin_get_booking_accounting_reconciliation(uuid)') is not null,
+  'Main Admin per-booking accounting reconciliation RPC exists');
+select ok((select prosecdef from pg_proc where oid='public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure),
+  'accounting reconciliation RPC is SECURITY DEFINER');
+select ok((select provolatile='s' from pg_proc where oid='public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure),
+  'accounting reconciliation RPC is declared STABLE');
+select ok(not has_function_privilege('anon',
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)','execute'),
+  'anonymous users cannot execute accounting reconciliation');
+select ok(has_function_privilege('authenticated',
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)','execute'),
+  'authenticated role can invoke the RPC but must pass its internal Main Admin gate');
+select ok(position('public.is_srk_admin()' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'RPC independently enforces Main Admin authorization');
+select ok(position('PARTIAL_REFUND_UNSUPPORTED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'partial refunds are explicitly flagged instead of allocated by assumption');
+select ok(position('settlement_status' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('transfer_status' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route provider processing and settlement are reported separately');
+select ok(position('CANCELLATION_FEE_LEDGER_UNBALANCED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'cancellation-fee ledger is compared with settled booking allocations');
+select ok(position('insert into' in lower(pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure)))=0
+  and position('update ' in lower(pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0
+  and position('delete from' in lower(pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'accounting reconciliation function contains no financial write statements');
 
 select * from finish();
 rollback;
