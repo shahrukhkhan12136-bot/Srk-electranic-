@@ -595,7 +595,7 @@ async function customerSubmitBookingRefund(bookingId){
 async function customerCancelBooking(bookingId,button) {
  if(!customerSb||!bookingId||button?.disabled)return;
  const note='ग्राहक ने ऐप से बुकिंग रद्द करने का अनुरोध किया है। कृपया इलेक्ट्रिशियन की सत्यापित स्थिति और उपलब्ध यात्रा/आगमन प्रमाण देखकर निर्णय लें।';
- if(!confirm('रद्द करने का अनुरोध Admin को भेजें? अभी बुकिंग रद्द नहीं होगी। Admin सत्यापित स्थिति के अनुसार ₹0, ₹49 या ₹99 तय करेगा और कारण दर्ज करेगा।'))return;
+ if(!confirm('रद्द करने का अनुरोध Admin को भेजें? अभी बुकिंग रद्द नहीं होगी। Admin प्रमाण जाँचकर निर्णय करेगा। ₹99 केवल ग्राहक के घर पहुँचने का प्रमाण दर्ज होने और Admin की मंज़ूरी पर; घर से नहीं निकला या रास्ते में होने पर ₹0।'))return;
  if(button)button.disabled=true;
  try {
   const {data,error}=await customerSb.rpc('srk_customer_request_booking_cancellation',{p_booking_id:bookingId,p_customer_note:note});
@@ -690,7 +690,7 @@ async function loadCustomerBookings() {
           (cancellationRequest.admin_reason?'<p class="small">Admin का कारण: '+customerEsc(cancellationRequest.admin_reason)+'</p>':'')+
           (cancellationRequest.request_status==='pending'?'<p class="small">अभी अंतिम फैसला नहीं हुआ है।</p>':'')+'</div>'
         : (!['completed','cancelled'].includes(row.status)
-          ? '<div class="job"><p class="small">रद्द करने का अनुरोध Admin को भेजें। Admin इलेक्ट्रिशियन की सत्यापित स्थिति देखकर ₹0, ₹49 या ₹99 तय करेगा और कारण दर्ज करेगा। अनुरोध भेजने से बुकिंग अपने-आप रद्द नहीं होगी।</p><button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\',this)" style="background:#fff0f0;color:#a32121">Admin से रद्द करने का अनुरोध</button></div>'
+          ? '<div class="job"><p class="small">रद्द करने का अनुरोध Admin को भेजें। Admin इलेक्ट्रिशियन की स्थिति और प्रमाण जाँचकर निर्णय करेगा। ₹99 केवल ग्राहक के घर पहुँचने का प्रमाण दर्ज होने और Admin की मंज़ूरी पर; घर से नहीं निकला या रास्ते में होने पर ₹0। अनुरोध भेजने से बुकिंग अपने-आप रद्द नहीं होगी।</p><button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\',this)" style="background:#fff0f0;color:#a32121">Admin से रद्द करने का अनुरोध</button></div>'
           : '');
       const refund=refundMap.get(row.id);
       const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
