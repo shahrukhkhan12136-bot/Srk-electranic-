@@ -3023,3 +3023,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नवीनतम CI में 121 Node tests में 120 पास और 1 fail मिला। कारण: aggregate commission report का पुराना test पूरे Admin HTML में Route शब्द रोक रहा था, जबकि अलग accounting reconciliation panel में Route Transfers का नया section वैध रूप से जोड़ा गया है।
 - `tests/admin-commission-report-labels.test.js` को केवल aggregate कमीशन रिपोर्ट के HTML section तक सीमित किया; read-only accounting reconciliation migration पर retired Route-field assertions यथावत हैं।
 - Test correction commit: `0f0dd20510c845c51c0e66d0664ca14287bbcb19`. इसके बाद का नया CI run अभी प्रतीक्षित है। PostgreSQL/pgTAP runtime और browser/device QA अभी Not Run हैं।
+
+
+## 2026-11-15 — Electrician GPS stop concurrency hardening
+
+- GPS signal/update failure से automatic server-stop और electrician के manual “Location बंद करें” action अब एक ही `electricianLocationStopBusy` guard साझा करते हैं। इससे एक booking पर duplicate concurrent `srk_electrician_stop_live_location` calls नहीं होंगी।
+- Stop RPC fail होने पर booking retry handle में बनी रहती है; server confirmation सफल होने पर ही handle हटता है। Shared guard और retry behavior के regression tests जोड़े।
+- Guard declaration move होने के बाद existing GPS network-exception test की source boundary भी update की। Latest branch head `c57577c9f72663cf52cfc8981d72f008d95b83ef` पर दोनों full repository Node workflows **SUCCESS** हुए।
+- Browser/device runtime check और final consolidated mobile QA अभी pending हैं। No Production changes, merge or deployment.
