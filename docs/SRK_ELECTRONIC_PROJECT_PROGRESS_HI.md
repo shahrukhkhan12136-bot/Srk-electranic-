@@ -3774,3 +3774,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Existing uniqueness Node test legacy pair को allow-list करता है; वह CLI sorting behavior test नहीं करता। No rename, migration repair, workflow trigger, Production access or schema change.
 - Supabase workflow में Production schema export secret है और branch guard पुरानी अलग branch पर है; इसे current Feature Branch पर चलाना अभी सुरक्षित विकल्प नहीं।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित। अगला technical gate: exact CLI 3.0.0 का isolated synthetic no-DB version-order test, फिर authoritative base DDL खोज जारी।
+
+
+### CLI 3.0.0 exact-source check correction — 15 Nov 2026
+- Supabase CLI `v3.0.0` tag में db-push core से `findPendingMigrations` तक का path inspect किया। Local paths version-order में sort होते हैं और उसी tag के unit tests 8-digit/14-digit shared-prefix case तथा mixed-width pending order को explicitly cover करते हैं।
+- पहले दर्ज “CLI 3.0.0 high-priority unresolved ordering risk” को **downgrade/correct** किया: TypeScript db-push path source-level पर ठीक किया हुआ दिखता है; runtime test इस environment में नहीं चला। CLI #6682 Go implementation का issue है, current pinned db-push TypeScript path का नहीं।
+- Exact duplicate 8-digit `20261109` version pair अलग migration-history ambiguity है; कोई rename/repair नहीं।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित।
