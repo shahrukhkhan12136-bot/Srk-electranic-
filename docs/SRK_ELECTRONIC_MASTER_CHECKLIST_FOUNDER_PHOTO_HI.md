@@ -392,3 +392,10 @@
 - [ ] Node webhook inbox suite runtime execution; SQL/pgTAP runtime; Razorpay sandbox and out-of-order/duplicate/retry integration.
 - [ ] Production DB/deploy/merge और final consolidated mobile QA अभी बाकी.
 - Commits: `7a5cf82`, `60eeeb6`, `fdead4c` (plus test assertion cleanup).
+
+
+### Admin Portal — booking completion workflow guard — 15 नवम्बर 2026
+- [x] Generic Admin Save से unfinished booking को सीधे Completed mark करने पर UI guard.
+- [x] Admin access regression test में source assertion जोड़ा.
+- [ ] Completion RPC/trigger का full backend authorization + state-transition audit और isolated runtime tests बाकी.
+- [ ] Node suite runtime, deployment, merge और consolidated final mobile QA बाकी.
