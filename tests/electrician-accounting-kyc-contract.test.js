@@ -107,3 +107,14 @@ test('electrician logout confirms server live-location stop before signing out',
   assert.match(logout, /if\(error\)throw error/);
   assert.match(logout, /catch\(e\)[\s\S]*?electricianLogoutBusy=false/);
 });
+
+
+test('KYC uploads reject overlapping submissions and restore controls after completion', () => {
+  const upload = body('uploadVerificationDocument');
+  assert.match(electrician, /let electricianKycUploadBusy=false/);
+  assert.match(upload, /if\(electricianKycUploadBusy\)/);
+  assert.match(upload, /electricianKycUploadBusy=true/);
+  assert.match(upload, /controls\.forEach\(control=>control\.disabled=true\)/);
+  assert.match(upload, /previousDisabled\[index\]/);
+  assert.match(upload, /finally\{[\s\S]*?electricianKycUploadBusy=false/);
+});
