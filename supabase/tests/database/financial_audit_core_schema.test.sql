@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(53);
+SELECT plan(54);
 
 SELECT ok(to_regclass('public.service_bookings') IS NOT NULL,'service bookings base table exists');
 SELECT ok(EXISTS (
@@ -8,6 +8,13 @@ SELECT ok(EXISTS (
     AND column_name='amount_paid' AND data_type='numeric'
     AND numeric_precision=12 AND numeric_scale=2
 ),'legacy verified payment amount column exists as numeric(12,2)');
+SELECT ok(EXISTS (
+  SELECT 1 FROM pg_constraint
+  WHERE conrelid='public.service_bookings'::regclass
+    AND conname='service_bookings_amount_paid_nonnegative_check'
+    AND contype='c'
+    AND pg_get_constraintdef(oid) ILIKE '%amount_paid%'
+),'verified payment amount cannot be negative for new or updated rows');
 SELECT ok(to_regclass('public.srk_booking_labour_bills') IS NOT NULL,'immutable labour bill base table exists');
 SELECT ok(to_regclass('public.srk_manual_payment_entries') IS NOT NULL,'manual payment base table exists');
 SELECT ok(to_regclass('public.srk_electrician_payouts') IS NOT NULL,'electrician payout base table exists');
