@@ -46,7 +46,7 @@
 <div id="staffElectricianInbox" style="margin-top:12px">Assigned अनुरोध लोड हो रहे हैं…</div>
 <div id="staffElectricianThreadPanel" class="card hidden"><h3 id="staffElectricianThreadTitle">इलेक्ट्रिशियन बातचीत</h3><div id="staffElectricianThread"></div><textarea id="staffElectricianReply" rows="3" maxlength="4000" style="width:100%;padding:10px" placeholder="इलेक्ट्रिशियन को जवाब लिखें"></textarea><button onclick="sendStaffElectricianReply()">जवाब भेजें</button><span id="staffElectricianReplyStatus" class="muted"></span></div>
 </div>
-<div class="card" id="sosAlertCard">
+<div class="card staff-only hidden" id="sosAlertCard">
 <h2>🚨 SOS तत्काल सहायता — Admin / Support</h2>
 <p class="muted">यहाँ Customer या Electrician द्वारा दर्ज SOS मामले दिखेंगे। केवल अधिकृत Main Admin और Support Staff इन्हें देख/स्वीकार कर सकते हैं। SMS/Push provider अभी configured नहीं है; इसलिए नीचे delivery को भेजा हुआ न मानें। ऐप पुलिस/112 को स्वतः सूचना नहीं भेजता।</p>
 <button type="button" class="alt" onclick="loadSosAlerts()">SOS सूची रीफ़्रेश करें</button>
