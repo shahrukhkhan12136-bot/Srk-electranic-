@@ -67,3 +67,9 @@ test('outbox terminalizes expired exhausted leases and uses a bounded worker bat
   assert.match(worker, /p_limit: 3/);
   assert.match(migration, /interval '5 minutes'/);
 });
+
+test('all outbox RPCs fail closed for null or non-service roles', () => {
+  const checks = migration.match(/auth\.role\(\) IS DISTINCT FROM 'service_role'/g) || [];
+  assert.equal(checks.length, 2);
+  assert.match(migration, /locked_until IS NULL OR o\.locked_until < clock_timestamp\(\)/);
+});
