@@ -3988,3 +3988,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Exact `auth_user_id` search surfaces only current Feature Branch migration consumers: Google Maps/admin activation insert and secure wallet ownership lookup. Older branch snapshot `20261109223000_sync_electrician_auth_profile_link.sql` also uses both `user_id` and `auth_user_id`, but does not define either column.
 - Exact `amount_paid` search surfaces application writes/reads and migration consumers; no source column declaration surfaced. The original starter table definitions do not contain either `amount_paid` or `auth_user_id`.
 - This confirms a source-artifact gap, not a claim that the live database lacks either column. No database was queried and no DDL guessed. The blocker remains until approved schema-only catalog export/deployment artifact is supplied. GPT-2 27/39 = 69%; overall 55/86 = 64%.
+
+
+### CI runtime update — 15 Nov 2026, 17:23 UTC
+- Feature Branch CI workflow को GitHub Actions के नए major versions पर अपडेट किया: `actions/checkout@v5`, `actions/setup-node@v5`, Node.js 22।
+- नया commit: `d2a88b268bec1839a76ac3254a8dfb2a2b3eb23a`।
+- इसी commit पर workflow runs `43740831240` और `43740826924` दोनों सफल हुए। सफल job log में `npm test`: 187/187 PASS, 0 FAIL, 0 skipped सत्यापित।
+- यह केवल Node.js source-regression CI है; PostgreSQL/pgTAP runtime, Supabase migration replay, Production parity या deployment प्रमाणित नहीं करता।
+- GPT-2 checklist 27/39 = 69% और कुल project 55/86 = 64% अपरिवर्तित; CI maintenance को checklist completion नहीं गिना गया।
