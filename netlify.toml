@@ -56,3 +56,8 @@
   from = "/api/razorpay-refund-status"
   to = "/.netlify/functions/razorpay-refund-status"
   status = 200
+
+[[redirects]]
+  from = "/api/razorpay-refund-recovery"
+  to = "/.netlify/functions/razorpay-refund-recovery"
+  status = 200
