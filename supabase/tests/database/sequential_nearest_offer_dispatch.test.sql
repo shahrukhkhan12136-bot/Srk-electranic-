@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(14);
+SELECT plan(16);
 
 SELECT has_column('public','job_offers','expires_at',
   'job offers carry a server-side expiry deadline');
@@ -67,5 +67,24 @@ SELECT ok(
   'expired offers advance to the next candidate'
 );
 
+
+SELECT ok(
+  position('lower(trim(e.state))=lower(trim(b.state))' in lower(pg_get_functiondef(
+    'public.srk_respond_to_offer(uuid,text)'::regprocedure
+  )))>0
+  AND position('lower(trim(e.district))=lower(trim(b.district))' in lower(pg_get_functiondef(
+    'public.srk_respond_to_offer(uuid,text)'::regprocedure
+  )))>0,
+  'offer acceptance revalidates the electrician current operating area'
+);
+SELECT ok(
+  position('e.approved_rate_tier=b.selected_rate_tier' in lower(pg_get_functiondef(
+    'public.srk_respond_to_offer(uuid,text)'::regprocedure
+  )))>0
+  AND position('e.approved_rate_card_version is not null' in lower(pg_get_functiondef(
+    'public.srk_respond_to_offer(uuid,text)'::regprocedure
+  )))>0,
+  'offer acceptance revalidates the customer-selected approved rate tier'
+);
 SELECT * FROM finish();
 ROLLBACK;
