@@ -284,3 +284,16 @@ test('Electrician push enable rolls back only a newly created browser subscripti
   assert.match(enable,/catch\(err\)\{if\(newlyCreatedSubscription\)\{try\{await newlyCreatedSubscription\.unsubscribe\(\)/);
   assert.match(enable,/button\.disabled=false/);
 });
+
+
+test('Electrician push state allows re-syncing an existing browser subscription', () => {
+  const start=electrician.indexOf('async function refreshElectricianPushState()');
+  const end=electrician.indexOf('\nasync function enableElectricianPushNotifications',start);
+  assert.ok(start>=0&&end>start);
+  const state=electrician.slice(start,end);
+  assert.match(state,/state\.textContent=sub\?'इस ब्राउज़र पर Push Subscription मौजूद है। सर्वर पंजीकरण दोबारा सिंक करने के लिए Enable दबा सकते हैं।'/);
+  assert.match(state,/on\.disabled=permission==='denied';off\.disabled=!sub/);
+  const enable=electrician.slice(electrician.indexOf('async function enableElectricianPushNotifications()'),electrician.indexOf('async function disableElectricianPushNotifications()'));
+  assert.match(enable,/let sub=await reg\.pushManager\.getSubscription\(\);if\(!sub\)\{sub=await reg\.pushManager\.subscribe/);
+  assert.match(enable,/sb\.from\('srk_push_subscriptions'\)\.upsert/);
+});
