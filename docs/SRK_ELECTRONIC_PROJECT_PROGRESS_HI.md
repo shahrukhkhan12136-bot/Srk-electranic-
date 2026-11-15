@@ -3634,3 +3634,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Checklist से गलत दावा हटाया कि original crop working file में तैयार है। अब साफ लिखा है कि original binary/crop दोनों pending हैं और वही crop Welcome Screen तथा Customer Login दोनों में लगना है।
 - Master checklist commit `d606344e3235f05ab9f8405882b790ddab1f4cd0`। Re-fetch verification: master garden-photo instruction correct; false crop claim absent; Welcome और Customer Login दोनों में placeholder और collage-reference absent; Service Worker cache v11।
 - GPT-1 progress **20/28 = 71%** अपरिवर्तित; यह documentation consistency fix है, नया checklist completion नहीं।
+
+
+## 2026-11-15 — अतिरिक्त feature/fix branch consumer audit
+- Flutter cash-payment migration `20261110235000` `amount_paid` write करती है और electrician identity के लिए `user_id/auth_user_id` दोनों पढ़ती है; कोई base-column DDL नहीं मिला।
+- Category/hourly booking migration profile/booking के कई अन्य columns जोड़ती है, लेकिन `amount_paid` या `auth_user_id` नहीं; `auth_user_id` को पहले से मौजूद मानती है। Direct UPI report migration भी `amount_paid` update करती है, create नहीं करती।
+- Google Maps migration केवल GPS coordinate columns जोड़ती है; उसी RPC में `auth_user_id` insert/update होता है। इससे usage सिद्ध है, column creation नहीं।
+- Manifest Section 5.8 में cross-branch findings दर्ज। दोनों exact column contracts अब भी unresolved; कोई अनुमानित DDL नहीं जोड़ा।
+- GPT-2 checklist **27/39 = 69%**, **12/39 शेष**।
