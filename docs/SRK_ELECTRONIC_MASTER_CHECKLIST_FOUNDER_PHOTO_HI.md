@@ -522,3 +522,9 @@
 ### Customer App — Profile/Support/Payment/Booking Auth Error Checks
 - Avatar upload, support message, Razorpay payment और booking submission में Auth Session lookup का returned `error` अब स्पष्ट जाँचा जाता है; केवल session data मौजूद होने पर आगे बढ़ेंगे।
 - Source-contract regression coverage जोड़ी। ये source-level checks हैं; browser/network fault-injection और live Supabase Auth/provider testing अभी लंबित हैं।
+
+
+### Electrician App — Push Notification बंद करने का सुरक्षित क्रम
+- पहले सर्वर की `srk_push_subscriptions` endpoint row हटती है; सफल होने पर ही ब्राउज़र subscription unsubscribe होती है।
+- इससे server-side delete विफल होने पर ब्राउज़र subscription को पहले बंद करके पुराना server record छोड़ने की स्थिति नहीं बनती।
+- Regression source-contract test जोड़ा। वास्तविक Push provider/ब्राउज़र परीक्षण अभी लंबित हैं।
