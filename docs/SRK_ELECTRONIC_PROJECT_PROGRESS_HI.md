@@ -3284,3 +3284,8 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - नया pgTAP source-contract test `supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql` जोड़ा: **15 assertions; plan count = 15**। इसमें Main Admin/row-lock/Cash-only/bill/fee/idempotency, Admin reconciliation, customer receipt और legacy isolation contracts शामिल हैं।
 - यह source audit + test authoring है; pgTAP/PostgreSQL runtime, concurrent transaction, browser receipt print/PDF और वास्तविक role-based DB tests अभी नहीं चले। कोई Production migration, payment, refund, payout, merge या deployment नहीं किया।
 - GPT-2 checklist count नहीं बदला: **27/39 = 69% पूरा; 12/39 = 31% बाकी**। यह अतिरिक्त dependency/test coverage है, checklist item acceptance नहीं।
+
+### Labour Bill ↔ Accounting bridge — CI follow-up (15 Nov 2026)
+- Code/test commit `12d92746fab47cdd8af0392835c6379a32c6f439` का Feature Branch Node CI run `43718088072` SUCCESS: **153/153 Node tests PASS**।
+- यह Node suite है; नया pgTAP file `admin_labour_bill_payment_accounting_bridge.test.sql` PostgreSQL में execute नहीं हुआ। PR के बाद का documentation-only HEAD `06e5659db44b36da60763ce12e6b7d10fd899cee` पर अलग CI run उपलब्ध नहीं था।
+- कोई checklist checkbox close नहीं किया; GPT-2 स्थिति **27/39 = 69%** ही है। PR #8 Draft/Open/Unmerged है।
