@@ -1,3 +1,9 @@
+## 2026-11-15 — GPT-1 SOS emergency UI integration (source-only)
+- उपयोगकर्ता के स्पष्ट आदेश के अनुसार Customer App और Electrician App में SOS control जोड़ा गया; तीन स्वीकृत कारण उपलब्ध हैं: ग्राहक को इलेक्ट्रिशियन से खतरा, इलेक्ट्रिशियन को ग्राहक से खतरा, मारपीट/अन्य आपात स्थिति।
+- दोनों UI shared srk_create_sos_alert RPC contract उपयोग करते हैं: p_booking_id, p_reason, p_details, p_location_lat, p_location_lng। Booking reference वैकल्पिक है। लोकेशन केवल SOS press के बाद browser permission से ली जाती है; अनुमति न मिले तो null coordinates के साथ अनुरोध जारी रहता है।
+- UI केवल confirmed success और case_id पर केस दर्ज दिखाता है; backend error/अनिश्चित response पर success नहीं दिखाता। पुलिस को ऐप से स्वतः कॉल/SMS नहीं जाएगा।
+- GPT-2 backend RPC, authorization, Admin/Support queue, SMS/Push delivery, acknowledgement और append-only audit अभी बाकी हैं। केवल source changes; Node test/CI, DB, browser/mobile, production, merge और deployment सत्यापित/किए नहीं गए।
+
 ## 2026-11-15 — Failed refund webhook regression test
 
 - Added a signed `refund.failed` webhook test verifying that the exact provider refund ID/payment/amount is passed to the server-side reconciliation RPC and that the webhook inbox event is completed only after reconciliation succeeds.
