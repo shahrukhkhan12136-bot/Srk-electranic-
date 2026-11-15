@@ -2324,3 +2324,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - `docs/PUSH_DELIVERY_ISOLATED_INTEGRATION_TEST_PLAN.md` में migration order, privilege checks, happy path, multiple devices, replay, partial failure, retry exhaustion, 404/410, no-subscription, stale offer, auth/body validation, parallel claims, worker timeout, monitoring, exit criteria दर्ज किए।
 - यह test plan है, executed test report नहीं। Isolated project/Netlify site अभी provision नहीं किए; कोई migration apply, deploy, push या production mutation नहीं हुई।
 - Commits: `77c6b476` (outbox preflight), `d58142e6` (ledger preflight), `76fedb8e` (integration plan), `82750f10` (outbox guard assertions), `dc9ba9f2` (ledger guard assertions)।
+
+
+## 2026-11-15 — Push Retry/Lease Deep Audit
+- SQL review में एक terminal-state bug मिला: worker/sender अगर आखिरी allowed attempt पर claim के बाद crash हो जाए तो row `processing` में फँस सकती थी, क्योंकि अगली claim में max-attempt filter उसे छोड़ देता था। अब outbox (8 attempts) और per-device ledger (5 attempts) claim RPC पहले expired exhausted leases को `dead` में बदलते हैं। Null lease भी reclaim/dead-letter logic में शामिल है।
+- सभी पाँच SECURITY DEFINER RPC role guards अब `auth.role() IS DISTINCT FROM 'service_role'` हैं, जिससे NULL role भी fail-closed होगा।
+- Outbox और device leases 2 से 5 मिनट किए; sequential worker batch 20 से घटाकर 3 किया ताकि serial sender calls का worst-case lease pressure कम हो। यह provisional budget है—isolated environment में वास्तविक duration/load test अभी आवश्यक है।
+- Source assertions में exhausted lease recovery, null lease reclaim, service-role fail-closed guards और batch cap जोड़े।
+- अभी भी कोई runtime test execute नहीं हुआ, कोई DB migration apply नहीं, कोई Edge/Netlify deployment नहीं, कोई वास्तविक push नहीं।
