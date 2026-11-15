@@ -148,3 +148,8 @@ test('electrician labour bill access recognizes any profile owned by the authent
   assert.match(multiProfileBillSql, /REVOKE ALL ON FUNCTION public\.srk_electrician_get_labour_bill\(uuid\) FROM PUBLIC,anon/);
   assert.match(multiProfileBillSql, /GRANT EXECUTE ON FUNCTION public\.srk_electrician_get_labour_bill\(uuid\) TO authenticated/);
 });
+
+test('customer work lifecycle SECURITY DEFINER RPCs retain the private authorization schema in search_path', () => {
+  assert.match(startFixSql, /alter function public\\.srk_customer_respond_work_start\\(uuid,text\\)[\\s\\S]*?set search_path = 'pg_catalog, public, auth, srk_private, pg_temp'/i);
+  assert.match(startFixSql, /alter function public\\.srk_customer_respond_work_completion\\(uuid,text,text\\)[\\s\\S]*?set search_path = 'pg_catalog, public, auth, srk_private, pg_temp'/i);
+});
