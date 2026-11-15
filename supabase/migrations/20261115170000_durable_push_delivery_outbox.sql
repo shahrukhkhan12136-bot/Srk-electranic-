@@ -37,6 +37,11 @@ CREATE INDEX IF NOT EXISTS srk_push_delivery_outbox_due_idx
   ON srk_private.srk_push_delivery_outbox(next_attempt_at, created_at)
   WHERE delivery_status IN ('pending','processing');
 
+-- Remove the legacy synchronous HTTP trigger in the same transaction that
+-- installs the outbox trigger. Keeping both would double-dispatch each offer;
+-- the legacy payload also lacks the outbox_id required by the new sender.
+DROP TRIGGER IF EXISTS trg_srk_push_job_offer ON public.job_offers;
+
 CREATE OR REPLACE FUNCTION private.srk_enqueue_job_offer_push()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'pg_catalog','public','srk_private','pg_temp'
