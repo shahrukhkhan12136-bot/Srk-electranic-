@@ -880,7 +880,7 @@ async function recoverAdminProviderRefund(bookingId,requestId){
    const audit='Recovery Audit ID: '+result.recovery_audit_id+'. ';
    if(result.accounting_finalized){if(box)box.textContent=audit+'Razorpay processed प्रमाण सुरक्षित और accounting finalization सफल।';}
    else{if(box)box.textContent=audit+'Provider प्रमाण सुरक्षित है, लेकिन accounting अभी finalize नहीं हुई। कोई नया refund/retry या payout release न करें; Main Admin reconciliation आवश्यक है। '+(result.error||result.message||'');}
-   await loadAdminRefundRequests();
+   if(result.accounting_finalized)await loadAdminRefundRequests();
   }else{throw new Error(result?.error||result?.message||'Recovery प्रमाण सुरक्षित नहीं हुआ। कोई नया refund न बनाएँ।');}
  }catch(error){if(box)box.textContent=(error?.message||'Recovery पूरी नहीं हुई।')+' नया refund/retry या payout release न करें।';}
  finally{adminRefundRecoveryBusy.delete(requestId);}
