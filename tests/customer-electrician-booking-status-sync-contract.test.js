@@ -423,3 +423,18 @@ test('Customer and electrician lifecycle actions reconcile uncertain network res
     assert.match(fn, /वर्तमान स्थिति रीफ़्रेश करके जाँचें/);
   }
 });
+
+test('Customer Razorpay verification reconciles uncertain responses against authoritative payment history', () => {
+  const reconcile = functionBody(customer, 'reconcileCustomerPaymentAfterUncertainVerification');
+  assert.match(reconcile, /srk_customer_get_payment_history/);
+  assert.match(reconcile, /p_limit:25,p_offset:0/);
+  assert.match(reconcile, /row\.booking_id===bookingId&&\['payment','manual_payment'\]\.includes/);
+  assert.match(reconcile, /await loadCustomerBookings\(\)/);
+  assert.match(reconcile, /await loadCustomerPaymentHistory\(true\)/);
+  const payment = functionBody(customer, 'startRazorpayPayment');
+  assert.match(payment, /const paymentBookingId = pendingBookingId/);
+  assert.match(payment, /booking_id: paymentBookingId/);
+  assert.match(payment, /reconcileCustomerPaymentAfterUncertainVerification\(paymentBookingId\)/);
+  assert.match(payment, /अभी दोबारा भुगतान न करें/);
+  assert.doesNotMatch(payment, /catch \(err\) \{ setPaymentStatus\(err\.message, true\); \}/);
+});
