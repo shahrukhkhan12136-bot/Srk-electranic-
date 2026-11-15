@@ -605,6 +605,35 @@ Object.assign(customerUiTranslations, {
  'डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।':'Default address updated successfully.',
  'डिफ़ॉल्ट पता नहीं बदला जा सका। ':'Could not update the default address. '
 });
+Object.assign(customerUiTranslations, {
+ '💳 भुगतान इतिहास और रसीद':'💳 Payment History & Receipts',
+ '📄 पुरानी Cancellation Fee / बकाया':'📄 Previous Cancellation Fees / Dues',
+ '↩️ मेरे रिफंड अनुरोध':'↩️ My Refund Requests',
+ 'आपकी निजी प्रोफ़ाइल और सेव किए गए पते सुरक्षित रूप से प्रबंधित किए जाते हैं।':'Your private profile and saved addresses are managed securely.',
+ '🛟 सहायता और शिकायत':'🛟 Help & Complaints',
+ '＋ नई शिकायत दर्ज करें':'＋ Submit a New Complaint',
+ '👤 मेरी प्रोफ़ाइल':'👤 My Profile',
+ 'हिन्दी':'Hindi',
+ '📍 आपके सेव किए गए पते':'📍 Your Saved Addresses',
+ '📍 सही लोकेशन चुनने के लिए GPS अनुमति दें। आपकी लोकेशन बुकिंग के साथ Admin और असाइन हुए इलेक्ट्रिशियन को दिखाई जाएगी।':'📍 Allow GPS to select the correct location. Your location will be shared with Admin and the assigned electrician with the booking.',
+ '📍 मेरी लोकेशन चुनें':'📍 Use My Location',
+ 'Google Maps में लोकेशन खोलें':'Open Location in Google Maps',
+ 'Electrical Assistant — 8 घंटे ₹899':'Electrical Assistant — 8 hours ₹899',
+ 'Skilled Electrician — 8 घंटे ₹1,199':'Skilled Electrician — 8 hours ₹1,199',
+ 'Expert Electrician — 8 घंटे ₹1,599':'Expert Electrician — 8 hours ₹1,599',
+ 'Premium Electrical Specialist — 8 घंटे ₹1,999':'Premium Electrical Specialist — 8 hours ₹1,999',
+ 'आपका अनुमानित मेहनताना':'Your Estimated Labour',
+ 'बुकिंग से पहले जरूरी जानकारी':'Important Information Before Booking',
+ 'दिखाई गई रकम चुनी गई श्रेणी और अवधि का अनुमान है—यह एडवांस या अंतिम बिल की अधिकतम सीमा नहीं है।':'The displayed amount is an estimate based on the selected tier and duration—not an advance or a maximum final bill.',
+ 'अंतिम मेहनताना सर्वर में दर्ज वास्तविक काम के मिनटों के अनुसार बनेगा।':'Final labour is calculated from actual work minutes recorded by the server.',
+ 'सामान/पार्ट्स मेहनताने में शामिल नहीं हैं; उनका अलग itemized विवरण और आपकी अलग मंजूरी जरूरी है।':'Materials/parts are not included in labour; they require a separate itemized bill and your separate approval.',
+ 'आपकी चुनी हुई श्रेणी ही भेजी जाएगी। उपलब्ध पार्टनर न होने पर श्रेणी अपने-आप नहीं बदलेगी।':'Only your selected tier will be assigned. If no partner is available, the tier will not change automatically.',
+ 'Cash या Online भुगतान तरीका आपकी अनुमति के बिना नहीं बदलेगा। भुगतान काम पूरा होने के बाद होगा।':'The payment method will not change from Cash or Online without your permission. Payment is due after the work is completed.',
+ 'यदि कोई पुरानी cancellation fee बाकी है, तो अगली booking के bill में अलग मद के रूप में जोड़ी जाएगी और booking भेजने से पहले दिखाई जाएगी।':'Any previous outstanding cancellation fee will be shown before booking and added as a separate item to the next booking bill.',
+ 'मैंने चुनी हुई श्रेणी, अवधि, अनुमान, अलग सामान बिल और भुगतान की शर्तें पढ़ ली हैं और बुकिंग भेजने की पुष्टि करता/करती हूँ।':'I have read the selected tier, duration, estimate, separate materials bill and payment terms, and confirm this booking.',
+ 'Razorpay से सुरक्षित भुगतान':'Secure Payment with Razorpay',
+ '🔒 Razorpay से भुगतान करें':'🔒 Pay with Razorpay'
+});
 function customerUiText(value) {
  const text = String(value ?? '');
  if (document.documentElement.lang !== 'en') return text;
