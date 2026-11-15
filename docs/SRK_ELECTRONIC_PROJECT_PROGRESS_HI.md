@@ -2332,3 +2332,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Outbox और device leases 2 से 5 मिनट किए; sequential worker batch 20 से घटाकर 3 किया ताकि serial sender calls का worst-case lease pressure कम हो। यह provisional budget है—isolated environment में वास्तविक duration/load test अभी आवश्यक है।
 - Source assertions में exhausted lease recovery, null lease reclaim, service-role fail-closed guards और batch cap जोड़े।
 - अभी भी कोई runtime test execute नहीं हुआ, कोई DB migration apply नहीं, कोई Edge/Netlify deployment नहीं, कोई वास्तविक push नहीं।
+
+
+## 2026-11-15 — Push Worker Gateway Authentication और Regression Assertions
+
+- Netlify Push Outbox Worker अब Supabase Edge Function request पर server-only `apikey` और `Authorization: Bearer` headers भी भेजता है; साथ में अलग `x-srk-push-secret` webhook authentication बनी रहती है। इससे Gateway JWT verification चालू होने पर request के Gateway स्तर पर अस्वीकृत होने का जोखिम संबोधित किया गया।
+- Worker test में bounded batch assertion को वर्तमान `p_limit: 3` से मिलाया और Gateway headers के source assertions जोड़े।
+- Sender test में malformed/expired subscription cleanup assertion को वर्तमान ledger target shape `target.subscription_id` से मिलाया।
+- Commits: `befbd4ef` (worker auth), `4336445d` (worker batch assertion), `3ff43f1d` (sender cleanup assertion), `28b401a9` (gateway auth assertions).
+- **सीमा:** यह source-level correction है। Node/Deno tests अभी execute नहीं हुए; Supabase Gateway/JWT behavior, Netlify schedule, provider delivery, retries और isolated integration flow अभी runtime में verify होने बाकी हैं। कोई Production migration, Edge Function deployment, Worker activation या real push नहीं किया गया।
