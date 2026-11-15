@@ -534,3 +534,9 @@
 - Push setup में ब्राउज़र द्वारा नई Subscription बनाए जाने के बाद Supabase upsert/Auth/config चरण विफल हो, तो केवल उसी नई Subscription को best-effort unsubscribe किया जाता है।
 - पहले से मौजूद Subscription को rollback में बंद नहीं किया जाता; सफल setup पर rollback reference साफ़ कर दिया जाता है।
 - Regression source-contract test जोड़ा। वास्तविक browser Push और Supabase provider परीक्षण लंबित हैं।
+
+
+### Customer App — Booking Submit Auth Regression Test सटीकता
+- Booking submit handler में customerSb.auth.getSession() के error: sessionError को जाँचने, session मौजूद होने, Bearer access token लगाने और session error पर /api/create-booking request रोकने की वास्तविक assertions जोड़ी गईं।
+- पुराना test global file में payment handler के sessionError match को booking submit के लिए पर्याप्त मान रहा था; अब test सीधे booking form के submit-handler block को जाँचता है।
+- यह test coverage correction है; application source में कोई बदलाव नहीं। Source-contract test को exact current commit पर CI से चलाना बाकी है।
