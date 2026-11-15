@@ -1533,28 +1533,33 @@ async function saveCustomerProfile() {
    const {error:uploadError}=await customerSb.storage.from('srk-customer-avatars').upload(avatarPath,file,{contentType:file.type,upsert:false});
    if(uploadError)throw uploadError;
   }
-  let profileSaveResult;
+  let profileSaveResult=null,profileSaveError=null;
   try{
    profileSaveResult=await customerSb.rpc('srk_customer_update_my_profile',{
     p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath
    });
-  }catch(saveError){
-   if(file&&avatarPath!==customerCurrentAvatarPath){
-    // The RPC may have committed even if its response was lost. Re-read the
-    // authoritative profile before deleting the newly uploaded object.
-    try{
-     const {data:latestData,error:latestError}=await customerSb.rpc('srk_customer_get_my_profile');
-     const latestProfile=Array.isArray(latestData)?latestData[0]:latestData;
-     if(!latestError&&latestProfile?.avatar_path!==avatarPath)await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]);
-    }catch(_){}
+   profileSaveError=profileSaveResult?.error||null;
+  }catch(saveError){profileSaveError=saveError;}
+  if(profileSaveError){
+   let lookupSucceeded=false,latestProfile=null;
+   try{
+    const {data:latestData,error:latestError}=await customerSb.rpc('srk_customer_get_my_profile');
+    latestProfile=Array.isArray(latestData)?latestData[0]:latestData;
+    lookupSucceeded=!latestError;
+   }catch(_){/* Never delete an uploaded object when the authoritative profile read is uncertain. */}
+   if(lookupSucceeded&&latestProfile?.avatar_path===avatarPath){
+    // The profile update committed despite an error response; keep the file and continue.
+    profileSaveResult={data:latestProfile,error:null};
+   }else{
+    if(lookupSucceeded&&file&&avatarPath!==customerCurrentAvatarPath){
+     await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]).catch(()=>{});
+    }
+    // If the read failed, leave the object in place rather than risk breaking a committed avatar path.
+    throw profileSaveError;
    }
-   throw saveError;
   }
-  const {data,error}=profileSaveResult;
-  if(error) {
-   if(file&&avatarPath!==customerCurrentAvatarPath) await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]).catch(()=>{});
-   throw error;
-  }
+  const {data,error}=profileSaveResult||{};
+  if(error)throw error;
   const oldAvatar=customerCurrentAvatarPath;
   customerCurrentAvatarPath=avatarPath;
   if(file) {
