@@ -85,3 +85,14 @@ test('customer and electrician support UI validate message length and prevent du
   assert.match(electricianReply, /electricianSupportReplyBusy/);
   assert.match(electricianReply, /body\.length>4000/);
 });
+
+
+test('customer support thread transport failure does not reject the complaint list refresh', () => {
+  const list = functionBody(customer, 'loadCustomerSupportComplaints');
+  const thread = functionBody(customer, 'loadCustomerSupportMessages');
+  assert.match(list, /if\(customerSupportSelectedId\)await loadCustomerSupportMessages\(\)/);
+  assert.match(thread, /Promise\.resolve\(\)\.then\(\(\)=>customerSb\.rpc\('srk_customer_list_booking_complaint_messages'/);
+  assert.match(thread, /\.catch\(error=>\(\{data:null,error\}\)\)/);
+  assert.match(thread, /if\(messageResult\.error\)\{supportStatus\('बातचीत लोड नहीं हो सकी। शिकायत सूची उपलब्ध है/);
+  assert.match(thread, /if\(request!==customerSupportThreadRequest\|\|id!==customerSupportSelectedId\)return/);
+});
