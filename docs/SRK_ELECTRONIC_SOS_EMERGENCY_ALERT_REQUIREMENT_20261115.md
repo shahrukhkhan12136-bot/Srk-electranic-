@@ -36,7 +36,7 @@
 - दोनों पक्षों के बीच end-to-end integration आवश्यक। किसी भी Production बदलाव/deployment से पहले अलग मंजूरी आवश्यक।
 
 ## सत्यापन स्थिति
-यह दस्तावेज़ स्वीकृत आवश्यकता दर्ज करता है, लागू feature का प्रमाण नहीं है। अभी कोई SOS UI, SMS, Push, database workflow या live notification चालू होने का दावा नहीं किया जा रहा।
+यह दस्तावेज़ स्वीकृत आवश्यकता और नीचे दर्ज GPT-1 source implementation/Node-test evidence दोनों को दर्ज करता है। UI source में SOS flow मौजूद है; इससे वास्तविक database workflow, SMS/Push delivery या live notification चालू होने का दावा नहीं किया जाता।
 
 
 ## 2026-11-15 — Accidental SOS prevention (user-approved)
@@ -62,3 +62,11 @@
 - Commit `bf765ca26f47e020817362243131d8da3db5e73e` के workflow run `43726275569` को rerun किया गया। Latest attempt में job `132849770691` सफल रहा: **163/163 Node tests पास, 0 failed, 0 cancelled**। इसमें SOS दो-चरणीय UI contract test भी शामिल है।
 - Customer/Electrician source में पुराने SOS booking/details selector references नहीं मिले। यह source/Node-contract verification है; browser/mobile runtime QA अभी अंतिम consolidated QA चरण के लिए स्थगित है।
 - Backend RPC, Admin/Support queue, SMS/Push delivery और live end-to-end SOS अभी GPT-2 integration पर निर्भर हैं; इन्हें पूर्ण घोषित नहीं किया गया।
+
+
+## 2026-11-15 — GPT-1 और GPT-2 SOS integration handoff स्थिति
+- वर्तमान Customer/Electrician files में SOS का दो-चरणीय flow source स्तर पर मौजूद है: कारण चयन, अलग final send, cancel पर discard, और reason-only `srk_create_sos_alert` RPC call। Active Work visibility `in_progress` booking से gated है।
+- Latest recorded Node CI verification: 163/163 tests पास; यह browser/mobile runtime या backend delivery का प्रमाण नहीं है।
+- इस verification pass में उपलब्ध source evidence से GPT-2 के backend RPC, Admin/Support queue, SMS/Push provider delivery और acknowledgement flow का runtime सत्यापन नहीं हुआ। इनका काम GPT-2 ownership में pending माना जाएगा, जब तक संबंधित migration/RPC/UI/CI evidence उपलब्ध न हो।
+- GPT-1 की अगली integration gate: GPT-2 backend contract/commit उपलब्ध होने पर RPC signature, response fields, failure states और case ID handling को source-level पर मिलाना; फिर अंतिम consolidated browser/mobile/E2E QA।
+- Production DB, SMS provider, merge/deploy या mobile QA नहीं किया गया।
