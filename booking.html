@@ -120,12 +120,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <section class="card" id="customerSupportPanel" style="margin-top:14px">
    <h3 style="margin-top:0">🛟 सहायता और शिकायत</h3>
    <p class="small">अपनी बुकिंग से जुड़ी शिकायत दर्ज करें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।</p>
-   <div class="job" id="customerSosPanel" style="border:2px solid #b91c1c;background:#fff7f7">
-    <h3 style="margin-top:0;color:#b91c1c">🚨 तत्काल सहायता (SOS)</h3><p class="small">खतरा या मारपीट की स्थिति में Admin और अधिकृत Support को अलर्ट भेजें। ऐप पुलिस को अपने-आप कॉल या संदेश नहीं भेजेगा।</p>
-    <button class="btn" type="button" id="customerSosOpen" style="width:100%;background:#b91c1c;color:white" onclick="openCustomerSosReasons()">🚨 SOS विकल्प खोलें</button>
-    <div id="customerSosChoice" hidden><label for="customerSosReason">तत्काल सहायता का कारण चुनें</label><select id="customerSosReason"><option value="">कारण चुनें</option><option value="customer_at_risk">ग्राहक को इलेक्ट्रिशियन से खतरा</option><option value="electrician_at_risk">इलेक्ट्रिशियन को ग्राहक से खतरा</option><option value="violence_or_other_emergency">मारपीट या अन्य आपात स्थिति</option></select>
-    <button class="btn" type="button" id="customerSosSend" style="width:100%;margin-top:10px;background:#991b1b;color:white" onclick="submitCustomerSosAlert()" disabled>🚨 SOS भेजें</button><button class="btn" type="button" onclick="cancelCustomerSosSelection()">वापस</button></div><p id="customerSosStatus" class="small" role="status" aria-live="assertive"></p>   </div>
-   <details style="margin:10px 0">
+    <details style="margin:10px 0">
     <summary style="cursor:pointer;font-weight:600">＋ नई शिकायत दर्ज करें</summary>
     <label for="customerSupportBooking">संबंधित बुकिंग</label>
     <select id="customerSupportBooking"><option value="">बुकिंग चुनें</option></select>
@@ -1091,7 +1086,12 @@ function customerRefundStatusText(status){
 }
 const customerLifecycleBusy=new Set();
 
-let customerSosBusy=false;
+const customerSosBusy=new Set();
+function openCustomerSosReasons(id){const choice=document.getElementById('customerSosChoice_'+id),reason=document.getElementById('customerSosReason_'+id);if(customerSosBusy.has(id)||!choice||!reason)return;reason.value='';document.getElementById('customerSosSend_'+id).disabled=true;choice.hidden=false;document.getElementById('customerSosOpen_'+id).hidden=true;document.getElementById('customerSosStatus_'+id).textContent='कारण चुनें। अलर्ट केवल “SOS भेजें” दबाने पर बनेगा।';}
+function cancelCustomerSosSelection(id){if(customerSosBusy.has(id))return;document.getElementById('customerSosReason_'+id).value='';document.getElementById('customerSosChoice_'+id).hidden=true;document.getElementById('customerSosOpen_'+id).hidden=false;document.getElementById('customerSosStatus_'+id).textContent='SOS चयन रद्द किया गया; कोई अलर्ट नहीं भेजा गया।';}
+document.addEventListener('change',event=>{if(event.target?.id?.startsWith('customerSosReason_')){const id=event.target.id.slice('customerSosReason_'.length);document.getElementById('customerSosSend_'+id).disabled=!['customer_at_risk','electrician_at_risk','violence_or_other_emergency'].includes(event.target.value);}});
+async function submitCustomerSosAlert(id){const button=document.getElementById('customerSosSend_'+id),status=document.getElementById('customerSosStatus_'+id);if(!customerSb||customerSosBusy.has(id)||!button||button.disabled)return;const reason=document.getElementById('customerSosReason_'+id).value;if(!['customer_at_risk','electrician_at_risk','violence_or_other_emergency'].includes(reason)){status.textContent='कृपया दिए गए तीन कारणों में से एक चुनें।';return;}if(!confirm('क्या आप Admin और अधिकृत Support Staff को SOS भेजना चाहते हैं?'))return;customerSosBusy.add(id);button.disabled=true;status.textContent='SOS अनुरोध दर्ज किया जा रहा है…';try{const {data,error}=await customerSb.rpc('srk_create_sos_alert',{p_reason:reason});if(error)throw error;if(!data?.success||!data?.case_id)throw new Error('SOS_CASE_NOT_CONFIRMED');status.textContent='SOS केस दर्ज हुआ (#'+String(data.case_id).slice(0,8)+')। अलर्ट डिलीवरी backend पुष्टि के अधीन है।';document.getElementById('customerSosChoice_'+id).hidden=true;document.getElementById('customerSosOpen_'+id).hidden=false;document.getElementById('customerSosReason_'+id).value='';}catch(_){status.textContent='SOS अभी दर्ज नहीं हो सका। अलर्ट भेजा हुआ न मानें।';}finally{customerSosBusy.delete(id);button.disabled=false;}}
+
 function openCustomerSosReasons(){const choice=document.getElementById('customerSosChoice'),reason=document.getElementById('customerSosReason');if(customerSosBusy||!choice||!reason)return;reason.value='';document.getElementById('customerSosSend').disabled=true;choice.hidden=false;document.getElementById('customerSosOpen').hidden=true;document.getElementById('customerSosStatus').textContent='कारण चुनें। अलर्ट केवल “SOS भेजें” दबाने पर बनेगा।';}
 function cancelCustomerSosSelection(){if(customerSosBusy)return;document.getElementById('customerSosReason').value='';document.getElementById('customerSosChoice').hidden=true;document.getElementById('customerSosOpen').hidden=false;document.getElementById('customerSosStatus').textContent='SOS चयन रद्द किया गया; कोई अलर्ट नहीं भेजा गया।';}
 document.getElementById('customerSosReason')?.addEventListener('change',event=>{document.getElementById('customerSosSend').disabled=!['customer_at_risk','electrician_at_risk','violence_or_other_emergency'].includes(event.target.value);});
@@ -1279,6 +1279,9 @@ async function loadCustomerBookings() {
       const timerMarkup=row.selected_category&&row.status==='in_progress'
         ? '<div class="job"><b>काम का टाइमर</b><p id="customerTimer_'+customerEsc(row.id)+'" data-running="'+(row.work_timer_running?'1':'0')+'" data-started="'+customerEsc(row.work_started_at||'')+'" data-accumulated="'+customerEsc(row.work_timer_elapsed_seconds||0)+'">'+customerEsc(formatCustomerTimer(row.work_timer_elapsed_seconds||0))+'</p><small>यह लाइव प्रदर्शन अनुमानित है; अंतिम बिल सर्वर के रिकॉर्ड समय से बनेगा।</small></div>'
         : '';
+      const sosMarkup=row.selected_category&&row.status==='in_progress'
+        ? '<div class="job" id="customerSosPanel_'+customerEsc(row.id)+'" style="border:2px solid #b91c1c;background:#fff7f7"><b style="color:#b91c1c">🚨 तत्काल सहायता (SOS)</b><p class="small">खतरे या मारपीट में Admin और अधिकृत Support को अलर्ट भेजें।</p><button type="button" id="customerSosOpen_'+customerEsc(row.id)+'" onclick="openCustomerSosReasons(\''+customerEsc(row.id)+'\')" style="background:#b91c1c;color:white">SOS विकल्प खोलें</button><div id="customerSosChoice_'+customerEsc(row.id)+'" hidden><label for="customerSosReason_'+customerEsc(row.id)+'">तत्काल सहायता का कारण</label><select id="customerSosReason_'+customerEsc(row.id)+'"><option value="">कारण चुनें</option><option value="customer_at_risk">ग्राहक को इलेक्ट्रिशियन से खतरा</option><option value="electrician_at_risk">इलेक्ट्रिशियन को ग्राहक से खतरा</option><option value="violence_or_other_emergency">मारपीट या अन्य आपात स्थिति</option></select><button type="button" id="customerSosSend_'+customerEsc(row.id)+'" onclick="submitCustomerSosAlert(\''+customerEsc(row.id)+'\')" disabled style="background:#991b1b;color:white">🚨 SOS भेजें</button><button type="button" onclick="cancelCustomerSosSelection(\''+customerEsc(row.id)+'\')">वापस</button></div><p id="customerSosStatus_'+customerEsc(row.id)+'" class="small" role="status" aria-live="assertive"></p></div>'
+        : '';
       const cancellationFeeItems=cancellationFeeMap.get(row.id)||[];
       const reservedFeePaise=cancellationFeeItems.filter(item=>item.status==='reserved').reduce((sum,item)=>sum+Number(item.amount_paise||0),0);
       const cancellationFeeMarkup=cancellationFeeItems.length
@@ -1326,7 +1329,7 @@ async function loadCustomerBookings() {
       (row.status==='assigned'&&row.assigned_electrician_id?'<div class="job" id="customerLiveLocation_'+customerEsc(row.id)+'"><b>इलेक्ट्रिशियन की Live Location</b><p class="small">इलेक्ट्रिशियन के यात्रा के दौरान लोकेशन साझा करने पर यहाँ दिखेगी।</p></div>':'') +
       '<p><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(row.location_lat,row.location_lng,[row.address,row.district,row.state,row.pincode,'India'].filter(Boolean).join(', ')))+'">📍 Google Maps में पता देखें</a></p>' +
       (contact ? '<p><b>असाइन इलेक्ट्रिशियन:</b> ' + customerEsc(contact.electrician_name || 'इलेक्ट्रिशियन') + '</p>' + (canCall ? '<p><b>इलेक्ट्रिशियन मोबाइल:</b> ' + customerEsc(phone) + '</p><a class="btn call" href="tel:' + phone + '">☎ इलेक्ट्रिशियन को कॉल करें</a>' : '<p class="small">इलेक्ट्रिशियन का मोबाइल नंबर उपलब्ध नहीं है।</p>') : '') +
-      startMarkup+timerMarkup+finalBillMarkup+cancellationFeeMarkup+completionMarkup+cancellationInfo+refundMarkup+
+      startMarkup+timerMarkup+sosMarkup+finalBillMarkup+cancellationFeeMarkup+completionMarkup+cancellationInfo+refundMarkup+
       '<details class="customer-booking-history"><summary>बुकिंग की पूरी टाइमलाइन देखें</summary>'+historyMarkup+'</details>' +
       '</article>';
     }).join('');
