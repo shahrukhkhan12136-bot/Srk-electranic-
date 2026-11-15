@@ -206,8 +206,8 @@ test("reconciles a signed processed refund event against its exact payment and a
     if(fn==="srk_service_claim_razorpay_webhook_event")
       return response(200,{success:true,should_process:true,claim_token:"623e4567-e89b-42d3-a456-426614174000"});
     if(target.includes("/rest/v1/srk_razorpay_refunds?")){
-      assert.match(target,/payment_id=eq\.pay_refund_processed/);
-      return response(200,[{id:"723e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refund_processed",refund_id:null,amount_paise:12500,status:"processing"}]);
+      assert.match(target,/payment_id=eq\.pay_refundprocessed/);
+      return response(200,[{id:"723e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refundprocessed",refund_id:null,amount_paise:12500,status:"processing"}]);
     }
     if(fn==="srk_service_reconcile_booking_refund"){
       const body=JSON.parse(options.body);
@@ -224,7 +224,7 @@ test("reconciles a signed processed refund event against its exact payment and a
   };
   t.after(()=>{global.fetch=originalFetch;});
   const result=await handler(event({event:"refund.processed",payload:{refund:{entity:{
-    id:"rfnd_processed123",payment_id:"pay_refund_processed",amount:12500,currency:"INR",status:"processed"
+    id:"rfnd_processed123",payment_id:"pay_refundprocessed",amount:12500,currency:"INR",status:"processed"
   }}}},"evt_refund_processed"));
   assert.equal(result.statusCode,200);
   assert.equal(JSON.parse(result.body).reconciled,true);
@@ -238,7 +238,7 @@ test("does not reconcile a refund webhook whose amount differs from the prepared
     if(fn==="srk_service_claim_razorpay_webhook_event")
       return response(200,{success:true,should_process:true,claim_token:"823e4567-e89b-42d3-a456-426614174000"});
     if(target.includes("/rest/v1/srk_razorpay_refunds?"))
-      return response(200,[{id:"923e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refund_mismatch",refund_id:null,amount_paise:12500,status:"processing"}]);
+      return response(200,[{id:"923e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refundmismatch",refund_id:null,amount_paise:12500,status:"processing"}]);
     if(fn==="srk_service_reconcile_booking_refund"){reconcileCalls++;throw new Error("must not reconcile mismatch");}
     if(fn==="srk_service_complete_razorpay_webhook_event"){
       completedOutcome=JSON.parse(options.body).p_outcome;
@@ -248,7 +248,7 @@ test("does not reconcile a refund webhook whose amount differs from the prepared
   };
   t.after(()=>{global.fetch=originalFetch;});
   const result=await handler(event({event:"refund.processed",payload:{refund:{entity:{
-    id:"rfnd_mismatch123",payment_id:"pay_refund_mismatch",amount:9999,currency:"INR",status:"processed"
+    id:"rfnd_mismatch123",payment_id:"pay_refundmismatch",amount:9999,currency:"INR",status:"processed"
   }}}},"evt_refund_mismatch"));
   assert.equal(result.statusCode,200);
   assert.equal(JSON.parse(result.body).reason,"refund_record_mismatch");
@@ -263,7 +263,7 @@ test("routes a signed failed refund event through server-side reconciliation", a
     if(fn==="srk_service_claim_razorpay_webhook_event")
       return response(200,{success:true,should_process:true,claim_token:"a23e4567-e89b-42d3-a456-426614174000"});
     if(target.includes("/rest/v1/srk_razorpay_refunds?"))
-      return response(200,[{id:"b23e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refund_failed",refund_id:"rfnd_failed123",amount_paise:12500,status:"processing"}]);
+      return response(200,[{id:"b23e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refundfailed",refund_id:"rfnd_failed123",amount_paise:12500,status:"processing"}]);
     if(fn==="srk_service_reconcile_booking_refund"){
       reconciled=JSON.parse(options.body);
       return response(200,{success:true,status:"failed"});
@@ -276,7 +276,7 @@ test("routes a signed failed refund event through server-side reconciliation", a
   };
   t.after(()=>{global.fetch=originalFetch;});
   const result=await handler(event({event:"refund.failed",payload:{refund:{entity:{
-    id:"rfnd_failed123",payment_id:"pay_refund_failed",amount:12500,currency:"INR",status:"failed"
+    id:"rfnd_failed123",payment_id:"pay_refundfailed",amount:12500,currency:"INR",status:"failed"
   }}}},"evt_refund_failed"));
   assert.equal(result.statusCode,200);
   assert.equal(reconciled.p_provider_status,"failed");
