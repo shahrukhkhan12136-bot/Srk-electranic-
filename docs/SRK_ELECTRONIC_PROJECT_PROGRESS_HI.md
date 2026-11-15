@@ -3149,7 +3149,7 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Checked saved reference images and Library image search; the original garden-photo binary is not accessible in this work session. Actual crop/asset replacement therefore remains pending; no false completion claim.
 - GPT-1 progress is separately counted from Master Checklist sections Customer (10), Electrician (10), and Welcome/Founder Photo (6): **19/26 = 73% complete; 7/26 = 27% remaining**. GPT-2 tasks excluded. This is implementation checklist progress, not Production readiness.
 - Going forward, report GPT-1 and GPT-2 percentages separately in progress updates; update the counts when checklist items change.
-\n\n## 2026-11-15 — Founder Photo owner confirmation and integration\n\n- User confirmed the black-shirt portrait with the green garden background is the authentic saved SRK ELECTRONIC Founder Photo.\n- Cropped the original portrait to the existing Welcome Screen Founder card ratio (880×1000); retained the real face, clothing and garden background without generative edits.\n- Replaced the placeholder monogram with the accessible responsive `<img>` using `/assets/srk-founder.jpg`; added contract assertions for the exact asset and removed-placeholder state.\n- Updated GPT-1 implementation checklist to 20/26 = 77% complete, 6/26 = 23% remaining. Preview/runtime visual QA and final consolidated mobile QA remain pending. No production deployment or merge.\n
+
 
 ## 2026-11-15 — GPT-2 Admin booking direct-write privilege closure
 
@@ -3161,3 +3161,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression test `tests/admin-booking-direct-write-closure.test.js` जोड़ा; CI अभी इस नए commit पर चलना बाकी है। PostgreSQL runtime/pgTAP और browser verification नहीं किए गए।
 - GPT-2 checkbox count अब **27/39 = 69% पूरा; 12/39 = 31% शेष**। Admin/Support Staff: **12/13 = 92%**। यह Feature Branch source progress है, Production readiness नहीं।
 - कोई Production migration, merge या deployment नहीं किया गया।
+
+
+## 2026-11-15 — Founder Photo identity confirmed; crop prepared
+
+- User confirmed the black-shirt portrait with the green garden background is the authentic saved SRK ELECTRONIC Founder Photo.
+- Prepared a crop to match the existing Founder card aspect ratio while preserving the original person, clothing and garden background.
+- The image binary has not yet been committed to `assets/srk-founder.jpg`; the Welcome Screen placeholder remains intentionally in place. No substitute collage or generated portrait was used.
+- GPT-1 remains 19/26 = 73% complete; 7/26 = 27% remaining. Asset integration, Preview/runtime visual QA and final consolidated mobile QA remain pending. No merge or Production deployment.
