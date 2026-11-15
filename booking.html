@@ -1155,9 +1155,24 @@ async function customerSubmitBookingRefund(bookingId){
   await loadCustomerBookings();
  }catch(error){
   const message=String(error?.message||'');
-  alert(message.includes('REFUND_REQUEST_ALREADY_SUBMITTED')||message.includes('REFUND_ALREADY_EXISTS')
-    ?'इस बुकिंग के लिए रिफंड अनुरोध पहले से मौजूद है। कृपया उसकी स्थिति देखें या सहायता टीम से संपर्क करें।'
-    :'रिफंड अनुरोध दर्ज नहीं हो सका। कृपया विवरण जाँचकर दोबारा कोशिश करें।');
+  let confirmedRequest=null,lookupSucceeded=false;
+  try{
+   const {data:requests,error:lookupError}=await customerSb.rpc('srk_customer_list_booking_refund_requests');
+   if(!lookupError&&Array.isArray(requests)){
+    lookupSucceeded=true;
+    confirmedRequest=requests.find(row=>row.booking_id===bookingId)||null;
+   }
+  }catch(_){/* An unavailable authoritative read leaves the write outcome uncertain. */}
+  if(confirmedRequest){
+   alert('इस बुकिंग के लिए रिफंड अनुरोध पहले से दर्ज है। वर्तमान स्थिति: '+customerRefundStatusText(confirmedRequest.status)+'। दोबारा अनुरोध नहीं भेजा गया।');
+   await loadCustomerBookings();
+  }else if(message.includes('REFUND_REQUEST_ALREADY_SUBMITTED')||message.includes('REFUND_ALREADY_EXISTS')||message.includes('REFUND_ALREADY_RECORDED')){
+   alert('इस बुकिंग पर रिफंड अनुरोध या रिफंड रिकॉर्ड पहले से मौजूद हो सकता है। Payments में स्थिति जाँचें या सहायता टीम से संपर्क करें।');
+  }else if(lookupSucceeded){
+   alert('रिफंड अनुरोध की पुष्टि नहीं मिली। कोई दूसरा अनुरोध अपने-आप नहीं भेजा गया। कृपया Payments में दोबारा जाँचें; फिर भी न दिखे तो कुछ देर बाद पुनः प्रयास करें।');
+  }else{
+   alert('रिफंड अनुरोध का परिणाम अभी स्पष्ट नहीं है। दोबारा भेजने से पहले Payments में स्थिति जाँचें, ताकि डुप्लिकेट अनुरोध न बने।');
+  }
  }finally{
   if(button)button.disabled=false;
  }
@@ -1174,7 +1189,22 @@ async function customerCancelBooking(bookingId,button) {
   alert(data.already_pending?'इस बुकिंग का अनुरोध पहले से Admin के पास लंबित है।':'रद्द करने का अनुरोध Admin को भेज दिया गया है। फैसला और लागू शुल्क बुकिंग में दिखेगा।');
   await loadCustomerBookings();
  } catch(error) {
-  alert('अनुरोध दर्ज नहीं हो सका। कृपया इंटरनेट और लॉगिन जाँचकर दोबारा कोशिश करें। '+(error?.message||''));
+  let confirmedRequest=null,lookupSucceeded=false;
+  try{
+   const {data:requests,error:lookupError}=await customerSb.rpc('srk_customer_list_booking_cancellation_requests');
+   if(!lookupError&&Array.isArray(requests)){
+    lookupSucceeded=true;
+    confirmedRequest=requests.find(row=>row.booking_id===bookingId&&row.request_status==='pending')||null;
+   }
+  }catch(_){/* Keep the outcome uncertain if the owner-scoped read also fails. */}
+  if(confirmedRequest){
+   alert('इस बुकिंग का रद्द करने का अनुरोध Admin के पास लंबित है। दोबारा अनुरोध नहीं भेजा गया।');
+   await loadCustomerBookings();
+  }else if(lookupSucceeded){
+   alert('अभी जाँची गई सूची में इस बुकिंग का लंबित अनुरोध नहीं मिला। कोई दूसरा अनुरोध अपने-आप नहीं भेजा गया। बुकिंग सूची रीफ़्रेश करें; फिर भी अनुरोध न दिखे तो दोबारा प्रयास करें।');
+  }else{
+   alert('रद्द करने के अनुरोध का परिणाम स्पष्ट नहीं है। दोबारा भेजने से पहले बुकिंग सूची रीफ़्रेश करके स्थिति जाँचें।');
+  }
  } finally {if(button)button.disabled=false;}
 }
 let customerLiveLocationBookingIds=[];let customerLiveLocationPoller=null;
