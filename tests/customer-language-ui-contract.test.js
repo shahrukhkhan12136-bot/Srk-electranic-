@@ -105,3 +105,15 @@ test('customer profile avatar, support, payment and booking check auth session e
   assert.match(bookingSubmit,/bookingHeaders\.Authorization = 'Bearer ' \+ customerSession\.access_token;/);
   assert.ok(bookingSubmit.indexOf('if (sessionError) throw sessionError;') < bookingSubmit.indexOf("fetch('/api/create-booking'"),'session errors must stop booking submission before network request');
 });
+
+
+test('customer avatar upload safely reconciles a rejected profile-save RPC before deleting the object', () => {
+  const save = body('saveCustomerProfile');
+  assert.match(save, /let profileSaveResult/);
+  assert.match(save, /catch\(saveError\)/);
+  assert.match(save, /srk_customer_get_my_profile/);
+  assert.match(save, /latestProfile\?\.avatar_path!==avatarPath/);
+  assert.match(save, /storage\.from\('srk-customer-avatars'\)\.remove\(\[avatarPath\]\)/);
+  assert.match(save, /if\(!latestError&&latestProfile\?\.avatar_path!==avatarPath\)/);
+  assert.match(save, /throw saveError/);
+});
