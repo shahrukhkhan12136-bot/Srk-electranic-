@@ -229,3 +229,14 @@
 - [ ] Node test suite execute करें; अभी source assertions लिखे हैं, run result नहीं।
  
 **Safety boundary:** Health/recovery migration केवल Feature Branch में है; अभी किसी database पर apply नहीं हुई। कोई dead letter वास्तव में requeue नहीं किया, कोई push/provider call, production change, deployment, worker activation या mobile QA नहीं हुआ।
+
+
+### Final Push Security Audit — Lease Fencing सुधार — 15 November 2026
+- [x] Audit में stale-worker race मिला: यदि worker का lease expire हो और दूसरा worker उसी row को reclaim कर ले, तो पुराना worker देर से finish RPC करके नए worker की स्थिति overwrite कर सकता था।
+- [x] नया migration `20261115200000_push_delivery_lease_fencing.sql`: Outbox और per-device finish RPC अब claimed `attempt_count` fencing token मांगते हैं; status `processing` और वही attempt count न होने पर stale result reject होता है।
+- [x] Netlify worker और Edge sender अब अपने claim response का attempt count finish RPC में भेजते हैं।
+- [x] Outbox और per-device fencing के source-contract assertions जोड़े।
+- [ ] Node/Deno suite execute करें और concurrent reclaim + stale finish race को isolated DB में चलाकर verify करें।
+- [ ] Provider call की transport-level duplicate संभावना बनी रहती है यदि पुराना worker lease expire होने के बाद भी provider request पूरा कर दे; fencing केवल stale DB completion को रोकती है, exactly-once delivery नहीं देती।
+
+**सुरक्षा सीमा:** Migration feature branch पर ही है; अभी apply/deploy नहीं हुई। कोई production mutation, real push, worker activation या mobile QA नहीं किया गया।
