@@ -384,3 +384,6 @@
 - [x] Reworked `tests/welcome-screen-contract.test.js` to assert role routing, no collage substitution, approved text, PWA start URL and offline precache.
 - [ ] Exact approved blue-background founder photo is not currently present in accessible repository or Library assets; final authentic-photo placement remains pending. The user previously specified: first blue-background photo is the Founder photo; second image is design reference. Do not substitute the design reference or older generated portrait.
 - [ ] Browser visual/runtime and install/offline tests pending; final mobile QA remains deferred. No deployment or Production changes.
+
+- [x] On branch head `3ad8d575266eea757a2084db82966b0c82b04e61`, both latest CI workflows reached the repository test step: Welcome Screen/PWA tests passed (`ok 139`, `ok 140`), and the full suite reported 139/140 pass. The sole remaining failure is the unrelated Razorpay refund-note test `matches an unpersisted provider refund by its internal refund-record note`.
+- [x] Updated the existing Electrician service-worker contract test from cache v8 to v9; that regression passed in the latest run.
