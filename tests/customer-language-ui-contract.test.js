@@ -106,6 +106,6 @@ test('customer profile avatar, support, payment and booking check auth session e
   assert.match(profile,/error:sessionError\}=await customerSb\.auth\.getSession\(\);\s*if\(sessionError\)throw sessionError/);
   assert.match(support,/error:sessionError\}=await customerSb\.auth\.getSession\(\);\s*if\(sessionError\)throw sessionError/);
   assert.match(payment,/error: sessionError \} = await customerSb\.auth\.getSession\(\);\s*if \(sessionError\) throw sessionError/);
-  assert.match(booking,/error: customerSessionData, error: sessionError \} = await customerSb\.auth\.getSession\(\);/);
+  assert.match(booking,/data: customerSessionData, error: sessionError \\} = await customerSb\\.auth\\.getSession\\(\\);/);
   assert.ok(submitStart<0,'booking submission should no longer use the unchecked session lookup');
 });
