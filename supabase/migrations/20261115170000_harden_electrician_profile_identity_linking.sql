@@ -45,7 +45,12 @@ FOR EACH ROW EXECUTE FUNCTION public.srk_sync_electrician_profile_identity();
 
 CREATE OR REPLACE FUNCTION public.srk_guard_electrician_profile_identity_link()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth AS $function$
-DECLARE v_phone text; v_user_phone text; v_confirmed_at timestamptz; v_profile_count integer;
+DECLARE
+  v_phone text;
+  v_user_phone text;
+  v_confirmed_at timestamptz;
+  v_profile_count integer;
+  v_auth_user_count integer;
 BEGIN
   IF NEW.user_id IS NULL AND NEW.auth_user_id IS NULL THEN RETURN NEW; END IF;
   IF NEW.user_id IS NULL OR NEW.auth_user_id IS NULL OR NEW.user_id IS DISTINCT FROM NEW.auth_user_id THEN
@@ -56,6 +61,12 @@ BEGIN
   IF v_user_phone IS NULL OR v_confirmed_at IS NULL
     OR right(regexp_replace(v_user_phone,'[^0-9]','','g'),10)<>v_phone THEN
     RAISE EXCEPTION 'ELECTRICIAN_PROFILE_PHONE_NOT_VERIFIED_OR_MISMATCHED' USING ERRCODE='23514';
+  END IF;
+  SELECT count(*) INTO v_auth_user_count FROM auth.users u
+  WHERE u.phone_confirmed_at IS NOT NULL
+    AND right(regexp_replace(coalesce(u.phone,''),'[^0-9]','','g'),10)=v_phone;
+  IF v_auth_user_count<>1 THEN
+    RAISE EXCEPTION 'AMBIGUOUS_VERIFIED_AUTH_USERS_FOR_ELECTRICIAN_PHONE' USING ERRCODE='23514';
   END IF;
   SELECT count(*) INTO v_profile_count FROM public.electrician_profiles p
   WHERE p.id<>NEW.id AND p.verification_status='approved'
@@ -74,10 +85,14 @@ FOR EACH ROW EXECUTE FUNCTION public.srk_guard_electrician_profile_identity_link
 
 CREATE OR REPLACE FUNCTION public.srk_link_electrician_profile()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth AS $function$
-DECLARE v_phone text; v_profile_count integer;
+DECLARE v_phone text; v_profile_count integer; v_auth_user_count integer;
 BEGIN
   IF NEW.phone IS NULL OR NEW.phone_confirmed_at IS NULL THEN RETURN NEW; END IF;
   v_phone:=right(regexp_replace(NEW.phone,'[^0-9]','','g'),10);
+  SELECT count(*) INTO v_auth_user_count FROM auth.users u
+  WHERE u.phone_confirmed_at IS NOT NULL
+    AND right(regexp_replace(coalesce(u.phone,''),'[^0-9]','','g'),10)=v_phone;
+  IF v_auth_user_count<>1 THEN RETURN NEW; END IF;
   SELECT count(*) INTO v_profile_count FROM public.electrician_profiles p
   WHERE p.verification_status='approved'
     AND right(regexp_replace(coalesce(p.phone,''),'[^0-9]','','g'),10)=v_phone;
