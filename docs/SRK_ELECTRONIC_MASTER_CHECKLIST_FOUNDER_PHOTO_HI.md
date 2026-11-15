@@ -13,7 +13,7 @@
 - **36% बाकी:** 31 / 86 मुख्य चेकलिस्ट आइटम।
 - यह प्रतिशत ऊपर के वर्तमान 9 मुख्य sections के checkbox count पर आधारित है; यह Production readiness, समय, लागत या code completion का प्रतिशत नहीं है।
 - बाकी मदों में isolated runtime/database tests, Main Production schema parity, browser/mobile visual QA और release/owner approval शामिल हैं।
-- **GPT-1 का अलग कार्यक्षेत्र:** Customer (10), Electrician (10), Welcome Screen/Founder Photo (6) — कुल 26 मदों में 19 पूर्ण, 7 शेष: **73% पूरा / 27% बाकी**। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
+- **GPT-1 का अलग कार्यक्षेत्र:** Customer (10), Electrician (10), Welcome Screen/Founder Photo (6) — कुल 28 मदों में 20 पूर्ण, 8 शेष: **71% पूरा / 29% बाकी**। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
 - Admin Panel के शीर्ष पर पूरे प्रोजेक्ट का कार्ड और GPT-2 का अलग कार्ड पहले से दर्ज हैं; GPT-1 का प्रतिशत इस checklist/progress log में अलग दिखाया जाएगा।
 - **GPT नंबर 2 का अलग कार्यक्षेत्र:** Admin/Support Staff (13), Payment/Accounting (10), Main Database audit/parity (16) — कुल 39 मदों में 27 पूर्ण, 12 शेष: **69% पूरा / 31% बाकी**। GPT-1 के Customer/Electrician कार्य इसमें शामिल नहीं हैं।
 - Admin Panel में पूरे प्रोजेक्ट के कार्ड के नीचे GPT-2 का अलग प्रगति कार्ड भी दिखाया गया है।
@@ -395,4 +395,4 @@
 
 - User clarified: authentic SRK ELECTRONIC Founder Photo is the photo with a garden/greenery in the background. Crop that exact photo and use the existing Founder model/layout; do not use the blue-background alternative or the design-model image as the identity source. Preserve the real face/identity.
 - Library image search and saved-reference-image lookup returned no accessible original image bytes; the repository asset previously inspected was an app-screen collage, not a safe substitute. Therefore actual photo crop/replacement remains pending until the original garden photo asset is accessible. Do not claim photo integration is complete.
-- GPT-1 progress is counted only from checklist sections 1 Customer (10), 2 Electrician (10), and 6 Welcome/Founder Photo (6): 19/26 checked = 73% complete; 7/26 = 27% remaining. GPT-2 work is excluded. This is checklist implementation progress, not Production readiness.
+- GPT-1 progress is counted only from checklist sections 1 Customer (10), 2 Electrician (10), and 6 Welcome/Founder Photo (6): 20/28 checked = 71% complete; 8/28 = 29% remaining. GPT-2 work is excluded. This is checklist implementation progress, not Production readiness.
