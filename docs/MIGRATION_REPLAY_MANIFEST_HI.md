@@ -305,3 +305,14 @@ prerequisite gates. No PostgreSQL replay or Production query was run.
 - यह `srk_push_subscriptions` की मूल table, primary key, Auth user FK, endpoint unique constraint, Web Push key columns, timestamps, user index और own-row RLS policy define करती है।
 - `20261115170001_durable_push_delivery_outbox.sql` की preflight अपेक्षित `id,user_id,endpoint,p256dh,auth` columns से मेल खाती है; `20261115180001_push_subscription_delivery_ledger.sql` की FK `id` से मेल खाती है।
 - कोई database पर migration apply नहीं की गई। PostgreSQL runtime/pgTAP replay अभी नहीं चला; staged historical migration को Production-ready न माना जाए।
+
+## 9. Latest prerequisite status correction — 15 Nov 2026
+
+- Section 5's earlier 73-file count and four-item prerequisite list are a historical snapshot; they are superseded by the later source recovery recorded in Section 6 and the current 77-file inventory in Sections 1–2.
+- The original migration `20261111020000_add_electrician_push_subscriptions.sql` has been restored from the historical branch. It defines `public.srk_push_subscriptions`; its required columns match the later outbox/ledger references at static source level. This is not a database replay or runtime validation.
+- The currently unresolved base prerequisites are therefore:
+  1. `service_bookings.amount_paid`
+  2. `electrician_profiles.auth_user_id`
+  3. `public.srk_booking_complaints`
+- The support complaint parent table remains unresolved. The reviewed complaint/support migrations consume it but do not create it. No authoritative CREATE TABLE source has been recovered.
+- Current inventory remains 77 SQL migration files. No checklist completion percentage is increased by this documentation correction; no Production access or migration execution occurred.
