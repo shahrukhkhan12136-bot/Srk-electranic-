@@ -1053,3 +1053,36 @@ Exact-definition search और historical root SQL cross-check से निम�
 ### 34.5 Current gate
 
 Finance/refund source family काफी हद तक map हो चुकी है, लेकिन इसे replay-ready नहीं कहा जा सकता। अभी भी authoritative core baseline, `is_srk_admin()` helper provenance, exact wallet schema lineage, all booking columns, remote migration history और duplicate 20261109 reconciliation आवश्यक हैं। कोई finance RPC, payment/refund operation, webhook, migration, pgTAP test या Production action execute नहीं हुआ; कोई data या schema बदला नहीं गया।
+
+
+## 35. Push delivery, KYC activation और SOS dependency audit — 16 Nov 2026
+
+### 35.1 Push subscription और durable delivery chain
+
+- `20261111020000_add_electrician_push_subscriptions.sql` पहली बार `public.srk_push_subscriptions` table बनाती है; यह `auth.users` पर निर्भर है और owner-scoped RLS policy लगाती है।
+- `20261115170001_durable_push_delivery_outbox.sql` स्पष्ट preflight में `srk_private` schema, subscription table/columns, `job_offers.expires_at`, `electrician_profiles.available_for_work`, और electrician identity/approval columns मांगती है। यह prerequisites के बिना fail-fast करती है।
+- `20261115180001_push_subscription_delivery_ledger.sql` outbox तथा subscription IDs पर per-device delivery ledger बनाती है।
+- `20261115190001_push_delivery_health_monitoring.sql` outbox और device ledger के बाद health summary और dead-letter recovery RPC जोड़ती है।
+- `20261115200001_push_delivery_lease_fencing.sql` पुराने finish RPC signatures हटाकर attempt-count/fencing-token signatures बनाती है; worker contract को उसी signature पर update करना जरूरी होगा।
+- Push worker RPCs service_role-only हैं; delivery tables private schema में हैं और browser roles को direct access नहीं मिलता।
+
+**नया baseline blocker:** मौजूदा 87 versioned migration files की inventory तथा `CREATE SCHEMA` source search में `srk_private` schema बनाने वाला कोई migration नहीं मिला। Push outbox migration इसे preflight में अनिवार्य मानती है। इसलिए इसका creator वर्तमान versioned migration chain में नहीं मिला। यह संभव है कि schema किसी पहले से मौजूद external/bootstrap setup से आता हो, लेकिन ऐसा authoritative evidence इस source audit में नहीं मिला। जब तक Database Owner उस schema की approved origin/ownership पुष्टि न करे या अलग approved baseline उपलब्ध न हो, clean replay gate बंद रहेगा। इसे स्वयं जोड़ना या Production में बनाना इस read-only scope में नहीं है।
+
+### 35.2 KYC और electrician activation chain
+
+- `20261115140000_electrician_kyc_review_and_activation_gate.sql` private Storage bucket `srk-electrician-verification` बनाता/अपडेट करता है; KYC document और append-only review event tables बनाता है; owner upload, owner/Admin read और unregistered-object delete Storage policies लगाता है।
+- यह migration electrician profile, Auth users, Storage schema/bucket/object infrastructure, availability events, job offers, rate-tier activation guard और Main Admin helper पर निर्भर है।
+- `20261114330000` document path lookup RPC और `20261114380000` phone-change approval workflow इसी identity/KYC domain के अलग components हैं।
+- KYC event table के direct client privileges revoke हैं; document access RPCs और Storage object policies के माध्यम से नियंत्रित है।
+- Bucket upsert existing bucket configuration बदल भी सकता है; इसलिए replay में existing bucket state/approved settings का parity check जरूरी है। कोई bucket या document बदला नहीं गया।
+
+### 35.3 SOS और delegated staff permissions
+
+- `20261115260000_sos_admin_support_alerts.sql` पहले `srk_admin_permissions` और `srk_admin_role_permissions` में SOS read/acknowledge permissions insert करता है; फिर SOS alert और append-only event tables तथा Main Admin/authorized Support Staff RPCs बनाता है।
+- इन permission tables का introducing source `20261114390000_admin_staff_rbac_foundation.sql` है। इसलिए RBAC foundation से पहले SOS migration चलाना dependency failure होगा।
+- SOS migration के comments स्पष्ट करते हैं कि इस backend source में SMS/Push provider configured नहीं है और automatic police/112 notification नहीं है। Database record/acknowledgement RPC को वास्तविक alert-delivery समझना गलत होगा।
+- SOS RPC authorization `srk_has_admin_permission(text)` और Main Admin helper `is_srk_admin()` की existing provenance/behavior पर निर्भर है; helper baseline gap पहले के sections में unresolved है।
+
+### 35.4 Test और replay निष्कर्ष
+
+Push/KYC/SOS source definitions और dependency checks अब map किए गए हैं, पर वर्तमान branch के इस GPT-2 run में कोई migration apply, PostgreSQL/pgTAP runtime test, push worker invocation, Storage write, KYC upload/review, SOS creation, provider delivery या Production query नहीं किया गया। Historical checklist/search snippets को वर्तमान branch runtime proof नहीं माना गया। Replay readiness अभी भी BLOCKED है: `srk_private` schema origin, core baseline, Main Admin helper, worker contract/version parity और authoritative remote migration lineage की पुष्टि बाकी है।
