@@ -84,3 +84,19 @@ PR #8 की वास्तविक changed-file सूची से migration
 - Live catalog और Feature Branch migration chain अलग हैं: ऊपर की नई fee tables live में अभी मौजूद नहीं थीं। इस कारण read-only reconciliation RPC को live schema पर लागू करना निषिद्ध रहेगा; उसे केवल पूरी reviewed migration chain वाले approved isolated test environment में validate किया जा सकता है।
 
 Security contract pgTAP अब 30 planned assertions तक बढ़ा है; cancellation-fee private ledger, append-only guard, integer-paise amount और new-category payable separation भी शामिल हैं। Runtime execution अभी pending है।
+
+
+## 10. Feature Branch implementation — read-only Admin booking report (2026-11-15)
+
+नई migration source: `20261115130000_admin_readonly_booking_accounting_reconciliation.sql`
+
+RPC: `public.srk_admin_get_booking_accounting_reconciliation(uuid)`
+
+- `SECURITY DEFINER`, `STABLE`, fixed empty search_path; authenticated execution grant के बावजूद function के अंदर `auth.uid()` + `is_srk_admin()` Main Admin gate अनिवार्य है। anon/public execute revoke।
+- एक booking UUID पर एक JSON report देता है। Customer verified collection/refund/net, immutable labour bill या legacy approved quote के Labour/Materials, labour-only commission, expected electrician payable, payout snapshot/status, Route transfer + provider processed + settlement amounts, cancellation-fee allocation/ledger, और केवल posted wallet entries अलग दिखाता है।
+- Route payment ID और assigned electrician recipient identity भी booking से मिलाए जाते हैं। Duplicate Route rows, missing payout/transfer, transfer mismatch, provider processing/settlement gap, payout/refund closure mismatch, invalid commission rate, partial refund, verified collection mismatch, cancellation-fee ledger mismatch अलग exception codes बनते हैं।
+- Cancellation fee के लिए settled allocation बनाम append-only ledger net का मिलान होता है। New-category booking में customer collection = immutable labour + settled carry-forward fees होना चाहिए; fee electrician payable/commission में नहीं जुड़ती।
+- Function body में कोई INSERT/UPDATE/DELETE नहीं है। कोई wallet posting, transfer, refund, payout status change या auto-repair नहीं।
+- `admin.html` में Main Admin के लिए Booking UUID आधारित panel जोड़ा गया; रिपोर्ट और exception list पढ़ सकता है। यह केवल UI source integration है, runtime browser test नहीं।
+
+pgTAP contract अब 43 planned assertions है। Static count/plan verification: 43/43। pgTAP runtime अभी execute नहीं हुआ। Production catalog में नई cancellation-fee tables अनुपस्थित हैं, इसलिए यह migration live पर apply नहीं की गई; report source Feature Branch में ही है।
