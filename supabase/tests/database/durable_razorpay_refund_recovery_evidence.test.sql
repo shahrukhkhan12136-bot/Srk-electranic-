@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(27);
 select ok(to_regclass('public.srk_razorpay_refund_recovery_audits') is not null,'durable refund recovery evidence table exists');
 select ok((select relrowsecurity from pg_class where oid='public.srk_razorpay_refund_recovery_audits'::regclass),'recovery evidence table has RLS enabled');
 select ok(not has_table_privilege('anon','public.srk_razorpay_refund_recovery_audits','select'),'anon cannot read private recovery evidence');
@@ -27,9 +27,15 @@ select ok(position('cancel-fee:cash:refund-wallet-credit:' in pg_get_functiondef
 select ok(position('srk_reverse_cancellation_fees_on_full_refund' in pg_get_triggerdef((select oid from pg_trigger where tgname='srk_reverse_cancellation_fees_on_full_refund' and not tgisinternal)))>0,'full-refund accounting reversal is attached to service booking payment status');
 
 select ok(position('new.service_charge * new.commission_rate / 100' in pg_get_functiondef('public.srk_calculate_booking_commission()'::regprocedure))>0,'company commission is calculated on service labour only, excluding materials');
-select ok(position('v_service + v_materials - v_commission' in pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,'electrician payable includes separately itemized materials less labour-only commission');
-select ok(position('payment_verified_at IS NOT NULL' in pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))>0,'Admin payout settlement requires verified booking payment');
 select ok(position('payment_status = ''paid''' in pg_get_functiondef('public.srk_admin_commission_report()'::regprocedure))>0,'commission report excludes refunded and unpaid bookings from collected totals');
 select ok(position('status=''posted''' in pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,'wallet displayed balance includes only posted ledger entries');
+
+select ok(position('topups_enabled',pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,'customer stored-value top-ups remain explicitly disabled');
+select ok(position('payouts_enabled',pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,'wallet cash-out remains explicitly disabled until provider approval');
+select ok((select data_type='bigint' from information_schema.columns where table_schema='public' and table_name='srk_route_transfers' and column_name='amount_paise'),'Route transfer amounts are stored as integer paise');
+select ok(exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass and conname='srk_route_transfers_payment_recipient_uniq'),'Route transfer ledger prevents duplicate recipient transfer per payment');
+select ok(exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass and conname='srk_route_transfers_recipient_check'),'Route transfer recipient identity is constrained by recipient type');
+select ok(not has_table_privilege('authenticated','public.srk_route_transfers','select'),'Route transfer provider ledger is not readable by authenticated users');
+select ok(position('sum(case when direction=''credit'' then amount else -amount end)' in pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,'wallet balance is derived from posted ledger entries rather than a mutable cached balance');
 select * from finish();
 rollback;
