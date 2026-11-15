@@ -57,14 +57,14 @@ This is the single index for GPT-2 scope, existing implementation, migrations, d
 | Commission, wallet, cash collection and payout | `20261109003000_secure_commission_reporting.sql`, `20261109010000_create_secure_wallet_ledger_foundation.sql`, `20261114360000_new_category_electrician_payout_reconciliation.sql`, `20261115150000_admin_readonly_booking_accounting_reconciliation.sql`, `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` | `accounting_reconciliation_readonly_contract.test.sql`, `admin_labour_bill_payment_accounting_bridge.test.sql`, `electrician_payout_reconciliation.test.sql` | `admin-commission-report-labels.test.js`, `electrician-accounting-kyc-contract.test.js` | `admin.html`; Main Admin-only payout/payment RPCs; no bank transfer or payout executed |
 | Route recipient and settlement evidence | `20261109020000_create_server_only_razorpay_route_transfer_ledger.sql`, `20261115170000_admin_route_transfer_accounting_reconciliation.sql`, `20261115180000_admin_route_recipient_and_settlement_validation.sql`, `20261115190000_enforce_single_primary_route_bank_link.sql` | Recipient/settlement source contracts are represented in accounting/payout tests; no independent provider settlement proof contract/runtime | `admin-route-settlement-warning.test.js` | `admin.html`; settlement is explicitly unverified, no transfer/payout operation performed |
 | Push outbox, device ledger and lease fencing | `20261111020000_add_electrician_push_subscriptions.sql`, `20261115170001_durable_push_delivery_outbox.sql`, `20261115180001_push_subscription_delivery_ledger.sql`, `20261115190001_push_delivery_health_monitoring.sql`, `20261115200001_push_delivery_lease_fencing.sql` | `push_delivery_lease_fencing.test.sql`; historical limited disposable-Postgres Push checks only, not current full-chain replay | `push-delivery-outbox.test.js`, `push-subscription-delivery-ledger.test.js`, `push-delivery-lease-fencing.test.js`, `push-job-offer-sender.test.js` | `admin.html`, `electrician.html`, `supabase/functions/push-job-offer/index.ts`, `netlify/functions/deliver-push-outbox.js`; no live provider send |
-| SOS alert and Admin/Support acknowledgement | `20261115260000_sos_admin_support_alerts.sql` | `sos_admin_support_alerts.test.sql` | `sos-admin-support-contract.test.js`, `sos-two-step-ui-contract.test.js` | `admin.html`, Customer/Electrician active-booking UI; SMS/Push/location/emergency-service integrations not configured |
+| SOS alert and Admin/Support acknowledgement | `20261115260000_sos_admin_support_alerts.sql` | `sos_admin_support_alerts.test.sql` | `admin-sos-staff-visibility.test.js`, `sos-admin-support-contract.test.js`, `sos-two-step-ui-contract.test.js` | `admin.html`, Customer/Electrician active-booking UI; Support Staff SOS queue visibility is explicitly enabled; SMS/Push/location/emergency-service integrations not configured |
 | Security, grants, search_path and audit | `20261115200000_harden_financial_admin_rpc_search_path.sql`, `20261115210001_harden_legacy_financial_read_rpc_search_paths.sql`, `20261115230000_admin_booking_direct_write_closure.sql` plus domain-specific RLS migrations above | RBAC, financial audit, legacy search-path, support, refund and SOS SQL contracts | `admin-booking-direct-write-closure.test.js`, `admin-refund-and-staff-access.test.js`, `legacy-financial-read-rpc-search-path.test.js` | `admin.html`, staff-management Edge Function and server RPCs; complete role/privilege matrix requires isolated PostgreSQL runtime |
 
 ## 5. Repository inventory snapshot
 At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 - SQL migrations: **78**
 - Supabase database contract files: **32**
-- Node test files: **33**
+- Node test files: **35**
 - GitHub Actions workflows: **3**
 - Recursive tree was not truncated.
 
@@ -188,6 +188,7 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 - `tests/admin-progress-card.test.js`
 - `tests/admin-commission-report-labels.test.js`
 - `tests/admin-refund-and-staff-access.test.js`
+- `tests/admin-sos-staff-visibility.test.js`
 - `tests/admin-route-settlement-warning.test.js`
 - `tests/booking-lifecycle-serialization.test.js`
 - `tests/customer-dashboard-menu-contract.test.js`
@@ -301,3 +302,9 @@ The GPT-2 feature set is not empty or waiting for discovery: the source already 
 - Commit `2c0f0624d69fab52389def0d93ca449d6c22c86d` records the Customer/Electrician → authenticated RPC → Admin/Support source integration recheck. It documents that clients send only `p_reason`; backend derives actor and the unique active booking, and Admin RPCs enforce SOS read/acknowledge permissions.
 - Commit-level PR-triggered workflow lookup returned no runs for this documentation commit. The previously verified Node run `43748698652` (189/189) remains the last verified test result; do not claim this docs commit itself was tested.
 - SOS PostgreSQL/pgTAP runtime, SMS/Push delivery, consented location and browser/mobile end-to-end QA remain pending. No emergency-service auto-contact, Production migration, merge or deployment.
+
+
+### Admin SOS Support visibility fix — 16 Nov 2026
+- UI audit found the SOS card was a normal Admin-only direct child of `#app`, while `showState()` also loads SOS for Support Staff. `setAdminPortalMode('staff')` therefore hid the card even though the Support role is explicitly granted `support.sos.read` and `support.sos.acknowledge` by migration `20261115260000`.
+- Fixed `admin.html` by marking the SOS card `staff-only hidden`, matching the role-mode visibility mechanism. Backend permission checks remain authoritative; no client-side permission bypass was added.
+- Added `tests/admin-sos-staff-visibility.test.js` to guard card visibility, role-mode behavior and Support permission grants. CI for these new commits is pending; no test pass is claimed yet.
