@@ -68,7 +68,7 @@ test('customer dynamic payment messages and printable receipt respect selected l
 test('customer and electrician inline browser scripts are syntactically valid JavaScript', () => {
   for (const file of ['booking.html', 'electrician.html']) {
     const html = fs.readFileSync(path.join(root, file), 'utf8');
-    const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\\s\\S]*?)<\\/script>/gi)];
+    const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
     assert.ok(scripts.length > 0, file + ' should contain an inline application script');
     for (const match of scripts) {
       assert.doesNotThrow(() => new Function(match[1]), file + ' inline script should parse');
