@@ -163,11 +163,11 @@ test('customer work lifecycle SECURITY DEFINER RPCs use an empty search_path and
   assert.ok(!startFixSql.includes("INSERT INTO work_transition_authorizations"));
   assert.ok(!startFixSql.includes("DELETE FROM work_timer_authorizations"));
   assert.ok(!startFixSql.includes("DELETE FROM work_transition_authorizations"));
-  assert.match(timerSql, /INSERT INTO srk_private\\.work_timer_authorizations/);
-  assert.match(timerSql, /DELETE FROM srk_private\\.work_timer_authorizations/);
-  assert.match(timerSql, /INSERT INTO srk_private\\.work_transition_authorizations/);
-  assert.match(timerSql, /DELETE FROM srk_private\\.work_transition_authorizations/);
-  assert.doesNotMatch(timerSql, /(?:INSERT INTO|DELETE FROM)\\s+(?:work_timer_authorizations|work_transition_authorizations)\\b/);
+  assert.match(timerSql, /INSERT INTO srk_private\.work_timer_authorizations/);
+  assert.match(timerSql, /DELETE FROM srk_private\.work_timer_authorizations/);
+  assert.match(timerSql, /INSERT INTO srk_private\.work_transition_authorizations/);
+  assert.match(timerSql, /DELETE FROM srk_private\.work_transition_authorizations/);
+  assert.doesNotMatch(timerSql, /(?:INSERT INTO|DELETE FROM)\s+(?:work_timer_authorizations|work_transition_authorizations)\\b/);
 });
 test('electrician timer RPCs authorize the exact assigned profile, not only the newest owned profile', () => {
   const start = sqlFunction(timerSql, 'srk_electrician_request_work_start');
@@ -181,8 +181,8 @@ test('electrician timer RPCs authorize the exact assigned profile, not only the 
 });
 
 test('Customer and Electrician SOS require explicit reason selection and separate final send action', () => {
-  const customerSos = customer.slice(customer.indexOf('let customerSosBusy=false;'), customer.indexOf('async function customerRespondWorkCompletion'));
-  const electricianSos = electrician.slice(electrician.indexOf('let electricianSosBusy=false;'), electrician.indexOf('async function electricianRequestWorkStart'));
+  const customerSos = customer.slice(customer.indexOf('const customerSosBusy=new Set();'), customer.indexOf('async function customerRespondWorkCompletion'));
+  const electricianSos = electrician.slice(electrician.indexOf('const electricianSosBusy=new Set();'), electrician.indexOf('async function electricianRequestWorkStart'));
   for (const [source, openFn, cancelFn] of [[customerSos, 'openCustomerSosReasons', 'cancelCustomerSosSelection'], [electricianSos, 'openElectricianSosReasons', 'cancelElectricianSosSelection']]) {
     assert.match(source, /srk_create_sos_alert/);
     for (const code of ['customer_at_risk', 'electrician_at_risk', 'violence_or_other_emergency']) assert.ok(source.includes(code));
