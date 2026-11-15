@@ -23,6 +23,7 @@ declare
   v_payable_paise bigint := 0;
   v_collection_paise bigint := 0;
   v_refund_paise bigint := 0;
+  v_refund_requested_paise bigint := 0;
   v_fee_allocated_paise bigint := 0;
   v_fee_settled_paise bigint := 0;
   v_fee_captured_paise bigint := 0;
@@ -139,8 +140,15 @@ begin
     v_refund_state := 'manual_recorded';
   end if;
   if v_refund.id is not null then
-    v_refund_paise := v_refund.amount_paise;
+    v_refund_requested_paise := v_refund.amount_paise;
     v_refund_state := v_refund.status;
+    -- Requested/processing/unknown/failed provider amounts are not cash returned
+    -- to the customer. Only a provider-confirmed processed refund reduces net collection.
+    if v_refund.status='processed' then
+      v_refund_paise := v_refund.amount_paise;
+    else
+      v_refund_paise := 0;
+    end if;
   end if;
   if v_refund.id is not null and v_manual_refund.id is not null then
     v_exceptions := array_append(v_exceptions,'MULTIPLE_REFUND_RECORDS');
@@ -164,6 +172,8 @@ begin
   end if;
   if v_refund_state in ('requested','processing','unknown') then
     v_exceptions := array_append(v_exceptions,'REFUND_PENDING_REVIEW');
+  elsif v_refund_state='failed' then
+    v_exceptions := array_append(v_exceptions,'REFUND_FAILED_REQUIRES_REVIEW');
   end if;
   if v_booking.payment_status='refunded' and v_refund_state not in ('processed','manual_recorded') then
     v_exceptions := array_append(v_exceptions,'REFUNDED_BOOKING_WITHOUT_FINAL_REFUND_EVIDENCE');
@@ -251,6 +261,12 @@ begin
   end if;
   if exists(select 1 from public.srk_route_transfers t
     where t.booking_id=p_booking_id
+      and (t.transfer_status in ('reversed','partially_reversed')
+        or t.settlement_status='reversed')) then
+    v_exceptions := array_append(v_exceptions,'ROUTE_TRANSFER_REVERSED_OR_PARTIALLY_REVERSED');
+  end if;
+  if exists(select 1 from public.srk_route_transfers t
+    where t.booking_id=p_booking_id
       and t.razorpay_payment_id is distinct from v_booking.razorpay_payment_id) then
     v_exceptions := array_append(v_exceptions,'ROUTE_PAYMENT_ID_MISMATCH');
   end if;
@@ -311,6 +327,12 @@ begin
   select r.status into v_refund_request_status
     from public.srk_booking_refund_requests r
    where r.booking_id=p_booking_id;
+  if v_refund_request_status in ('requested','in_review','approved','processing','unknown') then
+    v_exceptions := array_append(v_exceptions,'REFUND_REQUEST_PENDING_REVIEW');
+  elsif v_refund_request_status='processed'
+     and v_refund_state not in ('processed','manual_recorded') then
+    v_exceptions := array_append(v_exceptions,'REFUND_REQUEST_PROCESSED_WITHOUT_FINAL_REFUND_EVIDENCE');
+  end if;
 
   return jsonb_build_object(
     'booking_id',v_booking.id,
@@ -321,6 +343,7 @@ begin
     'razorpay_payment_id',v_booking.razorpay_payment_id,
     'customer_collection_paise',v_collection_paise,
     'refund_paise',v_refund_paise,
+    'refund_requested_or_unconfirmed_paise',v_refund_requested_paise,
     'refund_status',v_refund_state,
     'customer_net_collection_paise',greatest(v_collection_paise-v_refund_paise,0),
     'customer_refund_request_status',v_refund_request_status,
