@@ -552,3 +552,11 @@
 - यदि ब्राउज़र में Push Subscription मौजूद हो लेकिन पिछली बार सर्वर पर endpoint upsert विफल हुआ हो, तो पहले UI में Enable बटन बंद हो जाता था और उसी मौजूदा subscription को दोबारा register करने का रास्ता नहीं रहता था।
 - अब मौजूदा browser subscription के साथ भी Enable उपलब्ध रहता है; enable handler उसी subscription को server table में फिर से upsert करता है। Disable क्रम और नई subscription rollback व्यवहार अपरिवर्तित हैं।
 - Regression source-contract test जोड़ा। वास्तविक browser Push, Supabase RLS और provider delivery परीक्षण अभी लंबित हैं।
+
+
+### 2026-11-16 — Electrician OTP, availability और सुरक्षित logout contract coverage
+- OTP login के phone validation, resend cooldown, signInWithOtp, busy-state cleanup और send-button restoration के source-contract assertions जोड़े।
+- OTP verification के SMS flow, token validation और busy-state cleanup के assertions जोड़े।
+- Availability change में approved-active profile gate, explicit confirmation, self-service RPC और failure पर buttons restore होने के assertions जोड़े।
+- Logout में active GPS watches clear करना, हर live-location server stop की पुष्टि, stop failure पर sign-out रोकना और Auth sign-out error handling के assertions जोड़े।
+- ये source-contract tests हैं; वास्तविक SMS/Auth, availability RPC, GPS/browser तथा live Supabase actor-isolation runtime अभी लंबित हैं। इस commit पर CI run उपलब्ध नहीं है।
