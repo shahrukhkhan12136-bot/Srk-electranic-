@@ -3920,3 +3920,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - यह केवल Node/static/mock regression suite है। PostgreSQL migrations, pgTAP assertions, Supabase replay, Production schema parity या Razorpay/SMS/Push integration का प्रमाण नहीं।
 - इस CI सफलता से GPT-2 की 27/39 checklist संख्या नहीं बदली; GPT-2 69% और कुल project 64% ही है।
 - कोई merge, deployment, Production DB operation या provider transaction नहीं किया।
+
+
+### मूल `amount_paid` / `auth_user_id` DDL की targeted source-search पुनःजाँच — 15 Nov 2026
+- Repository code search में `amount_paid numeric`, `amount_paid decimal`, `auth_user_id uuid`, `auth_user_id references auth.users`, और `service_bookings amount_paid` खोजे।
+- कोई authoritative base-column declaration नहीं मिली। Search results में केवल consumers मिले: commission trigger/reporting, Admin column grant, Razorpay webhook write, receipt/history RPC, तथा Google Maps approval function और wallet ownership lookup।
+- Quote migration में `amount_paid` की non-negative validation है, पर column creation नहीं। Google Maps migration `auth_user_id` को INSERT/UPSERT में लिखती है, पर column creation/FK declaration नहीं।
+- यह GitHub code search है, पूर्ण Git object/history या live database catalog का प्रमाण नहीं; इसलिए निष्कर्ष “इस खोज में declaration नहीं मिली” तक सीमित है।
+- DDL अनुमान से नहीं जोड़ी जाएगी। अगला प्रमाण-स्रोत अधिक पुरानी migration/tag/deployment artifact या owner-approved read-only catalog export होना चाहिए।
+- Checklist closure नहीं; GPT-2 27/39 = 69%, कुल project 55/86 = 64% अपरिवर्तित।
