@@ -6,6 +6,8 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
 const customer = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
+const timerSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114240000_server_authoritative_customer_approved_work_timer.sql'), 'utf8');
+const startFixSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114260000_fix_work_start_rpc_and_append_only_event_history.sql'), 'utf8');
 
 function handler(source, name) {
   const start = source.indexOf('async function ' + name + '(');
@@ -75,4 +77,50 @@ test('booking lifecycle UI distinguishes pending start, running work, completion
   assert.match(customer, /work_start_approval_status/);
   assert.match(customer, /completion_approval_status/);
   assert.match(customer, /completion_approval_status==='pending'/);
+});
+
+
+function sqlFunction(source, name) {
+  const start = source.indexOf('CREATE OR REPLACE FUNCTION public.' + name + '(');
+  assert.ok(start >= 0, name + ' SQL function exists');
+  const end = source.indexOf('$function$;', start);
+  assert.ok(end > start, name + ' SQL function body ends');
+  return source.slice(start, end + '$function$;'.length);
+}
+
+test('server work-start request and customer approval lock the booking and use server clock', () => {
+  const request = sqlFunction(timerSql, 'srk_electrician_request_work_start');
+  const approval = sqlFunction(startFixSql, 'srk_customer_respond_work_start');
+  assert.match(request, /assigned_electrician_id=v_profile FOR UPDATE/);
+  assert.match(request, /work_start_requested_at=clock_timestamp\(\)/);
+  assert.match(request, /work_timer_running=false/);
+  assert.match(approval, /customer_user_id=auth\.uid\(\)[\s\S]*?FOR UPDATE/);
+  assert.match(approval, /work_started_at=clock_timestamp\(\)/);
+  assert.match(approval, /work_timer_running=true/);
+  assert.match(approval, /work_start_approval_status='rejected'/);
+});
+
+test('server completion freezes elapsed time and customer rejection resumes from server time', () => {
+  const request = sqlFunction(timerSql, 'srk_electrician_request_work_completion');
+  const response = sqlFunction(timerSql, 'srk_customer_respond_work_completion');
+  assert.match(request, /assigned_electrician_id=v_profile FOR UPDATE/);
+  assert.match(request, /clock_timestamp\(\)-b\.work_started_at/);
+  assert.match(request, /work_timer_running=false/);
+  assert.match(request, /completion_approval_status='pending'/);
+  assert.match(response, /customer_user_id=auth\.uid\(\)[\s\S]*?FOR UPDATE/);
+  assert.match(response, /IF p_response='approved' THEN/);
+  assert.match(response, /INSERT INTO public\.srk_booking_labour_bills/);
+  assert.match(response, /ELSIF p_response='rejected' THEN[\s\S]*?work_started_at=clock_timestamp\(\),work_timer_running=true/);
+  assert.match(response, /ELSE[\s\S]*?srk_booking_complaints[\s\S]*?completion_approval_status='disputed'[\s\S]*?work_timer_running=false/);
+});
+
+test('offer acceptance verifies assigned electrician and locks offer plus booking before assignment', () => {
+  const fn = sqlFunction(timerSql, 'srk_respond_to_offer');
+  assert.match(fn, /e\.user_id=auth\.uid\(\) AND e\.auth_user_id=auth\.uid\(\)/);
+  assert.match(fn, /e\.verification_status='approved' AND e\.active=true/);
+  assert.match(fn, /FOR UPDATE OF o/);
+  assert.match(fn, /FROM public\.service_bookings WHERE id=v_booking_id FOR UPDATE/);
+  assert.match(fn, /status='accepted'/);
+  assert.match(fn, /assigned_electrician_id=v_electrician_id,status='assigned'/);
+  assert.match(fn, /v_expires_at<=clock_timestamp\(\)/);
 });
