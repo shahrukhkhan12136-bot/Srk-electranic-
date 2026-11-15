@@ -782,8 +782,19 @@ async function saveBookingInternal(id){
    : 'वास्तविक मैनुअल भुगतान और रसीद सुरक्षित रूप से दर्ज हो गई।');
   await loadAll();return;
  }
- const {data:updatedBooking,error:updateError}=await sb.from('service_bookings').update({status,quoted_amount:quoted}).eq('id',id).select('id').maybeSingle();
- if(updateError||!updatedBooking){alert('बुकिंग अपडेट नहीं हुई। Admin अनुमति, बुकिंग स्थिति और server-side नियम जाँचें।');await loadAll();return;}
+ const {data:updatedBooking,error:updateError}=await sb.from('service_bookings').update({quoted_amount:quoted}).eq('id',id).select('id').maybeSingle();
+ if(updateError||!updatedBooking){alert('बुकिंग की तय राशि अपडेट नहीं हुई। Admin अनुमति और बुकिंग स्थिति जाँचें।');await loadAll();return;}
+ if(status!==booking.status){
+  if(booking.selected_category||booking.status!=='new'||status!=='confirmed'){
+   alert('पुरानी बुकिंग में Admin केवल नई बुकिंग को Confirm कर सकता है। Assignment, Inspection, Quote, Work Completion और Cancellation अपने सुरक्षित workflow से ही होंगे।');
+   await loadAll();return;
+  }
+  const {data:confirmation,error:confirmationError}=await sb.rpc('srk_admin_confirm_legacy_booking',{p_booking_id:id});
+  if(confirmationError||!confirmation?.success){
+   alert('बुकिंग Confirm नहीं हुई। मौजूदा Status और Admin अनुमति जाँचें; तय राशि का बदलाव अलग से सुरक्षित हो चुका हो सकता है।');
+   await loadAll();return;
+  }
+ }
  await loadAll();
 }
 const adminApplicationReviewBusy=new Set();
