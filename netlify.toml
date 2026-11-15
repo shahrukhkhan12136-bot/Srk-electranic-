@@ -61,3 +61,13 @@
   from = "/api/razorpay-refund-recovery"
   to = "/.netlify/functions/razorpay-refund-recovery"
   status = 200
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
