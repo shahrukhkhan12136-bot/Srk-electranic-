@@ -162,7 +162,7 @@
 ## अभी का साफ निष्कर्ष
 
 **Feature implementation:** कई मुख्य Customer, Electrician, Admin/Staff, payment/refund, KYC, timer, dispatch और Push workflows Feature Branch में implement हैं; legacy manual-payment source gap भी अभी जोड़ा गया है।  
-**Founder/Welcome source status:** founder asset और Welcome Screen integration अब Feature Branch में मौजूद हैं; exact approved portrait से visual match और Preview/owner acceptance अभी pending हैं।  
+**Founder/Welcome source status (2026-11-15 correction):** Welcome Screen और Customer Login में अभी `founder-photo-pending` placeholder है; `assets/srk-founder.jpg` collage है और approved original नहीं, इसलिए उसे display नहीं किया गया। Library की `Urban Garden Portrait.png` मूल garden portrait को branch में lossless तरीके से transfer करके दोनों screens में integrate करना बाकी है। उसके बाद exact visual match, Preview और owner acceptance होंगे।  
 **अभी का मुख्य verification blocker:** non-Push database/RPC/browser end-to-end runtime; Push के local PostgreSQL tests सफल हैं, लेकिन managed Supabase parity और Edge↔Netlify/provider integration बाकी है।  
 **Production:** कोई migration apply, merge, deployment या live payment action नहीं किया गया है।
 
