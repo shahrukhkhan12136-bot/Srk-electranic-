@@ -2706,3 +2706,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Historical booking/financial data और legacy audit columns untouched हैं; destructive cleanup नहीं किया।
 - Admin/Accounting reconciliation और manual-payment source में पुराने quote-dependent checks मिले। ये GPT-2 ownership हैं; उन्हें बदले बिना cross-owner review के लिए pending दर्ज किया।
 - SQL runtime/pgTAP और RPC caller contract verification बाकी हैं। कोई Production migration, deployment, PR merge या live booking/payment action नहीं।
+
+
+## 2026-11-15 — Quotation retirement: electrician contract hardening
+
+- Offer-details RPC migration को ठीक किया ताकि portal के आवश्यक `offer_expires_at` और `estimated_labour_paise` fields न टूटें; quote-only projections हटे।
+- Contact details केवल assigned status में exposed हैं; category/rate/duration/server timer fields सुरक्षित।
+- Electrician App से आखिरी legacy `quoted_amount` display fallback हटाया। अब server-calculated estimate ही दिखता है।
+- Regression tests जोड़े: `tests/electrician-legacy-quotation-retirement.test.js`।
+- Node CI run `43705727199` commit `b9fd6a1` पर success हुआ, लेकिन बाद के contract/UI/test commits पर runs `43705891497` और `43705887412` latest check के समय pending/in-progress थे; latest-head PASS अभी प्रमाणित नहीं।
+- GPT-2 cross-owner blockers: Admin quote editing UI, legacy manual-payment approved-quote dependency, reconciliation approved-quote exception. इन्हें नए immutable server-timed labour bill और separate materials receipt से जोड़ना होगा।
+- Historical quote/status audit columns तथा old booking status constraints अभी preserve हैं; कोई paid/settled record delete नहीं किया। SQL runtime/pgTAP pending. No Production migration, deployment, PR merge or live payment action.
