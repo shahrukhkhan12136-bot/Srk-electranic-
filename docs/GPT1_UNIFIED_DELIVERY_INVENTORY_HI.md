@@ -206,3 +206,21 @@ Migration-source checks:
 - **GPT-2 handoff / unresolved migration-baseline dependency:** Electrician UI सीधे `electrician_profiles` से अपना profile पढ़ता है। Legacy `COMPLETE_DATABASE_SETUP.sql` में `srk_electrician_read_own_profile` policy (`user_id = auth.uid()`) मौजूद है; इस audit में migration chain की जाँची गई identity migrations (`20261109000500...`, `20261114130000...`) में यह policy नहीं मिली। इसे अभी **confirmed missing** नहीं कह रहे, क्योंकि historical/base DDL और remote applied policy history अभी authoritative रूप से reconcile नहीं हैं। GPT-2 को यह exact dependency verify करनी है; fresh migration replay में policy न हो तो Electrician profile SELECT fail हो सकता है. GPT-1 ने कोई SQL/RLS change नहीं किया.
 
 यह source/policy-file inspection है, live role test नहीं। आगे का सुरक्षित कदम GPT-2 से authoritative baseline और migration replay में profile own-read policy की पुष्टि लेना है; Production query/change या migration apply नहीं किया गया।
+
+
+## 17. RLS regression-test coverage reconciliation — 15 Nov 2026
+
+इस pass में portal direct-access tables के migrations और उपलब्ध pgTAP files को साथ मिलाया:
+
+| Client direct access | Migration policy evidence | Dedicated DB security regression test |
+|---|---|---|
+| Customer `service_bookings` own-row SELECT | `20261108121115_add_customer_account_booking_access.sql`; merged Admin/customer policy `20261108234000_combine_booking_read_policy.sql` | इस tree के 32 pgTAP SQL files में इस exact own-row policy/actor-isolation की dedicated assertion नहीं मिली |
+| Electrician `electrician_profiles` own-row SELECT | Legacy `COMPLETE_DATABASE_SETUP.sql` / `PORTAL_SCHEMA.sql` में policy; current migration chain में इस audit तक authoritative confirmation नहीं | नहीं; `electrician_profile_identity_linking.test.sql` identity trigger/link consistency जाँचता है, self-read RLS नहीं |
+| Electrician `srk_push_subscriptions` own-user upsert/delete | `20261111020000_add_electrician_push_subscriptions.sql` में RLS + `user_id = auth.uid()` policy | push delivery tests मौजूद, पर table owner-policy isolation का dedicated pgTAP test नहीं मिला |
+| Electrician `srk_wallet_accounts`, `srk_wallet_ledger`, `srk_wallet_bank_links` own-user SELECT | `20261109010000_create_secure_wallet_ledger_foundation.sql` में तीनों owner-read policies और authenticated SELECT grants | wallet RLS owner-vs-other-user का dedicated pgTAP test नहीं मिला; accounting tests दूसरे accounting contracts को cover करते हैं |
+| Electrician `srk_electrician_payouts` own/admin SELECT | `20261114125844_restore_financial_audit_core_schema.sql` में `srk_read_authorized_electrician_payouts` | `financial_audit_core_schema.test.sql` में grant और Admin/linked electrician policy definition assertions मौजूद |
+| Customer avatar/support Storage objects | Private buckets + owner/complaint/admin-scoped policies | `customer_profile_saved_addresses_private_storage.test.sql`, `customer_avatar_object_integrity.test.sql`, `support_attachment_admin_message_access.test.sql` में policy/bucket/object ownership assertions मौजूद |
+
+**GPT-2 को भेजने योग्य database/security verification items:** (1) Electrician own-profile SELECT policy migration chain में मौजूद है या नहीं, authoritative base schema + migration replay से तय करें; (2) customer booking own-row SELECT, electrician profile self-read, push subscription owner-only write, और wallet owner-only read के लिए अलग pgTAP actor-isolation tests जोड़ें/मौजूदा tests में exact assertions पहचानें। यह केवल test-coverage gap है, runtime vulnerability का दावा नहीं। GPT-1 ने इन GPT-2-owned SQL/RLS areas में कोई edit नहीं किया।
+
+**GPT-1 source/test reconciliation:** Customer Storage controls की dedicated pgTAP coverage मौजूद है; payout RLS contract test मौजूद है। Customer/Electrician portal के RPC/UI Node source contracts मौजूद हैं, पर वे live authenticated actor isolation या वास्तविक DB execution सिद्ध नहीं करते। Manual mobile QA और all-provider runtime QA अभी deferred हैं।
