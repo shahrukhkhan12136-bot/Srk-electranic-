@@ -9,7 +9,7 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202611151
 
 test('categorized customer refund UI is available only after completed work', () => {
   assert.match(booking, /const refundLifecycleEligible=row\.selected_category==null\|\|row\.status==='completed';/);
-  assert.match(booking, /const canRequestRefund=refundLifecycleEligible\s+&& String\(row\.payment_status\|\|' '\)\.toLowerCase\(\)==='paid'/);
+  assert.match(booking, /const canRequestRefund=refundLifecycleEligible\s+&& String\(row\.payment_status\|\|''\)\.toLowerCase\(\)==='paid'/);
 });
 
 test('server independently enforces completed categorized booking and verified paid amount', () => {
