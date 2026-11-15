@@ -93,7 +93,8 @@ test('server work-start request and customer approval lock the booking and use s
   const request = sqlFunction(timerSql, 'srk_electrician_request_work_start');
   const approval = sqlFunction(startFixSql, 'srk_customer_respond_work_start');
   assert.match(request, /WHERE id=p_booking_id FOR UPDATE/);
-  assert.match(request, /p\.id=b\.assigned_electrician_id[\\s\\S]*?p\.user_id=auth\\.uid\\(\\) OR p\.auth_user_id=auth\\.uid\\(\\)/);
+  assert.ok(request.includes("p.id=b.assigned_electrician_id"));
+  assert.ok(request.includes("p.user_id=auth.uid() OR p.auth_user_id=auth.uid()"));
   assert.match(request, /work_start_requested_at=clock_timestamp\(\)/);
   assert.match(request, /work_timer_running=false/);
   assert.match(approval, /customer_user_id=auth\.uid\(\)[\s\S]*?FOR UPDATE/);
@@ -106,7 +107,8 @@ test('server completion freezes elapsed time and customer rejection resumes from
   const request = sqlFunction(timerSql, 'srk_electrician_request_work_completion');
   const response = sqlFunction(timerSql, 'srk_customer_respond_work_completion');
   assert.match(request, /WHERE id=p_booking_id FOR UPDATE/);
-  assert.match(request, /p\.id=b\.assigned_electrician_id[\\s\\S]*?p\.user_id=auth\\.uid\\(\\) OR p\.auth_user_id=auth\\.uid\\(\\)/);
+  assert.ok(request.includes("p.id=b.assigned_electrician_id"));
+  assert.ok(request.includes("p.user_id=auth.uid() OR p.auth_user_id=auth.uid()"));
   assert.match(request, /clock_timestamp\(\)-b\.work_started_at/);
   assert.match(request, /work_timer_running=false/);
   assert.match(request, /completion_approval_status='pending'/);
