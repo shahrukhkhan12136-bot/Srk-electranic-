@@ -2519,3 +2519,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - JavaScript parse-only check: `razorpay-webhook.js` PASS; `tests/razorpay-webhook-inbox.test.js` PASS. यह Node test execution नहीं है; webhook inbox suite runtime अभी नहीं चला.
 - No Razorpay API call, real refund, database apply, production deploy, merge, or mobile QA.
 - शेष runtime verification: signature/replay/duplicate delivery, provider event ordering, retry after ambiguous RPC/network outcome, Main Admin/Support Staff authorization, and database reconciliation transaction tests in isolated environment.
+
+
+### Admin Portal — generic booking completion guard — 15 नवम्बर 2026
+- Admin Portal के generic booking Save path में एक high-impact workflow gap मिला: Main Admin किसी unfinished legacy booking को सीधे `completed` चुनकर save कर सकता था. इससे सामान्य status update के रास्ते completion-linked commission/accounting triggers चलने का जोखिम था, बिना संबंधित trusted completion workflow के.
+- `admin.html` में guard जोड़ा: unfinished booking को generic Save path से Completed नहीं किया जा सकता; existing already-completed record को unchanged save करने का path बंद नहीं किया.
+- `tests/admin-refund-and-staff-access.test.js` में source regression assertion जोड़ा.
+- यह UI-layer hardening है, database authorization/trigger replacement नहीं. Backend completion RPC और trigger invariants की अलग source audit तथा isolated runtime test अभी बाकी हैं. JavaScript/Node test suite का runtime execution इस change के लिए अभी नहीं किया गया.
+- No booking status update, commission/payout mutation, DB apply, deployment, merge, or mobile QA.
