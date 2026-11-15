@@ -33,17 +33,16 @@ test('customer payment receipt HTML escapes every server-provided text field', (
   const start = booking.indexOf('async function customerPrintPaymentReceipt(');
   const end = booking.indexOf('\\nasync function ', start + 1);
   const fn = booking.slice(start, end < 0 ? booking.length : end);
-  for (const field of [
-    'data.receipt_reference', 'data.booking_id', 'data.customer_name',
-    'data.service_type', 'address', 'paymentDate', 'bookingDate',
-    'data.source_booking_id'
-  ]) {
-    if (field === 'address' || field === 'paymentDate' || field === 'bookingDate') {
-      assert.match(fn, new RegExp('customerEsc\\(' + field.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\\)'));
-    } else {
-      assert.match(fn, new RegExp('customerEsc\\(' + field.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '\\)'));
-    }
-  }
+  for (const pattern of [
+    /customerEsc\(data\.receipt_reference\)/,
+    /customerEsc\(data\.booking_id\)/,
+    /customerEsc\(data\.customer_name\)/,
+    /customerEsc\(data\.service_type\)/,
+    /customerEsc\(address\|\|R\(/,
+    /customerEsc\(paymentDate\)/,
+    /customerEsc\(bookingDate\)/,
+    /customerEsc\(String\(item\.source_booking_id\)/
+  ]) assert.match(fn, pattern);
   assert.match(booking, /function customerEsc\(value\)[\s\S]*?replace\(\/\[&<>"'\]\/g/);
 });
 
