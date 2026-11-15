@@ -105,3 +105,15 @@ test('customer support attachment cleanup re-reads authoritative links before de
   assert.match(send, /if\(safeToRemovePendingUpload\)await customerSb\.storage\.from\('srk-customer-support'\)\.remove\(\[pendingUploadPath\]\)/);
   assert.match(send, /if\(!lookupError&&Array\.isArray\(linkedAttachments\)\)/);
 });
+
+
+test('customer complaint submission reconciles an uncertain RPC result through the owner-scoped complaint list', () => {
+  const create = functionBody(customer, 'createCustomerSupportComplaint');
+  assert.match(create, /srk_customer_create_booking_complaint/);
+  assert.match(create, /srk_customer_list_booking_complaints/);
+  assert.match(create, /complaints\.find\(row=>row\.booking_id===bookingId&&row\.category===category&&row\.description===description\)/);
+  assert.match(create, /customerSupportSelectedId=confirmedComplaint\.id/);
+  assert.match(create, /दोबारा शिकायत नहीं भेजी गई/);
+  assert.match(create, /lookupSucceeded/);
+  assert.doesNotMatch(create,/catch[\s\S]*?customerSb\.rpc\('srk_customer_create_booking_complaint'/);
+});
