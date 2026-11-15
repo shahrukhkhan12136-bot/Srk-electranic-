@@ -554,7 +554,13 @@ BEGIN
 
   IF NEW.status='assigned'
      AND OLD.status IN ('new','confirmed')
-     AND NEW.assigned_electrician_id IS NOT NULL THEN
+     AND NEW.assigned_electrician_id IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM public.job_offers o
+       WHERE o.booking_id=NEW.id
+         AND o.electrician_id=NEW.assigned_electrician_id
+         AND o.status='accepted'
+     ) THEN
     RETURN NEW;
   END IF;
 
@@ -607,3 +613,60 @@ CREATE TRIGGER srk_guard_new_category_booking_status_transition
 
 COMMENT ON FUNCTION public.srk_guard_new_category_booking_status_transition() IS
   'Protects new-category bookings from direct status/category edits; allows only authorized work transitions and the dedicated approved cancellation workflow.';
+
+
+-- The accepted offer is recorded before the booking assignment update so the
+-- status guard can verify that assignment came from the real offer-response RPC.
+CREATE OR REPLACE FUNCTION public.srk_respond_to_offer(p_offer_id uuid,p_response text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $function$
+DECLARE
+  v_booking_id uuid;
+  v_electrician_id uuid;
+  v_offer_status text;
+  v_expires_at timestamptz;
+  v_next jsonb;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
+  IF p_response NOT IN ('accepted','declined') THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023'; END IF;
+
+  SELECT o.booking_id,o.electrician_id,o.status,o.expires_at
+    INTO v_booking_id,v_electrician_id,v_offer_status,v_expires_at
+  FROM public.job_offers o
+  JOIN public.electrician_profiles e ON e.id=o.electrician_id
+  WHERE o.id=p_offer_id AND e.user_id=auth.uid() AND e.auth_user_id=auth.uid()
+    AND e.verification_status='approved' AND e.active=true AND e.available_for_work=true
+  FOR UPDATE OF o;
+  IF v_booking_id IS NULL THEN RAISE EXCEPTION 'Offer not found or electrician is not active' USING ERRCODE='P0002'; END IF;
+  IF v_offer_status<>'offered' THEN RAISE EXCEPTION 'Offer already answered or expired' USING ERRCODE='55000'; END IF;
+
+  PERFORM 1 FROM public.service_bookings WHERE id=v_booking_id FOR UPDATE;
+  IF v_expires_at IS NOT NULL AND v_expires_at<=clock_timestamp() THEN
+    UPDATE public.job_offers SET status='expired',responded_at=clock_timestamp()
+      WHERE id=p_offer_id AND status='offered';
+    v_next:=private.srk_dispatch_next_booking_offer(v_booking_id);
+    RETURN jsonb_build_object('success',false,'code','offer_expired','next_offer',v_next);
+  END IF;
+
+  IF p_response='accepted' THEN
+    UPDATE public.job_offers SET status='accepted',responded_at=clock_timestamp()
+      WHERE id=p_offer_id AND status='offered';
+    IF NOT FOUND THEN RAISE EXCEPTION 'Offer already answered or expired' USING ERRCODE='55000'; END IF;
+    UPDATE public.service_bookings SET assigned_electrician_id=v_electrician_id,status='assigned'
+      WHERE id=v_booking_id AND assigned_electrician_id IS NULL AND status IN ('new','confirmed');
+    IF NOT FOUND THEN RAISE EXCEPTION 'This job has already been assigned' USING ERRCODE='55000'; END IF;
+    UPDATE public.job_offers SET status='cancelled',responded_at=clock_timestamp()
+      WHERE booking_id=v_booking_id AND id<>p_offer_id AND status='offered';
+    UPDATE srk_private.srk_booking_offer_dispatch SET dispatch_status='accepted',updated_at=clock_timestamp()
+      WHERE booking_id=v_booking_id;
+    RETURN jsonb_build_object('success',true,'status','accepted');
+  END IF;
+
+  UPDATE public.job_offers SET status='declined',responded_at=clock_timestamp() WHERE id=p_offer_id;
+  v_next:=private.srk_dispatch_next_booking_offer(v_booking_id);
+  RETURN jsonb_build_object('success',true,'status','declined','next_offer',v_next);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_respond_to_offer(uuid,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_respond_to_offer(uuid,text) TO authenticated;
