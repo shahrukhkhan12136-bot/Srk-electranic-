@@ -307,3 +307,12 @@
 - [x] Added regression assertions for representative new translation values and accessibility labels.
 - [x] Latest feature branch Node test workflows on `d55c11159b865386234601df2041c998fa735d6b`: **SUCCESS** (two full repository Node test runs).
 - [ ] Browser runtime language switching and visual behavior remain pending; final consolidated mobile QA remains deferred.
+
+
+### 2026-11-15 — Customer dynamic English messages and dialogs
+- [x] Added English dictionary entries for dynamic GPS/location feedback, payment history and refund loading/errors, complaint/status feedback, work-start approval, cancellation and booking errors, OTP/session feedback, address operations, and payment result messages.
+- [x] Wrapped native `window.confirm` through the same English translation function as `window.alert`, so confirmation dialogs are localized too.
+- [x] Added English copy for the full cancellation-fee policy confirmation and translated labels inside the dynamic booking confirmation summary (tier, duration, estimated labour, payment method, prior fee line items).
+- [x] Added regression coverage for dynamic messages, confirmation dialogs and cancellation/booking summary text.
+- [x] First test run caught a test-only wrapper-name mismatch; corrected the test. Latest branch-head runs on `3fb69b1c59858f291fd0821e658e0ee837aad5b9`: **SUCCESS** (two full repository Node test runs).
+- [ ] Browser runtime language switching, dynamic backend-provided message coverage and visual QA remain pending. Final consolidated mobile QA remains deferred.
