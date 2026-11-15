@@ -1,6 +1,5 @@
 -- Complete the private electrician KYC document lifecycle and gate activation on required evidence.
 -- Feature Branch source only; do not apply to Production without the approved rollout.
-begin;
 
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values(
@@ -543,5 +542,3 @@ comment on table public.srk_electrician_verification_documents is
   'Private electrician KYC documents. Direct client table access is revoked; use owner/Admin projections and signed private storage URLs.';
 comment on table public.srk_electrician_verification_document_events is
   'Append-only KYC submission and Admin review history; no direct client access.';
-
-commit;
