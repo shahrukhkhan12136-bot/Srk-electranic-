@@ -171,3 +171,13 @@
 4. Financial audit base objects payout/refund/manual payment RPCs के पहले चाहिए; exact FK, trigger and enum/state dependencies line-by-line verify हों।
 5. Push subscription/outbox/delivery/health/lease sequence का replay क्रम source-level function signature diff से confirm करना बाकी है।
 6. इस scan से कोई missing DDL अनुमान से नहीं जोड़ा गया। Duplicate version, `amount_paid`, `auth_user_id` और baseline gaps अब भी hard blockers हैं।
+
+
+### 5.7 Older branch/schema provenance re-check — 15 नवम्बर 2026
+Older `feature/business-finance-dashboard` और `work/separate-customer-electrician-portals` source branches पर अतिरिक्त cross-check किया गया:
+- `SUPABASE_SCHEMA.sql` तथा `COMPLETE_DATABASE_SETUP.sql` में `service_bookings` और `electrician_profiles` के base `CREATE TABLE` statements हैं, लेकिन इनमें `amount_paid` या `auth_user_id` column definition नहीं मिली। `PORTAL_SCHEMA.sql` में भी इन दो column names की definition नहीं मिली।
+- Finance branch की `20261109075837_electrician_inspection_quotes_and_service_only_commission.sql` `service_bookings` में `service_charge`, `materials_amount`, quote status/timestamps और `work_started_at` जोड़ती है; `amount_paid` नहीं जोड़ती, जबकि trigger/function उसी column को पढ़ते हैं।
+- Portal branch की `20261109171621_add_admin_verified_manual_payment_workflow.sql` `amount_paid` को UPDATE करती है और उसी को validate भी करती है; यह column को ADD नहीं करती। अन्य finance/refund migrations भी इसे पहले से मौजूद मानती हैं।
+- Portal branch की `20261109223000_sync_electrician_auth_profile_link.sql` `auth_user_id` में Auth ID लिखती है और `user_id OR auth_user_id` से lookup करती है; यह column को ADD नहीं करती। `20261110030000_admin_direct_electrician_assignment.sql` भी इसे पहले से मौजूद मानती है।
+- इन पुराने branches के schema/migration copies स्वतंत्र schema provenance नहीं हैं और इनके consumers column contract (type, nullability, default, constraints, indexes) प्रमाणित नहीं करते। इसलिए दोनों columns के exact base DDL अब भी unresolved हैं; कोई guessed `ADD COLUMN` प्रस्तावित नहीं है।
+- ध्यान दें: पुराने finance branch में quote migrations को अलग timestamped filenames मिले थे (`20261109075837`, `20261109080400`), जबकि वर्तमान Feature Branch में दोनों `20261109` prefix पर हैं। यह historical lineage clue है, लेकिन वर्तमान Supabase migration history के लिए rename/replay plan नहीं है।
