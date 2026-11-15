@@ -27,6 +27,14 @@ test('SOS creation derives one active booking and actor from authenticated serve
   assert.match(migration, /selected_category is not null/);
 });
 
+
+test('SOS contact snapshots respect schema bounds and tolerate malformed phone values', () => {
+  assert.match(migration, /v_actor_name:=left\(coalesce\(nullif\(btrim\(v_booking\.customer_name\),''\),'Customer'\),120\)/);
+  assert.match(migration, /v_actor_name:=left\(coalesce\(nullif\(btrim\(v_profile\.display_name\),''\),'Electrician'\),120\)/);
+  assert.equal((migration.match(/length\(btrim\(coalesce\(v_(?:booking\.phone|profile\.phone),'')\)\) between 5 and 30/g) || []).length, 2);
+  assert.equal((migration.match(/then btrim\(v_(?:booking\.phone|profile\.phone)\) else 'Unavailable' end/g) || []).length, 2);
+});
+
 test('SOS cases and event history are private and append-only', () => {
   assert.match(migration, /alter table public\.srk_sos_alerts enable row level security/i);
   assert.match(migration, /revoke all on public\.srk_sos_alerts from public,anon,authenticated/i);
