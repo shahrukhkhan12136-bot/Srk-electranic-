@@ -985,3 +985,18 @@ Read-only inspection of `20261114390000_admin_staff_rbac_foundation.sql`, `20261
 Therefore the Admin helper gap is not isolated to the older complaint/commission migrations: later Staff RBAC and booking-write-closure migrations also depend on it. A future approved baseline must supply the exact Main Admin helper and its allow-list table before these dependents. Do not substitute `srk_is_admin()` or `srk_has_admin_permission()` for `is_srk_admin()`; they have different names and roles.
 
 No migration or policy was changed. No database execution, Production access, migration replay, or deployment occurred.
+
+
+## 33. Main Admin allow-list table और helper — exact historical source cross-check — 16 Nov 2026
+
+Exact-definition search और historical root SQL cross-check से निम्न बातें स्थापित हुईं:
+
+- `PORTAL_SCHEMA.sql` में `public.srk_admin_users` का source DDL है: `user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE`, साथ में `created_at timestamptz NOT NULL DEFAULT now()`।
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` इस table पर RLS enable करता है, `srk_admin_users_self_read` policy authenticated user को केवल `user_id = auth.uid()` row पढ़ने देती है, और `public.is_srk_admin()` को `SECURITY DEFINER`, `STABLE`, `SET search_path = public, auth` के साथ define करता है। Function `srk_admin_users` में current `auth.uid()` की मौजूदगी देखता है; PUBLIC EXECUTE revoke और authenticated EXECUTE grant भी स्पष्ट हैं।
+- `COMPLETE_DATABASE_SETUP.sql` में यही table/helper setup सम्मिलित है। ये historical setup SQL artifacts हैं; वर्तमान versioned migration chain का हिस्सा होने का प्रमाण नहीं।
+- Current 87-file migration inventory और exact-definition search में `CREATE OR REPLACE FUNCTION public.is_srk_admin()` या `CREATE TABLE public.srk_admin_users` वाली कोई versioned migration नहीं मिली। Migration files इसे call करती हैं, पर helper/table को introduce नहीं करतीं।
+- अतः exact historical definition और grants ज्ञात हैं; लेकिन clean migration replay में इन्हें कौन-सा approved versioned baseline स्थापित करता है, यह अब भी unresolved है। Historical SQL को स्वतः replay करने की अनुमति या सुरक्षितता इससे नहीं मिलती।
+
+यह finding Sections 30–32 को और स्पष्ट करती है: Main Admin allow-list identity (`srk_admin_users`) और delegated staff permission helper (`srk_has_admin_permission`) अलग authorization layers हैं। Main Admin helper/table के बिना dependent migrations को replay-ready नहीं कहा जा सकता।
+
+कोई historical SQL execute नहीं किया गया; कोई Admin identity/allow-list row नहीं पढ़ी या बदली गई; Production access, migration replay, DDL या deployment नहीं हुआ।
