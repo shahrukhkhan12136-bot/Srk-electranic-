@@ -320,3 +320,12 @@ Source call-sites के RPC names और payload keys को संबंधि
 
 - Documentation commit `fd9560b1689bcf017a9a0d836f69ea34d2ee60e3` पर GitHub Actions Node workflow runs `43747463894` और `43747468082` दोनों **completed / success** हैं। दोनों उसी exact branch-head SHA पर चले; dependency install और repository Node test job सफल रहे।
 - Recheck में PR #8 Open / Draft / mergeable रहा। कोई merge, deploy, SQL migration, Production action या mobile QA नहीं किया गया।
+
+
+## 22. GPT-2 base-DDL correction cross-reference — 16 Nov 2026
+
+- GPT-2 की authoritative dependency note `docs/BASE_SCHEMA_MIGRATION_DEPENDENCY_GAPS_20261115.md` में direct migration inspection के आधार पर पुष्टि है कि `20261109000500_harden_electrician_profile_identity_linking.sql` `public.electrician_profiles.auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL` जोड़ती है, और non-NULL values के लिए partial unique index बनाती है। इसलिए `auth_user_id` current Feature Branch migration-chain का unresolved source-DDL blocker **नहीं** है।
+- इस inventory के पुराने Sections 7/8 तथा पहले के RLS notes में `auth_user_id` को unresolved बताया गया था; वे historical observations हैं और इस correction से superseded हैं। यह correction केवल source migration chain के बारे में है; remote migration application या live DB parity का प्रमाण नहीं।
+- अभी उपलब्ध checked-in evidence के अनुसार confirmed missing base-source column dependency `public.service_bookings.amount_paid` है। उसका authoritative type, precision, nullability, default, constraints/indexes/grants अभी अज्ञात हैं; अनुमान से DDL नहीं जोड़ना है।
+- GPT-2 owner को यही एक base-DDL gap और शेष migration replay / remote history / actor-isolation runtime gates आगे verify करने हैं। GPT-1 ने GPT-2-owned SQL/RLS में कोई बदलाव नहीं किया।
+- इस दस्तावेज़ को cross-reference के रूप में अपडेट किया गया; कोई application source, migration, Production setting, payment/provider, deployment या mobile QA नहीं बदला/चलाया गया।
