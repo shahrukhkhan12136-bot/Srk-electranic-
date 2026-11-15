@@ -3059,3 +3059,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Wallet summary RPC से है; bank-link query signed-in user-scoped और ledger query user + wallet scoped है। दोनों query failures अलग दिखते हैं। UI स्पष्ट करता है कि ledger balance बैंक ट्रांसफर का प्रमाण नहीं; withdrawal/transfer initiate करने वाला action मौजूद नहीं है।
 - इन contracts के लिए `tests/electrician-accounting-kyc-contract.test.js` जोड़ा। Latest branch SHA `6b83ba1dc3423921a00d1a71564869c286cfbf22` पर दो full repository Node workflows **SUCCESS** हुए।
 - Browser runtime/visual QA अभी pending; final consolidated mobile QA deferred है। No Production changes, merge or deployment.
+
+
+### Test harness follow-up — 2026-11-15
+
+- नए KYC/earnings/wallet contract test के पहले runs में केवल test helper के source-boundary extraction और regex escaping की गलतियाँ मिलीं; app source में कोई बदलाव आवश्यक नहीं हुआ।
+- Test helper को अगले function declaration तक सीमित किया और profile `finally` assertion ठीक की।
+- Latest branch head `2a7771c153b82785238256d8852e04aa540f901c` पर दोनों full repository Node workflows **SUCCESS** हुए।
