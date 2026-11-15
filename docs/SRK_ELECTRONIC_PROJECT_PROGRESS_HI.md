@@ -3744,3 +3744,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - यह code search confirms कि दोनों columns कई downstream features के लिए आवश्यक हैं; यह उनके actual SQL type, nullability, FK target, uniqueness या historical creation source को सिद्ध नहीं करता। कोई guessed DDL नहीं जोड़ी।
 - अगला सुरक्षित स्रोत: अधिकृत read-only Production schema catalog/export या वह मूल migration/commit जो इन columns को पहली बार बनाता है। बिना उसके PostgreSQL replay fixture/pgTAP runtime को authoritative baseline पर चलाना संभव नहीं।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित; audit findings को completion नहीं गिना गया।
+
+
+### GPT-2 local PostgreSQL feasibility + latest-head CI verification — 15 Nov 2026
+- PR #8 का वर्तमान head `008275b0d7724f101b531635dd7d32aa8197de2c` verify किया। इसी exact commit पर GitHub Actions run `43732055749` SUCCESS है; job `Node test suite (no secrets, no deployment)` और सभी steps successful हैं। इसे Node CI success माना गया है, PostgreSQL/pgTAP success नहीं।
+- Local execution environment में `psql`, `postgres`, `initdb`, `pg_ctl`, `docker`, `podman` और Python `psycopg` उपलब्ध नहीं मिले। इसलिए इस session में disposable PostgreSQL instance शुरू करके migration/pgTAP चलाना संभव नहीं हुआ। कोई remote/Production DB fallback इस्तेमाल नहीं किया।
+- Targeted repository code search ने फिर पुष्टि की कि `amount_paid` Razorpay webhook से लिखता है और booking/commission/refund/reporting flows पढ़ते हैं; `auth_user_id` Admin approval और wallet ownership paths में उपयोग होता है। Search में दोनों के defining column DDL नहीं मिले। Search index सीमित हो सकता है; इसे exhaustive proof नहीं माना गया।
+- दोनों कॉलम के exact baseline contract और local PostgreSQL runtime अभी blocker हैं। कोई अनुमानित DDL/fixture नहीं जोड़ी गई।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित; Node CI सफलता या provenance audit से कोई checklist item बंद नहीं हुआ।
