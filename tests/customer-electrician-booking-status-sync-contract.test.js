@@ -101,3 +101,8 @@ test('customer booking timeline reports partial per-booking RPC errors without t
   assert.match(load, /if\(timelineResults\.some\(\(\{result\}\)=>result\.error\)\)\s*\{/);
   assert.doesNotMatch(load, /if\(timelineResult\.error\)/);
 });
+
+test('customer booking status has a clear label while electrician work-start approval is pending', () => {
+  assert.match(customer, /awaiting_work_start_approval:'काम शुरू करने के लिए आपकी मंजूरी प्रतीक्षित'/);
+  assert.match(customer, /row\.status==='awaiting_work_start_approval'&&row\.work_start_approval_status==='pending'/);
+});
