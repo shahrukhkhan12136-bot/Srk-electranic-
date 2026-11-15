@@ -165,7 +165,7 @@ test('Support Staff authorization and assignment use a consistent lock order and
   const permissionEnd = staffMigration.indexOf('$function$;', permissionStart);
   assert.ok(permissionStart >= 0 && permissionEnd > permissionStart);
   const permission = staffMigration.slice(permissionStart, permissionEnd);
-  assert.match(permission, /tracked\\.auth_session_id = v_session_id/);
-  assert.match(permission, /tracked\\.revoked_at is null[\\s\\S]*?for share/);
-  assert.match(permission, /auth\\.sessions auth_s[\\s\\S]*?auth_s\\.id = v_session_id/);
+  assert.ok(permission.includes('tracked.auth_session_id = v_session_id'));
+  assert.ok(permission.includes('tracked.revoked_at is null') && permission.includes('for share'));
+  assert.ok(permission.includes('auth.sessions auth_s') && permission.includes('auth_s.id = v_session_id'));
 });
