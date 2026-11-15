@@ -28,6 +28,7 @@ test('only due delivery targets are claimed under row locks', () => {
 test('successful subscription delivery is persisted and not intentionally resent', () => {
   assert.match(edge, /srk_finish_push_subscription_delivery/);
   assert.match(edge, /p_success: true/);
+  assert.match(edge, /Invalid subscription identity/);
   assert.match(migration, /delivery_status='delivered'/);
 });
 
