@@ -919,3 +919,55 @@ Customer frontend `srk-customer-support` नाम के Storage bucket मे�
 अगला सुरक्षित कदम migration directory की प्रत्यक्ष पूरी inventory से support/complaint/Storage candidate files पहचानना और उनके complete SQL bodies की जाँच करना है। यदि कोई introducing source वास्तव में branch में नहीं है, तो उसे स्पष्ट missing-baseline item के रूप में दर्ज किया जाए; अनुमान से नया schema या migration न बनाया जाए।
 
 **सीमा:** यह source-only निरीक्षण है। कोई SQL execute नहीं हुआ; pgTAP, Supabase CLI, Docker या PostgreSQL नहीं चलाया गया; Production से संपर्क/पढ़ाई/बदलाव नहीं हुआ; कोई migration, application source या Storage object नहीं बदला गया।
+
+
+## 31. Support migration directory की प्रत्यक्ष inventory से Section 30 का संशोधन — 16 Nov 2026
+
+Section 30 के बाद migration directory की GitHub Contents API inventory को प्रत्यक्ष रूप से पढ़ा गया। कुल 87 migration filenames की सूची मिली। इस पूरी सूची में support के वे दो महत्वपूर्ण migration files मिले जो पहले exact-name code search में सामने नहीं आए थे। इसलिए Section 30 में complaint base tables और Storage setup को “introducing source नहीं मिला” कहना अधूरा था। नीचे corrected source-of-truth दर्ज है।
+
+### 31.1 Complaint base schema का source मिल गया
+
+`20261110040000_customer_admin_complaints.sql` ये objects बनाती है:
+
+- `public.srk_booking_complaints` — customer booking complaint, category, description, status, Admin note और resolution metadata;
+- `public.srk_booking_complaint_events` — complaint status/activity history;
+- complaint created/booking/status indexes;
+- customer complaint create/list RPCs और Admin complaint list/update RPCs;
+- दोनों base tables पर RLS enable और direct table privileges revoke।
+
+यह migration `service_bookings.customer_user_id` और `public.is_srk_admin()` पर निर्भर है। Customer account field पहले वाली `20261108121115_add_customer_account_booking_access.sql` migration में जोड़ी जाती है। `is_srk_admin()` की migration-chain introducing definition फिर भी नहीं मिली; इसका ऐतिहासिक root setup source Section 30.3 में दर्ज है।
+
+### 31.2 Conversation/attachment schema और private Storage source मिल गया
+
+`20261113220000_customer_support_conversation_schema.sql`:
+
+- `srk_booking_complaint_messages` और `srk_booking_complaint_message_attachments` tables बनाती है;
+- attachment thread integrity के लिए composite unique index और composite foreign key बनाती है;
+- customer message send/list और attachment-link RPCs बनाती है;
+- `srk-customer-support` bucket को private (`public=false`) बनाकर 10 MiB size limit और JPEG/PNG/WebP/PDF MIME allowlist सेट करती है;
+- `srk_customer_support_object_access(text,boolean)` helper बनाती है;
+- authenticated customer के complaint-folder upload/delete और customer-owner-or-Admin read के लिए Storage object policies बनाती है;
+- base support message/attachment tables पर RLS enable और direct privileges revoke करती है।
+
+Attachment linker Storage object के bucket ID, path prefix, customer ownership, complaint ownership, customer-authored message और file metadata की जाँच के बाद metadata row insert करता है।
+
+### 31.3 Support dependency order — source के अनुसार
+
+1. `20261108121115_add_customer_account_booking_access.sql` — `service_bookings.customer_user_id` prerequisite।
+2. Authoritative baseline में `public.is_srk_admin()` और `srk_admin_users` उपलब्ध होना चाहिए; current migrations में helper की introducing definition अब भी नहीं मिली।
+3. `20261110040000_customer_admin_complaints.sql` — complaint/event base tables और customer/Admin complaint RPCs।
+4. `20261113220000_customer_support_conversation_schema.sql` — complaint FK पर conversation/attachment tables, bucket, object access helper और Storage policies।
+5. `20261113230000_support_attachment_paths_and_admin_message_list.sql` — customer attachment listing और Admin message/attachment listing RPCs।
+6. `20261114300000_admin_customer_support_thread_replies.sql` — Admin reply RPC; prior complaint/message tables और Admin helper पर निर्भर।
+
+`20261114350000_electrician_support_tickets_and_admin_inbox.sql` अलग electrician-support subsystem है। यह electrician profile identity fields (`user_id`, `auth_user_id`), booking, Auth users और Admin helper पर निर्भर होकर ticket/message tables तथा electrician/Admin RPCs बनाती है। इसे customer complaint Storage chain के साथ एक ही table family न समझें।
+
+### 31.4 Corrected conclusion
+
+- Complaint base table source **मिल गया**: migration `20261110040000`।
+- Customer/Admin conversation, attachment schema और private Storage bucket/policies source **मिल गया**: migration `20261113220000`।
+- Attachment/Admin listing और Admin reply migrations बाद के क्रम में मौजूद हैं।
+- शेष प्रमुख unresolved dependency: `public.is_srk_admin()` का authoritative versioned migration/baseline source और उसका grants/privileges provenance।
+- Source order एक उपयोगी dependency sequence देता है, लेकिन इससे Production application या migration replay safety सिद्ध नहीं होती। Duplicate 20261109 prefix, approved baseline, remote migration lineage और Production provenance gates पहले जैसे खुले हैं।
+
+यह Section 30 की “support base/Storage source नहीं मिला” वाली provisional बात को supersede करता है। Section 30 का `is_srk_admin()` provenance finding अभी भी लागू है। कोई SQL execute, migration replay, pgTAP run, Production access/change, DDL या application source modification नहीं हुआ।
