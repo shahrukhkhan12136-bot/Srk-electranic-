@@ -39,6 +39,19 @@ test('transient endpoint errors retry per subscription; permanent gone endpoints
   assert.match(migration, /next_attempt_at=clock_timestamp\(\)\+make_interval/);
 });
 
+test('sender waits for every device attempt and persists success or retry outcome', () => {
+  assert.match(edge, /await Promise\.all\(claimed\.targets\.map/);
+  assert.match(edge, /p_success: true/);
+  assert.match(edge, /p_success: false/);
+  assert.match(edge, /srk_is_push_subscription_delivery_complete/);
+});
+
+test('permanent endpoint responses remove the subscription and cascade its ledger row', () => {
+  assert.match(edge, /status === 404 \|\| status === 410/);
+  assert.match(edge, /\.from\("srk_push_subscriptions"\)\.delete\(\)\.eq\("id", target\.subscription_id\)/);
+  assert.match(migration, /subscription_id uuid NOT NULL REFERENCES public\.srk_push_subscriptions\(id\) ON DELETE CASCADE/);
+});
+
 test('outbox completion waits for all subscription deliveries to reach terminal state', () => {
   assert.match(edge, /srk_is_push_subscription_delivery_complete/);
   assert.match(worker, /result\.complete === true/);
