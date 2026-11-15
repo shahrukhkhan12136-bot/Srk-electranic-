@@ -116,13 +116,13 @@ test('Customer booking list guards rejected auth session lookup and always clear
   const sessionAt = load.indexOf('customerSb.auth.getSession()');
   assert.ok(tryAt >= 0 && sessionAt > tryAt, 'session lookup is inside booking loader try/catch');
   assert.match(load, /if \(sessionError \|\| !session\)/);
-  assert.match(load, /finally \{\s*box\.setAttribute\('aria-busy','false'\);\s*\}/);
+  assert.match(load, /finally \{\s*if \(isCurrent\(\)\) box\.setAttribute\('aria-busy','false'\);\s*\}/);
   assert.match(load, /बुकिंग लोड नहीं हो सकीं/);
 });
 
 test('customer booking timeline isolates a rejected per-booking RPC transport', () => {
   const load = functionBody(customer, 'loadCustomerBookings');
-  assert.match(load, /catch\\(error\\)/);
+  assert.match(load, /catch\s*\(error\)/);
   assert.match(load, /return \\{ bookingId: row\\.id, result: \\{ error \\} \\};/);
 });
 
@@ -161,7 +161,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
   for (const fn of [electricianStart, electricianCompletion]) {
     assert.match(fn, /catch\s*\(/);
     assert.match(fn, /finally\s*\{\s*electricianLifecycleBusy\.delete\(bookingId\)/);
-    assert.match(fn, /रीफ़्रेश करके दोबारा कोशिश करें/);
+    assert.match(fn, /वर्तमान स्थिति रीफ़्रेश करके जाँचें/);
   }
   assert.match(customerRefund, /catch\s*\(error\)/);
   assert.match(customerRefund, /finally\s*\{\s*if\(button\)button\.disabled=false/);
@@ -179,7 +179,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
 test('customer live-location transport failure does not discard rendered booking history', () => {
   const live = customer.slice(customer.indexOf('async function refreshCustomerLiveLocations'), customer.indexOf('if(!customerLiveLocationPoller)'));
   assert.match(live, /try\{const \{data,error\}=await customerSb\.rpc\('srk_customer_get_live_electrician_location'/);
-  assert.match(live, /catch\(error\)\{box\.innerHTML=.*लोकेशन अभी लोड नहीं हो सकी/);
+  assert.match(live, /catch\(error\)\{if\(!isCurrent\(id\)\)return;box\.innerHTML=.*लोकेशन अभी लोड नहीं हो सकी/);
   assert.match(live, /await Promise\.all\(customerLiveLocationBookingIds\.map\(async id=>/);
   const load = functionBody(customer, 'loadCustomerBookings');
   assert.ok(load.indexOf('box.innerHTML = data.map') < load.indexOf('await refreshCustomerLiveLocations()'), 'booking cards render before location refresh');
@@ -207,7 +207,7 @@ test('Electrician earnings and wallet panels isolate rejected network requests',
   const wallet = electrician.slice(walletStart, respondStart);
   assert.match(earnings, /Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_get_my_earnings'\)\)\.catch\(error=>\(\{data:null,error\}\)\)/);
   assert.match(earnings, /\.catch\(error=>\(\{data:null,error\}\)\)/);
-  assert.match(earnings, /payout स्थिति लोड नहीं हुई/);
+  assert.match(earnings, /पेआउट स्थिति लोड नहीं हुई/);
   assert.match(wallet, /Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_get_my_wallet_summary'\)\)\.catch\(error=>\(\{data:null,error\}\)\)/);
   assert.match(wallet, /Promise\.resolve\(\)\.then\(\(\)=>sb\.from\('srk_wallet_bank_links'\)/);
   assert.match(wallet, /Promise\.resolve\(\)\.then\(\(\)=>sb\.from\('srk_wallet_ledger'\)/);
@@ -373,7 +373,10 @@ test('Electrician offers refresh on foreground and reconnect using the guarded d
 });
 
 test('Electrician notification deep links explain unavailable or non-actionable offers', () => {
-  const focus = functionBody(electrician, 'focusElectricianOfferFromNotification');
+  const focusStart=electrician.indexOf('function focusElectricianOfferFromNotification()');
+  const focusEnd=electrician.indexOf('\nfunction base64UrlToBytes',focusStart);
+  assert.ok(focusStart>=0&&focusEnd>focusStart,'notification focus handler exists');
+  const focus=electrician.slice(focusStart,focusEnd);
   assert.match(focus, /const card=document\.getElementById\('electricianOffer_\'\+offerId\)/);
   assert.match(focus, /if\(!card\.querySelector\('button\[onclick\*="respond\("\]'\)\)notice=/);
   assert.match(focus, /सूचना वाला ऑफर अब आपकी सूची में उपलब्ध नहीं है/);
@@ -389,7 +392,7 @@ test('Electrician offer expiry remains server-authoritative and advances the nex
   assert.match(offerDispatchSql, /'code','offer_expired'/);
   assert.match(offerDispatchSql, /WHERE o\.status='offered' AND o\.expires_at<=clock_timestamp\(\)/);
   assert.match(offerExpiryWorker, /srk_expire_and_advance_booking_offers/);
-  assert.match(offerExpiryWorker, /schedule: '\* \* \* \* \*'/);
+  assert.match(offerExpiryWorker, /schedule: "\* \* \* \* \*"/);
   const respondStart = electrician.indexOf('function respond(');
   const respondEnd = electrician.indexOf('\nfunction bookingMapDirections', respondStart);
   const respond = electrician.slice(respondStart, respondEnd);
@@ -415,11 +418,11 @@ test('Customer and electrician lifecycle actions reconcile uncertain network res
   const electricianStart = functionBody(electrician, 'electricianRequestWorkStart');
   const electricianCompletion = functionBody(electrician, 'electricianRequestWorkCompletion');
   for (const fn of [customerStart, customerCompletion]) {
-    assert.match(fn, /catch\([a-z]+\)\{try\{await loadCustomerBookings\(\);/);
+    assert.match(fn, /catch\s*\([a-z]+\)\s*\{\s*try\s*\{\s*await loadCustomerBookings\(\);/);
     assert.match(fn, /स्थिति रीफ़्रेश करके जाँचें/);
   }
   for (const fn of [electricianStart, electricianCompletion]) {
-    assert.match(fn, /catch\([a-z]+\)\{try\{await refresh\(\);/);
+    assert.match(fn, /catch\s*\([a-z]+\)\s*\{\s*try\s*\{\s*await refresh\(\);/);
     assert.match(fn, /वर्तमान स्थिति रीफ़्रेश करके जाँचें/);
   }
 });
