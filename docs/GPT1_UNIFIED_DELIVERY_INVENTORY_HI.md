@@ -187,3 +187,22 @@ Inspected the current Feature Branch source for `booking.html` and `electrician.
 - Electrician live-location source calls (start/update/stop/status) and customer location read have matching definitions in `20261114320000_booking_scoped_live_electrician_location.sql`.
 
 इन signatures/definitions का मिलान source-level पर हुआ है; actual RPC execution, actor isolation, grants/RLS, concurrency और returned payload behavior अभी runtime-verified नहीं हैं। अब शेष प्रमुख source reconciliation काम है: सभी direct Supabase table selects/inserts/updates और Storage bucket operations को संबंधित RLS/bucket policies तथा test coverage से जोड़ना; इसके बाद केवल वास्तविक mismatch मिलने पर code change करना।
+
+
+## 16. Direct table / Storage access और RLS dependency audit — 15 Nov 2026
+
+Portal source में direct client access inventory:
+
+- Customer: `service_bookings` SELECT (customer UID filter); `srk-customer-avatars` upload/signed-read/delete; `srk-customer-support` upload/signed-read/delete.
+- Electrician: `electrician_profiles` SELECT (current user filter); `srk_electrician_payouts` SELECT (profile ID filter); `srk_wallet_bank_links` और `srk_wallet_ledger` SELECT; `srk_push_subscriptions` upsert/delete.
+
+Migration-source checks:
+
+- Customer `service_bookings` own-row SELECT policy `srk_customer_read_own_bookings` मिली — `20261108121115_add_customer_account_booking_access.sql`.
+- Customer avatar और support-object policies/private buckets संबंधित migrations में मिलीं — `20261114201428_customer_profile_saved_addresses_private_storage.sql`, `20261114180000_harden_customer_avatar_object_integrity.sql`, `20261113220000_customer_support_conversation_schema.sql`. Support attachment object access customer complaint ownership helper से gated है; पूरा Storage runtime अभी pending है.
+- Electrician `srk_push_subscriptions` पर own-user RLS policy `20261111020000_add_electrician_push_subscriptions.sql` में मिली.
+- Electrician payout SELECT policy `srk_read_authorized_electrician_payouts` `20261114125844_restore_financial_audit_core_schema.sql` में मिली; यह Admin या linked profile के `ep.user_id = auth.uid()` को अनुमति देती है.
+- Wallet ledger और bank-link owner-read policies `20261109010000_create_secure_wallet_ledger_foundation.sql` में मिलीं.
+- **GPT-2 handoff / unresolved migration-baseline dependency:** Electrician UI सीधे `electrician_profiles` से अपना profile पढ़ता है। Legacy `COMPLETE_DATABASE_SETUP.sql` में `srk_electrician_read_own_profile` policy (`user_id = auth.uid()`) मौजूद है; इस audit में migration chain की जाँची गई identity migrations (`20261109000500...`, `20261114130000...`) में यह policy नहीं मिली। इसे अभी **confirmed missing** नहीं कह रहे, क्योंकि historical/base DDL और remote applied policy history अभी authoritative रूप से reconcile नहीं हैं। GPT-2 को यह exact dependency verify करनी है; fresh migration replay में policy न हो तो Electrician profile SELECT fail हो सकता है. GPT-1 ने कोई SQL/RLS change नहीं किया.
+
+यह source/policy-file inspection है, live role test नहीं। आगे का सुरक्षित कदम GPT-2 से authoritative baseline और migration replay में profile own-read policy की पुष्टि लेना है; Production query/change या migration apply नहीं किया गया।
