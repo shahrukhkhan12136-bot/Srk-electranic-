@@ -75,6 +75,7 @@ test('booking lifecycle UI distinguishes pending start, running work, completion
   assert.match(electrician, /booking_status==='in_progress'/);
   assert.match(electrician, /completion_approval_status==='pending'/);
   assert.match(electrician, /completion_approval_status==='disputed'/);
+  assert.match(electrician, /completion_approval_status!=='pending'&&o\.completion_approval_status!=='disputed'/);
   assert.match(customer, /work_start_approval_status/);
   assert.match(customer, /completion_approval_status/);
   assert.match(customer, /completion_approval_status==='pending'/);
