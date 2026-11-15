@@ -83,7 +83,7 @@ REVOKE ALL ON TABLE public.srk_booking_labour_bills FROM PUBLIC,anon,authenticat
 
 CREATE OR REPLACE FUNCTION public.srk_guard_server_work_timer()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE v_authorized boolean;
 BEGIN
@@ -129,7 +129,7 @@ CREATE TRIGGER srk_guard_server_work_timer
 
 CREATE OR REPLACE FUNCTION public.srk_guard_immutable_booking_labour_bill()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE b public.service_bookings%ROWTYPE; v_minutes bigint; v_amount numeric(24,0);
 BEGIN
@@ -174,7 +174,7 @@ CREATE TRIGGER srk_guard_immutable_booking_labour_bill
 
 CREATE OR REPLACE FUNCTION public.srk_electrician_request_work_start(p_booking_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE v_profile uuid; b public.service_bookings%ROWTYPE;
 BEGIN
@@ -202,7 +202,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.srk_customer_respond_work_start(p_booking_id uuid,p_response text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE b public.service_bookings%ROWTYPE; p public.electrician_profiles%ROWTYPE;
   v_rate bigint; v_tier text; v_version text;
@@ -253,7 +253,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.srk_electrician_request_work_completion(p_booking_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE v_profile uuid; b public.service_bookings%ROWTYPE; v_elapsed numeric(24,6);
 BEGIN
@@ -282,7 +282,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.srk_customer_respond_work_completion(p_booking_id uuid,p_response text,p_note text DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','auth','srk_private','pg_temp'
+SET search_path = ''
 AS $function$
 DECLARE b public.service_bookings%ROWTYPE; v_minutes bigint; v_paise numeric(24,0); v_amount numeric(18,2); v_note text:=NULLIF(btrim(p_note),'');
 BEGIN
