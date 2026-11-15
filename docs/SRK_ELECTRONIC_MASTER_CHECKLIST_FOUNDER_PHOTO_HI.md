@@ -499,3 +499,9 @@
 - Support ticket list loader में transport-safe result लाने के बाद पुराना undefined `error` variable reference बचा हुआ था; उसे हटाकर उसी result.error का उपयोग सुनिश्चित किया। यह वास्तविक source bug था जो सामान्य सफल response पर भी ReferenceError दे सकता था।
 - Support thread messages RPC को rejected network promise से सुरक्षित किया; failure पर बातचीत पैनल में Retry संदेश आता है।
 - Regression source-contract test जोड़ा। वास्तविक browser/network fault-injection और Supabase runtime जाँच अभी लंबित हैं।
+
+
+### Electrician App — प्रारंभिक Auth Session नेटवर्क विफलता
+- App initialization में `sb.auth.getSession()` के rejected promise / session error के लिए catch जोड़ा।
+- विफलता पर unhandled promise rejection के बजाय login screen और स्पष्ट OTP retry संदेश दिखेगा।
+- Regression source-contract test जोड़ा; वास्तविक browser/network fault injection और live Supabase auth परीक्षण अभी लंबित हैं।
