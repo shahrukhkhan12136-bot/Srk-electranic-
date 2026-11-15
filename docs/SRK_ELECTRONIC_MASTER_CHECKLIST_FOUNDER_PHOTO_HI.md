@@ -335,3 +335,16 @@
 - [ ] Run provider sandbox integration for Razorpay create/status/recovery/webhook paths; no live-provider action.
 - [ ] Review manual refund UI and RPC in a browser after all feature implementation; final mobile QA remains deferred to the single consolidated pass.
 - [ ] Production migration/deployment remains blocked pending explicit approval; no merge/deploy was done.
+
+
+### Admin Refund Queue और Manual Refund flow — 15 नवम्बर 2026
+- [x] Admin refund queue/decision migration का Main Admin authorization, request row lock, state transition और audit-note validation source review.
+- [x] Razorpay initiator, read-only status lookup, webhook/recovery evidence और service reconciliation path का source review; कोई provider request नहीं भेजी.
+- [x] Approved manual-payment Customer refund requests के लिए Admin UI में receipt/UTR आधारित manual refund record workflow जोड़ा.
+- [x] Manual refund RPC को approved request lock/approval check और successful booking refund के साथ Customer request `processed` transition हेतु सुधारा.
+- [x] Manual refund RPC पर pgTAP के 8 source assertions जोड़े; test plan/assertion count मिलाया. Runtime test अभी नहीं चला.
+- [ ] Fresh isolated database पर migration chain और संबंधित Admin refund/recovery pgTAP suites चलाना.
+- [ ] Razorpay provider sandbox integration, signature/webhook delivery, ambiguous timeout और recovery race को isolated environment में runtime verify करना.
+- [ ] Main Admin बनाम Support Staff runtime authorization test; source review में privileged RPCs `is_srk_admin()` से guarded हैं.
+- [ ] Production apply/deploy/merge और consolidated mobile QA अभी नहीं हुए; सभी approval guardrails लागू हैं.
+- Feature branch commits: `29da3e0` migration, `a8f41f9` Admin manual workflow, `b4b1cd2` safe Razorpay reason passing, `629574e` pgTAP.
