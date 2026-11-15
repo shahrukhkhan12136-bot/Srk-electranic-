@@ -338,3 +338,64 @@ ROLLBACK;
 - Supabase Production connection / remote history query: NOT RUN.
 - Live catalog snapshot: NOT ACCESSED.
 - Migration repair or database write: NONE.
+
+## 15. Reconciliation of awaiting_work_start_approval against later migration source — 16 Nov 2026
+
+### Question under review
+
+The reported live catalog contains status `awaiting_work_start_approval`, while the two source migrations with the duplicate `20261109` prefix do not list that state in their `service_bookings_status_check` definitions. This is a reconciliation point, not by itself evidence of an incorrect live schema.
+
+### Exact source SQL comparison
+
+1. `20261109_allow_quote_approval_booking_states.sql` defines the allowed status list as `new, confirmed, assigned, inspection, awaiting_quote_approval, quote_approved, quote_rejected, in_progress, completed, cancelled`; it does **not** include `awaiting_work_start_approval`.
+2. `20261109_electrician_inspection_quotes_and_service_only_commission.sql` ends with the same status list and likewise does **not** include `awaiting_work_start_approval`.
+3. A later source migration, `20261114240000_server_authoritative_customer_approved_work_timer.sql`, explicitly adds:
+   - `work_start_approval_status` (default `not_requested`);
+   - `work_start_requested_at` and related server timer / approval columns;
+   - `awaiting_work_start_approval` to `service_bookings_status_check`;
+   - the same state to the assignment-required CHECK constraint.
+4. The 20261114 source migration describes the new-customer work-start flow: an electrician requests permission, customer approval starts the server timer, and rejection returns the booking to `assigned`. The exact SQL also contains the status literal in its protected RPC.
+5. `20261114250000_admin_work_dispute_review_and_immutable_history.sql` adds append-only work lifecycle event history and Admin review source. `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql` later corrects/hardens the work-start response RPC and customer-safe timeline. These are related follow-on source files, but the status-list addition itself is in `20261114240000`.
+
+### Git source chronology (not Production deployment evidence)
+
+- The later work-timer migration first appears in Git at commit `9f29c1611d0c5ae5ecc052dd73b738da2ef20e40`, dated 2026-11-14 06:28:33 UTC, message “Add server-authoritative work timer and immutable labour-only bill”.
+- Fetching the file at that original commit confirms that the original committed body already contained both `awaiting_work_start_approval` and `work_start_approval_status`. Original blob SHA: `ab31e3ae78a706a02749e59ba2a8fd09b81b3f5a`.
+- The path history shows later edits to this migration through 2026-11-15, including timer precision, RPC validation, search-path hardening and assigned-electrician profile access. The current branch version is therefore not byte-for-byte identical to the initial Git blob; the current blob SHA at audit time is `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe`.
+- The 20261114250000 history file was first committed at `ca1f15e126a466903eb9e45ea5c0d0c4c0877c6c` (2026-11-14 06:37:50 UTC).
+- The 20261114260000 follow-up file has its own later Git history beginning 2026-11-14 06:48:37 UTC (`fe1e125407f15a629e8846835b92487b311cb445`), with further edits on 2026-11-14 and 2026-11-15.
+- Git commit history proves when these source files and revisions entered this repository. It does **not** prove that any of them were applied to Production, the order in which a hosted database applied them, or which exact later-edited file body was executed.
+
+### Required Production history reconciliation
+
+The reported live catalog observation is not independently re-queried in this audit. No Supabase Production connection or history query was performed. To reconcile it, an authorized Database Owner/DBA must use the approved read-only process from §14 and return the relevant history rows for **both** the 20261109 pair and the later work-timer family:
+
+```sql
+BEGIN READ ONLY;
+
+SELECT version, name
+FROM supabase_migrations.schema_migrations
+WHERE version LIKE '20261109%'
+   OR version LIKE '20261114%'
+ORDER BY version, name;
+
+ROLLBACK;
+```
+
+If the actual history table schema differs, inspect its columns first as described in §14 and stop if assumptions do not match. Preserve environment identity and query timestamp; do not share connection strings, passwords, or secrets.
+
+### Decision / no-remediation boundary
+
+- Source explanation for the status difference: **CONFIRMED** — the state is absent from both 20261109 source files and is explicitly introduced by later source migration `20261114240000`.
+- Original Git commit for that later migration and presence of the status in its original committed body: **CONFIRMED**.
+- Presence of `20261114240000`, `20261114250000`, or `20261114260000` in Production migration history: **NOT VERIFIED**.
+- Whether Production's live constraint came from that migration, a later migration, manual DDL, or another deployment path: **UNKNOWN** until owner-provided history and catalog evidence are reconciled.
+- Whether the Production-applied body matches the original or a later edited Git revision: **UNKNOWN**; a version/name history row alone may not prove the exact executed SQL body.
+- No migration was run, repaired, renamed, deleted, merged, reordered or edited. No Production connection or database write occurred. No GPT-1 Customer/Electrician/Welcome source was changed.
+
+### Source links
+
+- Original work-timer migration commit: https://github.com/shahrukhkhan12136-bot/Srk-electranic-/commit/9f29c1611d0c5ae5ecc052dd73b738da2ef20e40
+- Work-timer migration source: https://github.com/shahrukhkhan12136-bot/Srk-electranic-/blob/feat/customer-login-first-dashboard-20261114/supabase/migrations/20261114240000_server_authoritative_customer_approved_work_timer.sql
+- Work lifecycle history migration: https://github.com/shahrukhkhan12136-bot/Srk-electranic-/blob/feat/customer-login-first-dashboard-20261114/supabase/migrations/20261114250000_admin_work_dispute_review_and_immutable_history.sql
+- Work-start RPC correction migration: https://github.com/shahrukhkhan12136-bot/Srk-electranic-/blob/feat/customer-login-first-dashboard-20261114/supabase/migrations/20261114260000_fix_work_start_rpc_and_append_only_event_history.sql
