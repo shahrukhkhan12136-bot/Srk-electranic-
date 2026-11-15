@@ -3299,3 +3299,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Follow-up CI run `43718294235` में 154 में से 153 tests पास हुए; नया regression assertion regex over-escaped होने से fail हुआ, SQL source correction नहीं। Assertion को stable literal contract checks में बदला; corrected test के लिए CI फिर चल रहा है।
 
 - अतिरिक्त hardening: fixed search_path में `public` रखना अनावश्यक object-shadowing surface बना सकता था। अब दोनों SECURITY DEFINER RPCs के सभी `srk_private` table references fully-qualified हैं और final `search_path = ''` है; regression test उसी least-privilege contract को verify करता है।
+
+### GPT-2 New-category manual refund ↔ Labour Bill reconciliation — 15 Nov 2026
+- Refund chain audit में Customer request और Razorpay preparation पहले से immutable labour bill + settled cancellation-fee ledger से exact full amount मिलाते थे; manual Admin refund finalizer में यह explicit new-category cross-check missing था।
+- `srk_admin_record_manual_refund(uuid,text,text)` में new-category branch जोड़ी: booking completed हो; customer-owned immutable bill मौजूद हो; bill electrician profile current assigned electrician से match करे; cancellation-fee items row-lock हों और सभी settled हों; refund amount bill labour + settled fees के बराबर हो और booking तथा original manual-payment evidence दोनों से exact match करे।
+- Legacy quote-based manual refund path अलग रखा; online/Razorpay payment को manual refund से रोकने वाला guard, approved customer request gate, payout block→refunded closure और fee-reversal trigger नहीं बदले।
+- pgTAP `admin_manual_refund_request_completion.test.sql` को 10 से **14 assertions** तक बढ़ाया; plan count **14/14**। Node regression test में new-category bill, assignment, settled-fee और exact-amount guards जोड़े।
+- Feature Branch Node CI run `43718479171` SUCCESS: **155/155 Node tests PASS**। PostgreSQL/pgTAP runtime, concurrent DB transaction, वास्तविक manual refund या wallet/ledger reversal test अभी नहीं चला।
+- यह अतिरिक्त refund compatibility/security fix है; checklist checkbox अभी close नहीं किया। GPT-2 **27/39 = 69% पूरा; 12/39 = 31% बाकी**। PR #8 Draft/Open/Unmerged; कोई Production DB change, provider refund, merge या deployment नहीं।
