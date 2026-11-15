@@ -1,5 +1,5 @@
-const CACHE='srk-electronic-v6';
-const FILES=['./','./index.html','./manifest.webmanifest','./icon.svg'];
+const CACHE='srk-electronic-v7';
+const FILES=['./','./index.html','./customer-login.html','./booking.html','./assets/srk-founder.jpg','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)));
