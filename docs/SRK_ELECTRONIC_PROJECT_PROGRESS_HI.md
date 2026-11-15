@@ -1975,3 +1975,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Payout recalculation केवल pending payout को refresh कर सकता है; paid/blocked/refunded row overwrite नहीं होती। Admin payout settlement booking-first locking और source amount comparison करता है।
 - Accounting security pgTAP contract को 20 से बढ़ाकर **30 assertions** किया; इसमें cancellation-fee private ledger, append-only protection और labour-only payable calculation भी शामिल है। Plan/count static check आगे फिर से किया जाएगा; runtime pgTAP अभी नहीं चला।
 - Live catalog में नई fee tables अनुपस्थित होने के कारण reconciliation RPC/view को live schema पर लागू नहीं किया गया। Feature Branch source-only; कोई migration apply, financial mutation, provider action, deploy/merge या mobile QA नहीं।
+
+
+### 2026-11-15 — Read-only Accounting Reconciliation RPC + Admin panel
+
+- Feature Branch migration `20261115130000_admin_readonly_booking_accounting_reconciliation.sql` में Main Admin-only RPC `srk_admin_get_booking_accounting_reconciliation(uuid)` जोड़ी।
+- RPC प्रति Booking verified customer collection/refund/net, Labour/Materials, labour-only Commission, expected electrician payable, payout snapshot, Route transfers (processed और settled अलग), cancellation-fee allocation/ledger, और posted wallet entries का read-only snapshot देता है।
+- Route payment ID/recipient identity, duplicate transfer, missing payout/transfer, amount mismatch, invalid commission, partial refund, payout/refund closure, cancellation-fee ledger balance और verified collection mismatch जैसे exception codes शामिल हैं।
+- RPC `SECURITY DEFINER + STABLE + fixed search_path`; anon/public execute बंद; authenticated caller को भी internal `is_srk_admin()` check पास करना अनिवार्य। Function body static scan में कोई INSERT/UPDATE/DELETE नहीं मिला।
+- `admin.html` में Main Admin Booking UUID report panel जोड़ा; यह केवल RPC call और read-only display करता है।
+- pgTAP contract 43 assertions तक बढ़ी; plan/count 43/43 static रूप से verified। Runtime pgTAP और browser test अभी नहीं चले।
+- कोई migration apply, Production schema/data change, provider call, financial write, payout, deployment, merge या mobile QA नहीं हुआ। Live schema में cancellation-fee tables अनुपस्थित होने से migration Feature Branch source-only रखी।
