@@ -486,9 +486,6 @@ begin
   if not found then raise exception 'ELECTRICIAN_PROFILE_NOT_FOUND' using errcode='P0002'; end if;
 
   if p_active then
-    if v_profile.active is true then
-      return jsonb_build_object('success',true,'active',true,'already_in_state',true);
-    end if;
     if v_profile.verification_status is distinct from 'approved'
        or v_profile.user_id is null or v_profile.auth_user_id is distinct from v_profile.user_id
        or not exists(
@@ -518,6 +515,9 @@ begin
       raise exception 'ADMIN_APPROVED_RATE_TIER_REQUIRED_BEFORE_ACTIVATION' using errcode='55000';
     end if;
 
+    if v_profile.active is true then
+      return jsonb_build_object('success',true,'active',true,'already_in_state',true);
+    end if;
     update public.electrician_profiles set active=true where id=v_profile.id;
     return jsonb_build_object('success',true,'active',true,'closed_offers_advanced',0);
   end if;
