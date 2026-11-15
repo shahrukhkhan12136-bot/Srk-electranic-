@@ -118,3 +118,23 @@ test('KYC uploads reject overlapping submissions and restore controls after comp
   assert.match(upload, /previousDisabled\[index\]/);
   assert.match(upload, /finally\{[\s\S]*?electricianKycUploadBusy=false/);
 });
+
+
+test('electrician support ticket create reconciles uncertain writes against a preflight ticket snapshot and exact first message', () => {
+  const create = body('createElectricianSupportTicket');
+  assert.match(create, /srk_electrician_list_my_support_tickets/);
+  assert.match(create, /previousTicketIds=new Set/);
+  assert.match(create, /!previousTicketIds\.has\(row\.id\)/);
+  assert.match(create, /srk_electrician_list_my_support_messages/);
+  assert.match(create, /m\.sender_role==='electrician'&&m\.body===body/);
+  assert.match(create, /डुप्लिकेट न बने/);
+});
+
+test('electrician support reply reconciles uncertain writes using preflight message IDs', () => {
+  const reply = body('sendElectricianSupportReply');
+  assert.match(reply, /srk_electrician_list_my_support_messages/);
+  assert.match(reply, /previousMessageIds=new Set/);
+  assert.match(reply, /!previousMessageIds\.has\(m\.id\)&&m\.sender_role==='electrician'&&m\.body===body/);
+  assert.match(reply, /डुप्लिकेट संदेश न बने/);
+  assert.match(reply, /electricianSupportReplyBusy=false/);
+});
