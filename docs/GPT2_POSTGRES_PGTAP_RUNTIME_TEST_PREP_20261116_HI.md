@@ -148,3 +148,16 @@ Feature Branch पर `.github/workflows/supabase-schema-ci.yml` मिला।
 - Remote supabase_migrations.schema_migrations entries: NOT INSPECTED.
 - Migration rename/delete/resequence/repair: NOT PERFORMED.
 - Local PostgreSQL replay / pgTAP: NOT RUN.
+
+## 10. Supabase official migration rules and precise duplicate-version finding — 16 Nov 2026
+
+- Official Supabase CLI documentation says migration filenames follow `<timestamp>_<name>.sql`, local migrations live in `supabase/migrations`, remote applied versions live in `supabase_migrations.schema_migrations`, and migration list compares timestamps only. See Supabase CLI migration reference: https://supabase.com/docs/reference/cli/supabase-migration-list
+- Exact source inventory for this branch: both 20261109 files have the same extracted 8-digit version `20261109`; they are not the separate 8-digit + 14-digit prefix pattern described in Supabase CLI issue #6036. That issue is related background, not proof of this exact case: https://github.com/supabase/cli/issues/6036
+- Because the two files resolve to the same migration version, their SQL bodies cannot be represented as two distinct version entries in a timestamp-keyed migration history without additional history/design context. This is a strong source-level collision finding; exact pinned CLI parser/reset output remains unverified because CLI and Docker are unavailable in the current execution environment.
+- Do not infer which file, if either, is recorded remotely. Do not rename, delete, combine, or repair the migrations until owner provides authoritative remote migration history and approves a reconciliation plan.
+- Safe scratch experiment is still pending: pinned CLI + disposable isolated environment, first with dummy files sharing the exact same 8-digit version, then with copies of these two SQL files. Keep Production credentials/network entirely absent.
+
+### Correction to the prior section
+
+- The earlier mention of an 8-digit/14-digit shared-prefix CLI issue is only an analogous known issue. The project's exact source condition is two files with the identical 8-digit version, which is a different and more direct collision.
+- CLI/Docker executable availability checked in the current environment: neither found. No install, remote connection, or database command was attempted.
