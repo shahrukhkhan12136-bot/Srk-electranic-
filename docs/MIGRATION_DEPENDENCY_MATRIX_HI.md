@@ -58,3 +58,11 @@
 - Production schema/history query: not performed.
 - Production migrations, payments, refunds, transfers, SMS/push sends: not performed.
 - This document does not close a GPT-2 checklist item or change the reported 69% progress.
+
+## Existing GitHub Actions schema workflow review — 15 Nov 2026
+
+- `.github/workflows/node-tests.yml` runs Node tests without secrets or deployment on pushes to this feature branch and PRs targeting main.
+- `.github/workflows/supabase-schema-ci.yml` is manual-only and its job condition allows only `refs/heads/feature/platform-fee-cash-online-cycle`; it does not run for this PR branch.
+- That workflow reads a `SUPABASE_DB_URL` secret, checks that the credential is restricted from table-row reads and schema writes, then performs a schema-only dump from the remote database and applies a hard-coded five-migration list. It is not a generic local clean-replay test for the current 73-file branch.
+- The existing workflow must not be repurposed or dispatched against Production as a shortcut. A proper PR workflow needs a separately approved baseline schema artifact and isolated local Supabase/PostgreSQL environment, with no Production connection or provider secrets.
+- No `supabase/config.toml` or `supabase/seed.sql` exists at the inspected PR head. No workflow was dispatched and no database was contacted.
