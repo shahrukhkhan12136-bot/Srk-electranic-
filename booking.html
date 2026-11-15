@@ -1538,7 +1538,7 @@ async function saveCustomerProfile() {
    profileSaveResult=await customerSb.rpc('srk_customer_update_my_profile',{
     p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath
    });
-   profileSaveError=profileSaveResult?.error||null;
+   profileSaveError=profileSaveResult?.error||(!profileSaveResult?new Error('Profile update was not confirmed'):null);
   }catch(saveError){profileSaveError=saveError;}
   if(profileSaveError){
    let lookupSucceeded=false,latestProfile=null;
