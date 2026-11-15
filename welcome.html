@@ -33,6 +33,7 @@ h1 span{display:block;color:var(--gold)}
 .lead{font-size:clamp(18px,2vw,22px);font-weight:750;line-height:1.45;margin:0 0 10px}
 .sublead{max-width:520px;color:var(--muted);font-size:16px;line-height:1.8;margin:0}
 .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.role-login{padding:10px 0 48px;text-align:center}.role-login h2{font-size:clamp(23px,3vw,32px);margin:0 0 8px}.role-login>p{color:var(--muted);margin:0 0 20px}.role-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.role-card{display:flex;flex-direction:column;gap:7px;padding:20px;border:1px solid rgba(255,255,255,.18);border-radius:16px;background:rgba(255,255,255,.07);text-decoration:none;transition:transform .18s,background .18s}.role-card:hover{transform:translateY(-3px);background:rgba(255,255,255,.12)}.role-card strong{font-size:17px;color:#fff}.role-card span{font-size:13px;color:var(--muted)}@media(max-width:650px){.role-grid{grid-template-columns:1fr}.role-login{padding-bottom:30px}}
 .btn{min-height:52px;padding:0 22px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;font-weight:800;font-size:15px;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
 .btn:hover{transform:translateY(-2px)}
 .btn:focus-visible,.header-link:focus-visible{outline:3px solid #fff;outline-offset:3px}
@@ -77,7 +78,7 @@ footer{border-top:1px solid var(--line);padding:22px 0 26px;text-align:center}
   <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="M23 3 9 22h9l-2 15 15-21h-9l1-13Z" fill="#10243a" stroke="#10243a" stroke-linejoin="round"/></svg></span>
   <span><span class="brand-name">SRK ELECTRONIC</span><span class="brand-caption" style="display:block">ELECTRICAL SERVICES</span></span>
  </a>
- <a class="header-link" href="/booking.html">ग्राहक लॉगिन ↗</a>
+ <a class="header-link" href="#role-login">तीनों लॉगिन ↗</a>
 </header>
 <main id="welcome">
  <section class="copy" aria-labelledby="welcome-title">
@@ -86,8 +87,8 @@ footer{border-top:1px solid var(--line);padding:22px 0 26px;text-align:center}
   <p class="lead">आपकी सुरक्षा, हमारी प्राथमिकता।</p>
   <p class="sublead">हर इलेक्ट्रिकल समस्या का भरोसेमंद समाधान। घर की इलेक्ट्रिकल सेवा के लिए सही शुरुआत यहीं से करें।</p>
   <div class="actions">
-   <a class="btn primary" href="/booking.html">ग्राहक लॉगिन करें <span aria-hidden="true">→</span></a>
-   <a class="btn secondary" href="/booking.html#customer-login">सर्विस बुकिंग शुरू करें</a>
+   <a class="btn primary" href="/customer-login.html">ग्राहक लॉगिन करें <span aria-hidden="true">→</span></a>
+   <a class="btn secondary" href="/electrician.html">इलेक्ट्रिशियन लॉगिन</a>
   </div>
   <p class="trust-note">आगे बढ़ने के लिए अपना मोबाइल नंबर सत्यापित करें।</p>
  </section>
@@ -98,6 +99,16 @@ footer{border-top:1px solid var(--line);padding:22px 0 26px;text-align:center}
   </div>
  </div>
 </main>
+<section id="role-login" class="role-login" aria-labelledby="role-title">
+ <h2 id="role-title">अपने खाते में लॉगिन करें</h2>
+ <p>अपनी भूमिका चुनें और सुरक्षित लॉगिन पेज पर जाएँ।</p>
+ <div class="role-grid">
+  <a class="role-card" href="/customer-login.html"><strong>ग्राहक लॉगिन</strong><span>मोबाइल OTP से लॉगिन</span></a>
+  <a class="role-card" href="/electrician.html"><strong>इलेक्ट्रिशियन लॉगिन</strong><span>पार्टनर पोर्टल</span></a>
+  <a class="role-card" href="/admin.html"><strong>एडमिन लॉगिन</strong><span>कंपनी प्रबंधन पोर्टल</span></a>
+ </div>
+</section>
+
 <footer>
  <div class="slogan">विश्वास की शक्ति, सेवा की पहचान।</div>
  <div class="footer-note">SRK ELECTRONIC · Electrical Services</div>
