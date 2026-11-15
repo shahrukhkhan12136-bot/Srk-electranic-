@@ -4033,3 +4033,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Exact/combined GitHub code searches (`amount_paid double precision`, `amount_paid decimal`, `ALTER TABLE service_bookings amount_paid`, `auth_user_id ALTER TABLE electrician_profiles`, `electrician profile auth`) से कोई authoritative introducing migration/commit नहीं मिला। Search index और inspected branch-tree सीमाओं के कारण इसे पूर्ण Git-history/deployment absence नहीं कहा जा रहा।
 - Complaint migration के बारे में भी exact-content check किया: historical branch source और current Feature Branch file दोनों 9,173 characters हैं और byte-for-byte समान हैं; content comparison सफल। इसलिए previous “exact source restored” status सही है।
 - Remaining source DDL blockers दो हैं: `service_bookings.amount_paid` और `electrician_profiles.auth_user_id`। No guessed DDL, Production query/export, migration replay, merge or deployment. GPT-2 27/39 = 69%; overall 56/86 = 65% अपरिवर्तित।
+
+
+### Latest CI confirmation and schema-source search — 15 Nov 2026
+- Latest Feature Branch head `fb49673502423c35d9c89e3b5573e396a70d6fe5` पर दोनों Node CI runs (`43742558516`, `43742562237`) सफल हुए। दोनों job logs में `187 tests`, `187 pass`, `0 fail`, `0 skipped` की पुष्टि हुई।
+- यह Node.js regression suite है; इससे PostgreSQL migration replay, pgTAP execution, Production schema parity या deployment सिद्ध नहीं होता।
+- Historical `SUPABASE_SCHEMA.sql` path history में केवल मूल upload commit `c4b6a46f22553e57638cdae844ec33d09bf8da2c` मिला; इस path का कोई दूसरा historical revision नहीं मिला। पुराने branches की जाँची गई payment/identity migrations में `amount_paid` और `auth_user_id` के उपयोग मिले, पर authoritative ADD COLUMN/CREATE TABLE declarations नहीं।
+- व्यापक SQL inventory fetch प्रयास tool-call सीमा पर रुक गया; इसलिए इसे पूर्ण branch-wide content scan नहीं माना जा रहा। Remaining DDL blockers वही दो हैं: `service_bookings.amount_paid`, `electrician_profiles.auth_user_id`।
+- No guessed DDL, Production DB query/export, migration replay, provider operation, merge or deployment. GPT-2 27/39 = 69%; overall 56/86 = 65% unchanged.
