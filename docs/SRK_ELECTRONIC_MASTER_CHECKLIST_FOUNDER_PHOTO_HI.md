@@ -123,7 +123,7 @@
 
 ## 9. Test, release और approval gates
 
-- [x] Latest successful Feature Branch PR Node CI run `43704748225` (commit `059f875`): **96 passed / 0 failed**। पहले failure का कारण Admin commission regression test में हटाए गए पुराने accounting migration path और retired Route fields की अपेक्षा थी; Admin UI/test को current read-only reconciliation contract के अनुसार सुधारा गया। यह Node source suite है, pgTAP/live DB/browser E2E/Preview/mobile QA नहीं।
+- [x] Feature Branch PR Node CI run `43704748225` (commit `059f875`): **96/96 PASS**। उसके बाद latest observed HEAD `a924bc3` का run `43704886935`: **97 PASS / 1 FAIL**; शेष failure GPT-1 Customer quote UI regression test के पुराने onclick-regex expectation में है (`tests/customer-quote-approval-ui.test.js`) जबकि `booking.html` में approve/reject handlers मौजूद हैं। Admin accounting tests latest run में PASS हैं। यह source-level Node suite है; pgTAP/live DB/browser E2E/Preview/mobile QA अलग बाकी हैं।
 - [x] Push Deno check और local PostgreSQL Push migration/RPC runtime checks PASS।
 - [ ] ऊपर सूचीबद्ध शेष Customer/Electrician/Admin/Staff/legacy-payment SQL और browser workflows के isolated runtime tests पूरे करें।
 - [ ] सभी implementation और internal checks पूरे होने के बाद ही एक consolidated desktop + mobile QA pass करें; बीच में अलग mobile test नहीं।
