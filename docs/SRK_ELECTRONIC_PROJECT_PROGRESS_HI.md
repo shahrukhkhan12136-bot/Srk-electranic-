@@ -2168,3 +2168,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Commission is reported as expected/ledgered/processed/settled amounts, not as cash received by the platform merely because a transfer row exists. A provider transfer marked processed is still distinct from settlement marked settled.
 - No Razorpay Route API calls, transfers, reversals, payouts, wallet mutations, migrations, or production changes were executed. Runtime tests remain unrun.
 - Commits: `07e2c333` (manual refund Route reversal gate), `eccddaa6` (54th assertion).
+
+
+## 2026-11-15 — Admin Commission Report Label and Route Ledger Contracts
+- Admin aggregate Commission Report labels were clarified: customer collection is explicitly limited to completed + paid bookings; company commission is labelled as calculated commission, not cash received; electrician amount remains a calculated payable, not proof of payout.
+- Per-booking Accounting Reconciliation UI continues to show Route `transfer_status` and `settlement_status` independently, and shows processed vs settled totals separately.
+- Added `tests/admin-commission-report-labels.test.js` for source-level guards covering labels, separate Route states and Main Admin / completed-paid scoping.
+- Extended accounting pgTAP source contract from 54 to 56 assertions: one logical transfer per provider payment + recipient type, plus unique idempotency key and provider transfer ID.
+- Source checks only. The new Node test and pgTAP suite have not been executed; no runtime pass is claimed.
+- Route transfer schema is server-only with integer paise, INR, separate transfer/settlement states, one payment-recipient logical row, and unique idempotency/provider transfer identifiers. No verified provider Route executor was found; automated transfers/reversals remain unimplemented/unverified and must not be described as live.
+- Commits: `46ac466c` (Admin wording), `0da7ca84` (Node source test), `e9d3c00b` (Route ledger contract assertions).
