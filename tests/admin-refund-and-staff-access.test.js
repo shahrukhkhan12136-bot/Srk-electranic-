@@ -350,3 +350,11 @@ test('Wallet and customer receipt SECURITY DEFINER RPCs use an empty search_path
     );
   }
 });
+
+
+const electricianOfferSearchPathFix = fs.readFileSync(path.join(root, 'supabase/migrations/20261116140000_pin_electrician_offer_details_search_path.sql'), 'utf8');
+
+test('Electrician offer-details RPC is pinned to an empty search_path', () => {
+  assert.ok(electricianOfferSearchPathFix.includes("alter function public.srk_get_my_offer_details()"));
+  assert.ok(electricianOfferSearchPathFix.includes("set search_path = '';"));
+});
