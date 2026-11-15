@@ -29,11 +29,17 @@ test('Customer and Electrician SOS UI expose only the three approved reason code
   }
 });
 
-test('SOS requires a distinct final send action and explicit confirmation in both apps', () => {
+test('SOS requires a distinct final send action without an extra confirmation modal in both apps', () => {
   assert.match(customer, /id="customerSosSend_[\s\S]*?SOS भेजें/);
   assert.match(electrician, /id="electricianSosSend_[\s\S]*?SOS भेजें/);
-  assert.match(customer, /async function submitCustomerSosAlert\([\s\S]*?if\(!confirm\(/);
-  assert.match(electrician, /async function submitElectricianSosAlert\([\s\S]*?if\(!confirm\(/);
+  const customerStart = customer.indexOf('async function submitCustomerSosAlert(');
+  const customerEnd = customer.indexOf('\n\n', customerStart);
+  const electricianStart = electrician.indexOf('async function submitElectricianSosAlert(');
+  const electricianEnd = electrician.indexOf('\n\n', electricianStart);
+  assert.ok(customerStart >= 0 && customerEnd > customerStart);
+  assert.ok(electricianStart >= 0 && electricianEnd > electricianStart);
+  assert.doesNotMatch(customer.slice(customerStart, customerEnd), /if\(!confirm\(/);
+  assert.doesNotMatch(electrician.slice(electricianStart, electricianEnd), /if\(!confirm\(/);
   assert.match(customer, /कारण चुनें। अलर्ट केवल “SOS भेजें” दबाने पर बनेगा।/);
   assert.match(electrician, /कारण चुनें। अलर्ट केवल “SOS भेजें” दबाने पर बनेगा।/);
 });
