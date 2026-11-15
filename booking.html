@@ -1737,14 +1737,14 @@ async function loadCustomerSupportMessages() {
  const id=document.getElementById('customerSupportComplaint').value,request=++customerSupportThreadRequest;
  if(!id){customerSupportSelectedId=null;customerSupportAttachments=[];renderCustomerSupportThread([]);return;}
  customerSupportSelectedId=id;renderCustomerSupportThread([]);supportStatus('बातचीत लोड हो रही है…');
- const [{data,error},attachmentsResult]=await Promise.all([
-  customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id}),
+ const [messageResult,attachmentsResult]=await Promise.all([
+  Promise.resolve().then(()=>customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id})).catch(error=>({data:null,error})),
   loadCustomerSupportAttachments(id).then(data=>({data,error:null})).catch(error=>({data:[],error}))
  ]);
  if(request!==customerSupportThreadRequest||id!==customerSupportSelectedId)return;
- if(error){supportStatus('बातचीत लोड नहीं हो सकी। कृपया फिर कोशिश करें।',true);return;}
  customerSupportAttachments=attachmentsResult.data||[];
- renderCustomerSupportThread(Array.isArray(data)?data:[]);
+ if(messageResult.error){supportStatus('बातचीत लोड नहीं हो सकी। शिकायत सूची उपलब्ध है; कृपया बातचीत फिर से खोलें।',true);return;}
+ renderCustomerSupportThread(Array.isArray(messageResult.data)?messageResult.data:[]);
  const complaint=customerSupportComplaints.find(c=>c.id===id);
  supportStatus(complaint?'शिकायत की स्थिति: '+(complaint.status||'अपडेट उपलब्ध नहीं'):(attachmentsResult.error?'कुछ संलग्न फ़ाइलें अभी उपलब्ध नहीं हैं।':''));
 }
