@@ -118,3 +118,25 @@ test('provider processed refund reconciliation independently requires the full b
   assert.match(refundReconcileMigration, /PROVIDER_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTION/);
   assert.match(refundReconcileMigration, /grant execute on function public\.srk_service_reconcile_booking_refund\(uuid,text,text,text\) to service_role/i);
 });
+
+
+test('Support Staff customer and electrician inbox RPCs enforce active permissions and current case assignment', () => {
+  const staffFunctions = [
+    ['srk_admin_staff_list_customer_complaints', 'support.customer.read'],
+    ['srk_admin_staff_list_customer_messages', 'support.customer.read'],
+    ['srk_admin_staff_send_customer_message', 'support.customer.reply'],
+    ['srk_admin_staff_update_customer_complaint', 'support.customer.update_status'],
+    ['srk_admin_staff_list_electrician_tickets', 'support.electrician.read'],
+    ['srk_admin_staff_list_electrician_messages', 'support.electrician.read'],
+    ['srk_admin_staff_send_electrician_message', 'support.electrician.reply'],
+    ['srk_admin_staff_update_electrician_ticket', 'support.electrician.update_status']
+  ];
+  for (const [name, permission] of staffFunctions) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = staffMigration.match(new RegExp('create or replace function public\\.' + escaped + '[\\s\\S]*?\\$function\\$;', 'i'));
+    assert.ok(match, name + ' must exist');
+    assert.match(match[0], new RegExp(permission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.match(match[0], /assigned_staff_user_id\\s*=\\s*(?:auth\\.uid\\(\\)|v_uid)/i, name + ' must scope to current assignee');
+  }
+  assert.match(staffMigration, /if v_actor is null or not public\\.is_srk_admin\\(\\) then[\\s\\S]*?MAIN_ADMIN_ONLY/i);
+});
