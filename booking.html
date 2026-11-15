@@ -1214,10 +1214,17 @@ async function loadCustomerBookings() {
     const timelineMap = new Map();
     // Timeline RPC is booking-scoped. Fetch it only for the already
     // owner-filtered bookings rather than calling it without its required ID.
-    const timelineResults = await Promise.all(data.map(async row => ({
-      bookingId: row.id,
-      result: await customerSb.rpc('srk_customer_get_my_booking_work_timeline',{p_booking_id:row.id})
-    })));
+    const timelineResults = await Promise.all(data.map(async row => {
+      try {
+        return {
+          bookingId: row.id,
+          result: await customerSb.rpc('srk_customer_get_my_booking_work_timeline',{p_booking_id:row.id})
+        };
+      } catch (error) {
+        // A single rejected timeline transport must not discard the booking list.
+        return { bookingId: row.id, result: { error } };
+      }
+    }));
     timelineResults.forEach(({bookingId,result})=>{
       if(!result.error) timelineMap.set(bookingId,Array.isArray(result.data)?result.data:[]);
     });
