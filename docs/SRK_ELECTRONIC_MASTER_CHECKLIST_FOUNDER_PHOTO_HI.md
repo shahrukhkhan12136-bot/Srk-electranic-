@@ -271,3 +271,13 @@
 - [ ] Deno type/runtime check और PostgreSQL migration/RPC concurrency test चलाएँ; sandbox में Deno और PostgreSQL tools उपलब्ध नहीं थे।
 
 **सीमा:** ये Node source-contract tests हैं; Supabase migrations apply नहीं हुईं, SQL runtime/permissions/concurrency सत्यापित नहीं हुए। Production या live push पर कोई कार्रवाई नहीं हुई।
+
+### Full Node suite और Edge Function type-check — 15 November 2026
+- [x] तीनों Push test files: **37/37 PASS**।
+- [x] Full repository `npm test`: **87/87 PASS**, 0 failures।
+- [x] Test suite के पुराने/गलत fixtures और SQL-format-sensitive assertions सुधारे: customer phone CASE multiline matcher, provider refund identity note, valid Razorpay payment-ID fixtures; Push preflight और public-config assertions भी सही किए। कोई production business logic बदलने की आवश्यकता नहीं पड़ी।
+- [x] Deno `check --no-config --no-lock supabase/functions/push-job-offer/index.ts` सफल।
+- [x] Netlify worker तथा Razorpay refund/webhook Node files पर `node --check` सफल; working tree clean।
+- [ ] PostgreSQL migration parser/apply, role grants, RPC behavior और concurrent lease-reclaim/stale-token test isolated DB में करें।
+
+**सीमा:** Node/Deno checks source/runtime type checks हैं; SQL migrations अभी किसी DB पर apply नहीं हुईं।
