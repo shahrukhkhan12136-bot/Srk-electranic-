@@ -2078,3 +2078,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Payment/refund history RPC auth.uid() के booking ownership पर सीमित है और verified payment, refund request, Razorpay refund तथा manual refund events लौटाती है; Admin/provider private payload नहीं लौटाती।
 - यह source-code review है; कोई SQL/pgTAP/runtime test इस चरण में execute नहीं हुआ। पहले दर्ज किए गए 28/13/14/11 assertion counts केवल test-file source declarations हैं, pass result नहीं।
 - शेष audit: customer booking create/confirm path, booking ownership and phone visibility, labour/material split and duration/paise calculation; फिर Electrician तथा Admin/Staff end-to-end source review। Manual device QA अंतिम consolidated चरण तक स्थगित है। Production/database/deploy में कोई बदलाव नहीं किया गया।
+
+
+### 2026-11-15 — Customer booking/refund integration audit (महत्वपूर्ण gap मिला)
+- Customer booking page का refund submit handler `srk_customer_create_booking_refund_request(uuid,text)` call करता है; branch migration chain में इस RPC की definition मौजूद नहीं मिली। साथ ही page history path में `srk_customer_list_my_booking_refund_requests()` और अन्य customer history caller names का exact migration/signature alignment दोबारा जाँचना आवश्यक है। इसे अभी working UI feature नहीं माना जाएगा; यह implementation blocker है।
+- Existing branch में `srk_customer_get_payment_receipt(uuid)` owner-check करता है और immutable labour bill को प्राथमिकता देता है; bill paise, amount और verified captured amount का exact match न होने पर labour amount null रखता है। Materials स्वतः receipt labour में शामिल नहीं होते।
+- Existing profile/support/payment-history source audit से कोई runtime result infer नहीं किया गया। Booking creation, contact reveal timing, server-side duration billing और paise rounding का complete source chain अभी इस checkpoint में प्रमाणित नहीं हुआ है।
+- अगला fix gate: refund request lifecycle को immutable labour bill + verified captured payment से reconcile करना; materials को स्वतः refund में न जोड़ना; rejected/failed request retry semantics और Admin review/status path को साथ में resolve करना। RPC नाम mismatch को blindly alias/copy नहीं करना। पहले सभी related schema, constraints, Admin RPCs और production-vs-feature migration differences inspect होंगे।
+- कोई migration apply, production write, payment/refund/provider call, deployment, merge या manual device QA नहीं किया।
