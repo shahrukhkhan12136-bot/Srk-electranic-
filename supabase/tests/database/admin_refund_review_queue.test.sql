@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(16);
 select has_function('public','srk_admin_list_booking_refund_requests',array[]::text[],'Admin refund queue RPC exists');
 select has_function('public','srk_admin_decide_booking_refund_request',array['uuid','text','text'],'Admin refund decision RPC exists');
 select ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure))>0,'queue is Main Admin only');
@@ -12,5 +12,9 @@ select ok(position('razorpay' in lower(pg_get_functiondef('public.srk_admin_deci
 select ok(position('payment_status' in lower(pg_get_functiondef('public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure)))=0,'decision RPC does not mutate payment status');
 select ok(has_function_privilege('authenticated','public.srk_admin_list_booking_refund_requests()','EXECUTE') and not has_function_privilege('anon','public.srk_admin_list_booking_refund_requests()','EXECUTE') and has_function_privilege('authenticated','public.srk_admin_decide_booking_refund_request(uuid,text,text)','EXECUTE') and not has_function_privilege('anon','public.srk_admin_decide_booking_refund_request(uuid,text,text)','EXECUTE'),'RPC execution is authenticated-only; Main Admin is enforced inside functions');
 select ok(coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc where oid='public.srk_admin_list_booking_refund_requests()'::regprocedure),false) and coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc where oid='public.srk_admin_decide_booking_refund_request(uuid,text,text)'::regprocedure),false),'both SECURITY DEFINER RPCs use empty search_path');
+select ok(position('refund.refund_id' in pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure))>0 and position('refund.last_error' in pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure))>0,'Admin queue exposes provider refund ID and last provider error for reconciliation');
+select ok(position('payout.payout_status' in pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure))>0 and position('payout.payout_note' in pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure))>0,'Admin queue exposes payout hold state and note');
+select ok(position('left join public.srk_razorpay_refunds refund' in pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure))>0 and position('left join public.srk_electrician_payouts payout' in pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure))>0,'recovery context is joined read-only by booking');
+select ok(position('payment_status' in lower(pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure)))>0 and position('update public.service_bookings' in lower(pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure)))=0,'recovery queue does not mutate booking payment state');
 select * from finish();
 rollback;
