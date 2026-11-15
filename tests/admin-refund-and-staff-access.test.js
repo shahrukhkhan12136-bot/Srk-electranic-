@@ -47,7 +47,8 @@ test('new-category booking status and category changes require protected server 
 
 test('Admin cannot manually mark an unfinished booking completed through the generic Save path', () => {
   assert.match(admin, /if\(status==='completed'&&booking\.status!=='completed'\)[\s\S]*?सुरक्षित completion workflow से ही दर्ज होगी/);
-  assert.doesNotMatch(admin, /\.update\(\{status,quoted_amount:quoted\}\)/);\n  assert.match(admin, /sb\.rpc\('srk_admin_confirm_legacy_booking'/);
+  assert.doesNotMatch(admin, /\.update\(\{status,quoted_amount:quoted\}\)/);
+  assert.match(admin, /sb\.rpc\('srk_admin_confirm_legacy_booking'/);
 });
 
 
