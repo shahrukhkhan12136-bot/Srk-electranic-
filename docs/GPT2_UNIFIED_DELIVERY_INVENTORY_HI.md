@@ -185,6 +185,7 @@ At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 ### 5C. All Node regression test files
 - `tests/accepted-contact-visibility.test.js`
 - `tests/admin-booking-direct-write-closure.test.js`
+- `tests/admin-progress-card.test.js`
 - `tests/admin-commission-report-labels.test.js`
 - `tests/admin-refund-and-staff-access.test.js`
 - `tests/admin-route-settlement-warning.test.js`
