@@ -731,7 +731,7 @@ function customerUiText(value) {
   .replace(/वास्तविक समय के अनुसार मेहनताना बनेगा और सामान\/पार्ट्स अलग होंगे।/g,'Labour is calculated from actual time, and materials/parts are separate.')
   .replace(/क्या बुकिंग भेजें\?/g,'Submit this booking?')
   .replace(/स्थिति:/g,'Status: ').replace(/तरीका:/g,'Method: ').replace(/दिनांक:/g,'Date: ')
-  .replace(/\\bAdmin\\b/g,'Admin');
+  .replace(/\bAdmin\b/g,'Admin');
 }
 const customerNativeAlert = window.alert.bind(window);
 window.alert = message => customerNativeAlert(customerUiText(message));
