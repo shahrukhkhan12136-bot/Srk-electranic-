@@ -3759,3 +3759,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Duplicate 8-digit migration prefix `20261109` अभी भी दो files पर है; कोई rename या migration-history rewrite नहीं। SOS migration का static dependency cluster RBAC permissions/role-permissions, Admin permission/session function, `service_bookings` और `auth.users` है।
 - यह inventory/static dependency audit है, PostgreSQL migration replay या pgTAP runtime नहीं। Missing baseline column contracts `amount_paid` और `auth_user_id` अब भी unresolved हैं।
 - GPT-2 checklist **27/39 = 69%** अपरिवर्तित; कोई checklist item बंद नहीं हुआ।
+
+
+### GPT-2 verification follow-up — 15 Nov 2026
+- नवीनतम docs commit `5af42604208ef6f6bdae9a4f2d51e0092b19c59e` के लिए GitHub Actions workflow `Feature Branch Node tests` **success** मिला। यह Node test workflow का परिणाम है; PostgreSQL/pgTAP या Production validation नहीं।
+- Historical commit `d7c7fc9800141195023453c7781d34b7e03bdc41` का पूरा diff देखा: `verify-payment.js` captured Razorpay payment के `p.amount / 100` से `service_bookings.amount_paid` लिखता है। यह application write-path का प्रमाण है, column की SQL type/nullability/default/constraint या base DDL का नहीं। इसलिए missing DDL blocker यथावत है।
+- Repository commit search में `amount_paid` के दो known application commits मिले; `auth_user_id` के लिए commit search में कोई result नहीं मिला। Search index सीमित हो सकता है; इसे पूर्ण अनुपस्थिति का प्रमाण नहीं माना गया।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित; कोई checklist item बंद नहीं हुआ।
