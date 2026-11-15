@@ -62,5 +62,5 @@ test('profile display-name updates validate input and use the self-service RPC',
   const profile = body('saveElectricianDisplayName');
   assert.match(profile, /name\.length<2\|\|name\.length>80/);
   assert.match(profile, /srk_electrician_update_my_display_name/);
-  assert.match(profile, /finally\\{button\\.disabled=false;\\}/);
+  assert.match(profile, /finally\{button\.disabled=false;\}/);
 });
