@@ -181,3 +181,12 @@ Older `feature/business-finance-dashboard` और `work/separate-customer-electr
 - Portal branch की `20261109223000_sync_electrician_auth_profile_link.sql` `auth_user_id` में Auth ID लिखती है और `user_id OR auth_user_id` से lookup करती है; यह column को ADD नहीं करती। `20261110030000_admin_direct_electrician_assignment.sql` भी इसे पहले से मौजूद मानती है।
 - इन पुराने branches के schema/migration copies स्वतंत्र schema provenance नहीं हैं और इनके consumers column contract (type, nullability, default, constraints, indexes) प्रमाणित नहीं करते। इसलिए दोनों columns के exact base DDL अब भी unresolved हैं; कोई guessed `ADD COLUMN` प्रस्तावित नहीं है।
 - ध्यान दें: पुराने finance branch में quote migrations को अलग timestamped filenames मिले थे (`20261109075837`, `20261109080400`), जबकि वर्तमान Feature Branch में दोनों `20261109` prefix पर हैं। यह historical lineage clue है, लेकिन वर्तमान Supabase migration history के लिए rename/replay plan नहीं है।
+
+
+### 5.8 अतिरिक्त feature/fix branches का consumer audit — 15 नवम्बर 2026
+अतिरिक्त उपलब्ध branches (`feature/flutter-mobile-apps`, `feature/electrician-categories-hourly-booking`, `feature/direct-upi-commission-15` आदि) के SQL migrations भी spot-check किए:
+- Flutter cash-payment migration `20261110235000_add_mobile_cash_payment_and_booking_location.sql` `amount_paid` में verified cash amount लिखती है और electrician lookup में `user_id/auth_user_id` दोनों पढ़ती है; कोई `ADD COLUMN` definition नहीं।
+- Category/hourly booking migration कई booking/profile columns जोड़ती है, पर `service_bookings.amount_paid` या `electrician_profiles.auth_user_id` नहीं। यह `auth_user_id` को पहले से मौजूद मानकर पढ़ती है।
+- Direct UPI payment-report migration `amount_paid` update करती है, लेकिन उसे create नहीं करती।
+- वर्तमान Google Maps migration केवल `location_lat/location_lng` जोड़ती है; उसी migration के Admin approval RPC में `auth_user_id` insert/update होता है।
+- इन अतिरिक्त branch consumers से usage की पुष्टि होती है, पर authoritative column DDL नहीं मिलता। इसलिए दोनों base-column contracts unresolved रहेंगे।
