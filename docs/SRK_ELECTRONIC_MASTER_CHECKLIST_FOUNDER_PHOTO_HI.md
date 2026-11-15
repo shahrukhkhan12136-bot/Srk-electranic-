@@ -109,10 +109,10 @@
 - [x] Electrician opt-in UI, browser permission handling, VAPID public-key retrieval, service-worker registration और local subscription enable/disable source review।
 - [x] Service worker push display और same-origin notification-click navigation source review।
 - [x] Sequential offer create/decline/expiry dispatch और scheduled expiry worker source review।
-- [ ] Offer dispatch/next-offer event से trusted server-side Web Push sender जोड़ें; अभी branch में delivery invocation प्रमाणित नहीं।
-- [ ] Push subscription storage के लिए owner-scoped RLS/RPC contract और invalid endpoint cleanup verify/implement करें; current client direct table upsert/delete की authoritative policy अभी verify नहीं।
-- [ ] Durable idempotent notification outbox, bounded retries और offer-state revalidation लागू करें; केवल live active offer पर notification भेजें।
-- [ ] Notification click पर Electrician dashboard में संबंधित offer highlight/open करें।
+- [x] Offer dispatch/next-offer event से trusted server-side Web Push sender जोड़ा; वर्तमान offer/booking/electrician state server पर revalidate होती है।
+- [x] Push subscription owner-scoped RLS/RPC contract, least-privilege CRUD grants और invalid endpoint cleanup जोड़ा।
+- [x] Durable outbox, per-device delivery ledger, bounded retry/backoff, lease fencing और live offer-state revalidation लागू।
+- [x] Notification click पर Electrician dashboard संबंधित offer को सुरक्षित same-origin route से highlight/open करता है।
 - [ ] Approved isolated environment में permission, delivery, duplicate/retry, expired/accepted offer, invalid endpoint और logout/account-switch tests चलाएँ।
 - [ ] Final consolidated mobile QA और production rollout सभी implementation पूरे होने और अलग explicit approval के बाद ही।
 
@@ -124,7 +124,7 @@
 - [x] Valid UUID offerId dashboard URL में जोड़ा जाता है; dashboard matching offer card को scroll/highlight करता है।
 - [x] Malformed offerId reject और Service Worker cache version bump किया।
 - [x] Source-contract assertions जोड़े (अभी execute नहीं किए गए)।
-- [ ] Trusted server-side Push sender, durable idempotent outbox/retry, subscription RLS/RPC और invalid endpoint cleanup implement/verify करें।
+- [x] Trusted sender, durable outbox/retry, subscription RLS/RPC और invalid endpoint cleanup feature branch में implement।
 - [ ] Approved isolated environment में push delivery और race/retry/permission tests; final mobile QA implementation पूर्ण होने के बाद।
 
 **Evidence boundary:** Deep-link source change committed; वास्तविक Push delivery, runtime test, production deploy या mobile QA नहीं हुआ।
@@ -136,8 +136,8 @@
 - [x] Feature branch में webhook-authenticated sender source जोड़ा: current offer/expiry, booking state/assignment और electrician active/approved/available revalidation; invalid/expired endpoints cleanup।
 - [x] Public GET response में केवल VAPID public key; private configuration response में नहीं।
 - [x] छह source-contract tests जोड़े; execute नहीं किए।
-- [ ] Migration में authenticated के TRUNCATE/TRIGGER/REFERENCES revoke करें और आवश्यक CRUD grants ही रखें; RLS owner scope verify करें।
-- [ ] Durable idempotent push outbox, bounded retry/backoff, delivery audit/dead-letter लागू करें; direct webhook request alone पर्याप्त नहीं।
+- [x] Authenticated के अनावश्यक TRUNCATE/TRIGGER/REFERENCES privileges revoke; केवल आवश्यक subscription CRUD grants और owner-scoped RLS।
+- [x] Durable idempotent push outbox, bounded retry/backoff, per-device delivery audit और dead-letter recovery लागू।
 - [ ] Feature-branch schema और Production schema align करें; Production inventory में `job_offers.expires_at` तथा `electrician_profiles.available_for_work` अनुपस्थित दिखे, इसलिए अभी Edge Function deploy निषिद्ध।
 - [ ] Isolated environment में sender + webhook + subscription + expiry/acceptance race tests चलाएँ; उसके बाद ही final mobile QA।
 
@@ -149,8 +149,8 @@
 - [x] Unique offer outbox row और private delivery-state table।
 - [x] Service-role-only claim/finish RPCs, lease, max attempts, exponential retry और dead-letter state।
 - [x] प्रति मिनट scheduled Netlify worker और छह source-contract assertions।
-- [ ] Per-subscription delivery ledger/idempotency ताकि partial failure retry पर सफल recipients को duplicate push न मिले।
-- [ ] Existing Production direct HTTP trigger और नए outbox के coexistence/rollout plan को duplicate delivery से सुरक्षित करें।
+- [x] Per-subscription delivery ledger/idempotency; partial failure retry पर पहले delivered devices सुरक्षित रहते हैं।
+- [x] Existing Production direct HTTP trigger को outbox trigger से बदलने का duplicate-safe source rollout plan और migration ordering दर्ज। Production rollout अलग approval के बिना नहीं।
 - [ ] Production/branch schema parity स्थापित करें; उसके बाद isolated DB + Edge Function + Netlify integration tests।
 - [ ] सभी implementation और internal checks पूरे होने पर consolidated final mobile QA; उससे पहले नहीं।
 
@@ -212,7 +212,7 @@
 - [x] 404/410 endpoint cleanup और subscription delete पर ledger cascade का source review।
 - [x] Retry केवल pending/expired-lease delivery rows पर; confirmed delivered rows claim query से बाहर रहती हैं।
 - [x] Partial delivery, all-target completion और endpoint cleanup के लिए source-contract assertions जोड़े।
-- [ ] Node/Deno tests execute करें और approved isolated DB में concurrent claims, partial provider failure, cleanup cascade तथा lease recovery verify करें।
+- [ ] Node/Deno tests 87/87 और Deno check PASS; local PostgreSQL में concurrent claim, lease fencing/recovery और ACL checks PASS। Partial provider-failure/cleanup-cascade तथा Edge↔Netlify integration अभी verify करें।
 - [ ] Provider timeout या provider success के बाद finish-RPC failure जैसे ambiguous outcomes के लिए metrics/alerting जोड़ें और duplicate risk monitor करें।
 
 **महत्वपूर्ण सीमा:** Web Push provider के सफल send के बाद response खो जाने या ledger success write विफल होने पर transport-level exactly-once guarantee संभव नहीं; lease expiry के बाद retry से duplicate notification संभव है। Confirmed delivered rows जानबूझकर दोबारा नहीं भेजी जातीं। अभी कोई runtime test, migration apply, real push या deployment नहीं हुआ।
@@ -224,9 +224,9 @@
 - [x] Retry, health RPC failure या dead-letter मौजूद होने पर scheduled invocation HTTP 502 लौटाती है ताकि platform-level function monitoring में degraded run दिखे।
 - [x] केवल exact dead outbox UUID पर service-role-only manual recovery RPC; delivered device rows को delivered ही रखता है और केवल dead device rows reset करता है।
 - [x] Worker monitoring और guarded recovery के source-contract assertions जोड़े।
-- [ ] Approved isolated DB में health counts, unauthorized RPC denial, manual recovery state transitions और delivered-row preservation execute/verify करें।
-- [ ] Netlify scheduled invocation/log alert integration को test environment में verify करें; alert delivery अभी runtime में प्रमाणित नहीं।
-- [ ] Node test suite execute करें; अभी source assertions लिखे हैं, run result नहीं।
+- [x] Disposable local PostgreSQL में health counts, unauthorized RPC denial, manual recovery state transitions और delivered-row preservation runtime-verified।
+- [ ] Netlify scheduled invocation और वास्तविक log/alert delivery को isolated integration में verify करें।
+- [x] Latest feature-branch full Node suite **87/87 PASS**; छह focused security suites **55/55 PASS**।
  
 **Safety boundary:** Health/recovery migration केवल Feature Branch में है; अभी किसी database पर apply नहीं हुई। कोई dead letter वास्तव में requeue नहीं किया, कोई push/provider call, production change, deployment, worker activation या mobile QA नहीं हुआ।
 
@@ -236,7 +236,7 @@
 - [x] नया migration `20261115200000_push_delivery_lease_fencing.sql`: Outbox और per-device finish RPC अब claimed `attempt_count` fencing token मांगते हैं; status `processing` और वही attempt count न होने पर stale result reject होता है।
 - [x] Netlify worker और Edge sender अब अपने claim response का attempt count finish RPC में भेजते हैं।
 - [x] Outbox और per-device fencing के source-contract assertions जोड़े।
-- [ ] Node/Deno suite execute करें और concurrent reclaim + stale finish race को isolated DB में चलाकर verify करें।
+- [x] Node 87/87, Deno Edge check PASS; local PostgreSQL में concurrent claim, expired-lease reclaim और stale-finish fencing runtime-verified।
 - [ ] Provider call की transport-level duplicate संभावना बनी रहती है यदि पुराना worker lease expire होने के बाद भी provider request पूरा कर दे; fencing केवल stale DB completion को रोकती है, exactly-once delivery नहीं देती।
 
 **सुरक्षा सीमा:** Migration feature branch पर ही है; अभी apply/deploy नहीं हुई। कोई production mutation, real push, worker activation या mobile QA नहीं किया गया।
@@ -248,8 +248,8 @@
 - [x] Edge sender के तीनों per-device finish call paths (malformed identity, success, transient failure) में attempt token verify करने के लिए regression assertion।
 - [x] Outbox और device fencing migrations के नए exact function signatures तथा service-role-only grants के source assertions।
 - [x] Health RPC के JSON keys (outbox, devices) और worker के consumed keys का मिलान; table column names (created_at, updated_at, delivery_status) source definitions से मेल खाते हैं।
-- [ ] Node test suite चलाएँ; अभी केवल assertions जोड़े/समीक्षा किए गए हैं, execution प्रमाणित नहीं।
-- [ ] Isolated PostgreSQL में migration chain apply करके SQL syntax, grants, claim→finish RPC scalar response, stale token rejection, health counts और recovery transitions verify करें।
+- [x] Full Node suite **87/87 PASS**; Push focused suites **37/37 PASS**।
+- [x] Push migration chain (चार migrations) local PostgreSQL में apply; grants, claim→finish RPC, stale-token rejection, health counts और recovery transitions verify।
 
 **स्थिति:** इस चरण में कोई DB query/write, migration apply, deployment या push नहीं किया गया।
 
@@ -258,7 +258,7 @@
 - [x] Netlify worker अब Outbox finish RPC का JSON boolean `true` अनिवार्य मानता है; `false`/invalid response finish failure और retry/alert path में जाता है।
 - [x] Edge sender अब per-device finish RPC में `data === true` अनिवार्य मानता है; stale/rejected finish successful send count नहीं होता।
 - [x] दोनों callers के लिए source-contract regression assertions जोड़े।
-- [ ] Node test suite और isolated concurrent stale-worker race test execute करें।
+- [x] Node suite 87/87 PASS; isolated PostgreSQL में concurrent claim और stale-worker fencing checks PASS।
 
 **सीमा:** अभी कोई test execute, migration apply, deployment या real push नहीं किया गया।
 
@@ -267,8 +267,8 @@
 - [x] `push-delivery-outbox`, `push-subscription-delivery-ledger`, `push-job-offer-sender`: **37/37 PASS**।
 - [x] Run से मिले दो test assertion defects सुधारे: availability preflight column-name matcher और public GET response secret-leak matcher; updated targeted run फिर 37/37 PASS।
 - [x] Netlify worker का `node --check` सफल।
-- [ ] पूरे repository test suite के 5 शेष unrelated failures ठीक/जाँचें: accepted electrician-contact projection; Razorpay refund GET exact stored ID; तीन refund-webhook reconciliation cases। वर्तमान full run: **82 PASS / 5 FAIL / 87 total**।
-- [ ] Deno type/runtime check और PostgreSQL migration/RPC concurrency test चलाएँ; sandbox में Deno और PostgreSQL tools उपलब्ध नहीं थे।
+- [x] पुराने 82/5 snapshot के पाँच failures latest checkout पर stale fixture/assertion mismatch निकले; final full suite **87/87 PASS**।
+- [x] बाद के disposable sandbox में Deno Edge check PASS और Push migrations/RPCs PostgreSQL 18.6 पर apply व concurrency/ACL runtime checks PASS।
 
 **सीमा:** ये Node source-contract tests हैं; Supabase migrations apply नहीं हुईं, SQL runtime/permissions/concurrency सत्यापित नहीं हुए। Production या live push पर कोई कार्रवाई नहीं हुई।
 
@@ -278,7 +278,7 @@
 - [x] Test suite के पुराने/गलत fixtures और SQL-format-sensitive assertions सुधारे: customer phone CASE multiline matcher, provider refund identity note, valid Razorpay payment-ID fixtures; Push preflight और public-config assertions भी सही किए। कोई production business logic बदलने की आवश्यकता नहीं पड़ी।
 - [x] Deno `check --no-config --no-lock supabase/functions/push-job-offer/index.ts` सफल।
 - [x] Netlify worker तथा Razorpay refund/webhook Node files पर `node --check` सफल; working tree clean।
-- [ ] PostgreSQL migration parser/apply, role grants, RPC behavior और concurrent lease-reclaim/stale-token test isolated DB में करें।
+- [x] Push की चार migrations local PostgreSQL पर apply; role grants, claim/finish RPC, concurrent claims, lease reclaim और stale token rejection runtime-verified।
 
 **सीमा:** Node/Deno checks source/runtime type checks हैं; SQL migrations अभी किसी DB पर apply नहीं हुईं।
 
@@ -287,7 +287,7 @@
 - [x] Six focused security/regression files भी अलग run में **55/55 PASS**: customer/electrician contact visibility, Razorpay refund status, Razorpay webhook inbox, push outbox, per-subscription ledger, push sender.
 - [x] `node --check netlify/functions/deliver-push-outbox.js` सफल।
 - [x] पुराने sandbox snapshot के पाँच failures को नवीनतम branch से दोबारा जाँचा: वे stale snapshot/test fixtures/assertions के mismatch थे; latest branch पर full suite green है। Refund-status test fixture अब provider identity note के साथ है।
-- [ ] Deno type/runtime check और PostgreSQL migration/RPC concurrency test बाकी हैं; उपलब्ध sandbox में Deno/PostgreSQL tools नहीं थे।
+- [x] Deno Edge check और Push PostgreSQL migration/RPC concurrency checks बाद के disposable sandbox में सफल।
 
 **सीमा:** ये Node source-contract tests हैं। Supabase migrations अभी apply नहीं हुईं; database runtime, SQL permissions/concurrency, वास्तविक push delivery और mobile QA सत्यापित नहीं हुए। कोई production बदलाव/deployment नहीं हुआ।
 
@@ -424,3 +424,15 @@
 - [ ] Missing Admin manual payment RPC(s) को accounting/cancellation-fee ledger invariants के अनुरूप design, pgTAP regression coverage सहित implement करना.
 - [ ] Legacy Admin status dropdown के हर valid transition और सभी trusted actor workflows map करके transaction-scoped DB authorization guard implement करना.
 - [ ] Isolated PostgreSQL/pgTAP runtime और concurrency verification; no production apply.
+
+
+## Checklist reconciliation — 15 November 2026 (latest branch evidence)
+
+- [x] Feature-branch Push implementation is no longer an open implementation task: trusted sender, subscription least-privilege/RLS, outbox, per-device ledger, bounded retry, lease fencing, dead-letter recovery, health RPC, notification deep-link and worker source are committed.
+- [x] Push verification already performed in disposable environments: full Node suite 87/87; focused suites 55/55 (Push-specific 37/37); Deno Edge check; four Push migrations applied to local PostgreSQL 18.6; claim/finish, concurrent claim, lease fencing/reclaim, dead-row recovery, health counts and role/RLS checks passed.
+- [ ] Still genuinely open for Push: managed Supabase schema/role parity; isolated Edge-to-Netlify scheduled delivery/provider integration; real alert delivery; partial-provider-failure/cleanup-cascade matrix; rollout/rollback rehearsal. Production schema was previously observed missing required offer-expiry and electrician-availability columns, so deployment remains blocked until parity is rechecked.
+- [x] Legacy booking status direct-write guard has been added to the feature branch; only Main Admin's dedicated legacy new→confirmed RPC remains available through the Admin generic editor. Runtime ACL/actor-path tests remain open.
+- [ ] Legacy Admin manual-payment RPC `srk_admin_record_manual_payment` is still absent. Do not mark payment recording complete until its amount contract reconciles approved labour + separately itemized materials, commission only on labour, exact verified amount, one receipt/payment row, payment evidence and payout/accounting effects. Customer receipt parity must be fixed with it.
+- [ ] Founder portrait binary/integration and owner visual acceptance remain open; the approved attachment must be recovered and committed before marking it done.
+- [ ] All other unchecked items below are actual runtime/integration/owner-approval gates unless explicitly superseded in the progress log. Mobile QA remains one consolidated final pass only; production rollout requires separate explicit approval.
+
