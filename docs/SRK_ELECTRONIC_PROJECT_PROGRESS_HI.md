@@ -3200,3 +3200,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - `tests/database-migration-version-uniqueness.test.js` जोड़ा: नए duplicate versions CI में fail होंगे और पुराने `20261109` collision को स्पष्ट allowlist में track किया गया है।
 - नवीनतम commit `3418ef8c13030395868fd443edab962411ec496f` पर CI run शुरू हुआ; परिणाम verify होना बाकी है। इससे पहले migration rename वाले intermediate commits पर CI fail हुआ क्योंकि Node test अभी पुराने path को refer कर रहा था; path ठीक कर दिया गया।
 - कोई Production migration, DB change, merge या deployment नहीं किया गया। GPT-2 checklist percentage **69%** ही है; migration file renaming अतिरिक्त quality work है, checklist completion checkbox नहीं।
+
+
+### Push migration filename references + CI verification — 15 Nov 2026
+- Rename के बाद CI ने दो पुराने source-test paths पकड़े (`push-delivery-outbox.test.js`, `push-subscription-delivery-ledger.test.js`); दोनों में outbox/subscription/health/lease migration references नए unique filenames पर अपडेट किए।
+- Final Feature Branch head `45bf7dd411b99d06d76215411076613879c44af5` पर दोनों Node CI runs **SUCCESS**: `43716184006`, `43716181744`।
+- Migration version audit: 66 SQL migration files में अब केवल पुरानी `20261109` duplicate pair बची है; नई चार Push migration versions unique हैं। `20261109` pair का Production history मिलान किए बिना कोई rename नहीं होगा।
+- Node CI source tests सफल हैं; PostgreSQL/pgTAP runtime और वास्तविक Production migration status का independent verification अभी अलग pending है।
+- GPT-2 checklist progress **69% (27/39)** अपरिवर्तित; कोई Production change, merge या deployment नहीं।
