@@ -2446,3 +2446,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - भुगतान source में कोई production/provider request नहीं भेजी गई। Refund submit/create RPC, refund provider execution caller और cancellation-debt RPC signatures का पूर्ण migration-to-UI parity अभी unresolved है। कोई deployment, database write या mobile QA नहीं हुआ।
 
 **अगला सटीक काम:** Feature Branch की पूरी migration सूची से refund/cancellation-debt function signatures और dependent tables का मिलान; फिर UI RPC नाम/arguments को canonical migration contract से align करना। इसके बाद Admin refund queue/provider caller audit।
+
+
+### Customer cancellation/refund RPC parity — verified correction (15 नवम्बर 2026)
+- Feature Branch की पूरी migration directory listing (54 SQL files) से पहले की “RPC definition नहीं मिली” वाली शंका resolve हुई। `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` में `srk_customer_list_my_cancellation_fee_debts()` और `srk_customer_list_booking_cancellation_fee_items()` दोनों परिभाषित हैं; दोनों केवल `auth.uid()` के matching customer rows लौटाते हैं।
+- `20261115100000_customer_refund_request_contract.sql` में `srk_customer_create_booking_refund_request(uuid,text)` और canonical `srk_customer_list_booking_refund_requests()` दोनों मौजूद हैं। Create-request में booking row lock, customer ownership, verified paid booking, immutable labour bill + fully-settled fee ledger reconciliation और duplicate refund checks हैं। History projection Admin private note को expose नहीं करती और customer ownership filter लगाती है।
+- Current `booking.html` में refund history call पहले से canonical `srk_customer_list_booking_refund_requests()` है; cancellation debt और fee-item calls भी migration function names से exact match हैं। पुरानी report entries में `srk_customer_list_my_booking_refund_requests()` और missing function claims अब **stale/ superseded** हैं; वे वर्तमान branch snapshot को describe नहीं करतीं।
+- ACL review में cancellation-debt और fee-item SQL SECURITY DEFINER projections के लिए explicit revoke/grant statements नहीं थे। Migration में अब दोनों functions से `PUBLIC, anon` execute revoke और केवल `authenticated` grant जोड़ा गया। यह source-level least-privilege correction है।
+- `cancellation_fee_refund_reversal.test.sql` में दो pgTAP privilege assertions जोड़े और plan 40 से 42 किया: authenticated को EXECUTE मिले तथा anon/PUBLIC को न मिले। अभी SQL/pgTAP runtime execute नहीं हुआ; assertions committed source हैं, passing runtime test नहीं।
+- Refund contract migration भी मौजूद है; पहले report में referenced `20261113235900_harden_customer_cancellation_and_safe_refund_history.sql` path current branch में नहीं है। सही current branch path `20261115100000_customer_refund_request_contract.sql` है।
+
+**Verified source commits:** migration ACL correction `f4fc34e`; pgTAP assertions `298e068`. कोई Production migration apply, database write, real refund/provider request, deployment या mobile QA नहीं किया गया।
