@@ -3168,7 +3168,7 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - User confirmed the black-shirt portrait with the green garden background is the authentic saved SRK ELECTRONIC Founder Photo.
 - Prepared a crop to match the existing Founder card aspect ratio while preserving the original person, clothing and garden background.
 - The image binary has not yet been committed to `assets/srk-founder.jpg`; the Welcome Screen placeholder remains intentionally in place. No substitute collage or generated portrait was used.
-- GPT-1 remains 19/26 = 73% complete; 7/26 = 27% remaining. Asset integration, Preview/runtime visual QA and final consolidated mobile QA remain pending. No merge or Production deployment.
+- GPT-1 current section checkbox count: 20/28 = 71% complete; 8/28 = 29% remaining. Asset integration, Preview/runtime visual QA and final consolidated mobile QA remain pending. No merge or Production deployment.
 
 
 ### GPT-2 Admin direct-write closure — CI follow-up (15 Nov 2026)
