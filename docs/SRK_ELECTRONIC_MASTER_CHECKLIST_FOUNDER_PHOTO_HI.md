@@ -216,3 +216,16 @@
 - [ ] Provider timeout या provider success के बाद finish-RPC failure जैसे ambiguous outcomes के लिए metrics/alerting जोड़ें और duplicate risk monitor करें।
 
 **महत्वपूर्ण सीमा:** Web Push provider के सफल send के बाद response खो जाने या ledger success write विफल होने पर transport-level exactly-once guarantee संभव नहीं; lease expiry के बाद retry से duplicate notification संभव है। Confirmed delivered rows जानबूझकर दोबारा नहीं भेजी जातीं। अभी कोई runtime test, migration apply, real push या deployment नहीं हुआ।
+
+
+### Push delivery monitoring, failure alerts और dead-letter recovery — 15 November 2026
+- [x] Service-role-only health RPC जो Outbox और per-device Ledger के pending/processing/delivered/dead counts तथा oldest pending timestamps देता है; payload, endpoint, user ID या private error text expose नहीं करता।
+- [x] Netlify worker structured healthy/degraded logs लिखता है; sender/finish/health failures अलग event names से दर्ज होते हैं।
+- [x] Retry, health RPC failure या dead-letter मौजूद होने पर scheduled invocation HTTP 502 लौटाती है ताकि platform-level function monitoring में degraded run दिखे।
+- [x] केवल exact dead outbox UUID पर service-role-only manual recovery RPC; delivered device rows को delivered ही रखता है और केवल dead device rows reset करता है।
+- [x] Worker monitoring और guarded recovery के source-contract assertions जोड़े।
+- [ ] Approved isolated DB में health counts, unauthorized RPC denial, manual recovery state transitions और delivered-row preservation execute/verify करें।
+- [ ] Netlify scheduled invocation/log alert integration को test environment में verify करें; alert delivery अभी runtime में प्रमाणित नहीं।
+- [ ] Node test suite execute करें; अभी source assertions लिखे हैं, run result नहीं।
+ 
+**Safety boundary:** Health/recovery migration केवल Feature Branch में है; अभी किसी database पर apply नहीं हुई। कोई dead letter वास्तव में requeue नहीं किया, कोई push/provider call, production change, deployment, worker activation या mobile QA नहीं हुआ।
