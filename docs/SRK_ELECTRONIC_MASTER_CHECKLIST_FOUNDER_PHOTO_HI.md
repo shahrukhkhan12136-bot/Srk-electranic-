@@ -97,6 +97,7 @@
 **जाँचा गया project:** `Srk electranic` — `gnqhoaqatmoiwwhgzkgm`, PostgreSQL 17.11, ACTIVE_HEALTHY. `SRK ELECTRONIC TEST` अलग project है; इसे Main DB नहीं माना। यह audit read-only catalog/table/migration inspection पर आधारित है, सिवाय नीचे दर्ज एक orphan function removal के।
 
 ### Checklist से बाहर मिला और हटाया गया
+- [x] `public.srk_route_transfers` — zero-row future-only Razorpay Route transfer ledger; current Customer/Admin/Electrician UI, Netlify/Edge functions या database functions में कोई caller नहीं; बिना CASCADE drop किया और `to_regclass` से verify किया। Main migration `20261115092149_retire_unused_razorpay_route_transfer_ledger`.
 - [x] `public.accept_electrician_job(uuid)` — पुराना orphan job-acceptance SECURITY DEFINER function हटाया। Current Electrician Portal `srk_respond_to_offer` use करता है; Customer/Admin/Electrician pages, सभी 10 Netlify functions और दोनों deployed Edge Functions में इसका कोई caller नहीं मिला; database dependent object नहीं मिला; pg_stat_statements में केवल पुराने DDL statements मिले; execute ACL postgres/service_role तक सीमित थी। Drop बिना CASCADE किया और `to_regprocedure` से verify किया कि function अब मौजूद नहीं। Production migration `20261115091906_retire_unused_legacy_accept_electrician_job` दर्ज है; matching source migration Feature Branch में commit है।
 
 ### अन्य database objects — हटाने योग्य साबित नहीं हुए
