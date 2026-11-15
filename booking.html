@@ -1000,7 +1000,6 @@ async function customerPrintPaymentReceipt(bookingId){
   customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');
   if(customerPaymentHistoryResetPending){customerPaymentHistoryResetPending=false;setTimeout(()=>loadCustomerPaymentHistory(true),0);}
  }
-}}finally{customerPaymentHistoryBusy=false;box.setAttribute('aria-busy','false');}
 }
 async function loadCustomerCancellationFeeDebts(){
  if(!customerSb)return;
