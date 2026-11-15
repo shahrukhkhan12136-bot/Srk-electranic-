@@ -3445,3 +3445,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - कोई अतिरिक्त user-entered booking ID/details/location field नहीं। Booking और actor context authenticated active booking/session से server-side निर्धारित होगा। उपलब्ध location ली जा सकती है; location unavailable/permission denied होने पर SOS block नहीं होगा।
 - Requirement document updated: `docs/SRK_ELECTRONIC_SOS_EMERGENCY_ALERT_REQUIREMENT_20261115.md`; commit `5d4296e9`।
 - **स्थिति: requirement/documentation approved; Customer/Electrician UI code change और test update अभी बाकी।** कोई Node/runtime test, DB migration, production change, merge या deployment इस update में नहीं किया गया।
+
+
+## 2026-11-15 — 71 migrations का dependency inventory (प्रारंभिक)
+
+- Feature Branch के सभी 71 SQL migration files का source fetch करके शुरुआती application-table dependencies, later migration-created tables और Supabase platform references का पहला inventory बनाया।
+- मुख्य pre-existing table candidates: `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers`; आगे के code में `srk_admin_users`, `srk_booking_complaints`, `srk_booking_complaint_events`, `srk_push_subscriptions` भी पहले से मौजूद schema dependencies के रूप में संदर्भित हैं। इनके exact DDL/columns/constraints की line-by-line पुष्टि अगला चरण है।
+- इस chain में बनाए जाने वाले financial, customer/support, dispatch/work-event, RBAC, refund, webhook और push-ledger tables को baseline में duplicate न करने का नियम दर्ज किया।
+- Auth/Storage roles, schemas और helper contracts को अलग test-only platform bootstrap में रखने की जरूरत दर्ज की। SQL regex scan में CTE/PLpgSQL aliases false positives दे सकते हैं; इसलिए inventory को प्रारंभिक working list कहा गया है, final schema contract नहीं।
+- नया दस्तावेज़: `docs/MIGRATION_DEPENDENCY_INVENTORY_HI.md`। कोई migration, test, workflow या GPT-1 shared source file नहीं बदली। Production/secret access नहीं; SQL runtime/pgTAP अभी execute नहीं हुआ।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित। अगला कदम: इन baseline tables के exact column/key/constraint contracts को source statements से निकालना।
