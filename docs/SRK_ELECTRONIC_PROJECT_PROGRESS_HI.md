@@ -3040,3 +3040,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - तीन अतिरिक्त pgTAP assertions जोड़े: Razorpay/online exclusion, approved request gate, और manual payment evidence amount match। Test plan 71 से 74 हुआ। Commit: 803a7f3e28037d8fcc8b686e84e75716e4730cbf.
 - Runtime PostgreSQL/pgTAP execution अभी उपलब्ध नहीं; assertions केवल source में जोड़े गए हैं, इन्हें पास घोषित नहीं किया गया।
 - Latest CI failure अब Customer Dashboard live-location network exception contract test में है (GPT-1 क्षेत्र); Admin commission report test पिछली CI failure में सुधार के बाद आगे बढ़ा। PR #8 खुला Draft है; merge/deploy नहीं किया।
+
+
+## 2026-11-15 — Refund executor/status/recovery source audit and CI
+
+- Latest Node CI on commit `6b83ba1dc3423921a00d1a71564869c286cfbf22` सफल: Push run `43710114587` और PR run `43710118567` दोनों success। पिछला Customer Dashboard test failure और Admin commission report test failure अब नवीनतम CI में नहीं हैं।
+- Razorpay refund executor, read-only status lookup और durable recovery endpoint का source audit: bearer token Supabase Auth से verify; Main Admin membership DB RPC से verify; refund record/payment ID/amount/currency/idempotency identity checks; ambiguous timeout पर नया refund ID नहीं बनता; status lookup provider GET-only है; recovery provider evidence को पहले append-only audit में save कर अलग accounting-finalization चरण चलाती है।
+- Refund reconciliation RPC service-role-only है, booking-first row lock लेती है, provider refund ID mismatch रोकती है और processed/failed terminal state को late event से regress नहीं होने देती। Definitive provider failure पर पहले से लगाया payout hold release करने का नियम source में मौजूद है; इसे केवल verified provider `failed` state पर लागू माना जाए।
+- यह source review और Node CI है; PostgreSQL/pgTAP runtime, live Razorpay sandbox/provider calls, browser E2E और Production DB parity सत्यापित नहीं हुए। कोई वास्तविक refund/payout, DB deployment, merge या production deployment नहीं किया गया।
