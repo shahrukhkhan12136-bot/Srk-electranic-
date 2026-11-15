@@ -3593,3 +3593,14 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Hard blockers कायम: duplicate `20261109` prefix; authoritative `service_bookings.amount_paid` और `electrician_profiles.auth_user_id` DDL अनुपलब्ध; complaint base DDL वर्तमान 71-file tree से बाहर और historical source को baseline में reconcile करना बाकी।
 - कोई SQL execute/apply, Production DB access, migration rename/history repair, merge/deploy या live payment/refund/payout/push action नहीं किया।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
+
+
+## 2026-11-15 — GPT-1 Founder collage safety correction
+- Feature Branch में `assets/srk-founder.jpg` को वास्तविक फोटो समझकर visually inspect किया: यह तीन mobile/app screenshots का collage है, original garden-background founder portrait नहीं। इसलिए इसे Founder portrait के रूप में दिखाना गलत था।
+- `welcome.html` से collage image हटाकर उसी Founder card/layout में स्पष्ट temporary photo-slot रखा; किसी अन्य व्यक्ति/AI/generated image का substitution नहीं किया।
+- `sw.js` cache version v10 से v11 किया और collage asset को offline precache से हटाया, ताकि पुराने installed PWA cache में भी गलत Founder image pinned न रहे।
+- `tests/welcome-screen-contract.test.js` अपडेट किया: अब test सुनिश्चित करता है कि collage Founder portrait की तरह render न हो और pending-photo slot मौजूद हो।
+- Commits: Welcome UI `ab9f704c21e0ad9a46b5e5080147db352f0a8b73`; Service Worker `96f6af8622879463c3848c93f1327d160094d4d6`; test `1919eee94e1109bb33f3e9e2814ffe3987dd99ed`। इस test commit पर अभी नया CI run उपलब्ध नहीं; PASS घोषित नहीं है।
+- Original garden-background photo bytes इस session के Library/current files/reference images में नहीं मिलीं। अतः वास्तविक photo crop/integration अभी pending है; उपयोगकर्ता द्वारा भेजी गई exact photo के बिना substitute नहीं बनेगा। GPT-1 checklist नवीनतम source count **20/28 = 71%**, **8/28 शेष** ही रहेगा।
+- PR #8 Draft/Open है; कोई merge, production deployment, database change या mobile QA नहीं किया।
+- SOS cross-check: PR #8 changed-file list में अभी SOS backend migration/RPC या Admin/Support queue/SMS implementation नहीं है। GPT-1 UI `srk_create_sos_alert` को केवल `p_reason` भेजती है; GPT-2 backend contract उपलब्ध होने पर integration review बाकी है।
