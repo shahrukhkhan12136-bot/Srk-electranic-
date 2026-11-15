@@ -123,7 +123,7 @@
 
 ## 9. Test, release और approval gates
 
-- [x] Latest Feature Branch Node CI run `43704591567` (commit `fe90915`): **93 passed / 1 failed**। Customer/Electrician phone-visibility और तीन OTP/session regression tests PASS। एकमात्र failure GPT-2/Admin scope की अनुपस्थित source migration `20261115130000_admin_readonly_booking_accounting_reconciliation.sql` पढ़ने वाले `tests/admin-commission-report-labels.test.js` में है। GPT-1 के नए tests PASS; full suite अभी green नहीं है।
+- [x] Latest successful Feature Branch PR Node CI run `43704748225` (commit `059f875`): **96 passed / 0 failed**। पहले failure का कारण Admin commission regression test में हटाए गए पुराने accounting migration path और retired Route fields की अपेक्षा थी; Admin UI/test को current read-only reconciliation contract के अनुसार सुधारा गया। यह Node source suite है, pgTAP/live DB/browser E2E/Preview/mobile QA नहीं।
 - [x] Push Deno check और local PostgreSQL Push migration/RPC runtime checks PASS।
 - [ ] ऊपर सूचीबद्ध शेष Customer/Electrician/Admin/Staff/legacy-payment SQL और browser workflows के isolated runtime tests पूरे करें।
 - [ ] सभी implementation और internal checks पूरे होने के बाद ही एक consolidated desktop + mobile QA pass करें; बीच में अलग mobile test नहीं।
