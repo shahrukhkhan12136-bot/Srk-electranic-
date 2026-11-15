@@ -61,3 +61,10 @@ Reviewed the historical starter artifacts on branch
 This records a concrete baseline-to-consumer dependency gap and narrows the
 next evidence request. It does not close a delivery checklist item or change
 the project completion percentages.
+
+
+## Additional source check — 15 Nov 2026, 18:23 UTC
+- Current Feature Branch की तीनों consolidated/base SQL files (`SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`) को पूरे content में दोबारा जाँचा। तीनों में `amount_paid` और `auth_user_id` का कोई occurrence/DDL नहीं मिला।
+- Repository commit search में `amount_paid` के केवल दो introducing application-consumer commits मिले: `d7c7fc9800141195023453c7781d34b7e03bdc41` और `1983b7334dfcd138ecc3dcf0f920b81ddfe671ee`; ये payment amount लिखने वाले commits हैं, schema DDL नहीं। `auth_user_id` के नाम से कोई introducing commit नहीं मिला।
+- यह check तीन checked-in schema files और searchable commit history तक सीमित है; GitHub connector की repository code search default branch तक सीमित है। इसे सभी deleted refs, unreachable Git objects या remote database history की exhaustive proof नहीं माना जा रहा।
+- Safe outcome अपरिवर्तित: missing column types/constraints अनुमान से नहीं बनाए जाएँगे। अगला निर्णायक प्रमाण owner-approved schema-only export/original deployment SQL या authorized migration-history evidence है।
