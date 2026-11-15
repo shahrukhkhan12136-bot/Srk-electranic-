@@ -124,3 +124,9 @@ test('offer acceptance verifies assigned electrician and locks offer plus bookin
   assert.match(fn, /assigned_electrician_id=v_electrician_id,status='assigned'/);
   assert.match(fn, /v_expires_at<=clock_timestamp\(\)/);
 });
+
+test('base work-start migration has no undeclared dispute-note references', () => {
+  const approval = sqlFunction(timerSql, 'srk_customer_respond_work_start');
+  assert.match(approval, /p_response NOT IN \('approved','rejected'\)/);
+  assert.doesNotMatch(approval, /\bp_note\b|\bv_note\b/);
+});
