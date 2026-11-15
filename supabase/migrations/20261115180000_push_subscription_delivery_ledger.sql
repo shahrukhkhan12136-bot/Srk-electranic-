@@ -116,3 +116,22 @@ REVOKE ALL ON FUNCTION public.srk_finish_push_subscription_delivery(uuid,boolean
   FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.srk_finish_push_subscription_delivery(uuid,boolean,text)
   TO service_role;
+
+CREATE OR REPLACE FUNCTION public.srk_is_push_subscription_delivery_complete(p_outbox_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','srk_private','pg_temp'
+AS $function$
+BEGIN
+  IF auth.role() <> 'service_role' THEN
+    RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
+  END IF;
+  RETURN NOT EXISTS(
+    SELECT 1 FROM srk_private.srk_push_subscription_deliveries d
+    WHERE d.outbox_id=p_outbox_id AND d.delivery_status IN ('pending','processing')
+  );
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_is_push_subscription_delivery_complete(uuid)
+  FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.srk_is_push_subscription_delivery_complete(uuid)
+  TO service_role;
