@@ -3964,3 +3964,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - वर्तमान PR head पर Feature Branch Node workflow run 43736953604 सफल है; job log में 187/187 Node tests PASS हैं। यह PostgreSQL runtime या pgTAP execution नहीं है।
 - सुरक्षित अगला विकल्प एक अलग GitHub Actions workflow है जो केवल disposable local PostgreSQL/Supabase instance में काम करे और Production secret/export न माँगे। लेकिन full migration replay से पहले authoritative base schema और amount_paid / auth_user_id की मूल definitions चाहिए; उन्हें अनुमान से fixture में जोड़ना स्वीकार्य नहीं।
 - इसलिए अभी pgTAP runtime को blocked रखा गया; कोई workflow/migration source नहीं बदली। GPT-2 27/39 = 69%, कुल project 55/86 = 64% अपरिवर्तित।
+
+
+### Historical branch DDL lineage re-check — 15 Nov 2026, 16:49 UTC
+- GitHub API से repository की सभी 18 listed branches के recursive trees देखे; पुराने `work/separate-customer-electrician-portals` branch में `20261109223000_sync_electrician_auth_profile_link.sql` मिला। यह `electrician_profiles.user_id` और `auth_user_id` दोनों में Auth ID लिखता है तथा दोनों से ownership check करता है, लेकिन स्वयं `auth_user_id` column बनाता/परिभाषित नहीं करता। इसलिए यह column के उपयोग का ऐतिहासिक प्रमाण है, मूल DDL/type/default/nullability/FK का नहीं।
+- पुराने `feature/platform-fee-cash-online-cycle` branch का `20261109075837_electrician_inspection_quotes_and_service_only_commission.sql` `NEW.amount_paid` को trigger में पढ़ता और validate करता है, लेकिन `amount_paid` column का ADD COLUMN या base CREATE TABLE definition नहीं देता।
+- वर्तमान financial audit migration में `amount_paid` और `auth_user_id` केवल audit allowlist में हैं; यह भी मूल column definitions नहीं देता।
+- Repository-wide exact code searches में `auth_user_id uuid`, `amount_paid numeric`, और इन columns के स्पष्ट ADD COLUMN definitions नहीं मिले। Search index की सीमा के कारण इसे सभी Git history में अनुपस्थिति का निर्णायक प्रमाण नहीं माना गया।
+- निष्कर्ष: दोनों columns के लिए मूल schema अभी भी unresolved है। कोई guessed DDL नहीं जोड़ा गया; PR source/migrations untouched। अगला विश्वसनीय प्रमाण approved read-only catalog/schema export या मूल deployment artifact ही होगा। GPT-2 27/39 = 69%; पूरा project 55/86 = 64% अपरिवर्तित।
