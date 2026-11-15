@@ -1730,15 +1730,35 @@ async function makeSelectedAddressDefault() {
  if(!a){setSavedAddressStatus('डिफ़ॉल्ट बनाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
  const button=document.getElementById('setDefaultSavedAddress');button.disabled=true;
  try {
-  const {error}=await customerSb.rpc('srk_customer_save_my_address',{
-   p_id:a.id,p_label:a.label,p_recipient_name:a.recipient_name,p_address_line:a.address_line,
-   p_landmark:a.landmark,p_pincode:a.pincode,p_district:a.district,p_state:a.state,
-   p_location_lat:a.location_lat,p_location_lng:a.location_lng,p_is_default:true
-  });
-  if(error)throw error;
+  let saveError=null,returnedId=null;
+  try{
+   const result=await customerSb.rpc('srk_customer_save_my_address',{
+    p_id:a.id,p_label:a.label,p_recipient_name:a.recipient_name,p_address_line:a.address_line,
+    p_landmark:a.landmark,p_pincode:a.pincode,p_district:a.district,p_state:a.state,
+    p_location_lat:a.location_lat,p_location_lng:a.location_lng,p_is_default:true
+   });
+   saveError=result?.error||(!result||!result.data?new Error('डिफ़ॉल्ट बदलने की पुष्टि नहीं मिली।'):null);
+   if(!saveError)returnedId=result.data;
+  }catch(e){saveError=e;}
+  if(saveError||returnedId!==id){
+   let lookupSucceeded=false,latestAddresses=[];
+   try{
+    const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
+    if(!error&&Array.isArray(data)){lookupSucceeded=true;latestAddresses=data;}
+   }catch(_){}
+   if(lookupSucceeded&&latestAddresses.some(row=>row.id===id&&row.is_default===true)){
+    // The server committed the default change despite an uncertain response.
+   }else{
+    if(lookupSucceeded)customerSavedAddresses=latestAddresses;
+    setSavedAddressStatus(lookupSucceeded
+     ?'डिफ़ॉल्ट पता बदलने की पुष्टि नहीं हुई। सूची अपडेट की गई है; कृपया वर्तमान डिफ़ॉल्ट जाँचें।'
+     :'डिफ़ॉल्ट बदलने का परिणाम स्पष्ट नहीं है। नेटवर्क लौटने पर सूची रीफ़्रेश करें; अभी अनुरोध दोबारा न भेजें।',true);
+    return;
+   }
+  }
   const addressListRefreshed=await loadCustomerSavedAddresses();
-  if(!addressListRefreshed){setSavedAddressStatus('डिफ़ॉल्ट पता बदलने का अनुरोध सफल रहा, लेकिन पता सूची रीफ़्रेश नहीं हो सकी। कृपया दोबारा लोड करें।',true);return;}
-  document.getElementById('savedAddressSelect').value=a.id;
+  if(!addressListRefreshed){setSavedAddressStatus('डिफ़ॉल्ट पता बदल गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी। कृपया दोबारा लोड करें।',true);return;}
+  document.getElementById('savedAddressSelect').value=id;
   setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।');
  } catch(e){setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
  finally{button.disabled=false;}
