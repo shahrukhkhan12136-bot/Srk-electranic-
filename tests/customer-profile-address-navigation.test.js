@@ -42,6 +42,12 @@ test('Customer saved-address writes reconcile uncertain RPC outcomes before allo
   assert.match(handler, /srk_customer_save_my_address/);
   assert.match(handler, /srk_customer_list_my_saved_addresses/);
   assert.match(handler, /const matches=latestAddresses\.filter/);
+  assert.match(handler, /const normalizedText=value=>String/);
+  assert.match(handler, /normalizedText\\(a\\.recipient_name\\)===normalizedText\\(payload\\.p_recipient_name\\)/);
+  assert.match(handler, /normalizedText\\(a\\.address_line\\)===normalizedText\\(payload\\.p_address_line\\)/);
+  assert.match(handler, /normalizedText\\(a\\.district\\)===normalizedText\\(payload\\.p_district\\)/);
+  assert.match(handler, /normalizedText\\(a\\.state\\)===normalizedText\\(payload\\.p_state\\)/);
+  assert.match(handler, /normalizedText\\(a\\.landmark\\)\\|\\|null/);
   assert.match(handler, /matches\.length===1\?matches\[0\]:null/);
   assert.match(handler, /editingId\?latestAddresses\.find/);
   assert.match(handler, /अभी वही अनुरोध दोबारा न भेजें/);
