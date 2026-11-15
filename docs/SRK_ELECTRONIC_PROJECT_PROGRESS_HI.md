@@ -3576,3 +3576,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - PR #8 latest head `758fda100f9cf2e8a389347af0c79e6662fbd160` खुला Draft/Unmerged है। इस docs commit पर Vercel status `failure` दिखा और target URL build-rate-limit/upgrade notice है; इसे successful deployment/build नहीं माना गया। इस नवीनतम docs commit के लिए नया Node workflow run उपलब्ध नहीं मिला। पिछला 163/163 pass run `7b23a2c4e7ef6012413957f4553acf44a9fab7b` पर था।
 - कोई SQL execute/apply, Production DB access, migration history edit, merge, deployment या provider refund/transfer नहीं किया।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
+
+
+## 2026-11-15 — GPT-1 active-work timer/SOS contract follow-up
+- Customer और Electrician के वर्तमान HTML source को फिर से पढ़ा: दोनों timer display server के `work_started_at` + accumulated seconds से बनाते हैं और UI हर सेकंड refresh होती है; यह client display है, bill calculation नहीं।
+- Customer SOS panel तथा Electrician SOS panel दोनों केवल चुनी category वाले `in_progress` काम पर दिखते हैं। Electrician completion request pending/disputed अवस्था में timer/completion action छिपा रहता है। नया regression assertion commit `70cca079e60f21aafba9db9c323a5336c410f886` में मौजूद है।
+- महत्वपूर्ण backend integration gate: दोनों UI submit handlers अभी `srk_create_sos_alert` को केवल `{p_reason}` भेजते हैं। UI booking-card ID को RPC में नहीं भेजती। यह तभी सुरक्षित/सही है जब GPT-2 का backend authenticated actor और सही active booking को स्पष्ट, unambiguous तरीके से derive करे; अन्यथा multiple active bookings में case association अस्पष्ट हो सकती है। GPT-2 के वास्तविक SQL/RPC contract और response को देखे बिना signature बदलना या backend success मानना उचित नहीं।
+- इस follow-up में code/DB नहीं बदला। PR #8 Draft/Open है; इस test commit के लिए नया Actions run उपलब्ध नहीं मिला।
+- GPT-1 का उपलब्ध implementation checklist denominator अभी भी Customer 10 + Electrician 10 + Welcome/Founder 6 = 26 items है; latest recorded count **19/26 = 73%**, **7/26 शेष**। यह implementation checklist progress है, release readiness नहीं; नए regression assertion को अलग checklist item मानकर denominator नहीं बढ़ाया।
+- अगला resume point: GPT-2 के `srk_create_sos_alert` SQL/RPC implementation को fetch करके authenticated actor/booking resolution, response schema और failure behavior का exact मिलान; फिर Customer/Electrician UI contract test चलने का CI evidence सत्यापित करना। Mobile QA अभी भी अंतिम consolidated pass के लिए deferred है।
