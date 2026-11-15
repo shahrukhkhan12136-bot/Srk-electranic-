@@ -64,7 +64,7 @@ This is the single index for GPT-2 scope, existing implementation, migrations, d
 At inventory head `c43c20325a5da6352ec7b1e8880f6e620788646f`:
 - SQL migrations: **78**
 - Supabase database contract files: **32**
-- Node test files: **35**
+- Node test files: **39**
 - GitHub Actions workflows: **3**
 - Recursive tree was not truncated.
 
@@ -310,3 +310,50 @@ The GPT-2 feature set is not empty or waiting for discovery: the source already 
 - Added `tests/admin-sos-staff-visibility.test.js` to guard card visibility, role-mode behavior and Support permission grants. CI for these new commits is pending; no test pass is claimed yet.
 
 - Follow-up review caught a regression risk in the initial visibility patch: a `staff-only` card would hide the SOS queue from Main Admin even though Main Admin loads it. Corrected with an `admin-shared` visibility class shown in both authorized portal modes; regression test now asserts both roles. Latest code/test commits: `94e1ffd` and `2650b0f`. CI still pending.
+
+
+### 3C. वर्तमान Feature Branch Node test inventory (2026-11-16 पुनर्गणना)
+
+Recursive Git tree से `tests/*.test.js` की वास्तविक संख्या **39** सत्यापित हुई। पुराने §3B snapshot में 35 लिखा था; वह संख्या अब superseded है। वर्तमान पूरी सूची:
+
+- `tests/accepted-contact-visibility.test.js`
+- `tests/admin-booking-direct-write-closure.test.js`
+- `tests/admin-commission-report-labels.test.js`
+- `tests/admin-progress-card.test.js`
+- `tests/admin-refund-and-staff-access.test.js`
+- `tests/admin-route-settlement-warning.test.js`
+- `tests/admin-sos-staff-visibility.test.js`
+- `tests/booking-lifecycle-serialization.test.js`
+- `tests/customer-booking-idempotency.test.js`
+- `tests/customer-dashboard-menu-contract.test.js`
+- `tests/customer-electrician-otp-login.test.js`
+- `tests/customer-electrician-phone-visibility.test.js`
+- `tests/customer-electrician-support-attachments-contract.test.js`
+- `tests/customer-electrician-support-contract.test.js`
+- `tests/customer-five-menu-source.test.js`
+- `tests/customer-immediate-booking-contract.test.js`
+- `tests/customer-language-ui-contract.test.js`
+- `tests/customer-payment-method-enforcement.test.js`
+- `tests/customer-payment-receipt-itemization.test.js`
+- `tests/customer-profile-address-navigation.test.js`
+- `tests/customer-refund-ui-lifecycle.test.js`
+- `tests/database-migration-version-uniqueness.test.js`
+- `tests/database-pgtap-plan-counts.test.js`
+- `tests/electrician-accounting-kyc-contract.test.js`
+- `tests/electrician-area-change-contract.test.js`
+- `tests/electrician-legacy-quotation-retirement.test.js`
+- `tests/electrician-live-location-client.test.js`
+- `tests/legacy-financial-read-rpc-search-path.test.js`
+- `tests/push-delivery-lease-fencing.test.js`
+- `tests/push-delivery-outbox.test.js`
+- `tests/push-job-offer-sender.test.js`
+- `tests/push-subscription-delivery-ledger.test.js`
+- `tests/razorpay-refund-executor.test.js`
+- `tests/razorpay-refund-recovery.test.js`
+- `tests/razorpay-refund-status.test.js`
+- `tests/razorpay-webhook-inbox.test.js`
+- `tests/sos-admin-support-contract.test.js`
+- `tests/sos-two-step-ui-contract.test.js`
+- `tests/welcome-screen-contract.test.js`
+
+यह फ़ाइल-गणना है, टेस्ट निष्पादन का परिणाम नहीं। नवीनतम SOS visibility regression test अभी CI/runtime में पास प्रमाणित नहीं है।
