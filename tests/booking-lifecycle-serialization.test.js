@@ -133,6 +133,12 @@ test('base work-start migration has no undeclared dispute-note references', () =
 });
 
 
+test('completion RPC comment documents the full three-argument signature', () => {
+  assert.match(timerSql, /CREATE OR REPLACE FUNCTION public\.srk_customer_respond_work_completion\(p_booking_id uuid,p_response text,p_note text DEFAULT NULL\)/);
+  assert.match(timerSql, /COMMENT ON FUNCTION public\.srk_customer_respond_work_completion\(uuid,text,text\) IS/);
+  assert.doesNotMatch(timerSql, /COMMENT ON FUNCTION public\.srk_customer_respond_work_completion\(uuid,text\) IS/);
+});
+
 test('electrician labour bill access recognizes any profile owned by the authenticated user', () => {
   const fn = sqlFunction(multiProfileBillSql, 'srk_electrician_get_labour_bill');
   assert.match(fn, /bill\.booking_id=p_booking_id/);
