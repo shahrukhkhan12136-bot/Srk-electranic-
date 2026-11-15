@@ -198,3 +198,13 @@ test('Support Staff session lifecycle and private assignment tables deny direct 
   }
   assert.ok(staffMigration.includes('grant execute on function public.srk_admin_staff_register_invited_user(uuid,text,uuid) to service_role'));
 });
+
+
+const staffPermissionVolatilityFix = fs.readFileSync(path.join(root, 'supabase/migrations/20261116100000_fix_staff_permission_helper_volatility.sql'), 'utf8');
+
+test('Staff permission helper is VOLATILE because it takes row locks', () => {
+  assert.match(staffPermissionVolatilityFix, /create or replace function public\\.srk_has_admin_permission\\(p_permission_key text\\)[\\s\\S]*?language plpgsql\\s+volatile\\s+security definer/i);
+  assert.match(staffPermissionVolatilityFix, /from public\\.srk_admin_staff s[\\s\\S]*?for share/i);
+  assert.match(staffPermissionVolatilityFix, /from public\\.srk_admin_staff_sessions tracked[\\s\\S]*?for share/i);
+  assert.match(staffPermissionVolatilityFix, /revoke all on function public\\.srk_has_admin_permission\\(text\\) from public, anon/i);
+});
