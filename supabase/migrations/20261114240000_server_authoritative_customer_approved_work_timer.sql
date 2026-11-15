@@ -179,14 +179,16 @@ AS $function$
 DECLARE v_profile uuid; b public.service_bookings%ROWTYPE;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  SELECT p.id INTO v_profile FROM public.electrician_profiles p
-  WHERE (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
-    AND p.verification_status='approved' AND p.active=true
-  ORDER BY p.created_at DESC LIMIT 1;
-  IF v_profile IS NULL THEN RAISE EXCEPTION 'Approved active electrician required' USING ERRCODE='42501'; END IF;
   SELECT * INTO b FROM public.service_bookings
-  WHERE id=p_booking_id AND assigned_electrician_id=v_profile FOR UPDATE;
-  IF NOT FOUND OR b.selected_category IS NULL THEN RAISE EXCEPTION 'New assigned customer booking not found' USING ERRCODE='42501'; END IF;
+  WHERE id=p_booking_id FOR UPDATE;
+  IF NOT FOUND OR b.assigned_electrician_id IS NULL OR b.selected_category IS NULL THEN
+    RAISE EXCEPTION 'New assigned customer booking not found' USING ERRCODE='42501';
+  END IF;
+  SELECT p.id INTO v_profile FROM public.electrician_profiles p
+  WHERE p.id=b.assigned_electrician_id
+    AND (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
+    AND p.verification_status='approved' AND p.active=true;
+  IF v_profile IS NULL THEN RAISE EXCEPTION 'Assigned approved active electrician required' USING ERRCODE='42501'; END IF;
   IF b.status<>'assigned' OR b.work_timer_running OR b.work_start_approval_status NOT IN ('not_requested','rejected') THEN
     RAISE EXCEPTION 'इस बुकिंग में अभी काम शुरू करने का अनुरोध उपलब्ध नहीं है';
   END IF;
@@ -258,13 +260,16 @@ AS $function$
 DECLARE v_profile uuid; b public.service_bookings%ROWTYPE; v_elapsed numeric(24,6);
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  SELECT p.id INTO v_profile FROM public.electrician_profiles p
-  WHERE (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
-    AND p.verification_status='approved' AND p.active=true ORDER BY p.created_at DESC LIMIT 1;
-  IF v_profile IS NULL THEN RAISE EXCEPTION 'Approved active electrician required' USING ERRCODE='42501'; END IF;
   SELECT * INTO b FROM public.service_bookings
-  WHERE id=p_booking_id AND assigned_electrician_id=v_profile FOR UPDATE;
-  IF NOT FOUND OR b.status<>'in_progress' OR NOT b.work_timer_running OR b.work_started_at IS NULL THEN
+  WHERE id=p_booking_id FOR UPDATE;
+  IF NOT FOUND OR b.assigned_electrician_id IS NULL THEN
+    RAISE EXCEPTION 'चलता हुआ काम नहीं मिला';
+  END IF;
+  SELECT p.id INTO v_profile FROM public.electrician_profiles p
+  WHERE p.id=b.assigned_electrician_id
+    AND (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
+    AND p.verification_status='approved' AND p.active=true;
+  IF v_profile IS NULL OR b.status<>'in_progress' OR NOT b.work_timer_running OR b.work_started_at IS NULL THEN
     RAISE EXCEPTION 'चलता हुआ काम नहीं मिला';
   END IF;
   v_elapsed:=b.work_timer_elapsed_seconds+greatest(extract(epoch FROM (clock_timestamp()-b.work_started_at)),0);
