@@ -2697,3 +2697,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Commits: Admin UI `be074d1`; test `db95b3b`, regex correction `d4f05ee`।
 - इन अंतिम दो source/test edits के बाद कोई नया CI run उपलब्ध नहीं दिखा; इसलिए **98/98 परिणाम पूर्ववर्ती tested HEAD `843e91a` के लिए है**, नवीनतम Admin label correction को अभी CI में पुनः चलाना बाकी है।
 - कोई Production DB, provider, payout, payment, deployment या merge action नहीं किया।
+
+
+## 2026-11-15 — Backend quotation RPC retirement (GPT-1)
+
+- New additive migration `20261115220000_retire_live_legacy_quotation_rpcs.sql` (commit `d8ec74f2ce150490b83cc0f13728079ce66f277b`) revoke/drop करती है: `srk_submit_booking_quote`, `srk_customer_respond_booking_quote`, `srk_update_booking_work_status`।
+- `srk_get_my_offer_details()` से legacy quoted amount, service/material quote amount, quote status और quote note projections हटाए। Assigned-only contact visibility तथा current category/duration/rate/server-timer fields रखे।
+- Historical booking/financial data और legacy audit columns untouched हैं; destructive cleanup नहीं किया।
+- Admin/Accounting reconciliation और manual-payment source में पुराने quote-dependent checks मिले। ये GPT-2 ownership हैं; उन्हें बदले बिना cross-owner review के लिए pending दर्ज किया।
+- SQL runtime/pgTAP और RPC caller contract verification बाकी हैं। कोई Production migration, deployment, PR merge या live booking/payment action नहीं।
