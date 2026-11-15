@@ -25,7 +25,7 @@ test('Customer avatar save reconciles returned and thrown RPC errors before dele
   const end = source.indexOf('const oldAvatar=customerCurrentAvatarPath;', start);
   assert.ok(start >= 0 && end > start, 'profile save reconciliation block exists');
   const block = source.slice(start, end);
-  assert.match(block, /profileSaveError=profileSaveResult\?\.error\|\|null/);
+  assert.match(block, /profileSaveError=profileSaveResult\?\.error\|\|\(/);
   assert.match(block, /catch\(saveError\)\{profileSaveError=saveError;\}/);
   assert.match(block, /srk_customer_get_my_profile/);
   assert.match(block, /lookupSucceeded&&latestProfile\?\.avatar_path===avatarPath/);
