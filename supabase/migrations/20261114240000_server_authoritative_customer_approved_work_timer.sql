@@ -208,8 +208,12 @@ DECLARE b public.service_bookings%ROWTYPE; p public.electrician_profiles%ROWTYPE
   v_rate bigint; v_tier text; v_version text;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_response NOT IN ('approved','rejected','disputed') OR p_response IS NULL OR (p_note IS NOT NULL AND length(p_note)>1000) THEN RAISE EXCEPTION 'Invalid response' USING ERRCODE='22023'; END IF;
-  IF p_response='disputed' AND (v_note IS NULL OR length(v_note)<20) THEN RAISE EXCEPTION 'विवाद का कारण कम से कम 20 अक्षरों में लिखें'; END IF;
+  -- Work-start approval supports only approve/reject; disputes belong to
+  -- completion review and are handled by the dedicated completion RPC.
+  IF p_booking_id IS NULL OR p_response IS NULL
+     OR p_response NOT IN ('approved','rejected') THEN
+    RAISE EXCEPTION 'Invalid work-start response' USING ERRCODE='22023';
+  END IF;
   SELECT * INTO b FROM public.service_bookings WHERE id=p_booking_id AND customer_user_id=auth.uid() FOR UPDATE;
   IF NOT FOUND OR b.status<>'awaiting_work_start_approval' OR b.work_start_approval_status<>'pending' THEN
     RAISE EXCEPTION 'काम शुरू करने की कोई लंबित अनुमति नहीं है';
