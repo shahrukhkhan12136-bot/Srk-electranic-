@@ -8,6 +8,7 @@ const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8')
 const customer = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
 const timerSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114240000_server_authoritative_customer_approved_work_timer.sql'), 'utf8');
 const startFixSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114260000_fix_work_start_rpc_and_append_only_event_history.sql'), 'utf8');
+const multiProfileBillSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261115120000_fix_multi_profile_electrician_labour_bill_access.sql'), 'utf8');
 
 function handler(source, name) {
   const start = source.indexOf('async function ' + name + '(');
@@ -129,4 +130,15 @@ test('base work-start migration has no undeclared dispute-note references', () =
   const approval = sqlFunction(timerSql, 'srk_customer_respond_work_start');
   assert.match(approval, /p_response NOT IN \('approved','rejected'\)/);
   assert.doesNotMatch(approval, /\bp_note\b|\bv_note\b/);
+});
+
+
+test('electrician labour bill access recognizes any profile owned by the authenticated user', () => {
+  const fn = sqlFunction(multiProfileBillSql, 'srk_electrician_get_labour_bill');
+  assert.match(fn, /bill\.booking_id=p_booking_id/);
+  assert.match(fn, /EXISTS\s*\([\s\S]*?profile\.id=bill\.electrician_profile_id/);
+  assert.match(fn, /profile\.user_id=auth\.uid\(\) OR profile\.auth_user_id=auth\.uid\(\)/);
+  assert.doesNotMatch(fn, /ORDER BY profile\.created_at DESC LIMIT 1/);
+  assert.match(multiProfileBillSql, /REVOKE ALL ON FUNCTION public\.srk_electrician_get_labour_bill\(uuid\) FROM PUBLIC,anon/);
+  assert.match(multiProfileBillSql, /GRANT EXECUTE ON FUNCTION public\.srk_electrician_get_labour_bill\(uuid\) TO authenticated/);
 });
