@@ -729,7 +729,9 @@ async function loadCustomerBookings() {
               : '')
           +'</div>'
         : '';
-      const canRequestRefund=String(row.payment_status||'').toLowerCase()==='paid'
+      const refundLifecycleEligible=row.selected_category==null||row.status==='completed';
+      const canRequestRefund=refundLifecycleEligible
+        && String(row.payment_status||'').toLowerCase()==='paid'
         && Number(row.amount_paid||0)>0
         && Boolean(row.payment_verified_at);
       let refundMarkup='';
