@@ -183,7 +183,7 @@ declare
   v_evidence text:=btrim(coalesce(p_stage_evidence,''));
 begin
   if auth.uid() is null or not public.is_srk_admin() then raise exception 'ADMIN_ONLY' using errcode='42501'; end if;
-  if p_decision not in ('approved','rejected') then raise exception 'INVALID_DECISION'; end if;
+  if p_decision is null or p_decision not in ('approved','rejected') then raise exception 'INVALID_DECISION'; end if;
   if length(v_reason)<10 or length(v_reason)>1000 then raise exception 'ADMIN_REASON_REQUIRED_10_TO_1000'; end if;
 
   -- Keep the same Booking -> Request lock order as customer cancellation.
@@ -206,7 +206,7 @@ begin
   if v_request.request_status<>'pending' then raise exception 'CANCELLATION_REQUEST_ALREADY_DECIDED'; end if;
 
   if p_decision='approved' then
-    if p_verified_stage not in ('not_departed','en_route','arrived') then raise exception 'INVALID_VERIFIED_STAGE'; end if;
+    if p_verified_stage is null or p_verified_stage not in ('not_departed','en_route','arrived') then raise exception 'INVALID_VERIFIED_STAGE'; end if;
     if length(v_evidence)<10 or length(v_evidence)>1000 then raise exception 'STAGE_EVIDENCE_REQUIRED_10_TO_1000'; end if;
     v_fee:=case p_verified_stage when 'not_departed' then 0 when 'en_route' then 0 when 'arrived' then 99 end;
     v_fee_paise:=round(v_fee*100)::bigint;
