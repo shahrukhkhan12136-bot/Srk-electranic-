@@ -2800,3 +2800,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - **महत्वपूर्ण source/document mismatch मिला:** `20261115150000_admin_readonly_booking_accounting_reconciliation.sql` के वर्तमान RPC body में Route transfer/settlement tables का कोई read/join/field नहीं है, जबकि इस Progress Log के पुराने Sections 10 और 11 में Route reconciliation को report में शामिल बताया गया है। इसलिए Route reconciliation को implemented/verified नहीं मानना है; इस report के दायरे से बाहर है।
 - **Test-count mismatch मिला:** `supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql` में वर्तमान `plan(46)` और 46 `select ok(...)` assertions हैं। पुराने दस्तावेज़ में 52 assertions लिखा है; वर्तमान source file के अनुसार 46 ही दर्ज किया जाएगा। यह static source count है, pgTAP runtime pass नहीं।
 - अगला काम: Route transfer/settlement reconciliation को अलग से exact schema/order review के बाद जोड़ने का प्रस्ताव तैयार करना; पहले pgTAP runtime execution वाले isolated test environment की पुष्टि आवश्यक। कोई Production migration, transfer, refund, payout या deployment नहीं किया गया।
+
+
+## 2026-11-15 — Route transfer / settlement reconciliation report extension
+
+- नई migration `supabase/migrations/20261115170000_admin_route_transfer_accounting_reconciliation.sql` जोड़ी गई। Existing Main Admin read-only per-booking accounting RPC अब `srk_route_transfers` से transfer rows, provider transfer IDs, payment IDs, recipient types, amounts, transfer status और settlement status दिखाती है।
+- Route ledger मौजूद होने पर ठीक एक electrician और एक platform-commission row अपेक्षित है; payment ID, Labour-derived electrician payable और Labour-only commission amount से मिलान होता है। Failed/reversed/partial-reversed/manual-review, unsettled, missing provider ID और manual-paid + Route-electrician transfer overlap को exception बनाया गया है।
+- No Route rows को अपने-आप error नहीं माना गया, क्योंकि manual bank/UPI payout flow भी मौजूद है। यह रिपोर्ट किसी provider API को call नहीं करती, पैसे transfer/reverse नहीं करती, settlement update नहीं करती और payout Paid mark नहीं करती।
+- `supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql` को `plan(54)` / 54 source-contract assertions तक बढ़ाया गया। Migration function body का static inspection: कोई INSERT/UPDATE/DELETE या provider HTTP call नहीं।
+- **सीमा:** यह source-level implementation और static inspection है। pgTAP/PostgreSQL runtime अभी execute नहीं हुआ; वास्तविक Razorpay Route live transfer/webhook/provider reconciliation अभी अलग से प्रमाणित होना बाकी है।
+- Commits: migration `d41fd5786b5d68135f07613d881112a7d88be0cc`; pgTAP contract update `5d9e699f78b4365f5d9f4e34fc6e45c1309177b9`। कोई Production migration या transfer नहीं किया गया।
