@@ -1,5 +1,7 @@
 # GPT-1 Customer / Electrician Runtime Acceptance Matrix — 2026-11-16
 
+**Coverage count:** इस matrix में 19 workflow rows हैं (C-01–C-09, E-01–E-09, S-01); इसे 20 workflows न गिना जाए।
+
 ## उद्देश्य और सीमा
 
 यह matrix पहले से स्वीकृत Customer App और Electrician App workflows के runtime acceptance और evidence को अलग रखता है। यह नई सुविधा या implementation scope नहीं जोड़ता।
@@ -48,7 +50,8 @@
 
 ## Evidence status
 
-- Feature-branch Node CI run #1150 (`43748433148`) on PR head `34877c0cc75934cbe4c5ebb38dbf1a9476e3b62e` completed successfully: **189/189 Node tests passed, 0 failed**. This is source-level CI evidence only; it does not execute pgTAP against the live/isolated database or prove provider/browser/mobile runtime acceptance.
+- Latest checked PR-head Node CI run #1156 (`43748698652`) on commit `088619ee27a2a37fc09bf4fa8d35d4f81fa853da` completed successfully: **189/189 Node tests passed, 0 failed, 0 skipped**. Job `132917615890` log independently confirms the summary. This is source-level CI evidence only; it does not execute pgTAP against the live/isolated database or prove provider/browser/mobile runtime acceptance.
+- The next documentation-only commit `e95bffed5efd92ad0030a7c686b1e020c5f0ab65` was followed by GPT-2 audit commit `088619ee27a2a37fc09bf4fa8d35d4f81fa853da`; current PR head is that latter commit. The latest CI therefore validates the exact current head at the time of this update.
 
 - This is a plan/evidence map, not a claim that runtime acceptance passed.
 - Existing Node/pgTAP filenames identify source-level coverage only; execution must be recorded against exact commit and environment.
