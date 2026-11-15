@@ -1204,11 +1204,17 @@ async function loadCustomerBookings() {
       box.textContent='इस लॉगिन से अभी कोई बुकिंग लिंक नहीं है। नई बुकिंग करते समय OTP वाला यही मोबाइल नंबर इस्तेमाल करें।';
       return;
     }
+    // These supplementary panels must not discard the owner-scoped booking list
+    // when one RPC has a rejected network request.
+    const safeCustomerRpc = async (name) => {
+      try { return await customerSb.rpc(name); }
+      catch (error) { return { data: null, error }; }
+    };
     const [contactsResult,refundResult,cancellationResult,cancellationFeeResult] = await Promise.all([
-      customerSb.rpc('srk_get_customer_call_contacts'),
-      customerSb.rpc('srk_customer_list_booking_refund_requests'),
-      customerSb.rpc('srk_customer_list_booking_cancellation_requests'),
-      customerSb.rpc('srk_customer_list_booking_cancellation_fee_items')
+      safeCustomerRpc('srk_get_customer_call_contacts'),
+      safeCustomerRpc('srk_customer_list_booking_refund_requests'),
+      safeCustomerRpc('srk_customer_list_booking_cancellation_requests'),
+      safeCustomerRpc('srk_customer_list_booking_cancellation_fee_items')
     ]);
     const callMap = new Map((contactsResult.data || []).map(item => [item.booking_id, item]));
     const timelineMap = new Map();
