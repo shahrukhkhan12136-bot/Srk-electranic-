@@ -44,6 +44,7 @@ declare
   v_refund_state text := 'none';
   v_payment_verified boolean := false;
   v_refund_request_status text;
+  v_expected_electrician_user_id uuid;
 begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'ADMIN_ONLY' using errcode='42501';
@@ -91,6 +92,10 @@ begin
       v_booking.commission_rate / 100))::bigint;
     v_payable_paise := greatest(v_labour_paise + v_materials_paise - v_commission_paise,0);
   end if;
+
+  select coalesce(ep.auth_user_id,ep.user_id) into v_expected_electrician_user_id
+    from public.electrician_profiles ep
+   where ep.id=v_booking.assigned_electrician_id;
 
   select * into v_payout
     from public.srk_electrician_payouts p
@@ -209,6 +214,16 @@ begin
 
   if v_route_electrician_count>1 or v_route_platform_count>1 then
     v_exceptions := array_append(v_exceptions,'ROUTE_TRANSFER_DUPLICATE');
+  end if;
+  if exists(select 1 from public.srk_route_transfers t
+    where t.booking_id=p_booking_id
+      and t.razorpay_payment_id is distinct from v_booking.razorpay_payment_id) then
+    v_exceptions := array_append(v_exceptions,'ROUTE_PAYMENT_ID_MISMATCH');
+  end if;
+  if exists(select 1 from public.srk_route_transfers t
+    where t.booking_id=p_booking_id and t.recipient_type='electrician'
+      and t.recipient_user_id is distinct from v_expected_electrician_user_id) then
+    v_exceptions := array_append(v_exceptions,'ROUTE_ELECTRICIAN_RECIPIENT_MISMATCH');
   end if;
   if v_route_electrician_paise=0 and coalesce(v_payable_paise,0)>0
      and v_booking.razorpay_payment_id is not null then
