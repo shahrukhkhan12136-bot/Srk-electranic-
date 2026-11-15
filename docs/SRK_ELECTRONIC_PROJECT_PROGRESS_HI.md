@@ -2046,6 +2046,6 @@ Master Requirements Section 6 की दोबारा जाँच में �
 ### 2026-11-15 — Founder portrait crop/pose instruction saved (pending)
 
 - User-approved edit specification recorded: use the previously saved garden-background Founder portrait only; crop to waist-up (remove all lower body/legs), keep face/hair/shoulders visible and centered, and pose both arms naturally folded/crossed across the chest with hands resting near opposite upper arms.
-- Preserve the same person, black shirt and garden background; photorealistic professional portrait; no text/logo/badge/extra person.
+- Updated per user: change/remove the garden background and use a clean premium professional portrait background. Match the Founder model/look shown in the existing three-photo Founder reference; do not paste the phone mockup or its layout into the final portrait. Keep the recognizable Founder appearance and black-shirt styling; photorealistic, no text/logo/badge/extra person.
 - The three-phone UI mockup is not a Founder portrait and must never be substituted.
 - Image generation could not be invoked due to the current Free-plan image-generation limit. **Pending** until generation is available; no edited image has been created or integrated yet.
