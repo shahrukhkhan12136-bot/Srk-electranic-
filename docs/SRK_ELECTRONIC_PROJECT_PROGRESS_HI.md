@@ -4007,3 +4007,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - यह historical staged source recovery है; कोई PostgreSQL/Supabase database पर apply नहीं किया गया। pgTAP/runtime replay नहीं हुआ।
 - शेष base-schema source gaps: `service_bookings.amount_paid`, `electrician_profiles.auth_user_id`, और parent table `public.srk_booking_complaints`; duplicate `20261109` remote migration lineage भी unresolved है।
 - Checklist प्रतिशत नहीं बढ़ाया: GPT-2 27/39 = 69%; कुल project 56/86 = 65%। केवल source recovery/documentation को implementation completion नहीं गिना।
+
+## 15 Nov 2026 — complaint dependency audit and CI confirmation
+
+- Confirmed both Node test jobs for commit `b4d03822ad197e7a8403b6b2137e584ebb1c45b0` completed successfully: 187 tests, 187 passed, 0 failed, 0 skipped in each run.
+- Static source review found `20261114202250_customer_complaint_customer_safe_projection.sql` writes to `public.srk_booking_complaint_events`; no authoritative parent/event table CREATE TABLE source was found in the inspected current migration inventory or exact-name GitHub commit search.
+- Updated migration replay manifest to distinguish the restored push-subscription migration from the remaining complaint parent/event and two column prerequisites.
+- These are source/CI findings only. Node tests do not execute PostgreSQL/pgTAP. No Production database, migration history, or provider operation was accessed. No checklist percentage changed.
+- Vercel reported a build-rate-limit failure on this commit; it is separate from the two successful Node test jobs and does not establish deployment success.
