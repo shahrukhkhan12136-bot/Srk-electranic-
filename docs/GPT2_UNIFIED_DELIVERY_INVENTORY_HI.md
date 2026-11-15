@@ -283,3 +283,9 @@ No Production schema/history queries or migrations, no secrets, no provider refu
 
 ## 10. Current outcome
 The GPT-2 feature set is not empty or waiting for discovery: the source already contains broad Admin/Support, payment/refund, accounting, payout, security, push and SOS implementations. The repository now has a single inventory of every migration, DB contract file, Node test file and CI workflow. The remaining work is to verify gaps, complete the test harness and resolve authoritative schema dependencies—not to repeatedly rediscover the same files.
+
+
+## 3B. Source-DDL correction — 15 Nov 2026
+- `auth_user_id` को missing base-DDL blocker न गिनें। Current branch migration `20261109000500_harden_electrician_profile_identity_linking.sql` इसे `uuid REFERENCES auth.users(id) ON DELETE SET NULL` के रूप में जोड़ती है; nullable/no explicit default, mismatch/duplicate checks, sync trigger and partial unique index included. यह Google Maps consumer migration `20261109001000` से पहले है। बाद की `20261114130000` migration में defensive `ADD COLUMN IF NOT EXISTS` भी है।
+- Confirmed missing-column source DDL blocker अब केवल `service_bookings.amount_paid` है। Exact type/precision/nullability/default/constraints/indexes/grants अभी authoritative source से स्थापित नहीं।
+- Latest branch head at audit time `6bbac5a55b9b9ed98621be90290c91949a9c8156` Node CI run `43746546950` passed: 189/189, 0 failures. No claim of PostgreSQL/pgTAP/full migration replay.
