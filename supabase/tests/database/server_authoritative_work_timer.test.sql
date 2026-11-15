@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(19);
+SELECT plan(20);
 
 SELECT has_column('public','service_bookings','work_timer_elapsed_seconds','server accumulated timer seconds are stored');
 SELECT has_column('public','service_bookings','work_started_at','server timer start timestamp is stored');
@@ -40,6 +40,13 @@ SELECT ok(
   position('disputed' in lower(pg_get_functiondef('public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure)))>0
   AND position('length(v_note)<20' in lower(pg_get_functiondef('public.srk_customer_respond_work_completion(uuid,text,text)'::regprocedure)))>0,
   'completion disputes require a reason and create a complaint for review'
+);
+
+SELECT ok(
+  position('exists (' in lower(pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)'::regprocedure)))>0
+  AND position('profile.id=bill.electrician_profile_id' in lower(pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)'::regprocedure)))>0
+  AND position('profile.user_id=auth.uid() OR profile.auth_user_id=auth.uid()' in lower(pg_get_functiondef('public.srk_electrician_get_labour_bill(uuid)'::regprocedure)))>0,
+  'electrician bill access accepts any owned profile and stays tied to the bill profile'
 );
 
 SELECT * FROM finish();
