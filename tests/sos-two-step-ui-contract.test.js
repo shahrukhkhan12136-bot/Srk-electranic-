@@ -44,9 +44,9 @@ test('Cancelling SOS selection discards the reason and never calls the backend',
     ['Electrician', electrician, 'cancelElectricianSosSelection']
   ]) {
     const start = source.indexOf('function ' + handlerName + '(');
-    const end = source.indexOf('}', start);
-    assert.ok(start >= 0 && end > start, app + ' cancel handler exists');
-    const handler = source.slice(start, end + 1);
+    const nextHandler = source.indexOf('document.addEventListener', start);
+    assert.ok(start >= 0 && nextHandler > start, app + ' cancel handler exists');
+    const handler = source.slice(start, nextHandler);
     assert.match(handler, /Reason_.*\.value=''/);
     assert.match(handler, /चयन रद्द किया गया; कोई अलर्ट नहीं भेजा गया।/);
     assert.doesNotMatch(handler, /\.rpc\(/, app + ' cancel handler must not call the SOS RPC');
