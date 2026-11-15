@@ -47,3 +47,19 @@ test('customer profile language preference applies reversible Hindi and English 
   assert.match(booking, /customerUiLanguageObserver\.observe\(document\.body/);
   assert.match(booking, /'सर्विस बुक करें':'Book a Service'/);
 });
+
+
+test('customer dynamic payment messages and printable receipt respect selected language', () => {
+  assert.match(booking, /const customerNativeAlert = window\.alert\.bind\(window\)/);
+  assert.match(booking, /window\.alert = message => customerNativeAlert\(customerUiText\(message\)\)/);
+  assert.match(booking, /'भुगतान रिकॉर्ड':'Payment Record'/);
+  assert.match(booking, /'रिफंड स्वीकृत':'Refund Approved'/);
+  assert.match(booking, /const receiptLang=document\.documentElement\.lang==='en'\?'en':'hi'/);
+  assert.match(booking, /toLocaleString\(receiptLang==='en'\?'en-IN':'hi-IN'/);
+  assert.match(booking, /<html lang=\"'\+receiptLang\+\'\"/);
+  assert.match(booking, /'कुल सत्यापित भुगतान':'Total Verified Payment'/);
+  const receiptStart = booking.indexOf('async function customerPrintPaymentReceipt');
+  const receiptEnd = booking.indexOf('async function loadCustomerPaymentHistory', receiptStart);
+  assert.ok(receiptStart >= 0 && receiptEnd > receiptStart);
+  assert.doesNotMatch(booking.slice(receiptEnd), /\bR\(/);
+});
