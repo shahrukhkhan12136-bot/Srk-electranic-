@@ -442,6 +442,16 @@
 - यह source-level hardening है; वास्तविक browser/network failure simulation, Supabase runtime और mobile QA अभी बाकी हैं।
 
 
+
+
+### 2026-11-16 — Customer/Electrician lifecycle retry cleanup coverage
+- Customer work-start approval और completion response में per-booking busy guard का `finally` में release और retry guidance inspected.
+- Electrician work-start/completion requests में busy guard release और refresh/retry messaging inspected.
+- Customer refund/cancellation submit handlers में failure message तथा submit button का `finally` में re-enable होना inspected.
+- Electrician offer response में busy guard release और response buttons का पुनः enable होना inspected.
+- इन paths के source-contract regression assertions `tests/customer-electrician-booking-status-sync-contract.test.js` में जोड़े गए। यह source inspection/contract coverage है; वास्तविक network fault injection, live RPC/database और browser testing नहीं हुई।
+- Exact latest commit पर CI परिणाम उपलब्ध होने तक इन tests को passed नहीं माना जाएगा।
+
 ### 2026-11-16 — Customer booking supplementary RPC resilience
 - `booking.html`: Customer booking list में call contacts, refund requests, cancellation requests और cancellation-fee items के supplementary RPC अब `safeCustomerRpc` से अलग-अलग transport rejection संभालते हैं। एक supplementary request reject होने पर मुख्य owner-scoped booking list को generic load failure से overwrite नहीं किया जाएगा।
 - Regression test `customer booking list survives rejected supplementary contact, refund, and cancellation RPCs` जोड़ा गया।
