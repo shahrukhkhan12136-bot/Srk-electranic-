@@ -833,11 +833,34 @@ async function loadAdminRefundRequests(){
    (r.refund_record_status?'<p>Provider Refund: <b>'+esc(r.refund_record_status)+'</b> · Provider status: '+esc(r.provider_status||'—')+' · Refund ID: '+esc(r.provider_refund_id||'अभी उपलब्ध नहीं')+'</p>':'<p>Provider Refund Record: अभी नहीं बना</p>')+
    (r.payout_status?'<p>Electrician Payout: <b>'+esc(r.payout_status)+'</b> · '+esc(r.payout_note||'')+'</p>':'')+
    (r.refund_last_error?'<p style="color:#9a3412">Provider error: '+esc(r.refund_last_error)+'</p>':'')+
+   (r.refund_record_status&&r.refund_record_status!=='processed'?'<button type="button" class="alt" onclick="inspectAdminProviderRefund(\''+esc(r.booking_id)+'\',\''+esc(r.request_id)+'\')">Razorpay की वास्तविक स्थिति जाँचें</button><div id="adminRefundProviderCheck_'+esc(r.request_id)+'" class="muted" aria-live="polite"></div>':'')+
    (['processing','unknown'].includes(state)||['requested','processing','failed'].includes(String(r.refund_record_status||''))?'<p class="notice" role="note">Recovery जाँच आवश्यक: पहले Razorpay Dashboard में इसी Refund ID / Payment ID की वास्तविक स्थिति मिलाएँ। बिना प्रमाण नया Refund या retry न करें; payout को manually release न करें।</p>':'')+
    (r.admin_note?'<p>पिछला Admin Note: '+esc(r.admin_note)+'</p>':'')+
    (['requested','in_review'].includes(state)?'<label for="adminRefundNote_'+esc(r.request_id)+'">Admin जाँच / निर्णय नोट (10–2000 अक्षर)</label><textarea id="adminRefundNote_'+esc(r.request_id)+'" minlength="10" maxlength="2000" rows="2" style="width:100%;padding:10px" placeholder="जाँच, प्रमाण और निर्णय का कारण लिखें"></textarea>':'')+
    '<div style="margin-top:8px">'+actions+'</div></article>';
  }).join('');
+}
+const adminRefundProviderCheckBusy=new Set();
+async function inspectAdminProviderRefund(bookingId,requestId){
+ if(adminRefundProviderCheckBusy.has(requestId))return;
+ const box=document.getElementById('adminRefundProviderCheck_'+requestId);
+ if(!box)return;
+ adminRefundProviderCheckBusy.add(requestId);box.textContent='Razorpay से read-only स्थिति जाँची जा रही है…';
+ try{
+  const {data:sessionData,error:sessionError}=await sb.auth.getSession();
+  const token=sessionData?.session?.access_token;
+  if(sessionError||!token)throw new Error('Main Admin session समाप्त है। दोबारा लॉगिन करें।');
+  const response=await fetch('/api/razorpay-refund-status',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({booking_id:bookingId})});
+  let result=null;try{result=await response.json();}catch(_){}
+  if(!response.ok&&!result?.success)throw new Error(result?.error||'Provider status verify नहीं हुआ।');
+  if(result?.verified&&result.provider){
+   const p=result.provider;
+   box.textContent='Verified Razorpay status: '+p.status+' · Refund ID: '+p.refund_id+' · Amount: ₹'+(Number(p.amount_paise)/100).toFixed(2)+(p.acquirer_reference?' · ARN/RRN/UTR: '+p.acquirer_reference:'')+'. यह केवल read-only जाँच है; Ledger/Payout अभी नहीं बदले।';
+  }else{
+   box.textContent=result?.message||result?.error||'स्थिति स्पष्ट नहीं है। Retry या payout release न करें।';
+  }
+ }catch(error){box.textContent=(error?.message||'स्थिति verify नहीं हुई।')+' कोई नया Refund या payout release न करें।';}
+ finally{adminRefundProviderCheckBusy.delete(requestId);}
 }
 async function decideAdminRefundRequest(id,decision){
  if(!['in_review','approved','rejected'].includes(decision)||adminRefundReviewBusy.has(id))return;
