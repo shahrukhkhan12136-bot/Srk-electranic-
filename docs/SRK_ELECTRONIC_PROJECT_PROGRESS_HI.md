@@ -3693,3 +3693,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Source change verified by re-fetch. New CI run not yet visible; no browser/mobile runtime test, DB change, merge or deployment performed.
 
 - Follow-up test correction: SOS handler source is minified onto one line, इसलिए contract test अब handler boundary को सही blank-line delimiter से पकड़ता है और regex escaping ठीक है। Corrected test commit: `72e4cbafe5dacdc9115a4d98487d16c4c9211d30`. Exact commit source re-fetch verification: दोनों submit handlers में extra modal नहीं, reason-only RPC है; saved-address navigation Home tab खोलता है। Node/CI execution अभी pending है।
+
+
+## 2026-11-15 — GPT-2 SOS backend foundation and Admin/Support queue
+- SOS backend migration source जोड़ी: `20261115260000_sos_admin_support_alerts.sql`। Client केवल approved `p_reason` भेजता है; server `auth.uid()` से Customer/Electrician actor और exactly one active new-category `in_progress` booking derive करता है। कोई booking/actor ID client से स्वीकार नहीं होता; multiple या missing active booking fail-closed है।
+- प्रति booking एक pending SOS case, private case table, dedicated `support.sos.read` / `support.sos.acknowledge` permissions, Main Admin + active permissioned Support Staff queue, serialized acknowledgement, append-only event history और Staff audit जोड़े। Browser roles को direct table access नहीं।
+- Admin Panel में SOS queue, acknowledgement note/action और activity history UI जोड़ा। Customer/Electrician clients का existing reason-only RPC contract नहीं बदला।
+- SMS/Push provider और Admin mobile recipient configuration अभी उपलब्ध/approved नहीं; इसलिए backend/UI status `not_configured` ही दिखाते हैं। Live/consented location contract भी अभी लागू नहीं; SOS case location के बिना भी दर्ज हो सकता है। पुलिस/112 को automatic notification नहीं है।
+- Node CI run `43730623836` on commit `480f90aebac56a05ce54f5c447aaec3142fd719d` SUCCESS: पूरा repository Node test job सफल। pgTAP source contract `sos_admin_support_alerts.test.sql` में plan 28 / 28 assertions है; PostgreSQL runtime अभी execute नहीं हुआ।
+- GPT-2 checklist **27/39 = 69%** अपरिवर्तित; यह source foundation है, end-to-end SMS/Push/location/runtime/owner approval पूर्ण नहीं। PR #8 Draft/Open/Unmerged। कोई Production migration, SMS/Push send, real transaction, merge या deployment नहीं किया।
