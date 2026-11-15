@@ -3827,3 +3827,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Inspected `20261109003000_secure_commission_reporting.sql`: it reads `amount_paid` and grants Admin column-level UPDATE on `amount_paid`, but contains no `ADD COLUMN` or base-table definition. Thus it further confirms application dependency, not the column's original DDL contract.
 - Commit search for `amount_paid` returned only two application-code commits (webhook and payment verification payloads), not a base DDL commit. Commit search for `auth_user_id` returned no matching commits; this is a search result, not proof no source exists.
 - PR #8 remains open, Draft, unmerged at head `cee9ea2`. No SQL runtime, remote DB access, migration repair, provider operation, or deployment occurred. GPT-2 remains 27/39 = 69%.
+
+
+### Historical base-schema source sweep — 15 Nov 2026
+- Rechecked the four original setup artifacts at baseline commit `08e5ff8`: `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`, and `PORTAL_SECURITY_UPDATE.sql`.
+- The two actual base-table definitions (`SUPABASE_SCHEMA.sql` and consolidated `COMPLETE_DATABASE_SETUP.sql`) create `service_bookings` and `electrician_profiles` but do not define `amount_paid` or `auth_user_id`. `PORTAL_SCHEMA.sql` only adds `electrician_profiles.user_id`; it does not add `auth_user_id`. `PORTAL_SECURITY_UPDATE.sql` contains no definitions for either field.
+- Repository-wide indexed search surfaced no additional source files with these exact column definitions. The only `amount_paid` commit-history matches remain two application payment-write commits, not DDL. This supports that the current tracked source bundle lacks the original contracts, while acknowledging GitHub code search is not a full archival guarantee.
+- Do not add guessed columns. Need a trustworthy original database schema export/deployment artifact or a verified approved read-only catalog export before any DDL decision.
+- GPT-2 remains 27/39 = 69%; no checklist item closed. No remote DB query, SQL runtime, or production change.
