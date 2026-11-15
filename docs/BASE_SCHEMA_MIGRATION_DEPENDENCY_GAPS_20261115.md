@@ -86,3 +86,10 @@ ALTER TABLE public.electrician_profiles
 
 ### Remaining confirmed source-DDL gap
 `service_bookings.amount_paid` remains absent from the three checked-in base schema files and no authoritative introducing `ADD COLUMN`/`CREATE TABLE` source has been identified. This is now the one confirmed missing-column source blocker. Do not guess its type, precision, nullability, default, constraints, indexes, or grants.
+
+
+## Follow-up historical branch and CI check — 15 Nov 2026, 18:30 UTC
+- Historical refs पर उपलब्ध starter schema की जाँच दोहराई: `main`, `feature/platform-fee-cash-online-cycle`, `safe-payment-refund-implementation`, और `work/separate-customer-electrician-portals` में `SUPABASE_SCHEMA.sql` का blob SHA समान `8ae88a7035bc963b244f22c6c1450c22618ec88f` है; चारों में `amount_paid` नहीं मिला। `feature/business-finance-dashboard` के `COMPLETE_DATABASE_SETUP.sql` में भी इसका उल्लेख नहीं मिला।
+- Repository commit search में `amount_paid` के लिए दो application-consumer commits ही मिले; कोई matching schema-introduction commit नहीं मिला। GitHub code search default branch तक सीमित है, इसलिए यह सभी historical/deleted/unreachable objects की exhaustive जाँच नहीं है।
+- नवीनतम PR head `2b08300e374f3a7c06e9e3d656b0165e6bd5f216` पर run `43746918575` completed success; job `132912152246` logs: 189 tests, 189 pass, 0 fail, 0 skipped। उसी SHA का दूसरा run `43746922357` उस समय pending था।
+- निष्कर्ष अपरिवर्तित: `auth_user_id` migration-chain DDL से covered है; `service_bookings.amount_paid` एकमात्र confirmed missing source-DDL gap है। No guessed DDL, no Production access or migration, no merge/deployment.
