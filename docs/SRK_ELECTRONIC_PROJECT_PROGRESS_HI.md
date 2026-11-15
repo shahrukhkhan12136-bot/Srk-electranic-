@@ -3518,3 +3518,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Findings और safe next steps `docs/CORE_BASELINE_DDL_CONTRACT_HI.md` में दर्ज किए। Complete disposable parity baseline अभी blocked है; production history या schema में कोई बदलाव नहीं।
 - कोई migration execute नहीं हुई; PostgreSQL/pgTAP runtime अभी नहीं चला।
 - GPT-2 checklist अपरिवर्तित: **27/39 = 69%**, **12/39 = 31% शेष**।
+
+
+## 2026-11-15 — GPT-1 SOS UI CI verification completed
+
+- SOS UI requirement document को successful rerun result के साथ अपडेट किया; commit `18e041e7d7bf3aec4d7f0de7e538bf5ec51424f1`।
+- Workflow run `43726275569` के latest rerun attempt में Node test job `132849770691` सफल: **163/163 pass, 0 fail, 0 cancelled**।
+- SOS दो-चरणीय UI contract test सहित Customer/Electrician source assertions पास हुए; पुराने SOS booking/details selector references दोनों app files में नहीं मिले।
+- GPT-1 का SOS UI source + Node contract verification पूरा। Browser/mobile visual QA consolidated final mobile QA चरण तक स्थगित है।
+- SOS का वास्तविक database RPC, Admin/Support acknowledgement queue, SMS/Push delivery और end-to-end alert अभी GPT-2 backend integration के बिना पूरा नहीं माना जाएगा।
+- कोई production DB, merge, deployment या mobile QA इस चरण में नहीं किया गया।
