@@ -3795,3 +3795,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Node CI for PR head `d106ec8` verified successful: run `43733401357`. No PostgreSQL runtime or pgTAP execution occurred.
 - Both migration files remain untouched. No remote migration repair, schema change, deployment or Production operation.
 - GPT-2 checklist remains 27/39 = 69%; no checklist item closed.
+
+
+### Repository-wide filename inventory and CI follow-up — 15 Nov 2026
+- Recursive Git tree at PR head `fed8b95` checked: repository contains exactly the two same-version 8-digit paths `20261109_allow_quote_approval_booking_states.sql` and `20261109_electrician_inspection_quotes_and_service_only_commission.sql`; no separate migration file whose filename is `electrician_inspection_quotes_and_service_only_commission` was found.
+- The original placeholder comment references a separately named “live Supabase migration”, but repository filename inventory cannot establish whether that migration exists in the remote ledger or what SQL it ran. This is now a distinct evidence gap.
+- Node CI for manifest commit `2dd840a` ended `cancelled` (run 43733764155); it is not a pass or a SQL test. No run was returned for progress commit `fed8b95`. PR #8 remains open, Draft, unmerged.
+- No migration path changed; no Production query or repair performed. GPT-2 remains 27/39 = 69%.
+- Next safe evidence target: recover the original deployment artifact/release record or an approved read-only migration-history export. Do not infer the remote migration version from the placeholder comment.
