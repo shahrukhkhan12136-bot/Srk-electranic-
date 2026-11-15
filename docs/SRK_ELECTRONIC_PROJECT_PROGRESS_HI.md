@@ -3134,3 +3134,9 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Latest CI on code head `3ad8d575266eea757a2084db82966b0c82b04e61`: Welcome Screen role/photo-slot test **PASS** (`ok 139`); PWA launch/offline-precache test **PASS** (`ok 140`); lifecycle and GPS contracts also pass. Repository test summary: **139 passed / 1 failed**.
 - The sole full-suite failure remains the unrelated Razorpay refund-note test `matches an unpersisted provider refund by its internal refund-record note`. No false full-suite green claim.
 - Exact approved blue-background Founder Photo remains unavailable in the accessible repository/Library; no unrelated collage/model/older portrait was substituted. Final original-photo integration still needs the previously approved photo asset.
+
+## 2026-11-15 — Refund Webhook टेस्ट fixture सुधार
+- GitHub Actions में Refund Webhook regression test की विफलता का कारण test fixture का provider refund ID `rfnd_note_match` था; Razorpay ID validator केवल `rfnd_` के बाद alphanumeric अक्षर स्वीकार करता है।
+- Test fixture को वैध आकार `rfndnotematch123` किया; production handler में कोई ढील नहीं दी और refund identity checks यथावत रखे।
+- बदलाव Feature Branch / Draft PR #8 में commit `42de563f4cc8b276f9a7105474135d36555991bd` पर है। नवीनतम CI run अभी उपलब्ध नहीं; pass होने का दावा नहीं।
+- GPT-2 कार्यक्षेत्र प्रगति अपरिवर्तित: 26/39 = 67% पूरा, 13/39 = 33% शेष।
