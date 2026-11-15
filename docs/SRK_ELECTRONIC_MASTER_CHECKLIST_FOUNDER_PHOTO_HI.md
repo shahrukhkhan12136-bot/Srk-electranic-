@@ -566,3 +566,9 @@
 - KYC upload handler में global in-flight guard जोड़ा; एक दस्तावेज़ अपलोड रहते दूसरा KYC upload शुरू नहीं होगा।
 - अपलोड के दौरान KYC file inputs और upload/preview buttons अस्थायी रूप से disable होते हैं; completion/failure दोनों स्थितियों में उनकी पुरानी disabled state finally में restore होती है।
 - Regression source-contract test जोड़ा। यह browser/storage runtime test नहीं है; वास्तविक Storage RLS, duplicate-click fault-injection और mobile QA अभी लंबित हैं।
+
+
+### 2026-11-16 — Customer Profile avatar upload की uncertain-save cleanup
+- Avatar upload के बाद profile update RPC का transport response reject होने पर नया private Storage object orphan रह सकता था।
+- अब ऐसे uncertain result पर owner profile दोबारा पढ़ा जाता है; केवल तभी नया object हटता है जब authoritative profile में वही avatar path सेव न हो। Re-read विफल हो तो object delete नहीं किया जाता, ताकि सफल server-side save का avatar टूटे नहीं।
+- Source-contract regression test जोड़ा। वास्तविक Supabase Storage/RPC fault-injection और browser validation अभी लंबित हैं।
