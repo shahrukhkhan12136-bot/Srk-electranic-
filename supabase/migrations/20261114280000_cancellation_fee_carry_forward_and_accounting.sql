@@ -319,7 +319,9 @@ as $$
   from public.srk_customer_cancellation_fee_debts d
   where d.customer_user_id=auth.uid()
   order by d.created_at desc,d.id;
-$$;
+$;
+revoke all on function public.srk_customer_list_my_cancellation_fee_debts() from public,anon;
+grant execute on function public.srk_customer_list_my_cancellation_fee_debts() to authenticated;
 
 create or replace function public.srk_admin_get_cancellation_fee_ledger_summary()
 returns jsonb language plpgsql stable security definer set search_path=''
@@ -348,7 +350,9 @@ as $$
   from public.srk_booking_cancellation_fee_items i
   where i.customer_user_id=auth.uid()
   order by i.created_at,i.id;
-$$;
+$;
+revoke all on function public.srk_customer_list_booking_cancellation_fee_items() from public,anon;
+grant execute on function public.srk_customer_list_booking_cancellation_fee_items() to authenticated;
 
 create or replace function public.srk_service_role_get_booking_payment_breakdown(p_booking_id uuid)
 returns jsonb language plpgsql stable security definer set search_path=''
