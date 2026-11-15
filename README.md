@@ -15,6 +15,19 @@
 - `/api/apply-electrician` — इलेक्ट्रिशियन आवेदन सेव करना
 - `/api/create-order` — Razorpay order बनाना
 - `/api/verify-payment` — signature और captured INR payment सत्यापित करना
+- `/api/razorpay-webhook` — Razorpay payment/refund webhook events को verify और process करना
+- `/api/razorpay-refund` — अधिकृत refund workflow का server-side execution
+- `/api/razorpay-refund-status` — refund status की server-side जाँच
+- `/api/razorpay-refund-recovery` — pending/uncertain refund operations की recovery/reconciliation
+- `/api/expire-booking-offers` — समय-सीमा पार offers expire करके sequential dispatch आगे बढ़ाना
+- `/api/deliver-push-outbox` — durable push outbox से queued notifications deliver/retry करना
+
+## Supabase Edge Functions
+- `admin-staff-management` — Admin द्वारा Support Staff invitation और staff lifecycle management
+- `electrician-phone-change` — Electrician phone-number change का OTP और Admin-approval workflow
+- `push-job-offer` — eligible offer के लिए push-notification delivery entry point
+
+इन server functions का source मौजूद होना Production secrets, provider configuration, scheduled invocation या वास्तविक delivery सक्रिय होने का प्रमाण नहीं है।
 
 ## Server-side environment variables
 Netlify Site configuration → Environment variables में:
