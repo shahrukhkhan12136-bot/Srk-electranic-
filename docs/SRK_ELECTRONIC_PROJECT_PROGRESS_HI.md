@@ -3245,3 +3245,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Regression test अब सुनिश्चित करता है कि Admin UI में legacy quote mutation RPC या editable amount input वापस न आए; backend legacy RPC को historical compatibility के लिए guarded रखा, drop नहीं किया।
 - Feature Branch source change; Node CI pending. PostgreSQL/pgTAP, browser runtime और Production migration नहीं किए। Historical paid/settled records सुरक्षित रखे गए।
 - GPT-2 checklist item 3.1.7 (Admin legacy quote editing/status control) का UI हिस्सा बंद; accounting/receipt dependency audit अलग शेष है।
+
+
+### Timer RPC documentation signature correction — 2026-11-15
+- Static review में `srk_customer_respond_work_completion` की वास्तविक signature `(uuid,text,text)` और उसी function के COMMENT statement की पुरानी signature `(uuid,text)` मिली।
+- Feature-branch migration में COMMENT signature को वास्तविक तीन arguments से मिलाया और Node source-contract regression test जोड़ा।
+- यह केवल migration comment metadata + regression test का source correction है; कोई database migration apply नहीं की गई।
+- इस नए commit के लिए CI result आने तक इसे test-success नहीं माना जाएगा। pgTAP / वास्तविक role-based RPC runtime verification अभी बाकी है।
