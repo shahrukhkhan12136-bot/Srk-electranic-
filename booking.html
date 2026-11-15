@@ -2149,7 +2149,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
 }
 
 async function reconcileCustomerPaymentAfterUncertainVerification(bookingId){
- let lookupSucceeded=false,paymentConfirmed=false;
+ let lookupSucceeded=false,paymentConfirmed=false,bookingsRefreshed=false,historyRefreshed=false;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_get_payment_history',{p_limit:25,p_offset:0});
   if(error)throw error;
@@ -2157,9 +2157,9 @@ async function reconcileCustomerPaymentAfterUncertainVerification(bookingId){
   const rows=Array.isArray(data)?data:[];
   paymentConfirmed=rows.some(row=>row.booking_id===bookingId&&['payment','manual_payment'].includes(String(row.event_type||'')));
  }catch(_){/* A failed authoritative read leaves the payment outcome uncertain. */}
- await loadCustomerBookings();
- await loadCustomerPaymentHistory(true);
- return {lookupSucceeded,paymentConfirmed};
+ try{await loadCustomerBookings();bookingsRefreshed=true;}catch(_){/* Keep the authoritative payment result even if the booking list is offline. */}
+ try{await loadCustomerPaymentHistory(true);historyRefreshed=true;}catch(_){/* Keep the authoritative payment result even if history refresh fails. */}
+ return {lookupSucceeded,paymentConfirmed,bookingsRefreshed,historyRefreshed};
 }
 function setPaymentStatus(message, isError = false) {
   const el = document.getElementById('paymentStatus');
@@ -2219,7 +2219,7 @@ async function startRazorpayPayment() {
         } catch (err) {
           const state=await reconcileCustomerPaymentAfterUncertainVerification(paymentBookingId);
           if(state.paymentConfirmed){
-            setPaymentStatus('✅ भुगतान सर्वर रिकॉर्ड में सत्यापित है। बुकिंग और Payments इतिहास रीफ़्रेश कर दिए गए हैं।');
+            setPaymentStatus('✅ भुगतान सर्वर रिकॉर्ड में सत्यापित है।'+(state.bookingsRefreshed?' बुकिंग सूची रीफ़्रेश हुई।':' बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी।')+(state.historyRefreshed?' Payments इतिहास रीफ़्रेश हुआ।':' Payments इतिहास अभी रीफ़्रेश नहीं हो सका।'));
           }else if(state.lookupSucceeded){
             setPaymentStatus('भुगतान की पुष्टि अभी सर्वर रिकॉर्ड में नहीं दिखी। अभी दोबारा भुगतान न करें। कुछ देर बाद Payments इतिहास रीफ़्रेश करें; राशि कटने पर सहायता टीम से संपर्क करें।',true);
           }else{
