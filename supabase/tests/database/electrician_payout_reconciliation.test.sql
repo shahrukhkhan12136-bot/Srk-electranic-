@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(26);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -101,6 +101,12 @@ select ok(position('payout_note = null' in
 select ok(position('payout_status = '||quote_literal('paid') in
   pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))=0,
   'refund trigger never overwrites an already paid payout');
+
+select ok(position('v_booking.commission_rate is null' in
+  pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))>0
+  and position('v_booking.commission_rate > 100' in
+  pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))>0,
+  'Admin settlement independently rejects missing or out-of-range commission rates');
 
 select * from finish();
 rollback;
