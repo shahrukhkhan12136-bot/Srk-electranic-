@@ -3126,3 +3126,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - The exact approved blue-background Founder Photo is not currently accessible in the repository or Library file list. Its original upload is referenced in prior project context (first blue-background image = actual Founder Photo; second image = design model), but the image bytes are not available to this work session. Authentic photo integration is therefore still pending; do not claim it is complete or ask for unrelated photos.
 - Added Welcome Screen regression coverage for all role routes, collage exclusion, copy, PWA start URL and offline precache.
 - Browser visual/runtime and PWA offline checks remain pending; no deployment or Production change was made. Final mobile QA remains deferred.
+
+
+### Welcome Screen CI follow-up — 2026-11-15
+- Fixed the Welcome Screen test harness to use string assertions for URL paths (avoids an invalid regular-expression delimiter issue).
+- Updated `tests/electrician-live-location-client.test.js` to expect the intentionally bumped service-worker cache `srk-electronic-v9`.
+- Latest CI on code head `3ad8d575266eea757a2084db82966b0c82b04e61`: Welcome Screen role/photo-slot test **PASS** (`ok 139`); PWA launch/offline-precache test **PASS** (`ok 140`); lifecycle and GPS contracts also pass. Repository test summary: **139 passed / 1 failed**.
+- The sole full-suite failure remains the unrelated Razorpay refund-note test `matches an unpersisted provider refund by its internal refund-record note`. No false full-suite green claim.
+- Exact approved blue-background Founder Photo remains unavailable in the accessible repository/Library; no unrelated collage/model/older portrait was substituted. Final original-photo integration still needs the previously approved photo asset.
