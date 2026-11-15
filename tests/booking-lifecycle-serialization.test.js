@@ -180,16 +180,18 @@ test('electrician timer RPCs authorize the exact assigned profile, not only the 
   }
 });
 
-test('Customer and Electrician SOS controls use the shared authenticated SOS RPC and three approved emergency categories', () => {
-  for (const source of [customer, electrician]) {
+test('Customer and Electrician SOS require explicit reason selection and separate final send action', () => {
+  for (const [source, openFn, cancelFn] of [[customer, 'openCustomerSosReasons', 'cancelCustomerSosSelection'], [electrician, 'openElectricianSosReasons', 'cancelElectricianSosSelection']]) {
     assert.match(source, /srk_create_sos_alert/);
-    assert.match(source, /customer_at_risk/);
-    assert.match(source, /electrician_at_risk/);
-    assert.match(source, /violence_or_other_emergency/);
-    assert.match(source, /p_location_lat:lat,p_location_lng:lng/);
-    assert.match(source, /पुलिस को ऐप से अपने-आप कोई कॉल या संदेश नहीं जाएगा/);
+    for (const code of ['customer_at_risk', 'electrician_at_risk', 'violence_or_other_emergency']) assert.ok(source.includes(code));
+    assert.match(source, /p_reason:reason/);
     assert.match(source, /SOS_CASE_NOT_CONFIRMED/);
+    assert.ok(source.includes(openFn)); assert.ok(source.includes(cancelFn));
+    assert.match(source, /कारण चुनें। अलर्ट केवल “SOS भेजें” दबाने पर बनेगा।/);
+    assert.match(source, /disabled/);
+    assert.doesNotMatch(source, /p_booking_id:|p_details:|p_location_lat:|p_location_lng:/);
+    assert.match(source, /पुलिस को ऐप से अपने-आप कॉल या संदेश नहीं जाएगा/);
   }
-  assert.match(customer, /customerSosBooking/);
-  assert.match(electrician, /electricianSosBooking/);
+  assert.doesNotMatch(customer, /customerSosBooking|customerSosDetails/);
+  assert.doesNotMatch(electrician, /electricianSosBooking|electricianSosDetails/);
 });
