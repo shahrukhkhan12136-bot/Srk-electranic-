@@ -56,7 +56,7 @@ test('outbox completion requires every device delivered so dead devices remain r
   assert.match(edge, /srk_is_push_subscription_delivery_complete/);
   assert.match(worker, /result\.complete === true/);
   assert.match(migration, /d\.delivery_status <> 'delivered'/);
-  assert.equal((migration.match(/d\\.delivery_status <> 'delivered'/g) || []).length, 2);
+  assert.equal((migration.match(/d\.delivery_status <> 'delivered'/g) || []).length, 2);
 });
 
 test('delivery ledger and RPCs are private and service-role only', () => {
