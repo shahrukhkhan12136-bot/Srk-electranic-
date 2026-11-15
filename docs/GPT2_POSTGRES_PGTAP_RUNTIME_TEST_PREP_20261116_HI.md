@@ -185,3 +185,27 @@ Feature Branch पर `.github/workflows/supabase-schema-ci.yml` मिला।
 - Filename inventory: **87/87 reviewed**.
 - CLI/Docker runtime, replay, pgTAP: **NOT RUN**.
 - Production/remote migration history: **NOT ACCESSED**.
+
+
+## 12. Exact SQL overlap in the 20261109 collision pair — 16 Nov 2026
+
+दोनों duplicate files का source दोबारा साथ में compare किया गया:
+
+- `20261109_allow_quote_approval_booking_states.sql` में केवल booking status allow-list और assigned-electrician requirement के दो CHECK constraints drop/recreate किए जाते हैं।
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` में quote workflow columns, commission trigger/function, quote submission/customer response/work-status RPCs, offer-details RPC और grants/revokes के बाद **ठीक वही दो CHECK constraints** फिर से drop/recreate किए जाते हैं।
+- दोनों files के उन अंतिम constraint statements का SQL text समान है: `service_bookings_status_check` और `service_bookings_assignment_status_requires_electrician`.
+
+### Source-level प्रभाव
+
+1. छोटी status-only migration, बड़ी quote/commission migration के अंत में पहले से मौजूद constraint change को दोहराती है।
+2. यदि दोनों को किसी custom runner से क्रमशः execute किया जाए, तो दूसरी execution उन्हीं constraints को फिर drop/add करेगी; यह duplicate business logic है और constraint revalidation/locking का अतिरिक्त काम कर सकती है। यह केवल source analysis है—runtime lock duration या data impact मापा नहीं गया।
+3. Timestamp-keyed migration history में एक ही version prefix होने के कारण यह तय नहीं किया जा सकता कि remote history में कौन-सी SQL body दर्ज हुई, या कोई अलग custom process दोनों चला चुका है। इसे अनुमान से तय न करें।
+4. इसलिए इस जोड़ी को स्वतः merge/delete/rename करना सुरक्षित नहीं है। पहले authoritative remote history और owner-approved reconciliation आवश्यक है।
+
+### निर्णय
+
+- Exact duplicated constraint block: **SOURCE CONFIRMED**.
+- Which SQL body is represented in remote history: **UNKNOWN / NOT ACCESSED**.
+- Whether both files have ever run against any hosted database: **UNKNOWN**.
+- CLI replay, PostgreSQL lock/performance behavior, and pgTAP: **NOT TESTED**.
+- कोई SQL migration edit नहीं की गई।
