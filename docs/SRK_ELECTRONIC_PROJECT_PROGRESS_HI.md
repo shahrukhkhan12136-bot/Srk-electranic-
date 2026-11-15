@@ -4100,3 +4100,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - उसी commit पर GitHub Actions run `43747984487`, job `132915419987` completed success। Decoded Node test log: 189 tests, 189 pass, 0 fail, 0 skipped.
 - यह दस्तावेज़-commit का Node regression pass है; payment record, provider capture, bank settlement, PostgreSQL/pgTAP runtime, migration replay, Production parity या deployment का प्रमाण नहीं। उपयोगकर्ता द्वारा बताया गया Paid status अभी independently verified नहीं है।
 - कोई payment/refund/transfer, Production query/change, merge या deployment नहीं किया गया। Checklist progress अपरिवर्तित: GPT-2 27/39 = 69%; overall 56/86 = 65%.
+
+
+### 2026-11-15 18:53 UTC — SOS contact snapshot constraint hardening
+- SOS case table में actor name 1–120 और phone 5–30 characters की सीमा है। पहले RPC केवल null/blank phone को fallback देता था; छोटा या बहुत लंबा phone तथा 120 से लंबा नाम case creation को constraint error से रोक सकता था।
+- Migration `20261115260000_sos_admin_support_alerts.sql` में Customer/Electrician दोनों paths अब नाम को 120 characters तक सीमित करते हैं और phone को 5–30 trimmed characters होने पर ही snapshot करते हैं; अन्यथा `Unavailable` रखा जाता है। इससे contact-format समस्या SOS case creation को अनावश्यक रूप से block नहीं करती।
+- Node contract test में दोनों actor paths के bounds assertions जोड़े। पहला CI run नई test regex की syntax त्रुटि से fail हुआ; उसे string assertions से सुधारा। Corrected commit `26f58201d7411adcdf22c7dce829f10320bae6d7`, run `43749164892`, job `132919041710`: **194 tests, 194 pass, 0 fail, 0 skipped**।
+- यह Node/source contract pass है; PostgreSQL/pgTAP execution, full migration replay, real SOS delivery, SMS/Push, consented location और browser/mobile E2E का प्रमाण नहीं। कोई Production migration, provider send, merge या deployment नहीं।
+- Checklist प्रतिशत नहीं बदला: GPT-2 **27/39 = 69%**, overall **56/86 = 65%**।
