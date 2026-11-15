@@ -3077,3 +3077,23 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Support Staff view में कार्ड नहीं दिखेगा; Admin portal के मौजूदा role-gating के कारण यह केवल Main Admin view में दिखेगा।
 - Checklist के summary section में भी यही गणना दर्ज की। नई checklist स्थिति आने पर कार्ड और दस्तावेज़ का प्रतिशत फिर से अपडेट करना होगा।
 - यह Feature Branch UI/documentation change है; Production deploy नहीं किया गया।
+
+
+## 2026-11-15 — Booking Lifecycle / Offer / Timer / Completion review
+
+### Source review findings
+- Offer response client only accepts `accepted` / `declined`, guards duplicate pending submissions per offer, checks explicit server success and refreshes the offer list on success/expiry. Server RPC checks auth identity against the electrician profile, approved/active/available state, booking location and approved rate tier; locks the offer and booking rows before assigning, validates expiry, and dispatches the next eligible offer after decline/expiry.
+- Electrician start request is limited to the assigned active approved electrician and locks the booking row. Server moves booking to `awaiting_work_start_approval`, stores request timestamp using `clock_timestamp()`, and keeps timer stopped until customer action.
+- Later corrective migration `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql` supplies the effective customer start RPC: customer-owned row lock, only approve/reject responses, Admin-approved rate snapshot check, timer starts with server `clock_timestamp()` only on approval; rejection returns booking to assigned and timer remains stopped.
+- Electrician completion request locks the assigned booking and freezes elapsed seconds from server timestamps. Customer completion decision locks customer-owned booking; approve inserts immutable labour bill, reject resumes timer with server clock, dispute records a complaint and keeps timer stopped. Server calculates billable minutes and paise amount; UI does not submit timer or final amount writes.
+- Customer and Electrician timer elements only project server elapsed seconds/start timestamp for display. The final bill is retrieved through the Electrician server RPC.
+
+### Changes made
+- Added per-booking in-flight guards to Electrician start/completion requests and Customer start/completion decisions. Guard releases in `finally`, including RPC errors, allowing safe retry after refresh/current-state review.
+- Added `tests/booking-lifecycle-serialization.test.js` with nine source-contract tests covering offer controls, both apps' duplicate-submit guards, customer approve/reject/dispute, server row locks, server clock, completion branches and timer display-only behavior.
+- All nine targeted lifecycle tests passed in CI; inline script parsing also passed.
+
+### CI / release status
+- Full repository CI is currently failing on a separate Razorpay webhook regression test: `matches an unpersisted provider refund by its internal refund-record note`, assertion false at `tests/razorpay-webhook-inbox.test.js:361`. This is outside the lifecycle changes; do not mark full suite green until repaired/re-run.
+- pgTAP SQL tests are present but were not executed; no Production migration, live booking, payment, or deployment action occurred.
+- Production migration parity and end-to-end testing remain pending. Keep the no-paid-staging-branch rule: only discuss staging cost/approval when implementation is complete and consolidated E2E is next. Final mobile QA remains deferred.
