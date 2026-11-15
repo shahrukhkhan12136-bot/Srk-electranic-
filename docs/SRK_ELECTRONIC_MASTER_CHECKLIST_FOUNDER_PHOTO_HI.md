@@ -403,3 +403,12 @@
 - Exact original bytes अभी accessible नहीं हैं; crop तैयार नहीं है। Welcome Screen और Customer Login दोनों में गलत collage हटाकर placeholder रखा गया है।
 - उसी original garden photo को existing Founder model/card ratio में crop करना है; face/identity/retouch नहीं। दोनों screens पर वही approved crop इस्तेमाल होगा।
 - PWA cache version अब v11 है; पुराने v9 इतिहास को current cache state न मानें।
+
+
+### 2026-11-16 — Customer/Electrician Booking Status Projection Reconciliation
+- [x] Rechecked Customer `loadCustomerBookings`: authenticated-session gate, `customer_user_id` filter, lifecycle/timer fields and per-booking `srk_customer_get_my_booking_work_timeline` call.
+- [x] Rechecked Electrician `refresh()` and `srk_get_my_offer_details`: offer/status RPC, error path, work-start/completion/dispute/completed UI branches and explicit refresh after offer/work lifecycle actions.
+- [x] Confirmed final replay-order migration `20261115220000_retire_live_legacy_quotation_rpcs.sql` restores all timer fields consumed by Electrician UI (`work_timer_elapsed_seconds`, `work_started_at`, `work_timer_running`) plus start/completion approval fields. Earlier `20261114370000...` definition did not expose timer fields, but the later migration replaces it; no SQL change made.
+- [x] Added `tests/customer-electrician-booking-status-sync-contract.test.js`; corrected one order-sensitive test assertion after first CI run. CI run #1211 (`43750241498`) on commit `609fd7843dc00fd3ca2e7560d3e0314b8bcec927`: **216/216 passed, 0 failed, 0 skipped** (job `132922373905`). Source-contract evidence only; no PostgreSQL or browser runtime execution.
+- [ ] Cross-app automatic realtime status refresh is not established: Customer uses explicit booking refresh/actions; Electrician realtime subscription listens to `job_offers` and `electrician_profiles`, not `service_bookings`. Keep this as a runtime/scope confirmation item; do not add new realtime behavior unless it is already in the approved checklist.
+- [ ] Isolated PostgreSQL role/JWT/concurrency tests, browser integration and final consolidated mobile QA remain pending. No Production access/migration, deployment, merge or staging branch was performed.
