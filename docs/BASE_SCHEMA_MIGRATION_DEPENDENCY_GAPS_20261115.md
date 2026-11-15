@@ -99,3 +99,11 @@ ALTER TABLE public.electrician_profiles
 - Latest PR head `659cd151fdf83779261bed034517b92b90d4a240` run `43747168727` completed successfully. Node job `132912932723`: 189 tests, 189 pass, 0 fail, 0 skipped.
 - Earlier row in this document listing `electrician_profiles.auth_user_id` as a missing source-DDL blocker is historical and superseded by the correction above: current migration chain defines it. The sole confirmed missing source-DDL item remains `service_bookings.amount_paid`.
 - This remains Node-only CI evidence, not PostgreSQL/pgTAP execution, complete migration replay, Production parity, or deployment.
+
+
+## Additional historical-ref and root SQL artifact sweep — 15 Nov 2026, 18:35 UTC
+- Checked six additional branches: `feature/direct-upi-commission-15`, `fix/admin-payout-reference-correction`, `predeploy/verified-electrician-booking-match`, `fix/admin-activation-rpc-and-readme-20261113`, `feature/electrician-categories-hourly-booking`, and `feature/customer-homepage-menu`.
+- Every one has the same `SUPABASE_SCHEMA.sql` blob `8ae88a7035bc963b244f22c6c1450c22618ec88f` and `COMPLETE_DATABASE_SETUP.sql` blob `2b806e727f449ba18e71ad23edef805ceb2da2b5`; neither contains an authoritative `service_bookings.amount_paid` column definition.
+- Inspected historical `work/separate-customer-electrician-portals` payment/refund/finance migrations and root SQL artifacts (`PORTAL_SCHEMA.sql`, `PORTAL_SECURITY_UPDATE.sql`, `ADMIN_EMAIL_LOGIN_SETUP.sql`, `COMPLETE_DATABASE_SETUP.sql`). They consume `amount_paid` or configure RLS, but no `ADD COLUMN amount_paid` / column declaration was found in these checked artifacts.
+- This expands checked-in branch/artifact evidence but is not proof about unreferenced Git objects, deleted refs, deployment SQL, or the live database. No Production schema or migration history was queried.
+- Required next evidence remains owner-provided original deployment SQL or an explicitly approved schema-only export. Do not infer type/default/nullability/precision or write a guessed migration.
