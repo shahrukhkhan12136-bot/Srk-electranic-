@@ -3859,3 +3859,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Job `Node test suite (no secrets, no deployment)` सफल रहा; लॉग में कुल 187 tests, 187 pass, 0 fail, 0 cancelled, 0 skipped दर्ज हैं।
 - यह केवल Node.js automated test suite है। इससे PostgreSQL migrations, pgTAP, Supabase migration replay या Production schema parity सत्यापित नहीं होते।
 - कोई DB संपर्क, migration execution, merge, deployment या payment/provider action नहीं हुआ। GPT-2 checklist 27/39 = 69% ही है; CI सफलता से कोई DB checklist item बंद नहीं किया गया।
+
+
+### पुराने Feature Branch से पहचान-कॉलम lineage का अतिरिक्त स्रोत — 15 Nov 2026
+- `work/separate-customer-electrician-portals` के commit `0fe5ef479e3ce69e9b219721599ebd52f6ba73ee` पर `20261109223000_sync_electrician_auth_profile_link.sql` मिला।
+- इसका trigger Auth user की पुष्टि के बाद `electrician_profiles.user_id` और `auth_user_id` दोनों को Auth user ID से synchronize करता है; job-offer RLS भी दोनों identity columns को पढ़ता है।
+- यह migration `auth_user_id` की मौजूदगी मानती है, लेकिन उपलब्ध SQL body में column ADD/CREATE DDL नहीं है। इसलिए इससे column का type, nullability, FK, uniqueness या मूल creation migration प्रमाणित नहीं होता।
+- पुराने `feature/platform-fee-cash-online-cycle` commit `73a4fd9d69a4b4952d7993e23fc8ad5766ebdcc2` की quote migration `20261109075837_electrician_inspection_quotes_and_service_only_commission.sql` भी `amount_paid` पढ़ती है, लेकिन स्वयं उसे add नहीं करती।
+- ये ऐतिहासिक source references dependency lineage को मजबूत करते हैं, पर मूल base-column DDL या Production migration history का विकल्प नहीं हैं। कोई DDL अनुमान से नहीं जोड़ा गया।
+- GPT-2 checklist 27/39 = 69%; कोई checklist item बंद नहीं। No DB connection, migration execution, merge or deployment.
