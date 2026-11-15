@@ -211,3 +211,22 @@ test('Electrician earnings and wallet panels isolate rejected network requests',
   assert.match(wallet, /बैंक लिंक की स्थिति लोड नहीं हो सकी/);
   assert.match(wallet, /वॉलेट लेन-देन सूची अभी उपलब्ध नहीं है/);
 });
+
+
+test('Electrician area, KYC, support and phone-history loaders handle rejected transports', () => {
+  const areaStart=electrician.indexOf('async function loadMyAreaChangeRequests(){');
+  const kycStart=electrician.indexOf('async function loadVerificationDocuments(){');
+  const supportStart=electrician.indexOf('async function loadElectricianSupportTickets(){');
+  const phoneStart=electrician.indexOf('async function loadElectricianPhoneChangeHistory(){');
+  assert.ok(areaStart>=0&&kycStart>areaStart&&supportStart>=0&&phoneStart>=0);
+  const area=electrician.slice(areaStart,electrician.indexOf('\nasync function submitElectricianAreaChange',areaStart));
+  const kyc=electrician.slice(kycStart,electrician.indexOf('\nasync function openVerificationDocument',kycStart));
+  const support=electrician.slice(supportStart,electrician.indexOf('\nlet electricianSupportCreateBusy',supportStart));
+  const phone=electrician.slice(phoneStart,electrician.indexOf('\nasync function ',phoneStart+10));
+  assert.match(area,/Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_electrician_list_my_area_requests'\)\)\.catch\(error=>\(\{data:null,error\}\)\)/);
+  assert.match(kyc,/Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_electrician_list_my_verification_documents'\)\)\.catch\(error=>\(\{data:null,error\}\)\)/);
+  assert.match(support,/Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_electrician_list_my_support_tickets'\)\)\.catch\(error=>\(\{data:null,error\}\)\)/);
+  assert.match(support,/सहायता अनुरोध अभी उपलब्ध नहीं हैं/);
+  assert.match(phone,/Promise\.resolve\(\)\.then\(\(\)=>sb\.functions\.invoke\('electrician-phone-change'/);
+  assert.match(phone,/\.catch\(error=>\(\{data:null,error\}\)\)/);
+});
