@@ -420,3 +420,10 @@
 - [x] Added source-contract regression coverage in `tests/customer-electrician-payment-history-contract.test.js`.
 - [ ] Validate this change in the next exact-head Node CI run. No browser, live auth, database, or mobile runtime claim is made.
 - [ ] Similar session-lookup placement in cancellation-fee and refund-history loaders remains to be inspected separately.
+
+
+### 2026-11-16 — Customer cancellation/refund history session failure handling
+- [x] Moved `auth.getSession()` inside guarded `try/catch` for `loadCustomerCancellationFeeDebts()` and `loadCustomerRefundHistory()`.
+- [x] Auth/session transport errors now use the existing safe retry message and `finally` clears the busy indicator.
+- [x] Added source-contract regression coverage for both loaders in `tests/customer-electrician-payment-history-contract.test.js`.
+- [ ] Validate these latest edits on the exact PR head with CI. No live authentication, database, browser, provider or mobile testing is claimed.
