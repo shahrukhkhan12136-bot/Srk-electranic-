@@ -169,7 +169,7 @@ test('customer booking lifecycle, refund and location feedback have English tran
 test('electrician live-location update network exceptions trigger safe sharing shutdown', () => {
   const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
   const start = electrician.indexOf('async function startElectricianLiveLocation(id)');
-  const end = electrician.indexOf('\nconst electricianLocationStopBusy', start);
+  const end = electrician.indexOf('\nasync function stopElectricianLiveLocation(id)', start);
   assert.ok(start >= 0 && end > start);
   const live = electrician.slice(start, end);
   assert.match(live, /try\s*\{[\s\S]*?srk_electrician_update_live_location/);
