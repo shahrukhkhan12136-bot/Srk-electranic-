@@ -614,3 +614,8 @@
 - Saved-address RPC सफल होने के बाद सूची refresh असफल हो सकती थी; पुराने flow में refresh helper का false result अनदेखा करके UI पूर्ण सफलता दिखाती थी।
 - अब refresh परिणाम जाँचा जाता है। सूची refresh विफल हो तो UI स्पष्ट करता है कि सेव अनुरोध सफल था लेकिन सूची अपडेट नहीं दिखी; पूर्ण सफलता संदेश नहीं दिखता।
 - Source-contract regression test जोड़ा; live Supabase/browser testing लंबित।
+
+### 2026-11-16 — Electrician Profile नाम सेव के बाद Dashboard refresh partial-success handling
+- Profile नाम update RPC सफल होने के बाद Dashboard refresh विफल हो सकता था; पुराने catch में यह स्थिति गलत तरीके से “नाम अपडेट नहीं हो सका” दिखा सकती थी, जबकि नाम server पर सेव हो चुका होता।
+- अब नाम update सफल होने पर नाम UI में सेट और सफलता दर्ज होती है; refresh अलग से संभाला जाता है। Refresh विफल हो तो स्पष्ट partial-success संदेश दिखता है और उपयोगकर्ता को Dashboard Refresh करने को कहा जाता है। मूल save RPC विफल होने पर ही save-failure संदेश आता है।
+- Source-contract regression test जोड़ा; live Supabase/browser network fault-injection अभी लंबित है।
