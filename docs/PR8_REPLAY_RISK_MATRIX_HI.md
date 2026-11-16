@@ -124,3 +124,19 @@ No PR merge, production deployment, migration execution, or Production write was
 The recursive Git tree for the current PR head `d01dc805d6d9ab5a9efcc53109cc5921ab27bfa7` was inspected (complete tree response; not truncated). It contains **87 SQL migration files**: 85 filenames with valid 14-digit version prefixes and the same two malformed filenames, `20261109_allow_quote_approval_booking_states.sql` and `20261109_electrician_inspection_quotes_and_service_only_commission.sql`. No duplicate valid 14-digit version prefixes were found. The exact Production ledger migration `20261108095928_add_actual_paid_amount_commission_and_status_history.sql` is still absent, while `20261116200000_restore_service_bookings_amount_paid.sql` is present.
 
 This confirms the earlier migration-inventory findings still apply to the refreshed PR head. It does not make the chain replayable: the missing historical source and malformed version filenames remain unresolved. No migration files were edited or executed.
+
+
+### 2026-11-16 critical follow-up: exact Production ledger ↔ current PR-head version comparison
+
+A fresh read-only comparison was performed between the Production Supabase migration ledger (87 entries; latest `20261115092149`) and the complete SQL migration tree at current PR #8 head `d01dc805d6d9ab5a9efcc53109cc5921ab27bfa7` (87 SQL files; 85 valid 14-digit filename prefixes).
+
+Exact version-prefix intersection is only **7**:
+`20261108120608`, `20261108120658`, `20261108121115`, `20261109103038`, `20261109103143`, `20261115091906`, `20261115092149`.
+
+Consequently:
+- **80 of 87 Production ledger version IDs** have no exact same-version filename in the current PR-head migration directory.
+- **78 of 85 valid PR-head migration version IDs** do not appear in the Production ledger.
+- These are exact filename/version comparisons only. They do **not** prove that all 80 Production migration bodies are absent: some may have been renamed, renumbered, consolidated, or represented by differently named source files. Such equivalence requires per-migration SQL and dependency comparison; it must not be assumed.
+- This substantially confirms that the current PR-head migration directory is not a direct filename/version mirror of the Production ledger. The missing original `20261108095928` remains among the unmatched Production versions.
+
+**Decision:** do not replay the current PR migration directory against Production, and do not “fix” this by bulk renaming/backdating. First build a reviewed one-to-one reconciliation map from every Production ledger entry to an exact source migration (or documented equivalent), inspect SQL bodies and ordering, then test the reconciled chain in an isolated disposable PostgreSQL/Supabase environment. This comparison was read-only; no Production writes or migration execution occurred.
