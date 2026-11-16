@@ -131,3 +131,29 @@ test('customer complaint submission reconciles an uncertain RPC result through t
   assert.match(create, /lookupSucceeded/);
   assert.doesNotMatch(create,/catch[\s\S]*?customerSb\.rpc\('srk_customer_create_booking_complaint'/);
 });
+
+test('customer support lists, threads and writes are invalidated when the OTP account changes', () => {
+  const reset = functionBody(customer, 'clearCustomerSupportView');
+  const create = functionBody(customer, 'createCustomerSupportComplaint');
+  const list = functionBody(customer, 'loadCustomerSupportComplaints');
+  const thread = functionBody(customer, 'loadCustomerSupportMessages');
+  const send = functionBody(customer, 'sendCustomerSupportMessage');
+  const authStart = customer.indexOf('customerSb.auth.onAuthStateChange');
+  const authEnd = customer.indexOf('});', authStart);
+  assert.ok(authStart >= 0 && authEnd > authStart, 'customer auth-change handler exists');
+  const authHandler = customer.slice(authStart, authEnd);
+  assert.match(reset, /customerSupportGeneration\+\+/);
+  assert.match(reset, /customerSupportThreadRequest\+\+/);
+  assert.match(reset, /customerSupportComplaints=\[\];customerSupportSelectedId=null;customerSupportAttachments=\[\]/);
+  assert.match(authHandler, /clearCustomerSupportView\(\)/);
+  assert.match(create, /const request=customerSupportGeneration,isCurrent=\(\)=>request===customerSupportGeneration/);
+  assert.match(create, /if\(!isCurrent\(\)\)return/);
+  assert.match(create, /finally \{if\(isCurrent\(\)\)/);
+  assert.match(list, /const request=customerSupportGeneration,isCurrent=\(\)=>request===customerSupportGeneration/);
+  assert.match(list, /if\(!isCurrent\(\)\)return/);
+  assert.match(thread, /const generation=customerSupportGeneration,isCurrent=\(\)=>generation===customerSupportGeneration/);
+  assert.match(thread, /if\(!isCurrent\(\)\|\|request!==customerSupportThreadRequest/);
+  assert.match(send, /const generation=customerSupportGeneration,isCurrent=\(\)=>generation===customerSupportGeneration/);
+  assert.match(send, /if\(!isCurrent\(\)\)return/);
+  assert.match(send, /finally\{if\(isCurrent\(\)\)/);
+});
