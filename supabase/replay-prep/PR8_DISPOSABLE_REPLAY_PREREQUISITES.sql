@@ -3,6 +3,8 @@
 -- The disposable local harness must set:
 --   SET app.srk_replay_environment = 'disposable_local';
 -- before executing this file in the same database session.
+-- This is an accidental-run marker, NOT proof that the server is local; never
+-- use Production/staging credentials or execute this file on hosted databases.
 --
 -- Required baseline objects: public.service_bookings, public.electrician_profiles,
 -- public.srk_admin_users, auth.users, auth.uid(), and Supabase roles.
