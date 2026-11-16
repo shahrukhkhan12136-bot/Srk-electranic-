@@ -157,3 +157,20 @@ test('Customer payment-history reset requested during pagination is queued inste
   assert.match(fn, /if\(customerPaymentHistoryResetPending\)\{customerPaymentHistoryResetPending=false;setTimeout\(\(\)=>loadCustomerPaymentHistory\(true\),0\);\}/);
   assert.match(fn, /finally\{[\s\S]*customerPaymentHistoryBusy=false;[\s\S]*customerPaymentHistoryResetPending/);
 });
+
+
+test('Customer cancellation-fee and refund history ignore stale responses after auth changes or overlapping refreshes', () => {
+  for (const [name, counter] of [
+    ['loadCustomerCancellationFeeDebts', 'customerCancellationFeeRequest'],
+    ['loadCustomerRefundHistory', 'customerRefundHistoryRequest']
+  ]) {
+    const start = customer.indexOf('async function ' + name + '(');
+    const end = customer.indexOf('\\nasync function ', start + 1);
+    const fn = customer.slice(start, end < 0 ? customer.length : end);
+    assert.ok(start >= 0, name + ' exists');
+    assert.ok(fn.includes('const requestId=++' + counter), name + ' increments its request generation');
+    assert.match(fn, /if\\(requestId!==customer(?:CancellationFee|RefundHistory)Request\\)return;/);
+    assert.match(fn, /if\\(requestId===customer(?:CancellationFee|RefundHistory)Request\\)box\\.setAttribute\\('aria-busy','false'\\)/);
+  }
+  assert.match(customer, /customerCancellationFeeRequest\\+\\+;\\s*customerRefundHistoryRequest\\+\\+;/);
+});
