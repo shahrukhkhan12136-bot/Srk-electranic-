@@ -227,3 +227,37 @@ Before creating an executable baseline file, obtain an owner-approved schema-onl
 5. अभी भी कोई PostgreSQL replay, role-based ACL test, RLS test या pgTAP run नहीं हुआ। ये निष्कर्ष source comparison हैं, runtime security certification नहीं।
 
 **अगला सुरक्षित gate:** canonical base DDL में प्रत्येक table के साथ RLS enablement, exact policy set, table GRANT/REVOKE, function owner/SECURITY DEFINER/search_path और EXECUTE grants को object-wise मंजूर कराना; उसके बाद ही disposable PostgreSQL replay candidate बनाना।
+
+## Triggers, Functions और EXECUTE permissions की migration-wise तुलना (16 Nov 2026)
+
+यह section standalone setup SQL और चुनी हुई numbered migrations के source-level comparison पर आधारित है। यह PostgreSQL replay या live trigger execution का प्रमाण नहीं है।
+
+### मुख्य object comparison
+
+| Object / contract | Standalone setup का रूप | Numbered migration chain का रूप | Replay / सुरक्षा निष्कर्ष |
+|---|---|---|---|
+| Auth phone-link trigger | `PORTAL_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` में `public.srk_link_electrician_profile()` SECURITY DEFINER, `search_path=public,auth`; `auth.users` पर AFTER INSERT या phone/phone_confirmed_at UPDATE trigger | `20261109000500` identity columns, sync/guard triggers और उसी link function का hardened replacement देता है; function का path `pg_catalog,public,auth`; direct EXECUTE PUBLIC/anon/authenticated से revoke | Trigger का base attachment standalone setup में है; numbered hardening function को बदलता है। Clean replay के लिए Auth trigger की creation/retention और `auth.users`/profile prerequisites को साथ verify करना होगा |
+| Profile identity synchronization | पुराना setup केवल `user_id` आधारित phone linking दिखाता है | `20261109000500` और दोबारा `20261114130000` में `auth_user_id` FK/index, दोनों identity columns का sync trigger, SECURITY DEFINER guard trigger और hardened Auth link function | दो numbered files में identity hardening दोहराई गई है; इसे अलग-अलग स्वतंत्र baseline समझना ठीक नहीं। दोनों columns की consistency और Auth user matching आवश्यक है |
+| Offer response RPC | `srk_respond_to_offer(uuid,text)` SECURITY DEFINER; approved/active profile के `user_id=auth.uid()` पर ownership check; PUBLIC revoke और authenticated grant | `20261114210000` में sequential-dispatch architecture के अनुरूप replacement; `user_id` और `auth_user_id` दोनों auth.uid से match; path `pg_catalog,public,auth,pg_temp`; PUBLIC/anon revoke, authenticated grant | समान function signature है, लेकिन business behavior और identity contract समान नहीं। Legacy body को वर्तमान implementation मानना गलत होगा |
+| Offer-details RPC | `COMPLETE_DATABASE_SETUP.sql` / `PORTAL_SECURITY_UPDATE.sql` में शुरुआती projection; SECURITY DEFINER, path `public,auth`, authenticated grant | `20261109002000`, quote migration और `20261114370000` में क्रमिक DROP/CREATE replacement; output columns बढ़ते हैं; final inspected version में SECURITY DEFINER, hardened path और authenticated-only grant। `20261116140000` path को खाली string पर pin करता है | Return shape समय के साथ बदलता है; clients और SQL callers के लिए अंतिम signature/columns महत्वपूर्ण हैं |
+| Admin application review | शुरुआती setup में jsonb-returning SECURITY DEFINER RPC; helper `srk_is_admin()`; authenticated grant | `20261109001500` स्पष्ट रूप से पुराने void-returning version को DROP करके jsonb contract बनाता है; बाद में `20261114130000` identity-safe matching के साथ replace करता है; `20261116150000` search_path को खाली pin करता है | Migration comment स्वयं पुराने void बनाम jsonb contract का अंतर बताता है। सही helper और `srk_admin_users` baseline dependency अब भी अनसुलझी है |
+| Commission trigger | Portal setup में `srk_calculate_commission_on_completion()` BEFORE UPDATE OF status trigger से जुड़ा; completion transition पर `quoted_amount * commission_rate` | Quote workflow migration `srk_calculate_booking_commission()` नाम का अलग trigger function बनाती है, जो `amount_paid`, `payment_status`, `service_charge` और commission rate देखता है | ये दो अलग commission contracts हैं। Inspected quote migration में इस नए function को जोड़ने वाला CREATE TRIGGER statement नहीं मिला; trigger attachment का वास्तविक owner अलग से प्रमाणित करना बाकी है |
+| Commission reporting RPCs | शुरुआती portal setup में इस जोड़ी का समकक्ष नहीं | `20261109003000` में Admin report और electrician earnings SECURITY DEFINER RPCs; explicit search_path, PUBLIC/anon revoke, authenticated grant | ये `amount_paid` सहित बाद में जोड़े गए columns पर निर्भर हैं; इसी कारण पहले दर्ज amount_paid prerequisite fix महत्वपूर्ण है |
+
+### विशेष trigger और permission observations
+
+1. **Trigger function EXECUTE और client RPC EXECUTE अलग बातें हैं।** Identity sync/guard, Auth-link और booking trigger functions पर PUBLIC/anon/authenticated का direct EXECUTE revoke होना अपने-आप trigger invocation को रोकने का प्रमाण नहीं है; trigger firing table operation के संदर्भ में होती है। इसके विपरीत callable RPCs के लिए स्पष्ट authenticated/service_role grants आवश्यक हैं।
+2. `20261114210000_sequential_nearest_offer_dispatch.sql` में `broadcast_booking_job()` trigger function direct browser execution से revoke है; AFTER INSERT trigger sequential dispatcher को चलाता है। Internal private dispatch functions के EXECUTE grants भी सीमित किए गए हैं; offer response RPC authenticated को मिलता है और expiry/advance RPC service_role को।
+3. `20261109001500` Admin review RPC को DROP/CREATE करता है, जबकि `20261114130000` उसे CREATE OR REPLACE करता है। DROP/CREATE के बाद grants दोबारा देना जरूरी है; इस migration में PUBLIC revoke और authenticated grant मौजूद हैं।
+4. `20261116140000`, `20261116150000` और `20261116160000` बाद की search_path hardening migrations हैं। इन्हें पुराने function definitions से अलग पढ़ना होगा; final function body, owner, SECURITY DEFINER flag और EXECUTE grants को एक साथ inspect करना अभी बाकी है।
+5. Auth-link chain `auth.users`, `electrician_profiles.user_id`, `electrician_profiles.auth_user_id`, verified phone और approved profile status पर निर्भर है। Standalone setup में Auth trigger मौजूद है, लेकिन numbered migration chain में उसका पूरा creation/retention path और canonical base schema एक ही replayable chain के रूप में अभी प्रमाणित नहीं है।
+6. Legacy commission trigger `quoted_amount` और status transition पर चलता है; quote-era function `amount_paid`/paid-state/service-charge आधारित है। इनके trigger attachment, execution order और duplicate commission-write risk को disposable PostgreSQL replay तथा trigger catalog inspection से ही निर्णायक रूप से जाँचा जा सकता है।
+
+### सीमाएँ और अगला gate
+
+- यह तुलना चुनी हुई setup files और ऊपर नामित migrations तक सीमित है; पूरे repository के हर SQL object का exhaustive scan नहीं है।
+- Function ownership, effective privileges inherited via PUBLIC/role membership, actual trigger catalog order, Auth trigger survival, and runtime behavior सत्यापित नहीं किए गए।
+- कोई PostgreSQL replay, pgTAP, trigger execution test या production write नहीं किया गया।
+- Canonical base schema और `srk_admin_users`/Admin helper introduction अभी भी unresolved replay gates हैं। इस आधार पर अभी consolidated executable baseline बनाना सुरक्षित नहीं है।
+
+**अगला सुरक्षित gate:** canonical base schema तय होने के बाद disposable database में migration replay करके `pg_proc`, `pg_trigger`, `pg_class.relowner` और effective function privileges की तुलना करना; उसके बाद ही trigger ownership/order और RPC grants को मंजूर करना।
