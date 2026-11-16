@@ -668,3 +668,11 @@
 - [x] Confirmed `package.json` currently runs Node tests only; repository has no checked-in `supabase/config.toml` or local pgTAP runner declaration.
 - [ ] Do not run/adapt remote-export workflow. First approve canonical baseline and duplicate timestamp history; then create a separate fully local-only pinned Supabase/pgTAP workflow using synthetic fixtures and both target suites.
 - No workflow was run or changed; no secret or database was accessed. **Progress remains 27/39 = 69%.**
+
+
+### 2026-11-16 — pgTAP suite coverage boundary review
+- [x] Read both target SQL suites directly: legacy payment/receipt has 18 assertions; new-category accounting bridge has 15 assertions. Both use a transaction and rollback and mainly inspect installed function definitions, existence, grants and metadata.
+- [x] Recorded that these 33 assertions are source-contract checks, not behavioural end-to-end payment tests. They do not seed synthetic booking/payment rows or invoke the RPCs to verify duplicate/concurrent settlement, trigger effects, injected-failure rollback, or persisted ledger reconciliation.
+- [x] Counted 32 SQL test files under `supabase/tests/database`; documented the extra fixture/runtime prerequisites and missing behavioural test cases in the migration replay gate document.
+- [ ] Still require approved canonical baseline, local Supabase/PostgreSQL + pgTAP runner, complete ordered replay, and separate synthetic behavioural tests. Neither target suite was executed in this source-only review.
+- No SQL, migration, workflow, or production database changed/accessed. **Progress remains 27/39 = 69%.**
