@@ -1501,7 +1501,7 @@ async function customerChangePaymentMethod(id){
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();if(sessionError)throw sessionError;
   requestedUserId=sessionData?.session?.user?.id||null;if(!isCurrent())return;if(!requestedUserId)throw new Error('LOGIN_REQUIRED');
   const {data,error}=await customerSb.rpc('srk_customer_change_payment_method',{p_booking_id:id,p_payment_method:'Razorpay ऑनलाइन भुगतान'});
-  if(!await sameSession())return;if(error)throw error;if(!data?.success)throw new Error('PAYMENT_METHOD_CHANGE_NOT_CONFIRMED');
+  if(!await sameSession())return;if(error)throw error;if(data!==true)throw new Error('PAYMENT_METHOD_CHANGE_NOT_CONFIRMED');
  }catch(error){
   if(!isCurrent())return;
   try{await loadCustomerBookings();if(!await sameSession())return;alert('सर्वर का जवाब स्पष्ट नहीं मिला। बुकिंग सूची रीफ़्रेश की गई है। भुगतान तरीका जाँचें; स्थिति की पुष्टि किए बिना दोबारा अनुरोध न भेजें।');}
