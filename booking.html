@@ -1294,7 +1294,7 @@ async function loadCustomerBookings() {
     }
     const cancellationMap=new Map();
     if(!cancellationResult.error){
-      (cancellationResult.data||[]).forEach(item=>cancellationMap.set(item.booking_id,item));
+      (cancellationResult.data||[]).forEach(item=>{if(!cancellationMap.has(item.booking_id))cancellationMap.set(item.booking_id,item);});
     }
     const cancellationFeeMap=new Map();
     if(!cancellationFeeResult.error){
