@@ -40,7 +40,7 @@ test('customer live-location reads require ownership, assignment, travel status 
   assert.match(body, /b\.assigned_electrician_id IS NOT NULL AND b\.status='assigned'/);
   assert.match(body, /v_row\.updated_at < clock_timestamp\(\)-interval '90 seconds'/);
   assert.match(body, /'location_unavailable_or_stale'/);
-  assert.match(body, /REVOKE ALL ON FUNCTION public\.srk_customer_get_live_electrician_location\(uuid\) FROM PUBLIC,anon/);
+  assert.match(location, /REVOKE ALL ON FUNCTION public\.srk_customer_get_live_electrician_location\(uuid\) FROM PUBLIC,anon/);
 });
 
 test('booking stage or assigned electrician changes clear active coordinates', () => {
