@@ -791,10 +791,10 @@ let electricianAccountViewGeneration=0;
 const electricianOfferResponseBusy=new Set();
 async function respond(button,id,response){
  if(!id||!['accepted','declined'].includes(response)||electricianOfferResponseBusy.has(id)||!user?.id||!profile?.id||electricianLogoutBusy)return;
- if(!confirm(response==='accepted'?'यह काम स्वीकार करना है?':'यह ऑफर मना कर दिया जाएगा।'))return;
  const requestedUserId=user.id,requestedProfileId=profile.id,requestedGeneration=electricianAccountViewGeneration;
  const isCurrent=()=>!electricianLogoutBusy&&requestedGeneration===electricianAccountViewGeneration&&user?.id===requestedUserId&&profile?.id===requestedProfileId;
  if(!isCurrent())return;
+ if(!confirm(response==='accepted'?'यह काम स्वीकार करना है?':'यह ऑफर मना कर दिया जाएगा।')||!isCurrent())return;
  electricianOfferResponseBusy.add(id);
  const card=button?.closest('.job');
  const buttons=card?[...card.querySelectorAll('button[onclick*="respond("]')]:button?[button]:[];
