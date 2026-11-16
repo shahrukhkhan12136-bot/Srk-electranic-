@@ -562,6 +562,7 @@ async function setElectricianAvailability(available){
  if(isCurrent()){on.disabled=false;off.disabled=false;}
 }
 const electricianLifecycleBusy=new Set();
+const electricianLifecycleLocked=new Set();
 
 const electricianSosBusy=new Set();
 function openElectricianSosReasons(id){const choice=document.getElementById('electricianSosChoice_'+id),reason=document.getElementById('electricianSosReason_'+id);if(electricianSosBusy.has(id)||!choice||!reason)return;reason.value='';document.getElementById('electricianSosSend_'+id).disabled=true;choice.classList.remove('hidden');document.getElementById('electricianSosOpen_'+id).classList.add('hidden');document.getElementById('electricianSosStatus_'+id).textContent='कारण चुनें। अलर्ट केवल “SOS भेजें” दबाने पर बनेगा।';}
@@ -595,43 +596,45 @@ async function electricianRequestWorkStart(bookingId){
  const requestedUserId=user?.id,requestedProfileId=profile?.id,requestedGeneration=electricianAccountViewGeneration;
  const requestKey=requestedGeneration+':'+String(bookingId);
  const isCurrent=()=>!!bookingId&&!!requestedUserId&&!!requestedProfileId&&!electricianLogoutBusy&&user?.id===requestedUserId&&profile?.id===requestedProfileId&&electricianAccountViewGeneration===requestedGeneration;
- if(!isCurrent()||electricianLifecycleBusy.has(requestKey))return;
+ if(!isCurrent()||electricianLifecycleBusy.has(requestKey)||electricianLifecycleLocked.has(String(bookingId)))return;
  if(!confirm('क्या आप ग्राहक से अभी काम शुरू करने की अनुमति माँगना चाहते हैं? ग्राहक की मंजूरी के बाद ही सर्वर टाइमर शुरू होगा।'))return;
  if(!isCurrent())return;
  electricianLifecycleBusy.add(requestKey);
+ let keepLocked=false;
  try{
   const {data,error}=await sb.rpc('srk_electrician_request_work_start',{p_booking_id:bookingId});
   if(!isCurrent())return;
   if(error)throw error;
   if(!data?.success)throw new Error('अनुमति अनुरोध की पुष्टि नहीं हुई');
   alert('काम शुरू करने की अनुमति ग्राहक को भेज दी गई है।');
-  try{await refresh();if(!isCurrent())return;}catch(_){if(isCurrent())alert('अनुमति अनुरोध सर्वर पर दर्ज हो गया है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। नेटवर्क ठीक होने पर Refresh करें।');}
+  try{await refresh();if(!isCurrent())return;}catch(_){keepLocked=true;if(isCurrent())alert('अनुमति अनुरोध सर्वर पर दर्ज हो गया है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। नेटवर्क ठीक होने पर Refresh करें।');}
  }catch(e){
   if(!isCurrent())return;
   try{await refresh();if(!isCurrent())return;alert('नेटवर्क जवाब नहीं मिला। ऑफर और बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}
-  catch(_){if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। Dashboard अभी रीफ़्रेश नहीं हो सका; दोबारा कार्रवाई से पहले Refresh करें।');}
- }finally{electricianLifecycleBusy.delete(requestKey);}
+  catch(_){keepLocked=true;if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। Dashboard अभी रीफ़्रेश नहीं हो सका; दोबारा कार्रवाई से पहले Refresh करें।');}
+ }finally{electricianLifecycleBusy.delete(requestKey);if(keepLocked)electricianLifecycleLocked.add(String(bookingId));}
 }
 async function electricianRequestWorkCompletion(bookingId){
  const requestedUserId=user?.id,requestedProfileId=profile?.id,requestedGeneration=electricianAccountViewGeneration;
  const requestKey=requestedGeneration+':'+String(bookingId);
  const isCurrent=()=>!!bookingId&&!!requestedUserId&&!!requestedProfileId&&!electricianLogoutBusy&&user?.id===requestedUserId&&profile?.id===requestedProfileId&&electricianAccountViewGeneration===requestedGeneration;
- if(!isCurrent()||electricianLifecycleBusy.has(requestKey))return;
+ if(!isCurrent()||electricianLifecycleBusy.has(requestKey)||electricianLifecycleLocked.has(String(bookingId)))return;
  if(!confirm('क्या काम पूरा हो गया है? इससे सर्वर टाइमर रुकेगा और ग्राहक से काम की पुष्टि माँगी जाएगी।'))return;
  if(!isCurrent())return;
  electricianLifecycleBusy.add(requestKey);
+ let keepLocked=false;
  try{
   const {data,error}=await sb.rpc('srk_electrician_request_work_completion',{p_booking_id:bookingId});
   if(!isCurrent())return;
   if(error)throw error;
   if(!data?.success)throw new Error('Completion request not confirmed');
   alert('काम पूरा होने की सूचना ग्राहक को भेज दी गई है।');
-  try{await refresh();if(!isCurrent())return;}catch(_){if(isCurrent())alert('काम पूरा होने की सूचना सर्वर पर दर्ज हो गई है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। नेटवर्क ठीक होने पर Refresh करें।');}
+  try{await refresh();if(!isCurrent())return;}catch(_){keepLocked=true;if(isCurrent())alert('काम पूरा होने की सूचना सर्वर पर दर्ज हो गई है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। नेटवर्क ठीक होने पर Refresh करें।');}
  }catch(e){
   if(!isCurrent())return;
   try{await refresh();if(!isCurrent())return;alert('नेटवर्क जवाब नहीं मिला। काम की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}
-  catch(_){if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। Dashboard अभी रीफ़्रेश नहीं हो सका; दोबारा कार्रवाई से पहले Refresh करें।');}
- }finally{electricianLifecycleBusy.delete(requestKey);}
+  catch(_){keepLocked=true;if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। Dashboard अभी रीफ़्रेश नहीं हो सका; दोबारा कार्रवाई से पहले Refresh करें।');}
+ }finally{electricianLifecycleBusy.delete(requestKey);if(keepLocked)electricianLifecycleLocked.add(String(bookingId));}
 }
 function formatElectricianTimer(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');}
 function updateElectricianTimers(){document.querySelectorAll('[id^="electricianTimer_"]').forEach(el=>{let n=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))n+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatElectricianTimer(n);});}
