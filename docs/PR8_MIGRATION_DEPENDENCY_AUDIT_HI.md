@@ -117,3 +117,39 @@ A deeper directory-level search located the refund-preparation function in `2026
 Therefore the specific block-marker mismatch risk raised in §7 is **not supported by the full source chain** and is withdrawn. The exact Razorpay marker is consistent across preparation, failure restoration, and successful refund-trigger closure. The trigger's narrow allow-list should remain; do not broaden it to arbitrary Admin blocks.
 
 Remaining caveat: this is static source-chain verification. Runtime transaction behavior, trigger ordering with the cancellation-fee reversal trigger, and all refund/payout pgTAP cases remain unexecuted.
+
+### 9. Razorpay refund execution and recovery call-chain located — 16 Nov 2026
+
+The earlier project-progress note that the trusted provider executor/caller was missing or unlocated is superseded by this full-tree inspection. The implementation exists in root modules with thin Netlify wrappers:
+
+- `netlify/functions/razorpay-refund.js` -> `razorpay-refund.js`
+- `netlify/functions/razorpay-refund-status.js` -> `razorpay-refund-status.js`
+- `netlify/functions/razorpay-refund-recovery.js` -> `razorpay-refund-recovery.js`
+- `netlify/functions/razorpay-webhook.js` -> `razorpay-webhook.js`
+
+**Normal refund execution path (source-confirmed):**
+1. POST endpoint requires a Bearer token; validates it through Supabase Auth `/auth/v1/user`.
+2. Checks Main Admin membership using `is_srk_admin` with the user's token.
+3. Calls `srk_admin_prepare_razorpay_refund` with the same user token; SQL independently checks `auth.uid()` and `is_srk_admin()`.
+4. Prepared record is validated, then Razorpay refund is requested for the exact stored payment ID and paise amount, with stable receipt/idempotency key and internal refund-record note.
+5. Provider response is checked against refund ID format, payment ID, exact amount, INR currency, and allowed status.
+6. The service-role reconciliation RPC is called. If response/reconciliation is ambiguous, the handler leaves the payout hold in place and directs recovery through the signed webhook or Admin reconciliation; it does not create a second internal refund record.
+
+**Webhook path (source-confirmed):**
+- Verifies HMAC-SHA256 against the raw request body and compares signatures with `timingSafeEqual`.
+- Claims a provider event through the service-role inbox RPC; event ID and payload hash provide replay/deduplication controls.
+- For refunds, checks provider ID/payment ID/amount/currency/status and binds to the exact internal refund using the stored provider refund ID, or before that ID is stored, the internal record ID note / stable receipt.
+- Calls `srk_service_reconcile_booking_refund`; failed reconciliation is surfaced as retryable webhook processing rather than silently marked complete.
+
+**Recovery/status paths (source-confirmed):**
+- Read-only status endpoint validates Main Admin and matches the provider refund to the internal record; it explicitly performs no database or payout mutation.
+- Recovery endpoint validates Main Admin, finds exactly one internal record, verifies the provider refund by stored ID or complete bounded pagination, and stores immutable provider evidence via service-role RPC. Only a fresh `processed` provider observation is eligible for a separate finalization transaction.
+- Evidence RPC checks service_role, Admin actor registry membership, evidence fields against supplied facts, and internal booking/payment/refund identity. Finalizer checks fresh evidence, full amount, identity, booking/refund/payout states, then uses the booking update trigger to close the exact Razorpay-owned payout hold.
+
+**Source-level security observations:**
+- Main Admin is checked at the HTTP boundary; normal preparation also repeats the check in SQL.
+- Privileged reconciliation/evidence/finalization RPCs revoke execution from public/anon/authenticated and grant service_role only.
+- SQL functions inspected use SECURITY DEFINER with pinned search_path.
+- No live provider request, secret access, database call, or runtime test was made.
+
+**Runtime caveats still open:** verify deployed Netlify wrappers/environment configuration; exercise signature failures, webhook retries/duplicates/out-of-order events, provider timeout after acceptance, same-key retry, and concurrent refund/payout settlement in an isolated database. Source review alone does not prove deployed configuration or transaction behavior.
