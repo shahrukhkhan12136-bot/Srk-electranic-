@@ -13,6 +13,11 @@ test('welcome screen routes all roles and never displays the unapproved collage 
   assert.ok(welcome.includes('href="/customer-login.html"'));
   assert.ok(welcome.includes('href="/electrician.html"'));
   assert.ok(welcome.includes('href="/admin.html"'));
+  assert.ok(welcome.includes('<section id="role-login"'), 'all role logins stay in one dedicated section');
+  for (const href of ['/customer-login.html', '/electrician.html', '/admin.html']) {
+    assert.equal(welcome.split('href="' + href + '"').length - 1, 1, href + ' appears exactly once on the welcome screen');
+  }
+  assert.ok(!welcome.includes('class="actions"'), 'hero area must not duplicate customer/electrician login actions');
   assert.ok(welcome.includes('class="founder-photo-pending"'));
   assert.ok(!welcome.includes('src="/assets/srk-founder.jpg"'));
   assert.ok(welcome.includes('FOUNDER &amp; DIRECTOR'));
