@@ -98,3 +98,15 @@
 - Implementation, Source Tests, Database Runtime, Browser E2E और Final Mobile QA के अलग-अलग प्रतिशत।
 
 पुराने dashboard snapshot में Master Checklist के 86 items में 56 पूरे (65%) दर्ज थे। यह पुराना मापा हुआ आंकड़ा है; अगली रिपोर्ट में वर्तमान checklist को दोबारा reconcile करके ही इसे अद्यतन किया जाएगा। Source code में बदलाव को runtime या QA completion नहीं गिना जाएगा।
+
+
+### 2026-11-16 — Customer Saved Address और Payment Method account-switch audit (जारी)
+- Save और Delete Saved Address handlers में account-generation तथा session-user validation जोड़ी; RPC, uncertain-result reconciliation और list refresh के बाद पुरानी session UI update नहीं कर सकती।
+- Default Saved Address handler को भी generation/session guards दिए। Source correction के दौरान original Default handler वापस जोड़ा और async declarations सत्यापित कीं; अंतिम fetched source में duplicate async declaration नहीं है।
+- Auth बदलने पर Save/Delete/Default buttons reset होते हैं, ताकि पुराना in-flight request controls को disabled न छोड़े।
+- Customer payment-method change RPC और उसके reconciliation/refresh paths में भी session generation guard जोड़ा।
+- Regression tests: tests/customer-profile-auth-isolation.test.js में Save/Delete, Default, Payment Method तथा auth-change button reset के चार focused source-contract tests जोड़े। कुल इस फ़ाइल में 7 tests मौजूद हैं।
+- Commits: source 9b300c3c1e4d297a89be3dda388f74faa0859f77 और a8a10edfc5f37161c214c6c62571578af3c0431b; tests 307c0aaa7f7de7fe4a400bdf81d2e3a217944c22।
+- अंतिम recheck: booking.html और test file के latest blob IDs fetch किए; सभी चार handlers मौजूद और async declaration marker सही। Current HEAD a8a10edfc5f37161c214c6c62571578af3c0431b पर GitHub Actions run उपलब्ध नहीं; tests execute नहीं हुए माने जाएँ।
+
+**इस सीमित Customer async-isolation workstream की प्रगति:** Code changes 100%; regression tests लिखे 100%; automated execution/CI 0% (अभी run उपलब्ध नहीं); Supabase runtime/browser validation 0% (final QA चरण में)। यह workstream प्रतिशत है, पूरे Customer App या पूरे project का नया प्रतिशत नहीं। पूरे project का पिछला सत्यापित checklist snapshot 56/86 = 65% था; current checklist recount अभी बाकी है।
