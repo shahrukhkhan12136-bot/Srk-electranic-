@@ -108,7 +108,7 @@ test('Customer payment-method change handles rejected RPC and unconfirmed respon
   assert.match(fn, /try\{/);
   assert.match(fn, /customerSb\.rpc\('srk_customer_change_payment_method'/);
   assert.match(fn, /if\(!data\?\.success\)throw new Error/);
-  assert.match(fn, /catch\(error\)\s*\{\s*try\s*\{\s*await loadCustomerBookings\(\)/);
+  assert.match(fn, /catch\(error\)\s*\{\s*if\(!isCurrent\(\)\)return;\s*try\{await loadCustomerBookings\(\)/);
   assert.match(fn, /सर्वर का जवाब स्पष्ट नहीं मिला/);
   assert.match(fn, /पुष्टि किए बिना दोबारा अनुरोध न भेजें/);
   assert.match(fn, /Online भुगतान की पसंद सर्वर पर सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
@@ -146,7 +146,7 @@ test('Customer payment-history refresh ignores stale responses after auth change
   assert.equal((fn.match(/if\(requestId!==customerPaymentHistoryRequest\)return false;/g) || []).length, 3);
   assert.match(fn, /catch\(error\)\{\s*if\(requestId!==customerPaymentHistoryRequest\)return false;/);
   const authStart=customer.indexOf('customerSb.auth.onAuthStateChange');
-  const authEnd=customer.indexOf('});',authStart);
+  const authEnd=customer.indexOf('const handleCustomerOffline',authStart);
   assert.ok(authStart>=0&&authEnd>authStart,'customer auth-change handler exists');
   const authHandler=customer.slice(authStart,authEnd);
   assert.match(authHandler,/if\(event==='SIGNED_IN'\|\|event==='SIGNED_OUT'\|\|event==='USER_DELETED'\)/);
