@@ -123,15 +123,13 @@ select ok(position('PROVIDER_REFUND_ID_MISMATCH' in
   'a provider event cannot replace a refund ID already bound to the booking refund record');
 
 select ok(
-  position('payout_status = '||quote_literal('blocked') in
+  position('payout_status = '||quote_literal('pending') in
     pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
-  and position('Razorpay refund pending' in
-    pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
-  and position('Manual refund processed' in
-    pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
-  and position('payout_status = '||quote_literal('refunded') in
-    pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
-  'full refunds close only refund-owned payout holds and preserve unrelated Admin blocks');
+  and position('payout_status = '||quote_literal('blocked') in
+    pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))=0
+  and position('set payout_status=''refunded''' in lower(
+    pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure)))>0,
+  'booking trigger closes pending payouts while verified refund RPCs close their own blocked holds');
  
 select ok(position('auth.jwt()->>'||quote_literal('role') in
   pg_get_functiondef('public.srk_service_role_get_booking_payment_breakdown(uuid)'::regprocedure))>0,
