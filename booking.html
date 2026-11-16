@@ -1552,6 +1552,7 @@ async function saveCustomerProfile() {
  const isCurrent=()=>requestId===customerProfileSaveRequest&&!!requestedUserId;
  const stillSameUser=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
  const fullName=document.getElementById('customerProfileName').value.trim();
+ const preferredLanguage=document.getElementById('customerProfileLanguage').value;
  if(fullName.length<2||fullName.length>120){setCustomerProfileStatus('नाम 2 से 120 अक्षरों के बीच दर्ज करें।',true);return;}
  button.disabled=true;setCustomerProfileStatus('प्रोफ़ाइल सेव हो रही है…');
  try {
@@ -1572,7 +1573,7 @@ async function saveCustomerProfile() {
   }
   let profileSaveResult=null,profileSaveError=null;
   try{
-   profileSaveResult=await customerSb.rpc('srk_customer_update_my_profile',{p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath});
+   profileSaveResult=await customerSb.rpc('srk_customer_update_my_profile',{p_full_name:fullName,p_preferred_language:preferredLanguage,p_avatar_path:avatarPath});
    if(!await stillSameUser())return;
    profileSaveError=profileSaveResult?.error||(!profileSaveResult?new Error('Profile update was not confirmed'):null);
   }catch(saveError){if(!await stillSameUser())return;profileSaveError=saveError;}
@@ -1583,7 +1584,7 @@ async function saveCustomerProfile() {
     if(!await stillSameUser())return;
     latestProfile=Array.isArray(latestData)?latestData[0]:latestData;lookupSucceeded=!latestError;
    }catch(_){if(!await stillSameUser())return;}
-   if(lookupSucceeded&&latestProfile?.avatar_path===avatarPath)profileSaveResult={data:latestProfile,error:null};
+   if(lookupSucceeded&&latestProfile?.full_name===fullName&&latestProfile?.preferred_language===preferredLanguage&&latestProfile?.avatar_path===avatarPath)profileSaveResult={data:latestProfile,error:null};
    else{
     if(lookupSucceeded&&file&&avatarPath!==customerCurrentAvatarPath){await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]).catch(()=>{});if(!await stillSameUser())return;}
     throw profileSaveError;
