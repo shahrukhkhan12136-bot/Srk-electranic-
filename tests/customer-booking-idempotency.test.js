@@ -176,7 +176,7 @@ test('concurrent duplicate insert resolves to the winning booking after unique-k
 
 test('pending browser idempotency keys are isolated per authenticated customer account', () => {
   assert.match(bookingUi, /function customerBookingRequestKey\(payload,customerUserId\)/);
-  assert.match(bookingUi, /const storageKey='srk\\.customer\\.booking\\.pending\\.v1:'\+customerUserId/);
+  assert.match(bookingUi, /const storageKey='srk\.customer\.booking\.pending\.v1:'\+customerUserId/);
   assert.match(bookingUi, /customerBookingRequestKey\(bookingPayload, latestSession\.user\.id\)/);
   assert.match(bookingUi, /clearCustomerBookingRequestKey\(requestKey, latestSession\.user\.id\)/);
   assert.match(bookingUi, /function clearCustomerBookingRequestKey\(key,customerUserId\)/);
