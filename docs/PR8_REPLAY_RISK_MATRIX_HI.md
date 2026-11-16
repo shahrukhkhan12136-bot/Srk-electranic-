@@ -106,3 +106,14 @@ The connected Supabase account's project inventory was read. It contains exactly
 A further read-only GitHub code search on the repository's default branch looked for the exact identifiers `service_booking_status_history`, `srk_log_service_booking_status`, `service_bookings_amount_paid_range`, and `srk_calculate_booking_commission`. The first three returned no matching source files; the commission function search found only `20261109_electrician_inspection_quotes_and_service_only_commission.sql`, which contains the consumer/replacement function but is not the missing historical migration. A separate repository-scoped commit search for “actual paid amount commission status history”, “amount_paid commission status history”, and “service booking status history” returned no matching commits.
 
 **Conclusion:** these additional default-branch code and commit searches did not recover the original DDL. The one matching commission-function migration does not establish the original definitions for `amount_paid`, `commission_rate`, `commission_amount`, or `service_booking_status_history`. The previously stated replay block remains unchanged. This search is limited to GitHub's indexed default-branch code and searchable commit messages; it does not cover unavailable historical refs, private forks, local copies, or owner-held backups.
+
+
+### 2026-11-16 follow-up: refreshed PR #8 head and CI status
+
+The live PR metadata was re-read after the previous audit update. PR #8 remains **open, Draft, and unmerged**; GitHub currently reports it as mergeable. Its current head is `d01dc805d6d9ab5a9efcc53109cc5921ab27bfa7` on `feat/customer-login-first-dashboard-20261114`. This differs from the earlier audited PR head `dc8b4f723ac7ae896eeb516336dd4b28577390b5`.
+
+The current PR head has a successful GitHub Actions run: run `43897251465`, job “Node test suite (no secrets, no deployment)”. The job completed successfully, including checkout, Node.js 22 setup, dependency installation, and “Run repository Node tests”. This is **Node test CI only**; it does not execute PostgreSQL migrations or pgTAP, and must not be interpreted as a database replay pass.
+
+The current PR head and this audit branch have diverged from their common ancestor `dc8b4f723ac7ae896eeb516336dd4b28577390b5`. The compare endpoint reports six commits ahead on the current PR head and nine commits behind relative to the audit branch; the reported file changes are `booking.html` and `tests/customer-booking-idempotency.test.js`. Therefore, the migration-source findings in this matrix remain valid only to the extent the current PR changes did not alter the audited SQL migration files; this compare reports no SQL migration file among the changed paths.
+
+No PR merge, production deployment, migration execution, or Production write was performed during this follow-up.
