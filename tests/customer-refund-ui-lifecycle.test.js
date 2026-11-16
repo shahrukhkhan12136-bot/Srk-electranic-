@@ -20,10 +20,10 @@ test('server independently enforces completed categorized booking and verified p
 
 test('confirmed customer refund requests remain confirmed when the booking list refresh fails', () => {
   const start = booking.indexOf('async function customerSubmitBookingRefund(');
-  const end = booking.indexOf('\\nasync function customerCancelBooking(', start);
+  const end = booking.indexOf('\nasync function customerCancelBooking(', start);
   const fn = booking.slice(start, end);
   assert.match(fn, /रिफंड अनुरोध सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
   assert.match(fn, /रिफंड अनुरोध पहले से दर्ज है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
-  assert.equal((fn.match(/try\\{await loadCustomerBookings\\(\\);\\}catch\\(_\\)/g) || []).length, 2);
+  assert.equal((fn.match(/try\{await loadCustomerBookings\(\);\}catch\(_\)/g) || []).length, 2);
   assert.match(fn, /दोबारा अनुरोध नहीं भेजा गया/);
 });
