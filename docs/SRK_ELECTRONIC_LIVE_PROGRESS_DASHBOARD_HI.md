@@ -132,3 +132,15 @@
 - Current HEAD `c6d764bff4946a986a74e458d86a2a7195dffdb7` पर GitHub Actions run उपलब्ध नहीं; test execution का दावा नहीं।
 
 **Customer async account-isolation audit — मापी गई उप-प्रगति:** इस audit batch में पहचाने गए और सुधारे गए handlers के source changes 100%; संबंधित source-contract tests लिखे 100%; automated execution/CI 0%; Supabase/payment-provider runtime 0%; Browser E2E और Final Mobile QA 0% (implementation पूर्ण होने के बाद)। यह केवल इस audit batch का प्रतिशत है; पूरे Customer App/Project का प्रतिशत नहीं।
+
+
+### 2026-11-16 — Customer OTP Login / Logout और Session Synchronization audit
+- Source audit में `syncCustomerSession()` के async getSession और sequential dashboard loads के दौरान auth generation बदलने पर पुरानी session का login/dashboard state लागू होने की संभावना मिली। अब generation snapshot लिया जाता है; session read और हर awaited loader के बाद stale generation पर flow रुकता है।
+- `customerSendOtp()` में generation guard जोड़ा: पुराने OTP send response/error नई session UI नहीं बदलेगा; finally केवल उसी generation का busy/button state restore करता है।
+- `customerVerifyOtp()` में OTP verification के बाद वर्तमान session दोबारा पढ़कर session user phone को requested phone से मिलाया जाता है; mismatch पर login success नहीं दिखता। Auth transition के बाद पुराने finally से नए request का busy state नहीं छेड़ा जाता।
+- `customerLogout()` में stale logout result/error/message और finally button changes guard किए। Auth transition listener OTP busy state, OTP controls और Logout button recover करता है।
+- Regression tests: `tests/customer-profile-auth-isolation.test.js` में session sync, OTP send, OTP verify, logout, auth transition OTP controls और logout button recovery के 6 focused assertions/tests जोड़े; file में कुल 13 tests हैं।
+- Commits: source `ecc8ac44ad3a081a630d051a383a7b7f58e216a2`, `e100e29e23e4a37bcae8a7c3dd488607e8b32978`; tests `91786fd35a2d78edb7d3467e0363aab7f4adac0b`, `2a30881da6b2ed238840b6041cd90af2acf73194`।
+- Final source/test re-fetch पर सभी मुख्य guards और handlers मौजूद; duplicate `async async` declaration नहीं मिली। Latest HEAD `f208be0a5d3943322a56c92c1d5951f877238291` पर GitHub Actions runs की सूची खाली; test execution/pass का दावा नहीं।
+
+**इस Customer OTP/Logout audit batch की मापी हुई प्रगति:** source changes 100%; regression tests लिखे 100%; automated execution/CI 0%; Supabase Auth runtime validation 0%; Browser E2E 0%; Final Mobile QA 0% (implementation समाप्ति के बाद)। यह केवल इस batch का प्रतिशत है। पूरे Customer App/Project का प्रतिशत बदलने से पहले Master Checklist का पुनर्मिलान जरूरी है।
