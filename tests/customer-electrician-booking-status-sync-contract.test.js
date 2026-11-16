@@ -502,7 +502,7 @@ test('customer refund and cancellation requests are isolated across auth changes
     const action = functionBody(customer, name);
     assert.match(action, /const generation=customerActionGeneration,isCurrent=\(\)=>generation===customerActionGeneration/);
     assert.match(action, /if\(!isCurrent\(\)\)return/);
-    assert.match(action, /finally\{if\(isCurrent\(\)&&button\)button\.disabled=false\}/);
+    assert.match(action, /finally\s*\{\s*if\(isCurrent\(\)&&button\)button\.disabled=false;?\s*\}/);
   }
   const refund = functionBody(customer, 'customerSubmitBookingRefund');
   assert.match(refund, /srk_customer_list_booking_refund_requests/);
