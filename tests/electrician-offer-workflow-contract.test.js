@@ -89,3 +89,15 @@ test('work lifecycle actions are isolated across electrician account switches', 
     assert.match(action, /if\(isCurrent\(\)\)alert\(/);
   }
 });
+
+test('electrician SOS requests do not update another account view after an auth switch', () => {
+  const sos = body('submitElectricianSosAlert');
+  assert.match(sos, /requestedUserId=user\?\.id,requestedProfileId=profile\?\.id,requestedGeneration=electricianAccountViewGeneration/);
+  assert.match(sos, /requestKey=requestedGeneration\+':'\+String\(id\)/);
+  assert.match(sos, /electricianSosBusy\.has\(requestKey\)/);
+  assert.match(sos, /electricianSosBusy\.add\(requestKey\)/);
+  assert.match(sos, /srk_create_sos_alert/);
+  assert.match(sos, /if\(!isCurrent\(\)\)return/);
+  assert.match(sos, /catch\(_\)\{if\(isCurrent\(\)&&status\)/);
+  assert.match(sos, /finally\{electricianSosBusy\.delete\(requestKey\);if\(isCurrent\(\)&&button\)button\.disabled=false/);
+});
