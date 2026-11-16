@@ -1416,3 +1416,51 @@ Current Feature Branch पर सीधे जाँच में:
 - **अगला आवश्यक सक्षम वातावरण:** isolated machine/runner जिसमें Docker daemon और pinned Supabase CLI हों, repository checkout scratch worktree में हो, और Production credentials/network secrets अनुपस्थित हों। वहाँ पहले dummy duplicate-version fixture पर CLI behavior जाँचा जाए; project migrations को अभी replay न किया जाए।
 
 यह Section 43 केवल environment capability evidence है; इससे Production की स्थिति या Supabase CLI के duplicate-version behavior के बारे में कोई नया निष्कर्ष नहीं निकाला गया।
+
+
+## 44. Staff RBAC और SOS pgTAP contracts: structural बनाम behavioral coverage — 16 Nov 2026
+
+दो targeted pgTAP files को पूरा पढ़कर उनके assertion bodies और test harness calls की जाँच की गई:
+
+- `admin_staff_rbac_foundation.test.sql`: 375 lines, `plan(69)`, `finish()`, `ROLLBACK`.
+- `sos_admin_support_alerts.test.sql`: 111 lines, `plan(28)`, `finish()`, `ROLLBACK`.
+
+### 44.1 ये tests अभी क्या प्रमाणित करते हैं
+
+इनका मुख्य तरीका catalog और stored function source inspection है:
+- `has_table`, `has_column`, `has_function`, `has_trigger`;
+- `has_table_privilege` और `has_function_privilege`;
+- `pg_get_functiondef`, `pg_get_function_result`, `pg_proc.provolatile`;
+- stored function body में expected permission names, ownership checks, row-lock clauses और audit insert text की उपस्थिति।
+
+इससे schema objects, grants और function source contracts का अच्छा structural guard मिलता है।
+
+### 44.2 वास्तविक runtime authorization cases अभी इस pair में execute नहीं होते
+
+दोनों files में निम्न behavioral harness calls नहीं मिले:
+- `set_config` / `request.jwt.claims` से अलग-अलग JWT/Auth identities स्थापित करना;
+- `SET ROLE anon` / `SET ROLE authenticated` करके वास्तविक caller privilege context में RPC call;
+- pgTAP `throws_ok`, `lives_ok`, `results_eq` या `is_empty` से allow/deny परिणाम assert करना;
+- Staff invite/activation, exact Auth session registration, revocation, suspension, assignment, reply और status transitions के लिए fixture rows बनाकर RPC invoke करना;
+- concurrent revoke/suspend और in-flight permission-check के बीच वास्तविक lock serialization test करना।
+
+विशेष रूप से Staff contract में `FOR SHARE` clauses के source text और `VOLATILE` catalog property की जाँच है; इससे concurrency race का runtime pass सिद्ध नहीं होता। SOS test में भी function bodies में expected INSERT/permission text की जाँच है, actual caller identity से RPC behavior नहीं।
+
+### 44.3 Test coverage classification
+
+| क्षेत्र | मौजूदा targeted pgTAP evidence | शेष runtime evidence |
+|---|---|---|
+| Tables / functions / triggers | Structural presence checks | Clean replay में object creation |
+| Table/function grants | Catalog privilege checks | अलग role context से direct access attempts |
+| Staff permission helper | Definition text + volatility + lock clauses | Auth UID/JWT/session fixture के साथ true/false results |
+| Staff lifecycle | RPC existence और source text | Invite, verify, activate, suspend, disable, revoke behavior |
+| Support assignment | RPC/body source assertions | Assigned vs unassigned staff callers |
+| Support reply/status | permission/assignment/source assertions | Actual allowed and denied RPC calls |
+| SOS acknowledgement | Function/body source assertions | Pending/acknowledged state transitions, duplicate/concurrent calls |
+| Concurrency | Lock-order/source assertions | Two-session transaction test |
+
+### 44.4 सुरक्षित अगला test-design कदम
+
+Replay gates पूरे होने और disposable local Supabase harness उपलब्ध होने के बाद targeted test suite में अलग behavioral pgTAP file जोड़ने का प्रस्ताव है। उसमें केवल synthetic local Auth users, synthetic Staff/Support records और synthetic cases हों; हर test transaction rollback हो। पहले negative authorization cases (anon, ordinary user, inactive Staff, wrong/revoked session, unassigned case) और फिर positive authorized flows चलें। Concurrency को अलग two-connection harness में जाँचा जाए, क्योंकि एक सामान्य single-transaction pgTAP test वास्तविक race reproduce नहीं करता।
+
+**निष्कर्ष:** मौजूदा 69 + 28 assertions structural contract coverage हैं; इन्हें 97 runtime authorization scenarios कहना गलत होगा। Behavioral coverage अभी **NOT PRESENT IN THESE TWO TARGETED FILES** है। यह source-only finding है—कोई test execute, SQL write, migration replay या Production access नहीं किया गया।
