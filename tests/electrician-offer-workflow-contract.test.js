@@ -29,7 +29,10 @@ test('offer response is owner-session RPC driven, guarded against duplicates and
   assert.match(respond, /if\(!confirm\(response==='accepted'[\s\S]*?\|\|!isCurrent\(\)\)return/);
   assert.match(respond, /const isCurrent=\(\)=>!electricianLogoutBusy&&requestedGeneration===electricianAccountViewGeneration&&user\?\.id===requestedUserId&&profile\?\.id===requestedProfileId/);
   assert.match(respond, /if\(!isCurrent\(\)\)return/);
-  assert.match(respond, /if\(isCurrent\(\)\)buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
+  assert.match(respond, /let keepDisabled=false/);
+  assert.match(respond, /keepDisabled=true/);
+  assert.match(respond, /if\(isCurrent\(\)&&!keepDisabled\)buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
+  assert.match(respond, /catch\(_\)\{keepDisabled=true;if\(isCurrent\(\)\)alert\('नेटवर्क जवाब नहीं मिला। ऑफर सूची रीफ़्रेश नहीं हो सकी/);
   const clearStart=source.indexOf('function clearElectricianAccountView()');
   const clearEnd=source.indexOf('\nfunction init()',clearStart);
   assert.ok(clearStart>=0&&clearEnd>clearStart,'account view reset handler exists');
