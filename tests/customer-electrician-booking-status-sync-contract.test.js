@@ -468,3 +468,14 @@ test('Customer booking refresh displays its network error before returning failu
   assert.match(catchBlock, /if \(!isCurrent\(\)\) return;\s*box\.textContent=navigator\.onLine===false[\s\S]*?return false;/);
   assert.doesNotMatch(catchBlock, /return false;\s*box\.textContent/);
 });
+
+test('customer auth changes invalidate in-flight booking refreshes before another session can render them', () => {
+  const authStart = customer.indexOf("customerSb.auth.onAuthStateChange((event) => {");
+  assert.ok(authStart >= 0, 'customer auth state listener exists');
+  const authEnd = customer.indexOf("setTimeout(syncCustomerSession, 0);", authStart);
+  assert.ok(authEnd > authStart, 'auth listener schedules session synchronization');
+  const authBlock = customer.slice(authStart, authEnd);
+  assert.match(authBlock, /customerBookingRefreshRequest\+\+/);
+  assert.match(authBlock, /customerBookings/);
+  assert.match(authBlock, /लॉगिन सत्र बदल रहा है/);
+});
