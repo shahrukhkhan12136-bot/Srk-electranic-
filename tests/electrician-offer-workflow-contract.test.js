@@ -90,7 +90,7 @@ test('work lifecycle actions are isolated across electrician account switches', 
     assert.match(action, /electricianLifecycleBusy\.add\(requestKey\)/);
     assert.match(action, new RegExp(rpc));
     assert.match(action, /if\(!isCurrent\(\)\)return/);
-    assert.match(action, /finally\{electricianLifecycleBusy\.delete\(requestKey\);?\}/);
+    assert.match(action, /finally\{electricianLifecycleBusy\.delete\(requestKey\);if\(keepLocked\)electricianLifecycleLocked\.add\(String\(bookingId\)\);\}/);
     assert.match(action, /if\(isCurrent\(\)\)alert\(/);
   }
 });
