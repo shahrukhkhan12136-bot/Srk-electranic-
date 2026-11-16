@@ -177,3 +177,26 @@ test('customer auth transitions immediately clear prior profile, avatar and book
   assert.ok(block.includes("const profileLanguage=document.getElementById('customerProfileLanguage');if(profileLanguage)profileLanguage.value='hi'"));
   assert.ok(block.includes("const mapWrap=document.getElementById('customerMapWrap');if(mapWrap)mapWrap.style.display='none'"));
 });
+
+
+test('customer auth transitions immediately clear identity-scoped profile and booking form values', () => {
+  const start = source.indexOf('customerSb.auth.onAuthStateChange');
+  const end = source.indexOf('const handleCustomerOffline', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  for (const id of ['customerProfileName','customerProfilePhone','name','state','district','pin','address','place','bookingLat','bookingLng']) {
+    assert.ok(block.includes(id), 'auth transition clears ' + id);
+  }
+  assert.ok(block.includes('customerCurrentAvatarPath=null;setCustomerAvatarPreview(null)'));
+  assert.ok(block.includes("profileLanguage.value='hi'"));
+  assert.ok(block.includes("mapWrap.style.display='none'"));
+});
+
+test('selecting a saved customer address restores its saved recipient name into the booking form', () => {
+  const start = source.indexOf('function applySelectedSavedAddress()');
+  const end = source.indexOf('\\nasync function saveCurrentBookingAddress()', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes("document.getElementById('name').value=a.recipient_name||''"));
+  assert.ok(block.includes("document.getElementById('address').value=a.address_line"));
+});
