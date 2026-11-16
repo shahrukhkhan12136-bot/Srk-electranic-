@@ -1495,3 +1495,38 @@ Replay gates पूरे होने और disposable local Supabase harness 
 ये proposed synthetic-local tests हैं, अभी जोड़े या चलाए नहीं गए हैं। Concurrency scenarios के लिए दो अलग DB connections/transactions चाहिए; एक साधारण pgTAP transaction पर्याप्त नहीं।
 
 **निष्कर्ष:** पाँचों high-risk workflow tests अभी implementation text/metadata की regression checks हैं, end-to-end behavioral runtime proof नहीं। इससे उनके SQL logic में defect सिद्ध नहीं होता; केवल test coverage की सीमा स्पष्ट होती है। कोई SQL execute, test run, migration replay, fixture write या Production access नहीं किया गया।
+
+
+## 46. पाँच workflow tests के synthetic fixture prerequisites — 16 Nov 2026
+
+§45 में पहचाने गए behavioral gaps के आधार पर पाँचों मौजूदा test files दोबारा पढ़ीं और test-design से पहले आवश्यक fixture boundaries दर्ज कीं। यह केवल तैयारी है; कोई test file बदली या जोड़ी नहीं गई।
+
+| Workflow | न्यूनतम isolated local fixture | निर्णायक behavioral assertions |
+|---|---|---|
+| Work Timer | दो local Auth users (एक customer, एक assigned electrician), एक नई category booking, approved rate snapshot | customer approval से पहले elapsed time शून्य; केवल संबंधित customer approval timer शुरू करे; दूसरे customer/electrician को deny; final bill server elapsed minutes से बने; dispute/reject path bill को गलत तरीके से finalize न करे |
+| Razorpay Inbox | service-role-only local invocation context, दो synthetic event IDs, अलग payload hashes | समान event दोबारा claim करने पर duplicate; active lease रहते दूसरा worker claim न करे; expiry के बाद नया fencing token; पुराना token completion reject; terminal event repeat idempotent |
+| Offer Dispatch | एक synthetic booking, समान क्षेत्र के कम-से-कम दो eligible electricians और एक ineligible control electrician; अलग rate-tier control | exact area/tier eligibility; एक समय में केवल एक current offer; decline/expiry पर अगला candidate; stale area/tier acceptance reject; concurrent accept में अधिकतम एक winner |
+| Push Delivery | एक outbox row और एक per-device row, processing state तथा attempt counters | stale attempt number reject; current attempt accept; delivered/dead terminal rows immutable; retry boundary और capped backoff persisted values से verify |
+| Legacy Status Guard | एक eligible legacy new booking, एक new-category booking, एक paid/refunded booking; local Main Admin और ordinary authenticated user | ordinary user deny; Main Admin केवल eligible legacy new को confirm करे; new-category और paid/refunded bookings unchanged रहें; direct authenticated status UPDATE deny |
+
+### 46.1 Test harness boundaries
+
+- हर Auth user और business row केवल disposable local Supabase database में synthetic हो; Production IDs या records fixture में न आएँ।
+- auth.uid() / JWT claim को test helper से सेट करने के बाद वास्तविक authenticated role context में RPC चलाया जाए। service_role workflow को अलग privileged local invocation में जाँचा जाए।
+- हर non-concurrency test transaction rollback करे; database-wide shared fixtures या स्थायी seed records न छोड़े।
+- Lease expiry के लिए वास्तविक sleep की जगह controllable timestamps/fixture clock तभी उपयोग हों जब function contract उसे सुरक्षित रूप से support करता हो; अन्यथा isolated local transaction में समय-सीमा को स्पष्ट रूप से test किया जाए।
+- Concurrent winner/lease race के लिए दो स्वतंत्र DB connections और coordinated transactions चाहिए; single pgTAP transaction को concurrency proof न माना जाए।
+- Local Auth schema, helper functions और authoritative base schema provenance उपलब्ध होने तक इन fixtures को runnable test code में बदलना अभी blocked है।
+
+### 46.2 Source-level inventory की पुष्टि
+
+इस pass में पाँच files के exact वर्तमान आकार/plan दोबारा जाँचे:
+- Work Timer: 54 lines, plan 20, INSERT fixture नहीं।
+- Razorpay Inbox: 69 lines, plan 15, INSERT fixture नहीं।
+- Sequential Offer Dispatch: 91 lines, plan 16, एक INSERT statement मौजूद; यह अकेले end-to-end workflow proof नहीं।
+- Push Delivery: 82 lines, plan 20, INSERT fixture नहीं।
+- Legacy Status Guard: 51 lines, plan 9, INSERT fixture नहीं।
+
+पाँचों में JWT/session setup, role switching या throws_ok / lives_ok / results_eq / is_empty behavioral assertion calls नहीं मिले। यह पाँचों targeted files की सीमा तक का निष्कर्ष है, पूरे 32-file suite का दावा नहीं।
+
+**निर्णय:** अगला coding step अभी production या current branch पर test edits नहीं है। पहले approved isolated runner, local Supabase config/harness, base-schema provenance और migration-version collision gate उपलब्ध होने चाहिए। उसके बाद पहले Work Timer और Webhook के local-only behavioral tests बनाए जाएँ; शेष तीन उसके बाद। इस pass में केवल GitHub source files पढ़ीं—कोई file write, SQL execution, test run, migration replay या Production access नहीं हुआ।
