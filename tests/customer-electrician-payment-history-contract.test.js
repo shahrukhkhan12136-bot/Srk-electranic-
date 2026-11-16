@@ -192,3 +192,17 @@ test('Customer payment receipt popup is closed when its originating session beco
   assert.ok(block.includes('if(isCurrent()&&requestedUserId)alert('));
   assert.ok(block.includes('printWindow.close();'));
 });
+
+
+test('Razorpay create and verify flow does not update a different customer session', () => {
+  const start = customer.indexOf('async function startRazorpayPayment()');
+  const end = customer.indexOf('\nfunction customerBookingRequestKey', start);
+  assert.ok(start >= 0 && end > start);
+  const block = customer.slice(start, end);
+  assert.ok(block.includes('const generation=customerActionGeneration'));
+  assert.ok(block.includes('const sameSession=async()'));
+  assert.ok(block.includes('requestedUserId=customerSession.user?.id||null'));
+  assert.ok(block.includes('if(!await sameSession())return;'));
+  assert.ok(block.includes('if(isCurrent())setPaymentStatus'));
+  assert.ok(block.includes('if(isCurrent()){\n      paymentBusy = false;'));
+});
