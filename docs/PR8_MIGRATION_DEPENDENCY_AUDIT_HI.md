@@ -1234,3 +1234,42 @@ The outbox migration includes explicit preflight exceptions for missing prerequi
 6. **Runtime:** no PostgreSQL parser, full replay or pgTAP test has run. Static source inventory is not a PASS.
 
 **Safety boundary:** Audit Branch documentation only. No migration source, PR branch, Main, Production, database, customer/Auth data, payment provider, or workflow was modified or accessed.
+
+
+## 74. Financial/refund/webhook dependency chain — source re-check — 17 Nov 2026
+
+This section records additional exact-file inspection on the Audit Branch. It is a source-order/dependency review, not SQL parsing or execution.
+
+| Order | Migration | Source objects / role | Required earlier objects |
+|---|---|---|---|
+| 1 | `20261114125844_restore_financial_audit_core_schema.sql` | Financial bill, manual payment, payout, admin audit, Razorpay refund, refund request and manual refund base tables | Core booking/profile/Auth tables |
+| 2 | `20261114190000_customer_receipt_immutable_labour_amount.sql` | Replaces customer receipt RPC to prefer immutable approved labour bill | `service_bookings`, `srk_booking_labour_bills` |
+| 3 | `20261114200000_customer_payment_refund_history_rpc.sql` | Customer-scoped payment/refund event history RPC | Booking/payment/refund source relations and Auth |
+| 4 | `20261114270000_admin_only_cancellation_requests_and_decisions.sql` | Admin-only cancellation request/decision contract | Booking, Admin identity helper, audit and wallet/payment relations |
+| 5 | `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` | Cancellation debt, booking fee items, append-only fee ledger; receipt/payment RPC replacements | Cancellation request table from 14270000, wallet ledger, bookings and financial base |
+| 6 | `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` | Full-refund fee reversal and refund RPC replacements | Cancellation fee tables/ledger from 14280000 and refund/payment base |
+| 7 | `20261114360000_new_category_electrician_payout_reconciliation.sql` | Replaces payout writer and paid-payout Admin RPC | Financial core payout/bill tables and booking commission/payment fields |
+| 8 | `20261114410000_razorpay_webhook_event_inbox.sql` | Durable provider-event inbox and claim/complete RPCs | Auth/role grants and Razorpay webhook service integration |
+| 9 | `20261115100000_customer_refund_request_contract.sql` | Customer refund request contract | Refund request base table, booking/payment relations |
+| 10 | `20261115110000_admin_refund_review_queue_and_decisions.sql` | Admin refund review/decision RPC contract | Customer refund request contract and Admin helper |
+| 11 | `20261115120000_durable_razorpay_refund_recovery_evidence.sql` | Immutable refund recovery evidence and two-phase recovery RPCs | `srk_razorpay_refunds`, bookings, Auth/service-role execution |
+| 12 | `20261115130000_admin_manual_refund_request_completion.sql` | Admin manual refund request completion | Refund request/review contract and manual refund ledger |
+
+### Confirmed source-level ordering notes
+
+- The immutable receipt RPC at 14190000 consumes `srk_booking_labour_bills`, introduced by 14125844; the ordering is consistent in the numbered filenames.
+- The cancellation-fee accounting migration at 14280000 consumes the cancellation request contract introduced at 14270000.
+- The full-refund reversal migration at 14290000 alters cancellation-fee tables introduced at 14280000.
+- The payout writer replacement at 14360000 reads the immutable labour bill and writes the payout ledger; the base payout/bill tables are introduced by 14125844.
+- Refund recovery evidence at 15120000 references the refund and booking records; the financial audit core precedes it.
+- These observations establish direct source references and intended lexical order only. They do not prove every intermediate function signature, trigger compatibility, grants, or replay success.
+
+### High-risk review items retained
+
+1. Receipt and payment-history RPC return-shape/signature compatibility across later replacements needs PostgreSQL catalog verification.
+2. Cancellation fee reservation, carry-forward, full-refund reversal and wallet entries require transactional fixtures proving no double collection or double reversal.
+3. Payout writer BEFORE/AFTER trigger ordering, commission source parity and cancellation-fee exclusion require runtime assertions.
+4. Razorpay webhook claim-token/lease behavior and refund recovery idempotency need concurrency and retry tests; no provider request was made.
+5. Admin refund decisions must remain separate from money movement; approval/review RPCs are not evidence that a refund was sent.
+
+**Status:** static dependency evidence expanded; PostgreSQL Parser, clean replay, pgTAP and concurrency tests remain **NOT RUN**. No database or provider was contacted.
