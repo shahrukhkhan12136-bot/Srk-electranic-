@@ -108,3 +108,20 @@ A source-only safe *candidate* sequence can be stated, but cannot be approved as
 The `20261110140000_restore_missing_customer_booking_quote_columns.sql` migration adds only `customer_suggested_amount` and `electrician_quote_kind`; it does not restore the legacy quote fields or `amount_paid`. Quote fields are introduced by the same-prefix `20261109_electrician_inspection_quotes_and_service_only_commission.sql` migration. This distinction matters when preparing fixtures and checking the dependency graph.
 
 No numbered migration was edited or reordered. This is a dependency analysis, not a runtime replay. Remote migration history remains unverified.
+
+
+## 9. Existing CI harness safety review — 16 Nov 2026
+
+Inspected `.github/workflows/supabase-schema-ci.yml` at the current feature branch. It is **not suitable to run for this Master Checklist replay**:
+
+- It is gated to `refs/heads/feature/platform-fee-cash-online-cycle`, not this current feature branch.
+- It requires `SUPABASE_DB_URL` and exports schema from a remote Supabase database before creating its local stack. Even though the export step requests schema-only/read-only access and checks a restricted role, this still makes a remote database a prerequisite and does not satisfy the requested fully local, no-remote replay.
+- It pins Supabase CLI 3.0.0, but its migration array contains five older, feature-specific migration paths that are not the current branch's complete migration chain. It does not apply the current 20261108–20261116 sequence or the two target pgTAP suites.
+- It does not run `supabase test db` or invoke the 18-assertion legacy payment/receipt suite and 15-assertion accounting bridge suite.
+- The current repository has no checked-in `supabase/config.toml`; `package.json` exposes only Node tests and declares no local PostgreSQL/pgTAP runner.
+
+**Safety decision:** Do not dispatch this workflow, do not provide a production database URL/secret, and do not adapt its remote export step as the starting point. No secrets were read, no remote DB was contacted, and no workflow was executed or changed.
+
+### Local-only harness acceptance gates
+
+A future dedicated workflow must (1) use a pinned Supabase CLI and container/runtime versions, (2) create a disposable local stack from a reviewed canonical baseline committed in this repository, (3) apply the complete ordered current migration chain without remote URLs or secrets, (4) seed synthetic-only identities and bookings, (5) run both named pgTAP suites plus schema lint, (6) stop and destroy the local stack even on failure, and (7) run on this branch's push/PR without deploying. Do not add that workflow until the canonical baseline and duplicate timestamp provenance are resolved; otherwise CI would merely automate an untrusted replay order.
