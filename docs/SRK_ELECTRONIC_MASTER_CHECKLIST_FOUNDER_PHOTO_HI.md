@@ -617,3 +617,9 @@
 - Profile नाम update RPC सफल होने के बाद Dashboard refresh विफल हो सकता था; पुराने catch में यह स्थिति गलत तरीके से “नाम अपडेट नहीं हो सका” दिखा सकती थी, जबकि नाम server पर सेव हो चुका होता।
 - अब नाम update सफल होने पर नाम UI में सेट और सफलता दर्ज होती है; refresh अलग से संभाला जाता है। Refresh विफल हो तो स्पष्ट partial-success संदेश दिखता है और उपयोगकर्ता को Dashboard Refresh करने को कहा जाता है। मूल save RPC विफल होने पर ही save-failure संदेश आता है।
 - Source-contract regression test जोड़ा; live Supabase/browser network fault-injection अभी लंबित है।
+
+### 2026-11-16 — Latest full Node CI green after customer/electrician lifecycle contract reconciliation
+- [x] Latest branch-head commit `3748004a72f0a929607c9d2e6343c0ea3d8a133b`, GitHub Actions run `43856680916`, job `133262646200`: **382/382 PASS, 0 FAIL, 0 cancelled**. Final TAP summary verified in job log.
+- [x] The previous 25 failures were investigated. The fixes align source-contract assertions with the implemented session-generation/request-key guards, guarded refresh outcomes, push-subscription rollback flow, and quoted live-location DOM selector. This is not a claim of live browser or Supabase runtime coverage.
+- [ ] Isolated PostgreSQL/Supabase + pgTAP execution, live browser/auth/Storage/Push fault-injection, Preview/mobile QA, and owner visual acceptance remain pending. PR #8 remains open, draft, and unmerged. Vercel Preview is still rate-limited; Netlify deploy-preview status is pending at this checkpoint.
+- **Progress remains 27/39 = 69%**; no additional Master Checklist completion item is counted from a source-contract CI pass alone.
