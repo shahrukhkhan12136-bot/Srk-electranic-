@@ -208,3 +208,21 @@ test('customer and electrician timer and SOS panels are restricted to active in-
   assert.match(electrician, /o\.selected_category&&o\.booking_status==='in_progress'\?'<div class="job" id="electricianSosPanel_/);
   assert.match(customer, /row\.selected_category&&row\.status==='in_progress'\s*\? '<div class="job" id="customerSosPanel_/);
 });
+
+test('customer lifecycle actions remain locked when server outcome cannot be reconciled after refresh failure', () => {
+  for (const name of ['customerRespondWorkStart', 'customerRespondWorkCompletion']) {
+    const fn = handler(customer, name);
+    assert.match(fn, /customerLifecycleLocked\.has\(String\(bookingId\)\)/);
+    assert.match(fn, /catch\(_\)\{keepLocked=true;/);
+    assert.match(fn, /if\(keepLocked\)customerLifecycleLocked\.add\(String\(bookingId\)\)/);
+  }
+});
+
+test('electrician lifecycle actions remain locked when server outcome cannot be reconciled after refresh failure', () => {
+  for (const name of ['electricianRequestWorkStart', 'electricianRequestWorkCompletion']) {
+    const fn = handler(electrician, name);
+    assert.match(fn, /electricianLifecycleLocked\.has\(String\(bookingId\)\)/);
+    assert.match(fn, /catch\(_\)\{keepLocked=true;/);
+    assert.match(fn, /if\(keepLocked\)electricianLifecycleLocked\.add\(String\(bookingId\)\)/);
+  }
+});
