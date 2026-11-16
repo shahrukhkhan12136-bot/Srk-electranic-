@@ -2170,6 +2170,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
       customerActionGeneration++;
+      pendingBookingId=null;
       customerOtpBusy=false;
       const otpSendButton=document.getElementById('customerSendOtp');if(otpSendButton&&Date.now()>=customerOtpUntil){otpSendButton.disabled=false;otpSendButton.textContent='OTP भेजें';}
       const otpVerifyButton=document.getElementById('customerVerifyOtp');if(otpVerifyButton)otpVerifyButton.disabled=false;
@@ -2377,6 +2378,8 @@ function clearCustomerBookingRequestKey(key){
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
   e.preventDefault();
+  const bookingGeneration=customerActionGeneration;
+  const isCurrent=()=>bookingGeneration===customerActionGeneration;
   const method = value('payment');
   const tier = document.getElementById('rateTier').selectedOptions[0]?.textContent || '';
   const hours = Number(value('durationHours'));
@@ -2387,9 +2390,18 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   if (!terms?.checked) { alert('बुकिंग भेजने से पहले जरूरी शर्तें पढ़कर स्वीकार करें।'); terms?.focus(); return; }
   if(estimatePaise===null){alert('कृपया इलेक्ट्रिशियन की श्रेणी और 1 से 8 घंटे की अवधि चुनें।');return;}
   if(!customerSb){alert('बुकिंग से पहले ग्राहक OTP लॉगिन करें।');return;}
+  let customerSession;
+  try{
+    const {data,error}=await customerSb.auth.getSession();
+    if(!isCurrent())return;
+    if(error)throw error;
+    customerSession=data?.session;
+    if(!customerSession?.user?.id)throw new Error('बुकिंग के लिए पहले ग्राहक OTP लॉगिन करें।');
+  }catch(error){if(isCurrent())alert(error.message||'ग्राहक लॉगिन सत्र सत्यापित नहीं हो सका।');return;}
   let debtRows=[],debtError=null;
   try{({data:debtRows,error:debtError}=await customerSb.rpc('srk_customer_list_my_cancellation_fee_debts'));}
-  catch(_){alert('पुरानी cancellation fee की जाँच अभी नहीं हो सकी। Payments में बकाया रीफ़्रेश करके दोबारा कोशिश करें।');return;}
+  catch(_){if(isCurrent())alert('पुरानी cancellation fee की जाँच अभी नहीं हो सकी। Payments में बकाया रीफ़्रेश करके दोबारा कोशिश करें।');return;}
+  if(!isCurrent())return;
   if(debtError){alert('पुरानी cancellation fee की जाँच अभी नहीं हो सकी। Payments में बकाया रीफ़्रेश करके दोबारा कोशिश करें।');return;}
   const priorCancellationDebts=(Array.isArray(debtRows)?debtRows:[]).filter(item=>item.status==='open');
   const priorFeePaise=priorCancellationDebts.reduce((sum,item)=>sum+Number(item.amount_paise||0),0);
@@ -2398,16 +2410,18 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     ? '\\nपुरानी Cancellation Fee (अलग मद): ₹'+(priorFeePaise/100).toFixed(2)+'\\n'+priorFeeLines+'\\nअभी का संयुक्त अनुमान: ₹'+((estimatePaise+priorFeePaise)/100).toFixed(2)
     : '\\nपुरानी Cancellation Fee: ₹0.00';
   if(!confirm('बुकिंग की पुष्टि करें\\n\\nश्रेणी: '+tier+'\\nअवधि: '+hours+' घंटे\\nअनुमानित मेहनताना: ₹'+(estimatePaise/100).toFixed(2)+priorFeeText+'\\nभुगतान तरीका: '+method+'\\n\\nपुरानी फीस अलग line items में रहेगी। यह मेहनताना अनुमान अंतिम बिल की सीमा नहीं है। वास्तविक समय के अनुसार मेहनताना बनेगा और सामान/पार्ट्स अलग होंगे। क्या बुकिंग भेजें?'))return;
+  if(!isCurrent())return;
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
   try {
     const bookingHeaders = { 'Content-Type': 'application/json' };
-    if (!customerSb) throw new Error('ग्राहक लॉगिन सेवा उपलब्ध नहीं है।');
-    const { data: customerSessionData, error: sessionError } = await customerSb.auth.getSession();
-    if (sessionError) throw sessionError;
-    const customerSession = customerSessionData?.session;
-    if (!customerSession) throw new Error('बुकिंग के लिए पहले ग्राहक OTP लॉगिन करें।');
-    bookingHeaders.Authorization = 'Bearer ' + customerSession.access_token;
+    if (!isCurrent()) return;
+    const { data: latestSessionData, error: latestSessionError } = await customerSb.auth.getSession();
+    if (!isCurrent()) return;
+    if (latestSessionError) throw latestSessionError;
+    const latestSession = latestSessionData?.session;
+    if (!latestSession?.user?.id || latestSession.user.id !== customerSession.user.id) throw new Error('लॉगिन सत्र बदल गया है। कृपया नई session से बुकिंग दोबारा जाँचें।');
+    bookingHeaders.Authorization = 'Bearer ' + latestSession.access_token;
     const bookingPayload = {
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
       address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), 
@@ -2417,7 +2431,9 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const requestKey = customerBookingRequestKey(bookingPayload);
     bookingHeaders['Idempotency-Key'] = requestKey;
     const response = await fetch('/api/create-booking', { method: 'POST', headers: bookingHeaders, body: JSON.stringify(bookingPayload) });
+    if (!isCurrent()) return;
     const result = await response.json();
+    if (!isCurrent()) return;
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
     clearCustomerBookingRequestKey(requestKey);
     pendingBookingId = result.booking_id;
