@@ -1622,3 +1622,36 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 **निर्णय:** इसे migration-history/replay audit में दूसरा blocker candidate दर्ज किया गया है। अभी किसी filename को rename नहीं किया गया, क्योंकि deployed `supabase_migrations.schema_migrations` history और पहले apply हो चुकी versions अज्ञात हैं। पहले से लागू migration का version बदलना remote history से mismatch पैदा कर सकता है।
 
 **सुरक्षित अगला कदम:** Owner से sanitized remote migration history और इस्तेमाल हो रहे Supabase CLI version की पुष्टि; फिर तय करना कि दोनों files कभी deploy हुई हैं या नहीं। यदि clean-install के लिए नया क्रम चाहिए, तो अलग approved forward-only/clean-bootstrap योजना बनाएं; live history को अनुमान से edit न करें। इस audit में केवल GitHub directory listing पढ़ी गई—कोई database connection या migration execution नहीं हुआ।
+
+
+## 42. Duplicate 20261109 migration pair — Git commit history और SQL overlap — 16 Nov 2026
+
+दोनों exact files की GitHub path-specific commit history और SQL body पढ़ी गई:
+
+| File | उपलब्ध Git commit history |
+|---|---|
+| `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | 08:00:19Z, 08:01:17Z, 08:04:11Z (9 Nov 2026) |
+| `20261109_allow_quote_approval_booking_states.sql` | 08:04:25Z (9 Nov 2026) |
+
+यह केवल Git commit timestamps हैं; ये Supabase में apply होने या remote migration history में दर्ज होने का प्रमाण नहीं हैं।
+
+### SQL overlap
+
+- बड़ी `electrician_inspection_quotes_and_service_only_commission` migration booking quote columns, commission trigger/function और quote/work RPCs बनाती है।
+- उसी बड़ी migration के अंतिम भाग में `service_bookings_status_check` और `service_bookings_assignment_status_requires_electrician` constraints को drop/recreate किया गया है।
+- छोटी `allow_quote_approval_booking_states` migration का पूरा SQL इन्हीं दो constraints को drop/recreate करने तक सीमित है और वही allowed statuses तथा assignment predicate रखती है।
+
+अर्थात् छोटी migration का SQL effect बड़ी migration के अंत में पहले से मौजूद है। यह source-level overlap/redundancy है। इससे यह साबित नहीं होता कि छोटी file को हटाना सुरक्षित है: दोनों का migration version `20261109` समान है और deployment history अज्ञात है।
+
+### Supabase migration identity का अर्थ
+
+दोनों filenames underscore से पहले समान version token `20261109` देती हैं। इसलिए version-based migration ledger में वे अलग unique versions नहीं दर्शातीं; migration tooling इन्हें एक version identity के रूप में देख सकती है। वास्तविक CLI version और deployed history से व्यवहार की पुष्टि अभी नहीं हुई।
+
+### Safe decision
+
+- किसी file को delete/rename/edit नहीं किया गया।
+- Git commit history को deployment history नहीं माना गया।
+- दोनों SQL effects का overlap अब documented है; duplicate version collision अभी भी replay blocker candidate है।
+- अगला आवश्यक प्रमाण: sanitized remote `supabase_migrations.schema_migrations` entries और deployed migration source/body/hash। उसके बिना यह तय नहीं किया जा सकता कि छोटी file कभी apply हुई, बड़ी file apply हुई, या दोनों में से कौन-सी production history में canonical है।
+
+इस जाँच में केवल GitHub source/history पढ़ी गई; Supabase credentials, database connection, migration execution या Production बदलाव नहीं हुए।
