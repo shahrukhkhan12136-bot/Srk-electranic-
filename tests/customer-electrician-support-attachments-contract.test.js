@@ -133,7 +133,10 @@ test('customer complaint submission reconciles an uncertain RPC result through t
 });
 
 test('customer support lists, threads and writes are invalidated when the OTP account changes', () => {
-  const reset = functionBody(customer, 'clearCustomerSupportView');
+  const resetStart = customer.indexOf('function clearCustomerSupportView()');
+  const resetEnd = customer.indexOf('\\nfunction renderCustomerSupportThread', resetStart);
+  assert.ok(resetStart >= 0 && resetEnd > resetStart, 'customer support reset handler exists');
+  const reset = customer.slice(resetStart, resetEnd);
   const create = functionBody(customer, 'createCustomerSupportComplaint');
   const list = functionBody(customer, 'loadCustomerSupportComplaints');
   const thread = functionBody(customer, 'loadCustomerSupportMessages');
