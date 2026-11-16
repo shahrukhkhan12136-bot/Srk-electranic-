@@ -476,7 +476,7 @@ test('customer auth changes immediately invalidate and clear old live-location s
   const auth = customer.slice(authStart, authEnd);
   assert.match(auth, /customerLiveLocationRefreshRequest\+\+/);
   assert.match(auth, /customerLiveLocationBookingIds\.forEach/);
-  assert.match(auth, /customerLiveLocation_'\\+id/);
+  assert.match(auth, /customerLiveLocation_'\+id/);
   assert.match(auth, /customerLiveLocationBookingIds=\[\]/);
 });
 
