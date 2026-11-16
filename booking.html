@@ -2208,6 +2208,8 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
         const field=document.getElementById(id);if(field)field.value='';
       });
       const profileLanguage=document.getElementById('customerProfileLanguage');if(profileLanguage)profileLanguage.value='hi';
+      applyCustomerUiLanguage('hi');
+      setSavedAddressStatus('');
       const addressLabel=document.getElementById('savedAddressLabel');if(addressLabel)addressLabel.value='home';
       const avatarFile=document.getElementById('customerAvatarFile');if(avatarFile)avatarFile.value='';
       customerCurrentAvatarPath=null;setCustomerAvatarPreview(null);
