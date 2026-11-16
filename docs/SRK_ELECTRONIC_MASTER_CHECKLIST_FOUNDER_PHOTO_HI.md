@@ -95,8 +95,8 @@
 - [x] Welcome Screen का source implementation और responsive layout मौजूद है।
 - [x] Owner ने black shirt और deep-blue studio background वाली original Founder Photo को आधिकारिक asset के रूप में confirm किया; garden portrait superseded है।
 - [x] Official blue-background Founder Photo की owner-verified मूल फ़ाइल `assets/IMG-20261116-WA0000.jpg` है; Welcome Screen और Customer Login दोनों इसी asset को सीधे load करते हैं। इस current source में `assets/founder-photo.svg` उपयोग नहीं हो रहा।
-- [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें; manual mobile QA अंतिम consolidated pass तक रोका गया है।
-- [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
+- [ ] Netlify Deploy Preview में asset/page load और desktop/mobile rendering verify करें; manual mobile QA अंतिम consolidated pass तक रोका गया है।
+- [ ] Automated build/check और Netlify Deploy Preview में asset/page load verify करें।
 - [ ] Owner visual acceptance लें।
 - [ ] Desktop और responsive/mobile presentation final consolidated QA में verify करें।
 
