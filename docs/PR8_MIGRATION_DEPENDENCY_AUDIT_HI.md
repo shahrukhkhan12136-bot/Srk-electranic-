@@ -499,3 +499,13 @@ verify-payment.js और razorpay-webhook.js के legacy-quote payment paths �
 
 - अतिरिक्त Git History जाँच: GitHub commit-history API में इसी exact migration path के लिए कोई commit नहीं मिला; commit search में migration filename, “atomic razorpay order payment finalization” और `srk_claim_payment_order_lock` के लिए भी कोई commit result नहीं मिला। इसलिए उपलब्ध repository history से इस migration का add/delete commit trace नहीं हो पाया।
 - निष्कर्ष को सीमित रखें: इस repository में यह migration कभी commit हुई थी, ऐसा अभी प्रमाणित नहीं है। पुराने progress दस्तावेज़ का उल्लेख अकेला source है; उसे वर्तमान branch की मौजूद SQL implementation न मानें।
+
+
+## 39. ग्राहक का Cash से Razorpay भुगतान विकल्प बदलने वाला RPC — Unicode literal mismatch
+
+- Frontend `booking.html` में `srk_customer_change_payment_method` को `p_payment_method: 'Razorpay ऑनलाइन भुगतान'` भेजा जाता है।
+- Migration `20261114202656_customer_change_payment_method_rpc.sql` में वही function argument की तुलना और database update के लिए `'Razorpay à¤à¤¨à¤²à¤¾à¤à¤¨ à¤­à¥à¤à¤¤à¤¾à¤¨'` literal इस्तेमाल करता दिखता है। यह frontend के सही Hindi Unicode literal से अलग mojibake text है।
+- यदि repository में मौजूद SQL literal ही deployed function में है, तो RPC का input validation `INVALID_PAYMENT_METHOD_CHANGE` देगा; और update value भी गलत text होगी। इसलिए ग्राहक का Cash से Online विकल्प बदलना विफल हो सकता है। यह source-level mismatch है; deployed DB/runtime पर परीक्षण नहीं हुआ।
+- Function की बाकी शर्तें उचित रूप से owner-scoped हैं: `auth.uid()`, केवल `new/confirmed`, unassigned, unpaid, zero amount, कोई order/payment ID नहीं, और पुराना method Cash; execute केवल authenticated को दिया गया है।
+- सुझाया सुधार: canonical UTF-8 literal को frontend और SQL में एक समान रखें (या स्थिर ASCII enum जैसे `razorpay` अपनाएँ), फिर pgTAP में सही literal success, गलत literal rejection, दूसरे customer का booking ID, assigned/paid/order-linked booking rejection जाँचें। Migration lineage/baseline clear होने तक कोई SQL edit या replay नहीं किया गया।
+- कोई Production query/write, payment, deployment या test execution नहीं हुआ।
