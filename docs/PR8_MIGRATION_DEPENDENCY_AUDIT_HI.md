@@ -943,3 +943,23 @@ Default-branch code search में `.github/workflows/supabase-schema-ci.yml` 
 - Migration replay: **NOT RUN**.
 - Production query/write, workflow dispatch, deployment, merge: **NONE**.
 - पाँचों Blockers: **अभी सभी का समाधान प्रमाणित नहीं**; बाकी चार की जाँच जारी है।
+
+
+## 63. Commission Reporting बनाम Payout Ledger — दूसरा Regression Gate
+
+Section 17–18 में दर्ज source-level mismatch के लिए payout reconciliation pgTAP में अतिरिक्त guard जोड़ा:
+
+- `supabase/tests/database/electrician_payout_reconciliation.test.sql` का plan 28 से 29 किया।
+- नया assertion `srk_create_electrician_payable()` function definition में `commission_amount` writer की उपस्थिति अनिवार्य करता है, ताकि Admin commission reporting और payout ledger अलग-अलग commission values पर न चलें।
+- Commit: `d275022408859b4ca52ce57fa2992af31c55053e`.
+
+यह भी test-first guard है; अभी इसे PASS नहीं कहा जा सकता। उपलब्ध source finding के अनुसार payout trigger commission गणना करता है, पर booking के `commission_amount` field को update करने का प्रमाण नहीं मिला। सही SQL correction के लिए उस trigger की authoritative migration, commission event timing और clean-replay dependencies को पहले निश्चित करना होगा। पुराने standalone setup trigger को सीधे बदलना या ऐतिहासिक migration edit करना सुरक्षित नहीं।
+
+### GPT-2 progress snapshot
+
+- Accounting bridge method consistency regression gate: added (plan 16).
+- Payout/Admin commission reporting parity regression gate: added (plan 29).
+- दोनों SQL runtime outcomes: NOT RUN.
+- पाँच blockers का final disposition: OPEN / PARTIAL; सभी का समाधान नहीं हुआ।
+- Migration replay और Runtime suite: NOT RUN.
+- Production access/write, deployment, workflow dispatch, merge: NONE.
