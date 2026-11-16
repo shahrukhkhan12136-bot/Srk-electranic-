@@ -101,3 +101,56 @@ test('saved address mutation buttons are restored when customer auth changes', (
   assert.ok(block.includes("['saveCurrentAddress','deleteSavedAddress','setDefaultSavedAddress'].forEach"));
   assert.ok(block.includes('if(button)button.disabled=false'));
 });
+
+
+test('customer session synchronization ignores stale session reads and stops after account changes', () => {
+  const start = source.indexOf('async function syncCustomerSession()');
+  const end = source.indexOf('\nasync function customerSendOtp', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes('const generation=customerActionGeneration'));
+  assert.ok(block.includes('if(!isCurrent())return'));
+  assert.ok(block.includes('await loadCustomerBookings();if(!isCurrent())return;'));
+  assert.ok(block.includes('await loadCustomerProfile();if(!isCurrent())return;'));
+});
+
+test('customer OTP send suppresses stale results and only restores its own busy state', () => {
+  const start = source.indexOf('async function customerSendOtp()');
+  const end = source.indexOf('\nasync function customerVerifyOtp', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes('const generation=customerActionGeneration'));
+  assert.ok(block.includes('if(!isCurrent())return'));
+  assert.match(block, /finally\{if\(isCurrent\(\)\)/);
+});
+
+test('customer OTP verification checks the verified session phone before continuing', () => {
+  const start = source.indexOf('async function customerVerifyOtp()');
+  const end = source.indexOf('\nasync function customerLogout', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes('customerSb.auth.getSession()'));
+  assert.ok(block.includes('actualPhone!==requestedPhone'));
+  assert.ok(block.includes('if(!data?.session?.user?.id)return'));
+  assert.match(block, /finally\{if\(isCurrent\(\)\)/);
+});
+
+test('customer logout suppresses stale status and button changes after another auth transition', () => {
+  const start = source.indexOf('async function customerLogout()');
+  const end = source.indexOf('\nif (customerCfg.', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes('const generation=customerActionGeneration'));
+  assert.ok(block.includes('if(!isCurrent())return'));
+  assert.ok(block.includes('finally{if(isCurrent())button.disabled=false;}'));
+});
+
+test('customer auth transitions release OTP busy state and recover OTP controls', () => {
+  const start = source.indexOf('customerSb.auth.onAuthStateChange');
+  const end = source.indexOf('const handleCustomerOffline', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes('customerOtpBusy=false'));
+  assert.ok(block.includes('otpSendButton.disabled=false'));
+  assert.ok(block.includes('otpVerifyButton.disabled=false'));
+});
