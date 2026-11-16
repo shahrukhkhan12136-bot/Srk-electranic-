@@ -13,9 +13,26 @@
 | GPS and offer RPC | `20261109001000` adds coordinate columns and Admin approval RPC; `20261109001500` replaces approval RPC; `20261109002000` creates map-pin offer RPC | Function replacement depends on prior signatures and columns | Keep the source-established order and validate signatures |
 | Quote RPC | `20261109_electrician_inspection_quotes_and_service_only_commission.sql` reads customer_user_id, location columns, and quote fields; replaces `srk_get_my_offer_details()` | Missing earlier ownership/GPS/base columns or wrong return signature causes failure | Verify full predecessor chain and RPC return-type compatibility |
 | Quote status migration duplication | The quote workflow file itself ends by replacing `service_bookings_status_check` and adding assignment-state constraint; `20261109_allow_quote_approval_booking_states.sql` repeats that status/assignment-constraint work | Running both may be redundant; exact duplicate constraint DDL may fail or cause confusing lineage | Compare both complete files and remote migration history; do not delete or rename either without approval |
-| Commission prerequisites | `20261109003000_secure_commission_reporting.sql` reads `amount_paid`; quote workflow trigger reads `NEW.amount_paid` | Earlier consumers can fail before later restore migration introduces the column | Reconcile canonical column introduction and deployed history before changing sequence |
+| Commission prerequisites (corrected after ledger check) | Production ledger records `20261108095928 add_actual_paid_amount_commission_and_status_history` before the quote workflow; live `service_bookings.amount_paid` exists with a nonnegative check. The matching historical migration file is absent from the audited PR source tree; branch instead contains a new `20261116200000_restore_service_bookings_amount_paid.sql` | Clean replay from branch source cannot reproduce the deployed introduction at its original point. The late restore file may mask missing history but does not reconstruct the exact historical chain | Recover/restore the original migration source from authoritative history; compare its full DDL before deciding whether the new late restore is redundant or retained only as a forward repair |
 | Migration versions | Two files start with `20261109_` rather than 14 digits | CLI migration parser / ledger cannot reliably order them | Resolve intended versions against authoritative remote ledger |
 | Local config | No `supabase/config.toml` at audited PR head | Local Supabase CLI workflow not yet reproducible | Add reviewed local configuration before claiming harness readiness |
+
+## Authoritative Production ledger reconciliation (read-only)
+
+The Supabase Production migration ledger was read without executing SQL changes. It reports the following relevant order:
+
+- `20261108095928 add_actual_paid_amount_commission_and_status_history`
+- `20261108121115 add_customer_account_booking_access`
+- `20261108183027 add_google_maps_location_support`
+- `20261108183324 expose_assigned_booking_map_pin`
+- `20261109075837 electrician_inspection_quotes_and_service_only_commission`
+- `20261109080400 allow_quote_approval_booking_states`
+
+The current Production `public.service_bookings` schema also exposes `amount_paid numeric` with a nonnegative check constraint. This confirms that the earlier claim that Production first introduced `amount_paid` only after its consumers was incorrect. The verified problem is instead a **source-history gap**: the audited branch has no migration file matching the ledger's `20261108095928` introduction, while it does contain a later `20261116200000_restore_service_bookings_amount_paid.sql`.
+
+The two quote-state blocks were compared line by line: both drop and recreate `service_bookings_status_check` with the same allowed-state list, and drop and recreate `service_bookings_assignment_status_requires_electrician` with the same assignment predicate. This is an exact repeated constraint operation in the branch source. Production ledger order places the quote workflow at `075837` and the separate state migration at `080400`, but the ledger exposes names/versions, not historical SQL bodies; it therefore confirms the deployed order, not that the Production SQL bodies were byte-identical.
+
+The branch's GPS/map files also use `20261109001000` and `20261109002000`, while the Production ledger records corresponding names at `20261108183027` and `20261108183324`. That is another source filename/version-to-ledger mismatch to reconcile before replay.
 
 ## Important additional finding: quote-state DDL is duplicated
 
@@ -31,4 +48,4 @@ The quote workflow migration includes the same high-level status and assignment 
 
 ## Safety boundary
 
-No remote database was connected to or modified. No migration was applied. No migration was renamed, deleted, or reordered. No test is represented as passed.
+Production was accessed only through read-only project, migration-ledger, and table-schema inspection. No SQL was executed against Production. No migration was applied, renamed, deleted, or reordered. No test is represented as passed.
