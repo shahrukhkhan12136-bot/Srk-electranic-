@@ -39,7 +39,7 @@
 ## Execution order and release gates
 
 1. Source regression: run npm test on the exact branch-head SHA and record commit/run. A green Node suite proves only the Node contracts it executes.
-2. Database baseline: GPT-2 resolves authoritative service_bookings.amount_paid DDL, reconciles migration history and proves clean isolated replay. Do not guess the column definition.
+2. Database baseline: GPT-2 verifies whether service_bookings.amount_paid already exists in the authoritative starter baseline, reconciles its later restore migration with earlier references and remote migration history, and proves clean isolated replay. Do not infer live schema parity from checked-in SQL.
 3. Actor isolation: pgTAP/JWT tests with Customer A/B, Electrician A/B, Admin, Support Staff and anon. Assert allowed and denied paths for relevant tables, RPCs and Storage objects.
 4. Concurrency/state: duplicate booking, offer accept/expiry races, work-start/completion decisions, refund/cancellation duplicates and immutable bill uniqueness using isolated fixtures.
 5. Browser integration: Customer/Electrician workflows against isolated backend after DB contracts pass; include language, receipt, support attachments, KYC preview and GPS permission/failure.
@@ -87,3 +87,9 @@
 - Documentation-only commit `6e132c80df3080e97e32014e51371f4d117d96ea` पर workflow run #1575 (`43780286915`) भी **completed / success** है। Job `133015681292` logs: **328 tests, 328 pass, 0 fail, 0 skipped**। इससे पुष्टि होती है कि GPT-1 evidence note जोड़ने से Node suite नहीं टूटी।
 - यह उसी branch-head का Node-only result है; PostgreSQL/pgTAP, clean migration replay, JWT actor isolation, private Storage, browser, OTP/SMS/push/SOS provider और final mobile QA अभी अलग acceptance gates हैं।
 - PR #8 Open / Draft / unmerged है। Vercel build-rate-limit status अलग failure बना हुआ है; कोई deployment/merge/Production action नहीं किया गया।
+
+
+## 2026-11-16 — baseline gate wording correction
+
+- `amount_paid` की later restore migration उपलब्ध है; Database gate अब इसकी definition को missing बताने के बजाय starter-baseline presence, earlier references और remote migration history का reconciliation माँगता है।
+- यह acceptance documentation correction है; कोई application code, SQL migration, database, deployment या mobile QA नहीं बदला/चलाया गया।
