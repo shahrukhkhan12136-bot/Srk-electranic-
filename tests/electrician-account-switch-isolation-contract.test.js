@@ -147,3 +147,41 @@ test('Electrician area-change requests cannot update a different account or prof
   const clear = source.slice(clearStart, clearEnd);
   assert.ok(clear.includes('electricianAreaChangeBusy=false'));
 });
+
+test('Electrician support ticket and reply actions are bound to the captured account and profile', () => {
+  for (const name of ['createElectricianSupportTicket','sendElectricianSupportReply']) {
+    const start = source.indexOf('async function ' + name);
+    const next = source.indexOf('\\nasync function ', start + 1);
+    assert.ok(start >= 0, name + ' exists');
+    const action = source.slice(start, next < 0 ? source.length : next);
+    assert.ok(action.includes('requestedUserId=user.id'));
+    assert.ok(action.includes('requestedProfileId=profile.id'));
+    assert.ok(action.includes('requestedGeneration=electricianAccountViewGeneration'));
+    assert.ok(action.includes('if(!isCurrent())return;'));
+    assert.ok(action.includes('finally{'));
+  }
+  const clearStart = source.indexOf('function clearElectricianAccountView()');
+  const clearEnd = source.indexOf('function init()', clearStart);
+  const clear = source.slice(clearStart, clearEnd);
+  assert.ok(clear.includes('electricianSupportThreadRequest++'));
+  assert.ok(clear.includes('electricianSupportSelectedId=null'));
+  assert.ok(clear.includes('electricianSupportCreateBusy=false'));
+  assert.ok(clear.includes('electricianSupportReplyBusy=false'));
+});
+
+test('Electrician KYC upload suppresses stale account results and restores controls only for its own session', () => {
+  const start = source.indexOf('async function uploadVerificationDocument');
+  const end = source.indexOf('function init()', start);
+  assert.ok(start >= 0 && end > start);
+  const upload = source.slice(start, end);
+  assert.ok(upload.includes('requestedUserId=user?.id'));
+  assert.ok(upload.includes('requestedProfileId=profile?.id'));
+  assert.ok(upload.includes('requestedGeneration=electricianAccountViewGeneration'));
+  assert.ok(upload.includes('if(!isCurrent())return;'));
+  assert.match(upload, /finally\\s*\\{\\s*if\\(isCurrent\\(\\)\\)\\s*\\{/);
+  const clearStart = source.indexOf('function clearElectricianAccountView()');
+  const clearEnd = source.indexOf('function init()', clearStart);
+  const clear = source.slice(clearStart, clearEnd);
+  assert.ok(clear.includes('electricianKycUploadBusy=false'));
+  assert.ok(clear.includes("control.disabled=false"));
+});
