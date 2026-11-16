@@ -82,7 +82,7 @@ test('electrician OTP login validates phone, applies resend cooldown and restore
   assert.match(send, /Date\.now\(\)<otpCooldownUntil/);
   assert.match(send, /sb\.auth\.signInWithOtp\(\{phone:p\}\)/);
   assert.match(send, /startOtpCooldown\(\)/);
-  assert.match(send, /finally\{otpBusy=false/);
+  assert.match(send, /finally\{document\.getElementById\('phone'\)\.disabled=false;otpBusy=false;/);
   assert.match(send, /btn\.disabled=false;btn\.textContent='OTP भेजें'/);
 });
 
@@ -92,7 +92,7 @@ test('electrician OTP verification validates token and uses SMS phone verificati
   assert.match(verify, /4,8/);
   assert.match(verify, /token/);
   assert.match(verify, /sb\.auth\.verifyOtp\(\{phone:p,token,type:'sms'\}\)/);
-  assert.match(verify, /finally\{otpBusy=false\}/);
+  assert.match(verify, /finally\{document\.getElementById\('phone'\)\.disabled=false;document\.getElementById\('otp'\)\.disabled=false;otpBusy=false\}/);
   assert.match(verify, /OTP गलत या समाप्त हो गया है/);
 });
 
