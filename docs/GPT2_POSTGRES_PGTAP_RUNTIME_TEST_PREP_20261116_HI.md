@@ -1148,3 +1148,32 @@ Section 36 के conditional column-order risk को जाँचने के
 **क्या अभी भी सिद्ध नहीं है:** ये दो ऐतिहासिक SQL files authoritative/approved Production bootstrap baseline हैं, ऐसा प्रमाण उपलब्ध नहीं। किसी अलग manual bootstrap, dashboard SQL, external migration, या पुराने schema snapshot में column पहले जोड़ा गया हो सकता है। Production history और execution logs की स्वतंत्र पुष्टि अभी भी Database Owner से चाहिए।
 
 इसलिए निर्णय अभी भी **REPLAY BLOCKED / OWNER EVIDENCE REQUIRED** है। कोई migration reorder/edit/repair/replay, DDL, Production query या data change नहीं किया गया।
+
+
+
+## 38. Customer/Admin booking SELECT policy replacement और direct-write ACL chronology — 16 Nov 2026
+
+### 38.1 Booking read policies additive नहीं, explicit replacement हैं
+
+Current branch source में:
+- `20261108121115_add_customer_account_booking_access.sql` customer ownership column/index और अलग `srk_customer_read_own_bookings` SELECT policy बनाती है।
+- `20261108234000_combine_booking_read_policy.sql` पहले पुराने `srk_admin_read_bookings` और `srk_customer_read_own_bookings` दोनों को DROP करती है, फिर एक `srk_admin_or_customer_read_bookings` policy बनाती है।
+- Combined policy में केवल Main Admin predicate `public.is_srk_admin()` या `auth.uid() = customer_user_id` से row visibility मिलती है।
+
+इसलिए इन दोनों migration files का क्रम महत्वपूर्ण है: combined-policy migration पुराने policy names को हटाकर एक स्पष्ट OR-policy स्थापित करती है। इस pair में पुरानी customer policy के साथ duplicate permissive policy बचने का source-level संकेत नहीं मिला। लेकिन यह निष्कर्ष केवल इन दो files तक सीमित है; सभी tables की सभी policy combinations का exhaustive runtime audit नहीं है।
+
+### 38.2 Booking direct UPDATE privilege chronology
+
+- `20261109003000_secure_commission_reporting.sql` authenticated role का table-wide UPDATE revoke करके सीमित columns पर UPDATE grant करती है; इस सूची में `amount_paid` शामिल है।
+- `20261115160000_legacy_booking_status_write_guard.sql` table-wide UPDATE फिर revoke करके केवल quote/payment columns पर सीमित grant देती है; इसमें भी `amount_paid` शामिल है।
+- `20261115230000_admin_booking_direct_write_closure.sql` अंत में table-wide UPDATE और status/quote/payment/location column UPDATE privileges revoke करती है; intended write path validated SECURITY DEFINER RPCs/server payment workflows है।
+
+यह source chronology दिखाती है कि direct-write privilege posture क्रमशः tighten होती है। पहले के grants को बाद की closure migration से अलग पढ़ना पर्याप्त नहीं; clean replay में अंतिम effective ACL और RLS policies दोनों का संयुक्त परीक्षण चाहिए। केवल GRANT/REVOKE statements से row-level authorization सिद्ध नहीं होता।
+
+### 38.3 अभी बाकी सत्यापन
+
+- सभी `service_bookings` policies की complete inventory और permissive/restrictive mode का एक consolidated matrix।
+- सभी relevant tables पर RLS enabled status तथा table/column privileges का final effective-state snapshot।
+- RPC execute grants के साथ SECURITY DEFINER owner, search_path और called helper authorization का मिलान।
+
+ये तीनों checks source/runtime parity के लिए शेष हैं। कोई SQL execution, ACL परिवर्तन, policy परिवर्तन, migration replay या Production access नहीं हुआ।
