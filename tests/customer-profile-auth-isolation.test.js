@@ -67,7 +67,7 @@ test('saved address save and delete actions reject stale customer sessions', () 
     assert.ok(block.includes('customerSb.auth.getSession()'));
     assert.ok(block.includes('const sameSession=async()'));
     assert.ok(block.includes('if(!await sameSession())return'));
-    assert.match(block, /finally\s*\{if\(generation===customerActionGeneration\)/);
+    assert.match(block, /finally\s*\{if\(isCurrent\(\)\)/);
   }
 });
 
