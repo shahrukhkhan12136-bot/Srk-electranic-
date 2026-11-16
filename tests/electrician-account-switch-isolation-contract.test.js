@@ -43,6 +43,7 @@ test('Electrician phone-change OTP state and responses are isolated across accou
     assert.ok(block.includes('const actionRequest=++electricianPhoneChangeActionRequest'));
     assert.ok(block.includes('requestedUserId=user?.id'));
     assert.ok(block.includes('if(!isCurrent())return'));
-    assert.ok(block.includes('if(isCurrent())phoneChangeBusy=false'));
+    assert.ok(block.includes('finally{if(isCurrent())'), name + ' releases busy state only for the current session');
+    assert.ok(block.includes('phoneChangeBusy=false'), name + ' clears its busy state');
   }
 });
