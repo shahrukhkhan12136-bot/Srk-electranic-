@@ -157,7 +157,7 @@ select ok(exists(select 1 from pg_trigger t
   lower(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)))=0,
   'AFTER triggers retain payout writes and independently reject booking-to-ledger commission mismatches');
 
-select ok(position('materials_amount' in lower(pg_get_triggerdef(t.oid)))>0
+select ok((select position('materials_amount' in lower(pg_get_triggerdef(t.oid)))>0
   and position('commission_amount' in lower(pg_get_triggerdef(t.oid)))>0
   from pg_trigger t
   where t.tgrelid='public.service_bookings'::regclass
