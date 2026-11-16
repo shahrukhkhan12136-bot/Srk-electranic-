@@ -2222,6 +2222,13 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   window.addEventListener('focus', scheduleCustomerResumeRefresh);
   window.addEventListener('online', scheduleCustomerResumeRefresh);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleCustomerResumeRefresh(); });
+  const customerBookingStatusPoller = setInterval(() => {
+    const dashboard = document.getElementById('customer-dashboard');
+    const bookingsPanel = document.getElementById('customerMenuBookings');
+    const bookingList = document.getElementById('customerBookings');
+    if (document.visibilityState !== 'visible' || dashboard?.style.display === 'none' || bookingsPanel?.hidden || bookingList?.getAttribute('aria-busy') === 'true') return;
+    loadCustomerBookings();
+  }, 30000);
   document.getElementById('customerSendOtp').addEventListener('click', customerSendOtp);
   document.getElementById('customerVerifyOtp').addEventListener('click', customerVerifyOtp);
   document.getElementById('customerLogout').addEventListener('click', customerLogout);
