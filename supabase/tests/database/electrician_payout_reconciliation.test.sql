@@ -1,8 +1,21 @@
 begin;
-select plan(26);
+select plan(28);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
+select ok(exists(select 1 from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgfoid='public.srk_create_electrician_payable()'::regprocedure),
+  'electrician payable function is actually attached to service_bookings');
+select ok(exists(select 1 from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgfoid='public.srk_create_electrician_payable()'::regprocedure
+    and (t.tgtype & 16)=16
+    and (t.tgtype & 8)=8),
+  'payout trigger fires AFTER UPDATE so booking state and verified payment evidence are committed in the row');
+
 select ok((select prosecdef from pg_proc where oid='public.srk_create_electrician_payable()'::regprocedure),
   'payable trigger uses a privileged server-side execution context');
 select ok((select coalesce(proconfig::text,'') like '%search_path=pg_catalog, public, pg_temp%'
