@@ -215,8 +215,10 @@ async function createElectricianSupportTicket(){
    await openElectricianSupportThread(matchedTicket.id);
   }else status.textContent='अनुरोध का परिणाम स्पष्ट नहीं है। दोबारा भेजने से पहले सहायता अनुरोध Refresh करके जाँचें, ताकि डुप्लिकेट न बने।';
  }finally{
-  electricianSupportCreateBusy=false;
-  if(isCurrent()&&button){button.disabled=false;button.textContent='सहायता अनुरोध भेजें';}
+  if(isCurrent()){
+   electricianSupportCreateBusy=false;
+   if(button){button.disabled=false;button.textContent='सहायता अनुरोध भेजें';}
+  }
  }
 }
 async function openElectricianSupportThread(id){
@@ -271,8 +273,10 @@ async function sendElectricianSupportReply(){
    await loadElectricianSupportTickets();
   }else status.textContent='जवाब का परिणाम स्पष्ट नहीं है। दोबारा भेजने से पहले बातचीत Refresh करके जाँचें, ताकि डुप्लिकेट संदेश न बने।';
  }finally{
-  electricianSupportReplyBusy=false;
-  if(isCurrent()&&button){button.disabled=false;button.textContent='जवाब भेजें';}
+  if(isCurrent()){
+   electricianSupportReplyBusy=false;
+   if(button){button.disabled=false;button.textContent='जवाब भेजें';}
+  }
  }
 }
 async function saveElectricianDisplayName(){const input=document.getElementById('electricianDisplayName'),button=document.getElementById('saveElectricianName'),msg=document.getElementById('profileNameMessage');if(!user?.id||!profile?.id||button.disabled)return;const requestedUserId=user.id,requestedProfileId=profile.id,request=++electricianDisplayNameSaveRequest,isCurrent=()=>request===electricianDisplayNameSaveRequest&&user?.id===requestedUserId&&profile?.id===requestedProfileId;const name=(input.value||'').trim().replace(/\s+/g,' ');if(name.length<2||name.length>80||!/^[\p{L}\p{N}\s.'-]+$/u.test(name)){msg.textContent='नाम 2 से 80 अक्षरों का रखें। केवल अक्षर, अंक, स्थान, बिंदु, apostrophe और hyphen मान्य हैं।';return;}button.disabled=true;msg.textContent='प्रोफ़ाइल नाम सुरक्षित रूप से अपडेट हो रहा है…';try{const {data,error}=await sb.rpc('srk_electrician_update_my_display_name',{p_display_name:name});if(!isCurrent())return;if(error)throw error;document.getElementById('name').textContent=data;msg.textContent='प्रोफ़ाइल नाम अपडेट हो गया।';try{await refresh();}catch(_){if(isCurrent())msg.textContent='प्रोफ़ाइल नाम अपडेट हो गया है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। कृपया Refresh करें।';}}catch(e){if(isCurrent())msg.textContent=e.message||'नाम अपडेट नहीं हो सका।';}finally{if(isCurrent())button.disabled=false;}}
