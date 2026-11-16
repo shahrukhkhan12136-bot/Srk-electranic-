@@ -469,6 +469,17 @@ test('Customer booking refresh displays its network error before returning failu
   assert.doesNotMatch(catchBlock, /return false;\s*box\.textContent/);
 });
 
+test('customer auth changes immediately invalidate and clear old live-location state', () => {
+  const authStart = customer.indexOf("customerSb.auth.onAuthStateChange((event) => {");
+  const authEnd = customer.indexOf("setTimeout(syncCustomerSession, 0);", authStart);
+  assert.ok(authStart >= 0 && authEnd > authStart);
+  const auth = customer.slice(authStart, authEnd);
+  assert.match(auth, /customerLiveLocationRefreshRequest\+\+/);
+  assert.match(auth, /customerLiveLocationBookingIds\.forEach/);
+  assert.match(auth, /customerLiveLocation_\+id/);
+  assert.match(auth, /customerLiveLocationBookingIds=\[\]/);
+});
+
 test('customer auth changes invalidate in-flight booking refreshes before another session can render them', () => {
   const authStart = customer.indexOf("customerSb.auth.onAuthStateChange((event) => {");
   assert.ok(authStart >= 0, 'customer auth state listener exists');
