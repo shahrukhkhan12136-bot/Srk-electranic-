@@ -20,11 +20,15 @@ select ok(position('like ''%online%''' in lower(pg_get_functiondef('public.srk_a
   and position('like ''%razorpay%''' in lower(pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0,
   'manual refund RPC rejects online payment methods even when provider IDs are missing');
 
-select ok(position('set payout_status=''refunded''' in lower(
+select ok(position('update public.service_bookings set payment_status=''refunded''' in lower(
   pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0
-  and position('blocked_payout_could_not_be_closed_as_refunded' in lower(
+  and position('select * into v_payout from public.srk_electrician_payouts where id=v_payout.id' in lower(
+  pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>
+    position('update public.service_bookings set payment_status=''refunded''' in lower(
+  pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))
+  and position('v_payout.payout_status is distinct from ''refunded''' in lower(
   pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0,
-  'verified manual refund closes its blocked unpaid payout as refunded');
+  'manual refund lets the booking trigger close the payout, then verifies the refunded state without a duplicate write');
 select ok(has_function_privilege('authenticated','public.srk_admin_record_manual_refund(uuid,text,text)','EXECUTE')
   and not has_function_privilege('anon','public.srk_admin_record_manual_refund(uuid,text,text)','EXECUTE'),
   'manual refund RPC is authenticated-only with Main Admin checked inside');
