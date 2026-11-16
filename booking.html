@@ -1124,6 +1124,7 @@ function customerRefundStatusText(status){
 }
 let customerActionGeneration=0;
 const customerLifecycleBusy=new Set();
+const customerLifecycleLocked=new Set();
 
 const customerSosBusy=new Set();
 function openCustomerSosReasons(id){const choice=document.getElementById('customerSosChoice_'+id),reason=document.getElementById('customerSosReason_'+id);if(customerSosBusy.has(id)||!choice||!reason)return;reason.value='';document.getElementById('customerSosSend_'+id).disabled=true;choice.hidden=false;document.getElementById('customerSosOpen_'+id).hidden=true;document.getElementById('customerSosStatus_'+id).textContent='कारण चुनें। अलर्ट केवल “SOS भेजें” दबाने पर बनेगा।';}
@@ -1134,7 +1135,7 @@ async function submitCustomerSosAlert(id){const button=document.getElementById('
 async function customerRespondWorkCompletion(bookingId,response){
  const generation=customerActionGeneration,requestKey=generation+':'+String(bookingId);
  const isCurrent=()=>generation===customerActionGeneration;
- if(!customerSb||!bookingId||customerLifecycleBusy.has(requestKey))return;
+ if(!customerSb||!bookingId||customerLifecycleLocked.has(String(bookingId))||customerLifecycleBusy.has(requestKey))return;
  let note=null;
  if(!['approved','rejected','disputed'].includes(response))return;
  if(response==='disputed'){
@@ -1145,18 +1146,19 @@ async function customerRespondWorkCompletion(bookingId,response){
  const messages={approved:'क्या आपने काम जाँच लिया है और इसे पूरा स्वीकार करते हैं?',rejected:'क्या काम अभी अधूरा है? इससे इलेक्ट्रिशियन का काम टाइमर फिर से चालू होगा।',disputed:'क्या आप इस काम पर औपचारिक विवाद दर्ज करना चाहते हैं?'};
  if(!confirm(messages[response]||'क्या आप आगे बढ़ना चाहते हैं?')||!isCurrent())return;
  customerLifecycleBusy.add(requestKey);
+ let keepLocked=false;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_respond_work_completion',{p_booking_id:bookingId,p_response:response,p_note:note});
   if(!isCurrent())return;
   if(error)throw error;
   if(!data?.success)throw new Error('Completion response was not confirmed');
   alert(response==='approved'?'काम पूरा होने की पुष्टि दर्ज हो गई।':response==='rejected'?'काम अभी अधूरा दर्ज हुआ है। इलेक्ट्रिशियन का टाइमर फिर शुरू होगा।':'आपका विवाद दर्ज हो गया है और Admin समीक्षा करेगा।');
-  try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
+  try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){keepLocked=true;if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
  }catch(error){
   if(!isCurrent())return;
   try{await loadCustomerBookings();if(!isCurrent())return;alert('नेटवर्क जवाब नहीं मिला। बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}
-  catch(_){if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
- }finally{customerLifecycleBusy.delete(requestKey);}
+  catch(_){keepLocked=true;if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
+ }finally{customerLifecycleBusy.delete(requestKey);if(keepLocked)customerLifecycleLocked.add(String(bookingId));}
 }
 async function customerSubmitBookingRefund(bookingId){
  const generation=customerActionGeneration,isCurrent=()=>generation===customerActionGeneration;
@@ -1467,22 +1469,23 @@ async function loadCustomerBookings() {
 async function customerRespondWorkStart(bookingId,response){
  const generation=customerActionGeneration,requestKey=generation+':'+String(bookingId);
  const isCurrent=()=>generation===customerActionGeneration;
- if(!customerSb||!bookingId||!['approved','rejected'].includes(response)||customerLifecycleBusy.has(requestKey))return;
+ if(!customerSb||!bookingId||customerLifecycleLocked.has(String(bookingId))||!['approved','rejected'].includes(response)||customerLifecycleBusy.has(requestKey))return;
  const question=response==='approved'?'क्या आप इलेक्ट्रिशियन को अभी काम शुरू करने की अनुमति देते हैं?':'क्या आप अभी काम शुरू करने की अनुमति रोकना चाहते हैं?';
  if(!confirm(question)||!isCurrent())return;
  customerLifecycleBusy.add(requestKey);
+ let keepLocked=false;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});
   if(!isCurrent())return;
   if(error)throw error;
   if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');
   alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');
-  try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
+  try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){keepLocked=true;if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
  }catch(e){
   if(!isCurrent())return;
   try{await loadCustomerBookings();if(!isCurrent())return;alert('नेटवर्क जवाब नहीं मिला। बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें.');}
-  catch(_){if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
- }finally{customerLifecycleBusy.delete(requestKey);}
+  catch(_){keepLocked=true;if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
+ }finally{customerLifecycleBusy.delete(requestKey);if(keepLocked)customerLifecycleLocked.add(String(bookingId));}
 }
 function formatCustomerTimer(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');}
 function updateCustomerTimers(){document.querySelectorAll('[id^="customerTimer_"]').forEach(el=>{let seconds=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))seconds+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatCustomerTimer(seconds);});}
