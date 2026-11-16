@@ -142,7 +142,7 @@ test('customer support lists, threads and writes are invalidated when the OTP ac
   const thread = functionBody(customer, 'loadCustomerSupportMessages');
   const send = functionBody(customer, 'sendCustomerSupportMessage');
   const authStart = customer.indexOf('customerSb.auth.onAuthStateChange');
-  const authEnd = customer.indexOf('});', authStart);
+  const authEnd = customer.indexOf('setTimeout(syncCustomerSession, 0);', authStart);
   assert.ok(authStart >= 0 && authEnd > authStart, 'customer auth-change handler exists');
   const authHandler = customer.slice(authStart, authEnd);
   assert.match(reset, /customerSupportGeneration\+\+/);
