@@ -35,10 +35,21 @@ select ok(position('status=''posted''' in pg_get_functiondef('public.srk_get_my_
 
 select ok(position('topups_enabled',pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,'customer stored-value top-ups remain explicitly disabled');
 select ok(position('payouts_enabled',pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,'wallet cash-out remains explicitly disabled until provider approval');
-select ok((select data_type='bigint' from information_schema.columns where table_schema='public' and table_name='srk_route_transfers' and column_name='amount_paise'),'Route transfer amounts are stored as integer paise');
-select ok(exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass and conname='srk_route_transfers_payment_recipient_uniq'),'Route transfer ledger prevents duplicate recipient transfer per payment');
-select ok(exists(select 1 from pg_constraint where conrelid='public.srk_route_transfers'::regclass and conname='srk_route_transfers_recipient_check'),'Route transfer recipient identity is constrained by recipient type');
-select ok(not has_table_privilege('authenticated','public.srk_route_transfers','select'),'Route transfer provider ledger is not readable by authenticated users');
+select ok(to_regclass('public.srk_route_transfers') is null,
+  'retired Route transfer ledger is absent after the explicit retirement migration');
+select ok(not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='public' and p.prosrc ilike '%srk_route_transfers%'),
+  'remaining public function bodies do not query the retired Route transfer ledger');
+select ok(position('route_transfer_count',pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('route_ledger_retired_no_route_transfers',pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Admin reconciliation preserves explicit zero/retired compatibility fields without Route settlement claims');
+select ok(position('route_provider_settlement_verified',pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('false',pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Admin reconciliation never infers provider settlement from the retired ledger');
 select ok(position('sum(case when direction=''credit'' then amount else -amount end)' in pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,'wallet balance is derived from posted ledger entries rather than a mutable cached balance');
 select * from finish();
 rollback;
