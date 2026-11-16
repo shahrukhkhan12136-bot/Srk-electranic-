@@ -28,7 +28,7 @@ test('Customer avatar save reconciles returned and thrown RPC errors before dele
   assert.match(block, /profileSaveError=profileSaveResult\?\.error\|\|\(/);
   assert.match(block, /catch\(saveError\)\{if\(!await stillSameUser\(\)\)return;profileSaveError=saveError;\}/);
   assert.match(block, /srk_customer_get_my_profile/);
-  assert.match(block, /lookupSucceeded&&latestProfile\?\.avatar_path===avatarPath/);
+  assert.match(block, /lookupSucceeded&&latestProfile\?\.full_name===fullName&&latestProfile\?\.preferred_language===preferredLanguage&&latestProfile\?\.avatar_path===avatarPath/);
   assert.match(block, /if\(lookupSucceeded&&file&&avatarPath!==customerCurrentAvatarPath\)\{await customerSb\.storage\.from\('srk-customer-avatars'\)\.remove\(\[avatarPath\]\)\.catch\(\(\)=>\{\}\);/);
   assert.doesNotMatch(block, /if\(error\)\s*\{\s*if\(file[\s\S]*?remove\(\[avatarPath\]\)/);
 });
