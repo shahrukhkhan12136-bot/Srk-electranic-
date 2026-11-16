@@ -1655,3 +1655,23 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 - अगला आवश्यक प्रमाण: sanitized remote `supabase_migrations.schema_migrations` entries और deployed migration source/body/hash। उसके बिना यह तय नहीं किया जा सकता कि छोटी file कभी apply हुई, बड़ी file apply हुई, या दोनों में से कौन-सी production history में canonical है।
 
 इस जाँच में केवल GitHub source/history पढ़ी गई; Supabase credentials, database connection, migration execution या Production बदलाव नहीं हुए।
+
+
+## 43. electrician_profiles.auth_user_id — introducing DDL और downstream order — 16 Nov 2026
+
+### Source evidence
+- `20261109000500_harden_electrician_profile_identity_linking.sql` सबसे पहले `public.electrician_profiles.auth_user_id` को `uuid REFERENCES auth.users(id) ON DELETE SET NULL` के रूप में जोड़ती है।
+- यही migration पुराने `user_id` और नए `auth_user_id` के बीच conflict check, दोनों दिशाओं में backfill, partial unique index, synchronization trigger और verified-phone identity guard स्थापित करती है।
+- अगली `20261109001000_add_google_maps_location_support.sql` में Admin approval function `user_id,auth_user_id` दोनों columns में insert/update करती है। इसलिए उपलब्ध timestamped Feature Branch chain में introducing DDL, इस downstream use से पहले है।
+- `20261109001500_unique_electrician_admin_identity_linking.sql` बाद में Admin review function को replace करती है; यह `user_id` set करती है और पहले migration का sync trigger `auth_user_id` को mirror करता है।
+- उपलब्ध starter-schema audit में `electrician_profiles.user_id` मौजूद है; `auth_user_id` को starter schema में मानकर नहीं चला गया है।
+
+### निष्कर्ष
+इस source chain में `auth_user_id` के लिए कोई “बाद में add, पहले use” ordering defect नहीं मिला: introducing migration `20261109000500` downstream use `20261109001000` से पहले आती है। अतः केवल इस आधार पर migration reorder/edit करने की आवश्यकता सिद्ध नहीं होती।
+
+यह clean-replay readiness का पूर्ण प्रमाण नहीं है। Canonical bootstrap की authority, remote migration ledger, deployed schema और actual Supabase CLI replay अभी भी स्वतंत्र रूप से सत्यापित होने चाहिए। विशेषकर `amount_paid` chronology और duplicate `20261109` version collision unresolved हैं।
+
+### सुरक्षा निर्णय
+- कोई migration rename/delete/edit नहीं किया गया।
+- कोई SQL execute, DB connection, migration replay, Production access या schema/data mutation नहीं हुआ।
+- अगला source-audit focus: `user_id` / `auth_user_id` को पढ़ने वाले policies, indexes, RPCs और trigger ordering की cross-reference सूची; फिर isolated disposable replay के लिए आवश्यक authoritative baseline evidence की सूची।
