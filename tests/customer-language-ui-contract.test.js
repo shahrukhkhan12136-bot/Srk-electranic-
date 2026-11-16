@@ -85,8 +85,8 @@ test('customer saved-address save catches rejected auth session lookup and resto
   const save=booking.slice(start,end);
   assert.match(save,/button\.disabled=true;button\.textContent='पता सेव हो रहा है…';\s*try\s*\{\s*const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
   assert.match(save,/if\(sessionError\)throw sessionError/);
-  assert.match(save,/catch\(e\) \{setSavedAddressStatus/);
-  assert.match(save,/finally \{button\.disabled=false;button\.textContent='यह पता सेव करें';\}/);
+  assert.match(save,/catch\(e\)\{if\(isCurrent\(\)\)setSavedAddressStatus/);
+  assert.match(save,/finally\{if\(isCurrent\(\)\)\{button\.disabled=false;button\.textContent='यह पता सेव करें';\}\}/);
 });
 
 
@@ -124,12 +124,12 @@ test('customer default-address update does not overwrite a failed address-list r
   const loadStart=booking.indexOf('async function loadCustomerSavedAddresses()');
   const loadEnd=booking.indexOf('\nfunction applySelectedSavedAddress()',loadStart);
   const defaultStart=booking.indexOf('async function makeSelectedAddressDefault()');
-  const defaultEnd=booking.indexOf('\nlet customerSupportComplaints',defaultStart);
+  const defaultEnd=booking.indexOf('\nfunction supportStatus',defaultStart);
   assert.ok(loadStart>=0&&loadEnd>loadStart&&defaultStart>=0&&defaultEnd>defaultStart);
   const load=booking.slice(loadStart,loadEnd),makeDefault=booking.slice(defaultStart,defaultEnd);
   assert.match(load,/return true;\s*\} catch\(e\).*return false;/s);
-  assert.match(makeDefault,/const addressListRefreshed=await loadCustomerSavedAddresses\(\);/);
-  assert.match(makeDefault,/if\(!addressListRefreshed\)\{setSavedAddressStatus\('डिफ़ॉल्ट पता बदल गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी।/);
+  assert.match(makeDefault,/const refreshed=await loadCustomerSavedAddresses\(\);/);
+  assert.match(makeDefault,/if\(!refreshed\)\{setSavedAddressStatus\('डिफ़ॉल्ट पता बदल गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी।/);
   assert.ok(makeDefault.indexOf('if(!addressListRefreshed)')<makeDefault.indexOf("setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।')"));
 });
 
@@ -139,8 +139,8 @@ test('customer saved-address delete reconciles uncertain RPC results and checks 
   const end=booking.indexOf('\nasync function makeSelectedAddressDefault()',start);
   assert.ok(start>=0&&end>start);
   const remove=booking.slice(start,end);
-  assert.match(remove,/const addressListRefreshed=await loadCustomerSavedAddresses\(\);/);
-  assert.match(remove,/if\(!addressListRefreshed\)\{setSavedAddressStatus\('पता हटाने का अनुरोध सफल रहा/);
+  assert.match(remove,/const refreshed=await loadCustomerSavedAddresses\(\);/);
+  assert.match(remove,/if\(!refreshed\)\{setSavedAddressStatus\('पता हटाने का अनुरोध सफल रहा/);
   assert.match(remove,/srk_customer_list_my_saved_addresses/);
   assert.match(remove,/deleteState=latestAddresses\.some\(row=>row\.id===id\)\?'present':'absent'/);
   assert.match(remove,/if\(deleteState==='absent'\)/);
@@ -152,8 +152,8 @@ test('customer saved-address delete reconciles uncertain RPC results and checks 
 
 test('customer saved-address save does not report full success when the refreshed list fails', () => {
   const save = body('saveCurrentBookingAddress');
-  assert.match(save, /const addressListRefreshed=await loadCustomerSavedAddresses\(\)/);
-  assert.match(save, /if\(!addressListRefreshed\)[\s\S]*?पता सेव हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी/);
+  assert.match(save, /const refreshed=await loadCustomerSavedAddresses\(\)/);
+  assert.match(save, /if\(!refreshed\)[\s\S]*?पता सेव हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी/);
   assert.ok(save.indexOf('if(!addressListRefreshed)') < save.indexOf("setSavedAddressStatus('पता सफलतापूर्वक सेव हो गया।')"));
   assert.match(save, /finally \{button\.disabled=false/);
 });
