@@ -1675,3 +1675,23 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 - कोई migration rename/delete/edit नहीं किया गया।
 - कोई SQL execute, DB connection, migration replay, Production access या schema/data mutation नहीं हुआ।
 - अगला source-audit focus: `user_id` / `auth_user_id` को पढ़ने वाले policies, indexes, RPCs और trigger ordering की cross-reference सूची; फिर isolated disposable replay के लिए आवश्यक authoritative baseline evidence की सूची।
+
+
+## 44. Identity trigger provenance और repeated hardening migration — 16 Nov 2026
+
+### Trigger provenance
+- `PORTAL_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` दोनों में `auth.users` पर `srk_link_electrician_profile_trigger` नाम का `AFTER INSERT OR UPDATE OF phone, phone_confirmed_at` trigger मौजूद है; यह `public.srk_link_electrician_profile()` को call करता है।
+- `20261109000500_harden_electrician_profile_identity_linking.sql` इस function body को unique verified phone/profile matching के साथ replace करती है, लेकिन स्वयं auth.users trigger को create/drop नहीं करती। इसलिए clean replay में इस trigger का अस्तित्व bootstrap contract पर निर्भर है।
+- दोनों starter files में trigger होने का source evidence मिला; पर कौन-सी file canonical deployed bootstrap है, यह अभी Owner से प्रमाणित नहीं है। इसे Production trigger का प्रमाण नहीं मानना है।
+
+### Repeated migration / function definition
+- `20261114130000_harden_electrician_profile_identity_linking.sql` फिर से `auth_user_id` add-if-not-exists, backfill, partial unique index, identity sync/guard triggers और `srk_link_electrician_profile()` function को recreate करती है। इन identity DDL/function blocks का बड़ा हिस्सा `20261109000500` में पहले से है।
+- बाद की migration Admin review RPC को भी recreate करती है; `20261116150000_pin_admin_application_review_search_path.sql` फिर उसी RPC का `search_path=''` pin करती है। यह repeated definition source chronology में स्पष्ट है; कौन-सा deployed version मौजूद है, remote migration history के बिना अज्ञात है।
+- `20261115140000_electrician_kyc_review_and_activation_gate.sql` की KYC upload/read/delete policies और activation RPC दोनों `electrician_profiles.user_id = auth.uid()` तथा `auth_user_id = auth.uid()` की समानता पर निर्भर हैं। Identity sync/guard सही क्रम और trigger presence इसलिए KYC lifecycle के लिए महत्वपूर्ण है।
+- `electrician_profile_identity_linking.test.sql` में 13 pgTAP assertions हैं, जिनमें identity columns, partial unique index, sync-before-guard trigger naming/order, verified phone matching और Admin unique-only link शामिल हैं। यह test file source में है; pgTAP अभी execute नहीं हुआ।
+
+### Safe conclusion and action
+- `auth_user_id` introduction `20261109000500` में है और `20261109001000` के downstream use से पहले है؛ यह order सही दिखता है।
+- `srk_link_electrician_profile_trigger` का source definition starter files में मौजूद है, migration files में नहीं; clean replay baseline प्रमाणित करना अनिवार्य है।
+- `20261114130000` की repeated identity definitions को अभी delete/merge/reorder नहीं किया गया। पहले canonical bootstrap, remote migration ledger और deployed function/trigger definitions की sanitized evidence चाहिए।
+- कोई SQL execute, DB connection, migration replay, Production access, schema/data mutation या deployment नहीं हुआ।
