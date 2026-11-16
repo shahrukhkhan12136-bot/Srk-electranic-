@@ -406,3 +406,14 @@ create-order.js में शुरुआती booking read के बाद fi
 **सुझाया गया सुधार:** reusable-order fast path को भी per-booking lock के भीतर रखें, lock के बाद booking state और expected amount दोबारा पढ़ें, फिर provider order status/amount जाँचकर लौटाएँ। यदि lock न मिले तो retry response दें। verify/webhook settlement और order creation के बीच साझा booking-state guard की concurrency test जोड़ें।
 
 यह create-order.js का static source finding है। कोई order बनाया नहीं गया, Razorpay API call नहीं की गई, और कोई Production/DB बदलाव नहीं हुआ। PostgreSQL/runtime concurrency test बाकी है।
+
+
+### 31. create-order payment-lock RPC की migration definition repository में नहीं मिली
+
+`create-order.js` दो database RPC call करता है: `srk_claim_payment_order_lock(p_booking_id)` और `srk_release_payment_order_lock(p_booking_id,p_lock_token)`। लेकिन GPT-2 audit branch के पूरे tracked file tree में इन दोनों function definitions का कोई SQL migration या root schema definition नहीं मिला। इन्हें केवल create-order.js में call-site के रूप में पाया गया। मौजूदा payment-order lock को लागू करने का दावा इसलिए source से सिद्ध नहीं है।
+
+**प्रभाव:** यदि ये functions deployed database में किसी बाहरी/untracked setup से मौजूद नहीं हैं, तो order creation lock claim पर fail होगा; और यदि केवल claim या release में से एक उपलब्ध है तो lock lifecycle अधूरा रहेगा। इसीलिए इसे confirmed Production outage नहीं, बल्कि repository migration dependency gap / deployment prerequisite माना जाए।
+
+**अगला कदम:** authoritative Production schema/function inventory और deployment migration history से दोनों signatures की मौजूदगी सत्यापित करें। यदि absent हों, तो reviewed migration में atomic per-booking lock token, expiry/lease, ownership-checked release और service_role-only execute grant परिभाषित करें; फिर दो concurrent create-order requests, expired lock, stale token release तथा paid booking race के PostgreSQL tests जोड़ें। Baseline/lineage और explicit approval के बिना migration न बनाएं/चलाएं।
+
+यह repository-wide tracked-source inspection है। कोई Production function/schema query, order creation, database mutation या runtime test नहीं हुआ।
