@@ -96,7 +96,7 @@ test('Customer cancellation-fee and refund history guard auth session failures w
     assert.match(fn, /if\(sessionError\)throw sessionError/);
     assert.ok(fn.includes(rpc), name + ' calls the expected owner-scoped RPC');
     assert.ok(fn.includes(busyText), name + ' shows its loading state');
-    assert.match(fn, /finally\{box\.setAttribute\('aria-busy','false'\);\}/);
+    assert.match(fn, /finally\{if\(requestId===customer(?:CancellationFee|RefundHistory)Request\)box\.setAttribute\('aria-busy','false'\);\}/);
   }
 });
 
@@ -165,11 +165,11 @@ test('Customer cancellation-fee and refund history ignore stale responses after 
     ['loadCustomerRefundHistory', 'customerRefundHistoryRequest']
   ]) {
     const start = customer.indexOf('async function ' + name + '(');
-    const end = customer.indexOf('\\nasync function ', start + 1);
+    const end = customer.indexOf('\nasync function ', start + 1);
     const fn = customer.slice(start, end < 0 ? customer.length : end);
     assert.ok(start >= 0, name + ' exists');
     assert.ok(fn.includes('const requestId=++' + counter), name + ' increments its request generation');
-    assert.match(fn, /if\\(requestId!==customer(?:CancellationFee|RefundHistory)Request\\)return;/);
+    assert.match(fn, /if\(requestId!==customer(?:CancellationFee|RefundHistory)Request\)return;/);
     assert.match(fn, /if\\(requestId===customer(?:CancellationFee|RefundHistory)Request\\)box\\.setAttribute\\('aria-busy','false'\\)/);
   }
   assert.match(customer, /customerCancellationFeeRequest\\+\\+;\\s*customerRefundHistoryRequest\\+\\+;/);
