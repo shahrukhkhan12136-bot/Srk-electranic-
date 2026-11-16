@@ -258,7 +258,7 @@ test('Electrician initial auth session lookup handles rejected promises safely',
   assert.ok(initStart>=0&&initEnd>initStart);
   const init=electrician.slice(initStart,initEnd);
   assert.match(init,/sb\.auth\.getSession\(\)\.then\(/);
-  assert.match(init,/\.catch\(\(\)=>\{user=null;show\(\)/);
+  assert.match(init,/\.catch\(\(\)=>\{[\s\S]*?clearElectricianAccountView\(\);user=null;show\(\)/);
   assert.match(init,/लॉगिन स्थिति अभी जाँची नहीं जा सकी/);
 });
 
