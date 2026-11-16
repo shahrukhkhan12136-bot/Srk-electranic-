@@ -446,7 +446,7 @@ async function submitElectricianSosAlert(id){
   if(!isCurrent())return;
   if(error)throw error;
   if(!data?.success||!data?.case_id)throw new Error('SOS_CASE_NOT_CONFIRMED');
-  status.textContent='SOS केस दर्ज हुआ (#'+String(data.case_id).slice(0,8)+')। अलर्ट डिलीवरी backend पुष्टि के अधीन है.';
+  status.textContent='SOS केस दर्ज हुआ (#'+String(data.case_id).slice(0,8)+')। अलर्ट डिलीवरी backend पुष्टि के अधीन है।';
   document.getElementById('electricianSosChoice_'+id)?.classList.add('hidden');
   document.getElementById('electricianSosOpen_'+id)?.classList.remove('hidden');
   const reasonInput=document.getElementById('electricianSosReason_'+id);if(reasonInput)reasonInput.value='';
