@@ -94,3 +94,23 @@ No migration was renamed/deleted/merged/reordered/repaired/replayed. No database
 ## 8. अगला सुरक्षित कदम
 
 एक canonical baseline-vs-migration matrix बनाना: हर base table/column/function/policy/grant के लिए (a) starter source, (b) introducing migration, (c) dependent migrations, (d) remote authoritative history proof, और (e) unresolved mismatch। Production provenance केवल DBA/Database Owner के read-only deployment logs/change ticket से verify किया जाए। Gates बंद होने तक local reset/replay और pgTAP runtime execution रुके रहेंगे।
+
+
+## 9. Admin helper exact bootstrap definition and replay gate matrix — 16 Nov 2026
+
+`COMPLETE_DATABASE_SETUP.sql` का exact Admin section दोबारा पढ़ा। इसमें `public.is_srk_admin()` को `public.srk_admin_users` पर `EXISTS` query से define किया गया है; function `STABLE SECURITY DEFINER` है, `search_path = public, auth` सेट है, PUBLIC execute revoke और authenticated execute grant है। यह definition standalone setup SQL में है, current `supabase/migrations` chain में इसका अलग introducing migration अभी नहीं मिला। अतः helper का body अनुमानित नहीं है—body source उपलब्ध है—लेकिन clean replay में इसे किस canonical versioned baseline/migration से उपलब्ध कराया जाना चाहिए, यह अभी तय नहीं है।
+
+### Consolidated replay gates (source audit only)
+
+| Gate | Source evidence | Remaining proof / safe status |
+|---|---|---|
+| Canonical base schema | `COMPLETE_DATABASE_SETUP.sql`, `SUPABASE_SCHEMA.sql` और बाद की incremental migrations | इन scripts का authoritative deployed baseline होना प्रमाणित नहीं; canonical bootstrap approval चाहिए |
+| Admin helper | `is_srk_admin()` body setup SQL में; कई early migrations इसे call करती हैं | Versioned introducing migration/approved baseline placement unresolved; `srk_is_admin()` को इसका alias न मानें |
+| Duplicate migration version | दोनों 20261109 files समान version token; SQL constraint DDL overlap | Remote migration ledger + CLI version चाहिए; rename/delete/merge नहीं किया |
+| `amount_paid` ordering | Explicit nullable `numeric(12,2)` ADD COLUMN + CHECK `20261116200000` में; earlier migrations में column-level grant/revoke consumers हैं | Earlier GRANT/REVOKE के पहले column मौजूद होने का प्रमाण या approved ordering design चाहिए; blind reorder नहीं |
+| Auth identity | `auth_user_id` UUID/FK `20261109000500` में; `user_id` sync और partial unique index | Source DDL मिला; deployed history/schema parity अभी अप्रमाणित |
+| Runtime harness | current branch में `supabase/config.toml` अनुपस्थित; Node tests अलग हैं | Approved disposable local PostgreSQL/Supabase harness और pgTAP runner तैयार/स्वीकृत करना बाकी |
+
+### निर्णय
+
+इन gates में से कोई भी Production database पर अनुमान लगाकर ठीक नहीं किया जाएगा। अगला deliverable एक reviewable, source-backed dependency graph और प्रस्तावित clean-install baseline diff होगा; execution से पहले Owner approval और disposable target confirmation आवश्यक है। इस pass में केवल setup SQL source पढ़ा और findings document कीं—कोई migration, database connection, query, DDL, pgTAP या deploy नहीं चला।
