@@ -140,7 +140,7 @@ test('customer payment preference UI reconciles uncertain RPC responses without 
   const end = dashboard.indexOf('\nfunction customerPayBooking', start);
   assert.ok(start >= 0 && end > start);
   const handler = dashboard.slice(start, end);
-  assert.match(handler, /catch\(error\)\s*\{\s*try\{\s*await loadCustomerBookings\(\)/);
+  assert.match(handler, /catch\(error\)\s*\{\s*if\(!isCurrent\(\)\)return;\s*try\{await loadCustomerBookings\(\);if\(!await sameSession\(\)\)return/);
   assert.match(handler, /स्थिति की पुष्टि किए बिना दोबारा अनुरोध न भेजें/);
   assert.match(handler, /पसंद सर्वर पर सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
 });
