@@ -1830,7 +1830,7 @@ function clearCustomerSupportView(){
  customerSupportListBusy=false;customerSupportSendBusy=false;
  customerSupportComplaints=[];customerSupportSelectedId=null;customerSupportAttachments=[];
  const select=document.getElementById('customerSupportComplaint');if(select){select.replaceChildren(new Option('शिकायत चुनें',''));select.disabled=false;}
- const booking=document.getElementById('customerSupportBooking');if(booking)booking.replaceChildren(new Option('बुकिंग चुनें',''));
+ const booking=document.getElementById('customerSupportBooking');if(booking){booking.replaceChildren(new Option('बुकिंग चुनें',''));booking.disabled=false;}
  for(const id of ['customerSupportDescription','customerSupportMessage']){const el=document.getElementById(id);if(el)el.value='';}
  const files=document.getElementById('customerSupportFiles');if(files)files.value='';
  const create=document.getElementById('customerSupportCreate');if(create){create.disabled=false;create.textContent='शिकायत दर्ज करें';}
@@ -1862,9 +1862,11 @@ function renderCustomerSupportThread(rows) {
 async function loadCustomerSupportBookings() {
  const select=document.getElementById('customerSupportBooking');
  if(!customerSb||!select)return;
+ const request=customerSupportGeneration,isCurrent=()=>request===customerSupportGeneration;
  select.disabled=true;
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(!isCurrent())return;
   if(sessionError)throw sessionError;
   const session=sessionData?.session;
   if(!session){select.replaceChildren(new Option('बुकिंग चुनें',''));return;}
@@ -1873,6 +1875,7 @@ async function loadCustomerSupportBookings() {
    .eq('customer_user_id',session.user.id)
    .order('created_at',{ascending:false})
    .limit(50);
+  if(!isCurrent())return;
   if(error)throw error;
   select.replaceChildren(new Option('बुकिंग चुनें',''));
   (Array.isArray(data)?data:[]).forEach(row=>{
@@ -1882,9 +1885,10 @@ async function loadCustomerSupportBookings() {
   });
   if(select.options.length===1)select.add(new Option('अभी कोई बुकिंग उपलब्ध नहीं है',''));
  } catch(error) {
+  if(!isCurrent())return;
   select.replaceChildren(new Option('बुकिंग लोड नहीं हो सकी',''));
   supportStatus('शिकायत के लिए बुकिंग सूची लोड नहीं हो सकी। कृपया रीफ़्रेश करें।',true);
- } finally {select.disabled=false;}
+ } finally {if(isCurrent())select.disabled=false;}
 }
 async function createCustomerSupportComplaint() {
  const request=customerSupportGeneration,isCurrent=()=>request===customerSupportGeneration;
