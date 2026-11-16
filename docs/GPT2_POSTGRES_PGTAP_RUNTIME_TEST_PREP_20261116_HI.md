@@ -1865,3 +1865,51 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 - Duplicate migration collision: **BLOCKED — preserve history pending ledger evidence**.
 - `amount_paid` clean replay: **BLOCKED — baseline/deployed-state evidence pending**.
 - No migration file, SQL, bootstrap, workflow or test harness changed. This update is documentation-only. No remote database, Production, Docker, or SQL runtime accessed.
+
+
+## 52. Owner evidence request pack — बिना credentials / row data — 16 Nov 2026
+
+इस pack का उद्देश्य केवल migration state और schema shape की पुष्टि है। Password, connection URI, API key, JWT, service-role key, customer/electrician row data, phone, email, payment identifiers या वास्तविक user IDs कभी साझा न करें।
+
+### A. Migration ledger — केवल metadata
+Owner/authorized DB administrator से केवल इन columns का sanitized export माँगा जाए:
+- `version` (migration version)
+- `name` (migration name)
+- यदि ledger में उपलब्ध हो तो `statements`/`created_at` जैसी गैर-संवेदनशील migration metadata वैकल्पिक; कोई SQL secret/row payload नहीं।
+
+विशेष रूप से पुष्टि चाहिए:
+- क्या version `20261109` ledger में है? यदि है, exact recorded name क्या है?
+- क्या दोनों `20261109` source filenames किसी environment में apply हुए, या केवल एक?
+- क्या `20261109003000`, `20261115160000`, `20261116200000` लागू हैं और किस क्रम में?
+- क्या कोई migration failed/repair/marked-applied हुई थी? केवल version/name/status बताएं।
+
+### B. `amount_paid` schema shape — metadata only
+Sanitized schema report में केवल ये विवरण:
+- Column exists: yes/no
+- Type: expected `numeric(12,2)` या actual type
+- Nullable: yes/no
+- Default: present/absent (default expression तभी दें जब उसमें कोई secret न हो)
+- Check constraint name + validated status; check expression `amount_paid IS NULL OR amount_paid >= 0` से मेल खाता है या नहीं
+- `authenticated` role के लिए column-level UPDATE grant present/absent; table-level UPDATE grant present/absent
+
+कोई booking row, amount value, customer identity या payment record साझा न करें।
+
+### C. Canonical baseline provenance
+केवल ये उत्तर चाहिए:
+- Authoritative baseline file/snapshot का नाम और revision/date.
+- यह Production schema का sanitized structure export है या TEST baseline?
+- क्या इसमें `service_bookings`, `electrician_profiles`, `auth.users` dependency contract और Storage bucket definitions शामिल हैं?
+- क्या `amount_paid` और `electrician_profiles.auth_user_id` baseline में मौजूद हैं?
+
+### D. Share method / handling
+- Output को plain text या sanitized CSV/SQL DDL-only रूप में दें; credentials और सभी row-level `INSERT`/`COPY` data हटाएँ।
+- यदि sanitized export बनाना संभव न हो, तो Owner/DB administrator से केवल ऊपर के yes/no + metadata answers लें।
+- Evidence आने पर GPT-2 source history और expected migration order से मिलान करेगा; mismatch होने पर harness को BLOCKED ही रखेगा।
+
+### E. Acceptance criteria
+- Migration ledger में exact duplicate-version state स्पष्ट हो।
+- `amount_paid` column + constraints + grants का deployed shape स्पष्ट हो।
+- Canonical baseline का provenance और intended target स्पष्ट हो।
+- इन तीनों के मेल के बाद ही Local Docker TEST migration manifest / preflight implementation शुरू होगी।
+
+**Safety:** कोई remote SQL command यहाँ execute नहीं की गई और यह pack Production credentials/access नहीं माँगता। यह केवल sanitized metadata request है।
