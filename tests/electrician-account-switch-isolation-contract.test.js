@@ -58,6 +58,6 @@ test('Electrician support create and reply do not clear a newer account busy loc
     const next = source.indexOf('\\nasync function ', start + 1);
     const block = source.slice(start, next < 0 ? source.length : next);
     assert.match(block, new RegExp('finally\\s*\\{\\s*if\\(isCurrent\\(\\)\\)\\s*\\{\\s*' + flag + '=false'));
-    assert.match(block, /if\\(button\\)\\{button\\.disabled=false/);
+    assert.match(block, /if\(button\)\{button\.disabled=false/);
   }
 });
