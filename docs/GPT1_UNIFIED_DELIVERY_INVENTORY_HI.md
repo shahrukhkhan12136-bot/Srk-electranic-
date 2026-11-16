@@ -6,6 +6,13 @@
 **Feature branch:** `feat/customer-login-first-dashboard-20261114`  
 **Inspected PR head (refreshed):** `eed50b086218ed6dfa095102150651992933de87`
 
+
+## 2026-11-16 — baseline dependency audit correction
+
+- `amount_paid` की definition बाद की restore migration में मिली; इसे अब “missing definition” नहीं, बल्कि शुरुआती baseline/migration-order verification issue के रूप में track किया गया है।
+- `is_srk_admin()` और `srk_is_admin()` अलग function names हैं; consolidated setup files और versioned migration chain की provenance को एक ही मानकर नहीं चलना है।
+- यह documentation correction है। कोई application source, SQL migration, database, deployment या mobile QA नहीं बदला/चलाया गया।
+
 ## 1. उद्देश्य और नियम
 
 यह GPT-1 (Customer App, Electrician App, पहले से पूरा Welcome Screen/founder-photo integration) का एक consolidated index है। उद्देश्य है कि हर बार अलग-अलग code, API, Edge/Netlify function, migration और test files फिर से न खोजनी पड़ें।
@@ -326,6 +333,7 @@ Source call-sites के RPC names और payload keys को संबंधि
 
 - GPT-2 की authoritative dependency note `docs/BASE_SCHEMA_MIGRATION_DEPENDENCY_GAPS_20261115.md` में direct migration inspection के आधार पर पुष्टि है कि `20261109000500_harden_electrician_profile_identity_linking.sql` `public.electrician_profiles.auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL` जोड़ती है, और non-NULL values के लिए partial unique index बनाती है। इसलिए `auth_user_id` current Feature Branch migration-chain का unresolved source-DDL blocker **नहीं** है।
 - इस inventory के पुराने Sections 7/8 तथा पहले के RLS notes में `auth_user_id` को unresolved बताया गया था; वे historical observations हैं और इस correction से superseded हैं। यह correction केवल source migration chain के बारे में है; remote migration application या live DB parity का प्रमाण नहीं।
-- अभी उपलब्ध checked-in evidence के अनुसार confirmed missing base-source column dependency `public.service_bookings.amount_paid` है। उसका authoritative type, precision, nullability, default, constraints/indexes/grants अभी अज्ञात हैं; अनुमान से DDL नहीं जोड़ना है।
-- GPT-2 owner को यही एक base-DDL gap और शेष migration replay / remote history / actor-isolation runtime gates आगे verify करने हैं। GPT-1 ने GPT-2-owned SQL/RLS में कोई बदलाव नहीं किया।
+- `public.service_bookings.amount_paid` को अब missing-definition कहना सही नहीं है: `20261116200000_restore_service_bookings_amount_paid.sql` इसे nullable `numeric(12,2)` और non-negative CHECK (`NOT VALID`) के साथ जोड़ती है। हालांकि कई पहले की migrations इसका उपयोग करती हैं; इसलिए authoritative starter schema और remote migration history से यह सत्यापित करना बाकी है कि उस शुरुआती baseline में यह column पहले से मौजूद था या नहीं। `COMPLETE_DATABASE_SETUP.sql` के पूरे checked-in content में `amount_paid` definition नहीं मिली।
+- Admin helper naming भी अलग-अलग है: `ADMIN_EMAIL_LOGIN_SETUP.sql` और `COMPLETE_DATABASE_SETUP.sql` में `public.is_srk_admin()` है, जबकि `PORTAL_SCHEMA.sql` में `public.srk_is_admin()` है। Versioned migrations `public.is_srk_admin()` को call करती हैं; उस helper की versioned migration/baseline provenance अभी प्रमाणित नहीं है।
+- GPT-2 owner को authoritative baseline, duplicate migration history reconciliation, migration replay और actor-isolation runtime gates verify करने हैं। GPT-1 ने GPT-2-owned SQL/RLS में कोई बदलाव नहीं किया।
 - इस दस्तावेज़ को cross-reference के रूप में अपडेट किया गया; कोई application source, migration, Production setting, payment/provider, deployment या mobile QA नहीं बदला/चलाया गया।
