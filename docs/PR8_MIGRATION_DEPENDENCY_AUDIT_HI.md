@@ -893,3 +893,28 @@ Payout ledger पुराने product/UI contract में पहले स�
 पुराने Business-Finance, direct-UPI और predeploy branches में payout table पहले से मौजूद होने की धारणा पर आधारित migrations/RPC/UI references मिले, पर मूल `CREATE TABLE srk_electrician_payouts` migration अभी नहीं मिली। इसलिए payout schema का historical origin unresolved है। Audit branch restoration DDL को केवल reconstruction candidate मानें, verified original baseline नहीं।
 
 सभी कार्य repository source/list inspection तक सीमित रहे। कोई SQL run/replay, pgTAP, Node test suite, Production query/write, workflow dispatch या branch merge नहीं हुआ।
+
+
+## 61. पुराने Migration Branches में Payout Table Creator की विस्तृत तलाश
+
+Payout/finance/electrician/manual-payment/commission/settlement नाम वाले migration files को अतिरिक्त पुराने branches में scan किया:
+
+| Branch | कुल migration files | नाम के आधार पर संबंधित files जाँचीं | `CREATE TABLE public.srk_electrician_payouts` |
+|---|---:|---:|---|
+| `work/separate-customer-electrician-portals` | 37 | 15 | नहीं मिला |
+| `feature/platform-fee-cash-online-cycle` | 58 | 10 | नहीं मिला |
+| `feature/direct-upi-commission-15` | 17 | 5 | नहीं मिला |
+| `safe-payment-refund-implementation` | 14 | 3 | नहीं मिला |
+| `main` | 20 | 3 | नहीं मिला |
+
+यह targeted scan है: केवल नाम से संबंधित migration files के content जाँचे गए, हर SQL file का exhaustive scan नहीं। पहले देखे गए predeploy और reference-correction migrations भी payout table को पहले से मौजूद मानकर RPC/trigger/security बदलाव करते हैं।
+
+### Workflow dependency का अतिरिक्त संकेत
+
+Default-branch code search में `.github/workflows/supabase-schema-ci.yml` के schema assertion में `to_regclass('public.srk_electrician_payouts') IS NULL` होने पर failure है। यह साबित करता है कि CI इस table को आवश्यक मानता है; यह table creation या historical provenance साबित नहीं करता।
+
+### निष्कर्ष
+
+अब तक जाँचे गए Feature, Portal, Finance, Direct-UPI, Predeploy, Safe-Payment और Main branch स्रोतों में payout ledger का मूल base-table DDL नहीं मिला। यह अभी भी unresolved dependency है। अगले चरण में नाम-आधारित targeted scan से आगे बढ़कर Git history में `srk_electrician_payouts` वाले earliest introducing commits और उसके संभावित alternate table names/DDL खोजे जाएँगे।
+
+कोई SQL execute/replay, test suite, Production access, workflow dispatch, या merge नहीं किया गया।
