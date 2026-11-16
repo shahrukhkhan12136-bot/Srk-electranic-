@@ -89,7 +89,12 @@ test('Electrician availability changes are bound to the same account and view ge
   assert.ok(action.includes('if(!isCurrent())return;'));
   assert.ok(action.includes("sb.rpc('srk_electrician_set_availability'"));
   assert.ok(action.includes("if(!data?.success)throw new Error('Availability update not confirmed')"));
-  assert.ok(action.includes('if(isCurrent())await refresh()'));
+  const refreshAt = action.indexOf('await refresh()');
+  assert.ok(refreshAt > action.indexOf("अब आप नए काम के ऑफर पाने के लिए उपलब्ध हैं।"));
+  assert.ok(action.lastIndexOf('if(!isCurrent())return;', refreshAt) >= 0,
+    'the captured account is rechecked before refreshing its view');
+  assert.ok(action.includes('if(isCurrent())alert(\'उपलब्धता सर्वर पर अपडेट हो गई है, लेकिन Dashboard रीफ़्रेश नहीं हो सका।'));
+  assert.ok(action.includes('if(isCurrent()){on.disabled=false;off.disabled=false;}'));
   assert.ok(action.includes('if(!isCurrent())return;\n  alert('));
 });
 
