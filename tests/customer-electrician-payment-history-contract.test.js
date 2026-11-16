@@ -170,7 +170,7 @@ test('Customer cancellation-fee and refund history ignore stale responses after 
     assert.ok(start >= 0, name + ' exists');
     assert.ok(fn.includes('const requestId=++' + counter), name + ' increments its request generation');
     assert.match(fn, /if\(requestId!==customer(?:CancellationFee|RefundHistory)Request\)return;/);
-    assert.match(fn, /if\\(requestId===customer(?:CancellationFee|RefundHistory)Request\\)box\\.setAttribute\\('aria-busy','false'\\)/);
+    assert.match(fn, /if\(requestId===customer(?:CancellationFee|RefundHistory)Request\)box\.setAttribute\('aria-busy','false'\)/);
   }
   assert.match(customer, /customerCancellationFeeRequest\\+\\+;\\s*customerRefundHistoryRequest\\+\\+;/);
 });
