@@ -2342,7 +2342,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     alert(`बुकिंग नंबर: ${result.booking_id}${estimateText}\n${result.message}${offerText}`);
     await loadCustomerBookings();
   } catch (err) {
-    alert(`${err.message}\nबुकिंग डेटाबेस में सेव नहीं हुई है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें।`);
+    alert(`${err.message}\nबुकिंग की पुष्टि नहीं हो सकी; संभव है अनुरोध सर्वर तक पहुँच गया हो। अभी विवरण न बदलें और पहले बुकिंग सूची रीफ़्रेश करके देखें। यदि बुकिंग नहीं दिखती, तो डुप्लीकेट से बचने के लिए इसी विवरण के साथ दोबारा कोशिश करें।`);
   } finally { submitButton.disabled = false; submitButton.textContent = 'बुकिंग भेजें'; }
 });
 document.getElementById('payNow').addEventListener('click', startRazorpayPayment);
