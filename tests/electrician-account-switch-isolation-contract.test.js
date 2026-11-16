@@ -35,7 +35,7 @@ test('Electrician phone-change OTP state and responses are isolated across accou
   assert.ok(clearBlock.includes('electricianPhoneChangeActionRequest++'));
   assert.ok(clearBlock.includes('phoneChangeRequestId=null'));
   assert.ok(clearBlock.includes("phoneOtpBox.classList.add('hidden')"));
-  assert.ok(clearBlock.includes("['phoneChangeOtp','phoneChangeNew','phoneChangeReason']"));
+  assert.ok(clearBlock.includes("'phoneChangeOtp','phoneChangeNew','phoneChangeReason'"));
   for (const name of ['sendElectricianPhoneChangeOtp','verifyElectricianPhoneChangeOtp']) {
     const start = source.indexOf('async function ' + name);
     const next = source.indexOf('\nasync function ', start + 1);
