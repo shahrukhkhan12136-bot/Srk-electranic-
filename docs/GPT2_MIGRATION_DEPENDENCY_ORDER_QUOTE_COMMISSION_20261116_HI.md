@@ -34,13 +34,13 @@ Quote migration की offer-details RPC `location_lat` और `location_lng` �
 
 Quote response RPC booking को `customer_user_id = auth.uid()` से खोजती है। इसलिए `20261108121115_add_customer_account_booking_access.sql` या उसके बराबर approved baseline, quote workflow से पहले जरूरी है।
 
-### D. `amount_paid` का order risk — अभी unresolved
+### D. `amount_paid` introduction — corrected after full-file re-check
 
-Quote migration का trigger `NEW.amount_paid` पढ़ता है। Commission reporting migration भी `amount_paid` पढ़ती है और authenticated update grant में इसे शामिल करती है।
+`20261109003000_secure_commission_reporting.sql` की पहली DDL statement `service_bookings.amount_paid numeric(12,2)` को `ADD COLUMN IF NOT EXISTS` से जोड़ती है। यह उसी migration के report/earnings function definitions और column-level UPDATE grant से पहले है। इसलिए पहले दर्ज किया गया दावा कि इस migration का grant missing column पर fail होगा, गलत था और वापस लिया जाता है।
 
-लेकिन current branch में explicit restore file `20261116200000_restore_service_bookings_amount_paid.sql` है। यदि starter baseline में यह column नहीं है, तो restore migration को उन dependent functions/triggers के runtime use से पहले लागू करना होगा।
+`20261116200000_restore_service_bookings_amount_paid.sql` बाद की idempotent restoration/constraint migration है। Quote migration में `NEW.amount_paid` वाला PL/pgSQL function define होता है, पर उस migration में उस function को invoke करने वाला trigger attach नहीं होता। इसलिए केवल function definition से missing-column replay failure सिद्ध नहीं होता।
 
-यह static source-level order risk है। PL/pgSQL trigger function की creation सफल हो सकती है, जबकि missing field वाला execution path बाद में विफल हो; इस audit ने कोई runtime claim/test नहीं किया।
+**अब वास्तविक source finding:** quote migration नया service-only commission function बनाती है, लेकिन setup में मौजूद पुराने commission trigger को replace/rewire नहीं करती। इसका प्रभाव अलग audit report में दर्ज है।
 
 ### E. Commission report और Admin helper
 
@@ -53,7 +53,7 @@ Quote migration का trigger `NEW.amount_paid` पढ़ता है। Commi
 - 09000500 का 09001000 से पहले होना source comment और field writes से समर्थित है।
 - 09002000 के बाद quote migration उसी offer-details function को विस्तारित करती है।
 - customer ownership और GPS fields quote RPC dependencies हैं।
-- amount_paid restore migration current branch में मौजूद है, जबकि dependent quote/commission source उसे पढ़ता है।
+- `amount_paid` का पहला visible source introduction `20261109003000_secure_commission_reporting.sql` में है; बाद की 16 Nov migration idempotent restore/check है।
 
 अभी सिद्ध नहीं:
 - कौन-सा exact starter schema clean replay का approved baseline है।
@@ -67,7 +67,7 @@ Quote migration का trigger `NEW.amount_paid` पढ़ता है। Commi
 इस chain को अभी replay-ready घोषित नहीं किया जा सकता। विशेष blockers:
 1. authoritative starter schema और migration lineage;
 2. duplicate 8-digit `20261109` version identity/order reconciliation;
-3. `amount_paid` prerequisite placement;
+3. Commission trigger का सही binding और event coverage;
 4. `is_srk_admin()` helper provenance;
 5. full dependency/grant/RLS map और isolated local harness.
 
