@@ -1616,15 +1616,21 @@ async function loadCustomerSavedAddresses() {
  if(!customerSb) return false;
  const requestId=++customerSavedAddressLoadRequest;
  const isCurrent=()=>requestId===customerSavedAddressLoadRequest;
+ let requestedUserId=null;
  select.disabled=true; setSavedAddressStatus('सेव किए गए पते लोड हो रहे हैं…');
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(!isCurrent())return false;
   if(sessionError)throw sessionError;
   if(!sessionData?.session){customerSavedAddresses=[];select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';setSavedAddressStatus('सेव किए गए पते देखने के लिए OTP लॉगिन करें।');return false;}
+  requestedUserId=sessionData.session.user.id;
   const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
   if(!isCurrent())return false;
   if(error) throw error;
+  const {data:latestSessionData,error:latestSessionError}=await customerSb.auth.getSession();
+  if(!isCurrent())return false;
+  if(latestSessionError)throw latestSessionError;
+  if(latestSessionData?.session?.user?.id!==requestedUserId)return false;
   customerSavedAddresses=Array.isArray(data)?data:[];
   select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>'+customerSavedAddresses.map(a=>
    '<option value="'+customerEsc(a.id)+'">'+customerEsc(({home:'घर',work:'काम की जगह',other:'अन्य'}[a.label]||a.label)+' — '+a.address_line+', '+a.district+' ('+a.pincode+')'+(a.is_default?' ★':''))+'</option>'
@@ -2055,6 +2061,11 @@ async function syncCustomerSession() {
     await loadCustomerSavedAddresses();
     await loadCustomerProfile();
   } else {
+    customerSavedAddressLoadRequest++;
+    customerSavedAddresses=[];
+    editingSavedAddressId=null;
+    const savedAddressSelect=document.getElementById('savedAddressSelect');
+    if(savedAddressSelect)savedAddressSelect.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';
     customerBookingRefreshRequest++;
     customerProfileLoadRequest++;
     customerPaymentHistoryRequest++;
@@ -2142,6 +2153,11 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
+      customerSavedAddressLoadRequest++;
+      customerSavedAddresses=[];
+      editingSavedAddressId=null;
+      const savedAddressSelect=document.getElementById('savedAddressSelect');
+      if(savedAddressSelect)savedAddressSelect.innerHTML='<option value="">नया पता इस्तेमाल करें</option>';
       customerPaymentHistoryRequest++;
       customerProfileLoadRequest++;
       customerProfileSaveRequest++;
