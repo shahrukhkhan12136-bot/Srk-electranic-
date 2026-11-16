@@ -45,5 +45,10 @@ select ok(position('status=''posted''' in pg_get_functiondef('public.srk_get_my_
  and position('topups_enabled',pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0
  and position('payouts_enabled',pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,
  'wallet balance counts posted entries and stored-value top-ups/cash-outs remain disabled');
+select ok(not has_table_privilege('anon','public.srk_wallet_accounts','select')
+ and not has_table_privilege('anon','public.srk_wallet_bank_links','select')
+ and has_table_privilege('authenticated','public.srk_wallet_accounts','select')
+ and has_table_privilege('authenticated','public.srk_wallet_bank_links','select'),
+ 'wallet account and bank-link reads are authenticated-only and RLS-filtered');
 select * from finish();
 rollback;
