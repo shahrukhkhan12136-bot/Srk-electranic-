@@ -541,3 +541,17 @@ test('Customer booking submission ignores stale OTP-session responses and clears
   assert.ok(authStart >= 0 && authEnd > authStart);
   assert.match(customer.slice(authStart, authEnd), /pendingBookingId=null/);
 });
+
+
+test('Customer booking status polls every 30 seconds only while the visible Bookings panel is open and idle', () => {
+  assert.match(customer, /const customerBookingStatusPoller = setInterval\(\(\) => \{/);
+  const start = customer.indexOf('const customerBookingStatusPoller = setInterval');
+  const end = customer.indexOf('}, 30000);', start);
+  assert.ok(start >= 0 && end > start, '30-second booking status poller exists');
+  const poller = customer.slice(start, end);
+  assert.match(poller, /document\.visibilityState !== 'visible'/);
+  assert.match(poller, /dashboard\?\.style\.display === 'none'/);
+  assert.match(poller, /bookingsPanel\?\.hidden/);
+  assert.match(poller, /bookingList\?\.getAttribute\('aria-busy'\) === 'true'/);
+  assert.match(poller, /loadCustomerBookings\(\)/);
+});
