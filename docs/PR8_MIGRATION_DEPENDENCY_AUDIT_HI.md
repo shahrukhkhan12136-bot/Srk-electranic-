@@ -1008,6 +1008,8 @@ Migration commits:
 - Initial migration: `6b361652ee49cb36a9b8680d309b9f2ec83d8b5`
 - Null/status and fail-closed corrections: `29d007145e214eb04e432ca49a6e80b47f5f5f4a`, `32b55dde9376a97e3d984da848e6eec975778b3e`
 - Preserve full original reconciliation function and add parity checks: `cdb4bf4b9453f395113245a725902670e449f1f4`
+- Payout-backed reports and trigger event coverage: `43c19084b5cf4a50902550a4180bc6f7a1f8c079`
+- Payout ledger is the sole commission source in reports: `f3cf06df07009b8378b23e26649fea5bc8166736`
 
 Regression test:
 `supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql`, plan 19; latest test commit `6e7e132ac800cc99249272650daaad4f7138e2d2`.
@@ -1070,7 +1072,7 @@ Runtime remains NOT RUN; no Production activity, deployment, workflow dispatch, 
 
 ## 67. Follow-up: Payout-backed reporting and trigger-order coverage
 
-Audit-branch source update commit: `43c19084b5cf4a50902550a4180bc6f7a1f8c079`.
+Audit-branch source commits: `43c19084b5cf4a50902550a4180bc6f7a1f8c079` (report/trigger changes) and `f3cf06df07009b8378b23e26649fea5bc8166736` (payout-ledger-only commission source).
 
 - The AFTER parity validator's `UPDATE OF` list now includes `materials_amount`, matching the existing payout writer's update event list, and includes `commission_amount` so direct privileged edits are also checked.
 - The existing payout writer trigger is named `srk_reconcile_electrician_payable`; the parity validator is named `zz_srk_validate_booking_commission_payout_parity`. PostgreSQL fires same-kind triggers alphabetically, so the intended order is payout write first, parity check second. The updated pgTAP suite asserts both trigger names/order and event coverage.
