@@ -459,3 +459,12 @@ A follow-up consistency check found a concrete test/source mismatch:
 - The 18-assertion legacy manual-payment/itemized-receipt test checks Main Admin authorization, booking lock, allowed booking/payment states, approved quote arithmetic, labour-only commission, immutable receipt ledger, payout split, and empty search_path. These are assertions in source, not proof of a passing test.
 
 **Current result:** one stale test expectation was corrected in the audit branch. No production schema was altered; no migration or pgTAP test was executed. The amount_paid prerequisite remains conditional on the canonical base schema containing `service_bookings` before these migrations.
+
+
+## 14. Financial search_path JavaScript contract test correction — 16 Nov 2026
+
+- The SQL pgTAP contract and the latest migration now agree that the three legacy financial SECURITY DEFINER read RPCs use an empty `search_path` (`search_path=""` in `pg_proc.proconfig`).
+- A separate Node test still read the earlier migration `20261115210001_harden_legacy_financial_read_rpc_search_paths.sql` and expected the older `pg_catalog, public, auth, pg_temp` setting. That made the source-level test stale after the newer ordered pin migration `20261116110000_pin_legacy_financial_read_rpc_search_paths.sql`.
+- Updated `tests/legacy-financial-read-rpc-search-path.test.js` on this audit branch to read the latest migration, assert all three function alterations use `SET search_path = ''`, and count the three empty-search-path assertions in the pgTAP contract.
+- The updated file was fetched back from GitHub and its returned blob SHA was checked. This is source verification only: the Node test and PostgreSQL/pgTAP suite have not been executed.
+- No PR-head changes, Production SQL, deployment, or merge were performed.
