@@ -188,6 +188,13 @@ test('uncertain booking submission is not falsely reported as definitely unsaved
   assert.match(bookingUi, /इसी विवरण के साथ दोबारा कोशिश करें/);
 });
 
+test('pending booking key is retained when the customer edits payload before resolving an uncertain request', () => {
+  const helper = bookingUi.slice(bookingUi.indexOf('function customerBookingRequestKey('), bookingUi.indexOf('function clearCustomerBookingRequestKey('));
+  assert.match(helper, /if\(saved&&\/[\s\S]*?test\(saved\.key\)\)return saved\.key/);
+  assert.doesNotMatch(helper, /saved\.fingerprint===fingerprint/);
+  assert.match(bookingUi, /यह बुकिंग अनुरोध पहचान पहले अलग जानकारी के साथ इस्तेमाल हो चुकी है/);
+});
+
 test('successful booking keeps its idempotency key until the new booking is visible after refresh', () => {
   const submit = bookingUi.slice(bookingUi.indexOf("document.getElementById('booking').addEventListener('submit'"));
   const loadIndex = submit.indexOf('const bookingListLoaded = await loadCustomerBookings();');
