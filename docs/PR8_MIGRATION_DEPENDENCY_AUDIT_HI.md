@@ -861,3 +861,18 @@ GitHub compare के अनुसार `feature/platform-fee-cash-online-cycle
 ### निर्णय
 
 दो tables के historical candidate creators अब पहचाने गए, पर Feature branch की वास्तविक ancestry/production provenance साबित नहीं हुई। Payout table के लिए भी audit branch restoration DDL मौजूद है, मगर उसका मूल historical origin अब भी unresolved है। किसी भी candidate migration को बिना schema diff, ancestry और dependency-order review के replay manifest में authoritative baseline के रूप में promote न करें। No SQL execution/tests/Production access/workflow dispatch.
+
+
+## 59. Payout Ledger के शुरुआती Product Commits की जाँच
+
+Repository commit search से ये पुराने commits मिले और diff/source स्तर पर जाँचे:
+
+- `a2a1fafd2c9d2dc09b782a4f838dec4cad3afdb6` — **Add secure admin electrician payout ledger controls**. Diff में Admin UI payout rows पढ़ती और भुगतान रिकॉर्ड करती है, लेकिन इस commit diff में payout table का `CREATE TABLE` DDL नहीं है।
+- `0d2fd2ba2e97160ac3d0a82741377a45a9384310` — **Show electrician manual UPI and bank payout status**. Electrician UI `srk_electrician_payouts` पढ़ती है और `electrician_profile_id`, `electrician_payable`, `payout_status`, `payout_method`, `payout_reference`, `paid_at` fields उपयोग करती है। यह table के पहले से मौजूद होने की अपेक्षा दिखाता है, Creator नहीं बताता।
+- `c75874578d4ba962ffc8b005d48e9bcd2ba592a8` — Manual UPI/Bank payout workflow documentation बताती है कि database pending payout row बनाता है और Admin बाहरी transfer के बाद UTR दर्ज करता है; यह भी schema DDL या migration provenance नहीं देता।
+
+Commit search में `srk_create_electrician_payable`, `srk_admin_mark_electrician_payout_paid`, `srk_get_my_earnings` और payout table के exact CREATE statement के लिए कोई creator commit surfaced नहीं हुआ। Search coverage सीमित है; इसे पूरे Git history में अनुपस्थिति का निर्णायक प्रमाण न मानें।
+
+### वर्तमान निष्कर्ष
+
+Payout ledger पुराने product/UI contract में पहले से अपेक्षित था, लेकिन उपलब्ध commit diffs और जाँची migrations में उसका original base DDL अभी नहीं मिला। Audit branch की `20261114125844_restore_financial_audit_core_schema.sql` में payout table की restoration definition है; यह वर्तमान replay के लिए candidate schema है, historical source/provenance का प्रमाण नहीं। इस dependency को unresolved ही रखें। No SQL execution/tests/Production access/workflow dispatch.
