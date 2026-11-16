@@ -121,3 +121,14 @@
 - उसी source pass में Support Messages/Attachments के render path की जाँच की: attachment/message results outer thread generation + request ID check के बाद ही UI में render होते हैं। OTP send/verify और logout auth-transition flows को अलग से देखा; इस pass में उन पर कोई बदलाव नहीं किया।
 
 **Customer async account-isolation audit workstream (अब तक किए गए इन handlers के दायरे में):** source changes 100%; regression tests लिखे 100%; automated execution/CI 0%; Supabase runtime validation 0%; browser/mobile validation 0% (implementation के बाद final QA)। ये प्रतिशत केवल इस audit workstream के हैं; पूरे Customer App या project के नहीं।
+
+
+### 2026-11-16 — Customer Razorpay payment session isolation
+- Audit में Razorpay create-order/checkout/verify flow मिला: भुगतान के दौरान ग्राहक session बदलने पर पुराना payment callback नई session की payment status UI या reconciliation को प्रभावित कर सकता था।
+- सुधार: payment start पर customer action generation capture; create-order के बाद session re-check; verify request पुराने captured bearer token से ही server पर जाती है; UI status, reconciliation और final button reset केवल original generation/session के लिए। Payment callback account switch के बाद नई session में UI update नहीं करता।
+- Regression test: `tests/customer-electrician-payment-history-contract.test.js` में Razorpay account-switch guard का focused source-contract test जोड़ा। इस file में अब 15 tests हैं।
+- Commits: source `4e68624b4a492c69398f68c5b305dd3742f38479`; test `c6d764bff4946a986a74e458d86a2a7195dffdb7`।
+- सावधानी: अगर payment verification का network result account switch के बाद uncertain हो, पुरानी session के reconciliation RPC को नई session से नहीं चलाया जाता; ग्राहक दोबारा original account में लॉगिन कर payment history जाँच सकता है। Duplicate payment का जोखिम बढ़ाने वाला auto-retry नहीं जोड़ा।
+- Current HEAD `c6d764bff4946a986a74e458d86a2a7195dffdb7` पर GitHub Actions run उपलब्ध नहीं; test execution का दावा नहीं।
+
+**Customer async account-isolation audit — मापी गई उप-प्रगति:** इस audit batch में पहचाने गए और सुधारे गए handlers के source changes 100%; संबंधित source-contract tests लिखे 100%; automated execution/CI 0%; Supabase/payment-provider runtime 0%; Browser E2E और Final Mobile QA 0% (implementation पूर्ण होने के बाद)। यह केवल इस audit batch का प्रतिशत है; पूरे Customer App/Project का प्रतिशत नहीं।
