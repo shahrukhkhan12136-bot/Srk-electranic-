@@ -169,6 +169,7 @@ test('uncertain KYC submit response reconciles a newly created owner document an
   assert.match(upload, /if\(recordError\)\{[\s\S]*?srk_electrician_list_my_verification_documents/);
   assert.match(upload, /!previousDocumentIds\.has\(row\.id\)/);
   assert.match(upload, /row\.document_type===type&&row\.file_name===file\.name\.slice\(0,180\)/);
+  assert.match(upload, /row\.file_name===file\.name\.slice\(0,180\)\.trim\(\)/);
   assert.match(upload, /srk_electrician_get_my_verification_document_path/);
   assert.match(upload, /confirmedPath===path/);
   assert.match(upload, /if\(confirmedDocumentPath\)[\s\S]*?दस्तावेज़ जमा हो गया है/);
