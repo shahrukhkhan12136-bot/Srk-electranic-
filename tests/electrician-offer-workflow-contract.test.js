@@ -25,6 +25,8 @@ test('offer response is owner-session RPC driven, guarded against duplicates and
   assert.match(respond, /data\?\.success!==true/);
   assert.match(respond, /finally\{[\s\S]*?electricianOfferResponseBusy\.delete\(id\)/);
   assert.match(respond, /const requestedUserId=user\.id,requestedProfileId=profile\.id,requestedGeneration=electricianAccountViewGeneration/);
+  assert.ok(respond.indexOf('const requestedUserId=user.id') < respond.indexOf("if(!confirm(response==='accepted'"));
+  assert.match(respond, /if\(!confirm\(response==='accepted'[\s\S]*?\|\|!isCurrent\(\)\)return/);
   assert.match(respond, /const isCurrent=\(\)=>!electricianLogoutBusy&&requestedGeneration===electricianAccountViewGeneration&&user\?\.id===requestedUserId&&profile\?\.id===requestedProfileId/);
   assert.match(respond, /if\(!isCurrent\(\)\)return/);
   assert.match(respond, /if\(isCurrent\(\)\)buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
