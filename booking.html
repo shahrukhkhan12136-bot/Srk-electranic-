@@ -1491,6 +1491,7 @@ function setCustomerProfileStatus(message,isError=false) {
 }
 let customerCurrentAvatarPath=null;
 let customerProfileLoadRequest=0;
+let customerProfileSaveRequest=0;
 let customerAvatarPreviewUrl=null;
 function setCustomerAvatarPreview(url) {
  const img=document.getElementById('customerAvatarPreview');
@@ -1545,63 +1546,61 @@ async function loadCustomerProfile() {
 }
 async function saveCustomerProfile() {
  const button=document.getElementById('saveCustomerProfile');
- if(button.disabled)return;
+ if(button.disabled||!customerSb)return;
+ const requestId=++customerProfileSaveRequest;
+ let requestedUserId=null;
+ const isCurrent=()=>requestId===customerProfileSaveRequest&&!!requestedUserId;
+ const stillSameUser=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
  const fullName=document.getElementById('customerProfileName').value.trim();
  if(fullName.length<2||fullName.length>120){setCustomerProfileStatus('नाम 2 से 120 अक्षरों के बीच दर्ज करें।',true);return;}
  button.disabled=true;setCustomerProfileStatus('प्रोफ़ाइल सेव हो रही है…');
  try {
+  const {data:initialSession,error:initialSessionError}=await customerSb.auth.getSession();
+  if(initialSessionError)throw initialSessionError;
+  requestedUserId=initialSession?.session?.user?.id||null;
+  if(!requestedUserId)throw new Error('प्रोफ़ाइल सेव करने के लिए OTP लॉगिन जरूरी है।');
   let avatarPath=customerCurrentAvatarPath;
   const file=document.getElementById('customerAvatarFile').files?.[0]||null;
-  if(file) {
+  if(file){
    const allowed=['image/jpeg','image/png','image/webp'];
-   if(!allowed.includes(file.type)||file.size>5*1024*1024||file.size===0) throw new Error('फोटो JPEG, PNG या WebP होनी चाहिए और 5 MB से छोटी होनी चाहिए।');
-   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
-   if(sessionError)throw sessionError;
-   const userId=sessionData?.session?.user?.id;
-   if(!userId)throw new Error('फोटो अपलोड करने के लिए OTP लॉगिन जरूरी है।');
-   const extension=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp' })[file.type];
-   avatarPath=userId+'/'+crypto.randomUUID()+'.'+extension;
+   if(!allowed.includes(file.type)||file.size>5*1024*1024||file.size===0)throw new Error('फोटो JPEG, PNG या WebP होनी चाहिए और 5 MB से छोटी होनी चाहिए।');
+   const extension=({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[file.type];
+   avatarPath=requestedUserId+'/'+crypto.randomUUID()+'.'+extension;
    const {error:uploadError}=await customerSb.storage.from('srk-customer-avatars').upload(avatarPath,file,{contentType:file.type,upsert:false});
+   if(!await stillSameUser())return;
    if(uploadError)throw uploadError;
   }
   let profileSaveResult=null,profileSaveError=null;
   try{
-   profileSaveResult=await customerSb.rpc('srk_customer_update_my_profile',{
-    p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath
-   });
+   profileSaveResult=await customerSb.rpc('srk_customer_update_my_profile',{p_full_name:fullName,p_preferred_language:document.getElementById('customerProfileLanguage').value,p_avatar_path:avatarPath});
+   if(!await stillSameUser())return;
    profileSaveError=profileSaveResult?.error||(!profileSaveResult?new Error('Profile update was not confirmed'):null);
-  }catch(saveError){profileSaveError=saveError;}
+  }catch(saveError){if(!await stillSameUser())return;profileSaveError=saveError;}
   if(profileSaveError){
    let lookupSucceeded=false,latestProfile=null;
    try{
     const {data:latestData,error:latestError}=await customerSb.rpc('srk_customer_get_my_profile');
-    latestProfile=Array.isArray(latestData)?latestData[0]:latestData;
-    lookupSucceeded=!latestError;
-   }catch(_){/* Never delete an uploaded object when the authoritative profile read is uncertain. */}
-   if(lookupSucceeded&&latestProfile?.avatar_path===avatarPath){
-    // The profile update committed despite an error response; keep the file and continue.
-    profileSaveResult={data:latestProfile,error:null};
-   }else{
-    if(lookupSucceeded&&file&&avatarPath!==customerCurrentAvatarPath){
-     await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]).catch(()=>{});
-    }
-    // If the read failed, leave the object in place rather than risk breaking a committed avatar path.
+    if(!await stillSameUser())return;
+    latestProfile=Array.isArray(latestData)?latestData[0]:latestData;lookupSucceeded=!latestError;
+   }catch(_){if(!await stillSameUser())return;}
+   if(lookupSucceeded&&latestProfile?.avatar_path===avatarPath)profileSaveResult={data:latestProfile,error:null};
+   else{
+    if(lookupSucceeded&&file&&avatarPath!==customerCurrentAvatarPath){await customerSb.storage.from('srk-customer-avatars').remove([avatarPath]).catch(()=>{});if(!await stillSameUser())return;}
     throw profileSaveError;
    }
   }
-  const {data,error}=profileSaveResult||{};
-  if(error)throw error;
-  const oldAvatar=customerCurrentAvatarPath;
-  customerCurrentAvatarPath=avatarPath;
-  if(file) {
+  const {data,error}=profileSaveResult||{};if(error)throw error;
+  if(!await stillSameUser())return;
+  const oldAvatar=customerCurrentAvatarPath;customerCurrentAvatarPath=avatarPath;
+  if(file){
    document.getElementById('customerAvatarFile').value='';
-   await loadCustomerAvatar(avatarPath);
-   if(oldAvatar&&oldAvatar!==avatarPath) await customerSb.storage.from('srk-customer-avatars').remove([oldAvatar]);
+   await loadCustomerAvatar(avatarPath,isCurrent);
+   if(!await stillSameUser())return;
+   if(oldAvatar&&oldAvatar!==avatarPath){await customerSb.storage.from('srk-customer-avatars').remove([oldAvatar]);if(!await stillSameUser())return;}
   }
-  document.getElementById('name').value=fullName;
-  setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
- } catch(e){setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||''),true);}
- finally{button.disabled=false;}
+  document.getElementById('name').value=fullName;setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
+ }catch(e){if(isCurrent())setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||''),true);}
+ finally{if(isCurrent())button.disabled=false;}
 }
 let customerSavedAddresses = [];
 let editingSavedAddressId = null;
@@ -2144,6 +2143,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
       customerPaymentHistoryRequest++;
       customerProfileLoadRequest++;
+      customerProfileSaveRequest++;
       customerCancellationFeeRequest++;
       customerRefundHistoryRequest++;
       customerPaymentHistoryResetPending=false;
