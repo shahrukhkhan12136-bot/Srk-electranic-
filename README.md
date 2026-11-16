@@ -51,7 +51,8 @@ Service-role key और Razorpay secret को browser, GitHub या chat म�
 
 ## Manual electrician payouts (UPI / Bank)
 - Automatic Razorpay Route transfers are not required for the current manual payout workflow.
-- After a customer's Razorpay payment is server-verified and the booking is completed, quote-approved, and assigned, the database creates a pending electrician payout ledger row using that booking's commission rate.
+- For a legacy (non-category) booking, a server-verified Razorpay payment or eligible recorded manual payment can create a pending payout only when the booking is completed, assigned, and its historical quote is approved; commission applies to labour, while materials pass through without commission.
+- New category bookings do not use quote approval or the legacy manual-payment RPC. Their payout is based on the immutable server-recorded labour bill and excludes settled cancellation-fee amounts; materials are zero in this flow.
 - An authorized Admin makes the actual UPI or bank transfer outside the website, then records the UTR / UPI reference in `/admin.html`. The website only records the transfer; it does not send money.
 - The electrician can see their own pending/paid payout status and recorded reference in `/electrician.html`. RLS restricts payout rows to the owning electrician and authorized admins.
 - Never mark a payout Paid before the actual transfer succeeds. No automatic payout or real-money test is performed by this code.
