@@ -1576,3 +1576,35 @@ Work Timer migration 20261114240000_server_authoritative_customer_approved_work_
 - Concurrency (दो customer replies या completion race) को अलग two-connection test harness में रखें; single pgTAP transaction से concurrency proof न दें।
 
 **निर्णय:** Work Timer का पहला runnable behavioral test तब बनाया जा सकता है जब disposable local Supabase/Auth harness और base-schema provenance gate उपलब्ध हों। अभी यह blueprint implementation-ready test specification है, executable test नहीं। इस pass में केवल migration और source test पढ़े गए; कोई fixture write, SQL execution, test run, migration replay या Production access नहीं किया गया।
+
+
+## 40. amount_paid replay blocker — safe remediation decision record — 16 Nov 2026
+
+### Evidence consolidated
+
+- दोनों उपलब्ध historical starter SQL files में `service_bookings.amount_paid` नहीं है (Section 37)।
+- पहली ज्ञात migration `20261109003000_secure_commission_reporting.sql` column-level UPDATE grant में `amount_paid` का उल्लेख करती है; बाद की 15 Nov migrations भी इसे grant/revoke में target करती हैं (Sections 36–37)।
+- Explicit `ADD COLUMN IF NOT EXISTS` केवल `20261116200000_restore_service_bookings_amount_paid.sql` में है, जो इन references के बाद क्रमित है।
+
+### Safe conclusion
+
+उपलब्ध starter SQL को clean-replay baseline मानने पर यह dependency वास्तविक blocker है: migration runner पहले की column-level GRANT/REVOKE statements तक पहुँचने से पहले column नहीं बना पाएगा। इसे केवल बाद में आने वाली `ADD COLUMN IF NOT EXISTS` migration से ठीक नहीं किया जा सकता। हालांकि starter SQL की Production authority अभी प्रमाणित नहीं है, इसलिए इसे live schema defect या Production data-loss risk घोषित नहीं किया जा रहा।
+
+### Remediation paths — अभी कोई path लागू नहीं किया गया
+
+1. **यदि Owner प्रमाणित करे कि यही canonical bootstrap है:** approved canonical bootstrap definition में `service_bookings.amount_paid numeric(12,2)` को सही nullability/default/check सहित स्थापित करें; बाद की restore migration को idempotent compatibility guard के रूप में रखें। Bootstrap files historical snapshots हैं या active deploy inputs, यह पहले स्पष्ट हो।
+2. **यदि canonical bootstrap कोई दूसरा source है:** उसी authoritative baseline में column की मौजूदगी साबित करें और उसका version/hash तथा provenance replay manifest में दर्ज करें। कोई source edit आवश्यक न हो सकता है।
+3. **यदि पहले से deployed migration history में पुराने migrations सफलतापूर्वक apply हैं:** deployed migration files को rename/reorder/edit न करें। नई clean-install bootstrap strategy या forward-only repair केवल Owner-approved migration design और verified remote history के बाद तय करें।
+
+### Required evidence before implementation
+
+- Owner से canonical bootstrap file/path और approval;
+- remote migration history का read-only export/screenshot (secrets हटाकर), खासकर 09003000, 15160000, 15230000 और 16200000 entries;
+- deployed schema में `service_bookings.amount_paid` की column type, nullability, default और CHECK constraint का sanitized schema-only evidence;
+- पुष्टि कि staging/local replay target disposable है और उसमें कोई user/payment data नहीं है।
+
+### Guardrails and next action
+
+- तब तक migrations को reorder/rename/edit नहीं करना; `supabase db reset`, hosted DB command, remote schema dump या Production query नहीं चलाना।
+- इस pass में केवल source inspection और यह decision record है; कोई database connection, SQL execution, schema mutation या deployment नहीं हुआ।
+- Owner evidence उपलब्ध होने पर पहले एक reviewable migration plan और diff तैयार होगा; execution अलग explicit approval के बाद ही।
