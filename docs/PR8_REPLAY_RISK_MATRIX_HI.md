@@ -92,3 +92,10 @@ The separate Supabase project `SRK ELECTRONIC TEST` (project ref `dvzmarekhstaub
 The Production Supabase project `gnqhoaqatmoiwwhgzkgm` was checked for Supabase-managed development branches. The read-only branch listing returned an empty list (`branches: []`). Therefore, no existing Supabase development branch was available to inspect as an alternate migration-history or schema source.
 
 This does not rule out external backups, deleted branches, or owner-held exports. It only confirms that the Production project currently exposes no managed development branches through the branch listing. No branch was created, reset, rebased, merged, or deleted.
+
+
+### 2026-11-16 follow-up: Supabase account inventory and project notebooks
+
+The connected Supabase account's project inventory was read. It contains exactly the two projects already checked in this investigation: Production `Srk electranic` (`gnqhoaqatmoiwwhgzkgm`) and `SRK ELECTRONIC TEST` (`dvzmarekhstaubyuoeeh`). No third staging/archive project is exposed in this account inventory. The Production project's saved-notebook listing was also checked and returned an empty list.
+
+**Conclusion:** no additional connected Supabase project or saved Production notebook is available as an alternate source for the missing original migration. This only covers projects/notebooks visible to the current connected account; it does not rule out another owner's account, external backups, or exported artifacts. All checks were metadata/listing reads; no schema, data, migration, or project state was changed.
