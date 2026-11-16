@@ -173,6 +173,15 @@ test('concurrent duplicate insert resolves to the winning booking after unique-k
   assert.equal(calls.filter(call => call.target.includes('/rest/v1/job_offers?')).length, 1);
 });
 
+
+test('pending browser idempotency keys are isolated per authenticated customer account', () => {
+  assert.match(bookingUi, /function customerBookingRequestKey\(payload,customerUserId\)/);
+  assert.match(bookingUi, /const storageKey='srk\\.customer\\.booking\\.pending\\.v1:'\+customerUserId/);
+  assert.match(bookingUi, /customerBookingRequestKey\(bookingPayload, latestSession\.user\.id\)/);
+  assert.match(bookingUi, /clearCustomerBookingRequestKey\(requestKey, latestSession\.user\.id\)/);
+  assert.match(bookingUi, /function clearCustomerBookingRequestKey\(key,customerUserId\)/);
+});
+
 test('uncertain booking submission is not falsely reported as definitely unsaved', () => {
   assert.match(bookingUi, /बुकिंग की पुष्टि नहीं हो सकी; संभव है अनुरोध सर्वर तक पहुँच गया हो/);
   assert.match(bookingUi, /पहले बुकिंग सूची रीफ़्रेश करके देखें/);
