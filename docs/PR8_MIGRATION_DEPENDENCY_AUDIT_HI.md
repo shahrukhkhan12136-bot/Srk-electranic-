@@ -590,3 +590,21 @@ Source-level contract:
 इसलिए वर्तमान उपलब्ध Branch source में तीनों handlers की labour-bill lookup dependency की SQL definition भी मौजूद है। Section 43 का unresolved-dependency कथन वापस लिया जाता है। अब इन चार payment RPC और labour-bill lookup RPC की repository source definition मिलती है।
 
 **बाकी सत्यापन:** Migration ordering/replay compatibility, PostgreSQL/pgTAP execution और deployed schema verification अभी नहीं हुए हैं। यह प्रमाणित नहीं है कि ये migrations किसी live Database में लागू हैं।
+
+
+## 45. Razorpay Atomic Payment migrations का क्रम और test coverage
+
+Feature branch `feature/platform-fee-cash-online-cycle` की migration सूची में dependency order सही दिखता है:
+1. `20261114000000_electrician_requested_and_approved_rate_tiers.sql`
+2. `20261114010000_customer_booking_category_and_duration.sql`
+3. `20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql` — `service_bookings` पर timer/rate snapshot fields और `srk_booking_labour_bills` table बनाता है; साथ में service-role-only `srk_service_get_labour_bill_for_payment(uuid)` RPC बनाता है।
+4. `20261114090000_atomic_razorpay_order_and_payment_finalization.sql` — पहले वाली bill table पर निर्भर होकर order lock/link और captured-payment finalization RPC बनाता है।
+
+इसलिए उपलब्ध फ़ाइल-क्रम में Atomic Payment migration अपने labour-bill table/RPC से पहले नहीं चलती। यह migration filename/order और source references का static निरीक्षण है; वास्तविक replay नहीं।
+
+Test source में:
+- `atomic_razorpay_order_and_payment_finalization.test.sql` RPC existence, service-role grants, unauthorized-role denial, lock/state checks, amount/currency/order checks और idempotency के source assertions रखता है।
+- `atomic_razorpay_order_behavior.test.sql` 15 assertions के लिए lock contention, एक पैसे के amount mismatch, valid order link, captured payment finalization, same-payment retry idempotency, different payment ID rejection, legacy quote mismatch और authenticated-role denial को कवर करता है।
+- इन tests को इस audit में execute नहीं किया गया। Test files में `srk_service_get_labour_bill_for_payment` के अलग existence/privilege/return-value assertions भी नहीं दिखे; इस RPC का grant/role contract migration source में मौजूद है, पर test coverage बढ़ाई जा सकती है।
+
+**निष्कर्ष:** Migration file order में कोई Razorpay-to-labour-bill ordering blocker नहीं मिला। Runtime/replay, SQL parser, pgTAP और deployed database verification अभी शेष हैं।
