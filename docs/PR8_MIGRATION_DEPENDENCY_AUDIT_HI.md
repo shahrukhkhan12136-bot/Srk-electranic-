@@ -644,3 +644,18 @@ Feature branch में `.github/workflows/payment-order-isolated-pgtap.yml` �
 **सुझाया गया सुधार:** अलग isolated workflow में पहले आवश्यक base schema/fixtures, फिर वास्तविक `20261114040000` और उसके बाद `20261114090000` क्रम से लागू करें; labour-bill RPC की existence, service_role-only grant, non-service denial और returned `labour_amount_paise` का pgTAP assertion जोड़ें। साथ ही handler के provider-timeout और expired-lock recovery scenarios को अलग mocked integration tests में कवर करें।
 
 किसी Production database, Supabase hosted branch या shared integration branch पर कार्रवाई नहीं की गई।
+
+
+## 48. Customer verify और Razorpay webhook की साझा finalization जाँच
+
+Feature branch के मौजूदा source को फिर से पढ़ने पर:
+- `verify-payment.js` ग्राहक के OTP-authenticated bearer session, booking ownership/verified phone, Razorpay signature, provider payment lookup, captured status, exact order ID, INR और approved paise amount जाँचता है। इसके बाद ही shared SQL finalizer RPC बुलाता है।
+- `razorpay-webhook.js` raw request body पर Razorpay HMAC signature जाँचता है; केवल `payment.captured` और `order.paid` events स्वीकार करता है। वह captured payment entity, booking payment method/status और approved amount जाँचकर वही SQL finalizer RPC बुलाता है। Netlify wrapper इसी root handler को export करता है।
+- Webhook में अलग event-inbox/deduplication table इस branch के इस handler में नहीं दिखी। लेकिन finalizer booking row को `FOR UPDATE` से lock करता है, उसी payment ID को `already_processed` मानता है और अलग payment ID को conflict करता है। इसलिए duplicate delivery का अंतिम DB write idempotent बनाया गया है; फिर भी webhook delivery/retry और verify-vs-webhook race का runtime test बाकी है।
+- इस branch में इन handlers के लिए अलग Node integration test file नहीं मिली; उपलब्ध atomic SQL behavior test same-payment retry और different-payment-ID conflict को cover करता है, पर actual HTTP handler race/timeout नहीं।
+
+**अतिरिक्त स्पष्ट जोखिम:** `create-order.js` Razorpay order POST में booking ID को receipt देता है, लेकिन request में स्पष्ट provider idempotency key नहीं दिखती। यदि Razorpay order create कर दे और client को response timeout हो जाए, तो retry पर दूसरा provider order बन सकने की संभावना है। यह duplicate captured charge सिद्ध नहीं करता; केवल duplicate/unused order risk है। Provider receipt uniqueness/idempotency का व्यवहार इस source audit से प्रमाणित नहीं हुआ।
+
+**सुझाए गए tests:** (1) same webhook event दो बार, (2) webhook और customer verify एक साथ, (3) same payment ID दो channels से, (4) अलग payment ID उसी order पर, (5) Razorpay order POST accepted-but-response-lost, (6) DB link RPC commit-but-response-lost और (7) 90-second lock expiry। इनको mocked HTTP integration और वास्तविक isolated PostgreSQL concurrency tests में चलाना चाहिए।
+
+यह source-only निष्कर्ष है। कोई handler test, pgTAP, Production query/write या payment request नहीं चलाया गया।
