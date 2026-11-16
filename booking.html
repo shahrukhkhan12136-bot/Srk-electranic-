@@ -2182,6 +2182,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
       customerProfileSaveRequest++;
       const profileSaveButton=document.getElementById('saveCustomerProfile');
       if(profileSaveButton)profileSaveButton.disabled=false;
+      ['saveCurrentAddress','deleteSavedAddress','setDefaultSavedAddress'].forEach(id=>{const button=document.getElementById(id);if(button)button.disabled=false;});
       customerCancellationFeeRequest++;
       customerRefundHistoryRequest++;
       clearCustomerSupportView();
