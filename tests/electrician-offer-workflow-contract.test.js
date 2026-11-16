@@ -24,7 +24,14 @@ test('offer response is owner-session RPC driven, guarded against duplicates and
   assert.match(respond, /data\?\.code==='offer_expired'/);
   assert.match(respond, /data\?\.success!==true/);
   assert.match(respond, /finally\{[\s\S]*?electricianOfferResponseBusy\.delete\(id\)/);
-  assert.match(respond, /buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
+  assert.match(respond, /const requestedUserId=user\.id,requestedProfileId=profile\.id,requestedGeneration=electricianAccountViewGeneration/);
+  assert.match(respond, /const isCurrent=\(\)=>!electricianLogoutBusy&&requestedGeneration===electricianAccountViewGeneration&&user\?\.id===requestedUserId&&profile\?\.id===requestedProfileId/);
+  assert.match(respond, /if\(!isCurrent\(\)\)return/);
+  assert.match(respond, /if\(isCurrent\(\)\)buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
+  const clearStart=source.indexOf('function clearElectricianAccountView()');
+  const clearEnd=source.indexOf('\nfunction init()',clearStart);
+  assert.ok(clearStart>=0&&clearEnd>clearStart,'account view reset handler exists');
+  assert.match(source.slice(clearStart,clearEnd), /electricianAccountViewGeneration\+\+/);
 });
 
 test('offer refresh uses the scoped offer RPC and refreshes on offer/profile realtime changes', () => {
