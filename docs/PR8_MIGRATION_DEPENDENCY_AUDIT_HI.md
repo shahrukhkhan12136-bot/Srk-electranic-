@@ -608,3 +608,22 @@ Test source में:
 - इन tests को इस audit में execute नहीं किया गया। Test files में `srk_service_get_labour_bill_for_payment` के अलग existence/privilege/return-value assertions भी नहीं दिखे; इस RPC का grant/role contract migration source में मौजूद है, पर test coverage बढ़ाई जा सकती है।
 
 **निष्कर्ष:** Migration file order में कोई Razorpay-to-labour-bill ordering blocker नहीं मिला। Runtime/replay, SQL parser, pgTAP और deployed database verification अभी शेष हैं।
+
+
+## 46. Payment-order flow का अंतिम static review और शेष परीक्षण
+
+`create-order.js` का क्रम दोबारा देखा:
+- पहले customer session/booking ownership जाँचता है; उसके बाद `srk_claim_payment_order_lock` RPC call करता है।
+- Lock मिलने के बाद booking फिर से पढ़ता और customer ownership/payment choice/completed state दोबारा जाँचता है।
+- उसके बाद immutable labour bill lookup, existing Razorpay order reuse या नया order create, और अंत में `srk_link_payment_order` द्वारा DB में atomic link करता है।
+- `finally` में वही booking/token pair देकर lock release की कोशिश करता है। SQL link RPC फिर से booking row lock, token expiry और exact amount जाँचता है।
+
+इस source sequence में पुराना “order reuse lock से पहले होता है” concern लागू नहीं होता।
+
+**दो resilience scenarios अभी व्यवहारिक रूप से test नहीं हुए:**
+1. Razorpay order create request सफल हो जाए, लेकिन response या बाद का DB link request timeout हो जाए। Provider पर unused/orphan order रह सकता है; retry पर नया order बन सकता है। उपलब्ध source में ऐसा order client को तब तक return नहीं होता जब तक DB link RPC सफल न हो, इसलिए इसे confirmed duplicate charge नहीं कह रहे।
+2. Order create/provider response 90-second SQL lock expiry से आगे निकल जाए तो link RPC expired token अस्वीकार करेगी। इससे provider पर unused order रह सकता है; user-facing retry/reconciliation behavior runtime test नहीं हुआ।
+
+**Test coverage सुधार:** PR branch की `atomic_razorpay_order_and_payment_finalization.test.sql` में service-role bill lookup RPC की existence, service_role-only grant, unauthorized-role denial, pinned search_path और paise return contract के explicit assertions जोड़ने चाहिए। Audit branch में वह test file मौजूद नहीं थी, इसलिए PR/test branch को बदले बिना इस audit branch पर test edit नहीं किया गया।
+
+**अगला सुरक्षित कदम:** इन दो timeout scenarios और bill-lookup privilege contract के लिए tests PR branch पर अलग reviewable patch में जोड़ना; फिर केवल अनुमोदित isolated test DB पर pgTAP चलाना। Production या shared integration branch पर कोई कार्रवाई नहीं की गई।
