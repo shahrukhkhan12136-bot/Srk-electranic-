@@ -63,9 +63,12 @@ test('work start and completion use separate server lifecycle RPCs with duplicat
 
 test('availability can only be changed by an active Admin-approved electrician through the RPC', () => {
   const availability = body('setElectricianAvailability');
-  assert.match(availability, /!profile\|\|!profile\.active\|\|profile\.verification_status!=='approved'/);
+  assert.match(availability, /!isCurrent\(\)\|\|!profile\.active\|\|profile\.verification_status!=='approved'/);
   assert.match(availability, /if\(!confirm\(/);
   assert.match(availability, /srk_electrician_set_availability/);
   assert.match(availability, /p_available:available/);
+  assert.match(availability, /requestedGeneration=electricianAccountViewGeneration/);
+  assert.match(availability, /user\?\.id===requestedUserId&&profile\?\.id===requestedProfileId/);
+  assert.match(availability, /if\(!isCurrent\(\)\)return/);
   assert.match(availability, /await refresh\(\)/);
 });
