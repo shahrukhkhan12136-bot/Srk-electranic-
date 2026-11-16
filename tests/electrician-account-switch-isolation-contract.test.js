@@ -47,3 +47,17 @@ test('Electrician phone-change OTP state and responses are isolated across accou
     assert.ok(block.includes('phoneChangeBusy=false'), name + ' clears its busy state');
   }
 });
+
+test('Electrician support create and reply do not clear a newer account busy lock', () => {
+  for (const [name, flag] of [
+    ['createElectricianSupportTicket', 'electricianSupportCreateBusy'],
+    ['sendElectricianSupportReply', 'electricianSupportReplyBusy']
+  ]) {
+    const start = source.indexOf('async function ' + name);
+    assert.notEqual(start, -1, name + ' exists');
+    const next = source.indexOf('\\nasync function ', start + 1);
+    const block = source.slice(start, next < 0 ? source.length : next);
+    assert.match(block, new RegExp('finally\\s*\\{\\s*if\\(isCurrent\\(\\)\\)\\s*\\{\\s*' + flag + '=false'));
+    assert.match(block, /if\\(button\\)\\{button\\.disabled=false/);
+  }
+});
