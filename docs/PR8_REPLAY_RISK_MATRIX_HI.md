@@ -290,3 +290,20 @@ The original SQL bodies for Production ledger entries `20261109052929`, `2026110
 **Additional ledger observation:** Production entries `20261109052929` and `20261109053005` have effectively the same three ALTER FUNCTION statements and the same recipient index creation, with only formatting differences. This is duplicated deployed migration work, not evidence that the PR branch has both historical entries represented.
 
 The comparison is static source inspection only. It does not prove whether an equivalent grant is inherited from the base setup or another uninspected SQL artifact. No Production SQL was changed, no migration was applied, and no replay or pgTAP tests were run.
+
+
+### 2026-11-16 follow-up: next five Production migration bodies compared (read-only)
+
+The original SQL bodies for Production ledger entries `20261109080121`, `20261109080400`, `20261109081310`, `20261109082241`, and `20261109082620` were read from the Production migration ledger and compared with the current PR #8 replay-prep migration tree.
+
+| Production version | Production change | PR-head comparison | Result |
+|---|---|---|---|
+| `20261109080121 lock_quote_workflow_rpcs_to_authenticated_users` | Revokes PUBLIC/anon execution and grants authenticated execution on the four quote/offer RPCs | The branch quote workflow file contains the same four-function revoke/grant set | Strong match; this block is present inside a larger migration, not as a separate numbered file |
+| `20261109080400 allow_quote_approval_booking_states` | Replaces booking status and assignment constraints for quote states | The malformed-name branch file `20261109_allow_quote_approval_booking_states.sql` contains the same two constraint operations; the quote workflow file also repeats them | Matching DDL is present, but duplicate execution/order and malformed version naming remain unresolved |
+| `20261109081310 srk_manual_electrician_payout_ledger` | Creates payout ledger table, RLS/policy, payout trigger/function, and Admin mark-paid RPC | Branch contains a later payout reconciliation migration that replaces the payout trigger and Admin payout RPC, but no matching initial `CREATE TABLE public.srk_electrician_payouts` definition was located in the inspected migration tree | Critical predecessor DDL not located; later function replacement alone cannot create the missing table |
+| `20261109082241 index_electrician_payout_foreign_keys` | Adds indexes on payout electrician profile and paid_by columns | No matching index creation was located in the current migration tree | No equivalent located; depends on payout table predecessor |
+| `20261109082620 lock_down_route_transfer_api_access` | Creates deny-all client RLS policy on `srk_route_transfers` and revokes anon/authenticated privileges | Initial Route ledger migration revokes client access and grants service_role, but no matching deny-all RLS policy creation was located; a later branch migration drops the Route ledger table | Partial overlap; policy DDL not located and later table retirement changes the object lifecycle |
+
+**Replay significance:** The Production payout ledger's initial table creation is a prerequisite for later payout-trigger/function alterations. The current branch contains later logic referencing `public.srk_electrician_payouts`, but the inspected migration files do not provide its original CREATE TABLE DDL. Do not infer or synthesize the historical table definition from later code; recover the authoritative source or schema export before replay planning.
+
+These are static source comparisons. “Not located” is limited to the current PR #8 replay-prep migration tree and inspected candidates; it is not proof that no external historical artifact exists. No Production SQL was changed, no migration was applied, and no replay or pgTAP tests were run.
