@@ -22,7 +22,7 @@ select ok(position('admin_note' in lower(pg_get_functiondef('public.srk_customer
 select ok(has_function_privilege('authenticated','public.srk_customer_get_payment_history(integer,integer)','EXECUTE')
  and not has_function_privilege('anon','public.srk_customer_get_payment_history(integer,integer)','EXECUTE'),
  'payment history RPC is authenticated-only');
-select * from finish();
-rollback;
 select ok(coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc where oid='public.srk_customer_get_payment_history(integer,integer)'::regprocedure),false),
  'security definer RPC uses an empty search_path');
+select * from finish();
+rollback;
