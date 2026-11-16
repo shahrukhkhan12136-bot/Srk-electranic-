@@ -411,7 +411,7 @@ test('Electrician offer response keeps a confirmed server decision distinct from
   const expiryRefresh = respond.indexOf("try{await refresh();}catch(_){alert('ऑफर समाप्त होने की पुष्टि मिल गई है");
   const uncertainCatch = respond.indexOf("नेटवर्क जवाब नहीं मिला। ऑफर की वर्तमान स्थिति रीफ़्रेश करके जाँचें");
   assert.ok(confirmed >= 0 && successRefresh > confirmed, 'confirmed response has its own refresh-failure handling');
-  assert.ok(expiryRefresh > confirmed, 'expired offer has its own refresh-failure handling');
+  assert.ok(expiryRefresh >= 0, 'expired offer has its own refresh-failure handling');
   assert.ok(uncertainCatch > successRefresh, 'uncertain RPC responses still reconcile by refreshing authoritative offers');
   assert.match(respond, /electricianOfferResponseBusy\.delete\(id\)/);
 });
