@@ -4,7 +4,7 @@
 
 ## मुख्य पेज और प्रवेश क्रम
 - `/` — Welcome Screen (`/welcome.html`) पर redirect
-- `/welcome.html` — भूमिका चुनने की स्वागत स्क्रीन; Customer और Electrician के login links
+- `/welcome.html` — भूमिका चुनने की स्वागत स्क्रीन; Customer, Electrician और Admin login links
 - `/customer-login.html` — Customer phone OTP login; सफल login के बाद `/booking.html` पर redirect
 - `/booking.html` — Customer Dashboard, सेवा बुकिंग और अकाउंट; Dashboard केवल authenticated customer session में खुलता है
 - `/electrician.html` — Electrician Partner phone OTP portal
