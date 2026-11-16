@@ -464,3 +464,12 @@ create-order.js में नया Order बनाने/reuse करने व
 **अगला verification gate:** किसी भी migration/patch से पहले authoritative deployed schema या approved test database से दोनों function definitions पढ़ें; फिर दो concurrent create-order requests, process timeout, failed release, expired lock reclaim और stale release-token scenarios के integration tests चलाएँ। जब तक यह contract उपलब्ध न हो, नया lock implementation अनुमान से न बनाएँ।
 
 यह source-only review है। कोई Supabase/Production query, payment order creation, database write या runtime test नहीं किया गया।
+### 36. Legacy Razorpay verify/webhook settlement — eligibility snapshot और final PATCH के बीच state-race
+
+verify-payment.js और razorpay-webhook.js के legacy-quote payment paths पहले booking पढ़कर payment method, completed status, approved quote और expected amount जाँचते हैं। इसके बाद provider/payment evidence validation के बाद अलग REST PATCH करते हैं। Final PATCH की conditional filters booking ID, Razorpay Order ID और payment_status not in (paid,refunded) तक सीमित हैं; वे उसी UPDATE के भीतर status='completed', quote_status='approved' और payment_method online होने की शर्त दोबारा लागू नहीं करते।
+
+इसलिए initial read और final PATCH के बीच यदि booking status/quote/payment method बदलता है, तो पुराना eligibility snapshot अभी भी paid update की अनुमति दे सकता है। यह संभावित race है, किसी Production booking या वास्तविक नुकसान का प्रमाण नहीं। Captured provider payment को केवल छोड़ देना भी सुरक्षित समाधान नहीं; ऐसी स्थिति में authoritative reconciliation/refund review चाहिए।
+
+**सुझाया गया सुधार:** legacy path को atomic DB settlement RPC में ले जाएँ जो booking row lock करके current order ID, online method, completed/approved eligibility, amount और payment/refund state एक ही transaction में जाँचे; mismatch पर स्पष्ट manual-reconciliation result दे। Verify-payment और webhook दोनों उसी RPC का उपयोग करें। pgTAP में initial read के बाद status बदलना, quote revoke/change, payment method change और concurrent verify/webhook के cases जोड़ें।
+
+यह finding source-level race analysis है। कोई DB/Production row नहीं देखी गई; कोई payment, refund, migration या runtime concurrency test नहीं किया गया।
