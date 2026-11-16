@@ -172,8 +172,8 @@ test('customer and electrician lifecycle actions expose retry states and always 
   assert.match(offerResponse, /catch\(e\)/);
   assert.match(offerResponse, /finally\{/);
   assert.match(offerResponse, /electricianOfferResponseBusy\.delete\(id\)/);
-  assert.match(offerResponse, /buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
-  assert.match(offerResponse, /catch\(e\)\{\s*try\{await refresh\(\)/);
+  assert.match(offerResponse, /if\(isCurrent\(\)\)buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
+  assert.match(offerResponse, /catch\(e\)\{\s*if\(!isCurrent\(\)\)return;\s*try\{await refresh\(\)/);
 });
 
 test('customer live-location transport failure does not discard rendered booking history', () => {
