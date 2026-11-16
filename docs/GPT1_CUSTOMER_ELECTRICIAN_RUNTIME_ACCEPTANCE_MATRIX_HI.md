@@ -74,3 +74,10 @@
 
 
 - Customer booking timeline error-handling correction: source inspection found the per-booking RPC results were stored in `timelineResults`, but the post-render warning referenced an undefined singular `timelineResult`. That ReferenceError fell into the outer catch and could replace an otherwise successfully loaded booking list with the generic load-failure message. GPT-1 corrected the warning to aggregate `timelineResults.some(({result})=>result.error)` and added a regression assertion in `tests/customer-electrician-booking-status-sync-contract.test.js`. This is source-level evidence; browser verification remains pending. Automatic Customer/Electrician realtime status updates remain unproven and are not expanded here.
+
+## 2026-11-16 — latest GPT-1 source acceptance evidence
+
+- PR #8 branch-head commit `7788a761d321aeee7c21a70ddfe1daa66a2d87f5` पर GitHub Actions Node workflow run #1574 (`43780087809`) completed successfully; job `133015065804` reports **328 tests, 328 pass, 0 fail, 0 skipped**.
+- इस Node suite में Customer/Electrician booking-status synchronization, phone-visibility source contracts, booking lifecycle/timer serialization, KYC/earnings/wallet UI contracts, live-location cleanup, cancellation/refund, support attachments, profile/address और payment-history regression checks शामिल हैं। यह source-contract/Node evidence है; isolated PostgreSQL/pgTAP, Auth/Storage actor isolation, browser, provider या device runtime acceptance नहीं है।
+- इस pass में phone visibility, work-start/completion serialization, live-location failure cleanup, KYC upload/preview gates और support ticket/attachment source contracts को मौजूदा tests तथा app source से पुनः cross-check किया; कोई नया GPT-1 source feature gap प्रमाणित नहीं हुआ। इसलिए कोई unplanned feature या realtime scope नहीं जोड़ा गया।
+- PR #8 अभी Open / Draft / unmerged है। Vercel status में build-rate-limit failure अलग है; इसे Node test failure नहीं माना गया। No merge, deployment, Production DB action, provider transaction या mobile QA.
