@@ -754,3 +754,25 @@ Migration `20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sq
 यह migration isolated payment fixture में अकेले जोड़ने योग्य नहीं है। सही replay chain के लिए केवल table names नहीं, बल्कि ऊपर के relations के आवश्यक columns, FK targets, unique/check constraints, trigger order, grants/RLS, helper function signatures और referenced return columns भी baseline में होने चाहिए। Migration में dynamic SQL/conditional branches भी हैं; इसलिए regex-आधारित सूची पूर्ण dependency proof नहीं है।
 
 **स्थिति:** यह विस्तृत source footprint है, PostgreSQL parser/replay नहीं। कोई test execution, Production query/write, workflow dispatch या hosted Supabase branch creation नहीं की गई। अगला audit pass हर बाहरी relation के exact referenced columns और prerequisite migration owner को crosswalk करेगा।
+
+
+## 53. Prerequisite migrations का क्रम — Source Cross-check
+
+Feature branch में उपलब्ध चार prerequisite migrations और Wallet Foundation को सीधे fetch करके क्रम/भूमिका का मिलान किया:
+
+| क्रम | Migration | 140400 के लिए योगदान |
+|---|---|---|
+| 1 | `20261109010000_create_secure_wallet_ledger_foundation.sql` | `srk_wallet_accounts`, `srk_wallet_ledger`, `srk_wallet_bank_links`; Auth users और electrician profile linkage पर निर्भर। |
+| 2 | `20261114000000_electrician_requested_and_approved_rate_tiers.sql` | `electrician_applications.requested_category`; `electrician_profiles` के approved rate-tier और approval audit fields/tables। |
+| 3 | `20261114010000_customer_booking_category_and_duration.sql` | `service_bookings.selected_category` और `selected_duration_hours`; category/duration validation और Admin offer RPC update। |
+| 4 | `20261114030000_verified_electrician_skills_and_category_matching.sql` | Applications/Profiles पर requested/approved skills और skill catalog/rules/matching infrastructure। |
+| 5 | `20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql` | ऊपर की schema पर labour bill, timer, wallet cash-cycle और payment bill lookup। |
+| 6 | `20261114090000_atomic_razorpay_order_and_payment_finalization.sql` | Immutable bill lookup contract पर order lock/link/release और captured payment finalizer। |
+
+### महत्वपूर्ण सीमा
+
+यह सूची आवश्यक feature-specific क्रम को पुष्ट करती है, पर पूर्ण replay chain अभी नहीं है। 140400 में `job_offers`, `srk_booking_complaints`, `srk_manual_payment_entries`, `srk_electrician_payouts`, `srk_razorpay_refunds`, `srk_booking_refund_requests` और `srk_customer_category_skill_rules` जैसे अतिरिक्त objects भी उपयोग होते हैं। इनके exact creator migration, prerequisite columns और function signatures का अलग crosswalk बाकी है। Root setup files में किसी object का मिलना अपने-आप migration chain में उसका सही स्थान सिद्ध नहीं करता।
+
+`20261109010000` के wallet helper में `electrician_profiles` का `auth_user_id/user_id` linkage पढ़ा जाता है; इसलिए Wallet Foundation को चलाने से पहले profile base और ये linkage columns उपलब्ध होने चाहिए। केवल तारीख के आधार पर migrations को replay करना पर्याप्त नहीं—base schema की readiness भी जरूरी है।
+
+**स्थिति:** Source cross-check only; no SQL execution/pgTAP. यह section 51–52 की dependency सूची को refine करता है, complete baseline certification नहीं।
