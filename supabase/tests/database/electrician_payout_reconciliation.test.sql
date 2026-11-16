@@ -12,9 +12,11 @@ select ok(exists(select 1 from pg_trigger t
   where t.tgrelid='public.service_bookings'::regclass
     and not t.tgisinternal
     and t.tgfoid='public.srk_create_electrician_payable()'::regprocedure
+    and (t.tgtype & 4)=4
     and (t.tgtype & 16)=16
-    and (t.tgtype & 8)=8),
-  'payout trigger fires AFTER UPDATE so booking state and verified payment evidence are committed in the row');
+    and (t.tgtype & 1)=1
+    and (t.tgtype & 2)=0),
+  'payout trigger is a row-level AFTER INSERT/UPDATE hook so booking state and verified payment evidence are committed first');
 
 select ok((select prosecdef from pg_proc where oid='public.srk_create_electrician_payable()'::regprocedure),
   'payable trigger uses a privileged server-side execution context');
@@ -98,13 +100,11 @@ select ok(position('payout_status = '||quote_literal('pending') in
   and position('payout_status = '||quote_literal('refunded') in
   pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
   'full refund closes an unpaid pending payout');
-select ok(position('payout_status = '||quote_literal('blocked') in
+select ok(position('payout_status = '||quote_literal('pending') in
   pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
-  and position('Razorpay refund pending' in
-  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
-  and position('Manual refund processed' in
-  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
-  'full refund closes only a payout hold created by a refund');
+  and position('payout_status = '||quote_literal('blocked') in
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))=0,
+  'booking trigger closes only pending payouts; verified refund RPCs own blocked-payout finalization');
 select ok(position('and payout_note in (' in
   pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
   'unrelated Admin payout blocks remain untouched');
