@@ -1022,8 +1022,7 @@ The same additive migration:
 - uses a manual payment method consistency guard before payout finalization.
 
 Regression test:
-`supabase/tests/database/electrician_payout_reconciliation.test.sql`, plan 34; latest test commit `7751d3222f76df0b062baf82f257eda443e2f7b8`.
-Latest Test commit: `dc2550277dc7f1e92fe285e8f82d782032e15a33`.
+`supabase/tests/database/electrician_payout_reconciliation.test.sql`, plan 34; latest test commit `f44ee3d78f8d7ba66e96cda6746d5777a727829d`.
 
 ### 64.4 Static verification and limitations
 
@@ -1072,17 +1071,48 @@ Runtime remains NOT RUN; no Production activity, deployment, workflow dispatch, 
 
 ## 67. Follow-up: Payout-backed reporting and trigger-order coverage
 
-Audit-branch source update commit: \`43c19084b5cf4a50902550a4180bc6f7a1f8c079\`.
+Audit-branch source update commit: `43c19084b5cf4a50902550a4180bc6f7a1f8c079`.
 
-- The AFTER parity validator's \`UPDATE OF\` list now includes \`materials_amount\`, matching the existing payout writer's update event list, and includes \`commission_amount\` so direct privileged edits are also checked.
-- The existing payout writer trigger is named \`srk_reconcile_electrician_payable\`; the parity validator is named \`zz_srk_validate_booking_commission_payout_parity\`. PostgreSQL fires same-kind triggers alphabetically, so the intended order is payout write first, parity check second. The updated pgTAP suite asserts both trigger names/order and event coverage.
-- Replaced \`srk_admin_commission_report()\` to keep \`total_collected\` as customer collection while taking payout gross, commission and electrician payable from \`srk_electrician_payouts\`. This excludes SRK-owned cancellation fees from electrician payable/earnings.
-- Replaced \`srk_get_my_earnings()\` to preserve customer \`amount_received\` while sourcing commission and electrician payable from the payout ledger.
-- Admin booking accounting reconciliation continues to check booking commission against payout \`platform_commission\` and reports \`BOOKING_COMMISSION_PAYOUT_LEDGER_MISMATCH\`.
+- The AFTER parity validator's `UPDATE OF` list now includes `materials_amount`, matching the existing payout writer's update event list, and includes `commission_amount` so direct privileged edits are also checked.
+- The existing payout writer trigger is named `srk_reconcile_electrician_payable`; the parity validator is named `zz_srk_validate_booking_commission_payout_parity`. PostgreSQL fires same-kind triggers alphabetically, so the intended order is payout write first, parity check second. The updated pgTAP suite asserts both trigger names/order and event coverage.
+- Replaced `srk_admin_commission_report()` to keep `total_collected` as customer collection while taking payout gross, commission and electrician payable from `srk_electrician_payouts`. This excludes SRK-owned cancellation fees from electrician payable/earnings.
+- Replaced `srk_get_my_earnings()` to preserve customer `amount_received` while sourcing commission and electrician payable from the payout ledger.
+- Admin booking accounting reconciliation continues to check booking commission against payout `platform_commission` and reports `BOOKING_COMMISSION_PAYOUT_LEDGER_MISMATCH`.
 
 Updated regression tests:
-- \`electrician_payout_reconciliation.test.sql\`: plan 34, 34 \`ok()\` assertions, latest commit \`7751d3222f76df0b062baf82f257eda443e2f7b8\`.
-- \`admin_labour_bill_payment_accounting_bridge.test.sql\`: plan 19, 18 \`ok()\` + 1 \`has_function()\`, latest commit \`6e7e132ac800cc99249272650daaad4f7138e2d2\`.
-- Static test-file structure check: each file has one \`finish()\` and one \`rollback;\`. These are source checks only, not runtime results.
+- `electrician_payout_reconciliation.test.sql`: plan 34, 34 `ok()` assertions, latest commit `7751d3222f76df0b062baf82f257eda443e2f7b8`.
+- `admin_labour_bill_payment_accounting_bridge.test.sql`: plan 19, 18 `ok()` + 1 `has_function()`, latest commit `6e7e132ac800cc99249272650daaad4f7138e2d2`.
+- Static test-file structure check: each file has one `finish()` and one `rollback;`. These are source checks only, not runtime results.
 
 **Important remaining verification:** no SQL parser, PostgreSQL replay, or pgTAP runtime was available/run. Report/earnings changes have source-level regression assertions only; no runtime data fixtures have exercised booking insert/update, cancellation fee exclusion, refund reversal, or ledger reconciliation. Do not mark these flows runtime-FIXED until disposable PostgreSQL evidence exists.
+
+## 68. Five primary blocker disposition and current verification gate
+
+| # | File / migration evidence | Actual cause | Correction / evidence | Status |
+|---|---|---|---|---|
+| 1 | `20261114270000_admin_only_cancellation_requests_and_decisions.sql`; introducing commit `cd5c0d8a07350fffb6be48c1f2a9481f73342b86` | PL/pgSQL function opens with `$$` but closes with `$;` | Lineage confirmed; original creation commit `3e4a20188d8d183516fc1527e7f83777b8304ca7` was correct. Historical file remains unchanged pending explicit edit approval. | **PARTIALLY FIXED** |
+| 2 | `COMPLETE_DATABASE_SETUP.sql`, `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql`; numbered migrations | Overlapping setup scripts exist, but no owner-approved canonical base-schema migration/baseline | Inventory and dependency notes recorded; baseline provenance and replay contract still missing. | **OPEN** |
+| 3 | Setup SQL and early migrations `20261108234000`, `20261109001000`, `20261109001500`, `20261109003000` | `is_srk_admin()` and `srk_is_admin()` are distinct helpers with different call sites; authoritative definitions/grants/order are not established in the numbered chain | Call sites and setup-script origins identified; no approved canonical helper baseline yet. | **OPEN** |
+| 4 | `srk_electrician_payouts`, `srk_manual_payment_entries`, `srk_booking_complaints`; related payout/payment migrations | Creator DDL and original constraints/grants/RLS provenance are not fully established in the current Feature migration chain | Downstream consumers and partial legacy/audit-branch evidence identified; authoritative original DDL provenance remains missing. | **OPEN** |
+| 5 | Production migration ledger vs Feature Branch numbered files | 87 ledger versions and 87 branch SQL files have only 7 exact version-ID matches; 80 ledger versions lack exact branch prefixes and 78 valid branch IDs are absent from the ledger. Renumbering/consolidation is possible; this is not proof of missing SQL. | Counts recorded; requires owner-approved authoritative ledger/schema-only snapshot and explicit mapping before replay. No Production query/write performed in this step. | **OPEN** |
+
+### Source correction disposition
+
+- Accounting Bridge method consistency and NULL handling: additive migration source corrected; pgTAP plan 19 source assertions added. **PARTIALLY FIXED — runtime NOT RUN**.
+- Commission BEFORE calculation / AFTER payout writer / AFTER parity validation: source architecture separated; payout writer trigger name precedes `zz_` parity validator alphabetically; event list now covers `materials_amount` and `commission_amount`. **PARTIALLY FIXED — runtime NOT RUN**.
+- Cancellation-fee exclusion in Admin commission report and Electrician earnings: both RPCs now use payout ledger amounts for electrician payable while preserving customer collection separately. **PARTIALLY FIXED — runtime NOT RUN**.
+- Financial reconciliation: Admin booking reconciliation compares `service_bookings.commission_amount` with payout `platform_commission` and reports the mismatch exception. **PARTIALLY FIXED — runtime NOT RUN**.
+- Booking insert/update, cancellation-fee, refund reversal and ledger behavior have not been exercised with PostgreSQL fixtures in this environment.
+
+### Verification results
+
+- SQL Parser: **NOT RUN**.
+- Full Migration Replay: **NOT RUN**.
+- pgTAP runtime: **NOT RUN**.
+- Node runtime: **NOT RUN**.
+- Static source inventory only; no runtime PASS claims.
+- Production changes: **NONE**.
+- Deployment: **NONE**.
+- Workflow dispatch: **NONE**.
+- Merge: **NONE**.
+- Paid Supabase branch/resource creation: **NONE**.
