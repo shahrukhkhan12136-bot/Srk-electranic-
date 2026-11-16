@@ -830,3 +830,18 @@ Feature branch के source को प्रत्यक्ष खोलकर 
 Migration chain कम-से-कम `20261112220000` तक पहुँचने से पहले `srk_electrician_payouts` और `srk_manual_payment_entries` का authoritative schema उपलब्ध होना चाहिए। इनके columns, constraints, indexes, RLS, grants और triggers बिना प्रमाण के fixture में गढ़ना उचित नहीं। `srk_booking_complaints` की base table भी support RPCs के लिए आवश्यक है।
 
 **स्थिति:** Creator provenance अभी unresolved; full replay blocked. केवल source inspection; कोई SQL execution, test, Production query/write या workflow dispatch नहीं।
+
+
+## 57. पुराने Portal Branch में दो Missing Creator Sources मिले
+
+`work/separate-customer-electrician-portals` branch की migration सूची और files प्रत्यक्ष जाँचने पर:
+
+1. **`srk_manual_payment_entries`** — `20261109171621_add_admin_verified_manual_payment_workflow.sql` इसे `CREATE TABLE IF NOT EXISTS` से बनाती है। DDL में `booking_id` UNIQUE/FK, payment method allow-list (`cash`,`upi`,`bank_transfer`), positive bounded amount, required payment reference, optional note, actor और timestamp हैं। Table पर RLS enable है और PUBLIC/anon/authenticated से सभी direct privileges revoke हैं। यह source candidate है; feature branch की पूरी ancestry/merge lineage अभी प्रमाणित नहीं।
+2. **`srk_booking_complaints`** — `20261110040000_customer_admin_complaints.sql` इसे बनाती है; उसी file में complaint status events table भी बनती है। DDL में booking/customer FKs, category/status allow-lists, description length bounds, admin note और resolution/audit fields हैं। यह भी पुराने Portal branch का source candidate है, अभी feature branch ancestry का प्रमाण नहीं।
+3. **`srk_electrician_payouts`** — पुराने Portal branch की जाँची migrations (`20261109165802`, `20261109173000`, `20261109180001`, `20261109234500`, `20261111090000`) केवल table को alter/use/harden करती हैं; इनमें base `CREATE TABLE` नहीं मिला। उसी branch के reviewed root setup files में भी base DDL नहीं मिला। इसका Creator अभी unresolved है।
+
+### Replay implication
+
+अब manual-payment और complaints के लिए plausible historical Creator migrations मौजूद हैं, पर उन्हें सीधे वर्तमान replay chain में जोड़ना उचित नहीं: पहले commit ancestry/merge-base और subsequent schema evolution की तुलना करनी होगी। Payout table का authoritative base DDL अभी नहीं मिला; इसलिए `20261112220000_cash_platform_fee_due_and_online_settlement.sql` की पूर्ण dependency chain अभी भी blocked है।
+
+सभी निष्कर्ष static source inspection हैं। कोई SQL execution, PostgreSQL replay, pgTAP, Production query/write या workflow dispatch नहीं हुआ।
