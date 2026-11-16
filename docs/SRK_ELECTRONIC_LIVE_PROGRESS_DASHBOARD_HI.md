@@ -3,7 +3,7 @@
 **अंतिम सत्यापित अपडेट:** 16 नवम्बर 2026  
 **PR:** [#8](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/pull/8) — OPEN / DRAFT / अभी MERGE नहीं  
 **Branch:** `feat/customer-login-first-dashboard-20261114`  
-**वर्तमान सत्यापित Code HEAD:** `1ec27f8dc7fbbe7c6200f1920481f80388b919bb`
+**वर्तमान सत्यापित Code HEAD:** `c8a1e456d1eb5b8c75c6e3c4e2a6e5bf1030a8ba`
 
 > यह डैशबोर्ड केवल सत्यापित स्थिति दिखाता है। Source में code/test मौजूद होना, live database पर चलना, preview पर दिखना और Production में release होना अलग-अलग gates हैं। प्रतिशत केवल checklist-count के आधार पर दिया जाता है; अनुमान से नहीं।
 
@@ -12,23 +12,25 @@
 | चरण | स्थिति | विस्तृत विवरण |
 |---|---|---|
 | 1. Implementation | **जारी — 65%** | Master checklist के 86 मुख्य items में 56 पूरे, 30 बाकी। यह पूरे project का checklist-count है; GPT-1/GPT-2 के अलग प्रतिशत इससे अलग हैं। |
-| 2. Source समीक्षा | **जारी** | अतिरिक्त Customer/Electrician source paths की समीक्षा चल रही है। Source-level Node suite इस HEAD पर PASS; इससे वास्तविक runtime प्रमाणित नहीं होता। |
+| 2. Source समीक्षा | **जारी** | Customer/Electrician source audit और documentation count reconciliation जारी। इस HEAD पर GitHub Actions Node run उपलब्ध नहीं; इसलिए इस HEAD पर PASS का दावा नहीं। |
 | 3. Database Runtime | **बाकी / अवरुद्ध** | Isolated TEST schema और वास्तविक PostgreSQL/pgTAP actor/concurrency execution बाकी। Production DB पर migration नहीं लगाई गई। Paid staging branch अभी नहीं बनाई जाएगी; पहले implementation पूरा होगा। |
 | 4. Browser E2E | **बाकी** | Login से booking, offer, timer, bill, payment/refund, support और role-isolation workflows का end-to-end browser acceptance बाकी। |
-| 5. Netlify Preview | **पिछली दर्ज स्थिति: Success** | Founder-photo/Welcome preview की सफलता पहले दर्ज है। इसे इस HEAD की नई deployment-success न समझें; नए preview की स्थिति अलग से verify करनी होगी। |
-| 6. Vercel Preview | **Build Rate Limit** | पिछली जाँच में Vercel build-rate-limit blocker मिला था। इसे pass नहीं माना गया है। |
+| 5. Netlify Preview | **पिछले source HEAD पर Success** | PR source HEAD `5bd2896d` पर Netlify Deploy Preview status success मिला था। नवीनतम documentation HEAD `c8a1e456` पर नया Netlify status उपलब्ध नहीं; इसे नई visual acceptance न समझें। |
+| 6. Vercel Preview | **Pending** | नवीनतम documentation HEAD `c8a1e456` पर Vercel check pending है; इससे पहले source HEAD पर build-rate-limit failure मिला था। अभी successful build प्रमाणित नहीं। |
 | 7. Owner Approval और Release | **बाकी** | Owner approval, PR merge, Production migrations/deploy और release अभी नहीं हुए हैं। |
 
 ## नवीनतम सत्यापित टेस्ट स्थिति
 
-- वर्तमान Code HEAD: `1ec27f8dc7fbbe7c6200f1920481f80388b919bb`
+- वर्तमान Code HEAD: `c8a1e456d1eb5b8c75c6e3c4e2a6e5bf1030a8ba`
 - इस HEAD के लिए GitHub Actions workflow runs: **कोई run उपलब्ध नहीं**। इसलिए इस HEAD पर test pass का दावा नहीं है।
+- इस HEAD का combined status: Vercel **pending**; Netlify status इस documentation commit पर उपलब्ध नहीं। इससे पहले source HEAD `5bd2896d` पर Netlify Deploy Preview **success** और Vercel **failure (build-rate-limit)** था।
 - ऐतिहासिक CI प्रमाण: पुराने HEAD `24aed49029a731e8a88cd33e0093dd2b18689e36` पर run `43843110580` में **358 passed / 0 failed / 0 skipped** दर्ज था। यह परिणाम वर्तमान HEAD पर लागू नहीं माना जाएगा।
 - पुराने HEAD पर अतिरिक्त focused source-contract harness **15/15 passed** दर्ज था; यह भी वर्तमान HEAD का परिणाम नहीं है।
 - यह source/Node CI, DB runtime, Browser E2E या Mobile QA का विकल्प नहीं।
 
 ## GPT-1 का कार्यक्षेत्र
 
+- Master Checklist sections 1, 2 और 6 की checkbox पुनर्गणना: Customer **9/10**, Electrician **9/10**, Welcome/Founder Photo **4/8** — कुल **22/28 = 79% पूरे**, **6/28 बाकी**। पुराने 21/28 (75%) आंकड़े में एक पूर्ण checkbox छूट गया था; Master Checklist में सही गणना अपडेट की गई है।
 - Customer App और Electrician App: implementation तथा source audit जारी।
 - Welcome Screen / Founder-photo integration: पहले पूर्ण दर्ज; बिना defect के दोबारा नहीं खोला जाएगा।
 - हाल के सुधार: account switch पर पुरानी Customer/Electrician Support requests, threads और async responses को नई session UI प्रभावित करने से रोकना।
@@ -144,3 +146,9 @@
 - Final source/test re-fetch पर सभी मुख्य guards और handlers मौजूद; duplicate `async async` declaration नहीं मिली। Latest HEAD `f208be0a5d3943322a56c92c1d5951f877238291` पर GitHub Actions runs की सूची खाली; test execution/pass का दावा नहीं।
 
 **इस Customer OTP/Logout audit batch की मापी हुई प्रगति:** source changes 100%; regression tests लिखे 100%; automated execution/CI 0%; Supabase Auth runtime validation 0%; Browser E2E 0%; Final Mobile QA 0% (implementation समाप्ति के बाद)। यह केवल इस batch का प्रतिशत है। पूरे Customer App/Project का प्रतिशत बदलने से पहले Master Checklist का पुनर्मिलान जरूरी है।
+
+
+### 2026-11-16 — GPT-1 checklist count और latest HEAD reconciliation
+- Master Checklist के Customer (10), Electrician (10) और Welcome/Founder Photo (8) sections के वास्तविक checkboxes पुनर्गिने: Customer 9 पूरे/1 बाकी; Electrician 9 पूरे/1 बाकी; Welcome 4 पूरे/4 बाकी। इसलिए GPT-1 कुल **22/28 = 79%**, **6 बाकी** है। पहले दर्ज 21/28 = 75% एक checkbox कम गिनने के कारण गलत था; Master Checklist header सुधारा गया।
+- PR #8 latest source/documentation HEAD: `c8a1e456d1eb5b8c75c6e3c4e2a6e5bf1030a8ba`; PR OPEN / DRAFT / UNMERGED। इस HEAD पर GitHub Actions workflow run उपलब्ध नहीं; Vercel status pending। इससे पहले source HEAD `5bd2896d898449a6290883c5750b5475a092eb68` पर Netlify Deploy Preview success और Vercel build-rate-limit failure मिला था।
+- यह checklist/dashboard documentation correction है; Customer/Electrician application code, database, provider, deployment, merge या mobile QA में बदलाव नहीं।
