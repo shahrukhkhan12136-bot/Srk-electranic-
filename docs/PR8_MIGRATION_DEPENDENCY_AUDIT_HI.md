@@ -918,3 +918,28 @@ Default-branch code search में `.github/workflows/supabase-schema-ci.yml` 
 अब तक जाँचे गए Feature, Portal, Finance, Direct-UPI, Predeploy, Safe-Payment और Main branch स्रोतों में payout ledger का मूल base-table DDL नहीं मिला। यह अभी भी unresolved dependency है। अगले चरण में नाम-आधारित targeted scan से आगे बढ़कर Git history में `srk_electrician_payouts` वाले earliest introducing commits और उसके संभावित alternate table names/DDL खोजे जाएँगे।
 
 कोई SQL execute/replay, test suite, Production access, workflow dispatch, या merge नहीं किया गया।
+
+
+## 62. GPT-2 Blocker Review — accounting bridge regression gate added
+
+उपयोगकर्ता के निर्देश के अनुसार पाँच Blockers, संबंधित pgTAP और Runtime verification पर अगला pass शुरू किया गया।
+
+### इस pass में प्रमाणित defect और test change
+
+- `20261115150000_admin_readonly_booking_accounting_reconciliation.sql` के `srk_admin_get_booking_accounting_reconciliation(uuid)` में manual payment evidence के लिए booking ID और amount जाँचे जाते हैं, लेकिन `mp.payment_method` को `v_booking.payment_method` से compare नहीं किया जाता।
+- इससे manual payment entry और booking row में Cash/UPI/Bank method अलग होने पर reconciliation exception छूट सकता है।
+- Regression gate जोड़ा: `supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql` का pgTAP plan 15 से 16 किया और assertion जोड़ा कि function में `mp.payment_method is distinct from v_booking.payment_method` guard मौजूद हो।
+- Test change commit: `4f07b9ddc90c654f6e22adc08a655358ed86400c`.
+
+### जरूरी सीमा
+
+यह **test-first regression guard** है, SQL defect का समाधान नहीं। मौजूदा function source में यह comparison नहीं मिला, इसलिए यह नया assertion वर्तमान schema पर fail होने की अपेक्षा रखता है, जब तक follow-up SQL fix लागू न हो। Historical migration को in-place बदलना उचित नहीं; नई ordered migration बनाने से पहले authoritative baseline और migration lineage की समीक्षा जरूरी है।
+
+### Verification status
+
+- Source inspection: **DONE**.
+- Regression assertion added: **DONE**.
+- PostgreSQL/pgTAP execution: **NOT RUN**.
+- Migration replay: **NOT RUN**.
+- Production query/write, workflow dispatch, deployment, merge: **NONE**.
+- पाँचों Blockers: **अभी सभी का समाधान प्रमाणित नहीं**; बाकी चार की जाँच जारी है।
