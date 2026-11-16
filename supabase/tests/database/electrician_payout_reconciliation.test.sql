@@ -123,9 +123,9 @@ select ok(position('v_booking.commission_rate is null' in
   pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))>0,
   'Admin settlement independently rejects missing or out-of-range commission rates');
 
-select ok(position('commission_amount' in
-  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
-  'payout reconciliation trigger also maintains the Admin commission_amount reporting field');
+select ok(position('new.commission_amount := v_commission' in
+  lower(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)))>0,
+  'payout reconciliation trigger writes the same calculated commission into the Admin reporting field');
 
 select * from finish();
 rollback;
