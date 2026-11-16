@@ -546,13 +546,20 @@ async function setElectricianAvailability(available){
   if(!isCurrent())return;
   if(error)throw error;
   if(!data?.success)throw new Error('Availability update not confirmed');
-  alert(available?'अब आप नए काम के ऑफर पाने के लिए उपलब्ध हैं।':'आपकी उपलब्धता बंद कर दी गई है। लंबित ऑफर आगे भेज दिए गए हैं।');
-  if(isCurrent())await refresh();
  }catch(e){
   if(!isCurrent())return;
-  alert('उपलब्धता अपडेट नहीं हुई। कृपया Refresh करके फिर कोशिश करें।');
+  alert('उपलब्धता अपडेट की पुष्टि नहीं हुई। कृपया Refresh करके वर्तमान स्थिति जाँचें; स्थिति स्पष्ट होने तक दोबारा अनुरोध न भेजें।');
   on.disabled=false;off.disabled=false;
+  return;
  }
+ if(!isCurrent())return;
+ alert(available?'अब आप नए काम के ऑफर पाने के लिए उपलब्ध हैं।':'आपकी उपलब्धता बंद कर दी गई है। लंबित ऑफर आगे भेज दिए गए हैं।');
+ try{
+  await refresh();
+ }catch(_){
+  if(isCurrent())alert('उपलब्धता सर्वर पर अपडेट हो गई है, लेकिन Dashboard रीफ़्रेश नहीं हो सका। इंटरनेट लौटने पर Refresh करके वर्तमान स्थिति देखें।');
+ }
+ if(isCurrent()){on.disabled=false;off.disabled=false;}
 }
 const electricianLifecycleBusy=new Set();
 
