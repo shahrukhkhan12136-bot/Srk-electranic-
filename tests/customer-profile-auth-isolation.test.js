@@ -194,7 +194,7 @@ test('customer auth transitions immediately clear identity-scoped profile and bo
 
 test('selecting a saved customer address restores its saved recipient name into the booking form', () => {
   const start = source.indexOf('function applySelectedSavedAddress()');
-  const end = source.indexOf('\\nasync function saveCurrentBookingAddress()', start);
+  const end = source.indexOf('async function saveCurrentBookingAddress()', start);
   assert.ok(start >= 0 && end > start);
   const block = source.slice(start, end);
   assert.ok(block.includes("document.getElementById('name').value=a.recipient_name||''"));
