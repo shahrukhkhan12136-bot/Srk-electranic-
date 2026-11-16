@@ -430,3 +430,20 @@ Reviewed `20261116100000_fix_staff_permission_helper_volatility.sql` and `202611
 - Its SQL predicate `payment_status NOT IN ('paid','refunded')` does not match NULL values (SQL three-valued logic). This is fail-closed for rows with NULL payment_status; confirm whether the intended business rule is to reject NULL or to treat NULL as unpaid before changing it.
 
 **Replay gate:** preserve the ordered dependency chain (Staff RBAC foundation → VOLATILE correction; booking/payment columns → Unicode contract), and verify with PostgreSQL/pgTAP plus a real UTF-8 RPC contract test. None were run in this review.
+
+
+### 13. SECURITY DEFINER search_path pinning batch (16 Nov 2026)
+
+Reviewed seven ordered hardening migrations from `20261116110000` through `20261116170000` and traced their target function definitions in earlier migrations:
+
+- `16110000` pins Admin commission report and both wallet summary/overview RPCs to empty `search_path`.
+- `16120000` pins the private customer-call contact implementation and its public invoker wrapper. The implementation is SECURITY DEFINER and the wrapper SECURITY INVOKER; both schema-qualify application objects.
+- `16130000` repeats the wallet summary/overview pins from `16110000` and additionally pins electrician earnings and customer payment receipt RPCs. The repeated ALTERs are idempotent but redundant; preserve order and consider consolidating only with owner-approved migration-history policy.
+- `16140000` pins the latest `srk_get_my_offer_details()` definition. Its dependency must be after `20261115220000`, which drops/recreates that function with the current output contract.
+- `16150000` pins `srk_admin_review_application(uuid,text)`; its signature was replaced from RETURNS void to RETURNS jsonb in `20261109001500`, so the identity-linking replacement must precede this ALTER. The helper `srk_is_admin()` remains a distinct dependency from `is_srk_admin()` and must exist in the selected baseline.
+- `16160000` uses `ALTER FUNCTION IF EXISTS` for three retired legacy quote/work-status RPCs. Following `20261115220000`, these functions are dropped, so this migration intentionally becomes a no-op on the current replay path. If an older installation retains them, it pins their paths.
+- `16170000` pins the service-role-only public rate-limit RPC; its private rate-limit table and service_role grants originate in `20261108120608`.
+
+The targeted functions' inspected bodies use schema-qualified application/auth relations; an empty path still permits built-ins through implicit `pg_catalog`. These ALTERs do not change function bodies, EXECUTE grants, caller authorization, RLS, or business logic. Static review does not prove all live Production function definitions match the branch source, nor does it prove replay succeeds against a clean baseline.
+
+**Replay ordering gates:** wallet/commission foundations before `16110000`; customer-call private schema/function before `16120000`; earnings and receipt functions before `16130000`; final offer-details definition after `15220000` and before `16140000`; JSONB Admin application-review replacement after `09001500` and before `16150000`; rate-limit foundation before `16170000`. No PostgreSQL replay or pgTAP suite was run.
