@@ -88,3 +88,13 @@ test('Customer cancellation submission reconciles a rejected write through the o
   assert.match(fn,/सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
   assert.match(fn,/अनुरोध Admin के पास लंबित है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
 });
+
+
+test('Customer booking view retains the newest cancellation request when a booking has multiple historical requests', () => {
+  const mapStart=customer.indexOf('const cancellationMap=new Map();');
+  const mapEnd=customer.indexOf('const cancellationFeeMap=',mapStart);
+  assert.ok(mapStart>=0&&mapEnd>mapStart,'cancellation request map exists');
+  const mapCode=customer.slice(mapStart,mapEnd);
+  assert.match(mapCode,/\(cancellationResult\.data\|\|\[\]\)\.forEach\(item=>\{if\(!cancellationMap\.has\(item\.booking_id\)\)cancellationMap\.set\(item\.booking_id,item\);\}\)/);
+  assert.match(cancellationSql,/order by r\.created_at desc/i);
+});
