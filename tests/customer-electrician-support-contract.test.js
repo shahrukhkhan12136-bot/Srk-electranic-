@@ -41,6 +41,15 @@ test('Customer support message send reconciles uncertain RPC responses before al
   assert.match(send, /दोबारा भेजने से पहले बातचीत Refresh करके जाँचें/);
 });
 
+test('Customer complaint uncertain-result reconciliation excludes pre-existing identical complaints', () => {
+  const create = customer.slice(customer.indexOf('async function createCustomerSupportComplaint()'), customer.indexOf('async function loadCustomerSupportAttachments'));
+  assert.match(create, /srk_customer_list_booking_complaints/);
+  assert.match(create, /priorComplaintIds=new Set\(before\.map\(row=>row\.id\)\)/);
+  assert.match(create, /!priorComplaintIds\.has\(row\.id\)/);
+  assert.match(create, /newMatches\.length===1\?newMatches\[0\]:null/);
+  assert.ok(create.indexOf('priorComplaintIds=new Set') < create.indexOf("rpc('srk_customer_create_booking_complaint'"));
+});
+
 test('Customer support SQL enforces complaint ownership and private storage object ownership', () => {
   assert.match(customerSupportSql, /c\.id=p_complaint_id and c\.customer_user_id=v_user_id/);
   assert.match(customerSupportSql, /o\.bucket_id='srk-customer-support'/);
