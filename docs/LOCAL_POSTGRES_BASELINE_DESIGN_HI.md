@@ -25,12 +25,12 @@
 
 ## 3. Core baseline के लिए अभी तक प्रमाणित बातें
 
-- Branch में 71 SQL migration files हैं।
+- वर्तमान branch snapshot में 87 SQL migration files हैं; इनमें 85 filenames 14-digit version से शुरू होते हैं और दो legacy `20261109_*.sql` filenames malformed हैं।
 - शुरुआती migrations core application tables पर `ALTER TABLE`, policies, triggers और functions लगाती हैं; इसलिए migration directory अकेले clean-room baseline नहीं है।
 - `COMPLETE_DATABASE_SETUP.sql` में पाँच core tables दिखती हैं, पर यह नवीनतम migration chain के सभी पुराने columns, constraints, triggers या platform objects की पूर्ण परिभाषा नहीं है। इसे बिना reconciliation के fixture या canonical schema नहीं मानना है।
 - Customer profile/avatar/support migrations `auth.users`, `auth.uid()` और Storage objects का संदर्भ देती हैं।
 - Refund, payout, booking, timer, dispatch और audit migrations कई पहले से मौजूद booking/profile columns तथा helper schemas पर निर्भर हैं।
-- 33 pgTAP SQL test files मौजूद हैं। वर्तमान Node plan-count test केवल `plan()` और assertion-call संख्या मिलाता है; SQL execute नहीं करता।
+- वर्तमान branch snapshot में 32 pgTAP SQL test files मौजूद हैं। वर्तमान Node plan-count test केवल `plan()` और assertion-call संख्या मिलाता है; SQL execute नहीं करता।
 
 ## 4. Fixture लिखने से पहले अनिवार्य dependency inventory
 
@@ -60,7 +60,7 @@
 1. **Static dependency gate:** हर migration dependency या तो bootstrap/baseline में परिभाषित हो या पहले की migration में निर्मित हो।
 2. **Clean-room gate:** खाली disposable PostgreSQL से bootstrap + baseline + पूरी migration chain बिना manual SQL edits के replay हो।
 3. **Version gate:** migration versions unique हों या स्पष्ट, tested legacy handling मौजूद हो।
-4. **pgTAP gate:** सभी 33 SQL test files वास्तव में execute हों; केवल plan count पर्याप्त नहीं।
+4. **pgTAP gate:** सभी 32 SQL test files वास्तव में execute हों; केवल plan count पर्याप्त नहीं।
 5. **Role/RLS gate:** anon, authenticated (कम-से-कम customer/electrician/support/admin synthetic identities) और service_role contexts में authorization tests चलें।
 6. **Repeatability gate:** नया database बनाकर पूरा run दोहराने पर वही परिणाम मिले।
 7. **Isolation gate:** CI में production secrets/URLs अनुपस्थित हों; test job disposable service container के अतिरिक्त किसी DB host से connect न कर सके।
@@ -70,6 +70,6 @@
 
 इस कार्य-सत्र के environment check में `psql`, `postgres`, `docker`, `podman` और `pg_virtualenv` executables उपलब्ध नहीं मिले। इसलिए अभी local PostgreSQL container शुरू करके runtime दावा करना संभव नहीं है।
 
-अगला कदम source-only dependency manifest बनाना है—विशेषकर core table columns, Auth/Storage object contracts, extensions और शुरुआती migration prerequisites। उसके बाद CI में disposable PostgreSQL service जोड़ने की feasibility जाँची जाएगी। जब तक clean-room replay और pgTAP वास्तविक रूप से न चलें, SQL runtime को **असत्यापित** ही माना जाएगा।
+अब `scripts/pr8-replay-preflight.mjs` और `npm run test:pr8-replay-preflight` जोड़े गए हैं। यह केवल filenames/counts/config की static जाँच करता है; database connection या SQL execution नहीं करता। मौजूदा snapshot में `supabase/config.toml` अनुपस्थित है और दो migration filenames malformed हैं, इसलिए यह preflight जानबूझकर BLOCKED परिणाम देगा। अगला कदम source-only dependency manifest और पूर्ण baseline fixture का प्रमाण-आधारित निर्माण है; उसके बाद ही isolated PostgreSQL/CI replay बनाया जाएगा। जब तक clean-room replay और pgTAP वास्तविक रूप से न चलें, SQL runtime को **असत्यापित** ही माना जाएगा।
 
 **वर्तमान GPT-2 checklist:** 27/39 = 69% पूरा; 12/39 बाकी। यह डिज़ाइन/अतिरिक्त hardening checklist item closure नहीं है, इसलिए प्रतिशत नहीं बढ़ाया गया।
