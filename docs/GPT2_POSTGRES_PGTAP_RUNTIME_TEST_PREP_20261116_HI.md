@@ -2233,3 +2233,17 @@ ORDER BY column_name;
 - Overall project: **56/86 = 65%** (इस audit से अपरिवर्तित)।
 - CI percentage: **Not measured — denominator formally defined नहीं**। Latest commit पर प्रत्येक provider/workflow status को अलग-अलग evidence के साथ report करना होगा; कोई fabricated combined score नहीं।
 - यह section metric/reporting policy है; कोई application code, test, workflow, database, payment provider, merge या deployment नहीं बदला/चलाया गया।
+
+
+## 65. Admin legacy booking/payment UI contract — source-string verification
+
+- Re-read the current `admin.html` and `tests/admin-legacy-quote-retirement.test.js` at the branch head after the assertion correction.
+- Performed an in-memory source-string verification of the five test-case areas and their concrete predicates:
+  1. Status confirmation control is exposed only for an unassigned legacy `new` booking.
+  2. Historical quote display cell is read-only (no input/select/button/onclick).
+  3. Status confirmation uses the dedicated `srk_admin_confirm_legacy_booking` RPC.
+  4. Non-editable status value remains present in the hidden field used by the shared Save handler.
+  5. Manual payment controls and dedicated RPC paths exist; payment status guard matches current source; no direct `service_bookings.update()` write is exposed in this Admin source.
+- Result: **7/7 source predicates PASS**. These are in-memory source checks only, not execution of Node's `node --test` runner. No test-runner PASS is claimed.
+- Current handler also requires an actual completed booking and valid receipt/UTR before recording manual payment; online Razorpay-linked bookings remain on the verified Razorpay flow. This was source-inspected, not runtime-tested.
+- No application code, SQL, database, workflow, payment provider, CI dispatch, merge, or deployment was changed or invoked by this verification.
