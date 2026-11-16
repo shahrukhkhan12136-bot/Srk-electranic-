@@ -646,3 +646,10 @@
 - [x] Latest PR #8 head `0755c94a28239a7a20e11a2490d93b75540d57c1`, GitHub Actions run `43859720987`, job `133273045255`: **384/384 PASS, 0 FAIL, 0 cancelled**. Final TAP summary verified from the job log.
 - [ ] PostgreSQL/Supabase migration replay and pgTAP runtime remain NOT RUN. Authoritative baseline, early `is_srk_admin()`/ `amount_paid` dependency order, and duplicate `20261109` remote history remain unresolved.
 - **GPT-2 progress remains 27/39 = 69%**. This source-only CI pass does not close database/runtime checklist items. PR #8 remains open, draft, unmerged; no Production access, deployment, or merge.
+
+
+### 2026-11-16 — Consolidated database setup cross-check
+- [x] Checked `COMPLETE_DATABASE_SETUP.sql` as a second possible bootstrap source: it defines both distinct Admin helper names in separate sections, including `public.is_srk_admin()`, but has no `service_bookings.amount_paid` column in its base table definition.
+- [x] Confirmed the standalone `SUPABASE_SCHEMA.sql` starter definition also omits `amount_paid`; the late restore migration remains later than the earlier commission-reporting GRANT/consumers.
+- [ ] Helper provenance/order in the numbered migration lineage and authoritative canonical baseline remain unresolved. The source presence of a helper in a manual consolidated setup file is not proof that a clean migration replay creates it before the first dependent migration.
+- No SQL/setup file changed, no database was accessed, and no runtime test was run. **Progress remains 27/39 = 69%.**
