@@ -6,16 +6,13 @@
 **Audited head:** `9590d903c5bf960d9660187962eec8b85a1707e0`  
 **Scope:** read-only source verification. No database connection/query, SQL execution, migration replay, DDL, workflow dispatch, merge, deployment, or Production operation.
 
-## 1. Re-verified amount_paid order gate
+## 1. `amount_paid` order gate — corrected after full migration inspection
 
-Current source still shows:
+The starter `SUPABASE_SCHEMA.sql` / `COMPLETE_DATABASE_SETUP.sql` table definitions omit `amount_paid`, but `20261109003000_secure_commission_reporting.sql` begins by adding `amount_paid numeric(12,2)` with `ADD COLUMN IF NOT EXISTS`. That DDL appears before its report/earnings function definitions and before the column-level UPDATE grant. Therefore the earlier conclusion that this migration grants a missing column was incorrect and is withdrawn.
 
-- `SUPABASE_SCHEMA.sql` / starter `service_bookings` definition does not declare `amount_paid`.
-- `20261109003000_secure_commission_reporting.sql` reads `amount_paid` in its report RPCs and executes the immediate column-level statement:
-  `GRANT UPDATE (status, quoted_amount, amount_paid, payment_status) ON TABLE public.service_bookings TO authenticated;`
-- `20261116200000_restore_service_bookings_amount_paid.sql` is the explicit source introduction and adds nullable `numeric(12,2)` plus a nonnegative CHECK marked `NOT VALID`.
+`20261116200000_restore_service_bookings_amount_paid.sql` is a later idempotent restore/constraint migration, not the first visible introduction. The quote migration's PL/pgSQL function references `NEW.amount_paid`, but the quote migration does not attach that function to a trigger; function definition alone does not establish an execution-time missing-column failure.
 
-A column-level GRANT cannot name a missing column. Therefore, **if the approved clean-install baseline omits amount_paid**, replay reaches an earlier consumer before the late ADD COLUMN migration. This is a source-level, high-confidence ordering blocker; no runtime reproduction was performed. The late migration does not by itself prove the historical deployed column definition or repair an earlier replay failure.
+The actual commission defect found on re-check is separate: the quote migration defines a service-only commission trigger function but leaves the starter setup's old quoted-total trigger attached. See the updated PR#8 audit report. No PostgreSQL replay was performed.
 
 ## 2. Admin helper bootstrap gate
 
@@ -38,7 +35,7 @@ A clean disposable replay is **BLOCKED** until all of the following are establis
 
 1. Approved canonical starter baseline and provenance.
 2. An approved placement for `public.is_srk_admin()` before its earliest consumer.
-3. A baseline/order that makes `service_bookings.amount_paid` exist before the earlier column-level GRANT and other consumers.
+3. A verified trigger replacement that binds the service-only commission function after its prerequisites exist, with pgTAP coverage for event columns and report/payout consistency.
 4. Owner/DBA-supplied sanitized evidence resolving duplicate `20261109` migration history.
 5. A pinned, isolated local PostgreSQL/Supabase + pgTAP harness.
 
@@ -90,7 +87,7 @@ No setup SQL or numbered migration was edited. No SQL was executed and no databa
 |---|---|---|---|
 | `20261108234000_combine_booking_read_policy.sql` | `public.is_srk_admin()` | `COMPLETE_DATABASE_SETUP.sql` manual consolidated setup contains it; no earlier numbered migration introducing it was identified | Baseline/helper bootstrap must precede this policy migration |
 | `20261109001000_add_google_maps_location_support.sql` | `public.is_srk_admin()` | Same manual setup artifact; function is called by an Admin RPC | Must be present before function creation/execution path is used |
-| `20261109003000_secure_commission_reporting.sql` | `service_bookings.amount_paid` and `public.is_srk_admin()` | `amount_paid` is added by later `20261116200000_restore_service_bookings_amount_paid.sql`; helper is in consolidated manual setup | Definite source-order conflict: column-level GRANT and report RPC reference amount_paid before the late ADD COLUMN file |
+| `20261109003000_secure_commission_reporting.sql` | `service_bookings.amount_paid` and `public.is_srk_admin()` | This migration adds `amount_paid` at its start; helper is in consolidated manual setup | Column-order blocker not supported by current source; Admin-helper provenance remains a separate baseline question |
 | `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | quote columns/status and `amount_paid` in trigger logic | This migration itself adds quote fields, but its trigger references `amount_paid`; same-prefix peer exists | Must resolve base payment column before trigger creation; duplicate version prefix needs authoritative history/order |
 | `20261114125844_restore_financial_audit_core_schema.sql` | `amount_paid`, quote fields, helper | Existing prior migrations/manual setup; references financial booking fields in audit snapshots | Must only be placed after all required booking columns and helper exist |
 | `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` | `amount_paid`, quote fields, payout/receipt tables, helper | Prior financial-core and booking migrations | Later consumer; not a candidate bootstrap fix |
