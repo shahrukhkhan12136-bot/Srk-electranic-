@@ -51,3 +51,12 @@ The quote workflow migration includes the same high-level status and assignment 
 ## Safety boundary
 
 Production was accessed only through read-only project, migration-ledger, and table-schema inspection. No SQL was executed against Production. No migration was applied, renamed, deleted, or reordered. No test is represented as passed.
+
+
+### 2026-11-16 follow-up: repository-wide source recovery attempt
+
+A follow-up read-only search checked the `supabase/migrations` directory on all 22 repository branches returned by GitHub's branch API, including `main`, the PR #8 source branch, the replay-prep branches, and the payment/refund feature branches. None contained a migration filename matching `20261108095928`, `actual_paid`, `amount_paid`, or `status_history`. The GitHub commit-history endpoint queried for the exact expected path `supabase/migrations/20261108095928_add_actual_paid_amount_commission_and_status_history.sql` returned an empty list. Repository-scoped code searches for `actual_paid_amount`, `status_history commission_rate`, and the exact ledger migration name returned no matching source file.
+
+The repository commit search for `amount_paid` surfaced two relevant consumer-code commits, not the missing DDL: `d7c7fc9800141195023453c7781d34b7e03bdc41` (“Record verified Razorpay amount paid”) and `1983b7334dfcd138ecc3dcf0f920b81ddfe671ee` (“Record webhook captured amount paid”). Their presence shows application code consuming/storing the field, but does not establish the SQL that originally created the column, commission fields, or status history.
+
+**Updated conclusion:** the original migration source was not recovered from any of the 22 currently listed branches, the queried exact-path history, or the repository-scoped searches performed in this audit. This is stronger negative evidence than the earlier PR-head-only search, but it is not proof that no source exists in deleted refs, inaccessible forks, local backups, Supabase migration artifacts, or owner-held exports. Do not recreate or backdate the original migration from inference. Request the original SQL/commit artifact or an owner-approved schema-only historical export and compare its complete DDL to the live schema before deciding how to reconcile the source tree.
