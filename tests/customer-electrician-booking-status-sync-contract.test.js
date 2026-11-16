@@ -155,7 +155,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
 
   for (const fn of [customerStart, customerCompletion]) {
     assert.match(fn, /catch\s*\(/);
-    assert.match(fn, /finally\s*\{\s*customerLifecycleBusy\.delete\(bookingId\)/);
+    assert.match(fn, /finally\s*\{\s*customerLifecycleBusy\.delete\(requestKey\)/);
     assert.match(fn, /नेटवर्क जवाब नहीं मिला/);
   }
   for (const fn of [electricianStart, electricianCompletion]) {
@@ -271,7 +271,7 @@ test('Electrician push disable removes server endpoint before browser unsubscrib
   const deleteIndex=disable.indexOf("sb.from('srk_push_subscriptions').delete()");
   const unsubscribeIndex=disable.indexOf('sub.unsubscribe()');
   assert.ok(deleteIndex>=0&&unsubscribeIndex>deleteIndex,'server endpoint must be removed before local subscription is stopped');
-  assert.match(disable,/if\(error\)throw error;const stopped=await sub\.unsubscribe\(\)/);
+  assert.match(disable,/if\(error\)throw error;\s*const stopped=await sub\.unsubscribe\(\)/);
   assert.match(disable,/finally\{await refreshElectricianPushState\(\);\}/);
 });
 
@@ -282,8 +282,8 @@ test('Electrician push enable rolls back only a newly created browser subscripti
   assert.ok(start>=0&&end>start);
   const enable=electrician.slice(start,end);
   assert.match(enable,/let newlyCreatedSubscription=null/);
-  assert.match(enable,/if\(!sub\)\{sub=await reg\.pushManager\.subscribe\([\s\S]*?newlyCreatedSubscription=sub;\}/);
-  assert.match(enable,/newlyCreatedSubscription=null;await refreshElectricianPushState\(\)/);
+  assert.match(enable,/if\(!sub\)\{sub=await reg\.pushManager\.subscribe\([\s\S]*?newlyCreatedSubscription=sub;/);
+  assert.match(enable,/newlyCreatedSubscription=null;\s*await refreshElectricianPushState\(\)/);
   assert.match(enable,/catch\(err\)\{if\(newlyCreatedSubscription\)\{try\{await newlyCreatedSubscription\.unsubscribe\(\)/);
   assert.match(enable,/button\.disabled=false/);
 });
@@ -297,7 +297,7 @@ test('Electrician push state allows re-syncing an existing browser subscription'
   assert.match(state,/state\.textContent=sub\?'इस ब्राउज़र पर Push Subscription मौजूद है। सर्वर पंजीकरण दोबारा सिंक करने के लिए Enable दबा सकते हैं।'/);
   assert.match(state,/on\.disabled=permission==='denied';off\.disabled=!sub/);
   const enable=electrician.slice(electrician.indexOf('async function enableElectricianPushNotifications()'),electrician.indexOf('async function disableElectricianPushNotifications()'));
-  assert.match(enable,/let sub=await reg\.pushManager\.getSubscription\(\);if\(!sub\)\{sub=await reg\.pushManager\.subscribe/);
+  assert.match(enable,/let sub=await reg\.pushManager\.getSubscription\(\);if\(!isCurrent\(\)\)return;if\(!sub\)\{sub=await reg\.pushManager\.subscribe/);
   assert.match(enable,/sb\.from\('srk_push_subscriptions'\)\.upsert/);
 });
 
@@ -433,7 +433,7 @@ test('Customer and electrician lifecycle actions distinguish confirmed RPC succe
   const electricianStart = functionBody(electrician, 'electricianRequestWorkStart');
   const electricianCompletion = functionBody(electrician, 'electricianRequestWorkCompletion');
   for (const fn of [customerStart, customerCompletion]) {
-    assert.ok(fn.includes("try{await loadCustomerBookings();}catch(_){alert('आपका जवाब सर्वर पर दर्ज हो गया है"), 'confirmed customer action has separate refresh-failure feedback');
+    assert.ok(/try\{await loadCustomerBookings\(\);if\(!isCurrent\(\)\)return;\}catch\(_\)\)\{if\(isCurrent\(\)\)alert\('आपका जवाब सर्वर पर दर्ज हो गया है/, 'confirmed customer action has separate refresh-failure feedback');
     assert.ok(fn.includes('await loadCustomerBookings();') && fn.includes('नेटवर्क जवाब नहीं मिला।'), 'uncertain customer RPC still refreshes authoritative bookings');
     assert.ok(fn.includes('स्थिति रीफ़्रेश करके जाँचें'), 'uncertain customer outcome asks user to check current status');
   }
