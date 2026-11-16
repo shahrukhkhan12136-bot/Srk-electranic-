@@ -107,7 +107,7 @@ test('Customer payment-method change handles rejected RPC and unconfirmed respon
   assert.match(fn, /if\(!customerSb\|\|!id\)return/);
   assert.match(fn, /try\{/);
   assert.match(fn, /customerSb\.rpc\('srk_customer_change_payment_method'/);
-  assert.match(fn, /if\(!data\?\.success\)throw new Error/);
+  assert.match(fn, /if\(data!==true\)throw new Error/);
   assert.match(fn, /catch\(error\)\s*\{\s*if\(!isCurrent\(\)\)return;\s*try\{await loadCustomerBookings\(\)/);
   assert.match(fn, /सर्वर का जवाब स्पष्ट नहीं मिला/);
   assert.match(fn, /पुष्टि किए बिना दोबारा अनुरोध न भेजें/);
