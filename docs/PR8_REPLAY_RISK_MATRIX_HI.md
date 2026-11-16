@@ -505,3 +505,14 @@ The Production migration ledger returned only **two** remaining entries (not fiv
 After identifying the ordered dependency conflict, the branch-only migration `20261115170000_admin_route_transfer_accounting_reconciliation.sql` was revised in commit `29135103d4f31d63da47dfca1660990812d17ee1`. It no longer queries `public.srk_route_transfers` or references that table in static SQL. The reconciliation JSON keeps the existing Route keys for response-shape compatibility, returns zero/empty values, and marks the evidence state as `route_ledger_retired_no_route_transfers`. The Admin manual payout path remains authoritative; this change does not create, settle, or initiate transfers.
 
 Fetch-back verification confirms the revised file contains no `FROM public.srk_route_transfers` query and retains the zero-valued compatibility fields. This resolves the specific source-level dependency previously identified. It is **not** proof of clean PostgreSQL replay: no PostgreSQL environment was available/run and pgTAP remains unexecuted. No Production SQL, deployment, payment/refund operation, or PR merge was performed.
+
+
+## Follow-up resolution — later Route reconciliation replacement
+
+A second ordered dependency was found during the follow-up scan: `20261115180000_admin_route_recipient_and_settlement_validation.sql` replaces the same reconciliation function after the Route ledger retirement, but its original body still contained 12 references to `public.srk_route_transfers`. This later replacement would have reintroduced the replay dependency even after the 17:00 migration was fixed.
+
+The 18:00 migration was therefore revised on the audit branch in commit `1f8d8bcdfc83c6b006ad6a9def010f453a979d63`. It now removes the Route-table queries and recipient/settlement validation block, retains the Route JSON keys as zero/empty compatibility values, and explicitly reports `route_ledger_retired_no_route_transfers`. The function comment no longer claims that Route settlement evidence is inspected.
+
+Fetch-back verification of the revised 18:00 file confirms **zero** `srk_route_transfers` references and all compatibility fields are present. A static scan of the remaining later migrations from 19:00 onward and the 15:00–17:00 follow-up migrations found no additional `srk_route_transfers` references in the inspected files. This is a bounded source scan, not proof that every SQL object or dynamic-SQL string in the repository is dependency-free.
+
+**Replay status remains unverified:** no PostgreSQL clean replay or pgTAP execution was performed. The edits are on `chore/pr8-replay-audit-20261116-v2` only, not PR #8 head; Production remains untouched and PR #8 remains unmerged.
