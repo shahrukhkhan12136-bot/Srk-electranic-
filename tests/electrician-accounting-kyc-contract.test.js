@@ -21,6 +21,13 @@ test('KYC uploads enforce allowlisted document types, MIME types and 5 MB size c
   assert.match(upload, /file\.size>5242880/);
   assert.match(upload, /upsert:false/);
   assert.match(upload, /srk_electrician_submit_verification_document/);
+  assert.match(upload, /requestedUserId=user\?\.id,requestedProfileId=profile\?\.id,requestedGeneration=electricianAccountViewGeneration/);
+  assert.match(upload, /if\(!isCurrent\(\)\)return/g);
+  assert.match(upload, /if\(isCurrent\(\)\)\{[\s\S]*electricianKycUploadBusy=false;/);
+  const clearStart=electrician.indexOf('function clearElectricianAccountView()');
+  const clearEnd=electrician.indexOf('function init()',clearStart);
+  assert.ok(clearStart>=0&&clearEnd>clearStart);
+  assert.match(electrician.slice(clearStart,clearEnd), /electricianKycUploadBusy=false/);
 });
 
 test('KYC document preview uses owner-scoped RPC and a short-lived signed URL', () => {
