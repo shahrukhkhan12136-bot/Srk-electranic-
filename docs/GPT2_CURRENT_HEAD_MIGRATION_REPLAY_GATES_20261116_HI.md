@@ -71,3 +71,14 @@ Current repository configuration was checked again at the audited PR head:
 - Node CI at the latest audited head is a separate source-contract signal; latest verified run in this workstream: `43859192973`, **384/384 PASS**.
 - PostgreSQL migration replay and pgTAP remain **NOT RUN**.
 - No workflow was dispatched or modified; no database connection, schema export, SQL execution, or Production access was made in this recheck.
+
+
+## 7. Consolidated setup cross-check — 16 Nov 2026
+
+A second candidate bootstrap file, `COMPLETE_DATABASE_SETUP.sql`, was inspected directly at the current branch:
+
+- It **does define** `public.is_srk_admin()` in its later Admin compatibility section, while its earlier setup section defines the distinct legacy `public.srk_is_admin()`. This means the helper definition exists in a consolidated manual setup artifact; the narrower unresolved question is its authoritative placement/provenance in the numbered migration lineage and whether that consolidated file is the approved canonical replay baseline.
+- It does **not** define `service_bookings.amount_paid` in its table creation. The separate `SUPABASE_SCHEMA.sql` starter definition also omits that column.
+- Therefore the amount-column ordering blocker remains independently confirmed against both checked-in setup candidates. The helper gate is refined, not cleared: a manual setup script contains the required helper, but the numbered migration sequence still has no verified introducing migration before early consumers.
+
+No setup SQL or numbered migration was edited. No SQL was executed and no database was accessed.
