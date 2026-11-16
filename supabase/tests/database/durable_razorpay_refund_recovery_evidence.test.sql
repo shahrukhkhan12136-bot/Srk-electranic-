@@ -17,7 +17,17 @@ select ok(position('REFUND_RECOVERY_EVIDENCE_IS_APPEND_ONLY' in pg_get_functiond
 select ok(position('ONLY_VERIFIED_PROCESSED_PROVIDER_EVIDENCE_CAN_FINALIZE' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'only provider processed evidence can finalize accounting');
 select ok(position('RECOVERY_EVIDENCE_TOO_OLD_REFRESH_PROVIDER_STATUS' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'stale evidence cannot finalize accounting');
 select ok(position('ELECTRICIAN_PAYOUT_MUST_REMAIN_BLOCKED_DURING_REFUND_RECOVERY' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'payout must remain blocked during recovery finalization');
-select ok(position('BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'verified full refund closes the blocked electrician payout as refunded');
+select ok(position('update public.service_bookings set payment_status=''refunded''' in lower(
+  pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>0
+  and position('select * into v_payout from public.srk_electrician_payouts where id=v_payout.id' in lower(
+  pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>
+    position('update public.service_bookings set payment_status=''refunded''' in lower(
+  pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))
+  and position('v_payout.payout_status is distinct from ''refunded''' in lower(
+  pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>0
+  and position('BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' in
+  pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,
+  'recovery finalizer relies on the booking trigger, then verifies blocked payout is refunded without a duplicate write');
 select ok(position('RECOVERY_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTION' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0
   and position('v_audit.amount_paise is distinct from round(v_booking.amount_paid*100)::bigint' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,
   'recovery finalization independently requires the provider refund to equal the full verified booking collection');
