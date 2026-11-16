@@ -1997,3 +1997,38 @@ Disposable Local Supabase environment बनने के बाद नीचे
 - Harness must use a dedicated local project, pinned CLI/runtime versions, pgTAP enabled, and no remote `SUPABASE_DB_URL`. Do not create a remote TEST project, run migration replay, or alter CI until owner approval and environment evidence are available.
 - Acceptance gate: all existing 32 pgTAP files plus new KYC runtime cases pass on clean disposable replay; duplicate migration token and baseline dependency blockers from Sections 50–52 must be resolved through reviewed test-only replay manifest, not silent production migration edits.
 - Current state: **specification written only**. No `supabase/config.toml`, Docker harness, runtime test file, Auth fixture, Storage upload/delete, pgTAP execution, migration replay or CI dispatch created/run.
+
+## 58. Admin RBAC + Electrician identity — runtime actor matrix — 16 Nov 2026
+
+### Existing static pgTAP scope
+- `admin_staff_rbac_foundation.test.sql` declares `plan(69)`. Source checks include staff/permission/session/audit tables, Support's seven seeded permissions, absence of finance/payment/wallet/refund/payout/KYC/staff-management/private-contact grants, SECURITY DEFINER + empty search_path, active staff/live Auth session/revoked-session guards, session locking, assigned customer/electrician support RPC presence, audit append-only trigger and selected schema constraints.
+- `electrician_profile_identity_linking.test.sql` declares `plan(13)`. Source checks identity columns/index, sync and guard triggers, verified phone match, ambiguous Auth/profile rejection, unique auto-link behavior, identity mismatch rejection, trigger coverage/order and Admin review uniqueness.
+- These are static catalog/function-definition assertions. They do not yet establish that distinct live JWT actors receive the intended allow/deny outcomes under concurrent or mismatched runtime data.
+
+### Required disposable TEST runtime scenarios
+| ID | Actor / setup | Action | Expected result |
+|---|---|---|---|
+| RBAC-01 | Active Support staff with assigned customer case | List assigned case and reply | Allow only assigned case; sender audit identifies staff UID |
+| RBAC-02 | Same Support staff; unassigned customer case | Read/reply/update | Deny |
+| RBAC-03 | Active Support staff; assigned electrician ticket | Read/reply/update | Allow only assigned ticket |
+| RBAC-04 | Support staff | Read KYC, commission, wallet, payment/refund/payout or staff registry | Deny |
+| RBAC-05 | Suspended or disabled Support staff | Call otherwise permitted support RPC | Deny |
+| RBAC-06 | Revoked tracked staff session | Call permission helper and support RPC | Deny immediately |
+| RBAC-07 | Main Admin | Assign/reassign support case and inspect staff audit | Allow; immutable audit entry recorded |
+| RBAC-08 | Support staff | Attempt Main Admin assignment/status/session-revoke RPC | Deny |
+| ID-01 | Exactly one phone-confirmed Auth user + one eligible approved profile with matching normalized phone | Link profile | Allow and synchronize both identity columns |
+| ID-02 | Two verified Auth users share normalized phone | Auto-link | Fail closed; no profile linked |
+| ID-03 | Two eligible profiles share normalized phone | Auto-link | Fail closed; no ambiguous profile selected |
+| ID-04 | Existing profile has conflicting non-null `user_id` and `auth_user_id` | Update identity | Reject; preserve prior linkage |
+| ID-05 | Auth user phone is unconfirmed or mismatched | Link profile | Reject |
+| ID-06 | Same Auth UID already linked to another profile | Link second profile | Unique constraint rejects duplicate linkage |
+| ID-07 | Concurrent attempts to link same profile / same Auth UID | Run two transactions | At most one valid link; no cross-user linkage |
+| ID-08 | Phone or approval status changes after linking | Update profile | Guard revalidates; invalid identity transition rejected |
+
+### Safety and test design
+- Every role scenario must use distinct synthetic Auth users and JWT claims, not just database role switching. Include positive and negative calls for the same RPC.
+- Session revocation/suspension tests must prove the next request is denied, not merely that a revoked_at/status column changed.
+- Identity race tests require two concurrent transactions in isolated TEST; sequential static assertions are insufficient.
+- Use synthetic contact/case/document records only. Never seed real user PII or use production Auth identities.
+- Runtime acceptance requires RBAC, identity, KYC and existing remaining database contracts all passing on clean isolated replay; current repo has no `supabase/config.toml`, no Docker harness, and no executable pgTAP run recorded.
+- Current state: **matrix specification only**. No test code, config, Docker, Auth fixture, SQL execution, remote DB connection or CI workflow was created or run.
