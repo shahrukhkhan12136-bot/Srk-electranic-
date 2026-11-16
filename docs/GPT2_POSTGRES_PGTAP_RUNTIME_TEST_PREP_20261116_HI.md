@@ -17,7 +17,7 @@
   - `supabase/tests/database/admin_staff_rbac_foundation.test.sql` — pgTAP `plan(69)`; assertion call count 69 (finish सहित)।
   - `supabase/tests/database/sos_admin_support_alerts.test.sql` — pgTAP `plan(28)`; assertion call count 28 (finish सहित)।
 - RBAC permission helper की row-locking implementation को `VOLATILE` करने वाली migration `20261116100000_fix_staff_permission_helper_volatility.sql` है। Test में helper का `provolatile='v'` होना भी जाँचा जाता है।
-- `docs/MIGRATION_REPLAY_MANIFEST_HI.md` में duplicate `20261109` version prefixes, missing authoritative `service_bookings.amount_paid` definition, unresolved electrician identity column baseline और historical schema/migration-history gaps दर्ज हैं। वह manifest खुद को execution-ready नहीं बताता।
+- `docs/MIGRATION_REPLAY_MANIFEST_HI.md` के नवीनतम audit के अनुसार `electrician_profiles.auth_user_id` की introducing DDL मौजूद है और `service_bookings.amount_paid` की source DDL भी अब branch में जोड़ी गई है। फिर भी `amount_paid` restore migration का timestamp कई पुराने migrations के बाद है, जबकि वे column को पहले ही GRANT/REVOKE/function logic में उपयोग करते हैं; इसलिए clean-replay dependency order unresolved है। Duplicate `20261109` lineage और authoritative baseline/migration history भी अभी unresolved हैं। Manifest execution-ready नहीं है।
 
 ## 3. Replay से पहले अनिवार्य gates
 
