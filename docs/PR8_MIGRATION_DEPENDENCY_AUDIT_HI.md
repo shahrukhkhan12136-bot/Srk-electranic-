@@ -722,3 +722,35 @@ Feature branch की migration list (58 SQL files) और payment flow के �
 SUPABASE_SCHEMA.sql में core booking/profile tables हैं, पर wallet foundation नहीं; PORTAL_SCHEMA.sql Auth-linked Admin/profile additions करता है; COMPLETE_DATABASE_SETUP.sql दोनों के duplicated/consolidated रूप रखता है। इनमें से किसी को अकेले इस feature migration chain का प्रमाणित canonical baseline नहीं माना गया। पहले exact columns, constraints, functions, schemas और migration ledger का crosswalk बनाना बाकी है।
 
 **स्थिति:** यह matrix source-level है। Migration parser, PostgreSQL replay, pgTAP और concurrent test अभी नहीं चले। कोई Production query/write, workflow dispatch या Supabase branch creation नहीं हुई।
+
+
+## 52. Labour Timer Migration — प्रत्यक्ष schema footprint का विस्तृत मिलान
+
+Migration `20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql` (2,678 lines) को सीधे पढ़कर migration द्वारा बनाए/बदले गए objects और बाहर से अपेक्षित objects अलग किए।
+
+### इस migration द्वारा बनाए जाने वाले मुख्य objects
+
+- Tables: `srk_booking_labour_bills`, `srk_private.work_timer_authorizations`, `electrician_cash_cycles`, `cash_offer_reservations`।
+- `service_bookings` में timer elapsed/origin और immutable rate-tier snapshot के पाँच columns; timer और snapshot validity constraints।
+- `srk_wallet_ledger` पर cash-cycle संबंधी बदलाव/constraints।
+- Triggers: immutable labour bill guard, server timer guard, cash-offer reservation handler और cancellation पर pre-work cash-cycle release।
+- Payment-facing helper: `srk_service_get_labour_bill_for_payment(uuid)`; यह migration उसी immutable bill से payment amount पढ़ने का contract स्थापित करती है।
+
+### Migration से पहले उपलब्ध होने वाले प्रमुख objects
+
+इस migration में `CREATE TABLE` न मिलने के बावजूद निम्न objects को read/write/alter किया जाता है; इसलिए baseline/पूर्व migrations में इनका पूरा schema होना चाहिए:
+
+- `public.service_bookings` — status, customer/electrician assignment, selected category, timer, completion approval, payment, quote, cancellation और refund संबंधी columns।
+- `public.electrician_profiles` — profile/user linkage, verification और approved rate tier संबंधी fields।
+- `public.job_offers` — booking/electrician offer और cash-cycle state।
+- `public.srk_wallet_ledger` — migration इसे alter भी करती है; Wallet Foundation `20261109010000` पहले चलना चाहिए।
+- `public.srk_wallet_accounts`, `public.srk_wallet_bank_links`।
+- अन्य accounting/workflow relations जिनका उपयोग migration में है: `srk_booking_complaints`, `srk_manual_payment_entries`, `srk_electrician_payouts`, `srk_razorpay_refunds`, `srk_booking_refund_requests`, `srk_customer_category_skill_rules`।
+- Supabase `auth.users`, `auth.uid()`, `auth.jwt()`, और Supabase roles/schema।
+- पहले से मौजूद Admin/auth helper जैसे `is_srk_admin()`; साथ ही पुराने RPCs/trigger contracts जिनको migration replace या wrap करती हैं।
+
+### Test baseline के लिए निष्कर्ष
+
+यह migration isolated payment fixture में अकेले जोड़ने योग्य नहीं है। सही replay chain के लिए केवल table names नहीं, बल्कि ऊपर के relations के आवश्यक columns, FK targets, unique/check constraints, trigger order, grants/RLS, helper function signatures और referenced return columns भी baseline में होने चाहिए। Migration में dynamic SQL/conditional branches भी हैं; इसलिए regex-आधारित सूची पूर्ण dependency proof नहीं है।
+
+**स्थिति:** यह विस्तृत source footprint है, PostgreSQL parser/replay नहीं। कोई test execution, Production query/write, workflow dispatch या hosted Supabase branch creation नहीं की गई। अगला audit pass हर बाहरी relation के exact referenced columns और prerequisite migration owner को crosswalk करेगा।
