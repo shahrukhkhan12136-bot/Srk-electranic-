@@ -155,3 +155,28 @@ test('missing electrician profile removes the stale realtime offer subscription'
   assert.match(missingProfile, /if\(offersChannel\)\{const oldChannel=offersChannel;offersChannel=null;sb\.removeChannel\(oldChannel\);\}/);
   assert.ok(missingProfile.indexOf('sb.removeChannel(oldChannel)') < missingProfile.indexOf("document.getElementById('name').textContent='प्रोफाइल लिंक नहीं हुई'"));
 });
+
+
+test('KYC upload snapshots owner documents before creating a new private object', () => {
+  const upload = body('uploadVerificationDocument');
+  assert.match(upload, /srk_electrician_list_my_verification_documents/);
+  assert.match(upload, /previousDocumentIds=new Set/);
+  assert.ok(upload.indexOf('previousDocumentIds=new Set') < upload.indexOf("from(KYC_BUCKET).upload"));
+});
+
+test('uncertain KYC submit response reconciles a newly created owner document and confirms its exact private path', () => {
+  const upload = body('uploadVerificationDocument');
+  assert.match(upload, /if\(recordError\)\{[\s\S]*?srk_electrician_list_my_verification_documents/);
+  assert.match(upload, /!previousDocumentIds\.has\(row\.id\)/);
+  assert.match(upload, /row\.document_type===type&&row\.file_name===file\.name\.slice\(0,180\)/);
+  assert.match(upload, /srk_electrician_get_my_verification_document_path/);
+  assert.match(upload, /confirmedPath===path/);
+  assert.match(upload, /if\(confirmedDocumentPath\)[\s\S]*?दस्तावेज़ जमा हो गया है/);
+});
+
+test('KYC upload deletes an object after submit failure only when owner reconciliation succeeds and finds no new record', () => {
+  const upload = body('uploadVerificationDocument');
+  assert.match(upload, /if\(reconciliationSucceeded&&!matchingDocument\)await sb\.storage\.from\(KYC_BUCKET\)\.remove\(\[path\]\)/);
+  assert.match(upload, /if\(matchingDocument\|\|!reconciliationSucceeded\)[\s\S]*?फ़ाइल सुरक्षित रखी गई है/);
+  assert.doesNotMatch(upload, /if\(recordError\)\{await sb\.storage\.from\(KYC_BUCKET\)\.remove/);
+});
