@@ -922,6 +922,8 @@ Default-branch code search में `.github/workflows/supabase-schema-ci.yml` 
 
 ## 62. GPT-2 Blocker Review — accounting bridge regression gate added
 
+> Follow-up correction: Section 64 supersedes the initial test-first-only status. A new additive migration now adds normalized method consistency and a dedicated mismatch exception; latest test commit is `63fb2dd7507c55f242d393a1512bb16ef3576d39`. Runtime remains NOT RUN.
+
 उपयोगकर्ता के निर्देश के अनुसार पाँच Blockers, संबंधित pgTAP और Runtime verification पर अगला pass शुरू किया गया।
 
 ### इस pass में प्रमाणित defect और test change
@@ -945,21 +947,91 @@ Default-branch code search में `.github/workflows/supabase-schema-ci.yml` 
 - पाँचों Blockers: **अभी सभी का समाधान प्रमाणित नहीं**; बाकी चार की जाँच जारी है।
 
 
-## 63. Commission Reporting बनाम Payout Ledger — दूसरा Regression Gate
+## 63. Commission Reporting बनाम Payout Ledger — AFTER Trigger के अनुरूप Regression Gate
 
-Section 17–18 में दर्ज source-level mismatch के लिए payout reconciliation pgTAP में अतिरिक्त guard जोड़ा:
+पहले Section 63 में जो assertion `NEW.commission_amount := v_commission` को payout के `AFTER` Trigger function के भीतर अनिवार्य कर रहा था, वह PostgreSQL trigger semantics के अनुसार सही नहीं था: `AFTER` Trigger में `NEW` बदलने से persisted booking row नहीं बदलती। उस assertion को हटाकर जिम्मेदारियाँ अलग की गईं।
 
-- `supabase/tests/database/electrician_payout_reconciliation.test.sql` का plan 28 से 29 किया।
-- नया assertion अब केवल column नाम की मौजूदगी नहीं, बल्कि exact assignment `NEW.commission_amount := v_commission` अनिवार्य करता है। इससे payout trigger द्वारा निकली वही commission राशि Admin reporting field में लिखे जाने की जाँच होगी।
-- Test commit: `bca20ce8b60b3c0fd8733cedf185c82b4cacce31` (पहले वाले कमजोर assertion को मजबूत किया; अलग अतिरिक्त assertion नहीं जोड़ा)।
+- `BEFORE` Trigger `public.srk_set_booking_commission_before_payout()` booking row के `NEW.commission_amount` को authoritative labour-only formula से सेट करता है।
+- Existing `AFTER` Trigger `public.srk_create_electrician_payable()` payout ledger बनाता/सुधारता है।
+- बाद का `AFTER` parity guard `public.srk_validate_booking_commission_payout_parity()` booking commission और payout ledger के `platform_commission` को compare करता है; mismatch होने पर उसी transaction को fail-closed करता है।
+- Accounting reconciliation RPC भी दोनों persisted values की parity जाँचता है।
+- Manual payment method mismatch होने पर BEFORE path payout finalization को reject करता है।
 
-यह भी test-first guard है; अभी इसे PASS नहीं कहा जा सकता। उपलब्ध source finding के अनुसार payout trigger commission गणना करता है, पर booking के `commission_amount` field को update करने का प्रमाण नहीं मिला। सही SQL correction के लिए उस trigger की authoritative migration, commission event timing और clean-replay dependencies को पहले निश्चित करना होगा। पुराने standalone setup trigger को सीधे बदलना या ऐतिहासिक migration edit करना सुरक्षित नहीं।
+### नवीनतम Test gate
+
+`supabase/tests/database/electrician_payout_reconciliation.test.sql` का plan 29 से 32 किया गया। तीन अतिरिक्त assertions:
+1. Commission assignment trigger row-level `BEFORE INSERT/UPDATE` है।
+2. BEFORE function वही commission formula लगाती है।
+3. BEFORE function manual payment method mismatch पर fail-closed करती है और AFTER parity trigger अलग से persisted payout parity enforce करता है।
+
+अंतिम Test commit: `dc2550277dc7f1e92fe285e8f82d782032e15a33`.
+
+यह pgTAP source/trigger-contract test है; अभी PostgreSQL/pgTAP Runtime में execute नहीं हुआ। इसे PASS घोषित नहीं किया गया।
 
 ### GPT-2 progress snapshot
 
 - Accounting bridge method consistency regression gate: added (plan 16).
-- Payout/Admin commission reporting parity regression gate: added (plan 29).
+- Payout/Admin commission reporting parity regression gate: corrected for BEFORE/AFTER semantics (plan 32).
 - दोनों SQL runtime outcomes: NOT RUN.
 - पाँच blockers का final disposition: OPEN / PARTIAL; सभी का समाधान नहीं हुआ।
 - Migration replay और Runtime suite: NOT RUN.
 - Production access/write, deployment, workflow dispatch, merge: NONE.
+
+## 64. Additive Accounting and Commission Correction — Source Changes Committed
+
+### 64.1 Historical Dollar-Quote defect and lineage status
+
+`supabase/migrations/20261114270000_admin_only_cancellation_requests_and_decisions.sql` contains a malformed function terminator:
+
+```sql
+end;
+$;
+```
+
+The function opens with `as $$`; its closing delimiter should be `$$;`. The current file has the same malformed delimiter in inspected ancestors `1a4657e9fddaa207fa3bc618f7fea0c5d667734c`, `a449ff18c1d840f71f5f93df363eee9b90c46f5e`, and `9bc85aa40f71b524a16395715b746bdde081fcfb`. The path history commits reviewed changed cancellation lock ordering and fee rules, not this delimiter. The original introducing commit is not yet established.
+
+**Disposition: OPEN — historical file was not edited.** The delimiter defect blocks trustworthy parser/replay verification. Do not edit this historical migration until its introducing lineage and approval are established.
+
+### 64.2 Accounting Bridge method consistency
+
+New additive migration:
+`supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`
+
+The migration preserves the full original reconciliation RPC body and adds:
+- normalized, non-null comparison of manual evidence `payment_method` with booking `payment_method`;
+- explicit `MANUAL_PAYMENT_METHOD_MISMATCH` exception;
+- booking/payout commission parity exception `BOOKING_COMMISSION_PAYOUT_LEDGER_MISMATCH`.
+
+Migration commits:
+- Initial migration: `6b361652ee49cb36a9b8680d309b9f2ec83d8b5`
+- Null/status and fail-closed corrections: `29d007145e214eb04e432ca49a6e80b47f5f5f4a`, `32b55dde9376a97e3d984da848e6eec975778b3e`
+- Preserve full original reconciliation function and add parity checks: `cdb4bf4b9453f395113245a725902670e449f1f4`
+
+Regression test:
+`supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql`, plan 16.
+Latest Test commit: `63fb2dd7507c55f242d393a1512bb16ef3576d39`.
+
+### 64.3 Commission BEFORE/AFTER separation and parity
+
+The same additive migration:
+- adds row-level BEFORE trigger `zz_srk_set_booking_commission_before_payout` to persist `commission_amount`;
+- keeps existing payout ledger writer as the AFTER trigger;
+- adds a later AFTER parity validator `zz_srk_validate_booking_commission_payout_parity` which checks the persisted payout row against the booking commission and raises on mismatch;
+- uses a manual payment method consistency guard before payout finalization.
+
+Regression test:
+`supabase/tests/database/electrician_payout_reconciliation.test.sql`, plan 32.
+Latest Test commit: `dc2550277dc7f1e92fe285e8f82d782032e15a33`.
+
+### 64.4 Static verification and limitations
+
+- GitHub file fetch confirms the additive migration and both updated pgTAP files exist on the audit branch.
+- Static comparison confirms the replacement reconciliation function was reconstructed from the full existing function before applying the targeted additions.
+- Test plans match statically counted assertions: Accounting Bridge 16/16; Payout Reconciliation 32/32.
+- PostgreSQL parser: **NOT RUN**.
+- Migration Replay: **NOT RUN**.
+- pgTAP Runtime: **NOT RUN**.
+- Full Node Runtime: **NOT RUN**.
+- Five primary migration/dependency blockers: **not all resolved**; canonical baseline, helper provenance, payout/manual-payment/complaint table provenance, and migration-history reconciliation remain open.
+- Production queries/writes, deployment, workflow dispatch, merge: **NONE**.
+
