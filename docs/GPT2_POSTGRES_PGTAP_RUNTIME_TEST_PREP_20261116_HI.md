@@ -1390,3 +1390,29 @@ Current Feature Branch पर सीधे जाँच में:
 इसके अतिरिक्त §37 में दर्ज base-schema/column provenance और §41 में माँगा गया owner catalog evidence भी unresolved है। अगला सुरक्षित technical step isolated scratch checkout में pinned Supabase CLI + Docker availability की पुष्टि करके केवल disposable dummy migrations पर समान 8-digit version behavior जाँचना है; उसके बाद ही project migration replay design पर लौटना चाहिए। Production credentials/network का उपयोग नहीं करना है।
 
 **इस pass में:** GitHub branch files और directory inventory ही पढ़े गए। कोई config generate/commit, migration edit/rename/reorder, SQL execution, Docker stack start, pgTAP run, Production query या deployment नहीं किया गया।
+
+
+## 43. Scratch runtime की वास्तविक executable availability — 16 Nov 2026
+
+इस execution environment में shell से सीधे executable lookup किया गया:
+
+| Tool | परिणाम |
+|---|---|
+| Node.js | उपलब्ध — v22.16.0 |
+| npm | उपलब्ध — 10.9.2 |
+| Supabase CLI (`supabase`) | उपलब्ध नहीं |
+| Docker CLI (`docker`) | उपलब्ध नहीं |
+| Podman (`podman`) | उपलब्ध नहीं |
+| PostgreSQL client (`psql`) | उपलब्ध नहीं |
+| pgTAP runner (`pg_prove`) | उपलब्ध नहीं |
+
+इसलिए अभी इसी environment में disposable Supabase stack शुरू करना, PostgreSQL server उपलब्ध कराना, या pgTAP runtime चलाना संभव नहीं है। Dummy migration collision का वास्तविक Supabase CLI experiment भी CLI के बिना नहीं किया गया; केवल filename/source collision पहले से प्रमाणित है। कोई package install, Docker daemon access, remote connection या database command चलाने का प्रयास नहीं किया गया।
+
+### निर्णय
+
+- **Node test tooling:** runtime मौजूद है, लेकिन repository checkout इस shell में उपलब्ध न होने के कारण repository का `npm test` इस pass में नहीं चलाया।
+- **Supabase/PostgreSQL runtime:** BLOCKED — आवश्यक binaries अनुपस्थित।
+- **Migration replay / pgTAP:** NOT RUN।
+- **अगला आवश्यक सक्षम वातावरण:** isolated machine/runner जिसमें Docker daemon और pinned Supabase CLI हों, repository checkout scratch worktree में हो, और Production credentials/network secrets अनुपस्थित हों। वहाँ पहले dummy duplicate-version fixture पर CLI behavior जाँचा जाए; project migrations को अभी replay न किया जाए।
+
+यह Section 43 केवल environment capability evidence है; इससे Production की स्थिति या Supabase CLI के duplicate-version behavior के बारे में कोई नया निष्कर्ष नहीं निकाला गया।
