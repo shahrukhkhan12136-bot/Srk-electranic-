@@ -4150,3 +4150,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Customer UI और migration/RPC contracts की शेष exact mapping, browser/network fault injection, isolated PostgreSQL/pgTAP, Supabase runtime, OTP/Storage/Push provider verification अभी pending हैं। ये gates final consolidated QA से पहले अलग implementation/runtime phases में ही पूरे होंगे; mobile QA deferred है।
 - Welcome Screen/Founder Photo का 16 नवम्बर owner-approved source integration पूर्ण है; इसे reopen या modify नहीं किया। कोई GPT-2 branch/code, Production, Supabase schema/settings, provider, deploy, merge या PR state नहीं बदली।
 - इस recheck से checklist percentage या completed checkbox count नहीं बढ़ाया गया; केवल प्रत्यक्ष source evidence और GPT-2 handoff dependency दर्ज की गई।
+
+
+## 2026-11-17 — GPT-1 Customer/Electrician visible-action static reconciliation
+
+- booking.html में 25 distinct Supabase RPC callers और 3 HTTP API routes (create-booking, create-order, verify-payment) की inventory दोबारा निकाली। electrician.html में 23 distinct Supabase RPC callers और push-job-offer Edge Function caller मिला।
+- दोनों portals में static DOM reference check: Customer 174 getElementById references और Electrician 105; किसी भी referenced ID का HTML में missing match नहीं मिला। Inline onclick handlers में दोनों pages पर कोई unresolved application function नहीं मिला। Electrician page में duplicate literal DOM IDs नहीं मिले। Customer refund controls के दो ID templates में दिखे duplicate literals booking UUID suffix के साथ render होते हैं; इसलिए अलग bookings पर IDs unique बनते हैं—इसे defect नहीं माना। यह static source inspection है, browser DOM runtime नहीं।
+- README endpoint wording में छोटा source mismatch सुधारा: Customer browser `/api/create-booking` call करता है और netlify.toml उसी path को `/.netlify/functions/create-booking` adapter पर rewrite करता है। अब README canonical browser endpoint और adapter relation दोनों बताता है। README change commit 91499992f932c700e1356afa4bef9f4234234941.
+- Customer refund CREATE RPC का पहले दर्ज GPT-2-owned missing-definition dependency अभी unresolved है; GPT-1 ने refund SQL/RLS या GPT-2 code नहीं बदला। बाकी सभी RPC names के लिए GitHub code-search results default-branch scoped/stale हो सकते हैं; इसलिए search में result न मिलना missing SQL definition का प्रमाण नहीं माना गया।
+- Node test suite इस documentation-only commit पर execute नहीं की गई; PostgreSQL/pgTAP, browser, Netlify Preview, provider, Supabase runtime और final mobile QA अभी pending हैं। No merge/deploy/Production change.
