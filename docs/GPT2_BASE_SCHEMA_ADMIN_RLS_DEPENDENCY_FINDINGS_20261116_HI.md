@@ -53,9 +53,9 @@ Historical `COMPLETE_DATABASE_SETUP.sql` की शुरुआती `service_b
 - customer ownership: `20261108121115_add_customer_account_booking_access.sql`;
 - GPS: `20261109001000_add_google_maps_location_support.sql`;
 - quote fields/statuses: `20261109_electrician_inspection_quotes_and_service_only_commission.sql`;
-- amount paid: `20261116200000_restore_service_bookings_amount_paid.sql`.
+- `amount_paid`: first visible source introduction is `20261109003000_secure_commission_reporting.sql` (added at the top before its own consumers); `20261116200000_restore_service_bookings_amount_paid.sql` is a later idempotent restore/constraint migration.
 
-यह source-level map है, पूर्ण schema reconciliation नहीं। खासकर `amount_paid` को पढ़ने वाले पुराने quote/commission/reporting source के मुकाबले restore migration का later timestamp अभी भी order review मांगता है।
+यह source-level map है, पूर्ण schema reconciliation नहीं। `amount_paid` के मामले में पहले दर्ज order blocker वापस लिया गया है: `09003000` स्वयं column को अपने consumers से पहले जोड़ती है। अलग commission-trigger wiring gap अब मुख्य audit report section 15 में दर्ज है.
 
 ## 5. Wallet foundation के अतिरिक्त base dependencies
 
