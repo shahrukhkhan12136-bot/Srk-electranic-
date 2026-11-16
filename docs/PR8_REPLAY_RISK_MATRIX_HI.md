@@ -516,3 +516,18 @@ The 18:00 migration was therefore revised on the audit branch in commit `1f8d8bc
 Fetch-back verification of the revised 18:00 file confirms **zero** `srk_route_transfers` references and all compatibility fields are present. A static scan of the remaining later migrations from 19:00 onward and the 15:00–17:00 follow-up migrations found no additional `srk_route_transfers` references in the inspected files. This is a bounded source scan, not proof that every SQL object or dynamic-SQL string in the repository is dependency-free.
 
 **Replay status remains unverified:** no PostgreSQL clean replay or pgTAP execution was performed. The edits are on `chore/pr8-replay-audit-20261116-v2` only, not PR #8 head; Production remains untouched and PR #8 remains unmerged.
+
+
+## Follow-up replay finding — `service_bookings.amount_paid` prerequisite
+
+A further high-priority clean-replay prerequisite was identified while tracing the later financial migrations:
+
+- The early migration `20261109003000_secure_commission_reporting.sql` defines `srk_admin_commission_report()` and `srk_get_my_earnings()` using `service_bookings.amount_paid`.
+- The quote workflow migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` also reads `NEW.amount_paid` in its trigger function.
+- Later receipt/refund and Admin booking RPC migrations also reference this column.
+- In the currently inspected migration tree, the explicit migration that adds the column is `20261116200000_restore_service_bookings_amount_paid.sql`, which is ordered after those earlier functions.
+- The manual setup file `COMPLETE_DATABASE_SETUP.sql` was previously inspected and does not create `service_bookings.amount_paid`.
+
+**Assessment:** If the clean replay starts from that documented setup schema, earlier functions/triggers may fail validation before the 20261116200000 restoration migration is reached. This is a likely migration-order blocker, not a reproduced PostgreSQL error. It remains possible that a separate canonical baseline supplies the column, but no such numbered baseline was identified in the inspected migration tree. The correct fix is to establish and document the canonical baseline, or move/add the prerequisite column migration before the first dependent migration; do not guess a version or reorder production history without a reviewed migration plan.
+
+**Verification boundary:** Static source/tree review only. No PostgreSQL replay or pgTAP execution was performed. No migration SQL was changed for this finding, and Production was not modified.
