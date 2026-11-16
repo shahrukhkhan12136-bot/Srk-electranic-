@@ -494,15 +494,15 @@ A follow-up consistency check found a concrete test/source mismatch:
 **सीमा:** इस समीक्षा ने कोई refund/payment execute नहीं किया, कोई Production SQL नहीं चलाया, और PR #8 head/Production/deployment को नहीं बदला।
 
 
-## 17. Electrician payout trigger attachment gap — 16 Nov 2026
+## 17. Electrician payout trigger attachment — source fix prepared, 16 Nov 2026
 
-Refund→Payout source trace में एक महत्वपूर्ण integration gap मिला:
+पहले audit में `srk_create_electrician_payable()` function मौजूद था, लेकिन उसे `service_bookings` पर attach करने वाला trigger उपलब्ध migration chain में नहीं मिला। इस integration gap के लिए audit branch में नया follow-up migration बनाया:
 
-- `20261114360000_new_category_electrician_payout_reconciliation.sql` `public.srk_create_electrician_payable()` trigger function बनाती है और direct client EXECUTE revoke करती है, लेकिन इसी migration में उस function को `public.service_bookings` पर attach करने वाला `CREATE TRIGGER ... EXECUTE FUNCTION` नहीं है।
-- इस branch की दोनों manual bootstrap files (`PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`) में पुराना `srk_booking_commission_trigger` केवल `srk_calculate_commission_on_completion()` चलाता है; वह नए payout reconciliation function को invoke नहीं करता।
-- उपलब्ध migration tree में payout function के लिए अलग trigger attachment migration भी नहीं मिली। यह bounded source scan है; किसी uninspected external/bootstrap artifact को इससे नकारा नहीं जा सकता।
-- इसलिए केवल function definition देखकर यह निष्कर्ष नहीं निकाला जा सकता कि booking के paid/completed होने पर electrician payout row स्वतः बनेगी या refunded transition पर payout बंद होगा। Refund RPC कुछ paths में payout row को सीधे update करती है, लेकिन सामान्य booking lifecycle integration अलग से चाहिए।
-- Existing `electrician_payout_reconciliation.test.sql` में 2 acceptance assertions जोड़ीं: trigger का `service_bookings` पर attach होना और AFTER UPDATE timing। Test plan अब 28 है। वर्तमान source के आधार पर ये assertions likely fail होंगी जब तक attachment migration मौजूद न हो; pgTAP चलाया नहीं गया है, इसलिए इसे executed failure नहीं कहा जा रहा।
-- **अगला निर्णय/सुधार:** owner-approved migration में trigger timing और event columns (status/payment_status/verified payment/assignment/amount/quote inputs), INSERT coverage, तथा legacy commission trigger के साथ coexistence तय करके attachment करना होगा। इसे अभी स्वतः नहीं जोड़ा गया, क्योंकि गलत timing duplicate payout या payout न बनने का कारण बन सकती है।
+- `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` function को `AFTER INSERT OR UPDATE OF` status, payment_status, assignment, verified-payment, amount, quote, commission और selected-category columns पर attach करता है।
+- Refund transition पर trigger केवल `pending` payout या उन्हीं `blocked` payouts को `refunded` करता है जिनका note verified refund workflow के known hold labels (`Razorpay refund pending`, `Manual refund processed`) में है। Unrelated Admin block और paid payout को नहीं बदलता।
+- Razorpay recovery finalizer और Manual refund RPC पहले booking को `refunded` करते हैं; अब वे payout को दूसरी बार UPDATE नहीं करते, बल्कि trigger के बाद row दोबारा पढ़कर `refunded` state verify करते हैं। Verification fail होने पर पूरी transaction fail-closed रहती है।
+- सामान्य Razorpay provider reconciliation में भी booking transition यही trigger payout hold बंद करता है। Failed provider refund पर existing reconciliation logic refund-owned hold को वापस pending करती है।
+- `electrician_payout_reconciliation.test.sql` में trigger event mask assertion सुधारी: PostgreSQL में bit 8 DELETE event है, AFTER timing नहीं; अब test INSERT/UPDATE/ROW और BEFORE-bit absent होने की जाँच करता है।
+- Payout, cancellation-fee refund reversal और manual-refund tests को single-owner trigger contract के अनुरूप बदला। Source-count check: payout test 28/28, cancellation-fee test 44/44, durable recovery test 35/35। Manual-refund test में 1 `has_function` + 13 `ok` assertions हैं (कुल plan 14)।
 
-**जोखिम:** यह source-level integration blocker है, केवल test coverage कमी नहीं। Production या PR #8 head पर कोई बदलाव नहीं किया।
+**सीमा:** ये source assertions और migration design review हैं; PostgreSQL parser/replay या pgTAP execution नहीं। Migration ordering, trigger interaction, transaction rollback और real payment/refund lifecycle को disposable PostgreSQL environment में चलाकर सत्यापित करना बाकी है। Production, PR #8 head और deployment अपरिवर्तित हैं।
