@@ -261,3 +261,45 @@ Before creating an executable baseline file, obtain an owner-approved schema-onl
 - Canonical base schema और `srk_admin_users`/Admin helper introduction अभी भी unresolved replay gates हैं। इस आधार पर अभी consolidated executable baseline बनाना सुरक्षित नहीं है।
 
 **अगला सुरक्षित gate:** canonical base schema तय होने के बाद disposable database में migration replay करके `pg_proc`, `pg_trigger`, `pg_class.relowner` और effective function privileges की तुलना करना; उसके बाद ही trigger ownership/order और RPC grants को मंजूर करना।
+
+## Canonical base schema और disposable replay gate (16 Nov 2026)
+
+### अभी उपलब्ध base artifacts
+
+| Artifact | इसमें क्या बनता है | सीमा |
+|---|---|---|
+| `SUPABASE_SCHEMA.sql` | `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers`; pgcrypto और शुरुआती RLS/policies | `srk_admin_users`, Auth profile-link trigger, Admin helpers और बाद के financial/quote columns का पूरा आधार नहीं |
+| `PORTAL_SCHEMA.sql` | `srk_admin_users`, profile `user_id`, Auth phone-link trigger, `srk_is_admin()`, portal RPCs और legacy commission trigger | स्पष्ट रूप से पहले `SUPABASE_SCHEMA.sql` चलाने को कहता है; बाद के migration contracts का पूरा विकल्प नहीं |
+| `COMPLETE_DATABASE_SETUP.sql` | ऊपर के चार core tables और portal objects को एक consolidated file में रखता है; दोनों Admin helper नाम भी हैं | दोहराए गए DDL/policies/functions हैं; `service_bookings.amount_paid` और बाद के सभी migration-era objects इसमें नहीं हैं |
+| `ADMIN_EMAIL_LOGIN_SETUP.sql` | पहले से मौजूद Admin table के ऊपर `is_srk_admin()` helper और policies का patch | standalone base नहीं; `srk_admin_users` पहले से होना जरूरी |
+| `PORTAL_SECURITY_UPDATE.sql` | Offer Details RPC का security patch | standalone base नहीं; table/function prerequisites पहले से चाहिए |
+
+### Numbered chain से दिखने वाला base dependency gap
+
+- जाँची गई numbered migration chain में core tables `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers` बनाने वाली कोई verified initial CREATE TABLE migration नहीं मिली। शुरुआती relevant migrations इन्हें पहले से मौजूद मानकर ALTER/POLICY/trigger/RPC करती हैं।
+- इसी तरह `public.srk_admin_users` बनाने वाली numbered migration अभी नहीं मिली। लेकिन `srk_is_admin()` और `is_srk_admin()` दोनों helper contracts बाद की policies/RPCs में उपयोग होते हैं।
+- `20261109001000_add_google_maps_location_support.sql` तीन core tables पर ALTER/constraint validation करता है और Admin helper `is_srk_admin()` को consume करता है।
+- `20261109001500_unique_electrician_admin_identity_linking.sql` अलग helper `srk_is_admin()` consume करता है और `srk_admin_users`/Auth identity context पर निर्भर है।
+- `20261109000500_harden_electrician_profile_identity_linking.sql` `electrician_profiles.auth_user_id` जोड़ता है; इसलिए base profile table और पहले का `user_id` identity contract आवश्यक हैं।
+- `20261109003000_secure_commission_reporting.sql` में `amount_paid` को functions से पहले जोड़ने वाला prerequisite अब source में मौजूद है; यह केवल एक missing-column gate का समाधान है, पूरे base schema का नहीं।
+- Wallet migration `20261109010000` अपने wallet tables बनाती है, पर वह core booking/profile/Admin base का स्थान नहीं लेती।
+
+### Disposable replay के लिए प्रस्तावित prerequisite order
+
+यह **सत्यापित execution plan नहीं**, source-derived dependency checklist है:
+
+1. Supabase-provided schemas/roles/extensions और Auth schema की उपलब्धता तय करें।
+2. चार core tables, उनके exact columns, primary/foreign keys, unique constraints और आवश्यक indexes का एक canonical base DDL तय करें।
+3. `srk_admin_users` table और Admin allowlist provisioning contract तय करें।
+4. `is_srk_admin()` और `srk_is_admin()` दोनों functions का intended अलग-अलग contract, owner, SECURITY DEFINER, search_path और grants मंजूर करें; इन्हें एक नाम में merge न करें।
+5. Portal Auth phone-link trigger और प्रारंभिक profile `user_id` linkage स्थापित करें।
+6. Customer ownership तथा electrician `auth_user_id` identity columns/indexes और synchronization/guard triggers जोड़ें।
+7. Location, quote, payment/commission prerequisites को उनके consuming RPCs से पहले लागू करें।
+8. शेष numbered migrations को सही version order में apply करके policies, triggers, functions और grants का catalog snapshot लें।
+9. फिर सभी उपलब्ध pgTAP tests चलाएँ और failures को अलग से दर्ज करें।
+
+### निर्णय
+
+अभी canonical base schema चुनने के लिए प्रमाण पर्याप्त नहीं है। `COMPLETE_DATABASE_SETUP.sql` सबसे समेकित manual setup artifact है, लेकिन इसे बिना normalization और migration reconciliation के numbered migration chain का canonical replay baseline घोषित नहीं किया जा सकता। इसलिए कोई नई executable baseline SQL file नहीं बनाई गई।
+
+**इस चरण में किया गया काम:** source inventory और dependency gate दस्तावेज़ित। कोई disposable database create/reset नहीं किया, कोई SQL apply नहीं किया, कोई PostgreSQL replay या pgTAP run नहीं हुआ, Production untouched है।
