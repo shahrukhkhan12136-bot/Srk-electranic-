@@ -10,6 +10,8 @@ const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8')
 
 test('customer OTP login normalizes Indian numbers and verifies SMS OTP before dashboard redirect', () => {
   assert.ok(customer.includes("if(d.length===10)return '+91'+d"));
+  assert.ok(customer.includes("if(raw.startsWith('+91')&&d.length===12&&d.startsWith('91'))return '+91'+d"));
+  assert.ok(!customer.includes("d.length>=10&&d.length<=15"), 'non-Indian international numbers are not accepted by this India-only booking flow');
   assert.ok(customer.includes('sb.auth.signInWithOtp({phone})'));
   assert.ok(customer.includes("sb.auth.verifyOtp({phone,token,type:'sms'})"));
   assert.ok(customer.includes("window.location.replace('/booking.html')"));
