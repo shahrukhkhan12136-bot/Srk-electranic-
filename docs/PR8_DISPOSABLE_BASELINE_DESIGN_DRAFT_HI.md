@@ -391,3 +391,16 @@ Bounded source review of `20261110040000_customer_admin_complaints.sql`, `202611
 - The visible filename ordering places these consumer migrations after their immediate feature foundations, but that alone does not solve the separate unresolved base-schema and Main Admin helper dependencies: `service_bookings`, `electrician_profiles`, `public.is_srk_admin()`, and `public.srk_admin_users` still need an approved canonical bootstrap. The ticket and Staff RBAC files call `is_srk_admin()`; identity review calls `srk_is_admin()`.
 
 **Replay gate:** validate the full ordered chain against an owner-approved disposable baseline, including Storage availability and all referenced base columns. Do not treat this static dependency graph as a successful replay. No database writes, replay, or pgTAP tests were performed in this review.
+
+
+### 10. Staff invitation service boundary and existing RBAC tests (16 Nov 2026)
+
+Reviewed `supabase/functions/admin-staff-management/index.ts`, `supabase/tests/database/admin_staff_rbac_foundation.test.sql`, and `supabase/tests/database/electrician_support_ticket_security.test.sql`:
+
+- The invitation Edge Function requires a Bearer token, validates it with Auth `getUser(token)`, and calls `is_srk_admin()` through the caller's authenticated client before constructing the service-role client. It ignores client-supplied role metadata and permits only `invite_support_staff`; the role is fixed to `support`.
+- The service-role-only `srk_admin_staff_register_invited_user` RPC additionally checks that the supplied actor UUID exists in `srk_admin_users`. In the reviewed Edge Function, that actor UUID comes from the Auth-verified user, after Main Admin RPC authorization. This is a coherent two-layer source-level boundary; the service-role RPC must remain unavailable to browser roles.
+- The Edge Function invites the Auth user before registering the Staff row. On registry failure it attempts to delete the newly invited Auth identity and reports the partial-failure possibility. Email delivery cannot be retracted; operations must check the cleanup result before retrying.
+- The Staff RBAC pgTAP file declares 69 assertions and checks permissions, active status, Auth session binding, assignment-only inboxes, privacy projections, lock behavior, and Main Admin-only assignment. The Electrician Support security pgTAP file declares 12 assertions for RLS, grants, ownership RPCs, and serialized writes. These are test source files only; their presence is not evidence they passed.
+- A runtime review must still verify Edge Function deployment/configuration, Auth redirect allow-list, required secrets, service-role grant behavior, and failure recovery for invitation email/registry partial completion. No Edge Function was invoked and no pgTAP suite was executed.
+
+**Replay / rollout gate:** keep invitation limited to the verified Main Admin Edge Function path; never expose the service-role registration RPC to authenticated browser clients. Execute the existing tests on an approved disposable baseline and test invite success plus registry-failure cleanup before rollout.
