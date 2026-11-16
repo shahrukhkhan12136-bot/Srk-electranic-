@@ -133,7 +133,7 @@ test('customer complaint submission reconciles an uncertain RPC result through t
   assert.match(create, /customerSupportSelectedId=confirmedComplaint\.id/);
   assert.match(create, /दोबारा शिकायत नहीं भेजी गई/);
   assert.match(create, /lookupSucceeded/);
-  assert.doesNotMatch(create,/catch[\s\S]*?customerSb\.rpc\('srk_customer_create_booking_complaint'/);
+  assert.equal((create.match(/srk_customer_create_booking_complaint/g)||[]).length,1,'uncertain outcomes never submit the complaint a second time');
 });
 
 test('customer support lists, threads and writes are invalidated when the OTP account changes', () => {
