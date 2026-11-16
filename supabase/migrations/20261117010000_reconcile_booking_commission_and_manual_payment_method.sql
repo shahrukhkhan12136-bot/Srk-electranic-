@@ -544,7 +544,7 @@ begin
     select b.assigned_electrician_id,
            coalesce(b.amount_paid,0)::numeric as customer_collected,
            coalesce(p.gross_service_amount,0) + coalesce(p.materials_amount,0) as payout_gross,
-           coalesce(p.platform_commission,b.commission_amount,0)::numeric as commission,
+           coalesce(p.platform_commission,0)::numeric as commission,
            coalesce(p.electrician_payable,0)::numeric as electrician_payable
     from public.service_bookings b
     left join public.srk_electrician_payouts p on p.booking_id=b.id
@@ -598,7 +598,7 @@ set search_path = pg_catalog, public, auth, pg_temp
 as $$
   select b.id, b.service_type, b.created_at, b.status, b.payment_status,
          coalesce(b.amount_paid,0),
-         coalesce(p.platform_commission,b.commission_amount,0),
+         coalesce(p.platform_commission,0),
          case when b.status='completed' and b.payment_status='paid'
               then coalesce(p.electrician_payable,0)
               else 0 end
