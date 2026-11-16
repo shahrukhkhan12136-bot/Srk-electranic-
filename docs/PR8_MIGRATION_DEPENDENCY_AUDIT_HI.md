@@ -518,3 +518,14 @@ verify-payment.js और razorpay-webhook.js के legacy-quote payment paths �
 - `tests/customer-payment-method-enforcement.test.js` में छह Node test cases हैं; इनमें migration/dashboard exact UTF-8 contract का static assertion और uncertain RPC response UI handling का static assertion भी है। इन छह test cases को इस audit में execute नहीं किया गया।
 - यह source-level correction है; deployed Database पर migration application/order या runtime behavior सत्यापित नहीं हुआ। Migration-history drift के कारण इसे Production में लागू हुआ मानना सुरक्षित नहीं है।
 - कोई source code/SQL बदला नहीं गया; केवल Audit report में Section 39 की qualification जोड़ी गई है।
+
+
+## 41. Admin Dashboard के दो आवश्यक RPC — वर्तमान Repository में SQL परिभाषा नहीं मिली
+
+- `admin.html` के `saveBookingInternal()` में legacy booking को `new → confirmed` करने के लिए `srk_admin_confirm_legacy_booking(p_booking_id)` RPC call होता है।
+- उसी function में नई category booking का वास्तविक Cash payment दर्ज करने के लिए `srk_admin_record_new_booking_cash_payment(p_booking_id,p_reference,p_note)` RPC call होता है। UI इन RPC failures को स्पष्ट error के रूप में दिखाता है और डेटा reload करता है।
+- दोनों exact function names के लिए repository-wide GitHub code search में कोई SQL definition नहीं मिली। साथ ही root setup files `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql` में भी दोनों नाम अनुपस्थित हैं। मौजूदा numbered migrations में भी exact definitions नहीं मिलीं।
+- इससे Feature Branch source में दो unresolved DB dependencies बनती हैं: legacy Admin confirmation और new-category Cash settlement। यदि ये functions किसी बाहरी/manual DB setup में मौजूद न हों, तो संबंधित Admin actions fail होंगे। Production DB नहीं देखा गया, इसलिए deployed absence या live outage का दावा नहीं है।
+- अलग से, legacy `srk_admin_record_manual_payment(uuid,text,text,text)` की SQL definition `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` में मौजूद है; उसे इन दो missing functions के साथ न मिलाएँ।
+- सुरक्षित अगला कदम: Git history/अन्य branches में दोनों definitions ढूँढना; फिर authorized isolated DB में signatures, grants, Main Admin checks, row locks, exact amount/ledger writes और idempotency verify करना। कोई नया RPC अनुमान से नहीं बनाया गया।
+- कोई Production query/write, SQL edit, payment, deployment या test execution नहीं हुआ।
