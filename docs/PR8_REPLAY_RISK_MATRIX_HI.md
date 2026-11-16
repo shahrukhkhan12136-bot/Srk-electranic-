@@ -228,3 +228,18 @@ A second pass checked six important candidates whose filenames do not normalize 
 | `20261114193300` | admin_approved_electrician_relocation | `20261114220000_admin_approved_electrician_relocation.sql` | Exact normalized SQL body |
 
 **Updated tally:** 20 comparisons = 14 exact normalized SQL-body matches + 6 non-identical candidates. This is still a partial candidate audit, not an 87-of-87 reconciliation. The remaining Production entries require candidate discovery, including split/consolidated/renamed migrations.
+
+
+### Next five Production ledger entries reviewed (versions 20261108092928–20261108095224)
+
+These five original SQL bodies were retrieved from the read-only Production migration ledger and inspected against the current PR-head migration inventory:
+
+| Production version | Production migration | Candidate / finding | Result |
+|---|---|---|---|
+| `20261108092928` | harden_srk_rls_policy_performance | `20261108234000_combine_booking_read_policy.sql` is only a partial thematic candidate; Production body also changes electrician profile and admin-user policies. | **Not equivalent / incomplete candidate** |
+| `20261108093725` | add_atomic_payment_order_lock | No corresponding lock-table + claim/release-function migration found in the 87-file PR-head migration inventory. | **No candidate located** |
+| `20261108093757` | add_service_role_policy_payment_order_locks | Depends on the payment-order-lock table from the preceding Production migration; no matching policy migration located in the PR-head inventory. | **No candidate located** |
+| `20261108094007` | harden_security_definer_function_search_paths | Several later files redefine some of the same functions, but no single file reproduces this migration's full function set, bodies, grants and search-path changes. | **No equivalent candidate located** |
+| `20261108095224` | add_missing_foreign_key_indexes | Production indexes `booking_status_history` and legacy `bookings` columns; no corresponding migration found in the current PR-head inventory. | **No candidate located** |
+
+This pass adds five reviewed Production entries. For these entries, no new exact normalized-body match was established. The audit remains a partial 87-entry reconciliation; absence of a candidate in the current PR-head tree does not prove the SQL never existed in another branch, deleted ref, backup, or earlier baseline.
