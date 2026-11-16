@@ -799,26 +799,29 @@ async function respond(button,id,response){
  const card=button?.closest('.job');
  const buttons=card?[...card.querySelectorAll('button[onclick*="respond("]')]:button?[button]:[];
  const oldLabels=buttons.map(b=>b.textContent);
+ let keepDisabled=false;
  buttons.forEach(b=>{b.disabled=true;if(b===button)b.textContent='कृपया प्रतीक्षा करें…';});
  try{
   const {data,error}=await sb.rpc('srk_respond_to_offer',{p_offer_id:id,p_response:response});
   if(!isCurrent())return;
   if(error)throw error;
   if(data?.code==='offer_expired'){
+   keepDisabled=true;
    alert(data.next_offer?.success?'इस ऑफर का समय समाप्त हो गया। अगला योग्य पार्टनर ऑफर भेज दिया गया है।':'इस ऑफर का समय समाप्त हो गया। अभी इस बुकिंग के लिए कोई अगला उपलब्ध पार्टनर नहीं मिला।');
-   try{await refresh();if(!isCurrent())return;}catch(_){if(isCurrent())alert('ऑफर समाप्त होने की पुष्टि मिल गई है, लेकिन सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
+   try{await refresh();if(!isCurrent())return;}catch(_){keepDisabled=true;if(isCurrent())alert('ऑफर समाप्त होने की पुष्टि मिल गई है, लेकिन सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
    return;
   }
   if(data?.success!==true)throw new Error('Offer response was not confirmed');
+  keepDisabled=true;
   alert(response==='accepted'?'काम आपको असाइन हो गया।':'ऑफर मना कर दिया गया।');
-  try{await refresh();if(!isCurrent())return;}catch(_){if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन ऑफर सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
+  try{await refresh();if(!isCurrent())return;}catch(_){keepDisabled=true;if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन ऑफर सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
  }catch(e){
   if(!isCurrent())return;
   try{await refresh();if(!isCurrent())return;alert('नेटवर्क जवाब नहीं मिला। ऑफर की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}
-  catch(_){if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। ऑफर सूची रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
+  catch(_){keepDisabled=true;if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। ऑफर सूची रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
  }finally{
   electricianOfferResponseBusy.delete(id);
-  if(isCurrent())buttons.forEach((b,i)=>{b.disabled=false;b.textContent=oldLabels[i]||'जवाब दें';});
+  if(isCurrent()&&!keepDisabled)buttons.forEach((b,i)=>{b.disabled=false;b.textContent=oldLabels[i]||'जवाब दें';});
  }
 }
 function bookingMapDirections(o){const destination=o.location_lat!=null&&o.location_lng!=null?String(o.location_lat)+','+String(o.location_lng):[o.address,o.district,o.state,o.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(destination)+'&travelmode=driving'}
