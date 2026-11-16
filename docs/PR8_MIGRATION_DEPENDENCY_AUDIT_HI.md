@@ -988,9 +988,11 @@ end;
 $;
 ```
 
-The function opens with `as $$`; its closing delimiter should be `$$;`. The current file has the same malformed delimiter in inspected ancestors `1a4657e9fddaa207fa3bc618f7fea0c5d667734c`, `a449ff18c1d840f71f5f93df363eee9b90c46f5e`, and `9bc85aa40f71b524a16395715b746bdde081fcfb`. The path history commits reviewed changed cancellation lock ordering and fee rules, not this delimiter. The original introducing commit is not yet established.
+The function opens with `as $`; its closing delimiter is malformed as `$;` and should be `$;`.
 
-**Disposition: OPEN — historical file was not edited.** The delimiter defect blocks trustworthy parser/replay verification. Do not edit this historical migration until its introducing lineage and approval are established.
+**Lineage is CONFIRMED:** original migration creation commit `3e4a20188d8d183516fc1527e7f83777b8304ca7` used `$;`. Defect-introducing commit `cd5c0d8a07350fffb6be48c1f2a9481f73342b86` changed `-$;` to `+$;`. Subsequent inspected path-history commits did not alter that delimiter (full commit evidence in §66).
+
+**Disposition: OPEN — historical file remains unchanged.** The introducing commit is identified, but the user's guardrail still requires explicit permission before editing the historical migration. A safe alternative is a disposable replay-only patch/overlay after the source snapshot is taken; do not rewrite the committed historical file without approval.
 
 ### 64.2 Accounting Bridge method consistency
 
@@ -1008,7 +1010,7 @@ Migration commits:
 - Preserve full original reconciliation function and add parity checks: `cdb4bf4b9453f395113245a725902670e449f1f4`
 
 Regression test:
-`supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql`, plan 16.
+`supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql`, plan 19; latest test commit `6e7e132ac800cc99249272650daaad4f7138e2d2`.
 Latest Test commit: `63fb2dd7507c55f242d393a1512bb16ef3576d39`.
 
 ### 64.3 Commission BEFORE/AFTER separation and parity
@@ -1020,14 +1022,14 @@ The same additive migration:
 - uses a manual payment method consistency guard before payout finalization.
 
 Regression test:
-`supabase/tests/database/electrician_payout_reconciliation.test.sql`, plan 32.
+`supabase/tests/database/electrician_payout_reconciliation.test.sql`, plan 34; latest test commit `7751d3222f76df0b062baf82f257eda443e2f7b8`.
 Latest Test commit: `dc2550277dc7f1e92fe285e8f82d782032e15a33`.
 
 ### 64.4 Static verification and limitations
 
 - GitHub file fetch confirms the additive migration and both updated pgTAP files exist on the audit branch.
 - Static comparison confirms the replacement reconciliation function was reconstructed from the full existing function before applying the targeted additions.
-- Test plans match statically counted assertions: Accounting Bridge 16/16; Payout Reconciliation 32/32.
+- Test plans match static assertion inventory: Accounting Bridge plan 19 (18 `ok()` plus 1 `has_function()`); Payout Reconciliation 34/34 `ok()` assertions. Runtime remains NOT RUN.
 - PostgreSQL parser: **NOT RUN**.
 - Migration Replay: **NOT RUN**.
 - pgTAP Runtime: **NOT RUN**.
@@ -1066,3 +1068,21 @@ Path history for `supabase/migrations/20261114270000_admin_only_cancellation_req
 **File disposition remains unchanged pending explicit historical-migration edit approval.** The user guardrail says not to change historical migrations without Lineage Approval. The introducing commit is now identified, but no historical file edit has been made in this step. The defect still blocks full parser/replay verification.
 
 Runtime remains NOT RUN; no Production activity, deployment, workflow dispatch, or merge occurred.
+
+
+## 67. Follow-up: Payout-backed reporting and trigger-order coverage
+
+Audit-branch source update commit: \`43c19084b5cf4a50902550a4180bc6f7a1f8c079\`.
+
+- The AFTER parity validator's \`UPDATE OF\` list now includes \`materials_amount\`, matching the existing payout writer's update event list, and includes \`commission_amount\` so direct privileged edits are also checked.
+- The existing payout writer trigger is named \`srk_reconcile_electrician_payable\`; the parity validator is named \`zz_srk_validate_booking_commission_payout_parity\`. PostgreSQL fires same-kind triggers alphabetically, so the intended order is payout write first, parity check second. The updated pgTAP suite asserts both trigger names/order and event coverage.
+- Replaced \`srk_admin_commission_report()\` to keep \`total_collected\` as customer collection while taking payout gross, commission and electrician payable from \`srk_electrician_payouts\`. This excludes SRK-owned cancellation fees from electrician payable/earnings.
+- Replaced \`srk_get_my_earnings()\` to preserve customer \`amount_received\` while sourcing commission and electrician payable from the payout ledger.
+- Admin booking accounting reconciliation continues to check booking commission against payout \`platform_commission\` and reports \`BOOKING_COMMISSION_PAYOUT_LEDGER_MISMATCH\`.
+
+Updated regression tests:
+- \`electrician_payout_reconciliation.test.sql\`: plan 34, 34 \`ok()\` assertions, latest commit \`7751d3222f76df0b062baf82f257eda443e2f7b8\`.
+- \`admin_labour_bill_payment_accounting_bridge.test.sql\`: plan 19, 18 \`ok()\` + 1 \`has_function()\`, latest commit \`6e7e132ac800cc99249272650daaad4f7138e2d2\`.
+- Static test-file structure check: each file has one \`finish()\` and one \`rollback;\`. These are source checks only, not runtime results.
+
+**Important remaining verification:** no SQL parser, PostgreSQL replay, or pgTAP runtime was available/run. Report/earnings changes have source-level regression assertions only; no runtime data fixtures have exercised booking insert/update, cancellation fee exclusion, refund reversal, or ledger reconciliation. Do not mark these flows runtime-FIXED until disposable PostgreSQL evidence exists.
