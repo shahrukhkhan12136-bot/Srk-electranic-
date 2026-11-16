@@ -21,7 +21,7 @@ test('customer receipt RPC reconciles legacy payment to approved labour plus mat
 
 test('customer payment receipt uses the owner-scoped receipt RPC and validates its document type', () => {
   const start = booking.indexOf('async function customerPrintPaymentReceipt(');
-  const end = booking.indexOf('\\nasync function ', start + 1);
+  const end = booking.indexOf('\nasync function ', start + 1);
   const fn = booking.slice(start, end < 0 ? booking.length : end);
   assert.match(fn, /customerSb\.rpc\('srk_customer_get_payment_receipt',\{p_booking_id:bookingId\}\)/);
   assert.match(fn, /data\.document_type!=='payment_receipt'/);
@@ -31,7 +31,7 @@ test('customer payment receipt uses the owner-scoped receipt RPC and validates i
 
 test('customer payment receipt HTML escapes every server-provided text field', () => {
   const start = booking.indexOf('async function customerPrintPaymentReceipt(');
-  const end = booking.indexOf('\\nasync function ', start + 1);
+  const end = booking.indexOf('\nasync function ', start + 1);
   const fn = booking.slice(start, end < 0 ? booking.length : end);
   for (const pattern of [
     /customerEsc\(data\.receipt_reference\)/,
