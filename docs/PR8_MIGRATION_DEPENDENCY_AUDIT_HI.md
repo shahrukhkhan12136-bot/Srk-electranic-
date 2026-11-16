@@ -693,3 +693,32 @@ Workflow/fixture के साथ वास्तविक dependency migration 
 **सुरक्षित निष्कर्ष:** अभी synthetic fixture पर Atomic migration test उपयोगी सीमित contract test है, लेकिन full migration-chain replay नहीं। पूरा dependency migration workflow में जोड़ने से पहले एक स्पष्ट, versioned और reproducible base schema तय करना होगा—जिसमें Supabase Auth roles/schema, booking/profile/wallet/job-offer tables, आवश्यक columns, helper functions और extensions शामिल हों। उसके बाद disposable local stack पर क्रम से baseline → `20261114040000` → `20261114090000` → pgTAP चलाया जाए। Baseline तैयार किए बिना fixture में अनुमान से columns/tables जोड़ना false-green test दे सकता है।
 
 **अगला gate:** canonical baseline चुनने के लिए migration history/root setup का table-column-function dependency matrix बनाना; फिर disposable local PostgreSQL/Supabase stack पर केवल CI runner में replay। किसी hosted Supabase project, Production, payment provider या shared branch का उपयोग नहीं। इस audit में कोई workflow dispatch या test execution नहीं हुआ।
+
+
+## 51. Payment test baseline — प्रथम dependency matrix (static source pass)
+
+Feature branch की migration list (58 SQL files) और payment flow के पहले वाले प्रमुख migrations का source review किया। नीचे केवल प्रत्यक्ष source dependencies दर्ज हैं; यह अभी complete schema manifest नहीं है।
+
+| Migration | प्रत्यक्ष काम / dependency |
+|---|---|
+| 20261109010000_create_secure_wallet_ledger_foundation.sql | srk_wallet_accounts, srk_wallet_ledger, srk_wallet_bank_links बनाती है; Auth users से FK और RLS/grants जोड़ती है। |
+| 20261114000000_electrician_requested_and_approved_rate_tiers.sql | पहले से मौजूद electrician_applications, electrician_profiles, Auth users पर columns/FK; rate-tier audit और private authorization table जोड़ती है। |
+| 20261114010000_customer_booking_category_and_duration.sql | पहले से मौजूद service_bookings पर category/duration columns तथा Admin offer RPC अपडेट। |
+| 20261114030000_verified_electrician_skills_and_category_matching.sql | electrician_applications, electrician_profiles, Auth users; skill catalog/rules/audit tables और category matching RPCs। |
+| 20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql | पहले से मौजूद service_bookings, electrician_profiles, srk_wallet_ledger, job_offers, Auth users तथा कई prior RPC/columns; labour bill, timer authorization, cash-cycle tables और अनेक workflow/accounting RPCs। |
+| 20261114090000_atomic_razorpay_order_and_payment_finalization.sql | पहले से मौजूद booking + immutable labour-bill contract; order-lock private table और service-only claim/link/release/finalize RPCs। |
+
+### Test baseline में अभी स्पष्ट रूप से शामिल करने योग्य prerequisites
+
+- Supabase local Auth schema/roles और auth.users fixture identities (केवल synthetic IDs) ताकि FK और auth.uid()/JWT-claim checks वैध रूप से जाँचे जा सकें।
+- Starter booking schema में 140000–140400 द्वारा उपयोग किए जाने वाले सभी service_bookings columns, constraints और trigger dependencies। केवल payment fixture के 13 columns पर्याप्त नहीं हैं।
+- electrician_applications, electrician_profiles और आवश्यक job_offers columns/relationships।
+- Wallet foundation migration 090100 को 140400 से पहले लागू करना, क्योंकि 140400 सीधे srk_wallet_ledger का constraint बदलती है और ledger RPCs पढ़ती/लिखती है।
+- 140400 से पहले मौजूद helper functions, private authorization schemas/tables और trigger functions जिनका उपयोग उसके body में है। हर CREATE OR REPLACE FUNCTION पहले से मौजूद table/column references को compile-time/runtime पर जाँचने के लिए पूरे baseline के साथ चलना चाहिए।
+- 140400 के बाद 140900; तभी 140900 के immutable labour bill lookup और payment lock/finalizer का वास्तविक migration-order test होगा।
+
+### Root setup पर सावधानी
+
+SUPABASE_SCHEMA.sql में core booking/profile tables हैं, पर wallet foundation नहीं; PORTAL_SCHEMA.sql Auth-linked Admin/profile additions करता है; COMPLETE_DATABASE_SETUP.sql दोनों के duplicated/consolidated रूप रखता है। इनमें से किसी को अकेले इस feature migration chain का प्रमाणित canonical baseline नहीं माना गया। पहले exact columns, constraints, functions, schemas और migration ledger का crosswalk बनाना बाकी है।
+
+**स्थिति:** यह matrix source-level है। Migration parser, PostgreSQL replay, pgTAP और concurrent test अभी नहीं चले। कोई Production query/write, workflow dispatch या Supabase branch creation नहीं हुई।
