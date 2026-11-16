@@ -465,14 +465,47 @@ async function submitElectricianAreaChange(){
  const isCurrent=()=>!!requestedUserId&&user?.id===requestedUserId&&profile?.id===requestedProfileId&&electricianAccountViewGeneration===requestedGeneration;
  const state=document.getElementById('areaChangeState').value.trim(),district=document.getElementById('areaChangeDistrict').value.trim(),pin=document.getElementById('areaChangePin').value.trim(),reason=document.getElementById('areaChangeReason').value.trim(),button=document.getElementById('submitAreaChange'),status=document.getElementById('areaChangeStatus');
  if(!isCurrent())return;
- if(state.length<2||district.length<2||!/^\d{6}$/.test(pin)||reason.length<10){status.textContent='राज्य, जिला, 6 अंकों का PIN और कम से कम 10 अक्षरों का कारण भरें।';return;}
+ if(state.length<2||district.length<2||!/^\\d{6}$/.test(pin)||reason.length<10){status.textContent='राज्य, जिला, 6 अंकों का PIN और कम से कम 10 अक्षरों का कारण भरें।';return;}
  if(!confirm('क्या आप '+district+', '+state+' को अपना नया काम क्षेत्र बनाना चाहते हैं? Admin की मंजूरी के बाद पुराना क्षेत्र बंद हो जाएगा।')||!isCurrent())return;
  electricianAreaChangeBusy=true;button.disabled=true;status.textContent='रिक्वेस्ट सुरक्षित रूप से भेजी जा रही है…';
  try{
-  const {data,error}=await sb.rpc('srk_electrician_request_area_change',{p_state:state,p_district:district,p_pincode:pin,p_reason:reason});
+  // Capture owner-scoped history before submission to reconcile a lost response safely.
+  const {data:before,error:beforeError}=await sb.rpc('srk_electrician_list_my_area_requests');
   if(!isCurrent())return;
-  if(error)throw error;if(!data?.success)throw new Error('Request not confirmed');
-  status.textContent='रिक्वेस्ट Admin को भेज दी गई है। मंजूरी मिलने तक आपका मौजूदा क्षेत्र चालू रहेगा。';
+  if(beforeError||!Array.isArray(before))throw new Error('रिक्वेस्ट भेजने से पहले इतिहास सत्यापित नहीं हो सका। कृपया Refresh करें।');
+  const baselineIds=new Set(before.map(row=>row.id));
+  const normalized=value=>String(value??'').trim().replace(/\\s+/g,' ');
+  let submitError=null;
+  try{
+   const result=await sb.rpc('srk_electrician_request_area_change',{p_state:state,p_district:district,p_pincode:pin,p_reason:reason});
+   if(!isCurrent())return;
+   if(result?.error)submitError=result.error;
+   else if(!result?.data?.success)submitError=new Error('Request not confirmed');
+  }catch(error){if(!isCurrent())return;submitError=error;}
+  if(submitError){
+   let lookupSucceeded=false,confirmed=[];
+   try{
+    const {data:after,error}=await sb.rpc('srk_electrician_list_my_area_requests');
+    if(!isCurrent())return;
+    if(!error&&Array.isArray(after)){
+     lookupSucceeded=true;
+     confirmed=after.filter(row=>!baselineIds.has(row.id)&&row.status==='pending'&&
+      normalized(row.requested_state)===normalized(state)&&
+      normalized(row.requested_district)===normalized(district)&&
+      row.requested_pincode===pin&&normalized(row.reason)===normalized(reason));
+    }
+   }catch(_){if(!isCurrent())return;}
+   if(confirmed.length===1){
+    status.textContent='आपकी रिक्वेस्ट सर्वर पर दर्ज हो गई है। मंजूरी मिलने तक आपका मौजूदा क्षेत्र चालू रहेगा।';
+   }else{
+    status.textContent=lookupSucceeded
+     ?'रिक्वेस्ट का परिणाम स्पष्ट नहीं है। नई मिलती-जुलती रिक्वेस्ट की पुष्टि नहीं हुई; डुप्लिकेट से बचने के लिए अभी दोबारा न भेजें। Refresh करके इतिहास जाँचें।'
+     :'रिक्वेस्ट का परिणाम स्पष्ट नहीं है और इतिहास भी नहीं खुला। डुप्लिकेट से बचने के लिए अभी दोबारा न भेजें; इंटरनेट लौटने पर Refresh करके स्थिति जाँचें।';
+    return;
+   }
+  }else{
+   status.textContent='रिक्वेस्ट Admin को भेज दी गई है। मंजूरी मिलने तक आपका मौजूदा क्षेत्र चालू रहेगा。';
+  }
   document.getElementById('areaChangeReason').value='';
   await loadMyAreaChangeRequests();
  }catch(e){if(!isCurrent())return;status.textContent=e.message||'रिक्वेस्ट नहीं भेजी जा सकी。';}
