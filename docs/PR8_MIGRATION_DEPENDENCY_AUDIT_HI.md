@@ -529,3 +529,14 @@ verify-payment.js और razorpay-webhook.js के legacy-quote payment paths �
 - अलग से, legacy `srk_admin_record_manual_payment(uuid,text,text,text)` की SQL definition `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` में मौजूद है; उसे इन दो missing functions के साथ न मिलाएँ।
 - सुरक्षित अगला कदम: Git history/अन्य branches में दोनों definitions ढूँढना; फिर authorized isolated DB में signatures, grants, Main Admin checks, row locks, exact amount/ledger writes और idempotency verify करना। कोई नया RPC अनुमान से नहीं बनाया गया।
 - कोई Production query/write, SQL edit, payment, deployment या test execution नहीं हुआ।
+
+
+## 42. दूसरी Branch में पुरानी Atomic Razorpay Migration मिली — PR #8 में अनुपस्थित और API contract अलग
+
+- Branch `feature/platform-fee-cash-online-cycle` की tree में `supabase/migrations/20261114090000_atomic_razorpay_order_and_payment_finalization.sql` मिली (blob SHA `06ecb9ec99981873b9e0c157f293197ba11caae7`)। इसलिए पुरानी progress रिपोर्ट का migration-संबंधी उल्लेख दूसरी Branch के संदर्भ में सही है; इसे वर्तमान PR #8 branch में मौजूद न मानें।
+- इस migration में `srk_claim_payment_order_lock(uuid)`, `srk_link_payment_order(uuid,uuid,text,bigint)`, `srk_release_payment_order_lock(uuid,uuid)`, और `srk_service_finalize_captured_payment(uuid,text,text,bigint,text)` परिभाषित हैं। यह private expiring lock, service_role-only grants और booking row lock/eligibility/amount recheck का प्रयास करती है।
+- वर्तमान PR #8 के `create-order.js` में claim और release RPC call होते हैं, लेकिन `srk_link_payment_order` call नहीं होता। Order create होने के बाद file सीधे REST PATCH से `razorpay_order_id` और `payment_status='pending'` लिखती है। इसलिए दूसरी Branch की migration अकेले लागू होने पर भी उसका atomic link RPC वर्तमान JavaScript द्वारा इस्तेमाल नहीं होगा; source path lock लेकर भी final link के समय migration के row-lock + token + amount/state revalidation को bypass करता है। यह source-level integration gap है, runtime incident नहीं।
+- दूसरी Branch की migration का captured-payment function `srk_service_finalize_captured_payment` है; वर्तमान PR #8 के `verify-payment.js` और `razorpay-webhook.js` इसके बजाय `srk_service_role_get_booking_payment_breakdown` और `srk_service_role_record_online_booking_payment` बुलाते हैं। इन दो नए नामों की definitions उस पुरानी migration में नहीं हैं। अतः migration को current code का पूरा समाधान नहीं माना जा सकता।
+- वर्तमान PR #8 tree में यह migration अनुपस्थित है; दूसरी Branch में मौजूद होना migration lineage/PR ancestry का प्रमाण नहीं कि यह Production या PR #8 में लागू हुई। कोई cherry-pick/restore या SQL change नहीं किया गया।
+- सुझाया अगला कदम: branch ancestry और intended API contract reconcile करें; फिर एक ही canonical order-link + payment-settlement RPC contract चुनकर JS और SQL को साथ align करें। Migration baseline स्पष्ट होने और authorized isolated DB उपलब्ध होने तक replay/DB test न करें।
+- Production query/write, payment, deployment या merge नहीं हुआ।
