@@ -134,3 +134,30 @@ bookings + profiles + Admin helper
 ### Next acceptance gate
 
 Before creating an executable baseline file, obtain an owner-approved schema-only baseline/provenance and reconcile it object-by-object against these source contracts. Then prepare a review-only diff, validate version ordering and duplicate filename handling, and only after explicit approval run replay and pgTAP on a disposable local target. No hosted database action is authorized by this document.
+
+
+## Standalone schema provenance inventory — read-only comparison (16 Nov 2026)
+
+चार SQL artifacts पढ़े गए; इन्हें अभी canonical baseline घोषित नहीं किया गया है।
+
+| Artifact | Source में मिला | उपयोगिता | Baseline के रूप में सीमा |
+|---|---|---|---|
+| `SUPABASE_SCHEMA.sql` | `pgcrypto`; `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers`; शुरुआती indexes और RLS insert policies | शुरुआती marketplace table shape का स्रोत | `srk_admin_users`, portal auth columns और बाद के financial/quote columns नहीं; केवल 93 lines का starter schema |
+| `PORTAL_SCHEMA.sql` | `srk_admin_users`; electrician `user_id`; Auth trigger; `srk_is_admin()`; Admin/electrician policies और offer RPCs | Portal-layer additions और legacy Admin helper का स्रोत | Header कहता है SUPABASE_SCHEMA के बाद चलाएँ; पुराने function/search_path/permissions contract को वर्तमान numbered migrations का स्वतः विकल्प नहीं मान सकते |
+| `COMPLETE_DATABASE_SETUP.sql` | पहले दो artifacts का consolidated रूप; चार base tables, `srk_admin_users`, `user_id`, `srk_is_admin()`, `is_srk_admin()`, legacy policies/RPCs | सबसे व्यापक standalone setup candidate | इसमें पुराने starter/portal objects और policies हैं; numbered migrations की पूरी वर्तमान schema, financial/quote/KYC/audit objects नहीं; कुछ DDL दोहराया गया है |
+| `ADMIN_EMAIL_LOGIN_SETUP.sql` | `srk_admin_users` पर RLS/self-read policy; `is_srk_admin()`; Admin table policies | Admin email-login patch का प्रमाण | Base schema नहीं; पहले से बनी tables पर निर्भर; इसे पहले चलाना संभव नहीं |
+
+### Source-backed table/column provenance
+
+- `SUPABASE_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` दोनों में शुरुआती `service_bookings` DDL है; इस DDL में `amount_paid` नहीं है।
+- शुरुआती `electrician_profiles` DDL में `application_id`, display/contact/location, skills, active और created_at हैं; `user_id` अलग Portal setup में जोड़ा गया; `auth_user_id` numbered migration `20261109000500` में जोड़ा गया।
+- शुरुआती `job_offers` DDL `service_bookings` और `electrician_profiles` पर foreign keys रखता है; इसलिए उन दोनों tables का पहले होना आवश्यक है।
+- `srk_admin_users` का DDL `PORTAL_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` में है; numbered migration chain में इसका authoritative introducing migration इस audit में नहीं मिला।
+- `COMPLETE_DATABASE_SETUP.sql` में `srk_is_admin()` और `is_srk_admin()` दोनों के definitions हैं, लेकिन यह standalone setup artifact है, numbered migration नहीं।
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` `srk_admin_users` पहले से मौजूद मानता है; यह table-creation source नहीं है।
+
+### निष्कर्ष / निर्णय
+
+**अभी कोई standalone SQL file copy करके baseline migration नहीं बनाई जाएगी।** `COMPLETE_DATABASE_SETUP.sql` सबसे अधिक शुरुआती DDL समेटता है, लेकिन वह historical starter/portal contract है; उसे वर्तमान PR #8 schema का पूरा या सुरक्षित canonical snapshot कहना गलत होगा। पहले object-by-object schema reconciliation, policy/ACL review, and owner sign-off चाहिए।
+
+इस inventory में केवल GitHub source files पढ़े गए। किसी database पर SQL execute नहीं किया गया; कोई production/test project बदला नहीं गया।
