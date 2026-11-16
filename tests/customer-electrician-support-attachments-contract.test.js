@@ -79,7 +79,7 @@ test('electrician support client creates, lists, opens and replies through self-
   assert.match(open,/if\(!isCurrent\(\)\|\|request!==electricianSupportThreadRequest/);
   assert.match(reply,/const requestedUserId=user\.id,requestedProfileId=profile\.id,requestedGeneration=electricianAccountViewGeneration/);
   assert.match(reply,/if\(!isCurrent\(\)\)return/);
-  assert.match(reply,/if\(isCurrent\(\)&&button\)/);
+  assert.match(reply, /finally\{\s*if\(isCurrent\(\)\)\s*\{\s*electricianSupportReplyBusy=false;/);
 });
 
 test('electrician support backend scopes tickets to authenticated owner and rejects closed-ticket replies', () => {
