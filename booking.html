@@ -1188,36 +1188,37 @@ async function customerSubmitBookingRefund(bookingId){
  }finally{if(isCurrent()&&button)button.disabled=false;}
 }
 async function customerCancelBooking(bookingId,button) {
- if(!customerSb||!bookingId||button?.disabled)return;
+ const generation=customerActionGeneration,isCurrent=()=>generation===customerActionGeneration;
+ if(!customerSb||!bookingId||button?.disabled||!isCurrent())return;
  const note='ग्राहक ने ऐप से बुकिंग रद्द करने का अनुरोध किया है। कृपया इलेक्ट्रिशियन की सत्यापित स्थिति और उपलब्ध यात्रा/आगमन प्रमाण देखकर निर्णय लें।';
- if(!confirm('रद्द करने का अनुरोध Admin को भेजें? अभी बुकिंग रद्द नहीं होगी। Admin प्रमाण जाँचकर निर्णय करेगा। ₹99 केवल ग्राहक के घर पहुँचने का प्रमाण दर्ज होने और Admin की मंज़ूरी पर; घर से नहीं निकला या रास्ते में होने पर ₹0।'))return;
+ if(!confirm('रद्द करने का अनुरोध Admin को भेजें? अभी बुकिंग रद्द नहीं होगी। Admin प्रमाण जाँचकर निर्णय करेगा। ₹99 केवल ग्राहक के घर पहुँचने का प्रमाण दर्ज होने और Admin की मंज़ूरी पर; घर से नहीं निकला या रास्ते में होने पर ₹0।')||!isCurrent())return;
  if(button)button.disabled=true;
  try {
   const {data,error}=await customerSb.rpc('srk_customer_request_booking_cancellation',{p_booking_id:bookingId,p_customer_note:note});
+  if(!isCurrent())return;
   if(error)throw error;
   if(!data?.success)throw new Error('CANCELLATION_REQUEST_NOT_CONFIRMED');
   alert(data.already_pending?'इस बुकिंग का अनुरोध पहले से Admin के पास लंबित है।':'रद्द करने का अनुरोध Admin को भेज दिया गया है। फैसला और लागू शुल्क बुकिंग में दिखेगा।');
-  try{await loadCustomerBookings();}catch(_){alert('रद्द करने का अनुरोध सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
+  try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('रद्द करने का अनुरोध सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
  } catch(error) {
+  if(!isCurrent())return;
   let confirmedRequest=null,lookupSucceeded=false;
   try{
    const {data:requests,error:lookupError}=await customerSb.rpc('srk_customer_list_booking_cancellation_requests');
-   if(!lookupError&&Array.isArray(requests)){
-    lookupSucceeded=true;
-    confirmedRequest=requests.find(row=>row.booking_id===bookingId&&row.request_status==='pending')||null;
-   }
-  }catch(_){/* Keep the outcome uncertain if the owner-scoped read also fails. */}
+   if(!isCurrent())return;
+   if(!lookupError&&Array.isArray(requests)){lookupSucceeded=true;confirmedRequest=requests.find(row=>row.booking_id===bookingId&&row.request_status==='pending')||null;}
+  }catch(_){if(!isCurrent())return;}
+  if(!isCurrent())return;
   if(confirmedRequest){
    alert('इस बुकिंग का रद्द करने का अनुरोध Admin के पास लंबित है। दोबारा अनुरोध नहीं भेजा गया।');
-   try{await loadCustomerBookings();}catch(_){alert('अनुरोध Admin के पास लंबित है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
+   try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('अनुरोध Admin के पास लंबित है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
   }else if(lookupSucceeded){
    alert('अभी जाँची गई सूची में इस बुकिंग का लंबित अनुरोध नहीं मिला। कोई दूसरा अनुरोध अपने-आप नहीं भेजा गया। बुकिंग सूची रीफ़्रेश करें; फिर भी अनुरोध न दिखे तो दोबारा प्रयास करें।');
   }else{
    alert('रद्द करने के अनुरोध का परिणाम स्पष्ट नहीं है। दोबारा भेजने से पहले बुकिंग सूची रीफ़्रेश करके स्थिति जाँचें।');
   }
- } finally {if(button)button.disabled=false;}
+ } finally {if(isCurrent()&&button)button.disabled=false;}
 }
-let customerLiveLocationBookingIds=[];let customerLiveLocationPoller=null;let customerLiveLocationRefreshRequest=0;
 async function refreshCustomerLiveLocations(){if(!customerSb||!customerLiveLocationBookingIds.length||navigator.onLine===false||document.visibilityState==='hidden')return;const request=++customerLiveLocationRefreshRequest,bookingIds=[...customerLiveLocationBookingIds];const isCurrent=id=>request===customerLiveLocationRefreshRequest&&customerLiveLocationBookingIds.includes(id);await Promise.all(bookingIds.map(async id=>{const box=document.getElementById('customerLiveLocation_'+id);if(!box)return;try{const {data,error}=await customerSb.rpc('srk_customer_get_live_electrician_location',{p_booking_id:id});if(!isCurrent(id))return;if(error){box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small" role="status">नेटवर्क के कारण लोकेशन अभी लोड नहीं हो सकी। इंटरनेट लौटने पर फिर कोशिश होगी।</p>';return;}if(!data?.is_active){box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small">अभी कोई ताज़ा लोकेशन उपलब्ध नहीं है। इलेक्ट्रिशियन के यात्रा के दौरान शेयरिंग शुरू करने पर यहाँ दिखेगी।</p>';return;}const lat=Number(data.latitude),lng=Number(data.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng)){box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small" role="status">GPS स्थान अभी मान्य नहीं है। अगला अपडेट आने पर फिर दिखेगा।</p>';return;}const updated=new Date(data.updated_at);const time=Number.isFinite(updated.getTime())?updated.toLocaleTimeString('hi-IN'):'अभी';const url='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng)+'&travelmode=driving';const embed='https://maps.google.com/maps?q='+encodeURIComponent(lat+','+lng)+'&z=15&output=embed';if(!isCurrent(id))return;box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small">ताज़ा GPS स्थान · अपडेट: '+customerEsc(time)+' · सटीकता लगभग '+customerEsc(Math.round(Number(data.accuracy_meters)||0))+' मीटर</p><iframe title="इलेक्ट्रिशियन की वर्तमान लोकेशन" src="'+customerEsc(embed)+'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="width:100%;height:220px;border:0;border-radius:10px" allowfullscreen></iframe><a target="_blank" rel="noopener" href="'+customerEsc(url)+'">🧭 Google Maps में रास्ता देखें</a>';}catch(error){if(!isCurrent(id))return;box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small" role="status">लोकेशन अभी लोड नहीं हो सकी। इंटरनेट लौटने पर फिर कोशिश होगी।</p>';}}));}
 if(!customerLiveLocationPoller)customerLiveLocationPoller=setInterval(refreshCustomerLiveLocations,15000);
 async function loadCustomerBookings() {
