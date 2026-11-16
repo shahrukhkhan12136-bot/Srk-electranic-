@@ -3,7 +3,7 @@
 **Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
 **Branch:** `feat/customer-login-first-dashboard-20261114`  
 **PR:** #8 — OPEN / DRAFT / NOT MERGED  
-**Audited head:** `b32fa84ff9c1c71c7eec4b9d47536bb6478830ab`  
+**Audited head:** `9590d903c5bf960d9660187962eec8b85a1707e0`  
 **Scope:** read-only source verification. No database connection/query, SQL execution, migration replay, DDL, workflow dispatch, merge, deployment, or Production operation.
 
 ## 1. Re-verified amount_paid order gate
@@ -51,3 +51,23 @@ Do not use the existing remote-schema-export workflow as a substitute for a disp
 - Production schema/history: **NOT ACCESSED in this audit**.
 - PR #8 remains **OPEN / DRAFT / UNMERGED**.
 - No application source, numbered SQL migration, CI workflow, database, payment provider, or deployment was changed.
+
+
+## 6. Current-branch CI/runtime harness recheck — 16 Nov 2026
+
+Current repository configuration was checked again at the audited PR head:
+
+- `package.json` maps `npm test` to `node --test tests/*.test.js`; this is the Node/source-contract suite, not a PostgreSQL test runner.
+- `supabase/config.toml` is absent from the branch tree, so this checkout is not currently a configured local Supabase project.
+- The repository has `.github/workflows/supabase-schema-ci.yml`, but it is not a safe GPT-2 local-only harness:
+  - it runs only by `workflow_dispatch`;
+  - its job guard accepts `feature/platform-fee-cash-online-cycle`, not the current `feat/customer-login-first-dashboard-20261114` branch;
+  - it requires `SUPABASE_DB_URL` and exports schema from the hosted database before starting a local stack;
+  - it applies only five hard-coded legacy fee/payment migrations and does not run `supabase test db` or the GPT-2 pgTAP suite.
+- `tests/database-pgtap-plan-counts.test.js` checks declared pgTAP plan counts against assertion-call counts. It does not execute SQL or validate PostgreSQL behavior.
+
+**Decision:** do not dispatch or repurpose that workflow for this branch. Its hosted-schema export dependency and incomplete migration list do not meet the approved isolated/no-Production-credential test boundary. Do not add a new replay workflow until the canonical baseline, helper/column ordering and duplicate-version gates above have an approved resolution.
+
+- Node CI at the latest audited head is a separate source-contract signal; latest verified run in this workstream: `43859192973`, **384/384 PASS**.
+- PostgreSQL migration replay and pgTAP remain **NOT RUN**.
+- No workflow was dispatched or modified; no database connection, schema export, SQL execution, or Production access was made in this recheck.
