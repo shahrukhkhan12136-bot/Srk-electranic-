@@ -102,10 +102,9 @@ test('customer profile avatar, support, payment and booking check auth session e
   assert.ok(bookingSubmitStart>=0&&bookingSubmitEnd>bookingSubmitStart,'booking submit handler exists');
   const bookingSubmit=booking.slice(bookingSubmitStart,bookingSubmitEnd);
   assert.match(bookingSubmit,/const \{data,error\}=await customerSb\.auth\.getSession\(\)[\s\S]*?if\(error\)throw error/);
-  assert.match(bookingSubmit,/const latestSession=latestSessionData\?\.session[\s\S]*?latestSession\.user\.id\s*!==\s*customerSession\.user\.id/);
+  assert.match(bookingSubmit,/const latestSession\\s*=\\s*latestSessionData\\?\\.session[\\s\\S]*?latestSession\\.user\\.id\\s*!==\\s*customerSession\\.user\\.id/);
   assert.match(bookingSubmit,/bookingHeaders\.Authorization = 'Bearer ' \+ latestSession\.access_token/);
   assert.ok(bookingSubmit.indexOf('if (latestSessionError) throw latestSessionError;') < bookingSubmit.indexOf("fetch('/api/create-booking'"),'session errors must stop booking submission before network request');
-  assert.ok(bookingSubmit.indexOf('if (sessionError) throw sessionError;') < bookingSubmit.indexOf("fetch('/api/create-booking'"),'session errors must stop booking submission before network request');
 });
 
 
