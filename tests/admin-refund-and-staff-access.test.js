@@ -381,3 +381,15 @@ test('Quote and work-status SECURITY DEFINER RPCs are pinned to an empty search_
   assert.equal((quoteWorkSearchPathFix.match(/set search_path = '';/g) || []).length, 3);
   assert.match(quoteWorkSearchPathFix, /IF EXISTS keeps fresh replay safe/i);
 });
+
+
+const publicRateLimitSearchPathFix = fs.readFileSync(path.join(root, 'supabase/migrations/20261116170000_pin_public_rate_limit_rpc_search_path.sql'), 'utf8');
+const publicRateLimitContract = fs.readFileSync(path.join(root, 'supabase/tests/database/public_rate_limit_rpc_search_path.test.sql'), 'utf8');
+
+test('service-only public rate-limit RPC pins an empty search_path and preserves its execution boundary', () => {
+  assert.match(publicRateLimitSearchPathFix, /alter function public\.srk_check_public_rate_limit\(text,text,integer\)\s+set search_path\s*=\s*''/i);
+  assert.match(publicRateLimitContract, /select plan\(5\)/);
+  assert.match(publicRateLimitContract, /has_function_privilege\('service_role'/);
+  assert.match(publicRateLimitContract, /not has_function_privilege\('anon'/);
+  assert.match(publicRateLimitContract, /not has_function_privilege\('authenticated'/);
+});
