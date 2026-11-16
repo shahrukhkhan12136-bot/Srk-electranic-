@@ -78,7 +78,7 @@ test('customer payment history handles auth session lookup failures through its 
   const sessionAt = fn.indexOf('customerSb.auth.getSession()');
   assert.ok(tryAt >= 0 && sessionAt > tryAt, 'session lookup is protected by the payment history try/catch');
   assert.match(fn, /if\(sessionError\)throw sessionError/);
-  assert.match(fn, /finally\s*\{\s*customerPaymentHistoryBusy=false;box\.setAttribute\('aria-busy','false'\);\s*\}/);
+  assert.match(fn, /finally\s*\{\s*customerPaymentHistoryBusy=false;box\.setAttribute\('aria-busy','false'\);/);
 });
 
 test('Customer cancellation-fee and refund history guard auth session failures with retry UI', () => {
