@@ -50,7 +50,7 @@ test('Customer saved-address writes reconcile uncertain RPC outcomes before allo
   assert.match(handler, /matches\.length===1\?matches\[0\]:null/);
   assert.match(handler, /editingId\?latestAddresses\.find/);
   assert.match(handler, /अभी वही अनुरोध दोबारा न भेजें/);
-  assert.match(handler, /if\(savedMatch\)\{savedId=savedMatch\.id;\}/);
+  assert.match(handler, /if\(savedMatch\)savedId=savedMatch\.id/);
 });
 
 test('Customer default-address updates reconcile uncertain RPC responses against the authoritative list', () => {
