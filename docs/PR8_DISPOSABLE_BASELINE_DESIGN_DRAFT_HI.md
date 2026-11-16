@@ -344,3 +344,15 @@ Before creating an executable baseline file, obtain an owner-approved schema-onl
 5. इन gates के बाद ही disposable local Supabase/PostgreSQL replay और pgTAP चलाना।
 
 **Verification:** यह Git source fetch और static text scan है। PostgreSQL replay, pgTAP, Production query/write, migration apply, merge और deployment नहीं किए गए। Scan केवल quote/commission/amount_paid नाम-संबंधित migration files पर सीमित था; इसे सभी SQL files या dynamic SQL की exhaustive जाँच न माना जाए।
+
+
+### 6. Root setup में पुराने Auth और commission trigger attachments — अतिरिक्त cross-check
+
+चार root SQL artifacts (PORTAL_SCHEMA.sql, COMPLETE_DATABASE_SETUP.sql, SUPABASE_SCHEMA.sql, ADMIN_EMAIL_LOGIN_SETUP.sql) में bounded search के बाद:
+
+- PORTAL_SCHEMA.sql और COMPLETE_DATABASE_SETUP.sql दोनों auth.users पर srk_link_electrician_profile_trigger को AFTER INSERT OR UPDATE OF phone, phone_confirmed_at से attach करते हैं। दोनों में पुरानी srk_link_electrician_profile() implementation भी है।
+- Current numbered migration 20261109000500_harden_electrician_profile_identity_linking.sql उसी function को अधिक सख्त identity/phone checks वाली implementation से replace करती है, लेकिन Auth trigger को drop/recreate नहीं करती। यदि approved bootstrap में root setup का Auth trigger पहले से बना हो, तो trigger उसी नाम के function को नई implementation के साथ invoke करेगा; clean replay में root setup शामिल न हो तो attachment का numbered migration source अभी नहीं मिला।
+- Root setup files में पुराना commission trigger srk_booking_commission_trigger, srk_calculate_commission_on_completion() को BEFORE UPDATE OF status पर attach करता है। यह नई quote migration के srk_calculate_booking_commission() से अलग function और अलग calculation contract है।
+- Quote migration की नई commission trigger function के लिए कोई matching trigger attachment नहीं मिला। पुराने root commission trigger की मौजूदगी नए function को attach नहीं करती और दोनों functions को interchangeable नहीं मानना चाहिए।
+
+इसलिए Auth trigger attachment का source root manual setup में पहचाना गया, लेकिन canonical numbered replay baseline में उसका स्थान अब भी unresolved है। इसी तरह पुराने commission trigger का manual setup evidence, नए quote commission trigger की सक्रियता सिद्ध नहीं करता।
