@@ -1120,3 +1120,16 @@ Updated regression tests:
 ## 69. Audit branch relationship to PR branch
 
 GitHub compare of `feat/customer-login-first-dashboard-20261114` (base) against `chore/pr8-replay-audit-20261116-v2` (head) reports `diverged`: audit branch is 190 commits ahead and 42 commits behind the PR branch from their merge base. This is a branch-relationship count, not 190 newly authored changes in this task. No rebase, merge, PR update, or PR-branch write was performed. The audit branch remains isolated pending owner review of the divergence.
+
+## 70. Dollar-Quote source correction — verified on Audit Branch
+
+- Historical defect lineage remains: the malformed delimiter was introduced by commit `cd5c0d8a07350fffb6be48c1f2a9481f73342b86`.
+- Corrective commit: `f3472a153b11f15acfb38e5879df027dc75a5098` (Audit Branch only).
+- Corrected file: `supabase/migrations/20261114270000_admin_only_cancellation_requests_and_decisions.sql`.
+- GitHub re-read Blob SHA: `892e7fcd51304ac84efb8ef4d8b251c198127526`; line 76 now ends with `$$;`; zero bare `$;` terminators remain.
+- GitHub compare confirms exactly one file changed, one insertion and one deletion: `-$;` to `+$$;`.
+- Dollar-quote lexical inventory: 12 `$$` tokens (balanced), 6 function terminators, zero malformed bare dollar-semicolon lines. This is a delimiter sanity check, **not** a PostgreSQL SQL parse.
+- PostgreSQL SQL Parser: **NOT RUN** — no PostgreSQL parser binary/package is available in the current execution environment.
+- Full Migration Replay: **NOT RUN** — no PostgreSQL server/client, Docker/Podman, or Supabase CLI is available; no disposable database was provisioned.
+- pgTAP runtime: **NOT RUN**. No runtime PASS is claimed.
+- Production, PR branch, deployment, merge, and workflow dispatch: **NOT TOUCHED**.
