@@ -110,3 +110,14 @@
 - अंतिम recheck: booking.html और test file के latest blob IDs fetch किए; सभी चार handlers मौजूद और async declaration marker सही। Current HEAD a8a10edfc5f37161c214c6c62571578af3c0431b पर GitHub Actions run उपलब्ध नहीं; tests execute नहीं हुए माने जाएँ।
 
 **इस सीमित Customer async-isolation workstream की प्रगति:** Code changes 100%; regression tests लिखे 100%; automated execution/CI 0% (अभी run उपलब्ध नहीं); Supabase runtime/browser validation 0% (final QA चरण में)। यह workstream प्रतिशत है, पूरे Customer App या पूरे project का नया प्रतिशत नहीं। पूरे project का पिछला सत्यापित checklist snapshot 56/86 = 65% था; current checklist recount अभी बाकी है।
+
+
+### 2026-11-16 — Customer Payment Receipt session isolation
+- Audit में `customerPrintPaymentReceipt()` मिला: receipt RPC pending रहते session बदलने पर पुराने ग्राहक की receipt popup में render हो सकती थी।
+- सुधार: receipt action अब customer action generation और वर्तमान auth session user ID capture करता है; receipt RPC के बाद session दोबारा जाँची जाती है। Session stale होने पर popup बंद होता है और stale session के नाम पर error alert नहीं दिखता।
+- Regression test: `tests/customer-electrician-payment-history-contract.test.js` में receipt popup stale-session guard का source-contract test जोड़ा। इस test file में अब 14 tests हैं।
+- Commits: source `5150f1d7f9d10e26bb689f510f4e14d8eee046b6`; test `ed611b06c90aded0401aa4d49c2a9f1f2f241886`।
+- अंतिम source/test re-fetch: receipt में generation/session guard और stale होने पर popup close verified। Current HEAD `ed611b06c90aded0401aa4d49c2a9f1f2f241886` पर GitHub Actions run उपलब्ध नहीं; automated tests execute होने का प्रमाण नहीं।
+- उसी source pass में Support Messages/Attachments के render path की जाँच की: attachment/message results outer thread generation + request ID check के बाद ही UI में render होते हैं। OTP send/verify और logout auth-transition flows को अलग से देखा; इस pass में उन पर कोई बदलाव नहीं किया।
+
+**Customer async account-isolation audit workstream (अब तक किए गए इन handlers के दायरे में):** source changes 100%; regression tests लिखे 100%; automated execution/CI 0%; Supabase runtime validation 0%; browser/mobile validation 0% (implementation के बाद final QA)। ये प्रतिशत केवल इस audit workstream के हैं; पूरे Customer App या project के नहीं।
