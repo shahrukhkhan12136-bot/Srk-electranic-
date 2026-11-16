@@ -1,10 +1,10 @@
 # GPT-1 Unified System Inventory — SRK ELECTRONIC
 
-**Inventory checked:** 15 November 2026  
+**Inventory checked:** 16 November 2026  
 **Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
 **PR:** #8 — Open, Draft, unmerged  
 **Feature branch:** `feat/customer-login-first-dashboard-20261114`  
-**Inspected PR head (refreshed):** `eed50b086218ed6dfa095102150651992933de87`
+**Inspected PR head (refreshed):** `f27a4ed04396c3869ad88455e172fca808f9c7b7`
 
 
 ## 2026-11-16 — baseline dependency audit correction
@@ -337,3 +337,17 @@ Source call-sites के RPC names और payload keys को संबंधि
 - Admin helper naming भी अलग-अलग है: `ADMIN_EMAIL_LOGIN_SETUP.sql` और `COMPLETE_DATABASE_SETUP.sql` में `public.is_srk_admin()` है, जबकि `PORTAL_SCHEMA.sql` में `public.srk_is_admin()` है। Versioned migrations `public.is_srk_admin()` को call करती हैं; उस helper की versioned migration/baseline provenance अभी प्रमाणित नहीं है।
 - GPT-2 owner को authoritative baseline, duplicate migration history reconciliation, migration replay और actor-isolation runtime gates verify करने हैं। GPT-1 ने GPT-2-owned SQL/RLS में कोई बदलाव नहीं किया।
 - इस दस्तावेज़ को cross-reference के रूप में अपडेट किया गया; कोई application source, migration, Production setting, payment/provider, deployment या mobile QA नहीं बदला/चलाया गया।
+
+
+## 23. GPT-1 latest-head source reconciliation — 16 Nov 2026
+
+**Audit basis:** PR #8 exact head `f27a4ed04396c3869ad88455e172fca808f9c7b7`; freshly fetched `booking.html` (blob `679072fa8926de0757e722390d1895f90c7d57c8`) and `electrician.html` (blob `90e0a597c138b04b2ab91861e644be3dad46e8a0`), plus the existing Customer/Electrician workflow and regression-test map.
+
+- Customer source call-sites reconfirmed: owner-filtered booking load and per-booking timeline RPC; safe handling when one timeline transport rejects; customer call-contact RPC; refund request/history; Admin-reviewed cancellation request; customer-approved work-start and completion/dispute; booking-scoped electrician live-location polling.
+- Electrician source call-sites reconfirmed: offer details and owner-scoped offer response; assigned-booking work-start request and customer-approval waiting state; completion request and server bill display; GPS failure cleanup through `srk_electrician_stop_live_location`; KYC document loader; support-ticket loader; earnings/wallet loaders.
+- Existing source contracts remain the evidence for UI/client logic. This pass did not invoke Supabase RPCs, real Auth actors, private Storage, browser sessions, GPS hardware, push delivery, or provider APIs.
+- No new concrete GPT-1 source defect or explicitly planned missing UI/API implementation was demonstrated. No app code or migration change is justified by this pass.
+- The prior header's inspected head `eed50b0...` is superseded by the exact current PR head above. The PR was re-read immediately before this documentation update and was Open/Draft/unmerged. No merge, deployment, Production action, database write, provider transaction, or mobile QA occurred.
+- GitHub Actions query for this exact head returned no workflow runs at the time of this inventory refresh. Do not carry forward the earlier 328-test success as evidence for this newer head; rerun/confirm CI against the current exact SHA before relying on it.
+
+**Decision:** Keep the remaining Customer/Electrician work as runtime acceptance gates already listed in Section 21. Do not add features or reopen Welcome Screen/founder-photo work.
