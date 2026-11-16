@@ -1035,3 +1035,20 @@ Latest Test commit: `dc2550277dc7f1e92fe285e8f82d782032e15a33`.
 - Five primary migration/dependency blockers: **not all resolved**; canonical baseline, helper provenance, payout/manual-payment/complaint table provenance, and migration-history reconciliation remain open.
 - Production queries/writes, deployment, workflow dispatch, merge: **NONE**.
 
+
+
+## 65. Disposable Runtime Environment Availability Check
+
+इस turn में local execution environment को दोबारा जाँचा गया:
+
+- `psql`: unavailable
+- `postgres`: unavailable
+- `docker`: unavailable
+- `podman`: unavailable
+- `supabase` CLI: unavailable
+- Python parser/runtime modules `pglast`, `sqlparse`, `psycopg`, `psycopg2`: unavailable
+- Repository `supabase/` directory में `config.toml` भी नहीं मिला।
+
+इसलिए इस environment में PostgreSQL Parser, Migration Replay या pgTAP Runtime चलाने का सुरक्षित साधन उपलब्ध नहीं है। Production project या अधूरे historical test project पर इसे substitute नहीं किया गया। किसी GitHub workflow को dispatch नहीं किया गया।
+
+**Runtime disposition: NOT RUN — environment unavailable.** Disposable PostgreSQL runtime स्थापित होने तक कोई PASS claim नहीं है।
