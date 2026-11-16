@@ -575,3 +575,18 @@ Branch `feature/platform-fee-cash-online-cycle` की `20261114090000_atomic_ra
 **अतिरिक्त सावधानी:** `create-order.js` में lock claim के बाद order reuse/create होता है और फिर `srk_link_payment_order` के जरिए atomic link किया जाता है। अतः पहले की टिप्पणी कि यह handler सीधे REST PATCH से order ID लिखता है, वर्तमान पढ़े गए source के लिए गलत थी; इस रिपोर्ट में उसे वापस लिया जाता है। Reusable-order fast path अब lock के भीतर है, लेकिन provider GET के बाद booking का पुनः-पठन RPC के भीतर `srk_link_payment_order` द्वारा state/amount दोबारा जाँचा जाता है।
 
 **स्थिति:** Migration/handler contract का source मिलान हुआ; PostgreSQL execution, pgTAP, deployment ledger और Production schema सत्यापन नहीं हुआ।
+
+
+## 44. Labour Bill Payment RPC की परिभाषा मिल गई — पिछला “missing” निष्कर्ष वापस
+
+Section 43 में `srk_service_get_labour_bill_for_payment(uuid)` को unresolved बताया गया था। Migration-by-migration पढ़ने पर यह निष्कर्ष गलत निकला। इसकी परिभाषा `supabase/migrations/20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql` में पंक्ति 745 से 768 के बीच मौजूद है।
+
+Source-level contract:
+- `SECURITY DEFINER`, `STABLE` और pinned `search_path` के साथ बनाया गया है।
+- `auth.jwt()->>'role' = 'service_role'` की जाँच करता है।
+- `srk_booking_labour_bills` से booking का immutable labour bill पढ़ता है और `labour_amount_paise` सहित आवश्यक fields लौटाता है।
+- PUBLIC, anon और authenticated से EXECUTE revoke; केवल service_role को grant।
+
+इसलिए वर्तमान उपलब्ध Branch source में तीनों handlers की labour-bill lookup dependency की SQL definition भी मौजूद है। Section 43 का unresolved-dependency कथन वापस लिया जाता है। अब इन चार payment RPC और labour-bill lookup RPC की repository source definition मिलती है।
+
+**बाकी सत्यापन:** Migration ordering/replay compatibility, PostgreSQL/pgTAP execution और deployed schema verification अभी नहीं हुए हैं। यह प्रमाणित नहीं है कि ये migrations किसी live Database में लागू हैं।
