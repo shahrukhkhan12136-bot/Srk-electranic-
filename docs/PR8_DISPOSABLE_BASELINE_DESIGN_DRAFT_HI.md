@@ -418,3 +418,15 @@ Reviewed `20261115260000_sos_admin_support_alerts.sql`, `sos_admin_support_alert
 - The pgTAP test declares 28 assertions; static source and JS contract tests exist. They have not been executed in this audit, so no runtime security or delivery claim is made.
 
 **Owner decisions before rollout:** approve global SOS queue visibility for Support Staff, decide repeat-alert throttling, and provide a separate tested notification/consent design if external delivery or live location is ever required. No external delivery was configured or invoked in this review.
+
+
+### 12. Staff permission-helper volatility correction and payment-method Unicode contract (16 Nov 2026)
+
+Reviewed `20261116100000_fix_staff_permission_helper_volatility.sql` and `20261115270000_fix_customer_payment_method_unicode_contract.sql`:
+
+- The original Staff permission helper uses `FOR SHARE` row locks on active Staff registry and tracked Auth-session rows. PostgreSQL requires a function that performs these locking reads to be VOLATILE; a STABLE declaration is incompatible with the intended locking behavior. The follow-up migration explicitly replaces it as PL/pgSQL VOLATILE, retains SECURITY DEFINER and empty `search_path`, preserves the Main Admin bypass, active Staff check, JWT session UUID validation, live `auth.sessions` check, and permission lookup, then revokes PUBLIC/anon and grants authenticated execution.
+- The existing 69-assertion Staff RBAC test includes checks for `provolatile='v'` on this helper and on Staff read RPCs. This is a source-level fix aligned with the test contract, not a test pass. The follow-up migration must run after the original Staff RBAC foundation and before the Staff test suite is considered valid.
+- The Unicode repair replaces `srk_customer_change_payment_method(uuid,text)` with an exact accepted value `Razorpay ऑनलाइन भुगतान`, derives the caller from `auth.uid()`, and only changes the caller's unassigned, unpaid `new/confirmed` cash booking to a Razorpay payment preference. It does not collect payment. It references `amount_paid`, `razorpay_order_id`, and `razorpay_payment_id`; therefore the canonical booking baseline and earlier `amount_paid` prerequisite must be present before this migration.
+- Its SQL predicate `payment_status NOT IN ('paid','refunded')` does not match NULL values (SQL three-valued logic). This is fail-closed for rows with NULL payment_status; confirm whether the intended business rule is to reject NULL or to treat NULL as unpaid before changing it.
+
+**Replay gate:** preserve the ordered dependency chain (Staff RBAC foundation → VOLATILE correction; booking/payment columns → Unicode contract), and verify with PostgreSQL/pgTAP plus a real UTF-8 RPC contract test. None were run in this review.
