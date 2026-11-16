@@ -303,3 +303,44 @@ Before creating an executable baseline file, obtain an owner-approved schema-onl
 अभी canonical base schema चुनने के लिए प्रमाण पर्याप्त नहीं है। `COMPLETE_DATABASE_SETUP.sql` सबसे समेकित manual setup artifact है, लेकिन इसे बिना normalization और migration reconciliation के numbered migration chain का canonical replay baseline घोषित नहीं किया जा सकता। इसलिए कोई नई executable baseline SQL file नहीं बनाई गई।
 
 **इस चरण में किया गया काम:** source inventory और dependency gate दस्तावेज़ित। कोई disposable database create/reset नहीं किया, कोई SQL apply नहीं किया, कोई PostgreSQL replay या pgTAP run नहीं हुआ, Production untouched है।
+
+
+## 2026-11-16 — Base table/column replay gates और quote trigger attachment re-check
+
+यह superseding source-only recheck वर्तमान audit branch `chore/pr8-replay-audit-20261116-v2` पर किया गया। यह live database या remote migration ledger का प्रमाण नहीं है।
+
+### 1. `amount_paid` का source-order correction
+
+- `20261109003000_secure_commission_reporting.sql` की वर्तमान audit-branch body अब सबसे पहले `public.service_bookings.amount_paid numeric(12,2)` को `ADD COLUMN IF NOT EXISTS` से जोड़ती है; इसके बाद commission report और SQL-language earnings function बनते हैं।
+- `20261116200000_restore_service_bookings_amount_paid.sql` में वही column idempotently जोड़ा गया है और nonnegative CHECK `NOT VALID` रूप में जोड़ा जाता है।
+- इसलिए पुराने audit notes में यह कहना कि वर्तमान audit branch में 09:00:00 migration सीधे missing-column consumer है, अब superseded है: इस branch में 09:00:00 file के भीतर column prerequisite पहले रखा गया है। Late restoration migration अब duplicate-safe fallback/constraint addition है।
+- यह source-order fix तभी उपयोगी है जब `public.service_bookings` पहले से approved baseline में मौजूद हो। यह table की introducing DDL या canonical baseline provenance स्वयं सिद्ध नहीं करता।
+
+### 2. Electrician identity column
+
+- `20261109000500_harden_electrician_profile_identity_linking.sql` सीधे `electrician_profiles.auth_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL` जोड़ती है, existing `user_id` से दोनों ओर backfill करती है, partial unique index बनाती है और identity-sync/guard triggers बनाती है।
+- उसी migration में `srk_link_electrician_profile()` function की replacement definition है, पर यह file स्वयं `auth.users` पर उसका trigger attach नहीं करती। Auth trigger की वास्तविक attachment/पूर्व-परिभाषा canonical baseline और earlier setup source से reconcile करनी होगी।
+- `electrician_profiles`, `auth.users`, `user_id` और Auth trigger bootstrap की उपलब्धता इस migration से पहले आवश्यक है।
+
+### 3. Quote commission trigger attachment — unresolved source gap
+
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` `srk_calculate_booking_commission()` नाम का trigger function बनाती है और उसके body में `NEW.amount_paid`, `NEW.commission_rate`, `NEW.service_charge`, `NEW.status` और `NEW.payment_status` पढ़ती है।
+- उसी migration body में इस function के लिए कोई `CREATE TRIGGER ... EXECUTE FUNCTION public.srk_calculate_booking_commission()` statement नहीं है।
+- Audit branch की सभी नाम-संबंधित quote/commission/amount_paid migration files के bounded scan में भी इस function को attach करने वाला कोई अलग `CREATE TRIGGER` नहीं मिला।
+- इसलिए function definition मौजूद होना commission trigger के वास्तव में सक्रिय होने का प्रमाण नहीं है। इसे source-level **trigger attachment gap / unresolved** के रूप में रखा जाए; बिना स्वीकृत व्यवहार/मूल lineage के नया trigger अनुमान से न जोड़ें।
+
+### 4. समान migration prefix और replay निर्णय
+
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` और `20261109_allow_quote_approval_booking_states.sql` दोनों का version prefix केवल `20261109` है, जबकि Supabase numbered migration सामान्यतः unique 14-digit version मांगती है।
+- दोनों files status/assignment constraints पर overlapping DROP/ADD DDL रखती हैं। वास्तविक execution order repository filename से विश्वसनीय रूप से तय नहीं किया जा सकता।
+- `20261109003000_secure_commission_reporting.sql` में अब `amount_paid` prerequisite का source-order सुधार है, लेकिन इससे duplicate-prefix lineage, Admin helper/bootstrap, base-table provenance, Auth trigger attachment या quote trigger attachment के gates बंद नहीं होते।
+
+### 5. अगली कार्रवाई और सीमा
+
+1. Owner/DBA से sanitized authoritative migration ledger तथा approved schema-only baseline/provenance लेना।
+2. Confirm करना कि `srk_link_electrician_profile()` का Auth trigger किस approved bootstrap/migration में attach होता है।
+3. Quote commission function के लिए अपेक्षित trigger event/columns और intended active status को product/database owner से confirm करना; उसके बाद ही migration change प्रस्तावित करना।
+4. Duplicate `20261109` version lineage को authoritative ledger से reconcile करना।
+5. इन gates के बाद ही disposable local Supabase/PostgreSQL replay और pgTAP चलाना।
+
+**Verification:** यह Git source fetch और static text scan है। PostgreSQL replay, pgTAP, Production query/write, migration apply, merge और deployment नहीं किए गए। Scan केवल quote/commission/amount_paid नाम-संबंधित migration files पर सीमित था; इसे सभी SQL files या dynamic SQL की exhaustive जाँच न माना जाए।
