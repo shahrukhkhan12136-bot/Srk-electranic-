@@ -15,6 +15,19 @@ declare
   v_commission numeric(12,2);
   v_bill public.srk_booking_labour_bills%rowtype;
 begin
+  if new.payment_status = 'paid'
+     and new.payment_verified_at is not null
+     and new.razorpay_payment_id is null
+     and exists (
+       select 1
+         from public.srk_manual_payment_entries e
+        where e.booking_id = new.id
+          and round(coalesce(e.amount,0),2) = round(coalesce(new.amount_paid,0),2)
+          and lower(btrim(e.payment_method)) is distinct from lower(btrim(new.payment_method))
+     ) then
+    raise exception 'MANUAL_PAYMENT_METHOD_MISMATCH';
+  end if;
+
   if new.payment_status is distinct from 'paid'
      or new.status is distinct from 'completed'
      or new.assigned_electrician_id is null
