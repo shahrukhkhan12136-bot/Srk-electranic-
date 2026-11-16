@@ -350,3 +350,17 @@ The payout table definition has a plain nullable `payout_reference` text column 
 **Safe correction:** before adding a constraint, decide the provider/reference namespace and normalization rules (UPI/bank references may have different formats). Then enforce a suitable unique key, preferably scoped to payment method/provider and normalized reference, and add a pgTAP case proving a second payout cannot reuse the same reference. Handle legitimate provider-specific collisions explicitly rather than applying a blind global unique constraint.
 
 This is static schema/function review only. No payout was modified, no payment was initiated, and no Production database was accessed.
+
+
+### 26. Accounting reconciliation pgTAP suite still referenced the retired Route ledger — corrected on GPT-2 audit branch
+
+Cross-checking the test assertions against the final Route retirement migrations found a stale test contract:
+
+- `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql` drops `public.srk_route_transfers`.
+- The later Admin reconciliation migrations intentionally preserve Route response keys as zero/empty compatibility fields and explicitly state `route_ledger_retired_no_route_transfers`; they no longer query the dropped table.
+- However, `accounting_reconciliation_readonly_contract.test.sql` still asserted the Route table existed and checked the old Route transfer validation, uniqueness, RLS, and service-role grants. Those assertions were incompatible with the final migration state and would fail (including `::regclass` lookups against the absent table).
+
+**Correction:** replaced the 21 stale Route-ledger assertions with 21 checks for the intended retired-ledger contract: table absent, compatibility response keys retained, values zero/empty/false, explicit retired status, and no query or old Route settlement validation in the read-only RPC. The suite remains `plan(74)`; static recount confirms 74 assertion calls, one `finish()`, one `rollback`, and no remaining hard dependency on `srk_route_transfers`.
+
+- Test-file commit: `ad72b30601ef401eba11e07f22997bb468576d22`
+- This is a source-level correction only. pgTAP has **not** been executed against PostgreSQL; no database or Production changes were made.
