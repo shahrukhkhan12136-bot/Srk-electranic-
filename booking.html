@@ -1114,6 +1114,7 @@ function customerRefundStatusText(status){
  const key=String(status||'').toLowerCase();
  return customerRefundStatusLabels[key]||'स्थिति अपडेट';
 }
+let customerActionGeneration=0;
 const customerLifecycleBusy=new Set();
 
 const customerSosBusy=new Set();
@@ -1123,45 +1124,31 @@ document.addEventListener('change',event=>{if(event.target?.id?.startsWith('cust
 async function submitCustomerSosAlert(id){const button=document.getElementById('customerSosSend_'+id),status=document.getElementById('customerSosStatus_'+id);if(!customerSb||customerSosBusy.has(id)||!button||button.disabled)return;const reason=document.getElementById('customerSosReason_'+id).value;if(!['customer_at_risk','electrician_at_risk','violence_or_other_emergency'].includes(reason)){status.textContent='कृपया दिए गए तीन कारणों में से एक चुनें।';return;}customerSosBusy.add(id);button.disabled=true;status.textContent='SOS अनुरोध दर्ज किया जा रहा है…';try{const {data,error}=await customerSb.rpc('srk_create_sos_alert',{p_reason:reason});if(error)throw error;if(!data?.success||!data?.case_id)throw new Error('SOS_CASE_NOT_CONFIRMED');status.textContent='SOS केस दर्ज हुआ (#'+String(data.case_id).slice(0,8)+')। अलर्ट डिलीवरी backend पुष्टि के अधीन है।';document.getElementById('customerSosChoice_'+id).hidden=true;document.getElementById('customerSosOpen_'+id).hidden=false;document.getElementById('customerSosReason_'+id).value='';}catch(_){status.textContent='SOS अभी दर्ज नहीं हो सका। अलर्ट भेजा हुआ न मानें।';}finally{customerSosBusy.delete(id);button.disabled=false;}}
 
 async function customerRespondWorkCompletion(bookingId,response){
- if(!customerSb||!bookingId||customerLifecycleBusy.has(bookingId))return;
+ const generation=customerActionGeneration,requestKey=generation+':'+String(bookingId);
+ const isCurrent=()=>generation===customerActionGeneration;
+ if(!customerSb||!bookingId||customerLifecycleBusy.has(requestKey))return;
  let note=null;
  if(!['approved','rejected','disputed'].includes(response))return;
  if(response==='disputed'){
   const field=document.getElementById('customerCompletionDispute_'+bookingId);
   note=String(field?.value||'').trim();
-  if(note.length<20||note.length>1000){
-   alert('विवाद का कारण 20 से 1000 अक्षरों में लिखें।');
-   field?.focus();
-   return;
-  }
+  if(note.length<20||note.length>1000){alert('विवाद का कारण 20 से 1000 अक्षरों में लिखें।');field?.focus();return;}
  }
- const messages={
-  approved:'क्या आपने काम जाँच लिया है और इसे पूरा स्वीकार करते हैं?',
-  rejected:'क्या काम अभी अधूरा है? इससे इलेक्ट्रिशियन का काम टाइमर फिर से चालू होगा।',
-  disputed:'क्या आप इस काम पर औपचारिक विवाद दर्ज करना चाहते हैं?'
- };
- if(!confirm(messages[response]||'क्या आप आगे बढ़ना चाहते हैं?'))return;
- customerLifecycleBusy.add(bookingId);
+ const messages={approved:'क्या आपने काम जाँच लिया है और इसे पूरा स्वीकार करते हैं?',rejected:'क्या काम अभी अधूरा है? इससे इलेक्ट्रिशियन का काम टाइमर फिर से चालू होगा।',disputed:'क्या आप इस काम पर औपचारिक विवाद दर्ज करना चाहते हैं?'};
+ if(!confirm(messages[response]||'क्या आप आगे बढ़ना चाहते हैं?')||!isCurrent())return;
+ customerLifecycleBusy.add(requestKey);
  try{
-  const {data,error}=await customerSb.rpc('srk_customer_respond_work_completion',{
-   p_booking_id:bookingId,p_response:response,p_note:note
-  });
+  const {data,error}=await customerSb.rpc('srk_customer_respond_work_completion',{p_booking_id:bookingId,p_response:response,p_note:note});
+  if(!isCurrent())return;
   if(error)throw error;
   if(!data?.success)throw new Error('Completion response was not confirmed');
-  alert(response==='approved'?'काम पूरा होने की पुष्टि दर्ज हो गई।':
-   response==='rejected'?'काम अभी अधूरा दर्ज हुआ है। इलेक्ट्रिशियन का टाइमर फिर शुरू होगा।':
-   'आपका विवाद दर्ज हो गया है और Admin समीक्षा करेगा।');
-  try{await loadCustomerBookings();}catch(_){alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
+  alert(response==='approved'?'काम पूरा होने की पुष्टि दर्ज हो गई।':response==='rejected'?'काम अभी अधूरा दर्ज हुआ है। इलेक्ट्रिशियन का टाइमर फिर शुरू होगा।':'आपका विवाद दर्ज हो गया है और Admin समीक्षा करेगा।');
+  try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
  }catch(error){
-  try{
-   await loadCustomerBookings();
-   alert('नेटवर्क जवाब नहीं मिला। बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');
-  }catch(_){
-   alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');
-  }
- }finally{
-  customerLifecycleBusy.delete(bookingId);
- }
+  if(!isCurrent())return;
+  try{await loadCustomerBookings();if(!isCurrent())return;alert('नेटवर्क जवाब नहीं मिला। बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}
+  catch(_){if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
+ }finally{customerLifecycleBusy.delete(requestKey);}
 }
 async function customerSubmitBookingRefund(bookingId){
  if(!customerSb)return;
@@ -1445,13 +1432,24 @@ async function loadCustomerBookings() {
   }
 }
 async function customerRespondWorkStart(bookingId,response){
- if(!customerSb||!bookingId||!['approved','rejected'].includes(response)||customerLifecycleBusy.has(bookingId))return;
+ const generation=customerActionGeneration,requestKey=generation+':'+String(bookingId);
+ const isCurrent=()=>generation===customerActionGeneration;
+ if(!customerSb||!bookingId||!['approved','rejected'].includes(response)||customerLifecycleBusy.has(requestKey))return;
  const question=response==='approved'?'क्या आप इलेक्ट्रिशियन को अभी काम शुरू करने की अनुमति देते हैं?':'क्या आप अभी काम शुरू करने की अनुमति रोकना चाहते हैं?';
- if(!confirm(question))return;
- customerLifecycleBusy.add(bookingId);
- try{const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});if(error)throw error;if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');try{await loadCustomerBookings();}catch(_){alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}}
- catch(e){try{await loadCustomerBookings();alert('नेटवर्क जवाब नहीं मिला। बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें।');}catch(_){alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}}
- finally{customerLifecycleBusy.delete(bookingId);}
+ if(!confirm(question)||!isCurrent())return;
+ customerLifecycleBusy.add(requestKey);
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_respond_work_start',{p_booking_id:bookingId,p_response:response});
+  if(!isCurrent())return;
+  if(error)throw error;
+  if(!data?.success)throw new Error('जवाब की पुष्टि नहीं हुई');
+  alert(response==='approved'?'काम शुरू करने की मंजूरी मिल गई। सर्वर टाइमर शुरू हो गया है।':'काम शुरू करने की मंजूरी नहीं दी गई। टाइमर बंद रहेगा।');
+  try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। नेटवर्क ठीक होने पर Refresh करें।');}
+ }catch(e){
+  if(!isCurrent())return;
+  try{await loadCustomerBookings();if(!isCurrent())return;alert('नेटवर्क जवाब नहीं मिला। बुकिंग की वर्तमान स्थिति रीफ़्रेश करके जाँचें; स्थिति के अनुसार ही आगे बढ़ें.');}
+  catch(_){if(isCurrent())alert('नेटवर्क जवाब नहीं मिला। बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी; दोबारा कार्रवाई से पहले Refresh करें।');}
+ }finally{customerLifecycleBusy.delete(requestKey);}
 }
 function formatCustomerTimer(seconds){const n=Math.max(0,Math.floor(Number(seconds)||0)),h=Math.floor(n/3600),m=Math.floor((n%3600)/60),s=n%60;return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');}
 function updateCustomerTimers(){document.querySelectorAll('[id^="customerTimer_"]').forEach(el=>{let seconds=Number(el.dataset.accumulated||0);if(el.dataset.running==='1'&&el.dataset.started){const t=Date.parse(el.dataset.started);if(Number.isFinite(t))seconds+=Math.max(0,(Date.now()-t)/1000);}el.textContent=formatCustomerTimer(seconds);});}
@@ -2192,6 +2190,8 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
+      customerActionGeneration++;
+      customerLifecycleBusy.clear();
       customerBookingRefreshRequest++;
       const bookingList=document.getElementById('customerBookings');
       if(bookingList){bookingList.textContent='लॉगिन सत्र बदल रहा है…';bookingList.setAttribute('aria-busy','false');}
