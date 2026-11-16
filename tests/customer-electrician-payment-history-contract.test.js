@@ -130,7 +130,7 @@ test('Confirmed Razorpay payment remains confirmed when booking or payment-histo
   const bookingsStart = customer.indexOf('async function loadCustomerBookings(');
   const bookingsEnd = customer.indexOf('\nasync function customerRespondWorkStart(', bookingsStart);
   const bookingsFn = customer.slice(bookingsStart, bookingsEnd);
-  assert.match(bookingsFn, /return true;[\\s\\S]*catch\(error\)[\\s\\S]*return false;/);
+  assert.match(bookingsFn, /return true;[\s\S]*catch\(error\)[\s\S]*return false;/);
   const historyStart = customer.indexOf('async function loadCustomerPaymentHistory(');
   const historyEnd = customer.indexOf('\nasync function loadCustomerCancellationFeeDebts(', historyStart);
   const historyFn = customer.slice(historyStart, historyEnd);
