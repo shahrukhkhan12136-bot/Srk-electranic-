@@ -75,9 +75,11 @@ select ok(position('materials_amount' in lower(pg_get_functiondef(
   'public.srk_customer_get_payment_receipt(uuid)'::regprocedure)))>0,
   'legacy receipt retains separate materials and approved-quote reconciliation for historical records');
 
-select ok(position('mp.payment_method is distinct from v_booking.payment_method' in lower(
+select ok(position('lower(btrim(mp.payment_method)) = lower(btrim(v_booking.payment_method))' in lower(
+  pg_get_functiondef('public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure)))>0
+  and position('manual_payment_method_mismatch' in lower(
   pg_get_functiondef('public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure)))>0,
-  'manual payment evidence must reconcile payment method as well as booking and amount');
+  'manual payment evidence requires a normalized non-null payment-method match and reports mismatches');
 
 select * from finish();
 rollback;
