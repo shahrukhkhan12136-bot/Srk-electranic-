@@ -540,3 +540,18 @@ verify-payment.js और razorpay-webhook.js के legacy-quote payment paths �
 - वर्तमान PR #8 tree में यह migration अनुपस्थित है; दूसरी Branch में मौजूद होना migration lineage/PR ancestry का प्रमाण नहीं कि यह Production या PR #8 में लागू हुई। कोई cherry-pick/restore या SQL change नहीं किया गया।
 - सुझाया अगला कदम: branch ancestry और intended API contract reconcile करें; फिर एक ही canonical order-link + payment-settlement RPC contract चुनकर JS और SQL को साथ align करें। Migration baseline स्पष्ट होने और authorized isolated DB उपलब्ध होने तक replay/DB test न करें।
 - Production query/write, payment, deployment या merge नहीं हुआ।
+
+
+## 42. Admin Dashboard के दो RPC — अन्य Branches और Git History में भी SQL परिभाषा नहीं मिली
+
+इस जाँच में इन दोनों नामों को अलग-अलग तरीके से तलाशा गया:
+- `srk_admin_confirm_legacy_booking`
+- `srk_admin_record_new_booking_cash_payment`
+
+परिणाम:
+- Repository के उपलब्ध code search में दोनों के exact नाम नहीं मिले।
+- दोनों नामों पर Git commit search में कोई commit नहीं मिला।
+- उपलब्ध branches की सूची में पुराने Admin/payment-संबंधित branches भी जाँचे गए। विशेष रूप से `work/separate-customer-electrician-portals` की Admin booking और manual-payment migrations में इन दोनों की परिभाषा नहीं मिली।
+- वहाँ `srk_admin_update_booking` और अलग manual-payment workflow मौजूद हैं, लेकिन वे इन दो RPC के समान नाम/contract नहीं हैं।
+
+**निष्कर्ष:** उपलब्ध GitHub branches और इतिहास से इन दो RPC की SQL implementation प्रमाणित नहीं होती। यह अभी भी Repository-स्तर का निष्कर्ष है; Production Database या किसी बाहरी/manual SQL installation की जाँच नहीं हुई है। इसलिए इसे live outage या deployed absence नहीं कहा जा सकता। Admin UI के संबंधित actions के लिए implementation/contract को स्पष्ट करना आवश्यक है।
