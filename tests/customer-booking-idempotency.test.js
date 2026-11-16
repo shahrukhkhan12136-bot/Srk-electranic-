@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const bookingUi = fs.readFileSync(path.join(__dirname, '..', 'booking.html'), 'utf8');
 
 process.env.SUPABASE_URL = 'https://supabase.test';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-test';
@@ -168,4 +171,11 @@ test('concurrent duplicate insert resolves to the winning booking after unique-k
   assert.equal(JSON.parse(result.body).replayed, true);
   assert.equal(calls.filter(call => call.method === 'POST' && call.target.endsWith('/service_bookings')).length, 1);
   assert.equal(calls.filter(call => call.target.includes('/rest/v1/job_offers?')).length, 1);
+});
+
+test('uncertain booking submission is not falsely reported as definitely unsaved', () => {
+  assert.match(bookingUi, /बुकिंग की पुष्टि नहीं हो सकी; संभव है अनुरोध सर्वर तक पहुँच गया हो/);
+  assert.match(bookingUi, /पहले बुकिंग सूची रीफ़्रेश करके देखें/);
+  assert.match(bookingUi, /इसी विवरण के साथ दोबारा कोशिश करें/);
+  assert.doesNotMatch(bookingUi, /बुकिंग डेटाबेस में सेव नहीं हुई है/);
 });
