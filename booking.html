@@ -2266,6 +2266,9 @@ async function startRazorpayPayment() {
   if (!window.Razorpay) { setPaymentStatus('Razorpay Checkout लोड नहीं हुआ। इंटरनेट चालू करके पेज रीफ्रेश करें।', true); return; }
   if (!pendingBookingId) { setPaymentStatus('भुगतान के लिए बुकिंग संदर्भ उपलब्ध नहीं है।', true); return; }
   paymentBusy = true;
+  const generation=customerActionGeneration;let requestedUserId=null;
+  const isCurrent=()=>generation===customerActionGeneration;
+  const sameSession=async()=>{if(!isCurrent()||!requestedUserId)return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
   const paymentBookingId = pendingBookingId;
   const button = document.getElementById('payNow');
   button.disabled = true;
@@ -2276,6 +2279,8 @@ async function startRazorpayPayment() {
     if (sessionError) throw sessionError;
     const customerSession = customerSessionData?.session;
     if (!customerSession) throw new Error('भुगतान के लिए पहले ग्राहक OTP लॉगिन करें।');
+    requestedUserId=customerSession.user?.id||null;
+    if(!isCurrent()||!requestedUserId)return;
     const paymentHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + customerSession.access_token };
     const orderResponse = await fetch('/api/create-order', {
       method: 'POST', headers: paymentHeaders,
@@ -2283,6 +2288,7 @@ async function startRazorpayPayment() {
     });
     const orderData = await orderResponse.json();
     if (!orderResponse.ok) throw new Error(orderData.error || 'ऑर्डर नहीं बन पाया।');
+    if(!await sameSession())return;
 
     const options = {
       key: orderData.key_id,
@@ -2295,7 +2301,7 @@ async function startRazorpayPayment() {
       notes: { service: value('service'), customer_phone: value('phone') },
       theme: { color: '#0b5ed7' },
       handler: async function (response) {
-        setPaymentStatus('भुगतान की जाँच हो रही है…');
+        if(isCurrent())setPaymentStatus('भुगतान की जाँच हो रही है…');
         try {
           const verifyResponse = await fetch('/api/verify-payment', {
             method: 'POST', headers: paymentHeaders,
@@ -2307,13 +2313,17 @@ async function startRazorpayPayment() {
           });
           const verifyData = await verifyResponse.json();
           if (!verifyResponse.ok || !verifyData.success) throw new Error(verifyData.error || 'भुगतान सत्यापित नहीं हुआ।');
+          if(!await sameSession())return;
           const [bookingsRefreshed,historyRefreshed]=await Promise.all([
             loadCustomerBookings().then(result=>result===true).catch(()=>false),
             loadCustomerPaymentHistory(true).then(result=>result===true).catch(()=>false)
           ]);
+          if(!isCurrent())return;
           setPaymentStatus('✅ भुगतान सफल और सत्यापित हो गया है।'+(bookingsRefreshed?' बुकिंग सूची रीफ़्रेश हुई।':' बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी।')+(historyRefreshed?' Payments इतिहास रीफ़्रेश हुआ।':' Payments इतिहास अभी रीफ़्रेश नहीं हो सका।'));
         } catch (err) {
+          if(!await sameSession())return;
           const state=await reconcileCustomerPaymentAfterUncertainVerification(paymentBookingId);
+          if(!await sameSession())return;
           if(state.paymentConfirmed){
             setPaymentStatus('✅ भुगतान सर्वर रिकॉर्ड में सत्यापित है।'+(state.bookingsRefreshed?' बुकिंग सूची रीफ़्रेश हुई।':' बुकिंग सूची अभी रीफ़्रेश नहीं हो सकी।')+(state.historyRefreshed?' Payments इतिहास रीफ़्रेश हुआ।':' Payments इतिहास अभी रीफ़्रेश नहीं हो सका।'));
           }else if(state.lookupSucceeded){
@@ -2323,21 +2333,23 @@ async function startRazorpayPayment() {
           }
         }
       },
-      modal: { ondismiss: function () { setPaymentStatus('आपने भुगतान विंडो बंद कर दी। अभी भुगतान की पुष्टि नहीं हुई है।', true); } }
+      modal: { ondismiss: function () { if(isCurrent())setPaymentStatus('आपने भुगतान विंडो बंद कर दी। अभी भुगतान की पुष्टि नहीं हुई है।', true); } }
     };
     const checkout = new Razorpay(options);
     checkout.on('payment.failed', function (response) {
       const reason = response.error && response.error.description ? response.error.description : 'भुगतान असफल रहा।';
-      setPaymentStatus('❌ ' + reason, true);
+      if(isCurrent())setPaymentStatus('❌ ' + reason, true);
     });
     checkout.open();
-    setPaymentStatus('Razorpay Checkout खुल रहा है…');
+    if(isCurrent())setPaymentStatus('Razorpay Checkout खुल रहा है…');
   } catch (error) {
-    setPaymentStatus(error.message || 'कुछ गड़बड़ हुई। कृपया दोबारा कोशिश करें।', true);
+    if(isCurrent())setPaymentStatus(error.message || 'कुछ गड़बड़ हुई। कृपया दोबारा कोशिश करें।', true);
   } finally {
-    paymentBusy = false;
-    button.disabled = false;
-    button.textContent = '🔒 Razorpay से भुगतान करें';
+    if(isCurrent()){
+      paymentBusy = false;
+      button.disabled = false;
+      button.textContent = '🔒 Razorpay से भुगतान करें';
+    }
   }
 }
 
