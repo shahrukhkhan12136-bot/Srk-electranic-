@@ -2281,3 +2281,28 @@ This does **not** establish that the historical Production database lacked `amou
 - Supabase CLI replay / PostgreSQL execution: **NOT RUN**.
 - Hosted schema and migration-history rows: **NOT ACCESSED / UNKNOWN**.
 - Migration files, starter schemas, workflows, Production and remote DB: **UNCHANGED / NOT CONTACTED**.
+
+
+## 67. Legacy manual-payment बनाम immutable labour-bill settlement — compatibility boundary recheck — 16 Nov 2026
+
+### Source-confirmed separation
+
+- `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` में `srk_admin_record_manual_payment` स्पष्ट रूप से `selected_category IS NOT NULL` वाले नए category bookings को `NEW_CATEGORY_BOOKING_USES_DEDICATED_SETTLEMENT` से रोकता है।
+- उसी RPC का legacy path केवल completed, assigned, `quote_status='approved'`, unpaid/pending और Razorpay-unlinked legacy booking स्वीकार करता है। यह `service_charge + materials_amount = quoted_amount` को paise में reconcile करता है; commission केवल labour पर और materials pass-through रखता है।
+- उसी migration का customer receipt RPC नई category bookings के लिए `srk_booking_labour_bills` और settled cancellation-fee ledger पढ़ता है; paid total immutable labour + settled fee से match होना आवश्यक है। Materials शून्य दिखते हैं।
+- Legacy receipt path पुराने labour/material split को `service_charge + materials_amount` से reconcile करता है और historical `quoted_amount` को उसी total के बराबर जाँचता है।
+- `20261115150000_admin_readonly_booking_accounting_reconciliation.sql` नई booking में immutable labour bill पढ़ता है; legacy booking के लिए historical service/material split fallback रखता है। Commission labour-only है।
+- `20261115230000_admin_booking_direct_write_closure.sql` approved quote बदलने से रोकता है और direct Admin table-update ACL बंद करता है।
+
+### Decision / compatibility interpretation
+
+यह source इस बात का प्रमाण है कि **नई category bookings का settlement और receipt immutable labour bill contract पर है**, जबकि पुरानी quote-based bookings के लिए सीमित historical manual-payment और receipt path बचा है। पुराने legacy rows के लिए immutable labour bill स्वतः उपलब्ध होने का प्रमाण नहीं मिला। इसलिए legacy RPC से approved-quote dependency हटाकर उसे बिना backfill/provenance योजना के immutable bill से बदलना पुराने unpaid/completed records की वैध receipt/payment प्रक्रिया तोड़ सकता है।
+
+अतः इस pass में migration बदलना उचित नहीं माना गया। “सभी legacy manual payments को immutable labour bill पर ले जाएँ” को फिलहाल **owner/DBA decision required** माना जाए: पहले तय हो कि पुराने legacy bookings के लिए immutable bill backfill अनुमत है या historical approved-quote contract स्थायी compatibility रहेगा। नई category settlement को legacy quote path से जोड़ना निषिद्ध ही रहे।
+
+### Verification boundary
+
+- SQL migration / accounting reconciliation: **SOURCE READ CONFIRMED**.
+- Existing source-contract tests: `legacy_manual_payment_and_itemized_receipt.test.sql` और `admin_labour_bill_payment_accounting_bridge.test.sql` में source/metadata assertions मौजूद हैं; इस review में उन्हें execute नहीं किया गया।
+- PostgreSQL/pgTAP behavioural runtime, synthetic booking settlement, duplicate/concurrent payment, payout trigger side effects और rollback: **NOT RUN**.
+- No SQL, migration, Production DB, hosted schema, payment provider, workflow or deployment changed/invoked.
