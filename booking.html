@@ -1455,22 +1455,24 @@ setInterval(updateCustomerTimers,1000);
 async function customerChangePaymentMethod(id){
  if(!customerSb||!id)return;
  if(!confirm('क्या आप इस बुकिंग के लिए Cash की जगह Online (Razorpay) भुगतान स्वयं चुनना चाहते हैं? कोई भुगतान अभी नहीं लिया जाएगा।'))return;
+ const generation=customerActionGeneration;let requestedUserId=null;
+ const isCurrent=()=>generation===customerActionGeneration&&!!requestedUserId;
+ const sameSession=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
  try{
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();if(sessionError)throw sessionError;
+  requestedUserId=sessionData?.session?.user?.id||null;if(!isCurrent())return;if(!requestedUserId)throw new Error('LOGIN_REQUIRED');
   const {data,error}=await customerSb.rpc('srk_customer_change_payment_method',{p_booking_id:id,p_payment_method:'Razorpay ऑनलाइन भुगतान'});
-  if(error)throw error;
-  if(!data?.success)throw new Error('PAYMENT_METHOD_CHANGE_NOT_CONFIRMED');
+  if(!await sameSession())return;if(error)throw error;if(!data?.success)throw new Error('PAYMENT_METHOD_CHANGE_NOT_CONFIRMED');
  }catch(error){
-  try{
-   await loadCustomerBookings();
-   alert('सर्वर का जवाब स्पष्ट नहीं मिला। बुकिंग सूची रीफ़्रेश की गई है। भुगतान तरीका जाँचें; स्थिति की पुष्टि किए बिना दोबारा अनुरोध न भेजें।');
-  }catch(_){
-   alert('सर्वर का जवाब स्पष्ट नहीं मिला और बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करके भुगतान तरीका जाँचें; पुष्टि से पहले दोबारा अनुरोध न भेजें।');
-  }
+  if(!isCurrent())return;
+  try{await loadCustomerBookings();if(!await sameSession())return;alert('सर्वर का जवाब स्पष्ट नहीं मिला। बुकिंग सूची रीफ़्रेश की गई है। भुगतान तरीका जाँचें; स्थिति की पुष्टि किए बिना दोबारा अनुरोध न भेजें।');}
+  catch(_){if(isCurrent())alert('सर्वर का जवाब स्पष्ट नहीं मिला और बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करके भुगतान तरीका जाँचें; पुष्टि से पहले दोबारा अनुरोध न भेजें।');}
   return;
  }
+ if(!isCurrent())return;
  alert('आपकी पसंद Online भुगतान के रूप में सुरक्षित हो गई है। भुगतान काम पूरा होने के बाद होगा।');
- try{await loadCustomerBookings();}
- catch(_){alert('Online भुगतान की पसंद सर्वर पर सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। Refresh करके वर्तमान स्थिति देखें।');}
+ try{await loadCustomerBookings();if(!await sameSession())return;}
+ catch(_){if(isCurrent())alert('Online भुगतान की पसंद सर्वर पर सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। Refresh करके वर्तमान स्थिति देखें।');}
 }
 function customerPayBooking(id,amount){
  if(!Number.isFinite(amount)||amount<1){alert('भुगतान राशि सही नहीं है।');return;}
@@ -1659,7 +1661,7 @@ function applySelectedSavedAddress() {
  }
  setSavedAddressStatus('सेव किया हुआ पता फॉर्म में भर दिया गया है। बुकिंग भेजने से पहले विवरण जाँच लें।');
 }
-async async function saveCurrentBookingAddress() {
+async function saveCurrentBookingAddress() {
  const button=document.getElementById('saveCurrentAddress');
  if(button.disabled||!customerSb)return;
  const generation=customerActionGeneration;let requestedUserId=null;
@@ -1712,7 +1714,7 @@ function editSelectedSavedAddress() {
  setSavedAddressStatus('पता फॉर्म में संपादन के लिए खुल गया है। बदलाव के बाद “यह पता सेव करें” दबाएँ।');
  document.getElementById('address').scrollIntoView({behavior:'smooth',block:'center'});
 }
-async async function deleteSelectedSavedAddress() {
+async function deleteSelectedSavedAddress() {
  const id=document.getElementById('savedAddressSelect').value;
  if(!id){setSavedAddressStatus('हटाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
  if(!customerSavedAddresses.some(x=>x.id===id))return;
@@ -1740,6 +1742,53 @@ async async function deleteSelectedSavedAddress() {
   else if(state==='present')setSavedAddressStatus('पता हटाने की पुष्टि नहीं हुई। सूची में पता अभी मौजूद है; कृपया दोबारा कोशिश करें।',true);
   else setSavedAddressStatus('पता हटाने का परिणाम स्पष्ट नहीं है। दोबारा कोशिश करने से पहले सेव किए गए पते रीफ़्रेश करें।',true);
  }finally{if(isCurrent())button.disabled=false;}
+}
+async function makeSelectedAddressDefault() {
+ const generation=customerActionGeneration;let requestedUserId=null;
+ const isCurrent=()=>generation===customerActionGeneration&&!!requestedUserId;
+ const sameSession=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
+ const id=document.getElementById('savedAddressSelect').value;
+ const a=customerSavedAddresses.find(x=>x.id===id);
+ if(!a){setSavedAddressStatus('डिफ़ॉल्ट बनाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
+ const button=document.getElementById('setDefaultSavedAddress');if(button.disabled)return;button.disabled=true;
+ try {
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();if(sessionError)throw sessionError;requestedUserId=sessionData?.session?.user?.id||null;if(!isCurrent())return;if(!requestedUserId)throw new Error('LOGIN_REQUIRED');
+  let saveError=null,returnedId=null;
+  try{
+   const result=await customerSb.rpc('srk_customer_save_my_address',{
+    p_id:a.id,p_label:a.label,p_recipient_name:a.recipient_name,p_address_line:a.address_line,
+    p_landmark:a.landmark,p_pincode:a.pincode,p_district:a.district,p_state:a.state,
+    p_location_lat:a.location_lat,p_location_lng:a.location_lng,p_is_default:true
+   });
+   if(!await sameSession())return;
+   saveError=result?.error||(!result||!result.data?new Error('डिफ़ॉल्ट बदलने की पुष्टि नहीं मिली।'):null);
+   if(!saveError)returnedId=result.data;
+  }catch(e){if(!await sameSession())return;saveError=e;}
+  if(saveError||returnedId!==id){
+   let lookupSucceeded=false,latestAddresses=[];
+   try{
+    const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
+    if(!await sameSession())return;
+    if(!error&&Array.isArray(data)){lookupSucceeded=true;latestAddresses=data;}
+   }catch(_){if(!await sameSession())return;}
+   if(lookupSucceeded&&latestAddresses.some(row=>row.id===id&&row.is_default===true)){
+    // The server committed the default change despite an uncertain response.
+   }else{
+    if(lookupSucceeded)customerSavedAddresses=latestAddresses;
+    setSavedAddressStatus(lookupSucceeded
+     ?'डिफ़ॉल्ट पता बदलने की पुष्टि नहीं हुई। सूची अपडेट की गई है; कृपया वर्तमान डिफ़ॉल्ट जाँचें।'
+     :'डिफ़ॉल्ट बदलने का परिणाम स्पष्ट नहीं है। नेटवर्क लौटने पर सूची रीफ़्रेश करें; अभी अनुरोध दोबारा न भेजें।',true);
+    return;
+   }
+  }
+  if(!await sameSession())return;
+  const addressListRefreshed=await loadCustomerSavedAddresses();
+  if(!await sameSession())return;
+  if(!addressListRefreshed){setSavedAddressStatus('डिफ़ॉल्ट पता बदल गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी। कृपया दोबारा लोड करें।',true);return;}
+  document.getElementById('savedAddressSelect').value=id;
+  setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।');
+ } catch(e){if(isCurrent())setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
+ finally{if(generation===customerActionGeneration)button.disabled=false;}
 }
 function supportStatus(message, isError=false) {
  const el=document.getElementById('customerSupportStatus');
@@ -2022,6 +2071,7 @@ async function syncCustomerSession() {
     await loadCustomerProfile();
   } else {
     customerSavedAddressLoadRequest++;
+    ['saveCurrentAddress','deleteSavedAddress','setDefaultSavedAddress'].forEach(id=>{const button=document.getElementById(id);if(button)button.disabled=false;});
     customerSavedAddresses=[];
     editingSavedAddressId=null;
     const savedAddressSelect=document.getElementById('savedAddressSelect');
