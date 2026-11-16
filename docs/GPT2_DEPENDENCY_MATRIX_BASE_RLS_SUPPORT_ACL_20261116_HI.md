@@ -17,7 +17,7 @@
 | `20261109001000_add_google_maps_location_support.sql` | `service_bookings`, `electrician_applications`, `electrician_profiles`, `public.is_srk_admin()`, identity columns | Adds GPS columns/checks and replaces Admin application-review RPC | Depends on baseline + identity hardening + Admin helper |
 | `20261109002000_expose_assigned_booking_map_pin.sql` | `job_offers`, `electrician_profiles.user_id`, `service_bookings`, GPS columns | Creates map/offer details RPC | Must follow identity and GPS prerequisites |
 | `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | Booking base + `customer_user_id`, profile identity, offers, GPS, quote/payment columns | Adds quote fields/RPCs and replaces offer-details function | Must follow customer, identity, GPS, and base prerequisites; function replacement order matters |
-| `20261109003000_secure_commission_reporting.sql` | `public.is_srk_admin()`, `amount_paid`, `commission_amount`, booking/profile base | Creates Admin/partner reports and adjusts column UPDATE grants | **Order risk:** `amount_paid` restore file is later in branch |
+| `20261109003000_secure_commission_reporting.sql` | `public.is_srk_admin()`, `amount_paid`, `commission_amount`, booking/profile base | Adds `amount_paid` at the start, then creates Admin/partner reports and adjusts column UPDATE grants | Column exists before this migration's own consumers; Admin-helper provenance remains unresolved |
 | `20261109010000_create_secure_wallet_ledger_foundation.sql` | `auth.users`, electrician profile identity fields, `public.is_srk_admin()`, UUID generation | Creates wallet tables/RPCs; reads profile and Admin helper | Depends on identity and Admin helper |
 | `20261109103143_move_customer_call_contact_lookup_to_private.sql` | `service_bookings.customer_user_id`, assigned profile fields, `private` schema | Creates private implementation + public invoker wrapper | Depends on customer identity and profile baseline |
 | `20261113230000_support_attachment_paths_and_admin_message_list.sql` | `srk_booking_complaints`, complaint messages, attachment table, customer ownership, `public.is_srk_admin()` | Functions only reference these tables; this file does not create the complaint base tables | **BLOCKER: complaint table/bucket baseline and helper provenance not established here** |
@@ -38,8 +38,8 @@
 ### 4. Commission ACL
 `20261109003000` revokes broad authenticated UPDATE on `service_bookings`, then grants column UPDATE on `status`, `quoted_amount`, `amount_paid`, and `payment_status`. Its own comment says RLS must limit rows. This source grant is not by itself proof that only Main Admin can update rows; the effective result also depends on all applicable policies, later grants/revokes, function paths and runtime role tests. Do not infer effective Production privileges from this migration alone.
 
-### 5. Amount-paid chronology
-The quote/commission source reads `amount_paid`; its explicit add-column source is `20261116200000_restore_service_bookings_amount_paid.sql`. If the approved baseline does not already contain that column, source order is inconsistent for a clean replay. This is a source-level ordering risk, not a proven live failure.
+### 5. Amount-paid chronology — corrected
+The earlier claim that the late 16 Nov file is the first column introduction was incomplete. `20261109003000_secure_commission_reporting.sql` adds `amount_paid` at its start, before its report/earnings functions and column-level grant. The 16 Nov file is a later idempotent restore/constraint migration. The missing-column replay blocker is withdrawn. Separately, the quote migration's service-only commission function is not attached to the existing booking commission trigger; see the main audit report.
 
 ## C. Dependency order — partial, not a replay plan
 
@@ -49,7 +49,7 @@ The following relative relationships are supported by source references/comments
 3. Electrician identity hardening precedes GPS migration (explicit source comment), and GPS precedes map RPC.
 4. Map RPC precedes quote migration's replacement/extension of that same RPC; replaying the older map migration afterward risks replacing the extended return shape.
 5. Complaint base tables and Admin helper must precede support message/attachment RPCs.
-6. `amount_paid` must exist before quote/commission/reporting runtime paths that reference it; current explicit restore migration is later in source sequence.
+6. `amount_paid` is added at the start of `20261109003000` before that migration's consumers; the quote migration's unbound PL/pgSQL function is a separate trigger-wiring issue.
 
 This is not a complete topological ordering and must not be used to run migrations. Duplicate 8-digit `20261109` version lineage, helper provenance, full baseline and remote history remain unresolved.
 
