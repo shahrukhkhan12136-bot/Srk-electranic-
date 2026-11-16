@@ -2071,3 +2071,97 @@ Disposable Local Supabase environment बनने के बाद नीचे
 - Netlify Deploy Preview: **SUCCESS**.
 - Vercel: **BLOCKED — build rate limit**.
 - Database runtime: **BLOCKED — canonical replay evidence and harness missing**.
+
+
+## 61. Owner के लिए read-only metadata evidence queries — 16 Nov 2026
+
+नीचे की queries केवल authorized Owner/DB administrator अपने चुने हुए environment में चलाएँ। GPT-2 ने इन्हें किसी remote या Production database पर execute नहीं किया है। सभी queries catalog metadata पढ़ती हैं; इनमें booking/customer/payment rows, secrets या credentials नहीं पढ़े जाते। Output share करने से पहले project URL, host, user names और अन्य identifying metadata हटा दें।
+
+### A. Migration ledger columns की उपलब्धता
+
+\`\`\`sql
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'supabase_migrations'
+  AND table_name = 'schema_migrations'
+ORDER BY ordinal_position;
+\`\`\`
+
+यदि version और name columns उपलब्ध हों, तब केवल relevant migration identifiers निकालें:
+
+\`\`\`sql
+SELECT version, name
+FROM supabase_migrations.schema_migrations
+WHERE version LIKE '20261109%'
+   OR version IN (
+     '20261109003000',
+     '20261115160000',
+     '20261116200000'
+   )
+ORDER BY version, name;
+\`\`\`
+
+यदि ledger table/columns अलग हों, तो अनुमान से query न बदलें; पहले sanitized column list दें।
+
+### B. service_bookings.amount_paid column shape
+
+\`\`\`sql
+SELECT column_name, data_type, numeric_precision, numeric_scale,
+       is_nullable, column_default
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'service_bookings'
+  AND column_name = 'amount_paid';
+\`\`\`
+
+### C. संबंधित CHECK constraints
+
+\`\`\`sql
+SELECT conname, convalidated, pg_get_constraintdef(oid) AS definition
+FROM pg_constraint
+WHERE conrelid = 'public.service_bookings'::regclass
+  AND contype = 'c'
+  AND (
+    conname ILIKE '%amount_paid%'
+    OR pg_get_constraintdef(oid) ILIKE '%amount_paid%'
+  )
+ORDER BY conname;
+\`\`\`
+
+### D. Column-level और table-level grants
+
+\`\`\`sql
+SELECT grantee, privilege_type, is_grantable
+FROM information_schema.column_privileges
+WHERE table_schema = 'public'
+  AND table_name = 'service_bookings'
+  AND column_name = 'amount_paid'
+  AND grantee IN ('authenticated', 'anon', 'PUBLIC')
+ORDER BY grantee, privilege_type;
+\`\`\`
+
+\`\`\`sql
+SELECT grantee, privilege_type, is_grantable
+FROM information_schema.table_privileges
+WHERE table_schema = 'public'
+  AND table_name = 'service_bookings'
+  AND grantee IN ('authenticated', 'anon', 'PUBLIC')
+ORDER BY grantee, privilege_type;
+\`\`\`
+
+### E. electrician_profiles identity columns
+
+\`\`\`sql
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'electrician_profiles'
+  AND column_name IN ('user_id', 'auth_user_id')
+ORDER BY column_name;
+\`\`\`
+
+### Output handling / limitations
+- केवल query results के metadata rows साझा करें; कोई full schema dump, table data, connection string, API key या JWT नहीं।
+- यदि supabase_migrations.schema_migrations मौजूद न हो या permission denied आए, तो इसे bypass न करें; Owner/DB administrator से sanitized ledger metadata माँगें।
+- information_schema grants effective privileges का पूरा runtime proof नहीं हैं; ये केवल declared grant metadata हैं। Actor-level authorization का प्रमाण अलग disposable TEST JWT tests से ही मिलेगा।
+- इन queries को चलाना भी Owner/DB administrator की जिम्मेदारी और अनुमति के अधीन है। GPT-2 ने कोई database connection या SQL execution नहीं किया।
