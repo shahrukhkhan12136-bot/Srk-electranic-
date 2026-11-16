@@ -1052,3 +1052,17 @@ Latest Test commit: `dc2550277dc7f1e92fe285e8f82d782032e15a33`.
 इसलिए इस environment में PostgreSQL Parser, Migration Replay या pgTAP Runtime चलाने का सुरक्षित साधन उपलब्ध नहीं है। Production project या अधूरे historical test project पर इसे substitute नहीं किया गया। किसी GitHub workflow को dispatch नहीं किया गया।
 
 **Runtime disposition: NOT RUN — environment unavailable.** Disposable PostgreSQL runtime स्थापित होने तक कोई PASS claim नहीं है।
+
+## 66. Dollar-Quote Defect — Introducing Commit Identified
+
+Path history for `supabase/migrations/20261114270000_admin_only_cancellation_requests_and_decisions.sql` was retrieved directly from GitHub.
+
+- Original migration-creation commit: `3e4a20188d8d183516fc1527e7f83777b8304ca7` (`feat(cancellation): add admin-only cancellation request workflow`). Its added file uses the correct closing delimiter `$$;`.
+- Defect-introducing commit: `cd5c0d8a07350fffb6be48c1f2a9481f73342b86` (`Revoke public execute on cancellation guard trigger function`). Its exact diff changes `-$$;` to `+$;`.
+- Subsequent path-history commits `c7d262309592c32860df2d376aea074d373a16d9`, `823355c06a85aad224014e84cb6a1ca32c17df23`, `59b4eba912d61bb4f6e702415801d08e839d50e1`, and `a2a0ff7945a12af96581ffef0c71c4be38a55ede` do not contain a dollar-delimiter change.
+
+**Lineage conclusion: CONFIRMED.** The malformed delimiter was introduced by commit `cd5c0d8a07350fffb6be48c1f2a9481f73342b86`, not by the original migration authoring commit.
+
+**File disposition remains unchanged pending explicit historical-migration edit approval.** The user guardrail says not to change historical migrations without Lineage Approval. The introducing commit is now identified, but no historical file edit has been made in this step. The defect still blocks full parser/replay verification.
+
+Runtime remains NOT RUN; no Production activity, deployment, workflow dispatch, or merge occurred.
