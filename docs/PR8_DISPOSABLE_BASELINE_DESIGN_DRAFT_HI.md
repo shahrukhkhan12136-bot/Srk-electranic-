@@ -506,3 +506,17 @@ A follow-up consistency check found a concrete test/source mismatch:
 - Payout, cancellation-fee refund reversal और manual-refund tests को single-owner trigger contract के अनुरूप बदला। Source-count check: payout test 28/28, cancellation-fee test 44/44, durable recovery test 35/35। Manual-refund test में 1 `has_function` + 13 `ok` assertions हैं (कुल plan 14)।
 
 **सीमा:** ये source assertions और migration design review हैं; PostgreSQL parser/replay या pgTAP execution नहीं। Migration ordering, trigger interaction, transaction rollback और real payment/refund lifecycle को disposable PostgreSQL environment में चलाकर सत्यापित करना बाकी है। Production, PR #8 head और deployment अपरिवर्तित हैं।
+
+### 18. Payout-trigger dependency and pgTAP plan-count recheck — 16 Nov 2026
+
+इस pass में audit branch के payout integration migration और संबंधित test files फिर से पढ़े:
+
+- SUPABASE_SCHEMA.sql तथा COMPLETE_DATABASE_SETUP.sql दोनों में service_bookings.payment_verified_at, razorpay_payment_id और commission_rate मौजूद हैं।
+- 20261109_electrician_inspection_quotes_and_service_only_commission.sql service_charge, materials_amount और quote_status जोड़ती है। यह migration function body में NEW.amount_paid भी पढ़ती है; इसलिए amount_paid prerequisite को इससे पहले स्थापित होना आवश्यक है।
+- नई 20261116210000_attach_electrician_payout_reconciliation_trigger.sql migration इन्हीं booking fields सहित selected_category, assignment/status/payment fields पर AFTER INSERT/UPDATE trigger जोड़ती है। Trigger event column list का static review हुआ; वास्तविक PostgreSQL catalog event mask अभी verify नहीं हुआ।
+- छह test files की plan-count source जाँच की: payout reconciliation 28/28; cancellation-fee refund reversal 44/44; manual refund completion 14 कुल (13 ok + 1 has_function); durable Razorpay recovery 35/35; public rate-limit search_path 5 कुल (4 ok + 1 has_function)। ये source assertion counts हैं, executed pgTAP results नहीं।
+- Wallet access test का plan(18) और 18 ok assertions भी दोबारा match हुआ।
+
+**शेष dependency gates:** selected_category का authoritative introducing DDL और trigger column-list के सभी fields का migration-order proof एक ही contiguous replay chain में फिर से verify करना है। इसके अतिरिक्त canonical base schema/Admin bootstrap, duplicate/malformed migration lineage, पूरे migration replay और transaction-level refund/payout side effects unresolved हैं।
+
+**Verification boundary:** इस pass में केवल GitHub source files पढ़े और assertion counts गिने। PostgreSQL/pgTAP नहीं चलाया; Production, PR #8 head, payment provider, deployment और merge को नहीं छुआ।
