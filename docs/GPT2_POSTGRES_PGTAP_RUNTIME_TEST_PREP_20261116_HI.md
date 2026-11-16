@@ -1695,3 +1695,24 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 - `srk_link_electrician_profile_trigger` का source definition starter files में मौजूद है, migration files में नहीं; clean replay baseline प्रमाणित करना अनिवार्य है।
 - `20261114130000` की repeated identity definitions को अभी delete/merge/reorder नहीं किया गया। पहले canonical bootstrap, remote migration ledger और deployed function/trigger definitions की sanitized evidence चाहिए।
 - कोई SQL execute, DB connection, migration replay, Production access, schema/data mutation या deployment नहीं हुआ।
+
+
+## 45. Electrician Identity — Admin/RPC/Wallet/KYC cross-reference — 16 Nov 2026
+
+### Cross-reference findings
+- `20261109001000_add_google_maps_location_support.sql`: Admin review RPC checks `auth.uid()` and `public.is_srk_admin()`, then writes both `user_id` and `auth_user_id`. The identity sync/guard from `20261109000500` must be installed before this function is exercised.
+- `20261109002000_expose_assigned_booking_map_pin.sql` and the later quote/offer RPC in `20261109_electrician_inspection_quotes_and_service_only_commission.sql` identify the electrician profile by `p.user_id=auth.uid()` and require approved + active. They do not independently compare `auth_user_id`; their safety relies on the profile identity sync/guard invariant.
+- `20261109003000_secure_commission_reporting.sql` uses `p.user_id=auth.uid()` for electrician earnings and Admin-only RPC guard for the global commission report. The same identity invariant applies.
+- `20261109010000_create_secure_wallet_ledger_foundation.sql` recognizes an approved electrician through `coalesce(ep.auth_user_id,ep.user_id)=auth.uid()`. The sync/guard should make both identifiers equal; if drift exists in an older schema before hardening, `coalesce` prioritizes `auth_user_id` and can differ from RPCs using only `user_id`.
+- `20261115140000_electrician_kyc_review_and_activation_gate.sql` is stricter: Storage owner upload/read/delete checks require both columns to equal `auth.uid()`, and activation checks `auth_user_id IS NOT DISTINCT FROM user_id` plus confirmed Auth phone and approved latest identity/address documents. It depends on identity sync/guard and the auth.users link trigger.
+- `20261109103143_move_customer_call_contact_lookup_to_private.sql` reads assigned electrician contact details only for the authenticated customer’s own booking (`b.customer_user_id=auth.uid()`). It does not use profile identity for authorization; it is a customer ownership check.
+
+### Admin and policy conclusion
+- The reviewed migration files do not add a direct client-facing RLS policy on `electrician_profiles`; the reviewed electrician access paths are SECURITY DEFINER RPCs with per-function checks. Existing base-table RLS/grants still need canonical bootstrap verification; this review is not proof of deployed policy state.
+- No cross-role escalation path was established from the reviewed snippets. However, the `user_id`-only RPCs, `auth_user_id`-first wallet check, and dual-column KYC checks are consistent only if the identity synchronization triggers are present and functioning. This is a material invariant and should remain a required pgTAP/runtime check.
+- The 13-assertion identity pgTAP test covers sync/guard triggers and unique-only linking, but it does not by itself prove every dependent RPC's behavior under mismatched or missing identity columns. Extend test coverage in a later reviewed change only after runtime harness/baseline is established.
+
+### Safety / next gate
+- No policies, migrations, or SQL were changed; only this audit document was updated.
+- No SQL execution, database connection, migration replay, Production access, schema/data mutation, payment action, or deployment occurred.
+- Before runtime: Owner must identify the canonical starter schema and provide sanitized evidence of remote migration ledger + deployed identity columns, indexes, trigger definitions, table grants/RLS policies. Then run pgTAP only against an isolated disposable TEST database, never Production.
