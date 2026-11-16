@@ -69,11 +69,11 @@ test('customer profile and saved-address loaders handle rejected auth session lo
   const loadAddresses=body('loadCustomerSavedAddresses');
   assert.match(loadProfile,/try\s*\{\s*const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
   assert.match(loadProfile,/if\(sessionError\)throw sessionError/);
-  assert.match(loadProfile,/catch\(e\)\{setCustomerProfileStatus\('प्रोफ़ाइल लोड नहीं हो सकी/);
+  assert.match(loadProfile,/catch\(e\)\s*\{setCustomerProfileStatus\('प्रोफ़ाइल लोड नहीं हो सकी/);
   assert.match(loadAddresses,/try\s*\{\s*const \{data:sessionData,error:sessionError\}=await customerSb\.auth\.getSession\(\)/);
   assert.match(loadAddresses,/if\(sessionError\)throw sessionError/);
-  assert.match(loadAddresses,/catch\(e\) \{ setSavedAddressStatus\('सेव किए गए पते अभी लोड नहीं हो सके/);
-  assert.match(loadAddresses,/finally \{select\.disabled=false;\}/);
+  assert.match(loadAddresses,/catch\(e\)\s*\{\s*if\(isCurrent\(\)\)setSavedAddressStatus\('सेव किए गए पते अभी लोड नहीं हो सके/);
+  assert.match(loadAddresses,/finally\s*\{\s*if\(isCurrent\(\)\)select\.disabled=false;\s*\}/);
 });
 
 
@@ -112,9 +112,9 @@ test('customer avatar upload safely reconciles a rejected profile-save RPC befor
   assert.match(save, /let profileSaveResult/);
   assert.match(save, /catch\(saveError\)/);
   assert.match(save, /srk_customer_get_my_profile/);
-  assert.match(save, /latestProfile\?\.avatar_path!==avatarPath/);
+  assert.match(save, /lookupSucceeded&&latestProfile\?\.avatar_path===avatarPath/);
   assert.match(save, /storage\.from\('srk-customer-avatars'\)\.remove\(\[avatarPath\]\)/);
-  assert.match(save, /if\(!latestError&&latestProfile\?\.avatar_path!==avatarPath\)/);
+  assert.match(save, /if\(lookupSucceeded&&file&&avatarPath!==customerCurrentAvatarPath\)/);
   assert.match(save, /throw saveError/);
 });
 
@@ -128,7 +128,7 @@ test('customer default-address update does not overwrite a failed address-list r
   const load=booking.slice(loadStart,loadEnd),makeDefault=booking.slice(defaultStart,defaultEnd);
   assert.match(load,/return true;\s*\} catch\(e\).*return false;/s);
   assert.match(makeDefault,/const addressListRefreshed=await loadCustomerSavedAddresses\(\);/);
-  assert.match(makeDefault,/if\(!addressListRefreshed\)\{setSavedAddressStatus\('डिफ़ॉल्ट पता बदलने का अनुरोध सफल रहा, लेकिन पता सूची रीफ़्रेश नहीं हो सकी।/);
+  assert.match(makeDefault,/if\(!addressListRefreshed\)\{setSavedAddressStatus\('डिफ़ॉल्ट पता बदल गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी।/);
   assert.ok(makeDefault.indexOf('if(!addressListRefreshed)')<makeDefault.indexOf("setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।')"));
 });
 
