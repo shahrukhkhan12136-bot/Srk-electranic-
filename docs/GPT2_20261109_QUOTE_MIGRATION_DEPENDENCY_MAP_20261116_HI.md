@@ -53,23 +53,19 @@ RPCs `auth.uid()` का उपयोग करती हैं और customer 
 | `user_id` / profile identity | `PORTAL_SCHEMA.sql` historical setup में जोड़ती है; `20261109000500...` इसे `auth_user_id` के साथ synchronize/guard करती है | Exact clean-replay baseline और ordering अभी स्वीकृत नहीं |
 | `location_lat`, `location_lng` | `20261109001000_add_google_maps_location_support.sql` तीनों booking/application/profile tables पर जोड़ती है | Target quote RPC इन्हें पढ़ती है; dependency order verify करना बाकी |
 | `job_offers` और profile base columns | Historical starter setup में definitions मिलीं | Current authoritative baseline नहीं |
-| `amount_paid` | Branch में explicit add-column migration `20261116200000_restore_service_bookings_amount_paid.sql` मिली | **महत्वपूर्ण prerequisite gap** |
+| `amount_paid` | `20261109003000_secure_commission_reporting.sql` की पहली DDL statement इसे जोड़ती है; `20261116200000_restore_service_bookings_amount_paid.sql` बाद की idempotent restore/check migration है | 09003000 के अपने consumers से पहले उपलब्ध |
 
-## 4. नया महत्वपूर्ण finding: `amount_paid` dependency
+## 4. `amount_paid` dependency — earlier blocker withdrawn after source re-check
 
-Target quote/commission migration के trigger function `srk_calculate_booking_commission()` में `NEW.amount_paid` पढ़ा जाता है।
+The earlier statement that only the 16 Nov restore migration introduces `amount_paid` was incomplete. Re-reading the full `20261109003000_secure_commission_reporting.sql` shows that its **first DDL statement** is:
 
-उसी branch में `amount_paid` जोड़ने वाली explicit migration:
-`20261116200000_restore_service_bookings_amount_paid.sql`
-है। Historical starter `service_bookings` definition में यह column नहीं है।
+`ALTER TABLE public.service_bookings ADD COLUMN IF NOT EXISTS amount_paid numeric(12,2);`
 
-अलग migration `20261109003000_secure_commission_reporting.sql` भी `amount_paid` को report/RPC में पढ़ती है और authenticated update grant में शामिल करती है।
+This occurs before that same migration defines the commission/earnings RPCs and runs the column-level UPDATE grant. Therefore the claimed missing-column failure inside `09003000` is not supported by the checked-in source. The later `20261116200000_restore_service_bookings_amount_paid.sql` is an idempotent restoration/constraint migration, not the first source introduction.
 
-इसलिए यदि approved replay baseline में `amount_paid` पहले से मौजूद नहीं है, तो:
-- quote/commission trigger migration को उस column के उपलब्ध होने से पहले replay करना dependency-order risk है;
-- commission reporting migration भी उस column के उपलब्ध होने पर निर्भर है।
+The quote migration defines `srk_calculate_booking_commission()` with a `NEW.amount_paid` reference, but it does **not** attach that function to a trigger. The checked-in starter setups instead install the old `srk_booking_commission_trigger` against `srk_calculate_commission_on_completion()`. This is a separate, confirmed trigger-wiring/reporting issue, recorded in the updated PR#8 audit report.
 
-यह source-level dependency finding है, runtime failure का दावा नहीं। किसी दूसरे approved baseline या historical SQL path में column पहले से हो सकता है; अभी ऐसा authoritative evidence नहीं मिला। Migration filename collision और remote lineage unresolved होने के कारण migration reorder/rename/repair का कोई प्रस्ताव नहीं किया गया।
+**Corrected conclusion:** do not retain `amount_paid` as a proven clean-replay ordering blocker on the evidence reviewed. The unresolved blockers remain canonical baseline, migration lineage/duplicate 20261109 identity, Admin helper provenance, and the uncorrected commission trigger wiring. No database execution was performed.
 
 ## 5. अन्य महत्वपूर्ण dependency observations
 
@@ -83,7 +79,7 @@ Target quote/commission migration के trigger function `srk_calculate_booking
 
 - Target migration की dependency chain historical setup scripts से अकेले प्रमाणित नहीं होती।
 - `customer_user_id`, profile identity hardening और map coordinates के source introducing files पहचाने गए।
-- `amount_paid` एक स्पष्ट order-sensitive prerequisite है: current branch में इसका explicit restore migration 16 Nov timestamp वाली है, जबकि target quote/commission migration और commission-reporting migration इसे पढ़ती हैं।
+- `amount_paid` का पहला visible source introduction `20261109003000_secure_commission_reporting.sql` में है; 16 Nov वाली migration बाद की idempotent restore/check है। Missing-column blocker को source re-check के बाद वापस लिया गया है।
 - यह finding पहले से खुले authoritative baseline और duplicate-version blockers को और स्पष्ट करती है; इन्हें बंद नहीं करती।
 - कोई migration rename, delete, merge, reorder, repair, replay या deployment नहीं किया गया।
 - कोई Production data, customer/Auth/payment record या secret नहीं पढ़ा गया।
