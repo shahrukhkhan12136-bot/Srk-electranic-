@@ -1608,3 +1608,17 @@ Work Timer migration 20261114240000_server_authoritative_customer_approved_work_
 - तब तक migrations को reorder/rename/edit नहीं करना; `supabase db reset`, hosted DB command, remote schema dump या Production query नहीं चलाना।
 - इस pass में केवल source inspection और यह decision record है; कोई database connection, SQL execution, schema mutation या deployment नहीं हुआ।
 - Owner evidence उपलब्ध होने पर पहले एक reviewable migration plan और diff तैयार होगा; execution अलग explicit approval के बाद ही।
+
+
+## 41. Migration version uniqueness audit — 16 Nov 2026
+
+Current Feature Branch `supabase/migrations` directory की GitHub contents listing में कुल 87 migration SQL files मिलीं। Filename के शुरुआती numeric version token के आधार पर exact duplicate version की जाँच में एक duplicate pair मिला:
+
+- `20261109_allow_quote_approval_booking_states.sql`
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+
+दोनों का migration version token ठीक `20261109` है। बाकी timestamped files में पूर्ण numeric version token duplicate नहीं मिला। एक ही version वाली दो files migration tooling में version collision/ambiguous ordering का जोखिम पैदा कर सकती हैं; वास्तविक व्यवहार प्रयुक्त Supabase CLI/version parser और migration history से सत्यापित होना बाकी है।
+
+**निर्णय:** इसे migration-history/replay audit में दूसरा blocker candidate दर्ज किया गया है। अभी किसी filename को rename नहीं किया गया, क्योंकि deployed `supabase_migrations.schema_migrations` history और पहले apply हो चुकी versions अज्ञात हैं। पहले से लागू migration का version बदलना remote history से mismatch पैदा कर सकता है।
+
+**सुरक्षित अगला कदम:** Owner से sanitized remote migration history और इस्तेमाल हो रहे Supabase CLI version की पुष्टि; फिर तय करना कि दोनों files कभी deploy हुई हैं या नहीं। यदि clean-install के लिए नया क्रम चाहिए, तो अलग approved forward-only/clean-bootstrap योजना बनाएं; live history को अनुमान से edit न करें। इस audit में केवल GitHub directory listing पढ़ी गई—कोई database connection या migration execution नहीं हुआ।
