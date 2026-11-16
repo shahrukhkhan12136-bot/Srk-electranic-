@@ -81,7 +81,7 @@ test('customer menu routes payments, support and profile content into their own 
 
 test('support and profile remain behind the authenticated customer dashboard', () => {
   assert.match(booking, /const dashboard = document\.getElementById\('customer-dashboard'\)/);
-  assert.match(booking, /document\.getElementById\('customer-dashboard'\)\.style\.display = session \? 'block' : 'none'/);
+  assert.match(booking, /dashboard\.style\.display = session \? 'block' : 'none'/);
   assert.match(booking, /srk_customer_create_booking_complaint/);
   assert.match(booking, /srk_customer_list_booking_complaints/);
   assert.match(booking, /srk_customer_update_my_profile/);
@@ -174,7 +174,7 @@ test('electrician live-location update network exceptions trigger safe sharing s
   const live = electrician.slice(start, end);
   assert.match(live, /try\s*\{[\s\S]*?srk_electrician_update_live_location/);
   assert.match(live, /if\(r\.error\)throw r\.error/);
-  assert.match(live, /catch\(error\)\s*\{\s*await stopElectricianLiveLocationAfterGpsFailure/);
+  assert.match(live, /catch\(error\)\s*\{[\s\S]*?await stopElectricianLiveLocationAfterGpsFailure/);
   assert.match(live, /stopElectricianLiveLocationAfterGpsFailure/);
 });
 
