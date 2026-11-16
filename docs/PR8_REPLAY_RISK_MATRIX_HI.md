@@ -547,3 +547,8 @@ The early wallet and Admin RPC migrations call two helper names: `public.is_srk_
 **Audit-branch correction:** `20261109010000_create_secure_wallet_ledger_foundation.sql` now defines both helper functions and their authenticated EXECUTE grants before the wallet RPCs, in commit `6f67aa96a64a112df14d48f3a88bd63851edd86c`. Fetch-back verification confirms both definitions occur before `srk_get_my_wallet_summary()`.
 
 **Important baseline dependency remains:** both helpers query `public.srk_admin_users`. The inspected `COMPLETE_DATABASE_SETUP.sql` creates that table, but a fully reproducible replay still requires this setup file (or an equivalent canonical numbered baseline) to be formally established as the starting schema. This helper-function correction does not independently create the base table. No PostgreSQL replay/pgTAP was run and Production was not modified.
+
+
+### Correction to the Admin-helper follow-up note
+
+A subsequent baseline-contract review found that `public.srk_admin_users` itself has no verified introducing migration in the numbered chain; its DDL is present in standalone setup SQL. Therefore, adding helper functions that query this table inside the wallet migration would only move the unresolved dependency and could make the migration fail on a clean replay. The provisional helper-function insertion from commit `6f67aa96a64a112df14d48f3a88bd63851edd86c` was reverted in commit `6580e6d2799ec2376e0fba48824c3ee2d55fe8d4`. The wallet migration is back to its prior source content. Both Admin helper functions and the `srk_admin_users` base table remain **unresolved baseline gates** until an owner-approved canonical base schema is established. No Production changes or database tests were performed.
