@@ -447,3 +447,15 @@ Reviewed seven ordered hardening migrations from `20261116110000` through `20261
 The targeted functions' inspected bodies use schema-qualified application/auth relations; an empty path still permits built-ins through implicit `pg_catalog`. These ALTERs do not change function bodies, EXECUTE grants, caller authorization, RLS, or business logic. Static review does not prove all live Production function definitions match the branch source, nor does it prove replay succeeds against a clean baseline.
 
 **Replay ordering gates:** wallet/commission foundations before `16110000`; customer-call private schema/function before `16120000`; earnings and receipt functions before `16130000`; final offer-details definition after `15220000` and before `16140000`; JSONB Admin application-review replacement after `09001500` and before `16150000`; rate-limit foundation before `16170000`. No PostgreSQL replay or pgTAP suite was run.
+
+
+### 14. Financial RPC search_path test mismatch and amount_paid restore gate (16 Nov 2026)
+
+A follow-up consistency check found a concrete test/source mismatch:
+
+- `20261116110000` and `20261116130000` set three wallet/commission SECURITY DEFINER RPCs to an empty `search_path` (`search_path=''`).
+- `legacy_financial_read_rpc_search_path.test.sql` still expected `pg_catalog, public, auth, pg_temp` for those same three functions. This assertion would fail against the intended hardened definitions. Updated the three assertions to expect the empty path; retained the SECURITY DEFINER and anon EXECUTE-denial checks. Test source correction commit: `d8eddf1b52714c90a03335f77e750ca87be2db00`. The test has not been executed.
+- `20261116200000_restore_service_bookings_amount_paid.sql` is idempotent: adds `amount_paid numeric(12,2)` if absent and adds a nullable/nonnegative CHECK as NOT VALID if its named constraint is absent. Earlier `20261109003000` now adds the column even earlier to support SQL-function creation and subsequent quote/payment migrations; the 16th-day restore migration therefore acts as a safe repair/final constraint gate on clean replay and legacy installations.
+- The 18-assertion legacy manual-payment/itemized-receipt test checks Main Admin authorization, booking lock, allowed booking/payment states, approved quote arithmetic, labour-only commission, immutable receipt ledger, payout split, and empty search_path. These are assertions in source, not proof of a passing test.
+
+**Current result:** one stale test expectation was corrected in the audit branch. No production schema was altered; no migration or pgTAP test was executed. The amount_paid prerequisite remains conditional on the canonical base schema containing `service_bookings` before these migrations.
