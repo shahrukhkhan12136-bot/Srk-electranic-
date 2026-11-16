@@ -59,7 +59,8 @@ test('customer profile restores the saved language and persists the selected pre
   const save = body('saveCustomerProfile');
   assert.match(load, /profile\.preferred_language\|\|'hi'/);
   assert.match(load, /applyCustomerUiLanguage\(profile\.preferred_language\|\|'hi'\)/);
-  assert.match(save, /p_preferred_language:document\.getElementById\('customerProfileLanguage'\)\.value/);
+  assert.match(save, /const preferredLanguage=document\.getElementById\('customerProfileLanguage'\)\.value/);
+  assert.match(save, /p_preferred_language:preferredLanguage/);
   assert.match(booking, /customerProfileLanguage.*addEventListener\('change'/);
 });
 
@@ -112,7 +113,7 @@ test('customer avatar upload safely reconciles a rejected profile-save RPC befor
   assert.match(save, /let profileSaveResult/);
   assert.match(save, /catch\(saveError\)/);
   assert.match(save, /srk_customer_get_my_profile/);
-  assert.match(save, /lookupSucceeded&&latestProfile\?\.avatar_path===avatarPath/);
+  assert.match(save, /lookupSucceeded&&latestProfile\?\.full_name===fullName&&latestProfile\?\.preferred_language===preferredLanguage&&latestProfile\?\.avatar_path===avatarPath/);
   assert.match(save, /storage\.from\('srk-customer-avatars'\)\.remove\(\[avatarPath\]\)/);
   assert.match(save, /if\(lookupSucceeded&&file&&avatarPath!==customerCurrentAvatarPath\)/);
   assert.match(save, /throw profileSaveError/);
