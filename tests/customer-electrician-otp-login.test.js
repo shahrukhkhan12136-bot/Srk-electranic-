@@ -19,6 +19,18 @@ test('customer OTP login normalizes Indian numbers and verifies SMS OTP before d
   assert.ok(customer.includes('if(busy)return'));
 });
 
+test('customer booking dashboard OTP accepts only Indian 10-digit or +91 numbers', () => {
+  assert.ok(booking.includes("if (digits.length === 10) return '+91' + digits;"));
+  assert.ok(booking.includes("if (raw.startsWith('+91') && digits.length === 12 && digits.startsWith('91')) return '+91' + digits;"));
+  assert.ok(!booking.includes('digits.length >= 10 && digits.length <= 15'));
+});
+
+test('electrician OTP accepts only Indian 10-digit or +91 numbers', () => {
+  assert.ok(electrician.includes("if(digits.length===10)return '+91'+digits"));
+  assert.ok(electrician.includes("if(raw.startsWith('+91')&&digits.length===12&&digits.startsWith('91'))return '+91'+digits"));
+  assert.ok(!electrician.includes('digits.length>=10&&digits.length<=15'));
+});
+
 test('customer booking dashboard remains hidden until a valid session is present', () => {
   assert.ok(booking.includes('id="customer-dashboard"'));
   assert.ok(booking.includes('style="display:none"'));
