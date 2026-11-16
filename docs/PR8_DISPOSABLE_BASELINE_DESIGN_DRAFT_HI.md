@@ -161,3 +161,38 @@ Before creating an executable baseline file, obtain an owner-approved schema-onl
 **अभी कोई standalone SQL file copy करके baseline migration नहीं बनाई जाएगी।** `COMPLETE_DATABASE_SETUP.sql` सबसे अधिक शुरुआती DDL समेटता है, लेकिन वह historical starter/portal contract है; उसे वर्तमान PR #8 schema का पूरा या सुरक्षित canonical snapshot कहना गलत होगा। पहले object-by-object schema reconciliation, policy/ACL review, and owner sign-off चाहिए।
 
 इस inventory में केवल GitHub source files पढ़े गए। किसी database पर SQL execute नहीं किया गया; कोई production/test project बदला नहीं गया।
+
+
+## Object-by-object delta — legacy setup बनाम शुरुआती numbered migrations (16 Nov 2026)
+
+यह तुलना वर्तमान audit branch की exact source files पर आधारित है। “Legacy setup में है” का अर्थ केवल standalone SQL में DDL मौजूद होना है; इसका अर्थ यह नहीं कि उसे numbered migrations से पहले बिना review चलाना चाहिए।
+
+| Object / contract | Legacy setup में स्थिति | Numbered migration delta / dependency | Replay निष्कर्ष |
+|---|---|---|---|
+| `service_bookings` | Base table मौजूद; customer/payment/booking/location fields, लेकिन `amount_paid` और `customer_user_id` नहीं | `20261108121115` adds `customer_user_id`; `20261109001000` adds GPS pair/range; `20261109003000` adds nullable `amount_paid numeric(12,2)`; quote workflow adds quote/service/work fields and constraints | Legacy table foundation उपयोगी, पर migration chain का replacement नहीं |
+| `electrician_applications` | Base table मौजूद; profile/application identity fields and approval state | `20261109001000` adds GPS pair/range; Admin review RPC uses `auth.users` phone confirmation and inserts/updates profile linkage | Auth schema + profiles prerequisites चाहिए |
+| `electrician_profiles` | Base table मौजूद; `application_id`, profile/contact/location, skills, active; consolidated setup additionally adds `verification_status` and `user_id` | `20261109000500` adds `auth_user_id` FK, backfill, unique partial index, sync/guard/link triggers; `20261109001000` adds GPS; later migrations evolve profile security and status | Legacy `user_id` may be present in consolidated setup; `auth_user_id` still needs owning migration |
+| `job_offers` | Base table, booking/profile FKs, status/match level, indexes, RLS; no public read/write policy | Early map RPC reads it; later dispatch migrations evolve offers, status and triggers | Depends on both bookings and profiles before creation |
+| `srk_admin_users` | Table in `PORTAL_SCHEMA.sql` and `COMPLETE_DATABASE_SETUP.sql`; FK to `auth.users`; RLS/self-read policy later in setup | No verified authoritative numbered CREATE TABLE migration in inspected chain | Baseline provenance gate; do not infer it is created by a migration |
+| `public.srk_is_admin()` | Defined in `PORTAL_SCHEMA.sql` and `COMPLETE_DATABASE_SETUP.sql` | `20261109001500` and wallet Admin overview call it | Helper is legacy setup prerequisite, not created by those consumers |
+| `public.is_srk_admin()` | Defined in `ADMIN_EMAIL_LOGIN_SETUP.sql` and `COMPLETE_DATABASE_SETUP.sql` | `20261108234000`, `20261109001000`, commission reporting and wallet Admin overview call it | Helper is legacy setup prerequisite, not created by those consumers |
+| `amount_paid` | Not in the original `service_bookings` DDL in `SUPABASE_SCHEMA.sql` / `COMPLETE_DATABASE_SETUP.sql` | Audit branch adds it at start of `20261109003000`, before SQL-language earnings function; quote trigger later reads `NEW.amount_paid` | Source-order patch present; still requires actual PostgreSQL replay |
+| `auth_user_id` | Not in original or consolidated legacy profile DDL | `20261109000500` adds it before GPS Admin review and wallet functions consume it | Ordering is source-backed; runtime not tested |
+
+### Exact early dependency blockers
+
+1. `20261108234000_combine_booking_read_policy.sql` creates an Admin-or-customer policy and calls `public.is_srk_admin()`. That migration does not define the helper or create `srk_admin_users`.
+2. `20261109001000_add_google_maps_location_support.sql` defines `srk_admin_review_application()` and calls `public.is_srk_admin()`; it also reads/writes `auth.users`, `electrician_applications` and `electrician_profiles`, and writes both `user_id` and `auth_user_id`.
+3. `20261109001500_unique_electrician_admin_identity_linking.sql` replaces the same Admin review RPC and calls the differently named `public.srk_is_admin()`. It therefore needs both the base Admin allowlist and the exact helper contract before execution.
+4. `20261109010000_create_secure_wallet_ledger_foundation.sql` consumes `electrician_profiles.auth_user_id/user_id`, `auth.users`, and `public.is_srk_admin()`; it creates wallet objects but does not establish the Admin base table/helper prerequisites.
+5. `COMPLETE_DATABASE_SETUP.sql` does contain both Admin helper names and the allowlist table, but also contains legacy policy/RPC definitions. It is not proven equivalent to the current migration-era function grants, search_path hardening, RLS and ACL state.
+
+### Current bounded status
+
+- **Confirmed by source:** all four operational base tables, Admin allowlist table, both legacy helper definitions, and the listed early migration consumers.
+- **Source-order fix on audit branch:** `amount_paid` is added before the SQL-language commission earnings function in `20261109003000`; the later restoration migration remains idempotent.
+- **Not resolved:** canonical base-schema ownership and whether the standalone setup's Admin helpers/table exactly satisfy the current numbered migration contracts.
+- **Not tested:** PostgreSQL clean replay, trigger runtime, grants under actual Supabase roles, RLS behavior, pgTAP.
+- **No action:** no production/test database SQL was executed; no migration was applied; no PR head/merge/deploy was changed.
+
+**Decision:** Do not create an executable baseline from these legacy files yet. Use them as source evidence, reconcile every base object and security contract, then produce a review-only candidate for owner approval.
