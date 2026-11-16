@@ -2306,3 +2306,16 @@ This does **not** establish that the historical Production database lacked `amou
 - Existing source-contract tests: `legacy_manual_payment_and_itemized_receipt.test.sql` और `admin_labour_bill_payment_accounting_bridge.test.sql` में source/metadata assertions मौजूद हैं; इस review में उन्हें execute नहीं किया गया।
 - PostgreSQL/pgTAP behavioural runtime, synthetic booking settlement, duplicate/concurrent payment, payout trigger side effects और rollback: **NOT RUN**.
 - No SQL, migration, Production DB, hosted schema, payment provider, workflow or deployment changed/invoked.
+
+## 67. Superseding correction — `amount_paid` is added at the start of `09003000`; prior blocker withdrawn
+
+A full-file re-read of `supabase/migrations/20261109003000_secure_commission_reporting.sql` shows its first DDL statement adds `public.service_bookings.amount_paid numeric(12,2)` with `ADD COLUMN IF NOT EXISTS`. This is before the same migration's commission-report/earnings function definitions and its column-level UPDATE grant. Consequently, the earlier sections 36, 37, 40, 51 and 66 incorrectly treated `20261116200000_restore_service_bookings_amount_paid.sql` as the first column introduction and described the earlier grant as a proven missing-column failure.
+
+**Corrected status:**
+- The starter SQL files do omit `amount_paid`; that remains true.
+- `20261109003000` adds the column before its own consumers; therefore the claimed missing-column GRANT blocker is **withdrawn**.
+- `20261116200000_restore_service_bookings_amount_paid.sql` is a later idempotent restoration/constraint migration.
+- The quote migration defines `srk_calculate_booking_commission()` with a `NEW.amount_paid` reference but does not attach it to a trigger. This function-definition reference is not proof of an immediate migration failure.
+- A separate, actionable commission trigger defect is confirmed: the setup files attach `srk_booking_commission_trigger` to the old `srk_calculate_commission_on_completion()` function; the quote migration neither replaces that trigger nor binds the new service-only function. The Admin commission report sums `commission_amount`, while the payout ledger independently calculates commission from service charge. This can create a reporting-versus-payout mismatch. See section 15 of `docs/PR8_MIGRATION_DEPENDENCY_AUDIT_HI.md`.
+
+This correction supersedes every earlier statement in this document that says `amount_paid` is introduced only by the 16 Nov migration or that `09003000` reaches a missing-column grant. The canonical baseline, helper provenance, duplicate migration version token, and trigger replacement plan remain open. PostgreSQL/pgTAP was not run, and no database or PR branch was changed.
