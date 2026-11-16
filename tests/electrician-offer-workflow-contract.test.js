@@ -10,7 +10,7 @@ function body(name) {
   const start = source.indexOf('async function ' + name + '(');
   assert.ok(start >= 0, name + ' handler exists');
   const tail = source.slice(start + 1);
-  const next = tail.search(/\n(?:async )?function\\s+[A-Za-z0-9_$]+\\s*\\(/);
+  const next = tail.search(/\n(?:async )?function\s+[A-Za-z0-9_$]+\s*\(/);
   return source.slice(start, next < 0 ? source.length : start + 1 + next);
 }
 
