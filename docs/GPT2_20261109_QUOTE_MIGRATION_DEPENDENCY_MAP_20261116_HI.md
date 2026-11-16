@@ -100,3 +100,20 @@ Migration owner/DBA से केवल read-only authoritative migration lineag
 - Production connection/query/write: NONE.
 - Migration replay/repair/DDL/deployment: NONE.
 - GPT-1 Customer/Electrician application source: untouched.
+
+## 9. 16 Nov — Admin/Accounting legacy quotation boundary re-check
+
+Current branch source files re-read:
+- `admin.html`: Admin booking table still selects `service_charge`, `materials_amount`, `quote_status` and `quoted_amount`, but renders the historical quote as read-only. The quote cell has no input/select/button or edit handler. Admin's legacy manual-payment branch calls `srk_admin_record_manual_payment`.
+- `supabase/migrations/20261115210000_legacy_manual_payment_and_itemized_receipt.sql`: that RPC deliberately requires `selected_category IS NULL`, completed + assigned booking, `quote_status='approved'`, exact labour + materials = approved `quoted_amount`, and rejects Razorpay-linked/new-category bookings. The legacy receipt also reconciles those historic amounts.
+- `admin.html` does not call the old quote submit/respond/work-status RPCs. The current `electrician.html` has no references to those old quote RPC names or quote-status fields.
+- `20261115220000_retire_live_legacy_quotation_rpcs.sql` drops only the three live legacy quote/work RPCs and replaces the electrician offer-details projection; it does not drop historical quote columns, booking rows, manual-payment RPC, or receipt data.
+
+### Safe retirement rule
+Do not delete `quote_status`, `service_charge`, `materials_amount`, `quoted_amount`, or historical quote/payment rows as part of this retirement. They remain necessary for old completed bookings and historical receipts/accounting. New-category bookings must continue using immutable server labour bills and their dedicated Cash settlement path, never the legacy quote/manual-payment RPC. The UI must keep historical quote data read-only and must not reintroduce quote submission/approval for new bookings.
+
+### Regression coverage added
+- `tests/admin-legacy-quote-retirement.test.js` now checks that the retirement migration removes the three active quote RPCs without dropping historical booking columns/table or the legacy manual-payment RPC, and that the legacy payment RPC remains approved-quote-scoped and excludes new-category bookings.
+- Existing pgTAP source files include 18 checks for legacy manual payment/itemized receipt and 15 checks for the new-category labour-bill/accounting bridge. These files have **not** been executed against isolated PostgreSQL/Supabase in this step; source assertions are not runtime proof.
+
+Verification boundary: current Feature Branch source only. No SQL replay, DB connection, Production query/write, DDL, deployment, merge, or payment/refund action.
