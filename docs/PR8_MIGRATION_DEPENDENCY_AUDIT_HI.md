@@ -555,3 +555,23 @@ verify-payment.js और razorpay-webhook.js के legacy-quote payment paths �
 - वहाँ `srk_admin_update_booking` और अलग manual-payment workflow मौजूद हैं, लेकिन वे इन दो RPC के समान नाम/contract नहीं हैं।
 
 **निष्कर्ष:** उपलब्ध GitHub branches और इतिहास से इन दो RPC की SQL implementation प्रमाणित नहीं होती। यह अभी भी Repository-स्तर का निष्कर्ष है; Production Database या किसी बाहरी/manual SQL installation की जाँच नहीं हुई है। इसलिए इसे live outage या deployed absence नहीं कहा जा सकता। Admin UI के संबंधित actions के लिए implementation/contract को स्पष्ट करना आवश्यक है।
+
+
+## 43. Razorpay Atomic Migration और वर्तमान JavaScript — Contract मिलान का संशोधित निष्कर्ष
+
+Branch `feature/platform-fee-cash-online-cycle` की `20261114090000_atomic_razorpay_order_and_payment_finalization.sql` को वर्तमान root handlers के साथ प्रत्यक्ष पढ़कर मिलाया गया। इससे पहले की रिपोर्ट में इन मुख्य RPC की SQL परिभाषा न मिलने की बात अधूरी थी; इस Migration में ये परिभाषाएँ वास्तव में मौजूद हैं:
+
+| RPC | Migration में परिभाषा | वर्तमान handler में उपयोग |
+|---|---|---|
+| `srk_claim_payment_order_lock(uuid)` | हाँ | `create-order.js` |
+| `srk_link_payment_order(uuid,uuid,text,bigint)` | हाँ | `create-order.js` |
+| `srk_release_payment_order_lock(uuid,uuid)` | हाँ | `create-order.js` finally block |
+| `srk_service_finalize_captured_payment(uuid,text,text,bigint,text)` | हाँ | `verify-payment.js` और `razorpay-webhook.js` |
+
+इसलिए इन चार RPC को “Repository में SQL definition missing” कहना सही नहीं है। इन्हें Migration में Service Role-only grants, booking row lock, lock token validation, payable-state/amount checks और captured-payment idempotency के साथ परिभाषित किया गया है। यह केवल source-level contract review है; Migration लागू होने या runtime व्यवहार का प्रमाण नहीं।
+
+**अलग unresolved dependency:** तीनों handlers में `srk_service_get_labour_bill_for_payment(uuid)` भी इस्तेमाल होता है, लेकिन इस Atomic Migration में इसकी परिभाषा नहीं है। उपलब्ध GitHub code search से भी इसकी दूसरी परिभाषा नहीं मिली। इसलिए इसकी SQL implementation और privilege contract अलग से सत्यापित करना बाकी है।
+
+**अतिरिक्त सावधानी:** `create-order.js` में lock claim के बाद order reuse/create होता है और फिर `srk_link_payment_order` के जरिए atomic link किया जाता है। अतः पहले की टिप्पणी कि यह handler सीधे REST PATCH से order ID लिखता है, वर्तमान पढ़े गए source के लिए गलत थी; इस रिपोर्ट में उसे वापस लिया जाता है। Reusable-order fast path अब lock के भीतर है, लेकिन provider GET के बाद booking का पुनः-पठन RPC के भीतर `srk_link_payment_order` द्वारा state/amount दोबारा जाँचा जाता है।
+
+**स्थिति:** Migration/handler contract का source मिलान हुआ; PostgreSQL execution, pgTAP, deployment ledger और Production schema सत्यापन नहीं हुआ।
