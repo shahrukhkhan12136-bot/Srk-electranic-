@@ -164,7 +164,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
     assert.match(fn, /वर्तमान स्थिति रीफ़्रेश करके जाँचें/);
   }
   assert.match(customerRefund, /catch\s*\(error\)/);
-  assert.match(customerRefund, /finally\s*\{\s*if\(button\)button\.disabled=false/);
+  assert.match(customerRefund, /finally\s*\{\s*if\(isCurrent\(\)&&button\)button\.disabled=false/);
   assert.match(customerRefund, /दोबारा अनुरोध नहीं भेजा गया/);
   assert.match(customerCancel, /catch\(error\)/);
   assert.match(customerCancel, /finally \{if\(button\)button\.disabled=false;\}/);
