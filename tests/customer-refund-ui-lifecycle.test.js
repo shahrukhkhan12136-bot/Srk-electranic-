@@ -24,6 +24,6 @@ test('confirmed customer refund requests remain confirmed when the booking list 
   const fn = booking.slice(start, end);
   assert.match(fn, /रिफंड अनुरोध सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
   assert.match(fn, /रिफंड अनुरोध पहले से दर्ज है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
-  assert.equal((fn.match(/try\{await loadCustomerBookings\(\);\}catch\(_\)/g) || []).length, 2);
+  assert.equal((fn.match(/try\{await loadCustomerBookings\(\);if\(!isCurrent\(\)\)return;\}catch\(_\)/g) || []).length, 2);
   assert.match(fn, /दोबारा अनुरोध नहीं भेजा गया/);
 });
