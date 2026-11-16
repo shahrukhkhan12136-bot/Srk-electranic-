@@ -1941,3 +1941,22 @@ Sanitized schema report में केवल ये विवरण:
 - Source review: **PASS** — registered KYC document का Storage object owner cleanup policy से delete नहीं होना चाहिए; केवल unregistered own-path object candidate है।
 - Test gap: वर्तमान pgTAP suite helper/function और delete policy की मौजूदगी जाँचती है, पर वास्तविक owner-vs-other-user JWT के साथ Storage delete attempts तथा registered-object deletion denial end-to-end साबित नहीं करती। इस scenario को disposable TEST Storage harness में जोड़ना आवश्यक है।
 - कोई SQL/migration/test file, Storage object, database या Production state नहीं बदली गई; यह documentation-only audit है।
+
+## 56. Existing KYC pgTAP plan(21) — assertion-by-assertion coverage boundary — 16 Nov 2026
+
+- वर्तमान `electrician_kyc_review_and_activation_gate.test.sql` में `begin; plan(21); ... finish(); rollback;` है।
+- 21 assertions का source inventory:
+  1–2. KYC documents और append-only events tables मौजूद।
+  3–8. Submit/list/Admin queue/review/activation/orphan-cleanup functions मौजूद।
+  9–10. Profile activation और rate-tier guard triggers मौजूद।
+  11–15. पाँच RPCs के authenticated-vs-anon EXECUTE privileges।
+  16. KYC documents table पर authenticated/anon direct SELECT निषिद्ध।
+  17. Bucket private और 5 MiB सीमा।
+  18. तीन Storage policy names मौजूद।
+  19–20. Activation और rate-tier functions में latest identity/address KYC approval guard marker।
+  21. Review RPC में `public.is_srk_admin()` Main Admin gate marker।
+- इस test का वास्तविक scope schema/catalog/function-definition inspection है। यह केवल `pg_policies` में policy नाम देखकर policy की वास्तविक JWT behavior सिद्ध नहीं करता; function source में marker खोजकर complete branch behavior भी सिद्ध नहीं होता।
+- स्पष्ट रूप से अनुपस्थित runtime assertions: (a) Owner A सही UID path में upload कर सके; (b) Owner B, unlinked user और गलत UID folder upload न कर सकें; (c) Owner A तथा Main Admin read कर सकें, अन्य electrician/Support न कर सके; (d) registered KYC object delete न हो; (e) unregistered own object ही cleanup हो; (f) event row UPDATE/DELETE अस्वीकार हो; (g) latest rejected/pending KYC पर activation अस्वीकार और approved latest KYC पर सही अनुमति।
+- प्रस्तावित runtime fixture matrix को disposable Local Supabase TEST में अलग test file में जोड़ना होगा; वास्तविक Storage behavior के लिए Storage schema/API harness आवश्यक है। केवल SQL catalog test जोड़ने से end-to-end Storage test का विकल्प नहीं मिलेगा।
+- Static inventory cross-check: **PASS** — plan(21) और 21 assertion calls मौजूद। pgTAP अभी execute नहीं हुआ; कोई runtime PASS दावा नहीं।
+- कोई test/migration/SQL/Storage object/DB state नहीं बदली गई; केवल audit documentation बदला गया।
