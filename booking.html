@@ -904,7 +904,7 @@ function customerPhoneE164() {
   const raw = document.getElementById('customerPhone').value.trim();
   const digits = raw.replace(/\D/g, '');
   if (digits.length === 10) return '+91' + digits;
-  if (raw.startsWith('+') && digits.length >= 10 && digits.length <= 15) return '+' + digits;
+  if (raw.startsWith('+91') && digits.length === 12 && digits.startsWith('91')) return '+91' + digits;
   return null;
 }
 function googleMapsUrl(lat, lng, address) { const q = lat !== '' && lng !== '' && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) ? `${lat},${lng}` : address; return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q); }
