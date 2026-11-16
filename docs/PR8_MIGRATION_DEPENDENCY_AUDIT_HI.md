@@ -659,3 +659,23 @@ Feature branch के मौजूदा source को फिर से पढ�
 **सुझाए गए tests:** (1) same webhook event दो बार, (2) webhook और customer verify एक साथ, (3) same payment ID दो channels से, (4) अलग payment ID उसी order पर, (5) Razorpay order POST accepted-but-response-lost, (6) DB link RPC commit-but-response-lost और (7) 90-second lock expiry। इनको mocked HTTP integration और वास्तविक isolated PostgreSQL concurrency tests में चलाना चाहिए।
 
 यह source-only निष्कर्ष है। कोई handler test, pgTAP, Production query/write या payment request नहीं चलाया गया।
+
+
+## 49. पुराने Payment Findings का Consolidated Correction — Sections 30–38
+
+नवीनतम source re-fetch के बाद नीचे के पुराने निष्कर्षों को वर्तमान `feature/platform-fee-cash-online-cycle` branch पर लागू न माना जाए। Sections 43–48 में नया source evidence दर्ज है; यह section पुराने पाठ को स्पष्ट रूप से supersede करता है।
+
+| पुराना हिस्सा | नया सत्यापित निष्कर्ष |
+|---|---|
+| 30 — reusable order lock से पहले लौटता है | गलत/पुराना। वर्तमान `create-order.js` में lock claim पहले, booking re-read बाद में, फिर reuse/create और atomic link है। |
+| 31 और 35 — claim/release SQL definitions missing | गलत/पुराना। चारों payment RPC `20261114090000_atomic_razorpay_order_and_payment_finalization.sql` में परिभाषित हैं। |
+| 32 — direct REST PATCH से order link | गलत/पुराना। वर्तमान handler `srk_link_payment_order` RPC call करता है; direct booking PATCH नहीं। |
+| 36 — verify/webhook अलग REST PATCH settlement | गलत/पुराना। वर्तमान दोनों handlers shared `srk_service_finalize_captured_payment` RPC call करते हैं। |
+| 37 — new-category payment RPC definitions missing | पुराने RPC नाम। वर्तमान handlers `srk_service_get_labour_bill_for_payment` और shared finalizer का उपयोग करते हैं; bill lookup definition migration `20261114040000` में मिली। |
+| 38 — atomic migration branch tree में नहीं | गलत/पुराना branch snapshot। Current feature branch में migration मौजूद है; audit branch snapshot में इसे न पाना इसका अभाव सिद्ध नहीं करता। |
+
+**Webhook inbox सावधानी (Sections 33–34):** उन sections में वर्णित event-inbox/claim-token flow को इस feature branch के वर्तमान `razorpay-webhook.js` पर लागू न मानें। इस branch का Netlify wrapper root `razorpay-webhook.js` export करता है; re-fetched handler में inbox claim/complete RPC calls नहीं हैं। Shared SQL finalizer duplicate captured payment ID को idempotently संभालता है, जो अलग सुरक्षा परत है। Inbox tests/दूसरे branch variant को इस handler की coverage न गिनें।
+
+**वर्तमान शेष gaps:** वास्तविक PostgreSQL/pgTAP execution; पूरे dependency migration order का isolated test; bill-lookup RPC privilege/return assertions; handler-level mocked HTTP tests; webhook-vs-verify concurrency; Razorpay order POST accepted-but-response-lost; DB link response-lost; 90-second lock expiry।
+
+इस correction से पहले के गलत निष्कर्ष हटाए नहीं गए हैं ताकि audit trail बना रहे, लेकिन उन्हें स्पष्ट रूप से superseded माना जाए। यह repository source review है; Production database या live provider behavior का प्रमाण नहीं।
