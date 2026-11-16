@@ -15,13 +15,6 @@ declare
   v_booking public.service_bookings%rowtype;
   v_bill public.srk_booking_labour_bills%rowtype;
   v_payout public.srk_electrician_payouts%rowtype;
-  v_route_transfers jsonb := '[]'::jsonb;
-  v_route_electrician_paise bigint := 0;
-  v_route_commission_paise bigint := 0;
-  v_route_transfer_count bigint := 0;
-  v_route_electrician_user_id uuid;
-  v_route_verified_link_count bigint := 0;
-  v_route_expected_linked_account_id text;
   v_refund public.srk_razorpay_refunds%rowtype;
   v_manual_refund public.srk_manual_refund_entries%rowtype;
   v_labour_paise bigint := 0;
@@ -127,99 +120,9 @@ begin
     end if;
   end if;
 
-  -- Route ledger is evidence only: this report never creates, retries, settles,
-  -- reverses, or marks a transfer paid. No rows means the manual payout path may apply.
-  select count(*)::bigint,
-         coalesce(sum(t.amount_paise) filter(where t.recipient_type='electrician'),0)::bigint,
-         coalesce(sum(t.amount_paise) filter(where t.recipient_type='platform_commission'),0)::bigint
-    into v_route_transfer_count,v_route_electrician_paise,v_route_commission_paise
-    from public.srk_route_transfers t
-   where t.booking_id=p_booking_id;
-
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'transfer_id',t.transfer_id,'payment_id',t.razorpay_payment_id,
-    'recipient_type',t.recipient_type,'recipient_user_id',t.recipient_user_id,
-    'linked_account_id',t.linked_account_id,'amount_paise',t.amount_paise,
-    'transfer_status',t.transfer_status,'settlement_status',t.settlement_status,
-    'error_code',t.error_code,'created_at',t.created_at,'updated_at',t.updated_at
-  ) order by t.created_at,t.id),'[]'::jsonb)
-    into v_route_transfers
-    from public.srk_route_transfers t
-   where t.booking_id=p_booking_id;
-
-  if v_route_transfer_count>0 then
-    -- Resolve the assigned profile to its Auth user and verified primary Route account.
-    select coalesce(ep.auth_user_id,ep.user_id)
-      into v_route_electrician_user_id
-      from public.electrician_profiles ep
-     where ep.id=v_booking.assigned_electrician_id;
-    if v_route_electrician_user_id is null then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_ELECTRICIAN_AUTH_USER_MAPPING_MISSING');
-    elsif (select count(*) from public.srk_route_transfers t
-            where t.booking_id=p_booking_id and t.recipient_type='electrician'
-              and t.recipient_user_id is distinct from v_route_electrician_user_id) > 0 then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_ELECTRICIAN_RECIPIENT_USER_MISMATCH');
-    end if;
-
-    select count(*)::bigint,min(bl.provider_account_id)
-      into v_route_verified_link_count,v_route_expected_linked_account_id
-      from public.srk_wallet_bank_links bl
-     where bl.user_id=v_route_electrician_user_id
-       and bl.provider='razorpay_route'
-       and bl.wallet_type='electrician'
-       and bl.verification_status='verified'
-       and bl.is_primary=true;
-    if v_route_verified_link_count<>1 then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_VERIFIED_PRIMARY_LINKED_ACCOUNT_MISSING_OR_AMBIGUOUS');
-    elsif exists(select 1 from public.srk_route_transfers t
-      where t.booking_id=p_booking_id and t.recipient_type='electrician'
-        and t.linked_account_id is distinct from v_route_expected_linked_account_id) then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_LINKED_ACCOUNT_ID_MISMATCH');
-    end if;
-
-    if exists(select 1 from public.srk_route_transfers t
-      where t.booking_id=p_booking_id and t.settlement_status='settled'
-        and t.transfer_status<>'processed') then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_SETTLED_WITHOUT_PROCESSED_TRANSFER');
-    end if;
-    if v_route_transfer_count<>(1+case when coalesce(v_commission_paise,0)>0 then 1 else 0 end)
-       or (select count(*) from public.srk_route_transfers t
-            where t.booking_id=p_booking_id and t.recipient_type='electrician')<>1
-       or (select count(*) from public.srk_route_transfers t
-            where t.booking_id=p_booking_id and t.recipient_type='platform_commission')
-          <>case when coalesce(v_commission_paise,0)>0 then 1 else 0 end then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_TRANSFER_RECIPIENT_ROWS_MISMATCH');
-    end if;
-    if exists(select 1 from public.srk_route_transfers t
-      where t.booking_id=p_booking_id
-        and t.razorpay_payment_id is distinct from v_booking.razorpay_payment_id) then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_TRANSFER_PAYMENT_ID_MISMATCH');
-    end if;
-    if v_route_electrician_paise is distinct from v_payable_paise
-       or v_route_commission_paise is distinct from v_commission_paise then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_TRANSFER_AMOUNT_MISMATCH');
-    end if;
-    if exists(select 1 from public.srk_route_transfers t
-      where t.booking_id=p_booking_id
-        and t.transfer_status in ('failed','reversed','partially_reversed','manual_review')) then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_TRANSFER_FAILED_REVERSED_OR_REVIEW');
-    end if;
-    if exists(select 1 from public.srk_route_transfers t
-      where t.booking_id=p_booking_id and t.settlement_status<>'settled') then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_TRANSFER_NOT_SETTLED');
-    end if;
-    if exists(select 1 from public.srk_route_transfers t
-      where t.booking_id=p_booking_id and t.transfer_status in ('created','pending','processed')
-        and t.transfer_id is null) then
-      v_exceptions:=array_append(v_exceptions,'ROUTE_TRANSFER_PROVIDER_ID_MISSING');
-    end if;
-    if v_payout.id is not null and v_payout.payout_status='paid'
-       and exists(select 1 from public.srk_route_transfers t
-         where t.booking_id=p_booking_id and t.recipient_type='electrician'
-           and t.transfer_status in ('processed','reversed','partially_reversed')) then
-      v_exceptions:=array_append(v_exceptions,'MANUAL_AND_ROUTE_ELECTRICIAN_PAYOUT_OVERLAP');
-    end if;
-  end if;
+  -- The Route transfer ledger was retired by an earlier migration. Keep the
+  -- response keys for API compatibility, but do not query the retired table or
+  -- infer provider settlement from its absence. Manual payout reconciliation remains separate.
 
   select * into v_refund from public.srk_razorpay_refunds r
    where r.booking_id=p_booking_id;
@@ -419,10 +322,12 @@ begin
     'materials_gross_paise',v_materials_paise,
     'labour_only_commission_expected_paise',v_commission_paise,
     'electrician_payable_expected_paise',v_payable_paise,
-    'route_transfer_count',v_route_transfer_count,
-    'route_electrician_transfer_paise',v_route_electrician_paise,
-    'route_platform_commission_transfer_paise',v_route_commission_paise,
-    'route_transfers',v_route_transfers,
+    'route_transfer_count',0,
+    'route_electrician_transfer_paise',0,
+    'route_platform_commission_transfer_paise',0,
+    'route_transfers','[]'::jsonb,
+    'route_provider_settlement_verified',false,
+    'route_settlement_evidence_status','route_ledger_retired_no_route_transfers',
     'payout',case when v_payout.id is null then null else jsonb_build_object(
       'payout_id',v_payout.id,'status',v_payout.payout_status,
       'recorded_payable_paise',round(v_payout.electrician_payable*100)::bigint,
@@ -452,4 +357,4 @@ grant execute on function public.srk_admin_get_booking_accounting_reconciliation
   to authenticated;
 
 comment on function public.srk_admin_get_booking_accounting_reconciliation(uuid) is
-  'Read-only Main Admin reconciliation including Razorpay Route transfer/settlement ledger evidence. Never posts, transfers, reverses, or marks payouts paid.';
+  'Read-only Main Admin reconciliation. Retired Route ledger fields remain zero/empty for API compatibility; no provider settlement is inferred. Never posts, transfers, reverses, or marks payouts paid.';
