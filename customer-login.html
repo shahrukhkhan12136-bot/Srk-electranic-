@@ -39,7 +39,7 @@
  const area=document.getElementById('otpArea');
  let busy=false, resendAt=0, timer=null;
  const sb=(cfg.SUPABASE_URL&&cfg.SUPABASE_ANON_KEY&&window.supabase)?window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY):null;
- function phoneE164(){const raw=phoneInput.value.trim(),d=raw.replace(/\D/g,'');if(d.length===10)return '+91'+d;if(raw.startsWith('+')&&d.length>=10&&d.length<=15)return '+'+d;return null;}
+ function phoneE164(){const raw=phoneInput.value.trim(),d=raw.replace(/\D/g,'');if(d.length===10)return '+91'+d;if(raw.startsWith('+91')&&d.length===12&&d.startsWith('91'))return '+91'+d;return null;}
  function setMessage(t,bad=false){msg.textContent=t;msg.style.color=bad?'#b42318':'#176b3a';}
  send.addEventListener('click',async()=>{
   if(!sb){setMessage('लॉगिन कॉन्फ़िगरेशन उपलब्ध नहीं है।',true);return;}
