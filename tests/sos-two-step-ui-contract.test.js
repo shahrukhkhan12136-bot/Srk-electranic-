@@ -70,7 +70,11 @@ test('SOS client sends only the reason and never claims delivery without a confi
     const handler = source.slice(start, end);
     assert.ok(handler.includes(client + ".rpc('srk_create_sos_alert',{p_reason:reason})"), app + ' RPC payload must contain only the selected reason');
     assert.match(handler, /!data\?\.success\|\|!data\?\.case_id/);
-    assert.match(handler, /SOS अभी दर्ज नहीं हो सका। अलर्ट भेजा हुआ न मानें।/);
+    assert.match(handler, /rpcAttempted=true/);
+    assert.match(handler, /SOS का परिणाम स्पष्ट नहीं है। केस दर्ज हुआ हो सकता है/);
+    assert.match(handler, /SMS\/Push डिलीवरी कॉन्फ़िगर नहीं है/);
+    assert.match(handler, /SOS अनुरोध शुरू नहीं हो सका। कृपया लॉगिन और सक्रिय बुकिंग जाँचें/);
+    assert.doesNotMatch(handler, /अलर्ट भेजा हुआ न मानें/);
     assert.doesNotMatch(handler, /p_booking_id|p_user_id|p_actor_id/);
     if(app==='Customer'){
       assert.ok(handler.includes('requestedGeneration=customerActionGeneration'));
