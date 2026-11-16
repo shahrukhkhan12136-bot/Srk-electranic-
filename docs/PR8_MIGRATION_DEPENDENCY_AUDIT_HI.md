@@ -845,3 +845,19 @@ Migration chain कम-से-कम `20261112220000` तक पहुँचन�
 अब manual-payment और complaints के लिए plausible historical Creator migrations मौजूद हैं, पर उन्हें सीधे वर्तमान replay chain में जोड़ना उचित नहीं: पहले commit ancestry/merge-base और subsequent schema evolution की तुलना करनी होगी। Payout table का authoritative base DDL अभी नहीं मिला; इसलिए `20261112220000_cash_platform_fee_due_and_online_settlement.sql` की पूर्ण dependency chain अभी भी blocked है।
 
 सभी निष्कर्ष static source inspection हैं। कोई SQL execution, PostgreSQL replay, pgTAP, Production query/write या workflow dispatch नहीं हुआ।
+
+
+## 58. Portal Branch की Ancestry तुलना — Creator Files की स्थिति
+
+GitHub compare के अनुसार `feature/platform-fee-cash-online-cycle` और `work/separate-customer-electrician-portals` **diverged** हैं। इनका common merge-base `fee88290a5c2f940b5307e76320f88ca9346e183` है; Portal branch उस base से 151 commits आगे और Feature branch 1,270 commits आगे है। इसलिए Portal branch की पुरानी migration files को वर्तमान Feature branch की लागू migration history मान लेना सुरक्षित नहीं है।
+
+### Table creator evidence का अद्यतन
+
+- `srk_manual_payment_entries`: Portal branch में `20261109171621_add_admin_verified_manual_payment_workflow.sql` वास्तविक `CREATE TABLE` source है, लेकिन यह Feature branch की ancestry में शामिल होने का प्रमाण नहीं है।
+- `srk_booking_complaints`: Portal branch में `20261110040000_customer_admin_complaints.sql` वास्तविक `CREATE TABLE` source है, लेकिन वही ancestry सीमा लागू है।
+- `srk_electrician_payouts`: Portal branch की जाँची migration files और reviewed root setup files में base creator नहीं मिला।
+- Audit branch की `20261114125844_restore_financial_audit_core_schema.sql` में manual-payment और payout tables की `CREATE TABLE IF NOT EXISTS` definitions हैं। यह audit/replay preparation के दौरान जोड़ी गई restoration migration है; इसे पुराना historical creator या Feature branch में पहले से मौजूद source नहीं माना जा सकता।
+
+### निर्णय
+
+दो tables के historical candidate creators अब पहचाने गए, पर Feature branch की वास्तविक ancestry/production provenance साबित नहीं हुई। Payout table के लिए भी audit branch restoration DDL मौजूद है, मगर उसका मूल historical origin अब भी unresolved है। किसी भी candidate migration को बिना schema diff, ancestry और dependency-order review के replay manifest में authoritative baseline के रूप में promote न करें। No SQL execution/tests/Production access/workflow dispatch.
