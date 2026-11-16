@@ -404,12 +404,25 @@ ${o.offer_status==='offered'&&o.booking_status!=='cancelled'&&p.active&&p.verifi
 focusElectricianOfferFromNotification();
 
 async function setElectricianAvailability(available){
- if(!profile||!profile.active||profile.verification_status!=='approved'){alert('उपलब्धता बदलने के लिए Admin-approved Active अकाउंट आवश्यक है।');return;}
+ const requestedUserId=user?.id,requestedProfileId=profile?.id,requestedGeneration=electricianAccountViewGeneration;
+ const isCurrent=()=>!!requestedUserId&&!!requestedProfileId&&!electricianLogoutBusy&&user?.id===requestedUserId&&profile?.id===requestedProfileId&&electricianAccountViewGeneration===requestedGeneration;
+ if(!isCurrent()||!profile.active||profile.verification_status!=='approved'){alert('उपलब्धता बदलने के लिए Admin-approved Active अकाउंट आवश्यक है।');return;}
  const label=available?'काम के लिए उपलब्ध':'अभी उपलब्ध नहीं';
  if(!confirm('क्या आप अपनी काम की उपलब्धता "'+label+'" करना चाहते हैं?'))return;
+ if(!isCurrent())return;
  const on=document.getElementById('availabilityOn'),off=document.getElementById('availabilityOff');on.disabled=true;off.disabled=true;
- try{const {data,error}=await sb.rpc('srk_electrician_set_availability',{p_available:available});if(error)throw error;if(!data?.success)throw new Error('Availability update not confirmed');alert(available?'अब आप नए काम के ऑफर पाने के लिए उपलब्ध हैं।':'आपकी उपलब्धता बंद कर दी गई है। लंबित ऑफर आगे भेज दिए गए हैं।');await refresh();}
- catch(e){alert('उपलब्धता अपडेट नहीं हुई। कृपया Refresh करके फिर कोशिश करें।');on.disabled=false;off.disabled=false;}
+ try{
+  const {data,error}=await sb.rpc('srk_electrician_set_availability',{p_available:available});
+  if(!isCurrent())return;
+  if(error)throw error;
+  if(!data?.success)throw new Error('Availability update not confirmed');
+  alert(available?'अब आप नए काम के ऑफर पाने के लिए उपलब्ध हैं।':'आपकी उपलब्धता बंद कर दी गई है। लंबित ऑफर आगे भेज दिए गए हैं।');
+  if(isCurrent())await refresh();
+ }catch(e){
+  if(!isCurrent())return;
+  alert('उपलब्धता अपडेट नहीं हुई। कृपया Refresh करके फिर कोशिश करें।');
+  on.disabled=false;off.disabled=false;
+ }
 }
 const electricianLifecycleBusy=new Set();
 
