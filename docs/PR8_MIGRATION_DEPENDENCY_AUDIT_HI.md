@@ -1176,3 +1176,61 @@ The source artifacts establish a **candidate legacy base**, not an approved cano
 Therefore GPT-2 will not synthesize or apply an executable baseline by guessing. The next safe source-only task is to finish the object-by-object baseline/consumer matrix (columns, constraints, indexes, triggers, functions, policies, grants, Auth/Storage assumptions) and mark which entries are source-proven versus owner/remote-history dependent. Full replay and pgTAP remain **NOT RUN** until the baseline is approved and a disposable PostgreSQL/Supabase harness exists.
 
 **Safety:** No Production query, remote migration-history read, database write, workflow dispatch, deployment, merge, payment, or customer/Auth data access occurred.
+
+
+## 73. Source-backed dependency matrix expansion — support, finance, push, RBAC and SOS — 17 Nov 2026
+
+**Scope:** exact Audit Branch migration files re-read from GitHub. Static DDL/reference inventory only; no PostgreSQL parser, SQL execution, database connection, migration replay, pgTAP, Production query, or deployment.
+
+### 73.1 Complaint and support conversation chain — base complaint source located
+
+| Order | Source | Objects introduced/changed | Required predecessors / downstream |
+|---|---|---|---|
+| 1 | `20261110040000_customer_admin_complaints.sql` | `srk_booking_complaints`, `srk_booking_complaint_events`; customer create/list and Admin list/update RPCs; RLS/revokes/grants | Requires `service_bookings`, `service_bookings.customer_user_id`, `auth.users`, `auth.uid()`; predecessor is customer-account booking access |
+| 2 | `20261113220000_customer_support_conversation_schema.sql` | `srk_booking_complaint_messages`, `srk_booking_complaint_message_attachments`; customer message/attachment RPCs and policies | Requires `srk_booking_complaints` from 10040000, Auth, UUID generation; creates composite message/thread unique index before attachment FK |
+| 3 | `20261113230000_support_attachment_paths_and_admin_message_list.sql` | Attachment path and Admin message-list RPC changes | Requires complaint, message and attachment tables plus Admin helper; Storage bucket/object-policy provenance is not established by these three table/function definitions alone |
+| 4 | `20261114390000_admin_staff_rbac_foundation.sql` | Staff, permissions, role-permissions, sessions, audit events, support assignments; permission-check and support RPCs; complaint message ALTER | Requires Auth users, complaint/message schema, electrician support-ticket schema; later consumers include SOS permissions |
+
+**Correction to earlier wording:** the claim that the complaint base table was not located is superseded. Its introducing DDL is present in `20261110040000_customer_admin_complaints.sql`. The remaining support gap is specifically the authoritative Storage bucket/object-policy contract and complete runtime permission behavior, not the complaint base table itself.
+
+### 73.2 Financial audit core — source introduction verified
+
+Source `20261114125844_restore_financial_audit_core_schema.sql` (Blob SHA `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`) explicitly creates seven financial/audit tables:
+
+- `srk_booking_labour_bills`
+- `srk_manual_payment_entries`
+- `srk_electrician_payouts`
+- `srk_admin_audit_events`
+- `srk_razorpay_refunds`
+- `srk_booking_refund_requests`
+- `srk_manual_refund_entries`
+
+It also defines two audit-capture functions, attaches audit triggers to bookings/profiles/applications/manual payments/manual refunds/payouts/Razorpay refunds, enables/adjusts RLS and grants, and creates an authorized-electrician payout read policy. The labour-bill table references booking, Auth customer, and electrician profile; downstream receipt, refund, payout reconciliation and accounting migrations depend on this financial foundation. This verifies the current branch source introduction, not Production deployment history or schema parity.
+
+### 73.3 Push delivery dependency chain — exact prerequisites in source
+
+| Order | Source | Objects / changes | Explicit prerequisites |
+|---|---|---|---|
+| 1 | `20261111020000_add_electrician_push_subscriptions.sql` | `public.srk_push_subscriptions`, user index, RLS and owner-only subscription policy | Auth users, UUID generation |
+| 2 | `20261114210000_sequential_nearest_offer_dispatch.sql` | `job_offers.expires_at`, private dispatch/candidate tables, sequential dispatch RPCs | Core booking/profile/job_offers and electrician availability/rate-tier/identity fields |
+| 3 | `20261115170001_durable_push_delivery_outbox.sql` | `srk_private.srk_push_delivery_outbox`, enqueue/claim/finish RPCs, offer trigger; removes legacy synchronous push trigger and replaces subscription ACL/policies | `srk_private`, push subscriptions with id/user_id/endpoint/p256dh/auth, `job_offers.expires_at`, electrician availability and identity/approval columns |
+| 4 | `20261115180001_push_subscription_delivery_ledger.sql` | `srk_private.srk_push_subscription_deliveries`, claim/finish/completion RPCs | Outbox table plus subscription id/user_id |
+
+The outbox migration includes explicit preflight exceptions for missing prerequisites. This is source evidence of its required ordering, not proof that the full chain executes successfully. Provider delivery and real push-send behavior remain unverified and were not invoked.
+
+### 73.4 Admin Staff RBAC and SOS chain
+
+- `20261114390000_admin_staff_rbac_foundation.sql` creates six staff/RBAC tables and permission/session/support RPCs. Its source comment preserves Main Admin identity in `srk_admin_users`; staff are separate identities and are not inserted into the Main Admin allow-list.
+- `20261115260000_sos_admin_support_alerts.sql` first inserts `support.sos.read` and `support.sos.acknowledge` permissions and maps them to the support role, then creates SOS alert/event tables and RPCs. It therefore requires the RBAC permission and role-permission tables before it runs, in addition to booking/Auth/profile prerequisites.
+- SOS source comment says no SMS/Push provider is configured by this migration. No external alert was sent.
+
+### 73.5 Remaining dependency gates after this expansion
+
+1. **Canonical baseline provenance:** five legacy core tables are source-backed, but the approved clean-install baseline and exact Supabase platform fixture are not approved.
+2. **Admin helper provenance:** `is_srk_admin()` and `srk_is_admin()` are distinct; exact definition/grant introduction and replay placement still require reconciliation.
+3. **Storage:** support attachment bucket, object metadata and Storage policy baseline require a complete source/owner-approved contract.
+4. **All-migration coverage:** this section expands selected high-impact clusters; it is not an exhaustive 89/89 object-level graph or a topological replay manifest.
+5. **Migration history/version handling:** the two malformed legacy `20261109_*.sql` filenames and authoritative applied-history relationship remain unresolved.
+6. **Runtime:** no PostgreSQL parser, full replay or pgTAP test has run. Static source inventory is not a PASS.
+
+**Safety boundary:** Audit Branch documentation only. No migration source, PR branch, Main, Production, database, customer/Auth data, payment provider, or workflow was modified or accessed.
