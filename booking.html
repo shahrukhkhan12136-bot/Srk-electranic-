@@ -1151,35 +1151,33 @@ async function customerRespondWorkCompletion(bookingId,response){
  }finally{customerLifecycleBusy.delete(requestKey);}
 }
 async function customerSubmitBookingRefund(bookingId){
- if(!customerSb)return;
+ const generation=customerActionGeneration,isCurrent=()=>generation===customerActionGeneration;
+ if(!customerSb||!isCurrent())return;
  const reasonEl=document.getElementById('customerRefundReason_'+bookingId);
  const button=document.getElementById('customerRefundSubmit_'+bookingId);
  const reason=String(reasonEl?.value||'').trim();
- if(reason.length<20||reason.length>1000){
-  alert('रिफंड का कारण 20 से 1000 अक्षरों में लिखें।');
-  reasonEl?.focus();
-  return;
- }
+ if(reason.length<20||reason.length>1000){alert('रिफंड का कारण 20 से 1000 अक्षरों में लिखें।');reasonEl?.focus();return;}
  if(button)button.disabled=true;
  try{
   const {data,error}=await customerSb.rpc('srk_customer_create_booking_refund_request',{p_booking_id:bookingId,p_reason:reason});
+  if(!isCurrent())return;
   if(error)throw error;
   if(!data?.success)throw new Error('Refund request was not confirmed');
   alert('रिफंड अनुरोध दर्ज हो गया है। राशि: '+formatCustomerMoney(data.amount)+'। इसकी स्थिति My Bookings और Payments मेनू में दिखाई देगी।');
-  try{await loadCustomerBookings();}catch(_){alert('रिफंड अनुरोध सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
+  try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('रिफंड अनुरोध सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
  }catch(error){
+  if(!isCurrent())return;
   const message=String(error?.message||'');
   let confirmedRequest=null,lookupSucceeded=false;
   try{
    const {data:requests,error:lookupError}=await customerSb.rpc('srk_customer_list_booking_refund_requests');
-   if(!lookupError&&Array.isArray(requests)){
-    lookupSucceeded=true;
-    confirmedRequest=requests.find(row=>row.booking_id===bookingId)||null;
-   }
-  }catch(_){/* An unavailable authoritative read leaves the write outcome uncertain. */}
+   if(!isCurrent())return;
+   if(!lookupError&&Array.isArray(requests)){lookupSucceeded=true;confirmedRequest=requests.find(row=>row.booking_id===bookingId)||null;}
+  }catch(_){if(!isCurrent())return;}
+  if(!isCurrent())return;
   if(confirmedRequest){
    alert('इस बुकिंग के लिए रिफंड अनुरोध पहले से दर्ज है। वर्तमान स्थिति: '+customerRefundStatusText(confirmedRequest.status)+'। दोबारा अनुरोध नहीं भेजा गया।');
-   try{await loadCustomerBookings();}catch(_){alert('रिफंड अनुरोध पहले से दर्ज है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
+   try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('रिफंड अनुरोध पहले से दर्ज है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
   }else if(message.includes('REFUND_REQUEST_ALREADY_SUBMITTED')||message.includes('REFUND_ALREADY_EXISTS')||message.includes('REFUND_ALREADY_RECORDED')){
    alert('इस बुकिंग पर रिफंड अनुरोध या रिफंड रिकॉर्ड पहले से मौजूद हो सकता है। Payments में स्थिति जाँचें या सहायता टीम से संपर्क करें।');
   }else if(lookupSucceeded){
@@ -1187,9 +1185,7 @@ async function customerSubmitBookingRefund(bookingId){
   }else{
    alert('रिफंड अनुरोध का परिणाम अभी स्पष्ट नहीं है। दोबारा भेजने से पहले Payments में स्थिति जाँचें, ताकि डुप्लिकेट अनुरोध न बने।');
   }
- }finally{
-  if(button)button.disabled=false;
- }
+ }finally{if(isCurrent()&&button)button.disabled=false;}
 }
 async function customerCancelBooking(bookingId,button) {
  if(!customerSb||!bookingId||button?.disabled)return;
