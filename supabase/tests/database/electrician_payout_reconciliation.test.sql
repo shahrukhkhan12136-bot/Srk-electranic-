@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(31);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -123,9 +123,35 @@ select ok(position('v_booking.commission_rate is null' in
   pg_get_functiondef('public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure))>0,
   'Admin settlement independently rejects missing or out-of-range commission rates');
 
+select ok(exists(select 1 from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgfoid='public.srk_set_booking_commission_before_payout()'::regprocedure
+    and (t.tgtype & 2)=2
+    and (t.tgtype & 1)=1
+    and (t.tgtype & 4)=4
+    and (t.tgtype & 16)=16),
+  'booking commission is assigned by a row-level BEFORE INSERT/UPDATE trigger');
+
 select ok(position('new.commission_amount := v_commission' in
-  lower(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)))>0,
-  'payout reconciliation trigger writes the same calculated commission into the Admin reporting field');
+  lower(pg_get_functiondef('public.srk_set_booking_commission_before_payout()'::regprocedure)))>0
+  and position('round(v_service * v_rate / 100,2)' in
+  lower(pg_get_functiondef('public.srk_set_booking_commission_before_payout()'::regprocedure)))>0,
+  'BEFORE trigger writes the same labour-only commission formula used by payout reconciliation');
+
+select ok(exists(select 1 from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgfoid='public.srk_validate_booking_commission_payout_parity()'::regprocedure
+    and (t.tgtype & 2)=0
+    and (t.tgtype & 1)=1
+    and (t.tgtype & 4)=4
+    and (t.tgtype & 16)=16)
+  and position('new.commission_amount is distinct from v_platform_commission' in
+  lower(pg_get_functiondef('public.srk_validate_booking_commission_payout_parity()'::regprocedure)))>0
+  and position('new.commission_amount :=' in
+  lower(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)))=0,
+  'AFTER triggers retain payout writes and independently reject booking-to-ledger commission mismatches');
 
 select * from finish();
 rollback;
