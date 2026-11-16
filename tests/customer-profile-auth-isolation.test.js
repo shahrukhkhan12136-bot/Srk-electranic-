@@ -200,3 +200,14 @@ test('selecting a saved customer address restores its saved recipient name into 
   assert.ok(block.includes("document.getElementById('name').value=a.recipient_name||''"));
   assert.ok(block.includes("document.getElementById('address').value=a.address_line"));
 });
+
+
+test('customer auth transitions reset the previous account language and saved-address status', () => {
+  const authStart = source.indexOf('customerSb.auth.onAuthStateChange');
+  const authEnd = source.indexOf('const handleCustomerOffline', authStart);
+  assert.ok(authStart >= 0 && authEnd > authStart);
+  const block = source.slice(authStart, authEnd);
+  assert.ok(block.includes("const profileLanguage=document.getElementById('customerProfileLanguage');if(profileLanguage)profileLanguage.value='hi'"));
+  assert.ok(block.includes("applyCustomerUiLanguage('hi');"));
+  assert.ok(block.includes("setSavedAddressStatus('');"));
+});
