@@ -94,8 +94,8 @@
 - [x] `index.html` स्वागत पेज पर redirect करता है और Welcome Screen का responsive layout मौजूद है।
 - [x] Welcome Screen का source implementation और responsive layout मौजूद है।
 - [x] Owner ने black shirt और deep-blue studio background वाली original Founder Photo को आधिकारिक asset के रूप में confirm किया; garden portrait superseded है।
-- [ ] Library में original blue-background portrait `Official Founder Photo.png` उपलब्ध है। इसे Feature Branch के `assets/` में जोड़ना, responsive Founder card में बिना appearance बदले दिखाना और Welcome Screen + Customer Login दोनों में wire करना बाकी है।
-- [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें।
+- [x] Official blue-background Founder Photo को `assets/founder-photo.svg` में responsive web asset के रूप में जोड़ा; मूल फोटो का चेहरा, कपड़े और background नहीं बदले। Welcome Screen और Customer Login दोनों में वही asset wire किया।
+- [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें; manual mobile QA अंतिम consolidated pass तक रोका गया है।
 - [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
 - [ ] Owner visual acceptance लें।
 - [ ] Desktop और responsive/mobile presentation final consolidated QA में verify करें।
