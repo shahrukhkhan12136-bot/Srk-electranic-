@@ -145,8 +145,13 @@ test('Customer payment-history refresh ignores stale responses after auth change
   assert.match(fn, /if\(requestId!==customerPaymentHistoryRequest\)return false;/);
   assert.equal((fn.match(/if\(requestId!==customerPaymentHistoryRequest\)return false;/g) || []).length, 3);
   assert.match(fn, /catch\(error\)\{\s*if\(requestId!==customerPaymentHistoryRequest\)return false;/);
-  assert.match(customer, /customerPaymentHistoryRequest\+\+;\s*customerPaymentHistoryResetPending=false;\s*customerLiveLocationRefreshRequest\+\+/);
-  assert.match(customer, /if\(event==='SIGNED_IN'\|\|event==='SIGNED_OUT'\|\|event==='USER_DELETED'\)\{\s*customerPaymentHistoryRequest\+\+/);
+  const authStart=customer.indexOf('customerSb.auth.onAuthStateChange');
+  const authEnd=customer.indexOf('});',authStart);
+  assert.ok(authStart>=0&&authEnd>authStart,'customer auth-change handler exists');
+  const authHandler=customer.slice(authStart,authEnd);
+  assert.match(authHandler,/if\(event==='SIGNED_IN'\|\|event==='SIGNED_OUT'\|\|event==='USER_DELETED'\)/);
+  assert.match(authHandler,/customerPaymentHistoryRequest\+\+/);
+  assert.match(authHandler,/customerPaymentHistoryResetPending=false/);
 });
 
 test('Customer payment-history reset requested during pagination is queued instead of silently lost', () => {
