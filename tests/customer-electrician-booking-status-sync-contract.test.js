@@ -479,3 +479,20 @@ test('customer auth changes invalidate in-flight booking refreshes before anothe
   assert.match(authBlock, /customerBookings/);
   assert.match(authBlock, /लॉगिन सत्र बदल रहा है/);
 });
+
+test('customer work lifecycle actions are invalidated when the signed-in account changes', () => {
+  assert.match(customer, /let customerActionGeneration=0/);
+  const authStart = customer.indexOf("customerSb.auth.onAuthStateChange((event) => {");
+  const authEnd = customer.indexOf("setTimeout(syncCustomerSession, 0);", authStart);
+  const auth = customer.slice(authStart, authEnd);
+  assert.match(auth, /customerActionGeneration\+\+/);
+  assert.match(auth, /customerLifecycleBusy\.clear\(\)/);
+  for (const name of ['customerRespondWorkStart', 'customerRespondWorkCompletion']) {
+    const action = functionBody(customer, name);
+    assert.match(action, /const generation=customerActionGeneration,requestKey=generation\+':'\+String\(bookingId\)/);
+    assert.match(action, /customerLifecycleBusy\.has\(requestKey\)/);
+    assert.match(action, /customerLifecycleBusy\.add\(requestKey\)/);
+    assert.match(action, /if\(!isCurrent\(\)\)return/);
+    assert.match(action, /finally\{customerLifecycleBusy\.delete\(requestKey\)\}/);
+  }
+});
