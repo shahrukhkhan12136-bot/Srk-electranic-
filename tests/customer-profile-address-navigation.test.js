@@ -83,7 +83,7 @@ test('Customer saved-address list refresh ignores stale session and RPC response
   const end = source.indexOf('function applySelectedSavedAddress()', start);
   assert.ok(start >= 0 && end > start, 'saved-address list loader exists');
   const loader = source.slice(start, end);
-  assert.match(loader, /customerSavedAddressLoadRequest=0/);
+  assert.match(source, /let customerSavedAddressLoadRequest=0/);
   assert.match(loader, /const requestId=\+\+customerSavedAddressLoadRequest/);
   assert.match(loader, /if\(!isCurrent\(\)\)return false/);
   assert.match(loader, /finally\s*\{\s*if\(isCurrent\(\)\)select\.disabled=false;\s*\}/);
