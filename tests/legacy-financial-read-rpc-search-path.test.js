@@ -22,6 +22,6 @@ test('legacy financial SECURITY DEFINER read RPCs pin an empty search_path', () 
 test('pgTAP contract checks SECURITY DEFINER configuration and anon denial', () => {
   assert.ok(contract.includes('select plan(6)'));
   assert.ok(contract.includes('SECURITY DEFINER'));
-  assert.equal((contract.match(/search_path=\\"\\"/g) || []).length, 3);
+  assert.equal(contract.split('search_path=""').length - 1, 3);
   assert.ok(contract.includes("not has_function_privilege('anon'"));
 });
