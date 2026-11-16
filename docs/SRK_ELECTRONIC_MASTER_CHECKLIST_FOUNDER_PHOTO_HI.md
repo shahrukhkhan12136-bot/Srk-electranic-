@@ -676,3 +676,11 @@
 - [x] Counted 32 SQL test files under `supabase/tests/database`; documented the extra fixture/runtime prerequisites and missing behavioural test cases in the migration replay gate document.
 - [ ] Still require approved canonical baseline, local Supabase/PostgreSQL + pgTAP runner, complete ordered replay, and separate synthetic behavioural tests. Neither target suite was executed in this source-only review.
 - No SQL, migration, workflow, or production database changed/accessed. **Progress remains 27/39 = 69%.**
+
+
+### 2026-11-16 — Customer booking status clarity and timeline error regression (main-branch reconciliation)
+- [x] Customer booking timeline partial-RPC error aggregation ठीक किया: सभी `timelineResults` की जाँच होती है, ताकि किसी एक timeline RPC की विफलता से पहले से लोड booking list सामान्य error state में न बदल जाए।
+- [x] `awaiting_work_start_approval` के लिए Customer-visible label जोड़ा: “काम शुरू करने के लिए आपकी मंजूरी प्रतीक्षित”.
+- [x] `tests/customer-electrician-booking-status-sync-contract.test.js` में दोनों व्यवहारों के regression source-contract checks मौजूद हैं।
+- [ ] इस feature-branch के exact merged head पर Node CI और browser/mobile runtime verification अभी अलग से आवश्यक है; main के पुराने 231/231 test run को इस head की validation नहीं माना जाएगा।
+- [ ] Cross-app automatic realtime service-booking status refresh अभी unverified है; manual/action refresh और Electrician job-offer/profile subscriptions इसका प्रमाण नहीं हैं।
