@@ -13,6 +13,11 @@ async function verifyOtp(){if(otpBusy)return;const p=normalizedPhone(),token=doc
 let electricianLogoutBusy=false;
 async function logout(){
  if(electricianLogoutBusy)return;
+ if(electricianLocationStartBusy.size){
+  const msg=document.getElementById('msg');
+  if(msg)msg.textContent='Live Location शुरू करने का अनुरोध अभी चल रहा है। उसके पूरा होने के बाद दोबारा Logout करें।';
+  return;
+ }
  electricianRefreshRequest++;
  electricianLogoutBusy=true;
  const button=document.querySelector('#app button[onclick="logout()"]');
@@ -61,6 +66,12 @@ async function stopElectricianLiveLocationAfterGpsFailure(id,watch,status,messag
 const electricianLocationStartBusy=new Set();
 async function startElectricianLiveLocation(id){
  const status=document.getElementById('liveLocStatus_'+id);
+ const requestedUserId=user?.id;
+ const isCurrent=()=>!!requestedUserId&&user?.id===requestedUserId&&profile?.user_id===requestedUserId&&!electricianLogoutBusy;
+ if(!isCurrent()){
+  if(status)status.textContent='लॉगिन सत्र बदल गया है। दोबारा लॉगिन करके प्रयास करें।';
+  return;
+ }
  if(electricianLocationStartBusy.has(id)){
   if(status)status.textContent='लोकेशन शुरू करने का अनुरोध पहले से चल रहा है।';
   return;
@@ -74,10 +85,12 @@ async function startElectricianLiveLocation(id){
  try{
   if(!confirm('क्या आप यात्रा के दौरान अपना वर्तमान GPS स्थान ग्राहक से साझा करना चाहते हैं?'))return;
   const p=await new Promise((ok,no)=>navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:20000,maximumAge:0}));
+  if(!isCurrent())throw Error('लॉगिन सत्र बदल गया है।');
   if(p.coords.accuracy>150)throw Error('GPS सटीकता कम है। खुले स्थान पर फिर कोशिश करें।');
   const {error}=await sb.rpc('srk_electrician_start_live_location',{p_booking_id:id,p_latitude:p.coords.latitude,p_longitude:p.coords.longitude,p_accuracy_meters:p.coords.accuracy});
   if(error)throw error;
   serverStarted=true;
+  if(!isCurrent())throw Error('लॉगिन सत्र बदल गया है।');
   if(status)status.textContent='Live Location साझा हो रही है। GPS चालू रखें।';
   let last=Date.now();
   watch=navigator.geolocation.watchPosition(async pos=>{
