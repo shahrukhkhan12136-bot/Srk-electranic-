@@ -66,6 +66,20 @@ test('electrician support client creates, lists, opens and replies through self-
   assert.match(reply, /await openElectricianSupportThread\(ticketId\)/);
   assert.match(open, /esc\(m\.body\)/);
   assert.match(list, /esc\(t\.subject\)/);
+  const clearStart=electrician.indexOf('function clearElectricianAccountView()');
+  const clearEnd=electrician.indexOf('\\nfunction init()',clearStart);
+  assert.ok(clearStart>=0&&clearEnd>clearStart,'account reset handler exists');
+  const clear=electrician.slice(clearStart,clearEnd);
+  assert.match(clear,/electricianSupportThreadRequest\\+\\+/);
+  assert.match(clear,/electricianSupportSelectedId=null/);
+  assert.match(clear,/electricianSupportReplyBusy=false/);
+  assert.match(create,/const requestedUserId=user\\.id,requestedProfileId=profile\\.id,requestedGeneration=electricianAccountViewGeneration/);
+  assert.match(create,/if\\(!isCurrent\\(\\)\\)return/);
+  assert.match(open,/requestedGeneration=electricianAccountViewGeneration/);
+  assert.match(open,/if\\(!isCurrent\\(\\)\\|\\|request!==electricianSupportThreadRequest/);
+  assert.match(reply,/const requestedUserId=user\\.id,requestedProfileId=profile\\.id,requestedGeneration=electricianAccountViewGeneration/);
+  assert.match(reply,/if\\(!isCurrent\\(\\)\\)return/);
+  assert.match(reply,/if\\(isCurrent\\(\\)&&button\\)/);
 });
 
 test('electrician support backend scopes tickets to authenticated owner and rejects closed-ticket replies', () => {
