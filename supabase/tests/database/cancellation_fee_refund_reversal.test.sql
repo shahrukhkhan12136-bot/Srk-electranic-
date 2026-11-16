@@ -160,9 +160,6 @@ select ok(position('BOOKING_ALREADY_REFUNDED' in
   pg_get_functiondef('public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure))>0,
   'online payment reconciliation refuses to resurrect a refunded booking');
 
-select * from finish();
-rollback;
-
 select ok(position('when ''not_departed'' then 0 when ''en_route'' then 0 when ''arrived'' then 99' in
   pg_get_functiondef('public.srk_admin_decide_booking_cancellation(uuid,text,text,text,text)'::regprocedure))>0,
   'only verified arrival with Admin approval can create the ₹99 cancellation fee');
