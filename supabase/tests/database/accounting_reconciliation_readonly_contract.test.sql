@@ -168,83 +168,104 @@ select ok(position('CASH_FEE_WALLET_REFUND_MISMATCH' in pg_get_functiondef(
   'manual full-refund reconciliation compares the exact cash-fee wallet credit to its original debit');
 
 
-select ok(to_regclass('public.srk_route_transfers') is not null,
-  'server-only Razorpay Route transfer ledger exists');
+select ok(to_regclass('public.srk_route_transfers') is null,
+  'retired Razorpay Route transfer ledger is absent after its retirement migration');
+
+select ok(position('route_transfer_count' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'read-only reconciliation preserves the Route transfer count response key for compatibility');
+
+select ok(position('route_electrician_transfer_paise' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('route_platform_commission_transfer_paise' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'read-only reconciliation preserves both Route amount response keys');
+
 select ok(position('route_transfers' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
-  and position('route_transfer_count' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'read-only accounting report exposes Route transfer rows and count');
-select ok(position('ROUTE_TRANSFER_RECIPIENT_ROWS_MISMATCH' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route reconciliation requires one electrician transfer and a commission transfer only when commission is positive');
-select ok(position('ROUTE_TRANSFER_PAYMENT_ID_MISMATCH' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route transfers must reference the booking Razorpay payment');
-select ok(position('ROUTE_TRANSFER_AMOUNT_MISMATCH' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route electrician and commission transfer amounts are matched to expected payable and commission');
-select ok(position('ROUTE_TRANSFER_NOT_SETTLED' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
-  and position('ROUTE_TRANSFER_FAILED_REVERSED_OR_REVIEW' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'pending, failed, reversed and review-required Route states are surfaced as exceptions');
-select ok(position('ROUTE_TRANSFER_PROVIDER_ID_MISSING' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'created/processed Route transfers require a provider transfer ID');
-select ok(position('MANUAL_AND_ROUTE_ELECTRICIAN_PAYOUT_OVERLAP' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'manual paid payout and Route electrician transfer overlap is flagged for review');
+  'read-only reconciliation preserves the empty Route rows response key');
 
-
-select ok(position('coalesce(v_commission_paise,0)>0' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'zero-commission bookings do not require a zero-value Route commission transfer row');
-
-
-select ok(position('ROUTE_ELECTRICIAN_RECIPIENT_USER_MISMATCH' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route electrician recipient Auth user must match the assigned electrician profile');
-select ok(position('ROUTE_VERIFIED_PRIMARY_LINKED_ACCOUNT_MISSING_OR_AMBIGUOUS' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route transfer requires exactly one verified primary electrician linked account');
-select ok(position('ROUTE_LINKED_ACCOUNT_ID_MISMATCH' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route electrician transfer linked account must match the verified primary bank link');
-select ok(position('ROUTE_SETTLED_WITHOUT_PROCESSED_TRANSFER' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'settled Route records require processed transfer status');
-
-select ok(position('ROUTE_PROVIDER_SETTLEMENT_NOT_INDEPENDENTLY_VERIFIED' in pg_get_functiondef(
-  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route ledger rows always remain flagged until independent provider settlement evidence exists');
 select ok(position('route_provider_settlement_verified' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
-  and position('not_independently_verified' in pg_get_functiondef(
+  and position('route_settlement_evidence_status' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
-  'Route reconciliation explicitly reports that bank/provider settlement is not verified');
+  'read-only reconciliation preserves Route settlement compatibility response keys');
 
-select ok(to_regclass('public.srk_wallet_bank_links_one_primary_route_electrician_uidx') is not null,
-  'database enforces at most one primary Razorpay Route electrician bank link per Auth user');
+select ok(position("'route_ledger_retired_no_route_transfers'" in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'Route compatibility status explicitly says the ledger is retired');
 
-select ok(exists(select 1 from pg_constraint
-  where conrelid='public.srk_route_transfers'::regclass and contype='u'
-    and pg_get_constraintdef(oid) like '%idempotency_key%'),
-  'Route transfer ledger enforces unique idempotency keys');
-select ok(exists(select 1 from pg_constraint
-  where conrelid='public.srk_route_transfers'::regclass and contype='u'
-    and pg_get_constraintdef(oid) like '%razorpay_payment_id%' and pg_get_constraintdef(oid) like '%recipient_type%'),
-  'Route transfer ledger prevents duplicate recipient rows for the same Razorpay payment');
+select ok(position("'route_transfers', '[]'::jsonb" in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'retired Route transfer rows are returned as an empty array');
 
-select ok((select relrowsecurity from pg_class where oid='public.srk_route_transfers'::regclass),
-  'Route transfer ledger has row-level security enabled');
-select ok(not has_table_privilege('anon','public.srk_route_transfers','select')
-  and not has_table_privilege('authenticated','public.srk_route_transfers','select'),
-  'anonymous and authenticated clients cannot read Route transfer ledger');
-select ok(has_table_privilege('service_role','public.srk_route_transfers','select')
-  and has_table_privilege('service_role','public.srk_route_transfers','insert')
-  and has_table_privilege('service_role','public.srk_route_transfers','update'),
-  'only server service role has the Route transfer ledger operational grants');
+select ok(position("'route_transfer_count', 0" in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'retired Route transfer count is reported as zero');
+
+select ok(position("'route_electrician_transfer_paise', 0" in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position("'route_platform_commission_transfer_paise', 0" in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'retired Route transfer amount fields are reported as zero');
+
+select ok(position("'route_provider_settlement_verified', false" in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'retired Route response does not claim provider settlement verification');
+
+select ok(position('srk_route_transfers' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'reconciliation RPC does not query the retired Route table');
+
+select ok(position('ROUTE_TRANSFER_RECIPIENT_ROWS_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0
+  and position('ROUTE_TRANSFER_PAYMENT_ID_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'retired Route recipient and payment matching checks are removed');
+
+select ok(position('ROUTE_TRANSFER_AMOUNT_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0
+  and position('ROUTE_TRANSFER_NOT_SETTLED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'retired Route amount and settlement checks are removed');
+
+select ok(position('ROUTE_TRANSFER_PROVIDER_ID_MISSING' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0
+  and position('ROUTE_TRANSFER_FAILED_REVERSED_OR_REVIEW' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'retired Route provider ID and failure-state checks are removed');
+
+select ok(position('ROUTE_ELECTRICIAN_RECIPIENT_USER_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0
+  and position('ROUTE_VERIFIED_PRIMARY_LINKED_ACCOUNT_MISSING_OR_AMBIGUOUS' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'retired Route recipient and linked-account validations are removed');
+
+select ok(position('ROUTE_LINKED_ACCOUNT_ID_MISMATCH' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0
+  and position('ROUTE_SETTLED_WITHOUT_PROCESSED_TRANSFER' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'retired Route linked-account and processed-state validations are removed');
+
+select ok(position('ROUTE_PROVIDER_SETTLEMENT_NOT_INDEPENDENTLY_VERIFIED' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'retired Route settlement exception is no longer generated');
+
+select ok(position('MANUAL_AND_ROUTE_ELECTRICIAN_PAYOUT_OVERLAP' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'manual payout flow is no longer compared with retired Route transfers');
+
+select ok(position('coalesce(v_commission_paise,0)>0' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))=0,
+  'retired Route zero-commission transfer-row rule is no longer applied');
+
+select ok(position('public.srk_admin_mark_electrician_payout_paid' in lower(pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure)))=0,
+  'read-only accounting reconciliation remains separate from manual payout settlement');
+
+select ok(not exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+  where n.nspname='public' and c.relname='srk_route_transfers'),
+  'no public Route transfer table remains after ledger retirement');
 
 select ok(position('auth.uid() is null or not public.is_srk_admin()' in lower(pg_get_functiondef(
   'public.srk_admin_mark_electrician_payout_paid(uuid,text,text,text)'::regprocedure)))>0,
