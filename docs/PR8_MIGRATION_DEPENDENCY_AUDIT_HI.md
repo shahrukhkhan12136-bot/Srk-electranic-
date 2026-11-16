@@ -776,3 +776,19 @@ Feature branch में उपलब्ध चार prerequisite migrations �
 `20261109010000` के wallet helper में `electrician_profiles` का `auth_user_id/user_id` linkage पढ़ा जाता है; इसलिए Wallet Foundation को चलाने से पहले profile base और ये linkage columns उपलब्ध होने चाहिए। केवल तारीख के आधार पर migrations को replay करना पर्याप्त नहीं—base schema की readiness भी जरूरी है।
 
 **स्थिति:** Source cross-check only; no SQL execution/pgTAP. यह section 51–52 की dependency सूची को refine करता है, complete baseline certification नहीं।
+
+
+## 54. अतिरिक्त Accounting/Support Tables — Creator Migration की स्थिति
+
+Feature branch के source search और संबंधित migration files के प्रत्यक्ष निरीक्षण में यह अंतर मिला:
+
+- `20261114200000_customer_payment_refund_history_rpc.sql` payment-history RPC बनाती है, लेकिन `srk_manual_payment_entries`, `srk_booking_refund_requests`, `srk_razorpay_refunds` और `srk_manual_refund_entries` को पहले से मौजूद मानती है। इसे इन tables का creator migration नहीं माना जा सकता।
+- `20261113230000_support_attachment_paths_and_admin_message_list.sql` complaint attachment/message RPCs उपयोग करती है; `srk_booking_complaints` की base table इस migration में create नहीं होती।
+- `20261109003000_secure_commission_reporting.sql` commission reporting RPCs पर केंद्रित है; यह `srk_electrician_payouts` का स्पष्ट CREATE TABLE owner नहीं मिला।
+- `srk_manual_payment_entries`, `srk_electrician_payouts` और `srk_customer_category_skill_rules` के लिए इस pass में feature branch के indexed source results से निश्चित creator migration प्रमाणित नहीं हुआ। `job_offers` का base DDL root setup files में दिखता है, लेकिन canonical migration ownership अभी तय नहीं।
+
+### निष्कर्ष / जोखिम
+
+इन tables को fixture में अनुमान से बनाना वास्तविक schema contract को छिपा सकता है। प्रत्येक table के लिए authoritative DDL, FK/unique/check constraints, RLS/policies, grants और trigger definitions ढूँढना जरूरी है। यदि वे केवल root setup scripts या किसी अन्य feature branch में हैं, तो उसे स्पष्ट baseline decision के रूप में दर्ज करना होगा—बिना Production schema export के।
+
+**अगला कदम:** Git history और सभी relevant migration filenames/branches में इन पाँच accounting/support tables के मूल DDL का provenance trace; जब तक यह न मिले, पूर्ण migration replay को blocked रखें। कोई SQL test या Production query नहीं चली।
