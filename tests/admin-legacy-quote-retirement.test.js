@@ -56,15 +56,15 @@ test('Manual payment UI remains available without exposing arbitrary status tran
 
 test('Admin manual payment handler enforces booking, receipt, and Razorpay guards', () => {
   const start = admin.indexOf('async function saveBookingInternal(id){');
-  const end = admin.indexOf('\\n}', start);
+  const end = admin.indexOf('\n}', start);
   assert.notEqual(start, -1, 'saveBookingInternal must exist');
   const handler = admin.slice(start, end === -1 ? undefined : end);
-  assert.match(handler, /booking\\.payment_status==='paid'&&payment_status!=='paid'/);
-  assert.match(handler, /payment_reference\\.length<4\\|\\|payment_reference\\.length>120/);
-  assert.match(handler, /booking\\.status!=='completed'\\|\\|status!=='completed'/);
-  assert.match(handler, /razorpay_payment_id\\|\\|booking\\.razorpay_order_id/);
+  assert.match(handler, /booking\.payment_status==='paid'&&payment_status!=='paid'/);
+  assert.match(handler, /payment_reference\.length<4\|\|payment_reference\.length>120/);
+  assert.match(handler, /booking\.status!=='completed'\|\|status!=='completed'/);
+  assert.match(handler, /razorpay_payment_id\|\|booking\.razorpay_order_id/);
   assert.match(handler, /manual_method!=='cash'/);
   assert.match(handler, /srk_admin_record_new_booking_cash_payment/);
   assert.match(handler, /srk_admin_record_manual_payment/);
-  assert.doesNotMatch(handler, /\\.from\\(['"]service_bookings['"]\\)\\s*\\.update\\s*\\(/);
+  assert.doesNotMatch(handler, /\.from\(['"]service_bookings['"]\)\s*\.update\s*\(/);
 });
