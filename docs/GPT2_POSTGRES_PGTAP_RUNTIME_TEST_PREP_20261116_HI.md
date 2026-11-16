@@ -2210,3 +2210,26 @@ ORDER BY column_name;
 ### Boundary
 - This is a source-level review only. No code changed, no browser test executed, no Auth users created, and no database/Storage calls made.
 - Route the UI reset recommendation to the customer-dashboard implementation owner (GPT-1); GPT-2 records the residual acceptance gap for the runtime test plan.
+
+
+## 64. Implementation प्रतिशत और CI score की माप — 16 Nov 2026
+
+### Implementation checklist
+- उपलब्ध consolidated GPT-2 inventory में दर्ज baseline **27/39 = 69% पूरा; 12/39 बाकी** है। Overall project baseline **56/86 = 65%** है।
+- ये प्रतिशत checklist-item counts हैं, पूरे application की live readiness या release confidence score नहीं।
+- किसी item को तभी complete गिना जाएगा जब उसके लिए अपेक्षित deliverable वास्तव में मौजूद हो और उसकी निर्धारित verification सीमा पूरी हो। केवल documentation/source audit, issue पहचानना, test plan लिखना या दूसरे GPT owner को recommendation देना नया completed item नहीं है।
+- इस कारण Sections 61–63 जैसे documentation-only audits से implementation प्रतिशत नहीं बढ़ता। Section 63 का UI fix GPT-1 implementation owner के scope में है; GPT-2 उसे अपना code completion नहीं गिनेगा।
+- अगली गणना में denominator 39 तभी रहेगा जब checklist scope अपरिवर्तित हो। कोई item split/add/remove हुआ तो पहले checklist version और denominator दर्ज होंगे; पुराने प्रतिशत से सीधे तुलना नहीं होगी।
+
+### CI score — अभी कोई प्रमाणित प्रतिशत नहीं
+- Repository में “CI score” नाम का एकल, परिभाषित denominator उपलब्ध evidence में स्थापित नहीं है। इसलिए अनुमान से 80%, 90% या कोई अन्य score नहीं लिखा जाएगा।
+- CI report में अलग-अलग वास्तविक checks दिखेंगे: Node tests, database/pgTAP runtime, browser E2E, deploy preview/build। हर check का status PASS / FAIL / PENDING / BLOCKED / NOT RUN और संबंधित commit SHA दर्ज होगा।
+- केवल उसी commit के completed successful run को PASS माना जाएगा। Pending, failed, missing run या पुराना commit current PASS नहीं है।
+- Node test PASS को PostgreSQL/pgTAP, browser E2E, Production schema parity या deployment PASS नहीं माना जाएगा।
+- यदि owner एक संयुक्त CI प्रतिशत चाहता है, तो पहले required checks की fixed सूची और denominator स्वीकृत होगा; score = completed PASS checks ÷ total required checks × 100. Scope बदलने पर नया denominator/version दर्ज होगा।
+
+### इस recheck पर लागू स्थिति
+- GPT-2 checklist: **27/39 = 69%** (इस documentation-only audit से अपरिवर्तित)।
+- Overall project: **56/86 = 65%** (इस audit से अपरिवर्तित)।
+- CI percentage: **Not measured — denominator formally defined नहीं**। Latest commit पर प्रत्येक provider/workflow status को अलग-अलग evidence के साथ report करना होगा; कोई fabricated combined score नहीं।
+- यह section metric/reporting policy है; कोई application code, test, workflow, database, payment provider, merge या deployment नहीं बदला/चलाया गया।
