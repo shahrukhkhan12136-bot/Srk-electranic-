@@ -75,6 +75,8 @@ test('electrician support client creates, lists, opens and replies through self-
   assert.match(clear,/electricianSupportReplyBusy=false/);
   assert.match(create,/const requestedUserId=user\.id,requestedProfileId=profile\.id,requestedGeneration=electricianAccountViewGeneration/);
   assert.match(create,/if\(!isCurrent\(\)\)return/);
+  assert.match(create,/newMatches=after\.filter/);
+  assert.match(create,/newMatches\.length===1\?newMatches\[0\]:null/);
   assert.match(open,/requestedGeneration=electricianAccountViewGeneration/);
   assert.match(open,/if\(!isCurrent\(\)\|\|request!==electricianSupportThreadRequest/);
   assert.match(reply,/const requestedUserId=user\.id,requestedProfileId=profile\.id,requestedGeneration=electricianAccountViewGeneration/);
