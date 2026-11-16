@@ -1218,3 +1218,52 @@ Current branch source में:
 | Internal schema | `private` का creator मिला | `srk_private` creator अभी नहीं मिला |
 
 **स्थिति:** यह source-only ACL/RLS/RPC reconciliation है, complete effective-state certification नहीं। विशेष रूप से `private` की मौजूदगी `srk_private` की मौजूदगी सिद्ध नहीं करती। कोई SQL/Production query, migration execution, permission edit, data write या deployment नहीं किया गया।
+
+
+## 40. SECURITY DEFINER RPC सूची और authorization review — 16 Nov 2026
+
+### 40.1 Source में पहचाने गए प्रमुख RPC समूह
+
+निम्न migrations में SECURITY DEFINER functions और उनके explicit EXECUTE grants मिले:
+
+| Migration / RPC समूह | Search path | Authorization/source observation |
+|---|---|---|
+| `20261109003000` — Admin commission report | `public, pg_temp` | `auth.uid()` और `public.is_srk_admin()` दोनों जाँचता है; PUBLIC/anon revoke, authenticated grant |
+| `20261109003000` — electrician earnings | `pg_catalog, public, auth, pg_temp` | `auth.uid()` से approved electrician profile सीमित; PUBLIC/anon revoke |
+| `20261109010000` — wallet summary | `public, pg_temp` | login अनिवार्य; wallet summary current UID से सीमित; authenticated grant |
+| `20261109010000` — Admin wallet overview | `public, pg_temp` | `is_srk_admin()` gate; authenticated grant |
+| `20261109001000` — Admin application review | `pg_catalog, public, auth, pg_temp` | `auth.uid()` + `is_srk_admin()` gate |
+| `20261109...` quote workflow | `pg_catalog, public, auth, pg_temp` | quote submit/work status approved active assigned electrician से; quote response customer_user_id से |
+| `20261109...` offer details | `pg_catalog, public, auth, pg_temp` | authenticated electrician profile के user_id से offer list सीमित |
+| `20261114190000` — payment receipt | `pg_catalog, public, auth, pg_temp` | login और customer booking ownership checks; PUBLIC/anon revoke |
+| `20261114200000` — payment/refund history | empty search_path | fully qualified object references और UID-owned bookings; PUBLIC/anon revoke |
+| `20261113230000` — support attachment/message RPCs | empty search_path | Admin listing functions `is_srk_admin()` gate करती हैं; customer listing अलग ownership checks करती है |
+
+यह source-discovered सूची है, database की exhaustive function catalog नहीं। GitHub code search की सीमाओं के कारण इसे सभी functions की पूर्ण inventory न माना जाए।
+
+### 40.2 Authorization और grants के बारे में निष्कर्ष
+
+- Admin commission, wallet overview, application review और support Admin listing RPCs authenticated role को execute देती हैं, लेकिन function body में Main Admin helper check भी है। इसलिए केवल EXECUTE grant से Admin authorization सिद्ध नहीं होता; helper की वास्तविक definition और runtime behavior निर्णायक हैं।
+- Customer receipt/history RPCs UID-आधारित booking ownership लागू करती हैं।
+- Quote workflow में customer response को `customer_user_id=auth.uid()` से बाँधा गया है; electrician operations को approved/active profile और assigned booking से।
+- Offer details RPC customer contact fields तभी लौटाती है जब booking उसी electrician profile को assigned हो; source में यह conditional masking दिखती है।
+- Rate-limit RPC केवल `service_role` execute के लिए है; सामान्य authenticated/anon execute revoke है।
+- Customer contact lookup का private implementation SECURITY DEFINER है, पर outer public wrapper SECURITY INVOKER है। Private implementation में customer UID के अपने bookings पर filter है।
+
+### 40.3 Search path और unresolved proof
+
+- कई पुराने RPCs `search_path = public, pg_temp` उपयोग करते हैं; नए customer-facing RPCs में `pg_catalog` पहले या empty search_path का उपयोग मिलता है।
+- Empty search_path वाले functions में schema-qualified object references का source review किया गया; runtime owner, object ownership और function body की वास्तविक deployed definition फिर भी Production catalog से ही सिद्ध होगी।
+- Source code से SECURITY DEFINER function का effective owner, live EXECUTE privileges, PUBLIC default privileges, overload collisions, और helper function का deployed body प्रमाणित नहीं हो सकता।
+- Main Admin helper `public.is_srk_admin()` की versioned migration provenance अब भी नहीं मिली। कई Admin RPCs इसी helper पर निर्भर हैं; इसलिए यह एक साझा unresolved dependency है।
+- `srk_has_admin_permission(text)` Staff RBAC helper को `is_srk_admin()` से अलग identity/authorization layer समझना होगा; इसे Main Admin helper का विकल्प नहीं माना जाए।
+
+### 40.4 अगला आवश्यक authoritative read-only evidence
+
+DBA/GPT-1 से केवल read-only catalog evidence चाहिए:
+1. प्रत्येक listed function का exact identity/signature, `prosecdef`, owner, `proconfig/search_path`, और deployed definition hash/definition।
+2. प्रत्येक signature के लिए `PUBLIC`, `anon`, `authenticated`, `service_role` EXECUTE ACL और overload inventory।
+3. `is_srk_admin()` तथा `srk_has_admin_permission(text)` के deployed owner, body, EXECUTE ACL और dependency chain।
+4. संबंधित roles की schema USAGE/CREATE permissions, विशेषकर `public`, `private` और `srk_private`।
+
+**स्थिति:** source-level review में कई RPCs के explicit grants और UID/Admin gates मिले; इसे effective Production security certification नहीं कहा जा सकता। कोई Production query, SQL execution, grant/revoke, function replacement या deployment नहीं किया गया।
