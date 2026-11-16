@@ -44,9 +44,9 @@ test('Read-only status display preserves the current value for the shared Save h
 });
 
 test('Manual payment UI remains available without exposing arbitrary status transitions', () => {
-  assert.ok(admin.includes(`id="pay-'+x.id+'"`));
-  assert.ok(admin.includes(`id="manual-method-'+x.id+'"`));
-  assert.ok(admin.includes(`id="ref-'+x.id+'"`));
+  assert.ok(admin.includes('id="pay-${x.id}"'));
+  assert.ok(admin.includes('id="manual-method-${x.id}"'));
+  assert.ok(admin.includes('id="ref-${x.id}"'));
   assert.match(admin, /payment_status!==\(booking\.payment_status\|\|'unpaid'\)/);
   assert.match(admin, /srk_admin_record_manual_payment/);
   assert.match(admin, /srk_admin_record_new_booking_cash_payment/);
