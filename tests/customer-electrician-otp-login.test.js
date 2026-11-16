@@ -46,3 +46,14 @@ test('electrician portal uses OTP login, a resend cooldown, and session-driven p
   assert.ok(electrician.includes("function show(){document.getElementById('login')"));
   assert.ok(electrician.includes("document.getElementById('app').classList.toggle('hidden',!user)"));
 });
+
+test('OTP phone and code inputs stay locked while authentication requests are pending', () => {
+  assert.ok(customer.includes('phoneInput.disabled=true'));
+  assert.ok(customer.includes('phoneInput.disabled=false'));
+  assert.ok(customer.includes('otpInput.disabled=true'));
+  assert.ok(customer.includes('otpInput.disabled=false'));
+  assert.ok(electrician.includes("document.getElementById('phone').disabled=true"));
+  assert.ok(electrician.includes("document.getElementById('phone').disabled=false"));
+  assert.ok(electrician.includes("document.getElementById('otp').disabled=true"));
+  assert.ok(electrician.includes("document.getElementById('otp').disabled=false"));
+});
