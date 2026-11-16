@@ -164,7 +164,7 @@ test('customer support lists, threads and writes are invalidated when the OTP ac
 test('customer support booking options cannot leak across OTP account switches', () => {
   const load = functionBody(customer, 'loadCustomerSupportBookings');
   const resetStart = customer.indexOf('function clearCustomerSupportView()');
-  const resetEnd = customer.indexOf('\\nfunction renderCustomerSupportThread', resetStart);
+  const resetEnd = customer.indexOf('\nfunction renderCustomerSupportThread', resetStart);
   assert.ok(resetStart >= 0 && resetEnd > resetStart);
   const reset = customer.slice(resetStart, resetEnd);
   assert.match(load, /const request=customerSupportGeneration,isCurrent=\(\)=>request===customerSupportGeneration/);
