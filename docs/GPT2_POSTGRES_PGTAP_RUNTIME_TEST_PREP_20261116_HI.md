@@ -1765,3 +1765,27 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 5. CI केवल disposable TEST database/container पर चले; Production schema export, remote Production connection, deployment या secrets की जरूरत न हो।
 
 **स्थिति:** अभी कोई `supabase test db`, pgTAP, local stack, migration replay या CI dispatch नहीं चलाया गया। यह केवल source inventory और readiness audit है।
+
+
+## 48. Disposable TEST harness — सुरक्षित स्थापना निर्णय — 16 Nov 2026
+
+### सत्यापित repository prerequisites
+- Feature Branch में `supabase/config.toml` नहीं है और कोई Compose/Docker project file या Supabase local harness tree में नहीं मिला।
+- 32 SQL pgTAP test files मौजूद हैं, पर `package.json` का `npm test` केवल Node test runner चलाता है; SQL tests का runner command नहीं है।
+- Migration tree में duplicate version token `20261109` है; साथ ही पहले के sections में `amount_paid` और electrician identity bootstrap chronology के unresolved dependencies दर्ज हैं। अतः पूरी migration directory को अभी blind `supabase db reset`/replay करना भरोसेमंद नहीं।
+- `supabase-schema-ci.yml` remote `SUPABASE_DB_URL` से Production schema export करता है और दूसरे branch पर gated है। इसे disposable TEST bootstrap के रूप में reuse/dispatch नहीं करना है।
+
+### Safe setup blueprint (अभी लागू नहीं किया गया)
+1. **Isolation:** पहले local Docker-based Supabase stack या अलग disposable Supabase TEST project चुनें। TEST project का URL/credentials Production से अलग हों; कोई Production secret workflow में न आए।
+2. **Pinned tooling:** Supabase CLI का एक reviewed exact version pin करें; CI में Docker service health-check और fixed timeout रखें। Version upgrade अलग reviewed PR हो।
+3. **Project config:** Owner की मंजूरी के बाद `supabase/config.toml` में project id, local API/DB ports, Auth settings, Storage buckets और migration/test paths explicit करें। Secrets या Production URL config में न रखें।
+4. **pgTAP:** TEST database में pgTAP extension उपलब्ध कराएँ और runner से `supabase/tests/database/*.test.sql` क्रमबद्ध चलाएँ। SQL tests को Node `npm test` का विकल्प न मानें; दोनों suites अलग-अलग run हों।
+5. **Bootstrap contract:** एक canonical, sanitized baseline तय करें जिसमें आवश्यक Supabase `auth`/`storage` schemas, roles, extensions, buckets, triggers, functions और starter tables reproducibly निर्मित हों। `PORTAL_SCHEMA.sql` बनाम `COMPLETE_DATABASE_SETUP.sql` की authority Owner से स्पष्ट कराएँ।
+6. **Migration gate:** replay से पहले unique migration version audit, required-column-before-GRANT check, `auth_user_id`/`amount_paid` baseline checks और `auth.users` identity trigger preflight चलाएँ। किसी ambiguity/duplicate version पर pipeline fail-closed हो; files को silently rename/reorder न करें।
+7. **Tests:** isolated DB पर clean bootstrap → approved migration replay → DB lint → all 32 pgTAP files → Node tests. Test reports artifacts हों; secrets/DB URLs logs में redact हों.
+8. **No remote mutation:** workflow में `SUPABASE_DB_URL`, `supabase db dump --remote`, `supabase link`, Production ref, deployment, seed of real data या remote migration push बिल्कुल न हो।
+
+### Approval / implementation boundary
+- यह section blueprint और prerequisite audit है; कोई `supabase/config.toml`, workflow, Docker file, package dependency या SQL test file अभी create/modify नहीं की गई।
+- इसे लागू करने से पहले Owner से दो निर्णय चाहिए: (a) केवल local disposable Docker stack या dedicated TEST project; (b) canonical bootstrap file कौन-सी है और क्या वह sanitized TEST baseline के रूप में authoritative है।
+- Owner decision के बाद भी पहले isolated config/harness PR बनेगा; workflow manual/local validation से शुरू होगा। Production integration अलग explicit approval के बिना नहीं होगी।
