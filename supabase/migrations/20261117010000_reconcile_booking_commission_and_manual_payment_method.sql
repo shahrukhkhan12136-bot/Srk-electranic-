@@ -15,8 +15,8 @@ declare
   v_commission numeric(12,2);
   v_bill public.srk_booking_labour_bills%rowtype;
 begin
-  if new.payment_status <> 'paid'
-     or new.status <> 'completed'
+  if new.payment_status is distinct from 'paid'
+     or new.status is distinct from 'completed'
      or new.assigned_electrician_id is null
      or new.payment_verified_at is null
      or not (
@@ -26,8 +26,9 @@ begin
            from public.srk_manual_payment_entries e
           where e.booking_id = new.id
             and round(coalesce(e.amount,0),2) = round(coalesce(new.amount_paid,0),2)
-            and lower(btrim(coalesce(e.payment_method,''))) =
-                lower(btrim(coalesce(new.payment_method,'')))
+            and e.payment_method is not null
+            and new.payment_method is not null
+            and lower(btrim(e.payment_method)) = lower(btrim(new.payment_method))
        )
      ) then
     return new;
@@ -93,8 +94,8 @@ as $$
 declare
   v_platform_commission numeric(12,2);
 begin
-  if new.payment_status <> 'paid'
-     or new.status <> 'completed'
+  if new.payment_status is distinct from 'paid'
+     or new.status is distinct from 'completed'
      or new.assigned_electrician_id is null
      or new.payment_verified_at is null
      or (new.selected_category is null and new.quote_status <> 'approved') then
@@ -201,8 +202,9 @@ begin
         select 1 from public.srk_manual_payment_entries mp
          where mp.booking_id=p_booking_id
            and round(mp.amount,2)=round(v_booking.amount_paid,2)
-           and lower(btrim(coalesce(mp.payment_method,''))) =
-               lower(btrim(coalesce(v_booking.payment_method,'')))
+           and mp.payment_method is not null
+           and v_booking.payment_method is not null
+           and lower(btrim(mp.payment_method)) = lower(btrim(v_booking.payment_method))
       )
     );
 
@@ -212,8 +214,7 @@ begin
        select 1 from public.srk_manual_payment_entries mp
         where mp.booking_id=p_booking_id
           and round(mp.amount,2)=round(v_booking.amount_paid,2)
-          and lower(btrim(coalesce(mp.payment_method,''))) <>
-              lower(btrim(coalesce(v_booking.payment_method,'')))
+          and lower(btrim(mp.payment_method)) is distinct from lower(btrim(v_booking.payment_method))
      ) then
     v_exceptions := array_append(v_exceptions,'MANUAL_PAYMENT_METHOD_MISMATCH');
   end if;
