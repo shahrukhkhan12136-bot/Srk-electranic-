@@ -1456,8 +1456,8 @@ async function customerChangePaymentMethod(id){
  if(!customerSb||!id)return;
  if(!confirm('क्या आप इस बुकिंग के लिए Cash की जगह Online (Razorpay) भुगतान स्वयं चुनना चाहते हैं? कोई भुगतान अभी नहीं लिया जाएगा।'))return;
  const generation=customerActionGeneration;let requestedUserId=null;
- const isCurrent=()=>generation===customerActionGeneration&&!!requestedUserId;
- const sameSession=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
+ const isCurrent=()=>generation===customerActionGeneration;
+ const sameSession=async()=>{if(!isCurrent()||!requestedUserId)return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();if(sessionError)throw sessionError;
   requestedUserId=sessionData?.session?.user?.id||null;if(!isCurrent())return;if(!requestedUserId)throw new Error('LOGIN_REQUIRED');
@@ -1665,8 +1665,8 @@ async function saveCurrentBookingAddress() {
  const button=document.getElementById('saveCurrentAddress');
  if(button.disabled||!customerSb)return;
  const generation=customerActionGeneration;let requestedUserId=null;
- const isCurrent=()=>generation===customerActionGeneration&&!!requestedUserId;
- const sameSession=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
+ const isCurrent=()=>generation===customerActionGeneration;
+ const sameSession=async()=>{if(!isCurrent()||!requestedUserId)return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
  button.disabled=true;button.textContent='पता सेव हो रहा है…';
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
@@ -1721,8 +1721,8 @@ async function deleteSelectedSavedAddress() {
  if(!confirm('क्या आप यह सेव किया हुआ पता हमेशा के लिए हटाना चाहते हैं? पहले की बुकिंग पर इसका असर नहीं होगा。'))return;
  if(!customerSb)return;
  const generation=customerActionGeneration;let requestedUserId=null;
- const isCurrent=()=>generation===customerActionGeneration&&!!requestedUserId;
- const sameSession=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
+ const isCurrent=()=>generation===customerActionGeneration;
+ const sameSession=async()=>{if(!isCurrent()||!requestedUserId)return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
  const button=document.getElementById('deleteSavedAddress');button.disabled=true;
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();if(sessionError)throw sessionError;
@@ -1745,8 +1745,8 @@ async function deleteSelectedSavedAddress() {
 }
 async function makeSelectedAddressDefault() {
  const generation=customerActionGeneration;let requestedUserId=null;
- const isCurrent=()=>generation===customerActionGeneration&&!!requestedUserId;
- const sameSession=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
+ const isCurrent=()=>generation===customerActionGeneration;
+ const sameSession=async()=>{if(!isCurrent()||!requestedUserId)return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
  const id=document.getElementById('savedAddressSelect').value;
  const a=customerSavedAddresses.find(x=>x.id===id);
  if(!a){setSavedAddressStatus('डिफ़ॉल्ट बनाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
