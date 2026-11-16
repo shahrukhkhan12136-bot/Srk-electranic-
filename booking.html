@@ -1200,6 +1200,17 @@ async function customerCancelBooking(bookingId,button) {
  if(!customerSb||!bookingId||button?.disabled||!isCurrent())return;
  const note='ग्राहक ने ऐप से बुकिंग रद्द करने का अनुरोध किया है। कृपया इलेक्ट्रिशियन की सत्यापित स्थिति और उपलब्ध यात्रा/आगमन प्रमाण देखकर निर्णय लें।';
  if(!confirm('रद्द करने का अनुरोध Admin को भेजें? अभी बुकिंग रद्द नहीं होगी। Admin प्रमाण जाँचकर निर्णय करेगा। ₹99 केवल ग्राहक के घर पहुँचने का प्रमाण दर्ज होने और Admin की मंज़ूरी पर; घर से नहीं निकला या रास्ते में होने पर ₹0।')||!isCurrent())return;
+ let priorRequestIds;
+ try{
+  const {data:before,error:beforeError}=await customerSb.rpc('srk_customer_list_booking_cancellation_requests');
+  if(!isCurrent())return;
+  if(beforeError||!Array.isArray(before))throw beforeError||new Error('CANCELLATION_BASELINE_UNAVAILABLE');
+  priorRequestIds=new Set(before.map(row=>row.id));
+ }catch(_){
+  if(isCurrent())alert('रद्द करने का अनुरोध भेजने से पहले पुरानी स्थिति सत्यापित नहीं हो सकी। कृपया बुकिंग रीफ़्रेश करके फिर कोशिश करें।');
+  return;
+ }
+ if(!isCurrent())return;
  if(button)button.disabled=true;
  try {
   const {data,error}=await customerSb.rpc('srk_customer_request_booking_cancellation',{p_booking_id:bookingId,p_customer_note:note});
@@ -1210,18 +1221,35 @@ async function customerCancelBooking(bookingId,button) {
   try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('रद्द करने का अनुरोध सर्वर पर दर्ज हो चुका है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
  } catch(error) {
   if(!isCurrent())return;
-  let confirmedRequest=null,lookupSucceeded=false;
+  let confirmedRequest=null,lookupSucceeded=false,ambiguous=false;
   try{
    const {data:requests,error:lookupError}=await customerSb.rpc('srk_customer_list_booking_cancellation_requests');
    if(!isCurrent())return;
-   if(!lookupError&&Array.isArray(requests)){lookupSucceeded=true;confirmedRequest=requests.find(row=>row.booking_id===bookingId&&row.request_status==='pending')||null;}
+   if(!lookupError&&Array.isArray(requests)){
+    lookupSucceeded=true;
+    const newMatches=requests.filter(row=>!priorRequestIds.has(row.id)&&row.booking_id===bookingId);
+    if(newMatches.length===1)confirmedRequest=newMatches[0];
+    else if(newMatches.length>1)ambiguous=true;
+    if(!confirmedRequest&&!ambiguous)confirmedRequest=requests.find(row=>row.booking_id===bookingId&&row.request_status==='pending')||null;
+   }
   }catch(_){if(!isCurrent())return;}
   if(!isCurrent())return;
   if(confirmedRequest){
-   alert('इस बुकिंग का रद्द करने का अनुरोध Admin के पास लंबित है। दोबारा अनुरोध नहीं भेजा गया।');
-   try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('अनुरोध Admin के पास लंबित है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
+   const status=confirmedRequest.request_status;
+   if(status==='pending'){
+    alert('इस बुकिंग का रद्द करने का अनुरोध Admin के पास लंबित है। दोबारा अनुरोध नहीं भेजा गया।');
+   }else if(status==='approved'){
+    alert('आपका रद्द करने का अनुरोध Admin ने मंजूर कर दिया है। बुकिंग रद्द हो चुकी है; दोबारा अनुरोध नहीं भेजा गया।');
+   }else if(status==='rejected'){
+    alert('आपका रद्द करने का अनुरोध Admin ने अस्वीकार कर दिया है। बुकिंग रद्द नहीं हुई; दोबारा अनुरोध नहीं भेजा गया।');
+   }else{
+    alert('आपका नया रद्द करने का अनुरोध सर्वर पर दर्ज मिला, लेकिन उसकी स्थिति स्पष्ट नहीं है। दोबारा अनुरोध न भेजें; बुकिंग Refresh करें।');
+   }
+   try{await loadCustomerBookings();if(!isCurrent())return;}catch(_){if(isCurrent())alert('अनुरोध की स्थिति सर्वर पर मिल गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी। इंटरनेट लौटने पर Refresh करें; अनुरोध दोबारा न भेजें।');}
+  }else if(ambiguous){
+   alert('इस बुकिंग के लिए एक से अधिक नई cancellation entries मिलीं। दोबारा अनुरोध नहीं भेजा गया। कृपया बुकिंग Refresh करके सहायता टीम से जाँच कराएँ।');
   }else if(lookupSucceeded){
-   alert('अभी जाँची गई सूची में इस बुकिंग का लंबित अनुरोध नहीं मिला। कोई दूसरा अनुरोध अपने-आप नहीं भेजा गया। बुकिंग सूची रीफ़्रेश करें; फिर भी अनुरोध न दिखे तो दोबारा प्रयास करें।');
+   alert('अभी जाँची गई सूची में इस बुकिंग का नया अनुरोध या लंबित अनुरोध नहीं मिला। कोई दूसरा अनुरोध अपने-आप नहीं भेजा गया। बुकिंग सूची रीफ़्रेश करें; यदि बुकिंग अभी cancellable है, तभी दोबारा प्रयास करें।');
   }else{
    alert('रद्द करने के अनुरोध का परिणाम स्पष्ट नहीं है। दोबारा भेजने से पहले बुकिंग सूची रीफ़्रेश करके स्थिति जाँचें।');
   }
