@@ -23,7 +23,7 @@ A disposable harness must first create the authoritative baseline and set this s
 SET app.srk_replay_environment = 'disposable_local';
 ```
 
-The script checks for the baseline tables and fails closed if they are absent. It adds the missing payment amount column and constraints, then defines both Admin predicate functions. It does not create the baseline tables, users, or roles.
+The script checks for the baseline tables and fails closed if they are absent. It adds the missing payment amount column and constraints, then defines both Admin predicate functions. It does not create the baseline tables, users, or roles. The session marker is only an accidental-run guard; it is **not** proof that the server is local. Never use hosted Production/staging credentials or run this file against hosted databases.
 
 ## Still not proven
 - This script has not been run in PostgreSQL.
