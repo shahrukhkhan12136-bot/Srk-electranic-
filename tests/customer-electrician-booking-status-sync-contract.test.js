@@ -160,7 +160,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
   }
   for (const fn of [electricianStart, electricianCompletion]) {
     assert.match(fn, /catch\s*\(/);
-    assert.match(fn, /finally\s*\{\s*electricianLifecycleBusy\.delete\(requestKey\);?\s*\}/);
+    assert.match(fn, /finally\s*\{\s*electricianLifecycleBusy\.delete\(requestKey\);?\s*if\(keepLocked\)electricianLifecycleLocked\.add\(String\(bookingId\)\);?\s*\}/);
     assert.match(fn, /वर्तमान स्थिति रीफ़्रेश करके जाँचें/);
   }
   assert.match(customerRefund, /catch\s*\(error\)/);
@@ -434,7 +434,7 @@ test('Customer and electrician lifecycle actions distinguish confirmed RPC succe
   const electricianStart = functionBody(electrician, 'electricianRequestWorkStart');
   const electricianCompletion = functionBody(electrician, 'electricianRequestWorkCompletion');
   for (const fn of [customerStart, customerCompletion]) {
-    assert.match(fn,/try\{await loadCustomerBookings\(\);if\(!isCurrent\(\)\)return;\}catch\(_\)\{if\(isCurrent\(\)\)alert\('आपका जवाब सर्वर पर दर्ज हो गया है/);
+    assert.match(fn,/try\{await loadCustomerBookings\(\);if\(!isCurrent\(\)\)return;\}catch\(_\)\{keepLocked=true;if\(isCurrent\(\)\)alert\('आपका जवाब सर्वर पर दर्ज हो गया है/);
     assert.ok(fn.includes('await loadCustomerBookings();') && fn.includes('नेटवर्क जवाब नहीं मिला।'), 'uncertain customer RPC still refreshes authoritative bookings');
     assert.ok(fn.includes('स्थिति रीफ़्रेश करके जाँचें'), 'uncertain customer outcome asks user to check current status');
   }
@@ -505,7 +505,7 @@ test('customer work lifecycle actions are invalidated when the signed-in account
     assert.match(action, /customerLifecycleBusy\.has\(requestKey\)/);
     assert.match(action, /customerLifecycleBusy\.add\(requestKey\)/);
     assert.match(action, /if\(!isCurrent\(\)\)return/);
-    assert.match(action, /finally\{customerLifecycleBusy\.delete\(requestKey\);?\}/);
+    assert.match(action, /finally\{customerLifecycleBusy\.delete\(requestKey\);if\(keepLocked\)customerLifecycleLocked\.add\(String\(bookingId\)\);\}/);
   }
 });
 
