@@ -28,7 +28,7 @@ test('electrician start and completion requests are serialized per booking', () 
     assert.match(fn, /electricianLifecycleBusy\.has\(requestKey\)/);
     assert.match(fn, /electricianLifecycleBusy\.add\(requestKey\)/);
     assert.match(fn, new RegExp(rpc));
-    assert.match(fn, /finally\{electricianLifecycleBusy\.delete\(requestKey\);\}/);
+    assert.match(fn, /finally\{electricianLifecycleBusy\.delete\(requestKey\);if\(keepLocked\)electricianLifecycleLocked\.add\(String\(bookingId\)\);\}/);
   }
 });
 
