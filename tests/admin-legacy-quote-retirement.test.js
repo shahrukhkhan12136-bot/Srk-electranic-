@@ -68,3 +68,30 @@ test('Admin manual payment handler enforces booking, receipt, and Razorpay guard
   assert.match(handler, /srk_admin_record_manual_payment/);
   assert.doesNotMatch(handler, /\.from\(['"]service_bookings['"]\)\s*\.update\s*\(/);
 });
+
+const quoteRetirementMigration = fs.readFileSync(
+  path.join(__dirname, '..', 'supabase', 'migrations', '20261115220000_retire_live_legacy_quotation_rpcs.sql'),
+  'utf8'
+);
+const legacyManualPaymentMigration = fs.readFileSync(
+  path.join(__dirname, '..', 'supabase', 'migrations', '20261115210000_legacy_manual_payment_and_itemized_receipt.sql'),
+  'utf8'
+);
+
+test('Quote retirement removes live quote RPCs but preserves historical booking columns and manual-payment RPC', () => {
+  assert.match(quoteRetirementMigration, /DROP FUNCTION IF EXISTS public\.srk_submit_booking_quote/);
+  assert.match(quoteRetirementMigration, /DROP FUNCTION IF EXISTS public\.srk_customer_respond_booking_quote/);
+  assert.match(quoteRetirementMigration, /DROP FUNCTION IF EXISTS public\.srk_update_booking_work_status/);
+  assert.doesNotMatch(quoteRetirementMigration, /ALTER\s+TABLE\s+public\.service_bookings\s+DROP\s+COLUMN/i);
+  assert.doesNotMatch(quoteRetirementMigration, /DROP\s+TABLE\s+public\.service_bookings/i);
+  assert.doesNotMatch(quoteRetirementMigration, /DROP FUNCTION IF EXISTS public\.srk_admin_record_manual_payment/i);
+});
+
+test('Historical legacy payment remains limited to completed bookings with approved quote; new-category bookings use separate settlement', () => {
+  assert.match(legacyManualPaymentMigration, /selected_category is not null/);
+  assert.match(legacyManualPaymentMigration, /quote_status is distinct from 'approved'/);
+  assert.match(legacyManualPaymentMigration, /v_booking\.service_charge/);
+  assert.match(legacyManualPaymentMigration, /v_booking\.materials_amount/);
+  assert.match(legacyManualPaymentMigration, /v_booking\.quoted_amount/);
+  assert.match(legacyManualPaymentMigration, /NEW_CATEGORY_BOOKING_USES_DEDICATED_SETTLEMENT/);
+});
