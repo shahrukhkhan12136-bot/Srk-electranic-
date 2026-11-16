@@ -192,7 +192,9 @@ test('pending booking key is retained when the customer edits payload before res
   const helper = bookingUi.slice(bookingUi.indexOf('function customerBookingRequestKey('), bookingUi.indexOf('function clearCustomerBookingRequestKey('));
   assert.match(helper, /if\(saved&&\/[\s\S]*?test\(saved\.key\)\)return saved\.key/);
   assert.doesNotMatch(helper, /saved\.fingerprint===fingerprint/);
-  assert.match(bookingUi, /यह बुकिंग अनुरोध पहचान पहले अलग जानकारी के साथ इस्तेमाल हो चुकी है/);
+  const bookingApi = fs.readFileSync(path.join(__dirname, '..', 'create-booking.js'), 'utf8');
+  assert.match(bookingApi, /यह बुकिंग अनुरोध पहचान पहले अलग जानकारी के साथ इस्तेमाल हो चुकी है/);
+  assert.match(bookingApi, /existing\\.customer_request_fingerprint !== requestFingerprint/);
 });
 
 test('successful booking keeps its idempotency key until the new booking is visible after refresh', () => {
