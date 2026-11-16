@@ -11,7 +11,7 @@
 - `/admin.html` — Admin / Support Staff portal
 
 ## Netlify Functions
-- `/.netlify/functions/create-booking` — Netlify function adapter के माध्यम से बुकिंग सेव करना और Supabase broadcast trigger से बने offers पढ़ना
+- `/api/create-booking` — Customer App का canonical booking endpoint; Netlify redirect इसे `/.netlify/functions/create-booking` adapter तक पहुँचाता है। यह बुकिंग सेव करता है और Supabase broadcast trigger से बने offers पढ़ता है
 - `/api/apply-electrician` — इलेक्ट्रिशियन आवेदन सेव करना
 - `/api/create-order` — Razorpay order बनाना
 - `/api/verify-payment` — signature और captured INR payment सत्यापित करना
