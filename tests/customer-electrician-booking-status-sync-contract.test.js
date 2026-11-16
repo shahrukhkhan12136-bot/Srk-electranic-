@@ -439,7 +439,7 @@ test('Customer and electrician lifecycle actions distinguish confirmed RPC succe
     assert.ok(fn.includes('स्थिति रीफ़्रेश करके जाँचें'), 'uncertain customer outcome asks user to check current status');
   }
   for (const fn of [electricianStart, electricianCompletion]) {
-    assert.match(fn,/try\{await refresh\(\);if\(!isCurrent\(\)\)return;\}catch\(_\)\{if\(isCurrent\(\)\)alert\(/);
+    assert.match(fn,/try\{await refresh\(\);if\(!isCurrent\(\)\)return;\}catch\(_\)\{keepLocked=true;if\(isCurrent\(\)\)alert\(/);
     assert.ok(fn.includes('सर्वर पर दर्ज हो गया है') || fn.includes('सर्वर पर दर्ज हो गई है'), 'refresh failure does not misreport the confirmed action');
     assert.ok(fn.includes('await refresh();') && fn.includes('नेटवर्क जवाब नहीं मिला।'), 'uncertain electrician RPC still refreshes authoritative dashboard');
     assert.ok(fn.includes('वर्तमान स्थिति रीफ़्रेश करके जाँचें'), 'uncertain electrician outcome asks user to check current status');
