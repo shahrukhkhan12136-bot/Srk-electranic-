@@ -284,7 +284,8 @@ async function createElectricianSupportTicket(){
    const {data:after,error:afterError}=await sb.rpc('srk_electrician_list_my_support_tickets');
    if(!isCurrent())return;
    if(!afterError&&Array.isArray(after)){
-    const candidate=after.find(row=>!previousTicketIds.has(row.id)&&row.category===category&&row.subject===subject&&(row.booking_id||'')===(booking||''))||null;
+    const newMatches=after.filter(row=>!previousTicketIds.has(row.id)&&row.category===category&&row.subject===subject&&(row.booking_id||'')===(booking||''));
+    const candidate=newMatches.length===1?newMatches[0]:null;
     if(candidate){
      const {data:messages,error:messagesError}=await sb.rpc('srk_electrician_list_my_support_messages',{p_ticket_id:candidate.id});
      if(!isCurrent())return;
