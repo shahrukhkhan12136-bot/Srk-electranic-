@@ -468,3 +468,12 @@ A follow-up consistency check found a concrete test/source mismatch:
 - Updated `tests/legacy-financial-read-rpc-search-path.test.js` on this audit branch to read the latest migration, assert all three function alterations use `SET search_path = ''`, and count the three empty-search-path assertions in the pgTAP contract.
 - The updated file was fetched back from GitHub and its returned blob SHA was checked. The Node test was then run in an isolated temporary fixture using the fetched migration, pgTAP contract, and JS test sources: syntax check PASS; 2 Node subtests PASS. This does not execute SQL or prove PostgreSQL catalog state. The PostgreSQL/pgTAP suite has not been executed.
 - No PR-head changes, Production SQL, deployment, or merge were performed.
+
+
+## 15. Service-only public rate-limit RPC security contract — 16 Nov 2026
+
+- The final search-path migration `20261116170000_pin_public_rate_limit_rpc_search_path.sql` pins `public.srk_check_public_rate_limit(text,text,integer)` to an empty `search_path`.
+- Its original foundation migration `20261108120608_add_public_api_rate_limiting.sql` creates the private rate-limit table, revokes table access from browser roles, grants table access to `service_role`, and grants RPC execution only to `service_role`.
+- The source audit found no dedicated pgTAP test file covering the final RPC search-path setting together with its service-only EXECUTE boundary. Added `supabase/tests/database/public_rate_limit_rpc_search_path.test.sql` with five assertions: function existence, SECURITY DEFINER, empty search_path, service_role EXECUTE, and anon/authenticated denial.
+- Added a Node source-contract assertion to `tests/admin-refund-and-staff-access.test.js` for the migration and pgTAP contract. Both changed files were fetched back from GitHub for source verification.
+- These are test additions only; neither the Node suite nor PostgreSQL/pgTAP has been executed. No Production SQL, PR-head changes, deployment, or merge was performed.
