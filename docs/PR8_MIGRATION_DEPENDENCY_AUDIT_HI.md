@@ -509,3 +509,12 @@ verify-payment.js और razorpay-webhook.js के legacy-quote payment paths �
 - Function की बाकी शर्तें उचित रूप से owner-scoped हैं: `auth.uid()`, केवल `new/confirmed`, unassigned, unpaid, zero amount, कोई order/payment ID नहीं, और पुराना method Cash; execute केवल authenticated को दिया गया है।
 - सुझाया सुधार: canonical UTF-8 literal को frontend और SQL में एक समान रखें (या स्थिर ASCII enum जैसे `razorpay` अपनाएँ), फिर pgTAP में सही literal success, गलत literal rejection, दूसरे customer का booking ID, assigned/paid/order-linked booking rejection जाँचें। Migration lineage/baseline clear होने तक कोई SQL edit या replay नहीं किया गया।
 - कोई Production query/write, payment, deployment या test execution नहीं हुआ।
+
+
+## 40. Section 39 का सुधार — बाद की Migration ने Unicode mismatch ठीक किया है
+
+- Section 39 में `20261114202656_customer_change_payment_method_rpc.sql` का mojibake literal देखकर संभावित live defect दर्ज किया गया था। उसी Feature Branch की आगे की Migration सूची में `20261115270000_fix_customer_payment_method_unicode_contract.sql` मिली।
+- यह follow-up migration उसी RPC को `CREATE OR REPLACE` करके argument validation और stored `payment_method` दोनों में Frontend के exact UTF-8 literal `Razorpay ऑनलाइन भुगतान` का उपयोग करती है। इसलिए Feature Branch के क्रम में यदि यह follow-up migration सफलतापूर्वक लागू हुई है, तो पहले migration का Unicode mismatch बाद की migration से ठीक हो जाता है। Section 39 को अकेले वर्तमान Feature Branch की अंतिम स्थिति न माना जाए।
+- `tests/customer-payment-method-enforcement.test.js` में छह Node test cases हैं; इनमें migration/dashboard exact UTF-8 contract का static assertion और uncertain RPC response UI handling का static assertion भी है। इन छह test cases को इस audit में execute नहीं किया गया।
+- यह source-level correction है; deployed Database पर migration application/order या runtime behavior सत्यापित नहीं हुआ। Migration-history drift के कारण इसे Production में लागू हुआ मानना सुरक्षित नहीं है।
+- कोई source code/SQL बदला नहीं गया; केवल Audit report में Section 39 की qualification जोड़ी गई है।
