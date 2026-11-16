@@ -455,3 +455,12 @@ Webhook inbox के pgTAP source-contract suite में दो अतिर�
 - ये pgTAP source assertions हैं; PostgreSQL पर execute नहीं हुए और वास्तविक दो-Worker concurrency साबित नहीं करते।
 
 Node regression test commit: 2f1068c36a11ee3b3c3dbdf282fef2610ac3c060। Webhook Node test inventory 14 cases है, लेकिन test execution अभी नहीं हुआ।
+### 35. Payment Order Lock lifecycle — release path मौजूद, DB contract अभी अनुपलब्ध
+
+create-order.js में नया Order बनाने/reuse करने वाले locked path के लिए `srk_claim_payment_order_lock` और `srk_release_payment_order_lock` RPC बुलाए जाते हैं। Lock Token मिलने के बाद handler का finally block success, early return और thrown error—सभी exits पर release RPC का प्रयास करता है। Release request विफल होने पर error log होता है; handler उस विफलता को caller के response में अलग से नहीं दिखाता।
+
+पूरे tracked Repository और migrations में दोनों RPC definitions की खोज से कोई SQL definition नहीं मिली। इसलिए इस source tree से इन बातों की पुष्टि नहीं हो सकी: Lock table/schema, atomic claim semantics, lock expiry/lease duration, expired-lock reclamation, token fencing, release authorization और release idempotency। यह Production DB में functions न होने का प्रमाण नहीं है; वे manually/deployed या किसी untracked source से मौजूद हो सकते हैं।
+
+**अगला verification gate:** किसी भी migration/patch से पहले authoritative deployed schema या approved test database से दोनों function definitions पढ़ें; फिर दो concurrent create-order requests, process timeout, failed release, expired lock reclaim और stale release-token scenarios के integration tests चलाएँ। जब तक यह contract उपलब्ध न हो, नया lock implementation अनुमान से न बनाएँ।
+
+यह source-only review है। कोई Supabase/Production query, payment order creation, database write या runtime test नहीं किया गया।
