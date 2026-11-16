@@ -181,9 +181,71 @@ async function stopElectricianLiveLocation(id){
 function focusElectricianOfferFromNotification(){const params=new URLSearchParams(location.search),offerId=params.get('offerId');if(!offerId||!/^[0-9a-f-]{36}$/i.test(offerId))return;const card=document.getElementById('electricianOffer_'+offerId),jobs=document.getElementById('jobs');let notice='';if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='3px solid #0b7a55';card.style.outlineOffset='4px';setTimeout(()=>{card.style.outline='';card.style.outlineOffset='';},5000);if(!card.querySelector('button[onclick*="respond("]'))notice='यह ऑफर अब जवाब देने के लिए उपलब्ध नहीं है। नीचे दिखाई गई वर्तमान स्थिति देखें।';}else{notice='सूचना वाला ऑफर अब आपकी सूची में उपलब्ध नहीं है। संभव है कि समय समाप्त हो गया हो, बुकिंग रद्द हुई हो या ऑफर किसी दूसरे योग्य पार्टनर को भेज दिया गया हो। सूची की वर्तमान स्थिति ही मान्य है।';}if(notice&&jobs){const status=document.createElement('p');status.className='muted';status.setAttribute('role','status');status.textContent=notice;jobs.prepend(status);}params.delete('offerId');const query=params.toString();history.replaceState({},'',location.pathname+(query?'?'+query:'')+location.hash);}
 function base64UrlToBytes(value){const padding='='.repeat((4-value.length%4)%4),base64=(value+padding).replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(base64),c=>c.charCodeAt(0));}
 async function getElectricianPushContext(){if(!window.isSecureContext||!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw new Error('इस ब्राउज़र में HTTPS Web Push उपलब्ध नहीं है। Chrome के सुरक्षित HTTPS पेज से प्रयास करें।');const {data,error}=await sb.auth.getUser();if(error||!data.user)throw error||new Error('लॉगिन सत्र नहीं मिला।');if(!profile||profile.user_id!==data.user.id||!profile.active||profile.verification_status!=='approved')throw new Error('सूचनाएँ चालू करने के लिए आपका Admin-approved Active इलेक्ट्रिशियन अकाउंट आवश्यक है।');return data.user;}
-async function refreshElectricianPushState(){const state=document.getElementById('pushNotificationState'),on=document.getElementById('enablePushNotifications'),off=document.getElementById('disablePushNotifications');if(!state||!user)return;const supported=window.isSecureContext&&'serviceWorker'in navigator&&'PushManager'in window&&'Notification'in window;if(!supported){state.textContent='इस ब्राउज़र/कनेक्शन में Web Push समर्थित नहीं है।';on.disabled=true;off.disabled=true;return;}try{const reg=await navigator.serviceWorker.getRegistration('./');const sub=await reg?.pushManager.getSubscription();const permission=Notification.permission;state.textContent=sub?'इस ब्राउज़र पर Push Subscription मौजूद है। सर्वर पंजीकरण दोबारा सिंक करने के लिए Enable दबा सकते हैं।':permission==='denied'?'सूचना अनुमति ब्राउज़र सेटिंग में Block है।':'इस ब्राउज़र पर Push Subscription चालू नहीं है।';on.disabled=permission==='denied';off.disabled=!sub;}catch(e){state.textContent='सूचना स्थिति अभी जाँची नहीं जा सकी।';}}
-async function enableElectricianPushNotifications(){const button=document.getElementById('enablePushNotifications'),state=document.getElementById('pushNotificationState');let newlyCreatedSubscription=null;button.disabled=true;try{if(!window.isSecureContext||!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw new Error('इस ब्राउज़र में HTTPS Web Push उपलब्ध नहीं है। Chrome के सुरक्षित HTTPS पेज से प्रयास करें।');if(Notification.permission!=='granted'){const permission=await Notification.requestPermission();if(permission!=='granted')throw new Error('ब्राउज़र ने Notification अनुमति नहीं दी। Chrome Site Settings में अनुमति बदलें।');}await getElectricianPushContext();state.textContent='Push सेटअप हो रहा है…';const response=await fetch('https://gnqhoaqatmoiwwhgzkgm.supabase.co/functions/v1/push-job-offer',{method:'GET',headers:{'Accept':'application/json'}});if(!response.ok)throw new Error('Push सेवा अभी उपलब्ध नहीं है (HTTP '+response.status+')।');const config=await response.json();if(!config.pushReady||!config.publicKey)throw new Error('Push सेवा की public key/configuration तैयार नहीं है।');const reg=await navigator.serviceWorker.register('./sw.js',{scope:'./'});await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();if(!sub){sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(config.publicKey)});newlyCreatedSubscription=sub;}const json=sub.toJSON(),ctx=await sb.auth.getUser();if(ctx.error||!ctx.data.user)throw ctx.error||new Error('लॉगिन सत्र समाप्त हो गया।');const {error}=await sb.from('srk_push_subscriptions').upsert({user_id:ctx.data.user.id,endpoint:json.endpoint,p256dh:json.keys?.p256dh,auth:json.keys?.auth},{onConflict:'endpoint'});if(error)throw error;state.textContent='इस फोन पर नए काम के Push Notifications चालू हो गए हैं।';newlyCreatedSubscription=null;await refreshElectricianPushState();await loadElectricianSupportTickets();}catch(err){if(newlyCreatedSubscription){try{await newlyCreatedSubscription.unsubscribe();}catch(cleanupError){/* Keep original setup error visible; cleanup is best-effort. */}}state.textContent=err.message||'Push Notifications चालू नहीं हो सके।';button.disabled=false;}}
-async function disableElectricianPushNotifications(){const state=document.getElementById('pushNotificationState'),button=document.getElementById('disablePushNotifications');button.disabled=true;try{const reg=await navigator.serviceWorker.getRegistration('./'),sub=await reg?.pushManager.getSubscription();if(!sub){state.textContent='इस ब्राउज़र पर कोई सक्रिय Push Subscription नहीं मिली।';return;}const endpoint=sub.endpoint,ctx=await sb.auth.getUser();if(ctx.error||!ctx.data.user)throw ctx.error||new Error('लॉगिन सत्र समाप्त हो गया।');const {error}=await sb.from('srk_push_subscriptions').delete().eq('endpoint',endpoint).eq('user_id',ctx.data.user.id);if(error)throw error;const stopped=await sub.unsubscribe();if(!stopped)throw new Error('ब्राउज़र Push Subscription बंद नहीं कर पाया।');state.textContent='इस फोन पर Push Notifications बंद कर दिए गए हैं।';}catch(err){state.textContent=err.message||'Push Notifications बंद नहीं हो सके।';}finally{await refreshElectricianPushState();}}
+async function refreshElectricianPushState(){
+ const state=document.getElementById('pushNotificationState'),on=document.getElementById('enablePushNotifications'),off=document.getElementById('disablePushNotifications');
+ const requestedUserId=user?.id,requestedGeneration=electricianAccountViewGeneration,isCurrent=()=>!!requestedUserId&&user?.id===requestedUserId&&electricianAccountViewGeneration===requestedGeneration;
+ if(!state||!isCurrent())return;
+ const supported=window.isSecureContext&&'serviceWorker'in navigator&&'PushManager'in window&&'Notification'in window;
+ if(!supported){state.textContent='इस ब्राउज़र/कनेक्शन में Web Push समर्थित नहीं है।';on.disabled=true;off.disabled=true;return;}
+ try{
+  const reg=await navigator.serviceWorker.getRegistration('./');if(!isCurrent())return;
+  const sub=await reg?.pushManager.getSubscription();if(!isCurrent())return;
+  const permission=Notification.permission;
+  state.textContent=sub?'इस ब्राउज़र पर Push Subscription मौजूद है। सर्वर पंजीकरण दोबारा सिंक करने के लिए Enable दबा सकते हैं।':permission==='denied'?'सूचना अनुमति ब्राउज़र सेटिंग में Block है।':'इस ब्राउज़र पर Push Subscription चालू नहीं है।';
+  on.disabled=permission==='denied';off.disabled=!sub;
+ }catch(e){if(isCurrent())state.textContent='सूचना स्थिति अभी जाँची नहीं जा सकी।';}
+}
+async function enableElectricianPushNotifications(){
+ const button=document.getElementById('enablePushNotifications'),state=document.getElementById('pushNotificationState');
+ const requestedUserId=user?.id,requestedProfileId=profile?.id,requestedGeneration=electricianAccountViewGeneration;
+ const isCurrent=()=>!!requestedUserId&&!!requestedProfileId&&user?.id===requestedUserId&&profile?.id===requestedProfileId&&electricianAccountViewGeneration===requestedGeneration&&!electricianLogoutBusy;
+ if(!isCurrent()||button.disabled)return;
+ let newlyCreatedSubscription=null;button.disabled=true;
+ try{
+  if(!window.isSecureContext||!('serviceWorker'in navigator)||!('PushManager'in window)||!('Notification'in window))throw new Error('इस ब्राउज़र में HTTPS Web Push उपलब्ध नहीं है। Chrome के सुरक्षित HTTPS पेज से प्रयास करें।');
+  if(Notification.permission!=='granted'){const permission=await Notification.requestPermission();if(!isCurrent())return;if(permission!=='granted')throw new Error('ब्राउज़र ने Notification अनुमति नहीं दी। Chrome Site Settings में अनुमति बदलें।');}
+  await getElectricianPushContext();if(!isCurrent())return;
+  state.textContent='Push सेटअप हो रहा है…';
+  const response=await fetch('https://gnqhoaqatmoiwwhgzkgm.supabase.co/functions/v1/push-job-offer',{method:'GET',headers:{'Accept':'application/json'}});if(!isCurrent())return;
+  if(!response.ok)throw new Error('Push सेवा अभी उपलब्ध नहीं है (HTTP '+response.status+')।');
+  const config=await response.json();if(!isCurrent())return;
+  if(!config.pushReady||!config.publicKey)throw new Error('Push सेवा की public key/configuration तैयार नहीं है।');
+  const reg=await navigator.serviceWorker.register('./sw.js',{scope:'./'});if(!isCurrent())return;
+  await navigator.serviceWorker.ready;if(!isCurrent())return;
+  let sub=await reg.pushManager.getSubscription();if(!isCurrent())return;
+  if(!sub){sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64UrlToBytes(config.publicKey)});newlyCreatedSubscription=sub;if(!isCurrent())throw new Error('लॉगिन सत्र बदल गया है।');}
+  const json=sub.toJSON(),ctx=await sb.auth.getUser();if(!isCurrent())return;
+  if(ctx.error||!ctx.data.user||ctx.data.user.id!==requestedUserId)throw ctx.error||new Error('लॉगिन सत्र बदल गया है।');
+  const {error}=await sb.from('srk_push_subscriptions').upsert({user_id:requestedUserId,endpoint:json.endpoint,p256dh:json.keys?.p256dh,auth:json.keys?.auth},{onConflict:'endpoint'});if(!isCurrent())return;
+  if(error)throw error;
+  state.textContent='इस फोन पर नए काम के Push Notifications चालू हो गए हैं।';newlyCreatedSubscription=null;
+  await refreshElectricianPushState();if(!isCurrent())return;
+  await loadElectricianSupportTickets();
+ }catch(err){
+  if(newlyCreatedSubscription){try{await newlyCreatedSubscription.unsubscribe();}catch(cleanupError){/* Best-effort cleanup of a subscription created by this request. */}}
+  if(isCurrent())state.textContent=err.message||'Push Notifications चालू नहीं हो सके।';
+ }finally{if(isCurrent())button.disabled=false;}
+}
+async function disableElectricianPushNotifications(){
+ const state=document.getElementById('pushNotificationState'),button=document.getElementById('disablePushNotifications');
+ const requestedUserId=user?.id,requestedProfileId=profile?.id,requestedGeneration=electricianAccountViewGeneration;
+ const isCurrent=()=>!!requestedUserId&&!!requestedProfileId&&user?.id===requestedUserId&&profile?.id===requestedProfileId&&electricianAccountViewGeneration===requestedGeneration&&!electricianLogoutBusy;
+ if(!isCurrent()||button.disabled)return;
+ button.disabled=true;
+ try{
+  const reg=await navigator.serviceWorker.getRegistration('./');if(!isCurrent())return;
+  const sub=await reg?.pushManager.getSubscription();if(!isCurrent())return;
+  if(!sub){state.textContent='इस ब्राउज़र पर कोई सक्रिय Push Subscription नहीं मिली।';return;}
+  const endpoint=sub.endpoint,ctx=await sb.auth.getUser();if(!isCurrent())return;
+  if(ctx.error||!ctx.data.user||ctx.data.user.id!==requestedUserId)throw ctx.error||new Error('लॉगिन सत्र बदल गया है।');
+  const {error}=await sb.from('srk_push_subscriptions').delete().eq('endpoint',endpoint).eq('user_id',requestedUserId);if(!isCurrent())return;
+  if(error)throw error;
+  const stopped=await sub.unsubscribe();if(!isCurrent())return;
+  if(!stopped)throw new Error('ब्राउज़र Push Subscription बंद नहीं कर पाया।');
+  state.textContent='इस फोन पर Push Notifications बंद कर दिए गए हैं।';
+ }catch(err){if(isCurrent())state.textContent=err.message||'Push Notifications बंद नहीं हो सके।';}
+ finally{if(isCurrent()){button.disabled=false;await refreshElectricianPushState();}}
+}
 let electricianSupportSelectedId=null,electricianSupportTickets=[];
 async function loadElectricianSupportTickets(){const box=document.getElementById('electricianSupportTickets');if(!box||!user)return;const request=++electricianSupportListRequest,requestedUserId=user.id,isCurrent=()=>request===electricianSupportListRequest&&user?.id===requestedUserId;box.textContent='आपके सहायता अनुरोध लोड हो रहे हैं…';const result=await Promise.resolve().then(()=>sb.rpc('srk_electrician_list_my_support_tickets')).catch(error=>({data:null,error}));if(!isCurrent())return;
  if(result.error){box.textContent='सहायता अनुरोध अभी उपलब्ध नहीं हैं। कृपया Refresh करें।';return;}
