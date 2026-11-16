@@ -1808,3 +1808,34 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 2. Owner से authoritative sanitized baseline / schema snapshot की पुष्टि जरूरी है; starter SQL को current baseline घोषित नहीं किया जाएगा।
 3. Duplicate `20261109` version और earlier migration column dependencies पर fail-closed preflight के बिना `supabase db reset` या replay नहीं चलाया जाएगा।
 4. इस audit में केवल GitHub source पढ़ा गया; कोई Docker container, Supabase stack, PostgreSQL instance या SQL test run नहीं किया गया। कोई file/row/schema/Production data नहीं बदला।
+
+
+## 50. Local TEST Bootstrap — dependency inventory और fail-closed gate — 16 Nov 2026
+
+### Bootstrap dependencies observed in source
+- Base app relations: `public.service_bookings`, `public.electrician_applications`, `public.electrician_profiles`, `public.job_offers`.
+- Supabase-managed dependencies referenced by migrations/tests: `auth.users`, `auth.uid()`, `auth.jwt()`, roles `anon`/`authenticated`/`service_role`, `storage.objects`, `storage.buckets`, `storage.foldername()`, Realtime publication/schema reload hooks where used.
+- Extension requirement visible in starter SQL: `pgcrypto`; pgTAP is additionally required for SQL contract tests. Exact extension schema/availability should be validated against the pinned local Supabase stack, not assumed.
+- Finance baseline is not just a single `amount_paid` field: `20261114125844_restore_financial_audit_core_schema.sql` creates core finance/audit relations used by downstream refund/payment/payout migrations. This file must be part of ordered migration replay and its prerequisite `service_bookings`, `electrician_profiles`, and `auth.users` must exist first.
+- Identity baseline: `20261109000500` adds `electrician_profiles.auth_user_id` and creates sync/guard triggers; later identity consumers require these invariants. `PORTAL_SCHEMA.sql`'s older `auth.users` trigger is not a replacement for the hardened migration function.
+- Wallet foundation creates wallet accounts/ledger/bank links and RLS in migration `20261109010000`; it assumes Auth users and electrician profile identity foundation are already present.
+- `amount_paid` is currently added only by late migration `20261116200000`, while earlier migrations include column-level grants/revokes referencing it. This is a clean-replay blocker until migration chronology is resolved from source and canonical baseline; a late additive fix does not automatically make earlier column-level grants valid.
+
+### Proposed Local Docker layout (not yet created)
+- `supabase/config.toml`: local project/API/DB/Auth/Storage config only; no remote project ref or secrets.
+- `supabase/seed.sql`: synthetic fixtures only, disabled by default until tests define deterministic requirements.
+- `scripts/db-test-preflight.mjs`: read-only static gate for duplicate migration version tokens, migration filename/order anomalies, required columns before GRANT/REVOKE, starter baseline gaps, and unsafe remote/Production workflow references.
+- `.github/workflows/supabase-local-pgtap.yml`: later, after local Docker proof; starts local Supabase/Postgres, runs preflight, applies only local migrations, executes pgTAP and Node tests. It must not read any remote DB secret.
+- Local run guide documents Docker/Supabase CLI versions, reset command, pgTAP command, logs/artifact redaction, and cleanup.
+
+### Explicit blockers before executable harness
+1. Resolve duplicate `20261109` migration version collision without rewriting history until deployment ledger is known.
+2. Resolve `amount_paid` chronology: move/introduce the column only through a reviewed forward-safe migration strategy after verifying historical deployed baseline; do not edit old applied migrations.
+3. Confirm the canonical sanitized base schema for local replay; neither legacy starter SQL is sufficient evidence by itself.
+4. Confirm required Supabase local services and Storage buckets from current migration contracts.
+5. Add behavioral test fixtures and ensure rollback/isolation for each pgTAP file.
+
+### Gate result
+- **Local Docker direction: approved by Owner.**
+- **Executable bootstrap: BLOCKED** on migration chronology + canonical baseline confirmation.
+- No config, workflow, script, seed, SQL, dependency or runtime was changed/created in this step. GitHub-only source review and documentation update performed; no DB connection, Docker startup, SQL execution, migration replay, remote schema export, Production data access or deployment occurred.
