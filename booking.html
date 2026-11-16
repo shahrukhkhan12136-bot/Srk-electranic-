@@ -1824,7 +1824,20 @@ function supportStatus(message, isError=false) {
  el.textContent=message; el.style.color=isError?'#b42318':'#65758a';
 }
 let customerSupportAttachments = [];
-let customerSupportListBusy=false,customerSupportSendBusy=false,customerSupportThreadRequest=0;
+let customerSupportListBusy=false,customerSupportSendBusy=false,customerSupportThreadRequest=0,customerSupportGeneration=0;
+function clearCustomerSupportView(){
+ customerSupportGeneration++;customerSupportThreadRequest++;
+ customerSupportListBusy=false;customerSupportSendBusy=false;
+ customerSupportComplaints=[];customerSupportSelectedId=null;customerSupportAttachments=[];
+ const select=document.getElementById('customerSupportComplaint');if(select){select.replaceChildren(new Option('शिकायत चुनें',''));select.disabled=false;}
+ const booking=document.getElementById('customerSupportBooking');if(booking)booking.replaceChildren(new Option('बुकिंग चुनें',''));
+ for(const id of ['customerSupportDescription','customerSupportMessage']){const el=document.getElementById(id);if(el)el.value='';}
+ const files=document.getElementById('customerSupportFiles');if(files)files.value='';
+ const create=document.getElementById('customerSupportCreate');if(create){create.disabled=false;create.textContent='शिकायत दर्ज करें';}
+ const send=document.getElementById('customerSupportSend');if(send){send.disabled=false;send.textContent='संदेश / फ़ाइल भेजें';}
+ document.getElementById('customerSupportThread').textContent='';
+ supportStatus('शिकायतें देखने के लिए OTP लॉगिन करें।');
+}
 function renderCustomerSupportThread(rows) {
  const box=document.getElementById('customerSupportThread'); box.replaceChildren();
  if(!rows.length){box.textContent='अभी इस शिकायत में कोई संदेश नहीं है।';return;}
@@ -1874,6 +1887,7 @@ async function loadCustomerSupportBookings() {
  } finally {select.disabled=false;}
 }
 async function createCustomerSupportComplaint() {
+ const request=customerSupportGeneration,isCurrent=()=>request===customerSupportGeneration;
  const bookingId=document.getElementById('customerSupportBooking').value;
  const category=document.getElementById('customerSupportCategory').value;
  const description=document.getElementById('customerSupportDescription').value.trim();
@@ -1886,16 +1900,20 @@ async function createCustomerSupportComplaint() {
   const {data,error}=await customerSb.rpc('srk_customer_create_booking_complaint',{
    p_booking_id:bookingId,p_category:category,p_description:description
   });
+  if(!isCurrent())return;
   if(error)throw error;
   if(!data)throw new Error('COMPLAINT_NOT_CONFIRMED');
   document.getElementById('customerSupportDescription').value='';
   await loadCustomerSupportComplaints();
+  if(!isCurrent())return;
   supportStatus('आपकी शिकायत दर्ज हो गई है। उसका reference और जवाब नीचे दिखाई देंगे।');
  } catch(error) {
+  if(!isCurrent())return;
   const msg=String(error?.message||'');
   let confirmedComplaint=null,lookupSucceeded=false;
   try{
    const {data:complaints,error:lookupError}=await customerSb.rpc('srk_customer_list_booking_complaints');
+   if(!isCurrent())return;
    if(!lookupError&&Array.isArray(complaints)){
     lookupSucceeded=true;
     confirmedComplaint=complaints.find(row=>row.booking_id===bookingId&&row.category===category&&row.description===description)||null;
@@ -1905,6 +1923,7 @@ async function createCustomerSupportComplaint() {
    document.getElementById('customerSupportDescription').value='';
    customerSupportSelectedId=confirmedComplaint.id;
    await loadCustomerSupportComplaints();
+   if(!isCurrent())return;
    supportStatus('आपकी शिकायत दर्ज हो गई है। Reference: '+String(confirmedComplaint.id).slice(0,8)+'। दोबारा शिकायत नहीं भेजी गई।');
   }else if(msg.includes('Daily complaint limit reached')){
    supportStatus('आज की शिकायत सीमा पूरी हो गई है। कृपया मौजूदा शिकायत में संदेश भेजें।',true);
@@ -1913,7 +1932,7 @@ async function createCustomerSupportComplaint() {
   }else{
    supportStatus('शिकायत दर्ज करने का परिणाम स्पष्ट नहीं है। दोबारा भेजने से पहले शिकायत सूची रीफ़्रेश करके जाँचें, ताकि डुप्लिकेट शिकायत न बने।',true);
   }
- } finally {button.disabled=false;button.textContent='शिकायत दर्ज करें';}
+ } finally {if(isCurrent()){button.disabled=false;button.textContent='शिकायत दर्ज करें';}}
 }
 async function loadCustomerSupportAttachments(complaintId) {
  const {data,error}=await customerSb.rpc('srk_customer_list_complaint_message_attachments',{p_complaint_id:complaintId});
@@ -1925,11 +1944,14 @@ async function loadCustomerSupportAttachments(complaintId) {
  }));
 }
 async function loadCustomerSupportComplaints() {
+ const request=customerSupportGeneration,isCurrent=()=>request===customerSupportGeneration;
  const select=document.getElementById('customerSupportComplaint');
  if(customerSupportListBusy)return;
  customerSupportListBusy=true;select.disabled=true;supportStatus('आपकी शिकायतें लोड हो रही हैं…');
  try {
-  const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');if(error)throw error;
+  const {data,error}=await customerSb.rpc('srk_customer_list_booking_complaints');
+  if(!isCurrent())return;
+  if(error)throw error;
   customerSupportComplaints=Array.isArray(data)?data:[];
   select.replaceChildren(new Option('शिकायत चुनें',''));
   customerSupportComplaints.forEach(c=>{const label=(c.category||'शिकायत')+' · '+(c.status||'स्थिति उपलब्ध नहीं')+' · '+String(c.id).slice(0,8);select.add(new Option(label,c.id));});
@@ -1938,10 +1960,11 @@ async function loadCustomerSupportComplaints() {
   select.value=customerSupportSelectedId||'';
   if(customerSupportSelectedId)await loadCustomerSupportMessages();
   else{customerSupportAttachments=[];renderCustomerSupportThread([]);supportStatus('अभी कोई शिकायत दर्ज नहीं है। ऊपर “नई शिकायत दर्ज करें” से शिकायत भेज सकते हैं।');}
- }catch(e){supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।',true);}
- finally{customerSupportListBusy=false;select.disabled=false;}
+ }catch(e){if(isCurrent())supportStatus('शिकायतें लोड नहीं हो सकीं। कृपया दोबारा कोशिश करें।',true);}
+ finally{if(isCurrent()){customerSupportListBusy=false;select.disabled=false;}}
 }
 async function loadCustomerSupportMessages() {
+ const generation=customerSupportGeneration,isCurrent=()=>generation===customerSupportGeneration;
  const id=document.getElementById('customerSupportComplaint').value,request=++customerSupportThreadRequest;
  if(!id){customerSupportSelectedId=null;customerSupportAttachments=[];renderCustomerSupportThread([]);return;}
  customerSupportSelectedId=id;renderCustomerSupportThread([]);supportStatus('बातचीत लोड हो रही है…');
@@ -1949,7 +1972,7 @@ async function loadCustomerSupportMessages() {
   Promise.resolve().then(()=>customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id})).catch(error=>({data:null,error})),
   loadCustomerSupportAttachments(id).then(data=>({data,error:null})).catch(error=>({data:[],error}))
  ]);
- if(request!==customerSupportThreadRequest||id!==customerSupportSelectedId)return;
+ if(!isCurrent()||request!==customerSupportThreadRequest||id!==customerSupportSelectedId)return;
  customerSupportAttachments=attachmentsResult.data||[];
  if(messageResult.error){supportStatus('बातचीत लोड नहीं हो सकी। शिकायत सूची उपलब्ध है; कृपया बातचीत फिर से खोलें।',true);return;}
  renderCustomerSupportThread(Array.isArray(messageResult.data)?messageResult.data:[]);
@@ -1958,6 +1981,7 @@ async function loadCustomerSupportMessages() {
 }
 async function sendCustomerSupportMessage() {
  if(customerSupportSendBusy)return;
+ const generation=customerSupportGeneration,isCurrent=()=>generation===customerSupportGeneration;
  const id=document.getElementById('customerSupportComplaint').value,input=document.getElementById('customerSupportMessage');
  const body=input.value.trim(),fileInput=document.getElementById('customerSupportFiles'),files=Array.from(fileInput.files||[]),button=document.getElementById('customerSupportSend');
  const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
@@ -1970,31 +1994,39 @@ async function sendCustomerSupportMessage() {
  const messageBody=body||'आपके लिए फ़ाइल संलग्न की गई है।';
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(!isCurrent())return;
   if(sessionError)throw sessionError;
   const userId=sessionData?.session?.user?.id;
   if(!userId)throw new Error('OTP लॉगिन आवश्यक है।');
   const {data:beforeMessages,error:beforeMessagesError}=await customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id});
+  if(!isCurrent())return;
   if(beforeMessagesError)throw beforeMessagesError;
   previousMessageIds=new Set((Array.isArray(beforeMessages)?beforeMessages:[]).map(row=>row.id));
   sendAttempted=true;
   const {data:messageId,error}=await customerSb.rpc('srk_customer_send_booking_complaint_message',{p_complaint_id:id,p_body:messageBody});
+  if(!isCurrent())return;
   if(error)throw error;if(!messageId)throw new Error('MESSAGE_NOT_CONFIRMED');
   for(const file of files){
    const ext=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':file.type==='image/webp'?'webp':'pdf',path=userId+'/'+id+'/'+crypto.randomUUID()+'.'+ext;
    pendingUploadPath=path;
    const {error:uploadError}=await customerSb.storage.from('srk-customer-support').upload(path,file,{contentType:file.type,upsert:false});
+   if(!isCurrent())return;
    if(uploadError)throw uploadError;
    const {error:linkError}=await customerSb.rpc('srk_customer_link_complaint_message_attachment',{p_complaint_id:id,p_message_id:messageId,p_storage_path:path,p_file_name:file.name.slice(0,180),p_mime_type:file.type,p_file_size_bytes:file.size});
+   if(!isCurrent())return;
    if(linkError)throw linkError;pendingUploadPath=null;linkedCount++;
   }
   input.value='';fileInput.value='';
   if(id===customerSupportSelectedId)await loadCustomerSupportMessages();
+  if(!isCurrent())return;
   supportStatus(files.length?'आपका संदेश और '+files.length+' फ़ाइल सफलतापूर्वक भेजी गई।':'आपका संदेश सहायता टीम को भेज दिया गया है।');
  }catch(e){
+  if(!isCurrent())return;
   if(pendingUploadPath){
    let safeToRemovePendingUpload=false;
    try{
     const {data:linkedAttachments,error:lookupError}=await customerSb.rpc('srk_customer_list_complaint_message_attachments',{p_complaint_id:id});
+    if(!isCurrent())return;
     if(!lookupError&&Array.isArray(linkedAttachments))safeToRemovePendingUpload=!linkedAttachments.some(row=>row.storage_path===pendingUploadPath);
    }catch(_){/* An uncertain attachment link must be preserved if its state cannot be read. */}
    if(safeToRemovePendingUpload)await customerSb.storage.from('srk-customer-support').remove([pendingUploadPath]).catch(()=>{});
@@ -2003,6 +2035,7 @@ async function sendCustomerSupportMessage() {
   if(sendAttempted&&previousMessageIds){
    try{
     const {data:afterMessages,error:afterMessagesError}=await customerSb.rpc('srk_customer_list_booking_complaint_messages',{p_complaint_id:id});
+    if(!isCurrent())return;
     if(!afterMessagesError&&Array.isArray(afterMessages))confirmedMessage=afterMessages.some(m=>!previousMessageIds.has(m.id)&&m.sender_role==='customer'&&m.body===messageBody);
    }catch(_){/* Preserve uncertainty if the authoritative thread read fails. */}
   }
@@ -2013,6 +2046,7 @@ async function sendCustomerSupportMessage() {
    }else{
     if(files.length)fileInput.value='';
     if(id===customerSupportSelectedId)await loadCustomerSupportMessages();
+    if(!isCurrent())return;
     supportStatus('आपका संदेश सहायता टीम को पहुँच गया है। दोबारा संदेश नहीं भेजा गया।');
    }
   }else if(sendAttempted){
@@ -2020,7 +2054,7 @@ async function sendCustomerSupportMessage() {
   }else{
    supportStatus('पुरानी बातचीत सत्यापित नहीं हो सकी। सुरक्षा के लिए संदेश नहीं भेजा गया; बातचीत Refresh करें।',true);
   }
- }finally{customerSupportSendBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}
+ }finally{if(isCurrent()){customerSupportSendBusy=false;button.disabled=false;button.textContent='संदेश / फ़ाइल भेजें';}}
 }
 
 async function syncCustomerSession() {
@@ -2072,6 +2106,7 @@ async function syncCustomerSession() {
     customerPaymentHistoryResetPending=false;
     customerLiveLocationRefreshRequest++;
     customerLiveLocationBookingIds=[];
+    clearCustomerSupportView();
     bookingPhone.value = '';
     bookingPhone.readOnly = true;
     document.getElementById('customerSignedIn').textContent = '';
@@ -2168,6 +2203,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
       if(profileSaveButton)profileSaveButton.disabled=false;
       customerCancellationFeeRequest++;
       customerRefundHistoryRequest++;
+      clearCustomerSupportView();
       customerPaymentHistoryResetPending=false;
     }
     setTimeout(syncCustomerSession, 0);
