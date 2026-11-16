@@ -184,3 +184,31 @@ The earlier statement that the original `20261108095928` SQL body could not be l
 This provides a concrete recovery path: export all 87 stored Production migration bodies read-only, reconcile each against the PR-head files (including consolidated/successor candidates), and produce a versioned mapping with body-level results. Do not copy/backdate the recovered original migration into a replay chain without first designing the correct baseline/replay strategy: Production already records that version as applied, and blindly reapplying it can conflict with existing objects.
 
 No migration was applied, no Production schema/data changed, and no PR was merged.
+
+
+### 2026-11-16 body-level reconciliation tranche: all 14 normalized-name candidates checked
+
+The Production ledger's stored SQL `statements` were compared against all 14 PR-head files whose normalized migration names match a Production ledger name. SQL comments and whitespace were normalized before comparison; dollar-quote delimiters were also normalized in a separate check for the four differing candidates.
+
+**Result: 10 exact normalized SQL-body matches; 4 body differences.**
+
+| Production version | Production migration | PR-head candidate | Body result |
+|---|---|---|---|
+| `20261108120608` | add_public_api_rate_limiting | `20261108120608_add_public_api_rate_limiting.sql` | Exact normalized body |
+| `20261108120658` | enable_rls_public_api_rate_limits | `20261108120658_enable_rls_public_api_rate_limits.sql` | Exact normalized body |
+| `20261108121115` | add_customer_account_booking_access | `20261108121115_add_customer_account_booking_access.sql` | Exact normalized body |
+| `20261108183027` | add_google_maps_location_support | `20261109001000_add_google_maps_location_support.sql` | **Different**; branch adds constraint validation statements |
+| `20261108183324` | expose_assigned_booking_map_pin | `20261109002000_expose_assigned_booking_map_pin.sql` | Exact normalized body |
+| `20261108190047` | create_secure_wallet_ledger_foundation | `20261109010000_create_secure_wallet_ledger_foundation.sql` | Exact normalized body |
+| `20261108193506` | create_server_only_razorpay_route_transfer_ledger | `20261109020000_create_server_only_razorpay_route_transfer_ledger.sql` | Exact normalized body |
+| `20261109103038` | customer_electrician_direct_call_contacts | `20261109103038_customer_electrician_direct_call_contacts.sql` | **Different**; function-body text differs slightly; requires semantic review |
+| `20261109103143` | move_customer_call_contact_lookup_to_private | `20261109103143_move_customer_call_contact_lookup_to_private.sql` | **Different**; branch adds `CREATE SCHEMA IF NOT EXISTS private` and body/length differs |
+| `20261109203132` | customer_admin_complaints | `20261110040000_customer_admin_complaints.sql` | Exact normalized body |
+| `20261110133835` | restore_missing_customer_booking_quote_columns | `20261110140000_restore_missing_customer_booking_quote_columns.sql` | Exact normalized body |
+| `20261111072823` | add_electrician_push_subscriptions | `20261111020000_add_electrician_push_subscriptions.sql` | **Material schema difference**; Production uses named endpoint/key length constraints and has no `user_agent` column; branch uses inline length checks and adds `user_agent` |
+| `20261115091906` | retire_unused_legacy_accept_electrician_job | `20261115091906_retire_unused_legacy_accept_electrician_job.sql` | Exact normalized body |
+| `20261115092149` | retire_unused_razorpay_route_transfer_ledger | `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql` | Exact normalized body |
+
+**Scope limitation:** these are the 14 exact normalized-name candidates, not a completed body-level mapping of all 87 Production migrations. The remaining 73 Production entries still need candidate discovery and comparison, including cases where a migration was renamed, consolidated, split, or removed. Same-name and exact-body matches do not by themselves prove replay order or dependency safety.
+
+The Production SQL was read only. No database writes, migration execution, deployment, or merge occurred.
