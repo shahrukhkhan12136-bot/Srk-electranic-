@@ -364,3 +364,14 @@ Cross-checking the test assertions against the final Route retirement migrations
 
 - Test-file commit: `ad72b30601ef401eba11e07f22997bb468576d22`
 - This is a source-level correction only. pgTAP has **not** been executed against PostgreSQL; no database or Production changes were made.
+
+
+### 27. Accounting reconciliation में manual payment method का मिलान अधूरा है
+
+srk_admin_get_booking_accounting_reconciliation(uuid) में manual payment evidence जाँचते समय booking ID और amount का मिलान srk_manual_payment_entries से होता है, लेकिन payment_method का मिलान service_bookings.payment_method से नहीं किया जाता।
+
+**प्रभाव:** यदि manual payment entry में upi और booking row में cash (या इसके उलट) दर्ज हो, तो केवल इस method mismatch के कारण reconciliation exception नहीं बनेगा। इससे रिपोर्ट भुगतान के तरीके की गलत जानकारी को पकड़ नहीं पाएगी। यह source-level संभावना है; Production डेटा नहीं देखा गया और किसी गलत रिकॉर्ड के मौजूद होने का दावा नहीं है।
+
+**सुझाया गया सुधार:** manual entry के लिए booking ID, amount और payment method—तीनों का मिलान करें; method mismatch पर स्पष्ट exception लौटाएँ। pgTAP में एक mismatch fixture और एक matching fixture जोड़ें। Razorpay वाले मामले में केवल razorpay_payment_id की मौजूदगी को provider-side राशि सत्यापन न समझें; उसके लिए authoritative verified payment evidence अलग से आवश्यक है।
+
+यह static source finding है। अभी migration या test बदला नहीं गया; PostgreSQL tests निष्पादित नहीं हुए। कोई Production परिवर्तन या भुगतान नहीं किया गया।
