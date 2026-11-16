@@ -131,3 +131,20 @@ test('Electrician account-view reset clears GPS watches and auth changes invalid
   assert.match(gps, /if\\(!isCurrent\\(\\)\\)\\{/);
   assert.match(gps, /navigator\\.geolocation\\.clearWatch\\(watch\\)/);
 });
+
+
+test('Electrician OTP account switch stops all prior live-location sessions before verifying the new account', () => {
+  const start = electrician.indexOf('async function verifyOtp()');
+  const end = electrician.indexOf('let electricianLogoutBusy=false', start);
+  assert.ok(start >= 0 && end > start);
+  const verify = electrician.slice(start, end);
+  const stopAll = verify.indexOf('Promise.allSettled(activeLocationIds.map');
+  const stopFailure = verify.indexOf("throw new Error('LIVE_LOCATION_STOP_NOT_CONFIRMED')");
+  const verifyOtp = verify.indexOf('sb.auth.verifyOtp');
+  assert.ok(stopAll >= 0 && stopFailure > stopAll && verifyOtp > stopFailure,
+    'old live-location sessions must be stopped before changing the auth account');
+  assert.match(verify, /results\\.some\\(r=>r\\.status==='rejected'\\|\\|r\\.value\\?\\.error\\)/);
+  assert.match(verify, /if\\(results\\.some[\\s\\S]*?throw new Error\\('LIVE_LOCATION_STOP_NOT_CONFIRMED'\\)/);
+  assert.match(verify, /पुराने अकाउंट की Live Location बंद होने की पुष्टि नहीं मिली/);
+  assert.match(verify, /activeLocationIds\\.forEach\\(id=>locationWatches\\.delete\\(id\\)\\)/);
+});
