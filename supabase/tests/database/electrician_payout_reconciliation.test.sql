@@ -1,5 +1,5 @@
 begin;
-select plan(32);
+select plan(34);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -151,11 +151,35 @@ select ok(exists(select 1 from pg_trigger t
     and (t.tgtype & 1)=1
     and (t.tgtype & 4)=4
     and (t.tgtype & 16)=16)
-  and position('new.commission_amount is distinct from v_platform_commission' in
+  and position('round(new.commission_amount,2) is distinct from v_platform_commission' in
   lower(pg_get_functiondef('public.srk_validate_booking_commission_payout_parity()'::regprocedure)))>0
   and position('new.commission_amount :=' in
   lower(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)))=0,
   'AFTER triggers retain payout writes and independently reject booking-to-ledger commission mismatches');
+
+select ok(position('materials_amount' in lower(pg_get_triggerdef(t.oid)))>0
+  and position('commission_amount' in lower(pg_get_triggerdef(t.oid)))>0
+  from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgfoid='public.srk_validate_booking_commission_payout_parity()'::regprocedure),
+  'AFTER parity validator covers every payout-writer update column plus direct commission edits');
+
+select ok((select min(t.tgname)='srk_reconcile_electrician_payable'
+  from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgfoid in (
+      'public.srk_create_electrician_payable()'::regprocedure,
+      'public.srk_validate_booking_commission_payout_parity()'::regprocedure))
+  and (select max(t.tgname)='zz_srk_validate_booking_commission_payout_parity'
+  from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgfoid in (
+      'public.srk_create_electrician_payable()'::regprocedure,
+      'public.srk_validate_booking_commission_payout_parity()'::regprocedure)),
+  'alphabetical AFTER trigger order writes payout ledger before parity validation');
 
 select * from finish();
 rollback;
