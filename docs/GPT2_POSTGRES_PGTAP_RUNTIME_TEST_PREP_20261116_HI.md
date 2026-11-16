@@ -1931,3 +1931,13 @@ Sanitized schema report में केवल ये विवरण:
 - Existing pgTAP KYC plan 21 में private bucket, policy names, client table SELECT denial, activation/KYC RPC guards और append-only event controls की structural assertions हैं। यह वास्तविक JWT actors के साथ Storage upload/download end-to-end exercise नहीं करता।
 - Static source cross-check: **PASS** — frontend और bucket size/MIME limits मेल खाते हैं; ownership और private-bucket guards source में मौजूद हैं।
 - Runtime limitation: pgTAP अभी execute नहीं हुआ; वास्तविक Storage JWT owner-vs-other-user upload/read/delete scenarios बाकी हैं। कोई Storage bucket, object, DB, SQL migration या Production state बदली नहीं गई।
+
+## 55. KYC orphan-object deletion guard — source audit — 16 Nov 2026
+
+- Storage delete policy केवल private KYC bucket में authenticated linked owner के UID folder पर लागू होती है।
+- `srk_electrician_can_delete_unregistered_kyc_object(text)` helper authenticated UID, non-null path, own-UID prefix और dual-linked electrician profile जाँचता है; यदि उसी `storage_path` का document database record मौजूद हो तो deletion false लौटाता है।
+- Helper `SECURITY DEFINER` और pinned empty `search_path` के साथ है; execute privilege `authenticated` को दिया गया है, `public/anon` से revoke है। Policy bucket ID और UID folder को अलग से जाँचती है।
+- Frontend uncertain-submit cleanup में केवल successful owner-list reconciliation और कोई नया matching document न मिलने पर object remove करता है। यदि reconciliation असफल हो या document मिल जाए, file सुरक्षित रखी जाती है।
+- Source review: **PASS** — registered KYC document का Storage object owner cleanup policy से delete नहीं होना चाहिए; केवल unregistered own-path object candidate है।
+- Test gap: वर्तमान pgTAP suite helper/function और delete policy की मौजूदगी जाँचती है, पर वास्तविक owner-vs-other-user JWT के साथ Storage delete attempts तथा registered-object deletion denial end-to-end साबित नहीं करती। इस scenario को disposable TEST Storage harness में जोड़ना आवश्यक है।
+- कोई SQL/migration/test file, Storage object, database या Production state नहीं बदली गई; यह documentation-only audit है।
