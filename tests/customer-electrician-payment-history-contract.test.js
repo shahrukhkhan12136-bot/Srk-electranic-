@@ -134,7 +134,7 @@ test('Confirmed Razorpay payment remains confirmed when booking or payment-histo
   const historyStart = customer.indexOf('async function loadCustomerPaymentHistory(');
   const historyEnd = customer.indexOf('\nasync function loadCustomerCancellationFeeDebts(', historyStart);
   const historyFn = customer.slice(historyStart, historyEnd);
-  assert.match(historyFn, /return true;[\\s\\S]*catch\(error\)[\\s\\S]*return false;/);
+  assert.match(historyFn, /return true;[\s\S]*catch\(error\)[\s\S]*return false;/);
 });
 
 test('Customer payment-history refresh ignores stale responses after auth changes', () => {
