@@ -41,7 +41,7 @@ test('Customer saved-address writes reconcile uncertain RPC outcomes before allo
   assert.match(handler, /srk_customer_save_my_address/);
   assert.match(handler, /srk_customer_list_my_saved_addresses/);
   assert.match(handler, /const matches=latestAddresses\.filter/);
-  assert.match(handler, /const normalizedText=value=>String/);
+  assert.match(handler, /const normalizedText=v=>String/);
   assert.match(handler, /normalizedText.*recipient_name.*payload/);
   assert.match(handler, /normalizedText.*address_line.*payload/);
   assert.match(handler, /normalizedText.*district.*payload/);
@@ -55,7 +55,7 @@ test('Customer saved-address writes reconcile uncertain RPC outcomes before allo
 
 test('Customer default-address updates reconcile uncertain RPC responses against the authoritative list', () => {
   const start = source.indexOf('async function makeSelectedAddressDefault() {');
-  const end = source.indexOf('let customerSupportComplaints', start);
+  const end = source.indexOf('function supportStatus', start);
   assert.ok(start >= 0 && end > start, 'default-address handler exists');
   const handler = source.slice(start, end);
   assert.match(handler, /srk_customer_save_my_address/);
@@ -71,8 +71,8 @@ test('Customer uncertain saved-address deletion refreshes the cached list and se
   assert.ok(start >= 0 && end > start, 'saved-address delete handler exists');
   const handler = source.slice(start, end);
   assert.match(handler, /srk_customer_list_my_saved_addresses/);
-  assert.match(handler, /customerSavedAddresses=latestAddresses/);
-  assert.match(handler, /select\.innerHTML=.*latestAddresses\.map/);
+  assert.match(handler, /customerSavedAddresses=rows/);
+  assert.match(handler, /select\.innerHTML=.*rows\.map/);
   assert.match(handler, /select\.value=deleteState==='absent'\?''\:id/);
   assert.match(handler, /सूची सर्वर से अपडेट कर दी गई है/);
 });
