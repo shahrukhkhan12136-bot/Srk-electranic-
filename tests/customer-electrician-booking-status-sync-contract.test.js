@@ -160,7 +160,7 @@ test('customer and electrician lifecycle actions expose retry states and always 
   }
   for (const fn of [electricianStart, electricianCompletion]) {
     assert.match(fn, /catch\s*\(/);
-    assert.match(fn, /finally\s*\{\s*electricianLifecycleBusy\.delete\(bookingId\)/);
+    assert.match(fn, /finally\s*\{\s*electricianLifecycleBusy\.delete\(requestKey\);?\s*\}/);
     assert.match(fn, /वर्तमान स्थिति रीफ़्रेश करके जाँचें/);
   }
   assert.match(customerRefund, /catch\s*\(error\)/);
@@ -284,7 +284,7 @@ test('Electrician push enable rolls back only a newly created browser subscripti
   assert.match(enable,/let newlyCreatedSubscription=null/);
   assert.match(enable,/if\(!sub\)\{sub=await reg\.pushManager\.subscribe\([\s\S]*?newlyCreatedSubscription=sub;/);
   assert.match(enable,/newlyCreatedSubscription=null;\s*await refreshElectricianPushState\(\)/);
-  assert.match(enable,/catch\(err\)\{if\(newlyCreatedSubscription\)\{try\{await newlyCreatedSubscription\.unsubscribe\(\)/);
+  assert.match(enable,/catch\(err\)\s*\{\s*if\(newlyCreatedSubscription\)\s*\{\s*try\{await newlyCreatedSubscription\.unsubscribe\(\)/);
   assert.match(enable,/button\.disabled=false/);
 });
 
@@ -297,7 +297,7 @@ test('Electrician push state allows re-syncing an existing browser subscription'
   assert.match(state,/state\.textContent=sub\?'इस ब्राउज़र पर Push Subscription मौजूद है। सर्वर पंजीकरण दोबारा सिंक करने के लिए Enable दबा सकते हैं।'/);
   assert.match(state,/on\.disabled=permission==='denied';off\.disabled=!sub/);
   const enable=electrician.slice(electrician.indexOf('async function enableElectricianPushNotifications()'),electrician.indexOf('async function disableElectricianPushNotifications()'));
-  assert.match(enable,/let sub=await reg\.pushManager\.getSubscription\(\);if\(!isCurrent\(\)\)return;if\(!sub\)\{sub=await reg\.pushManager\.subscribe/);
+  assert.match(enable,/let sub=await reg\.pushManager\.getSubscription\(\);if\(!isCurrent\(\)\)return;\s*if\(!sub\)\{sub=await reg\.pushManager\.subscribe/);
   assert.match(enable,/sb\.from\('srk_push_subscriptions'\)\.upsert/);
 });
 
@@ -504,7 +504,7 @@ test('customer work lifecycle actions are invalidated when the signed-in account
     assert.match(action, /customerLifecycleBusy\.has\(requestKey\)/);
     assert.match(action, /customerLifecycleBusy\.add\(requestKey\)/);
     assert.match(action, /if\(!isCurrent\(\)\)return/);
-    assert.match(action, /finally\{customerLifecycleBusy\.delete\(requestKey\)\}/);
+    assert.match(action, /finally\{customerLifecycleBusy\.delete\(requestKey\);?\}/);
   }
 });
 
