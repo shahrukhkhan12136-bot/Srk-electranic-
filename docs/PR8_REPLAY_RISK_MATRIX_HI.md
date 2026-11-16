@@ -343,3 +343,20 @@ Production ledger SQL bodies `20261109112105`, `20261109114000`, `20261109114642
 The phone-number sequence in Production is chronological: mask phone numbers, restore direct calls, then allow customer-contact visibility after completion. The current branch must be checked against the intended final product/privacy policy rather than copying one intermediate historical migration in isolation.
 
 “Not located” is scoped to the current branch migration tree and inspected candidates. No Production SQL was changed, no migration was applied, and no PostgreSQL replay or pgTAP test was run.
+
+
+### 2026-11-16 follow-up: next five Production migration bodies compared (read-only)
+
+Production ledger bodies `20261109163755`, `20261109164808`, `20261109165802`, `20261109170626`, and `20261109170937` were inspected against the PR #8 replay-prep migration tree.
+
+| Production version | Production change | PR branch comparison | Result |
+|---|---|---|---|
+| `20261109163755 fix_null_validation_quote_and_payout` | Adds explicit NULL checks to quote response and Admin payout method validation | Branch quote/work RPC hardening migration only pins search paths; later payout reconciliation validates commission rate including NULL and has its own Admin payout checks, but no exact paired function-body replacement was located | Partial coverage only; NULL semantics must be checked per RPC |
+| `20261109164808 sync_electrician_auth_profile_link` | Replaces auth-profile link trigger and expands job-offer SELECT policy to match either identity column | Branch identity-linking migration provides stricter synchronized identity handling; sequential dispatch uses canonical identity checks, but no exact matching job-offer SELECT policy replacement was located in inspected files | Related identity safeguards exist; policy behavior differs and needs RLS reconciliation |
+| `20261109165802 harden_electrician_payable_trigger_search_path` | Replaces payout trigger with pinned search_path and legacy quote payout logic | Later branch payout reconciliation redefines the same trigger with pinned search_path and broader category/manual-payment rules | Later successor exists, but behavior is materially broader; replay must ensure payout table and all referenced category/payment objects precede it |
+| `20261109170626 expire_job_offers_when_booking_cancelled` | Adds trigger to cancel offered/accepted job offers when booking status changes to cancelled | Sequential dispatch marks dispatch cancelled when it next runs against a non-offerable booking and cancels sibling offers on acceptance; no equivalent booking-cancellation trigger was located | No direct trigger equivalent located; cancellation may leave outstanding offers until another workflow acts |
+| `20261109170937 secure_admin_booking_updates_and_profile_columns` | Revokes direct booking UPDATE; adds validated Admin booking-update RPC; restricts electrician profile UPDATE to active column | Branch later direct-write closure revokes authenticated booking UPDATE and supplies narrower quote/location RPCs, but it does not reproduce this exact status-transition RPC or the same profile active-only grant | Partial permission hardening; Admin workflow and profile column grants require explicit reconciliation |
+
+**Priority follow-ups:** (1) Confirm cancellation immediately expires existing offered/accepted rows, not merely that later dispatch refuses to continue; (2) compare the exact job-offer SELECT policy with the branch's identity model; (3) verify the intended Admin status-update flow before replacing the Production RPC with narrower branch endpoints. The branch's later payout trigger is not a drop-in historical replay equivalent.
+
+These are static source comparisons. “Not located” is scoped to the current branch migration tree and inspected candidates. No Production SQL was changed, no migration was applied, and no PostgreSQL replay or pgTAP test was run.
