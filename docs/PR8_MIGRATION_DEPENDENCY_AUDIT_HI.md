@@ -950,8 +950,8 @@ Default-branch code search में `.github/workflows/supabase-schema-ci.yml` 
 Section 17–18 में दर्ज source-level mismatch के लिए payout reconciliation pgTAP में अतिरिक्त guard जोड़ा:
 
 - `supabase/tests/database/electrician_payout_reconciliation.test.sql` का plan 28 से 29 किया।
-- नया assertion `srk_create_electrician_payable()` function definition में `commission_amount` writer की उपस्थिति अनिवार्य करता है, ताकि Admin commission reporting और payout ledger अलग-अलग commission values पर न चलें।
-- Commit: `d275022408859b4ca52ce57fa2992af31c55053e`.
+- नया assertion अब केवल column नाम की मौजूदगी नहीं, बल्कि exact assignment `NEW.commission_amount := v_commission` अनिवार्य करता है। इससे payout trigger द्वारा निकली वही commission राशि Admin reporting field में लिखे जाने की जाँच होगी।
+- Test commit: `bca20ce8b60b3c0fd8733cedf185c82b4cacce31` (पहले वाले कमजोर assertion को मजबूत किया; अलग अतिरिक्त assertion नहीं जोड़ा)।
 
 यह भी test-first guard है; अभी इसे PASS नहीं कहा जा सकता। उपलब्ध source finding के अनुसार payout trigger commission गणना करता है, पर booking के `commission_amount` field को update करने का प्रमाण नहीं मिला। सही SQL correction के लिए उस trigger की authoritative migration, commission event timing और clean-replay dependencies को पहले निश्चित करना होगा। पुराने standalone setup trigger को सीधे बदलना या ऐतिहासिक migration edit करना सुरक्षित नहीं।
 
