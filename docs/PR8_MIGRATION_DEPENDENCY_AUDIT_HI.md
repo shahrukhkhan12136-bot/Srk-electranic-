@@ -627,3 +627,20 @@ Test source में:
 **Test coverage सुधार:** PR branch की `atomic_razorpay_order_and_payment_finalization.test.sql` में service-role bill lookup RPC की existence, service_role-only grant, unauthorized-role denial, pinned search_path और paise return contract के explicit assertions जोड़ने चाहिए। Audit branch में वह test file मौजूद नहीं थी, इसलिए PR/test branch को बदले बिना इस audit branch पर test edit नहीं किया गया।
 
 **अगला सुरक्षित कदम:** इन दो timeout scenarios और bill-lookup privilege contract के लिए tests PR branch पर अलग reviewable patch में जोड़ना; फिर केवल अनुमोदित isolated test DB पर pgTAP चलाना। Production या shared integration branch पर कोई कार्रवाई नहीं की गई।
+
+
+## 47. Isolated pgTAP workflow की वास्तविक सीमा और नया test gap
+
+Feature branch में `.github/workflows/payment-order-isolated-pgtap.yml` मौजूद है। Source inspection से यह workflow:
+- GitHub-hosted runner पर pinned Supabase CLI 3.1.0 से अस्थायी local Supabase stack शुरू करता है;
+- `payment_order_bootstrap.sql` fixture से synthetic `service_bookings` और `srk_booking_labour_bills` tables बनाता है;
+- केवल `20261114090000_atomic_razorpay_order_and_payment_finalization.sql` लागू करता है;
+- दो Atomic Payment pgTAP files चलाता है और अंत में local stack बंद करता है।
+
+**महत्वपूर्ण सीमा:** यह workflow `20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql` लागू नहीं करता। Fixture पहले से labour-bill table बना देता है। इसलिए यह Atomic migration की RPC behavior जाँच सकता है, लेकिन full dependency migration order, labour-bill lookup RPC की creation/grant, या उस RPC के actual return contract को validate नहीं करता। दोनों pgTAP files में भी `srk_service_get_labour_bill_for_payment(uuid)` का explicit assertion नहीं है।
+
+**Workflow status:** इस audit में workflow dispatch नहीं किया गया और कोई pgTAP result उपलब्ध नहीं है। Workflow file होना successful run का प्रमाण नहीं।
+
+**सुझाया गया सुधार:** अलग isolated workflow में पहले आवश्यक base schema/fixtures, फिर वास्तविक `20261114040000` और उसके बाद `20261114090000` क्रम से लागू करें; labour-bill RPC की existence, service_role-only grant, non-service denial और returned `labour_amount_paise` का pgTAP assertion जोड़ें। साथ ही handler के provider-timeout और expired-lock recovery scenarios को अलग mocked integration tests में कवर करें।
+
+किसी Production database, Supabase hosted branch या shared integration branch पर कार्रवाई नहीं की गई।
