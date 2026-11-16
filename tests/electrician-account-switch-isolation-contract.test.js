@@ -110,7 +110,7 @@ test('Electrician push controls ignore stale account results and bind writes to 
   assert.ok(enable.includes('if(!isCurrent())return'));
   assert.ok(enable.includes('ctx.data.user.id!==requestedUserId'));
   assert.ok(enable.includes('user_id:requestedUserId'));
-  assert.ok(enable.includes('finally{if(isCurrent())button.disabled=false}'));
+  assert.ok(enable.includes('finally{if(isCurrent())button.disabled=false;}'));
   const disable = extract('disableElectricianPushNotifications');
   assert.ok(disable.includes('ctx.data.user.id!==requestedUserId'));
   assert.ok(disable.includes(".eq('user_id',requestedUserId)"));
@@ -171,14 +171,14 @@ test('Electrician support ticket and reply actions are bound to the captured acc
 
 test('Electrician KYC upload suppresses stale account results and restores controls only for its own session', () => {
   const start = source.indexOf('async function uploadVerificationDocument');
-  const end = source.indexOf('function init()', start);
+  const end = source.indexOf('\nasync function loadEarnings()', start);
   assert.ok(start >= 0 && end > start);
   const upload = source.slice(start, end);
   assert.ok(upload.includes('requestedUserId=user?.id'));
   assert.ok(upload.includes('requestedProfileId=profile?.id'));
   assert.ok(upload.includes('requestedGeneration=electricianAccountViewGeneration'));
   assert.ok(upload.includes('if(!isCurrent())return;'));
-  assert.match(upload, /finally\\s*\\{\\s*if\\(isCurrent\\(\\)\\)\\s*\\{/);
+  assert.match(upload, /finally\s*\{\s*if\(isCurrent\(\)\)\s*\{/);
   const clearStart = source.indexOf('function clearElectricianAccountView()');
   const clearEnd = source.indexOf('function init()', clearStart);
   const clear = source.slice(clearStart, clearEnd);
