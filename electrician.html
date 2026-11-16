@@ -5,6 +5,8 @@ const cfg=window.SRK_CONFIG||{};let sb,user,profile,offersChannel,otpBusy=false,
 function safeTel(v){const p=String(v??'').replace(/\D/g,'');return /^[0-9]{10,15}$/.test(p)?'tel:'+p:''}
 function clearElectricianAccountView(){
  electricianAccountViewGeneration++;
+ electricianKycUploadBusy=false;
+ document.querySelectorAll('#verificationCard .job > input[type="file"],#verificationCard .job > button').forEach(control=>control.disabled=false);
  electricianSupportThreadRequest++;
  electricianSupportSelectedId=null;
  electricianSupportCreateBusy=false;
@@ -470,7 +472,10 @@ async function openVerificationDocument(documentId){const box=document.getElemen
 let electricianKycUploadBusy=false;
 async function uploadVerificationDocument(type,inputId){
  const input=document.getElementById(inputId),file=input?.files?.[0],msg=document.getElementById('kycMessage');
+ const requestedUserId=user?.id,requestedProfileId=profile?.id,requestedGeneration=electricianAccountViewGeneration;
+ const isCurrent=()=>!!requestedUserId&&!!requestedProfileId&&!electricianLogoutBusy&&user?.id===requestedUserId&&profile?.id===requestedProfileId&&electricianAccountViewGeneration===requestedGeneration;
  const allowed=['identity_proof','address_proof','skill_certificate'];
+ if(!isCurrent()){if(msg)msg.textContent='कृपया दोबारा लॉगिन करके प्रयास करें।';return;}
  if(electricianKycUploadBusy){msg.textContent='एक दस्तावेज़ अपलोड हो रहा है। कृपया उसके पूरा होने तक प्रतीक्षा करें।';return;}
  if(!allowed.includes(type)||!file){msg.textContent='कृपया पहले सही दस्तावेज़ चुनें।';return;}
  if(!KYC_MIME_TYPES.includes(file.type)||file.size<1||file.size>5242880){msg.textContent='केवल PDF/JPG/PNG और अधिकतम 5 MB फ़ाइल स्वीकार है।';return;}
@@ -479,45 +484,54 @@ async function uploadVerificationDocument(type,inputId){
  const previousDisabled=controls.map(control=>control.disabled);
  controls.forEach(control=>control.disabled=true);
  const safeName=file.name.normalize('NFKC').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-120)||'document';
- const path=user.id+'/'+type+'/'+crypto.randomUUID()+'-'+safeName;
+ const path=requestedUserId+'/'+type+'/'+crypto.randomUUID()+'-'+safeName;
  msg.textContent='दस्तावेज़ सुरक्षित रूप से अपलोड हो रहा है…';
  try{
   const {data:beforeDocuments,error:beforeDocumentsError}=await sb.rpc('srk_electrician_list_my_verification_documents');
+  if(!isCurrent())return;
   if(beforeDocumentsError)throw beforeDocumentsError;
   const previousDocumentIds=new Set((Array.isArray(beforeDocuments)?beforeDocuments:[]).map(row=>row.id));
   const {error:uploadError}=await sb.storage.from(KYC_BUCKET).upload(path,file,{contentType:file.type,upsert:false});
+  if(!isCurrent())return;
   if(uploadError)throw uploadError;
   const {error:recordError}=await sb.rpc('srk_electrician_submit_verification_document',{p_document_type:type,p_storage_path:path,p_file_name:file.name.slice(0,180),p_mime_type:file.type,p_file_size_bytes:file.size});
+  if(!isCurrent())return;
   if(recordError){
    let reconciliationSucceeded=false,matchingDocument=null,confirmedDocumentPath=false;
    try{
     const {data:afterDocuments,error:listError}=await sb.rpc('srk_electrician_list_my_verification_documents');
+    if(!isCurrent())return;
     if(!listError&&Array.isArray(afterDocuments)){
      reconciliationSucceeded=true;
      matchingDocument=afterDocuments.find(row=>!previousDocumentIds.has(row.id)&&row.document_type===type&&row.file_name===file.name.slice(0,180).trim()&&row.mime_type===file.type&&Number(row.file_size_bytes)===file.size)||null;
      if(matchingDocument){
       const {data:confirmedPath,error:pathError}=await sb.rpc('srk_electrician_get_my_verification_document_path',{p_document_id:matchingDocument.id});
+      if(!isCurrent())return;
       confirmedDocumentPath=!pathError&&confirmedPath===path;
      }
     }
-   }catch(_){/* Preserve the uploaded private object when the write outcome cannot be established. */}
+   }catch(_){if(!isCurrent())return;/* Preserve the uploaded private object when the write outcome cannot be established. */}
+   if(!isCurrent())return;
    if(confirmedDocumentPath){
     input.value='';msg.textContent='दस्तावेज़ जमा हो गया है। सर्वर ने जमा होने की पुष्टि की है।';
-    await loadVerificationDocuments();await refresh();return;
+    await loadVerificationDocuments();if(isCurrent())await refresh();return;
    }
-   if(reconciliationSucceeded&&!matchingDocument)await sb.storage.from(KYC_BUCKET).remove([path]).catch(()=>{});
+   if(reconciliationSucceeded&&!matchingDocument){await sb.storage.from(KYC_BUCKET).remove([path]).catch(()=>{});if(!isCurrent())return;}
    if(matchingDocument||!reconciliationSucceeded){
     msg.textContent='दस्तावेज़ जमा करने का परिणाम स्पष्ट नहीं है। फ़ाइल सुरक्षित रखी गई है; दोबारा जमा करने से पहले Refresh करके स्थिति जाँचें।';
     return;
    }
    throw recordError;
   }
+  if(!isCurrent())return;
   input.value='';msg.textContent='दस्तावेज़ जमा हो गया है। Admin की जाँच के बाद स्थिति यहाँ दिखेगी।';
-  await loadVerificationDocuments();await refresh();
- }catch(e){msg.textContent='दस्तावेज़ जमा नहीं हो सका। कृपया फ़ाइल और इंटरनेट जाँचकर फिर कोशिश करें।';}
+  await loadVerificationDocuments();if(isCurrent())await refresh();
+ }catch(e){if(isCurrent())msg.textContent='दस्तावेज़ जमा नहीं हो सका। कृपया फ़ाइल और इंटरनेट जाँचकर फिर कोशिश करें।';}
  finally{
-  controls.forEach((control,index)=>control.disabled=previousDisabled[index]);
-  electricianKycUploadBusy=false;
+  if(isCurrent()){
+   controls.forEach((control,index)=>control.disabled=previousDisabled[index]);
+   electricianKycUploadBusy=false;
+  }
  }
 }
 async function loadEarnings(){
