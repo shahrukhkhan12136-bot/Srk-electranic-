@@ -386,3 +386,12 @@ Core schema migration में srk_manual_payment_entries पर UNIQUE(booking
 **सुरक्षित सुधार:** UPI/Bank references के लिए provider/method के अनुरूप normalized uniqueness नीति तय करें। Cash receipt references के नियम अलग हो सकते हैं; इसलिए सभी methods पर अंधाधुंध global unique constraint न लगाएँ। Database-level unique index/constraint और concurrent duplicate-attempt pgTAP परीक्षण जोड़ें। Existing duplicate rows हों तो migration से पहले सुरक्षित reconciliation आवश्यक होगा; Production rows जाँचे नहीं गए हैं।
 
 यह schema और function source review है। कोई migration, data change या वास्तविक भुगतान नहीं किया गया; PostgreSQL tests निष्पादित नहीं हुए।
+
+
+### 29. Online payment verification: reconciliation finding का दायरा स्पष्ट
+
+पिछले हिस्से में यह कहा गया था कि Accounting Reconciliation Razorpay payment ID की मौजूदगी को देखती है, provider से राशि दोबारा नहीं पूछती। यह बात केवल read-only reconciliation RPC के दायरे में सही है; इसे पूरे online payment flow पर लागू नहीं समझना चाहिए।
+
+Source review में verify-payment.js ग्राहक bearer session और booking ownership जाँचता है, Razorpay API से payment retrieve करता है, captured status, exact order ID, INR currency और expected paise amount मिलाता है; तभी booking/ledger settlement करता है। razorpay-webhook.js raw-body HMAC signature जाँचता है, captured event payload में payment ID/order ID/status/currency/amount जाँचता है, और booking order से मिलान करता है। New-category flow में service-role settlement RPC भी booking/payment/amount identity स्वीकारता है।
+
+इसलिए upstream verification मौजूद है; read-only reconciliation RPC स्वयं Razorpay API/provider evidence fetch नहीं करती। अभी तक यह source-level review है—deployed environment, live provider calls या Production records verify नहीं किए गए।
