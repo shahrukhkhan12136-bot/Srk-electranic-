@@ -72,5 +72,12 @@ test('SOS client sends only the reason and never claims delivery without a confi
     assert.match(handler, /!data\?\.success\|\|!data\?\.case_id/);
     assert.match(handler, /SOS अभी दर्ज नहीं हो सका। अलर्ट भेजा हुआ न मानें।/);
     assert.doesNotMatch(handler, /p_booking_id|p_user_id|p_actor_id/);
+    if(app==='Customer'){
+      assert.ok(handler.includes('requestedGeneration=customerActionGeneration'));
+      assert.ok(handler.includes('customerSb.auth.getSession()'));
+      assert.ok(handler.includes('if(!isCurrent())return'));
+      assert.ok(handler.includes('finally{if(isCurrent())'));
+      assert.ok(customer.includes('customerSosBusy.clear()'));
+    }
   }
 });
