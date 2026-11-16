@@ -1,3 +1,9 @@
+-- Replay prerequisite: the consolidated setup schema does not define amount_paid.
+-- Add it before the SQL-language earnings function and later quote/payment workflows
+-- bind to this column. The later restoration migration remains safely idempotent.
+alter table public.service_bookings
+  add column if not exists amount_paid numeric(12,2);
+
 -- Protect commission data from customer/electrician direct table access.
 -- Admin and electrician commission views are served only through ownership/admin-checked RPCs.
 
