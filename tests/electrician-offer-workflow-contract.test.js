@@ -80,7 +80,7 @@ test('work lifecycle actions are isolated across electrician account switches', 
   ]) {
     const action = body(name);
     assert.match(action, /const requestedUserId=user\?\.id,requestedProfileId=profile\?\.id,requestedGeneration=electricianAccountViewGeneration/);
-    assert.match(action, /const requestKey=requestedGeneration\+': '\+String\(bookingId\)/);
+    assert.match(action, /const requestKey=requestedGeneration\+':'\+String\(bookingId\)/);
     assert.match(action, /electricianLifecycleBusy\.has\(requestKey\)/);
     assert.match(action, /electricianLifecycleBusy\.add\(requestKey\)/);
     assert.match(action, new RegExp(rpc));
