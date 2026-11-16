@@ -81,3 +81,9 @@
 - इस Node suite में Customer/Electrician booking-status synchronization, phone-visibility source contracts, booking lifecycle/timer serialization, KYC/earnings/wallet UI contracts, live-location cleanup, cancellation/refund, support attachments, profile/address और payment-history regression checks शामिल हैं। यह source-contract/Node evidence है; isolated PostgreSQL/pgTAP, Auth/Storage actor isolation, browser, provider या device runtime acceptance नहीं है।
 - इस pass में phone visibility, work-start/completion serialization, live-location failure cleanup, KYC upload/preview gates और support ticket/attachment source contracts को मौजूदा tests तथा app source से पुनः cross-check किया; कोई नया GPT-1 source feature gap प्रमाणित नहीं हुआ। इसलिए कोई unplanned feature या realtime scope नहीं जोड़ा गया।
 - PR #8 अभी Open / Draft / unmerged है। Vercel status में build-rate-limit failure अलग है; इसे Node test failure नहीं माना गया। No merge, deployment, Production DB action, provider transaction या mobile QA.
+
+## 2026-11-16 — documentation-commit CI confirmation
+
+- Documentation-only commit `6e132c80df3080e97e32014e51371f4d117d96ea` पर workflow run #1575 (`43780286915`) भी **completed / success** है। Job `133015681292` logs: **328 tests, 328 pass, 0 fail, 0 skipped**। इससे पुष्टि होती है कि GPT-1 evidence note जोड़ने से Node suite नहीं टूटी।
+- यह उसी branch-head का Node-only result है; PostgreSQL/pgTAP, clean migration replay, JWT actor isolation, private Storage, browser, OTP/SMS/push/SOS provider और final mobile QA अभी अलग acceptance gates हैं।
+- PR #8 Open / Draft / unmerged है। Vercel build-rate-limit status अलग failure बना हुआ है; कोई deployment/merge/Production action नहीं किया गया।
