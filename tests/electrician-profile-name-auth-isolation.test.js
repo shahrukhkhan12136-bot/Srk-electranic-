@@ -7,7 +7,12 @@ const source = fs.readFileSync(path.join(__dirname, '..', 'electrician.html'), '
 
 test('Electrician profile-name save cannot update a different account view', () => {
   assert.ok(source.includes('electricianDisplayNameSaveRequest=0'));
-  assert.ok(source.includes('function clearElectricianAccountView(){profile=null;electricianDisplayNameSaveRequest++;'));
+  const clearStart=source.indexOf('function clearElectricianAccountView()');
+  const clearEnd=source.indexOf('\\nfunction init()',clearStart);
+  assert.ok(clearStart>=0&&clearEnd>clearStart,'account view reset handler exists');
+  const clearBlock=source.slice(clearStart,clearEnd);
+  assert.ok(clearBlock.includes('profile=null;'));
+  assert.ok(clearBlock.includes('electricianDisplayNameSaveRequest++'));
   const start = source.indexOf('async function saveElectricianDisplayName()');
   assert.notEqual(start, -1);
   const end = source.indexOf('\n', start);
