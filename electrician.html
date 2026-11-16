@@ -5,6 +5,7 @@ const cfg=window.SRK_CONFIG||{};let sb,user,profile,offersChannel,otpBusy=false,
 function safeTel(v){const p=String(v??'').replace(/\D/g,'');return /^[0-9]{10,15}$/.test(p)?'tel:'+p:''}
 function clearElectricianAccountView(){
  electricianAccountViewGeneration++;
+ electricianAreaChangeBusy=false;
  locationWatches.forEach(watch=>navigator.geolocation.clearWatch(watch));
  locationWatches.clear();
  electricianLocationStartBusy.clear();
@@ -251,6 +252,7 @@ async function loadElectricianSupportTickets(){const box=document.getElementById
  if(result.error){box.textContent='सहायता अनुरोध अभी उपलब्ध नहीं हैं। कृपया Refresh करें।';return;}
  const {data}=result;electricianSupportTickets=Array.isArray(data)?data:[];const labels={open:'खुला',in_review:'जाँच में',resolved:'हल हो गया',closed:'बंद'},cats={booking:'बुकिंग / काम',payment_payout:'कमाई / भुगतान',kyc_account:'KYC / अकाउंट',app_technical:'ऐप / तकनीकी',customer_safety:'सुरक्षा / व्यवहार',other:'अन्य'};box.innerHTML=electricianSupportTickets.map(t=>'<article class="job"><b>'+esc(t.subject)+'</b><p>'+esc(cats[t.category]||t.category)+' • '+esc(labels[t.status]||t.status)+'</p><small>'+esc(new Date(t.created_at).toLocaleString('hi-IN'))+'</small>'+(t.booking_id?'<p>Booking: <code>'+esc(t.booking_id)+'</code></p>':'')+(t.admin_note?'<p><b>Admin नोट:</b> '+esc(t.admin_note)+'</p>':'')+'<button class="alt" onclick="openElectricianSupportThread(\''+t.id+'\')">बातचीत खोलें</button></article>').join('')||'<p>अभी कोई सहायता अनुरोध नहीं है।</p>';}
 let electricianSupportCreateBusy=false,electricianSupportReplyBusy=false,electricianSupportThreadRequest=0,electricianSupportListRequest=0,electricianPhoneHistoryRequest=0,electricianAreaHistoryRequest=0,electricianKycListRequest=0;
+let electricianAreaChangeBusy=false;
 async function createElectricianSupportTicket(){
  if(electricianSupportCreateBusy||!user?.id||!profile?.id)return;
  const requestedUserId=user.id,requestedProfileId=profile.id,requestedGeneration=electricianAccountViewGeneration;
