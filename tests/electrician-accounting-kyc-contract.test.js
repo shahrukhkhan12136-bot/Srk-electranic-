@@ -192,3 +192,16 @@ test('KYC upload deletes an object after submit failure only when owner reconcil
   assert.match(upload, /if\(matchingDocument\|\|!reconciliationSucceeded\)[\s\S]*?फ़ाइल सुरक्षित रखी गई है/);
   assert.doesNotMatch(upload, /if\(recordError\)\{await sb\.storage\.from\(KYC_BUCKET\)\.remove/);
 });
+
+test('availability save success is not reported as failure when dashboard refresh fails', () => {
+  const availability = body('setElectricianAvailability');
+  const rpcSuccess = availability.indexOf("if(!data?.success)throw new Error('Availability update not confirmed')");
+  const failureMessage = availability.indexOf('उपलब्धता अपडेट की पुष्टि नहीं हुई');
+  const successMessage = availability.indexOf('अब आप नए काम के ऑफर पाने के लिए उपलब्ध हैं।');
+  const refresh = availability.indexOf('await refresh()');
+  const refreshFailure = availability.indexOf('उपलब्धता सर्वर पर अपडेट हो गई है, लेकिन Dashboard रीफ़्रेश नहीं हो सका।');
+  assert.ok(rpcSuccess >= 0 && failureMessage > rpcSuccess && successMessage > failureMessage);
+  assert.ok(refresh > successMessage && refreshFailure > refresh);
+  assert.doesNotMatch(availability.slice(refresh), /उपलब्धता अपडेट की पुष्टि नहीं हुई/);
+  assert.match(availability, /on\.disabled=false;off\.disabled=false/);
+});
