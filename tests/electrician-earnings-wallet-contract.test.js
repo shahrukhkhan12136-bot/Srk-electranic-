@@ -10,6 +10,10 @@ test('Electrician earnings and wallet ignore stale responses after auth changes 
   assert.ok(source.includes('electricianEarningsRequest=0'));
   assert.ok(source.includes('electricianWalletRequest=0'));
   assert.ok(source.includes('onAuthStateChange((_e,s)=>{electricianEarningsRequest++;electricianWalletRequest++;'));
+  assert.ok(source.includes('function clearElectricianAccountView(){profile=null;'));
+  assert.ok(source.includes('if(previousUserId!==nextUserId){electricianRefreshRequest++;clearElectricianAccountView();'));
+  assert.ok(source.includes("'jobs','earnings','partnerWallet','electricianSupportTickets'"));
+  assert.ok(source.includes('if((user?.id||null)!==(nextUser?.id||null)){electricianRefreshRequest++;clearElectricianAccountView();}'));
   assert.ok(earnings.includes('const request=++electricianEarningsRequest,requestedUserId=user.id,requestedProfileId=profile.id;'));
   assert.ok(earnings.includes('request===electricianEarningsRequest&&user?.id===requestedUserId&&profile?.id===requestedProfileId'));
   assert.ok(earnings.includes('if(!isCurrent())return;'));
