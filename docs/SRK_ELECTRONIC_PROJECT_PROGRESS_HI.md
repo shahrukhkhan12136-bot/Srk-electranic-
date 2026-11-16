@@ -4140,3 +4140,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - सुरक्षित निर्णय: कोई migration rename/reorder/edit, replay या Production schema action नहीं किया। Authoritative baseline और remote migration history के साथ approved dependency reconciliation के बिना local/hosted reset नहीं चलाना है।
 - docs/GPT2_POSTGRES_PGTAP_RUNTIME_TEST_PREP_20261116_HI.md के शीर्ष summary को इसी current स्थिति के अनुसार ठीक किया।
 - यह static source audit/documentation update है; PostgreSQL/pgTAP runtime और GitHub Actions PASS का दावा नहीं।
+
+
+## 2026-11-17 — GPT-1 Customer/Electrician source integration recheck
+
+- GPT-1 की सीमा के भीतर booking.html और electrician.html के वर्तमान Feature Branch source को दोबारा fetch करके UI RPC/API caller inventory निकाली। Customer page में 25 distinct RPC names और booking/order/payment के 3 API endpoints मिले; Electrician page में 22 distinct RPC names और push-job-offer Edge Function endpoint मिला। यह caller inventory है, सभी backend definitions/permissions की पूर्ण पुष्टि नहीं।
+- Electrician offer contract को migration 20261115220000_retire_live_legacy_quotation_rpcs.sql से सीधे verify किया: srk_get_my_offer_details() अब work_timer_elapsed_seconds, work_started_at, work_timer_running, start/completion approval fields, estimate, expiry और assignment-gated contact fields लौटाता है। Migration में authenticated-only EXECUTE grant है। यह source-level caller/return-shape match है; PostgreSQL runtime नहीं।
+- Customer refund submit में स्पष्ट cross-scope blocker मिला: booking.html srk_customer_create_booking_refund_request(uuid,text) call करता है, पर Feature Branch migration inventory/source में इस CREATE RPC की authoritative definition नहीं मिली। Existing refund-history migration path भी fetch पर 404 हुआ; पुराने consolidated audit में history RPC/table provenance और refund CREATE gap पहले से दर्ज है। यह GPT-2 Database/Refund ownership है—GPT-1 ने कोई SQL/RLS/refund implementation नहीं बदला।
+- Customer UI और migration/RPC contracts की शेष exact mapping, browser/network fault injection, isolated PostgreSQL/pgTAP, Supabase runtime, OTP/Storage/Push provider verification अभी pending हैं। ये gates final consolidated QA से पहले अलग implementation/runtime phases में ही पूरे होंगे; mobile QA deferred है।
+- Welcome Screen/Founder Photo का 16 नवम्बर owner-approved source integration पूर्ण है; इसे reopen या modify नहीं किया। कोई GPT-2 branch/code, Production, Supabase schema/settings, provider, deploy, merge या PR state नहीं बदली।
+- इस recheck से checklist percentage या completed checkbox count नहीं बढ़ाया गया; केवल प्रत्यक्ष source evidence और GPT-2 handoff dependency दर्ज की गई।
