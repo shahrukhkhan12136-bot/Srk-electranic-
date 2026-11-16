@@ -2189,6 +2189,12 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
       customerActionGeneration++;
       customerLifecycleBusy.clear();
+      customerLiveLocationRefreshRequest++;
+      customerLiveLocationBookingIds.forEach(id=>{
+        const locationBox=document.getElementById('customerLiveLocation_'+id);
+        if(locationBox)locationBox.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small">लॉगिन सत्र बदल गया है। नई बुकिंग सूची लोड होने पर ही लोकेशन फिर दिखाई जाएगी।</p>';
+      });
+      customerLiveLocationBookingIds=[];
       customerBookingRefreshRequest++;
       const bookingList=document.getElementById('customerBookings');
       if(bookingList){bookingList.textContent='लॉगिन सत्र बदल रहा है…';bookingList.setAttribute('aria-busy','false');}
