@@ -1490,6 +1490,7 @@ function setCustomerProfileStatus(message,isError=false) {
  el.textContent=message;el.style.color=isError?'#b42318':'#176b3a';
 }
 let customerCurrentAvatarPath=null;
+let customerProfileLoadRequest=0;
 let customerAvatarPreviewUrl=null;
 function setCustomerAvatarPreview(url) {
  const img=document.getElementById('customerAvatarPreview');
@@ -1497,42 +1498,50 @@ function setCustomerAvatarPreview(url) {
  customerAvatarPreviewUrl=url||null;
  if(url){img.src=url;img.style.display='block';}else{img.removeAttribute('src');img.style.display='none';}
 }
-async function loadCustomerAvatar(path) {
+async function loadCustomerAvatar(path,isCurrent=()=>true) {
  if(!path||!customerSb)return;
  try {
   const {data,error}=await customerSb.storage.from('srk-customer-avatars').createSignedUrl(path,300);
+  if(!isCurrent())return;
   if(error)throw error;
   setCustomerAvatarPreview(data.signedUrl);
- } catch(e){setCustomerProfileStatus('प्रोफ़ाइल फोटो लोड नहीं हो सकी।',true);}
+ } catch(e){if(isCurrent())setCustomerProfileStatus('प्रोफ़ाइल फोटो लोड नहीं हो सकी।',true);}
 }
 async function loadCustomerProfile() {
  if(!customerSb)return;
+ const requestId=++customerProfileLoadRequest;
+ const isCurrent=()=>requestId===customerProfileLoadRequest;
  setCustomerProfileStatus('प्रोफ़ाइल लोड हो रही है…');
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
+  if(!isCurrent())return;
   if(sessionError)throw sessionError;
   const session=sessionData?.session;
   if(!session){setCustomerProfileStatus('प्रोफ़ाइल देखने के लिए OTP लॉगिन करें।',true);return;}
+  const requestedUserId=session.user.id;
+  const stillSameUser=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
   const phone=session.user.phone||'';
- const digits=String(phone).replace(/\\D/g,'');
- const displayPhone=digits.startsWith('91')&&digits.length===12?digits.slice(2):digits;
+  const digits=String(phone).replace(/\\D/g,'');
+  const displayPhone=digits.startsWith('91')&&digits.length===12?digits.slice(2):digits;
   document.getElementById('customerProfilePhone').value=displayPhone||phone;
   const {data,error}=await customerSb.rpc('srk_customer_get_my_profile');
+  if(!await stillSameUser())return;
   if(error)throw error;
   const profile=Array.isArray(data)?data[0]:data;
   if(profile) {
    document.getElementById('customerProfileName').value=profile.full_name||'';
-   if(profile.full_name) document.getElementById('name').value=profile.full_name;
+   if(profile.full_name)document.getElementById('name').value=profile.full_name;
    document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
    applyCustomerUiLanguage(profile.preferred_language||'hi');
    customerCurrentAvatarPath=profile.avatar_path||null;
-   if(customerCurrentAvatarPath) await loadCustomerAvatar(customerCurrentAvatarPath);
+   if(customerCurrentAvatarPath)await loadCustomerAvatar(customerCurrentAvatarPath,stillSameUser);
+   if(!await stillSameUser())return;
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।');
   } else {
    document.getElementById('customerProfileName').value=document.getElementById('name').value||'';
    setCustomerProfileStatus('नई प्रोफ़ाइल है। अपना नाम भरकर सेव करें।');
   }
- } catch(e){setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
+ } catch(e){if(isCurrent())setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
 }
 async function saveCustomerProfile() {
  const button=document.getElementById('saveCustomerProfile');
@@ -2047,6 +2056,7 @@ async function syncCustomerSession() {
     await loadCustomerProfile();
   } else {
     customerBookingRefreshRequest++;
+    customerProfileLoadRequest++;
     customerPaymentHistoryRequest++;
     customerPaymentHistoryResetPending=false;
     customerLiveLocationRefreshRequest++;
@@ -2133,6 +2143,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
       customerPaymentHistoryRequest++;
+      customerProfileLoadRequest++;
       customerCancellationFeeRequest++;
       customerRefundHistoryRequest++;
       customerPaymentHistoryResetPending=false;
