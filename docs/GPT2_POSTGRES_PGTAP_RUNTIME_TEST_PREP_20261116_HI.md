@@ -1464,3 +1464,34 @@ Current Feature Branch पर सीधे जाँच में:
 Replay gates पूरे होने और disposable local Supabase harness उपलब्ध होने के बाद targeted test suite में अलग behavioral pgTAP file जोड़ने का प्रस्ताव है। उसमें केवल synthetic local Auth users, synthetic Staff/Support records और synthetic cases हों; हर test transaction rollback हो। पहले negative authorization cases (anon, ordinary user, inactive Staff, wrong/revoked session, unassigned case) और फिर positive authorized flows चलें। Concurrency को अलग two-connection harness में जाँचा जाए, क्योंकि एक सामान्य single-transaction pgTAP test वास्तविक race reproduce नहीं करता।
 
 **निष्कर्ष:** मौजूदा 69 + 28 assertions structural contract coverage हैं; इन्हें 97 runtime authorization scenarios कहना गलत होगा। Behavioral coverage अभी **NOT PRESENT IN THESE TWO TARGETED FILES** है। यह source-only finding है—कोई test execute, SQL write, migration replay या Production access नहीं किया गया।
+
+
+## 45. High-risk workflow pgTAP files का source-level behavior audit — 16 Nov 2026
+
+इस pass में पाँच महत्वपूर्ण test files की पूरी सामग्री पढ़ी गई: work timer, legacy booking status guard, sequential offer dispatch, push delivery lease fencing और Razorpay webhook inbox.
+
+### 45.1 पाँचों files का साझा test pattern
+
+इन पाँचों में `BEGIN`, घोषित `plan(...)`, `finish()` और `ROLLBACK` मौजूद हैं। लेकिन इनके assertions मुख्यतः catalog metadata और `pg_get_functiondef(...)` में अपेक्षित SQL text की उपस्थिति पर निर्भर हैं। Test files में अलग-अलग JWT identity स्थापित करना, `SET ROLE`, या pgTAP `throws_ok/lives_ok/results_eq/is_empty` के जरिए caller behavior execute/assert करना नहीं मिला।
+
+### 45.2 विशिष्ट coverage और gaps
+
+| Test | मौजूदा assertions | जो अभी runtime में सिद्ध नहीं |
+|---|---|---|
+| `server_authoritative_work_timer.test.sql` — plan 20 | columns, tables, RPCs, triggers, rounding formula, protected status/timer source, anonymous execute denial | customer/electrician identities से request-start → customer approval → elapsed time → completion → bill; forged client writes; dispute/reject outcomes |
+| `legacy_booking_status_write_guard.test.sql` — plan 9 | Admin RPC definition, row-lock text, status transition guard, grants, search_path | non-admin/Admin caller invoke; actual legacy row state transition और denied state |
+| `sequential_nearest_offer_dispatch.test.sql` — plan 16 | queue objects, RPC grants, geographic/tier source, decline/expiry dispatch source | synthetic booking/electrician fixtures, actual candidate ordering, one-at-a-time offer, expiry worker and concurrent accept/decline |
+| `push_delivery_lease_fencing.test.sql` — plan 20 | service-role grants, attempt-count fencing, row-lock text, processing/terminal states, retry bounds/backoff, search_path | stale/current worker calls against fixture rows; lease renewal/finish races and actual persisted status |
+| `razorpay_webhook_event_inbox.test.sql` — plan 15 | RLS/grants, unique constraints, claim/complete source, token/hash/lease text | duplicate event claims, expired lease reclaim, wrong token rejection, idempotent completion against local synthetic events |
+
+### 45.3 Local behavioral suite के लिए प्राथमिकता
+
+1. **Timer lifecycle (P0):** अलग customer और electrician Auth users; customer approval से पहले timer न चले; customer approval के बाद server timestamps; completion पर final bill; customer/electrician cross-booking denial; direct timer/snapshot writes denied.
+2. **Webhook lease fencing (P0):** synthetic event ID/hash; duplicate claim; active lease conflict; expired lease reclaim; old token completion denied; current token completion accepted; terminal event idempotency.
+3. **Offer dispatch (P1):** synthetic eligible candidates; exact rate tier/area; decline/expiry next candidate; simultaneous accept attempts में एक winner.
+4. **Push delivery fencing (P1):** stale attempt rejected; current processing attempt accepted; terminal state immutable; retry/dead-letter boundaries.
+5. **Legacy status guard (P1):** anonymous/ordinary authenticated denied; Main Admin valid transition; already transitioned or payment-protected booking denied.
+
+ये proposed synthetic-local tests हैं, अभी जोड़े या चलाए नहीं गए हैं। Concurrency scenarios के लिए दो अलग DB connections/transactions चाहिए; एक साधारण pgTAP transaction पर्याप्त नहीं।
+
+**निष्कर्ष:** पाँचों high-risk workflow tests अभी implementation text/metadata की regression checks हैं, end-to-end behavioral runtime proof नहीं। इससे उनके SQL logic में defect सिद्ध नहीं होता; केवल test coverage की सीमा स्पष्ट होती है। कोई SQL execute, test run, migration replay, fixture write या Production access नहीं किया गया।
