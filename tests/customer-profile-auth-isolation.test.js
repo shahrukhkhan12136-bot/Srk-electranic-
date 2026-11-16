@@ -154,3 +154,13 @@ test('customer auth transitions release OTP busy state and recover OTP controls'
   assert.ok(block.includes('otpSendButton.disabled=false'));
   assert.ok(block.includes('otpVerifyButton.disabled=false'));
 });
+
+
+test('customer auth transitions restore logout button after an in-flight logout', () => {
+  const start = source.indexOf('customerSb.auth.onAuthStateChange');
+  const end = source.indexOf('const handleCustomerOffline', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes("const customerLogoutButton=document.getElementById('customerLogout')"));
+  assert.ok(block.includes('if(customerLogoutButton)customerLogoutButton.disabled=false'));
+});
