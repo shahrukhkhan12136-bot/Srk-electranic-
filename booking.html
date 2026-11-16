@@ -1878,6 +1878,18 @@ async function createCustomerSupportComplaint() {
  if(!bookingId){supportStatus('शिकायत दर्ज करने के लिए अपनी बुकिंग चुनें।',true);return;}
  if(description.length<20||description.length>2000){supportStatus('समस्या का विवरण 20 से 2000 अक्षरों में लिखें।',true);document.getElementById('customerSupportDescription').focus();return;}
  if(button.disabled)return;
+ // Capture the owner's existing complaint IDs before submission. An identical
+ // older complaint must never be mistaken for confirmation of this new request.
+ let priorComplaintIds;
+ try {
+  const {data:before,error:beforeError}=await customerSb.rpc('srk_customer_list_booking_complaints');
+  if(!isCurrent())return;
+  if(beforeError||!Array.isArray(before))throw beforeError||new Error('COMPLAINT_BASELINE_UNAVAILABLE');
+  priorComplaintIds=new Set(before.map(row=>row.id));
+ }catch(_){
+  if(isCurrent())supportStatus('शिकायत भेजने से पहले मौजूदा सूची सत्यापित नहीं हो सकी। कृपया सूची रीफ़्रेश करके फिर कोशिश करें।',true);
+  return;
+ }
  button.disabled=true;button.textContent='शिकायत दर्ज हो रही है…';
  try {
   const {data,error}=await customerSb.rpc('srk_customer_create_booking_complaint',{
@@ -1899,7 +1911,8 @@ async function createCustomerSupportComplaint() {
    if(!isCurrent())return;
    if(!lookupError&&Array.isArray(complaints)){
     lookupSucceeded=true;
-    confirmedComplaint=complaints.find(row=>row.booking_id===bookingId&&row.category===category&&row.description===description)||null;
+    const newMatches=complaints.filter(row=>!priorComplaintIds.has(row.id)&&row.booking_id===bookingId&&row.category===category&&row.description===description);
+    confirmedComplaint=newMatches.length===1?newMatches[0]:null;
    }
   }catch(_){/* If the owner-scoped list is unavailable, keep the submission outcome uncertain. */}
   if(confirmedComplaint){
