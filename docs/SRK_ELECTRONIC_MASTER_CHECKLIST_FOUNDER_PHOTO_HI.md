@@ -637,3 +637,12 @@
 - [x] Dependency map updated with the safe retirement boundary and source/runtime verification limits.
 - [ ] Isolated PostgreSQL/Supabase pgTAP execution remains pending; existing SQL test files (18 legacy payment/receipt checks and 15 new-category accounting bridge checks) were not executed in this step.
 - **GPT-2 progress remains 27/39 = 69%**. Source-contract tests and documentation do not count the pending isolated runtime work as complete.
+
+
+### 2026-11-16 — Migration replay harness audit and exact-head CI
+- [x] Rechecked current branch's Supabase test setup: `supabase/config.toml` is absent; Node test script runs `tests/*.test.js` only; pgTAP plan-count test is a static count check, not SQL execution.
+- [x] Existing `.github/workflows/supabase-schema-ci.yml` is not suitable for GPT-2 isolated tests: it is manually dispatched, branch-guarded to another branch, requires a hosted DB schema-export secret, applies only five unrelated/older migrations, and has no `supabase test db` step. It was not dispatched or modified.
+- [x] Updated migration replay gate document with this exact harness finding; no schema or migration order was changed.
+- [x] Latest PR #8 head `0755c94a28239a7a20e11a2490d93b75540d57c1`, GitHub Actions run `43859720987`, job `133273045255`: **384/384 PASS, 0 FAIL, 0 cancelled**. Final TAP summary verified from the job log.
+- [ ] PostgreSQL/Supabase migration replay and pgTAP runtime remain NOT RUN. Authoritative baseline, early `is_srk_admin()`/ `amount_paid` dependency order, and duplicate `20261109` remote history remain unresolved.
+- **GPT-2 progress remains 27/39 = 69%**. This source-only CI pass does not close database/runtime checklist items. PR #8 remains open, draft, unmerged; no Production access, deployment, or merge.
