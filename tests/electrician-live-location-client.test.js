@@ -94,3 +94,40 @@ test('live-location start is bound to the same authenticated electrician session
   assert.match(start[0], /if\(!isCurrent\(\)\)throw Error\('लॉगिन सत्र बदल गया है।'\)/);
   assert.match(start[0], /if\(serverStarted\)[\s\S]*?srk_electrician_stop_live_location/);
 });
+
+
+test('Electrician logout confirms every active server location stop before signing out', () => {
+  const start = electrician.indexOf('async function logout()');
+  const end = electrician.indexOf('\\nfunction renderElectricianLiveLocationControls', start);
+  assert.ok(start >= 0 && end > start);
+  const logout = electrician.slice(start, end);
+  const stopAll = logout.indexOf('Promise.allSettled(activeLocationIds.map');
+  const failureGuard = logout.indexOf("throw new Error('LIVE_LOCATION_STOP_NOT_CONFIRMED')");
+  const signOut = logout.indexOf('sb.auth.signOut()');
+  assert.ok(stopAll >= 0 && failureGuard > stopAll && signOut > failureGuard,
+    'all stop RPCs and their failure guard must precede auth sign-out');
+  assert.match(logout, /results\\.findIndex\\(r=>r\\.status==='rejected'\\|\\|r\\.value\\?\\.error\\)/);
+  assert.match(logout, /catch\\(e\\)[\\s\\S]*?लॉगआउट पूरा नहीं हो सका/);
+  assert.match(logout, /activeLocationIds\\.forEach\\(id=>locationWatches\\.delete\\(id\\)\\)/);
+});
+
+test('Electrician account-view reset clears GPS watches and auth changes invalidate old callbacks', () => {
+  const resetStart = electrician.indexOf('function clearElectricianAccountView()');
+  const resetEnd = electrician.indexOf('\\nfunction ', resetStart + 10);
+  assert.ok(resetStart >= 0 && resetEnd > resetStart);
+  const reset = electrician.slice(resetStart, resetEnd);
+  assert.match(reset, /electricianAccountViewGeneration\\+\\+/);
+  assert.match(reset, /locationWatches\\.forEach\\(watch=>navigator\\.geolocation\\.clearWatch\\(watch\\)\\)/);
+  assert.match(reset, /locationWatches\\.clear\\(\\)/);
+  const authStart = electrician.indexOf('sb.auth.onAuthStateChange');
+  const authEnd = electrician.indexOf('function show()', authStart);
+  assert.ok(authStart >= 0 && authEnd > authStart);
+  const auth = electrician.slice(authStart, authEnd);
+  assert.match(auth, /if\\(previousUserId!==nextUserId\\)[\\s\\S]*?clearElectricianAccountView\\(\\)/);
+  const gpsStart = electrician.indexOf('async function startElectricianLiveLocation(id)');
+  const gpsEnd = electrician.indexOf('\\nasync function stopElectricianLiveLocationAfterGpsFailure', gpsStart);
+  const gps = electrician.slice(gpsStart, gpsEnd);
+  assert.match(gps, /const isCurrent=\\(\\)=>!!requestedUserId&&user\\?\\.id===requestedUserId&&profile\\?\\.user_id===requestedUserId&&!electricianLogoutBusy/);
+  assert.match(gps, /if\\(!isCurrent\\(\\)\\)\\{/);
+  assert.match(gps, /navigator\\.geolocation\\.clearWatch\\(watch\\)/);
+});
