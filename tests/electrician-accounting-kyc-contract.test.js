@@ -210,8 +210,10 @@ test('availability save success is not reported as failure when dashboard refres
 test('Electrician KYC client bucket, privacy, size and MIME allowlist match the storage migration', () => {
   const migrationPath = path.join(root, 'supabase', 'migrations', '20261115140000_electrician_kyc_review_and_activation_gate.sql');
   const migration = fs.readFileSync(migrationPath, 'utf8');
-  assert.match(electrician, /const KYC_BUCKET='srk-electrician-verification'/);
-  assert.match(electrician, /const KYC_MIME_TYPES=\['application\\/pdf','image\\/jpeg','image\\/png'\]/);
-  assert.match(migration, /values\\(\\s*'srk-electrician-verification',\\s*'srk-electrician-verification',\\s*false,\\s*5242880,\\s*array\\['application\\/pdf','image\\/jpeg','image\\/png'\]::text\\[\\]/i);
-  assert.match(migration, /create policy srk_electrician_kyc_owner_upload[\\s\\S]*?bucket_id='srk-electrician-verification'[\\s\\S]*?storage\\.foldername\\(name\\)\)\[1\]=auth\.uid\(\)::text/i);
+  assert.ok(electrician.includes("const KYC_BUCKET='srk-electrician-verification'"));
+  assert.ok(electrician.includes("const KYC_MIME_TYPES=['application/pdf','image/jpeg','image/png']"));
+  assert.ok(migration.includes("'srk-electrician-verification',\n  'srk-electrician-verification',\n  false,\n  5242880,\n  array['application/pdf','image/jpeg','image/png']::text[]"));
+  assert.ok(migration.includes('create policy srk_electrician_kyc_owner_upload on storage.objects'));
+  assert.ok(migration.includes("bucket_id='srk-electrician-verification'"));
+  assert.ok(migration.includes('(storage.foldername(name))[1]=auth.uid()::text'));
 });
