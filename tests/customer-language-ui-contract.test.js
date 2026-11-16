@@ -128,9 +128,9 @@ test('customer default-address update does not overwrite a failed address-list r
   assert.ok(loadStart>=0&&loadEnd>loadStart&&defaultStart>=0&&defaultEnd>defaultStart);
   const load=booking.slice(loadStart,loadEnd),makeDefault=booking.slice(defaultStart,defaultEnd);
   assert.match(load,/return true;\s*\} catch\(e\).*return false;/s);
-  assert.match(makeDefault,/const refreshed=await loadCustomerSavedAddresses\(\);/);
-  assert.match(makeDefault,/if\(!refreshed\)\{setSavedAddressStatus\('डिफ़ॉल्ट पता बदल गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी।/);
-  assert.ok(makeDefault.indexOf('if(!refreshed)')<makeDefault.indexOf("setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।')"));
+  assert.match(makeDefault,/const addressListRefreshed=await loadCustomerSavedAddresses\(\);/);
+  assert.match(makeDefault,/if\(!addressListRefreshed\)\{setSavedAddressStatus\('डिफ़ॉल्ट पता बदल गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी।/);
+  assert.ok(makeDefault.indexOf('if(!addressListRefreshed)')<makeDefault.indexOf("setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।')"));
 });
 
 
