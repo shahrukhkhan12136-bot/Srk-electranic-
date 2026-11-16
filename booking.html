@@ -2395,17 +2395,18 @@ function customerBookingRequestKey(payload,customerUserId){
   if(!customerUserId)throw new Error('बुकिंग पहचान के लिए ग्राहक लॉगिन आवश्यक है।');
   const storageKey='srk.customer.booking.pending.v1:'+customerUserId;
   const fingerprint=JSON.stringify(payload);
-  try{
-    const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');
-    if(saved&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(saved.key))return saved.key;
-  }catch(_){}
+  let saved;
+  try{saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');}
+  catch(_){throw new Error('बुकिंग की सुरक्षित पहचान इस ब्राउज़र में सेव नहीं हो सकी। कृपया ब्राउज़र स्टोरेज चालू करके दोबारा कोशिश करें।');}
+  if(saved&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(saved.key))return saved.key;
   if(!window.crypto?.getRandomValues)throw new Error('इस डिवाइस पर सुरक्षित बुकिंग पहचान उपलब्ध नहीं है। कृपया सुरक्षित ब्राउज़र में दोबारा कोशिश करें।');
   const bytes=new Uint8Array(16);
   window.crypto.getRandomValues(bytes);
   bytes[6]=(bytes[6]&0x0f)|0x40;bytes[8]=(bytes[8]&0x3f)|0x80;
   const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
   const key=hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
-  try{sessionStorage.setItem(storageKey,JSON.stringify({key,fingerprint}));}catch(_){}
+  try{sessionStorage.setItem(storageKey,JSON.stringify({key,fingerprint}));}
+  catch(_){throw new Error('बुकिंग की सुरक्षित पहचान सेव नहीं हो सकी। बुकिंग नहीं भेजी गई। ब्राउज़र स्टोरेज की जगह खाली करके दोबारा कोशिश करें।');}
   return key;
 }
 function clearCustomerBookingRequestKey(key,customerUserId){
