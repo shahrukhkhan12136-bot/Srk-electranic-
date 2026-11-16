@@ -473,3 +473,17 @@ verify-payment.js और razorpay-webhook.js के legacy-quote payment paths �
 **सुझाया गया सुधार:** legacy path को atomic DB settlement RPC में ले जाएँ जो booking row lock करके current order ID, online method, completed/approved eligibility, amount और payment/refund state एक ही transaction में जाँचे; mismatch पर स्पष्ट manual-reconciliation result दे। Verify-payment और webhook दोनों उसी RPC का उपयोग करें। pgTAP में initial read के बाद status बदलना, quote revoke/change, payment method change और concurrent verify/webhook के cases जोड़ें।
 
 यह finding source-level race analysis है। कोई DB/Production row नहीं देखी गई; कोई payment, refund, migration या runtime concurrency test नहीं किया गया।
+
+## 37. Verify Payment / Webhook की दो service-role RPC निर्भरताएँ — SQL definition अभी प्रमाणित नहीं
+
+### स्रोत में उपयोग
+- `verify-payment.js` के new-category रास्ते में `srk_service_role_get_booking_payment_breakdown` से immutable labour bill और cancellation-fee सहित अपेक्षित कुल राशि ली जाती है। इसके बाद `srk_service_role_record_online_booking_payment` को booking ID, Razorpay Order ID, Payment ID और paise amount के साथ बुलाया जाता है।
+- `razorpay-webhook.js` का new-category payment रास्ता भी यही दोनों RPC बुलाता है। RPC settlement असफल होने पर webhook retryable error देता है; Verify Payment Admin reconciliation की जरूरत बताता है।
+- जाँची गई migration `20261114360000_new_category_electrician_payout_reconciliation.sql` में payout trigger `srk_create_electrician_payable` और payout settlement function हैं, लेकिन इन दोनों online-payment RPC की definitions नहीं हैं।
+- साथ में जाँची गई root setup files `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`, `ADMIN_EMAIL_LOGIN_SETUP.sql` में भी इन exact function names की definitions नहीं मिलीं। कुछ अन्य payment-related migrations केवल payment preference या दूसरे workflows संभालती हैं।
+
+### प्रभाव / सीमा
+- यह दो RPC runtime dependencies हैं। यदि ये Production/Test database में किसी अलग untracked या manually-installed SQL से उपलब्ध नहीं हैं, तो new-category online payment verification और webhook settlement fail होंगे।
+- अभी यह प्रमाणित नहीं है कि deployed database में functions मौजूद नहीं हैं; Production schema query नहीं की गई। इसलिए इसे confirmed outage नहीं, बल्कि repository/replay lineage में unresolved dependency माना जाए।
+- अगला सुरक्षित कदम: canonical baseline और migration lineage तय होने के बाद isolated test database में `pg_proc`/privilege/signature जाँचें; function body में booking row lock, exact order/payment/amount/currency validation, idempotency, paid/refunded conflict और ledger atomicity सत्यापित करें। उसके बाद Verify Payment और webhook के साझा settlement contract पर pgTAP तथा concurrent retry tests जोड़ें।
+- अभी कोई SQL migration, Production query/write, payment attempt या refund operation नहीं किया गया।
