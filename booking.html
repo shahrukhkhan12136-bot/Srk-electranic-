@@ -920,6 +920,8 @@ let customerPaymentHistoryOffset=0;
 let customerPaymentHistoryBusy=false;
 let customerPaymentHistoryRequest=0;
 let customerPaymentHistoryResetPending=false;
+let customerCancellationFeeRequest=0;
+let customerRefundHistoryRequest=0;
 function formatCustomerMoney(amount) {
  const n=Number(amount);
  return Number.isFinite(n)?'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'राशि उपलब्ध नहीं';
@@ -1007,34 +1009,40 @@ async function loadCustomerPaymentHistory(reset=true) {
 }
 async function loadCustomerCancellationFeeDebts(){
  if(!customerSb)return;
+ const requestId=++customerCancellationFeeRequest;
  const box=document.getElementById('customerCancellationFeeDebts');
  if(!box)return;
  box.setAttribute('aria-busy','true');box.textContent='Cancellation fee बकाया लोड हो रहा है…';
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(sessionError)throw sessionError;
+  if(requestId!==customerCancellationFeeRequest)return;
   if(!sessionData?.session){box.textContent='बकाया देखने के लिए OTP लॉगिन करें।';return;}
   const {data,error}=await customerSb.rpc('srk_customer_list_my_cancellation_fee_debts');
   if(error)throw error;
+  if(requestId!==customerCancellationFeeRequest)return;
   const rows=Array.isArray(data)?data:[];
   const due=rows.filter(r=>['open','reserved'].includes(r.status));
   const total=due.reduce((sum,r)=>sum+Number(r.amount_paise||0),0);
   box.innerHTML='<p><b>कुल बकाया: ₹'+(total/100).toFixed(2)+'</b></p>'+
    (rows.map(r=>'<article class="card" style="margin:8px 0;padding:10px"><b>₹'+(Number(r.amount_paise)/100).toFixed(2)+'</b><p class="small">पुरानी Booking: '+customerEsc(String(r.source_booking_id||'').slice(0,8))+'… · स्थिति: '+customerEsc(({open:'अगली booking में जोड़ी जाएगी',reserved:'अगली booking के bill में जोड़ी गई',settled:'जमा हो चुकी',reversed:'Admin द्वारा reverse'}[r.status]||r.status))+'</p><p class="small">तारीख: '+customerEsc(r.created_at?new Date(r.created_at).toLocaleString(document.documentElement.lang==='en'?'en-IN':'hi-IN'):'')+'</p></article>').join('')||'<p class="small">कोई cancellation fee बकाया नहीं है।</p>');
- }catch(e){box.textContent='Cancellation fee बकाया अभी लोड नहीं हो सका। कृपया दोबारा कोशिश करें.';}
- finally{box.setAttribute('aria-busy','false');}
+ }catch(e){if(requestId===customerCancellationFeeRequest)box.textContent='Cancellation fee बकाया अभी लोड नहीं हो सका। कृपया दोबारा कोशिश करें.';}
+ finally{if(requestId===customerCancellationFeeRequest)box.setAttribute('aria-busy','false');}
 }
 async function loadCustomerRefundHistory(){
  if(!customerSb)return;
+ const requestId=++customerRefundHistoryRequest;
  const box=document.getElementById('customerRefundHistory');
  if(!box)return;
  box.setAttribute('aria-busy','true');box.textContent='रिफंड अनुरोध लोड हो रहे हैं…';
  try{
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(sessionError)throw sessionError;
+  if(requestId!==customerRefundHistoryRequest)return;
   if(!sessionData?.session){box.textContent='रिफंड स्थिति देखने के लिए OTP लॉगिन करें।';return;}
   const {data,error}=await customerSb.rpc('srk_customer_list_booking_refund_requests');
   if(error)throw error;
+  if(requestId!==customerRefundHistoryRequest)return;
   const rows=Array.isArray(data)?data:[];
   box.innerHTML=rows.map(row=>{
    const date=row.updated_at||row.created_at;
@@ -1042,8 +1050,8 @@ async function loadCustomerRefundHistory(){
    return '<article class="card" style="margin:10px 0;padding:12px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>बुकिंग #'+customerEsc(String(row.booking_id||'').slice(0,8).toUpperCase())+'</strong><strong>'+customerEsc(formatCustomerMoney(row.amount))+'</strong></div><p class="small">स्थिति: '+customerEsc(customerRefundStatusText(row.status))+'</p><p class="small">कारण: '+customerEsc(row.reason||'—')+'</p><p class="small">अंतिम अपडेट: '+customerEsc(dateText)+'</p></article>';
   }).join('')||'<p class="small">अभी कोई रिफंड अनुरोध दर्ज नहीं है।</p>';
  }catch(error){
-  box.textContent='रिफंड स्थिति लोड नहीं हो सकी। कृपया दोबारा कोशिश करें।';
- }finally{box.setAttribute('aria-busy','false');}
+  if(requestId===customerRefundHistoryRequest)box.textContent='रिफंड स्थिति लोड नहीं हो सकी। कृपया दोबारा कोशिश करें।';
+ }finally{if(requestId===customerRefundHistoryRequest)box.setAttribute('aria-busy','false');}
 }
 const customerBookingStatusLabels = {
   new:'बुकिंग प्राप्त हुई',
@@ -2125,6 +2133,8 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
       customerPaymentHistoryRequest++;
+      customerCancellationFeeRequest++;
+      customerRefundHistoryRequest++;
       customerPaymentHistoryResetPending=false;
     }
     setTimeout(syncCustomerSession, 0);
