@@ -3,7 +3,7 @@
 **अंतिम सत्यापित अपडेट:** 16 नवम्बर 2026  
 **PR:** [#8](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/pull/8) — OPEN / DRAFT / अभी MERGE नहीं  
 **Branch:** `feat/customer-login-first-dashboard-20261114`  
-**नवीनतम डैशबोर्ड Commit से पहले सत्यापित Code HEAD:** `24aed49029a731e8a88cd33e0093dd2b18689e36`
+**वर्तमान सत्यापित Code HEAD:** `1ec27f8dc7fbbe7c6200f1920481f80388b919bb`
 
 > यह डैशबोर्ड केवल सत्यापित स्थिति दिखाता है। Source में code/test मौजूद होना, live database पर चलना, preview पर दिखना और Production में release होना अलग-अलग gates हैं। प्रतिशत केवल checklist-count के आधार पर दिया जाता है; अनुमान से नहीं।
 
@@ -19,15 +19,13 @@
 | 6. Vercel Preview | **Build Rate Limit** | पिछली जाँच में Vercel build-rate-limit blocker मिला था। इसे pass नहीं माना गया है। |
 | 7. Owner Approval और Release | **बाकी** | Owner approval, PR merge, Production migrations/deploy और release अभी नहीं हुए हैं। |
 
-## नवीनतम सत्यापित टेस्ट
+## नवीनतम सत्यापित टेस्ट स्थिति
 
-- GitHub Actions workflow: **Node test suite (no secrets, no deployment)**
-- सत्यापित Code HEAD: `24aed49029a731e8a88cd33e0093dd2b18689e36`
-- GitHub Actions run: `43843110580`
-- परिणाम: **358 passed / 0 failed / 0 skipped**
-- अतिरिक्त focused source-contract harness: **15/15 passed** (यह अलग targeted check है; GitHub Actions run ऊपर वाला authoritative CI प्रमाण है)।
-- अन्य GitHub checks: Redirect rules **Success**, Header rules **Success**, Pages changed **Neutral**।
-- यह source/Node CI है; DB runtime, Browser E2E या Mobile QA का विकल्प नहीं।
+- वर्तमान Code HEAD: `1ec27f8dc7fbbe7c6200f1920481f80388b919bb`
+- इस HEAD के लिए GitHub Actions workflow runs: **कोई run उपलब्ध नहीं**। इसलिए इस HEAD पर test pass का दावा नहीं है।
+- ऐतिहासिक CI प्रमाण: पुराने HEAD `24aed49029a731e8a88cd33e0093dd2b18689e36` पर run `43843110580` में **358 passed / 0 failed / 0 skipped** दर्ज था। यह परिणाम वर्तमान HEAD पर लागू नहीं माना जाएगा।
+- पुराने HEAD पर अतिरिक्त focused source-contract harness **15/15 passed** दर्ज था; यह भी वर्तमान HEAD का परिणाम नहीं है।
+- यह source/Node CI, DB runtime, Browser E2E या Mobile QA का विकल्प नहीं।
 
 ## GPT-1 का कार्यक्षेत्र
 
@@ -64,3 +62,27 @@
 - **नया CI/test परिणाम और सत्यापित commit**
 
 हर नए अपडेट में PR HEAD और संबंधित checks फिर से जाँचे जाएँगे। पुराना test result नए commit पर लागू मानकर नहीं बताया जाएगा।
+
+
+## प्रगति इतिहास — 2026-11-16 (नवीनतम)
+
+### Customer App — SOS account-switch isolation
+- समस्या: SOS RPC लंबित रहते अकाउंट बदलने पर पुराने अनुरोध का परिणाम नई session UI को प्रभावित कर सकता था।
+- सुधार: SOS submit अब account generation snapshot और auth.getSession() से वर्तमान session पहचानता है; stale response/error UI में लागू नहीं होता और busy/button state केवल उसी generation में restore होती है। Auth change पर SOS busy set साफ होता है।
+- Regression test: tests/sos-two-step-ui-contract.test.js में Customer SOS generation/session/finally guards के assertions जोड़े।
+- Commits: source 91a47765859570ffb6d87d7fdc031875414a19d2; test 6c4652458a8afc787b9af4d279ffa76e732de4b0।
+- सत्यापन: latest source/test blob re-fetched; latest HEAD पर GitHub Actions run उपलब्ध नहीं। Runtime/Supabase और browser परीक्षण बाकी।
+
+### Customer App — Saved Address save/delete account isolation
+- समस्या: Save/Delete address RPC, reconciliation lookup या list refresh के दौरान अकाउंट बदलने पर पुराने request का परिणाम नई session की address list/status/button को बदल सकता था।
+- सुधार: दोनों actions में account generation और session user ID capture; हर async boundary के बाद generation/session re-check; stale request UI update नहीं करता और finally केवल उसी session में button restore करता है।
+- Commit: 1ec27f8dc7fbbe7c6200f1920481f80388b919bb।
+- सत्यापन: source update commit हुआ; regression tests अभी जोड़ने/जाँचने बाकी हैं। GitHub Actions run उपलब्ध नहीं। Runtime और browser परीक्षण बाकी।
+
+### शेष / अगला कदम
+- Saved Address Save/Delete के लिए focused regression tests जोड़ना और Default Address action की account-switch isolation जाँचना।
+- Customer payment-method change सहित बाकी async mutations का source audit।
+- इसके बाद Electrician App के शेष स्वीकृत items और Master Checklist reconcile करना।
+- Manual mobile QA, Browser E2E और DB runtime परीक्षण implementation समाप्त होने तक स्थगित हैं।
+
+सुरक्षा: PR #8 OPEN / DRAFT / UNMERGED; Production deploy, Production DB बदलाव और paid staging creation नहीं किए गए।
