@@ -1177,3 +1177,44 @@ Current branch source में:
 - RPC execute grants के साथ SECURITY DEFINER owner, search_path और called helper authorization का मिलान।
 
 ये तीनों checks source/runtime parity के लिए शेष हैं। कोई SQL execution, ACL परिवर्तन, policy परिवर्तन, migration replay या Production access नहीं हुआ।
+
+
+
+## 39. RLS/ACL/RPC संयुक्त जाँच — private schema, server-only ledger और Storage dependencies — 16 Nov 2026
+
+### 39.1 `private` और `srk_private` अलग schemas हैं
+
+अब current migration source में `private` schema के explicit creators मिल गए:
+- `20261108120608_add_public_api_rate_limiting.sql` में `create schema if not exists private` और server-only rate-limit table/function।
+- `20261109103143_move_customer_call_contact_lookup_to_private.sql` में भी `create schema if not exists private` और private contact-lookup implementation।
+
+इससे `private` schema के source-level creator का gap बंद होता है। लेकिन यह `srk_private` schema से अलग नाम है। Section 35 में `srk_private` के migration creator का न मिलना अभी भी unresolved है; दोनों schemas को एक न माना जाए।
+
+### 39.2 Server-only table ACL का उदाहरण
+
+`20261109020000_create_server_only_razorpay_route_transfer_ledger.sql`:
+- `public.srk_route_transfers` पर RLS enable करती है।
+- `anon` और `authenticated` से सभी table privileges revoke करती है।
+- `service_role` को SELECT/INSERT/UPDATE देती है।
+- Source comment स्पष्ट करता है कि DB ledger write अपने-आप Razorpay money movement नहीं करता।
+
+`20261108120608` की rate-limit table भी `anon`/ `authenticated` से बंद है और `service_role` के लिए है; rate-limit RPC execute भी केवल `service_role` को मिलता है।
+
+### 39.3 SECURITY DEFINER / Storage boundary
+
+`20261114180000_harden_customer_avatar_object_integrity.sql` में profile RPC SECURITY DEFINER और empty search_path के साथ है। Function Storage object metadata, bucket ID, owner, MIME type, size और user-folder path जाँचता है; execute privilege `authenticated` को दिया गया है, जबकि public/anon revoke हैं। यह Storage schema/table/bucket की पहले से मौजूद Supabase infrastructure पर निर्भर है। Source पढ़ने से bucket/object policies की live स्थिति सिद्ध नहीं होती।
+
+### 39.4 संयुक्त जाँच-सूची की वर्तमान स्थिति
+
+| जाँच क्षेत्र | Source से मिला निष्कर्ष | शेष प्रमाण |
+|---|---|---|
+| Booking read policies | Customer/Admin policy replacement स्पष्ट | सभी tables की पूर्ण policy inventory और effective mode |
+| Booking direct UPDATE | privilege grants बाद में closure से revoke | effective table/column ACL + RLS संयुक्त snapshot |
+| Server-only ledger | RLS + anon/authenticated revoke + service_role grants | Production effective ACL snapshot |
+| Rate limiting | private schema/table और service_role-only RPC source में | private schema/table runtime parity |
+| RPC execute grants | कई RPCs में public/anon revoke और authenticated/service_role grant स्पष्ट | सभी overloads/signatures और अंतिम grants की exhaustive सूची |
+| SECURITY DEFINER | अलग-अलग search_path patterns, कुछ empty path | प्रत्येक function में object qualification, owner और helper chain review |
+| Storage | avatar RPC storage.objects metadata पढ़ती है | bucket existence/config, RLS policies और ownership metadata parity |
+| Internal schema | `private` का creator मिला | `srk_private` creator अभी नहीं मिला |
+
+**स्थिति:** यह source-only ACL/RLS/RPC reconciliation है, complete effective-state certification नहीं। विशेष रूप से `private` की मौजूदगी `srk_private` की मौजूदगी सिद्ध नहीं करती। कोई SQL/Production query, migration execution, permission edit, data write या deployment नहीं किया गया।
