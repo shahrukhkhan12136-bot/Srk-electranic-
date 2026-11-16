@@ -93,7 +93,7 @@ Recursive Git tree (refreshed PR head) में 213 tracked files मिले;
 
 | Shared system | GPT-1 dependency | GPT-2 owner responsibility | Current boundary |
 |---|---|---|---|
-| Main Supabase baseline / identity | Customer and Electrician RPCs require booking/customer/electrician ownership columns | Historical DDL, roles, grants, RLS, schema parity | `service_bookings.amount_paid` and `electrician_profiles.auth_user_id` authoritative DDL remain unresolved in baseline audit; do not guess |
+| Main Supabase baseline / identity | Customer and Electrician RPCs require booking/customer/electrician ownership columns | Historical DDL, roles, grants, RLS, schema parity | the starter-baseline provenance/order for `service_bookings.amount_paid` remains unresolved (a later restore migration defines it); `electrician_profiles.auth_user_id` is introduced by a versioned migration; do not guess |
 | Booking and offer lifecycle | Customer booking creation/history and Electrician offer/accept/respond | Core booking state, offer dispatch, locking, triggers, DB privileges | Migrations and source are present; full replay and actor/race runtime not proven |
 | Payment / receipts / refunds | Customer payment choice/history/receipt/refund request; Electrician earnings view | Provider verification, payment/refund ledgers, refund approvals/recovery, payout/accounting | Client-to-RPC source mapped; DB/provider runtime remains separate |
 | Customer/Electrician support | Customer complaint messages/attachments; Electrician tickets/replies | Admin inbox, staff assignment, role scopes, audit and attachment access | Child schemas/RPCs present; end-to-end role/storage test pending |
@@ -104,7 +104,7 @@ Recursive Git tree (refreshed PR head) में 213 tracked files मिले;
 ## 8. Known integration/replay gates — do not silently bypass
 
 1. Current PR is Draft and source-only; do not merge, deploy, or apply migrations to Production.
-2. Historical baseline DDL is still unresolved for `public.service_bookings.amount_paid` and `public.electrician_profiles.auth_user_id`. Never guess types/defaults/nullability/FKs/indexes.
+2. `public.service_bookings.amount_paid` is defined in later migration `20261116200000_restore_service_bookings_amount_paid.sql`, but its presence in the authoritative starter baseline and ordering relative to earlier references remain unresolved. `public.electrician_profiles.auth_user_id` is introduced by migration `20261109000500_harden_electrician_profile_identity_linking.sql`. Never infer live parity from source files.
 3. Complaint base schema and push subscription base schema were historically recovered into current branch, but remote applied-history still requires independent evidence.
 4. Legacy migration filenames include two 8-digit `20261109` prefixes; duplicate remote lineage/application history must be reconciled before any replay plan.
 5. `docs/MIGRATION_REPLAY_MANIFEST_HI.md` and dependency docs are static inventories, not proof of a valid PostgreSQL clean replay.
