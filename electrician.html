@@ -576,7 +576,9 @@ async function submitElectricianSosAlert(id){
  const reason=document.getElementById('electricianSosReason_'+id)?.value;
  if(!['customer_at_risk','electrician_at_risk','violence_or_other_emergency'].includes(reason)){if(status)status.textContent='कृपया दिए गए तीन कारणों में से एक चुनें।';return;}
  electricianSosBusy.add(requestKey);button.disabled=true;if(status)status.textContent='SOS अनुरोध दर्ज किया जा रहा है…';
+ let rpcAttempted=false;
  try{
+  rpcAttempted=true;
   const {data,error}=await sb.rpc('srk_create_sos_alert',{p_reason:reason});
   if(!isCurrent())return;
   if(error)throw error;
@@ -585,7 +587,7 @@ async function submitElectricianSosAlert(id){
   document.getElementById('electricianSosChoice_'+id)?.classList.add('hidden');
   document.getElementById('electricianSosOpen_'+id)?.classList.remove('hidden');
   const reasonInput=document.getElementById('electricianSosReason_'+id);if(reasonInput)reasonInput.value='';
- }catch(_){if(isCurrent()&&status)status.textContent='SOS अभी दर्ज नहीं हो सका। अलर्ट भेजा हुआ न मानें।';}
+ }catch(_){if(isCurrent()&&status)status.textContent=rpcAttempted?'SOS का परिणाम स्पष्ट नहीं है। केस दर्ज हुआ हो सकता है; बुकिंग Refresh करके स्थिति जाँचें। SMS/Push डिलीवरी कॉन्फ़िगर नहीं है।':'SOS अनुरोध शुरू नहीं हो सका। कृपया लॉगिन और सक्रिय बुकिंग जाँचें।';}
  finally{electricianSosBusy.delete(requestKey);if(isCurrent()&&button)button.disabled=false;}
 }
 
