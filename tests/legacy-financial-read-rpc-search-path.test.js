@@ -13,7 +13,7 @@ test('legacy financial SECURITY DEFINER read RPCs pin an empty search_path', () 
     'srk_get_my_wallet_summary',
     'srk_admin_wallet_overview'
   ]) {
-    assert.match(migration, new RegExp('ALTER FUNCTION public\\\\.' + fn + '\\\\(\\\\)'));
+    assert.match(migration, new RegExp('ALTER FUNCTION public\\\\.' + fn + '\\\\(\\\\)', 'i'));
   }
   assert.equal((migration.match(/SET search_path = '';/g) || []).length, 3);
   assert.ok(!migration.includes('pg_catalog, public, auth, pg_temp'));
