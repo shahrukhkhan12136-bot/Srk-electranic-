@@ -492,3 +492,17 @@ A follow-up consistency check found a concrete test/source mismatch:
 - यह source/test-contract repair है, test pass नहीं। Node tests, PostgreSQL replay और pgTAP suites अभी execute नहीं हुए। Full disposable replay से पहले canonical base schema, is_srk_admin()/srk_admin_users, cancellation-fee schema, payout/refund dependencies और migration ledger ordering को resolve करना बाकी है।
 
 **सीमा:** इस समीक्षा ने कोई refund/payment execute नहीं किया, कोई Production SQL नहीं चलाया, और PR #8 head/Production/deployment को नहीं बदला।
+
+
+## 17. Electrician payout trigger attachment gap — 16 Nov 2026
+
+Refund→Payout source trace में एक महत्वपूर्ण integration gap मिला:
+
+- `20261114360000_new_category_electrician_payout_reconciliation.sql` `public.srk_create_electrician_payable()` trigger function बनाती है और direct client EXECUTE revoke करती है, लेकिन इसी migration में उस function को `public.service_bookings` पर attach करने वाला `CREATE TRIGGER ... EXECUTE FUNCTION` नहीं है।
+- इस branch की दोनों manual bootstrap files (`PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`) में पुराना `srk_booking_commission_trigger` केवल `srk_calculate_commission_on_completion()` चलाता है; वह नए payout reconciliation function को invoke नहीं करता।
+- उपलब्ध migration tree में payout function के लिए अलग trigger attachment migration भी नहीं मिली। यह bounded source scan है; किसी uninspected external/bootstrap artifact को इससे नकारा नहीं जा सकता।
+- इसलिए केवल function definition देखकर यह निष्कर्ष नहीं निकाला जा सकता कि booking के paid/completed होने पर electrician payout row स्वतः बनेगी या refunded transition पर payout बंद होगा। Refund RPC कुछ paths में payout row को सीधे update करती है, लेकिन सामान्य booking lifecycle integration अलग से चाहिए।
+- Existing `electrician_payout_reconciliation.test.sql` में 2 acceptance assertions जोड़ीं: trigger का `service_bookings` पर attach होना और AFTER UPDATE timing। Test plan अब 28 है। वर्तमान source के आधार पर ये assertions likely fail होंगी जब तक attachment migration मौजूद न हो; pgTAP चलाया नहीं गया है, इसलिए इसे executed failure नहीं कहा जा रहा।
+- **अगला निर्णय/सुधार:** owner-approved migration में trigger timing और event columns (status/payment_status/verified payment/assignment/amount/quote inputs), INSERT coverage, तथा legacy commission trigger के साथ coexistence तय करके attachment करना होगा। इसे अभी स्वतः नहीं जोड़ा गया, क्योंकि गलत timing duplicate payout या payout न बनने का कारण बन सकती है।
+
+**जोखिम:** यह source-level integration blocker है, केवल test coverage कमी नहीं। Production या PR #8 head पर कोई बदलाव नहीं किया।
