@@ -44,7 +44,7 @@ The two helpers must not be treated as aliases. Their exact approved baseline de
 - The base `service_bookings` definition in `COMPLETE_DATABASE_SETUP.sql` does not declare `amount_paid`.
 - On this audit branch, `20261109003000_secure_commission_reporting.sql` now adds `amount_paid numeric(12,2)` with `ADD COLUMN IF NOT EXISTS` before defining the SQL-language commission/earnings functions and column grants that consume it.
 - `20261116200000_restore_service_bookings_amount_paid.sql` remains as an idempotent later restoration/constraint migration.
-- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` also reads `NEW.amount_paid`; its exact ordering and trigger attachment must still be checked against the approved baseline and migration lineage.
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` defines a PL/pgSQL function that reads `NEW.amount_paid`, but does not attach it to a trigger. The early column-order concern is not established because `09003000` adds the column before its own consumers; the separate trigger-wiring defect is recorded in section 15.
 
 This audit-branch source correction removes the identified early missing-column ordering issue in that migration. It does **not** establish that a clean replay succeeds: canonical base-table provenance, both Admin helper definitions/grants, malformed legacy filenames, duplicate-prefix history and the full trigger dependency chain remain unresolved. Do not rename/resequence migrations or infer deployed history without reconciling the authoritative migration ledger first.
 
@@ -68,14 +68,14 @@ The two `20261109_...` filenames do not carry a 14-digit migration version. Thei
 
 1. Obtain owner-approved baseline provenance and the authoritative remote migration-history/schema-only evidence.
 2. Decide where the canonical base schema and both Admin helpers are introduced for a disposable clean install.
-3. Resolve the `amount_paid` introduction/order contract so all earlier consumers can compile.
+3. Preserve the early `amount_paid` ADD COLUMN at the start of `09003000`; resolve the separate service-only commission trigger binding with an ordered follow-up migration and focused pgTAP coverage.
 4. Resolve the two malformed migration filenames against the authoritative migration ledger; do not guess timestamps.
 5. Add/verify Supabase local configuration and an isolated disposable PostgreSQL/Supabase harness.
-6. Only then run full migration replay and all 32 pgTAP files against the disposable target, recording actual logs and results.
+6. Only then run full migration replay and all 34 pgTAP files against the disposable target, recording actual logs and results.
 
 ## Status
 
-**Replay is not yet verified.** This document records static dependency findings only. The 32 pgTAP files have not been executed in PostgreSQL as part of this audit. No Production SQL or migration history was changed; no merge or deployment was performed.
+**Replay is not yet verified.** This document records static dependency findings only. The 34 pgTAP files have not been executed in PostgreSQL as part of this audit. No Production SQL or migration history was changed; no merge or deployment was performed.
 
 ### 6. Payout trigger column-source order — verified from feature-branch source
 
