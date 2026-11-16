@@ -444,3 +444,14 @@ create-order.js में शुरुआती booking read के बाद fi
 - यह नया test अभी execute नहीं हुआ है। SQL/pgTAP और वास्तविक concurrent Worker behavior भी अभी untested हैं।
 
 अगला वास्तविक test gap: दो concurrent Worker में पहला lease expire होने के बाद दूसरा Worker नया Token ले, फिर पहला Worker completion करे—इस पूरे क्रम को PostgreSQL integration test में चलाना। कोई Production query या बदलाव नहीं किया गया।
+### 34. Webhook inbox SQL contract — अतिरिक्त fencing assertions
+
+Webhook inbox के pgTAP source-contract suite में दो अतिरिक्त assertions जोड़े गए:
+- Expired lease दोबारा claim होने पर नया fencing Token और नई दो-मिनट lease सेट होती है।
+- पुराने Worker का Token बदल जाने पर Completion RPC नए Worker के Event को complete नहीं कर सकती।
+
+- SQL test commit: d78577eb5ccb2c6baef8dede525115388c924f62
+- Static recount: plan 17, assertion calls 17, एक finish() और एक rollback।
+- ये pgTAP source assertions हैं; PostgreSQL पर execute नहीं हुए और वास्तविक दो-Worker concurrency साबित नहीं करते।
+
+Node regression test commit: 2f1068c36a11ee3b3c3dbdf282fef2610ac3c060। Webhook Node test inventory 14 cases है, लेकिन test execution अभी नहीं हुआ।
