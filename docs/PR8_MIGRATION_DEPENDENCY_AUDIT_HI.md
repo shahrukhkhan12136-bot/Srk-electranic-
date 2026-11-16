@@ -876,3 +876,20 @@ Commit search में `srk_create_electrician_payable`, `srk_admin_mark_electr
 ### वर्तमान निष्कर्ष
 
 Payout ledger पुराने product/UI contract में पहले से अपेक्षित था, लेकिन उपलब्ध commit diffs और जाँची migrations में उसका original base DDL अभी नहीं मिला। Audit branch की `20261114125844_restore_financial_audit_core_schema.sql` में payout table की restoration definition है; यह वर्तमान replay के लिए candidate schema है, historical source/provenance का प्रमाण नहीं। इस dependency को unresolved ही रखें। No SQL execution/tests/Production access/workflow dispatch.
+
+
+## 60. पुराने Business-Finance और Payout-Security Branches की जाँच
+
+अतिरिक्त branches के SQL स्रोत जाँचे:
+
+- `feature/business-finance-dashboard` की `20261110080448_srk_business_finance_dashboard.sql` payout table का creator नहीं है; इसमें `private` schema object बनता है। `20261111043852_srk_business_finance_reporting_dates.sql` भी payout table का base DDL नहीं बनाती।
+- उसी branch के `SUPABASE_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`, `PORTAL_SCHEMA.sql`, `PORTAL_SECURITY_UPDATE.sql` में `srk_electrician_payouts` का कोई उल्लेख/creator नहीं मिला।
+- `feature/direct-upi-commission-15` branch में `20261109160000_guard_payout_upi_profile_fields.sql` payout UPI profile fields की सुरक्षा/alteration migration के रूप में मौजूद है; यह base table creator नहीं है।
+- `predeploy/verified-electrician-booking-match` में `20261109190500_harden_quote_and_payout_rpc_null_validation.sql` payout RPC validation harden करती है; base payout table creation नहीं।
+- `main` branch की migration list में payout base creator नहीं दिखा; यह list inspection है, पूर्ण historical absence का प्रमाण नहीं।
+
+### निष्कर्ष
+
+पुराने Business-Finance, direct-UPI और predeploy branches में payout table पहले से मौजूद होने की धारणा पर आधारित migrations/RPC/UI references मिले, पर मूल `CREATE TABLE srk_electrician_payouts` migration अभी नहीं मिली। इसलिए payout schema का historical origin unresolved है। Audit branch restoration DDL को केवल reconstruction candidate मानें, verified original baseline नहीं।
+
+सभी कार्य repository source/list inspection तक सीमित रहे। कोई SQL run/replay, pgTAP, Node test suite, Production query/write, workflow dispatch या branch merge नहीं हुआ।
