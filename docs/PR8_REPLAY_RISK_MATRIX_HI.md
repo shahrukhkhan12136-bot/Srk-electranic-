@@ -531,3 +531,10 @@ A further high-priority clean-replay prerequisite was identified while tracing t
 **Assessment:** If the clean replay starts from that documented setup schema, earlier functions/triggers may fail validation before the 20261116200000 restoration migration is reached. This is a likely migration-order blocker, not a reproduced PostgreSQL error. It remains possible that a separate canonical baseline supplies the column, but no such numbered baseline was identified in the inspected migration tree. The correct fix is to establish and document the canonical baseline, or move/add the prerequisite column migration before the first dependent migration; do not guess a version or reorder production history without a reviewed migration plan.
 
 **Verification boundary:** Static source/tree review only. No PostgreSQL replay or pgTAP execution was performed. No migration SQL was changed for this finding, and Production was not modified.
+
+
+### Resolution — add the amount_paid prerequisite before its first SQL-function dependency
+
+The source-order issue was addressed in the audit branch by updating `20261109003000_secure_commission_reporting.sql` in commit `cd9af526b08b4d63d86b860531caada5ea9ccdba`. It now executes `ALTER TABLE public.service_bookings ADD COLUMN IF NOT EXISTS amount_paid numeric(12,2)` before defining the financial reporting functions. Fetch-back verification confirms the column addition occurs before `srk_admin_commission_report()` and `srk_get_my_earnings()`. The later `20261116200000_restore_service_bookings_amount_paid.sql` remains idempotent.
+
+This removes the identified missing-column ordering issue for the inspected source sequence. It does not validate the complete canonical baseline or prove clean replay. The quote trigger's PL/pgSQL record-field reference is also not independently runtime-tested. PostgreSQL replay and pgTAP remain outstanding; no Production change was made.
