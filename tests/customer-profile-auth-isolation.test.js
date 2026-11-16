@@ -54,3 +54,50 @@ test('saved customer addresses are cleared and in-flight reads invalidated on au
   assert.ok(loadBlock.includes('latestSessionData?.session?.user?.id!==requestedUserId'));
   assert.ok(loadBlock.includes('if(!isCurrent())return false'));
 });
+
+
+test('saved address save and delete actions reject stale customer sessions', () => {
+  for (const name of ['saveCurrentBookingAddress', 'deleteSelectedSavedAddress']) {
+    const start = source.indexOf('async function ' + name + '(');
+    const next = source.indexOf('\nfunction ', start + 10);
+    assert.ok(start >= 0, name + ' handler exists');
+    assert.ok(next > start, name + ' handler boundary exists');
+    const block = source.slice(start, next);
+    assert.ok(block.includes('const generation=customerActionGeneration'));
+    assert.ok(block.includes('customerSb.auth.getSession()'));
+    assert.ok(block.includes('const sameSession=async()'));
+    assert.ok(block.includes('if(!await sameSession())return'));
+    assert.match(block, /finally\s*\{if\(generation===customerActionGeneration\)/);
+  }
+});
+
+test('default saved address mutation is isolated across customer account switches', () => {
+  const start = source.indexOf('async function makeSelectedAddressDefault()');
+  const end = source.indexOf('\nfunction supportStatus', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes('const generation=customerActionGeneration'));
+  assert.ok(block.includes('customerSb.auth.getSession()'));
+  assert.ok(block.includes('if(!await sameSession())return'));
+  assert.match(block, /finally\s*\{if\(generation===customerActionGeneration\)/);
+});
+
+test('customer payment-method mutation is isolated across account switches', () => {
+  const start = source.indexOf('async function customerChangePaymentMethod(');
+  const end = source.indexOf('\nfunction customerPayBooking', start);
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes('const generation=customerActionGeneration'));
+  assert.ok(block.includes('customerSb.auth.getSession()'));
+  assert.ok(block.includes('if(!await sameSession())return'));
+  assert.ok(block.includes('if(!isCurrent())return'));
+});
+
+test('saved address mutation buttons are restored when customer auth changes', () => {
+  const authStart = source.indexOf('customerSb.auth.onAuthStateChange');
+  const authEnd = source.indexOf('const handleCustomerOffline', authStart);
+  assert.ok(authStart >= 0 && authEnd > authStart);
+  const block = source.slice(authStart, authEnd);
+  assert.ok(block.includes("['saveCurrentAddress','deleteSavedAddress','setDefaultSavedAddress'].forEach"));
+  assert.ok(block.includes('if(button)button.disabled=false'));
+});
