@@ -54,3 +54,19 @@ test('only Admin approval changes the active service area and preserves accepted
   assert.match(adminReview, /b\.status IN \('new','confirmed'\)/);
   assert.match(adminReview, /UPDATE srk_private\.srk_electrician_area_change_requests SET status=p_decision/);
 });
+
+test('uncertain relocation submission is reconciled against one new exact owner-scoped pending request', () => {
+  const submit = functionBody(app, 'submitElectricianAreaChange');
+  assert.match(submit, /srk_electrician_list_my_area_requests/);
+  assert.match(submit, /const baselineIds=new Set\(before\.map\(row=>row\.id\)\)/);
+  assert.match(submit, /!baselineIds\.has\(row\.id\)/);
+  assert.match(submit, /row\.status==='pending'/);
+  assert.match(submit, /normalized\(row\.requested_state\)===normalized\(state\)/);
+  assert.match(submit, /normalized\(row\.requested_district\)===normalized\(district\)/);
+  assert.match(submit, /row\.requested_pincode===pin/);
+  assert.match(submit, /normalized\(row\.reason\)===normalized\(reason\)/);
+  assert.match(submit, /confirmed\.length===1/);
+  assert.match(submit, /डुप्लिकेट से बचने के लिए अभी दोबारा न भेजें/);
+  assert.ok(submit.indexOf('srk_electrician_list_my_area_requests') < submit.indexOf('srk_electrician_request_area_change'),
+    'baseline history is captured before creating the relocation request');
+});
