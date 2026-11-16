@@ -1659,64 +1659,41 @@ function applySelectedSavedAddress() {
  }
  setSavedAddressStatus('सेव किया हुआ पता फॉर्म में भर दिया गया है। बुकिंग भेजने से पहले विवरण जाँच लें।');
 }
-async function saveCurrentBookingAddress() {
+async async function saveCurrentBookingAddress() {
  const button=document.getElementById('saveCurrentAddress');
- if(button.disabled) return;
+ if(button.disabled||!customerSb)return;
+ const generation=customerActionGeneration;let requestedUserId=null;
+ const isCurrent=()=>generation===customerActionGeneration&&!!requestedUserId;
+ const sameSession=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
  button.disabled=true;button.textContent='पता सेव हो रहा है…';
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
   if(sessionError)throw sessionError;
-  if(!sessionData?.session)throw new Error('पता सेव करने के लिए पहले OTP लॉगिन करें।');
+  requestedUserId=sessionData?.session?.user?.id||null;
+  if(!isCurrent())return;
+  if(!requestedUserId)throw new Error('पता सेव करने के लिए पहले OTP लॉगिन करें।');
   const editingId=editingSavedAddressId;
   const editingAddress=editingId?customerSavedAddresses.find(a=>a.id===editingId):null;
-  const payload={
-   p_id:editingId,p_label:document.getElementById('savedAddressLabel').value,
-   p_recipient_name:value('name'),p_address_line:value('address'),p_landmark:value('place')||null,
-   p_pincode:value('pin'),p_district:value('district'),p_state:value('state'),
-   p_location_lat:value('bookingLat')?Number(value('bookingLat')):null,
-   p_location_lng:value('bookingLng')?Number(value('bookingLng')):null,
-   p_is_default:editingAddress?.is_default===true
-  };
+  const payload={p_id:editingId,p_label:document.getElementById('savedAddressLabel').value,p_recipient_name:value('name'),p_address_line:value('address'),p_landmark:value('place')||null,p_pincode:value('pin'),p_district:value('district'),p_state:value('state'),p_location_lat:value('bookingLat')?Number(value('bookingLat')):null,p_location_lng:value('bookingLng')?Number(value('bookingLng')):null,p_is_default:editingAddress?.is_default===true};
   let savedId=null,saveError=null;
-  try{
-   const result=await customerSb.rpc('srk_customer_save_my_address',payload);
-   saveError=result?.error||(!result||!result.data?new Error('पता सेव होने की पुष्टि नहीं मिली।'):null);
-   if(!saveError)savedId=result.data;
-  }catch(e){saveError=e;}
+  try{const result=await customerSb.rpc('srk_customer_save_my_address',payload);if(!await sameSession())return;saveError=result?.error||(!result||!result.data?new Error('पता सेव होने की पुष्टि नहीं मिली।'):null);if(!saveError)savedId=result.data;}
+  catch(e){if(!await sameSession())return;saveError=e;}
   if(saveError){
    let lookupSucceeded=false,latestAddresses=[];
-   try{
-    const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
-    if(!error&&Array.isArray(data)){lookupSucceeded=true;latestAddresses=data;}
-   }catch(_){}
-   const normalizedText=value=>String(value??'').trim();
-   const matches=latestAddresses.filter(a=>
-    normalizedText(a.recipient_name)===normalizedText(payload.p_recipient_name)&&
-    normalizedText(a.address_line)===normalizedText(payload.p_address_line)&&
-    (normalizedText(a.landmark)||null)===(normalizedText(payload.p_landmark)||null)&&
-    a.pincode===payload.p_pincode&&
-    normalizedText(a.district)===normalizedText(payload.p_district)&&
-    normalizedText(a.state)===normalizedText(payload.p_state)&&
-    a.location_lat===payload.p_location_lat&&a.location_lng===payload.p_location_lng&&a.label===payload.p_label
-   );
+   try{const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');if(!await sameSession())return;if(!error&&Array.isArray(data)){lookupSucceeded=true;latestAddresses=data;}}
+   catch(_){if(!await sameSession())return;}
+   const normalizedText=v=>String(v??'').trim();
+   const matches=latestAddresses.filter(a=>normalizedText(a.recipient_name)===normalizedText(payload.p_recipient_name)&&normalizedText(a.address_line)===normalizedText(payload.p_address_line)&&(normalizedText(a.landmark)||null)===(normalizedText(payload.p_landmark)||null)&&a.pincode===payload.p_pincode&&normalizedText(a.district)===normalizedText(payload.p_district)&&normalizedText(a.state)===normalizedText(payload.p_state)&&a.location_lat===payload.p_location_lat&&a.location_lng===payload.p_location_lng&&a.label===payload.p_label);
    const savedMatch=editingId?latestAddresses.find(a=>a.id===editingId&&matches.some(m=>m.id===a.id)):(matches.length===1?matches[0]:null);
-   if(savedMatch){savedId=savedMatch.id;}
-   else{
-    if(lookupSucceeded)customerSavedAddresses=latestAddresses;
-    editingSavedAddressId=editingId;
-    setSavedAddressStatus(lookupSucceeded
-     ?'पता सेव होने की पुष्टि नहीं हुई। सूची अपडेट की गई है; दोबारा सेव करने से पहले जाँच लें।'
-     :'पता सेव करने का परिणाम स्पष्ट नहीं है। नेटवर्क लौटने पर सेव किए गए पते रीफ़्रेश करें; अभी वही अनुरोध दोबारा न भेजें।',true);
-    return;
-   }
+   if(savedMatch)savedId=savedMatch.id;
+   else{if(lookupSucceeded)customerSavedAddresses=latestAddresses;editingSavedAddressId=editingId;setSavedAddressStatus(lookupSucceeded?'पता सेव होने की पुष्टि नहीं हुई। सूची अपडेट की गई है; दोबारा सेव करने से पहले जाँच लें।':'पता सेव करने का परिणाम स्पष्ट नहीं है। नेटवर्क लौटने पर सेव किए गए पते रीफ़्रेश करें; अभी वही अनुरोध दोबारा न भेजें।',true);return;}
   }
-  const addressListRefreshed=await loadCustomerSavedAddresses();
-  if(!addressListRefreshed){editingSavedAddressId=null;setSavedAddressStatus('पता सेव हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी। कृपया सूची दोबारा लोड करें।',true);return;}
-  document.getElementById('savedAddressSelect').value=savedId;
-  editingSavedAddressId=null;
-  setSavedAddressStatus('पता सफलतापूर्वक सेव हो गया।');
- } catch(e) {setSavedAddressStatus(e.message==='ADDRESS_LIMIT_REACHED'?'अधिकतम 10 पते सेव हो सकते हैं। पहले कोई पुराना पता हटाना होगा.':'पता सेव नहीं हो सका। '+(e.message||''),true);}
- finally {button.disabled=false;button.textContent='यह पता सेव करें';}
+  if(!await sameSession())return;
+  const refreshed=await loadCustomerSavedAddresses();if(!await sameSession())return;
+  if(!refreshed){editingSavedAddressId=null;setSavedAddressStatus('पता सेव हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी। कृपया सूची दोबारा लोड करें।',true);return;}
+  document.getElementById('savedAddressSelect').value=savedId;editingSavedAddressId=null;setSavedAddressStatus('पता सफलतापूर्वक सेव हो गया।');
+ }catch(e){if(isCurrent())setSavedAddressStatus(e.message==='ADDRESS_LIMIT_REACHED'?'अधिकतम 10 पते सेव हो सकते हैं। पहले कोई पुराना पता हटाना होगा.':'पता सेव नहीं हो सका। '+(e.message||''),true);}
+ finally{if(isCurrent()){button.disabled=false;button.textContent='यह पता सेव करें';}}
 }
 function editSelectedSavedAddress() {
  const id=document.getElementById('savedAddressSelect').value;
@@ -1735,85 +1712,35 @@ function editSelectedSavedAddress() {
  setSavedAddressStatus('पता फॉर्म में संपादन के लिए खुल गया है। बदलाव के बाद “यह पता सेव करें” दबाएँ।');
  document.getElementById('address').scrollIntoView({behavior:'smooth',block:'center'});
 }
-async function deleteSelectedSavedAddress() {
+async async function deleteSelectedSavedAddress() {
  const id=document.getElementById('savedAddressSelect').value;
  if(!id){setSavedAddressStatus('हटाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
- const a=customerSavedAddresses.find(x=>x.id===id);
- if(!a)return;
+ if(!customerSavedAddresses.some(x=>x.id===id))return;
  if(!confirm('क्या आप यह सेव किया हुआ पता हमेशा के लिए हटाना चाहते हैं? पहले की बुकिंग पर इसका असर नहीं होगा。'))return;
+ if(!customerSb)return;
+ const generation=customerActionGeneration;let requestedUserId=null;
+ const isCurrent=()=>generation===customerActionGeneration&&!!requestedUserId;
+ const sameSession=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
  const button=document.getElementById('deleteSavedAddress');button.disabled=true;
- try {
-  const {data,error}=await customerSb.rpc('srk_customer_delete_my_saved_address',{p_id:id});
-  if(error)throw error;
-  if(data!==true)throw new Error('ADDRESS_NOT_FOUND');
+ try{
+  const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();if(sessionError)throw sessionError;
+  requestedUserId=sessionData?.session?.user?.id||null;if(!isCurrent())return;if(!requestedUserId)throw new Error('LOGIN_REQUIRED');
+  const {data,error}=await customerSb.rpc('srk_customer_delete_my_saved_address',{p_id:id});if(!await sameSession())return;
+  if(error)throw error;if(data!==true)throw new Error('ADDRESS_NOT_FOUND');
   editingSavedAddressId=null;
-  const addressListRefreshed=await loadCustomerSavedAddresses();
-  if(!addressListRefreshed){setSavedAddressStatus('पता हटाने का अनुरोध सफल रहा, लेकिन सूची रीफ़्रेश नहीं हो सकी। कृपया सूची दोबारा लोड करें।',true);return;}
-  document.getElementById('savedAddressSelect').value='';
-  setSavedAddressStatus('पता हटा दिया गया है। पुरानी बुकिंग का पता सुरक्षित है।');
- } catch(e){
-  let deleteState='unknown';
-  try{
-   const {data:latestAddresses,error:lookupError}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
-   if(!lookupError&&Array.isArray(latestAddresses)){
-    deleteState=latestAddresses.some(row=>row.id===id)?'present':'absent';
-    customerSavedAddresses=latestAddresses;
-    const select=document.getElementById('savedAddressSelect');
-    select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>'+latestAddresses.map(row=>
-     '<option value="'+customerEsc(row.id)+'">'+customerEsc(({home:'घर',work:'काम की जगह',other:'अन्य'}[row.label]||row.label)+' — '+row.address_line+', '+row.district+' ('+row.pincode+')'+(row.is_default?' ★':''))+'</option>'
-    ).join('');
-    select.value=deleteState==='absent'?'':id;
-   }
-  }catch(_){/* Preserve uncertainty when the authoritative list cannot be read. */}
-  if(deleteState==='absent'){
-   editingSavedAddressId=null;
-   setSavedAddressStatus('पता हट चुका है। पुरानी बुकिंग का पता सुरक्षित है। सूची सर्वर से अपडेट कर दी गई है।');
-  }else if(deleteState==='present')setSavedAddressStatus('पता हटाने की पुष्टि नहीं हुई। सूची में पता अभी मौजूद है; कृपया दोबारा कोशिश करें।',true);
+  const refreshed=await loadCustomerSavedAddresses();if(!await sameSession())return;
+  if(!refreshed){setSavedAddressStatus('पता हटाने का अनुरोध सफल रहा, लेकिन सूची रीफ़्रेश नहीं हो सकी। कृपया सूची दोबारा लोड करें।',true);return;}
+  document.getElementById('savedAddressSelect').value='';setSavedAddressStatus('पता हटा दिया गया है। पुरानी बुकिंग का पता सुरक्षित है।');
+ }catch(e){
+  if(!isCurrent())return;
+  let state='unknown';
+  try{const {data:rows,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');if(!await sameSession())return;if(!error&&Array.isArray(rows)){state=rows.some(row=>row.id===id)?'present':'absent';customerSavedAddresses=rows;const select=document.getElementById('savedAddressSelect');select.innerHTML='<option value="">नया पता इस्तेमाल करें</option>'+rows.map(row=>'<option value="'+customerEsc(row.id)+'">'+customerEsc(({home:'घर',work:'काम की जगह',other:'अन्य'}[row.label]||row.label)+' — '+row.address_line+', '+row.district+' ('+row.pincode+')'+(row.is_default?' ★':''))+'</option>').join('');select.value=state==='absent'?'':id;}}
+  catch(_){if(!await sameSession())return;}
+  if(state==='absent'){editingSavedAddressId=null;setSavedAddressStatus('पता हट चुका है। पुरानी बुकिंग का पता सुरक्षित है। सूची सर्वर से अपडेट कर दी गई है।');}
+  else if(state==='present')setSavedAddressStatus('पता हटाने की पुष्टि नहीं हुई। सूची में पता अभी मौजूद है; कृपया दोबारा कोशिश करें।',true);
   else setSavedAddressStatus('पता हटाने का परिणाम स्पष्ट नहीं है। दोबारा कोशिश करने से पहले सेव किए गए पते रीफ़्रेश करें।',true);
- }
- finally{button.disabled=false;}
+ }finally{if(isCurrent())button.disabled=false;}
 }
-async function makeSelectedAddressDefault() {
- const id=document.getElementById('savedAddressSelect').value;
- const a=customerSavedAddresses.find(x=>x.id===id);
- if(!a){setSavedAddressStatus('डिफ़ॉल्ट बनाने के लिए पहले सेव किया हुआ पता चुनें।',true);return;}
- const button=document.getElementById('setDefaultSavedAddress');button.disabled=true;
- try {
-  let saveError=null,returnedId=null;
-  try{
-   const result=await customerSb.rpc('srk_customer_save_my_address',{
-    p_id:a.id,p_label:a.label,p_recipient_name:a.recipient_name,p_address_line:a.address_line,
-    p_landmark:a.landmark,p_pincode:a.pincode,p_district:a.district,p_state:a.state,
-    p_location_lat:a.location_lat,p_location_lng:a.location_lng,p_is_default:true
-   });
-   saveError=result?.error||(!result||!result.data?new Error('डिफ़ॉल्ट बदलने की पुष्टि नहीं मिली।'):null);
-   if(!saveError)returnedId=result.data;
-  }catch(e){saveError=e;}
-  if(saveError||returnedId!==id){
-   let lookupSucceeded=false,latestAddresses=[];
-   try{
-    const {data,error}=await customerSb.rpc('srk_customer_list_my_saved_addresses');
-    if(!error&&Array.isArray(data)){lookupSucceeded=true;latestAddresses=data;}
-   }catch(_){}
-   if(lookupSucceeded&&latestAddresses.some(row=>row.id===id&&row.is_default===true)){
-    // The server committed the default change despite an uncertain response.
-   }else{
-    if(lookupSucceeded)customerSavedAddresses=latestAddresses;
-    setSavedAddressStatus(lookupSucceeded
-     ?'डिफ़ॉल्ट पता बदलने की पुष्टि नहीं हुई। सूची अपडेट की गई है; कृपया वर्तमान डिफ़ॉल्ट जाँचें।'
-     :'डिफ़ॉल्ट बदलने का परिणाम स्पष्ट नहीं है। नेटवर्क लौटने पर सूची रीफ़्रेश करें; अभी अनुरोध दोबारा न भेजें।',true);
-    return;
-   }
-  }
-  const addressListRefreshed=await loadCustomerSavedAddresses();
-  if(!addressListRefreshed){setSavedAddressStatus('डिफ़ॉल्ट पता बदल गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी। कृपया दोबारा लोड करें।',true);return;}
-  document.getElementById('savedAddressSelect').value=id;
-  setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।');
- } catch(e){setSavedAddressStatus('डिफ़ॉल्ट पता नहीं बदला जा सका। '+(e.message||''),true);}
- finally{button.disabled=false;}
-}
-let customerSupportComplaints = [];
-let customerSupportSelectedId = null;
 function supportStatus(message, isError=false) {
  const el=document.getElementById('customerSupportStatus');
  el.textContent=message; el.style.color=isError?'#b42318':'#65758a';
