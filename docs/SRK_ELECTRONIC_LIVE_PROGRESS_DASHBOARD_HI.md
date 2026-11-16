@@ -3,7 +3,7 @@
 **अंतिम सत्यापित अपडेट:** 16 नवम्बर 2026  
 **PR:** [#8](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/pull/8) — OPEN / DRAFT / अभी MERGE नहीं  
 **Branch:** `feat/customer-login-first-dashboard-20261114`  
-**वर्तमान सत्यापित Code HEAD:** `c8a1e456d1eb5b8c75c6e3c4e2a6e5bf1030a8ba`
+**वर्तमान सत्यापित Code HEAD:** `2caa40a88d54e52735c9ad92e03b821d4ef1be6b`
 
 > यह डैशबोर्ड केवल सत्यापित स्थिति दिखाता है। Source में code/test मौजूद होना, live database पर चलना, preview पर दिखना और Production में release होना अलग-अलग gates हैं। प्रतिशत केवल checklist-count के आधार पर दिया जाता है; अनुमान से नहीं।
 
@@ -15,15 +15,15 @@
 | 2. Source समीक्षा | **जारी** | Customer/Electrician source audit और documentation count reconciliation जारी। इस HEAD पर GitHub Actions Node run उपलब्ध नहीं; इसलिए इस HEAD पर PASS का दावा नहीं। |
 | 3. Database Runtime | **बाकी / अवरुद्ध** | Isolated TEST schema और वास्तविक PostgreSQL/pgTAP actor/concurrency execution बाकी। Production DB पर migration नहीं लगाई गई। Paid staging branch अभी नहीं बनाई जाएगी; पहले implementation पूरा होगा। |
 | 4. Browser E2E | **बाकी** | Login से booking, offer, timer, bill, payment/refund, support और role-isolation workflows का end-to-end browser acceptance बाकी। |
-| 5. Netlify Preview | **पिछले source HEAD पर Success** | PR source HEAD `5bd2896d` पर Netlify Deploy Preview status success मिला था। नवीनतम documentation HEAD `c8a1e456` पर नया Netlify status उपलब्ध नहीं; इसे नई visual acceptance न समझें। |
-| 6. Vercel Preview | **Pending** | नवीनतम documentation HEAD `c8a1e456` पर Vercel check pending है; इससे पहले source HEAD पर build-rate-limit failure मिला था। अभी successful build प्रमाणित नहीं। |
+| 5. Netlify Preview | **पिछले source HEAD पर Success** | PR source HEAD `5bd2896d` पर Netlify Deploy Preview status success मिला था। नवीनतम documentation HEAD `2caa40a8` पर नया Netlify status उपलब्ध नहीं; इसे नई visual acceptance न समझें। |
+| 6. Vercel Preview | **Pending** | नवीनतम documentation HEAD `2caa40a8` पर Vercel check **failure (build-rate-limit)** है। इसे application test failure या successful build नहीं माना गया। |
 | 7. Owner Approval और Release | **बाकी** | Owner approval, PR merge, Production migrations/deploy और release अभी नहीं हुए हैं। |
 
 ## नवीनतम सत्यापित टेस्ट स्थिति
 
-- वर्तमान Code HEAD: `c8a1e456d1eb5b8c75c6e3c4e2a6e5bf1030a8ba`
+- वर्तमान Code HEAD: `2caa40a88d54e52735c9ad92e03b821d4ef1be6b`
 - इस HEAD के लिए GitHub Actions workflow runs: **कोई run उपलब्ध नहीं**। इसलिए इस HEAD पर test pass का दावा नहीं है।
-- इस HEAD का combined status: Vercel **pending**; Netlify status इस documentation commit पर उपलब्ध नहीं। इससे पहले source HEAD `5bd2896d` पर Netlify Deploy Preview **success** और Vercel **failure (build-rate-limit)** था।
+- इस HEAD का combined status: Vercel **failure (build-rate-limit)**; Netlify status इस documentation commit पर उपलब्ध नहीं। इससे पहले source HEAD `5bd2896d` पर Netlify Deploy Preview **success** मिला था।
 - ऐतिहासिक CI प्रमाण: पुराने HEAD `24aed49029a731e8a88cd33e0093dd2b18689e36` पर run `43843110580` में **358 passed / 0 failed / 0 skipped** दर्ज था। यह परिणाम वर्तमान HEAD पर लागू नहीं माना जाएगा।
 - पुराने HEAD पर अतिरिक्त focused source-contract harness **15/15 passed** दर्ज था; यह भी वर्तमान HEAD का परिणाम नहीं है।
 - यह source/Node CI, DB runtime, Browser E2E या Mobile QA का विकल्प नहीं।
@@ -150,5 +150,5 @@
 
 ### 2026-11-16 — GPT-1 checklist count और latest HEAD reconciliation
 - Master Checklist के Customer (10), Electrician (10) और Welcome/Founder Photo (8) sections के वास्तविक checkboxes पुनर्गिने: Customer 9 पूरे/1 बाकी; Electrician 9 पूरे/1 बाकी; Welcome 4 पूरे/4 बाकी। इसलिए GPT-1 कुल **22/28 = 79%**, **6 बाकी** है। पहले दर्ज 21/28 = 75% एक checkbox कम गिनने के कारण गलत था; Master Checklist header सुधारा गया।
-- PR #8 latest source/documentation HEAD: `c8a1e456d1eb5b8c75c6e3c4e2a6e5bf1030a8ba`; PR OPEN / DRAFT / UNMERGED। इस HEAD पर GitHub Actions workflow run उपलब्ध नहीं; Vercel status pending। इससे पहले source HEAD `5bd2896d898449a6290883c5750b5475a092eb68` पर Netlify Deploy Preview success और Vercel build-rate-limit failure मिला था।
+- PR #8 latest source/documentation HEAD: `2caa40a88d54e52735c9ad92e03b821d4ef1be6b`; PR OPEN / DRAFT / UNMERGED। इस HEAD पर GitHub Actions workflow run उपलब्ध नहीं; Vercel status build-rate-limit failure। इससे पहले source HEAD `5bd2896d898449a6290883c5750b5475a092eb68` पर Netlify Deploy Preview success और Vercel build-rate-limit failure मिला था।
 - यह checklist/dashboard documentation correction है; Customer/Electrician application code, database, provider, deployment, merge या mobile QA में बदलाव नहीं।
