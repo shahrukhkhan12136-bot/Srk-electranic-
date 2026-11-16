@@ -2032,3 +2032,25 @@ Disposable Local Supabase environment बनने के बाद नीचे
 - Use synthetic contact/case/document records only. Never seed real user PII or use production Auth identities.
 - Runtime acceptance requires RBAC, identity, KYC and existing remaining database contracts all passing on clean isolated replay; current repo has no `supabase/config.toml`, no Docker harness, and no executable pgTAP run recorded.
 - Current state: **matrix specification only**. No test code, config, Docker, Auth fixture, SQL execution, remote DB connection or CI workflow was created or run.
+
+## 59. Local Docker TEST harness — repository readiness recheck — 16 Nov 2026
+
+### Current repository facts
+- `package.json` defines only Node test scripts (`node --test tests/*.test.js`); no Supabase CLI, pgTAP runner or Docker command is wired into npm scripts.
+- `supabase/config.toml` is absent.
+- Root `docker-compose.yml` is absent.
+- `supabase/seed.sql` is absent.
+- Existing `.github/workflows/node-tests.yml` installs Node 22 dependencies and runs only `npm test`; it has no PostgreSQL, Supabase CLI, Storage service, pgTAP or migration replay stage.
+- Existing `.github/workflows/supabase-schema-ci.yml` remains unsuitable as the first runtime harness: it uses remote `SUPABASE_DB_URL` schema export, is branch-gated elsewhere, and is not a disposable local TEST workflow.
+- The repository does contain 32 SQL pgTAP files, but the above infrastructure is not present to execute them.
+
+### Fail-closed readiness decision
+- **Do not add a speculative `supabase/config.toml` or run migration replay yet.** The duplicate `20261109` migration token and unresolved canonical baseline/`amount_paid` dependency evidence from Sections 50–52 mean a clean replay recipe is not currently established.
+- **Do not add a CI job that connects to a remote database.** A future workflow must start an isolated disposable Postgres/Supabase stack, use synthetic fixtures only, and have no Production secrets or remote DB URL.
+- First required owner evidence remains: sanitized migration ledger, deployed `amount_paid` schema/grants evidence, duplicate-version applied/not-applied confirmation, and canonical base-schema provenance.
+- After evidence review, create a reviewed test-only replay manifest, pin Supabase CLI/runtime versions, configure local Auth/Storage and pgTAP, then run all SQL tests and the actor matrix. Keep test-only baseline adjustments explicitly separate from production migrations.
+
+### Recheck result
+- Repository infrastructure inventory: **PASS** (absence/presence facts verified against current branch).
+- Runtime readiness: **BLOCKED** (safe canonical replay baseline not proven).
+- No Docker command was run; no config, compose file, seed, workflow or test file was created; no DB connection, migration replay, Storage API call or CI dispatch occurred. Documentation-only update.
