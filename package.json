@@ -10,6 +10,7 @@
     "test:refund": "node --test tests/razorpay-refund-executor.test.js",
     "test:webhook": "node --test tests/razorpay-webhook-inbox.test.js",
     "test:customer-payment": "node --test tests/customer-payment-method-enforcement.test.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "test:pr8-replay-preflight": "node scripts/pr8-replay-preflight.mjs"
   }
 }
