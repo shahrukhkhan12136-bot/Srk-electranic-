@@ -368,3 +368,12 @@ Before creating an executable baseline file, obtain an owner-approved schema-onl
 - RBAC migration का अपना comment भी Main Admin को `srk_admin_users` में अलग identity class बताता है, लेकिन इस pass में numbered migration chain में `srk_admin_users` की introducing DDL नहीं मिली। इसलिए Staff RBAC tables का होना Main Admin registry bootstrap को सिद्ध नहीं करता।
 
 **Replay gate:** canonical baseline owner से लिखित पुष्टि लें कि `srk_admin_users`, `is_srk_admin()`, `srk_is_admin()` और उनके exact grants/security/search_path contract किस approved bootstrap/migration से आते हैं। तब तक helper definitions को अनुमान से जोड़ना या RBAC/consumer migrations को clean replay-ready बताना उचित नहीं है। यह GitHub source/code-search आधारित bounded audit है; database replay/pgTAP नहीं।
+
+
+### 8. Support Staff RPC separation — authorization boundary cross-check (16 Nov 2026)
+
+- `20261114390000_admin_staff_rbac_foundation.sql` केवल Staff registry नहीं बनाती; उसी migration में assignment-aware Staff RPCs भी परिभाषित हैं: customer complaint/ticket list, message read/reply, status update और assignment listing.
+- Staff-facing complaint/ticket RPCs `public.srk_has_admin_permission(...)` से permission जाँचती हैं और current `srk_admin_support_assignments` ownership भी जाँचती हैं। यह Main Admin के broad RPC path से अलग सीमित access contract है।
+- Main Admin management RPCs (staff invite/status/session revoke/assignment) `public.is_srk_admin()` से guarded हैं। पुराने Main Admin complaint/ticket inbox RPCs भी इसी Main Admin helper से guarded रहते हैं।
+- इसलिए Staff RBAC जोड़ने का अर्थ यह नहीं कि हर पुराने `srk_admin_*` RPC को Support Staff के लिए खोल दिया जाए। Staff को केवल नए scoped RPCs और assigned cases के माध्यम से access मिलना चाहिए; इस separation को regression review में सुरक्षित रखना है।
+- यह static source review है: किसी JWT session, assignment race, permission denial, RPC execution या RLS behavior का runtime test नहीं हुआ।
