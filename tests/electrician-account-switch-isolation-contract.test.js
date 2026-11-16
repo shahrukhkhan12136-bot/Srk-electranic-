@@ -117,3 +117,16 @@ test('Electrician push controls ignore stale account results and bind writes to 
   assert.ok(disable.includes('if(!isCurrent())return'));
   assert.ok(disable.includes('finally{if(isCurrent())'));
 });
+
+test('Electrician KYC document preview closes stale tabs after account changes', () => {
+  const start = source.indexOf('async function openVerificationDocument');
+  const end = source.indexOf('let electricianKycUploadBusy', start);
+  assert.ok(start >= 0 && end > start);
+  const preview = source.slice(start, end);
+  assert.ok(preview.includes('requestedUserId=user?.id'));
+  assert.ok(preview.includes('requestedProfileId=profile?.id'));
+  assert.ok(preview.includes('requestedGeneration=electricianAccountViewGeneration'));
+  assert.ok(preview.includes('if(!isCurrent()){preview.close();return;}'));
+  assert.ok(preview.includes('preview.location.replace(signed.signedUrl)'));
+  assert.ok(preview.includes('if(box&&isCurrent())'));
+});
