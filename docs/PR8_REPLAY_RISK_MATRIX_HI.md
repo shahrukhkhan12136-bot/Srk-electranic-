@@ -60,3 +60,21 @@ A follow-up read-only search checked the `supabase/migrations` directory on all 
 The repository commit search for `amount_paid` surfaced two relevant consumer-code commits, not the missing DDL: `d7c7fc9800141195023453c7781d34b7e03bdc41` (“Record verified Razorpay amount paid”) and `1983b7334dfcd138ecc3dcf0f920b81ddfe671ee` (“Record webhook captured amount paid”). Their presence shows application code consuming/storing the field, but does not establish the SQL that originally created the column, commission fields, or status history.
 
 **Updated conclusion:** the original migration source was not recovered from any of the 22 currently listed branches, the queried exact-path history, or the repository-scoped searches performed in this audit. This is stronger negative evidence than the earlier PR-head-only search, but it is not proof that no source exists in deleted refs, inaccessible forks, local backups, Supabase migration artifacts, or owner-held exports. Do not recreate or backdate the original migration from inference. Request the original SQL/commit artifact or an owner-approved schema-only historical export and compare its complete DDL to the live schema before deciding how to reconcile the source tree.
+
+
+### 2026-11-16 follow-up: Production current-schema evidence (read-only)
+
+Read-only catalog queries were run against the Production project `gnqhoaqatmoiwwhgzkgm`; no DDL or data writes were issued.
+
+- `public.service_bookings` currently has `amount_paid numeric`, `commission_amount numeric`, and `commission_rate numeric`.
+- `amount_paid` currently has two CHECK constraints: `service_bookings_amount_paid_nonnegative` (NULL or >= 0) and `service_bookings_amount_paid_range` (NULL or between 0 and 10,000,000). Both are present simultaneously.
+- The current `service_bookings` trigger set includes `srk_calculate_booking_commission` (BEFORE INSERT or UPDATE OF status, payment_status, amount_paid, commission_rate) and `srk_log_service_booking_status` (AFTER INSERT OR UPDATE OF status).
+- `public.service_booking_status_history` currently exists with columns `id uuid`, `booking_id uuid`, `old_status text`, `new_status text`, `note text`, `changed_by uuid`, and `changed_at timestamptz`; its primary key is `id`, and `booking_id` references `service_bookings(id) ON DELETE CASCADE`.
+- The live `srk_calculate_booking_commission()` function validates nonnegative `amount_paid`, validates `commission_rate` in 0..100, and calculates `commission_amount` from `service_charge * commission_rate / 100` only when status is completed, payment_status is paid, and amount_paid/service_charge are non-NULL.
+- The live `srk_log_service_booking_status()` function inserts an initial history row on booking creation and records status transitions, using `auth.uid()` as `changed_by`.
+
+These are **current-state catalog facts only**. They do not reveal the original migration's exact SQL, the historical order in which these objects were introduced, or whether all current definitions match the body recorded under ledger version `20261108095928`.
+
+The branch's later `20261116200000_restore_service_bookings_amount_paid.sql` was also inspected. It only conditionally adds `service_bookings.amount_paid numeric(12,2)` and the two amount-paid CHECK constraints above. It does not create `commission_amount`, `commission_rate`, `service_booking_status_history`, or either trigger/function. Therefore it is not a replacement for the missing historical migration and cannot by itself make the original ledger entry reproducible.
+
+**Replay decision remains blocked:** obtain the exact original SQL artifact or an owner-approved historical schema/migration export. Do not treat a present-day schema reconstruction as the original migration; do not alter Production or backdate a migration.
