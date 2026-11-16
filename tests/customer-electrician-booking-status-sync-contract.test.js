@@ -172,7 +172,8 @@ test('customer and electrician lifecycle actions expose retry states and always 
   assert.match(offerResponse, /catch\(e\)/);
   assert.match(offerResponse, /finally\{/);
   assert.match(offerResponse, /electricianOfferResponseBusy\.delete\(id\)/);
-  assert.match(offerResponse, /if\(isCurrent\(\)\)buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
+  assert.match(offerResponse, /let keepDisabled=false/);
+  assert.match(offerResponse, /if\(isCurrent\(\)&&!keepDisabled\)buttons\.forEach\(\(b,i\)=>\{b\.disabled=false/);
   assert.match(offerResponse, /catch\(e\)\{\s*if\(!isCurrent\(\)\)return;\s*try\{await refresh\(\)/);
 });
 
@@ -407,8 +408,8 @@ test('Electrician offer response keeps a confirmed server decision distinct from
   assert.ok(start >= 0 && end > start);
   const respond = electrician.slice(start, end);
   const confirmed = respond.indexOf("if(data?.success!==true)");
-  const successRefresh = respond.indexOf("try{await refresh();if(!isCurrent())return;}catch(_){if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है");
-  const expiryRefresh = respond.indexOf("try{await refresh();if(!isCurrent())return;}catch(_){if(isCurrent())alert('ऑफर समाप्त होने की पुष्टि मिल गई है");
+  const successRefresh = respond.indexOf("try{await refresh();if(!isCurrent())return;}catch(_){keepDisabled=true;if(isCurrent())alert('आपका जवाब सर्वर पर दर्ज हो गया है");
+  const expiryRefresh = respond.indexOf("try{await refresh();if(!isCurrent())return;}catch(_){keepDisabled=true;if(isCurrent())alert('ऑफर समाप्त होने की पुष्टि मिल गई है");
   const uncertainCatch = respond.indexOf("नेटवर्क जवाब नहीं मिला। ऑफर की वर्तमान स्थिति रीफ़्रेश करके जाँचें");
   assert.ok(confirmed >= 0 && successRefresh > confirmed, 'confirmed response has its own refresh-failure handling');
   assert.ok(expiryRefresh >= 0, 'expired offer has its own refresh-failure handling');
