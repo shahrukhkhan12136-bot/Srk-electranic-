@@ -629,3 +629,11 @@
 - [x] This exact-head run supersedes the earlier CI checkpoint at `3748004a72f0a929607c9d2e6343c0ea3d8a133b` / run `43856680916`; the earlier 25-failure state is not the current Node CI result.
 - [ ] PostgreSQL/Supabase pgTAP runtime, hosted schema parity, provider integration, browser/mobile QA and owner acceptance remain separate pending gates. No production migration, deployment, PR merge, payment/refund or provider action was performed.
 - **GPT-2 progress remains 27/39 = 69%**; Node source-contract CI success alone does not complete any remaining runtime checklist item.
+
+### 2026-11-16 — Legacy quotation retirement boundary regression coverage
+- [x] Rechecked Admin/Accounting source: Admin displays old quote fields read-only for historical bookings; legacy manual-payment RPC still requires completed + assigned + customer-approved historical quote and reconciles labour/materials. New-category bookings use separate immutable labour-bill settlement.
+- [x] Added regression tests to ensure legacy quote retirement drops only the live quote/work RPCs, preserves historical booking columns/rows and legacy manual-payment RPC, and keeps old manual settlement quote-scoped while excluding new-category bookings.
+- [x] GitHub Actions run `43859093022`, job `133270886606`: **384/384 PASS, 0 FAIL** after the test additions.
+- [x] Dependency map updated with the safe retirement boundary and source/runtime verification limits.
+- [ ] Isolated PostgreSQL/Supabase pgTAP execution remains pending; existing SQL test files (18 legacy payment/receipt checks and 15 new-category accounting bridge checks) were not executed in this step.
+- **GPT-2 progress remains 27/39 = 69%**. Source-contract tests and documentation do not count the pending isolated runtime work as complete.
