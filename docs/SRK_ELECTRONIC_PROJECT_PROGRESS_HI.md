@@ -4131,3 +4131,12 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - यह source change और test addition हैं; इस commit पर Node CI execution/PASS अभी प्रमाणित नहीं है। GitHub status में Vercel build-rate-limit failure दिखा; इससे Node test result infer नहीं किया जा सकता।
 - Manual-payment SQL अभी legacy approved-quote contract पर निर्भर है। इसे नए immutable server-timed labour bill और अलग materials receipt से जोड़ना अगला accounting task है; ऐतिहासिक paid/refund/payment records सुरक्षित रहेंगे।
 - कोई Production database query/migration, real payment/refund, merge या deployment नहीं किया गया।
+
+
+## 2026-11-16 — GPT-2 amount_paid migration-order dependency audit
+
+- Feature Branch के चार source files दोबारा fetch करके क्रम जाँचा: `20261109003000_secure_commission_reporting.sql` (lines 59–61) पहले ही `service_bookings.amount_paid` पर column-level GRANT देता है और उसी migration में column पढ़ता है; `20261115160000_legacy_booking_status_write_guard.sql` और `20261115230000_admin_booking_direct_write_closure.sql` भी उसी column को GRANT/REVOKE/function logic में उपयोग करते हैं।
+- Column जोड़ने वाली migration `20261116200000_restore_service_bookings_amount_paid.sql` बाद के timestamp पर है; यह nullable `numeric(12,2)` और nonnegative `NOT VALID` CHECK जोड़ती है। इसलिए source DDL अब मौजूद है, लेकिन केवल इसे बाद में जोड़ देने से पुराने migrations का clean-replay dependency order ठीक नहीं होता।
+- सुरक्षित निर्णय: कोई migration rename/reorder/edit, replay या Production schema action नहीं किया। Authoritative baseline और remote migration history के साथ approved dependency reconciliation के बिना local/hosted reset नहीं चलाना है।
+- docs/GPT2_POSTGRES_PGTAP_RUNTIME_TEST_PREP_20261116_HI.md के शीर्ष summary को इसी current स्थिति के अनुसार ठीक किया।
+- यह static source audit/documentation update है; PostgreSQL/pgTAP runtime और GitHub Actions PASS का दावा नहीं।
