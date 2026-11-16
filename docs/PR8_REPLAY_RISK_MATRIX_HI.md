@@ -538,3 +538,12 @@ A further high-priority clean-replay prerequisite was identified while tracing t
 The source-order issue was addressed in the audit branch by updating `20261109003000_secure_commission_reporting.sql` in commit `cd9af526b08b4d63d86b860531caada5ea9ccdba`. It now executes `ALTER TABLE public.service_bookings ADD COLUMN IF NOT EXISTS amount_paid numeric(12,2)` before defining the financial reporting functions. Fetch-back verification confirms the column addition occurs before `srk_admin_commission_report()` and `srk_get_my_earnings()`. The later `20261116200000_restore_service_bookings_amount_paid.sql` remains idempotent.
 
 This removes the identified missing-column ordering issue for the inspected source sequence. It does not validate the complete canonical baseline or prove clean replay. The quote trigger's PL/pgSQL record-field reference is also not independently runtime-tested. PostgreSQL replay and pgTAP remain outstanding; no Production change was made.
+
+
+## Follow-up finding — Admin helper functions were only in manual setup files
+
+The early wallet and Admin RPC migrations call two helper names: `public.is_srk_admin()` and `public.srk_is_admin()`. The inspected numbered migration tree did not define these helpers before their first use; their definitions were present in separate manual setup files. This creates a replay prerequisite gap unless the canonical baseline explicitly installs both helpers and `public.srk_admin_users`.
+
+**Audit-branch correction:** `20261109010000_create_secure_wallet_ledger_foundation.sql` now defines both helper functions and their authenticated EXECUTE grants before the wallet RPCs, in commit `6f67aa96a64a112df14d48f3a88bd63851edd86c`. Fetch-back verification confirms both definitions occur before `srk_get_my_wallet_summary()`.
+
+**Important baseline dependency remains:** both helpers query `public.srk_admin_users`. The inspected `COMPLETE_DATABASE_SETUP.sql` creates that table, but a fully reproducible replay still requires this setup file (or an equivalent canonical numbered baseline) to be formally established as the starting schema. This helper-function correction does not independently create the base table. No PostgreSQL replay/pgTAP was run and Production was not modified.
