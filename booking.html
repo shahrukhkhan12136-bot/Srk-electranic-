@@ -2411,7 +2411,7 @@ function customerBookingRequestKey(payload,customerUserId){
 function clearCustomerBookingRequestKey(key,customerUserId){
   if(!customerUserId)return;
   const storageKey='srk.customer.booking.pending.v1:'+customerUserId;
-  try{const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');if(saved?.key===key)sessionStorage.removeItem(storageKey);}catch(_){}}
+  try{const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');if(saved?.key===key)sessionStorage.removeItem(storageKey);}catch(_){}
 }
 document.getElementById('customerLocate').addEventListener('click',()=>locateInto('bookingLat','bookingLng','customerLocationStatus','customerMapWrap','customerMap','customerMapLink'));
 document.getElementById('booking').addEventListener('submit', async function (e) {
