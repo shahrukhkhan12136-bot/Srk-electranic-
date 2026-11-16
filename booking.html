@@ -1534,7 +1534,7 @@ async function loadCustomerProfile() {
    document.getElementById('customerProfileLanguage').value=profile.preferred_language||'hi';
    applyCustomerUiLanguage(profile.preferred_language||'hi');
    customerCurrentAvatarPath=profile.avatar_path||null;
-   if(customerCurrentAvatarPath)await loadCustomerAvatar(customerCurrentAvatarPath,stillSameUser);
+   if(customerCurrentAvatarPath)await loadCustomerAvatar(customerCurrentAvatarPath,isCurrent);
    if(!await stillSameUser())return;
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।');
   } else {
