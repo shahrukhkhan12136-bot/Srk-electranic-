@@ -85,3 +85,10 @@ The branch's later `20261116200000_restore_service_bookings_amount_paid.sql` was
 The separate Supabase project `SRK ELECTRONIC TEST` (project ref `dvzmarekhstaubyuoeeh`) was checked before treating it as a possible source for the missing historical DDL. The project is `ACTIVE_HEALTHY`, but its migration ledger contains only seven push-notification test migrations dated 2026-11-10/11 (`20261110201406` through `20261111071759`). Its current public tables are `srk_push_subscriptions`, `electrician_profiles`, and `job_offers`; the inspected public schema does not contain `service_bookings` or `service_booking_status_history`.
 
 **Conclusion:** this TEST project is a push-notification test environment, not a historical database snapshot or source for the missing `20261108095928` migration. It does not resolve the original DDL gap. Both project metadata, migration ledger, and table listing were read-only; no SQL or schema changes were made.
+
+
+### 2026-11-16 follow-up: Production Supabase development branches
+
+The Production Supabase project `gnqhoaqatmoiwwhgzkgm` was checked for Supabase-managed development branches. The read-only branch listing returned an empty list (`branches: []`). Therefore, no existing Supabase development branch was available to inspect as an alternate migration-history or schema source.
+
+This does not rule out external backups, deleted branches, or owner-held exports. It only confirms that the Production project currently exposes no managed development branches through the branch listing. No branch was created, reset, rebased, merged, or deleted.
