@@ -307,3 +307,20 @@ The original SQL bodies for Production ledger entries `20261109080121`, `2026110
 **Replay significance:** The Production payout ledger's initial table creation is a prerequisite for later payout-trigger/function alterations. The current branch contains later logic referencing `public.srk_electrician_payouts`, but the inspected migration files do not provide its original CREATE TABLE DDL. Do not infer or synthesize the historical table definition from later code; recover the authoritative source or schema export before replay planning.
 
 These are static source comparisons. “Not located” is limited to the current PR #8 replay-prep migration tree and inspected candidates; it is not proof that no external historical artifact exists. No Production SQL was changed, no migration was applied, and no replay or pgTAP tests were run.
+
+
+### 2026-11-16 follow-up: next five Production migration bodies compared (read-only)
+
+Production ledger bodies `20261109094209`, `20261109103038`, `20261109103143`, `20261109110140`, and `20261109112032` were read and compared with the PR #8 replay-prep branch.
+
+| Production version | Production change | PR branch comparison | Result |
+|---|---|---|---|
+| `20261109094209 add_secure_admin_booking_offer_flow` | Defines Admin RPC `srk_admin_offer_booking(uuid)`, selecting eligible electricians and creating offers | Later branch introduces a different sequential/nearest-first dispatch architecture using private dispatch/candidate tables and `private.srk_dispatch_next_booking_offer`; no same-function implementation was located | No direct equivalent; later design is a substantial workflow replacement, not a one-to-one replay substitute |
+| `20261109103038 customer_electrician_direct_call_contacts` | Creates customer call-contact RPC with booking-status restrictions and authenticated-only execution | `20261109103038_customer_electrician_direct_call_contacts.sql` contains the same function logic and grants | Matching migration body located |
+| `20261109103143 move_customer_call_contact_lookup_to_private` | Moves implementation into private schema and exposes an invoker wrapper | Same-named branch migration has the private implementation and wrapper, but also creates the private schema and its implementation omits the Production status filter | Similar, but not exact; inspect security and returned-row behavior before treating as equivalent |
+| `20261109110140 align_electrician_payouts_with_booking_commission_rate` | Replaces payout trigger and Admin paid-out RPC to calculate commission from booking commission_rate and verify ledger amounts | Later branch payout reconciliation migration replaces these same routines with a broader category/manual-payment-aware implementation | Later successor logic exists, but it is not a body-equivalent replacement; dependency on the payout ledger table remains |
+| `20261109112032 allow_electricians_to_read_own_manual_payout_status` | Adds authenticated SELECT policy allowing an electrician to read their own payout rows | No matching own-payout SELECT policy was located in the inspected branch migration candidates | No equivalent located; verify intended electrician visibility and RLS before replay |
+
+**Important security/behavior note:** The Production private call-contact implementation restricts results to a defined set of active booking statuses. The branch private implementation shown in the matching file does not carry that status predicate. Do not treat this as a harmless formatting difference: it changes which booking rows can be returned by the helper, and the wrapper's effective access behavior needs review.
+
+These findings are static comparisons only. “Not located” is scoped to the current branch migration tree and inspected candidates. No Production SQL was changed, no migration was applied, and no PostgreSQL replay or pgTAP test was run.
