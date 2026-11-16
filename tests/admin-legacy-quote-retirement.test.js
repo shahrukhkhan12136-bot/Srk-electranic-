@@ -27,3 +27,24 @@ test('Admin status confirmation remains guarded by the dedicated Main-Admin RPC'
   assert.match(admin, /srk_admin_confirm_legacy_booking/);
   assert.doesNotMatch(admin, /\.from\(['"]service_bookings['"]\)\.update\(/);
 });
+
+
+test('Read-only status display preserves the current value for the shared Save handler', () => {
+  assert.match(admin, /<input type="hidden" id="st-'+x.id+'" value="' + esc(x.status) + '"><span class="tag">स्थिति: '+esc(x.status)/);
+  const start = admin.indexOf('async function saveBookingInternal(id){');
+  const end = admin.indexOf('\n}', start);
+  assert.notEqual(start, -1, 'saveBookingInternal must exist');
+  const handler = admin.slice(start, end === -1 ? undefined : end);
+  assert.match(handler, /if\(status!==booking\.status&&!\( !booking\.selected_category&&booking\.status==='new'&&status==='confirmed'\)\)/);
+  assert.match(handler, /srk_admin_confirm_legacy_booking/);
+});
+
+test('Manual payment UI remains available without exposing arbitrary status transitions', () => {
+  assert.match(admin, /id="pay-'+x.id+'"/);
+  assert.match(admin, /id="manual-method-'+x.id+'"/);
+  assert.match(admin, /id="ref-'+x.id+'"/);
+  assert.match(admin, /payment_status!==booking\.payment_status/);
+  assert.match(admin, /srk_admin_record_manual_payment/);
+  assert.match(admin, /srk_admin_record_new_booking_cash_payment/);
+  assert.doesNotMatch(admin, /\.from\(['"]service_bookings['"]\)\s*\.update\s*\(/);
+});
