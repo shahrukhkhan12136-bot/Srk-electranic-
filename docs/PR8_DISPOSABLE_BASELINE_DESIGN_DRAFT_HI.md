@@ -404,3 +404,17 @@ Reviewed `supabase/functions/admin-staff-management/index.ts`, `supabase/tests/d
 - A runtime review must still verify Edge Function deployment/configuration, Auth redirect allow-list, required secrets, service-role grant behavior, and failure recovery for invitation email/registry partial completion. No Edge Function was invoked and no pgTAP suite was executed.
 
 **Replay / rollout gate:** keep invitation limited to the verified Main Admin Edge Function path; never expose the service-role registration RPC to authenticated browser clients. Execute the existing tests on an approved disposable baseline and test invite success plus registry-failure cleanup before rollout.
+
+
+### 11. SOS alert workflow — Support permissions, booking dependency and delivery limits (16 Nov 2026)
+
+Reviewed `20261115260000_sos_admin_support_alerts.sql`, `sos_admin_support_alerts.test.sql`, and the two SOS client contract tests:
+
+- SOS adds two explicit Support permissions (`support.sos.read`, `support.sos.acknowledge`) and grants both to the Support role. This is an intentional extension beyond assigned complaint/ticket queues: the SOS inbox RPCs return the shared SOS queue to any active Staff user holding the relevant permission; there is no per-case assignment filter in these two SOS RPCs. Confirm this broad emergency-queue visibility is owner-approved.
+- SOS creation derives the actor and booking from `auth.uid()`, requires exactly one active `in_progress` booking with non-null `selected_category`, and supports customer/electrician identity matching. It stores a name/phone snapshot; malformed phone values become `Unavailable`. The migration depends on the canonical `service_bookings` columns (`customer_user_id`, `selected_category`, `customer_name`, `phone`, `assigned_electrician_id`, `status`) and `electrician_profiles` columns (`user_id`, `auth_user_id`, `display_name`, `phone`). These must be present before replay.
+- One pending alert per booking is enforced by a partial unique index, with booking-row locking and conflict handling. Once acknowledged, the unique predicate no longer blocks a later SOS for that booking; this supports repeat alerts but does not impose a cooldown or per-user rate limit. Decide whether repeated acknowledged SOS cases need an operational throttle.
+- SOS event history is private and protected against UPDATE, DELETE and TRUNCATE. Acknowledgement is permission-gated, row-locked, requires a note, and writes both SOS history and Staff audit events.
+- The migration explicitly leaves SMS, Push, and location at `not_configured` / `not_shared`; it does not notify police/112 or any external emergency service. UI/test contracts reflect these limits. Treat the feature as an in-app alert queue only, not an emergency dispatch service.
+- The pgTAP test declares 28 assertions; static source and JS contract tests exist. They have not been executed in this audit, so no runtime security or delivery claim is made.
+
+**Owner decisions before rollout:** approve global SOS queue visibility for Support Staff, decide repeat-alert throttling, and provide a separate tested notification/consent design if external delivery or live location is ever required. No external delivery was configured or invoked in this review.
