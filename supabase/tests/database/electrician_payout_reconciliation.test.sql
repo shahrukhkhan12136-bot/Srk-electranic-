@@ -1,5 +1,5 @@
 begin;
-select plan(31);
+select plan(32);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -132,6 +132,10 @@ select ok(exists(select 1 from pg_trigger t
     and (t.tgtype & 4)=4
     and (t.tgtype & 16)=16),
   'booking commission is assigned by a row-level BEFORE INSERT/UPDATE trigger');
+
+select ok(position('manual_payment_method_mismatch' in
+  lower(pg_get_functiondef('public.srk_set_booking_commission_before_payout()'::regprocedure)))>0,
+  'payout finalization fails closed when manual evidence method differs from the booking');
 
 select ok(position('new.commission_amount := v_commission' in
   lower(pg_get_functiondef('public.srk_set_booking_commission_before_payout()'::regprocedure)))>0
