@@ -45,13 +45,13 @@
   if(!sb){setMessage('लॉगिन कॉन्फ़िगरेशन उपलब्ध नहीं है।',true);return;}
   if(busy)return;const phone=phoneE164();if(!phone){setMessage('कृपया सही 10 अंकों का भारतीय मोबाइल नंबर डालें।',true);return;}
   if(Date.now()<resendAt){setMessage('OTP दोबारा भेजने से पहले कृपया प्रतीक्षा करें।',true);return;}
-  busy=true;send.disabled=true;setMessage('OTP भेजा जा रहा है…');
-  try{const {error}=await sb.auth.signInWithOtp({phone});if(error)throw error;area.classList.remove('hidden');resendAt=Date.now()+60000;setMessage('OTP भेजने का अनुरोध सफल हुआ। SMS देखें और OTP खुद दर्ज करें।');let left=60;send.textContent='OTP दोबारा भेजें ('+left+' सेकंड)';timer=setInterval(()=>{left--;send.textContent=left>0?'OTP दोबारा भेजें ('+left+' सेकंड)':'OTP दोबारा भेजें';if(left<=0){clearInterval(timer);send.disabled=false;}},1000);}catch(e){setMessage('OTP नहीं भेजा जा सका। मोबाइल नंबर और SMS सेवा जाँचकर फिर कोशिश करें।',true);send.disabled=false;}finally{busy=false;}
+  busy=true;send.disabled=true;phoneInput.disabled=true;setMessage('OTP भेजा जा रहा है…');
+  try{const {error}=await sb.auth.signInWithOtp({phone});if(error)throw error;area.classList.remove('hidden');resendAt=Date.now()+60000;setMessage('OTP भेजने का अनुरोध सफल हुआ। SMS देखें और OTP खुद दर्ज करें।');let left=60;send.textContent='OTP दोबारा भेजें ('+left+' सेकंड)';timer=setInterval(()=>{left--;send.textContent=left>0?'OTP दोबारा भेजें ('+left+' सेकंड)':'OTP दोबारा भेजें';if(left<=0){clearInterval(timer);send.disabled=false;}},1000);}catch(e){setMessage('OTP नहीं भेजा जा सका। मोबाइल नंबर और SMS सेवा जाँचकर फिर कोशिश करें।',true);send.disabled=false;}finally{phoneInput.disabled=false;busy=false;}
  });
  verify.addEventListener('click',async()=>{
   if(!sb||busy)return;const phone=phoneE164(),token=otpInput.value.trim();if(!phone||!/^\d{4,8}$/.test(token)){setMessage('मोबाइल नंबर और सही OTP दर्ज करें।',true);return;}
-  busy=true;verify.disabled=true;setMessage('OTP सत्यापित हो रहा है…');
-  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका Customer Dashboard खुल रहा है…');window.location.replace('/booking.html');}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{busy=false;verify.disabled=false;}
+  busy=true;verify.disabled=true;phoneInput.disabled=true;otpInput.disabled=true;setMessage('OTP सत्यापित हो रहा है…');
+  try{const {error}=await sb.auth.verifyOtp({phone,token,type:'sms'});if(error)throw error;setMessage('लॉगिन सफल! आपका Customer Dashboard खुल रहा है…');window.location.replace('/booking.html');}catch(e){setMessage('OTP गलत या समाप्त हो गया है। नया OTP लेकर फिर कोशिश करें।',true);}finally{phoneInput.disabled=false;otpInput.disabled=false;busy=false;verify.disabled=false;}
  });
  if(!sb){send.disabled=true;setMessage('लॉगिन सेवा कॉन्फ़िगरेशन नहीं मिला।',true);}else{sb.auth.getSession().then(({data,error})=>{if(!error&&data?.session)window.location.replace('/booking.html');}).catch(()=>{});}
 })();
