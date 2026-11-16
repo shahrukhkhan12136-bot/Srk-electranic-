@@ -87,3 +87,12 @@ test('Customer saved-address list refresh ignores stale session and RPC response
   assert.match(loader, /if\(!isCurrent\(\)\)return false/);
   assert.match(loader, /finally\s*\{\s*if\(isCurrent\(\)\)select\.disabled=false;\s*\}/);
 });
+
+
+test('selecting a saved customer address restores its saved recipient name into the booking form', () => {
+  const start = source.indexOf('function applySelectedSavedAddress()');
+  const end = source.indexOf('\nasync function saveCurrentBookingAddress()', start);
+  assert.ok(start >= 0 && end > start, 'saved-address selection handler exists');
+  const block = source.slice(start, end);
+  assert.ok(block.includes("document.getElementById('name').value=a.recipient_name||''"));
+});
