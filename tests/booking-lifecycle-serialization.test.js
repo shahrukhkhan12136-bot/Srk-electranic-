@@ -25,10 +25,10 @@ test('electrician start and completion requests are serialized per booking', () 
     ['electricianRequestWorkCompletion', 'srk_electrician_request_work_completion']
   ]) {
     const fn = handler(electrician, name);
-    assert.match(fn, /electricianLifecycleBusy\.has\(bookingId\)/);
-    assert.match(fn, /electricianLifecycleBusy\.add\(bookingId\)/);
+    assert.match(fn, /electricianLifecycleBusy\\.has\\(requestKey\\)/);
+    assert.match(fn, /electricianLifecycleBusy\\.add\\(requestKey\\)/);
     assert.match(fn, new RegExp(rpc));
-    assert.match(fn, /finally\{electricianLifecycleBusy\.delete\(bookingId\);\}/);
+    assert.match(fn, /finally\{electricianLifecycleBusy\\.delete\\(requestKey\\);\}/);
   }
 });
 
@@ -36,10 +36,10 @@ test('customer start approval is validated and serialized per booking', () => {
   assert.match(customer, /const customerLifecycleBusy=new Set\(\)/);
   const fn = handler(customer, 'customerRespondWorkStart');
   assert.match(fn, /!\['approved','rejected'\]\.includes\(response\)/);
-  assert.match(fn, /customerLifecycleBusy\.has\(bookingId\)/);
-  assert.match(fn, /customerLifecycleBusy\.add\(bookingId\)/);
+  assert.match(fn, /customerLifecycleBusy\\.has\\(requestKey\\)/);
+  assert.match(fn, /customerLifecycleBusy\\.add\\(requestKey\\)/);
   assert.match(fn, /srk_customer_respond_work_start/);
-  assert.match(fn, /finally\{customerLifecycleBusy\.delete\(bookingId\);\}/);
+  assert.match(fn, /finally\{customerLifecycleBusy\\.delete\\(requestKey\\);\}/);
 });
 
 test('customer completion response allows only approve, reject or dispute and requires dispute reason', () => {
@@ -47,8 +47,8 @@ test('customer completion response allows only approve, reject or dispute and re
   assert.match(fn, /!\['approved','rejected','disputed'\]\.includes\(response\)/);
   assert.match(fn, /note\.length<20\|\|note\.length>1000/);
   assert.match(fn, /srk_customer_respond_work_completion/);
-  assert.match(fn, /customerLifecycleBusy\.has\(bookingId\)/);
-  assert.match(fn, /finally[\s\S]*?customerLifecycleBusy\.delete\(bookingId\)/);
+  assert.match(fn, /customerLifecycleBusy\\.has\\(requestKey\\)/);
+  assert.match(fn, /finally[\s\S]*?customerLifecycleBusy\\.delete\\(requestKey\\)/);
 });
 
 test('customer and electrician timers are display-only projections of server timestamps and elapsed seconds', () => {
