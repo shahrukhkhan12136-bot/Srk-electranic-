@@ -130,7 +130,7 @@ test('customer default-address update does not overwrite a failed address-list r
   assert.match(load,/return true;\s*\} catch\(e\).*return false;/s);
   assert.match(makeDefault,/const refreshed=await loadCustomerSavedAddresses\(\);/);
   assert.match(makeDefault,/if\(!refreshed\)\{setSavedAddressStatus\('डिफ़ॉल्ट पता बदल गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी।/);
-  assert.ok(makeDefault.indexOf('if(!addressListRefreshed)')<makeDefault.indexOf("setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।')"));
+  assert.ok(makeDefault.indexOf('if(!refreshed)')<makeDefault.indexOf("setSavedAddressStatus('डिफ़ॉल्ट पता सफलतापूर्वक बदल दिया गया है।')"));
 });
 
 
@@ -142,10 +142,10 @@ test('customer saved-address delete reconciles uncertain RPC results and checks 
   assert.match(remove,/const refreshed=await loadCustomerSavedAddresses\(\);/);
   assert.match(remove,/if\(!refreshed\)\{setSavedAddressStatus\('पता हटाने का अनुरोध सफल रहा/);
   assert.match(remove,/srk_customer_list_my_saved_addresses/);
-  assert.match(remove,/deleteState=latestAddresses\.some\(row=>row\.id===id\)\?'present':'absent'/);
-  assert.match(remove,/if\(deleteState==='absent'\)/);
-  assert.match(remove,/else if\(deleteState==='present'\)/);
-  assert.match(remove,/let deleteState='unknown'/);
+  assert.match(remove,/state=rows\.some\(row=>row\.id===id\)\?'present':'absent'/);
+  assert.match(remove,/if\(state==='absent'\)/);
+  assert.match(remove,/else if\(state==='present'\)/);
+  assert.match(remove,/let state='unknown'/);
   assert.match(remove,/else setSavedAddressStatus\('पता हटाने का परिणाम स्पष्ट नहीं है/);
 });
 
@@ -155,5 +155,5 @@ test('customer saved-address save does not report full success when the refreshe
   assert.match(save, /const refreshed=await loadCustomerSavedAddresses\(\)/);
   assert.match(save, /if\(!refreshed\)[\s\S]*?पता सेव हो गया है, लेकिन सूची रीफ़्रेश नहीं हो सकी/);
   assert.ok(save.indexOf('if(!addressListRefreshed)') < save.indexOf("setSavedAddressStatus('पता सफलतापूर्वक सेव हो गया।')"));
-  assert.match(save, /finally \{button\.disabled=false/);
+  assert.match(save, /finally\{if\(isCurrent\(\)\)\{button\.disabled=false/);
 });
