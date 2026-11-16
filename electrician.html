@@ -416,7 +416,7 @@ async function uploadVerificationDocument(type,inputId){
     const {data:afterDocuments,error:listError}=await sb.rpc('srk_electrician_list_my_verification_documents');
     if(!listError&&Array.isArray(afterDocuments)){
      reconciliationSucceeded=true;
-     matchingDocument=afterDocuments.find(row=>!previousDocumentIds.has(row.id)&&row.document_type===type&&row.file_name===file.name.slice(0,180)&&row.mime_type===file.type&&Number(row.file_size_bytes)===file.size)||null;
+     matchingDocument=afterDocuments.find(row=>!previousDocumentIds.has(row.id)&&row.document_type===type&&row.file_name===file.name.slice(0,180).trim()&&row.mime_type===file.type&&Number(row.file_size_bytes)===file.size)||null;
      if(matchingDocument){
       const {data:confirmedPath,error:pathError}=await sb.rpc('srk_electrician_get_my_verification_document_path',{p_document_id:matchingDocument.id});
       confirmedDocumentPath=!pathError&&confirmedPath===path;
