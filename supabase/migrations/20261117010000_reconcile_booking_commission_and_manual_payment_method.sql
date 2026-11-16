@@ -220,7 +220,6 @@ begin
            and lower(btrim(mp.payment_method)) = lower(btrim(v_booking.payment_method))
       )
     );
-
   if v_booking.payment_status in ('paid','refunded')
      and v_booking.razorpay_payment_id is null
      and exists (
@@ -231,7 +230,6 @@ begin
      ) then
     v_exceptions := array_append(v_exceptions,'MANUAL_PAYMENT_METHOD_MISMATCH');
   end if;
-
   if v_booking.payment_status in ('paid','refunded') and not v_payment_verified then
     v_exceptions := array_append(v_exceptions,'VERIFIED_PAYMENT_EVIDENCE_MISSING_OR_MISMATCHED');
   end if;
@@ -265,6 +263,7 @@ begin
     v_payable_paise := greatest(v_labour_paise + v_materials_paise - v_commission_paise,0);
   end if;
 
+
   select * into v_payout
     from public.srk_electrician_payouts p
    where p.booking_id=p_booking_id;
@@ -284,10 +283,14 @@ begin
        or round(coalesce(v_payout.electrician_payable,0)*100)::bigint is distinct from v_payable_paise then
       v_exceptions := array_append(v_exceptions,'PAYOUT_AMOUNT_MISMATCH');
     end if;
-    if round(coalesce(v_booking.commission_amount,0)*100)::bigint
-       is distinct from round(coalesce(v_payout.platform_commission,0)*100)::bigint then
-      v_exceptions := array_append(v_exceptions,'BOOKING_COMMISSION_PAYOUT_LEDGER_MISMATCH');
-    end if;
+  end if;
+
+  if v_payout.id is not null and (
+       v_booking.commission_amount is null
+       or round(v_booking.commission_amount*100)::bigint
+          is distinct from round(v_payout.platform_commission*100)::bigint
+     ) then
+    v_exceptions := array_append(v_exceptions,'BOOKING_COMMISSION_PAYOUT_LEDGER_MISMATCH');
   end if;
 
   select * into v_refund from public.srk_razorpay_refunds r
@@ -301,6 +304,8 @@ begin
   if v_refund.id is not null then
     v_refund_requested_paise := v_refund.amount_paise;
     v_refund_state := v_refund.status;
+    -- Requested/processing/unknown/failed provider amounts are not cash returned
+    -- to the customer. Only a provider-confirmed processed refund reduces net collection.
     if v_refund.status='processed' then
       v_refund_paise := v_refund.amount_paise;
     else
@@ -322,69 +327,148 @@ begin
   ) then
     v_exceptions := array_append(v_exceptions,'MANUAL_REFUND_PAYMENT_EVIDENCE_MISMATCH');
   end if;
-  if v_refund_paise>0 and v_refund_paise<>v_collection_paise then
-    v_exceptions := array_append(v_exceptions,'REFUND_AMOUNT_DIFFERS_FROM_VERIFIED_COLLECTION');
+  if v_refund_paise>0 and v_refund_paise<v_collection_paise then
+    v_exceptions := array_append(v_exceptions,'PARTIAL_REFUND_UNSUPPORTED');
+  elsif v_refund_paise>v_collection_paise then
+    v_exceptions := array_append(v_exceptions,'REFUND_EXCEEDS_VERIFIED_COLLECTION');
+  end if;
+  if v_refund_state in ('requested','processing','unknown') then
+    v_exceptions := array_append(v_exceptions,'REFUND_PENDING_REVIEW');
+  elsif v_refund_state='failed' then
+    v_exceptions := array_append(v_exceptions,'REFUND_FAILED_REQUIRES_REVIEW');
+  end if;
+  if v_booking.payment_status='refunded' and v_refund_state not in ('processed','manual_recorded') then
+    v_exceptions := array_append(v_exceptions,'REFUNDED_BOOKING_WITHOUT_FINAL_REFUND_EVIDENCE');
+  elsif v_refund_state in ('processed','manual_recorded') and v_booking.payment_status<>'refunded' then
+    v_exceptions := array_append(v_exceptions,'FINAL_REFUND_EVIDENCE_BOOKING_NOT_REFUNDED');
+  end if;
+  if v_refund_state in ('processed','manual_recorded') and v_payout.id is not null
+     and v_payout.payout_status<>'refunded' then
+    v_exceptions := array_append(v_exceptions,'FINAL_REFUND_PAYOUT_NOT_CLOSED');
   end if;
 
-  select coalesce(sum(i.amount_paise) filter (where i.status='reserved'),0)::bigint,
-         coalesce(sum(i.amount_paise) filter (where i.status='settled'),0)::bigint
-    into v_fee_source_open_paise,v_fee_settled_paise
+  select coalesce(sum(i.amount_paise) filter(where i.status in ('reserved','settled','reversed')),0)::bigint,
+         coalesce(sum(i.amount_paise) filter(where i.status='settled'),0)::bigint,
+         coalesce(sum(i.amount_paise) filter(where i.status in ('settled','reversed')),0)::bigint
+    into v_fee_allocated_paise,v_fee_settled_paise,v_fee_captured_paise
     from public.srk_booking_cancellation_fee_items i
    where i.booking_id=p_booking_id;
-  v_fee_allocated_paise := v_fee_source_open_paise + v_fee_settled_paise;
 
-  select coalesce(sum(e.amount_paise) filter (where e.entry_status='posted' and e.direction='credit'),0)::bigint,
-         coalesce(sum(e.amount_paise) filter (where e.entry_status='posted' and e.direction='debit'),0)::bigint
-    into v_wallet_credit_paise,v_wallet_debit_paise
-    from public.srk_wallet_ledger e
-   where e.booking_id=p_booking_id;
-
-  select coalesce(sum(e.amount_paise) filter (where e.entry_status='posted'),0)::bigint
+  select coalesce(sum(case when l.direction='credit' then l.amount_paise else -l.amount_paise end),0)::bigint
     into v_fee_ledger_net_paise
-    from public.srk_cancellation_fee_ledger e
-   where e.booking_id=p_booking_id;
+    from public.srk_cancellation_fee_ledger l
+   where l.booking_id=p_booking_id;
 
-  select coalesce(sum(e.amount_paise) filter (where e.entry_status='posted' and e.direction='credit'),0)::bigint
-    into v_fee_captured_paise
-    from public.srk_cancellation_fee_ledger e
-   where e.booking_id=p_booking_id;
+  select coalesce(sum(d.amount_paise),0)::bigint
+    into v_fee_source_open_paise
+    from public.srk_customer_cancellation_fee_debts d
+   where d.source_booking_id=p_booking_id and d.status in ('open','reserved');
 
-  select coalesce(sum(e.amount_paise) filter (where e.entry_status='posted' and e.direction='credit'),0)::bigint
-    into v_cash_fee_actual_wallet_credit_paise
-    from public.srk_wallet_ledger e
-   where e.booking_id=p_booking_id
-     and e.idempotency_key like 'cancel-fee:cash:customer-refund:%';
-
-  v_cash_fee_expected_wallet_credit_paise := greatest(v_fee_captured_paise-v_fee_ledger_net_paise,0);
-
-  if v_cash_fee_actual_wallet_credit_paise<>v_cash_fee_expected_wallet_credit_paise then
-    v_exceptions := array_append(v_exceptions,'CASH_CANCELLATION_FEE_WALLET_REFUND_MISMATCH');
+  if v_fee_ledger_net_paise<0 then
+    v_exceptions := array_append(v_exceptions,'CANCELLATION_FEE_LEDGER_NEGATIVE_NET');
+  end if;
+  if v_fee_ledger_net_paise<>v_fee_settled_paise then
+    v_exceptions := array_append(v_exceptions,'CANCELLATION_FEE_LEDGER_UNBALANCED');
+  end if;
+  if v_booking.selected_category is not null and v_payment_verified
+     and v_collection_paise is distinct from (v_labour_paise+v_fee_captured_paise) then
+    v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_LABOUR_AND_SETTLED_FEES');
+  elsif v_booking.selected_category is null and v_payment_verified
+     and v_booking.quote_status='approved'
+     and v_collection_paise is distinct from (v_labour_paise+v_materials_paise) then
+    v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_APPROVED_QUOTE');
   end if;
 
-  select jsonb_agg(jsonb_build_object(
-    'id',e.id,'entry_type',e.entry_type,'direction',e.direction,
-    'amount_paise',e.amount_paise,'entry_status',e.entry_status,
-    'idempotency_key',e.idempotency_key,'created_at',e.created_at
-  ) order by e.created_at,e.id)
-    into v_fee_ledger
-    from public.srk_cancellation_fee_ledger e
-   where e.booking_id=p_booking_id;
+  select
+    coalesce(sum(case when w.direction='credit' then round(w.amount*100)::bigint else 0 end),0)::bigint,
+    coalesce(sum(case when w.direction='debit' then round(w.amount*100)::bigint else 0 end),0)::bigint
+  into v_wallet_credit_paise,v_wallet_debit_paise
+  from public.srk_wallet_ledger w
+  where w.status='posted'
+    and (
+      w.reference_id=p_booking_id::text
+      or w.reference_id in (
+        select i.id::text from public.srk_booking_cancellation_fee_items i
+         where i.booking_id=p_booking_id
+        union
+        select i.debt_id::text from public.srk_booking_cancellation_fee_items i
+         where i.booking_id=p_booking_id
+      )
+    );
 
-  select jsonb_agg(jsonb_build_object(
-    'id',e.id,'entry_type',e.entry_type,'direction',e.direction,
-    'amount_paise',e.amount_paise,'entry_status',e.entry_status,
-    'idempotency_key',e.idempotency_key,'created_at',e.created_at
-  ) order by e.created_at,e.id)
-    into v_wallet
-    from public.srk_wallet_ledger e
-   where e.booking_id=p_booking_id;
+  -- For a manual full refund, prove the exact cash cancellation-fee wallet debit
+  -- was credited back. Scope credits by the refund evidence ID so a later reuse of
+  -- the same debt on another booking cannot contaminate this booking's comparison.
+  if v_manual_refund.id is not null then
+    select coalesce(sum(round(w.amount*100)::bigint),0)::bigint
+      into v_cash_fee_expected_wallet_credit_paise
+      from public.srk_booking_cancellation_fee_items i
+      join public.srk_cancellation_fee_ledger l
+        on l.debt_id=i.debt_id and l.booking_id=i.booking_id
+       and l.entry_type='cash_electrician_debit' and l.direction='credit'
+       and l.status='posted'
+      join public.srk_wallet_ledger w
+        on w.reference_type='cancellation_fee_item' and w.reference_id=i.id::text
+       and w.wallet_type='electrician' and w.entry_type='cancellation_fee'
+       and w.direction='debit' and w.status='posted'
+       and w.user_id=l.electrician_user_id
+       and round(w.amount*100)::bigint=i.amount_paise
+     where i.booking_id=p_booking_id and i.status='reversed';
 
-  select rr.status into v_refund_request_status
-    from public.srk_booking_refund_requests rr
-   where rr.booking_id=p_booking_id;
-  if v_refund_request_status='approved'
-     and v_refund_state not in ('processed','manual_recorded') then
-    v_exceptions := array_append(v_exceptions,'APPROVED_REFUND_REQUEST_PENDING_REVIEW');
+    select coalesce(sum(round(w.amount*100)::bigint),0)::bigint
+      into v_cash_fee_actual_wallet_credit_paise
+      from public.srk_booking_cancellation_fee_items i
+      join public.srk_cancellation_fee_ledger l
+        on l.debt_id=i.debt_id and l.booking_id=i.booking_id
+       and l.entry_type='cash_electrician_debit' and l.direction='credit'
+       and l.status='posted'
+      join public.srk_wallet_ledger w
+        on w.reference_type='cancellation_fee_refund' and w.reference_id=i.debt_id::text
+       and w.wallet_type='electrician' and w.entry_type='cancellation_fee'
+       and w.direction='credit' and w.status='posted'
+       and w.user_id=l.electrician_user_id
+       and w.provider_reference=v_manual_refund.id::text
+       and round(w.amount*100)::bigint=i.amount_paise
+     where i.booking_id=p_booking_id and i.status='reversed';
+
+    if v_cash_fee_expected_wallet_credit_paise<>v_cash_fee_actual_wallet_credit_paise then
+      v_exceptions:=array_append(v_exceptions,'CASH_FEE_WALLET_REFUND_MISMATCH');
+    end if;
+  end if;
+
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'entry_type',l.entry_type,'direction',l.direction,'amount_paise',l.amount_paise,
+    'status',l.status,'payment_reference',l.payment_reference,'created_at',l.created_at
+  ) order by l.created_at,l.id),'[]'::jsonb)
+  into v_fee_ledger
+  from public.srk_cancellation_fee_ledger l
+  where l.booking_id=p_booking_id;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'wallet_type',w.wallet_type,'entry_type',w.entry_type,'direction',w.direction,
+    'amount_paise',round(w.amount*100)::bigint,'status',w.status,
+    'reference_type',w.reference_type,'reference_id',w.reference_id,'created_at',w.created_at
+  ) order by w.created_at,w.id),'[]'::jsonb)
+  into v_wallet
+  from public.srk_wallet_ledger w
+  where w.status='posted'
+    and (
+      w.reference_id=p_booking_id::text
+      or w.reference_id in (
+        select i.id::text from public.srk_booking_cancellation_fee_items i
+         where i.booking_id=p_booking_id
+        union
+        select i.debt_id::text from public.srk_booking_cancellation_fee_items i
+         where i.booking_id=p_booking_id
+      )
+    );
+
+  select r.status into v_refund_request_status
+    from public.srk_booking_refund_requests r
+   where r.booking_id=p_booking_id;
+  if v_refund_request_status in ('requested','in_review','approved','processing','unknown') then
+    v_exceptions := array_append(v_exceptions,'REFUND_REQUEST_PENDING_REVIEW');
   elsif v_refund_request_status='processed'
      and v_refund_state not in ('processed','manual_recorded') then
     v_exceptions := array_append(v_exceptions,'REFUND_REQUEST_PROCESSED_WITHOUT_FINAL_REFUND_EVIDENCE');
