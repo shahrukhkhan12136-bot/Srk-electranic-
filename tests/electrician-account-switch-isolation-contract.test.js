@@ -64,7 +64,7 @@ test('Electrician support create and reply do not clear a newer account busy loc
 
 test('Electrician account changes stop old GPS watchers and stale callbacks cannot update location', () => {
   const clearStart = source.indexOf('function clearElectricianAccountView()');
-  const clearEnd = source.indexOf('\\nfunction init()', clearStart);
+  const clearEnd = source.indexOf('function init()', clearStart);
   const clearBlock = source.slice(clearStart, clearEnd);
   assert.ok(clearBlock.includes('locationWatches.forEach(watch=>navigator.geolocation.clearWatch(watch))'));
   assert.ok(clearBlock.includes('locationWatches.clear()'));
