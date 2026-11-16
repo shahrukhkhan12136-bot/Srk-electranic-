@@ -395,3 +395,14 @@ Core schema migration में srk_manual_payment_entries पर UNIQUE(booking
 Source review में verify-payment.js ग्राहक bearer session और booking ownership जाँचता है, Razorpay API से payment retrieve करता है, captured status, exact order ID, INR currency और expected paise amount मिलाता है; तभी booking/ledger settlement करता है। razorpay-webhook.js raw-body HMAC signature जाँचता है, captured event payload में payment ID/order ID/status/currency/amount जाँचता है, और booking order से मिलान करता है। New-category flow में service-role settlement RPC भी booking/payment/amount identity स्वीकारता है।
 
 इसलिए upstream verification मौजूद है; read-only reconciliation RPC स्वयं Razorpay API/provider evidence fetch नहीं करती। अभी तक यह source-level review है—deployed environment, live provider calls या Production records verify नहीं किए गए।
+
+
+### 30. Reusable Razorpay order लौटाने से पहले booking state दोबारा lock/recheck नहीं होती
+
+create-order.js में शुरुआती booking read के बाद findReusableOrder(booking, amount) existing order को Razorpay से fetch करता है। यदि provider order अभी created है और amount/currency match हैं, तो handler सीधे वही order लौटाता है। यह fast reuse branch srk_claim_payment_order_lock लेने और booking को दोबारा पढ़ने से पहले चलती है।
+
+**संभावित race:** शुरुआती read के बाद और Razorpay order lookup के दौरान webhook/verify-payment booking को paid (या अन्य terminal state) कर सकता है। फिर भी reusable order branch पुराने booking snapshot से order लौटाती है; इस path में payment_status/status दोबारा verify नहीं होते। इससे ग्राहक को ऐसे order के साथ checkout दिख सकता है जिसकी booking अब payable नहीं रही। Razorpay duplicate capture को कैसे व्यवहार करेगा, यह यहाँ test नहीं किया गया; इसलिए इसे निश्चित double-charge नहीं, stale-order exposure/race condition कहा जा रहा है।
+
+**सुझाया गया सुधार:** reusable-order fast path को भी per-booking lock के भीतर रखें, lock के बाद booking state और expected amount दोबारा पढ़ें, फिर provider order status/amount जाँचकर लौटाएँ। यदि lock न मिले तो retry response दें। verify/webhook settlement और order creation के बीच साझा booking-state guard की concurrency test जोड़ें।
+
+यह create-order.js का static source finding है। कोई order बनाया नहीं गया, Razorpay API call नहीं की गई, और कोई Production/DB बदलाव नहीं हुआ। PostgreSQL/runtime concurrency test बाकी है।
