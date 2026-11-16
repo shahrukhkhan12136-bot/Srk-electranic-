@@ -2186,3 +2186,27 @@ ORDER BY column_name;
 - Existing Supabase workflow: current objective के लिए unsuitable / **DO NOT DISPATCH**.
 - Safe next path: Owner द्वारा उपलब्ध कराए गए sanitized metadata की review; फिर no-remote-credentials वाला disposable local Postgres/Supabase project और अलग test-only manifest। पहले pinned CLI में duplicate migration parser behavior को scratch copy में verify करें।
 - इस audit में कोई workflow बदला/चलाया नहीं गया; कोई secret, remote DB URL, Production schema या row data access नहीं हुआ।
+
+
+## 63. Customer auth-switch UI isolation — residual display-state review
+
+### Source evidence
+- \`booking.html\` auth listener on \`SIGNED_IN\`, \`SIGNED_OUT\`, and \`USER_DELETED\` increments request counters for saved addresses, payment history, profile load/save, cancellation fees and refunds; it also clears the saved-address array and selector.
+- \`syncCustomerSession()\` clears customer profile name, phone, current avatar path and avatar preview in its no-session branch.
+- When a different authenticated session is present, \`syncCustomerSession()\` starts loading that session's profile but does not first clear the previous profile name/phone/avatar preview in the signed-in branch.
+
+### Residual risk / interpretation
+- The existing request guards reduce the risk of an old asynchronous response overwriting current account state.
+- However, during an account-to-account switch where the new session is already present, the previous account's profile name/avatar may remain visible until the new profile load replaces them. This is a **stale UI display / privacy presentation concern**, not evidence that the new user can read the prior user's database records or that RLS is bypassed.
+- The Node test \`tests/customer-profile-auth-isolation.test.js\` checks source markers and invalidation logic; it does not simulate two real Auth users in a browser or verify immediate clearing of identity-bound DOM state.
+
+### Recommended acceptance test
+1. Sign in as synthetic User A and load profile/avatar/saved-address list.
+2. Switch to synthetic User B while the dashboard remains open; verify A's profile name, phone, avatar preview, saved-address options and in-flight responses are cleared before B's data is rendered.
+3. Delay A's profile/avatar/address responses, complete switch to B, then release A's responses; verify none repopulate the UI.
+4. Sign out and verify all identity-bound fields/previews are cleared.
+5. Repeat with refresh/focus and network reconnect.
+
+### Boundary
+- This is a source-level review only. No code changed, no browser test executed, no Auth users created, and no database/Storage calls made.
+- Route the UI reset recommendation to the customer-dashboard implementation owner (GPT-1); GPT-2 records the residual acceptance gap for the runtime test plan.
