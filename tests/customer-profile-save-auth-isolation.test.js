@@ -22,4 +22,5 @@ test('Customer profile saves are isolated across auth identity changes', () => {
   assert.ok(block.includes('finally{if(isCurrent())button.disabled=false;}'));
   const auth = source.slice(source.indexOf('onAuthStateChange((event) =>'));
   assert.match(auth, /customerProfileSaveRequest\+\+/);
+  assert.match(auth, /const profileSaveButton=document\.getElementById\('saveCustomerProfile'\);\s*if\(profileSaveButton\)profileSaveButton\.disabled=false;/);
 });
