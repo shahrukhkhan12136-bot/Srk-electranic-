@@ -1921,3 +1921,13 @@ Sanitized schema report में केवल ये विवरण:
 - सफल reconciliation और नया matching document न मिलने पर ही uploaded private object हटता है। Reconciliation fail हो या नया matching record मिले लेकिन path confirmation न हो, object को सुरक्षित रखा जाता है और user को Refresh करके जाँचने को कहा जाता है।
 - Static source cross-check: **PASS** — frontend filename normalization, SQL `btrim`, owner-scoped list RPC और exact-path confirmation परस्पर मेल खाते हैं।
 - यह source review है; Node test suite इस pass में execute नहीं हुई और PostgreSQL/pgTAP runtime test नहीं चला। कोई SQL, migration, database, Storage object, deployment या Production state नहीं बदली।
+
+## 54. KYC Storage bucket enforcement — source cross-check — 16 Nov 2026
+
+- KYC migration bucket `srk-electrician-verification` को private (`public=false`) रखती है; `file_size_limit=5242880` और MIME allowlist PDF/JPEG/PNG है।
+- Frontend upload guard वही 5 MiB limit और MIME allowlist लागू करता है; Storage bucket configuration server-side पर भी समान सीमा रखती है।
+- Upload policy केवल authenticated, दोनों identity columns से linked electrician को उसके अपने UID/type folder में insert करने देती है। Read policy owner या Admin तक सीमित है; owner delete policy केवल unregistered KYC object cleanup helper से नियंत्रित है।
+- Submit RPC storage object के अस्तित्व, UID/type path prefix, path length/control characters, filename length, MIME allowlist और file-size bounds को फिर जाँचता है; document insert और audit event एक transaction में होते हैं।
+- Existing pgTAP KYC plan 21 में private bucket, policy names, client table SELECT denial, activation/KYC RPC guards और append-only event controls की structural assertions हैं। यह वास्तविक JWT actors के साथ Storage upload/download end-to-end exercise नहीं करता।
+- Static source cross-check: **PASS** — frontend और bucket size/MIME limits मेल खाते हैं; ownership और private-bucket guards source में मौजूद हैं।
+- Runtime limitation: pgTAP अभी execute नहीं हुआ; वास्तविक Storage JWT owner-vs-other-user upload/read/delete scenarios बाकी हैं। कोई Storage bucket, object, DB, SQL migration या Production state बदली नहीं गई।
