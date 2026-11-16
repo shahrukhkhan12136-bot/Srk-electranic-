@@ -661,3 +661,10 @@
 - [x] Clarified `20261110140000` only adds `customer_suggested_amount` and `electrician_quote_kind`; it is not a repair for `amount_paid` or the legacy quote fields.
 - [ ] Obtain sanitized authoritative migration-ledger evidence for the two `20261109` files; then establish approved baseline, pin isolated PostgreSQL/Supabase CLI, replay in disposable DB and run 18 + 15 pgTAP assertions.
 - No SQL migration was changed or reordered; no remote database access or SQL execution. **Progress remains 27/39 = 69%.**
+
+
+### 2026-11-16 — Existing database CI harness safety gate
+- [x] Inspected `.github/workflows/supabase-schema-ci.yml`: wrong branch gate, remote `SUPABASE_DB_URL` schema export, old unrelated five-migration list, no current full-chain replay and no target pgTAP execution.
+- [x] Confirmed `package.json` currently runs Node tests only; repository has no checked-in `supabase/config.toml` or local pgTAP runner declaration.
+- [ ] Do not run/adapt remote-export workflow. First approve canonical baseline and duplicate timestamp history; then create a separate fully local-only pinned Supabase/pgTAP workflow using synthetic fixtures and both target suites.
+- No workflow was run or changed; no secret or database was accessed. **Progress remains 27/39 = 69%.**
