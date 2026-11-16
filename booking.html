@@ -2160,6 +2160,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
       customerOtpBusy=false;
       const otpSendButton=document.getElementById('customerSendOtp');if(otpSendButton&&Date.now()>=customerOtpUntil){otpSendButton.disabled=false;otpSendButton.textContent='OTP भेजें';}
       const otpVerifyButton=document.getElementById('customerVerifyOtp');if(otpVerifyButton)otpVerifyButton.disabled=false;
+      const customerLogoutButton=document.getElementById('customerLogout');if(customerLogoutButton)customerLogoutButton.disabled=false;
       customerLifecycleBusy.clear();
       customerSosBusy.clear();
       customerLiveLocationRefreshRequest++;
