@@ -72,3 +72,20 @@ test('availability can only be changed by an active Admin-approved electrician t
   assert.match(availability, /if\(!isCurrent\(\)\)return/);
   assert.match(availability, /await refresh\(\)/);
 });
+
+test('work lifecycle actions are isolated across electrician account switches', () => {
+  for (const [name, rpc] of [
+    ['electricianRequestWorkStart', 'srk_electrician_request_work_start'],
+    ['electricianRequestWorkCompletion', 'srk_electrician_request_work_completion']
+  ]) {
+    const action = body(name);
+    assert.match(action, /const requestedUserId=user\?\.id,requestedProfileId=profile\?\.id,requestedGeneration=electricianAccountViewGeneration/);
+    assert.match(action, /const requestKey=requestedGeneration\+': '\+String\(bookingId\)/);
+    assert.match(action, /electricianLifecycleBusy\.has\(requestKey\)/);
+    assert.match(action, /electricianLifecycleBusy\.add\(requestKey\)/);
+    assert.match(action, new RegExp(rpc));
+    assert.match(action, /if\(!isCurrent\(\)\)return/);
+    assert.match(action, /finally\{electricianLifecycleBusy\.delete\(requestKey\)\}/);
+    assert.match(action, /if\(isCurrent\(\)\)alert\(/);
+  }
+});
