@@ -324,3 +324,22 @@ Production ledger bodies `20261109094209`, `20261109103038`, `20261109103143`, `
 **Important security/behavior note:** The Production private call-contact implementation restricts results to a defined set of active booking statuses. The branch private implementation shown in the matching file does not carry that status predicate. Do not treat this as a harmless formatting difference: it changes which booking rows can be returned by the helper, and the wrapper's effective access behavior needs review.
 
 These findings are static comparisons only. “Not located” is scoped to the current branch migration tree and inspected candidates. No Production SQL was changed, no migration was applied, and no PostgreSQL replay or pgTAP test was run.
+
+
+### 2026-11-16 follow-up: next five Production migration bodies compared (read-only)
+
+Production ledger SQL bodies `20261109112105`, `20261109114000`, `20261109114642`, `20261109161539`, and `20261109161545` were inspected and compared with current PR #8 branch migrations.
+
+| Production version | Production change | PR branch comparison | Result |
+|---|---|---|---|
+| `20261109112105 consolidate_electrician_payout_read_policy` | Replaces separate payout read policies with one authenticated policy allowing Admin OR owner-electrician reads | No matching policy consolidation / own-payout SELECT policy was located in the inspected branch migration set | RLS behavior needs explicit reconciliation; do not assume later payout function code supplies this table policy |
+| `20261109114000 protect_customer_and_electrician_phone_numbers_until_masked_calling` | Temporarily masks phone numbers in customer-call RPC and electrician offer-details RPC | Branch contains direct phone fields in its customer-contact and offer-details implementations; no corresponding masking migration located | Historical privacy change is not represented as a distinct branch migration |
+| `20261109114642 enable_direct_customer_electrician_phone_calls` | Restores direct phone number in both RPCs, retaining active booking-status filtering in customer-contact RPC | Branch direct-call migration restores phone; private implementation in branch does not retain the Production status predicate | Partial behavioral match; status-based scope differs |
+| `20261109161539 customer_contact_after_completion` | Extends customer-call contact visibility to completed bookings while keeping other status restrictions | Branch private helper does not include the Production status allow-list | Not equivalent; branch function may return rows outside the intended active/completed status set |
+| `20261109161545 hide_customer_details_on_cancelled_bookings` | Hides customer name, phone, address, GPS and quote fields when booking is cancelled; allows disclosure only for assigned active-through-completed statuses | Branch `20261114370000_electrician_offer_details_immediate_booking_fields.sql` includes `cancelled` in the CASE conditions that expose customer details | **High-priority privacy discrepancy:** branch offer-details RPC currently allows customer PII fields for cancelled bookings; Production migration explicitly hides them |
+
+**Priority finding:** Review `20261114370000_electrician_offer_details_immediate_booking_fields.sql` before any rollout. Its disclosure condition includes `cancelled`, whereas the inspected Production privacy migration expressly excludes cancelled bookings. This is a source-level discrepancy, not a live exploit finding; no runtime test was performed.
+
+The phone-number sequence in Production is chronological: mask phone numbers, restore direct calls, then allow customer-contact visibility after completion. The current branch must be checked against the intended final product/privacy policy rather than copying one intermediate historical migration in isolation.
+
+“Not located” is scoped to the current branch migration tree and inspected candidates. No Production SQL was changed, no migration was applied, and no PostgreSQL replay or pgTAP test was run.
