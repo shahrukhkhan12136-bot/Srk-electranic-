@@ -417,3 +417,16 @@ create-order.js में शुरुआती booking read के बाद fi
 **अगला कदम:** authoritative Production schema/function inventory और deployment migration history से दोनों signatures की मौजूदगी सत्यापित करें। यदि absent हों, तो reviewed migration में atomic per-booking lock token, expiry/lease, ownership-checked release और service_role-only execute grant परिभाषित करें; फिर दो concurrent create-order requests, expired lock, stale token release तथा paid booking race के PostgreSQL tests जोड़ें। Baseline/lineage और explicit approval के बिना migration न बनाएं/चलाएं।
 
 यह repository-wide tracked-source inspection है। कोई Production function/schema query, order creation, database mutation या runtime test नहीं हुआ।
+
+
+### 32. Razorpay order-link PATCH भुगतान की अंतिम स्थिति को बिना शर्त `pending` कर सकता है
+
+`create-order.js` में lock लेने के बाद booking दोबारा पढ़ी जाती है और `findReusableOrder()` Razorpay से पुराने order का `created` status/amount/currency जाँचता है। यदि पुराना order लौटता है, तो उसके बाद `service_bookings` पर PATCH केवल `id=bookingId` से filter होता है और `razorpay_order_id` तथा `payment_status='pending'` लिखता है। PATCH predicate में `payment_status` का pending/unpaid होना, `razorpay_order_id` का उसी पुराने order से match, या payment state का पुनः सत्यापन नहीं है।
+
+**संभावित race:** पुराने order को reusable जाँचने और PATCH के बीच उसका captured-payment webhook सफलतापूर्वक booking को Paid कर सकता है। उसके बाद create-order का unconditional PATCH `payment_status` को फिर Pending कर सकता है, जबकि `razorpay_payment_id`/`payment_verified_at` जैसे payment evidence fields row में रह सकते हैं। यह खास तौर पर पहले से मौजूद order के reuse path में संभव है; नया order ग्राहक को लौटाने से पहले ही यह race तभी बनेगी जब उसी booking/order पर कोई पहले से चल रहा provider payment event हो।
+
+इसी परिवार का webhook legacy path भी पहले booking status/payment method/quote/amount पढ़ता है, फिर अलग PATCH करता है। उसका PATCH `id`, `razorpay_order_id` और `payment_status not.in.(paid,refunded)` से guarded है, लेकिन बीच में booking status, payment method या quote state बदलने पर उन शर्तों को database update के भीतर दोबारा लागू नहीं करता। New-category path अलग service-role settlement RPC पर निर्भर है; उसका authoritative SQL function definition tracked migrations में नहीं मिला, इसलिए उसकी atomicity का दावा यहाँ नहीं किया जा सकता।
+
+**सुझाया गया सुधार:** order-link update को atomic conditional DB RPC/UPDATE में बदलें: lock के भीतर booking state, online method, completed/approved state, current order ID और unpaid/pending status की जाँच हो; payment final हो चुकी हो तो `pending` कभी न लिखें। Webhook और verify-payment को भी साझा atomic settlement contract पर रखें। Regression tests में (1) reusable order lookup के बाद webhook Paid, (2) refunded/paid state के बाद stale PATCH, (3) status/payment method/quote बदलना, और (4) concurrent verify + webhook शामिल हों।
+
+यह static source review है। कोई Razorpay order/API call, Production query, payment, DB write या concurrency test नहीं किया गया।
