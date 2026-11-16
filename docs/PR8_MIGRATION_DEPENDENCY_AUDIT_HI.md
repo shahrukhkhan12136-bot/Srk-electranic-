@@ -988,11 +988,11 @@ end;
 $;
 ```
 
-The function opens with `as $`; its closing delimiter is malformed as `$;` and should be `$;`.
+The function opens with `as $$`; its closing delimiter is malformed as `$;` and should be `$$;`.
 
-**Lineage is CONFIRMED:** original migration creation commit `3e4a20188d8d183516fc1527e7f83777b8304ca7` used `$;`. Defect-introducing commit `cd5c0d8a07350fffb6be48c1f2a9481f73342b86` changed `-$;` to `+$;`. Subsequent inspected path-history commits did not alter that delimiter (full commit evidence in §66).
+**Lineage is CONFIRMED:** original migration creation commit `3e4a20188d8d183516fc1527e7f83777b8304ca7` used `$$;`. Defect-introducing commit `cd5c0d8a07350fffb6be48c1f2a9481f73342b86` changed `-$$;` to `+$;`. Subsequent inspected path-history commits did not alter that delimiter (full commit evidence in §66).
 
-**Disposition: OPEN — historical file remains unchanged.** The introducing commit is identified, but the user's guardrail still requires explicit permission before editing the historical migration. A safe alternative is a disposable replay-only patch/overlay after the source snapshot is taken; do not rewrite the committed historical file without approval.
+**Disposition: OPEN — historical file remains unchanged.** The introducing commit is identified, but the user's guardrail still requires explicit permission before editing the historical migration. A disposable replay-only correction can be prepared separately; do not rewrite the committed historical file without approval.
 
 ### 64.2 Accounting Bridge method consistency
 
@@ -1011,7 +1011,6 @@ Migration commits:
 
 Regression test:
 `supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql`, plan 19; latest test commit `6e7e132ac800cc99249272650daaad4f7138e2d2`.
-Latest Test commit: `63fb2dd7507c55f242d393a1512bb16ef3576d39`.
 
 ### 64.3 Commission BEFORE/AFTER separation and parity
 
@@ -1080,7 +1079,7 @@ Audit-branch source update commit: `43c19084b5cf4a50902550a4180bc6f7a1f8c079`.
 - Admin booking accounting reconciliation continues to check booking commission against payout `platform_commission` and reports `BOOKING_COMMISSION_PAYOUT_LEDGER_MISMATCH`.
 
 Updated regression tests:
-- `electrician_payout_reconciliation.test.sql`: plan 34, 34 `ok()` assertions, latest commit `7751d3222f76df0b062baf82f257eda443e2f7b8`.
+- `electrician_payout_reconciliation.test.sql`: plan 34, 34 `ok()` assertions, latest commit `f44ee3d78f8d7ba66e96cda6746d5777a727829d`.
 - `admin_labour_bill_payment_accounting_bridge.test.sql`: plan 19, 18 `ok()` + 1 `has_function()`, latest commit `6e7e132ac800cc99249272650daaad4f7138e2d2`.
 - Static test-file structure check: each file has one `finish()` and one `rollback;`. These are source checks only, not runtime results.
 
@@ -1116,3 +1115,6 @@ Updated regression tests:
 - Workflow dispatch: **NONE**.
 - Merge: **NONE**.
 - Paid Supabase branch/resource creation: **NONE**.
+## 69. Audit branch relationship to PR branch
+
+GitHub compare of `feat/customer-login-first-dashboard-20261114` (base) against `chore/pr8-replay-audit-20261116-v2` (head) reports `diverged`: audit branch is 190 commits ahead and 42 commits behind the PR branch from their merge base. This is a branch-relationship count, not 190 newly authored changes in this task. No rebase, merge, PR update, or PR-branch write was performed. The audit branch remains isolated pending owner review of the divergence.
