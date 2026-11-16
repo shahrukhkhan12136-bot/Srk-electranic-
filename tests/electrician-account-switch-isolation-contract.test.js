@@ -130,3 +130,20 @@ test('Electrician KYC document preview closes stale tabs after account changes',
   assert.ok(preview.includes('preview.location.replace(signed.signedUrl)'));
   assert.ok(preview.includes('if(box&&isCurrent())'));
 });
+
+test('Electrician area-change requests cannot update a different account or profile view', () => {
+  const start = source.indexOf('async function submitElectricianAreaChange');
+  const end = source.indexOf('async function refresh()', start);
+  assert.ok(start >= 0 && end > start);
+  const action = source.slice(start, end);
+  assert.ok(action.includes('requestedUserId=user?.id'));
+  assert.ok(action.includes('requestedProfileId=profile?.id'));
+  assert.ok(action.includes('requestedGeneration=electricianAccountViewGeneration'));
+  assert.ok(action.includes('if(!isCurrent())return;'));
+  assert.ok(action.includes("sb.rpc('srk_electrician_request_area_change'"));
+  assert.ok(action.includes('finally{if(isCurrent()){electricianAreaChangeBusy=false;button.disabled=false;}}'));
+  const clearStart = source.indexOf('function clearElectricianAccountView()');
+  const clearEnd = source.indexOf('function init()', clearStart);
+  const clear = source.slice(clearStart, clearEnd);
+  assert.ok(clear.includes('electricianAreaChangeBusy=false'));
+});
