@@ -272,7 +272,7 @@ test('Electrician push disable removes server endpoint before browser unsubscrib
   const unsubscribeIndex=disable.indexOf('sub.unsubscribe()');
   assert.ok(deleteIndex>=0&&unsubscribeIndex>deleteIndex,'server endpoint must be removed before local subscription is stopped');
   assert.match(disable,/if\(error\)throw error;\s*const stopped=await sub\.unsubscribe\(\)/);
-  assert.match(disable,/finally\{await refreshElectricianPushState\(\);\}/);
+  assert.match(disable,/finally\{if\(isCurrent\(\)\)\{button\.disabled=false;await refreshElectricianPushState\(\);\}\}/);
 });
 
 
@@ -433,12 +433,12 @@ test('Customer and electrician lifecycle actions distinguish confirmed RPC succe
   const electricianStart = functionBody(electrician, 'electricianRequestWorkStart');
   const electricianCompletion = functionBody(electrician, 'electricianRequestWorkCompletion');
   for (const fn of [customerStart, customerCompletion]) {
-    assert.ok(/try\{await loadCustomerBookings\(\);if\(!isCurrent\(\)\)return;\}catch\(_\)\)\{if\(isCurrent\(\)\)alert\('आपका जवाब सर्वर पर दर्ज हो गया है/, 'confirmed customer action has separate refresh-failure feedback');
+    assert.match(fn,/try\{await loadCustomerBookings\(\);if\(!isCurrent\(\)\)return;\}catch\(_\)\{if\(isCurrent\(\)\)alert\('आपका जवाब सर्वर पर दर्ज हो गया है/);
     assert.ok(fn.includes('await loadCustomerBookings();') && fn.includes('नेटवर्क जवाब नहीं मिला।'), 'uncertain customer RPC still refreshes authoritative bookings');
     assert.ok(fn.includes('स्थिति रीफ़्रेश करके जाँचें'), 'uncertain customer outcome asks user to check current status');
   }
   for (const fn of [electricianStart, electricianCompletion]) {
-    assert.ok(fn.includes('try{await refresh();}catch(_){alert('), 'confirmed electrician action has separate refresh-failure handling');
+    assert.match(fn,/try\{await refresh\(\);if\(!isCurrent\(\)\)return;\}catch\(_\)\{if\(isCurrent\(\)\)alert\(/);
     assert.ok(fn.includes('सर्वर पर दर्ज हो गया है') || fn.includes('सर्वर पर दर्ज हो गई है'), 'refresh failure does not misreport the confirmed action');
     assert.ok(fn.includes('await refresh();') && fn.includes('नेटवर्क जवाब नहीं मिला।'), 'uncertain electrician RPC still refreshes authoritative dashboard');
     assert.ok(fn.includes('वर्तमान स्थिति रीफ़्रेश करके जाँचें'), 'uncertain electrician outcome asks user to check current status');
