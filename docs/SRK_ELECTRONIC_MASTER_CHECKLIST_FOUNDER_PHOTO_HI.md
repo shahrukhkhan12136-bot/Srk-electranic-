@@ -653,3 +653,11 @@
 - [x] Confirmed the standalone `SUPABASE_SCHEMA.sql` starter definition also omits `amount_paid`; the late restore migration remains later than the earlier commission-reporting GRANT/consumers.
 - [ ] Helper provenance/order in the numbered migration lineage and authoritative canonical baseline remain unresolved. The source presence of a helper in a manual consolidated setup file is not proof that a clean migration replay creates it before the first dependent migration.
 - No SQL/setup file changed, no database was accessed, and no runtime test was run. **Progress remains 27/39 = 69%.**
+
+
+### 2026-11-16 — Concrete migration dependency map
+- [x] Mapped early `is_srk_admin()` consumers: booking-read policy migration `20261108234000` and GPS/admin RPC migration `20261109001000`; consolidated setup has the function, but no authoritative numbered-migration bootstrap placement is proven.
+- [x] Mapped `amount_paid` consumers: `20261109003000` commission report and the same-prefix quote migration trigger reference it before the late `20261116200000` add-column migration. This confirms the clean-replay ordering blocker from source inspection.
+- [x] Clarified `20261110140000` only adds `customer_suggested_amount` and `electrician_quote_kind`; it is not a repair for `amount_paid` or the legacy quote fields.
+- [ ] Obtain sanitized authoritative migration-ledger evidence for the two `20261109` files; then establish approved baseline, pin isolated PostgreSQL/Supabase CLI, replay in disposable DB and run 18 + 15 pgTAP assertions.
+- No SQL migration was changed or reordered; no remote database access or SQL execution. **Progress remains 27/39 = 69%.**
