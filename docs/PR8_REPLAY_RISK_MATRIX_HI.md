@@ -243,3 +243,18 @@ These five original SQL bodies were retrieved from the read-only Production migr
 | `20261108095224` | add_missing_foreign_key_indexes | Production indexes `booking_status_history` and legacy `bookings` columns; no corresponding migration found in the current PR-head inventory. | **No candidate located** |
 
 This pass adds five reviewed Production entries. For these entries, no new exact normalized-body match was established. The audit remains a partial 87-entry reconciliation; absence of a candidate in the current PR-head tree does not prove the SQL never existed in another branch, deleted ref, backup, or earlier baseline.
+
+
+### Next five Production ledger entries reviewed (versions 20261108102159–20261108102951)
+
+Read-only Production SQL bodies were retrieved and compared with the PR-head migration inventory and later search-path hardening candidates:
+
+| Production version | Production migration | Candidate / finding | Result |
+|---|---|---|---|
+| `20261108102159` | harden_payment_order_lock_search_paths | Production alters `srk_claim_payment_order_lock(uuid)` and `srk_release_payment_order_lock(uuid,uuid)`; the similarly themed later branch files alter different financial read RPCs. | **No equivalent candidate located** |
+| `20261108102323` | harden_booking_broadcast_search_path | Production alters `broadcast_booking_job()`; no corresponding function alteration found in the current PR-head migration files. | **No candidate located** |
+| `20261108102612` | harden_booking_guard_trigger_search_path | Production alters `guard_new_booking()`; no corresponding function alteration found in the current PR-head migration files. | **No candidate located** |
+| `20261108102837` | enable_realtime_job_offer_updates | Production adds `public.job_offers` to `supabase_realtime`; no corresponding publication alteration found in the current PR-head migration files. | **No candidate located** |
+| `20261108102951` | enable_realtime_electrician_profile_updates | Production adds `public.electrician_profiles` to `supabase_realtime`; no corresponding publication alteration found in the current PR-head migration files. | **No candidate located** |
+
+No exact normalized-body match was established in this batch. The later search-path migrations in the branch are not substitutes for the two payment-lock function alterations: they target different function signatures. Absence from the current PR-head tree is not proof that a source never existed elsewhere.
