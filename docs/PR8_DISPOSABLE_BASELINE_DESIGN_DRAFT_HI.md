@@ -356,3 +356,15 @@ Before creating an executable baseline file, obtain an owner-approved schema-onl
 - Quote migration की नई commission trigger function के लिए कोई matching trigger attachment नहीं मिला। पुराने root commission trigger की मौजूदगी नए function को attach नहीं करती और दोनों functions को interchangeable नहीं मानना चाहिए।
 
 इसलिए Auth trigger attachment का source root manual setup में पहचाना गया, लेकिन canonical numbered replay baseline में उसका स्थान अब भी unresolved है। इसी तरह पुराने commission trigger का manual setup evidence, नए quote commission trigger की सक्रियता सिद्ध नहीं करता।
+
+
+### 7. Admin helper और RBAC migration bootstrap — अतिरिक्त dependency check (16 Nov 2026)
+
+- `20261114390000_admin_staff_rbac_foundation.sql` में `public.srk_admin_staff`, permissions, role-permissions, sessions और append-only audit tables बनती हैं। इसी migration का `srk_has_admin_permission(text)` Main Admin check के लिए `public.is_srk_admin()` call करता है।
+- उसी numbered migration में `is_srk_admin()` या `srk_admin_users` की table definition नहीं है। इसलिए RBAC foundation का clean replay इन objects की पहले से approved उपलब्धता पर निर्भर है।
+- GitHub code-search के इस audit pass में `is_srk_admin()` के numbered-migration matches केवल consumer/reference files में मिले: `20261108234000_combine_booking_read_policy.sql`, `20261109001000_add_google_maps_location_support.sql`, `20261109003000_secure_commission_reporting.sql`, `20261109010000_create_secure_wallet_ledger_foundation.sql`, `20261113230000_support_attachment_paths_and_admin_message_list.sql`; matching numbered migration definition नहीं मिली।
+- `is_srk_admin()` की definition root setup artifacts `PORTAL_SCHEMA.sql` / `COMPLETE_DATABASE_SETUP.sql` और `ADMIN_EMAIL_LOGIN_SETUP.sql` में है। ये manual/root setup files हैं; अभी तक इन्हें canonical numbered migration baseline घोषित करने का प्रमाण नहीं मिला।
+- `20261109001500_unique_electrician_admin_identity_linking.sql` दूसरी helper `public.srk_is_admin()` call करती है। इसे `is_srk_admin()` का alias न मानें; दोनों नाम अलग API contracts हैं और उनकी provenance/permissions अलग से verify होनी चाहिए।
+- RBAC migration का अपना comment भी Main Admin को `srk_admin_users` में अलग identity class बताता है, लेकिन इस pass में numbered migration chain में `srk_admin_users` की introducing DDL नहीं मिली। इसलिए Staff RBAC tables का होना Main Admin registry bootstrap को सिद्ध नहीं करता।
+
+**Replay gate:** canonical baseline owner से लिखित पुष्टि लें कि `srk_admin_users`, `is_srk_admin()`, `srk_is_admin()` और उनके exact grants/security/search_path contract किस approved bootstrap/migration से आते हैं। तब तक helper definitions को अनुमान से जोड़ना या RBAC/consumer migrations को clean replay-ready बताना उचित नहीं है। यह GitHub source/code-search आधारित bounded audit है; database replay/pgTAP नहीं।
