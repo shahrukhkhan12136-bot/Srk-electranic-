@@ -78,3 +78,10 @@ These are **current-state catalog facts only**. They do not reveal the original 
 The branch's later `20261116200000_restore_service_bookings_amount_paid.sql` was also inspected. It only conditionally adds `service_bookings.amount_paid numeric(12,2)` and the two amount-paid CHECK constraints above. It does not create `commission_amount`, `commission_rate`, `service_booking_status_history`, or either trigger/function. Therefore it is not a replacement for the missing historical migration and cannot by itself make the original ledger entry reproducible.
 
 **Replay decision remains blocked:** obtain the exact original SQL artifact or an owner-approved historical schema/migration export. Do not treat a present-day schema reconstruction as the original migration; do not alter Production or backdate a migration.
+
+
+### 2026-11-16 follow-up: separate TEST project checked (read-only)
+
+The separate Supabase project `SRK ELECTRONIC TEST` (project ref `dvzmarekhstaubyuoeeh`) was checked before treating it as a possible source for the missing historical DDL. The project is `ACTIVE_HEALTHY`, but its migration ledger contains only seven push-notification test migrations dated 2026-11-10/11 (`20261110201406` through `20261111071759`). Its current public tables are `srk_push_subscriptions`, `electrician_profiles`, and `job_offers`; the inspected public schema does not contain `service_bookings` or `service_booking_status_history`.
+
+**Conclusion:** this TEST project is a push-notification test environment, not a historical database snapshot or source for the missing `20261108095928` migration. It does not resolve the original DDL gap. Both project metadata, migration ledger, and table listing were read-only; no SQL or schema changes were made.
