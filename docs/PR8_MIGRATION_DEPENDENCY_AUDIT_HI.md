@@ -430,3 +430,17 @@ create-order.js में शुरुआती booking read के बाद fi
 **सुझाया गया सुधार:** order-link update को atomic conditional DB RPC/UPDATE में बदलें: lock के भीतर booking state, online method, completed/approved state, current order ID और unpaid/pending status की जाँच हो; payment final हो चुकी हो तो `pending` कभी न लिखें। Webhook और verify-payment को भी साझा atomic settlement contract पर रखें। Regression tests में (1) reusable order lookup के बाद webhook Paid, (2) refunded/paid state के बाद stale PATCH, (3) status/payment method/quote बदलना, और (4) concurrent verify + webhook शामिल हों।
 
 यह static source review है। कोई Razorpay order/API call, Production query, payment, DB write या concurrency test नहीं किया गया।
+
+### 33. Webhook lease expiry और claim-token fencing — निष्कर्ष का स्पष्टीकरण तथा अतिरिक्त regression test
+
+दो मिनट की lease_expires_at अवधि समाप्त होना अपने-आप पुराने Worker का Claim Token रद्द नहीं करता। यह अवधि दूसरे Worker को Event दोबारा claim करने की अनुमति देती है। नया Claim मिलने पर claim_token बदल जाता है; completion RPC वर्तमान Token से मिलान करती है और पुराने Token को stale_claim लौटाती है। इसलिए केवल lease-expiry के बाद, लेकिन किसी नए Claim से पहले, पुरानी Completion स्वीकार होना अपने-आप में सिद्ध दोष नहीं है। पहले उठाई गई “lease expiry पर completion रोकनी चाहिए” वाली चिंता को confirmed defect नहीं माना जाए।
+
+अतिरिक्त स्रोत-जाँच में razorpay-webhook.js का completeWebhookEvent() RPC response में success:false मिलने पर exception फेंकता है। Handler इस स्थिति में HTTP 200 सफलता नहीं देता; retryable completion का प्रयास करता है और provider retry के लिए HTTP 500 लौटाता है। इसलिए stale Claim की अस्वीकृति handler द्वारा सफलता के रूप में छिपाई नहीं जाती।
+
+**Regression coverage जोड़ी:** tests/razorpay-webhook-inbox.test.js में नया test जोड़ा गया है, जो simulated stale_claim completion response पर handler के HTTP 500 व्यवहार और पुराने Token के दोबारा इस्तेमाल को जाँचता है।
+
+- Test commit: 2f1068c36a11ee3b3c3dbdf282fef2610ac3c060
+- Static source recount: webhook Node test cases 13 से बढ़कर **14** हुए।
+- यह नया test अभी execute नहीं हुआ है। SQL/pgTAP और वास्तविक concurrent Worker behavior भी अभी untested हैं।
+
+अगला वास्तविक test gap: दो concurrent Worker में पहला lease expire होने के बाद दूसरा Worker नया Token ले, फिर पहला Worker completion करे—इस पूरे क्रम को PostgreSQL integration test में चलाना। कोई Production query या बदलाव नहीं किया गया।
