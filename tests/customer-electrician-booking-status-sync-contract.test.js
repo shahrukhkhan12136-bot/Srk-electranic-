@@ -533,7 +533,7 @@ test('Customer booking submission ignores stale OTP-session responses and clears
   assert.match(submit, /const isCurrent=\(\)=>bookingGeneration===customerActionGeneration/);
   assert.match(submit, /customerSb\.auth\.getSession\(\)[\s\S]*?if\(!isCurrent\(\)\)return/);
   assert.match(submit, /srk_customer_list_my_cancellation_fee_debts[\s\S]*?if\(!isCurrent\(\)\)return/);
-  assert.match(submit, /latestSession\.user\.id\s*!==\s*customerSession\.user\.id/);
+  assert.match(submit, /latestSession\\.user\\.id\\s*!==\\s*customerSession\\.user\\.id/);
   assert.match(submit, /fetch\('\/api\/create-booking'[\s\S]*?if \(!isCurrent\(\)\) return/);
   assert.match(submit, /catch \(err\) \{\s*if \(!isCurrent\(\)\) return;/);
   const authStart = customer.indexOf('customerSb.auth.onAuthStateChange');
