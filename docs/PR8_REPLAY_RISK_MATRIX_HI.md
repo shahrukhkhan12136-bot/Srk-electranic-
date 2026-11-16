@@ -140,3 +140,21 @@ Consequently:
 - This substantially confirms that the current PR-head migration directory is not a direct filename/version mirror of the Production ledger. The missing original `20261108095928` remains among the unmatched Production versions.
 
 **Decision:** do not replay the current PR migration directory against Production, and do not “fix” this by bulk renaming/backdating. First build a reviewed one-to-one reconciliation map from every Production ledger entry to an exact source migration (or documented equivalent), inspect SQL bodies and ordering, then test the reconciled chain in an isolated disposable PostgreSQL/Supabase environment. This comparison was read-only; no Production writes or migration execution occurred.
+
+
+### 2026-11-16 follow-up: filename-level candidate reconciliation
+
+A second pass compared normalized migration names and inspected the SQL text of the strongest apparent PR-head candidates. **14 Production ledger names have an exact normalized name match** in the branch even though most filenames use different version prefixes. The other 73 ledger names do not have an exact normalized-name match.
+
+Examples of strong *candidate* correspondences (not yet proven historical equivalents):
+| Production ledger entry | PR-head candidate file | Evidence / limitation |
+|---|---|---|
+| `20261108181453 restrict_public_form_inserts_to_server_functions` | `20261108233500_restrict_public_form_inserts.sql` | SQL text revokes direct anon/authenticated inserts and grants service_role inserts; body-level intent appears aligned. |
+| `20261108181538 combine_admin_customer_booking_read_policy` | `20261108234000_combine_booking_read_policy.sql` | SQL text combines admin/customer booking SELECT policy. |
+| `20261109075837 electrician_inspection_quotes_and_service_only_commission` | `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | Same normalized name; inspected body adds quote columns and commission trigger logic. |
+| `20261109080400 allow_quote_approval_booking_states` | `20261109_allow_quote_approval_booking_states.sql` | Same normalized name; inspected body changes booking status and assignment constraints. |
+| `20261114193300 admin_approved_electrician_relocation_20261114220000` | `20261114220000_admin_approved_electrician_relocation.sql` | Name strongly aligns; branch file body defines admin-approved area-change workflow. |
+
+These examples show why version-only comparison overstates *definite missing SQL bodies*: some entries may have been renamed or renumbered. Conversely, similar names and apparent intent are not proof of byte-for-byte or behaviorally equivalent SQL, nor do they establish the original execution order. Production migration bodies are not available from the migration ledger response used here.
+
+**Next required evidence:** obtain the original SQL bodies (or trusted source commit/export) for all Production ledger versions, then compare each candidate with exact DDL, grants, policies, triggers, functions, and dependencies. Do not mark a candidate “reconciled” until that comparison is complete. No database changes or replay occurred.
