@@ -179,3 +179,16 @@ test('Customer cancellation-fee and refund history ignore stale responses after 
   }
   assert.match(customer, /customerCancellationFeeRequest\+\+;\s*customerRefundHistoryRequest\+\+;/);
 });
+
+
+test('Customer payment receipt popup is closed when its originating session becomes stale', () => {
+  const start = customer.indexOf('async function customerPrintPaymentReceipt(');
+  const end = customer.indexOf('\nasync function ', start + 10);
+  assert.ok(start >= 0 && end > start);
+  const block = customer.slice(start, end);
+  assert.ok(block.includes('const generation=customerActionGeneration'));
+  assert.ok(block.includes('customerSb.auth.getSession()'));
+  assert.ok(block.includes('if(!await sameSession()){printWindow.close();return;}'));
+  assert.ok(block.includes('if(isCurrent()&&requestedUserId)alert('));
+  assert.ok(block.includes('printWindow.close();'));
+});
