@@ -187,3 +187,15 @@ test('uncertain booking submission is not falsely reported as definitely unsaved
   assert.match(bookingUi, /पहले बुकिंग सूची रीफ़्रेश करके देखें/);
   assert.match(bookingUi, /इसी विवरण के साथ दोबारा कोशिश करें/);
 });
+
+test('successful booking keeps its idempotency key until the new booking is visible after refresh', () => {
+  const submit = bookingUi.slice(bookingUi.indexOf("document.getElementById('booking').addEventListener('submit'"));
+  const loadIndex = submit.indexOf('const bookingListLoaded = await loadCustomerBookings();');
+  const visibleIndex = submit.indexOf("document.getElementById('customerBookings')?.innerHTML.includes(String(result.booking_id))");
+  const clearIndex = submit.indexOf('clearCustomerBookingRequestKey(requestKey, latestSession.user.id);');
+  assert.ok(loadIndex >= 0, 'booking list refresh result is captured');
+  assert.ok(visibleIndex > loadIndex, 'created booking visibility is checked after refresh');
+  assert.ok(clearIndex > visibleIndex, 'idempotency key is cleared only after booking is visible');
+  assert.match(submit, /सुरक्षित डुप्लीकेट-रोक पहचान सुरक्षित रखी गई है/);
+  assert.match(submit, /नई या बदली हुई बुकिंग अभी न भेजें/);
+});
