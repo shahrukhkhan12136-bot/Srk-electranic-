@@ -182,6 +182,13 @@ test('pending browser idempotency keys are isolated per authenticated customer a
   assert.match(bookingUi, /function clearCustomerBookingRequestKey\(key,customerUserId\)/);
 });
 
+test('booking submission fails closed when session storage cannot persist its idempotency key', () => {
+  const helper = bookingUi.slice(bookingUi.indexOf('function customerBookingRequestKey('), bookingUi.indexOf('function clearCustomerBookingRequestKey('));
+  assert.match(helper, /catch\(_\)\{throw new Error\('बुकिंग की सुरक्षित पहचान इस ब्राउज़र में सेव नहीं हो सकी/);
+  assert.match(helper, /catch\(_\)\{throw new Error\('बुकिंग की सुरक्षित पहचान सेव नहीं हो सकी। बुकिंग नहीं भेजी गई/);
+  assert.doesNotMatch(helper, /catch\(_\)\{\}/);
+});
+
 test('uncertain booking submission is not falsely reported as definitely unsaved', () => {
   assert.match(bookingUi, /बुकिंग की पुष्टि नहीं हो सकी; संभव है अनुरोध सर्वर तक पहुँच गया हो/);
   assert.match(bookingUi, /पहले बुकिंग सूची रीफ़्रेश करके देखें/);
