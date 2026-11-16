@@ -391,3 +391,34 @@ test("does not reconcile an unrelated same-payment same-amount refund without ma
   assert.equal(reconcileCalls, 0);
   assert.equal(outcome, "ignored");
 });
+
+
+test("does not acknowledge webhook completion when its claim token was fenced by a newer worker", async t => {
+  const completionTokens = [];
+  global.fetch = async (url, options = {}) => {
+    const fn = rpcName(url);
+    if (fn === "srk_service_claim_razorpay_webhook_event") {
+      return response(200, {
+        success: true,
+        should_process: true,
+        claim_token: "f23e4567-e89b-42d3-a456-426614174000"
+      });
+    }
+    if (fn === "srk_service_complete_razorpay_webhook_event") {
+      const body = JSON.parse(options.body);
+      completionTokens.push(body.p_claim_token);
+      return response(200, {
+        success: false,
+        stale_claim: true,
+        state: "processing"
+      });
+    }
+    throw new Error("unexpected RPC " + fn);
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const result = await handler(event({ event: "payment.authorized" }, "evt_stale_claim"));
+  assert.equal(result.statusCode, 500);
+  assert.equal(JSON.parse(result.body).success, false);
+  assert.equal(completionTokens.length, 2);
+  assert.ok(completionTokens.every(token => token === "f23e4567-e89b-42d3-a456-426614174000"));
+});
