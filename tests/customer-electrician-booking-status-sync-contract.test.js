@@ -522,3 +522,22 @@ test('customer refund and cancellation requests are isolated across auth changes
   assert.match(cancellation, /srk_customer_list_booking_cancellation_requests/);
   assert.match(cancellation, /if\(!isCurrent\(\)\)return;\s*if\(!lookupError/);
 });
+
+
+test('Customer booking submission ignores stale OTP-session responses and clears the prior payment reference on account switch', () => {
+  const start = customer.indexOf("document.getElementById('booking').addEventListener('submit'");
+  const end = customer.indexOf("document.getElementById('payNow').addEventListener", start);
+  assert.ok(start >= 0 && end > start, 'customer booking submit handler exists');
+  const submit = customer.slice(start, end);
+  assert.match(submit, /const bookingGeneration=customerActionGeneration/);
+  assert.match(submit, /const isCurrent=\(\)=>bookingGeneration===customerActionGeneration/);
+  assert.match(submit, /customerSb\.auth\.getSession\(\)[\s\S]*?if\(!isCurrent\(\)\)return/);
+  assert.match(submit, /srk_customer_list_my_cancellation_fee_debts[\s\S]*?if\(!isCurrent\(\)\)return/);
+  assert.match(submit, /latestSession\.user\.id!==customerSession\.user\.id/);
+  assert.match(submit, /fetch\('\/api\/create-booking'[\s\S]*?if \(!isCurrent\(\)\) return/);
+  assert.match(submit, /catch \(err\) \{\s*if \(!isCurrent\(\)\) return;/);
+  const authStart = customer.indexOf('customerSb.auth.onAuthStateChange');
+  const authEnd = customer.indexOf('setTimeout(syncCustomerSession, 0);', authStart);
+  assert.ok(authStart >= 0 && authEnd > authStart);
+  assert.match(customer.slice(authStart, authEnd), /pendingBookingId=null/);
+});
