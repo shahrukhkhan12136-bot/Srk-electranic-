@@ -496,3 +496,18 @@ test('customer work lifecycle actions are invalidated when the signed-in account
     assert.match(action, /finally\{customerLifecycleBusy\.delete\(requestKey\)\}/);
   }
 });
+
+test('customer refund and cancellation requests are isolated across auth changes', () => {
+  for (const name of ['customerSubmitBookingRefund', 'customerCancelBooking']) {
+    const action = functionBody(customer, name);
+    assert.match(action, /const generation=customerActionGeneration,isCurrent=\(\)=>generation===customerActionGeneration/);
+    assert.match(action, /if\(!isCurrent\(\)\)return/);
+    assert.match(action, /finally\{if\(isCurrent\(\)&&button\)button\.disabled=false\}/);
+  }
+  const refund = functionBody(customer, 'customerSubmitBookingRefund');
+  assert.match(refund, /srk_customer_list_booking_refund_requests/);
+  assert.match(refund, /if\(!isCurrent\(\)\)return;\s*if\(!lookupError/);
+  const cancellation = functionBody(customer, 'customerCancelBooking');
+  assert.match(cancellation, /srk_customer_list_booking_cancellation_requests/);
+  assert.match(cancellation, /if\(!isCurrent\(\)\)return;\s*if\(!lookupError/);
+});
