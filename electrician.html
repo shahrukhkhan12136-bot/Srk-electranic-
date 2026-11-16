@@ -432,7 +432,27 @@ const electricianSosBusy=new Set();
 function openElectricianSosReasons(id){const choice=document.getElementById('electricianSosChoice_'+id),reason=document.getElementById('electricianSosReason_'+id);if(electricianSosBusy.has(id)||!choice||!reason)return;reason.value='';document.getElementById('electricianSosSend_'+id).disabled=true;choice.classList.remove('hidden');document.getElementById('electricianSosOpen_'+id).classList.add('hidden');document.getElementById('electricianSosStatus_'+id).textContent='कारण चुनें। अलर्ट केवल “SOS भेजें” दबाने पर बनेगा।';}
 function cancelElectricianSosSelection(id){if(electricianSosBusy.has(id))return;document.getElementById('electricianSosReason_'+id).value='';document.getElementById('electricianSosChoice_'+id).classList.add('hidden');document.getElementById('electricianSosOpen_'+id).classList.remove('hidden');document.getElementById('electricianSosStatus_'+id).textContent='SOS चयन रद्द किया गया; कोई अलर्ट नहीं भेजा गया।';}
 document.addEventListener('change',event=>{if(event.target?.id?.startsWith('electricianSosReason_')){const id=event.target.id.slice('electricianSosReason_'.length);document.getElementById('electricianSosSend_'+id).disabled=!['customer_at_risk','electrician_at_risk','violence_or_other_emergency'].includes(event.target.value);}});
-async function submitElectricianSosAlert(id){const button=document.getElementById('electricianSosSend_'+id),status=document.getElementById('electricianSosStatus_'+id);if(!sb||!user||electricianSosBusy.has(id)||!button||button.disabled)return;const reason=document.getElementById('electricianSosReason_'+id).value;if(!['customer_at_risk','electrician_at_risk','violence_or_other_emergency'].includes(reason)){status.textContent='कृपया दिए गए तीन कारणों में से एक चुनें।';return;}electricianSosBusy.add(id);button.disabled=true;status.textContent='SOS अनुरोध दर्ज किया जा रहा है…';try{const {data,error}=await sb.rpc('srk_create_sos_alert',{p_reason:reason});if(error)throw error;if(!data?.success||!data?.case_id)throw new Error('SOS_CASE_NOT_CONFIRMED');status.textContent='SOS केस दर्ज हुआ (#'+String(data.case_id).slice(0,8)+')। अलर्ट डिलीवरी backend पुष्टि के अधीन है।';document.getElementById('electricianSosChoice_'+id).classList.add('hidden');document.getElementById('electricianSosOpen_'+id).classList.remove('hidden');document.getElementById('electricianSosReason_'+id).value='';}catch(_){status.textContent='SOS अभी दर्ज नहीं हो सका। अलर्ट भेजा हुआ न मानें।';}finally{electricianSosBusy.delete(id);button.disabled=false;}}
+async function submitElectricianSosAlert(id){
+ const button=document.getElementById('electricianSosSend_'+id),status=document.getElementById('electricianSosStatus_'+id);
+ const requestedUserId=user?.id,requestedProfileId=profile?.id,requestedGeneration=electricianAccountViewGeneration;
+ const requestKey=requestedGeneration+':'+String(id);
+ const isCurrent=()=>!!requestedUserId&&!!requestedProfileId&&!electricianLogoutBusy&&user?.id===requestedUserId&&profile?.id===requestedProfileId&&electricianAccountViewGeneration===requestedGeneration;
+ if(!sb||!isCurrent()||electricianSosBusy.has(requestKey)||!button||button.disabled)return;
+ const reason=document.getElementById('electricianSosReason_'+id)?.value;
+ if(!['customer_at_risk','electrician_at_risk','violence_or_other_emergency'].includes(reason)){if(status)status.textContent='कृपया दिए गए तीन कारणों में से एक चुनें।';return;}
+ electricianSosBusy.add(requestKey);button.disabled=true;if(status)status.textContent='SOS अनुरोध दर्ज किया जा रहा है…';
+ try{
+  const {data,error}=await sb.rpc('srk_create_sos_alert',{p_reason:reason});
+  if(!isCurrent())return;
+  if(error)throw error;
+  if(!data?.success||!data?.case_id)throw new Error('SOS_CASE_NOT_CONFIRMED');
+  status.textContent='SOS केस दर्ज हुआ (#'+String(data.case_id).slice(0,8)+')। अलर्ट डिलीवरी backend पुष्टि के अधीन है.';
+  document.getElementById('electricianSosChoice_'+id)?.classList.add('hidden');
+  document.getElementById('electricianSosOpen_'+id)?.classList.remove('hidden');
+  const reasonInput=document.getElementById('electricianSosReason_'+id);if(reasonInput)reasonInput.value='';
+ }catch(_){if(isCurrent()&&status)status.textContent='SOS अभी दर्ज नहीं हो सका। अलर्ट भेजा हुआ न मानें।';}
+ finally{electricianSosBusy.delete(requestKey);if(isCurrent()&&button)button.disabled=false;}
+}
 
 async function electricianRequestWorkStart(bookingId){
  const requestedUserId=user?.id,requestedProfileId=profile?.id,requestedGeneration=electricianAccountViewGeneration;
