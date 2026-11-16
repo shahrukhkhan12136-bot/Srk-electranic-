@@ -487,3 +487,12 @@ verify-payment.js और razorpay-webhook.js के legacy-quote payment paths �
 - अभी यह प्रमाणित नहीं है कि deployed database में functions मौजूद नहीं हैं; Production schema query नहीं की गई। इसलिए इसे confirmed outage नहीं, बल्कि repository/replay lineage में unresolved dependency माना जाए।
 - अगला सुरक्षित कदम: canonical baseline और migration lineage तय होने के बाद isolated test database में `pg_proc`/privilege/signature जाँचें; function body में booking row lock, exact order/payment/amount/currency validation, idempotency, paid/refunded conflict और ledger atomicity सत्यापित करें। उसके बाद Verify Payment और webhook के साझा settlement contract पर pgTAP तथा concurrent retry tests जोड़ें।
 - अभी कोई SQL migration, Production query/write, payment attempt या refund operation नहीं किया गया।
+
+
+## 38. पुराने Project Progress दस्तावेज़ और वर्तमान Branch Tree में Order-Lock migration का विरोधाभास
+
+- Repository search में पुराने commit/document `091fccd32a71028b49800152cafdd5d9ab8fb7a2` के `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` अंश में दावा है कि Feature Branch में `20261114090000_atomic_razorpay_order_and_payment_finalization.sql` नाम का migration जोड़ा गया था। उस विवरण के अनुसार उसमें private expiring order-lock table, service-role claim/release RPC और atomic captured-payment finalizer होना था।
+- लेकिन वर्तमान PR branch `feat/customer-login-first-dashboard-20261114` और GPT-2 audit branch `chore/pr8-replay-audit-20261116-v2` — दोनों की recursive Git tree सूची में यह migration filename मौजूद नहीं है। वर्तमान दोनों trees में exact RPC names `srk_claim_payment_order_lock`, `srk_release_payment_order_lock`, `srk_service_role_get_booking_payment_breakdown`, `srk_service_role_record_online_booking_payment` की कोई migration file भी नहीं मिली।
+- अतः पुराने progress document का दावा वर्तमान checked-out branch content से मेल नहीं खाता। यह संभव है कि पुराना document किसी बाद में हटाए गए/अलग commit state का वर्णन करता हो; उपलब्ध evidence से कारण तय नहीं है।
+- यह finding पहले के unresolved dependency निष्कर्ष को और मजबूत करती है, लेकिन Production में function अनुपस्थित होने का प्रमाण नहीं है। अगला कदम Git history/PR commit ancestry में उस migration के add/delete commits का पता लगाना और उसके बाद authorized isolated DB में actual function signatures/privileges जाँचना है।
+- कोई migration restore या नया SQL patch नहीं किया गया; Production/DB query, payment या deployment नहीं हुआ।
