@@ -117,3 +117,10 @@ The current PR head has a successful GitHub Actions run: run `43897251465`, job 
 The current PR head and this audit branch have diverged from their common ancestor `dc8b4f723ac7ae896eeb516336dd4b28577390b5`. The compare endpoint reports six commits ahead on the current PR head and nine commits behind relative to the audit branch; the reported file changes are `booking.html` and `tests/customer-booking-idempotency.test.js`. Therefore, the migration-source findings in this matrix remain valid only to the extent the current PR changes did not alter the audited SQL migration files; this compare reports no SQL migration file among the changed paths.
 
 No PR merge, production deployment, migration execution, or Production write was performed during this follow-up.
+
+
+### 2026-11-16 follow-up: current PR-head migration inventory
+
+The recursive Git tree for the current PR head `d01dc805d6d9ab5a9efcc53109cc5921ab27bfa7` was inspected (complete tree response; not truncated). It contains **87 SQL migration files**: 85 filenames with valid 14-digit version prefixes and the same two malformed filenames, `20261109_allow_quote_approval_booking_states.sql` and `20261109_electrician_inspection_quotes_and_service_only_commission.sql`. No duplicate valid 14-digit version prefixes were found. The exact Production ledger migration `20261108095928_add_actual_paid_amount_commission_and_status_history.sql` is still absent, while `20261116200000_restore_service_bookings_amount_paid.sql` is present.
+
+This confirms the earlier migration-inventory findings still apply to the refreshed PR head. It does not make the chain replayable: the missing historical source and malformed version filenames remain unresolved. No migration files were edited or executed.
