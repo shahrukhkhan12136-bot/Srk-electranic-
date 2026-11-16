@@ -2153,6 +2153,9 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
+      customerBookingRefreshRequest++;
+      const bookingList=document.getElementById('customerBookings');
+      if(bookingList){bookingList.textContent='लॉगिन सत्र बदल रहा है…';bookingList.setAttribute('aria-busy','false');}
       customerSavedAddressLoadRequest++;
       customerSavedAddresses=[];
       editingSavedAddressId=null;
