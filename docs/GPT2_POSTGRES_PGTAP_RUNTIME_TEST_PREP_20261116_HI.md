@@ -2247,3 +2247,37 @@ ORDER BY column_name;
 - Result: **7/7 source predicates PASS**. These are in-memory source checks only, not execution of Node's `node --test` runner. No test-runner PASS is claimed.
 - Current handler also requires an actual completed booking and valid receipt/UTR before recording manual payment; online Razorpay-linked bookings remain on the verified Razorpay flow. This was source-inspected, not runtime-tested.
 - No application code, SQL, database, workflow, payment provider, CI dispatch, merge, or deployment was changed or invoked by this verification.
+
+
+## 66. Clean-baseline blocker: amount_paid is referenced before its restore migration — 16 Nov 2026
+
+### Source files re-read at the current Feature Branch head
+
+- `COMPLETE_DATABASE_SETUP.sql` defines `public.service_bookings` without an `amount_paid` column.
+- `SUPABASE_SCHEMA.sql` likewise defines `public.service_bookings` without `amount_paid`.
+- `supabase/migrations/20261109003000_secure_commission_reporting.sql` references `amount_paid` in its Admin commission report, its column-level privilege statement, and the SQL-language electrician earnings function. In particular it executes:
+  `GRANT UPDATE (status, quoted_amount, amount_paid, payment_status) ON TABLE public.service_bookings TO authenticated;`
+  and later creates a SQL-language function whose SELECT reads `b.amount_paid`.
+- `supabase/migrations/20261116200000_restore_service_bookings_amount_paid.sql` is the source migration that adds nullable `amount_paid numeric(12,2)` and a nonnegative CHECK constraint; its timestamp is later than the commission-reporting migration.
+- The 20261109 electrician quote/commission migration also contains a PL/pgSQL trigger function body that reads `NEW.amount_paid`. Its function-body reference is a separate concern from the immediate SQL/column-privilege parse-time dependency in the earlier 14-digit commission migration.
+
+### Precise replay implication
+
+A clean replay starting from either checked-in starter schema, applying migrations in timestamp order, reaches `20261109003000_secure_commission_reporting.sql` before `20261116200000_restore_service_bookings_amount_paid.sql`. At that point the referenced column does not exist. The column-level GRANT cannot be applied to a missing column, and the later SQL-language function also requires the column to resolve when created. Therefore this is a source-proven clean-baseline ordering blocker, not merely a runtime test gap.
+
+This does **not** establish that the historical Production database lacked `amount_paid`: the live database may have had an out-of-band/manual column or a different prior baseline. No remote schema or migration history was accessed in this review.
+
+### Safe decision
+
+1. Keep both starter schemas and all numbered migrations unchanged until authoritative environment history is obtained.
+2. Do not simply move the 20261116 restore migration backwards, rename it, or repair remote history; doing so could conflict with an already-applied hosted schema.
+3. Record the required evidence: approved baseline identity, whether `amount_paid` existed before 20261109003000 in each hosted environment, and the matching `supabase_migrations.schema_migrations` rows.
+4. Once owner/DBA supplies sanitized read-only evidence, prepare a separate migration reconciliation proposal and test it only against a disposable local baseline. No Production action is implied.
+
+### Verification boundary
+
+- Source files and relevant SQL statements: **READ / SOURCE CONFIRMED**.
+- Clean-baseline ordering conflict: **SOURCE CONFIRMED**.
+- Supabase CLI replay / PostgreSQL execution: **NOT RUN**.
+- Hosted schema and migration-history rows: **NOT ACCESSED / UNKNOWN**.
+- Migration files, starter schemas, workflows, Production and remote DB: **UNCHANGED / NOT CONTACTED**.
