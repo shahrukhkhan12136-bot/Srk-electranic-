@@ -188,7 +188,7 @@ test('uncertain KYC submit response reconciles a newly created owner document an
 
 test('KYC upload deletes an object after submit failure only when owner reconciliation succeeds and finds no new record', () => {
   const upload = body('uploadVerificationDocument');
-  assert.match(upload, /if\(reconciliationSucceeded&&!matchingDocument\)await sb\.storage\.from\(KYC_BUCKET\)\.remove\(\[path\]\)/);
+  assert.match(upload, /if\(reconciliationSucceeded&&!matchingDocument\)\{await sb\.storage\.from\(KYC_BUCKET\)\.remove\(\[path\]\)/);
   assert.match(upload, /if\(matchingDocument\|\|!reconciliationSucceeded\)[\s\S]*?फ़ाइल सुरक्षित रखी गई है/);
   assert.doesNotMatch(upload, /if\(recordError\)\{await sb\.storage\.from\(KYC_BUCKET\)\.remove/);
 });
