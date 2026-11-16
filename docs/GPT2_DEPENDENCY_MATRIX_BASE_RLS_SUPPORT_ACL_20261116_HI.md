@@ -22,7 +22,7 @@
 | `20261109103143_move_customer_call_contact_lookup_to_private.sql` | `service_bookings.customer_user_id`, assigned profile fields, `private` schema | Creates private implementation + public invoker wrapper | Depends on customer identity and profile baseline |
 | `20261113230000_support_attachment_paths_and_admin_message_list.sql` | `srk_booking_complaints`, complaint messages, attachment table, customer ownership, `public.is_srk_admin()` | Functions only reference these tables; this file does not create the complaint base tables | **BLOCKER: complaint table/bucket baseline and helper provenance not established here** |
 | `20261114150000_customer_booking_submission_idempotency.sql` | `service_bookings` | Adds request key/fingerprint, check and unique partial index | Depends on base booking table |
-| `20261116200000_restore_service_bookings_amount_paid.sql` | `service_bookings` | Adds nullable `amount_paid` and nonnegative CHECK | Exists in source, but after earlier quote/commission references |
+| `20261116200000_restore_service_bookings_amount_paid.sql` | `service_bookings` | Idempotently restores/checks nullable `amount_paid` and nonnegative CHECK | Later compatibility/constraint migration; not the first visible column introduction |
 
 ## B. Newly confirmed specific findings
 
