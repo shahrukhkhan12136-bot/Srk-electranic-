@@ -679,3 +679,17 @@ Feature branch के मौजूदा source को फिर से पढ�
 **वर्तमान शेष gaps:** वास्तविक PostgreSQL/pgTAP execution; पूरे dependency migration order का isolated test; bill-lookup RPC privilege/return assertions; handler-level mocked HTTP tests; webhook-vs-verify concurrency; Razorpay order POST accepted-but-response-lost; DB link response-lost; 90-second lock expiry।
 
 इस correction से पहले के गलत निष्कर्ष हटाए नहीं गए हैं ताकि audit trail बना रहे, लेकिन उन्हें स्पष्ट रूप से superseded माना जाए। यह repository source review है; Production database या live provider behavior का प्रमाण नहीं।
+
+
+## 50. Full dependency migration को isolated test में जोड़ने से पहले baseline blocker
+
+Workflow/fixture के साथ वास्तविक dependency migration `20261114040000_server_authoritative_labour_timer_and_bill_snapshot.sql` और root setup files का static comparison किया। अभी इसे मौजूदा test workflow में सीधे जोड़ना सही नहीं होगा:
+
+1. `payment_order_bootstrap.sql` केवल दो synthetic tables बनाता है: सीमित `service_bookings` और `srk_booking_labour_bills`। इसमें `electrician_profiles`, `srk_wallet_ledger`, `auth.users` test rows/relationships, कई timer/booking columns और migration द्वारा उपयोग की जाने वाली बाकी dependencies नहीं हैं।
+2. `20261114040000` केवल bill table नहीं बनाती; यह existing `service_bookings`, `electrician_profiles`, `srk_wallet_ledger`, `job_offers`, Auth users तथा कई पहले से मौजूद RPC/schema contracts पर निर्भर 2,678-line migration है। इसमें wallet-ledger constraints/functions, timer authorization, profile lookup, cash-cycle और अनेक RPC भी हैं।
+3. Root `SUPABASE_SCHEMA.sql` सिर्फ 93 lines का starter schema है; इसमें `srk_wallet_ledger` नहीं है और यह migration की पूरी prerequisite schema नहीं देता। `PORTAL_SCHEMA.sql` electrician profile Auth linkage जोड़ता है, लेकिन वह भी wallet ledger और सभी required columns/functions का canonical baseline नहीं है। `COMPLETE_DATABASE_SETUP.sql` में duplicated setup definitions हैं; इसे बिना lineage review canonical baseline घोषित करना उचित नहीं।
+4. मौजूदा workflow के push-path filter में `20261114040000` शामिल नहीं है; इसलिए उस dependency migration में बदलाव अपने-आप इस workflow को trigger नहीं करेगा।
+
+**सुरक्षित निष्कर्ष:** अभी synthetic fixture पर Atomic migration test उपयोगी सीमित contract test है, लेकिन full migration-chain replay नहीं। पूरा dependency migration workflow में जोड़ने से पहले एक स्पष्ट, versioned और reproducible base schema तय करना होगा—जिसमें Supabase Auth roles/schema, booking/profile/wallet/job-offer tables, आवश्यक columns, helper functions और extensions शामिल हों। उसके बाद disposable local stack पर क्रम से baseline → `20261114040000` → `20261114090000` → pgTAP चलाया जाए। Baseline तैयार किए बिना fixture में अनुमान से columns/tables जोड़ना false-green test दे सकता है।
+
+**अगला gate:** canonical baseline चुनने के लिए migration history/root setup का table-column-function dependency matrix बनाना; फिर disposable local PostgreSQL/Supabase stack पर केवल CI runner में replay। किसी hosted Supabase project, Production, payment provider या shared branch का उपयोग नहीं। इस audit में कोई workflow dispatch या test execution नहीं हुआ।
