@@ -2144,6 +2144,8 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
       customerPaymentHistoryRequest++;
       customerProfileLoadRequest++;
       customerProfileSaveRequest++;
+      const profileSaveButton=document.getElementById('saveCustomerProfile');
+      if(profileSaveButton)profileSaveButton.disabled=false;
       customerCancellationFeeRequest++;
       customerRefundHistoryRequest++;
       customerPaymentHistoryResetPending=false;
