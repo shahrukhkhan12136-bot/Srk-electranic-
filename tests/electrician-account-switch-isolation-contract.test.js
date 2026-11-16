@@ -92,3 +92,28 @@ test('Electrician availability changes are bound to the same account and view ge
   assert.ok(action.includes('if(isCurrent())await refresh()'));
   assert.ok(action.includes('if(!isCurrent())return;\n  alert('));
 });
+
+test('Electrician push controls ignore stale account results and bind writes to the captured user', () => {
+  const extract = name => {
+    const start = source.indexOf('async function ' + name);
+    const next = source.indexOf('\\nasync function ', start + 1);
+    assert.ok(start >= 0, name + ' exists');
+    return source.slice(start, next < 0 ? source.length : next);
+  };
+  const refresh = extract('refreshElectricianPushState');
+  assert.ok(refresh.includes('requestedUserId=user?.id'));
+  assert.ok(refresh.includes('electricianAccountViewGeneration'));
+  assert.ok(refresh.includes('if(!isCurrent())return'));
+  const enable = extract('enableElectricianPushNotifications');
+  assert.ok(enable.includes('requestedProfileId=profile?.id'));
+  assert.ok(enable.includes('user?.id===requestedUserId'));
+  assert.ok(enable.includes('if(!isCurrent())return'));
+  assert.ok(enable.includes('ctx.data.user.id!==requestedUserId'));
+  assert.ok(enable.includes('user_id:requestedUserId'));
+  assert.ok(enable.includes('finally{if(isCurrent())button.disabled=false}'));
+  const disable = extract('disableElectricianPushNotifications');
+  assert.ok(disable.includes('ctx.data.user.id!==requestedUserId'));
+  assert.ok(disable.includes(".eq('user_id',requestedUserId)"));
+  assert.ok(disable.includes('if(!isCurrent())return'));
+  assert.ok(disable.includes('finally{if(isCurrent())'));
+});
