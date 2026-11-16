@@ -1682,6 +1682,7 @@ function applySelectedSavedAddress() {
  if(!id) return;
  const a=customerSavedAddresses.find(x=>x.id===id);
  if(!a) return;
+ document.getElementById('name').value=a.recipient_name||'';
  document.getElementById('state').value=a.state;
  document.getElementById('district').value=a.district;
  document.getElementById('pin').value=a.pincode;
@@ -2201,6 +2202,18 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
       customerActionGeneration++;
+      // Clear identity-scoped profile and booking form data immediately on every auth transition.
+      // A newly signed-in customer must never see the previous customer's cached values.
+      ['customerProfileName','customerProfilePhone','name','state','district','pin','address','place','bookingLat','bookingLng'].forEach(id=>{
+        const field=document.getElementById(id);if(field)field.value='';
+      });
+      const profileLanguage=document.getElementById('customerProfileLanguage');if(profileLanguage)profileLanguage.value='hi';
+      const addressLabel=document.getElementById('savedAddressLabel');if(addressLabel)addressLabel.value='home';
+      const avatarFile=document.getElementById('customerAvatarFile');if(avatarFile)avatarFile.value='';
+      customerCurrentAvatarPath=null;setCustomerAvatarPreview(null);
+      setCustomerProfileStatus('');
+      const mapWrap=document.getElementById('customerMapWrap');if(mapWrap)mapWrap.style.display='none';
+      const locationStatus=document.getElementById('customerLocationStatus');if(locationStatus)locationStatus.textContent='';
       pendingBookingId=null;
       customerOtpBusy=false;
       const otpSendButton=document.getElementById('customerSendOtp');if(otpSendButton&&Date.now()>=customerOtpUntil){otpSendButton.disabled=false;otpSendButton.textContent='OTP भेजें';}
