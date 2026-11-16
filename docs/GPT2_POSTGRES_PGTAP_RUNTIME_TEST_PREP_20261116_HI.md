@@ -1530,3 +1530,49 @@ Replay gates पूरे होने और disposable local Supabase harness 
 पाँचों में JWT/session setup, role switching या throws_ok / lives_ok / results_eq / is_empty behavioral assertion calls नहीं मिले। यह पाँचों targeted files की सीमा तक का निष्कर्ष है, पूरे 32-file suite का दावा नहीं।
 
 **निर्णय:** अगला coding step अभी production या current branch पर test edits नहीं है। पहले approved isolated runner, local Supabase config/harness, base-schema provenance और migration-version collision gate उपलब्ध होने चाहिए। उसके बाद पहले Work Timer और Webhook के local-only behavioral tests बनाए जाएँ; शेष तीन उसके बाद। इस pass में केवल GitHub source files पढ़ीं—कोई file write, SQL execution, test run, migration replay या Production access नहीं हुआ।
+
+
+## 47. Work Timer behavioral test blueprint — fixture और assertion क्रम — 16 Nov 2026
+
+Work Timer migration 20261114240000_server_authoritative_customer_approved_work_timer.sql और मौजूदा 20-assertion pgTAP file को पढ़कर runnable test लिखने से पहले exact fixture contract तैयार किया गया। अभी केवल design है; कोई SQL test file नहीं बनाई या चलाई गई।
+
+### 47.1 न्यूनतम synthetic fixture contract
+
+एक isolated test case में:
+- दो अलग local Auth users: customer और electrician; दोनों के UUID स्थिर test variables से बनें।
+- Electrician के लिए एक profile: user_id और auth_user_id उसी electrician Auth UUID से मेल खाएँ; verification_status='approved', active=true; approved_rate_tier booking के selected_rate_tier के बराबर हो; approved_rate_card_version, rate_tier_approved_by, rate_tier_approved_at सभी non-null हों।
+- Identity-linking trigger के कारण electrician Auth fixture में confirmed phone होना चाहिए और profile phone उसी normalized phone से match करे। Test phone केवल synthetic हो और उसी test fixture में unique रहे।
+- एक booking: customer_user_id customer UUID, assigned_electrician_id profile UUID, non-null selected_category, matching selected_rate_tier, status='assigned', timer defaults बंद/zero।
+- Customer और electrician के अतिरिक्त एक दूसरा customer तथा एक unrelated electrician identity negative authorization checks के लिए हों; उनके पास target booking का ownership/assignment न हो।
+
+### 47.2 Behavioral test sequence
+
+1. **Initial state:** timer बंद, work_started_at null, elapsed seconds zero और कोई labour bill नहीं।
+2. **Unauthenticated / wrong electrician:** बिना identity और unrelated electrician से srk_electrician_request_work_start(booking_id) deny; booking अपरिवर्तित रहे।
+3. **Assigned electrician request:** सही approved assigned electrician request करे; status awaiting_work_start_approval, approval pending, request timestamp non-null; timer अभी भी बंद और start timestamp null।
+4. **Wrong customer:** दूसरा customer approve/reject करने की कोशिश करे; deny और pending request अपरिवर्तित रहे।
+5. **Customer rejects:** owner customer reject करे; status वापस assigned, approval rejected, timer बंद। फिर assigned electrician नया request कर सके।
+6. **Customer approves:** owner customer approve करे; rate tier/version/8-hour paise snapshot approved profile से match हों; status in_progress, approval approved, running true, server start timestamp non-null।
+7. **Direct-write guard:** authenticated client timer, start timestamp, elapsed seconds या rate snapshot बदलने की कोशिश करे; protected authorization के बिना deny हो।
+8. **Completion request:** assigned electrician completion request करे; timer बंद हो, start timestamp clear हो, elapsed seconds positive हों, completion approval pending हो।
+9. **Wrong customer completion:** unrelated customer approve न कर सके।
+10. **Completion approval:** owner customer approve करे; immutable labour bill बने; bill minutes ceil(elapsed_seconds/60) हों; paise amount floor(rate8h_paise*minutes/480+0.5) से मेल खाए; booking completed हो।
+11. **Bill immutability:** bill पर UPDATE और DELETE deny हों; duplicate approval दूसरा bill न बना सके।
+12. **Bill read access:** owner customer और assigned electrician अपने bill को पढ़ सकें; unrelated customer/electrician को कोई row न मिले।
+
+### 47.3 अलग test transactions में rejection/dispute branches
+
+- Work-start rejection को अलग fixture/transaction में जाँचा जाए ताकि primary approval path के state transitions उससे contaminate न हों।
+- Completion rejection: elapsed time सुरक्षित रहे, timer फिर चालू हो और नई work_started_at server से बने; अगली completion request में accumulated elapsed time जुड़ना चाहिए।
+- Completion dispute: कम-से-कम 20 अक्षरों का note अनिवार्य; complaint row बने; bill न बने और booking completed न हो। इस branch के बाद operational dispute-resolution/resume path का अलग owner-approved contract आवश्यक है—इस test को अपने-आप timer restart मानकर pass नहीं करना चाहिए।
+
+### 47.4 महत्वपूर्ण fixture blockers
+
+- Historical starter SQL को authoritative baseline नहीं माना जा सकता; clean local schema provenance अभी unresolved है।
+- Local Auth users, auth.uid() claim helper, authenticated role switching और srk_private schema prerequisites स्थापित होने चाहिए।
+- Electrician profile identity trigger confirmed-phone uniqueness लागू करता है; साधारण profile INSERT पर्याप्त नहीं होगा।
+- Main Admin helper इस Work Timer happy path के लिए आवश्यक नहीं दिखता; test को Main Admin allowlist पर निर्भर न बनाया जाए।
+- Time assertions में exact wall-clock duration पर brittle equality न रखें। Server-generated timestamps के क्रम, positive elapsed value और bill formula को उसी transaction के stored snapshot से assert करें।
+- Concurrency (दो customer replies या completion race) को अलग two-connection test harness में रखें; single pgTAP transaction से concurrency proof न दें।
+
+**निर्णय:** Work Timer का पहला runnable behavioral test तब बनाया जा सकता है जब disposable local Supabase/Auth harness और base-schema provenance gate उपलब्ध हों। अभी यह blueprint implementation-ready test specification है, executable test नहीं। इस pass में केवल migration और source test पढ़े गए; कोई fixture write, SQL execution, test run, migration replay या Production access नहीं किया गया।
