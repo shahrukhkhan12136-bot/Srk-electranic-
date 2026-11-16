@@ -4,7 +4,7 @@
 **Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
 **PR:** #8 — Open, Draft, unmerged  
 **Feature branch:** `feat/customer-login-first-dashboard-20261114`  
-**Inspected PR head (refreshed):** `f27a4ed04396c3869ad88455e172fca808f9c7b7`
+**Inspected PR head (refreshed):** `b39e49b2b354c4fe8d8f87ec89d51232f65a7c42`
 
 
 ## 2026-11-16 — baseline dependency audit correction
@@ -351,3 +351,14 @@ Source call-sites के RPC names और payload keys को संबंधि
 - GitHub Actions query for this exact head returned no workflow runs at the time of this inventory refresh. Do not carry forward the earlier 328-test success as evidence for this newer head; rerun/confirm CI against the current exact SHA before relying on it.
 
 **Decision:** Keep the remaining Customer/Electrician work as runtime acceptance gates already listed in Section 21. Do not add features or reopen Welcome Screen/founder-photo work.
+
+
+## 24. Latest PR-head confirmation — 16 Nov 2026
+
+- PR #8 का वर्तमान exact HEAD `b39e49b2b354c4fe8d8f87ec89d51232f65a7c42` है; PR Open / Draft / unmerged है।
+- इस HEAD पर `booking.html` blob `679072fa8926de0757e722390d1895f90c7d57c8` और `electrician.html` blob `90e0a597c138b04b2ab91861e644be3dad46e8a0` हैं। ये दोनों GPT-1 के पिछले source reconciliation में जाँचे गए blobs के समान हैं; इसलिए Section 23 के Customer/Electrician source-call-site observations अभी भी इन्हीं source files पर लागू हैं।
+- वर्तमान HEAD का commit message `docs: distinguish pgTAP structural and behavioral coverage` है। GPT-2 की runtime-preparation note अब स्पष्ट करती है कि targeted Staff RBAC/SOS pgTAP assertions catalog/function-source structural checks हैं; JWT identity, SET ROLE, वास्तविक allow/deny RPC calls और two-session concurrency behavior इन दो files में मौजूद नहीं हैं। इसे runtime authorization pass न कहा जाए।
+- इस exact HEAD के लिए GitHub Actions workflow-run lookup में कोई Node run नहीं मिला। Combined status में Vercel और Netlify deploy-preview दोनों success हैं; ये Node test suite या database runtime tests का विकल्प नहीं हैं।
+- इस refresh में Customer/Electrician source blobs unchanged मिले। कोई app source, migration, SQL, Auth/Storage setting या Production resource नहीं बदला; कोई database/browser/device/provider test नहीं चलाया गया। PR merge/deploy और final mobile QA नहीं किए गए।
+
+**Decision:** GPT-1 source review में अभी कोई नया concrete implementation defect प्रमाणित नहीं हुआ। Existing runtime acceptance gates और GPT-2-owned database prerequisites यथावत हैं; नई feature scope नहीं जोड़ी गई।
