@@ -792,3 +792,24 @@ Feature branch के source search और संबंधित migration files
 इन tables को fixture में अनुमान से बनाना वास्तविक schema contract को छिपा सकता है। प्रत्येक table के लिए authoritative DDL, FK/unique/check constraints, RLS/policies, grants और trigger definitions ढूँढना जरूरी है। यदि वे केवल root setup scripts या किसी अन्य feature branch में हैं, तो उसे स्पष्ट baseline decision के रूप में दर्ज करना होगा—बिना Production schema export के।
 
 **अगला कदम:** Git history और सभी relevant migration filenames/branches में इन पाँच accounting/support tables के मूल DDL का provenance trace; जब तक यह न मिले, पूर्ण migration replay को blocked रखें। कोई SQL test या Production query नहीं चली।
+
+
+## 55. Creator Migration Cross-check — दो महत्वपूर्ण स्रोत मिल गए
+
+इस pass में पहले unresolved सूची के दो हिस्सों के वास्तविक creator migrations प्रमाणित हुए:
+
+1. `20261114030000_verified_electrician_skills_and_category_matching.sql` सीधे `srk_customer_category_skill_rules` बनाती है; साथ में `srk_electrician_skill_catalog`, `srk_customer_category_skill_rule_audit` और `srk_electrician_skill_audit` भी बनते हैं। इसलिए इस table को अब unresolved creator सूची से हटाया गया।
+2. `20261114100000_reproducible_labour_only_refund_foundation.sql` सीधे `srk_razorpay_refunds`, `srk_manual_refund_entries` और `srk_booking_refund_requests` बनाती है। `20261114130000_durable_razorpay_refund_provider_reconciliation.sql` आगे `srk_razorpay_refund_events` बनाती है। `20261114200000_customer_payment_refund_history_rpc.sql` इन tables का creator नहीं, बल्कि consumer/read RPC है।
+
+Support chain का cross-check:
+- `20261113180000_customer_support_messages_and_attachments.sql` `srk_booking_complaint_messages` बनाती है।
+- `20261113190000_admin_support_replies_and_attachment_linking.sql` `srk_booking_complaint_message_attachments` बनाती है।
+- `20261113220000_customer_complaint_creation_rpc.sql` और `20261113230000_support_attachment_paths_and_admin_message_list.sql` complaint base table को पहले से मौजूद मानती हैं; `srk_booking_complaints` का creator इस feature branch के reviewed sources में अभी नहीं मिला।
+
+अभी भी unresolved:
+- `srk_manual_payment_entries` — creator migration प्रमाणित नहीं।
+- `srk_electrician_payouts` — creator migration प्रमाणित नहीं।
+- `srk_booking_complaints` — base DDL प्रमाणित नहीं; केवल related message/attachment tables के creators मिले।
+- `job_offers` — base DDL `SUPABASE_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` में मिला, लेकिन canonical migration baseline/ordering प्रमाणित नहीं।
+
+ये निष्कर्ष source-level file inspection पर आधारित हैं। कोई SQL execution, PostgreSQL replay, pgTAP, Production query या write नहीं हुआ।
