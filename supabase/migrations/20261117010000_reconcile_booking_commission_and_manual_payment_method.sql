@@ -145,7 +145,9 @@ after insert or update of
   amount_paid,
   quote_status,
   service_charge,
+  materials_amount,
   commission_rate,
+  commission_amount,
   razorpay_payment_id,
   selected_category,
   payment_method
@@ -521,3 +523,89 @@ grant execute on function public.srk_admin_get_booking_accounting_reconciliation
 
 comment on function public.srk_admin_get_booking_accounting_reconciliation(uuid) is
   'Read-only Main Admin per-booking financial reconciliation. Never posts, transfers, or marks payouts paid.';
+
+
+-- Reporting must use the payout ledger as the authoritative electrician amount.
+-- amount_paid remains customer collection and can include SRK-owned cancellation fees.
+create or replace function public.srk_admin_commission_report()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_result jsonb;
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'Admin access required' using errcode = '42501';
+  end if;
+
+  with paid_completed as (
+    select b.assigned_electrician_id,
+           coalesce(b.amount_paid,0)::numeric as customer_collected,
+           coalesce(p.gross_service_amount,0) + coalesce(p.materials_amount,0) as payout_gross,
+           coalesce(p.platform_commission,b.commission_amount,0)::numeric as commission,
+           coalesce(p.electrician_payable,0)::numeric as electrician_payable
+    from public.service_bookings b
+    left join public.srk_electrician_payouts p on p.booking_id=b.id
+    where b.status='completed' and b.payment_status='paid'
+  ),
+  totals as (
+    select coalesce(sum(customer_collected),0)::numeric as collected,
+           coalesce(sum(commission),0)::numeric as commission,
+           coalesce(sum(electrician_payable),0)::numeric as payable
+    from paid_completed
+  ),
+  partners as (
+    select p.id as electrician_id,
+           p.display_name,
+           count(pc.*)::integer as paid_completed_jobs,
+           coalesce(sum(pc.payout_gross),0)::numeric as gross_received,
+           coalesce(sum(pc.commission),0)::numeric as company_commission,
+           coalesce(sum(pc.electrician_payable),0)::numeric as electrician_earning
+    from public.electrician_profiles p
+    left join paid_completed pc on pc.assigned_electrician_id=p.id
+    group by p.id,p.display_name
+    order by p.display_name
+  )
+  select jsonb_build_object(
+    'total_collected',t.collected,
+    'total_commission',t.commission,
+    'total_electrician_payable',t.payable,
+    'partners',coalesce((select jsonb_agg(to_jsonb(partners)) from partners),'[]'::jsonb)
+  ) into v_result
+  from totals t;
+
+  return v_result;
+end;
+$$;
+
+create or replace function public.srk_get_my_earnings()
+returns table (
+  booking_id uuid,
+  service_type text,
+  booking_created_at timestamptz,
+  booking_status text,
+  payment_status text,
+  amount_received numeric,
+  commission_amount numeric,
+  electrician_earning numeric
+)
+language sql
+stable
+security definer
+set search_path = pg_catalog, public, auth, pg_temp
+as $$
+  select b.id, b.service_type, b.created_at, b.status, b.payment_status,
+         coalesce(b.amount_paid,0),
+         coalesce(p.platform_commission,b.commission_amount,0),
+         case when b.status='completed' and b.payment_status='paid'
+              then coalesce(p.electrician_payable,0)
+              else 0 end
+  from public.electrician_profiles ep
+  join public.service_bookings b on b.assigned_electrician_id=ep.id
+  left join public.srk_electrician_payouts p on p.booking_id=b.id
+  where ep.user_id=auth.uid() and ep.verification_status='approved'
+  order by b.created_at desc
+  limit 200;
+$$;
