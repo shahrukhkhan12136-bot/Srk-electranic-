@@ -108,7 +108,7 @@ test('customer support thread transport failure does not reject the complaint li
   assert.match(thread, /Promise\.resolve\(\)\.then\(\(\)=>customerSb\.rpc\('srk_customer_list_booking_complaint_messages'/);
   assert.match(thread, /\.catch\(error=>\(\{data:null,error\}\)\)/);
   assert.match(thread, /if\(messageResult\.error\)\{supportStatus\('बातचीत लोड नहीं हो सकी। शिकायत सूची उपलब्ध है/);
-  assert.match(thread, /if\(request!==customerSupportThreadRequest\|\|id!==customerSupportSelectedId\)return/);
+  assert.match(thread, /if\(!isCurrent\(\)\|\|request!==customerSupportThreadRequest\|\|id!==customerSupportSelectedId\)return/);
 });
 
 
@@ -134,7 +134,7 @@ test('customer complaint submission reconciles an uncertain RPC result through t
 
 test('customer support lists, threads and writes are invalidated when the OTP account changes', () => {
   const resetStart = customer.indexOf('function clearCustomerSupportView()');
-  const resetEnd = customer.indexOf('\\nfunction renderCustomerSupportThread', resetStart);
+  const resetEnd = customer.indexOf('\nfunction renderCustomerSupportThread', resetStart);
   assert.ok(resetStart >= 0 && resetEnd > resetStart, 'customer support reset handler exists');
   const reset = customer.slice(resetStart, resetEnd);
   const create = functionBody(customer, 'createCustomerSupportComplaint');
