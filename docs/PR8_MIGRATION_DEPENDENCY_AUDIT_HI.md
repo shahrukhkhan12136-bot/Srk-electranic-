@@ -1150,3 +1150,29 @@ GitHub compare of `feat/customer-login-first-dashboard-20261114` (base) against 
 - Attempted to install `pglast` for a real PostgreSQL grammar parse; installation could not reach the package index because DNS/network resolution is unavailable. No package was installed and no parser result was produced.
 - This confirms the parser blocker is environmental, not a successful or failed SQL parse. Parser, full replay, and pgTAP remain **NOT RUN**.
 - No source migration or tests were changed in this step. No workflow was dispatched and no database was accessed.
+
+
+## 72. GPT-2 baseline re-check on current Audit Branch head — 17 Nov 2026
+
+**Read-only source evidence:** Audit Branch head before this report update: `e7c323c08236e76dae67adcfc10973f4f462e427`. No database connection or SQL execution was performed.
+
+### Current repository inventory
+
+- Recursive Git tree reports **89** files under `supabase/migrations/` on this Audit Branch (the earlier 87-file count is stale for this head).
+- The two malformed legacy filenames remain present:
+  - `20261109_allow_quote_approval_booking_states.sql`
+  - `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+- `supabase/config.toml` remains absent.
+- Four standalone SQL setup artifacts were re-read directly from GitHub:
+  - `SUPABASE_SCHEMA.sql` — Blob SHA `8ae88a7035bc963b244f22c6c1450c22618ec88f`; 4 explicit base-table definitions: service_bookings, electrician_applications, electrician_profiles, job_offers.
+  - `PORTAL_SCHEMA.sql` — Blob SHA `efc14aa623a3895ffb3841b7b0f226f2015f34b1`; 1 explicit table definition (srk_admin_users), 5 function definitions, 10 policy definitions.
+  - `COMPLETE_DATABASE_SETUP.sql` — Blob SHA `2b806e727f449ba18e71ad23edef805ceb2da2b5`; 5 explicit base-table definitions (the four above plus srk_admin_users), 7 function definitions, 17 policy definitions.
+  - `ADMIN_EMAIL_LOGIN_SETUP.sql` — Blob SHA `dbd91b3f912b1e0946bffe6d249a85cc41dc81cd`; no table definitions, 2 function definitions, 7 policy definitions.
+  
+### Baseline conclusion
+
+The source artifacts establish a **candidate legacy base**, not an approved canonical baseline. `COMPLETE_DATABASE_SETUP.sql` consolidates five base tables, but its presence does not prove equivalence to the intended clean-install schema or the deployed schema. `PORTAL_SCHEMA.sql` and `ADMIN_EMAIL_LOGIN_SETUP.sql` overlap with the consolidated setup and define Admin functions/policies on different setup paths. The helper names `srk_is_admin()` and `is_srk_admin()` remain distinct objects and must retain separately verified definitions/grants.
+
+Therefore GPT-2 will not synthesize or apply an executable baseline by guessing. The next safe source-only task is to finish the object-by-object baseline/consumer matrix (columns, constraints, indexes, triggers, functions, policies, grants, Auth/Storage assumptions) and mark which entries are source-proven versus owner/remote-history dependent. Full replay and pgTAP remain **NOT RUN** until the baseline is approved and a disposable PostgreSQL/Supabase harness exists.
+
+**Safety:** No Production query, remote migration-history read, database write, workflow dispatch, deployment, merge, payment, or customer/Auth data access occurred.
