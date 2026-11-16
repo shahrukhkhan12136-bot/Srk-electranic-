@@ -1131,3 +1131,20 @@ Function body में कुछ column references PL/pgSQL runtime पर reso
 ### 36.3 निष्कर्ष
 
 Search-path hardening family source-level mapped है; दो repeated ALTER statements दर्ज हैं। `amount_paid` chronology एक अधिक गंभीर conditional replay gate है और authoritative baseline के बिना clean replay को सुरक्षित घोषित नहीं किया जा सकता। कोई DB query, PostgreSQL/pgTAP execution, Production access, payment action, DDL, data change या deployment नहीं हुआ।
+
+
+
+## 37. Historical starter SQL में amount_paid की अनुपस्थिति की पुष्टि — 16 Nov 2026
+
+Section 36 के conditional column-order risk को जाँचने के लिए current branch पर उपलब्ध दोनों historical starter files के पूरे शुरुआती `service_bookings` table definitions पढ़े गए:
+
+- `SUPABASE_SCHEMA.sql` में `service_bookings` की पूरी CREATE TABLE definition में `amount_paid` column नहीं है।
+- `COMPLETE_DATABASE_SETUP.sql` के consolidated starter section में भी वही base table definition है और उसमें `amount_paid` नहीं है।
+- `20261116200000_restore_service_bookings_amount_paid.sql` इस column को बाद में `ADD COLUMN IF NOT EXISTS` से जोड़ती है।
+- इसके विपरीत `20261109003000_secure_commission_reporting.sql`, `20261115160000_legacy_booking_status_write_guard.sql` और `20261115230000_admin_booking_direct_write_closure.sql` पहले ही column-level GRANT/REVOKE में `amount_paid` का नाम लेते हैं।
+
+**इससे क्या सिद्ध होता है:** उपलब्ध दोनों ऐतिहासिक starter SQL definitions इस column को स्थापित नहीं करतीं; इसलिए यदि इन्हीं definitions को शुरुआती schema baseline मानकर migration chronology replay की जाए, तो पहले के column-level privilege statements का target column अनुपस्थित होगा। यह source-level clean-replay blocker को पहले से अधिक मजबूत बनाता है।
+
+**क्या अभी भी सिद्ध नहीं है:** ये दो ऐतिहासिक SQL files authoritative/approved Production bootstrap baseline हैं, ऐसा प्रमाण उपलब्ध नहीं। किसी अलग manual bootstrap, dashboard SQL, external migration, या पुराने schema snapshot में column पहले जोड़ा गया हो सकता है। Production history और execution logs की स्वतंत्र पुष्टि अभी भी Database Owner से चाहिए।
+
+इसलिए निर्णय अभी भी **REPLAY BLOCKED / OWNER EVIDENCE REQUIRED** है। कोई migration reorder/edit/repair/replay, DDL, Production query या data change नहीं किया गया।
