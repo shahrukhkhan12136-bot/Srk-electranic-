@@ -2397,7 +2397,7 @@ function customerBookingRequestKey(payload,customerUserId){
   const fingerprint=JSON.stringify(payload);
   try{
     const saved=JSON.parse(sessionStorage.getItem(storageKey)||'null');
-    if(saved&&saved.fingerprint===fingerprint&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(saved.key))return saved.key;
+    if(saved&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(saved.key))return saved.key;
   }catch(_){}
   if(!window.crypto?.getRandomValues)throw new Error('इस डिवाइस पर सुरक्षित बुकिंग पहचान उपलब्ध नहीं है। कृपया सुरक्षित ब्राउज़र में दोबारा कोशिश करें।');
   const bytes=new Uint8Array(16);
