@@ -55,7 +55,7 @@ test('Electrician support create and reply do not clear a newer account busy loc
   ]) {
     const start = source.indexOf('async function ' + name);
     assert.notEqual(start, -1, name + ' exists');
-    const next = source.indexOf('\\nasync function ', start + 1);
+    const next = source.indexOf('\nasync function ', start + 1);
     const block = source.slice(start, next < 0 ? source.length : next);
     assert.match(block, new RegExp('finally\\s*\\{\\s*if\\(isCurrent\\(\\)\\)\\s*\\{\\s*' + flag + '=false'));
     assert.match(block, /if\(button\)\{button\.disabled=false/);
@@ -96,7 +96,7 @@ test('Electrician availability changes are bound to the same account and view ge
 test('Electrician push controls ignore stale account results and bind writes to the captured user', () => {
   const extract = name => {
     const start = source.indexOf('async function ' + name);
-    const next = source.indexOf('\\nasync function ', start + 1);
+    const next = source.indexOf('\nasync function ', start + 1);
     assert.ok(start >= 0, name + ' exists');
     return source.slice(start, next < 0 ? source.length : next);
   };
@@ -151,7 +151,7 @@ test('Electrician area-change requests cannot update a different account or prof
 test('Electrician support ticket and reply actions are bound to the captured account and profile', () => {
   for (const name of ['createElectricianSupportTicket','sendElectricianSupportReply']) {
     const start = source.indexOf('async function ' + name);
-    const next = source.indexOf('\\nasync function ', start + 1);
+    const next = source.indexOf('\nasync function ', start + 1);
     assert.ok(start >= 0, name + ' exists');
     const action = source.slice(start, next < 0 ? source.length : next);
     assert.ok(action.includes('requestedUserId=user.id'));
