@@ -23,3 +23,17 @@ test('Customer profile and avatar responses are isolated across auth changes', (
   assert.ok(avatarBlock.includes('if(!isCurrent())return'));
   assert.ok(avatarBlock.includes('if(isCurrent())setCustomerProfileStatus'));
 });
+
+test('uncertain customer profile save is reconciled against every requested field, not avatar path alone', () => {
+  const start = source.indexOf('async function saveCustomerProfile()');
+  const end = source.indexOf('\nlet customerSavedAddresses', start);
+  assert.notEqual(start, -1);
+  assert.ok(end > start);
+  const block = source.slice(start, end);
+  assert.ok(block.includes("const preferredLanguage=document.getElementById('customerProfileLanguage').value;"));
+  assert.ok(block.includes('p_preferred_language:preferredLanguage'));
+  assert.ok(block.includes('latestProfile?.full_name===fullName'));
+  assert.ok(block.includes('latestProfile?.preferred_language===preferredLanguage'));
+  assert.ok(block.includes('latestProfile?.avatar_path===avatarPath'));
+  assert.ok(!block.includes('if(lookupSucceeded&&latestProfile?.avatar_path===avatarPath)'));
+});
