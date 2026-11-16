@@ -1839,3 +1839,29 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 - **Local Docker direction: approved by Owner.**
 - **Executable bootstrap: BLOCKED** on migration chronology + canonical baseline confirmation.
 - No config, workflow, script, seed, SQL, dependency or runtime was changed/created in this step. GitHub-only source review and documentation update performed; no DB connection, Docker startup, SQL execution, migration replay, remote schema export, Production data access or deployment occurred.
+
+
+## 51. Migration collision और `amount_paid` — सुरक्षित remediation decision — 16 Nov 2026
+
+### A. Duplicate `20261109` migration pair
+- `20261109_allow_quote_approval_booking_states.sql` केवल दो booking constraints drop/recreate करता है (8 lines).
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` quote/commission schema + functions/triggers बनाता है और अंत में वही दो constraints उसी allowed-state logic के साथ drop/recreate करता है (108 lines).
+- अतः छोटा migration SQL-effect के स्तर पर बड़े migration के अंतिम constraint block का duplicate है; दोनों को अलग-अलग version migrations की तरह सुरक्षित रूप से क्रमित मानना उचित नहीं।
+- **Remediation:** अभी किसी file का नाम/contents/history rewrite नहीं करना। पहले Owner-approved remote migration ledger (version + name) और deployed schema evidence लें। यदि इनमें से कोई version deployed है तो applied history immutable मानें; केवल नई forward migration से corrective change करें। यदि किसी environment में दोनों में से कोई apply नहीं हुआ, तो disposable local harness के लिए explicit reviewed migration manifest/temporary test-only normalization strategy बनाएं; repository history को बिना निर्णय के rewrite न करें। Preflight duplicate version पर fail करे।
+
+### B. `amount_paid` chronology
+- `20261109003000` में `GRANT UPDATE(status, quoted_amount, amount_paid, payment_status)` है; `20261115160000` में भी `GRANT UPDATE(quoted_amount,amount_paid,payment_status)` है। PostgreSQL column-level grant/revoke target column को statement execution पर resolve करता है।
+- `amount_paid` add करने वाली migration `20261116200000` बाद में आती है। इसलिए clean replay में earlier column-level GRANT statements से पहले column absent हो तो replay fail हो सकता है।
+- `20261109003000` और `20261115160000` को पहले apply कर चुके deployed DB पर बाद की `20261116200000` additive migration सामान्यतः missing column जोड़ सकती है; यह deployment state पर निर्भर है और remote ledger के बिना पुष्टि नहीं की जा सकती।
+- **Remediation:** historical migrations को चुपचाप edit न करें। पहले remote migration ledger + actual column presence/definition लें। यदि किसी deployed environment में earlier GRANT migrations applied हैं, नई forward-only migration में सही column definition/constraints और आवश्यक grants को reconcile करें। Disposable local clean replay के लिए केवल तभी baseline column pre-provision करें जब Owner-approved canonical schema evidence इसे स्थापित करे; test-only shortcut को Production baseline का प्रमाण न मानें।
+
+### C. Required evidence before unblock
+1. Owner-provided sanitized migration ledger export (migration version/name only; no row data/secrets).
+2. Sanitized schema evidence for `public.service_bookings.amount_paid` type, nullability, constraints, and column grants.
+3. Confirmation whether either `20261109` migration was applied in any shared/deployed environment.
+4. Canonical base schema snapshot provenance and intended environment/version.
+
+### Gate decision
+- Duplicate migration collision: **BLOCKED — preserve history pending ledger evidence**.
+- `amount_paid` clean replay: **BLOCKED — baseline/deployed-state evidence pending**.
+- No migration file, SQL, bootstrap, workflow or test harness changed. This update is documentation-only. No remote database, Production, Docker, or SQL runtime accessed.
