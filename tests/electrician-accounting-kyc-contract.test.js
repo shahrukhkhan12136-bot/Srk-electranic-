@@ -103,6 +103,10 @@ test('electrician availability changes require approved active profile and expli
   assert.match(availability, /srk_electrician_set_availability/);
   assert.match(availability, /p_available:available/);
   assert.match(availability, /await refresh\(\)/);
+  assert.match(availability, /requestedUserId=user\?\.id,requestedProfileId=profile\?\.id,requestedGeneration=electricianAccountViewGeneration/);
+  assert.match(availability, /user\?\.id===requestedUserId&&profile\?\.id===requestedProfileId&&electricianAccountViewGeneration===requestedGeneration/);
+  assert.match(availability, /if\(!isCurrent\(\)\)return;[\s\S]*?srk_electrician_set_availability/);
+  assert.match(availability, /catch\(e\)\{\s*if\(!isCurrent\(\)\)return;/);
   assert.match(availability, /catch\(e\)[\s\S]*?on\.disabled=false;off\.disabled=false/);
 });
 
