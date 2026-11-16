@@ -108,7 +108,7 @@ test('Customer payment-method change handles rejected RPC and unconfirmed respon
   assert.match(fn, /try\{/);
   assert.match(fn, /customerSb\.rpc\('srk_customer_change_payment_method'/);
   assert.match(fn, /if\(!data\?\.success\)throw new Error/);
-  assert.match(fn, /catch\\(error\\)\\{\\s*try\\{\\s*await loadCustomerBookings\\(\\)/);
+  assert.match(fn, /catch\(error\)\s*\{\s*try\s*\{\s*await loadCustomerBookings\(\)/);
   assert.match(fn, /सर्वर का जवाब स्पष्ट नहीं मिला/);
   assert.match(fn, /पुष्टि किए बिना दोबारा अनुरोध न भेजें/);
   assert.match(fn, /Online भुगतान की पसंद सर्वर पर सुरक्षित हो गई है, लेकिन बुकिंग सूची रीफ़्रेश नहीं हो सकी/);
@@ -128,11 +128,11 @@ test('Confirmed Razorpay payment remains confirmed when booking or payment-histo
   assert.match(customer, /भुगतान सफल और सत्यापित हो गया है।'\+\(bookingsRefreshed\?/);
   assert.match(customer, /historyRefreshed\?/);
   const bookingsStart = customer.indexOf('async function loadCustomerBookings(');
-  const bookingsEnd = customer.indexOf('\\nasync function customerRespondWorkStart(', bookingsStart);
+  const bookingsEnd = customer.indexOf('\nasync function customerRespondWorkStart(', bookingsStart);
   const bookingsFn = customer.slice(bookingsStart, bookingsEnd);
   assert.match(bookingsFn, /return true;[\\s\\S]*catch\(error\)[\\s\\S]*return false;/);
   const historyStart = customer.indexOf('async function loadCustomerPaymentHistory(');
-  const historyEnd = customer.indexOf('\\nasync function loadCustomerCancellationFeeDebts(', historyStart);
+  const historyEnd = customer.indexOf('\nasync function loadCustomerCancellationFeeDebts(', historyStart);
   const historyFn = customer.slice(historyStart, historyEnd);
   assert.match(historyFn, /return true;[\\s\\S]*catch\(error\)[\\s\\S]*return false;/);
 });
