@@ -2054,3 +2054,20 @@ Disposable Local Supabase environment बनने के बाद नीचे
 - Repository infrastructure inventory: **PASS** (absence/presence facts verified against current branch).
 - Runtime readiness: **BLOCKED** (safe canonical replay baseline not proven).
 - No Docker command was run; no config, compose file, seed, workflow or test file was created; no DB connection, migration replay, Storage API call or CI dispatch occurred. Documentation-only update.
+
+
+## 60. नवीनतम PR head और deploy-preview recheck — 16 Nov 2026, 14:36 IST
+
+- Branch `feat/customer-login-first-dashboard-20261114` का वर्तमान tip और PR #8 का refreshed head दोनों `5d00930a554461732ffda455b9588204a50e794c` हैं। इससे पहले देखे गए `f8c94cd` head को अब current head न मानें।
+- नवीनतम commit `Test saved customer address auth isolation` ने केवल `tests/customer-profile-auth-isolation.test.js` में regression assertion जोड़ा: Auth identity बदलने पर saved-address state clear होना, in-flight load request invalidate होना और response के समय user ID दोबारा verify होना।
+- इस commit पर provider checks: Netlify Deploy Preview **SUCCESS** (`https://deploy-preview-8--srk-electronic-india.netlify.app`); Vercel **FAILURE** (build rate limit)। इस commit के लिए GitHub Actions PR workflow runs की सूची खाली मिली।
+- यह नया Node regression test source में मौजूद है; उपलब्ध CI evidence से इसे independently executed/pass घोषित नहीं किया जा रहा। PostgreSQL/pgTAP runtime स्थिति इससे नहीं बदलती।
+- PR #8 अभी **OPEN / DRAFT / NOT MERGED** है। कोई Production deployment, DB migration, remote DB query या migration replay नहीं किया गया।
+- Section 59 का Local Docker TEST readiness निर्णय यथावत है: repository में `supabase/config.toml`, root `docker-compose.yml`, `supabase/seed.sql` और executable pgTAP harness अनुपस्थित हैं; duplicate `20261109` migration lineage के लिए authoritative remote ledger/evidence अभी भी चाहिए।
+- अगला सुरक्षित कदम owner से sanitized migration ledger और schema-only evidence लेना है; उसके बाद ही pinned CLI के disposable scratch project में duplicate-version parsing/replay behavior जाँचा जा सकता है। कोई Production migration file rename/delete/resequence नहीं होगी।
+
+### Recheck result
+- PR/branch head synchronization: **PASS**.
+- Netlify Deploy Preview: **SUCCESS**.
+- Vercel: **BLOCKED — build rate limit**.
+- Database runtime: **BLOCKED — canonical replay evidence and harness missing**.
