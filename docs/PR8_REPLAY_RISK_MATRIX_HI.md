@@ -273,3 +273,20 @@ The original SQL bodies for Production ledger entries `20261108103531`, `2026110
 | `20261108184938 limit_booking_updates_and_correct_earnings_timestamp` | Restricts booking UPDATE columns and replaces electrician earnings RPC with `booking_created_at` output | `20261109003000_secure_commission_reporting.sql` contains the same four-column UPDATE grant and a closely matching earnings query/output name, but bundles additional admin-report work and does not reproduce the exact preceding revoke sequence/body as a standalone migration | Close candidate; bundled and not a one-to-one migration match |
 
 These comparisons are source-level only. A similar function body or overlapping statements do not establish replay equivalence, dependency safety, or identical grants. The five Production bodies were inspected read-only; no Production SQL was changed, no migration was applied, and no tests were run.
+
+
+### 2026-11-16 follow-up: next five Production migration bodies compared (read-only)
+
+The original SQL bodies for Production ledger entries `20261109052929`, `20261109053005`, `20261109053301`, `20261109053328`, and `20261109075837` were read from the Production migration ledger and compared with the current PR #8 replay-prep migration tree.
+
+| Production version | Production change | PR-head comparison | Result |
+|---|---|---|---|
+| `20261109052929 harden_wallet_reporting_rpc_paths_and_route_recipient_index` | Pins three wallet/commission RPC search paths and creates `srk_route_transfers_recipient_user_id_idx` | `20261115210001_harden_legacy_financial_read_rpc_search_paths.sql` pins the same three functions, but the recipient-user index is not included in the located branch files | Partial match; index DDL absent from located candidates |
+| `20261109053005 harden_wallet_and_commission_security_definer_paths` | Repeats the same three search-path changes and recipient-user index creation | Same later branch search-path migration covers the three function alterations, but no matching recipient-user index creation was located | Partial match; same index gap |
+| `20261109053301 grant_authenticated_select_service_bookings` | Grants SELECT on `public.service_bookings` to authenticated | Current combined booking read policy defines row visibility but does not itself grant the table-level SELECT privilege; no matching grant statement was located in the checked migration candidates | No matching grant located |
+| `20261109053328 grant_authenticated_select_job_offers_for_rls_realtime` | Grants SELECT on `public.job_offers` to authenticated | No matching table-level SELECT grant was located in the checked migration candidates | No matching grant located |
+| `20261109075837 electrician_inspection_quotes_and_service_only_commission` | Adds quote columns/constraints, commission trigger logic, three quote/work RPCs, expanded offer-details RPC, grants, and quote-related status/assignment constraints | The branch quote workflow file is a close structural match, but its SQL is not identical: formatting aside, the grant/revoke blocks differ (branch explicitly revokes PUBLIC/anon), and the separate quote-state migration repeats constraint work; exact source/body reconciliation remains necessary | Close candidate; not one-to-one equivalent |
+
+**Additional ledger observation:** Production entries `20261109052929` and `20261109053005` have effectively the same three ALTER FUNCTION statements and the same recipient index creation, with only formatting differences. This is duplicated deployed migration work, not evidence that the PR branch has both historical entries represented.
+
+The comparison is static source inspection only. It does not prove whether an equivalent grant is inherited from the base setup or another uninspected SQL artifact. No Production SQL was changed, no migration was applied, and no replay or pgTAP tests were run.
