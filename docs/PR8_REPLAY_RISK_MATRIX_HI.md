@@ -212,3 +212,19 @@ The Production ledger's stored SQL `statements` were compared against all 14 PR-
 **Scope limitation:** these are the 14 exact normalized-name candidates, not a completed body-level mapping of all 87 Production migrations. The remaining 73 Production entries still need candidate discovery and comparison, including cases where a migration was renamed, consolidated, split, or removed. Same-name and exact-body matches do not by themselves prove replay order or dependency safety.
 
 The Production SQL was read only. No database writes, migration execution, deployment, or merge occurred.
+
+
+### Additional cross-name candidate checks (six more comparisons)
+
+A second pass checked six important candidates whose filenames do not normalize to the Production migration name. This raises the checked set to **20 candidate comparisons overall: 14 exact normalized-body matches and 6 differences**.
+
+| Production version | Production migration | PR-head candidate | Body result |
+|---|---|---|---|
+| `20261108095928` | add_actual_paid_amount_commission_and_status_history | `20261116200000_restore_service_bookings_amount_paid.sql` | **Not equivalent**. Production body also creates commission calculation trigger/function and status-history table, RLS, policies, grants, and status logger trigger/function; branch file only restores amount_paid and checks. |
+| `20261108181453` | restrict_public_form_inserts_to_server_functions | `20261108233500_restrict_public_form_inserts.sql` | Exact normalized SQL body |
+| `20261108181538` | combine_admin_customer_booking_read_policy | `20261108234000_combine_booking_read_policy.sql` | Exact normalized SQL body |
+| `20261109075837` | electrician_inspection_quotes_and_service_only_commission | `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | **Not exact**. Branch file has additional revokes and constraint DDL; function body statements also differ. Treat as modified/consolidated candidate, not identical historical SQL. |
+| `20261109080400` | allow_quote_approval_booking_states | `20261109_allow_quote_approval_booking_states.sql` | Exact normalized SQL body |
+| `20261114193300` | admin_approved_electrician_relocation | `20261114220000_admin_approved_electrician_relocation.sql` | Exact normalized SQL body |
+
+**Updated tally:** 20 comparisons = 14 exact normalized SQL-body matches + 6 non-identical candidates. This is still a partial candidate audit, not an 87-of-87 reconciliation. The remaining Production entries require candidate discovery, including split/consolidated/renamed migrations.
