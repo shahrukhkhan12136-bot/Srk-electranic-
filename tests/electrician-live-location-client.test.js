@@ -144,7 +144,7 @@ test('Electrician OTP account switch stops all prior live-location sessions befo
   assert.ok(stopAll >= 0 && stopFailure > stopAll && verifyOtp > stopFailure,
     'old live-location sessions must be stopped before changing the auth account');
   assert.match(verify, /results\\.some\\(r=>r\\.status==='rejected'\\|\\|r\\.value\\?\\.error\\)/);
-  assert.match(verify, /if\\(results\\.some[\\s\\S]*?throw new Error\\('LIVE_LOCATION_STOP_NOT_CONFIRMED'\\)/);
+  assert.ok(verify.includes("if(results.some(r=>r.status==='rejected'||r.value?.error))throw new Error('LIVE_LOCATION_STOP_NOT_CONFIRMED')"));
   assert.match(verify, /पुराने अकाउंट की Live Location बंद होने की पुष्टि नहीं मिली/);
   assert.match(verify, /activeLocationIds\\.forEach\\(id=>locationWatches\\.delete\\(id\\)\\)/);
 });
