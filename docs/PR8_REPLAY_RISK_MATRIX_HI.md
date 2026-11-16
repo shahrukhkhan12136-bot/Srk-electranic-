@@ -498,3 +498,10 @@ The Production migration ledger returned only **two** remaining entries (not fiv
 **Final ledger scope:** The Production ledger query after `20261114193300` returned only these two rows, so this batch is complete for the currently recorded Production migrations. The Route ledger DROP is a direct source-level match but exposes a significant downstream dependency in the branch. The legacy offer-accept RPC DROP is a direct match.
 
 **Scope/limitations:** Static source and migration-ledger inspection only. No PostgreSQL replay or pgTAP test was run, so the predicted clean-replay failure is a source-level dependency finding, not an observed runtime error. Production remained read-only; no SQL changes, migration, deployment, payment/refund operation, or merge was performed.
+
+
+## Resolution note — Route ledger replay dependency
+
+After identifying the ordered dependency conflict, the branch-only migration `20261115170000_admin_route_transfer_accounting_reconciliation.sql` was revised in commit `29135103d4f31d63da47dfca1660990812d17ee1`. It no longer queries `public.srk_route_transfers` or references that table in static SQL. The reconciliation JSON keeps the existing Route keys for response-shape compatibility, returns zero/empty values, and marks the evidence state as `route_ledger_retired_no_route_transfers`. The Admin manual payout path remains authoritative; this change does not create, settle, or initiate transfers.
+
+Fetch-back verification confirms the revised file contains no `FROM public.srk_route_transfers` query and retains the zero-valued compatibility fields. This resolves the specific source-level dependency previously identified. It is **not** proof of clean PostgreSQL replay: no PostgreSQL environment was available/run and pgTAP remains unexecuted. No Production SQL, deployment, payment/refund operation, or PR merge was performed.
