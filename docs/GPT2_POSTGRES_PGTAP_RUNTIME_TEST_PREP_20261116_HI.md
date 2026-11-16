@@ -1267,3 +1267,90 @@ DBA/GPT-1 से केवल read-only catalog evidence चाहिए:
 4. संबंधित roles की schema USAGE/CREATE permissions, विशेषकर `public`, `private` और `srk_private`।
 
 **स्थिति:** source-level review में कई RPCs के explicit grants और UID/Admin gates मिले; इसे effective Production security certification नहीं कहा जा सकता। कोई Production query, SQL execution, grant/revoke, function replacement या deployment नहीं किया गया।
+
+
+## 41. GPT-1/DBA के लिए न्यूनतम Production catalog evidence request — केवल read-only — 16 Nov 2026
+
+Source audit से अब यह स्पष्ट है कि शेष प्रश्न GitHub source से हल नहीं हो सकते: Production में function का वास्तविक owner, deployed body/config और प्रभावी ACL catalog से ही प्रमाणित होंगे। इसलिए अगला कदम किसी remediation का नहीं, केवल metadata-only catalog evidence का है।
+
+### 41.1 सभी SECURITY DEFINER functions का catalog snapshot
+
+GPT-1/DBA नीचे का SELECT Production SQL Editor में read-only रूप से चला सकते हैं। यह application/customer/payment rows नहीं पढ़ता; केवल function metadata और ACL दिखाता है।
+
+```sql
+select
+  n.nspname as schema_name,
+  p.proname as function_name,
+  pg_get_function_identity_arguments(p.oid) as identity_arguments,
+  pg_get_userbyid(p.proowner) as function_owner,
+  p.prosecdef as security_definer,
+  p.provolatile as volatility,
+  p.proconfig as function_settings,
+  pg_get_function_result(p.oid) as result_type,
+  p.proacl as function_acl,
+  pg_get_functiondef(p.oid) as deployed_definition
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname in ('public','private','srk_private')
+  and p.prosecdef = true
+order by n.nspname, p.proname,
+         pg_get_function_identity_arguments(p.oid);
+```
+
+### 41.2 Main Admin और Staff helper के exact signatures
+
+```sql
+select
+  n.nspname as schema_name,
+  p.proname as function_name,
+  pg_get_function_identity_arguments(p.oid) as identity_arguments,
+  pg_get_userbyid(p.proowner) as function_owner,
+  p.prosecdef as security_definer,
+  p.provolatile as volatility,
+  p.proconfig as function_settings,
+  p.proacl as function_acl,
+  pg_get_functiondef(p.oid) as deployed_definition
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('is_srk_admin','srk_has_admin_permission')
+order by p.proname, pg_get_function_identity_arguments(p.oid);
+```
+
+### 41.3 Schema usage/create ACL और default function ACL
+
+```sql
+select
+  n.nspname as schema_name,
+  r.rolname as role_name,
+  has_schema_privilege(r.oid, n.oid, 'USAGE') as has_usage,
+  has_schema_privilege(r.oid, n.oid, 'CREATE') as has_create
+from pg_namespace n
+cross join pg_roles r
+where n.nspname in ('public','private','srk_private')
+  and r.rolname in ('anon','authenticated','service_role','postgres')
+order by n.nspname, r.rolname;
+
+select
+  coalesce(n.nspname, '<all schemas>') as schema_name,
+  pg_get_userbyid(d.defaclrole) as grantor_role,
+  d.defaclobjtype as object_type,
+  d.defaclacl as default_acl
+from pg_default_acl d
+left join pg_namespace n on n.oid = d.defaclnamespace
+where d.defaclobjtype = 'f'
+order by 1,2;
+```
+
+### 41.4 Evidence लौटाने का न्यूनतम प्रारूप
+
+GPT-1/DBA से केवल ऊपर के result sets और query timestamp/environment label चाहिए। कोई password, API key, service-role secret, customer row, phone, payment record या personal data नहीं चाहिए। अगर output में deployed function definition लौटाना policy के अनुसार संभव न हो, तो कम-से-कम owner, signature, `prosecdef`, `provolatile`, `proconfig` और ACL लौटाएँ।
+
+### 41.5 Source provenance पर निष्कर्ष
+
+- `public.is_srk_admin()` का exact SECURITY DEFINER implementation केवल historical `ADMIN_EMAIL_LOGIN_SETUP.sql` और `COMPLETE_DATABASE_SETUP.sql` में मिला; इसे introduce करने वाली versioned migration source search में नहीं मिली।
+- `public.srk_has_admin_permission(text)` का current helper implementation `20261116100000_fix_staff_permission_helper_volatility.sql` में है; यह Main Admin helper को call करता है।
+- `srk_private` schema creator और function/schema effective ACL अभी भी source evidence से सिद्ध नहीं।
+- Production catalog output मिलने तक function ownership, deployed helper body, default ACL, और schema-level access को **UNVERIFIED / OWNER EVIDENCE REQUIRED** माना जाएगा।
+
+**सुरक्षा सीमा:** ऊपर के statements SELECT-only catalog inspection हैं। GPT-2 ने इन्हें Production में execute नहीं किया। कोई migration, DDL, grant/revoke, function edit, data change या deployment नहीं किया गया।
