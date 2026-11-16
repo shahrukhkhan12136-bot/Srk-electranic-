@@ -86,5 +86,5 @@ test('Customer saved-address list refresh ignores stale session and RPC response
   assert.match(loader, /customerSavedAddressLoadRequest=0/);
   assert.match(loader, /const requestId=\+\+customerSavedAddressLoadRequest/);
   assert.match(loader, /if\(!isCurrent\(\)\)return false/);
-  assert.match(loader, /finally\{if\(isCurrent\(\)\)select\.disabled=false;\}/);
+  assert.match(loader, /finally\s*\{\s*if\(isCurrent\(\)\)select\.disabled=false;\s*\}/);
 });
