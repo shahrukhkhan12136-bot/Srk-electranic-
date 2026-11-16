@@ -1913,3 +1913,11 @@ Sanitized schema report में केवल ये विवरण:
 - इन तीनों के मेल के बाद ही Local Docker TEST migration manifest / preflight implementation शुरू होगी।
 
 **Safety:** कोई remote SQL command यहाँ execute नहीं की गई और यह pack Production credentials/access नहीं माँगता। यह केवल sanitized metadata request है।
+
+## 53. KYC filename reconciliation — source cross-check — 16 Nov 2026
+
+- नवीनतम source test `tests/electrician-accounting-kyc-contract.test.js` अब uncertain KYC submit response में owner-list reconciliation, preflight document IDs, exact document type/MIME/size matching, और confirmed private storage path की जाँच करता है।
+- `electrician.html` में submit RPC को `file.name.slice(0,180)` भेजा जाता है; migration `20261115140000_electrician_kyc_review_and_activation_gate.sql` database insert पर `btrim(p_file_name)` रखती है। इसलिए owner-list में लौटने वाला canonical filename trimmed रूप है; reconciliation test का `.trim()` comparison SQL contract से मेल खाता है।
+- सफल reconciliation और नया matching document न मिलने पर ही uploaded private object हटता है। Reconciliation fail हो या नया matching record मिले लेकिन path confirmation न हो, object को सुरक्षित रखा जाता है और user को Refresh करके जाँचने को कहा जाता है।
+- Static source cross-check: **PASS** — frontend filename normalization, SQL `btrim`, owner-scoped list RPC और exact-path confirmation परस्पर मेल खाते हैं।
+- यह source review है; Node test suite इस pass में execute नहीं हुई और PostgreSQL/pgTAP runtime test नहीं चला। कोई SQL, migration, database, Storage object, deployment या Production state नहीं बदली।
