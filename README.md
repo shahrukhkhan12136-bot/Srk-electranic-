@@ -11,7 +11,7 @@
 - `/admin.html` — Admin / Support Staff portal
 
 ## Netlify Functions
-- `/api/create-booking` — बुकिंग सेव करना और Supabase broadcast trigger से बने offers पढ़ना
+- `/.netlify/functions/create-booking` — Netlify function adapter के माध्यम से बुकिंग सेव करना और Supabase broadcast trigger से बने offers पढ़ना
 - `/api/apply-electrician` — इलेक्ट्रिशियन आवेदन सेव करना
 - `/api/create-order` — Razorpay order बनाना
 - `/api/verify-payment` — signature और captured INR payment सत्यापित करना
@@ -19,8 +19,12 @@
 - `/api/razorpay-refund` — अधिकृत refund workflow का server-side execution
 - `/api/razorpay-refund-status` — refund status की server-side जाँच
 - `/api/razorpay-refund-recovery` — pending/uncertain refund operations की recovery/reconciliation
-- `/api/expire-booking-offers` — समय-सीमा पार offers expire करके sequential dispatch आगे बढ़ाना
-- `/api/deliver-push-outbox` — durable push outbox से queued notifications deliver/retry करना
+
+## Scheduled Netlify Functions
+- `expire-booking-offers` — हर मिनट expired sequential electrician offers को expire करके अगला offer आगे बढ़ाने का scheduled worker। यह `/api/expire-booking-offers` HTTP endpoint नहीं है।
+- `deliver-push-outbox` — हर मिनट durable push outbox से queued notifications deliver/retry करने का scheduled worker। यह `/api/deliver-push-outbox` HTTP endpoint नहीं है।
+
+इन scheduled workers का source/config मौजूद होना deployed schedule, आवश्यक server-side secrets या सफल वास्तविक delivery का प्रमाण नहीं है।
 
 ## Supabase Edge Functions
 - `admin-staff-management` — Admin द्वारा Support Staff invitation और staff lifecycle management
