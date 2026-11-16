@@ -1,5 +1,5 @@
 begin;
-select plan(7);
+select plan(9);
 select ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
  'receipt remains authenticated');
 select ok(position('customer_user_id = v_uid' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
@@ -15,5 +15,10 @@ select ok(position('materials_amount' in lower(pg_get_functiondef('public.srk_cu
 select ok(not has_function_privilege('anon','public.srk_customer_get_payment_receipt(uuid)','EXECUTE')
  and has_function_privilege('authenticated','public.srk_customer_get_payment_receipt(uuid)','EXECUTE'),
  'receipt RPC remains authenticated-only');
+select ok((select prosecdef from pg_proc where oid='public.srk_customer_get_payment_receipt(uuid)'::regprocedure),
+ 'receipt RPC remains SECURITY DEFINER');
+select ok(coalesce((select proconfig @> ARRAY['search_path=""'] from pg_proc
+ where oid='public.srk_customer_get_payment_receipt(uuid)'::regprocedure),false),
+ 'receipt RPC pins an empty search_path');
 select * from finish();
 rollback;
