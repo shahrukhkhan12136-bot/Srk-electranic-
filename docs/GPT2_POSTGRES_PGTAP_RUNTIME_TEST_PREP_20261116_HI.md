@@ -1716,3 +1716,27 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 - No policies, migrations, or SQL were changed; only this audit document was updated.
 - No SQL execution, database connection, migration replay, Production access, schema/data mutation, payment action, or deployment occurred.
 - Before runtime: Owner must identify the canonical starter schema and provide sanitized evidence of remote migration ledger + deployed identity columns, indexes, trigger definitions, table grants/RLS policies. Then run pgTAP only against an isolated disposable TEST database, never Production.
+
+
+## 46. Identity dependent RPC — अतिरिक्त pgTAP coverage plan — 16 Nov 2026
+
+### मौजूदा टेस्ट की सीमा
+`electrician_profile_identity_linking.test.sql` में `plan(13)` है। यह columns/indexes/triggers और stored function definitions की मौजूदगी/कुछ source fragments जाँचता है। यह अभी वास्तविक Auth users/profile rows बनाकर `srk_get_my_offer_details`, quote/work RPC, wallet summary, commission earnings या KYC Storage policies को execute करके owner/non-owner व्यवहार साबित नहीं करता। इसलिए 13/13 मौजूद assertions को पूर्ण end-to-end identity authorization coverage नहीं माना जाएगा।
+
+### प्रस्तावित isolated-TEST pgTAP matrix (केवल test harness उपलब्ध होने के बाद)
+1. **Booking / offer ownership:** linked approved+active electrician को केवल अपने profile के offers दिखें; दूसरे UID को वही offer/booking न दिखे; unlinked UID को खाली परिणाम/authorization error मिले; inactive या unapproved profile quote submit/work-status update न कर सके।
+2. **Quote RPC:** assigned electrician quote submit कर सके; दूसरे electrician का UID उसी booking पर असफल हो; customer केवल अपने booking quote को approve/reject कर सके; unrelated customer असफल हो।
+3. **Wallet identity:** `user_id=auth.uid()` और `auth_user_id=auth.uid()` synced profile पर electrician wallet बनता है; mismatched columns trigger से reject हों; profile absent/unapproved पर electrician wallet न बने; दूसरे UID को ledger/account rows न दिखें।
+4. **Commission:** Admin RPC non-admin से `42501`/denial दे; electrician earnings केवल उसी profile के assigned bookings लौटाएँ; mismatched profile identity दूसरे UID को earnings न दे; unpaid/incomplete bookings earning में शून्य रहें।
+5. **KYC Storage:** dual-linked owner सही UID/type folder में upload/read कर सके; दूसरे UID, unlinked profile, गलत folder या wrong bucket से denial; Admin read allowed; KYC event UPDATE/DELETE denied; latest identity/address proof pending/rejected होने पर activation gate बंद रहे।
+6. **Identity uniqueness / phone:** zero या multiple verified Auth users पर auto-link न हो; duplicate approved phone profile पर link fail-closed; phone mismatch/unconfirmed phone reject; user_id/auth_user_id drift insert/update दोनों में reject/sync हो।
+7. **Admin RBAC interaction:** Main Admin review अनुमत; Support staff को KYC review, commission report, wallet overview, payment/refund/payout permissions न मिलें; inactive/revoked staff session पर permission false हो।
+
+### Test implementation guardrails
+- `auth.uid()`/JWT claims को pgTAP harness के supported तरीके से set करें; fixtures को transaction के भीतर बनाकर rollback करें। वास्तविक customer/electrician data या live Auth account न छुएँ।
+- Storage policy assertions के लिए disposable Supabase Storage schema + test bucket आवश्यक है; केवल `pg_get_functiondef` inspection पर्याप्त नहीं।
+- Exception tests में exact SQLSTATE/expected denial assert करें; केवल function text में शब्द खोजने को runtime proof न मानें।
+- Test harness/TEST schema अभी अनुपलब्ध है; इसलिए यह coverage plan है, executed test result नहीं। कोई नया test SQL अभी नहीं जोड़ा गया।
+
+### निर्णय
+पहले TEST database bootstrap + Supabase CLI/Postgres/pgTAP reproducible harness स्थापित और Owner-approved हो। उसके बाद matrix को छोटे pgTAP files में लागू कर isolated DB पर चलाएँ। Production connection, migration replay या live data पर परीक्षण निषिद्ध रहेगा।
