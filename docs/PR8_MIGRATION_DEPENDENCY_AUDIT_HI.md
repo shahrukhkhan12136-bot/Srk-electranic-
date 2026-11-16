@@ -813,3 +813,20 @@ Support chain का cross-check:
 - `job_offers` — base DDL `SUPABASE_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` में मिला, लेकिन canonical migration baseline/ordering प्रमाणित नहीं।
 
 ये निष्कर्ष source-level file inspection पर आधारित हैं। कोई SQL execution, PostgreSQL replay, pgTAP, Production query या write नहीं हुआ।
+
+
+## 56. Manual Payment और Payout Tables — पहली निर्भरता और Baseline Gap
+
+Feature branch के source को प्रत्यक्ष खोलकर यह क्रम सत्यापित किया:
+
+- `20261112220000_cash_platform_fee_due_and_online_settlement.sql` शुरुआत में `srk_electrician_payouts` पर `ALTER TABLE` करता है; उसी migration में `srk_manual_payment_entries` पढ़ी/लिखी जाती है और `srk_electrician_payouts` में payout row insert/update होती है। यह दोनों tables की Creator Migration नहीं है; ये इस तारीख तक पहले से मौजूद होनी चाहिए।
+- `20261114140000_manual_labour_only_refund_workflow.sql` `srk_manual_payment_entries` और `srk_electrician_payouts` को `%ROWTYPE`, SELECT और UPDATE के जरिए इस्तेमाल करती है; इसका अपना CREATE TABLE केवल `srk_manual_refund_intents` है।
+- Reviewed root setup files (`SUPABASE_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`, `PORTAL_SCHEMA.sql`, `ADMIN_EMAIL_LOGIN_SETUP.sql`, `PORTAL_SECURITY_UPDATE.sql`) में `srk_manual_payment_entries`, `srk_electrician_payouts` और `srk_booking_complaints` की base CREATE TABLE DDL नहीं मिली।
+- `job_offers` का base CREATE TABLE `SUPABASE_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` में मौजूद है; लेकिन इसे numbered migration में बदलने/लागू करने का canonical baseline अभी प्रमाणित नहीं।
+- GitHub code search में इन तीन unresolved tables के explicit CREATE TABLE results नहीं मिले। Search index सीमित हो सकता है; इसलिए यह पूरे Git इतिहास या निजी/अन्य repositories में अनुपस्थिति का प्रमाण नहीं है।
+
+### Dependency blocker
+
+Migration chain कम-से-कम `20261112220000` तक पहुँचने से पहले `srk_electrician_payouts` और `srk_manual_payment_entries` का authoritative schema उपलब्ध होना चाहिए। इनके columns, constraints, indexes, RLS, grants और triggers बिना प्रमाण के fixture में गढ़ना उचित नहीं। `srk_booking_complaints` की base table भी support RPCs के लिए आवश्यक है।
+
+**स्थिति:** Creator provenance अभी unresolved; full replay blocked. केवल source inspection; कोई SQL execution, test, Production query/write या workflow dispatch नहीं।
