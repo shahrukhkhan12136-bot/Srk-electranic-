@@ -76,3 +76,19 @@ test('Electrician account changes stop old GPS watchers and stale callbacks cann
   assert.ok(live.includes('if(!isCurrent()){\n    navigator.geolocation.clearWatch(watch)'));
   assert.ok(live.includes('if(locationWatches.get(id)===watch)locationWatches.delete(id)'));
 });
+
+test('Electrician availability changes are bound to the same account and view generation', () => {
+  const start = source.indexOf('async function setElectricianAvailability');
+  const end = source.indexOf('const electricianLifecycleBusy', start);
+  assert.ok(start >= 0 && end > start);
+  const action = source.slice(start, end);
+  assert.ok(action.includes('requestedUserId=user?.id'));
+  assert.ok(action.includes('requestedProfileId=profile?.id'));
+  assert.ok(action.includes('requestedGeneration=electricianAccountViewGeneration'));
+  assert.ok(action.includes('electricianAccountViewGeneration===requestedGeneration'));
+  assert.ok(action.includes('if(!isCurrent())return;'));
+  assert.ok(action.includes("sb.rpc('srk_electrician_set_availability'"));
+  assert.ok(action.includes("if(!data?.success)throw new Error('Availability update not confirmed')"));
+  assert.ok(action.includes('if(isCurrent())await refresh()'));
+  assert.ok(action.includes('if(!isCurrent())return;\n  alert('));
+});
