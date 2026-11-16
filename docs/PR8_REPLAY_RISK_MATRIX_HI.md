@@ -377,3 +377,20 @@ Production ledger bodies `20261109171033`, `20261109171621`, `20261109171942`, `
 **Replay blockers / checks:** The two Production audit-table definitions (`srk_manual_payment_entries`, `srk_manual_refund_entries`) are schema prerequisites, not merely RPC implementation details. Confirm their exact constraints, unique keys, RLS, and grants in the branch's canonical replay chain. Preserve the booking-first lock order across payout and refund paths to prevent concurrent settlement/refund races. Branch's later refund architecture is broader and must not be treated as an exact historical substitute.
 
 “Not located” is scoped to the current branch migration tree and inspected candidates. These are static SQL comparisons only; no Production SQL was changed, no migration was applied, and no PostgreSQL replay or pgTAP test was run.
+
+
+### 2026-11-16 follow-up: next five Production migration bodies compared (read-only)
+
+Production ledger bodies `20261109180001`, `20261109202321`, `20261109202355`, `20261109202505`, and `20261109202511` were checked against the PR #8 branch migration tree.
+
+| Production version | Production change | PR branch comparison | Result |
+|---|---|---|---|
+| `20261109180001 fix_manual_payout_special_forms` | Replaces payout-paid RPC with shared booking-first then payout-row locking and manual/Razorpay payment verification | Branch financial RPC/search-path hardening and payout reconciliation contain related checks, but no exact equivalent of this complete legacy RPC/lock protocol was located | Preserve lock order explicitly; not an exact match |
+| `20261109202321 admin_audit_log` | Creates audit event table, allowlisted audit trigger function, triggers on six sensitive tables, and Admin list RPC | Branch `20261114125844_restore_financial_audit_core_schema.sql` creates audit table and financial relations, but no matching audit capture trigger/list RPC implementation was located in the branch migration tree | Schema foundation exists; audit capture and read API appear incomplete in replay chain |
+| `20261109202355 razorpay_refund_tables_and_audit_type` | Creates Razorpay refund table, indexes/RLS/grants, webhook refund ID column, and expands audit entity type | Branch `20261114125844_restore_financial_audit_core_schema.sql` recreates the refund table and related refund-request/manual-refund relations with RLS and service-role grants; branch durable recovery migration adds append-only provider evidence. However, the exact webhook-column alteration and Production index/constraint sequence need separate confirmation | Broad schema successor exists; not an exact one-to-one replay |
+| `20261109202505 razorpay_refund_prepare_rpc` | Admin RPC validates verified Razorpay payment and approved quote, blocks paid payouts, creates idempotent refund intent | Branch refund architecture has review queue and durable recovery evidence, but no matching Admin prepare-Razorpay-refund RPC was located by migration-tree search | No direct prepare-RPC equivalent located; verify the application calls a supported replacement |
+| `20261109202511 razorpay_refund_list_rpc` | Admin-only paginated/list RPC for Razorpay refund records | Branch review queue exposes refund state as part of customer refund requests; no equivalent standalone Razorpay refund-list RPC was located | UI/API contract differs; ensure Admin visibility is fully covered |
+
+**Important audit finding:** Branch financial core migration restores several required tables, but a table alone does not replace Production's audit trigger pipeline. Without the capture function, per-table triggers, and Admin list RPC, the schema may store audit rows without automatically generating them or exposing the intended review interface. Confirm whether another non-migration deployment artifact supplies these functions before treating the branch replay as complete.
+
+These are static source comparisons. “Not located” is scoped to the current branch migration tree. No Production SQL was changed, no migration was applied, and no PostgreSQL replay or pgTAP test was run.
