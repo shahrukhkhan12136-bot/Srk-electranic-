@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(19);
 
 select has_function('public','srk_admin_record_new_booking_cash_payment',
   array['uuid','text','text'],
@@ -80,6 +80,28 @@ select ok(position('lower(btrim(mp.payment_method)) = lower(btrim(v_booking.paym
   and position('manual_payment_method_mismatch' in lower(
   pg_get_functiondef('public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure)))>0,
   'manual payment evidence requires a normalized non-null payment-method match and reports mismatches');
+
+select ok(position('p.electrician_payable' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0
+  and position('p.platform_commission' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0
+  and position('p.gross_service_amount' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0,
+  'Admin commission report uses payout ledger values rather than treating cancellation-fee collection as electrician earnings');
+
+select ok(position('p.electrician_payable' in lower(pg_get_functiondef(
+  'public.srk_get_my_earnings()'::regprocedure)))>0
+  and position('p.platform_commission' in lower(pg_get_functiondef(
+  'public.srk_get_my_earnings()'::regprocedure)))>0
+  and position('coalesce(b.amount_paid,0)' in lower(pg_get_functiondef(
+  'public.srk_get_my_earnings()'::regprocedure)))>0,
+  'Electrician earnings separates customer collection from authoritative payout payable');
+
+select ok(position('booking_commission_payout_ledger_mismatch' in lower(pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure)))>0
+  and position('v_payout.platform_commission' in lower(pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure)))>0,
+  'Admin financial reconciliation flags booking-to-payout commission ledger divergence');
 
 select * from finish();
 rollback;
