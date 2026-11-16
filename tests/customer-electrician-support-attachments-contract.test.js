@@ -127,7 +127,9 @@ test('customer complaint submission reconciles an uncertain RPC result through t
   const create = functionBody(customer, 'createCustomerSupportComplaint');
   assert.match(create, /srk_customer_create_booking_complaint/);
   assert.match(create, /srk_customer_list_booking_complaints/);
-  assert.match(create, /complaints\.find\(row=>row\.booking_id===bookingId&&row\.category===category&&row\.description===description\)/);
+  assert.match(create, /priorComplaintIds=new Set\(before\.map\(row=>row\.id\)\)/);
+  assert.match(create, /const newMatches=complaints\.filter\(row=>!priorComplaintIds\.has\(row\.id\)&&row\.booking_id===bookingId&&row\.category===category&&row\.description===description\)/);
+  assert.match(create, /confirmedComplaint=newMatches\.length===1\?newMatches\[0\]:null/);
   assert.match(create, /customerSupportSelectedId=confirmedComplaint\.id/);
   assert.match(create, /दोबारा शिकायत नहीं भेजी गई/);
   assert.match(create, /lookupSucceeded/);
