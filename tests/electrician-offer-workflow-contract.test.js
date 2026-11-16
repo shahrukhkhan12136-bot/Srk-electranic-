@@ -48,10 +48,10 @@ test('offer refresh uses the scoped offer RPC and refreshes on offer/profile rea
 test('work start and completion use separate server lifecycle RPCs with duplicate-action guards', () => {
   const start = body('electricianRequestWorkStart');
   const complete = body('electricianRequestWorkCompletion');
-  assert.match(start, /electricianLifecycleBusy\.has\(bookingId\)/);
+  assert.match(start, /electricianLifecycleBusy\.has\(requestKey\)/);
   assert.match(start, /srk_electrician_request_work_start/);
   assert.match(start, /data\?\.success/);
-  assert.match(complete, /electricianLifecycleBusy\.has\(bookingId\)/);
+  assert.match(complete, /electricianLifecycleBusy\.has\(requestKey\)/);
   assert.match(complete, /srk_electrician_request_work_completion/);
   assert.match(complete, /data\?\.success/);
   assert.match(source, /data-running=/);
