@@ -115,7 +115,7 @@ test('customer avatar upload safely reconciles a rejected profile-save RPC befor
   assert.match(save, /lookupSucceeded&&latestProfile\?\.avatar_path===avatarPath/);
   assert.match(save, /storage\.from\('srk-customer-avatars'\)\.remove\(\[avatarPath\]\)/);
   assert.match(save, /if\(lookupSucceeded&&file&&avatarPath!==customerCurrentAvatarPath\)/);
-  assert.match(save, /throw saveError/);
+  assert.match(save, /throw profileSaveError/);
 });
 
 
