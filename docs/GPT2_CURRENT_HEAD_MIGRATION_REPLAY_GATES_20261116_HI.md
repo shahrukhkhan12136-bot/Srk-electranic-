@@ -76,7 +76,7 @@ A second candidate bootstrap file, `COMPLETE_DATABASE_SETUP.sql`, was inspected 
 
 - It **does define** `public.is_srk_admin()` in its later Admin compatibility section, while its earlier setup section defines the distinct legacy `public.srk_is_admin()`. This means the helper definition exists in a consolidated manual setup artifact; the narrower unresolved question is its authoritative placement/provenance in the numbered migration lineage and whether that consolidated file is the approved canonical replay baseline.
 - It does **not** define `service_bookings.amount_paid` in its table creation. The separate `SUPABASE_SCHEMA.sql` starter definition also omits that column.
-- Therefore the amount-column ordering blocker remains independently confirmed against both checked-in setup candidates. The helper gate is refined, not cleared: a manual setup script contains the required helper, but the numbered migration sequence still has no verified introducing migration before early consumers.
+- The setup files' omission is real, but it does not establish an ordering failure: `20261109003000_secure_commission_reporting.sql` adds the column at its start, before its own consumers. The helper gate is refined, not cleared: a manual setup script contains the required helper, but the numbered migration sequence still has no verified introducing migration before early consumers.
 
 No setup SQL or numbered migration was edited. No SQL was executed and no database was accessed.
 
@@ -88,7 +88,7 @@ No setup SQL or numbered migration was edited. No SQL was executed and no databa
 | `20261108234000_combine_booking_read_policy.sql` | `public.is_srk_admin()` | `COMPLETE_DATABASE_SETUP.sql` manual consolidated setup contains it; no earlier numbered migration introducing it was identified | Baseline/helper bootstrap must precede this policy migration |
 | `20261109001000_add_google_maps_location_support.sql` | `public.is_srk_admin()` | Same manual setup artifact; function is called by an Admin RPC | Must be present before function creation/execution path is used |
 | `20261109003000_secure_commission_reporting.sql` | `service_bookings.amount_paid` and `public.is_srk_admin()` | This migration adds `amount_paid` at its start; helper is in consolidated manual setup | Column-order blocker not supported by current source; Admin-helper provenance remains a separate baseline question |
-| `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | quote columns/status and `amount_paid` in trigger logic | This migration itself adds quote fields, but its trigger references `amount_paid`; same-prefix peer exists | Must resolve base payment column before trigger creation; duplicate version prefix needs authoritative history/order |
+| `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | quote columns/status and a PL/pgSQL function referencing `amount_paid` | This migration defines `srk_calculate_booking_commission()` but does not attach it to a trigger; `09003000` adds `amount_paid` before later consumers | No missing-column trigger-creation blocker established; actual gap is that the service-only function is not wired to the existing trigger; duplicate version prefix still needs authoritative history/order |
 | `20261114125844_restore_financial_audit_core_schema.sql` | `amount_paid`, quote fields, helper | Existing prior migrations/manual setup; references financial booking fields in audit snapshots | Must only be placed after all required booking columns and helper exist |
 | `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` | `amount_paid`, quote fields, payout/receipt tables, helper | Prior financial-core and booking migrations | Later consumer; not a candidate bootstrap fix |
 
@@ -98,7 +98,7 @@ A source-only safe *candidate* sequence can be stated, but cannot be approved as
 
 1. Confirm the authoritative starter schema and its provenance; do not assume either setup SQL file equals the deployed database or migration ledger.
 2. Ensure the approved bootstrap creates `srk_admin_users` and `is_srk_admin()` before `20261108234000` (and any earlier consumer).
-3. Ensure `service_bookings.amount_paid` exists in the starter baseline or in a numbered migration strictly before `20261109003000` and before the quote migration's trigger references it. Do not rely on the late `20261116200000` repair for a clean replay.
+3. Preserve the `09003000` early `ADD COLUMN amount_paid` step in any approved replay graph; treat `20261116200000` as a later idempotent restore/check. Separately resolve the quote commission trigger wiring gap with an ordered follow-up migration after the new function and required columns exist.
 4. Resolve the two `20261109` files against a sanitized authoritative migration-ledger export; preserve both source files until that evidence exists.
 5. Only then pin a local PostgreSQL/Supabase CLI version, create disposable fixture data, replay in a fresh local project, and execute both pgTAP suites (18 legacy payment/receipt + 15 accounting bridge assertions).
 
