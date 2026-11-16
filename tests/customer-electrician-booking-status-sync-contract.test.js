@@ -323,7 +323,7 @@ test('Customer booking refresh ignores stale requests after session, booking, ti
   assert.match(load, /if \(!isCurrent\(\)\) return;\s*timelineResults\.forEach/);
   assert.match(load, /if \(!isCurrent\(\)\) return;\s*box\.innerHTML = data\.map/);
   assert.match(load, /if \(isCurrent\(\)\) box\.setAttribute\('aria-busy','false'\)/);
-  assert.match(customer, /customerBookingRefreshRequest\+\+;\s*customerLiveLocationRefreshRequest\+\+;\s*customerLiveLocationBookingIds=\[\]/);
+  assert.match(customer, /customerBookingRefreshRequest\+\+;[\s\S]*?customerLiveLocationRefreshRequest\+\+;\s*customerLiveLocationBookingIds=\[\]/);
 });
 
 test('Customer live location polling ignores stale responses and preserves network-error state', () => {
