@@ -394,3 +394,20 @@ Production ledger bodies `20261109180001`, `20261109202321`, `20261109202355`, `
 **Important audit finding:** Branch financial core migration restores several required tables, but a table alone does not replace Production's audit trigger pipeline. Without the capture function, per-table triggers, and Admin list RPC, the schema may store audit rows without automatically generating them or exposing the intended review interface. Confirm whether another non-migration deployment artifact supplies these functions before treating the branch replay as complete.
 
 These are static source comparisons. “Not located” is scoped to the current branch migration tree. No Production SQL was changed, no migration was applied, and no PostgreSQL replay or pgTAP test was run.
+
+
+### 2026-11-16 follow-up: next five Production migration bodies compared (read-only)
+
+Production ledger bodies `20261109202534`, `20261109203132`, `20261109203137`, `20261110080448`, and `20261110133835` were inspected against the PR #8 branch.
+
+| Production version | Production change | PR branch comparison | Result |
+|---|---|---|---|
+| `20261109202534 razorpay_refund_audit_trigger` | Adds a dedicated Razorpay refund audit-capture function and trigger writing refund changes to `srk_admin_audit_events` | Branch has the audit-events base table and durable refund-recovery evidence, but no dedicated refund audit-capture trigger/function located | Audit table alone does not capture refund changes; direct functional gap unless supplied elsewhere |
+| `20261109203132 customer_admin_complaints` | Creates complaint/event tables, customer create/list RPCs and Admin list/update RPCs | Branch `20261110040000_customer_admin_complaints.sql` is an exact normalized-body match; later customer-safe projection hardens the customer-facing response and serializes daily-limit checks | Core complaint workflow present; later branch hardening is an intentional successor |
+| `20261109203137 electrician_verification_documents` | Creates private Storage bucket/policies, verification document/event tables, submit/list/review RPCs and guarded activation; removes direct profile activation update | Branch has a private KYC document-path RPC, but no matching base bucket, tables, upload/review RPCs, event history or guarded activation migration located | High-priority replay dependency gap: path-preview RPC assumes verification document relations already exist |
+| `20261110080448 srk_business_finance_dashboard` | Creates private business-expense table and Admin add/list/dashboard RPCs with revenue, payout, expense and net-profit calculations | No matching private expense table or equivalent Admin finance dashboard migration located in the current branch tree | No direct equivalent located; confirm whether the finance dashboard is still in scope |
+| `20261110133835 restore_missing_customer_booking_quote_columns` | Adds `customer_suggested_amount` and `electrician_quote_kind` to service_bookings, with comments and schema reload | Branch same-version candidate `20261110140000_restore_missing_customer_booking_quote_columns.sql` was previously confirmed as exact normalized-body match | Exact migration-body match, version filename differs from Production ledger |
+
+**Priority:** The electrician verification-document migration is a dependency for the later Branch KYC path-preview RPC and should be reconciled before replay. Confirm whether the Finance Dashboard feature is intentionally retired or whether its private table/RPCs are missing from the replay plan. Complaint core workflow is present and has a later privacy hardening migration.
+
+“Not located” is scoped to the current branch migration tree. Static source comparison only; no Production SQL was changed, no migration was applied, and no PostgreSQL replay or pgTAP test was run.
