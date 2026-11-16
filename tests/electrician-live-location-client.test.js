@@ -75,3 +75,22 @@ test('live location start failure after server activation attempts server-side c
   assert.match(start[0], /if\(serverStarted\)[\s\S]*?srk_electrician_stop_live_location/);
   assert.match(start[0], /सर्वर पर sharing बंद होने की पुष्टि नहीं हुई/);
 });
+
+test('logout waits for an in-flight live-location start before stopping tracked shares', () => {
+  const logoutStart = electrician.indexOf('async function logout()');
+  const logoutEnd = electrician.indexOf('\nfunction renderElectricianLiveLocationControls', logoutStart);
+  assert.ok(logoutStart >= 0 && logoutEnd > logoutStart, 'logout handler exists');
+  const logout = electrician.slice(logoutStart, logoutEnd);
+  assert.match(logout, /if\(electricianLocationStartBusy\.size\)/);
+  assert.ok(logout.indexOf('electricianLocationStartBusy.size') < logout.indexOf('electricianRefreshRequest++'));
+  assert.match(logout, /activeLocationIds=\[\.\.\.locationWatches\.keys\(\)\]/);
+});
+
+test('live-location start is bound to the same authenticated electrician session', () => {
+  const start = electrician.match(/async function startElectricianLiveLocation\(id\)\{[\s\S]*?\n\}/);
+  assert.ok(start, 'live-location start handler exists');
+  assert.match(start[0], /const requestedUserId=user\?\.id/);
+  assert.match(start[0], /profile\?\.user_id===requestedUserId/);
+  assert.match(start[0], /if\(!isCurrent\(\)\)throw Error\('लॉगिन सत्र बदल गया है।'\)/);
+  assert.match(start[0], /if\(serverStarted\)[\s\S]*?srk_electrician_stop_live_location/);
+});
