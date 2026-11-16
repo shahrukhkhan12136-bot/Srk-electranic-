@@ -164,3 +164,16 @@ test('customer auth transitions restore logout button after an in-flight logout'
   assert.ok(block.includes("const customerLogoutButton=document.getElementById('customerLogout')"));
   assert.ok(block.includes('if(customerLogoutButton)customerLogoutButton.disabled=false'));
 });
+
+
+test('customer auth transitions immediately clear prior profile, avatar and booking address form values', () => {
+  const authStart = source.indexOf('customerSb.auth.onAuthStateChange');
+  const authEnd = source.indexOf('const handleCustomerOffline', authStart);
+  assert.ok(authStart >= 0 && authEnd > authStart);
+  const block = source.slice(authStart, authEnd);
+  assert.ok(block.includes("['customerProfileName','customerProfilePhone','name','state','district','pin','address','place','bookingLat','bookingLng'].forEach"));
+  assert.ok(block.includes("customerCurrentAvatarPath=null;setCustomerAvatarPreview(null);"));
+  assert.ok(block.includes("const avatarFile=document.getElementById('customerAvatarFile');if(avatarFile)avatarFile.value=''"));
+  assert.ok(block.includes("const profileLanguage=document.getElementById('customerProfileLanguage');if(profileLanguage)profileLanguage.value='hi'"));
+  assert.ok(block.includes("const mapWrap=document.getElementById('customerMapWrap');if(mapWrap)mapWrap.style.display='none'"));
+});
