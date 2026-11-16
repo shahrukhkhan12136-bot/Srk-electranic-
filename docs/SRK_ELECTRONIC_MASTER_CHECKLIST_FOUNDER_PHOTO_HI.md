@@ -1,6 +1,6 @@
 # SRK ELECTRONIC — मुख्य मास्टर चेकलिस्ट (एकीकृत स्थिति)
 
-**अंतिम मिलान:** 15 नवम्बर 2026  
+**अंतिम मिलान:** 16 नवम्बर 2026  
 **काम की branch:** `feat/customer-login-first-dashboard-20261114`  
 **Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
 **स्थिति का नियम:** [x] = Feature Branch source में implement/verified; इसका अर्थ Production पर लागू होना नहीं है। Runtime/Production/owner approval को अलग स्पष्ट रखा गया है। पुरानी विस्तृत कार्य-इतिहास `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` में है। इस checklist में duplicate पुराने pending items को बार-बार नहीं दोहराया जाएगा।
@@ -89,12 +89,12 @@
 
 ## 6. Welcome Screen और Founder Photo
 
-**Owner-approved asset (नवीनतम स्पष्ट निर्देश):** असली Founder Photo वही है जिसमें Founder के पीछे हरा-भरा बगीचा है। उसी फोटो को crop करके लगाना है; चेहरा/पहचान या फोटो का रूप बदलना नहीं है। पहले दर्ज blue-background portrait वाला निर्देश अब इस स्पष्ट garden-photo निर्देश से supersede होता है। Welcome Screen का crop/layout मौजूदा Founder model/reference जैसा रहेगा।
+**Owner-approved asset (नवीनतम निर्देश, 16 नवम्बर 2026):** आधिकारिक Founder Photo वही मूल portrait है जिसमें Founder काली shirt में बाँहें मोड़े हुए हैं और पीछे गहरा नीला studio background है। यही Library asset `SRK ELECTRONIC/Official Founder Photo.png` उपयोग करना है। पहले दर्ज garden-background portrait/`Urban Garden Portrait.png` निर्देश अब superseded हैं; उसे उपयोग नहीं करना है। चेहरा, कपड़े और नीला background ज्यों का त्यों रखें—कोई AI substitute या appearance edit नहीं। केवल आवश्यक responsive display sizing/cropping करें। Welcome Screen और Customer Login दोनों में यही फोटो लगनी है।
 
 - [x] `index.html` स्वागत पेज पर redirect करता है और Welcome Screen का responsive layout मौजूद है।
 - [x] Welcome Screen का source implementation और responsive layout मौजूद है।
 - [x] Owner ने हरे-भरे बगीचे वाली original Founder Photo की पहचान और उसी फोटो को मौजूदा Founder model/card में crop करने का निर्देश confirm किया।
-- [ ] Library में standalone original garden-background portrait `Urban Garden Portrait.png` मिला और visual inspection किया; इसे source asset के रूप में सुरक्षित रखा है। अभी original binary को Feature Branch के `assets/` में जोड़ना, Founder card अनुपात में crop करना और Welcome Screen + Customer Login दोनों में wire करना बाकी है; collage/AI-generated substitute इस्तेमाल नहीं होगा।
+- [ ] Library में original blue-background portrait `Official Founder Photo.png` उपलब्ध है। इसे Feature Branch के `assets/` में जोड़ना, responsive Founder card में बिना appearance बदले दिखाना और Welcome Screen + Customer Login दोनों में wire करना बाकी है।
 - [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें।
 - [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
 - [ ] Owner visual acceptance लें।
