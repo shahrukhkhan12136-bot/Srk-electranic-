@@ -86,3 +86,15 @@
 - Manual mobile QA, Browser E2E और DB runtime परीक्षण implementation समाप्त होने तक स्थगित हैं।
 
 सुरक्षा: PR #8 OPEN / DRAFT / UNMERGED; Production deploy, Production DB बदलाव और paid staging creation नहीं किए गए।
+
+
+## प्रगति प्रतिशत रिपोर्टिंग नियम — 2026-11-16
+
+आगे से हर प्रगति रिपोर्ट में प्रतिशत अनिवार्य होगा। प्रतिशत हमेशा सत्यापित checklist के पूरे/कुल items से निकलेगा; अनुमान या मनमाना प्रतिशत नहीं दिया जाएगा। जहाँ denominator या item status reconcile नहीं हुआ है, वहाँ स्पष्ट रूप से 'प्रतिशत अभी सत्यापित नहीं' लिखा जाएगा। अलग-अलग हिस्सों के प्रतिशत अलग दिखेंगे:
+- पूरे SRK ELECTRONIC प्रोजेक्ट का प्रतिशत।
+- GPT-1 Customer App का प्रतिशत।
+- GPT-1 Electrician App का प्रतिशत।
+- Welcome Screen/Founder-photo का प्रतिशत (पूर्ण कार्य दोबारा नहीं खोला जाएगा, जब तक defect न मिले)।
+- Implementation, Source Tests, Database Runtime, Browser E2E और Final Mobile QA के अलग-अलग प्रतिशत।
+
+पुराने dashboard snapshot में Master Checklist के 86 items में 56 पूरे (65%) दर्ज थे। यह पुराना मापा हुआ आंकड़ा है; अगली रिपोर्ट में वर्तमान checklist को दोबारा reconcile करके ही इसे अद्यतन किया जाएगा। Source code में बदलाव को runtime या QA completion नहीं गिना जाएगा।
