@@ -1133,3 +1133,12 @@ GitHub compare of `feat/customer-login-first-dashboard-20261114` (base) against 
 - Full Migration Replay: **NOT RUN** — no PostgreSQL server/client, Docker/Podman, or Supabase CLI is available; no disposable database was provisioned.
 - pgTAP runtime: **NOT RUN**. No runtime PASS is claimed.
 - Production, PR branch, deployment, merge, and workflow dispatch: **NOT TOUCHED**.
+
+
+## 71. Runtime tooling re-check and safe execution decision
+
+- Local environment re-check: `psql`, `postgres`, `pg_ctl`, Docker, Podman, Supabase CLI, `sqlfluff`, and `pg_format` are unavailable. Python modules `pglast`, `pg_query`, `sqlglot`, `sqlparse`, `psycopg`, and `psycopg2` are also unavailable.
+- The repository workflow `.github/workflows/supabase-schema-ci.yml` is not a safe or applicable replay path for this audit: it is `workflow_dispatch` only, hard-gated to `refs/heads/feature/platform-fee-cash-online-cycle`, and exports schema from the configured remote Supabase database before creating its local stack. It does not target this Audit Branch or the full PR #8 migration chain. It was **not dispatched**.
+- No Supabase project was queried, created, or modified. No Production connection was used. No external online SQL parser was given repository source.
+- Therefore PostgreSQL parser, full migration replay, and pgTAP runtime remain **NOT RUN**. Static delimiter sanity is not a substitute for parser/replay evidence.
+- Next safe execution prerequisite: provide an isolated disposable PostgreSQL/Supabase environment populated from an approved schema baseline, or an approved CI workflow that runs the Audit Branch migration chain locally without Production export. Then run parser/lint, ordered full replay, and all relevant pgTAP suites; capture raw logs and resulting commit/test evidence.
