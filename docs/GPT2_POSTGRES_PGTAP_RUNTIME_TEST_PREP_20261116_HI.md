@@ -1789,3 +1789,22 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 - यह section blueprint और prerequisite audit है; कोई `supabase/config.toml`, workflow, Docker file, package dependency या SQL test file अभी create/modify नहीं की गई।
 - इसे लागू करने से पहले Owner से दो निर्णय चाहिए: (a) केवल local disposable Docker stack या dedicated TEST project; (b) canonical bootstrap file कौन-सी है और क्या वह sanitized TEST baseline के रूप में authoritative है।
 - Owner decision के बाद भी पहले isolated config/harness PR बनेगा; workflow manual/local validation से शुरू होगा। Production integration अलग explicit approval के बिना नहीं होगी।
+
+
+## 49. Local Docker TEST चयन और Starter Bootstrap तुलना — 16 Nov 2026
+
+### Owner decision recorded
+- Owner के “Ha” के आधार पर अगला TEST target **Local Docker-based Supabase** चुना गया है। यह चयन केवल environment direction की स्वीकृति है; इससे Production access, remote TEST project, schema mutation, migration replay या deployment की अनुमति नहीं मिलती।
+
+### तीन starter SQL files की तुलना
+- `SUPABASE_SCHEMA.sql`: 93 lines; मूल `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers`, basic RLS और पुराना `electrician_profiles.user_id` field.
+- `PORTAL_SCHEMA.sql`: 146 lines; header स्पष्ट कहता है कि इसे `SUPABASE_SCHEMA.sql` के बाद चलाएँ। यह `auth.users` पर `srk_link_electrician_profile_trigger` बनाता है और पुराने Admin/Electrician policies/RPCs जोड़ता है.
+- `COMPLETE_DATABASE_SETUP.sql`: 402 lines; base schema + portal setup का consolidated/expanded रूप और पुराने अतिरिक्त RPC/policies. इसमें कुछ policy/function definitions बाद में दोबारा आती हैं.
+- `COMPLETE_DATABASE_SETUP.sql` में भी वर्तमान migrations के `electrician_profiles.auth_user_id` और `service_bookings.amount_paid` baseline definitions नहीं मिले। `SUPABASE_SCHEMA.sql` + `PORTAL_SCHEMA.sql` में भी ये modern columns नहीं मिले।
+- इसलिए इन तीनों में से कोई भी अभी Feature Branch की 87 migrations के लिए प्रमाणित current canonical bootstrap नहीं है। `PORTAL_SCHEMA.sql` का documented dependency `SUPABASE_SCHEMA.sql` है; `COMPLETE_DATABASE_SETUP.sql` consolidated legacy starter है, लेकिन modern migration prerequisites का विकल्प नहीं।
+
+### सुरक्षित निष्कर्ष / अगला कदम
+1. Local Docker path चुना हुआ है, पर पहले TEST bootstrap contract बनाना होगा: Supabase-managed `auth`/`storage` schemas, roles, extensions, bucket definitions और current baseline tables.
+2. Owner से authoritative sanitized baseline / schema snapshot की पुष्टि जरूरी है; starter SQL को current baseline घोषित नहीं किया जाएगा।
+3. Duplicate `20261109` version और earlier migration column dependencies पर fail-closed preflight के बिना `supabase db reset` या replay नहीं चलाया जाएगा।
+4. इस audit में केवल GitHub source पढ़ा गया; कोई Docker container, Supabase stack, PostgreSQL instance या SQL test run नहीं किया गया। कोई file/row/schema/Production data नहीं बदला।
