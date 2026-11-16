@@ -98,7 +98,7 @@ test('electrician OTP verification validates token and uses SMS phone verificati
 
 test('electrician availability changes require approved active profile and explicit confirmation', () => {
   const availability = body('setElectricianAvailability');
-  assert.match(availability, /!profile\|\|!profile\.active\|\|profile\.verification_status!=='approved'/);
+  assert.match(availability, /!isCurrent\(\)\|\|!profile\.active\|\|profile\.verification_status!=='approved'/);
   assert.match(availability, /if\(!confirm\(/);
   assert.match(availability, /srk_electrician_set_availability/);
   assert.match(availability, /p_available:available/);
