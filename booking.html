@@ -2473,14 +2473,20 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     const result = await response.json();
     if (!isCurrent()) return;
     if (!response.ok || !result.success) throw new Error(result.error || 'बुकिंग सेव नहीं हुई।');
-    clearCustomerBookingRequestKey(requestKey, latestSession.user.id);
     pendingBookingId = result.booking_id;
     const estimateText = result.estimate?.amount_rupees ? `\nअनुमानित मेहनताना: ₹${result.estimate.amount_rupees}` : '';
     const offerText = Number(result.offers_created)>0
       ? '\\nअभी एक eligible इलेक्ट्रिशियन को ऑफर भेजा गया है।'
       : '\\nअभी चुनी हुई श्रेणी का कोई उपलब्ध और approved इलेक्ट्रिशियन नहीं मिला। आपकी श्रेणी नहीं बदली गई है।';
     alert(`बुकिंग नंबर: ${result.booking_id}${estimateText}\n${result.message}${offerText}`);
-    await loadCustomerBookings();
+    const bookingListLoaded = await loadCustomerBookings();
+    if (!isCurrent()) return;
+    const bookingVisible = bookingListLoaded && document.getElementById('customerBookings')?.innerHTML.includes(String(result.booking_id));
+    if (bookingVisible) {
+      clearCustomerBookingRequestKey(requestKey, latestSession.user.id);
+    } else {
+      alert('बुकिंग सर्वर पर बन गई है, लेकिन सूची में इसकी पुष्टि अभी नहीं दिखी। सुरक्षित डुप्लीकेट-रोक पहचान सुरक्षित रखी गई है। पहले Refresh करके इसी बुकिंग की स्थिति जाँचें; नई या बदली हुई बुकिंग अभी न भेजें।');
+    }
   } catch (err) {
     if (!isCurrent()) return;
     alert(`${err.message}\nबुकिंग की पुष्टि नहीं हो सकी; संभव है अनुरोध सर्वर तक पहुँच गया हो। अभी विवरण न बदलें और पहले बुकिंग सूची रीफ़्रेश करके देखें। यदि बुकिंग नहीं दिखती, तो डुप्लीकेट से बचने के लिए इसी विवरण के साथ दोबारा कोशिश करें।`);
