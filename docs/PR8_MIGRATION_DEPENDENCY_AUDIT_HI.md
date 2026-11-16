@@ -1142,3 +1142,11 @@ GitHub compare of `feat/customer-login-first-dashboard-20261114` (base) against 
 - No Supabase project was queried, created, or modified. No Production connection was used. No external online SQL parser was given repository source.
 - Therefore PostgreSQL parser, full migration replay, and pgTAP runtime remain **NOT RUN**. Static delimiter sanity is not a substitute for parser/replay evidence.
 - Next safe execution prerequisite: provide an isolated disposable PostgreSQL/Supabase environment populated from an approved schema baseline, or an approved CI workflow that runs the Audit Branch migration chain locally without Production export. Then run parser/lint, ordered full replay, and all relevant pgTAP suites; capture raw logs and resulting commit/test evidence.
+
+
+## 72. Execution-host and parser-install attempt
+
+- Execution host has Node.js v22.16.0 and npm, but the repository `package.json` declares no PostgreSQL parser dependency and no lockfile was found at the repository root. Node/npm availability alone does not parse PostgreSQL SQL or provide a PostgreSQL server.
+- Attempted to install `pglast` for a real PostgreSQL grammar parse; installation could not reach the package index because DNS/network resolution is unavailable. No package was installed and no parser result was produced.
+- This confirms the parser blocker is environmental, not a successful or failed SQL parse. Parser, full replay, and pgTAP remain **NOT RUN**.
+- No source migration or tests were changed in this step. No workflow was dispatched and no database was accessed.
