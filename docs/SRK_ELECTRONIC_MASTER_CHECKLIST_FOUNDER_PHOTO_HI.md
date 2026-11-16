@@ -623,3 +623,9 @@
 - [x] The previous 25 failures were investigated. The fixes align source-contract assertions with the implemented session-generation/request-key guards, guarded refresh outcomes, push-subscription rollback flow, and quoted live-location DOM selector. This is not a claim of live browser or Supabase runtime coverage.
 - [ ] Isolated PostgreSQL/Supabase + pgTAP execution, live browser/auth/Storage/Push fault-injection, Preview/mobile QA, and owner visual acceptance remain pending. PR #8 remains open, draft, and unmerged. Vercel Preview is still rate-limited; Netlify deploy-preview status is pending at this checkpoint.
 - **Progress remains 27/39 = 69%**; no additional Master Checklist completion item is counted from a source-contract CI pass alone.
+
+### 2026-11-16 — Exact current PR-head Node CI re-verification
+- [x] Current PR #8 head `8061c8c36ffa74347c90acaa8589fc27740c34d8`, GitHub Actions push run `43856889579`, job `133263338180`: **382/382 PASS, 0 FAIL**. Final TAP summary and all workflow steps (checkout, Node 22 setup, dependency install, `npm test`) were verified in the job log.
+- [x] This exact-head run supersedes the earlier CI checkpoint at `3748004a72f0a929607c9d2e6343c0ea3d8a133b` / run `43856680916`; the earlier 25-failure state is not the current Node CI result.
+- [ ] PostgreSQL/Supabase pgTAP runtime, hosted schema parity, provider integration, browser/mobile QA and owner acceptance remain separate pending gates. No production migration, deployment, PR merge, payment/refund or provider action was performed.
+- **GPT-2 progress remains 27/39 = 69%**; Node source-contract CI success alone does not complete any remaining runtime checklist item.
