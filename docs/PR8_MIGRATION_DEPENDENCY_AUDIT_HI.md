@@ -39,14 +39,14 @@ The consolidated setup SQL creates these base objects and enables initial RLS, b
 
 The two helpers must not be treated as aliases. Their exact approved baseline definitions, grants, and replay placement need to be established before replay.
 
-### 3. `amount_paid` is introduced too late for earlier consumers on a clean baseline
+### 3. `amount_paid` ordering — source prerequisite fixed, baseline still gated
 
 - The base `service_bookings` definition in `COMPLETE_DATABASE_SETUP.sql` does not declare `amount_paid`.
-- `20261109003000_secure_commission_reporting.sql` reads `amount_paid` and grants column-level UPDATE access to it.
-- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` also reads `NEW.amount_paid` in its commission trigger.
-- The current source adds `amount_paid numeric(12,2)` only in `20261116200000_restore_service_bookings_amount_paid.sql`, which sorts much later.
+- On this audit branch, `20261109003000_secure_commission_reporting.sql` now adds `amount_paid numeric(12,2)` with `ADD COLUMN IF NOT EXISTS` before defining the SQL-language commission/earnings functions and column grants that consume it.
+- `20261116200000_restore_service_bookings_amount_paid.sql` remains as an idempotent later restoration/constraint migration.
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` also reads `NEW.amount_paid`; its exact ordering and trigger attachment must still be checked against the approved baseline and migration lineage.
 
-Consequently, a clean replay from the checked-in starter SQL can encounter a missing-column failure before it reaches the later restore migration. Do not solve this by blindly renaming/reordering migrations or by guessing a different column contract; reconcile the intended schema introduction and deployed migration lineage first.
+This audit-branch source correction removes the identified early missing-column ordering issue in that migration. It does **not** establish that a clean replay succeeds: canonical base-table provenance, both Admin helper definitions/grants, malformed legacy filenames, duplicate-prefix history and the full trigger dependency chain remain unresolved. Do not rename/resequence migrations or infer deployed history without reconciling the authoritative migration ledger first.
 
 ### 4. Early identity / GPS / offer function chain has explicit order
 
