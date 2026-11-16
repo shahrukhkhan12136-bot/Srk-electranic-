@@ -9,11 +9,11 @@ const wallet = source.slice(source.indexOf('async function loadPartnerWallet'), 
 test('Electrician earnings and wallet ignore stale responses after auth changes or overlapping refreshes', () => {
   assert.ok(source.includes('electricianEarningsRequest=0'));
   assert.ok(source.includes('electricianWalletRequest=0'));
-  assert.match(source,/if\(previousUserId!==nextUserId\)\{electricianRefreshRequest\+\+;[\s\S]*?clearElectricianAccountView\(\)/);
+  assert.match(source,/onAuthStateChange\(\(_e,s\)=>\{const nextUser=s\?\.user\|\|null,previousUserId=user\?\.id\|\|null,nextUserId=nextUser\?\.id\|\|null;electricianEarningsRequest\+\+;electricianWalletRequest\+\+;if\(previousUserId!==nextUserId\)/);
   assert.ok(source.includes('function clearElectricianAccountView(){profile=null;'));
   assert.match(source,/if\(previousUserId!==nextUserId\)\{electricianRefreshRequest\+\+;[\s\S]*?clearElectricianAccountView\(\)/);
   assert.ok(source.includes("'jobs','earnings','partnerWallet','electricianSupportTickets'"));
-  assert.match(source,/if\\(\\(user\\?\\.id\\|\\|null\\)!==\\(nextUser\\?\\.id\\|\\|null\\)\\)\\{electricianRefreshRequest\\+\\+;[\\s\\S]*?clearElectricianAccountView\\(\\);\\}/);
+  assert.match(source,/if\(\(user\?\.id\|\|null\)!==\(nextUser\?\.id\|\|null\)\)\{electricianRefreshRequest\+\+;[\s\S]*?clearElectricianAccountView\(\);\}/);
   assert.ok(earnings.includes('const request=++electricianEarningsRequest,requestedUserId=user.id,requestedProfileId=profile.id;'));
   assert.ok(earnings.includes('request===electricianEarningsRequest&&user?.id===requestedUserId&&profile?.id===requestedProfileId'));
   assert.ok(earnings.includes('if(!isCurrent())return;'));
