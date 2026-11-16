@@ -158,3 +158,29 @@ Examples of strong *candidate* correspondences (not yet proven historical equiva
 These examples show why version-only comparison overstates *definite missing SQL bodies*: some entries may have been renamed or renumbered. Conversely, similar names and apparent intent are not proof of byte-for-byte or behaviorally equivalent SQL, nor do they establish the original execution order. Production migration bodies are not available from the migration ledger response used here.
 
 **Next required evidence:** obtain the original SQL bodies (or trusted source commit/export) for all Production ledger versions, then compare each candidate with exact DDL, grants, policies, triggers, functions, and dependencies. Do not mark a candidate “reconciled” until that comparison is complete. No database changes or replay occurred.
+
+
+### 2026-11-16 critical evidence recovery: original Production SQL bodies are available in the migration ledger
+
+A read-only query of `supabase_migrations.schema_migrations` exposed the stored `statements` array. This is stronger evidence than the migration-name ledger alone: original SQL bodies can be retrieved directly from the Production migration history. No writes were made.
+
+#### Direct body comparisons against current PR #8 head
+
+Compared Production SQL with the apparent PR-head candidate after removing SQL comments and normalizing whitespace/case:
+
+| Production version | PR-head candidate | Result |
+|---|---|---|
+| `20261108095928` amount-paid/commission/status-history | `20261116200000_restore_service_bookings_amount_paid.sql` | **NOT EQUIVALENT.** Production body is 3,554 chars; branch restore is 720 chars. Production creates the commission trigger/function, status-history table/index/RLS/policies/grants, and status logging trigger/function. Branch restore only adds `amount_paid` and its two range/nonnegative constraints. |
+| `20261108181453` restrict public form inserts | `20261108233500_restrict_public_form_inserts.sql` | Normalized SQL matches. |
+| `20261108181538` combine admin/customer booking read policy | `20261108234000_combine_booking_read_policy.sql` | Normalized SQL matches. |
+| `20261109075837` quote workflow | `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | **NOT an exact normalized-body match.** Production body is 8,521 chars; branch body is 9,568 chars. Branch candidate includes additional revokes and status-constraint DDL, while some function-body statements differ in the direct statement comparison. Treat as a possible consolidation/modified successor, not proven identical. |
+| `20261109080400` quote approval booking states | `20261109_allow_quote_approval_booking_states.sql` | Normalized SQL matches. |
+| `20261114193300` admin-approved electrician relocation | `20261114220000_admin_approved_electrician_relocation.sql` | Normalized SQL matches. |
+
+#### Revised conclusion
+
+The earlier statement that the original `20261108095928` SQL body could not be located is superseded: **the exact original body is recoverable from Production's migration ledger**. It still is not present as an equivalent complete migration in the current PR-head tree. The later `restore_service_bookings_amount_paid` file is only a partial column/constraint repair and cannot substitute for the original migration.
+
+This provides a concrete recovery path: export all 87 stored Production migration bodies read-only, reconcile each against the PR-head files (including consolidated/successor candidates), and produce a versioned mapping with body-level results. Do not copy/backdate the recovered original migration into a replay chain without first designing the correct baseline/replay strategy: Production already records that version as applied, and blindly reapplying it can conflict with existing objects.
+
+No migration was applied, no Production schema/data changed, and no PR was merged.
