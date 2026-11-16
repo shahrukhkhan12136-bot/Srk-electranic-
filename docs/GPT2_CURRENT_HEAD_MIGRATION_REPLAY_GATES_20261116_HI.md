@@ -125,3 +125,17 @@ Inspected `.github/workflows/supabase-schema-ci.yml` at the current feature bran
 ### Local-only harness acceptance gates
 
 A future dedicated workflow must (1) use a pinned Supabase CLI and container/runtime versions, (2) create a disposable local stack from a reviewed canonical baseline committed in this repository, (3) apply the complete ordered current migration chain without remote URLs or secrets, (4) seed synthetic-only identities and bookings, (5) run both named pgTAP suites plus schema lint, (6) stop and destroy the local stack even on failure, and (7) run on this branch's push/PR without deploying. Do not add that workflow until the canonical baseline and duplicate timestamp provenance are resolved; otherwise CI would merely automate an untrusted replay order.
+
+
+## 10. Target pgTAP suite content and coverage boundary — 16 Nov 2026
+
+Inspected the two target SQL files directly:
+
+- `supabase/tests/database/legacy_manual_payment_and_itemized_receipt.test.sql` declares `plan(18)` and runs inside `begin; ... finish(); rollback;`.
+- `supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql` declares `plan(15)` and uses the same transaction/rollback pattern.
+
+Both suites primarily inspect installed function definitions with `pg_get_functiondef`, check function existence, and inspect grants / `search_path` metadata. Their assertions cover important source contracts (Admin-only checks, row locking, quote/category guards, labour/material separation, commission formula, immutable ledger writes, payout rows, receipt reconciliation, and selected idempotency-key text). They do **not** create synthetic users/bookings/payments and invoke the RPCs to prove runtime outcomes, nor do they test concurrent sessions, actual rollback after injected failures, trigger side-effects, or full end-to-end reconciliation against rows.
+
+The directory currently contains 32 database SQL test files. The target plans total 33 assertions, but assertion count is not equivalent to behavioural integration coverage. A local runner still needs a canonical schema/bootstrap, Supabase auth roles/functions, pgTAP extension, complete migration replay, and synthetic fixture strategy. Add separate behavioural tests for successful/invalid manual settlement, duplicate request, concurrent settlement, payout/commission ledger reconciliation, receipt ownership, and failure rollback. Keep the current source-contract suites as complementary checks.
+
+**Execution status:** inspected source only. Neither target SQL suite was executed. No database was created or contacted; no migration or test file was modified.
