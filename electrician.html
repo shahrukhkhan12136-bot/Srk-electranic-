@@ -5,6 +5,10 @@ const cfg=window.SRK_CONFIG||{};let sb,user,profile,offersChannel,otpBusy=false,
 function safeTel(v){const p=String(v??'').replace(/\D/g,'');return /^[0-9]{10,15}$/.test(p)?'tel:'+p:''}
 function clearElectricianAccountView(){
  electricianAccountViewGeneration++;
+ locationWatches.forEach(watch=>navigator.geolocation.clearWatch(watch));
+ locationWatches.clear();
+ electricianLocationStartBusy.clear();
+ electricianLocationStopBusy.clear();
  electricianKycUploadBusy=false;
  document.querySelectorAll('#verificationCard .job > input[type="file"],#verificationCard .job > button').forEach(control=>control.disabled=false);
  electricianSupportThreadRequest++;
@@ -112,15 +116,30 @@ async function startElectricianLiveLocation(id){
   if(status)status.textContent='Live Location साझा हो रही है। GPS चालू रखें।';
   let last=Date.now();
   watch=navigator.geolocation.watchPosition(async pos=>{
+   if(!isCurrent()){
+    navigator.geolocation.clearWatch(watch);
+    if(locationWatches.get(id)===watch)locationWatches.delete(id);
+    return;
+   }
    if(Date.now()-last<12000||pos.coords.accuracy>150)return;
    last=Date.now();
    try{
     const r=await sb.rpc('srk_electrician_update_live_location',{p_booking_id:id,p_latitude:pos.coords.latitude,p_longitude:pos.coords.longitude,p_accuracy_meters:pos.coords.accuracy});
     if(r.error)throw r.error;
    }catch(error){
+    if(!isCurrent()){
+     navigator.geolocation.clearWatch(watch);
+     if(locationWatches.get(id)===watch)locationWatches.delete(id);
+     return;
+    }
     await stopElectricianLiveLocationAfterGpsFailure(id,watch,status,'GPS अपडेट नहीं हो सका।');
    }
   },()=>{
+   if(!isCurrent()){
+    navigator.geolocation.clearWatch(watch);
+    if(locationWatches.get(id)===watch)locationWatches.delete(id);
+    return;
+   }
    stopElectricianLiveLocationAfterGpsFailure(id,watch,status,'GPS सिग्नल उपलब्ध नहीं है।');
   },{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
   locationWatches.set(id,watch);
