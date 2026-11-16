@@ -196,3 +196,34 @@ Before creating an executable baseline file, obtain an owner-approved schema-onl
 - **No action:** no production/test database SQL was executed; no migration was applied; no PR head/merge/deploy was changed.
 
 **Decision:** Do not create an executable baseline from these legacy files yet. Use them as source evidence, reconcile every base object and security contract, then produce a review-only candidate for owner approval.
+
+
+## RLS, policy और ACL cross-check — legacy setup बनाम early migrations (16 Nov 2026)
+
+| Security area | Standalone setup का source contract | Numbered migration का बदलाव | परिणाम |
+|---|---|---|---|
+| Public booking/application INSERT | `SUPABASE_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` में anon तथा authenticated के लिए permissive INSERT policies | `20261108233500_restrict_public_form_inserts.sql` दोनों policies DROP करता है; anon/authenticated INSERT REVOKE; service_role को INSERT GRANT | पुराने public INSERT model को final access model न मानें |
+| Customer booking read | Legacy portal setup में electrician offer-based booking read; customer ownership column base table में नहीं | `20261108121115` `customer_user_id` FK/index और own-booking SELECT policy जोड़ता है; `20261108234000` Admin + customer को एक SELECT policy में जोड़ता है | Ownership migration और Admin helper दोनों पहले चाहिए |
+| Admin booking read | `PORTAL_SCHEMA.sql` में `srk_admin_read_bookings` | `20261108234000` उसे हटाकर `srk_admin_or_customer_read_bookings` बनाता है, जो `public.is_srk_admin()` call करता है | Helper dependency explicit |
+| Admin booking UPDATE / application access | Portal script अलग Admin SELECT/UPDATE policies बनाती है | बाद की hardening migrations policy/ACL को आगे बदलती हैं; केवल legacy policies वर्तमान grants का प्रमाण नहीं | Final ACL/RLS को पूरी chain से पुनर्निर्मित करना होगा |
+| Electrician profile/offer read | Portal script own-profile / own-offer policies बनाती है; offer-based booking SELECT policy भी जोड़ती है | Identity-linking, offer RPC और बाद की privacy migrations इन्हें बदलती/सीमित करती हैं | Legacy policies अकेले वर्तमान privacy contract नहीं |
+| Admin helper execution | Portal script `srk_is_admin()` को PUBLIC से revoke और authenticated को execute grant देती है; Admin email setup `is_srk_admin()` पर अलग revoke/grant देती है | Migrations दोनों नामों का उपयोग करती हैं; helper definitions/grants के exact baseline provenance का प्रमाण अभी अलग से आवश्यक | दोनों helper contracts को एक-दूसरे का substitute न मानें |
+| SECURITY DEFINER functions | Portal setup में Auth link trigger helper, offer response और Admin review functions SECURITY DEFINER हैं; explicit search_path अलग-अलग है | `20261109000500` identity functions/triggers बनाता है और PUBLIC/anon/authenticated execution revoke करता है; `20261109001500` Admin review function को `search_path=pg_catalog,public,auth` के साथ replace करता है | पुराने function body/grants को current hardened contract न मानें |
+
+### प्रत्यक्ष policy/ACL evidence
+
+- `20261108233500_restrict_public_form_inserts.sql` स्पष्ट रूप से public browser INSERT बंद करता है और केवल `service_role` INSERT grant करता है। यह public Netlify/server-function submission design का हिस्सा है।
+- `20261108121115_add_customer_account_booking_access.sql` `customer_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL` और partial index जोड़ता है। Customer SELECT predicate `auth.uid() = customer_user_id` है।
+- `20261108234000_combine_booking_read_policy.sql` दो पुरानी SELECT policies हटाकर एक policy बनाता है: Admin helper OR customer ownership। इस migration में `public.is_srk_admin()` का definition नहीं है।
+- `20261109001500_unique_electrician_admin_identity_linking.sql` अलग helper `public.srk_is_admin()` call करता है; वह Admin review RPC को drop/recreate करता है, PUBLIC execution revoke करता है और authenticated को grant देता है।
+- Legacy consolidated setup में `srk_admin_users_self_read` policy कई जगह दोहराई गई है और `is_srk_admin()` / `srk_is_admin()` दोनों मौजूद हैं। Duplicate DDL और migration-era security state को बिना normalization के एक ही executable baseline में जोड़ना उचित नहीं।
+
+### RLS/ACL निष्कर्ष
+
+1. चार core tables पर RLS enable होना, पूर्ण access model होने के बराबर नहीं है। Policies, table privileges, function EXECUTE grants और SECURITY DEFINER search_path सभी अलग-अलग सत्यापित होने चाहिए।
+2. Legacy public INSERT policies को migration `20261108233500` हटाती है। यदि disposable baseline में legacy setup को wholesale चलाकर बाद की migration छोड़ी जाए, तो अपेक्षित server-only insert boundary स्थापित नहीं होगी।
+3. Admin booking read policy को helper `is_srk_admin()` चाहिए; Admin approval migration `srk_is_admin()` पर निर्भर है। दोनों नाम अलग API contracts हैं।
+4. `PORTAL_SECURITY_UPDATE.sql` और `ADMIN_EMAIL_LOGIN_SETUP.sql` patch/setup artifacts हैं; इन्हें numbered migration chain का विकल्प नहीं माना गया।
+5. अभी भी कोई PostgreSQL replay, role-based ACL test, RLS test या pgTAP run नहीं हुआ। ये निष्कर्ष source comparison हैं, runtime security certification नहीं।
+
+**अगला सुरक्षित gate:** canonical base DDL में प्रत्येक table के साथ RLS enablement, exact policy set, table GRANT/REVOKE, function owner/SECURITY DEFINER/search_path और EXECUTE grants को object-wise मंजूर कराना; उसके बाद ही disposable PostgreSQL replay candidate बनाना।
