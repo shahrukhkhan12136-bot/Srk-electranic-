@@ -1354,3 +1354,39 @@ GPT-1/DBA से केवल ऊपर के result sets और query timestam
 - Production catalog output मिलने तक function ownership, deployed helper body, default ACL, और schema-level access को **UNVERIFIED / OWNER EVIDENCE REQUIRED** माना जाएगा।
 
 **सुरक्षा सीमा:** ऊपर के statements SELECT-only catalog inspection हैं। GPT-2 ने इन्हें Production में execute नहीं किया। कोई migration, DDL, grant/revoke, function edit, data change या deployment नहीं किया गया।
+
+
+## 42. Local Supabase harness और वास्तविक test inventory की पुनः जाँच — 16 Nov 2026
+
+### 42.1 Local harness अभी repository में अधूरा है
+
+Current Feature Branch पर सीधे जाँच में:
+- `supabase/` directory में `functions/`, `migrations/`, `tests/` मौजूद हैं।
+- `supabase/config.toml` नहीं मिला (GitHub Contents API पर exact path 404)।
+- Root `package.json` में `npm test` केवल `node --test tests/*.test.js` चलाता है; PostgreSQL या pgTAP script नहीं है।
+- इसलिए वर्तमान checkout अपने-आप `supabase start` / `supabase test db` के लिए complete, initialized local Supabase project नहीं है। पहले isolated scratch/worktree में pinned Supabase CLI से config/harness बनाना और review करना होगा; अभी branch में generated config commit नहीं की गई।
+
+### 42.2 Database pgTAP inventory की स्थिति
+
+- `supabase/tests/database/` में **32** SQL test files मौजूद हैं।
+- Staff RBAC और SOS Admin/Support के targeted contracts क्रमशः `plan(69)` और `plan(28)` के रूप में दर्ज हैं; §2 और §25 में static count verification पहले दर्ज है।
+- इन 32 SQL files का होना runtime pass नहीं है। कोई pgTAP test अभी execute नहीं हुआ।
+
+### 42.3 Migration version gate की exact स्थिति
+
+- Current migration directory में **87** SQL files हैं।
+- `20261109_allow_quote_approval_booking_states.sql` और `20261109_electrician_inspection_quotes_and_service_only_commission.sql` दोनों का extracted version ठीक `20261109` है।
+- `tests/database-migration-version-uniqueness.test.js` इस duplicate को सामान्य valid unique pair नहीं मानता; यह इसे एक explicit `approvedLegacyCollision` allow-list exception में दर्ज करता है। इसका अर्थ केवल इतना है कि repository test इस ज्ञात collision को फिलहाल स्वीकार करता है—यह Supabase CLI replay compatibility या remote history correctness का प्रमाण नहीं।
+- Staff RBAC foundation file का वास्तविक नाम `20261114390000_admin_staff_rbac_foundation.sql` मिला। इस migration में Staff tables, RLS, browser-role revokes, permission helper और session/audit structures हैं; इसलिए local test में Auth schema/session prerequisites निर्णायक हैं। यह अलग से कोई नया Production finding नहीं है।
+
+### 42.4 इस pass का निष्कर्ष और अगला सुरक्षित कदम
+
+**Local DB creation: NOT STARTED. Runtime tests: NOT RUN.**
+
+अभी local replay शुरू न करने के दो प्रत्यक्ष repository blockers हैं:
+1. `supabase/config.toml` / reviewed local harness अनुपस्थित है।
+2. duplicate `20261109` version collision का CLI-compatible resolution और authoritative migration-history reconciliation बाकी है।
+
+इसके अतिरिक्त §37 में दर्ज base-schema/column provenance और §41 में माँगा गया owner catalog evidence भी unresolved है। अगला सुरक्षित technical step isolated scratch checkout में pinned Supabase CLI + Docker availability की पुष्टि करके केवल disposable dummy migrations पर समान 8-digit version behavior जाँचना है; उसके बाद ही project migration replay design पर लौटना चाहिए। Production credentials/network का उपयोग नहीं करना है।
+
+**इस pass में:** GitHub branch files और directory inventory ही पढ़े गए। कोई config generate/commit, migration edit/rename/reorder, SQL execution, Docker stack start, pgTAP run, Production query या deployment नहीं किया गया।
