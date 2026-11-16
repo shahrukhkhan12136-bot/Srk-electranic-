@@ -1523,7 +1523,7 @@ Replay gates पूरे होने और disposable local Supabase harness 
 इस pass में पाँच files के exact वर्तमान आकार/plan दोबारा जाँचे:
 - Work Timer: 54 lines, plan 20, INSERT fixture नहीं।
 - Razorpay Inbox: 69 lines, plan 15, INSERT fixture नहीं।
-- Sequential Offer Dispatch: 91 lines, plan 16, एक INSERT statement मौजूद; यह अकेले end-to-end workflow proof नहीं।
+- Sequential Offer Dispatch: 91 lines, plan 16; `INSERT INTO public.job_offers` केवल `pg_get_functiondef(...)` पर चलने वाले `position(...)` source-text assertion के भीतर है—test fixture के रूप में कोई booking/offer row insert नहीं होती।
 - Push Delivery: 82 lines, plan 20, INSERT fixture नहीं।
 - Legacy Status Guard: 51 lines, plan 9, INSERT fixture नहीं।
 
