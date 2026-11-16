@@ -1740,3 +1740,28 @@ Current Feature Branch `supabase/migrations` directory की GitHub contents li
 
 ### निर्णय
 पहले TEST database bootstrap + Supabase CLI/Postgres/pgTAP reproducible harness स्थापित और Owner-approved हो। उसके बाद matrix को छोटे pgTAP files में लागू कर isolated DB पर चलाएँ। Production connection, migration replay या live data पर परीक्षण निषिद्ध रहेगा।
+
+
+## 47. Existing pgTAP inventory और safe runtime harness gap — 16 Nov 2026
+
+### Repository inventory (source tree checked)
+- `supabase/tests/database/` में कुल **32 `.test.sql` pgTAP contract files** मौजूद हैं। इनमें Identity `plan(13)`, KYC/Activation `plan(21)`, और Admin Staff RBAC `plan(69)` शामिल हैं।
+- इसलिए पिछले section 46 का matrix पूरी तरह नया test set नहीं है: KYC/Activation और RBAC के कई schema/function/privilege checks पहले से मौजूद हैं। Section 46 को **missing runtime behavior coverage proposal** के रूप में पढ़ें, न कि इन पूरे विषयों के test files न होने के रूप में।
+- KYC test पहले से bucket privacy, Storage policy names, client table SELECT denial, activation/KYC function gates, Admin-only review और append-only event guard की source/schema assertions करता है। यह actual JWT-owner vs other-user Storage upload/download behavior का end-to-end execution नहीं दिखाता।
+- RBAC test `plan(69)` में role permissions, browser table privileges, Main Admin separation, session tracking/revocation, support assignment ownership, private contact exclusions और Staff mutation restrictions के कई checks हैं। यह भी runtime JWT actor fixtures के साथ पूरा multi-role scenario test होने का प्रमाण नहीं है।
+- `tests/database-pgtap-plan-counts.test.js` एक Node static test है जो सभी SQL test files में declared `plan(n)` और assertion-call count का मिलान करता है। यह SQL/pgTAP को execute नहीं करता।
+
+### Harness / CI readiness findings
+- Feature Branch tree में `supabase/config.toml` मौजूद नहीं है; इसलिए standard Supabase local project/test command का project config अभी उपलब्ध नहीं।
+- `package.json` का `npm test` केवल `node --test tests/*.test.js` चलाता है; pgTAP SQL files execute नहीं करता।
+- `.github/workflows/node-tests.yml` भी केवल Node tests चलाता है।
+- मौजूदा `.github/workflows/supabase-schema-ci.yml` को GPT-2 ने dispatch नहीं किया: यह `SUPABASE_DB_URL` secret से Production schema-only dump पढ़ता है, दूसरे branch `feature/platform-fee-cash-online-cycle` पर gated है, और केवल पुराने hardcoded पाँच migrations चलाता है; यह current Feature Branch के सभी 32 pgTAP files का isolated clean replay नहीं है। इसे वर्तमान सुरक्षित TEST harness नहीं माना जा सकता।
+
+### अगला सुरक्षित काम
+1. Owner-approved dedicated disposable TEST Supabase project/DB तय हो; Production credentials/URL का उपयोग न हो।
+2. Feature Branch में pinned Supabase CLI version, `supabase/config.toml`, local Postgres/Storage services, pgTAP enablement और reproducible fixture/bootstrap contract तैयार हो।
+3. Migration replay plan को duplicate `20261109` version और baseline-dependent columns/triggers की ज्ञात समस्याओं से पहले रोकने वाला fail-closed preflight चाहिए।
+4. पहले isolated clean replay और मौजूदा 32 pgTAP contracts चलें; फिर section 46 के वास्तविक owner-vs-non-owner JWT/Storage/RPC behavior tests जोड़े जाएँ।
+5. CI केवल disposable TEST database/container पर चले; Production schema export, remote Production connection, deployment या secrets की जरूरत न हो।
+
+**स्थिति:** अभी कोई `supabase test db`, pgTAP, local stack, migration replay या CI dispatch नहीं चलाया गया। यह केवल source inventory और readiness audit है।
