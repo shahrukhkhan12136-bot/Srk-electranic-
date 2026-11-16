@@ -1960,3 +1960,40 @@ Sanitized schema report में केवल ये विवरण:
 - प्रस्तावित runtime fixture matrix को disposable Local Supabase TEST में अलग test file में जोड़ना होगा; वास्तविक Storage behavior के लिए Storage schema/API harness आवश्यक है। केवल SQL catalog test जोड़ने से end-to-end Storage test का विकल्प नहीं मिलेगा।
 - Static inventory cross-check: **PASS** — plan(21) और 21 assertion calls मौजूद। pgTAP अभी execute नहीं हुआ; कोई runtime PASS दावा नहीं।
 - कोई test/migration/SQL/Storage object/DB state नहीं बदली गई; केवल audit documentation बदला गया।
+
+## 57. KYC runtime TEST cases — executable acceptance matrix — 16 Nov 2026
+
+Disposable Local Supabase environment बनने के बाद नीचे दिए गए cases को अलग runtime test file में लागू करना है। अभी ये **test specifications हैं, executed tests नहीं**।
+
+| ID | Actor / setup | Action | Expected result |
+|---|---|---|---|
+| KYC-ST-01 | Linked electrician A; own UID folder; allowed PDF/JPEG/PNG under 5 MiB | Upload | Allow; object path remains private |
+| KYC-ST-02 | Linked electrician A | Upload into B UID folder | Deny |
+| KYC-ST-03 | Linked electrician B | Read/download A object | Deny |
+| KYC-ST-04 | Unlinked authenticated user | Upload/read/delete KYC object | Deny |
+| KYC-ST-05 | Main Admin | Read A KYC object | Allow only via intended Admin read policy |
+| KYC-ST-06 | Support Staff | Read A KYC object | Deny |
+| KYC-ST-07 | Owner A; document row references object path | Delete object | Deny |
+| KYC-ST-08 | Owner A; own object has no document row | Orphan cleanup delete | Allow |
+| KYC-ST-09 | Owner B; A owns orphan object | Delete A object | Deny |
+| KYC-ST-10 | Any actor | Upload disallowed MIME / >5 MiB | Deny at Storage layer |
+| KYC-DB-01 | Owner A and valid profile | Submit metadata for actual own object | One document + one submitted event |
+| KYC-DB-02 | Owner A submits path owned by B / missing object | Submit RPC | Deny; no document/event row |
+| KYC-DB-03 | Existing event row | UPDATE / DELETE event | Trigger rejects both |
+| KYC-DB-04 | Profile latest required KYC pending or rejected | Main Admin activation attempt | Deny |
+| KYC-DB-05 | Profile latest required KYC approved and phone verified | Main Admin activation attempt | Allow if all other guards pass |
+| KYC-DB-06 | Profile has older approved and newer rejected required document | Activation attempt | Deny; latest document controls |
+| KYC-DB-07 | Support Staff | Review KYC / activate electrician | Deny |
+| KYC-DB-08 | Electrician A | List own KYC documents | Only A's rows |
+| KYC-DB-09 | Electrician B | Attempt direct table SELECT | Deny |
+
+### Runtime fixture and harness requirements
+- Synthetic-only Auth users: Electrician A, Electrician B, unlinked user, Main Admin, Support Staff; never use real customer/electrician records or production credentials.
+- Profiles A/B must have both `user_id` and `auth_user_id` equal to their corresponding Auth UID; unlinked profile fixture must remain genuinely unlinked.
+- Use distinct JWT claims per actor and assert `auth.uid()` identity for each call. Never treat `SET ROLE authenticated` alone as proof of actor identity.
+- Storage cases require a running disposable Supabase Storage service and its supported upload/download/delete API path; direct catalog inspection alone is insufficient.
+- Each test must assert both response and side effects (document row, event row, object existence); cleanup must be confined to synthetic fixture paths.
+- Keep each scenario isolated and rollback DB fixtures where possible. Storage objects do not necessarily participate in SQL transaction rollback; remove only test-prefixed objects after assertions and fail closed if ownership cannot be confirmed.
+- Harness must use a dedicated local project, pinned CLI/runtime versions, pgTAP enabled, and no remote `SUPABASE_DB_URL`. Do not create a remote TEST project, run migration replay, or alter CI until owner approval and environment evidence are available.
+- Acceptance gate: all existing 32 pgTAP files plus new KYC runtime cases pass on clean disposable replay; duplicate migration token and baseline dependency blockers from Sections 50–52 must be resolved through reviewed test-only replay manifest, not silent production migration edits.
+- Current state: **specification written only**. No `supabase/config.toml`, Docker harness, runtime test file, Auth fixture, Storage upload/delete, pgTAP execution, migration replay or CI dispatch created/run.
