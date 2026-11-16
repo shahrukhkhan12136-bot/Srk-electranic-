@@ -100,11 +100,13 @@ select ok(position('payout_status = '||quote_literal('pending') in
   and position('payout_status = '||quote_literal('refunded') in
   pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
   'full refund closes an unpaid pending payout');
-select ok(position('payout_status = '||quote_literal('pending') in
+select ok(position('payout_status = '||quote_literal('blocked') in
   pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
-  and position('payout_status = '||quote_literal('blocked') in
-  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))=0,
-  'booking trigger closes only pending payouts; verified refund RPCs own blocked-payout finalization');
+  and position('Razorpay refund pending' in
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0
+  and position('Manual refund processed' in
+  pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
+  'full refund closes only refund-owned blocked holds and preserves unrelated Admin blocks');
 select ok(position('and payout_note in (' in
   pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure))>0,
   'unrelated Admin payout blocks remain untouched');
