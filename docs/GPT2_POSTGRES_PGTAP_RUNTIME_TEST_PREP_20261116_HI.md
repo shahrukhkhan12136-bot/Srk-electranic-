@@ -2165,3 +2165,24 @@ ORDER BY column_name;
 - यदि supabase_migrations.schema_migrations मौजूद न हो या permission denied आए, तो इसे bypass न करें; Owner/DB administrator से sanitized ledger metadata माँगें।
 - information_schema grants effective privileges का पूरा runtime proof नहीं हैं; ये केवल declared grant metadata हैं। Actor-level authorization का प्रमाण अलग disposable TEST JWT tests से ही मिलेगा।
 - इन queries को चलाना भी Owner/DB administrator की जिम्मेदारी और अनुमति के अधीन है। GPT-2 ने कोई database connection या SQL execution नहीं किया।
+
+
+## 62. Node test workflow और पुराने Supabase workflow का execution-safety audit — 16 Nov 2026
+
+### Node workflow
+- \`package.json\` में \`npm test\` का command \`node --test tests/*.test.js\` है।
+- \`.github/workflows/node-tests.yml\` Node 22 स्थापित करके \`npm install --ignore-scripts --no-audit --no-fund\` और \`npm test\` चलाता है। इसमें PostgreSQL, Supabase CLI, Storage या pgTAP service नहीं है।
+- यह workflow Node source-contract/regression tests के लिए उपयुक्त है; इसे database runtime evidence नहीं माना जाएगा।
+
+### Existing Supabase schema workflow — do not dispatch
+- \`.github/workflows/supabase-schema-ci.yml\` केवल manual \`workflow_dispatch\` है और job condition \`refs/heads/feature/platform-fee-cash-online-cycle\` पर gate है; वर्तमान PR branch इस gate से मेल नहीं खाती।
+- Workflow में \`SUPABASE_DB_URL\` secret के जरिए remote database से \`public,private\` schema-only dump लेने का स्पष्ट step है, जिसका नाम “Export schema only from production” है। इसके बाद temporary local Supabase stack में restore करके पाँच hard-coded पुरानी migrations apply होती हैं।
+- यह current branch की सभी migrations का clean canonical replay नहीं है; यह remote Production schema export पर निर्भर है और current duplicate \`20261109\` migration lineage को resolve नहीं करता।
+- इसलिए इसे current PR branch पर dispatch, gate बदलकर चलाना, या किसी remote/Production URL से जोड़ना **नहीं** है। यह केवल source audit में देखा गया existing workflow है; कोई run नहीं किया गया।
+- Workflow की least-privilege checks होने से भी Production schema export की owner authorization या इस project के लिए suitability अपने-आप सिद्ध नहीं होती।
+
+### Decision
+- Node workflow: source-only test path; database test substitute नहीं।
+- Existing Supabase workflow: current objective के लिए unsuitable / **DO NOT DISPATCH**.
+- Safe next path: Owner द्वारा उपलब्ध कराए गए sanitized metadata की review; फिर no-remote-credentials वाला disposable local Postgres/Supabase project और अलग test-only manifest। पहले pinned CLI में duplicate migration parser behavior को scratch copy में verify करें।
+- इस audit में कोई workflow बदला/चलाया नहीं गया; कोई secret, remote DB URL, Production schema या row data access नहीं हुआ।
