@@ -375,3 +375,14 @@ srk_admin_get_booking_accounting_reconciliation(uuid) में manual payment e
 **सुझाया गया सुधार:** manual entry के लिए booking ID, amount और payment method—तीनों का मिलान करें; method mismatch पर स्पष्ट exception लौटाएँ। pgTAP में एक mismatch fixture और एक matching fixture जोड़ें। Razorpay वाले मामले में केवल razorpay_payment_id की मौजूदगी को provider-side राशि सत्यापन न समझें; उसके लिए authoritative verified payment evidence अलग से आवश्यक है।
 
 यह static source finding है। अभी migration या test बदला नहीं गया; PostgreSQL tests निष्पादित नहीं हुए। कोई Production परिवर्तन या भुगतान नहीं किया गया।
+
+
+### 28. Manual payment UTR/reference पर भी duplicate रोक नहीं है
+
+Core schema migration में srk_manual_payment_entries पर UNIQUE(booking_id) है, लेकिन payment_reference पर कोई unique constraint नहीं है। इसलिए एक booking पर एक manual payment entry सीमित है, पर एक ही UPI/Bank reference को अलग-अलग bookings में दोबारा दर्ज करने से database नहीं रोकता। Admin manual-payment RPC भी केवल method, reference की लंबाई और booking/payment state जाँचता है; दूसरे booking की समान reference खोजने का guard नहीं दिखता।
+
+इसी प्रकार payout table में UNIQUE(booking_id) है, payout_reference पर नहीं; payout settlement RPC भी केवल method और reference की लंबाई जाँचता है, duplicate reference lookup नहीं करता।
+
+**सुरक्षित सुधार:** UPI/Bank references के लिए provider/method के अनुरूप normalized uniqueness नीति तय करें। Cash receipt references के नियम अलग हो सकते हैं; इसलिए सभी methods पर अंधाधुंध global unique constraint न लगाएँ। Database-level unique index/constraint और concurrent duplicate-attempt pgTAP परीक्षण जोड़ें। Existing duplicate rows हों तो migration से पहले सुरक्षित reconciliation आवश्यक होगा; Production rows जाँचे नहीं गए हैं।
+
+यह schema और function source review है। कोई migration, data change या वास्तविक भुगतान नहीं किया गया; PostgreSQL tests निष्पादित नहीं हुए।
