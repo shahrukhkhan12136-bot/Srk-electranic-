@@ -5002,3 +5002,49 @@ Audit Branch का यह test payout trigger के refund-owned blocked hold 
 - अगला सुरक्षित कदम केवल Audit Branch पर test-source प्रस्ताव/coverage gap दर्ज करना और migration dependency ordering को static रूप से पुनः जाँचना है। कोई test चलाना, SQL बदलना, database access, CI dispatch, deployment, merge या cherry-pick नहीं हुआ।
 
 **Verdict:** Source-level permissions स्पष्ट हैं; live grants, effective deployed definitions और trigger runtime behavior अभी अप्रमाणित हैं। Trigger regression coverage जोड़ने से पहले owner approval और test design review आवश्यक है।
+
+
+
+## 165. Trigger Regression Test Proposal और Migration Ordering Gate
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** केवल documentation में test-design proposal; कोई SQL test file या migration बदली/चलाई नहीं गई।
+
+### 1. प्रस्तावित Regression Test Cases
+
+Audit Branch की `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` के लिए अलग focused test file प्रस्तावित है। इसे लिखने/चलाने से पहले owner approval और fixture/schema review आवश्यक है।
+
+| Case | Setup / Action | अपेक्षित परिणाम |
+|---|---|---|
+| Pending payout | booking का payment_status paid से refunded | संबंधित pending payout refunded हो |
+| Refund-owned Razorpay hold | payout blocked और note `Razorpay refund pending`; booking refunded | payout refunded हो और note clear हो |
+| Refund-owned manual hold | payout blocked और note `Manual refund processed`; booking refunded | payout refunded हो और note clear हो |
+| Unrelated Admin hold | payout blocked लेकिन note कोई अलग Admin reason | payout blocked और note जस का तस रहे |
+| Already paid payout | payout paid; booking refunded transition | paid payout अपने-आप overwrite न हो |
+| Reconciliation post-condition | processed provider result से booking refunded | RPC response से पहले payout state refunded सत्यापित हो; mismatch पर fail closed |
+| Failed provider result | refund failed; payout Razorpay marker के साथ blocked | previous payout status/note restore हों; unrelated hold न बदले |
+| Replay/idempotency | वही processed result दोबारा | state regress न हो; final booking/payout state consistent रहे |
+
+ये अपेक्षित behavioral assertions हैं, मौजूदा test pass होने का दावा नहीं। विशेष रूप से paid payout, concurrent settlement और transaction rollback behavior को isolated PostgreSQL test में verify करना होगा; इस चरण में कोई execution नहीं हुआ।
+
+### 2. मौजूदा Test File में न्यूनतम अतिरिक्त Static Assertions
+
+मौजूदा `refund_reconcile_full_amount_guard.test.sql` अभी पाँच assertions तक सीमित है। इसमें trigger function की source definition/trigger registration, refund-owned marker allowlist, unrelated blocked hold preservation, और provider reconciliation के बाद payout post-condition के लिए coverage नहीं है। केवल function text की substring जाँच behavioral proof नहीं होगी; isolated fixtures के साथ transactional behavior tests अधिक मजबूत होंगे।
+
+### 3. Migration Ordering Gate
+
+Audit Branch के source timestamps के अनुसार:
+1. `20261115250000_harden_refund_reconcile_full_amount.sql` provider reconciliation RPC परिभाषित करती है।
+2. `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` बाद में trigger attach करती है और manual-refund/recovery RPCs को फिर से परिभाषित करती है।
+3. इसलिए final function body migration order पर निर्भर है; पहले की RPC definitions को अंतिम effective definition नहीं मानना चाहिए।
+4. Financial audit core trigger migration पहले से मौजूद है; payout table पर उसके audit triggers का registration source-level है, runtime audit event evidence नहीं।
+
+Migration filename timestamp क्रम केवल intended ordering बताता है। वास्तविक clean replay, dependency resolution, duplicate trigger behavior और final catalog definitions अभी execute/introspect नहीं हुए।
+
+### 4. Gate / निर्णय
+
+- अभी केवल test proposal दस्तावेज़ीकृत है; SQL test या migration source edit नहीं।
+- अगली implementation से पहले owner की स्पष्ट अनुमति, schema fixtures, expected transaction semantics और isolated disposable PostgreSQL environment आवश्यक हैं।
+- तब तक कोई SQL execution, pgTAP, DB query, CI dispatch, deployment, merge या cherry-pick नहीं होगा।
+
+**Verdict:** Audit Branch में trigger-aware test coverage का स्पष्ट gap है। Proposed cases implementation checklist हैं, verification results नहीं।
