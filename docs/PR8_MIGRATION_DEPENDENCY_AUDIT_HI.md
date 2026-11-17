@@ -5492,3 +5492,42 @@ Service-role client केवल server-side Auth invitation और registry reg
 ### 6. Verdict
 
 Static source review के अनुसार Edge Function verified Bearer user और Main Admin RPC check के बाद ही invite flow चलाती है; actor ID verified `authData.user.id` से आती है, client body से नहीं। इससे invite actor attribution का source-level design संतोषजनक दिखता है। Deployment configuration, actual requests, audit rows और failure/retry runtime behavior अभी सत्यापित नहीं हैं। कोई function, migration, test, secret, permission या database setting नहीं बदली गई; कोई test/pgTAP/DB query/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
+
+
+
+## 177. Staff Invite Audit Row — Actor/Target, Atomicity और Failure Evidence
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Staff RBAC migration में invite-registration RPC और Staff audit table का static source review।
+
+### 1. Invite event का audit payload
+
+`srk_admin_staff_register_invited_user(uuid,text,uuid)`:
+- `p_actor_admin_id` और `p_staff_user_id` दोनों null न होने की जाँच करता है।
+- Actor UUID को `srk_admin_users.user_id` में मौजूद होना आवश्यक करता है।
+- Staff row को fixed `support` role और `invited` status के साथ insert करता है; `invited_by` में वही actor UUID रखता है।
+- उसी RPC में `srk_admin_staff_audit_events` पर `staff.invited` / `success` event insert करता है। Audit details में `role_key: support` दर्ज है।
+
+### 2. Transaction boundary
+
+दोनों SQL inserts एक ही PostgreSQL function invocation के भीतर हैं। सामान्य PostgreSQL transaction semantics के अनुसार, यदि दूसरी insert fail होकर exception उठाती है तो पहली insert भी उसी transaction में rollback होगी। यह source-level/transaction-semantics निष्कर्ष है; कोई database execution या rollback test नहीं किया गया।
+
+Auth invitation इससे पहले Edge Function के Supabase Auth Admin API call में बनती है, इसलिए Auth invitation और database registry/audit एक single cross-system transaction नहीं हैं। DB registration failure पर Edge Function Auth user delete करने का best-effort प्रयास करती है; email पहले जा चुकी हो सकती है।
+
+### 3. Audit query support और append-only controls
+
+- Audit table में `actor_user_id`, `target_user_id`, `action`, `outcome`, `details`, `created_at` fields हैं।
+- Actor और target दोनों के लिए descending `created_at` indexes हैं।
+- Browser roles को table/sequence के direct privileges revoke किए गए हैं।
+- UPDATE, DELETE और TRUNCATE रोकने वाले append-only triggers migration में परिभाषित हैं।
+
+### 4. शेष Evidence Gap
+
+- RPC actor ID को `srk_admin_users` membership से validate करता है, पर अकेले SQL function यह सिद्ध नहीं करता कि caller की वर्तमान Auth identity वही actor है। यह भरोसा service-role-only grant और Edge Function के पहले किए गए `getUser(token)` + `is_srk_admin()` checks पर निर्भर है।
+- `staff.invited` success event registry insert के साथ बनता है; invalid request, denied Edge Function request, Auth invite failure, या registration failure के लिए इसी RPC में अलग `denied/failed` audit event नहीं दिखता।
+- Auth invitation email delivery और cleanup outcome की durable audit event इस RPC में नहीं है।
+- Actual audit rows, DB privileges, trigger enforcement और rollback behavior live database में सत्यापित नहीं हुए।
+
+### 5. Verdict
+
+Invite success path में actor, target, action और fixed Support role का audit event source code में स्पष्ट है; actor/target lookup indexes भी मौजूद हैं। Database registry insert और success audit insert एक RPC transaction में साथ रहते हैं, लेकिन Auth invitation अलग system operation है। Denied/failed invite attempts और email delivery/cleanup के लिए durable event coverage शेष है। कोई source file, migration, test, permission या database setting नहीं बदली गई; कोई test/pgTAP/DB query/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
