@@ -793,3 +793,42 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - यह section केवल Main live catalog, current KYC function bodies, row counts और Feature migration source का read-only reconciliation है।
 - कोई Production DDL/DML, data copy, table rename/drop, migration apply, Auth action, deployment, merge, refund/payout या mobile QA नहीं हुआ।
 - Remaining: Feature vs Main complete `service_bookings` column diff; KYC legacy/new event strategy owner/GPT-2 review; old KYC history retention + event immutability parity; cancellation migration 27–29 dependency and legacy direct-cancel behavior; work event trigger ordering and labour bill schema dependency review।
+
+
+## Section 28 — service_bookings का exact live-column diff और trigger interaction (2026-11-17)
+
+### 1. Main live column inventory — read-only
+- Main Supabase project `gnqhoaqatmoiwwhgzkgm` पर `information_schema.columns` से `public.service_bookings` के सभी columns, types, nullability और defaults पढ़े।
+- Live table में legacy work fields मौजूद हैं: `work_start_approval_status`, `work_start_requested_at`, `work_timer_running`, `work_timer_seconds`, `completion_requested_at`, `completion_approval_status`, `customer_completed_at`, साथ में legacy `work_started_at`।
+- इसलिए इसे “कोई timer/work fields नहीं हैं” कहना गलत होगा। सही स्थिति: कुछ legacy timer/approval columns मौजूद हैं, लेकिन Feature के authoritative timer/bill contract का पूरा schema नहीं है।
+- Main live में Feature के इन 10 target columns में से कोई भी नहीं मिला: `selected_category`, `selected_duration_hours`, `selected_rate_tier`, `estimated_labour_paise`, `estimate_rate_card_version`, `work_start_origin_status`, `work_timer_elapsed_seconds`, `labour_rate_tier_snapshot`, `labour_rate8h_paise_snapshot`, `labour_rate_card_version_snapshot`।
+- Live `work_timer_seconds` अभी integer है; Feature timer migration इसे bigint बनाती है और fractional elapsed seconds अलग `numeric(24,6)` column में रखती है। केवल column-name overlap से behavioral parity सिद्ध नहीं होती।
+
+### 2. Authoritative Feature migration dependencies
+- `20261114160000_customer_selected_rate_tier_and_server_estimate.sql` (blob SHA `940943827c648bd9877faccc52844b81996bfcab`) category/duration/tier/estimate snapshot और electrician approved-tier fields जोड़ती है।
+- `20261114240000_server_authoritative_customer_approved_work_timer.sql` (blob SHA `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe`) timer elapsed precision, approved rate snapshot, private timer authorization और status/assignment constraints पर निर्भर है।
+- `20261114250000_admin_work_dispute_review_and_immutable_history.sql` (blob SHA `1bfb04b90aebeb644cdfa52096222f8d1d8175ec`) `srk_booking_work_events`, append-only lifecycle capture और Admin review RPC बनाती है।
+- `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql` (blob SHA `2cf12e7a53d0fbe95de1933d31798d60e442d97f`) work-start authorization और event immutability hardening जोड़ती है।
+- Migration ordering और पूरा dependency graph साथ में review करना होगा; किसी एक migration को अकेले apply करना सुरक्षित नहीं माना गया।
+
+### 3. Existing Main trigger interaction — exact inventory
+Main `service_bookings` पर ये non-internal triggers live हैं:
+- `a_guard_booking` — BEFORE INSERT, `guard_new_booking()`
+- `broadcast_new_booking` — AFTER INSERT, `broadcast_booking_job()`
+- `srk_audit_service_bookings` — AFTER INSERT/UPDATE/DELETE, admin audit capture
+- `srk_calculate_booking_commission` — BEFORE INSERT और financial/status UPDATE
+- `srk_cancel_booking_job_offers` — cancellation पर offer cleanup
+- `srk_guard_work_approval_transitions` — BEFORE UPDATE OF status
+- `srk_log_service_booking_status` — status history log
+- `trg_srk_create_electrician_payable` — payment/status/quote/service-charge/materials/assignment changes पर legacy payable generation
+Feature work-event trigger जोड़ने से पहले इनके साथ event ordering, same-row writes, recursion, audit payload, cancellation cleanup और legacy payable side-effects का परीक्षण आवश्यक है।
+
+### 4. Cancellation rollout dependency reminder
+- `20261114270000_admin_only_cancellation_requests_and_decisions.sql` (blob SHA `131413a17b71530889067bc5c9889ca3bdcfec2b`) request/event tables और direct-cancel guard workflow बनाती है।
+- Fee/accounting continuation `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` (blob SHA `e8554d1b8c85810b8dc32eb9428697d9e29dc53a`) और `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` (blob SHA `901512e832279d51ab9278c6ea6522df2a30978c)) पर निर्भर है।
+- Main के existing direct-cancel function और live status/offer cleanup triggers के साथ compatibility review अभी बाकी है।
+
+### 5. Verification boundary / no-write
+- Live schema, column types और trigger definitions केवल read-only SQL से inspect किए।
+- Feature migrations source files से पढ़ीं; कोई migration apply, DDL/DML, trigger/function alteration, production deployment, merge, payout/refund या mobile QA नहीं किया।
+- Next: exact status/assignment constraints + trigger function bodies की तुलना; KYC legacy/new event strategy और cancellation direct-call guard के owner/GPT-2 review के बाद ही integration proposal तैयार करना।
