@@ -152,3 +152,10 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Staff के अलग RPCs (srk_admin_staff_*electrician*) क्रमशः support.electrician.read, support.electrician.reply, और support.electrician.update_status permissions तथा case/assignment ownership checks लगाते हैं।
 - electrician_support_ticket_security.test.sql में कुल 4 नए source-contract assertions जोड़े; plan अब 16 है। इनमें exact per-operation permission gates और case/assignment lock order भी जाँचे जाते हैं। Source count verified; pgTAP execute नहीं हुआ।
 - यह change runtime acceptance को pass नहीं करता; संबंधित runtime checks Pending रहते हैं।
+
+
+### Razorpay Refund Recovery pagination edge cases — 17 November 2026 (source-only)
+
+- `tests/razorpay-refund-recovery.test.js` में दो अतिरिक्त Node test cases जोड़े: (1) एक ही internal refund record से exact-match करने वाले दो provider refunds मिलें तो recovery evidence/finalization न हो; (2) pagination में अगले page पर पहले से देखा गया provider refund ID दोबारा आए तो search unstable मानकर fail-closed हो।
+- ये cases `razorpay-refund-recovery.js` के मौजूदा `matches.length !== 1` और cross-page `seen` duplicate guards को exercise करने के लिए हैं; production logic में बदलाव नहीं किया गया।
+- Test source जोड़ा गया है, लेकिन Node suite execute नहीं हुई। इसलिए ये runtime pass नहीं हैं और Acceptance Matrix के Pending checks नहीं बदलते।
