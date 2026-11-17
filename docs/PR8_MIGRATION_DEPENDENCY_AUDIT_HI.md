@@ -7018,3 +7018,20 @@ Only static inspection and this documentation update were performed. No source/m
 Choose and document one lifecycle contract: (a) disallow deleting already-linked objects through the generic customer Storage policy and provide a coordinated delete RPC, or (b) retain deletion but make metadata cleanup/reconciliation explicit. Add tests for linked-object deletion, unlinked-object deletion, and attachment listing after object removal. Verify any client-side delete flow before selecting the contract.
 
 Static inspection and documentation only. No source, migration or test file was edited; no SQL/pgTAP, Storage API, browser/runtime test, CI, deployment, merge or cherry-pick was run. GPT-2 checklist remains 27/39 = 69%; documentation-only findings do not increase it. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and reconcile their own work.
+
+
+## 218. Customer Complaint Rate Limit — Concurrent Request Serialization
+
+### Static source reviewed
+- `20261110040000_customer_admin_complaints.sql` SHA `26103b3cb2838b058d9f5287cf8eb6eeb732b056`.
+- The complaint creation RPC is `srk_customer_create_booking_complaint(uuid,text,text)`.
+
+### Finding
+The RPC checks the customer's complaint count in the previous 24 hours and rejects when the count is already 10. It then inserts the new complaint. Before the count, it locks the selected booking row with `FOR SHARE`.
+
+A row-level `FOR SHARE` lock on a booking does not serialize concurrent complaint submissions by the same customer: shared locks are compatible, and requests may target different bookings. The count-and-insert sequence has no visible per-customer advisory lock or other serialization mechanism in this function. Consequently, concurrent requests near the limit could each observe a count below 10 and collectively insert more than 10 complaints. This is a **potential race inferred from the SQL lock/count structure**, not a reproduced exploit or confirmed production behavior.
+
+### Test gap and recommendation
+The inspected complaint SQL test coverage does not establish the concurrent rate-limit boundary. In the isolated PostgreSQL branch, test 9 existing complaints followed by parallel submissions, then verify that no more than one request can take the count to 10 and all excess requests are rejected. Consider a per-customer transaction-scoped advisory lock or a dedicated rate-limit row locked before counting; choose a collision-safe keying strategy and keep lock order consistent with other complaint operations.
+
+Static review and documentation only. No source or test file was changed; no SQL/pgTAP or concurrency test was run. GPT-2 checklist remains 27/39 = 69%; this finding does not change the checklist count. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and reconcile their own work.
