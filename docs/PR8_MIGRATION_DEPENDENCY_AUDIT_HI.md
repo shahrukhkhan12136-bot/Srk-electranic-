@@ -4946,3 +4946,59 @@ Blob: `b12da77471d510b55f798bd089597d866d79a133`
 - यह source-level comparison है, runtime proof नहीं। कोई SQL parser, pgTAP, PostgreSQL replay, DB introspection, CI dispatch, deployment, merge या cherry-pick नहीं हुआ।
 
 **अगला सुरक्षित कदम:** trigger migration के बाद effective RPC definitions, grants/search_path और refund state-machine tests की branch-wise तुलना; कोई DB operation नहीं।
+
+
+
+## 164. Effective Refund RPC, Permissions और Test Coverage — Trigger Migration के बाद
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** दोनों branches की exact migration/test files का static comparison; कोई database execution नहीं।
+
+### 1. Effective definition का क्रम
+
+Audit Branch में `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` बाद की migration है और यह तीन महत्वपूर्ण definitions दोबारा बनाती है:
+- `srk_create_electrician_payable()` trigger function;
+- `srk_admin_record_manual_refund(uuid,text,text)`;
+- `srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)`.
+
+इसलिए Audit Branch की अंतिम manual-refund और recovery definitions को पहले की `20261115130000` और `20261115240000` definitions से अलग पढ़ना जरूरी है। बाद की migration के manual/recovery functions booking को `refunded` करने के बाद payout दोबारा पढ़कर trigger-produced state verify करते हैं।
+
+Feature Branch में यह trigger migration path नहीं मिला (contents API पर 404); वहाँ manual-refund function की पुरानी definition payout को स्वयं `refunded` करती है और recovery migration भी payout को स्वयं close करती है।
+
+### 2. Reconciliation RPC का अंतर
+
+दोनों branches की `20261115250000_harden_refund_reconcile_full_amount.sql` अलग है:
+
+- Feature Branch Blob `56d300abc8495d1c5c5371d60bc0321650623db5`: processed refund पर payout को सीधे refunded करने, blocked payout की जाँच/repair करने और failed refund पर previous payout state लौटाने का logic रखती है।
+- Audit Branch Blob `3bda81c2b827f597f639846d33967a7c88296e21`: processed result पर booking का `payment_status='refunded'` करती है; Audit Branch के बाद वाले booking trigger से payout closure अपेक्षित है। Failed result पर केवल Razorpay refund marker वाले blocked payout को pending और `previous_payout_note` पर लौटाती है।
+
+Audit Branch के इस reconciliation RPC में booking update के बाद payout state को दोबारा पढ़कर verify करने वाला check नहीं है। यह बाद की manual/recovery functions के मुकाबले अलग fail-closed व्यवहार है। इसे runtime defect घोषित नहीं किया गया है; transaction और trigger behavior DB में execute नहीं किया गया।
+
+### 3. Function security और grants
+
+Static source में:
+- Manual refund RPC: `SECURITY DEFINER`, fixed search_path `pg_catalog, public, auth, pg_temp`; PUBLIC/anon revoke और authenticated grant।
+- Recovery finalizer: `SECURITY DEFINER`, empty search_path; PUBLIC/anon/authenticated revoke और केवल service_role grant।
+- Provider reconciliation RPC: `SECURITY DEFINER`, empty search_path; PUBLIC/anon/authenticated revoke और केवल service_role grant।
+- Trigger function: `SECURITY DEFINER`, search_path `pg_catalog, public, pg_temp`; इसे table trigger से invoke किया जाता है।
+
+यह migration text में लिखे grants/guards का प्रमाण है; live database privileges या deployed `pg_proc` configuration का नहीं।
+
+### 4. Tests में branch-wise अंतर
+
+`refund_reconcile_full_amount_guard.test.sql`:
+- Feature Branch Blob `a81dcc344db145533be6ec239d47270f30da1c6f`: `plan(10)`; direct payout closure, historical blocked payout repair और service_role-only privilege सहित assertions।
+- Audit Branch Blob `fd5b7ceb8e612b588fac1a7ade8d7035388ca2bc`: `plan(5)`; RPC existence, full-amount comparison, integer-paise check, booking lock और service_role-only privilege assertions।
+
+Audit Branch का यह test payout trigger के refund-owned blocked hold closure, unrelated blocked hold preservation, या booking update के बाद payout state की पुष्टि नहीं करता। इसीलिए trigger migration के लिए focused regression coverage अभी स्पष्ट रूप से अधूरी है।
+
+`admin_refund_review_queue.test.sql` भी branches में अलग है: Feature `plan(17)`, Audit `plan(16)`; दोनों में authenticated-only RPC grants और empty search_path assertions मौजूद हैं। यह test trigger lifecycle को प्रमाणित नहीं करता।
+
+### 5. निष्कर्ष / अगला सुरक्षित कदम
+
+- Audit Branch की अंतिम manual-refund और recovery RPC definitions trigger-aware हैं।
+- Audit Branch का provider reconciliation RPC trigger पर निर्भर है, लेकिन उसी RPC में payout post-condition assertion नहीं है।
+- Audit Branch के refund reconciliation test में trigger-specific regression assertions अनुपस्थित हैं।
+- अगला सुरक्षित कदम केवल Audit Branch पर test-source प्रस्ताव/coverage gap दर्ज करना और migration dependency ordering को static रूप से पुनः जाँचना है। कोई test चलाना, SQL बदलना, database access, CI dispatch, deployment, merge या cherry-pick नहीं हुआ।
+
+**Verdict:** Source-level permissions स्पष्ट हैं; live grants, effective deployed definitions और trigger runtime behavior अभी अप्रमाणित हैं। Trigger regression coverage जोड़ने से पहले owner approval और test design review आवश्यक है।
