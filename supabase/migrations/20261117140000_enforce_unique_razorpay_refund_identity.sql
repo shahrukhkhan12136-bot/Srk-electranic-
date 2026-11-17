@@ -32,7 +32,8 @@ begin
   end if;
 
   -- Serialize claims for the same provider ID across both write paths.
-  perform pg_advisory_xact_lock(hashtextextended(v_provider_refund_id, 731942));
+  perform pg_advisory_xact_lock(hashtextextended('provider:'||v_provider_refund_id, 731942));
+  perform pg_advisory_xact_lock(hashtextextended('refund-record:'||v_refund_record_id::text, 731942));
 
   -- One provider refund ID cannot identify two internal refund records.
   if exists (
