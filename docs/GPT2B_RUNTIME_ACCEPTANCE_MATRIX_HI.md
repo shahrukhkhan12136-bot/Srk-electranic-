@@ -238,3 +238,17 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - No source-level defect was confirmed in these reviewed lifecycle paths. This does not prove concurrent behavior without runtime testing.
 - Test files currently declare: `admin_staff_rbac_foundation.test.sql` plan 70, `electrician_support_ticket_security.test.sql` plan 17, and `support_attachment_staff_access.test.sql` plan 11. These are declarations/source assertions only; none were executed in this review.
 - No code, migration, permissions, or production settings changed. PostgreSQL, pgTAP, Node, Storage API, and CI remain unexecuted.
+
+
+
+### Cancellation Fee lifecycle + Admin direct-write / refund permission cross-check — 17 November 2026 (source-only)
+
+- Branch HEAD before this review: `8989be5001ba88dd4333a05dab9edd6b952d14ec`.
+- Traced `srk_customer_cancellation_fee_debts`, `srk_booking_cancellation_fee_items`, `srk_cancellation_fee_ledger`, online collection, cash collection, cancellation release, and full-refund reversal.
+- Lifecycle is internally consistent at source level: `open -> reserved` on a new booking; `reserved -> open` with item `released` if the unpaid booking is cancelled; `reserved -> settled` on verified online/cash collection; on a verified full refund, a compensating debit/reversal ledger entry is appended, item becomes `reversed`, and debt returns to `open` for a future booking. Partial refund is rejected by the current full-refund path.
+- Therefore reconciliation counting item statuses `settled` + `reversed` as historically captured fees is intentional: `reversed` means the fee was previously collected and later reversed. The signed cancellation-fee ledger net should equal currently settled items. This is not a confirmed reconciliation defect.
+- Cash full-refund path also requires the original electrician wallet debit, writes a matching wallet credit, and reconciliation checks expected vs actual refund credit scoped to the manual refund evidence ID.
+- Admin direct-write closure provides Main-Admin-only, row-locked legacy quote and customer-location RPCs; legacy quote mutation is blocked for new-category, cancelled, approved, or paid/online bookings and enforces labour+materials split where present. Location edits record before/after audit data. Direct authenticated UPDATE grants for the guarded booking fields are revoked; the earlier migration granted only status/quoted_amount/amount_paid/payment_status, and the closure revokes those plus address/district/state/pincode.
+- Refund review decision RPC is Main-Admin-only, locks the request, and enforces allowed state transitions. Manual refund RPC validates approved Customer request when present, matching manual payment evidence, full amount against immutable labour/settled fee ledger for new-category bookings, and payout state. Provider recovery finalization and reconciliation RPCs explicitly require service_role and are not executable by authenticated/anon/public.
+- Source tests currently declare 44 cancellation-fee reversal assertions and 14 manual-refund completion assertions; they were not executed. No DB, pgTAP, Node, CI, or provider runtime test was run.
+- No source code, migration, permission, or production setting changed in this review. This remains source-level inspection only; live ACL/catalog and transaction concurrency need final runtime acceptance.
