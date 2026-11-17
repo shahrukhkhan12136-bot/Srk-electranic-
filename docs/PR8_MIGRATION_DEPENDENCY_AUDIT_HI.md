@@ -3793,3 +3793,49 @@ Trigger UPDATE list में `payment_status` शामिल है, इसल
 - Route mismatch अब exact सात literal test expectations तक सीमित कर दी गई है; अभी कोई contract fix लागू नहीं है।
 - Refund trigger event scope inspected finalizer update से मेल खाता है; runtime concurrency/rollback और सभी privileged writers की समीक्षा बाकी है।
 - कोई SQL/test execution, migration edit, database query/write, CI dispatch, deployment, merge या Production action नहीं किया गया।
+
+
+### 139. Refund transition writers और Trigger-mediated payout closure का source inventory — 17 Nov 2026
+
+यह सीमित source inventory है: inspected migrations में मिले refund-related `service_bookings.payment_status='refunded'` writers और उनके trust gates।
+
+#### 139.1 पहचाने गए writer paths
+
+1. **Admin manual refund — `srk_admin_record_manual_refund(uuid,text,text)`**
+   - Final definition: `20261116210000_attach_electrician_payout_reconciliation_trigger.sql`, blob `b12da77471d510b55f798bd089597d866d79a133`.
+   - `auth.uid()` और `is_srk_admin()` check; verified paid booking; Razorpay/online payment rejection; customer request approved gate; manual payment record/amount match; new-category immutable labour bill + settled cancellation fee parity.
+   - Payout पहले से paid हो तो reject; pending हो तो exact `Manual refund processed` hold बनाता है; blocked payout पर आगे बढ़ सकता है।
+   - Booking को refunded करने के बाद payout दोबारा पढ़ता है और payout refunded न हो तो exception उठाता है। इसलिए unrelated blocked note trigger द्वारा न छूटे तो function success नहीं लौटाता; transaction rollback अपेक्षित है, पर runtime पुष्टि बाकी है।
+
+2. **Provider refund reconciliation — `srk_service_reconcile_booking_refund(uuid,text,text,text)`**
+   - Defined in `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql`, blob `c811fe2a0ae129201ca9e99c5405bbb59e831f57`; later full-amount replacement `20261115250000_harden_refund_reconcile_full_amount.sql`, blob `3bda81c2b827f597f639846d33967a7c88296e21`.
+   - `service_role` JWT gate; booking-first row lock; refund record lock; provider refund ID consistency; terminal processed/failed state replay protection.
+   - Processed state पर full booking collection amount match के बाद booking refunded करता है; failed state पर केवल exact `Razorpay refund pending` hold restore करता है।
+   - Final runtime grants/replacement और webhook caller chain को अलग deployment/replay verification चाहिए।
+
+3. **Recovery evidence finalizer — `srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)`**
+   - Final definition in `20261116210000`, blob `b12da77471d510b55f798bd089597d866d79a133`.
+   - `service_role` gate; processed और 15-minute evidence; full amount; booking/payment/refund/currency/provider refund ID consistency; booking/refund/payout locks; paid payout rejection; idempotent replay state check.
+   - Booking refunded करने के बाद AFTER trigger द्वारा payout closure verify करता है; failure पर exception.
+
+4. **Cancellation/full-refund flows — `20261114290000`**
+   - Same migration contains multiple refund-related booking state transitions, cancellation-fee/wallet reversal logic and service-side reconciliation.
+   - These are additional trigger entry points, not proof that all refund sources are fully inventoried. Their caller/grant matrix must be checked against the exact final migration chain.
+
+#### 139.2 Direct-write boundary
+
+Migration `20261115230000_admin_booking_direct_write_closure.sql`, blob `a1c1abe91e337a22576dbc05f766806699c13dcb`, revokes authenticated direct UPDATE on selected booking financial/status columns. This supports the RPC-mediated model, but it does not by itself prove that service-role, owner, SQL maintenance, or every privileged Edge Function write path is covered.
+
+#### 139.3 Trigger safety conclusion
+
+- The payout trigger closes only `pending` payouts or `blocked` payouts carrying exact refund-owned notes: `Razorpay refund pending` / `Manual refund processed`.
+- It deliberately leaves unrelated blocked holds and already-paid payouts untouched.
+- The inspected latest manual-refund and recovery-finalizer functions both re-read payout state and raise if the trigger did not close it as refunded. The provider reconciliation path uses its own service-role status handling.
+- No source evidence in this limited scan shows an ordinary authenticated client direct-write path to `payment_status='refunded'`; exhaustive repository/runtime caller proof is not claimed.
+
+#### 139.4 Remaining gates
+
+1. Build a complete function/grant/caller matrix for every writer in `20261114290000`, later replacements, Edge Functions and webhook routes.
+2. Confirm final grants and trigger bindings after a clean disposable PostgreSQL replay.
+3. Add rollback tests for unrelated blocked payout note, exact refund-owned blocked note, missing payout, already-paid payout, and concurrent transitions.
+4. No SQL, pgTAP/Node test, PostgreSQL replay, database query/write, provider call, CI dispatch, deployment, merge or Production action was performed in this section.
