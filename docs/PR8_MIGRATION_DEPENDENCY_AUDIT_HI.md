@@ -2828,3 +2828,37 @@ Section 117 के बाद Audit Branch में Staff RBAC source और उ
 - Main Admin और Staff के अलग authorization paths: **source-confirmed**.
 - एक Auth identity का दोनों registries में overlap असंभव होना: **not proven**.
 - No SQL/pgTAP execution, database query, permission/schema change, migration, CI run or deployment.
+
+
+## 119. Cross-registry identity overlap — direct helper-path verification — 17 Nov 2026
+
+Section 118 के बाद Staff permission helper की पूरी अंतिम definition और दोनों identity registries के उपलब्ध schema source को फिर पढ़ा गया।
+
+### 119.1 निर्णायक source behavior
+
+- `srk_has_admin_permission(text)` की अंतिम definition (migration `20261116100000_fix_staff_permission_helper_volatility.sql`, blob `fc99aaf9c564b348e25a72b416dd4eb746e0fad3`) में सबसे पहले `public.is_srk_admin()` जाँचा जाता है। यह true होने पर helper तुरंत `true` लौटाता है; उसके बाद ही Staff registry, active status, JWT session, live Auth session और Staff permission map जाँचे जाते हैं।
+- इसलिए यदि कोई Auth identity दोनों `srk_admin_users` और `srk_admin_staff` में मौजूद हो, तो helper उसे Staff permission map से सीमित नहीं करेगा; वह Main Admin branch लेगा। यह निष्कर्ष function source से सीधे निकलता है, runtime test नहीं।
+- `PORTAL_SCHEMA.sql` (blob `efc14aa623a3895ffb3841b7b0f226f2015f34b1`) में `srk_admin_users.user_id` primary key है, लेकिन वह अलग `srk_admin_staff.user_id` registry से cross-table exclusivity constraint नहीं दिखाता।
+- Staff RBAC test (blob `46305769a74ea0acbb1caf8dc4a41d322614fe3a`) Support permission map में finance/payment/refund/payout/audit permissions की अनुपस्थिति जाँचता है; वह दोनों registries में एक ही user_id की अनुपस्थिति assert नहीं करता।
+
+### 119.2 Finance Audit read RPC के लिए सुरक्षा परिणाम
+
+- मौजूदा draft gate `auth.uid() IS NOT NULL AND public.is_srk_admin()` allow-listed Main Admin को पहचानता है।
+- Support permission map में `audit.read` न होना पर्याप्त सुरक्षा सीमा नहीं है यदि वही identity Main Admin allow-list में भी दर्ज हो; Main Admin-first helper उस Staff permission map को bypass करता है।
+- इसीलिए cross-registry overlap को केवल “Support के पास audit permission नहीं” कहकर बंद नहीं माना जा सकता।
+
+### 119.3 सुरक्षित अगला निर्णय
+
+Owner से इनमें से एक authoritative policy चुनवानी होगी:
+1. **Exclusive registries:** एक Auth user दोनों registries में एक साथ नहीं हो सकता; इसे trusted DB-side invariant/controlled RPCs से enforce और test किया जाए।
+2. **Explicit role precedence:** यदि overlap जानबूझकर वैध है, तो तय किया जाए कि उस identity को Main Admin माना जाएगा या Support Staff; Finance Audit gate उसी authoritative rule से बने।
+
+किसी email/domain heuristic या client-supplied role पर भरोसा न करें। इस audit में कोई constraint, RPC, migration, permission या draft SQL नहीं बदला गया।
+
+### Status
+
+- Main Admin-first short-circuit in Staff helper: **source-confirmed**.
+- Cross-registry exclusivity in inspected schema/test: **not found in inspected sources**.
+- Overlap का runtime अस्तित्व: **unknown; no database query performed**.
+- Finance Audit gate closure: **owner policy decision required**.
+- No SQL/pgTAP execution, database query, permission/schema change, migration, CI run or deployment.
