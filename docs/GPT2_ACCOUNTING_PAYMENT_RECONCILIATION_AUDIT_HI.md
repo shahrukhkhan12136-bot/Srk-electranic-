@@ -1,0 +1,66 @@
+# GPT-2 Accounting-to-Payment Reconciliation Review — 17 November 2026
+
+## Reviewed source snapshot
+
+Branch: `chore/pr8-replay-audit-20261116-v2`  
+Reviewed HEAD: `7ca38be9db682c2bac71e2841b50bb0e24c087fd`
+
+- `supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`
+  - SHA: `68189051090a51bef26a98997caf103b62ed070c`
+- `supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql`
+  - SHA: `7db3d4e5bec75100acc6f892bbcdfe7f29f0f3b7`
+  - Declared `plan(19)`
+- `supabase/tests/database/electrician_payout_reconciliation.test.sql`
+  - SHA: `ad3bdeb8ce00596b3e588f6df47fdfea35794119`
+  - Declared `plan(52)`
+- Online settlement migration:
+  - `supabase/migrations/20261114280000_cancellation_fee_carry_forward_and_accounting.sql`
+  - SHA: `e8554d1b8c85810b8dc32eb9428697d9e29dc53a`
+
+## What the accounting reconciliation function checks
+
+Static inspection of `srk_admin_get_booking_accounting_reconciliation(uuid)` shows that it produces a read-only per-booking reconciliation, including:
+
+- verified customer collection and refund/net collection;
+- immutable labour bill for new-category bookings, with materials excluded from that labour-only path;
+- expected labour commission and electrician payable;
+- payout row existence, electrician assignment, and gross/materials/commission/payable amounts;
+- booking commission versus payout-ledger commission parity;
+- cancellation-fee allocation, settled/reversed fee state, fee-ledger net balance, and source debt still open/reserved;
+- posted wallet credit/debit totals and a dedicated cash cancellation-fee wallet-refund comparison;
+- refund evidence and pending/final refund consistency;
+- explicit exception strings and an `is_reconciled` boolean.
+
+The source has a useful distinction between customer collection (`amount_paid`) and electrician payable (payout ledger). Cancellation-fee collection is not treated as electrician labour earnings.
+
+## Static finding: aggregate reports can silently omit missing payout-ledger evidence
+
+The same migration defines `srk_admin_commission_report()` and `srk_get_my_earnings()`.
+
+Both use a LEFT JOIN from bookings to `srk_electrician_payouts`, then `coalesce(...,0)` for commission/payable values. The Admin report's `paid_completed` CTE selects completed, paid bookings without requiring a payout row. The electrician earnings function likewise returns a completed/paid booking even if its payout row is absent, with zero commission/payable due to the LEFT JOIN and COALESCE.
+
+Consequences:
+- a completed/paid booking with missing payout evidence can appear as zero electrician payable/commission in the aggregate report rather than being clearly marked as a reconciliation exception;
+- the per-booking reconciliation function does flag `MISSING_PAYOUT_ROW` for completed, verified-paid bookings with an assigned electrician, but the aggregate report and earnings response do not surface that exception.
+
+This is a **static reporting-completeness gap**, not proof that a missing payout row currently exists in production or that the payout trigger failed. Normal trigger operation is intended to create the payout row. The issue is that the aggregate report does not fail closed or expose missing-ledger status if that invariant is broken.
+
+## Recommended follow-up
+
+1. In an isolated database test, create a completed, verified-paid booking with an assigned electrician and deliberately absent payout row (or invoke the report against a controlled fixture before payout creation).
+2. Confirm the per-booking reconciliation reports `MISSING_PAYOUT_ROW`.
+3. Confirm whether Admin commission report and electrician earnings expose a missing-ledger exception rather than silently returning zero payout amounts.
+4. Consider adding explicit missing-payout counts/booking IDs or excluding invalid rows while marking the report incomplete. Do not simply coalesce a missing payout row to zero without a warning.
+5. Add a regression assertion for the Admin report and electrician earnings RPC.
+
+## Test coverage assessment
+
+- The 19-assertion accounting bridge test checks function definitions/source contracts for Cash settlement, immutable labour bill, receipt, reconciliation, report and earnings. It does not create a real new-category online settlement fixture or execute the reconciliation flow.
+- The 52-assertion payout reconciliation test includes DML rollback fixtures, but those fixtures use the legacy approved-quote path and do not prove the new-category online payment → cancellation-fee ledger → accounting reconciliation → payout report path end-to-end.
+- No test was executed in this review. The declared plans and SQL source were inspected only.
+
+## Limits and action boundary
+
+Static source review only. No source SQL or test was edited. No SQL, PostgreSQL query, migration replay, pgTAP, Node test, provider API, CI, deployment, merge, cherry-pick, or production setting was run or changed.
+
+GPT-2 checklist remains **27/39 = 69%**. This review records a reporting gap and a test requirement; it is not runtime acceptance evidence.
