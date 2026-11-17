@@ -275,3 +275,13 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - No additional source-level defect was confirmed in these specific cross-link and duplicate-prevention paths. Live constraints, ACL/catalog state, and concurrent transaction behavior remain unverified.
 - Documentation correction: the prior Support test-plan counts in this matrix were stale. Correct declared plans are Admin Staff RBAC 69, Electrician Support 16, and Staff Customer Attachment 11. These are declarations/source assertions, not executed pgTAP results.
 - No database or provider calls, migration replay, PostgreSQL/pgTAP, Node suite, CI, deployment, merge, or production setting changes were performed.
+
+
+### Electrician payout write-surface + commission trigger ordering audit — 17 November 2026 (source-only)
+
+- Reviewed the current payout creation/settlement trigger, commission setter, fixed-rate guard, legacy commission-trigger retirement, and Main Admin payout settlement RPC.
+- Trigger source ordering is intentional: `aa_srk_enforce_new_booking_commission_rate` runs before `zz_srk_set_booking_commission_before_payout` for BEFORE events, so a new booking receives 15.00 before commission is calculated. The AFTER payout trigger then consumes that persisted-in-transaction 15.00 rate. The legacy completion-time commission trigger is explicitly detached.
+- The payout creation trigger writes/refreshes only a pending payout; it does not overwrite paid or other non-pending payout states. Full-refund transitions close pending payouts and only the specifically refund-owned blocked holds.
+- Main Admin payout settlement RPC validates Main Admin identity, locks booking then payout, accepts only pending payout, checks booking/payment/immutable labour and payout-ledger parity, and records paid-by/reference metadata. Direct authenticated UPDATE of booking commission fields is revoked by the reviewed security migration.
+- **Unresolved evidence boundary:** the reviewed migration chain and tracked setup SQL did not provide a conclusive canonical `CREATE TABLE` + ACL/RLS/grant definition for `public.srk_electrician_payouts`. Therefore this source review cannot prove that direct table-level writes are unavailable to authenticated users or that deployed table grants match the intended RPC-only payout lifecycle. This is not proof of an exploitable grant; it is a catalog-evidence gap. Final acceptance must inspect live `pg_class`, `information_schema.role_table_grants`, `pg_policies`, and relevant function ACLs, without broadening grants.
+- No migration/code change was made. No PostgreSQL catalog query, SQL/pgTAP, Node suite, CI, deployment, merge, or production setting was executed/changed.
