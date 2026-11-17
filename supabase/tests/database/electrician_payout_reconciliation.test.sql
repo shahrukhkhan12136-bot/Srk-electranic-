@@ -1,5 +1,5 @@
 begin;
-select plan(46);
+select plan(49);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -136,6 +136,26 @@ select ok(exists(select 1 from pg_trigger t
 select ok(position('manual_payment_method_mismatch' in
   lower(pg_get_functiondef('public.srk_set_booking_commission_before_payout()'::regprocedure)))>0,
   'payout finalization fails closed when manual evidence method differs from the booking');
+
+select ok(to_regprocedure('public.srk_enforce_new_booking_commission_rate()') is not null
+  and exists(select 1 from pg_trigger t
+    where t.tgrelid='public.service_bookings'::regclass
+      and not t.tgisinternal
+      and t.tgname='aa_srk_enforce_new_booking_commission_rate'
+      and (t.tgtype & 2)=2 and (t.tgtype & 1)=1
+      and (t.tgtype & 4)=4 and (t.tgtype & 16)=16
+      and position('commission_rate' in lower(pg_get_triggerdef(t.oid)))>0),
+  'fixed commission guard runs before INSERT and on commission_rate UPDATE attempts');
+select ok(position('new.commission_rate := 15.00' in
+  lower(pg_get_functiondef('public.srk_enforce_new_booking_commission_rate()'::regprocedure)))>0
+  and position('tg_op = '||quote_literal('INSERT') in
+  lower(pg_get_functiondef('public.srk_enforce_new_booking_commission_rate()'::regprocedure)))>0,
+  'every newly inserted booking is assigned exactly 15 percent regardless of supplied value');
+select ok(position('new.commission_rate is distinct from old.commission_rate' in
+  lower(pg_get_functiondef('public.srk_enforce_new_booking_commission_rate()'::regprocedure)))>0
+  and position('booking_commission_rate_is_immutable' in
+  lower(pg_get_functiondef('public.srk_enforce_new_booking_commission_rate()'::regprocedure)))>0,
+  'existing booking commission snapshots cannot be rewritten');
 
 select ok(position('new.commission_amount := v_commission' in
   lower(pg_get_functiondef('public.srk_set_booking_commission_before_payout()'::regprocedure)))>0
