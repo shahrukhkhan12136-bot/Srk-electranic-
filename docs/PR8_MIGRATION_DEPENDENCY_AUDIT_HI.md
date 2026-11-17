@@ -5413,3 +5413,43 @@ Migration `20261114390000_admin_staff_rbac_foundation.sql` स्पष्ट �
 ### 5. Verdict
 
 Audit Branch में Main Admin और Support Staff की identity तथा audit streams अलग परिभाषित हैं। General audit का `admin/user/system` role field Support Staff को अलग label नहीं करता; Staff-specific events के लिए अलग table मौजूद है। इन दोनों streams की वास्तविक runtime completeness, cross-stream correlation और immutable behavior execute करके verify नहीं किए गए। कोई SQL/test/migration, permission, policy या database setting नहीं बदली गई; कोई DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+
+## 175. Staff Audit Append-Only Guard और Invite Actor Attribution
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Support Staff audit guard, audit event insertion call paths और service-role invite RPC का static source review।
+
+### 1. Append-Only Guard
+
+Migration `20261114390000_admin_staff_rbac_foundation.sql` में:
+- `BEFORE UPDATE OR DELETE` row trigger सभी row mutation को `ADMIN_STAFF_AUDIT_IS_APPEND_ONLY` exception से रोकता है।
+- `BEFORE TRUNCATE` statement trigger भी वही exception देता है।
+- Browser roles `PUBLIC`, `anon`, `authenticated` के direct table और sequence privileges revoke किए गए हैं।
+- Audit rows केवल insert करने वाले trusted SECURITY DEFINER workflows से लिखे जाने का design है।
+
+यह database-level guard सामान्य UPDATE/DELETE/TRUNCATE को रोकने का source evidence है; इसे database owner/superuser या trigger-disabling privileged operator के विरुद्ध absolute tamper-proof guarantee नहीं कहा जा सकता। कोई privileged bypass execute नहीं किया गया।
+
+### 2. Event Coverage की Source सूची
+
+Migration में staff status change, invite, session revoke/register, support case assignment, customer/electrician reply और status update के लिए explicit audit INSERT दिखाई देते हैं। इन inserts का business operation के साथ एक transaction में होना PostgreSQL function execution model से अपेक्षित है, लेकिन rollback behavior का runtime proof उपलब्ध नहीं है।
+
+### 3. Invite Actor Attribution का विशेष ध्यान
+
+`srk_admin_staff_register_invited_user(uuid,text,uuid)` केवल `service_role` को EXECUTE grant देता है। Function `p_actor_admin_id` को `srk_admin_users` में मौजूद होने की जाँच करता है और उसी UUID को invite audit के `actor_user_id` में लिखता है।
+
+यह check पुष्टि करता है कि UUID किसी Main Admin record का है; यह अकेले यह प्रमाणित नहीं करता कि उसी Admin ने वर्तमान invite request वास्तव में शुरू की थी। वास्तविक attribution इस बात पर निर्भर है कि service-role-only Edge Function caller को कैसे authenticate करती है और actor UUID स्वयं trusted server-side session से लेती है या नहीं। Edge Function का implementation और runtime request flow इस चरण में सत्यापित नहीं किया गया। इसलिए client-provided actor UUID को बिना server-side binding के भरोसेमंद नहीं मानना चाहिए।
+
+### 4. सुझाए गए Verification Assertions
+
+1. Staff audit row पर UPDATE और DELETE असफल हों।
+2. Staff audit table पर TRUNCATE असफल हो।
+3. सामान्य staff RPC में business change और audit insert साथ rollback हों।
+4. Invite Edge Function authenticated Main Admin session से actor UUID निकाले; arbitrary request-body UUID स्वीकार न हो।
+5. Service-role invite function का direct invocation केवल trusted server path से हो और actor attribution का evidence सुरक्षित रहे।
+6. हर audited action में actor, target, action, outcome और न्यूनतम आवश्यक details सही हों; credentials या access tokens कभी न लिखे जाएँ।
+
+### 5. Verdict
+
+Staff audit table पर row mutation और truncate रोकने वाले triggers मौजूद हैं। कई staff workflows में explicit audit inserts भी हैं। Invite RPC का actor UUID parameter केवल Main Admin registry membership से validate होता है; वास्तविक initiating Admin की पहचान server-side Edge Function flow पर निर्भर है, जिसे अभी verify नहीं किया गया। Append-only protection privileged database owner के विरुद्ध absolute नहीं है। कोई SQL/test/migration, grant, policy या database setting नहीं बदली गई; कोई DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
