@@ -2705,3 +2705,14 @@ Durable Razorpay recovery evidence tests एक अलग table/workflow को 
 - केवल Audit Branch source inspected; no database query, SQL execution, runtime JWT test, production change or deployment.
 - No Finance Audit read API बनाया गया; no permissions changed.
 - निष्कर्ष केवल देखे गए `admin.html`, generic audit migration, recovery handler और recovery migration पर आधारित हैं।
+
+
+## 114. Finance Audit Log सुरक्षित read API — design draft — 17 Nov 2026
+
+- मौजूदा Finance Audit table पर authenticated direct SELECT revoked है; इसे खोलने के बजाय Main Admin-only SECURITY DEFINER RPC प्रस्तावित है।
+- Staff Audit RPC पहले से Main Admin gate का pattern देती है, लेकिन वह अलग Staff activity table पढ़ती है; Finance Audit RPC उससे अलग और explicit होगी।
+- नया design draft `docs/drafts/finance_audit_log_read_api_design.md` में रखा गया है।
+- Draft में parameterized filters, bounded 1..100 pagination, deterministic keyset cursor, explicit Main Admin gate, raw sensitive JSON redaction, direct table SELECT बंद रखने और role-based regression matrix का प्रस्ताव है।
+- इसमें कोई executable SQL नहीं है; implementation या privilege changes नहीं किए गए।
+- Open owner decisions: UI-visible fields, raw vs redacted before/after, lookback/retention, read-access logging.
+- No SQL execution, pgTAP, migration, permission change, database mutation or deployment.
