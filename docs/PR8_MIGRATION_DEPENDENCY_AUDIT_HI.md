@@ -2899,3 +2899,56 @@ Proposed remediation for owner review (not implemented):
 - Cross-table uniqueness/exclusion constraint: **not found in inspected schema**.
 - Actual overlap in live database: **unknown; no DB query performed**.
 - No code/migration/test/permission change, no invitation, no DB/CI/deployment action.
+
+
+## 121. Cross-registry exclusion — सुरक्षित remediation और acceptance plan — 17 Nov 2026
+
+Section 120 के enforcement gap के लिए केवल Edge Function में email pre-check जोड़ना पर्याप्त नहीं होगा। Auth identity UUID ही authoritative key है, और दोनों registries में concurrent writes भी संभव हैं।
+
+### 121.1 प्रस्तावित सुरक्षा आवश्यकता
+
+एक ही `auth.users.id` को एक समय में `srk_admin_users` और `srk_admin_staff` दोनों में मौजूद होने से database स्तर पर रोकना होगा। यह नियम इन सभी रास्तों पर लागू होना चाहिए:
+- Main Admin allow-list में insert/update;
+- Staff registration/invite RPC;
+- किसी भी भविष्य के trusted service-role या maintenance path से registry write.
+
+### 121.2 Implementation विकल्प — owner/DBA review आवश्यक
+
+**विकल्प A — Canonical identity registry (सबसे स्पष्ट दीर्घकालीन मॉडल):**
+- एक authoritative registry में `user_id PRIMARY KEY` और identity class (Main Admin या Staff) रखें।
+- दोनों role-specific tables को उसी registry के composite key/class से बाँधें, ताकि class mismatch database constraint से असंभव हो।
+- Existing identities का controlled backfill, duplicate detection और migration ordering पहले तय करें।
+
+**विकल्प B — दोनों tables पर database-side guard:**
+- दोनों registries के INSERT और identity-changing UPDATE पर एक ही UUID-keyed transaction lock लें और opposite registry में membership जाँचें।
+- Direct browser writes बंद रहें; trusted write paths सीमित और documented हों।
+- Transaction isolation, lock ordering, concurrent inserts और existing-row backfill के व्यवहार को PostgreSQL में साबित करना आवश्यक है। केवल RPC/Edge pre-check को invariant न मानें।
+
+इनमें से कौन-सा मॉडल चुना जाए, यह DBA/owner की schema और migration-history समीक्षा के बाद तय हो। केवल एक registration RPC में `NOT EXISTS` जोड़ना concurrent या दूसरे write paths के विरुद्ध पर्याप्त प्रमाण नहीं है।
+
+### 121.3 Invite flow सुधार
+
+- पहले से Main Admin UUID/email को Staff invite target बनाने से fail closed करें।
+- यदि Auth invite API पहले ही email भेज चुकी हो और बाद में registration असफल हो, तो partial side effect को स्पष्ट रूप से संभालें; email भेजे जाने को rollback हुआ न बताएं।
+- Existing Auth user, pending invitation, duplicate Staff row और retry/idempotency के व्यवहार को स्पष्ट करें।
+- Client-supplied role या metadata को authorization source न मानें; Support role server-side fixed रहे।
+
+### 121.4 आवश्यक pgTAP / isolated PostgreSQL acceptance cases
+
+1. पहले से Main Admin UUID को Staff registry में जोड़ना अस्वीकार हो।
+2. पहले से Staff UUID को Main Admin allow-list में जोड़ना अस्वीकार हो।
+3. सामान्य Auth UUID को Support के रूप में जोड़ना सफल हो; वह Main Admin permission न पाए।
+4. Duplicate Staff registration स्पष्ट और सुरक्षित परिणाम दे।
+5. दोनों दिशाओं में concurrent cross-registry insert में अधिकतम एक transaction सफल हो।
+6. UPDATE द्वारा user_id बदलकर overlap बनाने का प्रयास अस्वीकार हो।
+7. Service-role registration भी वही invariant लागू करे; service role bypass न कर सके।
+8. Existing duplicate/overlap data मिलने पर migration fail-safe हो और कोई identity स्वतः promote/demote न करे।
+9. Main Admin-first helper का overlap regression test हो।
+10. Invite registration failure के बाद Auth invitation partial-side-effect path verify हो।
+
+### 121.5 वर्तमान स्थिति और सीमाएँ
+
+- यह remediation/acceptance design केवल audit documentation है।
+- कोई migration SQL, trigger, constraint, RPC, Edge Function या test file नहीं बदली गई।
+- कोई database query, PostgreSQL replay, pgTAP, invite, CI, deployment या merge नहीं किया गया।
+- Owner/DBA को विकल्प A या B चुनना है; तब तक cross-registry exclusivity **OPEN / NOT VERIFIED** रहेगी।
