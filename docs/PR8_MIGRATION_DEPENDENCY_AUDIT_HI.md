@@ -2347,3 +2347,36 @@ Migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` के
 - No source changes, DB execution, or payment/payout mutation performed.
 
 यह finding Section 99–102 के NULL-method/alternate-write-path caveats को सीमित करती है: official RPC का सामान्य valid manual-payment path method, evidence, booking और payout को एक coherent transaction में बाँधता है; remaining uncertainty alternate privileged paths, legacy rows, concurrency और actual runtime proof की है।
+
+
+## 104. Manual Payment evidence table access and audit trail — source review — 17 Nov 2026
+
+Migration `20261114125844_restore_financial_audit_core_schema.sql` में `srk_manual_payment_entries` की schema, grants, RLS और audit trigger जाँचे गए।
+
+### 104.1 Table constraints and direct access
+
+- `booking_id` पर UNIQUE constraint है: प्रति booking एक manual-payment evidence row.
+- `payment_method` NOT NULL और allowed values `cash`, `upi`, `bank_transfer` तक सीमित हैं.
+- Amount positive और maximum ₹1,00,00,000 तक constrained है; payment reference trimmed length 4–120; note maximum 250 characters.
+- `recorded_by` और `recorded_at` evidence provenance देते हैं.
+- RLS enabled है; `PUBLIC`, `anon`, `authenticated` से table privileges revoke हैं; table privileges केवल `service_role` को grant हैं.
+- इसलिए सामान्य authenticated client को इस table पर direct SELECT/INSERT/UPDATE/DELETE privilege नहीं मिलता; Admin RPC SECURITY DEFINER path से insert करता है.
+
+### 104.2 Audit evidence
+
+- `srk_audit_manual_payment_entries` AFTER INSERT/UPDATE/DELETE trigger `srk_capture_admin_audit_event()` चलाता है.
+- Audit function manual-payment के `booking_id`, `payment_method`, `amount` में बदलाव पहचानता है और `before_data`, `after_data`, `changed_fields`, actor, role, action तथा booking/entity IDs को `srk_admin_audit_events` में लिखता है.
+- Trigger INSERT/UPDATE/DELETE तीनों पर लगा है; इसलिए privileged service-role mutation पर भी audit event बनना चाहिए, बशर्ते trigger मौजूद हो और transaction commit हो.
+- Table स्वयं append-only नहीं है: service_role को ALL grant है और UPDATE/DELETE को रोकने वाला अलग immutable trigger इस migration में नहीं मिला. इसलिए यह audit-tracked है, database-enforced immutable नहीं.
+- Audit trail उसी transaction का हिस्सा है; privileged actor अगर audit table या trigger को bypass/disable कर सके तो यह अकेला tamper-proof external ledger नहीं है.
+
+### 104.3 निष्कर्ष और सीमा
+
+- Authenticated direct table access restriction: **source-confirmed**.
+- One-row-per-booking and field validation: **source-confirmed**.
+- UPDATE/DELETE before/after audit capture: **source-confirmed**.
+- Immutable/append-only enforcement against service_role: **not present in reviewed migration**.
+- Runtime grants/RLS, trigger execution and transaction behavior: **not tested against PostgreSQL**.
+- No SQL execution, database change, or payment mutation performed.
+
+सुझाव: यदि business requirement manual-payment evidence को immutable बनाना है, तो service-role writer को केवल controlled RPC तक सीमित रखें और correction के लिए append-only correction/reversal event model अपनाएँ; केवल mutable row + same-database audit trigger को tamper-proof न मानें।
