@@ -191,25 +191,25 @@ select ok(position('route_provider_settlement_verified' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'read-only reconciliation preserves Route settlement compatibility response keys');
 
-select ok(position("'route_ledger_retired_no_route_transfers'" in pg_get_functiondef(
+select ok(position('''route_ledger_retired_no_route_transfers''' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'Route compatibility status explicitly says the ledger is retired');
 
-select ok(position("'route_transfers', '[]'::jsonb" in pg_get_functiondef(
+select ok(position('''route_transfers'', ''[]''::jsonb' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'retired Route transfer rows are returned as an empty array');
 
-select ok(position("'route_transfer_count', 0" in pg_get_functiondef(
+select ok(position('''route_transfer_count'', 0' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'retired Route transfer count is reported as zero');
 
-select ok(position("'route_electrician_transfer_paise', 0" in pg_get_functiondef(
+select ok(position('''route_electrician_transfer_paise'', 0' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
-  and position("'route_platform_commission_transfer_paise', 0" in pg_get_functiondef(
+  and position('''route_platform_commission_transfer_paise'', 0' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'retired Route transfer amount fields are reported as zero');
 
-select ok(position("'route_provider_settlement_verified', false" in pg_get_functiondef(
+select ok(position('''route_provider_settlement_verified'', false' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'retired Route response does not claim provider settlement verification');
 
