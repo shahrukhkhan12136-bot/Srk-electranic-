@@ -1190,3 +1190,27 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - A concrete test syntax blocker is now recorded for GPT-2.
 - Next: continue the remaining Admin Panel integration/dependency map and prepare a concise GPT-2 handoff for the identified Staff/RBAC, support, refund contract, and SQL test issues. Runtime/pgTAP/provider testing remains deferred to consolidated approved staging QA.
 - No code or SQL changed; no refund/provider call, test execution, database write, deployment, merge, or mobile QA occurred.
+
+
+## Section 41 — Main live Storage और Edge Function availability cross-check (2026-11-17)
+
+### 1. Main live Storage catalog — read-only
+- Connected Main project पर `storage.buckets` और `storage.objects` की `pg_policies` सूची पढ़ी।
+- Admin UI का Support Attachment bucket नाम `srk-customer-support` है; Main live bucket catalog में यह bucket नहीं मिला। इससे Section 35/पहले की finding पुष्ट होती है कि Support Attachment signed-URL preview अभी live Main Storage पर उपलब्ध नहीं है।
+- KYC का वास्तविक live bucket ID `srk-electrician-verification` मिला; यह UI के KYC preview flow से मेल खाता है। Bucket private है।
+- KYC Storage policies में authenticated owner-folder upload, owner-or-Admin read, और owner-folder cleanup (केवल तब जब document row उस path को reference न करती हो) मौजूद हैं। ये policies Support bucket के लिए नहीं हैं।
+- इस query में Support bucket या उसके लिए कोई Storage object policy नहीं मिली। कोई bucket/policy create या modify नहीं की।
+
+### 2. Main live Edge Functions — read-only
+- Main project की deployed Edge Function सूची में केवल `send-sms-2factor` और `push-job-offer` नाम के Functions मिले।
+- Admin UI से संबंधित `admin-staff-management` और `electrician-phone-change` इस Main live deployed Function सूची में नहीं मिले। इसलिए इन दोनों की deployed implementation/OTP/RBAC behavior का live code audit इस project पर संभव नहीं हुआ।
+- कोई Function invoke, deploy, invitation, SMS/OTP, phone update या Auth action नहीं किया।
+
+### 3. Integration conclusion
+- Admin Panel में Support Attachment preview और Main Storage configuration के बीच confirmed availability gap है। इसे Support message/attachment tables, private bucket, object path contract, signed URL authorization और Staff/Admin read policy के पूरे reviewed bundle के रूप में reconcile करना होगा; केवल bucket बनाना पर्याप्त नहीं।
+- Staff Management तथा Electrician Phone Change UI/backend integration को release से पहले सही target environment में Function source/deployment contract के साथ सत्यापित करना होगा। Main में Function absent होने को source code defect या सुरक्षित behavior का प्रमाण न मानें।
+- KYC bucket की मौजूदा policies को Support bucket पर copy न करें; दोनों के ownership/path/access models अलग हो सकते हैं।
+
+### Verification boundary / no-write
+- Main Supabase catalog और deployed Edge Function inventory केवल read-only देखे गए। Feature `admin.html` source पहले से re-fetched है; कोई source edit या SQL migration नहीं की।
+- Production DDL/DML, Storage write, Function invocation/deployment, Auth/OTP/invitation, payment/refund/payout, merge और mobile QA नहीं हुए।
