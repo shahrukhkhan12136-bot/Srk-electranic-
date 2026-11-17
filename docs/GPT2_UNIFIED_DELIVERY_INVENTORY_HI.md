@@ -683,3 +683,9 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - Follow-up static review of 3AF caught a critical omission: request helpers accepted `deadlineAt`, but the Handler had not initialized it. This is now corrected at the very start of `exports.handler` with `Date.now() + HANDLER_BUDGET_MS`; without this, the deadline helper would fail before completing the request.
 - Pre-evidence authentication and two internal read calls are capped at 5 seconds each (rather than 10 seconds) while preserving the 32-second evidence/finalization reserve. Razorpay provider requests remain capped at 15 seconds but are also bounded by the same remaining budget. Evidence save keeps a 17-second reserve for finalization; the finalization RPC is capped at 15 seconds.
 - Latest root source blob SHA `deeb64d5ac6338b0d4a380604ba80e29d137f82f`. This corrects the earlier 3AF source statement; it does not mean tests were executed. The regression test is still source-only; no Node test, CI, DB, live runtime, deployment, production, or mobile QA was run.
+
+
+## 3AH. 17 November 2026 — Deterministic observation UUID format correction
+
+- Static standards review found that `stableObservationId` derives 128 bits from SHA-256, but had marked the UUID version nibble as version 5 (which conventionally identifies the SHA-1 namespace/name algorithm). Changed the version nibble to 8, the custom UUID format, while retaining the RFC variant bits and deterministic SHA-256 derivation. This is a format/semantics correction; the ID remains stable for the same refund-record ID and provider payload hash.
+- Updated the regression assertion from UUID version 5 to UUID version 8. Test remains unexecuted; no runtime/CI/DB test was run.
