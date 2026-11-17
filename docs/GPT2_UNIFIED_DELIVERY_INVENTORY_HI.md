@@ -638,3 +638,13 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - निष्कर्ष: Netlify Functions के synchronous 60-second ceiling को live payment path पर लागू तथ्य न मानें; Vercel की Hobby limits भी इन handlers पर लागू तथ्य नहीं हैं, जब तक यह सिद्ध न हो कि वे Vercel Function के रूप में deploy हुए हैं। अभी दोनों handler paths के लिए platform ceiling unverified है।
 - अगला सुरक्षित कदम: Netlify site/deployment का read-only evidence या Razorpay Dashboard में configured webhook endpoint domain प्राप्त करना; secrets/tokens माँगे या expose किए बिना। उसके बाद ही platform timeout बनाम source request budgets तय करें।
 - कोई source/runtime behavior नहीं बदला। कोई Netlify/Vercel setting, function, deployment, webhook endpoint, DB, provider, CI, merge या mobile QA नहीं बदला/चलाया गया।
+
+
+## 3AC. 17 November 2026 — Netlify deployment gate और live host evidence का repository audit
+
+- Feature branch README.md स्पष्ट रूप से वर्तमान deployment target Netlify बताता है और Razorpay webhook, refund executor, refund status तथा refund recovery को Netlify Functions के रूप में सूचीबद्ध करता है।
+- netlify.toml में functions = netlify/functions और /api/razorpay-webhook, /api/razorpay-refund, /api/razorpay-refund-status, /api/razorpay-refund-recovery के Netlify Function redirects मौजूद हैं।
+- NETLIFY_PIPELINE_SETUP_HI.md कहता है कि pipeline patch स्वयं live deploy नहीं करता। ADMIN_SETUP_HINDI.md में स्पष्ट निर्देश है कि Production publishing स्थगित रखें; केवल Dashboard deploy status देखें और audit, migration reconciliation, testing तथा owner की स्पष्ट अनुमति से पहले resume/upgrade/deploy न करें।
+- इसलिए repo evidence Netlify को intended deployment platform सिद्ध करता है, लेकिन live Netlify Site/Deploy record या Razorpay Dashboard endpoint URL उपलब्ध न होने से वर्तमान webhook host और Refund Recovery deployment status की पुष्टि अभी नहीं हुई। Vercel का READY Production site अलग तथ्य है; उससे Netlify functions के live होने का निष्कर्ष नहीं निकाला जा सकता।
+- इस चैट में कोई Netlify connector/authorized Netlify deployment read tool उपलब्ध नहीं मिला। अगली पुष्टि owner-controlled Netlify Dashboard के Deploys view अथवा Razorpay Dashboard में configured webhook URL के domain से होगी; secret values की जरूरत नहीं। जब तक पुष्टि न हो, platform timeout limits को handlers पर लागू मानकर code change नहीं करेंगे।
+- कोई Netlify/Vercel deploy pause/resume, upgrade, environment change, webhook edit, source handler change, DB operation, CI/runtime test या mobile QA नहीं किया गया। Owner approval gate यथावत है।
