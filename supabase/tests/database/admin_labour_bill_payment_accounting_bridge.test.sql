@@ -1,5 +1,5 @@
 begin;
-select plan(19);
+select plan(23);
 
 select has_function('public','srk_admin_record_new_booking_cash_payment',
   array['uuid','text','text'],
@@ -102,6 +102,29 @@ select ok(position('booking_commission_payout_ledger_mismatch' in lower(pg_get_f
   and position('v_payout.platform_commission' in lower(pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure)))>0,
   'Admin financial reconciliation flags booking-to-payout commission ledger divergence');
+
+
+select ok(position('v_booking.razorpay_order_id<>p_order_id' in lower(pg_get_functiondef(
+  'public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure)))>0
+  and position('v_booking.razorpay_order_id<>p_order_id' in lower(pg_get_functiondef(
+  'public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure)))<
+  position('if v_booking.payment_status=''paid''' in lower(pg_get_functiondef(
+  'public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure))),
+  'online settlement validates the original Razorpay order before idempotent retry handling');
+
+select ok(position('round(v_booking.amount_paid*100)::bigint<>p_amount_paise' in lower(pg_get_functiondef(
+  'public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure)))>0,
+  'same-payment retry must match the durable original captured amount');
+
+select ok(position('if v_booking.payment_status=''paid''' in lower(pg_get_functiondef(
+  'public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure)))<
+  position('where booking_id=p_booking_id and status=''reserved''' in lower(pg_get_functiondef(
+  'public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure))),
+  'idempotent paid retry is handled before summing fee rows already transitioned from reserved');
+
+select ok(position('RETRY_CAPTURED_AMOUNT_DOES_NOT_MATCH_ORIGINAL_COLLECTION' in pg_get_functiondef(
+  'public.srk_service_role_record_online_booking_payment(uuid,text,text,bigint)'::regprocedure))>0,
+  'same payment ID with a changed captured amount is rejected');
 
 select * from finish();
 rollback;
