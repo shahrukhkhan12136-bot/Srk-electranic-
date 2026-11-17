@@ -5221,3 +5221,38 @@ Audit core migration `20261114125844_restore_financial_audit_core_schema.sql` (B
 यह अपेक्षित event chain source code से निकला test design है, observed runtime result नहीं। Provider reconciliation migration `20261115250000_harden_refund_reconcile_full_amount.sql` में processed branch booking update के बाद payout post-condition re-read नहीं करती; Section 168 का यह gap कायम है। इसीलिए test को केवल audit rows नहीं, booking/payout final state भी स्वतंत्र रूप से assert करना चाहिए।
 
 **Verdict:** तीन-entity audit chain के लिए अलग behavioral assertions आवश्यक हैं। कोई migration या test file नहीं बदली गई; कोई SQL, pgTAP, DB query, replay, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+
+## 170. PostgreSQL Trigger Firing Order और Audit Timestamp Assumptions
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Audit और payout trigger definitions का static ordering review; कोई database execution नहीं।
+
+### 1. एक ही Booking UPDATE पर दो AFTER Triggers
+
+Audit core migration (Blob `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`) में:
+- `srk_audit_service_bookings`: `AFTER INSERT OR UPDATE OR DELETE`
+- यह `srk_capture_admin_audit_event()` चलाता है।
+
+Payout reconciliation migration (Blob `b12da77471d510b55f798bd089597d866d79a133`) में:
+- `srk_reconcile_electrician_payable`: `AFTER INSERT OR UPDATE OF ... payment_status ...`
+- यह `srk_create_electrician_payable()` चलाता है।
+
+दोनों Booking table पर AFTER UPDATE event में भाग लेते हैं। PostgreSQL में एक ही event/timing के समान-स्तर के triggers नाम के alphabetical क्रम में fire होते हैं। इन नामों में `srk_audit_service_bookings` पहले और `srk_reconcile_electrician_payable` बाद में आता है।
+
+इसका अर्थ: Booking audit trigger पहले booking का `paid → refunded` event लिख सकता है; उसके बाद payout reconciliation trigger payout row बदलता है, और उस payout row का अपना audit trigger payout event लिखता है। यह क्रम source definitions से निकला है; runtime trace नहीं।
+
+### 2. Test Design पर असर
+
+- Audit rows का insertion order या `created_at` timestamp business transition order का प्रमाण न माना जाए।
+- Test को तीनों entity rows को `entity_type + entity_id + booking_id` से खोजकर उनके JSON snapshots और changed_fields independently assert करने चाहिए।
+- Payout audit event booking trigger के nested payout UPDATE से आता है; उसे booking audit row में मिलाकर न जाँचा जाए।
+- यदि trigger names बदले जाएँ, ordering assumption बदल सकती है; इसलिए test correctness को alphabetical order पर निर्भर नहीं बनाना चाहिए।
+- Transaction rollback test में booking, payout और सभी generated audit rows की atomic rollback जाँची जाए।
+
+### 3. अतिरिक्त सीमा
+
+Audit triggers `AFTER INSERT OR UPDATE OR DELETE` हैं और generic audit function allow-listed fields में वास्तविक बदलाव न होने पर event छोड़ देता है। Payout trigger booking update के अंदर payout row update करता है; इसलिए nested update के audit event को भी अलग assertion चाहिए।
+
+**Verdict:** Source में booking और payout audit chain के trigger definitions मौजूद हैं। Firing order का निष्कर्ष PostgreSQL trigger semantics और trigger names पर आधारित static analysis है; कोई runtime order, timestamp behavior या audit-row output verify नहीं हुआ। कोई SQL/test/migration file नहीं बदली गई; DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
