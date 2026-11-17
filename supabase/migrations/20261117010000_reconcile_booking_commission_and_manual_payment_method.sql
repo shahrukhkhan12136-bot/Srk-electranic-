@@ -96,7 +96,7 @@ on public.service_bookings
 for each row
 execute function public.srk_set_booking_commission_before_payout();
 
--- The payout AFTER trigger is alphabetically earlier (srk_reconcile_...).
+-- The existing payout AFTER trigger (trg_srk_create_electrician_payable) sorts before this parity trigger.
 -- This validation runs after that ledger write in the same transaction.
 create or replace function public.srk_validate_booking_commission_payout_parity()
 returns trigger
