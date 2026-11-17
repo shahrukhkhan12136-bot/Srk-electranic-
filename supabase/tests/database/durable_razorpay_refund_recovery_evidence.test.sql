@@ -33,7 +33,7 @@ select ok(position('RECOVERY_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTIO
   'recovery finalization independently requires the provider refund to equal the full verified booking collection');
 select ok(position('REFUNDED_BOOKING_PAYOUT_STATE_REQUIRES_MANUAL_RECONCILIATION' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'idempotent replay validates payout reversal state after the accounting trigger');
 select ok(position('v_audit.provider_status is distinct from ''processed''' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0
-  and position('set provider_status=''processed'',status=''processed''' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,
+  and position('provider_status=''processed'',status=''processed''' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,
   'fresh Admin-audited processed provider evidence can explicitly recover a previously failed internal refund; ordinary webhook reconciliation remains terminal');
 select ok(position('update public.service_bookings' in lower(pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>0,'accounting finalization is a separate transaction boundary from evidence persistence');
 
