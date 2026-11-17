@@ -4795,3 +4795,50 @@ GitHub से दोनों शाखाओं की वर्तमान �
 4. कोई SQL execution, database replay, pgTAP, CI dispatch, deployment या production/shared database operation नहीं किया गया।
 
 **स्थिति:** Static diff review दर्ज; schema-history verification pending; integration/merge readiness अभी स्वीकृत नहीं।
+
+
+## 161. Migration History Gate — Route Ledger Retirement और बाद के RPC का विरोधाभास
+
+**तारीख:** 17 नवंबर 2026  
+**जाँची गई शाखाएँ:** Feature Branch और GPT-2 Audit Branch
+
+### 1. Route ledger का migration क्रम प्रमाणित
+
+दोनों branches में ये migrations और समान Blob SHA मिले:
+
+| क्रम | Migration | Blob SHA | स्रोत में प्रभाव |
+|---|---|---|---|
+| 1 | `20261109020000_create_server_only_razorpay_route_transfer_ledger.sql` | `cc7ac608877c8fcf629c51720e8c7f1620f55f71` | `public.srk_route_transfers` बनाती है |
+| 2 | `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql` | `b6b0fd06c78b40a9b9fe3fdf0dae9faf16ee9bc2` | `drop table public.srk_route_transfers;` चलाती है |
+
+Master Checklist भी Main DB का नवीनतम लागू migration version `20261115092149` बताती है और Route ledger retirement दर्ज करती है। यह दस्तावेज़ी/Repository evidence है; इस चरण में कोई DB query नहीं चलाई गई।
+
+### 2. Feature Branch में बाद की RPC migrations फिर retired table पढ़ती हैं
+
+- `20261115170000_admin_route_transfer_accounting_reconciliation.sql` — Feature Branch Blob `943dd52e21281e5a41e6b85332dc320d740ad4c7`; इसमें `srk_route_transfers` के कई SELECT references हैं।
+- `20261115180000_admin_route_recipient_and_settlement_validation.sql` — Feature Branch Blob `31e04cf24d6f7f5e71d8dc28159878e01688103c`; इसमें भी Route ledger के SELECT references और recipient/settlement validation हैं।
+- दोनों migrations की timestamp/version retirement migration `20261115092149` के बाद की है। इस क्रम में table को दोबारा बनाने वाली कोई migration इन जाँचे गए files में नहीं मिली।
+
+### 3. Audit Branch का संस्करण
+
+उन्हीं दोनों paths के Audit Branch versions:
+
+- `20261115170000_admin_route_transfer_accounting_reconciliation.sql` — Blob `9238fde16407710c208cc3d2156526c361cf4aea`
+- `20261115180000_admin_route_recipient_and_settlement_validation.sql` — Blob `58042f828aeb1a951b36191d68a0573cdc15fcc0`
+
+इनमें `srk_route_transfers` का कोई reference नहीं है। Response compatibility के लिए Route fields zero/empty रखे गए हैं और retired ledger से provider settlement infer नहीं किया गया।
+
+### 4. तकनीकी निष्कर्ष
+
+- Migration chain में Route ledger पहले create, फिर drop है।
+- Feature Branch के बाद के PL/pgSQL RPC source में उसी dropped relation को पढ़ने वाले statements मौजूद हैं। इसलिए उन RPCs के invoke होने पर missing-relation runtime failure का जोखिम है।
+- PL/pgSQL statements के runtime planning/validation का वास्तविक व्यवहार इस audit में database पर execute करके नहीं जाँचा गया। अतः इसे runtime-confirmed failure नहीं, बल्कि स्पष्ट source/schema-history incompatibility माना जाए।
+- Audit Branch का retired-ledger implementation migration history के साथ अधिक संगत है।
+
+### 5. शेष dependency प्रश्न
+
+Refund/payout chain के लिए payout base table, refund table और trigger definitions की migration provenance अभी पूरी तरह स्थापित नहीं हुई। Feature Branch के refund reconciliation में payout row locking और refund-owned blocked payout को refunded करने का logic है; Audit Branch में historical blocked payout को previous state पर लौटाने का logic है। इन दोनों में निर्णय लेने से पहले संबंधित trigger/function source और `previous_payout_note` field provenance की अलग जाँच आवश्यक है।
+
+**अगला सुरक्षित कदम:** Feature/Audit Branch में refund/payout base schema और trigger migrations की exact source provenance खोजना; कोई migration apply या database operation नहीं करना।
+
+**सीमा:** कोई SQL execution, migration replay, pgTAP, CI dispatch, deployment, merge या cherry-pick नहीं किया गया।
