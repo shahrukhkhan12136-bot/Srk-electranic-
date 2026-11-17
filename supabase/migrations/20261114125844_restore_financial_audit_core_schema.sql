@@ -252,7 +252,7 @@ BEGIN
     WHEN 'electrician_application' THEN ARRAY['verification_status','active']
     WHEN 'manual_payment' THEN ARRAY['booking_id','payment_method','amount']
     WHEN 'manual_refund' THEN ARRAY['booking_id','payment_entry_id','amount']
-    WHEN 'electrician_payout' THEN ARRAY['booking_id','payout_status','payout_method','payout_reference','payout_note','electrician_payable','platform_commission','paid_at']
+    WHEN 'electrician_payout' THEN ARRAY['booking_id','electrician_profile_id','razorpay_payment_id','gross_service_amount','materials_amount','platform_commission','electrician_payable','payout_status','payout_method','payout_reference','payout_note','paid_by','paid_at']
     ELSE ARRAY[]::text[] END;
   v_entity_id := coalesce(nullif(v_new->>'id','')::uuid,nullif(v_old->>'id','')::uuid);
   v_booking_id := CASE WHEN v_entity_type='booking' THEN v_entity_id
