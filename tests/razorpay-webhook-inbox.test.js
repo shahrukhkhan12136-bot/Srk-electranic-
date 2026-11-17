@@ -26,6 +26,27 @@ const event = (payload, eventId = "evt_test_123", signatureOverride) => {
   };
 };
 const rpcName = url => String(url).split("/").pop();
+test("reads Razorpay headers case-insensitively", async t => {
+  let claimedEventId = null;
+  global.fetch = async (url, options = {}) => {
+    const fn = rpcName(url);
+    if (fn === "srk_service_claim_razorpay_webhook_event") {
+      claimedEventId = JSON.parse(options.body).p_event_id;
+      return response(200, { success: true, duplicate: true, should_process: false, state: "processed" });
+    }
+    throw new Error("unexpected RPC " + fn);
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const incoming = event({ event: "payment.authorized" }, "evt_mixed_case");
+  incoming.headers = {
+    "X-RaZoRpAy-SiGnAtUrE": incoming.headers["x-razorpay-signature"],
+    "X-RaZoRpAy-EvEnT-Id": "evt_mixed_case"
+  };
+  const result = await handler(incoming);
+  assert.equal(result.statusCode, 200);
+  assert.equal(claimedEventId, "evt_mixed_case");
+});
+
 
 test("rejects invalid signature before touching the database", async t => {
   let calls = 0;
