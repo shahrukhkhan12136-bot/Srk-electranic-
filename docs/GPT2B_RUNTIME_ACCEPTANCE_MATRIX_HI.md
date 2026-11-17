@@ -187,3 +187,9 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - `electrician_support_ticket_security.test.sql` में एक अतिरिक्त catalog-level pgTAP assertion जोड़ा गया। यह चार legacy Main Admin inbox RPCs पर एक साथ जाँचता है: `SECURITY DEFINER`, खाली `search_path`, authenticated EXECUTE और anon/PUBLIC EXECUTE का अभाव।
 - इससे Staff के अलग RBAC RPCs और पुराने Main Admin-only RPCs के बीच privilege boundary की जाँच अधिक पूर्ण होती है। Test plan अब 17 है।
 - यह source-only assertion है; PostgreSQL/pgTAP execute नहीं हुआ। Runtime status Pending ही है।
+
+
+### Customer Support Staff RPC privilege boundary — 17 November 2026 (source-only)
+
+- `admin_staff_rbac_foundation.test.sql` में एक catalog-level pgTAP assertion जोड़ा गया। यह चार Customer Support Staff RPCs (assigned complaint list, thread read, reply, status update) के लिए `VOLATILE SECURITY DEFINER`, खाली `search_path`, authenticated EXECUTE तथा anon/PUBLIC EXECUTE निषेध जाँचता है।
+- Test plan 69 से 70 हुआ। यह source assertion है; PostgreSQL/pgTAP execute नहीं हुआ और Runtime status Pending है।
