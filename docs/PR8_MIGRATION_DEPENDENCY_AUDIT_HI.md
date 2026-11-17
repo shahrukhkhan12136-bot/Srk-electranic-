@@ -3279,3 +3279,46 @@ Audit Branch की शुरुआती sequence में पहले 18 mig
 - is_srk_admin() और srk_is_admin() अलग function names हैं; relevant earliest callers के पहले दोनों की availability/compatibility स्पष्ट होनी चाहिए।
 - अगले pass में 20261113–20261117 support, financial audit, RBAC, refund, payout, Route, push और search_path migrations की object-level prerequisites map करनी हैं।
 - कोई SQL execution, PostgreSQL parser/replay, pgTAP, database query/write, CI dispatch, deployment या merge नहीं किया गया।
+
+## 131. Support, financial base और customer RPC dependency chain — 17 Nov 2026
+
+इस pass में Support conversation, Finance audit core, customer rate-tier, receipt/history और dispatch migrations के source bodies/DDL points पढ़े गए। यह static source-level dependency mapping है।
+
+### 131.1 Support conversation chain
+
+- 20261110040000_customer_admin_complaints.sql पहले srk_booking_complaints और srk_booking_complaint_events बनाती है; complaint FK service_bookings और customer/auth ownership पर निर्भर है।
+- 20261113220000_customer_support_conversation_schema.sql स्पष्ट रूप से पहले complaint base की जरूरत रखती है: messages और attachments tables complaint IDs को FK करती हैं। यह composite attachment FK के लिए messages(id, complaint_id) unique index पहले बनाती है। यह storage.objects, storage.buckets और public.is_srk_admin() भी इस्तेमाल करती है।
+- 20261113230000_support_attachment_paths_and_admin_message_list.sql 13220000 में बने message/attachment tables और complaint base पर निर्भर है; यह उन्हीं tables पर customer/admin listing RPCs बनाती है।
+- 20261114201428_customer_profile_saved_addresses_private_storage.sql के comment और statements बताते हैं कि customer-support bucket तथा access helper पहले से मौजूद होने चाहिए; यह support bucket की broader delete policy हटाकर linked attachment protection वाली policy बनाती है।
+- इसलिए provisional chain: complaint base (10040000) → support message/attachment + bucket/helper (13220000) → Admin/customer attachment listing (13230000) → avatar/saved-address migration का support delete-policy tightening (14201428).
+- Storage schemas/roles/extensions और helper availability का exact baseline अलग से verify होना बाकी है।
+
+### 131.2 Financial audit core chain
+
+- 20261114125844_restore_financial_audit_core_schema.sql सात core relations बनाती है: srk_booking_labour_bills, srk_manual_payment_entries, srk_electrician_payouts, srk_admin_audit_events, srk_razorpay_refunds, srk_booking_refund_requests और srk_manual_refund_entries।
+- उसी migration में RLS, grants, indexes, audit capture functions और service_bookings/electrician_profiles/electrician_applications तथा finance tables पर audit triggers बनते हैं।
+- इसके comments में स्पष्ट है कि labour bill table को work-timer migration से पहले लाया जा रहा है और यह 14190000 receipt तथा 14200000 payment-history RPCs से पहले होना चाहिए।
+- 20261114190000_customer_receipt_immutable_labour_amount.sql srk_booking_labour_bills तथा service_bookings payment fields पढ़ती है।
+- 20261114200000_customer_payment_refund_history_rpc.sql srk_booking_refund_requests, srk_razorpay_refunds और srk_manual_refund_entries के साथ service_bookings पढ़ती है।
+- इसलिए financial base core (14125844) → receipt (14190000) और payment/refund history (14200000) एक स्पष्ट dependency edge है।
+- Base tables की FK dependencies service_bookings, electrician_profiles, auth.users और कुछ payment columns पर हैं; इनका authoritative starter schema और column contract फिर भी जरूरी है।
+
+### 131.3 Customer rate-tier / dispatch chain
+
+- 20261114160000_customer_selected_rate_tier_and_server_estimate.sql service_bookings, electrician_applications, electrician_profiles और job_offers पर columns/functions/triggers बदलती है; यह srk_private schema स्वयं बनाती है, फिर srk_private.electrician_rate_tier_authorizations table बनाती है।
+- यह existing public.is_srk_admin() और existing private/public offer-dispatch functions को उपयोग/replace करती है। इसलिए Admin helper तथा शुरुआती offer/booking baseline objects पहले चाहिए।
+- 20261114210000_sequential_nearest_offer_dispatch.sql job_offers में expires_at जोड़ती है, private dispatch/candidate tables बनाती है और broadcast_booking_job तथा offer response/expiry functions replace करती है। यह 14160000 में परिभाषित private.srk_offer_booking_to_eligible_electricians(uuid) को भी replace करती है।
+- इसलिए selected-rate-tier and offer eligibility (14160000) → sequential dispatch replacement (14210000) source-level ordering dependency है।
+- 20261114150000_customer_booking_submission_idempotency.sql booking request key/fingerprint columns और unique index जोड़ती है; यह service_bookings baseline पर निर्भर है।
+- 20261114180000_harden_customer_avatar_object_integrity.sql customer profile/avatar storage contract को harden करती है; 14201428 में srk_customer_profiles और avatar bucket बनने के बाद इसका exact placement/compatibility runtime review माँगता है। इस pass में इसे standalone order-safe घोषित नहीं किया गया।
+
+### 131.4 शुरुआती क्रम के लिए अभी भी खुले gates
+
+1. Complaint base और Storage objects का approved baseline.
+2. Finance core से पहले सभी referenced booking/profile/payment columns की exact definition.
+3. Admin helper names (is_srk_admin vs srk_is_admin) और earliest migration availability.
+4. 14180000 avatar hardening तथा 14201428 profile/storage creation का वास्तविक dependency order — source bodies का अलग targeted comparison जरूरी।
+5. Offer dispatch function replacements का exact final body और triggers का replay behavior.
+6. यह mapping 89/89 migrations की पूर्ण transitive dependency graph नहीं है; अभी शेष mid/late migrations का review जारी है।
+
+No SQL, PostgreSQL replay, pgTAP, DB query/write, CI dispatch, deployment or merge performed.
