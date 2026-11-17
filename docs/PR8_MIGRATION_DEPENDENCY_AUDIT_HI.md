@@ -4201,3 +4201,42 @@ Workflow blob: `8cdd128fb69227fee82b5084f8b78634f13ffcb2`.
 मौजूदा Workflow में Local Supabase execution मौजूद है, लेकिन baseline Production-derived schema है। इसलिए इसे पूरी तरह Local-Only migration replay नहीं माना जा सकता। Audit Branch की complete clean replay और pgTAP execution अभी **Not Run / Unverified** हैं।
 
 कोई workflow, package script, migration या test file edit नहीं की गई। कोई CI dispatch, remote database query, schema export, SQL execution, deployment, merge या Production operation नहीं हुआ।
+
+
+### 147. Audit Branch Migration Inventory का Fresh Reconciliation — 17 Nov 2026
+
+इस चरण में GitHub के Audit Branch पर `supabase/migrations/` directory की पूरी current listing दोबारा पढ़ी गई। यह filename/blob inventory review है; कोई SQL migration execute नहीं हुई।
+
+#### 147.1 वर्तमान Inventory
+
+- कुल SQL migration files: **89**
+- अलग-अलग filename version prefixes: **88**
+- Duplicate version prefix: **20261109** — दो अलग filenames उसी version से शुरू होते हैं:
+  - `20261109_allow_quote_approval_booking_states.sql`
+  - `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+- दोनों अलग migration contents हैं; इसलिए migration history में एक ही version identifier का collision मौजूद है।
+- एक अन्य pair `20261115120001_fix_multi_profile_electrician_labour_bill_access.sql` और `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql` का blob SHA समान है: `e3bdf2624c224322a6ac4c99f2ae6e77b1be4774`. यह duplicate content है, पर version prefix अलग है।
+
+#### 147.2 हाल की Migration Chain की स्थिति
+
+Current Audit Branch listing में ये अंतिम migrations मौजूद हैं:
+- `20261116100000` से `20261116170000`: Staff permission volatility तथा RPC search_path hardening।
+- `20261116200000_restore_service_bookings_amount_paid.sql`
+- `20261116210000_attach_electrician_payout_reconciliation_trigger.sql`
+- `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`
+
+अंतिम Accounting Bridge migration Audit Branch में मौजूद है; इसे Feature Branch पर स्वतः उपलब्ध या लागू मानना गलत होगा।
+
+#### 147.3 Replay Ordering पर प्रभाव
+
+1. दो `20261109` migrations का समान version-prefix collision clean replay से पहले resolve करना अनिवार्य है। सिर्फ filename sorting से यह प्रमाणित नहीं होता कि Supabase migration history दोनों को अलग-अलग स्वीकार करेगी।
+2. समान content वाले दो अलग-version migrations को बिना इतिहास/उद्देश्य जाँचे हटाना या consolidate करना सुरक्षित नहीं है; उनके version records अलग हो सकते हैं।
+3. पहले से दर्ज bootstrap dependency (`public.is_srk_admin()`), duplicate labour-bill table definitions, Route ledger retirement/reconciliation, refund finalizer replacements और final accounting RPC replacement को dependency graph में explicit prerequisite edges के रूप में रखना होगा।
+4. Migration filenames का क्रम एक प्रारंभिक ordering है, dependency proof नहीं। प्रत्येक migration के referenced tables, functions, types, policies, triggers और grants के producer/consumer संबंध की जाँच अभी आवश्यक है।
+5. `supabase/config.toml` इस Audit Branch पर उपलब्ध नहीं मिला; इसलिए इस review से CLI migration discovery/configuration behavior की पुष्टि नहीं की जा सकती।
+
+#### 147.4 निष्कर्ष
+
+Fresh GitHub listing ने 89 files / 88 version prefixes की inventory की पुष्टि की और यह भी दिखाया कि latest accounting bridge migration chain में शामिल है। सबसे स्पष्ट replay blocker अभी भी duplicate `20261109` version prefix है। Full dependency graph और blank-database replay अभी **Not Run / Unverified** हैं।
+
+कोई migration file, filename, package script, workflow या test edit नहीं किया गया। कोई SQL, database, CI, deployment, merge या Production operation नहीं हुआ।
