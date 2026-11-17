@@ -212,3 +212,15 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - लेकिन RPC return shape में `commission_amount` अभी भी शामिल है। Electrician UI इसे दिखा रहा है—इसका UI conflict ऊपर दर्ज है। API response से field हटाने पर GPT-1 UI coordination और function return-type migration की जरूरत होगी; इस audit में कोई API contract change नहीं किया।
 - `srk_admin_mark_electrician_payout_paid()` Main Admin gate, booking-first फिर payout-row lock, केवल pending payout transition, verified completed/paid booking, immutable labour bill, assigned electrician match और payout amount parity जाँचता है। Function पर `PUBLIC` revoke और authenticated EXECUTE grant मौजूद है।
 - ये source/migration-chain checks हैं। ACL/catalog state, lock contention, concurrent refund-vs-payout, और settlement behavior को PostgreSQL/pgTAP runtime में verify नहीं किया गया; runtime acceptance Pending है।
+
+
+
+### Storage Support policy interaction review — 17 November 2026 (source-only, scoped)
+
+- Active branch HEAD was verified as `73723d1d96cbf193bbb118ace5ad3f9b0249a74f` before this review.
+- Inspected all 4 migrations that define Storage policies among the 12 storage/support-related migrations: Customer Support conversation schema, Customer private-avatar storage, linked-support-attachment deletion guard, and assigned-Staff attachment read.
+- Customer Support bucket policies are bucket-scoped to `srk-customer-support`: upload checks Customer complaint ownership; read checks Customer/Main Admin or the separately added currently assigned Staff attachment helper; delete checks the row-locking unlinked-object helper. The earlier broad Customer delete policy and later unlinked-only policy are explicitly dropped before the final delete policy is created.
+- Avatar read/upload/delete policies are separately scoped to `srk-customer-avatars` and Customer ownership; they do not grant access to Customer Support objects.
+- No second Support-bucket DELETE policy or broader Support-bucket SELECT policy was found in these inspected policy-defining migrations. The legacy setup/schema SQL files inspected do not define `storage.objects` policies.
+- Scope limitation: this was a source review of policy-defining/support-related migrations and setup/schema SQL, not a live `pg_policies` catalog dump. Therefore it does not prove that the deployed Supabase project has no manually-created or dashboard-added permissive policies. Full catalog verification and delete/read behavior remain runtime acceptance items.
+- No migration or application code changed in this audit; no PostgreSQL, pgTAP, Storage API, Node test suite, or CI was executed.
