@@ -4685,3 +4685,25 @@ Track A को Track B का सफल विकल्प न मानें�
 - [ ] PostgreSQL replay और pgTAP execution के लिए अलग disposable local test evidence प्राप्त करना।
 
 **Cross-check verdict:** GPT-1 handover के 10/11 commit references GitHub पर मिले और उन सभी पर Vercel/Netlify statuses success हैं। Node workflow success का evidence 4/11 listed SHAs पर मिला। यह CI cross-check है, database/runtime sign-off नहीं। PR #8 OPEN / Draft / Unmerged ही रहे।
+
+
+### 158. GPT-1 Commit Ancestry: Feature Branch बनाम GPT-2 Audit Branch — 17 Nov 2026
+
+GitHub compare endpoint से Section 157 में मिले सभी 10 commits की दोनों branches के विरुद्ध ancestry जाँची गई।
+
+#### 158.1 परिणाम
+
+- **Feature Branch `feat/customer-login-first-dashboard-20261114`: 10/10 commits ancestry में मिले।** हर compare में merge-base ठीक वही GPT-1 commit SHA था और `ahead_by=0` रहा। इसका अर्थ है कि ये commits Feature Branch की history में शामिल हैं।
+- **GPT-2 Audit Branch `chore/pr8-replay-audit-20261116-v2`: 0/10 commits ancestry में मिले।** हर compare का status `diverged` रहा; common merge base `dc8b4f723ac7ae896eeb516336dd4b28577390b5` था। इसलिए GPT-1 के commits Audit Branch में सीधे शामिल नहीं हैं।
+- यह ancestry check है; समान code/content किसी अलग commit से मौजूद हो सकता है। इसे तय करने के लिए अलग file/blob-level comparison चाहिए।
+
+#### 158.2 व्यावहारिक निष्कर्ष
+
+1. GPT-1 का audited काम Feature Branch history पर है।
+2. GPT-2 का migration/dependency report अलग Audit Branch पर है।
+3. दोनों branches को सीधे merge या cherry-pick करना अभी उचित नहीं; duplicate migrations, overlapping changes और contract drift का पहले file-level reconciliation जरूरी है।
+4. Missing GPT-1 SHA `4638c7277c62cdf3fb23cd1899b8683775c4807d` अभी भी verify नहीं हुआ है।
+
+**Verification scope:** 10 known commit SHAs × 2 branches = 20 compare checks; सभी 20 सफलतापूर्वक लौटे। कोई branch बदली नहीं गई, कोई merge/cherry-pick नहीं किया गया और कोई database/CI operation नहीं हुआ।
+
+**Verdict:** GPT-1 Feature Branch में, GPT-2 Audit Branch में। संयुक्त Integration Branch अभी HOLD पर रहे।
