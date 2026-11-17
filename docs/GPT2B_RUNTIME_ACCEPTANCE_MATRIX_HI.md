@@ -333,3 +333,13 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Cross-checked Admin refund review RPCs: both require authenticated Main Admin identity internally, lock the refund-request row for decisions, enforce allowed status transitions, and only record review decisions; approval does not itself call a payment provider or issue a refund. Existing pgTAP test declares 16 assertions for RPC privilege gates and state/transition contracts; it does not replace runtime authorization checks.
 - No new source defect confirmed in these inspected paths. No source migration/app code changed in this audit. No PostgreSQL catalog query, SQL compile, migration replay, pgTAP, Node suite, CI, provider API, deployment, merge, cherry-pick, or production setting executed/changed.
 - GPT-2 official checklist remains **27/39 = 69%**; runtime acceptance remains **60/60 Pending**.
+
+
+### Support Staff financial-permission isolation cross-check — 17 November 2026 (source-only)
+
+- Rechecked the current Support RBAC migration and its pgTAP source. The Support role is seeded with exactly seven permissions: customer support read/reply/status, electrician support read/reply/status, and basic booking context. The permission test explicitly rejects finance, payment, wallet, refund, payout, cancellation-fee, KYC, staff-management, audit, cancellation-decision, and private-contact permissions.
+- Permission helper requires an active Staff registry row, an exact extant Auth session, a non-revoked tracked Staff session, and the mapped role permission; it holds shared locks on the Staff registry/session rows so suspension/revocation serializes with in-flight authorized work. Main Admin is intentionally handled as a separate identity class.
+- Customer and Electrician Staff inboxes are assignment-scoped; reply/status RPCs re-check current assignment under row locks. Staff RPCs reviewed here do not expose payout/refund actions. This is source-level confirmation, not a live Auth/session concurrency test.
+- Recounted the current `admin_staff_rbac_foundation.test.sql`: declared plan **70**, actual pgTAP assertion calls **70**. The test is not executed. This count supersedes any earlier conflicting notes for the current file revision.
+- Payout table direct-write ACL remains unresolved as recorded above; Staff permission isolation does not prove table ACL safety for other authenticated clients.
+- No source code or migration changed. No PostgreSQL, pgTAP, Node suite, CI, deployment, merge, cherry-pick, or production setting executed/changed. GPT-2 official checklist remains **27/39 = 69%**; runtime acceptance remains **60/60 Pending**.
