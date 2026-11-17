@@ -7341,27 +7341,23 @@ Static text comparison only. कोई SQL, database query, migration replay, pg
 
 Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह section correction है; checklist 27/39 = 69% अपरिवर्तित.
 
-## 233. Legacy Completion Commission Trigger पुराने Quote Total को Interim Commission में लिख सकता है
+## 233. Legacy Completion Commission Trigger — बाद की Migration में Retire किया गया
 
 ### Static source reviewed
-- `PORTAL_SCHEMA.sql` SHA `efc14aa623a3895ffb3841b7b0f226f2015f34b1`.
-- `COMPLETE_DATABASE_SETUP.sql` SHA `2b806e727f449ba18e71ad23edef805ceb2da2b5`.
 - `supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` SHA `68189051090a51bef26a98997caf103b62ed070c`.
-- `supabase/tests/database/electrician_payout_reconciliation.test.sql` SHA `88184e2e1fb386f16d6bd339556a15a5b87275d2`.
+- `supabase/migrations/20261117120000_retire_legacy_booking_commission_trigger.sql` SHA `e8b86036eeaefe5d969d3e08ecc2c6ff9d255f1f`.
+- `supabase/tests/database/electrician_payout_reconciliation.test.sql` SHA `bfab741e6e3321531a1c8e01498d4a297459cdc0`.
 
-### Finding
-Baseline schema `PORTAL_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` दोनों में `srk_booking_commission_trigger` नाम का `BEFORE UPDATE OF status` trigger मौजूद है। यह `srk_calculate_commission_on_completion()` चलाता है, जो पहली बार status `completed` होने पर commission को `new.quoted_amount * new.commission_rate / 100` से सेट करता है।
+### Re-check और correction
+पहले इस section में baseline schema और migration `20261117010000` के आधार पर यह concern दर्ज था कि legacy `srk_booking_commission_trigger`, नए verified-payment commission trigger से पहले चल सकता है और unpaid completion पर quoted total से interim commission लिख सकता है।
 
-बाद की migration `20261117010000` अलग `zz_srk_set_booking_commission_before_payout` BEFORE trigger बनाती है, जो commission केवल तब labour/service amount से सेट करती है जब booking completed, paid, payment-verified और Razorpay या matching manual-payment evidence से समर्थित हो। यह migration पुराने `srk_booking_commission_trigger` को drop या replace नहीं करती।
+बाद की migration `20261117120000_retire_legacy_booking_commission_trigger.sql` स्पष्ट रूप से `DROP TRIGGER IF EXISTS srk_booking_commission_trigger ON public.service_bookings` चलाती है। इसलिए migration chain के इस चरण के बाद legacy trigger `service_bookings` पर attached नहीं रहता और पुराने completion-time calculation से `commission_amount` overwrite नहीं होना चाहिए। Legacy function `srk_calculate_commission_on_completion()` को compatibility के लिए रखा गया है, लेकिन trigger attachment हटाया गया है।
 
-PostgreSQL के समान timing वाले row-level BEFORE triggers नाम के alphabetical क्रम में चलते हैं। इसलिए legacy `srk_booking_commission_trigger`, नए `zz_srk_set_booking_commission_before_payout` से पहले चलता है। यदि booking पहले completed होती है लेकिन payment अभी verified नहीं है, तो legacy trigger quoted total पर commission लिख सकता है और नया trigger अपने early-return path के कारण उसे उसी update में labour-only value से नहीं बदलता। बाद के qualifying payment update पर नया trigger commission overwrite कर सकता है।
+अपडेटेड payout reconciliation pgTAP source में static assertions भी मौजूद हैं कि legacy trigger attached न हो, compatibility function मौजूद रहे, और नया `zz_srk_set_booking_commission_before_payout` trigger installed हो। ये assertions test source की जाँच हैं—इन्हें executed/passing test न समझें।
 
-यह baseline + additive migration के बीच confirmed source-level coexistence है। इससे वास्तविक payout गलत हुआ या database में गलत स्थायी राशि बनी रही, ऐसा runtime प्रमाण उपलब्ध नहीं है। नई payout reconciliation और parity triggers के कारण qualifying paid/completed transition पर बाद में consistency check होता है; interim अवस्था और trigger interactions को runtime में जाँचना बाकी है।
+### शेष सत्यापन
+- Ordered clean replay में retirement migration लागू होने की पुष्टि।
+- Completed-unpaid से बाद में verified-paid transition, legacy quote/materials और manual-payment evidence पर runtime behavior।
+- यह सुनिश्चित करना कि trigger retirement से पहले की deployed अवस्थाओं के लिए rollout क्रम सुरक्षित है।
 
-### Required action
-- Project owner से तय करें कि legacy completion trigger अभी भी किसी compatibility flow के लिए आवश्यक है या obsolete है।
-- यदि obsolete है, तो पहले isolated PostgreSQL में पुराने और नए trigger के संयुक्त व्यवहार की जाँच करें; उसके बाद ही अलग additive migration में सुरक्षित रूप से retire/replace करने पर विचार करें।
-- pgTAP/runtime coverage में completed-unpaid, बाद में verified-paid, legacy quote जिसमें materials शामिल हों, matching/mismatching manual evidence और transaction rollback scenarios जोड़ें।
-- Existing baseline या applied migration history को सीधे rewrite न करें।
-
-Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह confirmed trigger coexistence और संभावित interim commission-value concern है, reproduced payout defect नहीं। GPT-2 checklist remains 27/39 = 69%.
+Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। पुराना coexistence concern बाद की retirement migration से source स्तर पर mitigated है; runtime proof उपलब्ध नहीं। GPT-2 checklist remains 27/39 = 69%.
