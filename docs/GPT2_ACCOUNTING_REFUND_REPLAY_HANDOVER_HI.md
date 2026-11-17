@@ -141,3 +141,16 @@ The Feature Branch migration directory was fetched and parsed directly:
 - No duplicate 14-digit migration versions.
 
 This confirms the two known malformed filenames; do not silently rename or delete them. Their effect on Supabase CLI replay still requires a pinned-version isolated CLI test.
+
+
+## 9. Legacy commission state-transition parity correction (Nov 17)
+
+The legacy function body was re-read directly. It explicitly sets `NEW.commission_amount := NULL` whenever the row is not both `status='completed'` and `payment_status='paid'` (or amount/service-charge eligibility is missing). The Bridge function previously returned without clearing the old commission value on non-qualifying transitions.
+
+Feature-branch correction:
+- Commit `78b22b37ab7f7565ab183e34d399b1738ab9e0ff` updates the Bridge BEFORE trigger function to set `NEW.commission_amount := NULL` before returning for non-qualifying/unverified booking states.
+- Commit `2ce98dc1310b0765269d28ae9be53b61cd875cef` increases the Accounting Bridge pgTAP static plan from 23 to 24 and asserts that the trigger function includes this clearing behavior.
+
+This preserves the legacy state-transition contract without attaching the legacy trigger a second time. The payout ledger's historical values remain separate; this change only updates the booking commission field on qualifying trigger events.
+
+**Verification boundary:** source diffs were committed to Feature Branch. PostgreSQL runtime pgTAP has not been executed. Node CI result for these latest commits is pending.
