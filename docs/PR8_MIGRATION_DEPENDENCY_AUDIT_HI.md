@@ -2528,3 +2528,42 @@ Migration `20261114125844_restore_financial_audit_core_schema.sql` में `sr
 - वास्तविक Admin UI read path: **not yet verified across repository**.
 - service-role actor NULL scenario: **conditional; runtime not tested**.
 - No SQL migration edit, database query, or production change performed.
+
+
+## 109. Audit-field regression tests — coverage gap review — 17 Nov 2026
+
+Audit Branch पर मौजूद SQL tests में पुराने financial audit allow-lists और नए Razorpay recovery evidence tests की तुलना की गई।
+
+### 109.1 पुराने Audit Log test में क्या जाँचा गया
+
+`supabase/tests/database/financial_audit_core_schema.test.sql` (blob SHA `1d4769e3be6af072bce6474c778cc1ad31b8d1c9`) में `plan(54)` है। इसमें table existence, RLS, direct authenticated access denial, constraints, SECURITY DEFINER/search_path और audit triggers की मौजूदगी के assertions हैं।
+
+इस test में:
+- Manual Payment के लिए `payment_reference`, `note`, `recorded_by`, `recorded_at` allow-list coverage का assertion नहीं मिला।
+- Manual Refund के लिए `refund_reference`, `note`, `recorded_by`, `recorded_at` coverage का assertion नहीं मिला।
+- Electrician Payout के `paid_by` field का audit snapshot assertion नहीं मिला।
+- Razorpay Refund के `payment_id`, `idempotency_key`, `admin_user_id`, `reason`, `last_error`, `previous_payout_note`, `processed_at`, `amount_paise`, `currency` fields का snapshot assertion नहीं मिला।
+
+इसलिए Section 105–107 में दर्ज field omissions के विरुद्ध यह test suite regression guard नहीं बनाती। यह निष्कर्ष इस inspected test file और संबंधित inspected files तक सीमित है; इसे पूरे repository में किसी भी दूसरे test के न होने का दावा न माना जाए।
+
+### 109.2 संबंधित tests का दायरा
+
+- `admin_manual_refund_request_completion.test.sql` (plan 14) refund RPC authorization, locking, request state और amount guards के source contracts जाँचता है; audit snapshot field completeness नहीं।
+- `legacy_manual_payment_and_itemized_receipt.test.sql` (plan 18) manual payment RPC और insert path जाँचता है; audit allow-list की पूरी field coverage नहीं।
+- `refund_reconcile_full_amount_guard.test.sql` (plan 5) refund amount/reconciliation guard पर केंद्रित है; audit snapshot assertions नहीं मिले।
+- `durable_razorpay_refund_recovery_evidence.test.sql` (plan 35) अलग recovery-evidence design के लिए service-role authorization, registered Admin actor, payload identity, append-only mutation guard और verified provider evidence gates के source assertions रखता है। यह पुराने `srk_admin_audit_events` के चार-field Razorpay snapshot को स्वतः ठीक या verify नहीं करता।
+
+### 109.3 सुधार के लिए आवश्यक regression tests
+
+1. Generic audit function के allow-list में Manual Payment/Refund और Payout के प्रत्येक आवश्यक field को स्पष्ट रूप से assert करें।
+2. Razorpay Refund audit function के INSERT, UPDATE और DELETE snapshots में अनुमत fields की सूची जाँचें।
+3. केवल omitted field बदलने पर expected audit event व्यवहार assert करें—विशेषकर reference/note/actor metadata।
+4. संवेदनशील provider references और idempotency keys के लिए redaction policy को test करें; इन्हें बिना समीक्षा audit JSON में न जोड़ें।
+5. पुराने generic audit log और नए durable recovery evidence को अलग test suites/contracts के रूप में रखें।
+
+### 109.4 Status
+
+- 54-assertion financial audit test का structural/security focus: **source-confirmed**.
+- पुराने audit field omissions के लिए exact regression assertions का अभाव: **inspected tests में confirmed**.
+- Durable Razorpay recovery evidence में actor/append-only source-contract assertions: **source-confirmed; runtime unverified**.
+- कोई SQL test execute नहीं किया गया; कोई migration/source SQL बदला नहीं गया; Production/Test Supabase पर कोई बदलाव नहीं किया गया।
