@@ -7328,3 +7328,26 @@ Static source review only. कोई SQL, database query, migration replay, pgTA
 - CI/static migration lint में एक ही migration file के भीतर समान function signature की repeated definitions को review warning बनाएं।
 
 Static text comparison only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह confirmed source duplication है, reproduced runtime defect या migration failure नहीं। GPT-2 checklist remains 27/39 = 69%.
+
+
+
+## 232. Customer Payment History RPC का बाद में बनने वाली Refund-Request Table पर Forward Runtime Dependency
+
+### Static source reviewed
+- `supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql` SHA `0cadc99ad47efa0e08f8efa21ca63b105aea12bd`.
+- `supabase/migrations/20261115100000_customer_refund_request_contract.sql` SHA `efe03913e108e98886cb25d24c3e4b1bb8e74481`.
+
+### Finding
+Migration `20261114200000` में `public.srk_customer_get_payment_history(integer,integer)` function बनाया जाता है और उसका EXECUTE अधिकार `authenticated` को दिया जाता है। Function की UNION query में `public.srk_booking_refund_requests` से `refund_request` event पढ़ा जाता है।
+
+लेकिन `srk_booking_refund_requests` table बाद की migration `20261115100000` में बनाई जाती है। इसलिए migration 14200000 apply होने के बाद और 15100000 apply होने से पहले authenticated customer payment-history RPC चलाए, तो function का refund-request query absent relation पर निर्भर होगा। यह Section 230 से अलग caller/function का deployment/runtime sequencing window है: Section 230 Admin refund-preparation RPC के बारे में है, जबकि यह Customer payment-history RPC के बारे में है।
+
+PL/pgSQL function body में relation reference होने से migration creation या clean ordered replay failure सिद्ध नहीं होता। जोखिम उस interval में function invoke करने पर है जब table अभी मौजूद न हो।
+
+### Required action
+- `srk_booking_refund_requests` table को Customer payment-history RPC से पहले create करें, या payment-history RPC को table migration के बाद ही expose/grant करें।
+- यदि migrations चरणों में deploy होती हैं, तो 15100000 apply और verify होने तक Customer payment-history RPC traffic रोकें।
+- Migration-order assertion जोड़ें कि इस RPC के authenticated execution exposure से पहले refund-request table मौजूद हो।
+- Isolated PostgreSQL में बीच की migration अवस्था पर targeted invocation और full ordered replay दोनों जाँचें।
+
+Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह forward runtime dependency है, reproduced failure नहीं। GPT-2 checklist remains 27/39 = 69%.
