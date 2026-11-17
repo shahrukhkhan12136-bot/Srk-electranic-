@@ -73,3 +73,12 @@ GPT-2 checklist remains **27/39 = 69%**. This review records a reporting gap and
 - Therefore the earlier source correction fixes the cancellation-fee earnings formula, but **does not fully close the missing-payout reporting-completeness gap**: Admin aggregate has no explicit missing-ledger count/exception field; Electrician earnings can display zero commission/earning without distinguishing “legitimate zero” from “missing payout row”.
 - Safe follow-up is to add an explicit reconciliation exception signal/count without changing the existing UI return contract until the caller/owner approves the exact display contract; alternatively use the existing per-booking Admin reconciliation RPC as the authoritative exception surface. No new UI feature or RPC return-shape change was made in this pass.
 - Static source evidence only. No fixture execution, PostgreSQL/pgTAP, Node tests, database query, provider action, deployment or merge. Official GPT-2 progress remains 27/39 = 69%; Runtime Acceptance 60/60 Pending.
+
+
+## Follow-up — Missing payout exception path and regression contract (17 Nov 2026)
+
+- Rechecked the current Main Admin per-booking RPC source in `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`: for a completed booking with verified payment and an assigned electrician, no payout row appends `MISSING_PAYOUT_ROW` to `exceptions`.
+- Rechecked `admin.html`: the existing read-only Booking Accounting Reconciliation panel renders the RPC's exception list and separately states when no payout record exists. Thus the missing-row case is already available through the per-booking Admin reconciliation surface; the aggregate commission card remains a summary and is not the authoritative exception surface.
+- Added one source contract assertion to `supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql`: declared plan and verified `SELECT ok` calls are now both 76; the new assertion checks the exception token and its completed + verified + assigned-electrician guard.
+- Final fetched test SHA: `eebcc4523feba1e4af608c9b9b725f5c3f86d783`.
+- This is a source-contract addition only. pgTAP was not run, so SQL syntax/runtime and the real missing-row fixture are not proven. No UI, RPC return shape, database, CI, deployment or merge changed. Official GPT-2 remains 27/39 = 69%; Runtime Acceptance 60/60 Pending.
