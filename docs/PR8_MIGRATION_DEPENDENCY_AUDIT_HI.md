@@ -6577,3 +6577,39 @@ Recommended later isolated pgTAP cases:
 - Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल migration और test source inspection तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 206. Payout Settlement and Refund Recovery — Booking/Payout Lock-Order Cross-Check
+
+### 1. Paths compared
+
+Static review covered:
+- `20261114360000_new_category_electrician_payout_reconciliation.sql` (SHA `5412f1c9cc628f919aa915dd82cf4bc80cb048d3`): `srk_admin_mark_electrician_payout_paid(uuid,text,text,text)`.
+- `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` (SHA `b12da77471d510b55f798bd089597d866d79a133`): `srk_admin_record_manual_refund(uuid,text,text,text)` and `srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)`.
+- `electrician_payout_reconciliation.test.sql` (SHA `88184e2e1fb386f16d6bd339556a15a5b87275d2`, `plan(34)`).
+
+### 2. Lock-order observations
+
+The three explicit Admin/service settlement paths use a consistent booking-first, payout-second row-lock order:
+
+1. **Payout settlement:** reads the payout's booking ID, locks the booking with `FOR UPDATE`, then locks the payout row with `FOR UPDATE`. It rechecks that the payout still belongs to the booking ID captured before the booking lock.
+2. **Manual refund completion:** locks the booking first, then the refund request/payment evidence and payout row. It updates booking payment status and relies on the booking AFTER trigger to close a refund-owned payout hold, then rereads and verifies the payout status.
+3. **Razorpay recovery finalization:** locks the booking first, then refund record and payout row. It verifies provider recovery evidence, updates booking payment status, relies on the booking AFTER trigger, and rereads the payout row to confirm it reached `refunded`.
+
+The booking payout trigger itself updates the payout row as a consequence of a booking insert/update, so the booking row is already the transaction's driving row. At source level, this aligns with the explicit settlement functions' booking-before-payout order.
+
+### 3. Assessment and limits
+
+- **Positive static finding:** the inspected payout settlement and refund finalization paths do not show an obvious opposite payout-first/booking-second lock order. This is a useful deadlock-risk reduction in the reviewed paths.
+- The initial payout-to-booking ID lookup in the Admin payout RPC is not itself locked; the function subsequently locks the booking, locks the payout, and verifies the relationship again before mutation.
+- This is not proof that the wider application has no deadlocks. Other writers, foreign-key interactions, triggers, concurrent schedules, or uninspected paths may introduce additional lock dependencies.
+- The existing `plan(34)` test contains a static assertion for booking-before-payout locking in the Admin payout RPC. The inspected excerpt does not establish runtime concurrency/deadlock coverage for all three paths.
+- No database query, PostgreSQL execution, concurrent transaction test, pgTAP run or migration replay was performed.
+
+### 4. Verdict
+
+The reviewed payout settlement, manual refund and Razorpay recovery functions have a consistent booking-first/payout-second lock order at source level. Record this as a **static consistency check passed for the inspected paths only**, not as a runtime concurrency guarantee. No source or migration change is proposed or made.
+
+GPT-2 checklist remains at the last recorded **27/39 = 69%**. Documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, concurrent test, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
