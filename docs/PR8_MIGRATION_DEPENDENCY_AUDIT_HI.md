@@ -6769,3 +6769,37 @@ Actual Razorpay idempotency semantics, provider pagination consistency, database
 GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only cross-check does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल तीन endpoint और संबंधित Node test source का static निरीक्षण तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, provider API call, runtime test, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 211. Customer Payment History RPC — Ownership Scope, Sensitive-Field Minimization और Pagination Stability
+
+### 1. Static source reviewed
+
+- `20261114200000_customer_payment_refund_history_rpc.sql` (SHA `0cadc99ad47efa0e08f8efa21ca63b105aea12bd`).
+- `customer_payment_refund_history_rpc.test.sql` (SHA `de1b3a072f0848c27f39ea578584562a68e48d3e`, `plan(11)`).
+- Wallet ledger foundation `20261109010000_create_secure_wallet_ledger_foundation.sql` (SHA `6b5871d6fcc10fa225a5bbb8e26911b7027e2043`).
+- Search-path hardening `20261116130000_pin_wallet_and_receipt_rpc_search_paths.sql` (SHA `59aa084dfb884823a891a88ed257054838b58fee`).
+
+### 2. Static control and data-shape observations
+
+1. **Authentication and ownership:** RPC rejects null `auth.uid()`. Original payment rows filter `service_bookings.customer_user_id=v_uid`; refund-request rows filter their own `customer_user_id=v_uid`; online and manual refund rows join booking and filter its customer owner.
+2. **Payment visibility:** original payment event is included only for `paid/refunded` bookings with non-null `payment_verified_at` and positive `amount_paid`. The original payment remains visible after refund, while refund events are separate rows.
+3. **Data minimization:** output is limited to event type, booking ID, amount, generic description, status, normalized payment method and event timestamp. It does not select Admin notes or raw provider payload.
+4. **Pagination bounds:** requested limit is clamped to 1–50, null defaults to 25, and offset is clamped to non-negative. Function is `STABLE SECURITY DEFINER` with empty search path; execution is revoked from PUBLIC/anon and granted to authenticated.
+5. **Wallet boundary:** reviewed wallet foundation describes an internal accounting ledger; customer top-ups and electrician payouts are explicitly disabled in the returned summary until their separate flows are approved. The later migration pins search paths for wallet and receipt SECURITY DEFINER RPCs.
+
+### 3. Test coverage and gap
+
+- SQL `plan(11)` statically checks auth identity, payment owner filter, verified payment conditions, three event sources, bounded pagination, absence of sensitive fields, authenticated-only execution and empty search path.
+- **Pagination stability gap:** query orders by `occurred_at`, `booking_id` and `event_type`, but does not include a unique event-row key as the final tie-breaker. If multiple rows for the same booking have equal timestamps and event type (for example, multiple refund-request events), their relative order is unspecified. With LIMIT/OFFSET, a boundary page can therefore be unstable across executions. This is a deterministic-ordering concern inferred from SQL semantics, not evidence of a reproduced missing/duplicate customer event.
+- The current SQL test checks that LIMIT/OFFSET exists but does not assert a unique final ordering key or behavior across adjacent pages with tied timestamps.
+- Recommended later isolated test: seed multiple same-booking, same-type events with identical timestamps around a page boundary and verify stable ordering with a unique event identifier as the final sort key.
+- No database query, pgTAP execution or pagination runtime test was performed.
+
+### 4. Verdict and limits
+
+The RPC has explicit customer ownership filters, bounded pagination, a minimized response shape and authenticated-only execution. A **static pagination determinism/coverage gap** remains because the sort key is not unique for every possible event row. This should be reviewed before relying on offset pagination for a complete, repeatable financial history; no source change is made in this audit.
+
+GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल RPC, संबंधित SQL test और wallet/search-path migration का static निरीक्षण तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, source/migration change, runtime test, CI, deployment, merge या cherry-pick नहीं किया गया।
