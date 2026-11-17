@@ -674,3 +674,40 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - Rate-tier rollout must include the complete category/rate-card schema and booking estimate migration dependencies, private authorization table, audit table, guard trigger, offer-dispatch eligibility, and Admin RPC as one reviewed bundle.
 - Legacy confirm rollout must include the status write guard and all dependent booking/payment write contracts; do not re-enable broad direct status updates.
 - No application code or SQL changed; no Production migration, Auth action, deployment, PR merge, refund, payout, or mobile QA occurred in this pass.
+
+
+## Section 24 — Admin RPC response parity और KYC Event-table contract drift (2026-11-17)
+
+### Revalidation
+- Feature `admin.html` SHA: `6b29511a1ecfab93b5689dff23012078091e57fc`.
+- PR #8 अब भी Open, Draft, Unmerged है।
+- Main RPC bodies और Feature Admin UI की named arguments/response keys का targeted comparison किया गया।
+
+### 1. Existing RPCs जिनका targeted UI contract match हुआ
+- `srk_admin_list_booking_complaints(p_limit)`: UI `p_limit:100` भेजता है। Main table projection में UI द्वारा पढ़े जा रहे complaint fields और `activity` event keys मौजूद हैं।
+- `srk_admin_update_booking_complaint(p_complaint_id,p_status,p_admin_note)`: UI named args और success JSON expectation Main signature/body से match करते हैं; Main status allow-list UI के चार status से match है; note limit 2000 है।
+- `srk_admin_list_electrician_area_requests(p_limit)`: UI `p_limit:200` और Main row projection में UI के द्वारा पढ़े गए पुराने/नए क्षेत्र, reason, status, admin note, created_at fields match हैं।
+- `srk_admin_review_electrician_area_request(p_request_id,p_decision,p_note)`: UI named args और success JSON match हैं। Main rejection पर 5+ अक्षरों का कारण अनिवार्य करता है; Feature UI भी यह validation करता है। Approval पर RPC profile lock लेकर area बदलता है, पुराने unaccepted offers बंद करता है और eligible booking के लिए existing Admin offer RPC reuse करता है।
+- `srk_admin_review_application(p_application_id,p_decision)`: UI named args match; Main `void` लौटाता है और UI केवल error check करता है। Approval के लिए phone-confirmed Auth user आवश्यक है और profile inactive बनता है।
+- `srk_admin_set_electrician_active(p_profile_id,p_active)`: UI args और `jsonb.success` match। Main latest identity/address proof approvals और OTP-linked identity enforce करता है।
+- `srk_admin_offer_booking(p_booking_id)`: UI arg और JSON keys `success/message/offers_created` match; Main booking row lock, unassigned status, approved/active OTP-linked profiles, PIN/district matching लागू करता है।
+- `srk_admin_commission_report()`: UI keys `total_commission`, `total_collected`, `total_electrician_payable`, `partners` तथा partner fields Main JSON से match हैं। गणना legacy completed+paid booking rows पर आधारित है; इसे नए category/cancellation accounting का parity proof न मानें।
+- `srk_admin_wallet_overview()`: UI के सभी छह keys Main JSON से match हैं: customer_wallets, electrician_wallets, posted_ledger_credits, posted_ledger_debits, pending_entries, verified_bank_links।
+
+### 2. KYC Event table नाम का महत्वपूर्ण drift
+- Feature UI `srk_admin_list_electrician_verification_documents(p_limit:300)` call करती है और `activity[]` में `actor_role,event_type,note,created_at` पढ़ती है।
+- Feature authoritative migration `20261115140000_electrician_kyc_review_and_activation_gate.sql` (SHA `3b6f6f2434deec960baba386cfc61a00e226c09b`) table `public.srk_electrician_verification_document_events` बनाती है।
+- उसी Feature migration का Admin list RPC `srk_electrician_verification_document_events` से activity पढ़ता है; Admin review RPC भी इसी table में append करता है।
+- Connected Main live Admin list/review RPC bodies इसके बजाय legacy `public.srk_electrician_verification_events` table इस्तेमाल करते हैं। Main catalog में legacy table और `srk_electrician_verification_documents` मिले; नई `srk_electrician_verification_document_events` table नहीं मिली।
+- अतः same RPC names और broadly similar UI fields के बावजूद Feature KYC event schema और Main live event schema अलग हैं। Main live function body को Feature migration parity न समझें। Feature KYC migration bundle में नया append-only event table, trigger, grants/RLS, Admin list/review RPC bodies और संबंधित upload/activation behavior साथ reconcile करना होगा।
+- किसी table को rename/drop/copy या दोनों histories को merge करने का निर्णय नहीं लिया गया। Legacy event history को सुरक्षित रखना आवश्यक है।
+
+### 3. KYC review behavior का अतिरिक्त अंतर
+- Feature migration review केवल pending document पर निर्णय स्वीकार करती है; rejection/resubmission reason 5–1000 अक्षर enforce करती है; नई document-event table में event लिखती है।
+- Main live review body का पहले निरीक्षण किए गए संस्करण में review-state transition/lock और side-effect rules अलग हैं; वह Feature migration के समान व्यवहार का प्रमाण नहीं है।
+- Feature UI note length सीमा रखता है और rejection/resubmission के लिए 5+ अक्षर की जाँच करता है। UI के अनुरूप होने के बावजूद backend body parity अलग से आवश्यक है।
+
+### Status
+- इस pass में कोई application code/SQL edit नहीं हुआ; केवल इस handover report में audit evidence जोड़ा गया।
+- Main Database पर कोई migration/DDL/DML, Auth action, deployment, merge, payment/refund/payout या mobile QA नहीं किया गया।
+- Remaining: KYC event history reconciliation; selected category booking और legacy Admin offer RPC boundary की समीक्षा; फिर शेष Admin RPCs के complete body/dependency parity checks।
