@@ -251,7 +251,7 @@ BEGIN
     WHEN 'electrician_profile' THEN ARRAY['active','verification_status','auth_user_id','user_id']
     WHEN 'electrician_application' THEN ARRAY['verification_status','active']
     WHEN 'manual_payment' THEN ARRAY['booking_id','payment_method','amount']
-    WHEN 'manual_refund' THEN ARRAY['booking_id','payment_entry_id','amount']
+    WHEN 'manual_refund' THEN ARRAY['booking_id','payment_entry_id','amount','refund_reference','recorded_by','recorded_at']
     WHEN 'electrician_payout' THEN ARRAY['booking_id','electrician_profile_id','razorpay_payment_id','gross_service_amount','materials_amount','platform_commission','electrician_payable','payout_status','payout_method','payout_reference','payout_note','paid_by','paid_at']
     ELSE ARRAY[]::text[] END;
   v_entity_id := coalesce(nullif(v_new->>'id','')::uuid,nullif(v_old->>'id','')::uuid);
@@ -285,47 +285,42 @@ CREATE OR REPLACE FUNCTION public.srk_capture_razorpay_refund_audit_event()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $function$
 DECLARE
-  v_entity_id uuid;
-  v_booking_id uuid;
+  v_old jsonb := CASE WHEN TG_OP='INSERT' THEN '{}'::jsonb ELSE pg_catalog.to_jsonb(OLD) END;
+  v_new jsonb := CASE WHEN TG_OP='DELETE' THEN '{}'::jsonb ELSE pg_catalog.to_jsonb(NEW) END;
   v_before jsonb := '{}'::jsonb;
   v_after jsonb := '{}'::jsonb;
   v_fields text[] := ARRAY[]::text[];
+  v_key text;
+  v_entity_id uuid;
+  v_booking_id uuid;
   v_actor uuid := auth.uid();
   v_role text;
+  v_allow text[] := ARRAY[
+    'refund_id','payment_id','amount','amount_paise','currency',
+    'status','provider_status','idempotency_key','reason',
+    'admin_user_id','previous_payout_note','processed_at'
+  ];
 BEGIN
-  IF TG_OP='DELETE' THEN
-    v_entity_id:=OLD.id; v_booking_id:=OLD.booking_id;
-    v_before:=pg_catalog.jsonb_build_object('refund_id',OLD.refund_id,'amount',OLD.amount,'status',OLD.status,'provider_status',OLD.provider_status);
-    v_fields:=ARRAY['refund_id','amount','status','provider_status'];
-  ELSIF TG_OP='INSERT' THEN
-    v_entity_id:=NEW.id; v_booking_id:=NEW.booking_id;
-    v_after:=pg_catalog.jsonb_build_object('refund_id',NEW.refund_id,'amount',NEW.amount,'status',NEW.status,'provider_status',NEW.provider_status);
-    v_fields:=ARRAY['refund_id','amount','status','provider_status'];
-  ELSE
-    v_entity_id:=NEW.id; v_booking_id:=NEW.booking_id;
-    IF OLD.refund_id IS DISTINCT FROM NEW.refund_id THEN
-      v_fields:=pg_catalog.array_append(v_fields,'refund_id');
-      v_before:=v_before||pg_catalog.jsonb_build_object('refund_id',OLD.refund_id);
-      v_after:=v_after||pg_catalog.jsonb_build_object('refund_id',NEW.refund_id);
-    END IF;
-    IF OLD.amount IS DISTINCT FROM NEW.amount THEN
-      v_fields:=pg_catalog.array_append(v_fields,'amount');
-      v_before:=v_before||pg_catalog.jsonb_build_object('amount',OLD.amount);
-      v_after:=v_after||pg_catalog.jsonb_build_object('amount',NEW.amount);
-    END IF;
-    IF OLD.status IS DISTINCT FROM NEW.status THEN
-      v_fields:=pg_catalog.array_append(v_fields,'status');
-      v_before:=v_before||pg_catalog.jsonb_build_object('status',OLD.status);
-      v_after:=v_after||pg_catalog.jsonb_build_object('status',NEW.status);
-    END IF;
-    IF OLD.provider_status IS DISTINCT FROM NEW.provider_status THEN
-      v_fields:=pg_catalog.array_append(v_fields,'provider_status');
-      v_before:=v_before||pg_catalog.jsonb_build_object('provider_status',OLD.provider_status);
-      v_after:=v_after||pg_catalog.jsonb_build_object('provider_status',NEW.provider_status);
-    END IF;
+  v_entity_id := coalesce(nullif(v_new->>'id','')::uuid,nullif(v_old->>'id','')::uuid);
+  v_booking_id := coalesce(nullif(v_new->>'booking_id','')::uuid,nullif(v_old->>'booking_id','')::uuid);
+  IF v_entity_id IS NULL THEN
+    IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
   END IF;
+
+  FOREACH v_key IN ARRAY v_allow LOOP
+    IF v_old->v_key IS DISTINCT FROM v_new->v_key THEN
+      v_fields := pg_catalog.array_append(v_fields,v_key);
+      IF v_old ? v_key THEN
+        v_before := v_before || pg_catalog.jsonb_build_object(v_key,v_old->v_key);
+      END IF;
+      IF v_new ? v_key THEN
+        v_after := v_after || pg_catalog.jsonb_build_object(v_key,v_new->v_key);
+      END IF;
+    END IF;
+  END LOOP;
+
   IF pg_catalog.cardinality(v_fields)>0 THEN
-    v_role:=CASE WHEN v_actor IS NULL THEN 'system'
+    v_role := CASE WHEN v_actor IS NULL THEN 'system'
       WHEN public.is_srk_admin() THEN 'admin' ELSE 'user' END;
     INSERT INTO public.srk_admin_audit_events
       (entity_type,entity_id,booking_id,action,actor_user_id,actor_role,changed_fields,before_data,after_data)
