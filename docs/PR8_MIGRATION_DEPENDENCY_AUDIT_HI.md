@@ -4516,3 +4516,32 @@ Track A को Track B का सफल विकल्प न मानें�
 5. Replay के बाद constraints, function signatures और grants का catalog-level comparison।
 
 **स्थिति:** Source-level collision evidence confirmed; clean replay compatibility, recorded migration history और live schema state unverified। इस section में केवल Audit Report बदली गई। कोई migration, application code, database, CI workflow या shared branch नहीं बदली गई।
+
+
+### 154. `is_srk_admin()` Bootstrap और Admin RBAC — Source-Level Reconciliation — 17 Nov 2026
+
+इस section में Audit Branch पर मौजूद consolidated setup, Admin email-login setup और शुरुआती migration dependency को मिलाया गया है। यह static source review है; किसी database catalog या live Auth user state को query नहीं किया गया।
+
+#### 154.1 Authoritative Source का अंतर
+
+- `COMPLETE_DATABASE_SETUP.sql` में Admin portal section के अंतर्गत `public.srk_admin_users` table बनाई जाती है। इसमें `user_id` primary key है और `auth.users(id)` पर FK है।
+- उसी consolidated setup में `public.is_srk_admin()` की definition भी मौजूद है। यह `srk_admin_users` में `auth.uid()` की मौजूदगी जाँचती है; function `STABLE SECURITY DEFINER` है और execute grant authenticated को दिया गया है।
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` table को पहले से मौजूद मानती है, RLS/self-read policy लगाती है और `is_srk_admin()` को फिर से define करती है। यह standalone blank-database bootstrap नहीं है; file header भी existing project और existing allow-list row की अपेक्षा बताता है।
+- `supabase/migrations/20261109003000_secure_commission_reporting.sql` में `srk_admin_commission_report()` बनाते समय `public.is_srk_admin()` call होता है। इस migration के source में helper या `srk_admin_users` table create नहीं होती।
+
+#### 154.2 Dependency निष्कर्ष
+
+1. यदि clean replay केवल timestamped migration files से शुरू होता है, तो शुरुआती Admin-gated migrations को `is_srk_admin()` और `srk_admin_users` की पहले से उपलब्ध definition चाहिए। इस source review में वह prerequisite इसी migration chain के शुरुआती हिस्से में स्थापित होता हुआ नहीं मिला।
+2. Repository में consolidated setup SQL मौजूद है और उसमें ये definitions हैं; इसलिए prerequisite source अनुपलब्ध नहीं है। लेकिन यह file timestamped migration chain के बाहर है और उसकी पूरी सामग्री बाद की migrations से overlap करती है।
+3. `ADMIN_EMAIL_LOGIN_SETUP.sql` को migration chain का substitute नहीं मान सकते: यह existing table/row और existing project schema पर निर्भर है।
+4. Staff RBAC की `srk_has_admin_permission()` व्यवस्था, Main Admin के `is_srk_admin()` path को पहले जाँचती है। इसलिए दोनों identity systems के overlap और precedence का प्रश्न अलग से बना रहता है; helper bootstrap उपलब्ध होना उस authorization design risk को हल नहीं करता।
+
+#### 154.3 सुरक्षित समाधान प्रस्ताव
+
+- Owner एक canonical baseline चुने: versioned bootstrap migration या documented, version-pinned baseline snapshot। दोनों setup SQL files को migrations से पहले अंधाधुंध चलाना स्वीकार्य नहीं।
+- Baseline में `auth.users` reference, `srk_admin_users`, `is_srk_admin()`, required grants और policies का exact contract दर्ज हो।
+- शुरुआती Admin-gated migrations की dependency manifest बने और clean disposable database पर उसी baseline से replay सत्यापित हो।
+- Main Admin और Support Staff identity overlap के लिए अलग DB invariant/pgTAP design तथा owner decision आवश्यक रहे।
+- Existing database में setup SQL दोबारा न चलाएँ; migration history या allow-list rows को अनुमान से न बदलें।
+
+**स्थिति:** Helper/table definitions repository source में confirmed; migration-only bootstrap gap source-level पर confirmed; live database में helper/allow-list की मौजूदगी, migration history और Staff/Main Admin overlap unverified। इस section में केवल Audit Report बदली गई। कोई SQL, migration, Auth user, database, CI या branch integration नहीं की गई।
