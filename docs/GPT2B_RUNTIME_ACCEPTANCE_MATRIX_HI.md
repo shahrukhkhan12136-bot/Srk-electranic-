@@ -108,3 +108,22 @@
 No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency runtime result is recorded at creation time. Add dated evidence only after the exact command is executed and output inspected.
 
 **Status:** Matrix prepared; runtime execution pending. This document does not change the official GPT-2 delivery percentage.
+
+
+## Evidence update — 17 November 2026 (source review only)
+
+### Payout rollback fixture review
+- Reviewed the two rollback fixtures in `supabase/tests/database/electrician_payout_reconciliation.test.sql` against the tracked starter table definitions and relevant migration additions.
+- The fixture values visibly satisfy the starter `electrician_profiles` / `service_bookings` phone and PIN formats, booking status/payment-status domains, 0–100 commission-rate range, and payout-table uniqueness/amount requirements.
+- The booking fixture's completed + paid + verified-payment state is designed to pass through the current BEFORE commission setter, AFTER payout writer, and later AFTER parity validator. The commission-only UPDATE targets the parity validator without firing the payout writer, as asserted by the test's trigger-column checks.
+- The two negative behavioral cases are present in source: missing payout row and mismatched payout commission. Their rollback/preservation outcomes remain **unverified until pgTAP is executed**. This source review is not a test pass and does not establish that the actual canonical database baseline matches the starter schema.
+
+### Remaining payout acceptance gap
+- B5 (commission-only update when booking and payout commission already match) still has no positive behavioral DB fixture; keep it Pending.
+- The runtime matrix remains 60/60 Pending because no PostgreSQL/pgTAP execution has been performed.
+
+### Fixed 15% commission invariant — source finding
+- `create-booking.js` calculates the current estimate server-side and omits `commission_rate` from the insert payload, so new booking rows currently rely on the database column default.
+- The starter `SUPABASE_SCHEMA.sql` defines that default as 15.00, and authenticated direct UPDATE of `commission_rate` is revoked by `20261109003000_secure_commission_reporting.sql` / later booking write closure.
+- However, the payout and commission trigger functions calculate from the stored `new.commission_rate` and only reject null/out-of-range values; they do not themselves require exactly 15.00. The canonical base-schema default and any service-role write path are not proven by this source review.
+- Treat exact 15% enforcement for newly created bookings as a source-level hardening item in the payout/commission workstream; preserve historical booking commission snapshots. No code or database change was made for this finding in this review.
