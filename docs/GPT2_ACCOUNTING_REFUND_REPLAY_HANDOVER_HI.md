@@ -1295,3 +1295,33 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - Section 41 already found neither Edge Function in the Main deployed function list. This review is source-only and does not change that live deployment absence.
 - Do not invoke either function: Staff invitation sends external email; phone-change can send SMS or change Auth phone. No invocation, email, SMS, OTP, Auth mutation, deploy, DDL/DML or live request occurred.
 - Required before release: resolve Main Admin-vs-Staff UUID exclusivity; add/review Staff invitation abuse throttling and failure audit policy; verify deployed `verify_jwt` configuration and secrets; reconcile all dependent RPC migrations with Main; and obtain owner approval for any external-action testing in isolated staging.
+
+
+## Section 45 — Customer Support private Storage और Main live dependency cross-check (2026-11-17)
+
+### Feature branch source
+- `20261113220000_customer_support_conversation_schema.sql`, SHA `75230ab805e61206515fd73e17e748de7ec249e5`:
+  - Customer complaint messages और attachments tables बनाता है; दोनों पर RLS enabled और direct public/anon/authenticated table grants revoke हैं।
+  - Attachment metadata में allowlisted MIME (JPEG/PNG/WEBP/PDF), अधिकतम 10 MiB, unique storage path और message↔complaint composite FK है।
+  - Customer attachment link RPC authenticated customer, complaint ownership, customer-authored message, user/complaint path prefix, bucket ID और Storage owner ID verify करता है।
+  - Private bucket `srk-customer-support` को 10 MiB और allowlisted MIME types के साथ create/upsert metadata करता है।
+  - Storage policies: authenticated INSERT केवल own customer complaint path; SELECT own complaint या Main Admin; DELETE केवल own customer complaint path। UPDATE policy नहीं है; client upload flow साधारण `upload(path,file)` है, upsert नहीं।
+  - `srk_customer_support_object_access(text,boolean)` SECURITY DEFINER, `search_path=''`, authenticated-only execute; Admin read bypass को policy में सीमित `bucket_id='srk-customer-support'` के साथ जोड़ा गया है।
+- `20261113230000_support_attachment_paths_and_admin_message_list.sql`, SHA `aaeb6f0d7efe680735039a0a516bd5fcce2dafa0`: Customer/Admin attachment list RPCs complaint ownership/Admin authorization check करते हैं; Admin attachment list अधिकतम 100 records देता है।
+- Customer client contract test SHA `f1fac5679a81b1144885ae945b4d2531437729f8` upload count/MIME/size validation, ownership-link RPC, cleanup-after-uncertain-link और 300-second private signed URL behavior को source-level assert करता है। Admin UI भी signed URL 300 seconds के लिए बनाता है।
+
+### Main live read-only result
+- `storage.buckets` में केवल private `srk-electrician-verification` मिला; `srk-customer-support` absent है।
+- `storage.objects` policies में केवल Electrician Verification के तीन policies मिले; Customer Support bucket policies absent हैं।
+- Public schema में संबंधित support tables में से केवल `srk_booking_complaints` मिला (RLS enabled, authenticated direct SELECT/INSERT grants false)। `srk_booking_complaint_messages`, `srk_booking_complaint_message_attachments`, `srk_electrician_support_tickets`, `srk_electrician_support_messages` live catalog query में absent मिले।
+- यह Feature migration source बनाम Main live database का स्पष्ट deployment gap है; कोई migration apply नहीं हुई।
+
+### Security / integration review
+- Upload path is customer UUID / complaint UUID / filename; link RPC owner check और complaint membership enforce करता है। Admin read policy को customer-owned complaint access helper के माध्यम से दिया गया है।
+- Upload में `upsert=false` default behavior के अनुरूप INSERT-only policy पर्याप्त दिखती है; यदि भविष्य में client upsert जोड़ा जाए तो Storage INSERT+SELECT+UPDATE permissions और overwrite ownership की अलग समीक्षा आवश्यक होगी।
+- Delete policy केवल own complaint path पर है; helper `p_allow_admin=false` होने पर Admin को delete bypass नहीं देता।
+- Signed URLs 300 seconds के हैं; URL बनाना केवल authenticated session और SELECT policy के बाद सफल होना चाहिए। Live bucket absent होने से current Main पर signed URL workflow अभी काम करने योग्य प्रमाणित नहीं है।
+- Main Admin identity exclusivity unresolved होने के कारण `is_srk_admin()`-based Admin storage read authorization अभी release blocker से जुड़ा हुआ है।
+
+### No-write boundary
+- केवल Feature source/tests read और Main catalog SELECT। कोई Storage bucket/policy create, object list/read/upload/delete, signed URL generation, migration, RPC invocation, DDL/DML, deployment या user data access नहीं हुआ।
