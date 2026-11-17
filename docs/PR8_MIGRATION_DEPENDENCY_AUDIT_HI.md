@@ -5859,3 +5859,42 @@ Source में Auth event generation counter तथा हर प्रमु�
 Section 184–186 मिलाकर Support Inbox, thread और status-action UI में **account-switch stale response / refresh starvation** का एक साझा lifecycle risk दिखाई देता है। यह static source finding है; live cross-account data exposure, unauthorized case update या message action की पुष्टि नहीं हुई। Server-side RPC authorization अलग से मौजूद है और उसे बनाए रखना आवश्यक है।
 
 केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई browser/Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 187. SOS Admin/Staff Inbox — Sensitive Contact Data और Account-Switch Guards
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** `loadSosAlerts()`, SOS history और acknowledgement handlers का static source review।
+
+### 1. SOS List Response और Shared DOM
+
+- `loadSosAlerts()` current `sb` और `user` की मौजूदगी जाँचता है, फिर `srk_admin_list_sos_alerts` RPC से अधिकतम 100 records माँगता है।
+- Render किए गए record में actor name और phone, case/booking IDs, reason, SMS/Push status, location status और acknowledgement details शामिल हैं।
+- SOS section Main Admin और Support Staff दोनों के लिए shared है। Staff के लिए केवल assigned cases तक सीमित होने का client-side filter इस renderer में नहीं दिखता; वास्तविक scope server RPC की authorization/query पर निर्भर है, जिसे इस चरण में DB/runtime से सत्यापित नहीं किया गया।
+- Response आने के बाद Auth generation, current user ID या portal mode की जाँच नहीं होती। इसलिए account switch के बाद पुराने अनुरोध का परिणाम shared SOS DOM में render हो सकता है। यह संभावित stale display है, live disclosure का प्रमाण नहीं।
+
+### 2. Shared Busy Flag और Refresh
+
+- `sosAlertLoadBusy.value` सभी users/roles के बीच global boolean है।
+- पुराने account की SOS list pending रहते नए account का load return कर सकता है। पुराने अनुरोध के `finally` में flag false होता है, पर नए account के लिए स्वतः retry नहीं दिखता।
+- इससे नए session में SOS जानकारी देर से या refresh तक अनुपलब्ध रह सकती है।
+
+### 3. History और Acknowledge Actions
+
+- `loadSosAlertHistory(caseId)` case ID लेकर history RPC चलाता है और response पर Auth generation/user ID/role guard नहीं करता।
+- `acknowledgeSosAlert(caseId)` note लेकर confirmation के बाद acknowledgement RPC चलाता है; request के बाद identity/role/case freshness re-check नहीं दिखती। Server-side RPC authorization और case-state validation आवश्यक हैं; यहाँ उनके live behavior की पुष्टि नहीं हुई।
+- इन handlers के late responses या alerts भी account transition के बाद पुराने request context से संबंधित UI में दिख सकते हैं।
+
+### 4. सुझाया गया सुरक्षित सुधार
+
+- SOS list/history/acknowledgement request के साथ Auth generation, user ID और portal role capture करें; हर await के बाद UI update से पहले verify करें।
+- Busy lock को account-generation keyed रखें; पुराने request का `finally` नए session का lock न हटाए। नए session के skipped bootstrap load को पुराने request के settle होने पर refresh करें।
+- Auth transition पर SOS history panels और in-flight request tokens invalidate करें।
+- Backend RPC को independently verify करें कि Support Staff केवल अधिकृत/assigned SOS cases ही पढ़ और acknowledge कर सके; UI में छिपाना authorization नहीं है।
+- Regression tests: A SOS list pending → logout → B login; A history pending → B login; A acknowledgement pending → B login; Main Admin ↔ Support Staff switch; shared busy lock contention; unassigned SOS read/ack denied by backend.
+
+### 5. Verdict और Evidence Boundary
+
+SOS UI में phone number सहित संवेदनशील संपर्क जानकारी render होती है, इसलिए stale-response guard का महत्व अधिक है। Source में account-generation guard नहीं मिला। **यह संभावित cross-session stale display concern है, live data leak या unauthorized acknowledgement का प्रमाण नहीं।** Backend RPC authorization, assigned-case scope और deployed behavior की पुष्टि शेष है।
+
+केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई browser/Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
