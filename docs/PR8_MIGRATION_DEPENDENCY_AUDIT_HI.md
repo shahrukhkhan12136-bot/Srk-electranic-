@@ -7060,3 +7060,27 @@ Therefore, the file's “consolidated database setup” / “Run once” wording
 4. Keep existing-project upgrade instructions separate from fresh-install instructions.
 
 Static file comparison only. No database was created, no SQL or migration was executed, and no test/CI/deployment was run. This is a bootstrap completeness/readiness finding, not a claim that a specific migration replay has failed. GPT-2 checklist remains 27/39 = 69%; documentation-only findings do not increment it. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and reconcile their own work.
+
+
+## 220. Supabase Schema CI Does Not Validate the Full Fresh-Install Migration Chain
+
+### Static source reviewed
+- `.github/workflows/supabase-schema-ci.yml` SHA `8cdd128fb69227fee82b5084f8b78634f13ffcb2`.
+- Workflow trigger is `workflow_dispatch` only.
+- Job condition is restricted to `refs/heads/feature/platform-fee-cash-online-cycle`.
+
+### Finding
+The workflow is not a clean empty-database migration replay. It exports the current remote project's `public,private` schema, restores that schema into a local Supabase stack, and then applies only five hard-coded payment-related migrations (20261112170000 through 20261113090000). It does not discover/apply all 89 versioned migrations in the repository, nor does it start from the canonical base setup and replay the complete migration history.
+
+This means the workflow can provide a narrow compatibility check for those five selected migrations against the exported schema snapshot, but it cannot establish fresh-install readiness, ordering correctness for the full migration set, or that the current feature/audit branch schema is reproducible from source. Its branch guard also targets `feature/platform-fee-cash-online-cycle`, whereas the current GPT-2 audit branch is `chore/pr8-replay-audit-20261116-v2` and the tracked feature branch is `feat/customer-login-first-dashboard-20261114`; therefore the job is skipped on those branches when manually dispatched.
+
+The workflow does include useful controls: a read-only schema-export credential check, schema-only dump with a data-statement guard, local stack, lint, smoke assertions, and cleanup. Those safeguards do not widen the migration coverage.
+
+### Required CI correction
+1. Separate a full fresh-install job (empty local Supabase database; documented baseline; every migration applied in timestamp order) from any production-schema compatibility job.
+2. Remove the five-file hard-coded migration list in favor of a validated complete migration set, with explicit handling for any intentionally excluded/one-off scripts.
+3. Make branch/event conditions match the actual supported PR and feature branches, and run the job automatically for relevant migration changes.
+4. Add smoke assertions for current Customer Support, Electrician Support, Staff RBAC, identity, receipt, payment, refund and payout objects, plus pgTAP execution where configured.
+5. Keep production schema export strictly read-only and separate from the empty-database replay so a live schema snapshot cannot mask missing baseline objects.
+
+Static workflow inspection only. No workflow was dispatched and no database, migration, lint, pgTAP, CI or deployment was run. This is a CI coverage/readiness finding, not evidence that a migration has failed. GPT-2 checklist remains 27/39 = 69%; documentation-only findings do not increment it. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and reconcile their own work.
