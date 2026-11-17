@@ -3839,3 +3839,58 @@ Migration `20261115230000_admin_booking_direct_write_closure.sql`, blob `a1c1abe
 2. Confirm final grants and trigger bindings after a clean disposable PostgreSQL replay.
 3. Add rollback tests for unrelated blocked payout note, exact refund-owned blocked note, missing payout, already-paid payout, and concurrent transitions.
 4. No SQL, pgTAP/Node test, PostgreSQL replay, database query/write, provider call, CI dispatch, deployment, merge or Production action was performed in this section.
+
+
+### 140. Refund RPC Grants और deployed Netlify Caller Mapping — 17 Nov 2026
+
+यह section Audit Branch source/config inspection पर आधारित है; deployed Netlify/Supabase configuration या live ACL catalog नहीं पढ़ा गया।
+
+#### 140.1 Function privilege chain
+
+| RPC | Source grant evidence | Intended caller |
+|---|---|---|
+| `srk_admin_prepare_razorpay_refund(uuid,text)` | `20261114290000`, lines 330–331: PUBLIC/anon revoke; authenticated execute grant | Main Admin-authenticated refund endpoint |
+| `srk_admin_record_manual_refund(uuid,text,text)` | `20261114290000`, lines 407–408 और later duplicate definition lines 607–608: PUBLIC/anon revoke; authenticated execute grant | Admin UI Supabase RPC call |
+| `srk_service_reconcile_booking_refund(uuid,text,text,text)` | Latest full-amount replacement `20261115250000`, lines 94–95: PUBLIC/anon/authenticated revoke; service_role execute grant | Refund endpoint + signed Razorpay webhook |
+| `srk_service_record_razorpay_refund_recovery_evidence(...)` | `20261115120000`, lines 135–136: PUBLIC/anon/authenticated revoke; service_role execute grant | Refund recovery server function |
+| `srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)` | `20261115120000`, lines 231–232: PUBLIC/anon/authenticated revoke; service_role execute grant | Recovery server function, separate RPC request |
+
+The latest `20261116210000` migration replaces the manual refund and recovery finalizer function bodies but does not restate their grants. In a successful ordered replay, PostgreSQL `CREATE OR REPLACE FUNCTION` preserves the existing function object's privileges; the prior explicit ACL remains the source-level grant basis. This was not verified against a live `proacl` catalog.
+
+#### 140.2 Actual repository call sites
+
+- `admin.html`:
+  - line 649 calls `/api/razorpay-refund`.
+  - line 1000 calls `/api/razorpay-refund-status`.
+  - line 1024 calls `/api/razorpay-refund-recovery`.
+  - line 1045 calls `sb.rpc('srk_admin_record_manual_refund', ...)` directly.
+- Root `razorpay-refund.js`, blob `afd68c6c1dd33102c40f5119616aec78e8f0ae1e`:
+  - verifies Supabase Auth bearer user and Main Admin predicate before refund preparation;
+  - calls the authenticated prepare RPC with the user's bearer token;
+  - after provider response, calls the service-only reconcile RPC using the server's service-role default token.
+- Root `razorpay-refund-recovery.js`, blob `2573aa5c6442ace359515f2227c5d93019534184`:
+  - verifies bearer user and Main Admin membership;
+  - reads internal refund/booking records with server credentials;
+  - records evidence and finalizes in two separate service-role RPC requests.
+- Root `razorpay-webhook.js`, blob `d52bfb3faca85f23c553309cf842e205f4351a8b`:
+  - verifies Razorpay HMAC signature;
+  - calls service-only refund reconciliation using `SUPABASE_KEY` as service credential.
+- `netlify.toml` sets `functions = "netlify/functions"`; the four Netlify function files are thin wrappers requiring the corresponding root handlers. Therefore the inspected root handlers are the configured Netlify function implementations, not an unreferenced duplicate copy.
+
+#### 140.3 Security observations and limits
+
+1. The service-only reconciliation/finalizer/evidence RPCs are not intentionally exposed to authenticated client role in the inspected migration grants.
+2. The manual refund RPC is intentionally executable by authenticated role but has its own `auth.uid()` + `is_srk_admin()` check and detailed booking/payment/request validation.
+3. Refund endpoint and recovery endpoint perform Auth user validation plus Main Admin check before privileged service-role operations. Webhook uses signature validation before privileged reconciliation.
+4. A service-role key in server-side environment is powerful; this source review does not establish actual secret storage, deployed function version, runtime environment, or absence of key leakage elsewhere.
+5. Webhook/refund endpoints share the same service-only reconciliation RPC. Row locking and terminal-state checks are present in source, but webhook retry ordering and real concurrency remain untested.
+6. This caller scan covers the identified root handlers, Netlify wrappers and Admin UI call sites; it is not a formal whole-repository proof of every possible service-role/SQL owner caller.
+
+#### 140.4 Remaining verification
+
+- Disposable PostgreSQL replay: inspect final `proacl`/effective EXECUTE for each RPC after all replacements.
+- Confirm `is_srk_admin()` and function grants in the exact documented bootstrap + migration order.
+- Review all server-side environment references and deployment settings without printing or exposing secret values.
+- Run isolated tests for authenticated non-admin rejection, Main Admin acceptance, service-role-only RPC denial, webhook signature rejection, replay and concurrent refund events.
+
+No secrets were read or printed. No live Supabase ACL, deployed Netlify configuration, provider API, SQL, test, CI, deployment, merge or Production action was executed.
