@@ -377,11 +377,13 @@ select ok(position('collection_totals' in lower(pg_get_functiondef(
 
 select ok(position('left join public.srk_electrician_payouts p' in lower(pg_get_functiondef(
   'public.srk_admin_commission_report()'::regprocedure)))>0
-  and position('and p.payout_status in' in lower(pg_get_functiondef(
+  and position('and p.payout_status in ('pending','paid','blocked')' in lower(pg_get_functiondef(
   'public.srk_admin_commission_report()'::regprocedure)))>0
   and position('count(pc.booking_id)' in lower(pg_get_functiondef(
-  'public.srk_admin_commission_report()'::regprocedure)))>0,
-  'Admin commission report preserves completed paid job counts with missing payout rows while only counting eligible ledger amounts');
+  'public.srk_admin_commission_report()'::regprocedure)))>0
+  and position('payout_status in ('pending','paid','blocked','refunded')' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))=0,
+  'Admin commission report counts matched jobs and excludes refunded payout amounts from commission totals');
 
 select * from finish();
 rollback;
