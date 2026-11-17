@@ -10,7 +10,19 @@ const getHeader = (headers, name) => {
   return key === undefined ? "" : headers[key];
 };
 
-const webhookFetch = (url, options = {}) => fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
+const WEBHOOK_HANDLER_BUDGET_MS = 52000;
+const WEBHOOK_COMPLETION_RESERVE_MS = 15000;
+const requestSignal = (deadlineAt, reserveMs = WEBHOOK_COMPLETION_RESERVE_MS) => {
+  const remaining = deadlineAt - Date.now() - reserveMs;
+  if (remaining <= 0) {
+    const error = new Error("WEBHOOK_HANDLER_DEADLINE_REACHED");
+    error.code = "WEBHOOK_HANDLER_DEADLINE_REACHED";
+    throw error;
+  }
+  return AbortSignal.timeout(Math.min(15000, remaining));
+};
+const webhookFetch = (url, options = {}, deadlineAt, reserveMs = WEBHOOK_COMPLETION_RESERVE_MS) =>
+  fetch(url, { ...options, signal: requestSignal(deadlineAt, reserveMs) });
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -18,7 +30,7 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body)
 });
 
-async function webhookInboxRpc(functionName, body) {
+async function webhookInboxRpc(functionName, body, deadlineAt, reserveMs = WEBHOOK_COMPLETION_RESERVE_MS) {
   const response = await webhookFetch(new URL("/rest/v1/rpc/" + functionName, SUPABASE_URL), {
     method: "POST",
     headers: {
@@ -27,27 +39,27 @@ async function webhookInboxRpc(functionName, body) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify(body)
-  });
+  }, deadlineAt, reserveMs);
   if (!response.ok) throw new Error("Webhook inbox RPC failed: " + functionName);
   return response.json();
 }
 
-async function claimWebhookEvent(eventId, eventType, payloadHash) {
+async function claimWebhookEvent(eventId, eventType, payloadHash, deadlineAt) {
   return webhookInboxRpc("srk_service_claim_razorpay_webhook_event", {
     p_event_id: eventId, p_event_type: eventType, p_payload_sha256: payloadHash
-  });
+  }, deadlineAt);
 }
 
-async function completeWebhookEvent(eventId, claimToken, outcome, error) {
+async function completeWebhookEvent(eventId, claimToken, outcome, error, deadlineAt) {
   const result = await webhookInboxRpc("srk_service_complete_razorpay_webhook_event", {
     p_event_id: eventId, p_claim_token: claimToken,
     p_outcome: outcome, p_error: error ? String(error).slice(0, 500) : null
-  });
+  }, deadlineAt, 0);
   if (!result?.success) throw new Error("Webhook event completion was not accepted");
   return result;
 }
 
-async function updateBooking(orderId, payment) {
+async function updateBooking(orderId, payment, deadlineAt) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
   url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,payment_method,razorpay_payment_id,selected_category");
@@ -55,7 +67,7 @@ async function updateBooking(orderId, payment) {
   const response = await webhookFetch(url, {
     method: "GET",
     headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
-  });
+  }, deadlineAt);
   if (!response.ok) throw new Error("Booking lookup failed");
   const rows = await response.json();
   const booking = Array.isArray(rows) ? rows[0] : null;
@@ -70,7 +82,7 @@ async function updateBooking(orderId, payment) {
       method: "POST",
       headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ p_booking_id: booking.id })
-    });
+    }, deadlineAt);
     if (!breakdownResponse.ok) throw new Error("Cancellation fee breakdown lookup failed");
     const breakdown = await breakdownResponse.json();
     const expectedAmount = Number(breakdown?.total_amount_paise);
@@ -79,7 +91,7 @@ async function updateBooking(orderId, payment) {
       method: "POST",
       headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ p_booking_id: booking.id, p_order_id: payment.order_id, p_payment_id: payment.id, p_amount_paise: payment.amount })
-    });
+    }, deadlineAt);
     if (!settlementResponse.ok) throw new Error("Cancellation fee ledger settlement failed");
     const settlement = await settlementResponse.json();
     return settlement?.success ? (settlement.already_processed ? "already_processed" : "updated") : "update_not_applied";
@@ -118,7 +130,7 @@ async function updateBooking(orderId, payment) {
       razorpay_payment_id: payment.id,
       payment_verified_at: new Date().toISOString()
     })
-  });
+  }, deadlineAt);
   if (!patched.ok) throw new Error("Booking payment update failed");
   const updated = await patched.json();
   if (Array.isArray(updated) && updated.length) return "updated";
@@ -139,7 +151,7 @@ async function updateBooking(orderId, payment) {
   return "update_not_applied";
 }
 
-async function reconcileRefund(refund, eventName) {
+async function reconcileRefund(refund, eventName, deadlineAt) {
   // Razorpay's own refund.created sample payloads can already carry
   // status=processed (for example, an immediately processed normal refund).
   // Do not discard that signed terminal evidence just because the event name
@@ -196,13 +208,14 @@ async function reconcileRefund(refund, eventName) {
       p_provider_status: refund.status,
       p_error: refund.status === "failed" ? "Razorpay reported refund failed" : null
     })
-  });
+  }, deadlineAt);
   if (!reconcileResponse.ok) throw new Error("Refund reconciliation RPC failed");
   const result = await reconcileResponse.json();
   return result?.success ? (result.replayed ? "already_processed" : result.status) : "refund_not_reconciled";
 }
 
 exports.handler = async (event) => {
+  const deadlineAt = Date.now() + WEBHOOK_HANDLER_BUDGET_MS;
   if (event.httpMethod !== "POST") return json(405, { success: false, error: "POST only." });
   if (!SUPABASE_URL || !SUPABASE_KEY || !WEBHOOK_SECRET) {
     console.error("Razorpay webhook server configuration is incomplete.");
@@ -233,7 +246,7 @@ exports.handler = async (event) => {
     // indexes the signed body hash to stop replay under a changed header.
     eventId = suppliedEventId && suppliedEventId.length <= 128
       ? suppliedEventId : ("sha256:" + payloadHash);
-    const claim = await claimWebhookEvent(eventId, eventName, payloadHash);
+    const claim = await claimWebhookEvent(eventId, eventName, payloadHash, deadlineAt);
 
     if (claim?.payload_conflict) {
       console.error("Razorpay reused an event ID with a different signed payload.");
@@ -253,21 +266,21 @@ exports.handler = async (event) => {
 
     if (eventName === "refund.created" || eventName === "refund.processed" || eventName === "refund.failed") {
       const refund = payload.payload?.refund?.entity;
-      const result = await reconcileRefund(refund, eventName);
+      const result = await reconcileRefund(refund, eventName, deadlineAt);
       if (result === "refund_payload_invalid" || result === "refund_record_mismatch") {
         console.error("Razorpay refund webhook requires manual reconciliation:", result);
-        await completeWebhookEvent(eventId, claimToken, "ignored", result);
+        await completeWebhookEvent(eventId, claimToken, "ignored", result, deadlineAt);
         claimToken = null;
         return json(200, { success: true, reconciled: false, reason: result });
       }
       if (result === "refund_not_reconciled") throw new Error("Refund record was not reconciled");
-      await completeWebhookEvent(eventId, claimToken, "processed", null);
+      await completeWebhookEvent(eventId, claimToken, "processed", null, deadlineAt);
       claimToken = null;
       return json(200, { success: true, reconciled: true, result });
     }
 
     if (eventName !== "payment.captured" && eventName !== "order.paid") {
-      await completeWebhookEvent(eventId, claimToken, "ignored", "Unsupported event type");
+      await completeWebhookEvent(eventId, claimToken, "ignored", "Unsupported event type", deadlineAt);
       claimToken = null;
       return json(200, { success: true, ignored: true });
     }
@@ -275,12 +288,12 @@ exports.handler = async (event) => {
     const payment = payload.payload?.payment?.entity;
     if (!payment || payment.status !== "captured" || !/^pay_[A-Za-z0-9]+$/.test(payment.id || "") ||
         !/^order_[A-Za-z0-9]+$/.test(payment.order_id || "")) {
-      await completeWebhookEvent(eventId, claimToken, "ignored", "Captured payment details missing or invalid");
+      await completeWebhookEvent(eventId, claimToken, "ignored", "Captured payment details missing or invalid", deadlineAt);
       claimToken = null;
       return json(200, { success: true, reconciled: false, reason: "captured_payment_details_invalid" });
     }
 
-    const result = await updateBooking(payment.order_id, payment);
+    const result = await updateBooking(payment.order_id, payment, deadlineAt);
     if (result === "update_not_applied") throw new Error("Payment reconciliation update was not applied");
     if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict" || result === "booking_not_payable" || result === "payment_method_not_online" || result === "payment_refunded") {
       console.error("Razorpay webhook could not reconcile booking:", result);
@@ -295,7 +308,7 @@ exports.handler = async (event) => {
   } catch (error) {
     if (claimToken && eventId) {
       try {
-        await completeWebhookEvent(eventId, claimToken, "retryable", error?.message || "Webhook processing failed");
+        await completeWebhookEvent(eventId, claimToken, "retryable", error?.message || "Webhook processing failed", deadlineAt);
       } catch (completionError) {
         console.error("Razorpay webhook retry state could not be saved:", completionError?.name || "UnknownError");
       }
