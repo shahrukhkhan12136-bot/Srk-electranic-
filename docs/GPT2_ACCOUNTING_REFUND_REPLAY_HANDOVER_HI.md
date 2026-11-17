@@ -981,3 +981,34 @@ Feature work-event trigger जोड़ने से पहले इनके �
 ### 4. Decision boundary
 - This is a proposed correction, not an applied patch. The manual refund, payout trigger, Razorpay reconciliation, and GPT-2 refund replay work must be reviewed together before changing source.
 - No SQL/code changed in this section; no test execution, Production DDL/DML, migration apply, external transfer/refund, deployment, merge or mobile QA.
+
+
+## Section 34 — Manual Refund pre-existing payout state matrix: unrelated Admin block overwrite risk (2026-11-17)
+
+### Additional critical finding
+- Manual Refund RPC currently allows any pre-existing `payout_status='blocked'` row to continue; it does not verify `payout_note` ownership before refund.
+- After booking status changes to refunded, payout trigger only closes refund-owned holds whose note exactly matches `Razorpay refund pending` or `Manual refund processed`. An unrelated Admin block remains blocked.
+- Manual Refund RPC then executes an unconditional `UPDATE ... WHERE id=v_payout.id AND payout_status='blocked'`, changing that unrelated Admin block to `refunded` and replacing its note with `Manual refund completed`.
+- Thus the earlier trigger interleaving is not the only defect: even after adding a safe trigger fallback, a pre-existing unrelated Admin block could be silently overwritten unless the RPC validates the original locked payout state and note before writing.
+
+### Required payout state policy
+| State at RPC entry | Safe handling |
+| --- | --- |
+| No payout row | Continue refund; no payout transition |
+| `pending` | Claim with exact `Manual refund processed` marker; after booking trigger, reconcile only exact marker or exact trigger-produced `refunded + NULL note` |
+| `blocked` + exact `Manual refund processed` | Treat only as an explicitly approved recoverable manual-refund hold; reconcile carefully |
+| `blocked` + any other note (including NULL) | Reject for Admin reconciliation; never overwrite |
+| `paid` | Reject with recovery-required error |
+| `refunded` or other terminal/unexpected state | Reject unless an explicitly designed idempotent replay path proves matching refund entry/reference |
+
+### Tests to add before enabling the fix
+- Existing blocked Admin note (including NULL note) must remain unchanged and manual refund RPC must fail atomically.
+- Exact refund-owned marker may be finalized, but only for matching booking/payout and no existing refund entry.
+- Trigger-produced `refunded + NULL note` is accepted only when the RPC itself had changed the locked pending payout to the exact manual marker earlier in the same transaction; never accept a pre-existing refunded row merely because note is NULL.
+- Pending payout happy path verifies final note, audit history, booking state, refund entry and customer request status.
+- The test must exercise actual trigger invocation from `service_bookings.payment_status` UPDATE, not only inspect function source strings.
+
+### Coordination and boundary
+- PR #8 currently has no submitted review or review-thread feedback for this proposed correction; no GPT-2 approval is visible in the available PR review data.
+- Because payout trigger, manual refund RPC, Razorpay reconciliation and GPT-2 replay work intersect, no implementation change is made until the owner/GPT-2 jointly confirms the state policy.
+- No code/SQL changed, no test run, no Production writes, provider actions, deployment, merge or mobile QA.
