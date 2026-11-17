@@ -4545,3 +4545,65 @@ Track A को Track B का सफल विकल्प न मानें�
 - Existing database में setup SQL दोबारा न चलाएँ; migration history या allow-list rows को अनुमान से न बदलें।
 
 **स्थिति:** Helper/table definitions repository source में confirmed; migration-only bootstrap gap source-level पर confirmed; live database में helper/allow-list की मौजूदगी, migration history और Staff/Main Admin overlap unverified। इस section में केवल Audit Report बदली गई। कोई SQL, migration, Auth user, database, CI या branch integration नहीं की गई।
+
+
+### 155. GPT-2 Final Migration Readiness Checklist — 17 Nov 2026
+
+यह checklist अब तक के source-level findings को execution gates में बदलती है। इसका अर्थ यह नहीं कि replay या tests चल चुके हैं। सभी अनसुलझे runtime items को स्पष्ट रूप से blocked/unverified रखा गया है।
+
+#### A. Source Inventory और Version Integrity
+
+- [x] Audit Branch पर 89 SQL migration files और 88 distinct version prefixes की inventory दर्ज।
+- [x] Duplicate `20261109` version prefix वाली दोनों अलग SQL files पहचानी गईं।
+- [x] समान blob SHA वाली दो labour-bill access migrations पहचानी गईं।
+- [ ] Owner-approved version collision strategy और migration history policy।
+- [ ] Pinned Supabase CLI पर duplicate-prefix और duplicate-content behavior का disposable replay evidence।
+
+#### B. Bootstrap और Schema Baseline
+
+- [x] `COMPLETE_DATABASE_SETUP.sql` में base tables, `srk_admin_users` और `is_srk_admin()` definitions की पहचान।
+- [x] शुरुआती Admin-gated migration में helper dependency की पहचान।
+- [ ] Canonical bootstrap source तय हो: versioned baseline या documented snapshot।
+- [ ] Bootstrap और timestamped migrations के overlap की object-by-object compatibility review।
+- [ ] Supabase CLI/PostgreSQL version pin तथा स्पष्ट `supabase/config.toml`/seed contract।
+- [ ] Blank disposable database पर bootstrap baseline का सफल निर्माण और catalog snapshot।
+
+#### C. Dependency और Contract Gates
+
+- [x] Booking quote/status dependency का source-level संबंध दर्ज।
+- [x] Labour-bill duplicate migration pair का exact blob match दर्ज।
+- [x] Refund lifecycle, Route ledger retirement/reconciliation और push outbox/ledger/lease chain की पूर्व sections में समीक्षा।
+- [x] Final accounting RPC और payout/refund trigger source chronology की समीक्षा।
+- [ ] प्रत्येक producer/consumer edge का complete 89-file dependency matrix और owner sign-off।
+- [ ] Duplicate table/function/constraint/policy/trigger/grant definitions का catalog-level comparison।
+- [ ] Route product contract तथा provider-settlement evidence का owner decision।
+- [ ] Manual refund blocked-payout note preservation और final accounting JSON/UI/test contract का resolution।
+
+#### D. Runtime Test Gates
+
+- [ ] SQL parser सभी 89 files पर।
+- [ ] सभी 89 migrations का clean replay, निर्धारित क्रम में, disposable local DB पर।
+- [ ] pgTAP suite discovery, reproducible runner और actual execution।
+- [ ] Main Admin बनाम Support Staff overlap/permission boundary tests।
+- [ ] Refund hold, recovery finalizer, payout trigger, idempotency, rollback और concurrency tests।
+- [ ] Accounting/payment ledger reconciliation tests।
+- [ ] Final schema, function ACL, RLS policy और trigger catalog assertions।
+
+#### E. Safety और Release Controls
+
+- [x] यह GPT-2 audit Audit Branch तक सीमित रही; कोई shared branch/merge नहीं।
+- [x] इस audit में Production या shared Test DB को query/modify नहीं किया गया।
+- [x] CI workflow dispatch, deployment, migration apply और database reset नहीं किए गए।
+- [ ] Disposable local environment की explicit owner approval और verified remote-disconnected configuration।
+- [ ] GPT-1 handover के साथ findings का line-by-line reconciliation।
+- [ ] दोनों audits के बाद अलग Integration Branch, conflict review और owner approval।
+
+#### Readiness Verdict
+
+<**Source audit:** substantial / ongoing reconciliation complete for documented areas.  
+**Migration execution readiness:** BLOCKED — canonical bootstrap, duplicate version policy, pinned runner/config और complete dependency proof बाकी।  
+**PostgreSQL/pgTAP runtime verification:** NOT RUN.  
+**Shared integration branch:** NOT READY.  
+**PR #8:** OPEN / Draft / Unmerged रखना उचित है।>
+
+**अगला सुरक्षित चरण:** GPT-1 की final handover report के साथ इस checklist का reconciliation, फिर owner के सामने केवल शेष blockers और उनके निर्णय रखना। कोई migration, application code, database, CI workflow या shared branch इस section में नहीं बदली गई।
