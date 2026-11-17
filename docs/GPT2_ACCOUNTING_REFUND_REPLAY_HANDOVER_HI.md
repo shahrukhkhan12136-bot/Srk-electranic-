@@ -399,3 +399,40 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - Read-only Main catalog/function/privilege inspection and Feature source reads only.
 - No application code, SQL migrations, or database objects were changed in this audit section.
 - No Production DDL/data writes, migration application, deployment, merge, or mobile QA occurred.
+
+
+## 18. Electrician Profile auth identity linkage audit (Nov 17)
+
+### Main live profile data (read-only snapshot)
+- Main currently contains one `electrician_profiles` row.
+- That row has non-null `user_id` and `auth_user_id`, and both UUIDs are identical.
+- It is Admin-approved and active, with one assigned booking and one offer row.
+- Across current profile rows, the audit found no UUID that links to more than one distinct profile through either identity column.
+- This is a point-in-time observation of the current single-row dataset; it is not proof that future writes cannot create collisions.
+
+### Schema constraints and policies
+- `auth_user_id` has a partial UNIQUE index (`electrician_auth_user_unique`) when non-null.
+- `user_id` has a non-unique partial index only; no UNIQUE constraint/index was found for it.
+- Both columns have foreign keys to `auth.users(id)` with `ON DELETE SET NULL`.
+- No database CHECK constraint enforces `user_id = auth_user_id`.
+- Authenticated SELECT policy allows a profile when either identity column matches `auth.uid()`; Admin can also read. Profile INSERT/UPDATE/DELETE policies are Admin-only.
+- The only inspected non-internal profile trigger is the audit trigger; no profile-table trigger automatically enforces identity parity.
+
+### Main linkage and approval functions
+- `srk_admin_review_application(uuid,text)` is Admin-only. On approval it finds a phone-confirmed `auth.users` row matching the application's normalized last 10 phone digits, then writes the same UUID into both `user_id` and `auth_user_id`. If no confirmed OTP account exists, approval fails.
+- `srk_link_electrician_profile()` is a SECURITY DEFINER trigger function on the Auth user linkage path. When a phone-confirmed Auth user appears, it updates approved profiles whose `user_id IS NULL` and whose normalized phone matches, setting both identity columns to the new Auth UUID.
+- `srk_admin_set_electrician_active(uuid,boolean)` refuses activation unless the profile is approved, `auth_user_id` is non-null, and `user_id IS NOT DISTINCT FROM auth_user_id`; it also requires latest identity and address proof documents to be approved.
+- `srk_admin_offer_booking(uuid)` only creates offers for approved/active profiles with non-null `auth_user_id` and exact `user_id = auth_user_id`.
+- These controls provide strong parity checks in the reviewed Admin approval, activation, and offer-creation paths.
+
+### Identity predicate mismatch still present
+- Actual Electrician UI reads customer contact through `srk_get_my_offer_details()`, whose ownership predicate is `p.user_id = auth.uid()`. It also requires approved/active profile and reveals customer contact fields only when the booking's `assigned_electrician_id = p.id` and status is in its allow-list.
+- Other live RPCs use `p.user_id = auth.uid() OR p.auth_user_id = auth.uid()`, including the separate assigned-booking contact RPC and several booking workflow operations.
+- Since the normal approval/activation/offer paths enforce equal IDs, this difference is not currently observable in the one-row Main snapshot. However, the schema itself does not globally enforce equality, and `user_id` is not unique. The mismatch remains a defense-in-depth consistency gap if any alternate Admin/import/manual write creates divergent values.
+- The unique index on `auth_user_id` prevents two profiles sharing that column value, but does not by itself prevent one profile's `user_id` from colliding with another profile's `auth_user_id`.
+
+### Recommendation for GPT-2 / owner review
+- Keep the current feature/UI behavior unchanged pending coordinated review.
+- Decide whether `user_id` is legacy alias or co-equal identity. Then standardize all electrician RPC ownership predicates and enforce the canonical invariant in a race-safe database constraint/trigger or canonical identity mapping.
+- Any schema enforcement must be designed against the complete Main migration history and existing Admin/application flows; do not add a one-off migration based only on the current one-row data snapshot.
+- This is a review recommendation only. No SQL, profile data, application code, or production settings were changed.
