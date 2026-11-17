@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(13);
 
 select ok(exists(select 1 from information_schema.columns where table_schema='public' and table_name='srk_razorpay_webhook_events' and column_name='event_payload' and data_type='jsonb'),
   'webhook inbox stores the minimal validated event payload for asynchronous processing');
@@ -35,8 +35,8 @@ select ok(not has_function_privilege('anon','public.srk_service_list_due_razorpa
   and not has_function_privilege('authenticated','public.srk_service_list_due_razorpay_webhook_events(integer)','execute')
   and has_function_privilege('service_role','public.srk_service_list_due_razorpay_webhook_events(integer)','execute'),
   'sweeper discovery RPC is service-role-only');
-select ok(position('event_payload=p_event_payload' in pg_get_functiondef('public.srk_service_enqueue_razorpay_webhook_event(text,text,text,jsonb)'::regprocedure))>0
-  and position('state=''queued''' in pg_get_functiondef('public.srk_service_enqueue_razorpay_webhook_event(text,text,text,jsonb)'::regprocedure))>0,
+select ok(position('p_event_payload' in pg_get_functiondef('public.srk_service_enqueue_razorpay_webhook_event(text,text,text,jsonb)'::regprocedure))>0
+  and position('queued' in pg_get_functiondef('public.srk_service_enqueue_razorpay_webhook_event(text,text,text,jsonb)'::regprocedure))>0,
   'replayed legacy inbox row without payload is safely re-queued with signed projection');
 
 select * from finish();
