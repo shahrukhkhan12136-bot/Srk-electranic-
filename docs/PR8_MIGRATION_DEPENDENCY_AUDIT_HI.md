@@ -5641,3 +5641,41 @@ Migration source में direct browser access बंद, append-only mutation
 ### 5. Verdict
 
 Source design में Main Admin actions और Support Staff actions के लिए अलग authorization gates हैं; actor identity सामान्यतः current `auth.uid()` से आती है, जबकि invite registration trusted Edge Function/service-role path पर निर्भर है। Support Staff writes assignment तथा permission checks के बाद ही सफल होते हैं। Rejected attempts की durable audit coverage अभी gap है। कोई source migration/test/permission/database setting नहीं बदली गई; कोई SQL/DB query/pgTAP/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
+
+
+## 181. Support Staff Session Binding — JWT Session, Auth Session और Revocation Gate
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Staff RBAC migration के अंतिम `srk_has_admin_permission` और `srk_admin_staff_register_session` definitions तथा session audit trigger का static review।
+
+### 1. Permission Check में Exact Session Binding
+
+- अंतिम `srk_has_admin_permission(text)` पहले `auth.uid()` और permission key जाँचता है।
+- Main Admin को अलग identity class के रूप में पहले allow किया जाता है; Support Staff path में यह bypass लागू नहीं है।
+- Support Staff के लिए JWT `session_id` UUID format में होना चाहिए।
+- Function active `srk_admin_staff` row और उसी UUID/Staff user से जुड़ी non-revoked `srk_admin_staff_sessions` row खोजता है।
+- अंत में `auth.sessions` में उसी session UUID और user UUID की मौजूदगी तथा role-permission mapping जाँची जाती है।
+- Registry और tracked session rows पर `FOR SHARE` locks लगाए जाते हैं। Source comments के अनुसार suspension/disable और explicit revoke के concurrent updates इन in-flight authorized transactions के साथ serialize होने चाहिए।
+
+### 2. Session Registration
+
+- `srk_admin_staff_register_session()` JWT से `session_id` लेता है, Staff का active status जाँचता है और `auth.sessions` में उसी user/session pair की मौजूदगी माँगता है।
+- यह `auth_session_id` पर partial unique index के साथ tracked session row insert करता है।
+- पहले से उसी Staff की active session row मिलने पर conflict-update केवल `last_seen_at` refresh करता है; revoked row या दूसरे Staff की row को फिर से सक्रिय नहीं करता।
+- Function केवल `authenticated` को executable है; `PUBLIC` और `anon` से revoke है।
+
+### 3. Audit Event का सूक्ष्म व्यवहार
+
+- `srk_capture_admin_staff_session_event` trigger केवल `AFTER INSERT` पर जुड़ा है।
+- इसलिए नई tracked session row का registration audit event बनता है; उसी existing row पर `ON CONFLICT DO UPDATE` से केवल `last_seen_at` बदलने पर यह INSERT trigger दोबारा नहीं चलता।
+- इस design में हर heartbeat/last-seen refresh का audit event नहीं बनता, जिससे audit table में अनावश्यक volume नहीं बढ़ता।
+
+### 4. शेष Evidence Gap
+
+- यह source-level review है। JWT claims, वास्तविक `auth.sessions` rows, deployed grants, concurrent suspension/revocation timing और session registration का runtime behavior verify नहीं किया गया।
+- Session revoke और Staff suspension के बीच वास्तविक transaction/lock ordering का कोई database concurrency test इस step में नहीं चला।
+- यह जाँच केवल static documentation तक सीमित रही; कोई SQL, test, pgTAP, DB query या migration execution नहीं हुआ।
+
+### 5. Verdict
+
+Source design Support Staff authorization को केवल user ID पर निर्भर नहीं रखता; वह JWT session ID, live Auth session, active Staff registry, tracked non-revoked session और role permission को साथ जाँचता है। Session registration audit केवल नई tracked row पर बनता है, last-seen refresh पर नहीं। ये अच्छे source-level controls हैं, पर live और concurrency evidence अभी उपलब्ध नहीं है। कोई source migration/test/permission/database setting नहीं बदली गई; कोई SQL/DB query/pgTAP/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
