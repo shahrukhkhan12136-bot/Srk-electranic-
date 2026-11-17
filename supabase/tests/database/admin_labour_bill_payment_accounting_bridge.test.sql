@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(23);
 
 select has_function('public','srk_admin_record_new_booking_cash_payment',
   array['uuid','text','text'],
@@ -117,6 +117,36 @@ select ok(
   and (select proconfig @> ARRAY['search_path=""']::text[] from pg_proc where oid='public.srk_admin_commission_report()'::regprocedure)
   and (select proconfig @> ARRAY['search_path=""']::text[] from pg_proc where oid='public.srk_get_my_earnings()'::regprocedure),
   'all SECURITY DEFINER accounting bridge functions pin an empty search_path');
+
+
+select ok(exists(
+  select 1
+    from pg_trigger legacy_before
+    join pg_trigger bridge_before
+      on bridge_before.tgrelid=legacy_before.tgrelid
+   where legacy_before.tgrelid='public.service_bookings'::regclass
+     and legacy_before.tgname='srk_calculate_booking_commission'
+     and bridge_before.tgname='zz_srk_set_booking_commission_before_payout'
+     and pg_get_triggerdef(legacy_before.oid,true) ilike 'CREATE TRIGGER% BEFORE %'
+     and pg_get_triggerdef(bridge_before.oid,true) ilike 'CREATE TRIGGER% BEFORE %'
+     and legacy_before.tgname < bridge_before.tgname
+  ),
+  'new commission BEFORE trigger runs after the legacy commission calculation trigger');
+
+select ok(exists(
+  select 1
+    from pg_trigger payout_after
+    join pg_trigger parity_after
+      on parity_after.tgrelid=payout_after.tgrelid
+   where payout_after.tgrelid='public.service_bookings'::regclass
+     and payout_after.tgname='trg_srk_create_electrician_payable'
+     and payout_after.tgfoid='public.srk_create_electrician_payable()'::regprocedure
+     and parity_after.tgname='zz_srk_validate_booking_commission_payout_parity'
+     and pg_get_triggerdef(payout_after.oid,true) ilike 'CREATE TRIGGER% AFTER %'
+     and pg_get_triggerdef(parity_after.oid,true) ilike 'CREATE TRIGGER% AFTER %'
+     and payout_after.tgname < parity_after.tgname
+  ),
+  'payout ledger AFTER trigger runs before the commission-to-payout parity validation trigger');
 
 select * from finish();
 rollback;
