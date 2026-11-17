@@ -1,5 +1,5 @@
 begin;
-select plan(39);
+select plan(41);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -206,6 +206,23 @@ select ok(position('payout_row_missing_during_commission_parity_check' in
 select ok(position('where public.srk_electrician_payouts.payout_status = '||quote_literal('pending') in
   lower(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)))>0,
   'payout upsert cannot silently overwrite a blocked payout row');
+
+
+select ok((select position('materials_amount' in lower(pg_get_triggerdef(t.oid)))=0
+    and position('commission_amount' in lower(pg_get_triggerdef(t.oid)))=0
+  from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgfoid='public.srk_create_electrician_payable()'::regprocedure),
+  'payout writer does not run on direct materials or commission-only edits');
+
+select ok((select position('materials_amount' in lower(pg_get_triggerdef(t.oid)))>0
+    and position('commission_amount' in lower(pg_get_triggerdef(t.oid)))>0
+  from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgfoid='public.srk_validate_booking_commission_payout_parity()'::regprocedure),
+  'parity-only update columns permit isolated guard checks without rewriting payout ledger');
 
 select * from finish();
 rollback;
