@@ -595,3 +595,16 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - Source files and migration were re-fetched from the audited branch. No Node tests or pgTAP tests were executed.
 - No database operation, migration apply/replay, CI dispatch, deployment, merge, provider refund, or production setting change occurred.
 - Official GPT-2 checklist remains **27/39 = 69% (12 remaining)**; Runtime Acceptance remains **60/60 Pending**. This audit note does not complete an official checklist item.
+
+
+## 3Y. 17 November 2026 — Main Admin payout settlement and accounting reconciliation recheck
+
+**Audited branch:** `chore/pr8-replay-audit-20261116-v2`
+
+- Re-fetched `supabase/migrations/20261114360000_new_category_electrician_payout_reconciliation.sql` and verified `srk_admin_mark_electrician_payout_paid`: authenticated Main Admin gate; UPI/Bank only; bounded UTR/UPI reference; booking row locked before payout row; only pending payout may transition to paid; completed + verified-paid booking required; new-category payout is recalculated from immutable labour bill and commission; booking assignment, labour-bill electrician, payout electrician and payout ledger amounts must agree; reserved cancellation-fee items block payout settlement; settled fees are included in collection parity but excluded from electrician payable.
+- The payout lifecycle trigger creates/refreshes only pending rows and does not overwrite paid/blocked/refunded rows. Full refund closes pending or explicitly refund-owned blocked payout holds, preserving unrelated Admin blocks and already-paid payouts.
+- Re-fetched `supabase/tests/database/electrician_payout_reconciliation.test.sql`: declared plan 55. Its source contains 55 `SELECT ok` assertions, including Main Admin settlement authorization, lock order, reference validation, immutable labour bill parity, fee separation and refund hold ownership. This is static test-source coverage only; pgTAP was not executed.
+- Re-fetched `supabase/migrations/20261115170000_admin_route_transfer_accounting_reconciliation.sql`: Admin reconciliation explicitly treats the retired Razorpay Route ledger as retired and does not infer provider settlement. The manual Admin payout RPC remains the authoritative payout-paid record after actual transfer and UTR entry.
+- No additional source defect was confirmed in this pass. This closes a source-audit subtask, but does not complete the full Payout/Accounting workstream: runtime/schema-chain verification remains pending, and the separate aggregate-report missing-payout visibility limitation remains documented in section 3X/related notes.
+
+**Verification boundary:** source re-fetch only; no Node/pgTAP execution, DB operation, migration apply/replay, CI, deployment, merge or mobile QA.
