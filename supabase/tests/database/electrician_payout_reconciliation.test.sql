@@ -1,5 +1,5 @@
 begin;
-select plan(51);
+select plan(53);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -347,6 +347,25 @@ select ok((select count(*)=1 from public.srk_electrician_payouts p
   join payout_rollback_fixtures f on f.booking_id=p.booking_id
   where f.scenario='mismatch'),
   'mismatch rollback preserves exactly one payout row');
+
+
+select ok(position('p.gross_service_amount' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0
+  and position('p.materials_amount' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0
+  and position('p.platform_commission' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0
+  and position('p.electrician_payable' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0,
+  'Admin commission report reads electrician gross, commission and payable from the canonical payout ledger');
+
+select ok(position('b.amount_paid' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0
+  and position('p.electrician_payable' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0
+  and position('set search_path = ""' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0,
+  'Admin commission report separates customer collection from payout payable and pins an empty search_path');
 
 select * from finish();
 rollback;
