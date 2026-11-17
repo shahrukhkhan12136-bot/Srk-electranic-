@@ -1,5 +1,5 @@
 begin;
-select plan(35);
+select plan(40);
 select ok(to_regclass('public.srk_razorpay_refund_recovery_audits') is not null,'durable refund recovery evidence table exists');
 select ok((select relrowsecurity from pg_class where oid='public.srk_razorpay_refund_recovery_audits'::regclass),'recovery evidence table has RLS enabled');
 select ok(not has_table_privilege('anon','public.srk_razorpay_refund_recovery_audits','select'),'anon cannot read private recovery evidence');
@@ -61,5 +61,28 @@ select ok(position('route_provider_settlement_verified',pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'Admin reconciliation never infers provider settlement from the retired ledger');
 select ok(position('sum(case when direction=''credit'' then amount else -amount end)' in pg_get_functiondef('public.srk_get_my_wallet_summary()'::regprocedure))>0,'wallet balance is derived from posted ledger entries rather than a mutable cached balance');
+
+select ok(exists(select 1 from pg_trigger where tgname='srk_refund_recovery_provider_identity_guard'
+  and tgrelid='public.srk_razorpay_refund_recovery_audits'::regclass and not tgisinternal),
+  'recovery observations enforce provider refund identity mapping before insert');
+select ok(exists(select 1 from pg_trigger where tgname='srk_refund_provider_identity_guard'
+  and tgrelid='public.srk_razorpay_refunds'::regclass and not tgisinternal),
+  'canonical refund records enforce provider refund identity mapping on write');
+select ok(position('pg_advisory_xact_lock' in pg_get_functiondef(
+  'public.srk_enforce_razorpay_refund_identity_mapping()'::regprocedure))>0
+  and position('refund-record:' in pg_get_functiondef(
+  'public.srk_enforce_razorpay_refund_identity_mapping()'::regprocedure))>0
+  and position('provider:' in pg_get_functiondef(
+  'public.srk_enforce_razorpay_refund_identity_mapping()'::regprocedure))>0,
+  'provider ID and internal record claims are serialized against concurrent conflicting inserts');
+select ok(position('PROVIDER_REFUND_ID_ALREADY_BOUND_TO_ANOTHER_REFUND' in pg_get_functiondef(
+  'public.srk_enforce_razorpay_refund_identity_mapping()'::regprocedure))>0
+  and position('REFUND_RECORD_ALREADY_BOUND_TO_ANOTHER_PROVIDER_REFUND' in pg_get_functiondef(
+  'public.srk_enforce_razorpay_refund_identity_mapping()'::regprocedure))>0,
+  'identity guard rejects both provider-ID reuse and conflicting IDs for one internal record');
+select ok((select prosecdef and coalesce(array_to_string(proconfig,','),'') like '%search_path=%'
+  from pg_proc where oid='public.srk_enforce_razorpay_refund_identity_mapping()'::regprocedure),
+  'identity guard is SECURITY DEFINER with an explicit empty search_path');
+
 select * from finish();
 rollback;
