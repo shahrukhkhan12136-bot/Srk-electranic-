@@ -1667,3 +1667,23 @@ The late migration family was compared against its referenced base relations and
 - Several successive report/refund migrations replace the same function signatures. The replay audit must preserve every historical migration version while separately recording the final effective function body.
 
 **Status:** late migration source dependencies reviewed; KYC forward-reference and Route index prerequisite recorded; no historical file reordered/edited; no SQL parser or database replay executed; runtime tests remain **NOT RUN**.
+
+
+## 85. Current-branch migration inventory recheck — 17 Nov 2026
+
+The recursive Git tree was fetched again at the current Audit Branch head after sections 81–84 were added.
+
+- Tree response: `truncated=false`.
+- Current migration SQL count: **89**.
+- Two filenames still fail the 14-digit timestamp + underscore naming convention:
+  - `20261109_allow_quote_approval_booking_states.sql`
+  - `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+- One pair of distinct migration paths still shares the exact same content blob:
+  - `20261115120001_fix_multi_profile_electrician_labour_bill_access.sql`
+  - `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql`
+  - Blob SHA: `e3bdf2624c224322a6ac4c99f2ae6e77b1be4774`
+- The tree was not truncated, so the count and path comparison cover the complete recursive tree response at the fetched branch head.
+
+This is an inventory check only. It does not establish a canonical bootstrap, a complete dependency DAG, a safe version remapping, or successful clean/upgrade replay. Preserve both malformed historical paths and the duplicate-content version identities until the repository owner approves a migration-lineage plan.
+
+**Status:** current inventory rechecked; no migration path modified; PostgreSQL parse/replay and runtime tests remain **NOT RUN**.
