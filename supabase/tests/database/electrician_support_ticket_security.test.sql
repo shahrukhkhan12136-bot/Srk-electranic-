@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(14);
 
 select ok(
   to_regclass('public.srk_electrician_support_tickets') is not null
@@ -98,6 +98,22 @@ select ok(
        and pg_get_constraintdef(oid) like '%admin%'
   ),
   'ticket status and message sender role constraints are present'
+);
+
+select ok(
+  position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_electrician_support_tickets(integer)'::regprocedure))>0
+  and position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_list_electrician_support_messages(uuid)'::regprocedure))>0
+  and position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_send_electrician_support_message(uuid,text)'::regprocedure))>0
+  and position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_update_electrician_support_ticket(uuid,text,text)'::regprocedure))>0,
+  'legacy electrician support inbox RPCs remain Main Admin-only'
+);
+
+select ok(
+  position('support.electrician.read' in pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure))>0
+  and position('support.electrician.read' in pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure))>0
+  and position('support.electrician.reply' in pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure))>0
+  and position('support.electrician.update_status' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure))>0,
+  'Staff electrician support RPCs enforce their separate RBAC permissions'
 );
 
 select * from finish();
