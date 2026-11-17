@@ -6876,3 +6876,41 @@ A **migration-to-test contract drift** is present in the repository source: an e
 GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only audit does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल receipt migrations और दोनों SQL test files का static comparison तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, source/migration/test-file edit, runtime test, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 214. Commission/Payout Parity Follow-up — Trigger Wiring Covered, Fail-Closed Branches Not Behavior-Tested
+
+### 1. Static source reviewed
+
+- Commission/parity correction migration `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` (SHA `68189051090a51bef26a98997caf103b62ed070c`).
+- Existing payout lifecycle trigger migration `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` (SHA `b12da77471d510b55f798bd089597d866d79a133`).
+- SQL test `electrician_payout_reconciliation.test.sql` (SHA `88184e2e1fb386f16d6bd339556a15a5b87275d2`, `plan(34)`).
+
+### 2. Trigger sequence and safeguards
+
+1. The Nov 17 migration installs a row-level BEFORE trigger that computes booking commission from the labour/service amount before the payout AFTER trigger runs.
+2. The BEFORE function rejects a manual-payment record whose amount matches the booking amount but whose payment method differs from the booking's method.
+3. The existing `srk_reconcile_electrician_payable` AFTER trigger writes or updates the payout ledger.
+4. A later-named `zz_srk_validate_booking_commission_payout_parity` AFTER trigger checks that a qualifying completed/paid booking has a payout row and that booking commission equals the payout ledger's platform commission. A missing row or mismatch raises an exception.
+5. The new migration also updates Admin reconciliation/report and electrician earnings projections to use the payout ledger as the authoritative payout amount.
+
+### 3. What the 34-assertion test actually verifies
+
+- It checks the BEFORE trigger is installed for row-level INSERT/UPDATE and that its function contains the manual-payment-method mismatch guard and labour-only commission formula.
+- It checks the AFTER parity trigger is installed, its definition compares booking commission with payout commission, and it does not itself assign commission.
+- It checks the parity trigger event columns include `materials_amount` and `commission_amount`, and checks alphabetical ordering places payout creation before parity validation.
+- These are catalog/function-definition assertions. The test contains no direct exception assertion for `PAYOUT_ROW_MISSING_DURING_COMMISSION_PARITY_CHECK` or `BOOKING_COMMISSION_AND_PAYOUT_PLATFORM_COMMISSION_MISMATCH`; it has no pgTAP exception/behavior call for either branch.
+
+### 4. Remaining verification gap and recommendation
+
+The static test gives useful evidence that the trigger wiring and intended order are represented in the database definitions. It does not demonstrate that either fail-closed branch fires for the intended fixture, nor that a parity exception rolls back both the booking update and the payout-ledger write atomically. In the later isolated PostgreSQL branch, add behavior cases that deliberately produce a missing payout and a commission mismatch, assert the exact exception, and verify the transaction leaves neither a partial booking update nor a partial payout mutation. Also test the valid legacy approved-quote and new-category immutable-labour paths with manual and online payment evidence.
+
+This is a **behavior-test coverage gap**, not proof that the trigger is defective or that a live booking has incorrect commission. No SQL/pgTAP was executed for this review.
+
+### 5. Verdict and limits
+
+The Nov 17 migration statically connects commission calculation, payout creation and ledger parity validation in the intended trigger sequence. The 34-assertion test verifies trigger wiring and source contracts, but does not behavior-test the two parity exception branches or transaction rollback. Confirm these only in the future isolated PostgreSQL branch after GPT-1/GPT-2 reconciliation.
+
+GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only audit does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल संबंधित migration और 34-assertion SQL test का static निरीक्षण तथा audit report में यह section जोड़ा गया। कोई SQL/pgTAP execution, DB query, source/migration/test-file edit, runtime test, CI, deployment, merge या cherry-pick नहीं किया गया।
