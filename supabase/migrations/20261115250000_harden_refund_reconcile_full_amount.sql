@@ -14,6 +14,8 @@ as $$
 declare
   v_refund public.srk_razorpay_refunds%rowtype;
   v_booking public.service_bookings%rowtype;
+  v_payout public.srk_electrician_payouts%rowtype;
+  v_has_payout boolean:=false;
   v_status text;
 begin
   if coalesce(auth.jwt()->>'role','')<>'service_role' then
@@ -41,6 +43,20 @@ begin
   if v_refund.refund_id is not null and p_provider_refund_id is not null
      and v_refund.refund_id is distinct from p_provider_refund_id then
     raise exception 'PROVIDER_REFUND_ID_MISMATCH' using errcode='55000';
+  end if;
+
+  -- Lock the payout in the same booking -> refund -> payout order used by preparation.
+  select * into v_payout from public.srk_electrician_payouts
+    where booking_id=v_booking.id for update;
+  v_has_payout:=found;
+  if p_provider_status='processed' and v_has_payout
+     and v_payout.payout_status not in ('blocked','refunded') then
+    raise exception 'ELECTRICIAN_PAYOUT_STATE_REQUIRES_MANUAL_RECONCILIATION' using errcode='55000';
+  end if;
+  if p_provider_status='processed' and v_has_payout
+     and v_payout.payout_status='blocked'
+     and v_payout.payout_note is distinct from 'Razorpay refund pending' then
+    raise exception 'ELECTRICIAN_PAYOUT_BLOCK_REASON_MISMATCH' using errcode='55000';
   end if;
 
   -- A processed provider result is allowed to close the booking only for the entire
@@ -78,6 +94,17 @@ begin
   if p_provider_status='processed' then
     update public.service_bookings set payment_status='refunded'
       where id=v_refund.booking_id and payment_status='paid';
+    if v_has_payout and v_payout.payout_status='blocked' then
+      update public.srk_electrician_payouts
+        set payout_status='refunded',
+            payout_note='Razorpay full refund verified; payout permanently withheld.',
+            updated_at=clock_timestamp()
+        where id=v_payout.id and payout_status='blocked'
+          and payout_note='Razorpay refund pending';
+      if not found then
+        raise exception 'BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' using errcode='55000';
+      end if;
+    end if;
   elsif p_provider_status='failed' then
     update public.srk_electrician_payouts
       set payout_status='pending',payout_note=v_refund.previous_payout_note,
