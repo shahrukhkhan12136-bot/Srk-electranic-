@@ -7,7 +7,7 @@
 
 ## 1. Inventory and hard gates
 
-- Current `supabase/migrations/` inventory: **92 SQL files**.
+- Current `supabase/migrations/` inventory: **93 SQL files** (including the fixed-new-booking commission guard added 17 Nov 2026).
 - Current `supabase/tests/database/` inventory: **36 pgTAP files**.
 - One duplicate migration version token remains: `20261109` is used by both `20261109_allow_quote_approval_booking_states.sql` and `20261109_electrician_inspection_quotes_and_service_only_commission.sql`.
 - `supabase/config.toml` is absent on this branch.
@@ -245,3 +245,14 @@ The source caller check was extended beyond SQL:
 - No alias, replacement helper, migration, grant change, or auth-semantic change was made during this audit.
 
 **Gate / owner evidence required:** obtain the owner-approved canonical baseline (sanitized schema definition and ACL/grant evidence for both helper signatures and `srk_admin_users`, plus confirmation of which starter/setup path is authoritative). Until then, fresh replay is blocked at the first direct policy/function-ACL dependency if the base objects are absent. Do not manufacture aliases or assume either starter SQL file is authoritative.
+
+
+### 7.9 Fixed commission-rate migration dependency (17 November 2026)
+
+- New migration: `20261117130000_enforce_fixed_new_booking_commission_rate.sql`.
+- Adds `public.srk_enforce_new_booking_commission_rate()` and a row-level BEFORE trigger `aa_srk_enforce_new_booking_commission_rate` on `service_bookings`.
+- On INSERT, the trigger overwrites any supplied `commission_rate` with exactly `15.00`. Its `aa_` name makes it run before the existing `zz_srk_set_booking_commission_before_payout` commission-amount calculator.
+- On UPDATE OF `commission_rate`, the trigger rejects any value different from OLD with `BOOKING_COMMISSION_RATE_IS_IMMUTABLE`. Other updates leave the stored historical commission snapshot unchanged.
+- No historical rows are updated or backfilled. The payout and accounting formulas continue to calculate the company share from the booking's stored snapshot, with labour-only service amount and materials excluded.
+- The payout pgTAP file now declares `plan(49)` and contains three additional source-catalog assertions for trigger wiring, forced 15% on INSERT, and immutable historical snapshots. These assertions have **not** been executed; runtime proof remains pending.
+- Dependency edge: canonical `service_bookings` base table and existing commission BEFORE trigger must exist before this migration; subsequent payout setter consumes the enforced 15% value. Migration ordering is additive and does not change old migration history.
