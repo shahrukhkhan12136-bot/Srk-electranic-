@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(13);
 
 select ok(to_regprocedure('public.srk_get_my_earnings()') is not null,
   'electrician earnings RPC exists');
@@ -23,6 +23,14 @@ select ok(position('coalesce(po.electrician_payable,0)' in lower(pg_get_function
 select ok(position('coalesce(b.amount_paid,0)' in lower(pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)))>0
   and position('b.amount_paid-coalesce(b.commission_amount,0)' in lower(pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)))=0,
   'customer collection is retained separately and never used to calculate electrician earning');
+
+
+select ok(position('p.user_id=auth.uid()' in lower(pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)))>0,
+  'earnings RPC is scoped to the authenticated electrician user');
+select ok(position('p.verification_status=''approved''' in lower(pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)))>0,
+  'earnings RPC requires an approved electrician profile');
+select ok(position('limit 200' in lower(pg_get_functiondef('public.srk_get_my_earnings()'::regprocedure)))>0,
+  'earnings RPC retains the bounded 200-booking response');
 
 select * from finish();
 rollback;
