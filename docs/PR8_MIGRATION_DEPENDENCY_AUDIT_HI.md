@@ -6524,3 +6524,56 @@ Recommended later isolated pgTAP coverage:
 - Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल migration/test source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 205. Payout Lifecycle — Existing Non-Pending Row and Parity Guard State Gap
+
+### 1. Static source path
+
+Compared:
+- `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` (SHA `b12da77471d510b55f798bd089597d866d79a133`).
+- `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` (SHA `68189051090a51bef26a98997caf103b62ed070c`).
+- `electrician_payout_reconciliation.test.sql` (SHA `88184e2e1fb386f16d6bd339556a15a5b87275d2`, `plan(34)`).
+
+The payout writer inserts a new row with `payout_status='pending'`. On booking conflict, it updates the existing payout only when that row is still `pending`:
+
+```sql
+on conflict (booking_id) do update set ...
+where public.srk_electrician_payouts.payout_status = 'pending';
+```
+
+If the existing row is `blocked`, `paid`, or `refunded`, this upsert does not change that row. The later parity trigger checks that a payout row exists and that `platform_commission` matches `service_bookings.commission_amount`; it does not check the payout row's lifecycle status.
+
+### 2. Potential state-contract gap
+
+For a qualifying completed/paid booking event, an existing non-pending payout row can therefore satisfy the parity guard if its commission value matches, even though the payout writer did not transition it back to pending. This is not necessarily an authorization bypass or a proven accounting defect: preserving a paid payout, unrelated Admin block, or refund-owned state may be intentional. The missing piece is an explicit documented state policy for each existing payout status when a qualifying booking event is replayed or edited.
+
+The risk to resolve is whether the booking can remain/return to a qualifying paid-completed state while its payout remains `blocked` or `refunded`, without the parity guard flagging that status mismatch. A `paid` payout should generally not be reopened automatically; it should require a deliberate reconciliation path.
+
+### 3. Existing test coverage
+
+The `plan(34)` source-contract test checks:
+- the payout writer's pending-only conflict update;
+- refund closure of pending payouts and specifically refund-owned blocked holds;
+- preservation of unrelated Admin blocks;
+- that the parity trigger compares commission values and runs after the payout writer.
+
+It does not assert a status-state matrix for an existing `blocked`, `paid`, or `refunded` payout when the booking becomes or remains qualifying. The test file is a source assertion script; this review did not execute it.
+
+Recommended later isolated pgTAP cases:
+- matching commission + existing unrelated `blocked` payout: verify the intended booking/payout state outcome;
+- matching commission + existing `refunded` payout: verify a refunded payout cannot silently coexist with a newly paid booking;
+- existing `paid` payout: verify it is preserved and any incompatible booking transition is rejected or explicitly reconciled;
+- refund-owned blocked hold: verify only the approved refund transition closes it as `refunded`;
+- mismatched commission: retain the existing parity rollback assertion.
+
+### 4. Verdict and limits
+
+- Static source identifies a **payout lifecycle status coverage gap**: the parity guard validates row presence and commission parity, not payout status parity.
+- This is a policy/behavior question for owner review, not proof that a live inconsistent row exists or that the trigger chain fails.
+- No code or migration change is proposed or made in this audit section.
+- No database query, migration replay, PostgreSQL execution, pgTAP run or runtime test was performed.
+- GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion.
+- Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल migration और test source inspection तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
