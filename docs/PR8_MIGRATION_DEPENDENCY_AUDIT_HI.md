@@ -1362,3 +1362,124 @@ A recursive Git tree read at Audit Branch head `0a2ccc4af877b06512ad58f8394f3aa9
 These findings strengthen the canonical-baseline and migration-lineage blockers. They do not authorize renaming historical files or changing migration order. A clean replay remains blocked pending an approved baseline/version mapping and a disposable Supabase-compatible PostgreSQL fixture.
 
 **Status:** source-only prerequisite review. No migration SQL was changed, parsed or executed; no database or Production system was contacted; runtime tests remain **NOT RUN**.
+
+## 78. Complete migration inventory and replay-manifest integrity — 17 Nov 2026
+
+A fresh recursive Git tree read was performed at Audit Branch head `651c6ab8a6643bb3560590680e7a584e95db94d0`. The tree response was not truncated.
+
+### Inventory evidence
+
+- SQL files under `supabase/migrations/`: **89**.
+- Lexicographically earliest filename: `20261108120608_add_public_api_rate_limiting.sql`.
+- Lexicographically latest filename: `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`.
+- This is a filename inventory only. Lexical order is not proof of dependency order, successful parse, or replay safety.
+
+### Filename/version anomalies
+
+- `supabase/migrations/20261109_allow_quote_approval_booking_states.sql` — blob `ef4bf8b9b8a9a35bf3ddd94ea4614c7498fb1c6d`; filename does not match the 14-digit timestamp plus underscore convention.
+- `supabase/migrations/20261109_electrician_inspection_quotes_and_service_only_commission.sql` — blob `014699d3190e45aacde4022ac7e7fa9ca4fec006`; filename does not match the 14-digit timestamp plus underscore convention.
+
+### Identical-content paths
+
+- Blob `e3bdf2624c224322a6ac4c99f2ae6e77b1be4774` is referenced by both `supabase/migrations/20261115120001_fix_multi_profile_electrician_labour_bill_access.sql` and `supabase/migrations/20261115145900_fix_multi_profile_electrician_labour_bill_access.sql`. These are two migration paths with byte-identical Git blob content, not proof that either path is safe to apply twice. Replay tooling and migration-ledger behavior must be checked before treating them as independent migrations.
+
+### Complete filename inventory (Git tree order)
+
+1. `20261108120608_add_public_api_rate_limiting.sql`
+2. `20261108120658_enable_rls_public_api_rate_limits.sql`
+3. `20261108121115_add_customer_account_booking_access.sql`
+4. `20261108233500_restrict_public_form_inserts.sql`
+5. `20261108234000_combine_booking_read_policy.sql`
+6. `20261109000500_harden_electrician_profile_identity_linking.sql`
+7. `20261109001000_add_google_maps_location_support.sql`
+8. `20261109001500_unique_electrician_admin_identity_linking.sql`
+9. `20261109002000_expose_assigned_booking_map_pin.sql`
+10. `20261109003000_secure_commission_reporting.sql`
+11. `20261109010000_create_secure_wallet_ledger_foundation.sql`
+12. `20261109020000_create_server_only_razorpay_route_transfer_ledger.sql`
+13. `20261109103038_customer_electrician_direct_call_contacts.sql`
+14. `20261109103143_move_customer_call_contact_lookup_to_private.sql`
+15. `20261109_allow_quote_approval_booking_states.sql`
+16. `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+17. `20261110040000_customer_admin_complaints.sql`
+18. `20261110140000_restore_missing_customer_booking_quote_columns.sql`
+19. `20261111020000_add_electrician_push_subscriptions.sql`
+20. `20261113220000_customer_support_conversation_schema.sql`
+21. `20261113230000_support_attachment_paths_and_admin_message_list.sql`
+22. `20261114125844_restore_financial_audit_core_schema.sql`
+23. `20261114130000_harden_electrician_profile_identity_linking.sql`
+24. `20261114150000_customer_booking_submission_idempotency.sql`
+25. `20261114160000_customer_selected_rate_tier_and_server_estimate.sql`
+26. `20261114180000_harden_customer_avatar_object_integrity.sql`
+27. `20261114190000_customer_receipt_immutable_labour_amount.sql`
+28. `20261114200000_customer_payment_refund_history_rpc.sql`
+29. `20261114201428_customer_profile_saved_addresses_private_storage.sql`
+30. `20261114202250_customer_complaint_customer_safe_projection.sql`
+31. `20261114202656_customer_change_payment_method_rpc.sql`
+32. `20261114210000_sequential_nearest_offer_dispatch.sql`
+33. `20261114220000_admin_approved_electrician_relocation.sql`
+34. `20261114230000_recheck_electrician_current_area_before_offer.sql`
+35. `20261114240000_server_authoritative_customer_approved_work_timer.sql`
+36. `20261114250000_admin_work_dispute_review_and_immutable_history.sql`
+37. `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql`
+38. `20261114270000_admin_only_cancellation_requests_and_decisions.sql`
+39. `20261114280000_cancellation_fee_carry_forward_and_accounting.sql`
+40. `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql`
+41. `20261114300000_admin_customer_support_thread_replies.sql`
+42. `20261114310000_electrician_self_availability.sql`
+43. `20261114320000_booking_scoped_live_electrician_location.sql`
+44. `20261114330000_electrician_private_kyc_document_preview.sql`
+45. `20261114340000_electrician_self_profile_name_edit.sql`
+46. `20261114350000_electrician_support_tickets_and_admin_inbox.sql`
+47. `20261114360000_new_category_electrician_payout_reconciliation.sql`
+48. `20261114370000_electrician_offer_details_immediate_booking_fields.sql`
+49. `20261114380000_electrician_phone_change_admin_approval.sql`
+50. `20261114390000_admin_staff_rbac_foundation.sql`
+51. `20261114410000_razorpay_webhook_event_inbox.sql`
+52. `20261115091906_retire_unused_legacy_accept_electrician_job.sql`
+53. `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql`
+54. `20261115100000_customer_refund_request_contract.sql`
+55. `20261115110000_admin_refund_review_queue_and_decisions.sql`
+56. `20261115120000_durable_razorpay_refund_recovery_evidence.sql`
+57. `20261115120001_fix_multi_profile_electrician_labour_bill_access.sql`
+58. `20261115130000_admin_manual_refund_request_completion.sql`
+59. `20261115140000_electrician_kyc_review_and_activation_gate.sql`
+60. `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql`
+61. `20261115150000_admin_readonly_booking_accounting_reconciliation.sql`
+62. `20261115160000_legacy_booking_status_write_guard.sql`
+63. `20261115170000_admin_route_transfer_accounting_reconciliation.sql`
+64. `20261115170001_durable_push_delivery_outbox.sql`
+65. `20261115180000_admin_route_recipient_and_settlement_validation.sql`
+66. `20261115180001_push_subscription_delivery_ledger.sql`
+67. `20261115190000_enforce_single_primary_route_bank_link.sql`
+68. `20261115190001_push_delivery_health_monitoring.sql`
+69. `20261115200000_harden_financial_admin_rpc_search_path.sql`
+70. `20261115200001_push_delivery_lease_fencing.sql`
+71. `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`
+72. `20261115210001_harden_legacy_financial_read_rpc_search_paths.sql`
+73. `20261115220000_retire_live_legacy_quotation_rpcs.sql`
+74. `20261115230000_admin_booking_direct_write_closure.sql`
+75. `20261115240000_harden_refund_recovery_full_amount.sql`
+76. `20261115250000_harden_refund_reconcile_full_amount.sql`
+77. `20261115260000_sos_admin_support_alerts.sql`
+78. `20261115270000_fix_customer_payment_method_unicode_contract.sql`
+79. `20261116100000_fix_staff_permission_helper_volatility.sql`
+80. `20261116110000_pin_legacy_financial_read_rpc_search_paths.sql`
+81. `20261116120000_pin_customer_call_contact_rpc_search_paths.sql`
+82. `20261116130000_pin_wallet_and_receipt_rpc_search_paths.sql`
+83. `20261116140000_pin_electrician_offer_details_search_path.sql`
+84. `20261116150000_pin_admin_application_review_search_path.sql`
+85. `20261116160000_pin_quote_and_work_status_rpc_search_paths.sql`
+86. `20261116170000_pin_public_rate_limit_rpc_search_path.sql`
+87. `20261116200000_restore_service_bookings_amount_paid.sql`
+88. `20261116210000_attach_electrician_payout_reconciliation_trigger.sql`
+89. `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`
+
+### Replay-manifest decision
+
+1. Keep the 89 path identities intact in the audit inventory; do not rename, delete, squash, or reorder historical migrations on this report-only step.
+2. The two nonconforming legacy `20261109_*.sql` filenames remain unresolved version-lineage items (see §77).
+3. The identical-content pair above requires an explicit migration-ledger and duplicate-application decision; identical blobs do not establish duplicate version IDs.
+4. Generate a dependency-respecting replay manifest only after the canonical bootstrap, platform prerequisites, and legacy version mapping are approved. A sorted filename list is not a dependency graph.
+
+**Status:** full current-tree inventory verified from GitHub; no migration SQL changed, parsed or executed; no database contacted; runtime tests remain **NOT RUN**.
