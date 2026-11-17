@@ -1,5 +1,5 @@
 BEGIN;
-select plan(70);
+select plan(71);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
