@@ -15,12 +15,12 @@ function json(statusCode,body){return{statusCode,headers:{"Content-Type":"applic
 async function readJson(response){const raw=await response.text();let value=null;try{value=raw?JSON.parse(raw):null;}catch(_){throw new Error("INVALID_UPSTREAM_JSON");}if(!response.ok){const error=new Error(value?.message||"UPSTREAM_REQUEST_FAILED");error.status=response.status;throw error;}return value;}
 function env(){return{url:process.env.SUPABASE_URL,key:process.env.SUPABASE_SERVICE_ROLE_KEY,rzpId:process.env.RAZORPAY_KEY_ID,rzpSecret:process.env.RAZORPAY_KEY_SECRET};}
 async function adminUser(token,cfg,deadlineAt){
- const auth=await fetch(cfg.url+"/auth/v1/user",{headers:{apikey:cfg.key,Authorization:"Bearer "+token},signal:requestSignal(deadlineAt,10000,PRE_EVIDENCE_RESERVE_MS)});
+ const auth=await fetch(cfg.url+"/auth/v1/user",{headers:{apikey:cfg.key,Authorization:"Bearer "+token},signal:requestSignal(deadlineAt,5000,PRE_EVIDENCE_RESERVE_MS)});
  if(!auth.ok)return null;const user=await readJson(auth);if(!user?.id||!UUID.test(user.id))return null;
- const check=await fetch(cfg.url+"/rest/v1/rpc/is_srk_admin",{method:"POST",headers:{apikey:cfg.key,Authorization:"Bearer "+token,"Content-Type":"application/json"},body:"{}",signal:requestSignal(deadlineAt,10000,PRE_EVIDENCE_RESERVE_MS)});
+ const check=await fetch(cfg.url+"/rest/v1/rpc/is_srk_admin",{method:"POST",headers:{apikey:cfg.key,Authorization:"Bearer "+token,"Content-Type":"application/json"},body:"{}",signal:requestSignal(deadlineAt,5000,PRE_EVIDENCE_RESERVE_MS)});
  if(!check.ok||await readJson(check)!==true)return null;return user;
 }
-async function dbGet(path,cfg,deadlineAt){return readJson(await fetch(cfg.url+path,{method:"GET",headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key,Accept:"application/json"},signal:requestSignal(deadlineAt,10000,PRE_EVIDENCE_RESERVE_MS)}));}
+async function dbGet(path,cfg,deadlineAt){return readJson(await fetch(cfg.url+path,{method:"GET",headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key,Accept:"application/json"},signal:requestSignal(deadlineAt,5000,PRE_EVIDENCE_RESERVE_MS)}));}
 async function rpc(name,args,cfg,deadlineAt,reserveMs=0,onDispatch){
  const signal=requestSignal(deadlineAt,15000,reserveMs);
  if(onDispatch)onDispatch();
@@ -58,6 +58,7 @@ async function findRefundAcrossPages(paymentId,record,cfg,deadlineAt){
  return{complete:false,reason:"provider_search_limit_reached",matches:[]};
 }
 exports.handler=async event=>{
+ const deadlineAt=Date.now()+HANDLER_BUDGET_MS;
  if(event.httpMethod!=="POST")return json(405,{success:false,error:"केवल POST अनुरोध स्वीकार है।"});
  const cfg=env();if(!cfg.url||!cfg.key||!cfg.rzpId||!cfg.rzpSecret)return json(500,{success:false,error:"Refund recovery server configuration is incomplete."});
  const auth=getHeader(event.headers,"authorization");const match=/^Bearer ([A-Za-z0-9._~-]{20,8192})$/.exec(auth);
