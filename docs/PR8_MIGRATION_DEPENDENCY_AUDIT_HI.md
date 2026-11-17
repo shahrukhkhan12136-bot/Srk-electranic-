@@ -3234,3 +3234,48 @@ Workflow `.github/workflows/supabase-schema-ci.yml` (blob `8cdd128fb69227fee82b5
 - `supabase/config.toml` / `supabase/seed.sql` absent from inspected recursive tree — **source-confirmed**.
 - Existing schema workflow manual-only, branch-restricted, schema-dump based, five hard-coded migrations — **source-confirmed**.
 - Existing workflow was not dispatched; no database contacted; no SQL, PostgreSQL replay, pgTAP, CI, deployment, merge or Production change performed.
+
+## 130. शुरुआती Migration dependency chain — SQL body से सत्यापित — 17 Nov 2026
+
+Audit Branch की शुरुआती sequence में पहले 18 migration bodies fetch करके SQL statements पढ़े गए। यह static source inspection है, PostgreSQL parse/replay नहीं।
+
+### 130.1 स्पष्ट क्रम-निर्भरता
+
+1. 20261108120608_add_public_api_rate_limiting.sql private schema, private.srk_public_api_rate_limits और public.srk_check_public_rate_limit(text,text,integer) बनाती है।
+2. 20261108120658_enable_rls_public_api_rate_limits.sql उसी private table पर RLS enable करती है। स्पष्ट prerequisite: 08120608 पहले।
+3. 20261108121115_add_customer_account_booking_access.sql existing public.service_bookings पर customer_user_id जोड़ती है और customer SELECT policy बनाती है।
+4. 20261108234000_combine_booking_read_policy.sql उसी customer ownership column को policy में उपयोग करती है और public.is_srk_admin() call करती है। स्पष्ट prerequisites: service_bookings + 08121115 customer_user_id + Admin helper bootstrap.
+5. 20261109000500_harden_electrician_profile_identity_linking.sql electrician_profiles.auth_user_id जोड़ती है; existing user_id, phone, verification_status, auth.users पर निर्भर होकर identity columns sync/guard triggers बनाती है।
+6. 20261109001000_add_google_maps_location_support.sql अपनी टिप्पणी में 09000500 के बाद चलने की बात कहती है; यह auth_user_id सहित दोनों identity columns लिखती है, location columns जोड़ती है, और is_srk_admin() वाला application-review RPC परिभाषित करती है।
+7. 20261109001500_unique_electrician_admin_identity_linking.sql स्पष्ट रूप से 09001000 के बाद चलने को कहती है; उसी signature का पहले वाला Admin review function drop करके JSONB-returning function बनाती है और legacy srk_is_admin() call करती है।
+8. 20261109002000_expose_assigned_booking_map_pin.sql service_bookings.location_lat/location_lng को पढ़ती है; इसलिए 09001000 के location DDL के बाद आना चाहिए।
+9. 20261109003000_secure_commission_reporting.sql service_bookings.amount_paid को numeric(12,2) के रूप में ADD IF NOT EXISTS करती है; इसके बाद उसी कॉलम पर report/earnings RPCs बनाती है। यह later migration 20261116200000_restore_service_bookings_amount_paid.sql से पहले ही column introduce करती है।
+10. 20261109010000_create_secure_wallet_ledger_foundation.sql electrician_profiles.auth_user_id और user_id पढ़ती है; इसलिए identity-column prerequisite (09000500) जरूरी है।
+11. 20261109020000_create_server_only_razorpay_route_transfer_ledger.sql existing service_bookings(id) और auth.users(id) पर FK बनाती है।
+12. 20261109103038_customer_electrician_direct_call_contacts.sql service_bookings.customer_user_id तथा assigned profile/booking columns पढ़ती है; 08121115 ownership column इसका prerequisite है।
+13. 20261109103143_move_customer_call_contact_lookup_to_private.sql उसी public RPC को private implementation + invoker wrapper से बदलती है; 09103038 के बाद आने वाला replacement है।
+
+### 130.2 दो समान 8-digit version files का वास्तविक overlap
+
+- 20261109_allow_quote_approval_booking_states.sql और 20261109_electrician_inspection_quotes_and_service_only_commission.sql दोनों service_bookings_status_check और service_bookings_assignment_status_requires_electrician को DROP/ADD करती हैं।
+- बड़ी quote migration पहली ही बार इन दोनों constraints को जोड़ती है; अलग 8-digit file वही constraints फिर से DROP/ADD करती है।
+- Quote migration में amount_paid, service_bookings की अन्य baseline columns, electrician_profiles, job_offers, auth.uid() और trigger/function contracts उपयोग होते हैं।
+- इसलिए दोनों को source-only आधार पर अलग-अलग versioned identities मानकर replay order तय करना सुरक्षित नहीं। CLI parser behavior और remote applied history का स्वतंत्र प्रमाण अभी नहीं है। कोई rename/delete/resequence नहीं किया गया।
+
+### 130.3 शुरुआती provisional dependency graph (execution order नहीं)
+
+- Rate-limit table → rate-limit RLS.
+- Customer booking ownership column → consolidated customer/Admin booking policy → customer call-contact RPC.
+- Electrician identity column + sync/guard triggers → Google Maps/Admin approval RPC → unique-only Admin approval replacement → wallet summary.
+- Google Maps location columns → assigned booking map-pin RPC.
+- amount_paid introducing DDL → commission/earnings RPC consumers.
+- Complaint base migration → बाद की support conversation/message/attachment migrations (बाद की पूरी chain अलग से verify करनी है).
+- Push subscription base table → push outbox → delivery ledger → health/lease fencing (बाद की पूरी chain अलग से verify करनी है).
+
+### 130.4 महत्वपूर्ण सीमा और आगे का काम
+
+- यह Section केवल fetch की गई शुरुआती migration bodies के स्पष्ट references/DDL को map करता है; 89/89 files की पूर्ण transitive dependency graph नहीं है।
+- Existing starter/base schema में service_bookings, electrician_profiles, job_offers, electrician_applications, auth.users, roles, extensions और helper functions का exact authoritative baseline अभी अलग gate है।
+- is_srk_admin() और srk_is_admin() अलग function names हैं; relevant earliest callers के पहले दोनों की availability/compatibility स्पष्ट होनी चाहिए।
+- अगले pass में 20261113–20261117 support, financial audit, RBAC, refund, payout, Route, push और search_path migrations की object-level prerequisites map करनी हैं।
+- कोई SQL execution, PostgreSQL parser/replay, pgTAP, database query/write, CI dispatch, deployment या merge नहीं किया गया।
