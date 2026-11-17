@@ -267,8 +267,8 @@ where f.scenario='missing' and p.booking_id=f.booking_id;
 select throws_ok(
   format('update public.service_bookings set commission_amount=commission_amount where id=%L',
     (select booking_id from payout_rollback_fixtures where scenario='missing')),
+  'P0001',
   'PAYOUT_ROW_MISSING_DURING_COMMISSION_PARITY_CHECK',
-  'missing payout parity exception',
   'commission-only update rejects a missing payout row'
 );
 select ok(not exists(
@@ -286,8 +286,8 @@ where f.scenario='mismatch' and p.booking_id=f.booking_id;
 select throws_ok(
   format('update public.service_bookings set commission_amount=commission_amount where id=%L',
     (select booking_id from payout_rollback_fixtures where scenario='mismatch')),
+  'P0001',
   'BOOKING_COMMISSION_AND_PAYOUT_PLATFORM_COMMISSION_MISMATCH',
-  'booking commission and payout platform commission mismatch',
   'commission-only update rejects a payout commission mismatch'
 );
 select ok(exists(
