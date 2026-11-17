@@ -1882,3 +1882,31 @@ This is a concrete dependency blocker, not merely a tooling limitation. It also 
 
 **Status:** prerequisite is source-verified from the first migration files and root starter schema. No database was initialized, no SQL was executed, and no runtime replay was attempted. Canonical baseline and clean replay remain **BLOCKED / UNRESOLVED**.
 
+
+
+## 93. Git commit history narrows the earliest available bootstrap candidate, but does not prove it was applied — 17 Nov 2026
+
+The GitHub path histories for the three root setup artifacts and the first two numbered migrations were checked to establish their earliest recorded repository presence.
+
+### Commit-history evidence
+
+- `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql`, and `COMPLETE_DATABASE_SETUP.sql` all first appear in the same repository commit:
+  `c4b6a46f22553e57638cdae844ec33d09bf8da2c`, dated **2026-11-08 04:15:50 UTC**.
+- The first rate-limiting migration, `20261108120608_add_public_api_rate_limiting.sql`, first appears in commit `7c13153393efbef7ab2150a5068d59e59358c847`, dated **2026-11-08 12:07:14 UTC**.
+- The customer-booking-access migration, `20261108121115_add_customer_account_booking_access.sql`, first appears in commit `c8144e4eabc4434603844f48aac335aada90fe1a`, dated **2026-11-08 12:12:02 UTC**.
+- Thus, the three setup artifacts were present in repository history about eight hours before the first numbered migration file was committed. This is consistent with a possible pre-migration bootstrap stage.
+
+### Finding and limits
+
+This history **narrows the earliest available repository bootstrap candidate** to the root setup artifacts as they existed in commit `c4b6a46f22553e57638cdae844ec33d09bf8da2c`. It does **not** establish that any one of those files was executed against the database, that its schema matched the database immediately before migration `20261108120608`, or that the three scripts were intended to be applied in any particular combination/order.
+
+The candidate set itself is not a canonical answer: `SUPABASE_SCHEMA.sql` is the starter public schema; `PORTAL_SCHEMA.sql` layers portal objects and the `srk_is_admin()` helper; `COMPLETE_DATABASE_SETUP.sql` is a consolidated artifact whose Admin helper/policy definitions differ from the standalone portal path as recorded in §91. A Git timestamp is provenance for repository availability, not deployment or database-execution evidence.
+
+### Safe next step
+
+- Preserve commit `c4b6a46f22553e57638cdae844ec33d09bf8da2c` as the earliest repository bootstrap snapshot for comparison only.
+- Obtain the owner-approved pre-migration schema-only export or migration-ledger evidence for the actual target database.
+- Compare that authoritative snapshot object-by-object with the three files at the above commit before designating a baseline.
+- Until that evidence is available, do not choose or apply one root script as the canonical replay baseline.
+
+**Status:** earliest Git introduction commits and timestamps are source-history verified. Actual execution/application provenance and schema equivalence remain **UNVERIFIED**. No source SQL, database, Production environment, or migration history was changed.
