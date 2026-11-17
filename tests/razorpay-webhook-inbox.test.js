@@ -29,6 +29,8 @@ const rpcName = url => String(url).split("/").pop();
 test("reads Razorpay headers case-insensitively", async t => {
   let claimedEventId = null;
   global.fetch = async (url, options = {}) => {
+    assert.ok(options.signal instanceof AbortSignal, "upstream request must have a bounded timeout signal");
+    assert.equal(options.signal.aborted, false);
     const fn = rpcName(url);
     if (fn === "srk_service_claim_razorpay_webhook_event") {
       claimedEventId = JSON.parse(options.body).p_event_id;
