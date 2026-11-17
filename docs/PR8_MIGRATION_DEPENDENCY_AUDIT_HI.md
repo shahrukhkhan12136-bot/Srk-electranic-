@@ -2746,3 +2746,14 @@ Durable Razorpay recovery evidence tests एक अलग table/workflow को 
 - कोई migration लागू नहीं, कोई test/SQL execute नहीं, कोई CI/DB/Production change नहीं।
 - Owner approval अभी भी जरूरी है: Admin को actor UUID और changed_fields दिखाना, retention/lookback, read-access monitoring, और final filter policy।
 - Approval के बाद ही drafts को active migration और isolated pgTAP suite में promote किया जाए।
+
+
+## 116. Finance Audit Read API — Behavioral Test Plan — 17 Nov 2026
+
+- Section 115 के 10 static catalog/source-contract assertions वास्तविक role behavior, row disclosure, pagination sequence या filter semantics execute नहीं करते।
+- इस gap को स्पष्ट करने के लिए `docs/drafts/finance_audit_log_read_api_behavioral_test_plan.md` जोड़ा गया।
+- Draft में 16 behavioral scenarios हैं: anon/customer/electrician/Support Staff denial, Main Admin read, page-size boundaries, paired cursor validation, equal-timestamp tie-break, multi-filter semantics, invalid allow-list values, raw JSON secret non-disclosure, direct table SELECT denial, anon EXECUTE denial और empty/final page behavior।
+- Plan synthetic-only fixtures, isolated disposable DB, rollback/cleanup, SQLSTATE evidence और complete paginated-ID comparison अनिवार्य करता है।
+- Open decisions अभी भी हैं: actor UUID/changed_fields visibility, actual schema के अनुसार entity/action allow-list, retention/lookback, read-access logging और Support Staff exclusion।
+- यह planning document है; कोई executable test, active migration, database operation, privilege change, CI run या deployment नहीं किया गया।
+- Promotion तभी जब RPC contract/field policy owner से approve हो और isolated PostgreSQL environment में tests execute हों।
