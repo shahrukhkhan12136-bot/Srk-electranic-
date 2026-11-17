@@ -1064,3 +1064,37 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - Customer Support attachment flow is a confirmed Main integration blocker: bucket + message/attachment tables + RPCs + policies are missing as a bundle.
 - Next: inspect the full Main live function bodies behind Admin reads and mutations, and map each direct-table query's exact column/filter requirements to existing grants and RLS. Review support bundle dependencies together with GPT-2; do not apply migrations or create buckets in Production.
 - No DDL/DML, bucket creation, object access, signed URL generation, policy change, function change, Auth setting change, deployment, merge, external action, or mobile QA was performed.
+
+
+## Section 37 — Admin Panel live RPC authorization + contract parity snapshot (2026-11-17)
+
+### Admin.html current surface
+- Re-fetched `admin.html`; SHA remains `6b29511a1ecfab93b5689dff23012078091e57fc`.
+- 53 distinct RPC names are called by the Admin UI.
+- Five direct Supabase surfaces are referenced: `electrician_applications`, `electrician_profiles`, `service_bookings`, `srk_electrician_payouts`, and Storage bucket `srk-customer-support`.
+- Direct reads observed:
+  - `service_bookings`: explicit booking fields for the main dashboard and small eligibility snapshots before protected RPC actions.
+  - `electrician_profiles`: one small explicit eligibility projection before activation.
+  - `electrician_applications` and `electrician_profiles`: broad `select('*')` in dashboard load, bounded to 300 and 500 rows respectively.
+  - `srk_electrician_payouts`: bounded latest 300 rows with joined display name/phone, plus paginated summary reads of id/payable/status.
+  - No direct table `.update()`/insert/delete write chain was observed in the extracted direct-table call sites; state-changing Admin actions use RPCs.
+- Broad `select('*')` is Admin-RLS-scoped today, but is unnecessary data over-fetch and makes UI coupling sensitive to future schema additions. Treat as a minimization/code-review item, not a proven unauthorized disclosure. Do not change until the agreed scope is reviewed.
+
+### Main live RPC inventory
+- Queried all 53 exact Admin UI RPC names against the live Main `public` catalog.
+- 17 exact names exist in Main; 36 exact names are absent from Main public catalog. This is consistent with the previously documented incomplete Feature→Main migration parity. Missing functions are not assumed to be absent from Feature; their Feature migration dependency bundles remain tracked in earlier sections.
+- All 17 present functions are SECURITY DEFINER, EXECUTE is false for `anon` and true for `authenticated`, and every one explicitly references `auth.uid()` and `is_srk_admin()` in its body. No present Admin RPC in this 17-function sample used the Staff permission helper. This means the live Main functions inspected are Main-Admin-only, not Support-Staff-capable. This is consistent with the known unintegrated Staff RBAC migration; do not grant Staff access by changing grants alone.
+- All 17 functions have a configured search_path. Fifteen pin `pg_catalog, public, auth, pg_temp`; two use `search_path = ''`: `srk_admin_decide_booking_refund_request` and `srk_admin_list_booking_refund_requests`. Their bodies schema-qualify referenced objects/functions in the inspected definitions. No search_path change made.
+- Main `is_srk_admin()` checks only membership in `srk_admin_users`, and is SECURITY DEFINER with pinned search_path. The separate Main Admin vs Staff UUID exclusivity blocker remains unresolved; no Staff helper or invariant added.
+
+### Contract mismatch re-confirmation
+- Live Main `srk_admin_decide_booking_refund_request(uuid,text,text)` argument is `p_status`, while Admin UI calls the same RPC with `p_decision`. PostgREST named-argument invocation therefore does not match the live Main signature.
+- Live Main `srk_admin_list_booking_refund_requests(integer)` returns legacy columns including `id`, `amount`, `status`, `refund_record_id`, `refund_id`, and `provider_status`; current Admin UI expects newer projection keys such as `request_id`, `request_amount`, `request_status`, `refund_record_status`, and payout/customer details. This is a response-shape incompatibility, not just a missing UI field.
+- Other major Admin workflow RPCs remain missing from Main: staff inbox/assignment/session APIs, customer and electrician support message APIs, SOS, cancellation, work-review, accounting reconciliation, new-category cash payment, legacy confirm, and rate-tier operations. The earlier migration bundle/dependency notes remain authoritative.
+- Existing Main `srk_admin_mark_electrician_payout_paid`, `srk_admin_record_manual_payment`, `srk_admin_record_manual_refund`, `srk_admin_review_application`, `srk_admin_review_electrician_document`, and `srk_admin_set_electrician_active` all include explicit Main Admin authorization checks. Payout settlement also locks booking then payout; the inspected function requires payment evidence and reconciled booking/payout amounts. This is static body inspection, not runtime proof.
+
+### Status / next steps
+- Confirmed: Main currently supports only the 17 overlapping Admin RPC contracts; the rest of the 53-name UI surface is not deploy-ready on Main.
+- Confirmed: current Main Admin RPCs inspected are Main-Admin-only; Staff support requires the complete RBAC + support inbox/session bundle and the UUID exclusivity invariant review.
+- Next read-only inspection: source of `admin-staff-management` and `electrician-phone-change` Edge Functions, plus their environment/config/auth boundaries. Do not invoke them, invite staff, send OTP, change phone, or send external messages.
+- No code/SQL changes, migrations, function execution, direct table writes, Storage URL creation, Staff invitation, OTP, payout, refund, deployment, merge, or mobile QA performed in this section.
