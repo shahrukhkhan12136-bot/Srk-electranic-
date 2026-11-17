@@ -7084,3 +7084,30 @@ The workflow does include useful controls: a read-only schema-export credential 
 5. Keep production schema export strictly read-only and separate from the empty-database replay so a live schema snapshot cannot mask missing baseline objects.
 
 Static workflow inspection only. No workflow was dispatched and no database, migration, lint, pgTAP, CI or deployment was run. This is a CI coverage/readiness finding, not evidence that a migration has failed. GPT-2 checklist remains 27/39 = 69%; documentation-only findings do not increment it. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and reconcile their own work.
+
+
+## 221. Versioned Migration Chain Depends on Unversioned Core Tables
+
+### Static source reviewed
+- `20261108121115_add_customer_account_booking_access.sql` SHA `9877bb969b380d306567322eb110d81eaaa4c115`.
+- `20261108233500_restrict_public_form_inserts.sql` SHA `a840a00a17866caa5dc841d6eb596c035198ce43`.
+- `20261109000500_harden_electrician_profile_identity_linking.sql` SHA `<verify-current-file-sha-before-reuse>`.
+- `20261114125844_restore_financial_audit_core_schema.sql` SHA `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`.
+- Root baseline artifacts: `SUPABASE_SCHEMA.sql` and `PORTAL_SCHEMA.sql` (see Section 219).
+
+### Finding
+The early versioned migrations are not a self-contained schema bootstrap. For example:
+- `20261108121115` immediately alters `public.service_bookings`, adds a foreign key to `auth.users`, creates an index and policy.
+- `20261108233500` drops policies and changes grants on both `public.service_bookings` and `public.electrician_applications`.
+- The early electrician identity migration alters `public.electrician_profiles`.
+- The later financial-core restoration creates dependent financial tables, but those definitions themselves reference pre-existing `service_bookings` and `electrician_profiles`.
+
+The required base operational relations are created in the root/manual setup scripts, not established by an initial versioned migration in the inspected chain. Thus, replaying only `supabase/migrations/` against an empty Supabase database has unresolved prerequisites. The existing CI workflow's production-schema export can supply those missing relations and mask this bootstrap dependency, which is why its current pass/fail result would not prove empty-database reproducibility.
+
+### Required dependency contract
+1. Convert the core operational schema into a versioned baseline migration (or formally define and validate a separate baseline import step that always precedes every migration).
+2. Document built-in Supabase prerequisites separately (`auth.users`, `storage`, required extensions/roles).
+3. Add preflight assertions for `service_bookings`, `electrician_applications`, `electrician_profiles` and their required columns before applying dependent migrations.
+4. Test the documented baseline plus all migrations from an empty local stack; do not seed the test by exporting the live project's current schema.
+
+Static dependency inspection only. No SQL was executed and no migration replay, pgTAP, CI, deployment or database change was performed. The finding establishes an external baseline dependency; it does not claim a particular migration failed in execution. GPT-2 checklist remains 27/39 = 69%; documentation-only findings do not increment the checklist. Paid Database Branch remains deferred until both workstreams are complete and reconciled.
