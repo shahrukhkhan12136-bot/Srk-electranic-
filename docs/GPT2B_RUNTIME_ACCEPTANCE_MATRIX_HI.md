@@ -119,7 +119,8 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - The two negative behavioral cases are present in source: missing payout row and mismatched payout commission. Their rollback/preservation outcomes remain **unverified until pgTAP is executed**. This source review is not a test pass and does not establish that the actual canonical database baseline matches the starter schema.
 
 ### Remaining payout acceptance gap
-- B5 (commission-only update when booking and payout commission already match) still has no positive behavioral DB fixture; keep it Pending.
+- Added a positive behavioral fixture for B5: when booking and payout commission already match, a commission-only UPDATE must complete without error (`lives_ok`). The missing-payout and mismatched-payout negative cases remain alongside it.
+- The payout pgTAP plan is now 52 assertions (48 `ok`, 3 `throws_ok`, 1 `lives_ok`), verified by source count. The positive case is source coverage only, not a runtime pass.
 - The runtime matrix remains 60/60 Pending because no PostgreSQL/pgTAP execution has been performed.
 
 ### Fixed 15% commission invariant — source finding
@@ -136,3 +137,10 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - The existing commission amount calculation remains based on labour/service amount only; material amount is not included in the commission base.
 - Added three pgTAP catalog/source assertions plus two behavioral assertions: fixture INSERT supplies 99% and must persist 15%; an attempted change of an existing booking snapshot to 20% must throw `BOOKING_COMMISSION_RATE_IS_IMMUTABLE`. The test plan is now 51. Test source is updated, but **no pgTAP execution has occurred**; all runtime acceptance cases remain Pending.
 - The positive behavioral B5 case (commission-only update with matching payout) remains open and separate from these three catalog assertions.
+
+
+### Payout parity positive-path fixture — 17 November 2026 (source-only)
+
+- Added a third legacy approved-quote fixture with a matching booking commission and payout platform commission. A commission-only UPDATE is wrapped in `lives_ok` and must succeed.
+- The fixture set now covers the positive matching case, missing-payout rejection, and mismatched-payout rejection. Source count checked: `plan(52)` = 48 `ok` + 3 `throws_ok` + 1 `lives_ok`.
+- No PostgreSQL/pgTAP execution occurred; all 60 runtime acceptance checks remain Pending.
