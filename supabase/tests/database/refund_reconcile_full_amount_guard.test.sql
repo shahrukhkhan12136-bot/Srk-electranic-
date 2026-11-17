@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(9);
 select ok(to_regprocedure('public.srk_service_reconcile_booking_refund(uuid,text,text,text)') is not null,
   'provider refund reconciliation RPC exists');
 select ok(position('PROVIDER_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTION' in
@@ -13,6 +13,9 @@ select ok(position('for update of b' in lower(pg_get_functiondef('public.srk_ser
 select ok(position('set payout_status=''refunded''' in lower(pg_get_functiondef(
   'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
   'verified processed refund closes its own blocked payout as refunded');
+select ok(position('historical processed-but-blocked state' in pg_get_functiondef(
+  'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
+  'replayed processed refunds repair their previously blocked payout');
 select ok(position('ELECTRICIAN_PAYOUT_STATE_REQUIRES_MANUAL_RECONCILIATION' in pg_get_functiondef(
   'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0
   and position('ELECTRICIAN_PAYOUT_BLOCK_REASON_MISMATCH' in pg_get_functiondef(
