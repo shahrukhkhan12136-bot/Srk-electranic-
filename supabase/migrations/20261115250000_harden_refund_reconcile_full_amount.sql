@@ -71,6 +71,23 @@ begin
   -- Provider refund states are terminal once processed or failed. Ignore late,
   -- out-of-order events instead of regressing a final state back to processing.
   if v_refund.status in ('processed','failed') then
+    -- Repair the historical processed-but-blocked state on a safe replay.
+    if v_refund.status='processed' and v_has_payout then
+      if v_payout.payout_status='blocked'
+         and v_payout.payout_note='Razorpay refund pending' then
+        update public.srk_electrician_payouts
+          set payout_status='refunded',
+              payout_note='Razorpay full refund verified; payout permanently withheld.',
+              updated_at=clock_timestamp()
+          where id=v_payout.id and payout_status='blocked'
+            and payout_note='Razorpay refund pending';
+        if not found then
+          raise exception 'BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' using errcode='55000';
+        end if;
+      elsif v_payout.payout_status is distinct from 'refunded' then
+        raise exception 'ELECTRICIAN_PAYOUT_STATE_REQUIRES_MANUAL_RECONCILIATION' using errcode='55000';
+      end if;
+    end if;
     return jsonb_build_object('success',true,'status',v_refund.status,'replayed',true);
   end if;
   v_status:=case p_provider_status when 'pending' then 'processing'
