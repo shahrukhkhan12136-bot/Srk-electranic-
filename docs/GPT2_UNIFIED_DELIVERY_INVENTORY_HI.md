@@ -648,3 +648,13 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - इसलिए repo evidence Netlify को intended deployment platform सिद्ध करता है, लेकिन live Netlify Site/Deploy record या Razorpay Dashboard endpoint URL उपलब्ध न होने से वर्तमान webhook host और Refund Recovery deployment status की पुष्टि अभी नहीं हुई। Vercel का READY Production site अलग तथ्य है; उससे Netlify functions के live होने का निष्कर्ष नहीं निकाला जा सकता।
 - इस चैट में कोई Netlify connector/authorized Netlify deployment read tool उपलब्ध नहीं मिला। अगली पुष्टि owner-controlled Netlify Dashboard के Deploys view अथवा Razorpay Dashboard में configured webhook URL के domain से होगी; secret values की जरूरत नहीं। जब तक पुष्टि न हो, platform timeout limits को handlers पर लागू मानकर code change नहीं करेंगे।
 - कोई Netlify/Vercel deploy pause/resume, upgrade, environment change, webhook edit, source handler change, DB operation, CI/runtime test या mobile QA नहीं किया गया। Owner approval gate यथावत है।
+
+
+## 3AD. 17 November 2026 — Refund Recovery ambiguous evidence-write outcome fail-closed fix
+
+- Re-audit में मिला कि evidence RPC request dispatch होने के बाद network/timeout error आने पर outer catch `evidence_saved:false` देता था, जबकि database transaction commit हो चुकी हो सकती है। यह caller को evidence absence का गलत संकेत दे सकता था।
+- `razorpay-refund-recovery.js` में evidence RPC शुरू होने से पहले stage flag false रहता है; RPC dispatch से ठीक पहले true होता है। उसके बाद exception या invalid/missing audit ID response पर Handler HTTP 202, `evidence_saved:"unknown"`, `accounting_finalized:false`, `safe_to_retry:false`, status `evidence_write_outcome_unknown` देता है। यह नया refund बनाने/अंधाधुंध retry करने से रोकता है और audit record की जाँच माँगता है।
+- Valid audit UUID मिलने पर existing flow unchanged: pending/failed evidence finalization नहीं करता; processed evidence को अलग RPC transaction में finalize करता है; finalization failure में वही audit ID लौटाता है।
+- नया Node test source `tests/razorpay-refund-recovery.test.js` में ambiguous evidence RPC response case जोड़ता है; test source मौजूद है, लेकिन इस चरण में Node/CI test execute नहीं किया गया।
+- Source blob SHA `46e2a349cc03b0b613705ded0b2658ff5c6b57f4`; test blob SHA `5fa1cd40c6b7f6f6e14f2d1bac970856d08bce42`; latest branch commit `47389fffa43b104cbd33880a2477d633409d4509` पर दोनों files re-fetch करके सत्यापित।
+- यह fix ambiguous evidence write की reporting सुधारता है; पूरे Handler की overall deadline अभी implement नहीं हुई। Hosting/runtime ceiling अभी live deployment evidence से verify नहीं है। कोई DB, provider, deploy, CI, merge या mobile QA नहीं किया गया।
