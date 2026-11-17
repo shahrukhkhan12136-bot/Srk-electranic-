@@ -2419,3 +2419,45 @@ Migration `20261114125844_restore_financial_audit_core_schema.sql` में man
 - No SQL changes, database execution, or payment mutation performed.
 
 यह audit completeness issue है; इससे अपने-आप unauthorized payment mutation सिद्ध नहीं होता। Direct authenticated table privileges पहले से revoked हैं, लेकिन privileged service-role path पर audit completeness आवश्यक है।
+
+
+
+## 106. Manual Refund और Payout audit allow-list की अधूरी field coverage — source-confirmed — 17 Nov 2026
+
+Migration `20261114125844_restore_financial_audit_core_schema.sql` में `srk_capture_admin_audit_event()` की allow-list को संबंधित table definitions और trigger attachments से cross-check किया गया।
+
+### 106.1 Manual Refund evidence
+
+`srk_manual_refund_entries` में `booking_id`, `payment_entry_id`, `amount`, `refund_reference`, `note`, `recorded_by`, `recorded_at` हैं। लेकिन `manual_refund` allow-list केवल `booking_id`, `payment_entry_id`, `amount` capture करती है।
+
+परिणाम:
+- INSERT snapshot में refund reference, note, recorder और recorded timestamp नहीं आते।
+- इन चार में से किसी field का अकेला UPDATE होने पर allow-list loop में कोई बदलाव नहीं मिलता; function zero changed fields पर लौट जाता है और audit event नहीं लिखता।
+- Manual refund entry पर AFTER INSERT/UPDATE/DELETE trigger मौजूद है, लेकिन trigger का होना complete field coverage की गारंटी नहीं देता।
+
+### 106.2 Electrician Payout evidence
+
+Payout table में `paid_by` मौजूद है, पर `electrician_payout` allow-list में `paid_by` नहीं है। `paid_at` capture होता है, लेकिन किस authenticated user ने payout को paid mark किया, उसका row-level `paid_by` value snapshot में नहीं आता। इससे payout status transition का actor और payout record का business approver/processor अलग-अलग होने पर पूरा संदर्भ उपलब्ध नहीं रहता।
+
+### 106.3 Access boundary और risk qualification
+
+- तीनों tables पर authenticated direct privileges revoked हैं और service_role को ALL grant है; reviewed migration के अनुसार सामान्य client direct write path restricted है।
+- ये findings audit completeness और privileged-write traceability की हैं; अपने-आप unauthorized refund या payout सिद्ध नहीं करतीं।
+- Audit event में पूरा `refund_reference` या payment reference जोड़ने से पहले secret/credential redaction policy तय होनी चाहिए। Recorder/paid_by UUID और timestamp को सुरक्षित रूप से preserve करना उपयोगी है।
+- Manual refund और payout audit triggers तथा allow-list की मौजूदगी source में confirm है; actual PostgreSQL trigger execution और event JSON runtime में verify नहीं हुए।
+
+### 106.4 Recommended regression tests
+
+1. Manual refund INSERT snapshot में approved/sanitized reference, note policy, `recorded_by` और `recorded_at` की coverage जाँचें।
+2. Refund reference-only, note-only और recorder-only UPDATE पर expected audit behavior जाँचें।
+3. Payout को paid mark करने पर `paid_by`, `paid_at`, status और reference का audit snapshot जाँचें।
+4. Sensitive reference values audit JSON में leak न हों, इसकी redaction assertion जोड़ें।
+5. DELETE before-snapshot में approved fields preserve हों और unrelated secret columns न आएँ।
+
+### 106.5 Status
+
+- Manual refund allow-list omission: **source-confirmed**.
+- Payout `paid_by` omission: **source-confirmed**.
+- Trigger attachment for manual refund and payout: **source-confirmed**.
+- Actual audit event contents / runtime behavior: **not PostgreSQL runtime-tested**.
+- No migration edit, database execution, refund, payout, or production change performed.
