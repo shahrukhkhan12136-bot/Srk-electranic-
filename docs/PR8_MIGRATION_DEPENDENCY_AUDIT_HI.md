@@ -2139,3 +2139,51 @@ BEFORE trigger matching amount के साथ manual payment method की cas
 - Manual payment evidence: **trigger-level mismatch guard मौजूद; complete workflow fail-closed behavior अभी runtime में सिद्ध नहीं**.
 - PostgreSQL clean replay और pgTAP: **not run**.
 - Feature Branch, Main, Supabase और Production: **इस review में unchanged**.
+
+
+## 98. Accounting Bridge pgTAP files — assertion nature and behavioral coverage gap — 17 Nov 2026
+
+दोनों Accounting Bridge test files को पूरा पढ़कर assertion-by-assertion scope review किया गया। यह test-source review है; tests execute नहीं किए गए।
+
+### 98.1 Labour Bill Accounting Bridge test
+
+File: `supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql`
+Blob SHA: `7db3d4e5bec75100acc6f892bbcdfe7f29f0f3b7`
+Declared plan: `19`.
+
+इस file के 19 checks में function existence और `pg_get_functiondef` के source-text substring checks हैं। वे Admin Cash RPC में Main Admin guard, booking lock, Cash-only guard, immutable labour bill, amount formula, receipt/wallet writes; reconciliation/receipt source fields; manual payment method comparison; तथा commission report/payout-ledger references की उपस्थिति जाँचते हैं।
+
+इस file में test fixture के रूप में booking/payment rows insert करके RPC invoke करने, expected SQLSTATE verify करने, या actual ledger rows/amounts compare करने वाले behavioral scenarios नहीं हैं। इसलिए 19/19 pass होने पर भी वह source text contract की पुष्टि होगी, payment flow की वास्तविक सफलता/विफलता की नहीं।
+
+### 98.2 Electrician Payout Reconciliation test
+
+File: `supabase/tests/database/electrician_payout_reconciliation.test.sql`
+Blob SHA: `88184e2e1fb386f16d6bd339556a15a5b87275d2`
+Declared plan: `34`.
+
+इस file में trigger attachment/timing, SECURITY DEFINER/search_path/privileges, Admin payout RPC के source guards, payout formula, refund transition branches, BEFORE/AFTER trigger presence, और trigger-name ordering की catalog/source assertions हैं। ये महत्वपूर्ण structural contracts हैं।
+
+लेकिन यह भी actual booking बनाकर payment verification, payout row creation, refund transition, paid-payout preservation, concurrent settlement या rollback behavior execute नहीं करती। खासकर alphabetical AFTER trigger ordering का assertion catalog names की min/max तुलना है; actual transaction behavior का runtime proof नहीं।
+
+### 98.3 Required isolated behavioral test matrix
+
+Owner-approved isolated PostgreSQL baseline उपलब्ध होने पर कम-से-कम ये behavior cases जोड़ें:
+
+1. Valid Cash manual evidence + matching booking method → booking commission और payout ledger commission समान।
+2. Amount match लेकिन payment method mismatch → transaction fail; कोई payout/ledger side effect न बचे।
+3. Manual evidence method या booking method NULL → fail-closed expected behavior स्पष्ट रूप से assert हो।
+4. Valid Razorpay payment evidence → commission और payout parity।
+5. Missing immutable labour bill / wrong electrician assignment / invalid commission rate → expected error और rollback।
+6. Existing pending payout पर full refund → refund-owned transition; unrelated Admin-blocked और already-paid payout untouched।
+7. दो concurrent Admin payout attempts → केवल एक successful settlement; duplicate ledger/payment नहीं।
+8. Commission/payout parity validator failure → उसी transaction में payout writer का side effect rollback हो।
+
+इन tests को वास्तविक pgTAP fixtures और SQLSTATE/row assertions के रूप में लिखें; केवल `pg_get_functiondef` substring assertions पर्याप्त नहीं हैं।
+
+### 98.4 Release gate
+
+- दोनों test files का static assertion scope: **reviewed**.
+- वास्तविक pgTAP pass/fail: **unknown — not run**.
+- Behavioral payment/payout/refund matrix: **not present in these two files; required**.
+- Isolated DB baseline और clean migration replay: **अब भी prerequisite**.
+- कोई SQL source, Feature Branch, Main, Supabase या Production बदलाव इस review में नहीं किया गया।
