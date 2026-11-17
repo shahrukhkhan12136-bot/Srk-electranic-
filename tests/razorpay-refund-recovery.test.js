@@ -243,3 +243,31 @@ test("does not report evidence as unsaved when the evidence RPC outcome is ambig
  assert.equal(body.safe_to_retry,false);
  assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence")),false);
 });
+
+
+test("reuses the same observation ID when retrying an ambiguous evidence write",async t=>{
+ const observationIds=[];let evidenceAttempts=0;
+ global.fetch=async(url,options={})=>{
+  const target=String(url);
+  if(target.endsWith("/auth/v1/user"))return response(200,{id:adminId});
+  if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);
+  if(target.includes("/rest/v1/srk_razorpay_refunds?"))return response(200,[record]);
+  if(target.includes("/rest/v1/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);
+  if(target.includes("api.razorpay.com/v1/refunds/"))return response(200,providerRefund);
+  if(target.endsWith("/rpc/srk_service_record_razorpay_refund_recovery_evidence")){
+   observationIds.push(JSON.parse(options.body).p_observation_id);
+   evidenceAttempts++;
+   if(evidenceAttempts===1)throw new Error("simulated lost response after commit");
+   return response(200,auditId);
+  }
+  if(target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence"))return response(200,{success:true,status:"processed"});
+  throw new Error("unexpected request "+target);
+ };
+ t.after(()=>{global.fetch=originalFetch;});
+ const first=await handler(request());const firstBody=JSON.parse(first.body);
+ assert.equal(first.statusCode,202);assert.equal(firstBody.evidence_saved,"unknown");
+ const second=await handler(request());const secondBody=JSON.parse(second.body);
+ assert.equal(second.statusCode,200);assert.equal(secondBody.recovery_audit_id,auditId);
+ assert.equal(observationIds.length,2);assert.equal(observationIds[0],observationIds[1]);
+ assert.match(observationIds[0],/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+});
