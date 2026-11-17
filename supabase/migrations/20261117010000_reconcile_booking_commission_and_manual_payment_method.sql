@@ -498,7 +498,7 @@ begin
     'route_platform_commission_transfer_paise', 0,
     'route_transfers', '[]'::jsonb,
     'route_provider_settlement_verified', false,
-    'route_settlement_evidence_status','route_ledger_retired_no_route_transfers',
+    'route_settlement_evidence_status', 'route_ledger_retired_no_route_transfers',
     'payout',case when v_payout.id is null then null else jsonb_build_object(
       'payout_id',v_payout.id,'status',v_payout.payout_status,
       'recorded_payable_paise',round(v_payout.electrician_payable*100)::bigint,
