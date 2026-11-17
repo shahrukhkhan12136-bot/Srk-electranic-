@@ -186,3 +186,17 @@ test("paginates past the first 100 refunds and recovers the exact second-page ma
  const pages=calls.filter(c=>c.target.includes("/payments/"+paymentId+"/refunds?"));
  assert.equal(pages.length,2);assert.ok(pages[0].target.endsWith("count=100&skip=0"));assert.ok(pages[1].target.endsWith("count=100&skip=100"));
 });
+
+
+test("stores failed provider evidence but never finalizes refund accounting or releases the payout",async t=>{
+ const calls=setup({providerStatus:"failed"});t.after(()=>{global.fetch=originalFetch;});
+ const result=await handler(request());const body=JSON.parse(result.body);
+ assert.equal(result.statusCode,202);
+ assert.equal(body.evidence_saved,true);
+ assert.equal(body.accounting_finalized,false);
+ assert.equal(body.provider_status,"failed");
+ assert.equal(calls.some(c=>c.target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence")),false);
+ const saved=calls.find(c=>c.target.endsWith("/rpc/srk_service_record_razorpay_refund_recovery_evidence"));
+ assert.ok(saved);
+ assert.equal(JSON.parse(saved.options.body).p_provider_status,"failed");
+});
