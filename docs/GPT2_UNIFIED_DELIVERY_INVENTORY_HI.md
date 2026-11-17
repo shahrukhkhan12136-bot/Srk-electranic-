@@ -488,3 +488,15 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - pgTAP source assertions को इसी corrected condition पर बदला गया: payout writer trigger definition में `commission_amount` नहीं, parity validator definition में `commission_amount` है। Plan **41** ही है; assertions **41** हैं।
 - यह trigger-definition source inspection है, PostgreSQL/pgTAP execution नहीं। Actual rollback fixtures अभी pending हैं; clean local replay के blockers और authoritative baseline unresolved हैं।
 - GPT-2 official progress **27/39 = 69%** unchanged।
+
+
+### 3P. Fresh-install और सुरक्षित runtime test environment recheck (17 Nov 2026)
+
+- Current audit branch पर `supabase/migrations/` में **92 migration files** हैं। सभी filenames में valid timestamp prefix है। Duplicate version का केवल एक legacy group मिला: `20261109_allow_quote_approval_booking_states.sql` और `20261109_electrician_inspection_quotes_and_service_only_commission.sql`; इसे production migration history evidence के बिना rename/resequence नहीं करना है।
+- `COMPLETE_DATABASE_SETUP.sql`, `SUPABASE_SCHEMA.sql` और `PORTAL_SCHEMA.sql` starter/older setup scripts हैं; ये वर्तमान 92-file ordered migration chain का विकल्प नहीं हैं। इसलिए इन्हें अकेले replay करके GPT-2B का fresh-install baseline प्रमाणित नहीं किया जा सकता।
+- मौजूदा `.github/workflows/supabase-schema-ci.yml` manual dispatch पर चलता है, लेकिन job केवल `feature/platform-fee-cash-online-cycle` ref पर enabled है। इसके अतिरिक्त यह `SUPABASE_DB_URL` secret से remote schema-only export/check करता है, फिर local Supabase में केवल पाँच चुनी हुई feature migrations apply करता है—पूरी 92-migration chain नहीं।
+- Workflow में remote schema export step स्पष्ट रूप से production schema कहता है। इसलिए इसे इस GPT-2B audit branch पर dispatch करना **सुरक्षित isolated fresh-install test नहीं** होगा; इसमें remote database से read-only schema access भी होगा। कोई workflow dispatch या remote query नहीं किया गया।
+- इस branch tree में checked-in `supabase/config.toml` नहीं मिला। Empty local Supabase project और full ordered migration replay चलाने से पहले reproducible local config, required extensions/auth/storage baseline और test harness तय करना आवश्यक है।
+- सुरक्षित अगला कदम: अलग local-only CI workflow/config प्रस्तावित करना जो किसी remote URL/secret को न पढ़े, empty local Supabase stack से शुरू हो, सभी migrations timestamp order में replay करे और pgTAP suites चलाए। इसे जोड़ने से पहले local prerequisites और migration compatibility source-level पर जाँचनी होगी; workflow execution के लिए अलग अनुमति/CI evidence आवश्यक होगा।
+- Payout pgTAP source file की नवीनतम स्थिति अलग से rechecked: `plan(46)` और 46 assertion statements; दो `throws_ok` parity rollback cases source में मौजूद हैं। PostgreSQL/pgTAP execution अभी भी **NOT RUN** है। पुराने §3O में दर्ज plan 41 ऐतिहासिक snapshot था, वर्तमान count नहीं।
+- कोई migration apply, DB query, workflow dispatch, remote schema export, provider action, deployment या merge नहीं हुआ। Official GPT-2 progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित।
