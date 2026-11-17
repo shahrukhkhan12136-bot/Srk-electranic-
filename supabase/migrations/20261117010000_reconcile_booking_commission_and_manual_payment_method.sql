@@ -7,7 +7,7 @@ create or replace function public.srk_set_booking_commission_before_payout()
 returns trigger
 language plpgsql
 security definer
-set search_path = pg_catalog, public, pg_temp
+set search_path = ''
 as $$
 declare
   v_service numeric(12,2);
@@ -102,7 +102,7 @@ create or replace function public.srk_validate_booking_commission_payout_parity(
 returns trigger
 language plpgsql
 security definer
-set search_path = pg_catalog, public, pg_temp
+set search_path = ''
 as $$
 declare
   v_platform_commission numeric(12,2);
@@ -537,7 +537,7 @@ create or replace function public.srk_admin_commission_report()
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
   v_result jsonb;
@@ -600,7 +600,7 @@ returns table (
 language sql
 stable
 security definer
-set search_path = pg_catalog, public, auth, pg_temp
+set search_path = ''
 as $$
   select b.id, b.service_type, b.created_at, b.status, b.payment_status,
          coalesce(b.amount_paid,0),
