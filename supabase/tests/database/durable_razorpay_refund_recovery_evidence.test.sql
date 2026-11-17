@@ -19,7 +19,7 @@ select ok(position('RECOVERY_EVIDENCE_TOO_OLD_REFRESH_PROVIDER_STATUS' in pg_get
 select ok(position('ELECTRICIAN_PAYOUT_MUST_REMAIN_BLOCKED_DURING_REFUND_RECOVERY' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'payout must remain blocked during recovery finalization');
 select ok(position('update public.service_bookings set payment_status=''refunded''' in lower(
   pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>0
-  and position('select * into v_payout from public.srk_electrician_payouts where id=v_payout.id' in lower(
+  and position('select * into v_payout from public.srk_electrician_payouts where booking_id=v_booking.id' in lower(
   pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>
     position('update public.service_bookings set payment_status=''refunded''' in lower(
   pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))
