@@ -59,12 +59,12 @@ select ok(position('p_outcome not in ('||quote_literal('processed')||','||quote_
   'completion outcome is allow-listed');
 select ok(position('claim_token=v_token' in
   pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event(text,text,text)'::regprocedure))>0
-  and position("lease_expires_at=clock_timestamp()+interval '2 minutes'" in
+  and position('lease_expires_at=clock_timestamp()+interval ''2 minutes''' in
   pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event(text,text,text)'::regprocedure))>0,
   'expired lease reclaim rotates the fencing token and renews the lease');
 select ok(position('v_event.claim_token is distinct from p_claim_token' in
   pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure))>0
-  and position("v_event.state<>'processing'" in
+  and position('v_event.state<>''processing''' in
   pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure))>0,
   'a worker with a superseded claim token cannot complete a newer worker event');
 
