@@ -1,5 +1,5 @@
 BEGIN;
-select plan(71);
+select plan(73);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -410,6 +410,29 @@ SELECT ok(
   AND position('a.assigned_staff_user_id=auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure))>0
   AND position('a.assigned_staff_user_id=auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure))>0,
   'unassigned cases and cases reassigned to another Staff user are excluded from both Staff inboxes and thread reads'
+);
+
+
+SELECT ok(
+  position('assigned_staff_user_id=v_uid' in lower(pg_get_functiondef(
+    'public.srk_admin_staff_send_customer_message(uuid,text)'::regprocedure)))>0
+  AND position('assigned_staff_user_id=v_uid' in lower(pg_get_functiondef(
+    'public.srk_admin_staff_update_customer_complaint(uuid,text,text)'::regprocedure)))>0
+  AND position('v_case_status=''closed''' in lower(pg_get_functiondef(
+    'public.srk_admin_staff_send_customer_message(uuid,text)'::regprocedure)))>0
+  AND position('v_old_status=''closed''' in lower(pg_get_functiondef(
+    'public.srk_admin_staff_update_customer_complaint(uuid,text,text)'::regprocedure)))>0,
+  'Customer Staff reply and status writes recheck current assignment and reject closed cases'
+);
+
+SELECT ok(
+  position('on conflict (case_type,case_id) do update' in lower(pg_get_functiondef(
+    'public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure)))>0
+  AND position('assigned_staff_user_id=excluded.assigned_staff_user_id' in lower(pg_get_functiondef(
+    'public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure)))>0
+  AND position('previous_staff_user_id' in lower(pg_get_functiondef(
+    'public.srk_admin_assign_support_case(text,uuid,uuid,text)'::regprocedure)))>0,
+  'Main Admin reassignment replaces the single current owner and audits the previous Staff owner'
 );
 
 SELECT * FROM finish();
