@@ -19,8 +19,9 @@ select ok(position('RECOVERY_EVIDENCE_TOO_OLD_REFRESH_PROVIDER_STATUS' in pg_get
 select ok(position('ELECTRICIAN_PAYOUT_MUST_REMAIN_BLOCKED_DURING_REFUND_RECOVERY' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,'payout must remain blocked during recovery finalization');
 select ok(position('v_payout.payout_note is distinct from ''Razorpay refund pending''' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,
   'recovery refuses to close a blocked payout unless it is the exact Razorpay-refund-owned hold');
-select ok(position('and payout_note=''Razorpay refund pending''' in pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))>0,
-  'final payout transition is conditionally fenced by the exact Razorpay refund hold note');
+select ok(position('update public.srk_electrician_payouts' in lower(
+  pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))=0,
+  'finalizer relies on the booking accounting trigger and does not issue a stale second payout update');
 select ok(position('update public.service_bookings set payment_status=''refunded''' in lower(
   pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>0
   and position('select * into v_payout from public.srk_electrician_payouts where booking_id=v_booking.id' in lower(
