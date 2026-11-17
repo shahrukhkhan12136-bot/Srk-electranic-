@@ -157,3 +157,29 @@ This preserves the legacy state-transition contract without attaching the legacy
 
 
 Latest CI tracking: workflow run `44032550519` was initially cancelled during the Node test step; its cancelled job was explicitly re-run. At the latest check, the rerun was `in_progress` (job `133867852566`). Do not treat it as passed until GitHub reports a completed success conclusion.
+
+
+## 10. Full PostgreSQL migration replay gate (Nov 17)
+
+A fresh dependency/replay review was performed against the current Feature Branch migration directory and the connected Supabase project catalogs. No database writes were made.
+
+### Source-tree findings
+- Feature Branch currently has 88 SQL files: 86 timestamped migrations and two malformed non-timestamped files:
+  - `20261109_allow_quote_approval_booking_states.sql`
+  - `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+- Both malformed files contain live DDL against `public.service_bookings`; the second also defines quote workflow RPCs and the legacy commission function. They are not safely treated as normal timestamped migration history.
+- The first timestamped feature migration that alters `public.service_bookings` is `20261108121115_add_customer_account_booking_access.sql`. It assumes the base `service_bookings` table and its columns/policies already exist; this branch does not contain a complete initial schema migration for that base table.
+- The timestamped accounting sequence has clear dependencies: audit core (14125844) creates financial ledger/audit structures; cancellation-fee accounting (14280000) uses wallet, cancellation, and immutable labour-bill objects; payout reconciliation (14360000) uses labour bills, manual payment entries, cancellation-fee items and payout ledger; manual refund/reconciliation migrations build on those; amount_paid restoration (16200000) precedes the final accounting bridge (17010000).
+- The current Main Supabase migration history includes earlier valid migration versions for quote/commission work (including versions `20261109075837` and `20261109080400`), while the Feature Branch contains similarly named SQL in the two malformed files. This is a migration-history/name alignment issue that must be resolved with an owner-reviewed baseline/replay plan, not by renaming files ad hoc.
+
+### Connected database findings (read-only)
+- Main project migration history has many already-applied production versions through Nov 15. It is not a disposable clean baseline and must not be reset or used for replay.
+- The connected `SRK ELECTRONIC TEST` project still has only seven push-test migrations and lacks the required booking, financial audit, labour bill, refund, payout, and manual-payment tables. It cannot run the PR #8 SQL suite in its current state.
+- No complete baseline schema snapshot or local Docker/PostgreSQL runtime is available in the current execution environment.
+- Supabase's current environment guidance says reproducibility requires sequential migration replay from a suitable baseline; a full reset replays migrations in order. The existing repository workflow is not a safe substitute: it is guarded to an unrelated old branch, requires a schema-export secret, and applies a hard-coded five-migration list unrelated to this PR8 chain.
+
+### Decision / gate
+- Do **not** run `db reset`, `db push`, `apply_migration`, or any DDL against Main or the incomplete Test project.
+- Do **not** create a paid Supabase branch/project. That remains deferred pending completion of implementation and explicit cost approval if later required.
+- Before runtime replay, the owner/GPT-2 must agree on the canonical baseline and how the two malformed files map to the already-applied migration history. Then replay the complete ordered chain on a disposable local or approved isolated database and run the full pgTAP suite.
+- This pass made no SQL migration edits. PR #8 remains Draft/Open/unmerged; Audit Branch and Production remain untouched.
