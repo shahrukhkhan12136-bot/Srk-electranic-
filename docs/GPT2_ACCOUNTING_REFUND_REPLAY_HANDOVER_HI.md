@@ -1214,3 +1214,26 @@ Feature work-event trigger जोड़ने से पहले इनके �
 ### Verification boundary / no-write
 - Main Supabase catalog और deployed Edge Function inventory केवल read-only देखे गए। Feature `admin.html` source पहले से re-fetched है; कोई source edit या SQL migration नहीं की।
 - Production DDL/DML, Storage write, Function invocation/deployment, Auth/OTP/invitation, payment/refund/payout, merge और mobile QA नहीं हुए।
+
+
+## Section 42 — Admin UI के 53 RPC नामों का Main live PostgreSQL catalog re-check (2026-11-17)
+
+### Method
+- Feature branch `admin.html` को re-fetch किया; SHA `6b29511a1ecfab93b5689dff23012078091e57fc`। Source से 53 distinct `.rpc()` names निकाले।
+- Main Supabase पर केवल read-only catalog query चलाई: `public.pg_proc`, function identity arguments, `prosecdef`, `proconfig`, और `anon` / `authenticated` EXECUTE privileges। कोई RPC invoke नहीं किया।
+
+### Findings
+- 53 में से 17 RPC names के लिए Main `public` schema में कम-से-कम एक overload मिला; शेष 36 के लिए कोई `public` overload नहीं मिला। यह Section 21 की count की पुनः पुष्टि है।
+- मिले हुए 17 में सभी SECURITY DEFINER हैं; `anon` EXECUTE false और `authenticated` EXECUTE true मिला। यह privilege result अपने-आप में Admin authorization सिद्ध नहीं करता; प्रत्येक function body की role/permission guard अलग से verify करनी होगी।
+- `srk_admin_list_booking_refund_requests(p_limit integer)` और `srk_admin_decide_booking_refund_request(p_request_id uuid, p_status text, p_admin_note text)` में `search_path=""` configuration मिली। इनके bodies में सभी object references schema-qualified हैं या नहीं, यह function-body review का शेष बिंदु है; बिना पुष्टि इसे सुरक्षित/असुरक्षित घोषित न करें।
+- बाकी मिले हुए SECURITY DEFINER functions में pinned `search_path=pg_catalog, public, auth, pg_temp` मिला।
+- Main में मौजूद UI-called legacy RPC signatures का exact argument contract UI और Feature migrations से अलग हो सकता है; केवल नाम का मिलना contract parity नहीं है। विशेषकर Refund UI में `p_decision` बनाम Main `p_status` और refund projection key drift Section 22 में दर्ज है।
+- Main में अनुपस्थित प्रमुख names में Staff RBAC/session RPCs, Support messages/attachments RPCs, SOS RPCs, Work Review, Cancellation decision, Accounting reconciliation, New Booking Cash Payment, Customer Location update और Rate Tier update शामिल हैं।
+
+### Release implication
+- Main live Admin Panel contract अभी पूर्ण नहीं है: 36 names absent और कई existing names के argument/response contracts drift में हैं। UI-only guard से इन RPC gaps को सुरक्षित नहीं माना जा सकता।
+- किसी भी missing RPC को isolated रूप से जोड़ना उचित नहीं; संबंधित table/schema, RLS, trigger, audit, grants, staff identity invariant और dependency migrations को reviewed bundle में reconcile करना होगा।
+- SECURITY DEFINER + authenticated EXECUTE को देखकर Admin-only access assume न करें। हर function body में Admin/Staff authorization path और UUID identity exclusivity की समीक्षा आवश्यक है।
+
+### No-write boundary
+- यह catalog-only read audit था। कोई function execute, SQL DDL/DML, migration, code edit, deployment, payment/refund/payout, SMS/OTP या merge नहीं किया गया।
