@@ -1333,3 +1333,32 @@ Four root-level SQL setup scripts were re-read from the Audit Branch. This is a 
 Treat these files as historical/bootstrap candidates, not as a replay sequence. Obtain an owner-approved baseline decision and a disposable PostgreSQL/Supabase-compatible fixture; then validate duplicate object declarations and platform dependencies in that isolated environment. Do not execute these scripts against Production.
 
 **Status:** four root scripts inventoried with exact Git blob identities. No SQL parser, PostgreSQL replay or runtime test was run. No source SQL was modified; only this Audit Branch report is being extended.
+
+
+## 77. Legacy quote migration prerequisites and filename-lineage gate — 17 Nov 2026
+
+The two legacy `20261109_*.sql` files and the starter schema were re-read directly from this Audit Branch.
+
+| Source | Blob SHA | Source-level finding |
+|---|---|---|
+| `SUPABASE_SCHEMA.sql` | `8ae88a7035bc963b244f22c6c1450c22618ec88f` | Declares the four starter tables; its booking definition does not contain the later customer Auth, map-coordinate or quote-workflow fields. |
+| `20261109_allow_quote_approval_booking_states.sql` | `ef4bf8b9b8a9a35bf3ddd94ea4614c7498fb1c6d` | Alters `service_bookings` status and assignment CHECK constraints; requires the booking table and its `status` / `assigned_electrician_id` columns. |
+| `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | `014699d3190e45aacde4022ac7e7fa9ca4fec006` | Adds quote fields and defines quote/customer/work RPCs; reads customer ownership, Auth-linked electrician identity, offer rows, booking map coordinates and existing payment/commission fields. |
+
+### Confirmed prerequisites from source
+
+1. The quote workflow's booking table must already have `customer_user_id`; the source-introducing customer-account migration is `20261108121115_add_customer_account_booking_access.sql`.
+2. The quote RPCs require Auth-aware profile identity (`electrician_profiles.user_id`) and approval/active fields. The root starter scripts are historical candidates; the identity-linking migration and platform Auth baseline must be included in the replay fixture.
+3. The offer-details RPC reads `job_offers` and booking map fields `location_lat` / `location_lng`; the starter schema supplies the offer table, while `20261109001000_add_google_maps_location_support.sql` is the source introducing the map fields.
+4. The target migration defines `srk_calculate_booking_commission()` but does not attach that function to a trigger in this file. Do not infer that this function is live merely because it exists; trigger wiring must be traced separately.
+5. The second filename has no full timestamp/version prefix. The pair's intended relative order cannot be certified from a normal timestamp sequence alone; preserve their source identities and obtain an owner-approved version mapping before generating a clean replay manifest.
+
+### Current-tree correction / stale-name check
+
+A recursive Git tree read at Audit Branch head `0a2ccc4af877b06512ad58f8394f3aa9f83522e7` returned no migration path containing `add_assigned_electrician_cash_payment_status`. Therefore the earlier note about two duplicate files with that exact name is **not reproduced in the current tree** and must not be treated as a confirmed current-branch blocker. This does not establish whether such files existed in another historical branch/commit.
+
+### Replay decision
+
+These findings strengthen the canonical-baseline and migration-lineage blockers. They do not authorize renaming historical files or changing migration order. A clean replay remains blocked pending an approved baseline/version mapping and a disposable Supabase-compatible PostgreSQL fixture.
+
+**Status:** source-only prerequisite review. No migration SQL was changed, parsed or executed; no database or Production system was contacted; runtime tests remain **NOT RUN**.
