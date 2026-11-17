@@ -7305,3 +7305,26 @@ Migration `20261114290000` में `public.srk_admin_prepare_razorpay_refund(u
 - Isolated PostgreSQL में full ordered replay और एक Admin refund-preparation call का targeted test चलाएँ।
 
 Static source review only. कोई SQL, database query, migration replay, pgTAP, Admin UI/browser test, CI dispatch या deployment नहीं चलाया गया। यह forward runtime dependency है, reproduced failure नहीं। GPT-2 checklist remains 27/39 = 69%.
+
+
+
+## 231. Refund/Accounting Migration में तीन RPC Definitions दो-दो बार हूबहू दोहराई गई हैं
+
+### Static source reviewed
+- `supabase/migrations/20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` SHA `c811fe2a0ae129201ca9e99c5405bbb59e831f57`.
+- उसी migration में निम्न function-definition ranges की तुलना की गई:
+  - `srk_admin_record_manual_refund(uuid,text,text)`: lines 334–408 और 534–608.
+  - `srk_admin_get_cancellation_fee_ledger_summary()`: lines 410–447 और 610–647.
+  - `srk_service_reconcile_booking_refund(uuid,text,text,text)`: lines 450–532 और 650–732.
+
+### Finding
+ऊपर दिए गए तीनों function-definition जोड़ों के पूरे definition/grant blocks का पाठ byte-for-byte समान है। प्रत्येक function पहले एक बार बनाया और उसके privileges सेट किए जाते हैं, फिर उसी migration में वही `CREATE OR REPLACE FUNCTION` definition और वही revoke/grant statements दूसरी बार दोहराए जाते हैं।
+
+यह migration file के भीतर confirmed duplication है। समान definitions के दोहराव से अपने-आप अलग runtime behavior या PostgreSQL migration failure सिद्ध नहीं होता; दूसरा `CREATE OR REPLACE` पहले definition को उसी रूप में फिर से लिखता है। लेकिन इससे migration अनावश्यक रूप से लंबी होती है, वास्तविक बाद के बदलावों को पहचानना कठिन हो सकता है और भविष्य में दोनों copies अलग होने पर कौन-सी definition अंतिम प्रभावी होगी, यह review में अतिरिक्त जोखिम बनेगा।
+
+### Required action
+- Migration को freeze/deploy करने से पहले तीनों duplicate blocks में से प्रत्येक की एक canonical copy रखें।
+- यदि migration किसी environment में पहले ही apply हो चुकी है, तो applied migration को इतिहास में rewrite न करें; cleanup के लिए अलग forward migration और environment-history reconciliation अपनाएँ।
+- CI/static migration lint में एक ही migration file के भीतर समान function signature की repeated definitions को review warning बनाएं।
+
+Static text comparison only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह confirmed source duplication है, reproduced runtime defect या migration failure नहीं। GPT-2 checklist remains 27/39 = 69%.
