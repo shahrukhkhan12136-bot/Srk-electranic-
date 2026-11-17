@@ -82,3 +82,12 @@ GPT-2 checklist remains **27/39 = 69%**. This review records a reporting gap and
 - Added one source contract assertion to `supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql`: declared plan and verified `SELECT ok` calls are now both 76; the new assertion checks the exception token and its completed + verified + assigned-electrician guard.
 - Final fetched test SHA: `eebcc4523feba1e4af608c9b9b725f5c3f86d783`.
 - This is a source-contract addition only. pgTAP was not run, so SQL syntax/runtime and the real missing-row fixture are not proven. No UI, RPC return shape, database, CI, deployment or merge changed. Official GPT-2 remains 27/39 = 69%; Runtime Acceptance 60/60 Pending.
+
+
+## Webhook acknowledgement timing — 17 Nov 2026
+
+- Current `razorpay-webhook.js` awaits claim, downstream lookup/reconciliation, and completion RPC before returning HTTP 200. Each outbound call has a 15-second timeout; the whole handler has no single five-second deadline.
+- Razorpay's current webhook guidance says receivers should return within five seconds; late/non-2xx deliveries are retried. This source shape therefore carries an acknowledgement-latency/redelivery risk even though event claims, fencing tokens and business-level idempotency protect against duplicate effects.
+- Required architectural resolution is durable asynchronous processing: commit the verified event, acknowledge promptly, then process via a durable worker/outbox. Returning 2xx before durable receipt or relying on unawaited serverless work is not safe. No new queue/worker or architecture change made without owner approval.
+- Refund executor recheck: stable stored receipt plus `X-Refund-Idempotency` and identical request payload are used on retry; network timeout is explicitly treated as ambiguous and does not create a fresh refund key.
+- Static source review only; no tests or provider/DB calls.
