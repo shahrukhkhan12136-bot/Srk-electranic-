@@ -7153,3 +7153,26 @@ This is a confirmed repository duplication, not evidence of a PostgreSQL failure
 - Add a repository check that flags identical migration blobs/content under different version prefixes for human review.
 
 Static file/blob comparison only. No migration history was queried, no SQL or replay was run, and no file was changed. GPT-2 checklist remains 27/39 = 69%.
+
+
+## 224. Two Migration Files Share the Same Version Prefix
+
+### Static source reviewed
+- `20261109_allow_quote_approval_booking_states.sql` SHA `ef4bf8b9b8a9a35bf3ddd94ea4614c7498fb1c6d`.
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` SHA `014699d3190e45aacde4022ac7e7fa9ca4fec006`.
+- Complete `supabase/migrations/` directory inventory: 89 SQL migration files.
+
+### Finding
+The two files above have the exact same migration version prefix, `20261109`, but contain different SQL bodies. The directory inventory contains 89 files and exactly one duplicated version prefix pair. The other 87 files have unique version prefixes.
+
+Migration history is version-keyed, so two different migration bodies cannot safely be treated as two independent, uniquely identified history entries under the same version. The repository does not encode a deterministic distinct version for these two files. This is a confirmed filename/version collision; whether the currently installed CLI rejects the directory at discovery time or later at history application was not tested here.
+
+The two short 8-digit versions also sort before the 14-digit `20261109000500` migration under ordinary lexicographic version ordering. Their intended exact place in the timestamp sequence is therefore not explicit.
+
+### Required action
+- Assign unique, reviewed migration versions to both files before any environment applies this migration set; preserve already-applied history rather than renaming blindly.
+- Verify every environment's `supabase_migrations.schema_migrations` entries and reconcile the two files against actual applied state.
+- Run the installed Supabase CLI's migration list/status and an isolated clean replay after version uniqueness is resolved.
+- Add CI validation that rejects duplicate version prefixes before invoking migration commands.
+
+Static filename inventory only. No Supabase CLI command, database migration history query, SQL execution or replay was run. This is a confirmed repository version collision, not a claim about a specific observed CLI error. GPT-2 checklist remains 27/39 = 69%.
