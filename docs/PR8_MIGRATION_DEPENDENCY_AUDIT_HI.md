@@ -2461,3 +2461,35 @@ Payout table में `paid_by` मौजूद है, पर `electrician_pay
 - Trigger attachment for manual refund and payout: **source-confirmed**.
 - Actual audit event contents / runtime behavior: **not PostgreSQL runtime-tested**.
 - No migration edit, database execution, refund, payout, or production change performed.
+
+
+## 107. Razorpay Refund audit snapshot में operational provenance fields छूटे — source-confirmed — 17 Nov 2026
+
+उसी migration में `srk_capture_razorpay_refund_audit_event()` को `srk_razorpay_refunds` की पूरी table definition के विरुद्ध जाँचा गया।
+
+### 107.1 Table और audit snapshot का अंतर
+
+Refund table में `payment_id`, `refund_id`, `amount`, `amount_paise`, `currency`, `idempotency_key`, `status`, `provider_status`, `reason`, `admin_user_id`, `previous_payout_note`, `last_error`, `created_at`, `updated_at`, `processed_at` हैं।
+
+लेकिन dedicated Razorpay audit function INSERT/DELETE snapshot में केवल `refund_id`, `amount`, `status`, `provider_status` रखता है; UPDATE में भी केवल इन्हीं चार fields के बदलाव जाँचे जाते हैं।
+
+### 107.2 Consequence
+
+- Refund record किस payment ID और idempotency key से जुड़ा था, किस Admin ने refund शुरू किया, किस कारण से किया, और failure का operational error क्या था—ये details audit snapshot में नहीं आतीं।
+- `payment_id`, `reason`, `admin_user_id`, `last_error`, `previous_payout_note`, `processed_at` या `idempotency_key` का अकेला UPDATE audit event नहीं बनाएगा, क्योंकि dedicated function केवल चार fields compare करता है।
+- `amount_paise`, currency और timestamps भी explicit snapshot में नहीं हैं; amount numeric snapshot मौजूद है, पर paise integer parity को audit JSON से स्वतंत्र रूप से reconstruct नहीं किया जा सकता।
+- यह omission existing trigger की अनुपस्थिति नहीं है: dedicated AFTER INSERT/UPDATE/DELETE trigger मौजूद है। कमी उसके field coverage में है।
+
+### 107.3 Safe audit design
+
+- `admin_user_id`, `payment_id`, `amount_paise`, currency, status/provider_status और processed timestamp को audit में शामिल करने पर विचार करें।
+- `idempotency_key` और provider/payment references को पूरा store करने से पहले exposure policy तय करें; आवश्यकता हो तो redacted value या keyed digest रखें।
+- `reason` तथा `last_error` में व्यक्तिगत/संवेदनशील data हो सकता है; bounded और sanitized representation ही रखें।
+- INSERT, state transition, failure, replay और DELETE के लिए before/after regression tests बनाएं।
+
+### 107.4 Status
+
+- Dedicated Razorpay audit function की चार-field सीमा: **source-confirmed**.
+- Trigger attachment और table field inventory: **source-confirmed**.
+- Actual audit JSON contents / runtime execution: **not PostgreSQL runtime-tested**.
+- No migration edit, provider call, refund, database execution, or production change performed.
