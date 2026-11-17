@@ -15,7 +15,14 @@ select ok(
 select ok(
   has_function_privilege('authenticated','public.srk_customer_support_object_delete_access(text)','EXECUTE')
   and not has_function_privilege('anon','public.srk_customer_support_object_delete_access(text)','EXECUTE')
-  and not has_function_privilege('public','public.srk_customer_support_object_delete_access(text)','EXECUTE'),
+  and not exists (
+    select 1
+      from pg_proc p,
+           lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+     where p.oid='public.srk_customer_support_object_delete_access(text)'::regprocedure
+       and acl.grantee=0
+       and acl.privilege_type='EXECUTE'
+  ),
   'support attachment delete guard is callable only by authenticated users'
 );
 
