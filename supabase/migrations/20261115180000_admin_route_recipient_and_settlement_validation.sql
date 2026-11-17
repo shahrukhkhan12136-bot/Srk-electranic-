@@ -423,6 +423,9 @@ begin
     'route_electrician_transfer_paise',v_route_electrician_paise,
     'route_platform_commission_transfer_paise',v_route_commission_paise,
     'route_transfers',v_route_transfers,
+    'route_provider_settlement_verified',false,
+    'route_settlement_evidence_status',case when v_route_transfer_count=0
+      then 'no_route_transfer_ledger_rows' else 'not_independently_verified' end,
     'payout',case when v_payout.id is null then null else jsonb_build_object(
       'payout_id',v_payout.id,'status',v_payout.payout_status,
       'recorded_payable_paise',round(v_payout.electrician_payable*100)::bigint,
