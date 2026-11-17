@@ -166,3 +166,11 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - `tests/razorpay-webhook-inbox.test.js` में एक नया source test जोड़ा: यदि वही provider event ID अलग signed payload के साथ दोबारा आए, तो webhook inbox का `payload_conflict` परिणाम सुरक्षित रूप से acknowledge हो, business reconciliation न चले और event को duplicate मानकर process न किया जाए।
 - यह मौजूदा `srk_service_claim_razorpay_webhook_event` conflict branch और handler response contract की coverage है; production logic/SQL में कोई बदलाव नहीं किया गया।
 - Node test execute नहीं हुई; इसलिए runtime pass नहीं माना गया और 60 runtime acceptance checks Pending ही हैं।
+
+
+### Payout / Accounting reconciliation source audit — 17 November 2026 (read-only)
+
+- Active branch के payout trigger और commission reconciliation source को फिर से cross-check किया: immutable labour bill, electrician assignment match, payment total में settled/reserved cancellation-fee ledger का मिलान, पर electrician payout से fee debt exclusion; commission केवल labour पर; refund-owned blocked hold ही refund होने पर बंद; पहले से paid payout overwrite न होना।
+- `srk_set_booking_commission_before_payout()` manual payment evidence के amount और payment-method दोनों को मिलाता है; `srk_validate_booking_commission_payout_parity()` missing payout row तथा booking-vs-payout commission mismatch पर transaction रोकता है।
+- New booking के लिए `aa_srk_enforce_new_booking_commission_rate` पहले 15.00% set करता है; पुराने booking commission snapshot को बदलने से रोकता है। Existing 52-check pgTAP file में 48 `ok`, 3 `throws_ok`, 1 `lives_ok` assertions का source count मिला।
+- इस read-only pass में कोई नया confirmed source defect नहीं मिला; इसलिए बिना प्रमाण नया code/test जोड़कर scope नहीं बढ़ाया। SQL/pgTAP/PostgreSQL runtime execute नहीं हुआ; 52 checks source assertions मात्र हैं और runtime acceptance Pending है।
