@@ -306,3 +306,11 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - `20261114360000_new_category_electrician_payout_reconciliation.sql` में payout creation trigger function का direct EXECUTE PUBLIC/anon/authenticated से revoke है। Main Admin settlement अलग SECURITY DEFINER RPC से होता है; RPC में Main Admin gate, booking-first row locks, pending-only transition और ledger parity checks हैं।
 - सीमा: migration replay के दौरान यदि payout table पहले किसी अन्य baseline से मौजूद हो तो यह migration का explicit REVOKE/GRANT block फिर भी intended ACL लागू करता है; लेकिन वास्तविक deployed `pg_class`, `role_table_grants`, `pg_policies`, function ACL और table owner का live catalog evidence अभी बाकी है। यह audit live database query नहीं था।
 - कोई source code/migration बदला नहीं; केवल यह evidence note जोड़ा गया। PostgreSQL, pgTAP, Node suite, CI, migration replay, deployment या production settings execute/change नहीं किए गए। Runtime acceptance matrix के सभी 60 checks Pending हैं।
+
+
+### Refund Recovery pgTAP source assertion correction — 17 November 2026 (source-only)
+
+- Refund recovery migration chain को फिर cross-check किया: `20261115240000_harden_refund_recovery_full_amount.sql` अंतिम recovery finalizer में booking-first lock के बाद `srk_electrician_payouts` को `booking_id=v_booking.id` से lock करता है; full-collection amount equality भी उसी finalizer में enforce होती है।
+- `durable_razorpay_refund_recovery_evidence.test.sql` में payout-lock source assertion गलती से `where id=v_payout.id` खोज रहा था, जो implementation से मेल नहीं खाता था। इसे वास्तविक `where booking_id=v_booking.id` predicate से ठीक किया। यह test-source mismatch था; production function में defect नहीं मिला।
+- Test का declared plan 40 ही रखा; assertion count नहीं बदला। यह pgTAP execution नहीं है—SQL compilation, migration replay और pgTAP अभी नहीं चलाए गए।
+- No database, provider API, CI, deployment, merge, या production setting changed.
