@@ -4290,3 +4290,71 @@ Fresh GitHub listing ने 89 files / 88 version prefixes की inventory क�
 6. प्रत्येक migration के लिए created/altered object और referenced object की machine-readable dependency matrix बनानी होगी; उसके बाद ही deterministic clean replay plan freeze किया जा सकता है।
 
 **निष्कर्ष:** मुख्य dependency edges पहचाने गए हैं, लेकिन यह अभी partial source-level graph है। पूर्ण 89-file dependency graph, blank-database replay और pgTAP execution **Not Run / Unverified** हैं। कोई executable file या database state नहीं बदली गई।
+
+
+### 149. 89/89 Migration Files — First-Pass Object Producer/Consumer Matrix — 17 Nov 2026
+
+Audit Branch directory से 89 SQL migration paths की inventory लेकर सभी files के source text को पढ़कर object-level first-pass scan किया गया। यह regex-assisted source inventory और पहले के line-by-line focused reviews का संयोजन है; PostgreSQL parser/catalog नहीं। इसलिए dynamic SQL, DO blocks, function-body references और overloaded signatures के लिए इसे final dependency proof न माना जाए।
+
+#### 149.1 Canonical External Prerequisites
+
+| Prerequisite object/domain | First observed consumers | Dependency conclusion |
+|---|---|---|
+| `public.service_bookings` | शुरुआती customer access, quote/state, wallet/Route, complaint, finance, work, refund और accounting migrations | Core base schema migration से पहले मौजूद होना चाहिए |
+| `public.electrician_profiles` | identity, map pin, offer dispatch, quote, KYC, work, payout, RBAC-adjacent RPCs | Core base schema prerequisite |
+| `public.electrician_applications` | admin application review, relocation, rate-tier and KYC review | Core base schema prerequisite |
+| `public.job_offers` | offer detail, dispatch, push outbox, selected-tier guard | Core base schema prerequisite |
+| `auth.users`, `auth.uid()`, `auth.sessions` | FKs, security-definer RPCs, staff session RBAC | Supabase Auth prerequisite |
+| `storage.objects` / Storage buckets | avatar, support attachment and KYC object policies | Supabase Storage prerequisite |
+| `public.is_srk_admin()` | staff RBAC foundation and later Admin RPCs | Timestamped migration chain में self-contained bootstrap अभी प्रमाणित नहीं |
+
+इससे स्पष्ट है कि 89-file directory अकेले blank PostgreSQL database के लिए self-contained migration set नहीं है। Core application schema और Supabase platform objects का reproducible bootstrap contract अलग से चाहिए।
+
+#### 149.2 Major Producer → Consumer Matrix
+
+| Producer / migration family | Produced objects | Important consumers |
+|---|---|---|
+| `20261108120608` + `20261108120658` | `private` schema, public rate-limit helper and RLS | public form/rate-limited RPC paths |
+| `20261109010000` | wallet accounts, wallet ledger, bank links, wallet RPCs | cancellation fee accounting, refund reversal, accounting bridge |
+| `20261109020000` | Route transfer ledger | later Route reconciliation; then retirement migration `20261115092149` |
+| `20261109_*` | quote columns, booking state constraints, quote/work RPCs | `20261110140000`, work timer and later search-path hardening |
+| `20261110040000` | booking complaints and complaint events | support conversation, Admin reply, Staff RBAC and customer-safe projection |
+| `20261111020000` | push subscriptions | durable push outbox, delivery ledger, health monitor and lease fencing |
+| `20261113220000` | support messages and attachment relations/policies | `20261113230000`, Admin replies, Staff RBAC |
+| `20261114125844` | finance/refund/audit tables incl. labour bills, manual payments, payouts, refunds | receipt/history, work timer, cancellation fee, refund and accounting chain |
+| `20261114140000` family / `20261114390000` | Staff/RBAC relations and permission helpers | later permission volatility fix and Staff/Admin support paths |
+| `20261114210000` | offer dispatch and private dispatch helpers | relocation/current-area recheck and push outbox trigger |
+| `20261114240000` | work timer, labour bill guard and work lifecycle RPCs | work event history, payout creation and labour-bill access |
+| `20261114250000` | work events and review RPC | `20261114260000` append-only guards/timeline |
+| `20261114270000` | cancellation requests/events and decision RPC | `20261114280000` fee/debt/ledger accounting; `20261114290000` full refund reversal |
+| `20261114280000` | cancellation fee debts, items and ledger | full refund reversal, manual payment/refund, final reconciliation |
+| `20261114360000` | electrician payable creator and Admin payout RPC | payout trigger/reconciliation and final Accounting Bridge |
+| `20261114410000` | Razorpay webhook event inbox and claim/complete RPCs | webhook handler/retry flow |
+| `20261115100000` → `20261115110000` | customer refund request contract → Admin review/decision | durable provider recovery evidence and manual refund completion |
+| `20261115120000` | durable Razorpay recovery audit/evidence and finalizer | `20261115240000`, `20261116210000` |
+| `20261115170001` → `15180001` → `15190001` → `15200001` | push outbox → delivery ledger → health/retry → lease fencing | durable push worker lifecycle |
+| `20261115150000` → `15170000` → `15180000` | successive accounting reconciliation RPC replacements | Admin UI and final `20261117010000` bridge |
+| `20261116210000` | final payout trigger and refund function replacements | booking completion/refund lifecycle and final Accounting Bridge |
+| `20261117010000` | final booking accounting reconciliation and report RPCs | Admin accounting read path; consumes finance, wallet, cancellation and refund ledgers |
+
+#### 149.3 High-Risk Ordering / Replay Findings
+
+1. **Core-schema gap:** early migrations alter/use `service_bookings`, `electrician_profiles`, `electrician_applications`, `job_offers` before any such core-table creation is visible in this 89-file inventory. A base-schema bootstrap is mandatory.
+2. **Admin helper bootstrap:** Staff RBAC migration references `is_srk_admin()`; helper definition is not introduced by that migration. Root setup SQL is outside timestamped migrations, so clean replay depends on undocumented external ordering unless formalized.
+3. **Duplicate version prefix:** the two `20261109` filenames remain a migration-history collision risk.
+4. **Duplicate labour-bill patch:** `20261115120001` and `20261115145900` have identical blob SHA `e3bdf2624c224322a6ac4c99f2ae6e77b1be4774`; replay applies same function replacement twice under distinct versions.
+5. **Labour-bill table producer overlap:** `20261114125844` and `20261114240000` both contain `CREATE TABLE IF NOT EXISTS srk_booking_labour_bills`. IF NOT EXISTS does not reconcile differing definitions; schema parity must be checked against a real catalog or exact DDL comparison.
+6. **Route create/retire/consumer chain:** Route ledger is created then retired before later Route reconciliation migrations. Later RPC/UI contract and whether Route remains an active accounting domain need one owner-approved canonical decision.
+7. **Function replacement chronology:** quote/work RPCs, receipt RPC, refund finalizer, payout creator and accounting reconciliation RPC are replaced in later migrations. Tests must target the final definition, not only earlier migration source.
+8. **Push chain prerequisites:** delivery outbox expects push subscription and job-offer schema; delivery ledger/health/lease functions consume earlier outbox/ledger objects. The sequence is coherent at source level but has not been replayed.
+9. **Final Accounting Bridge is a broad consumer:** it references manual payment, labour bill, payout, provider/manual refund, cancellation fee, wallet, refund request and booking relations. Its function body cannot be considered validated from migration ordering alone.
+
+#### 149.4 Coverage and Limits
+
+- Inventory count: 89 SQL files; 88 distinct version prefixes; duplicate `20261109` remains.
+- The first-pass scan is not a SQL parser. It can over-report identifiers in comments/PLpgSQL variables and miss dynamic references, trigger-body calls, grants, policies, extension-provided objects and runtime-only dependencies.
+- No `supabase/config.toml` was found in the branch inventory; migration runner/config behavior remains unknown.
+- No SQL parser, PostgreSQL catalog inspection, clean database replay, pgTAP, CI workflow, deployment, or Production/Test database operation was run.
+- No migration file was changed; this section changes only the Audit Report.
+
+**स्थिति:** 89/89 file paths का first-pass source inventory दर्ज है। यह dependency graph का आधार है, लेकिन replay-ready sign-off नहीं। अगला कदम duplicate/version/bootstrap और duplicate DDL को owner-approved remediation list में बदलना, फिर isolated local PostgreSQL replay के लिए explicit prerequisites तय करना है।
