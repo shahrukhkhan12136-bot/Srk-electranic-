@@ -271,3 +271,28 @@ test("reuses the same observation ID when retrying an ambiguous evidence write",
  assert.equal(observationIds.length,2);assert.equal(observationIds[0],observationIds[1]);
  assert.match(observationIds[0],/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 });
+
+
+test("stops provider pagination before evidence when the overall deadline reserve is reached",async t=>{
+ const calls=[];let elapsed=0;const originalNow=Date.now;
+ Date.now=()=>originalNow()+elapsed;
+ global.fetch=async(url,options={})=>{
+  const target=String(url);calls.push(target);
+  if(target.endsWith("/auth/v1/user"))return response(200,{id:adminId});
+  if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);
+  if(target.includes("/rest/v1/srk_razorpay_refunds?"))return response(200,[{...record,refund_id:null}]);
+  if(target.includes("/rest/v1/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);
+  if(target.includes("/payments/"+paymentId+"/refunds?count=100&skip=0")){
+   elapsed=21000;
+   return response(200,{items:Array.from({length:100},(_,i)=>({id:"rfnd_page"+i,payment_id:paymentId,amount:12500,currency:"INR",status:"processed",notes:{srk_refund_record_id:"other"},receipt:"other"}))});
+  }
+  throw new Error("unexpected request "+target);
+ };
+ t.after(()=>{global.fetch=originalFetch;Date.now=originalNow;});
+ const result=await handler(request());const body=JSON.parse(result.body);
+ assert.equal(result.statusCode,202);assert.equal(body.status,"deadline_before_evidence");
+ assert.equal(body.evidence_saved,false);assert.equal(body.accounting_finalized,false);assert.equal(body.safe_to_retry,false);
+ assert.equal(calls.filter(target=>target.includes("/payments/"+paymentId+"/refunds?")).length,1);
+ assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_record_razorpay_refund_recovery_evidence")),false);
+ assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence")),false);
+});
