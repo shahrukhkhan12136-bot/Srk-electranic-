@@ -5453,3 +5453,42 @@ Migration में staff status change, invite, session revoke/register, suppor
 ### 5. Verdict
 
 Staff audit table पर row mutation और truncate रोकने वाले triggers मौजूद हैं। कई staff workflows में explicit audit inserts भी हैं। Invite RPC का actor UUID parameter केवल Main Admin registry membership से validate होता है; वास्तविक initiating Admin की पहचान server-side Edge Function flow पर निर्भर है, जिसे अभी verify नहीं किया गया। Append-only protection privileged database owner के विरुद्ध absolute नहीं है। कोई SQL/test/migration, grant, policy या database setting नहीं बदली गई; कोई DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+
+## 176. Staff Invite Edge Function — Trusted Admin Actor Verification
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** `supabase/functions/admin-staff-management/index.ts` और संबंधित source-level test assertions का static review।
+
+### 1. Main Admin की पहचान server-side verify होती है
+
+Edge Function:
+- Bearer token अनिवार्य करता है।
+- `userClient.auth.getUser(token)` से Supabase Auth के विरुद्ध token/user सत्यापित करता है।
+- उसी authenticated user context से `userClient.rpc("is_srk_admin")` चलाता है और केवल `true` पर आगे बढ़ता है।
+- Browser के `user_metadata`/`app_metadata` को authorization source नहीं मानता।
+
+### 2. Actor UUID request body से नहीं आता
+
+Invite registration RPC को `p_actor_admin_id: authData.user.id` दिया जाता है। Request body से actor/admin ID, role या is_admin flag नहीं पढ़ा जाता। Role server-side fixed `support` है। इससे पिछले section में उठी actor-attribution चिंता के लिए source-level समाधान मिलता है: Edge Function पहले trusted Auth user और Main Admin status verify करती है, फिर उसी verified user ID को service-role RPC तक भेजती है।
+
+### 3. Service-role का सीमित उपयोग और failure path
+
+Service-role client केवल server-side Auth invitation और registry registration के लिए बनाया जाता है। Registry registration विफल होने पर function नव-निर्मित Auth user को हटाने का प्रयास करता है और response में बताता है कि invitation email पहले ही भेजा गया हो सकता है। यह cleanup email को वापस नहीं ले सकता; इसलिए failure पर manual Main Admin review की चेतावनी उचित है।
+
+### 4. उपलब्ध Test Evidence की सीमा
+
+`tests/admin-refund-and-staff-access.test.js` में static source assertions मौजूद हैं जो Bearer token, `auth.getUser(token)`, `is_srk_admin`, `authData.user.id`, fixed Support role और failed registration cleanup को जाँचने के लिए लिखे गए हैं। यह test file source assertions का प्रमाण है; इस audit चरण में Node tests चलाए नहीं गए। Database pgTAP file में भी service-role-only registration grant और function existence के assertions मौजूद हैं, पर pgTAP execute नहीं किया गया।
+
+### 5. शेष Runtime Verification
+
+1. Edge Function deployment में सही secrets और JWT verification configuration मौजूद हों।
+2. Non-Admin, expired token और missing token पर invitation न बने।
+3. Valid Main Admin invite में audit actor UUID वास्तविक authenticated Main Admin से मेल खाए।
+4. Auth invitation सफल लेकिन registry insert विफल होने पर cleanup outcome और पहले से भेजे गए email का handling सत्यापित हो।
+5. Concurrent duplicate invitation और retry behavior नियंत्रित हो।
+
+### 6. Verdict
+
+Static source review के अनुसार Edge Function verified Bearer user और Main Admin RPC check के बाद ही invite flow चलाती है; actor ID verified `authData.user.id` से आती है, client body से नहीं। इससे invite actor attribution का source-level design संतोषजनक दिखता है। Deployment configuration, actual requests, audit rows और failure/retry runtime behavior अभी सत्यापित नहीं हैं। कोई function, migration, test, secret, permission या database setting नहीं बदली गई; कोई test/pgTAP/DB query/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
