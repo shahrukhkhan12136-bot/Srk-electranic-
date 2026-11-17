@@ -469,3 +469,13 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - यह migration-chain के बाद database catalog/function definitions पर चलने वाला pgTAP contract है। इसे अभी execute नहीं किया गया; इसलिए इसे runtime rollback प्रमाण नहीं माना जाएगा।
 - वास्तविक exception/rollback scenarios के लिए isolated PostgreSQL fixture अभी आवश्यक है: (1) qualifying paid/completed booking पर payout row missing होने से booking update rollback, (2) blocked payout में commission mismatch होने से booking update rollback और blocked payout unchanged रहना। Fixture schema/constraints की पूरी पुष्टि के बिना behavioral test source नहीं जोड़ा गया।
 - कोई PostgreSQL/pgTAP run, database migration apply, Production query/write, provider refund/payout, merge या deployment नहीं हुआ। Official GPT-2 progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित।
+
+
+### 3O. Parity-only update paths — fixture design refinement (17 Nov 2026)
+
+- Payout trigger और parity validator की UPDATE column lists की तुलना से एक सुरक्षित targeted guard path पहचाना: payout writer `materials_amount` और `commission_amount` पर fire नहीं होता, जबकि AFTER parity validator दोनों पर fire होता है।
+- इसलिए missing-payout guard को valid verified booking पर payout row बनने के बाद test transaction में row हटाकर, फिर केवल `materials_amount` बदलकर exercise किया जा सकता है; parity validator exception देगा और उसी statement/transaction का rollback row deletion सहित सभी बदलाव वापस करेगा। (यह design है, executed result नहीं।)
+- Commission mismatch guard के लिए existing blocked payout row का commission value fixture में अपेक्षित booking commission से अलग रखा जा सकता है; फिर केवल `commission_amount` update करने पर payout writer fire नहीं होगा और parity validator mismatch reject करेगा। Transaction rollback के बाद blocked payout row unchanged verify किया जा सकता है।
+- pgTAP file में दो assertions जोड़े गए हैं जो दोनों triggers की column-list separation जाँचते हैं। Plan अब **41 assertions** है; actual fixture/rollback assertions अभी नहीं जोड़े गए, क्योंकि complete authoritative baseline और exact table constraints/migration replay अभी unresolved हैं।
+- Test file source count rechecked: plan **41**, `select ok(...)` assertions **41**, `finish()` और transaction rollback मौजूद। pgTAP execution **NOT RUN**।
+- GPT-2 official progress **27/39 = 69%** unchanged; source assertions/documentation implementation checklist item complete नहीं करते।
