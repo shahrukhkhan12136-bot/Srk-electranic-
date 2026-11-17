@@ -570,3 +570,28 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - A proper fix requires a durable asynchronous worker/outbox or a provider-compatible fast-ack design that commits receipt before returning 2xx. Do not return 2xx before durable receipt; do not use unawaited background work without a durable execution guarantee. No queue/worker feature was added because it changes architecture and needs owner-approved scope.
 - Refund create path rechecked against Razorpay API docs: `X-Refund-Idempotency` and stable `receipt` are sent with the same persisted refund key/body; the provider docs describe receipt as an idempotency key. Existing code treats network timeout as ambiguous and does not generate a new key.
 - Source-only audit. No Node/pgTAP execution, provider calls, DB, CI, deployment, merge or mobile QA. GPT-2 official checklist remains 27/39 = 69%; Runtime Acceptance 60/60 Pending.
+
+
+## 3X. 17 November 2026 — Webhook lease budget and Refund Recovery timeout audit
+
+**Audited branch:** `chore/pr8-replay-audit-20261116-v2`  
+**Pre-documentation HEAD:** `814c5a6728f5e9adba8d1259f76d78e83c048de3`
+
+### Razorpay Webhook — verified source facts
+- `razorpay-webhook.js` verifies the HMAC signature before claiming an event, then synchronously performs claim, event-specific reconciliation and completion before returning its HTTP response. There is no separate durable worker/queue handoff in this handler; do not describe it as fast-acknowledgement/background processing.
+- The inbox migration grants a 2-minute claim lease and uses a fresh claim token as a fencing token. Completion accepts only the current token; stale completion is rejected.
+- Each of the eight Supabase request call sites uses `webhookFetch` with a 15-second AbortSignal timeout. They are alternative branches, not eight requests on every execution.
+- Source-path budget: ordinary refund processing has up to four sequential HTTP requests (claim, refund lookup, reconcile RPC, completion); the new-category payment path has up to five (claim, booking lookup, breakdown RPC, settlement RPC, completion); the legacy payment concurrency-recheck path can reach six. At 15 seconds per request, their nominal network timeout ceilings are 60, 75 and 90 seconds respectively, before local processing. Therefore the earlier broad suggestion that four 15-second requests alone exceed the 2-minute lease was incorrect. A 2-minute lease can still be exceeded by runtime/platform delays or other unbounded work; no heartbeat/lease extension exists. These are source calculations, not measured runtime timings.
+- No provider webhook latency/SLA claim is made in this audit. No durable worker architecture was added or approved.
+
+### Refund Recovery — verified source facts
+- `razorpay-refund-recovery.js` has per-request timeouts: 10 seconds for Auth checks, 10 seconds for ordinary Supabase reads, and 15 seconds for RPC/provider requests.
+- When the provider refund ID is not stored, the recovery handler can read up to ten pages of 100 refunds sequentially. Ten provider calls alone have a theoretical configured timeout budget of 150 seconds, before Auth, Supabase reads, evidence persistence and optional finalization. There is no overall handler deadline or cancellation budget in this source.
+- Pagination is bounded and fail-closed: a full ten-page scan returns `provider_search_limit_reached` without saving evidence; malformed/duplicate page IDs also stop the search. Exact single-match checks precede evidence persistence.
+- Evidence persistence and accounting finalization are separate HTTP/PostgREST requests and therefore separate database transactions. Only fresh (`<15 minutes`) provider evidence with status `processed` can finalize. Failed/pending evidence is recorded but does not finalize or release payout.
+- This is a potential handler-duration/platform-timeout risk, not proof of a failed or duplicated refund. Runtime limits are not verified here.
+
+### Verification boundary and status
+- Source files and migration were re-fetched from the audited branch. No Node tests or pgTAP tests were executed.
+- No database operation, migration apply/replay, CI dispatch, deployment, merge, provider refund, or production setting change occurred.
+- Official GPT-2 checklist remains **27/39 = 69% (12 remaining)**; Runtime Acceptance remains **60/60 Pending**. This audit note does not complete an official checklist item.
