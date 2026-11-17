@@ -202,3 +202,13 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - यह स्वीकृत Electrician App नियम से टकराता है: Electrician को केवल उसकी 85% देय कमाई दिखनी चाहिए; 15% Company commission को किसी नाम/रूप में Electrician App में नहीं दिखाना है।
 - यह GPT-1 ownership वाला Electrician App UI है। इस GPT-2B audit में `electrician.html` को बदला नहीं गया। GPT-1 owner को स्पष्ट handoff आवश्यक है; साथ में backend RPC payload में commission field की जरूरत भी पुनः जाँची जाए ताकि अनावश्यक exposure न रहे।
 - यह source-level confirmed UI defect है; कोई UI/runtime test execute नहीं हुआ। इसे fix या deploy हुआ नहीं माना जाए। Runtime acceptance अभी Pending है।
+
+
+
+### Accounting RPC privilege and payout settlement cross-check — 17 November 2026 (source-only)
+
+- `srk_admin_commission_report()` की मूल ACL migration में `PUBLIC/anon` revoke और `authenticated` grant मिला। बाद की `CREATE OR REPLACE` पर ACL preserve होने की पुष्टि source chain से की; function body में `auth.uid()` और Main Admin gate है।
+- `srk_get_my_earnings()` की मूल ACL भी `PUBLIC/anon` revoke और `authenticated` grant है; SQL query exact `electrician_profiles.user_id=auth.uid()` तथा approved profile पर सीमित है।
+- लेकिन RPC return shape में `commission_amount` अभी भी शामिल है। Electrician UI इसे दिखा रहा है—इसका UI conflict ऊपर दर्ज है। API response से field हटाने पर GPT-1 UI coordination और function return-type migration की जरूरत होगी; इस audit में कोई API contract change नहीं किया।
+- `srk_admin_mark_electrician_payout_paid()` Main Admin gate, booking-first फिर payout-row lock, केवल pending payout transition, verified completed/paid booking, immutable labour bill, assigned electrician match और payout amount parity जाँचता है। Function पर `PUBLIC` revoke और authenticated EXECUTE grant मौजूद है।
+- ये source/migration-chain checks हैं। ACL/catalog state, lock contention, concurrent refund-vs-payout, और settlement behavior को PostgreSQL/pgTAP runtime में verify नहीं किया गया; runtime acceptance Pending है।
