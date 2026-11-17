@@ -500,3 +500,13 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - सुरक्षित अगला कदम: अलग local-only CI workflow/config प्रस्तावित करना जो किसी remote URL/secret को न पढ़े, empty local Supabase stack से शुरू हो, सभी migrations timestamp order में replay करे और pgTAP suites चलाए। इसे जोड़ने से पहले local prerequisites और migration compatibility source-level पर जाँचनी होगी; workflow execution के लिए अलग अनुमति/CI evidence आवश्यक होगा।
 - Payout pgTAP source file की नवीनतम स्थिति अलग से rechecked: `plan(46)` और 46 assertion statements; दो `throws_ok` parity rollback cases source में मौजूद हैं। PostgreSQL/pgTAP execution अभी भी **NOT RUN** है। पुराने §3O में दर्ज plan 41 ऐतिहासिक snapshot था, वर्तमान count नहीं।
 - कोई migration apply, DB query, workflow dispatch, remote schema export, provider action, deployment या merge नहीं हुआ। Official GPT-2 progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित।
+
+
+### 3Q. Payout parity rollback fixtures और वर्तमान Support Staff contract counts — 17 Nov 2026
+
+- Current source recheck पर `supabase/tests/database/electrician_payout_reconciliation.test.sql` का plan **55** और 55 assertion calls है। इसमें transaction-scoped legacy quote fixtures के साथ positive commission-only update, missing-payout parity exception, blocked payout commission mismatch exception और failed statement के बाद payout row/state preservation assertions मौजूद हैं (fixture section: `payout_rollback_fixtures`).
+- ये fixtures `lives_ok` / `throws_ok` source contracts हैं; PostgreSQL/pgTAP में execute नहीं किए गए। इसलिए actual trigger rollback behavior अभी unverified है।
+- Support Staff current source contract counts rechecked: `admin_staff_rbac_foundation.test.sql` 73, `electrician_support_ticket_security.test.sql` 17, `support_attachment_staff_access.test.sql` 11, `support_attachment_deletion_lifecycle.test.sql` 8, `support_attachment_admin_message_access.test.sql` 14, `sos_admin_support_alerts.test.sql` 28. ये सभी plan/assertion source counts हैं, pass counts नहीं।
+- Additional Node source contracts: `admin-refund-and-staff-access.test.js` में 29 tests और `staff-customer-attachment-access-contract.test.js` में 6 tests; execute नहीं किए गए।
+- Payout commission-only edit path में payout writer trigger column list से `commission_amount` बाहर है और parity validator में शामिल है; इसी वजह से missing payout तथा mismatch exception fixtures payout upsert को दोबारा चलाए बिना parity guard तक पहुँचते हैं। यह source wiring evidence है, runtime result नहीं।
+- No database operation, pgTAP/Node test execution, CI dispatch, migration replay, production access, provider action, deployment, merge या mobile QA किया गया। Official GPT-2 progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित; Runtime Acceptance **60/60 Pending**।
