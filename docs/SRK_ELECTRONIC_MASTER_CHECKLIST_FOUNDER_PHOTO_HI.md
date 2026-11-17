@@ -1,6 +1,6 @@
 # SRK ELECTRONIC — मुख्य मास्टर चेकलिस्ट (एकीकृत स्थिति)
 
-**अंतिम मिलान:** 16 नवम्बर 2026  
+**अंतिम मिलान:** 17 नवम्बर 2026  
 **काम की branch:** `feat/customer-login-first-dashboard-20261114`  
 **Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
 **स्थिति का नियम:** [x] = Feature Branch source में implement/verified; इसका अर्थ Production पर लागू होना नहीं है। Runtime/Production/owner approval को अलग स्पष्ट रखा गया है। पुरानी विस्तृत कार्य-इतिहास `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` में है। इस checklist में duplicate पुराने pending items को बार-बार नहीं दोहराया जाएगा।
@@ -684,3 +684,15 @@
 - [x] `tests/customer-electrician-booking-status-sync-contract.test.js` में दोनों व्यवहारों के regression source-contract checks मौजूद हैं।
 - [ ] इस feature-branch के exact merged head पर Node CI और browser/mobile runtime verification अभी अलग से आवश्यक है; main के पुराने 231/231 test run को इस head की validation नहीं माना जाएगा।
 - [ ] Cross-app automatic realtime service-booking status refresh अभी unverified है; manual/action refresh और Electrician job-offer/profile subscriptions इसका प्रमाण नहीं हैं।
+
+
+### 2026-11-17 — GPT-1 resume audit: refund RPC correction and exact-head CI
+
+- पुनःजाँचा गया exact PR #8 head: `5bb05585406b726c11d8d24c1aea736a95d66635`। Current source blobs: `booking.html` = `d4acf0d51f693ec0d2ff5827e0411e3ca30149a2`; `electrician.html` = `0588cfe716e1e5c47690e826bbe2bb09a0c57bed`।
+- Customer portal में 25 distinct Supabase RPC calls और 3 API routes (`/api/create-booking`, `/api/create-order`, `/api/verify-payment`) हैं; Electrician portal में 23 distinct RPC calls और Push Edge Function caller है। `srk_create_sos_alert` दोनों में shared है; इसलिए कुल 47 distinct RPC names हैं।
+- **पहले दर्ज Customer refund CREATE RPC gap का correction:** इस exact branch पर `20261115100000_customer_refund_request_contract.sql` में `srk_customer_create_booking_refund_request(uuid,text)` की authoritative definition मौजूद है। UI के `p_booking_id` और `p_reason` arguments SQL signature से match करते हैं। `tests/customer-refund-ui-lifecycle.test.js` source contract और `customer_refund_request_contract.test.sql` में 17 structural pgTAP assertions भी मौजूद हैं। इसलिए 17 Nov की पहले वाली “definition नहीं मिली” टिप्पणी superseded है। pgTAP अभी इस note में executed नहीं माना गया है। GPT-2-owned SQL में कोई बदलाव नहीं किया।
+- इस pass में Customer profile/address, payment/refund, complaint/support, work-timer/cancellation, और Electrician dispatch/availability/location/KYC/profile/support/phone-change migrations की function declarations सीधे fetch करके जाँचीं। Previously mapped caller contracts मौजूद हैं; इससे live PostgreSQL execution, actor isolation या full clean migration replay सिद्ध नहीं होता।
+- Exact HEAD Node CI: run `44047022462`, job `133915140187`, **417/417 PASS, 0 FAIL, 0 skipped**। Combined status में Vercel और Netlify deploy-preview दोनों success हैं। यह branch preview/Node evidence है; Production deployment नहीं।
+- Direct client access inventory: Customer `service_bookings` read + private `srk-customer-avatars` / `srk-customer-support` Storage; Electrician `electrician_profiles`, `srk_electrician_payouts`, `srk_push_subscriptions`, `srk_wallet_bank_links`, `srk_wallet_ledger` reads/writes। इनकी RLS/Storage actor-isolation runtime पुष्टि GPT-2 baseline/DB gates के बाद होगी; विशेषकर electrician own-profile read policy की authoritative migration-baseline पुष्टि GPT-2 handoff है।
+- कोई Customer/Electrician source defect इस pass में प्रमाणित नहीं हुआ; कोई नया feature नहीं जोड़ा। GPT-1 progress checkbox count नहीं बढ़ाया गया। अगला सुरक्षित कार्य: direct-table/Storage policy-test mapping को GPT-2 handoff के साथ अंतिम करना, फिर DB replay/actor tests उपलब्ध होने पर browser acceptance; mobile QA अभी deferred।
+- कोई SQL/RLS, Production, payment/provider, Auth/Storage setting, deployment, merge या PR state नहीं बदली।
