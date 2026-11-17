@@ -51,6 +51,9 @@ revoke all on function public.srk_customer_support_object_delete_access(text) fr
 grant execute on function public.srk_customer_support_object_delete_access(text) to authenticated;
 
 drop policy if exists srk_customer_support_delete_own on storage.objects;
+-- Remove the earlier unlinked-only policy too: permissive Storage policies OR together,
+-- and that policy does not take the row lock required for link/delete serialization.
+drop policy if exists srk_customer_support_delete_unlinked_own on storage.objects;
 create policy srk_customer_support_delete_own on storage.objects
 for delete to authenticated
 using (
