@@ -7240,27 +7240,30 @@ Because the reference is inside a PL/pgSQL function body, static inspection does
 Static source review only. No SQL, database query, migration replay, pgTAP, browser test, CI dispatch or deployment was run. This is a confirmed forward dependency and rollout-order requirement, not a reproduced migration failure. GPT-2 checklist remains 27/39 = 69%.
 
 
-## 228. Payout Reconciliation के 34 pgTAP Assertions संरचनात्मक हैं; Transactional Runtime Scenarios शामिल नहीं हैं
+## 228. Payout Reconciliation Test में Transactional Rollback Fixtures मौजूद हैं; Runtime अभी Execute नहीं हुआ
 
-### Static source reviewed
-- `supabase/tests/database/electrician_payout_reconciliation.test.sql` SHA `88184e2e1fb386f16d6bd339556a15a5b87275d2`.
+### नवीनतम Static Source Reviewed
+- `supabase/tests/database/electrician_payout_reconciliation.test.sql` SHA `df68cbd1e53ab539babdbecf38054eeee888c5dc`, घोषित `plan(46)`.
 - `supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` SHA `68189051090a51bef26a98997caf103b62ed070c`.
 
-### Finding
-Payout reconciliation test में घोषित `plan(34)` के साथ 34 top-level assertions हैं और `finish()` मौजूद है। Assertions trigger attachment/type/order, function configuration/privileges और `pg_get_functiondef()` में अपेक्षित source fragments की जाँच करते हैं। यह उपयोगी catalog/source-contract coverage है।
+### Coverage Correction
+पहले दर्ज निष्कर्ष कि इस test में कोई booking/payout fixture DML या trigger invocation नहीं है, नवीनतम branch file के लिए गलत/पुराना है। नवीनतम test में:
+- `payout_rollback_fixtures` नाम की temporary fixture table बनाई जाती है।
+- दो electrician profiles और दो completed/paid booking fixtures insert किए जाते हैं।
+- Missing-payout scenario में payout row हटाकर commission-only booking update पर `throws_ok` से `PAYOUT_ROW_MISSING_DURING_COMMISSION_PARITY_CHECK` अपेक्षित है।
+- Mismatch scenario में payout को blocked और platform commission को booking commission से अलग किया जाता है; commission-only update पर `throws_ok` से `BOOKING_COMMISSION_AND_PAYOUT_PLATFORM_COMMISSION_MISMATCH` अपेक्षित है।
+- दोनों failure cases के बाद payout row/state को जाँचने वाले assertions मौजूद हैं।
+- Static inventory में घोषित plan 46 और 46 pgTAP assertions मेल खाते हैं; दो `throws_ok` calls और पाँच DML statements पाए गए।
 
-लेकिन test transaction में कोई booking/payout fixture insert या update नहीं करता और trigger को वास्तविक row changes से invoke नहीं करता। इसलिए 34/34 assertion-count match को payout row के वास्तविक निर्माण/अपडेट, commission mismatch पर transaction rollback, manual payment evidence mismatch, refund transition, अथवा concurrent booking updates के runtime proof के रूप में नहीं पढ़ा जा सकता। विशेषकर AFTER payout writer और parity validator का वास्तविक transactional interaction इस फ़ाइल में execute नहीं होता।
+### शेष सीमाएँ
+यह test अब केवल source/catalog inspection नहीं है: इसमें वास्तविक transactional fixture setup और trigger-invoking UPDATE statements लिखे हैं। फिर भी इसे चलाया नहीं गया है। इसलिए assertions के pass होने, rollback behavior के runtime में सफल होने, fixture compatibility, migration replay, concurrent update behavior या पूरे payout lifecycle की पुष्टि नहीं हुई है। यह coverage मौजूद होने का source-level निष्कर्ष है, passing test result नहीं।
 
-यह test की घोषित structural प्रकृति का coverage gap है; इससे production bug या runtime failure सिद्ध नहीं होता।
+### Required Action
+- Canonical baseline और migration lineage तय होने के बाद isolated PostgreSQL में clean replay के साथ यह pgTAP file चलाएँ।
+- Runtime output में 46/46 pass, fixture setup, expected SQLSTATE/message और rollback aftermath सत्यापित करें।
+- Concurrent booking/payout mutations तथा refund-to-payout transitions अलग runtime scenarios में जाँचें।
 
-### Required action
-- Isolated PostgreSQL में वास्तविक booking/payment/payout fixtures के साथ insert/update scenarios जोड़ें।
-- Commission mismatch और payout row missing होने पर पूरा statement/transaction rollback होता है, इसे verify करें।
-- Manual-payment method mismatch, full-refund payout closure और unrelated Admin payout hold preservation को trigger invocation से जाँचें।
-- Concurrent update behavior अलग controlled test में जाँचें; अभी कोई concurrency guarantee प्रमाणित नहीं है।
-
-Static source review only. Test, SQL, database query या migration replay नहीं चलाया गया। कोई runtime result infer नहीं किया गया। GPT-2 checklist remains 27/39 = 69%.
-
+Static source review only. इस correction के लिए केवल audit documentation बदली गई; SQL, database, pgTAP, CI या deployment नहीं चलाए गए। GPT-2 checklist remains 27/39 = 69%.
 
 ## 229. Cancellation Fee Refund-Reversal pgTAP Test 44 Source Assertions तक सीमित है
 
