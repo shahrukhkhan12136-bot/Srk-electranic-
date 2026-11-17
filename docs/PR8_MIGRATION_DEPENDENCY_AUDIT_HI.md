@@ -6836,3 +6836,43 @@ The later migration statically repairs the earlier malformed Unicode literal whi
 GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल संबंधित दो migrations और 14-assertion SQL test का static निरीक्षण तथा यह report section जोड़ा गया। कोई SQL/pgTAP execution, DB query, source/migration change, runtime test, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 213. Customer Payment Receipt — पुराने pgTAP Assertion बनाम बाद का Itemized Receipt Contract
+
+### 1. Static source reviewed
+
+- Initial receipt migration `20261114190000_customer_receipt_immutable_labour_amount.sql` (SHA `2eb307f774e58671a18252b34c8ba5f95fc3c1e6`).
+- Later receipt/manual-payment replacement `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` (SHA `729ad87166557425f973ac04051c08217f1d0404`).
+- Search-path hardening `20261116130000_pin_wallet_and_receipt_rpc_search_paths.sql` (SHA `59aa084dfb884823a891a88ed257054838b58fee`).
+- Earlier test `customer_receipt_immutable_labour_amount.test.sql` (SHA `185ca4b96233216634e7cbbabce48d5015c6f62c`, `plan(9)`).
+- Later test `legacy_manual_payment_and_itemized_receipt.test.sql` (SHA `0dbfe7492f71fb0647125d815591cc687d616120`, `plan(18)`).
+
+### 2. Migration sequence and contract delta
+
+1. Initial receipt RPC preferred immutable labour bill and deliberately excluded materials; its legacy fallback required service_charge to equal the full amount paid.
+2. Later migration replaces the same receipt RPC. For new-category bookings, it requires immutable labour bill plus settled cancellation-fee items to equal paid amount, and returns labour amount, zero materials, cancellation-fee amount/items and total.
+3. For legacy bookings, the later function separately reconciles service_charge + materials_amount against both amount_paid and quoted_amount, then returns labour and materials separately.
+4. Later migration also restores Admin manual-payment RPC for eligible legacy completed/assigned/approved-quote bookings; it records manual payment, updates booking payment fields and verifies payout split. This is a separate Admin-only path, not customer payment collection.
+5. The Nov 16 migration pins the receipt SECURITY DEFINER function to empty search_path after the replacement.
+
+### 3. Concrete static test-contract conflict
+
+- The earlier `customer_receipt_immutable_labour_amount.test.sql` includes an assertion that `materials_amount` does not appear anywhere in the final receipt function definition.
+- The later `20261115210000` replacement explicitly returns `materials_amount` for legacy bookings (and sets it to zero for new-category bookings).
+- Since the later migration replaces the same function, the earlier test's “materials field absent” assertion is stale against the later intended itemized receipt contract. If the full migration chain is replayed and both tests run against the final function definition, that earlier assertion is expected to fail. This is a static source-level incompatibility prediction, not an observed test failure.
+- The later 18-assertion test explicitly expects `materials_amount` in the receipt and checks labour/material reconciliation, demonstrating the later contract direction.
+- Recommended resolution for owner review: update the earlier test to assert that new-category receipts exclude material charges economically (materials amount is zero) while legacy receipts itemize approved materials, rather than requiring the JSON key/function text to be absent globally. Preserve a separate assertion that platform commission is not applied to materials.
+- No test file or migration was modified.
+
+### 4. Security and runtime limits
+
+Both receipt versions are customer-owner scoped and authenticated-only; the later replacement keeps SECURITY DEFINER and empty search_path. The manual settlement function checks Main Admin, locks the booking, rejects new-category/Razorpay bookings, and checks the final payout split. Static inspection does not prove transaction rollback, runtime ownership isolation, paise rounding under real data or effective deployed privileges.
+
+### 5. Verdict and limits
+
+A **migration-to-test contract drift** is present in the repository source: an earlier test still asserts the pre-itemized receipt shape while a later migration and test adopt an itemized legacy receipt shape. The expected full-chain test failure should be confirmed in the future isolated PostgreSQL branch after GPT-1/GPT-2 reconciliation. No actual test execution or live deployment failure is claimed.
+
+GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only audit does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल receipt migrations और दोनों SQL test files का static comparison तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, source/migration/test-file edit, runtime test, CI, deployment, merge या cherry-pick नहीं किया गया।
