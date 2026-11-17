@@ -1362,3 +1362,16 @@ Feature work-event trigger जोड़ने से पहले इनके �
 
 ### No-write boundary
 - Only source files and Main public function catalog were read. No RPC invoked, no migration applied, no DDL/DML, no Storage mutation, no PR review/comment, no merge/deploy. GPT-2 Audit Branch untouched.
+
+
+## Section 47 — Main में मौजूद 17 Admin RPCs: EXECUTE / SECURITY DEFINER / search_path recheck (2026-11-17)
+
+- Main `public.pg_proc` metadata से Admin UI के 17 matching RPCs फिर जाँचे। सभी 17 `SECURITY DEFINER` हैं; authenticated EXECUTE=true और anon EXECUTE=false। यह केवल role grants/metadata का परिणाम है; function body authorization और behavior का विकल्प नहीं।
+- 15 functions का configured search_path `pg_catalog, public, auth, pg_temp` है। दो refund RPCs का search_path empty (`search_path=''`) है:
+  - `srk_admin_decide_booking_refund_request(p_request_id uuid,p_status text,p_admin_note text)`
+  - `srk_admin_list_booking_refund_requests(p_limit integer)`
+- इन दोनों live refund function bodies को read-only `pg_get_functiondef` से inspect किया। Referenced tables/functions explicitly schema-qualified हैं (`public.*`, `auth.uid()`); कोई unqualified relation/function reference नहीं दिखा। इसलिए empty search_path स्वयं में इन inspected bodies पर unresolved name-resolution gap नहीं दिखाता। यह full security review या SQL execution test नहीं है।
+- Refund decision body Main contract में `p_status` स्वीकारता है; Admin UI call अभी `p_decision` भेजता है — argument name mismatch unresolved।
+- Refund list body returns columns `id, booking_id, customer_user_id, customer_name, customer_phone, amount, reason, status, admin_note, created_at, updated_at, payment_status, payment_method, razorpay_payment_id, has_manual_payment, refund_record_id, refund_id, provider_status`; UI projection/key mapping drift पहले Sections 22/42 में दर्ज है।
+- अन्य 15 functions के bodies, per-function object references, authorization branch और return contract की पूर्ण line-by-line review अभी शेष है; इस metadata query को उस review का substitute न मानें।
+- No function executed; only catalog metadata and two function definitions read. No database writes, PR comments, merge, deployment or external action.
