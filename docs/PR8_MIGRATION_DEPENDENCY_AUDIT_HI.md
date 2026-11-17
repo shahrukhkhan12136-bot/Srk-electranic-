@@ -3894,3 +3894,59 @@ The latest `20261116210000` migration replaces the manual refund and recovery fi
 - Run isolated tests for authenticated non-admin rejection, Main Admin acceptance, service-role-only RPC denial, webhook signature rejection, replay and concurrent refund events.
 
 No secrets were read or printed. No live Supabase ACL, deployed Netlify configuration, provider API, SQL, test, CI, deployment, merge or Production action was executed.
+
+
+### 141. Refund/Webhook Node Test Coverage Matrix और stale-source gap — 17 Nov 2026
+
+इस section में पाँच मौजूदा Node test files का source-only review किया गया। Test execution नहीं हुआ।
+
+#### 141.1 मौजूदा focused test coverage
+
+| Test file | Static test count | मौजूद coverage |
+|---|---:|---|
+| `tests/razorpay-refund-executor.test.js` | 4 | missing login, Main Admin denial before provider call, stable idempotency key + reconciliation request, ambiguous timeout पर fail-closed |
+| `tests/razorpay-refund-recovery.test.js` | 9 | bounded audit note, Main Admin gate, exact evidence, separate finalization request, finalizer failure, pending status, amount mismatch, exact record binding, pagination |
+| `tests/razorpay-webhook-inbox.test.js` | 14 | HMAC invalid signature, durable event claim, duplicate/replay, active lease, refunded booking protection, processed/failed refund reconciliation, amount/identity mismatch, note/receipt binding, fenced claim |
+| `tests/razorpay-refund-status.test.js` | 7 | missing session, Main Admin gate, read-only provider GET, mismatch fail-closed, booking/payment ID match, pagination |
+| `tests/admin-refund-and-staff-access.test.js` | 29 | Admin refund UI, Support Staff separation, manual refund source assertions, full-amount checks, Staff authorization and search-path contracts |
+
+इन पाँच files में कुल 63 test declarations हैं; इनमें से 34 चार focused Razorpay files में हैं। यह source में declarations की गिनती है, passing test count नहीं।
+
+#### 141.2 Permission और caller coverage
+
+- Refund executor test Main Admin failure पर Provider call शून्य रहने की पुष्टि करता है।
+- Recovery test Main Admin failure पर Provider lookup न होने की पुष्टि करता है।
+- Refund-status test भी Main Admin failure पर Provider lookup रोकता है।
+- Webhook test invalid HMAC पर database call रोकता है और signed refund event को exact internal record से bind करता है।
+- Webhook tests processed/failed provider event को `srk_service_reconcile_booking_refund` तक route करते हैं।
+- इनमें से कोई inspected Node test वास्तविक PostgreSQL `has_function_privilege`/effective ACL catalog नहीं जाँचता। Admin test में एक static grant-text assertion है, पर वह live ACL proof नहीं है।
+- Service-role Authorization header को गलत/कम privilege credential से बदलकर RPC denial का end-to-end test भी इन inspected focused tests में नहीं मिला।
+
+#### 141.3 महत्वपूर्ण stale-source test gap
+
+`tests/admin-refund-and-staff-access.test.js`, blob `38fc1153654a640e02205d92993f074936f9c792`, manual refund assertions के लिए यह file पढ़ता है:
+
+`supabase/migrations/20261115130000_admin_manual_refund_request_completion.sql`
+
+लेकिन latest manual refund function body बाद में `20261116210000_attach_electrician_payout_reconciliation_trigger.sql`, blob `b12da77471d510b55f798bd089597d866d79a133`, में replace हुआ है।
+
+इसलिए test के manual-refund source assertions पुराने definition पर केंद्रित हैं; वे latest replacement में `auth.uid()/is_srk_admin()`, exact refund-owned payout hold, booking refunded transition और post-trigger payout reread/exception को सीधे assert नहीं करते। यह test की source-target coverage कमी है, अपने-आप में runtime defect का प्रमाण नहीं।
+
+Recovery full-amount test भी `20261115240000` definition पढ़ता है जबकि finalizer को `20261116210000` ने replace किया है। अलग final migration comparison tests की जरूरत है, ताकि final definition पर ही security/evidence/lock/trigger invariants जाँचे जाएँ।
+
+#### 141.4 प्रस्तावित अतिरिक्त tests — अभी केवल सुझाव
+
+1. Latest manual refund function source test: Main Admin predicate, exact hold note, unrelated blocked note पर fail-closed, payout reread और exception.
+2. Final recovery finalizer source test: 15-minute evidence freshness, processed status, full amount, identity match, row-lock order, paid payout rejection, trigger result reread.
+3. Final reconcile function test: final definition और service_role-only grant; processed full amount और failed/pending status behavior.
+4. ACL pgTAP: anon/authenticated denial तथा service_role execute for evidence, finalizer और reconcile RPCs; authenticated manual refund के लिए explicit gate.
+5. Webhook/refund integration contract: service-role header present only in server handler; bad signature या non-admin path पर no privileged RPC; duplicate/concurrent event replay.
+6. Refund trigger rollback behavior: unrelated blocked note और missing/inconsistent payout पर सभी संबंधित booking/refund/request/payout writes rollback हों।
+
+#### 141.5 निष्कर्ष और सीमा
+
+- Existing Node tests में मजबूत request-level checks हैं, खासकर Main Admin gate, HMAC, identity matching, idempotency और replay।
+- सबसे स्पष्ट coverage gap latest SQL function replacements के विरुद्ध stale migration-file assertions हैं।
+- Existing Node mocks वास्तविक Postgres grants, triggers, transaction rollback, row locks या concurrent transactions प्रमाणित नहीं करते।
+- `package.json` में `test:refund`, `test:webhook` और aggregate `test` scripts मौजूद हैं; इस review में कोई script execute नहीं की गई।
+- कोई test file, migration, RPC, grant, database, CI workflow, deployment या Production state बदला नहीं गया।
