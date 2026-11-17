@@ -117,6 +117,51 @@ test("does not bind an unrelated same-payment same-amount refund without exact r
 });
 
 
+
+test("rejects multiple exact provider refund matches without saving or finalizing evidence",async t=>{
+ const calls=[];
+ const unlinkedRecord={...record,refund_id:null};
+ const secondMatch={...providerRefund,id:"rfnd_recovery456"};
+ global.fetch=async(url,options={})=>{
+  const target=String(url);calls.push(target);
+  if(target.endsWith("/auth/v1/user"))return response(200,{id:adminId});
+  if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);
+  if(target.includes("/rest/v1/srk_razorpay_refunds?"))return response(200,[unlinkedRecord]);
+  if(target.includes("/rest/v1/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);
+  if(target.includes("/payments/"+paymentId+"/refunds?count=100&skip=0"))return response(200,{items:[providerRefund,secondMatch]});
+  throw new Error("unexpected request "+target);
+ };
+ t.after(()=>{global.fetch=originalFetch;});
+ const result=await handler(request());const body=JSON.parse(result.body);
+ assert.equal(result.statusCode,202);assert.equal(body.status,"multiple_provider_matches");assert.equal(body.safe_to_retry,false);
+ assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_record_razorpay_refund_recovery_evidence")),false);
+ assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence")),false);
+});
+
+test("fails closed when provider refund pagination repeats an ID across pages",async t=>{
+ const calls=[];
+ const unlinkedRecord={...record,refund_id:null};
+ const firstPage=Array.from({length:100},(_,i)=>({
+  id:"rfnd_page"+i,payment_id:paymentId,amount:12500,currency:"INR",status:"processed",
+  notes:{srk_refund_record_id:"different-record"},receipt:"different-receipt"
+ }));
+ global.fetch=async(url,options={})=>{
+  const target=String(url);calls.push(target);
+  if(target.endsWith("/auth/v1/user"))return response(200,{id:adminId});
+  if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);
+  if(target.includes("/rest/v1/srk_razorpay_refunds?"))return response(200,[unlinkedRecord]);
+  if(target.includes("/rest/v1/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);
+  if(target.includes("/payments/"+paymentId+"/refunds?count=100&skip=0"))return response(200,{items:firstPage});
+  if(target.includes("/payments/"+paymentId+"/refunds?count=100&skip=100"))return response(200,{items:[firstPage[0],providerRefund]});
+  throw new Error("unexpected request "+target);
+ };
+ t.after(()=>{global.fetch=originalFetch;});
+ const result=await handler(request());const body=JSON.parse(result.body);
+ assert.equal(result.statusCode,202);assert.equal(body.status,"provider_pagination_unstable");assert.equal(body.safe_to_retry,false);
+ assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_record_razorpay_refund_recovery_evidence")),false);
+ assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence")),false);
+});
+
 test("paginates past the first 100 refunds and recovers the exact second-page match",async t=>{
  const calls=[],firstPage=Array.from({length:100},(_,i)=>({
   id:"rfnd_other"+i,payment_id:paymentId,amount:12500,currency:"INR",status:"processed",
