@@ -53,7 +53,7 @@ BEGIN
   IF v_event.event_type <> p_event_type OR v_event.payload_sha256 <> p_payload_sha256 THEN
     RETURN jsonb_build_object('success',false,'payload_conflict',true,'accepted',false);
   END IF;
-  IF v_event.event_payload IS NULL THEN
+  IF v_event.event_payload IS NULL AND v_event.state NOT IN ('processed','ignored') THEN
     UPDATE public.srk_razorpay_webhook_events
       SET event_payload=p_event_payload,state='queued',claim_token=NULL,lease_expires_at=NULL,
           completed_at=NULL,last_error=NULL,last_received_at=clock_timestamp()
@@ -120,3 +120,38 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_service_list_due_razorpay_webhook_events(integer) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.srk_service_list_due_razorpay_webhook_events(integer) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.srk_service_complete_razorpay_webhook_event(
+  p_event_id text,p_claim_token uuid,p_outcome text,p_error text DEFAULT NULL
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $function$
+DECLARE v_event public.srk_razorpay_webhook_events%rowtype;
+BEGIN
+  IF coalesce(auth.jwt()->>'role','') <> 'service_role' THEN
+    RAISE EXCEPTION 'SERVICE_ROLE_REQUIRED' USING ERRCODE='42501';
+  END IF;
+  IF p_event_id IS NULL OR p_claim_token IS NULL
+     OR p_outcome NOT IN ('processed','ignored','retryable')
+     OR (p_error IS NOT NULL AND length(p_error)>500) THEN
+    RAISE EXCEPTION 'INVALID_RAZORPAY_WEBHOOK_COMPLETION' USING ERRCODE='22023';
+  END IF;
+  SELECT * INTO v_event FROM public.srk_razorpay_webhook_events
+    WHERE event_id=p_event_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'WEBHOOK_EVENT_NOT_FOUND'; END IF;
+  IF v_event.state <> 'processing' OR v_event.claim_token IS DISTINCT FROM p_claim_token THEN
+    RETURN jsonb_build_object('success',false,'stale_claim',true,'state',v_event.state);
+  END IF;
+  UPDATE public.srk_razorpay_webhook_events
+    SET state=p_outcome,
+        completed_at=CASE WHEN p_outcome IN ('processed','ignored') THEN clock_timestamp() ELSE NULL END,
+        lease_expires_at=CASE WHEN p_outcome='retryable' THEN clock_timestamp() ELSE NULL END,
+        last_error=CASE WHEN p_outcome='retryable' THEN left(coalesce(p_error,'Retryable processing error'),500) ELSE NULL END,
+        event_payload=CASE WHEN p_outcome IN ('processed','ignored') THEN NULL ELSE event_payload END,
+        claim_token=NULL,last_received_at=clock_timestamp()
+    WHERE event_id=p_event_id;
+  RETURN jsonb_build_object('success',true,'state',p_outcome);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text) TO service_role;
