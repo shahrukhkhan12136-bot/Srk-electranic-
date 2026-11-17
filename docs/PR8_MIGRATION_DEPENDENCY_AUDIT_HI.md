@@ -2792,3 +2792,39 @@ Migration `20261114125844_restore_financial_audit_core_schema.sql` (blob `bdfdfc
 - `is_srk_admin()` semantics and allow-list table shape: **source-confirmed** from repository SQL.
 - Support Staff exclusion from allow-list: **not proven**.
 - No SQL execution, database query, permission change, migration, CI run or deployment.
+
+
+
+## 118. मौजूदा Staff RBAC के साथ Finance Audit gate का मिलान — 17 Nov 2026
+
+Section 117 के बाद Audit Branch में Staff RBAC source और उसके pgTAP contract को पढ़कर Finance Audit draft के Admin identity gate से मिलान किया गया।
+
+### 118.1 अलग Staff registry और permission helper
+
+- Migration `supabase/migrations/20261116100000_fix_staff_permission_helper_volatility.sql` (blob `fc99aaf9c564b348e25a72b416dd4eb746e0fad3`) में `srk_has_admin_permission(text)` की अंतिम definition है।
+- Helper पहले `auth.uid()` और permission key validate करता है; फिर `public.is_srk_admin()` true होने पर Main Admin path से अनुमति देता है।
+- अन्य authenticated users के लिए यह `srk_admin_staff` में active Staff row, JWT `session_id`, matching live `auth.sessions` row और non-revoked `srk_admin_staff_sessions` row जाँचता है। Registry और tracked session पर `FOR SHARE` locks लेता है।
+- इसलिए source में Main Admin और Support Staff के authorization paths अलग हैं: Main Admin allow-list predicate; Staff session-bound permission map.
+- Migration helper को `VOLATILE SECURITY DEFINER`, empty `search_path` के साथ परिभाषित करती है; EXECUTE authenticated को दिया गया है और PUBLIC/anon से revoke है।
+
+### 118.2 Support permission scope
+
+- `supabase/tests/database/admin_staff_rbac_foundation.test.sql` (blob `46305769a74ea0acbb1caf8dc4a41d322614fe3a`) का static pgTAP contract सात seeded permissions और Support role की सात mappings जाँचता है।
+- उसी test में Support role के लिए `finance.%`, `payment.%`, `wallet.%`, `refund.%`, `payout.%`, `cancellation.%`, `kyc.%`, `staff.manage`, `audit.read`, cancellation-decision और private-contact permissions की अनुपस्थिति जाँची गई है।
+- Test Main Admin-only Staff management और Staff audit-history RPC gates भी source-inspect करता है।
+- यह मौजूदा Support role के permission-map scope का मजबूत source-level evidence है; pgTAP assertions इस pass में execute नहीं किए गए।
+
+### 118.3 Finance Audit draft पर असर और सीमा
+
+- मौजूदा Finance Audit draft का `auth.uid() IS NOT NULL AND public.is_srk_admin()` gate Main Admin allow-list path के अनुरूप है; Support permission map में `audit.read` न होना Staff को अलग permission-helper path पर सीमित करता है।
+- लेकिन उपलब्ध source यह साबित नहीं करता कि एक ही Auth user को गलती से/जानबूझकर `srk_admin_users` और `srk_admin_staff` दोनों में रखना database constraint से असंभव है। `srk_has_admin_permission()` स्वयं `is_srk_admin()` true होने पर Staff permission map को bypass करके Main Admin path लौटाता है।
+- इसलिए यह कहना सही है कि repository में अलग Main Admin/Staff authorization paths और Support के लिए finance/audit permission exclusion मौजूद हैं; लेकिन cross-registry identity exclusivity का invariant अभी source से सिद्ध नहीं।
+- Finance Audit draft को इस चरण में बदला नहीं गया। Owner को पुष्टि करनी होगी कि Staff identities कभी `srk_admin_users` में नहीं रखी जातीं, या cross-registry exclusion के लिए authoritative rule/constraint देना होगा। बिना इस पुष्टि के “Support Staff हर स्थिति में Finance Audit से बाहर” का दावा नहीं किया जाएगा।
+
+### Status
+
+- Staff permission helper और session-bound checks: **source-confirmed**.
+- Support permission map में finance/payment/refund/payout/audit permissions का अभाव: **test-source-confirmed; runtime unverified**.
+- Main Admin और Staff के अलग authorization paths: **source-confirmed**.
+- एक Auth identity का दोनों registries में overlap असंभव होना: **not proven**.
+- No SQL/pgTAP execution, database query, permission/schema change, migration, CI run or deployment.
