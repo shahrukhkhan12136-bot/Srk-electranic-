@@ -7197,3 +7197,22 @@ The reference is inside a PL/pgSQL trigger function and is reached only for a ca
 - Add a migration-order assertion for this dependency and verify it with a clean isolated replay plus a cancellation-transition test after the full chain.
 
 Static source review only. No SQL, trigger invocation, database query, migration replay or test was run. This is a forward-dependency finding, not a reproduced failure. GPT-2 checklist remains 27/39 = 69%.
+
+
+## 226. Qualification to Section 225 — No Intermediate Migration Invokes the Forward-Referenced Cancellation Path
+
+### Static source reviewed
+- `20261114240000_server_authoritative_customer_approved_work_timer.sql` SHA `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe`, especially the cancelled-status branch of `srk_guard_new_category_booking_status_transition()`.
+- `20261114250000_admin_work_dispute_review_and_immutable_history.sql` SHA `1bfb04b90aebeb644cdfa52096222f8d1d8175ec`.
+- `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql` SHA `2cf12e7a53d0fbe95de1933d31798d60e442d97f`.
+- `20261114270000_admin_only_cancellation_requests_and_decisions.sql` SHA `892e7fcd51304ac84efb8ef4d8b251c198127526`.
+
+### Cross-check and qualification
+A focused review of the two intervening migrations, 14250000 and 14260000, found no cancellation-status update or invocation of the cancelled-status branch. The 14260000 booking updates are work-start approval/rejection transitions, not cancellation transitions. Therefore the static evidence does **not** show that the ordered clean migration replay itself invokes the missing-table branch before 14270000 creates the cancellation-request table.
+
+Section 225 should consequently be read as a **deployment/runtime sequencing window**, not as a demonstrated migration-replay failure: if application traffic can execute a new-category booking cancellation after 14240000 is deployed but before 14270000 is deployed, the installed trigger can reach its forward table reference. A single atomic deployment or a rollout that prevents cancellation traffic during that interval may avoid the window. Whether the actual deployment process is atomic was not established from these migration files.
+
+### Updated recommendation
+Keep the dependency documented. Before rollout, either ensure the migration batch is applied atomically / cancellation traffic is gated for the interval, or introduce the request table before installing the trigger branch. Do not claim that migration replay fails solely from this forward reference. A clean isolated replay and a targeted cancellation-transition test are still required for runtime acceptance.
+
+Static source review only. No SQL, database query, migration replay, test, CI dispatch or deployment was run. GPT-2 checklist remains 27/39 = 69%.
