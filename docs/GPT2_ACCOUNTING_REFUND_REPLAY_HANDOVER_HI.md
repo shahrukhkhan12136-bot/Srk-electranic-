@@ -90,3 +90,18 @@ Audit version lacks these additional replay-repair guards/branches.
 5. Keep PR #8 Draft. No merge, Production migration, deployment, payout/refund action, or Audit Branch modification is authorized by this handover.
 
 **Evidence classification:** all findings above are source/blob comparisons or prior static catalog/test observations. PostgreSQL runtime replay and pgTAP execution remain unverified.
+
+
+## 7. Additional Feature-branch correction — refund trigger interaction (Nov 17)
+
+A source-level control-flow review found an interaction between the provider refund RPC and the payout-creation trigger:
+- The refund RPC changes `service_bookings.payment_status` to `refunded`.
+- That update fires `srk_create_electrician_payable()`, whose refund branch can itself change the refund-owned blocked payout to `refunded` and clear `payout_note`.
+- The RPC then attempted a second UPDATE requiring the payout still be `blocked` with note `Razorpay refund pending`; without handling the trigger's prior transition, it could raise `BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED` and roll back the provider reconciliation transaction.
+
+Feature branch correction:
+- Commit `06f102e1cae57cb4cf40b2870092325f0fb342ac` updates `supabase/migrations/20261115250000_harden_refund_reconcile_full_amount.sql`.
+- After attempting the exact blocked-payout transition, the RPC now accepts only the trigger-produced state `payout_status='refunded' AND payout_note IS NULL`, then restores the final provider-confirmed audit note. It does not overwrite any non-null note or accept other payout states.
+- Commit `d4b2102db57eadfbb6f9433a356527705113ad99` updates `supabase/tests/database/refund_reconcile_full_amount_guard.test.sql`, increasing the static pgTAP plan from 9 to 10 and asserting the trigger-closure fallback and final note restoration.
+
+**Verification boundary:** GitHub source diffs and fetched file contents were rechecked. The associated Node workflow run was pending at the time of this report update. The pgTAP assertion is static and has not been executed against PostgreSQL. GPT-2 should review the new correction before any branch integration.
