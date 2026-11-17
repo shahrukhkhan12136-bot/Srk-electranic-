@@ -18,7 +18,10 @@ select ok(position('left join public.srk_razorpay_refunds refund' in pg_get_func
 select ok(position('payment_status' in lower(pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure)))>0 and position('update public.service_bookings' in lower(pg_get_functiondef('public.srk_admin_list_booking_refund_requests()'::regprocedure)))=0,'recovery queue does not mutate booking payment state');
 select ok(position('v_payout.payout_note is distinct from ''Manual refund processed''' in pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
   'manual refund refuses to close an unrelated blocked payout');
-select ok(position('and payout_note=''Manual refund processed''' in pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
-  'manual refund payout closure is conditionally fenced by its exact hold note');
+select ok(position('select * into v_payout from public.srk_electrician_payouts' in pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>
+  position('update public.service_bookings set payment_status=''refunded''' in pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))
+  and position('v_payout.payout_status is distinct from ''refunded''' in pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0
+  and position('update public.srk_electrician_payouts' in pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))=0,
+  'manual refund verifies the booking accounting trigger closed its payout without a stale second update');
 select * from finish();
 rollback;
