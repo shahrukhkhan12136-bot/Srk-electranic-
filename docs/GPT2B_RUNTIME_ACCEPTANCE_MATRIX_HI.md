@@ -193,3 +193,12 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 
 - `admin_staff_rbac_foundation.test.sql` में एक catalog-level pgTAP assertion जोड़ा गया। यह चार Customer Support Staff RPCs (assigned complaint list, thread read, reply, status update) के लिए `VOLATILE SECURITY DEFINER`, खाली `search_path`, authenticated EXECUTE तथा anon/PUBLIC EXECUTE निषेध जाँचता है।
 - Test plan 69 से 70 हुआ। यह source assertion है; PostgreSQL/pgTAP execute नहीं हुआ और Runtime status Pending है।
+
+
+
+### Electrician Earnings UI — commission visibility conflict found (17 November 2026, source-only audit)
+
+- Active branch file `electrician.html` के `loadEarnings()` भाग में `srk_get_my_earnings` RPC से `commission_amount` पढ़कर UI में स्पष्ट रूप से “कंपनी कमीशन” summary और हर paid booking पर “कमीशन” दिखाया जाता है।
+- यह स्वीकृत Electrician App नियम से टकराता है: Electrician को केवल उसकी 85% देय कमाई दिखनी चाहिए; 15% Company commission को किसी नाम/रूप में Electrician App में नहीं दिखाना है।
+- यह GPT-1 ownership वाला Electrician App UI है। इस GPT-2B audit में `electrician.html` को बदला नहीं गया। GPT-1 owner को स्पष्ट handoff आवश्यक है; साथ में backend RPC payload में commission field की जरूरत भी पुनः जाँची जाए ताकि अनावश्यक exposure न रहे।
+- यह source-level confirmed UI defect है; कोई UI/runtime test execute नहीं हुआ। इसे fix या deploy हुआ नहीं माना जाए। Runtime acceptance अभी Pending है।
