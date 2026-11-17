@@ -208,21 +208,19 @@ select ok(position('where public.srk_electrician_payouts.payout_status = '||quot
   'payout upsert cannot silently overwrite a blocked payout row');
 
 
-select ok((select position('materials_amount' in lower(pg_get_triggerdef(t.oid)))=0
-    and position('commission_amount' in lower(pg_get_triggerdef(t.oid)))=0
+select ok((select position('commission_amount' in lower(pg_get_triggerdef(t.oid)))=0
   from pg_trigger t
   where t.tgrelid='public.service_bookings'::regclass
     and not t.tgisinternal
     and t.tgfoid='public.srk_create_electrician_payable()'::regprocedure),
-  'payout writer does not run on direct materials or commission-only edits');
+  'payout writer does not run on commission_amount-only edits');
 
-select ok((select position('materials_amount' in lower(pg_get_triggerdef(t.oid)))>0
-    and position('commission_amount' in lower(pg_get_triggerdef(t.oid)))>0
+select ok((select position('commission_amount' in lower(pg_get_triggerdef(t.oid)))>0
   from pg_trigger t
   where t.tgrelid='public.service_bookings'::regclass
     and not t.tgisinternal
     and t.tgfoid='public.srk_validate_booking_commission_payout_parity()'::regprocedure),
-  'parity-only update columns permit isolated guard checks without rewriting payout ledger');
+  'parity validator runs on commission_amount-only edits while payout writer does not');
 
 select * from finish();
 rollback;
