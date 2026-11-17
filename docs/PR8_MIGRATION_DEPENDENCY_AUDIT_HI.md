@@ -5713,3 +5713,35 @@ Source design Support Staff authorization को केवल user ID पर न
 ### 4. शेष Evidence Gap और Verdict
 
 Frontend Staff login flow source में registration/permission failure पर portal access रोकता है। Migration history में row-locking permission helper को VOLATILE करने का corrective migration मौजूद है। यह source-level cross-check है; PostgreSQL function replacement, वास्तविक sign-in, sign-out, concurrent revoke/suspend या browser behavior runtime में verify नहीं हुआ। कोई source migration/test/permission/database setting नहीं बदली गई; कोई SQL/DB query/pgTAP/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
+
+
+## 183. Admin Auth State Events — Duplicate Bootstrap और Stale-Request Guard Review
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** `admin.html` में Supabase Auth state listener, direct email-login reauthorization, Staff/Main Admin bootstrap और logout transition का static cross-check।
+
+### 1. Auth State Listener
+
+- `init()` में `sb.auth.onAuthStateChange` listener हर Auth event पर `adminAuthRun` बढ़ाता है, `user` को event session से सेट करता है और `showState()` को अगली task में चलाता है।
+- `showState()` शुरू होते समय अपना run number और current user snapshot लेता है।
+- `is_srk_admin()`, Staff session registration और Staff permission RPC के बाद यह जाँचता है कि run अभी current है और user ID वही है। पुरानी request का result नया Auth state आने पर आगे का UI transition नहीं कर सकता।
+
+### 2. Direct Login और संभावित Duplicate Bootstrap
+
+- `emailLogin()` सफल `signInWithPassword` के बाद `user=data.user` सेट करके सीधे `showState()` भी चलाता है।
+- उसी login से Supabase Auth state listener भी event भेजता है और अपना `showState()` schedule करता है। इसलिए source में एक login के आसपास दो bootstrap invocations संभव हैं।
+- दोनों invocations के run counter और post-await identity checks stale result को रोकने के लिए मौजूद हैं। Source review से duplicate RPC/network work की संभावना दिखती है; इससे अपने-आप authorization bypass या गलत role display सिद्ध नहीं होता।
+- Listener callback और direct login path का वास्तविक event ordering/browser behavior इस audit में चलाकर नहीं देखा गया।
+
+### 3. Logout Transition
+
+- Explicit `logout()` `sb.auth.signOut()` call करता है और error आने पर success message नहीं दिखाता।
+- Auth state listener sign-out event पर run counter बढ़ाकर `user=null` सेट करता है; फिर `showState()` login view दिखाता है और Admin app छिपाता है।
+- Staff bootstrap के बीच sign-out होने पर बाद के RPC results की run/user checks stale continuation को रोकने के लिए हैं।
+- Network failure, token expiry, tab suspension और concurrent sign-out/login का browser-level behavior अप्रमाणित है।
+
+### 4. शेष Evidence Gap और Verdict
+
+Source में Auth event generation counter तथा हर प्रमुख authorization await के बाद user/run guard मौजूद हैं। Direct email-login path और Auth listener दोनों bootstrap चला सकते हैं, जिससे duplicate authorization RPCs संभव हैं; कोई source-level प्रमाण नहीं मिला कि इससे stale role state स्वीकार हो जाती है। एक focused browser test में rapid login, sign-out during bootstrap, account switch और duplicate event ordering जाँचना चाहिए।
+
+**Evidence boundary:** GitHub source inspection only. कोई browser test, Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया। कोई application source, migration, permission या database setting नहीं बदली गई; केवल यह audit documentation section जोड़ा गया।
