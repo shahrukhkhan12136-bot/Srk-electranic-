@@ -150,5 +150,5 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 
 - पुराने electrician-support inbox RPCs (srk_admin_list/send/update_electrician_support_*) authenticated role को EXECUTE देते हैं, लेकिन function body में public.is_srk_admin() gate है; इसलिए ये Main Admin-only legacy route हैं, Staff access route नहीं।
 - Staff के अलग RPCs (srk_admin_staff_*electrician*) क्रमशः support.electrician.read, support.electrician.reply, और support.electrician.update_status permissions तथा case/assignment ownership checks लगाते हैं।
-- electrician_support_ticket_security.test.sql में 2 source-contract assertions जोड़े; plan अब 14 है। Source count verified; pgTAP execute नहीं हुआ।
+- electrician_support_ticket_security.test.sql में कुल 4 नए source-contract assertions जोड़े; plan अब 16 है। इनमें exact per-operation permission gates और case/assignment lock order भी जाँचे जाते हैं। Source count verified; pgTAP execute नहीं हुआ।
 - यह change runtime acceptance को pass नहीं करता; संबंधित runtime checks Pending रहते हैं।
