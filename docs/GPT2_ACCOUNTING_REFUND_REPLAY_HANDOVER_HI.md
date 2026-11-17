@@ -1375,3 +1375,29 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - Refund list body returns columns `id, booking_id, customer_user_id, customer_name, customer_phone, amount, reason, status, admin_note, created_at, updated_at, payment_status, payment_method, razorpay_payment_id, has_manual_payment, refund_record_id, refund_id, provider_status`; UI projection/key mapping drift पहले Sections 22/42 में दर्ज है।
 - अन्य 15 functions के bodies, per-function object references, authorization branch और return contract की पूर्ण line-by-line review अभी शेष है; इस metadata query को उस review का substitute न मानें।
 - No function executed; only catalog metadata and two function definitions read. No database writes, PR comments, merge, deployment or external action.
+
+
+## Section 48 — Main के existing Admin RPC bodies बनाम Admin UI contract: targeted review (2026-11-17)
+
+### Confirmed matching contracts
+- `srk_admin_list_booking_complaints(p_limit integer)`: UI `p_limit:100` भेजता है; Main output में complaint fields और ordered activity JSON हैं। यह नाम/argument/result surface पर मेल खाता है।
+- `srk_admin_list_electrician_area_requests(p_limit integer)`: UI `p_limit:200`; Main pending requests लौटाता है और fields UI के अपेक्षित area-change card से मेल खाते हैं।
+- `srk_admin_list_electrician_verification_documents(p_limit integer)`: UI `p_limit:300`; Main output KYC preview/review UI की अपेक्षित metadata देता है। पर Main legacy `srk_electrician_verification_events` पढ़ता है; Feature की नई event table अलग है (Section 24), इसलिए schema/event history parity अभी unresolved है।
+- `srk_admin_review_electrician_area_request(p_request_id,p_decision,p_note)`: UI के argument names match करते हैं। Function profile/request row locks लेता है, pending-only review करता है, और approval पर पुरानी unaccepted offers close करके Admin offer RPC invoke करता है। यह mutating RPC है; कोई invocation नहीं हुआ।
+- `srk_admin_review_electrician_document(p_document_id,p_review_status,p_admin_note)` और `srk_admin_set_electrician_active(p_profile_id,p_active)`: UI arguments match; document review profile→document lock order और audit event insert करता है; activation latest identity/address proof approvals, Admin-approved profile और OTP-linked user identity जाँचता है।
+- `srk_admin_set_electrician_rate_tier(p_electrician_profile_id,p_rate_tier)`: Admin UI argument names exact match; Feature migration source header भी exact match करता है। No invocation.
+- `srk_admin_mark_electrician_payout_paid(p_payout_id,p_method,p_reference,p_note)`: UI arguments match; Main RPC केवल pending payout, UPI/Bank method, reference और booking/payment/payout ledger parity जाँचकर Admin-confirmed manual payout status लिखता है। लेकिन Main validation अभी legacy quote/service_charge/materials_amount model पर आधारित है; Feature new-category immutable labour bill/payout path का parity नहीं। Owner-approved Manual Payout only policy कायम है; Razorpay Route Transfer सक्रिय नहीं करना।
+- `srk_admin_update_booking_complaint(p_complaint_id,p_status,p_admin_note)`: UI arguments match; Main row lock, Admin check और complaint event insert करता है।
+- `srk_admin_review_application(p_application_id,p_decision)`: UI arguments match; approval से पहले Auth phone OTP confirmation खोजता है और profile inactive बनाता है।
+
+### Confirmed contract/security gaps
+1. **Refund decision argument mismatch**: UI `p_decision` भेजता है; Main RPC argument `p_status` है। इस कारण UI से decision call PostgREST function signature resolve न कर पाने की आशंका है; source contract mismatch निश्चित है। No live call made.
+2. **Refund list response mismatch**: UI renderer `request_id, request_amount, request_status, request_reason, refund_record_status, provider_refund_id` जैसे keys पढ़ता है; Main RPC columns `id, amount, status, reason, refund_record_id, refund_id, provider_status` हैं। Existing adapter/projection drift release blocker है।
+3. **Legacy offer direct-call guard**: Main `srk_admin_offer_booking(p_booking_id)` new/confirmed unassigned booking पर offers बनाता है और location/identity eligibility checks करता है, लेकिन inspected body में `selected_category IS NULL` server-side guard नहीं है। UI client-side new-category रोकता है, पर direct RPC invocation bypass कर सकता है। Feature-side guarded offer/dispatcher dependency bundle reconcile किए बिना Main legacy RPC को सुरक्षित नहीं मानना चाहिए.
+4. **Commission summary model**: Main `srk_admin_commission_report()` sums `amount_paid` as gross for all paid+completed bookings and computes electrician payable as gross minus `commission_amount`; it does not derive new-category earnings from immutable labour bill or explicitly separate materials/cancellation fees. Treat it as legacy-only until Feature accounting reconciliation is integrated and report semantics are aligned.
+5. **Admin identity root**: Main `is_srk_admin()` only checks whether `auth.uid()` exists in `public.srk_admin_users`; no Staff exclusion invariant is enforced in that function. Existing Main Admin-vs-Staff UUID collision/race concern remains a release blocker.
+
+### Additional checks
+- All inspected Admin RPCs remain `SECURITY DEFINER`, authenticated EXECUTE granted, anon EXECUTE denied (Section 47). Main payout/report/read functions do their own `auth.uid()` + `is_srk_admin()` check; role grants alone do not confer authorization.
+- No function was invoked; no booking, payout, refund, KYC, complaint, or customer data rows were read. Only function definitions and UI source were inspected.
+- No code, SQL migration, or production setting changed. No PR review/comment, merge, deployment, email, SMS, payment, refund or payout action.
