@@ -2624,3 +2624,28 @@ Static source matching पर्याप्त नहीं है। Isolated 
 - PostgreSQL/pgTAP runtime: **not executed**.
 - Owner approval for sensitive-field policy and isolated DB execution: **pending**.
 - No Production/Test Supabase changes.
+
+
+## 111. Broader repository scan — generic Audit Log बनाम durable refund evidence tests — 17 Nov 2026
+
+Section 109 के “inspected tests” निष्कर्ष को सीमित न रहने देने के लिए Audit Branch की पूरी `supabase/tests/database/` tree में audit/payment/refund/payout नाम वाले सभी 13 SQL test files की सूची और audit-संबंधित assertions scan की गईं।
+
+### 111.1 Scan में मिला coverage
+
+- `financial_audit_core_schema.test.sql` (54 assertions): generic `srk_admin_audit_events` table, RLS, permissions, constraints और trigger existence। Manual Payment/Refund/Payout allow-list के प्रत्येक field तथा Razorpay dedicated four-field snapshot की completeness का explicit assertion नहीं मिला।
+- `durable_razorpay_refund_recovery_evidence.test.sql` (35 assertions): अलग `srk_razorpay_refund_recovery_audits` evidence table के RLS, service-role function privileges, authorized Admin actor registry, provider payload identity/amount match, bounded Admin note, append-only mutation guard और finalize evidence gates के source contracts।
+- `admin_refund_review_queue.test.sql` (16 assertions): refund decision RPC और bounded audit note का source contract; generic audit JSON field coverage नहीं।
+- `cancellation_fee_refund_reversal.test.sql` (44 assertions): immutable ledger/reversal and service-role reconciliation guards; generic audit allow-list completeness नहीं।
+- बाकी inspected payment/refund tests customer RPC, refund request, payment method या payout reconciliation contracts पर केंद्रित हैं; generic audit snapshot fields की पुष्टि नहीं करते।
+
+### 111.2 महत्वपूर्ण सीमा
+
+Durable Razorpay recovery evidence tests एक अलग table/workflow को कवर करते हैं। वे पुराने `srk_razorpay_refunds` trigger और `srk_admin_audit_events` के अधूरे snapshot को replace या validate नहीं करते। दोनों evidence systems को एक ही coverage समझना गलत होगा।
+
+### 111.3 Updated confidence
+
+- इस Audit Branch पर filename-filtered 13 SQL tests का scan पूरा: **source tree scan complete for this filtered set**.
+- Generic Audit Log field-completeness regression gap: **confirmed within all 13 inspected files**.
+- Durable recovery evidence के source-contract tests: **present; runtime unverified**.
+- यह scan filename filter पर आधारित है; unrelated-named SQL tests या application-layer tests में समान assertions हो सकते हैं। इसलिए पूरे repository में हर संभव test की अनुपस्थिति का दावा नहीं है।
+- No source SQL/test file modified; no SQL execution, PostgreSQL replay, provider call, or database mutation performed.
