@@ -1,5 +1,5 @@
 begin;
-select plan(52);
+select plan(51);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
