@@ -1542,3 +1542,35 @@ Direct source inspection of the five finance migrations confirms these additiona
 5. No dependency manifest should be marked executable until the canonical baseline and all prerequisites are approved.
 
 **Status:** additional source-level finance edges verified; no database or production access; no SQL parse/replay; runtime tests remain **NOT RUN**.
+
+
+## 81. Canonical bootstrap compatibility and Admin-helper lineage — 17 Nov 2026
+
+The four root setup files were compared with the earliest numbered migrations and the function names referenced by those migrations. This is a source-level compatibility audit; it does not select or apply a bootstrap.
+
+### Root bootstrap comparison
+
+| File | Objects/contracts established | Relevant omissions or incompatibilities |
+|---|---|---|
+| `SUPABASE_SCHEMA.sql` | Creates the four starter operational tables, `job_offers`, indexes and initial RLS/policies. | Does not create `srk_admin_users`, `is_srk_admin()`, or `srk_is_admin()`; does not define `amount_paid`; does not create schema `private`. |
+| `PORTAL_SCHEMA.sql` | Adds `srk_admin_users`, `electrician_profiles.user_id`, portal functions and policies; defines `srk_is_admin()`. | Defines `srk_is_admin()`, not `is_srk_admin()`. It is documented as running after `SUPABASE_SCHEMA.sql`. |
+| `COMPLETE_DATABASE_SETUP.sql` | Bundles the starter schema and portal setup; additionally defines `is_srk_admin()` in its Admin patch section. | Does not define `amount_paid` and does not create schema `private`; later migration 090030 adds `amount_paid`. It overlaps the separate root setup files and is not an approved migration-version baseline. |
+| `ADMIN_EMAIL_LOGIN_SETUP.sql` | Adds `is_srk_admin()` and Admin policies/RPC against the existing Admin allow-list. | It assumes `srk_admin_users` and the operational tables already exist; it is a patch, not a complete bootstrap. |
+
+### Numbered migration contracts
+
+1. `20261108234000_combine_booking_read_policy.sql` creates a policy that calls `public.is_srk_admin()`. The numbered migration sequence does not itself establish that helper before this policy is created. A replay therefore needs an explicit, approved bootstrap prerequisite that provides the function.
+2. `20261109001000_add_google_maps_location_support.sql` also calls `public.is_srk_admin()` inside the replacement Admin-review function.
+3. `20261109003000_secure_commission_reporting.sql` and `20261109010000_create_secure_wallet_ledger_foundation.sql` call `public.is_srk_admin()` in privileged report/overview functions.
+4. `20261109001500_unique_electrician_admin_identity_linking.sql` calls `public.srk_is_admin()`, so its prerequisite is the portal helper name, not the alternate helper used by the other migrations.
+5. `20261109003000_secure_commission_reporting.sql` adds `service_bookings.amount_paid`; the root starter and consolidated setup snapshots inspected here do not define that column.
+6. The first rate-limit migration `20261108120608_add_public_api_rate_limiting.sql` creates schema `private` itself and grants access to the Supabase `service_role`. Replay also depends on the Supabase platform roles and Auth schema being present; these are platform prerequisites, not objects supplied by the four root SQL files.
+
+### Replay decision
+
+- Do not treat `SUPABASE_SCHEMA.sql` + `PORTAL_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`, or `ADMIN_EMAIL_LOGIN_SETUP.sql` as interchangeable baselines.
+- Before producing an executable clean-replay manifest, the repository owner must approve one canonical bootstrap and explicitly map the Admin helper contract(s), Auth/platform prerequisites, and the initial migration boundary.
+- Do not silently add aliases, rewrite historical migrations, or choose a root script by filename. Such changes would alter the bootstrap/security contract and require separate approval.
+- `amount_paid` is an identified later migration addition, not a reason to hand-edit the historical root setup snapshot during this audit.
+
+**Status:** root-file and early-migration source comparison completed; baseline remains **NOT APPROVED**; no SQL parsed or executed; no database contacted; runtime replay tests remain **NOT RUN**.
