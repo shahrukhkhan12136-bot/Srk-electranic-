@@ -526,3 +526,55 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - This is a Feature-source vs connected-Main schema/migration-history parity gap, not a claim that the Feature UI is defective. If this Main project is the intended runtime target, the affected UI actions can fail with missing-function errors until the relevant approved migrations are applied.
 - Do not apply these migrations as a quick fix. The full migration replay/order and GPT-2 Admin/Accounting dependency blockers remain open; migration history, duplicate timestamps, and authoritative baseline must be reconciled first.
 - No Production schema/data/settings were changed. No migration was applied, no provider action was triggered, no deployment/merge was performed, and no mobile QA was run.
+
+
+## Section 21 — Admin Panel RPC, Support/RBAC और operational migration dependency audit (2026-11-17)
+
+### Source snapshot
+- Feature branch: `feat/customer-login-first-dashboard-20261114`
+- Admin Panel source: `admin.html`, blob SHA `6b29511a1ecfab93b5689dff23012078091e57fc`.
+- Support/RBAC foundation: `20261114390000_admin_staff_rbac_foundation.sql`, blob SHA `5aa0f9058a56d735455f2a9944c861e8312ddb89`.
+- Staff permission volatility correction: `20261116100000_fix_staff_permission_helper_volatility.sql`, blob SHA `fc99aaf9c564b348e25a72b416dd4eb746e0fad3`.
+- Main project checks below are live catalog/migration-ledger reads, not migration replay or runtime user tests.
+
+### Exact Admin Panel RPC inventory
+- Extracted 53 distinct `.rpc()` names from the current Admin Panel source.
+- Connected Main public function catalog resolves 17 names; 36 names did not resolve by exact public function name at audit time.
+- Resolved names: `is_srk_admin`, `srk_admin_commission_report`, `srk_admin_decide_booking_refund_request`, `srk_admin_list_booking_complaints`, `srk_admin_list_booking_refund_requests`, `srk_admin_list_electrician_area_requests`, `srk_admin_list_electrician_verification_documents`, `srk_admin_mark_electrician_payout_paid`, `srk_admin_offer_booking`, `srk_admin_record_manual_payment`, `srk_admin_record_manual_refund`, `srk_admin_review_application`, `srk_admin_review_electrician_area_request`, `srk_admin_review_electrician_document`, `srk_admin_set_electrician_active`, `srk_admin_update_booking_complaint`, `srk_admin_wallet_overview`.
+- Names not resolved: `srk_admin_acknowledge_sos_alert`, `srk_admin_assign_support_case`, `srk_admin_confirm_legacy_booking`, `srk_admin_decide_booking_cancellation`, `srk_admin_get_booking_accounting_reconciliation`, `srk_admin_get_booking_work_review`, `srk_admin_get_cancellation_fee_ledger_summary`, `srk_admin_list_booking_cancellation_requests`, `srk_admin_list_booking_complaint_messages`, `srk_admin_list_complaint_message_attachments`, `srk_admin_list_electrician_support_messages`, `srk_admin_list_electrician_support_tickets`, `srk_admin_list_sos_alert_events`, `srk_admin_list_sos_alerts`, `srk_admin_list_staff`, `srk_admin_list_staff_audit_events`, `srk_admin_list_staff_sessions`, `srk_admin_list_support_assignments`, `srk_admin_record_new_booking_cash_payment`, `srk_admin_send_booking_complaint_message`, `srk_admin_send_electrician_support_message`, `srk_admin_set_electrician_rate_tier`, `srk_admin_staff_list_customer_complaints`, `srk_admin_staff_list_customer_messages`, `srk_admin_staff_list_electrician_messages`, `srk_admin_staff_list_electrician_tickets`, `srk_admin_staff_register_session`, `srk_admin_staff_revoke_session`, `srk_admin_staff_send_customer_message`, `srk_admin_staff_send_electrician_message`, `srk_admin_staff_set_status`, `srk_admin_staff_update_customer_complaint`, `srk_admin_staff_update_electrician_ticket`, `srk_admin_update_booking_customer_location`, `srk_admin_update_electrician_support_ticket`, `srk_has_admin_permission`.
+- The count is source-to-Main catalog parity only. It does not imply all 36 are independently broken: some are grouped behind one feature migration or may have alternate supported paths. Exact argument and return-shape parity remains a separate check.
+- Of the inspected Main functions, `is_srk_admin()` is SECURITY DEFINER, has a pinned search_path, grants authenticated execution, and denies anon execution. The RBAC helper `srk_has_admin_permission(text)` was not present in the Main public catalog.
+
+### Migration and schema dependency grouping
+- Customer complaints: `20261110040000_customer_admin_complaints.sql` defines complaint and immutable event tables plus customer/Admin complaint RPCs. Main has `srk_booking_complaints` and `srk_booking_complaint_events` with RLS enabled, but the corresponding migration version is absent from the queried Main ledger.
+- Complaint conversation and attachments: `20261113220000_customer_support_conversation_schema.sql` defines message/attachment tables and customer-side RPCs; `20261113230000_support_attachment_paths_and_admin_message_list.sql` adds Admin message/attachment listing. Those message/attachment tables were not found in the inspected Main table set.
+- Work review: `20261114250000_admin_work_dispute_review_and_immutable_history.sql` defines `srk_booking_work_events` and `srk_admin_get_booking_work_review`; the table/function were not found in the inspected Main catalog.
+- Cancellation: `20261114270000_admin_only_cancellation_requests_and_decisions.sql` adds request/event tables, direct-cancellation guard trigger, customer request RPCs, and Admin decision RPC. These objects were not found in the inspected Main table set. This migration has a dependency on the existing booking table and must be reviewed with cancellation-fee/accounting migrations before any replay.
+- Staff Support: `20261114390000_admin_staff_rbac_foundation.sql` defines six tables: `srk_admin_staff`, `srk_admin_permissions`, `srk_admin_role_permissions`, `srk_admin_staff_sessions`, `srk_admin_staff_audit_events`, and `srk_admin_support_assignments`; it also defines permission, session, assignment, Staff inbox, status, and audit RPCs. None of those six tables were found in the inspected Main catalog.
+- Electrician Support: `20261114350000_electrician_support_tickets_and_admin_inbox.sql` defines ticket/message tables and customer-facing? No — Electrician-facing ticket/message RPCs plus Admin inbox/reply/status RPCs. The tables were not found in the inspected Main table set.
+- SOS: `20261115260000_sos_admin_support_alerts.sql` defines SOS alert/event tables, authenticated SOS creation, Admin list/acknowledgement, and immutable event guard. The tables and Admin RPCs were not found in the inspected Main catalog.
+- New-category payout reconciliation: `20261114360000_new_category_electrician_payout_reconciliation.sql` adds payable creation and Admin paid-marking logic; the paid-marking RPC name resolves in Main, so its live signature/body and underlying payout/accounting contract must be compared rather than treating the function as absent.
+- Queried migration-ledger versions for `20261110040000`, `20261113220000`, `20261113230000`, `20261114250000`, `20261114270000`, `20261114300000`, `20261114350000`, `20261114360000`, `20261114390000`, `20261115260000`, and `20261116100000`: none were present in the returned Main ledger rows. Ledger absence is a migration-history signal, not standalone proof that every object is absent; catalog checks above provide the object-level evidence where queried.
+
+### Staff invitation and identity-exclusivity blocker
+- Admin UI calls Edge Function `admin-staff-management` for Support Staff invitation. The Edge Function validates the caller with `auth.getUser(token)` and `is_srk_admin()`, fixes the role to Support, creates an Auth invitation with the service-role client, then calls `srk_admin_staff_register_invited_user(uuid,text,uuid)`.
+- That service-role-only RPC verifies the actor UUID exists in `srk_admin_users`, then inserts the target UUID into `srk_admin_staff`; it does not check that the target UUID is absent from `srk_admin_users`. The Staff table's primary key only prevents duplicates within the Staff table.
+- The permission helper deliberately checks `is_srk_admin()` first and returns full Main Admin access before evaluating Staff permissions. Therefore cross-table identity exclusivity is a security prerequisite, not merely a data-cleanliness preference.
+- Required before RBAC can be accepted: add a database-side, race-safe invariant preventing one Auth UUID from existing in both Main Admin and Staff registries; cover both invite/registration and any Main Admin provisioning path. Do not rely only on a preflight check in the Edge Function. This is a blocker for owner/GPT-2 review; no fix was applied.
+- The Edge Function sends the Auth invitation before registering the Staff row. If registration fails, it attempts to delete the new Auth user and warns that an email may already have been sent. This compensating cleanup is documented behavior, not a guaranteed email recall; test the failure path only in approved isolated staging.
+
+### Staff authorization migration order
+- The RBAC foundation uses session-aware permission checks and row locks. The follow-up `20261116100000_fix_staff_permission_helper_volatility.sql` explicitly changes `srk_has_admin_permission(text)` to VOLATILE because PostgreSQL row-locking `FOR SHARE` is incompatible with a STABLE helper.
+- Safe source replay order therefore requires the Staff RBAC foundation before the volatility correction, followed by verification of the exact final function definition, grants, RLS, immutable audit triggers, and Edge Function deployment/configuration. Do not apply either migration independently or directly to Production.
+- Main currently exposes `is_srk_admin()`, but the inspected public catalog did not expose `srk_has_admin_permission(text)`; Staff session and permission behavior has not been integration-tested with authenticated Main Admin/Staff identities.
+
+### Safe next sequence
+1. Reconcile the full authoritative migration baseline and exact version order, including the already identified Accounting/Refund/Payout dependencies and duplicate timestamp risks.
+2. Resolve the Main Admin ↔ Staff UUID exclusivity invariant with owner/GPT-2 approval before accepting the Staff RBAC migration.
+3. Compare each missing Admin RPC's exact signature, output contract, authorization predicate, RLS/trigger dependencies, and side effects against the current Admin UI caller.
+4. Review customer support, electrician support, cancellation, work-review, SOS, and accounting/payout groups as dependency bundles; do not cherry-pick isolated RPCs.
+5. Only after all implementation is consolidated should isolated end-to-end testing/staging be discussed; obtain explicit approval before any paid branch, migration application, deployment, merge, or external action.
+
+### Change boundary
+- This section records source and connected-Main audit findings only. No application code, SQL migration, database schema/data, Auth user, invitation, email, provider action, deployment, or PR merge was changed or triggered.
+- PR #8 remains Open, Draft, and Unmerged. No mobile QA was performed.
