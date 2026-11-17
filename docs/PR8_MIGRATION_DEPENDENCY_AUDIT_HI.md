@@ -1510,3 +1510,35 @@ This section records only dependencies supported by migration comments, DDL, or 
 Some PL/pgSQL function bodies contain references to relations introduced by later migrations. Successful function creation, if a parser permits deferred statement planning, would not prove that the function can execute at that point. The replay fixture must test both clean migration application and invocation of representative RPC/trigger paths after the full schema is present.
 
 **Status:** source-read dependency edges only. No full DAG has been certified; no PostgreSQL parser or database replay was run; no SQL was executed; runtime tests remain **NOT RUN**.
+
+## 80. Refund, cancellation-fee, wallet and payout dependency chain — 17 Nov 2026
+
+Direct source inspection of the five finance migrations confirms these additional edges:
+
+| Order | Migration | Direct prerequisite / reason |
+|---|---|---|
+| 1 | `20261109010000_create_secure_wallet_ledger_foundation.sql` | Creates `srk_wallet_accounts` and `srk_wallet_ledger`; the cancellation-fee migration alters the wallet ledger entry-type constraint and later refund logic writes wallet reversals. Also requires Auth and `electrician_profiles` baseline objects. |
+| 2 | `20261114125844_restore_financial_audit_core_schema.sql` | Creates the financial core relations including `srk_razorpay_refunds`, `srk_manual_payment_entries`, `srk_electrician_payouts`, and `srk_booking_labour_bills`. It requires baseline `service_bookings`, `electrician_profiles`, Auth and UUID support. |
+| 3 | `20261114270000_admin_only_cancellation_requests_and_decisions.sql` | Creates cancellation request/event tables and the approved-decision guard. Its booking/customer references require the baseline and customer identity column lineage. |
+| 4 | `20261114280000_cancellation_fee_carry_forward_and_accounting.sql` | Alters `srk_wallet_ledger`; references cancellation requests from 142700; creates debt, fee-item and fee-ledger tables. Therefore wallet foundation and cancellation request migration must precede it. |
+| 5 | `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` | Alters fee-item/fee-ledger tables from 142800 and writes `srk_wallet_ledger`; reads processed Razorpay/manual refund evidence from the financial core. Therefore 142800 and core refund tables must precede it. |
+| 6 | `20261114360000_new_category_electrician_payout_reconciliation.sql` | Payout writer and paid-payout RPC read immutable labour bills, manual payment entries, payout ledger, and cancellation-fee items; therefore financial core and 142800 must precede execution of payout paths. |
+| 7 | `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` | Reconciliation/report functions read payout, manual-payment, refund, cancellation-fee, wallet and booking objects. It must remain after all corresponding schema and writer migrations, including 142900 and 143600. |
+
+### Verified ordering constraints
+
+- `09010000 → 14280000 → 14290000` (wallet ledger creation, extension and reversal consumer).
+- `14125844 → 14290000` (refund evidence tables are read by the full-refund reversal).
+- `14270000 → 14280000 → 14290000` (cancellation request, debt/allocation ledger, then reversal).
+- `14125844 → 14360000` and `14280000 → 14360000` (payout consumer reads core payout/bill tables and cancellation-fee items).
+- `14290000 → 17010000` and `14360000 → 17010000` (final reconciliation reads reversal and payout outcomes).
+
+### Replay risks that remain
+
+1. These edges are source-derived, not proof of a complete graph. Earlier migrations and baseline setup still need a full object-by-object dependency pass.
+2. Some migrations use `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, or replace existing functions. A clean replay and an upgrade replay can behave differently; both need separate disposable-database fixtures.
+3. `20261114290000` expects full-refund evidence and settled fee items before a booking transitions to refunded. Trigger ordering and actual refund writer invocation must be tested, not inferred from file order.
+4. The payout migration's function definitions are not proof that the payout trigger is attached at that point; trigger attachment lineage must be separately verified.
+5. No dependency manifest should be marked executable until the canonical baseline and all prerequisites are approved.
+
+**Status:** additional source-level finance edges verified; no database or production access; no SQL parse/replay; runtime tests remain **NOT RUN**.
