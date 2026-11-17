@@ -2567,3 +2567,60 @@ Audit Branch पर मौजूद SQL tests में पुराने finan
 - पुराने audit field omissions के लिए exact regression assertions का अभाव: **inspected tests में confirmed**.
 - Durable Razorpay recovery evidence में actor/append-only source-contract assertions: **source-confirmed; runtime unverified**.
 - कोई SQL test execute नहीं किया गया; कोई migration/source SQL बदला नहीं गया; Production/Test Supabase पर कोई बदलाव नहीं किया गया।
+
+
+## 110. Audit-field regression test plan — safe coverage and behavioral assertions — 17 Nov 2026
+
+Section 109 के निष्कर्षों के आधार पर test plan तैयार किया गया। यह योजना है; अभी test files या migration source में कोई बदलाव नहीं किया गया।
+
+### 110.1 Field policy पहले तय हो
+
+सभी table columns को बिना छँटाई Audit JSON में डालना सुरक्षित नहीं है। प्रस्तावित review matrix:
+
+| Entity | Audit में आवश्यक पहचान/व्यावसायिक fields | सावधानी |
+|---|---|---|
+| Manual Payment | booking_id, payment_method, amount, recorded_by, recorded_at | payment_reference और note को raw रूप में रखने से पहले redaction/retention तय हो |
+| Manual Refund | booking_id, payment_entry_id, amount, recorded_by, recorded_at | refund_reference और note संवेदनशील हो सकते हैं; raw snapshot स्वतः न जोड़ें |
+| Electrician Payout | booking_id, payout_status, payout_method, amount fields, paid_at, paid_by | payout_reference और payout_note की redaction/length policy तय हो |
+| Razorpay Refund | payment/booking linkage, refund_id, amount + paise, currency, status/provider_status, admin_user_id, processed_at | idempotency_key, last_error, reason, previous_payout_note को raw रूप में न लिखें; सुरक्षित summary/redaction तय हो |
+
+इस matrix में “आवश्यक” का अर्थ final approval नहीं है। Owner/security review को तय करना होगा कि कौन-सा field पूर्ण, masked, hashed या केवल metadata के रूप में रखा जाए।
+
+### 110.2 Static contract assertions
+
+एक dedicated audit-field contract test (या मौजूदा `financial_audit_core_schema.test.sql` में अलग स्पष्ट test group) में:
+1. Generic function की Manual Payment allow-list में स्वीकृत fields की मौजूदगी जाँचें।
+2. Manual Refund allow-list में स्वीकृत fields की मौजूदगी जाँचें।
+3. Electrician Payout allow-list में `paid_by` सहित स्वीकृत fields की मौजूदगी जाँचें।
+4. Razorpay dedicated audit function में INSERT/DELETE और UPDATE branches के स्वीकृत fields की coverage जाँचें।
+5. Sensitive fields के लिए raw values के बजाय approved redaction/omission contract assert करें।
+6. Test plan count को assertions की वास्तविक संख्या से मिलाएँ।
+
+### 110.3 Behavioral trigger tests — isolated PostgreSQL में
+
+Static source matching पर्याप्त नहीं है। Isolated test database में fixtures और trigger execution से जाँचें:
+- INSERT: `changed_fields`, `after_data`, actor ID/role सही हों।
+- UPDATE: केवल बदले हुए allow-listed fields `before_data` और `after_data` में हों।
+- UPDATE of excluded field only: approved policy के अनुसार event न बने या sanitized event बने।
+- DELETE: `before_data` उपलब्ध हो और `after_data` खाली रहे।
+- NULL/absent optional values: अनावश्यक event या गलत JSON key न बने।
+- Admin-context और service-role-context: actor attribution अपेक्षित और विश्वसनीय हो।
+- Sensitive references/notes: raw secret/token या अनावश्यक personal text audit JSON में न आए।
+
+हर test transaction को rollback करें; production या shared Supabase database पर न चलाएँ।
+
+### 110.4 Test execution gate
+
+- पहले migration dependency order और clean disposable PostgreSQL baseline सत्यापित करें।
+- फिर संबंधित migration replay करें।
+- उसके बाद pgTAP test files execute करें और वास्तविक output/exit status सुरक्षित रखें।
+- केवल source assertions या GitHub CI Node success को PostgreSQL runtime pass न कहें।
+
+### 110.5 Status
+
+- Test plan: **documented**.
+- Migration allow-list correction: **not implemented**.
+- SQL regression test changes: **not implemented**.
+- PostgreSQL/pgTAP runtime: **not executed**.
+- Owner approval for sensitive-field policy and isolated DB execution: **pending**.
+- No Production/Test Supabase changes.
