@@ -7364,3 +7364,31 @@ Static source review only. कोई SQL, database query, migration replay, pgTA
 - यह सुनिश्चित करना कि trigger retirement से पहले की deployed अवस्थाओं के लिए rollout क्रम सुरक्षित है।
 
 Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। पुराना coexistence concern बाद की retirement migration से source स्तर पर mitigated है; runtime proof उपलब्ध नहीं। GPT-2 checklist remains 27/39 = 69%.
+
+## 235. Razorpay Webhook Inbox pgTAP — दो `position()` Assertions में Double-Quoted Text Literals
+
+### 1. Static source reviewed
+
+- `supabase/tests/database/razorpay_webhook_event_inbox.test.sql`
+- SHA: `e038140c520744d026248f7f4198520d860c4525`
+- घोषित योजना: `plan(17)`; इस review में योजना/17 assertions की execution नहीं की गई।
+
+### 2. मिला हुआ SQL-स्रोत जोखिम
+
+दो assertions में `position()` के search text को double quotes में लिखा गया है:
+
+- `position("lease_expires_at=clock_timestamp()+interval '2 minutes'" in ...)`
+- `position("v_event.state<>'processing'" in ...)`
+
+PostgreSQL में double quotes identifier के लिए होते हैं; text literal के लिए single quotes चाहिए। इसलिए ये expressions सामान्य SQL parsing में text खोजने के बजाय quoted identifier/column reference की तरह समझे जाएंगे। यदि ऐसा matching identifier उपलब्ध नहीं है, तो test execution में unresolved-column error आ सकता है। यह source-level SQL correctness concern है; test चलाए बिना इसे observed runtime failure नहीं कहा जा रहा।
+
+### 3. प्रभाव और सुरक्षित अगला कदम
+
+- प्रभावित दो assertions lease renewal और stale-worker completion guard के source text की जाँच करते हैं।
+- इन दोनों search strings को SQL text literals के रूप में लिखने की आवश्यकता है; कोई source/test edit इस review में नहीं किया गया।
+- बाकी 15 assertions, migration behavior, और वास्तविक webhook concurrency का runtime परिणाम इस finding से प्रमाणित नहीं होता।
+- isolated PostgreSQL test environment में अनुमति मिलने के बाद ही pgTAP execution से पुष्टि की जानी चाहिए।
+
+### 4. Verdict and limits
+
+यह **static test-source defect candidate** है, runtime test failure का दावा नहीं। कोई migration replay, SQL/pgTAP execution, DB query, source/test edit, CI dispatch, deployment, merge या cherry-pick नहीं किया गया। GPT-2 checklist अंतिम प्रमाणित स्थिति **27/39 = 69%** पर ही रहती है।
