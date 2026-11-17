@@ -17,6 +17,7 @@ begin
 
   with paid_completed as (
     select
+      b.id as booking_id,
       b.assigned_electrician_id,
       (coalesce(p.gross_service_amount,0) + coalesce(p.materials_amount,0))::numeric as gross,
       coalesce(p.platform_commission,0)::numeric as commission,
@@ -25,10 +26,10 @@ begin
     left join public.srk_electrician_payouts p
       on p.booking_id = b.id
      and p.electrician_profile_id = b.assigned_electrician_id
+     and p.payout_status in ('pending','paid','blocked')
     where b.status = 'completed'
       and b.payment_status = 'paid'
       and b.payment_verified_at is not null
-      and p.payout_status in ('pending','paid','blocked')
   ),
   collection_totals as (
     -- Collections must not disappear merely because a payout row is missing
