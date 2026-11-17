@@ -2319,3 +2319,40 @@ A full-file re-read of `supabase/migrations/20261109003000_secure_commission_rep
 - A separate, actionable commission trigger defect is confirmed: the setup files attach `srk_booking_commission_trigger` to the old `srk_calculate_commission_on_completion()` function; the quote migration neither replaces that trigger nor binds the new service-only function. The Admin commission report sums `commission_amount`, while the payout ledger independently calculates commission from service charge. This can create a reporting-versus-payout mismatch. See section 15 of `docs/PR8_MIGRATION_DEPENDENCY_AUDIT_HI.md`.
 
 This correction supersedes every earlier statement in this document that says `amount_paid` is introduced only by the 16 Nov migration or that `09003000` reaches a missing-column grant. The canonical baseline, helper provenance, duplicate migration version token, and trigger replacement plan remain open. PostgreSQL/pgTAP was not run, and no database or PR branch was changed.
+
+
+## 12. Current GPT-2B branch recheck — local-only harness prerequisites (17 Nov 2026)
+
+यह addendum इसी audit branch `chore/pr8-replay-audit-20261116-v2` के recursive source tree और वर्तमान files को पढ़कर बनाया गया है। पुराने sections में दिए गए 87/78/32 जैसे inventory counts historical snapshots हैं; इस recheck के लिए वे current counts नहीं हैं।
+
+### Current source inventory
+- `supabase/migrations/`: **92 SQL migration files**.
+- Filename check: सभी files timestamp-prefix format में हैं; केवल एक duplicate version group है — `20261109` की दो files: `20261109_allow_quote_approval_booking_states.sql` और `20261109_electrician_inspection_quotes_and_service_only_commission.sql`.
+- `supabase/tests/database/`: **36 pgTAP SQL test files**.
+- `supabase/config.toml`: current branch tree में absent.
+- `package.json`: `npm test` केवल `node --test tests/*.test.js` चलाता है; यह PostgreSQL/pgTAP suite नहीं चलाता.
+- `.github/workflows/node-tests.yml`: Node 22 tests चलाता है; Supabase CLI, Docker, PostgreSQL या pgTAP setup नहीं करता.
+- `.github/workflows/supabase-schema-ci.yml`: `workflow_dispatch` है, पर job guard केवल `feature/platform-fee-cash-online-cycle` को स्वीकार करता है। यह `SUPABASE_DB_URL` से remote schema-only export करता है, local stack में restore करता है और केवल पाँच hard-coded feature migrations चलाता है; यह current audit branch का पूर्ण local-only migration replay नहीं है.
+
+### Safety decision
+- Existing Supabase schema workflow को dispatch नहीं किया गया और उसे current branch पर enable/modify नहीं किया गया.
+- कोई remote database URL/secret पढ़ा नहीं गया; कोई remote schema export/query, migration apply, PostgreSQL/pgTAP execution या CI dispatch नहीं हुआ.
+- Existing starter SQL files `COMPLETE_DATABASE_SETUP.sql`, `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql` ordered 92-migration chain का substitute नहीं हैं.
+- Duplicate `20261109` version को बिना owner/DBA द्वारा दिए sanitized migration-history evidence और approved reconciliation के rename/delete/merge/resequence/repair नहीं करना है.
+
+### Local-only harness की अगली design gates
+1. **Canonical baseline:** approved, versioned local baseline जिसमें Supabase Auth/Storage roles, extensions, required schemas, grants, RLS and seed-free platform objects स्पष्ट हों.
+2. **Migration lineage:** duplicate-version pair के लिए owner-reviewed resolution plan; remote ledger का अनुमान नहीं लगाना.
+3. **Dependency replay:** सभी 92 migrations का source-derived dependency/order map; हर referenced table/column/function/trigger/policy/storage object/extension का producer पहले identify हो.
+4. **Isolated project:** reviewed `supabase/config.toml`, pinned Supabase CLI version, Docker availability; CI job में कोई `SUPABASE_DB_URL`, Production secret, provider credential या deploy permission न हो.
+5. **Clean replay:** empty local Supabase stack पर पूरा ordered migration set replay; failure पर तुरंत stop; आगे migrations चला कर error mask न हो.
+6. **Tests:** `supabase test db` से 36 pgTAP files, फिर Node 22 `npm test`; बाद में अलग controlled concurrency/provider/Storage integration runs.
+7. **Artifacts:** CLI/Docker versions, commit SHA, exact migration order, replay logs, pgTAP totals and redacted failure output store हों.
+
+### Status
+- Local-only harness design prerequisites documented: **SOURCE REVIEW COMPLETE**.
+- Canonical baseline and duplicate-version approval: **BLOCKED / OWNER EVIDENCE REQUIRED**.
+- Full migration dependency map: **NOT COMPLETE**.
+- Supabase config / local stack: **NOT CREATED / NOT RUN**.
+- PostgreSQL, pgTAP, provider and Storage runtime: **NOT RUN**.
+- Official GPT-2 implementation progress remains **27/39 = 69%**; this documentation-only preparation does not increment it.
