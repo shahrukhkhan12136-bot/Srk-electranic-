@@ -2380,3 +2380,42 @@ Migration `20261114125844_restore_financial_audit_core_schema.sql` में `sr
 - No SQL execution, database change, or payment mutation performed.
 
 सुझाव: यदि business requirement manual-payment evidence को immutable बनाना है, तो service-role writer को केवल controlled RPC तक सीमित रखें और correction के लिए append-only correction/reversal event model अपनाएँ; केवल mutable row + same-database audit trigger को tamper-proof न मानें।
+
+
+## 105. Manual Payment audit allow-list omits reference, note and recorder — source-confirmed gap — 17 Nov 2026
+
+Migration `20261114125844_restore_financial_audit_core_schema.sql` में manual-payment audit allow-list की table columns से तुलना की गई।
+
+### 105.1 Exact mismatch
+
+`srk_manual_payment_entries` में ये fields हैं:
+- `booking_id`
+- `payment_method`
+- `amount`
+- `payment_reference`
+- `note`
+- `recorded_by`
+- `recorded_at`
+
+लेकिन `srk_capture_admin_audit_event()` के `manual_payment` allow-list में केवल:
+`booking_id, payment_method, amount`
+हैं।
+
+### 105.2 Consequence
+
+- Insert audit event में payment reference, note और recorder identity snapshot नहीं होते.
+- यदि किसी privileged writer द्वारा केवल `payment_reference`, `note`, `recorded_by` या `recorded_at` बदला जाए, तो allow-list loop में कोई changed field नहीं मिलेगा.
+- Function `cardinality(v_fields)=0` पर लौट जाता है; इसलिए ऐसे field-only UPDATE के लिए audit event नहीं बनेगा.
+- यह Section 104 के निष्कर्ष को और सीमित करता है: trigger मौजूद है, लेकिन manual-payment evidence का complete field history capture नहीं करता.
+
+### 105.3 Recommended correction and status
+
+- Allow-list में `payment_reference`, `note`, `recorded_by`, `recorded_at` शामिल करने पर विचार करें.
+- Payment reference में संवेदनशील provider/card/bank data आ सकता है; इसे audit JSON में रखने से पहले allowed format और redaction policy तय करें. केवल approved reference token/last-four या keyed digest रखना बेहतर हो सकता है; पूरा sensitive credential audit में न रखें.
+- Recorder identity और timestamp को कम-से-कम insert event में preserve करें.
+- Tests: INSERT snapshot coverage; reference-only UPDATE; note-only UPDATE; recorder-only UPDATE; DELETE before snapshot; ensure redaction and no secret leakage.
+- Allow-list omission and zero-event path: **source-confirmed**.
+- Actual trigger behavior and audit row contents: **not PostgreSQL runtime-tested**.
+- No SQL changes, database execution, or payment mutation performed.
+
+यह audit completeness issue है; इससे अपने-आप unauthorized payment mutation सिद्ध नहीं होता। Direct authenticated table privileges पहले से revoked हैं, लेकिन privileged service-role path पर audit completeness आवश्यक है।
