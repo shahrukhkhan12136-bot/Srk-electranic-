@@ -5294,3 +5294,36 @@ Test और Admin reporting को:
 ### 4. Verdict
 
 Source में audit writes synchronous trigger inserts हैं और table timestamp default `now()` है। इससे atomicity तथा timestamp-order test requirements स्पष्ट होते हैं। अभी atomicity को इस repository पर execute करके प्रमाणित नहीं किया गया है। कोई SQL/test/migration file नहीं बदली गई; कोई DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+
+## 172. Audit Table Access, Index Coverage और Retention/Immutability सीमा
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Audit core migration में table grants, RLS और indexes का static inspection।
+
+### 1. Read/Write Access
+
+Migration में `srk_admin_audit_events` पर RLS enable है और PUBLIC, anon तथा authenticated से सभी table privileges revoke किए गए हैं। उसी migration में `service_role` को `ALL` grant है। इस source definition के अनुसार सामान्य authenticated client को सीधे audit table पढ़ने/लिखने का grant नहीं मिलता; service_role privileged है।
+
+महत्वपूर्ण सीमा: `ALL` privilege का अर्थ केवल append/INSERT नहीं है। इस migration के आधार पर service_role के लिए UPDATE/DELETE भी privilege set में शामिल हैं। इसलिए इसे tamper-proof या strictly append-only audit store कहना सही नहीं होगा। यह source-level grant review है; deployed DB privileges verify नहीं किए गए।
+
+### 2. उपलब्ध Indexes और Query Paths
+
+Migration में ये उपयोगी indexes हैं:
+- `(booking_id, created_at DESC)`, केवल non-null booking_id rows के लिए।
+- `(entity_type, entity_id, created_at DESC)`।
+- `(created_at DESC)`।
+- Refund status और created_at पर अलग operational index।
+
+इनसे booking timeline, entity history और recent-event queries के लिए स्पष्ट index paths मिलते हैं।
+
+### 3. शेष Design Questions
+
+- `actor_user_id` पर कोई dedicated index इस migration में नहीं मिला। यदि Admin UI में actor-wise audit search आवश्यक हो, तो query plan/volume के आधार पर अलग index की जरूरत जाँची जाए।
+- इस migration में audit-event retention, archival या purge policy परिभाषित नहीं है। इसे स्वतः अनंत retention का प्रमाण न मानें; अन्य migrations/operational policy अलग हो सकती है।
+- यदि audit history को privileged service_role compromise के विरुद्ध tamper-evident बनाना आवश्यक है, तो वर्तमान table grants अकेले वह guarantee नहीं देते। अलग append-only/externally anchored design का threat-model review चाहिए।
+
+### 4. Verdict
+
+Authenticated client access पर revoke/RLS controls और मुख्य booking/entity/time indexes source में मौजूद हैं। लेकिन service_role को broad table privileges दिए गए हैं; actor-wise index और retention policy इस migration में नहीं दिखते। कोई grant, policy, index या retention setting बदली नहीं गई; कोई live DB privilege inspection, query plan, DB query, test, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
