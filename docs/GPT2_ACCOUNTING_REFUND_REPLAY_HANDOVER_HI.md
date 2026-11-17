@@ -239,3 +239,34 @@ Main history also contains `20261109080121` / `lock_quote_workflow_rpcs_to_authe
 - 09080121 remains a source-recovery gap; live ACL evidence establishes its present effect only.
 - Keep both malformed files unchanged until the owner/GPT-2 approves a canonical baseline and migration-history alignment plan.
 - All Main queries were read-only SELECT/catalog inspection. No DDL, migration application, or Production writes occurred.
+
+
+## 13. Additional 09080121 ACL coverage review (Nov 17)
+
+### Feature source already contains the core ACL statements
+The recovered malformed Feature file `20261109_electrician_inspection_quotes_and_service_only_commission.sql` includes explicit:
+- `REVOKE ALL ... FROM public, anon` for all four quote/workflow RPCs;
+- `GRANT EXECUTE ... TO authenticated` for the same four RPCs.
+
+The four exact signatures are:
+- `srk_submit_booking_quote(uuid,numeric,numeric,text)`
+- `srk_customer_respond_booking_quote(uuid,text)`
+- `srk_update_booking_work_status(uuid,text)`
+- `srk_get_my_offer_details()`
+
+An earlier timestamped migration `20261109002000_expose_assigned_booking_map_pin.sql` independently revokes PUBLIC/anon and grants authenticated on `srk_get_my_offer_details()`.
+
+### Interpretation of missing 09080121
+- This means the **observable ACL effect** attributed to locking the four quote/workflow RPCs is already represented in Feature source, and Main live catalog confirms the same effective privilege outcome.
+- It does not prove that the missing Main migration `20261109080121` had no other statements or that every original SQL statement is represented.
+- Therefore keep 09080121 marked as a historical source-recovery gap, but do not add a duplicate ACL migration solely to repeat the four grants/revokes.
+
+### Remaining source/behavior discrepancy
+- Main's live `srk_update_booking_work_status` is more restrictive than the recovered malformed Feature SQL: live permits only `inspection`, rejecting `in_progress` and `completed` in this RPC.
+- Main's live `srk_get_my_offer_details` masks personal/contact and quote fields unless the booking is in an allowed assigned/work state; the recovered malformed Feature source gates those fields only on assigned-electrician identity.
+- These are current Main function definitions, not proven contents of migration 09080121. Their origin may be later migrations or later changes. Do not treat them as missing 09080121 SQL without further provenance.
+
+### Evidence and safety
+- Feature migration tree was re-listed: there is no valid timestamped file for 09080121, and no later timestamped quote/work-status replacement was found in the inspected migration range.
+- Main privilege/function catalog checks were read-only SELECTs.
+- No source SQL, migration name, or live database object was changed in this pass.
