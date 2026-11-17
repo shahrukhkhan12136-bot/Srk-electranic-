@@ -1448,3 +1448,32 @@ Feature work-event trigger जोड़ने से पहले इनके �
 
 ### Safety boundary
 - Audit Branch read-only inspect/compare हुआ; उसमें कोई edit/merge/cherry-pick नहीं। Feature branch में केवल यह documentation update होगा। No Supabase migration apply, SQL write, pgTAP runtime, external payment/refund/payout, deployment, PR review/merge, or Production change.
+
+## Section 51 — Shared-branch readiness: current divergence and commission migration incompatibility (2026-11-17)
+
+### Current refs and divergence (fresh GitHub read)
+- PR #8 / Feature branch `feat/customer-login-first-dashboard-20261114`: head `401632189e0ddc1217526aa3427bcb05751206fb`; Open, Draft, Unmerged.
+- GPT-2 Audit branch `chore/pr8-replay-audit-20261116-v2`: head `ed917756d09174133c2150acdee2e6d0694e263d`.
+- Fresh compare result: branches are `diverged`; Audit is 329 commits ahead and Feature is 129 commits ahead of Audit; common merge base `dc8b4f723ac7ae896eeb516336dd4b28577390b5`. This is not a safe direct-merge state.
+- Compare endpoint reports 38 changed paths in the branch comparison, including payout, commission/manual-payment migrations, refund/payout tests, route-transfer accounting and audit documentation.
+
+### Commission/manual-payment migration — same filename, materially different contracts
+- Feature file `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`: blob SHA `324c58ba485395bd0ceb2402b99a90e36929eedc`, 621 lines.
+- Audit file with the same filename: blob SHA `68189051090a51bef26a98997caf103b62ed070c`, 612 lines.
+- A line-by-line comparison found 567 differing line positions. Differences include:
+  - Feature sets `search_path = ''`; Audit sets `pg_catalog, public, pg_temp`.
+  - Feature has a different early return/state-transition block for legacy commission behavior.
+  - Audit explicitly branches on `selected_category` and validates the immutable labour bill in the displayed function body.
+- Therefore this is not a filename-level cherry-pick. The two complete migration bodies, trigger order, payout creation contract, commission calculation and test expectations require joint review before choosing one integrated migration.
+
+### Payout lifecycle trigger candidate remains Audit-only
+- `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` exists on Audit with blob SHA `b12da77471d510b55f798bd089597d866d79a133`; it is absent at that path on Feature.
+- Its opening function contract says the booking transition is the single point that closes refund-owned payout holds and refund RPCs verify rather than repeat the write. This is a candidate architecture, not yet ported or runtime-proven.
+- The matching Audit manual-refund test SHA is `99cb0eb02e667699db27951b5b26161a89b8951b` (plan 14); Feature test SHA is `211fe123674a6e7affc207d02ddbae350e4cdc8f` (plan 15). The tests differ, including an additional Feature assertion for the protected Admin audit stream. Do not replace one test with the other without preserving the distinct assertions and reconciling the plan.
+
+### Shared-branch readiness gates
+- Current refs, common ancestor and divergence have been re-verified.
+- High-level changed-path inventory and the same-name commission migration conflict have been identified.
+- The payout-only manual architecture remains the approved direction; Route Transfer must stay retired and historical Route records preserved.
+- Still open: reconcile the payout lifecycle trigger with Feature's full trigger chain; resolve the materially different commission/manual-payment migration; preserve all refund/audit assertions; jointly resolve the Razorpay reconciliation post-condition; and complete dependency-ordered static plus isolated PostgreSQL/pgTAP verification.
+- No shared branch was created. No cherry-pick, merge, migration apply, SQL write, database invocation, deployment, payment/refund/payout, PR review or Production change occurred.
