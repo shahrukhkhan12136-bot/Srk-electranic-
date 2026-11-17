@@ -5,608 +5,85 @@ const crypto = require("node:crypto");
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-test-secret";
 process.env.RAZORPAY_WEBHOOK_SECRET = "webhook-test-secret";
+process.env.URL = "https://srk-test.netlify.app";
 
 const { handler } = require("../razorpay-webhook.js");
 const originalFetch = global.fetch;
-const response = (status, data) => ({
-  ok: status >= 200 && status < 300,
-  status,
-  json: async () => data
-});
-const event = (payload, eventId = "evt_test_123", signatureOverride) => {
-  const body = JSON.stringify(payload);
-  const signature = signatureOverride || crypto
-    .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
-    .update(Buffer.from(body, "utf8")).digest("hex");
-  return {
-    httpMethod: "POST",
-    headers: { "x-razorpay-signature": signature, "x-razorpay-event-id": eventId },
-    body,
-    isBase64Encoded: false
-  };
+const response = (status,data) => ({ok:status>=200&&status<300,status,json:async()=>data});
+const event = (payload,eventId="evt_test_123",mixedCase=false) => {
+  const body=JSON.stringify(payload);
+  const signature=crypto.createHmac("sha256",process.env.RAZORPAY_WEBHOOK_SECRET).update(Buffer.from(body)).digest("hex");
+  return {httpMethod:"POST",headers:mixedCase?{"X-RaZoRpAy-SiGnAtUrE":signature,"X-RaZoRpAy-EvEnT-Id":eventId}:{"x-razorpay-signature":signature,"x-razorpay-event-id":eventId},body,isBase64Encoded:false};
 };
 const rpcName = url => String(url).split("/").pop();
-test("reads Razorpay headers case-insensitively", async t => {
-  let claimedEventId = null;
-  global.fetch = async (url, options = {}) => {
-    assert.ok(options.signal instanceof AbortSignal, "upstream request must have a bounded timeout signal");
-    assert.equal(options.signal.aborted, false);
-    const fn = rpcName(url);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      claimedEventId = JSON.parse(options.body).p_event_id;
-      return response(200, { success: true, duplicate: true, should_process: false, state: "processed" });
-    }
-    throw new Error("unexpected RPC " + fn);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const incoming = event({ event: "payment.authorized" }, "evt_mixed_case");
-  incoming.headers = {
-    "X-RaZoRpAy-SiGnAtUrE": incoming.headers["x-razorpay-signature"],
-    "X-RaZoRpAy-EvEnT-Id": "evt_mixed_case"
-  };
-  const result = await handler(incoming);
-  assert.equal(result.statusCode, 200);
-  assert.equal(claimedEventId, "evt_mixed_case");
+
+test("rejects invalid signature before durable enqueue",async t=>{
+  let calls=0; global.fetch=async()=>{calls++;throw new Error("must not fetch");};
+  t.after(()=>{global.fetch=originalFetch;});
+  const result=await handler({...event({event:"payment.captured"}),headers:{"x-razorpay-signature":"0".repeat(64)}});
+  assert.equal(result.statusCode,400); assert.equal(calls,0);
 });
 
-
-test("rejects invalid signature before touching the database", async t => {
-  let calls = 0;
-  global.fetch = async () => { calls++; throw new Error("must not fetch"); };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({ event: "refund.created" }, "evt_bad", "0".repeat(64)));
-  assert.equal(result.statusCode, 400);
-  assert.equal(calls, 0);
-});
-
-test("claims a signed event and durably marks unsupported event ignored", async t => {
-  const calls = [];
-  global.fetch = async (url, options) => {
-    const fn = rpcName(url);
-    calls.push(fn);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      const body = JSON.parse(options.body);
-      assert.equal(body.p_event_id, "evt_ignored_1");
-      assert.equal(body.p_event_type, "payment.authorized");
-      assert.match(body.p_payload_sha256, /^[a-f0-9]{64}$/);
-      return response(200, { success: true, should_process: true, claim_token: "223e4567-e89b-42d3-a456-426614174000" });
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      const body = JSON.parse(options.body);
-      assert.equal(body.p_outcome, "ignored");
-      assert.equal(body.p_claim_token, "223e4567-e89b-42d3-a456-426614174000");
-      return response(200, { success: true, state: "ignored" });
-    }
-    throw new Error("unexpected RPC " + fn);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({ event: "payment.authorized" }, "evt_ignored_1"));
-  assert.equal(result.statusCode, 200);
-  assert.deepEqual(calls, ["srk_service_claim_razorpay_webhook_event", "srk_service_complete_razorpay_webhook_event"]);
-});
-
-
-test("rejects a reused provider event ID with a different signed payload", async t => {
-  let claimCalls = 0;
-  const originalPayload = { event: "payment.authorized", payload: { marker: "original" } };
-  const conflictingPayload = { event: "payment.authorized", payload: { marker: "changed" } };
-  global.fetch = async (url, options = {}) => {
-    claimCalls++;
-    assert.equal(rpcName(url), "srk_service_claim_razorpay_webhook_event");
-    const body = JSON.parse(options.body);
-    assert.equal(body.p_event_id, "evt_reused_header");
-    assert.match(body.p_payload_sha256, /^[a-f0-9]{64}$/);
-    return response(200, {
-      success: false,
-      payload_conflict: true,
-      should_process: false
-    });
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event(conflictingPayload, "evt_reused_header"));
-  assert.equal(result.statusCode, 200);
-  assert.equal(JSON.parse(result.body).reconciled, false);
-  assert.equal(JSON.parse(result.body).reason, "event_id_payload_conflict");
-  assert.equal(claimCalls, 1);
-});
-
-test("acknowledges already processed duplicate without replaying business logic", async t => {
-  let calls = 0;
-  global.fetch = async (url) => {
-    calls++;
-    assert.equal(rpcName(url), "srk_service_claim_razorpay_webhook_event");
-    return response(200, { success: true, duplicate: true, should_process: false, state: "processed" });
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({ event: "refund.processed" }, "evt_duplicate_1"));
-  assert.equal(result.statusCode, 200);
-  assert.equal(JSON.parse(result.body).duplicate, true);
-  assert.equal(calls, 1);
-});
-
-test("asks provider to retry while another worker holds an active lease", async t => {
-  global.fetch = async () => response(200, { success: true, in_progress: true, should_process: false });
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({ event: "payment.captured" }, "evt_busy_1"));
-  assert.equal(result.statusCode, 503);
-  assert.equal(JSON.parse(result.body).retry, true);
-});
-
-test("same signed body cannot be replayed under a changed event header", async t => {
-  let firstClaim = true;
-  let completionCount = 0;
-  let firstHash = null;
-  global.fetch = async (url, options) => {
-    const fn = rpcName(url);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      const body = JSON.parse(options.body);
-      if (firstClaim) {
-        firstClaim = false;
-        firstHash = body.p_payload_sha256;
-        return response(200, { success: true, should_process: true, claim_token: "323e4567-e89b-42d3-a456-426614174000" });
-      }
-      assert.notEqual(body.p_event_id, "evt_replay_original");
-      assert.equal(body.p_payload_sha256, firstHash);
-      return response(200, { success: true, duplicate: true, should_process: false, state: "ignored" });
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      completionCount++;
-      return response(200, { success: true, state: "ignored" });
-    }
-    throw new Error("unexpected RPC " + fn);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const payload = { event: "payment.authorized" };
-  const first = await handler(event(payload, "evt_replay_original"));
-  const replay = await handler(event(payload, "evt_replay_changed_header"));
-  assert.equal(first.statusCode, 200);
-  assert.equal(replay.statusCode, 200);
-  assert.equal(JSON.parse(replay.body).duplicate, true);
-  assert.equal(completionCount, 1);
-});
-
-test("does not settle a Cash booking from a captured webhook", async t => {
-  const calls = [];
-  global.fetch = async (url, options = {}) => {
-    const target = String(url);
-    const fn = rpcName(target);
-    calls.push(target);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      return response(200, { success: true, should_process: true, claim_token: "423e4567-e89b-42d3-a456-426614174000" });
-    }
-    if (target.includes("/rest/v1/service_bookings?")) {
-      return response(200, [{
-        id: "123e4567-e89b-42d3-a456-426614174000",
-        payment_method: "Cash",
-        payment_status: "unpaid",
-        razorpay_payment_id: null,
-        selected_category: "home_wiring",
-        status: "completed"
-      }]);
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      const body = JSON.parse(options.body);
-      assert.equal(body.p_outcome, "ignored");
-      assert.equal(body.p_error, "payment_method_not_online");
-      return response(200, { success: true, state: "ignored" });
-    }
-    throw new Error("unexpected request " + target);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({
-    event: "payment.captured",
-    payload: { payment: { entity: {
-      id: "pay_cashblocked", order_id: "order_cashblocked",
-      status: "captured", amount: 50000, currency: "INR"
-    } } }
-  }, "evt_cash_payment_blocked"));
-  assert.equal(result.statusCode, 200);
-  assert.equal(JSON.parse(result.body).reason, "payment_method_not_online");
-  assert.equal(calls.some(url => url.includes("srk_service_role_get_booking_payment_breakdown")), false);
-  assert.equal(calls.some(url => url.includes("srk_service_role_record_online_booking_payment")), false);
-});
-
-test("does not re-open a refunded booking from a captured webhook", async t => {
-  const calls = [];
-  global.fetch = async (url, options = {}) => {
-    const target = String(url);
-    const fn = rpcName(target);
-    calls.push(target);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      return response(200, { success: true, should_process: true, claim_token: "523e4567-e89b-42d3-a456-426614174000" });
-    }
-    if (target.includes("/rest/v1/service_bookings?")) {
-      return response(200, [{
-        id: "123e4567-e89b-42d3-a456-426614174000",
-        payment_method: "Razorpay ऑनलाइन भुगतान",
-        payment_status: "refunded",
-        razorpay_payment_id: null,
-        selected_category: "home_wiring",
-        status: "completed"
-      }]);
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      const body = JSON.parse(options.body);
-      assert.equal(body.p_outcome, "ignored");
-      assert.equal(body.p_error, "payment_refunded");
-      return response(200, { success: true, state: "ignored" });
-    }
-    throw new Error("unexpected request " + target);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({
-    event: "payment.captured",
-    payload: { payment: { entity: {
-      id: "pay_refundblocked", order_id: "order_refundblocked",
-      status: "captured", amount: 50000, currency: "INR"
-    } } }
-  }, "evt_refund_payment_blocked"));
-  assert.equal(result.statusCode, 200);
-  assert.equal(JSON.parse(result.body).reason, "payment_refunded");
-  assert.equal(calls.some(url => url.includes("srk_service_role_get_booking_payment_breakdown")), false);
-  assert.equal(calls.some(url => url.includes("srk_service_role_record_online_booking_payment")), false);
-});
-
-test("reconciles a signed processed refund event against its exact payment and amount", async t => {
-  const calls=[];
-  global.fetch=async (url,options={})=>{
-    const target=String(url),fn=rpcName(target);calls.push(target);
-    if(fn==="srk_service_claim_razorpay_webhook_event")
-      return response(200,{success:true,should_process:true,claim_token:"623e4567-e89b-42d3-a456-426614174000"});
-    if(target.includes("/rest/v1/srk_razorpay_refunds?")){
-      assert.match(target,/payment_id=eq\.pay_refundprocessed/);
-      return response(200,[{id:"723e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refundprocessed",refund_id:null,idempotency_key:"refund_key_12345",amount_paise:12500,status:"processing"}]);
-    }
-    if(fn==="srk_service_reconcile_booking_refund"){
+test("verifies mixed-case headers, durably queues a minimal payment projection, and triggers background processing",async t=>{
+  const calls=[]; global.fetch=async(url,options={})=>{
+    calls.push({url:String(url),options});
+    if(rpcName(url)==="srk_service_enqueue_razorpay_webhook_event"){
       const body=JSON.parse(options.body);
-      assert.equal(body.p_refund_record_id,"723e4567-e89b-42d3-a456-426614174000");
-      assert.equal(body.p_provider_refund_id,"rfnd_processed123");
-      assert.equal(body.p_provider_status,"processed");
-      return response(200,{success:true,status:"processed"});
-    }
-    if(fn==="srk_service_complete_razorpay_webhook_event"){
-      assert.equal(JSON.parse(options.body).p_outcome,"processed");
-      return response(200,{success:true,state:"processed"});
-    }
-    throw new Error("unexpected request "+target);
-  };
-  t.after(()=>{global.fetch=originalFetch;});
-  const result=await handler(event({event:"refund.processed",payload:{refund:{entity:{
-    id:"rfnd_processed123",payment_id:"pay_refundprocessed",amount:12500,currency:"INR",status:"processed",receipt:"refund_key_12345"
-  }}}},"evt_refund_processed"));
-  assert.equal(result.statusCode,200);
-  assert.equal(JSON.parse(result.body).reconciled,true);
-  assert.equal(calls.some(url=>url.includes("service_bookings")),false);
-});
-
-test("does not reconcile a refund webhook whose amount differs from the prepared record", async t => {
-  let reconcileCalls=0,completedOutcome=null;
-  global.fetch=async (url,options={})=>{
-    const target=String(url),fn=rpcName(target);
-    if(fn==="srk_service_claim_razorpay_webhook_event")
-      return response(200,{success:true,should_process:true,claim_token:"823e4567-e89b-42d3-a456-426614174000"});
-    if(target.includes("/rest/v1/srk_razorpay_refunds?"))
-      return response(200,[{id:"923e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refundmismatch",refund_id:null,amount_paise:12500,status:"processing"}]);
-    if(fn==="srk_service_reconcile_booking_refund"){reconcileCalls++;throw new Error("must not reconcile mismatch");}
-    if(fn==="srk_service_complete_razorpay_webhook_event"){
-      completedOutcome=JSON.parse(options.body).p_outcome;
-      return response(200,{success:true,state:"ignored"});
-    }
-    throw new Error("unexpected request "+target);
-  };
-  t.after(()=>{global.fetch=originalFetch;});
-  const result=await handler(event({event:"refund.processed",payload:{refund:{entity:{
-    id:"rfnd_mismatch123",payment_id:"pay_refundmismatch",amount:9999,currency:"INR",status:"processed"
-  }}}},"evt_refund_mismatch"));
-  assert.equal(result.statusCode,200);
-  assert.equal(JSON.parse(result.body).reason,"refund_record_mismatch");
-  assert.equal(reconcileCalls,0);
-  assert.equal(completedOutcome,"ignored");
-});
-
-test("routes a signed failed refund event through server-side reconciliation", async t => {
-  let reconciled=null,completion=null;
-  global.fetch=async (url,options={})=>{
-    const target=String(url),fn=rpcName(target);
-    if(fn==="srk_service_claim_razorpay_webhook_event")
-      return response(200,{success:true,should_process:true,claim_token:"a23e4567-e89b-42d3-a456-426614174000"});
-    if(target.includes("/rest/v1/srk_razorpay_refunds?"))
-      return response(200,[{id:"b23e4567-e89b-42d3-a456-426614174000",payment_id:"pay_refundfailed",refund_id:"rfnd_failed123",amount_paise:12500,status:"processing"}]);
-    if(fn==="srk_service_reconcile_booking_refund"){
-      reconciled=JSON.parse(options.body);
-      return response(200,{success:true,status:"failed"});
-    }
-    if(fn==="srk_service_complete_razorpay_webhook_event"){
-      completion=JSON.parse(options.body);
-      return response(200,{success:true,state:"processed"});
-    }
-    throw new Error("unexpected request "+target);
-  };
-  t.after(()=>{global.fetch=originalFetch;});
-  const result=await handler(event({event:"refund.failed",payload:{refund:{entity:{
-    id:"rfnd_failed123",payment_id:"pay_refundfailed",amount:12500,currency:"INR",status:"failed"
-  }}}},"evt_refund_failed"));
-  assert.equal(result.statusCode,200);
-  assert.equal(reconciled.p_provider_status,"failed");
-  assert.equal(reconciled.p_provider_refund_id,"rfnd_failed123");
-  assert.equal(completion.p_outcome,"processed");
-});
-
-
-test("accepts a processed refund entity in refund.created as documented by Razorpay", async t => {
-  let reconciled = null;
-  let completed = null;
-  global.fetch = async (url, options = {}) => {
-    const target = String(url);
-    const fn = rpcName(target);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      return response(200, { success: true, should_process: true, claim_token: "c23e4567-e89b-42d3-a456-426614174000" });
-    }
-    if (target.includes("/rest/v1/srk_razorpay_refunds?")) {
-      assert.ok(target.includes('payment_id=eq.pay_createdprocessed'));
-      return response(200, [{
-        id: "d23e4567-e89b-42d3-a456-426614174000",
-        payment_id: "pay_createdprocessed",
-        refund_id: null,
-        idempotency_key: "refund_key_54321",
-        amount_paise: 12500,
-        status: "processing"
-      }]);
-    }
-    if (fn === "srk_service_reconcile_booking_refund") {
-      reconciled = JSON.parse(options.body);
-      return response(200, { success: true, status: "processed" });
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      completed = JSON.parse(options.body);
-      return response(200, { success: true, state: "processed" });
-    }
-    throw new Error("unexpected request " + target);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({
-    event: "refund.created",
-    payload: { refund: { entity: {
-      id: "rfnd_createdprocessed123",
-      payment_id: "pay_createdprocessed",
-      amount: 12500,
-      receipt: "refund_key_54321",
-      currency: "INR",
-      status: "processed"
-    } } }
-  }, "evt_refund_created_processed"));
-  assert.equal(result.statusCode, 200);
-  assert.equal(JSON.parse(result.body).reconciled, true);
-  assert.equal(reconciled.p_provider_status, "processed");
-  assert.equal(reconciled.p_provider_refund_id, "rfnd_createdprocessed123");
-  assert.equal(completed.p_outcome, "processed");
-});
-
-
-test("matches an unpersisted provider refund by its internal refund-record note", async t => {
-  let reconciled = 0;
-  global.fetch = async (url, options = {}) => {
-    const target = String(url), fn = rpcName(target);
-    if (fn === "srk_service_claim_razorpay_webhook_event")
-      return response(200, { success: true, should_process: true, claim_token: "e23e4567-e89b-42d3-a456-426614174000" });
-    if (target.includes("/rest/v1/srk_razorpay_refunds?"))
-      return response(200, [{ id: "f23e4567-e89b-42d3-a456-426614174000", payment_id: "pay_notematch123", refund_id: null, idempotency_key: "key_note_match", amount_paise: 12500, status: "processing" }]);
-    if (fn === "srk_service_reconcile_booking_refund") {
-      reconciled++;
-      assert.equal(JSON.parse(options.body).p_refund_record_id, "f23e4567-e89b-42d3-a456-426614174000");
-      return response(200, { success: true, status: "processed" });
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event")
-      return response(200, { success: true, state: "processed" });
-    throw new Error("unexpected request " + target);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({ event: "refund.processed", payload: { refund: { entity: {
-    id: "rfnd_notematch123", payment_id: "pay_notematch123", amount: 12500, currency: "INR", status: "processed",
-    notes: { srk_refund_record_id: "f23e4567-e89b-42d3-a456-426614174000" }
-  } } } }, "evt_refund_note_match"));
-  assert.equal(result.statusCode, 200);
-  assert.equal(JSON.parse(result.body).reconciled, true);
-  assert.equal(reconciled, 1);
-});
-
-test("does not reconcile an unrelated same-payment same-amount refund without matching receipt or notes", async t => {
-  let reconcileCalls = 0;
-  let outcome = null;
-  global.fetch = async (url, options = {}) => {
-    const target = String(url), fn = rpcName(target);
-    if (fn === "srk_service_claim_razorpay_webhook_event")
-      return response(200, { success: true, should_process: true, claim_token: "a323e4567-e89b-42d3-a456-426614174000" });
-    if (target.includes("/rest/v1/srk_razorpay_refunds?"))
-      return response(200, [{ id: "b323e4567-e89b-42d3-a456-426614174000", payment_id: "pay_unrelated", refund_id: null, idempotency_key: "expected_receipt_123", amount_paise: 12500, status: "processing" }]);
-    if (fn === "srk_service_reconcile_booking_refund") {
-      reconcileCalls++;
-      throw new Error("must not reconcile an unrelated provider refund");
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      outcome = JSON.parse(options.body).p_outcome;
-      return response(200, { success: true, state: "ignored" });
-    }
-    throw new Error("unexpected request " + target);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({ event: "refund.processed", payload: { refund: { entity: {
-    id: "rfnd_unrelated", payment_id: "pay_unrelated", amount: 12500, currency: "INR", status: "processed",
-    receipt: "different_receipt_456", notes: { srk_booking_id: "other-booking" }
-  } } } }, "evt_refund_unrelated"));
-  assert.equal(result.statusCode, 200);
-  assert.equal(JSON.parse(result.body).reason, "refund_record_mismatch");
-  assert.equal(reconcileCalls, 0);
-  assert.equal(outcome, "ignored");
-});
-
-
-test("does not acknowledge webhook completion when its claim token was fenced by a newer worker", async t => {
-  const completionTokens = [];
-  global.fetch = async (url, options = {}) => {
-    const fn = rpcName(url);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      return response(200, {
-        success: true,
-        should_process: true,
-        claim_token: "f23e4567-e89b-42d3-a456-426614174000"
-      });
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      const body = JSON.parse(options.body);
-      completionTokens.push(body.p_claim_token);
-      return response(200, {
-        success: false,
-        stale_claim: true,
-        state: "processing"
-      });
-    }
-    throw new Error("unexpected RPC " + fn);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({ event: "payment.authorized" }, "evt_stale_claim"));
-  assert.equal(result.statusCode, 500);
-  assert.equal(JSON.parse(result.body).success, false);
-  assert.equal(completionTokens.length, 2);
-  assert.ok(completionTokens.every(token => token === "f23e4567-e89b-42d3-a456-426614174000"));
-});
-
-
-test("marks transient refund lookup failures retryable so a provider retry can reclaim the event", async t => {
-  const outcomes = [];
-  global.fetch = async (url, options = {}) => {
-    const target = String(url);
-    const fn = rpcName(target);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      return response(200, {
-        success: true, should_process: true,
-        claim_token: "923e4567-e89b-42d3-a456-426614174000"
-      });
-    }
-    if (target.includes("/rest/v1/srk_razorpay_refunds?")) {
-      return response(503, { message: "temporary database outage" });
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      const body = JSON.parse(options.body);
-      outcomes.push(body);
-      return response(200, { success: true, state: "retryable" });
-    }
-    throw new Error("unexpected request " + target);
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({
-    event: "refund.processed",
-    payload: { refund: { entity: {
-      id: "rfnd_retryable123", payment_id: "pay_retryable123",
-      amount: 12500, currency: "INR", status: "processed"
-    } } }
-  }, "evt_refund_retryable"));
-  assert.equal(result.statusCode, 500);
-  assert.equal(outcomes.length, 1);
-  assert.equal(outcomes[0].p_outcome, "retryable");
-  assert.equal(outcomes[0].p_claim_token, "923e4567-e89b-42d3-a456-426614174000");
-  assert.match(outcomes[0].p_error, /Refund record lookup failed/);
-});
-
-test("returns retryable failure when durable inbox completion cannot be persisted", async t => {
-  const calls = [];
-  global.fetch = async (url, options = {}) => {
-    const fn = rpcName(url);
-    calls.push(fn);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      return response(200, {
-        success: true, should_process: true,
-        claim_token: "a23e4567-e89-42d3-a456-426614174000"
-      });
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      const body = JSON.parse(options.body);
-      assert.equal(body.p_outcome, "ignored");
-      return response(503, { message: "temporary completion outage" });
-    }
-    throw new Error("unexpected request " + String(url));
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const result = await handler(event({ event: "payment.authorized" }, "evt_completion_outage"));
-  assert.equal(result.statusCode, 500);
-  assert.deepEqual(calls, [
-    "srk_service_claim_razorpay_webhook_event",
-    "srk_service_complete_razorpay_webhook_event",
-    "srk_service_complete_razorpay_webhook_event"
-  ]);
-});
-
-
-test("a reclaimed lease fences the earlier worker and accepts only the newer claim token", async t => {
-  const claims = [];
-  const completions = [];
-  global.fetch = async (url, options = {}) => {
-    const fn = rpcName(url);
-    if (fn === "srk_service_claim_razorpay_webhook_event") {
-      const token = claims.length === 0
-        ? "b23e4567-e89b-42d3-a456-426614174000"
-        : "c23e4567-e89b-42d3-a456-426614174000";
-      claims.push(token);
-      return response(200, {
-        success: true, should_process: true, claim_token: token,
-        attempt_count: claims.length
-      });
-    }
-    if (fn === "srk_service_complete_razorpay_webhook_event") {
-      const body = JSON.parse(options.body);
-      completions.push(body.p_claim_token);
-      if (body.p_claim_token === claims[0]) {
-        return response(200, { success: false, stale_claim: true, state: "processing" });
-      }
-      return response(200, { success: true, state: body.p_outcome });
-    }
-    throw new Error("unexpected RPC " + String(url));
-  };
-  t.after(() => { global.fetch = originalFetch; });
-  const payload = { event: "payment.authorized" };
-  const firstWorker = await handler(event(payload, "evt_lease_reclaimed"));
-  const secondWorker = await handler(event(payload, "evt_lease_reclaimed"));
-  assert.equal(firstWorker.statusCode, 500);
-  assert.equal(secondWorker.statusCode, 200);
-  assert.equal(claims.length, 2);
-  assert.notEqual(claims[0], claims[1]);
-  assert.deepEqual(completions, [claims[0], claims[0], claims[1]]);
-});
-
-
-test("stops payment work before the shared deadline and uses the reserved budget to mark the claim retryable", async t => {
-  const calls = [];
-  const originalNow = Date.now;
-  let elapsed = 0;
-  Date.now = () => originalNow() + elapsed;
-  global.fetch = async (url, options = {}) => {
-    const target = String(url);
-    calls.push({ target, options });
-    if (target.endsWith("/rpc/srk_service_claim_razorpay_webhook_event")) {
-      return response(200, { success: true, should_process: true, claim_token: "d23e4567-e89b-42d3-a456-426614174000" });
-    }
-    if (target.includes("/rest/v1/service_bookings?")) {
-      elapsed = 38000;
-      return response(200, [{ id: "123e4567-e89b-42d3-a456-426614174000", quoted_amount: 125, service_charge: 100, materials_amount: 25, quote_status: "approved", status: "completed", payment_status: "pending", payment_method: "online", razorpay_payment_id: null, selected_category: "new_category" }]);
-    }
-    if (target.endsWith("/rpc/srk_service_complete_razorpay_webhook_event")) {
-      const body = JSON.parse(options.body);
-      assert.equal(body.p_outcome, "retryable");
-      assert.equal(body.p_claim_token, "d23e4567-e89b-42d3-a456-426614174000");
+      assert.equal(body.p_event_id,"evt_fast_ack"); assert.equal(body.p_event_type,"payment.captured");
+      assert.match(body.p_payload_sha256,/^[a-f0-9]{64}$/);
+      assert.deepEqual(body.p_event_payload,{payload:{payment:{entity:{id:"pay_abc123",order_id:"order_abc123",status:"captured",amount:12500,currency:"INR"}}}});
       assert.ok(options.signal instanceof AbortSignal);
-      assert.equal(options.signal.aborted, false);
-      return response(200, { success: true, state: "retryable" });
+      return response(200,{success:true,accepted:true,queued:true,event_id:"evt_fast_ack"});
     }
-    throw new Error("unexpected request " + target);
+    assert.equal(new URL(url).pathname,"/.netlify/functions/razorpay-webhook-consumer");
+    assert.equal(JSON.parse(options.body).event_id,"evt_fast_ack");
+    assert.equal(options.headers["x-srk-webhook-worker-auth"],crypto.createHmac("sha256",process.env.SUPABASE_SERVICE_ROLE_KEY).update("evt_fast_ack").digest("hex"));
+    return response(202,{});
   };
-  t.after(() => { global.fetch = originalFetch; Date.now = originalNow; });
-  const payload = { event: "payment.captured", payload: { payment: { entity: { id: "pay_deadline123", order_id: "order_deadline123", status: "captured", amount: 12500, currency: "INR" } } } };
-  const result = await handler(event(payload, "evt_deadline_budget"));
-  assert.equal(result.statusCode, 500);
-  assert.equal(calls.length, 3);
-  assert.ok(calls[0].target.endsWith("/rpc/srk_service_claim_razorpay_webhook_event"));
-  assert.ok(calls[1].target.includes("/rest/v1/service_bookings?"));
-  assert.ok(calls[2].target.endsWith("/rpc/srk_service_complete_razorpay_webhook_event"));
-  assert.equal(calls.some(call => String(call.target).includes("get_booking_payment_breakdown")), false);
-  assert.equal(calls.some(call => String(call.target).includes("record_online_booking_payment")), false);
+  t.after(()=>{global.fetch=originalFetch;});
+  const incoming=event({event:"payment.captured",payload:{payment:{entity:{id:"pay_abc123",order_id:"order_abc123",status:"captured",amount:12500,currency:"INR",email:"private@example.com",contact:"9999999999"}}}},"evt_fast_ack",true);
+  const result=await handler(incoming);
+  assert.equal(result.statusCode,200); assert.equal(JSON.parse(result.body).accepted,true);
+  assert.equal(calls.length,2);
+});
+
+test("does not trigger a worker again for an already processed duplicate",async t=>{
+  let calls=0; global.fetch=async(url)=>{calls++;assert.equal(rpcName(url),"srk_service_enqueue_razorpay_webhook_event");return response(200,{success:true,accepted:true,duplicate:true,state:"processed",event_id:"evt_done"});};
+  t.after(()=>{global.fetch=originalFetch;});
+  const result=await handler(event({event:"payment.authorized"},"evt_done"));
+  assert.equal(result.statusCode,200); assert.equal(calls,1); assert.equal(JSON.parse(result.body).duplicate,true);
+});
+
+test("retries when the durable inbox cannot confirm acceptance",async t=>{
+  global.fetch=async()=>response(503,{}); t.after(()=>{global.fetch=originalFetch;});
+  const result=await handler(event({event:"payment.captured"},"evt_db_down"));
+  assert.equal(result.statusCode,503); assert.equal(JSON.parse(result.body).retry,true);
+});
+
+test("asks Razorpay to retry when the background consumer trigger is not accepted",async t=>{
+  let calls=0; global.fetch=async(url)=>{calls++;if(calls===1)return response(200,{success:true,accepted:true,queued:true,event_id:"evt_trigger_down"});return response(500,{});};
+  t.after(()=>{global.fetch=originalFetch;});
+  const result=await handler(event({event:"payment.captured"},"evt_trigger_down"));
+  assert.equal(result.statusCode,503); assert.equal(calls,2);
+});
+
+test("reuses the canonical event ID when the same signed body is replayed with a different header",async t=>{
+  const ids=[];global.fetch=async(url,options={})=>{
+    if(rpcName(url)==="srk_service_enqueue_razorpay_webhook_event"){const b=JSON.parse(options.body);ids.push(b.p_event_id);return response(200,{success:true,accepted:true,duplicate:true,state:"queued",event_id:"evt_original"});}
+    return response(202,{});
+  };
+  t.after(()=>{global.fetch=originalFetch;});
+  const payload={event:"refund.processed",payload:{refund:{entity:{id:"rfnd_abc123",payment_id:"pay_abc123",status:"processed",currency:"INR",amount:12500,receipt:"refund_key",notes:{srk_refund_record_id:"refund-record-id",private_note:"do not persist"}}}}};
+  const body=JSON.stringify(payload);
+  const signature=crypto.createHmac("sha256",process.env.RAZORPAY_WEBHOOK_SECRET).update(body).digest("hex");
+  const first=await handler({httpMethod:"POST",headers:{"x-razorpay-signature":signature,"x-razorpay-event-id":"evt_original"},body});
+  const second=await handler({httpMethod:"POST",headers:{"x-razorpay-signature":signature,"x-razorpay-event-id":"evt_changed"},body});
+  assert.equal(first.statusCode,200);assert.equal(second.statusCode,200);assert.deepEqual(ids,["evt_original","evt_changed"]);
+});
+
+test("returns a payload conflict without replacing an existing signed event",async t=>{
+  global.fetch=async()=>response(200,{success:false,accepted:false,payload_conflict:true});
+  t.after(()=>{global.fetch=originalFetch;});
+  const result=await handler(event({event:"payment.captured"},"evt_conflict"));
+  assert.equal(result.statusCode,200);assert.equal(JSON.parse(result.body).reason,"event_id_payload_conflict");
 });
