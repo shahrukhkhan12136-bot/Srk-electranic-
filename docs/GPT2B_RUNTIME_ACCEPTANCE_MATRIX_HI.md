@@ -377,3 +377,72 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Recounted current Node source tests: webhook inbox **15**, refund executor **4**, refund recovery **11**. These are test declarations only; no Node test suite was run.
 - No additional source-level defect confirmed in this pass. Remaining evidence boundary: Node execution, SQL compilation/migration replay, PostgreSQL/pgTAP, real webhook/provider behavior, lease-expiry concurrency, and deployed ACL/catalog are unverified.
 - No source code or migration changed. No database query/SQL execution, Node suite, CI, provider API, deployment, merge, cherry-pick, or production setting changed. GPT-2 official checklist remains **27/39 = 69%**; runtime acceptance remains **60/60 Pending**.
+
+
+## चार GPT-2B Workstream की अलग Source-Implementation Checklist — 17 November 2026
+
+यह checklist **Source readiness** मापती है, Runtime pass या Production readiness नहीं। हर Workstream में 8 समान-भार वाले milestones हैं। किसी milestone को तभी पूरा गिना गया है जब उसके source/contract का निरीक्षण और उपलब्ध implementation evidence मिला। जहाँ canonical schema/ACL evidence या runtime proof बाकी है, उसे पूरा नहीं गिना गया।
+
+### A — Payment / Webhook / Refund / Recovery: 7/8 = 87.5%
+
+| # | Source milestone | स्थिति |
+|---|---|---|
+| A1 | Raw-body signature validation, DB access से पहले | पूरा |
+| A2 | Durable event inbox, duplicate और payload-collision guard | पूरा |
+| A3 | Lease expiry / claim-token stale-worker fencing | पूरा |
+| A4 | Payment/refund event identity, amount और terminal-state reconciliation guards | पूरा |
+| A5 | Main Admin refund executor, stable idempotency और ambiguous-timeout handling | पूरा |
+| A6 | Recovery exact note/receipt matching, pagination और ambiguity fail-closed | पूरा |
+| A7 | Provider refund ID ↔ internal refund record one-to-one mapping guard | पूरा |
+| A8 | Razorpay sandbox, actual webhook retry और concurrent lease/finalization runtime proof | बाकी |
+
+### B — Payout / Accounting: 6/8 = 75%
+
+| # | Source milestone | स्थिति |
+|---|---|---|
+| B1 | Payout creation trigger, pending-only upsert और paid-row preservation | पूरा |
+| B2 | New booking पर fixed 15% commission तथा historical snapshot immutability | पूरा |
+| B3 | Labour-only commission, materials exclusion और integer-paise accounting rules | पूरा |
+| B4 | Refund pending/processed/failed और paid-payout lifecycle guards | पूरा |
+| B5 | Main Admin payout settlement authorization, booking-first locks और ledger parity | पूरा |
+| B6 | Manual-payment evidence तथा read-only booking accounting reconciliation checks | पूरा |
+| B7 | Canonical payout table DDL, owner, RLS और direct ACL का authoritative evidence | बाकी — schema/ACL blocker |
+| B8 | PostgreSQL/pgTAP execution, concurrent settlement/refund race और rounding-boundary runtime proof | बाकी |
+
+### C — Customer Support / Complaints / Attachments: 6/8 = 75%
+
+| # | Source milestone | स्थिति |
+|---|---|---|
+| C1 | Customer-owned complaint access और safe projection | पूरा |
+| C2 | Complaint thread read/reply/status source guards | पूरा |
+| C3 | Customer-owned Storage path और complaint/message attachment linking checks | पूरा |
+| C4 | Linked attachment generic-delete रोकना और link/delete को row-lock से serialize करना | पूरा — source guard |
+| C5 | वर्तमान assigned Staff के लिए attachment read और bounded metadata RPC | पूरा |
+| C6 | Support bucket बनाम avatar policy interaction का migration-source review | पूरा |
+| C7 | Canonical legacy Admin helper/table और live Storage policy catalog की authoritative पुष्टि | बाकी — schema/catalog blocker |
+| C8 | PostgreSQL/pgTAP, वास्तविक Storage download/delete और concurrent link/delete runtime proof | बाकी |
+
+### D — Electrician Support / Staff / RBAC: 6/8 = 75%
+
+| # | Source milestone | स्थिति |
+|---|---|---|
+| D1 | Electrician-owned ticket access और दूसरे Electrician के ticket isolation | पूरा |
+| D2 | Support Staff role permissions और financial/admin permission isolation | पूरा |
+| D3 | Assigned-ticket-only list/read/reply/status और reassignment checks | पूरा |
+| D4 | Case/assignment row-lock order, closed-ticket guards और Staff session/suspension checks | पूरा |
+| D5 | Assigned Staff attachment access boundary और metadata RPC source guards | पूरा |
+| D6 | SQL contract assertions तथा Main Admin बनाम Staff RPC privilege boundary source review | पूरा |
+| D7 | Canonical legacy Admin helper/table baseline और live ACL/RLS catalog confirmation | बाकी — schema/catalog blocker |
+| D8 | PostgreSQL/pgTAP, real Auth session, assignment race और Storage actor runtime proof | बाकी |
+
+### वर्तमान गणना
+
+| Workstream | पूरे milestones | कुल | Source readiness |
+|---|---:|---:|---:|
+| A — Payment/Webhook/Refund | 7 | 8 | **87.5%** |
+| B — Payout/Accounting | 6 | 8 | **75%** |
+| C — Customer Support | 6 | 8 | **75%** |
+| D — Electrician Support/Staff | 6 | 8 | **75%** |
+| **चारों का समान-भार औसत** | **25** | **32** | **78.125% ≈ 78%** |
+
+**महत्वपूर्ण सीमा:** यह 8×4 source milestone checklist पर आधारित नया, स्पष्ट denominator है; इसे पुरानी 50% गणना के साथ सीधी तुलना तभी समझें जब पुरानी गणना का denominator भी यही था। यह आधिकारिक GPT-2 delivery checklist को नहीं बदलता: वह **27/39 = 69%** ही है। Runtime Acceptance Matrix अब भी **60/60 Pending** है; कोई PostgreSQL/pgTAP/provider/Storage runtime pass दर्ज नहीं हुआ। GPT-1 के Electrician App में commission visibility वाला handoff भी अलग से खुला है और इस GPT-2B गणना में शामिल नहीं है।
