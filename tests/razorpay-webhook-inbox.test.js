@@ -62,6 +62,31 @@ test("claims a signed event and durably marks unsupported event ignored", async 
   assert.deepEqual(calls, ["srk_service_claim_razorpay_webhook_event", "srk_service_complete_razorpay_webhook_event"]);
 });
 
+
+test("rejects a reused provider event ID with a different signed payload", async t => {
+  let claimCalls = 0;
+  const originalPayload = { event: "payment.authorized", payload: { marker: "original" } };
+  const conflictingPayload = { event: "payment.authorized", payload: { marker: "changed" } };
+  global.fetch = async (url, options = {}) => {
+    claimCalls++;
+    assert.equal(rpcName(url), "srk_service_claim_razorpay_webhook_event");
+    const body = JSON.parse(options.body);
+    assert.equal(body.p_event_id, "evt_reused_header");
+    assert.match(body.p_payload_sha256, /^[a-f0-9]{64}$/);
+    return response(200, {
+      success: false,
+      payload_conflict: true,
+      should_process: false
+    });
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const result = await handler(event(conflictingPayload, "evt_reused_header"));
+  assert.equal(result.statusCode, 200);
+  assert.equal(JSON.parse(result.body).reconciled, false);
+  assert.equal(JSON.parse(result.body).reason, "event_id_payload_conflict");
+  assert.equal(claimCalls, 1);
+});
+
 test("acknowledges already processed duplicate without replaying business logic", async t => {
   let calls = 0;
   global.fetch = async (url) => {
