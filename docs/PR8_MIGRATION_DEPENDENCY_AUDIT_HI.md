@@ -1574,3 +1574,35 @@ The four root setup files were compared with the earliest numbered migrations an
 - `amount_paid` is an identified later migration addition, not a reason to hand-edit the historical root setup snapshot during this audit.
 
 **Status:** root-file and early-migration source comparison completed; baseline remains **NOT APPROVED**; no SQL parsed or executed; no database contacted; runtime replay tests remain **NOT RUN**.
+
+
+## 82. Later accounting trigger attachment and duplicate migration identity — 17 Nov 2026
+
+A follow-up source pass checked the late amount-column restoration, payout trigger attachment, final commission bridge, and repeated migration bodies.
+
+### Confirmed source-order edges
+
+| Required order | Source evidence | Replay implication |
+|---|---|---|
+| `20261114125844_restore_financial_audit_core_schema.sql` → `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` | The latter's `srk_create_electrician_payable()` reads the core payout and manual-payment tables and the immutable labour-bill table. | Finance core schema and its required bill/payment prerequisites must exist before this trigger function is installed or invoked. |
+| `20261116200000_restore_service_bookings_amount_paid.sql` → `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` | The trigger function reads `service_bookings.amount_paid`, and the trigger event list includes that column. | The column must exist before trigger attachment. |
+| `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` → `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` | The 17 Nov migration explicitly states that the payout ledger remains in its existing AFTER trigger; its AFTER parity validator reads the payout row written by that trigger. | The payout writer trigger must be attached before the parity validator can safely be exercised. |
+| `20261116200000_restore_service_bookings_amount_paid.sql` → `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` | The BEFORE commission trigger and reconciliation RPC read `amount_paid`; the event list includes it. | Amount-column lineage is a hard prerequisite for the commission/payment bridge. |
+
+The 17 Nov commission bridge uses a BEFORE trigger named `zz_srk_set_booking_commission_before_payout`, while the payout writer is an AFTER trigger named `srk_reconcile_electrician_payable`. The parity validator is an AFTER trigger named `zz_srk_validate_booking_commission_payout_parity`. PostgreSQL's alphabetical ordering within same-kind triggers supports the intended AFTER order by trigger name, but source names alone do not replace a PostgreSQL runtime fixture. The existing static test files check the intended trigger semantics; they have not been executed.
+
+### Duplicate migration body
+
+The current recursive Git tree contains two distinct migration paths with the same exact blob SHA:
+
+- `20261115120001_fix_multi_profile_electrician_labour_bill_access.sql`
+- `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql`
+- Shared blob SHA: `e3bdf2624c224322a6ac4c99f2ae6e77b1be4774`
+
+Both paths contain the same `CREATE OR REPLACE FUNCTION public.srk_electrician_get_labour_bill(uuid)` definition and grants. The second application may be functionally idempotent at the SQL-object level, but it is still a separate migration version and may appear as a second entry in migration history. Preserve both historical paths during this audit; do not rename, delete, squash, or silently omit either version. The replay manifest must retain both identities and document the repeated body.
+
+### Status and limits
+
+- The source-level payout trigger attachment is now located in `20261116210000`; this closes the earlier question of where the attachment is defined, not whether its behavior passes runtime tests.
+- The amount-paid restoration is explicit and idempotent, but the root bootstrap still needs owner approval.
+- No PostgreSQL parser, clean replay, upgrade replay, trigger execution, or accounting fixture was run. Runtime tests remain **NOT RUN**.
