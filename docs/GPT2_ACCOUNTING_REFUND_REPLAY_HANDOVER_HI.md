@@ -154,3 +154,6 @@ Feature-branch correction:
 This preserves the legacy state-transition contract without attaching the legacy trigger a second time. The payout ledger's historical values remain separate; this change only updates the booking commission field on qualifying trigger events.
 
 **Verification boundary:** source diffs were committed to Feature Branch. PostgreSQL runtime pgTAP has not been executed. Node CI result for these latest commits is pending.
+
+
+Latest CI tracking: workflow run `44032550519` was initially cancelled during the Node test step; its cancelled job was explicitly re-run. At the latest check, the rerun was `in_progress` (job `133867852566`). Do not treat it as passed until GitHub reports a completed success conclusion.
