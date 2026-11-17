@@ -4484,3 +4484,35 @@ Track A को Track B का सफल विकल्प न मानें�
 - बिना owner approval migration filenames rename/delete/reorder नहीं किए जाएँगे।
 
 **निष्कर्ष:** Local replay की तैयारी के लिए source evidence पर्याप्त रूप से संकलित है, लेकिन अभी executable clean-replay runbook स्वीकृत/सिद्ध नहीं। सबसे पहले canonical bootstrap baseline, duplicate version strategy, CLI config और pgTAP runner तय होने चाहिए। इस section में केवल Audit Report बदली गई; कोई workflow, migration, database या secret नहीं।
+
+
+### 153. Duplicate Migration Content and Version Collision — Resolution Design — 17 Nov 2026
+
+इस section में पहले पहचाने गए दो migration anomalies की exact source files दोबारा पढ़कर तुलना की गई है। यह static GitHub source review है; migration history या PostgreSQL catalog query नहीं की गई।
+
+#### 153.1 दो 20261109 Version Files — अलग काम, साझा prerequisite
+
+- `20261109_allow_quote_approval_booking_states.sql` (blob `ef4bf8b9b8a9a35bf3ddd94ea4614c7498fb1c6d`) मौजूदा `public.service_bookings` पर status और assigned-electrician constraints drop/recreate करती है।
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` (blob `014699d3190e45aacde4022ac7e7fa9ca4fec006`) उसी table पर quote/work columns और constraints जोड़ती है तथा commission/quote RPC definitions बनाती है।
+- दोनों files अलग SQL हैं; समान version prefix होने के कारण migration tooling/history में collision risk है। दूसरी file के functions और constraints को table तथा referenced columns/profiles के पहले से मौजूद होने की जरूरत है।
+- पहले file की status constraint सूची quote workflow states को स्वीकार करती है। दूसरे file की quote RPC इन्हीं states और columns का उपयोग करती है। इसलिए केवल filename sort देखकर सुरक्षित ordering सिद्ध नहीं होती।
+
+**Resolution design:** owner तय करे कि कौन-सा version prefix canonical होगा। उसके बाद migration history policy और clean-install sequence को disposable local database में जाँचने के लिए अलग change प्रस्तावित हो। बिना approval filename rename, timestamp change या migration-history repair नहीं।
+
+#### 153.2 समान Blob वाली दो Labour-Bill Access Migrations
+
+- `20261115120001_fix_multi_profile_electrician_labour_bill_access.sql` और `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql` दोनों का blob SHA `e3bdf2624c224322a6ac4c99f2ae6e77b1be4774` है।
+- दोनों exact same `srk_electrician_get_labour_bill(uuid)` function body तथा वही REVOKE/GRANT statements रखती हैं।
+- अलग version prefixes के साथ समान SQL replay करने पर function definition और grants दोबारा लागू होंगे; पर यह duplicate file migration history में अलग entry है। इसे harmless मानने से पहले CLI history और migration runner behavior की पुष्टि जरूरी है।
+
+**Resolution design:** दोनों entries को बिना history review के हटाएँ या rename न करें। पहले disposable database पर pinned Supabase CLI version में migration listing/history behavior का परीक्षण हो; उसके बाद owner-approved forward-only cleanup plan बने। Existing deployed databases की history को blind edit न करें।
+
+#### 153.3 Canonical Replay Order के लिए अभी आवश्यक प्रमाण
+
+1. Bootstrap baseline में `service_bookings`, `electrician_profiles` और quote-related prerequisites का exact schema snapshot।
+2. दोनों 20261109 files के लिए migration-tool version-prefix acceptance और recorded history behavior।
+3. दोनों labour-bill duplicate files के लिए migration history और idempotency result।
+4. Clean disposable DB पर एक migration failure के बाद stop/rollback behavior।
+5. Replay के बाद constraints, function signatures और grants का catalog-level comparison।
+
+**स्थिति:** Source-level collision evidence confirmed; clean replay compatibility, recorded migration history और live schema state unverified। इस section में केवल Audit Report बदली गई। कोई migration, application code, database, CI workflow या shared branch नहीं बदली गई।
