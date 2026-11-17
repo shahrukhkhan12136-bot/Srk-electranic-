@@ -224,3 +224,17 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - No second Support-bucket DELETE policy or broader Support-bucket SELECT policy was found in these inspected policy-defining migrations. The legacy setup/schema SQL files inspected do not define `storage.objects` policies.
 - Scope limitation: this was a source review of policy-defining/support-related migrations and setup/schema SQL, not a live `pg_policies` catalog dump. Therefore it does not prove that the deployed Supabase project has no manually-created or dashboard-added permissive policies. Full catalog verification and delete/read behavior remain runtime acceptance items.
 - No migration or application code changed in this audit; no PostgreSQL, pgTAP, Storage API, Node test suite, or CI was executed.
+
+
+
+### Customer + Electrician Support Staff assignment lifecycle review — 17 November 2026 (source-only)
+
+- Branch HEAD before review: `e5dc257186a601537860b26bc632b5b9ce22af64`.
+- `srk_has_admin_permission(text)` requires active Staff registry entry, exact JWT `session_id`, matching non-revoked tracked session, and a still-existing Auth session. It holds shared locks on Staff and tracked-session rows; suspension/revocation updates serialize against in-flight authorized work.
+- Main Admin assignment requires active Support-role Staff, locks Staff registry first, then the complaint/ticket row, then assignment row. Closed cases cannot be assigned.
+- Both Customer and Electrician Staff inboxes are restricted to currently assigned cases. Thread reads lock case then current assignment; replies and status changes use the same case-then-assignment lock order and recheck the current assignee.
+- Reply paths require both read and reply permissions, reject closed cases, validate message length, and record audit events. Status paths require read and update-status permissions, validate reason/status, reject closed cases, and record audit events. Staff cannot set a case to `closed`; only `in_review` or `resolved` is accepted.
+- Reassignment changes the single assignment row. Since Staff thread/list operations lock and check that row, a completed reassignment prevents the former Staff member from accessing subsequent reads/writes; already-returned data cannot be recalled.
+- No source-level defect was confirmed in these reviewed lifecycle paths. This does not prove concurrent behavior without runtime testing.
+- Test files currently declare: `admin_staff_rbac_foundation.test.sql` plan 70, `electrician_support_ticket_security.test.sql` plan 17, and `support_attachment_staff_access.test.sql` plan 11. These are declarations/source assertions only; none were executed in this review.
+- No code, migration, permissions, or production settings changed. PostgreSQL, pgTAP, Node, Storage API, and CI remain unexecuted.
