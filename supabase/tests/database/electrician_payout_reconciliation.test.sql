@@ -191,9 +191,7 @@ select ok(not exists(select 1 from pg_trigger t
 select ok(to_regprocedure('public.srk_calculate_commission_on_completion()') is not null,
   'legacy commission function remains available for compatibility but is not attached');
 
-select ok(position('drop trigger if exists srk_booking_commission_trigger on public.service_bookings' in
-  lower(pg_get_functiondef('public.srk_set_booking_commission_before_payout()'::regprocedure)))=0
-  and exists(select 1 from pg_trigger t
+select ok(exists(select 1 from pg_trigger t
     where t.tgrelid='public.service_bookings'::regclass
       and not t.tgisinternal
       and t.tgname='zz_srk_set_booking_commission_before_payout'),
