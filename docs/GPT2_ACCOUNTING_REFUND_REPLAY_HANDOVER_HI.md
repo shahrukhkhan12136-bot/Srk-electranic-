@@ -832,3 +832,37 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - Live schema, column types और trigger definitions केवल read-only SQL से inspect किए।
 - Feature migrations source files से पढ़ीं; कोई migration apply, DDL/DML, trigger/function alteration, production deployment, merge, payout/refund या mobile QA नहीं किया।
 - Next: exact status/assignment constraints + trigger function bodies की तुलना; KYC legacy/new event strategy और cancellation direct-call guard के owner/GPT-2 review के बाद ही integration proposal तैयार करना।
+
+
+## Section 29 — Live status constraints, protected-transition trigger और cancellation/payable interaction (2026-11-17)
+
+### 1. Main live constraints
+- `service_bookings_status_check` में वर्तमान allowed states हैं: `new, confirmed, assigned, inspection, awaiting_quote_approval, quote_approved, awaiting_work_start_approval, quote_rejected, in_progress, completed, cancelled`।
+- Assignment constraint assigned/work/legacy quote states में non-null `assigned_electrician_id` मांगता है।
+- Work-start approval constraint केवल `not_requested/pending/approved/rejected` स्वीकारता है।
+- Completion approval constraint में `not_requested/pending/approved/rejected/disputed/admin_approved/reopened` पहले से हैं।
+- Timer seconds constraint integer seconds को 0–604800 तक सीमित करता है।
+- Feature timer migration status/assignment constraints को replace करती है; rollout में existing rows और status values की preflight validation आवश्यक है।
+
+### 2. Existing Main protected work transition guard
+- Live `srk_guard_work_approval_transitions()` SECURITY DEFINER trigger function `srk_private.work_transition_authorizations` में current transaction, booking और target status का authorization खोजती है।
+- यह direct `in_progress/completed` status transition रोकती है; completion पर approved/admin_approved और start पर approved/reopened state भी मांगती है।
+- Feature timer migration इसी protected-authorization pattern को आगे बढ़ाती है और `srk_private.work_transition_authorizations` के साथ timer-specific authorization table रखती है। इसलिए यह “नई authorization प्रणाली पूरी तरह अलग है” वाला मामला नहीं; मौजूदा Main guard को final Feature RPC definitions और transaction-scoped authorization writes के साथ regression-test करना होगा।
+- Feature event capture trigger अतिरिक्त AFTER trigger होगा; existing BEFORE status guard और AFTER audit/status/payable triggers के साथ ordering/rollback behavior test करना बाकी है।
+
+### 3. Existing Main legacy payable gate — high-priority accounting compatibility
+- Live `trg_srk_create_electrician_payable` केवल तब payable बनाता/अपडेट करता है जब booking `payment_status='paid'`, `status='completed'`, `quote_status='approved'`, electrician assigned, payment verified हो और Razorpay/manual payment evidence मौजूद हो।
+- इसके बाद यह `service_charge + materials_amount` को quote total से मिलाता है और quote-based commission/payable लिखता है।
+- Feature नए category flow को quotation-free बताती है और immutable labour-only bill / separate material treatment पर आधारित है। यदि Feature की authoritative payout reconciliation migration इस legacy trigger को safely replace/branch नहीं करती, तो नया completed+paid booking legacy quote gate पार नहीं करेगा और payable छूट सकता है; दूसरी ओर legacy quote branch को हटाना पुराने NULL-category bookings को प्रभावित कर सकता है।
+- यह release blocker है: payout path को Main legacy bookings और नए category bookings के लिए अलग, idempotent, audited reconciliation के साथ प्रमाणित करना होगा। केवल trigger का नाम/मौजूदगी देखकर payout parity घोषित नहीं की जा सकती।
+
+### 4. Cancellation approval interaction
+- Feature Admin decision RPC Booking row पहले lock करता है, फिर pending request lock/revalidate करता है; approval पर transaction-local `srk.cancel_request_id` सेट करके booking को cancelled करता है।
+- Feature status guard में इसी approved request ID और booking relationship की जाँच के बाद cancellation allow करने का path है।
+- Main live cancellation trigger cancelled होने पर `job_offers` के offered/accepted records को cancelled करता है। यह cleanup रखना जरूरी है; cancellation integration के बाद trigger firing और rollback atomicity verify करनी होगी।
+- Main के पुराने direct-cancellation RPC/function को नए request-only path के साथ reconcile करना बाकी है; UI guard अकेला पर्याप्त नहीं।
+
+### 5. Verification / next actions
+- Live constraints और सात trigger functions की definitions read-only SQL से inspect कीं। कोई live row या schema नहीं बदला।
+- Feature timer, work-event, cancellation और payout migration source files inspect कीं; कोई migration apply नहीं की।
+- Next: Feature payout migration में payable trigger replacement/branch को पूरा पढ़कर exact diff निकालना; फिर legacy NULL-category vs new-category payment/completion/refund cases के static/pgTAP matrix तैयार करना। उसके बाद GPT-2/owner के साथ payout contract और cancellation direct-call guard पर निर्णय आवश्यक है।
