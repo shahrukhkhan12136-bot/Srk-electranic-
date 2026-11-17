@@ -1687,3 +1687,28 @@ The recursive Git tree was fetched again at the current Audit Branch head after 
 This is an inventory check only. It does not establish a canonical bootstrap, a complete dependency DAG, a safe version remapping, or successful clean/upgrade replay. Preserve both malformed historical paths and the duplicate-content version identities until the repository owner approves a migration-lineage plan.
 
 **Status:** current inventory rechecked; no migration path modified; PostgreSQL parse/replay and runtime tests remain **NOT RUN**.
+
+
+## 86. Push delivery chain and private-schema prerequisite — 17 Nov 2026
+
+The four durable push-delivery migrations were checked against their explicit preflight guards and the earlier schema creators.
+
+### Confirmed dependency chain
+
+1. `20261114160000_customer_selected_rate_tier_and_server_estimate.sql` creates schema `srk_private`; this is the required namespace prerequisite for later dispatch and push objects.
+2. `20261114210000_sequential_nearest_offer_dispatch.sql` creates `srk_private.srk_booking_offer_dispatch` and `srk_private.srk_booking_offer_candidates`; it also adds `job_offers.expires_at`.
+3. `20261114310000_electrician_self_availability.sql` adds `electrician_profiles.available_for_work`.
+4. `20261111020000_add_electrician_push_subscriptions.sql` creates `public.srk_push_subscriptions` with `id,user_id,endpoint,p256dh,auth`. It is earlier in filename order than the dispatch and availability migrations, but the outbox consumer is later.
+5. `20261115170001_durable_push_delivery_outbox.sql` has an explicit preflight for `srk_private`, the subscription table and its five required columns, `job_offers.expires_at`, and electrician identity/approval/availability columns. It then creates the durable outbox and offer-enqueue trigger.
+6. `20261115180001_push_subscription_delivery_ledger.sql` preflights the outbox and subscription IDs, then creates `srk_private.srk_push_subscription_deliveries` with unique `(outbox_id,subscription_id)`.
+7. `20261115190001_push_delivery_health_monitoring.sql` preflights both delivery tables before creating health and dead-letter recovery RPCs.
+8. `20261115200001_push_delivery_lease_fencing.sql` preflights both tables, then replaces the two finish RPC signatures to require attempt-count fencing tokens.
+
+### Additional source observations
+
+- The durable outbox's subscription preflight requires the exact five columns supplied by `20261111020000`; this edge is explicit even though the subscription table is created months of migration-order earlier.
+- The outbox preflight's `job_offers.expires_at` requirement points to `20261114210000`; its availability and identity requirements point to the profile migrations and `20261114310000`.
+- The per-subscription delivery ledger references both `srk_private.srk_push_delivery_outbox(id)` and `public.srk_push_subscriptions(id)`; its preflight guards the outbox and subscription identity columns.
+- The lease-fencing migration drops older function signatures and creates new signatures with an added attempt-count argument. Callers/workers must use the new signatures after this migration; function-signature consumers should be checked in application code before replay is declared complete.
+
+**Status:** push-delivery prerequisite chain source-verified; no trigger execution, worker invocation, SQL parse, or database replay performed; runtime tests remain **NOT RUN**.
