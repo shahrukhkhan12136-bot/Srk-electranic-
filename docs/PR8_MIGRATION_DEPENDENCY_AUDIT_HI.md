@@ -1483,3 +1483,30 @@ A fresh recursive Git tree read was performed at Audit Branch head `651c6ab8a664
 4. Generate a dependency-respecting replay manifest only after the canonical bootstrap, platform prerequisites, and legacy version mapping are approved. A sorted filename list is not a dependency graph.
 
 **Status:** full current-tree inventory verified from GitHub; no migration SQL changed, parsed or executed; no database contacted; runtime tests remain **NOT RUN**.
+
+## 79. Source-verified dependency edges for identity, receipts and accounting — 17 Nov 2026
+
+This section records only dependencies supported by migration comments, DDL, or direct object references. It is a partial edge list, not a certified complete DAG.
+
+### Explicit ordering edges
+
+| Required order | Evidence from source | Replay implication |
+|---|---|---|
+| `20261109000500_harden_electrician_profile_identity_linking.sql` → `20261109001000_add_google_maps_location_support.sql` | The first migration's opening comment says it must run before the second; the second writes both identity columns. | Preserve this order; the identity columns and synchronization guard must exist before the Admin approval function writes them. |
+| `20261109001000_add_google_maps_location_support.sql` → `20261109001500_unique_electrician_admin_identity_linking.sql` | The latter's opening comment says it runs after the former and replaces `srk_admin_review_application(uuid,text)`; it drops the earlier `RETURNS void` function and creates a `RETURNS jsonb` version. | Function signature replacement is order-sensitive; a replay manifest must not reverse these files. |
+| `20261114125844_restore_financial_audit_core_schema.sql` → `20261114190000_customer_receipt_immutable_labour_amount.sql` | The core migration says it precedes receipt consumers and creates `srk_booking_labour_bills`; the receipt RPC reads that table. | Core relation must exist before receipt RPC is exercised. |
+| `20261114125844_restore_financial_audit_core_schema.sql` → `20261114200000_customer_payment_refund_history_rpc.sql` | The core migration explicitly says it precedes history RPC consumers and creates the manual-payment/payout relations; the history RPC reads booking payment data and refund relations. | Core finance tables are prerequisites; later refund relations must also exist before runtime execution. |
+
+### Additional direct prerequisites (source-level)
+
+1. `20261108121115_add_customer_account_booking_access.sql` adds `service_bookings.customer_user_id` referencing `auth.users(id)`. Later customer-scoped receipt/history RPCs filter on this column. Therefore the canonical baseline must provide `service_bookings`, Auth schema/users, and the customer-account migration must precede those RPCs.
+2. `20261109001000_add_google_maps_location_support.sql` adds booking/application/profile coordinate columns and replaces the Admin application-review function. Its insert/update references `electrician_profiles.user_id`, `auth_user_id`, and application/profile fields; the starter schema and identity-linking chain are prerequisites.
+3. `20261114190000_customer_receipt_immutable_labour_amount.sql` reads both `service_bookings.customer_user_id` and `srk_booking_labour_bills`; the latter is created by the financial core migration. Receipt execution additionally depends on Auth identity and verified payment columns being present.
+4. `20261114360000_new_category_electrician_payout_reconciliation.sql` references `srk_booking_labour_bills`, `srk_manual_payment_entries`, `srk_electrician_payouts`, and cancellation-fee items. The financial core migration creates the first three; cancellation-fee schema must be installed before the payout function is exercised.
+5. `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` reads/writes the payout, manual-payment, wallet, refund and cancellation-fee accounting relations. It belongs after their schema and writer migrations; filename order alone is insufficient proof that all runtime dependencies are met.
+
+### Important runtime-vs-creation distinction
+
+Some PL/pgSQL function bodies contain references to relations introduced by later migrations. Successful function creation, if a parser permits deferred statement planning, would not prove that the function can execute at that point. The replay fixture must test both clean migration application and invocation of representative RPC/trigger paths after the full schema is present.
+
+**Status:** source-read dependency edges only. No full DAG has been certified; no PostgreSQL parser or database replay was run; no SQL was executed; runtime tests remain **NOT RUN**.
