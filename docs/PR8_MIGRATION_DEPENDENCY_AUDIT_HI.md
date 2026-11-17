@@ -4010,3 +4010,55 @@ Section 141 के stale-source निष्कर्ष को exact test struc
 - यह blueprint है, लागू code change नहीं।
 - Node tests, pgTAP, SQL parser, PostgreSQL replay या database query execute नहीं किए गए।
 - कोई migration, executable test, grant, trigger, CI, deployment, merge या Production state नहीं बदली गई।
+
+
+### 143. Refund Payout AFTER Trigger का Exact Transition Contract — 17 Nov 2026
+
+Final source `supabase/migrations/20261116210000_attach_electrician_payout_reconciliation_trigger.sql`, blob `b12da77471d510b55f798bd089597d866d79a133`, को trigger और दोनों refund RPC transitions के बीच cross-check किया गया।
+
+#### 143.1 Trigger की वास्तविक शर्तें
+
+- Function: `public.srk_create_electrician_payable()`.
+- Trigger: `srk_reconcile_electrician_payable`, `AFTER INSERT OR UPDATE OF` booking status, payment_status, electrician assignment, payment verification, amount, quote status, service/material amounts, commission rate, Razorpay payment ID और selected category.
+- जब `new.payment_status='refunded'` हो:
+  - उसी booking का `pending` payout `refunded` होता है।
+  - `blocked` payout केवल तब `refunded` होता है जब note exact `Razorpay refund pending` या `Manual refund processed` हो।
+  - बदले गए payout का note NULL किया जाता है।
+  - दूसरे कारण से blocked payout untouched रहता है।
+  - पहले से `paid` payout इस UPDATE predicate में शामिल नहीं है।
+
+#### 143.2 Manual Refund और Recovery Finalizer की trigger निर्भरता
+
+- Manual Refund पहले pending payout को `blocked / Manual refund processed` करता है, फिर booking को refunded करता है और payout को दोबारा पढ़कर refunded state की पुष्टि करता है।
+- Recovery Finalizer processed provider evidence, freshness, full amount और identity checks के बाद booking को refunded करता है; trigger exact refund-owned blocked hold बंद करता है; Finalizer payout state दोबारा पढ़ता है।
+- दोनों RPCs trigger के बाद स्वयं दूसरी payout transition write नहीं करते। Trigger result गलत हो तो exception उठाते हैं।
+- यह design duplicate competing payout writes कम करता है; transaction rollback का वास्तविक व्यवहार अभी runtime-tested नहीं है।
+
+#### 143.3 प्रस्तावित Trigger Regression Cases
+
+1. Pending payout + booking refunded → payout refunded, note NULL.
+2. Blocked + `Razorpay refund pending` → refunded, note NULL.
+3. Blocked + `Manual refund processed` → refunded, note NULL.
+4. Blocked + unrelated Admin note → blocked और note unchanged.
+5. Paid payout → paid ही रहे; Refund RPC को fail-closed होना चाहिए।
+6. कोई payout row न हो → booking/refund transition पर trigger कोई payout row न बनाए।
+7. Manual Refund trigger के बाद payout reread में refunded न मिले → exception और पूरे transaction की rollback assertion।
+8. Recovery Finalizer trigger के बाद payout reread में refunded न मिले → exception और पूरे transaction की rollback assertion।
+9. एक ही refund दोबारा finalize हो → केवल exact already-refunded + processed state idempotent replay हो।
+10. Refund के समय concurrent payout state change → consistent row-lock/terminal outcome; कोई paid payout refunded न बने।
+
+#### 143.4 Static coverage gap
+
+Reviewed `tests/admin-refund-and-staff-access.test.js` में final trigger की exact payout predicate, तीनों payout status branches, note clearing, या trigger event columns पर direct assertions नहीं मिले। मौजूदा refund Node tests mocks/source checks हैं; वे PostgreSQL trigger execution या rollback सिद्ध नहीं करते।
+
+इसलिए Section 142 के test blueprint में अलग trigger contract test जोड़ना चाहिए, जो final migration में:
+- `AFTER INSERT OR UPDATE OF payment_status` event को assert करे;
+- pending तथा दो exact blocked-note conditions assert करे;
+- unrelated blocked note और paid payout exclusion assert करे;
+- note NULL update assert करे।
+
+इन source assertions के बाद भी disposable PostgreSQL/pgTAP tests में persisted payout state और rollback verify करना आवश्यक है।
+
+#### 143.5 सीमा
+
+यह source-level contract review है। कोई Node test, pgTAP, SQL parser, PostgreSQL replay या database query execute नहीं किया गया। कोई migration, trigger, RPC, grant, executable test, CI, deployment, merge या Production state बदली नहीं गई।
