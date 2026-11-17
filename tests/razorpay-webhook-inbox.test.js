@@ -447,3 +447,68 @@ test("does not acknowledge webhook completion when its claim token was fenced by
   assert.equal(completionTokens.length, 2);
   assert.ok(completionTokens.every(token => token === "f23e4567-e89b-42d3-a456-426614174000"));
 });
+
+
+test("marks transient refund lookup failures retryable so a provider retry can reclaim the event", async t => {
+  const outcomes = [];
+  global.fetch = async (url, options = {}) => {
+    const target = String(url);
+    const fn = rpcName(target);
+    if (fn === "srk_service_claim_razorpay_webhook_event") {
+      return response(200, {
+        success: true, should_process: true,
+        claim_token: "923e4567-e89b-42d3-a456-426614174000"
+      });
+    }
+    if (target.includes("/rest/v1/srk_razorpay_refunds?")) {
+      return response(503, { message: "temporary database outage" });
+    }
+    if (fn === "srk_service_complete_razorpay_webhook_event") {
+      const body = JSON.parse(options.body);
+      outcomes.push(body);
+      return response(200, { success: true, state: "retryable" });
+    }
+    throw new Error("unexpected request " + target);
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const result = await handler(event({
+    event: "refund.processed",
+    payload: { refund: { entity: {
+      id: "rfnd_retryable123", payment_id: "pay_retryable123",
+      amount: 12500, currency: "INR", status: "processed"
+    } } }
+  }, "evt_refund_retryable"));
+  assert.equal(result.statusCode, 500);
+  assert.equal(outcomes.length, 1);
+  assert.equal(outcomes[0].p_outcome, "retryable");
+  assert.equal(outcomes[0].p_claim_token, "923e4567-e89b-42d3-a456-426614174000");
+  assert.match(outcomes[0].p_error, /Refund record lookup failed/);
+});
+
+test("returns retryable failure when durable inbox completion cannot be persisted", async t => {
+  const calls = [];
+  global.fetch = async (url, options = {}) => {
+    const fn = rpcName(url);
+    calls.push(fn);
+    if (fn === "srk_service_claim_razorpay_webhook_event") {
+      return response(200, {
+        success: true, should_process: true,
+        claim_token: "a23e4567-e89-42d3-a456-426614174000"
+      });
+    }
+    if (fn === "srk_service_complete_razorpay_webhook_event") {
+      const body = JSON.parse(options.body);
+      assert.equal(body.p_outcome, "ignored");
+      return response(503, { message: "temporary completion outage" });
+    }
+    throw new Error("unexpected request " + String(url));
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const result = await handler(event({ event: "payment.authorized" }, "evt_completion_outage"));
+  assert.equal(result.statusCode, 500);
+  assert.deepEqual(calls, [
+    "srk_service_claim_razorpay_webhook_event",
+    "srk_service_complete_razorpay_webhook_event",
+    "srk_service_complete_razorpay_webhook_event"
+  ]);
+});
