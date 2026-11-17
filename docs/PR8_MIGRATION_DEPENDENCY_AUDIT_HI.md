@@ -3702,3 +3702,57 @@ Admin UI सीधे तीन keys consume करता है:
 2. Refund finalizer का payout close अब trigger-mediated है; inspected source में full-amount/provider identity/locking guards बने हुए हैं।
 3. अगला सुरक्षित कदम final RPC के छह Route compatibility keys और Admin UI contract पर source-level correction proposal तथा targeted regression assertions तैयार करना है।
 4. कोई SQL execution, PostgreSQL replay, pgTAP run, database query/write, provider call, CI dispatch, deployment, merge या Production परिवर्तन नहीं किया गया।
+
+
+### 137. Route compatibility correction proposal और Refund Trigger regression matrix — 17 Nov 2026
+
+यह section केवल प्रस्ताव/acceptance matrix है; production migration या test file में बदलाव नहीं किया गया।
+
+#### 137.1 नया महत्वपूर्ण static test conflict
+
+मौजूदा pgTAP file `supabase/tests/database/durable_razorpay_refund_recovery_evidence.test.sql` (blob `370b2c5e460d1a9abfbbe53371a48f9e68788788`) के अंत में दो assertions अंतिम `srk_admin_get_booking_accounting_reconciliation(uuid)` definition में:
+- `route_transfer_count`
+- `route_ledger_retired_no_route_transfers`
+की उपस्थिति माँगते हैं।
+
+लेकिन अंतिम migration `20261117010000` (blob `68189051090a51bef26a98997caf103b62ed070c`) के function body में कोई `route_*` key नहीं है। इसलिए current migration chain के final catalog पर यह pgTAP assertion अपेक्षित रूप से fail हो सकती है। यह static source contradiction है; test चलाया नहीं गया है।
+
+इसी test में अगली assertion `route_provider_settlement_verified` और false का अस्तित्व माँगती है; वह भी अंतिम RPC definition में नहीं है। इसे केवल UI fallback से पूरा नहीं माना जा सकता, क्योंकि pgTAP सीधे `pg_get_functiondef` जाँचता है।
+
+#### 137.2 Route API के लिए प्रस्तावित न्यूनतम सुधार
+
+Owner की स्वीकृति के बाद अंतिम RPC JSON में स्पष्ट retired compatibility contract जोड़ने का प्रस्ताव:
+- `route_transfer_count = 0`
+- `route_electrician_transfer_paise = 0`
+- `route_platform_commission_transfer_paise = 0`
+- `route_transfers = []`
+- `route_provider_settlement_verified = false`
+- `route_settlement_evidence_status = 'route_ledger_retired_no_route_transfers'`
+
+इन keys को केवल compatibility fields के रूप में लौटाया जाए। किसी internal ledger status को bank/provider settlement प्रमाण न कहा जाए। यदि owner Route section को पूरी तरह हटाना चाहता है, तो वैकल्पिक रास्ता Admin UI और pgTAP/Node contract tests को एक ही नए contract के अनुरूप संशोधित करना है। दोनों में से निर्णय आवश्यक है; अभी कोई विकल्प लागू नहीं किया गया।
+
+#### 137.3 Targeted regression acceptance matrix — Refund Trigger
+
+Disposable PostgreSQL में बाद में चलाए जाने वाले tests के लिए न्यूनतम cases:
+
+1. Processed provider evidence + पूरा booking amount + blocked payout note `Razorpay refund pending` → booking refunded और payout refunded.
+2. Processed evidence + पूरा amount + blocked payout note `Manual refund processed` → payout refunded.
+3. Blocked payout पर unrelated Admin note → trigger payout को refunded न करे; finalizer fail closed करे.
+4. Payout पहले से paid → finalizer reject करे; payout state अपरिवर्तित रहे.
+5. Provider evidence status processed नहीं → finalizer reject करे.
+6. Evidence 15 मिनट से पुराना → finalizer reject करे.
+7. Evidence amount booking collection से कम/अधिक → finalizer reject करे.
+8. Payment ID, currency या refund record identity mismatch → finalizer reject करे.
+9. पहले से refunded booking + processed refund + payout refunded → idempotent replay success.
+10. पहले से refunded booking + payout blocked/pending/paid या कोई असंगत state → replay reject/manual reconciliation.
+11. Trigger के बाद payout row अपेक्षित state में न हो → finalizer exception; पूरी transaction rollback की पुष्टि.
+12. एक ही booking पर concurrent refund finalization attempts → केवल एक consistent terminal accounting state; duplicate payout transition नहीं.
+
+हर test में केवल exception text नहीं, transaction के बाद booking, refund, request और payout rows की persisted state भी जाँची जाए। खास तौर पर rollback case में refund/request/booking updates और trigger-side payout mutation सभी rollback होने चाहिए।
+
+#### 137.4 Scope और execution gate
+
+- यह acceptance matrix है, executed test report नहीं।
+- Existing Node test `tests/admin-route-settlement-warning.test.js` (blob `66ab538e2492b97c957622ed984ce8d7a3bb43ba`) वर्तमान में पुरानी Route-aware migration `20261115170000` पढ़ता है; इसे अंतिम RPC contract से जोड़ने वाला test प्रस्तावित है।
+- कोई test file, migration, function, trigger, RLS या grant नहीं बदला गया।
+- कोई SQL execution, PostgreSQL replay, pgTAP/Node test run, database query/write, provider call, CI dispatch, deployment, merge या Production action नहीं किया गया।
