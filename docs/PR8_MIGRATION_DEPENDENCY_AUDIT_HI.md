@@ -2187,3 +2187,47 @@ Owner-approved isolated PostgreSQL baseline उपलब्ध होने प�
 - Behavioral payment/payout/refund matrix: **not present in these two files; required**.
 - Isolated DB baseline और clean migration replay: **अब भी prerequisite**.
 - कोई SQL source, Feature Branch, Main, Supabase या Production बदलाव इस review में नहीं किया गया।
+
+
+## 99. Manual payment NULL-method evidence can pass payout writer — static source finding — 17 Nov 2026
+
+### 99.1 संबंधित source और blob
+
+- Payout writer: `supabase/migrations/20261114360000_new_category_electrician_payout_reconciliation.sql` — blob `5412f1c9cc628f919aa915dd82cf4bc80cb048d3`.
+- Trigger re-attachment / same writer body: `supabase/migrations/20261116210000_attach_electrician_payout_reconciliation_trigger.sql` — blob `b12da77471d510b55f798bd089597d866d79a133`.
+- BEFORE commission + payment-method guard: `supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` — blob `68189051090a51bef26a98997caf103b62ed070c`.
+- Manual-payment bridge test: `supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql` — blob `7db3d4e5bec75100acc6f892bbcdfe7f29f0f3b7`.
+- Payout reconciliation test: `supabase/tests/database/electrician_payout_reconciliation.test.sql` — blob `88184e2e1fb386f16d6bd339556a15a5b87275d2`.
+
+### 99.2 Exact control-flow gap
+
+Payout writer `srk_create_electrician_payable()` accepts manual evidence when a row exists for the booking and its amount matches `amount_paid`. Its EXISTS condition does **not** require `payment_method` to be non-NULL or equal to the booking's `payment_method`.
+
+The BEFORE trigger `srk_set_booking_commission_before_payout()` has two relevant paths:
+- It raises `MANUAL_PAYMENT_METHOD_MISMATCH` when a same-amount manual row has a method distinct from the booking method.
+- For commission finalization, it only treats manual evidence as valid when both methods are non-NULL and normalized-equal; otherwise it returns NEW without setting commission.
+
+If both the manual evidence method and booking method are NULL, `IS DISTINCT FROM` is false, so the mismatch exception does not fire. The valid-evidence EXISTS is also false because of the explicit non-NULL predicates. However, the AFTER payout writer's amount-only EXISTS is true. Thus the payout writer can proceed despite the absence of a valid method match. Depending on prior commission state and the parity validator, the later AFTER parity check may reject the transaction; that does not turn the payout writer's own evidence predicate into a fail-closed method check.
+
+If one method is NULL and the other is non-NULL, the BEFORE mismatch guard should raise for a same-amount manual row. The specific uncovered case is both NULL (and any writer invocation not preceded by the intended BEFORE trigger, which must be checked against the actual installed schema).
+
+### 99.3 Required correction and tests
+
+Recommended correction: make the payout writer's manual-evidence predicate identical to the commission trigger/reconciliation contract:
+- evidence method IS NOT NULL;
+- booking method IS NOT NULL;
+- `lower(btrim(e.payment_method)) = lower(btrim(new.payment_method))`;
+- amount matches the verified booking amount.
+
+Do not silently treat missing method as valid. Decide explicitly whether a NULL method is rejected with a stable exception or leaves payment unverified and blocks payout creation.
+
+Add behavioral cases for (a) both methods NULL, (b) evidence method NULL / booking method set, (c) evidence method set / booking method NULL, (d) normalized equal values, and (e) normalized unequal values. Assert payout row absence/presence, commission parity, and full transaction rollback.
+
+Existing tests assert that the BEFORE function contains a mismatch token and that reconciliation contains a method comparison, but do not execute these NULL combinations. Section 98 records the broader static-vs-runtime limitation.
+
+### 99.4 Confidence and gate
+
+- Static control-flow gap in payout writer predicate: **confirmed by source**.
+- Whether the full installed trigger chain always prevents a committed inconsistent payout: **not runtime verified**.
+- Fix: **not applied**; requires isolated PostgreSQL test and owner-approved source correction.
+- No Feature Branch, Main, Supabase, Production or payment data changed.
