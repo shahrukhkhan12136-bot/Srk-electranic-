@@ -112,7 +112,8 @@ exports.handler=async event=>{
   }
  }catch(error){
   console.error("Razorpay refund recovery failed:",error?.status||error?.name||"Unknown");
-  if(error?.code==="REFUND_RECOVERY_DEADLINE_REACHED"&&!evidenceWriteStarted)return json(202,{success:false,evidence_saved:false,accounting_finalized:false,status:"deadline_before_evidence",safe_to_retry:false,error:"सुरक्षित समय-बजट समाप्त होने से पहले Provider जाँच पूरी नहीं हुई। कोई Evidence या Accounting बदलाव शुरू नहीं किया गया; नया refund न बनाएँ। बाद में Admin जाँच दोहराएँ।"});\n  if(evidenceWriteStarted)return json(202,{success:false,evidence_saved:"unknown",accounting_finalized:false,status:"evidence_write_outcome_unknown",safe_to_retry:false,error:"Evidence save अनुरोध भेजा गया था, लेकिन उसका परिणाम verify नहीं हुआ। Database में audit रिकॉर्ड सुरक्षित हुआ हो सकता है; नया refund न बनाएँ और मौजूदा recovery audit जाँचें।"});
+  if(error?.code==="REFUND_RECOVERY_DEADLINE_REACHED"&&!evidenceWriteStarted)return json(202,{success:false,evidence_saved:false,accounting_finalized:false,status:"deadline_before_evidence",safe_to_retry:false,error:"सुरक्षित समय-बजट समाप्त होने से पहले Provider जाँच पूरी नहीं हुई। कोई Evidence या Accounting बदलाव शुरू नहीं किया गया; नया refund न बनाएँ। बाद में Admin जाँच दोहराएँ।"});
+  if(evidenceWriteStarted)return json(202,{success:false,evidence_saved:"unknown",accounting_finalized:false,status:"evidence_write_outcome_unknown",safe_to_retry:false,error:"Evidence save अनुरोध भेजा गया था, लेकिन उसका परिणाम verify नहीं हुआ। Database में audit रिकॉर्ड सुरक्षित हुआ हो सकता है; नया refund न बनाएँ और मौजूदा recovery audit जाँचें।"});
   return json(502,{success:false,evidence_saved:false,safe_to_retry:false,error:"Refund recovery अभी पूरी नहीं हो सकी। Provider या database स्थिति verify नहीं हुई; कोई नया refund/retry न करें."});
  }
 };
