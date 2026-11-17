@@ -127,3 +127,12 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - The starter `SUPABASE_SCHEMA.sql` defines that default as 15.00, and authenticated direct UPDATE of `commission_rate` is revoked by `20261109003000_secure_commission_reporting.sql` / later booking write closure.
 - However, the payout and commission trigger functions calculate from the stored `new.commission_rate` and only reject null/out-of-range values; they do not themselves require exactly 15.00. The canonical base-schema default and any service-role write path are not proven by this source review.
 - Treat exact 15% enforcement for newly created bookings as a source-level hardening item in the payout/commission workstream; preserve historical booking commission snapshots. No code or database change was made for this finding in this review.
+
+
+### Fixed commission guard — implementation/source status (17 November 2026)
+
+- Implemented in source migration `20261117130000_enforce_fixed_new_booking_commission_rate.sql`: new booking INSERTs are forced to `commission_rate = 15.00`, even if the caller supplies another value.
+- Attempts to change `commission_rate` on an existing booking fail with `BOOKING_COMMISSION_RATE_IS_IMMUTABLE`; the migration does not rewrite historical booking snapshots.
+- The existing commission amount calculation remains based on labour/service amount only; material amount is not included in the commission base.
+- Added three pgTAP catalog/source assertions and increased `electrician_payout_reconciliation.test.sql` plan from 46 to 49. Test source is updated, but **no pgTAP execution has occurred**; all runtime acceptance cases remain Pending.
+- The positive behavioral B5 case (commission-only update with matching payout) remains open and separate from these three catalog assertions.
