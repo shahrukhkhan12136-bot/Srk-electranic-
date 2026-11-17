@@ -2986,3 +2986,45 @@ Section 121 के बाद Audit Branch पर Main Admin registry के setu
 - Cross-registry DB constraint in inspected bootstrap schema: **not found**.
 - Production execution/current live state: **unknown; not queried**.
 - No SQL/schema/RPC/permission change, no database query, no invite, no CI/deployment/merge.
+
+
+## 123. दोनों Registry के वास्तविक source-level write points — 17 Nov 2026
+
+Section 122 के बाद Audit Branch पर Staff registry migration और invitation Edge Function के exact write points पुनः पढ़े गए।
+
+### 123.1 Staff registry का write point
+
+- Migration `supabase/migrations/20261114390000_admin_staff_rbac_foundation.sql` (blob `5aa0f9058a56d735455f2a9944c861e8312ddb89`) में `srk_admin_staff_register_invited_user(uuid,text,uuid)` ही inspected staff-invite registration function है।
+- Function `p_staff_user_id` और `p_actor_admin_id` non-NULL जाँचता है, actor को `srk_admin_users` में सत्यापित करता है, और display name validate करता है।
+- इसके बाद यह सीधे `srk_admin_staff` में Support / invited row insert करता है। Target `p_staff_user_id` के `srk_admin_users` में पहले से होने की जाँच नहीं करता।
+- Function पर PUBLIC, anon और authenticated execute revoke है; केवल `service_role` को execute grant है।
+- Migration में `srk_admin_staff` पर browser roles की direct table privileges revoke हैं। इससे browser direct writes बंद करने का intent दिखता है, लेकिन privileged/service-role और future maintenance write paths के लिए cross-table invariant फिर भी आवश्यक है।
+
+### 123.2 Edge Function का caller
+
+- `supabase/functions/admin-staff-management/index.ts` (blob `c783989ca7142fce9d88270286bc916a66d22298`) Bearer token से Auth user सत्यापित करता है, `is_srk_admin()` से inviter authorize करता है, और role को server-side `support` पर स्थिर रखता है।
+- Function पहले `inviteUserByEmail` करता है और फिर ऊपर दिए service-role RPC को target UUID देता है।
+- Edge Function में invite से पहले target email/UUID को `srk_admin_users` से मिलाने की जाँच नहीं है।
+- RPC fail होने पर Edge Function Auth user cleanup का प्रयास करता है; invitation email पहले भेजी जा चुकी हो सकती है। Cleanup fail होने पर manual Main Admin review की चेतावनी देता है।
+- इसलिए invitation flow में duplicate/partial-side-effect handling मौजूद है, लेकिन Main Admin target exclusion का प्रमाण नहीं है।
+
+### 123.3 Main Admin registry और combined write coverage
+
+- Main Admin enrollment का documented SQL insert Section 122 में दर्ज है; inspected setup/bootstrap schema में cross-table constraint नहीं मिला।
+- इस source pass में Staff registration का एक explicit SQL insert point और Main Admin का एक documented manual enrollment point पहचाना गया। यह पूरे repository, deployed Edge Functions, SQL Editor history या external service-role scripts की exhaustive inventory होने का दावा नहीं है।
+- चुना जाने वाला DB-level invariant दोनों tables पर लागू होना चाहिए और INSERT के साथ identity-changing UPDATE तथा service-role/owner maintenance writes को भी cover करना चाहिए। केवल Edge Function pre-check या केवल registration RPC pre-check पर्याप्त नहीं है।
+
+### 123.4 सुरक्षित अगला acceptance gate
+
+1. Owner/DBA पहले तय करे: canonical identity registry या दोनों tables पर race-safe DB guard.
+2. Migration में existing overlap detection हो; स्वतः किसी identity को promote/demote न किया जाए।
+3. दोनों दिशाओं के inserts, UPDATE, concurrent inserts और service-role path के isolated PostgreSQL/pgTAP tests हों।
+4. Invite failure/cleanup और पहले से मौजूद Auth identity के retry behavior का अलग परीक्षण हो।
+
+### Status
+
+- Staff registration function target Main Admin exclusion absent: **source-confirmed**.
+- Edge Function pre-invite target exclusion absent: **source-confirmed**.
+- Main Admin manual enrollment command: **Section 122 में source-confirmed**.
+- Repository-wide / Production writer inventory: **not established**.
+- No SQL/schema/RPC/Edge Function change, no DB query, no invitation, no pgTAP/CI/deployment/merge.
