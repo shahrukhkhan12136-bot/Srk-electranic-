@@ -4240,3 +4240,53 @@ Current Audit Branch listing में ये अंतिम migrations मौ�
 Fresh GitHub listing ने 89 files / 88 version prefixes की inventory की पुष्टि की और यह भी दिखाया कि latest accounting bridge migration chain में शामिल है। सबसे स्पष्ट replay blocker अभी भी duplicate `20261109` version prefix है। Full dependency graph और blank-database replay अभी **Not Run / Unverified** हैं।
 
 कोई migration file, filename, package script, workflow या test edit नहीं किया गया। कोई SQL, database, CI, deployment, merge या Production operation नहीं हुआ।
+
+
+### 148. Migration Dependency Graph — प्रमुख Producer/Consumer Edges — 17 Nov 2026
+
+इस चरण में current Audit Branch migration sources की static समीक्षा के आधार पर मुख्य dependency edges लिखे गए हैं। यह पूर्ण machine-generated graph नहीं है; कोई SQL parser, migration replay या database catalog query नहीं चलाई गई।
+
+#### 148.1 Core Booking और Quote Workflow
+
+- Quote/state migrations `20261109_*` सीधे `public.service_bookings` को ALTER करती हैं; इसलिए `service_bookings` और उससे जुड़े booking identity columns इस chain से पहले उपलब्ध होने चाहिए।
+- Quote workflow migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` अतिरिक्त रूप से `electrician_profiles`, `job_offers`, `auth.uid()` और booking columns/functions पर निर्भर है।
+- अतः यह migration किसी blank PostgreSQL database पर अकेले लागू नहीं हो सकती; application base schema तथा Supabase Auth schema prerequisites हैं।
+
+#### 148.2 Finance Base और उसके Consumers
+
+- `20261114125844_restore_financial_audit_core_schema.sql` finance tables बनाता है, लेकिन FK के लिए पहले से `service_bookings`, `electrician_profiles` और `auth.users` चाहिए।
+- यह base `srk_booking_labour_bills`, `srk_manual_payment_entries`, `srk_electrician_payouts`, `srk_admin_audit_events`, `srk_razorpay_refunds`, `srk_booking_refund_requests` और `srk_manual_refund_entries` उपलब्ध कराता है।
+- `20261114190000_customer_receipt_immutable_labour_amount.sql` तथा `20261114200000_customer_payment_refund_history_rpc.sql` इस finance base के बाद आने चाहिए; base migration स्वयं इसी consumer ordering की टिप्पणी देती है।
+- बाद की refund/recovery migrations को refund tables, payout table, booking/payment columns और Admin authorization helper उपलब्ध होने चाहिए।
+
+#### 148.3 Work, Cancellation और Refund Chain
+
+- `20261114250000` work-dispute/history relations और `20261114260000` work-start/event guard का क्रमिक consumer है।
+- `20261114270000` cancellation request/decision foundation के बाद `20261114280000` cancellation fee/debt/wallet accounting तथा `20261114290000` full refund/wallet reversal chain आती है।
+- Refund request/review chain: `20261115100000` → `20261115110000` → `20261115120000`; इसके बाद manual refund completion और full-amount recovery/reconcile hardening migrations आती हैं।
+- यह ordering filename और source references से समर्थित है; transaction-level replay success अभी प्रमाणित नहीं है।
+
+#### 148.4 Staff RBAC Bootstrap Dependency
+
+- `20261114390000_admin_staff_rbac_foundation.sql` Main Admin helper `public.is_srk_admin()` को call करता है, लेकिन यह migration स्वयं helper definition का bootstrap नहीं देती।
+- पूर्व audit में `COMPLETE_DATABASE_SETUP.sql` और `ADMIN_EMAIL_LOGIN_SETUP.sql` में helper definitions/ordering देखे गए थे; ये root setup scripts timestamped migration chain के बाहर हैं।
+- इसलिए migration-only clean replay में helper पहले से मौजूद होने का प्रमाण नहीं है। किसी external bootstrap को documented, versioned prerequisite बनाना होगा या migration chain को self-contained करना होगा।
+- इस dependency को केवल filename sorting से हल नहीं किया जा सकता।
+
+#### 148.5 Route, Push और अंतिम Accounting Consumers
+
+- Route ledger foundation `20261109020000` के बाद retirement `20261115092149` और बाद के Route reconciliation/settlement migrations का क्रम है; final RPC और UI contract drift अलग से unresolved है।
+- Push chain: subscription base `20261111020000` → durable outbox `20261115170001` → delivery ledger `20261115180001` → health monitoring `20261115190001` → lease fencing `20261115200001`।
+- अंतिम payout trigger `20261116210000` finance payout table और booking commission/payment fields पर निर्भर है।
+- अंतिम Accounting Bridge `20261117010000` finance tables के साथ cancellation fee items/ledger, wallet ledger, refund request, provider refund और payout relations पर निर्भर है; यह chain के अनेक पूर्ववर्ती domains का consumer है।
+
+#### 148.6 Replay Blockers और अगला सुरक्षित कदम
+
+1. Duplicate `20261109` version prefix का resolution अभी भी आवश्यक है।
+2. External base schema/bootstrap की exact source, order और reproducible provisioning contract अभी unresolved है।
+3. Finance base की FK prerequisites और दो labour-bill definitions की catalog-level parity अभी runtime में verify नहीं हुई।
+4. `is_srk_admin()` bootstrap gap को migration-only chain में स्पष्ट रूप से resolve करना होगा।
+5. Route ledger retirement के बाद कौन-सा canonical Route schema/function contract रहेगा, owner decision आवश्यक है।
+6. प्रत्येक migration के लिए created/altered object और referenced object की machine-readable dependency matrix बनानी होगी; उसके बाद ही deterministic clean replay plan freeze किया जा सकता है।
+
+**निष्कर्ष:** मुख्य dependency edges पहचाने गए हैं, लेकिन यह अभी partial source-level graph है। पूर्ण 89-file dependency graph, blank-database replay और pgTAP execution **Not Run / Unverified** हैं। कोई executable file या database state नहीं बदली गई।
