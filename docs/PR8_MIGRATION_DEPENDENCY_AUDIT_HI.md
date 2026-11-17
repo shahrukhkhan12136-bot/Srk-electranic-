@@ -5782,3 +5782,41 @@ Source में Auth event generation counter तथा हर प्रमु�
 यह **source-level संभावित cross-account stale-data exposure** है, live exploit या runtime-confirmed leak नहीं। RPC authorization और assignment checks migration में मौजूद हैं; लेकिन browser rendering layer में inbox/thread responses के लिए Auth-generation guard अनुपस्थित दिखता है। इसे UI privacy concern के रूप में प्राथमिकता से ठीक करके browser regression test करना चाहिए।
 
 केवल GitHub source inspection और documentation update किया गया। कोई application source, migration, permission या database setting नहीं बदली गई; कोई browser/Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+## 185. Support Reply In-Flight Lifecycle — Account Switch और Global Busy Flag
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** `admin.html` के customer/electrician Support reply handlers, shared busy state और logout lifecycle का static review।
+
+### 1. Reply Handler का Auth/User Guard
+
+- `sendStaffCustomerReply()` और `sendStaffElectricianReply()` में request से पहले selected case ID, text field और body capture होते हैं।
+- RPC response आने के बाद handlers Auth generation, current user ID, current portal mode या selected case ID की दोबारा जाँच नहीं करते।
+- Success पर वे shared reply field खाली करते हैं, success status लिखते हैं और captured case की thread फिर खोलते हैं। यदि request pending रहते account switch हो, तो पुराने account का completion नए account के shared UI को बदल सकता है।
+- RPC server-side permission और assignment checks अलग सुरक्षा परत हैं; इस UI finding से यह निष्कर्ष नहीं निकलता कि पुराना Staff किसी दूसरे Staff के case में reply भेज सकता है।
+
+### 2. Global Busy Flag
+
+- Customer और electrician replies एक ही global `staffSupportReplyBusy` boolean साझा करते हैं।
+- पुराने account की reply pending रहते नए account का reply handler तुरंत return कर सकता है। पुराने request का `finally` flag false करता है, पर नए account के reply को अपने-आप retry नहीं करता।
+- यह cross-account UI availability / stale-completion concern है; वास्तविक संदेश किस identity से स्वीकार होगा, यह server authorization और request के समय उपलब्ध Auth session पर निर्भर है और यहाँ runtime में जाँचा नहीं गया।
+
+### 3. Logout और Account Transition
+
+- Explicit logout `sb.auth.signOut()` करता है; Auth listener `adminAuthRun` बढ़ाता है और user state बदलता है।
+- लेकिन inspected reply handlers उस generation को capture/compare नहीं करते, और logout code Staff reply fields, selected thread IDs या pending UI state को स्पष्ट रूप से invalidate/clear नहीं करता।
+- इसलिए late completion पुराने status/field/thread को नए session के DOM में बदल सकती है। यह पहले Section 184 में दर्ज inbox/thread stale-response concern को reply actions तक बढ़ाता है।
+
+### 4. सुझाया गया सुरक्षित सुधार
+
+- हर reply request के साथ `adminAuthRun`, user ID और selected case ID capture करें; response और `finally` में केवल उसी generation के UI/busy state को बदलें।
+- Busy state को per-account/per-request रखें; account transition पर पुराने handler को UI update से रोकें और reply panels/selected IDs साफ़ करें।
+- Server-side permission, current assignment, case-open और actor checks बनाए रखें; client-side guard server authorization का विकल्प नहीं है।
+- Browser regression test में reply submit के तुरंत बाद logout/account switch, दो Staff के बीच rapid switch, customer बनाम electrician reply overlap, तथा network delay/error शामिल हों।
+
+### 5. Verdict और Evidence Boundary
+
+यह **संभावित stale UI completion और reply availability risk** है, runtime-confirmed unauthorized message या data breach नहीं। Source review में reply completion के लिए Auth-generation guard नहीं मिला। इसे Section 184 के साथ एक ही account-transition regression suite में शामिल करना चाहिए।
+
+केवल GitHub source inspection और इस documentation section का update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई browser/Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
