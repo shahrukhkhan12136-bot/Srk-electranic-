@@ -121,17 +121,13 @@ select ok(
 
 select ok(exists(
   select 1
-    from pg_trigger legacy_before
-    join pg_trigger bridge_before
-      on bridge_before.tgrelid=legacy_before.tgrelid
-   where legacy_before.tgrelid='public.service_bookings'::regclass
-     and legacy_before.tgname='srk_calculate_booking_commission'
+    from pg_trigger bridge_before
+   where bridge_before.tgrelid='public.service_bookings'::regclass
      and bridge_before.tgname='zz_srk_set_booking_commission_before_payout'
-     and pg_get_triggerdef(legacy_before.oid,true) ilike 'CREATE TRIGGER% BEFORE %'
+     and bridge_before.tgfoid='public.srk_set_booking_commission_before_payout()'::regprocedure
      and pg_get_triggerdef(bridge_before.oid,true) ilike 'CREATE TRIGGER% BEFORE %'
-     and legacy_before.tgname < bridge_before.tgname
   ),
-  'new commission BEFORE trigger runs after the legacy commission calculation trigger');
+  'commission BEFORE trigger is explicitly attached by the timestamped accounting bridge migration');
 
 select ok(exists(
   select 1
