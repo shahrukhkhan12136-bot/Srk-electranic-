@@ -866,3 +866,35 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - Live constraints और सात trigger functions की definitions read-only SQL से inspect कीं। कोई live row या schema नहीं बदला।
 - Feature timer, work-event, cancellation और payout migration source files inspect कीं; कोई migration apply नहीं की।
 - Next: Feature payout migration में payable trigger replacement/branch को पूरा पढ़कर exact diff निकालना; फिर legacy NULL-category vs new-category payment/completion/refund cases के static/pgTAP matrix तैयार करना। उसके बाद GPT-2/owner के साथ payout contract और cancellation direct-call guard पर निर्णय आवश्यक है।
+
+
+## Section 30 — Feature payout reconciliation migration: legacy parity, trigger coverage और remaining blockers (2026-11-17)
+
+### 1. Main vs Feature payable function
+- Main live `srk_create_electrician_payable()` अभी legacy-only है: `payment_status='paid'`, `status='completed'`, `quote_status='approved'`, assignment, payment verification और Razorpay/manual payment evidence के बाद quote service+materials से payout बनाता है।
+- Feature migration `20261114360000_new_category_electrician_payout_reconciliation.sql` (blob SHA `bc657107350b43a392b7883238be1b3e00a02ee2`) इस legacy path को बनाए रखती है और `selected_category IS NOT NULL` पर immutable labour bill path जोड़ती है।
+- New-category branch bill का electrician assignment और positive labour amount verify करती है; amount_paid को labour + reserved/settled cancellation fee items से मिलाती है; electrician gross service और commission केवल labour पर calculate होते हैं, cancellation fees electrician earnings में शामिल नहीं होतीं।
+- Legacy NULL-category branch अब भी approved quote और service+materials total पर निर्भर है। इस प्रकार source migration दोनों paths अलग रखती है; Main live में यह Feature implementation अभी लागू नहीं है।
+
+### 2. Payout settlement hard checks
+- Feature `srk_admin_mark_electrician_payout_paid(uuid,text,text,text)` Admin-only है; UPI/Bank method और valid reference मांगती है; Booking-first फिर Payout row lock करती है।
+- New-category payout में bill/booking electrician match, completed+paid+verified payment, exact labour+settled fee total, Razorpay/manual payment evidence, no reserved fee items और ledger gross/materials/commission/payable parity check होती है।
+- Legacy branch approved quote, exact payment, electrician assignment और ledger calculations re-check करती है।
+- यह source-level contract है; live runtime behavior नहीं। Manual payout ही वर्तमान owner-approved payout mode है; Razorpay Route retired है।
+
+### 3. Trigger coverage gap to resolve before rollout
+- Main live payout trigger अभी `service_bookings` पर INSERT या UPDATE OF `payment_status,status,quote_status,service_charge,materials_amount,assigned_electrician_id,payment_verified_at,razorpay_payment_id,amount_paid` पर fire होता है।
+- Feature migration trigger list वही fields रखती है; इसमें `selected_category` और `commission_rate` नहीं हैं।
+- इसलिए यदि इन दो fields में से किसी का standalone correction/update payout eligibility या commission बदलता है, trigger ledger को स्वतः recalculate नहीं करेगा। यह तभी सुरक्षित है जब upstream workflow इन्हें payable trigger से पहले immutable/final कर दे; उस invariant को migration chain और constraints से प्रमाणित करना बाकी है।
+- Labour bill table Main live catalog में मौजूद नहीं मिली (column inventory query ने zero rows लौटाईं); Feature payout function उसे अनिवार्य रूप से पढ़ती है। Main पर इस migration को अकेले लागू करना असंभव/असुरक्षित है; पूरी bill + timer + cancellation fee dependency chain आवश्यक है।
+- Feature payout migration `srk_booking_labour_bills` insert/update पर अलग payout trigger नहीं बनाती। Expected workflow में bill completion transaction के दौरान पहले बने और फिर booking status/payment transition trigger को fire करे—इस transaction-order invariant को work-completion RPC source और tests से प्रमाणित करना होगा।
+
+### 4. Refund replay caveat
+- Feature payout trigger refund पर pending payout को `refunded` करता है और केवल refund-owned blocked notes (`Razorpay refund pending`, `Manual refund processed`) को release करता है; unrelated Admin block और already-paid payout को overwrite नहीं करना चाहिए।
+- Main live पुराने function में refund path केवल pending payout को refunded करता है; refund-owned blocked payout handling और payout-note preservation parity अभी नहीं है।
+- यह GPT-2 के Manual Refund Note Preservation और Refund Replay work के साथ joint review मांगता है।
+
+### 5. Verification boundary / next
+- Main live payout function, trigger definition, payout unique index और bill table catalog read-only queries से inspect किए। Feature payout migration पूरी पढ़ी।
+- कोई Production DDL/DML, migration apply, payout/refund, deployment, merge या mobile QA नहीं किया।
+- Next: exact work-completion RPC transaction ordering और bill immutability/unique constraints inspect करें; commission/category immutability proof लें; फिर legacy/new category × Razorpay/manual × full/partial refund × pending/blocked/paid payout replay matrix GPT-2 के साथ reconcile करें।
