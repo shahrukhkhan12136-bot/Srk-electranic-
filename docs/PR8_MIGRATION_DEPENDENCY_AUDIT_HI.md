@@ -5898,3 +5898,44 @@ Section 184–186 मिलाकर Support Inbox, thread और status-action 
 SOS UI में phone number सहित संवेदनशील संपर्क जानकारी render होती है, इसलिए stale-response guard का महत्व अधिक है। Source में account-generation guard नहीं मिला। **यह संभावित cross-session stale display concern है, live data leak या unauthorized acknowledgement का प्रमाण नहीं।** Backend RPC authorization, assigned-case scope और deployed behavior की पुष्टि शेष है।
 
 केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई browser/Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 188. SOS Backend Authorization — Support Staff Scope और Audit Test Coverage
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** SOS migration `20261115260000_sos_admin_support_alerts.sql` और `sos_admin_support_alerts.test.sql` का static review।
+
+### 1. Backend Permission Gate — सकारात्मक निष्कर्ष
+
+- Migration अलग permissions `support.sos.read` और `support.sos.acknowledge` register करती है और Support role को स्पष्ट रूप से देती है।
+- तीनों Admin RPCs `SECURITY DEFINER` और empty `search_path` के साथ हैं; PUBLIC/anon execute revoke है और authenticated execute grant है। Function body में `auth.uid()` तथा संबंधित `srk_has_admin_permission(...)` gate लागू है।
+- SOS tables पर RLS enabled है; browser roles को direct table read privilege नहीं दिया गया। SOS event history के UPDATE/DELETE/TRUNCATE guards भी migration में मौजूद हैं।
+- Acknowledge RPC case row को `FOR UPDATE` lock करता है, केवल pending case स्वीकार करता है, फिर SOS event और Staff audit event लिखता है। ये source-level transaction flow findings हैं, runtime verification नहीं।
+
+### 2. Support Staff Data Scope — स्पष्ट रूप से व्यापक
+
+- `srk_admin_list_sos_alerts` permission check के बाद `srk_sos_alerts` से सभी cases लौटाता है; query में assigned staff, assigned case या case ownership का filter नहीं है।
+- `srk_admin_list_sos_alert_events` भी read permission मिलने पर दिए गए किसी भी मौजूद case की history लौटाता है।
+- `srk_admin_acknowledge_sos_alert` में acknowledge permission और pending-state check है, पर assigned-staff/case filter नहीं।
+- इसलिए इस migration के अनुसार Support role के पास SOS read और acknowledge की role-wide permission है, केवल assigned SOS cases तक सीमित access नहीं। यह permission design का व्यापक दायरा है; इसे अपने-आप authorization bypass नहीं कहा जा सकता। क्योंकि SOS records में actor phone और emergency context शामिल हैं, owner को पुष्टि करनी चाहिए कि सभी active Support Staff को सभी SOS cases देखना/स्वीकार करना अपेक्षित है या assignment/shift/team scope चाहिए।
+
+### 3. Existing Test File — 28 Static Assertions
+
+- `supabase/tests/database/sos_admin_support_alerts.test.sql` में `plan(28)` है।
+- यह RLS/direct-read denial, dedicated permissions, authenticated creation, actor/booking ownership, active booking, duplicate pending case, SOS reasons, read/ack RPC permission gates, row lock, event/audit writes और pending→acknowledged transition के source/catalog assertions रखता है।
+- यह test file मौजूद है; इस audit step में इसे execute नहीं किया गया।
+- इसमें actual Support Staff A बनाम B assigned/unassigned case visibility, अलग-अलग role JWT के साथ list/history/ack behavior, concurrent acknowledge result, या audit row contents का behavioral proof नहीं दिखता।
+
+### 4. सुझाए गए निर्णय और Regression Coverage
+
+- Product/security owner से तय कराएँ: Support Staff को सभी SOS cases चाहिए या केवल assigned/team/active-shift cases।
+- यदि scope सीमित होना चाहिए, तो list, history और acknowledge तीनों RPCs में एक समान server-side scope check अनिवार्य हो; केवल UI filtering पर्याप्त नहीं।
+- Behavioral tests में Main Admin, authorized Support, permission-विहीन user, unassigned Support Staff और दूसरे team के Staff को अलग-अलग जाँचें।
+- दो Support users के simultaneous acknowledge में केवल एक success, दूसरे को already-acknowledged response, और exactly-once SOS/staff audit event जाँचें।
+- Phone number व emergency details केवल आवश्यक भूमिकाओं को लौटें; audit details में अनावश्यक निजी जानकारी न जोड़ें।
+
+### 5. Verdict और Evidence Boundary
+
+SOS backend में dedicated role permissions, direct-table read restriction और acknowledge row lock जैसे उपयोगी सुरक्षा controls source में मौजूद हैं। साथ ही Support role का SOS read/ack scope **सभी SOS cases** तक व्यापक है, assigned-only नहीं। यह business/security approval का विषय है। Existing 28-assertion test file source-level coverage देती है, पर runtime/behavioral proof नहीं।
+
+केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई test/pgTAP, SQL, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
