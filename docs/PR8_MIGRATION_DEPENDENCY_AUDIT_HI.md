@@ -4842,3 +4842,56 @@ Refund/payout chain के लिए payout base table, refund table और trig
 **अगला सुरक्षित कदम:** Feature/Audit Branch में refund/payout base schema और trigger migrations की exact source provenance खोजना; कोई migration apply या database operation नहीं करना।
 
 **सीमा:** कोई SQL execution, migration replay, pgTAP, CI dispatch, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 162. Refund/Payout Base Schema और Audit Trigger Provenance — Corrective Verification
+
+**तारीख:** 17 नवंबर 2026  
+**जाँची गई शाखाएँ:** Feature Branch और GPT-2 Audit Branch  
+**Scope:** केवल GitHub source/migration inspection; कोई database operation नहीं।
+
+### 1. Section 161 की provenance finding का सुधार
+
+पहले की जाँच में srk_electrician_payouts, srk_manual_payment_entries और srk_admin_audit_events की CREATE provenance नहीं मिली थी। अब दोनों branches में exact migration path मिला:
+
+- supabase/migrations/20261114125844_restore_financial_audit_core_schema.sql
+- Feature Branch Blob SHA: bdfdfcc01366a9d4a298b2107c53f1525b326bf9
+- GPT-2 Audit Branch Blob SHA: bdfdfcc01366a9d4a298b2107c53f1525b326bf9
+
+दोनों branches पर पूरा file content और Blob SHA समान है। इसलिए Section 161 की यह धारणा कि इन tables की branch-side CREATE provenance अनुपस्थित है, इस migration के संदर्भ में गलत/अधूरी थी। यह migration 14 नवम्बर के क्रम में है और बाद के refund/history consumers से पहले आती है।
+
+### 2. Base tables और मुख्य constraints
+
+उसी migration में निम्न definitions मिलीं:
+
+- srk_manual_payment_entries: booking FK, payment method allow-list, amount/reference checks और प्रति booking UNIQUE constraint।
+- srk_electrician_payouts: booking/electrician FKs, gross/materials/commission/payable amounts, payout states pending/paid/blocked/refunded, प्रति booking UNIQUE constraint और Paid status के लिए method/reference/paid_at/paid_by अनिवार्य check।
+- srk_razorpay_refunds: provider payment/refund ID format checks, INR, unique idempotency key, refund status allow-list, प्रति booking UNIQUE constraint और amount_paise = round(amount*100) check।
+- srk_booking_refund_requests: customer/booking FKs, refund state allow-list, Razorpay refund record FK और प्रति booking UNIQUE constraint।
+- srk_manual_refund_entries: manual payment entry FK, refund reference checks, प्रति booking तथा प्रति payment entry UNIQUE constraints।
+- srk_admin_audit_events: entity/action/actor allow-lists और before/after JSON audit fields।
+- srk_booking_labour_bills की एक प्रारंभिक definition भी इसी migration में है; बाद की timer migration की CREATE TABLE IF NOT EXISTS definition के साथ compatibility source में अपेक्षित रखी गई है।
+
+### 3. previous_payout_note का source प्रमाण
+
+srk_razorpay_refunds की CREATE TABLE definition में previous_payout_note text column स्पष्ट रूप से मौजूद है। Refund preparation function में payout की मौजूदा payout_note इस column में रखी जाती है, जब payout को refund-pending स्थिति में block किया जाता है। Reconciliation के failed path में payout अभी भी blocked और note अभी भी refund-owned marker होने पर पुराना note वापस लगाया जाता है।
+
+इसलिए previous_payout_note केवल बाद की migration में अनुमान से उपयोग किया गया field नहीं है; इसकी base definition इसी migration में है। यह source-level finding है, किसी live database में column existence का नया प्रमाण नहीं।
+
+### 4. Audit trigger provenance
+
+उसी migration में दो SECURITY DEFINER trigger functions और trigger registrations मौजूद हैं:
+
+- srk_capture_admin_audit_event(): manual payment, manual refund और electrician payout सहित allow-listed financial fields का audit event बनाता है।
+- srk_capture_razorpay_refund_audit_event(): Razorpay refund ID, amount, status और provider status में बदलाव का audit event बनाता है।
+- srk_audit_manual_payment_entries, srk_audit_manual_refund_entries, srk_audit_electrician_payouts और srk_audit_razorpay_refunds triggers संबंधित tables पर INSERT/UPDATE/DELETE के लिए register किए गए हैं।
+- दोनों trigger functions में SET search_path='' है; direct EXECUTE को PUBLIC/anon/authenticated से revoke करके service_role को grant किया गया है।
+
+### 5. अब भी शेष सीमाएँ
+
+- यह migration CREATE TABLE IF NOT EXISTS का उपयोग करती है। पहले से मौजूद table का incompatible shape हो तो यह statement अपने-आप उसे migrate/repair नहीं करेगा; deployed schema parity अलग से जाँचना आवश्यक है।
+- Migration की foreign keys service_bookings, electrician_profiles, auth.users और trigger function में is_srk_admin() जैसे baseline objects पर निर्भर हैं। इस migration से उन सभी foundational objects की पूरी empty-database provenance सिद्ध नहीं होती।
+- 20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql दोनों branches में refund preparation/reconciliation functions में payout lock और refund-owned blocked marker का उपयोग करती है। Feature/Audit के बाद के hardening migration versions में payout state handling का अंतर अलग static review का विषय बना रहेगा; इस provenance check से कोई business behavior चुनकर लागू नहीं किया गया।
+- कोई SQL execution, migration replay, pgTAP, production introspection, CI dispatch, deployment, merge या cherry-pick नहीं हुआ।
+
+**निष्कर्ष:** Refund/payout core tables, previous_payout_note और संबंधित audit triggers की Feature Branch source provenance मिल गई और दोनों branches पर समान है। Section 161 की missing-provenance टिप्पणी को इस migration के लिए supersede किया जाए। फिर भी complete empty-database replay या live schema parity प्रमाणित नहीं है।
