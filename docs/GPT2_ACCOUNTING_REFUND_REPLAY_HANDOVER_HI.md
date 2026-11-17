@@ -930,3 +930,24 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - GPT-2 के साथ commission-rate immutability vs trigger-field update decision।
 - Bill insert + completion update + payment transition + payout creation के success/rollback/idempotent replay tests।
 - Refund replay matrix में pending, refund-owned blocked, unrelated Admin blocked और paid payout states; payout-note preservation की assertion।
+
+
+## Section 32 — Manual Refund ↔ payout trigger transaction-order conflict (2026-11-17)
+
+### Critical source-level conflict found
+- Feature migration `20261115130000_admin_manual_refund_request_completion.sql` (SHA `51f3b13adc80e117cc62f05b0e70ae795ee0f9fd`) में `srk_admin_record_manual_refund(uuid,text,text)` पहले pending payout को `blocked` + `payout_note='Manual refund processed'` बनाती है।
+- उसी RPC में बाद में `service_bookings.payment_status='refunded'` update होता है। यह `20261114360000_new_category_electrician_payout_reconciliation.sql` का AFTER payout trigger चलाता है।
+- उस trigger का refund branch `pending` payout या `blocked` payout whose note is `'Razorpay refund pending'` / `'Manual refund processed'` को तुरंत `refunded` करता है और `payout_note=NULL` लिखता है।
+- Manual Refund RPC इसके बाद payout row को फिर update करने की कोशिश करती है, लेकिन WHERE condition `payout_status='blocked'` मांगती है; trigger ने उसे पहले ही `refunded` कर दिया है। इसलिए UPDATE zero rows लौटाता है और RPC `BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED` exception देती है।
+- PostgreSQL exception पूरे transaction को rollback कर देगी: manual refund entry, booking refunded status और payout state सभी rollback होंगे। बाहरी वास्तविक transfer पहले हो चुका हो तो उसके लिए यह गंभीर reconciliation risk है।
+- यह static source ordering से निकला high-confidence finding है; live execution test नहीं चलाया गया। मौजूदा `admin_manual_refund_request_completion.test.sql` केवल RPC body में refund status closure text की मौजूदगी assert करता है; trigger interleaving/rowcount conflict को test नहीं करता।
+
+### Required coordinated correction (not applied)
+- GPT-2/owner को एक authoritative close owner चुनना होगा: या payout trigger refund-owned manual hold को पहले close करे और RPC उसी exact final state/note को idempotently verify करे; या trigger manual-refund-owned hold को RPC के explicit finalization तक blocked छोड़े।
+- किसी भी fix में unrelated Admin blocked payout note preserve हो, Razorpay-owned marker अलग रहे, already-paid payout reject हो, और repeated finalize सुरक्षित हो।
+- Add transaction-level pgTAP regression: pending payout → manual refund RPC → trigger ordering → final refunded payout + durable audit row; injected failure must prove full DB rollback while external transfer reference/recovery evidence remains independently durable.
+- Existing RPC lock order booking → refund request → payment evidence/fee rows → payout should remain consistent with Razorpay refund reconciliation and payout settlement; concurrency test still needed.
+
+### Verification boundary
+- केवल Feature Branch source files और existing pgTAP assertions inspect किए।
+- कोई code/SQL edit, migration apply, Production DDL/DML, external money transfer, provider API call, deployment, merge या mobile QA नहीं किया।
