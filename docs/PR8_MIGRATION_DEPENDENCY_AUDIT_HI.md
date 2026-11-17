@@ -1766,3 +1766,40 @@ Both files' assertion totals match their declared plans. Each has one terminal `
 
 **Status:** test plan arithmetic and file termination structure source-verified (19/19 and 34/34 planned assertions); PostgreSQL parser, pgTAP execution, accounting DML fixtures, concurrency tests, and clean replay remain **NOT RUN**. No Production access or database mutation performed.
 
+## 89. Accounting trigger event coverage and transition-path review — 17 Nov 2026
+
+The additive accounting bridge migration and the existing payout-writer migration were compared line-by-line at source level. This section records event coverage and control-flow observations; it does not simulate PostgreSQL trigger execution.
+
+### Event coverage matrix
+
+| Booking change | BEFORE commission trigger | AFTER payout writer | AFTER parity validator |
+|---|---|---|---|
+| Insert | Runs | Runs | Runs |
+| Status / payment status | Runs | Runs | Runs |
+| Assigned electrician / verified timestamp | Runs | Runs | Runs |
+| Amount paid / quote status / service charge / commission rate | Runs | Runs | Runs |
+| Razorpay payment ID / selected category | Runs | Runs | Runs |
+| Payment method | Runs | Not listed as a writer event | Runs |
+| Materials amount | Not listed as a BEFORE event | Runs | Runs |
+| Direct commission amount edit | Not listed as a BEFORE event | Not listed as a writer event | Runs |
+
+### Source-level conclusions
+
+1. The BEFORE function writes `service_bookings.commission_amount` only after the booking is in the paid/completed/assigned/verified state and payment evidence is accepted. For selected-category bookings it requires the immutable labour bill to match the assigned electrician; for legacy bookings it requires an approved quote.
+2. The existing AFTER payout writer independently calculates payout values and upserts only a pending payout row. Its trigger includes the fields that affect payout calculation, including `materials_amount`.
+3. The parity validator is a later-named AFTER trigger. It checks the payout row exists and compares the booking commission with the payout ledger's `platform_commission`. Because PostgreSQL orders same-kind triggers alphabetically by trigger name, the source naming intends the payout writer to run before the `zz_` parity validator.
+4. A payment-method-only edit invokes the BEFORE consistency guard and AFTER parity validator, but not the payout writer. The commission formula itself does not depend on payment method; this is coherent at source level provided the existing payout row is already present for an eligible paid booking.
+5. A materials-only edit invokes the payout writer and parity validator but not the BEFORE commission trigger. This matches the legacy payout calculation where materials affect payable, not platform commission; selected-category payouts explicitly set materials to zero.
+6. A direct commission-only edit invokes the parity validator but neither the BEFORE commission setter nor payout writer. The parity check is intended to reject divergence rather than silently rewrite either ledger value.
+7. A transition to `payment_status='refunded'` is covered by the payout writer's payment-status event and its refund branch; both commission and parity functions return without treating the refunded booking as a newly payable completion.
+
+### Remaining risks / evidence boundary
+
+- The event matrix is inferred from the declared trigger column lists; actual PostgreSQL event firing and same-transaction rollback behavior are not yet executed.
+- The payment-method-only path assumes an eligible payout row already exists. A malformed pre-existing paid booking without a payout row is not repaired by that event alone; the parity trigger should fail the update rather than silently manufacture a payout.
+- The payout writer's upsert updates only rows whose existing status is `pending`. Blocked, paid, or refunded rows are deliberately not rewritten by the eligible-payment branch; verify each lifecycle transition with isolated fixtures.
+- The current static pgTAP checks inspect trigger metadata and function source but do not exercise every event-matrix row as real DML.
+- No SQL parser, PostgreSQL replay, pgTAP run, refund fixture, concurrent update, or payout lifecycle integration test was executed.
+
+**Status:** trigger column lists, source control-flow gates, and intended alphabetical AFTER-trigger ordering source-verified. Runtime event behavior and all database tests remain **NOT RUN**. No Production or PR-branch changes performed.
+
