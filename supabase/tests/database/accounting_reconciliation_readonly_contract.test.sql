@@ -1,5 +1,5 @@
 begin;
-select plan(74);
+select plan(75);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -290,6 +290,17 @@ select ok(position('v_request.status is distinct from ''approved''' in pg_get_fu
 select ok(position('round(v_booking.amount_paid,2)<>round(v_payment.amount,2)' in pg_get_functiondef(
   'public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
   'manual refund RPC matches the refund amount to recorded manual payment evidence');
+
+
+select ok(position('''gross_service_amount''' in pg_get_functiondef(
+  'public.srk_capture_admin_audit_event()'::regprocedure))>0
+  and position('''materials_amount''' in pg_get_functiondef(
+  'public.srk_capture_admin_audit_event()'::regprocedure))>0
+  and position('''electrician_profile_id''' in pg_get_functiondef(
+  'public.srk_capture_admin_audit_event()'::regprocedure))>0
+  and position('''paid_by''' in pg_get_functiondef(
+  'public.srk_capture_admin_audit_event()'::regprocedure))>0,
+  'payout audit captures electrician assignment, gross/materials amounts and paid actor');
 
 select * from finish();
 rollback;
