@@ -13,8 +13,8 @@ const getHeader = (headers, name) => {
 const WEBHOOK_HANDLER_BUDGET_MS = 52000;
 const WEBHOOK_COMPLETION_RESERVE_MS = 15000;
 const requestSignal = (deadlineAt, reserveMs = WEBHOOK_COMPLETION_RESERVE_MS) => {
-  const remaining = deadlineAt - Date.now() - reserveMs;
-  if (remaining <= 0) {
+  const remaining = Number(deadlineAt) - Date.now() - reserveMs;
+  if (!Number.isFinite(remaining) || remaining <= 0) {
     const error = new Error("WEBHOOK_HANDLER_DEADLINE_REACHED");
     error.code = "WEBHOOK_HANDLER_DEADLINE_REACHED";
     throw error;
@@ -140,7 +140,7 @@ async function updateBooking(orderId, payment, deadlineAt) {
   const latestResponse = await webhookFetch(url, {
     method: "GET",
     headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
-  });
+  }, deadlineAt);
   if (!latestResponse.ok) throw new Error("Booking payment reconciliation failed");
   const latestRows = await latestResponse.json();
   const latest = Array.isArray(latestRows) ? latestRows[0] : null;
@@ -177,7 +177,7 @@ async function reconcileRefund(refund, eventName, deadlineAt) {
   const lookupResponse = await webhookFetch(lookupUrl, {
     method: "GET",
     headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
-  });
+  }, deadlineAt);
   if (!lookupResponse.ok) throw new Error("Refund record lookup failed");
   const rows = await lookupResponse.json();
   if (!Array.isArray(rows) || rows.length !== 1) throw new Error("Refund record missing or ambiguous");
@@ -297,12 +297,12 @@ exports.handler = async (event) => {
     if (result === "update_not_applied") throw new Error("Payment reconciliation update was not applied");
     if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict" || result === "booking_not_payable" || result === "payment_method_not_online" || result === "payment_refunded") {
       console.error("Razorpay webhook could not reconcile booking:", result);
-      await completeWebhookEvent(eventId, claimToken, "ignored", result);
+      await completeWebhookEvent(eventId, claimToken, "ignored", result, deadlineAt);
       claimToken = null;
       return json(200, { success: true, reconciled: false, reason: result });
     }
 
-    await completeWebhookEvent(eventId, claimToken, "processed", null);
+    await completeWebhookEvent(eventId, claimToken, "processed", null, deadlineAt);
     claimToken = null;
     return json(200, { success: true, reconciled: true, result });
   } catch (error) {
