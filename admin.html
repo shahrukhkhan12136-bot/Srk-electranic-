@@ -37,7 +37,7 @@
 <p class="muted">यहाँ केवल आपको सौंपे गए ग्राहक सहायता मामले दिखेंगे। ग्राहक का फोन नंबर, पता और अन्य निजी प्रोफ़ाइल जानकारी इस स्क्रीन पर उपलब्ध नहीं है।</p>
 <button type="button" class="alt" onclick="loadStaffSupportInbox()">रीफ़्रेश करें</button><span id="staffCustomerStatus" class="muted" aria-live="polite"></span>
 <div id="staffCustomerInbox" style="margin-top:12px">Assigned शिकायतें लोड हो रही हैं…</div>
-<div id="staffCustomerThreadPanel" class="card hidden"><h3 id="staffCustomerThreadTitle">ग्राहक बातचीत</h3><div id="staffCustomerThread"></div><textarea id="staffCustomerReply" rows="3" maxlength="4000" style="width:100%;padding:10px" placeholder="ग्राहक को जवाब लिखें"></textarea><button onclick="sendStaffCustomerReply()">जवाब भेजें</button><span id="staffCustomerReplyStatus" class="muted"></span></div>
+<div id="staffCustomerThreadPanel" class="card hidden"><h3 id="staffCustomerThreadTitle">ग्राहक बातचीत</h3><div id="staffCustomerThread"></div><span id="staffCustomerAttachmentStatus" class="muted" aria-live="polite"></span><textarea id="staffCustomerReply" rows="3" maxlength="4000" style="width:100%;padding:10px" placeholder="ग्राहक को जवाब लिखें"></textarea><button onclick="sendStaffCustomerReply()">जवाब भेजें</button><span id="staffCustomerReplyStatus" class="muted"></span></div>
 </div>
 <div class="card staff-only hidden" id="staffSupportElectricianCard">
 <h2>इलेक्ट्रिशियन सहायता — Assigned Cases</h2>
@@ -246,7 +246,42 @@ async function showState(){
  if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await Promise.all([loadStaffSupportInbox(),loadSosAlerts()]);}
 }
 let staffCustomerSelectedId=null,staffElectricianSelectedId=null,staffCustomerThreadRequest=0,staffElectricianThreadRequest=0;
+let staffCustomerAttachmentMap=new Map(),staffCustomerAttachmentObjectUrls=[];
 let staffSupportLoadBusy=false,staffSupportReplyBusy=false;
+function clearStaffCustomerAttachmentState(){
+ staffCustomerAttachmentObjectUrls.forEach(url=>URL.revokeObjectURL(url));
+ staffCustomerAttachmentObjectUrls=[];
+ staffCustomerAttachmentMap.clear();
+}
+async function openStaffCustomerAttachment(id){
+ const attachment=staffCustomerAttachmentMap.get(id);
+ if(!attachment||!staffCustomerSelectedId||attachment.complaint_id!==staffCustomerSelectedId)return;
+ const popup=window.open('about:blank','_blank');
+ if(popup)popup.opener=null;
+ const status=document.getElementById('staffCustomerAttachmentStatus');
+ if(status)status.textContent='फ़ाइल की अनुमति जाँची जा रही है…';
+ try{
+  // Storage download re-evaluates the current assignment RLS policy on every request.
+  // Do not use a signed URL that could remain valid after the case is reassigned.
+  const {data,error}=await sb.storage.from('srk-customer-support').download(attachment.storage_path);
+  if(error||!data)throw error||new Error('ATTACHMENT_DOWNLOAD_FAILED');
+  if(attachment.complaint_id!==staffCustomerSelectedId||!staffCustomerAttachmentMap.has(id)){
+   if(popup)popup.close();
+   return;
+  }
+  const objectUrl=URL.createObjectURL(data);
+  staffCustomerAttachmentObjectUrls.push(objectUrl);
+  if(popup)popup.location.replace(objectUrl);
+  else{
+   const link=document.createElement('a');link.href=objectUrl;link.download=attachment.file_name;link.rel='noopener noreferrer';
+   document.body.appendChild(link);link.click();link.remove();
+  }
+  if(status)status.textContent='फ़ाइल खुल गई है।';
+ }catch(error){
+  if(popup)popup.close();
+  if(status)status.textContent='फ़ाइल उपलब्ध नहीं है। संभव है शिकायत अब आपको assigned न हो।';
+ }
+}
 async function loadStaffSupportInbox(){
  if(!sb||!user||adminPortalMode!=='staff'||staffSupportLoadBusy)return;
  staffSupportLoadBusy=true;
@@ -279,13 +314,30 @@ async function updateStaffCustomerComplaint(id){
  await loadStaffSupportInbox();
 }
 async function openStaffCustomerThread(id){
- const request=++staffCustomerThreadRequest;staffCustomerSelectedId=id;
+ const request=++staffCustomerThreadRequest;staffCustomerSelectedId=id;clearStaffCustomerAttachmentState();
  const panel=document.getElementById('staffCustomerThreadPanel'),box=document.getElementById('staffCustomerThread');
- panel.classList.remove('hidden');box.textContent='बातचीत लोड हो रही है…';
- const {data,error}=await sb.rpc('srk_admin_staff_list_customer_messages',{p_complaint_id:id});
+ const attachmentStatus=document.getElementById('staffCustomerAttachmentStatus');
+ panel.classList.remove('hidden');box.textContent='बातचीत और संलग्न फ़ाइलें लोड हो रही हैं…';
+ if(attachmentStatus)attachmentStatus.textContent='';
+ const [messagesResult,attachmentsResult]=await Promise.all([
+  sb.rpc('srk_admin_staff_list_customer_messages',{p_complaint_id:id}),
+  sb.rpc('srk_admin_staff_list_customer_attachments',{p_complaint_id:id})
+ ]);
  if(request!==staffCustomerThreadRequest||id!==staffCustomerSelectedId)return;
- if(error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
- box.innerHTML=(data||[]).map(m=>'<article class="card"><b>'+(m.is_current_staff_sender?'आप (Support Staff)':(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक'))+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p><small>'+esc(m.created_at)+'</small></article>').join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ if(messagesResult.error){box.textContent='बातचीत उपलब्ध नहीं है।';return;}
+ const messages=messagesResult.data||[],attachments=attachmentsResult.error?[]:(attachmentsResult.data||[]);
+ const byMessage=new Map();
+ attachments.forEach(a=>{
+  staffCustomerAttachmentMap.set(a.id,{...a,complaint_id:id});
+  if(!byMessage.has(a.message_id))byMessage.set(a.message_id,[]);
+  byMessage.get(a.message_id).push(a);
+ });
+ box.innerHTML=messages.map(m=>{
+  const files=byMessage.get(m.id)||[];
+  const fileMarkup=files.length?'<div class="muted" style="margin-top:8px">संलग्न फ़ाइलें:</div>'+files.map(a=>'<div><button type="button" class="alt" onclick="openStaffCustomerAttachment(\''+esc(a.id)+'\')">📎 '+esc(a.file_name)+'</button></div>').join(''):'';
+  return '<article class="card"><b>'+(m.is_current_staff_sender?'आप (Support Staff)':(m.sender_role==='admin'?'SRK सहायता टीम':'ग्राहक'))+'</b><p style="white-space:pre-wrap">'+esc(m.body)+'</p>'+fileMarkup+'<small>'+esc(m.created_at)+'</small></article>';
+ }).join('')||'<p>अभी कोई संदेश नहीं है।</p>';
+ if(attachmentsResult.error&&attachmentStatus)attachmentStatus.textContent='संलग्न फ़ाइलों की सूची उपलब्ध नहीं है।';
  document.getElementById('staffCustomerThreadTitle').textContent='ग्राहक बातचीत • '+id;
 }
 async function sendStaffCustomerReply(){
@@ -341,6 +393,7 @@ async function emailLogin(){const email=document.getElementById('email').value.t
 let adminLogoutBusy=false;
 async function logout(){
  if(adminLogoutBusy||!sb)return;
+ clearStaffCustomerAttachmentState();staffCustomerThreadRequest++;staffCustomerSelectedId=null;
  adminLogoutBusy=true;
  const button=document.querySelector('button[onclick="logout()"]');
  if(button)button.disabled=true;
