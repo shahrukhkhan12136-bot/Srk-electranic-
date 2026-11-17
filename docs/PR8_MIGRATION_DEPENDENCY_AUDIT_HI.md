@@ -1626,3 +1626,44 @@ The current Audit Branch test infrastructure was checked without dispatching wor
 Do not repurpose the Production-schema export workflow, do not dispatch a workflow as a substitute for an approved disposable database, and do not claim SQL parser or pgTAP success from test-file inspection. A dedicated isolated PostgreSQL/Supabase test environment, approved bootstrap, and a parser/runtime toolchain are still required.
 
 **Status:** test infrastructure inspected; no workflow dispatched; no dependency installed; no SQL parser executed; no database connected; both accounting pgTAP suites remain **NOT RUN**.
+
+
+## 84. Refund, RBAC, KYC, SOS and legacy-retirement dependency pass — 17 Nov 2026
+
+The late migration family was compared against its referenced base relations and helper functions. Edges below are source-derived and are not a complete replay DAG.
+
+### Confirmed dependency edges and ordering concerns
+
+| Consumer migration | Required earlier source | Evidence / replay note |
+|---|---|---|
+| `20261115100000_customer_refund_request_contract.sql` | `20261114125844_restore_financial_audit_core_schema.sql`, `20261116200000_restore_service_bookings_amount_paid.sql`, `20261114280000_cancellation_fee_carry_forward_and_accounting.sql`, `20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` | Customer request RPC reads refund request/refund evidence, manual refund, immutable labour bill, settled cancellation fee items, and the verified paid amount. The relevant tables/column and fee ledger must exist before it is called. |
+| `20261115110000_admin_refund_review_queue_and_decisions.sql` | `14125844`, `14280000`, `14360000`, `15100000` | Admin queue joins refund requests, booking, labour bill, Razorpay refund and payout. Decision RPC mutates the refund request state created by the earlier contract. |
+| `20261115120000_durable_razorpay_refund_recovery_evidence.sql` | `14125844`, `15110000`/existing refund relation lineage | Creates append-only recovery evidence referencing `srk_razorpay_refunds`, `service_bookings`, and `auth.users`; its writer checks `srk_admin_users` and the internal refund row. It depends on Auth/platform identity and financial core relations. |
+| `20261115130000_admin_manual_refund_request_completion.sql` | `14125844`, `15100000`, `14280000`, `14290000`, `14360000` | Replaces the manual refund completion RPC and reads payment, request, labour bill, fee and payout state. Later `20261116210000` replaces the same RPC again; final definition must be taken from the later migration, not this intermediate version. |
+| `20261115150000_admin_readonly_booking_accounting_reconciliation.sql` | `14125844`, `14280000`, `14290000`, `14360000`, `15100000` | Read-only report joins bill, payout, refund, manual refund, cancellation-fee and wallet ledgers. It is replaced by `15170000` and `15180000`; retain version history and use the final definition for final-state analysis. |
+| `20261115170000_admin_route_transfer_accounting_reconciliation.sql` | `15150000` and `09020000` route-transfer lineage | Replaces the report contract after Route retirement and explicitly reports no live Route transfers while preserving response fields. |
+| `20261115190000_enforce_single_primary_route_bank_link.sql` | Route bank-link relation and its provider/wallet columns | Performs a fail-closed duplicate check and adds a partial unique index. The exact creator of `srk_wallet_bank_links` must be present in the approved bootstrap/migration lineage; this migration does not create that table. |
+| `20261115200000_harden_financial_admin_rpc_search_path.sql` | `14125844`, `14360000`, `15130000` | Uses `ALTER FUNCTION` for exact signatures of payout, manual-refund and payout-trigger functions. All signatures must already exist. |
+| `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` | `14125844`, `14190000`, `14360000`, `16200000` | Manual-payment RPC reads the legacy booking quote and payout contracts; receipt RPC reads immutable labour-bill and payment evidence. The later `amount_paid` restoration is a prerequisite for execution of the payment/receipt path. |
+| `20261115210001_harden_legacy_financial_read_rpc_search_paths.sql` | Wallet and commission read RPC definitions from the approved bootstrap/financial lineage | Alters three exact function signatures; must not run before those functions are created. |
+| `20261115220000_retire_live_legacy_quotation_rpcs.sql` | Quote RPCs and offer-details contract from the legacy quote/offer migrations | Revokes and drops named RPCs and recreates the offer-details projection. This is a destructive schema/API transition; historical booking/payment evidence is intentionally retained. |
+| `20261115230000_admin_booking_direct_write_closure.sql` | Legacy booking schema, Admin identity helper and existing quote/location columns | Adds replacement Admin-only write RPCs. It assumes the underlying booking columns and `is_srk_admin()` already exist. |
+| `20261115240000_harden_refund_recovery_full_amount.sql`, `20261115250000_harden_refund_reconcile_full_amount.sql` | `15120000` and the refund/payment/payout relations | Both replace service-role refund functions. Recovery finalization and provider reconciliation now enforce full-collection equality; the final definition must be sourced from these later replacements. |
+| `20261115260000_sos_admin_support_alerts.sql` | `14390000_admin_staff_rbac_foundation.sql` and `service_bookings`/Auth | Inserts SOS permission and role-permission rows and creates SOS alert/event objects. RBAC permission tables must exist first. |
+| `20261115270000_fix_customer_payment_method_unicode_contract.sql` | Customer booking ownership and booking payment columns from the approved baseline/early migrations | Replaces the customer payment-method RPC and checks owner, booking status, assignment, amount and provider IDs. The `amount_paid` column must exist at execution time. |
+
+### KYC forward-reference requiring explicit replay treatment
+
+- `20261114330000_electrician_private_kyc_document_preview.sql` creates `srk_electrician_get_my_verification_document_path(uuid)`, whose function body reads `srk_electrician_verification_documents`.
+- The table is created later by `20261115140000_electrician_kyc_review_and_activation_gate.sql`.
+- This is a source-level forward reference. PL/pgSQL may defer statement planning until invocation, so it is not asserted here to be a CREATE FUNCTION parse failure. However, the helper is not safely callable in the interval before the table exists. A clean replay manifest should flag this runtime availability gap; do not silently renumber or rewrite historical files.
+
+### Other important lineage observations
+
+- `20261115140000` establishes the private KYC document/event relations and Storage policies. It requires the earlier electrician profile identity chain and Supabase Storage platform objects/bucket prerequisites.
+- `20261115260000` assumes RBAC permission catalog and role mapping tables from `14390000`; the permission rows are additive and use conflict handling.
+- `20261115190000` is a partial unique index, not a table creator. Existing duplicate primary Route links cause an intentional migration failure and require owner-reviewed reconciliation; do not auto-select or delete a bank link.
+- `20261115220000` drops legacy quotation RPCs. It must be treated as an API cutover after dependent clients and replacement projections are reviewed, not as a harmless additive migration.
+- Several successive report/refund migrations replace the same function signatures. The replay audit must preserve every historical migration version while separately recording the final effective function body.
+
+**Status:** late migration source dependencies reviewed; KYC forward-reference and Route index prerequisite recorded; no historical file reordered/edited; no SQL parser or database replay executed; runtime tests remain **NOT RUN**.
