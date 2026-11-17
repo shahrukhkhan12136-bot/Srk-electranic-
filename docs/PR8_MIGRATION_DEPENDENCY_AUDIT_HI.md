@@ -2757,3 +2757,38 @@ Durable Razorpay recovery evidence tests एक अलग table/workflow को 
 - Open decisions अभी भी हैं: actor UUID/changed_fields visibility, actual schema के अनुसार entity/action allow-list, retention/lookback, read-access logging और Support Staff exclusion।
 - यह planning document है; कोई executable test, active migration, database operation, privilege change, CI run या deployment नहीं किया गया।
 - Promotion तभी जब RPC contract/field policy owner से approve हो और isolated PostgreSQL environment में tests execute हों।
+
+
+## 117. Finance Audit RPC — वास्तविक schema और Admin identity gate का मिलान — 17 Nov 2026
+
+### 117.1 Audit table schema — exact source verification
+
+Migration `20261114125844_restore_financial_audit_core_schema.sql` (blob `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`) को पूरा पढ़ा गया।
+
+- `srk_admin_audit_events` columns: `id uuid`, `entity_type text`, `entity_id uuid`, `booking_id uuid`, `action text`, `actor_user_id uuid`, `actor_role text`, `changed_fields text[]`, `before_data jsonb`, `after_data jsonb`, `created_at timestamptz`.
+- Entity allow-list: `booking`, `electrician_profile`, `electrician_application`, `manual_payment`, `manual_refund`, `electrician_payout`, `razorpay_refund`.
+- Action allow-list: `created`, `updated`, `deleted`.
+- `actor_role` allow-list: `admin`, `user`, `system`.
+- सभी सूचीबद्ध RPC filter values table constraints से मेल खाते हैं। लेकिन actor/entity UUID fields और JSON field visibility अभी भी owner policy decision हैं।
+
+### 117.2 Admin identity gate — महत्वपूर्ण qualification
+
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` में `is_srk_admin()` केवल यह जाँचता है कि `auth.uid()` की row `srk_admin_users` में मौजूद है या नहीं।
+- `PORTAL_SCHEMA.sql` में `srk_admin_users` का schema केवल `user_id` और `created_at` रखता है; कोई `role`/Main-Admin-vs-Support-Staff column नहीं है।
+- इसलिए `is_srk_admin()` allow-list membership प्रमाणित करता है, लेकिन अकेले यह प्रमाणित नहीं करता कि Support Staff को Main Admin से अलग पहचाना जाता है।
+- Draft RPC में `auth.uid() IS NOT NULL AND public.is_srk_admin()` gate है। अतः इसे अभी **allow-listed Admin-only** कहना सही है; **Main Admin-only** तभी कहा जा सकता है जब owner पुष्टि करे कि Support Staff कभी `srk_admin_users` में नहीं जोड़े जाते, या अलग authoritative Main Admin role predicate उपलब्ध हो।
+- SQL draft header में यह सीमा स्पष्ट कर दी गई है। कोई permission या role schema नहीं बदला गया।
+
+### 117.3 आवश्यक owner confirmation और test adjustment
+
+1. Confirm करें कि Support Staff identities को `srk_admin_users` से पूरी तरह बाहर रखा जाता है या नहीं।
+2. यदि Support Staff वहाँ हो सकते हैं, तो Main Admin के लिए authoritative role source/predicate तय करें; केवल email/domain या caller-supplied role पर भरोसा न करें।
+3. Behavioral B04 को वास्तविक Support Staff identity के साथ चलाएँ; यदि वह allow-list में है तो वर्तमान RPC gate उसे allow करेगा — यह test अभी blocked/decision-required है।
+4. B02/B03 और anon denial, Main Admin positive test, cursor/filter behavior तथा secret non-disclosure isolated DB में अभी भी आवश्यक हैं।
+
+### Status
+
+- Audit table column/check constraints: **source-confirmed**.
+- `is_srk_admin()` semantics and allow-list table shape: **source-confirmed** from repository SQL.
+- Support Staff exclusion from allow-list: **not proven**.
+- No SQL execution, database query, permission change, migration, CI run or deployment.
