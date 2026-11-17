@@ -763,3 +763,33 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - यह section केवल live read-only SQL/catalog inspection और Feature Branch handover documentation पर आधारित है।
 - कोई application code, SQL migration, Production DDL/DML, Auth action, deployment, merge, payment/refund/payout, या mobile QA नहीं किया गया।
 - Remaining: work-event schema/table/trigger exact catalog reconciliation; cancellation request migration bundle + old direct cancellation compatibility; Feature timer/bill vs Main legacy status transition dependency mapping; refund/payment/payout contract reconciliation; KYC event-history preservation; legacy offer category hard guard।
+
+
+## Section 27 — KYC legacy history और work/cancellation schema catalog reconciliation (2026-11-17)
+
+### 1. Main KYC legacy event store की exact स्थिति
+- Main में `public.srk_electrician_verification_events` table मौजूद है और RLS enabled है।
+- इसका live schema: `id, document_id, electrician_profile_id, actor_user_id, actor_role, event_type, note, created_at`।
+- Main live `srk_admin_list_electrician_verification_documents(integer)` और `srk_admin_review_electrician_document(uuid,text,text)` दोनों इसी legacy event table को पढ़ते/लिखते हैं। इसलिए इसे drop/rename करना current live Admin KYC history contract तोड़ देगा।
+- Main `public.srk_electrician_verification_document_events` table नहीं मिली। Feature migration `20261115140000_electrician_kyc_review_and_activation_gate.sql` इसी नए table को बनाती है और Feature Admin list/review + electrician submission RPCs उसी पर निर्भर हैं।
+- Read-only row count snapshot: legacy KYC events = 0; KYC documents = 0। यह केवल वर्तमान snapshot है, future history को सुरक्षित रखने की आवश्यकता समाप्त नहीं करता।
+- Safe integration direction अभी तय नहीं: legacy table को authoritative रखते हुए Feature RPCs को उसी schema पर adapt करना, compatibility layer बनाना, या explicit reviewed backfill/dual-read plan। कोई rename/drop/copy/backfill या migration नहीं किया गया।
+- KYC document table live मौजूद है और RLS enabled है; Main legacy list/review function behavior Feature migration से अलग है। Feature review pending-only lock, 5–1000 char rejection/resubmission note, append event, latest KYC approval के आधार पर deactivation/offer advancement लागू करती है; Main body पुराने lock/update/event/deactivation contract पर है। इनका behavioral parity अभी unresolved है।
+
+### 2. Main work-history schema absence की पुष्टि
+- Main public catalog में `srk_booking_work_events`, `srk_booking_labour_bills`, `srk_admin_get_booking_work_review(uuid)` नहीं मिले।
+- Feature migration `20261114250000_admin_work_dispute_review_and_immutable_history.sql` event table + append-only lifecycle trigger + Admin review RPC बनाती है; यह `service_bookings` के timer/approval columns और `srk_booking_labour_bills` पर निर्भर है।
+- Feature follow-up `20261114260000_fix_work_start_rpc_and_append_only_event_history.sql` event mutation रोकने के triggers, private timer authorization dependencies और customer-safe timeline RPC भी जोड़ती है।
+- Main `service_bookings` में inspected subset के कुछ पुराने work fields मौजूद हैं, पर Feature का पूरा selected-category/rate snapshot + server timer + immutable bill schema live parity के रूप में स्थापित नहीं हुआ। Full column-by-column reconciliation बाकी है।
+- Main `service_bookings` triggers अभी legacy booking broadcast, admin audit, commission, cancellation-offer cleanup, work-approval transition guard, status log और legacy payable generation चलाते हैं। Feature lifecycle event trigger जोड़ने से पहले trigger order/side effects और function dependencies का migration-level review जरूरी है।
+
+### 3. Cancellation migration dependency और compatibility
+- Feature migration `20261114270000_admin_only_cancellation_requests_and_decisions.sql` cancellation request table, append-only cancellation event table, direct-cancel guard trigger और customer/Admin RPC workflow जोड़ती है।
+- Main catalog में `srk_booking_cancellation_requests` और `srk_booking_cancellation_events` नहीं मिले। Main का पुराना `srk_customer_cancel_my_booking(uuid)` direct-cancel path मौजूद है; Feature migration guard लगाने के बाद पुराने function/client call को intended rejection/compatibility behavior के साथ verify करना होगा।
+- Feature cancellation fee/accounting आगे की migrations `20261114280000` और `20261114290000` पर निर्भर है; अकेली request/decision migration पूरी cancellation/accounting rollout नहीं है।
+- No schema/function/trigger changes made.
+
+### No-write / next review
+- यह section केवल Main live catalog, current KYC function bodies, row counts और Feature migration source का read-only reconciliation है।
+- कोई Production DDL/DML, data copy, table rename/drop, migration apply, Auth action, deployment, merge, refund/payout या mobile QA नहीं हुआ।
+- Remaining: Feature vs Main complete `service_bookings` column diff; KYC legacy/new event strategy owner/GPT-2 review; old KYC history retention + event immutability parity; cancellation migration 27–29 dependency and legacy direct-cancel behavior; work event trigger ordering and labour bill schema dependency review।
