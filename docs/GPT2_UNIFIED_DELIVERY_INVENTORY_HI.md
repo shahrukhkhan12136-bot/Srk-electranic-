@@ -608,3 +608,12 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - No additional source defect was confirmed in this pass. This closes a source-audit subtask, but does not complete the full Payout/Accounting workstream: runtime/schema-chain verification remains pending, and the separate aggregate-report missing-payout visibility limitation remains documented in section 3X/related notes.
 
 **Verification boundary:** source re-fetch only; no Node/pgTAP execution, DB operation, migration apply/replay, CI, deployment, merge or mobile QA.
+
+
+## 3Z. 17 November 2026 — Serverless execution ceiling cross-check
+
+- The repository contains `netlify.toml` with `functions = "netlify/functions"`, and `netlify/functions/razorpay-refund-recovery.js` is a wrapper around the root recovery handler. The configured redirects route `/api/razorpay-refund-recovery` to that Netlify Function. This establishes a Netlify deployment path in source, but does not by itself prove which provider currently serves Production.
+- Current Netlify Functions documentation states a default synchronous execution limit of 60 seconds and a background execution limit of 15 minutes. See https://docs.netlify.com/build/functions/configuration/ .
+- Comparing this platform limit with the source budgets recorded in section 3X: the unlinked Refund Recovery path can spend up to 150 seconds in provider page requests alone; the webhook source's longest inspected sequential request path has a nominal 90-second per-request-timeout budget. If these handlers are served as standard synchronous Netlify Functions, both source paths can exceed the documented 60-second ceiling before completion. This is a concrete conditional platform-timeout risk; it is not proof of a live Production timeout because the active hosting provider/site configuration and actual request timings have not been verified.
+- Safe fix is not to raise arbitrary per-call timeouts or return success before durable work. Refund Recovery needs a bounded synchronous scan that stops before the platform ceiling while preserving its existing fail-closed/no-evidence behavior, or an explicitly approved durable background/recovery-job architecture. Webhook needs durable receipt/worker handoff or a verified bounded synchronous path; do not acknowledge 2xx before durable receipt. Background execution changes response/lifecycle behavior and is not added without owner approval.
+- No code changed in this audit. No Node/pgTAP, DB, provider, CI, deployment, merge or mobile QA executed.
