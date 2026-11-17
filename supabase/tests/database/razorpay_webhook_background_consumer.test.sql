@@ -39,10 +39,11 @@ select ok(position('p_event_payload' in pg_get_functiondef('public.srk_service_e
   and position('queued' in pg_get_functiondef('public.srk_service_enqueue_razorpay_webhook_event(text,text,text,jsonb)'::regprocedure))>0,
   'replayed legacy inbox row without payload is safely re-queued with signed projection');
 
-select * from finish();
-rollback;
-
 select ok(position('event_payload=case' in lower(pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure)))>0
   and position('p_outcome in ('||quote_literal('processed')||','||quote_literal('ignored')||')' in
     lower(pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure)))>0,
   'terminal completion purges the minimal event payload while retryable events retain it');
+
+select * from finish();
+rollback;
+
