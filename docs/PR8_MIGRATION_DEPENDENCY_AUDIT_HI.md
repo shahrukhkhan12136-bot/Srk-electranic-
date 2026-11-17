@@ -3577,3 +3577,66 @@ Function body का table access PL/pgSQL execution के समय resolve/ex
 ### 135.6 सीमा
 
 यह source-level signature/replacement map है, runtime proof नहीं। PostgreSQL parser/replay, pgTAP, live catalog query, provider calls, SQL writes, CI, deployment, merge और Production action नहीं किए गए।
+
+## 136. Accounting JSON contract और Refund Finalizer guard preservation — 17 Nov 2026
+
+### 136.1 Accounting RPC: Route JSON keys final bridge में हट गए
+
+तुलना की गई definitions:
+
+- 15180000 Route recipient/settlement validation body — blob `58042f828aeb1a951b36191d68a0573cdc15fcc0`
+- 17010000 final Audit Branch accounting/commission bridge — blob `68189051090a51bef26a98997caf103b62ed070c`
+
+15180000 की `jsonb_build_object` response में ये Route keys मौजूद हैं:
+- `route_transfer_count`
+- `route_electrician_transfer_paise`
+- `route_platform_commission_transfer_paise`
+- `route_transfers`
+- `route_provider_settlement_verified`
+- `route_settlement_evidence_status`
+
+15180000 स्पष्ट रूप से कहता है कि Route ledger retired है; इसलिए transfer values zero/empty रहें और provider settlement verified false रहे। यानी ये fields API compatibility के लिए थे, provider settlement का प्रमाण नहीं।
+
+17010000 की final `jsonb_build_object` response में ऊपर की कोई Route key नहीं मिली। यह केवल comment/formatting बदलाव नहीं, बल्कि source-level JSON response shape change है। यदि Admin UI, report export या external consumer इन keys पर निर्भर है तो final migration के बाद वे fields गायब होंगे।
+
+**Finding:** Route ledger को retired मानने और provider settlement को unverified रखने का safety meaning सही दिशा में है, लेकिन 17010000 ने पहले से मौजूद compatibility keys हटा दी हैं। Owner को तय करना होगा: keys को zero/empty/false के साथ restore किया जाए, या सभी consumers को नए contract पर migrate करके removal स्वीकार की जाए। इस audit में consumer-wide exhaustive search और runtime API test नहीं हुआ; इसलिए actual UI breakage घोषित नहीं है।
+
+### 136.2 Refund Finalizer: 15240000 के मुख्य full-amount guards 16210000 में मौजूद हैं
+
+तुलना की गई definitions:
+
+- 15240000 initial full-amount hardening — blob `40ebd534cf4209e98adc8c1f44b53b9ebfc09920`
+- 16210000 latest payout-trigger integration replacement — blob `b12da77471d510b55f798bd089597d866d79a133`
+
+Latest 16210000 function body में निम्न guards अभी भी मौजूद हैं:
+
+1. Provider evidence status `processed` होना चाहिए।
+2. Evidence 15 मिनट से पुराना होने पर refresh-required error।
+3. Booking row `FOR UPDATE` lock।
+4. Provider evidence amount का booking `amount_paid` के पूरे amount से exact paise equality।
+5. Refund row lock और payment ID, booking payment ID, amount, currency तथा existing provider refund ID consistency।
+6. Payout row lock; payout पहले से `paid` हो तो fail closed।
+7. Booking payment state केवल `paid` या `refunded` स्वीकार।
+8. Existing blocked payout को trigger द्वारा refunded किए जाने के बाद दोबारा पढ़कर final state verify करना; न हो तो exception।
+
+यह source-level guard-preservation evidence है। पूरे PL/pgSQL body का formal semantic equivalence या concurrent transaction behavior सिद्ध नहीं हुआ।
+
+### 136.3 Refund payout close ownership में बदलाव
+
+15240000 में finalizer खुद blocked payout row को `refunded` करता था और payout note लिखता था।
+
+16210000 में finalizer उस direct update के बजाय booking payment-state update के बाद AFTER UPDATE payout trigger से close होने की अपेक्षा करता है। फिर payout row re-read करके `refunded` status जाँचता है। Trigger की predicate केवल refund-owned blocked notes/status को close करने के लिए सीमित दिखती है।
+
+**निर्भरता:** 16210000 finalizer अब payout trigger की सही attachment, firing condition और execution order पर निर्भर है। Trigger attach होने का source मौजूद है, लेकिन PostgreSQL catalog में actual trigger binding और transaction rollback behavior replay के बिना verified नहीं।
+
+### 136.4 अगली कार्रवाई के लिए आवश्यक acceptance tests
+
+- Accounting RPC JSON contract: 15180000 के छह Route keys 17010000 में expected policy के अनुसार उपस्थित/अनुपस्थित हों।
+- Refund full amount: कम, अधिक, exact amount; stale evidence; non-processed provider status; changed payment/refund identity।
+- Payout lifecycle: no payout, blocked Razorpay payout, unrelated blocked payout, pending payout, already paid payout।
+- Trigger binding: booking payment_status transition पर केवल intended refund-owned blocked payout close हो।
+- Failure atomicity: trigger/finalizer error पर refund state, booking state और payout state एक transaction में rollback हों।
+
+### 136.5 सीमा
+
+यह GitHub source-only comparison है। कोई PostgreSQL replay, pgTAP, consumer UI test, provider call, database query/write, CI, deployment, merge या Production action नहीं किया गया।
