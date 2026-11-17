@@ -5820,3 +5820,42 @@ Source में Auth event generation counter तथा हर प्रमु�
 यह **संभावित stale UI completion और reply availability risk** है, runtime-confirmed unauthorized message या data breach नहीं। Source review में reply completion के लिए Auth-generation guard नहीं मिला। इसे Section 184 के साथ एक ही account-transition regression suite में शामिल करना चाहिए।
 
 केवल GitHub source inspection और इस documentation section का update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई browser/Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 186. Support Inbox Refresh Lock और Case Status Actions — Account Generation Review
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** `loadStaffSupportInbox()`, customer/electrician case status handlers और thread selection lifecycle का static review।
+
+### 1. Inbox Global Busy Lock
+
+- `loadStaffSupportInbox()` एक global `staffSupportLoadBusy` boolean से duplicate loads रोकता है।
+- दोनों complaint-list RPCs के `Promise.all` पूरा होने के बाद ही परिणाम DOM में लिखे जाते हैं; इस बीच Auth generation, current user ID और `adminPortalMode` का पुनः सत्यापन नहीं दिखता।
+- यदि Staff A की सूची pending रहते account Staff B में बदल जाए, तो A के response से shared inbox DOM बदल सकता है।
+- B का bootstrap load पुराने global busy flag के कारण return कर सकता है। पुराने अनुरोध के `finally` में flag false होता है, लेकिन B के लिए स्वतः retry/schedule नहीं दिखता।
+
+### 2. Thread Selection Guards की सीमा
+
+- Customer और electrician thread loaders अपने-अपने request counter और selected case ID जाँचते हैं; इससे एक ही session में पुराने case का response नए चुने case पर लिखे जाने का जोखिम घटता है।
+- ये guards Auth generation या user ID नहीं जाँचते। Account switch के समय counter/selection invalidate नहीं होते; इसलिए पुरानी session का response नए account के DOM में आ सकता है।
+- Thread response में संदेश body भी render होता है। यह संभावित stale display है, server-side authorization bypass का प्रमाण नहीं।
+
+### 3. Case Status Update Handlers
+
+- `updateStaffCustomerComplaint()` और `updateStaffElectricianTicket()` status RPC के बाद सीधे `loadStaffSupportInbox()` बुलाते हैं; RPC response के बाद Auth generation/user ID/portal mode guard नहीं दिखता।
+- Account switch के दौरान late success/failure alert या refresh call नए session की UI पर असर डाल सकता है।
+- Database RPC के permission/assignment checks इस static finding से हटे हुए नहीं माने जा सकते; actual request identity और server behavior runtime में सत्यापित नहीं हुआ।
+
+### 4. सुझाया गया सुधार
+
+- Inbox load, thread load और status update के आरम्भ में `adminAuthRun`, user ID और Staff mode capture करें; हर awaited operation के बाद उन्हीं की पुष्टि करें।
+- Global boolean के बजाय account-generation keyed request token/lock रखें। पुराने request का `finally` नए account का lock न हटाए।
+- Auth transition पर inbox/thread request counters बढ़ाएँ, selected IDs reset करें, thread panels और reply fields साफ़ करें।
+- यदि B का bootstrap पुराने request के कारण skip हो, तो पुराने request के settle होने पर केवल वर्तमान valid Staff generation के लिए एक refresh schedule करें।
+- Regression suite: A inbox pending → logout → B login; A thread pending → B login; A status update pending → B login; B bootstrap while A lock active; old request finally vs new request lock; repeated refresh.
+
+### 5. Verdict और Evidence Boundary
+
+Section 184–186 मिलाकर Support Inbox, thread और status-action UI में **account-switch stale response / refresh starvation** का एक साझा lifecycle risk दिखाई देता है। यह static source finding है; live cross-account data exposure, unauthorized case update या message action की पुष्टि नहीं हुई। Server-side RPC authorization अलग से मौजूद है और उसे बनाए रखना आवश्यक है।
+
+केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई browser/Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
