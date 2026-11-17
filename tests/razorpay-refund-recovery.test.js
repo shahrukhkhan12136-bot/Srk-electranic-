@@ -15,6 +15,26 @@ const record={id:recordId,booking_id:bookingId,payment_id:paymentId,refund_id:re
 const providerRefund={id:refundId,payment_id:paymentId,amount:12500,currency:"INR",status:"processed",created_at:1794720000,acquirer_data:{arn:"ARN123"},notes:{srk_refund_record_id:recordId}};
 const response=(status,data)=>({ok:status>=200&&status<300,status,text:async()=>JSON.stringify(data)});
 const originalFetch=global.fetch;
+
+test("reads Main Admin authorization header case-insensitively",async t=>{
+ let authHeader=null;
+ global.fetch=async(url,options={})=>{
+  const target=String(url);
+  if(target.endsWith("/auth/v1/user")){authHeader=options.headers.Authorization;return response(200,{id:adminId});}
+  if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);
+  if(target.includes("/rest/v1/srk_razorpay_refunds?"))return response(200,[record]);
+  if(target.includes("/rest/v1/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);
+  if(target.includes("api.razorpay.com/v1/refunds/"))return response(200,providerRefund);
+  if(target.endsWith("/rpc/srk_service_record_razorpay_refund_recovery_evidence"))return response(200,auditId);
+  if(target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence"))return response(200,{success:true,status:"processed"});
+  throw new Error("unexpected request "+target);
+ };
+ t.after(()=>{global.fetch=originalFetch;});
+ const incoming=request();incoming.headers={"AuThOrIzAtIoN":"Bearer test-admin-token-123456789"};
+ const result=await handler(incoming);
+ assert.equal(result.statusCode,200);assert.equal(authHeader,"Bearer test-admin-token-123456789");
+});
+
 function request(note="Verified against Razorpay Dashboard; proceed with accounting recovery."){return{httpMethod:"POST",headers:{authorization:"Bearer test-admin-token-123456789"},body:JSON.stringify({booking_id:bookingId,admin_note:note})};}
 function setup({provider=providerRefund,finalizeOk=true,providerStatus="processed"}={}){
  const calls=[];
