@@ -5376,3 +5376,40 @@ Audit table में `actor_user_id` का foreign key `auth.users(id)` से
 ### 5. Verdict
 
 Source में actor attribution `auth.uid()` और `is_srk_admin()` पर आधारित है। Service-role/backend request में user subject न होने पर audit actor `system` हो सकता है; Auth user deletion पर actor foreign key NULL हो सकती है। इन परिस्थितियों का runtime behavior और deployed configuration verify नहीं किया गया है। कोई SQL/test/migration, grant, policy या database setting नहीं बदली गई; कोई DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+
+## 174. Main Admin और Support Staff Audit Streams का अंतर
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Audit Branch में Main Admin allow-list, Support Staff RBAC और दोनों audit tables के source-level संबंध की जाँच। कोई database operation या runtime test नहीं किया गया।
+
+### 1. Staff अलग Identity Class है
+
+Migration `20261114390000_admin_staff_rbac_foundation.sql` स्पष्ट करती है कि Main Admin की पहचान `srk_admin_users` में रहती है और Support Staff को उस सूची में नहीं जोड़ा जाता। Staff के लिए अलग `srk_admin_staff`, `srk_admin_permissions` और `srk_admin_role_permissions` संरचनाएँ हैं। Permission helper पहले Main Admin जाँचता है; उसके बाद active staff और role-permission mapping जाँचता है।
+
+### 2. दो अलग Audit Tables
+
+- Financial/general audit: `srk_admin_audit_events`; actor role केवल `admin`, `user`, `system` में वर्गीकृत होता है।
+- Staff RBAC audit: `srk_admin_staff_audit_events`; इसमें actor UUID, target UUID, action, outcome और details अलग से रखे जाते हैं। Staff audit table पर immutable guard और actor/target indexes भी migration में परिभाषित हैं।
+
+इसलिए Support Staff द्वारा किया गया ऐसा बदलाव जो general audit trigger से गुजरता है, `is_srk_admin()` false होने पर `user` role के रूप में दिख सकता है; Staff-specific activity का विस्तृत रिकॉर्ड अलग Staff audit stream में होना चाहिए। General audit role field अकेले Support Staff को सामान्य ग्राहक से अलग नहीं पहचानती।
+
+### 3. Reporting और Investigation के लिए प्रभाव
+
+- Main Admin की वित्तीय कार्रवाई और Support Staff की support कार्रवाई को केवल `actor_role` से अलग-अलग न समझें।
+- Staff investigation में `srk_admin_staff_audit_events` के actor/target/action/outcome/details को साथ पढ़ना आवश्यक है।
+- दोनों audit streams के बीच correlation चाहिए तो actor UUID और संबंधित business entity/reference को स्पष्ट रूप से जोड़ने वाला report/query contract चाहिए; केवल timestamp से संबंध या क्रम सिद्ध नहीं होता।
+- Staff audit table के immutable guard का दावा source definition पर आधारित है; trigger bypass या privileged database owner के विरुद्ध runtime/tamper-resistance test नहीं किया गया।
+
+### 4. सुझाए गए Verification Assertions
+
+1. Main Admin action general audit में `actor_role='admin'` और सही actor UUID दे।
+2. Support Staff action Staff-specific audit में सही actor/target/action/outcome दर्ज करे।
+3. Support Staff द्वारा general audited entity बदलने पर `actor_role='user'` की अपेक्षा स्पष्ट हो और रिपोर्टिंग इसे ग्राहक कार्रवाई न समझे।
+4. Main Admin द्वारा Staff audit history पढ़ने की अनुमति और non-Admin denial behavior test हो।
+5. दोनों audit streams की correlation entity/actor identifiers से हो, केवल timestamp ordering से नहीं।
+
+### 5. Verdict
+
+Audit Branch में Main Admin और Support Staff की identity तथा audit streams अलग परिभाषित हैं। General audit का `admin/user/system` role field Support Staff को अलग label नहीं करता; Staff-specific events के लिए अलग table मौजूद है। इन दोनों streams की वास्तविक runtime completeness, cross-stream correlation और immutable behavior execute करके verify नहीं किए गए। कोई SQL/test/migration, permission, policy या database setting नहीं बदली गई; कोई DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
