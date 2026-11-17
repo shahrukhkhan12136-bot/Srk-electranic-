@@ -64,3 +64,12 @@ This is a **static reporting-completeness gap**, not proof that a missing payout
 Static source review only. No source SQL or test was edited. No SQL, PostgreSQL query, migration replay, pgTAP, Node test, provider API, CI, deployment, merge, cherry-pick, or production setting was run or changed.
 
 GPT-2 checklist remains **27/39 = 69%**. This review records a reporting gap and a test requirement; it is not runtime acceptance evidence.
+
+
+## Recheck — 17 November 2026, current audit branch
+
+- Current Admin report migration `20261117180000_reconcile_admin_commission_report_to_payout_ledger.sql` SHA `e3eaa21836628c459e757461a5598aa51ea8b66c` confirms customer collections remain separately visible in `total_collected`; commission/payable and partner earnings are sourced from payout rows. Partner `paid_completed_jobs` uses `count(pc.booking_id)`, so a missing/mismatched payout row is not counted as a payout-backed job.
+- Current Electrician earnings migration `20261117190000_reconcile_electrician_earnings_to_payout_ledger.sql` SHA `f12d41362dcb230bfe606aa43e47ba6ee3f6c444` correctly sources commission/payable from the canonical payout ledger, but it still LEFT JOINs the payout table and COALESCEs missing payout values to zero while returning the booking row.
+- Therefore the earlier source correction fixes the cancellation-fee earnings formula, but **does not fully close the missing-payout reporting-completeness gap**: Admin aggregate has no explicit missing-ledger count/exception field; Electrician earnings can display zero commission/earning without distinguishing “legitimate zero” from “missing payout row”.
+- Safe follow-up is to add an explicit reconciliation exception signal/count without changing the existing UI return contract until the caller/owner approves the exact display contract; alternatively use the existing per-booking Admin reconciliation RPC as the authoritative exception surface. No new UI feature or RPC return-shape change was made in this pass.
+- Static source evidence only. No fixture execution, PostgreSQL/pgTAP, Node tests, database query, provider action, deployment or merge. Official GPT-2 progress remains 27/39 = 69%; Runtime Acceptance 60/60 Pending.
