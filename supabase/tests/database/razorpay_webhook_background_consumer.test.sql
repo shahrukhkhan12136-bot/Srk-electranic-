@@ -24,7 +24,7 @@ select ok(position('interval ''2 minutes''' in pg_get_functiondef('public.srk_se
 select ok(position('event_payload is not null' in lower(pg_get_functiondef('public.srk_service_claim_razorpay_webhook_event_for_worker(text)'::regprocedure)))>0,
   'worker cannot claim legacy inbox rows without a persisted payload');
 select ok(position('state in ('||quote_literal('queued')||','||quote_literal('retryable')||')' in
-  pg_get_functiondef('public.srk_service_list_due_razorpay_webhook_events(integer)'::regprocedure))>0
+  lower(pg_get_functiondef('public.srk_service_list_due_razorpay_webhook_events(integer)'::regprocedure)))>0
   and position('lease_expires_at<=clock_timestamp()' in pg_get_functiondef('public.srk_service_list_due_razorpay_webhook_events(integer)'::regprocedure))>0,
   'sweeper discovers queued, retryable, and expired processing events');
 select ok(not has_function_privilege('anon','public.srk_service_claim_razorpay_webhook_event_for_worker(text)','execute')
@@ -42,7 +42,7 @@ select ok(position('p_event_payload' in pg_get_functiondef('public.srk_service_e
 select * from finish();
 rollback;
 
-select ok(position('event_payload=case' in pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure))>0
+select ok(position('event_payload=case' in lower(pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure)))>0
   and position('p_outcome in ('||quote_literal('processed')||','||quote_literal('ignored')||')' in
-    pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure))>0,
+    lower(pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure)))>0,
   'terminal completion purges the minimal event payload while retryable events retain it');
