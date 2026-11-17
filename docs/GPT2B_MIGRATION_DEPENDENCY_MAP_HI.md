@@ -211,3 +211,16 @@ This section records concrete named function edges found in additional migration
 
 **Completeness boundary:** this second pass materially expands the named function dependency edges for booking lifecycle, support/RBAC, payout/refund/accounting and push subsystems. It is still not a parser-generated, exhaustive graph of all 92 files, all dynamic SQL, all column references, or all trigger side effects. A clean replay remains the only way to validate compilation and object resolution end-to-end.
 
+
+
+### 7.7 Push lease-fencing caller cross-check (worker source)
+
+The source caller check was extended beyond SQL:
+
+- Netlify worker netlify/functions/deliver-push-outbox.js calls srk_claim_push_delivery_outbox and passes p_attempt_count from the claimed row into srk_finish_push_delivery_outbox.
+- Supabase Edge Function supabase/functions/push-job-offer/index.ts passes p_attempt_count from each claimed device delivery into srk_finish_push_subscription_delivery and checks srk_is_push_subscription_delivery_complete.
+- Node source-contract tests tests/push-delivery-outbox.test.js and tests/push-subscription-delivery-ledger.test.js assert those caller argument names and the changed SQL signatures.
+- pgTAP source file supabase/tests/database/push_delivery_lease_fencing.test.sql checks the new regprocedure signatures, service-role grants, stale-attempt guards, processing-state guard and retry caps.
+- **Finding:** the two current worker source callers inspected match the lease-fenced attempt-count signatures. This reduces the specific stale-caller concern for these two tracked workers.
+- **Not proven:** deployed worker versions, environment secrets, runtime RPC execution, concurrent stale worker rejection, actual retry/lease timing, or Node/pgTAP test pass. The contract test files were inspected only; no test runner or database was executed.
+
