@@ -6136,3 +6136,40 @@ SOS migration इन tables/columns को पहले से मौजूद �
 अब यह कहना सही है कि base table definitions repository में मौजूद हैं, लेकिन वे versioned migration chain के बाहर manual setup SQL में हैं। SOS migration के जरूरी अतिरिक्त columns की कुछ provenance पहचानी गई है। फिर भी canonical fresh-install path और पूर्ण clean replay अभी **unverified** हैं। अगला सुरक्षित static कदम setup scripts और migration history के बीच पूरा schema-diff/inventory बनाना है; कोई shared/Production DB operation इस audit से अधिकृत नहीं है।
 
 यह केवल GitHub source inspection और इस report का documentation update है। कोई SQL/pgTAP execute, database query, migration replay, application source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 194. Setup Script बनाम SOS Migration — Baseline Drift और Fresh-Install Manifest
+
+### 1. तीन Setup Files एक समान नहीं हैं
+
+Static source comparison:
+
+- `SUPABASE_SCHEMA.sql` SHA `8ae88a7035bc963b244f22c6c1450c22618ec88f`: `service_bookings` और `electrician_profiles` की शुरुआती tables बनाता है।
+- `PORTAL_SCHEMA.sql` SHA `efc14aa623a3895ffb3841b7b0f226f2015f34b1`: header के अनुसार इसे `SUPABASE_SCHEMA.sql` के बाद चलाना है; यह `electrician_profiles.user_id` और Admin/portal policies/functions जोड़ता है।
+- `COMPLETE_DATABASE_SETUP.sql` SHA `2b806e727f449ba18e71ad23edef805ceb2da2b5`: यह consolidated script है; इसमें base schema और Portal setup के कई हिस्से पहले से शामिल हैं। इसलिए इसे दोनों अलग scripts के बाद फिर से चलाने का निर्देश नहीं मानना चाहिए।
+
+### 2. SOS के लिए आवश्यक बाद के Columns Setup Scripts में नहीं हैं
+
+इन तीनों setup files में खोज के अनुसार `service_bookings.customer_user_id`, `service_bookings.selected_category` और `electrician_profiles.auth_user_id` की स्थापना नहीं मिली। इनकी provenance अलग timestamped migrations में है:
+
+- `20261108121115_add_customer_account_booking_access.sql` — `customer_user_id`
+- `20261109000500_harden_electrician_profile_identity_linking.sql` — `auth_user_id`
+- `20261114160000_customer_selected_rate_tier_and_server_estimate.sql` — `selected_category`
+
+SOS migration `20261115260000_sos_admin_support_alerts.sql` इन columns पर निर्भर करती है। इसका अर्थ है कि केवल किसी एक root setup script को चलाना SOS-ready schema नहीं बनाता; बाद की migrations भी आवश्यक हैं। `amount_paid` भी शुरुआती base schema में नहीं दिखता; उसे `20261116200000_restore_service_bookings_amount_paid.sql` बाद में जोड़ता है, हालांकि SOS function स्वयं इस column को नहीं पढ़ता।
+
+### 3. Fresh-Install Manifest में आवश्यक स्पष्टता
+
+Canonical fresh install के लिए repository owner को एक ही documented path तय करना चाहिए:
+
+1. चुना हुआ base setup script — `SUPABASE_SCHEMA.sql` + `PORTAL_SCHEMA.sql`, या consolidated `COMPLETE_DATABASE_SETUP.sql`; दोनों paths को बिना reconciliation के mix न करें।
+2. उसके बाद सभी आवश्यक versioned migrations, timestamp/order सहित, जिनमें customer booking identity, electrician identity, selected category और SOS/RBAC prerequisites शामिल हों।
+3. हर migration की prerequisite table/column inventory और clean disposable PostgreSQL/Supabase replay evidence।
+
+यह audit कोई नया manifest या schema परिवर्तन लागू नहीं करता। केवल source files की सामग्री और उनके घोषित क्रम का static comparison किया गया है।
+
+### 4. Verdict
+
+**मुख्य जोखिम:** Root setup SQL और timestamped migration history दो अलग schema-delivery layers हैं। उपलब्ध source से SOS prerequisites की provenance पहचानी जा सकती है, पर fresh install के लिए एक authoritative, non-duplicative execution path अभी स्थापित नहीं है। Clean replay readiness **unverified** रहेगी जब तक owner canonical setup path तय न करे और isolated replay evidence उपलब्ध न हो।
+
+कोई SQL/pgTAP execute, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
