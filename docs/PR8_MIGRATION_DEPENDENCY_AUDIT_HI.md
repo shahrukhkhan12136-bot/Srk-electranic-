@@ -3388,3 +3388,74 @@ No SQL, PostgreSQL replay, pgTAP, DB query/write, CI dispatch, deployment or mer
 3. Route ledger drop (15092149) और route-related reconciliation replacement (15170000/15180000) को final contract के रूप में owner/DBA से स्पष्ट कराना है।
 4. Search-path patches और repeated RPC replacements के final function bodies का source hash/ordering matrix बनाना बाकी है।
 5. No SQL, PostgreSQL parser/replay, pgTAP, DB query/write, CI dispatch, deployment or merge performed.
+
+## 133. Audit Branch का 89-file inventory और duplicate-version matrix — 17 Nov 2026
+
+Audit Branch के recursive Git tree को फिर से पढ़ा गया। Tree response truncated नहीं था। `supabase/migrations/` में ठीक 89 SQL files मिलीं। यह inventory केवल इस branch snapshot का है।
+
+### 133.1 दिन-वार inventory
+
+| Filename date prefix | SQL files |
+|---|---:|
+| 20261108 | 5 |
+| 20261109 | 11 |
+| 20261110 | 2 |
+| 20261111 | 1 |
+| 20261113 | 2 |
+| 20261114 | 30 |
+| 20261115 | 27 |
+| 20261116 | 10 |
+| 20261117 | 1 |
+| **कुल** | **89** |
+
+12 Nov prefix की कोई migration file इस tree में नहीं मिली। यह केवल filename inventory है, applied migration history का प्रमाण नहीं।
+
+### 133.2 Version identity collision
+
+Supabase migration filename convention में underscore से पहले का prefix version identity होता है। Tree में एक duplicate version prefix मिला:
+
+| Version | File 1 | File 2 | निष्कर्ष |
+|---|---|---|---|
+| 20261109 | 20261109_allow_quote_approval_booking_states.sql | 20261109_electrician_inspection_quotes_and_service_only_commission.sql | दोनों का version prefix समान; अलग contents और sizes |
+
+इसलिए 89 filenames में 88 distinct version prefixes हैं। इन दोनों files के लिए CLI parsing, migration history insertion और remote DB में applied state का प्रमाण उपलब्ध नहीं है। कोई rename, delete, timestamp change या migration-history edit नहीं किया गया।
+
+### 133.3 Exact identical content, अलग versions
+
+| File | Blob SHA |
+|---|---|
+| 20261115120001_fix_multi_profile_electrician_labour_bill_access.sql | e3bdf2624c224322a6ac4c99f2ae6e77b1be4774 |
+| 20261115145900_fix_multi_profile_electrician_labour_bill_access.sql | e3bdf2624c224322a6ac4c99f2ae6e77b1be4774 |
+
+ये दो अलग version prefixes वाली files हैं, लेकिन Git content blob एक ही है। यह duplicate version collision नहीं है; यह duplicate content है। दोनों को applied history में रखने/हटाने का निर्णय owner/DBA और Supabase migration history verification के बिना नहीं किया जाएगा।
+
+### 133.4 Functional dependency bands — provisional, replay order नहीं
+
+| Migration band | Source-level functional area | प्रमुख prerequisites / downstream links |
+|---|---|---|
+| 08–09 Nov | Rate limit, customer booking ownership, electrician identity/location, commission/wallet/Route ledger, quotes | Starter booking/profile schema, Auth, Admin helper names, identity triggers, quote constraints |
+| 10–11 Nov | Complaint base, quote-column restoration, push subscription base | Booking/customer schema; push subscription base आगे push outbox की prerequisite |
+| 13 Nov | Support conversations, attachments और Admin message listing | Complaint base, Storage bucket/schema, Admin helper |
+| 14 Nov | Finance core, customer profile/address, rate-tier/dispatch, work timer/events, cancellation/fee/refund, KYC, Staff RBAC, webhook inbox | Booking/profile/payment baseline, Storage/Auth, finance core, support objects, Admin helper and permission model |
+| 15 Nov | Refund request/recovery, manual refund, KYC activation, accounting/Route reconciliation, push outbox/ledger/health, legacy RPC retirement/hardening | Finance core, refund request/evidence, Route contract, push subscriptions, prior RPCs |
+| 16 Nov | Staff helper volatility, RPC search_path patches, amount_paid restore, payout trigger | Earlier target functions and financial/payout tables |
+| 17 Nov | Commission + manual payment-method bridge | Payout/commission source functions, payment-method consistency and prior reconciliation RPC |
+
+### 133.5 Clean replay पर अभी निर्णय क्यों नहीं दिया जा सकता
+
+1. **Baseline ambiguity:** कई शुरुआती migrations existing public tables, Auth roles, Storage objects, extensions और helper functions मानकर चलती हैं। Branch में एक authoritative clean starter schema + bootstrap recipe अभी प्रमाणित नहीं।
+2. **Version collision:** 20261109 duplicate version के लिए CLI/history व्यवहार की पुष्टि नहीं।
+3. **Duplicate content:** 15120001 और 15145900 का समान blob, लेकिन अलग version entries।
+4. **Object definition collision:** srk_booking_labour_bills की 14125844 और 14240000 definitions का पूर्ण column/constraint parity decision बाकी।
+5. **Repeated replacements:** booking accounting reconciliation, refund recovery, Admin review, dispatch, and search_path functions के final definitions को ordered signature/hash matrix में मिलाना बाकी।
+6. **Branch compatibility:** PR #8 Feature Branch और Audit Branch अलग हैं; इस inventory से merge compatibility या production applied state साबित नहीं होती।
+
+### 133.6 इस pass का सत्यापन और सीमा
+
+- Recursive Git tree में 89/89 SQL migration paths मिले; response truncated=false था।
+- Duplicate version prefix का count: 1 collision group (20261109); distinct version prefixes: 88।
+- Exact identical blob group: 1 pair (15120001 और 15145900)।
+- कोई migration file rename/delete/edit नहीं की गई; केवल Audit Report documentation update है।
+- कोई SQL execution, PostgreSQL parser/replay, pgTAP, database query/write, CI dispatch, deployment, merge या Production action नहीं किया गया।
+
+**स्थिति:** Source-level inventory और duplicate matrix तैयार है। इसे अभी final clean-replay approval नहीं माना जाएगा। अगला आवश्यक कदम: owner-approved baseline + duplicate-version resolution, फिर disposable local PostgreSQL/Supabase harness में full 89-file replay और pgTAP validation।
