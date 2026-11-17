@@ -6440,3 +6440,45 @@ Recommended later pgTAP assertions: inspect `has_function_privilege` for anon/au
 - Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल migration/test source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 203. Admin Commission Report — Missing Payout Row Visibility and Coverage Gap
+
+### 1. Report query behavior
+
+Latest migration `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` (SHA `68189051090a51bef26a98997caf103b62ed070c`) defines `public.srk_admin_commission_report()` using:
+
+- `service_bookings` filtered to `status='completed'` and `payment_status='paid'`;
+- a `LEFT JOIN` from those bookings to `srk_electrician_payouts` by `booking_id`;
+- `coalesce(...,0)` for payout gross, platform commission and electrician payable;
+- aggregate totals and per-electrician totals from those joined rows.
+
+This means a paid/completed booking with no matching payout row is still included in the report's paid-completed job count, while its payout gross, commission and payable contribute zero. The report JSON does not expose a missing-payout count or exception list.
+
+### 2. Related reconciliation path
+
+The same migration's per-booking accounting reconciliation separately adds `PAYOUT_MISSING` when a payout row is absent. That provides a diagnostic path, but the aggregate commission report does not surface or link that exception in its returned summary.
+
+Therefore this is a **report visibility / completeness gap to resolve**, not proof that a missing payout currently exists. The trigger and reconciliation source may prevent or flag such a state, but no live rows were queried.
+
+### 3. Test coverage check
+
+The current `admin_labour_bill_payment_accounting_bridge.test.sql` (SHA `7db3d4e5bec75100acc6f892bbcdfe7f29f0f3b7`, `plan(19)`) asserts that the Admin report reads `p.electrician_payable`, `p.platform_commission` and `p.gross_service_amount`. It does not assert behavior or visibility when a completed/paid booking has no payout row.
+
+Recommended later isolated-database tests:
+- create a paid/completed booking with no payout row and confirm the aggregate report exposes a missing-payout exception/count rather than silently presenting zero payout values;
+- create a matching payout row and confirm totals/counts reconcile;
+- verify the per-booking reconciliation reports `PAYOUT_MISSING` for the first case.
+
+Any report contract change should be owner-reviewed before implementation; no source change is proposed or made in this audit item.
+
+### 4. Verdict and limits
+
+- Static SQL confirms that the aggregate report's LEFT JOIN and COALESCE make missing payout rows numerically indistinguishable from zero-valued payout fields in its summary.
+- The per-booking reconciliation has a separate `PAYOUT_MISSING` exception, but the aggregate report does not expose it.
+- No evidence establishes that a real missing payout row exists.
+- No database query, migration replay, pgTAP execution or runtime test was performed.
+- GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion.
+- Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, database query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
