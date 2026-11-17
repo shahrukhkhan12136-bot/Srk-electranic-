@@ -10,7 +10,6 @@ const getHeader = (headers, name) => {
   return key === undefined ? "" : headers[key];
 };
 
-const WEBHOOK_HANDLER_BUDGET_MS = 52000;
 const WEBHOOK_COMPLETION_RESERVE_MS = 15000;
 const requestSignal = (deadlineAt, reserveMs = WEBHOOK_COMPLETION_RESERVE_MS) => {
   const remaining = Number(deadlineAt) - Date.now() - reserveMs;
@@ -292,7 +291,7 @@ exports.handler = async (event) => {
     return json(400,{success:false,error:"Signature verification failed."});
   try {
     const payload = JSON.parse(rawBody.toString("utf8"));
-    const eventName = typeof payload.event === "string" && payload.event.length <= 100 ? payload.event : "unknown";
+    const eventName = typeof payload.event === "string" && payload.event.length >= 1 && payload.event.length <= 100 ? payload.event : "unknown";
     const payloadHash = crypto.createHash("sha256").update(rawBody).digest("hex");
     const suppliedEventId = String(getHeader(event.headers,"x-razorpay-event-id")).trim();
     const eventId = suppliedEventId && suppliedEventId.length <= 128 ? suppliedEventId : "sha256:"+payloadHash;
