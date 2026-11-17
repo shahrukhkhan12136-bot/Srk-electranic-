@@ -7238,3 +7238,25 @@ Because the reference is inside a PL/pgSQL function body, static inspection does
 - Add a migration-order assertion that checks function-body relation dependencies against object-creation versions, plus a targeted post-migration KYC preview/upload test in an isolated database.
 
 Static source review only. No SQL, database query, migration replay, pgTAP, browser test, CI dispatch or deployment was run. This is a confirmed forward dependency and rollout-order requirement, not a reproduced migration failure. GPT-2 checklist remains 27/39 = 69%.
+
+
+## 228. Payout Reconciliation के 34 pgTAP Assertions संरचनात्मक हैं; Transactional Runtime Scenarios शामिल नहीं हैं
+
+### Static source reviewed
+- `supabase/tests/database/electrician_payout_reconciliation.test.sql` SHA `88184e2e1fb386f16d6bd339556a15a5b87275d2`.
+- `supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` SHA `68189051090a51bef26a98997caf103b62ed070c`.
+
+### Finding
+Payout reconciliation test में घोषित `plan(34)` के साथ 34 top-level assertions हैं और `finish()` मौजूद है। Assertions trigger attachment/type/order, function configuration/privileges और `pg_get_functiondef()` में अपेक्षित source fragments की जाँच करते हैं। यह उपयोगी catalog/source-contract coverage है।
+
+लेकिन test transaction में कोई booking/payout fixture insert या update नहीं करता और trigger को वास्तविक row changes से invoke नहीं करता। इसलिए 34/34 assertion-count match को payout row के वास्तविक निर्माण/अपडेट, commission mismatch पर transaction rollback, manual payment evidence mismatch, refund transition, अथवा concurrent booking updates के runtime proof के रूप में नहीं पढ़ा जा सकता। विशेषकर AFTER payout writer और parity validator का वास्तविक transactional interaction इस फ़ाइल में execute नहीं होता।
+
+यह test की घोषित structural प्रकृति का coverage gap है; इससे production bug या runtime failure सिद्ध नहीं होता।
+
+### Required action
+- Isolated PostgreSQL में वास्तविक booking/payment/payout fixtures के साथ insert/update scenarios जोड़ें।
+- Commission mismatch और payout row missing होने पर पूरा statement/transaction rollback होता है, इसे verify करें।
+- Manual-payment method mismatch, full-refund payout closure और unrelated Admin payout hold preservation को trigger invocation से जाँचें।
+- Concurrent update behavior अलग controlled test में जाँचें; अभी कोई concurrency guarantee प्रमाणित नहीं है।
+
+Static source review only. Test, SQL, database query या migration replay नहीं चलाया गया। कोई runtime result infer नहीं किया गया। GPT-2 checklist remains 27/39 = 69%.
