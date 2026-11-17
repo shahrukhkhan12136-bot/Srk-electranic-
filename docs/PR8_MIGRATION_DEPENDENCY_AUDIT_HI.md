@@ -4405,3 +4405,36 @@ Section 149 के बाद छह high-risk items की source-level पु�
 - No PostgreSQL instance, SQL parser, pgTAP, CI workflow, deployment, shared Test DB or Production DB was used.
 
 **निर्णय:** अभी shared/integration branch बनाना उचित नहीं। पहले P0 decisions और reproducible bootstrap स्पष्ट हों। उसके बाद ही isolated replay, और फिर controlled integration की अनुमति पर विचार किया जाए।
+
+
+### 151. External Bootstrap Sources — Consolidated Setup Reconciliation — 17 Nov 2026
+
+Section 149 के "core schema external prerequisite" और Admin helper bootstrap को root-level setup files के विरुद्ध दोबारा जाँचा गया। इस जाँच से एक महत्वपूर्ण स्पष्टता मिलती है: prerequisites repository में मौजूद हैं, लेकिन timestamped 89-file migration chain के अंदर नहीं हैं।
+
+#### 151.1 Confirmed Bootstrap Chain
+
+- `SUPABASE_SCHEMA.sql` (blob `8ae88a7035bc963b244f22c6c1450c22618ec88f`) में `service_bookings`, `electrician_applications`, `electrician_profiles` और शुरुआती marketplace schema की definitions मौजूद हैं।
+- `PORTAL_SCHEMA.sql` (blob `efc14aa623a3895ffb3841b7b0f226f2015f34b1`) स्पष्ट रूप से `SUPABASE_SCHEMA.sql` के बाद चलने को कहता है; यह `srk_admin_users`, Auth profile-link trigger, `srk_is_admin()`, offer RPC और `job_offers` आधारित policies/functions देता है।
+- `COMPLETE_DATABASE_SETUP.sql` (blob `2b806e727f449ba18e71ad23edef805ceb2da2b5`) consolidated setup है। इसमें क्रमशः base schema, Admin/Electrician portal, secure offer details और Admin email-login compatibility sections मौजूद हैं।
+- Consolidated file में `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers`, `srk_admin_users`, `srk_is_admin()` और `is_srk_admin()` definitions मिलीं। इसलिए इस file को पूरा और सफलतापूर्वक चलाने पर source-level bootstrap मौजूद होने का आधार मिलता है।
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` (blob `dbd91b3f912b1e0946bffe6d249a85cc41dc81cd`) अलग compatibility patch है; यह `srk_admin_users` और operational tables पहले से मौजूद मानता है तथा `is_srk_admin()` बनाता है।
+- `PORTAL_SETUP_HINDI.md` consolidated setup को एक बार चलाने और `VERCEL_DEPLOY_HINDI.md` देखने का निर्देश देता है।
+
+#### 151.2 Corrected Interpretation
+
+1. Core tables और helper functions repository से अनुपस्थित नहीं हैं; वे root-level setup SQL में उपलब्ध हैं।
+2. समस्या यह है कि ये files `supabase/migrations/` की timestamped 89-file chain का हिस्सा नहीं हैं। इसलिए केवल उस directory को blank database पर replay करना पर्याप्त नहीं।
+3. Repository documentation consolidated setup को एक बार चलाने का रास्ता देती है, लेकिन इस audit ने उस script को execute नहीं किया और न यह प्रमाणित किया कि हर existing environment ने वही exact version पहले से चलाया है।
+4. Migration-only replay contract चाहिए तो base setup को versioned, deterministic prerequisite बनाना होगा या runner को explicitly documented bootstrap phase देनी होगी। Existing Production/Test database पर setup script दोबारा चलाने की सलाह इस audit से नहीं दी जा रही।
+5. `srk_is_admin()` और `is_srk_admin()` दो अलग helper names हैं; consolidated setup में दोनों मौजूद हैं। Staff RBAC का consumer `is_srk_admin()` है। इनका semantic equivalence केवल नाम या समान allow-list query से assume नहीं करना चाहिए।
+
+#### 151.3 Replay Gate Update
+
+- External bootstrap source identified: **Yes**.
+- Root consolidated setup source order inspected: **Yes, static only**.
+- Actual setup execution / transaction success: **Not Run**.
+- Existing database bootstrap state: **Not queried**.
+- Timestamped migration chain self-contained without bootstrap: **No**.
+- Safe next step: owner-approved disposable local environment में bootstrap-plus-migrations का documented sequence और compatibility review तैयार करना; किसी shared/Production DB पर प्रयोग नहीं।
+
+**सुधार:** पहले के Sections 149–150 में "external base schema/bootstrap" को unresolved कहा गया था। अब repository source identified है; unresolved हिस्सा source की उपलब्धता नहीं, बल्कि उसका reproducible versioned replay contract और वास्तविक environment state है।
