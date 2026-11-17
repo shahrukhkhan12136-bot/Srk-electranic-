@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(11);
 
 select ok(
   exists (
@@ -108,6 +108,28 @@ select ok(
        ))>0
   ),
   'Metadata RPC is authenticated-only and Staff attachment read does not grant Storage upload or delete access'
+);
+
+select ok(
+  exists (
+    select 1
+      from pg_proc p
+     where p.oid='public.srk_admin_staff_list_customer_attachments(uuid)'::regprocedure
+       and p.prosecdef
+       and p.provolatile='v'
+       and coalesce(p.proconfig::text,'') like '%search_path=""%'
+  )
+  and has_function_privilege('authenticated','public.srk_admin_staff_list_customer_attachments(uuid)','EXECUTE')
+  and not has_function_privilege('anon','public.srk_admin_staff_list_customer_attachments(uuid)','EXECUTE')
+  and not exists (
+    select 1
+      from pg_proc p,
+           lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+     where p.oid='public.srk_admin_staff_list_customer_attachments(uuid)'::regprocedure
+       and acl.grantee=0
+       and acl.privilege_type='EXECUTE'
+  ),
+  'attachment metadata RPC is VOLATILE SECURITY DEFINER with empty search_path and authenticated-only EXECUTE'
 );
 
 select * from finish();
