@@ -53,8 +53,16 @@ BEGIN
   IF v_event.event_type <> p_event_type OR v_event.payload_sha256 <> p_payload_sha256 THEN
     RETURN jsonb_build_object('success',false,'payload_conflict',true,'accepted',false);
   END IF;
-  UPDATE public.srk_razorpay_webhook_events
-    SET last_received_at=clock_timestamp() WHERE event_id=v_event.event_id;
+  IF v_event.event_payload IS NULL THEN
+    UPDATE public.srk_razorpay_webhook_events
+      SET event_payload=p_event_payload,state='queued',claim_token=NULL,lease_expires_at=NULL,
+          completed_at=NULL,last_error=NULL,last_received_at=clock_timestamp()
+      WHERE event_id=v_event.event_id;
+    v_event.state := 'queued';
+  ELSE
+    UPDATE public.srk_razorpay_webhook_events
+      SET last_received_at=clock_timestamp() WHERE event_id=v_event.event_id;
+  END IF;
   RETURN jsonb_build_object('success',true,'accepted',true,'duplicate',true,
     'state',v_event.state,'event_id',v_event.event_id);
 END;
@@ -92,3 +100,23 @@ GRANT EXECUTE ON FUNCTION public.srk_service_claim_razorpay_webhook_event_for_wo
 
 COMMENT ON COLUMN public.srk_razorpay_webhook_events.event_payload IS
   'Minimal validated Razorpay event projection required by the server-side asynchronous reconciler; service-role RPC only.';
+
+CREATE OR REPLACE FUNCTION public.srk_service_list_due_razorpay_webhook_events(p_limit integer DEFAULT 20)
+RETURNS TABLE(event_id text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $function$
+BEGIN
+  IF coalesce(auth.jwt()->>'role','') <> 'service_role' THEN
+    RAISE EXCEPTION 'SERVICE_ROLE_REQUIRED' USING ERRCODE='42501';
+  END IF;
+  RETURN QUERY
+    SELECT e.event_id FROM public.srk_razorpay_webhook_events e
+    WHERE e.event_payload IS NOT NULL
+      AND (e.state IN ('queued','retryable')
+        OR (e.state='processing' AND (e.lease_expires_at IS NULL OR e.lease_expires_at<=clock_timestamp())))
+    ORDER BY e.first_received_at
+    LIMIT greatest(1,least(coalesce(p_limit,20),50));
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_service_list_due_razorpay_webhook_events(integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.srk_service_list_due_razorpay_webhook_events(integer) TO service_role;
