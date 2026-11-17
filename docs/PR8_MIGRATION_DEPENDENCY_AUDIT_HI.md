@@ -1308,3 +1308,28 @@ Six migration files were re-read directly from the Audit Branch. Blob SHA values
 6. Verify support ticket Admin checks against the canonical Admin helper and test cross-electrician isolation.
 
 **Status:** six migration sources inspected and their direct dependency edges recorded. This is not a complete 89-file graph and is not PostgreSQL parse/replay evidence. Runtime tests remain **NOT RUN**; no database, location provider or notification provider was contacted.
+
+
+## 76. Legacy root schema scripts — canonical baseline provenance check — 17 Nov 2026
+
+Four root-level SQL setup scripts were re-read from the Audit Branch. This is a source inventory only; none was executed.
+
+| File | Blob SHA | Table declarations found | Function declarations found |
+|---|---|---|---|
+| `SUPABASE_SCHEMA.sql` | `8ae88a7035bc963b244f22c6c1450c22618ec88f` | `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers` | 0 |
+| `PORTAL_SCHEMA.sql` | `efc14aa623a3895ffb3841b7b0f226f2015f34b1` | `srk_admin_users` | 5 |
+| `COMPLETE_DATABASE_SETUP.sql` | `2b806e727f449ba18e71ad23edef805ceb2da2b5` | The same four core tables plus `srk_admin_users` | 8 |
+| `ADMIN_EMAIL_LOGIN_SETUP.sql` | `dbd91b3f912b1e0946bffe6d249a85cc41dc81cd` | 0 | 2 |
+
+### Findings
+
+1. `COMPLETE_DATABASE_SETUP.sql` overlaps the table declarations in `SUPABASE_SCHEMA.sql` and `PORTAL_SCHEMA.sql`; it is not an independent numbered migration and cannot be assumed safe to replay after either script.
+2. `PORTAL_SCHEMA.sql` and `ADMIN_EMAIL_LOGIN_SETUP.sql` both define Admin-related function contracts. The function inventory includes `srk_is_admin()` and `is_srk_admin()` as distinct names; their existence in setup scripts does not establish which definition/grants are authoritative for a clean install.
+3. The four files do not form a documented, uniquely ordered baseline chain. The branch therefore has overlapping bootstrap sources rather than a proven single canonical baseline.
+4. The earlier dependency report's baseline gate remains open: the owner-approved bootstrap choice, exact platform prerequisites (Auth roles/extensions/Storage), and numbered-migration starting point must be specified before a deterministic clean replay manifest can be certified.
+
+### Safe next step
+
+Treat these files as historical/bootstrap candidates, not as a replay sequence. Obtain an owner-approved baseline decision and a disposable PostgreSQL/Supabase-compatible fixture; then validate duplicate object declarations and platform dependencies in that isolated environment. Do not execute these scripts against Production.
+
+**Status:** four root scripts inventoried with exact Git blob identities. No SQL parser, PostgreSQL replay or runtime test was run. No source SQL was modified; only this Audit Branch report is being extended.
