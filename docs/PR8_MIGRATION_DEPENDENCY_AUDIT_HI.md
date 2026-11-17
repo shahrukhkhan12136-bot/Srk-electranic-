@@ -6369,3 +6369,40 @@ AFTER parity trigger में payout-trigger वाले columns के सा
 Static event-column cross-check में commission और payout की मुख्य input columns पर स्पष्ट event-list conflict नहीं मिला। `materials_amount` का अंतर legacy quote path के commission base से मेल खाता दिखता है। Runtime ordering और parity rollback अभी **unverified** हैं।
 
 केवल source inspection और audit documentation update किया गया। कोई SQL/pgTAP execution, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 201. Legacy Quote Status Nullability — Commission Guard Cross-Check and Progress Ledger
+
+### 1. Quote status schema contract
+
+Migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` (SHA `014699d3190e45aacde4022ac7e7fa9ca4fec006`) declares:
+
+- `quote_status text not null default 'not_submitted'`
+- Allowed values: `not_submitted`, `pending`, `approved`, `rejected`
+
+इसलिए Section 200 में review किए गए नए BEFORE commission trigger और AFTER parity trigger के legacy quote guard को nullable `quote_status` मानकर नहीं पढ़ना चाहिए: versioned migration के अनुसार field NOT NULL है और default भी उपलब्ध है। इस specific NULL-three-valued-logic concern को schema contract address करता है, बशर्ते authoritative install path इस migration को लागू करे।
+
+### 2. Commission trigger contract का static परिणाम
+
+- New-category flow में immutable labour bill से commission base लिया जाता है।
+- Legacy flow में approved quote की service charge commission base है; materials commission base में शामिल नहीं।
+- Manual payment method mismatch पर same booking और same amount की evidence row मिलने पर BEFORE trigger exception देता है।
+- BEFORE trigger commission set करता है; existing AFTER payout trigger ledger row लिखता है; बाद का AFTER parity trigger दोनों commission values का मिलान करता है।
+
+ये source definitions हैं, actual PostgreSQL execution proof नहीं। Section 199 का direct static test assertion gap और Section 200 के runtime-order/rollback proof की जरूरत अभी खुली है।
+
+### 3. GPT-2 progress ledger — authoritative documented checkpoint
+
+Master Checklist में दर्ज नवीनतम स्पष्ट GPT-2 denominator **27/39 = 69%** है। इसे इस documentation-only review से बढ़ाया नहीं गया। यह प्रतिशत उसी 39-item checklist का है; इसे पूरे SRK ELECTRONIC project या shared-branch readiness का प्रतिशत न समझें।
+
+- GPT-2 checklist: **27/39 complete (69%)** — last recorded checkpoint; this review does not add a completed checklist item.
+- Remaining GPT-2 checklist items: **12/39 (31%)**.
+- Shared paid Database Branch: deferred until GPT-1 and GPT-2 work and reports are collected, per owner-approved sequence.
+- PostgreSQL replay, pgTAP runtime and accounting/payment runtime remain unverified/not run.
+- No combined shared-branch readiness percentage is assigned because no approved fixed denominator for that separate gate has been established.
+
+### 4. Verdict
+
+Quote status is explicitly NOT NULL in the inspected versioned migration, so the hypothetical NULL quote-status path is not a supported schema state when the migration is applied. GPT-2's last recorded checklist progress remains 69%; no extra progress is claimed from this static cross-check.
+
+केवल source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
