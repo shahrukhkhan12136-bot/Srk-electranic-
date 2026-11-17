@@ -711,3 +711,13 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - इस pass में कोई application code/SQL edit नहीं हुआ; केवल इस handover report में audit evidence जोड़ा गया।
 - Main Database पर कोई migration/DDL/DML, Auth action, deployment, merge, payment/refund/payout या mobile QA नहीं किया गया।
 - Remaining: KYC event history reconciliation; selected category booking और legacy Admin offer RPC boundary की समीक्षा; फिर शेष Admin RPCs के complete body/dependency parity checks।
+
+
+## Section 25 — Legacy Admin Offer RPC में server-side category guard gap (2026-11-17)
+
+- Feature Admin UI `offerBookingInternal()` पहले booking row से `selected_category` पढ़ती है और non-null होने पर `srk_admin_offer_booking` call करने से पहले रोक देती है। UI स्पष्ट रूप से कहती है कि नई श्रेणी की booking को legacy bulk-offer RPC से नहीं भेजना है।
+- Connected Main live `srk_admin_offer_booking(uuid)` body inspected: Admin auth, booking lock, unassigned state, `new/confirmed` status, active+approved+OTP-linked electrician, PIN/district matching लागू करता है; लेकिन function body में `selected_category IS NULL` guard नहीं है।
+- इसलिए सुरक्षा सीमा अभी UI-side check पर निर्भर है। Authenticated Main Admin द्वारा RPC को सीधे call करने पर selected-category booking भी legacy matching flow में जा सकती है। यह privilege escalation नहीं (RPC Main Admin-only है), लेकिन business workflow isolation gap और accidental misuse risk है।
+- Owner-approved architecture में Customer payments Razorpay हैं, Electrician payouts Admin Manual Payout हैं, Razorpay Route retired है; यह finding offer dispatch scope के बारे में है, payment/payout routing नहीं।
+- Safe remediation: Feature Branch में legacy RPC के server-side body में `selected_category IS NULL` hard guard जोड़ने वाला reviewed migration; साथ ही Main intended schema, offer uniqueness/locking, and new-category sequential dispatcher contracts reconcile हों। Existing historical offers/booking rows को mutate न करें।
+- कोई migration या code change नहीं किया गया; Production पर कोई बदलाव नहीं हुआ।
