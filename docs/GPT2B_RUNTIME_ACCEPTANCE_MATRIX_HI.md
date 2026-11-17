@@ -134,5 +134,5 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Implemented in source migration `20261117130000_enforce_fixed_new_booking_commission_rate.sql`: new booking INSERTs are forced to `commission_rate = 15.00`, even if the caller supplies another value.
 - Attempts to change `commission_rate` on an existing booking fail with `BOOKING_COMMISSION_RATE_IS_IMMUTABLE`; the migration does not rewrite historical booking snapshots.
 - The existing commission amount calculation remains based on labour/service amount only; material amount is not included in the commission base.
-- Added three pgTAP catalog/source assertions and increased `electrician_payout_reconciliation.test.sql` plan from 46 to 49. Test source is updated, but **no pgTAP execution has occurred**; all runtime acceptance cases remain Pending.
+- Added three pgTAP catalog/source assertions plus two behavioral assertions: fixture INSERT supplies 99% and must persist 15%; an attempted change of an existing booking snapshot to 20% must throw `BOOKING_COMMISSION_RATE_IS_IMMUTABLE`. The test plan is now 51. Test source is updated, but **no pgTAP execution has occurred**; all runtime acceptance cases remain Pending.
 - The positive behavioral B5 case (commission-only update with matching payout) remains open and separate from these three catalog assertions.
