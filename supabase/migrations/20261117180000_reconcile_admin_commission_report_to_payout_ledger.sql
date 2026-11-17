@@ -18,7 +18,6 @@ begin
   with paid_completed as (
     select
       b.assigned_electrician_id,
-      coalesce(b.amount_paid,0)::numeric as collected,
       (coalesce(p.gross_service_amount,0) + coalesce(p.materials_amount,0))::numeric as gross,
       coalesce(p.platform_commission,0)::numeric as commission,
       coalesce(p.electrician_payable,0)::numeric as payable
@@ -31,12 +30,23 @@ begin
       and b.payment_verified_at is not null
       and p.payout_status in ('pending','paid','blocked')
   ),
+  collection_totals as (
+    -- Collections must not disappear merely because a payout row is missing
+    -- or its electrician assignment does not reconcile.
+    select coalesce(sum(coalesce(b.amount_paid,0)),0)::numeric as collected
+    from public.service_bookings b
+    where b.status = 'completed'
+      and b.payment_status = 'paid'
+      and b.payment_verified_at is not null
+  ),
   totals as (
     select
-      coalesce(sum(collected),0)::numeric as collected,
-      coalesce(sum(commission),0)::numeric as commission,
-      coalesce(sum(payable),0)::numeric as payable
-    from paid_completed
+      ct.collected,
+      coalesce(sum(pc.commission),0)::numeric as commission,
+      coalesce(sum(pc.payable),0)::numeric as payable
+    from collection_totals ct
+    left join paid_completed pc on true
+    group by ct.collected
   ),
   partners as (
     select
