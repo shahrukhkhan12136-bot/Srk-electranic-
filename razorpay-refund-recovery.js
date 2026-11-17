@@ -1,4 +1,4 @@
-const {createHash,randomUUID}=require("node:crypto");
+const {createHash}=require("node:crypto");
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAYMENT=/^pay_[A-Za-z0-9]+$/;
 const REFUND=/^rfnd_[A-Za-z0-9]+$/;
@@ -19,6 +19,12 @@ async function rpc(name,args,cfg){
 async function providerGet(path,cfg){
  const auth=Buffer.from(cfg.rzpId+":"+cfg.rzpSecret).toString("base64");
  return readJson(await fetch("https://api.razorpay.com/v1"+path,{method:"GET",headers:{Authorization:"Basic "+auth,Accept:"application/json"},signal:AbortSignal.timeout(15000)}));
+}
+function stableObservationId(refundRecordId,payloadHash){
+ const bytes=createHash("sha256").update("srk-refund-recovery:"+refundRecordId+":"+payloadHash).digest().subarray(0,16);
+ bytes[6]=(bytes[6]&0x0f)|0x50;bytes[8]=(bytes[8]&0x3f)|0x80;
+ const hex=bytes.toString("hex");
+ return hex.slice(0,8)+"-"+hex.slice(8,12)+"-"+hex.slice(12,16)+"-"+hex.slice(16,20)+"-"+hex.slice(20);
 }
 function exactMatch(item,record){
  if(!item||item.payment_id!==record.payment_id||Number(item.amount)!==Number(record.amount_paise)||item.currency!=="INR")return false;
@@ -83,7 +89,7 @@ exports.handler=async event=>{
    p_refund_record_id:record.id,p_provider_refund_id:providerRefund.id,p_payment_id:providerRefund.payment_id,
    p_amount_paise:Number(providerRefund.amount),p_currency:providerRefund.currency,p_provider_status:providerRefund.status,
    p_provider_created_at:providerCreatedAt,p_acquirer_reference:acquirerReference,p_provider_payload_sha256:payloadHash,
-   p_observation_id:randomUUID(),p_provider_evidence:providerRefund,p_admin_user_id:user.id,p_admin_note:note
+   p_observation_id:stableObservationId(record.id,payloadHash),p_provider_evidence:providerRefund,p_admin_user_id:user.id,p_admin_note:note
   },cfg);
   if(typeof evidenceId!=="string"||!UUID.test(evidenceId))return json(202,{success:false,evidence_saved:"unknown",accounting_finalized:false,status:"evidence_write_outcome_unknown",safe_to_retry:false,error:"Evidence request का जवाब प्रमाणित नहीं हुआ। Database में रिकॉर्ड सुरक्षित हुआ हो सकता है; नया refund न बनाएँ और audit records जाँचें।"});
   if(providerRefund.status!=="processed")return json(202,{success:true,evidence_saved:true,accounting_finalized:false,recovery_audit_id:evidenceId,provider_status:providerRefund.status,safe_to_retry:false,message:"Provider प्रमाण अलग transaction में सुरक्षित हुआ। केवल processed status ही accounting finalization के योग्य है; कोई payout release या नया refund नहीं किया गया।"});
