@@ -383,7 +383,7 @@ select ok(position('left join public.srk_electrician_payouts p' in lower(pg_get_
   'public.srk_admin_commission_report()'::regprocedure)))>0
   and position('payout_status in (''pending'',''paid'',''blocked'',''refunded'')' in lower(pg_get_functiondef(
   'public.srk_admin_commission_report()'::regprocedure)))=0,
-  'Admin commission report counts matched jobs and excludes refunded payout amounts from commission totals');
+  'Admin commission report counts all eligible paid completed bookings and excludes refunded payout amounts from commission totals');
 
 select * from finish();
 rollback;
