@@ -461,3 +461,11 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - Authoritative labour-only commission assignment पहले से मौजूद `zz_srk_set_booking_commission_before_payout` verified-payment trigger के पास रहता है।
 - Migration source branch पर commit हुई; इसे किसी database पर apply नहीं किया गया। PostgreSQL migration replay, pgTAP/runtime test और payout/refund side-effect test अभी pending हैं।
 - यह source change अपने-आप checklist item को complete नहीं करता; official GPT-2 progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित है।
+
+
+### 3N. Payout parity exception guards — अतिरिक्त pgTAP source assertions (17 Nov 2026)
+
+- `supabase/tests/database/electrician_payout_reconciliation.test.sql` का plan **34 से 39** किया गया; पाँच अतिरिक्त assertions legacy trigger retirement, compatibility function preservation, verified-payment trigger presence, payout-row-missing/commission-mismatch exception guards और blocked payout upsert protection को जाँचते हैं।
+- यह migration-chain के बाद database catalog/function definitions पर चलने वाला pgTAP contract है। इसे अभी execute नहीं किया गया; इसलिए इसे runtime rollback प्रमाण नहीं माना जाएगा।
+- वास्तविक exception/rollback scenarios के लिए isolated PostgreSQL fixture अभी आवश्यक है: (1) qualifying paid/completed booking पर payout row missing होने से booking update rollback, (2) blocked payout में commission mismatch होने से booking update rollback और blocked payout unchanged रहना। Fixture schema/constraints की पूरी पुष्टि के बिना behavioral test source नहीं जोड़ा गया।
+- कोई PostgreSQL/pgTAP run, database migration apply, Production query/write, provider refund/payout, merge या deployment नहीं हुआ। Official GPT-2 progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित।
