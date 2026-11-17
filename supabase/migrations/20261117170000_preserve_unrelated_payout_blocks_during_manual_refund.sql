@@ -130,15 +130,14 @@ begin
     raise exception 'BOOKING_REFUND_STATE_CHANGED' using errcode='40001';
   end if;
 
-  -- The verified manual refund is now final. Close the previously blocked
-  -- unpaid payout exactly as the Razorpay recovery path does.
+  -- The booking AFTER UPDATE accounting trigger closes this exact manual-refund
+  -- hold in the same transaction. Verify the trigger result rather than issuing
+  -- a second UPDATE that still expects the pre-trigger blocked state.
   if v_payout.id is not null then
-    update public.srk_electrician_payouts
-       set payout_status='refunded',
-           payout_note='Manual refund completed',
-           updated_at=clock_timestamp()
-     where id=v_payout.id and payout_status='blocked' and payout_note='Manual refund processed';
-    if not found then
+    select * into v_payout from public.srk_electrician_payouts
+      where booking_id=p_booking_id for update;
+    if not found or v_payout.payout_status is distinct from 'refunded'
+       or v_payout.payout_note is not null then
       raise exception 'BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' using errcode='55000';
     end if;
   end if;
