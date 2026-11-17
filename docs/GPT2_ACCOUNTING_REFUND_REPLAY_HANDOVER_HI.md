@@ -113,3 +113,20 @@ Feature branch correction:
 - The two trigger-only SECURITY DEFINER functions revoke direct execute from `public`, `anon`, and `authenticated`. The RPC ACLs for the reconciliation/report/earnings functions are inherited from their earlier definitions and must be confirmed in a clean replay/catalog test.
 - Feature Node workflow for test commit `d4b2102db57eadfbb6f9433a356527705113ad99` completed successfully: run `44032065222`, job `133866127480`, all workflow steps successful.
 - This Node workflow does **not** execute PostgreSQL migrations or pgTAP. The added pgTAP test remains runtime-unverified.
+
+
+## 8. Commission trigger clean-replay conclusion (Nov 17)
+
+Further migration-source review resolved the earlier open question about the legacy commission trigger:
+
+- The malformed file `20261109_electrician_inspection_quotes_and_service_only_commission.sql` defines `public.srk_calculate_booking_commission()`, but contains no `CREATE TRIGGER` attachment. GitHub code search also found no separate migration attaching this trigger. Therefore a clean replay of the numbered migration set does not attach that legacy function.
+- The function's former behavior was to validate nonnegative `amount_paid` / `service_charge`, validate commission rate, compute commission from legacy `service_charge` for completed+paid rows, and otherwise clear `commission_amount`.
+- The timestamped Accounting Bridge migration explicitly attaches `zz_srk_set_booking_commission_before_payout` to INSERT and the relevant UPDATE columns. Its BEFORE function handles **both** workflows:
+  - New-category bookings: requires the immutable labour bill to exist, be positive, and match the assigned electrician; computes commission from that bill.
+  - Legacy quote bookings: when `selected_category IS NULL`, requires `quote_status='approved'` and computes commission from `service_charge`.
+  - For both qualifying paths it validates `commission_rate` is 0–100 and sets `commission_amount`.
+- Thus the Bridge trigger is the effective commission-calculation trigger for clean replay; adding the old trigger attachment is not required and would add a second overlapping BEFORE trigger. On a database where the old trigger already exists, its alphabetical name sorts before `zz_srk_set...`; the Bridge calculation overwrites its commission result for qualifying rows, including new-category bookings.
+
+**Remaining nuance:** the old function cleared `commission_amount` when a booking ceased to be completed+paid; the Bridge function returns without clearing it for non-qualifying states. Reports filter to completed+paid, and payout history is retained, but this behavioral difference should be consciously accepted or covered by a specific state-transition test before release. Do not add the old trigger blindly.
+
+**Conclusion:** no migration edit is recommended at this point. The prior "legacy commission trigger missing" concern is downgraded from a clean-replay blocker to a documented legacy-function/transition-semantics difference. Runtime migration replay and pgTAP are still required before release.
