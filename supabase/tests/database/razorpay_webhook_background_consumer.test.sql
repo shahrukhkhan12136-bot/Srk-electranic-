@@ -1,5 +1,5 @@
 begin;
-select plan(13);
+select plan(14);
 
 select ok(exists(select 1 from information_schema.columns where table_schema='public' and table_name='srk_razorpay_webhook_events' and column_name='event_payload' and data_type='jsonb'),
   'webhook inbox stores the minimal validated event payload for asynchronous processing');
@@ -41,3 +41,8 @@ select ok(position('p_event_payload' in pg_get_functiondef('public.srk_service_e
 
 select * from finish();
 rollback;
+
+select ok(position('event_payload=case' in pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure))>0
+  and position('p_outcome in ('||quote_literal('processed')||','||quote_literal('ignored')||')' in
+    pg_get_functiondef('public.srk_service_complete_razorpay_webhook_event(text,uuid,text,text)'::regprocedure))>0,
+  'terminal completion purges the minimal event payload while retryable events retain it');
