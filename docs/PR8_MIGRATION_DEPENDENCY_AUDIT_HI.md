@@ -2231,3 +2231,38 @@ Existing tests assert that the BEFORE function contains a mismatch token and tha
 - Whether the full installed trigger chain always prevents a committed inconsistent payout: **not runtime verified**.
 - Fix: **not applied**; requires isolated PostgreSQL test and owner-approved source correction.
 - No Feature Branch, Main, Supabase, Production or payment data changed.
+
+
+## 100. NULL manual-method path may retain stale commission and pass parity — conditional static finding — 17 Nov 2026
+
+Section 99 के NULL-method gap को BEFORE/AFTER trigger के पूरे source order के साथ और संकीर्ण रूप से जाँचा गया।
+
+### 100.1 Control-flow
+
+Migration `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`:
+- BEFORE trigger `zz_srk_set_booking_commission_before_payout` manual evidence को valid तभी मानता है जब दोनों methods non-NULL और normalized-equal हों।
+- यदि methods दोनों NULL हों, mismatch check का `IS DISTINCT FROM` false होता है और valid-evidence check false; function `return new` कर देता है। इस branch में वह `commission_amount` को NULL या किसी नए मान पर reset नहीं करता।
+- PostgreSQL UPDATE में untouched column का पुराना value NEW row में बना रहता है; इसलिए पहले से मौजूद `commission_amount` इस early-return path में stale value के रूप में रह सकता है।
+- AFTER trigger `srk_reconcile_electrician_payable` amount-only manual evidence predicate से payout row बना सकता है।
+- उसके बाद alphabetically later `zz_srk_validate_booking_commission_payout_parity` payout commission और booking `commission_amount` compare करता है। यदि stale commission पुराने/वर्तमान computed commission के बराबर है, तो parity check इस अकेले कारण से fail नहीं होगा।
+
+### 100.2 Risk statement
+
+इसलिए दोनों payment methods NULL होने पर यह केवल संभावित “commission NULL रह गया, parity fail हो गई” मामला नहीं है। यदि booking row में पहले से matching non-NULL commission_amount है, और बाकी labour bill/payment/booking preconditions valid हैं, तो source control-flow payout writer को चलने देता है और parity assertion भी समान numeric commission के कारण pass कर सकती है।
+
+यह source-level conditional path है; इसे live/isolated database में execute नहीं किया गया। Existing data में ऐसा prior commission state है या नहीं, इसकी जाँच नहीं की गई।
+
+### 100.3 Recommended fail-closed correction
+
+- Commission BEFORE trigger में manual evidence absent/invalid होने पर stale `commission_amount` को preserve न करें; payment transition को स्पष्ट exception से रोकें या commission reset करके payout writer को रोकने वाला एक consistent state contract लागू करें।
+- Payout writer में manual evidence predicate को भी method non-NULL + normalized equality से बाँधें।
+- AFTER parity validator में manual payment evidence validity अलग से assert करें; केवल दो commission numbers बराबर होना payment evidence का विकल्प नहीं है।
+- Regression tests में पुराने matching `commission_amount` वाले booking पर दोनों methods NULL रखकर payment-paid transition चलाएँ; transaction rollback और payout row absence assert करें। साथ में NULL/non-NULL asymmetric और normalized-equal/unequal cases भी शामिल हों।
+
+### 100.4 Status
+
+- BEFORE early-return stale-value preservation: **source से confirmed**.
+- AFTER payout + parity conditional path: **source से confirmed**.
+- Actual committed inconsistent row in an installed database: **not proven; runtime test required**.
+- Fix or data mutation: **not performed**.
+- No Feature Branch, Main, Supabase or Production changes.
