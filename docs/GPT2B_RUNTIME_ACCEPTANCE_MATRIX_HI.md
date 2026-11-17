@@ -180,3 +180,10 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 
 - `support_attachment_staff_access.test.sql` में एक अतिरिक्त pgTAP assertion जोड़ा: `srk_admin_staff_list_customer_attachments(uuid)` का VOLATILE + SECURITY DEFINER + empty `search_path` होना, authenticated को EXECUTE मिलना, और anon/PUBLIC को EXECUTE न मिलना। इससे metadata RPC की privilege boundary भी सीधे catalog-level पर जाँची जाएगी; पहले Storage guard के लिए यह coverage थी, metadata RPC के लिए PUBLIC ACL का अलग assertion नहीं था।
 - Test plan अब 11 है। यह source-only बदलाव है; PostgreSQL/pgTAP execution नहीं हुआ, इसलिए assertion अभी Pending है।
+
+
+### Electrician Support legacy Admin RPC privilege boundary — 17 November 2026 (source-only)
+
+- `electrician_support_ticket_security.test.sql` में एक अतिरिक्त catalog-level pgTAP assertion जोड़ा गया। यह चार legacy Main Admin inbox RPCs पर एक साथ जाँचता है: `SECURITY DEFINER`, खाली `search_path`, authenticated EXECUTE और anon/PUBLIC EXECUTE का अभाव।
+- इससे Staff के अलग RBAC RPCs और पुराने Main Admin-only RPCs के बीच privilege boundary की जाँच अधिक पूर्ण होती है। Test plan अब 17 है।
+- यह source-only assertion है; PostgreSQL/pgTAP execute नहीं हुआ। Runtime status Pending ही है।
