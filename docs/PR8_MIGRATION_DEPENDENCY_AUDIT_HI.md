@@ -5256,3 +5256,41 @@ Payout reconciliation migration (Blob `b12da77471d510b55f798bd089597d866d79a133`
 Audit triggers `AFTER INSERT OR UPDATE OR DELETE` हैं और generic audit function allow-listed fields में वास्तविक बदलाव न होने पर event छोड़ देता है। Payout trigger booking update के अंदर payout row update करता है; इसलिए nested update के audit event को भी अलग assertion चाहिए।
 
 **Verdict:** Source में booking और payout audit chain के trigger definitions मौजूद हैं। Firing order का निष्कर्ष PostgreSQL trigger semantics और trigger names पर आधारित static analysis है; कोई runtime order, timestamp behavior या audit-row output verify नहीं हुआ। कोई SQL/test/migration file नहीं बदली गई; DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+
+## 171. Audit Transaction Atomicity और created_at Ordering की सीमा
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Audit table defaults और trigger-insert behavior का static review; कोई transaction execute नहीं किया गया।
+
+### 1. Audit Rows उसी Database Transaction का हिस्सा हैं
+
+Audit functions सीधे `srk_admin_audit_events` में INSERT करती हैं। ये INSERT संबंधित table के AFTER ROW trigger के भीतर होता है; कोई अलग connection या asynchronous queue source में नहीं दिखती।
+
+इसलिए सामान्य PostgreSQL transaction semantics के अनुसार:
+- Business row update और trigger-generated audit row एक ही transaction में commit होते हैं।
+- उसी transaction में बाद में exception उठे और transaction rollback हो, तो business changes और audit rows दोनों rollback होने चाहिए।
+- Recovery finalizer में booking update के बाद payout state verify की जाती है; verification exception होने पर पहले बने booking/payout/refund audit rows भी उसी transaction के साथ rollback होने चाहिए।
+
+यह PostgreSQL transactional behavior से निकला निष्कर्ष है, इस repository पर चलाया गया runtime test नहीं।
+
+### 2. created_at से Trigger Order तय नहीं किया जा सकता
+
+Audit table में `created_at timestamptz NOT NULL DEFAULT now()` है। PostgreSQL में `now()` transaction-start timestamp देता है; इसलिए एक transaction के भीतर बने booking, payout और Razorpay audit events के timestamps समान हो सकते हैं।
+
+Test और Admin reporting को:
+- केवल `created_at` के आधार पर trigger order तय नहीं करना चाहिए।
+- `entity_type`, `entity_id`, `booking_id`, `action`, `changed_fields`, `before_data`, `after_data` को मुख्य evidence बनाना चाहिए।
+- अगर भविष्य में strict per-event ordering चाहिए, तो अलग monotonic sequence/ordinal design की आवश्यकता पर विचार करना होगा; अभी ऐसी सुविधा मौजूद होने का दावा नहीं है।
+
+### 3. सुझाए गए Atomicity Assertions
+
+1. एक सफल refund transaction में booking, payout और Razorpay refund audit rows commit हों।
+2. Finalizer के payout post-condition पर जानबूझकर failure उत्पन्न करने वाले isolated test में booking/refund/payout business state और सभी उसी transaction के audit rows rollback हों।
+3. उसी transaction में audit insert failure हो तो business state silently commit न हो।
+4. एक transaction के अंदर बने audit rows का `created_at` समान होना स्वीकार्य हो; test किसी निश्चित timestamp order की माँग न करे।
+
+### 4. Verdict
+
+Source में audit writes synchronous trigger inserts हैं और table timestamp default `now()` है। इससे atomicity तथा timestamp-order test requirements स्पष्ट होते हैं। अभी atomicity को इस repository पर execute करके प्रमाणित नहीं किया गया है। कोई SQL/test/migration file नहीं बदली गई; कोई DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
