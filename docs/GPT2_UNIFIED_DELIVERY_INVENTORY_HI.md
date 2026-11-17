@@ -543,3 +543,11 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - Current re-fetch: razorpay-webhook.js SHA 496df0a22b8e9e47be06a66dfb6fb934176a513c; test SHA a6767a68115ef7ecf73afa5b4b31d700278d18ac. Source count: one native fetch inside wrapper, eight wrapper call sites, one 15-second timeout configuration.
 - Remaining limitation: multiple sequential requests can still extend total handler duration; 2-minute lease renewal/heartbeat is not implemented. Runtime overlap, provider retry timing and Vercel execution limits remain unverified. No heartbeat feature was added.
 - No Node test execution, pgTAP, database operation, migration apply, CI dispatch, deployment, merge or production change. Official GPT-2 progress 27/39 = 69% complete; 12 remaining अपरिवर्तित; Runtime Acceptance 60/60 Pending।
+
+### 3U. Aggregate earnings missing-payout evidence gap — current source recheck (17 Nov 2026)
+
+- Re-fetched current Admin commission report migration SHA `e3eaa21836628c459e757461a5598aa51ea8b66c` and Electrician earnings migration SHA `f12d41362dcb230bfe606aa43e47ba6ee3f6c444`.
+- Admin report correctly separates customer collection from payout-ledger totals and counts only matched payout rows, but does not expose an explicit missing/mismatched payout-row count or booking IDs.
+- Electrician earnings now correctly sources commission and payable from the canonical payout ledger (therefore excludes SRK cancellation-fee carry-forward), but its LEFT JOIN + COALESCE still returns zero values when the payout row is absent. That is ambiguous with a legitimate zero and does not expose the existing per-booking reconciliation exception.
+- Classification: **known source-level reporting-completeness gap**, not evidence that any live payout row is missing. It remains open for an owner-approved signal/contract decision; do not alter the Electrician UI or RPC return shape without coordination with GPT-1/owner.
+- No code/SQL migration changed; no database, pgTAP, Node, CI, provider, deployment, merge or mobile QA executed. Official GPT-2 progress **27/39 = 69%** and Runtime Acceptance **60/60 Pending** remain unchanged.
