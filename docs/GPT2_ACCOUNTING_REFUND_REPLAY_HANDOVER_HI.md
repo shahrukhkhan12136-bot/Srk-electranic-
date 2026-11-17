@@ -334,3 +334,35 @@ The live RPC behavior is compatible with the latter two names: completed calls a
 - Current Main customer call-contact RPC is authenticated-only and status-filtered; cancelled bookings are excluded and completed bookings are included.
 - The Feature branch's historical private implementation does not reproduce this status filter. A later Feature migration or current source replacement must be checked before any replay/equivalence claim.
 - No code or migration was changed in this audit section. All Main checks were read-only catalog/privilege SELECTs. No Production DDL, data write, migration application, deployment, or configuration change occurred.
+
+
+## 16. Phone privacy decision history and direct-call source comparison (Nov 17)
+
+### Recovered Git decision history (Nov 9 UTC)
+The repository commit history around the phone-visibility change provides the following sequence:
+- `58259351074895b656c6ea6926619609eb7a9f89` (11:40:55Z): hide direct electrician phone number until masked calling is ready.
+- `4bbfc6ee12638fc65e7277d7ba9df9e48e66ae0f` (11:40:57Z): hide direct customer phone number until masked calling is ready.
+- `2dce997bd0029bbbd9ab04a4965072bf9cf2e628` (11:41:54Z): documentation records masked calling / Exotel GreenPin candidate, OTP ownership verification, and that both real numbers remain hidden until provider activation.
+- `a61843d92acc22847078055d138af754dae700cd` (11:47:27Z): restores customer's ability to see assigned electrician phone and direct-call.
+- `ffb9f1a5316beda02264b62046c78a6ff15c5d0b` (11:47:30Z): restores assigned/approved electrician's ability to see customer phone and direct-call.
+- `ea50a8d0254405fa40b65eca734469a0dd22978b` (11:47:35Z): explicitly documents the owner's updated decision: masked calling / Exotel is not to be implemented now; direct calls are allowed for an assigned booking, with numbers restricted to the authenticated booking owner / assigned electrician. This supersedes the earlier masked-calling decision.
+
+These commit diffs establish the decision timeline and UI intent. They do not, by themselves, prove that these commits are the exact original SQL bodies for Main ledger migration IDs `09114000` and `09114642`.
+
+### Feature SQL source comparison
+- `20261109103038_customer_electrician_direct_call_contacts.sql` creates `public.srk_get_customer_call_contacts()` as SECURITY DEFINER, authenticated-only, returning the assigned electrician phone to the authenticated customer for statuses `assigned, inspection, awaiting_quote_approval, quote_approved, in_progress`.
+- `20261109103143_move_customer_call_contact_lookup_to_private.sql` moves the implementation to `private.srk_get_customer_call_contacts_impl()` and makes the public RPC a SECURITY INVOKER wrapper. The private implementation requires `auth.uid()`, scopes rows to `b.customer_user_id = auth.uid()` and a non-null assigned electrician, but has no booking-status filter in this historical Feature source.
+- `20261116120000_pin_customer_call_contact_rpc_search_paths.sql` pins both functions' search paths to empty string. This is later Feature-only hardening in the checked branch; it is not in Main's recorded migration ledger.
+
+### Current Main runtime comparison
+- Main's current private implementation is SECURITY DEFINER, pinned to `pg_catalog, public, auth, pg_temp`, and requires a non-null authenticated UID.
+- It scopes returned phone data to the caller's own customer bookings and a non-null assigned electrician.
+- Its explicit status allow-list includes `assigned, inspection, awaiting_quote_approval, quote_approved, in_progress, completed`; `cancelled` is excluded.
+- Both public wrapper and private implementation are executable by `authenticated`, not `anon`.
+- Therefore Main's live behavior supports the owner's recovered direct-call decision: assigned-party phone visibility, completed bookings included, cancelled bookings excluded. It does not implement masked calling.
+
+### Reconciliation conclusion
+- The Nov 9 Git history confirms the earlier masked-calling proposal was explicitly superseded by the owner before direct-call UI was restored.
+- Feature's original private RPC migration lacks the later Main status allow-list; Main live catalog is more restrictive for cancelled bookings and explicitly allows completed bookings.
+- Main migration ledger names `09114000 protect_customer_and_electrician_phone_numbers_until_masked_calling` and `09114642 enable_direct_customer_electrician_phone_calls` describe the same broad change sequence, but exact SQL equivalence to the Git commits remains unproven. Do not infer original SQL solely from migration names or commit timestamps.
+- No new phone-visibility code or SQL was changed in this pass. The report documents recovered decision evidence and live behavior only. Main access remained read-only; no DDL, data writes, migration application, deployment, or configuration changes occurred.
