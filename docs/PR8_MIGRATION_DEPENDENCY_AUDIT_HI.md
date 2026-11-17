@@ -7133,3 +7133,23 @@ The quote migration creates a PL/pgSQL commission trigger function that reads `N
 - Confirm actual Supabase CLI ordering and replay behavior in an isolated empty database before treating this as a runtime failure.
 
 Static filename/dependency review only. No migration was renamed or edited; no SQL, database replay, pgTAP, CI, deployment or production operation was run. This is an ordering/readiness risk, not a claim that replay has failed. GPT-2 checklist remains 27/39 = 69%.
+
+
+## 223. Duplicate Migration Body Is Stored Under Two Different Version IDs
+
+### Static source reviewed
+- `20261115120001_fix_multi_profile_electrician_labour_bill_access.sql` SHA `e3bdf2624c224322a6ac4c99f2ae6e77b1be4774`.
+- `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql` SHA `e3bdf2624c224322a6ac4c99f2ae6e77b1be4774`.
+
+### Finding
+The two differently versioned migration paths have the exact same Git blob SHA and identical SQL body. Both replace `public.srk_electrician_get_labour_bill(uuid)`, then revoke PUBLIC/anon execution and grant authenticated execution. If both are applied in timestamp order, the second migration repeats the same function replacement and grants without adding a distinct schema change.
+
+This is a confirmed repository duplication, not evidence of a PostgreSQL failure. It creates avoidable migration-history noise and makes it harder to tell which migration version was intended to carry the change. It also means removing either file after it has been applied in an environment would create migration-history divergence unless handled with a deliberate compatibility plan.
+
+### Required action
+- Check deployed `supabase_migrations.schema_migrations` history across environments before deciding whether either version can be removed.
+- If neither version has shipped, retain one canonical migration and remove the duplicate before baseline/replay is frozen.
+- If either/both have shipped, keep historical files immutable and document the duplicate; do not rewrite deployed migration history.
+- Add a repository check that flags identical migration blobs/content under different version prefixes for human review.
+
+Static file/blob comparison only. No migration history was queried, no SQL or replay was run, and no file was changed. GPT-2 checklist remains 27/39 = 69%.
