@@ -6406,3 +6406,37 @@ Master Checklist में दर्ज नवीनतम स्पष्ट GP
 Quote status is explicitly NOT NULL in the inspected versioned migration, so the hypothetical NULL quote-status path is not a supported schema state when the migration is applied. GPT-2's last recorded checklist progress remains 69%; no extra progress is claimed from this static cross-check.
 
 केवल source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 202. Admin Commission Report — Function ACL Inheritance and Test Assertion Gap
+
+### 1. Original function privilege boundary
+
+Migration `20261109003000_secure_commission_reporting.sql` (SHA `9b4ed1529ea2a6e4da4ba0804bdbc9b3612627b9`) creates `public.srk_admin_commission_report()` as `SECURITY DEFINER`, checks `auth.uid()` and `public.is_srk_admin()`, then explicitly applies:
+
+- `REVOKE ALL ... FROM public, anon`
+- `GRANT EXECUTE ... TO authenticated`
+
+Thus the intended caller boundary is authenticated callers only, with Main Admin authorization enforced inside the function.
+
+### 2. Latest replacement cross-check
+
+Migration `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` (SHA `68189051090a51bef26a98997caf103b62ed070c`) uses `CREATE OR REPLACE FUNCTION` for the same zero-argument report function. Its body again checks `auth.uid()` and `public.is_srk_admin()`; the replacement does not contain a new REVOKE/GRANT pair.
+
+Static migration semantics: `CREATE OR REPLACE FUNCTION` replaces the function definition without dropping and recreating the function object, so its pre-existing ACL is retained. The earlier explicit ACL therefore remains the expected effective privilege boundary, provided the original migration is part of the applied history. This is not a newly discovered PUBLIC-execution exposure.
+
+### 3. SQL test coverage gap
+
+The current `admin_labour_bill_payment_accounting_bridge.test.sql` (SHA `7db3d4e5bec75100acc6f892bbcdfe7f29f0f3b7`, `plan(19)`) statically checks that the report uses payout-ledger commission, gross service amount and electrician payable. It does not directly assert the report function's EXECUTE ACL or its Main Admin guard after the latest replacement.
+
+Recommended later pgTAP assertions: inspect `has_function_privilege` for anon/authenticated roles and inspect the function definition for the Admin guard. Execute only in the separately approved isolated database stage.
+
+### 4. Verdict and limits
+
+- Static source review found an explicit original ACL and a later replacement that preserves the function object; no ACL regression is established by these files.
+- Direct regression assertions for ACL/guard are absent from this accounting bridge test.
+- Actual effective privileges in a live database, role membership, and RPC invocation behavior remain unverified because no database was queried and no pgTAP was run.
+- GPT-2 checklist stays at the last recorded **27/39 = 69%**; this documentation-only item does not increment completion.
+- Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल migration/test source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
