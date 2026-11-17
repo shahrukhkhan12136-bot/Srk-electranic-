@@ -183,3 +183,29 @@ A fresh dependency/replay review was performed against the current Feature Branc
 - Do **not** create a paid Supabase branch/project. That remains deferred pending completion of implementation and explicit cost approval if later required.
 - Before runtime replay, the owner/GPT-2 must agree on the canonical baseline and how the two malformed files map to the already-applied migration history. Then replay the complete ordered chain on a disposable local or approved isolated database and run the full pgTAP suite.
 - This pass made no SQL migration edits. PR #8 remains Draft/Open/unmerged; Audit Branch and Production remain untouched.
+
+
+## 11. Malformed quote migration ↔ Main history reconciliation (Nov 17)
+
+A direct comparison was made between the current Feature Branch migration tree and the live Main Supabase `list_migrations` catalog (read-only).
+
+### Exact / likely mappings
+1. Feature file `20261109_allow_quote_approval_booking_states.sql` has SHA `ef4bf8b9b8a9a35bf3ddd94ea4614c7498fb1c6d`. Its SQL body matches the patch in Git commit `cd2c46e6e938ba7813eeb6461769f2a796ad3d93`. Main's applied history has version `20261109080400`, name `allow_quote_approval_booking_states`. This is a strong exact content/name mapping to the applied version, but the file is still malformed in Feature and is not yet renamed.
+2. Feature file `20261109_electrician_inspection_quotes_and_service_only_commission.sql` SHA `014699d3190e45aacde4022ac7e7fa9ca4fec006` appears to correspond by name and SQL scope to Main's applied `20261109075837`, name `electrician_inspection_quotes_and_service_only_commission`. The original migration body for that applied version was not recovered from the current repository, so byte-for-byte equivalence is **not proven**. Do not rename it based on name alone.
+
+### Additional applied migration absent by filename
+Main history also contains `20261109080121` / `lock_quote_workflow_rpcs_to_authenticated_users`. No corresponding timestamped file exists in the Feature Branch migration directory. The malformed quote migration itself includes explicit revoke/grant statements for the quote/work-status RPCs, and later Feature hardening migrations exist, but this does not prove that the full original 09080121 migration behavior is reproduced. Its exact SQL still needs recovery or a schema/ACL equivalence review.
+
+### Full history comparison
+- Live Main Supabase migration history: 87 applied versions.
+- Feature Branch migration directory: 88 SQL files (86 timestamped, 2 malformed).
+- Only 7 timestamped version IDs overlap exactly between the 86 valid Feature files and the 87 live Main history versions.
+- 79 Feature timestamped versions are not present in Main history (expected candidates for pending branch work, subject to dependency validation).
+- 80 Main applied version IDs have no same-version timestamped file in the Feature directory. Two malformed Feature files appear to be intended counterparts to Main versions 09075837 and 09080400, but only 09080400 has a recovered exact patch match. One further applied Main version 09080121 has no counterpart file identified.
+- Main's live schema has the quote columns and quote-related booking status values, but catalog presence alone does not prove every RPC grant, trigger, policy, or historical migration side effect.
+
+### Required resolution (no edits made)
+- Recover the authoritative SQL for applied versions 09075837 and 09080121 (for example from the original migration source/backup or a reviewed database schema/ACL export).
+- Compare each original SQL body against Feature's current malformed/valid files and record exact semantic equivalence.
+- Only then propose canonical timestamped filenames and decide whether the branch should retain already-applied historical versions as migration files. Do not simply rename and run them: Main already records these versions as applied, and the branch's full migration set is not a clean replay baseline.
+- No migration files were renamed, deleted, or applied. No Main/Test DDL was executed.
