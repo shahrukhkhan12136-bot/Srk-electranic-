@@ -4438,3 +4438,49 @@ Section 149 के "core schema external prerequisite" और Admin helper boots
 - Safe next step: owner-approved disposable local environment में bootstrap-plus-migrations का documented sequence और compatibility review तैयार करना; किसी shared/Production DB पर प्रयोग नहीं।
 
 **सुधार:** पहले के Sections 149–150 में "external base schema/bootstrap" को unresolved कहा गया था। अब repository source identified है; unresolved हिस्सा source की उपलब्धता नहीं, बल्कि उसका reproducible versioned replay contract और वास्तविक environment state है।
+
+
+### 152. Disposable Local Replay — Prerequisite and Runbook Readiness Review — 17 Nov 2026
+
+इस section में repository के setup guide, root bootstrap SQL, package scripts और वर्तमान schema workflow को मिलाकर देखा गया है। उद्देश्य सुरक्षित local-only replay की तैयारी है; कोई command execute नहीं की गई।
+
+#### 152.1 Repository Evidence
+
+- `PORTAL_SETUP_HINDI.md` कहता है कि मुख्य setup के लिए `VERCEL_DEPLOY_HINDI.md` पढ़ें और `COMPLETE_DATABASE_SETUP.sql` एक बार चलाएँ।
+- `VERCEL_DEPLOY_HINDI.md` में इस consolidated SQL को Supabase SQL Editor में चलाने का निर्देश है। यह owner-operated existing project setup guide है; disposable local migration replay का runbook नहीं।
+- `COMPLETE_DATABASE_SETUP.sql` अपने भीतर base schema, portal/RBAC, privacy hardening, secure offer details और Admin email-login compatibility sections समेटता है। इसके भीतर कुछ objects timestamped migrations में फिर से ALTER/replace होते हैं; इसलिए इसे migrations से पहले seed मानकर पूरी chain चलाने की compatibility अभी सिद्ध नहीं।
+- `package.json` में केवल Node test scripts हैं (`test`, `test:refund`, `test:webhook`, `test:customer-payment`); कोई migration replay, pgTAP या SQL parser script नहीं।
+- `supabase/config.toml` Audit Branch पर पहले की inventory में नहीं मिला। CLI project configuration, database settings, seed path और migration schema configuration स्पष्ट नहीं।
+- `.github/workflows/supabase-schema-ci.yml` केवल `workflow_dispatch` पर है और केवल `feature/platform-fee-cash-online-cycle` ref पर job चलाता है। यह remote `SUPABASE_DB_URL` से schema-only export लेकर local stack में restore करता है, फिर पाँच hard-coded Feature-branch migrations चलाता है। यह Audit Branch की 89-file clean replay नहीं है; इसे dispatch नहीं किया गया।
+- `README.md` साफ कहता है कि Feature schema की Main Supabase parity और isolated database tests अलग release gates हैं। इस audit ने Main/Test database को query नहीं किया।
+
+#### 152.2 दो अलग Replay Tracks को न मिलाएँ
+
+| Track | उद्देश्य | वर्तमान स्थिति |
+|---|---|---|
+| A. Bootstrap compatibility | `COMPLETE_DATABASE_SETUP.sql` से बने baseline और timestamped migrations के overlap/ordering को समझना | Static source review उपलब्ध; local execution नहीं |
+| B. Migration-only clean replay | स्पष्ट base prerequisite के बाद 89 migrations को blank disposable DB पर क्रम से लागू करना | अभी blocked: base contract, duplicate version और migration runner/config अनसुलझे |
+| C. Existing Main DB parity | मौजूदा Main schema और intended migration state का सुरक्षित अंतर निकालना | अलग owner-approved read-only process चाहिए; इस audit में नहीं किया |
+
+Track A को Track B का सफल विकल्प न मानें। Existing Main DB से schema export करना भी blank-database clean replay नहीं है और remote credentials/permissions के अलग जोखिम रखता है।
+
+#### 152.3 Local-Only Runbook — Approval से पहले आवश्यक Gates
+
+1. Disposable isolated environment की सीमा लिखित हो: local Supabase/Docker project, throwaway volume/database, कोई remote `--linked`, `--remote`, Production/Test URL या वास्तविक secrets नहीं।
+2. Supabase CLI और PostgreSQL versions pin किए जाएँ; `supabase/config.toml` तथा migration/seed configuration owner-approved हों।
+3. Base schema का एक canonical starting point चुना जाए: consolidated setup SQL या versioned bootstrap migration। दोनों को बिना compatibility review के लगातार लागू न करें।
+4. Bootstrap baseline और प्रत्येक migration के बीच duplicate object, constraint, trigger, policy, function signature और grant overlap की preflight सूची बने।
+5. दो `20261109` version prefixes का owner-approved resolution और migration history policy तय हो।
+6. `is_srk_admin()` की authoritative definition और Staff RBAC से पहले उसका provisioning सुनिश्चित हो।
+7. pgTAP install/extension और test runner का reproducible तरीका तय हो; Node source tests को database tests न गिनें।
+8. Replay logs में हर migration का exact filename, start/end result, error और final schema checks दर्ज हों। किसी failure पर आगे की migrations रोकें; आंशिक state को success न कहें।
+9. सफल parser, successful migration replay, pgTAP assertions और application-level tests को अलग-अलग status में report करें।
+
+#### 152.4 निषिद्ध Shortcut
+
+- मौजूदा CI workflow को Audit Branch पर चलाने के लिए branch condition बदलना या remote secret जोड़ना इस audit की अनुमति में नहीं है।
+- Production/Main या shared Test DB पर `db push`, `db reset`, SQL Editor setup script, schema export, migration apply या test execution नहीं।
+- `COMPLETE_DATABASE_SETUP.sql` को किसी existing database पर दोबारा चलाने की सिफारिश नहीं; documented guide का "एक बार" निर्देश बना रहता है।
+- बिना owner approval migration filenames rename/delete/reorder नहीं किए जाएँगे।
+
+**निष्कर्ष:** Local replay की तैयारी के लिए source evidence पर्याप्त रूप से संकलित है, लेकिन अभी executable clean-replay runbook स्वीकृत/सिद्ध नहीं। सबसे पहले canonical bootstrap baseline, duplicate version strategy, CLI config और pgTAP runner तय होने चाहिए। इस section में केवल Audit Report बदली गई; कोई workflow, migration, database या secret नहीं।
