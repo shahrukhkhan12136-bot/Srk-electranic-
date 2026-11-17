@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(56);
+SELECT plan(59);
 
 SELECT ok(to_regclass('public.service_bookings') IS NOT NULL,'service bookings base table exists');
 SELECT ok(EXISTS (
@@ -42,6 +42,10 @@ SELECT ok(EXISTS (
     AND qual ILIKE '%user_id%'
 ),'payout SELECT policy permits only Main Admin or the owning electrician');
 SELECT ok(NOT has_table_privilege('authenticated','public.srk_admin_audit_events','SELECT'),'authenticated cannot read audit events directly');
+SELECT ok(NOT has_table_privilege('service_role','public.srk_admin_audit_events','INSERT'),'service role cannot directly insert audit events outside row triggers');
+SELECT ok(NOT has_table_privilege('service_role','public.srk_admin_audit_events','UPDATE'),'service role cannot rewrite historical audit events');
+SELECT ok(NOT has_table_privilege('service_role','public.srk_admin_audit_events','DELETE'),'service role cannot delete historical audit events');
+
 SELECT ok(NOT has_table_privilege('authenticated','public.srk_razorpay_refunds','SELECT'),'authenticated cannot read provider refund records directly');
 SELECT ok(NOT has_table_privilege('authenticated','public.srk_booking_refund_requests','SELECT'),'authenticated cannot read refund requests directly');
 SELECT ok(NOT has_table_privilege('authenticated','public.srk_manual_refund_entries','SELECT'),'authenticated cannot read manual refund records directly');
