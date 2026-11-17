@@ -4358,3 +4358,50 @@ Audit Branch directory से 89 SQL migration paths की inventory लेक�
 - No migration file was changed; this section changes only the Audit Report.
 
 **स्थिति:** 89/89 file paths का first-pass source inventory दर्ज है। यह dependency graph का आधार है, लेकिन replay-ready sign-off नहीं। अगला कदम duplicate/version/bootstrap और duplicate DDL को owner-approved remediation list में बदलना, फिर isolated local PostgreSQL replay के लिए explicit prerequisites तय करना है।
+
+
+### 150. Migration Replay Remediation Priority — Evidence-Based Triage — 17 Nov 2026
+
+Section 149 के बाद छह high-risk items की source-level पुनःजाँच की गई। इस section का उद्देश्य बदलाव लागू करना नहीं, बल्कि clean replay से पहले blockers का क्रम और आवश्यक owner decision स्पष्ट करना है।
+
+#### 150.1 Confirmed Source Facts
+
+1. **Duplicate version prefix:** `20261109_allow_quote_approval_booking_states.sql` और `20261109_electrician_inspection_quotes_and_service_only_commission.sql` दोनों का migration version prefix `20261109` है। दोनों अलग-अलग बदलाव करते हैं: पहली booking status constraints बदलती है; दूसरी quote/work columns, RPCs और constraints जोड़ती है। इनमें से किसी को हटाना या rename करना सुरक्षित रूप से स्वतः तय नहीं किया जा सकता।
+2. **Labour-bill table DDL parity:** `20261114125844_restore_financial_audit_core_schema.sql` और `20261114240000_server_authoritative_customer_approved_work_timer.sql` में `CREATE TABLE IF NOT EXISTS public.srk_booking_labour_bills` का पूरा extracted DDL इस source comparison में byte-for-byte समान मिला। इसलिए इस जोड़ी के table-column/constraint definition में source-level drift नहीं मिला। यह live catalog parity या पूरी migration success का प्रमाण नहीं है।
+3. **Identical repeated patch:** `20261115120001_fix_multi_profile_electrician_labour_bill_access.sql` और `20261115145900_fix_multi_profile_electrician_labour_bill_access.sql` का Git blob SHA समान है: `e3bdf2624c224322a6ac4c99f2ae6e77b1be4774`. दोनों एक ही function replacement और grants दोहराते हैं। यह duplicate content है, लेकिन इनके version prefixes अलग हैं; इसे duplicate version collision न समझें।
+4. **Admin helper bootstrap:** Staff RBAC migration `public.is_srk_admin()` पर निर्भर है; helper timestamped migration set में self-contained रूप से define होता नहीं दिखा। Root setup SQL से external bootstrap की निर्भरता अभी documented migration prerequisite नहीं है।
+5. **External base schema:** शुरुआती migrations `service_bookings`, `electrician_profiles`, `electrician_applications`, `job_offers` और Supabase Auth/Storage objects को पहले से मौजूद मानती हैं। इन core objects का पूर्ण producer इस 89-file migration directory में नहीं मिला।
+6. **Route contract:** Route ledger creation और retirement, फिर बाद के reconciliation RPC/UI consumers के बीच canonical product/schema contract अभी owner decision माँगता है।
+
+#### 150.2 Priority Order Before Any Shared-Branch Integration
+
+| Priority | Item | Required safe resolution | Gate |
+|---|---|---|---|
+| P0 | Core schema + Supabase Auth/Storage bootstrap | Versioned, reproducible prerequisite source and exact ordering documented; confirm which schema is authoritative | No blank replay until proven |
+| P0 | Duplicate `20261109` version | Owner selects canonical migration history; preserve both functional changes and document any rename/version-history implications | No migration renaming without approval |
+| P0 | `is_srk_admin()` bootstrap | Put helper in a deterministic prerequisite or migration before first consumer; reconcile with root setup scripts | Staff RBAC chain not replay-ready until resolved |
+| P1 | Route ledger retirement/consumer contract | Product owner chooses active/retired Route accounting model; align final RPC, UI fields and tests | Do not merge conflicting Route contracts |
+| P1 | Repeated labour-bill access patch | Decide whether one copy is retained or both remain as historical no-op replacements; update migration history plan consistently | Avoid silent deletion/renumbering |
+| P2 | Function replacement and test target chronology | Tests must inspect final definitions, especially refund finalizer, payout trigger and accounting RPC | Static tests alone are insufficient |
+| P2 | Full replay + pgTAP | Only after P0/P1 decisions, in isolated disposable local DB with prerequisites and documented runner | No shared/Production DB |
+
+#### 150.3 Safe Next Execution Plan
+
+- Step A: collect the authoritative base schema/bootstrap sources and list every object they provision; do not infer that a setup guide is executable or complete merely because it exists.
+- Step B: ask the repository owner to approve a version-history strategy for the two `20261109` files. Preserve both bodies and their intent.
+- Step C: establish the authoritative `is_srk_admin()` definition and make its provisioning order deterministic.
+- Step D: obtain an explicit Route ledger lifecycle decision and reconcile SQL/UI/test contracts.
+- Step E: prepare an isolated local replay checklist with exact CLI/config/version assumptions; do not execute until approved.
+- Step F: run parser/replay and pgTAP only in that disposable local environment; capture complete logs and distinguish parser, replay, and behavioral-test outcomes.
+- Step G: after GPT-1/GPT-2 findings are reconciled, create an integration branch from an agreed base and apply reviewed commits deliberately; do not merge divergent audit branches wholesale.
+
+#### 150.4 Scope / Status
+
+- Two `20261109` migration files: version-prefix collision confirmed by exact filenames.
+- Labour-bill table DDL: exact source text matched in both producers.
+- Repeated labour-bill access patch: identical Git blob confirmed.
+- Core schema, helper bootstrap and Route contract: unresolved.
+- No SQL migration was edited, renamed, removed or applied.
+- No PostgreSQL instance, SQL parser, pgTAP, CI workflow, deployment, shared Test DB or Production DB was used.
+
+**निर्णय:** अभी shared/integration branch बनाना उचित नहीं। पहले P0 decisions और reproducible bootstrap स्पष्ट हों। उसके बाद ही isolated replay, और फिर controlled integration की अनुमति पर विचार किया जाए।
