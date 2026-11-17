@@ -3506,3 +3506,74 @@ Function body का table access PL/pgSQL execution के समय resolve/ex
 - Duplicate-version body और दोनों labour-bill table definitions का static text comparison किया गया।
 - कोई SQL apply, parser, PostgreSQL replay, pgTAP, database query/write, CI, deployment, merge या Production action नहीं किया गया।
 - Version collision का समाधान अभी भी owner/DBA निर्णय और approved migration-history reconciliation पर निर्भर है।
+
+## 135. RPC replacement और search_path final-definition map — 17 Nov 2026
+
+इस pass में चुनी हुई reconciliation, refund, offer-dispatch और search_path migrations को GitHub से fetch करके function signatures और replacement targets का static map बनाया गया। यह पूरे repository का exhaustive function inventory नहीं है।
+
+### 135.1 Booking accounting reconciliation RPC — एक signature, चार definitions
+
+एक ही signature बार-बार replace होती है:
+
+`public.srk_admin_get_booking_accounting_reconciliation(uuid) RETURNS jsonb`
+
+| क्रम | Migration | Blob SHA | Source-level भूमिका |
+|---|---|---|---|
+| 1 | 20261115150000_admin_readonly_booking_accounting_reconciliation.sql | 07b7c3a0eefe6388410712af033fd6dc6f4a7581 | पहला read-only accounting reconciliation body |
+| 2 | 20261115170000_admin_route_transfer_accounting_reconciliation.sql | 9238fde16407710c208cc3d2156526c361cf4aea | Route ledger retired मानकर zero-valued Route response fields |
+| 3 | 20261115180000_admin_route_recipient_and_settlement_validation.sql | 58042f828aeb1a951b36191d68a0573cdc15fcc0 | Route recipient/provider-settlement validation contract वाला replacement |
+| 4 | 20261117010000_reconcile_booking_commission_and_manual_payment_method.sql | 68189051090a51bef26a98997caf103b62ed070c | अंतिम Audit Branch source replacement; commission/payment-method consistency bridge के साथ |
+
+**मुख्य dependency:** 17010000 का body ही इस migration chain के अंत में इस signature की अंतिम source definition है। 15170000/15180000 की Route fields और provider evidence semantics को 17010000 के JSON output के साथ line-by-line reconcile करना आवश्यक है। केवल function name समान होना behavioral compatibility का प्रमाण नहीं। Feature Branch से कोई body copy नहीं किया गया।
+
+### 135.2 Razorpay refund recovery replacement chain
+
+| Signature | Definition / replacement | Blob SHA |
+|---|---|---|
+| `srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)` | 15120000 durable evidence initial implementation | adf83de704725e791a096462eaa385b28f92c7a7 |
+| वही | 15240000 full-amount verification replacement | 40ebd534cf4209e98adc8c1f44b53b9ebfc09920 |
+| वही | 16210000 payout lifecycle / finalizer replacement | b12da77471d510b55f798bd089597d866d79a133 |
+| `srk_service_reconcile_booking_refund(uuid,text,text,text)` | 15250000 provider reconcile full-amount replacement | 3bda81c2b827f597f639846d33967a7c88296e21 |
+
+- 15120000 durable provider evidence table और record/finalize RPC बनाती है।
+- 15240000 finalizer को केवल processed provider evidence और full verified collection amount के लिए harden करती है।
+- 16210000 finalizer को फिर replace करती है और payout lifecycle integration जोड़ती है; इसलिए final body की acceptance criteria में 15240000 का full-amount guard सुरक्षित रहना चाहिए। इस pass में complete semantic equivalence का प्रमाण नहीं दिया जा रहा; dedicated body diff और test आवश्यक है।
+- 15250000 provider reconciliation boundary पर full-collection equality enforce करती है।
+- कोई provider call या refund operation नहीं किया गया।
+
+### 135.3 Offer dispatch replacement
+
+| Signature | Migration | Blob SHA | भूमिका |
+|---|---|---|---|
+| `private.srk_dispatch_next_booking_offer(uuid)` | 14210000_sequential_nearest_offer_dispatch.sql | e56bee06fa8e4684e93cdb33938458ea4a7ed462 | Initial sequential nearest-first dispatch |
+| वही | 14230000_recheck_electrician_current_area_before_offer.sql | 19a380e5a0e0b21c23d166d79ade8fa64f6694f7 | Dispatch time पर candidate का current area दोबारा verify |
+
+इस replacement में latest definition को dispatch से पहले electrician की वर्तमान operating area re-check करनी है। अन्य offer RPCs जैसे `srk_respond_to_offer` और `srk_expire_and_advance_booking_offers` initial dispatch migration में define हैं; इस pass में उनके बाद के replacements नहीं मिले।
+
+### 135.4 Search-path hardening chain — exact targets
+
+| Migration | Functions / targets | Blob SHA |
+|---|---|---|
+| 15200000_harden_financial_admin_rpc_search_path | `srk_admin_mark_electrician_payout_paid(uuid,text,text,text)`, `srk_admin_record_manual_refund(uuid,text,text)`, `srk_create_electrician_payable()` → empty path | 7b712106ae0d22dcb0ca4f2ab0105a519a279c64 |
+| 15210001_harden_legacy_financial_read_rpc_search_paths | `srk_admin_commission_report()`, `srk_get_my_wallet_summary()`, `srk_admin_wallet_overview()` → `pg_catalog,public,auth,pg_temp` | 103bdeb80f0c2f1cf4a726bbfaa42ff5f94efd9f |
+| 16110000_pin_legacy_financial_read_rpc_search_paths | वही तीन read RPCs → empty path | b8749c54c969f718a7038cbbc373a09ceed0145b |
+| 16120000_pin_customer_call_contact_rpc_search_paths | private implementation और public wrapper → empty path | dd5d07f9f27c18207812f637b9f3522ecb9b8061 |
+| 16130000_pin_wallet_and_receipt_rpc_search_paths | wallet summary, Admin wallet overview, `srk_get_my_earnings()`, customer receipt RPC → empty path | 59aa084dfb884823a891a88ed257054838b58fee |
+| 16140000_pin_electrician_offer_details_search_path | `srk_get_my_offer_details()` → empty path | 473296998acb72288ff0aa109f94e0d3304e4fa7 |
+| 16150000_pin_admin_application_review_search_path | `srk_admin_review_application(uuid,text)` → empty path | b65e88211b835d60f83429c4ce64c72ca56ebf28 |
+| 16160000_pin_quote_and_work_status_rpc_search_paths | quote submit/respond/work-status RPCs → empty path, IF EXISTS | 476946396e2feed512a9092995685fbd9ef4d789 |
+| 16170000_pin_public_rate_limit_rpc_search_path | public rate-limit RPC → empty path | bc2fec111f31137015b972ced489dd0ae7299913 |
+
+**Order note:** 15210001 तीन legacy read RPCs का search_path `pg_catalog,public,auth,pg_temp` रखता है, जबकि 16110000 वही तीन targets बाद में empty path पर pin करता है। इसलिए 16110000 का बाद में चलना अपेक्षित है; timestamp order में यह क्रम मौजूद है। यह intentional hardening progression हो सकती है, पर final catalog setting PostgreSQL replay/catalog inspection से ही प्रमाणित होगी।
+
+### 135.5 अभी शेष semantic checks
+
+1. 17010000 accounting RPC output में 15180000 के Route recipient/provider evidence fields बचते हैं या नहीं — exact JSON-key/body diff।
+2. 16210000 finalizer replacement में 15240000 के सभी full-amount guards और lock-order checks सुरक्षित हैं या नहीं — complete function-body diff।
+3. Repeated Admin application review, offer details, wallet/receipt and quote/work functions के original definitions और exact replacement chronology की full chain।
+4. हर `ALTER FUNCTION ... SET search_path` target के लिए सुनिश्चित करना कि function signature उससे पहले बन चुकी है; विशेषकर 16150000 का Admin application review target।
+5. Disposable PostgreSQL replay में final `pg_proc.proconfig`, function signatures, grants और trigger bindings verify करना।
+
+### 135.6 सीमा
+
+यह source-level signature/replacement map है, runtime proof नहीं। PostgreSQL parser/replay, pgTAP, live catalog query, provider calls, SQL writes, CI, deployment, merge और Production action नहीं किए गए।
