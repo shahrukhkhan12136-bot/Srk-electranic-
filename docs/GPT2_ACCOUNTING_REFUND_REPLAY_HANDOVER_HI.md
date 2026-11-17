@@ -1012,3 +1012,23 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - PR #8 currently has no submitted review or review-thread feedback for this proposed correction; no GPT-2 approval is visible in the available PR review data.
 - Because payout trigger, manual refund RPC, Razorpay reconciliation and GPT-2 replay work intersect, no implementation change is made until the owner/GPT-2 jointly confirms the state policy.
 - No code/SQL changed, no test run, no Production writes, provider actions, deployment, merge or mobile QA.
+
+
+## Section 35 — Admin Panel non-RPC integration surface and remaining security checks (2026-11-17)
+
+### Current source snapshot
+- Re-fetched `admin.html`; SHA `6b29511a1ecfab93b5689dff23012078091e57fc`.
+- Re-extracted all Admin client integration entry points: 53 distinct RPC names remain; client also invokes Edge Functions `admin-staff-management` and `electrician-phone-change`.
+- Direct Supabase table references include `electrician_applications`, `electrician_profiles`, `service_bookings`, `srk_electrician_payouts`, and Storage bucket `srk-customer-support` (the bucket reference is via Storage, not a SQL table).
+- This is a source inventory, not proof that direct access is authorized or correctly RLS-protected in Main.
+
+### Required integration gates
+1. **Direct table reads:** verify each exact SELECT/UPDATE operation, selected columns, filters and pagination against Main RLS and grants. Admin UI visibility checks are not a replacement for database authorization.
+2. **Storage attachments:** verify private bucket status, object path ownership, signed URL lifetime, MIME/size limits, and Admin/Staff role-specific read policy. Do not expose public object URLs for customer support attachments.
+3. **Staff Edge Function:** `admin-staff-management` invitation flow must be tested only after UUID cross-registry exclusivity is implemented and reviewed. Invitation sends an externally visible email; no test/invitation without explicit approval and isolated staging.
+4. **Electrician phone-change Edge Function:** verify actor identity, current phone/session challenge, OTP provider boundary, rate limits, audit event and profile ownership. No OTP/SMS or phone change operation is to be triggered during this audit.
+5. **RPC call-site arguments:** continue exact named-argument and response-field mapping for all 53 names. Existing refund named-argument/queue shape mismatch and missing Staff/Support RPC bundles remain release blockers.
+
+### Scope decision
+- No new feature or UI change is proposed. These checks are part of existing Admin Panel integration/security verification.
+- No direct table write, Storage object read/write, Edge Function invocation, invitation, email, OTP/SMS, Production DDL/DML, deployment, merge or mobile QA occurred.
