@@ -22,7 +22,7 @@ begin
       coalesce(p.platform_commission,0)::numeric as commission,
       coalesce(p.electrician_payable,0)::numeric as payable
     from public.service_bookings b
-    join public.srk_electrician_payouts p
+    left join public.srk_electrician_payouts p
       on p.booking_id = b.id
      and p.electrician_profile_id = b.assigned_electrician_id
     where b.status = 'completed'
