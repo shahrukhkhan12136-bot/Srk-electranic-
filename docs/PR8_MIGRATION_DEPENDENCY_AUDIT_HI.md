@@ -7111,3 +7111,25 @@ The required base operational relations are created in the root/manual setup scr
 4. Test the documented baseline plus all migrations from an empty local stack; do not seed the test by exporting the live project's current schema.
 
 Static dependency inspection only. No SQL was executed and no migration replay, pgTAP, CI, deployment or database change was performed. The finding establishes an external baseline dependency; it does not claim a particular migration failed in execution. GPT-2 checklist remains 27/39 = 69%; documentation-only findings do not increment the checklist. Paid Database Branch remains deferred until both workstreams are complete and reconciled.
+
+
+## 222. Legacy 8-Digit Migration Versions Have a Different Position from the 14-Digit Sequence
+
+### Static source reviewed
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` SHA `014699d3190e45aacde4022ac7e7fa9ca4fec006`.
+- `20261109_allow_quote_approval_booking_states.sql` SHA `ef4bf8b9b8a9a35bf3ddd94ea4614c7498fb1c6d`.
+- `20261109003000_secure_commission_reporting.sql` SHA `9b4ed1529ea2a6e4da4ba0804bdbc9b3612627b9`.
+- `20261108121115_add_customer_account_booking_access.sql` SHA `9877bb969b380d306567322eb110d81eaaa4c115`.
+
+### Finding
+Two migration filenames use the 8-digit version prefix `20261109`, while the surrounding chain uses 14-digit timestamps. Under the normal version-prefix ordering, these represent the start of 9 November and sort before `20261109003000` (00:30 on 9 November), rather than being interleaved at an intended later position.
+
+The quote migration creates a PL/pgSQL commission trigger function that reads `NEW.amount_paid`. The explicit `amount_paid` column addition is in the later `20261109003000_secure_commission_reporting.sql`. PL/pgSQL may defer resolving that record field until the trigger executes, so this static ordering alone does not establish that migration creation fails. It does establish that the intermediate schema between these migrations is not yet compatible with that trigger's runtime contract. The quote/customer RPC also relies on `customer_user_id`, which is added by the earlier 8 November migration `20261108121115`, so that particular prerequisite is ordered before the 9 November files.
+
+### Required action
+- Normalize legacy migration versions to explicit 14-digit timestamps in a reviewed migration-history plan; do not rename already-applied migration versions without checking deployed migration history.
+- Make the `amount_paid` column prerequisite explicit before installing any trigger/function that reads it, or move the trigger definition to a later migration after the column is guaranteed.
+- Add a static migration-order check that extracts version prefixes and verifies required objects/columns are created before consumers.
+- Confirm actual Supabase CLI ordering and replay behavior in an isolated empty database before treating this as a runtime failure.
+
+Static filename/dependency review only. No migration was renamed or edited; no SQL, database replay, pgTAP, CI, deployment or production operation was run. This is an ordering/readiness risk, not a claim that replay has failed. GPT-2 checklist remains 27/39 = 69%.
