@@ -4895,3 +4895,54 @@ srk_razorpay_refunds की CREATE TABLE definition में previous_payout_no
 - कोई SQL execution, migration replay, pgTAP, production introspection, CI dispatch, deployment, merge या cherry-pick नहीं हुआ।
 
 **निष्कर्ष:** Refund/payout core tables, previous_payout_note और संबंधित audit triggers की Feature Branch source provenance मिल गई और दोनों branches पर समान है। Section 161 की missing-provenance टिप्पणी को इस migration के लिए supersede किया जाए। फिर भी complete empty-database replay या live schema parity प्रमाणित नहीं है।
+
+
+
+## 163. Refund/Payout State Transition और Trigger Ordering — Static Branch Comparison
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Feature Branch बनाम GPT-2 Audit Branch; केवल source inspection। कोई SQL/DB execution नहीं।
+
+### 1. दोनों branches में समान core migration
+
+`20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` दोनों branches में मौजूद है, लेकिन Blob SHA अलग है:
+
+- Feature Branch: `901512e832279d51ab9278c6ea6522df2a30978c` (821 lines)
+- Audit Branch: `c811fe2a0ae129201ca9e99c5405bbb59e831f57` (733 lines)
+
+दोनों versions में refund preparation के समय booking/refund/payout rows पर locking, payout को refund-pending marker के साथ blocked करना, तथा provider reconciliation function मौजूद है। Feature version में उसी migration के भीतर संबंधित functions के अतिरिक्त/दोहराए गए definitions भी हैं; इसे केवल line count से correctness का प्रमाण न माना जाए।
+
+### 2. सबसे बड़ा state-transition अंतर
+
+- Feature Branch की `20261115250000_harden_refund_reconcile_full_amount.sql` (`56d300abc8495d1c5c5371d60bc0321650623db5`) verified full refund पर payout को सीधे `refunded` करती है; failed/non-final path में refund-owned blocked payout को `pending` और `previous_payout_note` पर वापस करती है।
+- Audit Branch की उसी migration (`3bda81c2b827f597f639846d33967a7c88296e21`) में reconciliation payout को सीधे close नहीं करती; refund-owned marker के लिए prior payout status/note restore path है।
+- दोनों branches में `20261115240000_harden_refund_recovery_full_amount.sql` समान Blob `40ebd534cf4209e98adc8c1f44b53b9ebfc09920` है। यह recovery evidence से verified processed refund के बाद payout को refunded करने की अपेक्षा करता है।
+
+### 3. Audit Branch में नया booking-trigger lifecycle
+
+Audit Branch में अतिरिक्त migration:
+
+`20261116210000_attach_electrician_payout_reconciliation_trigger.sql`  
+Blob: `b12da77471d510b55f798bd089597d866d79a133`
+
+इसमें `srk_create_electrician_payable()` को `service_bookings` पर AFTER INSERT/UPDATE trigger से जोड़ा गया है। Trigger का `payment_status='refunded'` path:
+- pending payout को refunded करता है;
+- blocked payout को तभी refunded करता है जब `payout_note` refund-owned markers `Razorpay refund pending` या `Manual refund processed` में से हो;
+- अन्य unrelated blocked holds को नहीं बदलता।
+
+इसी Audit Branch migration में manual refund और recovery finalization functions booking को refunded करने के बाद payout row दोबारा पढ़कर trigger-produced `refunded` state verify करते हैं। इससे refund RPC और booking lifecycle trigger के बीच एक स्पष्ट single-writer pattern दिखता है।
+
+यह migration Feature Branch में उसी path पर नहीं मिली (GitHub contents API ने उस ref/path के लिए 404 लौटाया)। अतः यह अंतर branch-specific है; इसे Feature Branch में मौजूद मानना गलत होगा।
+
+### 4. Audit-trigger interaction
+
+दोनों branches की समान core audit migration `20261114125844_restore_financial_audit_core_schema.sql` में payout और refund tables के AFTER INSERT/UPDATE/DELETE audit triggers registered हैं। इसलिए payout lifecycle trigger द्वारा payout update होने पर payout audit trigger भी source के अनुसार fire होना अपेक्षित है। यह source-level trigger registration का निष्कर्ष है; trigger execution order/actual audit rows को DB में चलाकर सत्यापित नहीं किया गया।
+
+### 5. Static review verdict
+
+- Audit Branch में booking payment-status transition payout closure का केंद्रीय स्थान है; refund RPC उसके परिणाम को verify करती है।
+- Feature Branch में reconciliation migration सीधे payout state बदलती है और Audit Branch वाला booking trigger migration अनुपस्थित है। दोनों approaches को मिलाकर/चुनकर लागू करने से पहले पूरी migration chain और tests का review आवश्यक है।
+- Manual refund completion migration `20261115130000_admin_manual_refund_request_completion.sql` दोनों branches में समान Blob `51f3b13adc80e117cc62f05b0e70ae795ee0f9fd` है; वह भी payout closure logic रखती है। Audit Branch के नए trigger migration में उसी function का replacement version booking trigger के बाद payout re-read/verification करता है। इसलिए migration timestamp order और final function definition महत्वपूर्ण हैं।
+- यह source-level comparison है, runtime proof नहीं। कोई SQL parser, pgTAP, PostgreSQL replay, DB introspection, CI dispatch, deployment, merge या cherry-pick नहीं हुआ।
+
+**अगला सुरक्षित कदम:** trigger migration के बाद effective RPC definitions, grants/search_path और refund state-machine tests की branch-wise तुलना; कोई DB operation नहीं।
