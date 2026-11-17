@@ -144,3 +144,11 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Added a third legacy approved-quote fixture with a matching booking commission and payout platform commission. A commission-only UPDATE is wrapped in `lives_ok` and must succeed.
 - The fixture set now covers the positive matching case, missing-payout rejection, and mismatched-payout rejection. Source count checked: `plan(52)` = 48 `ok` + 3 `throws_ok` + 1 `lives_ok`.
 - No PostgreSQL/pgTAP execution occurred; all 60 runtime acceptance checks remain Pending.
+
+
+### Electrician Support Main Admin बनाम Staff RBAC — 17 November 2026 (source-only)
+
+- पुराने electrician-support inbox RPCs (srk_admin_list/send/update_electrician_support_*) authenticated role को EXECUTE देते हैं, लेकिन function body में public.is_srk_admin() gate है; इसलिए ये Main Admin-only legacy route हैं, Staff access route नहीं।
+- Staff के अलग RPCs (srk_admin_staff_*electrician*) क्रमशः support.electrician.read, support.electrician.reply, और support.electrician.update_status permissions तथा case/assignment ownership checks लगाते हैं।
+- electrician_support_ticket_security.test.sql में 2 source-contract assertions जोड़े; plan अब 14 है। Source count verified; pgTAP execute नहीं हुआ।
+- यह change runtime acceptance को pass नहीं करता; संबंधित runtime checks Pending रहते हैं।
