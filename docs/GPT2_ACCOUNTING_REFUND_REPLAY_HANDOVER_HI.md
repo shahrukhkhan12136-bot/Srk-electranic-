@@ -633,3 +633,44 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - Before any implementation port: resolve the refund named-argument and row-shape mismatch, confirm the intended manual refund/payment and payout body versions, locate authoritative source for legacy confirm/rate-tier RPCs, and reconcile complete migration order/dependencies.
 - Staff UUID exclusivity blocker from Section 21 remains unresolved and must be decided with owner/GPT-2 before the Staff RBAC bundle is accepted.
 - Do not cherry-pick isolated financial RPCs, run production migrations, deploy, merge PR #8, trigger refunds/payouts, or perform mobile QA in this phase.
+
+
+## Section 23 — Legacy Booking Confirm और Electrician Rate Tier RPC source verification (2026-11-17)
+
+### Source खोज का परिणाम
+दोनों RPC के Feature source अब मिल गए हैं; इन्हें अब “source unresolved” नहीं माना जाएगा:
+- `srk_admin_confirm_legacy_booking(uuid)`: `supabase/migrations/20261115160000_legacy_booking_status_write_guard.sql`, blob SHA `b07658edbc51285a607a5007c7d99d95ae3bd104`.
+- `srk_admin_set_electrician_rate_tier(uuid,text)`: `supabase/migrations/20261114160000_customer_selected_rate_tier_and_server_estimate.sql`, blob SHA `940943827c648bd9877faccc52844b81996bfcab`.
+
+### 1. Legacy Booking Confirm
+- Admin UI sends named args `p_booking_id` and expects `jsonb.success=true`.
+- Feature migration function has the same signature and returns `jsonb`; requires authenticated Main Admin (`auth.uid()` and `is_srk_admin()`).
+- It locks the booking row, only permits legacy rows with `selected_category IS NULL`, status exactly `new`, no assigned electrician, no paid/refunded payment, and no Razorpay order/payment IDs.
+- It updates only `new` → `confirmed`, guards against concurrent conflict, and returns booking ID/status.
+- Migration also revokes direct client status update privileges and restores only the explicit legacy payment/quote columns. This is an important dependency of the new audited booking-status write boundary.
+- Main all-schema `pg_proc` search found no function with this name. The queried Main migration ledger also did not show `20261115160000`. Main's existing booking status write grants/policies were not changed.
+
+### 2. Admin Electrician Rate Tier
+- Admin UI sends named args `p_electrician_profile_id` and `p_rate_tier`, validates the four allowed tiers, and displays success only after RPC returns without error.
+- Feature migration defines the same argument names and returns `jsonb`; requires authenticated Main Admin and an approved KYC profile.
+- It records an authorization row in private schema `srk_private.electrician_rate_tier_authorizations`, updates the four approved-rate fields, deletes the transaction-scoped authorization row, and inserts an audit record in `srk_electrician_rate_tier_audit`.
+- A trigger blocks direct setting of approved rate-tier fields and blocks activation unless the approved rate tier, card version, approver, and approval timestamp are all present.
+- Audit table has RLS enabled, direct public/anon/authenticated table privileges revoked, and an Admin-only SELECT policy. Authorization table is private and has no client privileges.
+- Main all-schema `pg_proc` search found no function with this name. Main catalog query also found none of the rate-tier columns/tables checked (`approved_rate_tier`, `approved_rate_card_version`, `rate_tier_approved_by`, `rate_tier_approved_at`, `srk_electrician_rate_tier_audit`). The queried Main migration ledger did not show `20261114160000`.
+
+### 3. Current Admin RPC security snapshot — existing 17 names
+- Rechecked Main public catalog for the 17 names previously found. All are SECURITY DEFINER, authenticated EXECUTE=true, anon EXECUTE=false.
+- All except two had explicit pinned `search_path=pg_catalog, public, auth, pg_temp`; the exceptions are `srk_admin_decide_booking_refund_request(uuid,text,text)` and `srk_admin_list_booking_refund_requests(integer)`, both have `search_path=''`. Empty search_path is intentional hardening when all object references are schema-qualified; body-level dependency review remains necessary.
+- Volatility: the list/read projections are STABLE where appropriate; mutation/administrative workflows are VOLATILE.
+- Confirmed Main argument/return contracts for selected Admin UI calls:
+  - `srk_admin_review_application(uuid,text)` args match UI named args; return is `void`, and UI checks only the error.
+  - `srk_admin_set_electrician_active(uuid,boolean)` args match UI; return is `jsonb`, and UI checks `success`.
+  - `srk_admin_offer_booking(uuid)` args match UI; return is `jsonb`.
+  - Complaint list and area/KYC list functions return typed table projections; these require continued per-field UI comparison before declaring full parity.
+- Existing refund UI/Main mismatches and legacy body parity gaps remain as Section 22; no new resolution is implied by this security snapshot.
+
+### Implementation gate and status
+- Both RPC source migrations are identified, but their dependent columns/tables/functions are not present in the queried Main catalog. Do not deploy either RPC by itself.
+- Rate-tier rollout must include the complete category/rate-card schema and booking estimate migration dependencies, private authorization table, audit table, guard trigger, offer-dispatch eligibility, and Admin RPC as one reviewed bundle.
+- Legacy confirm rollout must include the status write guard and all dependent booking/payment write contracts; do not re-enable broad direct status updates.
+- No application code or SQL changed; no Production migration, Auth action, deployment, PR merge, refund, payout, or mobile QA occurred in this pass.
