@@ -6019,3 +6019,48 @@ Migration में phone/name server-side source से लिए जाते 
 Customer और Electrician SOS request UI में account-generation safeguards मौजूद हैं और दोनों flows case registration को SMS/Push delivery से अलग बताते हैं। Electrician helper में busy-key mismatch छोटा source inconsistency है। Admin UI में Section 187 वाला account-switch guard gap बना हुआ है। ये static source findings हैं; browser behavior, real Auth transitions और RPC runtime इस चरण में नहीं जाँचे गए।
 
 केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई test/pgTAP, SQL, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 191. SOS pgTAP File — Static Assertion Coverage और Behavioral Gaps
+
+**तारीख:** 17 नवंबर 2026  
+**Test file:** `supabase/tests/database/sos_admin_support_alerts.test.sql`  
+**Migration:** `supabase/migrations/20261115260000_sos_admin_support_alerts.sql`
+
+### 1. Test File और मौजूदा Coverage
+
+- Test file SHA: `9a523217daf2bb9cabd00e4e631e361c16b167cb`; 111 lines; `plan(28)`.
+- SOS migration SHA: `6e630bea1d0b85e369e015c931cc41d52056c082`; 327 lines.
+- Test assertions मुख्यतः catalog और function-source inspection करती हैं:
+  - SOS case/event tables, RLS, browser direct-read denial और append-only triggers।
+  - Support read/ack permissions और role mapping।
+  - Creation RPC का SECURITY DEFINER, empty search_path, grants, authenticated actor/booking ownership, active booking, approved reason codes, duplicate pending रोकने का source marker और `not_configured` response।
+  - Admin list/history permission markers।
+  - Acknowledge RPC में permission, `FOR UPDATE`, event/staff-audit inserts और pending→acknowledged transition के source markers।
+- Test file में वास्तविक Customer/Electrician/Admin JWT contexts बनाकर end-to-end RPC behavior चलाने वाले assertions दिखाई नहीं देते। इसीलिए source-text assertion को deployed runtime authorization या व्यवहार का प्रमाण नहीं मानना चाहिए।
+
+### 2. मुख्य Behavioral Coverage Gaps
+
+1. **Creation ownership:** अलग-अलग Customer/Electrician identity के साथ own booking, दूसरे व्यक्ति की booking, inactive/closed booking और एक से अधिक active booking के वास्तविक RPC outcomes।
+2. **Duplicate/concurrency:** एक booking पर दो concurrent SOS creation calls में केवल एक pending case और सही event history।
+3. **Staff scope:** Section 188 के अनुसार Support role के लिए assignment filter नहीं है। Test को स्पष्ट रूप से तय और जाँचना चाहिए कि unassigned Staff भी list/history/ack कर सकता है या access को assignment/team तक सीमित करना है।
+4. **Acknowledgement race:** दो Staff एक ही pending case acknowledge करें तो केवल एक success; दूसरा साफ़ conflict पाए; case और audit history एकसाथ consistent रहें।
+5. **Audit atomicity:** acknowledgement RPC के बीच event-history या staff-audit insert failure पर status update और दूसरी insert rollback हों।
+6. **Input/data minimization:** 5–500 character note boundaries, whitespace-only note, HTML/script-like text escaping, अत्यधिक निजी जानकारी न रखने की guidance और returned phone/note visibility।
+7. **Delivery state:** provider unconfigured होने पर response और stored status `not_configured` ही रहें; कोई UI/API path SMS/Push को sent न बताए। Provider integration आने पर delivery callback, retries और failure transitions अलग tests माँगेंगे।
+8. **Retention/deletion:** कोई expiry/purge policy अभी migration में नहीं मिली (Section 189); retention policy तय होने पर archive/delete और FK RESTRICT व्यवहार के tests चाहिए।
+
+### 3. Recommended Next Test Set
+
+- अलग-अलग role/JWT के साथ create/read/history/ack authorization matrix।
+- Same-booking duplicate creation और same-case concurrent acknowledgement।
+- Acknowledge transaction rollback तथा event/staff-audit row consistency।
+- Support Staff assigned बनाम unassigned case visibility/acknowledgement का owner-approved expected behavior।
+- `not_configured` delivery state और note validation/escaping।
+- चुनी हुई retention policy के अनुसार archival/deletion lifecycle।
+
+### 4. Verdict और Evidence Boundary
+
+मौजूदा 28 planned assertions schema/security configuration और function source में महत्वपूर्ण safeguards की मौजूदगी जाँचते हैं, लेकिन वास्तविक role-based RPC outcomes, concurrency, transaction rollback और data lifecycle को साबित नहीं करते। Section 188 का role-wide Support access निर्णय अभी owner confirmation माँगता है; test expectation उसी निर्णय के बाद तय होनी चाहिए।
+
+यह केवल static file inspection और audit documentation है। Test execute नहीं किया गया; कोई SQL, pgTAP, DB query, migration replay, source/migration/permission change, CI, deployment, merge या cherry-pick नहीं हुआ।
