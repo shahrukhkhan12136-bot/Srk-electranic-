@@ -6333,3 +6333,39 @@ SOS RPC के direct column references के लिए source provenance अ�
 नवीनतम migration source में commission sequencing और parity validation के दो नए trigger functions हैं। संबंधित bridge test में method mismatch assertion है, पर दोनों नए trigger functions के लिए प्रत्यक्ष static assertions अनुपस्थित हैं। इसलिए PostgreSQL Parser/pgTAP और Accounting Runtime Test workstream में इस gap को शामिल करना होगा।
 
 यह केवल migration और test source की static समीक्षा तथा audit report documentation update है। कोई SQL/pgTAP execution, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 200. Commission/Payout Trigger Event-Column Alignment — Static Cross-Check
+
+### 1. दोनों trigger event lists का मिलान
+
+Migration `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` में BEFORE commission trigger इन columns पर INSERT/UPDATE के लिए बना है:
+
+- `status`, `payment_status`, `assigned_electrician_id`, `payment_verified_at`, `amount_paid`
+- `quote_status`, `service_charge`, `commission_rate`, `razorpay_payment_id`
+- `selected_category`, `payment_method`
+
+पहले से मौजूद AFTER payout trigger `srk_reconcile_electrician_payable` इन columns पर INSERT/UPDATE के लिए बना है:
+
+- `status`, `payment_status`, `assigned_electrician_id`, `payment_verified_at`, `amount_paid`
+- `quote_status`, `service_charge`, `materials_amount`, `commission_rate`, `razorpay_payment_id`
+- `selected_category`
+
+AFTER parity trigger में payout-trigger वाले columns के साथ `commission_amount` भी शामिल है।
+
+### 2. Static निष्कर्ष
+
+- Commission की गणना में प्रयुक्त मुख्य fields — service/quote, commission rate, booking status, payment verification और selected category — दोनों commission और payout paths के trigger event lists में शामिल हैं।
+- Legacy quote payout path में `materials_amount` बदलने पर payout trigger चलता है। Commission BEFORE trigger उस column पर नहीं चलता, लेकिन legacy commission source `service_charge` और `commission_rate` है; materials amount commission base में शामिल नहीं दिखता।
+- BEFORE trigger का नाम `zz_srk_set_booking_commission_before_payout` और AFTER payout trigger का नाम `srk_reconcile_electrician_payable` है। PostgreSQL में BEFORE और AFTER अलग trigger phases हैं; इनके नामों की तुलना से cross-phase execution order तय नहीं होता। AFTER phase में payout trigger का नाम parity trigger `zz_srk_validate_booking_commission_payout_parity` से पहले आता है।
+- Parity trigger `commission_amount` सहित संबंधित columns पर चलता है और payout row न मिलने या commission अलग होने पर exception उठाता है।
+
+### 3. शेष प्रमाण की सीमा
+
+यह source-level event-column alignment है। इससे यह प्रमाणित नहीं होता कि PostgreSQL में वास्तविक insert/update, trigger ordering, transaction rollback या concurrent updates सफल हैं। इसके लिए नियोजित isolated PostgreSQL/pgTAP और runtime tests आवश्यक हैं। Section 199 में दर्ज दोनों नए trigger functions के explicit static test assertions का gap भी अभी बाकी है।
+
+### 4. Verdict
+
+Static event-column cross-check में commission और payout की मुख्य input columns पर स्पष्ट event-list conflict नहीं मिला। `materials_amount` का अंतर legacy quote path के commission base से मेल खाता दिखता है। Runtime ordering और parity rollback अभी **unverified** हैं।
+
+केवल source inspection और audit documentation update किया गया। कोई SQL/pgTAP execution, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
