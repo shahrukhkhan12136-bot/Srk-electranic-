@@ -3083,3 +3083,43 @@ Section 124 के बाद helper-function compatibility को exact source �
 - Staff migration calls helper without defining it in that migration: **source-confirmed**.
 - Actual live DB helper availability / replay failure: **not tested; not asserted**.
 - No migration/helper/RLS/grant change, no database query, no PostgreSQL replay/pgTAP, no CI/deployment/merge.
+
+## 126. Canonical combined setup bundle में current helper की मौजूदगी — 17 Nov 2026
+
+Section 125 के conditional migration dependency को स्पष्ट करने के लिए canonical setup bundle और उसके निर्देशों का cross-check किया गया।
+
+### 126.1 Combined setup script का क्रम
+
+- `COMPLETE_DATABASE_SETUP.sql` (blob `2b806e727f449ba18e71ad23edef805ceb2da2b5`, 402 lines) में शुरुआती portal section के दौरान लगभग lines 133–137 पर legacy `public.srk_is_admin()` define होता है।
+- उसी combined script के बाद के Admin email-login section में लगभग lines 323–338 पर current `public.is_srk_admin()` भी define होता है।
+- इसलिए इस file की पूरी सामग्री सफलतापूर्वक चलने पर दोनों नामों की definitions script में मौजूद हैं; यह Section 125 के “केवल SUPABASE_SCHEMA.sql + PORTAL_SCHEMA.sql + Staff migrations” वाले सीमित sequence से अलग स्थिति है।
+- Combined script में Admin email-login block existing `srk_admin_users` row मानता है; Main Admin UUID enrollment निर्देश अलग setup steps में दिया गया है।
+
+### 126.2 Documentation का canonical path
+
+- `PORTAL_SETUP_HINDI.md` (blob `dda516ff465a09f141e803897fb71c2d7294a453`, line 3) कहता है कि मुख्य setup के लिए `VERCEL_DEPLOY_HINDI.md` पढ़ें और केवल `COMPLETE_DATABASE_SETUP.sql` एक बार चलाएँ।
+- `VERCEL_DEPLOY_HINDI.md` (blob `d1e79f473e966645ca6144a257aa1fcda9733791`, लगभग lines 20–22) भी इसी combined file को एक बार चलाने को कहता है और उसे base schema, portal access, privacy rules, Admin email login और payment tracking का क्रमबद्ध setup बताता है।
+- `README.md` (blob `ad80aa238eed5f3963c1fce1c5836c34b3ba75de`) में Database section Main Supabase project का उल्लेख करता है, पर इस migration set के लिए अलग से authoritative clean-replay order नहीं देता।
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` standalone विकल्प में भी `is_srk_admin()` define होता है, लेकिन वह existing Admin row मानता है और combined setup guide का मुख्य one-file path नहीं है।
+
+### 126.3 संशोधित निष्कर्ष
+
+- यदि documented combined setup `COMPLETE_DATABASE_SETUP.sql` पूरा सफलतापूर्वक चलाया गया हो और उसके बाद Staff migrations लागू हों, तो इस script में current `is_srk_admin()` definition मौजूद है। इसलिए Section 125 की helper dependency उस documented setup path में source-level पर पूरी हो सकती है।
+- यदि migration-only clean replay में यह combined bootstrap script या कोई equivalent prior helper definition शामिल नहीं है, तो Staff migration की `is_srk_admin()` dependency अब भी unresolved prerequisite है।
+- यह निष्कर्ष file contents और documentation पर आधारित है। SQL blocks का वास्तविक execution, statement-level success, migration runner ordering, live DB function inventory और clean PostgreSQL replay जाँचे नहीं गए।
+- Combined setup script का मौजूद होना अपने-आप यह प्रमाणित नहीं करता कि वह Production में चला है या सभी statements सफल हुए हैं।
+
+### 126.4 Required resolution before replay
+
+1. Owner/DBA तय करे कि clean replay का authoritative starting point `COMPLETE_DATABASE_SETUP.sql` है या migration-only baseline।
+2. यदि migration-only baseline चुना जाता है, तो `is_srk_admin()` की authoritative definition को migration dependency chain में स्पष्ट रूप से शामिल करने की योजना बने; अभी कोई helper/migration edit नहीं किया गया।
+3. Disposable PostgreSQL में documented combined setup + Staff migrations और migration-only baseline दोनों के replay order की जाँच हो।
+4. Replay में दोनों helper names, grants, RLS policy callers और expected function availability verify हों।
+
+### Status
+
+- Combined setup script में legacy और current दोनों helper definitions: **source-confirmed**.
+- Setup guide का one-file canonical instruction: **source-confirmed**.
+- Documented full-bundle path पर helper dependency पूरी होने की संभावना: **source-level; execution unverified**.
+- Migration-only baseline पर prerequisite: **अब भी स्पष्ट रूप से दर्ज; runtime untested**.
+- No SQL/schema/helper/migration change, no database query, no PostgreSQL replay/pgTAP, no CI/deployment/merge.
