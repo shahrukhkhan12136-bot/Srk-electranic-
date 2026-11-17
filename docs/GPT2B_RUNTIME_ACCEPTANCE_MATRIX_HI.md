@@ -562,3 +562,11 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Added migration `20261117160000_preserve_unrelated_payout_blocks_during_refund_recovery.sql`. Before any accounting mutation, the finalizer now requires both `payout_status='blocked'` and `payout_note='Razorpay refund pending'`; the final UPDATE repeats both predicates as a conditional fence. A different Admin block fails closed with `ELECTRICIAN_PAYOUT_NOT_HELD_BY_THIS_RAZORPAY_REFUND`. The no-payout case and exact refund-owned hold behavior remain unchanged.
 - Added two pgTAP source-contract assertions; `durable_razorpay_refund_recovery_evidence.test.sql` declared plan **45** (previously 43). SQL/pgTAP has NOT been executed; source assertions do not prove migration compilation or runtime behavior.
 - No live DB migration applied, no SQL/pgTAP/Node/CI run, no Provider API, deployment, merge, cherry-pick or Production setting changed. GPT-2 official checklist **27/39 = 69%**; Runtime Acceptance **60/60 Pending** unchanged.
+
+
+### Manual Refund ↔ Payout hold ownership fence — 17 November 2026 (source-only fix)
+
+- Cross-check found the parallel manual-refund path had the same ownership gap: it accepted any already-`blocked` payout and later changed that row to `refunded`, even if the block was not created by this manual-refund operation.
+- Added migration `20261117170000_preserve_unrelated_payout_blocks_during_manual_refund.sql`. A pending payout is conditionally moved to blocked with note `Manual refund processed`; an already-blocked payout is accepted only when its note exactly matches that manual-refund hold. The final transition to `refunded` repeats both the blocked-state and exact-note predicates. Unrelated Admin/Razorpay holds fail closed with `ELECTRICIAN_PAYOUT_NOT_HELD_BY_THIS_MANUAL_REFUND`.
+- Extended `supabase/tests/database/admin_refund_review_queue.test.sql` from declared plan **16** to **18** with two source-contract assertions for hold ownership and conditional closure. Test NOT executed.
+- This is a source-only migration; it has NOT been applied. No PostgreSQL, pgTAP, Node suite, CI, deployment, merge, cherry-pick, provider API or Production setting executed/changed. GPT-2 official checklist **27/39 = 69%**; Runtime Acceptance **60/60 Pending** unchanged.
