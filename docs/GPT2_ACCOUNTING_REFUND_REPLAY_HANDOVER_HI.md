@@ -721,3 +721,45 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - Owner-approved architecture में Customer payments Razorpay हैं, Electrician payouts Admin Manual Payout हैं, Razorpay Route retired है; यह finding offer dispatch scope के बारे में है, payment/payout routing नहीं।
 - Safe remediation: Feature Branch में legacy RPC के server-side body में `selected_category IS NULL` hard guard जोड़ने वाला reviewed migration; साथ ही Main intended schema, offer uniqueness/locking, and new-category sequential dispatcher contracts reconcile हों। Existing historical offers/booking rows को mutate न करें।
 - कोई migration या code change नहीं किया गया; Production पर कोई बदलाव नहीं हुआ।
+
+
+## Section 26 — Main live work-review, cancellation और legacy RPC boundary revalidation (2026-11-17)
+
+### Live database recheck
+- Main Supabase project `Srk electranic` (project ref `gnqhoaqatmoiwwhgzkgm`) पर केवल read-only catalog/function inspection किया गया।
+- PR #8 re-fetch: Open, Draft, Unmerged; head SHA `06a6b718bb107afe177ace6cc4c421521eaa0d4f`।
+- Feature `admin.html` SHA `6b29511a1ecfab93b5689dff23012078091e57fc`; handover report SHA before this append `1551a90ec01228399f353481eb479622459107e6`।
+
+### 1. Admin work-review RPC live Main में अनुपस्थित
+- Main public catalog में `srk_admin_get_booking_work_review(uuid)` नहीं मिला।
+- इस कारण Feature Admin Panel का Booking UUID work-history / immutable final bill / dispute review call अभी Main live database पर resolve नहीं हो सकता।
+- Feature source migration में `srk_booking_work_events` append-only event history और Admin-only review RPC का पूरा dependency bundle है; इसे अकेले RPC के रूप में deploy नहीं करना है। Event table, lifecycle trigger, RLS/revokes, bill/complaint dependencies और संबंधित booking schema को साथ reconcile करना होगा।
+- Main में `srk_booking_work_events`/नए work-review event schema की मौजूदगी इस query से establish नहीं हुई; इसे अनुपस्थित मानकर destructive action नहीं लेना है। अलग catalog/table verification आवश्यक है।
+
+### 2. Main live customer cancellation अभी पुराना direct path है
+- Main में `srk_customer_cancel_my_booking(uuid)` मौजूद है। Body केवल booking owner (`customer_user_id = auth.uid()`), unassigned state और `new/confirmed` status verify करके booking को सीधे `cancelled` करती है।
+- यह function Admin-reviewed cancellation request, arrival evidence, ₹99 fee eligibility और Main Admin approval workflow implement नहीं करता।
+- Main में cancellation status trigger `srk_cancel_booking_job_offers()` booking cancelled होने पर offered/accepted offers को cancelled करता है; यह trigger केवल offer cleanup है, fee approval workflow नहीं।
+- इसलिए PR की source-only cancellation-request flow को Main पर इस पुराने function के साथ parity मानना गलत होगा। पुराने customer cancel path को बंद/बदलने से पहले compatibility, existing clients और complete migration sequence review जरूरी है। इस pass में कोई function/trigger बदला नहीं गया।
+
+### 3. Main legacy electrician status RPC अभी सीमित inspection transition देता है
+- Main में `srk_update_booking_work_status(uuid,text)` body केवल `inspection` status स्वीकार करती है; active+approved electrician profile और assigned booking verify करके `assigned -> inspection` transition करती है।
+- यह Feature के customer-approved start request, server-clock timer, completion request/approval/rejection/dispute और immutable bill workflow का विकल्प नहीं है।
+- इस pass में Feature के नए timer/bill migrations को Main पर apply या पुराने RPC को alter नहीं किया गया।
+
+### 4. Existing refund/payment/payout RPC body evidence rechecked
+- Main `srk_admin_list_booking_refund_requests(integer)` refund queue में manual-payment presence, refund record ID, provider status और booking payment fields लौटाता है; इसका signature `p_limit` है।
+- Main `srk_admin_decide_booking_refund_request(uuid,text,text)` status allow-list `in_review/approved/rejected` है; यह केवल request status/admin note update करता है, provider refund execute नहीं करता। Feature UI का named argument `p_decision` और Main का `p_status` अभी mismatch है।
+- Main `srk_admin_record_manual_payment` completed + approved-quote booking, quote total, manual-only payment और existing manual-entry duplicate रोकता है; Razorpay-linked booking को reject करता है।
+- Main `srk_admin_record_manual_refund` केवल verified manual payment refund करता है; Razorpay-linked refund reject, duplicate refund reject, और paid electrician payout होने पर block करता है।
+- Main `srk_admin_mark_electrician_payout_paid` legacy approved quote/service-charge/materials reconciliation पर निर्भर है; यह Feature के immutable labour bill/new category payout contract का parity proof नहीं है।
+- इन bodies की वजह से पहले Sections 21–22 में दर्ज Feature/Main accounting, refund, payment और payout contract drift अभी unresolved है। इस recheck ने उसे resolve नहीं किया।
+
+### 5. Legacy bulk-offer server guard gap की body-level पुष्टि
+- Main `srk_admin_offer_booking(uuid)` का पूर्ण body फिर inspect किया। Booking row lock, unassigned/status checks और active+approved+OTP-linked electrician eligibility मौजूद हैं; लेकिन `selected_category IS NULL` server-side predicate अब भी नहीं है।
+- Feature UI guard को अकेला enforcement न मानें। Server-side guard और sequential-dispatch dependency reconciliation अभी आवश्यक हैं; historical offers/booking rows को mutate न करें।
+
+### Status / no-write confirmation
+- यह section केवल live read-only SQL/catalog inspection और Feature Branch handover documentation पर आधारित है।
+- कोई application code, SQL migration, Production DDL/DML, Auth action, deployment, merge, payment/refund/payout, या mobile QA नहीं किया गया।
+- Remaining: work-event schema/table/trigger exact catalog reconciliation; cancellation request migration bundle + old direct cancellation compatibility; Feature timer/bill vs Main legacy status transition dependency mapping; refund/payment/payout contract reconciliation; KYC event-history preservation; legacy offer category hard guard।
