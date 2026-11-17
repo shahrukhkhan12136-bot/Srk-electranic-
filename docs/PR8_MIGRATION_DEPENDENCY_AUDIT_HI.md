@@ -3050,3 +3050,36 @@ Inspected setup documents में Main Admin enrollment का एक document
 - `ADMIN_EMAIL_LOGIN_SETUP.sql` में enrollment INSERT: **inspected file में नहीं मिला**.
 - Legacy/current helper naming difference: **source-confirmed**.
 - No SQL/schema/RPC/document setup change, no database query, no migration replay, no invite, no CI/deployment/merge.
+
+
+## 125. Legacy और current Admin helper नाम / migration prerequisite — 17 Nov 2026
+
+Section 124 के बाद helper-function compatibility को exact source पर जाँचा गया।
+
+### 125.1 दो अलग function names
+
+- `PORTAL_SCHEMA.sql` (blob `efc14aa623a3895ffb3841b7b0f226f2015f34b1`, lines 33–37) `public.srk_is_admin()` बनाता है और legacy Admin RLS policies उसी नाम को call करती हैं।
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` (blob `dbd91b3f912b1e0946bffe6d249a85cc41dc81cd`, lines 14–18) अलग function `public.is_srk_admin()` बनाता है।
+- Staff RBAC migration `20261114390000_admin_staff_rbac_foundation.sql` (blob `5aa0f9058a56d735455f2a9944c861e8312ddb89`) `public.is_srk_admin()` को कई जगह call करता है, पर inspected migration में उस function की definition नहीं है।
+- Follow-up volatility migration `20261116100000_fix_staff_permission_helper_volatility.sql` (blob `fc99aaf9c564b348e25a72b416dd4eb746e0fad3`) भी `public.is_srk_admin()` को call करता है; वह भी इस helper को define नहीं करती।
+
+### 125.2 Dependency / deployment risk
+
+- यदि deployment sequence में `ADMIN_EMAIL_LOGIN_SETUP.sql` पहले सफलतापूर्वक चल चुका है, तो Staff migration की इस helper dependency को वह पूरा कर सकता है।
+- यदि केवल `SUPABASE_SCHEMA.sql`, `PORTAL_SCHEMA.sql` और Staff migrations चलाए जाएँ, तो legacy schema में `srk_is_admin()` उपलब्ध है, लेकिन Staff migration जिस `is_srk_admin()` को call करती है वह इस inspected sequence में define नहीं होती। इससे migration function creation या बाद के calls fail हो सकते हैं, exact PostgreSQL dependency validation के अधीन।
+- दोनों helpers का body समान allow-list membership check करता है, लेकिन वे अलग object names हैं; एक दूसरे का alias नहीं हैं।
+- यह static source/dependency finding है। किसी वास्तविक database में कौन-सा function मौजूद है, उसका owner/grants क्या हैं, या migration किस क्रम में चल चुकी है—यहाँ query नहीं किया गया।
+
+### 125.3 Required resolution before replay
+
+1. Canonical Admin predicate/function name owner/DBA तय करे।
+2. Migration set में उस helper की authoritative definition और dependency ordering स्पष्ट हो।
+3. Legacy `srk_is_admin()` callers/policies को inventory करके compatibility/retirement plan बनाया जाए; बिना review legacy function drop न हो।
+4. Clean disposable PostgreSQL replay में दोनों setup paths और Staff migrations का क्रम सत्यापित हो; missing-helper negative case और expected helper-present case के tests हों।
+
+### Status
+
+- Legacy `srk_is_admin()` vs current `is_srk_admin()` naming drift: **source-confirmed**.
+- Staff migration calls helper without defining it in that migration: **source-confirmed**.
+- Actual live DB helper availability / replay failure: **not tested; not asserted**.
+- No migration/helper/RLS/grant change, no database query, no PostgreSQL replay/pgTAP, no CI/deployment/merge.
