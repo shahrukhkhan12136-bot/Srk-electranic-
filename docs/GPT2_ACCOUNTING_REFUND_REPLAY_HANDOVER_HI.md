@@ -487,3 +487,42 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - Keep app and Main schema unchanged for now. Ask GPT-2/owner to settle canonical electrician identity invariant, then review a coordinated migration that standardizes relevant RPC predicates and enforces the invariant race-safely against full migration history.
 - Separately decide whether srk_get_my_wallet_summary() should remain a lazy account initializer or become a read-only summary plus explicit account-creation path.
 - This section documents read-only Main catalog/function/ACL inspection and Feature source call paths. No SQL, data, application code, or Production settings were changed; no migration was applied, deployment or merge performed, or mobile QA run.
+
+
+## 20. Electrician UI RPC-to-Main live schema parity (Nov 17)
+
+### Source inventory
+- Re-fetched Feature Branch electrician.html at blob SHA 0588cfe716e1e5c47690e826bbe2bb09a0c57bed.
+- Extracted 23 distinct RPC names called by the current Electrician UI. The previously audited core workflow RPCs are present in Main; however, 13 other UI-called RPC names do not currently resolve in the connected Main project catalog:
+  - srk_electrician_stop_live_location(uuid)
+  - srk_electrician_start_live_location(uuid,double precision,double precision,numeric)
+  - srk_electrician_update_live_location(uuid,double precision,double precision,numeric)
+  - srk_electrician_list_my_support_tickets()
+  - srk_electrician_create_support_ticket(text,text,text,uuid)
+  - srk_electrician_list_my_support_messages(uuid)
+  - srk_electrician_send_support_message(uuid,text)
+  - srk_electrician_update_my_display_name(text)
+  - srk_electrician_get_my_live_location_status(uuid)
+  - srk_electrician_get_labour_bill(uuid)
+  - srk_electrician_set_availability(boolean)
+  - srk_create_sos_alert(text)
+  - srk_electrician_get_my_verification_document_path(uuid)
+- Exact live catalog checks returned null for the corresponding to_regprocedure lookups; name inventory across schemas also returned no matching definitions. Therefore these are not merely EXECUTE-grant failures in the inspected Main snapshot.
+
+### Feature migration source evidence
+- Feature source contains definitions for self-availability in 20261114310000, booking-scoped live location in 20261114320000, private KYC document path in 20261114330000, self profile-name edit in 20261114340000, Electrician support ticket/message RPCs in 20261114350000, SOS creation in 20261115260000, and labour bill in 20261115120001 / 20261115145900.
+- Queried supabase_migrations.schema_migrations for those eight migration versions in the connected Main project; no matching rows were returned.
+- The support-ticket migration grants authenticated execution and its bodies derive the caller profile from auth.uid; the live-location functions similarly bind the booking to the caller's approved profile and assigned booking; KYC path RPC scopes the document to the caller's own profile. SOS source derives exactly one in-progress selected-category booking from auth.uid and explicitly records SMS/Push as not_configured (no automatic police/112 or provider delivery is implemented by that migration).
+- These source definitions are evidence of intended Feature Branch implementation only; they are not evidence that Main has those objects deployed.
+
+### Direct table access policies used by Electrician UI
+- srk_electrician_payouts SELECT policy permits Admin or rows whose electrician profile has user_id=auth.uid(); this is consistent with the UI's profile-ID filter only when the profile identity columns remain equal.
+- srk_wallet_bank_links and srk_wallet_ledger SELECT policies scope directly to user_id=auth.uid().
+- srk_push_subscriptions SELECT/INSERT/UPDATE/DELETE policies scope to user_id=auth.uid().
+- electrician_profiles SELECT policy permits either auth_user_id=auth.uid(), user_id=auth.uid(), or Admin; profile writes remain Admin-only in the inspected policies.
+- This confirms another practical consequence of the unresolved identity invariant: payout-history visibility is user_id-only even though other RPCs accept either identity column.
+
+### Impact and safe boundary
+- This is a Feature-source vs connected-Main schema/migration-history parity gap, not a claim that the Feature UI is defective. If this Main project is the intended runtime target, the affected UI actions can fail with missing-function errors until the relevant approved migrations are applied.
+- Do not apply these migrations as a quick fix. The full migration replay/order and GPT-2 Admin/Accounting dependency blockers remain open; migration history, duplicate timestamps, and authoritative baseline must be reconciled first.
+- No Production schema/data/settings were changed. No migration was applied, no provider action was triggered, no deployment/merge was performed, and no mobile QA was run.
