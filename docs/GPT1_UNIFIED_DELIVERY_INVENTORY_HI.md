@@ -362,3 +362,15 @@ Source call-sites के RPC names और payload keys को संबंधि
 - इस refresh में Customer/Electrician source blobs unchanged मिले। कोई app source, migration, SQL, Auth/Storage setting या Production resource नहीं बदला; कोई database/browser/device/provider test नहीं चलाया गया। PR merge/deploy और final mobile QA नहीं किए गए।
 
 **Decision:** GPT-1 source review में अभी कोई नया concrete implementation defect प्रमाणित नहीं हुआ। Existing runtime acceptance gates और GPT-2-owned database prerequisites यथावत हैं; नई feature scope नहीं जोड़ी गई।
+
+
+## 25. GPT-1 exact-head refresh — 17 Nov 2026
+
+- Exact PR #8 head: `5bb05585406b726c11d8d24c1aea736a95d66635`; current `booking.html` blob `d4acf0d51f693ec0d2ff5827e0411e3ca30149a2`, `electrician.html` blob `0588cfe716e1e5c47690e826bbe2bb09a0c57bed`।
+- Customer: 25 distinct RPC calls + 3 HTTP API routes. Electrician: 23 distinct RPC calls + one Push Edge Function call. One RPC (`srk_create_sos_alert`) is shared, giving 47 distinct RPC names total.
+- Refund RPC false-gap correction: `20261115100000_customer_refund_request_contract.sql` does define `srk_customer_create_booking_refund_request(uuid,text)`; current Customer call payload (`p_booking_id`, `p_reason`) matches. Source test `tests/customer-refund-ui-lifecycle.test.js` and 17 structural assertions in `supabase/tests/database/customer_refund_request_contract.test.sql` exist. This supersedes the earlier 17 Nov “definition not found” observation. pgTAP execution remains unverified; no GPT-2 SQL was edited.
+- Directly re-fetched function declarations from the relevant Customer/Electrician migration groups (profile/address, payment/refund, complaint/support, cancellation/timer, offer dispatch, relocation/availability, live location, KYC, profile name, support tickets and phone-change approval). No caller/signature mismatch was demonstrated in this pass. Existing older sections 14–20 remain the mapping index; this is not a claim that every RPC has been executed.
+- Exact-head GitHub Actions run `44047022462`, job `133915140187`: **417/417 Node tests PASS**. Vercel and Netlify deploy-preview checks are success. Node and Preview status do not prove database/provider/browser/mobile runtime.
+- Current direct client table/storage inventory remains: Customer `service_bookings` read and private avatar/support buckets; Electrician `electrician_profiles`, payout, push-subscription, wallet-bank-link and wallet-ledger accesses. Own-profile RLS provenance and actor-isolation coverage remain GPT-2 DB handoff items; Storage/role runtime still pending.
+- No new GPT-1 UI/API feature gap was evidenced; no implementation checkbox or percentage was increased. Next work remains policy/test handoff and isolated runtime acceptance after GPT-2 baseline/replay is ready. Mobile QA remains one final consolidated pass.
+- No app code, SQL/RLS, Production, payment/provider, Auth/Storage setting, deployment, merge or PR state was changed in this audit.
