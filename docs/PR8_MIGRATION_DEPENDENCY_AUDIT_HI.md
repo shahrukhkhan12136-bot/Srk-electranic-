@@ -3950,3 +3950,63 @@ Recovery full-amount test भी `20261115240000` definition पढ़ता ह
 - Existing Node mocks वास्तविक Postgres grants, triggers, transaction rollback, row locks या concurrent transactions प्रमाणित नहीं करते।
 - `package.json` में `test:refund`, `test:webhook` और aggregate `test` scripts मौजूद हैं; इस review में कोई script execute नहीं की गई।
 - कोई test file, migration, RPC, grant, database, CI workflow, deployment या Production state बदला नहीं गया।
+
+
+### 142. Latest Refund Function के लिए Test Update Blueprint — 17 Nov 2026
+
+Section 141 के stale-source निष्कर्ष को exact test structure से cross-check किया गया। यह section केवल test-update blueprint है; executable test file नहीं बदली गई।
+
+#### 142.1 Existing test का source selection
+
+`tests/admin-refund-and-staff-access.test.js`, blob `38fc1153654a640e02205d92993f074936f9c792`:
+- Line 12 पर `20261115130000_admin_manual_refund_request_completion.sql` को `manualRefundMigration` नाम से पढ़ता है।
+- Lines 94–102 में उसी पुराने file से manual refund ledger/amount assertions करता है।
+- Line 104 पर `20261115240000_harden_refund_recovery_full_amount.sql` को पढ़ता है।
+- Lines 106–111 में recovery finalizer की full-amount assertions पुराने replacement file पर करता है।
+- Lines 113–119 में `20261115250000_harden_refund_reconcile_full_amount.sql` से provider reconciliation और service_role grant assert करता है।
+
+लेकिन final manual refund और final recovery finalizer bodies दोनों `20261116210000_attach_electrician_payout_reconciliation_trigger.sql`, blob `b12da77471d510b55f798bd089597d866d79a133`, में फिर से `CREATE OR REPLACE FUNCTION` किए गए हैं।
+
+#### 142.2 Recommended minimal test refactor
+
+एक ही latest migration source को स्पष्ट नाम से पढ़ें, जैसे `refundPayoutTriggerMigration`, और पुराने migration assertions हटाने के बजाय उन्हें historical prerequisite coverage के रूप में रखें। इसके बाद final-definition assertions अलग tests में जोड़ें:
+
+**A. Latest Manual Refund definition**
+- `auth.uid() is not null` तथा `public.is_srk_admin()` gate।
+- Online/Razorpay payment path पर manual refund रोकना।
+- Approved customer request / immutable labour bill / settled fee ledger की मौजूदा शर्तें final definition में भी बनी हों।
+- Pending payout के लिए exact `Manual refund processed` hold।
+- Booking को `payment_status='refunded'` करने के बाद payout state दोबारा पढ़ना।
+- Payout refunded न होने पर exception; transaction rollback runtime test अलग।
+
+**B. Latest Recovery Finalizer definition**
+- Evidence `processed` और 15-minute freshness।
+- Booking full collected amount equality।
+- Refund record, booking payment ID, provider refund ID और currency identity consistency।
+- Booking/refund/payout row locks और already-paid payout rejection।
+- Booking refunded transition के बाद payout state reread; expected refunded state न मिलने पर exception।
+- Idempotent replay branch final definition से assert हो।
+
+**C. Trigger contract**
+- Trigger event definition में `payment_status` update शामिल हो।
+- Exact refund-owned blocked notes ही auto-close हों:
+  `Razorpay refund pending`, `Manual refund processed`.
+- Unrelated blocked note और paid payout untouched रहें।
+- Trigger function की test source assertion runtime rollback का विकल्प नहीं है।
+
+**D. Provider reconciliation final definition**
+- `20261115250000` final body के full-amount check और service_role grant assertions बनाए रखें।
+- Test यह भी सुनिश्चित करे कि बाद की migration इसे अनजाने में replace करके full-amount guard या grant contract न हटाए।
+- अंतिम ACL की authoritative जाँच disposable PostgreSQL/pgTAP में हो, source regex में नहीं।
+
+#### 142.3 Test design सावधानी
+
+- Regex/static tests source contract regressions पकड़ते हैं, लेकिन SQL semantics, trigger execution, transaction rollback, lock ordering या concurrent behavior सिद्ध नहीं करते।
+- Function definition extraction को exact signature के `CREATE OR REPLACE FUNCTION ... $$; ` block तक सीमित रखें; पूरे migration file में कहीं भी शब्द खोजने से unrelated function का match false positive दे सकता है।
+- Migration order के अनुसार final definition चुनना जरूरी है; पुरानी migration पर passing assertion अंतिम deployed function का प्रमाण नहीं है।
+
+#### 142.4 अनुमोदन सीमा और स्थिति
+
+- यह blueprint है, लागू code change नहीं।
+- Node tests, pgTAP, SQL parser, PostgreSQL replay या database query execute नहीं किए गए।
+- कोई migration, executable test, grant, trigger, CI, deployment, merge या Production state नहीं बदली गई।
