@@ -6696,3 +6696,38 @@ These are **test-matrix coverage recommendations**, not evidence that the source
 GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल migration और संबंधित test source inspection तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 209. Razorpay Webhook Inbox — Signed-Event Idempotency, Lease Fencing और Test-Coverage Boundary
+
+### 1. Static source reviewed
+
+- `20261114410000_razorpay_webhook_event_inbox.sql` (SHA `152659f7ac4dd6952c2cf8beca3c3111f3a1536a`).
+- `razorpay-webhook.js` (SHA `d52bfb3faca85f23c553309cf842e205f4351a8b`).
+- `tests/razorpay-webhook-inbox.test.js` (SHA `7e9d7f2a7e7ebcc3f55dea6b2eb3b718f9570461`).
+- `supabase/tests/database/razorpay_webhook_event_inbox.test.sql` (SHA `e038140c520744d026248f7f4198520d860c4525`, `plan(17)`).
+
+### 2. Static control-flow observations
+
+1. **Signature boundary:** the handler computes HMAC-SHA256 over the raw request bytes and uses a timing-safe comparison before parsing the payload or calling the database.
+2. **Durable idempotency:** the inbox has a primary key on provider event ID and a unique constraint on signed payload SHA-256. This also prevents the same signed body being replayed under a different event header.
+3. **Claim serialization:** the service-role-only claim RPC inserts a new event as `processing`, or locks an existing row with `FOR UPDATE`. A live two-minute lease returns `in_progress`; expired/retryable claims rotate the UUID fencing token and renew the lease.
+4. **Canonical event ownership:** when a payload hash already exists under another event ID, the RPC returns the stored canonical event ID for a same-type retry. The handler adopts that canonical ID before completion.
+5. **Completion fencing:** the completion RPC locks the event and accepts only the current claim token while the row remains `processing`. It allow-lists `processed`, `ignored` and `retryable`; stale workers cannot complete a newer claim.
+6. **Refund/payment boundary:** the handler routes refund events through a separate reconciliation RPC after matching payment ID, amount and refund identity evidence. Captured-payment handling rejects non-online methods and already-refunded bookings before settlement.
+
+### 3. Test evidence and gaps
+
+- The Node test file uses mocked HTTP/RPC responses. It covers invalid signatures before database access, ignored and duplicate events, active leases, changed event headers for the same body, Cash/refunded booking guards, refund identity/amount matching, and stale completion fencing.
+- The SQL `plan(17)` test inspects table constraints, RLS/privileges, service-role guards, row-lock/lease/token source and allowed outcomes. Its assertions inspect catalog/function definitions; they are not live multi-session concurrency tests.
+- The reviewed Node tests do not execute the SQL functions against PostgreSQL. No test execution was performed in this audit.
+- Recommended later isolated database cases: two concurrent claims for one event; reclaim after an actually expired lease; old-token completion after a successful reclaim; same event ID with a different payload hash; same payload hash with a different event type; and rollback/retry behavior when business reconciliation succeeds but inbox completion fails.
+- These are behavioral coverage recommendations. Static review did not establish a demonstrated source defect or a live duplicate-processing incident.
+
+### 4. Verdict and limits
+
+The reviewed handler and inbox migration show a coherent signed-payload idempotency design with row-lock serialization, lease expiry and fencing-token completion. Record this as a **static design cross-check only**. PostgreSQL concurrency, transaction boundaries across the external handler and database, actual HMAC/provider delivery behavior, and clean migration replay remain unverified.
+
+No source or migration change is proposed or made. GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल migration, handler और संबंधित Node/pgTAP test source inspection तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, runtime test, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
