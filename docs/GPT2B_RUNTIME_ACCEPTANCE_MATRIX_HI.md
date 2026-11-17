@@ -296,3 +296,13 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Legacy completion-time commission trigger is detached by the retirement migration; no active duplicate legacy commission calculation trigger was identified in the reviewed migration sequence.
 - No new source-level defect confirmed in these specific trigger/manual-settlement paths. This remains source evidence only; PostgreSQL trigger catalog/order, SQL compilation, rollback semantics, and concurrent execution have not been runtime-tested.
 - No source migration or application code changed. No DB/pgTAP/Node suite/CI/deployment/merge/production setting was executed or changed.
+
+
+### Electrician payout table grants / RLS canonical migration cross-check — 17 November 2026 (source-only)
+
+- पहले दर्ज payout-table direct-write authorization evidence gap को tracked migration chain के canonical base definition से फिर जाँचा: `20261114125844_restore_financial_audit_core_schema.sql` में `public.srk_electrician_payouts` बनाया गया है और RLS enable किया गया है।
+- उसी migration में `PUBLIC`, `anon`, और `authenticated` से table के सभी privileges revoke हैं; `service_role` को ALL और `authenticated` को केवल SELECT grant है। इससे authenticated direct INSERT/UPDATE/DELETE grant source में नहीं दिखता।
+- Authenticated SELECT policy केवल `public.is_srk_admin()` या उसी user के `electrician_profiles.user_id=auth.uid()` वाले payout rows को पढ़ने देती है। इसलिए prior source-only “canonical payout table grants not established” blocker tracked migration evidence के स्तर पर resolve हुआ; यह deployed/live catalog की पुष्टि नहीं है।
+- `20261114360000_new_category_electrician_payout_reconciliation.sql` में payout creation trigger function का direct EXECUTE PUBLIC/anon/authenticated से revoke है। Main Admin settlement अलग SECURITY DEFINER RPC से होता है; RPC में Main Admin gate, booking-first row locks, pending-only transition और ledger parity checks हैं।
+- सीमा: migration replay के दौरान यदि payout table पहले किसी अन्य baseline से मौजूद हो तो यह migration का explicit REVOKE/GRANT block फिर भी intended ACL लागू करता है; लेकिन वास्तविक deployed `pg_class`, `role_table_grants`, `pg_policies`, function ACL और table owner का live catalog evidence अभी बाकी है। यह audit live database query नहीं था।
+- कोई source code/migration बदला नहीं; केवल यह evidence note जोड़ा गया। PostgreSQL, pgTAP, Node suite, CI, migration replay, deployment या production settings execute/change नहीं किए गए। Runtime acceptance matrix के सभी 60 checks Pending हैं।
