@@ -951,3 +951,33 @@ Feature work-event trigger जोड़ने से पहले इनके �
 ### Verification boundary
 - केवल Feature Branch source files और existing pgTAP assertions inspect किए।
 - कोई code/SQL edit, migration apply, Production DDL/DML, external money transfer, provider API call, deployment, merge या mobile QA नहीं किया।
+
+
+## Section 33 — Manual Refund conflict: safe reconciliation design and regression coverage (2026-11-17)
+
+### 1. Cross-check against existing Razorpay repair pattern
+- Razorpay migration `20261115250000_harden_refund_reconcile_full_amount.sql` (SHA `56d300abc8495d1c5c5371d60bc0321650623db5`) already handles an analogous trigger interleaving: after booking becomes refunded, if the trigger has already changed the exact refund-owned payout to `refunded` and cleared its note, the RPC restores the provider-confirmed final note only when `payout_status='refunded' AND payout_note IS NULL`.
+- Manual refund RPC does not yet implement the equivalent post-trigger reconciliation. It only tries `WHERE payout_status='blocked'`, so it conflicts with the trigger's earlier transition.
+- The Razorpay pattern is a useful precedent, but cannot be copied blindly: manual refund uses a different exact marker (`Manual refund processed`) and final audit note, and must keep unrelated Admin block reasons untouched.
+
+### 2. Proposed narrow correction for GPT-2/owner review
+- Preserve the existing pre-update locked payout row in `v_payout`.
+- If it was pending, the RPC creates its own exact `Manual refund processed` hold. After booking refund update fires the trigger, accept only either:
+  1. the same payout still blocked with exact manual-refund marker, then close it to refunded; or
+  2. the same payout already refunded with NULL note because the trigger closed that exact marker, then restore `Manual refund completed` as the final audit note.
+- If it is already blocked for any other reason, already paid, or has any unexpected state/note, raise and rollback. Do not overwrite unrelated Admin notes.
+- If payout was already blocked before RPC entry, do not assume it is a manual-refund-owned hold. The current code permits any blocked payout to proceed; this should be reviewed explicitly and likely reject unless the block reason is an approved recoverable state.
+- Keep all writes inside the same booking-first transaction and keep the payout audit trigger enabled.
+
+### 3. Required regression tests (current tests are static)
+- Extend `admin_manual_refund_request_completion.test.sql` to assert the post-trigger fallback recognizes only `refunded + payout_note IS NULL` for the exact payout row and restores `Manual refund completed`.
+- Add transaction-level fixtures for: pending payout; unrelated Admin blocked payout; pre-existing refund-owned blocked payout; already-paid payout; no payout row; duplicate manual refund replay.
+- Assert success case leaves booking refunded, one manual refund entry, approved request processed, payout refunded with final note, and immutable audit events for each state transition.
+- Assert conflict/failure cases rollback booking, refund entry, request and payout atomically.
+- Add concurrent settlement/refund test to verify booking → request/payment evidence → payout lock ordering; no provider call is part of the DB test.
+- Existing test `admin_manual_refund_request_completion.test.sql` (SHA `211fe123674a6e7affc207d02ddbae350e4cdc8f`) is source-definition/static pgTAP coverage; it currently checks the existence of a blocked-to-refunded update but does not model the AFTER booking trigger running between the two RPC statements.
+- Existing `electrician_payout_reconciliation.test.sql` (SHA `e80aa9213343c280bab95b786e29f0386a010d65`) checks that trigger contains both refund markers and clears the note, which together expose the interleaving but do not prove end-to-end RPC success.
+
+### 4. Decision boundary
+- This is a proposed correction, not an applied patch. The manual refund, payout trigger, Razorpay reconciliation, and GPT-2 refund replay work must be reviewed together before changing source.
+- No SQL/code changed in this section; no test execution, Production DDL/DML, migration apply, external transfer/refund, deployment, merge or mobile QA.
