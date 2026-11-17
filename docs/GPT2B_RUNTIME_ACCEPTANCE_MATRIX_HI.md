@@ -343,3 +343,14 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Recounted the current `admin_staff_rbac_foundation.test.sql`: declared plan **70**, actual pgTAP assertion calls **70**. The test is not executed. This count supersedes any earlier conflicting notes for the current file revision.
 - Payout table direct-write ACL remains unresolved as recorded above; Staff permission isolation does not prove table ACL safety for other authenticated clients.
 - No source code or migration changed. No PostgreSQL, pgTAP, Node suite, CI, deployment, merge, cherry-pick, or production setting executed/changed. GPT-2 official checklist remains **27/39 = 69%**; runtime acceptance remains **60/60 Pending**.
+
+
+### Payout table canonical schema / ACL source sweep — 17 November 2026 (source-only)
+
+- Verified current branch HEAD before review: `853fa47a82d380199472ca4286d65c9d1c01a05d`.
+- Re-read `SUPABASE_SCHEMA.sql`, `COMPLETE_DATABASE_SETUP.sql`, `PORTAL_SCHEMA.sql`, payout creation/settlement migrations, payout reconciliation trigger migration, and payout pgTAP source. No `CREATE TABLE public.srk_electrician_payouts`, `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`, table-level `GRANT/REVOKE`, or `CREATE POLICY` for this table was found in these tracked files.
+- Repository code searches for the exact table-creation, RLS-enable, grant, and policy strings also returned no results. The payout migrations use the table from SECURITY DEFINER trigger/RPC code, but that does not establish the table's direct client ACL or RLS state.
+- Existing payout pgTAP source exercises privileged trigger/RPC behavior and fixture DML, but does not assert `has_table_privilege`, `relrowsecurity/relforcerowsecurity`, `relacl`, or applicable `pg_policies` rows for `srk_electrician_payouts`.
+- Conclusion: the canonical table owner, schema definition, RLS enabled/forced state, direct authenticated/anon privileges, and any live permissive policies remain an explicit evidence blocker. No speculative DDL/ACL migration was created. Required next evidence is an owner-approved schema-only baseline or authorized read-only catalog export including table owner, ACL, RLS flags, and policies.
+- No source or SQL files changed. No database connection/query, migration replay, SQL compile, pgTAP, Node suite, CI, deployment, merge, cherry-pick, or production setting changed.
+- GPT-2 official checklist remains **27/39 = 69%**; runtime acceptance remains **60/60 Pending**.
