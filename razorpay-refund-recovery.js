@@ -17,16 +17,18 @@ function env(){return{url:process.env.SUPABASE_URL,key:process.env.SUPABASE_SERV
 async function adminUser(token,cfg,deadlineAt){
  const auth=await fetch(cfg.url+"/auth/v1/user",{headers:{apikey:cfg.key,Authorization:"Bearer "+token},signal:requestSignal(deadlineAt,10000,PRE_EVIDENCE_RESERVE_MS)});
  if(!auth.ok)return null;const user=await readJson(auth);if(!user?.id||!UUID.test(user.id))return null;
- const check=await fetch(cfg.url+"/rest/v1/rpc/is_srk_admin",{method:"POST",headers:{apikey:cfg.key,Authorization:"Bearer "+token,"Content-Type":"application/json"},body:"{}",signal:AbortSignal.timeout(10000)});
+ const check=await fetch(cfg.url+"/rest/v1/rpc/is_srk_admin",{method:"POST",headers:{apikey:cfg.key,Authorization:"Bearer "+token,"Content-Type":"application/json"},body:"{}",signal:requestSignal(deadlineAt,10000,PRE_EVIDENCE_RESERVE_MS)});
  if(!check.ok||await readJson(check)!==true)return null;return user;
 }
 async function dbGet(path,cfg,deadlineAt){return readJson(await fetch(cfg.url+path,{method:"GET",headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key,Accept:"application/json"},signal:requestSignal(deadlineAt,10000,PRE_EVIDENCE_RESERVE_MS)}));}
-async function rpc(name,args,cfg){
- return readJson(await fetch(cfg.url+"/rest/v1/rpc/"+name,{method:"POST",headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(args),signal:AbortSignal.timeout(15000)}));
+async function rpc(name,args,cfg,deadlineAt,reserveMs=0,onDispatch){
+ const signal=requestSignal(deadlineAt,15000,reserveMs);
+ if(onDispatch)onDispatch();
+ return readJson(await fetch(cfg.url+"/rest/v1/rpc/"+name,{method:"POST",headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(args),signal}));
 }
 async function providerGet(path,cfg,deadlineAt){
  const auth=Buffer.from(cfg.rzpId+":"+cfg.rzpSecret).toString("base64");
- return readJson(await fetch("https://api.razorpay.com/v1"+path,{method:"GET",headers:{Authorization:"Basic "+auth,Accept:"application/json"},signal:AbortSignal.timeout(15000)}));
+ return readJson(await fetch("https://api.razorpay.com/v1"+path,{method:"GET",headers:{Authorization:"Basic "+auth,Accept:"application/json"},signal:requestSignal(deadlineAt,15000,PRE_EVIDENCE_RESERVE_MS)}));
 }
 function stableObservationId(refundRecordId,payloadHash){
  const bytes=createHash("sha256").update("srk-refund-recovery:"+refundRecordId+":"+payloadHash).digest().subarray(0,16);
@@ -78,7 +80,7 @@ exports.handler=async event=>{
   let providerRefund,lookupMode="refund_id";
   if(record.refund_id){
    if(!REFUND.test(record.refund_id))return json(409,{success:false,error:"Stored provider Refund ID is invalid.",safe_to_retry:false});
-   providerRefund=await providerGet("/refunds/"+encodeURIComponent(record.refund_id),cfg);
+   providerRefund=await providerGet("/refunds/"+encodeURIComponent(record.refund_id),cfg,deadlineAt);
   }else{
    lookupMode="payment_refund_list";
    const search=await findRefundAcrossPages(record.payment_id,record,cfg,deadlineAt);
@@ -92,13 +94,12 @@ exports.handler=async event=>{
   const acquirer=providerRefund.acquirer_data||{};
   const acquirerReference=acquirer.arn||acquirer.rrn||acquirer.utr||null;
   const payloadHash=createHash("sha256").update(JSON.stringify(providerRefund)).digest("hex");
-  evidenceWriteStarted=true;
   const evidenceId=await rpc("srk_service_record_razorpay_refund_recovery_evidence",{
    p_refund_record_id:record.id,p_provider_refund_id:providerRefund.id,p_payment_id:providerRefund.payment_id,
    p_amount_paise:Number(providerRefund.amount),p_currency:providerRefund.currency,p_provider_status:providerRefund.status,
    p_provider_created_at:providerCreatedAt,p_acquirer_reference:acquirerReference,p_provider_payload_sha256:payloadHash,
    p_observation_id:stableObservationId(record.id,payloadHash),p_provider_evidence:providerRefund,p_admin_user_id:user.id,p_admin_note:note
-  },cfg);
+  },cfg,deadlineAt,EVIDENCE_FINALIZATION_RESERVE_MS,()=>{evidenceWriteStarted=true;});
   if(typeof evidenceId!=="string"||!UUID.test(evidenceId))return json(202,{success:false,evidence_saved:"unknown",accounting_finalized:false,status:"evidence_write_outcome_unknown",safe_to_retry:false,error:"Evidence request का जवाब प्रमाणित नहीं हुआ। Database में रिकॉर्ड सुरक्षित हुआ हो सकता है; नया refund न बनाएँ और audit records जाँचें।"});
   if(providerRefund.status!=="processed")return json(202,{success:true,evidence_saved:true,accounting_finalized:false,recovery_audit_id:evidenceId,provider_status:providerRefund.status,safe_to_retry:false,message:"Provider प्रमाण अलग transaction में सुरक्षित हुआ। केवल processed status ही accounting finalization के योग्य है; कोई payout release या नया refund नहीं किया गया।"});
   try{
