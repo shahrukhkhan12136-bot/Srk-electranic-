@@ -24,10 +24,10 @@ select ok(position('update public.srk_electrician_payouts' in lower(
   'finalizer relies on the booking accounting trigger and does not issue a stale second payout update');
 select ok(position('update public.service_bookings set payment_status=''refunded''' in lower(
   pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>0
-  and position('select * into v_payout from public.srk_electrician_payouts where booking_id=v_booking.id' in lower(
-  pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>
-    position('update public.service_bookings set payment_status=''refunded''' in lower(
-  pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))
+  and position('select * into v_payout from public.srk_electrician_payouts where booking_id=v_booking.id' in
+  substring(lower(pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure))
+    from position('update public.service_bookings set payment_status=''refunded''' in
+      lower(pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))))>0
   and position('v_payout.payout_status is distinct from ''refunded''' in lower(
   pg_get_functiondef('public.srk_service_finalize_razorpay_refund_from_recovery_evidence(uuid)'::regprocedure)))>0
   and position('BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' in
