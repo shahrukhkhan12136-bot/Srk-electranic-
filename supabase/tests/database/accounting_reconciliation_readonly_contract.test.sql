@@ -140,7 +140,7 @@ select ok(position('select i.debt_id::text from public.srk_booking_cancellation_
 
 select ok(position('MISSING_PAYOUT_ROW' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
-  and position("if not found and v_booking.status='completed' and v_payment_verified" in
+  and position('if not found and v_booking.status='||quote_literal('completed')||' and v_payment_verified' in
     pg_get_functiondef('public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
   and position('v_booking.assigned_electrician_id is not null' in
     pg_get_functiondef('public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
