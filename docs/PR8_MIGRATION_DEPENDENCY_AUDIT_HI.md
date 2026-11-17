@@ -1712,3 +1712,28 @@ The four durable push-delivery migrations were checked against their explicit pr
 - The lease-fencing migration drops older function signatures and creates new signatures with an added attempt-count argument. Callers/workers must use the new signatures after this migration; function-signature consumers should be checked in application code before replay is declared complete.
 
 **Status:** push-delivery prerequisite chain source-verified; no trigger execution, worker invocation, SQL parse, or database replay performed; runtime tests remain **NOT RUN**.
+
+
+## 87. Push worker ↔ Edge Function ↔ RPC contract audit — 17 Nov 2026
+
+The scheduled Netlify worker, Supabase Edge Function, three push-delivery migrations and the Node source-contract tests were read together. This is a source-level compatibility review, not execution.
+
+### Confirmed interface matches
+
+- Worker claim call: `srk_claim_push_delivery_outbox({p_limit:3})`; SQL returns table rows `outbox_id,payload,attempt_count`. Worker consumes those exact names.
+- Worker sender payload adds `outbox_id`; Edge Function validates UUID, event type/schema/table, and offer record identity before processing.
+- Edge Function claims per-device rows through `srk_claim_push_subscription_deliveries(p_outbox_id,p_user_id,p_limit)`; SQL returns `targets` containing `delivery_id,subscription_id,endpoint,p256dh,auth,attempt_count`, which matches sender consumption.
+- All three per-device finish call sites pass `p_attempt_count`; lease-fencing migration replaces the old 3-argument finish signature with the new 4-argument signature and returns boolean. Worker likewise passes `p_attempt_count` and accepts completion only when the RPC returns JSON boolean `true`.
+- Worker calls `srk_is_push_subscription_delivery_complete(p_outbox_id)` indirectly through the Edge Function; the Edge Function maps only strict boolean true to `complete:true`. Worker treats partial completion as retryable.
+- Health RPC output keys `outbox.dead` and `devices.dead` match the worker's health summary reads.
+- Legacy synchronous offer trigger is dropped in the outbox migration before the replacement AFTER INSERT trigger is created, preventing two intended dispatch paths from remaining active together.
+
+### Operational risks still requiring isolated execution
+
+1. Per-device claim limit is up to 100 and the Edge Function awaits all sends with `Promise.all`; there is no explicit per-send timeout in this function. The five-minute device lease therefore needs worst-case fan-out/timeout measurement in isolation. Do not assume the five-minute lease is sufficient solely from static review.
+2. A provider 404/410 causes subscription deletion; the ledger row is removed by its FK cascade. Confirm the delete succeeds under the deployed service-role policy and verify the expected completion behavior in integration tests.
+3. Web Push remains at-least-once where provider acceptance and network timeout are ambiguous. A stale lease/fencing token prevents stale database completion, but cannot retract a notification already accepted by the provider.
+4. The worker processes up to three outbox items sequentially, while the schedule is every minute and leases are five minutes. Verify Netlify execution limits, overlap behavior, and stale-lease recovery under concurrent scheduled invocations.
+5. Source-contract Node tests exist for outbox, per-device ledger and fencing, but they have not been executed in this audit environment. The pgTAP lease-fencing suite and isolated end-to-end test plan also remain **NOT RUN**.
+
+**Status:** cross-component RPC names, argument keys, response fields, and signature transition source-verified. No Node test execution, Edge deployment, provider send, SQL parse, or database replay was performed.
