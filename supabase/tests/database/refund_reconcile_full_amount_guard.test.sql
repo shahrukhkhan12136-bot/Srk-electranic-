@@ -1,5 +1,5 @@
 begin;
-select plan(5);
+select plan(8);
 select ok(to_regprocedure('public.srk_service_reconcile_booking_refund(uuid,text,text,text)') is not null,
   'provider refund reconciliation RPC exists');
 select ok(position('PROVIDER_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTION' in
@@ -10,6 +10,19 @@ select ok(position('v_refund.amount_paise is distinct from round(v_booking.amoun
   'full amount comparison uses integer paise from the locked booking row');
 select ok(position('for update of b' in lower(pg_get_functiondef('public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure)))>0,
   'booking row is locked before refund record reconciliation');
+select ok(position('set payout_status=''refunded''' in lower(pg_get_functiondef(
+  'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
+  'verified processed refund closes its own blocked payout as refunded');
+select ok(position('ELECTRICIAN_PAYOUT_STATE_REQUIRES_MANUAL_RECONCILIATION' in pg_get_functiondef(
+  'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0
+  and position('ELECTRICIAN_PAYOUT_BLOCK_REASON_MISMATCH' in pg_get_functiondef(
+  'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
+  'unexpected or paid payout states fail closed for manual reconciliation');
+select ok(position('from public.srk_electrician_payouts' in lower(pg_get_functiondef(
+  'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0
+  and position('for update' in lower(pg_get_functiondef(
+  'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
+  'payout row is locked before final refund accounting');
 select ok(has_function_privilege('service_role','public.srk_service_reconcile_booking_refund(uuid,text,text,text)','execute')
   and not has_function_privilege('authenticated','public.srk_service_reconcile_booking_refund(uuid,text,text,text)','execute'),
   'only trusted service role can reconcile provider refund state');
