@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(54);
+SELECT plan(56);
 
 SELECT ok(to_regclass('public.service_bookings') IS NOT NULL,'service bookings base table exists');
 SELECT ok(EXISTS (
@@ -66,6 +66,20 @@ SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid='public.srk_capture_admin_aud
 SELECT ok((SELECT proconfig @> ARRAY['search_path=""'] FROM pg_proc WHERE oid='public.srk_capture_admin_audit_event()'::regprocedure),'generic audit trigger has empty search_path');
 SELECT ok(NOT has_function_privilege('anon','public.srk_capture_admin_audit_event()','EXECUTE'),'anon cannot directly execute generic audit trigger');
 SELECT ok(NOT has_function_privilege('authenticated','public.srk_capture_admin_audit_event()','EXECUTE'),'authenticated cannot directly execute generic audit trigger');
+SELECT ok(position('refund_reference' in pg_get_functiondef('public.srk_capture_admin_audit_event()'::regprocedure))>0
+  AND position('recorded_by' in pg_get_functiondef('public.srk_capture_admin_audit_event()'::regprocedure))>0
+  AND position('recorded_at' in pg_get_functiondef('public.srk_capture_admin_audit_event()'::regprocedure))>0,
+'manual refund audit captures reference and recording actor/time metadata');
+
+SELECT ok(position('payment_id' in pg_get_functiondef('public.srk_capture_razorpay_refund_audit_event()'::regprocedure))>0
+  AND position('amount_paise' in pg_get_functiondef('public.srk_capture_razorpay_refund_audit_event()'::regprocedure))>0
+  AND position('currency' in pg_get_functiondef('public.srk_capture_razorpay_refund_audit_event()'::regprocedure))>0
+  AND position('idempotency_key' in pg_get_functiondef('public.srk_capture_razorpay_refund_audit_event()'::regprocedure))>0
+  AND position('reason' in pg_get_functiondef('public.srk_capture_razorpay_refund_audit_event()'::regprocedure))>0
+  AND position('admin_user_id' in pg_get_functiondef('public.srk_capture_razorpay_refund_audit_event()'::regprocedure))>0
+  AND position('processed_at' in pg_get_functiondef('public.srk_capture_razorpay_refund_audit_event()'::regprocedure))>0,
+'Razorpay refund audit captures provider reconciliation, idempotency, decision and completion metadata');
+
 SELECT ok((SELECT prosecdef FROM pg_proc WHERE oid='public.srk_capture_razorpay_refund_audit_event()'::regprocedure),'Razorpay audit trigger is SECURITY DEFINER');
 SELECT ok((SELECT proconfig @> ARRAY['search_path=""'] FROM pg_proc WHERE oid='public.srk_capture_razorpay_refund_audit_event()'::regprocedure),'Razorpay audit trigger has empty search_path');
 SELECT ok(NOT has_function_privilege('anon','public.srk_capture_razorpay_refund_audit_event()','EXECUTE'),'anon cannot directly execute Razorpay audit trigger');
