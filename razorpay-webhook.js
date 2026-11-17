@@ -214,106 +214,100 @@ async function reconcileRefund(refund, eventName, deadlineAt) {
   return result?.success ? (result.replayed ? "already_processed" : result.status) : "refund_not_reconciled";
 }
 
+async function processWebhookPayload(payload,eventName,deadlineAt) {
+  if (eventName === "refund.created" || eventName === "refund.processed" || eventName === "refund.failed") {
+    const refund = payload.payload?.refund?.entity;
+    const result = await reconcileRefund(refund,eventName,deadlineAt);
+    if (result === "refund_payload_invalid" || result === "refund_record_mismatch")
+      return { outcome: "ignored", reason: result };
+    if (result === "refund_not_reconciled") throw new Error("Refund record was not reconciled");
+    return { outcome: "processed", result };
+  }
+  if (eventName !== "payment.captured" && eventName !== "order.paid")
+    return { outcome: "ignored", reason: "unsupported_event_type" };
+  const payment = payload.payload?.payment?.entity;
+  if (!payment || payment.status !== "captured" || !/^pay_[A-Za-z0-9]+$/.test(payment.id || "") ||
+      !/^order_[A-Za-z0-9]+$/.test(payment.order_id || ""))
+    return { outcome: "ignored", reason: "captured_payment_details_invalid" };
+  const result = await updateBooking(payment.order_id,payment,deadlineAt);
+  if (result === "update_not_applied") throw new Error("Payment reconciliation update was not applied");
+  if (["not_found","amount_mismatch","payment_conflict","booking_not_payable","payment_method_not_online","payment_refunded"].includes(result))
+    return { outcome: "ignored", reason: result };
+  return { outcome: "processed", result };
+}
+
+function minimalEventPayload(payload,eventName) {
+  if (eventName === "payment.captured" || eventName === "order.paid") {
+    const entity = payload.payload?.payment?.entity;
+    if (!entity || typeof entity !== "object") return {};
+    return { payload: { payment: { entity: { id: entity.id, order_id: entity.order_id, status: entity.status, amount: entity.amount, currency: entity.currency } } } };
+  }
+  if (["refund.created","refund.processed","refund.failed"].includes(eventName)) {
+    const entity = payload.payload?.refund?.entity;
+    if (!entity || typeof entity !== "object") return {};
+    return { payload: { refund: { entity: { id: entity.id, payment_id: entity.payment_id, status: entity.status, currency: entity.currency, amount: entity.amount, receipt: entity.receipt, notes: { srk_refund_record_id: entity.notes?.srk_refund_record_id } } } } };
+  }
+  return {};
+}
+
+async function enqueueWebhookEvent(eventId,eventType,payloadHash,eventPayload) {
+  const response = await fetch(new URL("/rest/v1/rpc/srk_service_enqueue_razorpay_webhook_event",SUPABASE_URL), {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, Authorization: "Bearer "+SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_event_id:eventId,p_event_type:eventType,p_payload_sha256:payloadHash,p_event_payload:eventPayload }),
+    signal: AbortSignal.timeout(3200)
+  });
+  if (!response.ok) throw new Error("Webhook durable enqueue failed");
+  return response.json();
+}
+
+async function triggerWebhookConsumer(eventId) {
+  const siteBase = process.env.DEPLOY_PRIME_URL || process.env.URL;
+  if (!siteBase) throw new Error("Webhook consumer site URL is not configured");
+  const target = new URL("/.netlify/functions/razorpay-webhook-consumer",siteBase);
+  if (target.protocol !== "https:") throw new Error("Webhook consumer URL must use HTTPS");
+  const workerAuth = crypto.createHmac("sha256",SUPABASE_KEY).update(eventId).digest("hex");
+  const response = await fetch(target,{
+    method:"POST",headers:{"Content-Type":"application/json","x-srk-webhook-worker-auth":workerAuth},
+    body:JSON.stringify({event_id:eventId}),signal:AbortSignal.timeout(900)
+  });
+  if (response.status !== 202) throw new Error("Webhook background consumer was not accepted");
+}
+
+exports.processWebhookPayload = processWebhookPayload;
+
 exports.handler = async (event) => {
-  const deadlineAt = Date.now() + WEBHOOK_HANDLER_BUDGET_MS;
-  if (event.httpMethod !== "POST") return json(405, { success: false, error: "POST only." });
+  if (event.httpMethod !== "POST") return json(405,{success:false,error:"POST only."});
   if (!SUPABASE_URL || !SUPABASE_KEY || !WEBHOOK_SECRET) {
     console.error("Razorpay webhook server configuration is incomplete.");
-    return json(500, { success: false, error: "Webhook server configuration incomplete." });
+    return json(500,{success:false,error:"Webhook server configuration incomplete."});
   }
-
-  const signature = getHeader(event.headers, "x-razorpay-signature");
-  const rawBody = event.isBase64Encoded
-    ? Buffer.from(event.body || "", "base64")
-    : Buffer.from(event.body || "", "utf8");
-  if (!/^[a-f0-9]{64}$/i.test(signature)) return json(400, { success: false, error: "Invalid signature." });
-
-  const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(rawBody).digest();
-  const received = Buffer.from(signature, "hex");
-  if (received.length !== expected.length || !crypto.timingSafeEqual(expected, received)) {
-    return json(400, { success: false, error: "Signature verification failed." });
-  }
-
-  let eventId = null;
-  let claimToken = null;
+  const signature = getHeader(event.headers,"x-razorpay-signature");
+  const rawBody = event.isBase64Encoded ? Buffer.from(event.body || "","base64") : Buffer.from(event.body || "","utf8");
+  if (rawBody.length === 0 || rawBody.length > 262144) return json(413,{success:false,error:"Webhook payload size is invalid."});
+  if (!/^[a-f0-9]{64}$/i.test(signature)) return json(400,{success:false,error:"Invalid signature."});
+  const expected = crypto.createHmac("sha256",WEBHOOK_SECRET).update(rawBody).digest();
+  const received = Buffer.from(signature,"hex");
+  if (received.length !== expected.length || !crypto.timingSafeEqual(expected,received))
+    return json(400,{success:false,error:"Signature verification failed."});
   try {
     const payload = JSON.parse(rawBody.toString("utf8"));
-    const eventName = typeof payload.event === "string" && payload.event.length <= 100
-      ? payload.event : "unknown";
+    const eventName = typeof payload.event === "string" && payload.event.length <= 100 ? payload.event : "unknown";
     const payloadHash = crypto.createHash("sha256").update(rawBody).digest("hex");
-    const suppliedEventId = String(getHeader(event.headers, "x-razorpay-event-id")).trim();
-    // The provider event ID is preferred, while the database also uniquely
-    // indexes the signed body hash to stop replay under a changed header.
-    eventId = suppliedEventId && suppliedEventId.length <= 128
-      ? suppliedEventId : ("sha256:" + payloadHash);
-    const claim = await claimWebhookEvent(eventId, eventName, payloadHash, deadlineAt);
-
-    if (claim?.payload_conflict) {
+    const suppliedEventId = String(getHeader(event.headers,"x-razorpay-event-id")).trim();
+    const eventId = suppliedEventId && suppliedEventId.length <= 128 ? suppliedEventId : "sha256:"+payloadHash;
+    const accepted = await enqueueWebhookEvent(eventId,eventName,payloadHash,minimalEventPayload(payload,eventName));
+    if (accepted?.payload_conflict) {
       console.error("Razorpay reused an event ID with a different signed payload.");
-      return json(200, { success: true, reconciled: false, reason: "event_id_payload_conflict" });
+      return json(200,{success:true,reconciled:false,reason:"event_id_payload_conflict"});
     }
-    if (claim?.duplicate) {
-      return json(200, { success: true, duplicate: true, state: claim.state });
-    }
-    if (claim?.in_progress) {
-      return json(503, { success: false, retry: true, reason: "event_processing_in_progress" });
-    }
-    if (!claim?.should_process || !claim.claim_token) {
-      throw new Error("Webhook event claim was not granted");
-    }
-    if (claim.canonical_event_id) eventId = claim.canonical_event_id;
-    claimToken = claim.claim_token;
-
-    if (eventName === "refund.created" || eventName === "refund.processed" || eventName === "refund.failed") {
-      const refund = payload.payload?.refund?.entity;
-      const result = await reconcileRefund(refund, eventName, deadlineAt);
-      if (result === "refund_payload_invalid" || result === "refund_record_mismatch") {
-        console.error("Razorpay refund webhook requires manual reconciliation:", result);
-        await completeWebhookEvent(eventId, claimToken, "ignored", result, deadlineAt);
-        claimToken = null;
-        return json(200, { success: true, reconciled: false, reason: result });
-      }
-      if (result === "refund_not_reconciled") throw new Error("Refund record was not reconciled");
-      await completeWebhookEvent(eventId, claimToken, "processed", null, deadlineAt);
-      claimToken = null;
-      return json(200, { success: true, reconciled: true, result });
-    }
-
-    if (eventName !== "payment.captured" && eventName !== "order.paid") {
-      await completeWebhookEvent(eventId, claimToken, "ignored", "Unsupported event type", deadlineAt);
-      claimToken = null;
-      return json(200, { success: true, ignored: true });
-    }
-
-    const payment = payload.payload?.payment?.entity;
-    if (!payment || payment.status !== "captured" || !/^pay_[A-Za-z0-9]+$/.test(payment.id || "") ||
-        !/^order_[A-Za-z0-9]+$/.test(payment.order_id || "")) {
-      await completeWebhookEvent(eventId, claimToken, "ignored", "Captured payment details missing or invalid", deadlineAt);
-      claimToken = null;
-      return json(200, { success: true, reconciled: false, reason: "captured_payment_details_invalid" });
-    }
-
-    const result = await updateBooking(payment.order_id, payment, deadlineAt);
-    if (result === "update_not_applied") throw new Error("Payment reconciliation update was not applied");
-    if (result === "not_found" || result === "amount_mismatch" || result === "payment_conflict" || result === "booking_not_payable" || result === "payment_method_not_online" || result === "payment_refunded") {
-      console.error("Razorpay webhook could not reconcile booking:", result);
-      await completeWebhookEvent(eventId, claimToken, "ignored", result, deadlineAt);
-      claimToken = null;
-      return json(200, { success: true, reconciled: false, reason: result });
-    }
-
-    await completeWebhookEvent(eventId, claimToken, "processed", null, deadlineAt);
-    claimToken = null;
-    return json(200, { success: true, reconciled: true, result });
+    if (!accepted?.success || accepted.accepted !== true || !accepted.event_id)
+      throw new Error("Webhook event was not durably accepted");
+    if (accepted.state !== "processed" && accepted.state !== "ignored")
+      await triggerWebhookConsumer(accepted.event_id);
+    return json(200,{success:true,accepted:true,queued:accepted.queued===true,duplicate:accepted.duplicate===true});
   } catch (error) {
-    if (claimToken && eventId) {
-      try {
-        await completeWebhookEvent(eventId, claimToken, "retryable", error?.message || "Webhook processing failed", deadlineAt);
-      } catch (completionError) {
-        console.error("Razorpay webhook retry state could not be saved:", completionError?.name || "UnknownError");
-      }
-    }
-    console.error("Razorpay webhook processing failed:", error?.name || "UnknownError");
-    return json(500, { success: false, error: "Webhook processing failed; provider retry requested." });
+    console.error("Razorpay webhook durable acceptance failed:",error?.name || "UnknownError");
+    return json(503,{success:false,retry:true,error:"Webhook was not confirmed as durably accepted; provider retry requested."});
   }
 };
