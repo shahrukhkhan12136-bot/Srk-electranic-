@@ -1,5 +1,5 @@
 begin;
-select plan(49);
+select plan(51);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -268,7 +268,7 @@ bookings as (
   select
     'pgTAP payout rollback', '9822200000', 'Uttar Pradesh','Varanasi','221001',
     'Test address','Electrical repair','Razorpay',100.00,'completed',
-    p.id,15.00,'paid',
+    p.id,99.00,'paid',
     case p.phone when '9811100001' then 'pgTapRollbackMissingPayment' else 'pgTapRollbackMismatchPayment' end,
     now(),100.00,100.00,0.00,'approved'
   from profiles p
@@ -279,6 +279,19 @@ select case when b.razorpay_payment_id='pgTapRollbackMissingPayment'
             then 'missing' else 'mismatch' end,
        b.assigned_electrician_id,b.id
 from bookings b;
+
+select ok((select count(*)=2 and bool_and(b.commission_rate=15.00)
+  from public.service_bookings b
+  join payout_rollback_fixtures f on f.booking_id=b.id),
+  'booking INSERT forces exactly 15 percent even when the caller supplies 99 percent');
+
+select throws_ok(
+  format('update public.service_bookings set commission_rate=20.00 where id=%L',
+    (select booking_id from payout_rollback_fixtures where scenario='missing')),
+  'P0001',
+  'BOOKING_COMMISSION_RATE_IS_IMMUTABLE',
+  'existing booking commission snapshot cannot be changed'
+);
 
 delete from public.srk_electrician_payouts p
 using payout_rollback_fixtures f
