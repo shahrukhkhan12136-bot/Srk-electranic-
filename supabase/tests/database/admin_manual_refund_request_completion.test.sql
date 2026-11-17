@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(15);
 select has_function('public','srk_admin_record_manual_refund',array['uuid','text','text'],'manual refund RPC exists');
 select ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure))>0,
   'manual refund remains Main Admin only');
@@ -52,6 +52,14 @@ select ok(position('MANUAL_REFUND_AMOUNT_DOES_NOT_MATCH_IMMUTABLE_LABOUR_AND_FEE
   and position('v_expected_paise:=v_labour_paise+v_fee_paise' in lower(
   pg_get_functiondef('public.srk_admin_record_manual_refund(uuid,text,text)'::regprocedure)))>0,
   'new-category manual refund amount must match immutable labour plus settled fees and original payment evidence');
+
+select ok(exists(
+  select 1 from pg_trigger
+   where tgrelid='public.srk_electrician_payouts'::regclass
+     and tgname='srk_audit_electrician_payouts' and not tgisinternal
+  ) and position('payout_note' in lower(pg_get_functiondef(
+    'public.srk_capture_admin_audit_event()'::regprocedure)))>0,
+  'payout status and note transitions are preserved in the append-only Admin audit event stream');
 
 select * from finish();
 rollback;
