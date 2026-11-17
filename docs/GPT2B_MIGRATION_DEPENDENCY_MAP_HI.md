@@ -224,3 +224,24 @@ The source caller check was extended beyond SQL:
 - **Finding:** the two current worker source callers inspected match the lease-fenced attempt-count signatures. This reduces the specific stale-caller concern for these two tracked workers.
 - **Not proven:** deployed worker versions, environment secrets, runtime RPC execution, concurrent stale worker rejection, actual retry/lease timing, or Node/pgTAP test pass. The contract test files were inspected only; no test runner or database was executed.
 
+
+
+### 7.8 Legacy Admin authorization helper provenance (92 migration source scan)
+
+**Scope:** all 92 files under `supabase/migrations/` on `chore/pr8-replay-audit-20261116-v2` were enumerated from the branch tree and inspected for definitions/replacements and references to `public.is_srk_admin()`, `public.srk_is_admin()`, `public.srk_admin_users`, and the newer Staff permission helper.
+
+| Object | Migration-chain evidence | Starter-schema evidence | Result |
+|---|---|---|---|
+| `public.is_srk_admin()` | No `CREATE FUNCTION` / `CREATE OR REPLACE FUNCTION` producer found in the 92 migrations. Migration `20261114125844_restore_financial_audit_core_schema.sql` executes `ALTER FUNCTION ... SET search_path=''`, revokes PUBLIC/anon and grants authenticated/service_role, so the function must already exist before this migration. Many later functions/policies call it. | `COMPLETE_DATABASE_SETUP.sql` defines it as SQL, STABLE, SECURITY DEFINER, search_path `public, auth`; revokes PUBLIC and grants authenticated. | Starter evidence only; not proof of the canonical deployed/base definition. |
+| `public.srk_is_admin()` | Referenced by `20261109001500_unique_electrician_admin_identity_linking.sql` and `20261114130000_harden_electrician_profile_identity_linking.sql`; no migration-chain producer, replacement, ALTER, or explicit function grants found. | `PORTAL_SCHEMA.sql` defines it as SQL, STABLE, SECURITY DEFINER, search_path `public`; revokes PUBLIC and grants authenticated. | Starter evidence only; provenance and current existence/grants remain unproven. |
+| `public.srk_admin_users` | Queried by multiple migrations as the Main Admin allow-list; no `CREATE TABLE` / `ALTER TABLE` producer for this table found in the 92 migrations. | `PORTAL_SCHEMA.sql` creates it with `user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE`; `COMPLETE_DATABASE_SETUP.sql` assumes it already exists and protects it with RLS/self-read policy. | Canonical base-table definition, RLS/policies, owner and grants are not established by the current migration chain. |
+| `public.srk_has_admin_permission(text)` | Created twice in `20261114390000_admin_staff_rbac_foundation.sql`; replaced in `20261116100000_fix_staff_permission_helper_volatility.sql`. Latest definition is PL/pgSQL, VOLATILE, SECURITY DEFINER, empty search_path; validates Main Admin separately, then checks active Staff registry and exact live Auth session while holding FOR SHARE locks. Latest migration revokes PUBLIC/anon and grants authenticated. | Not a legacy starter-schema producer. | Migration provenance is established; runtime correctness still requires replay and pgTAP/runtime checks. |
+
+**Call-site / DDL timing notes**
+- `20261108234000_combine_booking_read_policy.sql` uses `public.is_srk_admin()` directly inside a `CREATE POLICY` expression. This is a DDL-time dependency: the helper must exist when that migration runs.
+- `20261114125844_restore_financial_audit_core_schema.sql` alters the function and its ACL; this is also a direct migration-time dependency and independently proves that a prior base object is assumed.
+- Other occurrences include PL/pgSQL function/trigger bodies, policy expressions and Main Admin identity checks. A PL/pgSQL body reference is not interchangeable with a DDL-time policy dependency; do not infer that every body reference is validated at migration creation.
+- The two starter files expose different legacy helper names (`srk_is_admin` vs `is_srk_admin`) and slightly different search_path declarations. Their presence in starter SQL does not establish that both exist, are equivalent, or have matching grants in the actual project baseline.
+- No alias, replacement helper, migration, grant change, or auth-semantic change was made during this audit.
+
+**Gate / owner evidence required:** obtain the owner-approved canonical baseline (sanitized schema definition and ACL/grant evidence for both helper signatures and `srk_admin_users`, plus confirmation of which starter/setup path is authoritative). Until then, fresh replay is blocked at the first direct policy/function-ACL dependency if the base objects are absent. Do not manufacture aliases or assume either starter SQL file is authoritative.
