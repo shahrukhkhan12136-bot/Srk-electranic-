@@ -2952,3 +2952,37 @@ Section 120 के enforcement gap के लिए केवल Edge Function �
 - कोई migration SQL, trigger, constraint, RPC, Edge Function या test file नहीं बदली गई।
 - कोई database query, PostgreSQL replay, pgTAP, invite, CI, deployment या merge नहीं किया गया।
 - Owner/DBA को विकल्प A या B चुनना है; तब तक cross-registry exclusivity **OPEN / NOT VERIFIED** रहेगी।
+
+
+## 122. Main Admin allow-list का documented manual write path — 17 Nov 2026
+
+Section 121 के बाद Audit Branch पर Main Admin registry के setup/documentation paths की जाँच की गई।
+
+### 122.1 Manual allow-list enrollment
+
+- `VERCEL_DEPLOY_HINDI.md` (blob `d1e79f473e966645ca6144a257aa1fcda9733791`, line 31) स्पष्ट रूप से Supabase Auth user UUID लेकर SQL Editor में यह command चलाने को कहता है:
+  `insert into public.srk_admin_users(user_id) values ('YOUR_AUTH_USER_UUID') on conflict do nothing;`
+- यह owner/operator द्वारा किया जाने वाला documented manual enrollment path है; यह Staff invitation Edge Function नहीं है।
+- उपलब्ध command में target UUID के `srk_admin_staff` में पहले से होने की explicit जाँच नहीं है। यदि Section 121 का invariant चुना जाता है, तो database-side guard को इस manual SQL path पर भी लागू होना होगा।
+
+### 122.2 Historical bootstrap/schema copies
+
+- `PORTAL_SCHEMA.sql` (blob `efc14aa623a3895ffb3841b7b0f226f2015f34b1`) और `COMPLETE_DATABASE_SETUP.sql` (blob `2b806e727f449ba18e71ad23edef805ceb2da2b5`) में `srk_admin_users` की table definition दिखती है: `user_id` primary key, `auth.users(id)` foreign key; inspected definition में `srk_admin_staff` के साथ cross-table exclusion नहीं।
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` (blob `dbd91b3f912b1e0946bffe6d249a85cc41dc81cd`) allow-list को सुरक्षित रखने और `is_srk_admin()` पर आधारित Admin gate दिखाता है; inspected file में Main Admin allow-list enrollment का नया controlled RPC नहीं मिला।
+- ये repository setup/bootstrap files हैं। इससे यह निष्कर्ष नहीं निकाला गया कि ये सभी Production में वर्तमान/सक्रिय रूप से चलाए गए हैं।
+
+### 122.3 Combined lifecycle conclusion
+
+- Staff invite path: Section 120 में target Main Admin exclusion नहीं मिली।
+- Main Admin documented manual enrollment path: target Staff exclusion नहीं मिली।
+- दोनों registry tables में inspected schema: cross-table invariant नहीं मिला।
+- इसलिए दोनों दिशाओं के write paths को सुरक्षित करने के लिए केवल Staff invite RPC patch पर्याप्त नहीं होगा। Database-level invariant या canonical identity registry सभी insert/update paths पर लागू होना चाहिए।
+- Live grants, actual write callers, current Production schema और वास्तविक overlapping identities इस source audit से प्रमाणित नहीं हैं; इनके लिए अलग approved read-only/runtime verification चाहिए।
+
+### Status
+
+- Manual Main Admin enrollment instruction: **source-confirmed**.
+- Manual command में Staff membership exclusion: **not present in inspected command**.
+- Cross-registry DB constraint in inspected bootstrap schema: **not found**.
+- Production execution/current live state: **unknown; not queried**.
+- No SQL/schema/RPC/permission change, no database query, no invite, no CI/deployment/merge.
