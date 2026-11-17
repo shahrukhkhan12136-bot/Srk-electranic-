@@ -53,7 +53,7 @@ begin
     select
       p.id as electrician_id,
       p.display_name,
-      count(pc.*)::integer as paid_completed_jobs,
+      count(pc.booking_id)::integer as paid_completed_jobs,
       coalesce(sum(pc.gross),0)::numeric as gross_received,
       coalesce(sum(pc.commission),0)::numeric as company_commission,
       coalesce(sum(pc.payable),0)::numeric as electrician_earning
