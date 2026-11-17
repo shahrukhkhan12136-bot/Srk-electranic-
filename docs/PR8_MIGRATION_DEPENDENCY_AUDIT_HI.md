@@ -2051,3 +2051,45 @@ Audit Branch के test contract में इसके विपरीत reti
 **Release gate:** PR #8 को Draft ही रखें। Branch contracts को resolve करें, manual refund block-reason audit behavior तय करें, GPT-2 accounting bridge को Feature Branch के current source के विरुद्ध integrate/review करें, और owner-approved isolated PostgreSQL baseline पर complete migration replay तथा pgTAP runtime pass मिलने तक merge/production release न करें।
 
 **Safety record:** इस reconciliation में केवल GitHub source, commit graph, PR metadata, statuses और test/migration text पढ़े गए। कोई source SQL edit, branch merge, workflow dispatch, Supabase query/migration, provider refund, payout, bank transfer या deployment action नहीं किया गया।
+
+
+## 96. Manual Refund audit-trail policy और Route settlement evidence boundary — 17 Nov 2026
+
+यह follow-up केवल दोनों branch के source और test contract का अतिरिक्त static review है। कोई SQL runtime, provider API, bank transfer, database या deployment action नहीं किया गया।
+
+### 96.1 Manual Refund payout-note overwrite — exact write sequence
+
+दोनों branches पर migration `supabase/migrations/20261115130000_admin_manual_refund_request_completion.sql` का blob समान है: `51f3b13adc80e117cc62f05b0e70ae795ee0f9fd`।
+
+Function का source sequence:
+1. यदि payout पहले `pending` है, तो पहले `payout_status='blocked'` और `payout_note='Manual refund processed'` लिखता है।
+2. Refund evidence insert और booking को `refunded` करने के बाद, उसी payout पर `payout_status='refunded'` और `payout_note='Manual refund completed'` लिखता है।
+3. यदि payout पहले से `blocked` था, तो step 1 नहीं चलता; फिर भी step 2 उसका पुराना note overwrite कर देता है।
+
+इससे दो अलग audit facts खोते हैं: (a) पहले से blocked payout का मूल reason, और (b) pending से blocked होकर refund-finalized होने का intermediate transition। यह source-level confirmed behavior है, runtime reproduction नहीं।
+
+**Recommended contract (implementation से पहले owner approval):** payout status transition का append-only audit event सुरक्षित किया जाए, जिसमें payout ID, booking ID, prior status, prior note, new status, new note, actor, timestamp और refund evidence reference हों। Final `payout_note` को अकेले history store न माना जाए। पहले से blocked payout को बिना उसके मूल reason को history में सुरक्षित किए close न किया जाए। इस change के साथ pgTAP assertions हों जो पहले से blocked और pending — दोनों paths में पुराना note तथा transition event सुरक्षित होने की पुष्टि करें। कोई schema/function edit इस section में नहीं किया गया।
+
+### 96.2 Route settlement — Feature Branch का अधिक सटीक contract
+
+Feature Branch की migration `20261115180000_admin_route_recipient_and_settlement_validation.sql` का blob SHA `58042f828aeb1a951b36191d68a0573cdc15fcc0` है। इसमें `srk_route_transfers` से transfer rows/count पढ़े जाते हैं और recipient, linked account, payment ID, amount, transfer state तथा settlement state की validations हैं। Test blob SHA `7b76ce5a20be5c42d76094b937d42fbb6bd22d08` इन contracts को assert करता है।
+
+महत्वपूर्ण सीमा: Feature Branch का source स्वयं `route_provider_settlement_verified=false` और `ROUTE_PROVIDER_SETTLEMENT_NOT_INDEPENDENTLY_VERIFIED` लौटाता है। इसलिए यह **Route ledger evidence और consistency validation** है; यह बैंक/provider द्वारा वास्तविक settlement का प्रमाण नहीं है। Admin UI में settlement evidence keys होना भी provider verification सिद्ध नहीं करता।
+
+Audit Branch की read-only reconciliation migration `20261115170000_admin_route_transfer_accounting_reconciliation.sql` (blob `9238fde16407710c208cc3d2156526c361cf4aea`) Route ledger को retired मानती है और transfer rows query नहीं करती। अतः दोनों branch contracts का वास्तविक अंतर है:
+- Feature: Route ledger मौजूद होने पर internal transfer records और state checks पढ़ता है, लेकिन independent provider settlement को unverified बताता है।
+- Audit: retired ledger compatibility response और zero Route transfers बताता है।
+
+**Owner decision required:** क्या PR #8 में Route transfers सक्रिय/समर्थित feature हैं, या Route ledger retired है और manual payout authoritative है? इस निर्णय के बाद schema, migration order, RPC JSON contract, Admin UI, service-role writer और tests को एक ही contract में align करना होगा। वास्तविक provider settlement verification अलग evidence source और process से ही आ सकती है। कोई provider/bank check नहीं किया गया।
+
+### 96.3 Cross-branch test scope reminder
+
+Feature Branch में `supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql` का Route test contract मौजूद है; Audit Branch के पुराने accounting contract में retired-ledger assumptions हैं। Static source assertions किसी भी branch में SQL function compile, actual table availability, RLS/grants, pgTAP pass या live settlement prove नहीं करतीं। PostgreSQL replay और pgTAP runtime अब भी release gate हैं।
+
+### 96.4 स्थिति
+
+- Manual Refund note/history behavior: **source-level confirmed issue; fix not applied**.
+- Route ledger product contract: **owner decision required**.
+- Provider settlement: **not independently verified**.
+- SQL runtime / pgTAP: **not run**.
+- Feature Branch / Main / Supabase / Production: **unchanged by this follow-up**.
