@@ -1910,3 +1910,40 @@ The candidate set itself is not a canonical answer: `SUPABASE_SCHEMA.sql` is the
 - Until that evidence is available, do not choose or apply one root script as the canonical replay baseline.
 
 **Status:** earliest Git introduction commits and timestamps are source-history verified. Actual execution/application provenance and schema equivalence remain **UNVERIFIED**. No source SQL, database, Production environment, or migration history was changed.
+
+
+## 94. Earliest bootstrap snapshot object inventory — 17 Nov 2026
+
+The root setup files were fetched at their earliest common repository commit `c4b6a46f22553e57638cdae844ec33d09bf8da2c`, rather than using their current mutable versions. This establishes exactly what the repository snapshot contained before the first numbered migrations were committed.
+
+### Immutable snapshot and object inventory
+
+| File at commit `c4b6a46` | Blob SHA | Source-level objects |
+|---|---|---|
+| `SUPABASE_SCHEMA.sql` | `8ae88a7035bc963b244f22c6c1450c22618ec88f` | Creates `service_bookings`, `electrician_applications`, `electrician_profiles`, and `job_offers`; adds `electrician_profiles.verification_status`; indexes and RLS setup |
+| `PORTAL_SCHEMA.sql` | `efc14aa623a3895ffb3841b7b0f226f2015f34b1` | Creates `srk_admin_users`; adds `electrician_profiles.user_id`; defines profile-link trigger, `srk_is_admin()`, offer-response, application-review and commission functions; creates Admin/electrician policies |
+| `COMPLETE_DATABASE_SETUP.sql` | `2b806e727f449ba18e71ad23edef805ceb2da2b5` | Consolidated copy of base and portal setup; additionally contains `srk_get_my_offer_details()` and `is_srk_admin()` compatibility path |
+| `ADMIN_EMAIL_LOGIN_SETUP.sql` | `dbd91b3f912b1e0946bffe6d249a85cc41dc81cd` | Does not create base tables; expects `srk_admin_users` and operational tables to exist; defines `is_srk_admin()` and replaces Admin policies/application-review RPC |
+
+### Dependency interpretation
+
+1. `SUPABASE_SCHEMA.sql` is the only one of these files that creates the four core marketplace tables from scratch. It is the lowest-level root schema candidate in this snapshot.
+2. `PORTAL_SCHEMA.sql` explicitly documents that it must run **after** `SUPABASE_SCHEMA.sql`. It depends on the starter tables and additionally assumes Supabase Auth's `auth.users` exists.
+3. `ADMIN_EMAIL_LOGIN_SETUP.sql` is a patch, not a standalone bootstrap. It assumes the admin allow-list and marketplace tables already exist.
+4. `COMPLETE_DATABASE_SETUP.sql` is a consolidated alternative to applying the base and portal scripts separately; it must not be blindly run in addition to both constituent scripts as a separate migration step.
+5. The base file already creates `job_offers` and adds `electrician_profiles.verification_status`. This confirms that at least some later numbered migrations' references to these objects are compatible with a pre-existing starter-schema model, but it does not prove that the actual database was initialized from this exact blob.
+
+### Finding
+
+The earliest Git snapshot supports a **candidate dependency order** of `SUPABASE_SCHEMA.sql` followed by `PORTAL_SCHEMA.sql`, with `ADMIN_EMAIL_LOGIN_SETUP.sql` treated as an optional later compatibility patch. `COMPLETE_DATABASE_SETUP.sql` is a bundled alternative, not an additional step.
+
+This is stronger provenance and object-level evidence than the current-file comparison alone, but it is still only repository evidence. It does not establish which script was executed, whether it completed successfully, or whether the target database had subsequent manual changes before migration `20261108120608`.
+
+### Replay decision
+
+- Use the immutable blobs above as comparison inputs only.
+- Do not apply any of these scripts to Production or an existing project.
+- For a future isolated replay, require owner approval of one baseline strategy and compare its complete schema/object definitions against an authoritative pre-migration schema-only export first.
+- Continue to treat clean replay as blocked until that authoritative equivalence check is available.
+
+**Status:** all four file blobs and source-level object inventories at the earliest common commit are verified. The base-versus-portal dependency order is documented in the source comments and corroborated by object references. Actual database execution history remains **UNVERIFIED**; no SQL or database was changed.
