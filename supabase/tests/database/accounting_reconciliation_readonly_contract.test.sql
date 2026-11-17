@@ -1,5 +1,5 @@
 begin;
-select plan(74);
+select plan(75);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -175,6 +175,11 @@ select ok(position('route_transfers' in pg_get_functiondef(
   and position('route_transfer_count' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'read-only accounting report exposes Route transfer rows and count');
+select ok(position('''route_provider_settlement_verified'',false' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('route_settlement_evidence_status' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'final Route validation RPC preserves the settlement evidence fields consumed by Admin UI');
 select ok(position('ROUTE_TRANSFER_RECIPIENT_ROWS_MISMATCH' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'Route reconciliation requires one electrician transfer and a commission transfer only when commission is positive');
