@@ -6803,3 +6803,36 @@ The RPC has explicit customer ownership filters, bounded pagination, a minimized
 GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल RPC, संबंधित SQL test और wallet/search-path migration का static निरीक्षण तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, source/migration change, runtime test, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 212. Customer Payment Method RPC — Unicode Repair Migration और Exact-Value Contract
+
+### 1. Static source reviewed
+
+- Initial RPC migration `20261114202656_customer_change_payment_method_rpc.sql` (SHA `e55012e27dc4b0786880b24da6bb5df777462abd`).
+- Follow-up repair migration `20261115270000_fix_customer_payment_method_unicode_contract.sql` (SHA `8f09dff592c1933d3412f058032ded5d52c0e914`).
+- Static SQL test `customer_change_payment_method_rpc.test.sql` (SHA `2cd5411ace71a9a7d9f19518e0b26f60c4ca6f66`, `plan(14)`).
+
+### 2. Migration-to-migration finding
+
+1. Initial migration embeds a corrupted/mis-decoded Hindi payment-method literal (`Razorpay à¤à¤¨à¤²à¤¾à¤à¤¨ à¤­à¥à¤à¤¤à¤¾à¤¨`) in both the input allow-list comparison and stored `payment_method` value.
+2. Later timestamped repair migration replaces the function using the intended canonical UTF-8 literal `Razorpay ऑनलाइन भुगतान` in both locations.
+3. The repair retains the original security/business predicates: authenticated owner, booking status `new/confirmed`, no assigned electrician, not paid/refunded, zero amount paid, no Razorpay order/payment IDs, and existing cash preference.
+4. The RPC only changes the payment preference; the migration comment explicitly says it does not collect payment or create an order.
+5. Both definitions use SECURITY DEFINER with empty search path and authenticated-only execution grants. The later replacement re-applies the grants.
+
+### 3. Test coverage and remaining limits
+
+- The 14-assertion SQL test checks the final function definition for the canonical lowercase-equivalent target string, owner scope, booking eligibility guards, no existing provider order/payment, zero paid amount, cash-only source preference, empty search path and authenticated-only execute privilege.
+- This is a source-definition/ACL assertion suite. It does not prove the migration sequence was replayed, nor exercise a real authenticated customer's update or rollback.
+- The test does not independently assert that the earlier migration's malformed literal is absent from the final installed function beyond checking the expected canonical target literal.
+- Recommended later isolated pgTAP behavior cases: wrong customer, already assigned booking, paid/refunded or non-zero-paid booking, existing Razorpay order/payment, non-cash source method, wrong target string, and a valid eligible cash booking. Confirm the stored value byte-for-byte equals the canonical UTF-8 literal.
+- The existence of a later repair is a confirmed static source fact; no live deployment defect or customer-impact incident is established.
+
+### 4. Verdict and limits
+
+The later migration statically repairs the earlier malformed Unicode literal while preserving the narrow eligibility/security conditions. The migration chain therefore contains an intentional corrective replacement; final installed behavior still requires clean replay and runtime verification. No source or migration edit was made in this audit.
+
+GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल संबंधित दो migrations और 14-assertion SQL test का static निरीक्षण तथा यह report section जोड़ा गया। कोई SQL/pgTAP execution, DB query, source/migration change, runtime test, CI, deployment, merge या cherry-pick नहीं किया गया।
