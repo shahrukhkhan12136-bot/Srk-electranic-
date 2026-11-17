@@ -520,3 +520,13 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - `cancellation_fee_refund_reversal.test.sql` current source plan **44**; source assertions केवल DDL/function contract दर्शाते हैं, pgTAP execute नहीं हुआ।
 - Source review में इस pass में कोई नया निश्चित defect पुष्ट नहीं हुआ। यह concurrent runtime, wallet ledger balance, provider confirmation या database-applied schema का प्रमाण नहीं है।
 - कोई database operation, migration replay, pgTAP/Node test execution, CI, production access, provider action, deployment, merge या mobile QA नहीं हुआ। Official GPT-2 progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित; Runtime Acceptance **60/60 Pending**।
+
+
+### 3S. Electrician Earnings RPC को canonical Payout Ledger से align किया — 17 Nov 2026
+
+- Audit में निश्चित mismatch मिला: पुराने `srk_get_my_earnings()` RPC में electrician earning `service_bookings.amount_paid - commission_amount` से निकल रही थी। New-category customer collection में carry-forward Cancellation Fee भी शामिल हो सकती है, जबकि वह SRK की receivable है, electrician की कमाई नहीं। Admin commission report पहले ही canonical payout ledger पर align हो चुकी थी, लेकिन Electrician App earnings RPC पुरानी गणना पर था।
+- Source fix: `20261117190000_reconcile_electrician_earnings_to_payout_ledger.sql` में `srk_get_my_earnings()` अब customer collection `amount_received` को अलग रखता है; `commission_amount` को `srk_electrician_payouts.platform_commission` और `electrician_earning` को `srk_electrician_payouts.electrician_payable` से लेता है। Join booking और उसी electrician profile दोनों से बँधा है; केवल pending/paid/blocked payout rows शामिल हैं, refunded payout को earning से बाहर रखा गया है। Missing payout पर earning शून्य रहती है—customer collection से अनुमान नहीं लगाया जाता।
+- RPC SECURITY DEFINER + empty search_path, anon/PUBLIC execute revoke और authenticated execute grant रखता है। Return columns वही हैं, इसलिए मौजूदा Electrician App caller contract नहीं बदला।
+- नया source contract: `supabase/tests/database/electrician_earnings_payout_ledger_contract.test.sql`, plan **10**, 10 assertion calls। Test file inspect/commit हुई है; pgTAP execute नहीं हुआ।
+- Commits: migration `87fe55e49d9f9777fc06faa3ced705e383213e9c`; test `9de53bda0e099396e4ed63248e425cbac744afba`।
+- Source fix committed only; database migration applied नहीं, कोई runtime/CI test नहीं चला। Official GPT-2 checklist progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित; Runtime Acceptance **60/60 Pending**।
