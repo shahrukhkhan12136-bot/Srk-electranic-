@@ -532,3 +532,14 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 
 - UI compatibility recheck: `electrician.html` मौजूदा RPC field names (`amount_received`, `commission_amount`, `electrician_earning`) ही consume करता है; return shape अपरिवर्तित है। UI payout state अलग से canonical payout table से पढ़ता है। Repo-wide targeted search में कोई दूसरा live `amount_paid - commission_amount` electrician earning formula नहीं मिला; पुराना formula केवल historical migration में है और नया migration उसे replace करता है।
 - Source fix committed only; database migration applied नहीं, कोई runtime/CI test नहीं चला। Official GPT-2 checklist progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित; Runtime Acceptance **60/60 Pending**।
+
+### 3T. Razorpay Webhook upstream request timeout और header-case hardening — 17 Nov 2026
+
+- Latest webhook source recheck में पाया गया कि inbox claim lease 2 मिनट का है, लेकिन razorpay-webhook.js के Supabase RPC, booking lookup/update, payment breakdown और refund reconciliation fetch calls पर कोई request timeout नहीं था। Network request अटकने पर Worker lease अवधि से अधिक समय तक processing में रह सकता था और lease expiry के बाद दूसरा Worker event reclaim कर सकता था।
+- सीमित source fix: webhookFetch() wrapper जोड़ा गया, जो प्रत्येक upstream fetch पर AbortSignal.timeout(15000) लागू करता है। सभी 8 upstream call sites wrapper से गुजरते हैं। इससे प्रत्येक individual network request अधिकतम 15 सेकंड में abort होगी; यह कुल handler duration या वास्तविक दो-Worker concurrency का runtime प्रमाण नहीं है।
+- tests/razorpay-webhook-inbox.test.js के mixed-case header test में यह assertion जोड़ा गया कि upstream RPC request में bounded timeout signal मौजूद हो। Test file में अभी 19 test cases हैं; Node tests execute नहीं किए गए।
+- पहले से जोड़े गए case-insensitive Razorpay signature/event-ID header lookup की भी current source पर पुनः पुष्टि हुई।
+- Commits: timeout wrapper source 5d6c27a8697be18d303bdb126f5f6dbebe9b0e12; test assertion b815d1d2a82d12f61fc5c365c3c9478a6a60d8b5.
+- Current re-fetch: razorpay-webhook.js SHA 496df0a22b8e9e47be06a66dfb6fb934176a513c; test SHA a6767a68115ef7ecf73afa5b4b31d700278d18ac. Source count: one native fetch inside wrapper, eight wrapper call sites, one 15-second timeout configuration.
+- Remaining limitation: multiple sequential requests can still extend total handler duration; 2-minute lease renewal/heartbeat is not implemented. Runtime overlap, provider retry timing and Vercel execution limits remain unverified. No heartbeat feature was added.
+- No Node test execution, pgTAP, database operation, migration apply, CI dispatch, deployment, merge or production change. Official GPT-2 progress 27/39 = 69% complete; 12 remaining अपरिवर्तित; Runtime Acceptance 60/60 Pending।
