@@ -1422,3 +1422,29 @@ Feature work-event trigger जोड़ने से पहले इनके �
 ### Scope / safety
 - ये निष्कर्ष Main live database के function definitions और Admin UI source के read-only inspection से निकले हैं; कोई booking, refund, payout, complaint, staff या customer row नहीं पढ़ी/बदली गई।
 - कोई RPC invoke नहीं हुआ; कोई migration/DDL/DML, Storage write, email/SMS, payment/refund/payout, deployment, PR review, merge या Production change नहीं हुआ।
+
+
+## Section 50 — GPT-2 Audit Branch से refund/payout trigger integration comparison और Section 49 clarification (2026-11-17)
+
+### Section 49 clarification — Manual Refund request status
+- Section 49 में Main live function के आधार पर manual refund request के processed status की कमी बताई गई थी। यह **Main live schema** के लिए सही है, लेकिन Feature PR source के पूरे migration chain के लिए निष्कर्ष अधूरा था: Feature branch migration `20261115130000_admin_manual_refund_request_completion.sql` (SHA `51f3b13adc80e117cc62f05b0e70ae795ee0f9fd`) approved request को lock करती है और सफल manual refund के अंत में `status='processed'` तथा `processed_at` सेट करती है। इसके 15-plan test में request status assertion भी है। अतः PR source chain में यह request-status behavior मौजूद है; Main Production database में migration apply होने का कोई प्रमाण नहीं।
+
+### Confirmed payout-trigger interleaving risk in Feature branch
+- Feature payout migration `20261114360000_new_category_electrician_payout_reconciliation.sql` (SHA `bc657107350b43a392b7883238be1b3e00a02ee2`) के AFTER booking trigger पर `payment_status='refunded'` होने पर pending payout को refunded करता है और केवल exact refund-owned blocked notes (`Razorpay refund pending`, `Manual refund processed`) बंद करता है; यह unrelated Admin block और paid payout को preserve करता है।
+- लेकिन उसी Feature manual-refund RPC में pending payout को पहले `blocked / Manual refund processed` किया जाता है, फिर booking को refunded किया जाता है, और उसके बाद RPC फिर payout row को `blocked` मानकर refunded update करने की कोशिश करता है। Booking trigger पहले ही उसी row को refunded कर चुका हो तो यह दूसरा update zero rows करेगा और RPC exception से पूरी transaction rollback हो सकती है। Feature migration का static test payout closure assertion रखता है, पर यह trigger-vs-RPC duplicate-write ordering behavioral PostgreSQL test से सिद्ध नहीं है। इसे अभी release blocker मानें; live RPC का पुराना body भी अलग है।
+
+### GPT-2 Audit Branch candidate resolution — NOT integrated
+- Audit Branch `chore/pr8-replay-audit-20261116-v2` में migration `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` (SHA `b12da77471d510b55f798bd089597d866d79a133`) payout lifecycle को एक booking AFTER trigger के ownership में रखती है। उसी migration में manual-refund RPC booking update के बाद payout row re-read करके `payout_status='refunded'` verify करती है; वह दूसरा payout UPDATE नहीं करती। उसके साथ manual-refund test (SHA `99cb0eb02e667699db27951b5b26161a89b8951b`) में इस ordering का static assertion है। यह Feature branch के duplicate-write risk का candidate fix है, पर runtime proof नहीं।
+- Audit Branch का `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` अलग content SHA `68189051090a51bef26a98997caf103b62ed070c` है; Feature branch में इसी नाम का migration SHA `324c58ba485395bd0ceb2402b99a90e36929eedc` है। Same filename होने से contents interchangeable नहीं हैं। Commission/payment trigger ordering और payout ledger bridge को exact diff + dependency review के बिना cherry-pick/overwrite न करें.
+- Branch comparison at this pass: Feature head `65d4e16fa2f7ecf77f0c5649986b7bd380aeec89`; GPT-2 Audit Branch `chore/pr8-replay-audit-20261116-v2` के विरुद्ध comparison **diverged**, Audit Branch 329 commits ahead और 128 behind; merge-base `dc8b4f723ac7ae896eeb516336dd4b28577390b5`. Direct merge/cherry-pick unsafe. Audit Branch को modify नहीं किया गया।
+
+### Remaining cross-path gap
+- GPT-2 audit के latest replay notes में `srk_service_reconcile_booking_refund` के processed path के बाद payout refunded post-condition/replay consistency verify न होने की static gap दर्ज है। Manual refund/recovery finalizers में payout re-read checks हैं, लेकिन provider reconciliation function को same explicit booking+payout post-condition और processed replay check चाहिए। इसे GPT-2/owner के साथ jointly reconcile करना होगा; arbitrary Admin-block closure स्वीकार नहीं है।
+- Razorpay preparation function exact `Razorpay refund pending` marker लिखती है; refund-owned marker consistency का यह हिस्सा source में मिला। फिर भी provider reconciliation post-condition gap खुला है।
+
+### PR preview / automation status (read-only observation)
+- PR #8 latest head `65d4e16fa2f7ecf77f0c5649986b7bd380aeec89`, Open, Draft, Unmerged. GitHub review submissions और inline review threads खाली थे; केवल deployment bot comments दिखाई दिए। GPT-2 review approval का प्रमाण नहीं मिला।
+- Netlify Deploy Preview bot ने इसी head के लिए Preview Ready बताया। Vercel ने daily free deployment API limit (>100/day) के कारण दो preview attempts fail बताए। ये Preview/build-provider status हैं; इन्हें Production deployment या application QA PASS न माना जाए।
+
+### Safety boundary
+- Audit Branch read-only inspect/compare हुआ; उसमें कोई edit/merge/cherry-pick नहीं। Feature branch में केवल यह documentation update होगा। No Supabase migration apply, SQL write, pgTAP runtime, external payment/refund/payout, deployment, PR review/merge, or Production change.
