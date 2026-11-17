@@ -270,3 +270,29 @@ An earlier timestamped migration `20261109002000_expose_assigned_booking_map_pin
 - Feature migration tree was re-listed: there is no valid timestamped file for 09080121, and no later timestamped quote/work-status replacement was found in the inspected migration range.
 - Main privilege/function catalog checks were read-only SELECTs.
 - No source SQL, migration name, or live database object was changed in this pass.
+
+
+## 14. Main live quote/work-status behavior vs migration ledger (Nov 17)
+
+### Read-only Main migration ledger check
+Main project migration ledger confirms these historical entries:
+- `20261109080121 lock_quote_workflow_rpcs_to_authenticated_users`
+- `20261109161539 customer_contact_after_completion`
+- `20261109161545 hide_customer_details_on_cancelled_bookings`
+
+The ledger does **not** list Feature-branch later migrations:
+- `20261114240000_server_authoritative_customer_approved_work_timer.sql`
+- `20261115220000_retire_live_legacy_quotation_rpcs.sql`
+
+### Current Main function definitions (read-only catalog query)
+- `srk_update_booking_work_status(uuid,text)` explicitly rejects every `p_status` except `inspection`, with message that customer approval is required to start and complete work. For the allowed case, it requires an assigned, approved, active electrician and only transitions `assigned -> inspection`.
+- `srk_get_my_offer_details()` exposes customer name/phone/address/location and legacy quote fields only when the electrician is the assigned electrician and booking status is one of `assigned, inspection, awaiting_quote_approval, quote_approved, in_progress, completed`. Cancelled and unassigned bookings are masked. The RPC resolves electrician profile using `p.user_id=auth.uid()` (not `auth_user_id` in this current Main definition).
+
+### What can and cannot be concluded
+- The current offer-details masking is consistent with the purpose of the Main ledger entries `customer_contact_after_completion` and `hide_customer_details_on_cancelled_bookings`, but without their original SQL source this is a semantic match, not proof of exact migration contents.
+- The current inspection-only work-status RPC body is a live security restriction. Its exact originating migration/commit has not been recovered; do not attribute it to 09080121 or either contact-visibility migration without source evidence.
+- The later Feature migration `20261115220000_retire_live_legacy_quotation_rpcs.sql` is a different, newer design: it revokes and drops the three legacy quote/work-status RPCs, and replaces offer-details with the server-timer contract. Its status-based contact guard covers `assigned, awaiting_work_start_approval, in_progress, completed, cancelled`, and it resolves both `user_id` and `auth_user_id`. This migration is not in Main's applied migration ledger, so do not assume Production has this newer contract.
+- Feature's `20261114240000_server_authoritative_customer_approved_work_timer.sql` still contains legacy RPC definitions for historical rows, but blocks their use for new-category bookings; the later `15220000` migration retires those RPCs entirely. Both are Feature-branch source only in this review.
+
+### Safety / next step
+All Main checks in this section were read-only: migration ledger listing and SELECT of `pg_get_functiondef`. No Main DDL, data writes, migration application, or Production configuration changes occurred. The remaining provenance gap is the original SQL/commit for Main versions `09161539` and `09161545`, plus the exact source change that narrowed the live work-status RPC to inspection only.
