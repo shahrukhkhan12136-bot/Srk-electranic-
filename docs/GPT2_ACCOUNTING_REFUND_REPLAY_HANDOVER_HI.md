@@ -296,3 +296,41 @@ The ledger does **not** list Feature-branch later migrations:
 
 ### Safety / next step
 All Main checks in this section were read-only: migration ledger listing and SELECT of `pg_get_functiondef`. No Main DDL, data writes, migration application, or Production configuration changes occurred. The remaining provenance gap is the original SQL/commit for Main versions `09161539` and `09161545`, plus the exact source change that narrowed the live work-status RPC to inspection only.
+
+
+## 15. Main Customer Call-Contact RPC — completed/cancelled visibility audit (Nov 17)
+
+### Main live definitions (read-only catalog inspection)
+- Public wrapper: `public.srk_get_customer_call_contacts()`
+  - SQL, STABLE, SECURITY INVOKER.
+  - Calls `private.srk_get_customer_call_contacts_impl()`.
+  - Current `search_path = public, private, pg_temp`.
+- Private implementation: `private.srk_get_customer_call_contacts_impl()`
+  - PL/pgSQL, STABLE, SECURITY DEFINER.
+  - Pinned `search_path = pg_catalog, public, auth, pg_temp`.
+  - Requires non-null `auth.uid()`.
+  - Returns electrician name/phone only for the authenticated customer's own bookings, with an assigned electrician, and status in:
+    `assigned, inspection, awaiting_quote_approval, quote_approved, in_progress, completed`.
+  - Cancelled bookings are excluded. Completed bookings remain eligible.
+- Effective EXECUTE privilege for both wrapper and private implementation: `anon=false`, `authenticated=true`.
+- The private implementation is SECURITY DEFINER; public wrapper is SECURITY INVOKER. The wrapper therefore exposes only the implementation's filtered result to authenticated callers.
+
+### Feature source comparison
+- Feature migration `20261109103038_customer_electrician_direct_call_contacts.sql` initially created the public SECURITY DEFINER RPC with a status allow-list that excluded completed bookings.
+- Feature migration `20261109103143_move_customer_call_contact_lookup_to_private.sql` moved the lookup into a private SECURITY DEFINER implementation and replaced the public function with a SECURITY INVOKER wrapper.
+- In that Feature migration's private implementation, the WHERE clause checked customer ownership and non-null assigned electrician, but had **no booking-status filter**. Therefore that historical Feature source would include cancelled as well as completed bookings.
+- Main's current implementation has a deliberate status allow-list: completed included, cancelled excluded. This is consistent with the intent signalled by Main ledger versions `20261109161539 customer_contact_after_completion` and `20261109161545 hide_customer_details_on_cancelled_bookings`, but their original SQL bodies were not recovered. Do not claim exact historical source equivalence.
+
+### Related Main migration history
+Main ledger also records:
+- `20261109114000 protect_customer_and_electrician_phone_numbers_until_masked_calling`
+- `20261109114642 enable_direct_customer_electrician_phone_calls`
+- `20261109161539 customer_contact_after_completion`
+- `20261109161545 hide_customer_details_on_cancelled_bookings`
+
+The live RPC behavior is compatible with the latter two names: completed calls allowed; cancelled calls hidden. The original migration bodies and exact chronological diffs remain unavailable, so provenance remains a semantic correlation only.
+
+### Security conclusion and follow-up
+- Current Main customer call-contact RPC is authenticated-only and status-filtered; cancelled bookings are excluded and completed bookings are included.
+- The Feature branch's historical private implementation does not reproduce this status filter. A later Feature migration or current source replacement must be checked before any replay/equivalence claim.
+- No code or migration was changed in this audit section. All Main checks were read-only catalog/privilege SELECTs. No Production DDL, data write, migration application, deployment, or configuration change occurred.
