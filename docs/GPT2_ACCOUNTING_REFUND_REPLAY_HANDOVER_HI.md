@@ -1098,3 +1098,33 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - Confirmed: current Main Admin RPCs inspected are Main-Admin-only; Staff support requires the complete RBAC + support inbox/session bundle and the UUID exclusivity invariant review.
 - Next read-only inspection: source of `admin-staff-management` and `electrician-phone-change` Edge Functions, plus their environment/config/auth boundaries. Do not invoke them, invite staff, send OTP, change phone, or send external messages.
 - No code/SQL changes, migrations, function execution, direct table writes, Storage URL creation, Staff invitation, OTP, payout, refund, deployment, merge, or mobile QA performed in this section.
+
+
+## Section 38 — Edge Function staff invitation + electrician phone-change security review (2026-11-17)
+
+### `admin-staff-management` Edge Function
+- Source re-fetched: `supabase/functions/admin-staff-management/index.ts`, SHA `c783989ca7142fce9d88270286bc916a66d22298`.
+- Accepts POST only (plus CORS preflight), requires a Bearer token, validates it using `auth.getUser(token)`, and checks `userClient.rpc('is_srk_admin') === true`. It does not trust browser-supplied user/app metadata for role.
+- Only supported action is `invite_support_staff`; email/name are validated; role is fixed server-side to Support; redirect URL is protocol/host checked. Service-role key is used only server-side.
+- Invitation email is sent by `inviteUserByEmail` before `srk_admin_staff_register_invited_user` registers the Staff row. If registration fails, the function attempts to delete the Auth identity, but cannot retract an email already delivered. This side-effect ordering is an operational retry risk already identified; no invocation/invitation was made.
+- No explicit application-level invitation rate limit was found in this Edge Function source. This is a review item, not proof of abuse or a confirmed vulnerability; do not add rate limiting outside approved scope.
+- Function uses wildcard CORS origin but still requires a valid Bearer token and server-side Main Admin check. No CORS change proposed from static inspection alone.
+
+### `electrician-phone-change` Edge Function + Feature migration
+- Source re-fetched: `supabase/functions/electrician-phone-change/index.ts`, SHA `372e52c8ca18a7ca984ae2de2fcdbb2a5ea87bc5`.
+- Every action first validates the Bearer token with `auth.getUser(token)`. Customer-side send/verify/history actions pass the verified actor UUID to service-role RPCs; Admin actions additionally call `is_srk_admin()` before the Admin queue/review branches. No user-supplied role metadata is used.
+- OTP is generated using Web Crypto CSPRNG with rejection sampling; only HMAC-SHA256 digest is persisted; expiry is 5 minutes; wrong attempts are capped at five; migration enforces at most three requests/hour and a 60-second resend gap; only one open request per electrician and one open request per new phone are allowed.
+- The preparation RPC requires exactly one matching electrician profile, a verified current Auth phone, a different and globally unused new Indian number, and a 10–500 character reason. The OTP verify RPC locks the request row and consumes the digest on success.
+- Admin approval is a two-stage claim → Auth phone update → profile finalize flow. It checks the Auth number before changing it, supports retry after an interrupted Auth/profile sync, and records sync_error instead of silently rolling back an ambiguous external Auth update. Admin claim/finalize/release/reject RPCs check the supplied Admin UUID against `srk_admin_users`; Edge Function derives that UUID from the verified JWT actor.
+- Feature migration `20261114380000_electrician_phone_change_admin_approval.sql`, SHA `0c389a039afab594b092fc69b81bc9fbc4bff650`, revokes all direct execute from public/anon/authenticated and grants the phone-change RPCs only to service_role. This makes the Edge Function's JWT-to-actor binding especially important; no direct RPC execution or OTP send was performed.
+- Live Main check: phone-change request table and public phone-change RPCs are absent. The live Main catalog also lacks Staff registry, Staff sessions, and support assignment tables. These workflows are Feature-branch source only until their approved migration bundles are integrated; do not test them against Main.
+
+### RBAC integration boundary
+- Feature Staff RBAC migration `20261114390000_admin_staff_rbac_foundation.sql`, SHA `5aa0f9058a56d735455f2a9944c861e8312ddb89`, creates separate Staff registry/session/audit/assignment objects and permission-scoped customer/electrician support RPCs. The Edge Function intentionally invites only the fixed Support role.
+- Migration comments and helper logic preserve Main Admin as a distinct full-control class, but the previously recorded race-safe cross-table UUID exclusivity invariant still needs owner/GPT-2 resolution. The invite registration RPC must not be treated as proof that a user UUID is excluded from `srk_admin_users`; no change made.
+- Since these migration bundles are absent from Main, no production invitation, phone-change workflow, OTP, or Staff session was exercised.
+
+### Status / next steps
+- Static Edge Function and migration source review complete; live Main absence confirmed for phone-change and Staff tables.
+- Next: inspect refund Edge Function source and its authentication/idempotency/provider boundaries, then reconcile all remaining Admin UI→Feature migration dependency bundles with GPT-2 without changing the GPT-2 Audit Branch.
+- No Edge Function invocation, invitation, email, OTP/SMS, Auth phone update, Staff creation, migration, SQL write, deployment, merge, or mobile QA occurred.
