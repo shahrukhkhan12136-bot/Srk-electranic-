@@ -7176,3 +7176,24 @@ The two short 8-digit versions also sort before the 14-digit `20261109000500` mi
 - Add CI validation that rejects duplicate version prefixes before invoking migration commands.
 
 Static filename inventory only. No Supabase CLI command, database migration history query, SQL execution or replay was run. This is a confirmed repository version collision, not a claim about a specific observed CLI error. GPT-2 checklist remains 27/39 = 69%.
+
+
+## 225. Work-Timer Status Trigger Has a Forward Reference to the Later Cancellation-Request Table
+
+### Static source reviewed
+- `20261114240000_server_authoritative_customer_approved_work_timer.sql` SHA `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe`.
+- `20261114270000_admin_only_cancellation_requests_and_decisions.sql` SHA `892e7fcd51304ac84efb8ef4d8b251c198127526`.
+
+### Finding
+Migration `20261114240000` defines and installs the `public.srk_guard_new_category_booking_status_transition()` trigger on `public.service_bookings`. Its cancelled-status branch queries `public.srk_booking_cancellation_requests` to verify an approved cancellation request.
+
+That relation is not created until the later migration `20261114270000`, which is three migration slots later. The earlier migration therefore installs a trigger whose cancellation path has a forward dependency on a table not yet created at that point in the ordered chain.
+
+The reference is inside a PL/pgSQL trigger function and is reached only for a cancelled status transition; it is not an unconditional top-level DDL reference. Static inspection does not establish that migration creation/replay fails. It does identify a transient schema/runtime gap: if a cancellation transition can occur after 142400 has been applied but before 142700 is applied, the trigger path may fail because its referenced relation is absent. The complete chain should create the table before enabling that cancellation path.
+
+### Required action
+- Prefer moving cancellation-request/event table creation into an earlier prerequisite migration, or split table creation from the later RPC/policy implementation so the relation exists before the trigger is installed.
+- Alternatively, make the trigger's cancellation branch unavailable until the table migration is applied, with a deliberate compatibility guard.
+- Add a migration-order assertion for this dependency and verify it with a clean isolated replay plus a cancellation-transition test after the full chain.
+
+Static source review only. No SQL, trigger invocation, database query, migration replay or test was run. This is a forward-dependency finding, not a reproduced failure. GPT-2 checklist remains 27/39 = 69%.
