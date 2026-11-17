@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(39);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -180,6 +180,34 @@ select ok((select min(t.tgname)='srk_reconcile_electrician_payable'
       'public.srk_create_electrician_payable()'::regprocedure,
       'public.srk_validate_booking_commission_payout_parity()'::regprocedure)),
   'alphabetical AFTER trigger order writes payout ledger before parity validation');
+
+
+select ok(not exists(select 1 from pg_trigger t
+  where t.tgrelid='public.service_bookings'::regclass
+    and not t.tgisinternal
+    and t.tgname='srk_booking_commission_trigger'),
+  'legacy completion-time commission trigger is retired from service_bookings');
+
+select ok(to_regprocedure('public.srk_calculate_commission_on_completion()') is not null,
+  'legacy commission function remains available for compatibility but is not attached');
+
+select ok(position('drop trigger if exists srk_booking_commission_trigger on public.service_bookings' in
+  lower(pg_get_functiondef('public.srk_set_booking_commission_before_payout()'::regprocedure)))=0
+  and exists(select 1 from pg_trigger t
+    where t.tgrelid='public.service_bookings'::regclass
+      and not t.tgisinternal
+      and t.tgname='zz_srk_set_booking_commission_before_payout'),
+  'verified-payment commission trigger remains installed after legacy trigger retirement');
+
+select ok(position('payout_row_missing_during_commission_parity_check' in
+  lower(pg_get_functiondef('public.srk_validate_booking_commission_payout_parity()'::regprocedure)))>0
+  and position('booking_commission_and_payout_platform_commission_mismatch' in
+  lower(pg_get_functiondef('public.srk_validate_booking_commission_payout_parity()'::regprocedure)))>0,
+  'parity validator explicitly rejects missing payout rows and commission mismatches');
+
+select ok(position('where public.srk_electrician_payouts.payout_status = '||quote_literal('pending') in
+  lower(pg_get_functiondef('public.srk_create_electrician_payable()'::regprocedure)))>0,
+  'payout upsert cannot silently overwrite a blocked payout row');
 
 select * from finish();
 rollback;
