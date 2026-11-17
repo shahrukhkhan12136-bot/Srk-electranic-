@@ -79,15 +79,14 @@ begin
     where id=v_booking.id and payment_status='paid';
   end if;
 
+  -- The booking's AFTER UPDATE accounting trigger closes this exact refund-owned
+  -- blocked payout in the same transaction. Re-read and verify that trigger result;
+  -- do not issue a second stale UPDATE against the pre-trigger blocked state.
   if v_has_payout then
-    update public.srk_electrician_payouts
-      set payout_status='refunded',
-          payout_note='Razorpay full refund verified; payout permanently withheld.',
-          updated_at=clock_timestamp()
-    where id=v_payout.id
-      and payout_status='blocked'
-      and payout_note='Razorpay refund pending';
-    if not found then
+    select * into v_payout from public.srk_electrician_payouts
+      where booking_id=v_booking.id for update;
+    if not found or v_payout.payout_status is distinct from 'refunded'
+       or v_payout.payout_note is not null then
       raise exception 'BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' using errcode='55000';
     end if;
   end if;
