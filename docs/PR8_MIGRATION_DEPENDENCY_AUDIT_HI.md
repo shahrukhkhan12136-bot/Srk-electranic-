@@ -1803,3 +1803,26 @@ The additive accounting bridge migration and the existing payout-writer migratio
 
 **Status:** trigger column lists, source control-flow gates, and intended alphabetical AFTER-trigger ordering source-verified. Runtime event behavior and all database tests remain **NOT RUN**. No Production or PR-branch changes performed.
 
+## 90. Commission-report missing-payout visibility gap — 17 Nov 2026
+
+The report functions were reviewed against the per-booking reconciliation RPC.
+
+### Source evidence
+
+- `srk_admin_commission_report()` builds `paid_completed` from every `service_bookings` row with `status='completed'` and `payment_status='paid'`, then uses a **LEFT JOIN** to `srk_electrician_payouts`.
+- Commission, payout gross, and electrician payable are all `coalesce(...,0)`. Therefore a completed/paid booking with no payout row contributes zero commission and zero payable to aggregate totals; it is not excluded or surfaced as an exception in this report payload.
+- `srk_get_my_earnings()` also LEFT JOINs the payout ledger and coalesces missing commission/payable to zero. The electrician view therefore cannot distinguish a legitimate zero amount from a missing payout row using these returned columns alone.
+- In contrast, `srk_admin_get_booking_accounting_reconciliation(uuid)` explicitly appends `MISSING_PAYOUT_ROW` for an eligible completed, payment-verified booking without a payout record.
+
+### Finding and recommended treatment
+
+This is a **reporting visibility gap**, not proof that a payout row is currently missing. A missing ledger row is silently represented as zero in the aggregate and electrician earnings result, while the detailed Admin reconciliation can detect it.
+
+Before calling the accounting reports fully reconciled, the owner should choose a compatible visibility contract, for example:
+1. Add a missing-payout count / exception summary to the Admin report without changing the existing JSON keys; and
+2. Decide whether the electrician earnings response should expose a separate reconciliation-warning field or rely on a controlled support workflow.
+
+Do not silently replace LEFT JOIN with INNER JOIN: that would hide affected bookings from reports rather than make the inconsistency visible. No application response contract or historical migration was changed in this audit step.
+
+**Status:** report join and coalesce behavior source-verified against the detailed reconciliation function. No database fixtures, SQL execution, or runtime report comparison performed. Finding requires owner/product approval before implementation; no Production or PR-branch changes performed.
+
