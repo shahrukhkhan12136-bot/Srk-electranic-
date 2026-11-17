@@ -6999,3 +6999,22 @@ The 69-assertion Staff RBAC test checks that the Staff support RPCs exist and in
 This is a **behavior-test coverage gap**, not evidence that the current owner/assignment checks are missing or bypassable. In the future isolated PostgreSQL branch, add role-switched fixtures for owner/non-owner, assigned/unassigned Staff, suspended/revoked Staff, closed ticket, unassigned booking, rate-limit boundary and concurrent reassignment. Assert both denial outcomes and absence of unintended rows/messages. No tests were executed for this review.
 
 Only static inspection and this documentation update were performed. No source/migration/test file was edited; no SQL, pgTAP, database query, browser/runtime test, CI, deployment, merge or cherry-pick was run. GPT-2 checklist remains at the last verified 27/39 = 69%; documentation-only work does not increment it. Paid Database Branch remains deferred until both GPT-1 and GPT-2 complete and reconcile their own work.
+
+
+## 217. Customer Support Attachments — Storage Deletion vs Metadata Lifecycle
+
+### Static sources reviewed
+- `20261113220000_customer_support_conversation_schema.sql` SHA `75230ab805e61206515fd73e17e748de7ec249e5`.
+- `20261113230000_support_attachment_paths_and_admin_message_list.sql` SHA `aaeb6f0d7efe680735039a0a516bd5fcce2dafa0`.
+- `support_attachment_admin_message_access.test.sql` SHA `bb9bb3491763f95ef7069f4aba7deefa28dd9787`, `plan(14)`.
+
+### Static finding
+- Attachment metadata stores `storage_path` as unique text. Its foreign keys bind the metadata row to the complaint and message thread, but not to a corresponding `storage.objects` row.
+- The private bucket has a customer-owned-object DELETE policy. The inspected migration does not pair that Storage deletion with a metadata-row deletion or cleanup trigger.
+- Therefore, if a customer deletes an uploaded object after its attachment metadata has been linked, the metadata row can remain while the referenced object is absent. The attachment list can then return a stale path. This is a lifecycle consistency risk, not evidence of unauthorized file access.
+- The 14-assertion SQL test covers access predicates, ownership, MIME/size validation and thread integrity; it does not test deleting a linked object, stale metadata handling, or cleanup/reconciliation.
+
+### Recommended isolated-DB follow-up
+Choose and document one lifecycle contract: (a) disallow deleting already-linked objects through the generic customer Storage policy and provide a coordinated delete RPC, or (b) retain deletion but make metadata cleanup/reconciliation explicit. Add tests for linked-object deletion, unlinked-object deletion, and attachment listing after object removal. Verify any client-side delete flow before selecting the contract.
+
+Static inspection and documentation only. No source, migration or test file was edited; no SQL/pgTAP, Storage API, browser/runtime test, CI, deployment, merge or cherry-pick was run. GPT-2 checklist remains 27/39 = 69%; documentation-only findings do not increase it. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and reconcile their own work.
