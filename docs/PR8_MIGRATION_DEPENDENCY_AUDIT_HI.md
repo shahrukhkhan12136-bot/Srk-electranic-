@@ -2671,3 +2671,37 @@ Durable Razorpay recovery evidence tests एक अलग table/workflow को 
 - Provider IDs, idempotency keys, free-text reason/error और payout notes को raw audit JSON में जोड़ने का प्रस्ताव नहीं है। उनकी masking/retention policy owner/security approval के बाद ही तय होगी।
 - Draft assertions मौजूदा migration पर अभी fail हो सकती हैं; इसे runnable test suite में promote नहीं किया गया।
 - No SQL migration edited, no test executed, no database/production changes.
+
+
+## 113. Financial Audit read-path और service-role actor attribution — 17 Nov 2026
+
+इस चरण में Admin UI, generic finance audit migration, durable Razorpay recovery migration और Netlify recovery handler को एक साथ cross-check किया गया।
+
+### 113.1 Finance Audit read path
+
+- `admin.html` (blob `4b54dbfb605e55bb086eca7f1d5be13270b78e91`) में `srk_admin_list_staff_audit_events` RPC का उपयोग मिलता है। यह Support Staff activity history है, Finance Audit Log नहीं।
+- उसी UI में `srk_admin_audit_events` table या finance-audit listing RPC का read call नहीं मिला।
+- Generic financial audit migration `20261114125844_restore_financial_audit_core_schema.sql` (blob `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`) audit table पर authenticated SELECT revoke करता है; इस migration में finance audit read RPC/policy नहीं दिखी।
+- निष्कर्ष: **जाँचे गए Admin UI और इस migration में Finance Audit Log का user-facing read path स्थापित नहीं मिला।** यह पूरे repository में किसी अन्य server/API path की अनुपस्थिति का अंतिम दावा नहीं है; आगे के server-side consumers की अलग खोज बाकी है।
+
+### 113.2 Generic finance audit actor — service-role context
+
+- Generic और Razorpay trigger functions `auth.uid()` को actor लेते हैं; NULL होने पर `actor_role='system'` लिखते हैं।
+- Netlify recovery handler `razorpay-refund-recovery.js` (blob `2573aa5c6442ace359515f2227c5d93019534184`) पहले incoming bearer token से Auth user पढ़ता है, उसी token से `is_srk_admin` जाँचता है, और फिर service-role key से DB RPC चलाता है।
+- Recovery evidence writer को यह handler स्पष्ट रूप से `p_admin_user_id=user.id` देता है। Migration `20261115120000_durable_razorpay_refund_recovery_evidence.sql` (blob `adf83de704725e791a096462eaa385b28f92c7a7`) actor को `srk_admin_users` registry में validate करता है और immutable recovery evidence row में रखता है।
+- इसलिए इस विशेष recovery flow में **अलग durable evidence record पर Admin actor स्पष्ट रूप से दर्ज है**।
+- Phase-2 finalizer अलग PostgREST request में service-role key से चलता है और `srk_razorpay_refunds` को update करता है। उस trigger के generic audit event में `auth.uid()` service-role context में NULL हो सकता है; ऐसी स्थिति में generic event actor `system` होगा, न कि Admin UUID। Admin UUID फिर भी अलग recovery evidence record से जुड़ा रहता है।
+- यह निष्कर्ष source-level है; JWT/runtime behavior और actual audit rows DB में execute करके verify नहीं किए गए।
+
+### 113.3 सुरक्षा निष्कर्ष और अगला आवश्यक निर्णय
+
+1. Finance Audit Log के लिए Main Admin-only read RPC/API चाहिए, जिसमें pagination, date/entity filters और sensitive-field redaction हो; direct authenticated table SELECT न खोलें।
+2. Service-role financial writes के लिए trusted actor propagation का एक consistent contract चाहिए। Caller-provided arbitrary UUID को बिना verified identity/role binding के स्वीकार न करें।
+3. Recovery flow का `admin_user_id` अलग durable evidence में सुरक्षित है; इसे generic audit actor के बराबर न मानें। दोनों records के बीच recovery audit ID से correlation उपयोगी रहेगा।
+4. Runtime tests में authenticated Admin RPC path और service-role backend path दोनों के actor IDs/roles जाँचें।
+
+### सीमाएँ
+
+- केवल Audit Branch source inspected; no database query, SQL execution, runtime JWT test, production change or deployment.
+- No Finance Audit read API बनाया गया; no permissions changed.
+- निष्कर्ष केवल देखे गए `admin.html`, generic audit migration, recovery handler और recovery migration पर आधारित हैं।
