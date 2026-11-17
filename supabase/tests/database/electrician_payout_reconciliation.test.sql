@@ -1,5 +1,5 @@
 begin;
-select plan(54);
+select plan(55);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -373,6 +373,11 @@ select ok(position('collection_totals' in lower(pg_get_functiondef(
   and position('sum(coalesce(b.amount_paid,0))' in lower(pg_get_functiondef(
   'public.srk_admin_commission_report()'::regprocedure)))>0,
   'Admin report totals verified collections independently of payout rows so missing payout records cannot hide customer collections');
+
+
+select ok(position('left join public.srk_electrician_payouts p' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0,
+  'Admin commission report retains completed paid job counts when a payout row is missing, without inventing ledger amounts');
 
 select * from finish();
 rollback;
