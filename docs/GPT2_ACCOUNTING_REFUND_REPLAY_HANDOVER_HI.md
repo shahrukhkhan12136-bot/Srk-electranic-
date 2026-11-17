@@ -898,3 +898,35 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - Main live payout function, trigger definition, payout unique index और bill table catalog read-only queries से inspect किए। Feature payout migration पूरी पढ़ी।
 - कोई Production DDL/DML, migration apply, payout/refund, deployment, merge या mobile QA नहीं किया।
 - Next: exact work-completion RPC transaction ordering और bill immutability/unique constraints inspect करें; commission/category immutability proof लें; फिर legacy/new category × Razorpay/manual × full/partial refund × pending/blocked/paid payout replay matrix GPT-2 के साथ reconcile करें।
+
+
+## Section 31 — Labour Bill transaction ordering, immutability और commission-trigger coverage (2026-11-17)
+
+### 1. Completion transaction order verified in Feature source
+- `20261114240000_server_authoritative_customer_approved_work_timer.sql` (SHA `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe`) में `srk_customer_respond_work_completion(uuid,text,text)` customer ownership और pending completion request lock/verify करती है।
+- Approved response पर उसी transaction में पहले `srk_booking_labour_bills` में final bill INSERT होता है; उसके बाद protected `completed` status transition और `service_charge` update होता है। इसलिए booking payable AFTER trigger fire होने तक bill row transaction में मौजूद होती है। किसी बाद के step में exception आए तो PostgreSQL transaction bill और booking update दोनों rollback करेगी।
+- Bill guard INSERT को उसी transaction के `work_timer_authorizations` record और authenticated actor से बांधता है; booking customer/electrician, stopped timer, pending completion request, category/rate snapshots, elapsed seconds, billable minutes और paise amount server booking snapshot से पुनः verify करता है।
+- Bill table में `booking_id` PRIMARY KEY है; FK booking DELETE पर RESTRICT; customer/electrician FKs भी RESTRICT। UPDATE और DELETE हमेशा reject होते हैं। Labour amount paise-to-rupee consistency CHECK से enforce है। Table RLS enabled और PUBLIC/anon/authenticated table privileges revoked हैं।
+- यह source-level transactional proof है; Main DB पर dependency migrations अभी apply नहीं हैं।
+
+### 2. Work completion Admin review
+- `srk_admin_get_booking_work_review(uuid)` उसी bill row, work event history और complaints को पढ़ता है; Admin auth check मौजूद है।
+- `20261114260000` में customer work-start response fix है; यह final bill creation function को replace नहीं करता। Completion bill path अभी `20261114240000` में defined है।
+- Append-only work event migration अलग से UPDATE/DELETE/TRUNCATE रोकती है; replay verification अभी शेष है।
+
+### 3. Trigger field coverage — refined finding
+- Feature status guard में `selected_category` बदलने पर हमेशा `BOOKING_CATEGORY_IS_IMMUTABLE` raise होता है। इसलिए payout trigger के UPDATE OF list में `selected_category` न होना अकेले bypass नहीं है; approved category immutable है।
+- Main live `srk_calculate_booking_commission()` BEFORE UPDATE OF `commission_rate` trigger से rate को 0–100 range में validate करता है और `commission_amount` recalculate करता है। Main live payout trigger की UPDATE OF list में `commission_rate` नहीं है। अतः यदि commission_rate paid/completed booking पर अलग update हो, commission_amount बदल सकता है पर payout ledger स्वतः recalculate नहीं होगा।
+- Main public function inventory में commission_rate का reference केवल booking guard, commission calculation, finance dashboard और payout functions में मिला; कोई dedicated Admin commission-rate RPC नहीं मिला। फिर भी database-level update path/owner operation को बंद या immutable सिद्ध नहीं किया गया।
+- Safe release choice: either `commission_rate` को payout calculation के लिए immutable snapshot बनाएं/updates रोकें, या payout trigger में `commission_rate` जोड़ें और paid/complete recalculation के replay cases test करें। GPT-2/owner review आवश्यक; अभी कोई code change नहीं किया।
+
+### 4. Main live database cross-check
+- Main live `service_bookings` में `commission_rate` मौजूद और NOT NULL है; `selected_category` अभी absent है।
+- Main live `service_bookings` पर BEFORE commission trigger और AFTER payout trigger मौजूद हैं। Payout trigger field list में commission_rate नहीं है।
+- Main live payout function अभी legacy quote-only है और Main live में `srk_booking_labour_bills` table नहीं मिली। इसलिए Feature timer/bill/payout migration chain Main पर लागू नहीं है।
+- कोई Production DDL/DML, migration apply, payout/refund, deployment, merge या mobile QA नहीं किया।
+
+### 5. Next verification
+- GPT-2 के साथ commission-rate immutability vs trigger-field update decision।
+- Bill insert + completion update + payment transition + payout creation के success/rollback/idempotent replay tests।
+- Refund replay matrix में pending, refund-owned blocked, unrelated Admin blocked और paid payout states; payout-note preservation की assertion।
