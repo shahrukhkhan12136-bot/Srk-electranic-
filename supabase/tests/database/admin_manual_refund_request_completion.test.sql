@@ -58,8 +58,12 @@ select ok(exists(
    where tgrelid='public.srk_electrician_payouts'::regclass
      and tgname='srk_audit_electrician_payouts' and not tgisinternal
   ) and position('payout_note' in lower(pg_get_functiondef(
-    'public.srk_capture_admin_audit_event()'::regprocedure)))>0,
-  'payout status and note transitions are preserved in the append-only Admin audit event stream');
+    'public.srk_capture_admin_audit_event()'::regprocedure)))>0
+  and not has_table_privilege('authenticated','public.srk_admin_audit_events','UPDATE')
+  and not has_table_privilege('authenticated','public.srk_admin_audit_events','DELETE')
+  and not has_table_privilege('anon','public.srk_admin_audit_events','UPDATE')
+  and not has_table_privilege('anon','public.srk_admin_audit_events','DELETE'),
+  'payout status and note transitions are preserved in the protected Admin audit stream; client roles cannot rewrite audit rows');
 
 select * from finish();
 rollback;
