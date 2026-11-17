@@ -1606,3 +1606,23 @@ Both paths contain the same `CREATE OR REPLACE FUNCTION public.srk_electrician_g
 - The source-level payout trigger attachment is now located in `20261116210000`; this closes the earlier question of where the attachment is defined, not whether its behavior passes runtime tests.
 - The amount-paid restoration is explicit and idempotent, but the root bootstrap still needs owner approval.
 - No PostgreSQL parser, clean replay, upgrade replay, trigger execution, or accounting fixture was run. Runtime tests remain **NOT RUN**.
+
+
+## 83. SQL parser and test-runner readiness — 17 Nov 2026
+
+The current Audit Branch test infrastructure was checked without dispatching workflows or contacting a database.
+
+### Repository runner facts
+
+- `package.json` declares only `razorpay` as a runtime dependency and exposes Node tests through `npm test`; it declares no PostgreSQL parser or SQL AST package.
+- No `package-lock.json` is present at the repository root, so the declared Node dependency graph is not lockfile-pinned.
+- No `supabase/config.toml` is present in the current tree.
+- The Node test workflow runs on pushes to `feat/customer-login-first-dashboard-20261114`, pull requests targeting `main`, or manual dispatch. It was not dispatched from this audit.
+- The Supabase schema workflow is `workflow_dispatch` only and has a job-level guard requiring `refs/heads/feature/platform-fee-cash-online-cycle`. It exports schema from a configured remote Supabase connection before starting a local stack; it is not a clean-replay workflow for this Audit Branch. It was not dispatched.
+- The current two accounting bridge suites are present: `admin_labour_bill_payment_accounting_bridge.test.sql` declares plan 19, and `electrician_payout_reconciliation.test.sql` declares plan 34. Each has one `finish()` and one `rollback;` in the source. This is static file inspection only.
+
+### Safe execution decision
+
+Do not repurpose the Production-schema export workflow, do not dispatch a workflow as a substitute for an approved disposable database, and do not claim SQL parser or pgTAP success from test-file inspection. A dedicated isolated PostgreSQL/Supabase test environment, approved bootstrap, and a parser/runtime toolchain are still required.
+
+**Status:** test infrastructure inspected; no workflow dispatched; no dependency installed; no SQL parser executed; no database connected; both accounting pgTAP suites remain **NOT RUN**.
