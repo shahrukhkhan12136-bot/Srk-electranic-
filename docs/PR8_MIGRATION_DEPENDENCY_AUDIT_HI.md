@@ -7216,3 +7216,25 @@ Section 225 should consequently be read as a **deployment/runtime sequencing win
 Keep the dependency documented. Before rollout, either ensure the migration batch is applied atomically / cancellation traffic is gated for the interval, or introduce the request table before installing the trigger branch. Do not claim that migration replay fails solely from this forward reference. A clean isolated replay and a targeted cancellation-transition test are still required for runtime acceptance.
 
 Static source review only. No SQL, database query, migration replay, test, CI dispatch or deployment was run. GPT-2 checklist remains 27/39 = 69%.
+
+
+## 227. KYC Document Preview RPC Has a Forward Reference to the Later KYC Documents Table
+
+### Static source reviewed
+- `supabase/migrations/20261114330000_electrician_private_kyc_document_preview.sql` SHA `1afa584652743e17d87c036c847fb5cd8436609c`.
+- `supabase/migrations/20261115140000_electrician_kyc_review_and_activation_gate.sql` SHA `3b6f6f2434deec960baba386cfc61a00e226c09b`.
+- `electrician.html` SHA `cfe0befb4649eb1a3eeedf2d25b494b9ed1c4d67`.
+
+### Finding
+Migration `20261114330000` creates `public.srk_electrician_get_my_verification_document_path(uuid)`. Its PL/pgSQL body selects `storage_path` from `public.srk_electrician_verification_documents`. The referenced table is created later in `20261115140000`, not by the earlier preview-RPC migration.
+
+The application file `electrician.html` calls this RPC from `openVerificationDocument()` (around line 662) and again during upload-result reconciliation (around line 710). The same page also calls `srk_electrician_list_my_verification_documents()`, which is introduced by the later KYC lifecycle migration. This confirms the dependency is exercised by application code, not merely an unused SQL reference.
+
+Because the reference is inside a PL/pgSQL function body, static inspection does not establish that creating/replaying migration 14330000 fails. It does establish a deployment-order requirement: if the application version exposing KYC preview/reconciliation is live after 14330000 but before 15140000, calls to the preview RPC can fail because the table is not yet present; the list/submit workflow also depends on the later migration's objects. Whether the actual rollout deploys the application and migration batch atomically was not established.
+
+### Required action
+- Apply the KYC table/storage/RPC lifecycle migration before exposing the corresponding electrician UI, or deploy the relevant migrations as one atomic/gated release.
+- Keep the preview RPC and KYC UI behind a readiness condition until `srk_electrician_verification_documents` and the list/submit RPCs exist.
+- Add a migration-order assertion that checks function-body relation dependencies against object-creation versions, plus a targeted post-migration KYC preview/upload test in an isolated database.
+
+Static source review only. No SQL, database query, migration replay, pgTAP, browser test, CI dispatch or deployment was run. This is a confirmed forward dependency and rollout-order requirement, not a reproduced migration failure. GPT-2 checklist remains 27/39 = 69%.
