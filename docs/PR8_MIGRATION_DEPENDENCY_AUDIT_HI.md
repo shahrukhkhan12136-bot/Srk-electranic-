@@ -1273,3 +1273,38 @@ This section records additional exact-file inspection on the Audit Branch. It is
 5. Admin refund decisions must remain separate from money movement; approval/review RPCs are not evidence that a refund was sent.
 
 **Status:** static dependency evidence expanded; PostgreSQL Parser, clean replay, pgTAP and concurrency tests remain **NOT RUN**. No database or provider was contacted.
+
+
+## 75. Offer dispatch, work lifecycle, availability and support dependencies — 17 Nov 2026
+
+Six migration files were re-read directly from the Audit Branch. Blob SHA values below identify the exact source inspected.
+
+| Migration | Blob SHA | Objects / change verified | Direct source dependencies |
+|---|---|---|---|
+| `20261114210000_sequential_nearest_offer_dispatch.sql` | `e56bee06fa8e4684e93cdb33938458ea4a7ed462` | Creates `srk_booking_offer_dispatch` and `srk_booking_offer_candidates`; adds `job_offers.expires_at`; dispatch, candidate-offer, response and expiry RPCs; new-booking trigger | `service_bookings`, `electrician_profiles`, `job_offers` |
+| `20261114230000_recheck_electrician_current_area_before_offer.sql` | `19a380e5a0e0b21c23d166d79ade8fa64f6694f7` | Replaces `srk_dispatch_next_booking_offer` to re-check current operating area | Dispatch/candidate objects and electrician current-area fields |
+| `20261114240000_server_authoritative_customer_approved_work_timer.sql` | `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe` | Creates work timer/transition authorization tables and immutable labour bill; adds multiple work-timer, approval and rate-tier snapshot columns to bookings; replaces work/offer RPCs | Bookings, electrician profiles, `job_offers`, dispatch tables, complaint/cancellation contracts |
+| `20261114250000_admin_work_dispute_review_and_immutable_history.sql` | `1bfb04b90aebeb644cdfa52096222f8d1d8175ec` | Creates `srk_booking_work_events`, capture trigger/function and Admin work-review RPC | Bookings, labour bills and complaint records |
+| `20261114310000_electrician_self_availability.sql` | `24becb0ef0de0e1d3721bcdd3e22897c0c8e2fc3` | Adds `electrician_profiles.available_for_work`; creates availability event table and self-service RPC | Electrician profiles, `job_offers`, dispatch-next RPC |
+| `20261114320000_booking_scoped_live_electrician_location.sql` | `70691ae383e114c7c5b0132f6b29eff6810f8155` | Creates booking-scoped live-location table, consent/start/update/stop/read RPCs and booking-transition stop trigger | Bookings and electrician profiles |
+| `20261114350000_electrician_support_tickets_and_admin_inbox.sql` | `6d95af8162cddf820df9fb5ea39161d2e0594d3f` | Creates electrician support-ticket and message tables plus electrician/Admin RPC family | Electrician profiles and bookings; Admin identity helper contract |
+
+### Dependency and behavioral findings
+
+- The dispatch migration's source explicitly describes one active offer per booking and sequential candidate progression; the next-area-check migration replaces the dispatcher rather than creating an independent dispatch path.
+- The availability RPC closes currently offered jobs when an electrician switches off availability, then calls the dispatcher to advance those bookings. This creates a direct dependency on the dispatch RPC being installed first.
+- The work-timer migration replaces `srk_respond_to_offer` and uses dispatch tables/functions. Its numbered order follows the dispatch foundation.
+- The dispute-review migration reads the immutable labour bill and complaint records; the work-timer and complaint foundations therefore precede it.
+- The live-location migration is assignment/booking scoped and grants authenticated execution to its RPCs. Runtime proof of authorization boundaries and automatic stop behavior remains required.
+- The electrician support inbox is separate from customer complaint conversations; its Admin RPCs depend on the Admin helper contract, which is still not fully traced to a canonical baseline.
+
+### Open verification gates
+
+1. Verify the exact column-level prerequisite set for dispatch candidate eligibility (identity, approval, operating area, coordinates, availability and selected rate tier) against a canonical baseline.
+2. Verify trigger replacement/ordering for new-booking dispatch and work status transitions, including whether an old trigger remains attached after each replacement.
+3. Exercise concurrent offer expiry, decline, availability-off and reassignment; static SQL cannot establish single-live-offer behavior under races.
+4. Verify work timer authorization cannot be replayed, forged or reused across bookings, and that the immutable labour bill is created exactly once.
+5. Verify live-location reads are limited to the assigned customer and that stop triggers cover every terminal/reassignment transition.
+6. Verify support ticket Admin checks against the canonical Admin helper and test cross-electrician isolation.
+
+**Status:** six migration sources inspected and their direct dependency edges recorded. This is not a complete 89-file graph and is not PostgreSQL parse/replay evidence. Runtime tests remain **NOT RUN**; no database, location provider or notification provider was contacted.
