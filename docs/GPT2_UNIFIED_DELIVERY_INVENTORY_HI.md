@@ -689,3 +689,11 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 
 - Static standards review found that `stableObservationId` derives 128 bits from SHA-256, but had marked the UUID version nibble as version 5 (which conventionally identifies the SHA-1 namespace/name algorithm). Changed the version nibble to 8, the custom UUID format, while retaining the RFC variant bits and deterministic SHA-256 derivation. This is a format/semantics correction; the ID remains stable for the same refund-record ID and provider payload hash.
 - Updated the regression assertion from UUID version 5 to UUID version 8. Test remains unexecuted; no runtime/CI/DB test was run.
+
+
+## 3AI. 17 November 2026 — Razorpay webhook overall deadline and completion reserve
+
+- razorpay-webhook.js now starts a 52,000 ms overall Handler budget, below the documented 60-second Netlify synchronous ceiling; actual live Site deployment/runtime remains unverified.
+- All Supabase inbox, booking, payment-breakdown, settlement and refund reconciliation requests now use AbortSignals bounded by the shared deadline. Pre-completion work reserves 15,000 ms for the separate durable inbox completion RPC. If the budget is exhausted after a claim, processing stops and the catch path uses the reserved time to mark the event retryable; provider retry is requested with HTTP 500. The claim RPC also keeps the completion reserve. Completion calls use the remaining time without a further reserve.
+- Added a Node regression test that advances a fake clock after booking lookup and verifies the payment breakdown/settlement RPCs are not dispatched, while the inbox claim is marked retryable using the reserved budget. Test source is present but has NOT been executed. No CI, DB, live webhook, provider, deployment, production or mobile test was run.
+- Source blob SHA 8e735a7f2b1c6f36b993096efcacb143efd8af01; new test source will be re-fetched and verified after documentation commit.
