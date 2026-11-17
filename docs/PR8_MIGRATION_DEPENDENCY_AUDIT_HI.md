@@ -5563,3 +5563,43 @@ Invite success path में actor, target, action और fixed Support role �
 ### 5. Verdict
 
 सफल Staff/Admin workflow events में actor attribution अधिकांशतः current authenticated user (`auth.uid()`) से जुड़ी है; invite path verified Edge Function actor ID का उपयोग करता है। Session registration event स्वयं Staff identity को actor बताता है। Success-path event coverage उपयोगी है, लेकिन denied/failed security attempts की durable audit coverage शेष gap है। यह source-level review है; live audit rows या deployed privileges verify नहीं हुए। कोई source file, migration, test, permission या database setting नहीं बदली गई; कोई test/pgTAP/DB query/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
+
+
+## 179. Staff Audit Table — RLS, Direct Access और Read RPC Security Review
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** `20261114390000_admin_staff_rbac_foundation.sql` की Staff Audit Table, append-only controls और audit-read function का static source review।
+
+### 1. Table और Direct Access
+
+- `srk_admin_staff_audit_events` पर Row Level Security enable है।
+- इस migration में इस Audit Table के लिए कोई `CREATE POLICY` / `ALTER POLICY` statement नहीं मिला।
+- `public`, `anon` और `authenticated` से Table तथा identity Sequence के direct privileges revoke किए गए हैं।
+- इसलिए browser roles के लिए direct table/sequence access का रास्ता migration में बंद किया गया है; पढ़ने का घोषित रास्ता सीमित RPC है।
+- `actor_user_id` और `target_user_id` पर foreign key नहीं है। Migration comment का उद्देश्य Auth user deletion के कारण FK `SET NULL` update से append-only guard टकराने से बचना है। इससे ऐतिहासिक UUID बने रह सकते हैं, लेकिन वे स्वतः जीवित Auth user की मौजूदगी की गारंटी नहीं देते।
+
+### 2. Append-only Controls
+
+- BEFORE UPDATE और BEFORE DELETE row trigger, तथा BEFORE TRUNCATE statement trigger, mutation-guard function चलाते हैं।
+- Guard function हर ऐसे प्रयास पर `ADMIN_STAFF_AUDIT_IS_APPEND_ONLY` exception उठाता है।
+- Trigger function पर browser roles का direct EXECUTE भी revoke है।
+- यह source-defined नियंत्रण है; privileged database owner/superuser द्वारा trigger disable या schema-level बदलाव की संभावना का यह निषेध नहीं करता।
+
+### 3. Audit Read RPC
+
+- `srk_admin_list_staff_audit_events(uuid,integer)` SECURITY DEFINER है और `search_path = ''` सेट करता है।
+- Function पहले `auth.uid()` मौजूद होने और `is_srk_admin()` true होने की जाँच करता है; अन्यथा `MAIN_ADMIN_ONLY` exception देता है।
+- Query केवल उन rows को लौटाती है जहाँ दिया गया Staff UUID `actor_user_id` या `target_user_id` है; परिणाम `created_at DESC, id DESC` क्रम में आते हैं।
+- Limit को 1 से 300 के बीच clamp किया गया है; null limit के लिए default 100 है।
+- Function execute अधिकार `authenticated` को दिया गया है, लेकिन Main Admin gate function के भीतर है। यह पूरे audit stream का global export endpoint नहीं है।
+- Returned columns में पूरा `details` JSONB शामिल है; इसलिए सभी writers में details payload को credentials, tokens, message bodies और अनावश्यक निजी जानकारी से मुक्त रखना महत्वपूर्ण है।
+
+### 4. शेष Evidence Gap
+
+- यह केवल migration source review है। Live database में RLS state, deployed grants, effective function definition, trigger attachment/enforcement और वास्तविक Main Admin/Support Staff requests verify नहीं किए गए।
+- No-FK design historical actor/target UUID बचाता है, पर audit viewer को deleted/unknown user IDs के लिए सुरक्षित display fallback चाहिए; इस migration के इस read function में display-name join नहीं है।
+- कोई behavioral test या pgTAP assertion इस audit step में नहीं चलाया गया; details JSONB की संवेदनशीलता भी सभी writers के runtime payload से सत्यापित नहीं हुई।
+
+### 5. Verdict
+
+Migration source में direct browser access बंद, append-only mutation guards और Main Admin-only scoped read RPC का स्पष्ट design है। RLS चालू है और Audit Table के लिए policy DDL नहीं है; access model RPC-केंद्रित है। फिर भी live deployment, वास्तविक role enforcement और audit details की content hygiene अप्रमाणित हैं। कोई source migration/test/permission/database setting नहीं बदली गई; कोई SQL/DB query/pgTAP/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
