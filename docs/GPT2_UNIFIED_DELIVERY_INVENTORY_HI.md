@@ -451,3 +451,13 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - Source files re-read: `PORTAL_SCHEMA.sql`, `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`, `20261116210000_attach_electrician_payout_reconciliation_trigger.sql`, `electrician_payout_reconciliation.test.sql`.
 - No database/pgTAP execution, source migration edit, Production query, payout/refund operation, merge or deployment performed for this finding.
 - Official GPT-2 progress remains **27/39 = 69%**.
+
+
+### 3M. Owner approval और legacy commission trigger retirement — source migration (17 Nov 2026)
+
+- Owner ने पुराने `srk_booking_commission_trigger` को obsolete मानकर additive migration में हटाने की स्पष्ट अनुमति दी।
+- नई migration `20261117120000_retire_legacy_booking_commission_trigger.sql` केवल `public.service_bookings` से `srk_booking_commission_trigger` को `DROP TRIGGER IF EXISTS` करती है।
+- Legacy function `srk_calculate_commission_on_completion()` को जानबूझकर delete नहीं किया; compatibility के लिए function definition बनी रहती है, लेकिन अब यह booking completion पर commission overwrite नहीं कर सकती।
+- Authoritative labour-only commission assignment पहले से मौजूद `zz_srk_set_booking_commission_before_payout` verified-payment trigger के पास रहता है।
+- Migration source branch पर commit हुई; इसे किसी database पर apply नहीं किया गया। PostgreSQL migration replay, pgTAP/runtime test और payout/refund side-effect test अभी pending हैं।
+- यह source change अपने-आप checklist item को complete नहीं करता; official GPT-2 progress **27/39 = 69% complete; 12 remaining** अपरिवर्तित है।
