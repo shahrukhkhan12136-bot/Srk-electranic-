@@ -3157,3 +3157,38 @@ Section 126 के बाद Migration directory के वास्तविक
 - Root bootstrap SQL का migration directory से अलग होना: **source-confirmed**.
 - Actual runner order / live DB helper presence / replay outcome: **unknown; not tested**.
 - No SQL/migration/helper change, no database query, no PostgreSQL replay/pgTAP, no CI/deployment/merge.
+
+## 128. Staff RBAC से पहले की migrations में भी current Admin helper calls — 17 Nov 2026
+
+Section 127 के बाद एक अतिरिक्त dependency scan किया गया। Repository code-search से मिले candidate paths को Audit Branch पर अलग से fetch करके सत्यापित किया गया।
+
+### 128.1 Timestamped migrations में पहले के calls
+
+- `20261108234000_combine_booking_read_policy.sql` (blob `d5925919ce9cb312349f5ca39916453cdc5262fa`, line 12) policy expression में `public.is_srk_admin()` call करता है।
+- `20261109001000_add_google_maps_location_support.sql` (blob `465097e26a93cff333289ecd6b18db4dd373622a`, line 27) Admin check में `public.is_srk_admin()` call करता है।
+- `20261109003000_secure_commission_reporting.sql` (blob `9b4ed1529ea2a6e4da4ba0804bdbc9b3612627b9`, line 19) Admin authorization में यही helper call करता है।
+- `20261109010000_create_secure_wallet_ledger_foundation.sql` (blob `6b5871d6fcc10fa225a5bbb8e26911b7027e2043`, line 158) भी यही helper call करता है।
+- `20261113230000_support_attachment_paths_and_admin_message_list.sql` (blob `aaeb6f0d7efe680735039a0a516bd5fcce2dafa0`, lines 57 और 98) दो functions में यही helper call करता है।
+- ये सभी migrations Staff RBAC foundation `20261114390000_admin_staff_rbac_foundation.sql` से timestamp में पहले हैं। इनमें से जाँची गई files helper को स्वयं define नहीं करतीं।
+
+### 128.2 इसका असर
+
+- Helper dependency केवल Staff RBAC migration तक सीमित नहीं है। Migration-only clean replay में current `is_srk_admin()` की जरूरत पहले की timestamped migrations में ही सामने आती है।
+- Root-level `COMPLETE_DATABASE_SETUP.sql` में current helper definition मौजूद है, इसलिए यदि documented bootstrap step पहले और सफलतापूर्वक चलता है तो यह dependency पूरी हो सकती है।
+- यदि runner केवल timestamped migration directory से शुरू होता है और bootstrap SQL पहले नहीं चलती, तो पहली relevant migration पर helper dependency unresolved हो सकती है। यह source-level risk है; PostgreSQL runtime failure अभी प्रमाणित नहीं है।
+- पुराना `srk_is_admin()` helper इन current-name calls का स्वतः विकल्प नहीं है; दोनों अलग function names हैं।
+
+### 128.3 Replay के लिए नया अनिवार्य निर्णय
+
+1. सभी migration runs से पहले `is_srk_admin()` की definition उपलब्ध कराने वाला bootstrap contract लिखित और reproducible होना चाहिए।
+2. वैकल्पिक रूप से, helper को migration chain में ऐसी शुरुआती migration से उपलब्ध कराने का reviewed design बने जो पहली caller migration से पहले चले। अभी कोई migration edit नहीं किया गया।
+3. Clean replay test को कम-से-कम earliest caller `20261108234000` से शुरू करके वास्तविक runner order में चलाया जाए।
+4. Replay log में earliest caller से पहले helper existence, function owner/grants और policy/function creation success रिकॉर्ड हों।
+
+### Status
+
+- पाँच earlier timestamped migration files में current helper calls: **source-confirmed on Audit Branch**.
+- उन पाँच inspected migration files में helper definition नहीं मिली: **source-confirmed for inspected files only**.
+- Root setup bundle में helper definition: **Section 126 के अनुसार source-confirmed**.
+- Full repository के हर SQL/PLpgSQL caller/definition की exhaustive inventory और actual clean replay: **अभी बाकी / runtime untested**.
+- No SQL/schema/helper/migration change, no database query, no PostgreSQL replay/pgTAP, no CI/deployment/merge.
