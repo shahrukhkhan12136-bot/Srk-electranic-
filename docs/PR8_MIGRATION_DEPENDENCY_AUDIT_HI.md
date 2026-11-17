@@ -2315,3 +2315,35 @@ Audit recommendation: add a regression test asserting NULL `p_method` is rejecte
 - No source fix, data update, or database execution performed.
 
 Recommendation: payment-method validity assertion को parity validator में भी जोड़ें, और payout writer trigger को `payment_method` updates पर attach करने की जरूरत है या नहीं—product/data contract के अनुसार तय करें। यदि attach किया जाए तो upsert side effects और paid/blocked/refunded payout guards के regression tests अनिवार्य हैं।
+
+
+## 103. Official legacy manual-payment RPC vs payout trigger amount parity — source alignment confirmed — 17 Nov 2026
+
+Migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` के `srk_admin_record_manual_payment(uuid,text,text,text)` को payout writer और commission bridge के साथ cross-check किया गया।
+
+### 103.1 Calculation alignment
+
+- RPC केवल legacy approved-quote booking स्वीकार करता है; `selected_category IS NOT NULL` पर dedicated settlement की ओर रोकता है।
+- यह service और materials को paise में round करके total बनाता है और `quoted_amount` से exact match माँगता है।
+- Commission केवल service/labour पर calculate होती है; materials पर platform commission नहीं लगाया जाता।
+- RPC booking को paid/verified और method-set करता है, फिर payout insert करता है; उसी booking UPDATE पर payout AFTER trigger भी चल सकता है।
+- Payout trigger legacy approved quote के लिए service + materials total validate करता है, commission service amount पर calculate करता है और electrician payable = service + materials - commission लिखता है।
+- RPC की commission/payable calculation और trigger की 2-decimal calculation source में समान formula पर आधारित हैं। RPC बाद में payout row को electrician, status pending, service, materials, commission, payable और Razorpay ID NULL के विरुद्ध verify करता है।
+- Existing payout mismatch होने पर RPC exception उठाता है; transaction atomicity के कारण payment evidence/booking update/payout changes rollback होने चाहिए। यह PostgreSQL runtime में अभी execute नहीं किया गया।
+
+### 103.2 Trigger ordering / side-effect boundary
+
+- `srk_reconcile_electrician_payable` AFTER trigger booking UPDATE पर payout upsert करता है।
+- RPC का explicit payout INSERT `ON CONFLICT (booking_id) DO NOTHING` है; इसके बाद row lock करके expected values जाँची जाती हैं।
+- Trigger का conflict UPDATE केवल `payout_status='pending'` पर होता है। Paid/blocked/refunded rows को यह upsert overwrite नहीं करता।
+- Parity AFTER trigger alphabetically बाद में चलता है और booking commission को payout platform commission से compare करता है।
+
+### 103.3 Status
+
+- Official legacy RPC input guards and amount formulas: **source-confirmed**.
+- RPC/trigger calculation contract alignment: **source-confirmed**.
+- Existing payout mismatch rejection path: **source-confirmed**.
+- Transaction rollback, concurrent RPC calls, and trigger execution order in an actual PostgreSQL instance: **not runtime-verified**.
+- No source changes, DB execution, or payment/payout mutation performed.
+
+यह finding Section 99–102 के NULL-method/alternate-write-path caveats को सीमित करती है: official RPC का सामान्य valid manual-payment path method, evidence, booking और payout को एक coherent transaction में बाँधता है; remaining uncertainty alternate privileged paths, legacy rows, concurrency और actual runtime proof की है।
