@@ -6100,3 +6100,39 @@ Static migration inspection से SOS migration की ये prerequisites स
 SOS migration का immediate RBAC ordering सही दिखाई देता है: Staff RBAC migration पहले और SOS migration बाद में है। फिर भी base booking/profile schema provenance इस migration subset से पूरी तरह स्थापित नहीं हुई, इसलिए clean-replay readiness को confirmed नहीं कहा जा सकता। यह static ordering/dependency review है, successful replay का दावा नहीं।
 
 केवल GitHub migration/test source inspection और documentation update हुआ। कोई SQL/pgTAP execute, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+## 193. SOS Canonical Base Schema Provenance — Manual Setup SQL बनाम Versioned Migrations
+
+**तारीख:** 17 नवंबर 2026  
+**संबंधित migration:** `20261115260000_sos_admin_support_alerts.sql`
+
+### 1. Section 192 का सटीक सुधार
+
+Section 192 में कहा गया था कि migration directory में `service_bookings` और `electrician_profiles` के canonical CREATE TABLE definitions नहीं मिले। विस्तृत repository-root जाँच में दो manual setup scripts में ये definitions मिलीं:
+
+- `SUPABASE_SCHEMA.sql` — SHA `8ae88a7035bc963b244f22c6c1450c22618ec88f`; इसमें दोनों base tables बनते हैं।
+- `COMPLETE_DATABASE_SETUP.sql` — SHA `2b806e727f449ba18e71ad23edef805ceb2da2b5`; इसमें भी दोनों base table definitions हैं।
+- `PORTAL_SCHEMA.sql` — SHA `efc14aa623a3895ffb3841b7b0f226f2015f34b1`; यह existing `electrician_profiles` पर `user_id` जोड़ता है।
+
+इसलिए tables के शुरुआती definitions repository में मौजूद हैं; लेकिन वे timestamped `supabase/migrations/` files नहीं, बल्कि अलग से चलाए जाने वाले setup SQL scripts हैं। Section 192 की “definitions नहीं मिलीं” बात को इसी सीमा तक सुधारना चाहिए—इन scripts की clean replay में वास्तविक execution/ordering अभी भी प्रमाणित नहीं है।
+
+### 2. SOS द्वारा उपयोग किए जाने वाले आवश्यक columns की provenance
+
+- Base `SUPABASE_SCHEMA.sql` में `service_bookings.customer_name`, `phone`, `status`, `assigned_electrician_id` और `electrician_profiles.display_name`, `phone` मौजूद हैं।
+- `20261108121115_add_customer_account_booking_access.sql` (SHA `9877bb969b380d306567322eb110d81eaaa4c115`) `service_bookings.customer_user_id` जोड़ता है।
+- `PORTAL_SCHEMA.sql` `electrician_profiles.user_id` जोड़ता है।
+- `20261109000500_harden_electrician_profile_identity_linking.sql` (SHA `132463d6f1aeffd7367d23143d64aa85d82bf176`) `electrician_profiles.auth_user_id` जोड़ता है।
+- `20261114160000_customer_selected_rate_tier_and_server_estimate.sql` (SHA `940943827c648bd9877faccc52844b81996bfcab`) `service_bookings.selected_category` जोड़ता है; SOS creation इसी column को active-work booking filter में पढ़ता है।
+
+### 3. Clean-Replay का वास्तविक जोखिम
+
+SOS migration इन tables/columns को पहले से मौजूद मानती है और `%rowtype` declarations तथा direct column references उपयोग करती है। Versioned migration chain में इनकी पूरी baseline स्थापना एकसमान नहीं है: कुछ prerequisites root-level manual scripts से आती हैं, जबकि कुछ बाद की timestamped migrations से। केवल filename order देखने से यह साबित नहीं होता कि नया खाली Supabase project पहले सही setup scripts से initialize होगा और फिर सभी migrations सही क्रम में चलेंगी।
+
+विशेष रूप से, clean replay manifest में यह स्पष्ट होना चाहिए कि `SUPABASE_SCHEMA.sql` या `COMPLETE_DATABASE_SETUP.sql` में से कौन-सा canonical baseline है; `PORTAL_SCHEMA.sql` कब और किस रूप में लागू होता है; तथा उसके बाद `customer_user_id`, profile identity columns और `selected_category` वाली migrations किस क्रम में चलती हैं। दोनों बड़े setup scripts को एक-दूसरे के साथ blindly चलाने से duplicate/पुराने definitions का जोखिम भी अलग से जाँचना होगा।
+
+### 4. Verdict और Evidence Boundary
+
+अब यह कहना सही है कि base table definitions repository में मौजूद हैं, लेकिन वे versioned migration chain के बाहर manual setup SQL में हैं। SOS migration के जरूरी अतिरिक्त columns की कुछ provenance पहचानी गई है। फिर भी canonical fresh-install path और पूर्ण clean replay अभी **unverified** हैं। अगला सुरक्षित static कदम setup scripts और migration history के बीच पूरा schema-diff/inventory बनाना है; कोई shared/Production DB operation इस audit से अधिकृत नहीं है।
+
+यह केवल GitHub source inspection और इस report का documentation update है। कोई SQL/pgTAP execute, database query, migration replay, application source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
