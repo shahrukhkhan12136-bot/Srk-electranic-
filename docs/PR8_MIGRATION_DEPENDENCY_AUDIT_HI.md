@@ -1854,3 +1854,31 @@ There is also a maintenance hazard: the portal and email-login scripts each recr
 
 **Status:** helper definitions and call sites source-verified in the four root scripts and named numbered migrations. No clean database replay, catalog inspection, SQL parser run, or live RLS behavior test was performed. Canonical baseline remains **UNRESOLVED**.
 
+## 92. Numbered migration chain has an external core-schema prerequisite — 17 Nov 2026
+
+The first numbered migrations were checked for whether they establish the core marketplace tables themselves or assume those tables already exist.
+
+### Source evidence
+
+- The first migration, `20261108120608_add_public_api_rate_limiting.sql`, creates the `private` schema, its rate-limit table, and a service-role-only function. It does not create the marketplace's core public tables.
+- The next relevant migration, `20261108121115_add_customer_account_booking_access.sql`, immediately alters `public.service_bookings`, adds a foreign key to `auth.users`, creates an index, and installs a customer SELECT policy.
+- `20261108233500_restrict_public_form_inserts.sql` alters policies and privileges on both `public.service_bookings` and `public.electrician_applications`.
+- `20261109000500_harden_electrician_profile_identity_linking.sql` alters `public.electrician_profiles` and references its existing `user_id`, `phone`, and `verification_status` columns.
+- `20261109002000_expose_assigned_booking_map_pin.sql` joins `job_offers`, `electrician_profiles`, and `service_bookings`.
+- The root-level `SUPABASE_SCHEMA.sql` contains the initial `CREATE TABLE` definitions for `service_bookings`, `electrician_applications`, and `electrician_profiles`, and later creates `job_offers`. These base definitions are not represented as an initial numbered migration in the inspected migration directory.
+
+### Finding
+
+**The numbered migration directory is not a self-contained empty-database bootstrap.** At minimum, the chain expects a pre-existing core schema before migration `20261108121115`; later migrations also expect the root-script tables and columns. Therefore, applying the numbered files to an empty PostgreSQL/Supabase database in filename order is not a valid clean-replay test unless a documented, versioned baseline is applied first.
+
+This is a concrete dependency blocker, not merely a tooling limitation. It also explains why choosing `SUPABASE_SCHEMA.sql` or `COMPLETE_DATABASE_SETUP.sql` as a baseline without proving their exact historical alignment would be unsafe: they are mutable root scripts and may already include objects or policies that later migrations expect to create or replace.
+
+### Required next step
+
+1. Establish the exact baseline schema version that existed immediately before `20261108120608`.
+2. Capture it as an immutable, owner-approved baseline artifact or reconstruct it from authoritative migration history.
+3. Replay the numbered migrations from that baseline in an isolated PostgreSQL environment.
+4. Record the first failure and dependency graph; do not patch historical migration identities merely to make replay pass.
+
+**Status:** prerequisite is source-verified from the first migration files and root starter schema. No database was initialized, no SQL was executed, and no runtime replay was attempted. Canonical baseline and clean replay remain **BLOCKED / UNRESOLVED**.
+
