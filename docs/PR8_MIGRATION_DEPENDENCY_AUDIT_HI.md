@@ -7351,3 +7351,29 @@ PL/pgSQL function body में relation reference होने से migratio
 - Isolated PostgreSQL में बीच की migration अवस्था पर targeted invocation और full ordered replay दोनों जाँचें।
 
 Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह forward runtime dependency है, reproduced failure नहीं। GPT-2 checklist remains 27/39 = 69%.
+
+
+## 233. Legacy Completion Commission Trigger पुराने Quote Total को Interim Commission में लिख सकता है
+
+### Static source reviewed
+- `PORTAL_SCHEMA.sql` SHA `efc14aa623a3895ffb3841b7b0f226f2015f34b1`.
+- `COMPLETE_DATABASE_SETUP.sql` SHA `2b806e727f449ba18e71ad23edef805ceb2da2b5`.
+- `supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` SHA `68189051090a51bef26a98997caf103b62ed070c`.
+- `supabase/tests/database/electrician_payout_reconciliation.test.sql` SHA `88184e2e1fb386f16d6bd339556a15a5b87275d2`.
+
+### Finding
+Baseline schema `PORTAL_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` दोनों में `srk_booking_commission_trigger` नाम का `BEFORE UPDATE OF status` trigger मौजूद है। यह `srk_calculate_commission_on_completion()` चलाता है, जो पहली बार status `completed` होने पर commission को `new.quoted_amount * new.commission_rate / 100` से सेट करता है।
+
+बाद की migration `20261117010000` अलग `zz_srk_set_booking_commission_before_payout` BEFORE trigger बनाती है, जो commission केवल तब labour/service amount से सेट करती है जब booking completed, paid, payment-verified और Razorpay या matching manual-payment evidence से समर्थित हो। यह migration पुराने `srk_booking_commission_trigger` को drop या replace नहीं करती।
+
+PostgreSQL के समान timing वाले row-level BEFORE triggers नाम के alphabetical क्रम में चलते हैं। इसलिए legacy `srk_booking_commission_trigger`, नए `zz_srk_set_booking_commission_before_payout` से पहले चलता है। यदि booking पहले completed होती है लेकिन payment अभी verified नहीं है, तो legacy trigger quoted total पर commission लिख सकता है और नया trigger अपने early-return path के कारण उसे उसी update में labour-only value से नहीं बदलता। बाद के qualifying payment update पर नया trigger commission overwrite कर सकता है।
+
+यह baseline + additive migration के बीच confirmed source-level coexistence है। इससे वास्तविक payout गलत हुआ या database में गलत स्थायी राशि बनी रही, ऐसा runtime प्रमाण उपलब्ध नहीं है। नई payout reconciliation और parity triggers के कारण qualifying paid/completed transition पर बाद में consistency check होता है; interim अवस्था और trigger interactions को runtime में जाँचना बाकी है।
+
+### Required action
+- Project owner से तय करें कि legacy completion trigger अभी भी किसी compatibility flow के लिए आवश्यक है या obsolete है।
+- यदि obsolete है, तो पहले isolated PostgreSQL में पुराने और नए trigger के संयुक्त व्यवहार की जाँच करें; उसके बाद ही अलग additive migration में सुरक्षित रूप से retire/replace करने पर विचार करें।
+- pgTAP/runtime coverage में completed-unpaid, बाद में verified-paid, legacy quote जिसमें materials शामिल हों, matching/mismatching manual evidence और transaction rollback scenarios जोड़ें।
+- Existing baseline या applied migration history को सीधे rewrite न करें।
+
+Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह confirmed trigger coexistence और संभावित interim commission-value concern है, reproduced payout defect नहीं। GPT-2 checklist remains 27/39 = 69%.
