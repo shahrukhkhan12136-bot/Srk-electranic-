@@ -578,3 +578,58 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 ### Change boundary
 - This section records source and connected-Main audit findings only. No application code, SQL migration, database schema/data, Auth user, invitation, email, provider action, deployment, or PR merge was changed or triggered.
 - PR #8 remains Open, Draft, and Unmerged. No mobile QA was performed.
+
+
+## Section 22 — Admin UI ↔ Main live RPC contract comparison (2026-11-17)
+
+### Snapshot revalidation
+- PR #8 फिर से जाँचा: Open, Draft, Unmerged; target Feature branch वही है।
+- `admin.html` blob SHA अभी भी `6b29511a1ecfab93b5689dff23012078091e57fc` है।
+- Main public catalog में पहले मिले 17 Admin RPC के exact argument names, return types, SECURITY DEFINER, volatility, search_path और grants पढ़े। सभी 17 के लिए anon EXECUTE=false और authenticated EXECUTE=true है। यह authenticated runtime behavior का test नहीं है।
+- 36 unresolved RPC names को सभी PostgreSQL schemas के `pg_proc` catalog में दोबारा खोजा; exact name matches किसी schema में नहीं मिले। इसलिए इन्हें केवल public-schema miss नहीं माना जा रहा।
+
+### Confirmed high-impact contract mismatches
+
+**A. Customer Refund Review**
+- Feature Admin UI calls `srk_admin_decide_booking_refund_request` with named JSON arguments `p_request_id`, `p_decision`, `p_admin_note`; it requires an audit note of 10–2000 characters.
+- Feature migration `20261115110000_admin_refund_review_queue_and_decisions.sql` defines the same `p_decision` argument and enforces the 10–2000 character note.
+- Main live function currently exposes `p_request_id uuid, p_status text, p_admin_note text DEFAULT NULL`; it does not expose the UI's `p_decision` argument name and only caps the note at 2000 rather than enforcing the Feature minimum. This named-argument mismatch can make the UI RPC call fail.
+- Refund queue mismatch is also confirmed: Feature UI expects row keys such as `request_id`, `booking_status`, `request_amount`, `request_reason`, `request_status`, `processed_at`, labour/refund/payout recovery fields. Feature migration defines that projection. Main live function currently returns a different row contract including `id`, `amount`, `reason`, `status`, and a smaller legacy projection. The UI reads `request_id`, `request_status`, `request_amount`; those values do not match the Main return names.
+- Therefore this is not merely a missing migration ledger entry: a live function with the same name exists but is contract-incompatible with the current Admin UI. Keep refund approval separate from actual provider refund execution; the UI itself states approval does not send money.
+
+**B. Manual Refund**
+- Function name and signature exist in Main: `srk_admin_record_manual_refund(p_booking_id uuid,p_reference text,p_note text DEFAULT NULL)`, matching the UI argument names.
+- But Main live body is the older manual-payment-only flow: it requires a manual payment entry, rejects Razorpay-linked bookings, blocks if electrician payout is already paid, inserts manual refund entry, and marks booking refunded.
+- Feature migration `20261115130000_admin_manual_refund_request_completion.sql` adds completion of an approved Customer refund request and reconciles the newer labour/cancellation-fee accounting contract. Same function signature does not mean equivalent behavior. Do not assume the Main implementation completes the new Customer refund request lifecycle.
+
+**C. Manual Payment**
+- Main live `srk_admin_record_manual_payment(uuid,text,text,text)` matches the UI's argument names, but its current body is the older legacy quote flow: completed booking, approved quote, no Razorpay IDs, and amount = service_charge + materials_amount.
+- Feature migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` replaces it with paise-based labour/materials/commission/payout consistency. UI separately calls `srk_admin_record_new_booking_cash_payment` for server-timed/category bookings; that RPC did not resolve in Main.
+- Consequence: the Main function's existence does not prove the newer itemized/manual-payment behavior is installed. The new-category Cash path is a definite missing RPC dependency.
+
+**D. Electrician Payout**
+- Main live `srk_admin_mark_electrician_payout_paid(uuid,text,text,text)` signature matches UI arguments and allows only `upi` / `bank`, denies anon and grants authenticated.
+- Feature migration `20261114360000_new_category_electrician_payout_reconciliation.sql` replaces the body with checks against the immutable labour bill and category-booking payment/payout parity. The Main live body inspected is still legacy quote/service-charge/materials reconciliation and does not establish that the Feature's new-category labour-bill contract is present.
+- Keep Admin Manual Payout as the only active electrician payout path. Razorpay Route Transfer remains retired; no Route payout or transfer activation is proposed.
+
+### Other missing RPCs mapped to their source bundles
+- `20261114390000_admin_staff_rbac_foundation.sql`: `srk_admin_list_staff`, `srk_admin_list_staff_sessions`, `srk_admin_staff_revoke_session`, `srk_admin_assign_support_case`, `srk_admin_list_support_assignments`, `srk_admin_list_staff_audit_events`, `srk_admin_staff_register_session`, `srk_admin_staff_set_status`, and the four `srk_admin_staff_*` support inbox/reply/update families. Followed by `20261116100000_fix_staff_permission_helper_volatility.sql` for the final session-locking permission helper.
+- `20261113230000_support_attachment_paths_and_admin_message_list.sql`: `srk_admin_list_booking_complaint_messages`, `srk_admin_list_complaint_message_attachments`; `20261114300000_admin_customer_support_thread_replies.sql`: `srk_admin_send_booking_complaint_message`.
+- `20261114350000_electrician_support_tickets_and_admin_inbox.sql`: `srk_admin_list_electrician_support_tickets`, `srk_admin_list_electrician_support_messages`, `srk_admin_send_electrician_support_message`, `srk_admin_update_electrician_support_ticket`.
+- `20261114250000_admin_work_dispute_review_and_immutable_history.sql`: `srk_admin_get_booking_work_review`.
+- `20261114270000_admin_only_cancellation_requests_and_decisions.sql`: `srk_admin_list_booking_cancellation_requests`, `srk_admin_decide_booking_cancellation`; `20261114280000_cancellation_fee_carry_forward_and_accounting.sql`: `srk_admin_get_cancellation_fee_ledger_summary` and `srk_admin_record_new_booking_cash_payment`.
+- `20261115260000_sos_admin_support_alerts.sql`: `srk_admin_list_sos_alerts`, `srk_admin_acknowledge_sos_alert`, `srk_admin_list_sos_alert_events`.
+- `20261115150000_admin_readonly_booking_accounting_reconciliation.sql`, subsequently revised by `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`: `srk_admin_get_booking_accounting_reconciliation`. Do not revive Route-specific settlement/payout behavior from the retired Route workstream.
+- `20261115230000_admin_booking_direct_write_closure.sql`: `srk_admin_update_booking_customer_location`.
+- `srk_admin_confirm_legacy_booking` and `srk_admin_set_electrician_rate_tier` are called by the current Admin UI but were not located in the migration files inspected during this pass. Their authoritative source migration and Main dependencies remain unresolved; do not invent or create replacements.
+- The already-present `srk_admin_list_booking_complaints(integer)`, `srk_admin_update_booking_complaint(uuid,text,text)`, area-request RPCs, KYC review RPCs, and Admin payout/payment RPCs need full return/body parity checks; matching names and signatures alone do not establish Feature parity.
+
+### Main catalog security snapshot
+- All 17 same-name Main Admin RPCs inspected were SECURITY DEFINER, had authenticated EXECUTE=true and anon EXECUTE=false.
+- Most had pinned search_path. `srk_admin_decide_booking_refund_request` and `srk_admin_list_booking_refund_requests` had empty search_path. This is a useful grant baseline, but not proof that the function body implements the Feature contract or that every referenced table's RLS is correct.
+- No SQL, migration, Auth, provider, or Production changes were made during this comparison. This is source/catalog inspection only.
+
+### Implementation gate
+- Before any implementation port: resolve the refund named-argument and row-shape mismatch, confirm the intended manual refund/payment and payout body versions, locate authoritative source for legacy confirm/rate-tier RPCs, and reconcile complete migration order/dependencies.
+- Staff UUID exclusivity blocker from Section 21 remains unresolved and must be decided with owner/GPT-2 before the Staff RBAC bundle is accepted.
+- Do not cherry-pick isolated financial RPCs, run production migrations, deploy, merge PR #8, trigger refunds/payouts, or perform mobile QA in this phase.
