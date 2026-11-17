@@ -1,5 +1,5 @@
 begin;
-select plan(9);
+select plan(10);
 select ok(to_regprocedure('public.srk_service_reconcile_booking_refund(uuid,text,text,text)') is not null,
   'provider refund reconciliation RPC exists');
 select ok(position('PROVIDER_REFUND_AMOUNT_DOES_NOT_MATCH_FULL_BOOKING_COLLECTION' in
@@ -13,6 +13,11 @@ select ok(position('for update of b' in lower(pg_get_functiondef('public.srk_ser
 select ok(position('set payout_status=''refunded''' in lower(pg_get_functiondef(
   'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
   'verified processed refund closes its own blocked payout as refunded');
+select ok(position('payout_note is null' in lower(pg_get_functiondef(
+  'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure)))>0
+  and position('razorpay full refund verified; payout permanently withheld.' in lower(pg_get_functiondef(
+  'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure)))>0,
+  'refund reconciliation tolerates the booking payout trigger closing the refund-owned hold and restores the final audit note');
 select ok(position('historical processed-but-blocked state' in pg_get_functiondef(
   'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0,
   'replayed processed refunds repair their previously blocked payout');
