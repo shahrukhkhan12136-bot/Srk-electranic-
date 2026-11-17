@@ -89,7 +89,7 @@ BEGIN
   )
   UPDATE public.srk_razorpay_webhook_events e
     SET state='processing',attempt_count=e.attempt_count+1,claim_token=v_token,
-        lease_expires_at=clock_timestamp()+interval '14 minutes',
+        lease_expires_at=clock_timestamp()+interval '2 minutes',
         last_received_at=clock_timestamp(),last_error=NULL,completed_at=NULL
   FROM picked WHERE e.event_id=picked.event_id
   RETURNING e.event_id,e.event_type,e.event_payload,e.claim_token,e.attempt_count;
