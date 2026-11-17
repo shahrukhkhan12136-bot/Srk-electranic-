@@ -6613,3 +6613,42 @@ The reviewed payout settlement, manual refund and Razorpay recovery functions ha
 GPT-2 checklist remains at the last recorded **27/39 = 69%**. Documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, concurrent test, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 207. Refund Full-Amount Contract — Customer Request, Manual Completion और Razorpay Reconciliation Cross-Check
+
+### 1. Compared source files
+
+- `20261115100000_customer_refund_request_contract.sql` (SHA `efe03913e108e98886cb25d24c3e4b1bb8e74481`).
+- `20261115130000_admin_manual_refund_request_completion.sql` (SHA `51f3b13adc80e117cc62f05b0e70ae795ee0f9fd`).
+- `20261115120000_durable_razorpay_refund_recovery_evidence.sql` (SHA `adf83de704725e791a096462eaa385b28f92c7a7`).
+- `20261115240000_harden_refund_recovery_full_amount.sql` (SHA `40ebd534cf4209e98adc8c1f44b53b9ebfc09920`).
+- `20261115250000_harden_refund_reconcile_full_amount.sql` (SHA `3bda81c2b827f597f639846d33967a7c88296e21`).
+
+Related source-contract tests:
+- `customer_refund_request_contract.test.sql` (SHA `2c6b4091af9a4258896ea9d055bc6847aac45f05`, `plan(17)`).
+- `admin_manual_refund_request_completion.test.sql` (SHA `99cb0eb02e667699db27951b5b26161a89b8951b`, `plan(14)`).
+- `durable_razorpay_refund_recovery_evidence.test.sql` (SHA `370b2c5e460d1a9abfbbe53371a48f9e68788788`, `plan(35)`).
+- `refund_reconcile_full_amount_guard.test.sql` (SHA `fd5b7ceb8e612b588fac1a7ade8d7035388ca2bc`, `plan(5)`).
+
+### 2. Full-amount contract by path
+
+1. **Customer request:** the booking must be verified-paid, with a positive `amount_paid`. For new categorized bookings, the expected collection is recomputed as immutable labour-bill paise plus settled cancellation-fee paise and compared with `round(amount_paid*100)`. Legacy bookings use the captured booking amount as the request amount.
+2. **Manual refund completion:** requires the matching manual-payment audit record. For new categorized bookings it independently checks completed status, customer/bill ownership, assigned electrician, settled fee items, and equality between labour + settled fees, booking collection and payment audit amount. Razorpay/online bookings are rejected from this manual path.
+3. **Razorpay recovery:** phase-one evidence persistence checks provider amount/payment/currency against the internal refund record and booking payment identity. The later finalization function independently compares the evidence amount in integer paise against the locked booking's full `amount_paid` before it can complete the refund.
+4. **Provider reconciliation RPC:** a `processed` provider result is rejected unless the internal refund amount equals the locked booking's full captured collection in paise. The RPC also uses booking-first row locking and is service-role-only.
+
+### 3. Cross-check result and limits
+
+- **Positive static consistency finding:** the inspected customer request, new-category manual completion, Razorpay recovery finalization and provider reconciliation paths all enforce a full-collection amount basis before treating a refund as completed. The Razorpay evidence writer alone is not the final accounting gate; the separate finalizer performs the full-booking comparison.
+- The legacy manual-refund path has a narrower evidence model than new-category bookings: it relies on the booking amount matching the manual-payment audit record, while the immutable labour/settled-fee ledger comparison is conditional on `selected_category` being present. This is an explicit legacy compatibility branch, not proof of an amount mismatch.
+- The source tests assert function definitions, guards, privileges and selected ordering. They do not, in the reviewed files, demonstrate live paise rounding, rollback, concurrent edits, or provider edge-case behavior. No pgTAP test was executed.
+- No partial-refund workflow is established by these inspected paths; the provider completion guards are intentionally full-collection checks.
+
+### 4. Verdict
+
+The four inspected refund entry/completion paths have a coherent **full captured collection** contract at source level, with stronger immutable labour-and-fee reconciliation for new-category bookings. Keep this as a static cross-check only; runtime behavior and database state remain unverified. No source or migration change is proposed or made.
+
+GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल migration और संबंधित test source inspection तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
