@@ -5603,3 +5603,41 @@ Invite success path में actor, target, action और fixed Support role �
 ### 5. Verdict
 
 Migration source में direct browser access बंद, append-only mutation guards और Main Admin-only scoped read RPC का स्पष्ट design है। RLS चालू है और Audit Table के लिए policy DDL नहीं है; access model RPC-केंद्रित है। फिर भी live deployment, वास्तविक role enforcement और audit details की content hygiene अप्रमाणित हैं। कोई source migration/test/permission/database setting नहीं बदली गई; कोई SQL/DB query/pgTAP/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
+
+
+## 180. Staff/Admin Write RPCs — Security Definer, Actor और Permission Gate Review
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Staff RBAC foundation migration में Admin assignment/status/session actions और Support Staff conversation actions का static source review।
+
+### 1. साझा Function Security Pattern
+
+- समीक्षा किए गए RPCs `SECURITY DEFINER` हैं और `search_path = ''` सेट करते हैं।
+- प्रत्येक RPC के लिए `PUBLIC` और `anon` का EXECUTE revoke है; आवश्यक client-facing functions को `authenticated` grant किया गया है।
+- Support Staff actions में current identity `auth.uid()` से ली जाती है और `srk_has_admin_permission(...)` से permission check होता है।
+- `srk_has_admin_permission` Main Admin को अलग identity class के रूप में allow करता है; Support Staff के लिए active staff registry record और role permission दोनों जरूरी हैं।
+
+### 2. Main Admin Actions
+
+- **Staff status:** `srk_admin_staff_set_status` Main Admin-only है; actor `auth.uid()` से आता है। Target staff row lock होती है; active करने से पहले Auth email confirmation check होता है। Suspend/disable पर active sessions revoke होते हैं; फिर success audit event लिखा जाता है।
+- **Support assignment:** `srk_admin_assign_support_case` Main Admin-only है। यह active Support Staff row, open case और current assignment जाँचता/lock करता है; assignment बदलने के साथ previous/new staff और reason audit event में लिखता है।
+- **Session revoke:** `srk_admin_staff_revoke_session` Main Admin-only है; session row update के बाद actor, target, session record ID और reason audit में लिखता है।
+- **Invite registration:** `srk_admin_staff_register_invited_user` browser roles से revoke है और केवल `service_role` को grant है। यह actor UUID को `srk_admin_users` में validate करता है; current Auth actor validation Edge Function पर निर्भर है (Sections 176–177)।
+
+### 3. Support Staff Actions
+
+- Customer complaint read/reply/status RPCs में आवश्यक customer permissions और case assignment check हैं।
+- Electrician ticket read/reply/status RPCs में आवश्यक electrician permissions; ticket read के लिए basic booking permission भी जाँची जाती है।
+- Reply/status writes से पहले case row और assignment row lock/check होते हैं; closed या unassigned case पर exception आता है।
+- Successful reply/status writes के साथ audit event उसी function transaction में insert होता है। Reply audit में message body के बजाय case/message IDs लिखे जाते हैं।
+- Session registration trigger में actor/target दोनों staff UUID हैं; यह Staff session event है, Admin-initiated action नहीं।
+
+### 4. Static Review से दिखने वाली सीमाएँ
+
+- इन RPC bodies में denied/failed attempts के लिए अलग durable audit insert नहीं दिखता; permission या validation exception आने पर success event insert तक execution नहीं पहुँचता।
+- यह review function definitions/grants के source text पर आधारित है। Live PostgreSQL में effective function ACL, deployed definitions, JWT claims और वास्तविक request behavior verify नहीं हुए।
+- कोई SQL/pgTAP/test execution नहीं किया गया; transaction rollback और concurrent lock behavior runtime प्रमाणित नहीं हैं।
+
+### 5. Verdict
+
+Source design में Main Admin actions और Support Staff actions के लिए अलग authorization gates हैं; actor identity सामान्यतः current `auth.uid()` से आती है, जबकि invite registration trusted Edge Function/service-role path पर निर्भर है। Support Staff writes assignment तथा permission checks के बाद ही सफल होते हैं। Rejected attempts की durable audit coverage अभी gap है। कोई source migration/test/permission/database setting नहीं बदली गई; कोई SQL/DB query/pgTAP/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
