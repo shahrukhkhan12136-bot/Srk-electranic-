@@ -7284,3 +7284,24 @@ Test `plan(44)` के साथ ठीक 44 top-level `ok(...)` assertions औ
 - Missing/unsettled fee item पर rollback behavior verify करें।
 
 Static source review only. Test, SQL, database query या migration replay नहीं चलाया गया। GPT-2 checklist remains 27/39 = 69%.
+
+
+## 230. Razorpay Refund Preparation RPC का Customer Refund-Request Table पर Forward Runtime Dependency
+
+### Static source reviewed
+- `supabase/migrations/20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` SHA `c811fe2a0ae129201ca9e99c5405bbb59e831f57`.
+- `supabase/migrations/20261115100000_customer_refund_request_contract.sql` SHA `efe03913e108e98886cb25d24c3e4b1bb8e74481`.
+- `supabase/migrations/20261115110000_admin_refund_review_queue_and_decisions.sql` SHA `900c5e63c2628a21280f3b8bcdabf46cadb3b9ed`.
+
+### Finding
+Migration `20261114290000` में `public.srk_admin_prepare_razorpay_refund(uuid,text)` function, `public.srk_booking_refund_requests` से customer refund request पढ़ता और उस पर `FOR UPDATE` lock लेता है। उसी migration के अंत में RPC का EXECUTE अधिकार `authenticated` को दिया गया है और function के भीतर Main Admin authorization check है।
+
+लेकिन `srk_booking_refund_requests` table और customer request RPCs बाद की migration `20261115100000` में बनाए जाते हैं। इसलिए 14290000 apply होने के बाद और 15100000 apply होने से पहले यदि authorized Admin refund-preparation RPC चलाए, तो function का request lookup absent relation पर निर्भर होगा। यह एक स्पष्ट deployment/runtime sequencing window है। Relation reference PL/pgSQL body में है; इससे migration creation या clean replay failure सिद्ध नहीं होता। बाद की 15110000 migration Admin review queue/decision RPCs जोड़ती है, लेकिन 14290000 वाला preparation RPC उससे पहले ही authenticated execution के लिए उपलब्ध है।
+
+### Required action
+- Customer refund-request table को refund-preparation RPC से पहले create करें, या उस RPC को table migration के बाद ही expose/grant करें।
+- यदि migrations अलग-अलग deploy होती हैं, तो 15100000 लागू और सत्यापित होने तक Admin refund-preparation traffic रोकें।
+- Migration-order assertion जोड़ें कि `srk_booking_refund_requests` का निर्माण `srk_admin_prepare_razorpay_refund` को expose करने से पहले हो।
+- Isolated PostgreSQL में full ordered replay और एक Admin refund-preparation call का targeted test चलाएँ।
+
+Static source review only. कोई SQL, database query, migration replay, pgTAP, Admin UI/browser test, CI dispatch या deployment नहीं चलाया गया। यह forward runtime dependency है, reproduced failure नहीं। GPT-2 checklist remains 27/39 = 69%.
