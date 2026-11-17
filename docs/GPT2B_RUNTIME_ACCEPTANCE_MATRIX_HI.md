@@ -314,3 +314,12 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - `durable_razorpay_refund_recovery_evidence.test.sql` में payout-lock source assertion गलती से `where id=v_payout.id` खोज रहा था, जो implementation से मेल नहीं खाता था। इसे वास्तविक `where booking_id=v_booking.id` predicate से ठीक किया। यह test-source mismatch था; production function में defect नहीं मिला।
 - Test का declared plan 40 ही रखा; assertion count नहीं बदला। यह pgTAP execution नहीं है—SQL compilation, migration replay और pgTAP अभी नहीं चलाए गए।
 - No database, provider API, CI, deployment, merge, या production setting changed.
+
+
+### Online settlement fee-retry idempotency correction — 17 November 2026 (source-only)
+
+- Confirmed source flaw: successful first settlement moves cancellation-fee items from `reserved` to `settled`, while the RPC previously compared retries against the now-reduced reserved-fee sum before checking the already-paid/same-payment case.
+- Added `20261117150000_fix_online_settlement_fee_retry_idempotency.sql`. The revised RPC validates the booking's original Razorpay order ID before retry handling; for the same already-paid payment ID it compares the retry amount against durable `service_bookings.amount_paid` in paise and returns `already_processed=true`. A changed amount or different payment ID is rejected. New/unpaid settlement still validates immutable labour plus currently reserved fees and retains the existing fee-ledger idempotency keys.
+- Extended `admin_labour_bill_payment_accounting_bridge.test.sql` from declared plan 19 to 23 with source assertions for order validation, durable amount matching, retry-before-reserved-fee-sum ordering, and changed-amount rejection.
+- Source-only GitHub changes. Migration has NOT been applied; pgTAP has NOT been run. No PostgreSQL, provider API, Node suite, CI, deployment, merge, cherry-pick, or production setting changed.
+- GPT-2 official checklist remains **27/39 = 69%**; this source correction is not runtime acceptance evidence. Runtime matrix remains **60/60 Pending**.
