@@ -23,6 +23,15 @@ begin
  else new.commission_amount:=null; end if;
  return new;
 end;$function$;
+
+-- Attach the legacy commission calculation trigger explicitly so a clean
+-- numbered-migration replay has the same BEFORE-trigger foundation as Main.
+drop trigger if exists srk_calculate_booking_commission on public.service_bookings;
+create trigger srk_calculate_booking_commission
+before insert or update of status, payment_status, amount_paid, commission_rate
+on public.service_bookings
+for each row
+execute function public.srk_calculate_booking_commission();
 create or replace function public.srk_submit_booking_quote(p_booking_id uuid,p_service_charge numeric,p_materials_amount numeric,p_quote_note text default null)
 returns jsonb language plpgsql security definer set search_path to 'pg_catalog','public','auth','pg_temp'
 as $function$
