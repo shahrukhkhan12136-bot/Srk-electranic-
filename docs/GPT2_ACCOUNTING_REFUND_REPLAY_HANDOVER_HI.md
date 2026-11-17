@@ -1266,3 +1266,32 @@ Feature work-event trigger जोड़ने से पहले इनके �
 
 ### No-write boundary
 - केवल GitHub source read और Main Supabase catalog SELECT। कोई table row read/query, customer data access, Storage object access, signed URL creation, RPC invocation, DDL/DML, bucket/policy creation, deploy, invitation, OTP/SMS, payout/refund या merge नहीं हुआ।
+
+
+## Section 44 — Admin Edge Functions source security review (2026-11-17)
+
+### Source versions inspected
+- `supabase/functions/admin-staff-management/index.ts`, SHA `c783989ca7142fce9d88270286bc916a66d22298` (103 lines).
+- `supabase/functions/electrician-phone-change/index.ts`, SHA `372e52c8ca18a7ca984ae2de2fcdbb2a5ea87bc5` (206 lines).
+- Related migration sources: `20261114380000_electrician_phone_change_admin_approval.sql` SHA `0c389a039afab594b092fc69b81bc9fbc4bff650`; `20261114390000_admin_staff_rbac_foundation.sql` SHA `5aa0f9058a56d735455f2a9944c861e8312ddb89`.
+
+### admin-staff-management findings
+- POST-only handler (OPTIONS preflight), validates Bearer token through `auth.getUser(token)`, then checks `userClient.rpc('is_srk_admin')`; browser-supplied metadata is explicitly not used for authorization.
+- Only supported action is `invite_support_staff`; role is hard-coded to `support`, not client-selectable. Email/name input is validated; redirect URL is restricted to HTTPS (HTTP only localhost), with no embedded credentials.
+- Uses service-role key only after Main Admin authorization; Auth invitation is sent before staff registry RPC. On registry failure it attempts Auth user deletion and accurately warns that an already-sent email cannot be recalled.
+- Source handler contains no explicit per-Admin invitation rate limit/cooldown. The related staff migration registers invited identity through service_role and writes an audit event on successful registration; invitation failure/cleanup path does not have a compensating DB audit entry visible in this handler. Add only after owner-approved security review; no code changed.
+- Main Admin identity exclusivity (same UUID present in both Main Admin and Staff registries) remains a prerequisite because the Edge Function's trust boundary is `is_srk_admin()`. Do not deploy/invoke while that invariant is unresolved.
+
+### electrician-phone-change findings
+- POST-only; authenticates Bearer token using `auth.getUser(token)`. Customer/electrician actions bind RPC arguments to authenticated actor UUID. Admin actions independently require `is_srk_admin()` before listing/reviewing requests.
+- Indian phone normalization, cryptographically secure six-digit OTP generation with rejection sampling, HMAC-SHA256 digest bound to request UUID, five-minute expiry, and provider request timeout are implemented in source.
+- OTP is sent only after DB prepare; SMS failure calls cancellation RPC and returns an explicit cleanup-pending warning if cleanup cannot be confirmed. Verify path does not expose OTP or store plaintext in DB.
+- Migration enforces at most five OTP attempts, OTP expiry, one open request per electrician and one open request per new phone; resend is rate-limited to 60 seconds and request creation is limited per electrician per hour (source message says wait one hour). DB row locks protect verify/claim/finalize state transitions. These are source migration controls, not proof that Main has applied them.
+- Admin approval claims request, compares current Auth phone against expected old/new phone, avoids repeating an already-completed Auth update, finalizes profile after Auth sync, and preserves a recoverable sync-error state on ambiguous finalization. No automatic rollback of Auth phone on uncertain result.
+- Both handlers use permissive `Access-Control-Allow-Origin: *`; authorization is Bearer-token/RPC-based rather than CORS-based. Browser CORS origin restriction could be defense-in-depth but is not treated as an authorization substitute.
+- No Edge Function runtime/deployment configuration file was found at the assumed `supabase/config.toml` path in this branch listing; deployed JWT verification settings remain unverified. Both handlers perform their own `auth.getUser(token)` validation in source.
+
+### Live / release status
+- Section 41 already found neither Edge Function in the Main deployed function list. This review is source-only and does not change that live deployment absence.
+- Do not invoke either function: Staff invitation sends external email; phone-change can send SMS or change Auth phone. No invocation, email, SMS, OTP, Auth mutation, deploy, DDL/DML or live request occurred.
+- Required before release: resolve Main Admin-vs-Staff UUID exclusivity; add/review Staff invitation abuse throttling and failure audit policy; verify deployed `verify_jwt` configuration and secrets; reconcile all dependent RPC migrations with Main; and obtain owner approval for any external-action testing in isolated staging.
