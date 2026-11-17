@@ -38,3 +38,22 @@
 
 ## Safety boundary
 No Production database query/export/migration, no Staff invitation/account mutation, no payment/refund/payout action, no merge/deployment, and no GPT-1 Customer/Electrician source change was performed.
+
+
+## Addendum — 2026-11-17: Assigned Customer Complaint Attachment Read
+
+The previously noted gap for Support Staff attachment access has now been addressed at source level on the GPT-2 audit branch.
+
+1. New migration: `20261117110000_support_staff_assigned_customer_attachment_read.sql`.
+2. A VOLATILE SECURITY DEFINER Storage-read helper requires the session-bound `support.customer.read` permission, the exact Customer/Complaint path mapping, the current `customer_complaint` assignment to `auth.uid()`, and an existing attachment metadata link.
+3. The helper locks the complaint row and then the current assignment row with `FOR SHARE`, matching the existing Staff thread-read / Main Admin reassignment lock order.
+4. The private Storage SELECT policy retains existing Customer-owner and Main Admin access and adds only the assigned Staff read path. The migration does not grant Staff upload or delete access.
+5. New metadata RPC `srk_admin_staff_list_customer_attachments(uuid)` returns bounded attachment metadata only after checking the active permission and current assignment.
+6. `admin.html` now displays attachment controls inside the assigned Customer Complaint thread. Each open action uses the authenticated Storage `download()` request so Storage RLS rechecks the current assignment; it does not mint a signed URL for Staff.
+7. Source contracts added: `supabase/tests/database/support_attachment_staff_access.test.sql` (10 pgTAP assertions) and `tests/staff-customer-attachment-access-contract.test.js` (6 Node contract tests).
+
+Validation boundary:
+- Migration, UI and test source were re-read after the edits.
+- pgTAP, Node tests, database migration replay and real Storage reassignment/download behavior have NOT been executed.
+- A reassignment prevents subsequent metadata and Storage download requests for the previous Staff member; a file already downloaded to a Staff browser cannot be remotely recalled.
+- No Production database, Storage object, deployment, merge or mobile QA action was performed.
