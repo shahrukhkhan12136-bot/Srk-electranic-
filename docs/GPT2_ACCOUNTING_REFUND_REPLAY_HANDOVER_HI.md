@@ -1032,3 +1032,35 @@ Feature work-event trigger जोड़ने से पहले इनके �
 ### Scope decision
 - No new feature or UI change is proposed. These checks are part of existing Admin Panel integration/security verification.
 - No direct table write, Storage object read/write, Edge Function invocation, invitation, email, OTP/SMS, Production DDL/DML, deployment, merge or mobile QA occurred.
+
+
+## Section 36 — Admin direct-table RLS and Storage bucket live-Main verification (2026-11-17)
+
+### Live Main catalog snapshot
+- Project: `gnqhoaqatmoiwwhgzkgm`; read-only SQL/catalog inspection only.
+- Admin direct-read tables `electrician_applications`, `electrician_profiles`, `service_bookings`, and `srk_electrician_payouts` all exist, have RLS enabled, and grant `SELECT` to `authenticated`; the inspected grant snapshot did not show direct authenticated INSERT/UPDATE/DELETE grants for these four tables.
+- Exact live policies:
+  - `electrician_applications`: SELECT and UPDATE scoped to `is_srk_admin()`; UPDATE has both USING and WITH CHECK.
+  - `electrician_profiles`: SELECT is owner (`auth_user_id` or `user_id`) or Admin; INSERT/UPDATE/DELETE are Admin-only, with UPDATE USING + WITH CHECK.
+  - `service_bookings`: SELECT is Admin or booking customer; UPDATE is Admin-only with USING + WITH CHECK. The current Admin UI uses direct reads plus protected RPCs for the restricted state transitions; do not treat the broad row policy as permission to bypass lifecycle RPC guards.
+  - `srk_electrician_payouts`: SELECT is Admin or the linked electrician owner. No direct authenticated mutation grant was present in the inspected table-grant result; payout state changes must continue through the audited Admin Manual Payout RPC.
+- RLS is enabled but not FORCE on these four tables. This is not by itself a defect: privileged owners/SECURITY DEFINER functions can bypass RLS, so their body authorization and grants remain separately important.
+
+### Storage bucket and object-policy findings
+- Live `storage.buckets` query returned only one bucket: `srk-electrician-verification`, private, 5 MiB limit, MIME allow-list PDF/JPEG/PNG.
+- Admin KYC UI uses `ADMIN_KYC_BUCKET` for short-lived signed previews (60 seconds). Live Storage policies include authenticated owner upload, owner-or-`is_srk_admin()` read, and owner cleanup only while the object is not registered in `srk_electrician_verification_documents`. The bucket is private; Admin preview is not a public URL.
+- Admin Customer Support UI requests signed URLs from bucket `srk-customer-support` for 300 seconds. That bucket is absent from live Main.
+- Live Main also lacks `srk_booking_complaint_messages` and `srk_booking_complaint_message_attachments` tables. Feature migration `20261113220000_customer_support_conversation_schema.sql` (SHA `75230ab805e61206515fd73e17e748de7ec249e5`) creates these dependencies, creates the private 10 MiB support bucket with JPEG/PNG/WebP/PDF allow-list, and installs owner/admin object access policies. The migration is not reflected in the queried Main catalog. Thus Customer Support attachment signed URLs cannot work on current Main until the entire reviewed support schema + bucket + policies bundle is integrated; do not create the bucket alone.
+- Live Main Storage object policies currently list only the three electrician-verification policies. No support-bucket policy exists in the inspected catalog.
+
+### Security advisor triage
+- Supabase Security Advisor snapshot reported 13 RLS-enabled/no-policy INFO findings, 59 authenticated-executable SECURITY DEFINER WARN findings, one `pg_net`-in-public WARN, and leaked-password protection disabled WARN.
+- These are project-wide findings, not all Admin Panel defects. RLS/no-policy on append-only/audit/payment tables may be intentional when all access is via narrowly authorized SECURITY DEFINER RPCs and direct grants are revoked; verify grants and each function body before classifying. Similarly, authenticated EXECUTE on a SECURITY DEFINER Admin RPC is expected only when its body enforces Main Admin/Staff authorization and anon/PUBLIC execution is revoked. Do not blanket-revoke or alter functions based on advisor counts alone.
+- Leaked-password protection is an Auth-wide security hardening item, not an Admin direct-table/Storage authorization finding; enabling it changes project Auth behavior and requires owner approval.
+- Advisor remediation references: Supabase Database Linter RLS no-policy `https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy`; SECURITY DEFINER executable `https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable`; leaked password protection `https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection`.
+
+### Status / next steps
+- Four Admin direct-read tables have explicit Admin/owner RLS policies as summarized above; KYC documents remain private and Admin-previewable.
+- Customer Support attachment flow is a confirmed Main integration blocker: bucket + message/attachment tables + RPCs + policies are missing as a bundle.
+- Next: inspect the full Main live function bodies behind Admin reads and mutations, and map each direct-table query's exact column/filter requirements to existing grants and RLS. Review support bundle dependencies together with GPT-2; do not apply migrations or create buckets in Production.
+- No DDL/DML, bucket creation, object access, signed URL generation, policy change, function change, Auth setting change, deployment, merge, external action, or mobile QA was performed.
