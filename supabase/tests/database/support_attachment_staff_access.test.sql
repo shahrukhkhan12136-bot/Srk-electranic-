@@ -91,18 +91,22 @@ select ok(
 select ok(
   has_function_privilege('authenticated','public.srk_admin_staff_list_customer_attachments(uuid)','EXECUTE')
   and not has_function_privilege('anon','public.srk_admin_staff_list_customer_attachments(uuid)','EXECUTE')
-  and position('srk_admin_staff_can_read_customer_attachment' in lower(coalesce(pg_get_expr(
+  and position('srk_customer_support_object_delete_access(name)' in lower(coalesce(pg_get_expr(
     (select polqual from pg_policy
       where polname='srk_customer_support_delete_own'
         and polrelid='storage.objects'::regclass),
     'storage.objects'::regclass
-  ),'')))=0
-  and position('srk_admin_staff_can_read_customer_attachment' in lower(coalesce(pg_get_expr(
-    (select polqual from pg_policy
-      where polname='srk_customer_support_upload_own'
-        and polrelid='storage.objects'::regclass),
-    'storage.objects'::regclass
-  ),'')))=0,
+  ),'')))>0
+  and not exists (
+    select 1
+      from pg_policy p
+     where p.polrelid='storage.objects'::regclass
+       and p.polname in ('srk_customer_support_delete_own','srk_customer_support_upload_own')
+       and position('srk_admin_staff_can_read_customer_attachment' in lower(
+         coalesce(pg_get_expr(p.polqual,p.polrelid),'') || ' ' ||
+         coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')
+       ))>0
+  ),
   'Metadata RPC is authenticated-only and Staff attachment read does not grant Storage upload or delete access'
 );
 
