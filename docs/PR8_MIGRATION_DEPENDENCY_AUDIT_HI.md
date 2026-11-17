@@ -3756,3 +3756,40 @@ Disposable PostgreSQL में बाद में चलाए जाने �
 - Existing Node test `tests/admin-route-settlement-warning.test.js` (blob `66ab538e2492b97c957622ed984ce8d7a3bb43ba`) वर्तमान में पुरानी Route-aware migration `20261115170000` पढ़ता है; इसे अंतिम RPC contract से जोड़ने वाला test प्रस्तावित है।
 - कोई test file, migration, function, trigger, RLS या grant नहीं बदला गया।
 - कोई SQL execution, PostgreSQL replay, pgTAP/Node test run, database query/write, provider call, CI dispatch, deployment, merge या Production action नहीं किया गया।
+
+
+### 138. pgTAP Route contract assertion की exact mismatch और Trigger scope — 17 Nov 2026
+
+#### 138.1 pgTAP में अतिरिक्त retired-ledger marker
+
+Section 137 में बताए छह Route compatibility keys के अतिरिक्त मौजूदा pgTAP test एक सातवें literal marker को भी final function definition में खोजता है:
+- `route_ledger_retired_no_route_transfers`
+
+Test file `supabase/tests/database/durable_razorpay_refund_recovery_evidence.test.sql`, blob `370b2c5e460d1a9abfbbe53371a48f9e68788788`, अंतिम assertions में:
+- `route_transfer_count` और `route_ledger_retired_no_route_transfers` दोनों माँगता है।
+- `route_provider_settlement_verified` तथा `false` भी माँगता है।
+
+अंतिम RPC `20261117010000`, blob `68189051090a51bef26a98997caf103b62ed070c`, के पूरे `jsonb_build_object` में कोई `route_*` key नहीं है। इसलिए तीनों literal expectations source-level पर पूरी नहीं होतीं। Test plan(35) है; इस समीक्षा में assertion count/plan consistency की अलग execution-based पुष्टि नहीं की गई।
+
+**Correction options:**
+1. Final RPC में retired-ledger marker सहित सातों agreed compatibility keys जोड़ें; या
+2. यदि Route API contract हटाना owner का निर्णय है, तो pgTAP assertions और Admin UI को उसी नए contract के अनुसार एक साथ बदलें।
+
+सिर्फ `false` शब्द function में कहीं और मौजूद होना Route-specific provider-verification assertion को सही नहीं बनाता; test को exact JSON key/value contract जाँचना चाहिए।
+
+#### 138.2 Refund payout trigger का exact event scope
+
+Migration `20261116210000_attach_electrician_payout_reconciliation_trigger.sql`, blob `b12da77471d510b55f798bd089597d866d79a133`, में `srk_reconcile_electrician_payable` trigger:
+- AFTER INSERT OR UPDATE OF `status, payment_status, assigned_electrician_id, payment_verified_at, amount_paid, quote_status, service_charge, materials_amount, commission_rate, razorpay_payment_id, selected_category` पर चलता है।
+- `payment_status='refunded'` branch pending payout या exact refund-owned blocked notes को refunded करता है।
+- unrelated blocked notes और paid payouts को update नहीं करता।
+
+Trigger UPDATE list में `payment_status` शामिल है, इसलिए inspected refund finalizers का booking payment-status transition trigger event को qualify करता है। Trigger list में `payment_method` नहीं है; यह इस refund-close branch के लिए आवश्यक नहीं दिखता, लेकिन अन्य payout recalculation behavior के लिए अलग समीक्षा विषय है।
+
+**Important scope note:** Trigger का refunded branch किसी भी qualifying booking transition पर चलता है; वह स्वयं provider evidence verify नहीं करता। Provider evidence/full-amount checks finalizer RPC में हैं। इसलिए सुरक्षा इस बात पर निर्भर है कि privileged booking refund transitions केवल उचित refund workflows से हों। RLS/RPC bypass, service-role direct writes और अन्य trusted writers का पूरा inventory इस section में नहीं किया गया।
+
+#### 138.3 निष्कर्ष
+
+- Route mismatch अब exact सात literal test expectations तक सीमित कर दी गई है; अभी कोई contract fix लागू नहीं है।
+- Refund trigger event scope inspected finalizer update से मेल खाता है; runtime concurrency/rollback और सभी privileged writers की समीक्षा बाकी है।
+- कोई SQL/test execution, migration edit, database query/write, CI dispatch, deployment, merge या Production action नहीं किया गया।
