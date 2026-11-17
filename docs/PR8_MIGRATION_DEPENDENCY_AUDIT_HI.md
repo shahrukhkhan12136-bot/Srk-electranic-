@@ -5531,3 +5531,35 @@ Auth invitation इससे पहले Edge Function के Supabase Auth Adm
 ### 5. Verdict
 
 Invite success path में actor, target, action और fixed Support role का audit event source code में स्पष्ट है; actor/target lookup indexes भी मौजूद हैं। Database registry insert और success audit insert एक RPC transaction में साथ रहते हैं, लेकिन Auth invitation अलग system operation है। Denied/failed invite attempts और email delivery/cleanup के लिए durable event coverage शेष है। कोई source file, migration, test, permission या database setting नहीं बदली गई; कोई test/pgTAP/DB query/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
+
+
+
+## 178. Staff RBAC Audit Writers — Actor Attribution और Event Coverage Matrix
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Staff RBAC foundation migration के सभी नौ audit-insert call sites का static review।
+
+### 1. Main Admin द्वारा किए जाने वाले बदलाव
+
+- **Staff status:** `srk_admin_staff_set_status` में actor `auth.uid()` से आता है और Main Admin check अनिवार्य है। Event में पुराना/नया status और reason दर्ज होता है। Suspend/disable पर active sessions revoke किए जाते हैं।
+- **Support assignment:** `srk_admin_assign_support_case` में actor `auth.uid()` है और Main Admin check अनिवार्य है। Event में case type/id, previous assignee, new assignee और reason दर्ज होते हैं।
+- **Session revoke:** `srk_admin_staff_revoke_session` में actor `auth.uid()` और Main Admin check है। Event में session record ID और reason दर्ज होते हैं।
+- **Staff invite:** अलग service-role-only RPC event लिखता है; actor Edge Function से verified Main Admin UUID के रूप में आता है (Sections 176–177)।
+
+### 2. Support Staff द्वारा किए जाने वाले बदलाव
+
+- Customer reply और status update में actor `auth.uid()` है; permission तथा case assignment checks के बाद success event लिखा जाता है।
+- Electrician reply और status update में भी actor `auth.uid()` है; संबंधित permission और assignment checks के बाद success event लिखा जाता है।
+- Session registration trigger में actor और target दोनों नए session row के `staff_user_id` से आते हैं; यह session creation event है, Main Admin action नहीं।
+
+### 3. Audit Read Access
+
+`srk_admin_list_staff_audit_events` Main Admin-only है। यह दिए गए staff UUID के actor या target होने वाले events लौटाता है, नवीनतम पहले, और limit को 1–300 तक सीमित करता है। इसलिए इसे पूरे system की global audit export न समझें; यह एक चुने हुए staff identity से जुड़े events का view है।
+
+### 4. Coverage Gap
+
+इन नौ insert call sites में दर्ज events success events हैं। Permission denial, invalid request, missing assignment, closed case, failed invitation, या अन्य rejected attempts के लिए अलग `denied`/`failed` event इन inspected RPC bodies में नहीं मिला। Database exception पर उसी transaction के success-side writes rollback होंगे; इसलिए rejected attempt का durable audit record स्वतः नहीं बनता। इसके लिए अलग सुरक्षित logging path की आवश्यकता हो सकती है, जिसमें sensitive message body/token जैसे data न लिखे जाएँ।
+
+### 5. Verdict
+
+सफल Staff/Admin workflow events में actor attribution अधिकांशतः current authenticated user (`auth.uid()`) से जुड़ी है; invite path verified Edge Function actor ID का उपयोग करता है। Session registration event स्वयं Staff identity को actor बताता है। Success-path event coverage उपयोगी है, लेकिन denied/failed security attempts की durable audit coverage शेष gap है। यह source-level review है; live audit rows या deployed privileges verify नहीं हुए। कोई source file, migration, test, permission या database setting नहीं बदली गई; कोई test/pgTAP/DB query/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
