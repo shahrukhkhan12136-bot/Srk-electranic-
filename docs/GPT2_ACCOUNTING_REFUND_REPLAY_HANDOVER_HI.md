@@ -1237,3 +1237,32 @@ Feature work-event trigger जोड़ने से पहले इनके �
 
 ### No-write boundary
 - यह catalog-only read audit था। कोई function execute, SQL DDL/DML, migration, code edit, deployment, payment/refund/payout, SMS/OTP या merge नहीं किया गया।
+
+
+## Section 43 — Admin Panel direct table access बनाम Main live RLS/grants (2026-11-17)
+
+### Feature UI source re-check
+- `admin.html` re-fetch SHA: `6b29511a1ecfab93b5689dff23012078091e57fc` (1093 lines)।
+- Direct PostgREST table reads केवल इन चार tables पर दिखे: `service_bookings`, `electrician_applications`, `electrician_profiles`, `srk_electrician_payouts`। कोई direct `.insert()`, `.update()`, `.delete()` या `.upsert()` write call नहीं मिला; UI writes संबंधित RPCs से करती है।
+- `service_bookings`: मुख्य dashboard query 300 latest rows और offer/save से पहले एक booking-specific read।
+- `electrician_applications`: 300 latest applications।
+- `electrician_profiles`: 500 latest profiles; activation से पहले profile-specific verification/rate approval read।
+- `srk_electrician_payouts`: latest 300 payout rows और अलग summary query में ordered range pagination।
+- KYC documents RPC से आते हैं और `srk-electrician-verification` bucket से signed preview बनता है। Support attachment preview में `srk-customer-support` bucket संदर्भित है।
+
+### Main live table grants/RLS result (read-only catalog)
+- चारों tables पर RLS enabled; `anon` को कोई table privilege नहीं; `authenticated` को SELECT है; `service_role` को SELECT/INSERT/UPDATE/DELETE है।
+- `service_bookings`: SELECT policy Admin या booking customer; UPDATE policy Admin-only। UI के direct reads इस policy के अधीन हैं।
+- `electrician_applications`: SELECT और UPDATE policies Admin-only; authenticated को केवल SELECT table grant मिला। इसलिए Admin read path policy-guarded है; UI application decision RPC से होता है।
+- `electrician_profiles`: SELECT policy profile owner या Admin; INSERT/UPDATE/DELETE policies Admin-only। ध्यान दें: direct SELECT policy profile owners को भी rows पढ़ने देती है; यह table-wide Admin-only visibility नहीं है।
+- `srk_electrician_payouts`: SELECT policy Admin या संबंधित electrician profile के `user_id` owner को अनुमति देती है; authenticated UPDATE grant/policy नहीं दिखा। UI payout write RPC `srk_admin_mark_electrician_payout_paid` call करता है।
+- चारों tables में `relforcerowsecurity=false`; यह अपने-आप client-side bypass नहीं दर्शाता, पर privileged roles/SECURITY DEFINER execution की समीक्षा अलग से आवश्यक है।
+
+### Integration risks / follow-up
+- Main live grants और RLS इन चार direct read paths को role-gated करते हैं; फिर भी Admin UI का पूरा authorization भरोसेमंद मानने से पहले `is_srk_admin()` की Admin-vs-Staff identity exclusivity और Staff access policy model को resolve करना होगा (Section 21/42)।
+- `srk_electrician_payouts` की UI direct reads और Admin manual payout RPC को नई owner-approved “Manual Payout only; Route retired” architecture तथा GPT-2 finance migration bundle के साथ reconcile करना होगा। कोई payout action नहीं किया गया।
+- Support bucket `srk-customer-support` Main live bucket catalog में अनुपस्थित होने की Section 41 finding के साथ, UI का signed-URL path अभी live integration में उपलब्ध प्रमाणित नहीं है। Bucket/policies create नहीं किए।
+- UI के direct table reads पर client-side row limits (300/500) मौजूद हैं; इन्हें server-side pagination/total completeness के रूप में न समझें। Payout summary अलग range pagination करता है।
+
+### No-write boundary
+- केवल GitHub source read और Main Supabase catalog SELECT। कोई table row read/query, customer data access, Storage object access, signed URL creation, RPC invocation, DDL/DML, bucket/policy creation, deploy, invitation, OTP/SMS, payout/refund या merge नहीं हुआ।
