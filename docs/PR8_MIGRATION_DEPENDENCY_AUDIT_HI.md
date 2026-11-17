@@ -5979,3 +5979,43 @@ SOS backend में dedicated role permissions, direct-table read restriction 
 Migration में phone/name server-side source से लिए जाते हैं, location default रूप से साझा नहीं है और SMS/Push configured न होने पर response `not_configured` रहता है। मुख्य शेष नीति प्रश्न SOS और append-only event history की retention/deletion अवधि तथा acknowledgement free-text का नियंत्रित उपयोग है। कोई live notification, location sharing या data retention runtime behavior इस static review से प्रमाणित नहीं होता।
 
 केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई test/pgTAP, SQL, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 190. Customer/Electrician SOS UI — Request Confirmation और Account-Switch Guard Review
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** `booking.html`, `electrician.html` और Admin SOS UI का static source cross-check।
+
+### 1. Customer SOS Request
+
+- Customer तीन अनुमत कारणों में से एक चुनता है; स्पष्ट “SOS भेजें” दबाने पर ही RPC call होता है। चयन रद्द करने पर UI बताता है कि कोई alert नहीं बनाया गया।
+- Request से पहले current Supabase session पढ़ा जाता है; `customerActionGeneration` को capture करके RPC के बाद compare किया जाता है।
+- Auth state के SIGNED_IN/SIGNED_OUT/USER_DELETED event पर generation बढ़ती है और `customerSosBusy` Set साफ होता है; पुराने response को नए session की UI में लिखने से रोका जाता है।
+- Success message “SOS केस दर्ज हुआ” कहता है और delivery को backend confirmation के अधीन बताता है। Error के बाद “परिणाम स्पष्ट नहीं” कहकर refresh करने की सलाह है; यह uncertain RPC outcome को सफल delivery नहीं बताता।
+
+### 2. Electrician SOS Request
+
+- Electrician flow user ID, profile ID और account-view generation capture करता है; RPC के बाद सभी की current स्थिति जाँचता है।
+- Busy key में generation और booking ID दोनों हैं; `finally` में key हमेशा हटती है। Account switch पर पुराने request का UI update रोका जाता है।
+- Open/Cancel helper में busy check bare booking ID से है जबकि submit handler generation-prefixed key रखता है। Submit button disabled होने से सामान्य UI में duplicate submission सीमित है, लेकिन helper guard की key mismatch source-level inconsistency है। इसे matching key strategy से एकसमान करना चाहिए।
+- Success/error messages Customer flow की तरह case registration और delivery के बीच अंतर बताते हैं।
+
+### 3. Admin SOS UI — स्पष्ट सूचना, लेकिन अलग Request-Guard Gap
+
+- Admin SOS card साफ कहता है कि SMS/Push provider configured नहीं है और ऐप Police/112 को स्वतः सूचना नहीं भेजता। List में delivery status और location status अलग दिखाए जाते हैं।
+- `loadSosAlerts()`, `acknowledgeSosAlert()` और `loadSosAlertHistory()` में Admin Auth generation/user snapshot guard नहीं दिखता; shared global busy lock भी है। Section 187 में दर्ज संभावित stale UI और account-switch race concern बना हुआ है।
+- Acknowledge success के बाद list reload होती है, लेकिन acknowledgement request के दौरान account switch के लिए client-side identity recheck नहीं है। Server RPC permission gate मौजूद है; यह source review किसी unauthorized backend action का प्रमाण नहीं है।
+
+### 4. सुझाए गए Regression Cases
+
+- Customer और Electrician: SOS request pending रहते logout/account switch; पुराने response से नए account की UI न बदले।
+- दोनों roles: duplicate click, ambiguous RPC timeout और बाद में refresh; case registration को delivery success न दिखाया जाए।
+- Electrician: generation-prefixed busy key के साथ open/cancel helper guard एकसमान हो।
+- Admin: list/history/ack request pending रहते Main Admin ↔ Support Staff और sign-out; पुराने result का render/alert नए session को प्रभावित न करे।
+- सभी UI: provider unconfigured होने पर delivery “भेजा गया” न दिखाई दे और emergency service स्वतः notify होने का दावा न हो।
+
+### 5. Verdict और Evidence Boundary
+
+Customer और Electrician SOS request UI में account-generation safeguards मौजूद हैं और दोनों flows case registration को SMS/Push delivery से अलग बताते हैं। Electrician helper में busy-key mismatch छोटा source inconsistency है। Admin UI में Section 187 वाला account-switch guard gap बना हुआ है। ये static source findings हैं; browser behavior, real Auth transitions और RPC runtime इस चरण में नहीं जाँचे गए।
+
+केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई test/pgTAP, SQL, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
