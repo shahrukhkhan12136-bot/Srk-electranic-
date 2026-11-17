@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(17);
 
 select ok(
   to_regclass('public.srk_electrician_support_tickets') is not null
@@ -137,6 +137,39 @@ select ok(
   and position('from public.srk_electrician_support_tickets t' in lower(pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)))
       < position('from public.srk_admin_support_assignments a' in lower(pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)),
   'Staff electrician support reads and writes lock case/assignment rows in the required order'
+);
+
+select ok(
+  (
+    select count(*)=4
+      from pg_proc p
+     where p.oid in (
+       'public.srk_admin_list_electrician_support_tickets(integer)'::regprocedure,
+       'public.srk_admin_list_electrician_support_messages(uuid)'::regprocedure,
+       'public.srk_admin_send_electrician_support_message(uuid,text)'::regprocedure,
+       'public.srk_admin_update_electrician_support_ticket(uuid,text,text)'::regprocedure
+     )
+       and p.prosecdef
+       and p.provolatile in ('s','v')
+       and coalesce(p.proconfig::text,'') like '%search_path=""%'
+  )
+  and (
+    select count(*)=4
+      from pg_proc p
+     where p.oid in (
+       'public.srk_admin_list_electrician_support_tickets(integer)'::regprocedure,
+       'public.srk_admin_list_electrician_support_messages(uuid)'::regprocedure,
+       'public.srk_admin_send_electrician_support_message(uuid,text)'::regprocedure,
+       'public.srk_admin_update_electrician_support_ticket(uuid,text,text)'::regprocedure
+     )
+       and has_function_privilege('authenticated',p.oid,'EXECUTE')
+       and not has_function_privilege('anon',p.oid,'EXECUTE')
+       and not exists (
+         select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+          where acl.grantee=0 and acl.privilege_type='EXECUTE'
+       )
+  ),
+  'all four legacy Admin inbox RPCs use a hardened definer context and authenticated-only execution'
 );
 
 select * from finish();
