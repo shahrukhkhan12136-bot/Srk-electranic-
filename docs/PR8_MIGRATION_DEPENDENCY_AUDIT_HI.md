@@ -2716,3 +2716,33 @@ Durable Razorpay recovery evidence tests एक अलग table/workflow को 
 - इसमें कोई executable SQL नहीं है; implementation या privilege changes नहीं किए गए।
 - Open owner decisions: UI-visible fields, raw vs redacted before/after, lookback/retention, read-access logging.
 - No SQL execution, pgTAP, migration, permission change, database mutation or deployment.
+
+
+## 115. Finance Audit Read RPC — SQL और pgTAP draft — 17 Nov 2026
+
+दो non-active draft artifacts बनाए गए:
+
+- `docs/drafts/srk_admin_list_financial_audit_events.draft.sql`
+- `docs/drafts/finance_audit_log_read_api.draft.test.sql`
+
+### प्रस्तावित RPC का व्यवहार
+
+- केवल authenticated Main Admin; `auth.uid()` और `public.is_srk_admin()` दोनों अनिवार्य।
+- `SECURITY DEFINER` और खाली `search_path`; सभी table/function references schema-qualified।
+- Filter allow-list: entity type और action; साथ में booking और actor UUID filters।
+- Stable keyset pagination: `created_at DESC, id DESC`; cursor timestamp और UUID दोनों अनिवार्य।
+- Page limit 1..100 तक clamp।
+- केवल metadata/changed_fields लौटाता है; raw `before_data` और `after_data` return नहीं करता।
+- Authenticated direct table SELECT grant नहीं जोड़ा गया; function execute authenticated role को दिया गया है, लेकिन Main Admin gate function के अंदर लागू रहता है।
+
+### Test draft
+
+10 static pgTAP contract assertions: function signature, SECURITY DEFINER, empty search_path, Main Admin gate, authorization error, page limit, cursor pair, raw JSON omission, direct table SELECT denial और execute grants।
+
+### सीमाएँ / शेष काम
+
+- दोनों files `docs/drafts/` में हैं; active migration/test directories में नहीं।
+- pgTAP draft केवल catalog/source-contract checks है। इसमें anon/customer/electrician/staff/Main Admin impersonation और वास्तविक row pagination के behavioral tests अभी शामिल नहीं हैं।
+- कोई migration लागू नहीं, कोई test/SQL execute नहीं, कोई CI/DB/Production change नहीं।
+- Owner approval अभी भी जरूरी है: Admin को actor UUID और changed_fields दिखाना, retention/lookback, read-access monitoring, और final filter policy।
+- Approval के बाद ही drafts को active migration और isolated pgTAP suite में promote किया जाए।
