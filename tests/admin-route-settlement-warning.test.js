@@ -10,8 +10,8 @@ test('Admin accounting reconciliation reports Route as retired and keeps Manual 
   const retirement = fs.readFileSync(path.join(root, 'supabase/migrations/20261115092149_retire_unused_razorpay_route_transfer_ledger.sql'), 'utf8');
   const bridge = fs.readFileSync(path.join(root, 'supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql'), 'utf8');
 
-  assert.match(retirement, /drop table public\\.srk_route_transfers/i);
-  assert.doesNotMatch(bridge, /public\\.srk_route_transfers/);
+  assert.ok(retirement.includes('drop table public.srk_route_transfers'));
+  assert.equal(bridge.includes('public.srk_route_transfers'), false);
   assert.match(bridge, /'route_provider_settlement_verified', false/);
   assert.match(bridge, /'route_settlement_evidence_status', 'route_ledger_retired_no_route_transfers'/);
   assert.match(admin, /Razorpay Route Transfers — Retired/);
