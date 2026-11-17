@@ -1,5 +1,5 @@
 begin;
-select plan(7);
+select plan(8);
 
 select ok(
   exists (
@@ -68,6 +68,25 @@ select ok(
   and position('for update' in lower(pg_get_functiondef('public.srk_customer_link_complaint_message_attachment(uuid,uuid,text,text,text,bigint)'::regprocedure)))
       < position('insert into public.srk_booking_complaint_message_attachments' in lower(pg_get_functiondef('public.srk_customer_link_complaint_message_attachment(uuid,uuid,text,text,text,bigint)'::regprocedure))),
   'attachment linker locks the exact Customer-owned Storage object before inserting metadata'
+);
+
+
+select ok(
+  not exists (
+    select 1
+      from pg_policy p
+     where p.polrelid='storage.objects'::regclass
+       and p.polname='srk_customer_support_delete_unlinked_own'
+  )
+  and not exists (
+    select 1
+      from pg_policy p
+     where p.polrelid='storage.objects'::regclass
+       and p.polcmd in ('d','*')
+       and position('srk-customer-support' in lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')))>0
+       and position('srk_customer_support_object_delete_access(name)' in lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')))=0
+  ),
+  'no legacy or alternate support-bucket DELETE policy can bypass the linked-attachment guard'
 );
 
 select * from finish();
