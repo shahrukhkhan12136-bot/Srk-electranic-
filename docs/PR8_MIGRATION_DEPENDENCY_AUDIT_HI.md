@@ -7286,27 +7286,21 @@ Test `plan(44)` के साथ ठीक 44 top-level `ok(...)` assertions औ
 Static source review only. Test, SQL, database query या migration replay नहीं चलाया गया। GPT-2 checklist remains 27/39 = 69%.
 
 
-## 230. Razorpay Refund Preparation RPC का Customer Refund-Request Table पर Forward Runtime Dependency
+## 230. Razorpay Refund Preparation RPC — पूर्व Forward-Dependency Finding वापस लिया गया
 
-### Static source reviewed
+### Static source re-check
+- `supabase/migrations/20261114125844_restore_financial_audit_core_schema.sql` SHA `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`.
 - `supabase/migrations/20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql` SHA `c811fe2a0ae129201ca9e99c5405bbb59e831f57`.
 - `supabase/migrations/20261115100000_customer_refund_request_contract.sql` SHA `efe03913e108e98886cb25d24c3e4b1bb8e74481`.
-- `supabase/migrations/20261115110000_admin_refund_review_queue_and_decisions.sql` SHA `900c5e63c2628a21280f3b8bcdabf46cadb3b9ed`.
 
-### Finding
-Migration `20261114290000` में `public.srk_admin_prepare_razorpay_refund(uuid,text)` function, `public.srk_booking_refund_requests` से customer refund request पढ़ता और उस पर `FOR UPDATE` lock लेता है। उसी migration के अंत में RPC का EXECUTE अधिकार `authenticated` को दिया गया है और function के भीतर Main Admin authorization check है।
+### Correction
+पहले इस section में कहा गया था कि `srk_booking_refund_requests` table केवल बाद की `20261115100000` migration में बनती है। यह निष्कर्ष गलत था। शुरुआती financial-core migration `20261114125844` में ही यह table बनती है और उसमें `id`, `booking_id`, `customer_user_id`, `amount`, `reason`, `status`, `admin_note`, `refund_record_id`, `decided_by`, timestamps तथा booking-level unique constraint शामिल हैं। उसी migration में RLS enablement, direct client-role privileges revoke, `service_role` grant और customer/status indexes भी हैं.
 
-लेकिन `srk_booking_refund_requests` table और customer request RPCs बाद की migration `20261115100000` में बनाए जाते हैं। इसलिए 14290000 apply होने के बाद और 15100000 apply होने से पहले यदि authorized Admin refund-preparation RPC चलाए, तो function का request lookup absent relation पर निर्भर होगा। यह एक स्पष्ट deployment/runtime sequencing window है। Relation reference PL/pgSQL body में है; इससे migration creation या clean replay failure सिद्ध नहीं होता। बाद की 15110000 migration Admin review queue/decision RPCs जोड़ती है, लेकिन 14290000 वाला preparation RPC उससे पहले ही authenticated execution के लिए उपलब्ध है।
+`20261114290000` का `srk_admin_prepare_razorpay_refund(uuid,text)` function इस table को reference करता है; लेकिन relation उससे पहले मौजूद है। बाद की `20261115100000` migration मुख्यतः customer request create/list RPCs जोड़ती है—table की पहली creation नहीं.
 
-### Required action
-- Customer refund-request table को refund-preparation RPC से पहले create करें, या उस RPC को table migration के बाद ही expose/grant करें।
-- यदि migrations अलग-अलग deploy होती हैं, तो 15100000 लागू और सत्यापित होने तक Admin refund-preparation traffic रोकें।
-- Migration-order assertion जोड़ें कि `srk_booking_refund_requests` का निर्माण `srk_admin_prepare_razorpay_refund` को expose करने से पहले हो।
-- Isolated PostgreSQL में full ordered replay और एक Admin refund-preparation call का targeted test चलाएँ।
+अतः absent-table forward runtime dependency वाला पुराना दावा वापस लिया जाता है। इस निष्कर्ष से clean replay या runtime behavior pass सिद्ध नहीं होता; वे अभी अलग से जाँचे जाने हैं.
 
-Static source review only. कोई SQL, database query, migration replay, pgTAP, Admin UI/browser test, CI dispatch या deployment नहीं चलाया गया। यह forward runtime dependency है, reproduced failure नहीं। GPT-2 checklist remains 27/39 = 69%.
-
-
+Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह section correction है; checklist 27/39 = 69% अपरिवर्तित.
 
 ## 231. Refund/Accounting Migration में तीन RPC Definitions दो-दो बार हूबहू दोहराई गई हैं
 
@@ -7331,27 +7325,21 @@ Static text comparison only. कोई SQL, database query, migration replay, pg
 
 
 
-## 232. Customer Payment History RPC का बाद में बनने वाली Refund-Request Table पर Forward Runtime Dependency
+## 232. Customer Payment History RPC — पूर्व Forward-Dependency Finding वापस लिया गया
 
-### Static source reviewed
-- `supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql` SHA `0cadc99ad47efa0e08f8efa21ca63b105aea12bd`.
+### Static source re-check
+- `supabase/migrations/20261114125844_restore_financial_audit_core_schema.sql` SHA `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`.
+- `supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql` SHA `0cadc99ad47efa0e08e8f8efa21ca63b105aea12bd`.
 - `supabase/migrations/20261115100000_customer_refund_request_contract.sql` SHA `efe03913e108e98886cb25d24c3e4b1bb8e74481`.
 
-### Finding
-Migration `20261114200000` में `public.srk_customer_get_payment_history(integer,integer)` function बनाया जाता है और उसका EXECUTE अधिकार `authenticated` को दिया जाता है। Function की UNION query में `public.srk_booking_refund_requests` से `refund_request` event पढ़ा जाता है।
+### Correction
+पहले इस section में कहा गया था कि `srk_booking_refund_requests` table बाद की `20261115100000` migration में पहली बार बनती है, इसलिए `srk_customer_get_payment_history(integer,integer)` को बीच की migration अवस्था में absent relation का खतरा है। यह दावा गलत था.
 
-लेकिन `srk_booking_refund_requests` table बाद की migration `20261115100000` में बनाई जाती है। इसलिए migration 14200000 apply होने के बाद और 15100000 apply होने से पहले authenticated customer payment-history RPC चलाए, तो function का refund-request query absent relation पर निर्भर होगा। यह Section 230 से अलग caller/function का deployment/runtime sequencing window है: Section 230 Admin refund-preparation RPC के बारे में है, जबकि यह Customer payment-history RPC के बारे में है।
+`20261114125844` migration, payment-history RPC वाली `20261114200000` migration से पहले ही, पूरी refund-request table और उसके सभी referenced columns बनाती है। इसलिए payment-history function का `refund_request` UNION branch table-creation order के लिहाज़ से forward dependency नहीं है। `20261115100000` customer-facing create/list request functions जोड़ती है; यह table की पहली creator नहीं है.
 
-PL/pgSQL function body में relation reference होने से migration creation या clean ordered replay failure सिद्ध नहीं होता। जोखिम उस interval में function invoke करने पर है जब table अभी मौजूद न हो।
+अतः absent-table forward runtime dependency वाला पुराना दावा वापस लिया जाता है। यह correction केवल migration source order और schema declaration पर आधारित है; इससे function invocation, authorization, pagination या clean replay का runtime proof नहीं मिलता.
 
-### Required action
-- `srk_booking_refund_requests` table को Customer payment-history RPC से पहले create करें, या payment-history RPC को table migration के बाद ही expose/grant करें।
-- यदि migrations चरणों में deploy होती हैं, तो 15100000 apply और verify होने तक Customer payment-history RPC traffic रोकें।
-- Migration-order assertion जोड़ें कि इस RPC के authenticated execution exposure से पहले refund-request table मौजूद हो।
-- Isolated PostgreSQL में बीच की migration अवस्था पर targeted invocation और full ordered replay दोनों जाँचें।
-
-Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह forward runtime dependency है, reproduced failure नहीं। GPT-2 checklist remains 27/39 = 69%.
-
+Static source review only. कोई SQL, database query, migration replay, pgTAP, runtime test, CI dispatch या deployment नहीं चलाया गया। यह section correction है; checklist 27/39 = 69% अपरिवर्तित.
 
 ## 233. Legacy Completion Commission Trigger पुराने Quote Total को Interim Commission में लिख सकता है
 
