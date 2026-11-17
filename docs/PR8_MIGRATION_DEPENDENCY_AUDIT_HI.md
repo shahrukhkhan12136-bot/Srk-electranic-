@@ -5048,3 +5048,49 @@ Migration filename timestamp क्रम केवल intended ordering बत�
 - तब तक कोई SQL execution, pgTAP, DB query, CI dispatch, deployment, merge या cherry-pick नहीं होगा।
 
 **Verdict:** Audit Branch में trigger-aware test coverage का स्पष्ट gap है। Proposed cases implementation checklist हैं, verification results नहीं।
+
+
+
+## 166. Trigger Attachment और Refund RPC Call-Path का Static Cross-Check
+
+**तारीख:** 17 नवंबर 2026  
+**स्रोत:** Audit Branch migration `20261116210000_attach_electrician_payout_reconciliation_trigger.sql` (Blob `b12da77471d510b55f798bd089597d866d79a133`)  
+**सीमा:** केवल source पढ़ना; कोई SQL/DB/test execution नहीं।
+
+### 1. Trigger Registration और Conditions
+
+Migration `public.srk_create_electrician_payable()` को परिभाषित करती है और `public.service_bookings` पर `srk_reconcile_electrician_payable` नाम का AFTER ROW trigger बनाती है। Trigger INSERT तथा निम्न columns के UPDATE पर चलता है: `status`, `payment_status`, `assigned_electrician_id`, `payment_verified_at`, `amount_paid`, `quote_status`, `service_charge`, `materials_amount`, `commission_rate`, `razorpay_payment_id`, `selected_category`।
+
+Refund closure branch केवल तब चलती है जब trigger को मिलने वाली नई booking row में `payment_status='refunded'` हो। वह उसी booking के payout में:
+- `pending` को `refunded` करती है;
+- `blocked` को तभी `refunded` करती है जब `payout_note` ठीक `Razorpay refund pending` या `Manual refund processed` हो;
+- अन्य payout states और unrelated blocked notes को इस branch से नहीं बदलती।
+
+ये trigger-body के static conditions हैं; database में trigger enabled/attached होने या runtime behavior का स्वतंत्र प्रमाण नहीं।
+
+### 2. तीन RPC Call-Paths की तुलना
+
+| RPC | Booking transition | Trigger के बाद payout check |
+|---|---|---|
+| `srk_admin_record_manual_refund` | manual refund entry के बाद paid booking को refunded करता है | payout row पहले से मौजूद हो तो दोबारा पढ़कर refunded न होने पर exception |
+| `srk_service_finalize_razorpay_refund_from_recovery_evidence` | verified recovery evidence के बाद paid booking को refunded करता है | payout मौजूद हो तो दोबारा पढ़कर refunded न होने पर exception; processed replay में भी payout state जाँचता है |
+| `srk_service_reconcile_booking_refund` | provider status processed होने पर paid booking को refunded करता है | उसी function body में payout को दोबारा पढ़कर verify नहीं करता |
+
+इसलिए तीसरे RPC का success response अकेले payout closure का post-condition प्रमाणित नहीं करता। यह source-level coverage gap है; इसे runtime failure नहीं कहा जा रहा।
+
+### 3. Regression Matrix के लिए सटीक अतिरिक्त Assertions
+
+Section 165 के प्रस्ताव को इस static review से निम्न assertions के साथ refine किया जाना चाहिए:
+1. Trigger name, timing, row-level scope और UPDATE column list मौजूद हों।
+2. `pending` payout refund transition पर `refunded` हो।
+3. दोनों exact refund-owned blocked notes बंद हों।
+4. अलग blocked note और `paid` payout अपरिवर्तित रहें।
+5. Manual refund और recovery RPC payout post-condition fail-closed रखें।
+6. Provider reconciliation में trigger के बाद payout post-condition को transactional test में assert किया जाए; केवल RPC JSON success को पर्याप्त न माना जाए।
+7. Recovery processed replay में booking और payout दोनों की consistent final state जाँची जाए।
+
+### 4. निष्कर्ष
+
+Trigger migration के भीतर manual refund और recovery RPCs trigger result को re-read करके जाँचती हैं; provider reconciliation RPC में वैसी explicit payout post-condition नहीं है। अगला सुरक्षित कदम इसी अंतर को owner review के लिए रखना है। Test file में बदलाव, pgTAP run, migration replay, DB query, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+**Verdict:** Static call-path review पूरा; trigger registration और payout lifecycle runtime verification अभी बाकी है।
