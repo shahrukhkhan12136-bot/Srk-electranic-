@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(41);
 select ok(to_regclass('public.srk_razorpay_refund_recovery_audits') is not null,'durable refund recovery evidence table exists');
 select ok((select relrowsecurity from pg_class where oid='public.srk_razorpay_refund_recovery_audits'::regclass),'recovery evidence table has RLS enabled');
 select ok(not has_table_privilege('anon','public.srk_razorpay_refund_recovery_audits','select'),'anon cannot read private recovery evidence');
@@ -83,6 +83,15 @@ select ok(position('PROVIDER_REFUND_ID_ALREADY_BOUND_TO_ANOTHER_REFUND' in pg_ge
 select ok((select prosecdef and coalesce(array_to_string(proconfig,','),'') like '%search_path=%'
   from pg_proc where oid='public.srk_enforce_razorpay_refund_identity_mapping()'::regprocedure),
   'identity guard is SECURITY DEFINER with an explicit empty search_path');
+
+select ok(
+  position('for update of b' in pg_get_functiondef(
+    'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))>0
+  and position('update public.srk_electrician_payouts' in pg_get_functiondef(
+    'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure))
+    > position('for update of b' in pg_get_functiondef(
+      'public.srk_service_reconcile_booking_refund(uuid,text,text,text)'::regprocedure)),
+  'refund reconciliation locks the booking before restoring or closing its payout row, matching payout settlement lock order');
 
 select * from finish();
 rollback;
