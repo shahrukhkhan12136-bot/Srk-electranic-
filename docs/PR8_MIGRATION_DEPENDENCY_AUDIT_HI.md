@@ -3459,3 +3459,50 @@ Supabase migration filename convention में underscore से पहले 
 - कोई SQL execution, PostgreSQL parser/replay, pgTAP, database query/write, CI dispatch, deployment, merge या Production action नहीं किया गया।
 
 **स्थिति:** Source-level inventory और duplicate matrix तैयार है। इसे अभी final clean-replay approval नहीं माना जाएगा। अगला आवश्यक कदम: owner-approved baseline + duplicate-version resolution, फिर disposable local PostgreSQL/Supabase harness में full 89-file replay और pgTAP validation।
+
+## 134. Duplicate-version body और labour-bill table parity — 17 Nov 2026
+
+### 134.1 20261109 duplicate-version files का body comparison
+
+दोनों files फिर से GitHub से पढ़ी गईं:
+
+- `20261109_allow_quote_approval_booking_states.sql` — blob `ef4bf8b9b8a9a35bf3ddd94ea4614c7498fb1c6d`
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` — blob `014699d3190e45aacde4022ac7e7fa9ca4fec006`
+
+पहली file में केवल दो booking constraints replace होते हैं:
+- `service_bookings_status_check`
+- `service_bookings_assignment_status_requires_electrician`
+
+दूसरी, बड़ी file quote columns, commission trigger function, quote submit/respond/work-status RPCs, offer details RPC और grants/revokes बनाती है। इसके अंत में वही दोनों booking constraints फिर से DROP/ADD किए गए हैं, और दोनों constraint definitions पहली छोटी file से textually समान हैं।
+
+**निष्कर्ष:** बड़ी migration के अंत में छोटी migration का constraint work दोहराया गया है। यह source-level redundancy है; पर दोनों filenames का version prefix `20261109` समान होने से migration-history identity collision भी है। केवल एक file को rename/delete करना या दूसरी को हटाना सुरक्षित रूप से तय नहीं किया जा सकता। Owner/DBA को authoritative migration version और पहले से applied history तय करनी होगी। Supabase CLI/remote history पर कोई परीक्षण नहीं हुआ।
+
+### 134.2 srk_booking_labour_bills table definitions की parity
+
+इन दोनों files के `CREATE TABLE IF NOT EXISTS public.srk_booking_labour_bills` blocks को अलग-अलग पढ़कर तुलना की गई:
+
+- `20261114125844_restore_financial_audit_core_schema.sql` — blob `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`
+- `20261114240000_server_authoritative_customer_approved_work_timer.sql` — blob `e84e2e0124b90b526d07f305bc9bf1e2eb6f0ebe`
+
+दोनों table definitions में columns, data types, defaults, NOT NULL constraints, primary key, foreign keys, CHECK expressions और table-level consistency check एक समान हैं। दोनों में:
+- `booking_id` primary key है;
+- customer और electrician profile foreign keys हैं;
+- category तथा approved rate tier allow-lists समान हैं;
+- rate card, rate8h, elapsed time, billable minutes, paise amount और decimal amount fields समान हैं;
+- `labour_amount = labour_amount_paise / 100.0` check समान है।
+
+**निष्कर्ष:** इस जोड़ी में table-definition drift का source-level प्रमाण नहीं मिला। पहले migration में table बन जाने पर दूसरे का `IF NOT EXISTS` उसी table को छोड़ देगा; समान definition होने के कारण यह particular duplicate create स्वयं column mismatch नहीं दिखाता। फिर भी runtime catalog/constraint parity का प्रमाण PostgreSQL replay के बिना उपलब्ध नहीं है।
+
+### 134.3 Avatar function और customer profile/storage migration का क्रम
+
+- `20261114180000_harden_customer_avatar_object_integrity.sql` customer profile update RPC को replace करती है और उसमें `srk_customer_profiles` तथा `storage.objects` को function body में access किया जाता है।
+- `20261114201428_customer_profile_saved_addresses_private_storage.sql` बाद में customer profile table, avatar bucket और avatar storage policies बनाती है।
+
+Function body का table access PL/pgSQL execution के समय resolve/execute होता है; केवल function definition मौजूद होने से यह साबित नहीं होता कि उससे पहले migration-time invocation हुआ। इसलिए इस source review में इसे अपने-आप clean-replay blocker घोषित नहीं किया गया। Runtime में function call केवल बाद की table/bucket migration सफल होने के बाद ही वैध होगा। कोई function call या database test नहीं किया गया।
+
+### 134.4 सत्यापन सीमा
+
+- ऊपर बताई गई सभी छह source files के GitHub blob SHA पढ़े गए।
+- Duplicate-version body और दोनों labour-bill table definitions का static text comparison किया गया।
+- कोई SQL apply, parser, PostgreSQL replay, pgTAP, database query/write, CI, deployment, merge या Production action नहीं किया गया।
+- Version collision का समाधान अभी भी owner/DBA निर्णय और approved migration-history reconciliation पर निर्भर है।
