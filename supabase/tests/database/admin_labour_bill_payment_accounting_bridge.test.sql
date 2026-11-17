@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(24);
 
 select has_function('public','srk_admin_record_new_booking_cash_payment',
   array['uuid','text','text'],
@@ -118,6 +118,10 @@ select ok(
   and (select proconfig @> ARRAY['search_path=""']::text[] from pg_proc where oid='public.srk_get_my_earnings()'::regprocedure),
   'all SECURITY DEFINER accounting bridge functions pin an empty search_path');
 
+
+select ok(position('new.commission_amount := null' in lower(pg_get_functiondef(
+  'public.srk_set_booking_commission_before_payout()'::regprocedure)))>0,
+  'commission amount is cleared when booking leaves verified completed-paid state');
 
 select ok(exists(
   select 1
