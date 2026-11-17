@@ -1,5 +1,9 @@
 -- DRAFT ONLY — do not apply as a production migration.
--- Proposed Main Admin-only, metadata-only read API for financial audit events.
+-- Proposed srk_admin_users allow-list-only, metadata-only read API for financial audit events.
+-- IMPORTANT: inspected srk_admin_users schema has user_id/created_at only, no role column.
+-- is_srk_admin() proves allow-list membership, not a distinct Main Admin vs Support Staff role.
+-- Do not label this Main Admin-only until owner confirms Support Staff are never allow-listed,
+-- or an authoritative Main Admin role predicate is provided.
 -- Kept under docs/drafts until field visibility/retention policy is approved.
 
 CREATE OR REPLACE FUNCTION public.srk_admin_list_financial_audit_events(
