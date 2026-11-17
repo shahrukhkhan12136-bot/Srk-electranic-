@@ -6297,3 +6297,39 @@ SOS migration तक पहुँचने से पहले selected root bas
 SOS RPC के direct column references के लिए source provenance अब अलग-अलग layers में पहचानी गई है। यह static provenance matrix है; इससे किसी database में columns मौजूद होने, constraints validate होने, `%ROWTYPE` resolution या SOS RPC execution की पुष्टि नहीं होती। Canonical setup path और clean replay अभी **unverified** हैं।
 
 केवल migration/setup source inspection और report documentation update किया गया। कोई SQL/pgTAP, database query, migration replay, application source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 199. Latest Booking Commission Correction — Migration-to-pgTAP Assertion Gap
+
+### 1. नवीनतम migration की पहचान
+
+`20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` (SHA `68189051090a51bef26a98997caf103b62ed070c`) latest migration inventory में मौजूद है। यह तीन महत्वपूर्ण source changes करती है:
+
+- `srk_set_booking_commission_before_payout()` नाम का BEFORE trigger function commission को payout AFTER trigger से पहले निर्धारित करता है।
+- `srk_validate_booking_commission_payout_parity()` नाम का AFTER trigger booking commission और payout ledger platform commission की समानता जाँचता है; mismatch पर transaction exception उठाता है।
+- Admin read-only accounting reconciliation में manual payment evidence के amount के साथ normalized payment-method match भी जाँचा जाता है और mismatch exception जोड़ा जाता है।
+
+### 2. संबंधित database test का static coverage
+
+`supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql` (SHA `7db3d4e5bec75100acc6f892bbcdfe7f29f0f3b7`) में `plan(19)` है। इसमें manual payment method mismatch की read-only reconciliation assertion मौजूद है, लेकिन test source में निम्न दोनों नए trigger functions के नाम नहीं मिले:
+
+- `srk_set_booking_commission_before_payout`
+- `srk_validate_booking_commission_payout_parity`
+
+इसलिए वर्तमान test file में इन नए trigger definitions, उनके trigger events और commission/payout parity failure path के लिए स्पष्ट static assertions नहीं दिखते। यह test file का coverage gap है; इससे migration का runtime behavior सफल या असफल सिद्ध नहीं होता।
+
+### 3. आगे की सत्यापन आवश्यकता
+
+अलग paid Database Branch बनाने की अभी जरूरत नहीं है। GPT-1 और GPT-2 के निर्धारित काम तथा दोनों की रिपोर्ट एकत्र होने के बाद ही owner की तय योजना के अनुसार isolated paid test branch बनाई जाएगी। उस समय कम-से-कम ये behavioral cases जाँचे जाने चाहिए:
+
+1. Verified paid + completed booking में BEFORE trigger commission को payout calculation से पहले सेट करे।
+2. Payout AFTER trigger उसी commission को ledger में लिखे।
+3. AFTER parity trigger mismatch पर पूरा transaction rollback कराए।
+4. Manual payment amount समान लेकिन method अलग होने पर payment evidence mismatch reject/flag हो।
+5. Razorpay payment path पर manual-payment method guard अनावश्यक रूप से लागू न हो।
+
+### 4. Verdict
+
+नवीनतम migration source में commission sequencing और parity validation के दो नए trigger functions हैं। संबंधित bridge test में method mismatch assertion है, पर दोनों नए trigger functions के लिए प्रत्यक्ष static assertions अनुपस्थित हैं। इसलिए PostgreSQL Parser/pgTAP और Accounting Runtime Test workstream में इस gap को शामिल करना होगा।
+
+यह केवल migration और test source की static समीक्षा तथा audit report documentation update है। कोई SQL/pgTAP execution, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
