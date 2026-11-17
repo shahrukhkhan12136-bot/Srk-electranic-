@@ -5939,3 +5939,43 @@ SOS UI में phone number सहित संवेदनशील संप
 SOS backend में dedicated role permissions, direct-table read restriction और acknowledge row lock जैसे उपयोगी सुरक्षा controls source में मौजूद हैं। साथ ही Support role का SOS read/ack scope **सभी SOS cases** तक व्यापक है, assigned-only नहीं। यह business/security approval का विषय है। Existing 28-assertion test file source-level coverage देती है, पर runtime/behavioral proof नहीं।
 
 केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई test/pgTAP, SQL, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 189. SOS Data Minimization, Retention और Delivery-State Review
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Audit Branch की `20261115260000_sos_admin_support_alerts.sql` migration का static privacy/lifecycle review।
+
+### 1. कौन-सा निजी डेटा रखा जाता है
+
+- SOS row में booking ID, authenticated actor user ID, actor role, नाम, फोन नंबर, reason code, acknowledgement actor/time/note और timestamps रखे जाते हैं।
+- नाम और फोन booking/customer record या electrician profile से server-side निकाले जाते हैं; caller इन्हें RPC arguments में मनमाने ढंग से नहीं भेजता।
+- SOS event history में creation के समय actor role और reason code; acknowledgement के समय free-text note दर्ज होता है।
+- Admin list RPC actor phone और acknowledgement note भी लौटाता है। इस कारण Section 188 में पहचाना गया व्यापक Support Staff read scope निजी जानकारी के लिहाज़ से महत्वपूर्ण है।
+
+### 2. Data Minimization और Retention Gap
+
+- Migration में SOS records या event history के लिए retention अवधि, expiry timestamp, archive/purge workflow या scheduled cleanup नहीं मिला।
+- `booking_id` और `actor_user_id` पर `ON DELETE RESTRICT` है; event rows भी alert deletion को restrict करती हैं। इसलिए सामान्य parent deletion से SOS history स्वतः साफ नहीं होगी।
+- Event history append-only है और UPDATE/DELETE/TRUNCATE रोकती है। यह audit integrity के लिए उपयोगी है, लेकिन retention और privacy deletion नीति अलग से तय करनी होगी।
+- Acknowledgement note 5–500 अक्षरों का free text है। UI note में निजी/संवेदनशील विवरण डालने से रोकने का कोई स्पष्ट instruction इस inspected flow में नहीं मिला। Notes में केवल आवश्यक कार्रवाई-संबंधी जानकारी रखने की नीति उपयोगी होगी।
+
+### 3. Location और Notification Delivery — वर्तमान स्थिति
+
+- `location_status` का default `not_shared` है; migration स्पष्ट कहती है कि live-location consent contract मौजूद नहीं है। इस inspected migration में location coordinates collect/store नहीं होते।
+- Migration comment कहता है कि SMS/Push provider configured नहीं है; creation RPC response दोनों delivery statuses `not_configured` लौटाता है।
+- Table में `queued/sent/failed` enum values मौजूद हैं, पर इस migration में provider dispatch या delivery callback implementation नहीं मिला। इसलिए केवल status columns देखकर वास्तविक SMS/Push delivery का दावा नहीं किया जा सकता।
+- SOS को Police/112 तक auto-notify करने का implementation इस migration में नहीं है; comment भी इसकी पुष्टि करता है।
+
+### 4. सुझाए गए सुरक्षित निर्णय
+
+- Owner से स्पष्ट retention period और lawful deletion/archive प्रक्रिया मंजूर कराएँ; immutable audit evidence के लिए आवश्यक न्यूनतम metadata ही रखें।
+- Support Staff access को जरूरत के अनुसार assigned/team/shift scope तक सीमित करने पर विचार करें; phone और acknowledgement note को अलग से field-level restrict करना भी विकल्प है।
+- Acknowledgement note में केवल कार्रवाई का संक्षिप्त विवरण रखने का निर्देश दें; credentials, निजी बातचीत या अनावश्यक व्यक्तिगत विवरण न रखें।
+- SMS/Push या live location शुरू करने से पहले provider, consent, delivery evidence, failure/retry handling और user-facing status semantics अलग से audit करें।
+
+### 5. Verdict और Evidence Boundary
+
+Migration में phone/name server-side source से लिए जाते हैं, location default रूप से साझा नहीं है और SMS/Push configured न होने पर response `not_configured` रहता है। मुख्य शेष नीति प्रश्न SOS और append-only event history की retention/deletion अवधि तथा acknowledgement free-text का नियंत्रित उपयोग है। कोई live notification, location sharing या data retention runtime behavior इस static review से प्रमाणित नहीं होता।
+
+केवल GitHub source inspection और documentation update हुआ। कोई application source, migration, permission या database setting नहीं बदली गई; कोई test/pgTAP, SQL, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया।
