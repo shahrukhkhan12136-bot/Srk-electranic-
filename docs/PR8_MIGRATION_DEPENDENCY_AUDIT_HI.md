@@ -5137,3 +5137,45 @@ Migration `20261114125844_restore_financial_audit_core_schema.sql` (Blob `bdfdfc
 ### 4. Verdict
 
 मौजूदा Audit Branch में payout trigger और payout/refund audit trigger की static coverage पहले से मौजूद है। वास्तविक कमी runtime behavioral evidence और provider reconciliation payout post-condition coverage की है। कोई test file या migration बदली नहीं गई; कोई pgTAP, DB query, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+
+## 168. Refund Audit Event Coverage और Provider Reconciliation Replay Gap
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Audit Branch की मौजूदा test/migration definitions का static cross-check; कोई SQL या database execution नहीं।
+
+### 1. मौजूदा Tests वास्तव में क्या जाँचते हैं?
+
+- `financial_audit_core_schema.test.sql` (Blob `1d4769e3be6af072bce6474c778cc1ad31b8d1c9`, `plan(54)`) audit tables, RLS, grants, function security और payout/refund audit triggers की catalog presence जाँचती है। इसमें वास्तविक payout/refund row mutate करके generated audit event के `before_data`, `after_data`, `changed_fields` या rollback का behavioral assertion नहीं दिखा।
+- `refund_reconcile_full_amount_guard.test.sql` (Blob `fd5b7ceb8e612b588fac1a7ade8d7035388ca2bc`, `plan(5)`) RPC existence, full amount guard, booking lock और service_role grant जाँचती है। इसमें provider reconciliation के बाद payout post-condition या processed replay की जाँच नहीं है।
+- `admin_manual_refund_request_completion.test.sql` (Blob `99cb0eb02e667699db27951b5b26161a89b8951b`, `plan(14)`) manual refund path में booking transition के बाद payout re-read/verification का static assertion रखती है।
+- `durable_razorpay_refund_recovery_evidence.test.sql` (Blob `370b2c5e460d1a9abfbbe53371a48f9e68788788`, `plan(35)`) recovery finalizer के payout re-read, refunded state, processed replay और recovery audit evidence पर static checks रखती है।
+
+### 2. Provider Reconciliation में विशेष Replay Gap
+
+Migration `20261115250000_harden_refund_reconcile_full_amount.sql` (Blob `3bda81c2b827f597f639846d33967a7c88296e21`) में:
+1. RPC booking row lock करती है, फिर refund row lock करती है।
+2. पहले से `processed` या `failed` refund record मिलने पर early return करती है।
+3. नए `processed` result पर booking को `refunded` करती है, जिससे payout trigger चलना अपेक्षित है।
+4. लेकिन उस booking update के बाद payout को दोबारा पढ़कर `refunded` होने की explicit पुष्टि नहीं करती।
+5. पहले से `processed` record के replay पर early return के कारण booking/payout consistency की पुनः जाँच भी नहीं होती।
+6. `failed` branch refund-owned blocked payout को सीधे `pending` करती है; payout audit trigger source में मौजूद है, लेकिन generated audit row test में assert नहीं है।
+
+यह source-level post-condition और replay-verification gap है; इससे runtime failure सिद्ध नहीं होता।
+
+### 3. अगली Test Design के लिए केंद्रित Assertions
+
+1. Processed reconciliation के बाद booking `refunded` और payout `refunded` दोनों verify हों।
+2. पहले से processed refund के replay पर payout mismatch हो तो success response बिना consistency check के न मिले।
+3. Failed reconciliation में केवल Razorpay-owned blocked payout restore हो; unrelated Admin hold न बदले।
+4. Payout state change पर एक audit event बने, सही entity/booking IDs, action, changed_fields और before/after state सहित।
+5. Refund status transition पर Razorpay refund audit event बने, सही old/new status के साथ।
+6. Transaction के भीतर बाद की forced failure होने पर business rows और संबंधित audit events साथ rollback हों।
+7. Idempotent replay पर duplicate audit event न बने जब कोई tracked field वास्तव में बदली न हो।
+
+ये proposed behavioral assertions हैं, अभी test implementation या pass results नहीं।
+
+### 4. Verdict
+
+Audit schema/trigger catalog coverage मौजूद है; वास्तविक audit event row behavior और provider reconciliation payout post-condition/replay coverage नहीं। अगला सुरक्षित कदम इन assertions को owner review के लिए देना है। कोई SQL/test file या migration बदली नहीं गई; pgTAP, DB query, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
