@@ -5094,3 +5094,46 @@ Section 165 के प्रस्ताव को इस static review से �
 Trigger migration के भीतर manual refund और recovery RPCs trigger result को re-read करके जाँचती हैं; provider reconciliation RPC में वैसी explicit payout post-condition नहीं है। अगला सुरक्षित कदम इसी अंतर को owner review के लिए रखना है। Test file में बदलाव, pgTAP run, migration replay, DB query, CI, deployment, merge या cherry-pick नहीं किया गया।
 
 **Verdict:** Static call-path review पूरा; trigger registration और payout lifecycle runtime verification अभी बाकी है।
+
+
+
+## 167. Existing Payout Test और Financial Audit Trail Coverage Cross-Check
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** मौजूदा SQL test/migration source का static review; कोई test या database command नहीं चलाया गया।
+
+### 1. महत्वपूर्ण अपडेट: Payout Trigger के कुछ प्रस्तावित Cases पहले से Static Test में हैं
+
+Audit Branch की `supabase/tests/database/electrician_payout_reconciliation.test.sql` (Blob `88184e2e1fb386f16d6bd339556a15a5b87275d2`) पहले से:
+- `srk_create_electrician_payable()` की मौजूदगी और `service_bookings` पर row-level AFTER INSERT/UPDATE attachment जाँचती है।
+- trigger function की SECURITY DEFINER/search_path और direct client EXECUTE restrictions जाँचती है।
+- function text में pending payout closure, दोनों refund-owned blocked notes, unrelated Admin block preservation, note clearing और paid payout overwrite न होने की शर्तें जाँचती है।
+- payout ledger और commission parity validator के trigger ordering की static जाँच करती है।
+
+इसलिए Section 165 में दिए गए trigger registration तथा source-condition cases पूरी तरह नए नहीं हैं। वे मौजूदा test के static assertions से काफी हद तक overlap करते हैं। मौजूदा file का test plan 34 है; इसे चलाया नहीं गया और इसके pass होने का दावा नहीं है।
+
+### 2. Financial Audit Trigger की Source-Level पुष्टि
+
+Migration `20261114125844_restore_financial_audit_core_schema.sql` (Blob `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`) में:
+- `srk_audit_electrician_payouts` payout table पर INSERT/UPDATE/DELETE audit trigger जोड़ता है।
+- `srk_audit_razorpay_refunds` Razorpay refund table पर अलग audit trigger जोड़ता है।
+- Generic audit allow-list में payout के लिए `payout_status`, `payout_note`, `payout_method`, `payout_reference`, `electrician_payable`, `platform_commission`, `paid_at` आदि शामिल हैं।
+- Razorpay refund audit function `refund_id`, `amount`, `status`, `provider_status` में बदलाव दर्ज करने के लिए event बनाती है।
+- Audit event actor के लिए `auth.uid()` null होने पर `system` role चुनती है; Admin identity मिलने पर `admin`, अन्यथा `user`।
+
+यह source में audit-trigger wiring और field allow-list का प्रमाण है; वास्तविक audit rows insert होने या rollback/commit के बाद सुरक्षित रहने का runtime प्रमाण नहीं।
+
+### 3. अभी वास्तविक Coverage Gap क्या बचता है?
+
+मौजूदा payout test function source और trigger catalog की static जाँच करता है। यह अलग से साबित नहीं करता कि:
+1. Refund transaction में payout trigger update से सही `electrician_payout` audit event row बनती है।
+2. Razorpay refund status change पर expected `razorpay_refund` audit event बनती है।
+3. Audit event में before/after values और changed_fields ठीक दर्ज होते हैं।
+4. Provider reconciliation द्वारा booking refunded करने के बाद payout trigger closure और payout audit event एक ही transaction में सफल होते हैं।
+5. किसी downstream exception पर booking, payout और audit events एक साथ rollback होते हैं।
+
+अतः अगला उपयोगी test design अब generic trigger assertions दोहराने के बजाय audit-event behavioral assertions पर केंद्रित होना चाहिए, साथ ही provider reconciliation RPC का payout post-condition gap अलग रखा जाए।
+
+### 4. Verdict
+
+मौजूदा Audit Branch में payout trigger और payout/refund audit trigger की static coverage पहले से मौजूद है। वास्तविक कमी runtime behavioral evidence और provider reconciliation payout post-condition coverage की है। कोई test file या migration बदली नहीं गई; कोई pgTAP, DB query, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
