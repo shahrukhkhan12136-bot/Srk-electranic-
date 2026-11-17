@@ -434,19 +434,19 @@ async function loadPayouts(){
   if(error)throw error;
   const rows=data||[];
   // Keep the Admin table bounded, but calculate summary totals across every payout row.
-  let pending=0,paid=0,offset=0;
+  let pendingPaise=0,paidPaise=0,offset=0;
   while(true){
    const {data:summaryRows,error:summaryError}=await sb.from('srk_electrician_payouts').select('id,electrician_payable,payout_status').order('id',{ascending:true}).range(offset,offset+999);
    if(summaryError)throw summaryError;
    for(const row of summaryRows||[]){
-    const amount=Number(row.electrician_payable||0);
-    if(row.payout_status==='pending')pending+=amount;
-    else if(row.payout_status==='paid')paid+=amount;
+    const amountPaise=Math.round(Number(row.electrician_payable||0)*100);
+    if(row.payout_status==='pending')pendingPaise+=amountPaise;
+    else if(row.payout_status==='paid')paidPaise+=amountPaise;
    }
    if(!summaryRows||summaryRows.length<1000)break;
    offset+=summaryRows.length;
   }
-  document.getElementById('payoutPending').textContent='₹'+pending.toFixed(2);document.getElementById('payoutPaid').textContent='₹'+paid.toFixed(2);
+  document.getElementById('payoutPending').textContent='₹'+(pendingPaise/100).toFixed(2);document.getElementById('payoutPaid').textContent='₹'+(paidPaise/100).toFixed(2);
   body.innerHTML=rows.map(x=>{const partner=x.electrician_profiles||{},action=x.payout_status==='pending'?'<div><select id="pm-'+x.id+'"><option value="upi">UPI</option><option value="bank">Bank</option></select><input id="pr-'+x.id+'" placeholder="UTR / UPI Reference" maxlength="120" style="width:170px"><input id="pn-'+x.id+'" placeholder="नोट (वैकल्पिक)" maxlength="250" style="width:140px"><button id="payout-action-'+x.id+'" onclick="markPayoutPaid(\''+x.id+'\')">भुगतान दर्ज करें</button></div>':'<span class="tag">'+esc(({pending:'लंबित',paid:'भुगतान पूरा',blocked:'रोक लगा है',refunded:'रिफंड पूरा'})[x.payout_status]||x.payout_status)+'</span>'+(x.payout_note?'<br>नोट: '+esc(x.payout_note):'')+(x.payout_reference?'<br>Ref: '+esc(x.payout_reference):'')+(x.paid_at?'<br>'+esc(new Date(x.paid_at).toLocaleString('en-IN')):'');return '<tr><td>'+esc(partner.display_name||'Electrician')+'<br>'+esc(partner.phone||'')+'</td><td>'+esc(x.booking_id)+'</td><td>₹'+Number(x.gross_service_amount).toFixed(2)+'</td><td>₹'+Number(x.materials_amount).toFixed(2)+'</td><td>₹'+Number(x.platform_commission).toFixed(2)+'</td><td><b>₹'+Number(x.electrician_payable).toFixed(2)+'</b></td><td>'+action+'</td></tr>';}).join('')||'<tr><td colspan="7">अभी कोई सत्यापित और पूर्ण काम पेआउट के लिए उपलब्ध नहीं है।</td></tr>';
   document.getElementById('payoutMsg').textContent='';
  }catch(e){body.innerHTML='<tr><td colspan="7" class="danger">पेआउट रिकॉर्ड लोड नहीं हो सके। Admin अनुमति जाँचें और फिर कोशिश करें।</td></tr>';}
