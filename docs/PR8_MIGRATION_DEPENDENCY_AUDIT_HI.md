@@ -3123,3 +3123,37 @@ Section 125 के conditional migration dependency को स्पष्ट �
 - Documented full-bundle path पर helper dependency पूरी होने की संभावना: **source-level; execution unverified**.
 - Migration-only baseline पर prerequisite: **अब भी स्पष्ट रूप से दर्ज; runtime untested**.
 - No SQL/schema/helper/migration change, no database query, no PostgreSQL replay/pgTAP, no CI/deployment/merge.
+
+## 127. Staff RBAC migration timestamp और helper bootstrap के बीच क्रम — 17 Nov 2026
+
+Section 126 के बाद Migration directory के वास्तविक timestamped filenames और Staff RBAC के आस-पास की migrations जाँची गईं।
+
+### 127.1 Migration directory में क्रम
+
+- Staff RBAC foundation का filename `20261114390000_admin_staff_rbac_foundation.sql` है।
+- इसके ठीक बाद timestamp के अनुसार `20261114410000_razorpay_webhook_event_inbox.sql` आता है; inspected file में `is_srk_admin()` या `srk_is_admin()` का उल्लेख नहीं मिला।
+- बाद की `20261116100000_fix_staff_permission_helper_volatility.sql` migration `srk_has_admin_permission(text)` को VOLATILE बनाकर फिर से define करती है और `public.is_srk_admin()` call करती है; वह भी helper definition नहीं बनाती।
+- `20261116110000_pin_legacy_financial_read_rpc_search_paths.sql` अगली timestamped migration है; inspected file में इन Admin helper names का उल्लेख नहीं मिला।
+- Migration tree में `COMPLETE_DATABASE_SETUP.sql` timestamped migration file नहीं है। वह repository root की अलग bootstrap/setup SQL file है।
+
+### 127.2 Replay का व्यावहारिक अर्थ
+
+- Migration runner की timestamp ordering अपने-आप root-level `COMPLETE_DATABASE_SETUP.sql` को पहले चलाने की गारंटी नहीं देती।
+- इसलिए यदि clean replay प्रक्रिया केवल `supabase/migrations/*.sql` चलाती है, तो Staff RBAC migration से पहले `is_srk_admin()` उपलब्ध कराने वाला स्पष्ट migration-file prerequisite इस inspected sequence में स्थापित नहीं हुआ।
+- यदि अलग documented bootstrap step में पूरा `COMPLETE_DATABASE_SETUP.sql` सफलतापूर्वक चलाया जाता है, तो Section 126 के अनुसार current helper definition मौजूद हो सकती है।
+- उपलब्ध source से यह तय नहीं होता कि project का वास्तविक deployment/replay runner bootstrap file को migrations से पहले चलाता है या नहीं। कोई runtime failure घोषित नहीं किया जा रहा।
+
+### 127.3 Replay gate
+
+1. Owner/DBA एक authoritative replay recipe लिखित रूप में तय करे: bootstrap SQL पहले, फिर timestamped migrations; या migration-only baseline।
+2. यदि migration-only baseline है, तो helper definition का migration-chain में स्थान तय और source-reviewed हो।
+3. Disposable PostgreSQL में runner के वास्तविक क्रम से replay करें और पहली Staff migration से पहले `to_regprocedure('public.is_srk_admin()')` जैसी catalog जाँच से helper presence verify करें।
+4. Replay log, migration history और helper owner/grants दर्ज किए बिना Production readiness घोषित न करें।
+
+### Status
+
+- Staff RBAC और follow-up migration filenames/timestamps: **source-confirmed**.
+- Follow-up volatility migration helper को define नहीं करती: **source-confirmed**.
+- Root bootstrap SQL का migration directory से अलग होना: **source-confirmed**.
+- Actual runner order / live DB helper presence / replay outcome: **unknown; not tested**.
+- No SQL/migration/helper change, no database query, no PostgreSQL replay/pgTAP, no CI/deployment/merge.
