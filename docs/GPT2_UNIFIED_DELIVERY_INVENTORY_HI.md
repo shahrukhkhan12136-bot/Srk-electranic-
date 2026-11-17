@@ -741,3 +741,14 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - No Route integration, bank API, new settlement automation, or other feature is added. Existing manual Admin-attested payout evidence remains the current approved workflow; it must not be described as independently bank-verified.
 - The four-workstream source checklist now has 27/27 applicable implementation checks complete (100% source-level); the former 28th item is explicitly N/A, not counted as completed implementation. This does not change the broad GPT-2 inventory (27/39, 69%) or runtime acceptance (60/60 Pending).
 - This is a documentation/checklist classification only. No database execution, migration replay, payout transaction, tests, CI, deployment, production change, merge, or mobile QA was performed. PR #8 remains Open/Draft/Unmerged.
+
+
+## 3AP. 17 November 2026 — Current branch tree inventory correction
+
+- Current branch: `chore/pr8-replay-audit-20261116-v2`; verified HEAD before this documentation update: `2a886095ec007d7695cd5ecca7003d81504ac2b2`.
+- Recursive Git tree recount (SQL/test/workflow files only): **100 SQL migration files**, **38 pgTAP SQL test files**, **57 Node `.test.js` files**, and **3 GitHub Actions workflow files**. `supabase/config.toml` is absent.
+- All 100 migration filenames have a numeric leading version token. Grouping by that token finds exactly one collision: `20261109`, shared by `20261109_allow_quote_approval_booking_states.sql` and `20261109_electrician_inspection_quotes_and_service_only_commission.sql`. No other duplicate token was found in this tree scan.
+- This supersedes older 92/93-migration and 36-pgTAP counts recorded in earlier dependency-map snapshots. Those earlier counts remain historical snapshots, not current inventory.
+- This is a recursive filename/tree inventory, not proof that all 100 migrations replay, compile, or are production-applied. The duplicate-version and canonical Supabase/Auth/Storage baseline gates remain unresolved; no file was renamed/reordered and no migration was executed.
+- Broad GPT-2 checklist remains **27/39 = 69%**; this inventory correction does not close an implementation item. Four-workstream source checklist remains **27/27 applicable = 100%**; Runtime Acceptance remains **60/60 Pending**.
+- No database access, migration replay, Node/pgTAP execution, CI dispatch, deployment, production change, merge, provider operation, or mobile QA was performed. PR #8 remains Open/Draft/Unmerged.
