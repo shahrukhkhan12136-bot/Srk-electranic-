@@ -116,6 +116,23 @@ $$;
 
 revoke all on function public.srk_create_electrician_payable() from public, anon, authenticated;
 
+-- Attach the payout ledger trigger explicitly for deterministic clean replay.
+drop trigger if exists trg_srk_create_electrician_payable on public.service_bookings;
+create trigger trg_srk_create_electrician_payable
+after insert or update of
+  payment_status,
+  status,
+  quote_status,
+  service_charge,
+  materials_amount,
+  assigned_electrician_id,
+  payment_verified_at,
+  razorpay_payment_id,
+  amount_paid
+on public.service_bookings
+for each row
+execute function public.srk_create_electrician_payable();
+
 create or replace function public.srk_admin_mark_electrician_payout_paid(
   p_payout_id uuid,
   p_method text,
