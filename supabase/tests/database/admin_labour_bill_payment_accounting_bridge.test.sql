@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(21);
 
 select has_function('public','srk_admin_record_new_booking_cash_payment',
   array['uuid','text','text'],
@@ -110,6 +110,13 @@ select ok(position('route_ledger_retired_no_route_transfers' in lower(pg_get_fun
   and position('route_provider_settlement_verified' in lower(pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure)))>0,
   'Route ledger remains retired; Admin reconciliation reports explicit retired status without querying Route transfers');
+
+select ok(
+  (select proconfig @> ARRAY['search_path=""']::text[] from pg_proc where oid='public.srk_set_booking_commission_before_payout()'::regprocedure)
+  and (select proconfig @> ARRAY['search_path=""']::text[] from pg_proc where oid='public.srk_validate_booking_commission_payout_parity()'::regprocedure)
+  and (select proconfig @> ARRAY['search_path=""']::text[] from pg_proc where oid='public.srk_admin_commission_report()'::regprocedure)
+  and (select proconfig @> ARRAY['search_path=""']::text[] from pg_proc where oid='public.srk_get_my_earnings()'::regprocedure),
+  'all SECURITY DEFINER accounting bridge functions pin an empty search_path');
 
 select * from finish();
 rollback;
