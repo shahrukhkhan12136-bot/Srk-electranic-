@@ -112,3 +112,28 @@ These are dependency constraints, not an instruction to manually reorder migrati
 - No remote database URL/secret was read; no Production schema query/export, migration apply, PostgreSQL/pgTAP execution, provider call, Storage integration test, workflow dispatch, deployment, or merge occurred.
 - The focused GPT-2B map is **documented**, but full replay readiness is **not established**.
 - Official GPT-2 progress remains **27/39 = 69% complete; 12 checklist items remaining**. Documentation/source inspection does not increment the implementation percentage.
+
+
+## 7. Customer Payment History RPC — dependency cross-check
+
+**Consumer:** `supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql`  
+**Consumer SHA:** `0cadc99ad47efa0e08e8f8efa21ca63b105aea12bd`
+
+Static cross-check of the objects referenced by `srk_customer_get_payment_history(integer,integer)`:
+
+| Required object/column | Source migration or baseline | Source SHA | Order check |
+|---|---|---|---|
+| `service_bookings.customer_user_id` | `20261108121115_add_customer_account_booking_access.sql` | `9877bb969b380d306567322eb110d81eaaa4c115` | Earlier than consumer |
+| `service_bookings.amount_paid` | `20261109003000_secure_commission_reporting.sql` | `9b4ed1529ea2a6e4da4ba0804bdbc9b3612627b9` | Earlier than consumer; later `20261116200000_restore_service_bookings_amount_paid.sql` is a restoration/constraint pass |
+| `srk_booking_refund_requests` and its customer/status/time columns | `20261114125844_restore_financial_audit_core_schema.sql` | `bdfdfcc01366a9d4a298b2107c53f1525b326bf9` | Earlier than consumer |
+| `srk_razorpay_refunds` and `processed_at/updated_at/created_at` | `20261114125844_restore_financial_audit_core_schema.sql` | `bdfdfcc01366a9d4a298b2107c53f1525b326bf9` | Earlier than consumer |
+| `srk_manual_refund_entries.recorded_at` | `20261114125844_restore_financial_audit_core_schema.sql` | `bdfdfcc01366a9d4a298b2107c53f1525b326bf9` | Earlier than consumer |
+| `service_bookings.payment_verified_at`, `payment_status`, `payment_method`, `razorpay_payment_id` | `COMPLETE_DATABASE_SETUP.sql` baseline | `2b806e727f449ba18e71ad23edef805ceb2da2b5` | Present in the inspected baseline |
+
+### Finding
+
+The referenced relations and columns have identifiable producers before the payment-history RPC in the source sequence. This targeted cross-check did **not** identify an absent-table or absent-column forward dependency for this RPC. The RPC's explicit customer filter is based on `auth.uid()` through `customer_user_id`; its refund branches join the refund records back to the customer-owned booking where needed.
+
+This is a source-order finding only. It does not prove that the full 92-file chain replays cleanly, that the function compiles in PostgreSQL, or that customer isolation/pagination works at runtime. The RPC's behavior still requires isolated database execution and role-scoped tests after the canonical baseline and migration-version blockers are resolved.
+
+Static source review only. No SQL, database query, migration replay, pgTAP, runtime test, CI dispatch, deployment, or merge was run for this cross-check. Checklist remains 27/39 = 69%.
