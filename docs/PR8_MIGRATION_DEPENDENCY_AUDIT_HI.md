@@ -4607,3 +4607,43 @@ Track A को Track B का सफल विकल्प न मानें�
 **PR #8:** OPEN / Draft / Unmerged रखना उचित है।>
 
 **अगला सुरक्षित चरण:** GPT-1 की final handover report के साथ इस checklist का reconciliation, फिर owner के सामने केवल शेष blockers और उनके निर्णय रखना। कोई migration, application code, database, CI workflow या shared branch इस section में नहीं बदली गई।
+
+
+### 156. GPT-1 / GPT-2 Audit Reconciliation — Handover Cross-Check — 17 Nov 2026
+
+यह reconciliation GPT-1 द्वारा साझा की गई handover report/commit list और GPT-2 की Audit Branch source findings को साथ रखती है। GPT-1 के सभी commits इस pass में स्वतंत्र रूप से fetch/verify नहीं किए गए; इसलिए GPT-1 execution outcomes को **handover-reported** कहा गया है, independently re-run नहीं।
+
+#### 156.1 GPT-1 से प्राप्त Handover Status
+
+- GPT-1 ने Admin Panel, Accounting, Payment History, Refund और Payout security audit अपने हिस्से में लिया।
+- GPT-1 handover के अनुसार 31 SQL test files में घोषित static assertion count और संबंधित plan(N) मेल खाते हैं।
+- GPT-1 handover के अनुसार Node tests, Vercel और Netlify Deploy Preview सफल रहे। इनका scope और commit mapping इस reconciliation में दोबारा execute नहीं किया गया।
+- GPT-1 handover स्पष्ट करता है कि वास्तविक PostgreSQL migration replay और pgTAP execution नहीं हुए।
+- GPT-1 handover में Refund/Payment ledger reconciliation, Route provider evidence, Main-vs-PR RPC drift तथा migration dependency ordering को शेष जोखिम बताया गया।
+
+#### 156.2 दोनों Audits में मेल खाते महत्वपूर्ण Blockers
+
+1. **Migration / runtime proof:** GPT-2 को canonical bootstrap, duplicate version policy, full dependency proof और clean PostgreSQL replay चाहिए। GPT-1 handover भी वास्तविक PostgreSQL replay/pgTAP को Not Run बताता है।
+2. **Refund / payout:** GPT-2 source review में Manual Refund द्वारा पहले से blocked payout note overwrite होने का जोखिम है। GPT-1 handover भी पुराने blocked payout note को preserve करने की जरूरत बताता है।
+3. **Route settlement:** GPT-2 source review में internal Route ledger rows को provider/bank settlement evidence नहीं माना गया। GPT-1 handover भी actual provider evidence के बिना settlement को verified न मानने की चेतावनी देता है।
+4. **Accounting RPC parity:** GPT-2 ने final accounting RPC और UI/test के Route fields में mismatch दर्ज किया। GPT-1 handover Main Supabase और PR #8 RPC overload/deployment drift को unresolved बताता है।
+5. **Release gate:** दोनों handovers से यह निष्कर्ष निकलता है कि static tests/CI success वास्तविक database replay, provider settlement या accounting reconciliation का विकल्प नहीं हैं।
+
+#### 156.3 GPT-2 के आगे बढ़ने से पहले आवश्यक संयुक्त निर्णय
+
+- [ ] GPT-1 के सभी handover commits और उनके branch/path mapping को GitHub पर स्वतंत्र रूप से verify करना।
+- [ ] GPT-1 के Node/Vercel/Netlify results को exact commit और workflow run से map करना।
+- [ ] Manual Refund payout-note preservation का एक canonical behavior तय करना।
+- [ ] Route ledger का product contract और provider-settlement evidence source तय करना।
+- [ ] Final accounting RPC JSON contract को Admin UI, API और pgTAP tests से एकसमान करना।
+- [ ] Bootstrap + duplicate migration policy पर owner approval।
+- [ ] Disposable, remote-disconnected PostgreSQL environment में replay/pgTAP के लिए अलग explicit approval।
+
+#### 156.4 संयुक्त Readiness Verdict
+
+**GPT-1 handover:** substantial source audit and handover-reported CI/test outcomes; runtime PostgreSQL/pgTAP not run.  
+**GPT-2 audit:** substantial source-level migration/dependency review; clean replay not run.  
+**Shared integration branch:** NOT READY — unresolved contracts and runtime gates remain.  
+**PR #8:** OPEN / Draft / Unmerged रखना उचित है।
+
+इस reconciliation में केवल Audit Branch की यह documentation file बदली गई। कोई source migration, application code, CI workflow, database, provider payment/refund या shared branch नहीं बदली गई।
