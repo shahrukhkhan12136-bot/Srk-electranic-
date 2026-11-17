@@ -1737,3 +1737,32 @@ The scheduled Netlify worker, Supabase Edge Function, three push-delivery migrat
 5. Source-contract Node tests exist for outbox, per-device ledger and fencing, but they have not been executed in this audit environment. The pgTAP lease-fencing suite and isolated end-to-end test plan also remain **NOT RUN**.
 
 **Status:** cross-component RPC names, argument keys, response fields, and signature transition source-verified. No Node test execution, Edge deployment, provider send, SQL parse, or database replay was performed.
+
+## 88. Accounting pgTAP suites — assertion inventory and behavioral-coverage boundary — 17 Nov 2026
+
+The two accounting-focused pgTAP files were re-read from the current Audit Branch and their test structure was counted directly.
+
+### Static test structure confirmed
+
+| Test file | Declared plan | `ok()` | `has_function()` | `finish()` | `rollback;` |
+|---|---:|---:|---:|---:|---:|
+| `admin_labour_bill_payment_accounting_bridge.test.sql` | 19 | 18 | 1 | 1 | 1 |
+| `electrician_payout_reconciliation.test.sql` | 34 | 34 | 0 | 1 | 1 |
+
+Both files' assertion totals match their declared plans. Each has one terminal `finish()` and one transaction rollback. This verifies source-file structure only; it does not establish that pgTAP accepts or executes the files.
+
+### What the assertions actually establish if run
+
+- The bridge suite checks existence and selected source-definition properties of the new-category Cash settlement RPC, Admin reconciliation, commission report, and electrician earnings function.
+- The payout suite checks trigger-function existence/attachment, trigger timing and event bits, security-definer/search-path/execute-privilege metadata, BEFORE commission persistence, AFTER payout/parity validation, relevant update-column coverage, and alphabetical AFTER-trigger ordering.
+- A substantial portion of the assertions inspect `pg_get_functiondef()` with substring searches. Those checks are useful source-contract guards, but they are not substitutes for exercising real INSERT/UPDATE transactions and observing resulting ledger rows.
+
+### Behavioral coverage still missing or unproven
+
+1. No captured test run exists; both suites remain **NOT RUN**.
+2. The static suites do not currently demonstrate an end-to-end booking fixture covering insert, payment verification, payout creation, later edits, and rollback behavior.
+3. Trigger recursion/ordering under actual row changes, duplicate payout protection, cancellation-fee exclusion, refund/reversal effects, and concurrent updates still require an isolated PostgreSQL test database.
+4. A passing source-string assertion would not prove numeric correctness, transaction atomicity, RLS behavior, or runtime compatibility of the deployed function return shape.
+
+**Status:** test plan arithmetic and file termination structure source-verified (19/19 and 34/34 planned assertions); PostgreSQL parser, pgTAP execution, accounting DML fixtures, concurrency tests, and clean replay remain **NOT RUN**. No Production access or database mutation performed.
+
