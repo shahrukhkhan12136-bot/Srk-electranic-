@@ -2493,3 +2493,38 @@ Refund table में `payment_id`, `refund_id`, `amount`, `amount_paise`, `cur
 - Trigger attachment और table field inventory: **source-confirmed**.
 - Actual audit JSON contents / runtime execution: **not PostgreSQL runtime-tested**.
 - No migration edit, provider call, refund, database execution, or production change performed.
+
+
+## 108. Audit Log read-access और actor attribution — source-level qualification — 17 Nov 2026
+
+Migration `20261114125844_restore_financial_audit_core_schema.sql` में `srk_admin_audit_events` की access policy और दोनों audit trigger functions की actor पहचान जाँची गई।
+
+### 108.1 Audit Log read access
+
+- Table पर RLS enabled है।
+- `PUBLIC`, `anon`, `authenticated` से सभी table privileges revoke हैं।
+- `service_role` को ALL grant है।
+- इस migration में `srk_admin_audit_events` के लिए authenticated SELECT grant या SELECT policy नहीं बनाई गई है।
+
+इसका अर्थ है कि सामान्य authenticated Admin client सीधे इस table को पढ़ नहीं सकता। यह अपने-आप security vulnerability नहीं है—यह सुरक्षित server-side access design भी हो सकता है—लेकिन Admin UI को Audit Log दिखाने के लिए अलग, सुरक्षित backend/RPC read path आवश्यक होगा। इस migration में ऐसा read RPC परिभाषित नहीं दिखता। पूरे repository के सभी API/server endpoints की जाँच इस section में नहीं की गई; इसलिए Admin UI की वास्तविक उपलब्धता अभी **unverified** है।
+
+### 108.2 Actor attribution का service-role जोखिम
+
+दोनों trigger functions actor के लिए `auth.uid()` लेते हैं। यदि कोई trusted backend service-role context से write करता है और उसमें authenticated user JWT context उपलब्ध नहीं है, तो `auth.uid()` NULL हो सकता है और event `system` actor के रूप में दर्ज होगा। इससे वास्तविक initiating Admin की पहचान खो सकती है।
+
+यह conditional finding है: हर service-role call में auth.uid() NULL ही होगा, ऐसा runtime में सिद्ध नहीं किया गया। Backend यदि verified actor ID अलग से pass/propagate करता है, तो स्थिति अलग हो सकती है; reviewed trigger interface में ऐसा explicit actor parameter नहीं है।
+
+### 108.3 आवश्यक design और tests
+
+1. Admin-only server-side read endpoint/RPC की पुष्टि करें; caller identity server पर verify हो और सामान्य users को audit rows न मिलें।
+2. Service-role writes में initiating Admin ID को trusted server context से audit तक पहुँचाने का स्पष्ट तरीका तय करें; client-supplied arbitrary actor ID स्वीकार न करें।
+3. Admin, electrician, customer और unauthenticated service-role scenarios में actor_user_id/actor_role तथा read authorization के tests जोड़ें।
+4. Audit table पर direct UPDATE/DELETE केवल service_role को उपलब्ध है; इसलिए append-only protection और privileged tampering controls अलग से तय करें।
+
+### 108.4 Status
+
+- RLS, revoke/grant और authenticated direct read restriction: **source-confirmed**.
+- इस migration में audit read RPC/policy का अभाव: **source-confirmed within this migration only**.
+- वास्तविक Admin UI read path: **not yet verified across repository**.
+- service-role actor NULL scenario: **conditional; runtime not tested**.
+- No SQL migration edit, database query, or production change performed.
