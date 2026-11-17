@@ -436,3 +436,54 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - Decide whether `user_id` is legacy alias or co-equal identity. Then standardize all electrician RPC ownership predicates and enforce the canonical invariant in a race-safe database constraint/trigger or canonical identity mapping.
 - Any schema enforcement must be designed against the complete Main migration history and existing Admin/application flows; do not add a one-off migration based only on the current one-row data snapshot.
 - This is a review recommendation only. No SQL, profile data, application code, or production settings were changed.
+
+
+## 19. Main Electrician RPC identity / authorization inventory (Nov 17)
+
+### Scope and method
+- Read-only catalog inventory of all functions in public and private schemas whose definitions reference public.electrician_profiles.
+- 29 functions were returned. The inventory includes self-service Electrician RPCs, Customer contact RPCs, Admin RPCs, and internal trigger functions.
+- Effective EXECUTE was checked: anon=false for every function; authenticated=true for callable authenticated RPCs; internal trigger functions are not executable by anon/authenticated directly.
+- This is a static live-definition and ACL review, not an impersonated JWT/session test.
+
+### Ownership predicate groups
+
+**A. user_id = auth.uid() only**
+- Actual Feature Electrician dashboard RPC: srk_get_my_offer_details().
+- Other functions in this group include srk_get_my_earnings() and srk_respond_to_offer(uuid,text).
+- srk_get_my_offer_details() requires approved + active profile and only returns customer name/phone/address/coordinates and legacy quote details for the caller's assigned booking in its explicit allowed statuses. Unassigned offers and cancelled bookings have those sensitive fields masked.
+- srk_respond_to_offer() binds the supplied offer UUID to a profile whose user_id=auth.uid(), requires approved + active, locks the offer, accepts only offered state, and conditionally assigns only an unassigned booking in new/confirmed. It does not trust a client-supplied electrician profile ID.
+- srk_get_my_earnings() binds bookings through profile user_id=auth.uid() and approved status; unlike several workflow RPCs, this definition does not require active=true.
+
+**B. user_id = auth.uid() OR auth_user_id = auth.uid()**
+- Confirmed in live definitions including srk_electrician_get_my_assigned_booking_contacts(), srk_electrician_get_work_control(uuid), srk_electrician_request_work_start(uuid), srk_electrician_request_work_completion(uuid), srk_electrician_confirm_cash_payment(uuid), srk_get_my_assigned_booking_quote_details(), srk_get_my_assigned_cash_payment(uuid), srk_get_my_offer_price_details(), srk_submit_booking_quote(...), and srk_update_booking_work_status(uuid,text).
+- Booking-mutating functions derive profile ID from authenticated UID, require approved + active profile, then bind the target booking to assigned_electrician_id = derived_profile_id. Cash confirmation additionally requires completed work, approved quote, cash payment method, eligible unpaid/pending state, and positive approved amount.
+- Work-start/completion functions bind to the assigned booking and enforce expected quote/timer/status state. Legacy work-status RPC permits only assigned -> inspection; it rejects direct start/completion status changes.
+- Assigned-contact RPC returns customer phone only for caller's assigned bookings and an explicit non-cancelled status allow-list. Assigned quote-details RPC is also assignment-bound and status-filtered.
+
+**C. Strict dual-ID equality**
+- srk_electrician_list_my_area_requests(), srk_electrician_request_area_change(...), srk_electrician_list_my_verification_documents(), and srk_electrician_submit_verification_document(...) require user_id=auth.uid() AND auth_user_id=auth.uid().
+- Document submission additionally validates storage path prefix against caller UID, MIME type, file size, and existence in the private verification bucket; replacement identity/address documents deactivate the profile pending review.
+- Area-change submission requires active + approved profile and writes a request scoped to the derived profile ID.
+
+**D. Admin-gated / internal functions**
+- Admin functions referencing electrician profiles include commission report, booking contacts, area-request/document listing and review, application review, offer dispatch, and profile activation. Their bodies check auth.uid() plus public.is_srk_admin() before privileged reads/writes. Profile IDs supplied to Admin-only RPCs are Admin parameters, not Electrician-controlled identity selectors.
+- broadcast_booking_job() and srk_link_electrician_profile() are SECURITY DEFINER trigger functions, not directly executable by anon/authenticated. The former creates offers for active/approved area-matched profiles; the latter links phone-confirmed Auth users to approved unlinked profiles and writes both identity columns.
+- The private Customer contact implementation requires authenticated UID and scopes rows to service_bookings.customer_user_id=auth.uid(), assigned electrician, and its explicit status allow-list.
+
+### Security observations / residual risks
+1. Identity predicate inconsistency remains confirmed. The actual Electrician dashboard's srk_get_my_offer_details() and offer-response path use user_id only; several workflow RPCs accept either identity column; KYC/area-request RPCs require both columns to be equal. Normal Admin approval, activation, and offer-creation paths set/check equality, but the schema still does not globally enforce it. This is a defense-in-depth consistency issue, not evidence of exploitable cross-profile access in the current one-profile snapshot.
+2. Wallet summary RPC has a side effect. srk_get_my_wallet_summary() is SECURITY DEFINER and authenticated-only, but inserts missing customer wallet-account and (when a profile matches coalesce(auth_user_id,user_id)=auth.uid()) electrician wallet-account rows while returning a summary. It does not accept a client-supplied profile ID. This is not a direct privilege bypass, but its “get” name masks a write side effect and its identity predicate is yet another variant; flag for coordinated owner/GPT-2 review before future redesign.
+3. No unassigned customer-contact leak was identified in the inspected Electrician contact paths. The actual dashboard offer-details RPC masks customer contact/address/location unless the booking is assigned to the derived profile and status is allowed. The separate assigned-contact and assigned-quote-detail RPCs also bind rows to assigned bookings.
+4. No Electrician RPC was found that trusts a caller-supplied profile UUID as the sole ownership proof. Supplied booking/offer IDs are followed by server-side profile derivation and assignment/offer ownership checks. Admin-only activation/review/dispatch functions accept profile/application/request IDs behind an Admin predicate.
+5. ACL result is consistent across the 29-function inventory: no anon EXECUTE. Authenticated callers can execute intended RPC surface, so body-level UID/assignment/Admin checks remain essential; SECURITY DEFINER alone is not an authorization boundary.
+
+### App-path comparison
+- Feature Customer UI calls the dedicated customer contact RPC; Main implementation scopes to authenticated booking owner and assigned electrician, excludes cancelled bookings, and includes completed bookings.
+- Feature Electrician dashboard calls srk_get_my_offer_details() for offer data and customer contact. It does not call the separate srk_electrician_get_my_assigned_booking_contacts() RPC.
+- Therefore the dashboard's active contact path inherits the user_id-only predicate and assigned-booking field masking described above; no UI switch or identity change is recommended without coordinated review.
+
+### Recommendation / change boundary
+- Keep app and Main schema unchanged for now. Ask GPT-2/owner to settle canonical electrician identity invariant, then review a coordinated migration that standardizes relevant RPC predicates and enforces the invariant race-safely against full migration history.
+- Separately decide whether srk_get_my_wallet_summary() should remain a lazy account initializer or become a read-only summary plus explicit account-creation path.
+- This section documents read-only Main catalog/function/ACL inspection and Feature source call paths. No SQL, data, application code, or Production settings were changed; no migration was applied, deployment or merge performed, or mobile QA run.
