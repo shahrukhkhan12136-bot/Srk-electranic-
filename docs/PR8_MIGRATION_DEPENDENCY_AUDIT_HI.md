@@ -5745,3 +5745,40 @@ Frontend Staff login flow source में registration/permission failure प�
 Source में Auth event generation counter तथा हर प्रमुख authorization await के बाद user/run guard मौजूद हैं। Direct email-login path और Auth listener दोनों bootstrap चला सकते हैं, जिससे duplicate authorization RPCs संभव हैं; कोई source-level प्रमाण नहीं मिला कि इससे stale role state स्वीकार हो जाती है। एक focused browser test में rapid login, sign-out during bootstrap, account switch और duplicate event ordering जाँचना चाहिए।
 
 **Evidence boundary:** GitHub source inspection only. कोई browser test, Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं किया गया। कोई application source, migration, permission या database setting नहीं बदली गई; केवल यह audit documentation section जोड़ा गया।
+
+
+## 184. Support Inbox Async Response — Account-Switch पर Stale UI Data Risk
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** `admin.html` के Support Staff inbox, thread loading और Auth account-switch lifecycle का static source review।
+
+### 1. Inbox Request का Auth-Generation Guard नहीं
+
+- `loadStaffSupportInbox()` शुरू होते समय `user` और `adminPortalMode === 'staff'` जाँचता है तथा दो RPC calls चलाता है: customer complaints और electrician tickets।
+- दोनों RPCs के लौटने के बाद यह function `adminAuthRun`, captured user ID या वर्तमान `adminPortalMode` दोबारा नहीं जाँचता।
+- इसके बाद response सीधे inbox DOM में render होता है। इसलिए यदि Staff A की request pending रहते logout/account switch होकर Staff B login करे, तो A की पुरानी response बाद में shared inbox elements को populate कर सकती है।
+- Database RPCs अपने invocation वाले authenticated user और assignment checks से data सीमित करते हैं; यह finding उन server-side checks को bypass होना नहीं बताती। जोखिम browser में पुराने account की पहले से प्राप्त सूची नए account के UI में stale रूप से दिखने का है।
+
+### 2. Thread Requests में Partial Guard
+
+- Customer और electrician thread functions selected thread के request counter तथा selected ID की तुलना करते हैं।
+- लेकिन वे Auth generation और current user ID capture/compare नहीं करते। Account switch के बाद पुरानी thread response के DOM में लिखे जाने की संभावना इसलिए पूरी तरह बंद नहीं है।
+- Selected thread IDs और panels को account transition पर reset/clear करने का स्पष्ट code इस inspected flow में नहीं मिला।
+
+### 3. अतिरिक्त Loading-State व्यवहार
+
+- `staffSupportLoadBusy` global boolean है। पुरानी account की inbox request pending रहने पर नए Staff bootstrap से शुरू हुई inbox load `return` कर सकती है; पुरानी request के `finally` में flag false होने पर नए account के लिए स्वतः retry नहीं दिखा।
+- यह availability/UI refresh concern है; इससे अकेले server authorization defect सिद्ध नहीं होता।
+
+### 4. सुझाया गया सुरक्षित सुधार
+
+- हर inbox/thread request के शुरू में `adminAuthRun` और current user ID capture करें; प्रत्येक awaited RPC के बाद दोनों को current state से मिलाएँ।
+- Auth user बदलने या sign-out पर Staff inbox/thread panels खाली करें, selected IDs reset करें और request counters invalidate करें।
+- Busy flag को account/request generation से बाँधें, ताकि पुरानी request नए account की loading को रोक न सके।
+- Regression coverage में Staff A की delayed response के दौरान logout + Staff B login, customer/electrician thread switch और sign-out during fetch शामिल हों।
+
+### 5. Verdict और Evidence Boundary
+
+यह **source-level संभावित cross-account stale-data exposure** है, live exploit या runtime-confirmed leak नहीं। RPC authorization और assignment checks migration में मौजूद हैं; लेकिन browser rendering layer में inbox/thread responses के लिए Auth-generation guard अनुपस्थित दिखता है। इसे UI privacy concern के रूप में प्राथमिकता से ठीक करके browser regression test करना चाहिए।
+
+केवल GitHub source inspection और documentation update किया गया। कोई application source, migration, permission या database setting नहीं बदली गई; कोई browser/Node test, SQL/pgTAP, DB query, migration replay, CI, deployment, merge या cherry-pick नहीं हुआ।
