@@ -6652,3 +6652,47 @@ The four inspected refund entry/completion paths have a coherent **full captured
 GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल migration और संबंधित test source inspection तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 208. Customer Refund Approval State Machine — Decision Boundary and Test-Matrix Gap
+
+### 1. Static source reviewed
+
+- `20261115110000_admin_refund_review_queue_and_decisions.sql` (SHA `900c5e63c2628a21280f3b8bcdabf46cadb3b9ed`).
+- `admin_refund_review_queue.test.sql` (SHA `70e039ffe2347976fa970c0a7b0535e861e9fde4`, `plan(16)`).
+- `customer_refund_admin_approval_gate.test.sql` (SHA `81ade4e70a5ffccb97dcb6dfe702580394f5bc73`, `plan(8)`).
+
+### 2. Decision state machine and separation of duties
+
+The Admin decision RPC:
+- requires authenticated Main Admin authorization through `is_srk_admin()`;
+- locks the selected refund-request row with `FOR UPDATE`;
+- requires a 10–2000 character audit note;
+- permits only `requested → in_review|approved|rejected` and `in_review → approved|rejected`;
+- records `decided_by` for terminal approval/rejection, while an `in_review` action leaves the final-decision actor unchanged;
+- updates only the refund-request record. It does not call Razorpay and does not update booking `payment_status`.
+
+The separate Razorpay preparation gate has source-contract assertions requiring explicit approval before provider processing and rejecting unreviewed/rejected requests. This supports a deliberate separation between Admin authorization and provider execution.
+
+### 3. Test coverage gap
+
+The 16-assertion review-queue test checks Main Admin guards, row locking, note length, presence of state-machine terms, final-decision actor recording, no provider call/payment-status mutation, RPC privileges, empty search path and read-only queue joins.
+
+However, the inspected test asserts that the state-machine source contains the relevant state labels; it does not behaviorally exercise the full allowed/denied transition matrix. In particular, it does not individually prove rejection of:
+- `approved → in_review|approved|rejected`;
+- `rejected → in_review|approved|rejected`;
+- `in_review → requested|in_review`;
+- a second concurrent decision after the first transaction changes the row.
+
+These are **test-matrix coverage recommendations**, not evidence that the source state guard is incorrect. The row lock and explicit transition predicate are present in the reviewed function.
+
+### 4. Verdict and limits
+
+- Static source confirms Main Admin-only review, serialized request-row decisions, bounded audit notes and a decision-only boundary separate from payment execution.
+- Add later isolated pgTAP behavior cases for every allowed and denied transition, including two competing Admin decisions and verification of `decided_by` semantics.
+- The existing SQL test was inspected but not executed. No runtime, concurrent transaction or database behavior is certified here.
+- No source or migration change is proposed or made.
+
+GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल migration और संबंधित test source inspection तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
