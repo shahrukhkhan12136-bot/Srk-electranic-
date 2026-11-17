@@ -4739,3 +4739,59 @@ GitHub से दोनों शाखाओं की वर्तमान �
 - अगला सुरक्षित कदम: अलग सामग्री वाली 6 फाइलों का line-level/diff review करके यह पहचानना कि कौन-से बदलाव Feature Branch में हैं, कौन-से Audit Branch में हैं, और क्या किसी बदलाव का समकक्ष रूप पहले से मौजूद है। बिना review के किसी फाइल को overwrite या copy नहीं करना है।
 
 **स्थिति:** Static file/blob comparison complete; semantic diff review pending; integration/merge readiness अभी स्वीकृत नहीं।
+
+
+## 160. छह अलग फाइलों का Static Diff Review — महत्वपूर्ण अंतर
+
+**तारीख:** 17 नवंबर 2026  
+**तुलना:** Feature Branch `feat/customer-login-first-dashboard-20261114` बनाम Audit Branch `chore/pr8-replay-audit-20261116-v2`
+
+### A. Refund review RPC migration और test
+
+- Feature Branch migration में `srk_admin_decide_booking_refund_request(uuid,text,text)` को दोबारा बनाने से पहले `drop function if exists` जोड़ा गया है। टिप्पणी के अनुसार इसका उद्देश्य पुराने input parameter नाम `p_status` से नए `p_decision` नाम पर PostgreSQL replay/replace समस्या से बचना है।
+- Audit Branch की उसी migration में यह अतिरिक्त DROP मौजूद नहीं है।
+- Feature Branch test में RPC argument name `p_decision` के लिए अतिरिक्त assertion है; Audit Branch test में यह assertion नहीं है।
+- दोनों शाखाओं के test plan और assertion संख्या अलग हैं; test execute नहीं किया गया। केवल source-level test text देखा गया है।
+
+**Review point:** migration ordering और पुराने overload/signature की वास्तविक स्थिति को migration history के साथ जाँचना होगा; अभी DROP को लागू या हटाने का निर्णय नहीं।
+
+### B. Refund reconciliation migration और guard test
+
+यह सबसे महत्वपूर्ण behavioral divergence है:
+
+- Feature Branch में payout row को booking → refund → payout lock order में lock किया गया है।
+- Feature Branch processed refund पर अप्रत्याशित payout states को manual reconciliation के लिए रोकता है; केवल refund-pending blocked payout को refunded करता है और स्थायी audit note लिखता है।
+- Audit Branch का संस्करण processed refund के बाद refund-owned blocked payout को pending स्थिति और `previous_payout_note` पर लौटाने वाला रास्ता रखता है।
+- Feature Branch का guard test 10 assertions रखता है, जिसमें payout-state guard, payout lock और historical repair शामिल हैं। Audit Branch test में 5 assertions हैं और ये अतिरिक्त guards शामिल नहीं हैं।
+
+**Review point:** दोनों व्यवहारों में आर्थिक/लेजर परिणाम अलग हैं। Trigger behavior, पुराने blocked payout state और refund lifecycle के साथ मिलाकर अलग से जाँचना जरूरी है। कोई भी संस्करण अभी runtime-सत्यापित नहीं है।
+
+### C. Route recipient और settlement reconciliation migration
+
+- Feature Branch का संस्करण `srk_route_transfers` ledger पढ़ता है और recipient, amount, payment ID, transfer status, settlement status तथा provider ID की जाँच करता है।
+- Audit Branch का संस्करण बताता है कि Route ledger पहले retire हो चुका है; इसलिए response keys को खाली/zero रखता है और provider settlement का अनुमान नहीं लगाता।
+- दोनों संस्करणों में यह अंतर सिर्फ formatting का नहीं, बल्कि उपलब्ध schema और evidence model का है।
+
+**Review point:** पहले दोनों branches की migration history में `srk_route_transfers` के create/alter/retire क्रम को सत्यापित करना होगा। जब तक table lifecycle और provider evidence का स्रोत प्रमाणित न हो, Feature Branch के ledger queries को replay-safe या Audit Branch के retired-table निर्णय को अंतिम नहीं कहा जा सकता।
+
+### D. Admin UI payout summary और Route display
+
+- Feature Branch payout summary के लिए payout rows को 1000-row pages में पढ़कर पूरे dataset का total जोड़ता है और paise में rounding करता है।
+- Audit Branch उपलब्ध `data` array से सीधे total बनाता है। यदि upstream query सीमित rows लौटाती है तो summary अधूरी हो सकती है; query limit का अलग सत्यापन बाकी है।
+- Feature Branch UI Route transfer ledger details दिखाने की कोशिश करता है; Audit Branch Route ledger retired बताकर independent settlement confirmation बाकी दिखाता है।
+
+**Review point:** UI summary की completeness upstream query/pagination पर निर्भर है। Route display को migration और वास्तविक provider evidence के साथ align करना होगा।
+
+### E. शेष फाइलें
+
+- `customer_payment_refund_history_rpc.test.sql` दोनों शाखाओं में बिल्कुल समान है (Section 159 में Blob SHA दर्ज है)।
+- ऊपर A–D में बताए गए छह paths में से यह समान test एकमात्र समान path है; बाकी पाँच paths में source differences हैं।
+
+### निर्णय और अगला सुरक्षित कदम
+
+1. अभी किसी भी source file को overwrite, copy, cherry-pick या merge नहीं करना है।
+2. अगली जाँच migration history पर केंद्रित होगी: Route ledger lifecycle, refund/payout trigger ordering, RPC signature history और संबंधित schema definitions।
+3. उसके बाद ही source-level recommendation बनाई जाएगी।
+4. कोई SQL execution, database replay, pgTAP, CI dispatch, deployment या production/shared database operation नहीं किया गया।
+
+**स्थिति:** Static diff review दर्ज; schema-history verification pending; integration/merge readiness अभी स्वीकृत नहीं।
