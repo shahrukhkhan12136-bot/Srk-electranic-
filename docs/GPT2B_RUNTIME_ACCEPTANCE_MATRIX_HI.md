@@ -252,3 +252,13 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Refund review decision RPC is Main-Admin-only, locks the request, and enforces allowed state transitions. Manual refund RPC validates approved Customer request when present, matching manual payment evidence, full amount against immutable labour/settled fee ledger for new-category bookings, and payout state. Provider recovery finalization and reconciliation RPCs explicitly require service_role and are not executable by authenticated/anon/public.
 - Source tests currently declare 44 cancellation-fee reversal assertions and 14 manual-refund completion assertions; they were not executed. No DB, pgTAP, Node, CI, or provider runtime test was run.
 - No source code, migration, permission, or production setting changed in this review. This remains source-level inspection only; live ACL/catalog and transaction concurrency need final runtime acceptance.
+
+
+### Razorpay Provider Refund ID one-to-one mapping guard — 17 November 2026 (source-only)
+
+- Confirmed source-level gap: recovery evidence accepted multiple observations for the same internal refund record, but did not prevent the same provider refund ID from being attached to a different internal refund record; it also did not prevent conflicting provider IDs being recorded against one internal record before finalization.
+- Added `20261117140000_enforce_unique_razorpay_refund_identity.sql`. A shared SECURITY DEFINER trigger guard protects both recovery-evidence inserts and canonical `srk_razorpay_refunds.refund_id` writes.
+- Guard takes transaction-scoped advisory locks for both provider ID and internal refund-record ID, then checks both directions across the audit and canonical refund tables. This serializes concurrent claims and rejects either provider-ID reuse across records or multiple provider IDs for one record.
+- Repeated append-only observations remain permitted when both the internal refund record ID and provider refund ID match. A non-null canonical provider refund ID cannot later be changed.
+- Added five source/schema assertions to `durable_razorpay_refund_recovery_evidence.test.sql` (declared plan now 40). They check both triggers, two-key advisory locking, both conflict guards, and SECURITY DEFINER/search-path metadata.
+- Source files committed on the active feature branch only. Migration was NOT applied; pgTAP/PostgreSQL, migration replay, concurrency, Node, CI, provider API, and production checks were NOT run. Runtime acceptance remains pending.
