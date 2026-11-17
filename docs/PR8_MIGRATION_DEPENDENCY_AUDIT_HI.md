@@ -6064,3 +6064,39 @@ Customer और Electrician SOS request UI में account-generation safeguar
 मौजूदा 28 planned assertions schema/security configuration और function source में महत्वपूर्ण safeguards की मौजूदगी जाँचते हैं, लेकिन वास्तविक role-based RPC outcomes, concurrency, transaction rollback और data lifecycle को साबित नहीं करते। Section 188 का role-wide Support access निर्णय अभी owner confirmation माँगता है; test expectation उसी निर्णय के बाद तय होनी चाहिए।
 
 यह केवल static file inspection और audit documentation है। Test execute नहीं किया गया; कोई SQL, pgTAP, DB query, migration replay, source/migration/permission change, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+## 192. SOS Migration Dependency Order — Clean-Replay Preconditions
+
+**तारीख:** 17 नवंबर 2026  
+**Migration:** `20261115260000_sos_admin_support_alerts.sql`  
+**Migration SHA:** `6e630bea1d0b85e369e015c931cc41d52056c082`
+
+### 1. Dependency Chain
+
+Static migration inspection से SOS migration की ये prerequisites सामने आती हैं:
+
+1. Supabase Auth schema/functions उपलब्ध हों: `auth.users`, `auth.uid()`, और roles `anon`, `authenticated`, `service_role`।
+2. Existing application schema में `public.service_bookings` और `public.electrician_profiles` उपलब्ध हों। SOS creation function इनके `%rowtype`, booking ownership/status/category, assigned profile और profile identity/name/phone fields को पढ़ता है।
+3. `20261114390000_admin_staff_rbac_foundation.sql` पहले लागू हो: यह `srk_admin_permissions`, `srk_admin_role_permissions`, `srk_admin_staff_audit_events`, Staff session/permission helper और related security foundation बनाता है।
+4. इसके बाद `20261115260000_sos_admin_support_alerts.sql` SOS permissions, tables, indexes, RLS/revokes, immutable event triggers और चार RPCs बनाता है।
+5. `supabase/tests/database/sos_admin_support_alerts.test.sql` इन objects के बाद चलने के लिए लिखा है; यह migration नहीं है और schema prerequisites स्वयं स्थापित नहीं करता।
+
+### 2. Ordering और Replay Observations
+
+- Migration filename ordering में Staff RBAC foundation (`20261114390000`) SOS migration (`20261115260000`) से पहले है।
+- SOS permission rows `ON CONFLICT DO NOTHING` के साथ insert होती हैं; tables/indexes `IF NOT EXISTS` उपयोग करते हैं; event triggers को पहले drop करके recreate किया जाता है।
+- SOS functions `CREATE OR REPLACE` हैं और grants/revokes स्पष्ट रूप से लिखे हैं।
+- यह repeatability के कुछ अच्छे संकेत हैं, लेकिन इससे पूरे project का clean replay सिद्ध नहीं होता। `CREATE TABLE IF NOT EXISTS` किसी पहले से मौजूद गलत/पुराने table shape को स्वतः ठीक नहीं करता।
+- इस branch की migration directory में `service_bookings` और `electrician_profiles` के canonical initial CREATE TABLE definitions इस SOS/RBAC chain में नहीं मिले। इसलिए उनका exact baseline provenance और column compatibility इस सीमित review से प्रमाणित नहीं है; clean replay से पहले canonical base schema/migration inventory से पुष्टि आवश्यक है।
+- SOS test file `plan(28)` है, पर इस audit में इसे execute नहीं किया गया। Function body में `service_bookings` और `electrician_profiles` row types तथा referenced columns compile/runtime में सही resolve होते हैं या नहीं, यह भी अभी execution evidence के बिना unverified है।
+
+### 3. Clean-Replay Gate
+
+आगे बढ़ने से पहले अलग से प्रमाणित करें कि clean baseline में आवश्यक tables/columns, Auth schema, RBAC tables/helper और pgTAP setup मौजूद हैं; migration order सही है; फिर isolated disposable PostgreSQL/Supabase environment में replay और संबंधित pgTAP test चलाकर logs सुरक्षित किए जाएँ। Shared/Production DB पर यह audit कोई operation अधिकृत नहीं करता।
+
+### 4. Verdict और Evidence Boundary
+
+SOS migration का immediate RBAC ordering सही दिखाई देता है: Staff RBAC migration पहले और SOS migration बाद में है। फिर भी base booking/profile schema provenance इस migration subset से पूरी तरह स्थापित नहीं हुई, इसलिए clean-replay readiness को confirmed नहीं कहा जा सकता। यह static ordering/dependency review है, successful replay का दावा नहीं।
+
+केवल GitHub migration/test source inspection और documentation update हुआ। कोई SQL/pgTAP execute, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं हुआ।
