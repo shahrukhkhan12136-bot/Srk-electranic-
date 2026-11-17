@@ -3640,3 +3640,65 @@ Latest 16210000 function body में निम्न guards अभी भी 
 ### 136.5 सीमा
 
 यह GitHub source-only comparison है। कोई PostgreSQL replay, pgTAP, consumer UI test, provider call, database query/write, CI, deployment, merge या Production action नहीं किया गया।
+
+
+### 136. अंतिम Accounting RPC के Route API contract और Refund Finalizer Trigger handoff — 17 Nov 2026
+
+#### 136.1 Route reconciliation JSON compatibility
+
+तुलना किए गए source:
+- Route-aware definition: `supabase/migrations/20261115180000_admin_route_recipient_and_settlement_validation.sql`, blob `58042f828aeb1a951b36191d68a0573cdc15fcc0`.
+- अंतिम Audit Branch definition: `supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`, blob `68189051090a51bef26a98997caf103b62ed070c`.
+- Consumer: `admin.html`, blob `4b54dbfb605e55bb086eca7f1d5be13270b78e91`.
+- Existing source-contract test: `tests/admin-route-settlement-warning.test.js`, blob `66ab538e2492b97c957622ed984ce8d7a3bb43ba`.
+
+Route-aware RPC छह keys लौटाता है:
+1. `route_transfer_count`
+2. `route_electrician_transfer_paise`
+3. `route_platform_commission_transfer_paise`
+4. `route_transfers`
+5. `route_provider_settlement_verified`
+6. `route_settlement_evidence_status`
+
+अंतिम `20261117010000` RPC body में इन छह में से कोई `route_*` key नहीं है। इस कारण final function पुराने Route-aware JSON contract को पूरा नहीं करता।
+
+Admin UI सीधे तीन keys consume करता है:
+- `route_transfers` — अनुपस्थित होने पर empty array.
+- `route_settlement_evidence_status` — अनुपस्थित होने पर `not_independently_verified`.
+- `route_provider_settlement_verified` — केवल strict boolean `true` होने पर verified दिखाता है; अनुपस्थित होने पर false-जैसा warning state.
+
+इसलिए inspected UI path में missing fields से गलत bank-settlement confirmation नहीं बनती; उलटे Route transfer details/amount/count उपलब्ध नहीं होंगे और warning/default state दिखेगी। Existing Node contract test Route warning copy और पुरानी Route-aware migration को जाँचता है, लेकिन अंतिम `17010000` RPC में छह keys की उपस्थिति नहीं जाँचता।
+
+**Required correction gate:** owner को तय करना है कि final RPC में छह retired/zero/empty compatibility keys वापस जोड़ी जाएँ या Admin UI contract को स्पष्ट रूप से बदलकर Route section हटाया/सीमित किया जाए। जब तक यह तय न हो, इसे API compatibility gap मानें; provider settlement का कोई दावा न करें।
+
+#### 136.2 Refund finalizer: direct payout write से trigger-mediated close
+
+तुलना किए गए source:
+- Full-amount finalizer: `supabase/migrations/20261115240000_harden_refund_recovery_full_amount.sql`, blob `40ebd534cf4209e98adc8c1f44b53b9ebfc09920`.
+- अंतिम trigger/finalizer migration: `supabase/migrations/20261116210000_attach_electrician_payout_reconciliation_trigger.sql`, blob `b12da77471d510b55f798bd089597d866d79a133`.
+- Existing pgTAP source: `supabase/tests/database/durable_razorpay_refund_recovery_evidence.test.sql`, blob `370b2c5e460d1a9abfbbe53371a48f9e68788788`.
+
+दोनों finalizer definitions में निम्न checks बने हुए हैं:
+- `service_role` enforcement और recovery evidence ID validation.
+- केवल `processed` provider evidence तथा 15-minute freshness window.
+- Booking row `FOR UPDATE`; पूरी booking collection के बराबर refund amount.
+- Refund row `FOR UPDATE`; payment ID, amount, currency और provider refund ID matching.
+- Payout row `FOR UPDATE`; पहले से paid payout पर fail-closed व्यवहार.
+- पहले से processed/refunded state के लिए payout state जाँच सहित idempotent replay.
+- Booking को refunded करने के बाद payout को दोबारा पढ़कर final state सत्यापित करना.
+
+मुख्य बदलाव payout closure का तरीका है:
+- पुराने `15240000` finalizer ने blocked payout को सीधे `refunded` किया और अलग payout note लिखा।
+- नए `16210000` migration में `srk_create_electrician_payable()` AFTER trigger booking के `payment_status` update पर चलता है। Refund transition पर यह pending payout या केवल इन exact refund-owned blocked notes — `Razorpay refund pending`, `Manual refund processed` — को `refunded` करता है और note null करता है।
+- नया recovery finalizer direct payout UPDATE नहीं करता; वह booking को refunded करता है, फिर payout को दोबारा पढ़कर `refunded` न होने पर exception उठाता है।
+
+इस source chain में Razorpay preparation का blocked marker `Razorpay refund pending` है और trigger उसी exact marker को पहचानता है। Finalizer पहले blocked payout state माँगता है; इसलिए unrelated Admin hold को स्वतः बंद करने का रास्ता नहीं दिखता।
+
+**Runtime caveat:** Trigger execution order, transaction rollback, concurrent refund/payout updates और वास्तविक PostgreSQL behavior अभी प्रमाणित नहीं हैं। pgTAP file में संबंधित assertions लिखे हुए हैं, पर उन्हें चलाया हुआ नहीं माना जा सकता।
+
+#### 136.3 निष्कर्ष और अगला gate
+
+1. Route API compatibility gap वास्तविक है; UI का वर्तमान fallback चेतावनीपूर्ण है, लेकिन Route विवरण खो सकता है।
+2. Refund finalizer का payout close अब trigger-mediated है; inspected source में full-amount/provider identity/locking guards बने हुए हैं।
+3. अगला सुरक्षित कदम final RPC के छह Route compatibility keys और Admin UI contract पर source-level correction proposal तथा targeted regression assertions तैयार करना है।
+4. कोई SQL execution, PostgreSQL replay, pgTAP run, database query/write, provider call, CI dispatch, deployment, merge या Production परिवर्तन नहीं किया गया।
