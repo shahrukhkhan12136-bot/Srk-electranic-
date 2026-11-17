@@ -1128,3 +1128,37 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - Static Edge Function and migration source review complete; live Main absence confirmed for phone-change and Staff tables.
 - Next: inspect refund Edge Function source and its authentication/idempotency/provider boundaries, then reconcile all remaining Admin UI→Feature migration dependency bundles with GPT-2 without changing the GPT-2 Audit Branch.
 - No Edge Function invocation, invitation, email, OTP/SMS, Auth phone update, Staff creation, migration, SQL write, deployment, merge, or mobile QA occurred.
+
+
+## Section 39 — Razorpay Refund Edge/API handler static security review (2026-11-17)
+
+### Refund initiation handler
+- Root source `razorpay-refund.js`, SHA `afd68c6c1dd33102c40f5119616aec78e8f0ae1e`; Netlify wrapper only re-exports this handler.
+- POST-only; validates bearer-token shape, verifies the token against Supabase Auth, then asks live DB `is_srk_admin()` using the same user token. No client role metadata is trusted; only Main Admin may initiate.
+- Refund preparation is delegated to `srk_admin_prepare_razorpay_refund`; provider request uses exact prepared payment ID, paise amount, receipt/idempotency key, and record IDs in notes. Amount is a safe integer >= 100 paise; payment and idempotency identifiers are format-checked.
+- Network timeout/ambiguous provider result retains hold and instructs same-record retry; provider 409 is treated as still processing; other provider errors are held for reconciliation. Successful provider response must match payment, amount, INR currency, refund ID and allowed status before DB reconciliation RPC is attempted.
+- If provider accepted but DB reconciliation fails, response leaves reconciliation pending and points to signed webhook recovery. No new refund record or payout release is attempted by the handler in that path.
+
+### Read-only provider status handler
+- Root source `razorpay-refund-status.js`, SHA `35d2086391485aa0f760e3431028ea962690647a`.
+- POST-only; verifies Supabase user and Main Admin membership before querying internal record/provider. Requires exactly one internal refund record and matching booking payment ID.
+- If refund ID is stored, fetches that exact provider refund. If not, searches up to 10 pages of 100 refunds, rejects unstable/duplicate pagination and requires exactly one exact match by payment/amount/currency plus internal record note or idempotency receipt.
+- Returns read-only verification metadata with `safe_to_retry:false`; no database write or provider refund action in this handler. Incomplete pagination, zero/multiple matches, or provider mismatch do not authorize retry.
+
+### Recovery handler
+- Root source `razorpay-refund-recovery.js`, SHA `2573aa5c6442ace359515f2227c5d93019534184`.
+- Verifies bearer token with Supabase Auth and Main Admin membership; requires valid booking UUID and 10–2000 character audit note.
+- Requires exactly one internal record and booking/payment ID match; fetches provider refund by exact stored ID or performs the same bounded full-page exact-match search. Ambiguous/no match never authorizes a new refund.
+- Stores a SHA-256 provider payload digest, unique observation ID, provider evidence, Admin UUID and note through a dedicated evidence RPC. Only provider status `processed` proceeds to a separate HTTP/PostgREST accounting-finalization transaction. Pending/failed states save evidence but do not finalize accounting or release payout.
+- If finalization is ambiguous/fails after evidence save, response preserves the recovery audit ID and instructs Admin reconciliation; no refund retry or payout release is performed.
+
+### Static-review caveats
+- This source inspection does not establish that Netlify environment variables, deployed function versions, provider credentials, webhook configuration, or live deployed code match the branch. No live provider request, refund, webhook, function invocation, or runtime test was made.
+- No explicit per-Admin initiation/recovery rate limit was found in these three handlers. Existing database idempotency and provider identity checks reduce duplicate-operation risk, but do not prove abuse-rate protection. Record as a review item; do not add scope without owner approval.
+- Refund handler uses server-side service-role credentials for its PostgREST reconciliation call only after verifying the user's bearer token and Main Admin membership. Secrets are not returned to the client in the inspected source.
+- Main live RPC contract drift documented in Sections 22 and 37 still blocks direct Feature UI parity; this static handler review does not resolve that drift.
+
+### Status / next steps
+- Static review of all three refund API handlers complete.
+- Next: inspect existing refund/webhook test coverage and exact reconciliation RPC transaction contracts; keep runtime/provider tests for the consolidated approved staging QA phase.
+- No provider API calls, refunds, recovery evidence writes, database writes, webhook sends, deployment, merge, or mobile QA performed.
