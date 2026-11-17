@@ -6965,3 +6965,37 @@ If option 2 is intended, document this limitation in the Staff UI.
 Static Staff attachment capability gap; no runtime Storage policy query or browser test was run. No code, migration or test file was changed. GPT-2 remains at the last recorded 27/39 = 69%; documentation does not increment the checklist. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and their work is reconciled.
 
 केवल संबंधित migrations, tests और UI files का static निरीक्षण तथा audit report में यह section जोड़ा गया। कोई SQL/pgTAP execution, DB query, Storage runtime test, source/migration/test-file edit, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 216. Electrician Support — Assigned-Staff Authorization Test Coverage
+
+### Static sources reviewed
+- `20261114350000_electrician_support_tickets_and_admin_inbox.sql` SHA `6d95af8162cddf820df9fb5ea39161d2e0594d3f`.
+- `20261114390000_admin_staff_rbac_foundation.sql` SHA `5aa0f9058a56d735455f2a9944c861e8312ddb89`.
+- `electrician_support_ticket_security.test.sql` SHA `0b7948fdbe40f0e10f0bd88af901738bd4b87679`, `plan(12)`.
+- `admin_staff_rbac_foundation.test.sql` SHA `46305769a74ea0acbb1caf8dc4a41d322614fe3a`, `plan(69)`.
+- Node contract files: `tests/customer-electrician-support-contract.test.js` SHA `a966bd63c5b7c34f96531e5ea3ad8b660ee9789d`; `tests/customer-electrician-support-attachments-contract.test.js` SHA `f1fac5679a81b1144885ae945b4d2531437729f8`.
+
+### What the source currently enforces
+- Electrician ticket creation requires the authenticated profile to match both `user_id` and `auth_user_id`; an optional booking must be assigned to that profile.
+- Ticket creation is rate-limited to 10 per user in a rolling 24-hour window. The profile row is locked before the count/insert path.
+- Electricians list only tickets whose `user_id` matches `auth.uid()`; message reads and replies also check ticket ownership.
+- Electrician replies are rejected for `closed` tickets.
+- Staff inbox RPCs require explicit Support permissions and a current assignment row; message reads/replies/status updates lock the case and assignment in a consistent order.
+- Main Admin inbox RPCs use the Main Admin predicate. Browser roles have no direct table privileges; RPCs are granted to authenticated and enforce identity internally.
+
+### Test coverage boundary
+The 12-assertion electrician SQL test verifies table/RLS/privilege setup, RPC grants, presence of row locking, and allowed category/status/sender constraints. It does **not** behavior-test:
+- A user attempting to read or reply to another electrician's ticket.
+- A booking that is not assigned to the creating electrician.
+- The 10-ticket rolling-window limit under concurrent creation attempts.
+- Replies against closed tickets.
+- An assigned Support Staff member versus an unassigned or suspended/revoked Staff member.
+- Reassignment racing with an in-flight Staff read/reply.
+
+The 69-assertion Staff RBAC test checks that the Staff support RPCs exist and includes static checks for active-session/row-locking behavior, but that is not a concurrent authorization test. The Node tests check UI/RPC source contracts, not live PostgreSQL authorization.
+
+### Verdict and next isolated-DB tests
+This is a **behavior-test coverage gap**, not evidence that the current owner/assignment checks are missing or bypassable. In the future isolated PostgreSQL branch, add role-switched fixtures for owner/non-owner, assigned/unassigned Staff, suspended/revoked Staff, closed ticket, unassigned booking, rate-limit boundary and concurrent reassignment. Assert both denial outcomes and absence of unintended rows/messages. No tests were executed for this review.
+
+Only static inspection and this documentation update were performed. No source/migration/test file was edited; no SQL, pgTAP, database query, browser/runtime test, CI, deployment, merge or cherry-pick was run. GPT-2 checklist remains at the last verified 27/39 = 69%; documentation-only work does not increment it. Paid Database Branch remains deferred until both GPT-1 and GPT-2 complete and reconcile their own work.
