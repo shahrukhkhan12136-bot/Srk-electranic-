@@ -559,3 +559,14 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - Clarification: the aggregate commission card remains a summary and does not expose a global missing-payout count; the existing per-booking read-only reconciliation panel is the exception surface. No new UI or RPC response field was added.
 - Strengthened `supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql` with a source assertion for the missing-payout exception and its guards. Current declaration `plan(76)`; exact source has 76 `SELECT ok` calls. Test SHA `eebcc4523feba1e4af608c9b9b725f5c3f86d783`.
 - Static source contract only; pgTAP/Node/runtime not run. No database, deployment, merge, CI or mobile QA. GPT-2 official checklist remains **27/39 = 69%**; Runtime Acceptance **60/60 Pending**.
+
+
+### 3W. Razorpay webhook acknowledgement deadline — source-level integration gap (17 Nov 2026)
+
+- Re-fetched `razorpay-webhook.js` SHA `496df0a22b8e9e47be06a66dfb6fb934176a513c`: after signature verification, the handler awaits the durable claim RPC, then performs payment/refund lookup and business reconciliation RPC(s), then awaits completion RPC before returning HTTP 200.
+- Each upstream call has a 15-second AbortSignal timeout, and a refund event can require at least claim + refund-row lookup + reconciliation + completion. The bounded per-request timeout does not enforce the provider's webhook acknowledgement deadline for the whole handler.
+- Razorpay's published webhook guidance says the receiver should respond within five seconds; non-2xx or late response is treated as delivery failure and may be retried. Therefore this synchronous processing shape can cause avoidable redeliveries even while the durable event inbox protects against duplicate business processing.
+- Safe classification: **confirmed source-level acknowledgement-latency risk**, not evidence of a production timeout or duplicate financial action. Existing event-level claim fencing and business reconciliation remain safeguards.
+- A proper fix requires a durable asynchronous worker/outbox or a provider-compatible fast-ack design that commits receipt before returning 2xx. Do not return 2xx before durable receipt; do not use unawaited background work without a durable execution guarantee. No queue/worker feature was added because it changes architecture and needs owner-approved scope.
+- Refund create path rechecked against Razorpay API docs: `X-Refund-Idempotency` and stable `receipt` are sent with the same persisted refund key/body; the provider docs describe receipt as an idempotency key. Existing code treats network timeout as ambiguous and does not generate a new key.
+- Source-only audit. No Node/pgTAP execution, provider calls, DB, CI, deployment, merge or mobile QA. GPT-2 official checklist remains 27/39 = 69%; Runtime Acceptance 60/60 Pending.
