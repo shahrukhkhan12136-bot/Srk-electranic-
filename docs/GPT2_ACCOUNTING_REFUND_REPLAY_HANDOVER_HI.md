@@ -209,3 +209,33 @@ Main history also contains `20261109080121` / `lock_quote_workflow_rpcs_to_authe
 - Compare each original SQL body against Feature's current malformed/valid files and record exact semantic equivalence.
 - Only then propose canonical timestamped filenames and decide whether the branch should retain already-applied historical versions as migration files. Do not simply rename and run them: Main already records these versions as applied, and the branch's full migration set is not a clean replay baseline.
 - No migration files were renamed, deleted, or applied. No Main/Test DDL was executed.
+
+
+## 12. Recovery of quote migration source and live ACL evidence (Nov 17)
+
+### 09075837 source recovery
+- GitHub file history for the malformed quote workflow file shows:
+  - `073d59e64672ee436783338dc3842c35e920a078`: initial placeholder stating the migration was applied.
+  - `04d0c02f03cd7fb27d9b699b109dedc0fa0e0bad`: full 99-line SQL workflow migration.
+  - `b5e5b3bf2555bde77d17fde1e8e1d62a67b58f2b`: adds the booking status and assignment constraints.
+- The current Feature file is byte-identical to the file at commit `b5e5b3b...` (blob SHA `014699d3190e45aacde4022ac7e7fa9ca4fec006`, 9,568 bytes).
+- The Main migration ledger records version `20261109075837` with the exact matching name `electrician_inspection_quotes_and_service_only_commission`. This is now a high-confidence filename/name/source mapping. However, the original Main-applied SQL blob is not available in the repository's current history, so byte-for-byte identity with the SQL originally applied to Main is still not proven.
+
+### 09080121 live security effect
+- Main migration ledger records `20261109080121` / `lock_quote_workflow_rpcs_to_authenticated_users`, but no same-version migration file is present in the Feature tree and no historical source file was recovered.
+- Read-only Main catalog inspection of the four quote/workflow RPCs found all four are SECURITY DEFINER with pinned `search_path = pg_catalog, public, auth, pg_temp`.
+- Effective EXECUTE privileges for each of these four RPCs: `anon=false`, `authenticated=true`, `public=false`.
+- The four inspected RPCs are `srk_submit_booking_quote`, `srk_customer_respond_booking_quote`, `srk_update_booking_work_status`, and `srk_get_my_offer_details`.
+- This confirms the **current live security outcome** is locked to authenticated users. It does not recover the original 09080121 SQL nor prove that the Feature migration set reproduces every statement in that migration.
+
+### Important live-vs-source divergence
+- Main's current `srk_update_booking_work_status` accepts only `inspection`; its current body explicitly rejects `in_progress` and `completed` transitions, requiring customer approval for work start/completion. The malformed Feature source still includes those broader transitions.
+- Main's current `srk_get_my_offer_details` additionally masks customer fields unless the booking is in an allowed assigned/work state.
+- Main's current `srk_submit_booking_quote` resolves electrician profiles using both `user_id` and `auth_user_id`, orders by `created_at`, and uses a numeric total variable.
+- These are live/current function definitions and may reflect later migrations or manual changes; do not back-port them blindly into the historical 09075837 migration. Reconcile against the later timestamped migrations and GPT-2's audit findings first.
+
+### Replay decision
+- The original Feature source for 09075837 has now been recovered from Git history, but no migration rename or replay is authorized.
+- 09080121 remains a source-recovery gap; live ACL evidence establishes its present effect only.
+- Keep both malformed files unchanged until the owner/GPT-2 approves a canonical baseline and migration-history alignment plan.
+- All Main queries were read-only SELECT/catalog inspection. No DDL, migration application, or Production writes occurred.
