@@ -5179,3 +5179,45 @@ Migration `20261115250000_harden_refund_reconcile_full_amount.sql` (Blob `3bda81
 ### 4. Verdict
 
 Audit schema/trigger catalog coverage मौजूद है; वास्तविक audit event row behavior और provider reconciliation payout post-condition/replay coverage नहीं। अगला सुरक्षित कदम इन assertions को owner review के लिए देना है। कोई SQL/test file या migration बदली नहीं गई; pgTAP, DB query, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+
+## 169. Booking → Payout → Razorpay Audit Event Chain: Expected Behavioral Evidence
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Audit trigger source और refund lifecycle का static cross-check; documentation-only।
+
+### 1. तीन अलग Audit Entities अपेक्षित हैं
+
+Audit core migration `20261114125844_restore_financial_audit_core_schema.sql` (Blob `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`) के अनुसार:
+
+- **Booking:** `service_bookings.payment_status` में `paid → refunded` बदलाव पर `entity_type='booking'`, `changed_fields` में `payment_status`, और before/after JSON में दोनों status।
+- **Electrician Payout:** booking trigger द्वारा payout `pending` या refund-owned `blocked` से `refunded` करने पर `entity_type='electrician_payout'`; `changed_fields` में बदले हुए payout fields, सामान्यतः `payout_status` और यदि साफ हुआ हो तो `payout_note`।
+- **Razorpay Refund:** refund record `processing → processed` होने पर `entity_type='razorpay_refund'`; बदले हुए `refund_id`, `status`, `provider_status` fields के exact before/after values।
+
+तीनों events अलग-अलग rows हैं; इन्हें एक event समझकर केवल count=1 assert नहीं करना चाहिए। Audit rows के आपसी timestamp/order पर निर्भर रहने के बजाय entity, entity_id, booking_id और field values से assert करना चाहिए।
+
+### 2. Source में दिखने वाला No-op व्यवहार
+
+- Generic audit trigger allow-list में न आने वाले columns के बदलाव पर event नहीं बनाता।
+- Generic UPDATE में allow-listed fields में कोई वास्तविक बदलाव न हो तो event नहीं बनता।
+- Razorpay UPDATE में `refund_id`, `amount`, `status`, `provider_status` में कोई बदलाव न हो तो event नहीं बनता।
+- Actor उपलब्ध न होने पर trigger `actor_role='system'` लिखता है; इसलिए service-role reconciliation test में system actor expectation की पुष्टि होनी चाहिए।
+
+### 3. Proposed Behavioral Test Matrix
+
+| Scenario | अपेक्षित प्रमाण |
+|---|---|
+| Processed provider result | Booking, payout और Razorpay refund के सही audit rows |
+| Refund-owned blocked payout | पुराना blocked note और नया refunded state सही before/after में |
+| Unrelated Admin hold | payout status/note जस का तस; payout audit update event नहीं |
+| No-op UPDATE | tracked field न बदले तो नया audit event नहीं |
+| Late duplicate processed result | business state स्थिर; कोई अनावश्यक duplicate update event नहीं |
+| Forced transaction failure | उसी transaction के business changes और audit rows दोनों rollback |
+| Failed provider result | केवल matching refund-owned hold restore; payout before/after audit row सही |
+
+### 4. महत्वपूर्ण सीमा
+
+यह अपेक्षित event chain source code से निकला test design है, observed runtime result नहीं। Provider reconciliation migration `20261115250000_harden_refund_reconcile_full_amount.sql` में processed branch booking update के बाद payout post-condition re-read नहीं करती; Section 168 का यह gap कायम है। इसीलिए test को केवल audit rows नहीं, booking/payout final state भी स्वतंत्र रूप से assert करना चाहिए।
+
+**Verdict:** तीन-entity audit chain के लिए अलग behavioral assertions आवश्यक हैं। कोई migration या test file नहीं बदली गई; कोई SQL, pgTAP, DB query, replay, CI, deployment, merge या cherry-pick नहीं किया गया।
