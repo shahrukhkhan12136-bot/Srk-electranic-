@@ -4647,3 +4647,41 @@ Track A को Track B का सफल विकल्प न मानें�
 **PR #8:** OPEN / Draft / Unmerged रखना उचित है।
 
 इस reconciliation में केवल Audit Branch की यह documentation file बदली गई। कोई source migration, application code, CI workflow, database, provider payment/refund या shared branch नहीं बदली गई।
+
+
+### 157. GPT-1 Handover Commit और CI Status Cross-Check — 17 Nov 2026
+
+इस pass में GPT-1 handover में दिए गए 11 commit SHAs को GitHub commit endpoint से जाँचा गया। 10 commits मिले; एक SHA `4638c7277c62cdf3fb23cd1899b8683775c4807d` पर GitHub ने “No commit found” लौटाया। इसलिए उस entry का सत्यापन बाकी है।
+
+#### 157.1 मिले हुए commits और बदली हुई files
+
+| Commit (short SHA) | GitHub commit title | मिली हुई file |
+|---|---|---|
+| `3adc082e` | Fix refund decision RPC parameter rename migration | `supabase/migrations/20261115110000_admin_refund_review_queue_and_decisions.sql` |
+| `695ee2e6` | Test refund decision RPC parameter contract | `supabase/tests/database/admin_refund_review_queue.test.sql` |
+| `75cd9ae3` | Calculate payout summaries across all records | `admin.html` |
+| `689e3ea6` | Use paise precision for payout summary totals | `admin.html` |
+| `03c5a6a5` | Fix payment history pgTAP assertion order | `supabase/tests/database/customer_payment_refund_history_rpc.test.sql` |
+| `37d05b7d` | Close blocked electrician payout after verified refund | `supabase/migrations/20261115250000_harden_refund_reconcile_full_amount.sql` |
+| `5b55e04c` | Repair blocked payout on refund replay | `supabase/migrations/20261115250000_harden_refund_reconcile_full_amount.sql` |
+| `ac0d2f94` | Test payout closure on processed refund | `supabase/tests/database/refund_reconcile_full_amount_guard.test.sql` |
+| `69d4d988` | Cover replay repair of processed refund payout | `supabase/tests/database/refund_reconcile_full_amount_guard.test.sql` |
+| `f89a9ad0` | Restore Route settlement evidence fields in accounting RPC | `supabase/migrations/20261115180000_admin_route_recipient_and_settlement_validation.sql` |
+
+ये commit records उन file paths और titles की पुष्टि करते हैं; इससे अपने-आप यह सिद्ध नहीं होता कि ये सभी commits वर्तमान GPT-2 Audit Branch में शामिल हैं या उनकी पूरी code behavior सही है।
+
+#### 157.2 CI / Deploy status cross-check
+
+- ऊपर के सभी 10 मिले commits पर GitHub combined status में **Vercel = success** और **Netlify Deploy Preview = success** मिला।
+- GitHub Actions workflow-run endpoint पर Node test workflow **success** केवल इन चार जाँचे गए commits के लिए मिला: `3adc082e`, `695ee2e6`, `ac0d2f94`, `69d4d988`।
+- शेष छह मिले commits के लिए इस endpoint ने Node workflow run नहीं लौटाया; इसलिए उनके लिए Node test success का दावा नहीं किया जा रहा।
+- Deploy Preview / Vercel success को PostgreSQL migration replay, pgTAP execution या provider-side payment settlement का प्रमाण नहीं माना जा सकता।
+
+#### 157.3 शेष सत्यापन
+
+- [ ] Missing SHA `4638c7277c62cdf3fb23cd1899b8683775c4807d` का सही commit SHA GPT-1 से पुनः प्राप्त करना।
+- [ ] सभी 10 मिले commits का Feature Branch / Audit Branch ancestry और current inclusion अलग से verify करना।
+- [ ] GPT-1 द्वारा बताए गए 31 SQL test files के exact inventory/plan counts को स्वतंत्र रूप से पुनः जाँचना।
+- [ ] PostgreSQL replay और pgTAP execution के लिए अलग disposable local test evidence प्राप्त करना।
+
+**Cross-check verdict:** GPT-1 handover के 10/11 commit references GitHub पर मिले और उन सभी पर Vercel/Netlify statuses success हैं। Node workflow success का evidence 4/11 listed SHAs पर मिला। यह CI cross-check है, database/runtime sign-off नहीं। PR #8 OPEN / Draft / Unmerged ही रहे।
