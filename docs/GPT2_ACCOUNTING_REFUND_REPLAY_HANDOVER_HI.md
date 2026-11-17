@@ -1162,3 +1162,31 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - Static review of all three refund API handlers complete.
 - Next: inspect existing refund/webhook test coverage and exact reconciliation RPC transaction contracts; keep runtime/provider tests for the consolidated approved staging QA phase.
 - No provider API calls, refunds, recovery evidence writes, database writes, webhook sends, deployment, merge, or mobile QA performed.
+
+
+## Section 40 — Razorpay refund test coverage and SQL test syntax blocker (2026-11-17)
+
+### Node handler test coverage inspected
+- `tests/razorpay-refund-executor.test.js` SHA `cb6a99eb61b7b74803f00b14e127c4af6d46a116`: covers missing login, Main Admin authorization before provider call, stable provider idempotency key + response reconciliation, and ambiguous timeout remaining unknown without reconciliation.
+- `tests/razorpay-refund-status.test.js` SHA `d65daae0b2a607fe4200562e58f92daf7f64398b`: covers missing session, Main Admin authorization, exact stored refund GET/no provider write, unlinked refund pagination, amount/payment mismatch, and booking-payment mismatch.
+- `tests/razorpay-refund-recovery.test.js` SHA `681234cbf4e3e5f11b5ed407fe88d0ef5e6507e3`: covers audit-note requirement, Main Admin authorization, evidence save then separate finalization request, evidence ID retention on finalization failure, pending provider state without finalization, amount mismatch, exact-note matching, unrelated same-payment/same-amount rejection, and pagination to page two.
+- These are source-level test definitions. They were inspected, not executed; they do not establish deployed provider behavior or database transaction concurrency.
+
+### Database recovery evidence contract
+- Migration `20261115120000_durable_razorpay_refund_recovery_evidence.sql`, SHA `adf83de704725e791a096462eaa385b28f92c7a7`, creates a private append-only recovery evidence table; writer/finalizer are service_role-only and independently enforce service role.
+- Evidence writer verifies the Main Admin actor, exact provider payload fields, internal payment/booking identity and amount, and idempotent observation UUID.
+- Finalizer requires processed evidence less than 15 minutes old, locks Booking → Refund → Payout, independently checks full captured collection, rejects already-paid payouts, requires refund-owned blocked payout state, and finalizes booking/refund/request/payout in one transaction.
+- Hardening migration `20261115240000_harden_refund_recovery_full_amount.sql`, SHA `40ebd534cf4209e98adc8c1f44b53b9ebfc09920`, adds the full-collection paise equality guard.
+- Provider reconciliation migration `20261115250000_harden_refund_reconcile_full_amount.sql`, SHA `56d300abc8495d1c5c5371d60bc0321650623db5`, independently checks full amount, booking-first locks, payout hold ownership and trigger-interleaving replay. This is static SQL review, not runtime/pgTAP evidence.
+
+### Confirmed SQL test syntax blocker — needs GPT-2 repair/review
+- Test file `supabase/tests/database/refund_reconcile_full_amount_guard.test.sql`, SHA `a81dcc344db145533be6ec239d47270f30da1c6f`, declares `plan(10)` and has ten `ok(...)` assertions, but a quote-aware parenthesis scan of the SQL source ends with three unmatched opening parentheses.
+- The malformed expressions are around source lines 13–15, 29–30 and 31–32 (the `position(... in lower(pg_get_functiondef(...))` assertions). The test file is therefore not parse-ready and cannot provide reliable pgTAP evidence until corrected.
+- The companion `durable_razorpay_refund_recovery_evidence.test.sql`, SHA `a191a6f74a1112f4eccfad448be291d93aaf95d8`, passed the same source parenthesis-balance scan (depth 0); it still has not been executed.
+- This is in the refund/accounting GPT-2 workstream. No edit was made; hand off the exact test syntax defect for GPT-2 review/fix and rerun on isolated staging. Do not alter the GPT-2 Audit Branch or silently patch overlapping financial tests.
+
+### Status / next steps
+- Refund API source and test definitions reviewed; no tests run against Production/Main.
+- A concrete test syntax blocker is now recorded for GPT-2.
+- Next: continue the remaining Admin Panel integration/dependency map and prepare a concise GPT-2 handoff for the identified Staff/RBAC, support, refund contract, and SQL test issues. Runtime/pgTAP/provider testing remains deferred to consolidated approved staging QA.
+- No code or SQL changed; no refund/provider call, test execution, database write, deployment, merge, or mobile QA occurred.
