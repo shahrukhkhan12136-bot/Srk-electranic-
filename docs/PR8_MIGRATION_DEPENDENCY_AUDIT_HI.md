@@ -6234,3 +6234,37 @@ Static comparison में ये दो files मिलीं:
 Migration order में पहली identity migration 9 नवंबर और दूसरी 14 नवंबर को है; दूसरी बाद वाली RPC definition भी लाती है। यह static source fact है, runtime defect का प्रमाण नहीं। Fresh-install manifest को पहले `electrician_profiles.user_id` की authoritative स्थापना और फिर दोनों ordered migrations का स्पष्ट उल्लेख करना चाहिए। Redundant redefinition को हटाना/बदलना इस audit के scope में नहीं है।
 
 केवल source comparison और report documentation update किया गया। कोई SQL/pgTAP, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 197. Google Maps Migration और Electrician Identity — Cross-Migration Ordering
+
+### 1. अगली migration की वास्तविक prerequisite
+
+`20261109001000_add_google_maps_location_support.sql` (SHA `465097e26a93cff333289ecd6b18db4dd373622a`) में `srk_admin_review_application(uuid,text)` को replace किया गया है। यह function `electrician_profiles.user_id` और `electrician_profiles.auth_user_id` दोनों columns में identity link लिखता है।
+
+इसलिए इस migration से पहले:
+- Root setup path से `electrician_profiles.user_id` मौजूद होना चाहिए।
+- `20261109000500_harden_electrician_profile_identity_linking.sql` से `auth_user_id` और दोनों columns का sync/guard setup मौजूद होना चाहिए।
+
+Timestamp order में `09000500` पहले और `09001000` उसके बाद है। यह source-level dependency sequence आपस में मेल खाता है।
+
+### 2. बाद का Admin Approval Replacement
+
+`20261114130000_harden_electrician_profile_identity_linking.sql` फिर `srk_admin_review_application(uuid,text)` को replace करती है और unique verified-phone तथा unique approved-profile checks को approval flow में लागू करती है। अतः source order के अनुसार final definition 14 नवंबर वाली है, जबकि Google Maps migration बीच में identity columns के दोनों नाम इस्तेमाल करती है।
+
+### 3. Fresh-Install Sequence का स्पष्ट रूप
+
+Static evidence के आधार पर इस dependency segment का क्रम यह होना चाहिए:
+
+1. चुना हुआ root baseline, जिसमें `electrician_profiles.user_id` हो।
+2. `20261109000500_harden_electrician_profile_identity_linking.sql` — `auth_user_id`, sync और guard।
+3. `20261109001000_add_google_maps_location_support.sql` — location columns और दोनों identity columns लिखने वाला approval RPC।
+4. `20261114130000_harden_electrician_profile_identity_linking.sql` — बाद वाला unique-only Admin approval RPC।
+
+यह सूची पूरे repository का पूर्ण install manifest नहीं है और न ही इसे replay करके सत्यापित किया गया है।
+
+### 4. Verdict
+
+इस dependency segment में timestamp ordering source references से संगत है। मुख्य बाहरी prerequisite अभी भी root setup से आने वाला `user_id` column है। Clean replay, existing-data constraints और actual function invocation behavior **unverified** हैं।
+
+केवल source inspection और report documentation update किया गया। कोई SQL/pgTAP, database query, migration replay, application source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
