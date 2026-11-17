@@ -433,3 +433,21 @@ Recursive migration filename scan में अभी भी केवल एक
 - Complaint/Message hard-delete के बाद orphan Storage object cleanup workflow remains open; no automatic cleanup feature was added.
 - PR #8 remains Open/Draft/Unmerged and points to its separate feature head; the GPT-2 audit branch was not merged.
 - No remote/Production database query, migration execution, provider operation, deployment, merge or mobile QA was performed.
+
+
+### 3L. Legacy completion commission trigger और नया payout commission trigger — coexistence audit (17 Nov 2026)
+
+Read-only source recheck में एक अतिरिक्त trigger-wiring concern मिला:
+
+- `PORTAL_SCHEMA.sql` में `srk_booking_commission_trigger` नाम का `BEFORE UPDATE OF status` trigger अभी भी `srk_calculate_commission_on_completion()` को call करता है।
+- उस legacy function का predicate `new.status='completed'` और `old.status IS DISTINCT FROM 'completed'` है; यह commission को `new.quoted_amount * new.commission_rate / 100` से बनाता है। Legacy quote में `quoted_amount` labour + materials total हो सकता है।
+- नई migration `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` अलग `zz_srk_set_booking_commission_before_payout` BEFORE trigger जोड़ती है। यह तभी labour-only commission set करती है जब booking completed + paid + verified हो और Razorpay या matching manual evidence उपलब्ध हो।
+- नई migration पुराने `srk_booking_commission_trigger` को DROP/replace नहीं करती। Trigger names के alphabetical order में पुराना `srk_...` trigger नए `zz_...` trigger से पहले चलता है। यदि completion पर payment अभी verified नहीं है, तो नया function early-return करता है; इससे legacy trigger द्वारा `quoted_amount` पर निकाला गया commission value बना रह सकता है। बाद के qualifying payment update पर नया trigger उसे labour-only amount से overwrite कर सकता है।
+
+**Classification:** यह source-level coexistence / interim commission-value concern है; इससे live payout गलत हुआ है, ऐसा कोई runtime प्रमाण नहीं। नई Admin commission report payout ledger पढ़ती है, लेकिन booking के `commission_amount` और payout parity की जाँच अलग reconciliation path में होती है।
+
+**Safe next step:** owner से तय कराएँ कि legacy completion trigger अब obsolete है और उसे additive follow-up migration में drop/replace करना है, या वह किसी historical compatibility case के लिए आवश्यक है। इस निर्णय के बिना trigger हटाया/बदला नहीं गया। Isolated PostgreSQL में completed-unpaid, later verified-paid, manual-evidence mismatch और rollback scenarios जोड़कर जाँचना बाकी है।
+
+- Source files re-read: `PORTAL_SCHEMA.sql`, `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`, `20261116210000_attach_electrician_payout_reconciliation_trigger.sql`, `electrician_payout_reconciliation.test.sql`.
+- No database/pgTAP execution, source migration edit, Production query, payout/refund operation, merge or deployment performed for this finding.
+- Official GPT-2 progress remains **27/39 = 69%**.
