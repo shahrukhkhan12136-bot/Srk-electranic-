@@ -119,6 +119,18 @@ begin
         where id=v_payout.id and payout_status='blocked'
           and payout_note='Razorpay refund pending';
       if not found then
+        -- The booking UPDATE above fires srk_create_electrician_payable(), which
+        -- may already close this exact refund-owned hold and clear its note.
+        -- Restore the final provider-confirmed audit note without accepting any
+        -- other payout state or overwriting a non-null Admin note.
+        update public.srk_electrician_payouts
+          set payout_note='Razorpay full refund verified; payout permanently withheld.',
+              updated_at=clock_timestamp()
+          where id=v_payout.id
+            and payout_status='refunded'
+            and payout_note is null;
+      end if;
+      if not found then
         raise exception 'BLOCKED_PAYOUT_COULD_NOT_BE_CLOSED_AS_REFUNDED' using errcode='55000';
       end if;
     end if;
