@@ -6173,3 +6173,36 @@ Canonical fresh install के लिए repository owner को एक ही d
 **मुख्य जोखिम:** Root setup SQL और timestamped migration history दो अलग schema-delivery layers हैं। उपलब्ध source से SOS prerequisites की provenance पहचानी जा सकती है, पर fresh install के लिए एक authoritative, non-duplicative execution path अभी स्थापित नहीं है। Clean replay readiness **unverified** रहेगी जब तक owner canonical setup path तय न करे और isolated replay evidence उपलब्ध न हो।
 
 कोई SQL/pgTAP execute, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 195. SOS Prerequisite Migration Chain — Timestamp और Helper-Version Cross-Check
+
+### 1. SOS से पहले जरूरी schema layers
+
+Audit Branch की migration सूची और संबंधित files की static जाँच में यह क्रम मिला:
+
+| क्रम | Migration | SOS के लिए भूमिका |
+|---|---|---|
+| 1 | `20261108121115_add_customer_account_booking_access.sql` | `service_bookings.customer_user_id` |
+| 2 | `20261109000500_harden_electrician_profile_identity_linking.sql` | `electrician_profiles.auth_user_id` |
+| 3 | `20261114160000_customer_selected_rate_tier_and_server_estimate.sql` | `service_bookings.selected_category` |
+| 4 | `20261114390000_admin_staff_rbac_foundation.sql` | SOS permissions, role mapping, Staff tables और `srk_has_admin_permission(text)` |
+| 5 | `20261115260000_sos_admin_support_alerts.sql` | SOS tables और create/list/acknowledge/history RPCs |
+
+इनके timestamps SOS migration से पहले हैं। Source order के हिसाब से SOS की तत्काल table/column और RBAC dependencies पहले आती हैं।
+
+### 2. Permission Helper का बाद का सुधार
+
+`20261114390000_admin_staff_rbac_foundation.sql` में permission helper का row-locking implementation मौजूद है। बाद की migration `20261116100000_fix_staff_permission_helper_volatility.sql` इसे स्पष्ट रूप से `VOLATILE` बनाती है, क्योंकि helper `FOR SHARE` locks लेता है।
+
+यह SOS migration के बाद timestamped है। इसलिए:
+- SOS migration के समय helper का effective definition RBAC migration वाला होगा।
+- पूरी migration chain के अंत में helper का definition बाद की VOLATILE correction वाला होगा।
+- केवल source पढ़ने से यह सिद्ध नहीं होता कि बीच की अवस्था में SOS RPC invocation सफल/असफल हुई; इस audit ने function execute नहीं किया।
+- Fresh-install verification में final helper definition और पूरी ordered migration chain दोनों जाँचना जरूरी है।
+
+### 3. Dependency Verdict
+
+SOS से पहले आवश्यक booking identity, electrician identity, selected category और Staff RBAC migrations मौजूद हैं और timestamps के अनुसार पहले आती हैं। यह **static ordering evidence** है, replay proof नहीं। Root setup scripts की canonical selection और versioned migrations के साथ उनका non-duplicative application अभी भी owner द्वारा तय और isolated environment में सत्यापित होना बाकी है।
+
+यह केवल migration filenames और source definitions की static समीक्षा तथा report update है। कोई SQL/pgTAP, database query, migration replay, application source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
