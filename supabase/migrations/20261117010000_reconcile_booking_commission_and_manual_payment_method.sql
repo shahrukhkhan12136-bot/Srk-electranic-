@@ -44,6 +44,9 @@ begin
             and lower(btrim(e.payment_method)) = lower(btrim(new.payment_method))
        )
      ) then
+    -- Match the legacy commission trigger's state-transition contract:
+    -- commission is not active unless the booking is completed and verified-paid.
+    new.commission_amount := null;
     return new;
   end if;
 
