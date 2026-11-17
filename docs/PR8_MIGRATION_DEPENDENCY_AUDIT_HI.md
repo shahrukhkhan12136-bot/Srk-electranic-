@@ -6914,3 +6914,54 @@ The Nov 17 migration statically connects commission calculation, payout creation
 GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only audit does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल संबंधित migration और 34-assertion SQL test का static निरीक्षण तथा audit report में यह section जोड़ा गया। कोई SQL/pgTAP execution, DB query, source/migration/test-file edit, runtime test, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 215. Assigned Support Staff — Customer Attachment Read Scope Migration/UI Gap
+
+### Static sources reviewed
+- `20261110040000_customer_admin_complaints.sql` SHA `26103b3cb2838b058d9f5287cf8eb6eeb732b056`.
+- `20261113220000_customer_support_conversation_schema.sql` SHA `75230ab805e61206515fd73e17e748de7ec249e5`.
+- `20261113230000_support_attachment_paths_and_admin_message_list.sql` SHA `aaeb6f0d7efe680735039a0a516bd5fcce2dafa0`.
+- `20261114202250_customer_complaint_customer_safe_projection.sql` SHA `9766233cc1c4aead2f9c4b09180a243e77c0d3a0`.
+- `20261114390000_admin_staff_rbac_foundation.sql` SHA `5aa0f9058a56d735455f2a9944c861e8312ddb89`.
+- `20261116100000_fix_staff_permission_helper_volatility.sql` SHA `fc99aaf9c564b348e25a72b416dd4eb746e0fad3`.
+- `support_attachment_admin_message_access.test.sql` SHA `bb9bb3491763f95ef7069f4aba7deefa28dd9787`, plan(14).
+- `admin_staff_rbac_foundation.test.sql` SHA `46305769a74ea0acbb1caf8dc4a41d322614fe3a`, plan(69).
+- UI: `admin.html` SHA `4b54dbfb605e55bb086eca7f1d5be13270b78e91`; `booking.html` SHA `41fc004057c8f52a5d691f96c24a790a153652c2`.
+
+### Confirmed Staff assignment and conversation scope
+- RBAC seeds explicit Support permissions for customer/electrician read, reply and status updates.
+- `srk_admin_support_assignments` stores assignment by case type and case ID.
+- Main Admin-only `srk_admin_assign_support_case` assigns/reassigns eligible cases.
+- Staff customer/electrician list RPCs filter to `assigned_staff_user_id=auth.uid()`.
+- Staff message read/reply and status update RPCs check permission and current case assignment.
+- Staff list projections omit private phone/name fields covered by the RBAC test.
+- Staff permissions require an active registry record and live, non-revoked Auth session; row locks serialize permission checks. A later migration correctly changes the helper to VOLATILE.
+- Direct browser access to private assignment tables is revoked.
+
+### Attachment capability gap
+The customer attachment system defines private bucket `srk-customer-support`, customer-owned upload/read/delete policies, Main Admin read access through `public.is_srk_admin()`, customer attachment link/list RPCs and a Main Admin attachment-list RPC. The object-access helper permits the owner when the complaint belongs to that Customer, or Main Admin when the Admin flag is enabled.
+
+The Staff assignment migration adds assigned-case message/list/reply/status RPCs, but the inspected migration does not add:
+- A Support Staff attachment-list RPC scoped to the currently assigned complaint.
+- A Staff-specific Storage object-access helper/policy for assigned customer complaints.
+- A Staff signed-URL issuance path.
+- Attachment rendering in the Staff customer conversation panel.
+
+The existing attachment test verifies Customer ownership and Main Admin access; it does not test an assigned Support Staff member opening an attachment.
+
+**Finding:** assigned Staff access to complaint text/messages exists, but assigned Staff access to customer complaint attachments is not established in the inspected RPC/Storage/UI path. This is a product capability/coverage gap if Support Staff are expected to review uploaded files, not evidence of unauthorized access or a live Storage defect.
+
+### Owner decision and future tests
+Owner should confirm whether:
+1. Support Staff may view attachments only for currently assigned complaints; or
+2. Attachments are intentionally restricted to the Customer and Main Admin.
+
+If option 1 is approved, add a narrowly scoped Staff metadata/signed-URL path checking active permission, current assignment, complaint identity, bucket and object path. Do not grant broad bucket reads. Test assigned/unassigned Staff, revoked/suspended Staff, Main Admin, Customer owner and unrelated Customer.
+
+If option 2 is intended, document this limitation in the Staff UI.
+
+### Verdict and limits
+Static Staff attachment capability gap; no runtime Storage policy query or browser test was run. No code, migration or test file was changed. GPT-2 remains at the last recorded 27/39 = 69%; documentation does not increment the checklist. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and their work is reconciled.
+
+केवल संबंधित migrations, tests और UI files का static निरीक्षण तथा audit report में यह section जोड़ा गया। कोई SQL/pgTAP execution, DB query, Storage runtime test, source/migration/test-file edit, CI, deployment, merge या cherry-pick नहीं किया गया।
