@@ -130,3 +130,14 @@ Further migration-source review resolved the earlier open question about the leg
 **Remaining nuance:** the old function cleared `commission_amount` when a booking ceased to be completed+paid; the Bridge function returns without clearing it for non-qualifying states. Reports filter to completed+paid, and payout history is retained, but this behavioral difference should be consciously accepted or covered by a specific state-transition test before release. Do not add the old trigger blindly.
 
 **Conclusion:** no migration edit is recommended at this point. The prior "legacy commission trigger missing" concern is downgraded from a clean-replay blocker to a documented legacy-function/transition-semantics difference. Runtime migration replay and pgTAP are still required before release.
+
+
+### Migration inventory re-count
+
+The Feature Branch migration directory was fetched and parsed directly:
+- 88 SQL migration files total.
+- 86 valid 14-digit timestamped migrations.
+- Exactly 2 malformed non-timestamped files: `20261109_allow_quote_approval_booking_states.sql` and `20261109_electrician_inspection_quotes_and_service_only_commission.sql`.
+- No duplicate 14-digit migration versions.
+
+This confirms the two known malformed filenames; do not silently rename or delete them. Their effect on Supabase CLI replay still requires a pinned-version isolated CLI test.
