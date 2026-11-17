@@ -2649,3 +2649,25 @@ Durable Razorpay recovery evidence tests एक अलग table/workflow को 
 - Durable recovery evidence के source-contract tests: **present; runtime unverified**.
 - यह scan filename filter पर आधारित है; unrelated-named SQL tests या application-layer tests में समान assertions हो सकते हैं। इसलिए पूरे repository में हर संभव test की अनुपस्थिति का दावा नहीं है।
 - No source SQL/test file modified; no SQL execution, PostgreSQL replay, provider call, or database mutation performed.
+
+
+## 112. Draft regression test artifact — not runnable / approval pending — 17 Nov 2026
+
+एक अलग static pgTAP source-contract draft बनाया गया है:
+
+`docs/drafts/financial_audit_field_coverage_regression.draft.sql`
+
+### Draft में शामिल 8 target assertions
+
+- Manual Payment: `recorded_by`, `recorded_at`.
+- Manual Refund: `recorded_by`, `recorded_at`.
+- Electrician Payout: `paid_by`.
+- Razorpay Refund: Admin actor, amount in paise, currency, processed timestamp, internal/provider status.
+
+### सुरक्षा और execution सीमाएँ
+
+- Draft को `supabase/tests/database/` के बाहर रखा गया है; यह मौजूदा SQL test runner में शामिल नहीं है।
+- यह static `pg_get_functiondef` contract check है; fixture-based trigger execution या PostgreSQL runtime behavior नहीं जाँचता।
+- Provider IDs, idempotency keys, free-text reason/error और payout notes को raw audit JSON में जोड़ने का प्रस्ताव नहीं है। उनकी masking/retention policy owner/security approval के बाद ही तय होगी।
+- Draft assertions मौजूदा migration पर अभी fail हो सकती हैं; इसे runnable test suite में promote नहीं किया गया।
+- No SQL migration edited, no test executed, no database/production changes.
