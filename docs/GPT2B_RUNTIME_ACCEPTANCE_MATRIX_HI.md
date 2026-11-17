@@ -523,3 +523,16 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - `.github/workflows/supabase-schema-ci.yml` केवल manual dispatch पर और एक अलग hard-coded feature branch पर चलने के लिए gated है। यह remote production schema-only export के लिए privileged-न-होने वाला role जाँचता है, फिर isolated local Supabase stack में schema restore और migrations apply करता है। User safety constraints के कारण workflow/CI/remote export/local DB apply execute नहीं किया गया।
 - सुधार: आगे की रिपोर्ट में यह नहीं कहा जाएगा कि RLS assertion test मौजूद नहीं है; सही स्थिति यह है कि **source test contract मौजूद है (74 declared assertions), पर उसका execution, canonical DDL provenance और deployed catalog proof उपलब्ध नहीं**।
 - कोई database query, pgTAP, Node suite, CI, schema export, migration replay, deployment या Production setting execute/change नहीं की गई। GPT-2 official checklist **27/39 = 69%**; Runtime Acceptance **60/60 Pending** अपरिवर्तित हैं।
+
+
+### Payout canonical migration provenance correction — 17 November 2026 (source-only)
+
+- पहले के payout inventory note में canonical DDL/RLS/ACL producer न मिलने का निष्कर्ष गलत था। Migration `supabase/migrations/20261114125844_restore_financial_audit_core_schema.sql` (blob SHA `bdfdfcc01366a9d4a298b2107c53f1525b326bf9`) में payout table का स्पष्ट canonical source मिला:
+  - `CREATE TABLE IF NOT EXISTS public.srk_electrician_payouts`; `booking_id` पर named UNIQUE constraint `srk_electrician_payouts_booking_id_key`; payout status CHECK और paid metadata CHECK मौजूद हैं।
+  - Table पर RLS ENABLE है; PUBLIC/anon/authenticated के सभी direct table privileges revoke किए जाते हैं; service_role को ALL और authenticated को केवल SELECT grant है।
+  - `srk_read_authorized_electrician_payouts` SELECT policy authenticated role के लिए Main Admin (`public.is_srk_admin()`) या उसी `auth.uid()` से linked electrician profile तक row access सीमित करती है।
+  - Electrician profile lookup `electrician_profiles.id = payout.electrician_profile_id` और `electrician_profiles.user_id = auth.uid()` पर scoped है। Migration payout indexes भी बनाती है।
+- इस कारण repository-source स्तर पर table DDL, unique booking constraint, RLS, expected SELECT policy और direct table grants/revokes अब प्रमाणित हैं। पूर्व रिपोर्ट का “इनका producer नहीं मिला” कथन superseded है।
+- शेष प्रमाण सीमाएँ: migration में explicit `ALTER TABLE ... OWNER TO` नहीं है, इसलिए effective owner migration चलाने वाले database role पर निर्भर है; live deployed catalog, अतिरिक्त manually-added permissive policies/ACL, migration वास्तव में लागू हुई या नहीं, और actual role-based row visibility अभी catalog/runtime से सत्यापित नहीं हैं। pgTAP plan 74 इन्हीं अपेक्षित RLS/constraint facts को assert करता है, पर अभी execute नहीं हुआ।
+- `.github/workflows/supabase-schema-ci.yml` को चलाना अब भी निषिद्ध/अनावश्यक है: उसका remote schema export + isolated local restore/migration apply workflow user की no-CI/no-DB-execution सीमा के बाहर है।
+- कोई source migration बदली नहीं गई; केवल audit दस्तावेज़ सुधारा गया। कोई database/catalog query, SQL/pgTAP, Node suite, CI, schema export, migration replay, deployment या Production setting execute/change नहीं की गई। GPT-2 official checklist **27/39 = 69%**; Runtime Acceptance **60/60 Pending** अपरिवर्तित हैं।
