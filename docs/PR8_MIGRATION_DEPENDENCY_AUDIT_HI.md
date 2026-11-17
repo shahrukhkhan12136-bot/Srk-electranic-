@@ -4707,3 +4707,35 @@ GitHub compare endpoint से Section 157 में मिले सभी 10 c
 **Verification scope:** 10 known commit SHAs × 2 branches = 20 compare checks; सभी 20 सफलतापूर्वक लौटे। कोई branch बदली नहीं गई, कोई merge/cherry-pick नहीं किया गया और कोई database/CI operation नहीं हुआ।
 
 **Verdict:** GPT-1 Feature Branch में, GPT-2 Audit Branch में। संयुक्त Integration Branch अभी HOLD पर रहे।
+
+
+## 159. GPT-1 Feature Branch बनाम GPT-2 Audit Branch — File/Blob तुलना
+
+**तुलना की तारीख:** 17 नवंबर 2026  
+**Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
+**Feature Branch:** `feat/customer-login-first-dashboard-20261114`  
+**Audit Branch:** `chore/pr8-replay-audit-20261116-v2`
+
+### तुलना का परिणाम
+
+GitHub से दोनों शाखाओं की वर्तमान फाइलें अलग-अलग fetch करके Blob SHA और पूरी UTF-8 सामग्री की तुलना की गई। कुल 7 अलग-अलग paths जाँचे गए:
+
+| File path | Feature Branch Blob SHA | Audit Branch Blob SHA | परिणाम |
+|---|---|---|---|
+| `supabase/migrations/20261115110000_admin_refund_review_queue_and_decisions.sql` | `2324ba93bb3a046966df01ca1023a61597727076` | `900c5e63c2628a21280f3b8bcdabf46cadb3b9ed` | अलग सामग्री |
+| `supabase/tests/database/admin_refund_review_queue.test.sql` | `2bb9d1b2549b1450b39e53c84e71203b342ebc75` | `70e039ffe2347976fa970c0a7b0535e861e9fde4` | अलग सामग्री |
+| `admin.html` | `6b29511a1ecfab93b5689dff23012078091e57fc` | `4b54dbfb605e55bb086eca7f1d5be13270b78e91` | अलग सामग्री |
+| `supabase/tests/database/customer_payment_refund_history_rpc.test.sql` | `de1b3a072f0848c27f39ea578584562a68e48d3e` | `de1b3a072f0848c27f39ea578584562a68e48d3e` | बिल्कुल समान |
+| `supabase/migrations/20261115250000_harden_refund_reconcile_full_amount.sql` | `56d300abc8495d1c5c5371d60bc0321650623db5` | `3bda81c2b827f597f639846d33967a7c88296e21` | अलग सामग्री |
+| `supabase/tests/database/refund_reconcile_full_amount_guard.test.sql` | `a81dcc344db145533be6ec239d47270f30da1c6f` | `fd5b7ceb8e612b588fac1a7ade8d7035388ca2bc` | अलग सामग्री |
+| `supabase/migrations/20261115180000_admin_route_recipient_and_settlement_validation.sql` | `31e04cf24d6f7f5e71d8dc28159878e01688103c` | `58042f828aeb1a951b36191d68a0573cdc15fcc0` | अलग सामग्री |
+
+### निष्कर्ष
+
+- 7 में से 1 फाइल दोनों शाखाओं में Blob SHA और पूरी सामग्री के स्तर पर समान है।
+- 6 फाइलों में सामग्री अलग है। केवल समान path होना समान implementation का प्रमाण नहीं है।
+- इस जाँच में दोनों शाखाओं पर कोई फाइल बदली नहीं गई।
+- कोई cherry-pick, merge, SQL execution, database replay, CI dispatch या deployment नहीं किया गया।
+- अगला सुरक्षित कदम: अलग सामग्री वाली 6 फाइलों का line-level/diff review करके यह पहचानना कि कौन-से बदलाव Feature Branch में हैं, कौन-से Audit Branch में हैं, और क्या किसी बदलाव का समकक्ष रूप पहले से मौजूद है। बिना review के किसी फाइल को overwrite या copy नहीं करना है।
+
+**स्थिति:** Static file/blob comparison complete; semantic diff review pending; integration/merge readiness अभी स्वीकृत नहीं।
