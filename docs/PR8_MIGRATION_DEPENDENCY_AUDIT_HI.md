@@ -4117,3 +4117,44 @@ File blob: `88184e2e1fb386f16d6bd339556a15a5b87275d2`; घोषित pgTAP pla
 - Section 143 को इस correction के साथ पढ़ें: source assertions मौजूद हैं; runtime transition/rollback/concurrency प्रमाण अभी बाकी हैं।
 
 कोई test execute या edit नहीं किया गया। कोई SQL, migration, database, CI, deployment, merge या Production state नहीं बदली गई।
+
+
+### 145. pgTAP Test Execution Path और CI Workflow Coverage — 17 Nov 2026
+
+इस चरण में केवल Audit Branch की `package.json` और `.github/workflows/supabase-schema-ci.yml` का static review किया गया।
+
+#### 145.1 Package Scripts
+
+`package.json` blob: `8a559d1daf4dac6c140a168bb71cc5da914dce58`.
+
+Scripts:
+- `test:refund` → Node test runner से `tests/razorpay-refund-executor.test.js`
+- `test:webhook` → Node test runner से `tests/razorpay-webhook-inbox.test.js`
+- `test:customer-payment` → Node test runner से `tests/customer-payment-method-enforcement.test.js`
+- `test` → `node --test tests/*.test.js`
+
+इन scripts में Supabase CLI, PostgreSQL migration replay, pgTAP runner या `supabase/tests/database/*.test.sql` चलाने का command नहीं है। इसलिए Node `npm test` चलने पर भी 34/14/35-plan वाले pgTAP SQL files अपने-आप execute नहीं होते।
+
+#### 145.2 Existing GitHub Workflow
+
+Workflow blob: `8cdd128fb69227fee82b5084f8b78634f13ffcb2`.
+
+Static configuration से:
+- Workflow केवल `workflow_dispatch` से manually शुरू होता है।
+- Job केवल `refs/heads/feature/platform-fee-cash-online-cycle` पर चलता है; GPT-2 Audit Branch `chore/pr8-replay-audit-20261116-v2` इस condition में शामिल नहीं है।
+- यह remote `SUPABASE_DB_URL` से schema-only export लेता है और उसे isolated local Supabase में restore करता है।
+- इसके बाद केवल पाँच hard-coded Feature migrations चलाता है: 20261112170000, 20261112193000, 20261112220000, 20261112230000 और 20261113090000।
+- यह Audit Branch की पूरी 89-file migration chain या database pgTAP suite execute नहीं करता।
+- Workflow के नाम में migration test है, लेकिन वर्तमान steps में `supabase test db` अथवा pgTAP SQL test directory चलाने वाला step नहीं दिखा।
+
+यह workflow dispatch नहीं किया गया। इसकी remote schema-export credential या वास्तविक Production database state की जाँच नहीं की गई।
+
+#### 145.3 निष्कर्ष और सुरक्षित अगला कदम
+
+1. pgTAP SQL files का मौजूद होना, उनके runnable test command या successful execution का प्रमाण नहीं है।
+2. वर्तमान package scripts में pgTAP execution path नहीं मिला।
+3. वर्तमान workflow Audit Branch की migration replay या पूरे pgTAP suite का विकल्प नहीं है।
+4. अगला engineering काम एक अलग, स्पष्ट रूप से isolated local PostgreSQL/Supabase test path प्रस्तावित करना होगा, जिसमें पूरा ordered migration replay और pgTAP tests चलें; इसे पहले review और owner approval के बाद ही बनाया/चलाया जाए।
+5. जब तक वह path स्थापित और execute न हो, migration replay, SQL parser, pgTAP और runtime assertions को **Not Run / Unverified** ही रिपोर्ट किया जाए।
+
+कोई package script, workflow, test या migration edit नहीं किया गया। कोई CI dispatch, database connection, SQL execution, deployment, merge या Production operation नहीं हुआ।
