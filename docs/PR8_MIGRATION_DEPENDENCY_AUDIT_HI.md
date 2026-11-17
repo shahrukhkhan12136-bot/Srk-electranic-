@@ -5679,3 +5679,37 @@ Source design में Main Admin actions और Support Staff actions के �
 ### 5. Verdict
 
 Source design Support Staff authorization को केवल user ID पर निर्भर नहीं रखता; वह JWT session ID, live Auth session, active Staff registry, tracked non-revoked session और role permission को साथ जाँचता है। Session registration audit केवल नई tracked row पर बनता है, last-seen refresh पर नहीं। ये अच्छे source-level controls हैं, पर live और concurrency evidence अभी उपलब्ध नहीं है। कोई source migration/test/permission/database setting नहीं बदली गई; कोई SQL/DB query/pgTAP/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
+
+
+## 182. Staff Session Bootstrap — Frontend Fail-Closed Flow और VOLATILE Permission Helper
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** `admin.html` Staff bootstrap, permission-helper volatility fix migration और संबंधित static test assertions का cross-check।
+
+### 1. Frontend Session Bootstrap
+
+- `admin.html` में authenticated user के लिए पहले `is_srk_admin()` जाँचा जाता है; true होने पर Main Admin mode चुना जाता है।
+- Main Admin न होने पर `srk_admin_staff_register_session()` call होता है।
+- Session registration error या false result पर Staff portal छिपाया जाता है, user को दोबारा login/Main Admin से संपर्क करने का संदेश दिया जाता है और `signOut()` call होता है।
+- Registration सफल होने के बाद `srk_has_admin_permission('support.customer.read')` जाँचा जाता है। Error/false पर भी portal बंद और sign-out होता है।
+- केवल दोनों checks सफल होने पर Staff mode दिखता है और assigned support inbox load होता है।
+- यह browser source में fail-closed flow है; वास्तविक browser/Auth runtime नहीं चलाया गया।
+
+### 2. Permission Helper Volatility Correction
+
+- Earlier foundation migration में `srk_has_admin_permission` को `STABLE` घोषित किया गया था, जबकि function body में `SELECT ... FOR SHARE` row locks हैं।
+- बाद की migration `20261116100000_fix_staff_permission_helper_volatility.sql` उसी function को `VOLATILE` घोषित करके replace करती है।
+- Migration comment इस बदलाव का कारण बताता है: PostgreSQL में row-locking SELECT को STABLE function के भीतर नहीं चलाया जा सकता।
+- Replacement में active Staff registry और exact tracked session row के locks तथा live `auth.sessions` check बने रहते हैं।
+- इसलिए migration history में बाद की VOLATILE definition को effective source definition मानना चाहिए; केवल पहले वाली foundation definition पढ़ना अधूरा होगा।
+
+### 3. Static Test Coverage Cross-check
+
+- `tests/admin-refund-and-staff-access.test.js` में helper के VOLATILE होने और registry/session `FOR SHARE` locks के static assertions हैं।
+- इसी test file में registration, suspension और permission checks के registry-first lock order की source assertions हैं।
+- Frontend Staff bootstrap के लिए `admin.html` में `srk_admin_staff_register_session` call की static assertion भी है।
+- इस audit step में test file execute नहीं की गई; assertions की मौजूदगी test pass होने का प्रमाण नहीं है।
+
+### 4. शेष Evidence Gap और Verdict
+
+Frontend Staff login flow source में registration/permission failure पर portal access रोकता है। Migration history में row-locking permission helper को VOLATILE करने का corrective migration मौजूद है। यह source-level cross-check है; PostgreSQL function replacement, वास्तविक sign-in, sign-out, concurrent revoke/suspend या browser behavior runtime में verify नहीं हुआ। कोई source migration/test/permission/database setting नहीं बदली गई; कोई SQL/DB query/pgTAP/replay/CI/deployment/merge/cherry-pick नहीं हुआ।
