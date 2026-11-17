@@ -572,3 +572,41 @@ test("a reclaimed lease fences the earlier worker and accepts only the newer cla
   assert.notEqual(claims[0], claims[1]);
   assert.deepEqual(completions, [claims[0], claims[0], claims[1]]);
 });
+
+
+test("stops payment work before the shared deadline and uses the reserved budget to mark the claim retryable", async t => {
+  const calls = [];
+  const originalNow = Date.now;
+  let elapsed = 0;
+  Date.now = () => originalNow() + elapsed;
+  global.fetch = async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ target, options });
+    if (target.endsWith("/rpc/srk_service_claim_razorpay_webhook_event")) {
+      return response(200, { success: true, should_process: true, claim_token: "d23e4567-e89b-42d3-a456-426614174000" });
+    }
+    if (target.includes("/rest/v1/service_bookings?")) {
+      elapsed = 38000;
+      return response(200, [{ id: "123e4567-e89b-42d3-a456-426614174000", quoted_amount: 125, service_charge: 100, materials_amount: 25, quote_status: "approved", status: "completed", payment_status: "pending", payment_method: "online", razorpay_payment_id: null, selected_category: "new_category" }]);
+    }
+    if (target.endsWith("/rpc/srk_service_complete_razorpay_webhook_event")) {
+      const body = JSON.parse(options.body);
+      assert.equal(body.p_outcome, "retryable");
+      assert.equal(body.p_claim_token, "d23e4567-e89b-42d3-a456-426614174000");
+      assert.ok(options.signal instanceof AbortSignal);
+      assert.equal(options.signal.aborted, false);
+      return response(200, { success: true, state: "retryable" });
+    }
+    throw new Error("unexpected request " + target);
+  };
+  t.after(() => { global.fetch = originalFetch; Date.now = originalNow; });
+  const payload = { event: "payment.captured", payload: { payment: { entity: { id: "pay_deadline123", order_id: "order_deadline123", status: "captured", amount: 12500, currency: "INR" } } } };
+  const result = await handler(event(payload, "evt_deadline_budget"));
+  assert.equal(result.statusCode, 500);
+  assert.equal(calls.length, 3);
+  assert.ok(calls[0].target.endsWith("/rpc/srk_service_claim_razorpay_webhook_event"));
+  assert.ok(calls[1].target.includes("/rest/v1/service_bookings?"));
+  assert.ok(calls[2].target.endsWith("/rpc/srk_service_complete_razorpay_webhook_event"));
+  assert.equal(calls.some(call => String(call.target).includes("get_booking_payment_breakdown")), false);
+  assert.equal(calls.some(call => String(call.target).includes("record_online_booking_payment")), false);
+});
