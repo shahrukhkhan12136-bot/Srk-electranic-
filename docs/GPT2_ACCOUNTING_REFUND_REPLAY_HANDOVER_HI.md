@@ -105,3 +105,11 @@ Feature branch correction:
 - Commit `d4b2102db57eadfbb6f9433a356527705113ad99` updates `supabase/tests/database/refund_reconcile_full_amount_guard.test.sql`, increasing the static pgTAP plan from 9 to 10 and asserting the trigger-closure fallback and final note restoration.
 
 **Verification boundary:** GitHub source diffs and fetched file contents were rechecked. The associated Node workflow run was pending at the time of this report update. The pgTAP assertion is static and has not been executed against PostgreSQL. GPT-2 should review the new correction before any branch integration.
+
+
+### Follow-up verification (after the commits above)
+
+- Re-read all five Feature Accounting Bridge function bodies. All application tables/types are explicitly schema-qualified under `search_path = ''`; Auth calls use `auth.uid()`, and the Admin predicate uses `public.is_srk_admin()`. Unqualified calls in the bodies are PostgreSQL built-ins resolved through implicit `pg_catalog`.
+- The two trigger-only SECURITY DEFINER functions revoke direct execute from `public`, `anon`, and `authenticated`. The RPC ACLs for the reconciliation/report/earnings functions are inherited from their earlier definitions and must be confirmed in a clean replay/catalog test.
+- Feature Node workflow for test commit `d4b2102db57eadfbb6f9433a356527705113ad99` completed successfully: run `44032065222`, job `133866127480`, all workflow steps successful.
+- This Node workflow does **not** execute PostgreSQL migrations or pgTAP. The added pgTAP test remains runtime-unverified.
