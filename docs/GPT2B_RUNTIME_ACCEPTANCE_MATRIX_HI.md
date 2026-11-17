@@ -159,3 +159,10 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - `tests/razorpay-refund-recovery.test.js` में दो अतिरिक्त Node test cases जोड़े: (1) एक ही internal refund record से exact-match करने वाले दो provider refunds मिलें तो recovery evidence/finalization न हो; (2) pagination में अगले page पर पहले से देखा गया provider refund ID दोबारा आए तो search unstable मानकर fail-closed हो।
 - ये cases `razorpay-refund-recovery.js` के मौजूदा `matches.length !== 1` और cross-page `seen` duplicate guards को exercise करने के लिए हैं; production logic में बदलाव नहीं किया गया।
 - Test source जोड़ा गया है, लेकिन Node suite execute नहीं हुई। इसलिए ये runtime pass नहीं हैं और Acceptance Matrix के Pending checks नहीं बदलते।
+
+
+### Razorpay Webhook event-ID collision guard — 17 November 2026 (source-only)
+
+- `tests/razorpay-webhook-inbox.test.js` में एक नया source test जोड़ा: यदि वही provider event ID अलग signed payload के साथ दोबारा आए, तो webhook inbox का `payload_conflict` परिणाम सुरक्षित रूप से acknowledge हो, business reconciliation न चले और event को duplicate मानकर process न किया जाए।
+- यह मौजूदा `srk_service_claim_razorpay_webhook_event` conflict branch और handler response contract की coverage है; production logic/SQL में कोई बदलाव नहीं किया गया।
+- Node test execute नहीं हुई; इसलिए runtime pass नहीं माना गया और 60 runtime acceptance checks Pending ही हैं।
