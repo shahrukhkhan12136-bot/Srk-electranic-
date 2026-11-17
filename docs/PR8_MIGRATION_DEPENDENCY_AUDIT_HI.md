@@ -2293,3 +2293,25 @@ Migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`, funct
 - No code changes to payment RPC, no data changes, and no database execution performed.
 
 Audit recommendation: add a regression test asserting NULL `p_method` is rejected with `INVALID_MANUAL_PAYMENT_METHOD`, and separately test a pre-existing paid booking with both method fields NULL to ensure later updates fail closed rather than relying on a stale commission value.
+
+
+## 102. payment_method-only UPDATE पर payout writer दोबारा नहीं चलता — 17 Nov 2026
+
+तीनों trigger event lists का cross-check:
+- BEFORE commission trigger `zz_srk_set_booking_commission_before_payout` की `UPDATE OF` list में `payment_method` शामिल है।
+- Commission parity AFTER trigger `zz_srk_validate_booking_commission_payout_parity` की `UPDATE OF` list में भी `payment_method` शामिल है।
+- Payout writer AFTER trigger `srk_reconcile_electrician_payable` की `UPDATE OF` list में `payment_method` शामिल **नहीं** है।
+
+अर्थात केवल `service_bookings.payment_method` बदलने वाला UPDATE BEFORE evidence guard और parity check चलाता है, लेकिन payout writer फिर से नहीं चलता। BEFORE guard सामान्यतः existing manual evidence method mismatch पर exception देता है। दोनों evidence/booking methods NULL होने पर उसका `IS DISTINCT FROM` mismatch guard false होता है; parity validator फिर भी केवल commission-vs-payout amount देखता है, manual evidence method validity नहीं।
+
+यह Section 100 की reachability nuance को मजबूत करता है: legacy/pre-existing NULL-method state में केवल booking method field का update payout writer द्वारा repair/reconcile नहीं होगा; और parity trigger payment-method validity को स्वतंत्र रूप से assert नहीं करता।
+
+### Status
+
+- Trigger event-list asymmetry: **source-confirmed**.
+- सामान्य Admin RPC से NULL-method creation: **official RPC guard द्वारा रोका गया** (Section 101).
+- Existing malformed NULL-method row पर payment_method-only update से invalid evidence स्वतः repair होना: **नहीं; source में ऐसा mechanism नहीं**.
+- Actual row mutation/commit या runtime behavior: **not tested**.
+- No source fix, data update, or database execution performed.
+
+Recommendation: payment-method validity assertion को parity validator में भी जोड़ें, और payout writer trigger को `payment_method` updates पर attach करने की जरूरत है या नहीं—product/data contract के अनुसार तय करें। यदि attach किया जाए तो upsert side effects और paid/blocked/refunded payout guards के regression tests अनिवार्य हैं।
