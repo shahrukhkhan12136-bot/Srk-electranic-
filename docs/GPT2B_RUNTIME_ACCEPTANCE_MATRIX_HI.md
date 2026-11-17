@@ -174,3 +174,9 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - `srk_set_booking_commission_before_payout()` manual payment evidence के amount और payment-method दोनों को मिलाता है; `srk_validate_booking_commission_payout_parity()` missing payout row तथा booking-vs-payout commission mismatch पर transaction रोकता है।
 - New booking के लिए `aa_srk_enforce_new_booking_commission_rate` पहले 15.00% set करता है; पुराने booking commission snapshot को बदलने से रोकता है। Existing 52-check pgTAP file में 48 `ok`, 3 `throws_ok`, 1 `lives_ok` assertions का source count मिला।
 - इस read-only pass में कोई नया confirmed source defect नहीं मिला; इसलिए बिना प्रमाण नया code/test जोड़कर scope नहीं बढ़ाया। SQL/pgTAP/PostgreSQL runtime execute नहीं हुआ; 52 checks source assertions मात्र हैं और runtime acceptance Pending है।
+
+
+### Customer Support Staff attachment metadata RPC privilege assertion — 17 November 2026 (source-only)
+
+- `support_attachment_staff_access.test.sql` में एक अतिरिक्त pgTAP assertion जोड़ा: `srk_admin_staff_list_customer_attachments(uuid)` का VOLATILE + SECURITY DEFINER + empty `search_path` होना, authenticated को EXECUTE मिलना, और anon/PUBLIC को EXECUTE न मिलना। इससे metadata RPC की privilege boundary भी सीधे catalog-level पर जाँची जाएगी; पहले Storage guard के लिए यह coverage थी, metadata RPC के लिए PUBLIC ACL का अलग assertion नहीं था।
+- Test plan अब 11 है। यह source-only बदलाव है; PostgreSQL/pgTAP execution नहीं हुआ, इसलिए assertion अभी Pending है।
