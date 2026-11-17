@@ -6206,3 +6206,31 @@ Audit Branch की migration सूची और संबंधित files �
 SOS से पहले आवश्यक booking identity, electrician identity, selected category और Staff RBAC migrations मौजूद हैं और timestamps के अनुसार पहले आती हैं। यह **static ordering evidence** है, replay proof नहीं। Root setup scripts की canonical selection और versioned migrations के साथ उनका non-duplicative application अभी भी owner द्वारा तय और isolated environment में सत्यापित होना बाकी है।
 
 यह केवल migration filenames और source definitions की static समीक्षा तथा report update है। कोई SQL/pgTAP, database query, migration replay, application source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 196. Electrician Identity Migration Pair — Shared Baseline Dependency और Later RPC Delta
+
+### 1. दो timestamped migrations का overlap
+
+Static comparison में ये दो files मिलीं:
+
+- `20261109000500_harden_electrician_profile_identity_linking.sql` — SHA `132463d6f1aeffd7367d23143d64aa85d82bf176`
+- `20261114130000_harden_electrician_profile_identity_linking.sql` — SHA `d24259cb2d197697efd4bfaa305dd4c3c62dab27`
+
+दोनों में `electrician_profiles.auth_user_id` को `ADD COLUMN IF NOT EXISTS` से जोड़ना, दोनों identity columns का mismatch check/backfill, unique partial index, identity sync trigger, verified-phone guard और unique-only Auth-user linking trigger/function का setup लगभग समान है। बाद वाली migration इन definitions को फिर से स्थापित करती है।
+
+### 2. बाद वाली migration का अतिरिक्त बदलाव
+
+`20261114130000` में `srk_admin_review_application(uuid,text)` का replacement भी है। यह approval के समय phone से Auth user को तभी link करता है जब verified phone match unique हो और approved profile भी unique हो। यह अतिरिक्त RPC बदलाव पहली `20261109000500` migration में नहीं है।
+
+इसलिए दूसरी migration को पूरी तरह duplicate कहना सही नहीं होगा: identity protection definitions का बड़ा overlap है, लेकिन Admin approval RPC का अतिरिक्त behavior भी इसमें शामिल है। Ordered history में बाद वाली definition प्रभावी होती है।
+
+### 3. दोनों migrations की साझा prerequisite
+
+दोनों migrations `electrician_profiles.user_id` को पढ़ती/लिखती हैं, पर इनमें से कोई भी `user_id` column create नहीं करती। उपलब्ध root setup evidence के अनुसार यह column `PORTAL_SCHEMA.sql` / consolidated setup layer से आता है। इससे यह और स्पष्ट होता है कि timestamped migration directory अकेले इस identity schema की पूरी baseline नहीं है।
+
+### 4. Verdict
+
+Migration order में पहली identity migration 9 नवंबर और दूसरी 14 नवंबर को है; दूसरी बाद वाली RPC definition भी लाती है। यह static source fact है, runtime defect का प्रमाण नहीं। Fresh-install manifest को पहले `electrician_profiles.user_id` की authoritative स्थापना और फिर दोनों ordered migrations का स्पष्ट उल्लेख करना चाहिए। Redundant redefinition को हटाना/बदलना इस audit के scope में नहीं है।
+
+केवल source comparison और report documentation update किया गया। कोई SQL/pgTAP, database query, migration replay, source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
