@@ -4,6 +4,12 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
 
+const getHeader = (headers, name) => {
+  const target = String(name).toLowerCase();
+  const key = Object.keys(headers || {}).find(candidate => candidate.toLowerCase() === target);
+  return key === undefined ? "" : headers[key];
+};
+
 const json = (statusCode, body) => ({
   statusCode,
   headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
@@ -201,7 +207,7 @@ exports.handler = async (event) => {
     return json(500, { success: false, error: "Webhook server configuration incomplete." });
   }
 
-  const signature = event.headers?.["x-razorpay-signature"] || event.headers?.["X-Razorpay-Signature"] || "";
+  const signature = getHeader(event.headers, "x-razorpay-signature");
   const rawBody = event.isBase64Encoded
     ? Buffer.from(event.body || "", "base64")
     : Buffer.from(event.body || "", "utf8");
@@ -220,8 +226,7 @@ exports.handler = async (event) => {
     const eventName = typeof payload.event === "string" && payload.event.length <= 100
       ? payload.event : "unknown";
     const payloadHash = crypto.createHash("sha256").update(rawBody).digest("hex");
-    const suppliedEventId = String(event.headers?.["x-razorpay-event-id"] ||
-      event.headers?.["X-Razorpay-Event-Id"] || "").trim();
+    const suppliedEventId = String(getHeader(event.headers, "x-razorpay-event-id")).trim();
     // The provider event ID is preferred, while the database also uniquely
     // indexes the signed body hash to stop replay under a changed header.
     eventId = suppliedEventId && suppliedEventId.length <= 128
