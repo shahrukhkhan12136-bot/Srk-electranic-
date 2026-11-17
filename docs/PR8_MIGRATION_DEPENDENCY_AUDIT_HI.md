@@ -2093,3 +2093,49 @@ Feature Branch में `supabase/tests/database/accounting_reconciliation_read
 - Provider settlement: **not independently verified**.
 - SQL runtime / pgTAP: **not run**.
 - Feature Branch / Main / Supabase / Production: **unchanged by this follow-up**.
+
+
+## 97. Accounting Bridge बनाम Feature Route RPC — function replacement compatibility gate — 17 Nov 2026
+
+इस section में GPT-2 Audit Branch पर मौजूद accounting bridge migration और उसके tests का source-level review किया गया। कोई migration execute, SQL parser, pgTAP runtime या branch integration नहीं की गई।
+
+### 97.1 Exact source identity
+
+- Migration: `supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`
+- Audit Branch blob SHA: `68189051090a51bef26a98997caf103b62ed070c`
+- Test: `supabase/tests/database/admin_labour_bill_payment_accounting_bridge.test.sql`
+- Test blob SHA: `7db3d4e5bec75100acc6f892bbcdfe7f29f0f3b7`
+- Companion payout test: `supabase/tests/database/electrician_payout_reconciliation.test.sql`
+- Companion test blob SHA: `88184e2e1fb386f16d6bd339556a15a5b87275d2`
+- यह migration GPT-2 Audit Branch पर है; Feature Branch पर इसी path की मौजूदगी इस review में स्थापित नहीं हुई।
+
+### 97.2 BEFORE commission / AFTER payout parity — static contract
+
+Bridge migration में `zz_srk_set_booking_commission_before_payout` BEFORE trigger immutable labour bill या approved quote से commission निकालकर `service_bookings.commission_amount` सेट करता है। Existing payout writer को बदलने के बजाय `zz_srk_validate_booking_commission_payout_parity` AFTER trigger payout ledger में लिखी commission से persisted booking commission का मिलान करता है।
+
+Companion test में trigger existence, BEFORE/AFTER timing flags, payout writer और parity validator के alphabetical trigger order, और commission formula की static assertions हैं। यह सही intended ordering का source/test contract है; PostgreSQL catalog में वास्तविक trigger execution order अभी runtime पर प्रमाणित नहीं है।
+
+### 97.3 HIGH PRIORITY: accounting RPC replacement Feature Route fields मिटा सकता है
+
+Bridge migration केवल नया helper जोड़ती नहीं है; यह उसी signature वाली function को पूरा `CREATE OR REPLACE` करती है:
+
+`public.srk_admin_get_booking_accounting_reconciliation(uuid)`
+
+Bridge की replacement body के JSON response में payout, refund, cancellation-fee और wallet reconciliation fields हैं, लेकिन Feature Branch के Route contract वाले keys/fields — `route_transfers`, `route_transfer_count`, `route_provider_settlement_verified`, `route_settlement_evidence_status` — शामिल नहीं हैं।
+
+Feature Branch का accounting reconciliation contract इन्हीं Route fields को Admin UI के लिए सुरक्षित रखता है और transfer evidence/consistency checks करता है। इसलिए यदि GPT-2 bridge migration को Feature Branch में सीधे cherry-pick/merge किया जाए और यह replacement बाद में लागू हो, तो Feature Route reconciliation JSON contract हट सकता है, भले ही Route migration पहले लागू हो चुकी हो।
+
+**Required integration rule:** इस bridge को Feature Branch में तभी integrate किया जाए जब एक संयुक्त RPC body तैयार हो जो दोनों पक्षों के आवश्यक accounting fields और Route validation logic को साथ रखे; उसके बाद Admin UI contract tests और pgTAP assertions उसी final function body के विरुद्ध अपडेट हों। केवल migration filename या commit order से इसे सुरक्षित integration न मानें। Audit Branch पर भी यह bridge वर्तमान Route-retired contract के साथ ही समझा जाए।
+
+### 97.4 Manual payment evidence behavior — review point
+
+BEFORE trigger matching amount के साथ manual payment method की case/whitespace-normalized equality जाँचता है और mismatch मिलने पर `MANUAL_PAYMENT_METHOD_MISMATCH` raise करता है। लेकिन commission finalization path में valid matching manual evidence या Razorpay payment ID न मिलने पर trigger `return new` करता है; इस trigger से अकेले यह सिद्ध नहीं होता कि पूरा payment/payout workflow fail-closed है। Existing payout writer, payment-verification RPC और caller path के साथ end-to-end isolated tests जरूरी हैं।
+
+### 97.5 स्थिति और gate
+
+- BEFORE commission / AFTER payout parity design: **static source/test contract मिला; runtime unverified**.
+- Bridge RPC बनाम Feature Route JSON: **confirmed replacement compatibility hazard**.
+- Direct cherry-pick/merge: **न करें; unified RPC contract पहले आवश्यक**.
+- Manual payment evidence: **trigger-level mismatch guard मौजूद; complete workflow fail-closed behavior अभी runtime में सिद्ध नहीं**.
+- PostgreSQL clean replay और pgTAP: **not run**.
+- Feature Branch, Main, Supabase और Production: **इस review में unchanged**.
