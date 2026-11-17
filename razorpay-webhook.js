@@ -10,6 +10,8 @@ const getHeader = (headers, name) => {
   return key === undefined ? "" : headers[key];
 };
 
+const webhookFetch = (url, options = {}) => fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
+
 const json = (statusCode, body) => ({
   statusCode,
   headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
@@ -17,7 +19,7 @@ const json = (statusCode, body) => ({
 });
 
 async function webhookInboxRpc(functionName, body) {
-  const response = await fetch(new URL("/rest/v1/rpc/" + functionName, SUPABASE_URL), {
+  const response = await webhookFetch(new URL("/rest/v1/rpc/" + functionName, SUPABASE_URL), {
     method: "POST",
     headers: {
       apikey: SUPABASE_KEY,
@@ -50,7 +52,7 @@ async function updateBooking(orderId, payment) {
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
   url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,payment_method,razorpay_payment_id,selected_category");
 
-  const response = await fetch(url, {
+  const response = await webhookFetch(url, {
     method: "GET",
     headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
   });
@@ -64,7 +66,7 @@ async function updateBooking(orderId, payment) {
   if (booking.selected_category) {
     if (booking.payment_status === "paid") return booking.razorpay_payment_id === payment.id ? "already_processed" : "payment_conflict";
     if (booking.status !== "completed") return "booking_not_payable";
-    const breakdownResponse = await fetch(new URL("/rest/v1/rpc/srk_service_role_get_booking_payment_breakdown", SUPABASE_URL), {
+    const breakdownResponse = await webhookFetch(new URL("/rest/v1/rpc/srk_service_role_get_booking_payment_breakdown", SUPABASE_URL), {
       method: "POST",
       headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ p_booking_id: booking.id })
@@ -73,7 +75,7 @@ async function updateBooking(orderId, payment) {
     const breakdown = await breakdownResponse.json();
     const expectedAmount = Number(breakdown?.total_amount_paise);
     if (!Number.isSafeInteger(expectedAmount) || expectedAmount < 100 || payment.amount !== expectedAmount || payment.currency !== "INR") return "amount_mismatch";
-    const settlementResponse = await fetch(new URL("/rest/v1/rpc/srk_service_role_record_online_booking_payment", SUPABASE_URL), {
+    const settlementResponse = await webhookFetch(new URL("/rest/v1/rpc/srk_service_role_record_online_booking_payment", SUPABASE_URL), {
       method: "POST",
       headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ p_booking_id: booking.id, p_order_id: payment.order_id, p_payment_id: payment.id, p_amount_paise: payment.amount })
@@ -102,7 +104,7 @@ async function updateBooking(orderId, payment) {
   patchUrl.searchParams.set("razorpay_order_id", "eq." + orderId);
   patchUrl.searchParams.set("payment_status", "not.in.(paid,refunded)");
 
-  const patched = await fetch(patchUrl, {
+  const patched = await webhookFetch(patchUrl, {
     method: "PATCH",
     headers: {
       apikey: SUPABASE_KEY,
@@ -123,7 +125,7 @@ async function updateBooking(orderId, payment) {
 
   // A concurrent webhook may have updated the row after our initial read.
   // Re-read to distinguish a true duplicate from a different payment conflict.
-  const latestResponse = await fetch(url, {
+  const latestResponse = await webhookFetch(url, {
     method: "GET",
     headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
   });
@@ -160,7 +162,7 @@ async function reconcileRefund(refund, eventName) {
   lookupUrl.searchParams.set("payment_id", "eq." + refund.payment_id);
   lookupUrl.searchParams.set("select", "id,payment_id,refund_id,idempotency_key,amount_paise,status");
   lookupUrl.searchParams.set("limit", "2");
-  const lookupResponse = await fetch(lookupUrl, {
+  const lookupResponse = await webhookFetch(lookupUrl, {
     method: "GET",
     headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
   });
@@ -185,7 +187,7 @@ async function reconcileRefund(refund, eventName) {
     if (!recordIdMatches && !receiptMatches) return "refund_record_mismatch";
   }
 
-  const reconcileResponse = await fetch(new URL("/rest/v1/rpc/srk_service_reconcile_booking_refund", SUPABASE_URL), {
+  const reconcileResponse = await webhookFetch(new URL("/rest/v1/rpc/srk_service_reconcile_booking_refund", SUPABASE_URL), {
     method: "POST",
     headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({
