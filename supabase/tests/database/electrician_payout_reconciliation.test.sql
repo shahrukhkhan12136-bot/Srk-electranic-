@@ -1,5 +1,5 @@
 begin;
-select plan(51);
+select plan(52);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -256,7 +256,8 @@ with profiles as (
     (display_name,phone,state,district,pincode,active)
   values
     ('pgTAP payout rollback missing','9811100001','Uttar Pradesh','Varanasi','221001',false),
-    ('pgTAP payout rollback mismatch','9811100002','Uttar Pradesh','Varanasi','221001',false)
+    ('pgTAP payout rollback mismatch','9811100002','Uttar Pradesh','Varanasi','221001',false),
+    ('pgTAP payout rollback positive','9811100003','Uttar Pradesh','Varanasi','221001',false)
   returning id, phone
 ),
 bookings as (
@@ -269,21 +270,34 @@ bookings as (
     'pgTAP payout rollback', '9822200000', 'Uttar Pradesh','Varanasi','221001',
     'Test address','Electrical repair','Razorpay',100.00,'completed',
     p.id,99.00,'paid',
-    case p.phone when '9811100001' then 'pgTapRollbackMissingPayment' else 'pgTapRollbackMismatchPayment' end,
+    case p.phone
+      when '9811100001' then 'pgTapRollbackMissingPayment'
+      when '9811100002' then 'pgTapRollbackMismatchPayment'
+      else 'pgTapRollbackPositivePayment'
+    end,
     now(),100.00,100.00,0.00,'approved'
   from profiles p
   returning id, assigned_electrician_id, razorpay_payment_id
 )
 insert into payout_rollback_fixtures(scenario,electrician_id,booking_id)
-select case when b.razorpay_payment_id='pgTapRollbackMissingPayment'
-            then 'missing' else 'mismatch' end,
+select case b.razorpay_payment_id
+         when 'pgTapRollbackMissingPayment' then 'missing'
+         when 'pgTapRollbackMismatchPayment' then 'mismatch'
+         else 'positive'
+       end,
        b.assigned_electrician_id,b.id
 from bookings b;
 
-select ok((select count(*)=2 and bool_and(b.commission_rate=15.00)
+select ok((select count(*)=3 and bool_and(b.commission_rate=15.00)
   from public.service_bookings b
   join payout_rollback_fixtures f on f.booking_id=b.id),
   'booking INSERT forces exactly 15 percent even when the caller supplies 99 percent');
+
+lives_ok(
+  format('update public.service_bookings set commission_amount=commission_amount where id=%L',
+    (select booking_id from payout_rollback_fixtures where scenario='positive')),
+  'commission-only update succeeds when booking and payout commission already match'
+);
 
 select throws_ok(
   format('update public.service_bookings set commission_rate=20.00 where id=%L',
