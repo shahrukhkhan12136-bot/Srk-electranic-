@@ -269,7 +269,7 @@ test("reuses the same observation ID when retrying an ambiguous evidence write",
  const second=await handler(request());const secondBody=JSON.parse(second.body);
  assert.equal(second.statusCode,200);assert.equal(secondBody.recovery_audit_id,auditId);
  assert.equal(observationIds.length,2);assert.equal(observationIds[0],observationIds[1]);
- assert.match(observationIds[0],/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+ assert.match(observationIds[0],/^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 });
 
 
