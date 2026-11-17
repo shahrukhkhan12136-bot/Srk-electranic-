@@ -404,5 +404,13 @@ SELECT ok(
   'all four Customer Support Staff RPCs use hardened definer context and authenticated-only execution'
 );
 
+SELECT ok(
+  position('a.assigned_staff_user_id=auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_customer_complaints()'::regprocedure))>0
+  AND position('a.assigned_staff_user_id=auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure))>0
+  AND position('a.assigned_staff_user_id=auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure))>0
+  AND position('a.assigned_staff_user_id=auth.uid()' in pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure))>0,
+  'unassigned cases and cases reassigned to another Staff user are excluded from both Staff inboxes and thread reads'
+);
+
 SELECT * FROM finish();
 ROLLBACK;
