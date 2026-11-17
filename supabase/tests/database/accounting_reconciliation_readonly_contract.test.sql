@@ -1,5 +1,5 @@
 begin;
-select plan(75);
+select plan(76);
 
 select ok(to_regclass('public.srk_electrician_payouts') is not null,
   'electrician payout obligation table exists');
@@ -137,6 +137,14 @@ select ok(position('REFUND_PROVIDER_PAYMENT_ID_MISMATCH' in pg_get_functiondef(
 select ok(position('select i.debt_id::text from public.srk_booking_cancellation_fee_items' in
   pg_get_functiondef('public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
   'wallet reconciliation includes the debt-linked electrician wallet refund reversal');
+
+select ok(position('MISSING_PAYOUT_ROW' in pg_get_functiondef(
+  'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position("if not found and v_booking.status='completed' and v_payment_verified" in
+    pg_get_functiondef('public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
+  and position('v_booking.assigned_electrician_id is not null' in
+    pg_get_functiondef('public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0,
+  'completed verified-paid bookings with an assigned electrician explicitly report a missing payout row');
 
 select ok(position('PAYOUT_ELECTRICIAN_ASSIGNMENT_MISMATCH' in pg_get_functiondef(
   'public.srk_admin_get_booking_accounting_reconciliation(uuid)'::regprocedure))>0
