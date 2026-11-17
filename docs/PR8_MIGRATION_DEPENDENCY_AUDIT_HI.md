@@ -6731,3 +6731,41 @@ The reviewed handler and inbox migration show a coherent signed-payload idempote
 No source or migration change is proposed or made. GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only review does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल migration, handler और संबंधित Node/pgTAP test source inspection तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, runtime test, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 210. Razorpay Refund Executor बनाम Recovery/Status Endpoint — Idempotency और Failure-Path Coverage Cross-Check
+
+### 1. Static source reviewed
+
+- `razorpay-refund.js` (SHA `afd68c6c1dd33102c40f5119616aec78e8f0ae1e`).
+- `razorpay-refund-recovery.js` (SHA `2573aa5c6442ace359515f2227c5d93019534184`).
+- `razorpay-refund-status.js` (SHA `35d2086391485aa0f760e3431028ea962690647a`).
+- `tests/razorpay-refund-executor.test.js` (SHA `cb6a99eb61b7b74803f00b14e127c4af6d46a116`).
+- `tests/razorpay-refund-recovery.test.js` (SHA `681234cbf4e3e5f11b5ed407fe88d0ef5e6507e3`).
+
+### 2. Endpoint separation and safety observations
+
+1. **Executor authorization:** validates a Bearer token with Supabase Auth, then checks Main Admin membership through the database before preparing a refund or calling Razorpay. Client-supplied role data is not used as authorization.
+2. **Stable provider request identity:** the executor uses the prepared record's amount in paise, payment ID and idempotency key as the provider request identity; the same key is sent in both the request header and receipt. The request includes internal booking/refund record notes.
+3. **Ambiguous provider outcomes:** network/timeout exceptions return an unknown/retryable response without marking the refund failed. Provider HTTP 409 is treated as still processing. Other provider rejection responses retain a reconciliation-required outcome; the handler does not release payout itself.
+4. **Provider response matching:** before reconciliation, response ID, payment ID, amount, INR currency and status are checked against the prepared record. If database reconciliation fails after provider acceptance, the handler returns a pending-reconciliation response and relies on the independent signed webhook/recovery path.
+5. **Recovery is distinct from execution:** recovery performs provider GET/read operations, checks exact internal record identity and booking/payment linkage, stores evidence with Admin identity/note/hash, and only then makes a separate finalization RPC for provider status `processed`. Pending/failed evidence is recorded without finalizing accounting.
+6. **Status endpoint is read-only:** it verifies the provider refund by stored refund ID or exact identity search and explicitly returns `read_only`; reviewed flow contains no refund, wallet or payout mutation.
+
+### 3. Test coverage and gaps
+
+- Executor Node tests cover missing login, non-Main-Admin rejection before provider call, stable idempotency key/amount and successful reconciliation, plus ambiguous network timeout not being marked failed.
+- Recovery Node tests cover bounded Admin note, Main Admin gate, evidence-before-finalization separation, preserving evidence ID after finalization failure, pending status not finalizing, amount mismatch, exact-note matching, unrelated same-payment/same-amount rejection, and a second-page exact match.
+- The executor test suite is comparatively narrow. Recommended additional cases for later isolated runtime validation: provider HTTP 409; provider 4xx/5xx; malformed/mismatched provider response; provider status `failed`; provider accepted but reconciliation RPC fails; prepared record already `processed` or `failed`; and retry with the same idempotency key after an ambiguous first response.
+- Recovery tests use mocked provider/DB responses. They do not prove real provider pagination stability, DB evidence immutability, transaction rollback, or concurrent Admin recovery behavior.
+- These are coverage recommendations, not proof of a source defect. No test was run in this review.
+
+### 4. Verdict and limits
+
+Static review supports a deliberate separation between **refund initiation**, **read-only provider verification**, and **evidence-backed accounting recovery**. The executor's ambiguous-outcome handling avoids treating an unknown provider result as a confirmed failure, while recovery requires exact identity evidence and a separate finalization step.
+
+Actual Razorpay idempotency semantics, provider pagination consistency, database transaction/ACL behavior and end-to-end failure recovery remain unverified. No source or migration change is proposed or made.
+
+GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only cross-check does not increment completion. Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल तीन endpoint और संबंधित Node test source का static निरीक्षण तथा audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, provider API call, runtime test, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
