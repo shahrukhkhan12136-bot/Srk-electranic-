@@ -69,7 +69,8 @@ test("asks Razorpay to retry when the background consumer trigger is not accepte
 
 test("reuses the canonical event ID when the same signed body is replayed with a different header",async t=>{
   const ids=[];global.fetch=async(url,options={})=>{
-    if(rpcName(url)==="srk_service_enqueue_razorpay_webhook_event"){const b=JSON.parse(options.body);ids.push(b.p_event_id);return response(200,{success:true,accepted:true,duplicate:true,state:"queued",event_id:"evt_original"});}
+    if(rpcName(url)==="srk_service_enqueue_razorpay_webhook_event"){const b=JSON.parse(options.body);ids.push(b.p_event_id);assert.deepEqual(b.p_event_payload,{payload:{refund:{entity:{id:"rfnd_abc123",payment_id:"pay_abc123",status:"processed",currency:"INR",amount:12500,receipt:"refund_key",notes:{srk_refund_record_id:"refund-record-id"}}}}});return response(200,{success:true,accepted:true,duplicate:true,state:"queued",event_id:"evt_original"});}
+    assert.equal(JSON.parse(options.body).event_id,"evt_original");
     return response(202,{});
   };
   t.after(()=>{global.fetch=originalFetch;});
