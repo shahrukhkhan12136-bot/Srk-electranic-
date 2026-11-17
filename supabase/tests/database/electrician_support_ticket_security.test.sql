@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(16);
 
 select ok(
   to_regclass('public.srk_electrician_support_tickets') is not null
@@ -114,6 +114,29 @@ select ok(
   and position('support.electrician.reply' in pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure))>0
   and position('support.electrician.update_status' in pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure))>0,
   'Staff electrician support RPCs enforce their separate RBAC permissions'
+);
+
+select ok(
+  position('support.electrician.read' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure)))>0
+  and position('booking.read_basic' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure)))>0
+  and position('support.electrician.read' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure)))>0
+  and position('support.electrician.read' in lower(pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure)))>0
+  and position('support.electrician.reply' in lower(pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure)))>0
+  and position('support.electrician.read' in lower(pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)))>0
+  and position('support.electrician.update_status' in lower(pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)))>0,
+  'each Staff electrician-support operation enforces its exact read, reply, status and booking-read permission gates'
+);
+
+select ok(
+  position('for share of t,a' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_tickets()'::regprocedure)))>0
+  and position('for share' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure)))>0
+  and position('for update' in lower(pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure)))>0
+  and position('for update' in lower(pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)))>0
+  and position('from public.srk_electrician_support_tickets t' in lower(pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure)))
+      < position('from public.srk_admin_support_assignments a' in lower(pg_get_functiondef('public.srk_admin_staff_send_electrician_message(uuid,text)'::regprocedure)))
+  and position('from public.srk_electrician_support_tickets t' in lower(pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)))
+      < position('from public.srk_admin_support_assignments a' in lower(pg_get_functiondef('public.srk_admin_staff_update_electrician_ticket(uuid,text,text)'::regprocedure)),
+  'Staff electrician support reads and writes lock case/assignment rows in the required order'
 );
 
 select * from finish();
