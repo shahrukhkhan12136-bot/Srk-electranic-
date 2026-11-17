@@ -3192,3 +3192,45 @@ Section 127 के बाद एक अतिरिक्त dependency scan क
 - Root setup bundle में helper definition: **Section 126 के अनुसार source-confirmed**.
 - Full repository के हर SQL/PLpgSQL caller/definition की exhaustive inventory और actual clean replay: **अभी बाकी / runtime untested**.
 - No SQL/schema/helper/migration change, no database query, no PostgreSQL replay/pgTAP, no CI/deployment/merge.
+
+## 129. वास्तविक repository replay harness और CI workflow की सीमा — 17 Nov 2026
+
+Audit Branch की recursive Git tree तथा workflow/config files की source-only जाँच की गई।
+
+### 129.1 Supabase CLI project configuration
+
+- Audit Branch की recursive tree में `supabase/config.toml` और `supabase/seed.sql` नहीं मिले।
+- इसलिए इस repository snapshot से कोई project-local Supabase CLI configuration, seed bootstrap या पूर्ण `supabase migration up/db push` runner order प्रमाणित नहीं होता।
+- `package.json` में केवल Node test scripts हैं: `test:refund`, `test:webhook`, `test:customer-payment`, और `test`। कोई migration/replay script घोषित नहीं है (blob `8a559d1daf4dac6c140a168bb71cc5da914dce58`)।
+
+### 129.2 GitHub Actions schema workflow
+
+Workflow `.github/workflows/supabase-schema-ci.yml` (blob `8cdd128fb69227fee82b5084f8b78634f13ffcb2`) में:
+- Trigger केवल `workflow_dispatch` है।
+- Job condition केवल `refs/heads/feature/platform-fee-cash-online-cycle` को अनुमति देती है; GPT-2 Audit Branch इस condition में नहीं है।
+- Workflow GitHub Secret `SUPABASE_DB_URL` से remote database का schema-only dump लेती है, फिर isolated local Supabase stack में restore करती है।
+- इसके बाद केवल पाँच hard-coded Feature migrations चलाती है: `20261112170000`, `20261112193000`, `20261112220000`, `20261112230000`, `20261113090000`।
+- Audit Branch की recursive tree में ये पाँच exact migration paths मौजूद नहीं हैं। इसलिए इस branch पर workflow को वर्तमान migration chain का replay harness नहीं माना जा सकता।
+- Workflow full `supabase/migrations/` directory को enumerate/apply नहीं करती; यह 89-file current Audit Branch migration set का clean replay नहीं है।
+
+### 129.3 Inventory और documentation drift
+
+- इस Audit Branch recursive tree में `supabase/migrations/` के **89 SQL files** गिने गए।
+- `docs/MIGRATION_REPLAY_MANIFEST_HI.md` में 78 files तथा बाद के ऐतिहासिक sections में 87 files का उल्लेख है; वह manifest पुराने Feature Branch snapshots पर आधारित है, current Audit Branch की 89-file inventory नहीं।
+- `docs/MIGRATION_DEPENDENCY_MATRIX_HI.md` का 73-file count भी पुराने Feature Branch static scan का है। इन पुराने counts को current Audit Branch count के रूप में उद्धृत न किया जाए।
+
+### 129.4 Clean Replay के लिए निष्कर्ष
+
+1. अभी कोई repository-local authoritative migration runner/config नहीं मिला।
+2. मौजूदा Supabase schema workflow manual, branch-restricted, remote schema export पर निर्भर और hard-coded five-file test है; इसे Audit Branch पर चलाना न तो संभव/उचित सिद्ध है और न ही full clean replay।
+3. पहले owner/DBA को authoritative baseline source, bootstrap contract, exact 89-file inventory और duplicate-version resolution मंजूर करना होगा।
+4. उसके बाद अलग disposable local Supabase/PostgreSQL harness बनाया जाए जो Audit Branch की पूरी migration directory को निर्धारित क्रम में लागू करे; इसमें Production URL/credentials या Production data न हों।
+5. किसी भी workflow edit/dispatch से पहले अलग स्पष्ट अनुमति और सुरक्षित local-only design आवश्यक है।
+
+### Status
+
+- Audit Branch tree: 89 SQL migration filenames — **source-count confirmed**.
+- `package.json` में migration runner script नहीं — **source-confirmed**.
+- `supabase/config.toml` / `supabase/seed.sql` absent from inspected recursive tree — **source-confirmed**.
+- Existing schema workflow manual-only, branch-restricted, schema-dump based, five hard-coded migrations — **source-confirmed**.
+- Existing workflow was not dispatched; no database contacted; no SQL, PostgreSQL replay, pgTAP, CI, deployment, merge or Production change performed.
