@@ -339,3 +339,24 @@ ALTER TABLE public.electrician_profiles
 यह nullable `uuid` column है, explicit default नहीं है, `auth.users(id)` को reference करता है और referenced Auth user हटने पर `SET NULL` लागू करता है। उसी migration में existing `user_id`/`auth_user_id` mismatch और duplicate identity links पर fail-closed checks, दोनों columns का synchronization और non-NULL `auth_user_id` पर partial unique index भी है। यह migration `20261109001000_add_google_maps_location_support.sql` से पहले आती है। इसलिए current branch के ordered migration source में इस column का DDL उपलब्ध है; इसे remaining base-DDL blocker न गिनें।
 
 **अब बचा हुआ source-DDL blocker:** `public.service_bookings.amount_paid`। Starter schema files और current migration sources में इसका authoritative introducing DDL अभी नहीं मिला। इसका exact type/precision/nullability/default/constraints/indexes/grants बिना approved source evidence के अनुमानित नहीं किए जाएँगे।
+
+
+## 12. Current-branch corrections — 18 November 2026
+
+Earlier sections above preserve the chronology of the initial and historical-branch searches. The following current-branch source checks supersede any wording that still describes these four objects as missing:
+
+1. **Complaint base tables are in this branch:** `supabase/migrations/20261110040000_customer_admin_complaints.sql` creates `srk_booking_complaints` and `srk_booking_complaint_events`, enables RLS, and revokes direct table access from PUBLIC/anon/authenticated. Their intended access is through scoped RPCs.
+2. **Push subscription base table is in this branch:** `supabase/migrations/20261111020000_add_electrician_push_subscriptions.sql` creates `srk_push_subscriptions`, its Auth FK, constraints, index, RLS, own-user policies and authenticated grants. The historical-branch migration cited in §9.2 is not the current-branch source path.
+3. **`service_bookings.amount_paid` is now source-backed:** `supabase/migrations/20261116200000_restore_service_bookings_amount_paid.sql` adds nullable `numeric(12,2)` and a nonnegative CHECK marked NOT VALID. It supersedes the unresolved blocker described in §11.2. Whether the constraint is validated on an existing database remains a live catalog/runtime question.
+4. **`electrician_profiles.auth_user_id` is current-branch source-backed:** as already corrected in §11.2, migration `20261109000500_harden_electrician_profile_identity_linking.sql` adds the nullable Auth FK and identity synchronization before the later approval RPC uses it.
+
+### Remaining platform/baseline boundary
+
+- `SUPABASE_SCHEMA.sql` / `PORTAL_SCHEMA.sql` / `COMPLETE_DATABASE_SETUP.sql` are app starter/setup sources, not definitions of Supabase's managed `auth` and `storage` platform schemas.
+- Auth prerequisites include managed `auth.users`, `auth.sessions`, `auth.uid()`, `auth.jwt()` and referenced phone/session fields. Storage prerequisites include managed `storage.buckets`, `storage.objects`, `storage.foldername()` and object ownership metadata.
+- `20261113220000_customer_support_conversation_schema.sql` creates the private `srk-customer-support` bucket, but does not create Storage's platform schema or functions. The separate `srk-customer-avatars` bucket referenced by avatar integrity code has no creating setup/migration source identified in this branch.
+- Both `srk_is_admin()` and `is_srk_admin()` exist in setup-source definitions and are referenced independently by the migration chain. Do not assume they are interchangeable. In particular, `20261114125844_restore_financial_audit_core_schema.sql` alters `public.is_srk_admin()`, so that helper must pre-exist.
+- The Supabase platform roles `anon`, `authenticated`, and `service_role` must be supplied by the platform or isolated local test harness, not recreated by production migrations.
+- The duplicate `20261109` migration-version token and the exact safe ordering/reconciliation of starter setup scripts versus incremental migrations remain unresolved. No migration rename/reorder is authorized.
+
+This correction is source-only. No live database, Auth/Storage catalog, constraint validation state, migration history, CI, deployment or production setting was accessed or changed.
