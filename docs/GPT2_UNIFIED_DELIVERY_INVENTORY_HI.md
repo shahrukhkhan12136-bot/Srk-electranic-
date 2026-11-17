@@ -551,3 +551,11 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - Electrician earnings now correctly sources commission and payable from the canonical payout ledger (therefore excludes SRK cancellation-fee carry-forward), but its LEFT JOIN + COALESCE still returns zero values when the payout row is absent. That is ambiguous with a legitimate zero and does not expose the existing per-booking reconciliation exception.
 - Classification: **known source-level reporting-completeness gap**, not evidence that any live payout row is missing. It remains open for an owner-approved signal/contract decision; do not alter the Electrician UI or RPC return shape without coordination with GPT-1/owner.
 - No code/SQL migration changed; no database, pgTAP, Node, CI, provider, deployment, merge or mobile QA executed. Official GPT-2 progress **27/39 = 69%** and Runtime Acceptance **60/60 Pending** remain unchanged.
+
+
+### 3V. Missing payout exception surfaced in existing Admin reconciliation + contract strengthened — 17 Nov 2026
+
+- Re-fetched current Main Admin per-booking reconciliation function and Admin UI. Existing RPC emits `MISSING_PAYOUT_ROW` only when booking is completed, payment evidence is verified, an electrician is assigned, and no payout row exists. Existing Admin panel already renders the exceptions array and explicitly says when the payout record is absent.
+- Clarification: the aggregate commission card remains a summary and does not expose a global missing-payout count; the existing per-booking read-only reconciliation panel is the exception surface. No new UI or RPC response field was added.
+- Strengthened `supabase/tests/database/accounting_reconciliation_readonly_contract.test.sql` with a source assertion for the missing-payout exception and its guards. Current declaration `plan(76)`; exact source has 76 `SELECT ok` calls. Test SHA `eebcc4523feba1e4af608c9b9b725f5c3f86d783`.
+- Static source contract only; pgTAP/Node/runtime not run. No database, deployment, merge, CI or mobile QA. GPT-2 official checklist remains **27/39 = 69%**; Runtime Acceptance **60/60 Pending**.
