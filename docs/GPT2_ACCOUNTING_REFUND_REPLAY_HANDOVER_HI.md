@@ -366,3 +366,36 @@ These commit diffs establish the decision timeline and UI intent. They do not, b
 - Feature's original private RPC migration lacks the later Main status allow-list; Main live catalog is more restrictive for cancelled bookings and explicitly allows completed bookings.
 - Main migration ledger names `09114000 protect_customer_and_electrician_phone_numbers_until_masked_calling` and `09114642 enable_direct_customer_electrician_phone_calls` describe the same broad change sequence, but exact SQL equivalence to the Git commits remains unproven. Do not infer original SQL solely from migration names or commit timestamps.
 - No new phone-visibility code or SQL was changed in this pass. The report documents recovered decision evidence and live behavior only. Main access remained read-only; no DDL, data writes, migration application, deployment, or configuration changes occurred.
+
+
+## 17. Customer ↔ Electrician phone-access RPC parity audit (Nov 17)
+
+### Actual Feature UI call paths
+- Customer booking UI calls `public.srk_get_customer_call_contacts()`, maps returned rows by `booking_id`, and only renders the electrician phone / `tel:` link when a matching contact row exists and the normalized number is 10–15 digits.
+- Electrician dashboard calls `public.srk_get_my_offer_details()`. It renders customer phone and direct-call link from `customer_phone` only when that field is returned. The dashboard does not call `srk_electrician_get_my_assigned_booking_contacts()`.
+- Therefore the actual two UI paths are asymmetric at the RPC level: Customer uses a dedicated contact RPC; Electrician uses the broader offer-details RPC whose response includes booking, quote, address, and contact fields.
+
+### Main live Customer-side authorization
+- `private.srk_get_customer_call_contacts_impl()` is SECURITY DEFINER, requires non-null `auth.uid()`, and filters `service_bookings.customer_user_id = auth.uid()`.
+- It additionally requires a non-null assigned electrician and booking status in `assigned, inspection, awaiting_quote_approval, quote_approved, in_progress, completed`. Cancelled is excluded.
+- Effective EXECUTE: authenticated=true, anon=false.
+- Public `srk_get_customer_call_contacts()` wrapper is SECURITY INVOKER, authenticated-only, and delegates to the private implementation.
+
+### Main live Electrician-side authorization
+- Actual UI RPC `public.srk_get_my_offer_details()` is SECURITY DEFINER, pinned `search_path = pg_catalog, public, auth, pg_temp`, authenticated-only (anon=false).
+- It joins `job_offers` to `electrician_profiles` and `service_bookings`; requires `p.user_id = auth.uid()`, `p.verification_status='approved'`, and `p.active=true`.
+- Customer name, phone, address, coordinates, and quote fields are returned only when `b.assigned_electrician_id = p.id` and status is one of `assigned, inspection, awaiting_quote_approval, quote_approved, in_progress, completed`. For other offers/booking states these fields are NULL.
+- Thus the actual dashboard does not expose customer phone from an unassigned offer; cancelled bookings are masked and completed bookings remain eligible.
+- A separate Main RPC `public.srk_electrician_get_my_assigned_booking_contacts()` is also SECURITY DEFINER and authenticated-only. It checks profile ownership via `ep.user_id = auth.uid() OR ep.auth_user_id = auth.uid()`, approved/active status, and a similar non-cancelled status allow-list. However, this RPC is not called by the checked Feature Electrician dashboard code, so it is not the active UI access path.
+
+### Parity / residual review items
+- Both actual UI paths are booking-scoped and exclude cancelled bookings; both allow completed bookings. Both deny anon execution and require authenticated identity.
+- They do not use identical ownership checks: Customer side matches `customer_user_id=auth.uid()`; Electrician dashboard's `srk_get_my_offer_details()` matches `p.user_id=auth.uid()`, while the separate assigned-contact RPC supports either `user_id` or `auth_user_id`.
+- The current Main offer-details definition does not itself require `ep.verification_status='approved'` or `ep.active=true'` in the CASE expression that reveals contact fields; those checks exist for the joined profile as a whole. The function's WHERE clause does require the joined profile to be approved and active.
+- The separate electrician contact RPC has an explicit profile ownership fallback but is unused by the Feature UI. Do not switch UI paths or change identity matching without confirming the canonical electrician-profile linkage and GPT-2/owner review.
+- This audit confirms source-level authorization predicates and effective EXECUTE privileges; it is not a live authenticated-user integration test or proof that every possible profile-link state is covered.
+
+### Safety / change record
+- Read-only Main catalog/function/privilege inspection and Feature source reads only.
+- No application code, SQL migrations, or database objects were changed in this audit section.
+- No Production DDL/data writes, migration application, deployment, merge, or mobile QA occurred.
