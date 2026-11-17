@@ -137,3 +137,77 @@ The referenced relations and columns have identifiable producers before the paym
 This is a source-order finding only. It does not prove that the full 92-file chain replays cleanly, that the function compiles in PostgreSQL, or that customer isolation/pagination works at runtime. The RPC's behavior still requires isolated database execution and role-scoped tests after the canonical baseline and migration-version blockers are resolved.
 
 Static source review only. No SQL, database query, migration replay, pgTAP, runtime test, CI dispatch, deployment, or merge was run for this cross-check. Checklist remains 27/39 = 69%.
+
+
+## 7. Function producer → consumer / replacement edges (second source pass)
+
+This section records concrete named function edges found in additional migration bodies. A function call inside a PL/pgSQL body can be late-bound at invocation; therefore a textual reference to a function created later is not automatically a migration-time failure. By contrast, a trigger target, table/column reference in DDL, ALTER FUNCTION, DROP FUNCTION, FK, policy, or index can be a hard migration-time dependency.
+
+### 7.1 Identity and Admin authorization baseline
+
+- Early migrations use more than one authorization helper name: public.is_srk_admin(), public.srk_is_admin(), and public.srk_admin_users appears in later work-timeline code. These names are not interchangeable. They are referenced by source but are not created by the focused GPT-2B migrations reviewed here.
+- Rate-tier, application review, Staff RBAC, SOS and finance Admin RPCs depend on the correct helper(s) being present in the canonical base schema.
+- **Open baseline check:** prove exact signatures, definitions, grants and semantics for each helper from the approved base schema. Do not alias/rename them based on naming similarity.
+
+### 7.2 Rate-tier / sequential offer dispatch / availability / KYC
+
+- 20261114160000_customer_selected_rate_tier_and_server_estimate.sql creates rate-tier audit/authorization tables, activation guard, Admin rate-tier setter, initial private.srk_offer_booking_to_eligible_electricians(uuid), and job-offer rate-tier guard.
+- 20261114210000_sequential_nearest_offer_dispatch.sql creates sequential dispatch state/candidate tables and replaces the private offer dispatcher with the sequential implementation; it also creates the next-offer dispatcher and public.srk_respond_to_offer(uuid,text).
+- 20261114230000_recheck_electrician_current_area_before_offer.sql replaces private.srk_dispatch_next_booking_offer(uuid) to recheck current electrician area immediately before offering.
+- 20261114240000_server_authoritative_customer_approved_work_timer.sql replaces/defines public.srk_respond_to_offer(uuid,text) again and calls private.srk_dispatch_next_booking_offer(uuid); that target is already produced by 14210000 and replaced by 14230000. Keep this chain in filename order.
+- 20261114310000_electrician_self_availability.sql updates electrician_profiles, declines offers when availability is turned off, and calls the private next-offer dispatcher to advance sequential dispatch.
+- 20261115140000_electrician_kyc_review_and_activation_gate.sql adds KYC tables/Storage bucket/policies and replaces electrician activation guard. It depends on the rate-tier authorization table/guard from 14160000, electrician availability events, job offers, and the private dispatch function.
+- **Runtime gate:** sequential offers, area recheck, availability changes and KYC activation must be tested together after a complete local replay; isolated function existence checks are insufficient.
+
+### 7.3 Work timer / immutable labour bill / dispute and cancellation
+
+- 20261114125844_restore_financial_audit_core_schema.sql creates srk_booking_labour_bills before the receipt/history RPCs consume it.
+- 20261114240000_server_authoritative_customer_approved_work_timer.sql contains a second CREATE TABLE IF NOT EXISTS public.srk_booking_labour_bills definition. Normalized table-definition text was compared: the two declarations are identical. The later declaration does not upgrade a previously existing divergent table because it is guarded by IF NOT EXISTS.
+- 14240000 creates work timer/transition authorization tables, bill immutability trigger, start/completion RPCs, booking quote/work-status RPC replacements, and the new-category booking status guard. Its function bodies reference complaint, offer, cancellation and dispatch objects created elsewhere in the chain; complete replay must finish before those RPCs are exercised.
+- 20261114250000_admin_work_dispute_review_and_immutable_history.sql adds booking work-event audit table and trigger; 20261114260000_fix_work_start_rpc_and_append_only_event_history.sql replaces work-start flow, adds immutable event guards, and creates the customer work timeline RPC.
+- 20261114270000_admin_only_cancellation_requests_and_decisions.sql creates cancellation request/event tables and booking cancellation guard; 20261114280000_cancellation_fee_carry_forward_and_accounting.sql extends wallet ledger and creates debt/item/fee-ledger objects; 20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql consumes these fee and refund objects.
+- **Open check:** verify all trigger ordering and lock-order behavior in a replayed database, especially booking → refund/payout/wallet row lock order and event immutability.
+
+### 7.4 Support Staff and SOS dependencies
+
+- 20261114350000_electrician_support_tickets_and_admin_inbox.sql creates Electrician Support ticket/message tables and Electrician/Admin thread RPCs.
+- 20261114390000_admin_staff_rbac_foundation.sql creates Staff, permission, role mapping, session, audit and current support assignment tables; it defines srk_has_admin_permission(text), Staff session/revocation RPCs, assignment RPCs and assigned Customer complaint/message RPCs. It calls the pre-existing public.is_srk_admin() helper.
+- The RBAC migration defines srk_has_admin_permission(text) once, then replaces it later in the same migration after adding the tracked-session identity check. The later definition is the effective one at the end of that migration.
+- 20261116100000_fix_staff_permission_helper_volatility.sql is a later replacement of that helper; its volatility declaration must be checked together with the final function body.
+- 20261115260000_sos_admin_support_alerts.sql inserts new keys into RBAC permission/role mapping tables and creates SOS alert/event tables. Its Admin list/acknowledge/event RPCs call srk_has_admin_permission(text) and write Staff audit events. Therefore it requires RBAC foundation before SOS.
+- 20261117110000_support_staff_assigned_customer_attachment_read.sql consumes current Staff permission/assignment rows and complaint attachment metadata; its policy/helper cannot be validated before both support attachment and RBAC producers.
+
+### 7.5 Payment, refund, payout and reconciliation replacements
+
+- 20261114125844_restore_financial_audit_core_schema.sql is the producer for the financial core tables used by receipt, manual payment, payout, refund and accounting reconciliation RPCs.
+- 20261114360000_new_category_electrician_payout_reconciliation.sql defines srk_create_electrician_payable() and Admin payout settlement. 20261116210000_attach_electrician_payout_reconciliation_trigger.sql replaces the payable writer and attaches it to service_bookings; it also replaces manual-refund/recovery functions.
+- 20261117010000_reconcile_booking_commission_and_manual_payment_method.sql installs the commission-before-payout setter and payout parity validator, and replaces Admin accounting/commission/earnings RPCs. 20261117120000_retire_legacy_booking_commission_trigger.sql then removes the old commission trigger. The replacement chain is source-ordered; runtime trigger ordering and exception rollback still need pgTAP execution.
+- Accounting reconciliation function public.srk_admin_get_booking_accounting_reconciliation(uuid) is successively defined/replaced in 15150000, 15170000, 15180000 and again in 17010000. The final source body in the chain is the effective definition. Each intermediate replacement must still compile at its own migration point, and references must match objects available at that point.
+- 20261115120001_fix_multi_profile_electrician_labour_bill_access.sql and 20261115145900_fix_multi_profile_electrician_labour_bill_access.sql were compared byte-for-byte: the complete 1,560-byte SQL files are identical (same blob SHA e3bdf2624c224322a6ac4c99f2ae6e77b1be4774). This is a repeated no-op function replacement, not a demonstrated runtime defect. Do not remove/rewrite historical migration files without approved migration-history evidence.
+- 20261115210000_legacy_manual_payment_and_itemized_receipt.sql defines manual payment and receipt RPCs over booking, manual-payment, wallet/payout and labour-bill records. Later search-path hardening migration 20261116130000_pin_wallet_and_receipt_rpc_search_paths.sql alters wallet/receipt functions and therefore depends on these earlier definitions.
+- Refund recovery sequence: durable recovery evidence producer → service record/finalize functions → full-amount replacement in 15240000 → reconciliation replacement in 15250000 → later 16210000 replacement. Service-only execute grants are explicit in these migrations; provider API itself is outside SQL replay.
+
+### 7.6 Push outbox / per-subscription ledger / health / fencing
+
+- 20261111020000_add_electrician_push_subscriptions.sql creates the subscription base table.
+- 20261115170001_durable_push_delivery_outbox.sql hardens subscription RLS/policies, creates srk_private.srk_push_delivery_outbox, installs job-offer enqueue trigger and creates outbox claim/finish RPCs.
+- 20261115180001_push_subscription_delivery_ledger.sql creates srk_private.srk_push_subscription_deliveries and per-subscription claim/finish/complete RPCs; it depends on both subscription and outbox tables.
+- 20261115190001_push_delivery_health_monitoring.sql reads both push delivery tables and adds health/dead-letter retry RPCs.
+- 20261115200001_push_delivery_lease_fencing.sql drops old 3-argument finish function signatures and creates lease-fenced finish signatures with attempt/lease token inputs. Callers must be updated to the new signatures; this is an API compatibility edge, not only a table dependency.
+- **Runtime gate:** prove enqueue idempotency, per-subscription fanout, retry/dead-letter state, stale worker fencing and lease expiry under concurrency.
+
+## 8. Duplicate definitions / replacement ledger and remaining checks
+
+| Finding | Source evidence | Interpretation / action |
+|---|---|---|
+| Duplicate 20261109 version prefix | Two distinct migration filenames share the version token | Hard stop for replay planning; owner-approved history evidence required |
+| Repeated labour-bill table declaration | 14125844 and 14240000 normalized DDL identical | Safe only if baseline object is same; IF NOT EXISTS will not reconcile drift |
+| Repeated Electrician labour-bill read RPC migration | 15120001 and 15145900 are byte-identical 1,560-byte files | Redundant replacement in source; preserve history pending owner evidence |
+| Accounting reconciliation RPC replacement chain | 15150000 → 15170000 → 15180000 → 17010000 | Final definition is latest; each intermediate definition needs compile/replay validation |
+| Push finish RPC signature change | 15200001 drops old signatures and adds lease-fenced signatures | Verify all server callers use new signatures; stale client/worker callers may fail |
+| RBAC permission helper replacement | Defined twice in 14390000, replaced again in 16100000 | Latest body/volatility and current session checks must be verified after replay |
+| Admin authorization helper provenance | Calls to is_srk_admin, srk_is_admin, and srk_admin_users | Canonical base-schema signatures/grants are still a prerequisite |
+| Function body references objects created later | Work timer/offer and SOS/support paths | Separate late-bound runtime references from DDL-time dependencies; exercise only after full replay |
+
+**Completeness boundary:** this second pass materially expands the named function dependency edges for booking lifecycle, support/RBAC, payout/refund/accounting and push subsystems. It is still not a parser-generated, exhaustive graph of all 92 files, all dynamic SQL, all column references, or all trigger side effects. A clean replay remains the only way to validate compilation and object resolution end-to-end.
+
