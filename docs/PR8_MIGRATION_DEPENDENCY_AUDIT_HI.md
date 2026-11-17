@@ -3322,3 +3322,69 @@ Audit Branch की शुरुआती sequence में पहले 18 mig
 6. यह mapping 89/89 migrations की पूर्ण transitive dependency graph नहीं है; अभी शेष mid/late migrations का review जारी है।
 
 No SQL, PostgreSQL replay, pgTAP, DB query/write, CI dispatch, deployment or merge performed.
+
+## 132. Work lifecycle, refund, route, push और late financial migrations — 17 Nov 2026
+
+इस pass में 14 Nov से 17 Nov तक की शेष मुख्य migration bodies का source-level object/DDL review किया गया। यह पूर्ण runtime replay नहीं है।
+
+### 132.1 Work timer और append-only work events
+
+- 20261114240000_server_authoritative_customer_approved_work_timer.sql service_bookings में timer/approval state columns, srk_private authorization tables और srk_booking_labour_bills बनाती है; साथ में booking guard, work-start/completion RPCs और labour bill RPCs बनाती है।
+- 20261114125844_restore_financial_audit_core_schema.sql इससे पहले srk_booking_labour_bills को CREATE TABLE IF NOT EXISTS से बनाती है। दोनों migrations एक ही relation के creation point हैं। IF NOT EXISTS दूसरी table definition को reconcile नहीं करता; इसलिए पहले वाली definition बन जाने पर 14240000 की CREATE TABLE definition लागू नहीं होगी। Exact column parity/constraints/indexes की तुलना और एक authoritative schema तय करना आवश्यक है।
+- 20261114250000_admin_work_dispute_review_and_immutable_history.sql srk_booking_work_events बनाती है और service_bookings trigger से history capture करती है।
+- 20261114260000_fix_work_start_rpc_and_append_only_event_history.sql उसी event relation पर mutation/truncate guards और customer timeline RPC जोड़ती है। इसलिए 14250000 → 14260000 स्पष्ट dependency है।
+- 20261114270000_admin_only_cancellation_requests_and_decisions.sql cancellation request/event tables, immutable-event trigger और service_bookings status guard जोड़ती है।
+- 20261114280000_cancellation_fee_carry_forward_and_accounting.sql wallet ledger, cancellation request flow, booking/payment state और service-role payment functions पर निर्भर होकर debt/item/fee-ledger tables तथा booking triggers बनाती है।
+- 20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql 14280000 के fee/debt/ledger objects और 14125844 के refund/manual refund tables पर निर्भर होकर full-refund reversal तथा refund RPCs replace करती है।
+- Provisional chain: work timer/bill baseline → work events → append-only timeline → cancellation request → cancellation fee accounting → full-refund reversal.
+
+### 132.2 Customer cancellation/payment और support RPC replacements
+
+- 20261114300000_admin_customer_support_thread_replies.sql earlier complaint/support message tables पर Admin reply RPC जोड़ती है।
+- 20261114202250_customer_complaint_customer_safe_projection.sql earlier complaint base पर customer-safe complaint projection बनाती है।
+- 20261114202656_customer_change_payment_method_rpc.sql booking payment-method contract पढ़ती/बदलती है; 20261115270000 बाद में इसी RPC का Unicode/payment-method contract replacement करती है।
+- 20261115100000_customer_refund_request_contract.sql refund request base और customer request/list RPC बनाती है; 20261115110000 Admin review queue/decision RPC इन्हें replace/extend करती है।
+- 20261115130000_admin_manual_refund_request_completion.sql manual refund completion RPC बनाती है; 15120000 durable recovery evidence और 15240000/15250000 recovery/reconciliation hardening उससे अलग provider-recovery chain है।
+- 15120000 recovery evidence table और service-only evidence/finalizer functions बनाती है; 15240000 उसी finalizer को full-amount rule से replace करती है; 15250000 refund reconcile RPC को full-amount rule से replace करती है।
+- Refund request table/core refund/manual refund/payment-entry tables की dependency 14125844 financial base और 15100000 request contract पर है।
+
+### 132.3 KYC, staff RBAC और identity baseline
+
+- 20261115140000_electrician_kyc_review_and_activation_gate.sql KYC document/event tables, Storage object policies, upload/review RPCs तथा electrician activation और rate-tier guards बनाती/replace करती है। यह storage.objects, storage buckets, electrician_profiles, auth.users और पहले से मौजूद rate-tier guard पर निर्भर है।
+- 20261114390000_admin_staff_rbac_foundation.sql staff/permissions/role map/session/audit/assignment tables, RLS और अनेक Staff RPCs बनाती है। यह earlier support complaint/message और electrician ticket tables को भी alter/read करती है।
+- 20261116100000_fix_staff_permission_helper_volatility.sql Staff permission helper को VOLATILE रूप में replace करती है; यह 14390000 के बाद का patch है, पर public.is_srk_admin() bootstrap dependency बनी रहती है।
+- Identity overlap/target-exclusion findings Sections 118–125 में हैं; इन migrations से live registry state प्रमाणित नहीं होती।
+
+### 132.4 Razorpay Route ledger retire और reconciliation compatibility
+
+- 20261109020000_create_server_only_razorpay_route_transfer_ledger.sql future Route transfer ledger बनाती है।
+- 20261115092149_retire_unused_razorpay_route_transfer_ledger.sql बिना CASCADE के public.srk_route_transfers को DROP करती है।
+- 20261115170000_admin_route_transfer_accounting_reconciliation.sql अपने header/body में Route ledger retired मानती है, Route response fields को zero और provider settlement verified को false लौटाती है; इसका inspected body srk_route_transfers table को query नहीं करता।
+- 20261115180000_admin_route_recipient_and_settlement_validation.sql उसी reconciliation RPC को फिर replace करती है। इसके final body में route provider/recipient evidence की contract validation अलग से review होनी चाहिए; यह migration क्रम में 15170000 के बाद है।
+- 20261115190000_enforce_single_primary_route_bank_link.sql wallet bank-link table पर unique index बनाती है; इससे Route provider settlement का प्रमाण नहीं मिलता।
+- यह route ledger retirement और later Route reconciliation function names का deliberate compatibility design हो सकता है, पर 15180000 का पूरा body + Feature/Audit branch contract alignment owner review के बिना निष्कर्ष नहीं है।
+
+### 132.5 Push delivery chain और duplicate migration identity
+
+- 20261111020000_add_electrician_push_subscriptions.sql public.srk_push_subscriptions बनाती है।
+- 20261115170001_durable_push_delivery_outbox.sql इसी subscription table की RLS policies बदलती है और srk_private.srk_push_delivery_outbox बनाती है; यह earlier subscription table के बिना नहीं चल सकती।
+- 20261115180001_push_subscription_delivery_ledger.sql outbox delivery attempts/ledger बनाती है; 15170001 outbox इसका prerequisite है।
+- 20261115190001_push_delivery_health_monitoring.sql outbox/ledger health और retry RPCs बनाती है।
+- 20261115200001_push_delivery_lease_fencing.sql दो finish RPC signatures DROP/CREATE करके lease fencing जोड़ती है; यह outbox और delivery ledger दोनों के बाद चलनी चाहिए।
+- Tree में 20261115120001_fix_multi_profile_electrician_labour_bill_access.sql और 20261115145900_fix_multi_profile_electrician_labour_bill_access.sql का exact Git blob समान है: e3bdf2624c224322a6ac4c99f2ae6e77b1be4774। अलग filenames/timestamps के बावजूद content identical है। Supabase CLI/remote history में दोनों कैसे दर्ज हैं, इसका प्रमाण नहीं; इसे silently deduplicate/rename नहीं किया गया।
+
+### 132.6 Late search_path, amount_paid और payout/commission bridge
+
+- 20261116110000 से 16170000 तक के search_path patch files पहले बने RPCs के definitions को replace/secure करते हैं; इन्हें target RPC migrations के बाद ही चलाया जा सकता है।
+- 20261116200000_restore_service_bookings_amount_paid.sql amount_paid column ADD IF NOT EXISTS करती है, लेकिन 20261109003000_secure_commission_reporting.sql पहले ही यही column numeric(12,2) में add कर चुकी है। इसलिए later migration restore intent है; वह पहला introduction नहीं।
+- 20261116210000_attach_electrician_payout_reconciliation_trigger.sql 14360000 के payable function को replace करती है, service_bookings trigger attach करती है, और manual refund/recovery finalizer functions को भी replace करती है। इसे financial core + payout base + earlier refund/recovery evidence migrations के बाद चाहिए।
+- 20261117010000_reconcile_booking_commission_and_manual_payment_method.sql commission BEFORE trigger, payout parity AFTER trigger और accounting reconciliation/commission/earnings RPCs बनाती है। यह 16210000 के payout trigger/function body के साथ interaction की समीक्षा माँगती है; दो अलग trigger responsibilities को एक-दूसरे का विकल्प न समझें।
+- 15150000, 15170000 और 15180000 एक ही reconciliation RPC signature को क्रमशः replace करते हैं; Audit Branch का late 17010000 फिर उसे replace करता है। इसलिए अंतिम RPC body migration order में सबसे बाद वाले compatible definition पर निर्भर है; Feature Branch body को Audit Branch में बिना merge review के नहीं लेना चाहिए।
+
+### 132.7 Duplicate version / replay gates
+
+1. दो समान 8-digit version files (Section 130) के साथ अब exact identical 14-digit migration bodies 15120001/15145900 भी दर्ज हैं। Supabase migration history semantics और duplicate version handling की पुष्टि जरूरी है।
+2. srk_booking_labour_bills के दो अलग CREATE TABLE IF NOT EXISTS definitions (14125844 और 14240000) का column/constraint parity audit आवश्यक है।
+3. Route ledger drop (15092149) और route-related reconciliation replacement (15170000/15180000) को final contract के रूप में owner/DBA से स्पष्ट कराना है।
+4. Search-path patches और repeated RPC replacements के final function bodies का source hash/ordering matrix बनाना बाकी है।
+5. No SQL, PostgreSQL parser/replay, pgTAP, DB query/write, CI dispatch, deployment or merge performed.
