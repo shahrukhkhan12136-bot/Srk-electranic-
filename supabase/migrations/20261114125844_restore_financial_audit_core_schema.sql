@@ -160,6 +160,9 @@ GRANT ALL ON TABLE public.srk_booking_labour_bills TO service_role;
 GRANT ALL ON TABLE public.srk_manual_payment_entries TO service_role;
 GRANT ALL ON TABLE public.srk_electrician_payouts TO service_role;
 GRANT ALL ON TABLE public.srk_admin_audit_events TO service_role;
+-- Audit rows are append-only through SECURITY DEFINER row triggers; service_role
+-- must not be able to rewrite or erase historical evidence directly.
+REVOKE INSERT,UPDATE,DELETE,TRUNCATE ON TABLE public.srk_admin_audit_events FROM PUBLIC,anon,authenticated,service_role;
 GRANT ALL ON TABLE public.srk_razorpay_refunds TO service_role;
 GRANT ALL ON TABLE public.srk_booking_refund_requests TO service_role;
 GRANT ALL ON TABLE public.srk_manual_refund_entries TO service_role;
