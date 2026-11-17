@@ -2,6 +2,7 @@ const {createHash,randomUUID}=require("node:crypto");
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAYMENT=/^pay_[A-Za-z0-9]+$/;
 const REFUND=/^rfnd_[A-Za-z0-9]+$/;
+function getHeader(headers,name){const target=String(name).toLowerCase();const key=Object.keys(headers||{}).find(candidate=>candidate.toLowerCase()===target);return key===undefined?"":headers[key];}
 function json(statusCode,body){return{statusCode,headers:{"Content-Type":"application/json","Cache-Control":"no-store"},body:JSON.stringify(body)};}
 async function readJson(response){const raw=await response.text();let value=null;try{value=raw?JSON.parse(raw):null;}catch(_){throw new Error("INVALID_UPSTREAM_JSON");}if(!response.ok){const error=new Error(value?.message||"UPSTREAM_REQUEST_FAILED");error.status=response.status;throw error;}return value;}
 function env(){return{url:process.env.SUPABASE_URL,key:process.env.SUPABASE_SERVICE_ROLE_KEY,rzpId:process.env.RAZORPAY_KEY_ID,rzpSecret:process.env.RAZORPAY_KEY_SECRET};}
@@ -43,7 +44,7 @@ async function findRefundAcrossPages(paymentId,record,cfg){
 exports.handler=async event=>{
  if(event.httpMethod!=="POST")return json(405,{success:false,error:"केवल POST अनुरोध स्वीकार है।"});
  const cfg=env();if(!cfg.url||!cfg.key||!cfg.rzpId||!cfg.rzpSecret)return json(500,{success:false,error:"Refund recovery server configuration is incomplete."});
- const auth=event.headers?.authorization||event.headers?.Authorization||"";const match=/^Bearer ([A-Za-z0-9._~-]{20,8192})$/.exec(auth);
+ const auth=getHeader(event.headers,"authorization");const match=/^Bearer ([A-Za-z0-9._~-]{20,8192})$/.exec(auth);
  if(!match)return json(401,{success:false,error:"Main Admin login required."});
  let input;try{input=JSON.parse(event.body||"{}");}catch(_){return json(400,{success:false,error:"Invalid JSON request."});}
  const bookingId=input?.booking_id,note=typeof input?.admin_note==="string"?input.admin_note.trim():"";
