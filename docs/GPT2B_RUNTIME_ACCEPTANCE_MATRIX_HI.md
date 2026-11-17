@@ -236,7 +236,7 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Reply paths require both read and reply permissions, reject closed cases, validate message length, and record audit events. Status paths require read and update-status permissions, validate reason/status, reject closed cases, and record audit events. Staff cannot set a case to `closed`; only `in_review` or `resolved` is accepted.
 - Reassignment changes the single assignment row. Since Staff thread/list operations lock and check that row, a completed reassignment prevents the former Staff member from accessing subsequent reads/writes; already-returned data cannot be recalled.
 - No source-level defect was confirmed in these reviewed lifecycle paths. This does not prove concurrent behavior without runtime testing.
-- Test files currently declare: `admin_staff_rbac_foundation.test.sql` plan 70, `electrician_support_ticket_security.test.sql` plan 17, and `support_attachment_staff_access.test.sql` plan 11. These are declarations/source assertions only; none were executed in this review.
+- Test files currently declare: `admin_staff_rbac_foundation.test.sql` plan 69, `electrician_support_ticket_security.test.sql` plan 16, and `support_attachment_staff_access.test.sql` plan 11. These are declarations/source assertions only; none were executed in this review.
 - No code, migration, permissions, or production settings changed. PostgreSQL, pgTAP, Node, Storage API, and CI remain unexecuted.
 
 
@@ -262,3 +262,16 @@ No PostgreSQL, pgTAP, provider-integrated, Storage-integrated, or concurrency ru
 - Repeated append-only observations remain permitted when both the internal refund record ID and provider refund ID match. A non-null canonical provider refund ID cannot later be changed.
 - Added five source/schema assertions to `durable_razorpay_refund_recovery_evidence.test.sql` (declared plan now 40). They check both triggers, two-key advisory locking, both conflict guards, and SECURITY DEFINER/search-path metadata.
 - Source files committed on the active feature branch only. Migration was NOT applied; pgTAP/PostgreSQL, migration replay, concurrency, Node, CI, provider API, and production checks were NOT run. Runtime acceptance remains pending.
+
+
+### Manual Refund evidence + Razorpay recovery cross-link audit — 17 November 2026 (source-only)
+
+- Active branch reviewed: `chore/pr8-replay-audit-20261116-v2`; starting HEAD `10dde83e3ef976891882227df46e7c680c853bf5`.
+- Rechecked the canonical refund/payment tables and the latest manual-refund and Razorpay recovery RPC definitions.
+- Manual-payment evidence is unique per booking. Manual-refund evidence is unique per booking and per payment-entry ID, and both tables are revoked from PUBLIC/anon/authenticated with service-role-only table access.
+- The Main Admin manual-refund RPC locks the booking, checks verified-paid status, rejects Razorpay/online bookings, locks the same-booking manual-payment evidence, compares recorded payment to booking amount, and checks the full immutable labour + settled-fee amount for new-category bookings. It then checks existing refund evidence and payout state before writing the refund, updating booking state, and closing a blocked unpaid payout.
+- Customer refund request creation is ownership-scoped, locks the booking and existing request, requires verified payment, validates new-category amount against immutable labour and settled fee items, and rejects existing Razorpay/manual refund evidence. Unique booking constraints provide a second duplicate barrier.
+- Razorpay recovery evidence validates provider refund ID, payment ID, amount, currency, status and payload against the internal refund record and booking payment ID. The later one-to-one mapping guard covers both provider-ID reuse and conflicting provider IDs per internal record. Recovery finalization remains service-role-only and booking/refund/payout row-locked.
+- No additional source-level defect was confirmed in these specific cross-link and duplicate-prevention paths. Live constraints, ACL/catalog state, and concurrent transaction behavior remain unverified.
+- Documentation correction: the prior Support test-plan counts in this matrix were stale. Correct declared plans are Admin Staff RBAC 69, Electrician Support 16, and Staff Customer Attachment 11. These are declarations/source assertions, not executed pgTAP results.
+- No database or provider calls, migration replay, PostgreSQL/pgTAP, Node suite, CI, deployment, merge, or production setting changes were performed.
