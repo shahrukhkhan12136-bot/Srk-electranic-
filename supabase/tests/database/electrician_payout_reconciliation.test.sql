@@ -1,5 +1,5 @@
 begin;
-select plan(53);
+select plan(54);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -366,6 +366,13 @@ select ok(position('b.amount_paid' in lower(pg_get_functiondef(
   and position('set search_path = ""' in lower(pg_get_functiondef(
   'public.srk_admin_commission_report()'::regprocedure)))>0,
   'Admin commission report separates customer collection from payout payable and pins an empty search_path');
+
+
+select ok(position('collection_totals' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0
+  and position('sum(coalesce(b.amount_paid,0))' in lower(pg_get_functiondef(
+  'public.srk_admin_commission_report()'::regprocedure)))>0,
+  'Admin report totals verified collections independently of payout rows so missing payout records cannot hide customer collections');
 
 select * from finish();
 rollback;
