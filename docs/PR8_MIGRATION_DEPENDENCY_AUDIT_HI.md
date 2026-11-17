@@ -1947,3 +1947,107 @@ This is stronger provenance and object-level evidence than the current-file comp
 - Continue to treat clean replay as blocked until that authoritative equivalence check is available.
 
 **Status:** all four file blobs and source-level object inventories at the earliest common commit are verified. The base-versus-portal dependency order is documented in the source comments and corroborated by object references. Actual database execution history remains **UNVERIFIED**; no SQL or database was changed.
+
+
+## 95. GPT-1 handover और GPT-2 Audit Branch का cross-workstream reconciliation — 17 Nov 2026
+
+GPT-1 द्वारा दिए गए handover को PR #8 के live GitHub head और GPT-2 Audit Branch के source files से मिलाया गया। यह section केवल source/history/status evidence दर्ज करता है; कोई SQL runtime, provider settlement, database migration या deployment action नहीं किया गया।
+
+### 95.1 PR head और CI/deploy status
+
+- PR #8 वर्तमान में **OPEN / DRAFT / UNMERGED** है; head branch `feat/customer-login-first-dashboard-20261114`, head commit `4638c7277c62cdf3fb23cd1899b8683775c480d1` है।
+- उसी commit के GitHub commit statuses में **Vercel = success** और **Netlify Deploy Preview = success** दर्ज हैं।
+- उसी commit के GitHub Actions workflow run `44025615076` में **Feature Branch Node tests = success** है।
+- Netlify check-runs में redirect/header processing checks भी success हैं।
+- PR discussion में पहले के Vercel deployment-limit failures मौजूद हैं; वे पुराने attempts हैं। वर्तमान head के ऊपर का status success है। इसलिए handover का current-status दावा सही है, पर पुराने failures को इतिहास से मिटाया नहीं जाना चाहिए।
+- ये CI/deploy statuses PostgreSQL migration replay, pgTAP execution, live Route settlement या payment-provider evidence का प्रमाण नहीं हैं।
+
+### 95.2 दोनों branches का Git graph — direct merge/replay सुरक्षित नहीं
+
+`chore/pr8-replay-audit-20261116-v2` को base और PR feature branch को head रखकर GitHub compare result:
+
+- Audit Branch HEAD: `af8060bf6ad010cbd75d4eaf056e6601bfffe309`
+- Feature Branch HEAD: `4638c7277c62cdf3fb23cd1899b8683775c480d1`
+- Merge base: `dc8b4f723ac7ae896eeb516336dd4b28577390b5`
+- Feature branch: Audit Branch से **57 commits ahead** और **222 commits behind**; compare status **diverged**।
+
+इसलिए دونوں branches को एक-दूसरे का simple superset नहीं माना जा सकता। पूरा branch merge, blanket cherry-pick या branch reset बिना file-by-file reconciliation और owner approval के नहीं करना चाहिए। GPT-2 का यह audit report Feature Branch पर मौजूद नहीं है; GPT-2 का accounting bridge migration भी Feature Branch पर नहीं मिला।
+
+### 95.3 Manual Refund — blocked payout note overwrite की पुष्टि
+
+दोनों branches पर `supabase/migrations/20261115130000_admin_manual_refund_request_completion.sql` का समान blob SHA है:
+
+`51f3b13adc80e117cc62f05b0e70ae795ee0f9fd`
+
+Source inspection से:
+
+- पहले से `blocked` payout को function अलग-अलग reason/note के साथ preserve नहीं करता।
+- Refund completion पर function सीधे `payout_status='refunded'` और `payout_note='Manual refund completed'` लिखता है।
+- अतः पहले से blocked payout का पुराना `payout_note` overwrite हो जाता है। GPT-1 handover का यह review point **CONFIRMED** है।
+- यदि payout पहले `pending` हो तो function पहले `Manual refund processed` note लिखता है और फिर completion पर उसे `Manual refund completed` से बदलता है। यह transition note भी final record में सुरक्षित नहीं रहता।
+
+**स्थिति:** behavior review आवश्यक है। कोई SQL fix इस reconciliation pass में नहीं किया गया। अपेक्षित audit policy तय हो: पुराना block reason immutable/history field में रखा जाए या final note में मूल reason को स्पष्ट रूप से carry किया जाए। केवल note को छोड़ देना भी पर्याप्त नहीं, क्योंकि status transition का audit trail चाहिए।
+
+### 95.4 Manual Refund test contract में Audit Branch stale assertion
+
+- Feature Branch test blob: `2db704e98a59cc7291a586370a5be5275eca2e12`
+- Audit Branch test blob: `99cb0eb02e667699db27951b5b26161a89b8951b`
+- Feature Branch test अब function के direct payout update contract को जांचता है: `payout_status='refunded'` और blocked payout closure failure guard।
+- Audit Branch test में पुरानी अपेक्षा है कि booking update trigger payout बंद करेगा और function बाद में payout row को दोबारा SELECT करके verify करेगा। वही अपेक्षित SELECT source function में मौजूद नहीं है; migration source दोनों branches में समान है।
+
+इसलिए Audit Branch का manual-refund test assertion source implementation के साथ **STALE / INCONSISTENT** है। Feature Branch वाला नया test contract source के वर्तमान direct-update path के अधिक अनुरूप है, पर दोनों suites को PostgreSQL पर चलाए बिना runtime pass नहीं कहा जा सकता।
+
+### 95.5 Razorpay refund recovery — Feature Branch में अतिरिक्त replay repair
+
+Migration `20261115250000_harden_refund_reconcile_full_amount.sql` दोनों branches पर अलग है:
+
+- Feature Branch blob: `0bdae500bcfda3721d8de4371695be08ba8e5f36`
+- Audit Branch blob: `3bda81c2b827f597f639846d33967a7c88296e21`
+
+Feature Branch में अतिरिक्त logic है जो पहले से `processed` refund को replay करते समय ऐतिहासिक `blocked` payout को `refunded` में repair करता है, बशर्ते block note अपेक्षित `Razorpay refund pending` हो। Audit Branch की version में यह repair path नहीं है।
+
+इसी प्रकार संबंधित test files भी अलग हैं:
+
+- Feature Branch test blob: `52f5e13981cf5a80d0ac4f2033429a04037c36c6`
+- Audit Branch test blob: `fd5b7ceb8e612b588fac1a7ade8d7035388ca2bc`
+
+Feature Branch test में payout close/replay-repair और fail-closed state assertions शामिल हैं; Audit Branch का test छोटा, पुराना five-assertion contract है। यह Feature Branch का substantive correction है जिसे GPT-2 के future audit baseline में review करके लाना होगा; इसे स्वतः स्वीकार या cherry-pick नहीं किया गया।
+
+### 95.6 Route Settlement — दोनों branches के RPC contracts में महत्वपूर्ण टकराव
+
+Accounting reconciliation test files अलग हैं:
+
+- Feature Branch blob: `7b76ce5a20be5c42d76094b937d42fbb6bd22d08`
+- Audit Branch blob: `110be3942aaec522ebcaa1d3d34643daea1450c4`
+
+Feature Branch test में final RPC के वास्तविक Route settlement evidence fields, transfer rows/count और recipient/payment/amount/state validation अपेक्षित हैं। Commit `4638c727...` की नई 75वीं assertion यह जांचती है कि Admin UI के लिए `route_provider_settlement_verified` और `route_settlement_evidence_status` fields लौटते हैं।
+
+Audit Branch के test contract में इसके विपरीत retired-ledger compatibility response अपेक्षित है: `route_ledger_retired_no_route_transfers`, खाली `route_transfers`, zero count और zero transfer amounts। यह केवल assertion naming का अंतर नहीं; दोनों branches Route ledger के व्यवहार पर अलग product/schema contract मानती हैं।
+
+**स्थिति:** Route Settlement contract को owner/product decision और वास्तविक Razorpay Route transfer/provider settlement evidence के साथ resolve करना जरूरी है। केवल static JSON key assertion वास्तविक provider settlement का प्रमाण नहीं है। कोई provider API, bank transfer या live ledger जांच इस review में नहीं हुई।
+
+### 95.7 GPT-2 Accounting Bridge और PR Feature scope
+
+- GPT-2 का additive migration `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` Audit Branch पर मौजूद है; Feature Branch fetch में यह file नहीं मिली।
+- इस migration में BEFORE commission assignment, AFTER payout writer parity validation, manual payment-method consistency और reconciliation RPC parity checks शामिल हैं।
+- इसे Feature Branch में स्वतः copy करना सुरक्षित नहीं है: दोनों branches diverged हैं और Feature Branch में payout/refund/Route functions के अलग versions हैं। Trigger ordering, payout writer behavior, refund reversal और Route accounting के साथ संयुक्त review जरूरी है।
+- GPT-1 handover के 31 SQL test files और static plan/assertion count match को handover claim के रूप में दर्ज किया गया है; इस pass में सभी 31 files का count दोबारा independently नहीं चलाया गया। PostgreSQL/pgTAP runtime execution अभी भी **NOT RUN** है।
+
+### 95.8 संयुक्त निष्कर्ष और सुरक्षित अगला कदम
+
+| विषय | Reconciliation स्थिति |
+|---|---|
+| PR #8 head / open-draft state | GitHub verified |
+| Current Node / Vercel / Netlify statuses | Current head पर success verified |
+| Branch graph | Diverged; direct merge unsafe |
+| Manual Refund old payout_note | Overwrite confirmed; correction pending |
+| Manual Refund test | Audit Branch assertion stale; Feature test newer |
+| Razorpay refund replay repair | Feature-only substantive addition; review/port pending |
+| Route Settlement | Conflicting branch contracts; product/provider evidence decision pending |
+| GPT-2 commission/payment bridge | Audit-only; cross-branch integration review pending |
+| Clean migration replay / pgTAP runtime | Blocked / not executed |
+| Production / Test Supabase changes | None performed by this reconciliation |
+
+**Release gate:** PR #8 को Draft ही रखें। Branch contracts को resolve करें, manual refund block-reason audit behavior तय करें, GPT-2 accounting bridge को Feature Branch के current source के विरुद्ध integrate/review करें, और owner-approved isolated PostgreSQL baseline पर complete migration replay तथा pgTAP runtime pass मिलने तक merge/production release न करें।
+
+**Safety record:** इस reconciliation में केवल GitHub source, commit graph, PR metadata, statuses और test/migration text पढ़े गए। कोई source SQL edit, branch merge, workflow dispatch, Supabase query/migration, provider refund, payout, bank transfer या deployment action नहीं किया गया।
