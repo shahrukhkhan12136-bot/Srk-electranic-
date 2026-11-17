@@ -1,5 +1,5 @@
 BEGIN;
-select plan(69);
+select plan(70);
 
 SELECT has_table('public','srk_admin_staff','separate staff registry exists');
 SELECT has_table('public','srk_admin_permissions','permission catalog exists');
@@ -368,6 +368,40 @@ SELECT ok(
   position('is_current_staff_sender boolean' in lower(pg_get_function_result('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure)))>0
   AND position('m.sender_user_id=auth.uid()' in lower(pg_get_functiondef('public.srk_admin_staff_list_electrician_messages(uuid)'::regprocedure)))>0,
   'electrician support thread identifies the current Staff sender without exposing user identifiers'
+);
+
+SELECT ok(
+  (
+    SELECT count(*)=4
+      FROM pg_proc p
+     WHERE p.oid IN (
+       'public.srk_admin_staff_list_customer_complaints()'::regprocedure,
+       'public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure,
+       'public.srk_admin_staff_send_customer_message(uuid,text)'::regprocedure,
+       'public.srk_admin_staff_update_customer_complaint(uuid,text,text)'::regprocedure
+     )
+       AND p.prosecdef
+       AND p.provolatile='v'
+       AND coalesce(p.proconfig::text,'') LIKE '%search_path=""%'
+  )
+  AND (
+    SELECT count(*)=4
+      FROM pg_proc p
+     WHERE p.oid IN (
+       'public.srk_admin_staff_list_customer_complaints()'::regprocedure,
+       'public.srk_admin_staff_list_customer_messages(uuid)'::regprocedure,
+       'public.srk_admin_staff_send_customer_message(uuid,text)'::regprocedure,
+       'public.srk_admin_staff_update_customer_complaint(uuid,text,text)'::regprocedure
+     )
+       AND has_function_privilege('authenticated',p.oid,'EXECUTE')
+       AND NOT has_function_privilege('anon',p.oid,'EXECUTE')
+       AND NOT EXISTS (
+         SELECT 1
+           FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+          WHERE acl.grantee=0 AND acl.privilege_type='EXECUTE'
+       )
+  ),
+  'all four Customer Support Staff RPCs use hardened definer context and authenticated-only execution'
 );
 
 SELECT * FROM finish();
