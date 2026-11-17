@@ -6268,3 +6268,32 @@ Static evidence के आधार पर इस dependency segment का क�
 इस dependency segment में timestamp ordering source references से संगत है। मुख्य बाहरी prerequisite अभी भी root setup से आने वाला `user_id` column है। Clean replay, existing-data constraints और actual function invocation behavior **unverified** हैं।
 
 केवल source inspection और report documentation update किया गया। कोई SQL/pgTAP, database query, migration replay, application source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 198. SOS RPC Required-Column Provenance Matrix
+
+### 1. SOS creation RPC के booking/profile columns
+
+SOS migration `20261115260000_sos_admin_support_alerts.sql` के `srk_create_sos_alert(text)` source में निम्न dependencies दिखती हैं:
+
+| SOS द्वारा उपयोग किया गया field | Source provenance |
+|---|---|
+| `service_bookings.customer_name`, `phone` | Root base schema: `SUPABASE_SCHEMA.sql` / `COMPLETE_DATABASE_SETUP.sql` |
+| `service_bookings.status`, `assigned_electrician_id` | Root base schema |
+| `service_bookings.customer_user_id` | `20261108121115_add_customer_account_booking_access.sql` |
+| `service_bookings.selected_category` | `20261114160000_customer_selected_rate_tier_and_server_estimate.sql` |
+| `electrician_profiles.display_name`, `phone` | Root base schema |
+| `electrician_profiles.user_id` | Portal setup layer: `PORTAL_SCHEMA.sql` या consolidated `COMPLETE_DATABASE_SETUP.sql` |
+| `electrician_profiles.auth_user_id` | `20261109000500_harden_electrician_profile_identity_linking.sql` |
+
+SOS function का `electrician_profiles%ROWTYPE` declaration पूरी profile row के वर्तमान schema पर निर्भर है; केवल ऊपर सूचीबद्ध columns की मौजूदगी अकेले इसका replay प्रमाण नहीं है।
+
+### 2. Install-manifest implication
+
+SOS migration तक पहुँचने से पहले selected root baseline में booking/profile base tables और `electrician_profiles.user_id` मौजूद होने चाहिए। इसके बाद customer-account, electrician-identity, selected-category और Staff RBAC migrations का क्रम लागू होता है। Sections 193–197 में दर्ज root-script choice और identity-migration ordering इसी dependency map के साथ पढ़ी जानी चाहिए।
+
+### 3. Verdict
+
+SOS RPC के direct column references के लिए source provenance अब अलग-अलग layers में पहचानी गई है। यह static provenance matrix है; इससे किसी database में columns मौजूद होने, constraints validate होने, `%ROWTYPE` resolution या SOS RPC execution की पुष्टि नहीं होती। Canonical setup path और clean replay अभी **unverified** हैं।
+
+केवल migration/setup source inspection और report documentation update किया गया। कोई SQL/pgTAP, database query, migration replay, application source/migration/permission/DB setting change, CI, deployment, merge या cherry-pick नहीं किया गया।
