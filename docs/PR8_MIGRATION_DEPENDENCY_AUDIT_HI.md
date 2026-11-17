@@ -7035,3 +7035,28 @@ A row-level `FOR SHARE` lock on a booking does not serialize concurrent complain
 The inspected complaint SQL test coverage does not establish the concurrent rate-limit boundary. In the isolated PostgreSQL branch, test 9 existing complaints followed by parallel submissions, then verify that no more than one request can take the count to 10 and all excess requests are rejected. Consider a per-customer transaction-scoped advisory lock or a dedicated rate-limit row locked before counting; choose a collision-safe keying strategy and keep lock order consistent with other complaint operations.
 
 Static review and documentation only. No source or test file was changed; no SQL/pgTAP or concurrency test was run. GPT-2 checklist remains 27/39 = 69%; this finding does not change the checklist count. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and reconcile their own work.
+
+
+## 219. Canonical Fresh-Install Script Is Not a Complete Current Schema Bootstrap
+
+### Static source reviewed
+- `COMPLETE_DATABASE_SETUP.sql` SHA `2b806e727f449ba18e71ad23edef805ceb2da2b5`.
+- `SUPABASE_SCHEMA.sql` SHA `8ae88a7035bc963b244f22c6c1450c22618ec88f`.
+- `PORTAL_SCHEMA.sql` SHA `efc14aa623a3895ffb3841b7b0f226f2015f34b1`.
+- `20261113220000_customer_support_conversation_schema.sql` SHA `75230ab805e61206515fd73e17e748de7ec249e5`.
+- `20261114130000_harden_electrician_profile_identity_linking.sql` SHA `d24259cb2d197697efd4bfaa305dd4c3c62dab27`.
+- `20261114190000_customer_receipt_immutable_labour_amount.sql` SHA `2eb307f774e58671a18252b34c8ba5f95fc3c1e6`.
+- `20261114390000_admin_staff_rbac_foundation.sql` SHA `5aa0f9058a56d735455f2a9944c861e8312ddb89`.
+
+### Finding
+`COMPLETE_DATABASE_SETUP.sql` embeds the complete contents of both `SUPABASE_SCHEMA.sql` and `PORTAL_SCHEMA.sql`, then adds older customer-privacy and admin-login patches. However, it does not include or invoke the ordered `supabase/migrations/` chain. Static comparison confirms that the consolidated script does not define several objects/columns introduced by later migrations, including electrician `auth_user_id`, customer-support conversation/attachment tables, Admin Staff/RBAC tables, and the current receipt RPC replacement. The root base schema also does not define later booking identity/category fields such as `customer_user_id` and `selected_category`.
+
+Therefore, the file's “consolidated database setup” / “Run once” wording is not sufficient evidence of a fresh install matching the current migration-based application. Running it alone can leave the database behind the schema expected by current application code. Conversely, applying the full migration chain after an incomplete or differently ordered manual setup may encounter prerequisite or drift issues; that requires actual clean replay to establish.
+
+### Required canonicalization before fresh-install sign-off
+1. Declare one supported bootstrap contract: either a true baseline plus every versioned migration in order, or a generated current-schema bootstrap with a documented migration-history baseline. Do not mix the two implicitly.
+2. Inventory every root SQL setup file and mark legacy/manual scripts clearly if they are not the supported fresh-install route.
+3. Add a clean-database test that starts from an empty Supabase-compatible database, applies the documented bootstrap and complete migration sequence, then asserts all required tables, columns, functions, triggers, policies, buckets and grants.
+4. Keep existing-project upgrade instructions separate from fresh-install instructions.
+
+Static file comparison only. No database was created, no SQL or migration was executed, and no test/CI/deployment was run. This is a bootstrap completeness/readiness finding, not a claim that a specific migration replay has failed. GPT-2 checklist remains 27/39 = 69%; documentation-only findings do not increment it. Paid Database Branch remains deferred until GPT-1 and GPT-2 finish and reconcile their own work.
