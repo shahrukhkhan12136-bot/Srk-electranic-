@@ -3028,3 +3028,25 @@ Section 122 के बाद Audit Branch पर Staff registry migration और
 - Main Admin manual enrollment command: **Section 122 में source-confirmed**.
 - Repository-wide / Production writer inventory: **not established**.
 - No SQL/schema/RPC/Edge Function change, no DB query, no invitation, no pgTAP/CI/deployment/merge.
+
+
+## 124. Admin setup दस्तावेज़ों का enrollment-path cross-check — 17 Nov 2026
+
+दोनों registry write paths की जाँच के बाद संबंधित setup दस्तावेज़ों का cross-check किया गया।
+
+- `PORTAL_SETUP_HINDI.md` (blob `dda516ff465a09f141e803897fb71c2d7294a453`, line 12) Admin Auth user UUID को `srk_admin_users` में डालने का निर्देश देता है और exact SQL के लिए `VERCEL_DEPLOY_HINDI.md` पर भेजता है।
+- `VERCEL_DEPLOY_HINDI.md` (blob `d1e79f473e966645ca6144a257aa1fcda9733791`, line 31) वही manual SQL enrollment command देता है। यह अलग दूसरा SQL writer नहीं, उसी manual path का विस्तृत निर्देश है।
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` (blob `dbd91b3f912b1e0946bffe6d249a85cc41dc81cd`) के inspected हिस्से में existing `srk_admin_users` row मानकर RLS और `is_srk_admin()` setup किया गया है; यह file स्वयं Admin enrollment INSERT नहीं करती।
+- `PORTAL_SCHEMA.sql` (blob `efc14aa623a3895ffb3841b7b0f226f2015f34b1`) में legacy `srk_is_admin()` helper है, जबकि `ADMIN_EMAIL_LOGIN_SETUP.sql` और Staff invite Edge Function `is_srk_admin()` नाम उपयोग करते हैं। यह historical/setup naming drift है; वर्तमान live function inventory या deployment state इस static check से तय नहीं होती।
+- `SUPABASE_SCHEMA.sql` (blob `8ae88a7035bc963b244f22c6c1450c22618ec88f`) में इस scan के दौरान `srk_admin_users` enrollment reference नहीं मिला।
+
+### निष्कर्ष
+
+Inspected setup documents में Main Admin enrollment का एक documented manual SQL path है, जिसे एक से अधिक guide refer करते हैं; `ADMIN_EMAIL_LOGIN_SETUP.sql` अलग insert path नहीं है। इससे पहले Section 123 में पहचाने गए Staff registration RPC के साथ source-level write-path map थोड़ा स्पष्ट होता है, लेकिन यह सभी external scripts, repository history, hosted functions या Production writes की exhaustive inventory नहीं है।
+
+### Status
+
+- Setup guide cross-reference: **source-confirmed**.
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` में enrollment INSERT: **inspected file में नहीं मिला**.
+- Legacy/current helper naming difference: **source-confirmed**.
+- No SQL/schema/RPC/document setup change, no database query, no migration replay, no invite, no CI/deployment/merge.
