@@ -4062,3 +4062,58 @@ Reviewed `tests/admin-refund-and-staff-access.test.js` में final trigger �
 #### 143.5 सीमा
 
 यह source-level contract review है। कोई Node test, pgTAP, SQL parser, PostgreSQL replay या database query execute नहीं किया गया। कोई migration, trigger, RPC, grant, executable test, CI, deployment, merge या Production state बदली नहीं गई।
+
+
+### 144. Section 143 का Coverage Correction — Existing pgTAP Trigger Tests पहले से मौजूद हैं — 17 Nov 2026
+
+Section 143 में यह कहना कि reviewed pgTAP में final trigger की payout predicate पर direct assertions नहीं मिले, अधूरा था। Audit Branch पर पहले से मौजूद `supabase/tests/database/electrician_payout_reconciliation.test.sql` इसका सीधा coverage देता है।
+
+#### 144.1 Existing Trigger Contract Test
+
+File blob: `88184e2e1fb386f16d6bd339556a15a5b87275d2`; घोषित pgTAP plan: `plan(34)`.
+
+इसमें:
+- Trigger function `public.srk_create_electrician_payable()` मौजूद होने और `service_bookings` पर attach होने की जाँच।
+- Trigger row-level AFTER INSERT/UPDATE hook होने की जाँच।
+- Refund transition branch `new.payment_status='refunded'` की जाँच।
+- Pending payout को refunded करने की source assertion।
+- Blocked payout को केवल दो exact notes `Razorpay refund pending` और `Manual refund processed` पर close करने की assertion।
+- `and payout_note in (...)` से unrelated Admin block बचाने की assertion।
+- Refund के बाद payout note NULL करने की assertion।
+- Paid payout को trigger द्वारा overwrite न करने की assertion।
+
+इसलिए Section 143 का प्रस्तावित अलग trigger source-contract test पूरी तरह नया नहीं है। इन मुख्य predicate checks का coverage पहले से मौजूद है।
+
+#### 144.2 Existing Refund RPC pgTAP Coverage
+
+**Manual Refund** — `supabase/tests/database/admin_manual_refund_request_completion.test.sql`, blob `99cb0eb02e667699db27951b5b26161a89b8951b`, plan 14:
+- Installed function definition में Main Admin predicate।
+- Booking refunded update के बाद payout reread।
+- Payout refunded न होने पर fail-closed assertion।
+- Authenticated-only / anon-denied privilege assertion।
+- Request approval, manual payment matching और Razorpay exclusion।
+
+**Recovery Finalizer** — `supabase/tests/database/durable_razorpay_refund_recovery_evidence.test.sql`, blob `370b2c5e460d1a9abfbbe53371a48f9e68788788`, plan 35:
+- Service-role privilege / authenticated denial।
+- Processed evidence और 15-minute freshness।
+- Booking refunded update के बाद payout reread और refunded-state verification।
+- Full booking amount, idempotent replay और recovery evidence checks।
+
+ये Tests `pg_get_functiondef` और privilege/catalog assertions से database में मौजूद final definitions को जाँचने के लिए लिखे गए हैं। पर इस audit में इन्हें execute नहीं किया गया; इसलिए actual test pass status उपलब्ध नहीं है।
+
+#### 144.3 अब बची हुई वास्तविक सीमाएँ
+
+1. `electrician_payout_reconciliation.test.sql` trigger source predicate को जाँचता है, लेकिन payout rows बनाकर सभी branches के वास्तविक persisted outcomes का integration test होने का प्रमाण इस static review से नहीं मिला।
+2. Manual Refund और Recovery Finalizer pgTAP tests function body में trigger के बाद reread जाँचते हैं; transaction rollback और सभी संबंधित rows की atomic rollback का runtime assertion अलग से चाहिए।
+3. Trigger definition के exact `UPDATE OF` column list की complete expected equality, concurrent refund/payout mutation और trigger ordering के वास्तविक runtime behavior की पुष्टि शेष है।
+4. Existing test file में plan(34) और plan(14)/plan(35) declarations हैं; यह घोषित assertions की संख्या है, passing result नहीं।
+5. Node test stale migration-source issue अब भी अलग है: `tests/admin-refund-and-staff-access.test.js` पुरानी SQL files पढ़ता है। Existing pgTAP coverage उस Node test के stale source selection को अपने-आप ठीक नहीं करती।
+
+#### 144.4 Corrected Conclusion
+
+- Trigger source contract के लिए नया pgTAP test शून्य से बनाने की आवश्यकता सिद्ध नहीं हुई; पहले से मौजूद 34-plan payout test मुख्य conditions cover करता है।
+- बेहतर अगला कदम existing pgTAP coverage को final trigger event-column contract और आवश्यक rollback/runtime cases के विरुद्ध gap-check करना है।
+- Manual Refund और Recovery Finalizer के pgTAP source/privilege checks भी पहले से मौजूद हैं; उन्हें execute किए बिना pass नहीं कहा जा सकता।
+- Section 143 को इस correction के साथ पढ़ें: source assertions मौजूद हैं; runtime transition/rollback/concurrency प्रमाण अभी बाकी हैं।
+
+कोई test execute या edit नहीं किया गया। कोई SQL, migration, database, CI, deployment, merge या Production state नहीं बदली गई।
