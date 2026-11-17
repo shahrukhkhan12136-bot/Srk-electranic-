@@ -50,6 +50,7 @@ exports.handler=async event=>{
  const bookingId=input?.booking_id,note=typeof input?.admin_note==="string"?input.admin_note.trim():"";
  if(!UUID.test(bookingId||""))return json(400,{success:false,error:"Valid booking ID required."});
  if(note.length<10||note.length>2000)return json(400,{success:false,error:"Recovery audit note must contain 10–2000 characters."});
+ let evidenceWriteStarted=false;
  try{
   const user=await adminUser(match[1],cfg);if(!user)return json(403,{success:false,error:"Only Main Admin can run refund recovery."});
   const rows=await dbGet("/rest/v1/srk_razorpay_refunds?booking_id=eq."+encodeURIComponent(bookingId)+"&select=id,booking_id,payment_id,refund_id,amount_paise,currency,idempotency_key,status&limit=2",cfg);
@@ -77,13 +78,14 @@ exports.handler=async event=>{
   const acquirer=providerRefund.acquirer_data||{};
   const acquirerReference=acquirer.arn||acquirer.rrn||acquirer.utr||null;
   const payloadHash=createHash("sha256").update(JSON.stringify(providerRefund)).digest("hex");
+  evidenceWriteStarted=true;
   const evidenceId=await rpc("srk_service_record_razorpay_refund_recovery_evidence",{
    p_refund_record_id:record.id,p_provider_refund_id:providerRefund.id,p_payment_id:providerRefund.payment_id,
    p_amount_paise:Number(providerRefund.amount),p_currency:providerRefund.currency,p_provider_status:providerRefund.status,
    p_provider_created_at:providerCreatedAt,p_acquirer_reference:acquirerReference,p_provider_payload_sha256:payloadHash,
    p_observation_id:randomUUID(),p_provider_evidence:providerRefund,p_admin_user_id:user.id,p_admin_note:note
   },cfg);
-  if(typeof evidenceId!=="string"||!UUID.test(evidenceId))return json(502,{success:false,evidence_saved:false,error:"Recovery evidence RPC did not return a valid audit ID.",safe_to_retry:false});
+  if(typeof evidenceId!=="string"||!UUID.test(evidenceId))return json(202,{success:false,evidence_saved:"unknown",accounting_finalized:false,status:"evidence_write_outcome_unknown",safe_to_retry:false,error:"Evidence request का जवाब प्रमाणित नहीं हुआ। Database में रिकॉर्ड सुरक्षित हुआ हो सकता है; नया refund न बनाएँ और audit records जाँचें।"});
   if(providerRefund.status!=="processed")return json(202,{success:true,evidence_saved:true,accounting_finalized:false,recovery_audit_id:evidenceId,provider_status:providerRefund.status,safe_to_retry:false,message:"Provider प्रमाण अलग transaction में सुरक्षित हुआ। केवल processed status ही accounting finalization के योग्य है; कोई payout release या नया refund नहीं किया गया।"});
   try{
    // This is intentionally a second HTTP/PostgREST request and therefore a separate DB transaction.
@@ -95,6 +97,7 @@ exports.handler=async event=>{
   }
  }catch(error){
   console.error("Razorpay refund recovery failed:",error?.status||error?.name||"Unknown");
+  if(evidenceWriteStarted)return json(202,{success:false,evidence_saved:"unknown",accounting_finalized:false,status:"evidence_write_outcome_unknown",safe_to_retry:false,error:"Evidence save अनुरोध भेजा गया था, लेकिन उसका परिणाम verify नहीं हुआ। Database में audit रिकॉर्ड सुरक्षित हुआ हो सकता है; नया refund न बनाएँ और मौजूदा recovery audit जाँचें।"});
   return json(502,{success:false,evidence_saved:false,safe_to_retry:false,error:"Refund recovery अभी पूरी नहीं हो सकी। Provider या database स्थिति verify नहीं हुई; कोई नया refund/retry न करें."});
  }
 };
