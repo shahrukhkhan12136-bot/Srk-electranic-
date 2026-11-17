@@ -4158,3 +4158,46 @@ Static configuration से:
 5. जब तक वह path स्थापित और execute न हो, migration replay, SQL parser, pgTAP और runtime assertions को **Not Run / Unverified** ही रिपोर्ट किया जाए।
 
 कोई package script, workflow, test या migration edit नहीं किया गया। कोई CI dispatch, database connection, SQL execution, deployment, merge या Production operation नहीं हुआ।
+
+
+### 146. CI Workflow का Production Schema Dependency और Local-Only Replay Gap — 17 Nov 2026
+
+इस चरण में मौजूदा `.github/workflows/supabase-schema-ci.yml` की शेष पूरी workflow steps का static review किया गया। कोई workflow dispatch या database connection नहीं किया गया।
+
+#### 146.1 Workflow का वास्तविक Data/Schema Flow
+
+Workflow blob: `8cdd128fb69227fee82b5084f8b78634f13ffcb2`.
+
+क्रम इस प्रकार है:
+1. GitHub Secret `SUPABASE_DB_URL` की मौजूदगी और PostgreSQL URI format जाँचा जाता है।
+2. उसी remote URL पर read-only role-check SQL चलाया जाता है।
+3. उसी remote URL से `public,private` schema का dump लिया जाता है।
+4. Schema dump को temporary local Supabase stack में restore किया जाता है।
+5. उसके बाद पाँच hard-coded Feature migrations चलती हैं।
+6. Local lint और तीन object smoke checks चलते हैं; अंत में local stack stop होती है।
+
+इससे यह स्पष्ट है कि migration execution local isolated stack में होता है, लेकिन test baseline remote database schema से लिया जाता है। अतः यह पूरी तरह Local-Only / Zero-Remote-Dependency replay नहीं है।
+
+#### 146.2 सुरक्षा और Coverage की सीमाएँ
+
+- Workflow की role-check query remote database से चलती है; यह स्वयं remote connection है, भले query read-only हो।
+- Schema-only dump में table rows export न करने का प्रयास है; workflow dump में COPY/INSERT statements की जाँच भी करता है। इससे Production data dump होने का प्रमाण नहीं मिलता, लेकिन schema metadata और object definitions फिर भी remote source से लिए जाते हैं।
+- Temporary local Supabase stack isolated है, पर उसका starting schema Production-derived है; यह blank database से पूरी migration history replay करने के बराबर नहीं है।
+- Workflow केवल पाँच Feature migrations hard-code करता है; GPT-2 Audit Branch की 89-file migration chain, duplicate version-prefix resolution, bootstrap ordering और pgTAP database suite का replay नहीं करता।
+- Role-check और schema-dump commands का वास्तविक व्यवहार, credential permissions, network boundary या secret value इस static audit में independently verify नहीं किए गए।
+- Workflow feature branch condition पर gated है; Audit Branch के लिए यह current execution path नहीं है।
+
+#### 146.3 सुरक्षित Engineering Recommendation
+
+1. एक अलग Local-Only workflow/script प्रस्तावित किया जाए, जो disposable local PostgreSQL/Supabase instance से शुरू हो और किसी remote database URL या Production secret को स्वीकार न करे।
+2. पहले migration inventory और duplicate timestamp/version collision का deterministic resolution plan बनाया जाए।
+3. सभी migrations को निर्धारित क्रम में replay कर SQL parser/database errors capture किए जाएँ।
+4. उसके बाद pgTAP database tests उसी disposable instance पर चलें।
+5. CI बदलाव को review और explicit owner approval के बाद ही बनाया या dispatch किया जाए।
+6. मौजूदा remote-schema workflow को अलग नाम/उद्देश्य से रखा जाए; इसे clean-room migration replay या Production-independent test प्रमाण न कहा जाए।
+
+#### 146.4 निष्कर्ष
+
+मौजूदा Workflow में Local Supabase execution मौजूद है, लेकिन baseline Production-derived schema है। इसलिए इसे पूरी तरह Local-Only migration replay नहीं माना जा सकता। Audit Branch की complete clean replay और pgTAP execution अभी **Not Run / Unverified** हैं।
+
+कोई workflow, package script, migration या test file edit नहीं की गई। कोई CI dispatch, remote database query, schema export, SQL execution, deployment, merge या Production operation नहीं हुआ।
