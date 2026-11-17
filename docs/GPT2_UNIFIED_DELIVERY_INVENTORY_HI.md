@@ -392,3 +392,44 @@ Recursive Git tree से `tests/*.test.js` की वास्तविक स�
 - Current source count prior snapshot 86 migrations / 43 Node tests से बढ़कर **87 SQL migrations / 44 Node test files** हुआ है; **32 pgTAP SQL files / 3 workflows** का पिछला count इस update में दोबारा recursive-tree से सत्यापित नहीं किया गया। नई migration के लिए तीन Node source-contract checks और `financial_audit_core_schema.test.sql` में तीन pgTAP assertions मौजूद हैं।
 - Exact PR head `${head}` पर इस audit में कोई GitHub Actions workflow run उपलब्ध नहीं था। पुराने head `68a6919` पर दर्ज 280/284 परिणाम इस head का CI परिणाम नहीं है। Netlify Deploy Preview सफल और Vercel build rate-limit failure अलग status checks हैं।
 - कोई PostgreSQL/pgTAP execution, full ordered replay, Production query/write, payment/refund/payout, merge या deployment नहीं किया गया।
+
+
+### 3I. GPT-2 audit branch — Support Attachment Security और वर्तमान source-tree count (17 Nov 2026)
+
+वर्तमान GPT-2 audit branch `chore/pr8-replay-audit-20261116-v2`, HEAD `ac4e55deec73c1f6b050bd96673f20afb66bf301` पर recursive Git tree से निम्न source counts सत्यापित हुए:
+
+- **91 SQL migrations**
+- **36 Supabase pgTAP SQL test files**
+- **54 Node `.test.js` files**
+- **3 GitHub Actions workflows**
+
+ये पूरे branch के repository counts हैं; इन्हें केवल GPT-2-owned files की संख्या न समझें। पुराने §3H के 87/44 counts इस branch snapshot के लिए superseded हैं।
+
+इस audit branch पर हाल के GPT-2 Support Attachment source changes:
+
+1. `20261117100000_prevent_deleting_linked_support_attachments.sql`: generic Customer Support Storage DELETE को linked attachment metadata के रहते रोकता है; unlinked pending object cleanup path रखता है। साथ में link/delete row-lock serialization जोड़ी गई।
+2. `support_attachment_deletion_lifecycle.test.sql`: 8 pgTAP source-contract assertions; **execute नहीं किया गया**।
+3. `20261117110000_support_staff_assigned_customer_attachment_read.sql`: Support Staff को केवल वर्तमान में assigned Customer Complaint की metadata-linked attachments पढ़ने देता है। Customer owner और Main Admin read path बना रहता है; Staff upload/delete नहीं मिलता।
+4. `support_attachment_staff_access.test.sql`: 10 pgTAP source-contract assertions; **execute नहीं किया गया**।
+5. `admin.html`: Staff Customer Complaint thread में attachment listing/open controls; authenticated Storage `download()` request इस्तेमाल होती है, Staff signed URL नहीं बनाया जाता।
+6. `staff-customer-attachment-access-contract.test.js`: 6 Node source-contract cases; **Node test runner में execute नहीं किया गया**।
+7. इस audit में `admin.html` का एक inline script और नया Node test source in-memory JavaScript syntax compilation से गुजरे; यह Node test suite/CI run का विकल्प नहीं है।
+
+### 3J. Migration version lineage — current branch recheck (17 Nov 2026)
+
+Recursive migration filename scan में अभी भी केवल एक duplicate version group मिला:
+
+- `20261109_allow_quote_approval_booking_states.sql`
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+
+`tests/database-migration-version-uniqueness.test.js` इस exact legacy pair को explicit exception के रूप में allow करता है; नए duplicate versions को fail करता है। दोनों files के SQL content में status constraints दोबारा replace होते हैं, पर repository source से hosted environment में कौन-सा version/SQL पहले या दोनों लागू हुए थे, यह स्थापित नहीं होता।
+
+**सुरक्षित स्थिति:** filenames rename/resequence, migration history repair या remote migration-list query नहीं किया गया। पहले owner/DBA से sanitized read-only migration-history evidence आवश्यक है। Supabase migration tracking timestamps पर आधारित है; इसलिए समान version prefix को filename-only बदलाव मानकर सुरक्षित रूप से हल नहीं किया जा सकता।
+
+### 3K. Progress / verification boundary — 17 Nov 2026
+
+- Official GPT-2 checklist: **27/39 = 69% complete; 12 remaining** — unchanged.
+- Support attachment changes are source additions only. No pgTAP, PostgreSQL replay, Storage actor runtime, browser runtime or CI execution is claimed.
+- Complaint/Message hard-delete के बाद orphan Storage object cleanup workflow remains open; no automatic cleanup feature was added.
+- PR #8 remains Open/Draft/Unmerged and points to its separate feature head; the GPT-2 audit branch was not merged.
+- No remote/Production database query, migration execution, provider operation, deployment, merge or mobile QA was performed.
