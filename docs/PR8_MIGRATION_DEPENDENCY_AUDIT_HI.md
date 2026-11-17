@@ -1826,3 +1826,31 @@ Do not silently replace LEFT JOIN with INNER JOIN: that would hide affected book
 
 **Status:** report join and coalesce behavior source-verified against the detailed reconciliation function. No database fixtures, SQL execution, or runtime report comparison performed. Finding requires owner/product approval before implementation; no Production or PR-branch changes performed.
 
+## 91. Bootstrap SQL versus numbered-lineage admin-helper contract — 17 Nov 2026
+
+The four root-level setup scripts and the numbered admin/RBAC migrations were compared to determine whether any one root script can safely be treated as the canonical baseline.
+
+### Source evidence
+
+1. `SUPABASE_SCHEMA.sql` defines the starter customer/provider tables and policies, but it does not define either `public.srk_is_admin()` or `public.is_srk_admin()`.
+2. `PORTAL_SCHEMA.sql` creates `srk_admin_users`, defines `public.srk_is_admin()`, and uses that helper in its Admin RLS policies and its first version of `srk_admin_review_application(uuid,text)`.
+3. `ADMIN_EMAIL_LOGIN_SETUP.sql` instead defines `public.is_srk_admin()` and recreates the Admin policies and application-review RPC using that name.
+4. `COMPLETE_DATABASE_SETUP.sql` contains the portal setup and then appends the email-login compatibility patch. Its final script therefore defines both helper names and replaces the earlier application-review function with a version that calls `is_srk_admin()`.
+5. The numbered lineage is written against `public.is_srk_admin()`: for example, `20261114390000_admin_staff_rbac_foundation.sql` and `20261115230000_admin_booking_direct_write_closure.sql` call it in privileged paths. The later `20261116150000_pin_admin_application_review_search_path.sql` also alters the application-review function.
+6. At the source level, both bootstrap helper bodies currently test membership in the same `srk_admin_users` table against `auth.uid()`. Thus the naming split is not, by itself, proof of different authorization outcomes today.
+
+### Finding
+
+**No single root SQL file is demonstrated to be a canonical, numbered-migration-compatible schema baseline.** In particular, running `PORTAL_SCHEMA.sql` after the starter schema supplies `srk_is_admin()` but not the `is_srk_admin()` dependency used by later numbered admin/RBAC migrations. The consolidated setup happens to include the compatibility helper, but it is a manually assembled bootstrap artifact, not a verified replay baseline for the current migration directory.
+
+There is also a maintenance hazard: the portal and email-login scripts each recreate similarly named Admin policies and the same application-review RPC against different helper names. Applying or editing these scripts independently can leave the project with multiple policy/helper paths whose future definitions may drift. Do not assume that duplicate policy names or helper aliases are interchangeable without checking the actual deployed policy catalog and migration order.
+
+### Required baseline decision
+
+- Declare one authoritative schema/bootstrap strategy (preferably the ordered numbered migration lineage after its filename/dependency issues are resolved).
+- Treat the root setup SQL files as legacy/manual bootstrap artifacts unless an owner-approved, reproducible import/replay procedure proves otherwise.
+- If both helper names must remain for compatibility, document one as a deliberate alias and test identical ownership, grants, volatility, search path, and call-site behavior.
+- Do not rename/drop helper functions, policies, or root scripts as part of this audit. No RLS or database changes were made.
+
+**Status:** helper definitions and call sites source-verified in the four root scripts and named numbered migrations. No clean database replay, catalog inspection, SQL parser run, or live RLS behavior test was performed. Canonical baseline remains **UNRESOLVED**.
+
