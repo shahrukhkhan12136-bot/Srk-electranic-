@@ -56,6 +56,10 @@ begin
 end;
 $function$;
 
+-- PostgreSQL cannot rename an existing input parameter through CREATE OR REPLACE.
+-- Drop the prior same-signature RPC first so p_status -> p_decision is replay-safe.
+drop function if exists public.srk_admin_decide_booking_refund_request(uuid,text,text);
+
 create or replace function public.srk_admin_decide_booking_refund_request(
   p_request_id uuid,
   p_decision text,
