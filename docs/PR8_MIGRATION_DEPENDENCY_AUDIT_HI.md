@@ -6482,3 +6482,45 @@ Any report contract change should be owner-reviewed before implementation; no so
 - Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
 
 केवल source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, database query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
+
+
+## 204. Commission/Payout Parity Trigger — Missing-Row Guard and Test Coverage Cross-Check
+
+### 1. Later parity guard located
+
+Migration `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` (SHA `68189051090a51bef26a98997caf103b62ed070c`) defines `srk_validate_booking_commission_payout_parity()` and attaches it as an AFTER trigger to `service_bookings`.
+
+For a completed, paid booking with an assigned electrician and verified payment (and, for legacy bookings, an approved quote), the function:
+
+- looks up the payout row by booking ID;
+- raises `PAYOUT_ROW_MISSING_DURING_COMMISSION_PARITY_CHECK` if no row exists;
+- raises `BOOKING_COMMISSION_AND_PAYOUT_PLATFORM_COMMISSION_MISMATCH` if the booking commission is null or differs from the payout ledger commission.
+
+The payout writer trigger is named `srk_reconcile_electrician_payable`; the parity trigger is named `zz_srk_validate_booking_commission_payout_parity`. PostgreSQL runs same-event triggers of the same timing alphabetically by name, so the source naming is intended to run the payout writer before this parity guard. Both are AFTER triggers; this naming observation is source-level, not a live trigger-order test.
+
+### 2. Updated interpretation of Section 203
+
+Section 203 correctly identifies that the aggregate Admin Commission Report uses a LEFT JOIN and COALESCE, so a missing payout row would appear as zero-valued payout fields without a dedicated missing-row count in that report.
+
+This Section 204 adds an important safeguard: for qualifying booking insert/update events after both triggers are installed, the parity trigger is designed to abort the transaction if the payout writer did not create a payout row or if commission values diverge. Therefore Section 203 is a **report observability gap for anomalous/pre-existing states**, not evidence that the current trigger path silently accepts a new missing payout row.
+
+### 3. Test assertion gap
+
+The inspected `admin_labour_bill_payment_accounting_bridge.test.sql` (SHA `7db3d4e5bec75100acc6f892bbcdfe7f29f0f3b7`, `plan(19)`) checks that the reconciliation function can flag booking-to-payout commission divergence. It does not directly assert the new parity trigger's missing-row exception, mismatch exception, or trigger attachment/order.
+
+Recommended later isolated pgTAP coverage:
+- assert the parity trigger exists on `service_bookings`;
+- exercise a qualifying completed/paid transition and verify a payout row is present before parity validation;
+- verify missing-row and commission-mismatch paths abort the transaction;
+- verify non-qualifying states (for example, not yet paid/completed) bypass the parity guard as intended.
+
+### 4. Verdict and limits
+
+- Static source confirms a parity guard for missing payout rows and commission mismatch on qualifying booking events.
+- This reduces the practical exposure described in Section 203 for new transitions after the trigger migration is applied.
+- Aggregate report visibility remains limited for anomalous or historical rows; the report itself does not expose a missing-payout exception/count.
+- Trigger order, transaction rollback and actual data behavior remain unverified; no PostgreSQL or pgTAP execution was performed.
+- GPT-2 checklist remains at the last recorded **27/39 = 69%**; this documentation-only cross-check does not increment completion.
+- Paid Database Branch remains deferred until GPT-1 and GPT-2 work is collected and reconciled.
+
+केवल migration/test source inspection और audit report documentation update किया गया। कोई SQL/pgTAP execution, DB query, migration replay, source change, CI, deployment, merge या cherry-pick नहीं किया गया।
