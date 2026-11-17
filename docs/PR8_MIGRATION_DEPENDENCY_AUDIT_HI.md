@@ -7260,3 +7260,27 @@ Payout reconciliation test में घोषित `plan(34)` के साथ
 - Concurrent update behavior अलग controlled test में जाँचें; अभी कोई concurrency guarantee प्रमाणित नहीं है।
 
 Static source review only. Test, SQL, database query या migration replay नहीं चलाया गया। कोई runtime result infer नहीं किया गया। GPT-2 checklist remains 27/39 = 69%.
+
+
+## 229. Cancellation Fee Refund-Reversal pgTAP Test 44 Source Assertions तक सीमित है
+
+### Static source reviewed
+- `supabase/tests/database/cancellation_fee_refund_reversal.test.sql` SHA `db92a834fa7bcc14c57870fcd851df2a6271a387`.
+- `supabase/migrations/20261114280000_cancellation_fee_carry_forward_and_accounting.sql` SHA `e8554d1b8c85810b8dc32eb9428697d9e29dc53a`.
+- `supabase/migrations/20261115240000_harden_refund_recovery_full_amount.sql` SHA `40ebd534cf4209e98adc8c1f44b53b9ebfc09920`.
+
+### Finding
+Test `plan(44)` के साथ ठीक 44 top-level `ok(...)` assertions और `finish()` रखता है। Assertions cancellation-fee tables/constraints/indexes, grants, trigger existence, तथा refund/cancellation functions के source text में अपेक्षित checks और lock-order fragments की जाँच करते हैं।
+
+इस test में कोई booking या fee fixture insert/update/delete नहीं है और `service_bookings` पर refund transition execute नहीं किया जाता। इसलिए यह वास्तविक ledger reversal entry, wallet credit reversal, fee debt reopen, duplicate reversal rejection, full-refund gate, या refund failure पर payout hold release का transactional परिणाम प्रमाणित नहीं करता। Trigger मौजूद होने और function body में अपेक्षित text होने की पुष्टि, trigger द्वारा सही rows पर सही क्रम में व्यवहार करने का runtime प्रमाण नहीं है।
+
+यह इस test file की coverage सीमा है; इससे कोई runtime defect या migration replay failure सिद्ध नहीं होता।
+
+### Required action
+- Isolated PostgreSQL में online और manual full-refund fixtures के साथ booking refund transition चलाएँ।
+- Original cancellation-fee ledger entry के विरुद्ध एक ही reversal बनना और duplicate attempt का सुरक्षित rejection जाँचें।
+- Wallet debit reversal/credit, debt reopen और Admin ledger net total को वास्तविक rows से verify करें।
+- Failed online refund पर payout hold release तथा unrelated Admin hold preservation को transaction tests में जाँचें।
+- Missing/unsettled fee item पर rollback behavior verify करें।
+
+Static source review only. Test, SQL, database query या migration replay नहीं चलाया गया। GPT-2 checklist remains 27/39 = 69%.
