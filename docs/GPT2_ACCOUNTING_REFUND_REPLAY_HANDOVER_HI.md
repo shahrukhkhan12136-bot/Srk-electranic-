@@ -1401,3 +1401,24 @@ Feature work-event trigger जोड़ने से पहले इनके �
 - All inspected Admin RPCs remain `SECURITY DEFINER`, authenticated EXECUTE granted, anon EXECUTE denied (Section 47). Main payout/report/read functions do their own `auth.uid()` + `is_srk_admin()` check; role grants alone do not confer authorization.
 - No function was invoked; no booking, payout, refund, KYC, complaint, or customer data rows were read. Only function definitions and UI source were inspected.
 - No code, SQL migration, or production setting changed. No PR review/comment, merge, deployment, email, SMS, payment, refund or payout action.
+
+
+## Section 49 — Refund completion state और Area-change dispatcher के अतिरिक्त Admin contract blockers (2026-11-17)
+
+### Manual Refund request lifecycle mismatch — confirmed from Main function bodies
+- Admin UI approved manual-payment refund request पर `srk_admin_record_manual_refund(p_booking_id,p_reference,p_note)` invoke करता है और success के बाद UI message कहता है कि Customer request processed है.
+- Main function केवल booking row lock करता है, verified manual payment entry जाँचता है, `srk_manual_refund_entries` में refund evidence insert करता है और `service_bookings.payment_status='refunded'` करता है। इसकी signature में `request_id` नहीं है और body `srk_booking_refund_requests` को read/update नहीं करती.
+- इसलिए इस RPC से refund request का `status='processed'` (या कोई terminal request state) set होना सिद्ध नहीं है; Admin list में request approved रह सकती है। Main list RPC का `refund_record_id` Razorpay refund table से आता है, manual refund entry से नहीं। UI manual-refund completion projection को अलग से reconcile करना होगा।
+- Main function paid electrician payout मिलने पर refund रोकता है; लेकिन pending/blocked payout की final reconciliation और Feature manual-refund transaction/trigger contract के साथ parity इस legacy body से साबित नहीं होती। GPT-2/owner के joint review के बिना इस function को नई flow के लिए patch/cherry-pick न करें.
+
+### Area-change approval invokes legacy dispatcher — confirmed
+- Main `srk_admin_review_electrician_area_request` approval पर profile का state/district/PIN बदलता है, पुराने इलाके के खुले offers decline करता है और हर प्रभावित unassigned new/confirmed booking के लिए `srk_admin_offer_booking(v_booking_id)` invoke करता है।
+- वही Main `srk_admin_offer_booking` सभी eligible same-PIN या district electricians को सामूहिक offers देता है; source में `selected_category IS NULL`, exact commercial tier, booking duration, nearest-first sequential order या one-live-offer guard नहीं है।
+- अतः area-change review सिर्फ area request RPC का isolated contract नहीं है: यह नई category booking पर legacy dispatcher तक पहुँचने का दूसरा server-side path है। जब तक area-change workflow को Feature sequential dispatcher के साथ transactionally reconcile और test नहीं किया जाता, इसे नई-category bookings के लिए release-ready नहीं मानें.
+
+### Main Admin identity check — direct definition confirmation
+- Main `public.is_srk_admin()` का पूरा body केवल `public.srk_admin_users` में `auth.uid()` की मौजूदगी जाँचता है। इसमें Staff registry exclusion या cross-table UUID uniqueness check नहीं है। इसलिए Section 46–48 का Main Admin vs Support Staff UUID collision blocker अभी भी खुला है.
+
+### Scope / safety
+- ये निष्कर्ष Main live database के function definitions और Admin UI source के read-only inspection से निकले हैं; कोई booking, refund, payout, complaint, staff या customer row नहीं पढ़ी/बदली गई।
+- कोई RPC invoke नहीं हुआ; कोई migration/DDL/DML, Storage write, email/SMS, payment/refund/payout, deployment, PR review, merge या Production change नहीं हुआ।
