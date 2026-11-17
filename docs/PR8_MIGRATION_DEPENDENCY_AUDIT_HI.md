@@ -2862,3 +2862,40 @@ Owner से इनमें से एक authoritative policy चुनवा�
 - Overlap का runtime अस्तित्व: **unknown; no database query performed**.
 - Finance Audit gate closure: **owner policy decision required**.
 - No SQL/pgTAP execution, database query, permission/schema change, migration, CI run or deployment.
+
+
+## 120. Staff invite lifecycle में Main Admin target exclusion — 17 Nov 2026
+
+Section 119 के बाद पूरी RBAC foundation migration और Staff invite Edge Function की source-level जाँच की गई।
+
+### 120.1 Design intent
+
+- Migration `20261114390000_admin_staff_rbac_foundation.sql` (blob `5aa0f9058a56d735455f2a9944c861e8312ddb89`) के header और table comment में स्पष्ट design rule है: Main Admin identity केवल `srk_admin_users` में रहे; Staff को उसमें कभी insert न करें।
+- Staff invite Edge Function (blob `c783989ca7142fce9d88270286bc916a66d22298`) caller को `auth.getUser(token)` से validate करती है, `is_srk_admin()` से inviter को authorize करती है, और role को fixed `support` रखती है।
+
+### 120.2 Enforcement gap
+
+- `srk_admin_staff_register_invited_user(uuid,text,uuid)` target UUID के लिए केवल non-NULL check करती है; actor UUID को `srk_admin_users` में मौजूद होना verify करती है।
+- उपलब्ध function body में target `p_staff_user_id` के `srk_admin_users` में पहले से मौजूद होने की explicit rejection नहीं मिली।
+- Edge Function भी invite से पहले target email/UUID को Main Admin allow-list के विरुद्ध check नहीं करती। Invite API से returned target UUID को service-role registration RPC में भेज दिया जाता है।
+- `srk_admin_staff.user_id` की primary key केवल Staff table के भीतर uniqueness देती है; `srk_admin_users.user_id` के साथ cross-table exclusion नहीं।
+- इसलिए “Staff को Main Admin allow-list में कभी न रखें” स्पष्ट design intent है, लेकिन inspected invite path में target-side enforcement प्रमाणित नहीं। Existing Main Admin identity को Staff invite करने का वास्तविक परिणाम runtime/DB पर जाँचा नहीं गया।
+
+### 120.3 Security consequence and required repair design
+
+यदि वही Auth UUID दोनों registries में आ जाए, तो Section 119 वाला Main Admin-first short-circuit Staff permission helper में उस identity को full Main Admin access देता है। इसलिए overlap रोकना केवल documentation convention नहीं, authorization boundary है।
+
+Proposed remediation for owner review (not implemented):
+1. Trusted registration RPC में actor authorization के बाद target UUID के `srk_admin_users` membership की जाँच कर overlap पर fail closed करें।
+2. Invitation flow में Auth invitation भेजने से पहले existing Auth user resolution/duplicate handling सुरक्षित रूप से तय करें; केवल email string या browser role पर भरोसा न करें।
+3. दोनों registry lifecycle paths के लिए race-safe invariant तय करें; केवल application pre-check पर्याप्त नहीं, यदि concurrent insert संभव हों।
+4. pgTAP में target already Main Admin, ordinary Support target, duplicate invite, and concurrent cross-registry insert cases जोड़ें।
+
+### Status
+
+- “Staff को Main Admin allow-list में न डालें” design intent: **source-confirmed**.
+- Inviter Main Admin check and fixed Support role: **source-confirmed**.
+- Target-side Main Admin exclusion in inspected registration RPC/Edge Function: **not found**.
+- Cross-table uniqueness/exclusion constraint: **not found in inspected schema**.
+- Actual overlap in live database: **unknown; no DB query performed**.
+- No code/migration/test/permission change, no invitation, no DB/CI/deployment action.
