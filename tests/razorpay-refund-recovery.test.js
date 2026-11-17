@@ -220,3 +220,26 @@ test("stores failed provider evidence but never finalizes refund accounting or r
  assert.ok(saved);
  assert.equal(JSON.parse(saved.options.body).p_provider_status,"failed");
 });
+
+
+test("does not report evidence as unsaved when the evidence RPC outcome is ambiguous",async t=>{
+ const calls=[];
+ global.fetch=async(url,options={})=>{
+  const target=String(url);calls.push(target);
+  if(target.endsWith("/auth/v1/user"))return response(200,{id:adminId});
+  if(target.endsWith("/rpc/is_srk_admin"))return response(200,true);
+  if(target.includes("/rest/v1/srk_razorpay_refunds?"))return response(200,[record]);
+  if(target.includes("/rest/v1/service_bookings?"))return response(200,[{id:bookingId,razorpay_payment_id:paymentId}]);
+  if(target.includes("api.razorpay.com/v1/refunds/"))return response(200,providerRefund);
+  if(target.endsWith("/rpc/srk_service_record_razorpay_refund_recovery_evidence"))throw new Error("simulated response lost after request dispatch");
+  throw new Error("unexpected request "+target);
+ };
+ t.after(()=>{global.fetch=originalFetch;});
+ const result=await handler(request());const body=JSON.parse(result.body);
+ assert.equal(result.statusCode,202);
+ assert.equal(body.evidence_saved,"unknown");
+ assert.equal(body.accounting_finalized,false);
+ assert.equal(body.status,"evidence_write_outcome_unknown");
+ assert.equal(body.safe_to_retry,false);
+ assert.equal(calls.some(target=>target.endsWith("/rpc/srk_service_finalize_razorpay_refund_from_recovery_evidence")),false);
+});
