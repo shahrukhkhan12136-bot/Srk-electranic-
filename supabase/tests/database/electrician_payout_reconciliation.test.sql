@@ -1,5 +1,5 @@
 begin;
-select plan(41);
+select plan(47);
 
 select ok(to_regprocedure('public.srk_create_electrician_payable()') is not null,
   'electrician payable trigger function exists');
@@ -221,6 +221,85 @@ select ok((select position('commission_amount' in lower(pg_get_triggerdef(t.oid)
     and not t.tgisinternal
     and t.tgfoid='public.srk_validate_booking_commission_payout_parity()'::regprocedure),
   'parity validator runs on commission_amount-only edits while payout writer does not');
+
+
+-- Behavioral rollback fixtures: legacy approved-quote path avoids Auth-user and
+-- immutable new-category labour-bill prerequisites. These execute only when pgTAP runs.
+create temporary table payout_rollback_fixtures (
+  scenario text primary key,
+  electrician_id uuid not null,
+  booking_id uuid not null
+) on commit drop;
+
+with profiles as (
+  insert into public.electrician_profiles
+    (display_name,phone,state,district,pincode,active)
+  values
+    ('pgTAP payout rollback missing','9811100001','Uttar Pradesh','Varanasi','221001',false),
+    ('pgTAP payout rollback mismatch','9811100002','Uttar Pradesh','Varanasi','221001',false)
+  returning id, phone
+),
+bookings as (
+  insert into public.service_bookings
+    (customer_name,phone,state,district,pincode,address,service_type,
+     payment_method,quoted_amount,status,assigned_electrician_id,
+     commission_rate,payment_status,razorpay_payment_id,payment_verified_at,
+     amount_paid,service_charge,materials_amount,quote_status)
+  select
+    'pgTAP payout rollback', '9822200000', 'Uttar Pradesh','Varanasi','221001',
+    'Test address','Electrical repair','Razorpay',100.00,'completed',
+    p.id,15.00,'paid',
+    case p.phone when '9811100001' then 'pgTapRollbackMissingPayment' else 'pgTapRollbackMismatchPayment' end,
+    now(),100.00,100.00,0.00,'approved'
+  from profiles p
+  returning id, assigned_electrician_id, razorpay_payment_id
+)
+insert into payout_rollback_fixtures(scenario,electrician_id,booking_id)
+select case when b.razorpay_payment_id='pgTapRollbackMissingPayment'
+            then 'missing' else 'mismatch' end,
+       b.assigned_electrician_id,b.id
+from bookings b;
+
+delete from public.srk_electrician_payouts p
+using payout_rollback_fixtures f
+where f.scenario='missing' and p.booking_id=f.booking_id;
+
+select throws_ok(
+  format('update public.service_bookings set commission_amount=commission_amount where id=%L',
+    (select booking_id from payout_rollback_fixtures where scenario='missing')),
+  'PAYOUT_ROW_MISSING_DURING_COMMISSION_PARITY_CHECK',
+  'missing payout parity exception',
+  'commission-only update rejects a missing payout row'
+);
+select ok(not exists(
+  select 1 from public.srk_electrician_payouts p
+  join payout_rollback_fixtures f on f.booking_id=p.booking_id
+  where f.scenario='missing'
+), 'failed missing-payout update leaves the payout row absent');
+
+update public.srk_electrician_payouts p
+set payout_status='blocked',
+    platform_commission=platform_commission+1.00
+from payout_rollback_fixtures f
+where f.scenario='mismatch' and p.booking_id=f.booking_id;
+
+select throws_ok(
+  format('update public.service_bookings set commission_amount=commission_amount where id=%L',
+    (select booking_id from payout_rollback_fixtures where scenario='mismatch')),
+  'BOOKING_COMMISSION_AND_PAYOUT_PLATFORM_COMMISSION_MISMATCH',
+  'booking commission and payout platform commission mismatch',
+  'commission-only update rejects a payout commission mismatch'
+);
+select ok(exists(
+  select 1 from public.srk_electrician_payouts p
+  join payout_rollback_fixtures f on f.booking_id=p.booking_id
+  where f.scenario='mismatch' and p.payout_status='blocked'
+    and p.platform_commission=16.00
+), 'failed mismatch update preserves the blocked payout and its mismatched ledger amount');
+select ok((select count(*)=1 from public.srk_electrician_payouts p
+  join payout_rollback_fixtures f on f.booking_id=p.booking_id
+  where f.scenario='mismatch'),
+  'mismatch rollback preserves exactly one payout row');
 
 select * from finish();
 rollback;
