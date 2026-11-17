@@ -479,3 +479,12 @@ Read-only source recheck में एक अतिरिक्त trigger-wirin
 - pgTAP file में दो assertions जोड़े गए हैं जो दोनों triggers की column-list separation जाँचते हैं। Plan अब **41 assertions** है; actual fixture/rollback assertions अभी नहीं जोड़े गए, क्योंकि complete authoritative baseline और exact table constraints/migration replay अभी unresolved हैं।
 - Test file source count rechecked: plan **41**, `select ok(...)` assertions **41**, `finish()` और transaction rollback मौजूद। pgTAP execution **NOT RUN**।
 - GPT-2 official progress **27/39 = 69%** unchanged; source assertions/documentation implementation checklist item complete नहीं करते।
+
+
+### 3O correction — payout trigger column overlap (17 Nov 2026)
+
+- पिछले §3O draft में `materials_amount` को parity-only field मानना गलत था। Trigger DDL दोबारा पढ़ने पर payout writer भी `materials_amount` पर fire होता है; इसलिए उसे बदलकर missing-row test करने पर payout row फिर insert/upsert हो सकती थी। उस प्रस्तावित test path को वापस लिया गया।
+- सही अलग trigger path केवल `commission_amount` है: BEFORE commission trigger और AFTER payout writer दोनों की UPDATE column list में यह field नहीं है; AFTER parity validator की list में है। इसलिए missing payout row और commission mismatch दोनों को केवल `commission_amount` update द्वारा parity validator तक पहुँचाने का source-level रास्ता है, बिना payout writer चलाए।
+- pgTAP source assertions को इसी corrected condition पर बदला गया: payout writer trigger definition में `commission_amount` नहीं, parity validator definition में `commission_amount` है। Plan **41** ही है; assertions **41** हैं।
+- यह trigger-definition source inspection है, PostgreSQL/pgTAP execution नहीं। Actual rollback fixtures अभी pending हैं; clean local replay के blockers और authoritative baseline unresolved हैं।
+- GPT-2 official progress **27/39 = 69%** unchanged।
