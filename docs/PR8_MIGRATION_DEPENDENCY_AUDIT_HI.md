@@ -5327,3 +5327,52 @@ Migration में ये उपयोगी indexes हैं:
 ### 4. Verdict
 
 Authenticated client access पर revoke/RLS controls और मुख्य booking/entity/time indexes source में मौजूद हैं। लेकिन service_role को broad table privileges दिए गए हैं; actor-wise index और retention policy इस migration में नहीं दिखते। कोई grant, policy, index या retention setting बदली नहीं गई; कोई live DB privilege inspection, query plan, DB query, test, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
+
+
+
+## 173. Audit Actor Identity और Service-Role Attribution की सीमा
+
+**तारीख:** 17 नवंबर 2026  
+**Scope:** Audit core migration में actor resolution, role classification और user deletion behavior का static source review। कोई JWT/session या database execution नहीं किया गया।
+
+### 1. Actor पहचान कहाँ से आती है
+
+Migration `20261114125844_restore_financial_audit_core_schema.sql` में दोनों trigger functions:
+- `srk_capture_admin_audit_event()`
+- `srk_capture_razorpay_refund_audit_event()`
+
+`auth.uid()` से `actor_user_id` लेते हैं। फिर:
+- actor UUID NULL हो तो `actor_role='system'`
+- actor UUID मौजूद हो और `public.is_srk_admin()` true हो तो `admin'`
+- अन्यथा `user'`
+
+यह पहचान source में request/JWT context से आती है; trigger function का `SECURITY DEFINER` होना अपने-आप वास्तविक व्यक्ति की पहचान नहीं बनाता।
+
+### 2. Service-role और backend workflow की सावधानी
+
+यदि backend/service-role request में ऐसा user subject उपलब्ध नहीं है जिससे `auth.uid()` UUID दे सके, तो audit row `actor_user_id=NULL` और `actor_role='system'` के रूप में दर्ज होगी। यह तकनीकी service actor और वास्तविक initiating Admin के बीच अंतर नहीं बताती।
+
+इसलिए:
+- Service-role workflow द्वारा किए गए परिवर्तन को स्वतः किसी Admin के नाम से attribute न किया जाए।
+- यदि किसी Admin ने backend action शुरू किया है, तो initiating Admin ID को सुरक्षित, server-validated तरीके से audit context तक पहुँचाने की आवश्यकता अलग से design/test की जानी चाहिए।
+- Client द्वारा भेजे गए मनमाने actor ID को trusted identity नहीं मानना चाहिए।
+
+यह conditional source-level risk है; कोई live JWT, service-role request या deployed audit row जाँची नहीं गई।
+
+### 3. User deletion का प्रभाव
+
+Audit table में `actor_user_id` का foreign key `auth.users(id)` से जुड़ा है और `ON DELETE SET NULL` है। अतः संबंधित Auth user हटने पर पुरानी audit row में actor UUID NULL हो सकता है। `actor_role` अलग text field है, इसलिए वह अपनी मौजूदा value रख सकती है; लेकिन उस row से मूल user की UUID identity फिर उपलब्ध नहीं रहेगी।
+
+यदि compliance या investigation के लिए actor identity को लंबे समय तक स्थिर रखना आवश्यक है, तो retention और pseudonymous actor-reference policy पर अलग design review चाहिए। इस audit में कोई schema change प्रस्तावित या लागू नहीं किया गया।
+
+### 4. सुझाए गए Verification Assertions
+
+1. Authenticated Admin द्वारा किए गए परिवर्तन में अपेक्षित Admin UUID और `admin` role दर्ज हों।
+2. सामान्य authenticated user परिवर्तन में सही UUID और `user` role दर्ज हो।
+3. बिना user subject वाले trusted backend/service-role workflow का अपेक्षित `system` attribution स्पष्ट रूप से test हो।
+4. Backend workflow में initiating Admin की पहचान आवश्यक हो तो वह केवल server-validated context से आए; client-supplied arbitrary UUID स्वीकार न हो।
+5. Auth user deletion के बाद `actor_user_id` के NULL होने और `actor_role` के बने रहने का behavior policy के अनुरूप test हो।
+
+### 5. Verdict
+
+Source में actor attribution `auth.uid()` और `is_srk_admin()` पर आधारित है। Service-role/backend request में user subject न होने पर audit actor `system` हो सकता है; Auth user deletion पर actor foreign key NULL हो सकती है। इन परिस्थितियों का runtime behavior और deployed configuration verify नहीं किया गया है। कोई SQL/test/migration, grant, policy या database setting नहीं बदली गई; कोई DB query, pgTAP, replay, CI, deployment, merge या cherry-pick नहीं हुआ।
