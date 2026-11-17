@@ -2266,3 +2266,30 @@ Migration `20261117010000_reconcile_booking_commission_and_manual_payment_method
 - Actual committed inconsistent row in an installed database: **not proven; runtime test required**.
 - Fix or data mutation: **not performed**.
 - No Feature Branch, Main, Supabase or Production changes.
+
+
+## 101. NULL-method trigger path की intended Admin RPC reachability सीमा — 17 Nov 2026
+
+Section 100 के conditional NULL-method path को official legacy Admin manual-payment entry point के विरुद्ध cross-check किया गया।
+
+### 101.1 Intended RPC guard
+
+Migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`, function `srk_admin_record_manual_payment(uuid,text,text,text)`:
+- Authenticated Main Admin check करता है।
+- `p_method` NULL होने पर `INVALID_MANUAL_PAYMENT_METHOD` देता है; allowed values केवल `cash`, `upi`, `bank_transfer` हैं।
+- पहले booking को `FOR UPDATE` lock करता है और existing payment state को unpaid/pending तथा unverified होना आवश्यक करता है।
+- उसी transaction में manual evidence row insert करता है, फिर booking पर `payment_method=p_method`, `payment_status='paid'`, `payment_verified_at=clock_timestamp()` और commission update करता है।
+- Payout row insert/verify भी उसी RPC transaction में करता है।
+
+### 101.2 Impact on Section 100
+
+इसलिए Section 100 का दोनों-methods-NULL वाला path इस official Admin manual-payment RPC के सामान्य उपयोग से उत्पन्न नहीं होना चाहिए। यह अब भी legacy/pre-existing malformed data, किसी अन्य privileged write path, या direct database maintenance path के लिए source-level guard gap है; intended RPC द्वारा सामान्य user/admin input से सिद्ध exploit नहीं है।
+
+### 101.3 Status and required test
+
+- Official Admin RPC rejects NULL method and writes evidence + booking + payout in one transaction: **source-confirmed**.
+- Section 100 conditional trigger path: **source-confirmed**, but its reachability through official RPC is **not supported**.
+- Runtime proof that no alternate writer can create this state: **not available**.
+- No code changes to payment RPC, no data changes, and no database execution performed.
+
+Audit recommendation: add a regression test asserting NULL `p_method` is rejected with `INVALID_MANUAL_PAYMENT_METHOD`, and separately test a pre-existing paid booking with both method fields NULL to ensure later updates fail closed rather than relying on a stale commission value.
