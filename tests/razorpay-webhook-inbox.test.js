@@ -512,3 +512,40 @@ test("returns retryable failure when durable inbox completion cannot be persiste
     "srk_service_complete_razorpay_webhook_event"
   ]);
 });
+
+
+test("a reclaimed lease fences the earlier worker and accepts only the newer claim token", async t => {
+  const claims = [];
+  const completions = [];
+  global.fetch = async (url, options = {}) => {
+    const fn = rpcName(url);
+    if (fn === "srk_service_claim_razorpay_webhook_event") {
+      const token = claims.length === 0
+        ? "b23e4567-e89b-42d3-a456-426614174000"
+        : "c23e4567-e89b-42d3-a456-426614174000";
+      claims.push(token);
+      return response(200, {
+        success: true, should_process: true, claim_token: token,
+        attempt_count: claims.length
+      });
+    }
+    if (fn === "srk_service_complete_razorpay_webhook_event") {
+      const body = JSON.parse(options.body);
+      completions.push(body.p_claim_token);
+      if (body.p_claim_token === claims[0]) {
+        return response(200, { success: false, stale_claim: true, state: "processing" });
+      }
+      return response(200, { success: true, state: body.p_outcome });
+    }
+    throw new Error("unexpected RPC " + String(url));
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const payload = { event: "payment.authorized" };
+  const firstWorker = await handler(event(payload, "evt_lease_reclaimed"));
+  const secondWorker = await handler(event(payload, "evt_lease_reclaimed"));
+  assert.equal(firstWorker.statusCode, 500);
+  assert.equal(secondWorker.statusCode, 200);
+  assert.equal(claims.length, 2);
+  assert.notEqual(claims[0], claims[1]);
+  assert.deepEqual(completions, [claims[0], claims[0], claims[1]]);
+});
