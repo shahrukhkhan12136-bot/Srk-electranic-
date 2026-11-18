@@ -63,3 +63,50 @@ test("enabled composition passes only the app module and Supabase session provid
     else globalThis.SrkAiAssistantWidget = oldWidget;
   }
 });
+
+test("enabled app composition rejects non-HTTPS API URLs before creating a client", () => {
+  const oldClient = globalThis.SrkAiAssistantClient;
+  let clientCreated = false;
+  try {
+    globalThis.SrkAiAssistantClient = {
+      createAiAssistantClient() { clientCreated = true; return {}; }
+    };
+    assert.throws(() => mountSrkAiAssistant({
+      container: {}, supabaseClient: { auth: { getSession() {} } },
+      appRole: "customer", moduleKey: "customer_support",
+      config: { AI_ASSISTANT_ENABLED: true, AI_ASSISTANT_API_BASE_URL: "http://api.example.test" }
+    }), /ai_assistant_api_base_url_required/);
+    assert.equal(clientCreated, false);
+  } finally {
+    if (oldClient === undefined) delete globalThis.SrkAiAssistantClient;
+    else globalThis.SrkAiAssistantClient = oldClient;
+  }
+});
+
+test("app session provider propagates Supabase auth errors instead of inventing a session", async () => {
+  const oldClient = globalThis.SrkAiAssistantClient;
+  const oldWidget = globalThis.SrkAiAssistantWidget;
+  let widgetOptions;
+  const authError = new Error("session refresh failed");
+  try {
+    globalThis.SrkAiAssistantClient = {
+      createAiAssistantClient() { return { sendMessage() {}, createHandoff() {} }; }
+    };
+    globalThis.SrkAiAssistantWidget = {
+      createAiAssistantWidget(options) { widgetOptions = options; return { mounted: true }; }
+    };
+    mountSrkAiAssistant({
+      container: {}, supabaseClient: { auth: { async getSession() {
+        return { data: { session: null }, error: authError };
+      } } },
+      appRole: "electrician", moduleKey: "electrician_assistant",
+      config: { AI_ASSISTANT_ENABLED: true, AI_ASSISTANT_API_BASE_URL: "https://api.example.test" }
+    });
+    await assert.rejects(widgetOptions.getSession(), error => error === authError);
+  } finally {
+    if (oldClient === undefined) delete globalThis.SrkAiAssistantClient;
+    else globalThis.SrkAiAssistantClient = oldClient;
+    if (oldWidget === undefined) delete globalThis.SrkAiAssistantWidget;
+    else globalThis.SrkAiAssistantWidget = oldWidget;
+  }
+});
