@@ -7,7 +7,6 @@ const path = require("node:path");
 const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118080000_align_offer_85_rate_and_payout_reconciliation.sql"), "utf8");
 const rateView = fs.readFileSync(path.join(__dirname, "../lib/electrician-rate-view.js"), "utf8");
 const netRate = require("../lib/electrician-net-rate");
-const rateViewTests = fs.readFileSync(path.join(__dirname, "electrician-rate-view.test.js"), "utf8");
 const bookingApi = fs.readFileSync(path.join(__dirname, "../create-booking.js"), "utf8");
 
 test("electrician rate-list builder calls the direct 85 percent half-up helper", () => {
@@ -30,9 +29,6 @@ test("SQL and JavaScript direct 85 percent half-up arithmetic agree on 10, 30, 5
     // SQL floor((gross * 8500 / 10000) + 0.5) uses the same positive-number half-up rule.
     const sqlEquivalent = Math.floor((gross * 8500 / 10000) + 0.5);
     assert.equal(sqlEquivalent, expected);
-  }
-  for (const [gross, expected] of tieCases) {
-    assert.ok(rateViewTests.includes(`electrician_rate_paise), [9, 26, 43, 60]`) || expected > 0);
   }
 });
 
