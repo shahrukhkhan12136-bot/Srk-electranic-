@@ -1,6 +1,28 @@
 # SRK ELECTRONIC — Commercial Rate List Management (Design Only)
 
-**Status:** Source documentation only. No migration, SQL execution, database change, deployment, or live rate change has been performed.
+**Status (18 नवंबर 2026):** यह दस्तावेज़ मूल डिजाइन आवश्यकताओं का रिकॉर्ड है। नीचे दिए गए पुराने प्रस्तावित API/स्कीमा को वर्तमान implementation न समझें। संबंधित SQL migrations और source tests repository में मौजूद हैं, लेकिन इन्हें किसी live/hosted database पर लागू करने या rate बदलने की पुष्टि नहीं है।
+
+## 0. Repository implementation status
+
+Rate List के लिए source migrations मौजूद हैं:
+
+- `20261118050000_versioned_rate_catalogue_and_multi_category_electricians.sql`: versioned published catalogue, चार rate tiers, category approvals, Main Admin publish RPC, customer catalogue read RPC और electrician net-rate RPC।
+- `20261118070000_admin_rate_catalogue_read_rpcs.sql`: Main Admin के लिए approved electrician/category read RPC।
+- `20261118080000_align_offer_85_rate_and_payout_reconciliation.sql` और `20261118110000_unify_electrician_rate_rounding.sql`: electrician offer/net और payout गणना को एक rounding नियम से मिलाते हैं।
+- `20261118090000_enforce_booking_rate_snapshot_immutability.sql`: booking के rate estimate snapshot को बदलने से रोकता है।
+
+**वास्तविक schema और इस दस्तावेज़ के पुराने प्रस्ताव में अंतर:**
+
+- वर्तमान migration में catalogue versions का status केवल `published` है। Draft/scheduled status workflow अभी schema में नहीं है।
+- Future `effective_at` स्वीकार किया जाता है, लेकिन अलग scheduled-status/approval queue नहीं है।
+- वास्तविक audit table का नाम `srk_rate_catalogue_audit` है; इसमें tier-wise पुराने/नए paise, actor और reason दर्ज होते हैं।
+- Admin publish RPC चारों tier keys, positive integer paise, reason और expected-current-version की जाँच करता है।
+- Main Admin authorization database RPC में `public.is_srk_admin()` से जाँचा जाता है।
+- Customer और electrician read RPC अलग हैं; electrician को केवल अपनी active approved categories की net rate मिलती है।
+- Booking estimate snapshot immutable है; पुरानी booking की कीमत को नए catalogue से दोबारा नहीं निकाला जाता।
+
+यहां “migration मौजूद” का अर्थ केवल Git branch में source file होना है। इसका अर्थ PostgreSQL replay, hosted DB update, deployment या production verification नहीं है। इन कार्यों के लिए अलग स्पष्ट अनुमति आवश्यक है।
+
 
 ## 1. Business requirements
 
