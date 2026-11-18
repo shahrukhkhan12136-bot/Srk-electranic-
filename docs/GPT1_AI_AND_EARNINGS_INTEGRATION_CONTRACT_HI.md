@@ -287,3 +287,8 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 
 - App composition अब `APP_MODULES_BY_ROLE` में role lookup के लिए own-property check करता है। `__proto__`, `constructor`, `toString`, `hasOwnProperty` जैसे inherited object names किसी app role की तरह स्वीकार नहीं होंगे।
 - Regression test इन चार prototype property names को invalid role के रूप में जाँचता है। Tests अभी execute नहीं हुए हैं।
+
+### AI widget idempotency-key failure recovery
+
+- Message और human-handoff दोनों flows में injected `createId()` अब `try` के अंदर चलता है। अगर key factory exception दे, widget generic safe error path लेता है और `finally` में busy state/control recovery होती है; uncaught exception से UI permanently disabled नहीं रहनी चाहिए।
+- Regression source assertions जोड़े गए हैं। Runtime tests अभी execute नहीं हुए हैं।
