@@ -1,5 +1,6 @@
 -- DRAFT ONLY. Run in a disposable DB after reviewing the schema draft.
 BEGIN;
+SET LOCAL search_path TO public, extensions;
 SELECT plan(29);
 SELECT ok(to_regclass('public.srk_ai_conversations') IS NOT NULL,'conversations table exists');
 SELECT ok(to_regclass('public.srk_ai_messages') IS NOT NULL,'messages table exists');
