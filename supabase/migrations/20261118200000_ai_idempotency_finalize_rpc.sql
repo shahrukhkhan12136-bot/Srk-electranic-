@@ -25,7 +25,7 @@ BEGIN
   END IF;
   IF p_actor_user_id IS NULL OR p_idempotency_key IS NULL OR
      p_request_sha256 IS NULL OR octet_length(p_request_sha256) <> 32 OR
-     p_final_status NOT IN ('completed','failed') OR
+     p_final_status IS NULL OR p_final_status NOT IN ('completed','failed') OR
      p_response_code IS NULL OR p_response_code NOT BETWEEN 100 AND 599 THEN
     RAISE EXCEPTION 'AI_INVALID_IDEMPOTENCY_FINALIZATION' USING ERRCODE='22023';
   END IF;
