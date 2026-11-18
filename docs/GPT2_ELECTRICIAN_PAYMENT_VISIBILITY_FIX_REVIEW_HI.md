@@ -45,8 +45,8 @@ Offer response में gross quote, service charge और materials fields त
 - पुराने variable commission और नए fixed 15% display share के बीच वास्तविक समानता अभी Production data के बिना सिद्ध नहीं है। Payout ledger amount अलग से लौटता है; दोनों में अंतर होने पर reconciliation आवश्यक है। इसीलिए इसे payout formula change या final accounting reconciliation न समझें।
 
 ## 5. Tests / Source checks
-- `tests/electrician-rate-view.test.js`: 9 unit cases; local Node run में 9 PASS, 0 FAIL।
-- `tests/electrician-payment-stage-sql-contract.test.js`: SQL migration और UI के लिए 8 source-contract tests जोड़े गए। Current source content पर 8/8 static assertions सफल।
+- `tests/electrician-rate-view.test.js`: 11 unit cases; local Node run में 11 PASS, 0 FAIL।
+- `tests/electrician-payment-stage-sql-contract.test.js`: SQL migration और UI के लिए 8 source-contract tests जोड़े गए। Current source content पर 8/8 static assertions सफल। Helper में browser-supplied stage ignore होने और manual-payment evidence requirement के लिए unit cases भी शामिल हैं।
 - PostgreSQL runtime / actual Supabase RPC integration test नहीं चला; कोई database connection या migration apply नहीं की गई।
 - Production में RPC signature बदलने के बाद app compatibility, grants, SQL execution plan और वास्तविक response payload का authenticated test बाकी है।
 
