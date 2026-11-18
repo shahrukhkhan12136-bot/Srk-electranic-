@@ -5,6 +5,7 @@ const cfg=window.SRK_CONFIG||{};let electricianAiAssistantWidget=null,electricia
 let sb,user,profile,offersChannel,otpBusy=false,otpCooldownUntil=0,otpTimer=null,phoneChangeRequestId=null,phoneChangeBusy=false,electricianRefreshRequest=0,electricianEarningsRequest=0,electricianWalletRequest=0,electricianDisplayNameSaveRequest=0,electricianPhoneChangeActionRequest=0;const locationWatches=new Map();
 function safeTel(v){const p=String(v??'').replace(/\D/g,'');return /^[0-9]{10,15}$/.test(p)?'tel:'+p:''}
 function clearElectricianAccountView(){
+ destroyElectricianAiAssistant();
  electricianAccountViewGeneration++;
  electricianAreaChangeBusy=false;
  locationWatches.forEach(watch=>navigator.geolocation.clearWatch(watch));
