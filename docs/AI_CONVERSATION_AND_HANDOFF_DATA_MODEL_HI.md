@@ -16,7 +16,7 @@ AI storage की source migrations:
 
 वास्तविक schema में महत्वपूर्ण अंतर:
 
-- Conversation status `open`, `handoff_requested`, `closed` है; पुराना `handoff_pending` नाम लागू नहीं।
+- Conversation status `open`, `handoff_requested`, `closed` है; पुराना `handoff_requested` नाम लागू नहीं।
 - Message sender field `sender_kind` है और values `user`, `assistant`, `human_agent` हैं; पुराना `sender_type/system` contract लागू नहीं। नया append RPC अभी केवल `user` और `assistant` sender स्वीकार करता है; human-agent workflow अलग से बनना है।
 - Handoff table का नाम `srk_ai_handoff_queue` है; handoff status `queued`, `assigned`, `resolved`, `cancelled` हैं।
 - Idempotency actor-scoped unique key `(actor_user_id,idempotency_key)` और SHA-256 digest `request_sha256` पर आधारित है। Response body store नहीं होती; reservation states में `reserved`, `conflict`, `replay`, `processing`, `failed` हैं।
@@ -46,7 +46,7 @@ AI conversation, AI message, idempotency, handoff और AI audit के लि�
 - `owner_user_id uuid not null references auth.users(id)`
 - `actor_type text not null`: केवल `customer` या `electrician`
 - `module_key text not null`: Customer के लिए `customer_support` / `booking_assistant`; Electrician के लिए `electrician_assistant`
-- `status text not null`: `open`, `handoff_pending`, `closed`
+- `status text not null`: `open`, `handoff_requested`, `closed`
 - `created_at`, `updated_at`, `closed_at`
 
 हर read/write पर owner और module authorization server से दोबारा जाँचना है। Conversation UUID जानना ownership का प्रमाण नहीं है।
@@ -175,7 +175,7 @@ Regression test इस contract को सुरक्षित रखता ह
 1. `srk_ai_conversations`
    - Primary key UUID; owner Auth user से जुड़ा होगा।
    - `actor_type` केवल `customer` / `electrician`; `module_key` actor के allowlisted modules में ही।
-   - Status केवल `open`, `handoff_pending`, `closed`; timestamps server-generated।
+   - Status केवल `open`, `handoff_requested`, `closed`; timestamps server-generated।
    - प्रत्येक request पर owner, active profile और module authorization पुनः जाँचना होगा; UUID अकेले अनुमति नहीं है।
 
 2. `srk_ai_messages`
