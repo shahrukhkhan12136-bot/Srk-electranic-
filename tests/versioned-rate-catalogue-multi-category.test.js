@@ -82,10 +82,12 @@ test("electrician rate-list RPC calculates direct 85 percent using half-up integ
   assert.doesNotMatch(migration, /'electrician_rate_paise',\(i\.customer_rate_paise-floor/);
 });
 
-test("85/15 split is complementary to the existing rounded 15 percent commission", () => {
+test("payout accounting retains one rounded 15 percent commission while rate-list display uses separate direct 85 percent", () => {
   assert.match(netPolicy, /PLATFORM_COMMISSION_BPS = 1500/);
   assert.match(netPolicy, /const net = Number\(gross - commission\)/);
-  assert.match(migration, /i\.customer_rate_paise-floor\(\(i\.customer_rate_paise::numeric\*1500\/10000\)\+0\.5\)/);
+  assert.match(netPolicy, /ELECTRICIAN_RATE_LIST_BPS = 8500/);
+  assert.match(migration, /'electrician_rate_paise',floor\(\(i\.customer_rate_paise::numeric\*8500\/10000\)\+0\.5\)::bigint/);
+  assert.doesNotMatch(migration, /'electrician_rate_paise',\(i\.customer_rate_paise-floor/);
 });
 
 test("catalogue version, item, and audit rows cannot be updated or deleted", () => {
