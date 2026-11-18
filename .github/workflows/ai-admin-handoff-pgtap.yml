@@ -72,11 +72,11 @@ jobs:
           docker exec "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;"
           OUTPUT="$({ printf '%s\n' 'SET search_path = public, extensions;'; cat "$GITHUB_WORKSPACE/supabase/tests/database/ai_admin_handoff_queue_read.test.sql"; } | docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 2>&1)" || { printf '%s\n' "$OUTPUT"; exit 1; }
           printf '%s\n' "$OUTPUT"
-          if printf '%s\\n' "$OUTPUT" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
+          if printf '%s\n' "$OUTPUT" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
             echo "pgTAP reported failed assertions."
             exit 1
           fi
-          if ! printf '%s\\n' "$OUTPUT" | grep -Eq '1\.\.13'; then
+          if ! printf '%s\n' "$OUTPUT" | grep -Eq '1\.\.13'; then
             echo "Expected pgTAP plan 1..13 was not found."
             exit 1
           fi
