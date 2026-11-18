@@ -33,7 +33,7 @@ The cash RPC remains separate. The legacy manual-payment RPC remains legacy-only
 
 This RPC is an **Admin-recorded verification** workflow. It does not independently query a UPI/bank provider or verify a bank statement. The Admin must inspect the actual received transaction and enter the correct UPI reference / UTR. The reference is audit evidence, not proof by itself.
 
-The advisory lock prevents concurrent duplicate references through this RPC. The source does not yet add a global unique index over all historical manual references; existing duplicate data and other insertion paths must be reviewed before such a constraint is safe.
+The UPI/bank RPC and the new-Catalogue cash hardening RPC now take the same transaction advisory lock and check the shared manual-payment evidence table before insert. This serializes duplicate references between these two new-Catalogue RPCs. The source does not yet add a global unique index over all historical manual references; legacy/manual or other insertion paths that do not take this lock, and existing duplicate data, must be reviewed before claiming global uniqueness.
 
 ## Regression test
 
