@@ -33,7 +33,7 @@ DECLARE
   v_uid uuid := auth.uid();
   v_session_id uuid;
 BEGIN
-  IF v_uid IS NULL OR p_permission_key IS NULL OR length(p_permission_key)>100 THEN
+  IF v_uid IS NULL OR p_permission_key IS NULL OR length(p_permission_key)>120 THEN
     RETURN false;
   END IF;
   IF public.is_srk_admin() THEN
@@ -65,8 +65,9 @@ BEGIN
     SELECT 1
       FROM public.srk_admin_staff s
       JOIN public.srk_admin_role_permissions rp ON rp.role_key=s.role_key
+      JOIN public.srk_admin_permissions p ON p.permission_key=rp.permission_key
      WHERE s.user_id=v_uid AND s.status='active'
-       AND rp.permission_key=p_permission_key
+       AND p.permission_key=p_permission_key
   ) OR (
     p_permission_key IN ('ai.handoff.read','ai.handoff.reply','ai.handoff.resolve')
     AND EXISTS (
