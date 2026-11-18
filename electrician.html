@@ -777,7 +777,7 @@ async function loadEarnings(){
    detail='<p class="bad">Checkout शुरू है, लेकिन इस Booking का पुराना Commission 15% से अलग है। सही मिलान होने तक वित्तीय विभाजन छिपाया गया है।</p>';
   }else if(x.payment_stage==='payment_verified'){
    detail='<p><b>भुगतान सत्यापित:</b> ग्राहक से वास्तविक प्राप्त '+money(x.amount_received)+' • Labour कुल '+money(x.customer_labour_gross)+' • आपकी वास्तविक देय कमाई '+money(x.electrician_earning)+' • वास्तविक कंपनी कमीशन '+money(x.company_share)+'</p>'+
-    '<p><b>अलग Electrician Payout Ledger:</b> '+money(x.payout_amount)+' • '+esc(statusText[x.payout_status]||x.payout_status||'रिकॉर्ड उपलब्ध नहीं')+'</p>';
+    '<p><b>अलग Electrician Payout Ledger:</b> '+(x.payout_amount==null?'राशि अभी दर्ज नहीं':money(x.payout_amount))+' • '+esc(statusText[x.payout_status]||x.payout_status||'रिकॉर्ड उपलब्ध नहीं')+'</p>';
   }else if(x.payment_stage==='refunded'){
    detail='<p class="muted">इस Booking का भुगतान Refund / Reversal में दर्ज है।</p>';
   }else{
