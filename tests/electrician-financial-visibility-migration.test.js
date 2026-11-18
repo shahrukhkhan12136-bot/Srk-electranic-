@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118033000_gate_electrician_financial_visibility.sql"), "utf8");
+const orderLockMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118040000_atomic_electrician_payment_order_link.sql"), "utf8");
 const ui = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
 
 test("offer RPC returns a distinct electrician net field, never the gross estimate column", () => {
@@ -82,11 +83,20 @@ test("Razorpay order amount comes from immutable server bill and persisted fee l
   assert.doesNotMatch(createOrder, /b\.amount\s*\|\|/);
 });
 
-test("Razorpay order persistence is conditional on booking remaining completed and unpaid", () => {
-  assert.match(createOrder, /&status=eq\.completed&payment_status=not\.in\.\(paid,refunded\)/);
-  assert.match(createOrder, /if\(!Array\.isArray\(persisted\)\|\|persisted\.length!==1\)/);
-  assert.match(createOrder, /razorpay_order_id:order\.id,payment_status:"pending"/);
-  assert.ok(createOrder.indexOf("const persisted=await db(") < createOrder.indexOf('return json(200,{success:true,key_id:RAZORPAY_KEY_ID'));
+test("payment order lock RPCs are service-role only and link validates lock token atomically", () => {
+  assert.match(orderLockMigration, /CREATE OR REPLACE FUNCTION public\.srk_claim_payment_order_lock/);
+  assert.match(orderLockMigration, /CREATE OR REPLACE FUNCTION public\.srk_release_payment_order_lock/);
+  assert.match(orderLockMigration, /CREATE OR REPLACE FUNCTION public\.srk_service_role_link_payment_order/);
+  assert.match(orderLockMigration, /v_lock\.lock_token IS DISTINCT FROM p_lock_token/);
+  assert.match(orderLockMigration, /FOR UPDATE/);
+  assert.match(orderLockMigration, /TO service_role/);
+  assert.match(createOrder, /rpc\/srk_service_role_link_payment_order/);
+  assert.doesNotMatch(createOrder, /service_bookings\?id=eq\.[\s\S]{0,150}PATCH/);
+});
+
+test("Razorpay order is not replaced when a previous linked order cannot be reused", () => {
+  assert.match(createOrder, /if\(!order&&booking\.razorpay_order_id\)/);
+  assert.match(createOrder, /Admin reconciliation आवश्यक है/);
 });
 
 test("customer payment verification checks HMAC, captured status, order, INR and exact amount", () => {
