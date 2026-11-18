@@ -82,9 +82,11 @@ test("Razorpay order amount comes from immutable server bill and persisted fee l
   assert.doesNotMatch(createOrder, /b\.amount\s*\|\|/);
 });
 
-test("Razorpay order is persisted with pending state before checkout response", () => {
+test("Razorpay order persistence is conditional on booking remaining completed and unpaid", () => {
+  assert.match(createOrder, /&status=eq\.completed&payment_status=not\.in\.\(paid,refunded\)/);
+  assert.match(createOrder, /if\(!Array\.isArray\(persisted\)\|\|persisted\.length!==1\)/);
   assert.match(createOrder, /razorpay_order_id:order\.id,payment_status:"pending"/);
-  assert.ok(createOrder.indexOf('body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})') < createOrder.indexOf('return json(200,{success:true,key_id:RAZORPAY_KEY_ID'));
+  assert.ok(createOrder.indexOf("const persisted=await db(") < createOrder.indexOf('return json(200,{success:true,key_id:RAZORPAY_KEY_ID'));
 });
 
 test("customer payment verification checks HMAC, captured status, order, INR and exact amount", () => {
