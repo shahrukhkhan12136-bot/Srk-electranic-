@@ -414,6 +414,33 @@ test("AI client rejects bearer tokens with whitespace, control characters, or ex
 });
 
 
+test("AI client builds exactly one canonical authorization and idempotency header", async () => {
+  let captured;
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async (_url, options) => {
+      captured = options;
+      return jsonResponse({
+        success: true, conversation_id: CONVERSATION,
+        module_key: "customer_support", reply: "उत्तर",
+        action: { status: "none", action_id: null, approval_required: false },
+        handoff: { required: false, handoff_id: null, queue: null, status: "not_required" }
+      });
+    }
+  });
+  await client.sendMessage({
+    moduleKey: "customer_support", message: "status",
+    accessToken: TOKEN, idempotencyKey: KEY
+  });
+  const names = Object.keys(captured.headers).map(name => name.toLowerCase());
+  assert.equal(names.filter(name => name === "authorization").length, 1);
+  assert.equal(names.filter(name => name === "idempotency-key").length, 1);
+  assert.equal(captured.headers.Authorization, "Bearer " + TOKEN);
+  assert.equal(captured.headers["Idempotency-Key"], KEY);
+  assert.equal(captured.redirect, "error");
+  assert.equal(captured.credentials, "omit");
+});
+
 test("AI client rejects UUID inputs with trailing line terminators before fetch", async () => {
   let calls = 0;
   const client = createAiAssistantClient({
