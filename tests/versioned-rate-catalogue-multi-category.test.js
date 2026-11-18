@@ -28,7 +28,7 @@ test("customer catalogue RPC returns the active published version and all custom
 
 test("electrician rate RPC requires the authenticated linked approved profile and returns only approved net items", () => {
   const rpc = migration.slice(migration.indexOf("FUNCTION public.srk_get_my_electrician_rate_list"));
-  assert.match(rpc, /auth_user_id=auth\(\) AND user_id=auth\(\)/);
+  assert.match(rpc, /auth_user_id=auth\.uid\(\) AND user_id=auth\.uid\(\)/);
   assert.match(rpc, /verification_status='approved'/);
   assert.match(rpc, /srk_electrician_approved_rate_categories/);
   assert.match(rpc, /a\.is_active=true/);
@@ -50,7 +50,7 @@ test("multiple categories are Admin-managed, audited, and used by booking dispat
 
 test("unchanged active electrician categories do not create false approval audit events", () => {
   assert.match(migration, /GET DIAGNOSTICS v_rows = ROW_COUNT/);
-  assert.match(migration, /IF v_rows > 0 THEN[\\s\\S]*srk_electrician_rate_category_audit/);
+  assert.match(migration, /IF v_rows > 0 THEN[\s\S]*srk_electrician_rate_category_audit/);
 });
 
 test("customer UI and booking API consume the same published catalogue RPC", () => {
