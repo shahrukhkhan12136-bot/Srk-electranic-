@@ -74,12 +74,39 @@ jobs:
           docker exec "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc \
             "select 'amount_paid=' || (exists (select 1 from information_schema.columns where table_schema='public' and table_name='service_bookings' and column_name='amount_paid'))::text;
              select 'amount_paid_constraint=' || (exists (select 1 from pg_constraint where conrelid='public.service_bookings'::regclass and conname='service_bookings_amount_paid_nonnegative_check'))::text;
-             select 'rate_catalogue=' || (to_regclass('public.srk_rate_catalogue') is not null)::text;" | tee -a "$LOG"
+             select 'rate_catalogue_versions=' || (to_regclass('public.srk_rate_catalogue_versions') is not null)::text;
+             select 'rate_catalogue_items=' || (to_regclass('public.srk_rate_catalogue_items') is not null)::text;
+             select 'rate_catalogue_audit=' || (to_regclass('public.srk_rate_catalogue_audit') is not null)::text;
+             select 'electrician_rate_categories=' || (to_regclass('public.srk_electrician_approved_rate_categories') is not null)::text;
+             select 'electrician_rate_category_audit=' || (to_regclass('public.srk_electrician_rate_category_audit') is not null)::text;
+             select 'rate_catalogue_rls=' || (coalesce((select bool_and(relrowsecurity) from pg_class where oid in ('public.srk_rate_catalogue_versions'::regclass,'public.srk_rate_catalogue_items'::regclass,'public.srk_rate_catalogue_audit'::regclass,'public.srk_electrician_approved_rate_categories'::regclass,'public.srk_electrician_rate_category_audit'::regclass)),false))::text;
+             select 'rate_publish_rpc=' || (to_regprocedure('public.srk_admin_publish_rate_catalogue(jsonb,timestamptz,uuid,text)') is not null)::text;
+             select 'customer_rate_read_rpc=' || (to_regprocedure('public.srk_get_current_customer_rate_catalogue()') is not null)::text;
+             select 'electrician_rate_read_rpc=' || (to_regprocedure('public.srk_get_my_electrician_rate_list()') is not null)::text;
+             select 'admin_category_rpc=' || (to_regprocedure('public.srk_admin_list_electrician_rate_categories()') is not null)::text;
+             select 'booking_snapshot_guard=' || (to_regprocedure('public.srk_guard_booking_rate_snapshot_immutable()') is not null)::text;" | tee -a "$LOG"
 
-          if ! grep -q 'amount_paid=true' "$LOG" || ! grep -q 'amount_paid_constraint=true' "$LOG"; then
-            echo "Final amount_paid schema assertions failed." | tee -a "$LOG"
-            exit 1
-          fi
+          required_checks=(
+            amount_paid=true
+            amount_paid_constraint=true
+            rate_catalogue_versions=true
+            rate_catalogue_items=true
+            rate_catalogue_audit=true
+            electrician_rate_categories=true
+            electrician_rate_category_audit=true
+            rate_catalogue_rls=true
+            rate_publish_rpc=true
+            customer_rate_read_rpc=true
+            electrician_rate_read_rpc=true
+            admin_category_rpc=true
+            booking_snapshot_guard=true
+          )
+          for check in "${required_checks[@]}"; do
+            if ! grep -q "$check" "$LOG"; then
+              echo "Final schema assertion failed: $check" | tee -a "$LOG"
+              exit 1
+            fi
+          done
 
       - name: Upload PostgreSQL replay evidence
         if: always()
