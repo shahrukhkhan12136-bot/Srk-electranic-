@@ -34,7 +34,7 @@ CREATE TABLE public.srk_ai_idempotency (
  expires_at timestamptz NOT NULL,
  UNIQUE(owner_user_id,endpoint_key,idempotency_key),
  CHECK(expires_at>created_at),
- CHECK((state='completed')=(response_status IS NOT NULL AND response_body IS NOT NULL))
+ CHECK ((state='completed' AND response_status IS NOT NULL AND response_body IS NOT NULL) OR (state<>'completed' AND response_status IS NULL AND response_body IS NULL))
 );
 CREATE INDEX srk_ai_idempotency_expiry_idx ON public.srk_ai_idempotency(expires_at);
 CREATE TABLE public.srk_ai_handoffs (
