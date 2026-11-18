@@ -239,3 +239,11 @@ test("Electrician profile refresh errors clear stale profile and live offer chan
   const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
   assert.match(source, /if\\(error\\)\\{profile=null;destroyElectricianAiAssistant\\(\\);if\\(offersChannel\\)\\{const oldChannel=offersChannel;offersChannel=null;Promise\\.resolve\\(sb\\.removeChannel\\(oldChannel\\)\\)\\.catch\\(\\(\\)=>\\{\\}\\);/);
 });
+
+
+test("Electrician profile refresh exceptions remove the stale live offer channel", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
+  assert.match(source, /catch\\(e\\)\\{if\\(!isCurrent\\(\\)\\)return;profile=null;destroyElectricianAiAssistant\\(\\);if\\(offersChannel\\)\\{const oldChannel=offersChannel;offersChannel=null;Promise\\.resolve\\(sb\\.removeChannel\\(oldChannel\\)\\)\\.catch\\(\\(\\)=>\\{\\}\\);/);
+});
