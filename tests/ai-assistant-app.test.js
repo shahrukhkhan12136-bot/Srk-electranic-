@@ -255,3 +255,25 @@ test("Customer AI widgets are destroyed immediately on every authentication iden
   const source = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
   assert.match(source, /onAuthStateChange\(\(event\) => \{\s*if\(event==='SIGNED_IN'\|\|event==='SIGNED_OUT'\|\|event==='USER_DELETED'\)\{\s*customerActionGeneration\+\+;\s*destroyCustomerAiAssistant\(\);/);
 });
+
+test("AI failures leave the existing Customer and Electrician support routes available", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const customer = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
+  const electrician = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
+  const widget = fs.readFileSync(path.join(__dirname, "../lib/ai-assistant-widget.js"), "utf8");
+
+  // AI mounts are separate from the existing, authenticated support workflows.
+  assert.match(customer, /id="customerAiAssistantMount"[\\s\\S]*?id="customerBookingAssistantMount"/);
+  assert.match(customer, /id="customerSupportCreate"/);
+  assert.match(customer, /id="customerSupportSend"/);
+  assert.match(customer, /id="customerSupportStatus"[^>]*role="status"/);
+
+  assert.match(electrician, /id="electricianAiAssistantMount"[\\s\\S]*?id="electricianSupportCategory"/);
+  assert.match(electrician, /createElectricianSupportTicket\\(\\)/);
+  assert.match(electrician, /sendElectricianSupportReply\\(\\)/);
+  assert.match(electrician, /id="electricianSupportCreateStatus"[^>]*aria-live="polite"/);
+
+  assert.match(widget, /AI सहायता अभी उपलब्ध नहीं है। मौजूदा सहायता विकल्प इस्तेमाल करें।/);
+  assert.match(widget, /कृपया दोबारा लॉगिन करें।/);
+});
