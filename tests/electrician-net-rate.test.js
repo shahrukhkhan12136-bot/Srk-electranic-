@@ -31,7 +31,7 @@ test("Admin rate edits automatically derive the new 85 percent amount", () => {
 });
 
 test("rejects zero, negative, fractional and unsafe amounts", () => {
-  for (const value of [0, -1, 1.5, Number.MAX_SAFE_INTEGER]) {
+  for (const value of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => calculateElectricianNetPaise(value));
   }
 });
