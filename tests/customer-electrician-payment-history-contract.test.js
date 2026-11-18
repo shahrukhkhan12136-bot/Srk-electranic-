@@ -219,3 +219,18 @@ test('Razorpay create and verify flow does not update a different customer sessi
   assert.ok(block.includes('if(isCurrent())setPaymentStatus'));
   assert.ok(block.includes('if(isCurrent()){\n      paymentBusy = false;'));
 });
+
+
+test('verified payment hides customer labour gross until payout reconciliation succeeds', () => {
+  const start = financialVisibilitySql.indexOf('CREATE FUNCTION public.srk_get_my_earnings()');
+  const end = financialVisibilitySql.indexOf('$$;', start);
+  const fn = financialVisibilitySql.slice(start, end);
+  assert.ok(start >= 0 && end > start, 'latest earnings function body exists');
+  const grossStart = fn.indexOf('END AS customer_labour_gross');
+  const grossCaseStart = fn.lastIndexOf('CASE', grossStart);
+  const grossCase = fn.slice(grossCaseStart, grossStart);
+  assert.match(grossCase, /verified\.is_verified[\s\S]*payout_check\.reconciliation_status='reconciled'[\s\S]*bill\.labour_amount IS NOT NULL/);
+  assert.match(grossCase, /WHEN checkout\.started[\s\S]*bill\.labour_amount IS NOT NULL THEN bill\.labour_amount/);
+  assert.match(fn, /WHEN verified\.is_verified AND payout_check\.reconciliation_status='reconciled' THEN payout\.platform_commission/);
+  assert.match(fn, /WHEN verified\.is_verified AND payout_check\.reconciliation_status='reconciled' THEN payout\.electrician_payable/);
+});
