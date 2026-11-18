@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   pgtap:
-    name: Replay schema and run 17 Rate Catalogue draft assertions
+    name: Replay schema and run 18 Rate Catalogue draft assertions
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -63,7 +63,7 @@ jobs:
             docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 < "$migration"
           done
 
-      - name: Enable pgTAP and run the 17 draft security assertions
+      - name: Enable pgTAP and run the 18 draft security assertions
         working-directory: ${{ runner.temp }}/srk-rate-catalogue-pgtap
         run: |
           set -euo pipefail
@@ -76,8 +76,8 @@ jobs:
             echo "pgTAP reported failed assertions."
             exit 1
           fi
-          if ! printf '%s\n' "$OUTPUT" | grep -Eq '1\.\.17'; then
-            echo "Expected pgTAP plan 1..17 was not found."
+          if ! printf '%s\n' "$OUTPUT" | grep -Eq '1\.\.18'; then
+            echo "Expected pgTAP plan 1..18 was not found."
             exit 1
           fi
 
