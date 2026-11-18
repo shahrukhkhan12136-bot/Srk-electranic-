@@ -939,15 +939,20 @@ let customerOtpBusy = false;
 let customerOtpUntil = 0;
 let customerOtpTimer = null;
 const customerMessage = message => { document.getElementById('customerAuthMessage').textContent = message; };
+function customerAiBookingContext(){
+  const bookingId=document.getElementById("customerSupportBooking")?.value?.trim()||"";
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(bookingId)
+    ? {booking_id:bookingId} : {};
+}
 function mountCustomerAiAssistant(){
   if(!customerSb||!window.SrkAiAssistantApp?.mountSrkAiAssistant)return;
   if(!customerAiAssistantWidget){
     const supportMount=document.getElementById("customerAiAssistantMount");
-    if(supportMount){supportMount.textContent="";try{customerAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:supportMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"customer_support"});}catch(_){customerAiAssistantWidget=null;supportMount.textContent="AI सहायता अभी उपलब्ध नहीं है। कृपया मौजूदा सहायता विकल्प इस्तेमाल करें।";}}
+    if(supportMount){supportMount.textContent="";try{customerAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:supportMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"customer_support",getContext:customerAiBookingContext});}catch(_){customerAiAssistantWidget=null;supportMount.textContent="AI सहायता अभी उपलब्ध नहीं है। कृपया मौजूदा सहायता विकल्प इस्तेमाल करें।";}}
   }
   if(!customerBookingAiAssistantWidget){
     const bookingMount=document.getElementById("customerBookingAssistantMount");
-    if(bookingMount){bookingMount.textContent="";try{customerBookingAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:bookingMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"booking_assistant"});}catch(_){customerBookingAiAssistantWidget=null;bookingMount.textContent="बुकिंग AI सहायता अभी उपलब्ध नहीं है। कृपया मौजूदा बुकिंग विकल्प इस्तेमाल करें।";}}
+    if(bookingMount){bookingMount.textContent="";try{customerBookingAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:bookingMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"booking_assistant",getContext:customerAiBookingContext});}catch(_){customerBookingAiAssistantWidget=null;bookingMount.textContent="बुकिंग AI सहायता अभी उपलब्ध नहीं है। कृपया मौजूदा बुकिंग विकल्प इस्तेमाल करें।";}}
   }
 }
 function destroyCustomerAiAssistant(){
