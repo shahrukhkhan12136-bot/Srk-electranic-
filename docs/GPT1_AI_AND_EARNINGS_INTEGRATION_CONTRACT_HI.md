@@ -168,3 +168,8 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Component default रूप से disabled है; `enabled: true`, explicit container, client और verified-session provider के बिना यह mount नहीं होता।
 - Component अभी `booking.html` या `electrician.html` में mount नहीं किया गया है और कोई live endpoint call enabled नहीं है। ऐसा तभी होगा जब GPT-2 backend contract और launch gates सत्यापित हों तथा post-launch activation अधिकृत हो।
 - `tests/ai-assistant-widget.test.js` disabled-default, module allowlist, configuration guard, safe rendering और handoff confirmation के source-contract checks जोड़ता है। Test suite अभी execute नहीं हुई है।
+### Browser compatibility और retry safety update
+
+- Client adapter और shared widget अब CommonJS tests के साथ browser global exports भी देते हैं: `SrkAiAssistantClient` और `SrkAiAssistantWidget`।
+- Message और handoff के idempotency keys केवल उसी अपरिवर्तित payload के retry पर reuse होते हैं; उपयोगकर्ता संदेश/summary बदलता है तो नया key बनता है।
+- यह source-level सुधार है; HTML pages में scripts जोड़ना/mount करना, runtime tests और live backend verification अभी शेष हैं।
