@@ -232,5 +232,6 @@ test('verified payment hides customer labour gross until payout reconciliation s
   assert.match(grossCase, /verified\.is_verified[\s\S]*payout_check\.reconciliation_status='reconciled'[\s\S]*bill\.labour_amount IS NOT NULL/);
   assert.match(grossCase, /WHEN checkout\.started[\s\S]*bill\.labour_amount IS NOT NULL THEN bill\.labour_amount/);
   assert.match(fn, /WHEN verified\.is_verified AND payout_check\.reconciliation_status='reconciled' THEN payout\.platform_commission/);
+  assert.match(fn, /bill\.electrician_profile_id IS DISTINCT FROM b\.assigned_electrician_id/);
   assert.match(fn, /WHEN verified\.is_verified AND payout_check\.reconciliation_status='reconciled' THEN payout\.electrician_payable/);
 });
