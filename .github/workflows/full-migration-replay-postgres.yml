@@ -80,15 +80,11 @@ jobs:
              select 'rate_draft_save_rpc=' || (to_regprocedure('public.srk_admin_save_rate_catalogue_draft(jsonb,timestamptz,text,uuid)') is not null)::text;
              select 'rate_draft_list_rpc=' || (to_regprocedure('public.srk_admin_list_rate_catalogue_drafts(integer)') is not null)::text;
              select 'rate_draft_publish_rpc=' || (to_regprocedure('public.srk_admin_publish_rate_catalogue_draft(uuid,uuid)') is not null)::text;
-             select 'rate_catalogue_drafts=' || (to_regclass('public.srk_rate_catalogue_drafts') is not null)::text;
-             select 'rate_draft_save_rpc=' || (to_regprocedure('public.srk_admin_save_rate_catalogue_draft(jsonb,timestamptz,text,uuid)') is not null)::text;
-             select 'rate_draft_list_rpc=' || (to_regprocedure('public.srk_admin_list_rate_catalogue_drafts(integer)') is not null)::text;
-             select 'rate_draft_publish_rpc=' || (to_regprocedure('public.srk_admin_publish_rate_catalogue_draft(uuid,uuid)') is not null)::text;
              select 'rate_catalogue_items=' || (to_regclass('public.srk_rate_catalogue_items') is not null)::text;
              select 'rate_catalogue_audit=' || (to_regclass('public.srk_rate_catalogue_audit') is not null)::text;
              select 'electrician_rate_categories=' || (to_regclass('public.srk_electrician_approved_rate_categories') is not null)::text;
              select 'electrician_rate_category_audit=' || (to_regclass('public.srk_electrician_rate_category_audit') is not null)::text;
-             select 'rate_catalogue_rls=' || (coalesce((select bool_and(relrowsecurity) from pg_class where oid in ('public.srk_rate_catalogue_versions'::regclass,'public.srk_rate_catalogue_items'::regclass,'public.srk_rate_catalogue_audit'::regclass,'public.srk_electrician_approved_rate_categories'::regclass,'public.srk_electrician_rate_category_audit'::regclass)),false))::text;
+             select 'rate_catalogue_rls=' || (coalesce((select bool_and(relrowsecurity) from pg_class where oid in ('public.srk_rate_catalogue_versions'::regclass,'public.srk_rate_catalogue_drafts'::regclass,'public.srk_rate_catalogue_items'::regclass,'public.srk_rate_catalogue_audit'::regclass,'public.srk_electrician_approved_rate_categories'::regclass,'public.srk_electrician_rate_category_audit'::regclass)),false))::text;
              select 'rate_publish_rpc=' || (to_regprocedure('public.srk_admin_publish_rate_catalogue(jsonb,timestamptz,uuid,text)') is not null)::text;
              select 'customer_rate_read_rpc=' || (to_regprocedure('public.srk_get_current_customer_rate_catalogue()') is not null)::text;
              select 'electrician_rate_read_rpc=' || (to_regprocedure('public.srk_get_my_electrician_rate_list()') is not null)::text;
@@ -99,10 +95,6 @@ jobs:
             amount_paid=true
             amount_paid_constraint=true
             rate_catalogue_versions=true
-            rate_catalogue_drafts=true
-            rate_draft_save_rpc=true
-            rate_draft_list_rpc=true
-            rate_draft_publish_rpc=true
             rate_catalogue_items=true
             rate_catalogue_audit=true
             electrician_rate_categories=true
