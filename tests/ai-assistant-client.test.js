@@ -205,6 +205,20 @@ test("AI client rejects malformed HTTPS base URLs before making a request", asyn
   assert.equal(calls, 0);
 });
 
+test("AI transport rejects an inconsistent ok flag and non-2xx HTTP status", async () => {
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async () => ({ ok: true, status: 503, json: async () => ({ success: true }) })
+  });
+  await assert.rejects(
+    client.sendMessage({
+      moduleKey: "customer_support", message: "status",
+      accessToken: TOKEN, idempotencyKey: KEY
+    }),
+    error => error.code === "ai_service_unavailable" && error.status === 503
+  );
+});
+
 test("AI transport rejects malformed and array response envelopes safely", async () => {
   for (const response of [
     null,
