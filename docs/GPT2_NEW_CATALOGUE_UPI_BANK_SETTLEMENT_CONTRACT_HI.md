@@ -49,3 +49,15 @@ Feature-branch source only. No Production DB changes, migration application, dep
 ## 18 नवंबर का अतिरिक्त method-normalization सुधार
 
 Manual-payment trigger में booking और evidence के payment_method का normalized text exact match होना आवश्यक है। इसलिए bank transfer के लिए RPC अब दोनों जगह canonical `bank_transfer` सहेजता है; UI/receipt इसे “बैंक ट्रांसफर” के रूप में दिखा सकती है। इससे draft का `Bank Transfer` बनाम `bank_transfer` mismatch ठीक हुआ। Regression contract भी canonical value की जाँच करता है। यह source-level सुधार है; PostgreSQL runtime test अभी नहीं हुआ।
+
+
+## Admin Dashboard routing audit (18 नवंबर)
+
+`admin.html` अब नई Catalogue booking में:
+- Cash के लिए `srk_admin_record_new_booking_cash_payment`
+- UPI / Bank Transfer के लिए `srk_admin_record_new_booking_manual_digital_payment`
+- अन्य manual digital methods के लिए रोक; Razorpay केवल verified online flow से
+
+Regression contract में Admin UI routing assertion जोड़ा गया है।
+
+**सीमा:** Customer की नई booking form अभी payment method के रूप में केवल Cash और Razorpay चुनने देती है। इसलिए UPI / Bank Transfer RPC तभी सफल होगा जब booking का पहले से दर्ज `payment_method` ग्राहक की अनुमति से `upi` या `bank_transfer` हो। केवल Admin dropdown बदलना पर्याप्त नहीं है; इससे customer की मूल payment choice नहीं बदली जाती। UPI ID / bank account / QR details उपलब्ध और स्वीकृत हुए बिना customer form में नए payment विकल्प नहीं जोड़े गए हैं।
