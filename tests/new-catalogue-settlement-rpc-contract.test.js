@@ -9,6 +9,7 @@ const payoutMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrat
 const hardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118120000_harden_online_payment_settlement_state.sql"), "utf8");
 const cashHardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118130000_harden_catalogue_admin_cash_settlement.sql"), "utf8");
 const manualDigitalMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118140000_add_catalogue_admin_manual_digital_settlement.sql"), "utf8");
+const adminHtml = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
 
 const extract = (name) => {
   const match = migration.match(new RegExp("create or replace function public\\." + name + "\\([\\s\\S]*?\\n\\$\\$;", "i"));
@@ -92,4 +93,12 @@ test("new Catalogue Admin UPI/bank settlement validates method, booking state, u
   assert.doesNotMatch(manualDigitalMigration, /srk_wallet_ledger/i);
   assert.match(manualDigitalMigration, /revoke all on function public\.srk_admin_record_new_booking_manual_digital_payment\(uuid,text,text,text\) from public,anon/i);
   assert.match(manualDigitalMigration, /grant execute on function public\.srk_admin_record_new_booking_manual_digital_payment\(uuid,text,text,text\) to authenticated/i);
+});
+
+
+test("Admin dashboard routes new Catalogue UPI and bank receipts to the dedicated digital settlement RPC", () => {
+  assert.match(adminHtml, /srk_admin_record_new_booking_manual_digital_payment/);
+  assert.match(adminHtml, /manual_method==='upi'\|\|manual_method==='bank_transfer'/);
+  assert.match(adminHtml, /srk_admin_record_new_booking_cash_payment/);
+  assert.match(adminHtml, /Razorpay भुगतान केवल verified online flow/);
 });
