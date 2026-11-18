@@ -329,3 +329,18 @@ test("AI guard rejects duplicate case-variant Authorization and idempotency head
   assert.equal(response.statusCode, 400);
   assert.equal(JSON.parse(response.body).error, "invalid_idempotency_key");
 });
+
+test("AI server rejects bearer tokens with whitespace, controls, or excessive length before Supabase", async () => {
+  const { handler, calls } = setup();
+  for (const token of [
+    " " + "valid-token", "valid-token ", "token with spaces",
+    "token\\r\\nInjected: yes", "token\\u00a0with-space",
+    "token\\u2003with-space", "token\\u0085with-control",
+    "x".repeat(8193)
+  ]) {
+    const request = event();
+    request.headers.authorization = "Bearer " + token;
+    assert.equal((await handler(request)).statusCode, 401);
+  }
+  assert.equal(calls.length, 0);
+});
