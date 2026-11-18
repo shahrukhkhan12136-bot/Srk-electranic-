@@ -63,7 +63,7 @@ jobs:
 
           mapfile -t migrations < <(find "$GITHUB_WORKSPACE/supabase/migrations" -maxdepth 1 -type f -name '*.sql' -print | LC_ALL=C sort)
           test "${#migrations[@]}" -gt 0
-          printf 'migration_file_count=%s\n' "${#migrations[@]}" | tee -a "$LOG"
+          printf 'migration_file_count=%s\\n' "${#migrations[@]}" | tee -a "$LOG"
 
           for migration in "${migrations[@]}"; do
             echo "===== APPLY: $(basename "$migration") =====" | tee -a "$LOG"
@@ -113,6 +113,23 @@ jobs:
             fi
           done
 
+      - name: Run Rate List Draft and Scheduled pgTAP security tests locally
+        working-directory: ${{ runner.temp }}/srk-full-migration-replay
+        run: |
+          set -euo pipefail
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          docker exec "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;"
+          OUTPUT="$(docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            < "$GITHUB_WORKSPACE/supabase/tests/database/rate_catalogue_draft_security.test.sql" 2>&1)" \
+            || { printf '%s\\n' "$OUTPUT"; exit 1; }
+          printf '%s\\n' "$OUTPUT"
+          if printf '%s\\n' "$OUTPUT" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
+            echo "Rate List Draft pgTAP assertions failed."
+            exit 1
+          fi
+
       - name: Upload PostgreSQL replay evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -121,7 +138,7 @@ jobs:
           path: ${{ runner.temp }}/srk-full-migration-evidence/
           if-no-files-found: warn
 
-      - name: Stop disposable local Supabase stack
+      - name: Stop disposable Supabase stack
         if: always()
         working-directory: ${{ runner.temp }}/srk-full-migration-replay
         run: supabase stop --no-backup
