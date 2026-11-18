@@ -156,3 +156,28 @@ test("assistant response rejects non-object action and handoff payloads", async 
     );
   }
 });
+
+test("AI client rejects malformed HTTPS base URLs before making a request", async () => {
+  let calls = 0;
+  const invalidUrls = [
+    "https://",
+    "https://user:secret@api.example.test",
+    "https://api.example.test?token=secret",
+    "https://api.example.test#fragment",
+    " https://api.example.test"
+  ];
+  for (const baseUrl of invalidUrls) {
+    const client = createAiAssistantClient({
+      enabled: true, baseUrl,
+      fetchImpl: async () => { calls++; return jsonResponse({}); }
+    });
+    await assert.rejects(
+      client.sendMessage({
+        moduleKey: "customer_support", message: "status",
+        accessToken: TOKEN, idempotencyKey: KEY
+      }),
+      error => error.code === "ai_service_unavailable"
+    );
+  }
+  assert.equal(calls, 0);
+});
