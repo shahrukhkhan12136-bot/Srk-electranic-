@@ -38,3 +38,18 @@ test('Electrician wallet summary requires approved active profile and both Auth 
   assert.ok(walletAccessSql.includes('GRANT EXECUTE ON FUNCTION public.srk_get_my_wallet_summary() TO authenticated'));
   assert.ok(fn.indexOf('IF EXISTS') < fn.indexOf('SELECT wa.id INTO v_electrician_id'));
 });
+
+
+const payoutRlsMigration = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261118170000_harden_electrician_payout_ledger_rls.sql'), 'utf8');
+
+test('payout ledger RLS requires the same approved active electrician identity and preserves Main Admin access', () => {
+  assert.match(payoutRlsMigration, /DROP POLICY IF EXISTS srk_read_authorized_electrician_payouts/);
+  assert.match(payoutRlsMigration, /CREATE POLICY srk_read_authorized_electrician_payouts[\\s\\S]*?FOR SELECT TO authenticated/);
+  assert.match(payoutRlsMigration, /\\(SELECT public\\.is_srk_admin\\(\\)\\)/);
+  assert.match(payoutRlsMigration, /ep\\.id\\s*=\\s*srk_electrician_payouts\\.electrician_profile_id/);
+  assert.match(payoutRlsMigration, /ep\\.user_id\\s*=\\s*\\(SELECT auth\\.uid\\(\\)\\)/);
+  assert.match(payoutRlsMigration, /ep\\.auth_user_id\\s*=\\s*\\(SELECT auth\\.uid\\(\\)\\)/);
+  assert.match(payoutRlsMigration, /ep\\.verification_status\\s*=\\s*'approved'/);
+  assert.match(payoutRlsMigration, /ep\\.active\\s*=\\s*true/);
+  assert.match(payoutRlsMigration, /BEGIN;[\\s\\S]*COMMIT;/);
+});
