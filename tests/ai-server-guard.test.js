@@ -751,3 +751,30 @@ test("handoff cannot create a queue item for a missing or foreign conversation",
     assert.equal(JSON.parse(response.body).error, "ai_conversation_access_denied");
   }
 });
+
+
+test("pre-launch AI OFF gate performs authorization reads only and never writes or calls a provider", async () => {
+  for (const mode of ["assistant", "handoff"]) {
+    const { handler, calls } = setup();
+    const body = mode === "assistant" ? {
+      module_key: "customer_support",
+      message: "Please help with my booking"
+    } : {
+      module_key: "customer_support",
+      conversation_id: UUID,
+      reason_code: "needs_human_support",
+      urgency: "normal",
+      summary: "Please connect me to support"
+    };
+    const response = await handler(event({ body }), mode);
+    assert.equal(response.statusCode, 503);
+    assert.equal(JSON.parse(response.body).error, "ai_not_enabled");
+    assert.ok(calls.length >= 3);
+    assert.ok(calls.every(call => call.options.method === "GET" || call.options.method === undefined),
+      "pre-launch AI gate must not perform database writes");
+    assert.ok(calls.every(call => !/\/rpc\//.test(call.url)),
+      "pre-launch AI gate must not invoke persistence or handoff RPCs");
+    assert.ok(calls.every(call => !/openai|anthropic|gemini|ai-gateway/i.test(call.url)),
+      "pre-launch AI gate must not call an AI provider");
+  }
+});
