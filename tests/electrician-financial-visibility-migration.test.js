@@ -55,3 +55,10 @@ test("earnings calculations use the actual immutable labour_amount column, not a
   assert.doesNotMatch(migration, /bill\.labour_amount_paise/);
   assert.match(migration, /WHEN verified\.is_verified THEN coalesce\(b\.amount_paid,0\)\s+ELSE 0/);
 });
+
+test("paid-but-unverified and refunded bookings never receive unpaid 85 percent earnings", () => {
+  assert.match(migration, /payment_verification_required/);
+  assert.match(migration, /payment_status IS DISTINCT FROM 'refunded'/);
+  assert.match(migration, /payment_status IS DISTINCT FROM 'paid'/);
+  assert.match(ui, /x\.payment_stage==='payment_verification_required'/);
+});
