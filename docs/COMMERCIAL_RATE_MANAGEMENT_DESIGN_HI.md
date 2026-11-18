@@ -17,8 +17,8 @@ Rate List के लिए source migrations मौजूद हैं:
 
 **वास्तविक schema और इस दस्तावेज़ के पुराने प्रस्ताव में अंतर:**
 
-- वर्तमान migration में catalogue versions का status केवल `published` है। Draft/scheduled status workflow अभी schema में नहीं है।
-- Future `effective_at` स्वीकार किया जाता है, लेकिन अलग scheduled-status/approval queue नहीं है।
+- वर्तमान source में Draft/Scheduled के लिए अलग private `srk_rate_catalogue_drafts` table और Main Admin-only save, list तथा publish RPC मौजूद हैं। Draft और scheduled records published customer/electrician catalogue से अलग रहते हैं।
+- Future `effective_at` वाला publish immutable published version बनाता है; customer active-rate query केवल प्रभावी समय आ चुके version को चुनती है।
 - वास्तविक audit table का नाम `srk_rate_catalogue_audit` है; इसमें tier-wise पुराने/नए paise, actor और reason दर्ज होते हैं।
 - Admin publish RPC चारों tier keys, positive integer paise, reason और expected-current-version की जाँच करता है।
 - Main Admin authorization database RPC में `public.is_srk_admin()` से जाँचा जाता है।
