@@ -2,7 +2,7 @@
 -- Run only after the schema and RPC drafts in a disposable local PostgreSQL database.
 BEGIN;
 SET LOCAL search_path TO public, extensions;
-SELECT plan(28);
+SELECT plan(32);
 
 -- Minimal Auth fixtures. No hosted project or real user data is used.
 INSERT INTO auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
