@@ -166,7 +166,8 @@ AS $$
       ELSE 0
     END AS amount_received,
     CASE
-      WHEN verified.is_verified THEN coalesce(b.commission_amount,0)
+      WHEN verified.is_verified AND payout_check.reconciliation_status='reconciled' THEN payout.platform_commission
+      WHEN verified.is_verified THEN NULL
       WHEN checkout.started AND b.commission_rate=15
         THEN (floor((round(coalesce(bill.labour_amount,0)*100)*1500+5000)/10000)/100)
       ELSE 0
@@ -188,7 +189,8 @@ AS $$
       ELSE NULL
     END AS customer_labour_gross,
     CASE
-      WHEN verified.is_verified THEN coalesce(payout.platform_commission,b.commission_amount,0)
+      WHEN verified.is_verified AND payout_check.reconciliation_status='reconciled' THEN payout.platform_commission
+      WHEN verified.is_verified THEN NULL
       WHEN checkout.started AND b.commission_rate=15 THEN (floor((round(coalesce(bill.labour_amount,0)*100)*1500+5000)/10000)/100)
       ELSE NULL
     END AS company_share,
