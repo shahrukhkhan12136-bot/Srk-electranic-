@@ -258,7 +258,7 @@ BEGIN
         WHEN 'expert_electrician' THEN 'Expert Electrician'
         WHEN 'premium_electrical_specialist' THEN 'Premium Electrical Specialist' END,
       'duration_hours',8,
-      'electrician_rate_paise',floor((i.customer_rate_paise::numeric*8500/10000)+0.5)::bigint
+      'electrician_rate_paise',(i.customer_rate_paise-floor((i.customer_rate_paise::numeric*1500/10000)+0.5))::bigint
     ) ORDER BY a.category_key),'[]'::jsonb)
     INTO v_items
     FROM public.srk_electrician_approved_rate_categories a
