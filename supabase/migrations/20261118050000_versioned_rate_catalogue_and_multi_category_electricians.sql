@@ -2,6 +2,19 @@
 -- SOURCE ONLY. Do not apply to Production without explicit approval.
 BEGIN;
 
+-- The legacy estimate constraint hard-coded the original four prices.
+-- New bookings use an immutable published catalogue version, while existing
+-- rows keep their saved amount/version snapshot. A CHECK constraint cannot
+-- safely compare against a mutable/current catalogue, so retain snapshot-shape
+-- validation and remove only the obsolete fixed-price equality check.
+ALTER TABLE public.service_bookings
+  DROP CONSTRAINT IF EXISTS service_bookings_estimate_matches_rate_card;
+
+COMMENT ON CONSTRAINT service_bookings_estimate_snapshot_complete
+  ON public.service_bookings IS
+  'Validates presence and shape of the immutable booking estimate snapshot; intentionally does not compare it with current catalogue prices.';
+
+
 CREATE TABLE IF NOT EXISTS public.srk_rate_catalogue_versions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   status text NOT NULL DEFAULT 'published' CHECK (status='published'),
@@ -261,7 +274,7 @@ BEGIN
         WHEN 'expert_electrician' THEN 'Expert Electrician'
         WHEN 'premium_electrical_specialist' THEN 'Premium Electrical Specialist' END,
       'duration_hours',8,
-      'electrician_rate_paise',(i.customer_rate_paise-floor((i.customer_rate_paise::numeric*1500/10000)+0.5))::bigint
+      'electrician_rate_paise',floor((i.customer_rate_paise::numeric*8500/10000)+0.5)::bigint
     ) ORDER BY a.category_key),'[]'::jsonb)
     INTO v_items
     FROM public.srk_electrician_approved_rate_categories a
