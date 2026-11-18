@@ -15,7 +15,7 @@ test('electrician portal contains no legacy inspection or quotation UI/data fall
   ]) {
     assert.equal(electrician.includes(legacy), false, 'legacy quotation reference remains: ' + legacy);
   }
-  assert.match(electrician, /estimated_labour_paise/);
+  assert.match(electrician, /electrician_offer_paise/);
   assert.match(electrician, /श्रम अनुमान उपलब्ध नहीं/);
 });
 
