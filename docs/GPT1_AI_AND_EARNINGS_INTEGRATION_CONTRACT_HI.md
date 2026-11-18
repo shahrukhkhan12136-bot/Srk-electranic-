@@ -193,3 +193,10 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Race/unique-key replay path पहले की तरह persisted booking snapshot लौटाता है।
 - नया source-contract test `tests/booking-rate-replay-order.test.js` replay-vs-current-catalogue ordering, persisted amount/version और new-booking server catalogue guard को जाँचता है।
 - अभी यह नया test execute नहीं हुआ है; live database trigger/runtime verification और end-to-end QA बाकी हैं।
+
+
+### App composition launch-guard regression coverage
+
+- `tests/ai-assistant-app.test.js` now additionally checks that an enabled app refuses a non-HTTPS AI API base URL before creating the transport client.
+- The session-provider contract is also checked: a Supabase `getSession()` error is propagated and is not converted into a fabricated or anonymous session.
+- These checks remain mocked source-contract tests. They do not activate the widget, prove a deployed backend, or authorize pre-launch mounting in either HTML app.
