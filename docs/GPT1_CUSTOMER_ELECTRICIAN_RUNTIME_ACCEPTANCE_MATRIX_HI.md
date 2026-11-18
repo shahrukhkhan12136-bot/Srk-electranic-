@@ -93,3 +93,13 @@
 
 - `amount_paid` की later restore migration उपलब्ध है; Database gate अब इसकी definition को missing बताने के बजाय starter-baseline presence, earlier references और remote migration history का reconciliation माँगता है।
 - यह acceptance documentation correction है; कोई application code, SQL migration, database, deployment या mobile QA नहीं बदला/चलाया गया।
+
+
+## 2026-11-18 — GPT-1 नवीनतम source और CI जाँच
+
+- Branch commit `a9174acdaa8fbe7808cae6cb71820aaa629c2319` पर GitHub Actions Node workflow run `44299282524` completed/success है। Job `134784436966` के logs में **656 tests, 656 pass, 0 fail, 0 skipped** दर्ज हैं। यह Node suite का प्रमाण है; इससे isolated PostgreSQL, browser, provider या mobile runtime acceptance सिद्ध नहीं होती।
+- Customer App में AI client/widget/app scripts और दोनों Customer module mount points मौजूद हैं। Mount केवल authenticated session तथा Customer profile-ready flow के बाद होता है; logout/auth transition पर widget destroy किया जाता है।
+- Electrician App में AI app mount path मौजूद है; केवल active और approved profile पर mount का प्रयास होता है। Auth account change, logout, profile error, missing या unapproved profile पर widget destroy होता है।
+- Public `srk-config.js` में `AI_ASSISTANT_ENABLED` और `AI_ASSISTANT_API_BASE_URL` मौजूद नहीं हैं; इसलिए AI default रूप से OFF है और कोई live AI endpoint call नहीं होती। GPT-2 backend endpoints/persistence/ownership/audit/handoff अभी live प्रमाणित नहीं हैं।
+- Customer/Electrician cross-app booking status का automatic realtime refresh अभी प्रमाणित नहीं; matrix में दर्ज manual/explicit refresh limitation यथावत है।
+- कोई नया source defect इस pass में प्रमाणित नहीं हुआ; इसलिए अनियोजित feature या realtime scope नहीं जोड़ा गया। दो-अकाउंट runtime, isolated DB/actor tests, browser/device GPS/print, provider acceptance और अंतिम mobile QA अभी बाकी हैं। कोई merge, deployment या Production DB action नहीं किया गया।
