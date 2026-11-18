@@ -5,12 +5,13 @@ const path = require("node:path");
 
 const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118033000_gate_electrician_financial_visibility.sql"), "utf8");
 const roundingMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118110000_unify_electrician_rate_rounding.sql"), "utf8");
+const earningsMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118080000_align_offer_85_rate_and_payout_reconciliation.sql"), "utf8");
 const orderLockMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118040000_atomic_electrician_payment_order_link.sql"), "utf8");
 const ui = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
 
 test("offer RPC returns a distinct electrician net field, never the gross estimate column", () => {
   assert.match(migration, /electrician_offer_paise bigint/);
-  assert.match(migration, /floor\(\(b\.estimated_labour_paise::numeric\*8500\+5000\)\/10000\)::bigint/);
+  assert.match(roundingMigration, /b\.estimated_labour_paise - floor\(\(b\.estimated_labour_paise::numeric\*1500\/10000\)\+0\.5\)::bigint/);
   assert.doesNotMatch(migration, /estimated_labour_paise bigint,/);
 });
 
@@ -68,9 +69,9 @@ test("paid-but-unverified and refunded bookings never receive unpaid 85 percent 
 });
 
 test("85 percent is rounded in integer paise with the residual assigned to the company", () => {
-  assert.match(migration, /floor\(\(round\(coalesce\(bill\.labour_amount,0\)\*100\)\*8500\+5000\)\/10000\)/);
-  assert.match(migration, /round\(coalesce\(bill\.labour_amount,0\),2\)-\(floor\(/);
-  assert.doesNotMatch(migration, /round\(coalesce\(bill\.labour_amount,0\)\*0\.15,2\)/);
+  assert.match(earningsMigration, /floor\(\(round\(coalesce\(bill\.labour_amount,0\)\*100\)\*1500\+5000\)\/10000\)/i);
+  assert.match(earningsMigration, /round\(coalesce\(bill\.labour_amount,0\),2\)-\(floor\(/i);
+  assert.doesNotMatch(earningsMigration, /round\(coalesce\(bill\.labour_amount,0\)\*0\.15,2\)/i);
 });
 
 const createOrder = fs.readFileSync(path.join(__dirname, "../create-order.js"), "utf8");
