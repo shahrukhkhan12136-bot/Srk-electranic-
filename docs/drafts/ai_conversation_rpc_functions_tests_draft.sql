@@ -169,10 +169,10 @@ SELECT is(
 UPDATE public.srk_ai_conversations SET status='closed',closed_at=now()
 WHERE id='20000000-0000-4000-8000-000000000001';
 SELECT throws_ok(
- $SELECT private.ai_complete_idempotency(
+ $$SELECT private.ai_complete_idempotency(
   '10000000-0000-4000-8000-000000000001','assistant','idem-key-00000004',200,
   '{"ok":true}'::jsonb,'20000000-0000-4000-8000-000000000001','must rollback'
-  )$,
+  )$$,
  'P0002',NULL,'failed assistant message insert aborts completion'
 );
 SELECT is(
@@ -187,10 +187,10 @@ SELECT is(
  'processing','invalid completion fixture obtains a live claim'
 );
 SELECT throws_ok(
- $SELECT private.ai_complete_idempotency(
+ $$SELECT private.ai_complete_idempotency(
   '10000000-0000-4000-8000-000000000001','assistant','idem-key-00000005',99,
   '{"ok":true}'::jsonb
-  )$,
+  )$$,
  '22023',NULL,'invalid response status is rejected'
 );
 
