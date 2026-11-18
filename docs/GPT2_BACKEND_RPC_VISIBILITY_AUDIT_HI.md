@@ -68,3 +68,9 @@ Production DB query/write, migration apply/replay, schema deployment, paid DB br
 - Ownership filter केवल `p.user_id=auth.uid()` है, जबकि offer-details RPC `p.user_id=auth.uid() OR p.auth_user_id=auth.uid()` स्वीकारता है। किसी भी replacement में इस identity-linking अंतर को जाँचना और approved canonical ownership rule अपनाना होगा; इसे चुपचाप बदलना नहीं।
 
 इससे पहले बताए गए gross/commission leakage की पुष्टि होती है। यह source audit है, live database verification नहीं।
+
+## 9. Frontend consumer audit
+
+`electrician.html` में `loadEarnings()` सीधे `sb.rpc('srk_get_my_earnings')` बुलाता है। Summary calculation अभी केवल completed + paid rows जोड़ती है, लेकिन RPC payload की pre-payment `amount_received` और `commission_amount` fields फिर भी authenticated client तक पहुँचती हैं। इसलिए frontend का paid-only filter data exposure को नहीं रोकता।
+
+यह UI existing payout ledger `srk_electrician_payouts` से electrician_payable और payout status भी पढ़ती है। किसी replacement में इस ledger की RLS/ownership policy और अलग payout lifecycle को preserve करना अनिवार्य है।
