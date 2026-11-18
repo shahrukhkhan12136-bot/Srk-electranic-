@@ -214,3 +214,13 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - `lib/ai-action-approval.js` now rejects array-shaped `action` and `approval` payloads before checking approval bindings.
 - `tests/ai-action-approval.test.js` adds coverage for array-shaped action and approval values.
 - This is a defensive pure-helper check only. Human identity verification, server-side approval loading, resource authorization and audit persistence remain backend responsibilities; tests have not been executed.
+
+
+## 9. AI base URL validation hardening — source and regression tests
+
+- App composition और transport client दोनों अब API base URL को strict HTTPS URL के रूप में parse करते हैं।
+- Empty hostname, embedded username/password, query string, fragment और surrounding whitespace वाले URL reject होते हैं।
+- Invalid URL पर transport से पहले fail-closed error आता है; fetch call नहीं होती।
+- tests/ai-assistant-app.test.js और tests/ai-assistant-client.test.js में malformed URL regression cases जोड़े गए हैं।
+- ये source-level/mock tests हैं; इस branch पर execution/CI evidence उपलब्ध होने तक इन्हें passed नहीं माना जाएगा।
+- यह केवल pre-launch hardening है; AI routes, production mounting या live activation नहीं।
