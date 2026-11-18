@@ -44,8 +44,8 @@ jobs:
           cd "$RUNNER_TEMP/srk-rate-snapshot-db"
           supabase init
           sed -i 's/^\([[:space:]]*port = \)54321$/\154321/' supabase/config.toml
-          sed -i 's/^\([[:space:]]*port = \)54322$/\155432/' supabase/config.toml
-          sed -i 's/^\([[:space:]]*shadow_port = \)54320$/\155430/' supabase/config.toml
+          sed -i 's/^\([[:space:]]*port = \)54322$/\157432/' supabase/config.toml
+          sed -i 's/^\([[:space:]]*shadow_port = \)54320$/\157430/' supabase/config.toml
 
       - name: Start disposable local Supabase database
         working-directory: ${{ runner.temp }}/srk-rate-snapshot-db
