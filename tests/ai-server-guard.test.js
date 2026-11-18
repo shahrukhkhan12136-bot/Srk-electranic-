@@ -18,7 +18,10 @@ function setup({ role = "customer", status = 200, user = null, env = null, custo
   const calls = [];
   const authUser = user || { id: "123e4567-e89b-42d3-a456-426614174001", app_metadata: { role } };
   const customerRows = customerProfiles || (role === "customer" ? [{ user_id: authUser.id }] : []);
-  const electricianRows = electricianProfiles || (role === "electrician" ? [{ id: UUID }] : []);
+  const electricianRows = electricianProfiles || (role === "electrician" ? [{
+    id: UUID, user_id: authUser.id, auth_user_id: authUser.id,
+    verification_status: "approved", active: true
+  }] : []);
   const fetchImpl = async (url, options) => {
     calls.push({ url, options });
     if (url.includes("/auth/v1/user")) {
@@ -132,6 +135,7 @@ test("electrician access requires one active approved profile with both identity
   assert.equal(query.searchParams.get("auth_user_id"), "eq.123e4567-e89b-42d3-a456-426614174001");
   assert.equal(query.searchParams.get("verification_status"), "eq.approved");
   assert.equal(query.searchParams.get("active"), "eq.true");
+  assert.equal(query.searchParams.get("select"), "id,user_id,auth_user_id,verification_status,active");
 
   const mismatched = setup({ role: "electrician", electricianProfiles: [] });
   assert.equal((await mismatched.handler(event({ body: { module_key: "electrician_assistant", message: "hi" } }))).statusCode, 403);
@@ -157,7 +161,11 @@ test("customer and approved electrician modules are independently authorized for
   const dual = setup({
     role: "customer",
     customerProfiles: [{ user_id: "123e4567-e89b-42d3-a456-426614174001" }],
-    electricianProfiles: [{ id: UUID }]
+    electricianProfiles: [{
+      id: UUID, user_id: "123e4567-e89b-42d3-a456-426614174001",
+      auth_user_id: "123e4567-e89b-42d3-a456-426614174001",
+      verification_status: "approved", active: true
+    }]
   });
   const customer = await dual.handler(event({
     body: { module_key: "customer_support", message: "hello" }
@@ -238,4 +246,47 @@ test("AI profile lookup HTTP errors and malformed profile payloads fail closed",
   const malformedResponse = await malformed(request);
   assert.equal(malformedResponse.statusCode, 503);
   assert.equal(JSON.parse(malformedResponse.body).error, "ai_service_unavailable");
+});
+
+
+test("AI profile rows must match the authenticated user even when the query returns a row", async () => {
+  const wrongCustomer = setup({
+    role: "customer",
+    customerProfiles: [{ user_id: "123e4567-e89b-42d3-a456-426614174099" }]
+  });
+  const customerResponse = await wrongCustomer.handler(event({
+    body: { module_key: "customer_support", message: "hello" }
+  }));
+  assert.equal(customerResponse.statusCode, 403);
+  assert.equal(JSON.parse(customerResponse.body).error, "ai_access_denied");
+
+  const wrongElectrician = setup({
+    role: "electrician",
+    electricianProfiles: [{
+      id: UUID,
+      user_id: "123e4567-e89b-42d3-a456-426614174001",
+      auth_user_id: "123e4567-e89b-42d3-a456-426614174099",
+      verification_status: "approved",
+      active: true
+    }]
+  });
+  const electricianResponse = await wrongElectrician.handler(event({
+    body: { module_key: "electrician_assistant", message: "hello" }
+  }));
+  assert.equal(electricianResponse.statusCode, 403);
+  assert.equal(JSON.parse(electricianResponse.body).error, "ai_access_denied");
+});
+
+test("AI electrician profile must be approved and active in returned data", async () => {
+  for (const profile of [
+    { id: UUID, user_id: "123e4567-e89b-42d3-a456-426614174001", auth_user_id: "123e4567-e89b-42d3-a456-426614174001", verification_status: "pending", active: true },
+    { id: UUID, user_id: "123e4567-e89b-42d3-a456-426614174001", auth_user_id: "123e4567-e89b-42d3-a456-426614174001", verification_status: "approved", active: false }
+  ]) {
+    const denied = setup({ role: "electrician", electricianProfiles: [profile] });
+    const response = await denied.handler(event({
+      body: { module_key: "electrician_assistant", message: "hello" }
+    }));
+    assert.equal(response.statusCode, 403);
+    assert.equal(JSON.parse(response.body).error, "ai_access_denied");
+  }
 });
