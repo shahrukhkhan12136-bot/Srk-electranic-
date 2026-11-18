@@ -943,11 +943,11 @@ function mountCustomerAiAssistant(){
   if(!customerSb||!window.SrkAiAssistantApp?.mountSrkAiAssistant)return;
   if(!customerAiAssistantWidget){
     const supportMount=document.getElementById("customerAiAssistantMount");
-    if(supportMount)customerAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:supportMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"customer_support"});
+    if(supportMount){try{customerAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:supportMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"customer_support"});}catch(_){customerAiAssistantWidget=null;supportMount.textContent="AI सहायता अभी उपलब्ध नहीं है। कृपया मौजूदा सहायता विकल्प इस्तेमाल करें।";}}
   }
   if(!customerBookingAiAssistantWidget){
     const bookingMount=document.getElementById("customerBookingAssistantMount");
-    if(bookingMount)customerBookingAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:bookingMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"booking_assistant"});
+    if(bookingMount){try{customerBookingAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:bookingMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"booking_assistant"});}catch(_){customerBookingAiAssistantWidget=null;bookingMount.textContent="बुकिंग AI सहायता अभी उपलब्ध नहीं है। कृपया मौजूदा बुकिंग विकल्प इस्तेमाल करें।";}}
   }
 }
 function destroyCustomerAiAssistant(){
