@@ -1,42 +1,36 @@
 # Supabase Migration Version Inventory — 18 Nov 2026
 
-Branch: `feat/ai-rate-management-foundation-20261118`
-Reviewed tree commit: `2ef5263ec23b94869ce2203254860c9fc6324a62`
+Branch: feat/ai-rate-management-foundation-20261118
+Reviewed branch HEAD before this documentation update: a6f54f1b04a21bfcd5b8dff5a7377757c8ec0e1d
 
-## Inventory result
-- SQL migration files under `supabase/migrations/`: **103**
-- Distinct numeric version prefixes: **102**
-- Duplicate version groups: **1**
-- Newly discovered duplicate groups beyond the known legacy pair: **0**
+## Branch inventory
+- SQL migration files under supabase/migrations/: 103
+- Distinct numeric version prefixes: 102
+- Duplicate version groups: 1
+- Sole duplicate group: 20261109
+  - 20261109_allow_quote_approval_booking_states.sql
+  - 20261109_electrician_inspection_quotes_and_service_only_commission.sql
 
-The sole duplicate group is:
-- Version `20261109`
-  - `20261109_allow_quote_approval_booking_states.sql`
-  - `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+The two SQL files repeat the booking status/assignment CHECK-constraint statements at source level. A disposable local runtime probe reproduced the schema_migrations primary-key collision when the duplicate prefix is replayed; see docs/DUPLICATE_20261109_MIGRATION_SCRATCH_EVIDENCE_20261118_HI.md.
 
-The second file repeats the four booking status/assignment CHECK-constraint statements already present at the end of the first file. This confirms source-level redundancy but does not establish which migration identity, if either, is recorded in the actual application's hosted migration ledger.
+## Actual application migration history — read-only
+The connected Supabase project Srk electranic was ACTIVE_HEALTHY. Its read-only migration listing returned 87 records.
+- Exact numeric version overlap between branch and application ledger: 7.
+- Application-ledger versions absent as exact prefixes in the branch: 80.
+- Branch versions absent from the application ledger: 96.
+- Same migration names ignoring version prefix: 16; only 7 of those also share the exact version, leaving 9 same-name/different-version pairs.
 
-A disposable local runtime probe reproduced the `schema_migrations` primary-key collision; see `docs/DUPLICATE_20261109_MIGRATION_SCRATCH_EVIDENCE_20261118_HI.md`.
+The application ledger contains these two distinct quote migrations:
+- 20261109075837 — electrician_inspection_quotes_and_service_only_commission
+- 20261109080400 — allow_quote_approval_booking_states
 
-## Existing automated guard
-`tests/database-migration-version-uniqueness.test.js` already:
-- scans all `.sql` files in `supabase/migrations/`;
-- validates each version prefix format;
-- fails on any new duplicate version group;
-- explicitly allowlists only the known `20261109` legacy pair and documents that it remains blocked pending migration-history reconciliation.
+This confirms that the actual application's migration ledger has two distinct identities for the quote migrations; the duplicate 20261109 prefix exists in the current branch filenames. The listing returns only version/name metadata and does not prove exact SQL content previously applied.
 
-This guard prevents additional collisions but intentionally does not resolve the legacy collision.
+The full reconciliation is documented in docs/ACTUAL_APP_MIGRATION_HISTORY_RECONCILIATION_20261118.md. The earlier test project's migration history is not authoritative for the application.
 
-## Test-project history check
-The read-only migration list for the Supabase project named `SRK ELECTRONIC TEST` returned seven push-notification test migrations (versions `20261110201406` through `20261111071759`). None matches the 103 version prefixes in this feature branch. This is a separate test project's ledger, not the application's authoritative hosted migration history.
+## Guard and safe next steps
+The existing tests/database-migration-version-uniqueness.test.js guard rejects new duplicate migration prefixes while allowlisting only this known legacy pair. Keep that guard.
 
-## Important limitation
-The Git tree inventory and test-project history do not reveal which migration version(s) are recorded in the actual application project's `schema_migrations` table, nor whether either duplicate file was previously applied through a manual or alternate deployment path.
+Before renaming or rewriting either legacy migration, reconcile all 87 application records against all 103 branch files, including changed versions and SQL contents. The amount_paid clean-replay ordering concern also remains open.
 
-## Safe next steps
-1. Keep the existing duplicate-pair guard in place.
-2. Obtain owner-authorized, read-only authoritative migration-history evidence for the actual application project before changing either legacy file.
-3. Continue dependency validation in disposable local Supabase. The separate `amount_paid` ordering concern remains open.
-4. Do not run hosted migrations or modify any hosted project as part of this review.
-
-No migration file was changed. The test-project history query was read-only. No hosted schema/data was changed. AI remains disabled.
+No hosted migration was applied and no hosted schema/data was changed. The application project was only queried for project status and migration metadata. AI remains disabled.
