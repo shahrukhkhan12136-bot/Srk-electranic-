@@ -60,3 +60,22 @@ test("Rate Catalogue RPC grants are least-privilege and base tables stay private
   assert.match(catalogueMigration, /GRANT EXECUTE ON FUNCTION public\.srk_admin_set_electrician_approved_categories\(uuid,text\[\],text\) TO authenticated/);
   assert.match(catalogueMigration, /GRANT SELECT ON TABLE public\.srk_rate_catalogue_items TO service_role/);
 });
+
+
+const electricianCatalogueGuard = read("supabase/migrations/20261118150000_block_electrician_gross_catalogue_access.sql");
+
+test("authenticated electrician sessions cannot call the customer gross catalogue RPC", () => {
+  assert.match(electricianCatalogueGuard, /ELECTRICIAN_CUSTOMER_RATE_CATALOGUE_FORBIDDEN/);
+  assert.match(electricianCatalogueGuard, /ep\.user_id=auth\.uid\(\) OR ep\.auth_user_id=auth\.uid\(\)/);
+  assert.match(electricianCatalogueGuard, /GRANT EXECUTE ON FUNCTION public\.srk_get_current_customer_rate_catalogue\(\) TO anon,authenticated,service_role/);
+});
+
+test("electrician net rate list resolves the published version without calling gross catalogue RPC", () => {
+  const start = electricianCatalogueGuard.indexOf("CREATE OR REPLACE FUNCTION public.srk_get_my_electrician_rate_list()");
+  const end = electricianCatalogueGuard.indexOf("$fn$;", start);
+  const fn = electricianCatalogueGuard.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(fn, /electrician_rate_paise/);
+  assert.match(fn, /customer_rate_paise-floor\(\(i\.customer_rate_paise::numeric\*1500\/10000\)\+0\.5\)::bigint/);
+  assert.doesNotMatch(fn, /srk_get_current_customer_rate_catalogue|customer_rate_paise['"]\s*,\s*commission|company_share/i);
+});
