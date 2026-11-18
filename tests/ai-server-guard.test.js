@@ -707,15 +707,24 @@ test("existing conversation IDs require an exact owner, module, and open status 
   assert.equal(allowed.statusCode, 503);
   assert.equal(JSON.parse(allowed.body).error, "ai_not_enabled");
 
-  // The persisted handoff RPC uses "handoff_requested" (not "handoff_pending").
-  // Such a conversation remains accessible to its owner until it is closed.
+  // Assistant appends are rejected after handoff is requested because the
+  // persistence append RPC accepts messages only while the conversation is open.
   const handoffRequested = make([{
     id: conversationId, owner_user_id: ownerId,
     module_key: "customer_support", status: "handoff_requested"
   }]);
-  const handoffRequestedResponse = await handoffRequested.handler(event({ body }));
-  assert.equal(handoffRequestedResponse.statusCode, 503);
-  assert.equal(JSON.parse(handoffRequestedResponse.body).error, "ai_not_enabled");
+  const assistantAfterHandoff = await handoffRequested.handler(event({ body }));
+  assert.equal(assistantAfterHandoff.statusCode, 403);
+  assert.equal(JSON.parse(assistantAfterHandoff.body).error, "ai_conversation_access_denied");
+
+  // A repeated handoff request may still reach the idempotent handoff RPC.
+  const handoffBody = {
+    module_key: "customer_support", conversation_id: conversationId,
+    reason_code: "needs_human_support", urgency: "normal", summary: "Please help"
+  };
+  const repeatedHandoff = await handoffRequested.handler(event({ body: handoffBody }), "handoff");
+  assert.equal(repeatedHandoff.statusCode, 503);
+  assert.equal(JSON.parse(repeatedHandoff.body).error, "ai_not_enabled");
 
   const url = new URL(own.calls.find(value => value.includes("/srk_ai_conversations")));
   assert.equal(url.searchParams.get("id"), "eq." + conversationId);
