@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { buildElectricianRateList, buildElectricianJobAccounting } = require("../lib/electrician-rate-view");
+const { buildElectricianRateList, deriveElectricianPaymentStage, buildElectricianJobAccounting } = require("../lib/electrician-rate-view");
 const { INITIAL_RATES_PAISE } = require("../lib/commercial-rate-policy");
 
 test("electrician rate list contains only their approved categories and 85 percent amounts", () => {
@@ -31,7 +31,7 @@ test("rate list rejects an approved category without a source rate", () => {
 test("unfinished job DTO does not include financial accounting", () => {
   const result = buildElectricianJobAccounting({
     booking_id: "b1", booking_status: "in_progress", payment_status: "pending",
-    paymentStage: "checkout_started",
+    razorpay_order_id: "order_123",
     customer_labour_gross_paise: 50000, company_share_paise: 7500, electrician_earning_paise: 42500
   });
   assert.equal("accounting" in result, false);
@@ -41,7 +41,7 @@ test("unfinished job DTO does not include financial accounting", () => {
 test("completed unpaid job exposes only electrician 85 percent", () => {
   const result = buildElectricianJobAccounting({
     booking_id: "b2", booking_status: "completed", payment_status: "unpaid",
-    paymentStage: "completed_unpaid", electrician_earning_paise: 76415,
+    electrician_earning_paise: 76415,
     customer_labour_gross_paise: 89900, company_share_paise: 13485
   });
   assert.equal(result.electrician_payable_paise, 76415);
@@ -50,10 +50,13 @@ test("completed unpaid job exposes only electrician 85 percent", () => {
   assert.equal("company_share_paise" in result, false);
 });
 
-test("checkout started exposes 100 percent split only after trusted stage is supplied", () => {
+test("checkout started derives from a persisted Razorpay order and exposes 100/85/15", () => {
+  assert.equal(deriveElectricianPaymentStage({
+    booking_status: "completed", payment_status: "pending", razorpay_order_id: "order_123"
+  }), "checkout_started");
   const result = buildElectricianJobAccounting({
     booking_id: "b3", booking_status: "completed", payment_status: "pending",
-    paymentStage: "checkout_started", customer_labour_gross_paise: 100000,
+    razorpay_order_id: "order_123", customer_labour_gross_paise: 100000,
     electrician_earning_paise: 85000, company_share_paise: 15000
   });
   assert.deepEqual(result.accounting, {
@@ -63,12 +66,12 @@ test("checkout started exposes 100 percent split only after trusted stage is sup
   });
 });
 
-test("verified payment exposes actual receipt and keeps payout ledger separate", () => {
+test("verified payment derives from persisted provider evidence and keeps payout separate", () => {
   const result = buildElectricianJobAccounting({
     booking_id: "b4", booking_status: "completed", payment_status: "paid",
-    paymentStage: "payment_verified", customer_labour_gross_paise: 100000,
-    electrician_earning_paise: 85000, company_share_paise: 15000,
-    customer_amount_received_paise: 103000,
+    payment_verified_at: "2026-11-18T02:00:00Z", razorpay_payment_id: "pay_123",
+    customer_labour_gross_paise: 100000, electrician_earning_paise: 85000,
+    company_share_paise: 15000, customer_amount_received_paise: 103000,
     payout_status: "pending", payout_amount_paise: 81250
   });
   assert.equal(result.accounting.customer_amount_received_paise, 103000);
@@ -76,9 +79,31 @@ test("verified payment exposes actual receipt and keeps payout ledger separate",
   assert.deepEqual(result.electrician_payout, { payout_status: "pending", payout_amount_paise: 81250 });
 });
 
+test("manual payment requires server-confirmed matching evidence flag", () => {
+  assert.equal(deriveElectricianPaymentStage({
+    booking_status: "completed", payment_status: "paid",
+    payment_verified_at: "2026-11-18T02:00:00Z", manualPaymentEvidence: true
+  }), "payment_verified");
+  assert.equal(deriveElectricianPaymentStage({
+    booking_status: "completed", payment_status: "paid",
+    payment_verified_at: "2026-11-18T02:00:00Z", manualPaymentEvidence: false
+  }), "completed_unpaid");
+});
+
+test("browser-supplied paymentStage is ignored", () => {
+  const result = buildElectricianJobAccounting({
+    booking_id: "b5", booking_status: "completed", payment_status: "unpaid",
+    paymentStage: "payment_verified", customer_labour_gross_paise: 100000,
+    electrician_earning_paise: 85000, company_share_paise: 15000
+  });
+  assert.equal("accounting" in result, false);
+  assert.equal("customer_labour_gross_paise" in result, false);
+  assert.equal(result.electrician_payable_paise, 85000);
+});
+
 test("completed status alone never reveals gross or company share", () => {
   const result = buildElectricianJobAccounting({
-    booking_id: "b5", booking_status: "completed", payment_status: "pending",
+    booking_id: "b6", booking_status: "completed", payment_status: "pending",
     customer_labour_gross_paise: 100000, electrician_earning_paise: 85000,
     company_share_paise: 15000
   });
@@ -88,17 +113,17 @@ test("completed status alone never reveals gross or company share", () => {
 
 test("rejects mismatched 100 percent split", () => {
   assert.throws(() => buildElectricianJobAccounting({
-    booking_id: "b6", booking_status: "completed", payment_status: "pending",
-    paymentStage: "checkout_started", customer_labour_gross_paise: 100000,
+    booking_id: "b7", booking_status: "completed", payment_status: "pending",
+    razorpay_order_id: "order_123", customer_labour_gross_paise: 100000,
     electrician_earning_paise: 85000, company_share_paise: 14000
   }), /must equal/);
 });
 
 test("verified stage requires a positive actual customer receipt", () => {
   assert.throws(() => buildElectricianJobAccounting({
-    booking_id: "b7", booking_status: "completed", payment_status: "paid",
-    paymentStage: "payment_verified", customer_labour_gross_paise: 100000,
-    electrician_earning_paise: 85000, company_share_paise: 15000,
-    customer_amount_received_paise: 0
+    booking_id: "b8", booking_status: "completed", payment_status: "paid",
+    payment_verified_at: "2026-11-18T02:00:00Z", razorpay_payment_id: "pay_123",
+    customer_labour_gross_paise: 100000, electrician_earning_paise: 85000,
+    company_share_paise: 15000, customer_amount_received_paise: 0
   }), /must be positive/);
 });
