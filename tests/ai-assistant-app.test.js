@@ -253,5 +253,5 @@ test("Customer AI widgets are destroyed immediately on every authentication iden
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
-  assert.match(source, /onAuthStateChange\\(\\(event\\) => \\{\\s*if\\(event==='SIGNED_IN'\\|\\|event==='SIGNED_OUT'\\|\\|event==='USER_DELETED'\\)\\{\\s*customerActionGeneration\\+\\+;\\s*destroyCustomerAiAssistant\\(\\);/);
+  assert.match(source, /onAuthStateChange\(\(event\) => \{\s*if\(event==='SIGNED_IN'\|\|event==='SIGNED_OUT'\|\|event==='USER_DELETED'\)\{\s*customerActionGeneration\+\+;\s*destroyCustomerAiAssistant\(\);/);
 });
