@@ -1,6 +1,6 @@
-# SRK ELECTRONIC — Commercial Rate List Management (Design Only)
+# SRK ELECTRONIC — Commercial Rate List Management
 
-**Status (18 नवंबर 2026):** यह दस्तावेज़ मूल डिजाइन आवश्यकताओं का रिकॉर्ड है। नीचे दिए गए पुराने प्रस्तावित API/स्कीमा को वर्तमान implementation न समझें। संबंधित SQL migrations और source tests repository में मौजूद हैं, लेकिन इन्हें किसी live/hosted database पर लागू करने या rate बदलने की पुष्टि नहीं है।
+**स्थिति (18 नवंबर 2026):** यह दस्तावेज़ requirements और repository implementation दोनों का रिकॉर्ड है। नीचे स्पष्ट रूप से प्रस्तावित बताए गए API/स्कीमा को ही design समझें। वर्तमान source implementation और CI प्रमाण अलग से दर्ज हैं। कोई live/hosted database migration, production rate change या deployment नहीं किया गया है।
 
 ## 0. Repository implementation status
 
@@ -127,4 +127,4 @@ Admin screen shows current published rates, scheduled version, draft editor, old
 
 ## 9. Explicit exclusions
 
-This design does not create database objects, migrations, RPCs, UI code, API handlers, or live rates. No SQL execution, migration replay, paid database branch creation, deployment, or additional paid service is authorized by this document.
+यह दस्तावेज़ स्वयं कोई database object, migration, RPC, UI code, API handler या live rate नहीं बनाता। Repository source/CI की सफलता को hosted database migration, production rate change या deployment न समझें। Paid database branch, production deployment या live rate बदलने के लिए अलग स्पष्ट अनुमति आवश्यक है।
