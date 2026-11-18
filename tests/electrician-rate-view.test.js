@@ -81,7 +81,7 @@ test("verified payment derives from persisted provider evidence and keeps payout
     payment_verified_at: "2026-11-18T02:00:00Z", razorpay_payment_id: "pay_123",
     customer_labour_gross_paise: 100000, electrician_earning_paise: 85000,
     company_share_paise: 15000, customer_amount_received_paise: 103000,
-    payout_status: "pending", payout_amount_paise: 81250
+    payout_reconciliation_status: "reconciled", payout_status: "pending", payout_amount_paise: 81250
   });
   assert.equal(result.accounting.customer_amount_received_paise, 103000);
   assert.equal(result.accounting.electrician_earning_paise, 85000);
