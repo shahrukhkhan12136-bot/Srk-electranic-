@@ -20,6 +20,12 @@ declare
 begin
   if auth.uid() is null or not public.is_srk_admin() then raise exception 'ADMIN_ONLY' using errcode='42501'; end if;
   if length(v_reference)<4 or length(v_reference)>120 then raise exception 'VALID_CASH_RECEIPT_REFERENCE_REQUIRED'; end if;
+  -- Share the same reference lock with the new-Catalogue UPI/bank RPC.
+  perform pg_advisory_xact_lock(hashtextextended(lower(v_reference), 73119));
+  if exists(select 1 from public.srk_manual_payment_entries
+     where lower(btrim(payment_reference))=lower(v_reference)) then
+    raise exception 'MANUAL_PAYMENT_REFERENCE_ALREADY_USED';
+  end if;
   if p_note is not null and length(p_note)>250 then raise exception 'PAYMENT_NOTE_TOO_LONG'; end if;
   select * into v_booking from public.service_bookings where id=p_booking_id for update;
   if not found then raise exception 'BOOKING_NOT_FOUND'; end if;
