@@ -157,3 +157,128 @@ test("Customer and Electrician widgets show login guidance and never send withou
     widget.destroy();
   }
 });
+
+
+test("Human handoff sends the conversation and booking context, then locks after confirmed queue success", async () => {
+  const documentRef = createFakeDocument();
+  const container = documentRef.createElement("main");
+  const sent = [];
+  const handedOff = [];
+  const widget = createAiAssistantWidget({
+    enabled: true, moduleKey: "customer_support", container, documentRef,
+    client: {
+      async sendMessage(payload) {
+        sent.push(payload);
+        return {
+          conversation_id: "123e4567-e89b-42d3-a456-426614174001",
+          reply: "मैं कर्मचारी की सहायता उपलब्ध करा सकता हूँ।",
+          handoff: { required: true }
+        };
+      },
+      async createHandoff(payload) {
+        handedOff.push(payload);
+        return {
+          handoff_id: "123e4567-e89b-42d3-a456-426614174002",
+          case_reference: "CASE-42",
+          status: "queued"
+        };
+      }
+    },
+    async getSession() { return { access_token: "live-session-token" }; },
+    getContext: () => ({ booking_id: "123e4567-e89b-42d3-a456-426614174003" }),
+    createId: () => "123e4567-e89b-42d3-a456-426614174004"
+  });
+  const buttons = [];
+  const collect = node => {
+    if (node.tagName === "button") buttons.push(node);
+    for (const child of node.children) collect(child);
+  };
+  collect(widget.element);
+  const input = widget.element.find("textarea");
+  buttons[0].listeners.click();
+  input.value = "मेरी बुकिंग में समस्या है";
+  await buttons[1].listeners.click();
+  const panel = widget.element.find("div");
+  const summary = panel.children[6];
+  const handoffButton = buttons[2];
+  assert.equal(summary.hidden, false);
+  summary.value = "बुकिंग की समस्या के लिए कर्मचारी से संपर्क चाहिए";
+  await handoffButton.listeners.click();
+
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].context.booking_id, "123e4567-e89b-42d3-a456-426614174003");
+  assert.equal(handedOff.length, 1);
+  assert.equal(handedOff[0].conversationId, "123e4567-e89b-42d3-a456-426614174001");
+  assert.equal(handedOff[0].context.booking_id, "123e4567-e89b-42d3-a456-426614174003");
+  assert.equal(handedOff[0].summary, summary.value);
+  assert.equal(handedOff[0].reasonCode, "needs_human_support");
+  assert.equal(handedOff[0].urgency, "normal");
+  assert.equal(handoffButton.disabled, true);
+  assert.equal(summary.disabled, true);
+  const status = panel.children[5];
+  assert.equal(status.textContent, "आपका सहायता अनुरोध दर्ज हो गया है।");
+  assert.ok(panel.children[2].children.some(item => item.children?.[1]?.textContent?.includes("CASE-42")));
+  widget.destroy();
+});
+
+test("Human handoff retries with the same idempotency key after a failed request", async () => {
+  const documentRef = createFakeDocument();
+  const container = documentRef.createElement("main");
+  const handoffCalls = [];
+  let attempt = 0;
+  const generatedIds = [
+    "123e4567-e89b-42d3-a456-426614174010",
+    "123e4567-e89b-42d3-a456-426614174011"
+  ];
+  const widget = createAiAssistantWidget({
+    enabled: true, moduleKey: "electrician_assistant", container, documentRef,
+    client: {
+      async sendMessage() {
+        return {
+          conversation_id: "123e4567-e89b-42d3-a456-426614174012",
+          reply: "सपोर्ट टीम सहायता कर सकती है।",
+          handoff: { required: true }
+        };
+      },
+      async createHandoff(payload) {
+        handoffCalls.push(payload);
+        attempt++;
+        if (attempt === 1) {
+          const error = new Error("temporary failure");
+          error.code = "ai_service_unavailable";
+          throw error;
+        }
+        return {
+          handoff_id: "123e4567-e89b-42d3-a456-426614174013",
+          status: "queued"
+        };
+      }
+    },
+    async getSession() { return { access_token: "live-session-token" }; },
+    createId: () => generatedIds.shift()
+  });
+  const buttons = [];
+  const collect = node => {
+    if (node.tagName === "button") buttons.push(node);
+    for (const child of node.children) collect(child);
+  };
+  collect(widget.element);
+  buttons[0].listeners.click();
+  widget.element.find("textarea").value = "सुरक्षा संबंधी समस्या";
+  await buttons[1].listeners.click();
+  const panel = widget.element.find("div");
+  const summary = panel.children[6];
+  summary.value = "कर्मचारी से तकनीकी सहायता चाहिए";
+  const handoffButton = buttons[2];
+  await handoffButton.listeners.click();
+  assert.equal(handoffButton.disabled, false);
+  assert.equal(summary.disabled, false);
+  await handoffButton.listeners.click();
+
+  assert.equal(handoffCalls.length, 2);
+  assert.equal(handoffCalls[0].idempotencyKey, "123e4567-e89b-42d3-a456-426614174011");
+  assert.equal(handoffCalls[1].idempotencyKey, handoffCalls[0].idempotencyKey);
+  assert.equal(handoffButton.disabled, true);
+  assert.equal(summary.disabled, true);
+  widget.destroy();
+});
