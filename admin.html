@@ -823,7 +823,7 @@ const SRK_RATE_TIERS=[
  ['expert_electrician','Expert Electrician','rateExpertElectrician'],
  ['premium_electrical_specialist','Premium Electrical Specialist','ratePremiumSpecialist']
 ];
-let adminCurrentRateCatalogue=null,adminRateCatalogueBusy=false,adminRateCategoryBusy=new Set();
+let adminCurrentRateCatalogue=null,adminRateCatalogueBusy=false,adminRateCategoryBusy=new Set(),adminRateCatalogueDraftCache=[] ,adminEditingRateDraftId=null;
 function paiseToRupees(paise){return (Number(paise)/100).toFixed(2);}
 function rupeesToPaise(value){
  const raw=String(value||'').trim();
@@ -849,13 +849,24 @@ async function loadAdminRateCatalogueDrafts(){
  if(!box||!sb||!user||adminPortalMode!=='main_admin')return;
  const {data,error}=await sb.rpc('srk_admin_list_rate_catalogue_drafts',{p_limit:50});
  if(error){box.textContent='Draft सूची नहीं खुली: '+error.message;return;}
- const rows=Array.isArray(data)?data:[];
+ const rows=Array.isArray(data)?data:[];adminRateCatalogueDraftCache=rows;
  if(!rows.length){box.textContent='कोई Draft या Scheduled बदलाव बाकी नहीं है।';return;}
- box.innerHTML='<strong>Draft / Scheduled बदलाव</strong>'+rows.map(row=>{
+ box.innerHTML='<strong>Draft / Scheduled बदलाव</strong>'+rows.map((row,index)=>{
   const id=String(row.id||'');
   const when=new Date(row.effective_at).toLocaleString('en-IN');
   return '<div style="border-top:1px solid #e6edf3;padding:10px 0"><strong>'+esc(row.status==='scheduled'?'Scheduled':'Draft')+'</strong> • लागू: '+esc(when)+'<div class="muted">'+esc(row.reason||'')+'</div><button type="button" onclick="publishAdminRateCatalogueDraft(\''+esc(id)+'\')">Publish / Schedule पक्का करें</button></div>';
  }).join('');
+}
+function editAdminRateCatalogueDraft(index){
+ const row=adminRateCatalogueDraftCache[index];if(!row||!row.id||!row.rates)return;
+ adminEditingRateDraftId=row.id;
+ for(const [key,label,id] of SRK_RATE_TIERS){const input=document.getElementById(id);if(input&&Number.isSafeInteger(Number(row.rates[key])))input.value=paiseToRupees(row.rates[key]);}
+ const date=new Date(row.effective_at);if(Number.isFinite(date.getTime())){
+  const local=new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  document.getElementById('rateCatalogueEffectiveAt').value=local;
+ }
+ document.getElementById('rateCatalogueReason').value=row.reason||'';
+ document.getElementById('adminRateCatalogueStatus').textContent='Draft संपादन के लिए खुला है: '+row.id;
 }
 async function saveAdminRateCatalogueDraft(){
  if(!sb||!user||adminPortalMode!=='main_admin'||adminRateCatalogueBusy)return;
@@ -868,11 +879,11 @@ async function saveAdminRateCatalogueDraft(){
   const local=document.getElementById('rateCatalogueEffectiveAt').value;
   const effectiveAt=local?new Date(local).toISOString():new Date().toISOString();
   if(!Number.isFinite(Date.parse(effectiveAt)))throw new Error('लागू होने का समय सही नहीं है।');
-  const {data,error}=await sb.rpc('srk_admin_save_rate_catalogue_draft',{p_rates:rates,p_effective_at:effectiveAt,p_reason:reason,p_draft_id:null});
+  const {data,error}=await sb.rpc('srk_admin_save_rate_catalogue_draft',{p_rates:rates,p_effective_at:effectiveAt,p_reason:reason,p_draft_id:adminEditingRateDraftId});
   if(error)throw error;
   if(!data?.success||!data?.draft_id)throw new Error('Draft सेव होने की पुष्टि नहीं मिली।');
   status.textContent=(data.status==='scheduled'?'Scheduled बदलाव':'Draft')+' सेव हुआ: '+data.draft_id;
-  await loadAdminRateCatalogueDrafts();
+  adminEditingRateDraftId=null;await loadAdminRateCatalogueDrafts();
  }catch(e){status.textContent='Draft सेव नहीं हुआ: '+(e.message||'त्रुटि');}
  finally{adminRateCatalogueBusy=false;}
 }
