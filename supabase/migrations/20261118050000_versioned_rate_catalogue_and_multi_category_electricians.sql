@@ -197,8 +197,8 @@ BEGIN
   END IF;
   IF p_electrician_profile_id IS NULL OR length(btrim(coalesce(p_reason,''))) NOT BETWEEN 5 AND 500
      OR p_category_keys IS NULL OR cardinality(p_category_keys)>4
-     OR cardinality(p_category_keys)<>(SELECT count(DISTINCT x) FROM unnest(p_category_keys) x)
-     OR EXISTS(SELECT 1 FROM unnest(p_category_keys) x WHERE x NOT IN (
+     OR cardinality(p_category_keys)<>(SELECT count(DISTINCT category_key) FROM unnest(p_category_keys) AS u(category_key))
+     OR EXISTS(SELECT 1 FROM unnest(p_category_keys) AS u(category_key) WHERE category_key NOT IN (
        'electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'
      )) THEN RAISE EXCEPTION 'INVALID_CATEGORY_APPROVAL_REQUEST' USING ERRCODE='22023'; END IF;
   SELECT * INTO v_profile FROM public.electrician_profiles
