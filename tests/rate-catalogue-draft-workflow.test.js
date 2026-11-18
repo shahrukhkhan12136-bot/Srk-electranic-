@@ -40,10 +40,21 @@ test("Main Admin UI can save drafts, view queue, and publish with expected curre
 });
 
 test("electrician tier selector displays the current published catalogue prices, never legacy hardcoded amounts",()=>{
- const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
- const context=vm.createContext({window:{},document:{getElementById(){return null;}}});
- vm.runInContext(script,context);
- vm.runInContext("adminCurrentRateCatalogue={rates:{electrical_assistant:12550,skilled_electrician:20000,expert_electrician:27525,premium_electrical_specialist:35000}}",context);
+ const helperStart=admin.indexOf("function paiseToRupees");
+ const helperEnd=admin.indexOf("function rupeesToPaise",helperStart);
+ assert.ok(helperStart>=0&&helperEnd>helperStart);
+ const context=vm.createContext({
+  esc:value=>String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"),
+  adminCurrentRateCatalogue:null,
+  SRK_RATE_TIERS:[
+   ["electrical_assistant","Electrical Assistant"],
+   ["skilled_electrician","Skilled Electrician"],
+   ["expert_electrician","Expert Electrician"],
+   ["premium_electrical_specialist","Premium Electrical Specialist"]
+  ]
+ });
+ vm.runInContext(admin.slice(helperStart,helperEnd),context);
+ context.adminCurrentRateCatalogue={rates:{electrical_assistant:12550,skilled_electrician:20000,expert_electrician:27525,premium_electrical_specialist:35000}};
  const dynamic=vm.runInContext("SRK_RATE_TIERS.map(([key,label])=>adminRateTierOption(key,label,'skilled_electrician')).join('')",context);
  assert.match(dynamic,/Electrical Assistant — ₹125\.50/);
  assert.match(dynamic,/Skilled Electrician — ₹200\.00/);
@@ -51,7 +62,7 @@ test("electrician tier selector displays the current published catalogue prices,
  assert.match(dynamic,/Premium Electrical Specialist — ₹350\.00/);
  assert.match(dynamic,/value="skilled_electrician" selected/);
  assert.doesNotMatch(dynamic,/₹899|₹1,199|₹1,599|₹1,999/);
- vm.runInContext("adminCurrentRateCatalogue=null",context);
+ context.adminCurrentRateCatalogue=null;
  const unavailable=vm.runInContext("adminRateTierOption('electrical_assistant','Electrical Assistant','')",context);
  assert.match(unavailable,/प्रकाशित दर उपलब्ध नहीं/);
  assert.doesNotMatch(unavailable,/₹\d/);
