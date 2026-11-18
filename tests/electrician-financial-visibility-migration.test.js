@@ -49,3 +49,9 @@ test("earnings RPC exposes checkout breakdown fields and separate payout status"
   assert.match(migration, /checkout_reconciliation_required/);
   assert.match(ui, /x\.payment_stage==='checkout_reconciliation_required'/);
 });
+
+test("earnings calculations use the actual immutable labour_amount column, not a nonexistent paise column", () => {
+  assert.match(migration, /bill\.labour_amount/);
+  assert.doesNotMatch(migration, /bill\.labour_amount_paise/);
+  assert.match(migration, /WHEN verified\.is_verified THEN coalesce\(b\.amount_paid,0\)\s+ELSE 0/);
+});
