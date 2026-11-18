@@ -778,7 +778,7 @@ async function loadEarnings(){
   }else if(x.payment_stage==='checkout_reconciliation_required'){
    detail='<p class="bad">Checkout शुरू है, लेकिन इस Booking का Rate/Commission पुराने हिसाब से जुड़ा है। सही मिलान होने तक वित्तीय विभाजन छिपाया गया है।</p>';
   }else if(x.payment_stage==='payment_verified'){
-   detail='<p><b>भुगतान सत्यापित:</b> ग्राहक से वास्तविक प्राप्त '+money(x.amount_received)+(x.customer_labour_gross==null?'':' • Labour कुल '+money(x.customer_labour_gross))+' • आपकी वास्तविक देय कमाई '+(x.electrician_earning==null?'Payout Ledger मिलान बाकी':money(x.electrician_earning))+' • वास्तविक कंपनी कमीशन '+money(x.company_share)+'</p>'+
+   detail='<p><b>भुगतान सत्यापित:</b> ग्राहक से वास्तविक प्राप्त '+money(x.amount_received)+(x.customer_labour_gross==null?'':' • Labour कुल '+money(x.customer_labour_gross))+' • आपकी वास्तविक देय कमाई '+(x.electrician_earning==null?'Payout Ledger मिलान बाकी':money(x.electrician_earning))+(x.company_share==null?' • कंपनी कमीशन Payout Ledger मिलान के बाद दिखेगा':' • वास्तविक कंपनी कमीशन '+money(x.company_share))+'</p>'+
     '<p><b>अलग Electrician Payout Ledger:</b> '+(x.payout_amount==null?'राशि अभी दर्ज नहीं':money(x.payout_amount))+' • '+esc(statusText[x.payout_status]||x.payout_status||'रिकॉर्ड उपलब्ध नहीं')+'</p>'+
     (x.payout_reconciliation_status==='reconciled'?'<p class="muted">Payout Ledger का Bill, कमीशन और देय रकम से मिलान हो गया है।</p>':'<p class="bad">ग्राहक भुगतान सत्यापित है, लेकिन Payout Ledger मिलान स्थिति: '+esc(x.payout_reconciliation_status||'not_checked')+'। इसे सही Payout Reconciliation न मानें।</p>');
   }else if(x.payment_stage==='payment_verification_required'){
