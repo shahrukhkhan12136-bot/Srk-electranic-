@@ -164,7 +164,8 @@ test("AI client rejects malformed HTTPS base URLs before making a request", asyn
     "https://user:secret@api.example.test",
     "https://api.example.test?token=secret",
     "https://api.example.test#fragment",
-    " https://api.example.test"
+    " https://api.example.test",
+    "https://api.example.test/prefix"
   ];
   for (const baseUrl of invalidUrls) {
     const client = createAiAssistantClient({
