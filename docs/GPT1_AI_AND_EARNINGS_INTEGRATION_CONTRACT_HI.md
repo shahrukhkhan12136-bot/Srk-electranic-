@@ -276,3 +276,9 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Regression test `Object.prototype` में inherited context/conversation values डालकर verify करता है कि वे request body में नहीं जातीं।
 - Tests अभी execute नहीं हुए हैं; यह pre-launch source hardening है, live API integration नहीं।
 - अतिरिक्त regression test: handoff custom-prototype request को network call से पहले रोकता है; inherited `context`, `reasonCode`, `urgency` को request body में शामिल नहीं करता।
+
+### AI widget teardown safety
+
+- Customer/Electrician widget में session token resolve होने के बाद, AI message या human-handoff request भेजने से पहले `destroyed` state दोबारा जाँची जाती है।
+- यदि app component हट चुका हो और session lookup बाद में resolve हो, तो कोई नया AI network request शुरू नहीं होगा।
+- दोनों request paths के लिए regression assertion जोड़ा गया। Tests अभी execute नहीं हुए हैं।
