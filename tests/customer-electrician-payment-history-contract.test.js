@@ -44,7 +44,8 @@ test('Electrician earnings and Admin bank payout remain distinct and UI never in
 test('Refunded completed bookings are not mislabeled as unpaid customer balances', () => {
   assert.match(earningsSql, /payment_status text/);
   assert.match(earningsSql, /b\.payment_status='paid'/);
-  assert.match(electrician, /const unpaid=completed\.filter\(x=>x\.payment_stage==='completed_unpaid'\)/);\n  assert.match(electrician, /const refunded=completed\.filter\(x=>x\.payment_stage==='refunded'\)/);
+  assert.match(electrician, /const unpaid=completed\.filter\(x=>x\.payment_stage==='completed_unpaid'\)/);
+  assert.match(electrician, /const refunded=completed\.filter\(x=>x\.payment_stage==='refunded'\)/);
   assert.match(electrician, /x\.payment_stage==='refunded'/);
   assert.match(electrician, /रिफंड \/ रिवर्सल:/);
 });
