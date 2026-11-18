@@ -7,12 +7,14 @@ on:
     paths:
       - "COMPLETE_DATABASE_SETUP.sql"
       - "supabase/migrations/**"
+      - "supabase/tests/database/rate_catalogue_draft_security.test.sql"
       - "docs/AI_CONVERSATION_AND_HANDOFF_DATA_MODEL_HI.md"
       - ".github/workflows/full-migration-replay-postgres.yml"
   pull_request:
     paths:
       - "COMPLETE_DATABASE_SETUP.sql"
       - "supabase/migrations/**"
+      - "supabase/tests/database/rate_catalogue_draft_security.test.sql"
       - ".github/workflows/full-migration-replay-postgres.yml"
   workflow_dispatch:
 
@@ -95,6 +97,10 @@ jobs:
             amount_paid=true
             amount_paid_constraint=true
             rate_catalogue_versions=true
+            rate_catalogue_drafts=true
+            rate_draft_save_rpc=true
+            rate_draft_list_rpc=true
+            rate_draft_publish_rpc=true
             rate_catalogue_items=true
             rate_catalogue_audit=true
             electrician_rate_categories=true
