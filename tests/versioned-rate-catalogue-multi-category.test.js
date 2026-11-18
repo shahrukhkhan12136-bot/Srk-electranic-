@@ -123,6 +123,6 @@ test("Admin electrician category list is server-gated to Main Admin and writes f
 test("Admin activation accepts new multi-category approvals as well as preserved legacy approvals", () => {
   assert.match(adminUi, /srk_admin_list_electrician_rate_categories/);
   assert.match(adminUi, /categoryProfile\?\.active_categories/);
-  assert.match(adminUi, /hasMultiCategoryApproval\|\|!hasLegacyApproval/);
+  assert.match(adminUi, /!hasMultiCategoryApproval&&!hasLegacyApproval/);
   assert.match(adminUi, /कम-से-कम एक Admin-approved Rate Category/);
 });
