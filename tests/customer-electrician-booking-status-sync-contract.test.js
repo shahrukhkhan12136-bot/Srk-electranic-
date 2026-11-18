@@ -105,6 +105,13 @@ test('customer booking timeline reports partial per-booking RPC errors without t
   assert.doesNotMatch(load, /if\(timelineResult\.error\)/);
 });
 
+test('electrician booking lifecycle refreshes every 30 seconds only for visible approved active sessions', () => {
+  assert.match(electrician, /let electricianBookingStatusPoller=null;/);
+  assert.match(electrician, /electricianBookingStatusPoller=setInterval\(\(\)=>\{/);
+  assert.match(electrician, /document\.visibilityState!=='visible'\|\|!user\|\|profile\?\.active!==true\|\|profile\?\.verification_status!=='approved'/);
+  assert.match(electrician, /refresh\(\);\s*\},30000\)/);
+});
+
 test('customer booking status has a clear label while electrician work-start approval is pending', () => {
   assert.match(customer, /awaiting_work_start_approval:'काम शुरू करने के लिए आपकी मंजूरी प्रतीक्षित'/);
   assert.match(customer, /row\.status==='awaiting_work_start_approval'&&row\.work_start_approval_status==='pending'/);
