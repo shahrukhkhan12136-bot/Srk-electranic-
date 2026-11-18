@@ -119,7 +119,7 @@ test("customer Rate Catalogue UI fails closed unless the published version and a
   assert.match(fn, /if\s*\(error\)\s*throw error/);
   assert.match(fn, /!data\?\.rate_version_id/);
   assert.match(fn, /Number\.isSafeInteger\(rates\[k\]\)/);
-  assert.match(fn, /rates\[k\]<=0/);
+  assert.match(fn, /rates\[k\]\s*<=\s*0/);
   assert.match(fn, /Object\.fromEntries\(keys\.map\(k=>\[k,rates\[k\]\]\)\)/);
   assert.match(fn, /customerRateVersionId=data\.rate_version_id/);
   assert.doesNotMatch(fn, /\|\|\s*\d{3,}/, "customer UI must not fall back to hardcoded catalogue prices");
