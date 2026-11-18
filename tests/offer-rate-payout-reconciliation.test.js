@@ -41,6 +41,7 @@ test("payment verification and payout-ledger reconciliation are separate states"
   assert.match(migration, /WHEN verified\.is_verified AND payout_check\.reconciliation_status='reconciled' THEN payout\.electrician_payable/);
   assert.match(migration, /WHEN verified\.is_verified THEN NULL/);
   assert.match(migration, /AS payout_reconciliation_status/);
+  assert.ok(migration.includes("CASE WHEN verified.is_verified AND payout_check.reconciliation_status='reconciled' THEN payout.payout_status ELSE NULL END AS payout_status"));
   assert.ok(migration.includes("WHEN verified.is_verified THEN NULL"));
   assert.ok(migration.includes("WHEN verified.is_verified AND payout_check.reconciliation_status='reconciled' THEN payout.platform_commission"));
 });
