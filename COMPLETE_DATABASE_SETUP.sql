@@ -158,7 +158,7 @@ create policy srk_electrician_read_own_offers on public.job_offers for select to
 using (exists (select 1 from public.electrician_profiles p where p.id = electrician_id and p.user_id = auth.uid()));
 drop policy if exists srk_electrician_read_offered_booking on public.service_bookings;
 create policy srk_electrician_read_offered_booking on public.service_bookings for select to authenticated
-using (exists (select 1 from public.job_offers o join public.electrician_profiles p on p.id=o.electrician_id where o.booking_id=id and p.user_id=auth.uid()));
+using (exists (select 1 from public.job_offers o join public.electrician_profiles p on p.id=o.electrician_id where o.booking_id=public.service_bookings.id and p.user_id=auth.uid()));
 
 -- Safe accept/decline: only the logged-in electrician can respond to their offer.
 create or replace function public.srk_respond_to_offer(p_offer_id uuid, p_response text)
