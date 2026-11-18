@@ -14,9 +14,9 @@ SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_ai_audit_ev
 SELECT ok(NOT has_table_privilege('anon','public.srk_ai_conversations','SELECT'),'anon cannot read conversations');
 SELECT ok(NOT has_table_privilege('authenticated','public.srk_ai_conversations','SELECT'),'authenticated cannot read conversations');
 SELECT ok(NOT has_table_privilege('authenticated','public.srk_ai_messages','INSERT'),'authenticated cannot insert messages');
-SELECT ok(NOT has_table_privilege('authenticated','public.srk_ai_idempotency','ALL'),'authenticated cannot access idempotency');
-SELECT ok(NOT has_table_privilege('authenticated','public.srk_ai_handoffs','ALL'),'authenticated cannot access handoffs');
-SELECT ok(NOT has_table_privilege('authenticated','public.srk_ai_audit_events','ALL'),'authenticated cannot access audit');
+SELECT ok(NOT has_table_privilege('authenticated','public.srk_ai_idempotency','SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'),'authenticated cannot access idempotency');
+SELECT ok(NOT has_table_privilege('authenticated','public.srk_ai_handoffs','SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'),'authenticated cannot access handoffs');
+SELECT ok(NOT has_table_privilege('authenticated','public.srk_ai_audit_events','SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'),'authenticated cannot access audit');
 SELECT ok(has_table_privilege('service_role','public.srk_ai_conversations','SELECT,INSERT,UPDATE,DELETE'),'service role can operate conversations');
 SELECT ok(has_table_privilege('service_role','public.srk_ai_audit_events','INSERT'),'service role can append audit');
 SELECT ok(NOT has_table_privilege('service_role','public.srk_ai_audit_events','UPDATE,DELETE'),'service role cannot mutate audit history');
