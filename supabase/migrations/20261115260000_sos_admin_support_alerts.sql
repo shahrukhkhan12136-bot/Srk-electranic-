@@ -147,13 +147,20 @@ begin
       then btrim(v_booking.phone) else 'Unavailable' end;
   else
     v_actor_role:='electrician';
-    select b,ep into v_booking,v_profile
+    select b.* into v_booking
       from public.service_bookings b
-      join public.electrician_profiles ep on ep.id=b.assigned_electrician_id
-     where (ep.user_id=v_uid or ep.auth_user_id=v_uid)
-       and b.selected_category is not null
+     where b.selected_category is not null
        and b.status='in_progress'
-     for update of b;
+       and exists (
+         select 1 from public.electrician_profiles ep
+          where ep.id=b.assigned_electrician_id
+            and (ep.user_id=v_uid or ep.auth_user_id=v_uid)
+       )
+     for update;
+    select ep.* into v_profile
+      from public.electrician_profiles ep
+     where ep.id=v_booking.assigned_electrician_id
+       and (ep.user_id=v_uid or ep.auth_user_id=v_uid);
     v_actor_name:=left(coalesce(nullif(btrim(v_profile.display_name),''),'Electrician'),120);
     v_actor_phone:=case when length(btrim(coalesce(v_profile.phone,''))) between 5 and 30
       then btrim(v_profile.phone) else 'Unavailable' end;
