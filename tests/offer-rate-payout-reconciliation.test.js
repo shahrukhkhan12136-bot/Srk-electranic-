@@ -92,3 +92,23 @@ test("electrician UI does not render an unreconciled company share as zero", () 
   assert.match(electricianUi, /x\.company_share==null\?' • कंपनी कमीशन Payout Ledger मिलान के बाद दिखेगा'/);
   assert.match(electricianUi, /ग्राहक भुगतान सत्यापित है, लेकिन Payout Ledger मिलान स्थिति/);
 });
+
+
+const payoutTriggerMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118100000_align_manual_payment_method_payout_trigger.sql"), "utf8");
+const paymentVerificationMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql"), "utf8");
+
+test("payout trigger requires the same manual-payment method match as payment verification", () => {
+  assert.match(payoutTriggerMigration, /e\.payment_method IS NOT NULL/);
+  assert.match(payoutTriggerMigration, /NEW\.payment_method IS NOT NULL/);
+  assert.match(payoutTriggerMigration, /lower\(btrim\(e\.payment_method\)\) = lower\(btrim\(NEW\.payment_method\)\)/);
+  assert.match(paymentVerificationMigration, /lower\(btrim\(e\.payment_method\)\) = lower\(btrim\(new\.payment_method\)\)/);
+  assert.doesNotMatch(payoutTriggerMigration, /round\(coalesce\(e\.amount,0\),2\) = round\(coalesce\(NEW\.amount_paid,0\),2\)\s*\)/);
+});
+
+test("manual-payment trigger alignment migration does not rewrite historical records", () => {
+  assert.doesNotMatch(payoutTriggerMigration, /UPDATE\s+public\.service_bookings/i);
+  assert.doesNotMatch(payoutTriggerMigration, /UPDATE\s+public\.srk_booking_labour_bills/i);
+  assert.doesNotMatch(payoutTriggerMigration, /UPDATE\s+public\.srk_manual_payment_entries/i);
+  assert.doesNotMatch(payoutTriggerMigration, /INSERT\s+INTO\s+public\.srk_electrician_payouts/i);
+  assert.doesNotMatch(payoutTriggerMigration, /DELETE\s+FROM\s+public\.srk_electrician_payouts/i);
+});
