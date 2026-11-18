@@ -176,3 +176,29 @@ test("customer and approved electrician modules are independently authorized for
   }));
   assert.equal(wrongModule.statusCode, 403);
 });
+
+
+test("duplicate Customer or Electrician profile rows fail closed instead of choosing an arbitrary identity", async () => {
+  const duplicateCustomer = setup({
+    role: "customer",
+    customerProfiles: [
+      { user_id: "123e4567-e89b-42d3-a456-426614174001" },
+      { user_id: "123e4567-e89b-42d3-a456-426614174001" }
+    ]
+  });
+  const customerResponse = await duplicateCustomer.handler(event({
+    body: { module_key: "customer_support", message: "hello" }
+  }));
+  assert.equal(customerResponse.statusCode, 403);
+  assert.equal(JSON.parse(customerResponse.body).error, "ai_access_denied");
+
+  const duplicateElectrician = setup({
+    role: "electrician",
+    electricianProfiles: [{ id: UUID }, { id: "123e4567-e89b-42d3-a456-426614174002" }]
+  });
+  const electricianResponse = await duplicateElectrician.handler(event({
+    body: { module_key: "electrician_assistant", message: "hello" }
+  }));
+  assert.equal(electricianResponse.statusCode, 403);
+  assert.equal(JSON.parse(electricianResponse.body).error, "ai_access_denied");
+});
