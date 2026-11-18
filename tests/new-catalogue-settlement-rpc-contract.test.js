@@ -117,6 +117,6 @@ test("customer payment consent UI distinguishes Razorpay UPI checkout from stand
   assert.match(paymentSelect, /value="Cash"/);
   assert.match(paymentSelect, /value="Razorpay ऑनलाइन भुगतान"/);
   assert.doesNotMatch(paymentSelect, /value="(?:upi|bank_transfer|bank transfer)"/i);
-  assert.match(adminHtml, /क्या आप इस बुकिंग के लिए Cash की जगह Online/);
+  assert.match(bookingHtml, /क्या आप इस बुकिंग के लिए Cash की जगह Online/);
   assert.match(manualDigitalMigration, /BOOKING_PAYMENT_METHOD_MISMATCH/);
 });
