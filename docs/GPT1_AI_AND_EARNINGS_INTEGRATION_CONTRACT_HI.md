@@ -275,3 +275,4 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - `createHandoff()` अब मूल request के plain-object/null-prototype होने की पुष्टि करता है और optional `context`, `conversationId`, `reasonCode`, `urgency`, `summary` own properties से ही पढ़ता है।
 - Regression test `Object.prototype` में inherited context/conversation values डालकर verify करता है कि वे request body में नहीं जातीं।
 - Tests अभी execute नहीं हुए हैं; यह pre-launch source hardening है, live API integration नहीं।
+- अतिरिक्त regression test: handoff custom-prototype request को network call से पहले रोकता है; inherited `context`, `reasonCode`, `urgency` को request body में शामिल नहीं करता।
