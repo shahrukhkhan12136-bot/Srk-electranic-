@@ -188,3 +188,12 @@ test("Customer and Electrician app shells prepare role-scoped mounts while prese
   assert.match(electrician, /mountElectricianAiAssistant\(\);/);
   assert.match(electrician, /destroyElectricianAiAssistant\(\)/);
 });
+
+
+test("public browser config keeps the AI widget launch flag and API base URL unset by default", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const config = fs.readFileSync(path.join(__dirname, "../srk-config.js"), "utf8");
+  assert.doesNotMatch(config, /AI_ASSISTANT_ENABLED/);
+  assert.doesNotMatch(config, /AI_ASSISTANT_API_BASE_URL/);
+});
