@@ -120,3 +120,22 @@ test("customer payment consent UI distinguishes Razorpay UPI checkout from stand
   assert.match(bookingHtml, /क्या आप इस बुकिंग के लिए Cash की जगह Online/);
   assert.match(manualDigitalMigration, /BOOKING_PAYMENT_METHOD_MISMATCH/);
 });
+
+
+test("new Catalogue online order and customer verification paths enforce ownership, amount, capture, and atomic settlement", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const createOrder = fs.readFileSync(path.join(__dirname, "../create-order.js"), "utf8");
+  const verifyPayment = fs.readFileSync(path.join(__dirname, "../verify-payment.js"), "utf8");
+  assert.match(createOrder, /user\.id !== booking\.customer_user_id/);
+  assert.match(createOrder, /!user\.phone_confirmed_at/);
+  assert.match(createOrder, /srk_service_role_get_booking_payment_breakdown/);
+  assert.match(createOrder, /srk_claim_payment_order_lock/);
+  assert.match(createOrder, /srk_service_role_link_payment_order/);
+  assert.match(createOrder, /srk_release_payment_order_lock/);
+  assert.match(verifyPayment, /createHmac\("sha256",RAZORPAY_KEY_SECRET\)/);
+  assert.match(verifyPayment, /p\.order_id!==orderId\|\|p\.status!=="captured"\|\|p\.currency!=="INR"\|\|p\.amount!==expectedAmount/);
+  assert.match(verifyPayment, /srk_service_role_get_booking_payment_breakdown/);
+  assert.match(verifyPayment, /srk_service_role_record_online_booking_payment/);
+  assert.match(verifyPayment, /p_booking_id:booking\.id,p_order_id:orderId,p_payment_id:payId,p_amount_paise:p\.amount/);
+});
