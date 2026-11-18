@@ -75,6 +75,7 @@ BEGIN
   WHERE auth_user_id=auth.uid()
     AND user_id=auth.uid()
     AND verification_status='approved'
+    AND active=true
   LIMIT 1;
 
   IF v_profile_id IS NULL THEN
