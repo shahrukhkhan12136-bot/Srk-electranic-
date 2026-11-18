@@ -51,7 +51,7 @@ begin
 
   insert into public.srk_manual_payment_entries(booking_id,payment_method,amount,payment_reference,note,recorded_by)
   values(p_booking_id,p_method,v_total/100.0,v_reference,nullif(btrim(coalesce(p_note,'')),''),auth.uid());
-  update public.service_bookings set payment_method=case when p_method='upi' then 'UPI' else 'Bank Transfer' end,payment_status='paid',
+  update public.service_bookings set payment_method=case when p_method='upi' then 'upi' else 'bank_transfer' end,payment_status='paid',
     amount_paid=v_total/100.0,payment_verified_at=now() where id=p_booking_id;
 
   for v_item in select * from public.srk_booking_cancellation_fee_items
