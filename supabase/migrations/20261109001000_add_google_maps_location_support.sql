@@ -19,7 +19,7 @@ ALTER TABLE public.electrician_profiles
   ADD CONSTRAINT electrician_profiles_location_pair_check CHECK ((location_lat IS NULL) = (location_lng IS NULL)) NOT VALID,
   ADD CONSTRAINT electrician_profiles_location_range_check CHECK (location_lat IS NULL OR (location_lat BETWEEN -90 AND 90 AND location_lng BETWEEN -180 AND 180)) NOT VALID;
 CREATE OR REPLACE FUNCTION public.srk_admin_review_application(p_application_id uuid, p_decision text)
- RETURNS void LANGUAGE plpgsql SECURITY DEFINER
+ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
  SET search_path TO 'pg_catalog', 'public', 'auth', 'pg_temp'
 AS $function$
 declare a public.electrician_applications%rowtype; linked_user uuid;
@@ -46,6 +46,7 @@ begin
   else
     update public.electrician_profiles set active=false,verification_status=p_decision where application_id=p_application_id;
   end if;
+  return jsonb_build_object('success', true, 'decision', p_decision);
 end;
 $function$;
 
