@@ -27,7 +27,7 @@ test("SQL and JavaScript direct 85 percent half-up arithmetic agree on 10, 30, 5
   for (const [gross, expected] of tieCases) {
     assert.equal(netRate.calculateElectricianRateListPaise(gross), expected);
     // SQL floor((gross * 8500 / 10000) + 0.5) uses the same positive-number half-up rule.
-    const sqlEquivalent = Math.floor((gross * 8500 / 10000) + 0.5);
+    const sqlEquivalent = Number((BigInt(gross) * 8500n + 5000n) / 10000n);
     assert.equal(sqlEquivalent, expected);
   }
 });
