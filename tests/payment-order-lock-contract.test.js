@@ -30,3 +30,8 @@ test("order linking validates new-catalogue breakdown or legacy approved quote",
   assert.match(sql, /if v_booking\.quote_status <> 'approved' then/i);
   assert.match(sql, /RAZORPAY_ORDER_AMOUNT_MISMATCH/);
 });
+
+
+test("active unexpired order lock returns no claim token", () => {
+  assert.match(sql, /on conflict\(booking_id\) do update[\s\S]*?where private\.srk_payment_order_locks\.expires_at <= now\(\)[\s\S]*?returning lock_token into v_token;\s*-- An active lock[\s\S]*?if not found then\s*return null;/i);
+});
