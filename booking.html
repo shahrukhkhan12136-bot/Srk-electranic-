@@ -1592,16 +1592,16 @@ async function loadCustomerAvatar(path,isCurrent=()=>true) {
  } catch(e){if(isCurrent())setCustomerProfileStatus('प्रोफ़ाइल फोटो लोड नहीं हो सकी।',true);}
 }
 async function loadCustomerProfile() {
- if(!customerSb)return;
+ if(!customerSb)return false;
  const requestId=++customerProfileLoadRequest;
  const isCurrent=()=>requestId===customerProfileLoadRequest;
  setCustomerProfileStatus('प्रोफ़ाइल लोड हो रही है…');
  try {
   const {data:sessionData,error:sessionError}=await customerSb.auth.getSession();
-  if(!isCurrent())return;
+  if(!isCurrent())return false;
   if(sessionError)throw sessionError;
   const session=sessionData?.session;
-  if(!session){setCustomerProfileStatus('प्रोफ़ाइल देखने के लिए OTP लॉगिन करें।',true);return;}
+  if(!session){setCustomerProfileStatus('प्रोफ़ाइल देखने के लिए OTP लॉगिन करें।',true);return false;}
   const requestedUserId=session.user.id;
   const stillSameUser=async()=>{if(!isCurrent())return false;const {data,error}=await customerSb.auth.getSession();return !error&&isCurrent()&&data?.session?.user?.id===requestedUserId;};
   const phone=session.user.phone||'';
@@ -1621,11 +1621,13 @@ async function loadCustomerProfile() {
    if(customerCurrentAvatarPath)await loadCustomerAvatar(customerCurrentAvatarPath,isCurrent);
    if(!await stillSameUser())return;
    setCustomerProfileStatus('प्रोफ़ाइल लोड हो गई।');
+   return true;
   } else {
    document.getElementById('customerProfileName').value=document.getElementById('name').value||'';
    setCustomerProfileStatus('नई प्रोफ़ाइल है। अपना नाम भरकर सेव करें।');
+   return false;
   }
- } catch(e){if(isCurrent())setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);}
+ } catch(e){if(isCurrent())setCustomerProfileStatus('प्रोफ़ाइल लोड नहीं हो सकी। '+(e.message||''),true);return false;}
 }
 async function saveCustomerProfile() {
  const button=document.getElementById('saveCustomerProfile');
@@ -1683,6 +1685,10 @@ async function saveCustomerProfile() {
    if(oldAvatar&&oldAvatar!==avatarPath){await customerSb.storage.from('srk-customer-avatars').remove([oldAvatar]);if(!await stillSameUser())return;}
   }
   document.getElementById('name').value=fullName;setCustomerProfileStatus('प्रोफ़ाइल सफलतापूर्वक सेव हो गई।');
+  const profileReady=await loadCustomerProfile();
+  if(!await stillSameUser())return;
+  if(profileReady&&document.getElementById('customer-dashboard')?.style.display!=='none')mountCustomerAiAssistant();
+  else destroyCustomerAiAssistant();
  }catch(e){if(isCurrent())setCustomerProfileStatus('प्रोफ़ाइल सेव नहीं हो सकी। '+(e.message||''),true);}
  finally{if(isCurrent())button.disabled=false;}
 }
@@ -2168,8 +2174,9 @@ async function syncCustomerSession() {
     await loadCustomerSupportBookings();if(!isCurrent())return;
     await loadCustomerSupportComplaints();if(!isCurrent())return;
     await loadCustomerSavedAddresses();if(!isCurrent())return;
-    await loadCustomerProfile();if(!isCurrent())return;
-    mountCustomerAiAssistant();
+    const customerProfileReady=await loadCustomerProfile();if(!isCurrent())return;
+    if(customerProfileReady)mountCustomerAiAssistant();
+    else destroyCustomerAiAssistant();
   } else {
     destroyCustomerAiAssistant();
     customerSavedAddressLoadRequest++;
