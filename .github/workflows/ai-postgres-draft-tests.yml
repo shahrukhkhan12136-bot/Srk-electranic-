@@ -1,0 +1,71 @@
+name: AI isolated PostgreSQL draft tests
+
+on:
+  push:
+    branches:
+      - feat/ai-rate-management-foundation-20261118
+    paths:
+      - "docs/drafts/ai_conversation_handoff_schema_draft.sql"
+      - "docs/drafts/ai_conversation_handoff_schema_tests_draft.sql"
+      - ".github/workflows/ai-postgres-draft-tests.yml"
+  pull_request:
+    paths:
+      - "docs/drafts/ai_conversation_handoff_schema_draft.sql"
+      - "docs/drafts/ai_conversation_handoff_schema_tests_draft.sql"
+      - ".github/workflows/ai-postgres-draft-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srk-ai-postgres-draft-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-postgres:
+    name: Run AI schema drafts in disposable local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: Initialize temporary local Supabase project
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/srk-ai-db"
+          cd "$RUNNER_TEMP/srk-ai-db"
+          supabase init
+
+      - name: Start disposable local database
+        working-directory: ${{ runner.temp }}/srk-ai-db
+        run: supabase start
+
+      - name: Enable pgTAP in the disposable database
+        working-directory: ${{ runner.temp }}/srk-ai-db
+        run: |
+          set -euo pipefail
+          supabase db query --local --output json "CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;"
+
+      - name: Apply AI schema draft locally only
+        working-directory: ${{ runner.temp }}/srk-ai-db
+        run: |
+          set -euo pipefail
+          supabase db query --local --file "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_handoff_schema_draft.sql"
+
+      - name: Run 29 pgTAP assertions and require all to pass
+        working-directory: ${{ runner.temp }}/srk-ai-db
+        run: |
+          set -euo pipefail
+          supabase db query --local --file "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_handoff_schema_tests_draft.sql"
+
+      - name: Stop disposable local database
+        if: always()
+        working-directory: ${{ runner.temp }}/srk-ai-db
+        run: supabase stop --no-backup
