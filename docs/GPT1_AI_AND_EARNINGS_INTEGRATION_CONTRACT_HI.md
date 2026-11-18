@@ -160,3 +160,11 @@ Mismatch/incomplete ledger पर भी earning/payout amount withheld रह�
 `tests/ai-assistant-client.test.js` adds source-level tests for disabled-by-default behavior, request shape, auth/idempotency headers, context allowlisting, safe failure handling and handoff status validation.
 
 These are client-adapter and mocked-contract tests only. They do not prove a live AI backend, actual Customer/Electrician UI, provider connection, or end-to-end handoff. No endpoint call is enabled in either app.
+
+## 8. साझा Customer/Electrician AI UI component — source added
+
+- `lib/ai-assistant-widget.js` में accessible chat surface, safe text-only rendering, Enter/Shift+Enter handling, sending/error states, optional human-handoff summary और backend-confirmed handoff reference rendering तैयार है।
+- यह Customer `customer_support` / `booking_assistant` और Electrician `electrician_assistant` module keys तक सीमित है।
+- Component default रूप से disabled है; `enabled: true`, explicit container, client और verified-session provider के बिना यह mount नहीं होता।
+- Component अभी `booking.html` या `electrician.html` में mount नहीं किया गया है और कोई live endpoint call enabled नहीं है। ऐसा तभी होगा जब GPT-2 backend contract और launch gates सत्यापित हों तथा post-launch activation अधिकृत हो।
+- `tests/ai-assistant-widget.test.js` disabled-default, module allowlist, configuration guard, safe rendering और handoff confirmation के source-contract checks जोड़ता है। Test suite अभी execute नहीं हुई है।
