@@ -299,3 +299,17 @@ test("AI electrician profile must be approved and active in returned data", asyn
     assert.equal(JSON.parse(response.body).error, "ai_access_denied");
   }
 });
+
+
+test("AI authorization and idempotency headers are matched case-insensitively", async () => {
+  const { handler, calls } = setup();
+  const request = event({ body: { module_key: "customer_support", message: "hello" } });
+  delete request.headers.authorization;
+  delete request.headers["idempotency-key"];
+  request.headers.aUtHoRiZaTiOn = "Bearer valid-token";
+  request.headers.iDeMpOtEnCy-KeY = UUID;
+  const response = await handler(request);
+  assert.equal(response.statusCode, 503);
+  assert.equal(JSON.parse(response.body).error, "ai_not_enabled");
+  assert.equal(calls.filter(call => call.url.includes("/auth/v1/user")).length, 1);
+});
