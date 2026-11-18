@@ -282,3 +282,8 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Customer/Electrician widget में session token resolve होने के बाद, AI message या human-handoff request भेजने से पहले `destroyed` state दोबारा जाँची जाती है।
 - यदि app component हट चुका हो और session lookup बाद में resolve हो, तो कोई नया AI network request शुरू नहीं होगा।
 - दोनों request paths के लिए regression assertion जोड़ा गया। Tests अभी execute नहीं हुए हैं।
+
+### AI app-role allowlist hardening
+
+- App composition अब `APP_MODULES_BY_ROLE` में role lookup के लिए own-property check करता है। `__proto__`, `constructor`, `toString`, `hasOwnProperty` जैसे inherited object names किसी app role की तरह स्वीकार नहीं होंगे।
+- Regression test इन चार prototype property names को invalid role के रूप में जाँचता है। Tests अभी execute नहीं हुए हैं।
