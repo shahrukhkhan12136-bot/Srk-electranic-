@@ -64,7 +64,7 @@ AS $function$
     b.status, b.selected_category, b.selected_rate_tier, b.selected_duration_hours,
     CASE
       WHEN b.selected_category IS NOT NULL AND b.estimated_labour_paise>0
-      THEN floor((b.estimated_labour_paise::numeric*8500+5000)/10000)::bigint
+      THEN (b.estimated_labour_paise-floor((b.estimated_labour_paise::numeric*1500+5000)/10000))::bigint
       ELSE NULL
     END,
     b.work_start_approval_status, b.completion_approval_status,
@@ -170,7 +170,7 @@ AS $$
     CASE
       WHEN verified.is_verified THEN coalesce(b.commission_amount,0)
       WHEN checkout.started AND b.commission_rate=15
-        THEN round(coalesce(bill.labour_amount,0),2)-(floor((round(coalesce(bill.labour_amount,0)*100)*8500+5000)/10000)/100)
+        THEN (floor((round(coalesce(bill.labour_amount,0)*100)*1500+5000)/10000)/100)
       ELSE 0
     END AS commission_amount,
     CASE
@@ -178,9 +178,9 @@ AS $$
       WHEN b.status='completed' AND b.payment_status IS DISTINCT FROM 'refunded'
         AND b.payment_status IS DISTINCT FROM 'paid' AND NOT checkout.started
         AND NOT verified.is_verified AND b.selected_category IS NOT NULL AND bill.labour_amount IS NOT NULL
-        THEN (floor((round(coalesce(bill.labour_amount,0)*100)*8500+5000)/10000)/100)
+        THEN (round(coalesce(bill.labour_amount,0),2)-(floor((round(coalesce(bill.labour_amount,0)*100)*1500+5000)/10000)/100))
       WHEN checkout.started AND b.commission_rate=15 AND bill.labour_amount IS NOT NULL
-        THEN (floor((round(coalesce(bill.labour_amount,0)*100)*8500+5000)/10000)/100)
+        THEN (round(coalesce(bill.labour_amount,0),2)-(floor((round(coalesce(bill.labour_amount,0)*100)*1500+5000)/10000)/100))
       ELSE 0
     END AS electrician_earning,
     CASE
@@ -190,7 +190,7 @@ AS $$
     END AS customer_labour_gross,
     CASE
       WHEN verified.is_verified THEN coalesce(payout.platform_commission,b.commission_amount,0)
-      WHEN checkout.started AND b.commission_rate=15 THEN round(coalesce(bill.labour_amount,0),2)-(floor((round(coalesce(bill.labour_amount,0)*100)*8500+5000)/10000)/100)
+      WHEN checkout.started AND b.commission_rate=15 THEN (floor((round(coalesce(bill.labour_amount,0)*100)*1500+5000)/10000)/100)
       ELSE NULL
     END AS company_share,
     CASE WHEN verified.is_verified THEN payout.electrician_payable ELSE NULL END AS payout_amount,
