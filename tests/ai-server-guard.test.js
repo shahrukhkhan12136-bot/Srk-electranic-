@@ -404,3 +404,19 @@ test("AI guard rejects unknown module keys before Supabase authentication", asyn
     assert.equal(calls.length, 0);
   }
 });
+
+
+test("AI guard rejects ambiguous duplicate authorization and idempotency headers", async () => {
+  const duplicateAuthorization = setup();
+  const authRequest = event({ body: { module_key: "customer_support", message: "hello" } });
+  authRequest.headers.Authorization = "Bearer another-token";
+  assert.equal((await duplicateAuthorization.handler(authRequest)).statusCode, 401);
+  assert.equal(duplicateAuthorization.calls.length, 0);
+
+  const duplicateIdempotency = setup();
+  const keyRequest = event({ body: { module_key: "customer_support", message: "hello" } });
+  keyRequest.headers["Idempotency-Key"] = UUID;
+  assert.equal((await duplicateIdempotency.handler(keyRequest)).statusCode, 400);
+  assert.equal(JSON.parse((await duplicateIdempotency.handler(keyRequest)).body).error, "invalid_idempotency_key");
+  assert.equal(duplicateIdempotency.calls.length, 6);
+});
