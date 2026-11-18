@@ -130,8 +130,8 @@ test("customer labour estimate uses only the selected published tier and bounded
   const end = bookingUi.indexOf("function initCustomerMenuShell()", start);
   const fn = bookingUi.slice(start, end);
   assert.ok(start >= 0 && end > start);
-  assert.match(fn, /!Number\.isInteger\(hours\)/);
-  assert.match(fn, /hours<1\|\|hours>8/);
-  assert.match(fn, /customerRateCard\[tier\]\*hours\/8\+0\.5/);
+  assert.match(fn, /!\s*Number\.isInteger\(hours\)/);
+  assert.match(fn, /hours\s*<\s*1\s*\|\|\s*hours\s*>\s*8/);
+  assert.match(fn, /customerRateCard\[tier\]\s*\*\s*hours\s*\/\s*8\s*\+\s*0\.5/);
   assert.doesNotMatch(fn, /customer_rate_paise|company_share|commission/);
 });
