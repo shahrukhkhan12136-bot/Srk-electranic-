@@ -123,7 +123,8 @@ test("enabled app composition rejects malformed HTTPS URLs and embedded credenti
       "https://user:secret@api.example.test",
       "https://api.example.test?token=secret",
       "https://api.example.test#fragment",
-      " https://api.example.test"
+      " https://api.example.test",
+      "https://api.example.test/prefix"
     ];
     for (const url of invalidUrls) {
       assert.throws(() => mountSrkAiAssistant({
