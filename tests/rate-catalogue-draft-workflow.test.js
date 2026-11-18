@@ -3,6 +3,7 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
+const vm=require("node:vm");
 const migration=fs.readFileSync(path.join(__dirname,"../supabase/migrations/20261118240000_rate_catalogue_draft_scheduled_workflow.sql"),"utf8");
 const publishMigration=fs.readFileSync(path.join(__dirname,"../supabase/migrations/20261118050000_versioned_rate_catalogue_and_multi_category_electricians.sql"),"utf8");
 const admin=fs.readFileSync(path.join(__dirname,"../admin.html"),"utf8");
@@ -36,4 +37,10 @@ test("Main Admin UI can save drafts, view queue, and publish with expected curre
  assert.ok(admin.includes("adminRateCatalogueDraftQueue"));
  assert.ok(admin.includes("editAdminRateCatalogueDraft"));
  for(const handler of ["saveAdminRateCatalogueDraft","publishAdminRateCatalogueDraft","loadAdminRateCatalogueDrafts"])assert.ok(admin.includes(`async function ${handler}(`),`${handler} must be async because it awaits Supabase RPCs`);
+});
+
+test("Admin page inline JavaScript parses without syntax errors",()=>{
+ const scripts=[...admin.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)];
+ assert.ok(scripts.length>0,"inline admin script must exist");
+ for(const script of scripts)new vm.Script(script[1],{filename:"admin.html"});
 });

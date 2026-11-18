@@ -844,7 +844,7 @@ async function loadAdminRateCatalogue(){
  for(const [key,label,id] of SRK_RATE_TIERS){const el=document.getElementById(id);if(el&&data.rates&&data.rates[key]!=null)el.value=paiseToRupees(data.rates[key]);}
  status.textContent='वर्तमान Published Catalogue लोड हो गया।';
 }
-async async function loadAdminRateCatalogueDrafts(){
+async function loadAdminRateCatalogueDrafts(){
  const box=document.getElementById('adminRateCatalogueDraftQueue');
  if(!box||!sb||!user||adminPortalMode!=='main_admin')return;
  const {data,error}=await sb.rpc('srk_admin_list_rate_catalogue_drafts',{p_limit:50});
@@ -868,7 +868,7 @@ function editAdminRateCatalogueDraft(index){
  document.getElementById('rateCatalogueReason').value=row.reason||'';
  document.getElementById('adminRateCatalogueStatus').textContent='Draft संपादन के लिए खुला है: '+row.id;
 }
-async async function saveAdminRateCatalogueDraft(){
+async function saveAdminRateCatalogueDraft(){
  if(!sb||!user||adminPortalMode!=='main_admin'||adminRateCatalogueBusy)return;
  const status=document.getElementById('adminRateCatalogueStatus');
  adminRateCatalogueBusy=true;status.textContent='Draft सेव हो रहा है…';
@@ -887,7 +887,7 @@ async async function saveAdminRateCatalogueDraft(){
  }catch(e){status.textContent='Draft सेव नहीं हुआ: '+(e.message||'त्रुटि');}
  finally{adminRateCatalogueBusy=false;}
 }
-async async function publishAdminRateCatalogueDraft(draftId){
+async function publishAdminRateCatalogueDraft(draftId){
  if(!sb||!user||adminPortalMode!=='main_admin'||adminRateCatalogueBusy)return;
  if(!confirm('इस Rate Draft को immutable Catalogue version के रूप में publish करना है?'))return;
  adminRateCatalogueBusy=true;
