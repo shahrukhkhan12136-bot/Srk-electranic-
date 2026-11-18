@@ -131,3 +131,28 @@ test("handoff rejects unknown status rather than claiming a ticket was created",
     error => error.code === "invalid_ai_response"
   );
 });
+
+test("assistant response rejects non-object action and handoff payloads", async () => {
+  for (const malformed of [
+    { action: "none", handoff: {} },
+    { action: {}, handoff: "not-required" },
+    { action: [], handoff: {} },
+    { action: {}, handoff: [] }
+  ]) {
+    const client = createAiAssistantClient({
+      enabled: true, baseUrl: "https://api.example.test",
+      fetchImpl: async () => jsonResponse({
+        success: true, conversation_id: CONVERSATION,
+        module_key: "customer_support", reply: "उत्तर",
+        action: malformed.action, handoff: malformed.handoff
+      })
+    });
+    await assert.rejects(
+      client.sendMessage({
+        moduleKey: "customer_support", message: "स्थिति",
+        accessToken: TOKEN, idempotencyKey: KEY
+      }),
+      error => error.code === "invalid_ai_response"
+    );
+  }
+});
