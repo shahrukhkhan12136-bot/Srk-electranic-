@@ -55,6 +55,11 @@ test("new Catalogue Admin cash RPC is Main Admin-only, locks booking and records
   const billAssignmentCheck = fn.indexOf("v_labour.electrician_profile_id is distinct from v_booking.assigned_electrician_id");
   assert.ok(billAssignmentCheck >= 0 && billAssignmentCheck < evidence,
     "cash settlement must verify immutable bill electrician against the assigned booking electrician before payment evidence");
+  const debtReservationCheck = fn.indexOf("CANCELLATION_FEE_DEBT_RESERVATION_MISMATCH");
+  const walletLedgerInsert = fn.indexOf("insert into public.srk_wallet_ledger");
+  assert.ok(debtReservationCheck >= 0 && walletLedgerInsert > debtReservationCheck,
+    "cash settlement must lock and verify the exact reserved customer debt before wallet or receivable ledger entries");
+  assert.match(fn, /reserved_booking_id=p_booking_id[\\s\\S]*?customer_user_id=v_booking\\.customer_user_id[\\s\\S]*?for update/i);
 });
 
 test("Catalogue payout trigger sources electrician labour only from immutable bill and excludes cancellation fees from payable", () => {
