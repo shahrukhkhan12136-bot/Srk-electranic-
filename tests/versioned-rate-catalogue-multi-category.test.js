@@ -6,6 +6,7 @@ const path = require("node:path");
 
 const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118050000_versioned_rate_catalogue_and_multi_category_electricians.sql"), "utf8");
 const roundingMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118110000_unify_electrician_rate_rounding.sql"), "utf8");
+const grossAccessMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118150000_block_electrician_gross_catalogue_access.sql"), "utf8");
 const bookingApi = fs.readFileSync(path.join(__dirname, "../create-booking.js"), "utf8");
 const customerUi = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
 const electricianUi = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
@@ -126,4 +127,21 @@ test("Admin activation accepts new multi-category approvals as well as preserved
   assert.match(adminUi, /categoryProfile\?\.active_categories/);
   assert.match(adminUi, /!hasMultiCategoryApproval&&!hasLegacyApproval/);
   assert.match(adminUi, /कम-से-कम एक Admin-approved Rate Category/);
+});
+
+test("final gross-catalogue RPC blocks electrician identities and net-rate RPC reads catalogue tables directly", () => {
+  const grossRpc = grossAccessMigration.slice(
+    grossAccessMigration.indexOf("FUNCTION public.srk_get_current_customer_rate_catalogue"),
+    grossAccessMigration.indexOf("-- The electrician's own Rate List")
+  );
+  const netRpc = grossAccessMigration.slice(
+    grossAccessMigration.indexOf("FUNCTION public.srk_get_my_electrician_rate_list"),
+    grossAccessMigration.indexOf("REVOKE ALL ON FUNCTION public.srk_get_current_customer_rate_catalogue")
+  );
+  assert.match(grossRpc, /ELECTRICIAN_CUSTOMER_RATE_CATALOGUE_FORBIDDEN/);
+  assert.match(grossRpc, /ep\.user_id=auth\.uid\(\) OR ep\.auth_user_id=auth\.uid\(\)/);
+  assert.match(netRpc, /srk_electrician_approved_rate_categories/);
+  assert.match(netRpc, /srk_rate_catalogue_items/);
+  assert.doesNotMatch(netRpc, /srk_get_current_customer_rate_catalogue/);
+  assert.match(grossAccessMigration, /GRANT EXECUTE ON FUNCTION public\.srk_get_current_customer_rate_catalogue\(\) TO anon,authenticated,service_role/);
 });
