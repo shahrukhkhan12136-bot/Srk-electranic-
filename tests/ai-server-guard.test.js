@@ -355,13 +355,13 @@ test("AI server rejects bearer tokens with whitespace, controls, or excessive le
 test("AI guard rejects UUID values with trailing line terminators", async () => {
   const malformedKey = setup();
   const request = event({ body: { module_key: "customer_support", message: "hello" } });
-  request.headers["idempotency-key"] = UUID + "\\n";
+  request.headers["idempotency-key"] = UUID + "\n";
   const keyResponse = await malformedKey.handler(request);
   assert.equal(keyResponse.statusCode, 400);
   assert.equal(JSON.parse(keyResponse.body).error, "invalid_idempotency_key");
 
   const malformedIdentity = setup({
-    user: { id: "123e4567-e89b-42d3-a456-426614174001\\n" }
+    user: { id: "123e4567-e89b-42d3-a456-426614174001\n" }
   });
   const identityResponse = await malformedIdentity.handler(event({
     body: { module_key: "customer_support", message: "hello" }
