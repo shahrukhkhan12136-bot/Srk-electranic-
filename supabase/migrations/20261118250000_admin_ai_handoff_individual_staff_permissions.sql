@@ -25,7 +25,7 @@ REVOKE ALL ON public.srk_admin_staff_permission_grants FROM PUBLIC,anon,authenti
 CREATE OR REPLACE FUNCTION public.srk_has_admin_permission(p_permission_key text)
 RETURNS boolean
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path=''
 AS $function$
