@@ -52,6 +52,7 @@ test("payout reconciliation checks immutable labour bill, electrician, commissio
   assert.match(migration, /payout\.electrician_profile_id IS DISTINCT FROM b\.assigned_electrician_id/);
   assert.match(migration, /bill\.booking_id IS NULL/);
   assert.ok(migration.includes("payout.razorpay_payment_id IS DISTINCT FROM b.razorpay_payment_id"));
+  assert.doesNotMatch(migration, /b\.razorpay_payment_id IS NOT NULL\s+AND payout\.razorpay_payment_id IS DISTINCT FROM/);
   assert.ok(migration.includes("round(payout.gross_service_amount*b.commission_rate/100,2)"));
   assert.match(migration, /payout\.gross_service_amount,2\) IS DISTINCT FROM round\(bill\.labour_amount,2\)/);
   assert.match(migration, /payout\.platform_commission,2\) IS DISTINCT FROM round\(b\.commission_amount,2\)/);
