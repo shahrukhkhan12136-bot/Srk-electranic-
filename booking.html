@@ -827,22 +827,30 @@ document.getElementById('year').textContent = new Date().getFullYear();
 let customerRateCard = Object.create(null);
 let customerRateVersionId = null;
 async function refreshCustomerRateCatalogue() {
-  if (!customerSb) throw new Error('ग्राहक Rate Catalogue पढ़ने के लिए Supabase कनेक्शन उपलब्ध नहीं है।');
-  const { data, error } = await customerSb.rpc('srk_get_current_customer_rate_catalogue');
-  if (error) throw error;
-  const rates = data?.rates;
   const keys = ['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'];
-  if (!data?.rate_version_id || !rates || keys.some(k => !Number.isSafeInteger(rates[k]) || rates[k] <= 0)) {
-    throw new Error('प्रकाशित Rate Catalogue अधूरा है। अभी बुकिंग दर उपलब्ध नहीं है।');
-  }
-  customerRateCard = Object.fromEntries(keys.map(k => [k, rates[k]]));
-  customerRateVersionId = data.rate_version_id;
   const customerRateLabels = {
     electrical_assistant: 'Electrical Assistant',
     skilled_electrician: 'Skilled Electrician',
     expert_electrician: 'Expert Electrician',
     premium_electrical_specialist: 'Premium Electrical Specialist'
   };
+  // Never leave a previously loaded catalogue visible after a refresh begins or fails.
+  customerRateCard = Object.create(null);
+  customerRateVersionId = null;
+  keys.forEach(key => {
+    const option = document.querySelector('#rateTier option[value="' + key + '"]');
+    if (option) option.textContent = customerRateLabels[key];
+  });
+  updateLabourEstimate();
+  if (!customerSb) throw new Error('ग्राहक Rate Catalogue पढ़ने के लिए Supabase कनेक्शन उपलब्ध नहीं है।');
+  const { data, error } = await customerSb.rpc('srk_get_current_customer_rate_catalogue');
+  if (error) throw error;
+  const rates = data?.rates;
+  if (!data?.rate_version_id || !rates || keys.some(k => !Number.isSafeInteger(rates[k]) || rates[k] <= 0)) {
+    throw new Error('प्रकाशित Rate Catalogue अधूरा है। अभी बुकिंग दर उपलब्ध नहीं है।');
+  }
+  customerRateCard = Object.fromEntries(keys.map(k => [k, rates[k]]));
+  customerRateVersionId = data.rate_version_id;
   keys.forEach(key => {
     const option = document.querySelector('#rateTier option[value="' + key + '"]');
     if (option) {
