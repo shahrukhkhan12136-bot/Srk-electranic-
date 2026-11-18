@@ -26,16 +26,16 @@ test("offer quote and money fields are hidden until persisted checkout or verifi
   const offerFunction = (migration.match(/create(?: or replace)? function public\.srk_get_my_offer_details\(\)[\s\S]*?\$function\$;/i)||[])[0]||"";
   assert.match(offerFunction, /b\.razorpay_order_id is not null and b\.payment_status='pending'/i);
   assert.match(offerFunction, /b\.payment_status='paid' and b\.payment_verified_at is not null/i);
-  assert.match(offerFunction, /then b\.quoted_amount else null/);
-  assert.match(offerFunction, /then b\.service_charge else null/);
-  assert.match(offerFunction, /then b\.materials_amount else null/);
+  assert.match(offerFunction, /then b\.quoted_amount else null/i);
+  assert.match(offerFunction, /then b\.service_charge else null/i);
+  assert.match(offerFunction, /then b\.materials_amount else null/i);
 });
 
 test("earnings RPC derives payment stage from persisted order and payment evidence", () => {
   const earningsFunction = (migration.match(/create(?: or replace)? function public\.srk_get_my_earnings\(\)[\s\S]*?\$\$;/i)||[])[0]||"";
   assert.match(earningsFunction, /checkout\.started then 'checkout_started'/i);
   assert.match(earningsFunction, /b\.payment_verified_at is not null/i);
-  assert.match(earningsFunction, /b\.razorpay_payment_id is not null or exists\(/i);
+  assert.match(earningsFunction, /b\.razorpay_payment_id is not null or exists\s*\(/ii);
   assert.doesNotMatch(earningsFunction, /p_payment_stage|browser_payment_stage|client_payment_stage/i);
 });
 
