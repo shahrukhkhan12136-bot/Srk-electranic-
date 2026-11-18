@@ -39,3 +39,14 @@ test("widget source uses safe text rendering, accessible status regions and conf
 test("browser global exposes the same safe widget factory as the CommonJS test export", () => {
   assert.equal(globalThis.SrkAiAssistantWidget.createAiAssistantWidget, createAiAssistantWidget);
 });
+
+
+test("widget starts closed, exposes an accessible entry point and Escape closes the panel", () => {
+  const source = fs.readFileSync(path.join(__dirname, "../lib/ai-assistant-widget.js"), "utf8");
+  assert.match(source, /toggle\.setAttribute\("aria-expanded", "false"\)/);
+  assert.match(source, /panel\.hidden = true/);
+  assert.match(source, /event\.key === "Escape" && panelOpen/);
+  assert.match(source, /setPanelOpen\(false\)/);
+  assert.match(source, /toggle\.focus\(\)/);
+  assert.match(source, /toggle\.removeEventListener\("click", onToggleClick\)/);
+});
