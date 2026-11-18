@@ -200,3 +200,10 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - `tests/ai-assistant-app.test.js` now additionally checks that an enabled app refuses a non-HTTPS AI API base URL before creating the transport client.
 - The session-provider contract is also checked: a Supabase `getSession()` error is propagated and is not converted into a fabricated or anonymous session.
 - These checks remain mocked source-contract tests. They do not activate the widget, prove a deployed backend, or authorize pre-launch mounting in either HTML app.
+
+
+### Booking snapshot replay regression coverage update
+
+- `tests/booking-rate-replay-order.test.js` now explicitly checks the unique-key race replay path returns the persisted `estimated_labour_paise` and `estimate_rate_card_version`, and does not recalculate from the current catalogue.
+- A separate source-contract check verifies new bookings persist the server-derived estimate, catalogue version, selected tier and duration.
+- These are static source assertions only; the Node test suite and database runtime tests have not been executed.
