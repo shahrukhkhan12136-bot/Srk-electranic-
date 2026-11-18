@@ -230,9 +230,11 @@ $complete$;
 
 REVOKE ALL ON FUNCTION private.ai_claim_idempotency(uuid,text,text,text,integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION private.ai_append_message(uuid,uuid,text,text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION private.ai_append_audit_event(uuid,text,text,text,text,uuid,uuid,uuid,jsonb) FROM PUBLIC, anon, authenticated;\nREVOKE ALL ON FUNCTION private.ai_complete_idempotency(uuid,text,text,integer,jsonb,uuid,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION private.ai_append_audit_event(uuid,text,text,text,text,uuid,uuid,uuid,jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION private.ai_complete_idempotency(uuid,text,text,integer,jsonb,uuid,text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION private.ai_claim_idempotency(uuid,text,text,text,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION private.ai_append_message(uuid,uuid,text,text) TO service_role;
-GRANT EXECUTE ON FUNCTION private.ai_append_audit_event(uuid,text,text,text,text,uuid,uuid,uuid,jsonb) TO service_role;\nGRANT EXECUTE ON FUNCTION private.ai_complete_idempotency(uuid,text,text,integer,jsonb,uuid,text) TO service_role;
+GRANT EXECUTE ON FUNCTION private.ai_append_audit_event(uuid,text,text,text,text,uuid,uuid,uuid,jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION private.ai_complete_idempotency(uuid,text,text,integer,jsonb,uuid,text) TO service_role;
 
 COMMIT;
