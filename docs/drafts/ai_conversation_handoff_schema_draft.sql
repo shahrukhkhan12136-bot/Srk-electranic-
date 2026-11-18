@@ -8,7 +8,7 @@ CREATE TABLE public.srk_ai_conversations (
  module_key text NOT NULL CHECK((actor_type='customer' AND module_key IN ('customer_support','booking_assistant')) OR (actor_type='electrician' AND module_key='electrician_assistant')),
  status text NOT NULL DEFAULT 'open' CHECK(status IN ('open','handoff_pending','closed')),
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
- closed_at timestamptz, CHECK((status='closed')=(closed_at IS NOT NULL))
+ closed_at timestamptz, CHECK((status='closed')=(closed_at IS NOT NULL)), UNIQUE(id,owner_user_id)
 );
 CREATE INDEX srk_ai_conversations_owner_recent_idx ON public.srk_ai_conversations(owner_user_id,updated_at DESC,id);
 CREATE TABLE public.srk_ai_messages (
@@ -34,12 +34,13 @@ CREATE TABLE public.srk_ai_idempotency (
  expires_at timestamptz NOT NULL,
  UNIQUE(owner_user_id,endpoint_key,idempotency_key),
  CHECK(expires_at>created_at),
- CHECK ((state='completed' AND response_status IS NOT NULL AND response_body IS NOT NULL) OR (state<>'completed' AND response_status IS NULL AND response_body IS NULL))
+ CHECK ((state='completed' AND response_status IS NOT NULL AND response_body IS NOT NULL) OR (state<>'completed' AND response_status IS NULL AND response_body IS NULL)),
+ CHECK ((state='processing')=(lease_expires_at IS NOT NULL))
 );
 CREATE INDEX srk_ai_idempotency_expiry_idx ON public.srk_ai_idempotency(expires_at);
 CREATE TABLE public.srk_ai_handoffs (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- conversation_id uuid NOT NULL REFERENCES public.srk_ai_conversations(id) ON DELETE CASCADE,
+ conversation_id uuid NOT NULL,
  owner_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
  queue_key text NOT NULL CHECK(queue_key IN ('main_admin')),
  reason_code text NOT NULL CHECK(reason_code IN ('user_requested','ai_uncertain','safety','service_issue','other')),
@@ -47,6 +48,7 @@ CREATE TABLE public.srk_ai_handoffs (
  summary text NOT NULL CHECK(length(btrim(summary)) BETWEEN 1 AND 2000),
  status text NOT NULL DEFAULT 'queued' CHECK(status IN ('queued','assigned','in_progress','resolved','cancelled')),
  assigned_staff_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+ FOREIGN KEY(conversation_id,owner_user_id) REFERENCES public.srk_ai_conversations(id,owner_user_id) ON DELETE CASCADE,
  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), resolved_at timestamptz
 );
 CREATE UNIQUE INDEX srk_ai_handoffs_one_open_per_conversation_uidx ON public.srk_ai_handoffs(conversation_id) WHERE status IN ('queued','assigned','in_progress');
