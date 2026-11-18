@@ -40,3 +40,12 @@ test("browser renders backend net directly and stage-gates customer/company tota
   assert.match(ui, /x\.payment_stage==='checkout_started'/);
   assert.match(ui, /x\.payment_stage==='completed_unpaid'/);
 });
+
+test("earnings RPC exposes checkout breakdown fields and separate payout status", () => {
+  assert.match(migration, /customer_labour_gross numeric/);
+  assert.match(migration, /company_share numeric/);
+  assert.match(migration, /payout_amount numeric/);
+  assert.match(migration, /payout_status text/);
+  assert.match(migration, /checkout_reconciliation_required/);
+  assert.match(ui, /x\.payment_stage==='checkout_reconciliation_required'/);
+});
