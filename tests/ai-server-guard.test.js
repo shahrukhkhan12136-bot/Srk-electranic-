@@ -51,6 +51,15 @@ test("AI route verifies bearer token with Supabase Auth and never trusts body ac
   assert.equal(calls[0].options.cache, "no-store");
 });
 
+test("oversized request bodies and malformed authenticated identities fail closed", async () => {
+  const { handler, calls } = setup();
+  const large = { ...event({ body: { module_key: "customer_support", message: "hi" } }), body: "x".repeat(8193) };
+  assert.equal((await handler(large)).statusCode, 413);
+  assert.equal(calls.length, 0);
+  const malformed = setup({ user: { id: "not-a-uuid", app_metadata: { role: "customer" } } });
+  assert.equal((await malformed.handler(event({ body: { module_key: "customer_support", message: "hi" } }))).statusCode, 403);
+});
+
 test("module authorization is derived only from trusted app_metadata role", async () => {
   const customer = setup({ role: "customer" });
   assert.equal((await customer.handler(event({ body: { module_key: "electrician_assistant", message: "hi" } }))).statusCode, 403);
