@@ -414,6 +414,7 @@ test("AI server rejects bearer tokens with whitespace, controls, or excessive le
     "token\r\nInjected: yes", "token\u00a0with-space",
     "token\u2003with-space", "token\u0085with-control",
     "token\twith-tab", "token\u0000with-null", "token\u007fwith-delete",
+    "token\u200bwith-zero-width", "token\ufeffwith-bom", "token😀with-emoji",
     "x".repeat(8193)
   ]) {
     const request = event();
