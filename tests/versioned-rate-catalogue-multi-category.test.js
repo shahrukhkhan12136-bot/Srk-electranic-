@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118050000_versioned_rate_catalogue_and_multi_category_electricians.sql"), "utf8");
+const roundingMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118110000_unify_electrician_rate_rounding.sql"), "utf8");
 const bookingApi = fs.readFileSync(path.join(__dirname, "../create-booking.js"), "utf8");
 const customerUi = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
 const electricianUi = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
@@ -79,17 +80,17 @@ test("dynamic catalogue estimate drops only the obsolete hard-coded rate equalit
   assert.doesNotMatch(migration, /ADD CONSTRAINT service_bookings_estimate_matches_rate_card/);
 });
 
-test("electrician rate-list RPC calculates direct 85 percent using half-up integer-paise rounding", () => {
-  assert.match(migration, /'electrician_rate_paise',floor\(\(i\.customer_rate_paise::numeric\*8500\/10000\)\+0\.5\)::bigint/);
-  assert.doesNotMatch(migration, /'electrician_rate_paise',\(i\.customer_rate_paise-floor/);
+test("final electrician rate-list RPC uses the payout-aligned rounded 15 percent deduction", () => {
+  assert.match(roundingMigration, /electrician_rate_paise',\(i\.customer_rate_paise - floor\(\(i\.customer_rate_paise::numeric\*1500\/10000\)\+0\.5\)::bigint\)/);
+  assert.doesNotMatch(roundingMigration, /electrician_rate_paise',floor\(\(i\.customer_rate_paise::numeric\*8500\/10000\)/);
 });
 
-test("payout accounting retains one rounded 15 percent commission while rate-list display uses separate direct 85 percent", () => {
+test("Rate List, Offer and payout share one rounded 15 percent commission rule", () => {
   assert.match(netPolicy, /PLATFORM_COMMISSION_BPS = 1500/);
   assert.match(netPolicy, /const net = Number\(gross - commission\)/);
-  assert.match(netPolicy, /ELECTRICIAN_RATE_LIST_BPS = 8500/);
-  assert.match(migration, /'electrician_rate_paise',floor\(\(i\.customer_rate_paise::numeric\*8500\/10000\)\+0\.5\)::bigint/);
-  assert.doesNotMatch(migration, /'electrician_rate_paise',\(i\.customer_rate_paise-floor/);
+  assert.match(netPolicy, /net = gross - round-half-up\(gross \* 15%\)/);
+  assert.match(roundingMigration, /electrician_rate_paise',\(i\.customer_rate_paise - floor\(\(i\.customer_rate_paise::numeric\*1500\/10000\)\+0\.5\)::bigint\)/);
+  assert.match(roundingMigration, /b\.estimated_labour_paise - floor\(\(b\.estimated_labour_paise::numeric\*1500\/10000\)\+0\.5\)::bigint/);
 });
 
 test("catalogue version, item, and audit rows cannot be updated or deleted", () => {
