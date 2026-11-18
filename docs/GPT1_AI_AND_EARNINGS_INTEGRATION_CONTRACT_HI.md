@@ -146,3 +146,17 @@ Mismatch/incomplete ledger पर भी earning/payout amount withheld रह�
 4. Rate List/Offer amount को RPC response से पढ़ें; browser में 85% दोबारा calculate न करें।
 5. Earnings UI में `null` को ₹0 में convert न करें। `payout_reconciliation_status` अलग दिखाएँ और `missing`/mismatch पर payout को unresolved रखें।
 6. कोई Production DB migration, deploy या paid AI provider setup बिना अलग explicit approval के नहीं होगा।
+
+
+## 7. GPT-1 pre-launch client adapter — source added
+
+`lib/ai-assistant-client.js` now provides the Customer/Electrician-side transport adapter for the proposed contract:
+- `sendMessage()` targets the proposed assistant route and accepts only the three Customer/Electrician module keys.
+- `createHandoff()` targets the proposed human-handoff route and validates the persisted handoff status before returning success.
+- Both methods require a verified session access token and UUID idempotency key; browser-supplied actor/role/permission fields are not accepted.
+- Context is restricted to an optional booking UUID. Provider/server error details are not forwarded to the UI.
+- Adapter is disabled by default. It must remain disabled until GPT-2 confirms deployed routes, persistence, authentication, ownership checks, audit, rate limits and kill switch.
+
+`tests/ai-assistant-client.test.js` adds source-level tests for disabled-by-default behavior, request shape, auth/idempotency headers, context allowlisting, safe failure handling and handoff status validation.
+
+These are client-adapter and mocked-contract tests only. They do not prove a live AI backend, actual Customer/Electrician UI, provider connection, or end-to-end handoff. No endpoint call is enabled in either app.
