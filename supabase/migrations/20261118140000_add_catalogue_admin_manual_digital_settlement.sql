@@ -10,9 +10,6 @@ as $$
 declare
   v_booking public.service_bookings%rowtype;
   v_labour public.srk_booking_labour_bills%rowtype;
-  v_profile public.electrician_profiles%rowtype;
-  v_electrician_user uuid;
-  v_wallet uuid;
   v_fee bigint;
   v_total bigint;
   v_reference text:=btrim(coalesce(p_reference,''));
@@ -51,12 +48,6 @@ begin
   v_total:=v_labour.labour_amount_paise+v_fee;
   if v_total<=0 or v_total>1000000000 then raise exception 'INVALID_BOOKING_TOTAL'; end if;
   if exists(select 1 from public.srk_manual_payment_entries where booking_id=p_booking_id) then raise exception 'MANUAL_PAYMENT_ALREADY_RECORDED'; end if;
-  select * into v_profile from public.electrician_profiles where id=v_labour.electrician_profile_id;
-  v_electrician_user:=coalesce(v_profile.auth_user_id,v_profile.user_id);
-  if v_electrician_user is null then raise exception 'ELECTRICIAN_AUTH_USER_REQUIRED'; end if;
-  insert into public.srk_wallet_accounts(user_id,wallet_type) values(v_electrician_user,'electrician')
-    on conflict(user_id,wallet_type) do nothing;
-  select id into v_wallet from public.srk_wallet_accounts where user_id=v_electrician_user and wallet_type='electrician' for update;
 
   insert into public.srk_manual_payment_entries(booking_id,payment_method,amount,payment_reference,note,recorded_by)
   values(p_booking_id,p_method,v_total/100.0,v_reference,nullif(btrim(coalesce(p_note,'')),''),auth.uid());
