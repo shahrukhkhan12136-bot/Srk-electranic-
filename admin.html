@@ -825,7 +825,7 @@ let adminCurrentRateCatalogue=null,adminRateCatalogueBusy=false,adminRateCategor
 function paiseToRupees(paise){return (Number(paise)/100).toFixed(2);}
 function rupeesToPaise(value){
  const raw=String(value||'').trim();
- if(!/^\\d+(?:\\.\\d{1,2})?$/.test(raw))throw new Error('दर रुपये में अधिकतम दो दशमलव तक भरें।');
+ if(!/^\d+(?:\.\d{1,2})?$/.test(raw))throw new Error('दर रुपये में अधिकतम दो दशमलव तक भरें।');
  const parts=raw.split('.');const paise=Number(parts[0])*100+Number((parts[1]||'').padEnd(2,'0'));
  if(!Number.isSafeInteger(paise)||paise<1||paise>9000000000000000)throw new Error('दर की राशि सीमा से बाहर है।');
  return paise;
