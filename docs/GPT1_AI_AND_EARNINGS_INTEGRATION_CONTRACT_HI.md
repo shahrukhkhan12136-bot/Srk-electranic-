@@ -240,3 +240,11 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Path prefix (`https://api.example.test/prefix`) अस्वीकार होता है, क्योंकि API routes absolute-root paths पर तय हैं और prefix चुपचाप हट सकता था।
 - Customer/Electrician composition और transport client के URL regression tests में path-prefix rejection जोड़ा गया है।
 - Tests अभी execute नहीं हुए हैं; यह pre-launch preparation है, live endpoint confirmation नहीं।
+
+
+## 12. AI client input/context prototype validation
+
+- Client entry points अब null, array या non-object request को stable `invalid_request` error से reject करते हैं।
+- Context केवल plain object या null-prototype object हो सकता है; inherited `booking_id` या custom prototype values स्वीकार नहीं होते।
+- `booking_id` केवल own-property से पढ़ा जाता है और UUID validation के बाद ही request में जाता है।
+- Regression tests जोड़े गए हैं; execution/CI evidence अभी उपलब्ध नहीं है।
