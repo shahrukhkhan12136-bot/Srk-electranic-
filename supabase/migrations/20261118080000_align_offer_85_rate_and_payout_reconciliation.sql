@@ -249,6 +249,7 @@ AS $$
         THEN 'category_materials_mismatch'
       WHEN b.selected_category IS NOT NULL AND (
         bill.booking_id IS NULL
+        OR bill.electrician_profile_id IS DISTINCT FROM b.assigned_electrician_id
         OR round(payout.gross_service_amount,2) IS DISTINCT FROM round(bill.labour_amount,2)
       ) THEN 'bill_mismatch'
       WHEN b.commission_rate IS NULL
