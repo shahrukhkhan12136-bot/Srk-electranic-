@@ -75,6 +75,8 @@ test("electrician net rate list resolves the published version without calling g
   const end = electricianCatalogueGuard.indexOf("$fn$;", start);
   const fn = electricianCatalogueGuard.slice(start, end);
   assert.ok(start >= 0 && end > start);
+  assert.match(fn, /verification_status='approved'/);
+  assert.match(fn, /active=true/);
   assert.match(fn, /electrician_rate_paise/);
   assert.match(fn, /customer_rate_paise-floor\(\(i\.customer_rate_paise::numeric\*1500\/10000\)\+0\.5\)::bigint/);
   assert.doesNotMatch(fn, /srk_get_current_customer_rate_catalogue|customer_rate_paise['"]\s*,\s*commission|company_share/i);
