@@ -56,3 +56,26 @@ test("migration does not rewrite legacy commission or payout calculation", () =>
   assert.doesNotMatch(migration, /set\s+commission_rate\s*=/i);
   assert.match(migration, /Existing commission_rate\/platform_commission and payout ledger are NOT changed/);
 });
+
+const electricianHtml = fs.readFileSync(
+  path.join(__dirname, "../electrician.html"),
+  "utf8"
+);
+
+test("electrician offer UI renders only the net amount supplied by the RPC", () => {
+  assert.match(electricianHtml, /o\.electrician_offer_paise/);
+  assert.doesNotMatch(electricianHtml, /o\.estimated_labour_paise/);
+  assert.doesNotMatch(electricianHtml, /estimated_labour_paise/);
+});
+
+test("earnings UI gates company and customer totals by server payment stage", () => {
+  const earningsUi = electricianHtml.split("async function loadEarnings(){")[1].split("async function loadPartnerWallet(){")[0];
+  assert.match(earningsUi, /x\.payment_stage==='completed_unpaid'/);
+  assert.match(earningsUi, /x\.payment_stage==='checkout_started'/);
+  assert.match(earningsUi, /x\.payment_stage==='payment_verified'/);
+  assert.match(earningsUi, /verified\.reduce\(\(sum,x\)=>sum\+Number\(x\.amount_received/);
+  assert.match(earningsUi, /\['checkout_started','payment_verified'\]/);
+  assert.match(earningsUi, /srk_electrician_payouts/);
+  assert.match(earningsUi, /अलग Electrician Payout Ledger/);
+  assert.doesNotMatch(earningsUi, /commission_amount/);
+});
