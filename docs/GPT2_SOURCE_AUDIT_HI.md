@@ -50,3 +50,14 @@
 - DTO केवल allowlisted AI module, action key, actor/record/approval/request IDs, timestamp और सीमित outcome रखता है; prompt, raw tool payload और free-form error text को output में शामिल नहीं करता।
 - यह केवल pure metadata builder है। इसे production में enforce करने, append-only persistence, server-authenticated actor identity, secret redaction, retention policy और tamper resistance के लिए backend तथा database कार्य अभी बाकी हैं।
 - इस test file को इस चरण में remote source में जोड़ा गया है; यहां test runner execution सत्यापित नहीं हुआ है। इसे पास हुआ घोषित न करें।
+
+
+## 18 नवम्बर 2026 — Manual payment method / payout trigger parity follow-up
+- `20261118100000_align_manual_payment_method_payout_trigger.sql` में मौजूदा `srk_create_electrician_payable()` को `CREATE OR REPLACE` से बदला गया है। मूल payout calculation और refund branch सुरक्षित रखे गए; manual payment evidence में booking ID, amount और normalized payment method तीनों का match अनिवार्य किया गया।
+- Payout AFTER trigger की `UPDATE OF` सूची में `payment_method` जोड़ा गया, ताकि केवल payment method बदलने पर भी evidence gate दोबारा चले।
+- `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` में Commission BEFORE Trigger और Commission/Payout Parity AFTER Trigger दोनों `payment_method` पर सुनते हैं; इनके fail-closed mismatch check की source assertions जोड़ी गईं।
+- `tests/offer-rate-payout-reconciliation.test.js` में अतिरिक्त assertions हैं: manual payment method match, तीनों triggers की `payment_method` event coverage, payout function का मूल logic सुरक्षित रहना (केवल evidence predicate जोड़कर), और पुराने booking/bill/manual-payment records पर migration-time UPDATE न होना।
+- GitHub source comparison में payout function body का normalized comparison पास हुआ: original function में केवल expected manual method evidence guard जोड़ा गया है। Original trigger event list के मुकाबले नया trigger केवल `payment_method` जोड़ता है।
+- नवीनतम source commit: `ea5d450c9e8e56ecc1971a3142e0bad6cfaf8153`।
+- Verification सीमा: इस turn में Node test runner, PostgreSQL parser/runtime, isolated DB, authenticated RPC या live payment E2E नहीं चलाया गया। GitHub Actions run list खाली रही; Vercel status build-rate-limit failure दिखाता है। इसलिए कोई runtime/CI pass claim नहीं है।
+- Migration source-only है; इसे किसी database पर लागू नहीं किया गया। पुराने booking, bill, manual payment entry या payout rows migration द्वारा rewrite नहीं किए गए।
