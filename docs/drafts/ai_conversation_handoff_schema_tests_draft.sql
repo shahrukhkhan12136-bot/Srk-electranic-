@@ -23,6 +23,8 @@ SELECT ok(NOT has_table_privilege('service_role','public.srk_ai_audit_events','U
 SELECT ok(EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_ai_conversations'::regclass AND contype='c' AND pg_get_constraintdef(oid) ILIKE '%module_key%'),'module keys constrained');
 SELECT ok(EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_ai_messages'::regclass AND contype='u' AND pg_get_constraintdef(oid) ILIKE '%conversation_id%sequence_no%'),'message sequence unique');
 SELECT ok(EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_ai_idempotency'::regclass AND contype='u' AND pg_get_constraintdef(oid) ILIKE '%owner_user_id%endpoint_key%idempotency_key%'),'idempotency scope unique');
+SELECT ok(EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_ai_handoffs'::regclass AND contype='f' AND pg_get_constraintdef(oid) ILIKE '%conversation_id, owner_user_id%' AND pg_get_constraintdef(oid) ILIKE '%srk_ai_conversations(id, owner_user_id)%'),'handoff owner must match conversation owner');
+SELECT ok(EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_ai_idempotency'::regclass AND contype='c' AND pg_get_constraintdef(oid) ILIKE '%lease_expires_at%'),'processing idempotency claim requires a lease');
 SELECT ok(to_regclass('public.srk_ai_handoffs_one_open_per_conversation_uidx') IS NOT NULL,'one-open-handoff index exists');
 SELECT ok(EXISTS(SELECT 1 FROM pg_index WHERE indexrelid='public.srk_ai_handoffs_one_open_per_conversation_uidx'::regclass AND indisunique AND indpred IS NOT NULL),'handoff uniqueness is partial');
 SELECT ok(EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.srk_ai_audit_events'::regclass AND contype='c' AND pg_get_constraintdef(oid) ILIKE '%event_type%'),'audit event types constrained');
