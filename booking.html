@@ -122,6 +122,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 
 <section class="card" id="customerSupportPanel" style="margin-top:14px">
    <div id="customerAiAssistantMount" aria-live="polite"></div>
+   <div id="customerBookingAssistantMount" aria-live="polite"></div>
    <h3 style="margin-top:0">🛟 सहायता और शिकायत</h3>
    <p class="small">अपनी बुकिंग से जुड़ी शिकायत दर्ज करें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।</p>
     <details style="margin:10px 0">
@@ -931,6 +932,7 @@ const value = id => document.getElementById(id).value.trim();
 const customerCfg = window.SRK_CONFIG || {};
 let customerSb = null;
 let customerAiAssistantWidget = null;
+let customerBookingAiAssistantWidget = null;
 let customerBookingRefreshRequest = 0;
 let customerResumeRefreshTimer = null;
 let customerOtpBusy = false;
@@ -938,14 +940,21 @@ let customerOtpUntil = 0;
 let customerOtpTimer = null;
 const customerMessage = message => { document.getElementById('customerAuthMessage').textContent = message; };
 function mountCustomerAiAssistant(){
-  if(customerAiAssistantWidget)return;
-  const mount=document.getElementById("customerAiAssistantMount");
-  if(!mount||!customerSb||!window.SrkAiAssistantApp?.mountSrkAiAssistant)return;
-  customerAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:mount,supabaseClient:customerSb,appRole:"customer",moduleKey:"customer_support"});
+  if(!customerSb||!window.SrkAiAssistantApp?.mountSrkAiAssistant)return;
+  if(!customerAiAssistantWidget){
+    const supportMount=document.getElementById("customerAiAssistantMount");
+    if(supportMount)customerAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:supportMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"customer_support"});
+  }
+  if(!customerBookingAiAssistantWidget){
+    const bookingMount=document.getElementById("customerBookingAssistantMount");
+    if(bookingMount)customerBookingAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:bookingMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"booking_assistant"});
+  }
 }
 function destroyCustomerAiAssistant(){
   customerAiAssistantWidget?.destroy?.();
+  customerBookingAiAssistantWidget?.destroy?.();
   customerAiAssistantWidget=null;
+  customerBookingAiAssistantWidget=null;
 }
 function customerPhoneE164() {
   const raw = document.getElementById('customerPhone').value.trim();
