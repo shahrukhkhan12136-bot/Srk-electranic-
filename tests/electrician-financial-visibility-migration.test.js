@@ -83,6 +83,13 @@ test("Razorpay order amount comes from immutable server bill and persisted fee l
   assert.doesNotMatch(createOrder, /b\.amount\s*\|\|/);
 });
 
+test("claim and link RPCs acquire booking row before lock row to avoid deadlock", () => {
+  const claim = orderLockMigration.slice(orderLockMigration.indexOf("FUNCTION public.srk_claim_payment_order_lock"), orderLockMigration.indexOf("CREATE OR REPLACE FUNCTION public.srk_release_payment_order_lock"));
+  const link = orderLockMigration.slice(orderLockMigration.indexOf("FUNCTION public.srk_service_role_link_payment_order"));
+  assert.ok(claim.indexOf("FROM public.service_bookings") < claim.indexOf("INSERT INTO private.srk_payment_order_locks"));
+  assert.ok(link.indexOf("FROM public.service_bookings") < link.indexOf("FROM private.srk_payment_order_locks"));
+});
+
 test("payment order lock RPCs are service-role only and link validates lock token atomically", () => {
   assert.match(orderLockMigration, /CREATE OR REPLACE FUNCTION public\.srk_claim_payment_order_lock/);
   assert.match(orderLockMigration, /CREATE OR REPLACE FUNCTION public\.srk_release_payment_order_lock/);
