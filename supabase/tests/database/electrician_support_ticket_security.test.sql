@@ -108,8 +108,8 @@ select ok(
 );
 
 select ok(
-  position('t.user_id = v_uid' in lower(pg_get_functiondef('public.srk_electrician_list_my_support_tickets()'::regprocedure)))>0
-  and position('p.user_id = v_uid' in lower(pg_get_functiondef('public.srk_electrician_list_my_support_tickets()'::regprocedure)))>0,
+  position('t.user_id=v_uid' in lower(pg_get_functiondef('public.srk_electrician_list_my_support_tickets()'::regprocedure)))>0
+  and position('p.user_id=v_uid' in lower(pg_get_functiondef('public.srk_electrician_list_my_support_tickets()'::regprocedure)))>0,
   'electrician ticket listing applies ticket-owner and profile-owner filters'
 );
 
@@ -125,7 +125,7 @@ select ok(
 
 select ok(
   position('support_ticket_not_available' in lower(pg_get_functiondef('public.srk_electrician_list_my_support_messages(uuid)'::regprocedure)))>0
-  and position('t.user_id = v_uid' in lower(pg_get_functiondef('public.srk_electrician_list_my_support_messages(uuid)'::regprocedure)))>0,
+  and position('t.user_id=v_uid' in lower(pg_get_functiondef('public.srk_electrician_list_my_support_messages(uuid)'::regprocedure)))>0,
   'message listing hides tickets not owned by the authenticated electrician'
 );
 
