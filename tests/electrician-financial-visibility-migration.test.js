@@ -8,7 +8,7 @@ const ui = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
 
 test("offer RPC returns a distinct electrician net field, never the gross estimate column", () => {
   assert.match(migration, /electrician_offer_paise bigint/);
-  assert.match(migration, /estimated_labour_paise::numeric\*8500/);
+  assert.match(migration, /floor\(\(b\.estimated_labour_paise::numeric\*8500\+5000\)\/10000\)::bigint/);
   assert.doesNotMatch(migration, /estimated_labour_paise bigint,/);
 });
 
@@ -52,7 +52,7 @@ test("earnings RPC exposes checkout breakdown fields and separate payout status"
 
 test("earnings calculations use the actual immutable labour_amount column, not a nonexistent paise column", () => {
   assert.match(migration, /bill\.labour_amount/);
-  assert.doesNotMatch(migration, /bill\.labour_amount_paise/);
+  assert.doesNotMatch(migration, /bill\.labour_amount_paise/);\n  assert.doesNotMatch(migration, /\\$\\{net\\}/);\n  assert.match(migration, /bill\.labour_amount IS NOT NULL/);
   assert.match(migration, /WHEN verified\.is_verified THEN coalesce\(b\.amount_paid,0\)\s+ELSE 0/);
 });
 
@@ -61,4 +61,10 @@ test("paid-but-unverified and refunded bookings never receive unpaid 85 percent 
   assert.match(migration, /payment_status IS DISTINCT FROM 'refunded'/);
   assert.match(migration, /payment_status IS DISTINCT FROM 'paid'/);
   assert.match(ui, /x\.payment_stage==='payment_verification_required'/);
+});
+
+test("85 percent is rounded in integer paise with the residual assigned to the company", () => {
+  assert.match(migration, /floor\(\(round\(coalesce\(bill\.labour_amount,0\)\*100\)\*8500\+5000\)\/10000\)/);
+  assert.match(migration, /round\(coalesce\(bill\.labour_amount,0\),2\)-\(floor\(/);
+  assert.doesNotMatch(migration, /round\(coalesce\(bill\.labour_amount,0\)\*0\.15,2\)/);
 });
