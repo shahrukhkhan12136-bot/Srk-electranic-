@@ -91,7 +91,7 @@ insert into public.service_bookings(
 select throws_ok(
   $q$update public.service_bookings
       set selected_category='expert_electrician'
-    where id='00000000-0000-4000-8000-000000000001$q$,
+    where id='00000000-0000-4000-8000-000000000001'$q$,
   '42501',
   'BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE',
   'changing the saved category is rejected'
@@ -100,7 +100,7 @@ select throws_ok(
 select throws_ok(
   $q$update public.service_bookings
       set estimated_labour_paise=999999
-    where id='00000000-0000-4000-8000-000000000001$q$,
+    where id='00000000-0000-4000-8000-000000000001'$q$,
   '42501',
   'BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE',
   'changing the saved amount is rejected'
@@ -116,7 +116,7 @@ select is(
 select lives_ok(
   $q$update public.service_bookings
       set booking_status='confirmed'
-    where id='00000000-0000-4000-8000-000000000001$q$,
+    where id='00000000-0000-4000-8000-000000000001'$q$,
   'non-snapshot booking fields remain updateable'
 );
 
