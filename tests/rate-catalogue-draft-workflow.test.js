@@ -39,6 +39,16 @@ test("Main Admin UI can save drafts, view queue, and publish with expected curre
  for(const handler of ["saveAdminRateCatalogueDraft","publishAdminRateCatalogueDraft","loadAdminRateCatalogueDrafts"])assert.ok(admin.includes(`async function ${handler}(`),`${handler} must be async because it awaits Supabase RPCs`);
 });
 
+test("failed catalogue refresh clears the cached version and stale rate inputs before returning",()=>{
+ const start=admin.indexOf("async function loadAdminRateCatalogue()");
+ const end=admin.indexOf("async function loadAdminRateCatalogueDrafts()",start);
+ const block=admin.slice(start,end);
+ assert.match(block,/adminCurrentRateCatalogue=null;\s*const \{data,error\}=await sb\.rpc\('srk_get_current_customer_rate_catalogue'\)/);
+ assert.match(block,/if\(error\)\{[\s\S]*?for\(const \[key,label,id\] of SRK_RATE_TIERS\)\{const input=document\.getElementById\(id\);if\(input\)input\.value='';\}[\s\S]*?return;/);
+ assert.ok(block.indexOf("adminCurrentRateCatalogue=null")<block.indexOf("await sb.rpc"));
+ assert.ok(block.indexOf("input.value=''")<block.indexOf("return;"));
+});
+
 test("electrician tier selector displays the current published catalogue prices, never legacy hardcoded amounts",()=>{
  const helperStart=admin.indexOf("function paiseToRupees");
  const helperEnd=admin.indexOf("function rupeesToPaise",helperStart);

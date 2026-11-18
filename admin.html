@@ -842,8 +842,13 @@ async function loadAdminRateCatalogue(){
  const status=document.getElementById('adminRateCatalogueStatus'),box=document.getElementById('adminRateCatalogueCurrent');
  if(!sb||!user||adminPortalMode!=='main_admin')return;
  status.textContent='Catalogue पढ़ रहे हैं…';
+ adminCurrentRateCatalogue=null;
  const {data,error}=await sb.rpc('srk_get_current_customer_rate_catalogue');
- if(error){status.textContent='Catalogue नहीं पढ़ा गया: '+error.message;return;}
+ if(error){
+  for(const [key,label,id] of SRK_RATE_TIERS){const input=document.getElementById(id);if(input)input.value='';}
+  status.textContent='Catalogue नहीं पढ़ा गया: '+error.message;
+  return;
+ }
  adminCurrentRateCatalogue=data||null;
  if(!data){box.textContent='अभी कोई Published Catalogue नहीं मिला। प्रारंभिक चार दरें भरकर पहला version publish किया जा सकता है।';return;}
  box.textContent='वर्तमान Version: '+data.rate_version_id+' • लागू: '+new Date(data.effective_at).toLocaleString('en-IN')+' • मुद्रा: INR • आधार: 8 घंटे';
