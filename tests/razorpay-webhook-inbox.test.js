@@ -407,3 +407,24 @@ test("new Catalogue Razorpay webhook delegates settlement to the guarded service
   assert.match(update, /payment\.currency !== "INR"/);
   assert.match(update, /if \(booking\.payment_status === "paid"\) return booking\.razorpay_payment_id === payment\.id \? "already_processed" : "payment_conflict"/);
 });
+
+
+test("webhook inbox SQL enforces service-role leases, payload dedupe, and claim-token completion", () => {
+  const sql = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114410000_razorpay_webhook_event_inbox.sql"), "utf8");
+  assert.match(sql, /payload_sha256 text not null/);
+  assert.match(sql, /unique \(payload_sha256\)/);
+  assert.match(sql, /lease_expires_at timestamptz/);
+  assert.match(sql, /clock_timestamp\(\)\+interval '2 minutes'/);
+  assert.match(sql, /state='processing' and v_event\.lease_expires_at>clock_timestamp\(\)/);
+  assert.match(sql, /v_event\.claim_token is distinct from p_claim_token/);
+  assert.match(sql, /coalesce\(auth\.jwt\(\)->>'role',''\)<>'service_role'/);
+  assert.match(sql, /grant execute on function public\.srk_service_claim_razorpay_webhook_event\(text,text,text\) to service_role/i);
+  assert.match(sql, /grant execute on function public\.srk_service_complete_razorpay_webhook_event\(text,uuid,text,text\) to service_role/i);
+});
+
+test("webhook inbox stale claim cannot complete a newer worker's lease", () => {
+  const sql = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114410000_razorpay_webhook_event_inbox.sql"), "utf8");
+  assert.match(sql, /if v_event\.state<>'processing' or v_event\.claim_token is distinct from p_claim_token then/);
+  assert.match(sql, /return jsonb_build_object\('success',false,'stale_claim',true/);
+  assert.match(sql, /set state=p_outcome/);
+});
