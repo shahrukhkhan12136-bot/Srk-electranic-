@@ -13,7 +13,7 @@ test("resolver selects the latest effective published version, not future or dra
   assert.deepEqual(resolvePublishedRateVersion({
     versions, rateTier: "skilled_electrician", now: "2026-11-18T12:00:00Z"
   }), {
-    rate_version_id: "v1", effective_at: "2026-11-01T00:00:00Z", rate_8h_paise: 119900
+    rate_version_id: "v1", effective_at: "2026-11-01T00:00:00Z", rate_tier: "skilled_electrician", rate_8h_paise: 119900
   });
 });
 
@@ -42,4 +42,11 @@ test("resolver rejects ambiguous published versions with the same effective time
 
 test("snapshot rejects invalid resolved rate context", () => {
   assert.throws(() => createBookingRateSnapshot({ resolvedRate: null, durationHours: 8 }));
+});
+
+test("snapshot rejects an unknown rate tier", () => {
+  assert.throws(() => createBookingRateSnapshot({
+    resolvedRate: { rate_version_id: "v1", effective_at: "2026-11-01T00:00:00Z", rate_tier: "unapproved", rate_8h_paise: 119900 },
+    durationHours: 8
+  }), /resolved_published_rate_required/);
 });
