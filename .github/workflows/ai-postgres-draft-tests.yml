@@ -9,13 +9,13 @@ on:
       - "docs/drafts/ai_conversation_handoff_schema_tests_draft.sql"
       - "docs/drafts/ai_conversation_rpc_functions_draft.sql"
       - "docs/drafts/ai_conversation_rpc_functions_tests_draft.sql"
-      - "docs/drafts/ai_conversation_rpc_functions_draft.sql"
-      - "docs/drafts/ai_conversation_rpc_functions_tests_draft.sql"
       - ".github/workflows/ai-postgres-draft-tests.yml"
   pull_request:
     paths:
       - "docs/drafts/ai_conversation_handoff_schema_draft.sql"
       - "docs/drafts/ai_conversation_handoff_schema_tests_draft.sql"
+      - "docs/drafts/ai_conversation_rpc_functions_draft.sql"
+      - "docs/drafts/ai_conversation_rpc_functions_tests_draft.sql"
       - ".github/workflows/ai-postgres-draft-tests.yml"
   workflow_dispatch:
 
