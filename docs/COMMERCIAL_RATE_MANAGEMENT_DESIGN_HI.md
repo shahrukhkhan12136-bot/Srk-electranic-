@@ -25,6 +25,8 @@ Rate List के लिए source migrations मौजूद हैं:
 
 यहां “migration मौजूद” का अर्थ केवल Git branch में source file होना है। इसका अर्थ PostgreSQL replay, hosted DB update, deployment या production verification नहीं है। इन कार्यों के लिए अलग स्पष्ट अनुमति आवश्यक है।
 
+**नवीनतम CI प्रमाण (18 नवम्बर 2026, commit `f813fea97f9b9f1a7e36ee4a9755b36ef3639e61`):** Repository Node tests सफल (702 tests); disposable local PostgreSQL में booking rate snapshot के 15/15 pgTAP assertions सफल। अलग full-migration replay workflow ने commit `e98df69841038929ace8b9acb8306664d91178be` पर 110 migrations सफलतापूर्वक लागू कीं और Rate Catalogue tables/RLS/RPC schema assertions पास किए। Snapshot workflow ने केवल संबंधित guard migration को isolated fixture database पर लागू किया; यह hosted/live DB या production verification नहीं है।
+
 
 ## 1. Business requirements
 
