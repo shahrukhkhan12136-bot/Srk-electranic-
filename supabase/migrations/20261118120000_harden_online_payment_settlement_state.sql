@@ -45,7 +45,7 @@ begin
     end if;
     raise exception 'BOOKING_ALREADY_PAID_WITH_DIFFERENT_PAYMENT';
   end if;
-  if v_booking.payment_status not in ('unpaid','pending') then
+  if v_booking.payment_status is null or v_booking.payment_status not in ('unpaid','pending') then
     raise exception 'BOOKING_PAYMENT_STATE_NOT_PAYABLE';
   end if;
   if v_booking.razorpay_payment_id is not null or v_booking.payment_verified_at is not null
