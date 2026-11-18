@@ -631,3 +631,45 @@ test("booking ownership lookup fails closed for missing, duplicate, mismatched, 
   assert.equal(failed.statusCode, 503);
   assert.equal(JSON.parse(failed.body).error, "ai_service_unavailable");
 });
+
+
+test("handoff booking references enforce the same customer ownership and electrician assignment checks", async () => {
+  const bookingId = "123e4567-e89b-42d3-a456-426614174099";
+  const customerId = "123e4567-e89b-42d3-a456-426614174001";
+  const handoffBody = module_key => ({
+    module_key,
+    conversation_id: UUID,
+    booking_id: bookingId,
+    reason_code: "needs_human_support",
+    urgency: "normal",
+    summary: "Please connect me to support"
+  });
+
+  const ownCustomer = setup({ bookingRows: [{
+    id: bookingId, customer_user_id: customerId, assigned_electrician_id: null
+  }] });
+  const customerOk = await ownCustomer.handler(event({ body: handoffBody("customer_support") }), "handoff");
+  assert.equal(customerOk.statusCode, 503);
+  assert.equal(JSON.parse(customerOk.body).error, "ai_not_enabled");
+
+  const otherCustomer = setup({ bookingRows: [{
+    id: bookingId, customer_user_id: "123e4567-e89b-42d3-a456-426614174088", assigned_electrician_id: null
+  }] });
+  const customerDenied = await otherCustomer.handler(event({ body: handoffBody("customer_support") }), "handoff");
+  assert.equal(customerDenied.statusCode, 403);
+  assert.equal(JSON.parse(customerDenied.body).error, "ai_booking_access_denied");
+
+  const ownElectrician = setup({ role: "electrician", bookingRows: [{
+    id: bookingId, customer_user_id: customerId, assigned_electrician_id: UUID
+  }] });
+  const electricianOk = await ownElectrician.handler(event({ body: handoffBody("electrician_assistant") }), "handoff");
+  assert.equal(electricianOk.statusCode, 503);
+  assert.equal(JSON.parse(electricianOk.body).error, "ai_not_enabled");
+
+  const otherElectrician = setup({ role: "electrician", bookingRows: [{
+    id: bookingId, customer_user_id: customerId, assigned_electrician_id: "123e4567-e89b-42d3-a456-426614174088"
+  }] });
+  const electricianDenied = await otherElectrician.handler(event({ body: handoffBody("electrician_assistant") }), "handoff");
+  assert.equal(electricianDenied.statusCode, 403);
+  assert.equal(JSON.parse(electricianDenied.body).error, "ai_booking_access_denied");
+});
