@@ -207,3 +207,10 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - `tests/booking-rate-replay-order.test.js` now explicitly checks the unique-key race replay path returns the persisted `estimated_labour_paise` and `estimate_rate_card_version`, and does not recalculate from the current catalogue.
 - A separate source-contract check verifies new bookings persist the server-derived estimate, catalogue version, selected tier and duration.
 - These are static source assertions only; the Node test suite and database runtime tests have not been executed.
+
+
+### AI action approval payload-shape hardening
+
+- `lib/ai-action-approval.js` now rejects array-shaped `action` and `approval` payloads before checking approval bindings.
+- `tests/ai-action-approval.test.js` adds coverage for array-shaped action and approval values.
+- This is a defensive pure-helper check only. Human identity verification, server-side approval loading, resource authorization and audit persistence remain backend responsibilities; tests have not been executed.
