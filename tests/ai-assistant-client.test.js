@@ -423,7 +423,7 @@ test("AI client rejects UUID inputs with trailing line terminators before fetch"
   await assert.rejects(
     client.sendMessage({
       moduleKey: "customer_support", message: "status",
-      accessToken: TOKEN, idempotencyKey: KEY + "\\n"
+      accessToken: TOKEN, idempotencyKey: KEY + "\n"
     }),
     error => error.code === "invalid_idempotency_key"
   );
@@ -431,7 +431,7 @@ test("AI client rejects UUID inputs with trailing line terminators before fetch"
     client.sendMessage({
       moduleKey: "customer_support", message: "status",
       accessToken: TOKEN, idempotencyKey: KEY,
-      conversationId: CONVERSATION + "\\n"
+      conversationId: CONVERSATION + "\n"
     }),
     error => error.code === "invalid_conversation_id"
   );
@@ -439,7 +439,7 @@ test("AI client rejects UUID inputs with trailing line terminators before fetch"
     client.sendMessage({
       moduleKey: "customer_support", message: "status",
       accessToken: TOKEN, idempotencyKey: KEY,
-      context: { booking_id: BOOKING + "\\n" }
+      context: { booking_id: BOOKING + "\n" }
     }),
     error => error.code === "invalid_context"
   );
