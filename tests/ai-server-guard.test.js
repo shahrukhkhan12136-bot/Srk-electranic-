@@ -114,10 +114,11 @@ test("staff and reports modules remain denied until database-backed RBAC is impl
 });
 
 test("malformed assistant requests and missing idempotency keys are rejected", async () => {
-  const { handler } = setup();
+  const { handler, calls } = setup();
   const missingKey = await handler(event({ key: null, body: { module_key: "customer_support", message: "hi" } }));
   assert.equal(missingKey.statusCode, 400);
   assert.equal(JSON.parse(missingKey.body).error, "invalid_idempotency_key");
+  assert.equal(calls.length, 0, "missing idempotency key must be rejected before Supabase calls");
   assert.equal((await handler(event({ body: { module_key: "customer_support", message: " " } }))).statusCode, 400);
   assert.equal((await handler(event({ body: { module_key: "customer_support", message: "hi", context: { owner_id: UUID } } }))).statusCode, 400);
 });
