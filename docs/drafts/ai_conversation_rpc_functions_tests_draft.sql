@@ -124,6 +124,9 @@ SELECT throws_ok(
 );
 
 
+-- Restore trusted-server claim for the positive completion tests.
+SELECT set_config('request.jwt.claim.role','service_role',true);
+
 -- Atomic completion: assistant message and cached response commit together.
 SELECT is(
  private.ai_claim_idempotency('10000000-0000-4000-8000-000000000001','assistant','idem-key-00000003',repeat('f',64),90)->>'status',
@@ -190,5 +193,6 @@ SELECT throws_ok(
  )$,
  '22023',NULL,'invalid response status is rejected'
 );
-\nSELECT * FROM finish();
+
+SELECT * FROM finish();
 ROLLBACK;
