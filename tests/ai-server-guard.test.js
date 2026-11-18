@@ -673,3 +673,73 @@ test("handoff booking references enforce the same customer ownership and electri
   assert.equal(electricianDenied.statusCode, 403);
   assert.equal(JSON.parse(electricianDenied.body).error, "ai_booking_access_denied");
 });
+
+
+test("existing conversation IDs require an exact owner, module, and open status match", async () => {
+  const conversationId = "123e4567-e89b-42d3-a456-426614174099";
+  const ownerId = "123e4567-e89b-42d3-a456-426614174001";
+  const make = rows => {
+    const calls = [];
+    const handler = createAiServerGuard({
+      env: { SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: "anon-test", SUPABASE_SERVICE_ROLE_KEY: "service-role-test" },
+      fetchImpl: async url => {
+        calls.push(url);
+        if (url.includes("/auth/v1/user")) return { ok: true, status: 200, json: async () => ({ id: ownerId }) };
+        if (url.includes("/srk_customer_profiles")) return { ok: true, status: 200, json: async () => [{ user_id: ownerId }] };
+        if (url.includes("/electrician_profiles")) return { ok: true, status: 200, json: async () => [] };
+        if (url.includes("/srk_ai_conversations")) return { ok: true, status: 200, json: async () => rows };
+        throw new Error("unexpected URL");
+      }
+    });
+    return { handler, calls };
+  };
+  const body = { module_key: "customer_support", message: "hello", conversation_id: conversationId };
+  const own = make([{ id: conversationId, owner_user_id: ownerId, module_key: "customer_support", status: "open" }]);
+  const allowed = await own.handler(event({ body }));
+  assert.equal(allowed.statusCode, 503);
+  assert.equal(JSON.parse(allowed.body).error, "ai_not_enabled");
+  const url = new URL(own.calls.find(value => value.includes("/srk_ai_conversations")));
+  assert.equal(url.searchParams.get("id"), "eq." + conversationId);
+  assert.equal(url.searchParams.get("owner_user_id"), "eq." + ownerId);
+  assert.equal(url.searchParams.get("module_key"), "eq.customer_support");
+  assert.equal(url.searchParams.get("status"), "neq.closed");
+
+  for (const rows of [
+    [],
+    [{ id: conversationId, owner_user_id: "123e4567-e89b-42d3-a456-426614174088", module_key: "customer_support", status: "open" }],
+    [{ id: conversationId, owner_user_id: ownerId, module_key: "electrician_assistant", status: "open" }],
+    [{ id: conversationId, owner_user_id: ownerId, module_key: "customer_support", status: "closed" }],
+    [
+      { id: conversationId, owner_user_id: ownerId, module_key: "customer_support", status: "open" },
+      { id: conversationId, owner_user_id: ownerId, module_key: "customer_support", status: "open" }
+    ]
+  ]) {
+    const denied = make(rows);
+    const response = await denied.handler(event({ body }));
+    assert.equal(response.statusCode, 403);
+    assert.equal(JSON.parse(response.body).error, "ai_conversation_access_denied");
+  }
+});
+
+test("handoff cannot create a queue item for a missing or foreign conversation", async () => {
+  const conversationId = "123e4567-e89b-42d3-a456-426614174099";
+  const ownerId = "123e4567-e89b-42d3-a456-426614174001";
+  for (const rows of [[], [{ id: conversationId, owner_user_id: "123e4567-e89b-42d3-a456-426614174088", module_key: "customer_support", status: "open" }]]) {
+    const handler = createAiServerGuard({
+      env: { SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: "anon-test", SUPABASE_SERVICE_ROLE_KEY: "service-role-test" },
+      fetchImpl: async url => {
+        if (url.includes("/auth/v1/user")) return { ok: true, status: 200, json: async () => ({ id: ownerId }) };
+        if (url.includes("/srk_customer_profiles")) return { ok: true, status: 200, json: async () => [{ user_id: ownerId }] };
+        if (url.includes("/electrician_profiles")) return { ok: true, status: 200, json: async () => [] };
+        if (url.includes("/srk_ai_conversations")) return { ok: true, status: 200, json: async () => rows };
+        throw new Error("unexpected URL");
+      }
+    });
+    const response = await handler(event({ body: {
+      module_key: "customer_support", conversation_id: conversationId,
+      reason_code: "needs_human_support", summary: "Please connect me to support"
+    } }), "handoff");
+    assert.equal(response.statusCode, 403);
+    assert.equal(JSON.parse(response.body).error, "ai_conversation_access_denied");
+  }
+});
