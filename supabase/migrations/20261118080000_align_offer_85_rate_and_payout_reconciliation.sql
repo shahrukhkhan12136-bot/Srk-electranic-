@@ -263,6 +263,7 @@ AS $$
   WHERE auth.uid() IS NOT NULL
     AND (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
     AND p.verification_status='approved'
+    AND p.active=true
   ORDER BY b.created_at DESC
   LIMIT 200;
 $$;
