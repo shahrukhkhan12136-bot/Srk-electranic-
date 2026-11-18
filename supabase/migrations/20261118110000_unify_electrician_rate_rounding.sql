@@ -47,7 +47,7 @@ GRANT EXECUTE ON FUNCTION public.srk_admin_set_electrician_approved_categories(u
 REVOKE ALL ON FUNCTION public.srk_get_my_electrician_rate_list() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_get_my_electrician_rate_list() TO authenticated;
 
-CREATE FUNCTION public.srk_get_my_offer_details()
+CREATE OR REPLACE FUNCTION public.srk_get_my_offer_details()
 RETURNS TABLE(
   offer_id uuid,
   offer_status text,
