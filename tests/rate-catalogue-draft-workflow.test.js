@@ -39,6 +39,20 @@ test("Main Admin UI can save drafts, view queue, and publish with expected curre
  for(const handler of ["saveAdminRateCatalogueDraft","publishAdminRateCatalogueDraft","loadAdminRateCatalogueDrafts"])assert.ok(admin.includes(`async function ${handler}(`),`${handler} must be async because it awaits Supabase RPCs`);
 });
 
+test("Admin catalogue loader clears stale values and rejects missing or malformed published data",()=>{
+ const start=admin.indexOf("async function loadAdminRateCatalogue()");
+ const end=admin.indexOf("async function loadAdminRateCatalogueDrafts()",start);
+ const fn=admin.slice(start,end);
+ assert.ok(start>=0&&end>start);
+ assert.match(fn,/adminCurrentRateCatalogue=null;\s*clearInputs\(\)/);
+ assert.match(fn,/if\(data==null\)[\s\S]*?return;/);
+ assert.match(fn,/actualKeys\.length===expectedKeys\.length/);
+ assert.match(fn,/Number\.isSafeInteger\(data\.rates\[key\]\)&&data\.rates\[key\]>0/);
+ assert.match(fn,/data\.currency!=='INR'\|\|data\.base_duration_hours!==8/);
+ assert.match(fn,/catch\(e\)\{[\s\S]*?adminCurrentRateCatalogue=null;\s*clearInputs\(\)/);
+ assert.match(fn,/पुरानी दरें इस्तेमाल नहीं की गई हैं/);
+});
+
 test("failed catalogue refresh clears the cached version and stale rate inputs before returning",()=>{
  const start=admin.indexOf("async function loadAdminRateCatalogue()");
  const end=admin.indexOf("async function loadAdminRateCatalogueDrafts()",start);

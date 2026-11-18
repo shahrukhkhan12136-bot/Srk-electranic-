@@ -841,19 +841,37 @@ function rupeesToPaise(value){
 async function loadAdminRateCatalogue(){
  const status=document.getElementById('adminRateCatalogueStatus'),box=document.getElementById('adminRateCatalogueCurrent');
  if(!sb||!user||adminPortalMode!=='main_admin')return;
- status.textContent='Catalogue पढ़ रहे हैं…';
+ const clearInputs=()=>{for(const [key,label,id] of SRK_RATE_TIERS){const input=document.getElementById(id);if(input)input.value='';}};
  adminCurrentRateCatalogue=null;
- const {data,error}=await sb.rpc('srk_get_current_customer_rate_catalogue');
- if(error){
-  for(const [key,label,id] of SRK_RATE_TIERS){const input=document.getElementById(id);if(input)input.value='';}
-  status.textContent='Catalogue नहीं पढ़ा गया: '+error.message;
-  return;
+ clearInputs();
+ box.textContent='';
+ status.textContent='Catalogue पढ़ रहे हैं…';
+ try{
+  const {data,error}=await sb.rpc('srk_get_current_customer_rate_catalogue');
+  if(error)throw error;
+  if(data==null){
+   box.textContent='अभी कोई Published Catalogue नहीं मिला। प्रारंभिक चार दरें भरकर पहला version publish किया जा सकता है।';
+   status.textContent='अभी Published Catalogue उपलब्ध नहीं है।';
+   return;
+  }
+  const expectedKeys=SRK_RATE_TIERS.map(([key])=>key).sort();
+  const actualKeys=data&&data.rates&&typeof data.rates==='object'&&!Array.isArray(data.rates)?Object.keys(data.rates).sort():[];
+  const effectiveTime=Date.parse(data?.effective_at);
+  const validVersion=typeof data?.rate_version_id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.rate_version_id);
+  const validRates=actualKeys.length===expectedKeys.length&&actualKeys.every((key,index)=>key===expectedKeys[index])&&expectedKeys.every(key=>Number.isSafeInteger(data.rates[key])&&data.rates[key]>0);
+  if(!validVersion||!Number.isFinite(effectiveTime)||data.currency!=='INR'||data.base_duration_hours!==8||!validRates){
+   throw new Error('Published Catalogue का डेटा अधूरा या गलत है।');
+  }
+  adminCurrentRateCatalogue=data;
+  box.textContent='वर्तमान Version: '+data.rate_version_id+' • लागू: '+new Date(effectiveTime).toLocaleString('en-IN')+' • मुद्रा: INR • आधार: 8 घंटे';
+  for(const [key,label,id] of SRK_RATE_TIERS){const el=document.getElementById(id);if(el)el.value=paiseToRupees(data.rates[key]);}
+  status.textContent='वर्तमान Published Catalogue लोड हो गया।';
+ }catch(e){
+  adminCurrentRateCatalogue=null;
+  clearInputs();
+  box.textContent='Published Catalogue अभी उपलब्ध नहीं है; पुरानी दरें इस्तेमाल नहीं की गई हैं।';
+  status.textContent='Catalogue नहीं पढ़ा गया: '+(e?.message||'त्रुटि');
  }
- adminCurrentRateCatalogue=data||null;
- if(!data){box.textContent='अभी कोई Published Catalogue नहीं मिला। प्रारंभिक चार दरें भरकर पहला version publish किया जा सकता है।';return;}
- box.textContent='वर्तमान Version: '+data.rate_version_id+' • लागू: '+new Date(data.effective_at).toLocaleString('en-IN')+' • मुद्रा: INR • आधार: 8 घंटे';
- for(const [key,label,id] of SRK_RATE_TIERS){const el=document.getElementById(id);if(el&&data.rates&&data.rates[key]!=null)el.value=paiseToRupees(data.rates[key]);}
- status.textContent='वर्तमान Published Catalogue लोड हो गया।';
 }
 async function loadAdminRateCatalogueDrafts(){
  const box=document.getElementById('adminRateCatalogueDraftQueue');
