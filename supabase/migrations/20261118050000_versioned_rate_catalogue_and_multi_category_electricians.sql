@@ -153,7 +153,8 @@ BEGIN
     SELECT customer_rate_paise INTO v_old
       FROM public.srk_rate_catalogue_items i
       JOIN public.srk_rate_catalogue_versions v ON v.id=i.rate_version_id
-     WHERE i.tier_key=v_tier AND v.status='published' AND v.effective_at<=now()
+     WHERE i.tier_key=v_tier AND i.rate_version_id<>v_version
+       AND v.status='published' AND v.effective_at<=now()
      ORDER BY v.effective_at DESC LIMIT 1;
     INSERT INTO public.srk_rate_catalogue_audit(
       rate_version_id,tier_key,old_customer_rate_paise,new_customer_rate_paise,actor_id,reason
@@ -278,5 +279,95 @@ REVOKE ALL ON FUNCTION public.srk_admin_set_electrician_approved_categories(uuid
 GRANT EXECUTE ON FUNCTION public.srk_admin_set_electrician_approved_categories(uuid,text[],text) TO authenticated;
 REVOKE ALL ON FUNCTION public.srk_get_my_electrician_rate_list() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_get_my_electrician_rate_list() TO authenticated;
+
+
+-- Booking dispatch and job-offer authorization now consult the multi-category
+-- Admin approval relation. Legacy approved_rate_tier columns remain untouched
+-- for historical compatibility; they are no longer the authority for new offers.
+CREATE OR REPLACE FUNCTION private.srk_offer_booking_to_eligible_electricians(p_booking_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','auth','pg_temp'
+AS $fn$
+DECLARE
+  v_booking public.service_bookings%ROWTYPE;
+  v_match_level text;
+  v_eligible integer:=0;
+  v_created integer:=0;
+BEGIN
+  IF p_booking_id IS NULL THEN RAISE EXCEPTION 'Booking ID required' USING ERRCODE='22023'; END IF;
+  SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found' USING ERRCODE='P0002'; END IF;
+  IF v_booking.assigned_electrician_id IS NOT NULL OR v_booking.status NOT IN ('new','confirmed') THEN
+    RETURN jsonb_build_object('success',false,'eligible_count',0,'offers_created',0);
+  END IF;
+  IF v_booking.selected_category IS NOT NULL AND
+     (v_booking.selected_rate_tier IS NULL OR v_booking.selected_duration_hours IS NULL) THEN
+    RETURN jsonb_build_object('success',false,'code','customer_selection_incomplete');
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.electrician_profiles e
+    WHERE e.active=true AND e.verification_status='approved'
+      AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
+      AND (v_booking.selected_rate_tier IS NULL OR EXISTS (
+        SELECT 1 FROM public.srk_electrician_approved_rate_categories a
+        WHERE a.electrician_profile_id=e.id AND a.category_key=v_booking.selected_rate_tier
+          AND a.is_active=true
+      ))
+      AND e.pincode=v_booking.pincode AND lower(trim(e.state))=lower(trim(v_booking.state))
+  ) THEN v_match_level:='pincode'; ELSE v_match_level:='district'; END IF;
+
+  WITH eligible AS (
+    SELECT e.id FROM public.electrician_profiles e
+    WHERE e.active=true AND e.verification_status='approved'
+      AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
+      AND (v_booking.selected_rate_tier IS NULL OR EXISTS (
+        SELECT 1 FROM public.srk_electrician_approved_rate_categories a
+        WHERE a.electrician_profile_id=e.id AND a.category_key=v_booking.selected_rate_tier
+          AND a.is_active=true
+      ))
+      AND lower(trim(e.state))=lower(trim(v_booking.state))
+      AND ((v_match_level='pincode' AND e.pincode=v_booking.pincode)
+        OR (v_match_level='district' AND lower(trim(e.district))=lower(trim(v_booking.district))))
+  ), inserted AS (
+    INSERT INTO public.job_offers(booking_id,electrician_id,status,match_level)
+    SELECT p_booking_id,e.id,'offered',v_match_level FROM eligible e
+    ON CONFLICT(booking_id,electrician_id) DO NOTHING RETURNING id
+  )
+  SELECT (SELECT count(*) FROM eligible),(SELECT count(*) FROM inserted)
+    INTO v_eligible,v_created;
+
+  IF v_eligible=0 THEN
+    RETURN jsonb_build_object('success',false,'code','no_exact_rate_tier_match',
+      'message','इस क्षेत्र में ग्राहक की चुनी श्रेणी के Admin-approved इलेक्ट्रिशियन उपलब्ध नहीं हैं।');
+  END IF;
+  RETURN jsonb_build_object('success',true,'match_level',v_match_level,
+    'eligible_count',v_eligible,'offers_created',v_created);
+END;
+$fn$;
+REVOKE ALL ON FUNCTION private.srk_offer_booking_to_eligible_electricians(uuid) FROM PUBLIC,anon,authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_guard_job_offer_selected_rate_tier()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'pg_catalog','public','pg_temp'
+AS $fn$
+DECLARE v_selected_tier text;
+BEGIN
+  SELECT b.selected_rate_tier INTO v_selected_tier
+  FROM public.service_bookings b WHERE b.id=NEW.booking_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Booking not found for job offer'; END IF;
+  IF v_selected_tier IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.electrician_profiles e
+    JOIN public.srk_electrician_approved_rate_categories a
+      ON a.electrician_profile_id=e.id AND a.category_key=v_selected_tier AND a.is_active=true
+    WHERE e.id=NEW.electrician_id AND e.active=true AND e.verification_status='approved'
+      AND e.auth_user_id IS NOT NULL AND e.user_id=e.auth_user_id
+  ) THEN
+    RAISE EXCEPTION 'Electrician must have the selected Admin-approved category' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$fn$;
+REVOKE ALL ON FUNCTION public.srk_guard_job_offer_selected_rate_tier() FROM PUBLIC,anon,authenticated;
 
 COMMIT;
