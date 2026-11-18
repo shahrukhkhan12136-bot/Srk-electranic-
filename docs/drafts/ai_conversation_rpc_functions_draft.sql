@@ -175,7 +175,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $complete$
 DECLARE
   v_row public.srk_ai_idempotency%ROWTYPE;
   v_message jsonb;
