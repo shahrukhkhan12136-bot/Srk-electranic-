@@ -343,7 +343,8 @@ test("AI handoff rejects custom prototypes and ignores inherited optional fields
       const body = JSON.parse(options.body);
       assert.equal(body.reason_code, "needs_human_support");
       assert.equal(body.urgency, "normal");
-      assert.deepEqual(body.context, {});
+      assert.equal(body.booking_id, null);
+      assert.equal(Object.prototype.hasOwnProperty.call(body, "context"), false);
       return jsonResponse({
         success: true, handoff_id: CONVERSATION, status: "queued",
         urgency: "normal"
