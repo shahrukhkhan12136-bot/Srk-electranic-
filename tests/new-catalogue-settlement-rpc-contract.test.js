@@ -85,7 +85,7 @@ test("new Catalogue Admin UPI/bank settlement validates method, booking state, u
   assert.match(manualDigitalMigration, /payment_verified_at is not null or coalesce\(v_booking\.amount_paid,0\)<>0/i);
   assert.match(manualDigitalMigration, /pg_advisory_xact_lock\(hashtextextended\(lower\(v_reference\), 73119\)\)/i);
   assert.match(manualDigitalMigration, /MANUAL_PAYMENT_REFERENCE_ALREADY_USED/i);
-  assert.match(manualDigitalMigration, /lower\(btrim\(e\.payment_method\)\)/i);
+  assert.match(manualDigitalMigration, /payment_method=case when p_method='upi' then 'UPI' else 'Bank Transfer' end/i);
   assert.match(manualDigitalMigration, /'online_collection','credit'/i);
   assert.doesNotMatch(manualDigitalMigration, /srk_wallet_ledger/i);
   assert.match(manualDigitalMigration, /revoke all on function public\.srk_admin_record_new_booking_manual_digital_payment\(uuid,text,text,text\) from public,anon/i);
