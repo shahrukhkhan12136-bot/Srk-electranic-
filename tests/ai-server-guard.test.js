@@ -142,3 +142,12 @@ test("AI profile lookup fails closed when server service-role credentials are mi
   assert.equal((await noServiceKey.handler(event({ body: { module_key: "customer_support", message: "hi" } }))).statusCode, 503);
   assert.equal(noServiceKey.calls.length, 1);
 });
+
+test("customer without an optional saved profile row is denied rather than assigned a guessed role", async () => {
+  const noProfile = setup({ role: "customer", customerProfiles: [] });
+  const response = await noProfile.handler(event({
+    body: { module_key: "customer_support", message: "hello" }
+  }));
+  assert.equal(response.statusCode, 403);
+  assert.equal(JSON.parse(response.body).error, "ai_access_denied");
+});
