@@ -2218,6 +2218,12 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
+  refreshCustomerRateCatalogue().catch(() => {
+    const amount=document.getElementById('labourEstimateAmount');
+    const detail=document.getElementById('labourEstimateBreakdown');
+    if(amount)amount.textContent='दर अभी उपलब्ध नहीं';
+    if(detail)detail.textContent='प्रकाशित Rate Catalogue लोड नहीं हुआ। बुकिंग भेजने से पहले पुनः प्रयास करें।';
+  });
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
       customerActionGeneration++;
