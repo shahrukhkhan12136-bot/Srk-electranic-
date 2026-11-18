@@ -132,12 +132,17 @@ test("handoff rejects unknown status rather than claiming a ticket was created",
   );
 });
 
-test("assistant response rejects non-object action and handoff payloads", async () => {
+test("assistant response rejects malformed nested action and handoff fields", async () => {
   for (const malformed of [
     { action: "none", handoff: {} },
     { action: {}, handoff: "not-required" },
     { action: [], handoff: {} },
-    { action: {}, handoff: [] }
+    { action: {}, handoff: [] },
+    { action: { status: "none", action_id: null, approval_required: "false" }, handoff: { required: false } },
+    { action: { status: "none", action_id: "not-a-uuid", approval_required: false }, handoff: { required: false } },
+    { action: { status: "none", action_id: null, approval_required: false }, handoff: { required: "false" } },
+    { action: { status: "none", action_id: null, approval_required: false }, handoff: { required: false, handoff_id: "not-a-uuid" } },
+    { action: { status: "none", action_id: null, approval_required: false }, handoff: { required: false, queue: [] } }
   ]) {
     const client = createAiAssistantClient({
       enabled: true, baseUrl: "https://api.example.test",
