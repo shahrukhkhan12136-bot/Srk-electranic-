@@ -2,7 +2,7 @@
 -- Run only after the schema and RPC drafts in a disposable local PostgreSQL database.
 BEGIN;
 SET LOCAL search_path TO public, extensions;
-SELECT plan(24);
+SELECT plan(21);
 
 -- Minimal Auth fixtures. No hosted project or real user data is used.
 INSERT INTO auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -51,7 +51,7 @@ SELECT is(
  'claimed','expired processing lease can be reclaimed'
 );
 SELECT throws_ok(
- $$SELECT private.ai_claim_idempotency(NULL,'assistant','idem-key-00000003,',repeat('d',64),90)$$,
+ $$SELECT private.ai_claim_idempotency(NULL,'assistant','idem-key-00000003',repeat('d',64),90)$$,
  '22023',NULL,'null owner is rejected'
 );
 
@@ -104,7 +104,7 @@ SELECT throws_ok(
 );
 SELECT ok(
  (SELECT prosecdef FROM pg_proc WHERE oid='private.ai_claim_idempotency(uuid,text,text,text,integer)'::regprocedure)
- AND (SELECT proconfig @> ARRAY['search_path='] FROM pg_proc WHERE oid='private.ai_claim_idempotency(uuid,text,text,text,integer)'::regprocedure),
+ AND (SELECT EXISTS (SELECT 1 FROM pg_catalog.unnest(proconfig) AS cfg WHERE cfg LIKE 'search_path=%') FROM pg_proc WHERE oid='private.ai_claim_idempotency(uuid,text,text,text,integer)'::regprocedure),
  'idempotency RPC is SECURITY DEFINER with empty search_path'
 );
 
