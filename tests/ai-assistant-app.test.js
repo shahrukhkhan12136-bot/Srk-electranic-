@@ -197,3 +197,15 @@ test("public browser config keeps the AI widget launch flag and API base URL uns
   assert.doesNotMatch(config, /AI_ASSISTANT_ENABLED/);
   assert.doesNotMatch(config, /AI_ASSISTANT_API_BASE_URL/);
 });
+
+test("Customer AI widget mounts only after a verified profile row is loaded", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
+  assert.match(source, /async function loadCustomerProfile\(\)[\s\S]*?if\(!customerSb\)return false;/);
+  assert.match(source, /setCustomerProfileStatus\('प्रोफ़ाइल लोड हो गई।'\);\s*return true;/);
+  assert.match(source, /setCustomerProfileStatus\('नई प्रोफ़ाइल है। अपना नाम भरकर सेव करें।'\);\s*return false;/);
+  assert.match(source, /catch\(e\)\{if\(isCurrent\(\)\)setCustomerProfileStatus\('प्रोफ़ाइल लोड नहीं हो सकी।[\s\S]*?return false;/);
+  assert.match(source, /const customerProfileReady=await loadCustomerProfile\(\);if\(!isCurrent\(\)\)return;\s*if\(customerProfileReady\)mountCustomerAiAssistant\(\);\s*else destroyCustomerAiAssistant\(\);/);
+  assert.match(source, /const profileReady=await loadCustomerProfile\(\);[\s\S]*?if\(profileReady&&document\.getElementById\('customer-dashboard'\)\?\.style\.display!=='none'\)mountCustomerAiAssistant\(\);\s*else destroyCustomerAiAssistant\(\);/);
+});
