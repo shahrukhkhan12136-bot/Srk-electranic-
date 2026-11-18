@@ -214,7 +214,7 @@ test('customer auth transitions reset the previous account language and saved-ad
 
 test('Customer AI widgets mount only after a verified profile row is loaded', () => {
   const loadStart = source.indexOf('async function loadCustomerProfile()');
-  const loadEnd = source.indexOf('\\nasync function saveCustomerProfile()', loadStart);
+  const loadEnd = source.indexOf('async function saveCustomerProfile()', loadStart);
   assert.ok(loadStart >= 0 && loadEnd > loadStart);
   const loadBlock = source.slice(loadStart, loadEnd);
   assert.match(loadBlock, /if\\(profile\\)[\\s\\S]*?return true/);
@@ -222,7 +222,7 @@ test('Customer AI widgets mount only after a verified profile row is loaded', ()
   assert.match(loadBlock, /catch\\(e\\)[\\s\\S]*?return false/);
 
   const syncStart = source.indexOf('async function syncCustomerSession()');
-  const syncEnd = source.indexOf('\\nasync function customerSendOtp', syncStart);
+  const syncEnd = source.indexOf('async function customerSendOtp', syncStart);
   assert.ok(syncStart >= 0 && syncEnd > syncStart);
   const syncBlock = source.slice(syncStart, syncEnd);
   assert.match(syncBlock, /const customerProfileReady=await loadCustomerProfile\\(\\)/);
@@ -230,7 +230,7 @@ test('Customer AI widgets mount only after a verified profile row is loaded', ()
   assert.match(syncBlock, /else \\{\\s*destroyCustomerAiAssistant\\(\\)/);
 
   const saveStart = source.indexOf('async function saveCustomerProfile()');
-  const saveEnd = source.indexOf('\\nlet customerSavedAddresses', saveStart);
+  const saveEnd = source.indexOf('let customerSavedAddresses', saveStart);
   assert.ok(saveStart >= 0 && saveEnd > saveStart);
   const saveBlock = source.slice(saveStart, saveEnd);
   assert.match(saveBlock, /const profileReady=await loadCustomerProfile\\(\\)/);
