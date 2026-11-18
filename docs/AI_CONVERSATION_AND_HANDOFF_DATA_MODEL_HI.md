@@ -225,3 +225,13 @@ Electrician access की शर्तें: `user_id` और `auth_user_id` �
 - Processing lease duration, retry/backoff, provider idempotency support और stuck-request recovery।
 - Main Admin handoff queue के बाद Support Staff permission boundary।
 - इन निर्णयों और staging tests के बिना AI feature flag OFF और server guard का `503 ai_not_enabled` व्यवहार कायम रहेगा।
+
+
+### 0.1 Main Admin handoff queue read RPC (18 नवम्बर 2026)
+
+- नई source migration `20261118230000_admin_ai_handoff_queue_read_rpc.sql` में `srk_admin_list_ai_handoff_queue(integer)` जोड़ा गया है।
+- यह केवल authenticated Main Admin (`auth.uid()` + `public.is_srk_admin()`) को queued/assigned handoff metadata पढ़ने देता है; सीमा 1–100 rows है।
+- सूची में high urgency पहले, फिर oldest request और stable ID ordering है। Conversation owner/module सहित queue summary दिखती है।
+- RPC read-only है: यह assign, resolve, cancel, messages पढ़ने या notification भेजने का अधिकार नहीं देता। PUBLIC/anon execute revoked; authenticated execute केवल function के Main Admin check के पीछे है।
+- Support Staff role/permission source अभी repository में प्रमाणित नहीं मिला; इसलिए staff assignment और staff access बंद हैं।
+- यह केवल Git branch source है; hosted migration, deployment और AI enablement नहीं हुए।
