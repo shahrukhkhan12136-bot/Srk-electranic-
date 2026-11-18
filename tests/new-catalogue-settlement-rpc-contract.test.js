@@ -105,10 +105,19 @@ test("Admin dashboard routes new Catalogue UPI and bank receipts to the dedicate
 });
 
 
-test("new Catalogue digital settlement validates bill assignment and reserved debt ownership", () => {
-  assert.match(manualDigitalMigration, /v_labour\.electrician_profile_id is distinct from v_booking\.assigned_electrician_id/i);
+test("new Catalogue digital settlement validates bill assignment and reserved debt ownership before recording payment", () => {
+  const billCheck = manualDigitalMigration.indexOf("v_labour.electrician_profile_id is distinct from v_booking.assigned_electrician_id");
+  const paymentEvidence = manualDigitalMigration.indexOf("insert into public.srk_manual_payment_entries");
+  const bookingPaymentUpdate = manualDigitalMigration.indexOf("update public.service_bookings");
+  assert.ok(billCheck >= 0 && paymentEvidence > billCheck && bookingPaymentUpdate > paymentEvidence,
+    "immutable bill ownership is checked before payment evidence or booking status changes");
+  const debtCheck = manualDigitalMigration.indexOf("CANCELLATION_FEE_DEBT_RESERVATION_MISMATCH");
+  const ledgerInsert = manualDigitalMigration.indexOf("insert into public.srk_cancellation_fee_ledger");
+  const itemSettlement = manualDigitalMigration.indexOf("update public.srk_booking_cancellation_fee_items set status='settled'");
+  const debtSettlement = manualDigitalMigration.indexOf("update public.srk_customer_cancellation_fee_debts set status='settled'");
+  assert.ok(debtCheck >= 0 && ledgerInsert > debtCheck && itemSettlement > ledgerInsert && debtSettlement > itemSettlement,
+    "reserved debt ownership is verified before ledger credit and settlement updates");
   assert.match(manualDigitalMigration, /status='reserved' and reserved_booking_id=p_booking_id[\s\S]*?customer_user_id=v_booking\.customer_user_id[\s\S]*?for update/i);
-  assert.match(manualDigitalMigration, /CANCELLATION_FEE_DEBT_RESERVATION_MISMATCH/i);
 });
 
 
