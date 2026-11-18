@@ -37,6 +37,14 @@ function setup({ role = "customer", status = 200, user = null, env = null, custo
     if (url.includes("/rest/v1/electrician_profiles")) {
       return { ok: true, status: 200, json: async () => electricianRows };
     }
+    if (url.includes("/rest/v1/srk_ai_conversations")) {
+      const query = new URL(url);
+      const conversationId = query.searchParams.get("id")?.slice(3);
+      const moduleKey = query.searchParams.get("module_key")?.slice(3);
+      return { ok: true, status: 200, json: async () => [{
+        id: conversationId, owner_user_id: authUser.id, module_key: moduleKey, status: "open"
+      }] };
+    }
     if (url.includes("/rest/v1/service_bookings")) {
       return { ok: true, status: 200, json: async () => bookingRows };
     }
