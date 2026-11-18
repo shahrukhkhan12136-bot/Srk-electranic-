@@ -81,13 +81,18 @@ jobs:
           test -n "$DB_CONTAINER"
           docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_rpc_functions_draft.sql"
 
-      - name: Run 9 private RPC privilege assertions
+      - name: Run 21 private RPC behavioral and privilege assertions
         working-directory: ${{ runner.temp }}/srk-ai-db
         run: |
           set -euo pipefail
           DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
           test -n "$DB_CONTAINER"
-          docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_rpc_functions_tests_draft.sql"
+          OUTPUT="$(docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_rpc_functions_tests_draft.sql" 2>&1)" || { printf '%s\\n' "$OUTPUT"; exit 1; }
+          printf '%s\\n' "$OUTPUT"
+          if printf '%s\\n' "$OUTPUT" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
+            echo "pgTAP reported failed assertions."
+            exit 1
+          fi
 
       - name: Stop disposable local database
         if: always()
