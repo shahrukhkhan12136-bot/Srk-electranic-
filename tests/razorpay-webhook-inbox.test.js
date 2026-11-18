@@ -1,6 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
+const fs = require("node:fs");
+const path = require("node:path");
 
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-test-secret";
@@ -390,4 +392,18 @@ test("does not reconcile an unrelated same-payment same-amount refund without ma
   assert.equal(JSON.parse(result.body).reason, "refund_record_mismatch");
   assert.equal(reconcileCalls, 0);
   assert.equal(outcome, "ignored");
+});
+
+
+test("new Catalogue Razorpay webhook delegates settlement to the guarded service-role RPC", () => {
+  const source = fs.readFileSync(path.join(__dirname, "../razorpay-webhook.js"), "utf8");
+  const update = source.slice(source.indexOf("async function updateBooking"), source.indexOf("async function reconcileRefund"));
+  assert.match(update, /if \(booking\.selected_category\)/);
+  assert.match(update, /srk_service_role_get_booking_payment_breakdown/);
+  assert.match(update, /srk_service_role_record_online_booking_payment/);
+  assert.match(update, /p_order_id: payment\.order_id/);
+  assert.match(update, /p_payment_id: payment\.id/);
+  assert.match(update, /payment\.amount !== expectedAmount/);
+  assert.match(update, /payment\.currency !== "INR"/);
+  assert.match(update, /if \(booking\.payment_status === "paid"\) return booking\.razorpay_payment_id === payment\.id \? "already_processed" : "payment_conflict"/);
 });
