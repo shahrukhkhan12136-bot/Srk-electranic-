@@ -1010,10 +1010,18 @@ async function toggleActive(id,active){
  adminActiveToggleBusy.add(id);
  try{
   if(active){
-   const {data:profile,error:readError}=await sb.from('electrician_profiles').select('verification_status,approved_rate_tier,approved_rate_card_version,rate_tier_approved_by,rate_tier_approved_at').eq('id',id).maybeSingle();
+   const {data:profile,error:readError}=await sb.from('electrician_profiles')
+    .select('verification_status,approved_rate_tier,approved_rate_card_version,rate_tier_approved_by,rate_tier_approved_at')
+    .eq('id',id).maybeSingle();
    if(readError||!profile)throw new Error('Profile not available');
-   if(profile.verification_status!=='approved'||!['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'].includes(profile.approved_rate_tier)||!profile.approved_rate_card_version||!profile.rate_tier_approved_by||!profile.rate_tier_approved_at){
-    alert('Active करने से पहले KYC Approved और पूरा Admin-approved रेट-श्रेणी रिकॉर्ड आवश्यक है।');return;
+   const {data:categoryRows,error:categoryError}=await sb.rpc('srk_admin_list_electrician_rate_categories');
+   if(categoryError||!Array.isArray(categoryRows))throw new Error('Admin category approvals could not be verified');
+   const categoryProfile=categoryRows.find(row=>row.electrician_profile_id===id);
+   const hasMultiCategoryApproval=Array.isArray(categoryProfile?.active_categories)&&categoryProfile.active_categories.length>0;
+   const hasLegacyApproval=['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'].includes(profile.approved_rate_tier)
+    &&!!profile.approved_rate_card_version&&!!profile.rate_tier_approved_by&&!!profile.rate_tier_approved_at;
+   if(profile.verification_status!=='approved'||(!hasMultiCategoryApproval&&!hasLegacyApproval)){
+    alert('Active करने से पहले KYC Approved और कम-से-कम एक Admin-approved Rate Category आवश्यक है।');return;
    }
   }
   const {data:updated,error}=await sb.rpc('srk_admin_set_electrician_active',{p_profile_id:id,p_active:active});
