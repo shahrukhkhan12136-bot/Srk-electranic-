@@ -21,6 +21,15 @@ test("electrician rate list contains only their approved categories and 85 perce
   assert.equal(result.items.length, 1);
 });
 
+test("rate list uses direct 85 percent half-up results for SQL tie cases", () => {
+  const result = buildElectricianRateList({
+    rates: { electrical_assistant: 10, skilled_electrician: 30, expert_electrician: 50, premium_electrical_specialist: 70 },
+    approvedCategoryKeys: ["electrical_assistant", "skilled_electrician", "expert_electrician", "premium_electrical_specialist"],
+    rateVersionId: "tie-v1", effectiveAt: "2026-11-18T00:00:00Z"
+  });
+  assert.deepEqual(result.items.map(item => item.electrician_rate_paise), [9, 26, 43, 60]);
+});
+
 test("rate list rejects an approved category without a source rate", () => {
   assert.throws(() => buildElectricianRateList({
     rates: INITIAL_RATES_PAISE, approvedCategoryKeys: ["unknown"],
@@ -76,7 +85,10 @@ test("verified payment derives from persisted provider evidence and keeps payout
   });
   assert.equal(result.accounting.customer_amount_received_paise, 103000);
   assert.equal(result.accounting.electrician_earning_paise, 85000);
-  assert.deepEqual(result.electrician_payout, { payout_status: "pending", payout_amount_paise: 81250 });
+  assert.deepEqual(result.electrician_payout, {
+    reconciliation_status: "reconciled", reconciled: true,
+    payout_status: "pending", payout_amount_paise: 81250
+  });
 });
 
 test("manual payment requires server-confirmed matching evidence flag", () => {
@@ -126,4 +138,32 @@ test("verified stage requires a positive actual customer receipt", () => {
     customer_labour_gross_paise: 100000, electrician_earning_paise: 85000,
     company_share_paise: 15000, customer_amount_received_paise: 0
   }), /must be positive/);
+});
+
+
+test("verified customer payment with missing payout ledger is not reported as reconciled", () => {
+  const result = buildElectricianJobAccounting({
+    booking_id: "b9", booking_status: "completed", payment_status: "paid",
+    payment_verified_at: "2026-11-18T02:00:00Z", razorpay_payment_id: "pay_999",
+    customer_labour_gross_paise: 100000, electrician_earning_paise: 85000,
+    company_share_paise: 15000, customer_amount_received_paise: 100000,
+    payout_reconciliation_status: "missing", payout_status: null, payout_amount_paise: null
+  });
+  assert.equal(result.accounting.customer_amount_received_paise, 100000);
+  assert.deepEqual(result.electrician_payout, {
+    reconciliation_status: "missing", reconciled: false,
+    payout_status: "not_recorded", payout_amount_paise: null
+  });
+});
+
+test("verified customer payment with a mismatched payout ledger does not expose payout amount as reconciled", () => {
+  const result = buildElectricianJobAccounting({
+    booking_id: "b10", booking_status: "completed", payment_status: "paid",
+    payment_verified_at: "2026-11-18T02:00:00Z", razorpay_payment_id: "pay_100",
+    customer_labour_gross_paise: 100000, electrician_earning_paise: 85000,
+    company_share_paise: 15000, customer_amount_received_paise: 100000,
+    payout_reconciliation_status: "mismatch", payout_status: "pending", payout_amount_paise: 85000
+  });
+  assert.equal(result.electrician_payout.reconciled, false);
+  assert.equal(result.electrician_payout.payout_amount_paise, null);
 });
