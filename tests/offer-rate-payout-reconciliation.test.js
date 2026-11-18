@@ -131,3 +131,10 @@ test("payout trigger replacement preserves the original function except for manu
   const normalize = (source) => source.toLowerCase().replace(/--[^\n]*/g, "").replace(/\s+/g, " ").trim();
   assert.equal(normalize(revised), normalize(expected));
 });
+
+
+test("commission and parity triggers revalidate payment-method-only booking changes", () => {
+  assert.match(paymentVerificationMigration, /new\.razorpay_payment_id is null[\s\S]*?lower\(btrim\(e\.payment_method\)\) is distinct from lower\(btrim\(new\.payment_method\)\)[\s\S]*?raise exception 'MANUAL_PAYMENT_METHOD_MISMATCH'/i);
+  assert.match(paymentVerificationMigration, /before insert or update of[\s\S]*?selected_category,[\s\S]*?payment_method[\s\S]*?on public\.service_bookings/i);
+  assert.match(paymentVerificationMigration, /after insert or update of[\s\S]*?selected_category,[\s\S]*?payment_method[\s\S]*?on public\.service_bookings/i);
+});
