@@ -36,3 +36,10 @@
 - 85% राशि की गणना को JavaScript floating-point multiplication से हटाकर BigInt आधारित integer arithmetic किया, ताकि बड़े वैध paise input पर rounding सटीक रहे।
 - Unsafe integer सीमा वाले टेस्ट को सही किया: `Number.MAX_SAFE_INTEGER` वैध इनपुट है; उससे बड़ा मान अस्वीकार होना चाहिए।
 - यह परीक्षण स्थानीय source snapshot पर चला; production API, Supabase या deployed app पर नहीं।
+
+
+## 18 नवम्बर 2026 — Booking rate snapshot contract
+- `lib/booking-rate-snapshot.js` जोड़ा: यह केवल प्रकाशित और प्रभावी rate version चुनता है; Draft तथा भविष्य की effective date वाली दरें वर्तमान बुकिंग के लिए नहीं चुनता।
+- नया booking snapshot rate version ID, effective timestamp, tier, 8-hour base rate, duration और labour amount को paise में रखता है। Snapshot object immutable/frozen है; पुराने booking की राशि बाद की catalogue update से पुनर्गणित नहीं होनी चाहिए।
+- `tests/booking-rate-snapshot.test.js` के 5 tests स्थानीय रूप से चलाए: **5 पास, 0 फेल**।
+- यह अभी pure source contract है। वास्तविक booking API अभी hard-coded rate card इस्तेमाल करता है; इस helper को production booking flow में जोड़ना, trusted server-side published catalogue storage पढ़ना और DB snapshot persistence करना बाकी है। कोई migration/DB बदलाव अनुमति के बिना नहीं किया गया।
