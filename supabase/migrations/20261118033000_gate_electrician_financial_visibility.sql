@@ -49,7 +49,7 @@ AS $function$
   SELECT
     o.id, o.status, o.match_level, o.created_at, o.expires_at,
     b.id, b.service_type, b.state, b.district, b.pincode, b.work_details,
-    CASE WHEN (
+    CASE WHEN b.status='completed' AND ((
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL
       AND b.amount_paid>0 AND (
         b.razorpay_payment_id IS NOT NULL OR EXISTS (
@@ -59,7 +59,7 @@ AS $function$
             AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
         )
       )
-    ) OR b.razorpay_order_id IS NOT NULL
+    ) OR b.razorpay_order_id IS NOT NULL)
       THEN b.quoted_amount ELSE NULL END,
     b.status, b.selected_category, b.selected_rate_tier, b.selected_duration_hours,
     CASE
@@ -88,7 +88,7 @@ AS $function$
       'assigned','inspection','awaiting_quote_approval','quote_approved',
       'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
     ) THEN b.location_lng ELSE NULL END,
-    CASE WHEN b.razorpay_order_id IS NOT NULL OR (
+    CASE WHEN b.status='completed' AND (b.razorpay_order_id IS NOT NULL OR (
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
       AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
         SELECT 1 FROM public.srk_manual_payment_entries e
