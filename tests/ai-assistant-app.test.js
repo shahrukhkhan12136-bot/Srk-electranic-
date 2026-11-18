@@ -351,9 +351,9 @@ test("AI widget mount failures cannot interrupt Customer profile or booking flow
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
-  assert.match(source, /if\(supportMount\)\{try\{/);
+  assert.match(source, /if\(supportMount\)\{supportMount\.textContent="";try\{/);
   assert.match(source, /catch\(_\)\{customerAiAssistantWidget=null;supportMount\.textContent=/);
-  assert.match(source, /if\(bookingMount\)\{try\{/);
+  assert.match(source, /if\(bookingMount\)\{bookingMount\.textContent="";try\{/);
   assert.match(source, /catch\(_\)\{customerBookingAiAssistantWidget=null;bookingMount\.textContent=/);
 });
 
@@ -361,6 +361,6 @@ test("Electrician AI widget mount failures cannot interrupt profile refresh or s
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
-  assert.match(source, /function mountElectricianAiAssistant\(\)[\s\S]*?try\{/);
+  assert.match(source, /function mountElectricianAiAssistant\(\)[\s\S]*?mount\.textContent="";try\{/);
   assert.match(source, /catch\(_\)\{electricianAiAssistantWidget=null;electricianAiAssistantUserId=null;mount\.textContent=/);
 });
