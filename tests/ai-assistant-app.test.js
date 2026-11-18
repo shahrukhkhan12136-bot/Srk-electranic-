@@ -247,3 +247,12 @@ test("Electrician profile refresh exceptions remove the stale live offer channel
   const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
   assert.match(source, /catch\\(e\\)\\{if\\(!isCurrent\\(\\)\\)return;profile=null;destroyElectricianAiAssistant\\(\\);if\\(offersChannel\\)\\{const oldChannel=offersChannel;offersChannel=null;Promise\\.resolve\\(sb\\.removeChannel\\(oldChannel\\)\\)\\.catch\\(\\(\\)=>\\{\\}\\);/);
 });
+
+
+test("Customer AI widgets are destroyed when the session check is unavailable or fails", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
+  assert.match(source, /if \\(!customerSb\\) \\{\\s*destroyCustomerAiAssistant\\(\\);/);
+  assert.match(source, /catch \\(_\\) \\{\\s*if\\(!isCurrent\\(\\)\\)return;\\s*destroyCustomerAiAssistant\\(\\);/);
+});
