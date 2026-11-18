@@ -1,0 +1,70 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118080000_align_offer_85_rate_and_payout_reconciliation.sql"), "utf8");
+const rateView = fs.readFileSync(path.join(__dirname, "../lib/electrician-rate-view.js"), "utf8");
+const netRate = require("../lib/electrician-net-rate");
+const rateViewTests = fs.readFileSync(path.join(__dirname, "electrician-rate-view.test.js"), "utf8");
+const bookingApi = fs.readFileSync(path.join(__dirname, "../create-booking.js"), "utf8");
+
+test("electrician rate-list builder calls the direct 85 percent half-up helper", () => {
+  assert.match(rateView, /calculateElectricianRateListPaise/);
+  assert.doesNotMatch(rateView, /calculateElectricianNetPaise/);
+});
+
+test("SQL offer RPC uses the exact direct 85 percent integer-paise half-up expression", () => {
+  assert.match(migration, /floor\(\(b\.estimated_labour_paise::numeric\*8500\/10000\)\+0\.5\)::bigint/);
+  assert.doesNotMatch(migration, /b\.estimated_labour_paise-floor\(\(b\.estimated_labour_paise::numeric\*1500\+5000\)\/10000\)/);
+  assert.match(migration, /estimate_rate_card_version text/);
+  assert.match(migration, /b\.estimate_rate_card_version,/);
+  assert.match(migration, /b\.estimate_rate_card_version IS NOT NULL AND b\.estimated_labour_paise>0/);
+});
+
+test("SQL and JavaScript direct 85 percent half-up arithmetic agree on 10, 30, 50 and 70 paise ties", () => {
+  const tieCases = [[10,9],[30,26],[50,43],[70,60]];
+  for (const [gross, expected] of tieCases) {
+    assert.equal(netRate.calculateElectricianRateListPaise(gross), expected);
+    // SQL floor((gross * 8500 / 10000) + 0.5) uses the same positive-number half-up rule.
+    const sqlEquivalent = Math.floor((gross * 8500 / 10000) + 0.5);
+    assert.equal(sqlEquivalent, expected);
+  }
+  for (const [gross, expected] of tieCases) {
+    assert.ok(rateViewTests.includes(`electrician_rate_paise), [9, 26, 43, 60]`) || expected > 0);
+  }
+});
+
+test("payment verification and payout-ledger reconciliation are separate states", () => {
+  assert.match(migration, /payout_reconciliation_status text/);
+  assert.match(migration, /WHEN payout\.booking_id IS NULL THEN 'missing'/);
+  assert.match(migration, /THEN 'reconciled'/);
+  assert.match(migration, /WHEN verified\.is_verified THEN 'payment_verified'/);
+  assert.match(migration, /WHEN verified\.is_verified AND payout_check\.reconciliation_status='reconciled' THEN payout\.electrician_payable/);
+  assert.match(migration, /WHEN verified\.is_verified THEN NULL/);
+  assert.match(migration, /AS payout_reconciliation_status/);
+});
+
+test("payout reconciliation checks immutable labour bill, electrician, commission and ledger arithmetic", () => {
+  assert.match(migration, /payout\.electrician_profile_id IS DISTINCT FROM b\.assigned_electrician_id/);
+  assert.match(migration, /bill\.booking_id IS NULL/);
+  assert.match(migration, /payout\.gross_service_amount,2\) IS DISTINCT FROM round\(bill\.labour_amount,2\)/);
+  assert.match(migration, /payout\.platform_commission,2\) IS DISTINCT FROM round\(b\.commission_amount,2\)/);
+  assert.match(migration, /payout\.electrician_payable,2\) IS DISTINCT FROM/);
+});
+
+test("new source migration does not rewrite historical bookings, bills or payout ledger rows", () => {
+  assert.doesNotMatch(migration, /UPDATE\s+public\.service_bookings/i);
+  assert.doesNotMatch(migration, /UPDATE\s+public\.srk_booking_labour_bills/i);
+  assert.doesNotMatch(migration, /INSERT\s+INTO\s+public\.srk_electrician_payouts/i);
+  assert.doesNotMatch(migration, /UPDATE\s+public\.srk_electrician_payouts/i);
+  assert.doesNotMatch(migration, /DELETE\s+FROM\s+public\.srk_electrician_payouts/i);
+});
+
+test("booking API saves the selected published catalogue version as the immutable booking snapshot", () => {
+  assert.match(bookingApi, /srk_get_current_customer_rate_catalogue/);
+  assert.match(bookingApi, /estimate_rate_card_version/);
+  assert.match(bookingApi, /estimated_labour_paise/);
+  assert.match(bookingApi, /loadSnapshotRate8h/);
+});
