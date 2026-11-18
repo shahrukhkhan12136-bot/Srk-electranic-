@@ -271,3 +271,28 @@ test("AI handoff rejects null, array and primitive request shapes before fetch",
   }
   assert.equal(calls, 0);
 });
+
+test("AI client rejects inherited request credentials and custom request prototypes", async () => {
+  let calls = 0;
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async () => { calls++; return jsonResponse({}); }
+  });
+  const inherited = Object.create({
+    moduleKey: "customer_support", message: "status",
+    accessToken: TOKEN, idempotencyKey: KEY
+  });
+  await assert.rejects(
+    client.sendMessage(inherited),
+    error => error.code === "invalid_request"
+  );
+  const partial = Object.create(null);
+  partial.moduleKey = "customer_support";
+  partial.message = "status";
+  partial.accessToken = TOKEN;
+  await assert.rejects(
+    client.sendMessage(Object.assign(Object.create({ idempotencyKey: KEY }), partial)),
+    error => error.code === "invalid_request"
+  );
+  assert.equal(calls, 0);
+});
