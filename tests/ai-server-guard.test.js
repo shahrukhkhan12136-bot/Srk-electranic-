@@ -227,6 +227,33 @@ test("duplicate Customer or Electrician profile rows fail closed instead of choo
 });
 
 
+test("AI server rejects inconsistent successful flags on Auth and profile HTTP errors", async () => {
+  const makeHandler = (profileResponse) => createAiServerGuard({
+    env: { SUPABASE_URL: "https://project.supabase.co", SUPABASE_ANON_KEY: "anon-test", SUPABASE_SERVICE_ROLE_KEY: "service-role-test" },
+    fetchImpl: async (url) => {
+      if (url.includes("/auth/v1/user")) {
+        return { ok: true, status: 503, json: async () => ({ id: "123e4567-e89b-42d3-a456-426614174001" }) };
+      }
+      return profileResponse(url);
+    }
+  });
+  const authHandler = makeHandler(() => ({ ok: true, status: 200, json: async () => [] }));
+  const authResponse = await authHandler(event({ body: { module_key: "customer_support", message: "hi" } }));
+  assert.equal(authResponse.statusCode, 503);
+
+  const profileHandler = createAiServerGuard({
+    env: { SUPABASE_URL: "https://project.supabase.co", SUPABASE_ANON_KEY: "anon-test", SUPABASE_SERVICE_ROLE_KEY: "service-role-test" },
+    fetchImpl: async (url) => {
+      if (url.includes("/auth/v1/user")) {
+        return { ok: true, status: 200, json: async () => ({ id: "123e4567-e89b-42d3-a456-426614174001" }) };
+      }
+      return { ok: true, status: 503, json: async () => [] };
+    }
+  });
+  const profileResponse = await profileHandler(event({ body: { module_key: "customer_support", message: "hi" } }));
+  assert.equal(profileResponse.statusCode, 503);
+});
+
 test("AI profile lookup HTTP errors and malformed profile payloads fail closed", async () => {
   const baseEnv = {
     SUPABASE_URL: "https://example.supabase.co",
