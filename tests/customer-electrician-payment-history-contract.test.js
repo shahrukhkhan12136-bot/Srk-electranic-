@@ -47,9 +47,9 @@ test('latest electrician earnings RPC requires an approved and active profile', 
   const end = financialVisibilitySql.indexOf('$;', start);
   const fn = financialVisibilitySql.slice(start, end);
   assert.ok(start >= 0 && end > start, 'latest earnings function body exists');
-  assert.match(fn, /p\\.user_id=auth\\.uid\\(\\) OR p\\.auth_user_id=auth\\.uid\\(\\)/);
-  assert.match(fn, /p\\.verification_status='approved'/);
-  assert.match(fn, /p\\.active=true/);
+  assert.match(fn, /p\.user_id=auth\.uid\(\) OR p\.auth_user_id=auth\.uid\(\)/);
+  assert.match(fn, /p\.verification_status='approved'/);
+  assert.match(fn, /p\.active=true/);
 });
 
 test('Refunded completed bookings are not mislabeled as unpaid customer balances', () => {
