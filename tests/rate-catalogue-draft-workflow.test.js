@@ -148,7 +148,7 @@ test("Draft queue ignores stale concurrent refresh responses",async()=>{
  let resolveFirst;
  const first=new Promise(resolve=>{resolveFirst=resolve;});
  let calls=0;
- const context=vm.createContext({window:{},document:{getElementById(id){return elements[id];}},__rpc:async()=>{calls++;return calls===1?await first:{data:[{id:"newer",status:"draft",effective_at:"2027-12-02T10:00:00Z",reason:"Newest",rates:{}}],error:null};}});
+ const context=vm.createContext({window:{},document:{getElementById(id){return elements[id]||(elements[id]={textContent:"",innerHTML:"",value:""});}},__rpc:async()=>{calls++;return calls===1?await first:{data:[{id:"newer",status:"draft",effective_at:"2027-12-02T10:00:00Z",reason:"Newest",rates:{}}],error:null};}});
  const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
  vm.runInContext(script,context);
  vm.runInContext("sb={rpc:__rpc};user={id:'admin-test'};adminPortalMode='main_admin';",context);

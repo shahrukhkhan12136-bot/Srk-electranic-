@@ -70,13 +70,13 @@ jobs:
           DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
           test -n "$DB_CONTAINER"
           docker exec "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;"
-          OUTPUT="$({ printf '%s\\n' 'SET search_path = public, extensions;'; cat "$GITHUB_WORKSPACE/supabase/tests/database/rate_catalogue_draft_security.test.sql"; } | docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 2>&1)" || { printf '%s\\n' "$OUTPUT"; exit 1; }
-          printf '%s\\n' "$OUTPUT"
-          if printf '%s\\n' "$OUTPUT" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
+          OUTPUT="$({ printf '%s\n' 'SET search_path = public, extensions;'; cat "$GITHUB_WORKSPACE/supabase/tests/database/rate_catalogue_draft_security.test.sql"; } | docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 2>&1)" || { printf '%s\n' "$OUTPUT"; exit 1; }
+          printf '%s\n' "$OUTPUT"
+          if printf '%s\n' "$OUTPUT" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
             echo "pgTAP reported failed assertions."
             exit 1
           fi
-          if ! printf '%s\\n' "$OUTPUT" | grep -Eq '1\\.\\.17'; then
+          if ! printf '%s\n' "$OUTPUT" | grep -Eq '1\.\.17'; then
             echo "Expected pgTAP plan 1..17 was not found."
             exit 1
           fi
