@@ -173,3 +173,13 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Client adapter और shared widget अब CommonJS tests के साथ browser global exports भी देते हैं: `SrkAiAssistantClient` और `SrkAiAssistantWidget`।
 - Message और handoff के idempotency keys केवल उसी अपरिवर्तित payload के retry पर reuse होते हैं; उपयोगकर्ता संदेश/summary बदलता है तो नया key बनता है।
 - यह source-level सुधार है; HTML pages में scripts जोड़ना/mount करना, runtime tests और live backend verification अभी शेष हैं।
+
+
+### App-side AI composition preparation (18 Nov 2026)
+
+- `lib/ai-assistant-app.js` जोड़कर Customer/Electrician app role के अनुसार module allowlist और Supabase session provider से widget composition तैयार किया गया है।
+- Customer role केवल `customer_support` और `booking_assistant` modules mount कर सकता है; Electrician role केवल `electrician_assistant` module mount कर सकता है।
+- यह helper केवल `AI_ASSISTANT_ENABLED === true` और HTTPS `AI_ASSISTANT_API_BASE_URL` मिलने पर mount करता है; अन्यथा कोई UI/network request नहीं होती।
+- नया `tests/ai-assistant-app.test.js` disabled default, role separation, fail-closed dependencies और Supabase session-provider handoff के source-contract checks रखता है।
+- अभी helper को `booking.html` या `electrician.html` में import/mount नहीं किया गया है। वास्तविक GPT-2 API routes इस branch tree में अभी नहीं मिले; proposed endpoints को live contract नहीं माना जाएगा।
+- इन tests को इस commit के लिए चलाया हुआ प्रमाण उपलब्ध नहीं है। HTML runtime/mobile QA भी नहीं हुआ है। Live activation post-launch और backend verification के बाद ही होगा।
