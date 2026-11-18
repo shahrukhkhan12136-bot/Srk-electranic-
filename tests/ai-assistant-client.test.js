@@ -333,3 +333,58 @@ test("AI client ignores inherited optional context and conversation fields", asy
     else delete Object.prototype.conversationId;
   }
 });
+
+test("AI handoff rejects custom prototypes and ignores inherited optional fields", async () => {
+  let calls = 0;
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async (_url, options) => {
+      calls++;
+      const body = JSON.parse(options.body);
+      assert.equal(body.reason_code, "needs_human_support");
+      assert.equal(body.urgency, "normal");
+      assert.deepEqual(body.context, {});
+      return jsonResponse({
+        success: true, handoff_id: CONVERSATION, status: "queued",
+        urgency: "normal"
+      });
+    }
+  });
+  const custom = Object.assign(Object.create({ trusted: true }), {
+    moduleKey: "customer_support", accessToken: TOKEN,
+    idempotencyKey: KEY, conversationId: CONVERSATION,
+    summary: "कृपया सहायता दें"
+  });
+  await assert.rejects(
+    client.createHandoff(custom),
+    error => error.code === "invalid_request"
+  );
+
+  const oldContext = Object.getOwnPropertyDescriptor(Object.prototype, "context");
+  const oldReason = Object.getOwnPropertyDescriptor(Object.prototype, "reasonCode");
+  const oldUrgency = Object.getOwnPropertyDescriptor(Object.prototype, "urgency");
+  try {
+    Object.defineProperty(Object.prototype, "context", {
+      configurable: true, value: { booking_id: BOOKING }
+    });
+    Object.defineProperty(Object.prototype, "reasonCode", {
+      configurable: true, value: "privileged_override"
+    });
+    Object.defineProperty(Object.prototype, "urgency", {
+      configurable: true, value: "high"
+    });
+    await client.createHandoff({
+      moduleKey: "customer_support", accessToken: TOKEN,
+      idempotencyKey: KEY, conversationId: CONVERSATION,
+      summary: "कृपया सहायता दें"
+    });
+  } finally {
+    for (const [key, descriptor] of [
+      ["context", oldContext], ["reasonCode", oldReason], ["urgency", oldUrgency]
+    ]) {
+      if (descriptor) Object.defineProperty(Object.prototype, key, descriptor);
+      else delete Object.prototype[key];
+    }
+  }
+  assert.equal(calls, 1);
+});
