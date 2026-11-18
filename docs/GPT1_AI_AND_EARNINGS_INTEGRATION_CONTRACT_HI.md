@@ -297,3 +297,12 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 
 - पिछली hardening में key factory error catch हो रहा था, लेकिन key बनाते समय pending message/summary पहले सेट होने से retry में नया key न बनने का edge case था। अब UUID key पहले बनती और validate होती है; उसके बाद ही pending text/summary commit होता है। Missing key पर retry factory दोबारा चलती है।
 - Message और handoff दोनों में UUID format client contract के अनुरूप validate होता है। Regression assertions अपडेट किए गए हैं। Runtime tests अभी execute नहीं हुए हैं।
+
+
+### AI profile-backed role detection — customer onboarding dependency (18 Nov 2026)
+
+- Current source guard derives Customer access from exactly one row in `srk_customer_profiles` and Electrician access from exactly one approved/active `electrician_profiles` row whose `user_id` and `auth_user_id` both match the authenticated Supabase user.
+- The Customer profile table is created by `20261114201428_customer_profile_saved_addresses_private_storage.sql`, but its profile row is inserted by the explicit `srk_customer_update_my_profile()` RPC in `20261114180000_harden_customer_avatar_object_integrity.sql`. The inspected Customer UI calls that RPC from the profile-save flow; no universal Auth-signup trigger or mandatory profile-row creation was found in the inspected source.
+- Therefore a legitimate Customer who has not saved their profile may be denied AI access (403). This is fail-closed, but it is not yet a complete Customer role registry. Do not loosen this by trusting browser role or unverified user metadata. Before enabling Customer AI, implement/verify a server-trusted Customer account marker or guaranteed profile provisioning at account creation, and test existing users without profile rows.
+- Electrician lookup additionally requires `active=true`, `verification_status=approved`, and both identity columns matching Auth. Staff/Admin remain denied until a dedicated DB-backed permission check is integrated.
+- AI remains disabled (`ai_not_enabled`); no live route, persistence or provider is claimed.
