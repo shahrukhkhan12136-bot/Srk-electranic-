@@ -16,7 +16,7 @@ AI storage की source migrations:
 
 वास्तविक schema में महत्वपूर्ण अंतर:
 
-- Conversation status `open`, `handoff_requested`, `closed` है; पुराना `handoff_requested` नाम लागू नहीं।
+- Conversation status `open`, `handoff_requested`, `closed` है; पुराने draft का `handoff_pending` नाम वास्तविक schema में लागू नहीं है।
 - Message sender field `sender_kind` है और values `user`, `assistant`, `human_agent` हैं; पुराना `sender_type/system` contract लागू नहीं। नया append RPC अभी केवल `user` और `assistant` sender स्वीकार करता है; human-agent workflow अलग से बनना है।
 - Handoff table का नाम `srk_ai_handoff_queue` है; handoff status `queued`, `assigned`, `resolved`, `cancelled` हैं।
 - Idempotency actor-scoped unique key `(actor_user_id,idempotency_key)` और SHA-256 digest `request_sha256` पर आधारित है। Response body store नहीं होती; reservation states में `reserved`, `conflict`, `replay`, `processing`, `failed` हैं।
