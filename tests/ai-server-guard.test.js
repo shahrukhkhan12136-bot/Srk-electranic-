@@ -135,6 +135,31 @@ test("handoff requests are validated and remain disabled until persistence and a
   assert.equal(JSON.parse(good.body).error, "ai_not_enabled");
 });
 
+test("malformed Supabase Auth JSON is rejected before any profile lookup", async () => {
+  const calls = [];
+  const handler = createAiServerGuard({
+    env: {
+      SUPABASE_URL: "https://project.supabase.co",
+      SUPABASE_ANON_KEY: "anon-test",
+      SUPABASE_SERVICE_ROLE_KEY: "service-role-test"
+    },
+    fetchImpl: async (url) => {
+      calls.push(url);
+      return {
+        ok: true, status: 200,
+        json: async () => { throw new Error("malformed auth response"); }
+      };
+    }
+  });
+  const response = await handler(event({
+    body: { module_key: "customer_support", message: "hi" }
+  }));
+  assert.equal(response.statusCode, 401);
+  assert.equal(JSON.parse(response.body).error, "authentication_required");
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].includes("/auth/v1/user"));
+});
+
 test("Supabase authentication failures fail closed", async () => {
   const { handler } = setup({ status: 401 });
   const response = await handler(event({ body: { module_key: "customer_support", message: "hello" } }));
