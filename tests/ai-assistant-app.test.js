@@ -212,3 +212,14 @@ test("Customer AI widget mounts only after a verified profile row is loaded", ()
   assert.match(source, /const customerProfileReady=await loadCustomerProfile\(\);if\(!isCurrent\(\)\)return;\s*if\(customerProfileReady\)mountCustomerAiAssistant\(\);\s*else destroyCustomerAiAssistant\(\);/);
   assert.match(source, /const profileReady=await loadCustomerProfile\(\);[\s\S]*?if\(profileReady&&document\.getElementById\('customer-dashboard'\)\?\.style\.display!=='none'\)mountCustomerAiAssistant\(\);\s*else destroyCustomerAiAssistant\(\);/);
 });
+
+test("Electrician AI widget mounts only after an active approved profile is verified", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
+  assert.match(source, /profile=p;\\s*if\\(p&&p\\.active===true&&p\\.verification_status==="approved"\\)mountElectricianAiAssistant\\(\\);else destroyElectricianAiAssistant\\(\\);/);
+  assert.match(source, /function show\\(\\)[\\s\\S]*?if\\(user\\)\\{refresh\\(\\)\\}else destroyElectricianAiAssistant\\(\\)/);
+  assert.match(source, /profile=null;destroyElectricianAiAssistant\\(\\);/);
+  assert.match(source, /if\\(error\\)\\{destroyElectricianAiAssistant\\(\\);/);
+  assert.match(source, /if\\(!p\\)\\{destroyElectricianAiAssistant\\(\\);/);
+});
