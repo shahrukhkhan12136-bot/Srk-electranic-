@@ -79,3 +79,10 @@ No migration was applied as part of this review.
 6. Do not run hosted migrations, alter the application schema/data, or deploy this feature as part of this review.
 
 No hosted schema/data was changed. Only project status and migration metadata were read. AI remains disabled.
+
+### Feature-branch remediation added (source + Node regression guard)
+- Added `20261109002500_restore_service_bookings_amount_paid_before_financial_grants.sql` to add nullable `amount_paid numeric(12,2)` and the same guarded, `NOT VALID` nonnegative constraint before `20261109003000_secure_commission_reporting.sql` performs the column-level UPDATE grant.
+- The later `20261116200000_restore_service_bookings_amount_paid.sql` remains in place and idempotent; it is not removed or rewritten.
+- Added `tests/amount-paid-migration-order.test.js` to guard timestamp ordering, the missing baseline column, the early addition, and later idempotence. Feature-branch Node CI passed at commit `18f51e74da154b5f7db30b0710b09c6f50c35898` (run `44301985756`).
+- The earlier quote-workflow migration defines a PL/pgSQL trigger function that references `NEW.amount_paid` before the new early-add migration. That function body is parsed when invoked, not necessarily when created; source inspection does not establish that the trigger fires before `amount_paid` is added. This is a dependency to verify during PostgreSQL replay, not a separately proven CREATE FUNCTION blocker.
+- The checked-in `.github/workflows/supabase-schema-ci.yml` is not a valid verification path for this feature branch: its job is hard-gated to `feature/platform-fee-cash-online-cycle` and its apply list is a fixed five-file subset, not the current branch's full migration sequence. No full PostgreSQL replay or schema lint was therefore performed for this branch. Do not treat Node CI as PostgreSQL validation.
