@@ -59,7 +59,12 @@ test("AI routes require POST and bearer authentication before processing", async
   const malformedBearer = event();
   malformedBearer.headers.authorization = "Bearer\\svalid-token";
   assert.equal((await handler(malformedBearer)).statusCode, 401);
-  assert.equal(calls.length, 0);
+  const tabBearer = event({ body: { module_key: "customer_support", message: "hello" } });
+  delete tabBearer.headers.authorization;
+  tabBearer.headers.Authorization = "Bearer\\tvalid-token";
+  assert.equal((await handler(tabBearer)).statusCode, 503);
+  assert.equal(JSON.parse((await handler(event({ body: { module_key: "customer_support", message: "hello" } }))).body).error, "ai_not_enabled");
+  assert.equal(calls.length, 6);
 });
 
 test("AI route verifies bearer token and checks profile records before rejecting live operation", async () => {
