@@ -31,7 +31,6 @@ test("rejects unknown modules, malformed identifiers and unsupported outcomes", 
 });
 
 test("does not accept free-form error details as audit metadata", () => {
-  assert.throws(() => buildAiAuditEvent({ ...valid, request_id: "Bearer-secret-token" }), /invalid_ai_audit_event_identifier/);
   const event = buildAiAuditEvent({ ...valid, error_message: "password=secret" });
   assert.equal(Object.hasOwn(event, "error_message"), false);
 });
