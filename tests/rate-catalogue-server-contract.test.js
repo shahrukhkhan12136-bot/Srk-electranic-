@@ -1,0 +1,53 @@
+"use strict";
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const read = (name) => fs.readFileSync(path.join(__dirname, "..", name), "utf8");
+const bookingUi = read("booking.html");
+const bookingApi = read("create-booking.js");
+const electricianUi = read("electrician.html");
+const catalogueMigration = read("supabase/migrations/20261118050000_versioned_rate_catalogue_and_multi_category_electricians.sql");
+const adminReadMigration = read("supabase/migrations/20261118070000_admin_rate_catalogue_read_rpcs.sql");
+
+test("customer UI and booking server read the same published catalogue RPC", () => {
+  assert.match(bookingUi, /rpc\(['"]srk_get_current_customer_rate_catalogue['"]\)/);
+  assert.match(bookingApi, /rpc\/srk_get_current_customer_rate_catalogue/);
+  assert.match(bookingApi, /Never accept client-supplied rate amounts\/version/);
+  assert.match(bookingApi, /estimate_rate_card_version:\s*rateCardVersion/);
+  assert.match(bookingApi, /estimated_labour_paise:\s*estimatedLabourPaise/);
+});
+
+test("booking API derives the estimate from server rate, selected tier and duration", () => {
+  assert.match(bookingApi, /const rate8hPaise = rateCard\[selected_rate_tier\]/);
+  assert.match(bookingApi, /Math\.floor\(\(rate8hPaise \* selected_duration_hours\) \/ 8 \+ 0\.5\)/);
+  assert.match(bookingApi, /!Object\.prototype\.hasOwnProperty\.call\(rateCard, selected_rate_tier\)/);
+  assert.match(bookingApi, /selected_duration_hours < 1 \|\| selected_duration_hours > 8/);
+});
+
+test("electrician rate list exposes only approved categories and the 85 percent rate", () => {
+  assert.match(electricianUi, /rpc\(['"]srk_get_my_electrician_rate_list['"]\)/);
+  const start = catalogueMigration.indexOf("CREATE OR REPLACE FUNCTION public.srk_get_my_electrician_rate_list()");
+  const end = catalogueMigration.indexOf("$fn$;", start);
+  const fn = catalogueMigration.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(fn, /a\.is_active=true/);
+  assert.match(fn, /electrician_rate_paise/);
+  assert.match(fn, /8500\/10000/);
+  assert.doesNotMatch(fn, /customer_rate_paise['"]\s*,\s*commission|company_share|gross_customer_amount/i);
+});
+
+test("Admin rate-category read and write RPCs are Main Admin protected", () => {
+  assert.match(adminReadMigration, /auth\.uid\(\) IS NULL OR NOT public\.is_srk_admin\(\)/);
+  assert.match(catalogueMigration, /FUNCTION public\.srk_admin_publish_rate_catalogue[\s\S]*?public\.is_srk_admin\(\)/);
+  assert.match(catalogueMigration, /FUNCTION public\.srk_admin_set_electrician_approved_categories[\s\S]*?public\.is_srk_admin\(\)/);
+  assert.match(adminReadMigration, /GRANT EXECUTE ON FUNCTION public\.srk_admin_list_electrician_rate_categories\(\) TO authenticated/);
+});
+
+test("catalogue publishing validates the exact four tier keys and expected current version", () => {
+  assert.match(catalogueMigration, /EXACTLY_FOUR_RATE_TIERS_REQUIRED/);
+  assert.match(catalogueMigration, /p_expected_current_version_id/);
+  assert.match(catalogueMigration, /RATE_CATALOGUE_VERSION_CONFLICT/);
+  assert.match(catalogueMigration, /effective_at<=now\(\)/);
+});
