@@ -54,9 +54,9 @@ SELECT ok(
   'queue ordering is priority-first and deterministic'
 );
 SELECT ok(
-  position('INSERT INTO' in upper(pg_get_functiondef('public.srk_admin_list_ai_handoff_queue(integer)'::regprocedure))=0
-  AND position('UPDATE ' in upper(pg_get_functiondef('public.srk_admin_list_ai_handoff_queue(integer)'::regprocedure))=0
-  AND position('DELETE ' in upper(pg_get_functiondef('public.srk_admin_list_ai_handoff_queue(integer)'::regprocedure))=0,
+  position('INSERT INTO' in upper(pg_get_functiondef('public.srk_admin_list_ai_handoff_queue(integer)'::regprocedure)))=0
+  AND position('UPDATE ' in upper(pg_get_functiondef('public.srk_admin_list_ai_handoff_queue(integer)'::regprocedure)))=0
+  AND position('DELETE ' in upper(pg_get_functiondef('public.srk_admin_list_ai_handoff_queue(integer)'::regprocedure)))=0,
   'queue RPC is read-only and cannot assign or resolve handoffs'
 );
 
