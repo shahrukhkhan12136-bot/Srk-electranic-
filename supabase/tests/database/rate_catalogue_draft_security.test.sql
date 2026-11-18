@@ -1,6 +1,6 @@
 BEGIN;
 SET LOCAL search_path TO public, extensions;
-SELECT plan(17);
+SELECT plan(18);
 
 SELECT has_table('public','srk_rate_catalogue_drafts',
   'private rate catalogue draft table exists');
@@ -116,6 +116,12 @@ SELECT ok(
       AND position('published_rate_version_id' IN pg_get_constraintdef(oid))>0
   ),
   'published status requires a linked immutable rate version'
+);
+
+SELECT ok(
+  position('p_rates->>v_key IS NULL' IN pg_get_functiondef(
+    'public.srk_admin_save_rate_catalogue_draft(jsonb,timestamptz,text,uuid)'::regprocedure))>0,
+  'draft save rejects null tier amounts before integer-paise validation'
 );
 
 SELECT ok(
