@@ -57,10 +57,14 @@ test("widget checks teardown after session resolution before sending either requ
   assert.match(source, /const accessToken = await credentials\(\);\s*if \(destroyed\) return;\s*const result = await client\.createHandoff/);
 });
 
-test("widget catches idempotency key factory failures and always restores busy controls", () => {
+test("widget catches idempotency key failures, validates UUIDs and regenerates missing retry keys", () => {
   const source = fs.readFileSync(path.join(__dirname, "../lib/ai-assistant-widget.js"), "utf8");
-  assert.match(source, /try \{\s*if \(pendingMessageText !== message\) \{\s*pendingMessageText = message;\s*pendingMessageKey = createId\(\);\s*\}/);
-  assert.match(source, /try \{\s*if \(pendingHandoffSummary !== summary\) \{\s*pendingHandoffSummary = summary;\s*pendingHandoffKey = createId\(\);\s*\}/);
+  assert.match(source, /pendingMessageText !== message \|\| !pendingMessageKey/);
+  assert.match(source, /pendingHandoffSummary !== summary \|\| !pendingHandoffKey/);
+  assert.match(source, /const nextKey = createId\(\)/);
+  assert.match(source, /typeof nextKey !== "string" \|\| !\/\^\[0-9a-f\]/);
+  assert.match(source, /pendingMessageKey = nextKey;\s*pendingMessageText = message/);
+  assert.match(source, /pendingHandoffKey = nextKey;\s*pendingHandoffSummary = summary/);
   assert.match(source, /finally \{\s*busy = false;/);
   assert.match(source, /if \(!destroyed\) send\.disabled = false/);
 });
