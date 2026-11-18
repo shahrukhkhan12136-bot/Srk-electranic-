@@ -170,7 +170,7 @@ AS $$
     CASE
       WHEN verified.is_verified THEN coalesce(b.commission_amount,0)
       WHEN checkout.started AND b.commission_rate=15
-        THEN round(coalesce(bill.labour_amount,0),2)-(${net}/100)
+        THEN round(coalesce(bill.labour_amount,0),2)-(floor((round(coalesce(bill.labour_amount,0)*100)*8500+5000)/10000)/100)
       ELSE 0
     END AS commission_amount,
     CASE
@@ -190,7 +190,7 @@ AS $$
     END AS customer_labour_gross,
     CASE
       WHEN verified.is_verified THEN coalesce(payout.platform_commission,b.commission_amount,0)
-      WHEN checkout.started AND b.commission_rate=15 THEN round(coalesce(bill.labour_amount,0)*0.15,2)
+      WHEN checkout.started AND b.commission_rate=15 THEN round(coalesce(bill.labour_amount,0),2)-(floor((round(coalesce(bill.labour_amount,0)*100)*8500+5000)/10000)/100)
       ELSE NULL
     END AS company_share,
     CASE WHEN verified.is_verified THEN payout.electrician_payable ELSE NULL END AS payout_amount,
