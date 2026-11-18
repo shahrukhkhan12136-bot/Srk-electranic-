@@ -4,6 +4,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const migration=fs.readFileSync(path.join(__dirname,"../supabase/migrations/20261118240000_rate_catalogue_draft_scheduled_workflow.sql"),"utf8");
+const publishMigration=fs.readFileSync(path.join(__dirname,"../supabase/migrations/20261118050000_versioned_rate_catalogue_and_multi_category_electricians.sql"),"utf8");
 const admin=fs.readFileSync(path.join(__dirname,"../admin.html"),"utf8");
 test("Rate Catalogue drafts are private and Main Admin-only",()=>{
  assert.match(migration,/ENABLE ROW LEVEL SECURITY/);
@@ -19,7 +20,9 @@ test("published drafts are immutable and customer catalogue remains separate",()
  assert.match(migration,/PUBLISHED_RATE_DRAFT_IS_IMMUTABLE/);
  assert.match(migration,/status='published' AND published_rate_version_id IS NOT NULL/);
  assert.match(migration,/srk_admin_publish_rate_catalogue\(/);
- assert.match(migration,/RATE_CATALOGUE_VERSION_CONFLICT/);
+ assert.match(migration,/p_expected_current_version_id/);
+ assert.match(migration,/public\\.srk_admin_publish_rate_catalogue\\(/);
+ assert.match(publishMigration,/RATE_CATALOGUE_VERSION_CONFLICT/);
 });
 test("draft queue has bounded paging and excludes published records",()=>{
  assert.match(migration,/INVALID_PAGE_LIMIT/);
