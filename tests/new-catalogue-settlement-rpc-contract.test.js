@@ -59,7 +59,7 @@ test("new Catalogue Admin cash RPC is Main Admin-only, locks booking and records
   const walletLedgerInsert = fn.indexOf("insert into public.srk_wallet_ledger");
   assert.ok(debtReservationCheck >= 0 && walletLedgerInsert > debtReservationCheck,
     "cash settlement must lock and verify the exact reserved customer debt before wallet or receivable ledger entries");
-  assert.match(fn, /reserved_booking_id=p_booking_id[\\s\\S]*?customer_user_id=v_booking\\.customer_user_id[\\s\\S]*?for update/i);
+  assert.ok(fn.indexOf("reserved_booking_id=p_booking_id") >= 0 && fn.indexOf("customer_user_id=v_booking.customer_user_id") > fn.indexOf("reserved_booking_id=p_booking_id") && fn.indexOf("for update", fn.indexOf("customer_user_id=v_booking.customer_user_id")) > 0, "debt reservation must bind booking and customer before row lock");
 });
 
 test("Catalogue payout trigger sources electrician labour only from immutable bill and excludes cancellation fees from payable", () => {
