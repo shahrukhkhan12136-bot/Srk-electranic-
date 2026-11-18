@@ -75,9 +75,9 @@ test("widget preserves the same message idempotency key after request failure", 
   const handoffStart = source.indexOf("async function requestHandoff()");
   const sendBlock = source.slice(sendStart, handoffStart);
   assert.match(sendBlock, /pendingMessageKey = nextKey;\s*pendingMessageText = message/);
-  assert.match(sendBlock, /pendingMessageKey = null;\\s*pendingMessageText = null/);
+  assert.match(sendBlock, /pendingMessageKey = null;\s*pendingMessageText = null/);
   assert.ok(sendBlock.indexOf("pendingMessageKey = null") < sendBlock.indexOf("} catch (error)"));
-  assert.match(sendBlock, /} catch \(error\) \{[\\s\\S]*?if \(!destroyed\) showError\(error\)/);
+  assert.match(sendBlock, /} catch \(error\) \{[\s\\S]*?if \(!destroyed\) showError\(error\)/);
   assert.doesNotMatch(sendBlock.slice(sendBlock.indexOf("} catch (error)")), /pendingMessageKey = null/);
 });
 
@@ -87,8 +87,8 @@ test("widget preserves handoff idempotency key after failure and clears it only 
   const end = source.indexOf("const onToggleClick", start);
   const block = source.slice(start, end);
   assert.match(block, /pendingHandoffKey = nextKey;\s*pendingHandoffSummary = summary/);
-  assert.match(block, /pendingHandoffKey = null;\\s*pendingHandoffSummary = null/);
+  assert.match(block, /pendingHandoffKey = null;\s*pendingHandoffSummary = null/);
   assert.ok(block.indexOf("pendingHandoffKey = null") < block.indexOf("} catch (error)"));
-  assert.match(block, /} catch \(error\) \{[\\s\\S]*?if \(!destroyed\) showError\(error\)/);
+  assert.match(block, /} catch \(error\) \{[\s\\S]*?if \(!destroyed\) showError\(error\)/);
   assert.doesNotMatch(block.slice(block.indexOf("} catch (error)")), /pendingHandoffKey = null/);
 });
