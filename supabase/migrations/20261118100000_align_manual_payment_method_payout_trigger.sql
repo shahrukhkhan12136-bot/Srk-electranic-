@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Align the payout-ledger trigger's manual-payment evidence with the
 -- authoritative payment-verification rule (booking + amount + payment method).
 -- SOURCE ONLY: do not apply to any database without explicit authorization.
@@ -138,3 +140,5 @@ AFTER INSERT OR UPDATE OF
 ON public.service_bookings
 FOR EACH ROW
 EXECUTE FUNCTION public.srk_create_electrician_payable();
+
+COMMIT;
