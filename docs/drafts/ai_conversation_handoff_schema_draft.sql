@@ -73,7 +73,7 @@ ALTER TABLE public.srk_ai_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.srk_ai_idempotency ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.srk_ai_handoffs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.srk_ai_audit_events ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.srk_ai_conversations,public.srk_ai_messages,public.srk_ai_idempotency,public.srk_ai_handoffs,public.srk_ai_audit_events FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON public.srk_ai_conversations,public.srk_ai_messages,public.srk_ai_idempotency,public.srk_ai_handoffs,public.srk_ai_audit_events FROM PUBLIC,anon,authenticated,service_role;
 GRANT SELECT,INSERT,UPDATE,DELETE ON public.srk_ai_conversations,public.srk_ai_messages,public.srk_ai_idempotency,public.srk_ai_handoffs TO service_role;
 GRANT SELECT,INSERT ON public.srk_ai_audit_events TO service_role;
 COMMIT;
