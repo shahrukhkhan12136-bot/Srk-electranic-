@@ -59,6 +59,7 @@ test("AI routes require POST and bearer authentication before processing", async
   const malformedBearer = event();
   malformedBearer.headers.authorization = "Bearer\\svalid-token";
   assert.equal((await handler(malformedBearer)).statusCode, 401);
+  assert.equal(calls.length, 0, "malformed bearer headers must not reach Supabase");
   const tabBearer = event({ body: { module_key: "customer_support", message: "hello" } });
   delete tabBearer.headers.authorization;
   tabBearer.headers.Authorization = "Bearer\tvalid-token";
