@@ -382,3 +382,12 @@ test("AI guard rejects malformed and non-object JSON before upstream requests", 
     assert.equal(calls.length, 0, "invalid JSON must not trigger Supabase calls");
   }
 });
+
+
+test("AI guard rejects unsupported route modes before authentication or profile lookups", async () => {
+  const { handler, calls } = setup();
+  const response = await handler(event(), "unexpected-mode");
+  assert.equal(response.statusCode, 404);
+  assert.equal(JSON.parse(response.body).error, "not_found");
+  assert.equal(calls.length, 0);
+});
