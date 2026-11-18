@@ -59,7 +59,7 @@ AS $function$
             AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
         )
       )
-    ) OR (b.razorpay_order_id IS NOT NULL AND b.payment_status IN ('pending','created')))
+    ) OR (b.razorpay_order_id IS NOT NULL AND b.payment_status='pending'))
       THEN b.quoted_amount ELSE NULL END,
     b.status, b.selected_category, b.selected_rate_tier, b.selected_duration_hours,
     CASE
@@ -88,7 +88,7 @@ AS $function$
       'assigned','inspection','awaiting_quote_approval','quote_approved',
       'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled'
     ) THEN b.location_lng ELSE NULL END,
-    CASE WHEN b.status='completed' AND ((b.razorpay_order_id IS NOT NULL AND b.payment_status IN ('pending','created')) OR (
+    CASE WHEN b.status='completed' AND ((b.razorpay_order_id IS NOT NULL AND b.payment_status='pending') OR (
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
       AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
         SELECT 1 FROM public.srk_manual_payment_entries e
@@ -96,7 +96,7 @@ AS $function$
           AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
       ))
     )) THEN b.service_charge ELSE NULL END,
-    CASE WHEN b.status='completed' AND ((b.razorpay_order_id IS NOT NULL AND b.payment_status IN ('pending','created')) OR (
+    CASE WHEN b.status='completed' AND ((b.razorpay_order_id IS NOT NULL AND b.payment_status='pending') OR (
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
       AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
         SELECT 1 FROM public.srk_manual_payment_entries e
@@ -104,7 +104,7 @@ AS $function$
           AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
       ))
     )) THEN b.materials_amount ELSE NULL END,
-    CASE WHEN b.status='completed' AND ((b.razorpay_order_id IS NOT NULL AND b.payment_status IN ('pending','created')) OR (
+    CASE WHEN b.status='completed' AND ((b.razorpay_order_id IS NOT NULL AND b.payment_status='pending') OR (
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
       AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
         SELECT 1 FROM public.srk_manual_payment_entries e
@@ -112,7 +112,7 @@ AS $function$
           AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
       ))
     )) THEN b.quote_status ELSE NULL END,
-    CASE WHEN b.status='completed' AND ((b.razorpay_order_id IS NOT NULL AND b.payment_status IN ('pending','created')) OR (
+    CASE WHEN b.status='completed' AND ((b.razorpay_order_id IS NOT NULL AND b.payment_status='pending') OR (
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
       AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
         SELECT 1 FROM public.srk_manual_payment_entries e
@@ -227,7 +227,7 @@ AS $$
     ) AS is_verified
   ) verified
   CROSS JOIN LATERAL (
-    SELECT ((b.razorpay_order_id IS NOT NULL AND b.payment_status IN ('pending','created')) AND b.payment_status IN ('pending','created')) AS started
+    SELECT (b.status='completed' AND b.razorpay_order_id IS NOT NULL AND b.payment_status='pending') AS started
   ) checkout
   WHERE auth.uid() IS NOT NULL
     AND (p.user_id=auth.uid() OR p.auth_user_id=auth.uid())
