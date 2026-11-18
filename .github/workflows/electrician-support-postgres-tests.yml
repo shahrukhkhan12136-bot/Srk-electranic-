@@ -1,0 +1,109 @@
+name: Electrician support isolated PostgreSQL security tests
+
+on:
+  push:
+    branches:
+      - feat/ai-rate-management-foundation-20261118
+    paths:
+      - "supabase/migrations/20261114350000_electrician_support_tickets_and_admin_inbox.sql"
+      - "supabase/tests/database/electrician_support_ticket_security.test.sql"
+      - ".github/workflows/electrician-support-postgres-tests.yml"
+  pull_request:
+    paths:
+      - "supabase/migrations/20261114350000_electrician_support_tickets_and_admin_inbox.sql"
+      - "supabase/tests/database/electrician_support_ticket_security.test.sql"
+      - ".github/workflows/electrician-support-postgres-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Share the lock with the other local Supabase CI workflow to avoid port/resource collisions.
+concurrency:
+  group: srk-ai-postgres-draft-tests-global
+  cancel-in-progress: false
+
+jobs:
+  electrician-support-postgres:
+    name: Test electrician support migration against isolated fixture schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: Initialize temporary local Supabase project
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/srk-electrician-support-db"
+          cd "$RUNNER_TEMP/srk-electrician-support-db"
+          supabase init
+          sed -i 's/^\([[:space:]]*port = \)54321$/\154321/' supabase/config.toml
+          sed -i 's/^\([[:space:]]*port = \)54322$/\155432/' supabase/config.toml
+          sed -i 's/^\([[:space:]]*shadow_port = \)54320$/\155430/' supabase/config.toml
+
+      - name: Start disposable local Supabase database
+        working-directory: ${{ runner.temp }}/srk-electrician-support-db
+        run: supabase start
+
+      - name: Enable pgTAP
+        working-directory: ${{ runner.temp }}/srk-electrician-support-db
+        run: |
+          set -euo pipefail
+          supabase db query --local "CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;"
+
+      - name: Create minimal prerequisite fixture schema
+        working-directory: ${{ runner.temp }}/srk-electrician-support-db
+        run: |
+          set -euo pipefail
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          create table public.electrician_profiles (
+            id uuid primary key default gen_random_uuid(),
+            user_id uuid not null references auth.users(id),
+            auth_user_id uuid not null references auth.users(id),
+            display_name text,
+            phone text
+          );
+          create table public.service_bookings (
+            id uuid primary key default gen_random_uuid(),
+            assigned_electrician_id uuid references public.electrician_profiles(id)
+          );
+          create or replace function public.is_srk_admin()
+          returns boolean
+          language sql
+          stable
+          as $$ select false $$;
+          SQL
+
+      - name: Apply electrician support migration locally only
+        working-directory: ${{ runner.temp }}/srk-electrician-support-db
+        run: |
+          set -euo pipefail
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 < "$GITHUB_WORKSPACE/supabase/migrations/20261114350000_electrician_support_tickets_and_admin_inbox.sql"
+
+      - name: Run 19 electrician support security assertions
+        working-directory: ${{ runner.temp }}/srk-electrician-support-db
+        run: |
+          set -euo pipefail
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          OUTPUT="$(docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 < "$GITHUB_WORKSPACE/supabase/tests/database/electrician_support_ticket_security.test.sql" 2>&1)" || { printf '%s\\n' "$OUTPUT"; exit 1; }
+          printf '%s\\n' "$OUTPUT"
+          if printf '%s\\n' "$OUTPUT" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
+            echo "pgTAP reported failed assertions."
+            exit 1
+          fi
+
+      - name: Stop disposable local database
+        if: always()
+        working-directory: ${{ runner.temp }}/srk-electrician-support-db
+        run: supabase stop --no-backup
