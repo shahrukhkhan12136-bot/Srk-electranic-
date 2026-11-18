@@ -37,3 +37,20 @@ test("AI cannot execute an unlisted tool or sensitive action without matching ap
     action, approval, nowMs: Date.parse("2026-11-18T12:00:00Z")
   }), { allowed: true, reason: "policy_checks_passed" });
 });
+
+
+test("approval fails closed when any action binding or approver identity is missing or mismatched", () => {
+  const nowMs = Date.parse("2026-11-18T12:00:00Z");
+  for (const [key, value] of [
+    ["action_id", "other-action"], ["action_type", "refund"], ["target_id", "other-target"],
+    ["payload_hash", "sha256:other"], ["requesting_module", "electrician_assistant"],
+    ["approver_user_id", ""], ["expires_at", 1795046400000]
+  ]) {
+    const changed = key === "requesting_module" || key === "approver_user_id" || key === "expires_at"
+      ? { ...approval, [key]: value }
+      : { ...approval, [key]: value };
+    assert.equal(isApprovalBoundToAction({ action, approval: changed, nowMs }), false, key);
+  }
+  assert.equal(isApprovalBoundToAction({ action: { module_key: "booking_assistant" }, approval: { ...approval, action_id: undefined, action_type: undefined, target_id: undefined, payload_hash: undefined }, nowMs }), false);
+  assert.equal(isApprovalBoundToAction({ action, approval, nowMs: NaN }), false);
+});
