@@ -89,7 +89,8 @@ This UI contract does not enable AI, create a provider account/key, create datab
 ## App-side mount preparation — 18 नवम्बर 2026
 
 - Customer `booking.html` और Electrician `electrician.html` में shared AI client/widget/app scripts और role-specific mount slots जोड़े गए हैं।
-- Customer mount केवल authenticated customer session flow में `customer_support` module के लिए प्रयास करता है; Electrician mount केवल signed-in electrician flow में `electrician_assistant` module के लिए। Logout/account switch पर widget destroy किया जाता है।
+- Customer mount authenticated और profile-ready session में अलग-अलग `customer_support` तथा `booking_assistant` modules के लिए प्रयास करता है; दोनों Customer Help & Support surface में अलग entry points हैं। Booking assistant केवल मार्गदर्शन/मसौदा देता है; booking की अंतिम पुष्टि existing Customer UI से ही होगी।
+- Electrician mount केवल signed-in electrician flow में `electrician_assistant` module के लिए प्रयास करता है। Logout/account switch पर संबंधित widgets destroy किए जाते हैं।
 - दोनों apps में mount helper का default kill switch कायम है: `AI_ASSISTANT_ENABLED` की explicit own-property value `true` न होने पर कोई widget render या AI network request नहीं होती। कोई live enablement/configuration नहीं जोड़ी गई।
 - इसे pre-launch app integration preparation माना जाए; actual visible UI, backend integration और runtime verification checkpoints अभी complete नहीं हैं।
 - Static regression test जोड़ा गया है, लेकिन इस environment में test execution नहीं हुआ; CI workflow run भी इस commit के लिए उपलब्ध नहीं मिला।
