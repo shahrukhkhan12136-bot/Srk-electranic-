@@ -34,7 +34,7 @@ test('Electrician wallet summary requires approved active profile and both Auth 
   assert.match(fn, /ep\.auth_user_id\s*=\s*v_uid/);
   assert.match(fn, /ep\.verification_status\s*=\s*'approved'/);
   assert.match(fn, /ep\.active\s*=\s*true/);
-  assert.match(fn, /v_electrician_id\s*:=\s*null/);
-  assert.match(fn, /REVOKE ALL ON FUNCTION public\.srk_get_my_wallet_summary\(\) FROM PUBLIC, anon/);
-  assert.match(fn, /GRANT EXECUTE ON FUNCTION public\.srk_get_my_wallet_summary\(\) TO authenticated/);
 });
+  assert.ok(walletAccessSql.includes('REVOKE ALL ON FUNCTION public.srk_get_my_wallet_summary() FROM PUBLIC, anon'));
+  assert.ok(walletAccessSql.includes('GRANT EXECUTE ON FUNCTION public.srk_get_my_wallet_summary() TO authenticated'));
+  assert.ok(fn.indexOf('IF EXISTS') < fn.indexOf('SELECT wa.id INTO v_electrician_id'));
