@@ -45,3 +45,27 @@ test("saved booking replay treats offer and historical-rate metadata as best-eff
   assert.match(helper, /return \{ offersCreated, matchLevel, rate8hPaise \}/);
   assert.match(source, /loadReplayDetails\(raced\)/);
 });
+
+
+test("unique-key race replay also returns the persisted booking snapshot", () => {
+  const raceStart = source.indexOf("const racedRows = await findByRequestKey()");
+  const raceEnd = source.indexOf("\n    }\n    const booking =", raceStart);
+  assert.ok(raceStart >= 0 && raceEnd > raceStart, "unique-key race replay block exists");
+  const replay = source.slice(raceStart, raceEnd);
+  assert.match(replay, /raced\.estimated_labour_paise/);
+  assert.match(replay, /raced\.estimate_rate_card_version/);
+  assert.match(replay, /loadReplayDetails\(raced\)/);
+  assert.doesNotMatch(replay, /rateCard\[selected_rate_tier\]/);
+});
+
+test("new booking persists server-derived estimate and catalogue version as the immutable snapshot inputs", () => {
+  const catalogueLookup = source.indexOf("rpc/srk_get_current_customer_rate_catalogue");
+  const insertStart = source.indexOf('inserted = await supabase("service_bookings"', catalogueLookup);
+  const insertEnd = source.indexOf("\n      });", insertStart);
+  assert.ok(catalogueLookup >= 0 && insertStart > catalogueLookup && insertEnd > insertStart);
+  const insert = source.slice(insertStart, insertEnd);
+  assert.match(insert, /estimated_labour_paise:\s*estimatedLabourPaise/);
+  assert.match(insert, /estimate_rate_card_version:\s*rateCardVersion/);
+  assert.match(insert, /selected_rate_tier/);
+  assert.match(insert, /selected_duration_hours/);
+});
