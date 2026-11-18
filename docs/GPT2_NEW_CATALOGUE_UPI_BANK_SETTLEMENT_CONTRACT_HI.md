@@ -44,3 +44,8 @@ The tests have **not** been executed. SQL syntax, trigger interaction, transacti
 ## Deployment boundary
 
 Feature-branch source only. No Production DB changes, migration application, deployment, paid DB branch, or expense.
+
+
+## 18 नवंबर का अतिरिक्त method-normalization सुधार
+
+Manual-payment trigger में booking और evidence के payment_method का normalized text exact match होना आवश्यक है। इसलिए bank transfer के लिए RPC अब दोनों जगह canonical `bank_transfer` सहेजता है; UI/receipt इसे “बैंक ट्रांसफर” के रूप में दिखा सकती है। इससे draft का `Bank Transfer` बनाम `bank_transfer` mismatch ठीक हुआ। Regression contract भी canonical value की जाँच करता है। यह source-level सुधार है; PostgreSQL runtime test अभी नहीं हुआ।
