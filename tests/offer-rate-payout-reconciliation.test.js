@@ -111,3 +111,23 @@ test("manual-payment trigger alignment migration does not rewrite historical rec
   assert.doesNotMatch(payoutTriggerMigration, /UPDATE\s+public\.srk_booking_labour_bills/i);
   assert.doesNotMatch(payoutTriggerMigration, /UPDATE\s+public\.srk_manual_payment_entries/i);
 });
+
+
+const originalPayoutTriggerMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114360000_new_category_electrician_payout_reconciliation.sql"), "utf8");
+
+test("payout trigger replacement preserves the original function except for manual method evidence", () => {
+  const extract = (source) => source.match(/create or replace function public\.srk_create_electrician_payable\(\)[\s\S]*?\n\$\$;/i)?.[0] || "";
+  const original = extract(originalPayoutTriggerMigration);
+  const revised = extract(payoutTriggerMigration);
+  assert.ok(original, "original payout trigger function must exist");
+  assert.ok(revised, "replacement payout trigger function must exist");
+  const expected = original.replace(
+    /and round\(coalesce\(e\.amount,0\),2\) = round\(coalesce\(new\.amount_paid,0\),2\)/i,
+    (match) => `${match}
+            and e.payment_method is not null
+            and new.payment_method is not null
+            and lower(btrim(e.payment_method)) = lower(btrim(new.payment_method))`
+  );
+  const normalize = (source) => source.toLowerCase().replace(/--[^\\n]*/g, "").replace(/\\s+/g, " ").trim();
+  assert.equal(normalize(revised), normalize(expected));
+});
