@@ -168,3 +168,23 @@ test("app composition rejects inherited object-prototype names as app roles", ()
     }), /ai_assistant_module_not_allowed_for_app/);
   }
 });
+
+test("Customer and Electrician app shells prepare role-scoped mounts while preserving the default-off kill switch", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const customer = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
+  const electrician = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
+  for (const source of [customer, electrician]) {
+    assert.match(source, /\/lib\/ai-assistant-client\.js/);
+    assert.match(source, /\/lib\/ai-assistant-widget\.js/);
+    assert.match(source, /\/lib\/ai-assistant-app\.js/);
+  }
+  assert.match(customer, /id="customerAiAssistantMount"/);
+  assert.match(customer, /appRole:"customer",moduleKey:"customer_support"/);
+  assert.match(customer, /mountCustomerAiAssistant\(\);/);
+  assert.match(customer, /destroyCustomerAiAssistant\(\);/);
+  assert.match(electrician, /id="electricianAiAssistantMount"/);
+  assert.match(electrician, /appRole:"electrician",moduleKey:"electrician_assistant"/);
+  assert.match(electrician, /mountElectricianAiAssistant\(\);/);
+  assert.match(electrician, /destroyElectricianAiAssistant\(\)/);
+});
