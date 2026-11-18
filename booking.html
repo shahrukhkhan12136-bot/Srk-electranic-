@@ -943,7 +943,7 @@ function mountCustomerAiAssistant(){
   if(!customerSb||!window.SrkAiAssistantApp?.mountSrkAiAssistant)return;
   if(!customerAiAssistantWidget){
     const supportMount=document.getElementById("customerAiAssistantMount");
-    if(supportMount){try{customerAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:supportMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"customer_support"});}catch(_){customerAiAssistantWidget=null;supportMount.textContent="AI सहायता अभी उपलब्ध नहीं है। कृपया मौजूदा सहायता विकल्प इस्तेमाल करें।";}}
+    if(supportMount){supportMount.textContent="";try{customerAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:supportMount,supabaseClient:customerSb,appRole:"customer",moduleKey:"customer_support"});}catch(_){customerAiAssistantWidget=null;supportMount.textContent="AI सहायता अभी उपलब्ध नहीं है। कृपया मौजूदा सहायता विकल्प इस्तेमाल करें।";}}
   }
   if(!customerBookingAiAssistantWidget){
     const bookingMount=document.getElementById("customerBookingAssistantMount");
