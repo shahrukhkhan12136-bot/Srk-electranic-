@@ -292,3 +292,8 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 
 - Message और human-handoff दोनों flows में injected `createId()` अब `try` के अंदर चलता है। अगर key factory exception दे, widget generic safe error path लेता है और `finally` में busy state/control recovery होती है; uncaught exception से UI permanently disabled नहीं रहनी चाहिए।
 - Regression source assertions जोड़े गए हैं। Runtime tests अभी execute नहीं हुए हैं।
+
+### AI widget idempotency key validation और retry recovery
+
+- पिछली hardening में key factory error catch हो रहा था, लेकिन key बनाते समय pending message/summary पहले सेट होने से retry में नया key न बनने का edge case था। अब UUID key पहले बनती और validate होती है; उसके बाद ही pending text/summary commit होता है। Missing key पर retry factory दोबारा चलती है।
+- Message और handoff दोनों में UUID format client contract के अनुरूप validate होता है। Regression assertions अपडेट किए गए हैं। Runtime tests अभी execute नहीं हुए हैं।
