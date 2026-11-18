@@ -89,3 +89,18 @@ Production DB query/write, migration apply/replay, schema deployment, paid DB br
 `electrician.html` में `loadEarnings()` सीधे `sb.rpc('srk_get_my_earnings')` बुलाता है। Summary calculation अभी केवल completed + paid rows जोड़ती है, लेकिन RPC payload की pre-payment `amount_received` और `commission_amount` fields फिर भी authenticated client तक पहुँचती हैं। इसलिए frontend का paid-only filter data exposure को नहीं रोकता।
 
 यह UI existing payout ledger `srk_electrician_payouts` से electrician_payable और payout status भी पढ़ती है। किसी replacement में इस ledger की RLS/ownership policy और अलग payout lifecycle को preserve करना अनिवार्य है।
+
+## 11. नया Earnings RPC split-leak audit — verified लेकिन unreconciled payout
+
+18 नवंबर की migration chain में 20261118080000_align_offer_85_rate_and_payout_reconciliation.sql का अंतिम srk_get_my_earnings() body जाँचा। इसमें payout reconciliation का status अलग से निकाला जाता है, और commission_amount, electrician_earning, company_share, payout_amount, payout_status को reconciliation के अनुसार gate किया गया है। लेकिन एक शेष असंगति मिली:
+
+- customer_labour_gross का CASE verified payment और labour bill मौजूद होने पर bill.labour_amount लौटा देता है; इसमें payout_check.reconciliation_status='reconciled' की शर्त नहीं है।
+- इसलिए payment verified लेकिन payout ledger missing/mismatch/incomplete होने पर SQL RPC gross labour amount उजागर कर सकता है।
+- lib/electrician-rate-view.js के buildElectricianJobAccounting() में इसी स्थिति में gross, materials, electrician earning और company share सभी null रखे जाते हैं; अतः SQL RPC और DTO visibility contract में अंतर है।
+- Actual customer receipt (amount_received) को verified payment पर दिखाना अलग बात है; वह customer से प्राप्त वास्तविक राशि है, payout split नहीं।
+
+आवश्यक additive source fix: अगली migration में customer_labour_gross को भी केवल verified.is_verified AND payout_check.reconciliation_status='reconciled' AND bill.labour_amount IS NOT NULL पर लौटाएँ। Checkout-started branch का वर्तमान gross display नियम जस का तस रहे। payment_stage='payment_verified' को reconciliation status से अलग रखें, ताकि payment सत्यापन और payout reconciliation दो अलग अवस्थाएँ रहें।
+
+आवश्यक regression test: verified payment + missing payout row, mismatch, incomplete ledger—तीनों में amount_received वास्तविक verified receipt रहे, पर customer_labour_gross, company_share, electrician_earning, payout_amount और payout_status withheld रहें। Reconciled case में ही split खुले। Existing tests/customer-electrician-payment-history-contract.test.js में latest earnings SQL body के लिए assertion जोड़ें।
+
+यह अभी source-level finding है। कोई migration बनाई या लागू नहीं गई। इस वातावरण में Supabase CLI उपलब्ध नहीं है; Supabase workflow के अनुसार नई migration को supabase migration new से बनाना आवश्यक है, इसलिए migration filename/SQL हाथ से बनाकर commit नहीं किया गया। Production DB और deployment अछूते हैं।
