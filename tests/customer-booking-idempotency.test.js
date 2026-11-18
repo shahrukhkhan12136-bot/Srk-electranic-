@@ -75,7 +75,9 @@ function mockSupabase({ existingRows = [], insertResponse, insertStatus = 201 } 
     }
     if (target.endsWith('/rest/v1/rpc/srk_get_current_customer_rate_catalogue')) return response({
       rate_version_id: '123e4567-e89b-42d3-a456-426614174099',
-      rates: { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 }\n    });\n    if (target.includes('/rest/v1/job_offers?select=id,match_level')) return response([]);
+      rates: { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 }
+    });
+    if (target.includes('/rest/v1/job_offers?select=id,match_level')) return response([]);
     throw new Error('Unexpected Supabase request: ' + target);
   };
   return calls;
