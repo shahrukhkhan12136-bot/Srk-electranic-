@@ -389,3 +389,26 @@ test("AI handoff rejects custom prototypes and ignores inherited optional fields
   }
   assert.equal(calls, 1);
 });
+
+
+test("AI client rejects bearer tokens with whitespace, control characters, or excessive length before fetch", async () => {
+  let calls = 0;
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async () => { calls++; return jsonResponse({}); }
+  });
+  const base = {
+    moduleKey: "customer_support", message: "status",
+    accessToken: TOKEN, idempotencyKey: KEY
+  };
+  for (const accessToken of [
+    " " + TOKEN, TOKEN + " ", "token with spaces",
+    "token\\r\\nInjected: yes", "x".repeat(8193)
+  ]) {
+    await assert.rejects(
+      client.sendMessage({ ...base, accessToken }),
+      error => error.code === "authentication_required"
+    );
+  }
+  assert.equal(calls, 0);
+});
