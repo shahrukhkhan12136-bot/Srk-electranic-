@@ -60,3 +60,20 @@ test("array-shaped action and approval payloads cannot authorize execution", () 
   assert.equal(isApprovalBoundToAction({ action, approval: [], nowMs }), false);
   assert.equal(isApprovalBoundToAction({ action: [], approval: [], nowMs }), false);
 });
+
+
+test("execution rejects caller module or action type that differs from the proposed action", () => {
+  const nowMs = Date.parse("2026-11-18T12:00:00Z");
+  assert.deepEqual(mayExecuteAiAction({
+    moduleKey: "electrician_assistant", toolKey: "read_work_guidance", actionType: "rate_publish",
+    action, approval, nowMs
+  }), { allowed: false, reason: "action_context_mismatch" });
+  assert.deepEqual(mayExecuteAiAction({
+    moduleKey: "booking_assistant", toolKey: "prepare_booking_draft", actionType: "read_only",
+    action, approval, nowMs
+  }), { allowed: false, reason: "action_context_mismatch" });
+  assert.deepEqual(mayExecuteAiAction({
+    moduleKey: "booking_assistant", toolKey: "prepare_booking_draft", actionType: "rate_publish",
+    action: { ...action, module_key: "customer_support" }, approval, nowMs
+  }), { allowed: false, reason: "action_context_mismatch" });
+});
