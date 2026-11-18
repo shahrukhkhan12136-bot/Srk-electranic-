@@ -180,9 +180,12 @@ test("Customer and Electrician app shells prepare role-scoped mounts while prese
     assert.match(source, /\/lib\/ai-assistant-app\.js/);
   }
   assert.match(customer, /id="customerAiAssistantMount"/);
+  assert.match(customer, /id="customerBookingAssistantMount"/);
   assert.match(customer, /appRole:"customer",moduleKey:"customer_support"/);
+  assert.match(customer, /appRole:"customer",moduleKey:"booking_assistant"/);
   assert.match(customer, /mountCustomerAiAssistant\(\);/);
   assert.match(customer, /destroyCustomerAiAssistant\(\);/);
+  assert.match(customer, /customerBookingAiAssistantWidget\?\.destroy\?\.\(\)/);
   assert.match(electrician, /id="electricianAiAssistantMount"/);
   assert.match(electrician, /appRole:"electrician",moduleKey:"electrician_assistant"/);
   assert.match(electrician, /mountElectricianAiAssistant\(\);/);
