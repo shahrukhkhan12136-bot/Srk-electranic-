@@ -42,7 +42,7 @@ test("new Catalogue online settlement RPC locks booking, checks exact order and 
 });
 
 test("new Catalogue Admin cash RPC is Main Admin-only, locks booking and records cash evidence before payment update", () => {
-  const fn = extract("srk_admin_record_new_booking_cash_payment");
+  const fn = cashHardeningMigration.match(/create or replace function public\\.srk_admin_record_new_booking_cash_payment\\([\\s\\S]*?\\n\\$\\$;/i)?.[0] || "";
   assert.ok(fn);
   assert.match(fn, /public\.is_srk_admin\(\)/i);
   assert.match(fn, /from public\.service_bookings where id=p_booking_id for update/i);
