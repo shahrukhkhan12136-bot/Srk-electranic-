@@ -9,6 +9,16 @@
   NODE_VERSION = "20"
 
 [[redirects]]
+  from = "/api/v1/ai/assistant"
+  to = "/.netlify/functions/ai-assistant"
+  status = 200
+
+[[redirects]]
+  from = "/api/v1/ai/handoff"
+  to = "/.netlify/functions/ai-handoff"
+  status = 200
+
+[[redirects]]
   from = "/api/create-booking"
   to = "/.netlify/functions/create-booking"
   status = 200
