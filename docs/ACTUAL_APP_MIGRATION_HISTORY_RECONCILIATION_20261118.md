@@ -52,6 +52,17 @@ Therefore the duplicate prefix in the branch does not represent a duplicate vers
 
 However, the ledger listing provides only version/name metadata. It does not prove the exact SQL bytes previously applied. Do not rename or rewrite the branch files solely from this mapping until their contents and the full migration history are reconciled.
 
+
+## Local clean-replay dependency review — amount_paid
+
+The checked-in COMPLETE_DATABASE_SETUP.sql defines service_bookings.commission_rate and commission_amount, but does not define amount_paid (source inspection).
+
+The migration 20261109003000_secure_commission_reporting.sql grants column-level UPDATE on service_bookings.amount_paid. The later migration 20261116200000_restore_service_bookings_amount_paid.sql adds that column. In timestamp order, the grant therefore precedes the column addition in the current branch.
+
+The quote workflow migration 20261109_electrician_inspection_quotes_and_service_only_commission.sql also references NEW.amount_paid inside its trigger function. PL/pgSQL function-body field resolution can be deferred until execution, so this reference alone is not proof that CREATE FUNCTION will fail. The earlier column-level GRANT on amount_paid is the direct clean-replay ordering concern if no earlier migration creates the column.
+
+This is a source-level finding only. No disposable local Supabase full replay was executed in this pass, and no hosted schema was changed. Before replay, identify whether any earlier branch migration adds amount_paid; otherwise move/introduce the column before the first GRANT/reference in a forward-safe migration plan, with tests.
+
 ## Feature branch deployment status
 
 The application ledger contains no 20261118 versions. The current rate-catalogue and booking-snapshot migrations dated 18 Nov are therefore not recorded as applied in this application's migration ledger at the time of this read-only check.
