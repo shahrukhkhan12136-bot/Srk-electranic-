@@ -210,6 +210,27 @@ test("AI transport rejects malformed and array response envelopes safely", async
   }
 });
 
+test("AI transport converts rejected or malformed JSON bodies to a safe client error", async () => {
+  for (const json of [
+    async () => { throw new Error("private upstream detail"); },
+    async () => undefined
+  ]) {
+    const client = createAiAssistantClient({
+      enabled: true, baseUrl: "https://api.example.test",
+      fetchImpl: async () => ({ ok: true, status: 200, json })
+    });
+    await assert.rejects(
+      client.sendMessage({
+        moduleKey: "customer_support", message: "status",
+        accessToken: TOKEN, idempotencyKey: KEY
+      }),
+      error => error instanceof AiAssistantClientError &&
+        error.code === "invalid_ai_response" && error.status === 200 &&
+        !error.message.includes("private upstream detail")
+    );
+  }
+});
+
 test("AI transport maps non-success HTTP status without parsing an error body", async () => {
   let parsed = false;
   const client = createAiAssistantClient({
