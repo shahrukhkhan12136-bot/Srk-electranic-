@@ -76,6 +76,8 @@ test("new Catalogue Admin cash settlement is Catalogue-only and rejects unexpect
   assert.match(cashHardeningMigration, /razorpay_payment_id is not null/i);
   assert.match(cashHardeningMigration, /revoke all on function public\.srk_admin_record_new_booking_cash_payment\(uuid,text,text\) from public,anon/i);
   assert.match(cashHardeningMigration, /grant execute on function public\.srk_admin_record_new_booking_cash_payment\(uuid,text,text\) to authenticated/i);
+  assert.match(cashHardeningMigration, /pg_advisory_xact_lock\(hashtextextended\(lower\(v_reference\), 73119\)\)/i);
+  assert.match(cashHardeningMigration, /MANUAL_PAYMENT_REFERENCE_ALREADY_USED/i);
 });
 
 test("new Catalogue Admin UPI/bank settlement validates method, booking state, unique evidence and direct-SRK fee collection", () => {
