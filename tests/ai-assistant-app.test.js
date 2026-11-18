@@ -3,9 +3,13 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { APP_MODULES_BY_ROLE, mountSrkAiAssistant } = require("../lib/ai-assistant-app");
 
-test("app composition remains inert unless the post-launch flag is explicitly enabled", () => {
+test("app composition remains inert unless the post-launch flag is explicitly enabled as an own config value", () => {
   assert.equal(mountSrkAiAssistant({ config: {} }), null);
   assert.equal(mountSrkAiAssistant({ config: { AI_ASSISTANT_ENABLED: false } }), null);
+  assert.equal(mountSrkAiAssistant({ config: null }), null);
+  assert.equal(mountSrkAiAssistant({ config: [] }), null);
+  const inheritedFlag = Object.create({ AI_ASSISTANT_ENABLED: true });
+  assert.equal(mountSrkAiAssistant({ config: inheritedFlag }), null);
 });
 
 test("Customer and Electrician module permissions are separated", () => {
