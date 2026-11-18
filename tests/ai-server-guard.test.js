@@ -58,6 +58,13 @@ test("module authorization is derived only from trusted app_metadata role", asyn
   assert.equal((await forged.handler(event({ body: { module_key: "reports_operations", message: "hi" } }))).statusCode, 403);
 });
 
+test("staff and reports modules remain denied until database-backed RBAC is implemented", async () => {
+  const staff = setup({ role: "staff" });
+  const admin = setup({ role: "admin" });
+  assert.equal((await staff.handler(event({ body: { module_key: "staff_assistant", message: "hi" } }))).statusCode, 403);
+  assert.equal((await admin.handler(event({ body: { module_key: "reports_operations", message: "hi" } }))).statusCode, 403);
+});
+
 test("malformed assistant requests and missing idempotency keys are rejected", async () => {
   const { handler } = setup();
   assert.equal((await handler(event({ key: null, body: { module_key: "customer_support", message: "hi" } }))).statusCode, 400);
