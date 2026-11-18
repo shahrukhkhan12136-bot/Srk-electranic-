@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { calculateElectricianNetPaise, calculateInternalResidualPaise } = require("../lib/electrician-net-rate");
+const { calculateElectricianNetPaise, calculateElectricianRateListPaise, calculateInternalResidualPaise } = require("../lib/electrician-net-rate");
 const { INITIAL_RATES_PAISE } = require("../lib/commercial-rate-policy");
 
 test("1000 rupees gross labour yields 850 net and 150 internal residual", () => {
@@ -42,5 +42,30 @@ test("Admin rate edits automatically derive the new 85 percent amount", () => {
 test("rejects zero, negative, fractional and unsafe amounts", () => {
   for (const value of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
     assert.throws(() => calculateElectricianNetPaise(value));
+  }
+});
+
+test("rate-list amount is calculated directly as 85 percent with integer-paise half-up rounding", () => {
+  assert.equal(calculateElectricianRateListPaise(100000), 85000);
+  assert.equal(calculateElectricianRateListPaise(89900), 76415);
+  assert.equal(calculateElectricianRateListPaise(99900), 84915);
+});
+
+test("direct 85 percent rate-list calculation rounds exact half-paise ties upward", () => {
+  assert.equal(calculateElectricianRateListPaise(10), 9);  // 8.5 paise
+  assert.equal(calculateElectricianRateListPaise(30), 26); // 25.5 paise
+  assert.equal(calculateElectricianRateListPaise(50), 43); // 42.5 paise
+  assert.equal(calculateElectricianRateListPaise(70), 60); // 59.5 paise
+});
+
+test("rate-list 85 percent is not passed through a second 15 percent deduction", () => {
+  const displayed = calculateElectricianRateListPaise(100000);
+  assert.equal(displayed, 85000);
+  assert.notEqual(displayed, calculateElectricianNetPaise(displayed));
+});
+
+test("rate-list helper rejects invalid integer-paise amounts", () => {
+  for (const value of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => calculateElectricianRateListPaise(value));
   }
 });
