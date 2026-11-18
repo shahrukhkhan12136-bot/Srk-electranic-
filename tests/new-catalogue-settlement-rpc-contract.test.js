@@ -10,6 +10,7 @@ const hardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/mig
 const cashHardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118130000_harden_catalogue_admin_cash_settlement.sql"), "utf8");
 const manualDigitalMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118140000_add_catalogue_admin_manual_digital_settlement.sql"), "utf8");
 const adminHtml = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
+const bookingHtml = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
 
 const extract = (name) => {
   const match = migration.match(new RegExp("create or replace function public\\." + name + "\\([\\s\\S]*?\\n\\$\\$;", "i"));
@@ -108,4 +109,14 @@ test("new Catalogue digital settlement validates bill assignment and reserved de
   assert.match(manualDigitalMigration, /v_labour\.electrician_profile_id is distinct from v_booking\.assigned_electrician_id/i);
   assert.match(manualDigitalMigration, /status='reserved' and reserved_booking_id=p_booking_id[\s\S]*?customer_user_id=v_booking\.customer_user_id[\s\S]*?for update/i);
   assert.match(manualDigitalMigration, /CANCELLATION_FEE_DEBT_RESERVATION_MISMATCH/i);
+});
+
+
+test("customer payment consent UI distinguishes Razorpay UPI checkout from standalone Admin-recorded UPI/bank transfer", () => {
+  const paymentSelect = bookingHtml.match(/<select id="payment" required>([\\s\\S]*?)<\\/select>/i)?.[1] || "";
+  assert.match(paymentSelect, /value="Cash"/);
+  assert.match(paymentSelect, /value="Razorpay ऑनलाइन भुगतान"/);
+  assert.doesNotMatch(paymentSelect, /value="(?:upi|bank_transfer|bank transfer)"/i);
+  assert.match(adminHtml, /क्या आप इस बुकिंग के लिए Cash की जगह Online/);
+  assert.match(manualDigitalMigration, /BOOKING_PAYMENT_METHOD_MISMATCH/);
 });
