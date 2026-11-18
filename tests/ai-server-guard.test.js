@@ -56,12 +56,12 @@ test("AI routes require POST and bearer authentication before processing", async
   const { handler, calls } = setup();
   assert.equal((await handler(event({ method: "GET" }))).statusCode, 405);
   assert.equal((await handler(event({ token: null }))).statusCode, 401);
-  const malformedBearer = event();
+  const malformedBearer = event({ body: { module_key: "customer_support", message: "hello" } });
   malformedBearer.headers.authorization = "Bearer\\svalid-token";
   assert.equal((await handler(malformedBearer)).statusCode, 401);
   assert.equal(calls.length, 0, "malformed bearer headers must not reach Supabase");
   for (const malformedValue of ["Bearer valid-token\n", "Bearer valid-token\r\n", "Bearer\nvalid-token"]) {
-    const malformedHeader = event();
+    const malformedHeader = event({ body: { module_key: "customer_support", message: "hello" } });
     malformedHeader.headers.authorization = malformedValue;
     assert.equal((await handler(malformedHeader)).statusCode, 401);
   }
@@ -417,7 +417,7 @@ test("AI server rejects bearer tokens with whitespace, controls, or excessive le
     "token\u200bwith-zero-width", "token\ufeffwith-bom", "token😀with-emoji",
     "x".repeat(8193)
   ]) {
-    const request = event();
+    const request = event({ body: { module_key: "customer_support", message: "hello" } });
     request.headers.authorization = "Bearer " + token;
     assert.equal((await handler(request)).statusCode, 401);
   }
