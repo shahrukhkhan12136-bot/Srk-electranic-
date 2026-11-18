@@ -412,3 +412,36 @@ test("AI client rejects bearer tokens with whitespace, control characters, or ex
   }
   assert.equal(calls, 0);
 });
+
+
+test("AI client rejects UUID inputs with trailing line terminators before fetch", async () => {
+  let calls = 0;
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async () => { calls++; return jsonResponse({}); }
+  });
+  await assert.rejects(
+    client.sendMessage({
+      moduleKey: "customer_support", message: "status",
+      accessToken: TOKEN, idempotencyKey: KEY + "\\n"
+    }),
+    error => error.code === "invalid_idempotency_key"
+  );
+  await assert.rejects(
+    client.sendMessage({
+      moduleKey: "customer_support", message: "status",
+      accessToken: TOKEN, idempotencyKey: KEY,
+      conversationId: CONVERSATION + "\\n"
+    }),
+    error => error.code === "invalid_conversation_id"
+  );
+  await assert.rejects(
+    client.sendMessage({
+      moduleKey: "customer_support", message: "status",
+      accessToken: TOKEN, idempotencyKey: KEY,
+      context: { booking_id: BOOKING + "\\n" }
+    }),
+    error => error.code === "invalid_context"
+  );
+  assert.equal(calls, 0);
+});
