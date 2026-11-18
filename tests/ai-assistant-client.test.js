@@ -296,3 +296,40 @@ test("AI client rejects inherited request credentials and custom request prototy
   );
   assert.equal(calls, 0);
 });
+
+test("AI client ignores inherited optional context and conversation fields", async () => {
+  const oldContext = Object.getOwnPropertyDescriptor(Object.prototype, "context");
+  const oldConversation = Object.getOwnPropertyDescriptor(Object.prototype, "conversationId");
+  let sentBody;
+  try {
+    Object.defineProperty(Object.prototype, "context", {
+      configurable: true, value: { booking_id: BOOKING }
+    });
+    Object.defineProperty(Object.prototype, "conversationId", {
+      configurable: true, value: CONVERSATION
+    });
+    const client = createAiAssistantClient({
+      enabled: true, baseUrl: "https://api.example.test",
+      fetchImpl: async (_url, options) => {
+        sentBody = JSON.parse(options.body);
+        return jsonResponse({
+          success: true, conversation_id: CONVERSATION,
+          module_key: "customer_support", reply: "उत्तर",
+          action: { status: "none", action_id: null, approval_required: false },
+          handoff: { required: false, handoff_id: null, queue: null, status: "not_required" }
+        });
+      }
+    });
+    await client.sendMessage({
+      moduleKey: "customer_support", message: "status",
+      accessToken: TOKEN, idempotencyKey: KEY
+    });
+    assert.equal(sentBody.conversation_id, null);
+    assert.deepEqual(sentBody.context, {});
+  } finally {
+    if (oldContext) Object.defineProperty(Object.prototype, "context", oldContext);
+    else delete Object.prototype.context;
+    if (oldConversation) Object.defineProperty(Object.prototype, "conversationId", oldConversation);
+    else delete Object.prototype.conversationId;
+  }
+});
