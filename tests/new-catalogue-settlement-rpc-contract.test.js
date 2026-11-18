@@ -6,6 +6,7 @@ const path = require("node:path");
 
 const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114280000_cancellation_fee_carry_forward_and_accounting.sql"), "utf8");
 const payoutMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114360000_new_category_electrician_payout_reconciliation.sql"), "utf8");
+const hardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118120000_harden_online_payment_settlement_state.sql"), "utf8");
 
 const extract = (name) => {
   const match = migration.match(new RegExp("create or replace function public\\." + name + "\\([\\s\\S]*?\\n\\$\\$;", "i"));
@@ -54,4 +55,14 @@ test("Catalogue payout trigger sources electrician labour only from immutable bi
   assert.match(payoutMigration, /v_service := round\(v_bill\.labour_amount,2\)/i);
   assert.match(payoutMigration, /v_materials := 0/i);
   assert.match(payoutMigration, /round\(v_service \+ v_materials - v_commission,2\)/i);
+});
+
+test("online settlement hardening requires Catalogue booking, exact order before replay, and payable state allow-list", () => {
+  assert.match(hardeningMigration, /v_booking\.selected_category is null then raise exception 'NEW_CATALOGUE_BOOKING_REQUIRED'/i);
+  assert.ok(hardeningMigration.indexOf("RAZORPAY_ORDER_MISMATCH") < hardeningMigration.indexOf("already_processed"));
+  assert.match(hardeningMigration, /payment_status is null or v_booking\.payment_status not in \('unpaid','pending'\)/i);
+  assert.match(hardeningMigration, /razorpay_payment_id is not null or v_booking\.payment_verified_at is not null/i);
+  assert.match(hardeningMigration, /coalesce\(v_booking\.amount_paid,0\)<>0/i);
+  assert.match(hardeningMigration, /revoke all on function public\.srk_service_role_record_online_booking_payment\(uuid,text,text,bigint\) from public,anon,authenticated/i);
+  assert.match(hardeningMigration, /grant execute on function public\.srk_service_role_record_online_booking_payment\(uuid,text,text,bigint\) to service_role/i);
 });
