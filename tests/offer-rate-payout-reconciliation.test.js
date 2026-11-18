@@ -8,6 +8,7 @@ const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/2
 const rateView = fs.readFileSync(path.join(__dirname, "../lib/electrician-rate-view.js"), "utf8");
 const netRate = require("../lib/electrician-net-rate");
 const bookingApi = fs.readFileSync(path.join(__dirname, "../create-booking.js"), "utf8");
+const snapshotGuard = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118090000_enforce_booking_rate_snapshot_immutability.sql"), "utf8");
 
 test("electrician rate-list builder calls the direct 85 percent half-up helper", () => {
   assert.match(rateView, /calculateElectricianRateListPaise/);
@@ -67,4 +68,15 @@ test("booking API saves the selected published catalogue version as the immutabl
   assert.match(bookingApi, /estimate_rate_card_version/);
   assert.match(bookingApi, /estimated_labour_paise/);
   assert.match(bookingApi, /loadSnapshotRate8h/);
+});
+
+
+test("booking commercial rate snapshot fields are write-once after booking creation", () => {
+  assert.match(snapshotGuard, /srk_guard_booking_rate_snapshot_immutable/);
+  assert.match(snapshotGuard, /OLD\.estimated_labour_paise IS DISTINCT FROM NEW\.estimated_labour_paise/);
+  assert.match(snapshotGuard, /OLD\.estimate_rate_card_version IS DISTINCT FROM NEW\.estimate_rate_card_version/);
+  assert.match(snapshotGuard, /OLD\.selected_rate_tier IS DISTINCT FROM NEW\.selected_rate_tier/);
+  assert.match(snapshotGuard, /BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE/);
+  assert.match(snapshotGuard, /BEFORE UPDATE OF selected_category,selected_duration_hours,selected_rate_tier/);
+  assert.doesNotMatch(snapshotGuard, /UPDATE\s+public\.service_bookings/i);
 });
