@@ -62,6 +62,30 @@ async function loadSnapshotRate8h(booking) {
   return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
 }
 
+
+async function loadReplayDetails(booking) {
+  let offersCreated = null;
+  let matchLevel = null;
+  let rate8hPaise = null;
+
+  try {
+    const rows = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(booking.id));
+    const offers = Array.isArray(rows) ? rows : [];
+    offersCreated = offers.length;
+    matchLevel = offers[0]?.match_level || null;
+  } catch (error) {
+    console.error("Booking replay offer metadata unavailable:", error.httpStatus || error.name || "UnknownError");
+  }
+
+  try {
+    rate8hPaise = await loadSnapshotRate8h(booking);
+  } catch (error) {
+    console.error("Booking replay historical rate unavailable:", error.httpStatus || error.name || "UnknownError");
+  }
+
+  return { offersCreated, matchLevel, rate8hPaise };
+}
+
 async function checkPublicRateLimit(endpoint, ipHash, limit) {
   const result = await supabase("rpc/srk_check_public_rate_limit", {
     method: "POST",
@@ -194,12 +218,10 @@ const work_details = clean(body.work_details, 2000);
       if (existing.customer_user_id !== customer_user_id || existing.customer_request_fingerprint !== requestFingerprint) {
         return json(409, { success: false, error: "यह बुकिंग अनुरोध पहचान पहले अलग जानकारी के साथ इस्तेमाल हो चुकी है। नई बुकिंग शुरू करें।" });
       }
-      const priorOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(existing.id));
-      const priorOfferRows = Array.isArray(priorOffers) ? priorOffers : [];
-      const snapshotRate8hPaise = await loadSnapshotRate8h(existing);
+      const replayDetails = await loadReplayDetails(existing);
       return json(200, { success: true, booking_id: existing.id, replayed: true,
-        estimate: { amount_paise: existing.estimated_labour_paise, amount_rupees: (existing.estimated_labour_paise / 100).toFixed(2), rate8h_paise: snapshotRate8hPaise, rate_card_version: existing.estimate_rate_card_version },
-        offers_created: priorOfferRows.length, match_level: priorOfferRows[0]?.match_level || null,
+        estimate: { amount_paise: existing.estimated_labour_paise, amount_rupees: (existing.estimated_labour_paise / 100).toFixed(2), rate8h_paise: replayDetails.rate8hPaise, rate_card_version: existing.estimate_rate_card_version },
+        offers_created: replayDetails.offersCreated, match_level: replayDetails.matchLevel,
         message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
     }
     // The service-role server reads the same published catalogue used by the
@@ -239,12 +261,10 @@ const work_details = clean(body.work_details, 2000);
       const racedRows = await findByRequestKey();
       const raced = Array.isArray(racedRows) ? racedRows[0] : null;
       if (!raced || raced.customer_user_id !== customer_user_id || raced.customer_request_fingerprint !== requestFingerprint) throw insertError;
-      const racedOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(raced.id));
-      const racedOfferRows = Array.isArray(racedOffers) ? racedOffers : [];
-      const snapshotRate8hPaise = await loadSnapshotRate8h(raced);
+      const replayDetails = await loadReplayDetails(raced);
       return json(200, { success: true, booking_id: raced.id, replayed: true,
-        estimate: { amount_paise: raced.estimated_labour_paise, amount_rupees: (raced.estimated_labour_paise / 100).toFixed(2), rate8h_paise: snapshotRate8hPaise, rate_card_version: raced.estimate_rate_card_version },
-        offers_created: racedOfferRows.length, match_level: racedOfferRows[0]?.match_level || null,
+        estimate: { amount_paise: raced.estimated_labour_paise, amount_rupees: (raced.estimated_labour_paise / 100).toFixed(2), rate8h_paise: replayDetails.rate8hPaise, rate_card_version: raced.estimate_rate_card_version },
+        offers_created: replayDetails.offersCreated, match_level: replayDetails.matchLevel,
         message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
     }
     const booking = Array.isArray(inserted) ? inserted[0] : null;
