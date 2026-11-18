@@ -143,3 +143,19 @@ test("enabled app composition rejects malformed HTTPS URLs and embedded credenti
     else globalThis.SrkAiAssistantClient = oldClient;
   }
 });
+
+test("enabled composition rejects an inherited API base URL", () => {
+  const oldValue = Object.getOwnPropertyDescriptor(Object.prototype, "AI_ASSISTANT_API_BASE_URL");
+  try {
+    Object.defineProperty(Object.prototype, "AI_ASSISTANT_API_BASE_URL", {
+      configurable: true, value: "https://api.example.test"
+    });
+    assert.throws(() => mountSrkAiAssistant({
+      config: { AI_ASSISTANT_ENABLED: true },
+      appRole: "customer", moduleKey: "customer_support"
+    }), /ai_assistant_api_base_url_required/);
+  } finally {
+    if (oldValue) Object.defineProperty(Object.prototype, "AI_ASSISTANT_API_BASE_URL", oldValue);
+    else delete Object.prototype.AI_ASSISTANT_API_BASE_URL;
+  }
+});
