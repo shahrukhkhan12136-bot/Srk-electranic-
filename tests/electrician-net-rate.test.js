@@ -58,6 +58,15 @@ test("direct 85 percent rate-list calculation rounds exact half-paise ties upwar
   assert.equal(calculateElectricianRateListPaise(70), 60); // 59.5 paise
 });
 
+test("direct 85 percent display and legacy 15 percent payout rounding remain separate at paise ties", () => {
+  const cases = [[10, 9, 8], [30, 26, 25], [50, 43, 42], [70, 60, 59]];
+  for (const [gross, directRateList, ledgerNet] of cases) {
+    assert.equal(calculateElectricianRateListPaise(gross), directRateList);
+    assert.equal(calculateElectricianNetPaise(gross), ledgerNet);
+    assert.equal(calculateInternalResidualPaise(gross) + ledgerNet, gross);
+  }
+});
+
 test("rate-list 85 percent is not passed through a second 15 percent deduction", () => {
   const displayed = calculateElectricianRateListPaise(100000);
   assert.equal(displayed, 85000);
