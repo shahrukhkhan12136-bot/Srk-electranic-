@@ -5,32 +5,32 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118080000_align_offer_85_rate_and_payout_reconciliation.sql"), "utf8");
+const roundingMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118110000_unify_electrician_rate_rounding.sql"), "utf8");
 const rateView = fs.readFileSync(path.join(__dirname, "../lib/electrician-rate-view.js"), "utf8");
 const netRate = require("../lib/electrician-net-rate");
 const bookingApi = fs.readFileSync(path.join(__dirname, "../create-booking.js"), "utf8");
 const snapshotGuard = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118090000_enforce_booking_rate_snapshot_immutability.sql"), "utf8");
 const electricianUi = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
 
-test("electrician rate-list builder calls the direct 85 percent half-up helper", () => {
+test("electrician rate-list builder uses the payout-aligned shared net helper", () => {
   assert.match(rateView, /calculateElectricianRateListPaise/);
-  assert.doesNotMatch(rateView, /calculateElectricianNetPaise/);
+  assert.match(rateView, /calculateElectricianRateListPaise\(/);
 });
 
-test("SQL offer RPC uses the exact direct 85 percent integer-paise half-up expression", () => {
-  assert.match(migration, /floor\(\(b\.estimated_labour_paise::numeric\*8500\/10000\)\+0\.5\)::bigint/);
-  assert.doesNotMatch(migration, /b\.estimated_labour_paise-floor\(\(b\.estimated_labour_paise::numeric\*1500\+5000\)\/10000\)/);
+test("final SQL offer RPC uses gross minus rounded 15 percent commission", () => {
+  assert.match(roundingMigration, /b\.estimated_labour_paise - floor\(\(b\.estimated_labour_paise::numeric\*1500\/10000\)\+0\.5\)::bigint/);
+  assert.doesNotMatch(roundingMigration, /b\.estimated_labour_paise::numeric\*8500/);
   assert.match(migration, /estimate_rate_card_version text/);
   assert.match(migration, /b\.estimate_rate_card_version,/);
   assert.match(migration, /b\.estimate_rate_card_version IS NOT NULL AND b\.estimated_labour_paise>0/);
 });
 
-test("SQL and JavaScript direct 85 percent half-up arithmetic agree on 10, 30, 50 and 70 paise ties", () => {
-  const tieCases = [[10,9],[30,26],[50,43],[70,60]];
+test("SQL and JavaScript payout-aligned 15 percent rounding agree on half-paise ties", () => {
+  const tieCases = [[10,8],[30,25],[50,42],[70,59]];
   for (const [gross, expected] of tieCases) {
     assert.equal(netRate.calculateElectricianRateListPaise(gross), expected);
-    // SQL floor((gross * 8500 / 10000) + 0.5) uses the same positive-number half-up rule.
-    const sqlEquivalent = Number((BigInt(gross) * 8500n + 5000n) / 10000n);
-    assert.equal(sqlEquivalent, expected);
+    const commission = Number((BigInt(gross) * 1500n + 5000n) / 10000n);
+    assert.equal(gross - commission, expected);
   }
 });
 
