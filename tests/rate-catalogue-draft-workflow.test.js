@@ -142,3 +142,21 @@ test("Draft save UI sends validated four-tier paise payload to the RPC",async()=
  assert.ok(calls.some(call=>call.name==="srk_admin_list_rate_catalogue_drafts"));
  assert.match(elements.adminRateCatalogueStatus.textContent,/Draft सेव हुआ/);
 });
+
+test("Draft queue ignores stale concurrent refresh responses",async()=>{
+ const elements={adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""}};
+ let resolveFirst;
+ const first=new Promise(resolve=>{resolveFirst=resolve;});
+ let calls=0;
+ const context=vm.createContext({window:{},document:{getElementById(id){return elements[id];}},__rpc:async()=>{calls++;return calls===1?await first:{data:[{id:"newer",status:"draft",effective_at:"2027-12-02T10:00:00Z",reason:"Newest",rates:{}}],error:null};}});
+ const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
+ vm.runInContext(script,context);
+ vm.runInContext("sb={rpc:__rpc};user={id:'admin-test'};adminPortalMode='main_admin';",context);
+ const older=vm.runInContext("loadAdminRateCatalogueDrafts()",context);
+ await vm.runInContext("loadAdminRateCatalogueDrafts()",context);
+ resolveFirst({data:[{id:"older",status:"draft",effective_at:"2027-12-01T10:00:00Z",reason:"Stale",rates:{}}],error:null});
+ await older;
+ assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/Newest/);
+ assert.doesNotMatch(elements.adminRateCatalogueDraftQueue.innerHTML,/Stale/);
+ assert.equal(vm.runInContext("adminRateCatalogueDraftCache[0].id",context),"newer");
+});

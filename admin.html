@@ -858,7 +858,7 @@ const SRK_RATE_TIERS=[
  ['expert_electrician','Expert Electrician','rateExpertElectrician'],
  ['premium_electrical_specialist','Premium Electrical Specialist','ratePremiumSpecialist']
 ];
-let adminCurrentRateCatalogue=null,adminRateCatalogueBusy=false,adminRateCategoryBusy=new Set(),adminRateCatalogueDraftCache=[] ,adminEditingRateDraftId=null;
+let adminCurrentRateCatalogue=null,adminRateCatalogueBusy=false,adminRateCategoryBusy=new Set(),adminRateCatalogueDraftCache=[] ,adminEditingRateDraftId=null,adminRateCatalogueDraftRefreshSequence=0;
 function paiseToRupees(paise){return (Number(paise)/100).toFixed(2);}
 function adminRateTierOption(key,label,selectedKey){
  const rates=adminCurrentRateCatalogue&&adminCurrentRateCatalogue.rates;
@@ -911,8 +911,10 @@ async function loadAdminRateCatalogue(){
 async function loadAdminRateCatalogueDrafts(){
  const box=document.getElementById('adminRateCatalogueDraftQueue');
  if(!box||!sb||!user||adminPortalMode!=='main_admin')return;
+ const refreshSequence=++adminRateCatalogueDraftRefreshSequence;
  const {data,error}=await sb.rpc('srk_admin_list_rate_catalogue_drafts',{p_limit:50});
- if(error){box.textContent='Draft सूची नहीं खुली: '+error.message;return;}
+ if(refreshSequence!==adminRateCatalogueDraftRefreshSequence)return;
+ if(error){adminRateCatalogueDraftCache=[];box.textContent='Draft सूची नहीं खुली: '+error.message;return;}
  const rows=Array.isArray(data)?data:[];adminRateCatalogueDraftCache=rows;
  if(!rows.length){box.textContent='कोई Draft या Scheduled बदलाव बाकी नहीं है।';return;}
  box.innerHTML='<strong>Draft / Scheduled बदलाव</strong>'+rows.map((row,index)=>{
