@@ -2,7 +2,28 @@
 
 **Audit date:** 18 नवम्बर 2026  
 **Branch:** `feat/ai-rate-management-foundation-20261118`  
-**स्थिति:** Design-only contract. यह migration, deployed schema या live API नहीं है।
+**स्थिति (18 नवम्बर 2026):** यह दस्तावेज़ मूल design और पुराने pre-migration contract का रिकॉर्ड है। AI के लिए additive source migrations और server-side guard अब branch में मौजूद हैं। नीचे के पुराने प्रस्तावित schema names/fields को वास्तविक वर्तमान schema न मानें; जहां अंतर हो, नीचे दिया implementation status और SQL migrations authoritative हैं।
+
+## 0. वर्तमान repository implementation status
+
+AI storage की source migrations:
+
+- `20261118180000_private_ai_conversation_persistence.sql`: अलग AI conversation, message, idempotency, handoff queue और metadata-only audit tables; RLS; browser roles से direct table access revoke; append-only audit trigger।
+- `20261118190000_ai_idempotency_reservation_rpc.sql`: actor-scoped atomic reservation RPC; service-role-only।
+- `20261118200000_ai_idempotency_finalize_rpc.sql`: processing reservation को completed/failed करने का service-role-only RPC; response body store नहीं करता।
+
+वास्तविक schema में महत्वपूर्ण अंतर:
+
+- Conversation status `open`, `handoff_requested`, `closed` है; पुराना `handoff_pending` नाम लागू नहीं।
+- Message sender field `sender_kind` है और values `user`, `assistant`, `human_agent` हैं; पुराना `sender_type/system` contract लागू नहीं।
+- Handoff table का नाम `srk_ai_handoff_queue` है; handoff status `queued`, `assigned`, `resolved`, `cancelled` हैं।
+- Idempotency actor-scoped unique key `(actor_user_id,idempotency_key)` और SHA-256 digest `request_sha256` पर आधारित है। Response body store नहीं होती; reservation states में `reserved`, `conflict`, `replay`, `processing`, `failed` हैं।
+- Audit table `srk_ai_audit_events` में केवल metadata fields हैं; prompt/message body या provider payload columns नहीं हैं।
+- मौजूदा `lib/ai-server-guard.js` auth, profile, module, conversation ownership और booking access validate करता है; इसके बाद जानबूझकर `503 ai_not_enabled` देता है। AI routes अभी persistence RPC या provider से wired नहीं हैं।
+
+**जाँच की सीमा:** migrations और tests केवल Git branch में source हैं। इस update में कोई PostgreSQL replay, hosted/live database migration, deployment या AI provider call नहीं हुआ। AI default-off रहेगा; explicit launch approval के बिना इसे enable नहीं करना है।
+
+
 
 ## 1. मौजूदा सिस्टम से अलगाव
 
