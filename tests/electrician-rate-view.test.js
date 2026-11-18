@@ -21,13 +21,13 @@ test("electrician rate list contains only their approved categories and 85 perce
   assert.equal(result.items.length, 1);
 });
 
-test("rate list uses direct 85 percent half-up results for SQL tie cases", () => {
+test("rate list matches rounded 15 percent payout results for SQL tie cases", () => {
   const result = buildElectricianRateList({
     rates: { electrical_assistant: 10, skilled_electrician: 30, expert_electrician: 50, premium_electrical_specialist: 70 },
     approvedCategoryKeys: ["electrical_assistant", "skilled_electrician", "expert_electrician", "premium_electrical_specialist"],
     rateVersionId: "tie-v1", effectiveAt: "2026-11-18T00:00:00Z"
   });
-  assert.deepEqual(result.items.map(item => item.electrician_rate_paise), [9, 26, 43, 60]);
+  assert.deepEqual(result.items.map(item => item.electrician_rate_paise), [8, 25, 42, 59]);
 });
 
 test("rate list rejects an approved category without a source rate", () => {
