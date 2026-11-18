@@ -217,11 +217,11 @@ test("Electrician AI widget mounts only after an active approved profile is veri
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
-  assert.match(source, /profile=p;[\\s\\S]*?if\\(p&&p\\.active===true&&p\\.verification_status==="approved"\\)mountElectricianAiAssistant\\(\\);else destroyElectricianAiAssistant\\(\\);/);
-  assert.match(source, /function show\\(\\)[\\s\\S]*?if\\(user\\)\\{refresh\\(\\)\\}else destroyElectricianAiAssistant\\(\\)/);
-  assert.match(source, /profile=null;destroyElectricianAiAssistant\\(\\);/);
-  assert.match(source, /if\\(error\\)\\{profile=null;destroyElectricianAiAssistant\\(\\);/);
-  assert.match(source, /if\\(!p\\)\\{destroyElectricianAiAssistant\\(\\);/);
+  assert.match(source, /profile=p;[\s\S]*?if\(p&&p\.active===true&&p\.verification_status==="approved"\)mountElectricianAiAssistant\(\);else destroyElectricianAiAssistant\(\);/);
+  assert.match(source, /function show\(\)[\s\S]*?if\(user\)\{refresh\(\)\}else destroyElectricianAiAssistant\(\)/);
+  assert.match(source, /profile=null;destroyElectricianAiAssistant\(\);/);
+  assert.match(source, /if\(error\)\{profile=null;destroyElectricianAiAssistant\(\);/);
+  assert.match(source, /if\(!p\)\{destroyElectricianAiAssistant\(\);/);
 });
 
 
@@ -229,7 +229,7 @@ test("Electrician AI widget is destroyed immediately when the authenticated acco
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
-  assert.match(source, /function clearElectricianAccountView\\(\\)\\{\\s*destroyElectricianAiAssistant\\(\\);/);
+  assert.match(source, /function clearElectricianAccountView\(\)\{\s*destroyElectricianAiAssistant\(\);/);
 });
 
 
@@ -237,7 +237,7 @@ test("Electrician profile refresh errors clear stale profile and live offer chan
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
-  assert.match(source, /if\\(error\\)\\{profile=null;destroyElectricianAiAssistant\\(\\);if\\(offersChannel\\)\\{const oldChannel=offersChannel;offersChannel=null;Promise\\.resolve\\(sb\\.removeChannel\\(oldChannel\\)\\)\\.catch\\(\\(\\)=>\\{\\}\\);/);
+  assert.match(source, /if\(error\)\{profile=null;destroyElectricianAiAssistant\(\);if\(offersChannel\)\{const oldChannel=offersChannel;offersChannel=null;Promise\.resolve\(sb\.removeChannel\(oldChannel\)\)\.catch\(\(\)=>\{\}\);/);
 });
 
 
@@ -245,5 +245,5 @@ test("Electrician profile refresh exceptions remove the stale live offer channel
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
-  assert.match(source, /catch\\(e\\)\\{if\\(!isCurrent\\(\\)\\)return;profile=null;destroyElectricianAiAssistant\\(\\);if\\(offersChannel\\)\\{const oldChannel=offersChannel;offersChannel=null;Promise\\.resolve\\(sb\\.removeChannel\\(oldChannel\\)\\)\\.catch\\(\\(\\)=>\\{\\}\\);/);
+  assert.match(source, /catch\(e\)\{if\(!isCurrent\(\)\)return;profile=null;destroyElectricianAiAssistant\(\);if\(offersChannel\)\{const oldChannel=offersChannel;offersChannel=null;Promise\.resolve\(sb\.removeChannel\(oldChannel\)\)\.catch\(\(\)=>\{\}\);/);
 });
