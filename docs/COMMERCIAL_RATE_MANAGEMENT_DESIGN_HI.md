@@ -20,6 +20,8 @@ Rate List के लिए source migrations मौजूद हैं:
 - Main Admin authorization database RPC में `public.is_srk_admin()` से जाँचा जाता है।
 - Customer और electrician read RPC अलग हैं; electrician को केवल अपनी active approved categories की net rate मिलती है।
 - Booking estimate snapshot immutable है; पुरानी booking की कीमत को नए catalogue से दोबारा नहीं निकाला जाता।
+- Main Admin UI `admin.html` में मौजूद है: चारों tier rates का INR input, बदलाव का कारण, effective time, current published catalogue read, version-checked publish और electrician approved-category management। UI इन actions को केवल `adminPortalMode === 'main_admin'` पर चलाता है।
+- UI राशि को integer paise में बदलकर `srk_admin_publish_rate_catalogue` RPC बुलाता है; Main Admin authorization और expected-current-version concurrency guard database में भी लागू हैं।
 
 यहां “migration मौजूद” का अर्थ केवल Git branch में source file होना है। इसका अर्थ PostgreSQL replay, hosted DB update, deployment या production verification नहीं है। इन कार्यों के लिए अलग स्पष्ट अनुमति आवश्यक है।
 
