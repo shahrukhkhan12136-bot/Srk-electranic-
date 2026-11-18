@@ -306,3 +306,13 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Therefore a legitimate Customer who has not saved their profile may be denied AI access (403). This is fail-closed, but it is not yet a complete Customer role registry. Do not loosen this by trusting browser role or unverified user metadata. Before enabling Customer AI, implement/verify a server-trusted Customer account marker or guaranteed profile provisioning at account creation, and test existing users without profile rows.
 - Electrician lookup additionally requires `active=true`, `verification_status=approved`, and both identity columns matching Auth. Staff/Admin remain denied until a dedicated DB-backed permission check is integrated.
 - AI remains disabled (`ai_not_enabled`); no live route, persistence or provider is claimed.
+
+
+### Customer/Electrician app mount and launch kill switch audit (18 Nov 2026)
+
+- Customer app mounts the Customer Support AI widget only after an authenticated session has been loaded and the existing customer profile/support data refresh sequence completes; on logout it calls the widget destroy method.
+- Electrician app mounts only for a signed-in session and destroys the widget when the session is absent or changes to another user. Server-side guard still independently verifies the approved/active Electrician profile.
+- Shared app composition requires the own config property `AI_ASSISTANT_ENABLED === true` and a valid HTTPS `AI_ASSISTANT_API_BASE_URL`; the public `srk-config.js` currently contains neither property, so the widget remains absent by default.
+- Even if the browser flag were deliberately enabled prematurely, both server routes remain fail-closed with `ai_not_enabled`; UI flag is not an authorization or backend enablement switch.
+- Regression test added to ensure the public browser config does not accidentally acquire either launch property. CI must pass on the resulting commit before considering this source check verified.
+- This is app-shell preparation only. It does not mean AI conversations, provider calls, persistence, or human handoff are live.
