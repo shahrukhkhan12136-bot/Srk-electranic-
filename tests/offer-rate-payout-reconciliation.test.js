@@ -9,6 +9,7 @@ const rateView = fs.readFileSync(path.join(__dirname, "../lib/electrician-rate-v
 const netRate = require("../lib/electrician-net-rate");
 const bookingApi = fs.readFileSync(path.join(__dirname, "../create-booking.js"), "utf8");
 const snapshotGuard = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118090000_enforce_booking_rate_snapshot_immutability.sql"), "utf8");
+const electricianUi = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
 
 test("electrician rate-list builder calls the direct 85 percent half-up helper", () => {
   assert.match(rateView, /calculateElectricianRateListPaise/);
@@ -81,4 +82,9 @@ test("booking commercial rate snapshot fields are write-once after booking creat
   assert.match(snapshotGuard, /BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE/);
   assert.match(snapshotGuard, /BEFORE UPDATE OF selected_category,selected_duration_hours,selected_rate_tier/);
   assert.doesNotMatch(snapshotGuard, /UPDATE\s+public\.service_bookings/i);
+});
+
+test("electrician UI does not render an unreconciled company share as zero", () => {
+  assert.match(electricianUi, /x\.company_share==null\?' • कंपनी कमीशन Payout Ledger मिलान के बाद दिखेगा'/);
+  assert.match(electricianUi, /ग्राहक भुगतान सत्यापित है, लेकिन Payout Ledger मिलान स्थिति/);
 });
