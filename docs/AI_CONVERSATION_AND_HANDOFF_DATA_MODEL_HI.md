@@ -123,3 +123,9 @@ Electrician access की शर्तें: `user_id` और `auth_user_id` �
 - कोई migration apply नहीं हुई; Production/paid Database Branch नहीं बदली।
 - AI provider call, live conversation persistence और human handoff अभी उपलब्ध नहीं हैं।
 - App का default-off launch guard यथावत रहेगा।
+
+### 4.2 Customer AI widget mount का अतिरिक्त UI audit
+
+`syncCustomerSession()` में OTP session मिलने पर app पहले `loadCustomerProfile()` चलाता है और उसके बाद `mountCustomerAiAssistant()` को unconditional call करता है। `loadCustomerProfile()` में profile row न मिलने पर “नई प्रोफ़ाइल है” status दिखता है, लेकिन function कोई readiness result नहीं लौटाता; इसलिए वर्तमान क्रम profile अनुपस्थित होने पर भी widget mount कर सकता है। यह backend authorization bypass नहीं है—`lib/ai-server-guard.js` का server-side profile lookup ऐसे request को `403 ai_access_denied` से रोकता है—लेकिन यह UI/backend readiness mismatch है और अनावश्यक failed requests दे सकता है।
+
+**Required UI correction:** profile loader को explicit readiness (`true` केवल authenticated user की profile row सफलतापूर्वक मिलने पर) लौटानी चाहिए। `syncCustomerSession()` केवल readiness true होने पर Customer AI widget mount करे; missing profile, profile lookup error, session change या logout पर widget destroy/unmount रहे। सफल `srk_customer_update_my_profile()` के बाद profile दोबारा load/verify करके ही widget mount हो। Tests में profile-present, profile-missing, lookup-error और logout/session-change cases cover हों। OTP के बाद स्वतः profile create करने का कोई अनुमान न लगाया जाए।
