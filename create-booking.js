@@ -134,8 +134,17 @@ exports.handler = async (event) => {
     const selected_category = clean(body.selected_category, 40);
     const selected_rate_tier = clean(body.selected_rate_tier, 40);
     const selected_duration_hours = Number(body.selected_duration_hours);
-    const rateCard = { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 };
-    const rateCardVersion = "SRK-CUSTOMER-LABOUR-2026-11-13-V1";
+    // The service-role server reads the same published catalogue used by the
+    // customer/electrician RPCs. Never accept client-supplied rate amounts/version.
+    const catalogue = await supabase("rpc/srk_get_current_customer_rate_catalogue", {
+      method: "POST", body: "{}"
+    });
+    const rateCard = catalogue && catalogue.rates;
+    const rateCardVersion = catalogue && catalogue.rate_version_id;
+    if (!rateCard || typeof rateCardVersion !== "string" ||
+        !["electrical_assistant","skilled_electrician","expert_electrician","premium_electrical_specialist"].every(k => Number.isSafeInteger(rateCard[k]) && rateCard[k] > 0)) {
+      return json(503, { success: false, error: "अभी प्रकाशित Rate Catalogue उपलब्ध नहीं है। कृपया कुछ देर बाद प्रयास करें।" });
+    }
     // SRK ELECTRONIC accepts immediate service requests only; ignore legacy schedule fields.
     const preferred_date = null;
     const preferred_time = null;
@@ -178,7 +187,7 @@ const work_details = clean(body.work_details, 2000);
       selected_duration_hours, work_details, payment_method
     })).digest("hex");
     const findByRequestKey = () => supabase(
-      "service_bookings?select=id,customer_user_id,customer_request_fingerprint&customer_request_key=eq." + encodeURIComponent(idempotencyKey),
+      "service_bookings?select=id,customer_user_id,customer_request_fingerprint,selected_rate_tier,selected_duration_hours,estimated_labour_paise,estimate_rate_card_version&customer_request_key=eq." + encodeURIComponent(idempotencyKey),
       { method: "GET" }
     );
     const existingRows = await findByRequestKey();
@@ -190,7 +199,7 @@ const work_details = clean(body.work_details, 2000);
       const priorOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(existing.id));
       const priorOfferRows = Array.isArray(priorOffers) ? priorOffers : [];
       return json(200, { success: true, booking_id: existing.id, replayed: true,
-        estimate: { amount_paise: estimatedLabourPaise, amount_rupees: (estimatedLabourPaise / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: rateCardVersion },
+        estimate: { amount_paise: existing.estimated_labour_paise, amount_rupees: (existing.estimated_labour_paise / 100).toFixed(2), rate8h_paise: Math.floor(existing.estimated_labour_paise * 8 / existing.selected_duration_hours + 0.5), rate_card_version: existing.estimate_rate_card_version },
         offers_created: priorOfferRows.length, match_level: priorOfferRows[0]?.match_level || null,
         message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
     }
@@ -218,7 +227,7 @@ const work_details = clean(body.work_details, 2000);
       const racedOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(raced.id));
       const racedOfferRows = Array.isArray(racedOffers) ? racedOffers : [];
       return json(200, { success: true, booking_id: raced.id, replayed: true,
-        estimate: { amount_paise: estimatedLabourPaise, amount_rupees: (estimatedLabourPaise / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: rateCardVersion },
+        estimate: { amount_paise: raced.estimated_labour_paise, amount_rupees: (raced.estimated_labour_paise / 100).toFixed(2), rate8h_paise: Math.floor(raced.estimated_labour_paise * 8 / raced.selected_duration_hours + 0.5), rate_card_version: raced.estimate_rate_card_version },
         offers_created: racedOfferRows.length, match_level: racedOfferRows[0]?.match_level || null,
         message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
     }
