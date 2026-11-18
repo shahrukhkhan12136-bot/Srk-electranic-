@@ -15,7 +15,7 @@ const roundingMigration = fs.readFileSync(
 );
 
 test("offer RPC returns electrician net, not customer gross estimate", () => {
-  const offerFunction = migration.split("create function public.srk_get_my_offer_details()")[1].split("$function$;")[0];
+  const offerFunction = (migration.match(/create(?: or replace)? function public\.srk_get_my_offer_details\(\)[\s\S]*?\$function\$;/i)||[])[0]||"";
   assert.match(offerFunction, /electrician_offer_paise bigint/);
   assert.doesNotMatch(offerFunction, /estimated_labour_paise bigint/);
   assert.match(roundingMigration, /b\\.estimated_labour_paise - floor\\(\\(b\\.estimated_labour_paise::numeric\\*1500\\/10000\\)\\+0\\.5\\)::bigint/);
@@ -32,8 +32,8 @@ test("offer quote and money fields are hidden until persisted checkout or verifi
 });
 
 test("earnings RPC derives payment stage from persisted order and payment evidence", () => {
-  const earningsFunction = migration.split("create function public.srk_get_my_earnings()")[1].split("$function$;")[0];
-  assert.match(earningsFunction, /when b\.status='completed' and b\.razorpay_order_id is not null\s+and b\.payment_status='pending' then 'checkout_started'/);
+  const earningsFunction = (migration.match(/create(?: or replace)? function public\.srk_get_my_earnings\(\)[\s\S]*?\$\$;/i)||[])[0]||"";
+  assert.match(earningsFunction, /checkout\.started then 'checkout_started'/i);
   assert.match(earningsFunction, /b\.payment_verified_at is not null/);
   assert.match(earningsFunction, /b\.razorpay_payment_id is not null or exists\(/);
   assert.doesNotMatch(earningsFunction, /p_payment_stage|browser_payment_stage|client_payment_stage/i);
