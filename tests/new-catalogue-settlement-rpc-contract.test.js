@@ -8,6 +8,7 @@ const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/2
 const payoutMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114360000_new_category_electrician_payout_reconciliation.sql"), "utf8");
 const hardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118120000_harden_online_payment_settlement_state.sql"), "utf8");
 const cashHardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118130000_harden_catalogue_admin_cash_settlement.sql"), "utf8");
+const manualDigitalMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118140000_add_catalogue_admin_manual_digital_settlement.sql"), "utf8");
 
 const extract = (name) => {
   const match = migration.match(new RegExp("create or replace function public\\." + name + "\\([\\s\\S]*?\\n\\$\\$;", "i"));
@@ -75,4 +76,18 @@ test("new Catalogue Admin cash settlement is Catalogue-only and rejects unexpect
   assert.match(cashHardeningMigration, /razorpay_payment_id is not null/i);
   assert.match(cashHardeningMigration, /revoke all on function public\.srk_admin_record_new_booking_cash_payment\(uuid,text,text\) from public,anon/i);
   assert.match(cashHardeningMigration, /grant execute on function public\.srk_admin_record_new_booking_cash_payment\(uuid,text,text\) to authenticated/i);
+});
+
+test("new Catalogue Admin UPI/bank settlement validates method, booking state, unique evidence and direct-SRK fee collection", () => {
+  assert.match(manualDigitalMigration, /p_method not in \('upi','bank_transfer'\)/i);
+  assert.match(manualDigitalMigration, /v_booking\.selected_category is null then raise exception 'NEW_CATALOGUE_BOOKING_REQUIRED'/i);
+  assert.match(manualDigitalMigration, /payment_status is null or v_booking\.payment_status not in \('unpaid','pending'\)/i);
+  assert.match(manualDigitalMigration, /payment_verified_at is not null or coalesce\(v_booking\.amount_paid,0\)<>0/i);
+  assert.match(manualDigitalMigration, /pg_advisory_xact_lock\(hashtextextended\(lower\(v_reference\), 73119\)\)/i);
+  assert.match(manualDigitalMigration, /MANUAL_PAYMENT_REFERENCE_ALREADY_USED/i);
+  assert.match(manualDigitalMigration, /lower\(btrim\(e\.payment_method\)\)/i);
+  assert.match(manualDigitalMigration, /'online_collection','credit'/i);
+  assert.doesNotMatch(manualDigitalMigration, /srk_wallet_ledger/i);
+  assert.match(manualDigitalMigration, /revoke all on function public\.srk_admin_record_new_booking_manual_digital_payment\(uuid,text,text,text\) from public,anon/i);
+  assert.match(manualDigitalMigration, /grant execute on function public\.srk_admin_record_new_booking_manual_digital_payment\(uuid,text,text,text\) to authenticated/i);
 });
