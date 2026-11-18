@@ -50,3 +50,9 @@ test("widget starts closed, exposes an accessible entry point and Escape closes 
   assert.match(source, /toggle\.focus\(\)/);
   assert.match(source, /toggle\.removeEventListener\("click", onToggleClick\)/);
 });
+
+test("widget checks teardown after session resolution before sending either request", () => {
+  const source = fs.readFileSync(path.join(__dirname, "../lib/ai-assistant-widget.js"), "utf8");
+  assert.match(source, /const accessToken = await credentials\(\);\s*if \(destroyed\) return;\s*const result = await client\.sendMessage/);
+  assert.match(source, /const accessToken = await credentials\(\);\s*if \(destroyed\) return;\s*const result = await client\.createHandoff/);
+});
