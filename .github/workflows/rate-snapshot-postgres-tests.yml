@@ -5,12 +5,12 @@ on:
     branches:
       - feat/ai-rate-management-foundation-20261118
     paths:
-      - "supabase/migrations/20261118090000_enforce_booking_rate_snapshot_immutability.sql"
+      - "supabase/migrations/20261118*.sql"
       - "supabase/tests/database/booking_rate_snapshot_immutability.test.sql"
       - ".github/workflows/rate-snapshot-postgres-tests.yml"
   pull_request:
     paths:
-      - "supabase/migrations/20261118090000_enforce_booking_rate_snapshot_immutability.sql"
+      - "supabase/migrations/20261118*.sql"
       - "supabase/tests/database/booking_rate_snapshot_immutability.test.sql"
       - ".github/workflows/rate-snapshot-postgres-tests.yml"
   workflow_dispatch:
