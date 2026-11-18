@@ -232,3 +232,11 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Missing/malformed response object, missing `ok`/`json`, JSON parse failure, और top-level array/string/null payload fail-closed होते हैं।
 - Regression tests malformed envelopes तथा 403 body non-parsing behavior cover करते हैं।
 - ये mocked source tests हैं; execution/CI प्रमाण उपलब्ध नहीं है। Live AI endpoint या activation का दावा नहीं है।
+
+
+## 11. AI API base URL path restriction
+
+- App composition और transport client दोनों अब केवल HTTPS origin-root base URL स्वीकार करते हैं (उदाहरण: `https://api.example.test`)।
+- Path prefix (`https://api.example.test/prefix`) अस्वीकार होता है, क्योंकि API routes absolute-root paths पर तय हैं और prefix चुपचाप हट सकता था।
+- Customer/Electrician composition और transport client के URL regression tests में path-prefix rejection जोड़ा गया है।
+- Tests अभी execute नहीं हुए हैं; यह pre-launch preparation है, live endpoint confirmation नहीं।
