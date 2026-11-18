@@ -8,6 +8,7 @@ const customer = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
 const electrician = fs.readFileSync(path.join(root, 'electrician.html'), 'utf8');
 const receiptSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114190000_customer_receipt_immutable_labour_amount.sql'), 'utf8');
 const earningsSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261109003000_secure_commission_reporting.sql'), 'utf8');
+const financialVisibilitySql = fs.readFileSync(path.join(root, 'supabase/migrations/20261118080000_align_offer_85_rate_and_payout_reconciliation.sql'), 'utf8');
 const historySql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114200000_customer_payment_refund_history_rpc.sql'), 'utf8');
 
 test('Customer payment history loads on Payments tab entry, login, manual refresh and paginated continuation', () => {
@@ -39,6 +40,16 @@ test('Electrician earnings and Admin bank payout remain distinct and UI never in
   assert.match(electrician, /यह ऐप का आंतरिक लेजर बैलेंस है/);
   assert.match(electrician, /बैंक खाता जोड़ना और निकासी अभी बंद है/);
   assert.doesNotMatch(electrician, /srk_wallet_withdraw|srk_create_withdrawal|create_bank_transfer|razorpay_route_transfer/i);
+});
+
+test('latest electrician earnings RPC requires an approved and active profile', () => {
+  const start = financialVisibilitySql.indexOf('CREATE FUNCTION public.srk_get_my_earnings()');
+  const end = financialVisibilitySql.indexOf('$;', start);
+  const fn = financialVisibilitySql.slice(start, end);
+  assert.ok(start >= 0 && end > start, 'latest earnings function body exists');
+  assert.match(fn, /p\\.user_id=auth\\.uid\\(\\) OR p\\.auth_user_id=auth\\.uid\\(\\)/);
+  assert.match(fn, /p\\.verification_status='approved'/);
+  assert.match(fn, /p\\.active=true/);
 });
 
 test('Refunded completed bookings are not mislabeled as unpaid customer balances', () => {
