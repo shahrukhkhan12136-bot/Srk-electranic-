@@ -13,6 +13,15 @@ test("899 rupees gross labour yields rounded net paise", () => {
   assert.equal(calculateInternalResidualPaise(89900), 13485);
 });
 
+test("rounding follows the existing rounded 15 percent commission and always reconciles to gross", () => {
+  const grossPaise = 10;
+  const netPaise = calculateElectricianNetPaise(grossPaise);
+  const companyPaise = calculateInternalResidualPaise(grossPaise);
+  assert.equal(netPaise, 8);
+  assert.equal(companyPaise, 2);
+  assert.equal(netPaise + companyPaise, grossPaise);
+});
+
 test("all four 8-hour category rates derive the expected electrician 85 percent", () => {
   assert.deepEqual(
     Object.fromEntries(Object.entries(INITIAL_RATES_PAISE).map(([tier, gross]) => [tier, calculateElectricianNetPaise(gross)])),
