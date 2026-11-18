@@ -23,6 +23,21 @@ Comparing migration names without their numeric prefixes:
 
 This is substantial migration-ledger/version drift. A version-prefix comparison alone is not sufficient to decide which branch files are safe to replay or rename.
 
+The nine same-name/different-version pairs are:
+- add_google_maps_location_support: branch 20261109001000; ledger 20261108183027
+- expose_assigned_booking_map_pin: branch 20261109002000; ledger 20261108183324
+- create_secure_wallet_ledger_foundation: branch 20261109010000; ledger 20261108190047
+- create_server_only_razorpay_route_transfer_ledger: branch 20261109020000; ledger 20261108193506
+- electrician_inspection_quotes_and_service_only_commission: branch 20261109; ledger 20261109075837
+- allow_quote_approval_booking_states: branch 20261109; ledger 20261109080400
+- customer_admin_complaints: branch 20261110040000; ledger 20261109203132
+- restore_missing_customer_booking_quote_columns: branch 20261110140000; ledger 20261110133835
+- add_electrician_push_subscriptions: branch 20261111020000; ledger 20261111072823
+
+There are 71 application-ledger records whose migration names do not appear in the branch file set. Conversely, 87 branch migration files have names not found in the application ledger. The application ledger also contains the name add_assigned_electrician_cash_payment_status twice, at versions 20261111082515 and 20261111083811; this needs separate review because the ledger's name is not unique.
+
+Important scope limitation: Supabase's migration listing exposes only version and name metadata. It does not expose the SQL body or a checksum for the already-applied migration. Therefore this is a complete metadata reconciliation, not a byte-for-byte or semantic SQL-content reconciliation.
+
 ## Resolution of the 20261109 duplicate identity
 
 The branch contains these two colliding filenames:
