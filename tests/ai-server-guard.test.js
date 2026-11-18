@@ -61,7 +61,7 @@ test("AI routes require POST and bearer authentication before processing", async
   assert.equal((await handler(malformedBearer)).statusCode, 401);
   const tabBearer = event({ body: { module_key: "customer_support", message: "hello" } });
   delete tabBearer.headers.authorization;
-  tabBearer.headers.Authorization = "Bearer\\tvalid-token";
+  tabBearer.headers.Authorization = "Bearer\tvalid-token";
   assert.equal((await handler(tabBearer)).statusCode, 503);
   assert.equal(JSON.parse((await handler(event({ body: { module_key: "customer_support", message: "hello" } }))).body).error, "ai_not_enabled");
   assert.equal(calls.length, 6);
