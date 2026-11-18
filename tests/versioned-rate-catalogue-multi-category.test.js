@@ -9,6 +9,8 @@ const bookingApi = fs.readFileSync(path.join(__dirname, "../create-booking.js"),
 const customerUi = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
 const electricianUi = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
 const netPolicy = fs.readFileSync(path.join(__dirname, "../lib/electrician-net-rate.js"), "utf8");
+const adminRateReadMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118070000_admin_rate_catalogue_read_rpcs.sql"), "utf8");
+const adminUi = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
 
 test("catalogue publish is Main Admin only, version-checked, and validates exactly four integer paise rates", () => {
   assert.match(migration, /public\.srk_admin_publish_rate_catalogue/);
@@ -94,4 +96,26 @@ test("catalogue version, item, and audit rows cannot be updated or deleted", () 
   assert.match(migration, /srk_rate_catalogue_versions_immutable/);
   assert.match(migration, /srk_rate_catalogue_items_immutable/);
   assert.match(migration, /srk_rate_catalogue_audit_immutable/);
+});
+
+
+test("Admin rate controls are Main Admin-only in the portal and call version-checked publish RPC", () => {
+  assert.match(adminUi, /id="adminRateCatalogueCard"/);
+  assert.match(adminUi, /id="adminElectricianRateCategoryCard"/);
+  assert.match(adminUi, /adminPortalMode!=='main_admin'/);
+  assert.match(adminUi, /srk_admin_publish_rate_catalogue/);
+  assert.match(adminUi, /p_expected_current_version_id:adminCurrentRateCatalogue\?\.rate_version_id\|\|null/);
+  assert.match(adminUi, /function rupeesToPaise/);
+  assert.match(adminUi, /!\/^\\d\+\(\?:\\\.\\d\{1,2\}\)\?\$\//);
+});
+
+test("Admin electrician category list is server-gated to Main Admin and writes full desired category state", () => {
+  assert.match(adminRateReadMigration, /srk_admin_list_electrician_rate_categories/);
+  assert.match(adminRateReadMigration, /NOT public\.is_srk_admin\(\)/);
+  assert.match(adminRateReadMigration, /active_categories/);
+  assert.match(adminUi, /srk_admin_list_electrician_rate_categories/);
+  assert.match(adminUi, /srk_admin_set_electrician_approved_categories/);
+  assert.match(adminUi, /p_category_keys:selected/);
+  assert.match(adminUi, /p_reason:reason/);
+  assert.match(adminRateReadMigration, /GRANT EXECUTE ON FUNCTION public\.srk_admin_list_electrician_rate_categories\(\) TO authenticated/);
 });
