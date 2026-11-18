@@ -492,7 +492,7 @@ test("AI guard rejects ambiguous duplicate authorization and idempotency headers
   const keyResponse = await duplicateIdempotency.handler(keyRequest);
   assert.equal(keyResponse.statusCode, 400);
   assert.equal(JSON.parse(keyResponse.body).error, "invalid_idempotency_key");
-  assert.equal(duplicateIdempotency.calls.length, 3);
+  assert.equal(duplicateIdempotency.calls.length, 0, "duplicate idempotency headers must be rejected before Supabase calls");
 });
 
 
