@@ -34,7 +34,7 @@ test('Electrician earnings and Admin bank payout remain distinct and UI never in
   assert.match(earningsSql, /where p\.user_id=auth\.uid\(\) and p\.verification_status='approved'/);
   assert.match(electrician, /sb\.rpc\('srk_get_my_earnings'\)/);
   assert.match(electrician, /srk_electrician_payouts/);
-  assert.match(electrician, /ग्राहक का भुगतान और Admin द्वारा आपके बैंक\/UPI में किया गया भुगतान अलग-अलग रिकॉर्ड हैं/);
+  assert.match(electrician, /अलग Electrician Payout Ledger/);\n  assert.match(electrician, /Admin वास्तविक ट्रांसफर के बाद UTR दर्ज करेगा, तभी Paid दिखेगा/);
   assert.match(electrician, /यह ऐप का आंतरिक लेजर बैलेंस है/);
   assert.match(electrician, /बैंक खाता जोड़ना और निकासी अभी बंद है/);
   assert.doesNotMatch(electrician, /srk_wallet_withdraw|srk_create_withdrawal|create_bank_transfer|razorpay_route_transfer/i);
@@ -43,8 +43,8 @@ test('Electrician earnings and Admin bank payout remain distinct and UI never in
 test('Refunded completed bookings are not mislabeled as unpaid customer balances', () => {
   assert.match(earningsSql, /payment_status text/);
   assert.match(earningsSql, /b\.payment_status='paid'/);
-  assert.match(electrician, /!\['paid','refunded'\]\.includes\(x\.payment_status\)/);
-  assert.match(electrician, /customerRefunded=completed\.filter\(x=>x\.payment_status==='refunded'\)\.length/);
+  assert.match(electrician, /const unpaid=completed\.filter\(x=>x\.payment_stage==='completed_unpaid'\)/);\n  assert.match(electrician, /const refunded=completed\.filter\(x=>x\.payment_stage==='refunded'\)/);
+  assert.match(electrician, /x\.payment_stage==='refunded'/);
   assert.match(electrician, /रिफंड \/ रिवर्सल:/);
 });
 
