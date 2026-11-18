@@ -145,7 +145,7 @@ test("verified customer payment with missing payout ledger is not reported as re
   const result = buildElectricianJobAccounting({
     booking_id: "b9", booking_status: "completed", payment_status: "paid",
     payment_verified_at: "2026-11-18T02:00:00Z", razorpay_payment_id: "pay_999",
-    customer_labour_gross_paise: 100000, electrician_earning_paise: 85000,
+    customer_labour_gross_paise: null, electrician_earning_paise: null,
     company_share_paise: 15000, customer_amount_received_paise: 100000,
     payout_reconciliation_status: "missing", payout_status: null, payout_amount_paise: null
   });
@@ -160,7 +160,7 @@ test("verified customer payment with a mismatched payout ledger does not expose 
   const result = buildElectricianJobAccounting({
     booking_id: "b10", booking_status: "completed", payment_status: "paid",
     payment_verified_at: "2026-11-18T02:00:00Z", razorpay_payment_id: "pay_100",
-    customer_labour_gross_paise: 100000, electrician_earning_paise: 85000,
+    customer_labour_gross_paise: 100000, electrician_earning_paise: null,
     company_share_paise: 15000, customer_amount_received_paise: 100000,
     payout_reconciliation_status: "mismatch", payout_status: "pending", payout_amount_paise: 85000
   });
