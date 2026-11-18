@@ -20,7 +20,7 @@ test("AI idempotency reservation RPC is service-role-only and validates SHA-256 
 
 test("AI idempotency reservation uses an actor-scoped unique conflict target and expiry-only reset", () => {
   assert.match(migration, /ON CONFLICT \(actor_user_id, idempotency_key\) DO UPDATE/i);
-  assert.match(migration, /WHERE current_row\.expires_at <= clock_timestamp\(\)/i);
+  assert.match(migration, /WHERE current_row\.expires_at <= clock_timestamp\(\)\s+AND current_row\.status <> 'processing'/i);
   assert.match(migration, /FOR UPDATE/i);
   assert.match(migration, /request_sha256 <> p_request_sha256/i);
 });
