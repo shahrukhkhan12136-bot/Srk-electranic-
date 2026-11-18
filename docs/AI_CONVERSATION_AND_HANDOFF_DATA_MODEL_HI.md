@@ -129,3 +129,15 @@ Electrician access की शर्तें: `user_id` और `auth_user_id` �
 `syncCustomerSession()` में OTP session मिलने पर app पहले `loadCustomerProfile()` चलाता है और उसके बाद `mountCustomerAiAssistant()` को unconditional call करता है। `loadCustomerProfile()` में profile row न मिलने पर “नई प्रोफ़ाइल है” status दिखता है, लेकिन function कोई readiness result नहीं लौटाता; इसलिए वर्तमान क्रम profile अनुपस्थित होने पर भी widget mount कर सकता है। यह backend authorization bypass नहीं है—`lib/ai-server-guard.js` का server-side profile lookup ऐसे request को `403 ai_access_denied` से रोकता है—लेकिन यह UI/backend readiness mismatch है और अनावश्यक failed requests दे सकता है।
 
 **Required UI correction:** profile loader को explicit readiness (`true` केवल authenticated user की profile row सफलतापूर्वक मिलने पर) लौटानी चाहिए। `syncCustomerSession()` केवल readiness true होने पर Customer AI widget mount करे; missing profile, profile lookup error, session change या logout पर widget destroy/unmount रहे। सफल `srk_customer_update_my_profile()` के बाद profile दोबारा load/verify करके ही widget mount हो। Tests में profile-present, profile-missing, lookup-error और logout/session-change cases cover हों। OTP के बाद स्वतः profile create करने का कोई अनुमान न लगाया जाए।
+
+### 4.3 Profile-readiness guard का implementation verification (18 नवम्बर 2026)
+
+पिछले UI audit के बाद source implementation दोबारा verify किया गया:
+
+- `loadCustomerProfile()` अब केवल authenticated session के लिए profile row सफलतापूर्वक मिलने पर readiness `true` देता है; missing row, lookup error या session unavailable होने पर `false` रहता है।
+- `syncCustomerSession()` readiness true होने पर ही Customer AI widget mount करता है; अन्यथा widget destroy रहता है।
+- Profile save के बाद भी loader से profile दोबारा fetch/verify किया जाता है; dashboard visible और profile verified होने पर ही widget mount होता है।
+- `lib/ai-server-guard.js` अभी भी हर request पर Customer profile या approved+active Electrician profile server-side जाँचता है और अंत में `503 ai_not_enabled` देता है। UI readiness check backend authorization का विकल्प नहीं है।
+- Regression coverage `tests/ai-assistant-app.test.js` में जोड़ी गई; branch CI run `44262276362` में 619 tests सफल, 0 failed रहे।
+
+**शेष निर्णय:** OTP verification के बाद Customer profile स्वतः बनानी है या मौजूदा explicit profile-save flow ही रखना है—यह product/onboarding निर्णय अभी खुला है। वर्तमान व्यवहार fail-closed है; इस audit में signup trigger, profile schema या database migration नहीं बदली गई।
