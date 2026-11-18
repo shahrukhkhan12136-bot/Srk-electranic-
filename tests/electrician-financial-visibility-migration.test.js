@@ -70,3 +70,38 @@ test("85 percent is rounded in integer paise with the residual assigned to the c
   assert.match(migration, /round\(coalesce\(bill\.labour_amount,0\),2\)-\(floor\(/);
   assert.doesNotMatch(migration, /round\(coalesce\(bill\.labour_amount,0\)\*0\.15,2\)/);
 });
+
+const createOrder = fs.readFileSync(path.join(__dirname, "../create-order.js"), "utf8");
+const verifyPayment = fs.readFileSync(path.join(__dirname, "../verify-payment.js"), "utf8");
+const razorpayWebhook = fs.readFileSync(path.join(__dirname, "../razorpay-webhook.js"), "utf8");
+
+test("Razorpay order amount comes from immutable server bill and persisted fee ledger", () => {
+  assert.match(createOrder, /srk_service_role_get_booking_payment_breakdown/);
+  assert.match(createOrder, /total!==labour\+fees/);
+  assert.match(createOrder, /Number\.isSafeInteger\(total\)/);
+  assert.doesNotMatch(createOrder, /b\.amount\s*\|\|/);
+});
+
+test("Razorpay order is persisted with pending state before checkout response", () => {
+  assert.match(createOrder, /razorpay_order_id:order\.id,payment_status:"pending"/);
+  assert.ok(createOrder.indexOf('body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})') < createOrder.indexOf('return json(200,{success:true,key_id:RAZORPAY_KEY_ID'));
+});
+
+test("customer payment verification checks HMAC, captured status, order, INR and exact amount", () => {
+  assert.match(verifyPayment, /createHmac\("sha256",RAZORPAY_KEY_SECRET\)/);
+  assert.match(verifyPayment, /p\.status!=="captured"/);
+  assert.match(verifyPayment, /p\.order_id!==orderId/);
+  assert.match(verifyPayment, /p\.currency!=="INR"/);
+  assert.match(verifyPayment, /p\.amount!==expectedAmount/);
+});
+
+test("categorized online payment settles through the server-owned payment ledger RPC", () => {
+  assert.match(verifyPayment, /srk_service_role_record_online_booking_payment/);
+  assert.match(razorpayWebhook, /srk_service_role_record_online_booking_payment/);
+  assert.match(razorpayWebhook, /payment\.status !== "captured"/);
+});
+
+test("checkout stage is derived from completed booking and persisted pending order", () => {
+  assert.match(migration, /b\.status='completed' AND b\.razorpay_order_id IS NOT NULL AND b\.payment_status='pending'/);
+  assert.match(migration, /WHEN b\.status='completed' AND checkout\.started THEN 'checkout_started'/);
+});
