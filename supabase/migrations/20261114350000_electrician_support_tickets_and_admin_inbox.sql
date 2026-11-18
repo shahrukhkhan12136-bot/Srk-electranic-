@@ -70,16 +70,18 @@ end;
 $function$;
 
 create or replace function public.srk_electrician_list_my_support_tickets()
-returns table(id uuid,booking_id uuid,category text,subject text,status text,admin_note text,created_at timestamptz,updated_at timestamptz,last_message_at timestamptz)
+returns table(id uuid,booking_id uuid,category text,subject text,status text,created_at timestamptz,updated_at timestamptz,last_message_at timestamptz)
 language plpgsql stable security definer
 set search_path = ''
 as $function$
 declare v_uid uuid:=auth.uid();
 begin
  if v_uid is null then raise exception 'AUTHENTICATION_REQUIRED' using errcode='42501'; end if;
- return query select t.id,t.booking_id,t.category,t.subject,t.status,t.admin_note,t.created_at,t.updated_at,
+ return query select t.id,t.booking_id,t.category,t.subject,t.status,t.created_at,t.updated_at,
    (select max(m.created_at) from public.srk_electrician_support_messages m where m.ticket_id=t.id)
- from public.srk_electrician_support_tickets t where t.user_id=v_uid
+ from public.srk_electrician_support_tickets t
+ join public.electrician_profiles p on p.id=t.electrician_profile_id
+ where t.user_id=v_uid and p.user_id=v_uid and p.auth_user_id=v_uid
  order by t.updated_at desc,t.id desc limit 100;
 end;
 $function$;
