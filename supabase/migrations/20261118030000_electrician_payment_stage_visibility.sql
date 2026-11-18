@@ -197,16 +197,26 @@ as $function$
     end,
     case
       when b.status='completed'
-       and (b.razorpay_order_id is not null or
-         (b.payment_status='paid' and b.payment_verified_at is not null))
+       and ((b.razorpay_order_id is not null and b.payment_status='pending') or
+         (b.payment_status='paid' and b.payment_verified_at is not null and
+          (b.razorpay_payment_id is not null or exists(
+            select 1 from public.srk_manual_payment_entries me
+            where me.booking_id=b.id
+              and round(me.amount,2)=round(coalesce(b.amount_paid,0),2)
+          ))))
        and bill.booking_id is not null
       then round(bill.labour_amount_paise/100,2)
       else null
     end,
     case
       when b.status='completed'
-       and (b.razorpay_order_id is not null or
-         (b.payment_status='paid' and b.payment_verified_at is not null))
+       and ((b.razorpay_order_id is not null and b.payment_status='pending') or
+         (b.payment_status='paid' and b.payment_verified_at is not null and
+          (b.razorpay_payment_id is not null or exists(
+            select 1 from public.srk_manual_payment_entries me
+            where me.booking_id=b.id
+              and round(me.amount,2)=round(coalesce(b.amount_paid,0),2)
+          ))))
        and bill.booking_id is not null
       then round((bill.labour_amount_paise -
         floor((bill.labour_amount_paise*85+50)/100))/100,2)
