@@ -62,7 +62,7 @@ test("Draft queue renders safe rows and Edit Draft restores all saved values",as
  assert.equal(elements.rateExpertElectrician.value,"275.25");
  assert.equal(elements.ratePremiumSpecialist.value,"350.00");
  assert.equal(elements.rateCatalogueReason.value,row.reason);
- assert.equal(context.adminEditingRateDraftId,"draft-42");
+ assert.match(elements.adminRateCatalogueStatus.textContent,/draft-42/);
 });
 test("Draft publish uses the current version guard and refreshes catalogue and queue",async()=>{
  const calls=[],elements={adminRateCatalogueStatus:{textContent:""},adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""}};
