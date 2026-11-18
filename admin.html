@@ -962,7 +962,7 @@ async function publishAdminRateCatalogueDraft(draftId){
   const {data,error}=await sb.rpc('srk_admin_publish_rate_catalogue_draft',{p_draft_id:draftId,p_expected_current_version_id:adminCurrentRateCatalogue?.rate_version_id||null});
   if(error)throw error;
   if(!data?.success||!data?.rate_version_id)throw new Error('Publish की पुष्टि नहीं मिली।');
-  status.textContent='Version publish हुआ; लागू समय: '+new Date(data.effective_at).toLocaleString('en-IN');
+  status.textContent=(Date.parse(data.effective_at)>Date.now()?'Version schedule हुआ; लागू समय: ':'Version publish हुआ; लागू समय: ')+new Date(data.effective_at).toLocaleString('en-IN');
   await loadAdminRateCatalogue();await loadAdminRateCatalogueDrafts();
  }catch(e){status.textContent='Publish नहीं हुआ: '+(e.message||'त्रुटि');}
  finally{adminRateCatalogueBusy=false;}

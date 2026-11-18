@@ -119,7 +119,7 @@ test("Draft publish uses the current version guard and refreshes catalogue and q
  assert.deepEqual({...publish.args},{p_draft_id:"draft-42",p_expected_current_version_id:"version-8"});
  assert.equal(context.__refreshed.catalogue,true);
  assert.equal(context.__refreshed.queue,true);
- assert.match(elements.adminRateCatalogueStatus.textContent,/Version publish हुआ/);
+ assert.match(elements.adminRateCatalogueStatus.textContent,/Version (publish|schedule) हुआ/);
 });
 test("Draft save UI sends validated four-tier paise payload to the RPC",async()=>{
  const elements={rateElectricalAssistant:{value:"125.50"},rateSkilledElectrician:{value:"200"},rateExpertElectrician:{value:"275.25"},ratePremiumSpecialist:{value:"350"},rateCatalogueReason:{value:"Automated UI test"},rateCatalogueEffectiveAt:{value:""},adminRateCatalogueStatus:{textContent:""},adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""}};
