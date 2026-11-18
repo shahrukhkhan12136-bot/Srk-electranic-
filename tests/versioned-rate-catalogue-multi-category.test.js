@@ -71,6 +71,17 @@ test("booking replay reads its original immutable rate version rather than today
   assert.match(bookingApi, /rate_version_id=eq\./);
 });
 
+test("dynamic catalogue estimate drops only the obsolete hard-coded rate equality constraint", () => {
+  assert.match(migration, /DROP CONSTRAINT IF EXISTS service_bookings_estimate_matches_rate_card/);
+  assert.match(migration, /COMMENT ON CONSTRAINT service_bookings_estimate_snapshot_complete/);
+  assert.doesNotMatch(migration, /ADD CONSTRAINT service_bookings_estimate_matches_rate_card/);
+});
+
+test("electrician rate-list RPC calculates direct 85 percent using half-up integer-paise rounding", () => {
+  assert.match(migration, /'electrician_rate_paise',floor\(\(i\.customer_rate_paise::numeric\*8500\/10000\)\+0\.5\)::bigint/);
+  assert.doesNotMatch(migration, /'electrician_rate_paise',\(i\.customer_rate_paise-floor/);
+});
+
 test("85/15 split is complementary to the existing rounded 15 percent commission", () => {
   assert.match(netPolicy, /PLATFORM_COMMISSION_BPS = 1500/);
   assert.match(netPolicy, /const net = Number\(gross - commission\)/);
