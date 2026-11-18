@@ -819,7 +819,22 @@ let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
 document.getElementById('year').textContent = new Date().getFullYear();
-const customerRateCard = { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 };
+let customerRateCard = Object.create(null);
+let customerRateVersionId = null;
+async function refreshCustomerRateCatalogue() {
+  if (!customerSb) throw new Error('ग्राहक Rate Catalogue पढ़ने के लिए Supabase कनेक्शन उपलब्ध नहीं है।');
+  const { data, error } = await customerSb.rpc('srk_get_current_customer_rate_catalogue');
+  if (error) throw error;
+  const rates = data?.rates;
+  const keys = ['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'];
+  if (!data?.rate_version_id || !rates || keys.some(k => !Number.isSafeInteger(rates[k]) || rates[k] <= 0)) {
+    throw new Error('प्रकाशित Rate Catalogue अधूरा है। अभी बुकिंग दर उपलब्ध नहीं है।');
+  }
+  customerRateCard = Object.fromEntries(keys.map(k => [k, rates[k]]));
+  customerRateVersionId = data.rate_version_id;
+  updateLabourEstimate();
+  return data;
+}
 function updateLabourEstimate() {
   const tier=document.getElementById('rateTier')?.value, hours=Number(document.getElementById('durationHours')?.value);
   const amount=document.getElementById('labourEstimateAmount'), detail=document.getElementById('labourEstimateBreakdown');
@@ -2442,6 +2457,9 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   const bookingGeneration=customerActionGeneration;
   const isCurrent=()=>bookingGeneration===customerActionGeneration;
   const method = value('payment');
+  try { await refreshCustomerRateCatalogue(); }
+  catch (error) { if (isCurrent()) alert(error.message || 'प्रकाशित दरें अभी उपलब्ध नहीं हैं।'); return; }
+  if (!isCurrent()) return;
   const tier = document.getElementById('rateTier').selectedOptions[0]?.textContent || '';
   const hours = Number(value('durationHours'));
   const rate8h = customerRateCard[value('rateTier')];
