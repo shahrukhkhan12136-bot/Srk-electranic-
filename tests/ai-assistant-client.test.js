@@ -250,3 +250,19 @@ test("AI client rejects non-object requests and inherited context references", a
   );
   assert.equal(calls, 0);
 });
+
+
+test("AI handoff rejects null, array and primitive request shapes before fetch", async () => {
+  let calls = 0;
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async () => { calls++; return jsonResponse({}); }
+  });
+  for (const malformed of [null, [], "handoff", 7]) {
+    await assert.rejects(
+      client.createHandoff(malformed),
+      error => error.code === "invalid_request"
+    );
+  }
+  assert.equal(calls, 0);
+});
