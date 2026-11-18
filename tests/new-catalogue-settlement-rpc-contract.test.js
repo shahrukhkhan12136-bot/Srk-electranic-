@@ -139,3 +139,19 @@ test("new Catalogue online order and customer verification paths enforce ownersh
   assert.match(verifyPayment, /srk_service_role_record_online_booking_payment/);
   assert.match(verifyPayment, /p_booking_id:booking\.id,p_order_id:orderId,p_payment_id:payId,p_amount_paise:p\.amount/);
 });
+
+
+test("new Catalogue Razorpay webhook verifies signed raw payload, deduplicates events and delegates payment to atomic settlement RPC", () => {
+  const webhook = fs.readFileSync(path.join(__dirname, "../razorpay-webhook.js"), "utf8");
+  assert.match(webhook, /createHmac\("sha256", WEBHOOK_SECRET\)\.update\(rawBody\)/);
+  assert.match(webhook, /timingSafeEqual\(expected, received\)/);
+  assert.match(webhook, /srk_service_claim_razorpay_webhook_event/);
+  assert.match(webhook, /srk_service_complete_razorpay_webhook_event/);
+  assert.match(webhook, /createHash\("sha256"\)\.update\(rawBody\)/);
+  assert.match(webhook, /payment\.status !== "captured"/);
+  assert.match(webhook, /payment\.amount !== expectedAmount \|\| payment\.currency !== "INR"/);
+  assert.match(webhook, /srk_service_role_get_booking_payment_breakdown/);
+  assert.match(webhook, /srk_service_role_record_online_booking_payment/);
+  assert.match(webhook, /p_booking_id: booking\.id, p_order_id: payment\.order_id, p_payment_id: payment\.id, p_amount_paise: payment\.amount/);
+  assert.match(webhook, /booking\.razorpay_payment_id === payment\.id \? "already_processed" : "payment_conflict"/);
+});
