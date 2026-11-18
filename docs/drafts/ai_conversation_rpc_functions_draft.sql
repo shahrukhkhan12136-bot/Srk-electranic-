@@ -161,11 +161,78 @@ BEGIN
 END;
 $$;
 
+
+CREATE OR REPLACE FUNCTION private.ai_complete_idempotency(
+  p_owner_user_id uuid,
+  p_endpoint_key text,
+  p_idempotency_key text,
+  p_response_status integer,
+  p_response_body jsonb,
+  p_conversation_id uuid DEFAULT NULL,
+  p_assistant_body text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $
+DECLARE
+  v_row public.srk_ai_idempotency%ROWTYPE;
+  v_message jsonb;
+BEGIN
+  IF COALESCE(pg_catalog.current_setting('request.jwt.claim.role', true), '') <> 'service_role' THEN
+    RAISE EXCEPTION 'service_role_required' USING ERRCODE = '42501';
+  END IF;
+  IF p_owner_user_id IS NULL
+     OR p_endpoint_key NOT IN ('assistant','handoff','action')
+     OR p_idempotency_key IS NULL OR pg_catalog.length(p_idempotency_key) NOT BETWEEN 16 AND 128
+     OR p_response_status NOT BETWEEN 200 AND 599
+     OR p_response_body IS NULL OR pg_catalog.pg_column_size(p_response_body) > 65536
+     OR ((p_conversation_id IS NULL) <> (p_assistant_body IS NULL))
+     OR (p_assistant_body IS NOT NULL AND pg_catalog.length(pg_catalog.btrim(p_assistant_body)) NOT BETWEEN 1 AND 8000) THEN
+    RAISE EXCEPTION 'invalid_idempotency_completion' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_row
+  FROM public.srk_ai_idempotency
+  WHERE owner_user_id=p_owner_user_id
+    AND endpoint_key=p_endpoint_key
+    AND idempotency_key=p_idempotency_key
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'idempotency_claim_not_found' USING ERRCODE = 'P0002';
+  END IF;
+  IF v_row.state <> 'processing' OR v_row.lease_expires_at IS NULL
+     OR v_row.lease_expires_at <= pg_catalog.clock_timestamp() THEN
+    RAISE EXCEPTION 'idempotency_claim_not_active' USING ERRCODE = '55000';
+  END IF;
+
+  IF p_conversation_id IS NOT NULL THEN
+    v_message := private.ai_append_message(
+      p_owner_user_id,p_conversation_id,'assistant',p_assistant_body
+    );
+  END IF;
+
+  UPDATE public.srk_ai_idempotency
+  SET state='completed',
+      response_status=p_response_status,
+      response_body=p_response_body,
+      lease_expires_at=NULL
+  WHERE id=v_row.id;
+
+  RETURN pg_catalog.jsonb_build_object(
+    'status','completed',
+    'message_id',v_message->>'message_id',
+    'sequence_no',v_message->>'sequence_no'
+  );
+END;
+$;
+
 REVOKE ALL ON FUNCTION private.ai_claim_idempotency(uuid,text,text,text,integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION private.ai_append_message(uuid,uuid,text,text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION private.ai_append_audit_event(uuid,text,text,text,text,uuid,uuid,uuid,jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION private.ai_append_audit_event(uuid,text,text,text,text,uuid,uuid,uuid,jsonb) FROM PUBLIC, anon, authenticated;\nREVOKE ALL ON FUNCTION private.ai_complete_idempotency(uuid,text,text,integer,jsonb,uuid,text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION private.ai_claim_idempotency(uuid,text,text,text,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION private.ai_append_message(uuid,uuid,text,text) TO service_role;
-GRANT EXECUTE ON FUNCTION private.ai_append_audit_event(uuid,text,text,text,text,uuid,uuid,uuid,jsonb) TO service_role;
+GRANT EXECUTE ON FUNCTION private.ai_append_audit_event(uuid,text,text,text,text,uuid,uuid,uuid,jsonb) TO service_role;\nGRANT EXECUTE ON FUNCTION private.ai_complete_idempotency(uuid,text,text,integer,jsonb,uuid,text) TO service_role;
 
 COMMIT;
