@@ -2,7 +2,7 @@
 -- Run only after the schema and RPC drafts in a disposable local PostgreSQL database.
 BEGIN;
 SET LOCAL search_path TO public, extensions;
-SELECT plan(21);
+SELECT plan(28);
 
 -- Minimal Auth fixtures. No hosted project or real user data is used.
 INSERT INTO auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -123,5 +123,72 @@ SELECT throws_ok(
  '42501',NULL,'non-service role claim cannot append audit'
 );
 
-SELECT * FROM finish();
+
+-- Atomic completion: assistant message and cached response commit together.
+SELECT is(
+ private.ai_claim_idempotency('10000000-0000-4000-8000-000000000001','assistant','idem-key-00000003',repeat('f',64),90)->>'status',
+ 'processing','completion fixture obtains a live claim'
+);
+SELECT is(
+ private.ai_complete_idempotency(
+  '10000000-0000-4000-8000-000000000001','assistant','idem-key-00000003',200,
+  '{"ok":true,"answer":"saved"}'::jsonb,
+  '20000000-0000-4000-8000-000000000001','atomic assistant reply'
+ )->>'status',
+ 'completed','completion RPC marks request completed'
+);
+SELECT is(
+ (SELECT response_status FROM public.srk_ai_idempotency
+  WHERE idempotency_key='idem-key-00000003' AND endpoint_key='assistant'),
+ 200,'completion stores response status'
+);
+SELECT is(
+ (SELECT response_body->>'answer' FROM public.srk_ai_idempotency
+  WHERE idempotency_key='idem-key-00000003' AND endpoint_key='assistant'),
+ 'saved','completion stores replay response body'
+);
+SELECT is(
+ (SELECT count(*)::integer FROM public.srk_ai_messages
+  WHERE conversation_id='20000000-0000-4000-8000-000000000001'
+    AND sender_type='assistant' AND body='atomic assistant reply'),
+ 1,'completion persists assistant message'
+);
+SELECT is(
+ private.ai_claim_idempotency('10000000-0000-4000-8000-000000000001','assistant','idem-key-00000003',repeat('f',64),90)->>'status',
+ 'replay','completed request replays stored result'
+);
+
+-- If message persistence fails, completion must roll back and keep the claim processing.
+SELECT is(
+ private.ai_claim_idempotency('10000000-0000-4000-8000-000000000001','assistant','idem-key-00000004',repeat('1',64),90)->>'status',
+ 'processing','atomic rollback fixture obtains a live claim'
+);
+UPDATE public.srk_ai_conversations SET status='closed',closed_at=now()
+WHERE id='20000000-0000-4000-8000-000000000001';
+SELECT throws_ok(
+ $SELECT private.ai_complete_idempotency(
+  '10000000-0000-4000-8000-000000000001','assistant','idem-key-00000004',200,
+  '{"ok":true}'::jsonb,'20000000-0000-4000-8000-000000000001','must rollback'
+ )$,
+ 'P0002',NULL,'failed assistant message insert aborts completion'
+);
+SELECT is(
+ (SELECT state FROM public.srk_ai_idempotency
+  WHERE idempotency_key='idem-key-00000004' AND endpoint_key='assistant'),
+ 'processing','failed completion leaves idempotency claim uncompleted'
+);
+UPDATE public.srk_ai_conversations SET status='open',closed_at=NULL
+WHERE id='20000000-0000-4000-8000-000000000001';
+SELECT is(
+ private.ai_claim_idempotency('10000000-0000-4000-8000-000000000001','assistant','idem-key-00000005',repeat('2',64),90)->>'status',
+ 'processing','invalid completion fixture obtains a live claim'
+);
+SELECT throws_ok(
+ $SELECT private.ai_complete_idempotency(
+  '10000000-0000-4000-8000-000000000001','assistant','idem-key-00000005',99,
+  '{"ok":true}'::jsonb
+ )$,
+ '22023',NULL,'invalid response status is rejected'
+);
+\nSELECT * FROM finish();
 ROLLBACK;
