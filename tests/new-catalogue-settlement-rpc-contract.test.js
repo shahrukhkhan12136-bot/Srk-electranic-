@@ -113,7 +113,7 @@ test("new Catalogue digital settlement validates bill assignment and reserved de
 
 
 test("customer payment consent UI distinguishes Razorpay UPI checkout from standalone Admin-recorded UPI/bank transfer", () => {
-  const paymentSelect = bookingHtml.match(/<select id="payment" required>([\\s\\S]*?)<\\/select>/i)?.[1] || "";
+  const paymentSelect = bookingHtml.match(/<select id="payment" required>([\s\S]*?)<\/select>/i)?.[1] || "";
   assert.match(paymentSelect, /value="Cash"/);
   assert.match(paymentSelect, /value="Razorpay ऑनलाइन भुगतान"/);
   assert.doesNotMatch(paymentSelect, /value="(?:upi|bank_transfer|bank transfer)"/i);
