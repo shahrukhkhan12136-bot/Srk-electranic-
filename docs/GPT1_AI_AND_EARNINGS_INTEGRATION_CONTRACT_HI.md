@@ -183,3 +183,13 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - नया `tests/ai-assistant-app.test.js` disabled default, role separation, fail-closed dependencies और Supabase session-provider handoff के source-contract checks रखता है।
 - अभी helper को `booking.html` या `electrician.html` में import/mount नहीं किया गया है। वास्तविक GPT-2 API routes इस branch tree में अभी नहीं मिले; proposed endpoints को live contract नहीं माना जाएगा।
 - इन tests को इस commit के लिए चलाया हुआ प्रमाण उपलब्ध नहीं है। HTML runtime/mobile QA भी नहीं हुआ है। Live activation post-launch और backend verification के बाद ही होगा।
+
+
+### Booking snapshot replay ordering fix (18 Nov 2026)
+
+- `create-booking.js` में idempotency-key से पहले से सेव booking मिलने पर अब current published Rate Catalogue दोबारा लोड करने की आवश्यकता नहीं है।
+- Existing booking replay पहले उसी booking का persisted `estimated_labour_paise`, `estimate_rate_card_version` और उसी version/tier का historical 8-hour rate लौटाता है।
+- Current catalogue केवल नई booking insert करने से पहले पढ़ा जाता है; नई booking के लिए client rate/version पर भरोसा नहीं किया जाता।
+- Race/unique-key replay path पहले की तरह persisted booking snapshot लौटाता है।
+- नया source-contract test `tests/booking-rate-replay-order.test.js` replay-vs-current-catalogue ordering, persisted amount/version और new-booking server catalogue guard को जाँचता है।
+- अभी यह नया test execute नहीं हुआ है; live database trigger/runtime verification और end-to-end QA बाकी हैं।
