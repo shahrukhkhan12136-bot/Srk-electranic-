@@ -261,3 +261,10 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Post-launch composition helper अब AI_ASSISTANT_API_BASE_URL को भी config का अपना (own) property होना अनिवार्य करता है; inherited URL से AI client नहीं बनेगा।
 - Regression test Object.prototype से inherited URL देकर verify करता है कि composition fail-closed रहती है।
 - यह केवल configuration hardening है; AI endpoint लागू/सत्यापित नहीं हुआ, app mounting या activation नहीं की गई। Test execution का प्रमाण अभी उपलब्ध नहीं है।
+
+### AI client request prototype hardening
+
+- `sendMessage()` अब केवल plain object या null-prototype request स्वीकार करता है।
+- `moduleKey`, `message`, `accessToken` और `idempotencyKey` चारों own properties होना अनिवार्य हैं; inherited credentials या idempotency values से request नहीं बनेगी।
+- Regression tests inherited request fields और custom prototype को fetch से पहले reject करते हैं।
+- यह source-level बदलाव है; test execution/CI evidence अभी उपलब्ध नहीं है।
