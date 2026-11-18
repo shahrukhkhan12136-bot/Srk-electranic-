@@ -166,13 +166,13 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - `lib/ai-assistant-widget.js` में accessible chat surface, safe text-only rendering, Enter/Shift+Enter handling, sending/error states, optional human-handoff summary और backend-confirmed handoff reference rendering तैयार है।
 - यह Customer `customer_support` / `booking_assistant` और Electrician `electrician_assistant` module keys तक सीमित है।
 - Component default रूप से disabled है; `enabled: true`, explicit container, client और verified-session provider के बिना यह mount नहीं होता।
-- Component अभी `booking.html` या `electrician.html` में mount नहीं किया गया है और कोई live endpoint call enabled नहीं है। ऐसा तभी होगा जब GPT-2 backend contract और launch gates सत्यापित हों तथा post-launch activation अधिकृत हो।
-- `tests/ai-assistant-widget.test.js` disabled-default, module allowlist, configuration guard, safe rendering और handoff confirmation के source-contract checks जोड़ता है। Test suite अभी execute नहीं हुई है।
+- Component `booking.html` और `electrician.html` में app-shell mount wiring के साथ जुड़ा है। Customer profile-ready होने पर और Electrician active/approved profile मिलने पर mount path चलता है; लेकिन public config में AI enable flag/API URL नहीं हैं, इसलिए widget default रूप से mount नहीं होता और कोई live endpoint call enabled नहीं है।
+- `tests/ai-assistant-widget.test.js` disabled-default, module allowlist, configuration guard, safe rendering और handoff confirmation के source-contract checks जोड़ता है। नवीनतम verified branch CI (`2ef5263e`) में पूरी Node suite 656/656 पास हुई; यह mocked/source-contract coverage है, live backend या mobile runtime proof नहीं।
 ### Browser compatibility और retry safety update
 
 - Client adapter और shared widget अब CommonJS tests के साथ browser global exports भी देते हैं: `SrkAiAssistantClient` और `SrkAiAssistantWidget`।
 - Message और handoff के idempotency keys केवल उसी अपरिवर्तित payload के retry पर reuse होते हैं; उपयोगकर्ता संदेश/summary बदलता है तो नया key बनता है।
-- यह source-level सुधार है; HTML pages में scripts जोड़ना/mount करना, runtime tests और live backend verification अभी शेष हैं।
+- यह source-level सुधार है; HTML pages में scripts शामिल हैं और app-shell mount wiring मौजूद है। वास्तविक browser/mobile runtime तथा live backend verification अभी शेष हैं।
 
 
 ### App-side AI composition preparation (18 Nov 2026)
@@ -181,8 +181,8 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Customer role केवल `customer_support` और `booking_assistant` modules mount कर सकता है; Electrician role केवल `electrician_assistant` module mount कर सकता है।
 - यह helper केवल `AI_ASSISTANT_ENABLED === true` और HTTPS `AI_ASSISTANT_API_BASE_URL` मिलने पर mount करता है; अन्यथा कोई UI/network request नहीं होती।
 - नया `tests/ai-assistant-app.test.js` disabled default, role separation, fail-closed dependencies और Supabase session-provider handoff के source-contract checks रखता है।
-- अभी helper को `booking.html` या `electrician.html` में import/mount नहीं किया गया है। वास्तविक GPT-2 API routes इस branch tree में अभी नहीं मिले; proposed endpoints को live contract नहीं माना जाएगा।
-- इन tests को इस commit के लिए चलाया हुआ प्रमाण उपलब्ध नहीं है। HTML runtime/mobile QA भी नहीं हुआ है। Live activation post-launch और backend verification के बाद ही होगा।
+- Helper को `booking.html` और `electrician.html` में शामिल कर app-shell mount paths से जोड़ा गया है। वास्तविक GPT-2 API routes इस branch tree में अभी नहीं मिले; proposed endpoints को live contract नहीं माना जाएगा।
+- नवीनतम verified branch CI (`2ef5263e`) में Node suite 656/656 पास हुई। यह mocked/source-contract coverage है; HTML browser/mobile runtime QA और live backend verification अभी शेष हैं। Live activation post-launch और backend verification के बाद ही होगा।
 
 
 ### Booking snapshot replay ordering fix (18 Nov 2026)
