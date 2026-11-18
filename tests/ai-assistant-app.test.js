@@ -280,6 +280,21 @@ test("AI failures leave the existing Customer and Electrician support routes ava
     "sendElectricianSupportReply()"
   ]) assert.ok(electrician.includes(marker), "Electrician fallback missing: " + marker);
 
+  // Verify the fallback controls are actually wired to their existing workflows,
+  // not merely present beside the AI mount points.
+  assert.match(customer, /customerSupportCreate['"]\)\.addEventListener\(['"]click['"],\s*createCustomerSupportComplaint\)/);
+  assert.match(customer, /customerSupportSend['"]\)\.addEventListener\(['"]click['"],\s*sendCustomerSupportMessage\)/);
+  assert.match(customer, /customerSupportRefresh['"]\)\.addEventListener\(['"]click['"]/);
+  assert.match(customer, /async function createCustomerSupportComplaint\(\)[\s\S]*?srk_customer_create_booking_complaint/);
+  assert.match(customer, /async function sendCustomerSupportMessage\(\)[\s\S]*?srk_customer_send_booking_complaint_message/);
+  assert.match(customer, /async function loadCustomerSupportComplaints\(\)[\s\S]*?srk_customer_list_booking_complaints/);
+
+  assert.match(electrician, /async function createElectricianSupportTicket\(\)[\s\S]*?srk_electrician_create_support_ticket/);
+  assert.match(electrician, /async function loadElectricianSupportTickets\(\)[\s\S]*?srk_electrician_list_my_support_tickets/);
+  assert.match(electrician, /async function sendElectricianSupportReply\(\)[\s\S]*?srk_electrician_send_support_message/);
+  assert.match(electrician, /async function openElectricianSupportThread\(id\)[\s\S]*?srk_electrician_list_my_support_messages/);
+  assert.match(electrician, /function clearElectricianAccountView\(\)\{\s*destroyElectricianAiAssistant\(\);/);
+
   assert.ok(widget.includes("AI सहायता अभी उपलब्ध नहीं है। मौजूदा सहायता विकल्प इस्तेमाल करें।"));
   assert.ok(widget.includes("कृपया दोबारा लॉगिन करें।"));
 });
