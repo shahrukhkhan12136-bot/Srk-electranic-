@@ -108,3 +108,30 @@ test("Electrician Rate List UI fails closed on RPC errors or malformed payloads 
   assert.match(electricianUi, /esc\(item\.customer_facing_label\|\|item\.category_key\)/);
   assert.match(electricianUi, /आपकी स्वीकृत Rate List अभी उपलब्ध नहीं है/);
 });
+
+
+test("customer Rate Catalogue UI fails closed unless the published version and all four safe integer rates exist", () => {
+  const start = bookingUi.indexOf("async function refreshCustomerRateCatalogue()");
+  const end = bookingUi.indexOf("function updateLabourEstimate()", start);
+  const fn = bookingUi.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(fn, /customerSb\.rpc\(['"]srk_get_current_customer_rate_catalogue['"]\)/);
+  assert.match(fn, /if\(error\)throw error/);
+  assert.match(fn, /!data\?\.rate_version_id/);
+  assert.match(fn, /Number\.isSafeInteger\(rates\[k\]\)/);
+  assert.match(fn, /rates\[k\]<=0/);
+  assert.match(fn, /Object\.fromEntries\(keys\.map\(k=>\[k,rates\[k\]\]\)\)/);
+  assert.match(fn, /customerRateVersionId=data\.rate_version_id/);
+  assert.doesNotMatch(fn, /\|\|\s*\d{3,}/, "customer UI must not fall back to hardcoded catalogue prices");
+});
+
+test("customer labour estimate uses only the selected published tier and bounded whole-hour duration", () => {
+  const start = bookingUi.indexOf("function updateLabourEstimate()");
+  const end = bookingUi.indexOf("document.getElementById('rateTier')", start);
+  const fn = bookingUi.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(fn, /!Number\.isInteger\(hours\)/);
+  assert.match(fn, /hours<1\|\|hours>8/);
+  assert.match(fn, /customerRateCard\[tier\]\*hours\/8\+0\.5/);
+  assert.doesNotMatch(fn, /customer_rate_paise|company_share|commission/);
+});
