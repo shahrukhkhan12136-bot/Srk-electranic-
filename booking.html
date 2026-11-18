@@ -121,6 +121,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   </section>
 
 <section class="card" id="customerSupportPanel" style="margin-top:14px">
+   <div id="customerAiAssistantMount" aria-live="polite"></div>
    <h3 style="margin-top:0">🛟 सहायता और शिकायत</h3>
    <p class="small">अपनी बुकिंग से जुड़ी शिकायत दर्ज करें, उसकी स्थिति देखें और सहायता टीम को संदेश भेजें। निजी बातचीत केवल आपके लॉगिन में उपलब्ध है।</p>
     <details style="margin:10px 0">
@@ -265,6 +266,9 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <footer>© <span id="year"></span> SRK ELECTRONIC · Shahrukh Khan</footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/srk-config.js"></script>
+<script src="/lib/ai-assistant-client.js"></script>
+<script src="/lib/ai-assistant-widget.js"></script>
+<script src="/lib/ai-assistant-app.js"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
 /* Customer-facing Hindi/English UI dictionary. Original strings are retained so
@@ -926,12 +930,23 @@ initCustomerMenuShell();
 const value = id => document.getElementById(id).value.trim();
 const customerCfg = window.SRK_CONFIG || {};
 let customerSb = null;
+let customerAiAssistantWidget = null;
 let customerBookingRefreshRequest = 0;
 let customerResumeRefreshTimer = null;
 let customerOtpBusy = false;
 let customerOtpUntil = 0;
 let customerOtpTimer = null;
 const customerMessage = message => { document.getElementById('customerAuthMessage').textContent = message; };
+function mountCustomerAiAssistant(){
+  if(customerAiAssistantWidget)return;
+  const mount=document.getElementById("customerAiAssistantMount");
+  if(!mount||!customerSb||!window.SrkAiAssistantApp?.mountSrkAiAssistant)return;
+  customerAiAssistantWidget=window.SrkAiAssistantApp.mountSrkAiAssistant({container:mount,supabaseClient:customerSb,appRole:"customer",moduleKey:"customer_support"});
+}
+function destroyCustomerAiAssistant(){
+  customerAiAssistantWidget?.destroy?.();
+  customerAiAssistantWidget=null;
+}
 function customerPhoneE164() {
   const raw = document.getElementById('customerPhone').value.trim();
   const digits = raw.replace(/\D/g, '');
@@ -2154,7 +2169,9 @@ async function syncCustomerSession() {
     await loadCustomerSupportComplaints();if(!isCurrent())return;
     await loadCustomerSavedAddresses();if(!isCurrent())return;
     await loadCustomerProfile();if(!isCurrent())return;
+    mountCustomerAiAssistant();
   } else {
+    destroyCustomerAiAssistant();
     customerSavedAddressLoadRequest++;
     ['saveCurrentAddress','deleteSavedAddress','setDefaultSavedAddress'].forEach(id=>{const button=document.getElementById(id);if(button)button.disabled=false;});
     customerSavedAddresses=[]; editingSavedAddressId=null;
