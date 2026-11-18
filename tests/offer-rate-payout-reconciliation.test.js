@@ -34,6 +34,7 @@ test("SQL and JavaScript direct 85 percent half-up arithmetic agree on 10, 30, 5
 
 test("payment verification and payout-ledger reconciliation are separate states", () => {
   assert.match(migration, /payout_reconciliation_status text/);
+  assert.ok(migration.includes("b.commission_rate IS DISTINCT FROM 15"));
   assert.match(migration, /WHEN payout\.booking_id IS NULL THEN 'missing'/);
   assert.match(migration, /THEN 'reconciled'/);
   assert.match(migration, /WHEN verified\.is_verified THEN 'payment_verified'/);
