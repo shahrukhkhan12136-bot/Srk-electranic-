@@ -369,3 +369,16 @@ test("AI guard rejects UUID values with trailing line terminators", async () => 
   assert.equal(identityResponse.statusCode, 403);
   assert.equal(malformedIdentity.calls.length, 1, "invalid Auth UUID must not trigger profile reads");
 });
+
+
+test("AI guard rejects malformed and non-object JSON before upstream requests", async () => {
+  for (const body of ["{", "null", "[]", '"text"', "42"]) {
+    const { handler, calls } = setup();
+    const request = event();
+    request.body = body;
+    const response = await handler(request);
+    assert.equal(response.statusCode, 400, "invalid JSON shape must be rejected");
+    assert.equal(JSON.parse(response.body).error, "invalid_request");
+    assert.equal(calls.length, 0, "invalid JSON must not trigger Supabase calls");
+  }
+});
