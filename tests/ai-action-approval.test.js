@@ -46,9 +46,7 @@ test("approval fails closed when any action binding or approver identity is miss
     ["payload_hash", "sha256:other"], ["requesting_module", "electrician_assistant"],
     ["approver_user_id", ""], ["expires_at", 1795046400000]
   ]) {
-    const changed = key === "requesting_module" || key === "approver_user_id" || key === "expires_at"
-      ? { ...approval, [key]: value }
-      : { ...approval, [key]: value };
+    const changed = { ...approval, [key]: value };
     assert.equal(isApprovalBoundToAction({ action, approval: changed, nowMs }), false, key);
   }
   assert.equal(isApprovalBoundToAction({ action: { module_key: "booking_assistant" }, approval: { ...approval, action_id: undefined, action_type: undefined, target_id: undefined, payload_hash: undefined }, nowMs }), false);
