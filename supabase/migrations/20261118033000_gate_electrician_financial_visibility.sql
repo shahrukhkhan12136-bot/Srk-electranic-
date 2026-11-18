@@ -95,7 +95,15 @@ AS $function$
         WHERE e.booking_id=b.id AND round(e.amount,2)=round(b.amount_paid,2)
           AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
       ))
-    ) THEN b.service_charge ELSE NULL END,
+    )) THEN b.service_charge ELSE NULL END,
+    CASE WHEN b.status='completed' AND (b.razorpay_order_id IS NOT NULL OR (
+      b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
+      AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
+        SELECT 1 FROM public.srk_manual_payment_entries e
+        WHERE e.booking_id=b.id AND round(e.amount,2)=round(b.amount_paid,2)
+          AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
+      ))
+    )) THEN b.materials_amount ELSE NULL END,
     CASE WHEN b.razorpay_order_id IS NOT NULL OR (
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
       AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
@@ -103,7 +111,7 @@ AS $function$
         WHERE e.booking_id=b.id AND round(e.amount,2)=round(b.amount_paid,2)
           AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
       ))
-    ) THEN b.materials_amount ELSE NULL END,
+    )) THEN b.quote_status ELSE NULL END,
     CASE WHEN b.razorpay_order_id IS NOT NULL OR (
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
       AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
@@ -111,15 +119,7 @@ AS $function$
         WHERE e.booking_id=b.id AND round(e.amount,2)=round(b.amount_paid,2)
           AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
       ))
-    ) THEN b.quote_status ELSE NULL END,
-    CASE WHEN b.razorpay_order_id IS NOT NULL OR (
-      b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
-      AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
-        SELECT 1 FROM public.srk_manual_payment_entries e
-        WHERE e.booking_id=b.id AND round(e.amount,2)=round(b.amount_paid,2)
-          AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
-      ))
-    ) THEN b.quote_note ELSE NULL END
+    )) THEN b.quote_note ELSE NULL END
   FROM public.job_offers o
   JOIN public.electrician_profiles p ON p.id=o.electrician_id
   JOIN public.service_bookings b ON b.id=o.booking_id
