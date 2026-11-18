@@ -416,7 +416,8 @@ test("AI guard rejects ambiguous duplicate authorization and idempotency headers
   const duplicateIdempotency = setup();
   const keyRequest = event({ body: { module_key: "customer_support", message: "hello" } });
   keyRequest.headers["Idempotency-Key"] = UUID;
-  assert.equal((await duplicateIdempotency.handler(keyRequest)).statusCode, 400);
-  assert.equal(JSON.parse((await duplicateIdempotency.handler(keyRequest)).body).error, "invalid_idempotency_key");
-  assert.equal(duplicateIdempotency.calls.length, 6);
+  const keyResponse = await duplicateIdempotency.handler(keyRequest);
+  assert.equal(keyResponse.statusCode, 400);
+  assert.equal(JSON.parse(keyResponse.body).error, "invalid_idempotency_key");
+  assert.equal(duplicateIdempotency.calls.length, 3);
 });
