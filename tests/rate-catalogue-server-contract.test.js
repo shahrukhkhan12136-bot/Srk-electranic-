@@ -123,6 +123,12 @@ test("customer Rate Catalogue UI fails closed unless the published version and a
   assert.match(fn, /Object\.fromEntries\s*\(\s*keys\.map\s*\(\s*k\s*=>\s*\[\s*k\s*,\s*rates\[k\]\s*\]\s*\)\s*\)/);
   assert.match(fn, /customerRateVersionId\s*=\s*data\.rate_version_id/);
   assert.doesNotMatch(fn, /\|\|\s*\d{3,}/, "customer UI must not fall back to hardcoded catalogue prices");
+  assert.ok(fn.indexOf("customerRateCard = Object.create(null)") < fn.indexOf("customerSb.rpc("),
+    "a failed refresh must not leave previously loaded customer rates in memory");
+  assert.ok(fn.indexOf("customerRateVersionId = null") < fn.indexOf("customerSb.rpc("),
+    "a failed refresh must not leave a stale rate version selected");
+  assert.match(fn, /option\.textContent = customerRateLabels\[key\]/,
+    "displayed option labels must not retain old catalogue prices during refresh");
 });
 
 test("customer labour estimate uses only the selected published tier and bounded whole-hour duration", () => {
