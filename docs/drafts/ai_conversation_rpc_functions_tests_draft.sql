@@ -20,7 +20,7 @@ SELECT set_config('request.jwt.claim.role','service_role',true);
 -- and expired lease reclaim.
 SELECT is(
  private.ai_claim_idempotency('10000000-0000-4000-8000-000000000001','assistant','idem-key-00000001',repeat('a',64),90)->>'status',
- 'claimed','first idempotency request is claimed'
+ 'processing','first idempotency request enters processing'
 );
 SELECT is(
  private.ai_claim_idempotency('10000000-0000-4000-8000-000000000001','assistant','idem-key-00000001',repeat('a',64),90)->>'status',
@@ -40,7 +40,7 @@ SELECT is(
 );
 SELECT is(
  private.ai_claim_idempotency('10000000-0000-4000-8000-000000000001','assistant','idem-key-00000002',repeat('c',64),90)->>'status',
- 'claimed','new idempotency key is claimed'
+ 'processing','new idempotency key enters processing'
 );
 UPDATE public.srk_ai_idempotency
 SET lease_expires_at=now()-interval '1 second'
