@@ -25,6 +25,7 @@ begin
   select * into v_booking from public.service_bookings where id=p_booking_id for update;
   if not found then raise exception 'BOOKING_NOT_FOUND'; end if;
   if v_booking.status<>'completed' or v_booking.assigned_electrician_id is null then raise exception 'COMPLETED_ASSIGNED_BOOKING_REQUIRED'; end if;
+  if v_booking.selected_category is null then raise exception 'NEW_CATALOGUE_BOOKING_REQUIRED'; end if;
   if lower(btrim(coalesce(v_booking.payment_method,''))) not in ('upi','bank_transfer','bank transfer') then raise exception 'BOOKING_PAYMENT_METHOD_MISMATCH'; end if;
   if (p_method='upi' and lower(btrim(v_booking.payment_method))<>'upi')
      or (p_method='bank_transfer' and lower(btrim(v_booking.payment_method)) not in ('bank_transfer','bank transfer')) then
