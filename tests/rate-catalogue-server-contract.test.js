@@ -51,3 +51,12 @@ test("catalogue publishing validates the exact four tier keys and expected curre
   assert.match(catalogueMigration, /RATE_CATALOGUE_VERSION_CONFLICT/);
   assert.match(catalogueMigration, /effective_at<=now\(\)/);
 });
+
+test("Rate Catalogue RPC grants are least-privilege and base tables stay private", () => {
+  assert.match(catalogueMigration, /REVOKE ALL ON public\.srk_rate_catalogue_versions,public\.srk_rate_catalogue_items,[\s\S]*?FROM PUBLIC,anon,authenticated/);
+  assert.match(catalogueMigration, /GRANT EXECUTE ON FUNCTION public\.srk_get_current_customer_rate_catalogue\(\) TO anon,authenticated,service_role/);
+  assert.match(catalogueMigration, /GRANT EXECUTE ON FUNCTION public\.srk_get_my_electrician_rate_list\(\) TO authenticated/);
+  assert.match(catalogueMigration, /GRANT EXECUTE ON FUNCTION public\.srk_admin_publish_rate_catalogue\(jsonb,timestamptz,uuid,text\) TO authenticated/);
+  assert.match(catalogueMigration, /GRANT EXECUTE ON FUNCTION public\.srk_admin_set_electrician_approved_categories\(uuid,text\[\],text\) TO authenticated/);
+  assert.match(catalogueMigration, /GRANT SELECT ON TABLE public\.srk_rate_catalogue_items TO service_role/);
+});
