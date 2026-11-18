@@ -56,6 +56,9 @@ test("AI routes require POST and bearer authentication before processing", async
   const { handler, calls } = setup();
   assert.equal((await handler(event({ method: "GET" }))).statusCode, 405);
   assert.equal((await handler(event({ token: null }))).statusCode, 401);
+  const malformedBearer = event();
+  malformedBearer.headers.authorization = "Bearer\\svalid-token";
+  assert.equal((await handler(malformedBearer)).statusCode, 401);
   assert.equal(calls.length, 0);
 });
 
