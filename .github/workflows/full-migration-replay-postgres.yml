@@ -1,0 +1,95 @@
+name: Full feature branch PostgreSQL migration replay
+
+on:
+  push:
+    branches:
+      - feat/ai-rate-management-foundation-20261118
+    paths:
+      - "COMPLETE_DATABASE_SETUP.sql"
+      - "supabase/migrations/**"
+      - ".github/workflows/full-migration-replay-postgres.yml"
+  pull_request:
+    paths:
+      - "COMPLETE_DATABASE_SETUP.sql"
+      - "supabase/migrations/**"
+      - ".github/workflows/full-migration-replay-postgres.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srk-full-migration-replay-postgres
+  cancel-in-progress: false
+
+jobs:
+  full-replay:
+    name: Replay baseline plus every feature migration in disposable PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v5
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: Initialize temporary Supabase project
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/srk-full-migration-replay"
+          cd "$RUNNER_TEMP/srk-full-migration-replay"
+          supabase init
+
+      - name: Start disposable local Supabase stack
+        working-directory: ${{ runner.temp }}/srk-full-migration-replay
+        run: supabase start
+
+      - name: Replay baseline and every migration in deterministic filename order
+        working-directory: ${{ runner.temp }}/srk-full-migration-replay
+        run: |
+          set -euo pipefail
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          mkdir -p "$RUNNER_TEMP/srk-full-migration-evidence"
+          LOG="$RUNNER_TEMP/srk-full-migration-evidence/replay.log"
+
+          echo "Applying COMPLETE_DATABASE_SETUP.sql to disposable local PostgreSQL"
+          docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            < "$GITHUB_WORKSPACE/COMPLETE_DATABASE_SETUP.sql" 2>&1 | tee "$LOG"
+
+          mapfile -t migrations < <(find "$GITHUB_WORKSPACE/supabase/migrations" -maxdepth 1 -type f -name '*.sql' -print | LC_ALL=C sort)
+          test "${#migrations[@]}" -gt 0
+          printf 'migration_file_count=%s\n' "${#migrations[@]}" | tee -a "$LOG"
+
+          for migration in "${migrations[@]}"; do
+            echo "===== APPLY: $(basename "$migration") =====" | tee -a "$LOG"
+            docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 \
+              < "$migration" 2>&1 | tee -a "$LOG"
+          done
+
+          echo "===== FINAL SCHEMA CHECKS =====" | tee -a "$LOG"
+          docker exec "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc \
+            "select 'amount_paid=' || (exists (select 1 from information_schema.columns where table_schema='public' and table_name='service_bookings' and column_name='amount_paid'))::text;
+             select 'amount_paid_constraint=' || (exists (select 1 from pg_constraint where conrelid='public.service_bookings'::regclass and conname='service_bookings_amount_paid_nonnegative_check'))::text;
+             select 'rate_catalogue=' || (to_regclass('public.srk_rate_catalogue') is not null)::text;" | tee -a "$LOG"
+
+          if ! grep -q 'amount_paid=true' "$LOG" || ! grep -q 'amount_paid_constraint=true' "$LOG"; then
+            echo "Final amount_paid schema assertions failed." | tee -a "$LOG"
+            exit 1
+          fi
+
+      - name: Upload PostgreSQL replay evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-feature-migration-replay-postgres
+          path: ${{ runner.temp }}/srk-full-migration-evidence/
+          if-no-files-found: warn
+
+      - name: Stop disposable local Supabase stack
+        if: always()
+        working-directory: ${{ runner.temp }}/srk-full-migration-replay
+        run: supabase stop --no-backup
