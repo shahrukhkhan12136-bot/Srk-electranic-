@@ -15,7 +15,7 @@ const extract = (name) => {
 test("new Catalogue payment breakdown RPC is service-role-only and uses immutable labour bill", () => {
   const fn = extract("srk_service_role_get_booking_payment_breakdown");
   assert.ok(fn);
-  assert.match(fn, /auth\.jwt\(\)->>'role'\)\s*<>\s*'service_role'/i);
+  assert.match(fn, /auth\.jwt\(\)->>'role',''\)\s*<>\s*'service_role'/i);
   assert.match(fn, /from public\.srk_booking_labour_bills[\s\S]*?where booking_id=p_booking_id/i);
   assert.match(fn, /where i\.booking_id=p_booking_id and i\.status='reserved'/i);
   assert.match(fn, /total_amount_paise/i);
@@ -26,7 +26,7 @@ test("new Catalogue payment breakdown RPC is service-role-only and uses immutabl
 test("new Catalogue online settlement RPC locks booking, checks exact order and amount, and is idempotent by payment ID", () => {
   const fn = extract("srk_service_role_record_online_booking_payment");
   assert.ok(fn);
-  assert.match(fn, /auth\.jwt\(\)->>'role'\)\s*<>\s*'service_role'/i);
+  assert.match(fn, /auth\.jwt\(\)->>'role',''\)\s*<>\s*'service_role'/i);
   assert.match(fn, /from public\.service_bookings where id=p_booking_id for update/i);
   assert.match(fn, /p_amount_paise<>v_expected/i);
   assert.match(fn, /v_booking\.razorpay_order_id<>p_order_id/i);
