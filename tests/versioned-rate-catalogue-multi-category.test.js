@@ -108,7 +108,7 @@ test("Admin rate controls are Main Admin-only in the portal and call version-che
   assert.match(adminUi, /srk_admin_publish_rate_catalogue/);
   assert.match(adminUi, /p_expected_current_version_id:adminCurrentRateCatalogue\?\.rate_version_id\|\|null/);
   assert.match(adminUi, /function rupeesToPaise/);
-  assert.ok(adminUi.includes("if(!/^\\\\d+(?:\\\\.\\\\d{1,2})?$/.test(raw))"));
+  assert.match(adminUi, /if\(!\/\^\\d\+\(\?:\\\.\\d\{1,2\}\)\?\$\/\.test\(raw\)\)/);
 });
 
 test("Admin electrician category list is server-gated to Main Admin and writes full desired category state", () => {
