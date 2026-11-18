@@ -202,3 +202,40 @@ test("duplicate Customer or Electrician profile rows fail closed instead of choo
   assert.equal(electricianResponse.statusCode, 403);
   assert.equal(JSON.parse(electricianResponse.body).error, "ai_access_denied");
 });
+
+
+test("AI profile lookup HTTP errors and malformed profile payloads fail closed", async () => {
+  const baseEnv = {
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: "anon-test",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role-test"
+  };
+  const makeHandler = (profileResponse) => createAiServerGuard({
+    env: baseEnv,
+    fetchImpl: async (url) => {
+      if (url.includes("/auth/v1/user")) {
+        return { ok: true, status: 200, json: async () => ({ id: "123e4567-e89b-42d3-a456-426614174001" }) };
+      }
+      return profileResponse(url);
+    }
+  });
+  const request = event({ body: { module_key: "customer_support", message: "hello" } });
+
+  const unavailable = makeHandler(async (url) => ({
+    ok: !url.includes("/srk_customer_profiles"),
+    status: url.includes("/srk_customer_profiles") ? 500 : 200,
+    json: async () => []
+  }));
+  const unavailableResponse = await unavailable(request);
+  assert.equal(unavailableResponse.statusCode, 503);
+  assert.equal(JSON.parse(unavailableResponse.body).error, "ai_service_unavailable");
+
+  const malformed = makeHandler(async (url) => ({
+    ok: true,
+    status: 200,
+    json: async () => url.includes("/srk_customer_profiles") ? { user_id: "123e4567-e89b-42d3-a456-426614174001" } : []
+  }));
+  const malformedResponse = await malformed(request);
+  assert.equal(malformedResponse.statusCode, 503);
+  assert.equal(JSON.parse(malformedResponse.body).error, "ai_service_unavailable");
+});
