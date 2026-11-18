@@ -281,6 +281,71 @@ REVOKE ALL ON FUNCTION public.srk_get_my_electrician_rate_list() FROM PUBLIC,ano
 GRANT EXECUTE ON FUNCTION public.srk_get_my_electrician_rate_list() TO authenticated;
 
 
+
+-- Preserve each existing single-category approval as one row in the new
+-- multi-category relation. Historical profile columns/audit remain untouched.
+INSERT INTO public.srk_electrician_approved_rate_categories(
+  electrician_profile_id,category_key,approved_by,approved_at,is_active
+)
+SELECT p.id,p.approved_rate_tier,p.rate_tier_approved_by,
+       coalesce(p.rate_tier_approved_at,now()),true
+FROM public.electrician_profiles p
+WHERE p.approved_rate_tier IS NOT NULL
+  AND p.rate_tier_approved_by IS NOT NULL
+  AND p.verification_status='approved'
+ON CONFLICT(electrician_profile_id,category_key) DO NOTHING;
+
+INSERT INTO public.srk_electrician_rate_category_audit(
+  electrician_profile_id,category_key,action,actor_id,reason
+)
+SELECT p.id,p.approved_rate_tier,'approved',p.rate_tier_approved_by,
+       'Legacy single-category approval copied to multi-category relation; legacy record preserved'
+FROM public.electrician_profiles p
+WHERE p.approved_rate_tier IS NOT NULL AND p.rate_tier_approved_by IS NOT NULL
+  AND p.verification_status='approved'
+  AND NOT EXISTS (
+    SELECT 1 FROM public.srk_electrician_rate_category_audit a
+    WHERE a.electrician_profile_id=p.id AND a.category_key=p.approved_rate_tier
+      AND a.reason='Legacy single-category approval copied to multi-category relation; legacy record preserved'
+  );
+
+-- Keep the legacy audited-column guard, but permit activation when at least
+-- one new Admin-approved category is present.
+CREATE OR REPLACE FUNCTION public.srk_guard_electrician_rate_tier_activation()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
+AS $fn$
+DECLARE v_authorized boolean:=false; v_has_multi_category boolean:=false;
+BEGIN
+  IF TG_OP='INSERT' THEN
+    IF NEW.approved_rate_tier IS NOT NULL OR NEW.approved_rate_card_version IS NOT NULL
+       OR NEW.rate_tier_approved_by IS NOT NULL OR NEW.rate_tier_approved_at IS NOT NULL THEN
+      RAISE EXCEPTION 'Legacy rate tier fields must be assigned through audited Admin RPC' USING ERRCODE='42501';
+    END IF;
+  ELSIF NEW.approved_rate_tier IS DISTINCT FROM OLD.approved_rate_tier
+     OR NEW.approved_rate_card_version IS DISTINCT FROM OLD.approved_rate_card_version
+     OR NEW.rate_tier_approved_by IS DISTINCT FROM OLD.rate_tier_approved_by
+     OR NEW.rate_tier_approved_at IS DISTINCT FROM OLD.rate_tier_approved_at THEN
+    SELECT EXISTS(
+      SELECT 1 FROM srk_private.electrician_rate_tier_authorizations a
+      WHERE a.transaction_id=pg_catalog.txid_current()
+        AND a.electrician_profile_id=NEW.id AND a.actor_id=auth.uid()
+    ) INTO v_authorized;
+    IF NOT v_authorized THEN RAISE EXCEPTION 'Legacy rate tier changes require audited Admin RPC' USING ERRCODE='42501'; END IF;
+  END IF;
+  SELECT EXISTS(
+    SELECT 1 FROM public.srk_electrician_approved_rate_categories a
+    WHERE a.electrician_profile_id=NEW.id AND a.is_active=true
+  ) INTO v_has_multi_category;
+  IF NEW.active IS TRUE AND NOT v_has_multi_category
+     AND (NEW.approved_rate_tier IS NULL OR NEW.approved_rate_card_version IS NULL
+       OR NEW.rate_tier_approved_by IS NULL OR NEW.rate_tier_approved_at IS NULL) THEN
+    RAISE EXCEPTION 'Admin must approve at least one electrician rate category before activation' USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$fn$;
+REVOKE ALL ON FUNCTION public.srk_guard_electrician_rate_tier_activation() FROM PUBLIC,anon,authenticated;
+
 -- Booking dispatch and job-offer authorization now consult the multi-category
 -- Admin approval relation. Legacy approved_rate_tier columns remain untouched
 -- for historical compatibility; they are no longer the authority for new offers.
