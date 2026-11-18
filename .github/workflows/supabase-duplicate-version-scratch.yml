@@ -2,6 +2,11 @@ name: Supabase duplicate migration version scratch test
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/ai-rate-management-foundation-20261118
+    paths:
+      - .github/workflows/supabase-duplicate-version-scratch.yml
 
 permissions:
   contents: read
