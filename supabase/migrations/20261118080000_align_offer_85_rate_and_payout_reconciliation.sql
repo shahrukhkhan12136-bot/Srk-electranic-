@@ -236,8 +236,7 @@ AS $$
       WHEN NOT verified.is_verified THEN 'not_applicable'
       WHEN payout.booking_id IS NULL THEN 'missing'
       WHEN payout.electrician_profile_id IS DISTINCT FROM b.assigned_electrician_id THEN 'electrician_mismatch'
-      WHEN b.razorpay_payment_id IS NOT NULL
-        AND payout.razorpay_payment_id IS DISTINCT FROM b.razorpay_payment_id THEN 'payment_id_mismatch'
+      WHEN payout.razorpay_payment_id IS DISTINCT FROM b.razorpay_payment_id THEN 'payment_id_mismatch'
       WHEN payout.gross_service_amount IS NULL OR payout.platform_commission IS NULL
         OR payout.electrician_payable IS NULL OR payout.payout_status IS NULL THEN 'incomplete'
       WHEN b.selected_category IS NOT NULL AND b.commission_rate IS DISTINCT FROM 15
