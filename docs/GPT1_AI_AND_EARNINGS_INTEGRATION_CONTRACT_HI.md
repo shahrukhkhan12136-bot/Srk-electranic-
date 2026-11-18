@@ -224,3 +224,11 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - tests/ai-assistant-app.test.js और tests/ai-assistant-client.test.js में malformed URL regression cases जोड़े गए हैं।
 - ये source-level/mock tests हैं; इस branch पर execution/CI evidence उपलब्ध होने तक इन्हें passed नहीं माना जाएगा।
 - यह केवल pre-launch hardening है; AI routes, production mounting या live activation नहीं।
+
+
+## 10. AI transport response envelope hardening
+
+- HTTP non-success response पर client अब JSON body parse नहीं करता; केवल HTTP status से safe error code बनता है।
+- Missing/malformed response object, missing `ok`/`json`, JSON parse failure, और top-level array/string/null payload fail-closed होते हैं।
+- Regression tests malformed envelopes तथा 403 body non-parsing behavior cover करते हैं।
+- ये mocked source tests हैं; execution/CI प्रमाण उपलब्ध नहीं है। Live AI endpoint या activation का दावा नहीं है।
