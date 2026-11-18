@@ -7,6 +7,7 @@ const path = require("node:path");
 const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114280000_cancellation_fee_carry_forward_and_accounting.sql"), "utf8");
 const payoutMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114360000_new_category_electrician_payout_reconciliation.sql"), "utf8");
 const hardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118120000_harden_online_payment_settlement_state.sql"), "utf8");
+const cashHardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118130000_harden_catalogue_admin_cash_settlement.sql"), "utf8");
 
 const extract = (name) => {
   const match = migration.match(new RegExp("create or replace function public\\." + name + "\\([\\s\\S]*?\\n\\$\\$;", "i"));
@@ -65,4 +66,13 @@ test("online settlement hardening requires Catalogue booking, exact order before
   assert.match(hardeningMigration, /coalesce\(v_booking\.amount_paid,0\)<>0/i);
   assert.match(hardeningMigration, /revoke all on function public\.srk_service_role_record_online_booking_payment\(uuid,text,text,bigint\) from public,anon,authenticated/i);
   assert.match(hardeningMigration, /grant execute on function public\.srk_service_role_record_online_booking_payment\(uuid,text,text,bigint\) to service_role/i);
+});
+
+test("new Catalogue Admin cash settlement is Catalogue-only and rejects unexpected payment states or evidence", () => {
+  assert.match(cashHardeningMigration, /v_booking\.selected_category is null then raise exception 'NEW_CATALOGUE_BOOKING_REQUIRED'/i);
+  assert.match(cashHardeningMigration, /payment_status is null or v_booking\.payment_status not in \('unpaid','pending'\)/i);
+  assert.match(cashHardeningMigration, /payment_verified_at is not null or coalesce\(v_booking\.amount_paid,0\)<>0/i);
+  assert.match(cashHardeningMigration, /razorpay_payment_id is not null/i);
+  assert.match(cashHardeningMigration, /revoke all on function public\.srk_admin_record_new_booking_cash_payment\(uuid,text,text\) from public,anon/i);
+  assert.match(cashHardeningMigration, /grant execute on function public\.srk_admin_record_new_booking_cash_payment\(uuid,text,text\) to authenticated/i);
 });
