@@ -36,9 +36,9 @@ jobs:
           create table public.scratch_duplicate_beta (id integer primary key);
           SQL
 
-      - name: Start disposable local Supabase
+      - name: Start disposable local database only
         working-directory: ${{ runner.temp }}/srk-duplicate-version-scratch
-        run: supabase start
+        run: supabase db start
 
       - name: Run duplicate-version replay probe and capture evidence
         working-directory: ${{ runner.temp }}/srk-duplicate-version-scratch
