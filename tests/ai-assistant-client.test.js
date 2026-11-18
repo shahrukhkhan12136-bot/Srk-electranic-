@@ -445,3 +445,28 @@ test("AI client rejects UUID inputs with trailing line terminators before fetch"
   );
   assert.equal(calls, 0);
 });
+
+test("expired session responses map to login-required without reading server details", async () => {
+  let parsed = false;
+  let calls = 0;
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async (_url, options) => {
+      calls++;
+      assert.equal(options.headers.Authorization, "Bearer " + TOKEN);
+      return {
+        ok: false, status: 401,
+        json: async () => { parsed = true; return { error: { message: "private auth detail" } }; }
+      };
+    }
+  });
+  await assert.rejects(
+    client.sendMessage({
+      moduleKey: "customer_support", message: "मेरी बुकिंग",
+      accessToken: TOKEN, idempotencyKey: KEY
+    }),
+    error => error.code === "authentication_required" && error.status === 401
+  );
+  assert.equal(calls, 1);
+  assert.equal(parsed, false);
+});
