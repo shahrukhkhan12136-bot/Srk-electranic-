@@ -117,4 +117,24 @@ BEGIN
 END;
 $$;
 
--- CREATE OR REPLACE preserves the existing trigger attachment and function ACL.
+-- CREATE OR REPLACE preserves the function ACL. The trigger is reattached below to include payment_method.
+
+
+-- Reattach the existing AFTER trigger with payment_method included in its
+-- UPDATE OF list. A method-only correction must re-run the same evidence gate.
+DROP TRIGGER IF EXISTS trg_srk_create_electrician_payable ON public.service_bookings;
+CREATE TRIGGER trg_srk_create_electrician_payable
+AFTER INSERT OR UPDATE OF
+  payment_status,
+  status,
+  quote_status,
+  service_charge,
+  materials_amount,
+  assigned_electrician_id,
+  payment_verified_at,
+  razorpay_payment_id,
+  amount_paid,
+  payment_method
+ON public.service_bookings
+FOR EACH ROW
+EXECUTE FUNCTION public.srk_create_electrician_payable();
