@@ -81,7 +81,7 @@ jobs:
           test -n "$DB_CONTAINER"
           docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_rpc_functions_draft.sql"
 
-      - name: Run 21 private RPC behavioral and privilege assertions
+      - name: Run 32 private RPC behavioral and privilege assertions
         working-directory: ${{ runner.temp }}/srk-ai-db
         run: |
           set -euo pipefail
