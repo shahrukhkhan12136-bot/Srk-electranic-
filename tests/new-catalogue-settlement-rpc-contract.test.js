@@ -102,3 +102,10 @@ test("Admin dashboard routes new Catalogue UPI and bank receipts to the dedicate
   assert.match(adminHtml, /srk_admin_record_new_booking_cash_payment/);
   assert.match(adminHtml, /Razorpay भुगतान केवल verified online flow/);
 });
+
+
+test("new Catalogue digital settlement validates bill assignment and reserved debt ownership", () => {
+  assert.match(manualDigitalMigration, /v_labour\.electrician_profile_id is distinct from v_booking\.assigned_electrician_id/i);
+  assert.match(manualDigitalMigration, /status='reserved' and reserved_booking_id=p_booking_id[\s\S]*?customer_user_id=v_booking\.customer_user_id[\s\S]*?for update/i);
+  assert.match(manualDigitalMigration, /CANCELLATION_FEE_DEBT_RESERVATION_MISMATCH/i);
+});
