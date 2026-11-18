@@ -871,5 +871,11 @@ function scheduleElectricianResumeRefresh(){if(electricianResumeRefreshTimer)cle
 window.addEventListener('focus',scheduleElectricianResumeRefresh);
 window.addEventListener('online',scheduleElectricianResumeRefresh);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleElectricianResumeRefresh();});
+// Keep the electrician's booking lifecycle projection current while the approved portal is open.
+let electricianBookingStatusPoller=null;
+if(!electricianBookingStatusPoller)electricianBookingStatusPoller=setInterval(()=>{
+ if(document.visibilityState!=='visible'||!user||profile?.active!==true||profile?.verification_status!=='approved')return;
+ refresh();
+},30000);
 init();
 </script></body></html>
