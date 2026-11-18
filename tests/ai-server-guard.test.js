@@ -421,3 +421,27 @@ test("AI guard rejects ambiguous duplicate authorization and idempotency headers
   assert.equal(JSON.parse(keyResponse.body).error, "invalid_idempotency_key");
   assert.equal(duplicateIdempotency.calls.length, 3);
 });
+
+
+test("AI guard rejects unexpected top-level request fields before Supabase calls", async () => {
+  const assistant = setup();
+  const assistantResponse = await assistant.handler(event({
+    body: { module_key: "customer_support", message: "hello", actor_role: "admin" }
+  }));
+  assert.equal(assistantResponse.statusCode, 400);
+  assert.equal(JSON.parse(assistantResponse.body).error, "invalid_request");
+  assert.equal(assistant.calls.length, 0);
+
+  const handoff = setup();
+  const handoffResponse = await handoff.handler(event({
+    body: {
+      module_key: "customer_support",
+      conversation_id: UUID,
+      reason_code: "needs_human_support",
+      actor_user_id: UUID
+    }
+  }), "handoff");
+  assert.equal(handoffResponse.statusCode, 400);
+  assert.equal(JSON.parse(handoffResponse.body).error, "invalid_request");
+  assert.equal(handoff.calls.length, 0);
+});
