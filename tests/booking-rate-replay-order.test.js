@@ -31,7 +31,9 @@ test("new booking still requires the server-loaded published catalogue", () => {
   const insert = source.indexOf('supabase("service_bookings", {', catalogueLookup);
   assert.ok(catalogueLookup >= 0 && insert > catalogueLookup);
   assert.match(source.slice(catalogueLookup, insert), /Number\.isSafeInteger\(rateCard\[selected_rate_tier\]\)/);
-  assert.match(source.slice(catalogueLookup, insert), /estimate_rate_card_version: rateCardVersion/);
+  const insertEnd = source.indexOf("\n      });", insert);
+  assert.ok(insertEnd > insert, "booking insert body exists");
+  assert.match(source.slice(catalogueLookup, insertEnd), /estimate_rate_card_version: rateCardVersion/);
 });
 
 test("saved booking replay treats offer and historical-rate metadata as best-effort", () => {
