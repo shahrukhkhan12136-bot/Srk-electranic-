@@ -22,7 +22,7 @@ test("customer UI and booking server read the same published catalogue RPC", () 
 test("booking API derives the estimate from server rate, selected tier and duration", () => {
   assert.match(bookingApi, /const rate8hPaise = rateCard\[selected_rate_tier\]/);
   assert.match(bookingApi, /Math\.floor\(\(rate8hPaise \* selected_duration_hours\) \/ 8 \+ 0\.5\)/);
-  assert.match(bookingApi, /Number\.isSafeInteger\(rateCard\[selected_rate_tier\]\) && rateCard\[selected_rate_tier\] > 0/);
+  assert.match(bookingApi, /!Number\.isSafeInteger\(rateCard\[selected_rate_tier\]\) \|\| rateCard\[selected_rate_tier\] <= 0/);
   assert.match(bookingApi, /selected_duration_hours < 1 \|\| selected_duration_hours > 8/);
 });
 
