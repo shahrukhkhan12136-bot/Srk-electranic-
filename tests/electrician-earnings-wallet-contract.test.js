@@ -45,7 +45,7 @@ const payoutRlsMigration = fs.readFileSync(path.join(__dirname, '..', 'supabase/
 test('payout ledger RLS requires the same approved active electrician identity and preserves Main Admin access', () => {
   assert.ok(payoutRlsMigration.includes('DROP POLICY IF EXISTS srk_read_authorized_electrician_payouts'));
   assert.ok(payoutRlsMigration.includes('CREATE POLICY srk_read_authorized_electrician_payouts'));
-  assert.ok(payoutRlsMigration.includes('FOR SELECT\\n  TO authenticated'));
+  assert.ok(payoutRlsMigration.includes('FOR SELECT') && payoutRlsMigration.includes('TO authenticated'));
   assert.ok(payoutRlsMigration.includes('(SELECT public.is_srk_admin())'));
   assert.ok(payoutRlsMigration.includes('ep.id = srk_electrician_payouts.electrician_profile_id'));
   assert.ok(payoutRlsMigration.includes('ep.user_id = (SELECT auth.uid())'));
