@@ -26,7 +26,9 @@ The application ledger contains these two distinct quote migrations:
 
 This confirms that the actual application's migration ledger has two distinct identities for the quote migrations; the duplicate 20261109 prefix exists in the current branch filenames. The listing returns only version/name metadata and does not prove exact SQL content previously applied.
 
-The full reconciliation is documented in docs/ACTUAL_APP_MIGRATION_HISTORY_RECONCILIATION_20261118.md. The earlier test project's migration history is not authoritative for the application.
+The detailed metadata comparison found 9 same-name/different-version pairs, 71 application-ledger records whose names are absent from the branch, and 87 branch files whose names are absent from the application ledger. The ledger also repeats add_assigned_electrician_cash_payment_status at versions 20261111082515 and 20261111083811.
+
+Supabase's migration listing returns only version/name metadata, not previously applied SQL bodies or checksums. Thus the reconciliation is metadata-level, not SQL-content-level. See docs/ACTUAL_APP_MIGRATION_HISTORY_RECONCILIATION_20261118.md for the nine mismatched pairs and limits. The earlier test project's migration history is not authoritative for the application.
 
 ## Guard and safe next steps
 The existing tests/database-migration-version-uniqueness.test.js guard rejects new duplicate migration prefixes while allowlisting only this known legacy pair. Keep that guard.
