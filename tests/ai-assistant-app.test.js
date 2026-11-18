@@ -159,3 +159,12 @@ test("enabled composition rejects an inherited API base URL", () => {
     else delete Object.prototype.AI_ASSISTANT_API_BASE_URL;
   }
 });
+
+test("app composition rejects inherited object-prototype names as app roles", () => {
+  for (const appRole of ["__proto__", "constructor", "toString", "hasOwnProperty"]) {
+    assert.throws(() => mountSrkAiAssistant({
+      config: { AI_ASSISTANT_ENABLED: true },
+      appRole, moduleKey: "customer_support"
+    }), /ai_assistant_module_not_allowed_for_app/);
+  }
+});
