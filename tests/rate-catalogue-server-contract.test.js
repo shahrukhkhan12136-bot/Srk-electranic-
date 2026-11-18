@@ -127,7 +127,7 @@ test("customer Rate Catalogue UI fails closed unless the published version and a
 
 test("customer labour estimate uses only the selected published tier and bounded whole-hour duration", () => {
   const start = bookingUi.indexOf("function updateLabourEstimate()");
-  const end = bookingUi.indexOf("document.getElementById('rateTier')", start);
+  const end = bookingUi.indexOf("\\ndocument.getElementById('rateTier')?.addEventListener", start);
   const fn = bookingUi.slice(start, end);
   assert.ok(start >= 0 && end > start);
   assert.match(fn, /!Number\.isInteger\(hours\)/);
