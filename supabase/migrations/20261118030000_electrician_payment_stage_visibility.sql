@@ -60,7 +60,7 @@ as $function$
       when b.assigned_electrician_id=p.id
        and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved',
          'quote_rejected','awaiting_work_start_approval','in_progress','completed','cancelled')
-       and (b.razorpay_order_id is not null or
+       and ((b.razorpay_order_id is not null and b.payment_status='pending') or
          (b.payment_status='paid' and b.payment_verified_at is not null and
           (b.razorpay_payment_id is not null or exists(
             select 1 from public.srk_manual_payment_entries me
@@ -95,8 +95,13 @@ as $function$
       'awaiting_work_start_approval','in_progress','completed','cancelled')
       then b.address else null end,
     case when b.assigned_electrician_id=p.id and b.status='completed'
-      and (b.razorpay_order_id is not null or
-        (b.payment_status='paid' and b.payment_verified_at is not null))
+      and ((b.razorpay_order_id is not null and b.payment_status='pending') or
+        (b.payment_status='paid' and b.payment_verified_at is not null and
+         (b.razorpay_payment_id is not null or exists(
+           select 1 from public.srk_manual_payment_entries me
+           where me.booking_id=b.id
+             and round(me.amount,2)=round(coalesce(b.amount_paid,0),2)
+         ))))
       then b.location_lat else
       case when b.assigned_electrician_id=p.id and b.status in (
         'assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected',
@@ -107,20 +112,40 @@ as $function$
       'awaiting_work_start_approval','in_progress','completed','cancelled')
       then b.location_lng else null end,
     case when b.assigned_electrician_id=p.id and b.status='completed'
-      and (b.razorpay_order_id is not null or
-        (b.payment_status='paid' and b.payment_verified_at is not null))
+      and ((b.razorpay_order_id is not null and b.payment_status='pending') or
+        (b.payment_status='paid' and b.payment_verified_at is not null and
+         (b.razorpay_payment_id is not null or exists(
+           select 1 from public.srk_manual_payment_entries me
+           where me.booking_id=b.id
+             and round(me.amount,2)=round(coalesce(b.amount_paid,0),2)
+         ))))
       then b.service_charge else null end,
     case when b.assigned_electrician_id=p.id and b.status='completed'
-      and (b.razorpay_order_id is not null or
-        (b.payment_status='paid' and b.payment_verified_at is not null))
+      and ((b.razorpay_order_id is not null and b.payment_status='pending') or
+        (b.payment_status='paid' and b.payment_verified_at is not null and
+         (b.razorpay_payment_id is not null or exists(
+           select 1 from public.srk_manual_payment_entries me
+           where me.booking_id=b.id
+             and round(me.amount,2)=round(coalesce(b.amount_paid,0),2)
+         ))))
       then b.materials_amount else null end,
     case when b.assigned_electrician_id=p.id and b.status='completed'
-      and (b.razorpay_order_id is not null or
-        (b.payment_status='paid' and b.payment_verified_at is not null))
+      and ((b.razorpay_order_id is not null and b.payment_status='pending') or
+        (b.payment_status='paid' and b.payment_verified_at is not null and
+         (b.razorpay_payment_id is not null or exists(
+           select 1 from public.srk_manual_payment_entries me
+           where me.booking_id=b.id
+             and round(me.amount,2)=round(coalesce(b.amount_paid,0),2)
+         ))))
       then b.quote_status else null end,
     case when b.assigned_electrician_id=p.id and b.status='completed'
-      and (b.razorpay_order_id is not null or
-        (b.payment_status='paid' and b.payment_verified_at is not null))
+      and ((b.razorpay_order_id is not null and b.payment_status='pending') or
+        (b.payment_status='paid' and b.payment_verified_at is not null and
+         (b.razorpay_payment_id is not null or exists(
+           select 1 from public.srk_manual_payment_entries me
+           where me.booking_id=b.id
+             and round(me.amount,2)=round(coalesce(b.amount_paid,0),2)
+         ))))
       then b.quote_note else null end
   from public.job_offers o
   join public.electrician_profiles p on p.id=o.electrician_id
