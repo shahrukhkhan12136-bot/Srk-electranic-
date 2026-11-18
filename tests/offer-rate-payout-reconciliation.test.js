@@ -109,6 +109,6 @@ test("manual-payment trigger alignment migration does not rewrite historical rec
   assert.doesNotMatch(payoutTriggerMigration, /UPDATE\s+public\.service_bookings/i);
   assert.doesNotMatch(payoutTriggerMigration, /UPDATE\s+public\.srk_booking_labour_bills/i);
   assert.doesNotMatch(payoutTriggerMigration, /UPDATE\s+public\.srk_manual_payment_entries/i);
-  assert.doesNotMatch(payoutTriggerMigration, /^INSERT\\s+INTO\\s+public\\.srk_electrician_payouts/im);
-  assert.doesNotMatch(payoutTriggerMigration, /^DELETE\\s+FROM\\s+public\\.srk_electrician_payouts/im);
+  assert.doesNotMatch(payoutTriggerMigration, /^INSERT\s+INTO\s+public\.srk_electrician_payouts/im);
+  assert.doesNotMatch(payoutTriggerMigration, /^DELETE\s+FROM\s+public\.srk_electrician_payouts/im);
 });
