@@ -22,6 +22,15 @@
 - Next implementation boundary: server/API wiring and UI integration. Database changes remain blocked pending explicit user approval.
 
 
+## 18 नवम्बर 2026 — Netlify/API integration trace
+- `netlify.toml` में Netlify Functions का स्रोत `netlify/functions` है; मौजूदा redirects booking, electrician application और payment endpoints को root-level handlers से जोड़ते हैं। `netlify/functions/create-booking.js` केवल `../../create-booking.js` का adapter है।
+- `create-booking.js` में ग्राहक की Supabase Bearer session को `/auth/v1/user` से सत्यापित किया जाता है और verified phone को booking phone से मिलाया जाता है। यह मौजूदा सुरक्षित server-side pattern है जिसे नए rate/AI endpoints में अपनाना चाहिए।
+- उसी booking handler में चार customer labour rates अभी hard-coded हैं (₹899/₹1,199/₹1,599/₹1,999) और एक fixed rate-card version string है। इसलिए केवल नई pure rate-list library जोड़ने से Admin द्वारा बदली गई दरें live booking में लागू नहीं होंगी। आगे API wiring में server-side active published catalogue पढ़ना और उसी version/amount का immutable booking snapshot बनाना आवश्यक है। Browser से भेजी गई कीमत को authoritative नहीं मानना है।
+- `netlify.toml` में अभी dedicated commercial-rate या AI-assistant API redirect नहीं मिला। कोई नया route इस audit में नहीं जोड़ा गया।
+- AI API design के लिए existing pattern में verified user session, server-side allowlist, narrowly scoped database calls और sanitized response अपनाएँ। Service-role key केवल server environment में रहे; उसे model prompt, tool arguments, browser या logs में कभी न भेजें।
+- यह source inspection है; कोई code route, database object, migration, deployment या runtime configuration नहीं बदली गई।
+
+
 ## 18 नवम्बर 2026 — अतिरिक्त सत्यापन
 - 5 टेस्ट फाइलों में कुल 19 टेस्ट चलाए गए: **19 पास, 0 फेल**।
 - 85% राशि की गणना को JavaScript floating-point multiplication से हटाकर BigInt आधारित integer arithmetic किया, ताकि बड़े वैध paise input पर rounding सटीक रहे।
