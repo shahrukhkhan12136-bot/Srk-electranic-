@@ -6,7 +6,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const migration = fs.readFileSync(
-  path.join(__dirname, "../supabase/migrations/20261118030000_electrician_payment_stage_visibility.sql"),
+  path.join(__dirname, "../supabase/migrations/20261118080000_align_offer_85_rate_and_payout_reconciliation.sql"),
+  "utf8"
+);
+const roundingMigration = fs.readFileSync(
+  path.join(__dirname, "../supabase/migrations/20261118110000_unify_electrician_rate_rounding.sql"),
   "utf8"
 );
 
@@ -14,7 +18,7 @@ test("offer RPC returns electrician net, not customer gross estimate", () => {
   const offerFunction = migration.split("create function public.srk_get_my_offer_details()")[1].split("$function$;")[0];
   assert.match(offerFunction, /electrician_offer_paise bigint/);
   assert.doesNotMatch(offerFunction, /estimated_labour_paise bigint/);
-  assert.match(offerFunction, /floor\(\(b\.estimated_labour_paise::numeric\*85\+50\)\/100\)::bigint/);
+  assert.match(roundingMigration, /b\\.estimated_labour_paise - floor\\(\\(b\\.estimated_labour_paise::numeric\\*1500\\/10000\\)\\+0\\.5\\)::bigint/);
   assert.doesNotMatch(offerFunction, /\n\s*b\.estimated_labour_paise,?/);
 });
 
@@ -37,7 +41,7 @@ test("earnings RPC derives payment stage from persisted order and payment eviden
 
 test("unpaid rows hide customer gross and company share but expose electrician net", () => {
   const earningsFunction = migration.split("create function public.srk_get_my_earnings()")[1].split("$function$;")[0];
-  assert.match(earningsFunction, /then round\(floor\(\(bill\.labour_amount_paise\*85\+50\)\/100\)\/100,2\)/);
+  assert.match(earningsFunction, /floor\\(\\(round\\(coalesce\\(bill\\.labour_amount,0\\)\\*100\\)\\*1500\\+5000\\)\\/10000\\)/i);
   assert.match(earningsFunction, /customer_labour_gross numeric/);
   assert.match(earningsFunction, /company_share numeric/);
   assert.match(earningsFunction, /and \(\(b\.razorpay_order_id is not null and b\.payment_status='pending'\) or/);
