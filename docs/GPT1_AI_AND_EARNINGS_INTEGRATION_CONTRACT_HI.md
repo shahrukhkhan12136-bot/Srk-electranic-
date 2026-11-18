@@ -268,3 +268,10 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - `moduleKey`, `message`, `accessToken` और `idempotencyKey` चारों own properties होना अनिवार्य हैं; inherited credentials या idempotency values से request नहीं बनेगी।
 - Regression tests inherited request fields और custom prototype को fetch से पहले reject करते हैं।
 - यह source-level बदलाव है; test execution/CI evidence अभी उपलब्ध नहीं है।
+
+### AI optional request fields prototype hardening
+
+- `sendMessage()` में optional `context` और `conversationId` केवल own properties से पढ़े जाते हैं; inherited values को अनदेखा किया जाता है।
+- `createHandoff()` अब मूल request के plain-object/null-prototype होने की पुष्टि करता है और optional `context`, `conversationId`, `reasonCode`, `urgency`, `summary` own properties से ही पढ़ता है।
+- Regression test `Object.prototype` में inherited context/conversation values डालकर verify करता है कि वे request body में नहीं जातीं।
+- Tests अभी execute नहीं हुए हैं; यह pre-launch source hardening है, live API integration नहीं।
