@@ -34,7 +34,8 @@ test('Electrician earnings and Admin bank payout remain distinct and UI never in
   assert.match(earningsSql, /where p\.user_id=auth\.uid\(\) and p\.verification_status='approved'/);
   assert.match(electrician, /sb\.rpc\('srk_get_my_earnings'\)/);
   assert.match(electrician, /srk_electrician_payouts/);
-  assert.match(electrician, /अलग Electrician Payout Ledger/);\n  assert.match(electrician, /Admin वास्तविक ट्रांसफर के बाद UTR दर्ज करेगा, तभी Paid दिखेगा/);
+  assert.match(electrician, /अलग Electrician Payout Ledger/);
+  assert.match(electrician, /Admin वास्तविक ट्रांसफर के बाद UTR दर्ज करेगा, तभी Paid दिखेगा/);
   assert.match(electrician, /यह ऐप का आंतरिक लेजर बैलेंस है/);
   assert.match(electrician, /बैंक खाता जोड़ना और निकासी अभी बंद है/);
   assert.doesNotMatch(electrician, /srk_wallet_withdraw|srk_create_withdrawal|create_bank_transfer|razorpay_route_transfer/i);
