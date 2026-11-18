@@ -92,3 +92,66 @@ test("widget preserves handoff idempotency key after failure and clears it only 
   assert.match(block, /} catch \(error\) \{[\s\\S]*?if \(!destroyed\) showError\(error\)/);
   assert.doesNotMatch(block.slice(block.indexOf("} catch (error)")), /pendingHandoffKey = null/);
 });
+
+function createFakeDocument() {
+  class FakeElement {
+    constructor(tagName) {
+      this.tagName = tagName;
+      this.children = [];
+      this.listeners = {};
+      this.attributes = {};
+      this.hidden = false;
+      this.disabled = false;
+      this.value = "";
+      this.textContent = "";
+    }
+    setAttribute(name, value) { this.attributes[name] = value; }
+    append(...items) { this.children.push(...items); }
+    addEventListener(name, callback) { this.listeners[name] = callback; }
+    removeEventListener(name) { delete this.listeners[name]; }
+    focus() {}
+    remove() { this.removed = true; }
+    find(tagName) {
+      if (this.tagName === tagName) return this;
+      for (const child of this.children) {
+        const found = child.find?.(tagName);
+        if (found) return found;
+      }
+      return null;
+    }
+  }
+  return { createElement: tagName => new FakeElement(tagName) };
+}
+
+test("Customer and Electrician widgets show login guidance and never send without a live session", async () => {
+  for (const moduleKey of ["customer_support", "electrician_assistant"]) {
+    const documentRef = createFakeDocument();
+    const container = documentRef.createElement("main");
+    let sendCalls = 0;
+    const widget = createAiAssistantWidget({
+      enabled: true, moduleKey, container, documentRef,
+      client: {
+        async sendMessage() { sendCalls++; },
+        async createHandoff() { throw new Error("handoff must not run"); }
+      },
+      async getSession() { return null; },
+      createId: () => "123e4567-e89b-42d3-a456-426614174000"
+    });
+    const toggle = widget.element.find("button");
+    const panel = widget.element.find("div");
+    const input = widget.element.find("textarea");
+    const buttons = [];
+    const collect = node => {
+      if (node.tagName === "button") buttons.push(node);
+      for (const child of node.children) collect(child);
+    };
+    collect(widget.element);
+    const send = buttons[1];
+    toggle.listeners.click();
+    input.value = "मेरी बुकिंग का स्टेटस बताइए";
+    await send.listeners.click();
+    assert.equal(sendCalls, 0, moduleKey + " must not send without a session");
+    assert.equal(panel.find("p").textContent, "कृपया दोबारा लॉगिन करें।");
+    widget.destroy();
+  }
+});
