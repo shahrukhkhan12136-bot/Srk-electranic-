@@ -66,6 +66,7 @@
 
 ## 4. अभी क्या सत्यापित नहीं हुआ
 
+- GitHub commit status में Vercel check `failure` दिखा; target संदेश `build-rate-limit` है। इसे code/test failure का प्रमाण नहीं मान सकते, लेकिन सफल build भी उपलब्ध नहीं है।
 - SQL migration Production या किसी live Supabase database पर लागू नहीं की गई।
 - Live RPC response से gross leakage का runtime test नहीं हुआ।
 - Authenticated electrician के साथ Offer/Earnings RPC integration test नहीं हुआ।
