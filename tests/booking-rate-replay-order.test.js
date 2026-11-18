@@ -22,7 +22,7 @@ test("replayed booking returns its persisted amount and catalogue version, not n
   const replay = source.slice(replayStart, replayEnd);
   assert.match(replay, /existing\.estimated_labour_paise/);
   assert.match(replay, /existing\.estimate_rate_card_version/);
-  assert.match(replay, /loadSnapshotRate8h\(existing\)/);
+  assert.match(replay, /loadReplayDetails\(existing\)/);
   assert.doesNotMatch(replay, /rateCard\[selected_rate_tier\]/);
 });
 
@@ -32,4 +32,16 @@ test("new booking still requires the server-loaded published catalogue", () => {
   assert.ok(catalogueLookup >= 0 && insert > catalogueLookup);
   assert.match(source.slice(catalogueLookup, insert), /Number\.isSafeInteger\(rateCard\[selected_rate_tier\]\)/);
   assert.match(source.slice(catalogueLookup, insert), /estimate_rate_card_version: rateCardVersion/);
+});
+
+test("saved booking replay treats offer and historical-rate metadata as best-effort", () => {
+  const helperStart = source.indexOf("async function loadReplayDetails(booking)");
+  const helperEnd = source.indexOf("\nasync function checkPublicRateLimit", helperStart);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, "replay metadata helper exists");
+  const helper = source.slice(helperStart, helperEnd);
+  assert.match(helper, /catch \(error\)/);
+  assert.match(helper, /offersCreated = null/);
+  assert.match(helper, /rate8hPaise = null/);
+  assert.match(helper, /return \{ offersCreated, matchLevel, rate8hPaise \}/);
+  assert.match(source, /loadReplayDetails\(raced\)/);
 });
