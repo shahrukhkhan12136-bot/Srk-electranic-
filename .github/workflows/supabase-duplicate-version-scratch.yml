@@ -28,7 +28,16 @@ jobs:
           mkdir -p "$RUNNER_TEMP/srk-duplicate-version-scratch"
           cd "$RUNNER_TEMP/srk-duplicate-version-scratch"
           supabase init
-          mkdir -p supabase/migrations
+
+      - name: Start disposable local database
+        working-directory: ${{ runner.temp }}/srk-duplicate-version-scratch
+        run: supabase db start
+
+      - name: Create duplicate-version migrations and capture replay evidence
+        working-directory: ${{ runner.temp }}/srk-duplicate-version-scratch
+        run: |
+          set -euo pipefail
+          mkdir -p supabase/migrations evidence
           cat > supabase/migrations/20261109_scratch_alpha.sql <<'SQL'
           create table public.scratch_duplicate_alpha (id integer primary key);
           SQL
@@ -36,15 +45,6 @@ jobs:
           create table public.scratch_duplicate_beta (id integer primary key);
           SQL
 
-      - name: Start disposable local database only
-        working-directory: ${{ runner.temp }}/srk-duplicate-version-scratch
-        run: supabase db start
-
-      - name: Run duplicate-version replay probe and capture evidence
-        working-directory: ${{ runner.temp }}/srk-duplicate-version-scratch
-        run: |
-          set -euo pipefail
-          mkdir -p evidence
           set +e
           supabase db reset --debug > evidence/db-reset.log 2>&1
           RESET_EXIT=$?
@@ -62,8 +62,6 @@ jobs:
             >> evidence/result.txt
           cat evidence/result.txt
           cat evidence/db-reset.log
-          # The probe is diagnostic: either CLI rejection or replay outcome is evidence.
-          # Do not turn a duplicate-version finding into an automatic migration repair.
           echo "Scratch probe completed; inspect the captured outcome before changing project migrations."
 
       - name: Upload scratch evidence
