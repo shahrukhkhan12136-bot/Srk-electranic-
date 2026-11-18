@@ -128,6 +128,6 @@ test("payout trigger replacement preserves the original function except for manu
             and new.payment_method is not null
             and lower(btrim(e.payment_method)) = lower(btrim(new.payment_method))`
   );
-  const normalize = (source) => source.toLowerCase().replace(/--[^\\n]*/g, "").replace(/\\s+/g, " ").trim();
+  const normalize = (source) => source.toLowerCase().replace(/--[^\n]*/g, "").replace(/\s+/g, " ").trim();
   assert.equal(normalize(revised), normalize(expected));
 });
