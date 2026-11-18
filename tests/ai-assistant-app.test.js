@@ -283,3 +283,50 @@ test("AI failures leave the existing Customer and Electrician support routes ava
   assert.ok(widget.includes("AI सहायता अभी उपलब्ध नहीं है। मौजूदा सहायता विकल्प इस्तेमाल करें।"));
   assert.ok(widget.includes("कृपया दोबारा लॉगिन करें।"));
 });
+
+test("Customer and Electrician app session providers return null for an expired session without fabricating credentials", async () => {
+  const oldClient = globalThis.SrkAiAssistantClient;
+  const oldWidget = globalThis.SrkAiAssistantWidget;
+  const mounted = [];
+  try {
+    globalThis.SrkAiAssistantClient = {
+      createAiAssistantClient(options) {
+        return { options, sendMessage() {}, createHandoff() {} };
+      }
+    };
+    globalThis.SrkAiAssistantWidget = {
+      createAiAssistantWidget(options) {
+        mounted.push(options);
+        return { mounted: true };
+      }
+    };
+    const config = {
+      AI_ASSISTANT_ENABLED: true,
+      AI_ASSISTANT_API_BASE_URL: "https://api.example.test"
+    };
+    const expiredSupabase = {
+      auth: { async getSession() {
+        return { data: { session: null }, error: null };
+      } }
+    };
+    mountSrkAiAssistant({
+      container: {}, supabaseClient: expiredSupabase,
+      appRole: "customer", moduleKey: "customer_support", config
+    });
+    mountSrkAiAssistant({
+      container: {}, supabaseClient: expiredSupabase,
+      appRole: "electrician", moduleKey: "electrician_assistant", config
+    });
+    assert.deepEqual(mounted.map(item => item.moduleKey), [
+      "customer_support", "electrician_assistant"
+    ]);
+    for (const widgetOptions of mounted) {
+      assert.equal(await widgetOptions.getSession(), null);
+    }
+  } finally {
+    if (oldClient === undefined) delete globalThis.SrkAiAssistantClient;
+    else globalThis.SrkAiAssistantClient = oldClient;
+    if (oldWidget === undefined) delete globalThis.SrkAiAssistantWidget;
+    else globalThis.SrkAiAssistantWidget = oldWidget;
+  }
+});
