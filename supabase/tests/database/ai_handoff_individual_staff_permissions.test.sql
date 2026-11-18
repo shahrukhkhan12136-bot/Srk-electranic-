@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(14);
+SELECT plan(15);
 
 SELECT has_table('public','srk_admin_staff_permission_grants','individual Staff permission grant table exists');
 SELECT ok(
