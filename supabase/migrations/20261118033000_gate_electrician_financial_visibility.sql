@@ -104,7 +104,7 @@ AS $function$
           AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
       ))
     )) THEN b.materials_amount ELSE NULL END,
-    CASE WHEN b.razorpay_order_id IS NOT NULL OR (
+    CASE WHEN b.status='completed' AND (b.razorpay_order_id IS NOT NULL OR (
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
       AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
         SELECT 1 FROM public.srk_manual_payment_entries e
@@ -112,7 +112,7 @@ AS $function$
           AND lower(btrim(e.payment_method))=lower(btrim(b.payment_method))
       ))
     )) THEN b.quote_status ELSE NULL END,
-    CASE WHEN b.razorpay_order_id IS NOT NULL OR (
+    CASE WHEN b.status='completed' AND (b.razorpay_order_id IS NOT NULL OR (
       b.payment_status='paid' AND b.payment_verified_at IS NOT NULL AND b.amount_paid>0
       AND (b.razorpay_payment_id IS NOT NULL OR EXISTS (
         SELECT 1 FROM public.srk_manual_payment_entries e
