@@ -61,3 +61,12 @@ Manual-payment trigger में booking और evidence के payment_method �
 Regression contract में Admin UI routing assertion जोड़ा गया है।
 
 **सीमा:** Customer की नई booking form अभी payment method के रूप में केवल Cash और Razorpay चुनने देती है। इसलिए UPI / Bank Transfer RPC तभी सफल होगा जब booking का पहले से दर्ज `payment_method` ग्राहक की अनुमति से `upi` या `bank_transfer` हो। केवल Admin dropdown बदलना पर्याप्त नहीं है; इससे customer की मूल payment choice नहीं बदली जाती। UPI ID / bank account / QR details उपलब्ध और स्वीकृत हुए बिना customer form में नए payment विकल्प नहीं जोड़े गए हैं।
+
+
+## अतिरिक्त source hardening (18 नवंबर)
+
+Digital settlement RPC में अब payment update से पहले दो स्पष्ट guards हैं:
+1. Immutable labour bill का `electrician_profile_id` उसी booking के `assigned_electrician_id` से मिलना चाहिए।
+2. हर reserved cancellation-fee item के debt record का `status='reserved'`, `reserved_booking_id` मौजूदा booking और `customer_user_id` booking customer से मेल खाना चाहिए; debt row lock भी लिया जाता है।
+
+Mismatch होने पर पूरी RPC transaction असफल होगी; payment entry या fee settlement आधा लागू नहीं होना चाहिए। इनके लिए regression contract assertions जोड़े गए हैं। यह source-level सुरक्षा है; PostgreSQL runtime और वास्तविक transaction व्यवहार अभी प्रमाणित नहीं हैं।
