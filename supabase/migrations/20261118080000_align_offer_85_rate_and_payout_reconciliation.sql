@@ -184,8 +184,11 @@ AS $$
       ELSE 0
     END AS electrician_earning,
     CASE
-      WHEN verified.is_verified AND bill.labour_amount IS NOT NULL THEN bill.labour_amount
-      WHEN checkout.started AND b.selected_category IS NOT NULL AND b.commission_rate=15 AND bill.labour_amount IS NOT NULL THEN bill.labour_amount
+      WHEN verified.is_verified
+        AND payout_check.reconciliation_status='reconciled'
+        AND bill.labour_amount IS NOT NULL THEN bill.labour_amount
+      WHEN checkout.started AND b.selected_category IS NOT NULL AND b.commission_rate=15
+        AND bill.labour_amount IS NOT NULL THEN bill.labour_amount
       ELSE NULL
     END AS customer_labour_gross,
     CASE
