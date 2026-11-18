@@ -39,6 +39,24 @@ test("Main Admin UI can save drafts, view queue, and publish with expected curre
  for(const handler of ["saveAdminRateCatalogueDraft","publishAdminRateCatalogueDraft","loadAdminRateCatalogueDrafts"])assert.ok(admin.includes(`async function ${handler}(`),`${handler} must be async because it awaits Supabase RPCs`);
 });
 
+test("electrician tier selector displays the current published catalogue prices, never legacy hardcoded amounts",()=>{
+ const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
+ const context=vm.createContext({window:{},document:{getElementById(){return null;}}});
+ vm.runInContext(script,context);
+ vm.runInContext("adminCurrentRateCatalogue={rates:{electrical_assistant:12550,skilled_electrician:20000,expert_electrician:27525,premium_electrical_specialist:35000}}",context);
+ const dynamic=vm.runInContext("SRK_RATE_TIERS.map(([key,label])=>adminRateTierOption(key,label,'skilled_electrician')).join('')",context);
+ assert.match(dynamic,/Electrical Assistant — ₹125\.50/);
+ assert.match(dynamic,/Skilled Electrician — ₹200\.00/);
+ assert.match(dynamic,/Expert Electrician — ₹275\.25/);
+ assert.match(dynamic,/Premium Electrical Specialist — ₹350\.00/);
+ assert.match(dynamic,/value="skilled_electrician" selected/);
+ assert.doesNotMatch(dynamic,/₹899|₹1,199|₹1,599|₹1,999/);
+ vm.runInContext("adminCurrentRateCatalogue=null",context);
+ const unavailable=vm.runInContext("adminRateTierOption('electrical_assistant','Electrical Assistant','')",context);
+ assert.match(unavailable,/प्रकाशित दर उपलब्ध नहीं/);
+ assert.doesNotMatch(unavailable,/₹\d/);
+});
+
 test("Admin page inline JavaScript parses without syntax errors",()=>{
  const scripts=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean);
  assert.ok(scripts.length>0,"inline admin script must exist");
