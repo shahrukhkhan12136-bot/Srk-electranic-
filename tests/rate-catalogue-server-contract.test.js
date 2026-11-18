@@ -116,7 +116,7 @@ test("customer Rate Catalogue UI fails closed unless the published version and a
   const fn = bookingUi.slice(start, end);
   assert.ok(start >= 0 && end > start);
   assert.match(fn, /customerSb\.rpc\(['"]srk_get_current_customer_rate_catalogue['"]\)/);
-  assert.match(fn, /if\(error\)throw error/);
+  assert.match(fn, /if\s*\(error\)\s*throw error/);
   assert.match(fn, /!data\?\.rate_version_id/);
   assert.match(fn, /Number\.isSafeInteger\(rates\[k\]\)/);
   assert.match(fn, /rates\[k\]<=0/);
@@ -127,7 +127,7 @@ test("customer Rate Catalogue UI fails closed unless the published version and a
 
 test("customer labour estimate uses only the selected published tier and bounded whole-hour duration", () => {
   const start = bookingUi.indexOf("function updateLabourEstimate()");
-  const end = bookingUi.indexOf("\\ndocument.getElementById('rateTier')?.addEventListener", start);
+  const end = bookingUi.indexOf("function initCustomerMenuShell()", start);
   const fn = bookingUi.slice(start, end);
   assert.ok(start >= 0 && end > start);
   assert.match(fn, /!Number\.isInteger\(hours\)/);
