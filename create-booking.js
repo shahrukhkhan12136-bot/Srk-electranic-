@@ -145,17 +145,6 @@ exports.handler = async (event) => {
     const selected_category = clean(body.selected_category, 40);
     const selected_rate_tier = clean(body.selected_rate_tier, 40);
     const selected_duration_hours = Number(body.selected_duration_hours);
-    // The service-role server reads the same published catalogue used by the
-    // customer/electrician RPCs. Never accept client-supplied rate amounts/version.
-    const catalogue = await supabase("rpc/srk_get_current_customer_rate_catalogue", {
-      method: "POST", body: "{}"
-    });
-    const rateCard = catalogue && catalogue.rates;
-    const rateCardVersion = catalogue && catalogue.rate_version_id;
-    if (!rateCard || typeof rateCardVersion !== "string" ||
-        !["electrical_assistant","skilled_electrician","expert_electrician","premium_electrical_specialist"].every(k => Number.isSafeInteger(rateCard[k]) && rateCard[k] > 0)) {
-      return json(503, { success: false, error: "अभी प्रकाशित Rate Catalogue उपलब्ध नहीं है। कृपया कुछ देर बाद प्रयास करें।" });
-    }
     // SRK ELECTRONIC accepts immediate service requests only; ignore legacy schedule fields.
     const preferred_date = null;
     const preferred_time = null;
@@ -178,7 +167,7 @@ const work_details = clean(body.work_details, 2000);
     if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
         !["home_wiring", "electrical_repair", "light_fan_fitting", "home_repair", "other"].includes(selected_category) ||
-        !Object.prototype.hasOwnProperty.call(rateCard, selected_rate_tier) ||
+        !["electrical_assistant","skilled_electrician","expert_electrician","premium_electrical_specialist"].includes(selected_rate_tier) ||
         !Number.isInteger(selected_duration_hours) || selected_duration_hours < 1 || selected_duration_hours > 8) {
       return json(400, { success: false, error: "कृपया नाम, सही 10 अंकों का मोबाइल, राज्य, जिला, 6 अंकों का PIN Code, पता, सर्विस, श्रेणी और अवधि भरें।" });
     }
@@ -190,8 +179,6 @@ const work_details = clean(body.work_details, 2000);
       return json(400, { success: false, error: "भुगतान राशि सही नहीं है।" });
     }
 
-    const rate8hPaise = rateCard[selected_rate_tier];
-    const estimatedLabourPaise = Math.floor((rate8hPaise * selected_duration_hours) / 8 + 0.5);
     const requestFingerprint = crypto.createHash("sha256").update(JSON.stringify({
       customer_user_id, customer_name, phone, state, district, pincode, address,
       location_lat, location_lng, service_type, selected_category, selected_rate_tier,
@@ -215,6 +202,22 @@ const work_details = clean(body.work_details, 2000);
         offers_created: priorOfferRows.length, match_level: priorOfferRows[0]?.match_level || null,
         message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
     }
+    // The service-role server reads the same published catalogue used by the
+    // customer/electrician RPCs. Never accept client-supplied rate amounts/version.
+    const catalogue = await supabase("rpc/srk_get_current_customer_rate_catalogue", {
+      method: "POST", body: "{}"
+    });
+    const rateCard = catalogue && catalogue.rates;
+    const rateCardVersion = catalogue && catalogue.rate_version_id;
+    if (!rateCard || typeof rateCardVersion !== "string" ||
+        !["electrical_assistant","skilled_electrician","expert_electrician","premium_electrical_specialist"].every(k => Number.isSafeInteger(rateCard[k]) && rateCard[k] > 0)) {
+      return json(503, { success: false, error: "अभी प्रकाशित Rate Catalogue उपलब्ध नहीं है। कृपया कुछ देर बाद प्रयास करें।" });
+    }
+    if (!Number.isSafeInteger(rateCard[selected_rate_tier]) || rateCard[selected_rate_tier] <= 0) {
+      return json(503, { success: false, error: "चुनी गई श्रेणी का प्रकाशित रेट अभी उपलब्ध नहीं है। कृपया बाद में प्रयास करें।" });
+    }
+    const rate8hPaise = rateCard[selected_rate_tier];
+    const estimatedLabourPaise = Math.floor((rate8hPaise * selected_duration_hours) / 8 + 0.5);
     let inserted;
     try {
       inserted = await supabase("service_bookings", {
