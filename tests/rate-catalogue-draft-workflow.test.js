@@ -46,7 +46,7 @@ test("failed catalogue refresh clears the cached version and stale rate inputs b
  assert.match(block,/adminCurrentRateCatalogue=null;\s*const \{data,error\}=await sb\.rpc\('srk_get_current_customer_rate_catalogue'\)/);
  assert.match(block,/if\(error\)\{[\s\S]*?for\(const \[key,label,id\] of SRK_RATE_TIERS\)\{const input=document\.getElementById\(id\);if\(input\)input\.value='';\}[\s\S]*?return;/);
  assert.ok(block.indexOf("adminCurrentRateCatalogue=null")<block.indexOf("await sb.rpc"));
- assert.ok(block.indexOf("input.value=''")<block.indexOf("return;"));
+ assert.ok(block.indexOf("input)input.value=''")<block.indexOf("return;"));
 });
 
 test("electrician tier selector displays the current published catalogue prices, never legacy hardcoded amounts",()=>{
