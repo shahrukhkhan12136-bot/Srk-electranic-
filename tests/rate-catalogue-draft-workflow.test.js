@@ -42,9 +42,42 @@ test("Main Admin UI can save drafts, view queue, and publish with expected curre
 test("Admin page inline JavaScript parses without syntax errors",()=>{
  const scripts=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean);
  assert.ok(scripts.length>0,"inline admin script must exist");
- for(const script of scripts)new vm.Script(script[1],{filename:"admin.html"});
+ for(const script of scripts)new vm.Script(script,{filename:"admin.html"});
 });
 
+test("Draft queue renders safe rows and Edit Draft restores all saved values",async()=>{
+ const elements={adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""},rateElectricalAssistant:{value:""},rateSkilledElectrician:{value:""},rateExpertElectrician:{value:""},ratePremiumSpecialist:{value:""},rateCatalogueEffectiveAt:{value:""},rateCatalogueReason:{value:""},adminRateCatalogueStatus:{textContent:""}};
+ const row={id:"draft-42",status:"scheduled",effective_at:"2027-12-01T10:00:00.000Z",reason:"Review <safe>",rates:{electrical_assistant:12550,skilled_electrician:20000,expert_electrician:27525,premium_electrical_specialist:35000}};
+ const context=vm.createContext({window:{},document:{getElementById(id){return elements[id]||(elements[id]={value:"",textContent:"",innerHTML:""});}},__rpc:async(name)=>({data:name==="srk_admin_list_rate_catalogue_drafts"?[row]:[],error:null})});
+ const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
+ vm.runInContext(script,context);
+ vm.runInContext("sb={rpc:__rpc};user={id:'admin-test'};adminPortalMode='main_admin';",context);
+ await vm.runInContext("loadAdminRateCatalogueDrafts()",context);
+ assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/Scheduled/);
+ assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/Review &lt;safe&gt;/);
+ assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/editAdminRateCatalogueDraft\(0\)/);
+ vm.runInContext("editAdminRateCatalogueDraft(0)",context);
+ assert.equal(elements.rateElectricalAssistant.value,"125.50");
+ assert.equal(elements.rateSkilledElectrician.value,"200.00");
+ assert.equal(elements.rateExpertElectrician.value,"275.25");
+ assert.equal(elements.ratePremiumSpecialist.value,"350.00");
+ assert.equal(elements.rateCatalogueReason.value,row.reason);
+ assert.equal(context.adminEditingRateDraftId,"draft-42");
+});
+test("Draft publish uses the current version guard and refreshes catalogue and queue",async()=>{
+ const calls=[],elements={adminRateCatalogueStatus:{textContent:""},adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""}};
+ const context=vm.createContext({window:{},document:{getElementById(id){return elements[id]||(elements[id]={value:"",textContent:"",innerHTML:""});}},confirm:()=>true,__rpc:async(name,args)=>{calls.push({name,args});if(name==="srk_admin_publish_rate_catalogue_draft")return {data:{success:true,rate_version_id:"version-9",effective_at:"2027-12-01T10:00:00.000Z"},error:null};return {data:[],error:null};}});
+ const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
+ vm.runInContext(script,context);
+ vm.runInContext("sb={rpc:__rpc};user={id:'admin-test'};adminPortalMode='main_admin';adminCurrentRateCatalogue={rate_version_id:'version-8'};loadAdminRateCatalogue=async()=>{__refreshed.catalogue=true};loadAdminRateCatalogueDrafts=async()=>{__refreshed.queue=true};",context);
+ context.__refreshed={catalogue:false,queue:false};
+ await vm.runInContext("publishAdminRateCatalogueDraft('draft-42')",context);
+ const publish=calls.find(x=>x.name==="srk_admin_publish_rate_catalogue_draft");
+ assert.deepEqual({...publish.args},{p_draft_id:"draft-42",p_expected_current_version_id:"version-8"});
+ assert.equal(context.__refreshed.catalogue,true);
+ assert.equal(context.__refreshed.queue,true);
+ assert.match(elements.adminRateCatalogueStatus.textContent,/Version publish हुआ/);
+});
 test("Draft save UI sends validated four-tier paise payload to the RPC",async()=>{
  const elements={rateElectricalAssistant:{value:"125.50"},rateSkilledElectrician:{value:"200"},rateExpertElectrician:{value:"275.25"},ratePremiumSpecialist:{value:"350"},rateCatalogueReason:{value:"Automated UI test"},rateCatalogueEffectiveAt:{value:""},adminRateCatalogueStatus:{textContent:""},adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""}};
  const calls=[];
