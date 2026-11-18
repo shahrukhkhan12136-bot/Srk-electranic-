@@ -57,13 +57,17 @@ jobs:
         working-directory: ${{ runner.temp }}/srk-ai-db
         run: |
           set -euo pipefail
-          supabase db query --local --file "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_handoff_schema_draft.sql"
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_handoff_schema_draft.sql"
 
       - name: Run 29 pgTAP assertions and require all to pass
         working-directory: ${{ runner.temp }}/srk-ai-db
         run: |
           set -euo pipefail
-          supabase db query --local --file "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_handoff_schema_tests_draft.sql"
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 < "$GITHUB_WORKSPACE/docs/drafts/ai_conversation_handoff_schema_tests_draft.sql"
 
       - name: Stop disposable local database
         if: always()
