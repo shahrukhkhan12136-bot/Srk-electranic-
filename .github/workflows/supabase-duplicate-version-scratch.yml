@@ -28,6 +28,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/srk-duplicate-version-scratch"
           cd "$RUNNER_TEMP/srk-duplicate-version-scratch"
           supabase init
+          mkdir -p supabase/migrations
           cat > supabase/migrations/20261109_scratch_alpha.sql <<'SQL'
           create table public.scratch_duplicate_alpha (id integer primary key);
           SQL
