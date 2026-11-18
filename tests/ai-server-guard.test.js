@@ -76,7 +76,7 @@ test("AI routes require POST and bearer authentication before processing", async
 
 test("AI route verifies bearer token and checks profile records before rejecting live operation", async () => {
   const { handler, calls } = setup();
-  const response = await handler(event({ body: { module_key: "customer_support", message: "hello", role: "admin", user_id: "fake" } }));
+  const response = await handler(event({ body: { module_key: "customer_support", message: "hello" } }));
   assert.equal(response.statusCode, 503);
   assert.equal(JSON.parse(response.body).error, "ai_not_enabled");
   assert.match(calls[0].url, /\/auth\/v1\/user$/);
