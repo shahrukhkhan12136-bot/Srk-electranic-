@@ -226,7 +226,7 @@ BEGIN
     'sequence_no',v_message->>'sequence_no'
   );
 END;
-$;
+$complete$;
 
 REVOKE ALL ON FUNCTION private.ai_claim_idempotency(uuid,text,text,text,integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION private.ai_append_message(uuid,uuid,text,text) FROM PUBLIC, anon, authenticated;
