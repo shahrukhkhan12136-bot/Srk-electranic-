@@ -56,6 +56,14 @@
 
 इस turn में 9 helper test cases Node test harness में चलाए गए: **9 passed, 0 failed**। ये helper-level tests हैं; पूरे repository का `npm test` या Postgres migration execution नहीं है। Static migration test file जोड़ी गई है, लेकिन इसे अभी PostgreSQL पर चलाकर प्रमाणित नहीं किया गया है।
 
+## 3A. अतिरिक्त Schema Review सुधार
+
+- Immutable labour bill का वास्तविक कॉलम `labour_amount` रुपये में है; Migration में गलत `labour_amount_paise` references हटाकर सही कॉलम और paise conversion उपयोग किया गया।
+- Checkout reconciliation hold अब legacy quote bookings पर भी लागू है; category/15% commission मेल न खाने पर गलत 85/15 विवरण नहीं दिखेगा।
+- Pre-payment `amount_received` शून्य रहता है; checkout का कुल labour gross अलग field में आता है। वास्तविक प्राप्त राशि केवल verified payment पर लौटती है।
+- Paid status होने पर भी payment proof अधूरा हो तो `payment_verification_required` stage आता है; उसे unpaid मानकर 85% कमाई नहीं दिखाई जाती। Refund पर भी unpaid 85% नहीं दिखता।
+- Static migration tests में इन schema और stage guards के assertions जोड़े गए। इन static tests को अभी Node पर चलाने का प्रमाण उपलब्ध नहीं है।
+
 ## 4. अभी क्या सत्यापित नहीं हुआ
 
 - SQL migration Production या किसी live Supabase database पर लागू नहीं की गई।
