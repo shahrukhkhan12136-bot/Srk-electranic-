@@ -1,79 +1,111 @@
-# SRK ELECTRONIC — Electrician Rate Privacy & Completed-Work Accounting Contract
+# SRK ELECTRONIC — Electrician 85% Rate List & Completed-Work Accounting Contract
 
-Status: updated GPT-1/GPT-2 source contract proposal; not yet wired into production booking, payout, or API flows.
+Status: GPT-1/GPT-2 shared source contract proposal; not yet wired into production booking, payout, or API flows.
 
-## Authoritative rate and calculation
+## 1. One Admin-approved source rate
 
-The Main Admin-approved commercial rate catalogue is the single source of truth. Every new booking must snapshot the same published `rate_version_id`, effective timestamp, tier, duration, and customer labour amount.
+The Main Admin-approved customer labour catalogue is the single source of truth. For every published rate version, the system derives the electrician rate as exactly 85% of the corresponding customer labour rate.
 
-- Customer labour amount = Admin-approved rate prorated to booking duration.
-- Electrician payable = 85% of the customer labour amount, calculated in integer paise with the documented half-up rounding policy.
-- Company labour share = customer labour amount - electrician payable.
+- Baseline catalogue duration: 8 hours.
+- Electrician 8-hour category rate = Admin-approved 8-hour customer category rate × 85%.
+- Use integer paise and half-up rounding to the nearest paise.
+- For another duration, prorate from the same published 8-hour category rate using the existing agreed duration policy.
+- Both customer and electrician views must reference the same `rate_version_id` and effective timestamp. Never calculate from different rate versions.
 
-Example at 8 hours: customer labour amount ₹1,000.00; company labour share ₹150.00; electrician payable ₹850.00.
+Initial 8-hour examples:
 
-Do not independently look up a different rate version for electrician earnings. Materials, travel, taxes, cancellation fees, tips, adjustments, and existing platform commission must remain separately classified and must not be silently folded into this labour split.
+| Category | Customer rate (Admin catalogue) | Electrician 85% rate |
+|---|---:|---:|
+| Electrical Assistant | ₹899.00 | ₹764.15 |
+| Skilled Electrician | ₹1,199.00 | ₹1,019.15 |
+| Expert Electrician | ₹1,599.00 | ₹1,359.15 |
+| Premium Electrical Specialist | ₹1,999.00 | ₹1,699.15 |
 
-## Electrician visibility — before and after work completion
+These are the current baseline examples; the active values must always come from the published Admin rate version, not hard-coded frontend values.
 
-**Before the work is completed:**
-- Do not show the electrician the commercial rate list/catalogue, customer rate card, or the job's gross customer labour amount.
-- Do not show company fee/share, commission, platform fee, or internal accounting details.
-- The electrician may see job/service details and operational status needed to perform the assigned work, but not pricing/rate-list information.
+## 2. What the electrician sees in the rate list
+
+The Electrician App must have its own **85% electrician rate list**:
+- Show only the electrician's own approved/assigned skill category or categories.
+- Show the 8-hour net payable rate for each category visible to that electrician.
+- If the electrician has multiple Admin-approved categories, show only those approved categories.
+- Never show the customer gross rate, the full customer rate catalogue, company 15% share, commission, platform fee, or internal accounting details in this rate-list view.
+- The rate list is available as a category-based earning reference; it is not proof that a particular customer has paid or that a payout has been transferred.
+
+## 3. Admin rate increases/decreases automatically flow through
+
+Whenever Main Admin publishes a new customer rate version, the corresponding electrician 85% rate list must automatically recalculate from that same version.
+
+Examples:
+- Skilled Electrician customer rate ₹1,199.00 → electrician rate ₹1,019.15.
+- If Admin changes customer rate to ₹999.00 → electrician rate becomes ₹849.15.
+- If Admin changes customer rate to ₹1,499.00 → electrician rate becomes ₹1,274.15.
+
+No separate electrician-rate edit is allowed; the electrician rate is derived from the Admin-published customer rate. The new version becomes visible according to its effective timestamp. Previously published versions and existing booking snapshots remain unchanged.
+
+## 4. Per-job visibility before and after completion
+
+**Before work completion:**
+- The electrician may see their own category-based 85% rate list described above.
+- The electrician must not see the customer's gross amount for the assigned booking, company share, commission, platform fee, or Admin accounting details.
+- Do not expose the customer's rate card or other categories' rates unless those categories are also approved for that electrician.
 
 **After the assigned work is marked completed:**
-- Show the accounting for that completed job, subject to the authoritative booking/payment records:
-  - Customer amount actually paid/received for the job.
+- Show the financial breakdown for that completed job, based on its immutable booking/payment snapshot:
+  - Customer amount actually paid/received.
   - Company fee/share for that job.
-  - Electrician's payable/earned amount for that job.
-- The completed-job view may show these three amounts together. It must not expose the entire commercial rate catalogue or rates for other service tiers.
-- Clearly distinguish customer payment received from Admin payout sent to the electrician. A customer payment does not by itself mean the electrician's bank/UPI payout is complete.
-- For refunded, reversed, unpaid, or disputed jobs, show the actual recorded status and amounts; do not present an expected amount as money received or paid.
+  - Electrician's 85% payable/earned amount.
+- The completed-job breakdown may show these three amounts together. It must not expose the full customer rate catalogue or unrelated category rates.
+- Clearly distinguish customer payment received from Admin payout sent to the electrician. Customer payment does not by itself mean the electrician's bank/UPI payout is complete.
+- For refunded, reversed, unpaid, or disputed jobs, show the actual recorded status and amounts; never label an expected amount as received or paid.
 - Summary totals may aggregate only eligible completed jobs and must reconcile to the per-job records.
 
-This is an intentional stage-based disclosure rule: pricing is hidden while the electrician is preparing/performing the job; completed-job accounting is visible afterwards. It is not a blanket ban on showing company-fee information to the electrician.
+## 5. Backend/API enforcement
 
-## Backend/API enforcement
-
-This rule must be enforced by the backend, not only by hiding UI elements:
-- Pre-completion response DTOs must omit the rate catalogue, gross customer amount, company share, and other accounting fields.
-- Completed-job accounting DTOs may include only that assigned electrician's completed-job customer-paid amount, company fee/share, electrician payable, and necessary payment/payout statuses.
-- Every query must enforce authenticated electrician identity and booking assignment. A caller must not be able to request another electrician's completed job by changing a booking ID.
-- Do not return the full rate catalogue or unrelated bookings in the completed-job response.
+This must be enforced by backend authorization and response schemas, not only by hiding UI elements:
+- A dedicated electrician-rate-list response may return only approved category identifier/name, 8-hour electrician net paise, duration, currency, active rate version, and effective timestamp. It must omit customer gross and company share.
+- The response must be filtered server-side to the authenticated electrician's Admin-approved categories.
+- Before completion, booking/job responses must omit customer gross, company share, commission, platform fee, and other accounting fields.
+- Completed-job accounting responses may include that assigned electrician's completed-job customer-paid amount, company share, electrician payable, and necessary payment/payout statuses.
+- Every query must enforce authenticated electrician identity and booking assignment. Changing a booking ID must never expose another electrician's records.
+- Do not return unrelated bookings, unapproved categories, or the full customer catalogue.
 - Audit RPC return types, direct table reads, grants, RLS policies, nested JSON, and error/debug responses for leakage.
 - Keep Admin/accounting full access to rate catalogue, gross/net/share, rate version, and reconciliation records.
 
-## Admin/accounting boundary
+## 6. Admin/accounting boundary
 
-Admin/accounting retains the full rate catalogue and all financial details, including customer gross, company share, electrician net, source rate version, calculation policy/version, and historical payout snapshot. Access is limited to authorized Admin/accounting roles. Audit and reconciliation remain available internally.
+Admin/accounting retains the full customer rate catalogue and all financial details, including customer gross, company share, electrician net, source rate version, calculation policy/version, and historical payout snapshot. Access is limited to authorized Admin/accounting roles. Audit and reconciliation remain available internally.
 
-## Existing records and commission compatibility
+## 7. Existing records and commission compatibility
 
 - Existing bookings, bills, rate snapshots, payout snapshots, and ledger rows are immutable under this change.
-- Apply the new 85/15 labour split only to eligible new bookings after an explicitly approved effective time.
-- Preserve the existing 15% platform commission rule and its historical snapshots. Before implementation, trace whether that commission currently represents the same economic share or a separate fee. Do not double-charge, double-subtract, or silently replace one rule with the other.
+- New rate versions apply only from their explicitly published effective timestamp.
+- Preserve the existing 15% platform commission rule and its historical snapshots. Before implementation, trace whether that commission already represents the same economic share as this 85/15 labour split or is a separate fee. Do not double-charge, double-subtract, or silently replace one rule with the other.
 - If the current commission is already the exact 15% withheld from labour, reconcile the accounting representation without charging an additional 15%. If it is a separate rule, obtain explicit business confirmation before combining them.
 
-## Backend controls and test requirements
+## 8. Backend controls and regression tests
 
 - Resolve one published rate version on the server at booking creation.
-- Persist immutable customer amount, company share, electrician payable, rate-version, and calculation-policy snapshots atomically.
+- Derive and persist immutable customer amount, company share, electrician payable, rate-version, and calculation-policy snapshots atomically.
 - Use integer paise; validate positive amounts and overflow.
-- Enforce authenticated electrician ownership and booking assignment on every read.
-- Test that pre-completion responses omit all pricing/accounting fields and never expose the rate catalogue.
-- Test that completed-job responses include the correct three amounts only for that electrician's completed jobs, and exclude unrelated bookings and other rate tiers.
+- Test the four baseline 8-hour category calculations above.
+- Test that Admin rate increases/decreases automatically change the next published electrician 85% list, including effective-time behavior.
+- Test that old bookings and old rate versions do not change after an Admin edit.
+- Test that the rate-list API returns only the electrician's approved category/categories and never returns customer gross/company share.
+- Test that pre-completion booking responses omit customer gross/company share and that completed-job responses show the three correct amounts only for that electrician's completed jobs.
 - Test nested objects, error/debug responses, refunded/reversed/unpaid states, customer-payment vs Admin-payout distinction, rounding, version consistency, payout totals, and legacy snapshot preservation.
 - Test that Admin accounting can still reconcile gross, net, and company share.
-- Do not modify or replay migrations until separately authorized.
+- Do not modify or replay database migrations until separately authorized.
 
-## GPT-1 work
+## 9. GPT-1 / GPT-2 ownership
 
-Electrician App must:
-- Never display the rate catalogue or job price before completion.
-- After completion, display the per-job customer-paid amount, company fee/share, and electrician earned/payable amount from the authorized completed-job DTO.
+**GPT-1 (Electrician App):**
+- Display the electrician's own category-based 85% rate list (8-hour baseline).
+- Do not display customer rate list or company share in that rate-list view.
+- After completion, show customer-paid amount, company fee/share, and electrician payable/earned amount from the authorized completed-job DTO.
 - Keep customer payment status distinct from Admin bank/UPI payout status.
-- Avoid deriving financial figures from client-side guesses; render server-authoritative snapshots only.
+- Render server-authoritative snapshots only; do not guess or recalculate financial figures in the client.
 
-## GPT-2 work
-
-Own rate version resolution, server-side split calculation, immutable snapshots, stage-based API/RPC DTOs, grants/RLS review, accounting reconciliation, and backend regression tests. Coordinate exact field names and completion/payment state rules with GPT-1 before app integration.
+**GPT-2 (Backend/API/Accounting):**
+- Own rate-version resolution, 85% calculation, category-based electrician rate-list DTO, immutable booking snapshots, completed-job accounting DTO, grants/RLS review, and accounting reconciliation.
+- Coordinate exact field names, category authorization, and completion/payment states with GPT-1 before integration.
