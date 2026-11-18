@@ -364,3 +364,43 @@ test("Electrician AI widget mount failures cannot interrupt profile refresh or s
   assert.match(source, /function mountElectricianAiAssistant\(\)[\s\S]*?mount\.textContent="";try\{/);
   assert.match(source, /catch\(_\)\{electricianAiAssistantWidget=null;electricianAiAssistantUserId=null;mount\.textContent=/);
 });
+
+
+test("app composition forwards a live booking context provider to the AI widget", () => {
+  const oldClient = globalThis.SrkAiAssistantClient;
+  const oldWidget = globalThis.SrkAiAssistantWidget;
+  let widgetOptions;
+  const contextProvider = () => ({ booking_id: "123e4567-e89b-42d3-a456-426614174000" });
+  try {
+    globalThis.SrkAiAssistantClient = {
+      createAiAssistantClient() { return { sendMessage() {}, createHandoff() {} }; }
+    };
+    globalThis.SrkAiAssistantWidget = {
+      createAiAssistantWidget(options) { widgetOptions = options; return { mounted: true }; }
+    };
+    mountSrkAiAssistant({
+      container: {}, supabaseClient: { auth: { getSession() {} } },
+      appRole: "customer", moduleKey: "booking_assistant",
+      config: { AI_ASSISTANT_ENABLED: true, AI_ASSISTANT_API_BASE_URL: "https://api.example.test" },
+      getContext: contextProvider
+    });
+    assert.equal(widgetOptions.getContext, contextProvider);
+    assert.deepEqual(widgetOptions.getContext(), { booking_id: "123e4567-e89b-42d3-a456-426614174000" });
+  } finally {
+    if (oldClient === undefined) delete globalThis.SrkAiAssistantClient;
+    else globalThis.SrkAiAssistantClient = oldClient;
+    if (oldWidget === undefined) delete globalThis.SrkAiAssistantWidget;
+    else globalThis.SrkAiAssistantWidget = oldWidget;
+  }
+});
+
+test("Customer and Electrician apps pass only UUID-shaped selected booking context", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const customer = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
+  const electrician = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
+  assert.match(customer, /function customerAiBookingContext\(\)[\s\S]*?customerSupportBooking[\s\S]*?\? \{booking_id:bookingId\} : \{\}/);
+  assert.equal((customer.match(/getContext:customerAiBookingContext/g) || []).length, 2);
+  assert.match(electrician, /function electricianAiBookingContext\(\)[\s\S]*?electricianSupportBooking[\s\S]*?\? \{booking_id:bookingId\} : \{\}/);
+  assert.match(electrician, /getContext:electricianAiBookingContext/);
+});
