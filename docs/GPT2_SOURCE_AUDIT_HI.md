@@ -43,3 +43,10 @@
 - नया booking snapshot rate version ID, effective timestamp, tier, 8-hour base rate, duration और labour amount को paise में रखता है। Snapshot object immutable/frozen है; पुराने booking की राशि बाद की catalogue update से पुनर्गणित नहीं होनी चाहिए।
 - `tests/booking-rate-snapshot.test.js` के 6 tests स्थानीय Node.js test runner से चलाए: **6 पास, 0 फेल**। इसमें latest effective version, future/draft exclusion, immutable snapshot, no-version, duplicate effective time और invalid tier जाँचे गए।
 - यह अभी pure source contract है। वास्तविक booking API अभी hard-coded rate card इस्तेमाल करता है; इस helper को production booking flow में जोड़ना, trusted server-side published catalogue storage पढ़ना और DB snapshot persistence करना बाकी है। कोई migration/DB बदलाव अनुमति के बिना नहीं किया गया।
+
+
+### AI audit-event metadata foundation (source-only)
+- `lib/ai-audit-event.js` और `tests/ai-audit-event.test.js` जोड़े गए।
+- DTO केवल allowlisted AI module, action key, actor/record/approval/request IDs, timestamp और सीमित outcome रखता है; prompt, raw tool payload और free-form error text को output में शामिल नहीं करता।
+- यह केवल pure metadata builder है। इसे production में enforce करने, append-only persistence, server-authenticated actor identity, secret redaction, retention policy और tamper resistance के लिए backend तथा database कार्य अभी बाकी हैं।
+- इस test file को इस चरण में remote source में जोड़ा गया है; यहां test runner execution सत्यापित नहीं हुआ है। इसे पास हुआ घोषित न करें।
