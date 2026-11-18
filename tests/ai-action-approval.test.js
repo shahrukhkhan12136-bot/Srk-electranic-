@@ -52,3 +52,11 @@ test("approval fails closed when any action binding or approver identity is miss
   assert.equal(isApprovalBoundToAction({ action: { module_key: "booking_assistant" }, approval: { ...approval, action_id: undefined, action_type: undefined, target_id: undefined, payload_hash: undefined }, nowMs }), false);
   assert.equal(isApprovalBoundToAction({ action, approval, nowMs: NaN }), false);
 });
+
+
+test("array-shaped action and approval payloads cannot authorize execution", () => {
+  const nowMs = Date.parse("2026-11-18T12:00:00Z");
+  assert.equal(isApprovalBoundToAction({ action: [], approval, nowMs }), false);
+  assert.equal(isApprovalBoundToAction({ action, approval: [], nowMs }), false);
+  assert.equal(isApprovalBoundToAction({ action: [], approval: [], nowMs }), false);
+});
