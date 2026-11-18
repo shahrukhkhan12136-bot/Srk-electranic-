@@ -52,6 +52,9 @@ test("new Catalogue Admin cash RPC is Main Admin-only, locks booking and records
   assert.ok(evidence >= 0 && bookingUpdate > evidence);
   assert.match(fn, /cancel-fee:cash:srk-credit:/i);
   assert.match(fn, /cancel-fee:cash:electrician-debit:/i);
+  const billAssignmentCheck = fn.indexOf("v_labour.electrician_profile_id is distinct from v_booking.assigned_electrician_id");
+  assert.ok(billAssignmentCheck >= 0 && billAssignmentCheck < evidence,
+    "cash settlement must verify immutable bill electrician against the assigned booking electrician before payment evidence");
 });
 
 test("Catalogue payout trigger sources electrician labour only from immutable bill and excludes cancellation fees from payable", () => {
