@@ -33,6 +33,12 @@ BEGIN
     WHERE private.srk_payment_order_locks.expires_at <= now()
   RETURNING lock_token INTO v_token;
 
+  -- An active lock makes the ON CONFLICT ... WHERE clause affect no row.
+  -- Return NULL explicitly rather than ever handing a caller an unpersisted token.
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+
   RETURN v_token;
 END;
 $function$;
