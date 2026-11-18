@@ -706,6 +706,17 @@ test("existing conversation IDs require an exact owner, module, and open status 
   const allowed = await own.handler(event({ body }));
   assert.equal(allowed.statusCode, 503);
   assert.equal(JSON.parse(allowed.body).error, "ai_not_enabled");
+
+  // The persisted handoff RPC uses "handoff_requested" (not "handoff_pending").
+  // Such a conversation remains accessible to its owner until it is closed.
+  const handoffRequested = make([{
+    id: conversationId, owner_user_id: ownerId,
+    module_key: "customer_support", status: "handoff_requested"
+  }]);
+  const handoffRequestedResponse = await handoffRequested.handler(event({ body }));
+  assert.equal(handoffRequestedResponse.statusCode, 503);
+  assert.equal(JSON.parse(handoffRequestedResponse.body).error, "ai_not_enabled");
+
   const url = new URL(own.calls.find(value => value.includes("/srk_ai_conversations")));
   assert.equal(url.searchParams.get("id"), "eq." + conversationId);
   assert.equal(url.searchParams.get("owner_user_id"), "eq." + ownerId);
