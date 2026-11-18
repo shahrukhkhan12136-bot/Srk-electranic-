@@ -23,7 +23,7 @@ AI storage की source migrations:
 - Audit table `srk_ai_audit_events` में केवल metadata fields हैं; prompt/message body या provider payload columns नहीं हैं।
 - मौजूदा `lib/ai-server-guard.js` auth, profile, module, conversation ownership और booking access validate करता है; इसके बाद जानबूझकर `503 ai_not_enabled` देता है। नए message और handoff RPC अभी storage foundation हैं; AI routes अभी इनसे wired नहीं हैं, provider call नहीं होता, और human agent assignment/notification workflow अभी नहीं बना है।
 
-**जाँच की सीमा:** migrations और tests केवल Git branch में source हैं। इस update में कोई PostgreSQL replay, hosted/live database migration, deployment या AI provider call नहीं हुआ। AI default-off रहेगा; explicit launch approval के बिना इसे enable नहीं करना है।
+**जाँच की सीमा और नवीनतम CI सत्यापन (18 नवम्बर 2026):** migrations अभी भी केवल Git branch में source हैं; कोई hosted/live database migration, deployment या AI provider call नहीं हुआ। Commit `4b71bed677c1872ba4913015124a5ede31612c69` पर disposable local Supabase stack में baseline और feature migrations replay सफल हुआ, Main Admin handoff queue के 13/13 pgTAP assertions सफल हुए, और repository Node test workflow सफल हुआ। यह केवल CI के अस्थायी database पर सत्यापन है—live/hosted database की पुष्टि नहीं। AI default-off रहेगा; explicit launch approval के बिना इसे enable नहीं करना है।
 
 
 
