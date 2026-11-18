@@ -248,3 +248,10 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - Context केवल plain object या null-prototype object हो सकता है; inherited `booking_id` या custom prototype values स्वीकार नहीं होते।
 - `booking_id` केवल own-property से पढ़ा जाता है और UUID validation के बाद ही request में जाता है।
 - Regression tests जोड़े गए हैं; execution/CI evidence अभी उपलब्ध नहीं है।
+
+### AI activation flag prototype hardening
+
+- App composition helper अब केवल plain config object के अपने (own) `AI_ASSISTANT_ENABLED === true` flag पर विचार करता है।
+- `null`, array, custom-prototype या inherited activation flag मिलने पर composition inert रहती है।
+- इससे किसी inherited/config-prototype property के कारण post-launch AI mounting अनजाने में चालू नहीं हो सकती।
+- Regression tests जोड़े गए हैं; execution/CI evidence अभी उपलब्ध नहीं है।
