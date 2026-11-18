@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(15);
 
 select has_function(
   'public',
@@ -85,7 +85,7 @@ insert into public.service_bookings(
   estimated_labour_paise,estimate_rate_card_version,booking_status
 ) values (
   '00000000-0000-4000-8000-000000000001',
-  'electrical_assistant',8,'electrical_assistant',120000,NULL,'pending'
+  'electrical_assistant',8,'electrical_assistant',120000,'00000000-0000-4000-8000-000000000002','pending'
 );
 
 select throws_ok(
@@ -104,6 +104,33 @@ select throws_ok(
   '42501',
   'BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE',
   'changing the saved amount is rejected'
+);
+
+select throws_ok(
+  $q$update public.service_bookings
+      set selected_duration_hours=4
+    where id='00000000-0000-4000-8000-000000000001'$q$,
+  '42501',
+  'BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE',
+  'changing the saved duration is rejected'
+);
+
+select throws_ok(
+  $q$update public.service_bookings
+      set selected_rate_tier='expert_electrician'
+    where id='00000000-0000-4000-8000-000000000001'$q$,
+  '42501',
+  'BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE',
+  'changing the saved rate tier is rejected'
+);
+
+select throws_ok(
+  $q$update public.service_bookings
+      set estimate_rate_card_version='00000000-0000-4000-8000-000000000003'
+    where id='00000000-0000-4000-8000-000000000001'$q$,
+  '42501',
+  'BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE',
+  'changing the saved catalogue version is rejected'
 );
 
 select is(
