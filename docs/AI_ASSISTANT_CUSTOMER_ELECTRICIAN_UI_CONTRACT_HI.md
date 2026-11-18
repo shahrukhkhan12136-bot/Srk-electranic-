@@ -78,3 +78,10 @@ Before mounting/activating either app surface:
 ## 7. Explicit non-goals
 
 This UI contract does not enable AI, create a provider account/key, create database tables or migrations, call a live API, change existing support workflows, or grant the assistant authority over booking, payment, refund, rate, payout, staff permission or SOS actions.
+
+## Backend readiness snapshot — 18 नवम्बर 2026
+
+- Branch में Netlify redirects और `netlify/functions/ai-assistant.js`, `netlify/functions/ai-handoff.js` scaffold मौजूद हैं।
+- वर्तमान `lib/ai-server-guard.js` authenticated user और app profile से role जाँचता है, लेकिन assistant/handoff persistence, booking ownership/assignment checks, idempotency storage, audit logging, provider adapter और human-support queue अभी उपलब्ध नहीं हैं। Guard जानबूझकर हर valid request पर HTTP 503 `ai_not_enabled` लौटाता है।
+- इसलिए इन paths को अभी **deploy-ready/live AI service नहीं** माना जाएगा। Client के API paths का Netlify redirect होना backend readiness का प्रमाण नहीं है।
+- GPT-1 app UI mounting और feature activation को OFF रखेगा, जब तक GPT-2 वास्तविक कार्यशील contracts और सभी release gates प्रमाणित न करे। Existing customer support और electrician support flows यथावत रहेंगे।
