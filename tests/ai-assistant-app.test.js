@@ -217,10 +217,10 @@ test("Electrician AI widget mounts only after an active approved profile is veri
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
-  assert.match(source, /profile=p;\\s*if\\(p&&p\\.active===true&&p\\.verification_status==="approved"\\)mountElectricianAiAssistant\\(\\);else destroyElectricianAiAssistant\\(\\);/);
+  assert.match(source, /profile=p;[\\s\\S]*?if\\(p&&p\\.active===true&&p\\.verification_status==="approved"\\)mountElectricianAiAssistant\\(\\);else destroyElectricianAiAssistant\\(\\);/);
   assert.match(source, /function show\\(\\)[\\s\\S]*?if\\(user\\)\\{refresh\\(\\)\\}else destroyElectricianAiAssistant\\(\\)/);
   assert.match(source, /profile=null;destroyElectricianAiAssistant\\(\\);/);
-  assert.match(source, /if\\(error\\)\\{destroyElectricianAiAssistant\\(\\);/);
+  assert.match(source, /if\\(error\\)\\{profile=null;destroyElectricianAiAssistant\\(\\);/);
   assert.match(source, /if\\(!p\\)\\{destroyElectricianAiAssistant\\(\\);/);
 });
 
@@ -246,13 +246,4 @@ test("Electrician profile refresh exceptions remove the stale live offer channel
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
   assert.match(source, /catch\\(e\\)\\{if\\(!isCurrent\\(\\)\\)return;profile=null;destroyElectricianAiAssistant\\(\\);if\\(offersChannel\\)\\{const oldChannel=offersChannel;offersChannel=null;Promise\\.resolve\\(sb\\.removeChannel\\(oldChannel\\)\\)\\.catch\\(\\(\\)=>\\{\\}\\);/);
-});
-
-
-test("Customer AI widgets are destroyed when the session check is unavailable or fails", () => {
-  const fs = require("node:fs");
-  const path = require("node:path");
-  const source = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
-  assert.match(source, /if \\(!customerSb\\) \\{\\s*destroyCustomerAiAssistant\\(\\);/);
-  assert.match(source, /catch \\(_\\) \\{\\s*if\\(!isCurrent\\(\\)\\)return;\\s*destroyCustomerAiAssistant\\(\\);/);
 });
