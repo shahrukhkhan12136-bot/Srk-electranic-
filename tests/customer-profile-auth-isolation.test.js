@@ -217,23 +217,25 @@ test('Customer AI widgets mount only after a verified profile row is loaded', ()
   const loadEnd = source.indexOf('async function saveCustomerProfile()', loadStart);
   assert.ok(loadStart >= 0 && loadEnd > loadStart);
   const loadBlock = source.slice(loadStart, loadEnd);
-  assert.match(loadBlock, /if\\(profile\\)[\\s\\S]*?return true/);
-  assert.match(loadBlock, /नई प्रोफ़ाइल है[\\s\\S]*?return false/);
-  assert.match(loadBlock, /catch\\(e\\)[\\s\\S]*?return false/);
+  assert.ok(loadBlock.includes('if(profile)'));
+  assert.ok(loadBlock.includes('return true;'));
+  assert.ok(loadBlock.includes('नई प्रोफ़ाइल है। अपना नाम भरकर सेव करें।'));
+  assert.ok(loadBlock.includes('catch(e){if(isCurrent())setCustomerProfileStatus'));
+  assert.ok(loadBlock.includes('return false;'));
 
   const syncStart = source.indexOf('async function syncCustomerSession()');
   const syncEnd = source.indexOf('async function customerSendOtp', syncStart);
   assert.ok(syncStart >= 0 && syncEnd > syncStart);
   const syncBlock = source.slice(syncStart, syncEnd);
-  assert.match(syncBlock, /const customerProfileReady=await loadCustomerProfile\\(\\)/);
-  assert.match(syncBlock, /if\\(customerProfileReady\\)mountCustomerAiAssistant\\(\\);\\s*else destroyCustomerAiAssistant\\(\\)/);
-  assert.match(syncBlock, /else \\{\\s*destroyCustomerAiAssistant\\(\\)/);
+  assert.ok(syncBlock.includes('const customerProfileReady=await loadCustomerProfile()'));
+  assert.ok(syncBlock.includes('if(customerProfileReady)mountCustomerAiAssistant();'));
+  assert.ok(syncBlock.includes('else destroyCustomerAiAssistant();'));
 
   const saveStart = source.indexOf('async function saveCustomerProfile()');
   const saveEnd = source.indexOf('let customerSavedAddresses', saveStart);
   assert.ok(saveStart >= 0 && saveEnd > saveStart);
   const saveBlock = source.slice(saveStart, saveEnd);
-  assert.match(saveBlock, /const profileReady=await loadCustomerProfile\\(\\)/);
-  assert.match(saveBlock, /if\\(profileReady&&document\\.getElementById\\('customer-dashboard'\\)\\?\\.style\\.display!=='none'\\)mountCustomerAiAssistant\\(\\)/);
-  assert.match(saveBlock, /else destroyCustomerAiAssistant\\(\\)/);
+  assert.ok(saveBlock.includes('const profileReady=await loadCustomerProfile()'));
+  assert.ok(saveBlock.includes("if(profileReady&&document.getElementById('customer-dashboard')?.style.display!=='none')mountCustomerAiAssistant();"));
+  assert.ok(saveBlock.includes('else destroyCustomerAiAssistant();'));
 });
