@@ -2153,6 +2153,7 @@ async function syncCustomerSession() {
   const loginPanel = document.getElementById('customer-login');
   const dashboard = document.getElementById('customer-dashboard');
   if (!customerSb) {
+    destroyCustomerAiAssistant();
     loginPanel.style.display = 'block'; dashboard.style.display = 'none';
     customerMessage('ग्राहक लॉगिन सेवा उपलब्ध नहीं है। कृपया बाद में दोबारा कोशिश करें。'); return;
   }
@@ -2164,6 +2165,7 @@ async function syncCustomerSession() {
     session = data?.session || null;
   } catch (_) {
     if(!isCurrent())return;
+    destroyCustomerAiAssistant();
     loginPanel.style.display = 'block'; dashboard.style.display = 'none';
     customerMessage('लॉगिन सत्र की जाँच नहीं हो सकी। कृपया इंटरनेट जाँचकर दोबारा कोशिश करें।'); return;
   }
