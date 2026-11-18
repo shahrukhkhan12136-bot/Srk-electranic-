@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(12);
 
 select has_function(
   'public',
@@ -77,6 +77,47 @@ select ok(
       )
   ),
   'PUBLIC, anon and authenticated have no direct execute grant'
+);
+
+-- Exercise the trigger against a real row, not only its function definition.
+insert into public.service_bookings(
+  id,selected_category,selected_duration_hours,selected_rate_tier,
+  estimated_labour_paise,estimate_rate_card_version,booking_status
+) values (
+  '00000000-0000-4000-8000-000000000001',
+  'electrical_assistant',8,'electrical_assistant',120000,NULL,'pending'
+);
+
+select throws_ok(
+  $update public.service_bookings
+      set selected_category='expert_electrician'
+    where id='00000000-0000-4000-8000-000000000001'$,
+  '42501',
+  'BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE',
+  'changing the saved category is rejected'
+);
+
+select throws_ok(
+  $update public.service_bookings
+      set estimated_labour_paise=999999
+    where id='00000000-0000-4000-8000-000000000001'$,
+  '42501',
+  'BOOKING_RATE_SNAPSHOT_IS_IMMUTABLE',
+  'changing the saved amount is rejected'
+);
+
+select is(
+  (select selected_category from public.service_bookings
+    where id='00000000-0000-4000-8000-000000000001'),
+  'electrical_assistant',
+  'rejected snapshot changes leave the original category intact'
+);
+
+select lives_ok(
+  $update public.service_bookings
+      set booking_status='confirmed'
+    where id='00000000-0000-4000-8000-000000000001'$,
+  'non-snapshot booking fields remain updateable'
 );
 
 select * from finish();
