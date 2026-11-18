@@ -47,7 +47,7 @@ test('Refunded completed bookings are not mislabeled as unpaid customer balances
   assert.match(electrician, /const unpaid=completed\.filter\(x=>x\.payment_stage==='completed_unpaid'\)/);
   assert.match(electrician, /const refunded=completed\.filter\(x=>x\.payment_stage==='refunded'\)/);
   assert.match(electrician, /x\.payment_stage==='refunded'/);
-  assert.match(electrician, /रिफंड \/ रिवर्सल:/);
+  assert.match(electrician, /Refund \/ Reversal:/i);
 });
 
 test('Customer refund and payment history labels distinguish requests, processing, completion and failures', () => {
