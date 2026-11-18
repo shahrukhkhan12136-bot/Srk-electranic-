@@ -117,6 +117,21 @@ test("human handoff sends only the documented fields and validates persisted sta
   assert.equal(result.status, "queued");
 });
 
+test("handoff rejects in_progress because it is not a persisted queue status", async () => {
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async () => jsonResponse({ success: true, handoff_id: HANDOFF, status: "in_progress" })
+  });
+  await assert.rejects(
+    client.createHandoff({
+      moduleKey: "electrician_assistant", conversationId: CONVERSATION,
+      reasonCode: "needs_human_support", summary: "मानव सहायता चाहिए।",
+      accessToken: TOKEN, idempotencyKey: KEY
+    }),
+    error => error.code === "invalid_ai_response"
+  );
+});
+
 test("handoff rejects unknown status rather than claiming a ticket was created", async () => {
   const client = createAiAssistantClient({
     enabled: true, baseUrl: "https://api.example.test",
