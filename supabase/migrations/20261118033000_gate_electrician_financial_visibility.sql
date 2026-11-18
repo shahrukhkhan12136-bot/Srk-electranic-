@@ -176,7 +176,7 @@ AS $$
         AND b.selected_category IS NOT NULL
         THEN round(((coalesce(bill.labour_amount_paise,0)::numeric*8500+5000)/10000)/100,2)
       WHEN checkout.started AND b.commission_rate=15
-        THEN round(((coalesce(b.estimated_labour_paise,0)::numeric*8500+5000)/10000)/100,2)
+        THEN round(((coalesce(bill.labour_amount_paise,0)::numeric*8500+5000)/10000)/100,2)
       ELSE 0
     END AS electrician_earning,
     CASE
