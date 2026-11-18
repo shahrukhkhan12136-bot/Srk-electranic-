@@ -236,6 +236,8 @@ AS $$
       WHEN payout.electrician_profile_id IS DISTINCT FROM b.assigned_electrician_id THEN 'electrician_mismatch'
       WHEN payout.gross_service_amount IS NULL OR payout.platform_commission IS NULL
         OR payout.electrician_payable IS NULL OR payout.payout_status IS NULL THEN 'incomplete'
+      WHEN b.selected_category IS NOT NULL AND b.commission_rate IS DISTINCT FROM 15
+        THEN 'commission_rate_mismatch'
       WHEN b.selected_category IS NOT NULL AND (
         bill.booking_id IS NULL
         OR round(payout.gross_service_amount,2) IS DISTINCT FROM round(bill.labour_amount,2)
