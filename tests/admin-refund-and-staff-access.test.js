@@ -371,13 +371,14 @@ test('Admin application-review SECURITY DEFINER RPC is pinned to an empty search
 const quoteWorkSearchPathFix = fs.readFileSync(path.join(root, 'supabase/migrations/20261116160000_pin_quote_and_work_status_rpc_search_paths.sql'), 'utf8');
 
 test('Quote and work-status SECURITY DEFINER RPCs are pinned to an empty search_path', () => {
-  for (const name of [
-    'srk_submit_booking_quote(uuid, numeric, numeric, text)',
-    'srk_customer_respond_booking_quote(uuid, text)',
-    'srk_update_booking_work_status(uuid, text)'
+  for (const signature of [
+    'public.srk_submit_booking_quote(uuid,numeric,numeric,text)',
+    'public.srk_customer_respond_booking_quote(uuid,text)',
+    'public.srk_update_booking_work_status(uuid,text)'
   ]) {
-    assert.ok(quoteWorkSearchPathFix.includes('alter function if exists public.' + name));
+    assert.ok(quoteWorkSearchPathFix.includes("'" + signature + "'"));
   }
-  assert.equal((quoteWorkSearchPathFix.match(/set search_path = '';/g) || []).length, 3);
-  assert.match(quoteWorkSearchPathFix, /IF EXISTS keeps fresh replay safe/i);
+  assert.match(quoteWorkSearchPathFix, /to_regprocedure\(v_signature\)/);
+  assert.match(quoteWorkSearchPathFix, /if v_function is not null then[\s\S]*?execute format\('alter function %s set search_path = %L'/i);
+  assert.match(quoteWorkSearchPathFix, /Resolve each signature before altering it/i);
 });
