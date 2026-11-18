@@ -28,8 +28,14 @@ test("widget source uses safe text rendering, accessible status regions and conf
   assert.match(source, /aria-live/);
   assert.match(source, /result\.handoff\?\.required === true/);
   assert.match(source, /result\.case_reference \|\| result\.handoff_id/);
-  assert.match(source, /pendingHandoffKey \|\|= createId\(\)/);
-  assert.match(source, /pendingMessageKey \|\|= createId\(\)/);
+  assert.match(source, /pendingHandoffSummary !== summary/);
+  assert.match(source, /pendingMessageText !== message/);
+  assert.match(source, /globalThis\.SrkAiAssistantWidget = exported/);
   assert.match(source, /if \(!enabled\) return null/);
   assert.doesNotMatch(source, /localStorage|sessionStorage/);
+});
+
+
+test("browser global exposes the same safe widget factory as the CommonJS test export", () => {
+  assert.equal(globalThis.SrkAiAssistantWidget.createAiAssistantWidget, createAiAssistantWidget);
 });
