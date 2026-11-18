@@ -110,3 +110,31 @@ test("app session provider propagates Supabase auth errors instead of inventing 
     else globalThis.SrkAiAssistantWidget = oldWidget;
   }
 });
+
+test("enabled app composition rejects malformed HTTPS URLs and embedded credentials", () => {
+  const oldClient = globalThis.SrkAiAssistantClient;
+  let clientCreated = false;
+  try {
+    globalThis.SrkAiAssistantClient = {
+      createAiAssistantClient() { clientCreated = true; return {}; }
+    };
+    const invalidUrls = [
+      "https://",
+      "https://user:secret@api.example.test",
+      "https://api.example.test?token=secret",
+      "https://api.example.test#fragment",
+      " https://api.example.test"
+    ];
+    for (const url of invalidUrls) {
+      assert.throws(() => mountSrkAiAssistant({
+        container: {}, supabaseClient: { auth: { getSession() {} } },
+        appRole: "customer", moduleKey: "customer_support",
+        config: { AI_ASSISTANT_ENABLED: true, AI_ASSISTANT_API_BASE_URL: url }
+      }), /ai_assistant_api_base_url_required/);
+    }
+    assert.equal(clientCreated, false);
+  } finally {
+    if (oldClient === undefined) delete globalThis.SrkAiAssistantClient;
+    else globalThis.SrkAiAssistantClient = oldClient;
+  }
+});
