@@ -223,3 +223,30 @@ test("AI transport maps non-success HTTP status without parsing an error body", 
   );
   assert.equal(parsed, false);
 });
+
+
+test("AI client rejects non-object requests and inherited context references", async () => {
+  let calls = 0;
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async () => { calls++; return jsonResponse({}); }
+  });
+  await assert.rejects(client.sendMessage(null), error => error.code === "invalid_request");
+  const inherited = Object.create({ booking_id: BOOKING });
+  await assert.rejects(
+    client.sendMessage({
+      moduleKey: "customer_support", message: "status",
+      context: inherited, accessToken: TOKEN, idempotencyKey: KEY
+    }),
+    error => error.code === "invalid_context"
+  );
+  const customPrototype = Object.create({ trusted: true });
+  await assert.rejects(
+    client.sendMessage({
+      moduleKey: "customer_support", message: "status",
+      context: customPrototype, accessToken: TOKEN, idempotencyKey: KEY
+    }),
+    error => error.code === "invalid_context"
+  );
+  assert.equal(calls, 0);
+});
