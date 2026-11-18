@@ -8,8 +8,12 @@ Rate List के लिए source migrations मौजूद हैं:
 
 - `20261118050000_versioned_rate_catalogue_and_multi_category_electricians.sql`: versioned published catalogue, चार rate tiers, category approvals, Main Admin publish RPC, customer catalogue read RPC और electrician net-rate RPC।
 - `20261118070000_admin_rate_catalogue_read_rpcs.sql`: Main Admin के लिए approved electrician/category read RPC।
+- `20261118240000_rate_catalogue_draft_scheduled_workflow.sql`: Main Admin-only Draft/Scheduled queue, सुरक्षित draft save/update, list और version-checked publish RPC। Scheduled बदलाव publish होने पर immutable published version में future `effective_at` के साथ दर्ज होता है; ग्राहक की active-rate query समय आने पर अपने आप नया version चुनती है।
+- `admin.html`: Main Admin panel में Draft/Scheduled सेव करना, queue देखना और publish/schedule पुष्टि करना।
 - `20261118080000_align_offer_85_rate_and_payout_reconciliation.sql` और `20261118110000_unify_electrician_rate_rounding.sql`: electrician offer/net और payout गणना को एक rounding नियम से मिलाते हैं।
 - `20261118090000_enforce_booking_rate_snapshot_immutability.sql`: booking के rate estimate snapshot को बदलने से रोकता है।
+
+**Draft/Scheduled workflow (नई migration):** Drafts अलग private table में रहते हैं और customer/electrician read RPC उन्हें नहीं पढ़ते। Draft queue, save और publish तीनों RPC Main Admin जाँच करते हैं। Draft publish करते समय वर्तमान published version का expected ID फिर जाँचा जाता है; mismatch पर publish रुकता है। Published draft record immutable रहता है। Future effective time वाला publish अभी से active नहीं होता; customer catalogue केवल `effective_at<=now()` version लौटाता है।
 
 **वास्तविक schema और इस दस्तावेज़ के पुराने प्रस्ताव में अंतर:**
 

@@ -76,6 +76,10 @@ jobs:
             "select 'amount_paid=' || (exists (select 1 from information_schema.columns where table_schema='public' and table_name='service_bookings' and column_name='amount_paid'))::text;
              select 'amount_paid_constraint=' || (exists (select 1 from pg_constraint where conrelid='public.service_bookings'::regclass and conname='service_bookings_amount_paid_nonnegative_check'))::text;
              select 'rate_catalogue_versions=' || (to_regclass('public.srk_rate_catalogue_versions') is not null)::text;
+             select 'rate_catalogue_drafts=' || (to_regclass('public.srk_rate_catalogue_drafts') is not null)::text;
+             select 'rate_draft_save_rpc=' || (to_regprocedure('public.srk_admin_save_rate_catalogue_draft(jsonb,timestamptz,text,uuid)') is not null)::text;
+             select 'rate_draft_list_rpc=' || (to_regprocedure('public.srk_admin_list_rate_catalogue_drafts(integer)') is not null)::text;
+             select 'rate_draft_publish_rpc=' || (to_regprocedure('public.srk_admin_publish_rate_catalogue_draft(uuid,uuid)') is not null)::text;
              select 'rate_catalogue_items=' || (to_regclass('public.srk_rate_catalogue_items') is not null)::text;
              select 'rate_catalogue_audit=' || (to_regclass('public.srk_rate_catalogue_audit') is not null)::text;
              select 'electrician_rate_categories=' || (to_regclass('public.srk_electrician_approved_rate_categories') is not null)::text;
