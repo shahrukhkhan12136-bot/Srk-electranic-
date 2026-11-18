@@ -826,7 +826,9 @@ let paymentBusy = false;
 document.getElementById('year').textContent = new Date().getFullYear();
 let customerRateCard = Object.create(null);
 let customerRateVersionId = null;
+let customerRateCatalogueRefreshSequence = 0;
 async function refreshCustomerRateCatalogue() {
+  const refreshSequence = ++customerRateCatalogueRefreshSequence;
   const keys = ['electrical_assistant','skilled_electrician','expert_electrician','premium_electrical_specialist'];
   const customerRateLabels = {
     electrical_assistant: 'Electrical Assistant',
@@ -844,6 +846,8 @@ async function refreshCustomerRateCatalogue() {
   updateLabourEstimate();
   if (!customerSb) throw new Error('ग्राहक Rate Catalogue पढ़ने के लिए Supabase कनेक्शन उपलब्ध नहीं है।');
   const { data, error } = await customerSb.rpc('srk_get_current_customer_rate_catalogue');
+  // Ignore an older response if a newer refresh has already started.
+  if (refreshSequence !== customerRateCatalogueRefreshSequence) return null;
   if (error) throw error;
   const rates = data?.rates;
   if (!data?.rate_version_id || !rates || keys.some(k => !Number.isSafeInteger(rates[k]) || rates[k] <= 0)) {
