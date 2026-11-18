@@ -167,3 +167,19 @@ test("verified customer payment with a mismatched payout ledger does not expose 
   assert.equal(result.electrician_payout.reconciled, false);
   assert.equal(result.electrician_payout.payout_amount_paise, null);
 });
+
+
+test("reconciled payout separately includes immutable materials without changing labour commission", () => {
+  const result = buildElectricianJobAccounting({
+    booking_id: "b11", booking_status: "completed", payment_status: "paid",
+    payment_verified_at: "2026-11-18T02:00:00Z", razorpay_payment_id: "pay_111",
+    customer_labour_gross_paise: 100000, materials_amount_paise: 10000,
+    electrician_earning_paise: 95000, company_share_paise: 15000,
+    customer_amount_received_paise: 110000, payout_reconciliation_status: "reconciled",
+    payout_status: "pending", payout_amount_paise: 95000
+  });
+  assert.equal(result.accounting.electrician_earning_paise, 95000);
+  assert.equal(result.accounting.materials_amount_paise, 10000);
+  assert.equal(result.accounting.customer_labour_gross_paise + result.accounting.materials_amount_paise,
+    result.accounting.electrician_earning_paise + result.accounting.company_share_paise);
+});
