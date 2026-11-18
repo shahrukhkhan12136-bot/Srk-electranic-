@@ -44,15 +44,16 @@ test('Legacy financial, wallet, receipt, call-contact and application-review RPC
 
 test('Retired quotation RPC hardening remains safe on fresh migration replay', () => {
   const sql = read('20261116160000_pin_quote_and_work_status_rpc_search_paths.sql');
-  for (const fn of [
-    'srk_submit_booking_quote',
-    'srk_customer_respond_booking_quote',
-    'srk_update_booking_work_status'
+  for (const signature of [
+    'public.srk_submit_booking_quote(uuid,numeric,numeric,text)',
+    'public.srk_customer_respond_booking_quote(uuid,text)',
+    'public.srk_update_booking_work_status(uuid,text)'
   ]) {
-    assert.match(sql, new RegExp('alter function if exists public\\.' + fn + '\\('));
+    assert.ok(sql.includes("'" + signature + "'"));
   }
-  assert.equal((sql.match(/set search_path = '';/g) || []).length, 3);
-  assert.match(sql, /IF EXISTS keeps fresh replay safe/i);
+  assert.match(sql, /to_regprocedure\(v_signature\)/);
+  assert.match(sql, /if v_function is not null then[\s\S]*?execute format\('alter function %s set search_path = %L'/i);
+  assert.match(sql, /Resolve each signature before altering it/i);
 });
 
 test('Financial payout and manual-refund mutation RPCs pin empty search_path', () => {
