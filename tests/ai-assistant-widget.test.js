@@ -151,7 +151,8 @@ test("Customer and Electrician widgets show login guidance and never send withou
     input.value = "मेरी बुकिंग का स्टेटस बताइए";
     await send.listeners.click();
     assert.equal(sendCalls, 0, moduleKey + " must not send without a session");
-    assert.equal(panel.find("p").textContent, "कृपया दोबारा लॉगिन करें।");
+    const status = panel.children.find(child => child.attributes.role === "status");
+    assert.equal(status.textContent, "कृपया दोबारा लॉगिन करें।");
     widget.destroy();
   }
 });
