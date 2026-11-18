@@ -55,6 +55,21 @@ Payment stage केवल trusted server-side payment intent / persisted verifi
 - `lib/electrician-payment-visibility.js` और उसके सात tests source branch में हैं; live RPC/API में wired नहीं।
 - इस document का उद्देश्य blocker और exact handoff स्पष्ट करना है, migration स्वयं लागू करना नहीं।
 
+
+## 10. अतिरिक्त वित्तीय तालिका RLS audit — payout ledger
+
+18 नवंबर की आगे की source जाँच में `20261114125844_restore_financial_audit_core_schema.sql` के `srk_electrician_payouts` access rules और दोनों app consumers देखे गए:
+
+- Table पर RLS enabled है; PUBLIC/anon/authenticated से सभी privileges revoke हैं, फिर authenticated को केवल SELECT दिया गया है।
+- मौजूदा SELECT policy Admin को अनुमति देती है, या उस Electrician profile को जिसकी `ep.id = payout.electrician_profile_id` और `ep.user_id = auth.uid()` है।
+- Policy में `ep.auth_user_id = auth.uid()`, `ep.verification_status = 'approved'` और `ep.active = true` की शर्तें नहीं हैं।
+- `electrician.html` payout ledger को सीधे SELECT करता है; इसलिए RPC के active/approved guards के बावजूद inactive या identity-link mismatch वाला पुराना profile session सीधे table से अपना payout row और उसके gross/commission fields पढ़ सकता है।
+- Source में payout trigger नई category के लिए row तभी बनाता है जब booking completed, payment_status paid, payment_verified_at मौजूद और Razorpay/manual evidence match हो। इसलिए यह audit pre-payment row creation का प्रमाण नहीं है; यह payout table की independent authorization policy में profile-state gap है।
+
+**Required source fix (अभी लागू नहीं):** additive migration में इसी policy को replace करें। Main Admin branch जस की तस रहे; Electrician branch में एक ही profile row के लिए `id`, `user_id = auth.uid()`, `auth_user_id = auth.uid()`, `verification_status = 'approved'` और `active = true` सभी अनिवार्य हों। Regression SQL test में approved+active सही दोनों IDs को अनुमति, inactive, unapproved, mismatched `auth_user_id`, दूसरे Electrician और anon को रोकना; Main Admin access preserve करना जाँचें। UI hide या RPC guard इस table policy का विकल्प नहीं है।
+
+यह finding source-level है। कोई migration apply नहीं हुई और live database policy की स्थिति verify नहीं की गई।
+
 ## 7. निषिद्ध कार्य (अलग अनुमति तक)
 
 Production DB query/write, migration apply/replay, schema deployment, paid DB branch, deployment, PR merge, पुराने migration rewrite, historical booking/bill update।
