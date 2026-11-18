@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: srk-ai-postgres-draft-tests-${{ github.event.pull_request.number || github.ref }}
+  group: srk-ai-postgres-draft-tests-global
   cancel-in-progress: false
 
 jobs:
@@ -46,6 +46,10 @@ jobs:
           mkdir -p "$RUNNER_TEMP/srk-ai-db"
           cd "$RUNNER_TEMP/srk-ai-db"
           supabase init
+          # Use isolated ports so stale or parallel local Supabase instances cannot collide.
+          sed -i 's/^\([[:space:]]*port = \)54321$/\154321/' supabase/config.toml
+          sed -i 's/^\([[:space:]]*port = \)54322$/\155432/' supabase/config.toml
+          sed -i 's/^\([[:space:]]*shadow_port = \)54320$/\155430/' supabase/config.toml
 
       - name: Start disposable local database
         working-directory: ${{ runner.temp }}/srk-ai-db
