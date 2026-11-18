@@ -391,3 +391,16 @@ test("AI guard rejects unsupported route modes before authentication or profile 
   assert.equal(JSON.parse(response.body).error, "not_found");
   assert.equal(calls.length, 0);
 });
+
+
+test("AI guard rejects unknown module keys before Supabase authentication", async () => {
+  for (const moduleKey of ["", "admin_console", "staff_support", "unknown_module"]) {
+    const { handler, calls } = setup();
+    const response = await handler(event({
+      body: { module_key: moduleKey, message: "hello" }
+    }));
+    assert.equal(response.statusCode, 403);
+    assert.equal(JSON.parse(response.body).error, "ai_access_denied");
+    assert.equal(calls.length, 0);
+  }
+});
