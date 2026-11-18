@@ -55,7 +55,7 @@ function setup({ role = "customer", status = 200, user = null, env = null, custo
 test("AI routes require POST and bearer authentication before processing", async () => {
   const { handler, calls } = setup();
   assert.equal((await handler(event({ method: "GET" }))).statusCode, 405);
-  assert.equal((await handler(event({ token: null }))).statusCode, 401);
+  assert.equal((await handler(event({ token: null, body: { module_key: "customer_support", message: "hello" } })).statusCode, 401);
   const malformedBearer = event({ body: { module_key: "customer_support", message: "hello" } });
   malformedBearer.headers.authorization = "Bearer\\svalid-token";
   assert.equal((await handler(malformedBearer)).statusCode, 401);
@@ -419,7 +419,7 @@ test("AI server rejects bearer tokens with whitespace, controls, or excessive le
   ]) {
     const request = event({ body: { module_key: "customer_support", message: "hello" } });
     request.headers.authorization = "Bearer " + token;
-    assert.equal((await handler(request)).statusCode, 401);
+    assert.equal((await handler(request)).statusCode, 401, `invalid bearer token must be rejected before Supabase: ${JSON.stringify(token)}`);
   }
   assert.equal(calls.length, 0);
 });
