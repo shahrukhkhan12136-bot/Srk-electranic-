@@ -14,21 +14,37 @@ function event({ method = "POST", token = "valid-token", key = UUID, body = {} }
     body: JSON.stringify(body)
   };
 }
-function setup({ role = "customer", status = 200, user = null, env = null } = {}) {
+function setup({ role = "customer", status = 200, user = null, env = null, customerProfiles = null, electricianProfiles = null } = {}) {
   const calls = [];
+  const authUser = user || { id: "123e4567-e89b-42d3-a456-426614174001", app_metadata: { role } };
+  const customerRows = customerProfiles || (role === "customer" ? [{ user_id: authUser.id }] : []);
+  const electricianRows = electricianProfiles || (role === "electrician" ? [{ id: UUID }] : []);
   const fetchImpl = async (url, options) => {
     calls.push({ url, options });
-    return {
-      ok: status >= 200 && status < 300,
-      status,
-      json: async () => user || { id: "123e4567-e89b-42d3-a456-426614174001", app_metadata: { role } }
-    };
+    if (url.includes("/auth/v1/user")) {
+      return {
+        ok: status >= 200 && status < 300,
+        status,
+        json: async () => authUser
+      };
+    }
+    if (url.includes("/rest/v1/srk_customer_profiles")) {
+      return { ok: true, status: 200, json: async () => customerRows };
+    }
+    if (url.includes("/rest/v1/electrician_profiles")) {
+      return { ok: true, status: 200, json: async () => electricianRows };
+    }
+    throw new Error("Unexpected URL");
   };
   return {
     calls,
     handler: createAiServerGuard({
       fetchImpl,
-      env: env || { SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: "anon-test" }
+      env: env || {
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_ANON_KEY: "anon-test",
+        SUPABASE_SERVICE_ROLE_KEY: "service-role-test"
+      }
     })
   };
 }
@@ -40,7 +56,7 @@ test("AI routes require POST and bearer authentication before processing", async
   assert.equal(calls.length, 0);
 });
 
-test("AI route verifies bearer token with Supabase Auth and never trusts body actor/role", async () => {
+test("AI route verifies bearer token and checks profile records before rejecting live operation", async () => {
   const { handler, calls } = setup();
   const response = await handler(event({ body: { module_key: "customer_support", message: "hello", role: "admin", user_id: "fake" } }));
   assert.equal(response.statusCode, 503);
@@ -49,6 +65,10 @@ test("AI route verifies bearer token with Supabase Auth and never trusts body ac
   assert.equal(calls[0].options.headers.Authorization, "Bearer valid-token");
   assert.equal(calls[0].options.headers.apikey, "anon-test");
   assert.equal(calls[0].options.cache, "no-store");
+  assert.equal(calls.length, 3);
+  assert.ok(calls[1].url.includes("/rest/v1/srk_customer_profiles"));
+  assert.ok(calls[2].url.includes("/rest/v1/electrician_profiles"));
+  assert.equal(calls[1].options.headers.Authorization, "Bearer service-role-test");
 });
 
 test("oversized request bodies and malformed authenticated identities fail closed", async () => {
@@ -60,10 +80,11 @@ test("oversized request bodies and malformed authenticated identities fail close
   assert.equal((await malformed.handler(event({ body: { module_key: "customer_support", message: "hi" } }))).statusCode, 403);
 });
 
-test("module authorization is derived only from trusted app_metadata role", async () => {
-  const customer = setup({ role: "customer" });
+test("module authorization is derived from application profile records, not app_metadata", async () => {
+  const customer = setup({ role: "customer", user: { id: "123e4567-e89b-42d3-a456-426614174001", app_metadata: { role: "electrician" } } });
+  assert.equal((await customer.handler(event({ body: { module_key: "customer_support", message: "hi" } }))).statusCode, 503);
   assert.equal((await customer.handler(event({ body: { module_key: "electrician_assistant", message: "hi" } }))).statusCode, 403);
-  const forged = setup({ user: { id: "user-1", user_metadata: { role: "admin" }, app_metadata: {} } });
+  const forged = setup({ user: { id: "user-1", user_metadata: { role: "admin" }, app_metadata: { role: "admin" } } });
   assert.equal((await forged.handler(event({ body: { module_key: "reports_operations", message: "hi" } }))).statusCode, 403);
 });
 
@@ -100,4 +121,24 @@ test("Supabase authentication failures fail closed", async () => {
   const { handler } = setup({ status: 401 });
   const response = await handler(event({ body: { module_key: "customer_support", message: "hello" } }));
   assert.equal(response.statusCode, 401);
+});
+
+
+test("electrician access requires one active approved profile with both identity columns matching Auth", async () => {
+  const valid = setup({ role: "electrician" });
+  assert.equal((await valid.handler(event({ body: { module_key: "electrician_assistant", message: "hi" } }))).statusCode, 503);
+  const query = new URL(valid.calls[2].url);
+  assert.equal(query.searchParams.get("user_id"), "eq.123e4567-e89b-42d3-a456-426614174001");
+  assert.equal(query.searchParams.get("auth_user_id"), "eq.123e4567-e89b-42d3-a456-426614174001");
+  assert.equal(query.searchParams.get("verification_status"), "eq.approved");
+  assert.equal(query.searchParams.get("active"), "eq.true");
+
+  const mismatched = setup({ role: "electrician", electricianProfiles: [] });
+  assert.equal((await mismatched.handler(event({ body: { module_key: "electrician_assistant", message: "hi" } }))).statusCode, 403);
+});
+
+test("AI profile lookup fails closed when server service-role credentials are missing", async () => {
+  const noServiceKey = setup({ env: { SUPABASE_URL: "https://example.supabase.co", SUPABASE_ANON_KEY: "anon-test" } });
+  assert.equal((await noServiceKey.handler(event({ body: { module_key: "customer_support", message: "hi" } }))).statusCode, 503);
+  assert.equal(noServiceKey.calls.length, 1);
 });
