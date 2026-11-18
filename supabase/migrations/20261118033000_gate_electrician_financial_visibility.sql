@@ -197,8 +197,8 @@ AS $$
     CASE
       WHEN verified.is_verified THEN 'payment_verified'
       WHEN b.status='completed' AND b.payment_status='refunded' THEN 'refunded'
-      WHEN b.status='completed' AND checkout.started AND b.selected_category IS NOT NULL
-        AND b.commission_rate IS DISTINCT FROM 15 THEN 'checkout_reconciliation_required'
+      WHEN b.status='completed' AND checkout.started
+        AND (b.selected_category IS NULL OR b.commission_rate IS DISTINCT FROM 15) THEN 'checkout_reconciliation_required'
       WHEN b.status='completed' AND checkout.started THEN 'checkout_started'
       WHEN b.status='completed' THEN 'completed_unpaid'
       ELSE 'not_completed'
