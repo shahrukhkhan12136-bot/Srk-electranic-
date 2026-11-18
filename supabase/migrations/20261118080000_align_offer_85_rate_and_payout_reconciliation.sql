@@ -195,7 +195,7 @@ AS $$
       ELSE NULL
     END AS company_share,
     CASE WHEN verified.is_verified AND payout_check.reconciliation_status='reconciled' THEN payout.electrician_payable ELSE NULL END AS payout_amount,
-    CASE WHEN verified.is_verified THEN payout.payout_status ELSE NULL END AS payout_status,
+    CASE WHEN verified.is_verified AND payout_check.reconciliation_status='reconciled' THEN payout.payout_status ELSE NULL END AS payout_status,
     payout_check.reconciliation_status AS payout_reconciliation_status,
     CASE
       WHEN verified.is_verified THEN 'payment_verified'
