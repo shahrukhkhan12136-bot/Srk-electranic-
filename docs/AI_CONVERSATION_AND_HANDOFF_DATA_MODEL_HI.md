@@ -11,15 +11,17 @@ AI storage की source migrations:
 - `20261118180000_private_ai_conversation_persistence.sql`: अलग AI conversation, message, idempotency, handoff queue और metadata-only audit tables; RLS; browser roles से direct table access revoke; append-only audit trigger।
 - `20261118190000_ai_idempotency_reservation_rpc.sql`: actor-scoped atomic reservation RPC; service-role-only।
 - `20261118200000_ai_idempotency_finalize_rpc.sql`: processing reservation को completed/failed करने का service-role-only RPC; response body store नहीं करता।
+- `20261118210000_ai_message_append_rpc.sql`: owner और open conversation lock/verify करके user/assistant message append करता है; केवल service-role।
+- `20261118220000_ai_handoff_request_rpc.sql`: owner conversation lock करके handoff queue row और `handoff_requested` status एक transaction में लिखता है; duplicate queued/assigned handoff पर मौजूदा queue item लौटाता है। यह agent assign या notification नहीं भेजता।
 
 वास्तविक schema में महत्वपूर्ण अंतर:
 
 - Conversation status `open`, `handoff_requested`, `closed` है; पुराना `handoff_pending` नाम लागू नहीं।
-- Message sender field `sender_kind` है और values `user`, `assistant`, `human_agent` हैं; पुराना `sender_type/system` contract लागू नहीं।
+- Message sender field `sender_kind` है और values `user`, `assistant`, `human_agent` हैं; पुराना `sender_type/system` contract लागू नहीं। नया append RPC अभी केवल `user` और `assistant` sender स्वीकार करता है; human-agent workflow अलग से बनना है।
 - Handoff table का नाम `srk_ai_handoff_queue` है; handoff status `queued`, `assigned`, `resolved`, `cancelled` हैं।
 - Idempotency actor-scoped unique key `(actor_user_id,idempotency_key)` और SHA-256 digest `request_sha256` पर आधारित है। Response body store नहीं होती; reservation states में `reserved`, `conflict`, `replay`, `processing`, `failed` हैं।
 - Audit table `srk_ai_audit_events` में केवल metadata fields हैं; prompt/message body या provider payload columns नहीं हैं।
-- मौजूदा `lib/ai-server-guard.js` auth, profile, module, conversation ownership और booking access validate करता है; इसके बाद जानबूझकर `503 ai_not_enabled` देता है। AI routes अभी persistence RPC या provider से wired नहीं हैं।
+- मौजूदा `lib/ai-server-guard.js` auth, profile, module, conversation ownership और booking access validate करता है; इसके बाद जानबूझकर `503 ai_not_enabled` देता है। नए message और handoff RPC अभी storage foundation हैं; AI routes अभी इनसे wired नहीं हैं, provider call नहीं होता, और human agent assignment/notification workflow अभी नहीं बना है।
 
 **जाँच की सीमा:** migrations और tests केवल Git branch में source हैं। इस update में कोई PostgreSQL replay, hosted/live database migration, deployment या AI provider call नहीं हुआ। AI default-off रहेगा; explicit launch approval के बिना इसे enable नहीं करना है।
 
