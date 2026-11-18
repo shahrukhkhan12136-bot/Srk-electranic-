@@ -255,3 +255,9 @@ These are client-adapter and mocked-contract tests only. They do not prove a liv
 - `null`, array, custom-prototype या inherited activation flag मिलने पर composition inert रहती है।
 - इससे किसी inherited/config-prototype property के कारण post-launch AI mounting अनजाने में चालू नहीं हो सकती।
 - Regression tests जोड़े गए हैं; execution/CI evidence अभी उपलब्ध नहीं है।
+
+### AI API URL config own-property guard
+
+- Post-launch composition helper अब AI_ASSISTANT_API_BASE_URL को भी config का अपना (own) property होना अनिवार्य करता है; inherited URL से AI client नहीं बनेगा।
+- Regression test Object.prototype से inherited URL देकर verify करता है कि composition fail-closed रहती है।
+- यह केवल configuration hardening है; AI endpoint लागू/सत्यापित नहीं हुआ, app mounting या activation नहीं की गई। Test execution का प्रमाण अभी उपलब्ध नहीं है।
