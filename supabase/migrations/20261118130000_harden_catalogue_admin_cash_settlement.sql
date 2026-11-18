@@ -42,6 +42,9 @@ begin
   if v_booking.razorpay_order_id is not null or v_booking.razorpay_payment_id is not null then raise exception 'RAZORPAY_BOOKING_MUST_USE_ONLINE_VERIFICATION'; end if;
   select * into v_labour from public.srk_booking_labour_bills where booking_id=p_booking_id;
   if not found then raise exception 'IMMUTABLE_LABOUR_BILL_REQUIRED'; end if;
+  if v_labour.electrician_profile_id is distinct from v_booking.assigned_electrician_id then
+    raise exception 'IMMUTABLE_LABOUR_BILL_OR_ELECTRICIAN_ASSIGNMENT_MISMATCH';
+  end if;
   select coalesce(sum(amount_paise),0) into v_fee from public.srk_booking_cancellation_fee_items
     where booking_id=p_booking_id and status='reserved';
   v_total:=v_labour.labour_amount_paise+v_fee;
