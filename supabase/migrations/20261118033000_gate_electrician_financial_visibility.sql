@@ -146,6 +146,10 @@ RETURNS TABLE (
   amount_received numeric,
   commission_amount numeric,
   electrician_earning numeric,
+  customer_labour_gross numeric,
+  company_share numeric,
+  payout_amount numeric,
+  payout_status text,
   payment_stage text
 )
 LANGUAGE sql
@@ -179,6 +183,18 @@ AS $$
         THEN round(((coalesce(bill.labour_amount_paise,0)::numeric*8500+5000)/10000)/100,2)
       ELSE 0
     END AS electrician_earning,
+    CASE
+      WHEN verified.is_verified THEN coalesce(bill.labour_amount,0)
+      WHEN checkout.started AND b.commission_rate=15 THEN coalesce(bill.labour_amount,0)
+      ELSE NULL
+    END AS customer_labour_gross,
+    CASE
+      WHEN verified.is_verified THEN coalesce(payout.platform_commission,b.commission_amount,0)
+      WHEN checkout.started AND b.commission_rate=15 THEN round(coalesce(bill.labour_amount,0)*0.15,2)
+      ELSE NULL
+    END AS company_share,
+    CASE WHEN verified.is_verified THEN payout.electrician_payable ELSE NULL END AS payout_amount,
+    CASE WHEN verified.is_verified THEN payout.payout_status ELSE NULL END AS payout_status,
     CASE
       WHEN verified.is_verified THEN 'payment_verified'
       WHEN b.status='completed' AND checkout.started THEN 'checkout_started'
