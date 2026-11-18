@@ -34,4 +34,5 @@ test("Main Admin UI can save drafts, view queue, and publish with expected curre
  assert.ok(admin.includes("srk_admin_publish_rate_catalogue_draft"));
  assert.ok(admin.includes("p_expected_current_version_id:adminCurrentRateCatalogue?.rate_version_id||null"));
  assert.ok(admin.includes("adminRateCatalogueDraftQueue"));
+ assert.ok(admin.includes("editAdminRateCatalogueDraft"));
 });

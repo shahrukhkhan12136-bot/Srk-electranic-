@@ -854,7 +854,7 @@ async function loadAdminRateCatalogueDrafts(){
  box.innerHTML='<strong>Draft / Scheduled बदलाव</strong>'+rows.map((row,index)=>{
   const id=String(row.id||'');
   const when=new Date(row.effective_at).toLocaleString('en-IN');
-  return '<div style="border-top:1px solid #e6edf3;padding:10px 0"><strong>'+esc(row.status==='scheduled'?'Scheduled':'Draft')+'</strong> • लागू: '+esc(when)+'<div class="muted">'+esc(row.reason||'')+'</div><button type="button" onclick="publishAdminRateCatalogueDraft(\''+esc(id)+'\')">Publish / Schedule पक्का करें</button></div>';
+  return '<div style="border-top:1px solid #e6edf3;padding:10px 0"><strong>'+esc(row.status==='scheduled'?'Scheduled':'Draft')+'</strong> • लागू: '+esc(when)+'<div class="muted">'+esc(row.reason||'')+'</div><button type="button" class="alt" onclick="editAdminRateCatalogueDraft('+index+')">Edit Draft</button> <button type="button" onclick="publishAdminRateCatalogueDraft(\''+esc(id)+'\')">Publish / Schedule पक्का करें</button></div>';
  }).join('');
 }
 function editAdminRateCatalogueDraft(index){
