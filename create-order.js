@@ -76,17 +76,18 @@ exports.handler=async event=>{
       try{amount=await paymentAmountPaise(booking);}catch(_){return json(409,{success:false,error:"अंतिम Labour Bill / cancellation fee का हिसाब तैयार नहीं है। Admin से जाँच कराएँ।"});}
       if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
       order=await findReusableOrder(booking,amount);
+      if(!order&&booking.razorpay_order_id){
+        return json(409,{success:false,error:"इस बुकिंग का पुराना Razorpay ऑर्डर मौजूद है, लेकिन उसकी स्थिति या राशि मेल नहीं खाती। नया ऑर्डर बनाने से पहले Admin reconciliation आवश्यक है।"});
+      }
       if(!order)order=await rp("orders",{method:"POST",body:JSON.stringify({amount,currency:"INR",receipt:bookingId.slice(0,40),notes:{booking_id:bookingId,service:"SRK ELECTRONIC"}})});
-      // Persist only while the booking is still completed and unpaid. If an
-      // admin/payment worker changed its state after the re-read, never expose
-      // a checkout order for the stale state.
-      const persisted=await db("service_bookings?id=eq."+encodeURIComponent(bookingId)+
-        "&status=eq.completed&payment_status=not.in.(paid,refunded)",{
-          method:"PATCH",
-          body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})
-        });
-      if(!Array.isArray(persisted)||persisted.length!==1){
-        return json(409,{success:false,error:"बुकिंग की स्थिति बदल गई है। भुगतान दोबारा शुरू करने से पहले Admin से जाँच कराएँ।"});
+      // The database validates the live booking, immutable bill/approved quote,
+      // lock token, and exact paise amount atomically before linking this order.
+      const linked=await db("rpc/srk_service_role_link_payment_order",{
+        method:"POST",
+        body:JSON.stringify({p_booking_id:bookingId,p_lock_token:lockToken,p_order_id:order.id,p_amount_paise:amount})
+      });
+      if(!linked?.success){
+        return json(409,{success:false,error:"बुकिंग की स्थिति या अंतिम राशि बदल गई है। ऑर्डर लिंक नहीं किया गया; Admin से जाँच कराएँ।"});
       }
     }
     return json(200,{success:true,key_id:RAZORPAY_KEY_ID,order_id:order.id,amount:order.amount,currency:order.currency});
