@@ -175,8 +175,9 @@ AS $$
     END AS commission_amount,
     CASE
       WHEN verified.is_verified THEN coalesce(payout.electrician_payable,0)
-      WHEN b.status='completed' AND NOT checkout.started AND NOT verified.is_verified
-        AND b.selected_category IS NOT NULL
+      WHEN b.status='completed' AND b.payment_status IS DISTINCT FROM 'refunded'
+        AND b.payment_status IS DISTINCT FROM 'paid' AND NOT checkout.started
+        AND NOT verified.is_verified AND b.selected_category IS NOT NULL
         THEN round(((coalesce(bill.labour_amount,0)*100*8500+5000)/10000)/100,2)
       WHEN checkout.started AND b.commission_rate=15
         THEN round(((coalesce(bill.labour_amount,0)*100*8500+5000)/10000)/100,2)
@@ -197,6 +198,7 @@ AS $$
     CASE
       WHEN verified.is_verified THEN 'payment_verified'
       WHEN b.status='completed' AND b.payment_status='refunded' THEN 'refunded'
+      WHEN b.status='completed' AND b.payment_status='paid' AND NOT verified.is_verified THEN 'payment_verification_required'
       WHEN b.status='completed' AND checkout.started
         AND (b.selected_category IS NULL OR b.commission_rate IS DISTINCT FROM 15) THEN 'checkout_reconciliation_required'
       WHEN b.status='completed' AND checkout.started THEN 'checkout_started'
