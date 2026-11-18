@@ -1,6 +1,6 @@
-# SRK ELECTRONIC — AI-Ready Foundation (Design Only)
+# SRK ELECTRONIC — AI-Ready Foundation
 
-**Status:** Source documentation only. No database objects, migrations, secrets, deployment, model provider, paid service, or runtime AI feature is enabled by this document.
+**स्थिति (18 नवंबर 2026):** Repository में AI foundation का सीमित backend और Main Admin handoff-queue read-only implementation मौजूद है। AI provider integration, model call, public assistant route, action execution और human assignment/notification अभी लागू नहीं हैं। Runtime AI जानबूझकर disabled है; किसी provider secret, paid service या deployment को सक्रिय नहीं किया गया है। नीचे दिए गए API contracts और action lifecycle जहां प्रस्तावित लिखे हैं, वहीं design-only हैं।
 
 ## 1. Goals and rollout
 
@@ -35,6 +35,8 @@ An AI action must carry authenticated actor context established by the server, m
 For privileged operations, check public.is_srk_admin() explicitly where Main Admin-only authority is required. Do not use srk_has_admin_permission(text) as a substitute for Main Admin-only checks, because that helper also supports permitted active staff.
 
 ## 4. Proposed API contracts (not implemented)
+
+**वर्तमान source implementation:** `lib/ai-server-guard.js` caller/profile/resource ownership और module/status checks करता है तथा अंत में `503 ai_not_enabled` लौटाता है। `netlify/functions/ai-assistant.js` और `netlify/functions/ai-handoff.js` thin wrappers हैं। `lib/ai-idempotency.js` deterministic digest helper देता है। Database migrations में private conversation/message/idempotency/handoff/audit tables तथा service-role-only reserve/finalize/append/handoff RPCs हैं। Main Admin के लिए `srk_admin_list_ai_handoff_queue(integer)` केवल queued/assigned handoff metadata पढ़ता है; यह assignment या resolution नहीं करता। Browser roles को AI control tables का direct access नहीं है।
 
 Versioned routes:
 - POST /api/v1/ai/assistant
@@ -116,4 +118,4 @@ Before enabling any module: threat model, data minimization review, prompt-injec
 
 ## 10. Explicit exclusions
 
-This document does not create migrations, tables, RPCs, API routes, AI provider accounts, keys, paid services, or deployments. It does not alter the existing 15% platform commission, payment/refund logic, rate catalogue, booking snapshots, Staff RBAC, or any previous migration.
+यह दस्तावेज़ स्वयं कोई migration, table, RPC, API route, AI provider account/key, paid service या deployment नहीं बनाता। Repository में मौजूद foundation को पूर्ण/सक्रिय AI assistant न समझें: AI disabled है; provider/model integration, user-facing AI replies, action approvals/execution, agent assignment और notifications अभी शामिल नहीं हैं। AI को enable करने, provider secret जोड़ने या production deployment के लिए अलग स्पष्ट अनुमति और release gates आवश्यक हैं। मौजूदा 15% platform commission, payment/refund logic, rate catalogue, booking snapshots, Staff RBAC या पुरानी migration को यह design नहीं बदलता।
