@@ -63,6 +63,7 @@ test("widget catches idempotency key failures, validates UUIDs and regenerates m
   assert.match(source, /pendingHandoffSummary !== summary \|\| !pendingHandoffKey/);
   assert.match(source, /const nextKey = createId\(\)/);
   assert.match(source, /typeof nextKey !== "string" \|\| !\/\^\[0-9a-f\]/);
+  assert.equal((source.match(/\(\?!\[\\s\\S\]\)/g) || []).length, 2, "both generated UUID checks must enforce the absolute end of input");
   assert.match(source, /pendingMessageKey = nextKey;\s*pendingMessageText = message/);
   assert.match(source, /pendingHandoffKey = nextKey;\s*pendingHandoffSummary = summary/);
   assert.match(source, /finally \{\s*busy = false;/);
