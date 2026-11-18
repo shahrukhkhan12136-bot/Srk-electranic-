@@ -77,7 +77,7 @@ as $function$
       when b.selected_category is not null
        and b.estimated_labour_paise is not null
        and b.estimated_labour_paise>0
-      then floor((b.estimated_labour_paise::numeric*85+50)/100)::bigint
+      then (b.estimated_labour_paise-floor((b.estimated_labour_paise::numeric*15+50)/100))::bigint
       else null
     end,
     b.work_start_approval_status,
@@ -244,13 +244,13 @@ as $function$
           ))))
        and bill.booking_id is not null
       then round((bill.labour_amount_paise -
-        floor((bill.labour_amount_paise*85+50)/100))/100,2)
+        (bill.labour_amount_paise-floor((bill.labour_amount_paise*15+50)/100)))/100,2)
       else null
     end,
     case
       when b.status='completed' and bill.booking_id is not null
        and b.payment_status in ('pending','unpaid','paid')
-      then round(floor((bill.labour_amount_paise*85+50)/100)/100,2)
+      then round((bill.labour_amount_paise-floor((bill.labour_amount_paise*15+50)/100))/100,2)
       when b.status='completed' and b.payment_status='paid'
        and b.payment_verified_at is not null
        and b.selected_category is null
