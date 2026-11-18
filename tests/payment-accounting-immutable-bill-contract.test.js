@@ -52,6 +52,6 @@ test('new-category payout and read-only accounting use immutable labour, zero ma
 test('refund flow preserves immutable-bill path for new bookings and approved-quote path for legacy bookings', () => {
   assert.match(refundSql, /if v_booking\.selected_category is not null then/);
   assert.match(refundSql, /IMMUTABLE_LABOUR_BILL_REQUIRED/);
-  assert.match(refundSql, /v_booking\.quote_status<>'approved'/);
+  assert.match(refundSql, /v_booking\.quote_status is distinct from 'approved'/);
   assert.match(refundSql, /PAID_AMOUNT_DOES_NOT_MATCH_APPROVED_QUOTE/);
 });
