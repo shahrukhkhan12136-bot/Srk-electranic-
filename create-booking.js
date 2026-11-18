@@ -51,6 +51,17 @@ async function supabase(path, options = {}) {
   return data;
 }
 
+async function loadSnapshotRate8h(booking) {
+  if (!booking || !booking.estimate_rate_card_version || !booking.selected_rate_tier) return null;
+  const rows = await supabase(
+    "srk_rate_catalogue_items?select=customer_rate_paise&rate_version_id=eq." +
+    encodeURIComponent(booking.estimate_rate_card_version) +
+    "&tier_key=eq." + encodeURIComponent(booking.selected_rate_tier)
+  );
+  const amount = Array.isArray(rows) ? rows[0]?.customer_rate_paise : null;
+  return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
+}
+
 async function checkPublicRateLimit(endpoint, ipHash, limit) {
   const result = await supabase("rpc/srk_check_public_rate_limit", {
     method: "POST",
@@ -198,8 +209,9 @@ const work_details = clean(body.work_details, 2000);
       }
       const priorOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(existing.id));
       const priorOfferRows = Array.isArray(priorOffers) ? priorOffers : [];
+      const snapshotRate8hPaise = await loadSnapshotRate8h(existing);
       return json(200, { success: true, booking_id: existing.id, replayed: true,
-        estimate: { amount_paise: existing.estimated_labour_paise, amount_rupees: (existing.estimated_labour_paise / 100).toFixed(2), rate8h_paise: Math.floor(existing.estimated_labour_paise * 8 / existing.selected_duration_hours + 0.5), rate_card_version: existing.estimate_rate_card_version },
+        estimate: { amount_paise: existing.estimated_labour_paise, amount_rupees: (existing.estimated_labour_paise / 100).toFixed(2), rate8h_paise: snapshotRate8hPaise, rate_card_version: existing.estimate_rate_card_version },
         offers_created: priorOfferRows.length, match_level: priorOfferRows[0]?.match_level || null,
         message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
     }
@@ -226,8 +238,9 @@ const work_details = clean(body.work_details, 2000);
       if (!raced || raced.customer_user_id !== customer_user_id || raced.customer_request_fingerprint !== requestFingerprint) throw insertError;
       const racedOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(raced.id));
       const racedOfferRows = Array.isArray(racedOffers) ? racedOffers : [];
+      const snapshotRate8hPaise = await loadSnapshotRate8h(raced);
       return json(200, { success: true, booking_id: raced.id, replayed: true,
-        estimate: { amount_paise: raced.estimated_labour_paise, amount_rupees: (raced.estimated_labour_paise / 100).toFixed(2), rate8h_paise: Math.floor(raced.estimated_labour_paise * 8 / raced.selected_duration_hours + 0.5), rate_card_version: raced.estimate_rate_card_version },
+        estimate: { amount_paise: raced.estimated_labour_paise, amount_rupees: (raced.estimated_labour_paise / 100).toFixed(2), rate8h_paise: snapshotRate8hPaise, rate_card_version: raced.estimate_rate_card_version },
         offers_created: racedOfferRows.length, match_level: racedOfferRows[0]?.match_level || null,
         message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
     }
