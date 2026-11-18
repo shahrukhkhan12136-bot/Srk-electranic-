@@ -177,15 +177,15 @@ AS $$
       WHEN verified.is_verified THEN coalesce(payout.electrician_payable,0)
       WHEN b.status='completed' AND b.payment_status IS DISTINCT FROM 'refunded'
         AND b.payment_status IS DISTINCT FROM 'paid' AND NOT checkout.started
-        AND NOT verified.is_verified AND b.selected_category IS NOT NULL
+        AND NOT verified.is_verified AND b.selected_category IS NOT NULL AND bill.labour_amount IS NOT NULL
         THEN (floor((round(coalesce(bill.labour_amount,0)*100)*8500+5000)/10000)/100)
-      WHEN checkout.started AND b.commission_rate=15
+      WHEN checkout.started AND b.commission_rate=15 AND bill.labour_amount IS NOT NULL
         THEN (floor((round(coalesce(bill.labour_amount,0)*100)*8500+5000)/10000)/100)
       ELSE 0
     END AS electrician_earning,
     CASE
       WHEN verified.is_verified AND bill.labour_amount IS NOT NULL THEN bill.labour_amount
-      WHEN checkout.started AND b.selected_category IS NOT NULL AND b.commission_rate=15 THEN bill.labour_amount
+      WHEN checkout.started AND b.selected_category IS NOT NULL AND b.commission_rate=15 AND bill.labour_amount IS NOT NULL THEN bill.labour_amount
       ELSE NULL
     END AS customer_labour_gross,
     CASE
@@ -200,7 +200,7 @@ AS $$
       WHEN b.status='completed' AND b.payment_status='refunded' THEN 'refunded'
       WHEN b.status='completed' AND b.payment_status='paid' AND NOT verified.is_verified THEN 'payment_verification_required'
       WHEN b.status='completed' AND checkout.started
-        AND (b.selected_category IS NULL OR b.commission_rate IS DISTINCT FROM 15) THEN 'checkout_reconciliation_required'
+        AND (b.selected_category IS NULL OR bill.labour_amount IS NULL OR b.commission_rate IS DISTINCT FROM 15) THEN 'checkout_reconciliation_required'
       WHEN b.status='completed' AND checkout.started THEN 'checkout_started'
       WHEN b.status='completed' THEN 'completed_unpaid'
       ELSE 'not_completed'
