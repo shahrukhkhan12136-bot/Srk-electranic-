@@ -57,6 +57,9 @@ test("payout reconciliation checks immutable labour bill, electrician, commissio
   assert.match(migration, /payout\.gross_service_amount,2\) IS DISTINCT FROM round\(bill\.labour_amount,2\)/);
   assert.match(migration, /payout\.platform_commission,2\) IS DISTINCT FROM round\(b\.commission_amount,2\)/);
   assert.match(migration, /payout\.electrician_payable,2\) IS DISTINCT FROM/);
+  assert.ok(migration.includes("WHEN b.status IS DISTINCT FROM 'completed' THEN 'booking_status_mismatch'"));
+  assert.ok(migration.includes("coalesce(payout.materials_amount,0) IS DISTINCT FROM 0"));
+  assert.ok(migration.includes("THEN 'category_materials_mismatch'"));
 });
 
 test("new source migration does not rewrite historical bookings, bills or payout ledger rows", () => {
