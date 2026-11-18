@@ -21,7 +21,7 @@ test("offer RPC withholds quote and materials amounts until persisted checkout o
 
 test("earnings RPC derives payment stage on server and verifies manual payment evidence", () => {
   assert.match(migration, /payment_stage text/);
-  assert.match(migration, /b\.razorpay_order_id IS NOT NULL AND b\.payment_status='pending'/);
+  assert.match(migration, /b\.razorpay_order_id IS NOT NULL AND b\.payment_status IN \('pending','created'\)/);
   assert.match(migration, /lower\(btrim\(e\.payment_method\)\)=lower\(btrim\(b\.payment_method\)\)/);
   assert.match(migration, /b\.payment_verified_at IS NOT NULL/);
 });
