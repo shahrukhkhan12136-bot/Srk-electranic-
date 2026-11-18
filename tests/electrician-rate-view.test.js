@@ -183,3 +183,21 @@ test("reconciled payout separately includes immutable materials without changing
   assert.equal(result.accounting.customer_labour_gross_paise + result.accounting.materials_amount_paise,
     result.accounting.electrician_earning_paise + result.accounting.company_share_paise);
 });
+
+
+test("unreconciled verified payment with partial ledger data withholds all split amounts", () => {
+  const result = buildElectricianJobAccounting({
+    booking_id: "b12", booking_status: "completed", payment_status: "paid",
+    payment_verified_at: "2026-11-18T02:00:00Z", razorpay_payment_id: "pay_112",
+    customer_labour_gross_paise: 100000, materials_amount_paise: 5000,
+    electrician_earning_paise: 85000, company_share_paise: 15000,
+    customer_amount_received_paise: 105000, payout_reconciliation_status: "mismatch",
+    payout_status: "pending", payout_amount_paise: 85000
+  });
+  assert.equal(result.accounting.customer_amount_received_paise, 105000);
+  assert.equal(result.accounting.customer_labour_gross_paise, null);
+  assert.equal(result.accounting.materials_amount_paise, null);
+  assert.equal(result.accounting.electrician_earning_paise, null);
+  assert.equal(result.accounting.company_share_paise, null);
+  assert.equal(result.electrician_payout.payout_amount_paise, null);
+});
