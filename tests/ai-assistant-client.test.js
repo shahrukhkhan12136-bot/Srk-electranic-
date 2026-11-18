@@ -132,6 +132,23 @@ test("handoff rejects unknown status rather than claiming a ticket was created",
   );
 });
 
+test("handoff rejects unknown urgency values returned by the API", async () => {
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async () => jsonResponse({
+      success: true, handoff_id: HANDOFF, status: "queued", urgency: "critical"
+    })
+  });
+  await assert.rejects(
+    client.createHandoff({
+      moduleKey: "electrician_assistant", conversationId: CONVERSATION,
+      reasonCode: "needs_human_support", summary: "मानव सहायता चाहिए।",
+      accessToken: TOKEN, idempotencyKey: KEY
+    }),
+    error => error.code === "invalid_ai_response"
+  );
+});
+
 test("assistant response rejects malformed nested action and handoff fields", async () => {
   for (const malformed of [
     { action: "none", handoff: {} },
