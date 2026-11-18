@@ -65,7 +65,8 @@ jobs:
             selected_duration_hours integer,
             selected_rate_tier text,
             estimated_labour_paise bigint,
-            estimate_rate_card_version uuid
+            estimate_rate_card_version uuid,
+            booking_status text
           );
           SQL
 
@@ -77,7 +78,7 @@ jobs:
           test -n "$DB_CONTAINER"
           docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 < "$GITHUB_WORKSPACE/supabase/migrations/20261118090000_enforce_booking_rate_snapshot_immutability.sql"
 
-      - name: Run all 8 booking snapshot pgTAP assertions
+      - name: Run all 12 booking snapshot pgTAP assertions
         working-directory: ${{ runner.temp }}/srk-rate-snapshot-db
         run: |
           set -euo pipefail
