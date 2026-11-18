@@ -151,3 +151,28 @@ test("customer without an optional saved profile row is denied rather than assig
   assert.equal(response.statusCode, 403);
   assert.equal(JSON.parse(response.body).error, "ai_access_denied");
 });
+
+
+test("customer and approved electrician modules are independently authorized for dual-profile accounts", async () => {
+  const dual = setup({
+    role: "customer",
+    customerProfiles: [{ user_id: "123e4567-e89b-42d3-a456-426614174001" }],
+    electricianProfiles: [{ id: UUID }]
+  });
+  const customer = await dual.handler(event({
+    body: { module_key: "customer_support", message: "hello" }
+  }));
+  assert.equal(customer.statusCode, 503);
+  assert.equal(JSON.parse(customer.body).error, "ai_not_enabled");
+
+  const electrician = await dual.handler(event({
+    body: { module_key: "electrician_assistant", message: "hello" }
+  }));
+  assert.equal(electrician.statusCode, 503);
+  assert.equal(JSON.parse(electrician.body).error, "ai_not_enabled");
+
+  const wrongModule = await dual.handler(event({
+    body: { module_key: "reports_operations", message: "hello" }
+  }));
+  assert.equal(wrongModule.statusCode, 403);
+});
