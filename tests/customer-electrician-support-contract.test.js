@@ -70,6 +70,8 @@ test('Electrician support UI sends the expected ticket, thread and reply RPC con
   assert.match(electrician, /electricianSupportReplyBusy/);
   assert.match(electrician, /esc\(t\.subject\)/);
   assert.match(electrician, /esc\(m\.body\)/);
+  const ticketList = electrician.slice(electrician.indexOf('async function loadElectricianSupportTickets()'), electrician.indexOf('async function createElectricianSupportTicket()'));
+  assert.doesNotMatch(ticketList, /t\.admin_note|Admin नोट/, 'internal Admin notes must not be rendered in the Electrician support ticket list');
 });
 
 test('Electrician support SQL enforces profile ownership, assigned-booking scope and bounded ticket creation', () => {
