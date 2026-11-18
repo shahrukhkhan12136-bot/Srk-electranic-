@@ -832,6 +832,19 @@ async function refreshCustomerRateCatalogue() {
   }
   customerRateCard = Object.fromEntries(keys.map(k => [k, rates[k]]));
   customerRateVersionId = data.rate_version_id;
+  const customerRateLabels = {
+    electrical_assistant: 'Electrical Assistant',
+    skilled_electrician: 'Skilled Electrician',
+    expert_electrician: 'Expert Electrician',
+    premium_electrical_specialist: 'Premium Electrical Specialist'
+  };
+  keys.forEach(key => {
+    const option = document.querySelector('#rateTier option[value="' + key + '"]');
+    if (option) {
+      const rupees = (rates[key] / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      option.textContent = customerRateLabels[key] + ' — 8 घंटे ₹' + rupees;
+    }
+  });
   updateLabourEstimate();
   return data;
 }
