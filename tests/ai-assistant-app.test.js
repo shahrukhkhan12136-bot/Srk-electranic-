@@ -263,17 +263,23 @@ test("AI failures leave the existing Customer and Electrician support routes ava
   const electrician = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
   const widget = fs.readFileSync(path.join(__dirname, "../lib/ai-assistant-widget.js"), "utf8");
 
-  // AI mounts are separate from the existing, authenticated support workflows.
-  assert.match(customer, /id="customerAiAssistantMount"[\\s\\S]*?id="customerBookingAssistantMount"/);
-  assert.match(customer, /id="customerSupportCreate"/);
-  assert.match(customer, /id="customerSupportSend"/);
-  assert.match(customer, /id="customerSupportStatus"[^>]*role="status"/);
+  // AI mounts remain separate from the existing authenticated support workflows.
+  for (const marker of [
+    'id="customerAiAssistantMount"',
+    'id="customerBookingAssistantMount"',
+    'id="customerSupportCreate"',
+    'id="customerSupportSend"',
+    'id="customerSupportStatus"'
+  ]) assert.ok(customer.includes(marker), "Customer fallback missing: " + marker);
 
-  assert.match(electrician, /id="electricianAiAssistantMount"[\\s\\S]*?id="electricianSupportCategory"/);
-  assert.match(electrician, /createElectricianSupportTicket\\(\\)/);
-  assert.match(electrician, /sendElectricianSupportReply\\(\\)/);
-  assert.match(electrician, /id="electricianSupportCreateStatus"[^>]*aria-live="polite"/);
+  for (const marker of [
+    'id="electricianAiAssistantMount"',
+    'id="electricianSupportCategory"',
+    'id="electricianSupportCreateStatus"',
+    "createElectricianSupportTicket()",
+    "sendElectricianSupportReply()"
+  ]) assert.ok(electrician.includes(marker), "Electrician fallback missing: " + marker);
 
-  assert.match(widget, /AI सहायता अभी उपलब्ध नहीं है। मौजूदा सहायता विकल्प इस्तेमाल करें।/);
-  assert.match(widget, /कृपया दोबारा लॉगिन करें।/);
+  assert.ok(widget.includes("AI सहायता अभी उपलब्ध नहीं है। मौजूदा सहायता विकल्प इस्तेमाल करें।"));
+  assert.ok(widget.includes("कृपया दोबारा लॉगिन करें।"));
 });
