@@ -967,13 +967,20 @@ async function saveBookingInternal(id){
   if(!confirm('क्या यह भुगतान वास्तव में प्राप्त हुआ है? Cash/UPI/Bank Transfer का सही तरीका चुनकर ही पुष्टि करें।'))return;
   let data,error;
   if(booking.selected_category){
-   if(manual_method!=='cash'){alert('नई server-timed booking का मैनुअल settlement अभी केवल वास्तविक Cash receipt के लिए उपलब्ध है। Online भुगतान Razorpay से ही verify होगा।');return;}
-   ({data,error}=await sb.rpc('srk_admin_record_new_booking_cash_payment',{p_booking_id:id,p_reference:payment_reference,p_note:'Admin द्वारा वास्तविक Cash प्राप्ति की पुष्टि; cancellation fee अलग ledger में settle'}));
+   if(manual_method==='cash'){
+    ({data,error}=await sb.rpc('srk_admin_record_new_booking_cash_payment',{p_booking_id:id,p_reference:payment_reference,p_note:'Admin द्वारा वास्तविक Cash प्राप्ति की पुष्टि; cancellation fee अलग ledger में settle'}));
+   }else if(manual_method==='upi'||manual_method==='bank_transfer'){
+    ({data,error}=await sb.rpc('srk_admin_record_new_booking_manual_digital_payment',{p_booking_id:id,p_method:manual_method,p_reference:payment_reference,p_note:'Admin द्वारा वास्तविक UPI/Bank Transfer प्राप्ति की पुष्टि; cancellation fee SRK ledger में settle'}));
+   }else{
+    alert('इस मैनुअल तरीके की नई Catalogue booking settlement अनुमति नहीं है। Razorpay भुगतान केवल verified online flow से दर्ज होगा।');return;
+   }
   }else{
    ({data,error}=await sb.rpc('srk_admin_record_manual_payment',{p_booking_id:id,p_method:manual_method,p_reference:payment_reference,p_note:'Admin द्वारा वास्तविक मैनुअल भुगतान प्राप्ति की पुष्टि'}));
   }
-  if(error||!data?.success){alert('मैनुअल भुगतान दर्ज नहीं हुआ: '+(error?.message||'कृपया भुगतान की स्थिति जाँचें।'));await loadAll();return;}
-  alert(booking.selected_category?'Cash payment सुरक्षित हुआ। Cancellation fee को अलग दिखाकर electrician wallet debit और SRK cancellation ledger में दर्ज किया गया।':'वास्तविक मैनुअल भुगतान और रसीद सुरक्षित रूप से दर्ज हो गई।');
+  if(error||!data?.success){alert('मैनुअल भुगतान दर्ज नहीं हुआ: '+(error?.message||'बुकिंग में चुना गया payment method और वास्तविक प्राप्ति मिलाएँ।'));await loadAll();return;}
+  alert(booking.selected_category
+   ?(manual_method==='cash'?'Cash payment सुरक्षित हुआ। Cancellation fee अलग ledger और electrician wallet में settle हुई.':'UPI/Bank payment सुरक्षित हुआ। Cancellation fee सीधे SRK ledger में credit हुई; electrician wallet से कोई debit नहीं हुआ।')
+   :'वास्तविक मैनुअल भुगतान और रसीद सुरक्षित रूप से दर्ज हो गई।');
   await loadAll();return;
  }
  if(status!==booking.status){
