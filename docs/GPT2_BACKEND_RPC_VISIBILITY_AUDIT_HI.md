@@ -58,3 +58,13 @@ Payment stage केवल trusted server-side payment intent / persisted verifi
 ## 7. निषिद्ध कार्य (अलग अनुमति तक)
 
 Production DB query/write, migration apply/replay, schema deployment, paid DB branch, deployment, PR merge, पुराने migration rewrite, historical booking/bill update।
+
+## 8. अतिरिक्त पुष्ट निष्कर्ष: Earnings RPC की पहचान और fields
+
+मौजूदा `20261109003000_secure_commission_reporting.sql` में `srk_get_my_earnings()` का पूरा source दोबारा पढ़ा गया:
+- RPC return signature में `amount_received`, `commission_amount`, `electrician_earning` हैं।
+- SELECT हर assigned booking पर `coalesce(b.amount_paid,0)` और `coalesce(b.commission_amount,0)` भेजता है, चाहे payment stage कुछ भी हो।
+- `electrician_earning` अभी completed + paid पर `amount_paid - commission_amount` है; यह पुराने commission model का payout estimate है, नई 85% policy का स्वतः प्रमाण नहीं।
+- Ownership filter केवल `p.user_id=auth.uid()` है, जबकि offer-details RPC `p.user_id=auth.uid() OR p.auth_user_id=auth.uid()` स्वीकारता है। किसी भी replacement में इस identity-linking अंतर को जाँचना और approved canonical ownership rule अपनाना होगा; इसे चुपचाप बदलना नहीं।
+
+इससे पहले बताए गए gross/commission leakage की पुष्टि होती है। यह source audit है, live database verification नहीं।
