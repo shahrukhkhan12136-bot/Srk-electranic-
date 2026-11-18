@@ -223,3 +223,11 @@ test("Electrician AI widget mounts only after an active approved profile is veri
   assert.match(source, /if\\(error\\)\\{destroyElectricianAiAssistant\\(\\);/);
   assert.match(source, /if\\(!p\\)\\{destroyElectricianAiAssistant\\(\\);/);
 });
+
+
+test("Electrician AI widget is destroyed immediately when the authenticated account view is cleared", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
+  assert.match(source, /function clearElectricianAccountView\\(\\)\\{\\s*destroyElectricianAiAssistant\\(\\);/);
+});
