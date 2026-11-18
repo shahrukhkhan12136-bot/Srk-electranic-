@@ -81,3 +81,20 @@ test('Electrician support SQL enforces profile ownership, assigned-booking scope
   assert.match(electricianSupportSql, /where t\.user_id=v_uid/);
   assert.match(electricianSupportSql, /set search_path = ''/);
 });
+
+test('Customer AI widgets mount only after the authenticated Customer profile is loaded', () => {
+  const sync = customer.slice(customer.indexOf('async function syncCustomerSession()'), customer.indexOf('async function customerSendOtp()'));
+  assert.match(sync, /const customerProfileReady=await loadCustomerProfile\(\)/);
+  assert.match(sync, /if\(customerProfileReady\)mountCustomerAiAssistant\(\)/);
+  assert.match(sync, /else destroyCustomerAiAssistant\(\)/);
+  const auth = customer.slice(customer.indexOf("customerSb.auth.onAuthStateChange"), customer.indexOf("async function syncCustomerSession()"));
+  assert.match(auth, /destroyCustomerAiAssistant\(\)/);
+});
+
+test('Electrician AI widget mounts only for an active Admin-approved profile and is destroyed otherwise', () => {
+  const refresh = electrician.slice(electrician.indexOf('async function refresh(){'), electrician.indexOf('function normalizedPhone()'));
+  assert.match(refresh, /p&&p\.active===true&&p\.verification_status==="approved"\)mountElectricianAiAssistant\(\)/);
+  assert.match(refresh, /else destroyElectricianAiAssistant\(\)/);
+  assert.match(refresh, /if\(error\)\{profile=null;destroyElectricianAiAssistant\(\)/);
+  assert.match(electrician, /function show\(\).*else destroyElectricianAiAssistant\(\)/);
+});
