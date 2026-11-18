@@ -2275,6 +2275,7 @@ if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
       customerActionGeneration++;
+      destroyCustomerAiAssistant();
       // Clear identity-scoped profile and booking form data immediately on every auth transition.
       // A newly signed-in customer must never see the previous customer's cached values.
       ['customerProfileName','customerProfilePhone','name','state','district','pin','address','place','bookingLat','bookingLng'].forEach(id=>{
