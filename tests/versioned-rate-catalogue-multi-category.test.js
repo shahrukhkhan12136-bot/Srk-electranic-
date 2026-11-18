@@ -48,6 +48,11 @@ test("multiple categories are Admin-managed, audited, and used by booking dispat
   assert.doesNotMatch(migration, /DROP COLUMN[^;]*approved_rate_tier/i);
 });
 
+test("unchanged active electrician categories do not create false approval audit events", () => {
+  assert.match(migration, /GET DIAGNOSTICS v_rows = ROW_COUNT/);
+  assert.match(migration, /IF v_rows > 0 THEN[\\s\\S]*srk_electrician_rate_category_audit/);
+});
+
 test("customer UI and booking API consume the same published catalogue RPC", () => {
   assert.match(customerUi, /rpc\('srk_get_current_customer_rate_catalogue'\)/);
   assert.match(bookingApi, /rpc\/srk_get_current_customer_rate_catalogue/);
