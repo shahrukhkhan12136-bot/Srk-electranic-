@@ -138,6 +138,30 @@ test("handoff requests are validated and remain disabled until persistence and a
   assert.equal(JSON.parse(good.body).error, "ai_not_enabled");
 });
 
+test("handoff reason codes match the persistence schema allowlist", async () => {
+  const { handler } = setup();
+  for (const reason_code of ["needs_human_support", "safety_concern", "account_issue", "billing_question", "other"]) {
+    const response = await handler(event({ body: {
+      module_key: "customer_support",
+      conversation_id: UUID,
+      reason_code,
+      urgency: "normal",
+      summary: "Please connect me to support"
+    } }), "handoff");
+    assert.equal(response.statusCode, 503, reason_code);
+    assert.equal(JSON.parse(response.body).error, "ai_not_enabled");
+  }
+  const invalid = await handler(event({ body: {
+    module_key: "customer_support",
+    conversation_id: UUID,
+    reason_code: "arbitrary_unrecognized_reason",
+    urgency: "normal",
+    summary: "Please connect me to support"
+  } }), "handoff");
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(JSON.parse(invalid.body).error, "invalid_handoff_request");
+});
+
 test("handoff requires a non-empty bounded summary", async () => {
   const { handler } = setup();
   for (const summary of [undefined, "", "   ", 42, "x".repeat(1001)]) {
