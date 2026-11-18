@@ -1,0 +1,74 @@
+name: Supabase duplicate migration version scratch test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  duplicate-version-scratch:
+    name: Probe duplicate timestamp handling in disposable local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: Initialize isolated scratch project
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/srk-duplicate-version-scratch"
+          cd "$RUNNER_TEMP/srk-duplicate-version-scratch"
+          supabase init
+          cat > supabase/migrations/20261109_scratch_alpha.sql <<'SQL'
+          create table public.scratch_duplicate_alpha (id integer primary key);
+          SQL
+          cat > supabase/migrations/20261109_scratch_beta.sql <<'SQL'
+          create table public.scratch_duplicate_beta (id integer primary key);
+          SQL
+
+      - name: Start disposable local Supabase
+        working-directory: ${{ runner.temp }}/srk-duplicate-version-scratch
+        run: supabase start
+
+      - name: Run duplicate-version replay probe and capture evidence
+        working-directory: ${{ runner.temp }}/srk-duplicate-version-scratch
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          set +e
+          supabase db reset --debug > evidence/db-reset.log 2>&1
+          RESET_EXIT=$?
+          set -e
+          printf 'supabase_cli_version=' > evidence/result.txt
+          supabase --version >> evidence/result.txt
+          printf 'db_reset_exit_code=%s\n' "$RESET_EXIT" >> evidence/result.txt
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          docker exec "$DB_CONTAINER" psql -X -U postgres -d postgres -Atc \
+            "select 'alpha_table=' || coalesce(to_regclass('public.scratch_duplicate_alpha')::text,'absent') union all select 'beta_table=' || coalesce(to_regclass('public.scratch_duplicate_beta')::text,'absent');" \
+            >> evidence/result.txt
+          docker exec "$DB_CONTAINER" psql -X -U postgres -d postgres -Atc \
+            "select 'history=' || coalesce(string_agg(version, ',' order by version),'empty') from supabase_migrations.schema_migrations where version='20261109';" \
+            >> evidence/result.txt
+          cat evidence/result.txt
+          cat evidence/db-reset.log
+          # The probe is diagnostic: either CLI rejection or replay outcome is evidence.
+          # Do not turn a duplicate-version finding into an automatic migration repair.
+          echo "Scratch probe completed; inspect the captured outcome before changing project migrations."
+
+      - name: Upload scratch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-duplicate-version-scratch-evidence
+          path: ${{ runner.temp }}/srk-duplicate-version-scratch/evidence/
+          if-no-files-found: warn
+
+      - name: Stop disposable local Supabase
+        if: always()
+        working-directory: ${{ runner.temp }}/srk-duplicate-version-scratch
+        run: supabase stop --no-backup
