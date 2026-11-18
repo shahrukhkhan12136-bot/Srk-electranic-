@@ -21,7 +21,7 @@ function setup({ role = "customer", status = 200, user = null, env = null } = {}
     return {
       ok: status >= 200 && status < 300,
       status,
-      json: async () => user || { id: "user-1", app_metadata: { role } }
+      json: async () => user || { id: "123e4567-e89b-42d3-a456-426614174001", app_metadata: { role } }
     };
   };
   return {
