@@ -14,7 +14,7 @@ function event({ method = "POST", token = "valid-token", key = UUID, body = {} }
     body: JSON.stringify(body)
   };
 }
-function setup({ role = "customer", status = 200, user = null, env = null, customerProfiles = null, electricianProfiles = null } = {}) {
+function setup({ role = "customer", status = 200, user = null, env = null, customerProfiles = null, electricianProfiles = null, bookingRows = [] } = {}) {
   const calls = [];
   const authUser = user || { id: "123e4567-e89b-42d3-a456-426614174001", app_metadata: { role } };
   const customerRows = customerProfiles || (role === "customer" ? [{ user_id: authUser.id }] : []);
@@ -36,6 +36,9 @@ function setup({ role = "customer", status = 200, user = null, env = null, custo
     }
     if (url.includes("/rest/v1/electrician_profiles")) {
       return { ok: true, status: 200, json: async () => electricianRows };
+    }
+    if (url.includes("/rest/v1/service_bookings")) {
+      return { ok: true, status: 200, json: async () => bookingRows };
     }
     throw new Error("Unexpected URL");
   };
@@ -541,4 +544,90 @@ test("AI guard rejects unexpected top-level request fields before Supabase calls
   assert.equal(handoffResponse.statusCode, 400);
   assert.equal(JSON.parse(handoffResponse.body).error, "invalid_request");
   assert.equal(handoff.calls.length, 0);
+});
+
+
+test("booking context is checked against the authenticated customer's exact booking", async () => {
+  const userId = "123e4567-e89b-42d3-a456-426614174001";
+  const bookingId = "123e4567-e89b-42d3-a456-426614174099";
+  const own = setup({ bookingRows: [{ id: bookingId, customer_user_id: userId, assigned_electrician_id: null }] });
+  const response = await own.handler(event({ body: {
+    module_key: "booking_assistant", message: "status?", context: { booking_id: bookingId }
+  } }));
+  assert.equal(response.statusCode, 503);
+  assert.equal(JSON.parse(response.body).error, "ai_not_enabled");
+  const bookingCall = own.calls.find(call => call.url.includes("/rest/v1/service_bookings"));
+  assert.ok(bookingCall);
+  const query = new URL(bookingCall.url);
+  assert.equal(query.searchParams.get("id"), "eq." + bookingId);
+  assert.equal(query.searchParams.get("select"), "id,customer_user_id,assigned_electrician_id");
+  assert.equal(bookingCall.options.headers.Authorization, "Bearer service-role-test");
+
+  const other = setup({ bookingRows: [{ id: bookingId, customer_user_id: "123e4567-e89b-42d3-a456-426614174088", assigned_electrician_id: null }] });
+  const denied = await other.handler(event({ body: {
+    module_key: "booking_assistant", message: "status?", context: { booking_id: bookingId }
+  } }));
+  assert.equal(denied.statusCode, 403);
+  assert.equal(JSON.parse(denied.body).error, "ai_booking_access_denied");
+});
+
+test("electrician booking context requires exact assigned electrician profile ownership", async () => {
+  const bookingId = "123e4567-e89b-42d3-a456-426614174099";
+  const own = setup({ role: "electrician", bookingRows: [{
+    id: bookingId, customer_user_id: null, assigned_electrician_id: UUID
+  }] });
+  const response = await own.handler(event({ body: {
+    module_key: "electrician_assistant", message: "job details", context: { booking_id: bookingId }
+  } }));
+  assert.equal(response.statusCode, 503);
+  assert.equal(JSON.parse(response.body).error, "ai_not_enabled");
+
+  for (const assignedId of [null, "123e4567-e89b-42d3-a456-426614174088"]) {
+    const other = setup({ role: "electrician", bookingRows: [{
+      id: bookingId, customer_user_id: null, assigned_electrician_id: assignedId
+    }] });
+    const denied = await other.handler(event({ body: {
+      module_key: "electrician_assistant", message: "job details", context: { booking_id: bookingId }
+    } }));
+    assert.equal(denied.statusCode, 403);
+    assert.equal(JSON.parse(denied.body).error, "ai_booking_access_denied");
+  }
+});
+
+test("booking ownership lookup fails closed for missing, duplicate, mismatched, or unavailable rows", async () => {
+  const bookingId = "123e4567-e89b-42d3-a456-426614174099";
+  for (const rows of [[], [
+    { id: bookingId, customer_user_id: "123e4567-e89b-42d3-a456-426614174001" },
+    { id: bookingId, customer_user_id: "123e4567-e89b-42d3-a456-426614174001" }
+  ], [{ id: "123e4567-e89b-42d3-a456-426614174088", customer_user_id: "123e4567-e89b-42d3-a456-426614174001" }]]) {
+    const denied = setup({ bookingRows: rows });
+    const response = await denied.handler(event({ body: {
+      module_key: "customer_support", message: "help", context: { booking_id: bookingId }
+    } }));
+    assert.equal(response.statusCode, 403);
+    assert.equal(JSON.parse(response.body).error, "ai_booking_access_denied");
+  }
+
+  const unavailable = createAiServerGuard({
+    env: {
+      SUPABASE_URL: "https://example.supabase.co",
+      SUPABASE_ANON_KEY: "anon-test",
+      SUPABASE_SERVICE_ROLE_KEY: "service-role-test"
+    },
+    fetchImpl: async url => {
+      if (url.includes("/auth/v1/user")) return { ok: true, status: 200, json: async () => ({
+        id: "123e4567-e89b-42d3-a456-426614174001"
+      }) };
+      if (url.includes("/srk_customer_profiles")) return { ok: true, status: 200, json: async () => [
+        { user_id: "123e4567-e89b-42d3-a456-426614174001" }
+      ] };
+      if (url.includes("/electrician_profiles")) return { ok: true, status: 200, json: async () => [] };
+      return { ok: false, status: 500, json: async () => [] };
+    }
+  });
+  const failed = await unavailable(event({ body: {
+    module_key: "customer_support", message: "help", context: { booking_id: bookingId }
+  } }));
+  assert.equal(failed.statusCode, 503);
+  assert.equal(JSON.parse(failed.body).error, "ai_service_unavailable");
 });
