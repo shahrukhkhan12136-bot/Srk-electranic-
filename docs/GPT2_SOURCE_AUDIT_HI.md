@@ -20,3 +20,10 @@
 ## Guardrails
 - No SQL was run; no migration was created or applied; no Paid DB branch was created; no deployment or paid service was used.
 - Next implementation boundary: server/API wiring and UI integration. Database changes remain blocked pending explicit user approval.
+
+
+## 18 नवम्बर 2026 — अतिरिक्त सत्यापन
+- 5 टेस्ट फाइलों में कुल 19 टेस्ट चलाए गए: **19 पास, 0 फेल**।
+- 85% राशि की गणना को JavaScript floating-point multiplication से हटाकर BigInt आधारित integer arithmetic किया, ताकि बड़े वैध paise input पर rounding सटीक रहे।
+- Unsafe integer सीमा वाले टेस्ट को सही किया: `Number.MAX_SAFE_INTEGER` वैध इनपुट है; उससे बड़ा मान अस्वीकार होना चाहिए।
+- यह परीक्षण स्थानीय source snapshot पर चला; production API, Supabase या deployed app पर नहीं।
