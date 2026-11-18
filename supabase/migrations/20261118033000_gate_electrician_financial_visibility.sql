@@ -165,22 +165,21 @@ AS $$
     b.payment_status,
     CASE
       WHEN verified.is_verified THEN coalesce(b.amount_paid,0)
-      WHEN checkout.started THEN coalesce(bill.labour_amount_paise,0)::numeric/100
       ELSE 0
     END AS amount_received,
     CASE
       WHEN verified.is_verified THEN coalesce(b.commission_amount,0)
       WHEN checkout.started AND b.commission_rate=15
-        THEN round(coalesce(bill.labour_amount_paise,0)::numeric/100*0.15,2)
+        THEN round(coalesce(bill.labour_amount,0)*0.15,2)
       ELSE 0
     END AS commission_amount,
     CASE
       WHEN verified.is_verified THEN coalesce(payout.electrician_payable,0)
       WHEN b.status='completed' AND NOT checkout.started AND NOT verified.is_verified
         AND b.selected_category IS NOT NULL
-        THEN round(((coalesce(bill.labour_amount_paise,0)::numeric*8500+5000)/10000)/100,2)
+        THEN round(((coalesce(bill.labour_amount,0)*100*8500+5000)/10000)/100,2)
       WHEN checkout.started AND b.commission_rate=15
-        THEN round(((coalesce(bill.labour_amount_paise,0)::numeric*8500+5000)/10000)/100,2)
+        THEN round(((coalesce(bill.labour_amount,0)*100*8500+5000)/10000)/100,2)
       ELSE 0
     END AS electrician_earning,
     CASE
