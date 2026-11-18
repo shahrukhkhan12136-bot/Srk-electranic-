@@ -29,3 +29,11 @@ test("half-paise ties reconcile to the existing payout commission rule", () => {
     assert.equal(gross - roundHalfUp(gross), expectedNet);
   }
 });
+
+test("electrician rate list rejects malformed, non-positive, or non-8-hour server amounts before rendering", () => {
+  assert.match(ui, /!Number\.isSafeInteger\(item\.electrician_rate_paise\)/);
+  assert.match(ui, /item\.electrician_rate_paise<=0/);
+  assert.match(ui, /item\.duration_hours!==8/);
+  assert.match(ui, /typeof rateList\.rate_version_id!=='string'/);
+  assert.match(ui, /rateList\.items\.some\(item=>/);
+});
