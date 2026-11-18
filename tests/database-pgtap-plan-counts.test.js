@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const directory = path.join(__dirname, '..', 'supabase', 'tests', 'database');
-const assertionPattern = /\bselect\s+(?:ok|is|isnt|has_table|has_column|has_function|has_trigger|has_index|hasnt_table|hasnt_column)\s*\(/gi;
+const assertionPattern = /\bselect\s+(?:ok|is|isnt|throws_ok|lives_ok|has_table|has_column|has_function|has_trigger|has_index|hasnt_table|hasnt_column)\s*\(/gi;
 
 test('every database pgTAP contract declares a plan matching its assertion count', () => {
   const files = fs.readdirSync(directory).filter(name => name.endsWith('.test.sql')).sort();
