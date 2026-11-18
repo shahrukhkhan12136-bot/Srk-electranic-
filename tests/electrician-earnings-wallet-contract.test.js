@@ -21,3 +21,20 @@ test('Electrician earnings and wallet ignore stale responses after auth changes 
   assert.ok(wallet.includes('request===electricianWalletRequest&&user?.id===requestedUserId'));
   assert.equal((wallet.match(/if\(!isCurrent\(\)\)return;/g)||[]).length, 2);
 });
+
+
+const walletAccessSql = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261118160000_harden_electrician_wallet_profile_access.sql'), 'utf8');
+
+test('Electrician wallet summary requires approved active profile and both Auth identity columns', () => {
+  const start = walletAccessSql.indexOf('CREATE OR REPLACE FUNCTION public.srk_get_my_wallet_summary()');
+  const end = walletAccessSql.indexOf('$function$;', start);
+  const fn = walletAccessSql.slice(start, end);
+  assert.ok(start >= 0 && end > start, 'latest wallet summary function exists');
+  assert.match(fn, /ep\.user_id\s*=\s*v_uid/);
+  assert.match(fn, /ep\.auth_user_id\s*=\s*v_uid/);
+  assert.match(fn, /ep\.verification_status\s*=\s*'approved'/);
+  assert.match(fn, /ep\.active\s*=\s*true/);
+  assert.match(fn, /v_electrician_id\s*:=\s*null/);
+  assert.match(fn, /REVOKE ALL ON FUNCTION public\.srk_get_my_wallet_summary\(\) FROM PUBLIC, anon/);
+  assert.match(fn, /GRANT EXECUTE ON FUNCTION public\.srk_get_my_wallet_summary\(\) TO authenticated/);
+});
