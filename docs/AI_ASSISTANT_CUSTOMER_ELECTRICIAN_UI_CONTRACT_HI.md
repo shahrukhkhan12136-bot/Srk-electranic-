@@ -85,3 +85,11 @@ This UI contract does not enable AI, create a provider account/key, create datab
 - वर्तमान `lib/ai-server-guard.js` authenticated user और app profile से role जाँचता है, लेकिन assistant/handoff persistence, booking ownership/assignment checks, idempotency storage, audit logging, provider adapter और human-support queue अभी उपलब्ध नहीं हैं। Guard जानबूझकर हर valid request पर HTTP 503 `ai_not_enabled` लौटाता है।
 - इसलिए इन paths को अभी **deploy-ready/live AI service नहीं** माना जाएगा। Client के API paths का Netlify redirect होना backend readiness का प्रमाण नहीं है।
 - GPT-1 app UI mounting और feature activation को OFF रखेगा, जब तक GPT-2 वास्तविक कार्यशील contracts और सभी release gates प्रमाणित न करे। Existing customer support और electrician support flows यथावत रहेंगे।
+
+## App-side mount preparation — 18 नवम्बर 2026
+
+- Customer `booking.html` और Electrician `electrician.html` में shared AI client/widget/app scripts और role-specific mount slots जोड़े गए हैं।
+- Customer mount केवल authenticated customer session flow में `customer_support` module के लिए प्रयास करता है; Electrician mount केवल signed-in electrician flow में `electrician_assistant` module के लिए। Logout/account switch पर widget destroy किया जाता है।
+- दोनों apps में mount helper का default kill switch कायम है: `AI_ASSISTANT_ENABLED` की explicit own-property value `true` न होने पर कोई widget render या AI network request नहीं होती। कोई live enablement/configuration नहीं जोड़ी गई।
+- इसे pre-launch app integration preparation माना जाए; actual visible UI, backend integration और runtime verification checkpoints अभी complete नहीं हैं।
+- Static regression test जोड़ा गया है, लेकिन इस environment में test execution नहीं हुआ; CI workflow run भी इस commit के लिए उपलब्ध नहीं मिला।
