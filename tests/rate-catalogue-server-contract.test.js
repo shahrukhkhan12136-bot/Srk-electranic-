@@ -81,3 +81,30 @@ test("electrician net rate list resolves the published version without calling g
   assert.match(fn, /customer_rate_paise-floor\(\(i\.customer_rate_paise::numeric\*1500\/10000\)\+0\.5\)::bigint/);
   assert.doesNotMatch(fn, /srk_get_current_customer_rate_catalogue|customer_rate_paise['"]\s*,\s*commission|company_share/i);
 });
+
+
+const electricianCatalogueFinalMigration = read("supabase/migrations/20261118150000_block_electrician_gross_catalogue_access.sql");
+
+test("final electrician Rate List RPC requires an active approved identity and returns only net rates", () => {
+  const start = electricianCatalogueFinalMigration.indexOf("CREATE OR REPLACE FUNCTION public.srk_get_my_electrician_rate_list()");
+  const end = electricianCatalogueFinalMigration.indexOf("$fn$;", start);
+  const fn = electricianCatalogueFinalMigration.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(fn, /auth_user_id=auth\.uid\(\)/);
+  assert.match(fn, /user_id=auth\.uid\(\)/);
+  assert.match(fn, /verification_status='approved'/);
+  assert.match(fn, /active=true/);
+  assert.match(fn, /a\.is_active=true/);
+  assert.match(fn, /electrician_rate_paise/);
+  assert.match(fn, /customer_rate_paise-floor\(\(i\.customer_rate_paise::numeric\*1500\/10000\)\+0\.5\)::bigint/);
+  assert.doesNotMatch(fn, /srk_get_current_customer_rate_catalogue|customer_rate_paise['"]\s*,\s*commission|company_share|gross_customer_amount/i);
+});
+
+test("Electrician Rate List UI fails closed on RPC errors or malformed payloads and escapes labels", () => {
+  assert.match(electricianUi, /if\(rateListResult\.error\)throw rateListResult\.error/);
+  assert.match(electricianUi, /!Array\.isArray\(rateList\.items\)/);
+  assert.match(electricianUi, /Number\.isSafeInteger\(item\.electrician_rate_paise\)/);
+  assert.match(electricianUi, /item\.duration_hours!==8/);
+  assert.match(electricianUi, /esc\(item\.customer_facing_label\|\|item\.category_key\)/);
+  assert.match(electricianUi, /आपकी स्वीकृत Rate List अभी उपलब्ध नहीं है/);
+});
