@@ -28,7 +28,7 @@ RETURNS TABLE(
   selected_category text,
   selected_rate_tier text,
   selected_duration_hours smallint,
-  estimated_labour_paise bigint,
+  electrician_offer_paise bigint,
   work_start_approval_status text,
   completion_approval_status text,
   customer_name text,
@@ -161,20 +161,20 @@ AS $$
     b.payment_status,
     CASE
       WHEN verified.is_verified THEN coalesce(b.amount_paid,0)
-      WHEN checkout.started THEN coalesce(b.estimated_labour_paise,0)::numeric/100
+      WHEN checkout.started THEN coalesce(bill.labour_amount_paise,0)::numeric/100
       ELSE 0
     END AS amount_received,
     CASE
       WHEN verified.is_verified THEN coalesce(b.commission_amount,0)
       WHEN checkout.started AND b.commission_rate=15
-        THEN round(coalesce(b.estimated_labour_paise,0)::numeric/100*0.15,2)
+        THEN round(coalesce(bill.labour_amount_paise,0)::numeric/100*0.15,2)
       ELSE 0
     END AS commission_amount,
     CASE
       WHEN verified.is_verified THEN coalesce(payout.electrician_payable,0)
       WHEN b.status='completed' AND NOT checkout.started AND NOT verified.is_verified
         AND b.selected_category IS NOT NULL
-        THEN round(((coalesce(b.estimated_labour_paise,0)::numeric*8500+5000)/10000)/100,2)
+        THEN round(((coalesce(bill.labour_amount_paise,0)::numeric*8500+5000)/10000)/100,2)
       WHEN checkout.started AND b.commission_rate=15
         THEN round(((coalesce(b.estimated_labour_paise,0)::numeric*8500+5000)/10000)/100,2)
       ELSE 0
@@ -188,6 +188,7 @@ AS $$
   FROM public.electrician_profiles p
   JOIN public.service_bookings b ON b.assigned_electrician_id=p.id
   LEFT JOIN public.srk_electrician_payouts payout ON payout.booking_id=b.id
+  LEFT JOIN public.srk_booking_labour_bills bill ON bill.booking_id=b.id
   CROSS JOIN LATERAL (
     SELECT (
       b.payment_status='paid'
