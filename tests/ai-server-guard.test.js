@@ -115,7 +115,9 @@ test("staff and reports modules remain denied until database-backed RBAC is impl
 
 test("malformed assistant requests and missing idempotency keys are rejected", async () => {
   const { handler } = setup();
-  assert.equal((await handler(event({ key: null, body: { module_key: "customer_support", message: "hi" } }))).statusCode, 400);
+  const missingKey = await handler(event({ key: null, body: { module_key: "customer_support", message: "hi" } }));
+  assert.equal(missingKey.statusCode, 400);
+  assert.equal(JSON.parse(missingKey.body).error, "invalid_idempotency_key");
   assert.equal((await handler(event({ body: { module_key: "customer_support", message: " " } }))).statusCode, 400);
   assert.equal((await handler(event({ body: { module_key: "customer_support", message: "hi", context: { owner_id: UUID } } }))).statusCode, 400);
 });
@@ -401,6 +403,7 @@ test("AI guard rejects duplicate case-variant Authorization and idempotency head
   const response = await keySetup.handler(duplicateKey);
   assert.equal(response.statusCode, 400);
   assert.equal(JSON.parse(response.body).error, "invalid_idempotency_key");
+  assert.equal(keySetup.calls.length, 0, "invalid idempotency key must be rejected before Supabase calls");
 });
 
 test("AI server rejects bearer tokens with whitespace, controls, or excessive length before Supabase", async () => {
