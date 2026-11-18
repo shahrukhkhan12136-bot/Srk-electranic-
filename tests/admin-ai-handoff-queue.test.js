@@ -47,7 +47,7 @@ test("AI handoff queue safely escapes every displayed database field",async()=>{
  assert.match(output,/&lt;img src=x onerror=alert\(1\)&gt;/);
  assert.doesNotMatch(output,/<script>|<img/);
  assert.match(output,/—/);
- assert.match(output,/केवल read-only/);
+ assert.match(ui.elements.adminAiHandoffQueueStatus.textContent,/केवल read-only/);
 });
 test("AI handoff queue displays a safe fallback when the RPC fails",async()=>{
  const ui=harness({error:new Error("database details")});
