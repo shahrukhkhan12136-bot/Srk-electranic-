@@ -101,6 +101,7 @@ test("payout trigger requires the same manual-payment method match as payment ve
   assert.match(payoutTriggerMigration, /e\.payment_method IS NOT NULL/);
   assert.match(payoutTriggerMigration, /NEW\.payment_method IS NOT NULL/);
   assert.match(payoutTriggerMigration, /lower\(btrim\(e\.payment_method\)\) = lower\(btrim\(NEW\.payment_method\)\)/);
+  assert.match(payoutTriggerMigration, /AFTER INSERT OR UPDATE OF[\\s\\S]*?amount_paid,[\\s\\S]*?payment_method[\\s\\S]*?ON public\\.service_bookings/);
   assert.match(paymentVerificationMigration, /lower\(btrim\(e\.payment_method\)\) = lower\(btrim\(new\.payment_method\)\)/);
   assert.doesNotMatch(payoutTriggerMigration, /round\(coalesce\(e\.amount,0\),2\) = round\(coalesce\(NEW\.amount_paid,0\),2\)\s*\)/);
 });
