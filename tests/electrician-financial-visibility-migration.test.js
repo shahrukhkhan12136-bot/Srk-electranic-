@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const migration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118033000_gate_electrician_financial_visibility.sql"), "utf8");
+const roundingMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118110000_unify_electrician_rate_rounding.sql"), "utf8");
 const orderLockMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118040000_atomic_electrician_payment_order_link.sql"), "utf8");
 const ui = fs.readFileSync(path.join(__dirname, "../electrician.html"), "utf8");
 
