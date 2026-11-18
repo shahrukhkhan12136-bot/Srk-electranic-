@@ -40,7 +40,7 @@ test("Main Admin UI can save drafts, view queue, and publish with expected curre
 });
 
 test("Admin page inline JavaScript parses without syntax errors",()=>{
- const scripts=[...admin.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)];
+ const scripts=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean);
  assert.ok(scripts.length>0,"inline admin script must exist");
  for(const script of scripts)new vm.Script(script[1],{filename:"admin.html"});
 });
