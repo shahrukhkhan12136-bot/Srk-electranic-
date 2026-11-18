@@ -141,3 +141,64 @@ Electrician access की शर्तें: `user_id` और `auth_user_id` �
 - Regression coverage `tests/ai-assistant-app.test.js` में जोड़ी गई; branch CI run `44262276362` में 619 tests सफल, 0 failed रहे।
 
 **शेष निर्णय:** OTP verification के बाद Customer profile स्वतः बनानी है या मौजूदा explicit profile-save flow ही रखना है—यह product/onboarding निर्णय अभी खुला है। वर्तमान व्यवहार fail-closed है; इस audit में signup trigger, profile schema या database migration नहीं बदली गई।
+
+
+## 7. Finalized pre-migration contract — 18 नवम्बर 2026
+
+यह section implementation review के लिए canonical contract है; यह SQL migration नहीं है और इसे किसी database पर apply नहीं किया गया है।
+
+### 7.1 Table ownership और constraints
+
+1. `srk_ai_conversations`
+   - Primary key UUID; owner Auth user से जुड़ा होगा।
+   - `actor_type` केवल `customer` / `electrician`; `module_key` actor के allowlisted modules में ही।
+   - Status केवल `open`, `handoff_pending`, `closed`; timestamps server-generated।
+   - प्रत्येक request पर owner, active profile और module authorization पुनः जाँचना होगा; UUID अकेले अनुमति नहीं है।
+
+2. `srk_ai_messages`
+   - Conversation FK के साथ `sequence_no` positive bigint; unique (`conversation_id`, `sequence_no`)।
+   - Sender केवल `user` / `assistant` / `system`; body non-empty और bounded (अधिकतम 8,000 characters)।
+   - Sequence allocation conversation row lock लेकर उसी transaction में हो; client sequence स्वीकार न हो।
+   - Provider request ID वैकल्पिक diagnostic reference है, secret या raw provider payload नहीं।
+
+3. `srk_ai_idempotency`
+   - Unique (`owner_user_id`, `endpoint_key`, `idempotency_key`); request hash canonical validated request का SHA-256।
+   - Key length bounded और endpoint allowlisted; response body bounded JSONB, secrets/credentials निषिद्ध।
+   - Same key + same hash + completed => original status/body replay; same key + different hash => conflict; processing => bounded retry/processing response; retryable failure => केवल defined retry policy से पुनः प्रयास।
+   - Expiry cleanup केवल retention window के बाद; active processing row कभी cleanup नहीं। Concurrent insert unique constraint और row lock से serialize हों।
+
+4. `srk_ai_handoffs`
+   - Conversation और owner दोनों से जुड़ा; queue/reason/urgency/status allowlisted।
+   - एक conversation पर एक समय में अधिकतम एक open handoff (queued/assigned/in_progress)।
+   - Staff assignment तब तक बंद रहेगा जब तक अलग staff permission और session authorization लागू व tested न हो; प्रारंभिक queue Main Admin-only।
+
+5. `srk_ai_audit_events`
+   - Append-only; event type/outcome allowlisted, actor/module/correlation IDs और सीमित sanitized metadata।
+   - सामान्य roles को SELECT/INSERT/UPDATE/DELETE direct grants नहीं। केवल trusted server-side writer; UPDATE/DELETE/TRUNCATE निषिद्ध।
+   - Audit write failure पर sensitive action fail closed; message text और credentials audit metadata में नहीं।
+
+### 7.2 API transaction order
+
+- Auth session verify → server-side actor/profile/module authorization → bounded input validation → canonical request hash → idempotency claim.
+- Conversation owner/actor/module row lock और booking ownership/assignment re-check → user message + assistant result + audit events atomic transaction में persist।
+- External model call database transaction/row lock के भीतर नहीं चलेगा। पहले idempotency claim `processing` commit; provider call bounded timeout के साथ; फिर result persist और idempotency `completed` mark। Crash recovery के लिए processing lease/expiry और retry policy अलग से implement/test होगी।
+- Provider timeout या unknown outcome पर नया key बनाकर automatic duplicate call नहीं; same key status/retry contract लागू होगा।
+- Handoff create, conversation status update और audit event एक database transaction में; response में persisted handoff ID/status मिलने के बाद ही UI success दिखाए।
+- Booking context केवल server द्वारा fetched record से; Customer owner match और Electrician assignment match प्रत्येक request पर अनिवार्य।
+
+### 7.3 Database security / rollout gates
+
+- सभी AI tables पर RLS enabled; `anon` और `authenticated` को direct table privileges नहीं। Browser से AI tables पर direct REST access नहीं।
+- Dedicated SECURITY DEFINER RPCs में `SET search_path = ''`, schema-qualified object references, explicit service-role assertion, strict EXECUTE grants और bounded result sets।
+- Service-role assertion के साथ actor identity को verified Auth JWT से Netlify handler निकाले; request body/model output से actor ID कभी स्वीकार न हो।
+- Foreign keys, CHECK constraints, partial unique open-handoff index, idempotency unique index, audit append-only enforcement और grants की catalog-level database tests हों।
+- Migration additive हो; मौजूदा complaint/support messages, booking/payment/rate tables या पुराने workflows को reuse/alter न करे।
+- पहले disposable/staging database पर full migration replay और negative permission tests; उसके बाद अलग explicit approval। इस branch update से कोई migration apply, deployment, paid database branch या production change नहीं होगा।
+
+### 7.4 शेष product/engineering निर्णय
+
+- Customer OTP के बाद profile auto-provisioning बनाम explicit profile-save flow।
+- Provider/vendor, data retention, deletion/export policy और model-call budget।
+- Processing lease duration, retry/backoff, provider idempotency support और stuck-request recovery।
+- Main Admin handoff queue के बाद Support Staff permission boundary।
+- इन निर्णयों और staging tests के बिना AI feature flag OFF और server guard का `503 ai_not_enabled` व्यवहार कायम रहेगा।
