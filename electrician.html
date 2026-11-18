@@ -774,7 +774,7 @@ async function loadEarnings(){
     ?'<p><b>काम पूरा — ग्राहक भुगतान बाकी:</b> आपकी 85% देय कमाई <b>'+money(x.electrician_earning)+'</b></p>'
     :'<p class="muted">अंतिम Labour Bill उपलब्ध होने पर आपकी 85% देय कमाई दिखाई जाएगी।</p>';
   }else if(x.payment_stage==='checkout_started'){
-   detail='<p><b>Checkout शुरू:</b> ग्राहक Labour कुल 100% '+money(x.customer_labour_gross)+' • आपकी 85% कमाई '+money(x.electrician_earning)+' • कंपनी का 15% हिस्सा '+money(x.company_share)+'</p>';
+   detail='<p><b>Checkout शुरू:</b> ग्राहक Labour कुल 100% '+money(x.customer_labour_gross)+' • आपकी 85% कमाई '+money(x.electrician_earning)+' • कंपनी का 15% हिस्सा '+(x.company_share==null?'कंपनी कमीशन Ledger मिलान के बाद दिखेगा':money(x.company_share))+'</p>';
   }else if(x.payment_stage==='checkout_reconciliation_required'){
    detail='<p class="bad">Checkout शुरू है, लेकिन इस Booking का Rate/Commission पुराने हिसाब से जुड़ा है। सही मिलान होने तक वित्तीय विभाजन छिपाया गया है।</p>';
   }else if(x.payment_stage==='payment_verified'){
