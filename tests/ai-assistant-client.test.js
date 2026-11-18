@@ -181,3 +181,44 @@ test("AI client rejects malformed HTTPS base URLs before making a request", asyn
   }
   assert.equal(calls, 0);
 });
+
+test("AI transport rejects malformed and array response envelopes safely", async () => {
+  for (const response of [
+    null,
+    {},
+    { ok: true, status: 200, json: async () => [] },
+    { ok: true, status: 200, json: async () => "success" },
+    { ok: true, status: 200, json: async () => null }
+  ]) {
+    const client = createAiAssistantClient({
+      enabled: true, baseUrl: "https://api.example.test",
+      fetchImpl: async () => response
+    });
+    await assert.rejects(
+      client.sendMessage({
+        moduleKey: "customer_support", message: "status",
+        accessToken: TOKEN, idempotencyKey: KEY
+      }),
+      error => error.code === "ai_request_rejected" || error.code === "invalid_ai_response"
+    );
+  }
+});
+
+test("AI transport maps non-success HTTP status without parsing an error body", async () => {
+  let parsed = false;
+  const client = createAiAssistantClient({
+    enabled: true, baseUrl: "https://api.example.test",
+    fetchImpl: async () => ({
+      ok: false, status: 403,
+      json: async () => { parsed = true; return { success: false }; }
+    })
+  });
+  await assert.rejects(
+    client.sendMessage({
+      moduleKey: "customer_support", message: "status",
+      accessToken: TOKEN, idempotencyKey: KEY
+    }),
+    error => error.code === "ai_access_denied" && error.status === 403
+  );
+  assert.equal(parsed, false);
+});
