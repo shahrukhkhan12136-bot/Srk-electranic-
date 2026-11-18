@@ -36,7 +36,7 @@ SELECT ok(
     SELECT 1 FROM pg_trigger
     WHERE tgrelid='public.srk_rate_catalogue_drafts'::regclass
       AND tgname='srk_rate_catalogue_draft_guard' AND NOT tgisinternal
-      AND (tgtype & 2)=2 AND (tgtype & 8)=8
+      AND (tgtype & 2)=2 AND (tgtype & 16)=16 AND (tgtype & 8)=8
   ),
   'draft guard runs before both UPDATE and DELETE'
 );
