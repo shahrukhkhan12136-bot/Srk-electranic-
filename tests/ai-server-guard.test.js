@@ -135,6 +135,21 @@ test("handoff requests are validated and remain disabled until persistence and a
   assert.equal(JSON.parse(good.body).error, "ai_not_enabled");
 });
 
+test("handoff requires a non-empty bounded summary", async () => {
+  const { handler } = setup();
+  for (const summary of [undefined, "", "   ", 42, "x".repeat(1001)]) {
+    const body = {
+      module_key: "customer_support",
+      conversation_id: UUID,
+      reason_code: "needs_human_support",
+      urgency: "normal"
+    };
+    if (summary !== undefined) body.summary = summary;
+    const response = await handler(event({ body }), "handoff");
+    assert.equal(response.statusCode, 400);
+  }
+});
+
 test("malformed Supabase Auth JSON is rejected before any profile lookup", async () => {
   const calls = [];
   const handler = createAiServerGuard({
