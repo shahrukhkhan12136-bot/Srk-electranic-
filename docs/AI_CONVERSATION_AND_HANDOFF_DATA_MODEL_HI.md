@@ -92,6 +92,18 @@ Source audit में मिला:
 
 Electrician access की शर्तें: `user_id` और `auth_user_id` दोनों Auth user से match, `verification_status='approved'`, `active=true`।
 
+
+### 4.1 OTP login और profile creation का verified source flow
+
+अतिरिक्त source audit में Customer app का वास्तविक flow भी जाँचा गया:
+
+- `booking.html` में Customer `signInWithOtp({phone})` और `verifyOtp({phone, token, type:'sms'})` से Auth session बनाता है।
+- OTP success के तुरंत बाद app `syncCustomerSession()` चलाता है; Auth signup/OTP event पर कोई profile-row insert नहीं दिखा।
+- `srk_customer_profiles` row अलग authenticated RPC `srk_customer_update_my_profile(text,text,text)` के insert/upsert से बनती है।
+- इसलिए Auth user होना अपने-आप Customer profile होने का प्रमाण नहीं है। AI guard में Customer profile absent होने पर `403 ai_access_denied` सही fail-closed व्यवहार है; मौजूदा regression test भी इसे जाँचता है।
+
+**Implementation decision:** जब तक trusted Customer provisioning तय न हो, AI widget को Customer profile उपलब्ध होने से पहले mount न करें और backend guard को bypass न करें। Profile auto-provisioning चाहिए तो OTP-verified Auth identity के बाद server-side provisioning trigger/RPC का additive design, existing profile fields/defaults, duplicate handling और पुराने accounts की backfill अलग से review करें। केवल `user_metadata.role`, browser-supplied role या client flag को Customer role का प्रमाण न बनाएं।
+
 ## 5. क्रमबद्ध implementation gates
 
 1. Customer और Electrician role provisioning/identity lifecycle की पुष्टि।
