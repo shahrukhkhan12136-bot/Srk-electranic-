@@ -307,7 +307,7 @@ test("AI authorization and idempotency headers are matched case-insensitively", 
   delete request.headers.authorization;
   delete request.headers["idempotency-key"];
   request.headers.aUtHoRiZaTiOn = "Bearer valid-token";
-  request.headers.iDeMpOtEnCy-KeY = UUID;
+  request.headers["iDeMpOtEnCy-KeY"] = UUID;
   const response = await handler(request);
   assert.equal(response.statusCode, 503);
   assert.equal(JSON.parse(response.body).error, "ai_not_enabled");
