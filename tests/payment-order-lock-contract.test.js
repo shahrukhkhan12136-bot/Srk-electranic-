@@ -21,7 +21,7 @@ test("order linking locks booking and lock rows, validates token expiry and exac
   assert.match(sql, /v_lock\.lock_token is distinct from p_lock_token/);
   assert.match(sql, /v_lock\.expires_at <= now\(\)/);
   assert.match(sql, /v_expected <> p_amount_paise/);
-  assert.match(sql, /set razorpay_order_id=p_order_id,payment_status='pending'/);
+  assert.match(sql, /set razorpay_order_id=p_order_id,payment_status='pending'/i);
 });
 
 test("order linking validates new-catalogue breakdown or legacy approved quote", () => {
