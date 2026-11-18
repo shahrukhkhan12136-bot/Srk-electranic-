@@ -313,3 +313,19 @@ test("AI authorization and idempotency headers are matched case-insensitively", 
   assert.equal(JSON.parse(response.body).error, "ai_not_enabled");
   assert.equal(calls.filter(call => call.url.includes("/auth/v1/user")).length, 1);
 });
+
+
+test("AI guard rejects duplicate case-variant Authorization and idempotency headers", async () => {
+  const authSetup = setup();
+  const duplicateAuth = event({ body: { module_key: "customer_support", message: "hello" } });
+  duplicateAuth.headers.Authorization = "Bearer another-token";
+  assert.equal((await authSetup.handler(duplicateAuth)).statusCode, 401);
+  assert.equal(authSetup.calls.length, 0, "ambiguous Authorization must not reach Supabase");
+
+  const keySetup = setup();
+  const duplicateKey = event({ body: { module_key: "customer_support", message: "hello" } });
+  duplicateKey.headers["Idempotency-Key"] = "123e4567-e89b-42d3-a456-426614174099";
+  const response = await keySetup.handler(duplicateKey);
+  assert.equal(response.statusCode, 400);
+  assert.equal(JSON.parse(response.body).error, "invalid_idempotency_key");
+});
