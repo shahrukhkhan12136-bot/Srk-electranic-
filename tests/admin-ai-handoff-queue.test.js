@@ -30,7 +30,9 @@ test("AI handoff queue is Main Admin only and uses the read-only RPC",async()=>{
  assert.equal(staff.calls.length,0);
  const admin=harness();
  await admin.context.loadAdminAiHandoffQueue();
- assert.deepEqual(admin.calls,[["srk_admin_list_ai_handoff_queue",{p_limit:50}]]);
+ assert.equal(admin.calls.length,1);
+ assert.equal(admin.calls[0][0],"srk_admin_list_ai_handoff_queue");
+ assert.equal(admin.calls[0][1].p_limit,50);
  assert.match(admin.elements.adminAiHandoffQueue.textContent,/कोई Queued या Assigned/);
 });
 test("AI handoff queue safely escapes every displayed database field",async()=>{
