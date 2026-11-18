@@ -82,6 +82,14 @@ BEGIN
     RAISE EXCEPTION 'INVALID_ORDER_OR_AMOUNT';
   END IF;
 
+  -- Keep the same row-lock order as the claim RPC (booking, then lock row)
+  -- to avoid a claim/link deadlock under concurrent checkout requests.
+  SELECT * INTO v_booking
+  FROM public.service_bookings
+  WHERE id=p_booking_id
+  FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'BOOKING_NOT_FOUND'; END IF;
+
   SELECT * INTO v_lock
   FROM private.srk_payment_order_locks
   WHERE booking_id=p_booking_id
@@ -90,12 +98,6 @@ BEGIN
      OR v_lock.expires_at <= now() THEN
     RAISE EXCEPTION 'PAYMENT_ORDER_LOCK_INVALID_OR_EXPIRED';
   END IF;
-
-  SELECT * INTO v_booking
-  FROM public.service_bookings
-  WHERE id=p_booking_id
-  FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'BOOKING_NOT_FOUND'; END IF;
   IF v_booking.status <> 'completed' THEN RAISE EXCEPTION 'BOOKING_NOT_COMPLETED'; END IF;
   IF v_booking.payment_status IN ('paid','refunded') THEN RAISE EXCEPTION 'BOOKING_ALREADY_PAID_OR_REFUNDED'; END IF;
   IF v_booking.payment_status NOT IN ('unpaid','pending') THEN RAISE EXCEPTION 'BOOKING_PAYMENT_STATE_NOT_PAYABLE'; END IF;
