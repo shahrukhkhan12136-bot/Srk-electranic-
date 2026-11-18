@@ -44,6 +44,7 @@ BEGIN
         completed_at = NULL,
         expires_at = clock_timestamp() + interval '24 hours'
     WHERE current_row.expires_at <= clock_timestamp()
+      AND current_row.status <> 'processing'
   RETURNING id INTO v_id;
 
   IF v_id IS NOT NULL THEN
