@@ -45,25 +45,18 @@ test("rejects zero, negative, fractional and unsafe amounts", () => {
   }
 });
 
-test("rate-list amount is calculated directly as 85 percent with integer-paise half-up rounding", () => {
+test("Rate List, Offer and payout all use gross minus the rounded 15 percent commission", () => {
   assert.equal(calculateElectricianRateListPaise(100000), 85000);
   assert.equal(calculateElectricianRateListPaise(89900), 76415);
   assert.equal(calculateElectricianRateListPaise(99900), 84915);
 });
 
-test("direct 85 percent rate-list calculation rounds exact half-paise ties upward", () => {
-  assert.equal(calculateElectricianRateListPaise(10), 9);  // 8.5 paise
-  assert.equal(calculateElectricianRateListPaise(30), 26); // 25.5 paise
-  assert.equal(calculateElectricianRateListPaise(50), 43); // 42.5 paise
-  assert.equal(calculateElectricianRateListPaise(70), 60); // 59.5 paise
-});
-
-test("direct 85 percent display and legacy 15 percent payout rounding remain separate at paise ties", () => {
-  const cases = [[10, 9, 8], [30, 26, 25], [50, 43, 42], [70, 60, 59]];
-  for (const [gross, directRateList, ledgerNet] of cases) {
-    assert.equal(calculateElectricianRateListPaise(gross), directRateList);
-    assert.equal(calculateElectricianNetPaise(gross), ledgerNet);
-    assert.equal(calculateInternalResidualPaise(gross) + ledgerNet, gross);
+test("Rate List and Offer match the existing payout rule at half-paise ties", () => {
+  const cases = [[10, 8], [30, 25], [50, 42], [70, 59]];
+  for (const [gross, expectedNet] of cases) {
+    assert.equal(calculateElectricianRateListPaise(gross), expectedNet);
+    assert.equal(calculateElectricianNetPaise(gross), expectedNet);
+    assert.equal(calculateInternalResidualPaise(gross) + expectedNet, gross);
   }
 });
 
