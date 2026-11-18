@@ -7,6 +7,7 @@ on:
     paths:
       - "COMPLETE_DATABASE_SETUP.sql"
       - "supabase/migrations/**"
+      - "docs/AI_CONVERSATION_AND_HANDOFF_DATA_MODEL_HI.md"
       - "supabase/tests/database/ai_admin_handoff_queue_read.test.sql"
       - ".github/workflows/ai-admin-handoff-pgtap.yml"
   pull_request:

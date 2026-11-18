@@ -23,7 +23,7 @@ AI storage की source migrations:
 - Audit table `srk_ai_audit_events` में केवल metadata fields हैं; prompt/message body या provider payload columns नहीं हैं।
 - मौजूदा `lib/ai-server-guard.js` auth, profile, module, conversation ownership और booking access validate करता है; इसके बाद जानबूझकर `503 ai_not_enabled` देता है। नए message और handoff RPC अभी storage foundation हैं; AI routes अभी इनसे wired नहीं हैं, provider call नहीं होता, और human agent assignment/notification workflow अभी नहीं बना है।
 
-**जाँच की सीमा और नवीनतम CI सत्यापन (18 नवम्बर 2026):** migrations अभी भी केवल Git branch में source हैं; कोई hosted/live database migration, deployment या AI provider call नहीं हुआ। Commit `4b71bed677c1872ba4913015124a5ede31612c69` पर disposable local Supabase stack में baseline और feature migrations replay सफल हुआ, Main Admin handoff queue के 13/13 pgTAP assertions सफल हुए, और repository Node test workflow सफल हुआ। यह केवल CI के अस्थायी database पर सत्यापन है—live/hosted database की पुष्टि नहीं। AI default-off रहेगा; explicit launch approval के बिना इसे enable नहीं करना है।
+**जाँच की सीमा और CI सत्यापन (18 नवम्बर 2026):** commit `7c2be6a81099a6bbac7f9ee34e7cff064e7529bb` पर 702 Node tests सफल हुए। अलग disposable local PostgreSQL workflow में 110 migrations का पूरा replay और Rate Catalogue schema assertions commit `e98df69841038929ace8b9acb8306664d91178be` पर सफल हुआ; booking snapshot guard के 15/15 pgTAP assertions commit `f813fea97f9b9f1a7e36ee4a9755b36ef3639e61` पर सफल हुए। Main Admin AI handoff queue के 13/13 pgTAP assertions का पिछला सफल run commit `4b71bed677c1872ba4913015124a5ede31612c69` पर है; नवीनतम commit पर फिर चलाने के लिए CI trigger जोड़ा गया है। ये सभी disposable CI database checks हैं—कोई hosted/live database migration, deployment या AI provider call नहीं हुआ। AI default-off रहेगा; explicit launch approval के बिना इसे enable नहीं करना है।
 
 
 
@@ -147,11 +147,11 @@ Electrician access की शर्तें: `user_id` और `auth_user_id` �
 - AI provider call, live conversation persistence और human handoff अभी उपलब्ध नहीं हैं।
 - App का default-off launch guard यथावत रहेगा।
 
-### 4.2 Customer AI widget mount का अतिरिक्त UI audit
+### 4.2 Customer AI widget mount readiness — source correction verified
 
-`syncCustomerSession()` में OTP session मिलने पर app पहले `loadCustomerProfile()` चलाता है और उसके बाद `mountCustomerAiAssistant()` को unconditional call करता है। `loadCustomerProfile()` में profile row न मिलने पर “नई प्रोफ़ाइल है” status दिखता है, लेकिन function कोई readiness result नहीं लौटाता; इसलिए वर्तमान क्रम profile अनुपस्थित होने पर भी widget mount कर सकता है। यह backend authorization bypass नहीं है—`lib/ai-server-guard.js` का server-side profile lookup ऐसे request को `403 ai_access_denied` से रोकता है—लेकिन यह UI/backend readiness mismatch है और अनावश्यक failed requests दे सकता है।
+वर्तमान `booking.html` में यह UI/backend readiness mismatch ठीक किया गया है: `loadCustomerProfile()` केवल authenticated session के साथ profile row सफलतापूर्वक मिलने पर `true` लौटाता है; missing profile या lookup error पर `false` रहता है। `syncCustomerSession()` केवल `customerProfileReady === true` होने पर Customer AI widgets mount करता है, अन्यथा उन्हें destroy करता है। Profile save के बाद भी profile दोबारा load/verify करके ही widget mount होता है। Auth transition/logout पर widgets destroy होते हैं और profile-load request generation stale responses रोकती है।
 
-**Required UI correction:** profile loader को explicit readiness (`true` केवल authenticated user की profile row सफलतापूर्वक मिलने पर) लौटानी चाहिए। `syncCustomerSession()` केवल readiness true होने पर Customer AI widget mount करे; missing profile, profile lookup error, session change या logout पर widget destroy/unmount रहे। सफल `srk_customer_update_my_profile()` के बाद profile दोबारा load/verify करके ही widget mount हो। Tests में profile-present, profile-missing, lookup-error और logout/session-change cases cover हों। OTP के बाद स्वतः profile create करने का कोई अनुमान न लगाया जाए।
+Regression test इस contract को सुरक्षित रखता है। OTP के बाद स्वतः profile create नहीं किया जाता; backend guard अभी भी authoritative authorization check है.
 
 ### 4.3 Profile-readiness guard का implementation verification (18 नवम्बर 2026)
 
