@@ -43,6 +43,9 @@ begin
   end if;
   select * into v_labour from public.srk_booking_labour_bills where booking_id=p_booking_id;
   if not found then raise exception 'IMMUTABLE_LABOUR_BILL_REQUIRED'; end if;
+  if v_labour.electrician_profile_id is distinct from v_booking.assigned_electrician_id then
+    raise exception 'IMMUTABLE_LABOUR_BILL_OR_ELECTRICIAN_ASSIGNMENT_MISMATCH';
+  end if;
   select coalesce(sum(amount_paise),0) into v_fee from public.srk_booking_cancellation_fee_items
     where booking_id=p_booking_id and status='reserved';
   v_total:=v_labour.labour_amount_paise+v_fee;
@@ -57,6 +60,11 @@ begin
   for v_item in select * from public.srk_booking_cancellation_fee_items
     where booking_id=p_booking_id and status='reserved' order by created_at,id for update
   loop
+    perform 1 from public.srk_customer_cancellation_fee_debts
+      where id=v_item.debt_id and status='reserved' and reserved_booking_id=p_booking_id
+        and customer_user_id=v_booking.customer_user_id
+      for update;
+    if not found then raise exception 'CANCELLATION_FEE_DEBT_RESERVATION_MISMATCH'; end if;
     -- UPI/bank funds are collected by SRK directly; no electrician cash-recovery debit applies.
     insert into public.srk_cancellation_fee_ledger(debt_id,booking_id,source_booking_id,
       customer_user_id,entry_type,direction,amount_paise,payment_reference,idempotency_key,note)
