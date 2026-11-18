@@ -190,7 +190,7 @@ CREATE OR REPLACE FUNCTION public.srk_admin_set_electrician_approved_categories(
   p_reason text
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $fn$
-DECLARE v_profile public.electrician_profiles%rowtype; v_key text; v_existing text;
+DECLARE v_profile public.electrician_profiles%rowtype; v_key text; v_existing text; v_rows integer:=0;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
     RAISE EXCEPTION 'MAIN_ADMIN_ONLY' USING ERRCODE='42501';
@@ -229,9 +229,12 @@ BEGIN
       approved_by=EXCLUDED.approved_by,approved_at=EXCLUDED.approved_at,
       is_active=true,revoked_by=NULL,revoked_at=NULL
     WHERE public.srk_electrician_approved_rate_categories.is_active=false;
-    INSERT INTO public.srk_electrician_rate_category_audit(
-      electrician_profile_id,category_key,action,actor_id,reason
-    ) VALUES(p_electrician_profile_id,v_key,'approved',auth.uid(),btrim(p_reason));
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+    IF v_rows > 0 THEN
+      INSERT INTO public.srk_electrician_rate_category_audit(
+        electrician_profile_id,category_key,action,actor_id,reason
+      ) VALUES(p_electrician_profile_id,v_key,'approved',auth.uid(),btrim(p_reason));
+    END IF;
   END LOOP;
   RETURN jsonb_build_object('success',true,'electrician_profile_id',p_electrician_profile_id,
     'approved_categories',to_jsonb(p_category_keys));
