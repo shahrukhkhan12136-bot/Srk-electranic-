@@ -65,6 +65,12 @@ begin
   for v_item in select * from public.srk_booking_cancellation_fee_items
     where booking_id=p_booking_id and status='reserved' order by created_at,id for update
   loop
+    perform 1 from public.srk_customer_cancellation_fee_debts
+      where id=v_item.debt_id and status='reserved'
+        and reserved_booking_id=p_booking_id
+        and customer_user_id=v_booking.customer_user_id
+      for update;
+    if not found then raise exception 'CANCELLATION_FEE_DEBT_RESERVATION_MISMATCH'; end if;
     insert into public.srk_wallet_ledger(wallet_id,user_id,wallet_type,entry_type,direction,amount,status,
       reference_type,reference_id,idempotency_key,description,posted_at)
     values(v_wallet,v_electrician_user,'electrician','cancellation_fee','debit',
