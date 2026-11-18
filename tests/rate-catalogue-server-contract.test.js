@@ -128,11 +128,11 @@ test("customer Rate Catalogue UI fails closed unless the published version and a
   assert.ok(fn.indexOf("customerRateVersionId = null") < fn.indexOf("customerSb.rpc("),
     "a failed refresh must not leave a stale rate version selected");
   assert.match(fn, /option\.textContent = customerRateLabels\[key\]/,
-    assert.match(fn, /refreshSequence = \\+\\+customerRateCatalogueRefreshSequence/,
+    "displayed option labels must not retain old catalogue prices during refresh");
+  assert.match(fn, /refreshSequence = \+\+customerRateCatalogueRefreshSequence/,
     "each refresh must carry a monotonically increasing request sequence");
-  assert.match(fn, /refreshSequence !== customerRateCatalogueRefreshSequence\\) return null/,
+  assert.match(fn, /refreshSequence !== customerRateCatalogueRefreshSequence\) return null/,
     "an older response must not overwrite the result of a newer refresh");
-  "displayed option labels must not retain old catalogue prices during refresh");
 });
 
 test("customer labour estimate uses only the selected published tier and bounded whole-hour duration", () => {
