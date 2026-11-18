@@ -235,12 +235,12 @@ AS $$
       WHEN payout.booking_id IS NULL THEN 'missing'
       WHEN payout.electrician_profile_id IS DISTINCT FROM b.assigned_electrician_id THEN 'electrician_mismatch'
       WHEN payout.gross_service_amount IS NULL OR payout.platform_commission IS NULL
-        OR payout.electrician_payable IS NULL THEN 'incomplete'
+        OR payout.electrician_payable IS NULL OR payout.payout_status IS NULL THEN 'incomplete'
       WHEN b.selected_category IS NOT NULL AND (
         bill.booking_id IS NULL
         OR round(payout.gross_service_amount,2) IS DISTINCT FROM round(bill.labour_amount,2)
       ) THEN 'bill_mismatch'
-      WHEN round(payout.platform_commission,2) IS DISTINCT FROM round(coalesce(b.commission_amount,0),2)
+      WHEN b.commission_amount IS NULL OR round(payout.platform_commission,2) IS DISTINCT FROM round(b.commission_amount,2)
         THEN 'commission_mismatch'
       WHEN round(payout.electrician_payable,2) IS DISTINCT FROM
         round(payout.gross_service_amount+coalesce(payout.materials_amount,0)-payout.platform_commission,2)
