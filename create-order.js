@@ -77,7 +77,17 @@ exports.handler=async event=>{
       if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
       order=await findReusableOrder(booking,amount);
       if(!order)order=await rp("orders",{method:"POST",body:JSON.stringify({amount,currency:"INR",receipt:bookingId.slice(0,40),notes:{booking_id:bookingId,service:"SRK ELECTRONIC"}})});
-      await db("service_bookings?id=eq."+encodeURIComponent(bookingId),{method:"PATCH",body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})});
+      // Persist only while the booking is still completed and unpaid. If an
+      // admin/payment worker changed its state after the re-read, never expose
+      // a checkout order for the stale state.
+      const persisted=await db("service_bookings?id=eq."+encodeURIComponent(bookingId)+
+        "&status=eq.completed&payment_status=not.in.(paid,refunded)",{
+          method:"PATCH",
+          body:JSON.stringify({razorpay_order_id:order.id,payment_status:"pending"})
+        });
+      if(!Array.isArray(persisted)||persisted.length!==1){
+        return json(409,{success:false,error:"बुकिंग की स्थिति बदल गई है। भुगतान दोबारा शुरू करने से पहले Admin से जाँच कराएँ।"});
+      }
     }
     return json(200,{success:true,key_id:RAZORPAY_KEY_ID,order_id:order.id,amount:order.amount,currency:order.currency});
   }catch(e){
