@@ -403,7 +403,7 @@ test("AI client rejects bearer tokens with whitespace, control characters, or ex
   };
   for (const accessToken of [
     " " + TOKEN, TOKEN + " ", "token with spaces",
-    "token\r\nInjected: yes", "x".repeat(8193)
+    "token\r\nInjected: yes", "token\u00a0with-space", "token\u2003with-space", "token\u0085with-control", "x".repeat(8193)
   ]) {
     await assert.rejects(
       client.sendMessage({ ...base, accessToken }),
