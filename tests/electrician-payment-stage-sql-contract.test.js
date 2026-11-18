@@ -35,7 +35,7 @@ test("earnings RPC derives payment stage from persisted order and payment eviden
   const earningsFunction = (migration.match(/create(?: or replace)? function public\.srk_get_my_earnings\(\)[\s\S]*?\$\$;/i)||[])[0]||"";
   assert.match(earningsFunction, /checkout\.started then 'checkout_started'/i);
   assert.match(earningsFunction, /b\.payment_verified_at is not null/i);
-  assert.match(earningsFunction, /b\.razorpay_payment_id is not null or exists\s*\(/ii);
+  assert.match(earningsFunction, /b\.razorpay_payment_id is not null or exists\s*\(/i);
   assert.doesNotMatch(earningsFunction, /p_payment_stage|browser_payment_stage|client_payment_stage/i);
 });
 
