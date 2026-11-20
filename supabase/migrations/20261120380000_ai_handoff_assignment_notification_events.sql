@@ -42,6 +42,14 @@ BEGIN
   IF NEW.status='assigned'
      AND (OLD.status IS DISTINCT FROM NEW.status
        OR OLD.assigned_to IS DISTINCT FROM NEW.assigned_to) THEN
+    -- Supersede older events that have not started delivery, avoiding a stale
+    -- queued/all-Staff alert alongside the fresh assigned-Staff alert.
+    UPDATE srk_private.srk_ai_handoff_notification_outbox
+    SET delivery_status='dead',locked_until=NULL,
+        last_error='Superseded by a newer Staff assignment',
+        updated_at=clock_timestamp()
+    WHERE handoff_id=NEW.id AND delivery_status='pending';
+
     SELECT coalesce(max(o.assignment_revision),-1)+1
       INTO v_revision
     FROM srk_private.srk_ai_handoff_notification_outbox o
