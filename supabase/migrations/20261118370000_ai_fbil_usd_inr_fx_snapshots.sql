@@ -106,16 +106,39 @@ UPDATE public.srk_ai_generation_cost_jobs
 SET fx_status='unavailable'
 WHERE status='unavailable' AND fx_status='pending';
 
+CREATE OR REPLACE FUNCTION public.srk_sync_ai_generation_fx_status()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=''
+AS $function$
+BEGIN
+  IF NEW.status='unavailable' THEN
+    NEW.fx_status='unavailable';
+    NEW.cost_inr=NULL;
+    NEW.fx_rate_date=NULL;
+    NEW.usd_inr_rate=NULL;
+    NEW.fx_source_url=NULL;
+    NEW.fx_retrieved_at=NULL;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_sync_ai_generation_fx_status() FROM PUBLIC,anon,authenticated,service_role;
+CREATE TRIGGER srk_ai_generation_fx_status_sync
+  BEFORE INSERT OR UPDATE OF status ON public.srk_ai_generation_cost_jobs
+  FOR EACH ROW EXECUTE FUNCTION public.srk_sync_ai_generation_fx_status();
+
 ALTER TABLE public.srk_ai_generation_cost_jobs
   ADD CONSTRAINT srk_ai_generation_cost_jobs_fx_status_check
     CHECK (fx_status IN ('pending','reported','unavailable')),
   ADD CONSTRAINT srk_ai_generation_cost_jobs_fx_values_check CHECK (
-    (fx_status='pending' AND cost_inr IS NULL AND fx_rate_date IS NULL
+    (fx_status='pending' AND status IN ('pending','processing','reported')
+      AND cost_inr IS NULL AND fx_rate_date IS NULL
       AND usd_inr_rate IS NULL AND fx_source_url IS NULL AND fx_retrieved_at IS NULL)
     OR (fx_status='reported' AND status='reported' AND cost_inr IS NOT NULL
       AND cost_inr>=0 AND fx_rate_date IS NOT NULL AND usd_inr_rate IS NOT NULL
       AND usd_inr_rate>0 AND fx_source_url IS NOT NULL AND fx_retrieved_at IS NOT NULL)
-    OR (fx_status='unavailable' AND cost_inr IS NULL AND fx_rate_date IS NULL
+    OR (fx_status='unavailable' AND status='unavailable' AND cost_inr IS NULL AND fx_rate_date IS NULL
       AND usd_inr_rate IS NULL AND fx_source_url IS NULL AND fx_retrieved_at IS NULL)
   );
 
