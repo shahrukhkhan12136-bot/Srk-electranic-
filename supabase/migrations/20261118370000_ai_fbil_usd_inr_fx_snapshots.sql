@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.srk_ai_usd_inr_reference_rates (
     rate_date=(published_at AT TIME ZONE 'Asia/Kolkata')::date
   ),
   CONSTRAINT srk_ai_fx_retrieval_after_publication CHECK (
-    retrieved_at>=published_at AND retrieved_at<=clock_timestamp()+interval '5 minutes'
+    retrieved_at>=published_at
   )
 );
 
