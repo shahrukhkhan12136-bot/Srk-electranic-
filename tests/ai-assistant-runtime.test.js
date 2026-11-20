@@ -67,6 +67,21 @@ test("server-side request limit returns 429 and never calls provider",async()=>{
  assert.equal(calls.some(x=>x.url.includes("srk_ai_finalize_idempotency")),true);
 });
 
+test("rate-limit storage failure fails closed before conversation or provider work",async()=>{
+ const calls=[];
+ const runtime=createAiAssistantRuntime({env,fetchImpl:async(url,opt={})=>{
+  calls.push(url);
+  if(url.includes("srk_ai_reserve_idempotency"))return res({state:"reserved",id:key,lease_version:1});
+  if(url.includes("srk_ai_reserve_request_capacity"))throw Error("database unavailable");
+  if(url.includes("srk_ai_finalize_idempotency"))return res({state:"failed"});
+  throw Error("unexpected request "+url);
+ }});
+ const result=await runtime.handle(args);
+ assert.equal(result.statusCode,503);
+ assert.equal(JSON.parse(result.body).error,"ai_service_unavailable");
+ assert.equal(calls.some(url=>url.includes("srk_ai_create_conversation")),false);
+ assert.equal(calls.some(url=>url==="https://ai-gateway.vercel.sh/v1/chat/completions"),false);
+});
 test("idempotent replay returns persisted reply without another model request",async()=>{
  let modelCalls=0;let internalError="";
  const runtime=createAiAssistantRuntime({env,onError:e=>{internalError=e;},fetchImpl:async(url)=>{
