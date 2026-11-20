@@ -263,3 +263,18 @@ Migration `20261109003000_secure_commission_reporting.sql` का `srk_admin_com
 3. **Merchant Settlement Reconciliation:** नई अलग read-only projection — imported settlement report batches/rows, linked Razorpay payment/refund IDs, provider fees/tax/adjustments, settlement ID, bank-credit/UTR evidence, unmatched exceptions और month-wise totals।
 
 नई layer में तारीख/समय के लिए merchant report का settlement date और timezone स्पष्ट रूप से store करना होगा; booking creation date से settlement month infer नहीं करना है। Imported source file और row-level provenance सुरक्षित रखनी होगी। Duplicate import रोकने के लिए report batch/file digest तथा stable row identity चाहिए। जब तक वास्तविक merchant export schema उपलब्ध न हो, CSV/XLSX parser या import migration final न करें।
+
+
+## 16. Admin authorization और file-import सुरक्षा — source review
+
+20 नवम्बर 2026 को संबंधित SQL और Admin UI के अतिरिक्त हिस्से जाँचे गए:
+
+- Booking reconciliation RPC में `auth.uid() IS NULL` तथा `NOT public.is_srk_admin()` पर `42501` error है। Function `STABLE SECURITY DEFINER`, खाली `search_path` के साथ है; `PUBLIC/anon` से execute revoke और `authenticated` को execute grant है। यह केवल JSON report लौटाता है; ledger insert, payout update या provider call नहीं करता।
+- Commission summary RPC भी Main Admin check करता है और `PUBLIC/anon` execute revoke करता है, लेकिन उसका `search_path = public, pg_temp` है। यह पुराना अलग function है; इसे नई Merchant Settlement import authority के रूप में reuse नहीं करना चाहिए। भविष्य में अलग security review में इसका search_path hardening देखना उचित होगा।
+- Admin UI में support attachments के लिए private Storage bucket `srk-customer-support` से 300-second signed URL बनता है। इस समीक्षा में Razorpay settlement report के लिए कोई upload/parser/import workflow या dedicated private bucket नहीं मिला।
+- इसलिए Merchant Settlement import को browser से सीधे financial tables में write करने की अनुमति नहीं देनी चाहिए। प्रस्तावित सीमा: Main Admin authorization → private/quarantined file upload → server-side size/type/encoding/row validation → report digest और stable row identity की duplicate जाँच → normalized immutable source batch/rows → अलग reconciliation projection। Upload file को public URL से serve न करें।
+- Import process केवल source evidence और reconciliation links बनाए; वह booking payment, refund status, electrician payout status या bank-paid state को update/finalize न करे। Unmatched या ambiguous rows exception queue में जाएँ।
+- File hash अकेला पर्याप्त row-level duplicate key नहीं माना जाएगा: report batch digest, report/version metadata और source-defined stable row identity साथ रखने होंगे। यदि report में stable row ID न हो, तो canonicalized row fingerprint और collision/duplicate ambiguity policy को sample file देखकर तय करना होगा।
+- Actual Razorpay report sample अभी उपलब्ध नहीं है। इसलिए bucket policies, file-size limits, CSV/XLSX parser, normalized columns, import RPC और SQL migration अभी final नहीं किए गए।
+
+यह source review है, runtime security test नहीं। कोई Storage bucket, policy, hosted database, import endpoint या financial state बदला नहीं गया।
