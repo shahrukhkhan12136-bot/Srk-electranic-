@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS srk_private.srk_ai_handoff_notification_outbox (
   updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   delivered_at timestamptz
 );
+ALTER TABLE srk_private.srk_ai_handoff_notification_outbox ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE srk_private.srk_ai_handoff_notification_outbox
   FROM PUBLIC, anon, authenticated;
 CREATE INDEX IF NOT EXISTS srk_ai_handoff_notification_due_idx
