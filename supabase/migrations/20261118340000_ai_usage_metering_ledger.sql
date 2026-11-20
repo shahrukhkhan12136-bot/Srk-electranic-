@@ -39,8 +39,7 @@ CREATE INDEX IF NOT EXISTS srk_ai_usage_model_created_idx
   ON public.srk_ai_usage_events(model_key,created_at DESC);
 
 ALTER TABLE public.srk_ai_usage_events ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON TABLE public.srk_ai_usage_events FROM PUBLIC,anon,authenticated;
-GRANT ALL ON TABLE public.srk_ai_usage_events TO service_role;
+REVOKE ALL ON TABLE public.srk_ai_usage_events FROM PUBLIC,anon,authenticated,service_role;
 
 CREATE OR REPLACE FUNCTION public.srk_ai_record_usage_event(
   p_attempt_id uuid,
