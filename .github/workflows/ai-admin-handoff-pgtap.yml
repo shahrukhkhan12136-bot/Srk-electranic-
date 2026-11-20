@@ -1,4 +1,4 @@
-name: AI Main Admin handoff queue pgTAP
+name: AI Main Admin and Staff handoff workflow pgTAP
 
 on:
   push:
@@ -9,12 +9,16 @@ on:
       - "supabase/migrations/**"
       - "docs/AI_CONVERSATION_AND_HANDOFF_DATA_MODEL_HI.md"
       - "supabase/tests/database/ai_admin_handoff_queue_read.test.sql"
+      - "supabase/tests/database/ai_handoff_individual_staff_permissions.test.sql"
+      - "supabase/tests/database/ai_handoff_staff_workflow.test.sql"
       - ".github/workflows/ai-admin-handoff-pgtap.yml"
   pull_request:
     paths:
       - "COMPLETE_DATABASE_SETUP.sql"
       - "supabase/migrations/**"
       - "supabase/tests/database/ai_admin_handoff_queue_read.test.sql"
+      - "supabase/tests/database/ai_handoff_individual_staff_permissions.test.sql"
+      - "supabase/tests/database/ai_handoff_staff_workflow.test.sql"
       - ".github/workflows/ai-admin-handoff-pgtap.yml"
   workflow_dispatch:
 
@@ -27,7 +31,7 @@ concurrency:
 
 jobs:
   pgtap:
-    name: Replay schema and run Main Admin queue assertions
+    name: Replay schema and run Main Admin and Staff assertions
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -64,23 +68,31 @@ jobs:
             docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 < "$migration"
           done
 
-      - name: Enable pgTAP and run the 13 queue assertions
+      - name: Enable pgTAP and run queue, permissions, and Staff workflow assertions
         working-directory: ${{ runner.temp }}/srk-ai-admin-pgtap
         run: |
           set -euo pipefail
           DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
           test -n "$DB_CONTAINER"
           docker exec "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;"
-          OUTPUT="$({ printf '%s\n' 'SET search_path = public, extensions;'; cat "$GITHUB_WORKSPACE/supabase/tests/database/ai_admin_handoff_queue_read.test.sql"; } | docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 2>&1)" || { printf '%s\n' "$OUTPUT"; exit 1; }
-          printf '%s\n' "$OUTPUT"
-          if printf '%s\n' "$OUTPUT" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
-            echo "pgTAP reported failed assertions."
-            exit 1
-          fi
-          if ! printf '%s\n' "$OUTPUT" | grep -Eq '1\.\.13'; then
-            echo "Expected pgTAP plan 1..13 was not found."
-            exit 1
-          fi
+          run_pgtap() {
+            local file="$1"
+            local expected_plan="$2"
+            local output
+            output="$({ printf '%s\\n' 'SET search_path = public, extensions;'; cat "$GITHUB_WORKSPACE/$file"; } | docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 2>&1)" || { printf '%s\\n' "$output"; return 1; }
+            printf '%s\\n' "$output"
+            if printf '%s\\n' "$output" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
+              echo "pgTAP reported failed assertions in $file."
+              return 1
+            fi
+            if ! printf '%s\\n' "$output" | grep -Fq "1..$expected_plan"; then
+              echo "Expected pgTAP plan 1..$expected_plan was not found in $file."
+              return 1
+            fi
+          }
+          run_pgtap "supabase/tests/database/ai_admin_handoff_queue_read.test.sql" 13
+          run_pgtap "supabase/tests/database/ai_handoff_individual_staff_permissions.test.sql" 15
+          run_pgtap "supabase/tests/database/ai_handoff_staff_workflow.test.sql" 18
 
       - name: Stop disposable local Supabase stack
         if: always()
