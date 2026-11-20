@@ -237,8 +237,8 @@ SELECT is(
   'vercel_ai_gateway','provider/test',false,NULL,NULL,NULL)->>'state'),
  'recorded','missing provider usage is explicitly recorded as unavailable');
 SELECT throws_ok(
- $UPDATE public.srk_ai_usage_events SET total_tokens=0
-   WHERE attempt_id='00000000-0000-4000-8000-000000000301'$,
+ $q$UPDATE public.srk_ai_usage_events SET total_tokens=0
+   WHERE attempt_id='00000000-0000-4000-8000-000000000301'$q$,
  '55000','AI_USAGE_EVENTS_ARE_APPEND_ONLY','usage ledger events cannot be updated');
 
 SELECT * FROM finish();
