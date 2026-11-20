@@ -91,7 +91,7 @@ jobs:
             fi
           }
           run_pgtap "supabase/tests/database/ai_admin_handoff_queue_read.test.sql" 13
-          run_pgtap "supabase/tests/database/ai_handoff_individual_staff_permissions.test.sql" 15
+          run_pgtap "supabase/tests/database/ai_handoff_individual_staff_permissions.test.sql" 17
           run_pgtap "supabase/tests/database/ai_handoff_staff_workflow.test.sql" 18
 
       - name: Stop disposable local Supabase stack
