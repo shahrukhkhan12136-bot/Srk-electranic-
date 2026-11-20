@@ -1,8 +1,8 @@
 "use strict";
 
 // Supplemental documentation guard only. These assertions do NOT exercise PostgreSQL
-// transactions, concurrency, RLS, grants, or RPC behavior. GPT-2 must run the real
-// non-production database test matrix in docs/ai-idempotency-db-test-plan.md.
+// transactions, concurrency, RLS, grants, or RPC behavior. GPT-1 owns the real
+// disposable PostgreSQL test matrix in docs/ai-idempotency-db-test-plan.md.
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
@@ -47,8 +47,10 @@ test("AI idempotency database test plan requires real PostgreSQL transaction and
   assert.match(plan, /independent PostgreSQL sessions/i);
   assert.match(plan, /Transaction rollback/i);
   assert.match(plan, /Migration replay\/rollback/i);
-  assert.match(plan, /NOT EXECUTED/);
-  assert.match(plan, /Static repository tests may supplement but cannot replace/i);
+  assert.match(plan, /implementation added; expanded CI execution pending/i);
+  assert.match(plan, /34 pgTAP assertions/i);
+  assert.match(plan, /two independent PostgreSQL sessions/i);
+  assert.match(plan, /Static repository tests supplement but do not replace/i);
 });
 
 test("AI idempotency handoff defines deterministic failed-key retry semantics", () => {
