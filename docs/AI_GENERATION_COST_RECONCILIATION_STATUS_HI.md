@@ -28,9 +28,9 @@
 
 ## 3. अभी क्या प्रमाणित है
 
-- Deno type-check workflow पहले के worker/parser commit पर सफल हुआ; generation timestamp और FX migration जोड़ने के बाद नया type-check फिर चलाया जा रहा है।
-- Node tests में USD cost parsing, छोटे decimal costs, generation ID matching और timestamp extraction शामिल हैं; नवीनतम code changes के बाद नया run चल रहा है।
-- Full migration replay और pgTAP runs अभी pending/in progress हैं; अंतिम SQL प्रमाण अभी उपलब्ध नहीं है।
+- Deno type-check workflow: सफल run #44743676819, commit `2204e2247610c09f706334fc515568ccc63223f8`।
+- Feature Branch Node tests: सफल run #44743676839, उसी commit पर; इसमें explicit zero, छोटे USD decimal, matching generation ID और timestamp parsing शामिल हैं।
+- Full migration replay और नया 27-assertion FBIL FX pgTAP run अभी pending/in progress हैं; अंतिम SQL प्रमाण अभी उपलब्ध नहीं है।
 
 ## 4. INR conversion — आधिकारिक FX स्रोत का सुधार
 
