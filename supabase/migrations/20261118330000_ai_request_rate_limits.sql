@@ -32,7 +32,7 @@ BEGIN
   IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'AI_SERVICE_ROLE_REQUIRED' USING ERRCODE='42501';
   END IF;
-  IF p_actor_user_id IS NULL OR p_module_key NOT IN ('customer_support','booking_assistant','electrician_assistant') THEN
+  IF p_actor_user_id IS NULL OR p_module_key IS NULL OR p_module_key NOT IN ('customer_support','booking_assistant','electrician_assistant') THEN
     RAISE EXCEPTION 'AI_INVALID_RATE_LIMIT_ARGUMENT' USING ERRCODE='22023';
   END IF;
 
