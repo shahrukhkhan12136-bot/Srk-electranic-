@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.srk_ai_generation_cost_jobs (
   generation_id text,
   provider_key text NOT NULL CHECK (provider_key='vercel_ai_gateway'),
   model_key text NOT NULL CHECK (length(btrim(model_key)) BETWEEN 1 AND 160),
-  status text NOT NULL CHECK (status IN ('pending','unavailable')),
+  status text NOT NULL CHECK (status IN ('pending','unavailable','reported')),
   attempt_count integer NOT NULL DEFAULT 0 CHECK (attempt_count BETWEEN 0 AND 20),
   next_attempt_at timestamptz,
   last_checked_at timestamptz,
