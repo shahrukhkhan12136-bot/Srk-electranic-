@@ -1,6 +1,6 @@
 BEGIN;
 SET LOCAL search_path TO public, extensions;
-SELECT plan(18);
+SELECT plan(20);
 
 SELECT has_table('public','srk_rate_catalogue_drafts',
   'private rate catalogue draft table exists');
@@ -130,6 +130,23 @@ SELECT ok(
   AND position('RATE_MUST_BE_INTEGER_PAISE' IN pg_get_functiondef(
     'public.srk_admin_save_rate_catalogue_draft(jsonb,timestamptz,text,uuid)'::regprocedure))>0,
   'draft save validates the four-tier integer-paise contract'
+);
+
+
+SELECT ok(
+  position('i.customer_rate_paise::numeric*1500/10000' IN pg_get_functiondef(
+    'public.srk_get_my_electrician_rate_list()'::regprocedure))>0
+  AND position('i.customer_rate_paise - floor' IN pg_get_functiondef(
+    'public.srk_get_my_electrician_rate_list()'::regprocedure))>0,
+  'electrician rate list uses the canonical commission-first 15% half-up net formula'
+);
+
+SELECT ok(
+  position('b.estimated_labour_paise::numeric*1500/10000' IN pg_get_functiondef(
+    'public.srk_get_my_offer_details()'::regprocedure))>0
+  AND position('b.estimated_labour_paise - floor' IN pg_get_functiondef(
+    'public.srk_get_my_offer_details()'::regprocedure))>0,
+  'job offer net amount uses the same canonical commission-first formula'
 );
 
 SELECT * FROM finish();
