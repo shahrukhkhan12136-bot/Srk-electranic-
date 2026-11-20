@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS public.srk_ai_messages (
     (sender_kind='assistant' AND sender_user_id IS NULL)
     OR (sender_kind IN ('user','human_agent') AND sender_user_id IS NOT NULL)
   ),
-  CONSTRAINT srk_ai_message_conversation_sequence_key UNIQUE (conversation_id,sequence_no)
+  CONSTRAINT srk_ai_message_conversation_sequence_key UNIQUE (conversation_id,sequence_no),
+  CONSTRAINT srk_ai_message_id_conversation_key UNIQUE (id,conversation_id)
 );
 
 CREATE INDEX IF NOT EXISTS srk_ai_messages_thread_idx
@@ -52,19 +53,46 @@ CREATE TABLE IF NOT EXISTS public.srk_ai_idempotency (
   status text NOT NULL DEFAULT 'processing'
     CHECK (status IN ('processing','completed','failed')),
   conversation_id uuid REFERENCES public.srk_ai_conversations(id) ON DELETE RESTRICT,
+  response_message_id uuid,
   response_code integer CHECK (response_code BETWEEN 100 AND 599),
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  created_at timestamptz NOT NULL DEFAULT transaction_timestamp(),
   completed_at timestamptz,
-  expires_at timestamptz NOT NULL DEFAULT (clock_timestamp()+interval '24 hours'),
+  failed_at timestamptz,
+  processing_lease_expires_at timestamptz,
+  retention_expires_at timestamptz,
+  lease_version bigint NOT NULL DEFAULT 1 CHECK (lease_version > 0),
   CONSTRAINT srk_ai_idempotency_actor_key UNIQUE(actor_user_id,idempotency_key),
-  CONSTRAINT srk_ai_idempotency_completion_check CHECK (
-    (status='processing' AND completed_at IS NULL)
-    OR (status IN ('completed','failed') AND completed_at IS NOT NULL)
+  CONSTRAINT srk_ai_idempotency_response_message_fk
+    FOREIGN KEY (response_message_id,conversation_id)
+    REFERENCES public.srk_ai_messages(id,conversation_id) ON DELETE RESTRICT,
+  CONSTRAINT srk_ai_idempotency_state_check CHECK (
+    (status='processing'
+      AND completed_at IS NULL AND failed_at IS NULL
+      AND response_message_id IS NULL AND response_code IS NULL
+      AND processing_lease_expires_at IS NOT NULL
+      AND retention_expires_at IS NULL)
+    OR
+    (status='completed'
+      AND completed_at IS NOT NULL AND failed_at IS NULL
+      AND response_message_id IS NOT NULL AND response_code IS NOT NULL
+      AND processing_lease_expires_at IS NULL
+      AND retention_expires_at IS NOT NULL
+      AND conversation_id IS NOT NULL)
+    OR
+    (status='failed'
+      AND completed_at IS NULL AND failed_at IS NOT NULL
+      AND response_message_id IS NULL AND response_code IS NOT NULL
+      AND processing_lease_expires_at IS NULL
+      AND retention_expires_at IS NOT NULL)
   )
 );
 
-CREATE INDEX IF NOT EXISTS srk_ai_idempotency_expiry_idx
-  ON public.srk_ai_idempotency(expires_at);
+CREATE INDEX IF NOT EXISTS srk_ai_idempotency_processing_lease_idx
+  ON public.srk_ai_idempotency(processing_lease_expires_at)
+  WHERE status='processing';
+CREATE INDEX IF NOT EXISTS srk_ai_idempotency_retention_idx
+  ON public.srk_ai_idempotency(retention_expires_at)
+  WHERE status IN ('completed','failed');
 
 CREATE TABLE IF NOT EXISTS public.srk_ai_handoff_queue (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
