@@ -93,7 +93,8 @@ jobs:
              select 'customer_rate_read_rpc=' || (to_regprocedure('public.srk_get_current_customer_rate_catalogue()') is not null)::text;
              select 'electrician_rate_read_rpc=' || (to_regprocedure('public.srk_get_my_electrician_rate_list()') is not null)::text;
              select 'admin_category_rpc=' || (to_regprocedure('public.srk_admin_list_electrician_rate_categories()') is not null)::text;
-             select 'booking_snapshot_guard=' || (to_regprocedure('public.srk_guard_booking_rate_snapshot_immutable()') is not null)::text;" | tee -a "$LOG"
+             select 'booking_snapshot_guard=' || (to_regprocedure('public.srk_guard_booking_rate_snapshot_immutable()') is not null)::text;
+             select 'payout_reference_unique_index=' || (exists (select 1 from pg_index i join pg_class idx on idx.oid=i.indexrelid where i.indrelid='public.srk_electrician_payouts'::regclass and idx.relname='srk_electrician_payouts_unique_reference_normalized' and i.indisunique))::text;" | tee -a "$LOG"
 
           required_checks=(
             amount_paid=true
@@ -113,6 +114,7 @@ jobs:
             electrician_rate_read_rpc=true
             admin_category_rpc=true
             booking_snapshot_guard=true
+            payout_reference_unique_index=true
           )
           for check in "${required_checks[@]}"; do
             if ! grep -q "$check" "$LOG"; then
