@@ -25,5 +25,5 @@ test('SOS queue is visible to Support Staff as well as Main Admin', () => {
 test('Support role is granted SOS read and acknowledgement permissions', () => {
   assert.match(sosMigration, /\('support','support\.sos\.read'\)/);
   assert.match(sosMigration, /\('support','support\.sos\.acknowledge'\)/);
-  assert.match(admin, /await Promise\\.all\\(\\[loadStaffSupportInbox\\(\\),loadSosAlerts\\(\\),loadStaffAiHandoffs\\(\\)\\]\\)/);
+  assert.match(admin, /await Promise\.all\(\[loadStaffSupportInbox\(\),loadSosAlerts\(\),loadStaffAiHandoffs\(\)\]\)/);
 });
