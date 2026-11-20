@@ -1548,7 +1548,7 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
    rows=[...apps.filter(x=>String(x.verification_status||'').toLowerCase()==='rejected').map(x=>({name:x.full_name,phone:x.phone,status:x.verification_status,detail:'आवेदन'})),...docs.filter(x=>String(x.review_status||'').toLowerCase()==='rejected').map(x=>({name:x.electrician_name,phone:x.electrician_phone,status:x.review_status,detail:'दस्तावेज़ • '+(x.document_type||'KYC')}))];
   }else if(selectedElectricianCategory==='work_completed'){
    heading='काम पूरा करने वाले इलेक्ट्रिशियन';
-   rows=(commission.partners||[]).filter(x=>Number(x.paid_completed_jobs||0)>0).map(x=>({name:x.display_name,phone:'',status:Number(x.paid_completed_jobs)+' पूरे Paid काम',detail:'Verified Collection ₹'+Number(x.gross_received||0).toFixed(2)+' • कंपनी कमीशन ₹'+Number(x.company_commission||0).toFixed(2)}));
+   const counts=new Map();bookings.filter(b=>String(b.status||'').toLowerCase()==='completed'&&b.assigned_electrician_id).forEach(b=>{const id=String(b.assigned_electrician_id);counts.set(id,(counts.get(id)||0)+1);});rows=[...counts.entries()].map(([id,count])=>{const p=profileById.get(id)||{},paid=(commission.partners||[]).find(x=>x.display_name===profileLabel(p));return {name:profileLabel(p),phone:p.phone,status:count+' पूरे ऑर्डर',detail:[p.district,p.state].filter(Boolean).join(', ')+(paid?' • Paid काम '+Number(paid.paid_completed_jobs||0)+' • कमीशन ₹'+Number(paid.company_commission||0).toFixed(2):'')};});
   }else{
    heading='काम पेंडिंग वाले इलेक्ट्रिशियन';
    const counts=new Map();
