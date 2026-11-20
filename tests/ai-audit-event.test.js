@@ -4,7 +4,7 @@ const { buildAiAuditEvent } = require("../lib/ai-audit-event");
 
 const valid = {
   module_key: "customer_support",
-  action_key: "read_own_booking_status",
+  action_key: "message_recorded",
   actor_id: "user-123",
   record_id: "booking-456",
   approval_id: null,
@@ -28,6 +28,30 @@ test("rejects unknown modules, malformed identifiers and unsupported outcomes", 
   assert.throws(() => buildAiAuditEvent({ ...valid, actor_id: "bad actor" }), /invalid_ai_audit_event/);
   assert.throws(() => buildAiAuditEvent({ ...valid, record_id: "secret\nvalue" }), /invalid_ai_audit_event_identifier/);
   assert.throws(() => buildAiAuditEvent({ ...valid, outcome: "maybe" }), /invalid_ai_audit_event/);
+});
+
+test("audit modules and action keys match the persisted database allowlists", () => {
+  for (const module_key of ["customer_support", "booking_assistant", "electrician_assistant"]) {
+    assert.equal(buildAiAuditEvent({ ...valid, module_key }).module_key, module_key);
+  }
+  for (const module_key of ["staff_assistant", "reports_operations", "root_admin"]) {
+    assert.throws(
+      () => buildAiAuditEvent({ ...valid, module_key }),
+      /invalid_ai_audit_event/
+    );
+  }
+  for (const action_key of [
+    "conversation_created", "message_recorded", "handoff_requested",
+    "handoff_assigned", "handoff_resolved", "request_rejected"
+  ]) {
+    assert.equal(buildAiAuditEvent({ ...valid, action_key }).action_key, action_key);
+  }
+  for (const action_key of ["read_own_booking_status", "unknown_action", "root_admin"]) {
+    assert.throws(
+      () => buildAiAuditEvent({ ...valid, action_key }),
+      /invalid_ai_audit_event/
+    );
+  }
 });
 
 test("audit outcomes match the persisted database outcome allowlist", () => {
