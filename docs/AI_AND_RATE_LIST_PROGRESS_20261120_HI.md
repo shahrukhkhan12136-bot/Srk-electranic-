@@ -140,3 +140,32 @@
 - Rate List booking snapshot run [44733164939](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164939), SHA `0aeca4be9e704eb336f56c2a0b881e9d36a9a2fb` — retry success.
 - पहले attempt में disposable Supabase DB container host port `57432` पहले से occupied था; यह application SQL/test failure नहीं था। Retry ने isolated DB शुरू करके booking snapshot test पूरा किया।
 - उसी SHA पर Rate Catalogue draft/security pgTAP [44733164876](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164876) और AI Main Admin/Staff handoff pgTAP [44733164775](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164775) — success.
+
+
+## 20 नवम्बर — AI Gateway लागत और FBIL FX सत्यापन अपडेट
+
+- Feature Branch Node tests run [44744075647](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44744075647), SHA `d72474c394860b4bbaf0ec85a5f475573aa017ce` — success.
+- AI Main Admin/Staff handoff + notification + generation-cost + FBIL FX pgTAP run [44744035882](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44744035882), SHA `af644e3a016c4b84a448390633e28a5df067e555` — success; log में 110 successful assertions, कोई failed assertion नहीं, और FBIL FX test plan 27/27 पूरा।
+- Full feature-branch PostgreSQL migration replay run [44743449743](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44743449743), SHA `c0fcd7d0a679e0fab30ce13500f13205c6495fdb` — success। यह disposable local PostgreSQL/Supabase stack पर replay था, hosted DB नहीं।
+- AI generation-cost Deno type-check run [44743676819](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44743676819), SHA `2204e2247610c09f706334fc515568ccc63223f8` — success।
+- FBIL FX test में malformed dollar-quote syntax को commit `af644e3a016c4b84a448390633e28a5df067e555` पर ठीक किया गया। Corrected pgTAP run ने 27/27 FX assertions सहित पूरा workflow pass किया।
+- Latest verified feature branch head: `d72474c394860b4bbaf0ec85a5f475573aa017ce` (documentation update के बाद)।
+
+## FBIL benchmark data license gate
+
+- FBIL FAQ के अनुसार कुछ benchmark-data उपयोगों—जैसे valuation, product/contract pricing, loan servicing और समान उद्देश्यों—के लिए End-User License/usage fee लागू हो सकती है। FAQ यह स्पष्ट रूप से नहीं बताता कि SRK का internal AI provider-cost accounting इसी श्रेणी में आता है या नहीं।
+- इसलिए केवल public website पर दिखाई देने के आधार पर automatic scraping या server-side ingestion शुरू नहीं होगी। पहले FBIL से लिखित रूप में internal service-cost accounting के उपयोग, applicable license/fee और permitted API/SFTP/data access की पुष्टि करनी होगी।
+- कोई FBIL subscription, license, API/SFTP access या paid service नहीं खरीदी/कनेक्ट की गई। यदि शुल्क लगेगा तो अलग उपयोगकर्ता मंजूरी आवश्यक होगी।
+- जब तक permitted source स्पष्ट नहीं होता, FX ingestion बंद रहेगी; INR cost अनुपलब्ध होने पर अनुमानित रुपये दर्ज नहीं होंगे।
+- आधिकारिक FAQ: https://www.fbil.org.in/uploads/FAQ_s_updates_30th_Nov_2023_edited_version_1def7b65bb.pdf
+
+## वर्तमान release gates — अभी बाकी
+
+1. FBIL से लिखित data-use/license clarification और उसके बाद स्वीकृत FX ingestion source तय करना।
+2. AI cost reconciliation worker का live-free mocked integration/contract testing, retries और FX unavailable paths की अतिरिक्त जाँच।
+3. AI handoff notification sender का mocked-provider delivery, expired subscription और retry/dead-letter end-to-end QA।
+4. AI request throttle की UTC day-boundary semantics और ₹20 daily / ₹500 monthly actual rupee-cost guard का design review। ₹20/₹500 guard अभी केवल योजना है; उपयोगकर्ता की स्पष्ट implementation अनुमति के बिना लागू नहीं होगा।
+5. Customer/Electrician mobile UI QA, Main Admin handoff workflow acceptance और अंतिम security/privacy/retention review।
+6. Rate List की Admin-only चार-tier increase/decrease behavior की अंतिम acceptance जाँच; कोई quotation/custom quote feature नहीं जोड़ा जाएगा।
+
+**सुरक्षा स्थिति:** AI Gateway, AI handoff push और AI cost reconciliation workers disabled-by-default/OFF हैं। कोई hosted Supabase migration, production deployment, live provider call, live push, Main merge या Developer Branch creation नहीं हुई। इस चरण को 100% complete घोषित नहीं किया गया है।
