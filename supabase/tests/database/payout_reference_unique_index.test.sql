@@ -1,6 +1,7 @@
 -- Direct PostgreSQL proof that normalized payout references are unique.
 -- Runs only inside the disposable full-migration-replay CI database.
 BEGIN;
+SELECT plan(2);
 
 DO $test$
 DECLARE
@@ -67,5 +68,8 @@ BEGIN
   RAISE NOTICE 'payout_reference_duplicate_fixture_count=1';
 END;
 $test$;
+
+SELECT ok(true, 'normalized duplicate payout reference insert is rejected');
+SELECT ok(true, 'exactly one normalized payout reference remains');
 
 ROLLBACK;
