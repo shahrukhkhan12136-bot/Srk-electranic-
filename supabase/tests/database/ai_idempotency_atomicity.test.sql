@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(34);
+SELECT plan(40);
 INSERT INTO auth.users (id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at)
 VALUES
  ('00000000-0000-4000-8000-000000000101','authenticated','authenticated','ai-owner@example.test','',transaction_timestamp(),transaction_timestamp(),transaction_timestamp()),
@@ -42,6 +42,34 @@ SELECT ok(
 UPDATE ai_test_context
 SET conversation_one=(public.srk_ai_create_conversation(actor_one,'customer_support')->>'conversation_id')::uuid,
  conversation_two=(public.srk_ai_create_conversation(actor_one,'booking_assistant')->>'conversation_id')::uuid;
+
+SELECT ok(
+ has_function_privilege('service_role','public.srk_ai_reserve_request_capacity(uuid,text)','EXECUTE')
+ AND NOT has_function_privilege('anon','public.srk_ai_reserve_request_capacity(uuid,text)','EXECUTE')
+ AND NOT has_function_privilege('authenticated','public.srk_ai_reserve_request_capacity(uuid,text)','EXECUTE'),
+ 'AI request capacity RPC is service-role-only');
+SELECT ok(
+ (SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_ai_request_limits'::regclass)
+ AND NOT has_table_privilege('anon','public.srk_ai_request_limits','SELECT')
+ AND NOT has_table_privilege('authenticated','public.srk_ai_request_limits','SELECT'),
+ 'AI request counters are private and RLS enabled');
+SELECT is(
+ (public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),'customer_support')->>'state'),
+ 'allowed','first request receives capacity');
+SELECT public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),'customer_support')
+FROM generate_series(1,9);
+SELECT is(
+ (public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),'customer_support')->>'scope'),
+ 'window','eleventh request in ten minutes is throttled');
+UPDATE public.srk_ai_request_limits SET requests_today=100
+WHERE actor_user_id=(SELECT actor_one FROM ai_test_context) AND module_key='customer_support';
+SELECT is(
+ (public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),'customer_support')->>'scope'),
+ 'daily','daily request ceiling is enforced');
+SELECT is(
+ (public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),'booking_assistant')->>'state'),
+ 'allowed','limits are isolated per assistant module');
+
 SELECT is((public.srk_ai_reserve_idempotency(actor_one,key_one,digest_one)->>'state'),'reserved',
  'first request reserves one five-minute processing lease') FROM ai_test_context;
 SELECT is((public.srk_ai_reserve_idempotency(actor_one,key_one,digest_one)->>'state'),'processing',
