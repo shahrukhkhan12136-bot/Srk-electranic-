@@ -128,10 +128,10 @@ CREATE TRIGGER srk_test_fail_ai_audit_insert
 BEFORE INSERT ON public.srk_ai_audit_events
 FOR EACH ROW EXECUTE FUNCTION public.srk_test_fail_ai_audit_insert();
 SELECT throws_ok(
- $SELECT public.srk_ai_complete_idempotency(
+ $q$SELECT public.srk_ai_complete_idempotency(
   (SELECT actor_one FROM ai_test_context),(SELECT key_four FROM ai_test_context),
   (SELECT digest_one FROM ai_test_context),1,(SELECT conversation_two FROM ai_test_context),
-  'Rollback answer',200)$,
+  'Rollback answer',200)$q$,
  'P0001','AI_TEST_FORCED_AUDIT_FAILURE',
  'forced audit failure aborts the completion transaction');
 DROP TRIGGER srk_test_fail_ai_audit_insert ON public.srk_ai_audit_events;
