@@ -109,7 +109,7 @@ test('electrician timer display is read-only and derives elapsed time from serve
   const formatter = syncFunctionBody(electrician, 'formatElectricianTimer');
   const updater = syncFunctionBody(electrician, 'updateElectricianTimers');
   assert.match(formatter, /Math\.floor\(Number\(seconds\)\|\|0\)/);
-  assert.match(updater, /data\.accumulated/);
+  assert.match(updater, /dataset\.accumulated/);
   assert.match(updater, /data\.running==='1'&&el\.dataset\.started/);
   assert.match(updater, /Date\.parse\(el\.dataset\.started\)/);
   assert.match(updater, /el\.textContent=formatElectricianTimer\(n\)/);
