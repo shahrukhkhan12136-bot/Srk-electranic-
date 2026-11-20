@@ -32,6 +32,7 @@ test("Gateway adapter sends a bounded non-streaming request to the fixed HTTPS e
       return {
         ok: true, status: 200,
         json: async () => ({
+          id: "gen-test-001",
           choices: [{ message: { content: " नमस्ते! " } }],
           usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 }
         })
@@ -49,6 +50,7 @@ test("Gateway adapter sends a bounded non-streaming request to the fixed HTTPS e
   assert.equal(body.max_tokens, 400, "invalid token limits fall back to the safe default");
   assert.equal(body.stream, false);
   assert.equal(result.reply, "नमस्ते!");
+  assert.equal(result.generationId, "gen-test-001");
   assert.deepEqual(result.usage, { promptTokens: 12, completionTokens: 8, totalTokens: 20 });
 });
 
