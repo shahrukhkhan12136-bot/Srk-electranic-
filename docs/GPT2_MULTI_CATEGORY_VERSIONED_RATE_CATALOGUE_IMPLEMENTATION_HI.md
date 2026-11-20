@@ -59,7 +59,7 @@ Customer RPC: \`public.srk_get_current_customer_rate_catalogue()\`
 - Idempotent replay original booking का archived \`rate_version_id + tier\` lookup करता है; आज की दर से पुराना estimate recalculate नहीं करता।
 - Electrician RPC उसी current catalogue \`rate_version_id\` से अपने approved tiers का 85% net निकालता है। इसलिए Customer gross और Electrician net एक ही version से आते हैं।
 
-**महत्वपूर्ण शेष कार्य:** Admin web UI में version draft/preview/publish और multiple-category selector अभी इस migration/RPC से wired नहीं हैं। Publish/approval RPC backend source मौजूद है, लेकिन Admin UI integration और end-to-end verification बाकी है। Production में कोई initial catalogue seed/publish नहीं किया गया; पहली approved Admin publish के बाद ही read RPC data लौटाएगी।
+**वर्तमान source स्थिति (20 नवम्बर 2026):** बाद की migration `supabase/migrations/20261118240000_rate_catalogue_draft_scheduled_workflow.sql` और `admin.html` में Main Admin के लिए Draft save/edit, Draft/Scheduled queue, version-checked publish/schedule और approved-category management controls मौजूद हैं। Draft अलग private table में रहता है; Customer/Electrician read RPC Draft को नहीं पढ़ते। यह UI और RPC source-level implementation है—hosted database या production पर लागू होने का प्रमाण नहीं। Production में initial catalogue seed/publish नहीं किया गया; पहली approved Admin publish के बाद ही read RPC data लौटाएगी।
 
 ## 5. 15% commission और 85% net reconciliation
 
@@ -91,8 +91,10 @@ Legacy bookings में stored \`commission_rate\`, existing payout rows औ�
 - Prior rate view tests: \`tests/electrician-rate-view.test.js\`
 - Existing source audit: \`docs/GPT2_BOOKING_RATE_SOURCE_AUDIT_HI.md\`
 
-## 7. Verification limits
+## 7. Verification limits and current CI evidence
 
-Source assertions and JavaScript syntax checks can be performed on this branch. They do **not** prove PostgreSQL migration validity, RLS behavior, Supabase RPC grants under deployed roles, Admin UI behavior, or live checkout/payout reconciliation. Node test suite and SQL migration execution must be run in an isolated disposable database/test environment before Production approval.
+A disposable GitHub Actions Supabase/PostgreSQL workflow has replayed the baseline plus feature migrations and passed the then-current 18 Draft/Scheduled security pgTAP assertions (run `44675940871`, commit `84f7b27cc2e824071d6f49e07591d624bae10287`). The rate rounding migration, SQL security test file, and workflow file at that tested commit were byte-for-byte identical to their current pre-follow-up versions. This is real isolated PostgreSQL evidence, not hosted TEST or Production evidence.
 
-No Production DB change, migration execution, deployment, paid branch, or PR merge is authorized or performed by this work.
+A follow-up adds two pgTAP assertions for the canonical commission-first rounding in both the electrician Rate List and offer RPCs, making the plan 20 assertions; its CI run is being checked separately. Full feature-branch migration replay is also being checked separately. Source assertions and JavaScript syntax checks do **not** prove hosted Supabase role behavior, mobile UI, live checkout, or payout transfer. Manual Customer/Electrician/Admin browser and device QA remains outstanding.
+
+No Production DB change, hosted migration execution, deployment, paid Developer Branch, or PR merge is authorized or performed by this work.
