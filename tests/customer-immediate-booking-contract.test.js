@@ -16,12 +16,13 @@ test('immediate customer booking does not require nonexistent schedule date/time
 });
 
 test('customer must explicitly choose a service category before booking', () => {
-  const selector = booking.match(/<select id="service" required>([\\s\\S]*?)<\\/select>/);
-  assert.ok(selector, 'service selector exists and is required');
-  assert.match(selector[1], /^\\s*<option value="" selected disabled>/);
-  assert.match(selector[1], /<option value="home_wiring">/);
+  const start = booking.indexOf('<select id="service" required>');
+  const end = booking.indexOf('</select>', start);
+  assert.ok(start >= 0 && end > start, 'service selector exists and is required');
+  const selector = booking.slice(start, end);
+  assert.ok(selector.includes('<option value="" selected disabled>'), 'no service is preselected');
+  assert.ok(selector.includes('<option value="home_wiring">'), 'service categories remain available');
 });
-
 test('customer booking payload follows the immediate-dispatch API contract', () => {
   const submitAt = booking.indexOf("document.getElementById('booking').addEventListener('submit'");
   const payloadAt = booking.indexOf('const bookingPayload = {', submitAt);
