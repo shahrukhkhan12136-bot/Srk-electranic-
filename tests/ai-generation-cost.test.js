@@ -6,6 +6,7 @@ test("accepts an explicit USD zero cost without confusing missing cost with zero
   const { extractReportedUsd } = await import("../supabase/functions/_shared/ai-generation-cost.mjs");
   assert.equal(extractReportedUsd({ data: { id: "gen_abc", total_cost: 0 } }, "gen_abc"), "0");
   assert.equal(extractReportedUsd({ data: { id: "gen_abc", total_cost: "0.0000001200" } }, "gen_abc"), "0.0000001200");
+  assert.equal(extractReportedUsd({ data: { id: "gen_abc", total_cost: 1e-8 } }, "gen_abc"), "0.00000001");
 });
 
 test("accepts documented camel-case SDK cost when present", async () => {
