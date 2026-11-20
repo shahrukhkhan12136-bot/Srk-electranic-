@@ -227,3 +227,19 @@ References:
 - Existing operational ledgers (booking, wallet, cancellation fee, refund, payout, webhook inbox) ही अपनी-अपनी state के owner रहेंगे।
 - कोई नया “cash received” या “bank paid” event केवल imported/verified source evidence पर बने; UI status, wallet balance, provider refund observation या payout admin reference अकेले पर्याप्त प्रमाण नहीं।
 - इस अतिरिक्त review में कोई migration, hosted database, provider API, refund, payout या bank action नहीं किया गया। यह source-only integration map है।
+
+
+## 14. Admin Panel की मौजूदा Accounting स्क्रीन — source verification
+
+`admin.html` और migration `20261115150000_admin_readonly_booking_accounting_reconciliation.sql` को साथ पढ़कर पुष्टि हुई:
+
+- Main Admin स्क्रीन में Booking UUID आधारित Read-only reconciliation card मौजूद है।
+- यह RPC `srk_admin_get_booking_accounting_reconciliation(uuid)` को बुलाता है; SQL function `STABLE SECURITY DEFINER`, खाली `search_path`, Main Admin check, और authenticated EXECUTE grant के साथ है।
+- स्क्रीन customer collection, confirmed तथा requested/unconfirmed refund, net collection, labour, materials, expected commission, expected electrician payable, payout status/reference, cancellation-fee allocations/ledger, posted wallet entries और exceptions दिखाती है।
+- RPC के exception checks में missing/mismatched verified payment, immutable labour bill missing, payout missing/assignment/amount mismatch, duplicate refund records, provider payment ID mismatch, pending/failed/unconfirmed refund, partial/over-refund, cancellation fee ledger imbalance, wallet refund mismatch और refund/payout state mismatch शामिल हैं।
+- Route transfer status स्पष्ट रूप से retired दिखाया जाता है; UI Route transfer को payout का प्रमाण नहीं मानती।
+- यह स्क्रीन per-booking snapshot है। इसमें Razorpay merchant settlement batch, gateway fee, fee GST/tax, settlement deductions/adjustments, actual bank credit, UTR match, date-range/monthly consolidated report या CSV import workflow नहीं है।
+- अलग payout table और commission summary मौजूद हैं, लेकिन UI स्वयं बताती है कि commission expected/calculated amount है, bank cash receipt नहीं; electrician payable भी actual bank settlement नहीं है।
+- अतः अगली Accounting delivery में मौजूदा Booking reconciliation को जस का तस रखते हुए अलग Merchant Settlement reconciliation layer चाहिए। वह read-only imported report evidence से payment/refund rows को link करेगी और bank statement/UTR match अलग status में रखेगी।
+
+यह UI/RPC source inspection है; hosted runtime में इसे execute करके नहीं देखा गया। कोई code या database change इस जाँच में नहीं किया गया।
