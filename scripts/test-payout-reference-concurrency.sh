@@ -8,6 +8,7 @@ BOOKING_B="00000000-0000-4000-8000-000000000813"
 REFERENCE="CI-UTR-RACE-002"
 TMP_DIR="$(mktemp -d)"
 PID_A=""
+PID_B=""
 
 psql_db() {
   docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 "$@"
@@ -15,6 +16,7 @@ psql_db() {
 
 cleanup() {
   rc=$?
+  if [[ -n "$PID_B" ]]; then kill "$PID_B" 2>/dev/null || true; wait "$PID_B" 2>/dev/null || true; fi
   if [[ -n "$PID_A" ]]; then wait "$PID_A" 2>/dev/null || true; fi
   psql_db >/dev/null 2>&1 <<SQL || true
 DELETE FROM public.srk_electrician_payouts WHERE booking_id IN ('$BOOKING_A','$BOOKING_B');
@@ -45,21 +47,19 @@ INSERT INTO public.service_bookings (
 ('$BOOKING_B','CI Race Customer B','9000000013','Uttar Pradesh','Kanpur','208001','Disposable race B','Electrical');
 SQL
 
-# Session A holds the unique-index key until it commits. Session B attempts the
-# same normalized reference while A is uncommitted and must fail after waiting.
+# A inserts first and holds its transaction open. B must visibly wait on the
+# uncommitted unique-index entry before A is allowed to commit.
 (
   {
     echo "BEGIN;"
     echo "INSERT INTO public.srk_electrician_payouts (booking_id,electrician_profile_id,gross_service_amount,materials_amount,platform_commission,electrician_payable,payout_reference) VALUES ('$BOOKING_A','$ELECTRICIAN',100,0,15,85,'$REFERENCE');"
-    echo "SELECT pg_sleep(2);"
+    echo "SELECT pg_sleep(10);"
     echo "COMMIT;"
-  } | timeout 20s docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1
+  } | docker exec -e PGAPPNAME=srk_payout_race_a -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1
 ) >"$TMP_DIR/session-a.out" 2>&1 &
 PID_A=$!
-sleep 0.3
 
-set +e
-timeout 20s docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<SQL >"$TMP_DIR/session-b.out" 2>&1
+docker exec -e PGAPPNAME=srk_payout_race_b -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<SQL >"$TMP_DIR/session-b.out" 2>&1 &
 INSERT INTO public.srk_electrician_payouts (
   booking_id,electrician_profile_id,gross_service_amount,materials_amount,
   platform_commission,electrician_payable,payout_reference
@@ -67,11 +67,37 @@ INSERT INTO public.srk_electrician_payouts (
   '$BOOKING_B','$ELECTRICIAN',100,0,15,85,'  ci-utr-race-002  '
 );
 SQL
-STATUS=$?
-set -e
+PID_B=$!
+
+# Do not infer concurrency from a fixed sleep: prove PostgreSQL reports B
+# blocked on A's uncommitted unique-key transaction before allowing A to finish.
+WAIT_CONFIRMED=false
+for attempt in $(seq 1 80); do
+  WAIT_STATE="$(psql_db -At -c "SELECT coalesce(wait_event_type,'') || ':' || coalesce(wait_event,'') FROM pg_stat_activity WHERE application_name='srk_payout_race_b' AND state='active' LIMIT 1;")"
+  if [[ "$WAIT_STATE" == "Lock:transactionid" ]]; then
+    WAIT_CONFIRMED=true
+    break
+  fi
+  if ! kill -0 "$PID_B" 2>/dev/null; then
+    break
+  fi
+  sleep 0.1
+done
+
+if [[ "$WAIT_CONFIRMED" != true ]]; then
+  echo "PostgreSQL did not confirm Session B waiting on Session A's unique-index transaction."
+  exit 1
+fi
+echo "PASS: PostgreSQL confirmed Session B waiting on the uncommitted unique-key transaction."
 
 wait "$PID_A"
 PID_A=""
+
+set +e
+wait "$PID_B"
+STATUS=$?
+set -e
+PID_B=""
 
 if [[ "$STATUS" -eq 0 ]]; then
   echo "Concurrent duplicate payout reference unexpectedly succeeded."
