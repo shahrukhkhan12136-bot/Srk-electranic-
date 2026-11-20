@@ -1,5 +1,30 @@
 <!doctype html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SRK ELECTRONIC | Admin</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
 :root{font-family:system-ui,Arial;color:#14213d;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}.top{background:#102a43;color:white;padding:20px}.wrap{max-width:1100px;margin:auto;padding:18px}.card{background:white;border-radius:14px;padding:18px;margin:14px 0;box-shadow:0 3px 16px #102a4312}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.stat{font-size:28px;font-weight:800;color:#087e8b}input,button,select{font:inherit;padding:11px;border-radius:8px;border:1px solid #ccd5df}button{background:#087e8b;color:white;border:0;cursor:pointer;margin:3px}button.alt{background:#334e68}table{width:100%;border-collapse:collapse;min-width:700px}td,th{text-align:left;padding:10px;border-bottom:1px solid #e6edf3;font-size:14px}.scroll{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}.muted{color:#627d98}.hidden{display:none}.danger{color:#b42318}.tag{padding:4px 8px;background:#e6f4f1;border-radius:20px;font-size:12px}
+
+/* SRK ELECTRONIC professional admin theme */
+:root{font-family:Inter,system-ui,-apple-system,Arial,sans-serif;color:#172b4d;background:#f2f5fa;--srk-navy:#102b4e;--srk-blue:#1d4ed8;--srk-gold:#f4c542;--srk-teal:#0f8b8d;--srk-green:#16834a;--srk-red:#c62828;--srk-amber:#c47b08}
+body{background:linear-gradient(180deg,#eaf0f8 0,#f5f7fb 260px)}
+.top{background:linear-gradient(120deg,#0b1f38,#163e68 68%,#24527b);border-bottom:4px solid var(--srk-gold);box-shadow:0 8px 26px #102b4e25;padding:24px 18px}
+.top h1{font-size:clamp(22px,3vw,32px);letter-spacing:.2px;margin:0 0 6px}.top p{color:#dce8f5;margin:0}
+.wrap{max-width:1240px;padding:18px}
+.card{border:1px solid #e1e8f0;border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 5px 20px #102b4e0d;background:#fff}
+.card h2{color:#15375d;font-size:19px;margin:0 0 10px}.card h3{color:#24496d}
+.grid{gap:14px}.stat{color:#0f8b8d;font-variant-numeric:tabular-nums}
+button{background:linear-gradient(135deg,#174a78,#1d4ed8);color:#fff;border:1px solid transparent;border-radius:10px;padding:11px 16px;font-weight:650;box-shadow:0 3px 9px #174a7826;transition:transform .15s,filter .15s,box-shadow .15s}
+button:hover{filter:brightness(1.08);box-shadow:0 5px 14px #174a7833;transform:translateY(-1px)}button:focus-visible{outline:3px solid #f4c542;outline-offset:2px}
+button.alt{background:#e9eff7;color:#173b60;border:1px solid #cbd8e7;box-shadow:none}button.alt:hover{background:#dce8f5}
+input,select,textarea{border:1px solid #cbd5e1;border-radius:10px;background:#fff}input:focus,select:focus,textarea:focus{outline:3px solid #f4c54266;border-color:#c18b00}
+table{border-collapse:separate;border-spacing:0;min-width:700px}th{background:#eaf1f8;color:#173b60;font-weight:700}td,th{padding:12px;border-bottom:1px solid #e7edf4}tr:hover td{background:#f8fbff}
+.tag{background:#e7f6ee;color:#17633b;font-weight:650}.muted{color:#64748b}.scroll{border:1px solid #e5ebf2;border-radius:12px}
+.admin-navigation{background:#fff;border:1px solid #dce5ef;border-radius:18px;padding:18px;margin:14px 0 20px;box-shadow:0 8px 24px #102b4e0c}
+.admin-nav-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}.admin-nav-title h2{margin:0;color:#12365b}
+.admin-nav-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px}
+.admin-nav-button{display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-height:78px;margin:0;padding:14px;background:#fff;color:#173b60;border:1px solid #dce5ef;border-left:5px solid var(--nav-accent,#1d4ed8);box-shadow:0 3px 12px #102b4e0b}
+.admin-nav-button:hover{background:#f8fbff;border-color:#b9cbe0}.admin-nav-icon{display:grid;place-items:center;flex:0 0 42px;height:42px;border-radius:12px;background:var(--nav-tint,#eaf1ff);color:var(--nav-accent,#1d4ed8);font-size:21px}
+.admin-nav-button strong{display:block;font-size:15px}.admin-nav-button small{display:block;color:#64748b;font-size:12px;font-weight:500;margin-top:3px}
+.admin-page-heading{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 8px}.admin-page-heading h2{margin:0;color:#14395f}.admin-back{background:#fff;color:#173b60;border:1px solid #cbd8e7;box-shadow:none}
+.admin-page-content>.card:first-child{margin-top:10px}.admin-page-content .hidden{display:none!important}
+@media(max-width:640px){.wrap{padding:12px}.card{padding:14px;border-radius:14px}.top{padding:18px 12px}.admin-navigation{padding:13px}.admin-nav-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.admin-nav-button{padding:10px;min-height:76px;gap:8px}.admin-nav-icon{flex-basis:34px;height:34px;font-size:18px}.admin-nav-button strong{font-size:13px}.admin-nav-button small{font-size:11px}}
 </style></head><body><header class="top"><div class="wrap"><h1>SRK ELECTRONIC — Admin Panel</h1><p>ग्राहक बुकिंग • इलेक्ट्रिशियन • काम और कमीशन</p></div></header><main class="wrap"><section class="card" id="login"><h2>Admin / Support Staff लॉगिन</h2><p class="muted">अपने SRK Admin ईमेल और पासवर्ड से लॉगिन करें।</p><input id="email" type="email" autocomplete="username" placeholder="Admin ईमेल" style="width:min(100%,360px)"><br><br><input id="password" type="password" autocomplete="current-password" placeholder="पासवर्ड" style="width:min(100%,360px)"><br><br><button onclick="emailLogin()">Admin पासवर्ड लॉगिन</button><br><button type="button" class="alt" onclick="staffEmailOtpLogin()">Support Staff Email Link लॉगिन</button><p class="muted">Support Staff को पहले Main Admin से invitation और activation मिलना आवश्यक है।</p><p id="authmsg"></p></section><section id="app" class="hidden"><div class="card"><button class="alt" onclick="refreshAdminPortal()">↻ Refresh</button><button class="alt" onclick="logout()">Logout</button><span id="who" class="muted"></span></div>
 <section class="card" id="projectProgressCard" aria-labelledby="projectProgressTitle">
 <h2 id="projectProgressTitle">SRK ELECTRONIC — प्रोजेक्ट प्रगति</h2>
@@ -1429,5 +1454,42 @@ function prepareApprovedCustomerRefund(bookingId,reason){
  document.getElementById('adminRazorpayRefundStatus').textContent='Approved customer request चुना गया है। Full Refund शुरू करने से पहले राशि और booking details जाँचें।';
 }
 function mapUrl(x){const q=(x.location_lat!=null&&x.location_lng!=null)?`${x.location_lat},${x.location_lng}`:[x.address,x.district,x.state,x.pincode,'India'].filter(Boolean).join(', ');return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q)}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}init();
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+// Progressive navigation: keep existing Admin modules and permissions intact.
+(function initSrkAdminNavigation(){
+ const app=document.getElementById('app');if(!app||app.dataset.srkNavigationReady==='1')return;
+ const toolbar=app.firstElementChild;if(!toolbar)return;
+ app.dataset.srkNavigationReady='1';
+ const nav=document.createElement('section');nav.className='admin-navigation';nav.id='srkAdminNavigation';
+ nav.innerHTML='<div class="admin-nav-title"><div><h2>SRK ELECTRONIC CONTROL CENTER</h2><p class="muted" style="margin:5px 0 0">विभाग चुनें — हर विभाग की जानकारी अलग खुलेगी</p></div><span class="tag">PROFESSIONAL ADMIN</span></div><div class="admin-nav-grid" id="srkAdminNavGrid"></div>';
+ toolbar.insertAdjacentElement('afterend',nav);
+ const pages=document.createElement('div');pages.id='srkAdminPages';app.insertBefore(pages,nav.nextSibling);
+ const groups=[
+  {id:'overview',title:'मुख्य डैशबोर्ड',desc:'कुल स्थिति और जरूरी सारांश',icon:'▦',accent:'#1d4ed8',tint:'#eaf1ff'},
+  {id:'electricians',title:'इलेक्ट्रिशियन',desc:'KYC, पार्टनर और काम का रिकॉर्ड',icon:'⚡',accent:'#c18b00',tint:'#fff6d9'},
+  {id:'customers',title:'ग्राहक',desc:'ग्राहक सहायता और अनुरोध',icon:'♙',accent:'#0f8b8d',tint:'#e3f7f5'},
+  {id:'orders',title:'ऑर्डर और बुकिंग',desc:'बुकिंग, काम और विवाद',icon:'▤',accent:'#7047c8',tint:'#f0eaff'},
+  {id:'finance',title:'पेमेंट और हिसाब',desc:'कमीशन, लेजर और भुगतान',icon:'₹',accent:'#16834a',tint:'#e5f6eb'},
+  {id:'operations',title:'सपोर्ट और कंट्रोल',desc:'स्टाफ, AI और SOS सहायता',icon:'⚙',accent:'#d05a24',tint:'#fff0e7'}
+ ];
+ const views={};
+ groups.forEach(g=>{const view=document.createElement('section');view.className='admin-page-content';view.dataset.page=g.id;view.hidden=true;view.innerHTML='<div class="admin-page-heading"><button type="button" class="admin-back" data-admin-home>← मुख्य डैशबोर्ड</button><h2>'+g.title+'</h2></div>';pages.appendChild(view);views[g.id]=view;});
+ function classify(el){const id=el.id||'';const text=((el.innerText||el.textContent||'')+' '+id).toLowerCase();
+  if(/projectprogresscard|gpt2progresscard|nbookings|nnew|napps|npros/.test(id)||/प्रोजेक्ट प्रगति|मेरी जिम्मेदारी की प्रगति/.test(text))return 'overview';
+  if(/electrician|इलेक्ट्रिशियन|kyc|पार्टनर|ratecategory|payoutpending|payoutpaid/.test(text))return 'electricians';
+  if(/ग्राहक|customer/.test(text))return 'customers';
+  if(/बुकिंग|booking|ऑर्डर|काम का इतिहास|workreview|cancellation request/.test(text))return 'orders';
+  if(/पेमेंट|payment|commission|कमीशन|ledger|लेजर|refund|razorpay|accounting|wallet|reconciliation|कुल बुकिंग|नए काम/.test(text))return 'finance';
+  if(/staff|स्टाफ|support|सहायता|ai assistant|handoff|sos|rate catalogue|दर सूची/.test(text))return 'operations';
+  return 'overview';
+ }
+ const nodes=[...app.children].filter(el=>el!==toolbar&&el!==nav&&el!==pages);
+ nodes.forEach(el=>{const group=classify(el);el.dataset.srkAdminGroup=group;views[group].appendChild(el);});
+ const grid=nav.querySelector('#srkAdminNavGrid');
+ function showPage(id){Object.entries(views).forEach(([key,view])=>{view.hidden=key!==id;});nav.hidden=id!=='overview';pages.hidden=id==='overview';if(id==='overview'){views.overview.hidden=false;pages.hidden=false;}const title=groups.find(g=>g.id===id)?.title||'मुख्य डैशबोर्ड';nav.querySelector('h2').textContent=id==='overview'?'SRK ELECTRONIC CONTROL CENTER':title;window.scrollTo({top:0,behavior:'smooth'});}
+ groups.forEach(g=>{const b=document.createElement('button');b.type='button';b.className='admin-nav-button';b.style.setProperty('--nav-accent',g.accent);b.style.setProperty('--nav-tint',g.tint);b.innerHTML='<span class="admin-nav-icon">'+g.icon+'</span><span><strong>'+g.title+'</strong><small>'+g.desc+'</small></span>';b.addEventListener('click',()=>showPage(g.id));grid.appendChild(b);});
+ app.addEventListener('click',e=>{if(e.target.closest('[data-admin-home]'))showPage('overview');});
+ showPage('overview');
+})();
+init();
 </script></body></html>
