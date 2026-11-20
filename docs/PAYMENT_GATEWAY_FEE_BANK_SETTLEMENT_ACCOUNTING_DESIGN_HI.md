@@ -143,3 +143,18 @@ Do not create/apply migration until:
 6. user explicitly approves any hosted TEST mutation or paid Developer Branch creation.
 
 No Production migration, live provider API call, real refund, payout, bank transfer, deployment or merge is authorized by this design document. AI Gateway remains disabled until separate explicit authorization.
+
+
+## 9. Feature Branch schema inventory correction — 20 नवम्बर 2026
+
+यह section बाद की migration-level source review के आधार पर जोड़ा गया है; पुराने Route-ledger संबंधी कथन को वर्तमान schema न माना जाए।
+
+- `20261109020000_create_server_only_razorpay_route_transfer_ledger.sql` ने पहले `srk_route_transfers` बनाया था, लेकिन `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql` उसे DROP करता है। वर्तमान Feature Branch final schema में `srk_route_transfers` मौजूद नहीं होना चाहिए। पहले के दस्तावेज़/पुराने migrations का उल्लेख historical है।
+- वास्तविक payout base `20261114125844_restore_financial_audit_core_schema.sql` में `srk_electrician_payouts` है: एक booking पर एक payout; gross service, materials, commission और electrician payable; pending/paid/blocked/refunded status; Admin द्वारा UPI/Bank method, reference, actor और paid timestamp। Amount columns अभी numeric रुपये में हैं, integer paise में नहीं।
+- Razorpay refund intent `srk_razorpay_refunds` में booking, payment ID, provider refund ID, amount/amount_paise, INR, unique idempotency key और refund status है। Refund recovery evidence अलग append-only audit table में provider response digest, amount, payment/refund ID, status, acquirer reference और admin evidence रखता है।
+- Signed webhook inbox `srk_razorpay_webhook_events` में event ID, event type, payload SHA-256, state, attempts और lease/claim token हैं। यह webhook delivery idempotency है; payment collection accounting ledger नहीं।
+- Payment capture अभी `service_bookings` में `payment_status`, `amount_paid`, `razorpay_payment_id`, `razorpay_order_id` और `payment_verified_at` के रूप में दर्ज होता है। `verify-payment.js` payment API से captured status, order ID, INR और exact amount verify करता है। `razorpay-webhook.js` signed webhook और durable inbox के बाद booking/refund RPC reconcile करता है।
+- मौजूदा refund, payout, wallet, cancellation-fee और webhook mechanisms पहले से कई अलग migrations/RPC/triggers में जुड़े हैं। नया accounting schema इन्हें duplicate या replace नहीं करेगा; केवल verified source event references से reconciliation projection/append-only import records बनाएगा।
+- इस inventory से अभी Gateway Fee, Fee GST, Razorpay settlement batch, settlement net amount और actual bank-credit UTR का authoritative source contract प्रमाणित नहीं हुआ। इसलिए इन fields की provider report mapping और masked sample evidence के बिना SQL table/migration बनाना सुरक्षित नहीं है।
+- Route settlement को live product capability मानना गलत होगा: Route table retired है, कोई active transfer integration नहीं है। Electrician payout अभी Admin के बाहरी bank/UPI transfer के बाद reference दर्ज करने का workflow है।
+
