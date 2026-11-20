@@ -147,3 +147,23 @@ test("Unexpected RPC failures return a generic unavailable response without leak
   assert.equal(calls[1].options.headers.apikey, "anon-test");
   assert.equal(calls[1].options.headers.Authorization.includes("must-not-be-used"), false);
 });
+
+
+test("Every privileged handoff action preserves database permission denial without leaking details", async () => {
+  const cases = [
+    [{ action: "list", limit: 10 }, "srk_staff_list_assigned_ai_handoffs"],
+    [{ action: "messages", handoff_id: HANDOFF }, "srk_staff_list_assigned_ai_handoff_messages"],
+    [{ action: "reply", handoff_id: HANDOFF, body: "A valid reply." }, "srk_staff_reply_ai_handoff"],
+    [{ action: "resolve", handoff_id: HANDOFF }, "srk_staff_resolve_ai_handoff"],
+    [{ action: "assign", handoff_id: HANDOFF, staff_user_id: STAFF, reason: "Valid assignment reason" }, "srk_admin_assign_ai_handoff"]
+  ];
+  for (const [body, rpc] of cases) {
+    const { handler, calls } = setup({ rpcStatus: 403, rpcResult: { message: "sensitive policy internals" } });
+    const response = await handler(event(body));
+    assert.equal(response.statusCode, 403, body.action);
+    assert.equal(JSON.parse(response.body).error, "permission_denied", body.action);
+    assert.doesNotMatch(response.body, /sensitive policy internals/);
+    assert.equal(calls.length, 2, body.action);
+    assert.ok(calls[1].url.endsWith("/rpc/" + rpc), body.action);
+  }
+});
