@@ -34,9 +34,13 @@ An AI action must carry authenticated actor context established by the server, m
 
 For privileged operations, check public.is_srk_admin() explicitly where Main Admin-only authority is required. Do not use srk_has_admin_permission(text) as a substitute for Main Admin-only checks, because that helper also supports permitted active staff.
 
-## 4. Proposed API contracts (not implemented)
+## 4. वर्तमान implementation और प्रस्तावित API contracts
 
-**वर्तमान source implementation:** `lib/ai-server-guard.js` caller/profile/resource ownership और module/status checks करता है तथा अंत में `503 ai_not_enabled` लौटाता है। `netlify/functions/ai-assistant.js` और `netlify/functions/ai-handoff.js` thin wrappers हैं। `lib/ai-idempotency.js` deterministic digest helper देता है। Database migrations में private conversation/message/idempotency/handoff/audit tables तथा service-role-only reserve/finalize/append/handoff RPCs हैं। Main Admin के लिए `srk_admin_list_ai_handoff_queue(integer)` केवल queued/assigned handoff metadata पढ़ता है; यह assignment या resolution नहीं करता। Browser roles को AI control tables का direct access नहीं है।
+**20 नवम्बर 2026 का source status:** `lib/ai-server-guard.js` verified Supabase session, Customer/Electrician profile, conversation ownership/status और booking ownership जाँचता है। Assistant route अब `lib/ai-assistant-runtime.js` से conversation create, user message append, सीमित history read, server-side Gateway adapter call और atomic idempotency completion/replay flow जोड़ता है। `lib/ai-gateway-client.js` का provider adapter server-side key और `AI_GATEWAY_ENABLED=true` के बिना कोई provider request नहीं करता। Default OFF स्थिति में assistant runtime कोई database या provider request नहीं करता और `503 ai_not_enabled` लौटाता है।
+
+Human handoff route भी authenticated owner/module/conversation/booking checks के बाद `srk_ai_request_handoff` service-role RPC से queue बनाता है; यह भी उसी explicit release flag के पीछे बंद है। Main Admin/Staff handoff list, assignment, reply और resolve RPC/UI source मौजूद हैं। Handoff notifications (email/push/SMS) अभी इस flow में पूर्ण नहीं हैं। Database migrations में private conversation/message/idempotency/handoff/audit tables और service-role-only RPCs मौजूद हैं। Browser roles को AI control tables का direct access नहीं है।
+
+वर्तमान MVP assistant केवल informational replies देता है; कोई tool/action execute नहीं करता। इसलिए payment, refund, payout, booking mutation, rate change या permission change करने की क्षमता उपलब्ध नहीं है। Human approval-bound action execution को अलग, अभी-अपूर्ण release work माना जाएगा।
 
 Versioned routes:
 - POST /api/v1/ai/assistant
@@ -118,4 +122,4 @@ Before enabling any module: threat model, data minimization review, prompt-injec
 
 ## 10. Explicit exclusions
 
-यह दस्तावेज़ स्वयं कोई migration, table, RPC, API route, AI provider account/key, paid service या deployment नहीं बनाता। Repository में मौजूद foundation को पूर्ण/सक्रिय AI assistant न समझें: AI disabled है; provider/model integration, user-facing AI replies, action approvals/execution, agent assignment और notifications अभी शामिल नहीं हैं। AI को enable करने, provider secret जोड़ने या production deployment के लिए अलग स्पष्ट अनुमति और release gates आवश्यक हैं। मौजूदा 15% platform commission, payment/refund logic, rate catalogue, booking snapshots, Staff RBAC या पुरानी migration को यह design नहीं बदलता।
+AI अभी pre-launch में OFF रहेगा। इस चरण में provider account/key जोड़ना, `AI_GATEWAY_ENABLED=true` करना, वास्तविक provider call, paid usage या deployment शामिल नहीं है। Runtime और handoff route source में तैयार हैं, लेकिन release flag OFF रहने से निष्क्रिय हैं। Handoff notification delivery तथा कोई भी action/tool execution और उससे जुड़ा human-approval lifecycle अभी पूर्ण नहीं है। AI को enable करने, provider secret जोड़ने या production deployment के लिए ऐप लॉन्च के बाद अलग स्पष्ट अनुमति और release gates आवश्यक हैं। मौजूदा 15% platform commission, payment/refund logic, Rate List, booking snapshots, Staff RBAC या पुरानी migration को यह AI workstream नहीं बदलता।
