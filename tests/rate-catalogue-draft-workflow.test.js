@@ -146,6 +146,17 @@ test("Draft save UI sends validated four-tier paise payload to the RPC",async()=
 });
 
 
+test("Edit Draft rejects malformed IDs before assigning the draft update target",()=>{
+ const elements={adminRateCatalogueStatus:{textContent:""},rateElectricalAssistant:{value:""}};
+ const context=vm.createContext({window:{},document:{getElementById(id){return elements[id]||(elements[id]={value:"",textContent:""});}}});
+ const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
+ vm.runInContext(script,context);
+ vm.runInContext("adminRateCatalogueDraftCache=[{id:\"bad');globalThis.pwned=true;//\",rates:{electrical_assistant:123}}];",context);
+ vm.runInContext("editAdminRateCatalogueDraft(0)",context);
+ assert.equal(vm.runInContext("adminEditingRateDraftId",context),null);
+ assert.match(elements.adminRateCatalogueStatus.textContent,/संपादन रोक दिया गया/);
+ assert.equal(vm.runInContext("globalThis.pwned",context),undefined);
+});
 test("Draft queue never interpolates an untrusted draft ID into inline JavaScript",async()=>{
  const elements={adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""},adminRateCatalogueStatus:{textContent:""}};
  const malicious="x');globalThis.pwned=true;//";

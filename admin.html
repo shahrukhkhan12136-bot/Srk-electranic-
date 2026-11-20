@@ -932,7 +932,11 @@ function publishAdminRateCatalogueDraftFromQueue(index){
  return publishAdminRateCatalogueDraft(row.id);
 }
 function editAdminRateCatalogueDraft(index){
- const row=adminRateCatalogueDraftCache[index];if(!row||!row.id||!row.rates)return;
+ const row=adminRateCatalogueDraftCache[index];
+ if(!row||typeof row.id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id)||!row.rates||typeof row.rates!=='object'||Array.isArray(row.rates)){
+  document.getElementById('adminRateCatalogueStatus').textContent='Draft ID या दरों का रिकॉर्ड सही नहीं है; संपादन रोक दिया गया।';
+  return;
+ }
  adminEditingRateDraftId=row.id;
  for(const [key,label,id] of SRK_RATE_TIERS){const input=document.getElementById(id);if(input&&Number.isSafeInteger(Number(row.rates[key])))input.value=paiseToRupees(row.rates[key]);}
  const date=new Date(row.effective_at);if(Number.isFinite(date.getTime())){
