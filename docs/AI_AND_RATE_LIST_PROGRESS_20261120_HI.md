@@ -100,3 +100,13 @@
 - Request throttle अभी request-count limits enforce करता है; provider token usage और वास्तविक रुपये/डॉलर cost metering अभी अलग शेष कार्य है।
 
 - अतिरिक्त runtime failure-path test भी जोड़ा: rate-limit database RPC अनुपलब्ध होने पर request fail-closed रहती है और conversation/provider work शुरू नहीं होता। Node CI run [44727154101](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44727154101), SHA `f43bf906b417275bb842d89b7634888e661cf553` — success.
+
+
+## CI अंतिम सत्यापन — 20 नवम्बर, 17:26 IST
+
+- AI अनुरोध सीमा का corrected pgTAP workflow run [44727454305](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44727454305), SHA `18ad32b1d33d1c86bf3f153dea1d1dbc94d07c57` — **success**, 41/41 assertions.
+- उसी SHA पर Feature Branch Node tests run [44727454262](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44727454262) — **success**.
+- पहले से सफल Rate List checks: Rate Catalogue draft/security 20 assertions [44726698171](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726698171), booking snapshot [44726698165](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726698165), और full feature-branch PostgreSQL migration replay [44726698016](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726698016) — सभी success, लेकिन ये rate-limit migration के पहले वाले SHA `c3b0e0ed9cd409057bc810bb6468a77265787dce` पर हैं; इन्हें नए SHA पर rerun करना बाकी है।
+- Request limit implementation एक user/module के लिए पहले request से शुरू होने वाला fixed 10-minute bucket और UTC day counter intended करता है; इसे strict rolling-window guarantee न समझें। Database function में UTC day boundary की explicit timezone handling का अलग review बाकी है।
+- Gateway adapter provider response से prompt/completion/total token counts पढ़ता है, लेकिन runtime अभी इन counts को persist नहीं करता और provider/model pricing से रुपये/डॉलर cost calculate नहीं करता। इसलिए वास्तविक token/cost metering अभी पूरा नहीं है।
+- AI तथा push disabled हैं। कोई live provider call, hosted DB mutation, deploy, Main merge या Developer Branch creation नहीं हुई।
