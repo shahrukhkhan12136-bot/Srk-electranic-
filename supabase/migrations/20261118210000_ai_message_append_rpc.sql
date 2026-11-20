@@ -16,6 +16,7 @@ SET search_path=''
 AS $function$
 DECLARE
   v_owner_user_id uuid;
+  v_module_key text;
   v_status text;
   v_sender_user_id uuid;
   v_message_id uuid;
@@ -32,8 +33,8 @@ BEGIN
     RAISE EXCEPTION 'AI_INVALID_MESSAGE' USING ERRCODE='22023';
   END IF;
 
-  SELECT conversation.owner_user_id, conversation.status
-    INTO v_owner_user_id, v_status
+  SELECT conversation.owner_user_id, conversation.module_key, conversation.status
+    INTO v_owner_user_id, v_module_key, v_status
   FROM public.srk_ai_conversations AS conversation
   WHERE conversation.id = p_conversation_id
   FOR UPDATE;
@@ -61,6 +62,12 @@ BEGIN
   UPDATE public.srk_ai_conversations
   SET updated_at = clock_timestamp()
   WHERE id = p_conversation_id;
+
+  INSERT INTO public.srk_ai_audit_events (
+    conversation_id, actor_user_id, module_key, action_key, outcome
+  ) VALUES (
+    p_conversation_id, p_actor_user_id, v_module_key, 'message_recorded', 'completed'
+  );
 
   RETURN jsonb_build_object(
     'state','appended',
