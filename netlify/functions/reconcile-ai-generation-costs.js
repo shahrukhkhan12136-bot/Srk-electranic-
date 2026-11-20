@@ -31,13 +31,14 @@ exports.handler = async function () {
         http_status: response.status,
         claimed: Number(result.claimed || 0),
         reported: Number(result.reported || 0),
+        fxApplied: Number(result.fxApplied || 0),
         retried: Number(result.retried || 0),
         finishFailed: Number(result.finishFailed || 0)
       }));
       return { statusCode: 502, body: JSON.stringify({ success: false, status: response.status }) };
     }
     return { statusCode: 200, body: JSON.stringify({
-      success: true, claimed: result.claimed, reported: result.reported
+      success: true, claimed: result.claimed, reported: result.reported, fxApplied: result.fxApplied
     }) };
   } catch (error) {
     console.error("AI generation cost reconciliation failed:", error && error.name ? error.name : "unknown");
