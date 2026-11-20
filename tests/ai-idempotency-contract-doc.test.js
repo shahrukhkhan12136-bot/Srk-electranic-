@@ -47,7 +47,7 @@ test("AI idempotency database test plan requires real PostgreSQL transaction and
   assert.match(plan, /independent PostgreSQL sessions/i);
   assert.match(plan, /Transaction rollback/i);
   assert.match(plan, /Migration replay\/rollback/i);
-  assert.match(plan, /implementation added; expanded CI execution pending/i);
+  assert.match(plan, /34\/34 pgTAP assertions and both two-session concurrency checks passed/i);
   assert.match(plan, /34 pgTAP assertions/i);
   assert.match(plan, /two independent PostgreSQL sessions/i);
   assert.match(plan, /Static repository tests supplement but do not replace/i);
