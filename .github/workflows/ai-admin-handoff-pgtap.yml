@@ -14,7 +14,8 @@ on:
       - "supabase/tests/database/ai_handoff_notification_outbox.test.sql"
       - "supabase/tests/database/ai_handoff_push_subscription_ledger.test.sql"
       - "supabase/migrations/20261118300000_ai_handoff_notification_lease_fencing.sql"
-      - "supabase/migrations/20261118310000_ai_handoff_notification_recipient_safety.sql"\n      - "supabase/migrations/20261118320000_ai_handoff_push_requires_device_delivery.sql"
+      - "supabase/migrations/20261118310000_ai_handoff_notification_recipient_safety.sql"
+      - "supabase/migrations/20261118320000_ai_handoff_push_requires_device_delivery.sql"
       - ".github/workflows/ai-admin-handoff-pgtap.yml"
   pull_request:
     paths:
