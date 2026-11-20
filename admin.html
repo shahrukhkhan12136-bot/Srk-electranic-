@@ -1457,7 +1457,7 @@ function mapUrl(x){const q=(x.location_lat!=null&&x.location_lng!=null)?`${x.loc
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 // Progressive navigation: keep existing Admin modules and permissions intact.
 (function initSrkAdminNavigation(){
- const app=document.getElementById('app');if(!app||app.dataset.srkNavigationReady==='1')return;
+ const app=document.getElementById('app');if(!app)return;if(!app.dataset)app.dataset={};if(app.dataset.srkNavigationReady==='1')return;
  const toolbar=app.firstElementChild;if(!toolbar)return;
  app.dataset.srkNavigationReady='1';
  const nav=document.createElement('section');nav.className='admin-navigation';nav.id='srkAdminNavigation';
