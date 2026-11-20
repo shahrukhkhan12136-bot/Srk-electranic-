@@ -42,13 +42,23 @@
 
 हर FX snapshot में rate value, rate date, source name/URL, publication timestamp और retrieval timestamp सुरक्षित रखना होगा। Conversion RPC केवल वही नवीनतम FBIL rate चुनता है जो उस generation के timestamp तक प्रकाशित हो चुकी थी; इससे weekend/Mumbai holiday और दोपहर 1 बजे से पहले/बाद की generation में rate गलत तारीख से नहीं लगेगी। कोई rate hardcode नहीं होगी।
 
-## 5. अभी शेष कार्य
+## 5. FBIL data licensing — automatic ingestion पर रोक
+
+FBIL के आधिकारिक FAQ के अनुसार USD/INR Reference Rate एक significant benchmark है। FBIL के benchmark data का उपयोग pricing, loan servicing, valuation और समान उद्देश्यों में करने पर End-User License/fees लागू हो सकते हैं; बिना registration/license के उपयोग को unauthorized बताया गया है। इसलिए केवल वेबसाइट पर rate दिखाई देने के आधार पर उसे SRK ELECTRONIC के server में स्वतः scrape या store करना उचित नहीं होगा।
+
+- FBIL FAQ: https://www.fbil.org.in/uploads/FAQ_s_updates_30th_Nov_2023_edited_version_1def7b65bb.pdf
+- FAQ में registration process और fees के बारे में: पहले registration, फिर FBIL license agreement/quotation; registration form भरना निःशुल्क है।
+- कोई FBIL subscription, API/SFTP access या paid data service इस समय खरीदी/मांगी/कनेक्ट नहीं की गई है।
+- इसलिए अभी कोई automatic FBIL fetcher नहीं जोड़ा जाएगा। पहले FBIL से लिखित रूप में पूछना होगा कि internal AI service-cost accounting के लिए कौन-सा license/permission लागू होता है और क्या API/SFTP access उपलब्ध है। कोई शुल्क हो तो उपयोगकर्ता की अलग मंजूरी जरूरी होगी।
+- यदि FBIL license जरूरी हो या बजट के अनुकूल न हो, तो उपयोगकर्ता की मंजूरी से वैकल्पिक permitted FX source या वास्तविक INR billing/settlement amount के आधार पर cost accounting चुना जाएगा। FX unavailable होने पर अनुमानित रुपये नहीं लिखे जाएंगे।
+
+## 6. अभी शेष कार्य
 
 1. नए timestamp-aware cost worker और FBIL FX migrations के pgTAP replay/test परिणाम देखना और failure ठीक करना।
-2. FBIL reference rate को भरोसेमंद तरीके से ingest करने का तरीका तय करना; वेबसाइट की उपलब्धता/format की जाँच के बिना scraping/API मानकर नहीं चलना। अभी कोई स्वचालित FBIL fetcher नहीं जोड़ा गया है।
-3. FX rate ingestion के बाद वास्तविक rate-date, publication-time, weekend/holiday selection और INR conversion का integration test करना।
+2. FBIL से usage-license/API/SFTP संबंधी लिखित पुष्टि का रास्ता तय करना; तब तक automatic scraping/fetching बंद रहेगी।
+3. स्वीकृत data source मिलने पर rate-date, publication-time, weekend/holiday selection और INR conversion का integration test करना।
 4. इसके बाद अलग काम के रूप में ₹20 daily / ₹500 monthly atomic reservation guard लागू करना — लेकिन अभी नहीं, जब तक उपयोगकर्ता स्पष्ट रूप से budget implementation की अनुमति न दे।
 
-## 6. सुरक्षा सीमा
+## 7. सुरक्षा सीमा
 
 कोई migration hosted Supabase पर लागू नहीं हुई। Edge Function deploy नहीं हुई। Netlify schedule deploy नहीं हुआ। कोई live Gateway call या live AI call नहीं हुई। `AI_GATEWAY_ENABLED`, `AI_COST_RECONCILIATION_ENABLED` और `AI_HANDOFF_PUSH_ENABLED` को enable नहीं किया गया। Budget limits अभी केवल planning हैं।
