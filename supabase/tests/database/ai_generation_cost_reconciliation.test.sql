@@ -12,7 +12,7 @@ SELECT has_column('public','srk_ai_generation_cost_jobs','locked_until',
 SELECT has_function('public','srk_claim_ai_generation_cost_jobs',
   ARRAY['integer'],'service worker can claim due generation cost jobs');
 SELECT has_function('public','srk_finish_ai_generation_cost_job',
-  ARRAY['uuid','integer','boolean','numeric','text','text'],
+  ARRAY['uuid','integer','boolean','numeric','text','timestamp with time zone','text'],
   'service worker can finish a fenced generation cost attempt');
 SELECT ok(
   (SELECT relrowsecurity FROM pg_class
@@ -25,7 +25,7 @@ SELECT ok(
   has_function_privilege('service_role',
     'public.srk_claim_ai_generation_cost_jobs(integer)','EXECUTE')
   AND has_function_privilege('service_role',
-    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,text)','EXECUTE')
+    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,timestamp with time zone,text)','EXECUTE')
   AND NOT has_function_privilege('anon',
     'public.srk_claim_ai_generation_cost_jobs(integer)','EXECUTE')
   AND NOT has_function_privilege('authenticated',
