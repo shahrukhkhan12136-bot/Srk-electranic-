@@ -51,7 +51,7 @@ test("idempotent replay returns persisted reply without another model request",a
  let modelCalls=0;let internalError="";
  const runtime=createAiAssistantRuntime({env,onError:e=>{internalError=e;},fetchImpl:async(url)=>{
   if(url.includes("srk_ai_reserve_idempotency"))return res({state:"replay",response_message_id:message,response_code:200,conversation_id:conversation});
-  if(url.includes("/rest/v1/srk_ai_messages?"))return res([{id:message,conversation_id,sender_kind:"assistant",body:"पहले वाला जवाब"}]);
+  if(url.includes("/rest/v1/srk_ai_messages?"))return res([{id:message,conversation_id:conversation,sender_kind:"assistant",body:"पहले वाला जवाब"}]);
   if(url==="https://ai-gateway.vercel.sh/v1/chat/completions")modelCalls++;
   throw Error("unexpected request");
  }});
