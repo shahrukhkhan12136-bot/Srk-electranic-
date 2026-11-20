@@ -157,6 +157,31 @@ test("Edit Draft rejects malformed IDs before assigning the draft update target"
  assert.match(elements.adminRateCatalogueStatus.textContent,/संपादन रोक दिया गया/);
  assert.equal(vm.runInContext("globalThis.pwned",context),undefined);
 });
+test("Edit Draft rejects incomplete or malformed rate records without changing the form",()=>{
+ const elements={adminRateCatalogueStatus:{textContent:""},rateElectricalAssistant:{value:"previous-1"},rateSkilledElectrician:{value:"previous-2"},rateExpertElectrician:{value:"previous-3"},ratePremiumSpecialist:{value:"previous-4"},rateCatalogueEffectiveAt:{value:"previous-date"},rateCatalogueReason:{value:"previous-reason"}};
+ const context=vm.createContext({window:{},document:{getElementById(id){return elements[id]||null;}}});
+ const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
+ vm.runInContext(script,context);
+ const validId="123e4567-e89b-42d3-a456-426614174000";
+ const invalidDrafts=[
+  {id:validId,rates:{electrical_assistant:100,skilled_electrician:200,expert_electrician:300},effective_at:"2027-12-01T10:00:00Z",reason:"Valid reason"},
+  {id:validId,rates:{electrical_assistant:100,skilled_electrician:200,expert_electrician:300,premium_electrical_specialist:null},effective_at:"2027-12-01T10:00:00Z",reason:"Valid reason"},
+  {id:validId,rates:{electrical_assistant:100,skilled_electrician:200,expert_electrician:300,premium_electrical_specialist:400,unexpected:500},effective_at:"2027-12-01T10:00:00Z",reason:"Valid reason"}
+ ];
+ for(const draft of invalidDrafts){
+  vm.runInContext("adminEditingRateDraftId=null",context);
+  context.invalidDraft=draft;
+  vm.runInContext("adminRateCatalogueDraftCache=[invalidDraft];editAdminRateCatalogueDraft(0)",context);
+  assert.equal(vm.runInContext("adminEditingRateDraftId",context),null);
+  assert.equal(elements.rateElectricalAssistant.value,"previous-1");
+  assert.equal(elements.rateSkilledElectrician.value,"previous-2");
+  assert.equal(elements.rateExpertElectrician.value,"previous-3");
+  assert.equal(elements.ratePremiumSpecialist.value,"previous-4");
+  assert.equal(elements.rateCatalogueEffectiveAt.value,"previous-date");
+  assert.equal(elements.rateCatalogueReason.value,"previous-reason");
+  assert.match(elements.adminRateCatalogueStatus.textContent,/संपादन रोक दिया गया/);
+ }
+});
 test("Draft queue never interpolates an untrusted draft ID into inline JavaScript",async()=>{
  const elements={adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""},adminRateCatalogueStatus:{textContent:""}};
  const malicious="x');globalThis.pwned=true;//";

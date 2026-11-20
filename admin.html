@@ -933,17 +933,24 @@ function publishAdminRateCatalogueDraftFromQueue(index){
 }
 function editAdminRateCatalogueDraft(index){
  const row=adminRateCatalogueDraftCache[index];
- if(!row||typeof row.id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id)||!row.rates||typeof row.rates!=='object'||Array.isArray(row.rates)){
-  document.getElementById('adminRateCatalogueStatus').textContent='Draft ID या दरों का रिकॉर्ड सही नहीं है; संपादन रोक दिया गया।';
+ const validId=row&&typeof row.id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id);
+ const validRates=row&&row.rates&&typeof row.rates==='object'&&!Array.isArray(row.rates)&&
+  Object.keys(row.rates).length===SRK_RATE_TIERS.length&&
+  SRK_RATE_TIERS.every(([key])=>Object.prototype.hasOwnProperty.call(row.rates,key)&&Number.isSafeInteger(row.rates[key])&&row.rates[key]>0);
+ const effectiveDate=row?new Date(row.effective_at):new Date(NaN);
+ const validReason=row&&typeof row.reason==='string'&&row.reason.trim().length>=5&&row.reason.length<=500;
+ const rateInputs=SRK_RATE_TIERS.map(([,label,id])=>document.getElementById(id));
+ const effectiveInput=document.getElementById('rateCatalogueEffectiveAt');
+ const reasonInput=document.getElementById('rateCatalogueReason');
+ if(!validId||!validRates||!Number.isFinite(effectiveDate.getTime())||!validReason||rateInputs.some(input=>!input)||!effectiveInput||!reasonInput){
+  document.getElementById('adminRateCatalogueStatus').textContent='Draft ID, चारों दरें, लागू समय या कारण सही नहीं है; संपादन रोक दिया गया।';
   return;
  }
  adminEditingRateDraftId=row.id;
- for(const [key,label,id] of SRK_RATE_TIERS){const input=document.getElementById(id);if(input&&Number.isSafeInteger(Number(row.rates[key])))input.value=paiseToRupees(row.rates[key]);}
- const date=new Date(row.effective_at);if(Number.isFinite(date.getTime())){
-  const local=new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16);
-  document.getElementById('rateCatalogueEffectiveAt').value=local;
- }
- document.getElementById('rateCatalogueReason').value=row.reason||'';
+ SRK_RATE_TIERS.forEach(([key,label,id],index)=>{rateInputs[index].value=paiseToRupees(row.rates[key]);});
+ const local=new Date(effectiveDate.getTime()-effectiveDate.getTimezoneOffset()*60000).toISOString().slice(0,16);
+ effectiveInput.value=local;
+ reasonInput.value=row.reason;
  document.getElementById('adminRateCatalogueStatus').textContent='Draft संपादन के लिए खुला है: '+row.id;
 }
 async function saveAdminRateCatalogueDraft(){
