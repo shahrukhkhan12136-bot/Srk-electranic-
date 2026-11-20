@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(14);
+SELECT plan(15);
 
 SELECT has_table('srk_private','srk_ai_handoff_notification_outbox',
   'private AI handoff notification outbox exists');
@@ -62,6 +62,13 @@ SELECT ok(
     'public.srk_claim_ai_handoff_notification_outbox(integer)'::regprocedure
   )) > 0,
   'resolved handoffs are suppressed instead of notified'
+);
+
+SELECT ok(
+  position('RETURN EXISTS (' in pg_get_functiondef(
+    'public.srk_is_ai_handoff_subscription_delivery_complete(uuid)'::regprocedure
+  )) > 0,
+  'an outbox with no registered device delivery is not marked complete'
 );
 
 SELECT * FROM finish();
