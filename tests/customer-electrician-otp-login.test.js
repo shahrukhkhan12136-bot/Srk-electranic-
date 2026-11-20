@@ -21,7 +21,8 @@ test('customer OTP login normalizes Indian numbers and verifies SMS OTP before d
 
 test('customer booking dashboard OTP accepts only Indian 10-digit or +91 numbers', () => {
   assert.ok(booking.includes("if (digits.length === 10) return '+91' + digits;"));
-  assert.ok(booking.includes("if (raw.startsWith('+91') && digits.length === 12 && digits.startsWith('91')) return '+91' + digits;"));
+  assert.ok(booking.includes("if (raw.startsWith('+91') && digits.length === 12 && digits.startsWith('91')) return '+91' + digits.slice(2);"));
+  assert.ok(!booking.includes("return '+91' + digits;"), "already-prefixed customer numbers must not receive a duplicate +91 prefix");
   assert.ok(!booking.includes('digits.length >= 10 && digits.length <= 15'));
 });
 
