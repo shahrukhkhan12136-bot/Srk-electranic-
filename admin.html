@@ -1493,7 +1493,7 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
  const electricianView=views.electricians;
  const electricianPanel=document.createElement('section');electricianPanel.className='srk-list-panel';electricianPanel.id='srkElectricianDirectory';
  electricianPanel.innerHTML='<h3>इलेक्ट्रिशियन — अलग-अलग सूचियाँ</h3><p class="muted">किसी श्रेणी पर क्लिक करें। सूची वास्तविक Admin डेटा से बनेगी।</p><div class="srk-subnav" id="srkElectricianSubnav"></div><div id="srkElectricianListHeading" class="admin-page-heading"><h2>सभी इलेक्ट्रिशियन श्रेणियाँ</h2></div><div id="srkElectricianList" class="srk-data-list" aria-live="polite">लॉगिन डेटा लोड होने पर सूची यहाँ दिखाई देगी।</div>';
- electricianView.appendChild(electricianPanel);
+ const electricianHeading=electricianView.querySelector('.admin-page-heading');if(electricianHeading)electricianHeading.insertAdjacentElement('afterend',electricianPanel);else electricianView.prepend(electricianPanel);
  const electricianCategories=[
   {id:'kyc_pending',label:'KYC पेंडिंग',color:'#c18b00'},
   {id:'kyc_review',label:'KYC जाँच में',color:'#1d4ed8'},
