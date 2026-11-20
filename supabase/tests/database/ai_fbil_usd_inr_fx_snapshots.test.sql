@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(13);
+SELECT plan(14);
 
 SELECT has_table('public','srk_ai_usd_inr_reference_rates',
   'private FBIL USD/INR reference-rate snapshot table exists');
