@@ -79,13 +79,13 @@ jobs:
             local file="$1"
             local expected_plan="$2"
             local output
-            output="$({ printf '%s\n' 'SET search_path = public, extensions;'; cat "$GITHUB_WORKSPACE/$file"; } | docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 2>&1)" || { printf '%s\n' "$output"; return 1; }
+            output="$({ echo 'SET search_path = public, extensions;'; cat "$GITHUB_WORKSPACE/$file"; } | docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 2>&1)" || { echo "$output"; return 1; }
             printf '%s\n' "$output"
-            if printf '%s\n' "$output" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
+            if echo "$output" | grep -Eq 'not ok [0-9]+|Looks like you failed [1-9]'; then
               echo "pgTAP reported failed assertions in $file."
               return 1
             fi
-            if ! printf '%s\n' "$output" | grep -Fq "1..$expected_plan"; then
+            if ! echo "$output" | grep -Fq "1..$expected_plan"; then
               echo "Expected pgTAP plan 1..$expected_plan was not found in $file."
               return 1
             fi
