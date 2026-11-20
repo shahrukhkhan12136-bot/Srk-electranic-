@@ -1491,6 +1491,31 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
  nodes.forEach(el=>{const group=classify(el);el.dataset.srkAdminGroup=group;views[group].appendChild(el);});
  const grid=nav.querySelector('#srkAdminNavGrid');
  const electricianView=views.electricians;
+ function addDataSection(viewId,sectionId,title,description,categories,renderRows){
+  const view=views[viewId],panel=document.createElement('section');panel.className='srk-list-panel';panel.id=sectionId;
+  panel.innerHTML='<h3>'+title+'</h3><p class="muted">'+description+'</p><div class="srk-subnav"></div><div class="admin-page-heading"><h2 class="srk-list-heading">सूची चुनें</h2><span class="muted srk-list-count"></span></div><div class="srk-data-list" aria-live="polite">डेटा लोड होने पर सूची दिखाई देगी।</div>';
+  const head=view.querySelector('.admin-page-heading');if(head)head.insertAdjacentElement('afterend',panel);else view.prepend(panel);
+  let active=categories[0].id;
+  function draw(){const result=renderRows(active,window.srkAdminDashboardData||{}),list=panel.querySelector('.srk-data-list');panel.querySelector('.srk-list-heading').textContent=result.title;panel.querySelector('.srk-list-count').textContent=result.rows.length+' रिकॉर्ड';
+   list.innerHTML=result.rows.length?result.rows.map(row=>'<article class="srk-data-row"><div><strong>'+escText(row.name)+'</strong><small>'+escText(row.detail||'')+'</small></div><span class="srk-status '+(row.kind||'pending')+'">'+escText(row.status||'')+'</span></article>').join(''):'<div class="srk-data-row">इस सूची में अभी कोई रिकॉर्ड उपलब्ध नहीं है।</div>';
+   panel.querySelectorAll('button[data-category]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.category===active)));
+  }
+  const buttons=panel.querySelector('.srk-subnav');categories.forEach(c=>{const b=document.createElement('button');b.type='button';b.dataset.category=c.id;b.style.setProperty('--sub-color',c.color||'#1d4ed8');b.innerHTML='<strong>'+c.label+'</strong><em>›</em>';b.setAttribute('aria-pressed','false');b.addEventListener('click',()=>{active=c.id;draw();});buttons.appendChild(b);});
+  return draw;
+ }
+ const customerCategories=[{id:'all',label:'सभी ग्राहक',color:'#0f8b8d'},{id:'repeat',label:'एक से अधिक ऑर्डर',color:'#1d4ed8'}];
+ const renderCustomers=addDataSection('customers','srkCustomerDirectory','ग्राहक — अलग-अलग सूचियाँ','बुकिंग में दर्ज वास्तविक ग्राहक रिकॉर्ड से सूची तैयार होगी।',customerCategories,(cat,d)=>{
+  const bookings=d.bookings||[],byPhone=new Map();bookings.forEach(b=>{const key=String(b.phone||b.customer_name||'unknown');if(!byPhone.has(key))byPhone.set(key,[]);byPhone.get(key).push(b);});
+  const rows=[...byPhone.values()].filter(list=>cat==='all'||list.length>1).map(list=>{const b=list[0];return {name:b.customer_name||'नाम उपलब्ध नहीं',detail:(b.phone||'फोन उपलब्ध नहीं')+' • '+list.length+' बुकिंग • '+[b.district,b.state].filter(Boolean).join(', '),status:list.length+' ऑर्डर',kind:'review'};});
+  return {title:cat==='repeat'?'एक से अधिक ऑर्डर वाले ग्राहक':'सभी बुकिंग वाले ग्राहक',rows};
+ });
+ const orderCategories=[{id:'new',label:'नए ऑर्डर',color:'#2563eb'},{id:'active',label:'चल रहे / पेंडिंग',color:'#d97706'},{id:'completed',label:'कंप्लीट ऑर्डर',color:'#16834a'},{id:'cancelled',label:'रद्द ऑर्डर',color:'#c62828'},{id:'all',label:'सभी ऑर्डर',color:'#7047c8'}];
+ const renderOrders=addDataSection('orders','srkOrderDirectory','ऑर्डर और बुकिंग — अलग-अलग सूचियाँ','हर स्टेटस की बुकिंग अलग सूची में दिखाई जाएगी।',orderCategories,(cat,d)=>{
+  const profiles=new Map((d.profiles||[]).map(p=>[String(p.id),p]));
+  const rows=(d.bookings||[]).filter(b=>cat==='all'||(cat==='active'?!['completed','cancelled','rejected'].includes(String(b.status||'').toLowerCase())&&b.status!=='new':cat==='cancelled'?['cancelled','rejected'].includes(String(b.status||'').toLowerCase()):String(b.status||'').toLowerCase()===cat)).map(b=>{const p=profiles.get(String(b.assigned_electrician_id))||{};return {name:(b.customer_name||'ग्राहक')+' • '+(b.service_type||'सेवा'),detail:'ग्राहक: '+(b.phone||'—')+' • इलेक्ट्रिशियन: '+(p.display_name||'अभी Assign नहीं')+' • ₹'+Number(b.quoted_amount||0).toFixed(2),status:b.status||'अज्ञात',kind:['completed'].includes(String(b.status||'').toLowerCase())?'approved':['cancelled','rejected'].includes(String(b.status||'').toLowerCase())?'rejected':'pending'};});
+  return {title:orderCategories.find(x=>x.id===cat)?.label||'ऑर्डर',rows};
+ });
+
  const electricianPanel=document.createElement('section');electricianPanel.className='srk-list-panel';electricianPanel.id='srkElectricianDirectory';
  electricianPanel.innerHTML='<h3>इलेक्ट्रिशियन — अलग-अलग सूचियाँ</h3><p class="muted">किसी श्रेणी पर क्लिक करें। सूची वास्तविक Admin डेटा से बनेगी।</p><div class="srk-subnav" id="srkElectricianSubnav"></div><div id="srkElectricianListHeading" class="admin-page-heading"><h2>सभी इलेक्ट्रिशियन श्रेणियाँ</h2></div><div id="srkElectricianList" class="srk-data-list" aria-live="polite">लॉगिन डेटा लोड होने पर सूची यहाँ दिखाई देगी।</div>';
  const electricianHeading=electricianView.querySelector('.admin-page-heading');if(electricianHeading)electricianHeading.insertAdjacentElement('afterend',electricianPanel);else electricianView.prepend(electricianPanel);
@@ -1534,7 +1559,7 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
   document.getElementById('srkElectricianList').innerHTML=rows.length?rows.map(x=>'<article class="srk-data-row"><div><strong>'+escText(x.name)+'</strong><small>'+escText(x.phone||'फोन उपलब्ध नहीं')+' • '+escText(x.detail)+'</small></div><span class="srk-status '+(String(x.status).toLowerCase().includes('reject')?'rejected':String(x.status).toLowerCase().includes('approv')||String(x.status).toLowerCase().includes('active')?'approved':String(x.status).toLowerCase().includes('review')?'review':'pending')+'">'+escText(x.status)+'</span></article>').join(''):'<div class="srk-data-row"><span>इस श्रेणी में अभी कोई रिकॉर्ड उपलब्ध नहीं है।</span></div>';
   document.querySelectorAll('#srkElectricianSubnav button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.category===selectedElectricianCategory)));
  }
- window.renderSrkElectricianLists=renderElectricianCategory;
+ window.renderSrkElectricianLists=()=>{renderElectricianCategory();renderCustomers();renderOrders();};
  const subnav=electricianPanel.querySelector('#srkElectricianSubnav');
  electricianCategories.forEach(c=>{const b=document.createElement('button');b.type='button';b.dataset.category=c.id;b.style.setProperty('--sub-color',c.color);b.innerHTML='<strong>'+c.label+'</strong><em>›</em>';b.setAttribute('aria-pressed','false');b.addEventListener('click',()=>{selectedElectricianCategory=c.id;renderElectricianCategory();});subnav.appendChild(b);});
  renderElectricianCategory();
