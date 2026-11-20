@@ -133,3 +133,10 @@
 - Corrected that assertion to the already-used tagged dollar quote `$q$ ... $q$` in commit `6c5cfb442168a1c7ef824bd3bab3492fca9ff454`.
 - Corrected 50-assertion rerun [44733448601](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733448601) is pending. Do not call the 50 pgTAP assertions passed until this run completes successfully.
 - Full feature-branch migration replay including the usage-ledger migration: run [44733164959](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164959), SHA `0aeca4be9e704eb336f56c2a0b881e9d36a9a2fb` — success.
+
+
+## Rate List CI retry — 20 नवम्बर
+
+- Rate List booking snapshot run [44733164939](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164939), SHA `0aeca4be9e704eb336f56c2a0b881e9d36a9a2fb` — retry success.
+- पहले attempt में disposable Supabase DB container host port `57432` पहले से occupied था; यह application SQL/test failure नहीं था। Retry ने isolated DB शुरू करके booking snapshot test पूरा किया।
+- उसी SHA पर Rate Catalogue draft/security pgTAP [44733164876](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164876) और AI Main Admin/Staff handoff pgTAP [44733164775](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164775) — success.
