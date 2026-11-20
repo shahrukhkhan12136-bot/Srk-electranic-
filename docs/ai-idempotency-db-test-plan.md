@@ -1,6 +1,6 @@
 # AI idempotency database test plan
 
-Status: **test plan only — NOT EXECUTED**. GPT-2 owns implementation and execution of shared database tests. The test target must be explicitly approved as non-production. Do not point these tests at production.
+Status: **test plan only — NOT EXECUTED**. GPT-1 owns implementation and execution of the combined database tests. The approved disposable CI PostgreSQL runner may be used; the existing Supabase TEST project must not be used destructively because its old data must be preserved. Do not point these tests at production.
 
 ## Required test matrix
 
