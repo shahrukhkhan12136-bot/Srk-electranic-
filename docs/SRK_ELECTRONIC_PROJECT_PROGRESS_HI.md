@@ -1,3 +1,12 @@
+## 2026-11-20 — Payout reference uniqueness strengthened
+
+- UTR / UPI reference guard को केवल RPC check पर निर्भर नहीं छोड़ा: migration में normalized `lower(btrim(payout_reference))` पर partial UNIQUE index भी जोड़ा गया। अब Admin RPC के बाहर किसी अन्य write path से duplicate reference डालने की कोशिश भी database स्तर पर reject होगी।
+- Migration पुराने payout records में पहले से duplicate normalized references मिलने पर स्पष्ट exception देकर रुकती है; अपने-आप पुराने records बदलती या हटाती नहीं।
+- Admin RPC में advisory transaction lock और duplicate-reference exception बना हुआ है; unique index अंतिम database-level backstop है।
+- Regression test में unique index, legacy duplicate precheck और RPC lock assertions शामिल हैं।
+- **सत्यापन सीमा:** Feature Branch source committed है; अभी इस नए migration के बाद Node test suite और disposable PostgreSQL migration replay का परिणाम उपलब्ध नहीं है। Vercel status success दिखा, लेकिन यह Node/SQL test pass का विकल्प नहीं है।
+- Hosted TEST/Production DB, पुराने records, live payment provider, payout, refund, merge और deployment में कोई बदलाव नहीं किया।
+
 ## 2026-11-20 — Electrician payout reference duplicate guard
 
 - Admin payout RPC में पहले से booking-first row locks और pending-only Paid transition थे, लेकिन अलग payout records पर एक ही bank UTR / UPI reference reuse को रोकने का explicit cross-payout guard नहीं था।
