@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(27);
+SELECT plan(34);
 INSERT INTO auth.users (id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at)
 VALUES
  ('00000000-0000-4000-8000-000000000101','authenticated','authenticated','ai-owner@example.test','',transaction_timestamp(),transaction_timestamp(),transaction_timestamp()),
@@ -106,6 +106,45 @@ WHERE actor_user_id=(SELECT actor_one FROM ai_test_context)
  AND idempotency_key=(SELECT key_three FROM ai_test_context);
 SELECT is((public.srk_ai_reserve_idempotency(actor_one,key_three,decode(repeat('d',64),'hex'))->>'state'),'reserved',
  'failure key can be reused strictly after retention expiry') FROM ai_test_context;
+UPDATE public.srk_ai_idempotency SET retention_expires_at=transaction_timestamp()
+WHERE actor_user_id=(SELECT actor_one FROM ai_test_context)
+ AND idempotency_key=(SELECT key_one FROM ai_test_context);
+SELECT is((public.srk_ai_reserve_idempotency(actor_one,key_one,digest_one)->>'state'),'replay',
+ 'completed response remains replayable exactly at the seven-day retention boundary') FROM ai_test_context;
+UPDATE public.srk_ai_idempotency SET retention_expires_at=transaction_timestamp()-interval '1 microsecond'
+WHERE actor_user_id=(SELECT actor_one FROM ai_test_context)
+ AND idempotency_key=(SELECT key_one FROM ai_test_context);
+SELECT is((public.srk_ai_reserve_idempotency(actor_one,key_one,decode(repeat('e',64),'hex'))->>'state'),'reserved',
+ 'completed key can be reused only strictly after retention expiry') FROM ai_test_context;
+SELECT is((public.srk_ai_reserve_idempotency(actor_one,key_four,digest_one)->>'state'),'reserved',
+ 'rollback test request reserves successfully') FROM ai_test_context;
+CREATE OR REPLACE FUNCTION public.srk_test_fail_ai_audit_insert()
+RETURNS trigger LANGUAGE plpgsql AS $test$
+BEGIN
+ RAISE EXCEPTION 'AI_TEST_FORCED_AUDIT_FAILURE' USING ERRCODE='P0001';
+END;
+$test$;
+CREATE TRIGGER srk_test_fail_ai_audit_insert
+BEFORE INSERT ON public.srk_ai_audit_events
+FOR EACH ROW EXECUTE FUNCTION public.srk_test_fail_ai_audit_insert();
+SELECT throws_ok(
+ $SELECT public.srk_ai_complete_idempotency(
+  (SELECT actor_one FROM ai_test_context),(SELECT key_four FROM ai_test_context),
+  (SELECT digest_one FROM ai_test_context),1,(SELECT conversation_two FROM ai_test_context),
+  'Rollback answer',200)$,
+ 'P0001','AI_TEST_FORCED_AUDIT_FAILURE',
+ 'forced audit failure aborts the completion transaction');
+DROP TRIGGER srk_test_fail_ai_audit_insert ON public.srk_ai_audit_events;
+DROP FUNCTION public.srk_test_fail_ai_audit_insert();
+SELECT is((SELECT i.status FROM public.srk_ai_idempotency i JOIN ai_test_context c
+ ON i.actor_user_id=c.actor_one AND i.idempotency_key=c.key_four),
+ 'processing','failed transaction leaves the idempotency claim processing');
+SELECT is((SELECT count(*)::integer FROM public.srk_ai_messages
+ WHERE conversation_id=(SELECT conversation_two FROM ai_test_context) AND sender_kind='assistant'),
+ 0,'failed transaction rolls back the inserted assistant message');
+SELECT is((public.srk_ai_complete_idempotency(actor_one,key_four,digest_one,1,conversation_two,
+ 'Committed answer',200)->>'state'),'completed',
+ 'same claim can complete successfully after rollback') FROM ai_test_context;
 SELECT throws_ok(
  $$SELECT public.srk_ai_finalize_idempotency((SELECT actor_one FROM ai_test_context),
  (SELECT key_four FROM ai_test_context),(SELECT digest_one FROM ai_test_context),1,'completed',200,NULL)$$,
