@@ -6,6 +6,7 @@ on:
       - feat/ai-rate-management-foundation-20261118
     paths:
       - "supabase/functions/ai-generation-cost-reconcile/**"
+      - "supabase/functions/_shared/ai-generation-cost.mjs"
       - ".github/workflows/ai-generation-cost-reconcile-deno-check.yml"
   pull_request:
     paths:
