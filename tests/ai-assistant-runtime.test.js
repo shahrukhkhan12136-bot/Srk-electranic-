@@ -30,7 +30,7 @@ test("new assistant turn persists user message and completes fenced idempotency 
   if(url.includes("/rest/v1/srk_ai_messages?"))return res([{sender_kind:"user",body:"नमस्ते"}]);
   if(url==="https://ai-gateway.vercel.sh/v1/chat/completions"){
    assert.equal(JSON.parse(opt.body).messages.at(-1).content,"नमस्ते");
-   return res({id:"gen-test-001",choices:[{message:{content:"नमस्ते! कैसे मदद करूँ?"}}],usage:{prompt_tokens:31,completion_tokens:12,total_tokens:43}});
+   return res({id:"gen_test_001",choices:[{message:{content:"नमस्ते! कैसे मदद करूँ?"}}],usage:{prompt_tokens:31,completion_tokens:12,total_tokens:43}});
   }
   if(url.includes("srk_ai_record_usage_event")){
    const body=JSON.parse(opt.body);
@@ -49,7 +49,7 @@ test("new assistant turn persists user message and completes fenced idempotency 
   if(url.includes("srk_ai_queue_generation_cost_job")){
    const body=JSON.parse(opt.body);
    assert.equal(body.p_attempt_id.length,36);
-   assert.equal(body.p_generation_id,"gen-test-001");
+   assert.equal(body.p_generation_id,"gen_test_001");
    assert.equal(body.p_provider_key,"vercel_ai_gateway");
    return res({state:"queued"});
   }
@@ -141,7 +141,7 @@ test("missing provider usage is explicitly recorded without inventing token coun
   if(url.includes("srk_ai_create_conversation"))return res({state:"created",conversation_id:conversation});
   if(url.includes("srk_ai_append_message"))return res({state:"appended"});
   if(url.includes("/rest/v1/srk_ai_messages?"))return res([{sender_kind:"user",body:"नमस्ते"}]);
-  if(url==="https://ai-gateway.vercel.sh/v1/chat/completions")return res({id:"gen-test-001",choices:[{message:{content:"ठीक है"}}]});
+  if(url==="https://ai-gateway.vercel.sh/v1/chat/completions")return res({id:"gen_test_001",choices:[{message:{content:"ठीक है"}}]});
   if(url.includes("srk_ai_record_usage_event")){
    recorded=JSON.parse(opt.body);
    return res({state:"recorded"});
@@ -149,7 +149,7 @@ test("missing provider usage is explicitly recorded without inventing token coun
   if(url.includes("srk_ai_queue_generation_cost_job")){
    const body=JSON.parse(opt.body);
    assert.equal(body.p_attempt_id.length,36);
-   assert.equal(body.p_generation_id,"gen-test-001");
+   assert.equal(body.p_generation_id,"gen_test_001");
    assert.equal(body.p_provider_key,"vercel_ai_gateway");
    return res({state:"queued"});
   }
@@ -174,7 +174,7 @@ test("usage ledger failure prevents an unmetered assistant response",async()=>{
   if(url.includes("srk_ai_create_conversation"))return res({state:"created",conversation_id:conversation});
   if(url.includes("srk_ai_append_message"))return res({state:"appended"});
   if(url.includes("/rest/v1/srk_ai_messages?"))return res([{sender_kind:"user",body:"नमस्ते"}]);
-  if(url==="https://ai-gateway.vercel.sh/v1/chat/completions")return res({id:"gen-test-001",choices:[{message:{content:"उत्तर"}}],usage:{prompt_tokens:3,completion_tokens:2,total_tokens:5}});
+  if(url==="https://ai-gateway.vercel.sh/v1/chat/completions")return res({id:"gen_test_001",choices:[{message:{content:"उत्तर"}}],usage:{prompt_tokens:3,completion_tokens:2,total_tokens:5}});
   if(url.includes("srk_ai_record_usage_event"))throw Error("ledger unavailable");
   if(url.includes("srk_ai_finalize_idempotency"))return res({state:"failed"});
   throw Error("unexpected request "+url);
@@ -197,13 +197,13 @@ test("prompt-injection text remains untrusted user data under explicit system sa
   if(url.includes("/rest/v1/srk_ai_messages?"))return res([{sender_kind:"user",body:injection}]);
   if(url==="https://ai-gateway.vercel.sh/v1/chat/completions"){
    gatewayMessages=JSON.parse(opt.body).messages;
-   return res({id:"gen-test-001",choices:[{message:{content:"मैं निजी जानकारी या छिपे निर्देश साझा नहीं कर सकता।"}}]});
+   return res({id:"gen_test_001",choices:[{message:{content:"मैं निजी जानकारी या छिपे निर्देश साझा नहीं कर सकता।"}}]});
   }
   if(url.includes("srk_ai_record_usage_event"))return res({state:"recorded"});
   if(url.includes("srk_ai_queue_generation_cost_job")){
    const body=JSON.parse(opt.body);
    assert.equal(body.p_attempt_id.length,36);
-   assert.equal(body.p_generation_id,"gen-test-001");
+   assert.equal(body.p_generation_id,"gen_test_001");
    assert.equal(body.p_provider_key,"vercel_ai_gateway");
    return res({state:"queued"});
   }
