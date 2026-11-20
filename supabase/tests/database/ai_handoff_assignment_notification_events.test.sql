@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(7);
+SELECT plan(8);
 
 SELECT has_column('srk_private','srk_ai_handoff_notification_outbox','assignment_revision',
   'notification outbox records assignment revision separately');
@@ -27,6 +27,14 @@ SELECT ok(
   AND position('max(o.assignment_revision)' in
     pg_get_functiondef('private.srk_enqueue_ai_handoff_assignment_notification()'::regprocedure)) > 0,
   'new assignment recipients receive a monotonically increasing event revision'
+);
+
+SELECT ok(
+  position('delivery_status=''pending''' in
+    pg_get_functiondef('private.srk_enqueue_ai_handoff_assignment_notification()'::regprocedure)) > 0
+  AND position('Superseded by a newer Staff assignment' in
+    pg_get_functiondef('private.srk_enqueue_ai_handoff_assignment_notification()'::regprocedure)) > 0,
+  'older pending alerts are superseded before a fresh assignment alert is queued'
 );
 
 SELECT ok(
