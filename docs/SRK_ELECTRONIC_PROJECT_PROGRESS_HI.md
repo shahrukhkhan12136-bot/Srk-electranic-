@@ -4194,3 +4194,10 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - **Runtime स्थिति: अभी PASS प्रमाणित नहीं।** उपलब्ध GitHub status endpoint पर commit `18fb6ceab33bf66445f88a561cf6499d93a27830` के लिए केवल Vercel build-rate-limit failure दिखा; GitHub Actions run/job logs इस connector से प्राप्त नहीं हुए। इसलिए PostgreSQL tests चलने या सफल होने का दावा नहीं है।
 - Test scripts केवल disposable local CI PostgreSQL के लिए हैं; hosted TEST/Production database, वास्तविक payout/UTR, bank transfer, merge या deployment नहीं किया गया।
 - अगला gate: GitHub Actions में `Full feature branch PostgreSQL migration replay` run की logs में `payout_reference_duplicate_insert_rejected=true` तथा concurrent test के दोनों PASS संदेश देखना। उसके बाद ही duplicate-reference SQL runtime validation को verified mark करना।
+### 2026-11-20 — PostgreSQL payout-reference concurrency test को lock-observation आधारित बनाना
+
+- Commit `200524377b76398540a44159e617681a25d4a45b` में `scripts/test-payout-reference-concurrency.sh` सुधारी: अब fixed 0.3-second delay को concurrency proof नहीं मानता। दूसरा psql session अलग `application_name` से चलता है और test `pg_stat_activity` में उसके `Lock:transactionid` wait की पुष्टि करता है; उसके बाद ही पहला transaction commit होता है।
+- दूसरे session के लिए 80 × 100ms bounded observation, अलग session output, unique-index-specific error match और final committed-row count रखा। Failure पर background session terminate/wait करके disposable fixtures cleanup किए जाते हैं।
+- Latest commit पर Vercel status अब **success** है; यह केवल Vercel check है, PostgreSQL workflow का परिणाम नहीं। GitHub connector का PR-triggered workflow-run lookup खाली लौटा और Actions run/job logs उपलब्ध नहीं हुए।
+- इसलिए direct duplicate insert और concurrent duplicate-write PostgreSQL runtime tests अभी **pending / unverified** हैं। Workflow YAML में दोनों steps मौजूद हैं; वास्तविक Actions PASS log मिलने पर ही runtime checklist बदलेगी।
+- कोई hosted Supabase TEST/Production mutation, वास्तविक payout/UTR, bank transfer, merge या deployment नहीं किया गया।
