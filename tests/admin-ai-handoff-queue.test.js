@@ -153,7 +153,7 @@ test("Staff resolve cancellation does not call the API or change the selected th
  const initialCalls=ui.calls.length;
  await ui.context.resolveStaffAiHandoff();
  assert.equal(ui.calls.length,initialCalls);
- assert.equal(ui.context.staffAiHandoffSelectedId,id);
+ assert.equal(vm.runInContext("staffAiHandoffSelectedId",ui.context),id);
  assert.doesNotMatch(ui.elements.staffAiHandoffThreadPanel.className||"","hidden");
 });
 test("Staff resolve API failure keeps the selected handoff open and reports the error",async()=>{
