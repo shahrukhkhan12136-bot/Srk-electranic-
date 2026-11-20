@@ -2,6 +2,26 @@
 -- Feature Branch source only. Do not apply to hosted TEST or Production without explicit approval.
 BEGIN;
 
+-- Database-level backstop for every write path, not only the Admin RPC.
+-- If legacy data already reuses a normalized reference, stop safely for review.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM public.srk_electrician_payouts
+     WHERE payout_reference IS NOT NULL
+     GROUP BY lower(btrim(payout_reference))
+    HAVING count(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'DUPLICATE_EXISTING_PAYOUT_REFERENCES_REQUIRE_REVIEW';
+  END IF;
+END;
+$$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS srk_electrician_payouts_unique_reference_normalized
+  ON public.srk_electrician_payouts (lower(btrim(payout_reference)))
+  WHERE payout_reference IS NOT NULL;
+
 create or replace function public.srk_admin_mark_electrician_payout_paid(
   p_payout_id uuid,
   p_method text,
