@@ -59,6 +59,26 @@ SQL
 ) >"$TMP_DIR/session-a.out" 2>&1 &
 PID_A=$!
 
+# Wait until A's INSERT has succeeded and its transaction is open before
+# starting B. Without this handshake the scheduler can let B win the race,
+# making the test nondeterministic and testing the wrong transaction.
+A_INSERT_CONFIRMED=false
+for attempt in $(seq 1 80); do
+  if grep -q 'INSERT 0 1' "$TMP_DIR/session-a.out" 2>/dev/null; then
+    A_INSERT_CONFIRMED=true
+    break
+  fi
+  if ! kill -0 "$PID_A" 2>/dev/null; then
+    echo "Session A exited before inserting its first payout row."
+    exit 1
+  fi
+  sleep 0.1
+done
+if [[ "$A_INSERT_CONFIRMED" != true ]]; then
+  echo "Session A did not confirm its insert before the concurrency check."
+  exit 1
+fi
+
 docker exec -e PGAPPNAME=srk_payout_race_b -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 <<SQL >"$TMP_DIR/session-b.out" 2>&1 &
 INSERT INTO public.srk_electrician_payouts (
   booking_id,electrician_profile_id,gross_service_amount,materials_amount,
