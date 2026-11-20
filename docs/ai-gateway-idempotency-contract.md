@@ -14,18 +14,18 @@ Add a nullable `response_message_id uuid` reference to `public.srk_ai_messages(i
 - The stored request digest matches the retry's digest.
 - The referenced message exists and its `conversation_id` equals the idempotency row's `conversation_id`.
 - The referenced message has `sender_kind = 'assistant'`.
-- The conversation belongs to the same actor and is still eligible for replay under the approved policy.
+- The conversation belongs to the same actor. For a completed record, a later transition of that conversation to `closed` does **not** invalidate replay during the completed retention window; replay remains actor-scoped and returns only the exact stored message ID. The original completion still requires the conversation to be open.
 
 Prefer a composite database constraint/foreign-key design where the existing schema permits it, or enforce the cross-row relationship inside a tightly scoped service-role RPC with explicit validation. Document the chosen enforcement mechanism. A missing, deleted, mismatched, non-assistant, or otherwise invalid response message is a fail-closed integrity error. **Never fall back to the latest message or any other message.**
 
-The reservation/replay contract must return the exact `response_message_id` for completed records. The replay read must load only that ID and validate its conversation, sender kind, and owner before returning the saved response.
+The reservation/replay contract must return the exact `response_message_id` for completed records. The replay read must load only that ID and validate its conversation, sender kind, and owner before returning the saved response. It must not require the conversation to remain open after completion.
 
 ## Atomic completion RPC
 
 The database owner should implement a service-role-only `public.srk_ai_complete_idempotency` RPC. It must perform the following in one database transaction:
 
 1. Lock the matching idempotency row using `SELECT ... FOR UPDATE`.
-2. Verify actor ID, idempotency key, request digest, and `status = 'processing'`.
+2. Verify actor ID, idempotency key, request digest, `status = 'processing'`, and the current lease fencing/version token.
 3. Verify the processing lease is still valid (not expired).
 4. Lock the target conversation row only after the idempotency row is locked.
 5. Verify conversation ownership matches the actor and conversation status is `open`.
@@ -37,15 +37,21 @@ Any validation, insert, or update failure must abort the entire transaction; no 
 
 A completed record is immutable for the replay-retention window. A retry with the same actor/key/digest returns the exact stored response without inserting another assistant message. Wrong actor or digest must never reveal the stored response.
 
-## Retention and lease policy
+### Different idempotency keys targeting the same conversation
+
+Each request first locks its own idempotency row, then locks the shared conversation row. Two different keys for the same actor/conversation therefore serialize at the conversation lock. If the conversation remains open, both valid requests may append one assistant response each in lock-acquisition order; neither may overwrite or duplicate the other's response. Each idempotency record stores its own exact message ID. If the conversation is closed before a request obtains/rechecks the conversation lock, that request fails without inserting a message. All paths retain the Idempotency Row → Conversation Row lock order.
+
+## Retention, failed-key policy, and lease fencing
 
 Do not use one generic 24-hour expiry to reclaim every status. Store/track separate timing semantics:
 
-- **Processing lease:** 5 minutes. Only an expired `processing` claim may be reclaimed, subject to actor/key/digest rules and a safe atomic transition.
-- **Completed replay retention:** 7 days. A completed record must not be reset or reclaimed during this window; replay must return its exact linked assistant message.
-- **Failed record retention:** 7 days. A failed record is not a successful replay and must never be returned as a completed response. Define whether a retry with the same key returns a stable failed result or requires a new key; do not silently convert it to success.
+- **Processing lease:** 5 minutes. A lease is valid only while `processing_lease_expires_at > transaction_timestamp()`; at the exact expiry timestamp it is expired. Only an expired `processing` claim may be reclaimed.
+- **Completed replay retention:** 7 days from `completed_at`. A completed record remains retained at the exact `retention_expires_at` timestamp. Cleanup/reuse is permitted only strictly after expiry, using `retention_expires_at < transaction_timestamp()`. A completed record must not be reset or reclaimed while `retention_expires_at >= transaction_timestamp()`.
+- **Failed record retention:** 7 days from its failure timestamp. The deterministic same-key policy during retention is: same actor/key/digest returns a stable failure result (no assistant response body and no successful replay); same actor/key with a different digest returns a conflict without revealing the prior result. A failed record is never silently converted to success. After the retention boundary has strictly passed and cleanup removes the row, the key may be reused as a new reservation.
 
-Specify timestamp columns/semantics (for example, `processing_lease_expires_at`, `completed_at`, and a status-specific `retention_expires_at`) and index/cleanup behavior. Expiry cleanup must not race with in-flight completion or violate the fixed lock order. Tests must cover just-before, at, and just-after each boundary.
+For an expired `processing` row, reclaim is allowed only for the same actor/key/digest. A different digest conflicts while that row exists. Reclaim must atomically increment a monotonically increasing `lease_version` (or issue an equivalent unguessable lease token) and set a new 5-minute lease. The worker receives that version/token and completion must compare it under the idempotency row lock. Once reclaimed, an old worker's token no longer matches and its completion must fail without writes. Actor mismatch is always denied.
+
+Specify timestamp columns/semantics (for example, `processing_lease_expires_at`, `completed_at`, `failed_at`, `retention_expires_at`, and `lease_version`) and index/cleanup behavior. Cleanup must lock rows and recheck status/expiry atomically; it must not race with in-flight completion or violate the fixed lock order. For completed/failed retention, the comparison is inclusive for retention (`retention_expires_at >= now()` means retained) and cleanup is strict (`retention_expires_at < now()`). Tests must cover immediately before, exactly at, and immediately after each boundary.
 
 ## Legacy RPC safety
 
@@ -61,14 +67,16 @@ Static SQL text assertions are useful as a supplemental guard but do not satisfy
 | Area | Required case and expected result |
 |---|---|
 | Duplicate key | Same actor/key/digest cannot create two assistant messages |
-| Concurrent requests | Two simultaneous completions serialize; exactly one message is inserted and the other receives exact replay/defined conflict |
+| Concurrent same key | Two simultaneous completions serialize; exactly one message is inserted and the other receives exact replay/defined conflict |
 | Exact replay | Retry returns the same `response_message_id` and same stored response |
 | Wrong actor/digest | Denied/conflict; no message body disclosed and no write occurs |
 | Invalid response link | Missing, wrong-conversation, non-assistant, or wrong-owner message fails closed; no latest-message fallback |
-| Expired lease | A processing claim older than 5 minutes cannot complete |
-| Failed retry | Failed state is never replayed as successful; behavior follows documented stable-failure/new-key policy |
-| Retention expiry | Completed and failed records remain protected for 7 days; processing lease and each retention boundary are tested before/at/after expiry |
+| Closed conversation replay | Completed response remains replayable to its actor by exact message ID after conversation closure, until retention expiry; another actor is denied |
+| Expired lease/fencing | Expired claim cannot complete; after same-digest reclaim, old lease token is rejected and new token may complete |
+| Failed retry | Same digest gets stable failure; different digest conflicts; neither path produces a successful replay |
+| Retention boundary | Completed/failed rows are retained at the exact expiry timestamp; cleanup/reuse occurs only strictly after it; test before/at/after |
 | Transaction rollback | Forced failure after message insert but before idempotency update leaves neither partial write nor completed state |
+| Different keys, same conversation | Two independent sessions with different keys serialize on the conversation lock; if it remains open both append distinct messages; if closed before the second recheck, second fails cleanly |
 | Unauthorized RPC | anon/authenticated or wrong service identity cannot invoke privileged completion or bypass checks |
 | Legacy RPC bypass | Finalize cannot mark completed; append cannot create assistant message |
 | Migration replay/rollback | Apply on clean non-production DB, verify repeatability/rollback procedure and constraints/grants/RLS |
