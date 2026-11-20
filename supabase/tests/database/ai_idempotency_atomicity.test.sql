@@ -57,7 +57,7 @@ SELECT is(
  (public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),'customer_support')->>'state'),
  'allowed','first request receives capacity');
 SELECT throws_ok(
- $SELECT public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),NULL)$,
+ $$SELECT public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),NULL)$$,
  '22023','AI_INVALID_RATE_LIMIT_ARGUMENT','request limiter rejects a missing module key');
 
 SELECT public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),'customer_support')
