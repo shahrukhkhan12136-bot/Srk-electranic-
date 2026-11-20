@@ -97,3 +97,25 @@ test("provider throttling, network errors and malformed replies return safe erro
   });
   await assert.rejects(malformed.generateReply({ messages }), error => error.code === "invalid_ai_response");
 });
+
+test("malformed or incomplete provider usage is unavailable, never fabricated as zero", async () => {
+  for (const usage of [
+    { prompt_tokens: "12", completion_tokens: 8, total_tokens: 20 },
+    { prompt_tokens: 12, completion_tokens: 8 },
+    { prompt_tokens: -1, completion_tokens: 8, total_tokens: 7 },
+    { prompt_tokens: 12, completion_tokens: 8, total_tokens: 10 }
+  ]) {
+    const client = createAiGatewayClient({
+      env: enabledEnv(),
+      fetchImpl: async () => ({
+        ok: true, status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "उत्तर" } }],
+          usage
+        })
+      })
+    });
+    const result = await client.generateReply({ messages });
+    assert.equal(result.usage, null);
+  }
+});
