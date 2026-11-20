@@ -225,10 +225,10 @@ SELECT is(
   'vercel_ai_gateway','provider/test',true,1,1,2)->>'state'),
  'access_denied','usage RPC rejects a different conversation owner');
 SELECT throws_ok(
- $SELECT public.srk_ai_record_usage_event(
+ $q$SELECT public.srk_ai_record_usage_event(
   '00000000-0000-4000-8000-000000000303',(SELECT actor_one FROM ai_test_context),
   (SELECT conversation_two FROM ai_test_context),(SELECT key_three FROM ai_test_context),
-  'vercel_ai_gateway','provider/test',true,5,5,3)$,
+  'vercel_ai_gateway','provider/test',true,5,5,3)$q$,
  '22023','AI_INVALID_USAGE_COUNTS','usage RPC rejects inconsistent token totals');
 SELECT is(
  (public.srk_ai_record_usage_event(
