@@ -1,6 +1,14 @@
 # AI idempotency database test plan
 
-Status: **implementation added; expanded CI execution pending**. GPT-1 owns the combined database tests. `supabase/tests/database/ai_idempotency_atomicity.test.sql` contains 34 pgTAP assertions for the core lifecycle, replay, lease fencing, retention boundaries, legacy bypass prevention, and transaction rollback. `scripts/test-ai-idempotency-concurrency.sh` runs two independent PostgreSQL sessions for same-key and different-key races. CI uses a disposable local Supabase/PostgreSQL stack; the existing hosted Supabase TEST project must not be used destructively because its old data must be preserved. Do not point these tests at production.
+Status: **34/34 pgTAP assertions and both two-session concurrency checks passed in disposable CI**. GPT-1 owns the combined database tests. `supabase/tests/database/ai_idempotency_atomicity.test.sql` contains 34 pgTAP assertions for the core lifecycle, replay, lease fencing, retention boundaries, legacy bypass prevention, and transaction rollback. `scripts/test-ai-idempotency-concurrency.sh` runs two independent PostgreSQL sessions for same-key and different-key races. CI uses a disposable local Supabase/PostgreSQL stack; the existing hosted Supabase TEST project must not be used destructively because its old data must be preserved. Do not point these tests at production.
+
+## Latest execution evidence (2026-11-20)
+
+- Feature branch head tested: `8741749943d7478366190d28982feff95fa95218`.
+- GitHub Actions run `44691928344` (`AI idempotency atomicity PostgreSQL tests`): **success**. All baseline and feature migrations replayed in a disposable local Supabase stack; all 34 pgTAP assertions passed; same-key replay and different-key serialization checks both passed in two independent PostgreSQL sessions. The harness confirmed one exact replay/message for the same key and exactly three assistant messages across the same-key plus different-key fixtures.
+- GitHub Actions run `44691928010` (`Feature Branch Node tests`) on the same SHA: **769 passed, 0 failed**.
+- The full feature migration replay and rate-draft workflow previously passed on `963a8aee7be38c633e28fa5c5d95e6f0a8c42cfa`; the 18 commits from that SHA to the tested head changed the AI test harness/docs only, not migrations. This supports migration replay evidence but does not replace hosted TEST/Production verification.
+- All execution used disposable CI resources. No hosted Supabase TEST or Production database was modified; AI Gateway remains disabled and no provider API was called.
 
 ## Required test matrix
 
