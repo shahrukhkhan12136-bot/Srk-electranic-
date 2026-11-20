@@ -52,7 +52,7 @@ test("Admin HTML inline JavaScript parses and Staff AI handoff controls are pres
  assert.match(html,/function assignAdminAiHandoff/);
 });
 
-function staffHarness({mode="staff",rows=[],messages=[]}={}){
+function staffHarness({mode="staff",rows=[],messages=[],confirmResult=true,fetchFailure=null}={}){
  const elements={
   staffAiHandoffList:{innerHTML:"",textContent:""},
   staffAiHandoffStatus:{textContent:""},
@@ -65,13 +65,13 @@ function staffHarness({mode="staff",rows=[],messages=[]}={}){
  const calls=[];
  const context={
   adminPortalMode:mode,user:{id:"staff"},sb:{auth:{getSession:async()=>({data:{session:{access_token:"staff-jwt"}},error:null})}},
-  fetch:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,options,body});
+  fetch:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,options,body});if(fetchFailure)throw fetchFailure;
    const data=body.action==="list"?rows:body.action==="messages"?messages:{state:body.action==="reply"?"replied":"resolved"};
    return {ok:true,json:async()=>({success:true,data})};
   },
   document:{getElementById:id=>elements[id]||null},
   esc:value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),
-  Date,confirm:()=>true
+  Date,confirm:()=>confirmResult
  };
  vm.createContext(context);vm.runInContext(source,context);
  return {context,elements,calls};
@@ -120,4 +120,48 @@ test("Staff can reply to and resolve an assigned AI handoff through authenticate
  assert.equal(ui.calls[3].body.handoff_id,id);
  assert.equal(ui.calls[3].options.headers.Authorization,"Bearer staff-jwt");
  assert.equal(ui.calls[4].body.action,"list","successful resolve refreshes the assigned queue");
+});
+
+test("Staff reply rejects blank or oversized text without making an API request",async()=>{
+ const id="123e4567-e89b-42d3-a456-426614174000";
+ const ui=staffHarness();
+ await ui.context.openStaffAiHandoff(id);
+ const initialCalls=ui.calls.length;
+ ui.elements.staffAiHandoffReply.value="   ";
+ await ui.context.replyStaffAiHandoff();
+ assert.equal(ui.calls.length,initialCalls);
+ assert.match(ui.elements.staffAiHandoffThreadStatus.textContent,/1 से 4000 अक्षरों/);
+ ui.elements.staffAiHandoffReply.value="x".repeat(4001);
+ await ui.context.replyStaffAiHandoff();
+ assert.equal(ui.calls.length,initialCalls);
+ assert.equal(ui.elements.staffAiHandoffReply.value,"x".repeat(4001));
+});
+test("Staff reply API failure preserves the draft and reports a safe error",async()=>{
+ const id="123e4567-e89b-42d3-a456-426614174000";
+ const ui=staffHarness({fetchFailure:new Error("network unavailable")});
+ await ui.context.openStaffAiHandoff(id);
+ ui.elements.staffAiHandoffReply.value="Please review this case.";
+ await ui.context.replyStaffAiHandoff();
+ assert.equal(ui.elements.staffAiHandoffReply.value,"Please review this case.");
+ assert.match(ui.elements.staffAiHandoffThreadStatus.textContent,/network unavailable/);
+ assert.equal(ui.calls.at(-1).body.action,"reply");
+});
+test("Staff resolve cancellation does not call the API or change the selected thread",async()=>{
+ const id="123e4567-e89b-42d3-a456-426614174000";
+ const ui=staffHarness({confirmResult:false});
+ await ui.context.openStaffAiHandoff(id);
+ const initialCalls=ui.calls.length;
+ await ui.context.resolveStaffAiHandoff();
+ assert.equal(ui.calls.length,initialCalls);
+ assert.equal(ui.context.staffAiHandoffSelectedId,id);
+ assert.doesNotMatch(ui.elements.staffAiHandoffThreadPanel.className||"","hidden");
+});
+test("Staff resolve API failure keeps the selected handoff open and reports the error",async()=>{
+ const id="123e4567-e89b-42d3-a456-426614174000";
+ const ui=staffHarness({fetchFailure:new Error("resolve request failed")});
+ await ui.context.openStaffAiHandoff(id);
+ await ui.context.resolveStaffAiHandoff();
+ assert.equal(ui.context.staffAiHandoffSelectedId,id);
+ assert.match(ui.elements.staffAiHandoffThreadStatus.textContent,/resolve request failed/);
+ assert.equal(ui.calls.at(-1).body.action,"resolve");
 });
