@@ -12,6 +12,7 @@ on:
       - "supabase/tests/database/ai_handoff_individual_staff_permissions.test.sql"
       - "supabase/tests/database/ai_handoff_staff_workflow.test.sql"
       - "supabase/tests/database/ai_handoff_notification_outbox.test.sql"
+      - "supabase/tests/database/ai_handoff_push_subscription_ledger.test.sql"
       - ".github/workflows/ai-admin-handoff-pgtap.yml"
   pull_request:
     paths:
@@ -95,6 +96,7 @@ jobs:
           run_pgtap "supabase/tests/database/ai_handoff_individual_staff_permissions.test.sql" 17
           run_pgtap "supabase/tests/database/ai_handoff_staff_workflow.test.sql" 18
           run_pgtap "supabase/tests/database/ai_handoff_notification_outbox.test.sql" 10
+          run_pgtap "supabase/tests/database/ai_handoff_push_subscription_ledger.test.sql" 9
 
       - name: Stop disposable local Supabase stack
         if: always()
