@@ -56,7 +56,7 @@ function staffHarness({mode="staff",rows=[],messages=[],confirmResult=true,fetch
  const elements={
   staffAiHandoffList:{innerHTML:"",textContent:""},
   staffAiHandoffStatus:{textContent:""},
-  staffAiHandoffThreadPanel:{classList:{remove(){},add(){}}},
+  staffAiHandoffThreadPanel:{classList:{hidden:true,remove(){this.hidden=false;},add(){this.hidden=true;}}},
   staffAiHandoffMessages:{innerHTML:"",textContent:""},
   staffAiHandoffThreadTitle:{textContent:""},
   staffAiHandoffThreadStatus:{textContent:""},
@@ -154,14 +154,14 @@ test("Staff resolve cancellation does not call the API or change the selected th
  await ui.context.resolveStaffAiHandoff();
  assert.equal(ui.calls.length,initialCalls);
  assert.equal(vm.runInContext("staffAiHandoffSelectedId",ui.context),id);
- assert.doesNotMatch(ui.elements.staffAiHandoffThreadPanel.className||"","hidden");
+ assert.equal(ui.elements.staffAiHandoffThreadPanel.classList.hidden,false);
 });
 test("Staff resolve API failure keeps the selected handoff open and reports the error",async()=>{
  const id="123e4567-e89b-42d3-a456-426614174000";
  const ui=staffHarness({fetchFailure:new Error("resolve request failed")});
  await ui.context.openStaffAiHandoff(id);
  await ui.context.resolveStaffAiHandoff();
- assert.equal(ui.context.staffAiHandoffSelectedId,id);
+ assert.equal(vm.runInContext("staffAiHandoffSelectedId",ui.context),id);
  assert.match(ui.elements.staffAiHandoffThreadStatus.textContent,/resolve request failed/);
  assert.equal(ui.calls.at(-1).body.action,"resolve");
 });
