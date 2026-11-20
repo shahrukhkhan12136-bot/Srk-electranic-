@@ -136,7 +136,7 @@ SELECT ok(
 SELECT ok(
   position('i.customer_rate_paise::numeric*1500/10000' IN pg_get_functiondef(
     'public.srk_get_my_electrician_rate_list()'::regprocedure))>0
-  AND position('i.customer_rate_paise - floor' IN pg_get_functiondef(
+  AND position('i.customer_rate_paise-floor' IN pg_get_functiondef(
     'public.srk_get_my_electrician_rate_list()'::regprocedure))>0,
   'electrician rate list uses the canonical commission-first 15% half-up net formula'
 );
