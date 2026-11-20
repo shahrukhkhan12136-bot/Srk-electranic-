@@ -85,21 +85,24 @@ BEGIN
     RETURNING o.id,o.handoff_id,o.attempt_count
   )
   SELECT c.id,c.handoff_id,q.urgency,q.created_at,
-    coalesce((
-      SELECT array_agg(DISTINCT s.user_id ORDER BY s.user_id)
-      FROM public.srk_admin_staff s
-      WHERE s.status='active'
-        AND (
-          EXISTS (SELECT 1 FROM public.srk_admin_role_permissions rp
-            WHERE rp.role_key=s.role_key AND rp.permission_key='ai.handoff.read')
-          OR EXISTS (SELECT 1 FROM public.srk_admin_staff_permission_grants g
-            WHERE g.staff_user_id=s.user_id AND g.permission_key='ai.handoff.read')
-        )
-    ),ARRAY[]::uuid[]),
+    CASE WHEN q.status='assigned' AND q.assigned_to IS NOT NULL
+      THEN ARRAY[q.assigned_to]
+      ELSE coalesce((
+        SELECT array_agg(DISTINCT s.user_id ORDER BY s.user_id)
+        FROM public.srk_admin_staff s
+        WHERE s.status='active'
+          AND (
+            EXISTS (SELECT 1 FROM public.srk_admin_role_permissions rp
+              WHERE rp.role_key=s.role_key AND rp.permission_key='ai.handoff.read')
+            OR EXISTS (SELECT 1 FROM public.srk_admin_staff_permission_grants g
+              WHERE g.staff_user_id=s.user_id AND g.permission_key='ai.handoff.read')
+          )
+      ),ARRAY[]::uuid[])
+    END,
     c.attempt_count
   FROM claimed c
   JOIN public.srk_ai_handoff_queue q ON q.id=c.handoff_id
-  WHERE q.status='queued';
+  WHERE q.status IN ('queued','assigned');
 END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_claim_ai_handoff_notification_outbox(integer)
