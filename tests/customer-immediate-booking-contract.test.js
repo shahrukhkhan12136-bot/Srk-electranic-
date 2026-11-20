@@ -23,6 +23,23 @@ test('customer must explicitly choose a service category before booking', () => 
   assert.ok(selector.includes('<option value="" selected disabled>'), 'no service is preselected');
   assert.ok(selector.includes('<option value="home_wiring">'), 'service categories remain available');
 });
+test('customer service choices match the server booking allowlist', () => {
+  const start = booking.indexOf('<select id="service" required>');
+  const end = booking.indexOf('</select>', start);
+  assert.ok(start >= 0 && end > start, 'service selector exists');
+  const markup = booking.slice(start, end);
+  const uiValues = [...markup.matchAll(/<option value="([^"]+)"/g)]
+    .map(match => match[1])
+    .filter(Boolean)
+    .sort();
+  const serverAllowlist = api.match(/\["home_wiring", "electrical_repair", "light_fan_fitting", "home_repair", "other"\]/);
+  assert.ok(serverAllowlist, 'server category allowlist exists');
+  const serverValues = [...serverAllowlist[0].matchAll(/"([^"]+)"/g)]
+    .map(match => match[1])
+    .sort();
+  assert.deepEqual(uiValues, serverValues);
+});
+
 test('customer booking payload follows the immediate-dispatch API contract', () => {
   const submitAt = booking.indexOf("document.getElementById('booking').addEventListener('submit'");
   const payloadAt = booking.indexOf('const bookingPayload = {', submitAt);
