@@ -46,10 +46,17 @@ SET request.jwt.claim.role='service_role';
 WITH result AS (
  SELECT public.srk_ai_complete_idempotency('$ACTOR','$SAME_KEY',decode(repeat('f',64),'hex'),1,'$CONVERSATION','same-key answer',200) AS payload
 )
-SELECT CASE WHEN payload->>'state'='replay'
- AND payload->>'response_message_id'=(SELECT response_message_id::text FROM public.srk_ai_idempotency
-   WHERE actor_user_id='$ACTOR' AND idempotency_key='$SAME_KEY')
- THEN 'SAME_KEY_REPLAY_OK' ELSE 'SAME_KEY_REPLAY_FAILED:'||payload::text END
+SELECT CASE WHEN (payload->>'state')='replay'
+ AND (payload->>'response_message_id') IS NOT NULL
+ AND (payload->>'response_message_id') IS NOT DISTINCT FROM (
+   SELECT response_message_id::text FROM public.srk_ai_idempotency
+   WHERE actor_user_id='$ACTOR' AND idempotency_key='$SAME_KEY'
+ )
+ THEN 'SAME_KEY_REPLAY_OK'
+ ELSE 'SAME_KEY_REPLAY_FAILED:payload='||payload::text||
+      ':stored='||(SELECT coalesce(response_message_id::text,'NULL') FROM public.srk_ai_idempotency
+        WHERE actor_user_id='$ACTOR' AND idempotency_key='$SAME_KEY')
+ END
 FROM result;
 SQL
 wait "$PID_A"
