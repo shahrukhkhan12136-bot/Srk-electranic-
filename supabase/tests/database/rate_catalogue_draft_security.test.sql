@@ -135,17 +135,17 @@ SELECT ok(
 
 SELECT ok(
   pg_get_functiondef('public.srk_get_my_electrician_rate_list()'::regprocedure)
-    ~ 'i[.]customer_rate_paise::numeric[*]1500/10000'
+    ~ 'i[.]customer_rate_paise::numeric[[:space:]]*[*][[:space:]]*1500[[:space:]]*/[[:space:]]*10000'
   AND pg_get_functiondef('public.srk_get_my_electrician_rate_list()'::regprocedure)
-    ~ 'i[.]customer_rate_paise-floor',
+    ~ 'i[.]customer_rate_paise[[:space:]]*-[[:space:]]*floor',
   'electrician rate list uses the canonical commission-first 15% half-up net formula'
 );
 
 SELECT ok(
   pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
-    ~ 'b[.]estimated_labour_paise::numeric[*]1500/10000'
+    ~ 'b[.]estimated_labour_paise::numeric[[:space:]]*[*][[:space:]]*1500[[:space:]]*/[[:space:]]*10000'
   AND pg_get_functiondef('public.srk_get_my_offer_details()'::regprocedure)
-    ~ 'b[.]estimated_labour_paise-floor',
+    ~ 'b[.]estimated_labour_paise[[:space:]]*-[[:space:]]*floor',
   'job offer net amount uses the same canonical commission-first formula'
 );
 
