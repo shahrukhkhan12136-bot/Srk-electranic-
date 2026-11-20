@@ -1,14 +1,14 @@
 # SRK ELECTRONIC — Electrician 85% Rate List & Completed-Work Accounting Contract
 
-Status: GPT-1/GPT-2 shared source contract proposal; not yet wired into production booking, payout, or API flows.
+Status: GPT-1 owns the combined app, database, API, and accounting implementation after the Issue #11 handoff. This remains a source contract; production booking, payout, and API activation are not claimed.
 
 ## 1. One Admin-approved source rate
 
-The Main Admin-approved customer labour catalogue is the single source of truth. For every published rate version, the system derives the electrician rate as exactly 85% of the corresponding customer labour rate.
+The Main Admin-approved customer labour catalogue is the single source of truth. The commercial split is 85% electrician / 15% company. To remain consistent with the payout ledger, the implemented canonical paise rule is: company commission = round-half-up(customer gross × 15%); electrician net = customer gross − rounded company commission. This is mathematically equivalent to an 85/15 split except at half-paise ties, where the commission-first rule is authoritative.
 
 - Baseline catalogue duration: 8 hours.
-- Electrician 8-hour category rate = Admin-approved 8-hour customer category rate × 85%.
-- Use integer paise and half-up rounding to the nearest paise.
+- Electrician 8-hour category net = Admin-approved 8-hour customer gross − round-half-up(15% of that gross).
+- Use integer paise; half-up rounding is applied to the 15% company commission, and the electrician receives the exact remaining paise.
 - For another duration, prorate from the same published 8-hour category rate using the existing agreed duration policy.
 - Both customer and electrician views must reference the same `rate_version_id` and effective timestamp. Never calculate from different rate versions.
 
@@ -97,15 +97,12 @@ Admin/accounting retains the full customer rate catalogue and all financial deta
 - Test that Admin accounting can still reconcile gross, net, and company share.
 - Do not modify or replay database migrations until separately authorized.
 
-## 9. GPT-1 / GPT-2 ownership
+## 9. Combined GPT-1 ownership after Issue #11 handoff
 
-**GPT-1 (Electrician App):**
-- Display the electrician's own category-based 85% rate list (8-hour baseline).
-- Do not display customer rate list or company share in that rate-list view.
-- After completion, show customer-paid amount, company fee/share, and electrician payable/earned amount from the authorized completed-job DTO.
-- Keep customer payment status distinct from Admin bank/UPI payout status.
+GPT-1 owns the complete remaining scope, including both app-side and formerly GPT-2 backend/database/accounting work:
+- Display each electrician's own category-based 85% net rate list (8-hour baseline); never show customer gross or company share in that rate-list view.
+- Own rate-version resolution, commission-first 15% rounding, category-filtered electrician rate DTO, immutable booking and payout snapshots, and completed-job accounting DTOs.
+- Own grants/RLS review, RPC authorization, audit records, and accounting reconciliation.
+- Keep customer payment received distinct from Admin bank/UPI payout sent.
 - Render server-authoritative snapshots only; do not guess or recalculate financial figures in the client.
-
-**GPT-2 (Backend/API/Accounting):**
-- Own rate-version resolution, 85% calculation, category-based electrician rate-list DTO, immutable booking snapshots, completed-job accounting DTO, grants/RLS review, and accounting reconciliation.
-- Coordinate exact field names, category authorization, and completion/payment states with GPT-1 before integration.
+- Complete isolated PostgreSQL migration replay, security, regression, and concurrency validation before any live activation.
