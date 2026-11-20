@@ -4,7 +4,8 @@
 - Migration पुराने payout records में पहले से duplicate normalized references मिलने पर स्पष्ट exception देकर रुकती है; अपने-आप पुराने records बदलती या हटाती नहीं।
 - Admin RPC में advisory transaction lock और duplicate-reference exception बना हुआ है; unique index अंतिम database-level backstop है।
 - Regression test में unique index, legacy duplicate precheck और RPC lock assertions शामिल हैं।
-- **सत्यापन सीमा:** Feature Branch source committed है; अभी इस नए migration के बाद Node test suite और disposable PostgreSQL migration replay का परिणाम उपलब्ध नहीं है। Vercel status success दिखा, लेकिन यह Node/SQL test pass का विकल्प नहीं है।
+- **सत्यापन:** Node CI run `446945...` के बाद के exact SHA `1bd3147bc63d00aac15371beb636ee45f2745abc` पर Node workflow success दर्ज है; अलग full migration replay run `44694641526` ने disposable PostgreSQL में migration replay की और `payout_reference_unique_index=true` पुष्टि की। (Run evidence GitHub Actions में है; यह hosted DB apply नहीं है।)
+- **बाकी runtime gap:** अभी तक अलग PostgreSQL test में duplicate normalized reference insert करके वास्तविक unique-violation पकड़ने और concurrent duplicate writes को चलाकर साबित करने का प्रमाण नहीं मिला। Source-contract test index/RPC guard की मौजूदगी जाँचता है; index metadata assertion यह साबित करता है कि unique index बना है, लेकिन duplicate write rejection का direct test नहीं है।
 - Hosted TEST/Production DB, पुराने records, live payment provider, payout, refund, merge और deployment में कोई बदलाव नहीं किया।
 
 ## 2026-11-20 — Electrician payout reference duplicate guard
@@ -12,7 +13,7 @@
 - Admin payout RPC में पहले से booking-first row locks और pending-only Paid transition थे, लेकिन अलग payout records पर एक ही bank UTR / UPI reference reuse को रोकने का explicit cross-payout guard नहीं था।
 - नई Feature Branch migration `20261120110000_prevent_duplicate_electrician_payout_references.sql` में normalized reference पर transaction advisory lock और existing payout-reference check जोड़ा। Duplicate reference पर `PAYOUT_REFERENCE_ALREADY_USED` / SQLSTATE `23505` fail-closed result मिलता है। Existing booking-first lock order और pending-only payout state gate बरकरार हैं।
 - `tests/new-catalogue-settlement-rpc-contract.test.js` में duplicate reference serialization, payout/refund booking-first lock order, paid-payout refund rejection और full-refund payout-state boundary के source-contract regressions जोड़े।
-- **स्थिति: source change committed; Node CI और isolated PostgreSQL replay अभी इस नए commit पर सत्यापित नहीं।** ये source-contract checks वास्तविक बैंक UTR uniqueness या concurrent PostgreSQL execution का प्रमाण नहीं हैं।
+- **स्थिति:** Node CI `44694349253` पर 772 tests pass हुए; full migration replay `44694641526` ने disposable PostgreSQL में migration apply की और unique index मौजूद/unique होने की पुष्टि की। Direct duplicate INSERT rejection और concurrent duplicate-reference write test अभी बाकी हैं। ये checks वास्तविक बैंक statement/UTR validity का प्रमाण नहीं हैं।
 - कोई Razorpay request, वास्तविक payout/refund, hosted TEST/Production database change, merge या deployment नहीं किया गया।
 
 ## 2026-11-16 — GPT-2 Payment / Accounting contract audit
