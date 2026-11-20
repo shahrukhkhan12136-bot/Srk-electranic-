@@ -104,7 +104,7 @@ jobs:
           run_pgtap "supabase/tests/database/ai_handoff_individual_staff_permissions.test.sql" 17
           run_pgtap "supabase/tests/database/ai_handoff_staff_workflow.test.sql" 18
           run_pgtap "supabase/tests/database/ai_handoff_notification_outbox.test.sql" 15
-          run_pgtap "supabase/tests/database/ai_handoff_assignment_notification_events.test.sql" 7
+          run_pgtap "supabase/tests/database/ai_handoff_assignment_notification_events.test.sql" 8
           run_pgtap "supabase/tests/database/ai_handoff_push_subscription_ledger.test.sql" 9
           run_pgtap "supabase/tests/database/ai_generation_cost_reconciliation.test.sql" 11
           run_pgtap "supabase/tests/database/ai_fbil_usd_inr_fx_snapshots.test.sql" 27
