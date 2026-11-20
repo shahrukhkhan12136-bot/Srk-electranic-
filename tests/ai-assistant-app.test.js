@@ -404,3 +404,94 @@ test("Customer and Electrician apps pass only UUID-shaped selected booking conte
   assert.match(electrician, /function electricianAiBookingContext\(\)[\s\S]*?electricianSupportBooking[\s\S]*?\? \{booking_id:bookingId\} : \{\}/);
   assert.match(electrician, /getContext:electricianAiBookingContext/);
 });
+
+
+test("real app composition mounts the widget and forwards the verified session and live booking context", async () => {
+  const { createAiAssistantWidget } = require("../lib/ai-assistant-widget");
+  const oldClient = globalThis.SrkAiAssistantClient;
+  const oldWidget = globalThis.SrkAiAssistantWidget;
+  class Element {
+    constructor(tagName) {
+      this.tagName = tagName;
+      this.children = [];
+      this.listeners = {};
+      this.attributes = {};
+      this.value = "";
+      this.hidden = false;
+      this.disabled = false;
+      this.textContent = "";
+    }
+    setAttribute(key, value) { this.attributes[key] = value; }
+    append(...children) { this.children.push(...children); }
+    addEventListener(key, callback) { this.listeners[key] = callback; }
+    removeEventListener(key) { delete this.listeners[key]; }
+    focus() {}
+    remove() { this.removed = true; }
+    find(tagName) {
+      if (this.tagName === tagName) return this;
+      for (const child of this.children) {
+        const found = child.find?.(tagName);
+        if (found) return found;
+      }
+      return null;
+    }
+  }
+  const documentRef = { createElement: tagName => new Element(tagName) };
+  const container = new Element("main");
+  const sent = [];
+  const bookingId = "123e4567-e89b-42d3-a456-426614174010";
+  const accessToken = "verified-live-session-token";
+  const contextProvider = () => ({ booking_id: bookingId });
+  try {
+    globalThis.SrkAiAssistantClient = {
+      createAiAssistantClient() {
+        return {
+          async sendMessage(payload) {
+            sent.push(payload);
+            return {
+              conversation_id: "123e4567-e89b-42d3-a456-426614174011",
+              reply: "बुकिंग की जानकारी उपलब्ध है।",
+              handoff: { required: false }
+            };
+          },
+          async createHandoff() { throw new Error("unexpected_handoff"); }
+        };
+      }
+    };
+    globalThis.SrkAiAssistantWidget = { createAiAssistantWidget: createAiAssistantWidget };
+    const mounted = mountSrkAiAssistant({
+      container, documentRef, appRole: "customer", moduleKey: "booking_assistant",
+      supabaseClient: { auth: { async getSession() {
+        return { data: { session: { access_token: accessToken } }, error: null };
+      } } },
+      getContext: contextProvider,
+      config: {
+        AI_ASSISTANT_ENABLED: true,
+        AI_ASSISTANT_API_BASE_URL: "https://api.example.test"
+      }
+    });
+    assert.ok(mounted?.element);
+    const buttons = [];
+    const collect = node => {
+      if (node.tagName === "button") buttons.push(node);
+      for (const child of node.children) collect(child);
+    };
+    collect(mounted.element);
+    const input = mounted.element.find("textarea");
+    buttons[0].listeners.click();
+    input.value = "मेरी बुकिंग की जानकारी बताइए";
+    await buttons[1].listeners.click();
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].moduleKey, "booking_assistant");
+    assert.equal(sent[0].accessToken, accessToken);
+    assert.deepEqual(sent[0].context, { booking_id: bookingId });
+    assert.equal(sent[0].message, input.value === "" ? "मेरी बुकिंग की जानकारी बताइए" : input.value);
+    mounted.destroy();
+    assert.equal(mounted.element.removed, true);
+  } finally {
+    if (oldClient === undefined) delete globalThis.SrkAiAssistantClient;
+    else globalThis.SrkAiAssistantClient = oldClient;
+    if (oldWidget === undefined) delete globalThis.SrkAiAssistantWidget;
+    else globalThis.SrkAiAssistantWidget = oldWidget;
+  }
+});
