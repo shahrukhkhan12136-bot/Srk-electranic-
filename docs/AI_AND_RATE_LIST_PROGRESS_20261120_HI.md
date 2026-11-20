@@ -76,3 +76,14 @@
 - उसी code state के migration replay, Rate Catalogue security, AI idempotency और booking snapshot के अलग-अलग checks पहले के SHA `6c2df7497f0e1c1b5d678dcd724a5d0bfc294747` पर success हुए: runs [44725464542](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725464542), [44725464612](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725464612), [44725464728](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725464728), [44725464479](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725464479) — इनमें नई pgTAP assertion वाला अंतिम workflow SHA शामिल नहीं है।
 - Rate List acceptance: `admin.html` में Main Admin draft save/edit, queue, version-checked publish/schedule; automated tests चारों दरों, सुरक्षित input, invalid draft rejection और Customer/Electrician के published catalogue reads को जाँचते हैं। कोई quotation feature नहीं जोड़ा गया।
 - सीमा यथावत: कोई hosted DB migration, live push, VAPID secret, Edge Function deployment, AI provider key/call, Main merge या Developer Branch creation नहीं हुई। AI और push OFF हैं।
+
+
+## 20 नवम्बर — AI अनुरोध सीमा और खर्च-सुरक्षा की शुरुआत
+
+- नया migration `20261118330000_ai_request_rate_limits.sql`: service-role-only atomic Postgres RPC और निजी RLS table। शुरुआती hard limits प्रति user/per assistant module 10 requests प्रति rolling 10-minute bucket और 100 requests प्रति UTC day हैं।
+- Runtime अब idempotency reservation के बाद और conversation/message/provider call से पहले capacity reserve करता है। सीमा पूरी होने पर HTTP 429 तथा Retry-After लौटता है; provider को call नहीं होता। Quota RPC fail होने पर भी request fail-closed रहती है।
+- Idempotent replay दूसरी quota slot नहीं लेता; केवल नया reserved request गिना जाता है। Provider error के बाद reserved capacity वापस नहीं होती—यह abuse/cost guard का conservative व्यवहार है।
+- Node CI run [44726735276](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726735276), SHA `acf233730e30ea003d36962abae839dd793cca99` — success.
+- AI request-limit pgTAP workflow run [44726735286](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726735286), SHA `acf233730e30ea003d36962abae839dd793cca99` — queue में; 41 assertions अभी pass घोषित नहीं।
+- इससे पहले उसी migration पर full PostgreSQL replay और AI/Rate List suites चल रही थीं; अंतिम SHA और परिणाम verify होने तक इन्हें final success नहीं माना जाएगा।
+- AI और AI push OFF; कोई provider key/call, live push, hosted DB migration, deployment, Main merge या Developer Branch creation नहीं।
