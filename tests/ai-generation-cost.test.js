@@ -10,6 +10,9 @@ test("accepts an explicit USD zero cost without confusing missing cost with zero
   assert.equal(extractGenerationCreatedAt({ data: { id: "gen_other", created_at: "2026-11-20T08:00:00Z" } }, "gen_abc"), null);
   assert.equal(extractGenerationCreatedAt({ data: { id: "gen_abc", created_at: "invalid" } }, "gen_abc"), null);
   assert.equal(extractReportedUsd({ data: { id: "gen_abc", total_cost: 1e-8 } }, "gen_abc"), "0.00000001");
+  assert.equal(extractReportedUsd({ data: { id: "gen_abc", total_cost: 1e-10 } }, "gen_abc"), "0.0000000001");
+  assert.equal(extractReportedUsd({ data: { id: "gen_abc", total_cost: 1e-11 } }, "gen_abc"), null,
+    "a positive cost beyond supported precision must not round down to zero");
 });
 
 test("accepts documented camel-case SDK cost when present", async () => {
