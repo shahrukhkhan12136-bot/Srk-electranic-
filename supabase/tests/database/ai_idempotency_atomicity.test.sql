@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(40);
+SELECT plan(41);
 INSERT INTO auth.users (id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at)
 VALUES
  ('00000000-0000-4000-8000-000000000101','authenticated','authenticated','ai-owner@example.test','',transaction_timestamp(),transaction_timestamp(),transaction_timestamp()),
@@ -56,6 +56,10 @@ SELECT ok(
 SELECT is(
  (public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),'customer_support')->>'state'),
  'allowed','first request receives capacity');
+SELECT throws_ok(
+ $SELECT public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),NULL)$,
+ '22023','AI_INVALID_RATE_LIMIT_ARGUMENT','request limiter rejects a missing module key');
+
 SELECT public.srk_ai_reserve_request_capacity((SELECT actor_one FROM ai_test_context),'customer_support')
 FROM generate_series(1,9);
 SELECT is(
