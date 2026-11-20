@@ -50,3 +50,29 @@ test("AI idempotency database test plan requires real PostgreSQL transaction and
   assert.match(plan, /NOT EXECUTED/);
   assert.match(plan, /Static repository tests may supplement but cannot replace/i);
 });
+
+test("AI idempotency handoff defines deterministic failed-key retry semantics", () => {
+  assert.match(contract, /same actor\/key\/digest returns a stable failure result/i);
+  assert.match(contract, /different digest returns a conflict/i);
+  assert.match(contract, /failed record is never silently converted to success/i);
+});
+
+test("AI idempotency handoff defines inclusive retention expiry and strict cleanup", () => {
+  assert.match(contract, /retention_expires_at >= transaction_timestamp\(\)/);
+  assert.match(contract, /retention_expires_at < transaction_timestamp\(\)/);
+  assert.match(plan, /exactly at `retention_expires_at`/);
+});
+
+test("AI idempotency handoff defines same-conversation concurrency and closed replay", () => {
+  assert.match(contract, /Different idempotency keys targeting the same conversation/);
+  assert.match(contract, /serialize at the conversation lock/);
+  assert.match(contract, /later transition of that conversation to `closed` does \*\*not\*\* invalidate replay/);
+  assert.match(plan, /Replay after conversation closure/);
+  assert.match(plan, /Different keys, same conversation/);
+});
+
+test("AI idempotency handoff defines expired-lease fencing", () => {
+  assert.match(contract, /lease_version/);
+  assert.match(contract, /old worker's token no longer matches/);
+  assert.match(plan, /old worker cannot complete/);
+});
