@@ -51,3 +51,53 @@ test("Admin HTML inline JavaScript parses and Staff AI handoff controls are pres
  assert.match(html,/function resolveStaffAiHandoff/);
  assert.match(html,/function assignAdminAiHandoff/);
 });
+
+function staffHarness({mode="staff",rows=[],messages=[]}={}){
+ const elements={
+  staffAiHandoffList:{innerHTML:"",textContent:""},
+  staffAiHandoffStatus:{textContent:""},
+  staffAiHandoffThreadPanel:{classList:{remove(){},add(){}}},
+  staffAiHandoffMessages:{innerHTML:"",textContent:""},
+  staffAiHandoffThreadTitle:{textContent:""},
+  staffAiHandoffThreadStatus:{textContent:""},
+  staffAiHandoffReply:{value:""}
+ };
+ const calls=[];
+ const context={
+  adminPortalMode:mode,user:{id:"staff"},sb:{auth:{getSession:async()=>({data:{session:{access_token:"staff-jwt"}},error:null})}},
+  fetch:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,options,body});
+   const data=body.action==="list"?rows:body.action==="messages"?messages:{state:body.action==="reply"?"replied":"resolved"};
+   return {ok:true,json:async()=>({success:true,data})};
+  },
+  document:{getElementById:id=>elements[id]||null},
+  esc:value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),
+  Date,confirm:()=>true
+ };
+ vm.createContext(context);vm.runInContext(source,context);
+ return {context,elements,calls};
+}
+test("Staff AI handoff list and transcript escape untrusted content and use the logged-in JWT",async()=>{
+ const id="123e4567-e89b-42d3-a456-426614174000";
+ const ui=staffHarness({
+  rows:[{handoff_id:id,module_key:"customer_support",urgency:"normal",reason_code:"other",summary:"<img src=x onerror=alert(1)>",created_at:"now"}],
+  messages:[{sender_kind:"customer<script>",created_at:"now",body:"<svg onload=alert(1)>"}]
+ });
+ await ui.context.loadStaffAiHandoffs();
+ assert.match(ui.elements.staffAiHandoffList.innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);
+ assert.doesNotMatch(ui.elements.staffAiHandoffList.innerHTML,/<img/);
+ assert.equal(ui.calls[0].url,"/api/v1/ai/staff-handoffs");
+ assert.equal(ui.calls[0].options.headers.Authorization,"Bearer staff-jwt");
+ assert.equal(ui.calls[0].body.action,"list");
+ await ui.context.openStaffAiHandoff(id);
+ assert.match(ui.elements.staffAiHandoffMessages.innerHTML,/&lt;svg onload=alert\(1\)&gt;/);
+ assert.match(ui.elements.staffAiHandoffMessages.innerHTML,/customer&lt;script&gt;/);
+ assert.doesNotMatch(ui.elements.staffAiHandoffMessages.innerHTML,/<svg|<script>/);
+ assert.equal(ui.calls[1].body.action,"messages");
+ assert.equal(ui.calls[1].body.handoff_id,id);
+});
+test("Staff AI handoff controls do not load a queue for non-Staff roles",async()=>{
+ const ui=staffHarness({mode:"main_admin"});
+ await ui.context.loadStaffAiHandoffs();
+ assert.equal(ui.calls.length,0);
+ assert.equal(ui.elements.staffAiHandoffList.innerHTML,"");
+});
