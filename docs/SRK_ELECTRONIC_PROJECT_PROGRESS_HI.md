@@ -4186,3 +4186,11 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Inline-handler name scan found no unresolved application handler names in either page. The Customer scan's only apparent unresolved token was the built-in JavaScript Number(), not an application function.
 - These checks establish source-level handler presence and routing only. They do not prove browser execution, RPC existence/permissions, database behavior, push delivery, SMS/OTP delivery, payment provider behavior, or UI acceptance.
 - No application code, database, configuration, deployment, merge, or production state was changed in this pass. Runtime/mobile QA remains deferred to the authorized consolidated final QA stage.
+## 2026-11-20 — Electrician payout reference duplicate और concurrent-write test जोड़ना
+
+- `supabase/tests/database/payout_reference_unique_index.test.sql` जोड़ा: disposable PostgreSQL में पहले payout reference insert करता है, फिर उसी normalized reference (case/outer whitespace बदलकर) को दूसरी payout row पर insert करता है। दूसरी insert को उसी unique index से reject होना चाहिए; fixture transaction rollback होती है।
+- `scripts/test-payout-reference-concurrency.sh` जोड़ा: दो independent PostgreSQL sessions एक ही normalized reference के लिए race करती हैं। Session A transaction को खुला रखती है; Session B को unique-index conflict के बाद reject होना चाहिए और केवल एक row commit होनी चाहिए।
+- `.github/workflows/full-migration-replay-postgres.yml` में दोनों tests शामिल किए और push/PR path triggers जोड़े। Feature Branch पर source files दोबारा fetch करके workflow steps और triggers की मौजूदगी जाँची।
+- **Runtime स्थिति: अभी PASS प्रमाणित नहीं।** उपलब्ध GitHub status endpoint पर commit `18fb6ceab33bf66445f88a561cf6499d93a27830` के लिए केवल Vercel build-rate-limit failure दिखा; GitHub Actions run/job logs इस connector से प्राप्त नहीं हुए। इसलिए PostgreSQL tests चलने या सफल होने का दावा नहीं है।
+- Test scripts केवल disposable local CI PostgreSQL के लिए हैं; hosted TEST/Production database, वास्तविक payout/UTR, bank transfer, merge या deployment नहीं किया गया।
+- अगला gate: GitHub Actions में `Full feature branch PostgreSQL migration replay` run की logs में `payout_reference_duplicate_insert_rejected=true` तथा concurrent test के दोनों PASS संदेश देखना। उसके बाद ही duplicate-reference SQL runtime validation को verified mark करना।
