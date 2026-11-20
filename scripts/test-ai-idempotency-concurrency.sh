@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set -x
 
 DB_CONTAINER="${1:?Pass the disposable Supabase database container name}"
 ACTOR="00000000-0000-4000-8000-000000000301"
@@ -9,7 +10,7 @@ KEY_A="00000000-0000-4000-8000-000000000304"
 KEY_B="00000000-0000-4000-8000-000000000305"
 DIGEST="$(printf 'f%.0s' {1..64})"
 TMP_DIR="$(mktemp -d)"
-trap 'rm -rf "$TMP_DIR"' EXIT
+trap 'rc=$?; echo "Concurrency harness exit: $rc"; for output in "$TMP_DIR"/*.out; do if [[ -f "$output" ]]; then echo "--- $output"; cat "$output"; fi; done; rm -rf "$TMP_DIR"; exit $rc' EXIT
 
 psql_setup() {
   docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 "$@"
