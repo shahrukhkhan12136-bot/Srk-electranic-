@@ -98,3 +98,5 @@
 - Node test run [44726899213](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726899213), SHA `8462c55fbfe0c80b9833ccd9548e2e87edd63d9a` — success.
 - AI request-limit pgTAP run [44726735286](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726735286), SHA `acf233730e30ea003d36962abae839dd793cca99` — अभी चल रही है; इसमें 41 assertions हैं, परिणाम आने तक pass नहीं माना जाएगा।
 - Request throttle अभी request-count limits enforce करता है; provider token usage और वास्तविक रुपये/डॉलर cost metering अभी अलग शेष कार्य है।
+
+- अतिरिक्त runtime failure-path test भी जोड़ा: rate-limit database RPC अनुपलब्ध होने पर request fail-closed रहती है और conversation/provider work शुरू नहीं होता। Node CI run [44727154101](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44727154101), SHA `f43bf906b417275bb842d89b7634888e661cf553` — success.
