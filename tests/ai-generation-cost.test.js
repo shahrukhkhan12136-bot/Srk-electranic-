@@ -23,6 +23,7 @@ test("does not invent zero when Gateway cost is absent", async () => {
 test("rejects mismatched generation IDs and invalid or out-of-range costs", async () => {
   const { extractReportedUsd } = await import("../supabase/functions/_shared/ai-generation-cost.mjs");
   assert.equal(extractReportedUsd({ data: { id: "gen_other", total_cost: 1 } }, "gen_abc"), null);
+  assert.equal(extractReportedUsd({ data: { total_cost: 1 } }, "gen_abc"), null);
   assert.equal(extractReportedUsd({ data: { id: "gen_abc", total_cost: -1 } }, "gen_abc"), null);
   assert.equal(extractReportedUsd({ data: { id: "gen_abc", total_cost: "1e-8" } }, "gen_abc"), null);
   assert.equal(extractReportedUsd({ data: { id: "gen_abc", total_cost: "10000000000" } }, "gen_abc"), null);
