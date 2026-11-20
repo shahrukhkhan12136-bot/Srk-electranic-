@@ -31,3 +31,9 @@ test("AI message append derives sender identity and stores only user/assistant m
   assert.match(migration, /UPDATE public\.srk_ai_conversations\s+SET updated_at = clock_timestamp\(\)/i);
   assert.doesNotMatch(migration, /provider_api_key|service_role_key|authorization_header/i);
 });
+
+test("recorded messages append a metadata-only audit event using the conversation module", () => {
+  assert.match(migration, /SELECT conversation\.owner_user_id, conversation\.module_key, conversation\.status/i);
+  assert.match(migration, /INSERT INTO public\.srk_ai_audit_events\s*\(\s*conversation_id, actor_user_id, module_key, action_key, outcome\s*\)\s*VALUES\s*\(\s*p_conversation_id, p_actor_user_id, v_module_key, 'message_recorded', 'completed'\s*\)/i);
+  assert.match(migration, /UPDATE public\.srk_ai_conversations[\s\S]*?INSERT INTO public\.srk_ai_audit_events/i);
+});
