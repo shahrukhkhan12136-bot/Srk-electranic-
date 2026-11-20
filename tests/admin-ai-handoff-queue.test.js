@@ -25,7 +25,7 @@ function harness({mode="main_admin",rows=[],staff=[],error=null}={}){
 test("AI handoff queue is Main Admin only and reads the queue before offering assignment",async()=>{
  const staffUi=harness({mode:"staff"});await staffUi.context.loadAdminAiHandoffQueue();assert.equal(staffUi.calls.length,0);
  const admin=harness();await admin.context.loadAdminAiHandoffQueue();
- assert.equal(admin.calls.length,1);assert.equal(admin.calls[0][0],"srk_admin_list_ai_handoff_queue");assert.equal(admin.calls[0][1].p_limit,50);
+ assert.equal(admin.calls.length,2);assert.equal(admin.calls[0][0],"srk_admin_list_ai_handoff_queue");assert.equal(admin.calls[0][1].p_limit,50);assert.equal(admin.calls[1][0],"srk_admin_list_staff");
  assert.match(admin.elements.adminAiHandoffQueue.textContent,/कोई Queued या Assigned/);
 });
 test("AI handoff queue safely escapes displayed database fields and offers only active Staff",async()=>{
