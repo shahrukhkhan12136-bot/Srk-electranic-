@@ -7,7 +7,8 @@ exports.handler = async function () {
   }
   const base = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
   const secret = process.env.AI_COST_RECONCILIATION_SECRET;
-  if (!base || !secret) {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base || !secret || !serviceRoleKey) {
     console.error("AI cost reconciliation worker configuration is incomplete.");
     return { statusCode: 500, body: "Worker configuration missing" };
   }
@@ -16,6 +17,8 @@ exports.handler = async function () {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        apikey: serviceRoleKey,
+        Authorization: "Bearer " + serviceRoleKey,
         "x-srk-ai-cost-reconciliation-secret": secret
       },
       body: "{}",
