@@ -54,10 +54,10 @@ WITH result AS (
 )
 SELECT is(result.payload->>'state','completed','valid completion atomically stores the assistant answer') FROM result;
 UPDATE ai_test_context
-SET response_message_id=(SELECT response_message_id::uuid FROM public.srk_ai_idempotency i
+SET response_message_id=(SELECT i.response_message_id::uuid FROM public.srk_ai_idempotency i
  WHERE i.actor_user_id=ai_test_context.actor_one AND i.idempotency_key=ai_test_context.key_one);
-SELECT ok((SELECT response_message_id IS NOT NULL AND status='completed'
- AND retention_expires_at=completed_at+interval '7 days'
+SELECT ok((SELECT i.response_message_id IS NOT NULL AND i.status='completed'
+ AND i.retention_expires_at=i.completed_at+interval '7 days'
  FROM public.srk_ai_idempotency i JOIN ai_test_context c
  ON c.actor_one=i.actor_user_id AND c.key_one=i.idempotency_key),
  'completion stores exact response reference and seven-day retention');
