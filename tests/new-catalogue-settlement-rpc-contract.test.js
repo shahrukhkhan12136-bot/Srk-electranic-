@@ -176,13 +176,15 @@ test("new Catalogue Razorpay webhook verifies signed raw payload, deduplicates e
 
 
 test("Admin payout RPC serializes and rejects reuse of a bank UTR or UPI reference across payouts", () => {
-  const fn = payoutReferenceHardeningMigration.match(/create or replace function public\\.srk_admin_mark_electrician_payout_paid\\([\\s\\S]*?\\n\\$\\$;/i)?.[0] || "";
+  const start = payoutReferenceHardeningMigration.indexOf("create or replace function public.srk_admin_mark_electrician_payout_paid(");
+  const end = payoutReferenceHardeningMigration.indexOf("$$;", start);
+  const fn = start >= 0 && end >= 0 ? payoutReferenceHardeningMigration.slice(start, end + 3) : "";
   assert.ok(fn, "payout RPC replacement must exist");
-  assert.match(fn, /pg_advisory_xact_lock\\(hashtextextended\\(lower\\(btrim\\(p_reference\\)\\), 88421\\)\\)/i);
-  assert.match(fn, /existing\\.id <> p_payout_id/i);
-  assert.match(fn, /lower\\(btrim\\(existing\\.payout_reference\\)\\) = lower\\(btrim\\(p_reference\\)\\)/i);
-  assert.match(fn, /PAYOUT_REFERENCE_ALREADY_USED/i);
-  assert.match(fn, /using errcode = '23505'/i);
+  assert.ok(fn.includes("pg_advisory_xact_lock(hashtextextended(lower(btrim(p_reference)), 88421))"));
+  assert.ok(fn.includes("existing.id <> p_payout_id"));
+  assert.ok(fn.includes("lower(btrim(existing.payout_reference)) = lower(btrim(p_reference))"));
+  assert.ok(fn.includes("PAYOUT_REFERENCE_ALREADY_USED"));
+  assert.ok(fn.includes("using errcode = '23505'"));
   assert.ok(fn.indexOf("Only pending payouts can be marked paid") < fn.indexOf("PAYOUT_REFERENCE_ALREADY_USED"));
   assert.ok(fn.indexOf("PAYOUT_REFERENCE_ALREADY_USED") < fn.indexOf("set payout_status = 'paid'"));
 });
