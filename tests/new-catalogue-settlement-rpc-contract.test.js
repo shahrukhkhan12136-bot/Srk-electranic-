@@ -205,7 +205,10 @@ test("payout and refund operations use the same booking-first lock order and rej
   const prepareRefund = extractFunctionFrom(refundAccountingMigration, "srk_admin_prepare_razorpay_refund");
   const manualRefund = extractFunctionFrom(refundAccountingMigration, "srk_admin_record_manual_refund");
   for (const fn of [markPaid, prepareRefund, manualRefund]) assert.ok(fn, "expected finance RPC source exists");
-  assert.ok(markPaid.indexOf("from public.service_bookings") < markPaid.indexOf("from public.srk_electrician_payouts"));
+  const bookingRowLock = markPaid.indexOf("from public.service_bookings\n   where id = v_booking_id\n   for update");
+  const payoutRowLock = markPaid.indexOf("from public.srk_electrician_payouts\n   where id = p_payout_id\n   for update");
+  assert.ok(bookingRowLock >= 0 && payoutRowLock > bookingRowLock,
+    "payout RPC must lock the booking row before locking the payout row; its initial payout lookup is read-only");
   assert.ok(prepareRefund.indexOf("from public.service_bookings where id=p_booking_id for update") < prepareRefund.indexOf("from public.srk_electrician_payouts"));
   assert.ok(manualRefund.indexOf("from public.service_bookings") < manualRefund.indexOf("from public.srk_electrician_payouts"));
   assert.ok(markPaid.includes("Only pending payouts can be marked paid"));
