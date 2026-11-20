@@ -101,3 +101,49 @@ test("Auth and database permission failures fail closed without exposing databas
   assert.equal(JSON.parse(denied.body).error, "permission_denied");
   assert.doesNotMatch(denied.body, /internal permission detail/);
 });
+
+
+test("Malformed authenticated identity and auth network errors fail closed before any handoff RPC", async () => {
+  for (const fetchImpl of [
+    async () => ({ ok: true, status: 200, json: async () => ({ id: "not-a-uuid" }) }),
+    async () => { throw new Error("auth network detail"); }
+  ]) {
+    const calls = [];
+    const handler = createAiStaffHandoffHandler({
+      env: { SUPABASE_URL: "https://project.supabase.co", SUPABASE_ANON_KEY: "anon-test" },
+      fetchImpl: async (url, options) => {
+        calls.push({ url, options });
+        return fetchImpl();
+      }
+    });
+    const response = await handler(event({ action: "list" }));
+    assert.ok([401, 503].includes(response.statusCode));
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "https://project.supabase.co/auth/v1/user");
+    assert.doesNotMatch(response.body, /auth network detail|not-a-uuid/);
+  }
+});
+
+test("Invalid bearer syntax and oversized request bodies are rejected before authentication", async () => {
+  const { handler, calls } = setup();
+  assert.equal((await handler(event({ action: "list" }, "token with spaces"))).statusCode, 401);
+  const oversized = {
+    httpMethod: "POST",
+    headers: { authorization: "Bearer valid-token" },
+    body: "x".repeat(8193)
+  };
+  assert.equal((await handler(oversized)).statusCode, 413);
+  assert.equal(calls.length, 0);
+});
+
+test("Unexpected RPC failures return a generic unavailable response without leaking database details", async () => {
+  const { handler, calls } = setup({ rpcStatus: 500, rpcResult: { message: "private SQL detail" } });
+  const response = await handler(event({ action: "resolve", handoff_id: HANDOFF }));
+  assert.equal(response.statusCode, 503);
+  assert.equal(JSON.parse(response.body).error, "handoff_operation_unavailable");
+  assert.doesNotMatch(response.body, /private SQL detail/);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].options.headers.Authorization, "Bearer valid-token");
+  assert.equal(calls[1].options.headers.apikey, "anon-test");
+  assert.equal(calls[1].options.headers.Authorization.includes("must-not-be-used"), false);
+});
