@@ -48,7 +48,7 @@ jobs:
 
       - name: Start disposable local Supabase stack
         working-directory: ${{ runner.temp }}/srk-full-migration-replay
-        run: supabase start
+        run: supabase start --exclude inbucket
 
       - name: Replay baseline and every migration in deterministic filename order
         working-directory: ${{ runner.temp }}/srk-full-migration-replay
