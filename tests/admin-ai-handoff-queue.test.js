@@ -101,3 +101,23 @@ test("Staff AI handoff controls do not load a queue for non-Staff roles",async()
  assert.equal(ui.calls.length,0);
  assert.equal(ui.elements.staffAiHandoffList.innerHTML,"");
 });
+
+test("Staff can reply to and resolve an assigned AI handoff through authenticated actions",async()=>{
+ const id="123e4567-e89b-42d3-a456-426614174000";
+ const ui=staffHarness({messages:[{sender_kind:"staff",body:"We are reviewing your request.",created_at:"now"}]});
+ await ui.context.openStaffAiHandoff(id);
+ ui.elements.staffAiHandoffReply.value="I have reviewed your request.";
+ await ui.context.replyStaffAiHandoff();
+ assert.equal(ui.calls[0].body.action,"messages");
+ assert.equal(ui.calls[1].body.action,"reply");
+ assert.equal(ui.calls[1].body.handoff_id,id);
+ assert.equal(ui.calls[1].body.body,"I have reviewed your request.");
+ assert.equal(ui.calls[1].options.headers.Authorization,"Bearer staff-jwt");
+ assert.equal(ui.elements.staffAiHandoffReply.value,"");
+ assert.equal(ui.calls[2].body.action,"messages","successful reply refreshes the transcript");
+ await ui.context.resolveStaffAiHandoff();
+ assert.equal(ui.calls[3].body.action,"resolve");
+ assert.equal(ui.calls[3].body.handoff_id,id);
+ assert.equal(ui.calls[3].options.headers.Authorization,"Bearer staff-jwt");
+ assert.equal(ui.calls[4].body.action,"list","successful resolve refreshes the assigned queue");
+});
