@@ -159,7 +159,7 @@ test("Edit Draft rejects malformed IDs before assigning the draft update target"
 });
 test("Edit Draft rejects incomplete or malformed rate records without changing the form",()=>{
  const elements={adminRateCatalogueStatus:{textContent:""},rateElectricalAssistant:{value:"previous-1"},rateSkilledElectrician:{value:"previous-2"},rateExpertElectrician:{value:"previous-3"},ratePremiumSpecialist:{value:"previous-4"},rateCatalogueEffectiveAt:{value:"previous-date"},rateCatalogueReason:{value:"previous-reason"}};
- const context=vm.createContext({window:{},document:{getElementById(id){return elements[id]||null;}}});
+ const context=vm.createContext({window:{},document:{getElementById(id){return elements[id]||(elements[id]={value:"",textContent:"",innerHTML:""});}}});
  const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
  vm.runInContext(script,context);
  const validId="123e4567-e89b-42d3-a456-426614174000";
