@@ -50,7 +50,7 @@ jobs:
           cd "$RUNNER_TEMP/srk-full-migration-replay"
           supabase init
           # Keep disposable Supabase ports away from runner-level services.
-          sed -i '/^port = 54321$/s/54321/55431/; /^port = 54322$/s/54322/55432/; /^shadow_port = 54320$/s/54320/55430/' supabase/config.toml
+          sed -i '/^port = 54321$/s/54321/61431/; /^port = 54322$/s/54322/61432/; /^shadow_port = 54320$/s/54320/61430/' supabase/config.toml
 
       - name: Start disposable local Supabase stack
         working-directory: ${{ runner.temp }}/srk-full-migration-replay
