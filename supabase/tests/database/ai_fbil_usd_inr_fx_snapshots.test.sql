@@ -125,10 +125,10 @@ SELECT is((public.srk_ai_record_fbil_usd_inr_rate(
   '2025-01-02T07:35:00Z'::timestamptz)->>'state'),
   'conflict','a different rate cannot overwrite an append-only daily snapshot');
 SELECT throws_ok(
-  $SELECT public.srk_ai_record_fbil_usd_inr_rate(
+  $q$SELECT public.srk_ai_record_fbil_usd_inr_rate(
     '2025-01-03',90,'https://evil.example/rate',
     '2025-01-03T07:30:00Z'::timestamptz,
-    '2025-01-03T07:35:00Z'::timestamptz)$,
+    '2025-01-03T07:35:00Z'::timestamptz)$q$,
   '22023','AI_INVALID_FBIL_FX_RATE',
   'FX ingestion rejects a non-FBIL source URL');
 
