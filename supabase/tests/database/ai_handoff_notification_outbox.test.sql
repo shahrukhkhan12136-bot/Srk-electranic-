@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(11);
+SELECT plan(14);
 
 SELECT has_table('srk_private','srk_ai_handoff_notification_outbox',
   'private AI handoff notification outbox exists');
@@ -43,6 +43,25 @@ SELECT ok(
     'public.srk_finish_ai_handoff_notification_outbox(uuid,integer,boolean,text)'::regprocedure
   )) > 0,
   'outbox completion rejects stale or expired worker leases'
+);
+
+SELECT ok(
+  position('s.status=''active''' in pg_get_functiondef(
+    'public.srk_claim_ai_handoff_notification_outbox(integer)'::regprocedure
+  )) > 0,
+  'notification recipients must be active Staff members'
+);
+SELECT ok(
+  position('ARRAY[q.assigned_to]' in pg_get_functiondef(
+    'public.srk_claim_ai_handoff_notification_outbox(integer)'::regprocedure
+  )) > 0,
+  'assigned handoffs notify only their assigned Staff member'
+);
+SELECT ok(
+  position('Handoff is no longer active' in pg_get_functiondef(
+    'public.srk_claim_ai_handoff_notification_outbox(integer)'::regprocedure
+  )) > 0,
+  'resolved handoffs are suppressed instead of notified'
 );
 
 SELECT * FROM finish();
