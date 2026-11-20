@@ -33,3 +33,9 @@ test("AI handoff queue insertion and conversation status transition share one tr
   assert.match(migration, /BEGIN;[\s\S]*COMMIT;/i);
   assert.doesNotMatch(migration, /send_email|send_sms|webhook|provider_api_key/i);
 });
+
+test("newly accepted handoffs append a metadata-only audit event using the conversation module", () => {
+  assert.match(migration, /SELECT conversation\.owner_user_id, conversation\.module_key, conversation\.status/i);
+  assert.match(migration, /INSERT INTO public\.srk_ai_audit_events\s*\(\s*conversation_id, actor_user_id, module_key, action_key, outcome\s*\)\s*VALUES\s*\(\s*p_conversation_id, p_actor_user_id, v_module_key, 'handoff_requested', 'accepted'\s*\)/i);
+  assert.match(migration, /UPDATE public\.srk_ai_conversations[\s\S]*?INSERT INTO public\.srk_ai_audit_events/i);
+});
