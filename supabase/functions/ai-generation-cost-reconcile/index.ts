@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { extractReportedUsd } from "../../../lib/ai-generation-cost.mjs";
+import { extractReportedUsd } from "../_shared/ai-generation-cost.mjs";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
