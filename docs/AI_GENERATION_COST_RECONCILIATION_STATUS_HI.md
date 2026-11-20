@@ -26,10 +26,9 @@
 
 ## 3. अभी क्या प्रमाणित है
 
-- Deno type-check workflow: सफल run #44742615951, commit `f3d09a33bc2cd628d336f9fcc107082bd269197b`।
-- Feature Branch Node tests: सफल run #44742615795, उसी commit पर।
-- ऊपर के runs में parser tests शामिल थे। ये latest बाद के dispatcher-only commit `05264fab8bca426f7918eb2268721c0ebca3ec4c` पर पुनः नहीं चले हैं।
-- pgTAP workflow को नए migration/test के साथ trigger किया गया; इसका final result अभी pending/अप्रमाणित है।
+- Deno type-check workflow: सफल run #44742944827, commit `5db041879069dbc2828d760eb69e0bfec6b024ea`।
+- Feature Branch Node tests: सफल run #44742955096, commit `01cbd6a90915cdc649f1dc52dd9ad3d38ffd6a1b`। इसमें छोटे USD costs, missing cost और generation ID matching के tests शामिल हैं।
+- Full migration replay, AI idempotency pgTAP, Rate List snapshot और Rate Catalogue pgTAP workflows commit `20698868b8afa8f33469c86b8868d847d48d49cb` पर चल रहे हैं; अंतिम परिणाम अभी pending है।
 
 ## 4. INR conversion — आधिकारिक FX स्रोत का सुधार
 
