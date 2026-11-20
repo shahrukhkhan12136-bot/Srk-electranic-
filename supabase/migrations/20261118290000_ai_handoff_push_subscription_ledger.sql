@@ -31,7 +31,9 @@ CREATE OR REPLACE FUNCTION public.srk_claim_ai_handoff_subscription_deliveries(
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
 SET search_path='pg_catalog','public','srk_private','pg_temp'
 AS $function$
-DECLARE v_targets jsonb;
+DECLARE
+  v_targets jsonb;
+  v_subscription_count integer;
 BEGIN
   IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
@@ -45,6 +47,9 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'AI handoff notification is not leased' USING ERRCODE='55000';
   END IF;
+
+  SELECT count(*)::integer INTO v_subscription_count
+  FROM public.srk_push_subscriptions s WHERE s.user_id=p_user_id;
 
   INSERT INTO srk_private.srk_ai_handoff_subscription_deliveries(outbox_id,subscription_id)
   SELECT p_outbox_id,s.id FROM public.srk_push_subscriptions s
@@ -84,7 +89,7 @@ BEGIN
   INTO v_targets
   FROM claimed c JOIN public.srk_push_subscriptions s ON s.id=c.subscription_id;
 
-  RETURN jsonb_build_object('targets',v_targets);
+  RETURN jsonb_build_object('targets',v_targets,'subscription_count',v_subscription_count);
 END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_claim_ai_handoff_subscription_deliveries(uuid,uuid,integer)
