@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(10);
+SELECT plan(11);
 
 SELECT has_table('srk_private','srk_ai_handoff_notification_outbox',
   'private AI handoff notification outbox exists');
@@ -36,6 +36,13 @@ SELECT ok(
       AND tgrelid='public.srk_ai_handoff_queue'::regclass
       AND NOT tgisinternal),
   'handoff insertion is connected to durable notification enqueue'
+);
+
+SELECT ok(
+  position('v_row.locked_until' in pg_get_functiondef(
+    'public.srk_finish_ai_handoff_notification_outbox(uuid,integer,boolean,text)'::regprocedure
+  )) > 0,
+  'outbox completion rejects stale or expired worker leases'
 );
 
 SELECT * FROM finish();
