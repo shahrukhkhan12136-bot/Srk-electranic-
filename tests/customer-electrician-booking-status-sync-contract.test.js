@@ -97,6 +97,26 @@ test('booking state changes trigger an explicit refresh after user decisions and
   for (const fn of [electricianStart, electricianCompletion, offerResponse]) assert.match(fn, /await refresh\(\)/);
 });
 
+test('electrician timer display is read-only and derives elapsed time from server projection', () => {
+  const formatter = functionBody(electrician, 'formatElectricianTimer');
+  const updater = functionBody(electrician, 'updateElectricianTimers');
+  assert.match(formatter, /Math\.floor\(Number\(seconds\)\|\|0\)/);
+  assert.match(updater, /data\.accumulated/);
+  assert.match(updater, /data\.running==='1'&&el\.dataset\.started/);
+  assert.match(updater, /Date\.parse\(el\.dataset\.started\)/);
+  assert.match(updater, /el\.textContent=formatElectricianTimer\(n\)/);
+  assert.doesNotMatch(updater, /\.rpc\(|\.update\(|\.insert\(/);
+  assert.match(electrician, /setInterval\(updateElectricianTimers,1000\)/);
+});
+
+test('electrician timer can only be started through the customer-approval server RPC', () => {
+  const start = functionBody(electrician, 'electricianRequestWorkStart');
+  assert.match(start, /srk_electrician_request_work_start/);
+  assert.match(start, /ग्राहक की मंजूरी के बाद ही सर्वर टाइमर शुरू होगा/);
+  assert.doesNotMatch(start, /work_timer_running\s*=|work_started_at\s*=/);
+  assert.match(electrician, /booking_status==='awaiting_work_start_approval'[\s\S]*?मंजूरी मिलने तक टाइमर बंद रहेगा/);
+});
+
 test('customer booking timeline reports partial per-booking RPC errors without throwing an undefined variable', () => {
   const load = functionBody(customer, 'loadCustomerBookings');
   assert.match(load, /const timelineResults = await Promise\.all\(data\.map/);
