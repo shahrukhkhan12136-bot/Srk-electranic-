@@ -278,3 +278,28 @@ Migration `20261109003000_secure_commission_reporting.sql` का `srk_admin_com
 - Actual Razorpay report sample अभी उपलब्ध नहीं है। इसलिए bucket policies, file-size limits, CSV/XLSX parser, normalized columns, import RPC और SQL migration अभी final नहीं किए गए।
 
 यह source review है, runtime security test नहीं। कोई Storage bucket, policy, hosted database, import endpoint या financial state बदला नहीं गया।
+
+
+## 17. Duplicate Import और source-row पहचान — design decision
+
+मौजूदा refund recovery evidence migration से एक उपयोगी pattern मिलता है: `observation_id` unique है; retry पर वही ID और वही provider facts मिलने पर पुराना record लौटता है, लेकिन उसी ID के साथ अलग facts आने पर request reject होती है। Merchant Settlement import में इसी fail-closed सिद्धांत को अपनाना चाहिए, पर provider report की row identity sample देखकर तय होगी।
+
+### प्रस्तावित दो-स्तरीय idempotency
+
+1. **Report batch level:** मूल file bytes का SHA-256 digest, provider/report type, merchant account का non-secret internal reference, report period और report timezone metadata। वही file digest उसी report type/account के लिए दोबारा आए तो नया batch न बने; मौजूदा batch का परिणाम दिखे। समान digest पर metadata conflict हो तो रोककर review करें।
+2. **Source row level:** यदि report में provider का stable settlement transaction/row ID है, तो उसी provider-defined identity को report namespace में unique करें। केवल payment ID पर्याप्त नहीं, क्योंकि एक payment से fee, tax, refund/adjustment या multiple settlement movements जुड़ सकते हैं।
+3. **यदि stable row ID न हो:** canonicalized source-row fingerprint में सभी आर्थिक रूप से महत्वपूर्ण source fields, currency, signed amount, settlement ID, transaction/reference IDs, row type और source date शामिल करें। फिर भी identical legitimate rows और accidental duplicate rows में फर्क न हो सके तो import को automatic post/reconcile न करें; ambiguous rows exception queue में जाएँ। Row number को अकेले cross-file identity न मानें।
+4. **Same key, different facts:** किसी भी stable row identity या import idempotency key के साथ अलग normalized facts आएँ तो overwrite/upsert न करें; conflict exception बनाएँ और batch को review-required रखें।
+5. **Atomicity:** batch registration, row validation और normalized row insertion एक transaction या resumable staged-import protocol में हों। आधा import हुआ batch “complete” न दिखे। प्रत्येक row पर accepted/rejected/duplicate/ambiguous status और error code सुरक्षित हों।
+6. **Append-only provenance:** original file digest, report version, source filename (sanitized), uploader Admin ID, upload timestamp, parser version, row number, raw-row digest और normalized fields का trace रखें। Original raw file private/quarantine retention policy के तहत रहे; secrets/PII को logs में न लिखें।
+7. **No financial side effects:** import केवल facts और reconciliation links बनाए। यह booking paid, refund processed, payout paid या bank credited status कभी set नहीं करेगा। Reconciliation projection में match/unmatched/conflict अलग-अलग status होंगे।
+
+### अभी क्या verify नहीं हुआ
+
+- Razorpay की वास्तविक settlement export में stable row ID उपलब्ध है या नहीं।
+- एक payment के लिए कितनी settlement rows/adjustment rows संभव हैं।
+- Fee, tax, refund, chargeback/adjustment के sign convention और currency/decimal format।
+- Settlement report timezone, date fields और report version metadata।
+- CSV/XLSX में duplicate rows का provider-defined अर्थ।
+
+इसलिए यह import idempotency contract है, executable parser/schema नहीं। Sample report के बिना unique index columns या canonical fingerprint SQL में hard-code नहीं किए जाएँगे।
