@@ -195,6 +195,11 @@ SELECT ok(
  (SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_ai_usage_events'::regclass)
  AND NOT has_table_privilege('anon','public.srk_ai_usage_events','SELECT')
  AND NOT has_table_privilege('authenticated','public.srk_ai_usage_events','SELECT')
+ AND NOT has_table_privilege('service_role','public.srk_ai_usage_events','SELECT')
+ AND NOT has_table_privilege('service_role','public.srk_ai_usage_events','INSERT')
+ AND NOT has_table_privilege('service_role','public.srk_ai_usage_events','UPDATE')
+ AND NOT has_table_privilege('service_role','public.srk_ai_usage_events','DELETE')
+ AND NOT has_table_privilege('service_role','public.srk_ai_usage_events','TRUNCATE')
  AND NOT EXISTS (SELECT 1 FROM information_schema.columns
   WHERE table_schema='public' AND table_name='srk_ai_usage_events'
   AND column_name IN ('body','prompt','completion')),
