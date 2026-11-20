@@ -64,3 +64,15 @@
 3. AI handoff queue, assignment, reply, resolve और notification का end-to-end acceptance coverage पूरा करना।
 4. AI abuse/rate-limit/cost cap, prompt-injection, retention/privacy, fallback/kill-switch और app UI QA के शेष gates पूरा करना।
 5. Rate List में पहले से मौजूद Admin-only price change flow का final acceptance check करना; scope में कोई quotation/custom quote feature नहीं जोड़ना।
+
+
+## 20 नवम्बर — बिना registered device के push को सफल न मानने की सुरक्षा
+
+- जाँच में एक edge case मिला: किसी eligible Staff account के पास कोई push subscription न होने पर device ledger खाली रहता था और पुराना completion RPC खाली ledger को सफल मान सकता था।
+- `supabase/migrations/20261118320000_ai_handoff_push_requires_device_delivery.sql` में completion RPC अब कम-से-कम एक device delivery record मौजूद होने और सभी records के delivered होने—दोनों शर्तों के बिना success नहीं देता।
+- `supabase/tests/database/ai_handoff_notification_outbox.test.sql` में 15वीं pgTAP assertion जोड़ी गई; workflow अब इसी 15-test plan और नई migration को replay करता है।
+- नवीनतम Node CI: run [44725610383](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725610383), SHA `6748497ef633d7f62307879c6bacb82d2622da15` — success.
+- नई AI handoff pgTAP run [44725610293](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725610293), SHA `6748497ef633d7f62307879c6bacb82d2622da15` — अभी चल रही है; 15 assertions को pass घोषित नहीं किया गया है।
+- उसी code state के migration replay, Rate Catalogue security, AI idempotency और booking snapshot के अलग-अलग checks पहले के SHA `6c2df7497f0e1c1b5d678dcd724a5d0bfc294747` पर success हुए: runs [44725464542](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725464542), [44725464612](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725464612), [44725464728](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725464728), [44725464479](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44725464479) — इनमें नई pgTAP assertion वाला अंतिम workflow SHA शामिल नहीं है।
+- Rate List acceptance: `admin.html` में Main Admin draft save/edit, queue, version-checked publish/schedule; automated tests चारों दरों, सुरक्षित input, invalid draft rejection और Customer/Electrician के published catalogue reads को जाँचते हैं। कोई quotation feature नहीं जोड़ा गया।
+- सीमा यथावत: कोई hosted DB migration, live push, VAPID secret, Edge Function deployment, AI provider key/call, Main merge या Developer Branch creation नहीं हुई। AI और push OFF हैं।
