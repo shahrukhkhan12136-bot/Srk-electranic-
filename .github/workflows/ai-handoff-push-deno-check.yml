@@ -33,4 +33,4 @@ jobs:
         with:
           deno-version: v2.2.7
       - name: Type-check sender without deployment or secrets
-        run: deno check supabase/functions/ai-handoff-push/index.ts
+        run: deno check --config supabase/functions/ai-handoff-push/deno.json supabase/functions/ai-handoff-push/index.ts
