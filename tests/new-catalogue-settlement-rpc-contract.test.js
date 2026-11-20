@@ -9,6 +9,7 @@ const payoutMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrat
 const hardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118120000_harden_online_payment_settlement_state.sql"), "utf8");
 const cashHardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118130000_harden_catalogue_admin_cash_settlement.sql"), "utf8");
 const manualDigitalMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118140000_add_catalogue_admin_manual_digital_settlement.sql"), "utf8");
+const payoutReferenceHardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261120110000_prevent_duplicate_electrician_payout_references.sql"), "utf8");
 const adminHtml = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
 const bookingHtml = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
 
@@ -171,4 +172,17 @@ test("new Catalogue Razorpay webhook verifies signed raw payload, deduplicates e
   assert.match(webhook, /srk_service_role_record_online_booking_payment/);
   assert.match(webhook, /p_booking_id: booking\.id, p_order_id: payment\.order_id, p_payment_id: payment\.id, p_amount_paise: payment\.amount/);
   assert.match(webhook, /booking\.razorpay_payment_id === payment\.id \? "already_processed" : "payment_conflict"/);
+});
+
+
+test("Admin payout RPC serializes and rejects reuse of a bank UTR or UPI reference across payouts", () => {
+  const fn = payoutReferenceHardeningMigration.match(/create or replace function public\\.srk_admin_mark_electrician_payout_paid\\([\\s\\S]*?\\n\\$\\$;/i)?.[0] || "";
+  assert.ok(fn, "payout RPC replacement must exist");
+  assert.match(fn, /pg_advisory_xact_lock\\(hashtextextended\\(lower\\(btrim\\(p_reference\\)\\), 88421\\)\\)/i);
+  assert.match(fn, /existing\\.id <> p_payout_id/i);
+  assert.match(fn, /lower\\(btrim\\(existing\\.payout_reference\\)\\) = lower\\(btrim\\(p_reference\\)\\)/i);
+  assert.match(fn, /PAYOUT_REFERENCE_ALREADY_USED/i);
+  assert.match(fn, /using errcode = '23505'/i);
+  assert.ok(fn.indexOf("Only pending payouts can be marked paid") < fn.indexOf("PAYOUT_REFERENCE_ALREADY_USED"));
+  assert.ok(fn.indexOf("PAYOUT_REFERENCE_ALREADY_USED") < fn.indexOf("set payout_status = 'paid'"));
 });
