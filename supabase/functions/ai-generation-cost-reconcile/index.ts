@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { extractReportedUsd } from "../../../lib/ai-generation-cost.mjs";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -34,18 +35,6 @@ function isJob(value: unknown): value is CostJob {
     typeof value.model_key === "string" && value.model_key.length > 0 && value.model_key.length <= 160 &&
     Number.isInteger(value.attempt_count) && (value.attempt_count as number) >= 1 && (value.attempt_count as number) <= 20;
 }
-function extractReportedUsd(payload: unknown, expectedGenerationId: string): string | null {
-  if (!isObject(payload)) return null;
-  const data = isObject(payload.data) ? payload.data : payload;
-  if (typeof data.id === "string" && data.id !== expectedGenerationId) return null;
-  const raw = data.total_cost ?? data.totalCost;
-  if (typeof raw !== "number" && typeof raw !== "string") return null;
-  if (typeof raw === "number" && (!Number.isFinite(raw) || raw < 0)) return null;
-  const normalized = String(raw);
-  if (!/^(?:0|[1-9]\d{0,9})(?:\.\d{1,10})?$/.test(normalized)) return null;
-  return normalized;
-}
-
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!enabled) return json({ error: "worker_disabled" }, 503);
