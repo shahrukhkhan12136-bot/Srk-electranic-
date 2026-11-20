@@ -48,6 +48,9 @@ function setup({ role = "customer", status = 200, user = null, env = null, custo
     if (url.includes("/rest/v1/service_bookings")) {
       return { ok: true, status: 200, json: async () => bookingRows };
     }
+    if (url.includes("/rest/v1/rpc/srk_ai_request_handoff")) {
+      return { ok: true, status: 200, json: async () => ({ state: "queued", handoff_id: UUID }) };
+    }
     throw new Error("Unexpected URL");
   };
   return {
@@ -186,6 +189,37 @@ test("handoff requires a non-empty bounded summary", async () => {
     const response = await handler(event({ body }), "handoff");
     assert.equal(response.statusCode, 400);
   }
+});
+
+test("enabled human handoff uses the service-role RPC after identity, conversation and booking checks", async () => {
+  const env = {
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: "anon-test",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role-test",
+    AI_GATEWAY_ENABLED: "true"
+  };
+  const { handler, calls } = setup({ env });
+  const response = await handler(event({ body: {
+    module_key: "customer_support",
+    conversation_id: UUID,
+    reason_code: "billing_question",
+    urgency: "high",
+    summary: "Please connect me to a support agent"
+  } }), "handoff");
+  assert.equal(response.statusCode, 200);
+  const body = JSON.parse(response.body);
+  assert.equal(body.handoff.required, true);
+  assert.equal(body.handoff.queue.id, UUID);
+  const rpc = calls.find(call => call.url.includes("/rest/v1/rpc/srk_ai_request_handoff"));
+  assert.ok(rpc);
+  assert.equal(rpc.options.headers.Authorization, "Bearer service-role-test");
+  assert.deepEqual(JSON.parse(rpc.options.body), {
+    p_actor_user_id: "123e4567-e89b-42d3-a456-426614174001",
+    p_conversation_id: UUID,
+    p_reason_code: "billing_question",
+    p_urgency: "high",
+    p_summary: "Please connect me to a support agent"
+  });
 });
 
 test("malformed Supabase Auth JSON is rejected before any profile lookup", async () => {
