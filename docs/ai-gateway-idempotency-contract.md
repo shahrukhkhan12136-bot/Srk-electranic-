@@ -4,7 +4,7 @@ Status: **CHANGES REQUESTED — NOT APPROVED.** This is a design and test handof
 
 ## Scope and ownership
 
-GPT-1 owns the AI Assistant application-side work and this design handoff. GPT-2 owns the shared Supabase schema, migrations, RPC implementation, RLS/grants, and non-production database integration tests. GPT-1 must not modify GPT-2-owned migrations or hosted database resources under this review.
+GPT-1 now owns the combined AI Assistant application and database work, including schema, migrations, RPCs, RLS/grants, and non-production integration tests. GPT-2 is no longer an active workstream. This ownership transfer does not authorize applying migrations to hosted projects, enabling AI, or deploying.
 
 ## Required schema and exact-response replay
 
