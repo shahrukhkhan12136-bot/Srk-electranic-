@@ -10,6 +10,7 @@ const hardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/mig
 const cashHardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118130000_harden_catalogue_admin_cash_settlement.sql"), "utf8");
 const manualDigitalMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261118140000_add_catalogue_admin_manual_digital_settlement.sql"), "utf8");
 const payoutReferenceHardeningMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261120110000_prevent_duplicate_electrician_payout_references.sql"), "utf8");
+const refundAccountingMigration = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql"), "utf8");
 const adminHtml = fs.readFileSync(path.join(__dirname, "../admin.html"), "utf8");
 const bookingHtml = fs.readFileSync(path.join(__dirname, "../booking.html"), "utf8");
 
@@ -187,4 +188,38 @@ test("Admin payout RPC serializes and rejects reuse of a bank UTR or UPI referen
   assert.ok(fn.includes("using errcode = '23505'"));
   assert.ok(fn.indexOf("Only pending payouts can be marked paid") < fn.indexOf("PAYOUT_REFERENCE_ALREADY_USED"));
   assert.ok(fn.indexOf("PAYOUT_REFERENCE_ALREADY_USED") < fn.indexOf("set payout_status = 'paid'"));
+});
+
+
+const extractFunctionFrom = (source, name) => {
+  const start = source.indexOf("create or replace function public." + name + "(");
+  const end = source.indexOf("$$;", start);
+  return start >= 0 && end >= 0 ? source.slice(start, end + 3) : "";
+};
+
+test("payout and refund operations use the same booking-first lock order and reject paid-payout refunds", () => {
+  const markPaid = extractFunctionFrom(payoutMigration, "srk_admin_mark_electrician_payout_paid");
+  const prepareRefund = extractFunctionFrom(refundAccountingMigration, "srk_admin_prepare_razorpay_refund");
+  const manualRefund = extractFunctionFrom(refundAccountingMigration, "srk_admin_record_manual_refund");
+  for (const fn of [markPaid, prepareRefund, manualRefund]) assert.ok(fn, "expected finance RPC source exists");
+  assert.ok(markPaid.indexOf("from public.service_bookings") < markPaid.indexOf("from public.srk_electrician_payouts"));
+  assert.ok(prepareRefund.indexOf("from public.service_bookings where id=p_booking_id for update") < prepareRefund.indexOf("from public.srk_electrician_payouts"));
+  assert.ok(manualRefund.indexOf("from public.service_bookings") < manualRefund.indexOf("from public.srk_electrician_payouts"));
+  assert.ok(markPaid.includes("Only pending payouts can be marked paid"));
+  assert.ok(prepareRefund.includes("ELECTRICIAN_PAYOUT_ALREADY_PAID_RECOVERY_REQUIRED"));
+  assert.ok(manualRefund.includes("ELECTRICIAN_PAYOUT_ALREADY_PAID_RECOVERY_REQUIRED"));
+  assert.ok(prepareRefund.includes("set payout_status='blocked',payout_note='Razorpay refund pending'"));
+  assert.ok(manualRefund.includes("set payout_status='blocked',payout_note='Manual refund processed'"));
+});
+
+test("verified full refund only closes pending or refund-owned blocked payouts, never paid or unrelated blocked payouts", () => {
+  const trigger = extractFunctionFrom(payoutMigration, "srk_create_electrician_payable");
+  assert.ok(trigger);
+  assert.ok(trigger.includes("payout_status = 'pending'"));
+  assert.ok(trigger.includes("payout_status = 'blocked'"));
+  assert.ok(trigger.includes("payout_note in ('Razorpay refund pending','Manual refund processed')"));
+  const refundBranch = trigger.slice(trigger.indexOf("elsif new.payment_status = 'refunded'"));
+  assert.ok(refundBranch.includes("payout_status = 'pending'"));
+  assert.ok(refundBranch.includes("payout_status = 'blocked'"));
+  assert.ok(!refundBranch.includes("set payout_status = 'paid'"));
 });
