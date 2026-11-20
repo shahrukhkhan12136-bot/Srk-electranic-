@@ -41,24 +41,23 @@ SQL
 ) >"$TMP_DIR/same-a.out" 2>&1 &
 PID_A=$!
 sleep 0.3
-timeout 25s docker exec -i "$DB_CONTAINER" psql -X -At -U postgres -d postgres -v ON_ERROR_STOP=1 <<SQL >"$TMP_DIR/same-b.out" 2>&1
+mapfile -t SAME_B_RESULT < <(timeout 25s docker exec -i "$DB_CONTAINER" psql -X -q -At -U postgres -d postgres -v ON_ERROR_STOP=1 <<SQL
 SET request.jwt.claim.role='service_role';
-WITH result AS (
- SELECT public.srk_ai_complete_idempotency('$ACTOR','$SAME_KEY',decode(repeat('f',64),'hex'),1,'$CONVERSATION','same-key answer',200) AS payload
-)
-SELECT CASE WHEN (payload->>'state')='replay'
- AND (payload->>'response_message_id') IS NOT NULL
- AND (payload->>'response_message_id') IS NOT DISTINCT FROM (
-   SELECT response_message_id::text FROM public.srk_ai_idempotency
-   WHERE actor_user_id='$ACTOR' AND idempotency_key='$SAME_KEY'
- )
- THEN 'SAME_KEY_REPLAY_OK'
- ELSE 'SAME_KEY_REPLAY_FAILED:payload='||payload::text||
-      ':stored='||(SELECT coalesce(response_message_id::text,'NULL') FROM public.srk_ai_idempotency
-        WHERE actor_user_id='$ACTOR' AND idempotency_key='$SAME_KEY')
- END
-FROM result;
+SELECT public.srk_ai_complete_idempotency('$ACTOR','$SAME_KEY',decode(repeat('f',64),'hex'),1,'$CONVERSATION','same-key answer',200)::text;
+SELECT response_message_id::text FROM public.srk_ai_idempotency
+WHERE actor_user_id='$ACTOR' AND idempotency_key='$SAME_KEY';
 SQL
+)
+printf '%s\\n' "${SAME_B_RESULT[@]}" >"$TMP_DIR/same-b.out"
+PAYLOAD="${SAME_B_RESULT[0]:-}"
+STORED_RESPONSE_ID="${SAME_B_RESULT[1]:-}"
+if [[ -z "$PAYLOAD" || -z "$STORED_RESPONSE_ID" ]] ||
+   [[ "$(printf '%s' "$PAYLOAD" | jq -r '.state // empty')" != "replay" ]] ||
+   [[ "$(printf '%s' "$PAYLOAD" | jq -r '.response_message_id // empty')" != "$STORED_RESPONSE_ID" ]]; then
+  echo "SAME_KEY_REPLAY_FAILED: payload=$PAYLOAD stored=$STORED_RESPONSE_ID" | tee -a "$TMP_DIR/same-b.out"
+  exit 1
+fi
+echo "SAME_KEY_REPLAY_OK" >>"$TMP_DIR/same-b.out"
 wait "$PID_A"
 grep -q 'completed' "$TMP_DIR/same-a.out"
 grep -q 'SAME_KEY_REPLAY_OK' "$TMP_DIR/same-b.out"
