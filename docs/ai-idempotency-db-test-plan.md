@@ -1,6 +1,6 @@
 # AI idempotency database test plan
 
-Status: **test plan only — NOT EXECUTED**. GPT-1 owns implementation and execution of the combined database tests. The approved disposable CI PostgreSQL runner may be used; the existing Supabase TEST project must not be used destructively because its old data must be preserved. Do not point these tests at production.
+Status: **implementation added; expanded CI execution pending**. GPT-1 owns the combined database tests. `supabase/tests/database/ai_idempotency_atomicity.test.sql` contains 34 pgTAP assertions for the core lifecycle, replay, lease fencing, retention boundaries, legacy bypass prevention, and transaction rollback. `scripts/test-ai-idempotency-concurrency.sh` runs two independent PostgreSQL sessions for same-key and different-key races. CI uses a disposable local Supabase/PostgreSQL stack; the existing hosted Supabase TEST project must not be used destructively because its old data must be preserved. Do not point these tests at production.
 
 ## Required test matrix
 
@@ -32,4 +32,4 @@ Status: **test plan only — NOT EXECUTED**. GPT-1 owns implementation and execu
 
 ## Execution boundary
 
-This plan does not create or apply migrations and does not connect to a database. GPT-2 must approve the non-production target and execute/own the real transaction, concurrency, security, migration replay, and rollback tests. Static repository tests may supplement but cannot replace those tests.
+This plan does not create or apply migrations and does not connect to a database. GPT-1 owns implementation and execution. The isolated CI runner is the approved disposable target for real transaction, concurrency, security, migration replay, and rollback tests. Static repository tests supplement but do not replace these tests. No hosted TEST or Production database has been modified.
