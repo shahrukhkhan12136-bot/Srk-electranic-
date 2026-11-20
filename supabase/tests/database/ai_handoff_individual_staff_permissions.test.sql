@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(15);
+SELECT plan(17);
 
 SELECT has_table('public','srk_admin_staff_permission_grants','individual Staff permission grant table exists');
 SELECT ok(
@@ -96,6 +96,24 @@ SELECT ok(
   position('public.srk_admin_role_permissions' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0
   AND position('ai.handoff.read' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0,
   'existing role permissions remain intact while AI permissions stay person-specific'
+);
+
+
+SELECT ok(
+  position('s.status=''active''' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))
+    < position('tracked.auth_session_id=v_session_id' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))
+  AND position('tracked.auth_session_id=v_session_id' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))
+    < position('auth.sessions auth_s' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))
+  AND position('auth.sessions auth_s' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))
+    < position('public.srk_admin_staff_permission_grants g' in pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure)),
+  'active Staff status and both live session checks occur before individual permission grants are considered'
+);
+SELECT ok(
+  position('g.staff_user_id=v_uid AND g.permission_key=p_permission_key' in
+    pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0
+  AND position('p_permission_key IN (''ai.handoff.read'',''ai.handoff.reply'',''ai.handoff.resolve'')' in
+    pg_get_functiondef('public.srk_has_admin_permission(text)'::regprocedure))>0,
+  'an individual grant applies only to the authenticated Staff member and the exact requested AI handoff permission'
 );
 
 SELECT * FROM finish();
