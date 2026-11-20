@@ -169,3 +169,13 @@
 6. Rate List की Admin-only चार-tier increase/decrease behavior की अंतिम acceptance जाँच; कोई quotation/custom quote feature नहीं जोड़ा जाएगा।
 
 **सुरक्षा स्थिति:** AI Gateway, AI handoff push और AI cost reconciliation workers disabled-by-default/OFF हैं। कोई hosted Supabase migration, production deployment, live provider call, live push, Main merge या Developer Branch creation नहीं हुई। इस चरण को 100% complete घोषित नहीं किया गया है।
+
+
+## 20 नवम्बर — Gateway लागत की precision सुरक्षा
+
+- Review में एक छोटा precision edge case मिला: JavaScript numeric USD cost को fixed 10 decimals में round करने पर बहुत छोटी positive लागत गलती से zero बन सकती थी।
+- `supabase/functions/_shared/ai-generation-cost.mjs` अब scientific notation को बिना rounding plain decimal में expand करता है। Supported 10 decimal places से अधिक precision वाली positive cost reject होती है; उसे zero नहीं माना जाता।
+- Tests जोड़े: (10^{-10}) USD स्वीकार, (10^{-11}) USD reject, explicit zero स्वीकार।
+- Latest Feature Branch Node CI run [44744639365](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44744639365), SHA `97022072887ae67e2ba4261e2dd77f7c166d90fe` — **791/791 passed**।
+- Updated shared parser का Deno type-check run [44744627981](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44744627981), SHA `7d1c47b15229791a19a3fcf0661f1d995dbf2481` — **success**।
+- यह केवल source/test सुधार है; कोई live Gateway call, cost fetch, hosted DB write या AI activation नहीं हुआ।
