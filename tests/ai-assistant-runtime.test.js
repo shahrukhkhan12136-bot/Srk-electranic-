@@ -24,6 +24,7 @@ test("new assistant turn persists user message and completes fenced idempotency 
  const runtime=createAiAssistantRuntime({env,onError:e=>{internalError=e;},fetchImpl:async(url,opt={})=>{
   calls.push({url,opt});
   if(url.includes("srk_ai_reserve_idempotency"))return res({state:"reserved",id:key,lease_version:1});
+  if(url.includes("srk_ai_reserve_request_capacity"))return res({state:"allowed",remaining_window:9,remaining_today:99});
   if(url.includes("srk_ai_create_conversation"))return res({state:"created",conversation_id:conversation});
   if(url.includes("srk_ai_append_message"))return res({state:"appended"});
   if(url.includes("/rest/v1/srk_ai_messages?"))return res([{sender_kind:"user",body:"नमस्ते"}]);
@@ -45,6 +46,25 @@ test("new assistant turn persists user message and completes fenced idempotency 
  assert.equal(result.statusCode,200,internalError);
  assert.equal(JSON.parse(result.body).reply,"नमस्ते! कैसे मदद करूँ?");
  assert.equal(calls.filter(x=>x.url==="https://ai-gateway.vercel.sh/v1/chat/completions").length,1);
+});
+
+
+test("server-side request limit returns 429 and never calls provider",async()=>{
+ const calls=[];
+ const runtime=createAiAssistantRuntime({env,fetchImpl:async(url,opt={})=>{
+  calls.push({url,opt});
+  if(url.includes("srk_ai_reserve_idempotency"))return res({state:"reserved",id:key,lease_version:1});
+  if(url.includes("srk_ai_reserve_request_capacity"))return res({state:"rate_limited",scope:"window",retry_after_seconds:240});
+  if(url.includes("srk_ai_finalize_idempotency"))return res({state:"failed"});
+  if(url==="https://ai-gateway.vercel.sh/v1/chat/completions")throw Error("provider must not be called");
+  throw Error("unexpected request "+url);
+ }});
+ const result=await runtime.handle(args);
+ assert.equal(result.statusCode,429);
+ assert.equal(result.headers["Retry-After"],"240");
+ assert.equal(JSON.parse(result.body).error,"ai_rate_limited");
+ assert.equal(calls.some(x=>x.url==="https://ai-gateway.vercel.sh/v1/chat/completions"),false);
+ assert.equal(calls.some(x=>x.url.includes("srk_ai_finalize_idempotency")),true);
 });
 
 test("idempotent replay returns persisted reply without another model request",async()=>{
