@@ -68,6 +68,14 @@ jobs:
             echo "Expected pgTAP plan 1..34 was not found."
             exit 1
           fi
+      - name: Run two-session same-key and different-key concurrency checks
+        working-directory: ${{ runner.temp }}/srk-ai-idempotency-pgtap
+        run: |
+          set -euo pipefail
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          bash "$GITHUB_WORKSPACE/scripts/test-ai-idempotency-concurrency.sh" "$DB_CONTAINER"
+
       - name: Stop disposable local Supabase stack
         if: always()
         working-directory: ${{ runner.temp }}/srk-ai-idempotency-pgtap
