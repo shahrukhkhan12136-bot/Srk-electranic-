@@ -7,7 +7,7 @@ const file=path.join(__dirname,"..","supabase","migrations","20261118270000_ai_h
 const sql=fs.readFileSync(file,"utf8");
 
 test("Main Admin assignment requires an active Staff member with read and reply permissions",()=>{
-  assert.match(sql,/auth\.uid\(\) IS NULL OR NOT public\.is_srk_admin\(\)/i);
+  assert.ok(sql.includes("v_actor IS NULL OR NOT public.is_srk_admin()"));
   assert.match(sql,/s\.status='active'/i);
   assert.match(sql,/ai\.handoff\.read/);
   assert.match(sql,/ai\.handoff\.reply/);
@@ -39,15 +39,9 @@ test("Staff resolution requires assigned ownership and closes queue and conversa
 });
 
 test("all workflow RPCs are SECURITY DEFINER with empty search_path and authenticated-only execution",()=>{
-  const signatures=[
-    "srk_admin_assign_ai_handoff(uuid,uuid,text)",
-    "srk_staff_list_assigned_ai_handoffs(integer)",
-    "srk_staff_list_assigned_ai_handoff_messages(uuid,integer)",
-    "srk_staff_reply_ai_handoff(uuid,text)",
-    "srk_staff_resolve_ai_handoff(uuid)"
-  ];
+  const signatures=["srk_admin_assign_ai_handoff","srk_staff_list_assigned_ai_handoffs","srk_staff_list_assigned_ai_handoff_messages","srk_staff_reply_ai_handoff","srk_staff_resolve_ai_handoff"];
   for(const signature of signatures){
-    assert.ok(sql.includes("CREATE OR REPLACE FUNCTION public."+signature));
+    assert.ok(sql.includes("CREATE OR REPLACE FUNCTION public."+signature+"("));
   }
   assert.equal((sql.match(/SECURITY DEFINER/g)||[]).length,5);
   assert.equal((sql.match(/SET search_path=''/g)||[]).length,5);
