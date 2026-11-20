@@ -1,3 +1,11 @@
+## 2026-11-20 — Electrician payout reference duplicate guard
+
+- Admin payout RPC में पहले से booking-first row locks और pending-only Paid transition थे, लेकिन अलग payout records पर एक ही bank UTR / UPI reference reuse को रोकने का explicit cross-payout guard नहीं था।
+- नई Feature Branch migration `20261120110000_prevent_duplicate_electrician_payout_references.sql` में normalized reference पर transaction advisory lock और existing payout-reference check जोड़ा। Duplicate reference पर `PAYOUT_REFERENCE_ALREADY_USED` / SQLSTATE `23505` fail-closed result मिलता है। Existing booking-first lock order और pending-only payout state gate बरकरार हैं।
+- `tests/new-catalogue-settlement-rpc-contract.test.js` में duplicate reference serialization, payout/refund booking-first lock order, paid-payout refund rejection और full-refund payout-state boundary के source-contract regressions जोड़े।
+- **स्थिति: source change committed; Node CI और isolated PostgreSQL replay अभी इस नए commit पर सत्यापित नहीं।** ये source-contract checks वास्तविक बैंक UTR uniqueness या concurrent PostgreSQL execution का प्रमाण नहीं हैं।
+- कोई Razorpay request, वास्तविक payout/refund, hosted TEST/Production database change, merge या deployment नहीं किया गया।
+
 ## 2026-11-16 — GPT-2 Payment / Accounting contract audit
 
 - Payment paths को source migrations के बीच मिलाया: Legacy booking का manual payment केवल completed + assigned + customer-approved legacy quote पर चलता है; labour और materials अलग amounts में लिए जाते हैं, total approved quote से match होता है, और platform commission केवल labour पर लगती है। नई Category Booking इस legacy manual-payment RPC से fail-closed तरीके से बाहर है।
