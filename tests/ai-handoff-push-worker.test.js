@@ -19,6 +19,8 @@ test("AI handoff push sender requires enable flag and a private worker secret", 
   assert.match(source, /x-srk-ai-handoff-push-secret/);
   assert.match(source, /srk_claim_ai_handoff_notification_outbox/);
   assert.match(source, /srk_claim_ai_handoff_subscription_deliveries/);
+  assert.match(source, /event\.recipient_user_ids\.length > 0/);
+  assert.match(source, /No active Staff member has handoff read permission/);
 });
 
 test("AI handoff push payload contains only a minimal staff alert", () => {
