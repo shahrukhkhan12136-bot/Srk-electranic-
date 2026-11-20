@@ -20,6 +20,14 @@ function functionBody(source, name) {
   return source.slice(start, next < 0 ? source.length : start + 1 + next);
 }
 
+function syncFunctionBody(source, name) {
+  const start = source.indexOf('function ' + name + '(');
+  assert.ok(start >= 0, name + ' handler exists');
+  const tail = source.slice(start + 1);
+  const next = tail.search(/\n(?:async )?function\\s+[A-Za-z0-9_$]+\\s*\\(/);
+  return source.slice(start, next < 0 ? source.length : start + 1 + next);
+}
+
 function sqlFunction(source, name) {
   const start = source.indexOf('CREATE FUNCTION public.' + name + '(');
   assert.ok(start >= 0, name + ' final SQL projection exists');
@@ -98,8 +106,8 @@ test('booking state changes trigger an explicit refresh after user decisions and
 });
 
 test('electrician timer display is read-only and derives elapsed time from server projection', () => {
-  const formatter = functionBody(electrician, 'formatElectricianTimer');
-  const updater = functionBody(electrician, 'updateElectricianTimers');
+  const formatter = syncFunctionBody(electrician, 'formatElectricianTimer');
+  const updater = syncFunctionBody(electrician, 'updateElectricianTimers');
   assert.match(formatter, /Math\.floor\(Number\(seconds\)\|\|0\)/);
   assert.match(updater, /data\.accumulated/);
   assert.match(updater, /data\.running==='1'&&el\.dataset\.started/);
