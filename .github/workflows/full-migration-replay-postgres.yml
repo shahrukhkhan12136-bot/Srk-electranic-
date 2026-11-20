@@ -8,6 +8,7 @@ on:
       - "COMPLETE_DATABASE_SETUP.sql"
       - "supabase/migrations/**"
       - "supabase/tests/database/rate_catalogue_draft_security.test.sql"
+      - "supabase/tests/database/payout_reference_unique_index.test.sql"
       - "docs/AI_CONVERSATION_AND_HANDOFF_DATA_MODEL_HI.md"
       - ".github/workflows/full-migration-replay-postgres.yml"
   pull_request:
@@ -139,6 +140,19 @@ jobs:
             echo "Rate List Draft pgTAP assertions failed."
             exit 1
           fi
+
+      - name: Prove duplicate normalized payout references are rejected
+        working-directory: ${{ runner.temp }}/srk-full-migration-replay
+        run: |
+          set -euo pipefail
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+          OUTPUT="$(docker exec -i "$DB_CONTAINER" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            < "$GITHUB_WORKSPACE/supabase/tests/database/payout_reference_unique_index.test.sql" 2>&1)" \
+            || { printf '%s\\n' "$OUTPUT"; exit 1; }
+          printf '%s\\n' "$OUTPUT"
+          printf '%s\\n' "$OUTPUT" | grep -q 'payout_reference_duplicate_insert_rejected=true'
+          printf '%s\\n' "$OUTPUT" | grep -q 'payout_reference_duplicate_fixture_count=1'
 
       - name: Upload PostgreSQL replay evidence
         if: always()
