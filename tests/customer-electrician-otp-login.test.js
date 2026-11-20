@@ -27,7 +27,8 @@ test('customer booking dashboard OTP accepts only Indian 10-digit or +91 numbers
 
 test('electrician OTP accepts only Indian 10-digit or +91 numbers', () => {
   assert.ok(electrician.includes("if(digits.length===10)return '+91'+digits"));
-  assert.ok(electrician.includes("if(raw.startsWith('+91')&&digits.length===12&&digits.startsWith('91'))return '+91'+digits"));
+  assert.ok(electrician.includes("if(raw.startsWith('+91')&&digits.length===12&&digits.startsWith('91'))return '+91'+digits.slice(2)"));
+  assert.ok(!electrician.includes("return '+91'+digits;return null"), 'the +91 prefix must not be duplicated');
   assert.ok(!electrician.includes('digits.length>=10&&digits.length<=15'));
 });
 
