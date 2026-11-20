@@ -24,7 +24,7 @@ test("AI idempotency handoff documents fail-closed exact response replay", () =>
 test("AI idempotency handoff documents atomic completion and fixed lock order", () => {
   assert.match(contract, /srk_ai_complete_idempotency/);
   assert.match(contract, /Idempotency Row → Conversation Row/);
-  assert.match(contract, /same database transaction/i);
+  assert.match(contract, /one database transaction/i);
   assert.match(contract, /entire transaction/i);
 });
 
