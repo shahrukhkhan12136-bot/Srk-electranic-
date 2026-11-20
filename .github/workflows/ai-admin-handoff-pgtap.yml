@@ -14,6 +14,7 @@ on:
       - "supabase/tests/database/ai_handoff_notification_outbox.test.sql"
       - "supabase/tests/database/ai_handoff_push_subscription_ledger.test.sql"
       - "supabase/tests/database/ai_generation_cost_reconciliation.test.sql"
+      - "supabase/tests/database/ai_fbil_usd_inr_fx_snapshots.test.sql"
       - "supabase/migrations/20261118300000_ai_handoff_notification_lease_fencing.sql"
       - "supabase/migrations/20261118310000_ai_handoff_notification_recipient_safety.sql"
       - "supabase/migrations/20261118320000_ai_handoff_push_requires_device_delivery.sql"
@@ -102,6 +103,7 @@ jobs:
           run_pgtap "supabase/tests/database/ai_handoff_notification_outbox.test.sql" 15
           run_pgtap "supabase/tests/database/ai_handoff_push_subscription_ledger.test.sql" 9
           run_pgtap "supabase/tests/database/ai_generation_cost_reconciliation.test.sql" 11
+          run_pgtap "supabase/tests/database/ai_fbil_usd_inr_fx_snapshots.test.sql" 11
 
       - name: Stop disposable local Supabase stack
         if: always()
