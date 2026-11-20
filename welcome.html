@@ -21,6 +21,42 @@ main{flex:1}.company,.welcome{max-width:850px;margin:0 auto;text-align:center}.c
 .role-login{padding:4px 0 38px;text-align:center}.role-login h2{font-size:clamp(22px,3vw,30px);margin:0 0 7px;color:var(--navy)}.role-login>p{color:var(--muted);margin:0 0 18px}.role-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.role-card{display:flex;flex-direction:column;gap:7px;padding:20px;border:1px solid rgba(23,105,210,.18);border-radius:16px;background:#fff;box-shadow:0 12px 32px rgba(20,67,120,.07);text-decoration:none;transition:transform .18s}.role-card:hover{transform:translateY(-3px)}.role-card strong{font-size:17px;color:var(--navy)}.role-card span{font-size:13px;color:var(--muted)}
 footer{border-top:1px solid var(--line);padding:18px 0 22px;text-align:center}.footer-note{font-size:11px;color:#617891;margin-top:6px}
 @media(max-width:650px){.shell{width:min(100% - 28px,520px)}header{min-height:72px}.brand-mark{width:40px;height:40px}.brand-name{font-size:14px}.brand-caption{font-size:9px}.header-link{font-size:12px;padding:9px 11px}.company{padding:27px 4px 14px}.company p,.welcome p{font-size:15px}.welcome{padding:12px 4px}.welcome .lead{font-size:17px}.founder{width:min(82%,280px);margin:8px auto 26px}.role-grid{grid-template-columns:1fr}.role-login{padding-bottom:28px}}
+/* Compact single-screen welcome layout for phones */
+@media(max-width:650px){
+ .shell{width:min(100% - 20px,520px);min-height:100svh}
+ header{min-height:54px;gap:8px}
+ .brand{gap:8px}.brand-mark{width:34px;height:34px;border-radius:10px}
+ .brand-mark svg{width:22px;height:22px}.brand-name{font-size:13px}
+ .brand-caption{font-size:8px;line-height:1.25;margin-top:2px}
+ .header-link{font-size:11px;padding:7px 9px}
+ .company{padding:10px 3px 3px}
+ .eyebrow{font-size:9px;letter-spacing:.12em}
+ .company h1{font-size:23px;margin:3px 0}
+ .company p{font-size:11px;line-height:1.35}
+ .welcome{padding:5px 3px 2px}
+ .welcome h2{font-size:19px;margin:3px 0 4px}
+ .welcome .lead{font-size:14px;margin-bottom:2px}
+ .welcome p{font-size:11px;line-height:1.35}
+ .slogan{margin-top:4px!important;font-size:11px!important}
+ .founder{width:104px;margin:7px auto 10px}
+ .founder img{aspect-ratio:240/222;border-width:2px;border-radius:14px}
+ .founder figcaption{font-size:10px;margin-top:4px}
+ .founder figcaption span{font-size:8px;margin-top:1px}
+ .role-login{padding:2px 0 10px}
+ .role-login h2{font-size:16px;margin:0 0 3px}
+ .role-login>p{font-size:10px;margin:0 0 8px}
+ .role-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .role-card{padding:10px 5px;gap:4px;border-radius:11px;min-height:64px;justify-content:center}
+ .role-card strong{font-size:11px;line-height:1.25}
+ .role-card span{font-size:9px;line-height:1.25}
+ footer{padding:7px 0 9px;font-size:10px}
+ .footer-note{font-size:9px;margin-top:2px}
+}
+@media(max-height:720px) and (max-width:650px){
+ .company{padding-top:6px}.founder{width:84px;margin:4px auto 6px}
+ .role-card{min-height:58px;padding:7px 4px}
+ footer{padding:4px 0 6px}
+}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
 </style>
 </head>
