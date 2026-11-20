@@ -55,8 +55,15 @@ Deno.serve(async (req) => {
         "srk_claim_ai_handoff_subscription_deliveries",
         { p_outbox_id: event.outbox_id, p_user_id: userId, p_limit: 100 }
       );
-      if (deviceClaimError || !isObject(deviceClaim) || !Array.isArray(deviceClaim.targets)) {
+      if (deviceClaimError || !isObject(deviceClaim) || !Array.isArray(deviceClaim.targets) ||
+          !Number.isInteger(deviceClaim.subscription_count) || deviceClaim.subscription_count < 0) {
         eventComplete = false; eventError = "Device delivery claim failed"; continue;
+      }
+      // No device rows makes the generic completion RPC vacuously true. Keep the
+      // outbox retryable so a later Staff push subscription can receive this alert.
+      if (deviceClaim.subscription_count === 0) {
+        eventComplete = false;
+        eventError = "Staff member has no active push subscription";
       }
 
       await Promise.all(deviceClaim.targets.map(async (rawTarget: unknown) => {
