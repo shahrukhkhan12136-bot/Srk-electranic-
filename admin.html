@@ -233,7 +233,7 @@ async function resolveStaffAiHandoff(){
  if(adminPortalMode!=='staff'||!id||staffAiHandoffBusy)return;
  if(!confirm('क्या यह AI Handoff हल हो गया है? मामला बंद हो जाएगा।'))return;
  staffAiHandoffBusy=true;status.textContent='मामला हल किया जा रहा है…';
- try{const result=await aiStaffHandoffRequest({action:'resolve',handoff_id:id});if(result?.state!=='resolved')throw new Error('Resolve की पुष्टि नहीं हुई।');staffAiHandoffSelectedId=null;document.getElementById('staffAiHandoffThreadPanel').classList.add('hidden');await loadStaffAiHandoffs();}
+ try{const result=await aiStaffHandoffRequest({action:'resolve',handoff_id:id});if(result?.state!=='resolved')throw new Error('Resolve की पुष्टि नहीं हुई।');staffAiHandoffSelectedId=null;document.getElementById('staffAiHandoffThreadPanel').classList.add('hidden');staffAiHandoffBusy=false;await loadStaffAiHandoffs();}
  catch(e){status.textContent=e.message||'मामला हल नहीं हुआ।';}
  finally{staffAiHandoffBusy=false;}
 }
