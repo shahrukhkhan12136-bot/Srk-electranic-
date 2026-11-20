@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(41);
+SELECT plan(50);
 INSERT INTO auth.users (id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at)
 VALUES
  ('00000000-0000-4000-8000-000000000101','authenticated','authenticated','ai-owner@example.test','',transaction_timestamp(),transaction_timestamp(),transaction_timestamp()),
@@ -185,5 +185,56 @@ SELECT throws_ok(
  $$SELECT public.srk_ai_append_message((SELECT actor_one FROM ai_test_context),
  (SELECT conversation_two FROM ai_test_context),'assistant','Bypass')$$,
  '22023','AI_INVALID_MESSAGE','legacy append rejects assistant messages');
+
+SELECT ok(
+ has_function_privilege('service_role','public.srk_ai_record_usage_event(uuid,uuid,uuid,uuid,text,text,boolean,integer,integer,integer)','EXECUTE')
+ AND NOT has_function_privilege('anon','public.srk_ai_record_usage_event(uuid,uuid,uuid,uuid,text,text,boolean,integer,integer,integer)','EXECUTE')
+ AND NOT has_function_privilege('authenticated','public.srk_ai_record_usage_event(uuid,uuid,uuid,uuid,text,text,boolean,integer,integer,integer)','EXECUTE'),
+ 'AI token usage recording RPC is service-role-only');
+SELECT ok(
+ (SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_ai_usage_events'::regclass)
+ AND NOT has_table_privilege('anon','public.srk_ai_usage_events','SELECT')
+ AND NOT has_table_privilege('authenticated','public.srk_ai_usage_events','SELECT')
+ AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+  WHERE table_schema='public' AND table_name='srk_ai_usage_events'
+  AND column_name IN ('body','prompt','completion')),
+ 'usage ledger is private and contains no message or prompt text columns');
+SELECT ok(
+ (SELECT prosecdef AND proconfig @> ARRAY['search_path=""']::text[] FROM pg_proc
+  WHERE oid='public.srk_ai_record_usage_event(uuid,uuid,uuid,uuid,text,text,boolean,integer,integer,integer)'::regprocedure),
+ 'usage recording RPC is SECURITY DEFINER with an empty search_path');
+SELECT is(
+ (public.srk_ai_record_usage_event(
+  '00000000-0000-4000-8000-000000000301',(SELECT actor_one FROM ai_test_context),
+  (SELECT conversation_two FROM ai_test_context),(SELECT key_one FROM ai_test_context),
+  'vercel_ai_gateway','provider/test',true,31,12,43)->>'state'),
+ 'recorded','reported provider token usage is recorded');
+SELECT is(
+ (SELECT total_tokens FROM public.srk_ai_usage_events
+  WHERE attempt_id='00000000-0000-4000-8000-000000000301'),
+ 43,'usage ledger stores exact reported token counts');
+SELECT is(
+ (public.srk_ai_record_usage_event(
+  '00000000-0000-4000-8000-000000000302',(SELECT actor_two FROM ai_test_context),
+  (SELECT conversation_two FROM ai_test_context),(SELECT key_two FROM ai_test_context),
+  'vercel_ai_gateway','provider/test',true,1,1,2)->>'state'),
+ 'access_denied','usage RPC rejects a different conversation owner');
+SELECT throws_ok(
+ $SELECT public.srk_ai_record_usage_event(
+  '00000000-0000-4000-8000-000000000303',(SELECT actor_one FROM ai_test_context),
+  (SELECT conversation_two FROM ai_test_context),(SELECT key_three FROM ai_test_context),
+  'vercel_ai_gateway','provider/test',true,5,5,3)$,
+ '22023','AI_INVALID_USAGE_COUNTS','usage RPC rejects inconsistent token totals');
+SELECT is(
+ (public.srk_ai_record_usage_event(
+  '00000000-0000-4000-8000-000000000304',(SELECT actor_one FROM ai_test_context),
+  (SELECT conversation_two FROM ai_test_context),(SELECT key_four FROM ai_test_context),
+  'vercel_ai_gateway','provider/test',false,NULL,NULL,NULL)->>'state'),
+ 'recorded','missing provider usage is explicitly recorded as unavailable');
+SELECT throws_ok(
+ $UPDATE public.srk_ai_usage_events SET total_tokens=0
+   WHERE attempt_id='00000000-0000-4000-8000-000000000301'$,
+ '55000','AI_USAGE_EVENTS_ARE_APPEND_ONLY','usage ledger events cannot be updated');
+
 SELECT * FROM finish();
 ROLLBACK;
