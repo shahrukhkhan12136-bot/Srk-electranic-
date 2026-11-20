@@ -1,4 +1,4 @@
--- Append one user or assistant message to an owned, open AI conversation.
+-- Append one user message only; assistant responses require atomic idempotency completion.
 -- This storage RPC does not invoke an AI provider or enable the API routes.
 
 BEGIN;
@@ -28,7 +28,7 @@ BEGIN
   END IF;
 
   IF p_actor_user_id IS NULL OR p_conversation_id IS NULL OR
-     p_sender_kind IS NULL OR p_sender_kind NOT IN ('user','assistant') OR
+     p_sender_kind IS NULL OR p_sender_kind <> 'user' OR
      p_body IS NULL OR length(btrim(p_body)) NOT BETWEEN 1 AND 4000 THEN
     RAISE EXCEPTION 'AI_INVALID_MESSAGE' USING ERRCODE='22023';
   END IF;
@@ -49,7 +49,7 @@ BEGIN
     RETURN jsonb_build_object('state','conversation_not_open');
   END IF;
 
-  v_sender_user_id := CASE WHEN p_sender_kind = 'user' THEN p_actor_user_id ELSE NULL END;
+  v_sender_user_id := p_actor_user_id;
 
   INSERT INTO public.srk_ai_messages (
     conversation_id, sender_kind, sender_user_id, body
