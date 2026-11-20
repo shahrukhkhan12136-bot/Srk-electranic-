@@ -90,7 +90,7 @@ test("Admin page inline JavaScript parses without syntax errors",()=>{
 
 test("Draft queue renders safe rows and Edit Draft restores all saved values",async()=>{
  const elements={adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""},rateElectricalAssistant:{value:""},rateSkilledElectrician:{value:""},rateExpertElectrician:{value:""},ratePremiumSpecialist:{value:""},rateCatalogueEffectiveAt:{value:""},rateCatalogueReason:{value:""},adminRateCatalogueStatus:{textContent:""}};
- const row={id:"draft-42",status:"scheduled",effective_at:"2027-12-01T10:00:00.000Z",reason:"Review <safe>",rates:{electrical_assistant:12550,skilled_electrician:20000,expert_electrician:27525,premium_electrical_specialist:35000}};
+ const row={id:"d7e9f2a1-8b4c-4d3e-9f10-123456789abc",status:"scheduled",effective_at:"2027-12-01T10:00:00.000Z",reason:"Review <safe>",rates:{electrical_assistant:12550,skilled_electrician:20000,expert_electrician:27525,premium_electrical_specialist:35000}};
  const context=vm.createContext({window:{},document:{getElementById(id){return elements[id]||(elements[id]={value:"",textContent:"",innerHTML:""});}},__rpc:async(name)=>({data:name==="srk_admin_list_rate_catalogue_drafts"?[row]:[],error:null})});
  const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
  vm.runInContext(script,context);
@@ -99,13 +99,15 @@ test("Draft queue renders safe rows and Edit Draft restores all saved values",as
  assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/Scheduled/);
  assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/Review &lt;safe&gt;/);
  assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/editAdminRateCatalogueDraft\(0\)/);
+ assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/publishAdminRateCatalogueDraftFromQueue\(0\)/);
+ assert.doesNotMatch(elements.adminRateCatalogueDraftQueue.innerHTML,/publishAdminRateCatalogueDraft\('d7e9f2a1/);
  vm.runInContext("editAdminRateCatalogueDraft(0)",context);
  assert.equal(elements.rateElectricalAssistant.value,"125.50");
  assert.equal(elements.rateSkilledElectrician.value,"200.00");
  assert.equal(elements.rateExpertElectrician.value,"275.25");
  assert.equal(elements.ratePremiumSpecialist.value,"350.00");
  assert.equal(elements.rateCatalogueReason.value,row.reason);
- assert.match(elements.adminRateCatalogueStatus.textContent,/draft-42/);
+ assert.match(elements.adminRateCatalogueStatus.textContent,/d7e9f2a1/);
 });
 test("Draft publish uses the current version guard and refreshes catalogue and queue",async()=>{
  const calls=[],elements={adminRateCatalogueStatus:{textContent:""},adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""}};
@@ -141,6 +143,23 @@ test("Draft save UI sends validated four-tier paise payload to the RPC",async()=
  assert.ok(Number.isFinite(Date.parse(save.args.p_effective_at)));
  assert.ok(calls.some(call=>call.name==="srk_admin_list_rate_catalogue_drafts"));
  assert.match(elements.adminRateCatalogueStatus.textContent,/Draft सेव हुआ/);
+});
+
+
+test("Draft queue never interpolates an untrusted draft ID into inline JavaScript",async()=>{
+ const elements={adminRateCatalogueDraftQueue:{textContent:"",innerHTML:""},adminRateCatalogueStatus:{textContent:""}};
+ const malicious="x');globalThis.pwned=true;//";
+ const context=vm.createContext({window:{},document:{getElementById(id){return elements[id]||(elements[id]={value:"",textContent:"",innerHTML:""});}},__rpc:async()=>({data:[{id:malicious,status:"draft",effective_at:"2027-12-01T10:00:00Z",reason:"Untrusted ID",rates:{}}],error:null})});
+ const script=admin.split("<script>").slice(1).map(part=>part.split("</script>")[0]).filter(Boolean).at(-1);
+ vm.runInContext(script,context);
+ vm.runInContext("sb={rpc:__rpc};user={id:'admin-test'};adminPortalMode='main_admin';",context);
+ await vm.runInContext("loadAdminRateCatalogueDrafts()",context);
+ assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/publishAdminRateCatalogueDraftFromQueue\(0\)/);
+ assert.match(elements.adminRateCatalogueDraftQueue.innerHTML,/disabled/);
+ assert.doesNotMatch(elements.adminRateCatalogueDraftQueue.innerHTML,/globalThis\.pwned/);
+ await vm.runInContext("publishAdminRateCatalogueDraftFromQueue(0)",context);
+ assert.match(elements.adminRateCatalogueStatus.textContent,/Draft ID गलत है/);
+ assert.equal(vm.runInContext("globalThis.pwned",context),undefined);
 });
 
 test("Draft queue ignores stale concurrent refresh responses",async()=>{

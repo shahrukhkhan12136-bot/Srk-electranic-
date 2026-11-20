@@ -918,10 +918,18 @@ async function loadAdminRateCatalogueDrafts(){
  const rows=Array.isArray(data)?data:[];adminRateCatalogueDraftCache=rows;
  if(!rows.length){box.textContent='कोई Draft या Scheduled बदलाव बाकी नहीं है।';return;}
  box.innerHTML='<strong>Draft / Scheduled बदलाव</strong>'+rows.map((row,index)=>{
-  const id=String(row.id||'');
+  const id=typeof row.id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id)?row.id:null;
   const when=new Date(row.effective_at).toLocaleString('en-IN');
-  return '<div style="border-top:1px solid #e6edf3;padding:10px 0"><strong>'+esc(row.status==='scheduled'?'Scheduled':'Draft')+'</strong> • लागू: '+esc(when)+'<div class="muted">'+esc(row.reason||'')+'</div><button type="button" class="alt" onclick="editAdminRateCatalogueDraft('+index+')">Edit Draft</button> <button type="button" onclick="publishAdminRateCatalogueDraft(\''+esc(id)+'\')">Publish / Schedule पक्का करें</button></div>';
+  return '<div style="border-top:1px solid #e6edf3;padding:10px 0"><strong>'+esc(row.status==='scheduled'?'Scheduled':'Draft')+'</strong> • लागू: '+esc(when)+'<div class="muted">'+esc(row.reason||'')+'</div><button type="button" class="alt" onclick="editAdminRateCatalogueDraft('+index+')">Edit Draft</button> <button type="button" onclick="publishAdminRateCatalogueDraftFromQueue('+index+')" '+(id?'':'disabled')+'>Publish / Schedule पक्का करें</button></div>';
  }).join('');
+}
+function publishAdminRateCatalogueDraftFromQueue(index){
+ const row=adminRateCatalogueDraftCache[index];
+ if(!row||typeof row.id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id)){
+  document.getElementById('adminRateCatalogueStatus').textContent='Draft ID गलत है; Publish रोक दिया गया।';
+  return;
+ }
+ return publishAdminRateCatalogueDraft(row.id);
 }
 function editAdminRateCatalogueDraft(index){
  const row=adminRateCatalogueDraftCache[index];if(!row||!row.id||!row.rates)return;
