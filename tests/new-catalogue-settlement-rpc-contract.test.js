@@ -185,6 +185,9 @@ test("Admin payout RPC serializes and rejects reuse of a bank UTR or UPI referen
   assert.ok(fn.includes("existing.id <> p_payout_id"));
   assert.ok(fn.includes("lower(btrim(existing.payout_reference)) = lower(btrim(p_reference))"));
   assert.ok(fn.includes("PAYOUT_REFERENCE_ALREADY_USED"));
+  assert.ok(payoutReferenceHardeningMigration.includes("CREATE UNIQUE INDEX IF NOT EXISTS srk_electrician_payouts_unique_reference_normalized"));
+  assert.ok(payoutReferenceHardeningMigration.includes("ON public.srk_electrician_payouts (lower(btrim(payout_reference)))"));
+  assert.ok(payoutReferenceHardeningMigration.includes("DUPLICATE_EXISTING_PAYOUT_REFERENCES_REQUIRE_REVIEW"));
   assert.ok(fn.includes("using errcode = '23505'"));
   assert.ok(fn.indexOf("Only pending payouts can be marked paid") < fn.indexOf("PAYOUT_REFERENCE_ALREADY_USED"));
   assert.ok(fn.indexOf("PAYOUT_REFERENCE_ALREADY_USED") < fn.indexOf("set payout_status = 'paid'"));
