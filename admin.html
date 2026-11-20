@@ -46,7 +46,12 @@
 <div id="staffElectricianInbox" style="margin-top:12px">Assigned अनुरोध लोड हो रहे हैं…</div>
 <div id="staffElectricianThreadPanel" class="card hidden"><h3 id="staffElectricianThreadTitle">इलेक्ट्रिशियन बातचीत</h3><div id="staffElectricianThread"></div><textarea id="staffElectricianReply" rows="3" maxlength="4000" style="width:100%;padding:10px" placeholder="इलेक्ट्रिशियन को जवाब लिखें"></textarea><button onclick="sendStaffElectricianReply()">जवाब भेजें</button><span id="staffElectricianReplyStatus" class="muted"></span></div>
 </div>
-<div class="card admin-shared hidden" id="sosAlertCard">
+<div class="card staff-only hidden" id="staffAiHandoffCard">
+<h2>AI Assistant — मेरे Assigned Handoff</h2><p class="muted">यहाँ केवल आपके खाते को सौंपे गए AI मामले दिखेंगे। बातचीत खोलकर ग्राहक को जवाब दें या मामला हल करें। अनुमति और assignment की पुष्टि सुरक्षित backend/database करेगा।</p>
+<button type="button" class="alt" onclick="loadStaffAiHandoffs()">AI Handoff रीफ़्रेश करें</button><span id="staffAiHandoffStatus" class="muted" aria-live="polite"></span><div id="staffAiHandoffList" style="margin-top:12px">AI Handoff सूची लोड हो रही है…</div>
+<div id="staffAiHandoffThreadPanel" class="card hidden" style="margin-top:12px"><h3 id="staffAiHandoffThreadTitle">AI बातचीत</h3><div id="staffAiHandoffMessages" aria-live="polite"></div>
+<label for="staffAiHandoffReply">जवाब</label><textarea id="staffAiHandoffReply" rows="3" maxlength="4000" style="width:100%;padding:10px" placeholder="ग्राहक को स्पष्ट जवाब लिखें"></textarea>
+<button type="button" onclick="replyStaffAiHandoff()">जवाब भेजें</button><button type="button" class="alt" onclick="resolveStaffAiHandoff()">मामला हल करें</button><span id="staffAiHandoffThreadStatus" class="muted" aria-live="polite"></span></div></div><div class="card admin-shared hidden" id="sosAlertCard">
 <h2>🚨 SOS तत्काल सहायता — Admin / Support</h2>
 <p class="muted">यहाँ Customer या Electrician द्वारा दर्ज SOS मामले दिखेंगे। केवल अधिकृत Main Admin और Support Staff इन्हें देख/स्वीकार कर सकते हैं। SMS/Push provider अभी configured नहीं है; इसलिए नीचे delivery को भेजा हुआ न मानें। ऐप पुलिस/112 को स्वतः सूचना नहीं भेजता।</p>
 <button type="button" class="alt" onclick="loadSosAlerts()">SOS सूची रीफ़्रेश करें</button>
@@ -168,7 +173,70 @@ async function inviteSupportStaff(){
  }catch(e){status.textContent='आमंत्रण विफल: '+(e.message||'कृपया फिर प्रयास करें।');}
  finally{if(button)button.disabled=false;}
 }
-let adminAiHandoffQueueBusy=false;
+let adminAiHandoffQueueBusy=false,adminAiAssignableStaff=[];
+async function loadAdminAiAssignableStaff(){
+ const {data,error}=await sb.rpc('srk_admin_list_staff');if(error)throw error;
+ adminAiAssignableStaff=Array.isArray(data)?data:[];
+}
+async function aiStaffHandoffRequest(payload){
+ const {data:sessionData,error:sessionError}=await sb.auth.getSession(),token=sessionData?.session?.access_token;
+ if(sessionError||!token)throw new Error('लॉगिन सत्र समाप्त है। दोबारा लॉगिन करें।');
+ const response=await fetch('/api/v1/ai/staff-handoffs',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload),cache:'no-store'});
+ let result=null;try{result=await response.json();}catch(_){}
+ if(!response.ok||!result?.success)throw new Error(result?.error==='permission_denied'?'आपके खाते को इस कार्रवाई की अनुमति नहीं है।':'कार्रवाई पूरी नहीं हुई। अनुमति और वर्तमान स्थिति जाँचें।');
+ return result.data;
+}
+async function assignAdminAiHandoff(handoffId){
+ if(adminPortalMode!=='main_admin'||!sb||!user)return;
+ const staffId=document.getElementById('ai-handoff-staff-'+handoffId)?.value||'';
+ if(!staffId){alert('पहले Active Staff चुनें।');return;}
+ const reason=prompt('इस AI Handoff को सौंपने का कारण लिखें (5–500 अक्षर):');if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ try{const result=await aiStaffHandoffRequest({action:'assign',handoff_id:handoffId,staff_user_id:staffId,reason:reason.trim()});if(result?.state!=='assigned')throw new Error('यह Handoff अभी Assign नहीं हो सका।');await loadAdminAiHandoffQueue();}
+ catch(e){alert(e.message||'Handoff Assign नहीं हुआ।');}
+}
+let staffAiHandoffSelectedId=null,staffAiHandoffBusy=false;
+async function loadStaffAiHandoffs(){
+ const box=document.getElementById('staffAiHandoffList'),status=document.getElementById('staffAiHandoffStatus');
+ if(!box||!status||!sb||!user||adminPortalMode!=='staff'||staffAiHandoffBusy)return;
+ staffAiHandoffBusy=true;status.textContent='Assigned मामले पढ़ रहे हैं…';
+ try{
+  const data=await aiStaffHandoffRequest({action:'list',limit:50}),rows=Array.isArray(data)?data:[];
+  if(!rows.length){box.textContent='अभी आपको कोई AI Handoff नहीं सौंपा गया है।';status.textContent='0 Assigned मामले';return;}
+  box.innerHTML=rows.map(row=>{
+   const id=String(row.handoff_id||'');if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))return '';
+   return '<article class="card"><strong>'+esc(row.module_key||'AI सहायता')+' • '+esc(row.urgency||'normal')+'</strong><p>'+esc(row.reason_code||'')+'</p><p style="white-space:pre-wrap">'+esc(row.summary||'')+'</p><small>बनाया गया: '+esc(row.created_at||'—')+'</small><br><button type="button" onclick="openStaffAiHandoff(\''+esc(id)+'\')">बातचीत खोलें</button></article>';
+  }).join('')||'<p>कोई मान्य Assigned मामला उपलब्ध नहीं है।</p>';
+  status.textContent=rows.length+' Assigned मामले';
+ }catch(e){box.textContent='AI Handoff सूची नहीं खुली। Staff की AI Handoff अनुमति जाँचें।';status.textContent='लोड विफल';}
+ finally{staffAiHandoffBusy=false;}
+}
+async function openStaffAiHandoff(id){
+ if(adminPortalMode!=='staff'||staffAiHandoffBusy)return;
+ staffAiHandoffSelectedId=id;const panel=document.getElementById('staffAiHandoffThreadPanel'),box=document.getElementById('staffAiHandoffMessages'),status=document.getElementById('staffAiHandoffThreadStatus');
+ panel.classList.remove('hidden');document.getElementById('staffAiHandoffThreadTitle').textContent='AI बातचीत • '+id.slice(0,8);box.textContent='बातचीत लोड हो रही है…';status.textContent='';
+ try{const data=await aiStaffHandoffRequest({action:'messages',handoff_id:id,limit:200}),rows=Array.isArray(data)?data:[];
+  box.innerHTML=rows.map(m=>'<article class="card"><strong>'+esc(m.sender_kind||'message')+'</strong><small> · '+esc(m.created_at||'')+'</small><p style="white-space:pre-wrap">'+esc(m.body||'')+'</p></article>').join('')||'<p>इस बातचीत में अभी कोई संदेश नहीं है।</p>';
+ }catch(e){box.textContent='बातचीत नहीं खुली। यह मामला अब आपके नाम assigned न हो तो Main Admin से संपर्क करें।';status.textContent='लोड विफल';}
+}
+async function replyStaffAiHandoff(){
+ const id=staffAiHandoffSelectedId,field=document.getElementById('staffAiHandoffReply'),status=document.getElementById('staffAiHandoffThreadStatus'),body=field?.value.trim()||'';
+ if(adminPortalMode!=='staff'||!id||staffAiHandoffBusy)return;
+ if(!body||body.length>4000){status.textContent='जवाब 1 से 4000 अक्षरों का होना चाहिए।';return;}
+ staffAiHandoffBusy=true;status.textContent='जवाब सुरक्षित किया जा रहा है…';
+ try{const result=await aiStaffHandoffRequest({action:'reply',handoff_id:id,body});if(result?.state!=='replied')throw new Error('जवाब सुरक्षित होने की पुष्टि नहीं हुई।');field.value='';staffAiHandoffBusy=false;await openStaffAiHandoff(id);status.textContent='जवाब सुरक्षित हो गया।';}
+ catch(e){status.textContent=e.message||'जवाब नहीं भेजा गया।';}
+ finally{staffAiHandoffBusy=false;}
+}
+async function resolveStaffAiHandoff(){
+ const id=staffAiHandoffSelectedId,status=document.getElementById('staffAiHandoffThreadStatus');
+ if(adminPortalMode!=='staff'||!id||staffAiHandoffBusy)return;
+ if(!confirm('क्या यह AI Handoff हल हो गया है? मामला बंद हो जाएगा।'))return;
+ staffAiHandoffBusy=true;status.textContent='मामला हल किया जा रहा है…';
+ try{const result=await aiStaffHandoffRequest({action:'resolve',handoff_id:id});if(result?.state!=='resolved')throw new Error('Resolve की पुष्टि नहीं हुई।');staffAiHandoffSelectedId=null;document.getElementById('staffAiHandoffThreadPanel').classList.add('hidden');await loadStaffAiHandoffs();}
+ catch(e){status.textContent=e.message||'मामला हल नहीं हुआ।';}
+ finally{staffAiHandoffBusy=false;}
+}
 async function loadAdminAiHandoffQueue(){
  const box=document.getElementById('adminAiHandoffQueue');
  const status=document.getElementById('adminAiHandoffQueueStatus');
@@ -176,7 +244,8 @@ async function loadAdminAiHandoffQueue(){
  adminAiHandoffQueueBusy=true;
  status.textContent='AI Handoff सूची पढ़ रहे हैं…';
  try{
-  const {data,error}=await sb.rpc('srk_admin_list_ai_handoff_queue',{p_limit:50});
+  const [queueResult]=await Promise.all([sb.rpc('srk_admin_list_ai_handoff_queue',{p_limit:50}),loadAdminAiAssignableStaff()]);
+  const {data,error}=queueResult;
   if(error)throw error;
   const rows=Array.isArray(data)?data:[];
   if(!rows.length){
@@ -186,11 +255,15 @@ async function loadAdminAiHandoffQueue(){
   }
   box.innerHTML='<div class="scroll"><table><thead><tr><th>स्थिति / प्राथमिकता</th><th>Module / कारण</th><th>सारांश</th><th>Conversation</th><th>समय</th></tr></thead><tbody>'+
    rows.map(row=>{
-    const created=Date.parse(row.created_at);
-    const when=Number.isFinite(created)?new Date(created).toLocaleString('en-IN'):'—';
-    return '<tr><td>'+esc(row.status)+'<br><strong>'+esc(row.urgency)+'</strong></td><td>'+esc(row.module_key)+'<br>'+esc(row.reason_code)+'</td><td style="white-space:pre-wrap">'+esc(row.summary)+'</td><td><code>'+esc(row.conversation_id)+'</code></td><td>'+esc(when)+'</td></tr>';
+    const created=Date.parse(row.created_at),when=Number.isFinite(created)?new Date(created).toLocaleString('en-IN'):'—';
+    const handoffId=String(row.handoff_id||'');
+    const validId=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(handoffId);
+    const options=adminAiAssignableStaff.filter(s=>s.status==='active').map(s=>'<option value="'+esc(s.user_id)+'">'+esc(s.display_name||s.user_id)+'</option>').join('');
+    const assigned= row.status==='assigned'?'Assigned to: '+esc(adminAiAssignableStaff.find(s=>s.user_id===row.assigned_to)?.display_name||'Staff'):'अभी Assigned नहीं';
+    const action=validId?'<div>'+assigned+'<br><select id="ai-handoff-staff-'+esc(handoffId)+'" aria-label="AI handoff के लिए Staff चुनें"><option value="">Active Staff चुनें</option>'+options+'</select> <button type="button" onclick="assignAdminAiHandoff(\''+esc(handoffId)+'\')">Assign करें</button></div>':'Handoff ID उपलब्ध नहीं';
+    return '<tr><td>'+esc(row.status)+'<br><strong>'+esc(row.urgency)+'</strong></td><td>'+esc(row.module_key)+'<br>'+esc(row.reason_code)+'</td><td style="white-space:pre-wrap">'+esc(row.summary)+'</td><td><code>'+esc(row.conversation_id)+'</code><br><small>'+esc(handoffId)+'</small>'+action+'</td><td>'+esc(when)+'</td></tr>';
    }).join('')+'</tbody></table></div>';
-  status.textContent=rows.length+' Handoff रिकॉर्ड • केवल read-only';
+  status.textContent=rows.length+' Handoff रिकॉर्ड • assignment उपलब्ध';
  }catch(_){
   box.textContent='AI Handoff सूची अभी नहीं खुली। Main Admin अनुमति और migration स्थिति जाँचें।';
   status.textContent='सूची लोड नहीं हुई।';
@@ -305,7 +378,7 @@ async function showState(){
  }
  setAdminPortalMode('staff');
  login.classList.add('hidden');app.classList.remove('hidden');
- if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await Promise.all([loadStaffSupportInbox(),loadSosAlerts()]);}
+ if(adminLoadedUserId!==activeUser.id){adminLoadedUserId=activeUser.id;await Promise.all([loadStaffSupportInbox(),loadSosAlerts(),loadStaffAiHandoffs()]);}
 }
 let staffCustomerSelectedId=null,staffElectricianSelectedId=null,staffCustomerThreadRequest=0,staffElectricianThreadRequest=0;
 let staffSupportLoadBusy=false,staffSupportReplyBusy=false;
