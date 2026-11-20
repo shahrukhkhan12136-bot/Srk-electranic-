@@ -1,0 +1,36 @@
+name: AI handoff push sender Deno type check
+
+on:
+  push:
+    branches:
+      - feat/ai-rate-management-foundation-20261118
+    paths:
+      - "supabase/functions/ai-handoff-push/**"
+      - ".github/workflows/ai-handoff-push-deno-check.yml"
+  pull_request:
+    paths:
+      - "supabase/functions/ai-handoff-push/**"
+      - ".github/workflows/ai-handoff-push-deno-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srk-ai-handoff-push-deno-check
+  cancel-in-progress: false
+
+jobs:
+  typecheck:
+    name: Type-check AI handoff push Edge Function
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v5
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.2.7
+      - name: Type-check sender without deployment or secrets
+        run: deno check supabase/functions/ai-handoff-push/index.ts
