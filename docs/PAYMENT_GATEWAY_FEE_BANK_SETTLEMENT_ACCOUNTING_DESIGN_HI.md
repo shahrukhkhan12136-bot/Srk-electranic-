@@ -243,3 +243,23 @@ References:
 - अतः अगली Accounting delivery में मौजूदा Booking reconciliation को जस का तस रखते हुए अलग Merchant Settlement reconciliation layer चाहिए। वह read-only imported report evidence से payment/refund rows को link करेगी और bank statement/UTR match अलग status में रखेगी।
 
 यह UI/RPC source inspection है; hosted runtime में इसे execute करके नहीं देखा गया। कोई code या database change इस जाँच में नहीं किया गया।
+
+
+## 15. मौजूदा Commission Report और Admin totals — अतिरिक्त source review
+
+Migration `20261109003000_secure_commission_reporting.sql` का `srk_admin_commission_report()` और `admin.html` का उपयोग जाँचा गया:
+
+- RPC केवल Main Admin के लिए है और `service_bookings` में `status='completed'` तथा `payment_status='paid'` वाली बुकिंग का aggregate बनाता है।
+- यह कुल verified-paid collection, दर्ज commission, electrician payable और electrician-wise jobs/totals देता है।
+- RPC में date range, month parameter, Razorpay-only filter, refund-adjusted merchant settlement, gateway fee/tax, settlement batch या bank-credit matching नहीं है। इसलिए यह मासिक रिपोर्ट या Merchant Settlement रिपोर्ट नहीं है; इसे all-time completed+paid operational summary की तरह ही समझना चाहिए।
+- Admin UI commission amount को स्पष्ट रूप से “गणना किया गया कंपनी कमीशन (प्राप्त नकद नहीं)” कहती है और electrician due को वास्तविक बैंक भुगतान नहीं बताती।
+- Admin booking table latest 300 bookings तक सीमित है; commission RPC aggregate अलग से सभी matching rows पर चलता है। इस वजह से table row count और aggregate report की अवधि/coverage एक जैसी नहीं समझनी चाहिए।
+- Existing payout list में latest 300 rows दिखाई जाती हैं, जबकि pending/paid totals pagination के जरिए सभी payout rows से calculate होते हैं। फिर भी यह merchant settlement या monthly report नहीं है।
+
+### सुरक्षित आगे का reporting विभाजन
+
+1. **Operational Commission Summary:** मौजूदा RPC/UI; इसकी मौजूदा semantics को न बदलें।
+2. **Per-booking Reconciliation:** मौजूदा Main Admin read-only RPC/UI; इसे सुरक्षित रखें।
+3. **Merchant Settlement Reconciliation:** नई अलग read-only projection — imported settlement report batches/rows, linked Razorpay payment/refund IDs, provider fees/tax/adjustments, settlement ID, bank-credit/UTR evidence, unmatched exceptions और month-wise totals।
+
+नई layer में तारीख/समय के लिए merchant report का settlement date और timezone स्पष्ट रूप से store करना होगा; booking creation date से settlement month infer नहीं करना है। Imported source file और row-level provenance सुरक्षित रखनी होगी। Duplicate import रोकने के लिए report batch/file digest तथा stable row identity चाहिए। जब तक वास्तविक merchant export schema उपलब्ध न हो, CSV/XLSX parser या import migration final न करें।
