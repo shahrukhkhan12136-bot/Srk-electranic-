@@ -29,13 +29,13 @@ SELECT ok(
   AND NOT has_function_privilege('anon',
     'public.srk_claim_ai_generation_cost_jobs(integer)','EXECUTE')
   AND NOT has_function_privilege('authenticated',
-    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,text)','EXECUTE'),
+    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,timestamp with time zone,text)','EXECUTE'),
   'claim and finish RPCs are service-role-only');
 SELECT ok(
   (SELECT prosecdef AND proconfig @> ARRAY['search_path=pg_catalog, public, pg_temp']::text[]
    FROM pg_proc WHERE oid='public.srk_claim_ai_generation_cost_jobs(integer)'::regprocedure)
   AND (SELECT prosecdef FROM pg_proc
-   WHERE oid='public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,text)'::regprocedure),
+   WHERE oid='public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,timestamp with time zone,text)'::regprocedure),
   'worker RPCs are SECURITY DEFINER with pinned search paths');
 SELECT ok(
   position('SKIP LOCKED' in upper(pg_get_functiondef(
@@ -45,11 +45,11 @@ SELECT ok(
   'claim uses SKIP LOCKED and bounded leases for concurrency safety');
 SELECT ok(
   position('p_attempt_count' in pg_get_functiondef(
-    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,text)'::regprocedure))>0
+    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,timestamp with time zone,text)'::regprocedure))>0
   AND position('locked_until' in pg_get_functiondef(
-    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,text)'::regprocedure))>0
+    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,timestamp with time zone,text)'::regprocedure))>0
   AND position('vercel_ai_gateway_generation_api' in pg_get_functiondef(
-    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,text)'::regprocedure))>0,
+    'public.srk_finish_ai_generation_cost_job(uuid,integer,boolean,numeric,text,timestamp with time zone,text)'::regprocedure))>0,
   'finish fences stale workers and accepts only the named Gateway cost source');
 
 SELECT * FROM finish();
