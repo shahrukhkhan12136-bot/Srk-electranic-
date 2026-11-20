@@ -21,6 +21,9 @@ test("AI handoff push sender requires enable flag and a private worker secret", 
   assert.match(source, /srk_claim_ai_handoff_subscription_deliveries/);
   assert.match(source, /event\.recipient_user_ids\.length > 0/);
   assert.match(source, /No active Staff member has handoff read permission/);
+  assert.match(source, /subscription_count/);
+  assert.match(source, /Staff member has no active push subscription/);
+  assert.match(source, /No device rows makes the generic completion RPC vacuously true/);
 });
 
 test("AI handoff push payload contains only a minimal staff alert", () => {
