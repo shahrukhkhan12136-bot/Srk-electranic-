@@ -26,7 +26,9 @@ test("widget source uses safe text rendering, accessible status regions and conf
   const source = fs.readFileSync(path.join(__dirname, "../lib/ai-assistant-widget.js"), "utf8");
   assert.match(source, /span\.textContent = value/);
   assert.match(source, /aria-live/);
-  assert.match(source, /result\.handoff\?\.required === true/);
+  assert.match(source, /Human handoff is an explicit user choice/);
+  assert.match(source, /handoffSummary\.hidden = false;\s*handoff\.hidden = false;/);
+  assert.doesNotMatch(source, /if \(result\.handoff\?\.required === true\)/);
   assert.match(source, /result\.case_reference \|\| result\.handoff_id/);
   assert.match(source, /pendingHandoffSummary !== summary/);
   assert.match(source, /pendingMessageText !== message/);
