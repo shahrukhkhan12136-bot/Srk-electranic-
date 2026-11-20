@@ -110,3 +110,18 @@
 - Request limit implementation एक user/module के लिए पहले request से शुरू होने वाला fixed 10-minute bucket और UTC day counter intended करता है; इसे strict rolling-window guarantee न समझें। Database function में UTC day boundary की explicit timezone handling का अलग review बाकी है।
 - Gateway adapter provider response से prompt/completion/total token counts पढ़ता है, लेकिन runtime अभी इन counts को persist नहीं करता और provider/model pricing से रुपये/डॉलर cost calculate नहीं करता। इसलिए वास्तविक token/cost metering अभी पूरा नहीं है।
 - AI तथा push disabled हैं। कोई live provider call, hosted DB mutation, deploy, Main merge या Developer Branch creation नहीं हुई।
+
+
+## 20 नवम्बर — AI token usage ledger और prompt-injection safeguards
+
+- नई migration `20261118340000_ai_usage_metering_ledger.sql`: provider generation attempts के लिए अलग append-only usage ledger और service-role-only `srk_ai_record_usage_event` RPC।
+- Ledger में actor, conversation/request/attempt reference, module, provider/model, reported prompt/completion/total token counts और usage उपलब्ध न होने की स्थिति दर्ज होती है। User message, assistant response, prompt text, phone या अन्य conversation content इस ledger में नहीं रखा जाता।
+- Usage ledger पर RLS enabled है; browser roles और service_role को direct table grants नहीं हैं। केवल SECURITY DEFINER RPC लिखता है; UPDATE/DELETE trigger से रोके जाते हैं।
+- Runtime अब provider reply complete करने से पहले usage event दर्ज करता है। Provider usage metadata न दे तो fabricated zero counts के बजाय `unavailable` status रिकॉर्ड होता है। Ledger write failure पर assistant response success नहीं लौटता और idempotency request failed finalize होती है।
+- Prompt में अब सभी user/history messages को untrusted data मानने, role override, hidden prompt/secret disclosure, दूसरे user के निजी data और बिना server-provided context के records/tools access का दावा न करने के स्पष्ट निर्देश हैं।
+- Runtime tests: token metadata recording, no-message-content ledger payload, missing usage handling, ledger outage fail-closed, और prompt-injection string को user data के रूप में रखने के tests जोड़े।
+- Node CI run [44733186672](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733186672), SHA `6c562bc098e7393e769c71028ecc569a4e8b8e3c` — success.
+- AI usage ledger security/persistence pgTAP plan अब 50 assertions है; run [44733186649](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733186649) उसी SHA पर pending है। इसे pass घोषित नहीं किया गया है।
+- Full feature-branch migration replay run [44733164959](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164959), SHA `0aeca4be9e704eb336f56c2a0b881e9d36a9a2fb` — in progress; इसमें नई usage migration शामिल है।
+- **लागत सीमा:** token counts अब persist होंगे, लेकिन अभी model pricing table/version, currency conversion, INR cost calculation, daily rupee budget या per-user rupee spend cap नहीं है। वास्तविक रुपये की लागत metering अभी अधूरी है; अनुमानित pricing hardcode नहीं की गई।
+- AI और push OFF; कोई provider call, hosted DB migration, deployment, Main merge या Developer Branch creation नहीं हुई।
