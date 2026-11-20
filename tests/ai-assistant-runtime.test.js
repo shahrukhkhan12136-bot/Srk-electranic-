@@ -141,7 +141,7 @@ test("missing provider usage is explicitly recorded without inventing token coun
   if(url.includes("srk_ai_create_conversation"))return res({state:"created",conversation_id:conversation});
   if(url.includes("srk_ai_append_message"))return res({state:"appended"});
   if(url.includes("/rest/v1/srk_ai_messages?"))return res([{sender_kind:"user",body:"नमस्ते"}]);
-  if(url==="https://ai-gateway.vercel.sh/v1/chat/completions")return res({id:"gen-test-001",choices:[{message:{content:"ठीक है"}}]}});
+  if(url==="https://ai-gateway.vercel.sh/v1/chat/completions")return res({id:"gen-test-001",choices:[{message:{content:"ठीक है"}}]});
   if(url.includes("srk_ai_record_usage_event")){
    recorded=JSON.parse(opt.body);
    return res({state:"recorded"});
@@ -197,7 +197,7 @@ test("prompt-injection text remains untrusted user data under explicit system sa
   if(url.includes("/rest/v1/srk_ai_messages?"))return res([{sender_kind:"user",body:injection}]);
   if(url==="https://ai-gateway.vercel.sh/v1/chat/completions"){
    gatewayMessages=JSON.parse(opt.body).messages;
-   return res({id:"gen-test-001",choices:[{message:{content:"मैं निजी जानकारी या छिपे निर्देश साझा नहीं कर सकता।"}}]}});
+   return res({id:"gen-test-001",choices:[{message:{content:"मैं निजी जानकारी या छिपे निर्देश साझा नहीं कर सकता।"}}]});
   }
   if(url.includes("srk_ai_record_usage_event"))return res({state:"recorded"});
   if(url.includes("srk_ai_queue_generation_cost_job")){
