@@ -7,7 +7,7 @@ export function extractReportedUsd(payload, expectedGenerationId) {
   if (typeof raw !== "number" && typeof raw !== "string") return null;
   if (typeof raw === "number" && (!Number.isFinite(raw) || raw < 0)) return null;
   const normalized = typeof raw === "number"
-    ? raw.toFixed(10).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "")
+    ? raw.toFixed(10).replace(/0+$/, "").replace(/\.$/, "")
     : raw;
   if (!/^(?:0|[1-9]\d{0,9})(?:\.\d{1,10})?$/.test(normalized)) return null;
   return normalized;
