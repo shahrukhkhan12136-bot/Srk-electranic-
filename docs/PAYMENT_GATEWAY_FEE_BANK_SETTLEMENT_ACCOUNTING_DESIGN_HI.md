@@ -158,3 +158,33 @@ No Production migration, live provider API call, real refund, payout, bank trans
 - इस inventory से अभी Gateway Fee, Fee GST, Razorpay settlement batch, settlement net amount और actual bank-credit UTR का authoritative source contract प्रमाणित नहीं हुआ। इसलिए इन fields की provider report mapping और masked sample evidence के बिना SQL table/migration बनाना सुरक्षित नहीं है।
 - Route settlement को live product capability मानना गलत होगा: Route table retired है, कोई active transfer integration नहीं है। Electrician payout अभी Admin के बाहरी bank/UPI transfer के बाद reference दर्ज करने का workflow है।
 
+
+## 10. Payment code-path review — 20 नवम्बर 2026
+
+Feature Branch पर वर्तमान source review:
+- `verify-payment.js` Razorpay signature verify करता है, Payment API से captured status, order ID, INR और exact amount जाँचता है; फिर `srk_service_role_record_online_booking_payment` RPC के जरिए booking payment state/related fee settlement लिखता है। Payment ID, paid amount और verification timestamp booking में दर्ज होते हैं।
+- `razorpay-webhook.js` signed webhook को verify करता है, `srk_razorpay_webhook_events` inbox claim/complete करता है और captured payment को booking/RPC में reconcile करता है।
+- `20261118120000_harden_online_payment_settlement_state.sql` payment ID, expected paise amount और booking state validate करके `service_bookings` में `payment_status`, `amount_paid`, `razorpay_payment_id`, `payment_verified_at` लिखता है।
+- इन verified capture paths में Gateway fee, fee-tax, settlement batch ID, settlement UTR और actual bank credit fields नहीं लिखे जाते।
+- `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql` स्पष्ट रूप से पुराने `srk_route_transfers` table को DROP करता है। इसलिए नए ledger को retired Route transfer integration के नाम/assumptions पर बनाना उचित नहीं।
+
+## 11. Razorpay settlement data mapping — documented, not yet account-verified
+
+Razorpay public Dashboard guidance बताती है कि:
+- Settlements dashboard में settlement amount, fees/tax, date/time और status देखे जा सकते हैं; settlement detail का breakdown उपलब्ध है।
+- Reports section से daily/monthly settlement report download की जा सकती है; उसमें transactions और corresponding settlement IDs map होते हैं।
+- Payment detail से linked settlement_id पर जाकर breakdown देखा जा सकता है।
+- Public Razorpay material settlement UTR, settlement ID, gateway fees और transaction-to-settlement mapping के उदाहरण देता है।
+
+References:
+- Razorpay Dashboard & Settlement Reports: https://razorpay.com/blog/how-to-use-razorpay-dashboard/
+- Razorpay Payment details / settlement details: https://razorpay.com/docs/payments/payments/dashboard/?preferred-country=IN
+- Razorpay settlement-to-bank matching explainer: https://razorpay.com/blog/instant-settlement-payment-gateway
+
+ये public docs हमारे merchant account की actual CSV column names, enabled product, exact report version, fee/tax tax-invoice mapping या SRK account के UTR availability की पुष्टि नहीं करते। इसलिए implementation mapping के लिए वास्तविक Dashboard से एक redacted sample settlement report (CSV/XLSX) या merchant-specific report schema आवश्यक रहेगा।
+
+## 12. Migration decision
+
+अभी केवल design/contract source changes सुरक्षित हैं। Production-grade import migration तब बनाई जाएगी जब redacted sample report से exact column names, row identity, sign convention, fee/tax rows, refunds/adjustments, partial/multiple credits और UTR availability verify हो जाए। तब migration में raw report file नहीं, केवल file digest, source metadata और normalized rows रखे जाएँगे; original imported facts append-only रहेंगे। CSV parser को report version, size/row limits, formula injection, duplicate rows, encoding, malformed amounts और import authorization के साथ अलग server-side workflow में test करना होगा।
+
+**अगला जरूरी input:** Razorpay Dashboard के Reports → Settlements से एक sample report export करके customer/account/bank details mask करके देना। कोई API key, secret, full bank number या customer PII साझा न करें।
