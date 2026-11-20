@@ -48,12 +48,13 @@
 - `supabase/functions/ai-handoff-push/index.ts`: staff recipient list के अनुसार subscribed devices को न्यूनतम push alert भेजने का sender जोड़ा गया। Notification में conversation text, customer identity या phone number नहीं भेजे जाते।
 - `netlify/functions/deliver-ai-handoff-notifications.js`: scheduled dispatcher जोड़ा गया, लेकिन `AI_HANDOFF_PUSH_ENABLED` `true` न होने पर वह केवल disabled response देता है। Edge sender भी अलग enable flag और private secret जाँचता है।
 - `supabase/migrations/20261118300000_ai_handoff_notification_lease_fencing.sql`: expired worker lease को reject करना और अंतिम attempt पर crash हुए processing event को dead-letter में डालना जोड़ा गया।
-- नए Node source safeguards test और pgTAP per-device ledger test जोड़े गए।
+- नए Node source safeguards test और pgTAP per-device ledger test जोड़े गए। Deno configuration के साथ Edge Function type-check workflow भी जोड़ा गया।
 - नवीनतम Node CI: run [44723080946](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44723080946), SHA `b72717b3e610092845323f5e2fc78fffb5fe32d9` — success.
+- AI Edge Function Deno type-check: run [44723786498](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44723786498), SHA `953e83fce9912d55de6569880498cd9a9eb2337c` — success.
 - AI Admin/Staff + notification outbox/ledger pgTAP: run [44723080860](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44723080860), उसी SHA — success.
 - Full feature-branch PostgreSQL migration replay: run [44722983726](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44722983726), SHA `88458680a37f643c76636f155aafa03c4358f825` — success; इसमें नई migrations का replay शामिल था।
 - AI idempotency PostgreSQL tests: run [44722983748](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44722983748) — success. Rate List booking snapshot tests: run [44722983787](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44722983787) — success.
-- Rate Catalogue draft pgTAP का पहला प्रयास Docker host port `54322` collision के कारण शुरू होने से पहले विफल हुआ; यह SQL assertion failure नहीं था। Failed-job retry शुरू किया गया है; परिणाम की पुष्टि बाकी है।
+- Rate Catalogue draft pgTAP का पहला प्रयास Docker host port `54322` collision के कारण शुरू होने से पहले विफल हुआ; failed-job retry run [44722983797, attempt 2](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44722983797) — success.
 - **महत्वपूर्ण सीमा:** यह source और isolated CI foundation है। कोई hosted database migration apply नहीं हुई, Edge Function deploy नहीं हुई, VAPID/worker secret configure नहीं हुए, और वास्तविक push नहीं भेजा गया। AI और handoff push दोनों OFF हैं।
 
 ## अगला काम
