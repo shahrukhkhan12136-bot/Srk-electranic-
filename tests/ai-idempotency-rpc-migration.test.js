@@ -18,11 +18,13 @@ test("AI idempotency reservation RPC is service-role-only and validates SHA-256 
   assert.equal(digest.length, 32);
 });
 
-test("AI idempotency reservation uses an actor-scoped unique conflict target and expiry-only reset", () => {
+test("AI idempotency reservation uses actor-scoped uniqueness and atomically reclaims any expired lease", () => {
   assert.match(migration, /ON CONFLICT \(actor_user_id, idempotency_key\) DO UPDATE/i);
-  assert.match(migration, /WHERE current_row\.expires_at <= clock_timestamp\(\)\s+AND current_row\.status <> 'processing'/i);
+  assert.match(migration, /WHERE current_row\.expires_at <= clock_timestamp\(\)/i);
+  assert.doesNotMatch(migration, /current_row\.status\s*<>\s*'processing'/i);
   assert.match(migration, /FOR UPDATE/i);
   assert.match(migration, /request_sha256 <> p_request_sha256/i);
+  assert.match(migration, /interval '24 hours'/i);
 });
 
 test("AI idempotency reservation distinguishes reserved, conflict, replay, processing and failed states", () => {

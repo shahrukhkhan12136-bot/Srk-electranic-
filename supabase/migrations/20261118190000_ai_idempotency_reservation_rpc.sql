@@ -26,8 +26,8 @@ BEGIN
     RAISE EXCEPTION 'AI_INVALID_IDEMPOTENCY_ARGUMENT' USING ERRCODE='22023';
   END IF;
 
-  -- A new key is claimed once. An expired record may be recycled, but a live
-  -- processing record is never overwritten by a concurrent request.
+  -- A key remains reserved while its 24-hour lease is live. Once expired,
+  -- even an abandoned processing reservation can be reclaimed atomically.
   INSERT INTO public.srk_ai_idempotency AS current_row (
     actor_user_id, idempotency_key, request_sha256, status, expires_at
   )
@@ -44,7 +44,6 @@ BEGIN
         completed_at = NULL,
         expires_at = clock_timestamp() + interval '24 hours'
     WHERE current_row.expires_at <= clock_timestamp()
-      AND current_row.status <> 'processing'
   RETURNING id INTO v_id;
 
   IF v_id IS NOT NULL THEN
