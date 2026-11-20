@@ -110,12 +110,18 @@ Deno.serve(async (req) => {
     else retried++;
   }
 
+  const { data: fxApplied, error: fxError } = await db.rpc(
+    "srk_apply_ai_generation_cost_fx", { p_limit: 20 }
+  );
+  const fxOk = !fxError && Number.isInteger(fxApplied);
+
   return json({
-    success: retried === 0 && finishFailed === 0,
+    success: retried === 0 && finishFailed === 0 && fxOk,
     claimed: claimed.length,
     reported,
     retried,
     terminalUnavailable,
-    finishFailed
-  }, retried === 0 && finishFailed === 0 ? 200 : 502);
+    fxApplied: fxOk ? fxApplied : 0,
+    finishFailed: finishFailed + (fxOk ? 0 : 1)
+  }, retried === 0 && finishFailed === 0 && fxOk ? 200 : 502);
 });
