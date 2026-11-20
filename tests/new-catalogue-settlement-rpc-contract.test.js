@@ -201,7 +201,7 @@ const extractFunctionFrom = (source, name) => {
 };
 
 test("payout and refund operations use the same booking-first lock order and reject paid-payout refunds", () => {
-  const markPaid = extractFunctionFrom(payoutMigration, "srk_admin_mark_electrician_payout_paid");
+  const markPaid = extractFunctionFrom(payoutReferenceHardeningMigration, "srk_admin_mark_electrician_payout_paid");
   const prepareRefund = extractFunctionFrom(refundAccountingMigration, "srk_admin_prepare_razorpay_refund");
   const manualRefund = extractFunctionFrom(refundAccountingMigration, "srk_admin_record_manual_refund");
   for (const fn of [markPaid, prepareRefund, manualRefund]) assert.ok(fn, "expected finance RPC source exists");
