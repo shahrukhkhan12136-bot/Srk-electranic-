@@ -1,6 +1,6 @@
 BEGIN;
 CREATE EXTENSION IF NOT EXISTS pgtap;
-SELECT plan(8);
+SELECT plan(10);
 
 SELECT has_column('srk_private','srk_ai_handoff_notification_outbox','assignment_revision',
   'notification outbox records assignment revision separately');
@@ -55,6 +55,23 @@ SELECT ok(
   AND NOT has_function_privilege('anon',
     'private.srk_enqueue_ai_handoff_assignment_notification()','EXECUTE'),
   'notification trigger function is not callable by client roles'
+);
+
+SELECT ok(
+  position('delivery_status IN (''pending'',''processing'')' in
+    pg_get_functiondef('private.srk_enqueue_ai_handoff_assignment_notification()'::regprocedure)) > 0
+  AND position('Superseded by a newer Staff assignment' in
+    pg_get_functiondef('private.srk_enqueue_ai_handoff_assignment_notification()'::regprocedure)) > 0,
+  'reassignment invalidates both pending and in-flight outbox events'
+);
+
+SELECT ok(
+  to_regprocedure('public.srk_authorize_ai_handoff_notification_recipient(uuid,uuid)') IS NOT NULL
+  AND has_function_privilege('service_role',
+    'public.srk_authorize_ai_handoff_notification_recipient(uuid,uuid)','EXECUTE')
+  AND NOT has_function_privilege('authenticated',
+    'public.srk_authorize_ai_handoff_notification_recipient(uuid,uuid)','EXECUTE'),
+  'pre-send recipient revalidation is restricted to the service role'
 );
 
 SELECT * FROM finish();
