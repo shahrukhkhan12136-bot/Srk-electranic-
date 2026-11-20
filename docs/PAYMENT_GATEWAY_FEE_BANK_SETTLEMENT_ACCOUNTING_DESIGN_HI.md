@@ -188,3 +188,42 @@ References:
 अभी केवल design/contract source changes सुरक्षित हैं। Production-grade import migration तब बनाई जाएगी जब redacted sample report से exact column names, row identity, sign convention, fee/tax rows, refunds/adjustments, partial/multiple credits और UTR availability verify हो जाए। तब migration में raw report file नहीं, केवल file digest, source metadata और normalized rows रखे जाएँगे; original imported facts append-only रहेंगे। CSV parser को report version, size/row limits, formula injection, duplicate rows, encoding, malformed amounts और import authorization के साथ अलग server-side workflow में test करना होगा।
 
 **अगला जरूरी input:** Razorpay Dashboard के Reports → Settlements से एक sample report export करके customer/account/bank details mask करके देना। कोई API key, secret, full bank number या customer PII साझा न करें।
+
+
+## 13. मौजूदा वित्तीय ledgers का integration map — 20 नवम्बर 2026
+
+अतिरिक्त migration-level source review के बाद निम्न सीमाएँ स्पष्ट हैं:
+
+### A. Wallet ledger अलग internal balance है
+- `srk_wallet_accounts` और `srk_wallet_ledger` में amount अभी `numeric(12,2)` रुपये है; entry types में booking_payment, refund, earning, commission, payout, adjustment, topup और cancellation_fee शामिल हैं।
+- Wallet summary में customer top-up और electrician bank payout स्पष्ट रूप से disabled हैं। इसलिए wallet balance को Razorpay bank settlement या electrician के वास्तविक bank credit के बराबर नहीं दिखाना है।
+- Wallet entries को नए gateway settlement ledger में दोबारा collection/payout के रूप में insert नहीं करना; आवश्यकता होने पर केवल source ledger reference और reconciliation relation रखें।
+- Wallet schema की append-only/immutable स्थिति को हर entry type पर समान मानकर नहीं चलना चाहिए; संबंधित triggers/RPCs की पूरी समीक्षा और database test आवश्यक है।
+
+### B. Cancellation-fee ledger स्वतंत्र sub-ledger है
+- `srk_customer_cancellation_fee_debts`, `srk_booking_cancellation_fee_items` और `srk_cancellation_fee_ledger` ₹99 cancellation fee carry-forward, reservation, collection और reversal को track करते हैं।
+- Cancellation ledger integer paise में और append-only है। Online payment पर fee item settlement तथा cancellation-fee ledger credit payment RPC transaction में जुड़ते हैं।
+- Full refund पर original cancellation-fee collection के विरुद्ध अलग reversal entry बनाई जाती है; partial refund path इस contract में fail-closed है।
+- Monthly report में cancellation-fee collection को gross service payment/merchant settlement में बिना mapping के जोड़ना नहीं है। इसे अलग line item तथा original booking/refund reference के साथ reconcile करना होगा।
+
+### C. Refund workflow को दोबारा नहीं बनाना
+- Refund intent `srk_razorpay_refunds` में एक booking पर unique record और unique idempotency key के साथ है।
+- Refund recovery audit अलग append-only provider evidence रखता है: provider refund ID, payment ID, amount paise, INR, provider status, acquirer reference, payload digest, observation ID और Admin evidence note।
+- Refund finalize workflow मौजूदा booking/payment state और payout/cancellation-fee reversal logic से जुड़ा है। नया accounting import केवल provider report से मिले refund/adjustment facts को source IDs से link करेगा; refund initiate या finalize नहीं करेगा।
+- Refund report row और refund recovery observation को दो अलग आर्थिक refunds न गिनें। वे एक ही refund घटना के अलग प्रमाण हो सकते हैं।
+
+### D. Electrician payout ledger वास्तविक बैंक settlement नहीं है
+- `srk_electrician_payouts` प्रति booking एक payable record बनाता है। Payout paid mark करने के लिए Admin UPI/Bank method और reference दर्ज करता है।
+- Paid status Admin द्वारा दर्ज payout evidence है; अभी कोई प्रमाणित bank feed/statement importer नहीं मिला। इसे “bank statement matched” न कहें।
+- Normalized payout reference uniqueness का database index मौजूद है; accounting import में इसे बदलने या दोबारा लागू करने की जरूरत नहीं। Payout और Razorpay merchant settlement अलग cash-flow हैं।
+
+### E. Payment capture और order linking
+- Payment order creation से पहले booking-level short-lived lock तथा exact amount/category/approved quote validation है।
+- Capture verification और signed webhook दोनों booking payment state को reconcile करते हैं; ये source paths capture/payment state के लिए authoritative हैं।
+- Gateway fee/tax और merchant settlement के लिए इन booking fields से कोई राशि derive नहीं करनी। Report source से अलग evidence आवश्यक है।
+
+### F. अगला accounting design decision
+- नई accounting layer को पहले read-only reconciliation/import projection के रूप में रखना चाहिए: provider report batch → source rows → linked internal payment/refund/payout/cancellation references → exceptions/monthly totals।
+- Existing operational ledgers (booking, wallet, cancellation fee, refund, payout, webhook inbox) ही अपनी-अपनी state के owner रहेंगे।
+- कोई नया “cash received” या “bank paid” event केवल imported/verified source evidence पर बने; UI status, wallet balance, provider refund observation या payout admin reference अकेले पर्याप्त प्रमाण नहीं।
+- इस अतिरिक्त review में कोई migration, hosted database, provider API, refund, payout या bank action नहीं किया गया। यह source-only integration map है।
