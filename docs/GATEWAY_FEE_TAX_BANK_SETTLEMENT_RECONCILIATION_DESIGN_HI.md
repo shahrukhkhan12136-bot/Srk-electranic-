@@ -6,7 +6,7 @@
 
 ## 1. Finding
 
-The current Admin booking reconciliation already combines booking collection evidence, refund amounts/status, labour/material amounts, the canonical platform commission and electrician payable, payout ledger, Route transfer details, wallet/cancellation-fee entries, and exception flags.
+The current Admin booking reconciliation combines booking collection evidence, refund amounts/status, labour/material amounts, the canonical platform commission and electrician payable, payout ledger, wallet/cancellation-fee entries, and exception flags. The historical Route-transfer fields are compatibility-only: the Route ledger was explicitly dropped by migration `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql`; the current reconciliation function was subsequently replaced by `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql` and must not treat Route as an active payout path.
 
 However, the reviewed SQL source does not establish a durable, transaction-linked ledger for the actual Payment Gateway fee and its tax, nor a complete bank-settlement batch/UTR reconciliation. The existing read-only booking reconciliation is not proof that those values are recorded at source.
 
@@ -107,3 +107,15 @@ Use separate append-only records for provider settlement batches and provider se
 - Razorpay terms: fees are separate from applicable taxes; the actual charges and tax must be grounded in provider evidence/invoices.
 
 **Important:** This document is a design contract. It does not claim the proposed tables, import process, bank matching, or live accounting are implemented.
+
+
+## 9. Route ledger retirement — corrected current-state note
+
+A later cross-check of migration order found that this design's earlier wording about Route transfer details could be read as an active integration. That is not the current state:
+
+- `20261115092149_retire_unused_razorpay_route_transfer_ledger.sql` drops `public.srk_route_transfers` without CASCADE because the approved app path is Admin-controlled UPI/Bank payout.
+- `20261115170000_admin_route_transfer_accounting_reconciliation.sql` is a historical intermediate function definition which still references that dropped table. It is superseded later in the migration chain by `20261117010000_reconcile_booking_commission_and_manual_payment_method.sql`, which replaces the booking reconciliation function and preserves only compatibility response fields where applicable.
+- The current source/test contract asserts that `public.srk_route_transfers` is absent. Do not create, query, or depend on that retired ledger for the new Merchant Settlement report.
+- Razorpay Route API documentation may describe a separate product, but its existence in provider docs does not establish that SRK has Route enabled or uses it.
+
+This correction is based on migration source order and static test contracts, not a new hosted database execution. No schema/data was changed.
