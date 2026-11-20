@@ -125,3 +125,11 @@
 - Full feature-branch migration replay run [44733164959](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164959), SHA `0aeca4be9e704eb336f56c2a0b881e9d36a9a2fb` — in progress; इसमें नई usage migration शामिल है।
 - **लागत सीमा:** token counts अब persist होंगे, लेकिन अभी model pricing table/version, currency conversion, INR cost calculation, daily rupee budget या per-user rupee spend cap नहीं है। वास्तविक रुपये की लागत metering अभी अधूरी है; अनुमानित pricing hardcode नहीं की गई।
 - AI और push OFF; कोई provider call, hosted DB migration, deployment, Main merge या Developer Branch creation नहीं हुई।
+
+
+## pgTAP test syntax correction — AI usage ledger
+
+- First 50-assertion run [44732954321](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44732954321) reached assertion 47 successfully, then failed before assertion 48 because one new `throws_ok` test used a malformed dollar-quoted SQL delimiter (`$SELECT ... $`). This is test SQL syntax, not a migration/runtime failure.
+- Corrected that assertion to the already-used tagged dollar quote `$q$ ... $q$` in commit `6c5cfb442168a1c7ef824bd3bab3492fca9ff454`.
+- Corrected 50-assertion rerun [44733448601](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733448601) is pending. Do not call the 50 pgTAP assertions passed until this run completes successfully.
+- Full feature-branch migration replay including the usage-ledger migration: run [44733164959](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44733164959), SHA `0aeca4be9e704eb336f56c2a0b881e9d36a9a2fb` — success.
