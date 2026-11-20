@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { extractReportedUsd } from "../_shared/ai-generation-cost.mjs";
+import { extractReportedUsd, extractGenerationCreatedAt } from "../_shared/ai-generation-cost.mjs";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
     if (!isJob(raw)) { retried++; continue; }
     const job = raw;
     let costUsd: string | null = null;
+    let generationCreatedAt: string | null = null;
     let failure = "Gateway generation cost is not available yet";
 
     try {
@@ -72,7 +73,11 @@ Deno.serve(async (req) => {
       if (response.ok) {
         const payload = await response.json();
         costUsd = extractReportedUsd(payload, job.generation_id);
-        if (costUsd === null) failure = "Gateway response did not contain a valid matching USD cost";
+        generationCreatedAt = extractGenerationCreatedAt(payload, job.generation_id);
+        if (costUsd === null || generationCreatedAt === null) {
+          costUsd = null;
+          failure = "Gateway response did not contain matching cost and generation timestamp";
+        }
       } else {
         // 404 is expected briefly because Gateway usage ingestion is asynchronous.
         failure = response.status === 404
@@ -91,6 +96,7 @@ Deno.serve(async (req) => {
         p_success: costUsd !== null,
         p_cost_usd: costUsd,
         p_cost_source: costUsd !== null ? "vercel_ai_gateway_generation_api" : null,
+        p_generation_created_at: costUsd !== null ? generationCreatedAt : null,
         p_error: costUsd === null ? failure : null
       }
     );
