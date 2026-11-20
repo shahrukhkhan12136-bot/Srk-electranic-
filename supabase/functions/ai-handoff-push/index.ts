@@ -71,6 +71,24 @@ Deno.serve(async (req) => {
         if (!isTarget(rawTarget)) { deviceFailed++; eventComplete = false; return; }
         const target = rawTarget;
         try {
+          // Re-check the current assignment and Staff permission immediately
+          // before contacting the external push provider. Reassignment fences
+          // the outbox and device ledger; this prevents stale queued sends.
+          const { data: authorized, error: authorizationError } = await db.rpc(
+            "srk_authorize_ai_handoff_notification_recipient",
+            { p_outbox_id: event.outbox_id, p_user_id: userId }
+          );
+          if (authorizationError) {
+            await db.rpc("srk_finish_ai_handoff_subscription_delivery", {
+              p_delivery_id: target.delivery_id, p_attempt_count: target.attempt_count,
+              p_success: false, p_error: "Recipient authorization check failed"
+            });
+            deviceFailed++; eventComplete = false; return;
+          }
+          if (authorized !== true) {
+            // A reassignment/resolution has already invalidated this delivery.
+            return;
+          }
           // Do not include conversation text, customer identity, phone, or other private content.
           const payload = JSON.stringify({
             title: "SRK ELECTRONIC — कर्मचारी सहायता",
