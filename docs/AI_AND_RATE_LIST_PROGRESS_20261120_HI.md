@@ -87,3 +87,14 @@
 - AI request-limit pgTAP workflow run [44726735286](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726735286), SHA `acf233730e30ea003d36962abae839dd793cca99` — queue में; 41 assertions अभी pass घोषित नहीं।
 - इससे पहले उसी migration पर full PostgreSQL replay और AI/Rate List suites चल रही थीं; अंतिम SHA और परिणाम verify होने तक इन्हें final success नहीं माना जाएगा।
 - AI और AI push OFF; कोई provider key/call, live push, hosted DB migration, deployment, Main merge या Developer Branch creation नहीं।
+
+
+## CI परिणाम अपडेट — 20 नवम्बर
+
+- Full feature branch PostgreSQL migration replay run [44726698016](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726698016), SHA `c3b0e0ed9cd409057bc810bb6468a77265787dce` — success; baseline plus सभी migrations क्रम से replay हुईं और payout concurrency checks भी सफल हुए।
+- Rate Catalogue draft/security + net-rounding pgTAP run [44726698171](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726698171), SHA `c3b0e0ed9cd409057bc810bb6468a77265787dce` — 20 assertions success.
+- Rate List booking snapshot pgTAP run [44726698165](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726698165), SHA `c3b0e0ed9cd409057bc810bb6468a77265787dce` — success.
+- AI Main Admin/Staff handoff + notification pgTAP run [44726698190](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726698190), SHA `c3b0e0ed9cd409057bc810bb6468a77265787dce` — success.
+- Node test run [44726899213](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726899213), SHA `8462c55fbfe0c80b9833ccd9548e2e87edd63d9a` — success.
+- AI request-limit pgTAP run [44726735286](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/actions/runs/44726735286), SHA `acf233730e30ea003d36962abae839dd793cca99` — अभी चल रही है; इसमें 41 assertions हैं, परिणाम आने तक pass नहीं माना जाएगा।
+- Request throttle अभी request-count limits enforce करता है; provider token usage और वास्तविक रुपये/डॉलर cost metering अभी अलग शेष कार्य है।
