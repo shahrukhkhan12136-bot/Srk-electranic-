@@ -16,6 +16,7 @@ on:
       - "COMPLETE_DATABASE_SETUP.sql"
       - "supabase/migrations/**"
       - "supabase/tests/database/rate_catalogue_draft_security.test.sql"
+      - "supabase/tests/database/payout_reference_unique_index.test.sql"
       - ".github/workflows/full-migration-replay-postgres.yml"
   workflow_dispatch:
 
