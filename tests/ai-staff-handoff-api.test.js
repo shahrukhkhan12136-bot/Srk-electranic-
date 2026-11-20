@@ -84,6 +84,9 @@ test("Invalid payloads, methods, and unauthenticated requests never invoke privi
   assert.equal((await handler(event({ action: "reply", handoff_id: HANDOFF, body: " " }))).statusCode, 400);
   assert.equal((await handler(event({ action: "list", extra: "nope" }))).statusCode, 400);
   assert.equal((await handler(event({ action: "list" }, null))).statusCode, 401);
+  const tabToken = event({ action: "list" });
+  tabToken.headers.authorization = "Bearer\tvalid-token";
+  assert.equal((await handler(tabToken)).statusCode, 401);
   assert.equal(calls.length, 0);
 });
 
