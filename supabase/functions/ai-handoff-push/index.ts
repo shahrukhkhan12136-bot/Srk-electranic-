@@ -47,7 +47,8 @@ Deno.serve(async (req) => {
     if (!isOutbox(raw)) { retried++; continue; }
     const event = raw;
     let eventError = "One or more staff devices did not complete delivery";
-    let eventComplete = true;
+    let eventComplete = event.recipient_user_ids.length > 0;
+    if (!eventComplete) eventError = "No active Staff member has handoff read permission";
 
     for (const userId of [...new Set(event.recipient_user_ids)]) {
       const { data: deviceClaim, error: deviceClaimError } = await db.rpc(
