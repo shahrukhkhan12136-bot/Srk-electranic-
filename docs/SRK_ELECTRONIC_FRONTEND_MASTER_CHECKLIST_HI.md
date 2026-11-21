@@ -1583,3 +1583,21 @@ Founder ने बाजार-दर तुलना के बाद नीच
 - [ ] Profile application, KYC upload/review states, admin approval UI, online/offline availability, live location consent/tracking और multi-skill management का पूरा source-to-screen inventory आगे करना बाकी है।
 - [ ] चारों Technician test files source में मौजूद हैं; Flutter test/analyzer/build execution इस audit में नहीं हुआ, इसलिए इन्हें passing न मानें।
 - [ ] इस audit में कोई Technician source, backend API, database या production setting नहीं बदली गई।
+
+## 7B. Technician Dashboard — screen और action coverage audit (21-11-2026)
+
+स्रोत जाँच: `apps/electrician_app/lib/main.dart` (वर्तमान branch पर source SHA: `69c9d0287ce00aabd4cad31dcc6bfa09e146808e`)।
+
+- [x] मौजूदा स्क्रीन: OTP Login, profile/approval status, नए booking offers, offer accept/decline, offer price details, assigned bookings, customer contact/map launch, inspection/start/complete actions, quote submission, cash-payment confirmation, earnings और wallet summary।
+- [x] Dashboard में Refresh, pull-to-refresh और sign-out controls मौजूद हैं।
+- [x] Profile approved + active न होने पर booking accept/work actions रोकने का UI gate मौजूद है; यह server authorization का विकल्प नहीं है।
+- [x] Quote form में labour/service और parts/material अलग दिखाने तथा ग्राहक approval की प्रतीक्षा का flow मौजूद है।
+- [ ] Quote-dependent booking lifecycle अभी मौजूद है; quote-free lifecycle में migration तभी जब GPT-2 से नया backend contract और पुराने status dependencies की पुष्टि हो।
+- [ ] Online/offline toggle और availability schedule की स्पष्ट UI नहीं मिली।
+- [ ] GPS का उपयोग assigned booking का map खोलने के लिए है; background/live technician location sharing या dispatch proximity status की screen नहीं मिली।
+- [ ] Profile edit, application submission, KYC/document upload, verification progress और skill-wise service management की पूरी screen नहीं मिली।
+- [ ] काम के 8 घंटे, lunch pause/resume, overtime, multi-day duration और multi-technician team progress का live timer UI नहीं मिला।
+- [ ] Technician payout request/UPI-bank details/UTR और payout history UI नहीं मिली; मौजूदा wallet source में bank payout बंद होने का संदेश है।
+- [ ] Complaint/support history, customer rating/review और cancellation/dispute resolution की technician-side screen इस source audit में नहीं मिली।
+- [ ] नए catalogue skill-level/task picker को Technician Dashboard में जोड़ना और offer eligibility में लागू करना backend API/version contract के बाद ही होगा।
+- [ ] यह coverage audit है, feature implementation नहीं। इस चरण में केवल checklist बदली गई; app source, backend, database और production settings नहीं बदले गए। Flutter tests/analyzer/build इस चरण में नहीं चलाए गए।
