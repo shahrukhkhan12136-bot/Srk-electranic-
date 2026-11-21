@@ -145,6 +145,9 @@ BEGIN
   IF p_is_online AND v_active_booking IS NOT NULL THEN
     RAISE EXCEPTION 'ACTIVE_BOOKING_MUST_FINISH_BEFORE_ONLINE_STATUS' USING ERRCODE='55000';
   END IF;
+  IF p_latitude IS NOT NULL AND NOT p_is_online AND v_active_booking IS NULL THEN
+    RAISE EXCEPTION 'GPS_UPDATES_ALLOWED_ONLY_WHILE_ONLINE_OR_ON_ACTIVE_BOOKING' USING ERRCODE='42501';
+  END IF;
   IF p_is_online AND p_latitude IS NULL
      AND (v_location_at IS NULL OR v_location_at<clock_timestamp()-interval '5 minutes') THEN
     RAISE EXCEPTION 'FRESH_GPS_LOCATION_REQUIRED_TO_GO_ONLINE' USING ERRCODE='22023';
@@ -195,7 +198,10 @@ BEGIN
   ON CONFLICT(booking_id) DO NOTHING
   RETURNING id INTO v_id;
   IF v_id IS NULL THEN
-    SELECT id INTO v_id FROM public.srk_technician_dispatch_requests WHERE booking_id=p_booking_id;
+    SELECT id INTO v_id FROM public.srk_technician_dispatch_requests WHERE booking_id=p_booking_id
+      AND category_code=p_category_code AND skill_code=p_skill_code
+      AND required_technician_count=p_required_technician_count;
+    IF v_id IS NULL THEN RAISE EXCEPTION 'BOOKING_ALREADY_HAS_DIFFERENT_DISPATCH_REQUIREMENTS' USING ERRCODE='23505'; END IF;
   ELSE
     INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,event_type,details)
     VALUES(v_id,p_booking_id,'dispatch_created',jsonb_build_object('category_code',p_category_code,
@@ -212,7 +218,7 @@ GRANT EXECUTE ON FUNCTION public.srk_dispatch_create_for_booking(uuid,text,text,
 CREATE OR REPLACE FUNCTION public.srk_dispatch_issue_next_offer(p_booking_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_req public.srk_technician_dispatch_requests%rowtype;
-  v_offer_id uuid; v_technician_id uuid; v_distance numeric; v_match_level text;
+  v_offer_id uuid; v_technician_id uuid; v_distance numeric; v_expired record;
 BEGIN
   SELECT * INTO v_req FROM public.srk_technician_dispatch_requests
   WHERE booking_id=p_booking_id FOR UPDATE;
@@ -221,16 +227,15 @@ BEGIN
     RETURN jsonb_build_object('success',true,'status',v_req.status);
   END IF;
 
-  UPDATE public.srk_technician_dispatch_offers
-    SET status='expired',responded_at=clock_timestamp()
-  WHERE dispatch_request_id=v_req.id AND status='offered' AND expires_at<=clock_timestamp();
-  IF FOUND THEN
+  FOR v_expired IN
+    UPDATE public.srk_technician_dispatch_offers
+      SET status='expired',responded_at=clock_timestamp()
+    WHERE dispatch_request_id=v_req.id AND status='offered' AND expires_at<=clock_timestamp()
+    RETURNING id,technician_id
+  LOOP
     INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,technician_id,offer_id,event_type)
-    SELECT v_req.id,p_booking_id,o.technician_id,o.id,'offer_expired'
-    FROM public.srk_technician_dispatch_offers o
-    WHERE o.dispatch_request_id=v_req.id AND o.status='expired'
-      AND o.responded_at>=clock_timestamp()-interval '2 seconds';
-  END IF;
+    VALUES(v_req.id,p_booking_id,v_expired.technician_id,v_expired.id,'offer_expired');
+  END LOOP;
 
   SELECT o.id INTO v_offer_id FROM public.srk_technician_dispatch_offers o
   WHERE o.dispatch_request_id=v_req.id AND o.status='offered' AND o.expires_at>clock_timestamp()
@@ -248,39 +253,40 @@ BEGIN
   WHERE id=v_req.id RETURNING * INTO v_req;
   IF v_req.status='assigned' THEN RETURN jsonb_build_object('success',true,'status','assigned'); END IF;
 
-  SELECT candidate.technician_id,candidate.distance_km
+  SELECT t.id,
+    (6371.0*2*asin(sqrt(
+      power(sin(radians(p.last_latitude-v_req.work_latitude)/2),2)
+      +cos(radians(v_req.work_latitude))*cos(radians(p.last_latitude))
+       *power(sin(radians(p.last_longitude-v_req.work_longitude)/2),2)
+    )))::numeric(8,3)
     INTO v_technician_id,v_distance
-  FROM (
-    SELECT t.id AS technician_id,
-      (6371.0*2*asin(sqrt(
-        power(sin(radians(p.last_latitude-v_req.work_latitude)/2),2)
-        +cos(radians(v_req.work_latitude))*cos(radians(p.last_latitude))
-         *power(sin(radians(p.last_longitude-v_req.work_longitude)/2),2)
-      )))::numeric(8,3) AS distance_km
-    FROM public.srk_technician_presence p
-    JOIN public.srk_technicians t ON t.id=p.technician_id AND t.account_status='active'
-    JOIN public.srk_technician_applications a ON a.technician_id=t.id AND a.status='approved'
-    JOIN public.srk_technician_application_skills aps ON aps.application_id=a.id AND aps.review_status='approved'
-    JOIN public.srk_service_skills s ON s.id=aps.skill_id AND s.skill_code=v_req.skill_code AND s.is_active
-    JOIN public.srk_service_categories c ON c.id=s.category_id AND c.category_code=v_req.category_code AND c.is_active
-    JOIN public.srk_technician_application_categories ac ON ac.application_id=a.id AND ac.category_id=c.id
-    WHERE p.is_online=true AND p.active_booking_id IS NULL
-      AND p.last_latitude IS NOT NULL AND p.last_longitude IS NOT NULL
-      AND p.last_location_at>=clock_timestamp()-interval '5 minutes'
-      AND NOT EXISTS (SELECT 1 FROM public.srk_technician_dispatch_offers old
-        WHERE old.dispatch_request_id=v_req.id AND old.technician_id=t.id)
-      AND NOT EXISTS (SELECT 1 FROM public.srk_technician_dispatch_offers live
-        WHERE live.technician_id=t.id AND live.status='offered' AND live.expires_at>clock_timestamp())
-      AND NOT EXISTS (SELECT 1 FROM public.srk_booking_technician_assignments assigned
-        WHERE assigned.booking_id=p_booking_id AND assigned.technician_id=t.id)
-  ) candidate
-  WHERE candidate.distance_km<=30
-  ORDER BY candidate.distance_km,candidate.technician_id
+  FROM public.srk_technician_presence p
+  JOIN public.srk_technicians t ON t.id=p.technician_id AND t.account_status='active'
+  JOIN public.srk_technician_applications a ON a.technician_id=t.id AND a.status='approved'
+  JOIN public.srk_technician_application_skills aps ON aps.application_id=a.id AND aps.review_status='approved'
+  JOIN public.srk_service_skills s ON s.id=aps.skill_id AND s.skill_code=v_req.skill_code AND s.is_active
+  JOIN public.srk_service_categories c ON c.id=s.category_id AND c.category_code=v_req.category_code AND c.is_active
+  JOIN public.srk_technician_application_categories ac ON ac.application_id=a.id AND ac.category_id=c.id
+  WHERE p.is_online=true AND p.active_booking_id IS NULL
+    AND p.last_latitude IS NOT NULL AND p.last_longitude IS NOT NULL
+    AND p.last_location_at>=clock_timestamp()-interval '5 minutes'
+    AND NOT EXISTS (SELECT 1 FROM public.srk_technician_dispatch_offers old
+      WHERE old.dispatch_request_id=v_req.id AND old.technician_id=t.id)
+    AND NOT EXISTS (SELECT 1 FROM public.srk_technician_dispatch_offers live
+      WHERE live.technician_id=t.id AND live.status='offered' AND live.expires_at>clock_timestamp())
+    AND NOT EXISTS (SELECT 1 FROM public.srk_booking_technician_assignments assigned
+      WHERE assigned.booking_id=p_booking_id AND assigned.technician_id=t.id)
+    AND (6371.0*2*asin(sqrt(
+      power(sin(radians(p.last_latitude-v_req.work_latitude)/2),2)
+      +cos(radians(v_req.work_latitude))*cos(radians(p.last_latitude))
+       *power(sin(radians(p.last_longitude-v_req.work_longitude)/2),2)
+    )))<=30
+  ORDER BY 2,t.id
   LIMIT 1
-  FOR UPDATE OF candidate;
+  FOR UPDATE OF p SKIP LOCKED;
 
   IF v_technician_id IS NULL THEN
-    UPDATE public.srk_technician_dispatch_requests SET status='unavailable',
+    UPDATE public.srk_technician_dispatch_requests SET status='searching',
       current_offer_id=NULL,updated_at=clock_timestamp() WHERE id=v_req.id;
     INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,event_type,details)
     VALUES(v_req.id,p_booking_id,'dispatch_unavailable',jsonb_build_object('radius_km',30,'skill_code',v_req.skill_code));
