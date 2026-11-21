@@ -965,11 +965,11 @@
 **निर्णय:** मौजूदा Booking System को अभी न बदलें। Quote-dependent RPC/UI को तब तक सुरक्षित रखें जब तक Backend नया quote-free lifecycle और payment contract deploy करके staging में Customer तथा Technician दोनों ऐप से सत्यापित न कर दे। यह audit source-only है; runtime, RPC, database, payment और production में बदलाव नहीं हुआ। Flutter tests/analyzer/Android build execute नहीं हुए।
 
 
-## 2AL. Technician कमाई, वॉलेट और 15%/85% payment split audit (21-11-2026)
+## 2AL. Technician कमाई, वॉलेट और service-charge commission audit (21-11-2026)
 
 ### Owner-confirmed financial rule
-- [x] Company platform fee = ग्राहक के पूरे booking payment का 15%।
-- [x] Technician share = उसी पूरे booking payment का 85%।
+- [x] Company commission = केवल service charge/labour का 15%।
+- [x] Technician service share = service charge/labour का 85%; materials पर commission/platform fee 0%।
 - [x] उदाहरण: ग्राहक ₹1,000 देता है → Company ₹150, Technician ₹850।
 - [x] Labour/service और approved materials सहित पूरी ग्राहक booking payment split का आधार है; केवल labour पर commission नहीं।
 - [x] यह नियम cash और online दोनों payment methods के लिए एक समान लागू होना चाहिए; वास्तविक collection और reconciliation method अलग हो सकता है।
@@ -991,7 +991,7 @@
 
 ### Backend में जरूरी सुधार — implementation से पहले contract
 - [ ] Server authoritative gross amount स्पष्ट करे: customer से वास्तव में verified/collected booking total; labour + approved materials + applicable customer charges का treatment स्पष्ट हो।
-- [ ] Company share = gross × 15%; Technician share = gross − Company share (85%)। Integer paise में deterministic rounding; दोनों shares का योग gross के बराबर रहे।
+- [ ] Commission base केवल service_charge हो; materials_amount को commission base से बाहर रखें। Integer paise में deterministic rounding; materials को अलग pass-through/accounting item रखें।
 - [ ] Customer discount/coupon, tax/GST, travel/extra charges, refund/partial refund, failed/reversed payment और chargeback के लिए लिखित allocation rule तय हो।
 - [ ] Cash और Razorpay online दोनों में paid evidence और gross amount source server-verified हो; client-provided amount पर भरोसा न हो।
 - [ ] Idempotent double-entry ledger entries: customer collection, company fee, technician payable, refund/reversal और payout; हर entry booking/payment/provider reference से जुड़ी हो।
@@ -1042,3 +1042,7 @@
 - [ ] इस audit में कोई screen, route, navigation, API या runtime code नहीं बदला। Flutter tests/analyzer/formatter/Android build/device testing execute नहीं हुई।
 
 **निष्कर्ष:** वर्तमान mobile apps में मुख्य सुविधाएँ एक-एक dashboard screen पर हैं; यह पूर्ण multi-screen Play Store app होने का प्रमाण नहीं है। अगला कदम owner-approved minimum screen map और missing release requirements तय करना है।
+
+
+## Owner correction — commission base clarified (21-11-2026)
+**Controlling rule:** 15% commission is charged only on service charge/labour; Technician receives 85% of service charge/labour. Materials/parts carry 0% company commission/platform fee and remain outside the commission base. Example: ₹600 labour + ₹400 materials → ₹90 company commission, ₹510 technician labour share, ₹400 materials separately. This supersedes earlier full-payment commission wording in this document. No live payment code is changed by this documentation correction.
