@@ -18,7 +18,7 @@ BEGIN
  WHERE b.srk_service_category_code IS NOT NULL AND b.status='completed'
   AND b.completion_approval_status='approved' AND b.customer_completed_at IS NOT NULL
   AND b.payment_status IN ('unpaid','pending') AND b.payment_verified_at IS NULL
-  AND COALESCE(b.amount_paid,0)=0 AND b.razorpay_order_id IS NULL
+  AND COALESCE(b.amount_paid,0)=0 AND b.razorpay_order_id IS NULL AND b.razorpay_payment_id IS NULL
   AND b.payment_method IN ('cash','upi','bank_transfer')
   AND NOT EXISTS(SELECT 1 FROM public.srk_master_booking_payments m WHERE m.booking_id=b.id)
  ORDER BY b.created_at DESC LIMIT p_limit;
