@@ -110,7 +110,6 @@ BEGIN
  SELECT * INTO v_payment FROM public.srk_master_booking_payments WHERE id=p_payment_id FOR UPDATE;
  IF NOT FOUND OR v_payment.payment_status<>'paid' OR v_payment.payment_method<>'razorpay' THEN
   RAISE EXCEPTION 'VERIFIED_RAZORPAY_PAYMENT_REQUIRED'; END IF;
- IF p_settled_amount_paise<v_payment.amount_paise THEN RAISE EXCEPTION 'SETTLEMENT_AMOUNT_BELOW_COLLECTION'; END IF;
  INSERT INTO public.srk_master_company_settlements(payment_id,settlement_reference,settled_amount_paise,evidence_note,confirmed_by)
  VALUES(p_payment_id,btrim(p_settlement_reference),p_settled_amount_paise,nullif(btrim(p_evidence_note),''),auth.uid())
  ON CONFLICT(payment_id) DO NOTHING RETURNING id INTO v_id;
