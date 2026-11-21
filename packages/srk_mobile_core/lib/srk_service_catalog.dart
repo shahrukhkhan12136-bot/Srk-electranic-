@@ -87,7 +87,15 @@ const List<SrkServiceCategory> srkServiceCatalog = [
     iconKey: 'electrical_services',
     description: 'घर, दुकान और फैक्ट्री की इलेक्ट्रिकल सेवाएँ',
     options: [
-      SrkServiceOption(id: 'electrical_wiring', name: 'Electrical Wiring', displayName: 'इलेक्ट्रिकल वायरिंग'),
+      SrkServiceOption(
+        id: 'electrical_wiring',
+        name: 'Electrical Wiring',
+        displayName: 'इलेक्ट्रिकल वायरिंग',
+        tasks: [
+          SrkServiceTask(id: 'normal_wiring', name: 'नॉर्मल वायरिंग (घर / दुकान)'),
+          SrkServiceTask(id: 'factory_large_project_wiring', name: 'बड़े प्रोजेक्ट की वायरिंग (बड़ी फैक्ट्री / कंपनी / औद्योगिक भवन)'),
+        ],
+      ),
       SrkServiceOption(id: 'fan_install_repair', name: 'Fan Installation / Repair', displayName: 'पंखा लगाना / मरम्मत'),
       SrkServiceOption(id: 'switch_socket', name: 'Switch & Socket Repair', displayName: 'स्विच और सॉकेट मरम्मत'),
       SrkServiceOption(id: 'light_install', name: 'Light Installation', displayName: 'लाइट लगाना'),
