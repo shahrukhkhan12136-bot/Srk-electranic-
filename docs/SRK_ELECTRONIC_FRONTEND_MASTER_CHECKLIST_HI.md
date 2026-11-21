@@ -735,3 +735,17 @@
 - [ ] Flutter formatter, analyzer, tests, Android build और device test अभी execute/verify नहीं हुए।
 
 **सीमा:** मौजूदा booking flow, quote compatibility, offer/assignment, map/contact, cash/online payment, earnings/wallet, backend, database और production behavior में कोई बदलाव नहीं।
+
+## 2X. Customer confirmation और final bill का isolated UI model (2026-11-21)
+
+- [x] Customer app में अलग read-only confirmation presentation model जोड़ा; start/completion pending, confirmed, disputed, other और unknown स्थितियाँ स्पष्ट रूप से अलग हैं।
+- [x] केवल स्पष्ट प्रस्तावित pending states को “ग्राहक की पुष्टि बाकी” presentation hint मिलता है; इससे कोई button/action authorize नहीं होता।
+- [x] Final bill preview में labour, customer-approved materials, other charges और server total integer paise में रखे जाते हैं।
+- [x] Missing/negative रकम और breakdown mismatch को fail-closed/inconsistent दिखाने के लिए validation जोड़ी; server total को client द्वारा चुपचाप बदला नहीं जाता।
+- [x] Payment eligibility केवल server का informational boolean है; हर payment request पर backend को दोबारा जाँच करनी होगी।
+- [x] Tests में pending/unknown states, server timestamps, valid/mismatched/missing amounts और payment eligibility शामिल हैं।
+- [ ] यह मॉडल live booking card, Customer confirmation button, bill display, receipt या Razorpay flow से जुड़ा नहीं है।
+- [ ] Backend exact deployed response, amount/currency rules, approved-material semantics, tax/fee treatment, payment eligibility, receipt and dispute contracts प्रकाशित करे; तब ही integration करें।
+- [ ] Flutter formatter, analyzer, tests, Android build और device test अभी execute/verify नहीं हुए।
+
+**सीमा:** मौजूदा booking card, quote compatibility, cancellation, complaint, contact privacy, online/cash payment और booking API untouched हैं।
