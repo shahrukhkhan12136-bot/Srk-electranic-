@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(9);
+SELECT plan(8);
 
 SELECT has_constraint('public','service_bookings','service_bookings_assignment_status_requires_electrician',
   'canonical Master category is accepted for assigned work without a legacy electrician profile');
