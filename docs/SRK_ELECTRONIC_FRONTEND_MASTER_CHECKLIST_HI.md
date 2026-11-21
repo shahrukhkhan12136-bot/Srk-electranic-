@@ -682,3 +682,17 @@
 - [x] Exported the helper from the verified-services library barrel.
 - [ ] Do not connect matcher to offer visibility or accept/decline until backend supplies canonical fields and server-side eligibility guarantees.
 - [ ] No existing offer card, booking lifecycle, quote, payment, assignment or backend behavior was changed.
+
+
+## 2U. Technician assigned-booking lifecycle preview audit (2026-11-21)
+
+- [x] Re-inspected the live Technician assigned-booking card and its status actions: assigned → inspection; quote-approved → work in progress; in-progress → completed; cash confirmation remains available only for completed cash bookings not marked paid.
+- [x] Confirmed the assigned-booking view also preserves map navigation, assignment-guarded customer phone, labour/material/total fields, payment state, earnings and wallet display.
+- [x] Added isolated `SrkTechnicianBookingLifecyclePreview` presentation mapping for the currently deployed statuses, with unknown states represented as informational/unknown.
+- [x] Explicitly marks `awaiting_quote_approval`, `quote_approved` and `quote_rejected` as legacy quote-dependent states; this prevents the prototype from implying that quote removal is already supported.
+- [x] Added unit tests for current statuses, legacy-state marking, completed terminal display and unknown/missing status handling; exported the helper from the verified-services barrel.
+- [ ] This helper is not connected to the live assigned-booking card and does not authorize or call any status transition.
+- [ ] Do not remove quote UI or change work-start/cash/payment calls until the quote-free lifecycle, material approval and payment replacement RPCs are deployed and tested by backend owner.
+- [ ] Flutter formatter, analyzer, unit/widget tests, Android build and device test remain unexecuted/unverified.
+
+**सीमा:** यह केवल read-only presentation prototype और source audit है। Live booking actions, RPCs, status transitions, customer contact, map, cash confirmation, earnings, wallet, backend, database, payment या production में कोई बदलाव नहीं किया गया।
