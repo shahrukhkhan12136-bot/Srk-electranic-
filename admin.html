@@ -878,6 +878,8 @@ async function saveBookingInternal(id){
  const {data:booking,error:readError}=await sb.from('service_bookings')
   .select('status,assigned_electrician_id,selected_category').eq('id',id).single();
  if(readError||!booking){alert('बुकिंग दोबारा पढ़ी नहीं जा सकी। Admin अनुमति और रिकॉर्ड की स्थिति जाँचें।');return;}
+ if(status==='completed'&&booking.status!=='completed'){alert('बुकिंग को Admin के सामान्य Save बटन से Completed नहीं किया जा सकता। काम पूरा होने की पुष्टि संबंधित सुरक्षित completion workflow से ही दर्ज होगी।');await loadAll();return;}
+ if(status==='cancelled'&&booking.status!=='cancelled'){alert('Admin Dashboard के सामान्य Save बटन से cancellation नहीं किया जा सकता। सुरक्षित cancellation workflow का उपयोग करें।');await loadAll();return;}
  if(status!==booking.status&&!( !booking.selected_category&&booking.status==='new'&&status==='confirmed')){
   alert('Admin केवल पुरानी नई बुकिंग को Confirm कर सकता है। Assignment, Work Completion और Cancellation अपने सुरक्षित workflow से ही होंगे.');
   await loadAll();return;
