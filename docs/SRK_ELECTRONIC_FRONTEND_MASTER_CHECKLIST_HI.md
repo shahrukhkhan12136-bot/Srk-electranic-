@@ -603,3 +603,28 @@
 - [x] The agreed basis remains the full booking payment. Illustration: ₹1,000 customer booking payment → ₹150 company share + ₹850 technician share.
 - [x] Updated `docs/SRK_MOBILE_BACKEND_CONTRACT_HANDOFF_HI.md` to remove the open question about the percentage/base and explicitly supersede the older labour-only wording in the Master Requirements for this later owner decision.
 - [ ] Backend must still reconcile ledger treatment for helper/material/tax/travel/refunds, rounding, cash and online settlements while preserving the confirmed 15%/85% split. No backend or payment code changed.
+
+
+## 2O. Customer picker और shared catalogue का reconciliation audit (2026-11-21)
+
+### दोनों स्रोतों की तुलना
+- [x] `apps/customer_app/lib/service_category_picker.dart` में UI navigation model है: category/subcategory IDs, Hindi labels और AC/Fridge के task labels।
+- [x] `packages/srk_mobile_core/lib/srk_service_catalog.dart` में reusable catalogue/rate presentation model है: English category/option names, descriptions, skill tiers और confirmed rate notes।
+- [x] दोनों में छह top-level categories और उनका क्रम मेल खाते हैं; अभी दोनों स्वतंत्र lists हैं, एक canonical source नहीं।
+- [x] Electrician के आठ task labels दोनों में लगभग समान हैं, लेकिन picker के stable subcategory IDs और shared catalogue के options के बीच explicit ID mapping नहीं है।
+- [x] AC + Fridge में AC/Fridge second-level split दोनों में है; picker task labels को plain strings रखता है, जबकि shared model tasks को एक note में text के रूप में रखता है। Individual task IDs अभी नहीं हैं।
+- [x] Motor & Pump के सात option labels दोनों में लगभग मेल खाते हैं; winding HP rates केवल shared catalogue में हैं, picker में HP selection/rate UI नहीं।
+- [x] Cooler Repair दोनों में है; ₹500 fixed labour और parts/winding exclusions केवल shared catalogue note में हैं।
+- [x] Plumber और Painter दोनों में picker तथा shared catalogue में विस्तृत service subcategories/options अभी खाली/अनुपस्थित हैं। इन्हें अनुमान से नहीं भरा गया है।
+- [x] Shared catalogue में approved rate/skill tiers हैं; picker में rate/skill tiers नहीं हैं। ये अलग उद्देश्य के models हैं, पर future integration में एक versioned catalogue contract से जुड़ना चाहिए।
+
+### सुरक्षित निष्कर्ष और अगला कदम
+- [x] अभी इन दोनों models को सीधे merge या एक-दूसरे में import नहीं किया गया; backend canonical IDs और catalogue version तय नहीं हैं।
+- [x] Picker को booking payload, pricing, dispatch या Technician eligibility से जोड़ना अभी सुरक्षित नहीं।
+- [ ] Backend owner से canonical category/subcategory/task/skill-tier IDs, catalogue version और rate effective-date contract मिलने पर एक ही shared canonical catalogue बनाया जाए; Customer picker उसी को render करे।
+- [ ] प्रत्येक task को stable ID दिया जाए; UI Hindi/English labels को ID से अलग रखा जाए। AC और Fridge tasks अलग-अलग nested रहें।
+- [ ] Plumber/Painter की वास्तविक subcategory सूची owner से लेकर जोड़ी जाए; कोई task या rate अनुमान से न बनाया जाए।
+- [ ] Motor & Pump winding HP choices, Cooler fixed ₹500 labour और separate materials approval को उसी canonical model में typed pricing rules के रूप में दर्शाया जाए; fixed jobs पर hourly overtime न लगे।
+- [ ] Canonical model बनने के बाद tests को IDs, category order, AC/Fridge isolation, Plumber/Painter options, fixed-vs-hourly pricing metadata और unknown/unpriced options पर बढ़ाया जाए।
+
+**स्थिति:** यह source-code inspection और documentation update है। इस चरण में Flutter UI/model source, booking submit, backend, database, payment या production behavior नहीं बदला गया। Flutter format/analyze/test/build अभी execute नहीं हुए।
