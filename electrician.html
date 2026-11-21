@@ -767,29 +767,56 @@ async function loadPartnerWallet(){
  const box=document.getElementById('partnerWallet');if(!box||!user)return;
  const request=++electricianWalletRequest,requestedUserId=user.id;
  const isCurrent=()=>request===electricianWalletRequest&&user?.id===requestedUserId;
- box.innerHTML='<p class="muted">वॉलेट जानकारी सुरक्षित रूप से लोड हो रही है…</p>';
- const walletResult=await Promise.resolve().then(()=>sb.rpc('srk_get_my_wallet_summary')).catch(error=>({data:null,error}));
- const {data,error}=walletResult;
+ box.innerHTML='<p class="muted">Master वॉलेट सुरक्षित रूप से लोड हो रहा है…</p>';
+ const master=await Promise.resolve().then(()=>sb.rpc('srk_master_wallet_summary')).catch(error=>({data:null,error}));
  if(!isCurrent())return;
- if(error){box.innerHTML='<p class="bad">वॉलेट जानकारी अभी उपलब्ध नहीं है। कृपया बाद में Refresh करें।</p>';return;}
+ if(!master.error&&master.data?.technician_id){
+  const w=master.data,money=v=>'₹'+(Number(v||0)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const status={pending:'भुगतान उपलब्ध',requested:'निकासी अनुरोध भेजा गया',paid:'भुगतान पूरा',blocked:'रोक लगा है',refunded:'रिफंड'};
+  const items=Array.isArray(w.payables)?w.payables:[];
+  box.innerHTML='<div class="job"><b>Master Technician Wallet</b><p><b>Technician ID:</b> <code>'+esc(w.technician_id)+'</code></p><div class="grid"><div>कुल कमाई <b>'+money(w.earned_paise)+'</b></div><div>निकासी योग्य <b>'+money(w.pending_paise)+'</b></div><div>अनुरोध में <b>'+money(w.requested_paise)+'</b></div><div>भुगतान पूरा <b>'+money(w.paid_paise)+'</b></div></div><small class="muted">यह हिसाब सभी स्वीकृत सेवा श्रेणियों के Master payable ledger से है।</small></div>'+
+  '<div class="job"><b>निकासी अनुरोध</b><p>UPI ID या बैंक भुगतान संदर्भ भरें। वास्तविक भुगतान Admin द्वारा सत्यापन के बाद ही होगा।</p><label for="masterPayoutDestinationType">भुगतान का तरीका</label><select id="masterPayoutDestinationType"><option value="upi">UPI</option><option value="bank">Bank</option></select><label for="masterPayoutDestination">UPI ID / बैंक खाता विवरण का सुरक्षित संदर्भ</label><input id="masterPayoutDestination" maxlength="160" autocomplete="off" placeholder="UPI ID या बैंक विवरण"><button type="button" id="masterPayoutRequestButton" onclick="requestMasterTechnicianPayout()">निकासी अनुरोध भेजें</button><p id="masterPayoutRequestMessage" class="muted" aria-live="polite"></p></div>'+
+  '<div class="job"><b>Master कमाई / Payable हिस्ट्री</b>'+(items.length?items.map(x=>'<p><b>'+esc(x.booking_id||'बुकिंग')+'</b> • '+money(x.amount_paise)+'<br>'+esc(status[x.status]||x.status)+' • '+esc(x.payment_method||'—')+'</p>').join(''):'<p>अभी कोई Master payable रिकॉर्ड उपलब्ध नहीं है।</p>')+'</div>'+
+  '<div class="job"><b>पुराना Electrician Wallet</b><small class="muted">पुराना लेजर और उसका इतिहास सुरक्षित रखा गया है।</small><div id="legacyPartnerWallet">पुराना वॉलेट लोड हो रहा है…</div></div>';
+  const legacy=await Promise.resolve().then(()=>sb.rpc('srk_get_my_wallet_summary')).catch(error=>({data:null,error}));
+  if(!isCurrent())return;
+  const lw=legacy.data?.electrician;
+  document.getElementById('legacyPartnerWallet').textContent=legacy.error?'पुराने वॉलेट का विवरण अभी उपलब्ध नहीं है।':lw?('पुराना लेजर बैलेंस: '+money(Math.round(Number(lw.balance||0)*100))):'पुराने वॉलेट में कोई लिंक्ड खाता नहीं मिला।';
+  return;
+ }
+ // Until the Master migration is applied, preserve the existing legacy wallet view.
+ const walletResult=await Promise.resolve().then(()=>sb.rpc('srk_get_my_wallet_summary')).catch(error=>({data:null,error}));
+ if(!isCurrent())return;
+ const {data,error}=walletResult;
+ if(error){box.innerHTML='<p class="bad">वॉलेट जानकारी अभी उपलब्ध नहीं है। Master Wallet RPC उपलब्ध होने तक पुराना Wallet विवरण भी जाँचें।</p>';return;}
  const w=data?.electrician;
- if(!w){box.innerHTML='<p>इलेक्ट्रिशियन वॉलेट केवल Admin द्वारा स्वीकृत पार्टनर के लिए खुलेगा।</p>';return;}
+ if(!w){box.innerHTML='<p>Technician पहचान अभी लिंक नहीं हुई है।</p>';return;}
  const [bankResult,ledgerResult]=await Promise.all([
   Promise.resolve().then(()=>sb.from('srk_wallet_bank_links').select('account_holder_name,bank_name,account_last4,ifsc_masked,verification_status,is_primary,wallet_type,provider').eq('user_id',user.id).order('is_primary',{ascending:false}).order('created_at',{ascending:false}).limit(3)).catch(error=>({data:null,error})),
   Promise.resolve().then(()=>sb.from('srk_wallet_ledger').select('entry_type,direction,amount,status,description,provider_reference,reference_id,created_at,posted_at').eq('wallet_id',w.wallet_id).eq('user_id',user.id).order('created_at',{ascending:false}).limit(10)).catch(error=>({data:null,error}))
  ]);
  if(!isCurrent())return;
  const bank=bankResult.data||[],ledger=ledgerResult.data||[];
- const verificationLabels={verified:'सत्यापित',pending:'जाँच बाकी',rejected:'अस्वीकृत',failed:'जाँच विफल',active:'सक्रिय'};
- const statusLabels={pending:'लंबित',posted:'दर्ज',completed:'पूरा',failed:'विफल',reversed:'रिवर्सल'};
- const directionLabels={credit:'जमा',debit:'निकासी'};
  const money=v=>'₹'+Number(v||0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
- const date=v=>v?new Date(v).toLocaleString('hi-IN'):'—';
- box.innerHTML='<div class="job"><b>इलेक्ट्रिशियन वॉलेट</b><p><b>लेजर बैलेंस:</b> '+money(w.balance)+'</p><small class="muted">यह ऐप का आंतरिक लेजर बैलेंस है। यह बैंक में पैसा पहुँचने या निकासी पूरी होने का प्रमाण नहीं है।</small></div>'+
- (bankResult.error?'<p class="bad">बैंक लिंक की स्थिति लोड नहीं हो सकी। निजी बैंक विवरण दिखाने के बजाय इसे छिपाया गया है।</p>':'<div class="job"><b>लिंक किया गया बैंक / UPI</b>'+(bank.length?bank.map(x=>'<p><b>'+esc(x.bank_name||x.provider||'बैंक / UPI')+'</b>'+(x.is_primary?' • प्राथमिक':'')+'<br>'+esc(x.account_holder_name||'खाताधारक नाम उपलब्ध नहीं')+'<br>'+(x.wallet_type==='bank'?'खाता ••••'+esc(x.account_last4||'----')+(x.ifsc_masked?' • IFSC '+esc(x.ifsc_masked):''):'UPI / Provider लिंक')+'<br><span class="pill">'+esc(verificationLabels[x.verification_status]||'स्थिति: '+(x.verification_status||'अज्ञात'))+'</span></p>').join(''):'<p>अभी कोई बैंक / UPI लिंक उपलब्ध नहीं है।</p>')+'</div>')+
- (ledgerResult.error?'<p class="bad">वॉलेट लेन-देन सूची अभी उपलब्ध नहीं है। कृपया बाद में Refresh करें।</p>':'<div class="job"><b>हाल के वॉलेट लेन-देन</b>'+(ledger.length?ledger.map(x=>'<p><b>'+esc(x.entry_type||'लेन-देन')+'</b> • '+esc(directionLabels[x.direction]||x.direction||'—')+' <b>'+money(x.amount)+'</b><br><span class="pill">'+esc(statusLabels[x.status]||x.status||'स्थिति अज्ञात')+'</span>'+(x.description?'<br>'+esc(x.description):'')+(x.provider_reference||x.reference_id?'<br><small>संदर्भ: '+esc(x.provider_reference||x.reference_id)+'</small>':'')+'<br><small class="muted">'+date(x.posted_at||x.created_at)+'</small></p>').join(''):'<p>अभी कोई वॉलेट लेन-देन नहीं है।</p>')+'</div>')+
- '<div class="job"><b>निकासी सुविधा</b><p>बैंक खाता जोड़ना और निकासी अभी बंद है। Route Linked Account onboarding, सत्यापन और Admin की अनुमति पूरी होने के बाद ही इसे सक्रिय किया जाएगा।</p><small class="muted">अभी इस स्क्रीन से कोई बैंक ट्रांसफर या निकासी शुरू नहीं की जा सकती।</small></div>';
+ box.innerHTML='<div class="job"><b>पुराना इलेक्ट्रिशियन वॉलेट</b><p><b>लेजर बैलेंस:</b> '+money(w.balance)+'</p><small class="muted">पुराना वॉलेट इतिहास सुरक्षित है। नया Master payout RPC उपलब्ध होने पर Master payout अनुरोध अलग दिखेगा।</small></div>'+
+ (bankResult.error?'<p class="bad">बैंक लिंक की स्थिति लोड नहीं हो सकी।</p>':'<div class="job"><b>लिंक किया गया बैंक / UPI</b>'+(bank.length?bank.map(x=>'<p><b>'+esc(x.bank_name||x.provider||'बैंक / UPI')+'</b> • '+esc(x.account_holder_name||'नाम उपलब्ध नहीं')+' • '+esc(x.verification_status||'स्थिति अज्ञात')+'</p>').join(''):'<p>अभी कोई बैंक / UPI लिंक उपलब्ध नहीं है।</p>')+'</div>')+
+ (ledgerResult.error?'<p class="bad">पुराना लेन-देन विवरण उपलब्ध नहीं है।</p>':'<div class="job"><b>हाल के पुराने वॉलेट लेन-देन</b>'+(ledger.length?ledger.map(x=>'<p>'+esc(x.entry_type||'लेन-देन')+' • '+esc(x.direction||'—')+' • '+money(x.amount)+' • '+esc(x.status||'—')+'</p>').join(''):'<p>अभी कोई लेन-देन नहीं है।</p>')+'</div>');
 }
+async function requestMasterTechnicianPayout(){
+ const button=document.getElementById('masterPayoutRequestButton'),msg=document.getElementById('masterPayoutRequestMessage');
+ const type=document.getElementById('masterPayoutDestinationType')?.value,destination=document.getElementById('masterPayoutDestination')?.value.trim();
+ if(!['upi','bank'].includes(type)||!destination||destination.length<4||destination.length>160){if(msg)msg.textContent='सही UPI ID या बैंक विवरण भरें।';return;}
+ if(button)button.disabled=true;if(msg)msg.textContent='निकासी अनुरोध सुरक्षित किया जा रहा है…';
+ const key='srk-master-payout-'+user.id+'-'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2));
+ try{
+  const {data,error}=await sb.rpc('srk_technician_request_master_payout',{p_destination_type:type,p_destination_reference:destination,p_idempotency_key:key});
+  if(error||!data?.success)throw error||new Error('PAYOUT_REQUEST_NOT_CONFIRMED');
+  if(msg)msg.textContent=data.already_processed?'यह अनुरोध पहले से दर्ज है।':'निकासी अनुरोध भेज दिया गया है। Admin की समीक्षा के बाद स्थिति यहाँ दिखेगी।';
+  await loadPartnerWallet();
+ }catch(e){if(msg)msg.textContent='अनुरोध नहीं भेजा गया। खुला अनुरोध या उपलब्ध बैलेंस जाँचें और Refresh करें।';}
+ finally{if(button)button.disabled=false;}
+}
+
 let electricianAccountViewGeneration=0;
 const electricianOfferResponseBusy=new Set();
 async function respond(button,id,response){
