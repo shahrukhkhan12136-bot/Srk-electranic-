@@ -1408,9 +1408,9 @@ function renderCustomerMasterWorkdayMarkup(bookingId,workdays,requiredCount){
   const pending=rows.filter(w=>w.status==='start_pending');
   const active=rows.filter(w=>['running','paused','lunch_paused'].includes(w.status));
   const stopped=rows.filter(w=>w.status==='stopped');
-  const statusRows=rows.map(w=>'<p class="small"><b>Technician:</b> '+customerEsc(w.technician_id)+' · <b>स्थिति:</b> '+customerEsc(w.status)+' · <b>समय:</b> '+customerEsc(formatCustomerTimer(w.accumulated_work_seconds||0))+'</p>').join('');
+  const statusRows=rows.map(w=>'<p class="small"><b>Technician:</b> '+customerEsc(w.technician_name||w.technician_id)+' · <b>स्थिति:</b> '+customerEsc(w.status)+' · <b>समय:</b> '+customerEsc(formatCustomerTimer(w.accumulated_work_seconds||0))+'</p>').join('');
   let action='';
-  if(pending.length)action+=pending.map(w=>'<div class="job"><b>Technician काम शुरू करने की अनुमति माँग रहा है।</b><p class="small">'+customerEsc(w.technician_id)+'</p><button type="button" onclick="customerRespondMasterWorkdayStart(\''+customerEsc(w.workday_id)+'\',\'approved\')">काम शुरू करने की मंजूरी दें</button> <button type="button" onclick="customerRespondMasterWorkdayStart(\''+customerEsc(w.workday_id)+'\',\'rejected\')">अभी मंजूरी न दें</button></div>').join('');
+  if(pending.length)action+=pending.map(w=>'<div class="job"><b>Technician काम शुरू करने की अनुमति माँग रहा है।</b><p class="small">'+customerEsc(w.technician_name||w.technician_id)+'</p><button type="button" onclick="customerRespondMasterWorkdayStart(\''+customerEsc(w.workday_id)+'\',\'approved\')">काम शुरू करने की मंजूरी दें</button> <button type="button" onclick="customerRespondMasterWorkdayStart(\''+customerEsc(w.workday_id)+'\',\'rejected\')">अभी मंजूरी न दें</button></div>').join('');
   if(active.some(w=>w.status==='running'))action+='<p class="small">काम का Timer चल रहा है। पहला 8 घंटे सामान्य दर पर और उसके बाद उसी दिन 1.5x Overtime लागू होगा।</p>';
   if(active.some(w=>w.status==='lunch_paused'))action+='<p class="small">Lunch Break चल रहा है; 1 घंटे बाद Timer अपने-आप Resume होगा।</p>';
   if(decision)action+='<p><b>आपका दैनिक निर्णय:</b> '+customerEsc(decision==='tomorrow'?'कल का शेड्यूल स्वीकार किया':decision==='completed'?'काम पूरा घोषित किया':'दूसरा Technician माँगा')+'</p>';
