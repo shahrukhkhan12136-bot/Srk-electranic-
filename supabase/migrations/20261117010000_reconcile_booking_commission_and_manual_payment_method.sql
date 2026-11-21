@@ -14,6 +14,7 @@ declare
   v_rate numeric(7,2);
   v_commission numeric(12,2);
   v_bill public.srk_booking_labour_bills%rowtype;
+  v_legacy srk_private.legacy_booking_financial_evidence%rowtype;
 begin
   if new.payment_status = 'paid'
      and new.payment_verified_at is not null
@@ -62,10 +63,8 @@ begin
     end if;
     v_service := round(v_bill.labour_amount,2);
   else
-    if new.quote_status <> 'approved' then
-      return new;
-    end if;
-    v_service := round(coalesce(new.service_charge,0),2);
+    -- Quote-era bookings are historical only; no new commission is created.
+    return new;
   end if;
 
   v_rate := new.commission_rate;
@@ -89,8 +88,7 @@ before insert or update of
   assigned_electrician_id,
   payment_verified_at,
   amount_paid,
-  quote_status,
-  service_charge,
+  selected_category,
   commission_rate,
   razorpay_payment_id,
   selected_category,
@@ -146,9 +144,7 @@ after insert or update of
   assigned_electrician_id,
   payment_verified_at,
   amount_paid,
-  quote_status,
-  service_charge,
-  materials_amount,
+  selected_category,
   commission_rate,
   commission_amount,
   razorpay_payment_id,
@@ -253,8 +249,14 @@ begin
     end if;
     v_materials_paise := 0;
   else
-    v_labour_paise := round(coalesce(v_booking.service_charge,0)*100)::bigint;
-    v_materials_paise := round(coalesce(v_booking.materials_amount,0)*100)::bigint;
+    SELECT * INTO v_legacy FROM srk_private.legacy_booking_financial_evidence
+     WHERE booking_id=p_booking_id;
+    IF FOUND THEN
+      v_labour_paise:=round(coalesce(v_legacy.service_charge,0)*100)::bigint;
+      v_materials_paise:=round(coalesce(v_legacy.materials_amount,0)*100)::bigint;
+    ELSE
+      v_exceptions:=array_append(v_exceptions,'MISSING_ARCHIVED_HISTORICAL_FINANCIAL_EVIDENCE');
+    END IF;
   end if;
 
   if v_booking.commission_rate is null
