@@ -50,6 +50,7 @@ test('ratings require 1 to 5 stars and cannot be submitted by unrelated users', 
 test('Admin rating moderation requires a reason and keeps an immutable moderation event', () => {
   assert.match(migration, /srk_admin_moderate_master_rating/);
   assert.match(migration, /srk_master_rating_moderation_events/);
+  assert.match(migration, /srk_master_rating_moderation_events_append_only/);
   assert.match(migration, /RATING_ALREADY_IN_TARGET_STATE/);
   assert.match(migration, /moderation_reason=CASE WHEN v_after='hidden'/);
 });
