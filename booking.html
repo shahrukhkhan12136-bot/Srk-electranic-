@@ -88,7 +88,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <section class="customer-menu-page" id="customerMenuBookings" role="tabpanel" aria-labelledby="customerTabBookings" hidden>
    <h2 class="section-title" style="margin-top:0">My Bookings</h2>
    <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
-   <div id="customerBookings" aria-live="polite"></div>
+   <div id="customerBookings" aria-live="polite"></div><section class="card" id="customerMasterRatingsPanel"><h3>⭐ आपकी Master Booking Ratings</h3><p class="small">काम पूरा होने और Customer द्वारा पुष्टि के बाद ही Technician को रेट करें। एक Booking में प्रत्येक Technician को एक बार Rating दी जा सकती है।</p><div id="customerMasterRatings" aria-live="polite">Rating सूची लोड हो रही है…</div></section>
   </section>
   <section class="customer-menu-page" id="customerMenuPayments" role="tabpanel" aria-labelledby="customerTabPayments" hidden>
    <section class="card" id="customerPaymentHistoryPanel" style="margin-top:14px">
@@ -1263,6 +1263,39 @@ async function customerCancelBooking(bookingId,button) {
 }
 async function refreshCustomerLiveLocations(){if(!customerSb||!customerLiveLocationBookingIds.length||navigator.onLine===false||document.visibilityState==='hidden')return;const request=++customerLiveLocationRefreshRequest,bookingIds=[...customerLiveLocationBookingIds];const isCurrent=id=>request===customerLiveLocationRefreshRequest&&customerLiveLocationBookingIds.includes(id);await Promise.all(bookingIds.map(async id=>{const box=document.getElementById('customerLiveLocation_'+id);if(!box)return;try{const {data,error}=await customerSb.rpc('srk_customer_get_live_electrician_location',{p_booking_id:id});if(!isCurrent(id))return;if(error){box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small" role="status">नेटवर्क के कारण लोकेशन अभी लोड नहीं हो सकी। इंटरनेट लौटने पर फिर कोशिश होगी।</p>';return;}if(!data?.is_active){box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small">अभी कोई ताज़ा लोकेशन उपलब्ध नहीं है। इलेक्ट्रिशियन के यात्रा के दौरान शेयरिंग शुरू करने पर यहाँ दिखेगी।</p>';return;}const lat=Number(data.latitude),lng=Number(data.longitude);if(!Number.isFinite(lat)||!Number.isFinite(lng)){box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small" role="status">GPS स्थान अभी मान्य नहीं है। अगला अपडेट आने पर फिर दिखेगा।</p>';return;}const updated=new Date(data.updated_at);const time=Number.isFinite(updated.getTime())?updated.toLocaleTimeString('hi-IN'):'अभी';const url='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(lat+','+lng)+'&travelmode=driving';const embed='https://maps.google.com/maps?q='+encodeURIComponent(lat+','+lng)+'&z=15&output=embed';if(!isCurrent(id))return;box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small">ताज़ा GPS स्थान · अपडेट: '+customerEsc(time)+' · सटीकता लगभग '+customerEsc(Math.round(Number(data.accuracy_meters)||0))+' मीटर</p><iframe title="इलेक्ट्रिशियन की वर्तमान लोकेशन" src="'+customerEsc(embed)+'" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="width:100%;height:220px;border:0;border-radius:10px" allowfullscreen></iframe><a target="_blank" rel="noopener" href="'+customerEsc(url)+'">🧭 Google Maps में रास्ता देखें</a>';}catch(error){if(!isCurrent(id))return;box.innerHTML='<b>इलेक्ट्रिशियन की Live Location</b><p class="small" role="status">लोकेशन अभी लोड नहीं हो सकी। इंटरनेट लौटने पर फिर कोशिश होगी।</p>';}}));}
 if(!customerLiveLocationPoller)customerLiveLocationPoller=setInterval(refreshCustomerLiveLocations,15000);
+async function loadCustomerMasterRatings(){
+ const box=document.getElementById('customerMasterRatings');if(!box||!customerSb)return;
+ box.textContent='Completed Booking Rating सूची लोड हो रही है…';
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_list_master_rating_tasks');
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  if(!rows.length){box.textContent='अभी कोई Completed Master Booking Rating के लिए उपलब्ध नहीं है।';return;}
+  box.innerHTML=rows.map(r=>{
+   const booking=customerEsc(r.booking_id),technician=customerEsc(r.technician_id);
+   const received=r.subject_rating_id?'<div class="job"><b>Technician ने आपके लिए Rating दी:</b> '+Number(r.subject_rating_stars)+'/5'+(r.subject_rating_text?'<p>'+customerEsc(r.subject_rating_text)+'</p>':'')+'<button type="button" onclick="reportCustomerMasterRating(\''+customerEsc(r.subject_rating_id)+'\')">इस Review की रिपोर्ट करें</button></div>':'';
+   const own=r.rating_id?'<div class="job"><b>आपकी Rating:</b> '+Number(r.stars)+'/5'+(r.review_text?'<p>'+customerEsc(r.review_text)+'</p>':'')+'</div>':
+    '<div class="job"><label for="customerMasterStars_'+booking+'">Technician को Stars दें</label><select id="customerMasterStars_'+booking+'"><option value="5">5 — बहुत अच्छा</option><option value="4">4 — अच्छा</option><option value="3">3 — ठीक</option><option value="2">2 — खराब</option><option value="1">1 — बहुत खराब</option></select><label for="customerMasterReview_'+booking+'">Review (वैकल्पिक, अधिकतम 1000 अक्षर)</label><textarea id="customerMasterReview_'+booking+'" maxlength="1000" rows="2" placeholder="अपने अनुभव के बारे में लिखें"></textarea><button type="button" onclick="submitCustomerMasterRating(\''+booking+'\',\''+technician+'\')">Rating जमा करें</button></div>';
+   return '<article class="job"><b>Booking: '+booking+'</b><p>Technician ID: <code>'+technician+'</code></p><p>Published Rating: '+Number(r.technician_average||0).toFixed(2)+'/5 ('+Number(r.technician_rating_count||0)+' Reviews)</p>'+own+received+'</article>';
+  }).join('');
+ }catch(e){box.textContent='Rating सूची अभी उपलब्ध नहीं है। Master Rating migration लागू होने और OTP Login की स्थिति जाँचें।';}
+}
+async function submitCustomerMasterRating(bookingId,technicianId){
+ const stars=Number(document.getElementById('customerMasterStars_'+bookingId)?.value),review=document.getElementById('customerMasterReview_'+bookingId)?.value.trim()||null;
+ if(!Number.isInteger(stars)||stars<1||stars>5){alert('1 से 5 Stars चुनें।');return;}
+ if(!confirm('क्या आप इस Technician को '+stars+'/5 Rating जमा करना चाहते हैं? इसे दोबारा संपादित नहीं किया जा सकेगा।'))return;
+ const {data,error}=await customerSb.rpc('srk_customer_rate_master_technician',{p_booking_id:bookingId,p_technician_id:technicianId,p_stars:stars,p_review_text:review});
+ if(error||!data){alert('Rating जमा नहीं हुई। Booking Completed और Customer-approved है या नहीं, जाँचें।');return;}
+ await loadCustomerMasterRatings();
+}
+async function reportCustomerMasterRating(ratingId){
+ const reason=prompt('इस Review की रिपोर्ट का कारण लिखें (5–500 अक्षर):');if(reason===null)return;
+ if(reason.trim().length<5||reason.length>500){alert('कारण 5 से 500 अक्षरों का होना चाहिए।');return;}
+ const details=prompt('अतिरिक्त विवरण (वैकल्पिक):');
+ const {data,error}=await customerSb.rpc('srk_master_report_booking_rating',{p_rating_id:ratingId,p_reason:reason.trim(),p_details:details===null?null:details.trim()||null});
+ if(error||!data){alert('Report जमा नहीं हुई। यह केवल उस Review के लिए संभव है जो आपके बारे में है।');return;}
+ alert('Review Report Admin को भेज दी गई है।');await loadCustomerMasterRatings();
+}
 async function loadCustomerBookings() {
   const request = ++customerBookingRefreshRequest;
   const isCurrent = () => request === customerBookingRefreshRequest;
@@ -1452,6 +1485,7 @@ async function loadCustomerBookings() {
       note.textContent='बुकिंग की जानकारी उपलब्ध है, लेकिन स्थिति इतिहास अभी लोड नहीं हो सका।';
       box.prepend(note);
     }
+    await loadCustomerMasterRatings();
     if(refundResult.error){
       const note=document.createElement('p');
       note.className='small';
