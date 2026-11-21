@@ -567,3 +567,14 @@ Production introspection में commission trigger `UPDATE OF status, payment
 - अगला आवश्यक कदम approved repository working environment में CLI से migration file generate करना, SQL review करना, फिर केवल `SRK ELECTRONIC TEST` पर apply और regression-test करना है।
 - Production पर apply/merge/deploy के लिए अलग स्पष्ट अनुमति आवश्यक है।
 - इस चरण में कोई database, migration history, payment, payout या app runtime परिवर्तन नहीं हुआ।
+
+
+## 35. TEST database read-only inspection — schema incomplete (21-11-2026)
+
+- TEST project ref `dvzmarekhstaubyuoeeh` पर केवल read-only catalog queries चलाए गए; कोई DDL/DML, migration, payment या payout बदलाव नहीं किया गया।
+- `public` schema में केवल 3 base tables मिलीं: `electrician_profiles`, `job_offers`, `srk_push_subscriptions`।
+- `service_bookings`, commission/service_charge/material columns और booking/ledger/payout triggers नहीं मिले। इसलिए commission trigger का व्यवहार इस TEST database पर जाँचना अभी संभव नहीं है।
+- `supabase_migrations.schema_migrations` में 7 migration versions मिले; मौजूदा app backend के लिए अपेक्षित पूर्ण booking schema का प्रमाण नहीं मिला।
+- Public routines में केवल push/offer test संबंधित 5 functions मिलीं; commission, wallet या payout संबंधित public routine नहीं मिली।
+- निष्कर्ष: TEST project अभी commission regression के लिए तैयार नहीं है। पहले approved branch की पूरी migration chain और सुरक्षित baseline को TEST में स्थापित/सत्यापित करना होगा। इसे remote reset करके ठीक करने का प्रयास नहीं करना है; `db reset --linked` destructive है।
+- जब तक baseline पूरा नहीं, commission migration apply न करें और test pass का दावा न करें। Production untouched है; Production पर कोई SQL query या बदलाव इस निरीक्षण में नहीं किया गया।
