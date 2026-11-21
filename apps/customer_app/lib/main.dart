@@ -701,7 +701,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         const SizedBox(height: 12),
         Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Padding(padding: EdgeInsets.all(14), child: Text(
-            'आपकी शुरुआती कीमत वैकल्पिक है और केवल अनुमान है, अंतिम भुगतान नहीं। इलेक्ट्रिशियन निरीक्षण के बाद Labour/Service और Materials का अलग-अलग कोटेशन या Counter Offer भेजेगा। काम शुरू होने से पहले आपकी मंजूरी जरूरी होगी; अभी कोई अग्रिम भुगतान नहीं लिया जाएगा।')),
+            'सर्विस की तय दर और काम की जानकारी के आधार पर बुकिंग होगी। जरूरी सामान या पार्ट्स की कीमत अलग बताई जाएगी और आपकी मंजूरी के बाद ही जोड़ी जाएगी।')),
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
