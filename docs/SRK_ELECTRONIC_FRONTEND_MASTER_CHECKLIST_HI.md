@@ -864,3 +864,17 @@
 - [ ] Flutter tests/analyzer/formatter अभी execute नहीं हुए।
 
 **सीमा:** केवल picker UI state बदली; live booking payload या backend नहीं बदला।
+
+
+## 2AH. Customer booking form और legacy submit compatibility audit (2026-11-21)
+
+- [x] OTP session/verified phone, required customer/address fields, 6-digit PIN, work details, date/time guards और submit loading/error flow की source-level जाँच।
+- [x] Cash/online payment method और optional GPS latitude/longitude pair पुराने payload में सुरक्षित पाए गए।
+- [x] Legacy electrical `service_type` अभी required है; नए category picker का versioned selection submit payload में नहीं जाता।
+- [x] Category/subcategory बदलने पर draft selection reset होता है; legacy dropdown को auto-map नहीं किया जाता।
+- [x] Integration plan §12 में audit निष्कर्ष और Backend dependency दर्ज।
+- [ ] Backend canonical catalogue/version, staging API contract और legacy dispatch compatibility के बिना structured service IDs live submit में न जोड़ें।
+- [ ] Location permission permanently denied होने पर Settings मार्ग का UX सुधार अलग से विचारें; manual address fallback अभी उपलब्ध है।
+- [ ] Flutter tests/analyzer/formatter/Android build/device tests इस audit में execute नहीं किए गए।
+
+**सीमा:** यह source-level audit और documentation update है। Booking form runtime code, payload, API, Supabase, backend, database, payment, dispatch और production में कोई बदलाव नहीं।
