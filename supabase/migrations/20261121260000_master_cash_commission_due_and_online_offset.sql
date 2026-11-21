@@ -77,6 +77,7 @@ DECLARE
   v_left bigint;
   v_take bigint;
   v_due_row record;
+  v_due_id uuid;
 BEGIN
   -- Serialize collection/offset work for this Technician.
   PERFORM 1 FROM public.srk_technicians WHERE id=NEW.technician_id FOR UPDATE;
@@ -94,12 +95,12 @@ BEGIN
       INSERT INTO public.srk_master_technician_commission_dues(
         booking_id,payment_id,technician_id,commission_due_paise
       ) VALUES(NEW.booking_id,NEW.payment_id,NEW.technician_id,NEW.company_commission_paise)
-      RETURNING id INTO v_due_row;
+      RETURNING id INTO v_due_id;
       INSERT INTO public.srk_master_technician_commission_events(
         technician_id,booking_id,payment_id,payable_id,event_type,amount_paise,source_due_id,event_data
       ) VALUES(
         NEW.technician_id,NEW.booking_id,NEW.payment_id,NEW.id,'cash_commission_due',
-        NEW.company_commission_paise,v_due_row.id,
+        NEW.company_commission_paise,v_due_id,
         jsonb_build_object('collection_method','cash','customer_amount_paise',NEW.labour_gross_paise+NEW.materials_reimbursement_paise)
       );
     END IF;
