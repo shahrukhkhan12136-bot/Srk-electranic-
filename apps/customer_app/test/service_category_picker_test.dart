@@ -79,7 +79,7 @@ void main() {
           body: SingleChildScrollView(
             child: SrkServiceCategoryPicker(
               onSelection: (selection) {
-                selected = {
+                selected = selection == null ? null : {
                   'category': selection.categoryId,
                   'subcategory': selection.subcategoryId,
                   'task': selection.taskId,
@@ -111,6 +111,41 @@ void main() {
       });
     });
 
+    testWidgets('changing parent choice clears previous completed selection', (tester) async {
+      Map<String, String?>? selected;
+      tester.view.physicalSize = const Size(900, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(
+              onSelection: (selection) {
+                selected = selection == null ? null : {
+                  'category': selection.categoryId,
+                  'subcategory': selection.subcategoryId,
+                  'task': selection.taskId,
+                };
+              },
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('कूलर'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('कूलर रिपेयर'));
+      await tester.pump();
+      expect(selected?['category'], 'cooler');
+
+      await tester.tap(find.text('AC + फ्रिज'));
+      await tester.pumpAndSettle();
+      expect(selected, isNull);
+      expect(find.text('कूलर रिपेयर'), findsNothing);
+    });
+
     testWidgets('Cooler selection exposes Cooler Repair only', (tester) async {
       Map<String, String?>? selected;
       tester.view.physicalSize = const Size(900, 1200);
@@ -123,7 +158,7 @@ void main() {
           body: SingleChildScrollView(
             child: SrkServiceCategoryPicker(
               onSelection: (selection) {
-                selected = {
+                selected = selection == null ? null : {
                   'category': selection.categoryId,
                   'subcategory': selection.subcategoryId,
                   'task': selection.taskId,
