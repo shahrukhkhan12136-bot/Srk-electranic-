@@ -1666,3 +1666,24 @@ Founder ने बाजार-दर तुलना के बाद नीच
 7. [ ] Widget/integration tests, Flutter format/analyzer, debug/release Android builds और device checks चलाकर हर result दर्ज करना।
 
 **इस audit में नहीं बदला:** Customer/Technician Dart source, backend/API, database/migrations/RPCs, payment provider settings, production data या Main branch। Flutter tests/build इस चरण में नहीं चलाए गए। पुराने quotation data को delete करना इस frontend commit का हिस्सा नहीं है; legacy handling GPT-2 की migration strategy और अलग data-safety approval से तय होगी।
+
+
+## 2BU. Electrician बुकिंग में हर तीसरी बुकिंग पर ऑनलाइन भुगतान अनिवार्य (21-11-2026)
+
+### स्वीकृत व्यावसायिक नियम
+- [x] इलेक्ट्रिशियन की पहली बुकिंग: ग्राहक Cash या Online में से कोई भुगतान तरीका चुन सकता है।
+- [x] दूसरी बुकिंग: Cash या Online दोनों विकल्प उपलब्ध।
+- [x] तीसरी बुकिंग: Online भुगतान अनिवार्य; Cash विकल्प नहीं दिखेगा/स्वीकार नहीं होगा।
+- [x] चौथी बुकिंग: Cash या Online दोनों विकल्प उपलब्ध।
+- [x] पाँचवीं बुकिंग: Cash या Online दोनों विकल्प उपलब्ध।
+- [x] छठवीं बुकिंग: Online भुगतान अनिवार्य; Cash विकल्प नहीं दिखेगा/स्वीकार नहीं होगा।
+- [x] इसके बाद यही छह-बुकिंग क्रम दोहराया जाएगा: 7वीं/8वीं पर Cash या Online, 9वीं पर Online अनिवार्य; इसी तरह हर तीसरी बुकिंग पर Online अनिवार्य।
+- [x] यह नियम विशेष रूप से Electrician booking sequence के लिए दर्ज है; अन्य service categories पर स्वतः लागू नहीं माना जाएगा।
+
+### Frontend और Backend लागू करने की शर्तें
+- [ ] GPT-2 backend electrician-wise booking sequence/counter का authoritative source दे और server-side पर हर तीसरी booking के लिए Online payment enforce करे। केवल app में Cash button छिपाना पर्याप्त नहीं है।
+- [ ] Backend contract में स्पष्ट ہو कि sequence किस event पर आगे بڑھے گا (مثلاً booking create/accept/complete) اور cancellation/failure/refund پر count کیسے ہوگا؛ اس کی पुष्टि کے بغیر frontend خود count نہیں کرے گا۔
+- [ ] Booking/payment API response میں اگلی booking کا sequence number، allowed payment methods اور online-required reason واضح طور پر ملے؛ Customer app اسی server response کے مطابق payment options دکھائے۔
+- [ ] اگر किसी booking पर Online अनिवार्य है, तो Cash selection को API/backend भी reject करे; UI bypass या पुराने app version से rule टूटना नहीं चाहिए।
+- [ ] Payment failure/cancel होने पर booking और sequence की स्थिति backend के तय नियम के अनुसार रहे; duplicate booking/payment attempt से counter गलत न बढ़े।
+- [ ] यह नियम अभी checklist/product requirement है; इस commit में Customer/Technician source, backend, database, payment settings या production data नहीं बदले गए। Tests/build नहीं चलाए गए।
