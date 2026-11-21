@@ -381,7 +381,6 @@ begin
      and v_collection_paise is distinct from (v_labour_paise+v_fee_captured_paise) then
     v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_LABOUR_AND_SETTLED_FEES');
   elsif v_booking.selected_category is null and v_payment_verified
-     and v_booking.quote_status='approved'
      and v_collection_paise is distinct from (v_labour_paise+v_materials_paise) then
     v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_ARCHIVED_HISTORICAL_EVIDENCE');
   end if;
