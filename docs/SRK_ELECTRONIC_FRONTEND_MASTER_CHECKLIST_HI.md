@@ -749,3 +749,17 @@
 - [ ] Flutter formatter, analyzer, tests, Android build और device test अभी execute/verify नहीं हुए।
 
 **सीमा:** मौजूदा booking card, quote compatibility, cancellation, complaint, contact privacy, online/cash payment और booking API untouched हैं।
+
+
+## 2Y. Customer + Technician shared confirmation/bill contract (2026-11-21)
+
+- [x] Added shared preview-only DTOs in `packages/srk_mobile_core/lib/srk_work_confirmation_contract.dart`; both apps can import one source of field names and enum parsing.
+- [x] Shared confirmation DTO includes booking/request IDs, actor, requested action, proposed state, version, idempotency key and server timestamps.
+- [x] Timer presentation remains fail-closed: only proposed `start_confirmed` with both server confirmation and server start timestamps and no completion timestamp may be displayed as active.
+- [x] Shared final-bill DTO carries labour, approved materials, other charges and server total as integer paise; amount validation requires non-negative integer amounts and exact sum equality.
+- [x] Exported the contract from the shared mobile-core barrel and added six unit tests for timestamp gating, UTC normalization, unknown states and bill validation.
+- [ ] DTO keys and enums are frontend proposals only, not deployed backend schema. Do not connect either app to live queries/actions until backend signs off and deploys exact JSON/RPC contracts.
+- [ ] No Customer/Technician screen, booking form, existing booking lifecycle, quote compatibility, payment, cancellation, complaints, map/contact, earnings/wallet or backend/database behavior changed.
+- [ ] Flutter format, analyzer, shared-core tests, Android build and device tests have not been run/verified.
+
+**सीमा:** यह साझा डेटा-मॉडल है, live integration नहीं। सर्वर ही booking status, customer ownership, technician assignment, skills, timer, bill total और payment eligibility का अंतिम प्राधिकरण रहेगा।
