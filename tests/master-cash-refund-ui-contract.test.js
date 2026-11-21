@@ -21,7 +21,7 @@ test('Technician cash refund evidence UI validates booking, amount and reference
  assert.match(technician,/Math\.round\(amount\*100\)!==amount\*100/);
  assert.match(technician,/reference\.length<4\|\|reference\.length>120/);
  assert.match(technician,/masterCashRefundEvidenceBusy/);
- assert.match(technician,/वास्तव में Customer को लौटा दी है/);
+ assert.match(technician,/Customer को वास्तव में लौटा दी है/);
 });
 
 test('Admin can inspect per-Technician cash refund evidence and finalize only a fully matched approved refund',()=>{
