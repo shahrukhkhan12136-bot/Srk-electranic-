@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS public.srk_technician_dispatch_events (
   actor_user_id uuid REFERENCES auth.users(id) ON DELETE RESTRICT,
   event_type text NOT NULL CHECK (event_type IN (
     'dispatch_created','offer_sent','offer_accepted','offer_declined','offer_expired',
-    'technician_assigned','dispatch_unavailable','dispatch_cancelled','technician_released'
+    'technician_assigned','dispatch_unavailable','dispatch_completed','dispatch_cancelled','technician_released'
   )),
   details jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp()
@@ -230,11 +230,11 @@ BEGIN
   FOR v_expired IN
     UPDATE public.srk_technician_dispatch_offers
       SET status='expired',responded_at=clock_timestamp()
-    WHERE status='offered' AND expires_at<=clock_timestamp()
-    RETURNING id,dispatch_request_id,booking_id,technician_id
+    WHERE dispatch_request_id=v_req.id AND status='offered' AND expires_at<=clock_timestamp()
+    RETURNING id,technician_id
   LOOP
     INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,technician_id,offer_id,event_type)
-    VALUES(v_expired.dispatch_request_id,v_expired.booking_id,v_expired.technician_id,v_expired.id,'offer_expired');
+    VALUES(v_req.id,p_booking_id,v_expired.technician_id,v_expired.id,'offer_expired');
   END LOOP;
 
   SELECT o.id INTO v_offer_id FROM public.srk_technician_dispatch_offers o
@@ -288,8 +288,12 @@ BEGIN
   IF v_technician_id IS NULL THEN
     UPDATE public.srk_technician_dispatch_requests SET status='searching',
       current_offer_id=NULL,updated_at=clock_timestamp() WHERE id=v_req.id;
-    INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,event_type,details)
-    VALUES(v_req.id,p_booking_id,'dispatch_unavailable',jsonb_build_object('radius_km',30,'skill_code',v_req.skill_code));
+    IF NOT EXISTS (SELECT 1 FROM public.srk_technician_dispatch_events e
+      WHERE e.dispatch_request_id=v_req.id AND e.event_type='dispatch_unavailable'
+        AND e.created_at>=clock_timestamp()-interval '5 minutes') THEN
+      INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,event_type,details)
+      VALUES(v_req.id,p_booking_id,'dispatch_unavailable',jsonb_build_object('radius_km',30,'skill_code',v_req.skill_code));
+    END IF;
     RETURN jsonb_build_object('success',true,'status','unavailable','radius_km',30);
   END IF;
 
@@ -314,9 +318,18 @@ GRANT EXECUTE ON FUNCTION public.srk_dispatch_issue_next_offer(uuid) TO service_
 -- Existing minute worker calls this RPC; no new customer appointment/scheduling flow is introduced.
 CREATE OR REPLACE FUNCTION public.srk_dispatch_process_pending_queue()
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
-DECLARE v_request record; v_result jsonb; v_processed integer:=0; v_offers_sent integer:=0;
+DECLARE v_request record; v_expired record; v_result jsonb; v_processed integer:=0; v_offers_sent integer:=0;
   v_waiting integer:=0; v_active integer:=0;
 BEGIN
+  FOR v_expired IN
+    UPDATE public.srk_technician_dispatch_offers
+      SET status='expired',responded_at=clock_timestamp()
+    WHERE status='offered' AND expires_at<=clock_timestamp()
+    RETURNING id,dispatch_request_id,booking_id,technician_id
+  LOOP
+    INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,technician_id,offer_id,event_type)
+    VALUES(v_expired.dispatch_request_id,v_expired.booking_id,v_expired.technician_id,v_expired.id,'offer_expired');
+  END LOOP;
   FOR v_request IN
     SELECT booking_id FROM public.srk_technician_dispatch_requests
     WHERE status='searching'
@@ -429,10 +442,14 @@ BEGIN
   UPDATE public.srk_technician_dispatch_offers SET status='cancelled',responded_at=clock_timestamp()
   WHERE booking_id=NEW.id AND status='offered';
   UPDATE public.srk_technician_dispatch_requests SET status=CASE WHEN NEW.status='completed' THEN 'completed' ELSE 'cancelled' END,
-    updated_at=clock_timestamp() WHERE booking_id=NEW.id;
+    current_offer_id=NULL,updated_at=clock_timestamp() WHERE booking_id=NEW.id;
+  IF NEW.status='cancelled' THEN
+    UPDATE public.srk_booking_technician_assignments SET assignment_status='cancelled'
+    WHERE booking_id=NEW.id AND assignment_status IN ('assigned','accepted','active');
+  END IF;
   FOR v_assignment IN
     SELECT technician_id FROM public.srk_booking_technician_assignments
-    WHERE booking_id=NEW.id AND assignment_status IN ('accepted','active','completed')
+    WHERE booking_id=NEW.id AND assignment_status IN ('accepted','active','completed','cancelled')
   LOOP
     UPDATE public.srk_technician_presence SET is_online=false,active_booking_id=NULL,updated_at=clock_timestamp()
     WHERE technician_id=v_assignment.technician_id AND active_booking_id=NEW.id;
@@ -440,6 +457,9 @@ BEGIN
     SELECT d.id,NEW.id,v_assignment.technician_id,'technician_released'
     FROM public.srk_technician_dispatch_requests d WHERE d.booking_id=NEW.id;
   END LOOP;
+  INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,event_type)
+  SELECT id,NEW.id,CASE WHEN NEW.status='completed' THEN 'dispatch_completed' ELSE 'dispatch_cancelled' END
+  FROM public.srk_technician_dispatch_requests WHERE booking_id=NEW.id;
   RETURN NEW;
 END;
 $function$;
