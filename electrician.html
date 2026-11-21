@@ -778,13 +778,15 @@ async function loadPartnerWallet(){
   '<div class="job"><b>निकासी अनुरोध</b><p>UPI ID या बैंक भुगतान संदर्भ भरें। यहाँ केवल payout request बनेगा; वास्तविक बैंक/UPI ट्रांसफर Admin करेगा।</p><label for="masterPayoutDestinationType">भुगतान का तरीका</label><select id="masterPayoutDestinationType"><option value="upi">UPI</option><option value="bank">Bank</option></select><label for="masterPayoutDestination">UPI ID / बैंक खाता विवरण का सुरक्षित संदर्भ</label><input id="masterPayoutDestination" maxlength="160" autocomplete="off" placeholder="UPI ID या बैंक विवरण"><button type="button" id="masterPayoutRequestButton" onclick="requestMasterTechnicianPayout()">निकासी अनुरोध भेजें</button><p id="masterPayoutRequestMessage" class="muted" aria-live="polite"></p></div>'+
   '<div class="job"><b>Master कमाई / Payable हिस्ट्री</b>'+(items.length?items.map(x=>'<p><b>'+esc(x.booking_id||'बुकिंग')+'</b> • '+money(x.amount_paise)+'<br>'+esc(status[x.status]||x.status)+' • '+esc(x.payment_method||'—')+'</p>').join(''):'<p>अभी कोई Master payable रिकॉर्ड उपलब्ध नहीं है।</p>')+'</div>'+
   '<div class="job"><b>पुराना Electrician Wallet</b><small class="muted">पुराना लेजर और उसका इतिहास सुरक्षित रखा गया है।</small><div id="legacyPartnerWallet">पुराना वॉलेट लोड हो रहा है…</div></div>';
-  const [legacy,bankResult,ledgerResult]=await Promise.all([
-   Promise.resolve().then(()=>sb.rpc('srk_get_my_wallet_summary')).catch(error=>({data:null,error})),
+  const legacy=await Promise.resolve().then(()=>sb.rpc('srk_get_my_wallet_summary')).catch(error=>({data:null,error}));
+  if(!isCurrent())return;
+  const lw=legacy.data?.electrician;
+  const [bankResult,ledgerResult]=await Promise.all([
    Promise.resolve().then(()=>sb.from('srk_wallet_bank_links').select('account_holder_name,bank_name,account_last4,ifsc_masked,verification_status,is_primary,wallet_type,provider').eq('user_id',user.id).order('is_primary',{ascending:false}).order('created_at',{ascending:false}).limit(3)).catch(error=>({data:null,error})),
-   Promise.resolve().then(()=>sb.from('srk_wallet_ledger').select('entry_type,direction,amount,status,description,provider_reference,reference_id,created_at,posted_at').eq('wallet_id',master.data.legacy_wallet_id||'00000000-0000-0000-0000-000000000000').eq('user_id',user.id).order('created_at',{ascending:false}).limit(10)).catch(error=>({data:null,error}))
+   lw?.wallet_id?Promise.resolve().then(()=>sb.from('srk_wallet_ledger').select('entry_type,direction,amount,status,description,provider_reference,reference_id,created_at,posted_at').eq('wallet_id',lw.wallet_id).eq('user_id',user.id).order('created_at',{ascending:false}).limit(10)).catch(error=>({data:null,error})):Promise.resolve({data:[],error:null})
   ]);
   if(!isCurrent())return;
-  const lw=legacy.data?.electrician,bank=bankResult.data||[],ledger=ledgerResult.data||[];
+  const bank=bankResult.data||[],ledger=ledgerResult.data||[];
   const legacyBox=document.getElementById('legacyPartnerWallet');
   legacyBox.innerHTML=(legacy.error?'<p class="bad">पुराने वॉलेट का विवरण अभी उपलब्ध नहीं है।</p>':lw?('<p><b>पुराना लेजर बैलेंस:</b> '+money(Math.round(Number(lw.balance||0)*100))+'</p><small class="muted">यह ऐप का आंतरिक लेजर बैलेंस है; Master payout request और Admin द्वारा वास्तविक भुगतान अलग रिकॉर्ड हैं।</small>'):'<p>पुराने वॉलेट में कोई लिंक्ड खाता नहीं मिला।</p>')+
    (bankResult.error?'<p class="bad">बैंक लिंक की स्थिति लोड नहीं हो सकी।</p>':'<div><b>पुराने Wallet Bank / UPI links</b>'+(bank.length?bank.map(x=>'<p>'+esc(x.bank_name||x.provider||'बैंक / UPI')+' • '+esc(x.account_holder_name||'नाम उपलब्ध नहीं')+' • '+esc(x.verification_status||'स्थिति अज्ञात')+'</p>').join(''):'<p>अभी कोई बैंक / UPI लिंक उपलब्ध नहीं है।</p>')+'</div>')+
