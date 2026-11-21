@@ -829,3 +829,6 @@
 - [ ] Flutter tests/analyzer/formatter/Android build अभी execute नहीं किए गए।
 
 **सीमा:** Existing booking form, booking submit payload, dispatch, quote/payment lifecycle, Supabase/RPC, database और production unchanged।
+
+
+- [x] विस्तृत चरणबद्ध Customer booking service-ID integration plan: `docs/SRK_CUSTOMER_BOOKING_SERVICE_ID_INTEGRATION_PLAN_HI.md` (अभी योजना; live submit payload नहीं बदला)।
