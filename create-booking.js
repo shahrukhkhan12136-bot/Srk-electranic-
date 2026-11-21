@@ -59,7 +59,7 @@ async function checkPublicRateLimit(endpoint, ipHash, limit) {
   return result === true;
 }
 
-async function verifyCustomerSession(authorization, bookingPhone) {
+async function verifyCustomerSession(authorization) {
   if (!authorization) { const error = new Error("Customer login required"); error.httpStatus = 401; throw error; }
   const match = /^Bearer ([A-Za-z0-9._~-]+)$/.exec(authorization);
   if (!match || match[1].length > 8192) {
@@ -79,16 +79,15 @@ async function verifyCustomerSession(authorization, bookingPhone) {
     throw error;
   }
   const user = await response.json();
-  const verifiedPhone = typeof user.phone === "string" ? user.phone.replace(/\D/g, "") : "";
-  const submittedPhone = bookingPhone.replace(/\D/g, "");
-  const normalizedVerified = verifiedPhone.length === 10 ? "91" + verifiedPhone : verifiedPhone;
-  const normalizedSubmitted = submittedPhone.length === 10 ? "91" + submittedPhone : submittedPhone;
-  if (!user.id || !user.phone_confirmed_at || normalizedVerified !== normalizedSubmitted) {
-    const error = new Error("Verified account phone must match booking phone");
+  const digits = typeof user.phone === "string" ? user.phone.replace(/\D/g, "") : "";
+  const verifiedPhone = digits.length === 10 ? digits : digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : "";
+  if (!user.id || !user.phone_confirmed_at || !/^[0-9]{10}$/.test(verifiedPhone)) {
+    const error = new Error("OTP-verified account phone is required");
     error.httpStatus = 403;
     throw error;
   }
-  return user.id;
+  // The Auth-verified number is authoritative. Never trust a client-supplied phone.
+  return { userId: user.id, phone: verifiedPhone };
 }
 
 exports.handler = async (event) => {
@@ -123,7 +122,7 @@ exports.handler = async (event) => {
   try {
     const body = JSON.parse(event.body || "{}");
     const customer_name = clean(body.customer_name, 100);
-    const phone = clean(body.phone, 10);
+    // Phone is derived exclusively from the verified Supabase Auth session.
     const state = clean(body.state, 100);
     const district = clean(body.district, 100);
     const pincode = clean(body.pincode, 6);
@@ -146,16 +145,17 @@ const work_details = clean(body.work_details, 2000);
     }
     const quoted_amount = body.quoted_amount == null || body.quoted_amount === ""
       ? null : Number(body.quoted_amount);
-    const customer_user_id = await verifyCustomerSession(
-      event.headers?.authorization || event.headers?.Authorization || "",
-      phone
+    const verifiedCustomer = await verifyCustomerSession(
+      event.headers?.authorization || event.headers?.Authorization || ""
     );
+    const customer_user_id = verifiedCustomer.userId;
+    const phone = verifiedCustomer.phone;
     const idempotencyKey = event.headers?.["idempotency-key"] || event.headers?.["Idempotency-Key"] || "";
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) {
       return json(400, { success: false, error: "बुकिंग अनुरोध की सुरक्षित पहचान नहीं मिली। कृपया दोबारा कोशिश करें।" });
     }
 
-    if (!customer_name || !/^[0-9]{10}$/.test(phone) || !state || !district ||
+    if (!customer_name || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address || !service_type ||
         !["home_wiring", "electrical_repair", "light_fan_fitting", "home_repair", "other"].includes(selected_category) ||
         !Object.prototype.hasOwnProperty.call(rateCard, selected_rate_tier) ||
