@@ -42,7 +42,7 @@ async function completeWebhookEvent(eventId, claimToken, outcome, error) {
 async function updateBooking(orderId, payment) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
-  url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,payment_method,razorpay_payment_id,selected_category");
+  url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,payment_method,razorpay_payment_id,selected_category,srk_service_category_code,completion_approval_status");
 
   const response = await fetch(url, {
     method: "GET",
@@ -55,6 +55,29 @@ async function updateBooking(orderId, payment) {
   const paymentMethod = String(booking.payment_method || "").trim().toLowerCase();
   if (!paymentMethod.includes("razorpay") && !paymentMethod.includes("online")) return "payment_method_not_online";
   if (booking.payment_status === "refunded") return "payment_refunded";
+  if (booking.srk_service_category_code) {
+    if (booking.payment_status === "paid") return booking.razorpay_payment_id === payment.id ? "already_processed" : "payment_conflict";
+    if (booking.status !== "completed" || booking.completion_approval_status !== "approved") return "booking_not_payable";
+    const billUrl = new URL("/rest/v1/srk_booking_final_bills", SUPABASE_URL);
+    billUrl.searchParams.set("booking_id", "eq." + booking.id);
+    billUrl.searchParams.set("select", "id,subtotal_paise");
+    billUrl.searchParams.set("limit", "1");
+    const billResponse = await fetch(billUrl, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } });
+    if (!billResponse.ok) throw new Error("Master final bill lookup failed");
+    const bills = await billResponse.json();
+    const bill = Array.isArray(bills) ? bills[0] : null;
+    const expectedAmount = Number(bill?.subtotal_paise);
+    if (!bill || !Number.isSafeInteger(expectedAmount) || expectedAmount < 100 ||
+        payment.amount !== expectedAmount || payment.currency !== "INR") return "amount_mismatch";
+    const settlementResponse = await fetch(new URL("/rest/v1/rpc/srk_service_role_record_master_online_payment", SUPABASE_URL), {
+      method: "POST",
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_booking_id: booking.id, p_order_id: payment.order_id, p_payment_id: payment.id, p_amount_paise: payment.amount })
+    });
+    if (!settlementResponse.ok) throw new Error("Master payment ledger settlement failed");
+    const settlement = await settlementResponse.json();
+    return settlement?.success ? (settlement.already_processed ? "already_processed" : "updated") : "update_not_applied";
+  }
   if (booking.selected_category) {
     if (booking.payment_status === "paid") return booking.razorpay_payment_id === payment.id ? "already_processed" : "payment_conflict";
     if (booking.status !== "completed") return "booking_not_payable";
