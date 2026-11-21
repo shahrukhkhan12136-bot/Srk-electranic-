@@ -17,6 +17,41 @@ void main() {
       );
     });
 
+    test('has versioned stable draft category and subcategory keys', () {
+      expect(srkServiceCatalogDraftVersion, 'draft-2026-11-21.1');
+      expect(
+        srkServiceCatalog.map((category) => category.id).toList(),
+        ['electrician', 'plumber', 'painter', 'ac_fridge', 'motor_pump', 'cooler'],
+      );
+      expect(
+        srkServiceCatalog.map((category) => category.displayName).toList(),
+        ['इलेक्ट्रीशियन', 'प्लंबर', 'पेंटर', 'AC + फ्रिज', 'मोटर और पंप', 'कूलर'],
+      );
+      final allOptionIds = srkServiceCatalog
+          .expand((category) => category.options)
+          .map((option) => option.id)
+          .whereType<String>()
+          .toList();
+      expect(allOptionIds.toSet().length, allOptionIds.length);
+    });
+
+    test('stores AC and Fridge task labels and IDs in the shared catalogue', () {
+      final category = srkServiceCatalog.singleWhere((item) => item.id == 'ac_fridge');
+      final ac = category.options.singleWhere((item) => item.id == 'ac');
+      final fridge = category.options.singleWhere((item) => item.id == 'fridge');
+      expect(ac.tasks.map((task) => task.name).toList(), [
+        'AC रिपेयर', 'इंस्टॉलेशन', 'अनइंस्टॉलेशन', 'सर्विसिंग',
+        'गैस चार्जिंग', 'लीकेज जाँच', 'कंप्रेसर', 'PCB',
+      ]);
+      expect(fridge.tasks.map((task) => task.name).toList(), [
+        'फ्रिज रिपेयर', 'कूलिंग समस्या', 'कंप्रेसर', 'गैस / लीकेज',
+        'PCB और अन्य मरम्मत',
+      ]);
+      expect(ac.tasks.map((task) => task.id).toSet().intersection(
+        fridge.tasks.map((task) => task.id).toSet(),
+      ), isEmpty);
+    });
+
     test('keeps AC and Fridge as separate second-level options', () {
       final category = srkServiceCatalog.singleWhere(
         (item) => item.name == 'AC + Fridge',
