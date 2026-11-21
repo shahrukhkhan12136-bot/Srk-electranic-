@@ -1455,3 +1455,16 @@ Founder ने चारों स्तरों के नमूना का�
 - [ ] यह catalogue presentation data है; booking payload, dispatch eligibility, rates, backend schema या production behavior इस commit से नहीं बदले।
 - [ ] Factory/industrial/high-load कार्यों के लिए उपयुक्त योग्यता, प्रशिक्षण और सुरक्षित कार्य-प्रक्रिया आवश्यक है।
 
+## 2BK. Work Timer — केवल प्रति घंटे का रेट दिखाना (21-11-2026)
+
+Founder के निर्देश के अनुसार काम के live Timer के पास किसी भी wiring विकल्प में 8 घंटे का package amount नहीं दिखेगा। Timer पर केवल प्रति घंटे का लागू रेट दिखे:
+
+- **Normal Wiring, बिना Helper:** ₹125 प्रति घंटा (मौजूदा ₹1,000 / 8 घंटे का hourly equivalent)।
+- **Normal Wiring, Helper सहित:** ₹187.50 प्रति घंटा (मौजूदा ₹1,500 / 8 घंटे का hourly equivalent; इसमें ₹62.50 प्रति घंटा Helper हिस्सा शामिल)।
+- **Project Wiring, बिना Helper:** ₹400 प्रति घंटा।
+- **Project Wiring, Helper सहित:** ₹550 प्रति घंटा।
+
+- [x] Shared catalogue में चारों rate variants के लिए अलग `timerHourlyAmount` display metadata दर्ज।
+- [x] मौजूदा 8-hour base package amounts और project hourly rates सुरक्षित; booking/billing की मूल दर या server calculation इस display instruction से नहीं बदली।
+- [ ] Customer और Electrician के live Timer UI में केवल चुने गए wiring option/helper selection का `timerHourlyAmount` दिखाना; 8-hour amount छिपाना — UI implementation और test बाकी।
+- [ ] Final bill server-authoritative calculation से ही बने; timer पर दिखने वाला hourly text केवल display है, client-side billing authority नहीं।
