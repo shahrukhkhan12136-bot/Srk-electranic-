@@ -58,7 +58,7 @@ grant execute on function public.srk_admin_commission_report() to authenticated;
 -- RLS still limits those updates to authorized Admin rows.
 revoke update on table public.service_bookings from authenticated;
 revoke update (commission_amount, commission_rate) on table public.service_bookings from authenticated;
-grant update (status, quoted_amount, amount_paid, payment_status)
+grant update (status, amount_paid, payment_status)
 on table public.service_bookings to authenticated;
 
 drop function if exists public.srk_get_my_earnings();
