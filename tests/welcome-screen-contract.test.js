@@ -20,7 +20,7 @@ test('welcome and both apps reserve prominent founder-photo slots until the orig
   const loginAt = welcome.indexOf('id="role-login"');
   assert.ok(companyAt >= 0 && companyAt < welcomeAt, 'company introduction appears first');
   assert.ok(welcomeAt < founderAt && founderAt < loginAt, 'welcome copy is followed by founder-photo slot and role logins');
-  assert.ok(welcome.includes('SRK ELECTRONIC एक इलेक्ट्रिकल सर्विस प्लेटफॉर्म है'));
+  assert.ok(welcome.includes('SRK ELECTRONIC एक multi-service home'));
   assert.ok(welcome.includes('आपका स्वागत है।'));
   assert.ok(welcome.includes('FOUNDER &amp; DIRECTOR'));
   assert.ok(welcome.includes('Smart Service... Better Life...'));
