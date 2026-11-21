@@ -144,8 +144,6 @@ const work_details = clean(body.work_details, 2000);
     if (!["Cash", "नकद (Cash)", "Razorpay ऑनलाइन भुगतान"].includes(payment_method)) {
       return json(400, { success: false, error: "कृपया Cash या Razorpay ऑनलाइन भुगतान में से एक तरीका चुनें।" });
     }
-    const quoted_amount = body.quoted_amount == null || body.quoted_amount === ""
-      ? null : Number(body.quoted_amount);
     const customer_user_id = await verifyCustomerSession(
       event.headers?.authorization || event.headers?.Authorization || "",
       phone
@@ -164,10 +162,6 @@ const work_details = clean(body.work_details, 2000);
     }
     if ((location_lat === null) !== (location_lng === null) || (location_lat !== null && (!Number.isFinite(location_lat) || !Number.isFinite(location_lng) || location_lat < -90 || location_lat > 90 || location_lng < -180 || location_lng > 180))) {
       return json(400, { success: false, error: 'मैप लोकेशन सही नहीं है। दोबारा लोकेशन चुनें।' });
-    }
-    if (quoted_amount !== null &&
-        (!Number.isFinite(quoted_amount) || quoted_amount <= 0 || quoted_amount > 10000000)) {
-      return json(400, { success: false, error: "भुगतान राशि सही नहीं है।" });
     }
 
     const rate8hPaise = rateCard[selected_rate_tier];
@@ -205,7 +199,7 @@ const work_details = clean(body.work_details, 2000);
           estimate_rate_card_version: rateCardVersion,
           customer_request_key: idempotencyKey,
           customer_request_fingerprint: requestFingerprint,
-          preferred_date, preferred_time, work_details, payment_method, quoted_amount: null, location_lat, location_lng,
+          preferred_date, preferred_time, work_details, payment_method, location_lat, location_lng,
           status: "new", payment_status: "unpaid",
           ...(customer_user_id ? { customer_user_id } : {})
         }])
