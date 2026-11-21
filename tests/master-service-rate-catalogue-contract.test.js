@@ -70,3 +70,12 @@ test('Admin service offering and rate changes are audited and no direct client t
   assert.match(migration, /REVOKE ALL ON TABLE public\.srk_service_offerings,public\.srk_service_rates/);
   assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.srk_customer_list_active_service_rates\(\) TO anon,authenticated,service_role/);
 });
+
+test('rate catalogue migration is syntactically shaped without duplicated SQL fragments', () => {
+  assert.equal((migration.match(/CREATE OR REPLACE FUNCTION public\\.srk_admin_upsert_service_offering/g) || []).length, 1);
+  assert.equal((migration.match(/CREATE OR REPLACE FUNCTION public\\.srk_admin_upsert_service_rate/g) || []).length, 1);
+  assert.match(migration, /p_service_code !~ '\\^\[a-z\]\[a-z0-9_\]\{1,79\}\$'/);
+  assert.match(migration, /p_level_code !~ '\\^\[a-z\]\[a-z0-9_\]\{1,79\}\$'/);
+  assert.doesNotMatch(migration, /79} IS NULL|79}    OR/);
+  assert.doesNotMatch(migration, /OR p_level_label IS NULL[\\s\\S]{0,100}CREATE OR REPLACE FUNCTION/);
+});
