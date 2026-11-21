@@ -8,6 +8,8 @@ DECLARE
  v_uid uuid:=auth.uid(); b public.service_bookings%rowtype;
  f public.srk_booking_final_bills%rowtype; p public.srk_master_booking_payments%rowtype;
  v_items jsonb:='[]'::jsonb; v_total bigint;
+ v_legacy srk_private.legacy_booking_financial_evidence%rowtype;
+ v_labour bigint; v_materials bigint;
 BEGIN
  IF v_uid IS NULL THEN RAISE EXCEPTION 'CUSTOMER_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
  IF p_booking_id IS NULL THEN RAISE EXCEPTION 'BOOKING_ID_REQUIRED' USING ERRCODE='22023'; END IF;
@@ -52,7 +54,7 @@ BEGIN
   );
  END IF;
 
- -- Preserve the historical single-Electrician and quote-era receipt contracts.
+ -- Preserve the historical single-Electrician receipt contract from its immutable bill.
  IF b.selected_category IS NOT NULL THEN
   DECLARE v_bill public.srk_booking_labour_bills%rowtype; v_fee bigint:=0; v_fee_items jsonb:='[]'::jsonb;
   BEGIN
@@ -73,19 +75,25 @@ BEGIN
     'total_amount',v_total/100.0,'description','सत्यापित भुगतान रसीद','document_type','payment_receipt');
   END;
  END IF;
- v_total:=round((coalesce(b.service_charge,0)+coalesce(b.materials_amount,0))*100)::bigint;
- IF v_total<=0 OR round(b.amount_paid*100)::bigint<>v_total
-   OR round(coalesce(b.quoted_amount,0)*100)::bigint<>v_total THEN
-  RAISE EXCEPTION 'LEGACY_QUOTE_RECEIPT_RECONCILIATION_FAILED';
+ SELECT * INTO v_legacy FROM srk_private.legacy_booking_financial_evidence
+  WHERE booking_id=p_booking_id;
+ IF NOT FOUND THEN RAISE EXCEPTION 'ARCHIVED_HISTORICAL_FINANCIAL_EVIDENCE_MISSING'; END IF;
+ v_labour:=round(coalesce(v_legacy.service_charge,0)*100)::bigint;
+ v_materials:=round(coalesce(v_legacy.materials_amount,0)*100)::bigint;
+ v_total:=v_labour+v_materials;
+ IF v_labour<=0 OR round(b.amount_paid*100)::bigint<>v_total
+   OR (v_legacy.quoted_amount IS NOT NULL AND round(v_legacy.quoted_amount*100)::bigint<>v_total) THEN
+  RAISE EXCEPTION 'ARCHIVED_HISTORICAL_RECEIPT_RECONCILIATION_FAILED';
  END IF;
  RETURN jsonb_build_object('receipt_reference','SRK-PAY-'||upper(left(replace(b.id::text,'-',''),12)),
   'booking_id',b.id,'customer_name',b.customer_name,'service_type',b.service_type,'address',b.address,
   'district',b.district,'state',b.state,'pincode',b.pincode,'booking_date',b.created_at,
   'payment_date',b.payment_verified_at,'payment_method',lower(coalesce(b.payment_method,'other')),
-  'amount_paid',v_total/100.0,'labour_amount',round(coalesce(b.service_charge,0),2),
-  'materials_amount',round(coalesce(b.materials_amount,0),2),'cancellation_fee_amount',0,
+  'amount_paid',v_total/100.0,'labour_amount',v_labour/100.0,
+  'materials_amount',v_materials/100.0,'cancellation_fee_amount',0,
   'cancellation_fee_items','[]'::jsonb,'total_amount',v_total/100.0,
-  'description','सत्यापित भुगतान रसीद — मेहनताना और सामग्री अलग-अलग','document_type','payment_receipt');
+  'description','ऐतिहासिक सत्यापित भुगतान रसीद — मेहनताना और सामग्री अलग-अलग',
+  'document_type','payment_receipt');
 END; $$;
 REVOKE ALL ON FUNCTION public.srk_customer_get_payment_receipt(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_customer_get_payment_receipt(uuid) TO authenticated;
