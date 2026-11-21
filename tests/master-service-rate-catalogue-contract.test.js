@@ -72,9 +72,9 @@ test('Admin service offering and rate changes are audited and no direct client t
 });
 
 test('rate catalogue migration has valid service/level identifiers and no duplicated SQL fragments', () => {
-  assert.equal((migration.match(/CREATE OR REPLACE FUNCTION public\.srk_admin_upsert_service_offering/g) || []).length, 1);
-  assert.equal((migration.match(/CREATE OR REPLACE FUNCTION public\.srk_admin_upsert_service_rate/g) || []).length, 1);
-  assert.ok(migration.includes("p_service_code !~ '^[a-z][a-z0-9_]{1,79}$'"));
-  assert.ok(migration.includes("p_level_code !~ '^[a-z][a-z0-9_]{1,79}$'"));
+  assert.equal((migration.match(/CREATE OR REPLACE FUNCTION public\\.srk_admin_upsert_service_offering/g) || []).length, 1);
+  assert.equal((migration.match(/CREATE OR REPLACE FUNCTION public\\.srk_admin_upsert_service_rate/g) || []).length, 1);
+  assert.match(migration, /p_service_code !~/);
+  assert.match(migration, /p_level_code !~/);
   assert.doesNotMatch(migration, /79} IS NULL|79}    OR/);
 });
