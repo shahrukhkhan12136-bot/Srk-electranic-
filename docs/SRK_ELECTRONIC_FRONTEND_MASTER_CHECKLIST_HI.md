@@ -1203,3 +1203,66 @@
 
 **Scope clarification:** इस तारीख के Founder निर्देश से category → task → electrician/helper count → duration (जहाँ लागू) → automatic amount → address → booking submission वाला customer flow वर्तमान frontend checklist में शामिल है। पहले के “future-only” नोट को इस स्पष्ट booking-flow निर्देश के विरुद्ध लागू न करें; फिर भी इस दस्तावेज़ी बदलाव से कोई backend/database/payment implementation स्वतः अधिकृत नहीं होती।
 
+## 2AZ. Owner scope correction — पुराने booking form का replacement और gap audit (21-11-2026)
+
+**नवीनतम Founder निर्देश पुराने booking form को बनाए रखने वाला नहीं है।** पुराने booking form का flow हटाकर नीचे दिया नया customer booking flow मुख्य और एकमात्र नया-booking entry flow होगा। पुराने सिस्टम की केवल वे सुविधाएँ/तकनीकी हिस्से रखे जाएँ जो नए flow में उपयोगी और API contract के अनुकूल हों। यह पुराने booking records/history को delete करने की अनुमति नहीं है।
+
+### A. वर्तमान source में मिला पुराना booking form — audit
+- [x] `apps/customer_app/lib/main.dart` में `CustomerBookingFormPage` पुराना form है; यह OTP session check के बाद `/api/create-booking` endpoint को submit करता है।
+- [x] पुराने form में customer name, OTP-linked phone (read-only), state, district, PIN code, full address, optional GPS coordinates, work details, payment method, preferred date और preferred time fields हैं।
+- [x] पुराने form में अलग पुराना Electrical service dropdown (`Electrical Wiring`, fan, switch/socket, light, MCB, inverter, appliance repair, other) अभी भी mandatory है।
+- [x] उसी form में नया छह-category `SrkServiceCategoryPicker` भी दिखता है, लेकिन code साफ कहता है कि यह preview-only है; selection पुराने `_service` field/booking payload को replace नहीं करता।
+- [x] पुराने form में नया category selection backend को भेजा नहीं जाता; submit payload अभी पुराने `service_type` string को भेजता है।
+- [x] पुराने form में automatic rate/amount calculation, technician count, helper count और 1-hour-to-50-day duration selection implemented नहीं हैं।
+- [x] वर्तमान category picker और shared catalogue में छह top-level categories तथा category/subcategory/task selection का draft source/test मौजूद है; IDs को code स्वयं draft/local proposal बताता है, deployed canonical backend IDs नहीं।
+- [x] Customer dashboard में booking history/list, refresh, cancellation action, complaint/support flow, technician contact display और Razorpay order/payment verification code मौजूद है; इन्हें नए form replacement के दौरान बिना जरूरत न हटाएँ।
+- [x] Booking success UI backend response में success और booking ID मिलने के बाद दिखती है; यही server-confirmed success principle नए form में सुरक्षित रखना है।
+- [ ] पुराने `/api/create-booking` endpoint का नए category/task/team/duration/rate/address payload स्वीकार करना, server-side validation, canonical ID mapping और dispatch compatibility Backend owner से verify करें।
+- [ ] पुराने quote/inspection/payment state dependencies का backend contract audit करें; quote UI/lifecycle को केवल safe backend transition तय होने पर हटाएँ। पुराने booking records को read-only history में सुरक्षित रखें।
+
+### B. नया Customer booking flow — controlling sequence
+- [ ] Login: mobile number + OTP verification।
+- [ ] पहली सफल login पर customer name save; पहले से saved name को दोबारा अनावश्यक रूप से न पूछें।
+- [ ] Home पर छह categories।
+- [ ] Category चुनने पर केवल उसी category के applicable subcategory/task choices।
+- [ ] Task के बाद जहाँ लागू हो technician/electrician count और helper count।
+- [ ] जहाँ hourly/day-based service लागू हो वहाँ duration: 1 hour से अधिकतम 50 days; fixed-price tasks में duration control न दिखे।
+- [ ] Selected category/task, skill/rate, worker/helper count और duration के आधार पर approved rate से amount auto-calculate और स्पष्ट price summary।
+- [ ] Amount summary के बाद work address: GPS auto-fill optional + manual full address; current GPS और work address को एक न मानें।
+- [ ] Verified phone login session से स्वतः; booking form में phone दोबारा type/edit न करवाएँ।
+- [ ] आवश्यक जानकारी जाँचने के बाद BOOK NOW; success केवल backend-confirmed booking ID/status पर।
+- [ ] पुराना electrical-only mandatory dropdown, पुराना duplicate service selection और preview-only warning नए form में नहीं रहने चाहिए।
+- [ ] नया flow सभी छह categories और हर लागू task के लिए end-to-end tested हो।
+
+### C. पुराने सिस्टम से क्या रखना है / क्या बदलना है
+**रखना और नए flow में फिर से उपयोग करना (compatibility review के बाद):**
+- [ ] OTP-authenticated Supabase session और verified phone identity।
+- [ ] Customer name profile/session से लेना और जरूरत पड़ने पर पहली बार save करना।
+- [ ] State, district, PIN code, full work address तथा optional GPS capture।
+- [ ] काम के बारे में optional extra instructions/notes।
+- [ ] Backend-confirmed booking submission, error handling, retry-safe/duplicate-submit protection और booking ID confirmation।
+- [ ] Existing booking history, booking details/status, refresh, cancellation rules, complaint/support, technician contact, payment status/receipt और verified Razorpay flow।
+- [ ] Existing materials/parts itemization और customer approval rule; materials पर platform commission 0%।
+- [ ] Existing secure API authentication; service-role key app में नहीं लाना।
+
+**पुराने नए-booking UI से हटाना/replace करना:**
+- [ ] पुराना electrical-only `_services` dropdown और उससे जुड़ा mandatory `_service` validation।
+- [ ] पुराने `service_type` free/legacy label को नए canonical category/subcategory/task identity से replace करना; API contract मिलने तक इसे live submit न करें।
+- [ ] Form के ऊपर preview-only category picker + नीचे पुराने form का दोहरा selection हटाकर एक integrated category-to-task selection।
+- [ ] पुराने fixed preferred date/time को नए duration-based flow के साथ reconcile करें; actual booking start/schedule field तभी रखें जब owner-approved flow और backend contract इसकी जरूरत बताए।
+- [ ] Customer name/phone को हर booking में फिर से भरने के बजाय verified account से auto-populate; phone read-only/hidden, name saved profile से।
+- [ ] Amount summary को अनुमानित static text से नहीं, approved rate calculation से दिखाएँ।
+
+### D. अभी स्पष्ट रूप से missing / blocked — अनुमान नहीं लगाना
+- [ ] हर category के subcategory/task का final owner-approved catalogue और canonical backend IDs।
+- [ ] किस service में skill level, electrician count, helper count और duration लागू है; fixed-price vs hourly/day-based task mapping।
+- [ ] प्रत्येक combination की Admin-approved rates, minimum/maximum worker limits, helper rate और rounding rule।
+- [ ] 50-day duration का unit/selection UX, overnight/day boundary, break/lunch/overtime और multi-day schedule behavior।
+- [ ] Backend API/RPC payload/response contract: category/task IDs, worker/helper count, duration, price snapshot, address/GPS, booking idempotency key, booking ID/status।
+- [ ] Multi-worker dispatch, capacity, sequential offers और partial assignment/failure behavior की backend पुष्टि।
+- [ ] Booking payment कब देय होगा और नया price estimate बनाम final labour/material amount कैसे दिखेगा; Razorpay को केवल verified server order/confirmation के साथ रखें।
+- [ ] Existing backend status/quote dependency का quote-free नई booking के लिए सुरक्षित विकल्प और legacy bookings के लिए अलग read-only behavior।
+- [ ] सभी gaps clear होने के बाद old form replace करें; फिर Flutter tests, analyzer, Android build और वास्तविक mobile visual/flow QA चलाएँ।
+
+**इस audit का परिणाम:** वर्तमान source में नया category picker मौजूद है, लेकिन अभी पुराना form ही वास्तविक booking submit करता है। इसलिए काम केवल पुराने form के कुछ fields बदलना नहीं है; पुराने mandatory electrical dropdown और preview-only picker को हटाकर पूरे booking entry flow को नए sequence से बनाना होगा। उपयोगी auth/address/GPS/submit/history/support/payment capabilities को अलग से सुरक्षित रखना है। इस documentation update में app code, backend, database, API, payment या पुराने records नहीं बदले गए।
+
