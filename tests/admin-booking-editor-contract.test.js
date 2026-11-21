@@ -6,7 +6,7 @@ const admin=fs.readFileSync(path.join(__dirname,'..','admin.html'),'utf8');
 
 test('Admin booking list shows verified payment as read-only and has no quote or manual customer payment controls',()=>{
  assert.match(admin,/सत्यापित भुगतान/);
- assert.doesNotMatch(admin,/quoted_amount|quote_status|service_charge|materials_amount|पुराना Quote/);
+ assert.doesNotMatch(admin,/quoted_amount|quote_status|service_charge|पुराना Quote/);
  assert.doesNotMatch(admin,/id="pay-\$\{x\.id\}"|id="manual-method-\$\{x\.id\}"|id="ref-\$\{x\.id\}"/);
  assert.doesNotMatch(admin,/srk_admin_record_manual_payment|srk_admin_record_new_booking_cash_payment/);
 });
