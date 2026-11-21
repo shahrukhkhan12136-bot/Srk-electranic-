@@ -204,4 +204,4 @@
 ## प्रगति लॉग
 | तारीख | चरण | बदली गई फाइलें | टेस्ट/Build प्रमाण | स्थिति |
 |---|---|---|---|---|
-| 2026-11-21 | प्रारंभिक source audit | कोई source file नहीं बदली | GitHub source inspection; build अभी नहीं चलाया | In progress |
+| 2026-11-21 | प्रारंभिक source audit | कोई app source file नहीं बदली | GitHub source inspection; build अभी नहीं चलाया | In progress |\n| 2026-11-21 | CI scope correction | `.github/workflows/flutter-android-ci.yml` | Workflow re-fetched; Customer + Technician steps मौजूद, Admin references अनुपस्थित; CI run/build अभी नहीं किया | Complete (scope edit only) |
