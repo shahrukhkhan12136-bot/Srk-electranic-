@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:srk_mobile_core/srk_service_catalog.dart' as catalog;
 
 /// Read-only, server-authored skill data for the Technician app.
 ///
@@ -69,6 +70,50 @@ class SrkVerifiedServiceSkill {
       catalogueVersion: _nonEmpty(json['catalogue_version']),
       verifiedAt: _date(json['verified_at']),
       validUntil: validUntil,
+    );
+  }
+
+  /// Parses a server skill only when its IDs and catalogue version match
+  /// the current frontend draft. This is a preview/contract check, not
+  /// authorization. Backend must publish and approve the canonical version.
+  static SrkVerifiedServiceSkill? fromDraftCatalogueServerJson(
+    Map<String, dynamic> json, {
+    DateTime? now,
+  }) {
+    final parsed = fromServerJson(json, now: now);
+    if (parsed == null ||
+        parsed.catalogueVersion != catalog.srkServiceCatalogDraftVersion) {
+      return null;
+    }
+
+    final category = catalog.srkServiceCatalog
+        .where((item) => item.id == parsed.categoryId)
+        .firstOrNull;
+    if (category == null) return null;
+
+    final subcategory = category.options
+        .where((item) => item.id == parsed.subcategoryId)
+        .firstOrNull;
+    if (subcategory == null) return null;
+
+    final taskId = parsed.taskId;
+    final task = taskId == null
+        ? null
+        : subcategory.tasks.where((item) => item.id == taskId).firstOrNull;
+    if (taskId != null && task == null) return null;
+
+    return SrkVerifiedServiceSkill(
+      categoryId: category.id,
+      subcategoryId: subcategory.id!,
+      categoryLabel: category.displayName,
+      subcategoryLabel: subcategory.displayName ?? subcategory.name,
+      taskId: task?.id,
+      taskLabel: task?.name,
+      skillTierId: parsed.skillTierId,
+      skillTierLabel: parsed.skillTierLabel,
+      catalogueVersion: parsed.catalogueVersion,
+      verifiedAt: parsed.verifiedAt,
+      validUntil: parsed.validUntil,
     );
   }
 
