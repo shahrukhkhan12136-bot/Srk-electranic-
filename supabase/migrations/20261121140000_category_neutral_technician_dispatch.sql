@@ -2,6 +2,34 @@
 -- Feature Branch only. Depends on the unified Technician identity and OTP-first onboarding migrations.
 -- Does not alter the legacy electrician job_offers path or production data.
 
+-- Canonical service identity on a booking. Legacy selected_category/rate_tier columns remain
+-- untouched for historical Electrician bookings and their original broadcast path.
+ALTER TABLE public.service_bookings
+  ADD COLUMN IF NOT EXISTS srk_service_category_code text,
+  ADD COLUMN IF NOT EXISTS srk_service_skill_code text,
+  ADD COLUMN IF NOT EXISTS srk_required_technician_count smallint NOT NULL DEFAULT 1;
+
+DO $booking_constraints$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='service_bookings_srk_category_code_fk') THEN
+    ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_srk_category_code_fk
+      FOREIGN KEY (srk_service_category_code) REFERENCES public.srk_service_categories(category_code) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='service_bookings_srk_skill_code_fk') THEN
+    ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_srk_skill_code_fk
+      FOREIGN KEY (srk_service_skill_code) REFERENCES public.srk_service_skills(skill_code) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='service_bookings_srk_category_skill_pair') THEN
+    ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_srk_category_skill_pair
+      CHECK ((srk_service_category_code IS NULL)=(srk_service_skill_code IS NULL));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='service_bookings_srk_required_technicians_valid') THEN
+    ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_srk_required_technicians_valid
+      CHECK (srk_required_technician_count BETWEEN 1 AND 10);
+  END IF;
+END;
+$booking_constraints$;
+
 CREATE TABLE IF NOT EXISTS public.srk_technician_presence (
   technician_id uuid PRIMARY KEY REFERENCES public.srk_technicians(id) ON DELETE RESTRICT,
   is_online boolean NOT NULL DEFAULT false,
@@ -27,8 +55,9 @@ CREATE TABLE IF NOT EXISTS public.srk_technician_dispatch_requests (
   required_technician_count smallint NOT NULL DEFAULT 1 CHECK (required_technician_count BETWEEN 1 AND 10),
   assigned_technician_count smallint NOT NULL DEFAULT 0 CHECK (assigned_technician_count BETWEEN 0 AND required_technician_count),
   offer_ttl_seconds smallint NOT NULL DEFAULT 60 CHECK (offer_ttl_seconds BETWEEN 15 AND 300),
-  work_latitude double precision NOT NULL CHECK (work_latitude BETWEEN -90 AND 90),
-  work_longitude double precision NOT NULL CHECK (work_longitude BETWEEN -180 AND 180),
+  work_latitude double precision CHECK (work_latitude BETWEEN -90 AND 90),
+  work_longitude double precision CHECK (work_longitude BETWEEN -180 AND 180),
+  CHECK ((work_latitude IS NULL)=(work_longitude IS NULL)),
   status text NOT NULL DEFAULT 'searching'
     CHECK (status IN ('searching','assigned','completed','cancelled','unavailable')),
   current_offer_id uuid,
@@ -192,8 +221,8 @@ BEGIN
   SELECT b.location_lat,b.location_lng INTO v_lat,v_lng
   FROM public.service_bookings b
   WHERE b.id=p_booking_id AND b.status NOT IN ('cancelled','completed');
-  IF NOT FOUND OR v_lat IS NULL OR v_lng IS NULL THEN
-    RAISE EXCEPTION 'BOOKING_WITH_VALID_GPS_LOCATION_REQUIRED_FOR_AUTO_DISPATCH' USING ERRCODE='22023';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'BOOKING_REQUIRED_FOR_TECHNICIAN_DISPATCH' USING ERRCODE='P0002';
   END IF;
   INSERT INTO public.srk_technician_dispatch_requests
     (booking_id,category_code,skill_code,required_technician_count,offer_ttl_seconds,work_latitude,work_longitude)
@@ -256,6 +285,19 @@ BEGIN
     current_offer_id=NULL,updated_at=clock_timestamp()
   WHERE id=v_req.id RETURNING * INTO v_req;
   IF v_req.status='assigned' THEN RETURN jsonb_build_object('success',true,'status','assigned'); END IF;
+
+  IF v_req.work_latitude IS NULL OR v_req.work_longitude IS NULL THEN
+    UPDATE public.srk_technician_dispatch_requests SET status='searching',
+      current_offer_id=NULL,updated_at=clock_timestamp() WHERE id=v_req.id;
+    IF NOT EXISTS (SELECT 1 FROM public.srk_technician_dispatch_events e
+      WHERE e.dispatch_request_id=v_req.id AND e.event_type='dispatch_unavailable'
+        AND e.created_at>=clock_timestamp()-interval '5 minutes') THEN
+      INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,event_type,details)
+      VALUES(v_req.id,p_booking_id,'dispatch_unavailable',
+        jsonb_build_object('reason','work_location_gps_missing','location_required',true));
+    END IF;
+    RETURN jsonb_build_object('success',true,'status','unavailable','reason','work_location_gps_missing');
+  END IF;
 
   SELECT t.id,
     (6371.0*2*asin(sqrt(
@@ -490,3 +532,64 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $function$
 $function$;
 REVOKE ALL ON FUNCTION public.srk_technician_get_my_dispatch_offers() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_technician_get_my_dispatch_offers() TO authenticated;
+
+-- A canonical-category booking bypasses only the legacy Electrician broadcast.
+-- The category-neutral trigger creates the new dispatch request and issues the first offer
+-- in the same booking transaction. Legacy bookings continue through the old dispatcher.
+CREATE OR REPLACE FUNCTION public.broadcast_booking_job()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+BEGIN
+  IF NEW.srk_service_category_code IS NOT NULL THEN
+    RETURN NEW;
+  END IF;
+  PERFORM private.srk_offer_booking_to_eligible_electricians(NEW.id);
+  RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.broadcast_booking_job() FROM PUBLIC,anon,authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_start_category_neutral_booking_dispatch()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+BEGIN
+  IF NEW.srk_service_category_code IS NULL THEN
+    RETURN NEW;
+  END IF;
+  PERFORM public.srk_dispatch_create_for_booking(
+    NEW.id,NEW.srk_service_category_code,NEW.srk_service_skill_code,
+    NEW.srk_required_technician_count,60
+  );
+  PERFORM public.srk_dispatch_issue_next_offer(NEW.id);
+  RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_start_category_neutral_booking_dispatch() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS srk_start_category_neutral_booking_dispatch ON public.service_bookings;
+CREATE TRIGGER srk_start_category_neutral_booking_dispatch
+AFTER INSERT ON public.service_bookings
+FOR EACH ROW EXECUTE FUNCTION public.srk_start_category_neutral_booking_dispatch();
+
+-- If GPS becomes available before any offer/assignment, refresh the pending dispatch snapshot.
+CREATE OR REPLACE FUNCTION public.srk_refresh_pending_dispatch_location()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+BEGIN
+  IF NEW.location_lat IS NOT DISTINCT FROM OLD.location_lat
+     AND NEW.location_lng IS NOT DISTINCT FROM OLD.location_lng THEN
+    RETURN NEW;
+  END IF;
+  UPDATE public.srk_technician_dispatch_requests d SET
+    work_latitude=NEW.location_lat,work_longitude=NEW.location_lng,updated_at=clock_timestamp()
+  WHERE d.booking_id=NEW.id AND d.status='searching'
+    AND NOT EXISTS (SELECT 1 FROM public.srk_technician_dispatch_offers o
+      WHERE o.dispatch_request_id=d.id AND o.status IN ('offered','accepted'))
+    AND NOT EXISTS (SELECT 1 FROM public.srk_booking_technician_assignments a
+      WHERE a.booking_id=NEW.id AND a.assignment_status IN ('accepted','active','completed'));
+  RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_refresh_pending_dispatch_location() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS srk_refresh_pending_dispatch_location ON public.service_bookings;
+CREATE TRIGGER srk_refresh_pending_dispatch_location
+AFTER UPDATE OF location_lat,location_lng ON public.service_bookings
+FOR EACH ROW EXECUTE FUNCTION public.srk_refresh_pending_dispatch_location();
+
+
