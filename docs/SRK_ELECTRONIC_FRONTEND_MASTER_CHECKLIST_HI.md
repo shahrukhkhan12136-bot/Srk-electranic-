@@ -1141,3 +1141,13 @@
 - [x] Refresh पर warnings reset होती हैं।
 - Source: `apps/electrician_app/lib/main.dart`, commit `c902d9687d67dcb5a11476fb2928ae98a1b01497`.
 - [ ] Flutter format/analyzer/widget tests और Android build/device QA अभी execute नहीं हुए।
+
+
+## 2AU. TEST migration history — approved branch version mismatch (21-11-2026)
+
+- [x] Approved branch में 21 SQL migration files की सूची जाँची।
+- [x] TEST migration history में 7 version IDs जाँचे।
+- [x] TEST के 7 version IDs में approved branch की 21 migration filenames से कोई exact version match नहीं मिला।
+- [x] इसे TEST baseline reconciliation blocker के रूप में दर्ज किया; कोई migration apply/repair नहीं की।
+- [ ] Supabase CLI वाले approved repository environment में migration-by-migration reconciliation और सुरक्षित baseline योजना बनानी है।
+- [ ] Reset या blind re-apply नहीं करना; Production untouched।
