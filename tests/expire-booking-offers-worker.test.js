@@ -36,23 +36,36 @@ test('offer expiry worker refuses to call Supabase without server configuration'
   });
 });
 
-test('offer expiry worker calls the service-role-only RPC and returns the advanced count', async () => {
+test('offer expiry worker advances legacy Electrician offers and processes the Technician dispatch queue', async () => {
   await withWorkerEnvironment({
     SUPABASE_URL: 'https://example.supabase.co/',
     SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key'
   }, async () => {
-    let request;
+    const requests = [];
     global.fetch = async (url, options) => {
-      request = { url, options };
-      return { ok: true, status: 200, text: async () => '3' };
+      requests.push({ url, options });
+      if (requests.length === 1) return { ok: true, status: 200, text: async () => '3' };
+      return { ok: true, status: 200, json: async () => ({
+        success: true, processed: 2, offers_sent: 1, waiting_for_eligible_technician: 1
+      }) };
     };
     const result = await worker.handler();
-    assert.equal(request.url, 'https://example.supabase.co/rest/v1/rpc/srk_expire_and_advance_booking_offers');
-    assert.equal(request.options.method, 'POST');
-    assert.equal(request.options.headers.apikey, 'test-service-role-key');
-    assert.equal(request.options.headers.Authorization, 'Bearer test-service-role-key');
-    assert.equal(request.options.body, '{}');
-    assert.deepEqual(JSON.parse(result.body), { success: true, advanced: 3 });
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0].url, 'https://example.supabase.co/rest/v1/rpc/srk_expire_and_advance_booking_offers');
+    assert.equal(requests[1].url, 'https://example.supabase.co/rest/v1/rpc/srk_dispatch_process_pending_queue');
+    for (const request of requests) {
+      assert.equal(request.options.method, 'POST');
+      assert.equal(request.options.headers.apikey, 'test-service-role-key');
+      assert.equal(request.options.headers.Authorization, 'Bearer test-service-role-key');
+      assert.equal(request.options.body, '{}');
+    }
+    assert.deepEqual(JSON.parse(result.body), {
+      success: true, electrician_offers_advanced: 3,
+      technician_dispatch: {
+        available: true, success: true, processed: 2, offers_sent: 1,
+        waiting_for_eligible_technician: 1
+      }
+    });
     assert.equal(result.statusCode, 200);
   });
 });
