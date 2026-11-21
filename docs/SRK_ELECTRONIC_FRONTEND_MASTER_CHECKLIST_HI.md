@@ -963,3 +963,40 @@
 - [ ] Final bill में labour, Customer-approved materials, अन्य लागू charges, total, payment method/status और receipt एक ही authoritative response से आने चाहिए।
 
 **निर्णय:** मौजूदा Booking System को अभी न बदलें। Quote-dependent RPC/UI को तब तक सुरक्षित रखें जब तक Backend नया quote-free lifecycle और payment contract deploy करके staging में Customer तथा Technician दोनों ऐप से सत्यापित न कर दे। यह audit source-only है; runtime, RPC, database, payment और production में बदलाव नहीं हुआ। Flutter tests/analyzer/Android build execute नहीं हुए।
+
+
+## 2AL. Technician कमाई, वॉलेट और 15%/85% payment split audit (21-11-2026)
+
+### Owner-confirmed financial rule
+- [x] Company platform fee = ग्राहक के पूरे booking payment का 15%।
+- [x] Technician share = उसी पूरे booking payment का 85%।
+- [x] उदाहरण: ग्राहक ₹1,000 देता है → Company ₹150, Technician ₹850।
+- [x] Labour/service और approved materials सहित पूरी ग्राहक booking payment split का आधार है; केवल labour पर commission नहीं।
+- [x] यह नियम cash और online दोनों payment methods के लिए एक समान लागू होना चाहिए; वास्तविक collection और reconciliation method अलग हो सकता है।
+
+### मौजूदा Technician mobile UI
+- [x] `srk_get_my_earnings` से earning rows पढ़ता है।
+- [x] Completed bookings की संख्या दिखाता है।
+- [x] Paid + completed rows के `electrician_earning` को जोड़कर Paid कमाई दिखाता है।
+- [x] `srk_get_my_wallet_summary` से internal wallet balance दिखाता है।
+- [x] UI स्पष्ट करता है कि बैंक payout अभी disabled है।
+- [ ] Flutter Technician ऐप में अलग Admin bank/UPI payout history list अभी नहीं दिखती; यह legacy web `electrician.html` की सुविधा से अलग है।
+
+### मौजूदा Backend mismatch
+- [ ] Migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` में `srk_calculate_booking_commission()` commission को `service_charge * commission_rate / 100` से निकालता है; materials/full customer payment base में शामिल नहीं।
+- [ ] `srk_get_my_earnings()` का मौजूदा reporting shape `amount_paid - commission_amount` से Technician earning निकालता है। सही 15/85 तभी होगा जब commission_amount पूरे customer payment पर सही तरीके से server-calculated हो।
+- [ ] Wallet foundation internal posted ledger balance दिखाता है; customer top-up और Technician bank payout disabled हैं। Wallet balance वास्तविक bank transfer नहीं है।
+- [ ] Current wallet foundation में automatic booking payment → commission → Technician wallet ledger posting का प्रमाण इस audit में नहीं मिला।
+- [ ] Razorpay Route transfer ledger/reconciliation record अपने-आप actual money transfer नहीं करता।
+
+### Backend में जरूरी सुधार — implementation से पहले contract
+- [ ] Server authoritative gross amount स्पष्ट करे: customer से वास्तव में verified/collected booking total; labour + approved materials + applicable customer charges का treatment स्पष्ट हो।
+- [ ] Company share = gross × 15%; Technician share = gross − Company share (85%)। Integer paise में deterministic rounding; दोनों shares का योग gross के बराबर रहे।
+- [ ] Customer discount/coupon, tax/GST, travel/extra charges, refund/partial refund, failed/reversed payment और chargeback के लिए लिखित allocation rule तय हो।
+- [ ] Cash और Razorpay online दोनों में paid evidence और gross amount source server-verified हो; client-provided amount पर भरोसा न हो।
+- [ ] Idempotent double-entry ledger entries: customer collection, company fee, technician payable, refund/reversal और payout; हर entry booking/payment/provider reference से जुड़ी हो।
+- [ ] Technician earnings view, Admin commission report, wallet ledger और payout queue एक ही authoritative 15/85 calculation use करें।
+- [ ] Bank payout केवल verified linked account, provider approval, Admin authorization और वास्तविक transfer confirmation/UTR के बाद paid दिखे।
+- [ ] Existing historical bookings/commission values का reconciliation plan और rollback/backfill approval अलग हो।
+
+**सीमा:** इस चरण में केवल source audit और दस्तावेज़ीकरण हुआ। कोई commission function, migration, wallet ledger, payout, payment, Supabase या production code नहीं बदला। Flutter tests/analyzer/Android build execute नहीं हुए।
