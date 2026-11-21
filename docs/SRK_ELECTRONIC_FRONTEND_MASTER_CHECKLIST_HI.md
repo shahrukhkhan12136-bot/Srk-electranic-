@@ -844,3 +844,13 @@
 - [ ] Flutter formatter/analyzer/tests और Android build/device test अभी execute/verify नहीं किए गए।
 
 **सीमा:** केवल picker का स्थान और form-local preview state बदला। Live API payload, booking lifecycle, dispatch, Supabase/backend/database/payment अपरिवर्तित।
+
+## 2AF. Category बदलने पर पुराना चयन साफ करना (2026-11-21)
+
+- [x] Picker callback nullable बनाया ताकि अधूरा parent selection स्पष्ट रूप से null भेज सके।
+- [x] Category/subcategory बदलते समय पुराने completed service selection को clear किया।
+- [x] नई valid hierarchy पूरी होने पर ही नया selection emit होता है।
+- [x] Parent category बदलने पर stale selection reset का widget test जोड़ा।
+- [ ] Flutter tests/analyzer/formatter अभी execute नहीं हुए।
+
+**सुरक्षा:** यह केवल form preview state है; legacy booking payload और backend flow अपरिवर्तित हैं।
