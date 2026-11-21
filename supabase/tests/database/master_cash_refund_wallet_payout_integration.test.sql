@@ -1,0 +1,13 @@
+BEGIN;
+SELECT plan(9);
+SELECT has_table('public','srk_master_payout_request_credits','Commission refund credits can be included in payout requests');
+SELECT ok(position('commission_refund_credit_available_paise' in pg_get_functiondef('public.srk_master_wallet_summary()'::regprocedure))>0,'Technician wallet shows refund-credit balances');
+SELECT ok(position('srk_master_payout_request_credits' in pg_get_functiondef('public.srk_technician_request_master_payout(text,text,text)'::regprocedure))>0,'Technician can request payout of refund credits');
+SELECT ok(position('status=''available''' in pg_get_functiondef('public.srk_admin_review_master_payout_request(uuid,text,text)'::regprocedure))>0,'Rejected payout returns refund credits to available');
+SELECT ok(position('status=''paid''' in pg_get_functiondef('public.srk_admin_mark_master_payout_paid(uuid,text,text,text)'::regprocedure))>0,'Admin UTR completion pays refund credits');
+SELECT has_function('public','srk_admin_list_master_payout_requests',ARRAY[]::text[]);
+SELECT has_function('public','srk_admin_mark_master_payout_paid',ARRAY['uuid','text','text','text']);
+SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_master_payout_request_credits'::regclass),'payout-credit links have RLS');
+SELECT ok(NOT has_table_privilege('authenticated','public.srk_master_payout_request_credits','SELECT'),'payout-credit links are not directly client-readable');
+SELECT * FROM finish();
+ROLLBACK;
