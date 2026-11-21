@@ -17,6 +17,7 @@ declare
   v_refund public.srk_razorpay_refunds%rowtype;
   v_payout public.srk_electrician_payouts%rowtype;
   v_customer_request public.srk_booking_refund_requests%rowtype;
+  v_legacy srk_private.legacy_booking_financial_evidence%rowtype;
   v_labour_paise bigint;
   v_fee_paise bigint;
   v_total_paise bigint;
@@ -92,17 +93,15 @@ begin
     end if;
     v_total:=v_total_paise/100.0;
   else
-    if v_booking.quote_status is distinct from 'approved'
-       or v_booking.quoted_amount is null or v_booking.service_charge is null
-       or v_booking.materials_amount is null then
-      raise exception 'ONLY_VERIFIED_APPROVED_QUOTE_BOOKINGS_CAN_BE_REFUNDED';
-    end if;
+    SELECT * INTO v_legacy FROM srk_private.legacy_booking_financial_evidence
+     WHERE booking_id=p_booking_id;
+    IF NOT FOUND THEN RAISE EXCEPTION 'ARCHIVED_HISTORICAL_FINANCIAL_EVIDENCE_MISSING'; END IF;
     v_total:=round(v_booking.amount_paid,2);
-    if v_total<>round(v_booking.quoted_amount,2)
-       or v_total<>round(v_booking.service_charge+v_booking.materials_amount,2) then
-      raise exception 'PAID_AMOUNT_DOES_NOT_MATCH_APPROVED_QUOTE';
-    end if;
-    v_total_paise:=round(v_total*100)::bigint;
+    v_total_paise:=round((coalesce(v_legacy.service_charge,0)+coalesce(v_legacy.materials_amount,0))*100)::bigint;
+    IF v_total_paise<=0 OR round(v_total*100)::bigint IS DISTINCT FROM v_total_paise
+       OR (v_legacy.quoted_amount IS NOT NULL AND round(v_legacy.quoted_amount*100)::bigint IS DISTINCT FROM v_total_paise) THEN
+      RAISE EXCEPTION 'PAID_AMOUNT_DOES_NOT_MATCH_ARCHIVED_HISTORICAL_EVIDENCE';
+    END IF;
   end if;
 
   select * into v_refund from public.srk_razorpay_refunds
