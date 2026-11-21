@@ -14,7 +14,7 @@ Customer UI सक्रिय दरों के लिए Supabase RPC `srk_c
 - `billing_model`: `hourly` या `fixed_per_unit`
 - `unit_label`
 - `level_code`, `level_label`
-- `technician_hourly_paise`, `helper_hourly_paise`
+- `technician_hourly_paise`, `helper_hourly_paise`, `helper_included`, `required_technician_count`, `team_8h_paise`
 - `fixed_labour_paise`
 - `rate_version`
 
@@ -32,6 +32,7 @@ POST `/api/create-booking`; Authorization: Bearer OTP-authenticated customer ses
 - `srk_service_code`
 - `srk_rate_level_code`
 - `srk_required_technician_count` (1–10)
+- `srk_helper_included` (hourly सेवा में boolean; true होने पर हर assigned Technician के साथ एक Helper चुना जाएगा; default false)
 
 Hourly सेवा के लिए:
 - `srk_duration_minutes`: 1 से 72,000 मिनट (50 दिन) तक
@@ -49,7 +50,7 @@ Master booking के लिए पुराने `selected_category`, `selecte
 Backend active rate को `srk_customer_get_service_rate(p_service_code,p_level_code)` से पढ़ता है; client-supplied price कभी स्वीकार न करें।
 
 Hourly:
-`round((technician_hourly_paise + helper_hourly_paise) × duration_minutes / 60)`
+`round((technician_hourly_paise + (srk_helper_included ? helper_hourly_paise : 0)) × duration_minutes × srk_required_technician_count / 60)`
 
 Response `estimate` में:
 - `amount_paise`, `amount_rupees`
@@ -67,7 +68,7 @@ Response में `fixed_labour_paise` और `unit_label` आएँगे। F
 ## Rate list UI requirements (GPT-1)
 1. मौजूदा Booking screen और मौजूदा rate-list area को ही अपडेट करें; parallel booking screen न बनाएं।
 2. Category → Skill/Service → Level चयन active catalogue से dynamic करें।
-3. Hourly rate list में Technician प्रति घंटा, Helper प्रति घंटा, Combined प्रति घंटा और Technician/Helper/Combined 8-hour comparison दिखाएँ।
+3. Hourly rate list में Technician प्रति घंटा, optional Helper प्रति घंटा, Combined प्रति घंटा और Technician/Helper/Combined 8-hour comparison दिखाएँ। Helper checkbox/toggle स्पष्ट हो; default में Helper शामिल न हो। चुने गए Technician count के हिसाब से Team estimate दिखाएँ।
 4. Estimate चुनी अवधि के आधार पर दिखाएँ; वास्तविक billing server-side timer records से होगी।
 5. Fixed service में प्रति unit fixed labour और quantity दिखाएँ; 8-hour comparison नहीं।
 6. Materials/parts labour से अलग रहें; customer approval flow बना रहे।
@@ -83,7 +84,7 @@ Master hourly bookings के लिए पुराना Electrician-only time
 - हर दिन पहले 4 वास्तविक काम के घंटे पूरे होने पर एक घंटे का lunch pause server-time से लगता है और उसके बाद timer अपने-आप फिर चलता है। Lunch time billable work में शामिल नहीं होता।
 - प्रत्येक Technician के हर दिन पहले 8 वास्तविक घंटे सामान्य दर पर; उसके बाद उसी दिन का समय 1.5x overtime पर। अगले दिन नया daily counter शुरू होता है।
 - दिन के अंत में Customer को ठीक तीन निर्णय मिलते हैं: `tomorrow`, `completed`, `replace_technician`. Replacement केवल भविष्य के काम के लिए पुराने Technician को बदलता है; पुराने workday और labour ledger सुरक्षित रहते हैं।
-- Daily Technician labour ledger append-only/immutable है। Replaced Technician जिसने billable work किया है, booking completion पर उसका completion counter भी गिना जाता है।
+- Daily Technician labour ledger में Technician और चुने गए Helper की normal/overtime रकम अलग-अलग snapshot होती है; ledger append-only/immutable है। Replaced Technician जिसने billable work किया है, booking completion पर उसका completion counter भी गिना जाता है।
 - ये RPCs और schema अभी Feature Branch source हैं; DB पर लागू नहीं किए गए हैं।
 
 **अभी integration बाकी:** Helper count/charges का booking-level स्पष्ट snapshot, सभी daily Technician labour entries का consolidated Final Bill, customer-approved materials, Cash/Razorpay collection, refund और accounting reconciliation. इन चरणों के बिना Master Booking flag चालू नहीं होगा।
