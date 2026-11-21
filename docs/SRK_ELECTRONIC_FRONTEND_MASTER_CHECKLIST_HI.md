@@ -1102,3 +1102,14 @@
 - [ ] Baseline के बाद ही trigger source audit और commission/payout regression tests करें।
 - [x] इस निरीक्षण में कोई DDL/DML, payment/payout परिवर्तन या Production SQL नहीं किया गया।
 - [ ] Remote TEST पर `db reset --linked` का उपयोग नहीं करना है; यह destructive है।
+
+
+## 2AQ. Customer dashboard — partial data-load errors visible (21-11-2026)
+
+- [x] Booking list load failure और missing OTP session के लिए अलग user-facing संदेश जोड़ा।
+- [x] Technician contact RPC failure अब silent नहीं है; booking cards फिर भी render होते हैं और Refresh का संदेश दिखता है।
+- [x] Complaint list RPC failure अब silent empty-list की तरह नहीं दिखता; पिछली loaded complaint list सुरक्षित रहती है और warning दिखती है।
+- [x] Refresh पर warnings reset होती हैं; successful RPC response warning हटाता है।
+- [x] Existing booking SELECT, cancellation, quote/payment RPC, form payload और booking lifecycle नहीं बदले।
+- Source: `apps/customer_app/lib/main.dart`, commit `7b48352e5cdfb296d3668e2bd6965ab2c72c8f2c`.
+- [ ] Flutter format/analyzer/widget tests और Android build चलाना बाकी है; इस environment में ये execute नहीं हुए।
