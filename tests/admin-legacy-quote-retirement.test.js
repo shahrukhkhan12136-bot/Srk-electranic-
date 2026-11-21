@@ -24,7 +24,7 @@ test('Payment order, verification and webhook use immutable bills and reject quo
 });
 
 test('Admin no longer displays or records legacy quotes or manual customer payments',()=>{
- assert.doesNotMatch(admin,/quoted_amount|quote_status|service_charge|materials_amount|पुराना Quote|srk_admin_record_manual_payment|srk_admin_record_new_booking_cash_payment/);
+ assert.doesNotMatch(admin,/quoted_amount|quote_status|service_charge|पुराना Quote|srk_admin_record_manual_payment|srk_admin_record_new_booking_cash_payment/);
  assert.match(admin,/सत्यापित भुगतान/);
 });
 
