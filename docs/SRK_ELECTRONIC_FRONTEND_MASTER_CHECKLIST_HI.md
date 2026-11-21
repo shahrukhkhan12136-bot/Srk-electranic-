@@ -17,8 +17,8 @@
 - [x] Flutter Customer app source मौजूद: `apps/customer_app/lib/main.dart`।
 - [x] Flutter Technician app source मौजूद: `apps/electrician_app/lib/main.dart`।
 - [x] Shared login/core package मौजूद: `packages/srk_mobile_core`।
-- [x] मौजूदा Customer source में legacy quotation states, quote response RPC और quote-आधारित booking logic मिला।
-- [x] मौजूदा Technician source में quote details RPC, quote submission dialog/RPC, inspection और quote approval gating मिला।
+- [x] मौजूदा Customer source में booking flow के साथ quotation से जुड़े अतिरिक्त states/actions मिले; Founder के निर्देशानुसार booking flow सुरक्षित रखना है और केवल अनावश्यक quotation विकल्प हटाने हैं।
+- [x] मौजूदा Technician source में मौजूदा job/booking flow के साथ quote submission/details और quote approval से जुड़े अतिरिक्त विकल्प मिले; मूल booking/job flow सुरक्षित रखना है।
 - [x] Customer app में OTP/dashboard/history, cancellation, location और Razorpay-related code के उपयोगी हिस्से मिले; नए flow से compatibility जाँच आवश्यक।
 - [x] Technician app में OTP, offer accept/decline, assigned bookings, location, work status, cash confirmation और wallet/earnings UI के उपयोगी हिस्से मिले; नए flow से compatibility जाँच आवश्यक।
 - [x] CI workflow अभी manual dispatch पर Customer, Electrician और Admin तीनों के Debug APK बनाता है; यह Play Store release pipeline नहीं है।
@@ -29,15 +29,15 @@
 - [ ] पुराने web/PWA Customer और Technician flows तथा पुराने checklist से preserve/retire map पूरा करें।
 - [ ] दोनों Flutter apps के सभी source files, Android config, tests, assets, API calls और dependency graph का पूर्ण inventory पूरा करें।
 
-## 2. पुराने UI/flow का सुरक्षित निपटान
-- [ ] Customer App से quotation creation/entry, quote wait, approve/reject, quote status और quote-based amount gating हटाएँ।
-- [ ] Technician App से quote form/dialog, quote submission, quote details display, quote status और quote approval gating हटाएँ।
-- [ ] दोनों ऐप में quotation शब्द/labels/buttons/routes/status mapping का पूर्ण source search करके शून्य करें।
-- [ ] पुराना inspection-first booking sequence हटाएँ; नया work-start flow लागू करें।
-- [ ] पुराने booking form और category assumptions को नए booking UX से बदलें; पुरानी booking UI copy न करें।
-- [ ] उपयोगी OTP/auth, secure API client, GPS permission, notifications, payment SDK, history/profile components को अलग-अलग review करके ही reuse करें।
+## 2. मौजूदा booking flow सुरक्षित रखते हुए अनावश्यक विकल्प हटाना
+- [ ] Customer App से केवल quotation creation/entry, quote wait, approve/reject, quote status और quote-based amount gating हटाएँ; मौजूदा booking flow न हटाएँ।
+- [ ] Technician App से केवल quote form/dialog, quote submission, quote details display, quote status और quote approval gating हटाएँ; मौजूदा assigned-job/booking actions सुरक्षित रखें।
+- [ ] दोनों ऐप में customer/technician के लिए दिखने वाले quotation विकल्प, labels, buttons, routes और status mapping हटाएँ; केवल आवश्यक material itemization/customer approval रखें।
+- [ ] मौजूदा booking/job lifecycle का audit करें; केवल quote approval पर निर्भर अनावश्यक inspection gating हटाएँ। मौजूदा सही status/actions सुरक्षित रखें।
+- [ ] मौजूदा booking form और booking UX को आधार बनाकर केवल आवश्यक नई categories/rates/helper/duration/address विकल्प जोड़ें या सुधारें; booking form दोबारा न बनाएँ।
+- [ ] मौजूदा OTP/auth, secure API client, GPS permission, notifications, payment SDK, booking/history/profile components को सुरक्षित रखें; बदलाव से पहले compatibility जाँचें।
 - [ ] Backend/DB में पुराने quote data/API/RPC/migrations को इस frontend बदलाव के कारण delete न करें।
-- [ ] Existing legacy bookings को सुरक्षित display/migration policy मिले; नए booking flow में legacy quote actions उपलब्ध न हों।
+- [ ] पहले से बनी bookings/history को सुरक्षित रखें; पुराने records पर quote actions न दिखाएँ और कोई data/API/database delete न करें।
 
 ## 3. Customer App — account और home
 - [ ] OTP login; भारतीय mobile number validation/normalization; resend cooldown; secure session handling।
@@ -47,8 +47,8 @@
 - [ ] Category tiles, accessible labels, empty/error/loading states और admin-configurable category data।
 - [ ] Profile, booking history, booking details, notifications, help/support, cancellation/complaint entry points।
 
-## 4. Customer App — नया booking flow
-- [ ] Category → service/subcategory → skill level → helper option (जहाँ लागू) → duration/quantity → address → technician count → price summary → BOOK NOW।
+## 4. Customer App — मौजूदा booking flow में आवश्यक सुधार
+- [ ] मौजूदा booking steps का audit करके उसी flow में आवश्यक category → service/subcategory → skill level → helper option (जहाँ लागू) → duration/quantity → address → technician count → price summary → BOOK NOW विकल्प जोड़ें/सुधारें; flow को शून्य से न बनाएँ।
 - [ ] AC + Fridge में पहले AC या Fridge चुनें; AC में Installation/Repair; Fridge में उपयुक्त task list।
 - [ ] Motor & Pump में task type और winding होने पर HP selection।
 - [ ] Cooler में per-cooler fixed labour selection; motor winding अलग item के रूप में।
@@ -205,3 +205,4 @@
 | तारीख | चरण | बदली गई फाइलें | टेस्ट/Build प्रमाण | स्थिति |
 |---|---|---|---|---|
 | 2026-11-21 | प्रारंभिक source audit | कोई app source file नहीं बदली | GitHub source inspection; build अभी नहीं चलाया | In progress |\n| 2026-11-21 | CI scope correction | `.github/workflows/flutter-android-ci.yml` | Workflow re-fetched; Customer + Technician steps मौजूद, Admin references अनुपस्थित; CI run/build अभी नहीं किया | Complete (scope edit only) |
+| 2026-11-21 | Founder clarification: booking flow preservation | Checklist sections 1–4 | मौजूदा booking system को दोबारा नहीं बनाना; केवल quotation/अनावश्यक विकल्प हटाने और आवश्यक category/rate आदि सुधारने का निर्देश दर्ज | Complete (checklist correction only) |
