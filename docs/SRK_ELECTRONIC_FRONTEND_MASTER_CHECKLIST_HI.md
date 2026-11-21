@@ -878,3 +878,28 @@
 - [ ] Flutter tests/analyzer/formatter/Android build/device tests इस audit में execute नहीं किए गए।
 
 **सीमा:** यह source-level audit और documentation update है। Booking form runtime code, payload, API, Supabase, backend, database, payment, dispatch और production में कोई बदलाव नहीं।
+
+
+## 2AI. Customer booking history, status, cancellation और complaint audit (2026-11-21)
+
+### सुरक्षित/मौजूदा व्यवहार
+- [x] Booking history केवल current authenticated user की `customer_user_id` rows पढ़ती है; newest-first क्रम और 50-row limit है।
+- [x] Booking card में service, booking ID, status, district/state/PIN और preferred date/time दिखते हैं।
+- [x] Existing statuses `new`, `confirmed`, `assigned`, `inspection`, legacy quote statuses, `in_progress`, `completed`, `cancelled` के Hindi labels मौजूद हैं; unknown status raw value के रूप में fallback होता है।
+- [x] Cancellation button केवल `new` और `confirmed` पर दिखता है और `srk_customer_cancel_my_booking` RPC को booking ID देता है।
+- [x] Cancellation RPC failure पर generic error आता है; UI success के बाद booking list refresh होती है।
+- [x] Complaint creation में category और कम-से-कम 10 अक्षर का विवरण जाँचा जाता है; RPC `srk_customer_create_booking_complaint` के बाद complaint list refresh होती है।
+- [x] Complaint list `srk_customer_list_booking_complaints` से आती है; complaint create/list दोनों booking ID के बजाय server RPC contract पर निर्भर हैं।
+- [x] Technician phone केवल contact RPC से आता है और assigned/बाद की अनुमत status स्थितियों में ही UI दिखाता है।
+
+### मिली हुई सीमाएँ / सुधार सूची
+- [ ] Complaint-list RPC failure को खाली सूची में बदल दिया जाता है; ग्राहक को यह स्पष्ट नहीं होता कि शिकायतें वास्तव में शून्य हैं या load नहीं हुईं।
+- [ ] Contact RPC failure भी चुपचाप ignore होता है; फोन न दिखने का कारण UI में स्पष्ट नहीं होता।
+- [ ] Booking history query failure का error पूरे dashboard के लिए आता है; अलग complaint/contact load state नहीं है।
+- [ ] Complaint subtitle में newline escaping जाँचकर सही line breaks सुनिश्चित करें।
+- [ ] Status fallback unknown backend status को raw string दिखाता है; unknown state के लिए सुरक्षित सामान्य Hindi label और logging पर विचार करें।
+- [ ] Quote approve/reject UI और quote-related statuses अभी legacy backend lifecycle पर निर्भर हैं। Quote-free backend transition matrix और historical booking compatibility के बिना इन्हें हटाना नहीं है।
+- [ ] Cancellation की server-side eligibility अंतिम authority है; UI का status check security control नहीं है। Backend RPC ownership और current state पुनः जाँचे।
+- [ ] इस source audit में Flutter widget tests, analyzer, formatter, Supabase integration test या Android build execute नहीं हुए।
+
+**सीमा:** इस audit में Customer runtime code, booking lifecycle, cancellation/complaint RPC, contacts, payment, Supabase, backend, database या production नहीं बदले। निष्कर्ष source inspection पर आधारित हैं।
