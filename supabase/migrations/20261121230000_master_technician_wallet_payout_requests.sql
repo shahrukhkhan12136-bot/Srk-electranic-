@@ -71,7 +71,7 @@ END; $$;
 
 CREATE OR REPLACE FUNCTION public.srk_technician_request_master_payout(
  p_destination_type text,p_destination_reference text,p_idempotency_key text
-) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $$$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $$
 DECLARE v_uid uuid:=auth.uid(); v_tid uuid; v_req uuid; v_total bigint;
 BEGIN
  IF v_uid IS NULL THEN RAISE EXCEPTION 'AUTH_REQUIRED' USING ERRCODE='42501'; END IF;
@@ -137,7 +137,7 @@ END; $$;
 
 CREATE OR REPLACE FUNCTION public.srk_admin_review_master_payout_request(
  p_request_id uuid,p_decision text,p_review_note text DEFAULT NULL
-) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $$
 DECLARE r public.srk_master_payout_requests%rowtype;
 BEGIN
  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ONLY' USING ERRCODE='42501'; END IF;
