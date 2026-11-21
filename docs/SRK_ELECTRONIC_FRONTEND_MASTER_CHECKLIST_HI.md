@@ -1426,14 +1426,18 @@ Implementation direction:
 - The shared Dart catalogue is currently documented as presentation-only; it is not automatically available to the legacy HTML pages. A tested shared web-compatible catalogue adapter or an approved API response is required before wiring the full dynamic selection flow. Do not manually duplicate partial lists into HTML.
 - No source code, database, production settings, booking, payment, or KYC behavior was changed by this audit.
 
-## 2BI. Electrician — Wiring के अंदर दो विकल्प
+## 2BI. Electrician — Expert Electrician के अंदर दो Wiring विकल्प
 
-- [ ] Customer flow में Electrician → Electrical Wiring चुनने पर दो विकल्प दिखें:
-  1. **नॉर्मल वायरिंग** — घर / दुकान की सामान्य वायरिंग।
-  2. **बड़े प्रोजेक्ट की वायरिंग** — बड़ी फैक्ट्री, कंपनी और औद्योगिक भवनों की वायरिंग।
-- [ ] Shared service catalogue में दोनों विकल्पों के अलग local task IDs दर्ज हैं: `normal_wiring` और `factory_large_project_wiring`।
-- [ ] यह अभी catalogue/presentation स्तर का बदलाव है; booking submit, dispatch eligibility, backend IDs या rates से wiring विकल्पों को जोड़ना बाकी है।
-- [ ] इस बदलाव से Basic / Expert / Master skill-level mapping या मौजूदा चार skill-level entries अपने-आप नहीं बदलतीं; उनका अलग owner confirmation आवश्यक है।
+Founder की पुष्टि के अनुसार Electrician की service options सूची में **Expert Electrician (एक्सपर्ट इलेक्ट्रीशियन)** parent option रहेगा। उसके अंदर ये दो child options होंगे:
+
+1. **Normal Wiring — नॉर्मल वायरिंग (घर / दुकान):** बिना Helper ₹1,000 प्रति 8 घंटे; Helper सहित ₹1,500 प्रति 8 घंटे।
+2. **Project Wiring — प्रोजेक्ट वायरिंग (बड़ी फैक्ट्री / कंपनी / औद्योगिक भवन):** बिना Helper ₹400 प्रति घंटा; Helper सहित ₹550 प्रति घंटा।
+
+- [x] Shared catalogue में parent ID `expert_electrician` और child IDs `normal_wiring`, `factory_large_project_wiring` दर्ज।
+- [x] दोनों child options के अपने अलग-अलग approved rates और helper rates दर्ज; किसी एक का rate दूसरे पर लागू नहीं होगा।
+- [x] Existing skillLevels — Basic, Expert Residential, Factory / Large Project, Master — और उनकी task lists/rates ज्यों की त्यों रखी गई हैं। यह parent-child service option structure उन चार skill-level entries को merge या rename नहीं करता।
+- [ ] Customer UI में Expert Electrician खोलने पर दोनों child options, उनके सही विवरण और अलग rates दिखाना — UI implementation/test बाकी।
+- [ ] Booking submit, dispatch eligibility और backend IDs से इन local option IDs को जोड़ना बाकी; यह catalogue/presentation data है, live booking behavior नहीं।
 
 ## 2BJ. Owner-approved Electrician — चारों स्तरों की काम सूची (21-11-2026)
 
