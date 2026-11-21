@@ -111,7 +111,7 @@ begin
      or new.status is distinct from 'completed'
      or new.assigned_electrician_id is null
      or new.payment_verified_at is null
-     or (new.selected_category is null and new.quote_status <> 'approved') then
+     or new.selected_category is null then
     return new;
   end if;
 
