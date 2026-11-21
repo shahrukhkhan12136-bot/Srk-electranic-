@@ -321,3 +321,17 @@ Display labels are resolved from the shared catalogue rather than trusting poten
 **Not authorization:** This parser is not connected to live profile data, offer filtering, offer acceptance, work status, material approval, cash/online payment or payouts. Existing generic skill parsing and offer-match helper remain preview-only. Client matching must never hide/authorize an offer; backend must independently verify active approved skills, booking ownership, assignment, expiry, canonical catalogue version and all state transitions.
 
 **Backend response required:** approve immutable canonical IDs/version and exact JSON contract; specify skill granularity for category/subcategory/task/tier, expiry/revocation semantics, and transactional revalidation on offer read/accept and each protected work/payment action. The current draft version is not a production identifier. No Supabase, backend, database, payment or production change was made. Flutter formatter/analyzer/tests/Android build have not been executed or verified.
+
+
+## 21. Offer-to-skill preview matching against shared catalogue (21 Nov 2026)
+
+Added `previewOfferSkillMatchAgainstDraftCatalogue` as a separate read-only preview helper.
+
+It requires the offer's `catalogue_version` to equal the shared draft version and validates category/subcategory IDs against the shared catalogue. If the offer includes a task ID, it must exist under that exact subcategory. A task-specific offer against a subcategory whose task taxonomy is not yet defined returns `unknown`, not a false positive. Only Technician skill records carrying the same draft catalogue version are considered for a match.
+
+Preview result semantics:
+- `matched`: known category/subcategory/task and version align with a same-version parsed Technician skill;
+- `notMatched`: known IDs do not align with any same-version skill;
+- `unknown`: missing/old catalogue version or task taxonomy not yet defined.
+
+This helper is not connected to live offer filtering/hiding, acceptance, dispatch, work status, material approval, payment or payouts. It must not be used as authorization. Backend remains authoritative and must independently validate active approved skill, current catalogue version, offer eligibility, assignment, ownership, expiry/revocation and state version atomically at each protected action. No live API/Supabase/backend/database/payment/production behavior changed. Tests, formatter, analyzer and Android build have not been executed.
