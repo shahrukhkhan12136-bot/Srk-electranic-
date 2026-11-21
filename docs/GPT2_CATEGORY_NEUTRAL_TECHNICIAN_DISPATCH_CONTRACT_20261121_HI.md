@@ -30,6 +30,22 @@ Example:
 - An accepted Technician is set Offline for new offers and linked to the active booking. GPS updates may continue while that booking is active.
 - Completion/cancellation releases the active booking and turns Online off; the Technician must explicitly go Online again.
 
+## Booking-to-dispatch handoff
+
+The booking row now has three canonical fields:
+
+- \`srk_service_category_code\`: one of the Admin-managed service category codes
+- \`srk_service_skill_code\`: an active skill belonging to that category
+- \`srk_required_technician_count\`: 1–10, default 1
+
+Both category and skill must be present together. On insert:
+
+1. The existing \`broadcast_booking_job()\` trigger skips only rows with a canonical service category; legacy Electrician bookings continue through the old sequential Electrician dispatcher.
+2. \`srk_start_category_neutral_booking_dispatch\` creates the shared dispatch request and immediately attempts the first nearest-Technician offer in the same database transaction.
+3. A booking without GPS coordinates is still saved. Its dispatch remains searching with a \`work_location_gps_missing\` event and no Technician offer. If coordinates are added before any offer/assignment, the pending dispatch location snapshot is refreshed and the existing minute worker can retry.
+
+This prevents new canonical bookings from receiving both legacy Electrician offers and shared Technician offers.
+
 ## Create a dispatch request — trusted backend only
 
 `POST /rest/v1/rpc/srk_dispatch_create_for_booking`
@@ -46,7 +62,7 @@ Example:
 
 - Callable only with the server-side Supabase service-role credential. Never call from browser/mobile using a service-role key.
 - Category and skill must be active and belong together.
-- Booking must exist, be non-terminal, and have valid work-site GPS coordinates.
+- Booking must exist and be non-terminal. GPS may be missing at creation; in that case dispatch waits without issuing offers until a valid work-site location is supplied.
 - Requested Technician count is 1–10.
 - Offer expiry is configurable per request from 15–300 seconds; default 60 seconds.
 - Request is idempotent for identical booking/category/skill/count. Conflicting requirements for an already-created request are rejected.
