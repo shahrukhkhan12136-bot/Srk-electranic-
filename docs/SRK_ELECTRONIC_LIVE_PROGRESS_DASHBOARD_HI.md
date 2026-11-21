@@ -1,70 +1,53 @@
 # SRK ELECTRONIC — लाइव प्रगति डैशबोर्ड
 
-**अंतिम सत्यापित अपडेट:** 16 नवम्बर 2026  
-**PR:** [#8](https://github.com/shahrukhkhan12136-bot/Srk-electranic-/pull/8) — OPEN / DRAFT / अभी MERGE नहीं  
-**Branch:** `feat/customer-login-first-dashboard-20261114`  
-**वर्तमान सत्यापित Code HEAD:** `1c6a03bdd891fee61a71b368991b83ffd7acfb20`
+**अंतिम सत्यापित अपडेट:** 21 नवम्बर 2026  
+**वर्तमान staging branch:** tmp/master-final-ui-20261121  
+**Feature base:** feature/master-rating-ui-followup-v2-20261121  
+**सत्यापित source HEAD:** 4cfdc869b3b69e3875e89fdf989ed215fcc351ab
 
-> यह डैशबोर्ड केवल सत्यापित स्थिति दिखाता है। Source में code/test मौजूद होना, live database पर चलना, preview पर दिखना और Production में release होना अलग-अलग gates हैं। प्रतिशत केवल checklist-count के आधार पर दिया जाता है; अनुमान से नहीं।
+> Source implementation, Node CI, PostgreSQL/pgTAP runtime, Browser E2E, Preview, Production migration और Owner approval अलग-अलग gates हैं। किसी एक का PASS दूसरे का प्रमाण नहीं है।
 
 ## एक नज़र में
 
-| चरण | स्थिति | विस्तृत विवरण |
+| चरण | स्थिति | विवरण |
 |---|---|---|
-| 1. Implementation | **जारी — 65%** | Master checklist के 86 मुख्य items में 56 पूरे, 30 बाकी। यह पूरे project का checklist-count है; GPT-1/GPT-2 के अलग प्रतिशत इससे अलग हैं। |
-| 2. Source समीक्षा | **जारी** | Customer/Electrician source audit और documentation count reconciliation जारी। इस HEAD पर GitHub Actions Node run उपलब्ध नहीं; इसलिए इस HEAD पर PASS का दावा नहीं। |
-| 3. Database Runtime | **बाकी / अवरुद्ध** | Isolated TEST schema और वास्तविक PostgreSQL/pgTAP actor/concurrency execution बाकी। Production DB पर migration नहीं लगाई गई। Paid staging branch अभी नहीं बनाई जाएगी; पहले implementation पूरा होगा। |
-| 4. Browser E2E | **बाकी** | Login से booking, offer, timer, bill, payment/refund, support और role-isolation workflows का end-to-end browser acceptance बाकी। |
-| 5. Netlify Preview | **वर्तमान HEAD पर Success** | PR source HEAD `1c6a03bd` पर Netlify Deploy Preview status **success** मिला। यह deploy-status प्रमाण है, अलग से manual visual/owner acceptance नहीं। |
-| 6. Vercel Preview | **Build blocked (rate limit)** | वर्तमान HEAD `1c6a03bd` पर Vercel check **failure (build-rate-limit)** है। इसे application test failure या successful build नहीं माना गया। |
-| 7. Owner Approval और Release | **बाकी** | Owner approval, PR merge, Production migrations/deploy और release अभी नहीं हुए हैं। |
+| Source implementation | जारी, काफी विस्तारित | Shared Technician onboarding/KYC/Admin approval, Master dispatch, Customer workday decisions/team GPS, GST final bill/invoice, cash payment/refund और wallet credits UI source में मौजूद। |
+| Node CI | <badge color="success">PASS</badge> | Exact HEAD 4cfdc869 पर GitHub Actions run 44906291585: **573 passed / 0 failed**। |
+| Database runtime | अवरुद्ध / NOT RUN | Supabase Pro Development Branch सुविधा उपलब्ध नहीं। Local replay attempt में authoritative core baseline missing होने से migration replay शुरू नहीं हो सका। कोई pgTAP test execute नहीं हुआ। |
+| Browser E2E | बाकी | OTP/SMS, KYC Storage, dispatch, timer, bill, payment/refund, payout, actor isolation और browser workflows runtime verify करने हैं। |
+| Preview / Visual QA | वर्तमान staging HEAD पर नहीं चला | Netlify/Vercel Preview और desktop/mobile visual acceptance को current staging PR पर अलग verify करना होगा। पुराने Preview statuses current HEAD पर लागू नहीं। |
+| Main PR / Release | अभी नहीं | Current staging changes का feature-branch review बाकी है। Main PR, merge, Production migration और deployment नहीं किए गए। |
 
-## नवीनतम सत्यापित टेस्ट स्थिति
+## वर्तमान source में शामिल मुख्य काम
 
-- वर्तमान Code HEAD: `1c6a03bdd891fee61a71b368991b83ffd7acfb20`
-- इस HEAD के लिए GitHub Actions workflow runs: **कोई run उपलब्ध नहीं**। इसलिए इस HEAD पर GitHub Actions test pass का दावा नहीं है।
-- इस HEAD का combined status: Vercel **failure (build-rate-limit)**; Netlify Deploy Preview **success**। Netlify success visual/manual owner acceptance का विकल्प नहीं है।
-- ऐतिहासिक CI प्रमाण: पुराने HEAD `24aed49029a731e8a88cd33e0093dd2b18689e36` पर run `43843110580` में **358 passed / 0 failed / 0 skipped** दर्ज था। यह परिणाम वर्तमान HEAD पर लागू नहीं माना जाएगा।
-- पुराने HEAD पर अतिरिक्त focused source-contract harness **15/15 passed** दर्ज था; यह भी वर्तमान HEAD का परिणाम नहीं है।
-- यह source/Node CI, DB runtime, Browser E2E या Mobile QA का विकल्प नहीं।
+- Shared Technician App: OTP-first application, multiple service categories/skills, private KYC upload, Admin skill/KYC review और approval gate।
+- Master dispatch: unified offer inbox, online/GPS presence, 30 km eligibility, Admin dispatch queue और retry।
+- Customer: Assigned Technician names/team, booking-scoped GPS, workday start approval, तीन daily decisions, normal/overtime breakdown।
+- Billing: immutable Master final bill, configurable GST snapshot, Customer GST invoice/credit-note view।
+- Admin manual payment verification: completed unpaid cash/UPI/bank bookings; Razorpay-linked bookings excluded; GST-inclusive total due और actual receipt/UTR check।
+- Cash refund: Technician inbox केवल Admin-approved refund requests दिखाता है; Admin finalization GST-inclusive amount validate करती है; commission reversal और recovered-commission wallet credit payout flow से जुड़ा है।
+- Technician Wallet: commission refund credit available/requested/paid/history दिखाता है।
+- Rates: 36 active confirmed rate levels; 6 pending Admin rows। Customer booking list में Technician/Helper hourly तथा 8-hour salary और combined total।
+- New Master booking में quote approval flow नहीं है; historical quote data archival compatibility के लिए preserved है।
 
-## GPT-1 का कार्यक्षेत्र
+## अभी वास्तविक blockers
 
-- Master Checklist sections 1, 2 और 6 की checkbox पुनर्गणना: Customer **9/10**, Electrician **9/10**, Welcome/Founder Photo **4/8** — कुल **22/28 = 79% पूरे**, **6/28 बाकी**। पुराने 21/28 (75%) आंकड़े में एक पूर्ण checkbox छूट गया था; Master Checklist में सही गणना अपडेट की गई है।
-- Customer App और Electrician App: implementation तथा source audit जारी।
-- Welcome Screen / Founder-photo integration: पहले पूर्ण दर्ज; बिना defect के दोबारा नहीं खोला जाएगा।
-- हाल के सुधार: account switch पर पुरानी Customer/Electrician Support requests, threads और async responses को नई session UI प्रभावित करने से रोकना।
-- GPT-2 के Admin, Support Staff, Main DB, Payments/Refunds/Payouts, Commission/Accounting और Security/Permissions को GPT-2 ही संभालेगा।
-
-## अभी शेष प्रमुख काम
-
-1. GPT-1 Customer/Electrician implementation और source audit के शेष स्वीकृत items पूरे करना।
-2. GPT-2 से TEST schema/database baseline और migration replay readiness का समन्वय।
-3. Isolated PostgreSQL/pgTAP actor-isolation, concurrency और storage tests चलाना।
-4. Browser E2E करना।
-5. सभी implementation/runtime gates पूरे होने के बाद एक consolidated final Mobile QA pass करना।
-6. Owner approval के बाद ही merge/release पर जाना।
+1. Road-distance travel fee 3 km free, फिर ₹4/km one-way अभी implement/runtime-verified नहीं। GPS straight-line distance को road distance नहीं मानेंगे। Approved routing provider और server-side API credential/configuration चाहिए।
+2. AC Installation/Repair का ₹437/hour combined team total दर्ज है, लेकिन Technician/Helper pay split pending है। Basic Electrician Helper, Pump Repair और 20 HP से ऊपर की Motor/Cooler winding rates भी Admin approval तक pending हैं।
+3. Founder का actual approved original photo अभी upload नहीं हुआ। कोई generated/alternate portrait substitute नहीं होगी।
+4. 112 SQL migrations और 55 pgTAP test files source में हैं; authoritative pre-existing core schema/Auth/Storage baseline और duplicate migration-version history reconcile करनी है। इसके बाद disposable PostgreSQL/Supabase में migration replay और सभी pgTAP tests चलेंगे।
+5. Hosted schema/role parity, OTP/SMS, KYC Storage, Push provider delivery, concurrency/actor ACL, ledger reconciliation, backup/restore integrity और full Browser E2E।
+6. Current staging branch पर Netlify/Vercel Preview, desktop/mobile QA और owner acceptance बाकी।
 
 ## सुरक्षा और रिलीज़ नियंत्रण
 
-- कोई PR merge या Production deploy नहीं किया गया।
-- कोई Production migration/schema change नहीं किया गया।
-- कोई भुगतान/रिफंड/वास्तविक ग्राहक बुकिंग टेस्ट नहीं किया गया।
-- Paid Supabase staging/development branch नहीं बनाई गई; इसकी जरूरत E2E चरण में होने पर लागत बताकर पहले अनुमति ली जाएगी।
-- Mobile QA को implementation समाप्त होने तक स्थगित रखा गया है।
+- Main Branch और Production Database untouched हैं।
+- कोई migration किसी database पर apply नहीं हुई।
+- कोई live payment, refund, payout, SMS/Push provider action या deployment नहीं किया गया।
+- Pro Plan restriction के कारण Supabase Development Branch नहीं बनी। GitHub-hosted local replay attempt भी baseline dependency पर fail हुआ; premature workflow हटा दिया गया। इसलिए pgTAP runtime को PASS नहीं कहा जाएगा।
+- Main PR अभी नहीं खोला गया; merge/deploy/Production migration के लिए अलग owner approval आवश्यक रहेगा।
 
-## आगे से प्रगति रिपोर्ट का नियम
-
-हर महत्वपूर्ण काम के बाद इसी प्रारूप में अपडेट दिया जाएगा:
-- **अभी क्या जाँचा**
-- **क्या पूरा हुआ (और उसका प्रमाण)**
-- **क्या बाकी है**
-- **कौन-सा blocker/निर्भरता है**
-- **अगला काम**
-- **नया CI/test परिणाम और सत्यापित commit**
-
-हर नए अपडेट में PR HEAD और संबंधित checks फिर से जाँचे जाएँगे। पुराना test result नए commit पर लागू मानकर नहीं बताया जाएगा।
-
+---
 
 ## प्रगति इतिहास — 2026-11-16 (नवीनतम)
 
