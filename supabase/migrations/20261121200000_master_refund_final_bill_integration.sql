@@ -157,14 +157,22 @@ end;
 $$;
 
 CREATE OR REPLACE FUNCTION public.srk_master_refund_payable_state_sync()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $
+DECLARE v_payment public.srk_master_booking_payments%rowtype;
 BEGIN
  IF NEW.payment_status='refunded' AND OLD.payment_status IS DISTINCT FROM NEW.payment_status THEN
    UPDATE public.srk_master_technician_payables SET payout_status='refunded'
     WHERE booking_id=NEW.id AND payout_status IN ('pending','requested','blocked');
+   UPDATE public.srk_master_booking_payments SET payment_status='refunded'
+    WHERE booking_id=NEW.id AND payment_status='paid' RETURNING * INTO v_payment;
+   IF FOUND THEN
+     INSERT INTO public.srk_master_payment_events(booking_id,payment_id,event_type,amount_paise,provider_reference,event_data)
+     VALUES(NEW.id,v_payment.id,'refund_processed',v_payment.amount_paise,
+       v_payment.razorpay_payment_id,jsonb_build_object('refund_status','processed'));
+   END IF;
  END IF;
  RETURN NEW;
-END; $$;
+END; $;
 REVOKE ALL ON FUNCTION public.srk_master_refund_payable_state_sync() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS srk_master_refund_payable_state_sync ON public.service_bookings;
 CREATE TRIGGER srk_master_refund_payable_state_sync
