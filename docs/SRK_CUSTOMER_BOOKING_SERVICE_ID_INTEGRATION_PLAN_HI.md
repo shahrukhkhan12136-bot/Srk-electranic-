@@ -154,3 +154,11 @@ Backend staging response और API contract मिलने के बाद �
 - Existing customer details, OTP checks, date/time, work details, payment method, GPS, endpoint और response handling untouched हैं।
 - नया category picker अभी legacy `service_type` को auto-fill नहीं करता। ऐसा करने से AC/Fridge/Plumber आदि की booking गलत legacy dispatch path पर जा सकती है।
 - इसलिए यह form-level state/UI preparation है, live category booking integration नहीं।
+
+## 10. Picker stale-selection safety (21-11-2026)
+
+- Picker callback अब nullable selection देता है।
+- Category या subcategory बदलते ही पुराना completed selection null से clear होता है; नया valid selection तभी emit होता है जब नया hierarchy choice पूरा हो।
+- इससे AC से Fridge, Cooler से AC या किसी अन्य parent choice पर जाने पर form में पुरानी service ID/label गलती से selected नहीं रहती।
+- नया reset व्यवहार UI state तक सीमित है; booking submit payload में कोई बदलाव नहीं।
+- Widget regression test जोड़ा गया है; अभी execute नहीं किया गया।
