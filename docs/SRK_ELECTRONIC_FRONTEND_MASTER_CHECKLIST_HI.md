@@ -560,3 +560,8 @@
 - [x] Test source re-fetched from the approved feature branch.
 - [ ] Tests have NOT yet been executed; GitHub Actions workflow is manual-dispatch only and no workflow-dispatch action is available in this connection.
 - [ ] Dart analyzer, formatter, Android debug APK builds, and device testing remain outstanding.
+
+
+- [x] Corrected Cooler widget test to tap the visible कूलर रिपेयर subcategory before asserting the selection callback (49bae0c).
+- [x] Checked GitHub Actions runs for this feature branch: no runs are currently listed. Test source is committed but execution is still pending.
+- [ ] Plumber and Painter detailed subcategories are intentionally not invented; only their top-level categories are shown until the owner confirms their service lists.
