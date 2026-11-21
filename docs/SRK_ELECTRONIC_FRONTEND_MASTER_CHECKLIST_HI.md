@@ -722,3 +722,16 @@
 - [ ] Existing cancel/complaint/contact/privacy/payment flows को transition matrix में explicitly preserve या replace किया जाए; कोई नया UI पुरानी API पर अनुमान से न बने।
 
 **स्थिति:** दोनों ऐप के मौजूदा स्रोतों का read-only audit और requirements documentation। कोई Customer/Technician screen, RPC, database, payment या live status action नहीं बदला।
+
+## 2W. Customer work confirmation और server timer का isolated preview (2026-11-21)
+
+- [x] प्रस्तावित start/completion confirmation states के लिए अलग typed DTO जोड़ा; ये backend के deployed status नाम नहीं हैं।
+- [x] प्रस्तावित contract में booking/request IDs, requester role, requested action, state, server timestamps, version और idempotency key शामिल हैं।
+- [x] Timer preview तभी active हो सकता है जब server confirmation timestamp और server start timestamp दोनों उपलब्ध हों तथा completion timestamp न हो।
+- [x] Client device clock से timer शुरू/गणना नहीं होती; duplicate request पहचान केवल समान non-empty booking ID + request ID पर आधारित है।
+- [x] Unknown/missing state/action fail-closed रहते हैं; tests में timestamp gating, completion, duplicate identity, UTC parsing और unknown state शामिल हैं।
+- [ ] यह DTO केवल isolated preview है; Customer या Technician की live screen, button, Supabase query/RPC अथवा status action से जुड़ा नहीं है।
+- [ ] Backend से exact deployed JSON keys, enum, ownership checks, idempotency behavior, server-time semantics, timeout/dispute/Admin override और version conflict contract मिलने तक इसे live app में न जोड़ें।
+- [ ] Flutter formatter, analyzer, tests, Android build और device test अभी execute/verify नहीं हुए।
+
+**सीमा:** मौजूदा booking flow, quote compatibility, offer/assignment, map/contact, cash/online payment, earnings/wallet, backend, database और production behavior में कोई बदलाव नहीं।
