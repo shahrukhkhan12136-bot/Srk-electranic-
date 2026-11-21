@@ -20,8 +20,8 @@ void main() {
 
     testWidgets('AC and Fridge show separate task lists', (tester) async {
       Map<String, String?>? selected;
-      await tester.view.setPhysicalSize(const Size(900, 1200));
-      await tester.view.setDevicePixelRatio(1);
+      tester.view.physicalSize = const Size(900, 1200);
+      tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
