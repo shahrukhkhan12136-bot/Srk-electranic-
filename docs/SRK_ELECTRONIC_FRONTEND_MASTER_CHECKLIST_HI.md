@@ -1130,3 +1130,14 @@
 - [x] Missing auth session पर दोबारा OTP login का संदेश।
 - [x] Source commit: `7b48352e5cdfb296d3668e2bd6965ab2c72c8f2c`.
 - [ ] Flutter format/analyzer/widget test/Android build/device QA अभी बाकी; execute नहीं हुए।
+
+
+## 2AT. Technician dashboard — optional data source failures isolated (21-11-2026)
+
+- [x] Offer price/quote details RPC failure अब पूरे dashboard को बंद नहीं करता; अलग warning दिखती है।
+- [x] Assigned booking customer-contact RPC failure पर booking details दिखाई देती हैं; contact warning अलग है।
+- [x] Earnings और wallet RPC failures अब independent warnings हैं; offers और assigned bookings की उपलब्ध जानकारी दिखाई जाती है।
+- [x] Core profile/offers/assigned-booking load failures अभी भी main dashboard error दिखाते हैं; core data silently fabricate नहीं होती।
+- [x] Refresh पर warnings reset होती हैं।
+- Source: `apps/electrician_app/lib/main.dart`, commit `c902d9687d67dcb5a11476fb2928ae98a1b01497`.
+- [ ] Flutter format/analyzer/widget tests और Android build/device QA अभी execute नहीं हुए।
