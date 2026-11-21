@@ -366,3 +366,31 @@
 - [ ] उस सूची के बाद हर category के customer-visible options, technician skill/onboarding options, rate/duration display और backend payload mapping का side-by-side matrix पूरा करना बाकी है।
 
 **इस audit का निर्णय:** अभी app source में category dropdown/catalog बदलना सुरक्षित नहीं, क्योंकि authoritative master document छह-category list और plumber/painter/AC-fridge standalone flows को परिभाषित नहीं करता। यह केवल requirements gap है—इससे user द्वारा बातचीत में स्वीकृत किसी category को अस्वीकार नहीं किया जा रहा। छह-category सूची स्पष्ट होते ही उसी के आधार पर मौजूदा booking flow में न्यूनतम बदलाव किए जाएँगे। इस चरण में कोई Dart source, backend API, SQL migration, database या production setting नहीं बदली गई।
+
+
+### 2E-1. बातचीत में मालिक द्वारा बताई गई छह मुख्य categories — recovered prior decision
+
+मुख्य requirements document में catalog अधूरा है, लेकिन मालिक की 2026-11-21 की बातचीत से छह top-level categories स्पष्ट रूप से recover हुई हैं। इन्हें चार Electrician skill tiers से अलग रखना है:
+
+1. **Electrician**
+2. **Plumber**
+3. **Painter**
+4. **AC + Fridge Technician** — AC और Fridge एक ही top-level category के अंदर।
+5. **Motor & Pump**
+6. **Cooler**
+
+**पहले से स्पष्ट booking options**
+- AC + Fridge Technician चुनने पर पहले **AC** और **Fridge** विकल्प दिखेंगे।
+- **AC** चुनने पर **AC Installation** और **AC Repair** दिखेंगे।
+- **Fridge** चुनने पर Fridge का booking flow खुलेगा; AC Installation/Repair विकल्प Fridge के अंदर नहीं दिखेंगे।
+- Helper विकल्प उसी संबंधित booking flow के अंदर रहेगा; इसे अलग top-level category या अलग booking entry नहीं बनाना है।
+- AC Installation और AC Repair दोनों के लिए स्वीकृत labour rate: technician अकेले ₹250/hour; helper जोड़ने पर कुल ₹400/hour; helper add-on ₹150/hour। सभी रकम labour-only हैं। Materials/parts अलग होंगे और customer approval के बाद ही bill होंगे।
+- Admin को future rate/commission configuration की आवश्यकता बताई गई है; पुराने bookings में उस समय लागू rate snapshot सुरक्षित रहना चाहिए।
+
+**Rates/catalog gaps जिन्हें अनुमान से नहीं भरना है**
+- Electrician के लिए master document के चार approved skill tiers और 8-hour customer rates §2 में उपलब्ध हैं; इन्हें Electrician category के अंदर skill/rate selection के रूप में रखें, अलग top-level categories न बनाएं।
+- Plumber, Painter, Motor & Pump, Cooler और Fridge के final current labour rates/subcategories इस recovered decision set में पूरी तरह निश्चित नहीं हैं। पुराने/आंशिक rate mentions को current approved rate मानकर लागू न करें।
+- Fridge helper applicability/rate, Motor & Pump service list/rates, Cooler booking/rate rules, Plumber/Painter service options/rates अभी लिखित रूप में पूर्ण नहीं हैं।
+- AC/Fridge category के अंदर Fridge booking flow निश्चित है; उसके अन्दर के sub-options केवल उपलब्ध approved catalog के अनुसार दिखेंगे—AC वाले विकल्प वहाँ नहीं दोहराने हैं।
+
+**Implementation guardrail:** छह top-level category cards/list और ऊपर दिए गए AC/Fridge navigation को frontend में जोड़ा जा सकता है; लेकिन जिन categories के rates या sub-options final नहीं हैं, उनके लिए मनगढ़ंत rate/subcategory नहीं दिखानी है। Existing booking form/lifecycle को preserve करके category-specific fields उसी flow में न्यूनतम रूप से जोड़े जाएँ। Master Requirements document को भी बाद में इस recovered approved catalog से reconcile करना होगा।
