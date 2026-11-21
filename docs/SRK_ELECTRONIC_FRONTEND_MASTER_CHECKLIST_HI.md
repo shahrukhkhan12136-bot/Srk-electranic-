@@ -1301,3 +1301,26 @@
 - [ ] Existing booking history, profile, skill verification, availability, dispatch and assignment behavior का regression test करें।
 
 **सीमा:** यह requirement frontend checklist में दर्ज है। मौजूदा API/dispatch contract और technician skill data की जाँच के बिना backend eligibility logic या assignment behavior न बदलें।
+
+
+## 2BC. Owner correction — booking selection order: category → skill level → capabilities → task (21-11-2026)
+
+**यह निर्देश 2BB के क्रम को स्पष्ट/सुधारता है।** ग्राहक पहले task नहीं चुनेगा और task के आधार पर technician list से शुरुआत नहीं होगी।
+
+नया customer selection क्रम:
+
+1. ग्राहक छह मुख्य service categories में से category चुनेगा (उदाहरण: Electrician या Plumber)।
+2. चुनी हुई category के अंदर उसके उपलब्ध skill levels दिखेंगे: **Basic, Expert, Master** (जहाँ उस category में ये levels स्वीकृत हैं)। उदाहरण के लिए Electrician के अंदर तीन स्तर और Plumber के अंदर तीन स्तर।
+3. ग्राहक Basic / Expert / Master में से अपना स्तर चुनेगा।
+4. चुने हुए स्तर की पूरी approved विशेषताएँ/profile विवरण दिखेंगे।
+5. उसी स्तर के व्यक्ति को कौन-कौन से काम आते हैं, उसकी पूरी approved skills/task list दिखाई जाएगी; कोई मौजूदा विशेषता या काम हटाया/छिपाया नहीं जाएगा।
+6. ग्राहक दिखाई गई सूची में से अपना आवश्यक काम/task चुनेगा।
+7. इसके बाद उसी चुने हुए category + skill level + task के अनुसार लागू helper choice, duration/quantity, rate/amount summary, address और booking steps आगे चलेंगे।
+8. बुकिंग/dispatch केवल चुने हुए स्तर और task के लिए पात्र, verified और उपलब्ध technician तक ही जाएगी। किसी दूसरे level या असंबंधित skill वाले व्यक्ति को उस booking के लिए न दिखाएँ/assign करें।
+
+- [ ] UI navigation और state model को इसी क्रम में लागू करें: category → skill level → capability/profile → task → बाकी booking विवरण।
+- [ ] Existing category, skill-level, technician-profile, verified-skills और task data का mapping audit करें; कोई feature/attribute delete या simplify न करें।
+- [ ] AC + Fridge, Motor & Pump, Cooler जैसी categories में जहाँ Basic/Expert/Master स्तर लागू नहीं हैं, वहाँ मनमाने स्तर न बनाएँ; उनके स्वीकृत category-specific विकल्प ही दिखाएँ।
+- [ ] Booking payload और dispatch eligibility इस क्रम के सभी selected IDs/verified skill relationships को backend contract से validate करें; contract upgrade के बिना live submit/dispatch behavior न बदलें।
+
+**यह 2BB की पहले लिखी category → task → technician-list वाली व्याख्या को supersede करता है।** 2BB की profile विशेषताएँ और verified skill संरक्षण की शर्तें लागू रहेंगी।
