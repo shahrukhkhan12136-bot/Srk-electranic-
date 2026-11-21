@@ -50,7 +50,7 @@ test('customer payment receipt HTML escapes every server-provided text field', (
 });
 
 test('receipt RPC refuses unpaid bookings and scopes receipt lookup to the authenticated customer', () => {
-  assert.match(receiptMigration, /where id=p_booking_id and customer_user_id=v_uid/);
+  assert.match(receiptMigration, /where id=p_booking_id and customer_user_id=v_uid/i);
   assert.match(receiptMigration, /b\.payment_status<>'paid'/);
   assert.match(receiptMigration, /b\.payment_verified_at IS NULL/);
   assert.match(receiptMigration, /ONLY_VERIFIED_PAID_BOOKINGS_HAVE_A_RECEIPT/);
