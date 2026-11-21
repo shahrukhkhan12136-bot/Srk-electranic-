@@ -1391,3 +1391,21 @@
 - [ ] Add regression tests for legacy profiles, all three levels, multi-level tasks, admin approval, inactive gating, and rate visibility permissions.
 
 **Scope and safety:** This finding is documentation/audit only. No rate values, task mappings, backend schema, dispatch eligibility, wallet balance, KYC status, or payment behavior were changed. Do not claim the application form or skill workflow is implemented until the secure server contract and UI are both complete.
+
+
+## 2BG. Service-wise skill-level counts follow the existing catalogue (21-11-2026)
+
+**यह निर्देश 2BF में लिखी गई एक समान तीन-स्तरीय धारणा को स्पष्ट रूप से supersede करता है।** किसी एक सर्विस के उदाहरण को सभी सर्विस पर लागू नहीं करना है। Registration, customer selection और technician profile में हर category के skill-level विकल्पों की संख्या और नाम मौजूदा `srk_service_catalog.dart` से ही लिए जाएँगे।
+
+Current catalogue audit:
+- Electrician: 4 existing skill levels — Basic, Expert Residential, Factory / Large Project, Master.
+- Plumber: 3 existing skill levels — Basic, Expert, Master / Industrial.
+- Painter: 3 existing skill levels — Basic, Expert, Master / Commercial.
+- Other service categories: retain their own existing catalogue structure and option counts; do not force them into a shared count.
+
+Implementation rules:
+- Read each category's actual `skillLevels` list dynamically; do not hardcode one universal number of levels.
+- Preserve all existing level names, rates, helper notes, task options and service-specific differences. Do not rename, merge, remove, duplicate or invent entries.
+- Where task-to-level mapping is not explicitly present in the catalogue or approved contract, do not guess it. Keep the existing customer/service selection data intact while recording the mapping gap for later approved work.
+- Any new example supplied by the owner explains the intended interaction only; it does not override existing catalogue data unless the owner explicitly requests a catalogue change.
+- This correction is a source-of-truth clarification; it does not modify rates, database schema, dispatch rules, payment behavior or production data.
