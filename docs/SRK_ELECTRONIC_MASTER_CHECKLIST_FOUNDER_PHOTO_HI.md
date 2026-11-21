@@ -72,6 +72,7 @@
 - [x] Customer cancellation request/fee carry-forward और refund reversal workflow source मौजूद।
 - [x] Customer और electrician phone numbers acceptance से पहले छिपे; acceptance/assignment के बाद full number visible; Support Staff को unrestricted phone projection नहीं। `tests/customer-electrician-phone-visibility.test.js` में दोनों दिशाओं के authenticated/assignment-scoped source regression tests PASS (latest Node CI run)।
 - [x] Customer payment receipt contract अलग-अलग flows के अनुसार reconcile है: Legacy paid booking की उसी receipt में approved labour और materials अलग line items हैं; नई Category Booking में immutable labour bill और settled cancellation-fee ledger दिखते हैं तथा materials `0` हैं (अलग materials-receipt RPC नहीं है)। Legacy manual-payment RPC केवल पुराने completed/assigned/customer-approved quote पर चलती है; नई Category Booking इससे स्पष्ट रूप से बाहर है। Migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`; Node/pgTAP source tests मौजूद, PostgreSQL/pgTAP runtime अलग pending है।
+- [x] Master Customer booking source: service/rate tier, 1–10 Technician, per-Technician Helper, work address, booking status, assigned Technician names/team, booking-scoped GPS, daily workday approval/decisions, final bill और GST invoice/credit-note UI जोड़े।
 - [ ] Customer payment/refund/cancellation के सभी owner/non-owner/anon और duplicate/concurrency व्यवहार isolated database में runtime verify करें।
 
 ## 2. इलेक्ट्रिशियन (Electrician) — Feature Branch implementation
