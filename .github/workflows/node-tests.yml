@@ -7,6 +7,7 @@ on:
       - feature/master-technician-payment-cycle-20261121
       - feature/master-gst-accounting-20261121
       - feature/master-rating-ui-followup-v2-20261121
+      - feature/master-customer-workday-ui-20261121
   pull_request:
     branches:
       - main
