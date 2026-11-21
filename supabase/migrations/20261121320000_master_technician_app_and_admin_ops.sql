@@ -1,7 +1,8 @@
 -- Complete shared Technician application read, customer workday decisions, and Admin dispatch visibility.
 DROP FUNCTION IF EXISTS public.srk_technician_get_my_applications();
 CREATE FUNCTION public.srk_technician_get_my_applications()
-RETURNS TABLE(application_id uuid,technician_id uuid,status text,rejection_reason text,submitted_at timestamptz,
+RETURNS TABLE(application_id uuid,technician_id uuid,full_name text,address text,district text,state text,pincode text,
+ experience_years integer,about text,status text,rejection_reason text,submitted_at timestamptz,
  categories jsonb,skills jsonb,kyc jsonb)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_uid uuid:=auth.uid();v_technician_id uuid;
@@ -10,7 +11,8 @@ BEGIN
  SELECT t.id INTO v_technician_id FROM public.srk_technicians t WHERE t.auth_user_id=v_uid;
  IF v_technician_id IS NULL THEN RETURN;END IF;
  RETURN QUERY
- SELECT a.id,a.technician_id,a.status,a.rejection_reason,a.submitted_at,
+ SELECT a.id,a.technician_id,a.full_name,a.address,a.district,a.state,a.pincode,a.experience_years,a.about,
+  a.status,a.rejection_reason,a.submitted_at,
   COALESCE((SELECT jsonb_agg(jsonb_build_object('code',c.category_code,'name',c.display_name)
    ORDER BY c.sort_order,c.category_code)
    FROM public.srk_technician_application_categories ac
