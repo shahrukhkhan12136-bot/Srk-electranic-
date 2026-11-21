@@ -79,12 +79,14 @@ class SrkServiceCategoryPicker extends StatefulWidget {
 class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   SrkServiceCategory? _category;
   SrkServiceSubcategory? _subcategory;
+  String? _selectedTaskId;
 
   void _selectCategory(SrkServiceCategory category) {
     widget.onSelection(null);
     setState(() {
       _category = category;
       _subcategory = null;
+      _selectedTaskId = null;
     });
     if (category.subcategories.isEmpty) {
       final selection = SrkServiceSelection.create(categoryId: category.id);
@@ -96,7 +98,10 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     final category = _category;
     if (category == null) return;
     widget.onSelection(null);
-    setState(() => _subcategory = subcategory);
+    setState(() {
+      _subcategory = subcategory;
+      _selectedTaskId = null;
+    });
     if (subcategory.children.isEmpty) {
       final selection = SrkServiceSelection.create(
         categoryId: category.id,
@@ -184,23 +189,26 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
             spacing: 8,
             runSpacing: 8,
             children: tasks.map((task) {
-              return ActionChip(
+              final selectedCategory = category;
+              if (selectedCategory == null) return const SizedBox.shrink();
+              final sourceCategory = catalog.srkServiceCatalog
+                  .singleWhere((item) => item.id == selectedCategory.id);
+              final sourceSubcategory = sourceCategory.options
+                  .singleWhere((item) => item.id == subcategory.id);
+              final sourceTask = sourceSubcategory.tasks
+                  .singleWhere((item) => item.name == task);
+              return FilterChip(
                 label: Text(task),
-                onPressed: () {
-                  final selectedCategory = category;
-                  if (selectedCategory == null) return;
-                  final sourceCategory = catalog.srkServiceCatalog
-                      .singleWhere((item) => item.id == selectedCategory.id);
-                  final sourceSubcategory = sourceCategory.options
-                      .singleWhere((item) => item.id == subcategory.id);
-                  final sourceTask = sourceSubcategory.tasks
-                      .singleWhere((item) => item.name == task);
+                selected: _selectedTaskId == sourceTask.id,
+                onSelected: (_) {
                   final selection = SrkServiceSelection.create(
                     categoryId: selectedCategory.id,
                     subcategoryId: subcategory.id,
                     taskId: sourceTask.id,
                   );
-                  if (selection != null) widget.onSelection(selection);
+                  if (selection == null) return;
+                  setState(() => _selectedTaskId = sourceTask.id);
+                  widget.onSelection(selection);
                 },
               );
             }).toList(),
