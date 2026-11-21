@@ -21,11 +21,12 @@ async function verifyCustomerSession(authorization, booking) {
 
 async function paymentAmountPaise(booking){
   if(booking.srk_service_category_code){
-    const bills=await db("srk_booking_final_bills?select=subtotal_paise,labour_amount_paise,materials_amount_paise&id=eq."+encodeURIComponent(booking.id)+"&limit=1");
+    const bills=await db("srk_booking_final_bills?select=id,subtotal_paise,labour_amount_paise,materials_amount_paise&booking_id=eq."+encodeURIComponent(booking.id)+"&limit=1");
     const bill=bills?.[0];
-    const total=Number(bill?.subtotal_paise),labour=Number(bill?.labour_amount_paise),materials=Number(bill?.materials_amount_paise);
-    if(!Number.isSafeInteger(total)||total<100||!Number.isSafeInteger(labour)||labour<1||!Number.isSafeInteger(materials)||materials<0||total!==labour+materials)
-      throw new Error("Invalid immutable Master final bill");
+    if(!bill||!Number.isSafeInteger(Number(bill.subtotal_paise))||Number(bill.subtotal_paise)!==Number(bill.labour_amount_paise)+Number(bill.materials_amount_paise))throw new Error("Invalid immutable Master final bill");
+    const taxes=await db("srk_booking_tax_snapshots?select=total_due_paise,total_tax_paise&booking_id=eq."+encodeURIComponent(booking.id)+"&limit=1");
+    const tax=taxes?.[0],total=Number(tax?.total_due_paise);
+    if(!Number.isSafeInteger(total)||total<100||!Number.isSafeInteger(Number(tax.total_tax_paise))||total!==Number(bill.subtotal_paise)+Number(tax.total_tax_paise))throw new Error("Master GST snapshot is missing or inconsistent");
     return total;
   }
   if(booking.selected_category){
