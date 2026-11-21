@@ -68,7 +68,7 @@ class SrkServiceCategory {
 
 /// Approved catalogue revision. IDs remain local keys, not deployed backend IDs.
 /// Keep the legacy constant name to avoid breaking existing app references.
-const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.3';
+const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.4';
 
 /// Six approved top-level categories, in the owner's requested order.
 ///
@@ -166,7 +166,7 @@ const List<SrkServiceCategory> srkServiceCatalog = [
         SrkServiceTask(id: 'ac_compressor', name: 'कंप्रेसर'),
         SrkServiceTask(id: 'ac_pcb', name: 'PCB'),
       ], rates: [
-        SrkServiceRate(label: 'AC Technician', amount: '₹437', unit: 'प्रति घंटा'),
+        SrkServiceRate(label: 'AC Technician की मजदूरी', amount: '₹437', unit: 'प्रति घंटा', helperAmount: 'Helper ₹250 प्रति घंटा अतिरिक्त', note: 'सामान / पार्ट्स अलग; ग्राहक की मंजूरी के बाद।'),
       ], note: 'Installation, Uninstallation, Repair, Servicing, Gas Charging, Leakage Check, Compressor और PCB'),
       SrkServiceOption(id: 'fridge', name: 'Fridge', displayName: 'फ्रिज', tasks: [
         SrkServiceTask(id: 'fridge_repair', name: 'फ्रिज रिपेयर'),
